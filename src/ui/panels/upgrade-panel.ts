@@ -6,6 +6,7 @@ import { tierUnlockCost } from '../../data/balance';
 import { getUpgradeLevel, getUpgradeCost } from '../../sim/progression';
 import { getMotes } from '../../sim/resources';
 import { formatNumber } from '../../util';
+import { getGemIconPath } from '../../render/assets/asset-paths';
 
 /**
  * Upgrade panel — DOM-based panel listing available upgrades.
@@ -18,6 +19,11 @@ export interface UpgradePanel {
 export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
   const panel = document.createElement('div');
   panel.className = 'panel upgrade-panel';
+
+  const title = document.createElement('h3');
+  title.className = 'panel-title';
+  title.textContent = 'Upgrades';
+  panel.appendChild(title);
 
   // Tier unlock button
   const unlockSection = document.createElement('div');
@@ -81,11 +87,17 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
       const tierColor = def.tierId ? TIER_BY_ID.get(def.tierId)?.color ?? '#888' : '#ecf0f1';
       btn.style.borderColor = tierColor;
 
+      // Build button content with gem icon
+      const iconSrc = def.tierId ? getGemIconPath(def.tierId) : '';
+      const iconHtml = def.tierId
+        ? `<img class="gem-icon" src="${iconSrc}" alt="" />`
+        : '';
+
       if (isMaxed) {
-        btn.textContent = `${def.icon} ${def.displayName} — MAX (Lv ${level})`;
+        btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} — MAX (Lv ${level})</span>`;
         btn.disabled = true;
       } else {
-        btn.textContent = `${def.icon} ${def.displayName} Lv ${level} — ${formatNumber(cost!)} motes`;
+        btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} Lv ${level} — ${formatNumber(cost!)} motes</span>`;
         btn.disabled = !canAfford;
       }
     }

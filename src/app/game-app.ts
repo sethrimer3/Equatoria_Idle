@@ -21,6 +21,9 @@ import {
   drawForge,
   drawForgeCrunch,
 } from '../render';
+import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
+import { preloadForgeSprites } from '../render/forge/forge-renderer';
+import { createBackgroundAnimation, type BackgroundAnimation } from '../render/background';
 import { setupInputListeners, type GameAction, type TabId } from '../input';
 import {
   createParticleDragState,
@@ -34,6 +37,7 @@ import { createUpgradePanel, createResourcePanel, createSettingsPanel } from '..
 import type { UpgradePanel } from '../ui/panels/upgrade-panel';
 import type { ResourcePanel } from '../ui/panels/resource-panel';
 import type { SettingsPanel } from '../ui/panels/settings-panel';
+import { createLoadingScreen } from '../ui/loading';
 import { loadSettings, saveGame, loadGame, deleteSave } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
 import { TIERS } from '../data/tiers';
@@ -60,7 +64,19 @@ interface AppState {
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
-export function startApp(): void {
+export async function startApp(): Promise<void> {
+  const root = document.getElementById('app')!;
+  root.innerHTML = '';
+
+  // ── Loading screen ──
+  const loadingScreen = await createLoadingScreen();
+  root.appendChild(loadingScreen.element);
+
+  // ── Preload essential sprites ──
+  preloadGeneratorSprites();
+  preloadForgeSprites();
+
+  // ── Initialize game state ──
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
   const settings = loadSettings();
@@ -78,19 +94,25 @@ export function startApp(): void {
     particleDrag: createParticleDragState(),
   };
 
-  // ── DOM structure ──
-  const root = document.getElementById('app')!;
-  root.innerHTML = '';
+  // ── Background animation ──
+  const bgAnimation: BackgroundAnimation = createBackgroundAnimation();
+  root.appendChild(bgAnimation.canvas);
 
+  // ── Canvas container (full screen) ──
   const canvasContainer = document.createElement('div');
   canvasContainer.id = 'canvas-container';
   root.appendChild(canvasContainer);
 
   const cc = createGameCanvas(canvasContainer);
 
+  // ── Panels overlay container ──
   const panelsContainer = document.createElement('div');
   panelsContainer.id = 'panels-container';
   root.appendChild(panelsContainer);
+
+  const panelsInner = document.createElement('div');
+  panelsInner.className = 'panels-inner';
+  panelsContainer.appendChild(panelsInner);
 
   const dispatch = (action: GameAction): void => handleAction(appState, action);
 
@@ -98,14 +120,14 @@ export function startApp(): void {
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch);
 
-  panelsContainer.appendChild(upgradePanel.element);
-  panelsContainer.appendChild(resourcePanel.element);
-  panelsContainer.appendChild(settingsPanel.element);
+  panelsInner.appendChild(upgradePanel.element);
+  panelsInner.appendChild(resourcePanel.element);
+  panelsInner.appendChild(settingsPanel.element);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
 
-  setActiveTab(appState, tabBar, upgradePanel, resourcePanel, settingsPanel);
+  setActiveTab(appState, tabBar, upgradePanel, resourcePanel, settingsPanel, panelsContainer);
 
   // ── Particle system ──
   const particles = new ParticleSystem();
@@ -147,9 +169,13 @@ export function startApp(): void {
   // ── Resize handler ──
   const onResize = (): void => {
     resizeCanvas(cc, canvasContainer);
+    bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
     recomputeGenerators();
   };
   window.addEventListener('resize', onResize);
+
+  // Initial background size
+  bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
 
   // ── Action handler ──
   function handleAction(state: AppState, action: GameAction): void {
@@ -181,7 +207,7 @@ export function startApp(): void {
         break;
       case 'set_active_tab':
         state.activeTab = action.tabId;
-        setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel);
+        setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel, panelsContainer);
         break;
       case 'save_game':
         saveGame(state.game);
@@ -259,9 +285,12 @@ export function startApp(): void {
       appState.forge,
     );
 
+    // ── Update background animation ──
+    bgAnimation.update(deltaMs);
+
     // ── Render ──
     clearCanvas(cc);
-    drawBackground(cc, '#1a1a2e');
+    drawBackground(cc, '#000000');
 
     drawGenerators(
       cc,
@@ -298,7 +327,7 @@ export function startApp(): void {
   }
 
   function updateUI(): void {
-    if (appState.activeTab === 'equation' || appState.activeTab === 'resources') {
+    if (appState.activeTab === 'resources') {
       upgradePanel.update(appState.game);
       resourcePanel.update(appState.game);
     }
@@ -310,18 +339,30 @@ export function startApp(): void {
     upPanel: UpgradePanel,
     resPanel: ResourcePanel,
     setPanel: SettingsPanel,
+    panelsCont: HTMLElement,
   ): void {
     bar.setActiveTab(state.activeTab);
-    upPanel.element.style.display = state.activeTab === 'equation' ? '' : 'none';
+
+    // Equation tab: hide panels overlay, show full-screen canvas
+    // Upgrades/Settings tabs: show panels overlay sliding in from right
+    const shouldShowPanels = state.activeTab !== 'equation';
+    panelsCont.classList.toggle('panels-visible', shouldShowPanels);
+
+    // Show/hide individual panels
+    upPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
     resPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
     setPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
 
-    upgradePanel.update(appState.game);
-    resourcePanel.update(appState.game);
+    if (shouldShowPanels) {
+      upgradePanel.update(appState.game);
+      resourcePanel.update(appState.game);
+    }
   }
 
   // Initial generator setup
   recomputeGenerators();
 
+  // ── Fade out loading screen and start game loop ──
+  await loadingScreen.fadeOut();
   requestAnimationFrame(gameLoop);
 }

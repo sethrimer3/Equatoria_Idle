@@ -8,6 +8,14 @@ import {
   FORGE_SPIN_UP_DURATION_MS,
   FORGE_SPIN_DOWN_DURATION_MS,
 } from '../../data/particles/particle-config';
+import { FORGE_SPRITE_PATH, FORGE_SPRITE_ALT_PATH } from '../assets/asset-paths';
+import { getCachedImage, loadImage } from '../assets/asset-loader';
+
+/** Preload forge sprites. Call once at startup. */
+export function preloadForgeSprites(): void {
+  loadImage(FORGE_SPRITE_PATH);
+  loadImage(FORGE_SPRITE_ALT_PATH);
+}
 
 export function drawForge(
   cc: CanvasContext,
@@ -19,17 +27,85 @@ export function drawForge(
 ): void {
   const ctx = cc.ctx;
   const forgeSize = FORGE_RADIUS;
-  const halfPi6 = Math.PI / 6;
   const spinMult = getForgeRotationMultiplier(
     crunchState, nowMs,
     FORGE_VALID_WAIT_TIME_MS, FORGE_SPIN_UP_DURATION_MS, FORGE_SPIN_DOWN_DURATION_MS,
   );
   const effectiveRotation = forgeRotation * spinMult;
 
-  ctx.save();
-  ctx.translate(forgeX, forgeY);
+  const sprite = getCachedImage(FORGE_SPRITE_PATH);
+  const spriteAlt = getCachedImage(FORGE_SPRITE_ALT_PATH);
 
-  ctx.rotate(-effectiveRotation);
+  if (sprite && spriteAlt) {
+    drawForgeSprite(ctx, forgeX, forgeY, forgeSize, effectiveRotation, sprite, spriteAlt);
+  } else {
+    drawForgeFallback(ctx, forgeX, forgeY, forgeSize, effectiveRotation);
+  }
+
+  // Attraction radius indicator
+  ctx.save();
+  ctx.strokeStyle = 'rgba(150,150,200,0.1)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.arc(forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawForgeSprite(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  forgeSize: number,
+  rotation: number,
+  sprite: HTMLImageElement,
+  spriteAlt: HTMLImageElement,
+): void {
+  const drawSize = forgeSize * 3;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Draw primary forge sprite rotating one direction
+  ctx.save();
+  ctx.rotate(-rotation);
+  ctx.drawImage(sprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+  ctx.restore();
+
+  // Draw alt forge sprite rotating the other direction
+  ctx.save();
+  ctx.rotate(rotation);
+  ctx.globalAlpha = 0.7;
+  ctx.drawImage(spriteAlt, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+  ctx.restore();
+
+  // Glow
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, forgeSize);
+  gradient.addColorStop(0, 'rgba(255,255,255,0.15)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, forgeSize, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawForgeFallback(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  forgeSize: number,
+  rotation: number,
+): void {
+  const halfPi6 = Math.PI / 6;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.rotate(-rotation);
   ctx.strokeStyle = 'rgba(200,200,255,0.5)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -39,7 +115,7 @@ export function drawForge(
   ctx.closePath();
   ctx.stroke();
 
-  ctx.rotate(effectiveRotation * 2);
+  ctx.rotate(rotation * 2);
   ctx.strokeStyle = 'rgba(255,255,255,0.6)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -49,7 +125,7 @@ export function drawForge(
   ctx.closePath();
   ctx.stroke();
 
-  ctx.rotate(-effectiveRotation);
+  ctx.rotate(-rotation);
   const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, forgeSize);
   gradient.addColorStop(0, 'rgba(255,255,255,0.25)');
   gradient.addColorStop(1, 'rgba(255,255,255,0)');
@@ -58,16 +134,6 @@ export function drawForge(
   ctx.arc(0, 0, forgeSize, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.restore();
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(150,150,200,0.1)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([5, 5]);
-  ctx.beginPath();
-  ctx.arc(forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 

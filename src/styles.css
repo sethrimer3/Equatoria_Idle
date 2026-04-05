@@ -1,12 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════
    Equatoria Idle — Core Styles
    Mobile-first, responsive, dark theme
+   Full-screen canvas with overlay panels
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  --bg-primary: #1a1a2e;
+  --bg-primary: #000000;
   --bg-secondary: #16213e;
   --bg-panel: #0f3460;
+  --bg-overlay: rgba(10, 10, 20, 0.80);
   --text-primary: #ecf0f1;
   --text-secondary: #95a5a6;
   --accent: #e94560;
@@ -26,7 +28,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-primary);
+  background: #000;
   color: var(--text-primary);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-size: 14px;
@@ -37,37 +39,89 @@ html, body {
 
 /* ── App layout ──────────────────────────────────────────────── */
 #app {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   width: 100%;
   height: 100%;
   max-width: 480px;
   margin: 0 auto;
+  overflow: hidden;
 }
 
-/* ── Canvas container (top ~40%) ─────────────────────────────── */
+/* ── Background animation canvas ─────────────────────────────── */
+.bg-animation-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* ── Canvas container (full screen behind everything) ────────── */
 #canvas-container {
-  flex: 0 0 40%;
-  min-height: 180px;
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
   overflow: hidden;
   cursor: pointer;
+  background: #000;
 }
 
 #game-canvas {
   display: block;
+  width: 100%;
+  height: 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
-/* ── Panels container (middle, scrollable) ───────────────────── */
+/* ── Panels overlay container ────────────────────────────────── */
 #panels-container {
-  flex: 1 1 auto;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: calc(100% - var(--tab-height) - var(--safe-bottom));
+  z-index: 5;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 12px;
-  padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 8px);
   -webkit-overflow-scrolling: touch;
+
+  /* Slide-in transition from the right */
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+#panels-container.panels-visible {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* Panel overlay background — 80% opaque dark */
+#panels-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-overlay);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Inner panel content padding */
+.panels-inner {
+  position: relative;
+  padding: 12px 12px;
+  padding-bottom: 16px;
+  min-height: 100%;
 }
 
 /* ── Panel base ──────────────────────────────────────────────── */
@@ -90,11 +144,13 @@ html, body {
 }
 
 .upgrade-btn {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   padding: 10px 12px;
   margin-bottom: 6px;
-  background: var(--bg-secondary);
+  background: rgba(22, 33, 62, 0.85);
   color: var(--text-primary);
   border: 2px solid #555;
   border-radius: var(--border-radius);
@@ -103,7 +159,7 @@ html, body {
   text-align: left;
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s;
-  min-height: 44px;  /* comfortable tap target */
+  min-height: 44px;
 }
 
 .upgrade-btn:disabled {
@@ -112,13 +168,25 @@ html, body {
 }
 
 .upgrade-btn:not(:disabled):active {
-  background: var(--bg-panel);
+  background: rgba(15, 52, 96, 0.9);
 }
 
 .unlock-btn {
-  background: var(--bg-panel);
+  background: rgba(15, 52, 96, 0.85);
   border-style: dashed;
-  text-align: center;
+  justify-content: center;
+}
+
+.upgrade-btn .gem-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: auto;
+}
+
+.upgrade-btn .upgrade-text {
+  flex: 1;
 }
 
 /* ── Resource rows ───────────────────────────────────────────── */
@@ -128,11 +196,19 @@ html, body {
   gap: 8px;
   padding: 6px 10px;
   margin-bottom: 4px;
-  background: var(--bg-secondary);
+  background: rgba(22, 33, 62, 0.85);
   border-left: 3px solid #555;
   border-radius: var(--border-radius);
   font-size: 13px;
   min-height: 36px;
+}
+
+.resource-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: auto;
 }
 
 .resource-name {
@@ -183,7 +259,7 @@ html, body {
   width: 100%;
   padding: 10px;
   margin-top: 8px;
-  background: var(--bg-secondary);
+  background: rgba(22, 33, 62, 0.85);
   color: var(--text-primary);
   border: 1px solid #555;
   border-radius: var(--border-radius);
@@ -199,7 +275,7 @@ html, body {
 }
 
 .settings-btn:active {
-  background: var(--bg-panel);
+  background: rgba(15, 52, 96, 0.9);
 }
 
 .credits {
@@ -210,14 +286,18 @@ html, body {
   line-height: 1.6;
 }
 
-/* ── Tab bar (bottom) ────────────────────────────────────────── */
+/* ── Tab bar (bottom, always visible) ────────────────────────── */
 .tab-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  flex: 0 0 auto;
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: var(--bg-secondary);
+  background: rgba(22, 33, 62, 0.92);
   border-top: 1px solid rgba(255,255,255,0.08);
+  z-index: 10;
 }
 
 .tab-btn {
@@ -255,30 +335,59 @@ html, body {
   opacity: 0.7;
 }
 
+/* ── Loading screen ──────────────────────────────────────────── */
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: opacity 0.6s ease-out;
+}
+
+.loading-screen--fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-logo-container {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-logo {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.loading-text {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: loading-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 /* ── Landscape adjustments ───────────────────────────────────── */
 @media (orientation: landscape) and (max-height: 500px) {
   #app {
-    flex-direction: row;
     max-width: 100%;
-  }
-
-  #canvas-container {
-    flex: 0 0 50%;
-    min-height: auto;
-    height: 100%;
-  }
-
-  #panels-container {
-    flex: 1;
-    padding-bottom: calc(var(--tab-height) + 8px);
-  }
-
-  .tab-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 10;
   }
 }
 

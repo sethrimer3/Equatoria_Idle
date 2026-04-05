@@ -3,6 +3,15 @@ import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import type { TierId } from '../../data/tiers';
 import { TIER_BY_ID } from '../../data/tiers';
 import { SPAWNER_SIZE } from '../../data/particles/particle-config';
+import { getGeneratorSpritePath } from '../assets/asset-paths';
+import { getCachedImage, loadImage } from '../assets/asset-loader';
+
+/** Preload generator sprites for all tiers. Call once at startup. */
+export function preloadGeneratorSprites(): void {
+  for (let i = 0; i < 11; i++) {
+    loadImage(getGeneratorSpritePath(i));
+  }
+}
 
 export function drawGenerators(
   cc: CanvasContext,
@@ -17,11 +26,52 @@ export function drawGenerators(
     const tier = TIER_BY_ID.get(gen.tierId);
     if (!tier) continue;
 
-    drawGenerator(ctx, gen.x, gen.y, tier.color, tier.glowColor, rotation, fadeAlpha, gen.range);
+    const spritePath = getGeneratorSpritePath(tier.unlockOrder);
+    const sprite = getCachedImage(spritePath);
+
+    if (sprite) {
+      drawGeneratorSprite(ctx, gen.x, gen.y, sprite, rotation, fadeAlpha, gen.range, tier.color);
+    } else {
+      // Fallback: draw procedural generator while sprite loads
+      drawGeneratorFallback(ctx, gen.x, gen.y, tier.color, tier.glowColor, rotation, fadeAlpha, gen.range);
+    }
   }
 }
 
-function drawGenerator(
+function drawGeneratorSprite(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  sprite: HTMLImageElement,
+  rotation: number,
+  alpha: number,
+  influenceRange: number,
+  color: string,
+): void {
+  if (alpha <= 0) return;
+  const size = SPAWNER_SIZE * 2.5;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+  ctx.restore();
+
+  // Influence radius indicator
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.15;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.arc(x, y, influenceRange, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawGeneratorFallback(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,

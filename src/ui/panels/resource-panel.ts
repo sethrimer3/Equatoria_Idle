@@ -2,6 +2,7 @@ import type { GameState } from '../../sim';
 import { TIERS } from '../../data/tiers';
 import { getMotes, getLifetimeMotes } from '../../sim/resources';
 import { formatNumber } from '../../util';
+import { getRefinedGemPath } from '../../render/assets/asset-paths';
 
 /**
  * Resources panel — shows per-tier mote totals and lifetime earnings.
@@ -41,7 +42,9 @@ export function createResourcePanel(): ResourcePanel {
       if (isUnlocked) {
         const current = getMotes(state.resources, tier.id);
         const lifetime = getLifetimeMotes(state.resources, tier.id);
+        const iconSrc = getRefinedGemPath(tier.id);
         row.innerHTML = `
+          <img class="resource-icon" src="${iconSrc}" alt="" />
           <span class="resource-name" style="color:${tier.color}">${tier.displayName}</span>
           <span class="resource-value">${formatNumber(current)}</span>
           <span class="resource-lifetime">(${formatNumber(lifetime)} total)</span>
