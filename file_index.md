@@ -20,12 +20,22 @@
 - Main application orchestrator.
 - `startApp()` — bootstraps DOM, creates systems, runs game loop.
 - `handleAction()` — central action dispatcher.
-- Game loop: sim tick → particle update → render → UI update → auto-save.
+- `recomputeGenerators()` — recomputes generator ring positions on resize/tier unlock.
+- Game loop: sim tick → particle update → render (generators, forge, equation, score, particles) → UI update → auto-save.
 
 ### src/data/tiers/tier-definitions.ts
 - Single source of truth for all colour tiers.
 - Exports `TIERS`, `TIER_BY_ID`, `VISIBLE_TIERS`, `VISIBLE_TIER_COUNT`.
 - 7 visible tiers (red→violet) + 2 secret (prismatic, void).
+
+### src/data/particles/particle-config.ts
+- All physics constants for particle simulation.
+- Velocities, forces, gravity strengths, merge thresholds, forge parameters, shockwave parameters.
+
+### src/data/particles/size-tiers.ts
+- `SizeIndex` type (0–3), `SizeName` type.
+- `SMALL/MEDIUM/LARGE/EXTRA_LARGE_SIZE_INDEX` constants.
+- Per-size scaling arrays: scale multipliers, velocity modifiers, force modifiers, small equivalents.
 
 ### src/data/upgrades/upgrade-types.ts
 - `UpgradeDefinition` interface, `UpgradeEffectKind` type.
@@ -57,10 +67,32 @@
 - `purchaseUpgrade()`, `getUpgradeCost()`, `canAffordUpgrade()`, `getAutoTapIntervalMs()`.
 
 ### src/sim/game-state.ts
-- Aggregate game state combining equation, resources, progression.
+- Aggregate game state combining equation, resources, progression, and forge crunch state.
 - `tapEquation()` — main tap action.
 - `tryPurchaseUpgrade()`, `tryUnlockNextTier()` — purchase actions.
 - `simTick()` — per-frame simulation advance (auto-tap).
+
+### src/sim/forge/forge-state.ts
+- `ForgeCrunchState` interface and factory.
+- `getForgeRotationMultiplier()` — spin speed multiplier based on crunch phase.
+
+### src/sim/forge/forge-logic.ts
+- `getCrunchOutput()` — compute output tier/size from an input particle.
+- `checkForgeCrunch()` — detect valid crunch conditions and arm the timer.
+- `startForgeCrunch()`, `updateForgeCrunch()` — crunch lifecycle management.
+- `getEquationCrunchBonus()` — equation-level-based crunch bonus.
+
+### src/sim/particles/sim-particle-state.ts
+- `SimParticleState` — inventory and unlocked tiers.
+- `updateInventory()`, `getInventoryTotal()`.
+
+### src/sim/particles/generator-state.ts
+- `GeneratorInfo` — position, range, and tier index for each generator.
+- `GeneratorState` — generator list, forge position, fade-in map.
+- `computeGeneratorPositions()` — places generators in a ring around the equation center.
+
+### src/sim/particles/merge-logic.ts
+- `ActiveMergeInfo` — read-only descriptor for an in-progress particle merge.
 
 ### src/render/canvas/game-canvas.ts
 - Canvas creation and lifecycle.
@@ -68,19 +100,35 @@
 - `createGameCanvas()`, `resizeCanvas()`, `clearCanvas()`, `drawBackground()`.
 
 ### src/render/particles/particle-system.ts
-- `ParticleSystem` class with pooled particles (300 max).
-- `emit()` — burst particles at position.
-- `update()` — physics (gravity, bounce, trail shift).
-- `draw()` — render trails and dots with alpha fade.
+- `ParticleSystem` class with a dynamic particle pool.
+- `emit()` — spawn near generator position.
+- `emitAtPosition()` — burst at canvas coordinates (tap/auto-tap).
+- `update()` — full physics, merges, forge crunch, shockwaves.
+- `draw()` — batched square rendering with glow, plus shockwave arcs.
+- Merge system: accumulates 100 small particles near a generator → upgrades to next size.
+- Forge crunch: particles near the forge are consumed and converted to next tier.
+- Shockwave system: expanding ring effect on merge completion.
+- Spatial hash grid for efficient shockwave→particle collision.
 
 ### src/render/equation/equation-renderer.ts
 - `drawEquation()` — renders equation terms on canvas.
 - `drawScore()` — score display at top.
 - `drawTapHint()` — pulsing "Tap the equation!" hint.
 
+### src/render/generators/generator-renderer.ts
+- `drawGenerators()` — draws Star-of-David style rotating generator icons with glow and range circles.
+
+### src/render/forge/forge-renderer.ts
+- `drawForge()` — draws the rotating forge icon with glow and attraction radius indicator.
+- `drawForgeCrunch()` — draws the crunch animation ring overlay.
+
 ### src/input/input-handler.ts
 - `GameAction` type (discriminated union of all actions).
 - `setupInputListeners()` — pointer event → GameAction dispatch.
+
+### src/input/particle-drag.ts
+- `ParticleDragState` — tracks drag position and velocity.
+- `handleParticleDragDown/Move/Up()` — lock nearby particles to the pointer and release with velocity.
 
 ### src/ui/tabs/tab-bar.ts
 - Bottom tab bar: Equation / Upgrades / Settings.
@@ -106,3 +154,4 @@
 
 ### src/util/format.ts
 - `formatNumber()` — K/M/B/T suffix formatting.
+
