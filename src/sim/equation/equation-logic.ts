@@ -74,7 +74,7 @@ export function buildEquationView(equationState: EquationState): EquationTermVie
 function formatSegmentExpression(level: number, value: number): string {
   const v = Math.floor(value * 100) / 100; // clean display
   if (level === 0) return '1';
-  if (level < 5) return `${v}`;
-  if (level < 10) return `${v}`;
-  return `${v}`;
+  if (level < 5) return `1+${level}`;
+  if (level < 10) return `${v}×${Math.floor(level / 2)}`;
+  return `${v}²`;
 }
