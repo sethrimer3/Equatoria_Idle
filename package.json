@@ -1,0 +1,27 @@
+{
+  "name": "equatoria-idle",
+  "version": "0.1.0",
+  "description": "Equatoria Idle — a mobile-first idle game with equation progression and gem particles",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sethrimer3/Equatoria_Idle.git"
+  },
+  "keywords": ["idle", "game", "math", "equation"],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sethrimer3/Equatoria_Idle/issues"
+  },
+  "homepage": "https://github.com/sethrimer3/Equatoria_Idle#readme",
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3"
+  }
+}

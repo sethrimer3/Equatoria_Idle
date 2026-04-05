@@ -1,0 +1,138 @@
+import type { ActionHandler } from '../../input';
+import type { SettingsState } from '../../settings';
+import { saveSettings } from '../../settings';
+
+/**
+ * Settings panel — DOM-based settings controls.
+ */
+export interface SettingsPanel {
+  element: HTMLElement;
+  getSettings(): SettingsState;
+}
+
+export function createSettingsPanel(
+  settings: SettingsState,
+  dispatch: ActionHandler,
+): SettingsPanel {
+  const panel = document.createElement('div');
+  panel.className = 'panel settings-panel';
+
+  const title = document.createElement('h3');
+  title.className = 'panel-title';
+  title.textContent = 'Settings';
+  panel.appendChild(title);
+
+  // SFX volume
+  const sfxRow = createSliderRow('SFX Volume', settings.sfxVolume, (v) => {
+    settings.sfxVolume = v;
+    saveSettings(settings);
+  });
+  panel.appendChild(sfxRow);
+
+  // Music volume
+  const musicRow = createSliderRow('Music Volume', settings.musicVolume, (v) => {
+    settings.musicVolume = v;
+    saveSettings(settings);
+  });
+  panel.appendChild(musicRow);
+
+  // Reduced particles toggle
+  const particleRow = createToggleRow('Reduced Particles', settings.isReducedParticles, (v) => {
+    settings.isReducedParticles = v;
+    saveSettings(settings);
+  });
+  panel.appendChild(particleRow);
+
+  // Screen shake toggle
+  const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
+    settings.isScreenShakeEnabled = v;
+    saveSettings(settings);
+  });
+  panel.appendChild(shakeRow);
+
+  // Save button
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'settings-btn';
+  saveBtn.textContent = '💾 Save Game';
+  saveBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    dispatch({ kind: 'save_game' });
+  });
+  panel.appendChild(saveBtn);
+
+  // Reset button
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'settings-btn danger';
+  resetBtn.textContent = '🗑 Reset Game';
+  resetBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to reset all progress?')) {
+      dispatch({ kind: 'reset_game' });
+    }
+  });
+  panel.appendChild(resetBtn);
+
+  // Credits
+  const credits = document.createElement('div');
+  credits.className = 'credits';
+  credits.innerHTML = `
+    <p>Equatoria Idle v0.1.0</p>
+    <p>A mathematical idle adventure</p>
+  `;
+  panel.appendChild(credits);
+
+  return {
+    element: panel,
+    getSettings: () => settings,
+  };
+}
+
+function createSliderRow(
+  label: string,
+  initialValue: number,
+  onChange: (value: number) => void,
+): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'settings-row';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = '100';
+  slider.value = String(Math.round(initialValue * 100));
+  slider.className = 'settings-slider';
+  slider.addEventListener('input', () => {
+    onChange(parseInt(slider.value) / 100);
+  });
+  row.appendChild(slider);
+
+  return row;
+}
+
+function createToggleRow(
+  label: string,
+  initialValue: boolean,
+  onChange: (value: boolean) => void,
+): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'settings-row';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = initialValue;
+  checkbox.className = 'settings-checkbox';
+  checkbox.addEventListener('change', () => {
+    onChange(checkbox.checked);
+  });
+  row.appendChild(checkbox);
+
+  return row;
+}
