@@ -4,3 +4,5 @@ export type { GameState, TapResult, SimTickResult } from './game-state';
 export * from './equation';
 export * from './resources';
 export * from './progression';
+export * from './forge';
+export * from './particles';

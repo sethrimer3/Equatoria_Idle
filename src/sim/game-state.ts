@@ -29,6 +29,7 @@ import {
   getAutoTapIntervalMs,
   type ProgressionState,
 } from './progression';
+import { createForgeCrunchState, type ForgeCrunchState } from './forge';
 
 // ─── Aggregate game state ───────────────────────────────────────
 
@@ -36,6 +37,7 @@ export interface GameState {
   equation: EquationState;
   resources: ResourceState;
   progression: ProgressionState;
+  forge: ForgeCrunchState;
   lastAutoTapMs: number;
   lastSaveMs: number;
   elapsedMs: number;
@@ -46,6 +48,7 @@ export function createGameState(): GameState {
     equation: createEquationState(INITIAL_UNLOCKED_TIER_COUNT),
     resources: createResourceState(),
     progression: createProgressionState(INITIAL_UNLOCKED_TIER_COUNT),
+    forge: createForgeCrunchState(),
     lastAutoTapMs: 0,
     lastSaveMs: 0,
     elapsedMs: 0,
