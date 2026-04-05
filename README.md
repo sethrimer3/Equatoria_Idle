@@ -11,6 +11,17 @@ npm run build    # Production build to dist/
 npm run typecheck # TypeScript type checking
 ```
 
+
+## GitHub Pages Deployment
+
+This repository is configured to deploy automatically to **GitHub Pages** with GitHub Actions.
+
+- Workflow file: `.github/workflows/deploy-pages.yml`
+- Trigger: pushes to `main` (or manual run from Actions tab)
+- Build output: `dist/`
+
+The Vite `base` path is resolved automatically in GitHub Actions from `GITHUB_REPOSITORY`, so assets load correctly from the repository pages URL (`https://<user>.github.io/<repo>/`).
+
 ## How to Play
 
 1. **Tap the equation** on the canvas to earn motes
