@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Colorful equation favicon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e" />
+      <stop offset="100%" stop-color="#16213e" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)" stroke="#ffffff22" stroke-width="2" />
+
+  <text x="8" y="39" font-family="'Trebuchet MS', 'Segoe UI', sans-serif" font-size="24" font-weight="700" letter-spacing="0.5">
+    <tspan fill="#ff5f6d">x</tspan>
+    <tspan fill="#ffd166">+</tspan>
+    <tspan fill="#06d6a0">y</tspan>
+    <tspan fill="#8ecae6">=</tspan>
+    <tspan fill="#c77dff">z</tspan>
+  </text>
+
+  <circle cx="10" cy="13" r="2" fill="#ff5f6d" />
+  <circle cx="54" cy="13" r="2" fill="#ffd166" />
+  <circle cx="32" cy="53" r="2" fill="#06d6a0" />
+</svg>
