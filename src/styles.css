@@ -1,0 +1,292 @@
+/* ═══════════════════════════════════════════════════════════════
+   Equatoria Idle — Core Styles
+   Mobile-first, responsive, dark theme
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-panel: #0f3460;
+  --text-primary: #ecf0f1;
+  --text-secondary: #95a5a6;
+  --accent: #e94560;
+  --border-radius: 6px;
+  --tab-height: 56px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Reset ───────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+/* ── App layout ──────────────────────────────────────────────── */
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ── Canvas container (top ~40%) ─────────────────────────────── */
+#canvas-container {
+  flex: 0 0 40%;
+  min-height: 180px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#game-canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ── Panels container (middle, scrollable) ───────────────────── */
+#panels-container {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 12px;
+  padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 8px);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Panel base ──────────────────────────────────────────────── */
+.panel {
+  margin-bottom: 8px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ── Upgrade buttons ─────────────────────────────────────────── */
+.upgrade-section {
+  margin-bottom: 6px;
+}
+
+.upgrade-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 2px solid #555;
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  min-height: 44px;  /* comfortable tap target */
+}
+
+.upgrade-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.upgrade-btn:not(:disabled):active {
+  background: var(--bg-panel);
+}
+
+.unlock-btn {
+  background: var(--bg-panel);
+  border-style: dashed;
+  text-align: center;
+}
+
+/* ── Resource rows ───────────────────────────────────────────── */
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background: var(--bg-secondary);
+  border-left: 3px solid #555;
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  min-height: 36px;
+}
+
+.resource-name {
+  font-weight: 700;
+  min-width: 60px;
+}
+
+.resource-value {
+  font-weight: 600;
+  flex: 1;
+  text-align: right;
+}
+
+.resource-lifetime {
+  color: var(--text-secondary);
+  font-size: 11px;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* ── Settings panel ──────────────────────────────────────────── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.settings-row label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.settings-slider {
+  width: 120px;
+  accent-color: var(--accent);
+}
+
+.settings-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.settings-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid #555;
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.settings-btn.danger {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.settings-btn:active {
+  background: var(--bg-panel);
+}
+
+.credits {
+  margin-top: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* ── Tab bar (bottom) ────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  flex: 0 0 auto;
+  height: calc(var(--tab-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--bg-secondary);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.15s;
+  min-height: 44px;
+}
+
+.tab-btn .tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tab-btn .tab-label {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.tab-btn.active {
+  color: var(--accent);
+}
+
+.tab-btn:active {
+  opacity: 0.7;
+}
+
+/* ── Landscape adjustments ───────────────────────────────────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  #app {
+    flex-direction: row;
+    max-width: 100%;
+  }
+
+  #canvas-container {
+    flex: 0 0 50%;
+    min-height: auto;
+    height: 100%;
+  }
+
+  #panels-container {
+    flex: 1;
+    padding-bottom: calc(var(--tab-height) + 8px);
+  }
+
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+  }
+}
+
+/* ── Desktop wider layout ────────────────────────────────────── */
+@media (min-width: 768px) {
+  #app {
+    max-width: 600px;
+    border-left: 1px solid rgba(255,255,255,0.05);
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+}
