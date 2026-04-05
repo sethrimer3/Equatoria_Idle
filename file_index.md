@@ -99,6 +99,23 @@
 - Internal resolution: 320px wide, height adapts to aspect ratio.
 - `createGameCanvas()`, `resizeCanvas()`, `clearCanvas()`, `drawBackground()`.
 
+### src/render/assets/asset-paths.ts
+- Centralized asset path definitions (single source of truth).
+- Tier-to-gem-name mapping for gem icons and refined gems.
+- Path helpers: `getGemIconPath()`, `getRefinedGemPath()`, `getGeneratorSpritePath()`, `getBgAnimationFramePath()`.
+- Constants: `FORGE_SPRITE_PATH`, `LOGO_PATH`, `BG_ANIMATION_FRAME_COUNT`, `BG_ANIMATION_FPS`.
+
+### src/render/assets/asset-loader.ts
+- Image loading utility with caching.
+- `loadImage()` — async load with cache.
+- `getCachedImage()` — synchronous cache lookup.
+- `preloadImages()` — batch preload with progress callback.
+
+### src/render/background/background-animation.ts
+- Background animation player for 2402-frame WebP sequence.
+- Uses rolling buffer of ~60 frames to manage memory.
+- `createBackgroundAnimation()` — returns canvas, update, resize, destroy.
+
 ### src/render/particles/particle-system.ts
 - `ParticleSystem` class with a dynamic particle pool.
 - `emit()` — spawn near generator position.
@@ -116,10 +133,12 @@
 - `drawTapHint()` — pulsing "Tap the equation!" hint.
 
 ### src/render/generators/generator-renderer.ts
-- `drawGenerators()` — draws Star-of-David style rotating generator icons with glow and range circles.
+- `drawGenerators()` — renders generators using tier sprites (with procedural fallback).
+- `preloadGeneratorSprites()` — preloads all tier generator sprite images.
 
 ### src/render/forge/forge-renderer.ts
-- `drawForge()` — draws the rotating forge icon with glow and attraction radius indicator.
+- `drawForge()` — renders forge using dual counter-rotating sprites (with procedural fallback).
+- `preloadForgeSprites()` — preloads forge sprite images.
 - `drawForgeCrunch()` — draws the crunch animation ring overlay.
 
 ### src/input/input-handler.ts
@@ -130,16 +149,20 @@
 - `ParticleDragState` — tracks drag position and velocity.
 - `handleParticleDragDown/Move/Up()` — lock nearby particles to the pointer and release with velocity.
 
+### src/ui/loading/loading-screen.ts
+- Loading screen with company logo and fade-out transition.
+- `createLoadingScreen()` — async, loads logo, shows for 1.5s minimum.
+
 ### src/ui/tabs/tab-bar.ts
 - Bottom tab bar: Equation / Upgrades / Settings.
 - `createTabBar()` — returns element and `setActiveTab()` method.
 
 ### src/ui/panels/upgrade-panel.ts
-- Upgrade purchase buttons (per-tier taps, auto-tap, multiplier, tier unlock).
+- Upgrade purchase buttons with gem icon sprites (per-tier taps, auto-tap, multiplier, tier unlock).
 - Updates button labels, costs, and disabled state from game state.
 
 ### src/ui/panels/resource-panel.ts
-- Per-tier mote display with current and lifetime totals.
+- Per-tier mote display with refined gem icon sprites, current and lifetime totals.
 
 ### src/ui/panels/settings-panel.ts
 - Settings controls: volume sliders, particle toggle, shake toggle, save, reset, credits.

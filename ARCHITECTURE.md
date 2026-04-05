@@ -106,10 +106,35 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 
 ## UI Structure
 
-- **Tab Bar** (bottom): Equation / Upgrades / Settings
-- **Equation tab**: canvas interaction + upgrade buttons
-- **Upgrades tab**: per-tier mote totals, upgrade list
-- **Settings tab**: volume sliders, toggles, save/reset, credits
+- **Tab Bar** (bottom): Equation / Upgrades / Settings — always visible over game canvas
+- **Equation tab**: full-screen black canvas with equation render, particles, generators, forge — no panels
+- **Upgrades tab**: slides in from the right over the canvas as a semi-transparent overlay (80% opaque dark background). Contains upgrade buttons (with gem icon sprites), resource rows (with refined gem sprites), and tier unlock button.
+- **Settings tab**: slides in same as Upgrades — volume sliders, toggles, save/reset, credits
+
+## Loading Screen
+
+- Displays company logo (gravy_thyme_logo.webp) on a black background
+- Shows a pulsing "Loading..." text indicator
+- Fades out after assets are preloaded (minimum 1.5s for branding)
+
+## Background Animation
+
+- 2402-frame WebP sequence at 24fps (100 seconds, looping)
+- Rendered to a dedicated background canvas behind all game content
+- Uses a rolling buffer of ~60 frames to avoid loading all frames into memory
+- Frames are loaded progressively and evicted when far from playback position
+
+## Sprite Assets
+
+All sprites are served from `public/assets/`:
+- **Gem icons** (`sprites/gemIcons/`): per-tier raw gem icons used in upgrade buttons
+- **Refined gems** (`sprites/refinedGems/`): per-tier refined gem icons used in resource rows
+- **Generators** (`sprites/generators/`): per-tier generator sprites rendered on canvas
+- **Forge** (`sprites/equationForge/`): dual forge sprites with counter-rotation
+- **Logo** (`sprites/logo/`): company logo for loading screen
+- **Background animation** (`animations/menuBackground_animation/`): frame sequence
+
+Tier-to-gem mapping is defined in `src/render/assets/asset-paths.ts`.
 
 ## Resize / Scaling Strategy
 
