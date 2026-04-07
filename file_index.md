@@ -116,6 +116,14 @@
 - Uses rolling buffer of ~60 frames to manage memory.
 - `createBackgroundAnimation()` — returns canvas, update, resize, destroy.
 
+### src/render/background/vermiculate-effect.ts
+- Purely decorative background tracer effect ported from Thero Idle's VermiculateEffect.js.
+- 14 tracers in two motion families: orthogonal (90° turns) and circular (continuous curves).
+- Contact-driven visibility: base lines invisible, only intersection zones glow at up to 15% opacity.
+- Renders on its own canvas element (`.vermiculate-canvas`) behind the game canvas.
+- `createVermiculateEffect()` — returns `VermiculateEffect` with `update`, `draw`, `reset`, `destroy`.
+- Prewarms 90 steps at init so geometry exists from the first frame.
+
 ### src/render/particles/particle-system.ts
 - `ParticleSystem` class with a dynamic particle pool.
 - `emit()` — spawn near generator position.

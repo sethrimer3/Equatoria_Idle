@@ -23,7 +23,7 @@ import {
 } from '../render';
 import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
 import { preloadForgeSprites } from '../render/forge/forge-renderer';
-import { createBackgroundAnimation, type BackgroundAnimation } from '../render/background';
+import { createBackgroundAnimation, type BackgroundAnimation, createVermiculateEffect, type VermiculateEffect } from '../render/background';
 import { setupInputListeners, type GameAction, type TabId } from '../input';
 import {
   createParticleDragState,
@@ -98,6 +98,13 @@ export async function startApp(): Promise<void> {
   const bgAnimation: BackgroundAnimation = createBackgroundAnimation();
   root.appendChild(bgAnimation.canvas);
 
+  // ── Vermiculate background effect ──
+  const vermiculateCanvas = document.createElement('canvas');
+  vermiculateCanvas.className = 'vermiculate-canvas';
+  root.appendChild(vermiculateCanvas);
+  const vermiculateCtx = vermiculateCanvas.getContext('2d')!;
+  const vermiculateEffect: VermiculateEffect = createVermiculateEffect();
+
   // ── Canvas container (full screen) ──
   const canvasContainer = document.createElement('div');
   canvasContainer.id = 'canvas-container';
@@ -169,13 +176,19 @@ export async function startApp(): Promise<void> {
   // ── Resize handler ──
   const onResize = (): void => {
     resizeCanvas(cc, canvasContainer);
-    bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+    const w = canvasContainer.clientWidth;
+    const h = canvasContainer.clientHeight;
+    bgAnimation.resize(w, h);
+    vermiculateCanvas.width = w;
+    vermiculateCanvas.height = h;
     recomputeGenerators();
   };
   window.addEventListener('resize', onResize);
 
   // Initial background size
   bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+  vermiculateCanvas.width = canvasContainer.clientWidth;
+  vermiculateCanvas.height = canvasContainer.clientHeight;
 
   // ── Action handler ──
   function handleAction(state: AppState, action: GameAction): void {
@@ -287,6 +300,13 @@ export async function startApp(): Promise<void> {
 
     // ── Update background animation ──
     bgAnimation.update(deltaMs);
+
+    // ── Update and draw vermiculate background ──
+    const vW = vermiculateCanvas.width;
+    const vH = vermiculateCanvas.height;
+    vermiculateEffect.update(nowMs, vW, vH);
+    vermiculateCtx.clearRect(0, 0, vW, vH);
+    vermiculateEffect.draw(vermiculateCtx);
 
     // ── Render ──
     clearCanvas(cc);
