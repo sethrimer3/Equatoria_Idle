@@ -79,6 +79,39 @@
 
 **Rationale**: Standard idle game exponential scaling. Each upgrade definition specifies its own base cost and scale factor, allowing fine-grained balance tuning without code changes.
 
+## Equation Progression Model
+
+**Decision**: Use a tier-based structured equation system where each gemstone tier adds a specific mathematical operator to the central equation f(t). The progression is: foundation (Sand) → passive time r·t (Quartz) → manual input x (Ruby) → addition (Sunstone) → multiplication (Citrine) → exponentiation (Emerald) → summation Σ (Sapphire) → product Π (Iolite) → factorial (Amethyst) → integration ∫ (Diamond) → recursion/self-reference (Nullstone).
+
+**Rationale**: Each tier has a clear, data-driven role defined in `data/equation/equation-tier-roles.ts`. The equation builds gradually from simple to complex, giving the player a visual sense of mathematical progression. The structured approach (vs. string concatenation) makes it easy to:
+- Render each tier's contribution in its gemstone color
+- Compute equation output from the structured model
+- Add new tiers or modify existing ones without rewiring rendering
+
+## Loom System
+
+**Decision**: Introduce passive production Looms as a parallel progression system alongside the equation. Each tier has its own Loom that generates motes per second. Sand Loom starts unlocked; other Looms unlock when their tier unlocks.
+
+**Rationale**: Provides continuous resource income even when the player isn't tapping. Creates a two-axis progression (passive Looms + active equation) that keeps both idle and active play viable. Loom definitions are data-driven in `data/looms/loom-definitions.ts` for easy balance tuning.
+
+## Equation Forge Gate
+
+**Decision**: The equation is not available at game start. The player must accumulate 50 Sand (via the Sand Loom) to unlock the Equation Forge. Only then does the equation appear and become tappable.
+
+**Rationale**: Creates a meaningful early-game progression moment. The player starts by understanding passive Loom production, then "forges" the equation into existence — reinforcing the theme that math is built from raw materials. The 50 Sand cost is low enough to reach quickly but high enough to feel like a milestone.
+
+## Separate Looms and Equation Tabs
+
+**Decision**: Split passive Loom upgrades and equation-specific upgrades into separate tabs (Looms tab and Equation tab) rather than combining them into one screen.
+
+**Rationale**: Reduces UI clutter and makes the two progression systems clearly distinguishable. The Looms tab focuses on passive production rates, while the Equation tab focuses on the mathematical artifact. This mirrors the two-pillar design of the game.
+
+## Save Format Version 2
+
+**Decision**: Bump save version to 2 to include Loom state and `isForgeUnlocked` in saved data. Accept version 1 saves with graceful fallback (missing Loom data uses defaults).
+
+**Rationale**: Backward compatibility prevents save loss during development. New state fields have sensible defaults, so v1 saves just start with Sand Loom at level 1 and forge locked.
+
 ## Auto-Tap System
 
 **Decision**: Auto-tap is a purchasable upgrade with decreasing interval per level, hard-floored at 200ms.

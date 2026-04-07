@@ -38,8 +38,10 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 │ resources│ particles│ panels   │ events → │ upgrades       │
 │ progress.│ equation │ upgrades │ GameAct. │ balance        │
 │ forge    │ generators│resources│ particle │ particles/     │
-│ particles│ forge    │ settings │ drag     │  config        │
-│          │ display  │          │          │  size-tiers    │
+│ looms    │ forge    │ looms    │ drag     │  config        │
+│ particles│ display  │ equation │          │  size-tiers    │
+│          │          │ settings │          │ looms          │
+│          │          │          │          │ equation/roles │
 ├──────────┴──────────┴──────────┴──────────┴────────────────┤
 │  settings/ — save/load, user preferences                   │
 │  util/     — formatting helpers                            │
@@ -54,20 +56,32 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 | Resources        | `sim/resources/resource-state` | Yes      |
 | Progression      | `sim/progression/progression-state` | Yes |
 | Forge crunch     | `sim/forge/forge-state`        | Yes (via forge-logic) |
+| Looms            | `sim/looms/loom-state`         | Yes      |
 | Generators       | `sim/particles/generator-state`| Yes (recomputed on resize/unlock) |
 | Particles        | `render/particles/particle-system` | Yes (visual + physics) |
 | Active Tab       | `app/game-app` (AppState)      | Yes      |
 | Settings         | `settings/settings-state`      | Yes      |
 | Tier definitions | `data/tiers/tier-definitions`  | No (const) |
+| Loom definitions | `data/looms/loom-definitions`  | No (const) |
+| Equation roles   | `data/equation/equation-tier-roles` | No (const) |
 | Upgrade defs     | `data/upgrades/upgrade-catalog`| No (const) |
 | Physics constants| `data/particles/particle-config` | No (const) |
 
 ## Equation Rendering Pipeline
 
-1. `buildEquationView()` generates `EquationTermView[]` from authoritative equation state
-2. `drawEquation()` renders terms on canvas with per-tier colours
-3. Terms are joined by `+` operators in a centred layout
-4. Flash overlay fades on tap for visual feedback
+1. `buildEquationView()` generates `EquationTermView[]` from authoritative equation state (only when forge is unlocked)
+2. Each term carries a `tierId`, `color`, `text`, `level`, and `operator` (passive_time, manual_input, addition, multiplication, exponentiation, summation, product, factorial, integration, recursion)
+3. **Canvas rendering**: `drawEquation()` renders terms on canvas with per-tier colours and `+` operators
+4. **DOM rendering**: `buildStructuredEquation()` in the Equation panel generates HTML with colored `<span>` elements, superscripts for exponents, and subscripts for summation/product notation
+5. Flash overlay fades on tap for visual feedback
+
+## Loom System
+
+- Each of the 11 gemstone tiers has a passive production Loom
+- Sand Loom starts unlocked at level 1; other Looms unlock when their tier unlocks
+- `tickLooms()` runs every sim tick, producing fractional motes per tier via an accumulator
+- Loom definitions in `data/looms/` set base rate, rate per level, base cost, and cost scaling
+- Looms are displayed in the Looms tab with per-tier cards showing level, rate, and upgrade button
 
 ## Particle Rendering Pipeline
 
@@ -106,10 +120,21 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 
 ## UI Structure
 
-- **Tab Bar** (bottom): Equation / Upgrades / Settings — always visible over game canvas
-- **Equation tab**: full-screen black canvas with equation render, particles, generators, forge — no panels
-- **Upgrades tab**: slides in from the right over the canvas as a semi-transparent overlay (80% opaque dark background). Contains upgrade buttons (with gem icon sprites), resource rows (with refined gem sprites), and tier unlock button.
+- **Tab Bar** (bottom): Equation / Looms / Upgrades / Settings — always visible over game canvas
+- **Equation tab**: Shows the Equation Forge. Before unlock: dormant locked presentation with Sand cost requirement. After unlock: the colored f(t) equation display + equation-specific upgrades + tier unlock button.
+- **Looms tab**: Shows per-tier passive production Looms in card layout — tier name, gem icon, description, level, production rate, upgrade button. Only unlocked tiers' Looms are shown.
+- **Upgrades tab**: slides in from the right over the canvas as a semi-transparent overlay. Contains upgrade buttons (with gem icon sprites), resource rows (with refined gem sprites), and tier unlock button.
 - **Settings tab**: slides in same as Upgrades — volume sliders, toggles, save/reset, credits
+
+## Early-Game Progression
+
+1. Player starts with Sand Loom unlocked (level 1, 1 mote/sec)
+2. Sand Loom can be upgraded using Sand motes (Looms tab)
+3. At 50 Sand, player can unlock the Equation Forge (Equation tab)
+4. After Equation Forge is unlocked, the f(t) equation appears and becomes tappable
+5. Unlocking Quartz adds the first equation term (passive r·t)
+6. Unlocking Ruby adds the manual tap variable (x)
+7. Further tiers add increasingly complex mathematical operators
 
 ## Loading Screen
 
