@@ -8,6 +8,12 @@ import {
   UPGRADE_TAP_MULTIPLIER,
 } from '../../data/balance';
 
+/** Maximum seconds of passive time used in equation output calculation. */
+const MAX_PASSIVE_TIME_SEC = 3600;
+
+/** Cap on factorial base to prevent numerical overflow. */
+const MAX_FACTORIAL_BASE = 20;
+
 // ─── Tap value computation ──────────────────────────────────────
 
 /** Motes produced by a single tap for one tier segment. */
@@ -48,6 +54,8 @@ export interface EquationTermView {
   text: string;
   level: number;
   operator: EquationOperator;
+  /** Numeric parameter value for this tier's contribution. */
+  paramValue: number;
 }
 
 /**
@@ -75,6 +83,7 @@ export function buildEquationView(equationState: EquationState): EquationTermVie
       text,
       level: seg.level,
       operator: role.operator,
+      paramValue,
     });
   }
   return terms;
@@ -147,7 +156,7 @@ export function computeEquationOutput(
 
     switch (role.operator) {
       case 'passive_time':
-        baseTerms += paramValue * Math.min(elapsedSec, 3600);
+        baseTerms += paramValue * Math.min(elapsedSec, MAX_PASSIVE_TIME_SEC);
         hasPassive = true;
         break;
       case 'manual_input':
@@ -192,7 +201,7 @@ export function computeEquationOutput(
 
   if (factorialBase > 0) {
     let fact = 1;
-    for (let i = 2; i <= Math.min(factorialBase, 20); i++) fact *= i;
+    for (let i = 2; i <= Math.min(factorialBase, MAX_FACTORIAL_BASE); i++) fact *= i;
     result *= fact;
   }
 

@@ -112,8 +112,9 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
       }
 
       // Update upgrade button
+      const tier = TIER_BY_ID.get(def.tierId);
       if (cost !== null) {
-        btn.textContent = `⬆ Upgrade — ${formatNumber(cost)} ${def.displayName.replace(' Loom', '')}`;
+        btn.textContent = `⬆ Upgrade — ${formatNumber(cost)} ${tier?.displayName ?? ''}`;
         btn.disabled = !canAfford;
       } else {
         btn.textContent = '⬆ MAX';

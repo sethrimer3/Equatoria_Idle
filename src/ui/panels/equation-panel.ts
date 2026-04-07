@@ -215,13 +215,13 @@ function buildStructuredEquation(terms: EquationTermView[]): string {
   // Build summation prefix if present
   if (sumTerms.length > 0) {
     const t = sumTerms[0];
-    html += `<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">Σ<sub>k=1</sub><sup>${t.text.replace(/[^0-9]/g, '')}</sup></span> `;
+    html += `<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">Σ<sub>k=1</sub><sup>${Math.floor(t.paramValue)}</sup></span> `;
   }
 
   // Build product prefix if present
   if (prodTerms.length > 0) {
     const t = prodTerms[0];
-    html += `<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">Π<sub>j=1</sub><sup>${t.text.replace(/[^0-9]/g, '')}</sup></span> `;
+    html += `<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">Π<sub>j=1</sub><sup>${Math.floor(t.paramValue)}</sup></span> `;
   }
 
   // Build integration prefix if present

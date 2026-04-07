@@ -26,10 +26,10 @@ export interface LoomState {
 
 export function createLoomState(): LoomState {
   return {
-    looms: TIERS.map((t, i) => ({
+    looms: TIERS.map((t) => ({
       tierId: t.id,
-      level: i === 0 ? 1 : 0,       // Sand Loom starts at level 1
-      isUnlocked: i === 0,           // Only Sand Loom unlocked at start
+      level: t.id === 'sand' ? 1 : 0,       // Sand Loom starts at level 1
+      isUnlocked: t.id === 'sand',           // Only Sand Loom unlocked at start
       accumulatorMs: 0,
     })),
   };
