@@ -43,7 +43,9 @@ import {
   FORGE_SPIN_UP_DURATION_MS,
   FORGE_SPIN_DOWN_DURATION_MS,
   FORGE_RADIUS,
+  EULER_FLUID_ENABLED,
 } from '../../data/particles/particle-config';
+import { applyEulerFluidForces } from './euler-fluid';
 import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
 import { getForgeRotationMultiplier } from '../../sim/forge/forge-state';
@@ -298,6 +300,18 @@ export class ParticleSystem {
     if (!skipPhysics) {
       for (const p of this.particles) {
         this._updateParticlePhysics(p, clampedDelta, nowMs, generators, forgeX, forgeY, canvasWidth, canvasHeight);
+      }
+    }
+
+    // ── Euler fluid dynamics ──
+    // Higher-tier particles push lower-tier particles away.
+    // Runs every other frame when above PERFORMANCE_THRESHOLD,
+    // interleaved with the physics skip (physics skips even frames,
+    // Euler skips odd frames) to spread the workload evenly.
+    if (EULER_FLUID_ENABLED) {
+      const skipEuler = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 !== 0;
+      if (!skipEuler) {
+        applyEulerFluidForces(this.particles, clampedDelta);
       }
     }
 

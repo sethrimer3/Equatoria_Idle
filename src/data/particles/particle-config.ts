@@ -45,3 +45,17 @@ export const DRAG_RELEASE_SPEED_THRESHOLD = 0.02;
 export const GENERATOR_FADE_IN_DURATION_MS = 1000;
 export const TRAIL_FADE = 0.15;
 export const MAX_SHOCKWAVES = 5;
+
+// ─── Euler fluid dynamics ────────────────────────────────────────
+/** Master toggle for the Euler inter-particle fluid forces. */
+export const EULER_FLUID_ENABLED = true;
+/** Radius (canvas px) within which a higher-tier particle's field affects a lower-tier one. */
+export const EULER_INFLUENCE_RADIUS = 40;
+/** Base repulsion strength coefficient. */
+export const EULER_BASE_STRENGTH = 0.8;
+/** Additional strength added per tier level of difference between the two particles. */
+export const EULER_TIER_SCALE = 0.25;
+/** Maximum Euler force magnitude applied to a particle per frame (prevents extreme kicks). */
+export const EULER_MAX_FORCE = 2.0;
+/** Minimum effective distance used in the inverse-distance formula (prevents singularity). */
+export const EULER_CORE_RADIUS = 3.0;
