@@ -452,16 +452,15 @@ export function createVermiculateEffect(): VermiculateEffect {
     ctx.globalAlpha = 1;
 
     // Head dots are faintly visible at all times.
+    ctx.globalAlpha = HEAD_DOT_OPACITY;
     for (const tracer of tracers) {
       const key = `${tracer.color.r},${tracer.color.g},${tracer.color.b}`;
       const sprite = dotSprites?.get(key);
       if (!sprite) continue;
       const half = HEAD_DOT_SIZE / 2;
-      ctx.save();
-      ctx.globalAlpha = HEAD_DOT_OPACITY;
       ctx.drawImage(sprite, tracer.x - half, tracer.y - half);
-      ctx.restore();
     }
+    ctx.globalAlpha = 1;
 
     ctx.restore();
   }
