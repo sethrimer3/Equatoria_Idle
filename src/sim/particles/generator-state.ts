@@ -1,6 +1,14 @@
 import type { TierId } from '../../data/tiers';
 import { TIERS } from '../../data/tiers';
-import { GENERATOR_CIRCLE_RADIUS_FRACTION } from '../../data/particles/particle-config';
+
+/** Fixed generator layout radius in canvas pixels. */
+const GENERATOR_RADIUS_PX = 160;
+
+/** Total generator slots in the circular layout. */
+const TOTAL_GENERATOR_SLOTS = 11;
+
+/** Angular spacing between adjacent generator slots (radians). */
+const ANGLE_STEP = (Math.PI * 2) / TOTAL_GENERATOR_SLOTS;
 
 export interface GeneratorInfo {
   readonly tierId: TierId;
@@ -28,8 +36,8 @@ export function createGeneratorState(): GeneratorState {
 
 export function computeGeneratorPositions(
   state: GeneratorState,
-  canvasWidth: number,
-  canvasHeight: number,
+  _canvasWidth: number,
+  _canvasHeight: number,
   equationCenterX: number,
   equationCenterY: number,
   unlockedTiers: ReadonlySet<TierId>,
@@ -38,16 +46,15 @@ export function computeGeneratorPositions(
   state.forgeX = equationCenterX;
   state.forgeY = equationCenterY;
 
-  const radius = Math.min(canvasWidth, canvasHeight) * GENERATOR_CIRCLE_RADIUS_FRACTION;
   const unlockedList = TIERS.filter(t => unlockedTiers.has(t.id));
-  const count = unlockedList.length;
 
   state.generators = unlockedList.map((tier, i) => {
-    const angle = -Math.PI / 2 + (i * Math.PI * 2) / count;
+    // Start at 270° (12 o'clock = -π/2) and space evenly using fixed 11-slot layout
+    const angle = -Math.PI / 2 + i * ANGLE_STEP;
     return {
       tierId: tier.id,
-      x: equationCenterX + Math.cos(angle) * radius,
-      y: equationCenterY + Math.sin(angle) * radius,
+      x: equationCenterX + Math.cos(angle) * GENERATOR_RADIUS_PX,
+      y: equationCenterY + Math.sin(angle) * GENERATOR_RADIUS_PX,
       range: spawnerGravityRadius,
       tierIndex: tier.unlockOrder,
     };
