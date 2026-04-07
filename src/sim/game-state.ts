@@ -78,7 +78,7 @@ export function tryPurchaseUpgrade(state: GameState, upgradeId: string): boolean
   if (!def) return false;
 
   // Determine which resource to spend
-  const costTierId: TierId = def.tierId ?? 'red'; // global upgrades cost red motes
+  const costTierId: TierId = def.tierId ?? 'sand'; // global upgrades cost sand motes
   const cost = getUpgradeCost(state.progression, upgradeId);
   if (cost === null) return false;
   if (getMotes(state.resources, costTierId) < cost) return false;
@@ -105,7 +105,7 @@ export function tryUnlockNextTier(state: GameState): boolean {
 
   const cost = tierUnlockCost(nextIndex);
   // Pay with the previous tier's motes
-  const payTierId = TIERS[nextIndex - 1]?.id ?? 'red';
+  const payTierId = TIERS[nextIndex - 1]?.id ?? 'sand';
   if (getMotes(state.resources, payTierId) < cost) return false;
 
   spendMotes(state.resources, payTierId, cost);

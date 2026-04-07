@@ -1,14 +1,16 @@
 /** Canonical tier identifiers, ordered by unlock progression. */
 export type TierId =
-  | 'red'
-  | 'orange'
-  | 'yellow'
-  | 'green'
-  | 'blue'
-  | 'indigo'
-  | 'violet'
-  | 'prismatic'   // secret tier 8
-  | 'void';       // secret tier 9
+  | 'sand'
+  | 'quartz'
+  | 'ruby'
+  | 'sunstone'
+  | 'citrine'
+  | 'emerald'
+  | 'sapphire'
+  | 'iolite'
+  | 'amethyst'
+  | 'diamond'
+  | 'nullstone';
 
 /** Full tier definition — single source of truth for colours, names, order. */
 export interface TierDefinition {
@@ -22,15 +24,17 @@ export interface TierDefinition {
 
 /** All tiers in canonical order. */
 export const TIERS: readonly TierDefinition[] = [
-  { id: 'red',       displayName: 'Red',       color: '#e74c3c', glowColor: '#ff6b6b', unlockOrder: 0, isSecret: false },
-  { id: 'orange',    displayName: 'Orange',    color: '#e67e22', glowColor: '#f5a623', unlockOrder: 1, isSecret: false },
-  { id: 'yellow',    displayName: 'Yellow',    color: '#f1c40f', glowColor: '#ffe066', unlockOrder: 2, isSecret: false },
-  { id: 'green',     displayName: 'Green',     color: '#2ecc71', glowColor: '#69db7c', unlockOrder: 3, isSecret: false },
-  { id: 'blue',      displayName: 'Blue',      color: '#3498db', glowColor: '#74c0fc', unlockOrder: 4, isSecret: false },
-  { id: 'indigo',    displayName: 'Indigo',    color: '#8e44ad', glowColor: '#b07cd8', unlockOrder: 5, isSecret: false },
-  { id: 'violet',    displayName: 'Violet',    color: '#9b59b6', glowColor: '#c49bde', unlockOrder: 6, isSecret: false },
-  { id: 'prismatic', displayName: 'Prismatic', color: '#ecf0f1', glowColor: '#ffffff', unlockOrder: 7, isSecret: true  },
-  { id: 'void',      displayName: 'Void',      color: '#2c3e50', glowColor: '#4a6274', unlockOrder: 8, isSecret: true  },
+  { id: 'sand',      displayName: 'Sand',      color: '#ffd764', glowColor: '#ffe599', unlockOrder: 0,  isSecret: false },
+  { id: 'quartz',    displayName: 'Quartz',    color: '#f5f0eb', glowColor: '#faf8f5', unlockOrder: 1,  isSecret: false },
+  { id: 'ruby',      displayName: 'Ruby',      color: '#dc3232', glowColor: '#ff6b6b', unlockOrder: 2,  isSecret: false },
+  { id: 'sunstone',  displayName: 'Sunstone',  color: '#ff8c3c', glowColor: '#ffb366', unlockOrder: 3,  isSecret: false },
+  { id: 'citrine',   displayName: 'Citrine',   color: '#e6c850', glowColor: '#f0d870', unlockOrder: 4,  isSecret: false },
+  { id: 'emerald',   displayName: 'Emerald',   color: '#50b464', glowColor: '#69db7c', unlockOrder: 5,  isSecret: false },
+  { id: 'sapphire',  displayName: 'Sapphire',  color: '#3c78c8', glowColor: '#74c0fc', unlockOrder: 6,  isSecret: false },
+  { id: 'iolite',    displayName: 'Iolite',    color: '#6464b4', glowColor: '#8888cc', unlockOrder: 7,  isSecret: false },
+  { id: 'amethyst',  displayName: 'Amethyst',  color: '#b464c8', glowColor: '#d088e0', unlockOrder: 8,  isSecret: false },
+  { id: 'diamond',   displayName: 'Diamond',   color: '#f0f5fa', glowColor: '#ffffff', unlockOrder: 9,  isSecret: false },
+  { id: 'nullstone', displayName: 'Nullstone', color: '#1e1e28', glowColor: '#9664c8', unlockOrder: 10, isSecret: false },
 ] as const;
 
 /** Quick lookup by id. */
@@ -41,5 +45,5 @@ export const TIER_BY_ID: ReadonlyMap<TierId, TierDefinition> = new Map(
 /** Visible (non-secret) tiers. */
 export const VISIBLE_TIERS: readonly TierDefinition[] = TIERS.filter(t => !t.isSecret);
 
-/** Number of visible tiers (7). */
+/** Number of visible tiers (11). */
 export const VISIBLE_TIER_COUNT = VISIBLE_TIERS.length;
