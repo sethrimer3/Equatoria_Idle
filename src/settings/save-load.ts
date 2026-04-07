@@ -5,7 +5,7 @@ import { createGameState } from '../sim/game-state';
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 
 interface SaveData {
   version: number;
@@ -13,6 +13,7 @@ interface SaveData {
   equation: {
     segments: Array<{ tierId: string; level: number; isUnlocked: boolean }>;
     totalTapCount: number;
+    isForgeUnlocked: boolean;
   };
   resources: {
     moteTotals: Record<string, number>;
@@ -23,6 +24,9 @@ interface SaveData {
     unlockedTierCount: number;
     autoTapLevel: number;
     globalMultiplier: number;
+  };
+  looms: {
+    looms: Array<{ tierId: string; level: number; isUnlocked: boolean }>;
   };
   elapsedMs: number;
 }
@@ -48,6 +52,7 @@ export function serializeGameState(state: GameState): SaveData {
         isUnlocked: s.isUnlocked,
       })),
       totalTapCount: state.equation.totalTapCount,
+      isForgeUnlocked: state.equation.isForgeUnlocked,
     },
     resources: { moteTotals, lifetimeMotes },
     progression: {
@@ -55,6 +60,13 @@ export function serializeGameState(state: GameState): SaveData {
       unlockedTierCount: state.progression.unlockedTierCount,
       autoTapLevel: state.progression.autoTapLevel,
       globalMultiplier: state.progression.globalMultiplier,
+    },
+    looms: {
+      looms: state.looms.looms.map(l => ({
+        tierId: l.tierId,
+        level: l.level,
+        isUnlocked: l.isUnlocked,
+      })),
     },
     elapsedMs: state.elapsedMs,
   };
@@ -74,6 +86,7 @@ export function deserializeGameState(data: SaveData): GameState {
     }
   }
   state.equation.totalTapCount = data.equation.totalTapCount;
+  state.equation.isForgeUnlocked = data.equation.isForgeUnlocked ?? false;
 
   // Resources
   for (const [key, val] of Object.entries(data.resources.moteTotals)) {
@@ -90,6 +103,17 @@ export function deserializeGameState(data: SaveData): GameState {
   state.progression.unlockedTierCount = data.progression.unlockedTierCount;
   state.progression.autoTapLevel = data.progression.autoTapLevel;
   state.progression.globalMultiplier = data.progression.globalMultiplier;
+
+  // Looms
+  if (data.looms?.looms) {
+    for (const saved of data.looms.looms) {
+      const loom = state.looms.looms.find(l => l.tierId === saved.tierId);
+      if (loom) {
+        loom.level = saved.level;
+        loom.isUnlocked = saved.isUnlocked;
+      }
+    }
+  }
 
   state.elapsedMs = data.elapsedMs;
 
@@ -113,7 +137,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    if (data.version !== SAVE_VERSION) return null; // version mismatch — fresh start
+    // Accept version 1 or 2 (v1 just won't have looms/forge data)
+    if (data.version !== SAVE_VERSION && data.version !== 1) return null;
     return deserializeGameState(data);
   } catch {
     return null;

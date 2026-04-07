@@ -433,3 +433,187 @@ html, body {
     border-right: 1px solid rgba(255,255,255,0.05);
   }
 }
+
+/* ── Panel subtitle ─────────────────────────────────────────── */
+.panel-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+/* ── Loom cards ──────────────────────────────────────────────── */
+.loom-card {
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--border-radius);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.loom-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.loom-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: auto;
+}
+
+.loom-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.loom-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.loom-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.loom-stat {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.loom-upgrade-btn {
+  font-size: 12px;
+}
+
+/* ── Equation panel — locked forge presentation ──────────────── */
+.forge-locked {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.forge-locked-icon {
+  font-size: 48px;
+  color: var(--text-secondary);
+  opacity: 0.4;
+  margin-bottom: 12px;
+  animation: forge-pulse 3s ease-in-out infinite;
+}
+
+@keyframes forge-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.forge-locked-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.forge-locked-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.forge-locked-cost {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.forge-unlock-btn {
+  background: rgba(201, 168, 76, 0.1);
+  border-color: var(--accent) !important;
+  color: var(--accent);
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 16px;
+}
+
+.forge-unlock-btn:not(:disabled):active {
+  background: rgba(201, 168, 76, 0.25);
+}
+
+/* ── Equation panel — unlocked display ───────────────────────── */
+.equation-title {
+  text-align: center;
+}
+
+.equation-display {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--border-radius);
+  padding: 16px 12px;
+  margin-bottom: 16px;
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.eq-prefix {
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-right: 4px;
+}
+
+.eq-dormant {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  font-size: 24px;
+  letter-spacing: 4px;
+}
+
+.eq-term {
+  font-weight: 700;
+  transition: text-shadow 0.2s;
+}
+
+.eq-term:hover {
+  text-shadow: 0 0 8px currentColor;
+}
+
+.eq-operator {
+  font-weight: 400;
+}
+
+.eq-upgrades-title {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.eq-upgrade-btn {
+  font-size: 12px;
+}
+
+.equation-display sup {
+  font-size: 0.7em;
+  vertical-align: super;
+}
+
+.equation-display sub {
+  font-size: 0.6em;
+  vertical-align: sub;
+}

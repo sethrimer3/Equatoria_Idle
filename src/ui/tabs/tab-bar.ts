@@ -16,9 +16,10 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
-  { id: 'equation',  label: 'Equation',  icon: '∑' },
+  { id: 'equation',  label: 'Equation',  icon: 'ƒ' },
+  { id: 'looms',     label: 'Looms',     icon: '⚙' },
   { id: 'resources', label: 'Upgrades',  icon: '⬆' },
-  { id: 'settings',  label: 'Settings',  icon: '⚙' },
+  { id: 'settings',  label: 'Settings',  icon: '☰' },
 ];
 
 export function createTabBar(dispatch: ActionHandler): TabBar {

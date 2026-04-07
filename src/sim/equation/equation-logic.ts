@@ -1,10 +1,18 @@
 import type { EquationState, TierEquationSegment } from './equation-state';
 import { getUnlockedSegments } from './equation-state';
 import { TIER_BY_ID, type TierId } from '../../data/tiers';
+import { EQUATION_ROLE_BY_TIER } from '../../data/equation';
+import type { EquationOperator } from '../../data/equation';
 import {
   BASE_TAP_VALUE,
   UPGRADE_TAP_MULTIPLIER,
 } from '../../data/balance';
+
+/** Maximum seconds of passive time used in equation output calculation. */
+const MAX_PASSIVE_TIME_SEC = 3600;
+
+/** Cap on factorial base to prevent numerical overflow. */
+const MAX_FACTORIAL_BASE = 20;
 
 // ─── Tap value computation ──────────────────────────────────────
 
@@ -15,6 +23,7 @@ export function segmentTapValue(seg: TierEquationSegment): number {
 
 /**
  * Compute per-tier mote gains for a single tap.
+ * Only produces gains if the forge is unlocked.
  * Returns a Map of tierId → motes generated.
  */
 export function computeTapGains(
@@ -22,9 +31,15 @@ export function computeTapGains(
   globalMultiplier: number,
 ): Map<TierId, number> {
   const gains = new Map<TierId, number>();
+  if (!equationState.isForgeUnlocked) return gains;
+
   for (const seg of getUnlockedSegments(equationState)) {
     const tier = TIER_BY_ID.get(seg.tierId);
     if (!tier) continue;
+    // Sand doesn't produce via equation tap (it's foundation only)
+    const role = EQUATION_ROLE_BY_TIER.get(seg.tierId);
+    if (role && role.operator === 'foundation') continue;
+
     const value = segmentTapValue(seg) * globalMultiplier;
     gains.set(seg.tierId, value);
   }
@@ -38,43 +53,165 @@ export interface EquationTermView {
   color: string;
   text: string;
   level: number;
+  operator: EquationOperator;
+  /** Numeric parameter value for this tier's contribution. */
+  paramValue: number;
 }
 
 /**
  * Build a view-model of the current equation for rendering.
- * The equation looks like:  Σ = (redVal) + (orangeVal) + ...
- * Each term's "value" is the tap value for that tier.
+ * The equation is displayed as f(t) = <structured expression>
+ * Each tier adds a specific mathematical layer.
  */
 export function buildEquationView(equationState: EquationState): EquationTermView[] {
+  if (!equationState.isForgeUnlocked) return [];
+
   const terms: EquationTermView[] = [];
   for (const seg of getUnlockedSegments(equationState)) {
     const tier = TIER_BY_ID.get(seg.tierId);
-    if (!tier) continue;
-    const val = segmentTapValue(seg);
-    // Build increasingly complex expression as level grows
-    const text = formatSegmentExpression(seg.level, val);
+    const role = EQUATION_ROLE_BY_TIER.get(seg.tierId);
+    if (!tier || !role) continue;
+    // Sand is foundation — doesn't appear in equation
+    if (role.operator === 'foundation') continue;
+
+    const paramValue = role.baseValue + seg.level * role.valuePerLevel;
+    const text = formatTierExpression(role.operator, paramValue, seg.level, role.symbol);
+
     terms.push({
       tierId: seg.tierId,
       color: tier.color,
       text,
       level: seg.level,
+      operator: role.operator,
+      paramValue,
     });
   }
   return terms;
 }
 
 /**
- * Format a single segment's expression.
- * As level increases, the expression becomes more complex:
- *   level 0: "1"
- *   level 1-4: "1 + n"  (additive)
- *   level 5-9: "n × 2"  (multiplicative style shown)
- *   level 10+: "n²"     (power notation teaser)
+ * Format the expression fragment for a specific tier's operator.
  */
-function formatSegmentExpression(level: number, value: number): string {
-  const v = Math.floor(value * 100) / 100; // clean display
-  if (level === 0) return '1';
-  if (level < 5) return `1+${level}`;
-  if (level < 10) return `${v}×${Math.floor(level / 2)}`;
-  return `${v}²`;
+function formatTierExpression(
+  operator: EquationOperator,
+  value: number,
+  _level: number,
+  symbol: string,
+): string {
+  const v = Math.round(value * 100) / 100;
+
+  switch (operator) {
+    case 'passive_time':
+      return `${v}${symbol}·t`;
+    case 'manual_input':
+      return `${v}${symbol}`;
+    case 'addition':
+      return '+';
+    case 'multiplication':
+      return `× ${v}`;
+    case 'exponentiation':
+      return `^ ${v}`;
+    case 'summation':
+      return `Σ(${Math.floor(v)})`;
+    case 'product':
+      return `Π(${Math.floor(v)})`;
+    case 'factorial':
+      return `${Math.floor(v)}!`;
+    case 'integration':
+      return `∫${v}dt`;
+    case 'recursion':
+      return `f(f) · ${v}`;
+    default:
+      return String(v);
+  }
+}
+
+/**
+ * Compute the total equation output value for display and scoring.
+ * This evaluates the structured equation based on unlocked tiers.
+ */
+export function computeEquationOutput(
+  equationState: EquationState,
+  elapsedSec: number,
+  tapCount: number,
+  globalMultiplier: number,
+): number {
+  if (!equationState.isForgeUnlocked) return 0;
+
+  let baseTerms = 0;
+  let hasPassive = false;
+  let hasManual = false;
+  let multiplier = 1;
+  let exponent = 1;
+  let sumTermCount = 1;
+  let productTermCount = 1;
+  let factorialBase = 0;
+  let integralFactor = 0;
+  let recursionFactor = 0;
+
+  for (const seg of getUnlockedSegments(equationState)) {
+    const role = EQUATION_ROLE_BY_TIER.get(seg.tierId);
+    if (!role) continue;
+    const paramValue = role.baseValue + seg.level * role.valuePerLevel;
+
+    switch (role.operator) {
+      case 'passive_time':
+        baseTerms += paramValue * Math.min(elapsedSec, MAX_PASSIVE_TIME_SEC);
+        hasPassive = true;
+        break;
+      case 'manual_input':
+        baseTerms += paramValue * tapCount;
+        hasManual = true;
+        break;
+      case 'addition':
+        baseTerms += paramValue;
+        break;
+      case 'multiplication':
+        multiplier *= paramValue;
+        break;
+      case 'exponentiation':
+        exponent = paramValue;
+        break;
+      case 'summation':
+        sumTermCount = Math.floor(paramValue);
+        break;
+      case 'product':
+        productTermCount = Math.floor(paramValue);
+        break;
+      case 'factorial':
+        factorialBase = Math.floor(paramValue);
+        break;
+      case 'integration':
+        integralFactor = paramValue;
+        break;
+      case 'recursion':
+        recursionFactor = paramValue;
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (!hasPassive && !hasManual) return 0;
+
+  let result = baseTerms * multiplier;
+  result = Math.pow(Math.max(result, 1), exponent);
+  result *= sumTermCount;
+  result *= productTermCount;
+
+  if (factorialBase > 0) {
+    let fact = 1;
+    for (let i = 2; i <= Math.min(factorialBase, MAX_FACTORIAL_BASE); i++) fact *= i;
+    result *= fact;
+  }
+
+  if (integralFactor > 0) {
+    result += integralFactor * elapsedSec * 0.01;
+  }
+
+  if (recursionFactor > 0) {
+    result *= (1 + recursionFactor * 0.1);
+  }
+
+  return result * globalMultiplier;
 }

@@ -42,6 +42,9 @@ export const MAX_OFFLINE_HOURS = 24;
 /** Number of tiers unlocked at game start. */
 export const INITIAL_UNLOCKED_TIER_COUNT = 1;
 
+/** Cost in Sand motes to unlock the Equation Forge. */
+export const EQUATION_FORGE_COST = 50;
+
 /** Mote threshold to unlock the next tier — tierIndex is 0-based for the tier being unlocked. */
 export function tierUnlockCost(tierIndex: number): number {
   return Math.floor(50 * Math.pow(10, tierIndex));

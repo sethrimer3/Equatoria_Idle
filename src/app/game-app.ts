@@ -3,11 +3,14 @@ import {
   tapEquation,
   tryPurchaseUpgrade,
   tryUnlockNextTier,
+  tryUnlockEquationForge,
+  tryUpgradeLoom,
   simTick,
   getScore,
   buildEquationView,
   type GameState,
 } from '../sim';
+import type { TierId } from '../data/tiers';
 import {
   createGameCanvas,
   resizeCanvas,
@@ -33,15 +36,16 @@ import {
   type ParticleDragState,
 } from '../input/particle-drag';
 import { createTabBar, type TabBar } from '../ui/tabs';
-import { createUpgradePanel, createResourcePanel, createSettingsPanel } from '../ui/panels';
+import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel } from '../ui/panels';
 import type { UpgradePanel } from '../ui/panels/upgrade-panel';
 import type { ResourcePanel } from '../ui/panels/resource-panel';
 import type { SettingsPanel } from '../ui/panels/settings-panel';
+import type { LoomPanel } from '../ui/panels/loom-panel';
+import type { EquationPanel } from '../ui/panels/equation-panel';
 import { createLoadingScreen } from '../ui/loading';
 import { loadSettings, saveGame, loadGame, deleteSave } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
 import { TIERS } from '../data/tiers';
-import type { TierId } from '../data/tiers';
 import { createForgeCrunchState, type ForgeCrunchState } from '../sim/forge';
 import {
   createGeneratorState,
@@ -86,7 +90,7 @@ export async function startApp(): Promise<void> {
 
   const appState: AppState = {
     game,
-    activeTab: 'equation',
+    activeTab: 'looms',
     tapFlashAlpha: 0,
     animPulse: 0,
     forge,
@@ -126,7 +130,11 @@ export async function startApp(): Promise<void> {
   const upgradePanel = createUpgradePanel(dispatch);
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch);
+  const loomPanel = createLoomPanel(dispatch);
+  const equationPanel = createEquationPanel(dispatch);
 
+  panelsInner.appendChild(equationPanel.element);
+  panelsInner.appendChild(loomPanel.element);
   panelsInner.appendChild(upgradePanel.element);
   panelsInner.appendChild(resourcePanel.element);
   panelsInner.appendChild(settingsPanel.element);
@@ -134,7 +142,7 @@ export async function startApp(): Promise<void> {
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
 
-  setActiveTab(appState, tabBar, upgradePanel, resourcePanel, settingsPanel, panelsContainer);
+  setActiveTab(appState, tabBar, upgradePanel, resourcePanel, settingsPanel, loomPanel, equationPanel, panelsContainer);
 
   // ── Particle system ──
   const particles = new ParticleSystem();
@@ -194,6 +202,7 @@ export async function startApp(): Promise<void> {
   function handleAction(state: AppState, action: GameAction): void {
     switch (action.kind) {
       case 'tap': {
+        if (!state.game.equation.isForgeUnlocked) break;
         const result = tapEquation(state.game);
         state.tapFlashAlpha = 1;
 
@@ -218,9 +227,15 @@ export async function startApp(): Promise<void> {
         tryUnlockNextTier(state.game);
         recomputeGenerators();
         break;
+      case 'unlock_equation_forge':
+        tryUnlockEquationForge(state.game);
+        break;
+      case 'upgrade_loom':
+        tryUpgradeLoom(state.game, action.tierId as TierId);
+        break;
       case 'set_active_tab':
         state.activeTab = action.tabId;
-        setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel, panelsContainer);
+        setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel, loomPanel, equationPanel, panelsContainer);
         break;
       case 'save_game':
         saveGame(state.game);
@@ -319,20 +334,23 @@ export async function startApp(): Promise<void> {
       appState.generatorState.fadeIns,
     );
 
-    drawForge(cc, equationCenterX, equationCenterY, particles.forgeRotation, appState.forge, nowMs);
+    // Only draw forge and equation on canvas if forge is unlocked
+    if (appState.game.equation.isForgeUnlocked) {
+      drawForge(cc, equationCenterX, equationCenterY, particles.forgeRotation, appState.forge, nowMs);
 
-    const terms = buildEquationView(appState.game.equation);
-    drawEquation(cc, terms, appState.tapFlashAlpha);
+      const terms = buildEquationView(appState.game.equation);
+      drawEquation(cc, terms, appState.tapFlashAlpha);
+
+      drawForgeCrunch(cc, equationCenterX, equationCenterY, appState.forge);
+
+      if (appState.game.equation.totalTapCount < 3) {
+        drawTapHint(cc, appState.animPulse);
+      }
+    }
 
     drawScore(cc, getScore(appState.game));
 
-    drawForgeCrunch(cc, equationCenterX, equationCenterY, appState.forge);
-
     particles.draw(cc);
-
-    if (appState.game.equation.totalTapCount < 3) {
-      drawTapHint(cc, appState.animPulse);
-    }
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
       updateUI();
@@ -347,7 +365,11 @@ export async function startApp(): Promise<void> {
   }
 
   function updateUI(): void {
-    if (appState.activeTab === 'resources') {
+    if (appState.activeTab === 'looms') {
+      loomPanel.update(appState.game);
+    } else if (appState.activeTab === 'equation') {
+      equationPanel.update(appState.game);
+    } else if (appState.activeTab === 'resources') {
       upgradePanel.update(appState.game);
       resourcePanel.update(appState.game);
     }
@@ -359,23 +381,31 @@ export async function startApp(): Promise<void> {
     upPanel: UpgradePanel,
     resPanel: ResourcePanel,
     setPanel: SettingsPanel,
+    lPanel: LoomPanel,
+    eqPanel: EquationPanel,
     panelsCont: HTMLElement,
   ): void {
     bar.setActiveTab(state.activeTab);
 
-    // Equation tab: hide panels overlay, show full-screen canvas
-    // Upgrades/Settings tabs: show panels overlay sliding in from right
-    const shouldShowPanels = state.activeTab !== 'equation';
+    // All tabs except canvas-only view show panels
+    const shouldShowPanels = true;
     panelsCont.classList.toggle('panels-visible', shouldShowPanels);
 
     // Show/hide individual panels
+    eqPanel.element.style.display = state.activeTab === 'equation' ? '' : 'none';
+    lPanel.element.style.display = state.activeTab === 'looms' ? '' : 'none';
     upPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
     resPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
     setPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
 
-    if (shouldShowPanels) {
-      upgradePanel.update(appState.game);
-      resourcePanel.update(appState.game);
+    // Immediately update visible panel
+    if (state.activeTab === 'looms') {
+      lPanel.update(appState.game);
+    } else if (state.activeTab === 'equation') {
+      eqPanel.update(appState.game);
+    } else if (state.activeTab === 'resources') {
+      upPanel.update(appState.game);
+      resPanel.update(appState.game);
     }
   }
 
