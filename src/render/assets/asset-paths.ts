@@ -12,15 +12,17 @@ const BASE = 'assets';
 
 /** Maps tier IDs to their raw gem icon filenames. */
 const GEM_ICON_MAP: Record<TierId, string> = {
-  red: 'ruby',
-  orange: 'sunstone',
-  yellow: 'citrine',
-  green: 'emerald',
-  blue: 'sapphire',
-  indigo: 'iolite',
-  violet: 'amethyst',
-  prismatic: 'diamond',
-  void: 'nullstone',
+  sand: 'sand',
+  quartz: 'quartz',
+  ruby: 'ruby',
+  sunstone: 'sunstone',
+  citrine: 'citrine',
+  emerald: 'emerald',
+  sapphire: 'sapphire',
+  iolite: 'iolite',
+  amethyst: 'amethyst',
+  diamond: 'diamond',
+  nullstone: 'nullstone',
 };
 
 export function getGemIconPath(tierId: TierId): string {
@@ -30,15 +32,17 @@ export function getGemIconPath(tierId: TierId): string {
 // ── Refined Gem Icons ──────────────────────────────────────────
 
 const REFINED_GEM_MAP: Record<TierId, string> = {
-  red: 'rubyLens',
-  orange: 'sunstoneLens',
-  yellow: 'citrineLens',
-  green: 'emeraldLens',
-  blue: 'sapphireLens',
-  indigo: 'ioliteLens',
-  violet: 'amethystLens',
-  prismatic: 'diamondLens',
-  void: 'nullstoneLens',
+  sand: 'sandLens',
+  quartz: 'quartzLens',
+  ruby: 'rubyLens',
+  sunstone: 'sunstoneLens',
+  citrine: 'citrineLens',
+  emerald: 'emeraldLens',
+  sapphire: 'sapphireLens',
+  iolite: 'ioliteLens',
+  amethyst: 'amethystLens',
+  diamond: 'diamondLens',
+  nullstone: 'nullstoneLens',
 };
 
 export function getRefinedGemPath(tierId: TierId): string {

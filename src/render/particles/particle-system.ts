@@ -187,7 +187,7 @@ function createBlankParticle(): EquatoriaParticle {
   return {
     isActive: false,
     x: 0, y: 0, vx: 0, vy: 0,
-    tierId: 'red',
+    tierId: 'sand',
     sizeIndex: 0 as SizeIndex,
     colorString: '#fff',
     glowColorString: null,

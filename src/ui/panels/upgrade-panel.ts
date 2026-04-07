@@ -58,7 +58,7 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
     if (nextIndex < TIERS.length && !TIERS[nextIndex].isSecret) {
       const nextTier = TIERS[nextIndex];
       const cost = tierUnlockCost(nextIndex);
-      const payTierId = TIERS[nextIndex - 1]?.id ?? 'red';
+      const payTierId = TIERS[nextIndex - 1]?.id ?? 'sand';
       const canAfford = getMotes(state.resources, payTierId) >= cost;
       unlockBtn.textContent = `🔓 Unlock ${nextTier.displayName} — ${formatNumber(cost)} ${TIER_BY_ID.get(payTierId)?.displayName ?? ''} motes`;
       unlockBtn.disabled = !canAfford;
@@ -76,7 +76,7 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
       const isMaxed = cost === null;
 
       // Determine which tier's motes to check affordability
-      const costTierId: TierId = def.tierId ?? 'red';
+      const costTierId: TierId = def.tierId ?? 'sand';
       const canAfford = cost !== null && getMotes(state.resources, costTierId) >= cost;
 
       // Check if upgrade is visible (tier must be unlocked for tier upgrades)

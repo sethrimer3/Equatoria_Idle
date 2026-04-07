@@ -10,7 +10,7 @@ export interface SimParticleState {
 export function createSimParticleState(): SimParticleState {
   return {
     inventory: new Map(),
-    unlockedTiers: new Set(['red']),
+    unlockedTiers: new Set(['sand']),
   };
 }
 
