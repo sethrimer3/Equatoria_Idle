@@ -242,7 +242,7 @@ export async function startApp(): Promise<void> {
         break;
       case 'reset_game':
         deleteSave();
-        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' as TabId });
+        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
         recomputeGenerators();
         setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel, loomPanel, equationPanel, panelsContainer);
         break;
