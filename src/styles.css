@@ -5,14 +5,17 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  --bg-primary: #000000;
-  --bg-secondary: #16213e;
-  --bg-panel: #0f3460;
-  --bg-overlay: rgba(10, 10, 20, 0.80);
-  --text-primary: #ecf0f1;
-  --text-secondary: #95a5a6;
-  --accent: #e94560;
-  --border-radius: 6px;
+  --bg-primary: #0a0a12;
+  --bg-secondary: #1a1a2e;
+  --bg-panel: #12121e;
+  --bg-overlay: rgba(8, 8, 16, 0.88);
+  --text-primary: #e6e6ea;
+  --text-secondary: #8a8a9a;
+  --accent: #c9a84c;
+  --accent-glow: rgba(201, 168, 76, 0.3);
+  --accent-border: rgba(201, 168, 76, 0.2);
+  --font-primary: 'Cormorant Garamond', Georgia, serif;
+  --border-radius: 16px;
   --tab-height: 56px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -28,9 +31,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
+  background: #0a0a12;
   color: var(--text-primary);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-primary);
   font-size: 14px;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -69,7 +72,7 @@ html, body {
   z-index: 1;
   overflow: hidden;
   cursor: pointer;
-  background: #000;
+  background: var(--bg-primary);
 }
 
 #game-canvas {
@@ -116,6 +119,20 @@ html, body {
   pointer-events: none;
 }
 
+/* Custom scrollbar for panels */
+#panels-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+#panels-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#panels-container::-webkit-scrollbar-thumb {
+  background: var(--accent-glow);
+  border-radius: 3px;
+}
+
 /* Inner panel content padding */
 .panels-inner {
   position: relative;
@@ -132,10 +149,10 @@ html, body {
 .panel-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: var(--accent);
   margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 
 /* ── Upgrade buttons ─────────────────────────────────────────── */
@@ -150,12 +167,13 @@ html, body {
   width: 100%;
   padding: 10px 12px;
   margin-bottom: 6px;
-  background: rgba(22, 33, 62, 0.85);
+  background: var(--bg-secondary);
   color: var(--text-primary);
-  border: 2px solid #555;
+  border: 1px solid var(--accent-border);
   border-radius: var(--border-radius);
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--font-primary);
   text-align: left;
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s;
@@ -168,11 +186,11 @@ html, body {
 }
 
 .upgrade-btn:not(:disabled):active {
-  background: rgba(15, 52, 96, 0.9);
+  background: rgba(201, 168, 76, 0.12);
 }
 
 .unlock-btn {
-  background: rgba(15, 52, 96, 0.85);
+  background: rgba(26, 26, 46, 0.85);
   border-style: dashed;
   justify-content: center;
 }
@@ -196,8 +214,8 @@ html, body {
   gap: 8px;
   padding: 6px 10px;
   margin-bottom: 4px;
-  background: rgba(22, 33, 62, 0.85);
-  border-left: 3px solid #555;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent);
   border-radius: var(--border-radius);
   font-size: 13px;
   min-height: 36px;
@@ -259,12 +277,13 @@ html, body {
   width: 100%;
   padding: 10px;
   margin-top: 8px;
-  background: rgba(22, 33, 62, 0.85);
+  background: var(--bg-secondary);
   color: var(--text-primary);
-  border: 1px solid #555;
+  border: 1px solid var(--accent-border);
   border-radius: var(--border-radius);
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--font-primary);
   cursor: pointer;
   min-height: 44px;
 }
@@ -275,7 +294,7 @@ html, body {
 }
 
 .settings-btn:active {
-  background: rgba(15, 52, 96, 0.9);
+  background: rgba(201, 168, 76, 0.08);
 }
 
 .credits {
@@ -295,8 +314,8 @@ html, body {
   display: flex;
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: rgba(22, 33, 62, 0.92);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(12, 12, 20, 0.95);
+  border-top: 1px solid rgba(201, 168, 76, 0.15);
   z-index: 10;
 }
 
@@ -312,14 +331,16 @@ html, body {
   color: var(--text-secondary);
   font-size: 10px;
   cursor: pointer;
-  padding: 4px 0;
-  transition: color 0.15s;
+  padding: 4px 8px;
+  border-radius: var(--border-radius);
+  transition: color 0.15s, background 0.15s;
   min-height: 44px;
 }
 
 .tab-btn .tab-icon {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
+  font-family: var(--font-primary);
 }
 
 .tab-btn .tab-label {
@@ -329,6 +350,7 @@ html, body {
 
 .tab-btn.active {
   color: var(--accent);
+  background: rgba(201, 168, 76, 0.08);
 }
 
 .tab-btn:active {
