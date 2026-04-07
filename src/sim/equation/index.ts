@@ -5,6 +5,7 @@ export {
   incrementTapCount,
   getSegment,
   getUnlockedSegments,
+  unlockForge,
 } from './equation-state';
 export type { EquationState, TierEquationSegment } from './equation-state';
 
@@ -12,5 +13,6 @@ export {
   segmentTapValue,
   computeTapGains,
   buildEquationView,
+  computeEquationOutput,
 } from './equation-logic';
 export type { EquationTermView } from './equation-logic';

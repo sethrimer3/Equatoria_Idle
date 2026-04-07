@@ -4,3 +4,7 @@ export { createResourcePanel } from './resource-panel';
 export type { ResourcePanel } from './resource-panel';
 export { createSettingsPanel } from './settings-panel';
 export type { SettingsPanel } from './settings-panel';
+export { createLoomPanel } from './loom-panel';
+export type { LoomPanel } from './loom-panel';
+export { createEquationPanel } from './equation-panel';
+export type { EquationPanel } from './equation-panel';

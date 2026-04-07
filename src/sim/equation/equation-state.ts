@@ -14,6 +14,8 @@ export interface TierEquationSegment {
 export interface EquationState {
   segments: TierEquationSegment[];
   totalTapCount: number;
+  /** Whether the Equation Forge has been unlocked (costs 50 Sand). */
+  isForgeUnlocked: boolean;
 }
 
 // ─── Factory ────────────────────────────────────────────────────
@@ -26,6 +28,7 @@ export function createEquationState(unlockedTierCount: number): EquationState {
       isUnlocked: i < unlockedTierCount,
     })),
     totalTapCount: 0,
+    isForgeUnlocked: false,
   };
 }
 
@@ -57,4 +60,8 @@ export function unlockTier(state: EquationState, tierId: TierId): boolean {
 
 export function incrementTapCount(state: EquationState): void {
   state.totalTapCount += 1;
+}
+
+export function unlockForge(state: EquationState): void {
+  state.isForgeUnlocked = true;
 }
