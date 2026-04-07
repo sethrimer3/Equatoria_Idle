@@ -90,7 +90,7 @@ export async function startApp(): Promise<void> {
 
   const appState: AppState = {
     game,
-    activeTab: 'looms',
+    activeTab: 'equation',
     tapFlashAlpha: 0,
     animPulse: 0,
     forge,
@@ -131,7 +131,7 @@ export async function startApp(): Promise<void> {
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch);
   const loomPanel = createLoomPanel(dispatch);
-  const equationPanel = createEquationPanel(dispatch);
+  const equationPanel = createEquationPanel();
 
   panelsInner.appendChild(equationPanel.element);
   panelsInner.appendChild(loomPanel.element);
@@ -242,15 +242,16 @@ export async function startApp(): Promise<void> {
         break;
       case 'reset_game':
         deleteSave();
-        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0 });
+        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
         recomputeGenerators();
+        setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel, loomPanel, equationPanel, panelsContainer);
         break;
     }
   }
 
   function recomputeGenerators(): void {
     const equationCenterX = cc.widthPx / 2;
-    const equationCenterY = cc.heightPx * 0.15;
+    const equationCenterY = cc.heightPx / 2;
     const unlockedSet = new Set<TierId>();
     for (let i = 0; i < appState.game.progression.unlockedTierCount; i++) {
       if (TIERS[i]) unlockedSet.add(TIERS[i].id);
@@ -283,7 +284,7 @@ export async function startApp(): Promise<void> {
 
     if (simResult.autoTapped && simResult.autoTapGains) {
       const cx = cc.widthPx / 2;
-      const cy = cc.heightPx * 0.15;
+      const cy = cc.heightPx / 2;
       for (const [tierId] of simResult.autoTapGains) {
         particles.emitAtPosition(cx, cy, 2, tierId, nowMs);
       }
@@ -295,7 +296,7 @@ export async function startApp(): Promise<void> {
     appState.animPulse += deltaMs / 500;
 
     const equationCenterX = cc.widthPx / 2;
-    const equationCenterY = cc.heightPx * 0.15;
+    const equationCenterY = cc.heightPx / 2;
 
     // Ensure generators are initialized on first frame
     if (appState.generatorState.generators.length === 0) {

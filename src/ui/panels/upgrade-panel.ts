@@ -2,7 +2,7 @@ import type { GameState } from '../../sim';
 import type { ActionHandler } from '../../input';
 import { ALL_UPGRADES } from '../../data/upgrades';
 import { TIER_BY_ID, TIERS, type TierId } from '../../data/tiers';
-import { tierUnlockCost } from '../../data/balance';
+import { tierUnlockCost, EQUATION_FORGE_COST } from '../../data/balance';
 import { getUpgradeLevel, getUpgradeCost } from '../../sim/progression';
 import { getMotes } from '../../sim/resources';
 import { formatNumber } from '../../util';
@@ -24,6 +24,19 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
   title.className = 'panel-title';
   title.textContent = 'Upgrades';
   panel.appendChild(title);
+
+  // Forge unlock button (shown only when forge is still locked)
+  const forgeUnlockSection = document.createElement('div');
+  forgeUnlockSection.className = 'upgrade-section';
+  const forgeUnlockBtn = document.createElement('button');
+  forgeUnlockBtn.className = 'upgrade-btn forge-unlock-btn';
+  forgeUnlockBtn.textContent = `🔥 Unlock Equation Forge — ${EQUATION_FORGE_COST} Sand`;
+  forgeUnlockBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    dispatch({ kind: 'unlock_equation_forge' });
+  });
+  forgeUnlockSection.appendChild(forgeUnlockBtn);
+  panel.appendChild(forgeUnlockSection);
 
   // Tier unlock button
   const unlockSection = document.createElement('div');
@@ -53,6 +66,16 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
   }
 
   function update(state: GameState): void {
+    // Update forge unlock button
+    if (state.equation.isForgeUnlocked) {
+      forgeUnlockSection.style.display = 'none';
+    } else {
+      forgeUnlockSection.style.display = '';
+      const sandMotes = getMotes(state.resources, 'sand');
+      forgeUnlockBtn.disabled = sandMotes < EQUATION_FORGE_COST;
+      forgeUnlockBtn.textContent = `🔥 Unlock Equation Forge — ${formatNumber(sandMotes)} / ${EQUATION_FORGE_COST} Sand`;
+    }
+
     // Update unlock button
     const nextIndex = state.progression.unlockedTierCount;
     if (nextIndex < TIERS.length && !TIERS[nextIndex].isSecret) {

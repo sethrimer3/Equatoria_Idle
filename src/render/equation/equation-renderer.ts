@@ -13,7 +13,7 @@ export function drawEquation(
 ): void {
   const ctx = cc.ctx;
   const centerX = cc.widthPx / 2;
-  const topY = cc.heightPx * 0.15;
+  const topY = cc.heightPx / 2;
 
   // Title label
   ctx.font = 'bold 10px monospace';
@@ -118,7 +118,7 @@ export function drawTapHint(cc: CanvasContext, pulse: number): void {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ecf0f1';
-  ctx.fillText('Tap the equation!', cc.widthPx / 2, cc.heightPx * 0.3);
+  ctx.fillText('Tap the equation!', cc.widthPx / 2, cc.heightPx / 2 + cc.heightPx * 0.15);
   ctx.globalAlpha = 1;
 }
 

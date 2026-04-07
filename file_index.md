@@ -103,6 +103,8 @@
 
 ### src/sim/particles/generator-state.ts
 - Generator ring positioning around the equation center.
+- Fixed 11-slot circular layout with 160px radius.
+- Generators start at 270° (12 o'clock) with equal angular spacing (360°/11).
 
 ### src/sim/particles/merge-logic.ts
 - `ActiveMergeInfo` — descriptor for in-progress particle merge.
@@ -148,13 +150,12 @@
 - Loading screen with company logo and fade-out transition.
 
 ### src/ui/tabs/tab-bar.ts
-- Bottom tab bar: Equation / Looms / Upgrades / Settings.
+- Bottom tab bar: Equation / Upgrades / Looms / Settings.
 - `createTabBar()` — returns element and `setActiveTab()` method.
 
 ### src/ui/panels/equation-panel.ts
 - Equation tab content.
-- **Locked state**: Shows dormant forge presentation with unlock button (50 Sand).
-- **Unlocked state**: Shows the colored f(t) equation display and equation-specific upgrades grouped by tier.
+- Shows only the colored f(t) equation display (no upgrades or unlock UI).
 - `buildStructuredEquation()` — generates HTML with colored spans per operator type.
 
 ### src/ui/panels/loom-panel.ts
@@ -164,6 +165,8 @@
 
 ### src/ui/panels/upgrade-panel.ts
 - Upgrade purchase buttons with gem icon sprites.
+- Includes "Unlock Equation Forge" button (50 Sand) shown before forge is unlocked.
+- Tier unlock buttons and per-tier upgrade buttons.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
