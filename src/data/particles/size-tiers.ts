@@ -14,15 +14,17 @@ export const EXTRA_LARGE_SIZE_INDEX: SizeIndex = 3;
 
 /**
  * Each size tier is (sizeIndex + 1) virtual pixels wide/tall.
- * Returns the pixel size for a given SizeIndex.
+ * Returns the virtual pixel dimension for a given SizeIndex.
+ * Used for determining trail lengths and visual sizing.
  */
 export function getSizePixels(sizeIndex: SizeIndex): number {
   return sizeIndex + 1;
 }
 
 /**
- * Scale multiplier relative to base particle size.
- * Each tier adds 1 virtual pixel, so sizeIndex 0 → 1px, 1 → 2px, etc.
+ * Scale multiplier relative to BASE_PARTICLE_SIZE.
+ * Each tier adds 1 virtual pixel, matching getSizePixels().
+ * This is applied as: finalSize = BASE_PARTICLE_SIZE * getSizeScaleMultiplier(sizeIndex).
  */
 export function getSizeScaleMultiplier(sizeIndex: SizeIndex): number {
   return sizeIndex + 1;
@@ -49,8 +51,10 @@ export function getSizeSmallEquivalent(sizeIndex: SizeIndex): number {
   return Math.pow(MERGE_THRESHOLD, sizeIndex);
 }
 
-// ── Backward-compatible readonly arrays for existing code ──
-// These are kept for existing read patterns but delegate to functions.
+// ── Backward-compatible readonly arrays (sizes 0–3 only) ──────
+// NOTE: These now use the new linear scaling (1 px per tier) rather than
+// the old non-linear values. Code should prefer the function-based
+// helpers above for unlimited size support.
 export const SIZE_SCALE_MULTIPLIERS: readonly number[] = [1.0, 2.0, 3.0, 4.0];
 export const SIZE_MIN_VELOCITY_MODIFIERS: readonly number[] = [1.0, 0.8, 0.57, 0.5];
 export const SIZE_MAX_VELOCITY_MODIFIERS: readonly number[] = [1.0, 0.85, 0.7, 0.6];

@@ -7,6 +7,7 @@ import {
   SMALL_SIZE_INDEX,
   MEDIUM_SIZE_INDEX,
   LARGE_SIZE_INDEX,
+  EXTRA_LARGE_SIZE_INDEX,
   getSizeScaleMultiplier,
   getSizeMinVelocityModifier,
   getSizeMaxVelocityModifier,
@@ -422,7 +423,7 @@ export class ParticleSystem {
         p.vy *= damping;
       }
     } else {
-      if (p.sizeIndex < 3) {
+      if (p.sizeIndex < EXTRA_LARGE_SIZE_INDEX) {
         for (const gen of generators) {
           if (gen.tierId !== p.tierId) continue;
           const dx = gen.x - p.x;
@@ -448,7 +449,7 @@ export class ParticleSystem {
       const fdy = forgeY - p.y;
       const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
       const isForgeAttractable = p.sizeIndex >= MEDIUM_SIZE_INDEX;
-      const forgeRange = p.sizeIndex >= 3 ? Infinity : MAX_FORGE_ATTRACTION_DISTANCE;
+      const forgeRange = p.sizeIndex >= EXTRA_LARGE_SIZE_INDEX ? Infinity : MAX_FORGE_ATTRACTION_DISTANCE;
       if (isForgeAttractable && fdist <= forgeRange && fdist > 1) {
         const force = (ATTRACTION_STRENGTH / (fdist * DISTANCE_SCALE)) * p.forceModifier;
         const angle = Math.atan2(fdy, fdx);
@@ -815,7 +816,10 @@ export class ParticleSystem {
       p.trailFrameCounter++;
       if (p.trailFrameCounter < TRAIL_CAPTURE_INTERVAL) continue;
       p.trailFrameCounter = 0;
-      const maxLen = p.sizeIndex === MEDIUM_SIZE_INDEX ? TRAIL_LENGTH_MEDIUM : TRAIL_LENGTH_LARGE;
+      // Medium gets short trail; large+ gets progressively longer trails
+      const maxLen = p.sizeIndex === MEDIUM_SIZE_INDEX
+        ? TRAIL_LENGTH_MEDIUM
+        : TRAIL_LENGTH_LARGE + (p.sizeIndex - LARGE_SIZE_INDEX) * 2;
       p.trail.push({ x: p.x, y: p.y });
       while (p.trail.length > maxLen) {
         p.trail.shift();
@@ -1003,11 +1007,9 @@ export class ParticleSystem {
         } else {
           // Medium particles: tiny subtle trail
           const alpha = t * 0.25;
-          const dotSize = 0.5;
           ctx.globalAlpha = alpha;
           ctx.fillStyle = p.colorString;
           ctx.fillRect(Math.floor(pos.x), Math.floor(pos.y), 1, 1);
-          void dotSize;
         }
       }
     }
