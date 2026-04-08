@@ -5,7 +5,9 @@ import { LOOM_DEFINITIONS } from '../../data/looms';
 import { getLoom, getLoomRate, getLoomCost } from '../../sim/looms';
 import { getMotes } from '../../sim/resources';
 import { formatNumber } from '../../util';
-import { getGemIconPath } from '../../render/assets/asset-paths';
+import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
+import { loadImage } from '../../render/assets/asset-loader';
+import { createTintedCanvas } from '../../render/assets/sprite-tint';
 
 /**
  * Looms panel — shows passive production Looms for each unlocked tier.
@@ -16,6 +18,16 @@ export interface LoomPanel {
   update(state: GameState): void;
 }
 
+/** Draw the tinted generator sprite onto a small icon canvas. */
+function renderLoomIconCanvas(canvas: HTMLCanvasElement, spritePath: string, color: string): void {
+  loadImage(spritePath).then((sprite) => {
+    const tinted = createTintedCanvas(sprite, color);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tinted, 0, 0, canvas.width, canvas.height);
+  }).catch(() => { /* sprite not available — leave canvas blank */ });
+}
 export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
   const panel = document.createElement('div');
   panel.className = 'panel loom-panel';
@@ -45,12 +57,14 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
     const header = document.createElement('div');
     header.className = 'loom-header';
 
-    const iconSrc = getGemIconPath(def.tierId);
-    const icon = document.createElement('img');
-    icon.className = 'loom-icon';
-    icon.src = iconSrc;
-    icon.alt = '';
-    header.appendChild(icon);
+    // Use a small canvas showing the tinted generator sprite
+    const spritePath = getGeneratorSpritePath(tier.unlockOrder);
+    const iconCanvas = document.createElement('canvas');
+    iconCanvas.className = 'loom-icon';
+    iconCanvas.width = 32;
+    iconCanvas.height = 32;
+    renderLoomIconCanvas(iconCanvas, spritePath, tier.color);
+    header.appendChild(iconCanvas);
 
     const nameEl = document.createElement('span');
     nameEl.className = 'loom-name';
