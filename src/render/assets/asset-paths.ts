@@ -32,7 +32,25 @@ export function getGemIconPath(tierId: TierId): string {
 // ── Refined Gem Icons ──────────────────────────────────────────
 
 const REFINED_GEM_MAP: Record<TierId, string> = {
-  sand: 'sandLens',
+  sand: 'sandRefinedGem',
+  quartz: 'quartzRefinedGem',
+  ruby: 'rubyRefinedGem',
+  sunstone: 'sunstoneRefinedGem',
+  citrine: 'citrineRefinedGem',
+  emerald: 'emeraldRefinedGem',
+  sapphire: 'sapphireRefinedGem',
+  iolite: 'ioliteRefinedGem',
+  amethyst: 'amethystRefinedGem',
+  diamond: 'diamondRefinedGem',
+  nullstone: 'nullstoneRefinedGem',
+};
+
+export function getRefinedGemPath(tierId: TierId): string {
+  return `${BASE}/sprites/refinedGems/${REFINED_GEM_MAP[tierId]}.webp`;
+}
+
+const LEGACY_REFINED_GEM_MAP: Record<TierId, string> = {
+  sand: 'aleph_resourceIcon',
   quartz: 'quartzLens',
   ruby: 'rubyLens',
   sunstone: 'sunstoneLens',
@@ -45,8 +63,8 @@ const REFINED_GEM_MAP: Record<TierId, string> = {
   nullstone: 'nullstoneLens',
 };
 
-export function getRefinedGemPath(tierId: TierId): string {
-  return `${BASE}/sprites/refinedGems/${REFINED_GEM_MAP[tierId]}.webp`;
+export function getRefinedGemFallbackPath(tierId: TierId): string {
+  return `${BASE}/sprites/refinedGems/${LEGACY_REFINED_GEM_MAP[tierId]}.webp`;
 }
 
 // ── Generator Sprites ──────────────────────────────────────────
@@ -58,8 +76,10 @@ export function getGeneratorSpritePath(unlockOrder: number): string {
 
 // ── Forge Sprites ──────────────────────────────────────────────
 
-export const FORGE_SPRITE_PATH = `${BASE}/sprites/equationForge/forge.png`;
-export const FORGE_SPRITE_ALT_PATH = `${BASE}/sprites/equationForge/forge2.png`;
+export const FORGE_SPRITE_PATH = `${BASE}/sprites/equationForge/forge.webp`;
+export const FORGE_SPRITE_ALT_PATH = `${BASE}/sprites/equationForge/forge2.webp`;
+export const FORGE_SPRITE_LEGACY_PATH = `${BASE}/sprites/equationForge/forge.png`;
+export const FORGE_SPRITE_ALT_LEGACY_PATH = `${BASE}/sprites/equationForge/forge2.png`;
 
 // ── Logo ───────────────────────────────────────────────────────
 

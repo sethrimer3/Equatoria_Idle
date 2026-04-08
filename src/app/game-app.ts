@@ -104,10 +104,6 @@ export async function startApp(): Promise<void> {
   root.appendChild(bgAnimation.canvas);
 
   // ── Vermiculate background effect ──
-  const vermiculateCanvas = document.createElement('canvas');
-  vermiculateCanvas.className = 'vermiculate-canvas';
-  root.appendChild(vermiculateCanvas);
-  const vermiculateCtx = vermiculateCanvas.getContext('2d')!;
   const vermiculateEffect: VermiculateEffect = createVermiculateEffect();
 
   // ── Canvas container (full screen) ──
@@ -192,17 +188,13 @@ export async function startApp(): Promise<void> {
     const w = canvasContainer.clientWidth;
     const h = canvasContainer.clientHeight;
     bgAnimation.resize(w, h);
-    vermiculateCanvas.width = w;
-    vermiculateCanvas.height = h;
+    vermiculateEffect.reset();
     recomputeGenerators();
   };
   window.addEventListener('resize', onResize);
 
   // Initial background size
   bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
-  vermiculateCanvas.width = canvasContainer.clientWidth;
-  vermiculateCanvas.height = canvasContainer.clientHeight;
-
   // ── Action handler ──
   function handleAction(state: AppState, action: GameAction): void {
     switch (action.kind) {
@@ -327,16 +319,11 @@ export async function startApp(): Promise<void> {
     // ── Update background animation ──
     bgAnimation.update(deltaMs);
 
-    // ── Update and draw vermiculate background ──
-    const vW = vermiculateCanvas.width;
-    const vH = vermiculateCanvas.height;
-    vermiculateEffect.update(nowMs, vW, vH);
-    vermiculateCtx.clearRect(0, 0, vW, vH);
-    vermiculateEffect.draw(vermiculateCtx);
-
     // ── Render ──
     clearCanvas(cc);
     drawBackground(cc, '#000000');
+    vermiculateEffect.update(nowMs, cc.widthPx, cc.heightPx);
+    vermiculateEffect.draw(cc.ctx);
 
     drawGenerators(
       cc,
