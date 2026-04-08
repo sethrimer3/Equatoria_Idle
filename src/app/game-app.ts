@@ -368,8 +368,6 @@ export async function startApp(): Promise<void> {
   function updateUI(): void {
     if (appState.activeTab === 'looms') {
       loomPanel.update(appState.game);
-    } else if (appState.activeTab === 'equation') {
-      equationPanel.update(appState.game);
     } else if (appState.activeTab === 'resources') {
       upgradePanel.update(appState.game);
       resourcePanel.update(appState.game);
@@ -388,8 +386,8 @@ export async function startApp(): Promise<void> {
   ): void {
     bar.setActiveTab(state.activeTab);
 
-    // All tabs except canvas-only view show panels
-    const shouldShowPanels = true;
+    // Equation tab is pure canvas render; other tabs show overlay panels.
+    const shouldShowPanels = state.activeTab !== 'equation';
     panelsCont.classList.toggle('panels-visible', shouldShowPanels);
 
     // Show/hide individual panels
@@ -402,8 +400,6 @@ export async function startApp(): Promise<void> {
     // Immediately update visible panel
     if (state.activeTab === 'looms') {
       lPanel.update(appState.game);
-    } else if (state.activeTab === 'equation') {
-      eqPanel.update(appState.game);
     } else if (state.activeTab === 'resources') {
       upPanel.update(appState.game);
       resPanel.update(appState.game);
