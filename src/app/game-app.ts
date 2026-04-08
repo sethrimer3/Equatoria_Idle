@@ -165,14 +165,18 @@ export async function startApp(): Promise<void> {
   };
 
   cc.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+    // Capture the pointer so pointermove/pointerup are always delivered to this
+    // element even when the pointer moves outside its bounds (critical for drag).
+    cc.canvas.setPointerCapture(e.pointerId);
     const pos = getCanvasCoords(e);
     handleParticleDragDown(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles, cc.widthPx, cc.heightPx);
   });
   cc.canvas.addEventListener('pointermove', (e: PointerEvent) => {
     if (!appState.particleDrag.isDown) return;
+    e.preventDefault();
     const pos = getCanvasCoords(e);
     handleParticleDragMove(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
-  });
+  }, { passive: false });
   cc.canvas.addEventListener('pointerup', (e: PointerEvent) => {
     const pos = getCanvasCoords(e);
     handleParticleDragUp(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
