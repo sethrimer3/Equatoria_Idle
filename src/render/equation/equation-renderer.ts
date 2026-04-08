@@ -20,11 +20,11 @@ export function drawEquation(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#aaa';
-  ctx.fillText('E =', centerX - cc.widthPx * 0.35, topY);
+  drawOutlinedText(ctx, 'E =', centerX - cc.widthPx * 0.35, topY);
 
   if (terms.length === 0) {
     ctx.fillStyle = '#666';
-    ctx.fillText('???', centerX, topY);
+    drawOutlinedText(ctx, '???', centerX, topY);
     return;
   }
 
@@ -80,12 +80,12 @@ function drawTermsLine(
   for (let i = 0; i < terms.length; i++) {
     const term = terms[i];
     ctx.fillStyle = term.color;
-    ctx.fillText(term.text, x + (term.text.length * charWidth) / 2, y);
+    drawOutlinedText(ctx, term.text, x + (term.text.length * charWidth) / 2, y);
     x += term.text.length * charWidth;
 
     if (i < terms.length - 1) {
       ctx.fillStyle = '#777';
-      ctx.fillText(' + ', x + 1.5 * charWidth, y);
+      drawOutlinedText(ctx, ' + ', x + 1.5 * charWidth, y);
       x += 3 * charWidth;
     }
   }
@@ -118,8 +118,21 @@ export function drawTapHint(cc: CanvasContext, pulse: number): void {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ecf0f1';
-  ctx.fillText('Tap the equation!', cc.widthPx / 2, cc.heightPx / 2 + cc.heightPx * 0.15);
+  drawOutlinedText(ctx, 'Tap the equation!', cc.widthPx / 2, cc.heightPx / 2 + cc.heightPx * 0.15);
   ctx.globalAlpha = 1;
+}
+
+function drawOutlinedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+): void {
+  ctx.lineWidth = 1;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#000';
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
 }
 
 function formatNumber(n: number): string {
