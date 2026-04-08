@@ -1,8 +1,9 @@
 import type { TierId } from '../../data/tiers';
 import { TIERS } from '../../data/tiers';
+import { SCENE_ZOOM_SCALE } from '../../data/particles/particle-config';
 
 /** Fixed generator layout radius in canvas pixels. */
-const GENERATOR_RADIUS_PX = 160;
+const GENERATOR_RADIUS_PX = 160 * SCENE_ZOOM_SCALE;
 
 /** Total generator slots in the circular layout. */
 const TOTAL_GENERATOR_SLOTS = 11;
