@@ -3,6 +3,7 @@ export interface SettingsState {
   musicVolume: number;     // 0–1
   sfxVolume: number;       // 0–1
   isReducedParticles: boolean;
+  graphicsQuality: 'high' | 'low';
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
 }
@@ -12,6 +13,7 @@ export function createDefaultSettings(): SettingsState {
     musicVolume: 0.5,
     sfxVolume: 0.7,
     isReducedParticles: false,
+    graphicsQuality: 'high',
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
   };

@@ -299,6 +299,7 @@ export async function startApp(): Promise<void> {
 
     const equationCenterX = cc.widthPx / 2;
     const equationCenterY = cc.heightPx / 2;
+    const isLowGraphics = settings.graphicsQuality === 'low';
 
     // Ensure generators are initialized on first frame
     if (appState.generatorState.generators.length === 0) {
@@ -314,6 +315,7 @@ export async function startApp(): Promise<void> {
       cc.widthPx,
       cc.heightPx,
       appState.forge,
+      { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
     );
 
     // ── Update background animation ──
@@ -348,7 +350,7 @@ export async function startApp(): Promise<void> {
 
     drawScore(cc, getScore(appState.game));
 
-    particles.draw(cc);
+    particles.draw(cc, { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics });
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
       updateUI();

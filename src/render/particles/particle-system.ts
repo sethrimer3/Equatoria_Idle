@@ -138,6 +138,11 @@ export interface Shockwave {
   color: string;
 }
 
+export interface ParticleRenderOptions {
+  enableGlow: boolean;
+  enableTrails: boolean;
+}
+
 /** Backward-compatible alias. */
 export type Particle = EquatoriaParticle;
 
@@ -332,6 +337,7 @@ export class ParticleSystem {
     canvasWidth: number,
     canvasHeight: number,
     crunchState: ForgeCrunchState,
+    options: ParticleRenderOptions,
   ): void {
     this.frameCount++;
     const deltaRatio = deltaMs / (1000 / 60);
@@ -358,7 +364,13 @@ export class ParticleSystem {
     }
 
     // Trail capture for medium+ particles
-    this._updateTrails();
+    if (options.enableTrails) {
+      this._updateTrails();
+    } else {
+      for (const p of this.particles) {
+        p.trail.length = 0;
+      }
+    }
 
     // ── Euler fluid dynamics ──
     // Higher-tier particles push lower-tier particles away.
@@ -977,57 +989,59 @@ export class ParticleSystem {
   }
 
   /** Render particles and shockwaves to canvas. */
-  draw(cc: CanvasContext): void {
+  draw(cc: CanvasContext, options: ParticleRenderOptions): void {
     const ctx = cc.ctx;
 
     // ── Draw trails for medium+ particles ──
-    for (const p of this.particles) {
-      if (p.sizeIndex < MEDIUM_SIZE_INDEX || p.trail.length < 2) continue;
-      const isLarge = p.sizeIndex >= LARGE_SIZE_INDEX;
-      const trailLen = p.trail.length;
+    if (options.enableTrails) {
+      for (const p of this.particles) {
+        if (p.sizeIndex < MEDIUM_SIZE_INDEX || p.trail.length < 2) continue;
+        const isLarge = p.sizeIndex >= LARGE_SIZE_INDEX;
+        const trailLen = p.trail.length;
 
-      for (let i = 0; i < trailLen; i++) {
-        const t = i / trailLen; // 0 at tail, ~1 at head
-        const pos = p.trail[i];
+        for (let i = 0; i < trailLen; i++) {
+          const t = i / trailLen; // 0 at tail, ~1 at head
+          const pos = p.trail[i];
 
-        if (isLarge) {
-          // Large+ particles: comet trail with glow and shrinking tail
-          const tailSize = p.size * t * 0.8; // shrinks toward tail
-          const alpha = t * 0.6;
-          if (tailSize < 0.3) continue;
+          if (isLarge) {
+            // Large+ particles: comet trail with glow and shrinking tail
+            const tailSize = p.size * t * 0.8; // shrinks toward tail
+            const alpha = t * 0.6;
+            if (tailSize < 0.3) continue;
 
-          // Glow layer
-          if (p.glowColorString) {
-            ctx.globalAlpha = alpha * 0.4;
-            ctx.shadowBlur = tailSize * 4;
-            ctx.shadowColor = p.glowColorString;
-            ctx.fillStyle = p.glowColorString;
-            const glowHalf = tailSize * 1.5;
+            // Glow layer
+            if (options.enableGlow && p.glowColorString) {
+              ctx.globalAlpha = alpha * 0.4;
+              ctx.shadowBlur = tailSize * 4;
+              ctx.shadowColor = p.glowColorString;
+              ctx.fillStyle = p.glowColorString;
+              const glowHalf = tailSize * 1.5;
+              ctx.fillRect(
+                Math.floor(pos.x - glowHalf),
+                Math.floor(pos.y - glowHalf),
+                Math.ceil(glowHalf * 2),
+                Math.ceil(glowHalf * 2),
+              );
+              ctx.shadowBlur = 0;
+            }
+
+            // Core trail segment
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.colorString;
+            const half = tailSize / 2;
             ctx.fillRect(
-              Math.floor(pos.x - glowHalf),
-              Math.floor(pos.y - glowHalf),
-              Math.ceil(glowHalf * 2),
-              Math.ceil(glowHalf * 2),
+              Math.floor(pos.x - half),
+              Math.floor(pos.y - half),
+              Math.ceil(tailSize),
+              Math.ceil(tailSize),
             );
-            ctx.shadowBlur = 0;
+          } else {
+            // Medium particles: tiny subtle trail
+            const alpha = t * 0.25;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.colorString;
+            ctx.fillRect(Math.floor(pos.x), Math.floor(pos.y), 1, 1);
           }
-
-          // Core trail segment
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = p.colorString;
-          const half = tailSize / 2;
-          ctx.fillRect(
-            Math.floor(pos.x - half),
-            Math.floor(pos.y - half),
-            Math.ceil(tailSize),
-            Math.ceil(tailSize),
-          );
-        } else {
-          // Medium particles: tiny subtle trail
-          const alpha = t * 0.25;
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = p.colorString;
-          ctx.fillRect(Math.floor(pos.x), Math.floor(pos.y), 1, 1);
         }
       }
     }
@@ -1047,7 +1061,7 @@ export class ParticleSystem {
     }
 
     for (const batch of batches.values()) {
-      if (batch.glow) {
+      if (options.enableGlow && batch.glow) {
         ctx.shadowBlur = batch.size * 3;
         ctx.shadowColor = batch.glow;
       } else {

@@ -285,6 +285,16 @@ html, body {
   accent-color: var(--accent);
 }
 
+.settings-select {
+  min-width: 96px;
+  padding: 4px 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  font-family: var(--font-primary);
+}
+
 .settings-btn {
   display: block;
   width: 100%;
