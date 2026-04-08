@@ -8,13 +8,18 @@ import {
   FORGE_SPIN_UP_DURATION_MS,
   FORGE_SPIN_DOWN_DURATION_MS,
 } from '../../data/particles/particle-config';
-import { FORGE_SPRITE_PATH, FORGE_SPRITE_ALT_PATH } from '../assets/asset-paths';
+import {
+  FORGE_SPRITE_ALT_LEGACY_PATH,
+  FORGE_SPRITE_ALT_PATH,
+  FORGE_SPRITE_LEGACY_PATH,
+  FORGE_SPRITE_PATH,
+} from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 
 /** Preload forge sprites. Call once at startup. */
 export function preloadForgeSprites(): void {
-  loadImage(FORGE_SPRITE_PATH);
-  loadImage(FORGE_SPRITE_ALT_PATH);
+  loadImage(FORGE_SPRITE_PATH).catch(() => loadImage(FORGE_SPRITE_LEGACY_PATH).catch(() => undefined));
+  loadImage(FORGE_SPRITE_ALT_PATH).catch(() => loadImage(FORGE_SPRITE_ALT_LEGACY_PATH).catch(() => undefined));
 }
 
 export function drawForge(
@@ -33,8 +38,8 @@ export function drawForge(
   );
   const effectiveRotation = forgeRotation * spinMult;
 
-  const sprite = getCachedImage(FORGE_SPRITE_PATH);
-  const spriteAlt = getCachedImage(FORGE_SPRITE_ALT_PATH);
+  const sprite = getCachedImage(FORGE_SPRITE_PATH) ?? getCachedImage(FORGE_SPRITE_LEGACY_PATH);
+  const spriteAlt = getCachedImage(FORGE_SPRITE_ALT_PATH) ?? getCachedImage(FORGE_SPRITE_ALT_LEGACY_PATH);
 
   if (sprite && spriteAlt) {
     drawForgeSprite(ctx, forgeX, forgeY, forgeSize, effectiveRotation, sprite, spriteAlt);
