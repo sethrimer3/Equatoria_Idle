@@ -7,13 +7,19 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postbuild": "mkdir -p dist/ASSETS && cp -R ASSETS/SPRITES ASSETS/ANIMATIONS dist/ASSETS/"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sethrimer3/Equatoria_Idle.git"
   },
-  "keywords": ["idle", "game", "math", "equation"],
+  "keywords": [
+    "idle",
+    "game",
+    "math",
+    "equation"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
