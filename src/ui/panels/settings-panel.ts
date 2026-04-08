@@ -64,9 +64,19 @@ export function createSettingsPanel(
   const resetBtn = document.createElement('button');
   resetBtn.className = 'settings-btn danger';
   resetBtn.textContent = '🗑 Reset Game';
-  resetBtn.addEventListener('pointerdown', (e) => {
+
+  let isResetConfirmOpen = false;
+  resetBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
-    if (confirm('Are you sure you want to reset all progress?')) {
+
+    if (isResetConfirmOpen) return;
+    isResetConfirmOpen = true;
+
+    const shouldReset = confirm('Are you sure you want to reset all progress?');
+    isResetConfirmOpen = false;
+
+    if (shouldReset) {
       dispatch({ kind: 'reset_game' });
     }
   });
