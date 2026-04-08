@@ -56,7 +56,7 @@ function drawGeneratorTinted(
   color: string,
 ): void {
   if (alpha <= 0) return;
-  const size = SPAWNER_SIZE * 2.5;
+  const size = SPAWNER_SIZE * 5;
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -93,7 +93,7 @@ function drawGeneratorFallback(
   ctx.globalAlpha = alpha;
   ctx.translate(x, y);
 
-  const size = SPAWNER_SIZE;
+  const size = SPAWNER_SIZE * 2;
   const halfPi6 = Math.PI / 6;
 
   ctx.rotate(-rotation);

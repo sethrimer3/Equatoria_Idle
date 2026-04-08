@@ -130,6 +130,9 @@ export interface Shockwave {
   x: number;
   y: number;
   radius: number;
+  maxRadius: number;
+  edgeThickness: number;
+  pushForce: number;
   alpha: number;
   timestampMs: number;
   color: string;
@@ -141,6 +144,11 @@ export type Particle = EquatoriaParticle;
 // ─── Spatial hash grid ──────────────────────────────────────────
 
 const GRID_CELL_SIZE = SHOCKWAVE_MAX_RADIUS;
+
+function getShockwaveScaleForSize(sizeIndex: SizeIndex): number {
+  // 2x2 (sizeIndex 1) => 5% of prior size, 3x3 => 10%, 4x4 => 15%, etc.
+  return Math.max(0, sizeIndex) * 0.05;
+}
 
 interface SpatialGrid {
   cells: Map<string, EquatoriaParticle[]>;
@@ -612,10 +620,14 @@ export class ParticleSystem {
 
       if (!merge.isTierConversion && this.shockwaves.length < MAX_SHOCKWAVES) {
         const tier = TIER_BY_ID.get(merge.outputTierId);
+        const shockwaveScale = getShockwaveScaleForSize(merge.outputSizeIndex);
         this.shockwaves.push({
           x: merge.targetX,
           y: merge.targetY,
           radius: 0,
+          maxRadius: SHOCKWAVE_MAX_RADIUS * shockwaveScale,
+          edgeThickness: 10 * Math.max(shockwaveScale, 0.1),
+          pushForce: 2.5 * shockwaveScale,
           alpha: 0.8,
           timestampMs: nowMs,
           color: tier?.color ?? '#fff',
@@ -746,27 +758,29 @@ export class ParticleSystem {
     this.shockwaves = this.shockwaves.filter(sw => {
       const elapsed = nowMs - sw.timestampMs;
       if (elapsed >= SHOCKWAVE_DURATION) return false;
-      sw.radius += 3.0;
+      const progress = elapsed / SHOCKWAVE_DURATION;
+      sw.radius = sw.maxRadius * progress;
       sw.alpha = 0.8 * (1 - elapsed / SHOCKWAVE_DURATION);
+      if (sw.maxRadius <= 0) return false;
       return true;
     });
 
     if (this.shockwaves.length > 0) {
       const grid = buildSpatialGrid(this.particles);
       for (const sw of this.shockwaves) {
-        const nearby = queryNearby(grid, sw.x, sw.y, sw.radius + 10);
+        const nearby = queryNearby(grid, sw.x, sw.y, sw.radius + sw.edgeThickness);
         for (const p of nearby) {
           if (p.isMerging) continue;
           const dx = p.x - sw.x;
           const dy = p.y - sw.y;
           const distSq = dx * dx + dy * dy;
-          const rMin = sw.radius - 10;
-          const rMax = sw.radius + 10;
+          const rMin = sw.radius - sw.edgeThickness;
+          const rMax = sw.radius + sw.edgeThickness;
           if (distSq < rMin * rMin || distSq > rMax * rMax) continue;
           const dist = Math.sqrt(distSq);
           if (dist < 0.1) continue;
-          p.vx += (dx / dist) * 2.5;
-          p.vy += (dy / dist) * 2.5;
+          p.vx += (dx / dist) * sw.pushForce;
+          p.vy += (dy / dist) * sw.pushForce;
         }
       }
     }
@@ -929,10 +943,14 @@ export class ParticleSystem {
           // Shockwave
           if (this.shockwaves.length < MAX_SHOCKWAVES) {
             const tier = TIER_BY_ID.get(merge.tierId);
+            const shockwaveScale = getShockwaveScaleForSize(newSizeIndex);
             this.shockwaves.push({
               x: cx,
               y: cy,
               radius: 0,
+              maxRadius: SHOCKWAVE_MAX_RADIUS * shockwaveScale,
+              edgeThickness: 10 * Math.max(shockwaveScale, 0.1),
+              pushForce: 2.5 * shockwaveScale,
               alpha: 0.6,
               timestampMs: nowMs,
               color: tier?.color ?? '#fff',
@@ -1046,7 +1064,7 @@ export class ParticleSystem {
     for (const sw of this.shockwaves) {
       ctx.strokeStyle = sw.color;
       ctx.globalAlpha = sw.alpha;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = Math.max(0.5, sw.edgeThickness * 0.2);
       ctx.beginPath();
       ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
       ctx.stroke();

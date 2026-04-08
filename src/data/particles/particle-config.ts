@@ -1,12 +1,15 @@
 export const PARTICLE_CANVAS_WIDTH = 320;
+/** Scene scale used for non-particle world elements (forge/generators/layout). */
+export const SCENE_ZOOM_SCALE = 0.8;
 export const BASE_PARTICLE_SIZE = 0.75;
 export const SIZE_MULTIPLIER = 2.5;
 export const EXTRA_LARGE_SIZE_BONUS = 1.5;
 export const MIN_VELOCITY = 0.312;
 export const MAX_VELOCITY = 2;
 export const ATTRACTION_STRENGTH = 1.5;
-export const FORGE_RADIUS = 28;
-export const MAX_FORGE_ATTRACTION_DISTANCE = FORGE_RADIUS * 2 * 0.9;
+const BASE_FORGE_RADIUS = 28;
+export const FORGE_RADIUS = BASE_FORGE_RADIUS * SCENE_ZOOM_SCALE;
+export const MAX_FORGE_ATTRACTION_DISTANCE = FORGE_RADIUS * 2 * 0.9 * 1.25;
 export const DISTANCE_SCALE = 0.01;
 export const FORCE_SCALE = 0.01;
 export const SPAWNER_GRAVITY_STRENGTH = 1.5;
@@ -26,7 +29,7 @@ export const SHOCKWAVE_EDGE_THICKNESS = 10;
 export const SPAWNER_SIZE = 8.8;
 export const SPAWNER_ROTATION_SPEED = 0.01;
 export const FORGE_ROTATION_SPEED = 0.01;
-export const SPAWNER_GRAVITY_RADIUS = SPAWNER_SIZE * SPAWNER_GRAVITY_RANGE_MULTIPLIER * 1.15;
+export const SPAWNER_GRAVITY_RADIUS = SPAWNER_SIZE * SPAWNER_GRAVITY_RANGE_MULTIPLIER * 1.15 * 1.25;
 export const GENERATOR_CONVERSION_RADIUS = 22;
 export const GENERATOR_CIRCLE_RADIUS_FRACTION = 0.35;
 export const VEER_ANGLE_MIN_DEG = 0.1;
