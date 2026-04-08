@@ -58,6 +58,22 @@ export function createSettingsPanel(
   );
   panel.appendChild(graphicsRow);
 
+  // Background style selector
+  const bgStyleRow = createSelectRow(
+    'Background Style',
+    settings.backgroundStyle,
+    [
+      { value: 'vermiculate', label: 'Vermiculate' },
+      { value: 'substrate',   label: 'Substrate (Crystal)' },
+      { value: 'none',        label: 'None' },
+    ],
+    (v) => {
+      settings.backgroundStyle = v as SettingsState['backgroundStyle'];
+      saveSettings(settings);
+    },
+  );
+  panel.appendChild(bgStyleRow);
+
   // Screen shake toggle
   const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
     settings.isScreenShakeEnabled = v;

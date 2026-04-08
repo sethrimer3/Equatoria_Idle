@@ -112,8 +112,15 @@
 
 **Rationale**: Backward compatibility prevents save loss during development. New state fields have sensible defaults, so v1 saves just start with Sand Loom at level 1 and forge locked.
 
+## Dual Background System
+
+**Decision**: Keep both background effects (Vermiculate and Substrate) simultaneously instantiated. A `backgroundStyle` setting (`'vermiculate' | 'substrate' | 'none'`) selects which one is drawn in the game loop. The inactive effect is simply skipped, not destroyed.
+
+**Rationale**: Both effects were ported from Thero Idle TD (Vermiculate from Chapter 1, Substrate from Chapter 6 / Shin Spire). Keeping both alive avoids a cold-start rebuild cost when switching back. A player-facing **Background Style** dropdown in the Settings panel exposes all three options. `'vermiculate'` is the default to preserve existing player experience. The setting is persisted in `localStorage` via `saveSettings`.
+
 ## Auto-Tap System
 
 **Decision**: Auto-tap is a purchasable upgrade with decreasing interval per level, hard-floored at 200ms.
 
 **Rationale**: Gives players a meaningful upgrade path. The hard floor prevents degenerate rapid tapping. The auto-tap triggers the same `tapEquation()` function as manual taps, keeping the code path unified.
+
