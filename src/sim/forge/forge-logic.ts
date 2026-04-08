@@ -32,17 +32,18 @@ export function getCrunchOutput(tierId: TierId, sizeIndex: SizeIndex): CrunchOut
   if (sizeIndex === MEDIUM_SIZE_INDEX) {
     const nextIndex = tierIndex + 1;
     if (nextIndex >= TIERS.length) return null;
-    return { outputTierId: TIERS[nextIndex].id, outputSizeIndex: 0 };
+    return { outputTierId: TIERS[nextIndex].id, outputSizeIndex: 0 as SizeIndex };
   }
   if (sizeIndex === LARGE_SIZE_INDEX) {
     const nextIndex = tierIndex + 1;
     if (nextIndex >= TIERS.length) return null;
-    return { outputTierId: TIERS[nextIndex].id, outputSizeIndex: 1 };
+    return { outputTierId: TIERS[nextIndex].id, outputSizeIndex: 1 as SizeIndex };
   }
-  if (sizeIndex === EXTRA_LARGE_SIZE_INDEX) {
+  // For size 3+ (extra-large and beyond), tier-jump by 2
+  if (sizeIndex >= EXTRA_LARGE_SIZE_INDEX) {
     const nextIndex = tierIndex + 2;
     if (nextIndex >= TIERS.length) return null;
-    return { outputTierId: TIERS[nextIndex].id, outputSizeIndex: 2 };
+    return { outputTierId: TIERS[nextIndex].id, outputSizeIndex: (sizeIndex - 1) as SizeIndex };
   }
   return null;
 }
