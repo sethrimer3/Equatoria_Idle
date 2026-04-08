@@ -42,8 +42,11 @@
 - Velocities, forces, gravity strengths, merge thresholds, forge parameters, shockwave parameters.
 
 ### src/data/particles/size-tiers.ts
-- `SizeIndex` type (0–3), `SizeName` type.
-- Per-size scaling arrays.
+- `SizeIndex` type (number, unlimited). Particle sizes 0, 1, 2, 3, …
+- Each size is (sizeIndex + 1) virtual pixels wide/tall (1×1, 2×2, 3×3, …).
+- 100 particles of size N combine into 1 of size N+1.
+- Function-based helpers: `getSizeScaleMultiplier()`, `getSizeMinVelocityModifier()`, etc.
+- Backward-compatible readonly arrays for sizes 0–3.
 
 ### src/data/upgrades/upgrade-types.ts
 - `UpgradeDefinition` interface, `UpgradeEffectKind` type.
@@ -126,6 +129,10 @@
 
 ### src/render/particles/particle-system.ts
 - Full particle physics, merges, forge crunch, shockwaves.
+- Edge repulsion prevents particle clumping on canvas boundaries.
+- Trail system: medium particles have subtle Euler trails; large+ have comet tails with glow.
+- Procedural merge: when 100 same-size particles exist, they seek each other and combine into 1 particle of the next size.
+- `ProceduralMerge` — tracks groups of particles undergoing seek-and-combine behavior.
 
 ### src/render/equation/equation-renderer.ts
 - `drawEquation()` — renders equation terms on canvas.

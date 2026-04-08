@@ -6,11 +6,12 @@ import {
   MERGE_THRESHOLD,
   SMALL_SIZE_INDEX,
   MEDIUM_SIZE_INDEX,
+  LARGE_SIZE_INDEX,
   EXTRA_LARGE_SIZE_INDEX,
-  SIZE_SCALE_MULTIPLIERS,
-  SIZE_MIN_VELOCITY_MODIFIERS,
-  SIZE_MAX_VELOCITY_MODIFIERS,
-  SIZE_FORCE_MODIFIERS,
+  getSizeScaleMultiplier,
+  getSizeMinVelocityModifier,
+  getSizeMaxVelocityModifier,
+  getSizeForceModifier,
 } from '../../data/particles/size-tiers';
 import {
   BASE_PARTICLE_SIZE,
@@ -34,8 +35,8 @@ import {
   PERFORMANCE_THRESHOLD,
   GENERATOR_CONVERSION_RADIUS,
   CONVERSION_SPREAD_VELOCITY,
-  SHOCKWAVE_MAX_RADIUS,
   SHOCKWAVE_DURATION,
+  SHOCKWAVE_MAX_RADIUS,
   MAX_SHOCKWAVES,
   FORGE_ROTATION_SPEED,
   SPAWNER_ROTATION_SPEED,
@@ -44,6 +45,16 @@ import {
   FORGE_SPIN_DOWN_DURATION_MS,
   FORGE_RADIUS,
   EULER_FLUID_ENABLED,
+  EDGE_REPULSION_MARGIN,
+  EDGE_REPULSION_STRENGTH,
+  TRAIL_LENGTH_MEDIUM,
+  TRAIL_LENGTH_LARGE,
+  TRAIL_CAPTURE_INTERVAL,
+  PROCEDURAL_MERGE_THRESHOLD,
+  PROCEDURAL_SEEK_BASE_FORCE,
+  PROCEDURAL_SEEK_RAMP_PER_SEC,
+  PROCEDURAL_SEEK_SNAP_DIST,
+  PROCEDURAL_MERGE_TIMEOUT_MS,
 } from '../../data/particles/particle-config';
 import { applyEulerFluidForces } from './euler-fluid';
 import type { GeneratorInfo } from '../../sim/particles/generator-state';
@@ -82,6 +93,16 @@ export interface EquatoriaParticle {
   pointerTargetX: number;
   pointerTargetY: number;
   nextVeerTimeMs: number;
+  /** Trail positions for medium+ particles. */
+  trail: Array<{ x: number; y: number }>;
+  /** Frame counter for trail capture throttling. */
+  trailFrameCounter: number;
+  /** Whether this particle is in a procedural seek-merge group. */
+  isProceduralSeeking: boolean;
+  /** Target centroid X for procedural seek-merge. */
+  proceduralTargetX: number;
+  /** Target centroid Y for procedural seek-merge. */
+  proceduralTargetY: number;
 }
 
 export interface ActiveMerge {
@@ -93,6 +114,16 @@ export interface ActiveMerge {
   startTimeMs: number;
   isTierConversion: boolean;
   conversionCount: number;
+}
+
+/** Tracks a group of same-size particles that are seeking each other out. */
+export interface ProceduralMerge {
+  particles: EquatoriaParticle[];
+  sizeIndex: SizeIndex;
+  tierId: TierId;
+  startTimeMs: number;
+  centroidX: number;
+  centroidY: number;
 }
 
 export interface Shockwave {
@@ -170,10 +201,10 @@ function initParticle(
   p.vy = 0;
   p.colorString = tier?.color ?? '#fff';
   p.glowColorString = tier?.glowColor ?? null;
-  p.size = BASE_PARTICLE_SIZE * (SIZE_SCALE_MULTIPLIERS[sizeIndex] ?? 1);
-  p.minVelocity = MIN_VELOCITY * (SIZE_MIN_VELOCITY_MODIFIERS[sizeIndex] ?? 1);
-  p.maxVelocity = MAX_VELOCITY * (SIZE_MAX_VELOCITY_MODIFIERS[sizeIndex] ?? 1);
-  p.forceModifier = SIZE_FORCE_MODIFIERS[sizeIndex] ?? 1;
+  p.size = BASE_PARTICLE_SIZE * getSizeScaleMultiplier(sizeIndex);
+  p.minVelocity = MIN_VELOCITY * getSizeMinVelocityModifier(sizeIndex);
+  p.maxVelocity = MAX_VELOCITY * getSizeMaxVelocityModifier(sizeIndex);
+  p.forceModifier = getSizeForceModifier(sizeIndex);
   p.tierIndex = tierIndex >= 0 ? tierIndex : 0;
   p.isMerging = false;
   p.mergeTargetX = 0;
@@ -183,6 +214,11 @@ function initParticle(
   p.pointerTargetX = 0;
   p.pointerTargetY = 0;
   p.nextVeerTimeMs = nowMs + VEER_INTERVAL_MIN_MS + Math.random() * (VEER_INTERVAL_MAX_MS - VEER_INTERVAL_MIN_MS);
+  p.trail = [];
+  p.trailFrameCounter = 0;
+  p.isProceduralSeeking = false;
+  p.proceduralTargetX = 0;
+  p.proceduralTargetY = 0;
 }
 
 function createBlankParticle(): EquatoriaParticle {
@@ -206,6 +242,11 @@ function createBlankParticle(): EquatoriaParticle {
     pointerTargetX: 0,
     pointerTargetY: 0,
     nextVeerTimeMs: 0,
+    trail: [],
+    trailFrameCounter: 0,
+    isProceduralSeeking: false,
+    proceduralTargetX: 0,
+    proceduralTargetY: 0,
   };
 }
 
@@ -214,6 +255,7 @@ function createBlankParticle(): EquatoriaParticle {
 export class ParticleSystem {
   particles: EquatoriaParticle[] = [];
   activeMerges: ActiveMerge[] = [];
+  proceduralMerges: ProceduralMerge[] = [];
   shockwaves: Shockwave[] = [];
   forgeRotation = 0;
   spawnerRotations: Map<TierId, number> = new Map();
@@ -228,6 +270,8 @@ export class ParticleSystem {
 
   private _releaseParticle(p: EquatoriaParticle): void {
     p.isActive = false;
+    p.trail.length = 0;
+    p.isProceduralSeeking = false;
     this._pool.push(p);
   }
 
@@ -301,7 +345,12 @@ export class ParticleSystem {
       for (const p of this.particles) {
         this._updateParticlePhysics(p, clampedDelta, nowMs, generators, forgeX, forgeY, canvasWidth, canvasHeight);
       }
+      // Edge repulsion — pushes particles away from canvas boundaries
+      this._applyEdgeRepulsion(canvasWidth, canvasHeight, clampedDelta);
     }
+
+    // Trail capture for medium+ particles
+    this._updateTrails();
 
     // ── Euler fluid dynamics ──
     // Higher-tier particles push lower-tier particles away.
@@ -318,6 +367,10 @@ export class ParticleSystem {
     if (this.mergeCooldownFrames > 0) this.mergeCooldownFrames--;
     if (this.frameCount % 10 === 0) this._attemptMerge(generators, nowMs);
     if (this.frameCount % 30 === 0) this._enforceParticleLimit(generators, nowMs);
+
+    // Procedural seek-merge: 100 same-size particles anywhere seek & combine
+    if (this.frameCount % 15 === 0) this._attemptProceduralMerge(nowMs);
+    this._updateProceduralMerges(nowMs, clampedDelta);
 
     this._processActiveMerges(nowMs, generators);
     this._checkForgeCrunch(crunchState, forgeX, forgeY, nowMs);
@@ -370,7 +423,7 @@ export class ParticleSystem {
         p.vy *= damping;
       }
     } else {
-      if (p.sizeIndex !== EXTRA_LARGE_SIZE_INDEX) {
+      if (p.sizeIndex < EXTRA_LARGE_SIZE_INDEX) {
         for (const gen of generators) {
           if (gen.tierId !== p.tierId) continue;
           const dx = gen.x - p.x;
@@ -396,7 +449,7 @@ export class ParticleSystem {
       const fdy = forgeY - p.y;
       const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
       const isForgeAttractable = p.sizeIndex >= MEDIUM_SIZE_INDEX;
-      const forgeRange = p.sizeIndex === EXTRA_LARGE_SIZE_INDEX ? Infinity : MAX_FORGE_ATTRACTION_DISTANCE;
+      const forgeRange = p.sizeIndex >= EXTRA_LARGE_SIZE_INDEX ? Infinity : MAX_FORGE_ATTRACTION_DISTANCE;
       if (isForgeAttractable && fdist <= forgeRange && fdist > 1) {
         const force = (ATTRACTION_STRENGTH / (fdist * DISTANCE_SCALE)) * p.forceModifier;
         const angle = Math.atan2(fdy, fdx);
@@ -486,9 +539,8 @@ export class ParticleSystem {
       const dashIdx = key.lastIndexOf('-');
       const tierId = key.substring(0, dashIdx) as TierId;
       const sizeIndex = parseInt(key.substring(dashIdx + 1), 10) as SizeIndex;
-      if (sizeIndex < EXTRA_LARGE_SIZE_INDEX) {
-        candidates.push({ tierId, sizeIndex, group });
-      }
+      // No cap — merging can happen indefinitely for any size
+      candidates.push({ tierId, sizeIndex, group });
     }
     if (candidates.length === 0) return;
 
@@ -720,10 +772,251 @@ export class ParticleSystem {
     }
   }
 
+  // ─── Edge repulsion ──────────────────────────────────────────
+
+  private _applyEdgeRepulsion(
+    canvasWidth: number,
+    canvasHeight: number,
+    clampedDelta: number,
+  ): void {
+    const margin = EDGE_REPULSION_MARGIN;
+    const strength = EDGE_REPULSION_STRENGTH;
+    for (const p of this.particles) {
+      if (p.isMerging || p.isLockedToPointer) continue;
+      // Left edge
+      if (p.x < margin) {
+        const t = 1 - p.x / margin; // 0 at margin, 1 at edge
+        p.vx += strength * t * t * clampedDelta;
+      }
+      // Right edge
+      const rightDist = canvasWidth - p.x;
+      if (rightDist < margin) {
+        const t = 1 - rightDist / margin;
+        p.vx -= strength * t * t * clampedDelta;
+      }
+      // Top edge
+      if (p.y < margin) {
+        const t = 1 - p.y / margin;
+        p.vy += strength * t * t * clampedDelta;
+      }
+      // Bottom edge
+      const bottomDist = canvasHeight - p.y;
+      if (bottomDist < margin) {
+        const t = 1 - bottomDist / margin;
+        p.vy -= strength * t * t * clampedDelta;
+      }
+    }
+  }
+
+  // ─── Trail updates ─────────────────────────────────────────
+
+  private _updateTrails(): void {
+    for (const p of this.particles) {
+      if (p.sizeIndex < MEDIUM_SIZE_INDEX) continue; // small particles have no trail
+      p.trailFrameCounter++;
+      if (p.trailFrameCounter < TRAIL_CAPTURE_INTERVAL) continue;
+      p.trailFrameCounter = 0;
+      // Medium gets short trail; large+ gets progressively longer trails
+      const maxLen = p.sizeIndex === MEDIUM_SIZE_INDEX
+        ? TRAIL_LENGTH_MEDIUM
+        : TRAIL_LENGTH_LARGE + (p.sizeIndex - LARGE_SIZE_INDEX) * 2;
+      p.trail.push({ x: p.x, y: p.y });
+      while (p.trail.length > maxLen) {
+        p.trail.shift();
+      }
+    }
+  }
+
+  // ─── Procedural merge (seek & combine anywhere) ────────────
+
+  private _attemptProceduralMerge(nowMs: number): void {
+    // Count particles by tier+size that are not already merging/seeking
+    const groups = new Map<string, EquatoriaParticle[]>();
+    for (const p of this.particles) {
+      if (p.isMerging || p.isProceduralSeeking) continue;
+      const key = `${p.tierId}-${p.sizeIndex}`;
+      let arr = groups.get(key);
+      if (!arr) { arr = []; groups.set(key, arr); }
+      arr.push(p);
+    }
+
+    for (const [key, group] of groups) {
+      if (group.length < PROCEDURAL_MERGE_THRESHOLD) continue;
+      const dashIdx = key.lastIndexOf('-');
+      const tierId = key.substring(0, dashIdx) as TierId;
+      const sizeIndex = parseInt(key.substring(dashIdx + 1), 10) as SizeIndex;
+
+      // Select exactly 100 particles
+      const selected = this._selectRandom(group, PROCEDURAL_MERGE_THRESHOLD);
+
+      // Compute centroid
+      let cx = 0, cy = 0;
+      for (const p of selected) { cx += p.x; cy += p.y; }
+      cx /= selected.length;
+      cy /= selected.length;
+
+      for (const p of selected) {
+        p.isProceduralSeeking = true;
+        p.proceduralTargetX = cx;
+        p.proceduralTargetY = cy;
+      }
+
+      this.proceduralMerges.push({
+        particles: selected,
+        sizeIndex,
+        tierId,
+        startTimeMs: nowMs,
+        centroidX: cx,
+        centroidY: cy,
+      });
+    }
+  }
+
+  private _updateProceduralMerges(nowMs: number, clampedDelta: number): void {
+    const toRemove = new Set<EquatoriaParticle>();
+
+    this.proceduralMerges = this.proceduralMerges.filter(merge => {
+      const elapsedMs = nowMs - merge.startTimeMs;
+      const elapsedSec = elapsedMs / 1000;
+
+      // Recompute centroid of surviving particles
+      let cx = 0, cy = 0, count = 0;
+      for (const p of merge.particles) {
+        if (!p.isActive) continue;
+        cx += p.x; cy += p.y; count++;
+      }
+      if (count === 0) return false;
+      cx /= count;
+      cy /= count;
+      merge.centroidX = cx;
+      merge.centroidY = cy;
+
+      // Ramping seek force
+      const seekForce = PROCEDURAL_SEEK_BASE_FORCE + PROCEDURAL_SEEK_RAMP_PER_SEC * elapsedSec;
+
+      let allGathered = true;
+      for (const p of merge.particles) {
+        if (!p.isActive) continue;
+        const dx = cx - p.x;
+        const dy = cy - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > PROCEDURAL_SEEK_SNAP_DIST) {
+          allGathered = false;
+          // Apply seek force toward centroid
+          const angle = Math.atan2(dy, dx);
+          p.vx += Math.cos(angle) * seekForce * clampedDelta;
+          p.vy += Math.sin(angle) * seekForce * clampedDelta;
+        }
+        p.proceduralTargetX = cx;
+        p.proceduralTargetY = cy;
+      }
+
+      // Complete merge when all gathered or timeout
+      if (allGathered || elapsedMs >= PROCEDURAL_MERGE_TIMEOUT_MS) {
+        for (const p of merge.particles) {
+          if (p.isActive) toRemove.add(p);
+        }
+
+        // Spawn one particle of the next size
+        if (this.particles.length - toRemove.size + 1 <= MAX_PARTICLES_FULL) {
+          const np = this._acquireParticle();
+          const newSizeIndex = (merge.sizeIndex + 1) as SizeIndex;
+          initParticle(np, merge.tierId, newSizeIndex, cx, cy, nowMs);
+          np.vx = (Math.random() - 0.5) * CONVERSION_SPREAD_VELOCITY * 0.5;
+          np.vy = (Math.random() - 0.5) * CONVERSION_SPREAD_VELOCITY * 0.5;
+          this.particles.push(np);
+
+          // Shockwave
+          if (this.shockwaves.length < MAX_SHOCKWAVES) {
+            const tier = TIER_BY_ID.get(merge.tierId);
+            this.shockwaves.push({
+              x: cx,
+              y: cy,
+              radius: 0,
+              alpha: 0.6,
+              timestampMs: nowMs,
+              color: tier?.color ?? '#fff',
+            });
+          }
+        }
+        return false;
+      }
+      return true;
+    });
+
+    if (toRemove.size > 0) {
+      const remaining: EquatoriaParticle[] = [];
+      for (const p of this.particles) {
+        if (toRemove.has(p)) {
+          p.isProceduralSeeking = false;
+          this._releaseParticle(p);
+        } else {
+          remaining.push(p);
+        }
+      }
+      this.particles = remaining;
+    }
+  }
+
   /** Render particles and shockwaves to canvas. */
   draw(cc: CanvasContext): void {
     const ctx = cc.ctx;
 
+    // ── Draw trails for medium+ particles ──
+    for (const p of this.particles) {
+      if (p.sizeIndex < MEDIUM_SIZE_INDEX || p.trail.length < 2) continue;
+      const isLarge = p.sizeIndex >= LARGE_SIZE_INDEX;
+      const trailLen = p.trail.length;
+
+      for (let i = 0; i < trailLen; i++) {
+        const t = i / trailLen; // 0 at tail, ~1 at head
+        const pos = p.trail[i];
+
+        if (isLarge) {
+          // Large+ particles: comet trail with glow and shrinking tail
+          const tailSize = p.size * t * 0.8; // shrinks toward tail
+          const alpha = t * 0.6;
+          if (tailSize < 0.3) continue;
+
+          // Glow layer
+          if (p.glowColorString) {
+            ctx.globalAlpha = alpha * 0.4;
+            ctx.shadowBlur = tailSize * 4;
+            ctx.shadowColor = p.glowColorString;
+            ctx.fillStyle = p.glowColorString;
+            const glowHalf = tailSize * 1.5;
+            ctx.fillRect(
+              Math.floor(pos.x - glowHalf),
+              Math.floor(pos.y - glowHalf),
+              Math.ceil(glowHalf * 2),
+              Math.ceil(glowHalf * 2),
+            );
+            ctx.shadowBlur = 0;
+          }
+
+          // Core trail segment
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.colorString;
+          const half = tailSize / 2;
+          ctx.fillRect(
+            Math.floor(pos.x - half),
+            Math.floor(pos.y - half),
+            Math.ceil(tailSize),
+            Math.ceil(tailSize),
+          );
+        } else {
+          // Medium particles: tiny subtle trail
+          const alpha = t * 0.25;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.colorString;
+          ctx.fillRect(Math.floor(pos.x), Math.floor(pos.y), 1, 1);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+
+    // ── Draw particles ──
     const batches = new Map<string, { color: string; glow: string | null; size: number; positions: Array<{ x: number; y: number }> }>();
     for (const p of this.particles) {
       const key = `${p.colorString}|${p.glowColorString ?? 'ng'}|${p.size}`;

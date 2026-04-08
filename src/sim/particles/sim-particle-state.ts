@@ -1,6 +1,6 @@
 import type { TierId } from '../../data/tiers';
 import type { SizeIndex } from '../../data/particles/size-tiers';
-import { SIZE_SMALL_EQUIVALENTS } from '../../data/particles/size-tiers';
+import { getSizeSmallEquivalent } from '../../data/particles/size-tiers';
 
 export interface SimParticleState {
   inventory: Map<TierId, number>;
@@ -22,7 +22,7 @@ export function updateInventory(
     state.inventory.set(key, 0);
   }
   for (const p of particleTiers) {
-    const smallEquiv = SIZE_SMALL_EQUIVALENTS[p.sizeIndex] ?? 1;
+    const smallEquiv = getSizeSmallEquivalent(p.sizeIndex);
     const current = state.inventory.get(p.tierId) ?? 0;
     state.inventory.set(p.tierId, current + smallEquiv);
   }
