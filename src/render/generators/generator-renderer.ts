@@ -5,6 +5,7 @@ import { TIER_BY_ID } from '../../data/tiers';
 import { SPAWNER_SIZE } from '../../data/particles/particle-config';
 import { getGeneratorSpritePath } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
+import { getTintedSpriteCanvas } from '../assets/sprite-tint';
 
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
@@ -27,22 +28,28 @@ export function drawGenerators(
     if (!tier) continue;
 
     const spritePath = getGeneratorSpritePath(tier.unlockOrder);
-    const sprite = getCachedImage(spritePath);
 
-    if (sprite) {
-      drawGeneratorSprite(ctx, gen.x, gen.y, sprite, rotation, fadeAlpha, gen.range, tier.color);
+    // Use tinted (color-corrected) sprite; fall back to raw sprite while tint is being cached
+    const tinted = getTintedSpriteCanvas(spritePath, tier.color);
+    if (tinted) {
+      drawGeneratorTinted(ctx, gen.x, gen.y, tinted, rotation, fadeAlpha, gen.range, tier.color);
     } else {
-      // Fallback: draw procedural generator while sprite loads
-      drawGeneratorFallback(ctx, gen.x, gen.y, tier.color, tier.glowColor, rotation, fadeAlpha, gen.range);
+      const sprite = getCachedImage(spritePath);
+      if (sprite) {
+        drawGeneratorTinted(ctx, gen.x, gen.y, sprite, rotation, fadeAlpha, gen.range, tier.color);
+      } else {
+        // Fallback: draw procedural generator while sprite loads
+        drawGeneratorFallback(ctx, gen.x, gen.y, tier.color, tier.glowColor, rotation, fadeAlpha, gen.range);
+      }
     }
   }
 }
 
-function drawGeneratorSprite(
+function drawGeneratorTinted(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  sprite: HTMLImageElement,
+  sprite: HTMLImageElement | HTMLCanvasElement,
   rotation: number,
   alpha: number,
   influenceRange: number,

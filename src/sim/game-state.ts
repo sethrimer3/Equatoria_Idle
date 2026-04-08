@@ -159,19 +159,21 @@ export function tryUpgradeLoom(state: GameState, tierId: TierId): boolean {
 export interface SimTickResult {
   autoTapped: boolean;
   autoTapGains: Map<TierId, number> | null;
+  loomGains: Map<TierId, number>;
 }
 
 /** Advance simulation by deltaMs. */
 export function simTick(state: GameState, deltaMs: number): SimTickResult {
   state.elapsedMs += deltaMs;
 
-  const result: SimTickResult = { autoTapped: false, autoTapGains: null };
+  const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map() };
 
   // Tick Looms — passive production
   const loomProduction = tickLooms(state.looms, deltaMs);
   for (const [tierId, amount] of loomProduction) {
     addMotes(state.resources, tierId, amount);
   }
+  result.loomGains = loomProduction;
 
   // Auto-tap (only if forge is unlocked)
   if (state.equation.isForgeUnlocked) {

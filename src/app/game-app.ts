@@ -53,6 +53,7 @@ import {
   type GeneratorState,
 } from '../sim/particles';
 import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
+import { SMALL_SIZE_INDEX } from '../data/particles/size-tiers';
 
 // ─── App state ──────────────────────────────────────────────────
 
@@ -288,6 +289,11 @@ export async function startApp(): Promise<void> {
       for (const [tierId] of simResult.autoTapGains) {
         particles.emitAtPosition(cx, cy, 2, tierId, nowMs);
       }
+    }
+
+    // Emit particles at generator positions for loom production ticks
+    for (const [tierId] of simResult.loomGains) {
+      particles.emit(tierId, SMALL_SIZE_INDEX, appState.generatorState.generators, nowMs);
     }
 
     if (appState.tapFlashAlpha > 0) {
