@@ -6,6 +6,7 @@ export interface SettingsState {
   graphicsQuality: 'high' | 'low';
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
+  backgroundStyle: 'vermiculate' | 'substrate' | 'none';
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -16,6 +17,7 @@ export function createDefaultSettings(): SettingsState {
     graphicsQuality: 'high',
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
+    backgroundStyle: 'vermiculate',
   };
 }
 

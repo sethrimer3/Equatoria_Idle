@@ -26,7 +26,7 @@ import {
 } from '../render';
 import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
 import { preloadForgeSprites } from '../render/forge/forge-renderer';
-import { createBackgroundAnimation, type BackgroundAnimation, createVermiculateEffect, type VermiculateEffect } from '../render/background';
+import { createBackgroundAnimation, type BackgroundAnimation, createVermiculateEffect, type VermiculateEffect, createSubstrateEffect, type SubstrateEffect } from '../render/background';
 import { setupInputListeners, type GameAction, type TabId } from '../input';
 import {
   createParticleDragState,
@@ -105,6 +105,11 @@ export async function startApp(): Promise<void> {
 
   // ── Vermiculate background effect ──
   const vermiculateEffect: VermiculateEffect = createVermiculateEffect();
+
+  // ── Substrate background effect ──
+  const substrateEffect: SubstrateEffect = createSubstrateEffect({
+    quality: settings.graphicsQuality === 'low' ? 'low' : 'high',
+  });
 
   // ── Canvas container (full screen) ──
   const canvasContainer = document.createElement('div');
@@ -189,6 +194,7 @@ export async function startApp(): Promise<void> {
     const h = canvasContainer.clientHeight;
     bgAnimation.resize(w, h);
     vermiculateEffect.reset();
+    substrateEffect.reset();
     recomputeGenerators();
   };
   window.addEventListener('resize', onResize);
@@ -324,8 +330,14 @@ export async function startApp(): Promise<void> {
     // ── Render ──
     clearCanvas(cc);
     drawBackground(cc, '#000000');
-    vermiculateEffect.update(nowMs, cc.widthPx, cc.heightPx);
-    vermiculateEffect.draw(cc.ctx);
+    if (settings.backgroundStyle === 'vermiculate') {
+      vermiculateEffect.update(nowMs, cc.widthPx, cc.heightPx);
+      vermiculateEffect.draw(cc.ctx);
+    } else if (settings.backgroundStyle === 'substrate') {
+      substrateEffect.update(nowMs, cc.widthPx, cc.heightPx);
+      substrateEffect.draw(cc.ctx);
+    }
+    // 'none' → skip both
 
     drawGenerators(
       cc,

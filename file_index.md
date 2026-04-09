@@ -125,7 +125,12 @@
 - Background animation player for 2402-frame WebP sequence.
 
 ### src/render/background/vermiculate-effect.ts
-- Decorative background tracer effect.
+- Decorative background tracer effect (worm-line style, ported from Thero Chapter 1).
+
+### src/render/background/substrate-effect.ts
+- Decorative background crystalline crack effect (Substrate style, ported from Thero Shin Spire / Chapter 6).
+- Exports `SubstrateEffect` interface and `createSubstrateEffect({ quality })` factory.
+- Quality parameter ('low' | 'medium' | 'high') scales seed count, max fronts, and grain density.
 
 ### src/render/particles/particle-system.ts
 - Full particle physics, merges, forge crunch, shockwaves.
