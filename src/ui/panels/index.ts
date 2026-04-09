@@ -8,3 +8,5 @@ export { createLoomPanel } from './loom-panel';
 export type { LoomPanel } from './loom-panel';
 export { createEquationPanel } from './equation-panel';
 export type { EquationPanel } from './equation-panel';
+export { createAchievementsPanel } from './achievements-panel';
+export type { AchievementsPanel } from './achievements-panel';

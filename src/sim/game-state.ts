@@ -41,6 +41,11 @@ import {
   getLoomCost,
   type LoomState,
 } from './looms';
+import {
+  createAchievementState,
+  checkAndUnlockAchievements,
+  type AchievementState,
+} from './achievements';
 
 // ─── Aggregate game state ───────────────────────────────────────
 
@@ -50,6 +55,7 @@ export interface GameState {
   progression: ProgressionState;
   forge: ForgeCrunchState;
   looms: LoomState;
+  achievements: AchievementState;
   lastAutoTapMs: number;
   lastSaveMs: number;
   elapsedMs: number;
@@ -62,6 +68,7 @@ export function createGameState(): GameState {
     progression: createProgressionState(INITIAL_UNLOCKED_TIER_COUNT),
     forge: createForgeCrunchState(),
     looms: createLoomState(),
+    achievements: createAchievementState(),
     lastAutoTapMs: 0,
     lastSaveMs: 0,
     elapsedMs: 0,
@@ -81,7 +88,8 @@ export function tapEquation(state: GameState): TapResult {
     return { gains: new Map(), particleCount: 0 };
   }
   incrementTapCount(state.equation);
-  const gains = computeTapGains(state.equation, state.progression.globalMultiplier);
+  const tapMultiplierWithBonuses = state.progression.globalMultiplier * state.achievements.tapMultiplierBonus;
+  const gains = computeTapGains(state.equation, tapMultiplierWithBonuses);
   for (const [tierId, amount] of gains) {
     addMotes(state.resources, tierId, amount);
   }
@@ -89,7 +97,7 @@ export function tapEquation(state: GameState): TapResult {
 }
 
 /** Try to purchase an upgrade. Returns true if successful. */
-export function tryPurchaseUpgrade(state: GameState, upgradeId: string): boolean {
+export function tryPurchaseUpgrade(state: GameState, upgradeId: string, bypassCost = false): boolean {
   const def = UPGRADE_BY_ID.get(upgradeId);
   if (!def) return false;
 
@@ -97,10 +105,12 @@ export function tryPurchaseUpgrade(state: GameState, upgradeId: string): boolean
   const costTierId: TierId = def.tierId ?? 'sand'; // global upgrades cost sand motes
   const cost = getUpgradeCost(state.progression, upgradeId);
   if (cost === null) return false;
-  if (getMotes(state.resources, costTierId) < cost) return false;
+  if (!bypassCost && getMotes(state.resources, costTierId) < cost) return false;
 
-  // Deduct cost and apply upgrade
-  spendMotes(state.resources, costTierId, cost);
+  // Deduct cost (only when not bypassing) and apply upgrade
+  if (!bypassCost) {
+    spendMotes(state.resources, costTierId, cost);
+  }
   purchaseUpgrade(state.progression, upgradeId);
 
   // For tap_value upgrades, also update equation state
@@ -112,7 +122,7 @@ export function tryPurchaseUpgrade(state: GameState, upgradeId: string): boolean
 }
 
 /** Try to unlock the next tier. */
-export function tryUnlockNextTier(state: GameState): boolean {
+export function tryUnlockNextTier(state: GameState, bypassCost = false): boolean {
   const nextIndex = state.progression.unlockedTierCount;
   if (nextIndex >= TIERS.length) return false;
 
@@ -122,9 +132,11 @@ export function tryUnlockNextTier(state: GameState): boolean {
   const cost = tierUnlockCost(nextIndex);
   // Pay with the previous tier's motes
   const payTierId = TIERS[nextIndex - 1]?.id ?? 'sand';
-  if (getMotes(state.resources, payTierId) < cost) return false;
+  if (!bypassCost && getMotes(state.resources, payTierId) < cost) return false;
 
-  spendMotes(state.resources, payTierId, cost);
+  if (!bypassCost) {
+    spendMotes(state.resources, payTierId, cost);
+  }
   unlockEquationTier(state.equation, tier.id);
   unlockLoom(state.looms, tier.id);
   state.progression.unlockedTierCount = nextIndex + 1;
@@ -132,24 +144,28 @@ export function tryUnlockNextTier(state: GameState): boolean {
 }
 
 /** Try to unlock the Equation Forge using Sand motes. */
-export function tryUnlockEquationForge(state: GameState): boolean {
+export function tryUnlockEquationForge(state: GameState, bypassCost = false): boolean {
   if (state.equation.isForgeUnlocked) return false;
-  if (getMotes(state.resources, 'sand') < EQUATION_FORGE_COST) return false;
-  spendMotes(state.resources, 'sand', EQUATION_FORGE_COST);
+  if (!bypassCost && getMotes(state.resources, 'sand') < EQUATION_FORGE_COST) return false;
+  if (!bypassCost) {
+    spendMotes(state.resources, 'sand', EQUATION_FORGE_COST);
+  }
   unlockForge(state.equation);
   return true;
 }
 
 /** Try to upgrade a Loom. Returns true if successful. */
-export function tryUpgradeLoom(state: GameState, tierId: TierId): boolean {
+export function tryUpgradeLoom(state: GameState, tierId: TierId, bypassCost = false): boolean {
   const loom = getLoom(state.looms, tierId);
   if (!loom || !loom.isUnlocked) return false;
 
   const cost = getLoomCost(tierId, loom.level);
   if (cost === null) return false;
-  if (getMotes(state.resources, tierId) < cost) return false;
+  if (!bypassCost && getMotes(state.resources, tierId) < cost) return false;
 
-  spendMotes(state.resources, tierId, cost);
+  if (!bypassCost) {
+    spendMotes(state.resources, tierId, cost);
+  }
   upgradeLoom(state.looms, tierId);
   return true;
 }
@@ -168,8 +184,8 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
 
   const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map() };
 
-  // Tick Looms — passive production
-  const loomProduction = tickLooms(state.looms, deltaMs);
+  // Tick Looms — passive production (with achievement loom bonus)
+  const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus);
   for (const [tierId, amount] of loomProduction) {
     addMotes(state.resources, tierId, amount);
   }
@@ -188,6 +204,9 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
       }
     }
   }
+
+  // Check for newly-unlocked achievements
+  checkAndUnlockAchievements(state.achievements, state.resources);
 
   return result;
 }

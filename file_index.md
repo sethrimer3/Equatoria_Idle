@@ -65,7 +65,7 @@
 ### src/sim/looms/loom-state.ts
 - Per-tier Loom state: level, isUnlocked, accumulatorMs.
 - `createLoomState()` — Sand Loom starts unlocked at level 1.
-- `tickLooms()` — passive production tick returning motes per tier.
+- `tickLooms(state, deltaMs, productionBonus?)` — passive production tick; bonus multiplier applied to all rates.
 - `upgradeLoom()`, `unlockLoom()`, `getLoom()`, `getLoomRate()`, `getLoomCost()`.
 
 ### src/sim/equation/equation-state.ts
@@ -88,12 +88,10 @@
 - `purchaseUpgrade()`, `getUpgradeCost()`, `canAffordUpgrade()`, `getAutoTapIntervalMs()`.
 
 ### src/sim/game-state.ts
-- Aggregate game state combining equation, resources, progression, forge, and Looms.
-- `tapEquation()` — main tap action (only works when forge is unlocked).
-- `tryPurchaseUpgrade()`, `tryUnlockNextTier()` — purchase actions.
-- `tryUnlockEquationForge()` — unlock forge for 50 Sand.
-- `tryUpgradeLoom()` — upgrade a tier's Loom.
-- `simTick()` — per-frame simulation: Loom production + auto-tap.
+- Aggregate game state combining equation, resources, progression, forge, Looms, and achievements.
+- `tapEquation()` — multiplies gains by `achievements.tapMultiplierBonus`.
+- `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)` — optional dev mode cost bypass.
+- `simTick()` — passes loom bonus from achievements; checks achievement unlock conditions each tick.
 
 ### src/sim/forge/forge-state.ts
 - `ForgeCrunchState` interface and factory.
@@ -151,9 +149,20 @@
 ### src/render/forge/forge-renderer.ts
 - Forge sprite rendering with crunch animation overlay.
 
+### src/data/achievements/achievement-definitions.ts
+- 9 achievement definitions for tiers sand through amethyst (last two tiers excluded).
+- Each achievement: id, displayName, description, requiresTierId, requiresLifetimeMotes, bonusKind, bonusMultiplier.
+- Bonus kinds: `tap_multiplier` (×tap gains) or `loom_multiplier` (×loom production).
+- Exports `ACHIEVEMENT_DEFINITIONS`, `ACHIEVEMENT_BY_ID`.
+
+### src/sim/achievements/achievement-state.ts
+- `AchievementState` — set of unlocked achievement IDs plus cached bonus multipliers.
+- `checkAndUnlockAchievements()` — checks lifetime motes for each tier and unlocks achievements.
+- `recomputeBonuses()` — recalculates `tapMultiplierBonus` and `loomMultiplierBonus` from unlocked set.
+
 ### src/input/input-handler.ts
 - `GameAction` type: tap, purchase_upgrade, unlock_next_tier, unlock_equation_forge, upgrade_loom, set_active_tab, save_game, reset_game.
-- `TabId` type: 'equation' | 'looms' | 'resources' | 'settings'.
+- `TabId` type: 'equation' | 'looms' | 'resources' | 'achievements' | 'settings'.
 - `setupInputListeners()` — pointer event → GameAction dispatch.
 
 ### src/input/particle-drag.ts
@@ -163,7 +172,7 @@
 - Loading screen with company logo and fade-out transition.
 
 ### src/ui/tabs/tab-bar.ts
-- Bottom tab bar: Equation / Upgrades / Looms / Settings.
+- Bottom tab bar: Equation / Upgrades / Looms / Achievements / Settings.
 - `createTabBar()` — returns element and `setActiveTab()` method.
 
 ### src/ui/panels/equation-panel.ts
@@ -180,20 +189,27 @@
 - Upgrade purchase buttons with gem icon sprites.
 - Includes "Unlock Equation Forge" button (50 Sand) shown before forge is unlocked.
 - Tier unlock buttons and per-tier upgrade buttons.
+- `update(state, isDevMode?)` — when devMode=true, shows all upgrades and enables all buttons.
+
+### src/ui/panels/achievements-panel.ts
+- Achievements tab content.
+- Shows a card per achievement: name, bonus badge, description, progress/unlock status.
+- Locked achievements shown at reduced opacity; unlocked ones highlighted with trophy icon.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
 
 ### src/ui/panels/settings-panel.ts
-- Settings controls: volume, particles, shake, save, reset, credits.
+- Settings controls: volume, particles, shake, developer mode toggle, save, reset, credits.
 
 ### src/settings/settings-state.ts
 - User settings model and localStorage persistence.
+- `isDevMode: boolean` — when true, all game actions bypass cost checks.
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 2): now includes Loom state and `isForgeUnlocked`.
-- Backward-compatible with version 1 saves.
+- Versioned save format (version 3): includes Loom state, `isForgeUnlocked`, and achievement unlock set.
+- Backward-compatible with version 1 and 2 saves.
 
 ### src/util/format.ts
 - `formatNumber()` — K/M/B/T suffix formatting.

@@ -13,7 +13,7 @@ import { getGemIconPath } from '../../render/assets/asset-paths';
  */
 export interface UpgradePanel {
   element: HTMLElement;
-  update(state: GameState): void;
+  update(state: GameState, isDevMode?: boolean): void;
 }
 
 export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
@@ -65,14 +65,14 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
     upgradeButtons.set(def.id, btn);
   }
 
-  function update(state: GameState): void {
+  function update(state: GameState, isDevMode = false): void {
     // Update forge unlock button
     if (state.equation.isForgeUnlocked) {
       forgeUnlockSection.style.display = 'none';
     } else {
       forgeUnlockSection.style.display = '';
       const sandMotes = getMotes(state.resources, 'sand');
-      forgeUnlockBtn.disabled = sandMotes < EQUATION_FORGE_COST;
+      forgeUnlockBtn.disabled = !isDevMode && sandMotes < EQUATION_FORGE_COST;
       forgeUnlockBtn.textContent = `🔥 Unlock Equation Forge — ${formatNumber(sandMotes)} / ${EQUATION_FORGE_COST} Sand`;
     }
 
@@ -82,7 +82,7 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
       const nextTier = TIERS[nextIndex];
       const cost = tierUnlockCost(nextIndex);
       const payTierId = TIERS[nextIndex - 1]?.id ?? 'sand';
-      const canAfford = getMotes(state.resources, payTierId) >= cost;
+      const canAfford = isDevMode || getMotes(state.resources, payTierId) >= cost;
       unlockBtn.textContent = `🔓 Unlock ${nextTier.displayName} — ${formatNumber(cost)} ${TIER_BY_ID.get(payTierId)?.displayName ?? ''} motes`;
       unlockBtn.disabled = !canAfford;
       unlockBtn.style.borderColor = nextTier.color;
@@ -100,10 +100,10 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
 
       // Determine which tier's motes to check affordability
       const costTierId: TierId = def.tierId ?? 'sand';
-      const canAfford = cost !== null && getMotes(state.resources, costTierId) >= cost;
+      const canAfford = isDevMode || (cost !== null && getMotes(state.resources, costTierId) >= cost);
 
-      // Check if upgrade is visible (tier must be unlocked for tier upgrades)
-      const isVisible = def.tierId === null ||
+      // In dev mode show all upgrades; otherwise tier must be unlocked
+      const isVisible = isDevMode || def.tierId === null ||
         state.equation.segments.some(s => s.tierId === def.tierId && s.isUnlocked);
       btn.style.display = isVisible ? '' : 'none';
 
