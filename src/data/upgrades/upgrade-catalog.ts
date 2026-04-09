@@ -1,70 +1,71 @@
 import type { UpgradeDefinition } from './upgrade-types';
 import { TIERS, type TierId } from '../tiers';
+import { EQUATION_ROLE_BY_TIER, type EquationOperator } from '../equation';
 import {
   BASE_UPGRADE_COST,
   UPGRADE_COST_SCALE_FACTOR,
-  UPGRADE_TAP_MULTIPLIER,
 } from '../balance';
 
-// ─── Per-tier tap-value upgrades ────────────────────────────────
+// ─── Planned equation-part upgrades ─────────────────────────────
 
-function makeTierTapUpgrade(tierId: TierId, displayName: string, baseCost: number): UpgradeDefinition {
+function operatorLabel(operator: EquationOperator): string {
+  switch (operator) {
+    case 'passive_time':
+      return 'Passive Term';
+    case 'manual_input':
+      return 'Manual Term';
+    case 'addition':
+      return 'Addition';
+    case 'multiplication':
+      return 'Multiplier';
+    case 'exponentiation':
+      return 'Exponent';
+    case 'summation':
+      return 'Summation';
+    case 'product':
+      return 'Product';
+    case 'factorial':
+      return 'Factorial';
+    case 'integration':
+      return 'Integration';
+    case 'recursion':
+      return 'Recursion';
+    default:
+      return 'Foundation';
+  }
+}
+
+function makeEquationPartUpgrade(tierId: TierId, displayName: string, baseCost: number): UpgradeDefinition {
+  const role = EQUATION_ROLE_BY_TIER.get(tierId);
+  const partName = role ? operatorLabel(role.operator) : 'Equation Part';
+  const description = role
+    ? `${role.roleDescription}. Increase ${displayName}'s ${partName.toLowerCase()} strength`
+    : `Increase ${displayName}'s equation contribution`;
+
   return {
-    id: `tap_${tierId}`,
-    displayName: `${displayName} Tap`,
-    description: `Increase ${displayName} motes per tap`,
+    id: `equation_${tierId}`,
+    displayName: `${displayName}: ${partName}`,
+    description,
     tierId,
     effectKind: 'tap_value',
     maxLevel: 0,  // unlimited
     baseCost,
     costScaleFactor: UPGRADE_COST_SCALE_FACTOR,
-    effectPerLevel: UPGRADE_TAP_MULTIPLIER,
-    icon: '⬆',
+    effectPerLevel: 1,
+    icon: '∴',
   };
 }
 
-/** Per-tier tap upgrades — costs grow per tier. */
-export const TIER_TAP_UPGRADES: readonly UpgradeDefinition[] = TIERS
-  .filter(t => !t.isSecret)
+/** Per-tier equation-part upgrades (excluding Sand foundation). */
+export const EQUATION_PART_UPGRADES: readonly UpgradeDefinition[] = TIERS
+  .filter(t => !t.isSecret && t.id !== 'sand')
   .map((t, i) =>
-    makeTierTapUpgrade(t.id, t.displayName, BASE_UPGRADE_COST * Math.pow(5, i)),
+    makeEquationPartUpgrade(t.id, t.displayName, BASE_UPGRADE_COST * Math.pow(5, i)),
   );
-
-// ─── Global upgrades ────────────────────────────────────────────
-
-export const AUTO_TAP_UPGRADE: UpgradeDefinition = {
-  id: 'auto_tap',
-  displayName: 'Auto-Tap',
-  description: 'Automatically tap the equation',
-  tierId: null,
-  effectKind: 'auto_tap_speed',
-  maxLevel: 12,
-  baseCost: 100,
-  costScaleFactor: 1.8,
-  effectPerLevel: 1,
-  icon: '⚡',
-};
-
-export const GLOBAL_MULTIPLIER_UPGRADE: UpgradeDefinition = {
-  id: 'global_mult',
-  displayName: 'Amplifier',
-  description: 'Multiply all mote income',
-  tierId: null,
-  effectKind: 'tap_multiplier',
-  maxLevel: 0,
-  baseCost: 500,
-  costScaleFactor: 2.0,
-  effectPerLevel: 0.25,   // +25 % per level
-  icon: '✖',
-};
 
 // ─── All upgrade definitions ────────────────────────────────────
 
-export const ALL_UPGRADES: readonly UpgradeDefinition[] = [
-  ...TIER_TAP_UPGRADES,
-  AUTO_TAP_UPGRADE,
-  GLOBAL_MULTIPLIER_UPGRADE,
-];
+export const ALL_UPGRADES: readonly UpgradeDefinition[] = EQUATION_PART_UPGRADES;
 
 /** Quick lookup by upgrade id. */
 export const UPGRADE_BY_ID: ReadonlyMap<string, UpgradeDefinition> = new Map(

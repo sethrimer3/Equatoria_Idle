@@ -53,7 +53,8 @@
 - `upgradeCostAtLevel()` — cost formula.
 
 ### src/data/upgrades/upgrade-catalog.ts
-- All upgrade definitions: per-tier tap upgrades, auto-tap, global multiplier.
+- All equation upgrade definitions aligned to equation tier roles/operators.
+- Per-tier equation-part upgrades (Quartz → Nullstone), no global equation upgrades.
 - Exports `ALL_UPGRADES`, `UPGRADE_BY_ID`.
 
 ### src/data/balance/balance-constants.ts
@@ -196,4 +197,3 @@
 
 ### src/util/format.ts
 - `formatNumber()` — K/M/B/T suffix formatting.
-
