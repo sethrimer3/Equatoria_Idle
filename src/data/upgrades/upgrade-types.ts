@@ -4,7 +4,7 @@ import type { TierId } from '../tiers';
 
 /** What an upgrade affects in the simulation. */
 export type UpgradeEffectKind =
-  | 'tap_value'         // increases motes per tap for a tier
+  | 'tap_value'         // increases a tier's equation segment level/strength
   | 'auto_tap_speed'    // reduces auto-tap interval
   | 'tap_multiplier'    // global multiplier on all tap income
   | 'tier_unlock';      // unlocks next tier
