@@ -404,11 +404,10 @@ export async function startApp(): Promise<void> {
   }
 
   function updateUI(): void {
-    if (appState.activeTab === 'equation') {
-      uiPanels.equationPanel.update(appState.game, settings.isDevMode);
-    } else if (appState.activeTab === 'looms') {
+    if (appState.activeTab === 'looms') {
       uiPanels.loomPanel.update(appState.game);
     } else if (appState.activeTab === 'resources') {
+      uiPanels.equationPanel.update(appState.game, settings.isDevMode);
       uiPanels.upgradePanel.update(appState.game, settings.isDevMode);
       uiPanels.resourcePanel.update(appState.game);
     } else if (appState.activeTab === 'achievements') {
@@ -419,12 +418,12 @@ export async function startApp(): Promise<void> {
   function setActiveTab(state: AppState, panels: UIPanels): void {
     panels.tabBar.setActiveTab(state.activeTab);
 
-    // All tabs now show panel overlays (including Equation tab which has upgrades)
-    const shouldShowPanels = true;
+    // Equation tab shows canvas only; all other tabs show panel overlays
+    const shouldShowPanels = state.activeTab !== 'equation';
     panels.panelsContainer.classList.toggle('panels-visible', shouldShowPanels);
 
     // Show/hide individual panels
-    panels.equationPanel.element.style.display = state.activeTab === 'equation' ? '' : 'none';
+    panels.equationPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
     panels.loomPanel.element.style.display = state.activeTab === 'looms' ? '' : 'none';
     panels.upgradePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
     panels.resourcePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
@@ -432,11 +431,10 @@ export async function startApp(): Promise<void> {
     panels.settingsPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
 
     // Immediately update visible panel
-    if (state.activeTab === 'equation') {
-      panels.equationPanel.update(appState.game, settings.isDevMode);
-    } else if (state.activeTab === 'looms') {
+    if (state.activeTab === 'looms') {
       panels.loomPanel.update(appState.game);
     } else if (state.activeTab === 'resources') {
+      panels.equationPanel.update(appState.game, settings.isDevMode);
       panels.upgradePanel.update(appState.game, settings.isDevMode);
       panels.resourcePanel.update(appState.game);
     } else if (state.activeTab === 'achievements') {
