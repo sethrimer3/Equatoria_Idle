@@ -58,7 +58,11 @@ function pushPosition(batch: DrawBatch, x: number, y: number): void {
   batch.count++;
 }
 
-// Reusable out-object for trail position reading
+/**
+ * Reusable out-object for trail position reading.
+ * Safe because canvas rendering is single-threaded — this is never
+ * accessed concurrently.
+ */
 const _trailPos = { x: 0, y: 0 };
 
 // ─── Draw ────────────────────────────────────────────────────────

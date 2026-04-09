@@ -65,6 +65,12 @@ import { drawParticles } from './particle-renderer';
 // Re-export types for backward compatibility
 export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions, ProceduralMerge };
 
+// ─── Constants ───────────────────────────────────────────────────
+
+/** Fallback spawn position when no matching generator is found (canvas center at 320px width). */
+const DEFAULT_SPAWN_X = 160;
+const DEFAULT_SPAWN_Y = 160;
+
 // ─── ParticleSystem class ────────────────────────────────────────
 
 export class ParticleSystem {
@@ -96,7 +102,7 @@ export class ParticleSystem {
     nowMs: number,
   ): void {
     if (this.particles.length >= MAX_PARTICLES_FULL) return;
-    let spawnX = 160, spawnY = 160;
+    let spawnX = DEFAULT_SPAWN_X, spawnY = DEFAULT_SPAWN_Y;
     for (let i = 0, len = generators.length; i < len; i++) {
       if (generators[i].tierId === tierId) { spawnX = generators[i].x; spawnY = generators[i].y; break; }
     }

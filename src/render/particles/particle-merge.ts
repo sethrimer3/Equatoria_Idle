@@ -61,6 +61,12 @@ function groupKey(tierIndex: number, sizeIndex: SizeIndex): number {
 
 // ─── Fisher-Yates partial shuffle ────────────────────────────────
 
+/**
+ * Select `count` random particles from `group` using a partial
+ * Fisher-Yates shuffle. **Mutates** `group` in-place by swapping
+ * selected elements to the front — callers should not rely on the
+ * original order of `group` after this call.
+ */
 function selectRandom(
   group: EquatoriaParticle[],
   count: number,

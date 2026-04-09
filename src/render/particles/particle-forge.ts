@@ -48,14 +48,15 @@ export function checkAndStartForgeCrunch(
       isMerging: p.isMerging,
     };
   }
-  // Slice to actual length (checkForgeCrunch iterates .length)
-  const infos = _scratchInfos.length > len ? _scratchInfos.slice(0, len) : _scratchInfos;
+  // Truncate scratch array to exact particle count so checkForgeCrunch
+  // iterates only the valid portion (it uses .filter which reads .length).
+  _scratchInfos.length = len;
 
-  const result = checkForgeCrunch(crunchState, infos, forgeX, forgeY, FORGE_RADIUS, nowMs);
+  const result = checkForgeCrunch(crunchState, _scratchInfos, forgeX, forgeY, FORGE_RADIUS, nowMs);
   if (result) {
     const resultSet = new Set(result);
     for (let i = 0; i < len; i++) {
-      if (resultSet.has(infos[i])) {
+      if (resultSet.has(_scratchInfos[i])) {
         const p = particles[i];
         p.isMerging = true;
         p.mergeTargetX = forgeX;
