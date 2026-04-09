@@ -1,0 +1,50 @@
+/* ═══════════════════════════════════════════════════════════════
+   Canvas & Background Styles
+   Background animation canvas, vermiculate, game canvas container
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Background animation canvas ─────────────────────────────── */
+.bg-animation-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* ── Vermiculate background canvas ───────────────────────────── */
+.vermiculate-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* ── Canvas container (full screen behind everything) ────────── */
+#canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% - var(--tab-height) - var(--safe-bottom));
+  z-index: 1;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-primary);
+}
+
+#game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  touch-action: none;
+}
