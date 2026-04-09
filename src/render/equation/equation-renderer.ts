@@ -1,10 +1,11 @@
 import type { CanvasContext } from '../canvas';
 import type { EquationTermView } from '../../sim/equation';
+import type { EquationRole } from '../../data/equation';
 
 /**
- * Renders the equation on the canvas.
- * The equation is drawn as coloured terms joined by '+' signs,
- * wrapped inside  E = <terms>  notation.
+ * Renders the structured nested equation on the canvas.
+ * Builds from inside out: Ruby base → + Sunstone → × Citrine → ^Emerald → wrappers.
+ * Quartz controls the f(…t) prefix.
  */
 export function drawEquation(
   cc: CanvasContext,
@@ -14,44 +15,134 @@ export function drawEquation(
   const ctx = cc.ctx;
   const centerX = cc.widthPx / 2;
   const topY = cc.heightPx / 2;
-
-  // Title label
-  ctx.font = 'bold 10px monospace';
+  const fontSize = 9;
+  ctx.font = `bold ${fontSize}px monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#aaa';
-  drawOutlinedText(ctx, 'E =', centerX - cc.widthPx * 0.35, topY);
 
   if (terms.length === 0) {
     ctx.fillStyle = '#666';
-    drawOutlinedText(ctx, '???', centerX, topY);
+    drawOutlinedText(ctx, 'E = ???', centerX, topY);
     return;
   }
 
-  // Compute layout — stack terms horizontally if they fit, or wrap
-  const fontSize = 10;
-  ctx.font = `bold ${fontSize}px monospace`;
-  const charWidth = ctx.measureText('0').width;
+  // Index by role
+  const byRole = new Map<EquationRole, EquationTermView>();
+  for (const t of terms) byRole.set(t.operator, t);
 
-  const termTexts = terms.map(t => t.text);
-  const gaps = terms.length - 1; // '+' signs
-  const totalChars = termTexts.reduce((s, t) => s + t.length, 0) + gaps * 3;
-  const totalWidth = totalChars * charWidth;
+  // Build the equation text segments with colors
+  const segments: Array<{ text: string; color: string }> = [];
 
-  // Determine if we should wrap to multiple lines
-  const maxLineWidth = cc.widthPx * 0.65;
-  const shouldWrap = totalWidth > maxLineWidth;
-
-  if (!shouldWrap) {
-    // Single line
-    drawTermsLine(ctx, terms, centerX, topY, charWidth, tapFlashAlpha);
+  // f(…t) prefix
+  const quartz = byRole.get('time_argument');
+  if (quartz) {
+    const argText = quartz.paramValue === 1 ? 't' : `${Math.floor(quartz.paramValue)}t`;
+    segments.push({ text: 'f(', color: '#aaa' });
+    segments.push({ text: argText, color: quartz.color });
+    segments.push({ text: ') = ', color: '#aaa' });
   } else {
-    // Two-line layout
-    const mid = Math.ceil(terms.length / 2);
-    const line1 = terms.slice(0, mid);
-    const line2 = terms.slice(mid);
-    drawTermsLine(ctx, line1, centerX, topY - fontSize * 0.7, charWidth, tapFlashAlpha);
-    drawTermsLine(ctx, line2, centerX, topY + fontSize * 0.7, charWidth, tapFlashAlpha);
+    segments.push({ text: 'f(t) = ', color: '#aaa' });
+  }
+
+  // Build core expression text
+  const ruby = byRole.get('base_value');
+  const sunstone = byRole.get('additive_slot');
+  const citrine = byRole.get('multiplier_slot');
+  const emerald = byRole.get('exponent_slot');
+  const sapphire = byRole.get('summation_wrap');
+  const iolite = byRole.get('product_wrap');
+  const amethyst = byRole.get('factorial_wrap');
+  const diamond = byRole.get('integral_wrap');
+  const nullstone = byRole.get('recursion_wrap');
+
+  if (!ruby) {
+    segments.push({ text: '...', color: '#666' });
+  } else {
+    // Prefix wrappers (outermost first for display)
+    if (nullstone) {
+      const v = Math.round(nullstone.paramValue * 100) / 100;
+      segments.push({ text: `lim`, color: nullstone.color });
+      segments.push({ text: `(n→${v}) `, color: nullstone.color });
+    }
+    if (diamond) {
+      const v = Math.round(diamond.paramValue * 100) / 100;
+      segments.push({ text: `∫₀`, color: diamond.color });
+      segments.push({ text: `^${v} `, color: diamond.color });
+    }
+    if (amethyst) {
+      segments.push({ text: 'Γ(', color: amethyst.color });
+    }
+    if (iolite) {
+      segments.push({ text: `Π`, color: iolite.color });
+      segments.push({ text: `(${Math.floor(iolite.paramValue)}) `, color: iolite.color });
+    }
+    if (sapphire) {
+      segments.push({ text: `Σ`, color: sapphire.color });
+      segments.push({ text: `(${Math.floor(sapphire.paramValue)}) `, color: sapphire.color });
+    }
+
+    // Open parens for exponent wrapping
+    if (emerald) segments.push({ text: '(', color: '#888' });
+    // Open parens for multiplier wrapping
+    if (citrine && sunstone) segments.push({ text: '(', color: '#888' });
+
+    // Ruby base value
+    segments.push({ text: String(Math.floor(ruby.paramValue)), color: ruby.color });
+
+    // Sunstone additive
+    if (sunstone) {
+      segments.push({ text: ' + ', color: sunstone.color });
+      segments.push({ text: String(Math.floor(sunstone.paramValue)), color: sunstone.color });
+    }
+
+    // Close parens for multiplier wrapping, then × value
+    if (citrine && sunstone) segments.push({ text: ')', color: '#888' });
+    if (citrine) {
+      segments.push({ text: ' × ', color: citrine.color });
+      segments.push({ text: String(Math.floor(citrine.paramValue)), color: citrine.color });
+    }
+
+    // Close parens for exponent, then ^value
+    if (emerald) {
+      segments.push({ text: ')', color: '#888' });
+      segments.push({ text: `^${Math.floor(emerald.paramValue)}`, color: emerald.color });
+    }
+
+    // Close wrappers
+    if (amethyst) {
+      segments.push({ text: ')!', color: amethyst.color });
+    }
+    if (diamond) {
+      segments.push({ text: ' dt', color: diamond.color });
+    }
+  }
+
+  // Compute total text width for centering
+  const charWidth = ctx.measureText('0').width;
+  let totalWidth = 0;
+  for (const seg of segments) totalWidth += seg.text.length * charWidth;
+
+  // Wrap to two lines if too wide
+  const maxLineWidth = cc.widthPx * 0.9;
+  if (totalWidth > maxLineWidth) {
+    // Find a good split point (after "= ")
+    let splitIdx = 0;
+    let accWidth = 0;
+    for (let i = 0; i < segments.length; i++) {
+      accWidth += segments[i].text.length * charWidth;
+      if (segments[i].text.includes('=')) {
+        splitIdx = i + 1;
+        break;
+      }
+    }
+    if (splitIdx === 0) splitIdx = Math.ceil(segments.length / 2);
+
+    const line1 = segments.slice(0, splitIdx);
+    const line2 = segments.slice(splitIdx);
+    drawSegmentLine(ctx, line1, centerX, topY - fontSize * 0.8, charWidth);
+    drawSegmentLine(ctx, line2, centerX, topY + fontSize * 0.8, charWidth);
+  } else {
+    drawSegmentLine(ctx, segments, centerX, topY, charWidth);
   }
 
   // Tap flash overlay
@@ -63,31 +154,21 @@ export function drawEquation(
   }
 }
 
-function drawTermsLine(
+function drawSegmentLine(
   ctx: CanvasRenderingContext2D,
-  terms: EquationTermView[],
+  segments: Array<{ text: string; color: string }>,
   centerX: number,
   y: number,
   charWidth: number,
-  _tapFlashAlpha: number,
 ): void {
-  // Compute total width for centering
-  const lineTexts = terms.map(t => t.text);
-  const totalChars = lineTexts.reduce((s, t) => s + t.length, 0) + (terms.length - 1) * 3;
-  const totalWidth = totalChars * charWidth;
+  let totalWidth = 0;
+  for (const seg of segments) totalWidth += seg.text.length * charWidth;
   let x = centerX - totalWidth / 2;
 
-  for (let i = 0; i < terms.length; i++) {
-    const term = terms[i];
-    ctx.fillStyle = term.color;
-    drawOutlinedText(ctx, term.text, x + (term.text.length * charWidth) / 2, y);
-    x += term.text.length * charWidth;
-
-    if (i < terms.length - 1) {
-      ctx.fillStyle = '#777';
-      drawOutlinedText(ctx, ' + ', x + 1.5 * charWidth, y);
-      x += 3 * charWidth;
-    }
+  for (const seg of segments) {
+    ctx.fillStyle = seg.color;
+    drawOutlinedText(ctx, seg.text, x + (seg.text.length * charWidth) / 2, y);
+    x += seg.text.length * charWidth;
   }
 }
 

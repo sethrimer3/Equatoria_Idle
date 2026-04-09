@@ -13,6 +13,7 @@ export {
   segmentTapValue,
   computeTapGains,
   buildEquationView,
+  buildStructuredEquationHtml,
   computeEquationOutput,
 } from './equation-logic';
 export type { EquationTermView } from './equation-logic';

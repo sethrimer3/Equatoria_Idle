@@ -1,6 +1,6 @@
 import type { UpgradeDefinition } from './upgrade-types';
 import { TIERS, type TierId } from '../tiers';
-import { EQUATION_ROLE_BY_TIER, type EquationOperator } from '../equation';
+import { EQUATION_ROLE_BY_TIER, type EquationRole } from '../equation';
 import {
   BASE_UPGRADE_COST,
   UPGRADE_COST_SCALE_FACTOR,
@@ -8,27 +8,27 @@ import {
 
 // ─── Planned equation-part upgrades ─────────────────────────────
 
-function operatorLabel(operator: EquationOperator): string {
-  switch (operator) {
-    case 'passive_time':
-      return 'Passive Term';
-    case 'manual_input':
-      return 'Manual Term';
-    case 'addition':
-      return 'Addition';
-    case 'multiplication':
+function roleLabel(role: EquationRole): string {
+  switch (role) {
+    case 'time_argument':
+      return 'Time Scale';
+    case 'base_value':
+      return 'Base Value';
+    case 'additive_slot':
+      return 'Additive Term';
+    case 'multiplier_slot':
       return 'Multiplier';
-    case 'exponentiation':
+    case 'exponent_slot':
       return 'Exponent';
-    case 'summation':
+    case 'summation_wrap':
       return 'Summation';
-    case 'product':
+    case 'product_wrap':
       return 'Product';
-    case 'factorial':
+    case 'factorial_wrap':
       return 'Factorial';
-    case 'integration':
+    case 'integral_wrap':
       return 'Integration';
-    case 'recursion':
+    case 'recursion_wrap':
       return 'Recursion';
     default:
       return 'Foundation';
@@ -36,10 +36,10 @@ function operatorLabel(operator: EquationOperator): string {
 }
 
 function makeEquationPartUpgrade(tierId: TierId, displayName: string, baseCost: number): UpgradeDefinition {
-  const role = EQUATION_ROLE_BY_TIER.get(tierId);
-  const partName = role ? operatorLabel(role.operator) : 'Equation Part';
-  const description = role
-    ? `${role.roleDescription}. Increase ${displayName}'s ${partName.toLowerCase()} strength`
+  const tierRole = EQUATION_ROLE_BY_TIER.get(tierId);
+  const partName = tierRole ? roleLabel(tierRole.role) : 'Equation Part';
+  const description = tierRole
+    ? `${tierRole.roleDescription}. Increase ${displayName}'s ${partName.toLowerCase()} strength`
     : `Increase ${displayName}'s equation contribution`;
 
   return {

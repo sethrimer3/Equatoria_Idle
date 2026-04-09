@@ -81,12 +81,36 @@
 
 ## Equation Progression Model
 
-**Decision**: Use a tier-based structured equation system where each gemstone tier adds a specific mathematical operator to the central equation f(t). The progression is: foundation (Sand) → passive time r·t (Quartz) → manual input x (Ruby) → addition (Sunstone) → multiplication (Citrine) → exponentiation (Emerald) → summation Σ (Sapphire) → product Π (Iolite) → factorial (Amethyst) → integration ∫ (Diamond) → recursion/self-reference (Nullstone).
+**Decision**: Use a structured slot-and-wrapper equation model where each gemstone tier either modifies a specific slot value or wraps the entire expression in a new mathematical layer. The equation is a single coherent nested mathematical object, NOT a flat chain of appended fragments.
 
-**Rationale**: Each tier has a clear, data-driven role defined in `data/equation/equation-tier-roles.ts`. The equation builds gradually from simple to complex, giving the player a visual sense of mathematical progression. The structured approach (vs. string concatenation) makes it easy to:
-- Render each tier's contribution in its gemstone color
-- Compute equation output from the structured model
-- Add new tiers or modify existing ones without rewiring rendering
+**Tier roles**:
+- Sand: foundation (pre-equation, forge unlock)
+- Quartz: time argument modifier f(t) → f(2t) → f(3t)
+- Ruby: base value slot (first additive number)
+- Sunstone: additive slot (second additive number: base + additive)
+- Citrine: multiplier slot wrapping addition: (base + additive) × m
+- Emerald: exponent slot wrapping multiplication: ((base + additive) × m)^p
+- Sapphire: summation wrapper Σ
+- Iolite: product wrapper Π
+- Amethyst: factorial/gamma wrapper Γ(…)!
+- Diamond: integration wrapper ∫
+- Nullstone: recursion/limit wrapper lim
+
+**Visual progression**: The equation evolves from inside out:
+- `f(t) = …` (just Quartz)
+- `f(t) = 1` (Ruby adds base)
+- `f(t) = 1 + 1` (Sunstone adds additive)
+- `f(t) = (1 + 1) × 1` (Citrine wraps with multiplication)
+- `f(t) = ((1 + 1) × 1)^1` (Emerald wraps with exponentiation)
+- Higher tiers wrap further
+
+**Rationale**: The structured slot-and-wrapper model produces a tight, elegant nested equation that reads as one coherent mathematical expression. Each tier has clear ownership of exactly one part of the equation. The data-driven `EquationTierRole` in `data/equation/equation-tier-roles.ts` defines each tier's `role`, `interaction` (slot/wrapper/argument/foundation), `symbol`, `baseValue`, and `valuePerLevel`. HTML rendering uses `buildStructuredEquationHtml()` which builds from innermost to outermost. This replaces the previous flat-append model where each tier was concatenated with `+` signs.
+
+## Save Format Version 4
+
+**Decision**: Bump save version to 4 to reflect the equation architecture redesign. Accept versions 1-3 with graceful fallback.
+
+**Rationale**: The equation state structure (segments with levels and unlock flags) hasn't changed at the persistence level — only the interpretation of tier roles has changed. Old saves can load correctly because segment data maps to the same tier IDs.
 
 ## Loom System
 
@@ -106,11 +130,9 @@
 
 **Rationale**: Reduces UI clutter and makes the two progression systems clearly distinguishable. The Looms tab focuses on passive production rates, while the Equation tab focuses on the mathematical artifact. This mirrors the two-pillar design of the game.
 
-## Save Format Version 2
+## Save Format Version 2 (superseded by v4)
 
-**Decision**: Bump save version to 2 to include Loom state and `isForgeUnlocked` in saved data. Accept version 1 saves with graceful fallback (missing Loom data uses defaults).
-
-**Rationale**: Backward compatibility prevents save loss during development. New state fields have sensible defaults, so v1 saves just start with Sand Loom at level 1 and forge locked.
+**Decision**: Originally bumped save version to 2 to include Loom state and `isForgeUnlocked`. Now at v4 after equation redesign.
 
 ## Dual Background System
 

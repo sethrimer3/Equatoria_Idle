@@ -104,7 +104,7 @@ export async function startApp(): Promise<void> {
 
   const appState: AppState = {
     game,
-    activeTab: 'equation',
+    activeTab: 'looms',
     tapFlashAlpha: 0,
     animPulse: 0,
     forge,
@@ -146,7 +146,7 @@ export async function startApp(): Promise<void> {
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch);
   const loomPanel = createLoomPanel(dispatch);
-  const equationPanel = createEquationPanel();
+  const equationPanel = createEquationPanel(dispatch);
   const achievementsPanel = createAchievementsPanel();
 
   panelsInner.appendChild(equationPanel.element);
@@ -272,7 +272,7 @@ export async function startApp(): Promise<void> {
         break;
       case 'reset_game':
         deleteSave();
-        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
+        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'looms' });
         recomputeGenerators();
         setActiveTab(state, uiPanels);
         break;
@@ -404,7 +404,9 @@ export async function startApp(): Promise<void> {
   }
 
   function updateUI(): void {
-    if (appState.activeTab === 'looms') {
+    if (appState.activeTab === 'equation') {
+      uiPanels.equationPanel.update(appState.game, settings.isDevMode);
+    } else if (appState.activeTab === 'looms') {
       uiPanels.loomPanel.update(appState.game);
     } else if (appState.activeTab === 'resources') {
       uiPanels.upgradePanel.update(appState.game, settings.isDevMode);
@@ -417,8 +419,8 @@ export async function startApp(): Promise<void> {
   function setActiveTab(state: AppState, panels: UIPanels): void {
     panels.tabBar.setActiveTab(state.activeTab);
 
-    // Equation tab is pure canvas render; other tabs show overlay panels.
-    const shouldShowPanels = state.activeTab !== 'equation';
+    // All tabs now show panel overlays (including Equation tab which has upgrades)
+    const shouldShowPanels = true;
     panels.panelsContainer.classList.toggle('panels-visible', shouldShowPanels);
 
     // Show/hide individual panels
@@ -430,7 +432,9 @@ export async function startApp(): Promise<void> {
     panels.settingsPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
 
     // Immediately update visible panel
-    if (state.activeTab === 'looms') {
+    if (state.activeTab === 'equation') {
+      panels.equationPanel.update(appState.game, settings.isDevMode);
+    } else if (state.activeTab === 'looms') {
       panels.loomPanel.update(appState.game);
     } else if (state.activeTab === 'resources') {
       panels.upgradePanel.update(appState.game, settings.isDevMode);

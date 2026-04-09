@@ -70,10 +70,26 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 ## Equation Rendering Pipeline
 
 1. `buildEquationView()` generates `EquationTermView[]` from authoritative equation state (only when forge is unlocked)
-2. Each term carries a `tierId`, `color`, `text`, `level`, and `operator` (passive_time, manual_input, addition, multiplication, exponentiation, summation, product, factorial, integration, recursion)
-3. **Canvas rendering**: `drawEquation()` renders terms on canvas with per-tier colours and `+` operators
-4. **DOM rendering**: `buildStructuredEquation()` in the Equation panel generates HTML with colored `<span>` elements, superscripts for exponents, and subscripts for summation/product notation
-5. Flash overlay fades on tap for visual feedback
+2. Each term carries a `tierId`, `color`, `text`, `level`, and `operator` (role type: time_argument, base_value, additive_slot, multiplier_slot, exponent_slot, summation_wrap, product_wrap, factorial_wrap, integral_wrap, recursion_wrap)
+3. **Structured equation model**: The equation is built as a nested mathematical structure, NOT a flat list of appended terms. Each tier either:
+   - modifies a specific slot value (Ruby = base, Sunstone = additive, Citrine = multiplier, Emerald = exponent)
+   - wraps the entire expression (Sapphire = Σ, Iolite = Π, Amethyst = Γ!, Diamond = ∫, Nullstone = lim)
+   - modifies the left-side time argument (Quartz: f(t) → f(2t) → f(3t))
+4. **DOM rendering**: `buildStructuredEquationHtml()` builds the equation from inside out as nested HTML with colored `<span>` elements, superscripts, subscripts, and proper parenthesization
+5. **Canvas rendering**: `drawEquation()` builds color-segmented equation text for the low-res canvas
+6. Hovering an equation upgrade highlights the corresponding tier's equation fragments
+7. Flash overlay fades on tap for visual feedback
+
+### Equation Progression (visual example):
+- Forge locked → (dormant state)
+- Quartz: `f(t) = …`
+- Ruby: `f(t) = 1`
+- Sunstone: `f(t) = 1 + 1`
+- Citrine: `f(t) = (1 + 1) × 1`
+- Emerald: `f(t) = ((1 + 1) × 1)^1`
+- Sapphire: `f(t) = Σ(((1 + 1) × 1)^1)`
+- Iolite: `f(t) = Π(Σ(((1 + 1) × 1)^1))`
+- Higher tiers wrap further
 
 ## Loom System
 
@@ -120,21 +136,25 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 
 ## UI Structure
 
-- **Tab Bar** (bottom): Equation / Looms / Upgrades / Settings — always visible over game canvas
-- **Equation tab**: Shows the Equation Forge. Before unlock: dormant locked presentation with Sand cost requirement. After unlock: the colored f(t) equation display + equation-specific upgrades + tier unlock button.
+- **Tab Bar** (bottom): Equation / Looms / Tiers / Achievements / Settings — always visible over game canvas
+- **Equation tab**: Shows the Equation Forge as a panel overlay. Before forge unlock: dormant locked presentation with Sand cost requirement and unlock button. After unlock: the colored nested f(t) equation display + equation-specific upgrades grouped by tier with hover-highlight linking.
 - **Looms tab**: Shows per-tier passive production Looms in card layout — tier name, gem icon, description, level, production rate, upgrade button. Only unlocked tiers' Looms are shown.
-- **Upgrades tab**: slides in from the right over the canvas as a semi-transparent overlay. Contains upgrade buttons (with gem icon sprites), resource rows (with refined gem sprites), and tier unlock button.
-- **Settings tab**: slides in same as Upgrades — volume sliders, toggles, save/reset, credits
+- **Tiers tab**: slides in from the right over the canvas as a semi-transparent overlay. Contains the tier unlock button for unlocking new gemstone tiers.
+- **Achievements tab**: shows achievement cards with progress tracking and bonus multipliers
+- **Settings tab**: slides in same as others — volume sliders, toggles, save/reset, credits
 
 ## Early-Game Progression
 
-1. Player starts with Sand Loom unlocked (level 1, 1 mote/sec)
+1. Player starts with Sand Loom unlocked (level 1, 1 mote/sec), default tab is Looms
 2. Sand Loom can be upgraded using Sand motes (Looms tab)
-3. At 50 Sand, player can unlock the Equation Forge (Equation tab)
-4. After Equation Forge is unlocked, the f(t) equation appears and becomes tappable
-5. Unlocking Quartz adds the first equation term (passive r·t)
-6. Unlocking Ruby adds the manual tap variable (x)
-7. Further tiers add increasingly complex mathematical operators
+3. At 50 Sand, player can unlock the Equation Forge (Equation tab shows locked state with unlock button)
+4. After Equation Forge is unlocked, the f(t) equation appears
+5. Unlocking Quartz adds the time argument: f(t) = …
+6. Unlocking Ruby adds the first base value: f(t) = 1
+7. Unlocking Sunstone adds addition: f(t) = 1 + 1
+8. Unlocking Citrine wraps with multiplication: f(t) = (1 + 1) × 1
+9. Unlocking Emerald wraps with exponentiation: f(t) = ((1 + 1) × 1)^1
+10. Higher tiers add summation, product, factorial, integral, and recursion wrappers
 
 ## Loading Screen
 
