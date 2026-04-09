@@ -136,12 +136,55 @@
 - Exports `SubstrateEffect` interface and `createSubstrateEffect({ quality })` factory.
 - Quality parameter ('low' | 'medium' | 'high') scales seed count, max fronts, and grain density.
 
+### src/render/particles/particle-types.ts
+- All shared particle system interfaces and type aliases.
+- `EquatoriaParticle` — core particle interface with ring-buffer trail fields.
+- `ActiveMerge`, `ProceduralMerge` — merge tracking types.
+- `Shockwave` — visual shockwave effect type.
+- `ParticleRenderOptions` — glow/trail toggle flags.
+
+### src/render/particles/particle-pool.ts
+- Particle object pool and lifecycle management.
+- `ParticlePool` class — acquire/release with internal free list.
+- `initParticle()` — initialises all particle fields on spawn.
+- Pre-computed `TIER_INDEX_MAP` for O(1) tier index lookup.
+
+### src/render/particles/particle-physics.ts
+- Per-particle physics: gravity, veer, velocity clamping, bounce.
+- `updateParticlePhysics()` — full per-particle physics step.
+- `applyEdgeRepulsion()` — boundary push forces.
+- `updateTrails()` / `clearTrails()` — ring-buffer trail management.
+- `getTrailPosition()` — zero-allocation trail position reader.
+
+### src/render/particles/particle-merge.ts
+- Traditional merge at generators + procedural seek-merge.
+- Fisher-Yates partial shuffle for O(k) random selection.
+- Module-level reusable `Map` for grouping (avoids per-frame allocation).
+- `attemptMerge()`, `processActiveMerges()`, `enforceParticleLimit()`.
+- `attemptProceduralMerge()`, `updateProceduralMerges()`.
+
+### src/render/particles/particle-forge.ts
+- Forge crunch integration between sim-layer forge-logic and visual particles.
+- `checkAndStartForgeCrunch()`, `completeForgeCrunch()`.
+
+### src/render/particles/particle-shockwave.ts
+- Shockwave expansion, fade, and spatial-grid force application.
+- `updateShockwaves()`, `getShockwaveScaleForSize()`.
+
+### src/render/particles/particle-renderer.ts
+- Batched canvas rendering for trails, particles, and shockwaves.
+- Numeric batch keys `(tierIndex << 8 | sizeIndex)`, Float64Array position buffers.
+- `drawParticles()` — unified render function.
+
+### src/render/particles/spatial-grid.ts
+- Numeric-keyed spatial hash grid for collision queries.
+- `buildSpatialGrid()`, `forEachNearby()` — callback-based (no result array allocation).
+
 ### src/render/particles/particle-system.ts
-- Full particle physics, merges, forge crunch, shockwaves.
-- Edge repulsion prevents particle clumping on canvas boundaries.
-- Trail system: medium particles have subtle Euler trails; large+ have comet tails with glow.
-- Procedural merge: when 100 same-size particles exist, they seek each other and combine into 1 particle of the next size.
-- `ProceduralMerge` — tracks groups of particles undergoing seek-and-combine behavior.
+- Slim orchestrator class (~200 lines, reduced from 1112).
+- Owns particle array, merge/shockwave lists, and pool.
+- Runs per-frame update pipeline: physics → trails → Euler → merges → forge → shockwaves.
+- Delegates rendering to `particle-renderer.ts`.
 
 ### src/render/equation/equation-renderer.ts
 - `drawEquation()` — renders equation terms on canvas.
