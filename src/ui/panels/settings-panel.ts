@@ -81,6 +81,13 @@ export function createSettingsPanel(
   });
   panel.appendChild(shakeRow);
 
+  // Developer mode toggle
+  const devModeRow = createToggleRow('Developer Mode', settings.isDevMode, (v) => {
+    settings.isDevMode = v;
+    saveSettings(settings);
+  });
+  panel.appendChild(devModeRow);
+
   // Save button
   const saveBtn = document.createElement('button');
   saveBtn.className = 'settings-btn';

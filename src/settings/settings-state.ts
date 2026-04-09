@@ -7,6 +7,8 @@ export interface SettingsState {
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
   backgroundStyle: 'vermiculate' | 'substrate' | 'none';
+  /** When true: all upgrades/unlocks are available regardless of cost; costs are not deducted. */
+  isDevMode: boolean;
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -18,6 +20,7 @@ export function createDefaultSettings(): SettingsState {
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
     backgroundStyle: 'vermiculate',
+    isDevMode: false,
   };
 }
 
