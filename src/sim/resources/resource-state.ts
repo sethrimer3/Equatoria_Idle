@@ -48,18 +48,14 @@ export function getTotalMotes(state: ResourceState): number {
  * tiers have motes it grows multiplicatively.
  */
 export function getEquivalence(state: ResourceState): number {
-  let equivalence = 0;
-  let first = true;
+  let equivalence = 1;
+  let hasAny = false;
   for (const v of state.moteTotals.values()) {
     if (v <= 0) continue;
-    if (first) {
-      equivalence = v;
-      first = false;
-    } else {
-      equivalence *= v;
-    }
+    hasAny = true;
+    equivalence *= v;
   }
-  return equivalence;
+  return hasAny ? equivalence : 0;
 }
 
 // ─── Mutations ──────────────────────────────────────────────────
