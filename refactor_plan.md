@@ -123,3 +123,47 @@ ParticleSystem (orchestrator)
 ├── updateShockwaves      — shockwave physics
 └── drawParticles         — batched canvas rendering
 ```
+
+---
+
+## Phase 2: Additional Monolithic File Splits
+
+### equation-logic.ts (329 → 3 files)
+
+The equation logic file contained three distinct concerns: tap value computation, view model/HTML building, and equation evaluation. Split into:
+
+| File | Purpose | Key exports |
+|------|---------|-------------|
+| `equation-tap.ts` | Tap value computation | `segmentTapValue()`, `computeTapGains()` |
+| `equation-view.ts` | View model + HTML builder | `buildEquationView()`, `buildStructuredEquationHtml()`, `EquationTermView` |
+| `equation-eval.ts` | Equation output evaluator | `computeEquationOutput()` |
+
+The original `equation-logic.ts` is now a re-export barrel for backward compatibility. No barrel imports (`index.ts`) or consumer code needed changes.
+
+### game-app.ts (458 → 4 files)
+
+The main application file handled bootstrap, action dispatch, game loop, rendering, and UI management. Split into:
+
+| File | Purpose | Key exports |
+|------|---------|-------------|
+| `app-types.ts` | Shared interfaces | `AppState`, `UIPanels` |
+| `app-actions.ts` | Action dispatch + tab switching | `handleAction()`, `setActiveTab()`, `updateVisiblePanels()` |
+| `app-game-loop.ts` | Frame-by-frame game loop | `createGameLoop()`, `GameLoopContext` |
+| `game-app.ts` | Slim bootstrap | `startApp()` |
+
+The game loop is created via a factory function that receives all dependencies through `GameLoopContext`, keeping the loop itself pure of startup concerns. Save/reset actions use local closures in game-app.ts since they need `deleteSave()` and `createGameState()`.
+
+### styles.css (709 → 6 files)
+
+The monolithic CSS was split by concern into focused stylesheets:
+
+| File | Purpose | Approx lines |
+|------|---------|-------------|
+| `base.css` | Reset, CSS variables, font-face, app layout | 65 |
+| `canvas.css` | Background canvases, game canvas container | 55 |
+| `panels.css` | Panel overlay, upgrades, resources, settings | 230 |
+| `tabs.css` | Bottom tab bar | 55 |
+| `components.css` | Loading, looms, equation display, achievements | 265 |
+| `responsive.css` | Media queries for landscape/desktop | 20 |
+
+The original `styles.css` now contains only `@import` directives in the correct cascade order. Vite handles CSS `@import` natively during bundling.

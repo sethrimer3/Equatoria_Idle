@@ -13,15 +13,43 @@
 - Entry point. Boots the app when DOM is ready.
 
 ### src/styles.css
-- All CSS for the game. Mobile-first responsive layout.
-- Sections: reset, app layout, canvas, panels, upgrades, resources, settings, tab bar, Loom cards, equation display, forge locked/unlocked presentation, media queries.
+- Import barrel for all CSS. Re-imports from `src/styles/` sub-files.
+
+### src/styles/base.css
+- CSS reset, `:root` variables, `@font-face`, `#app` layout.
+
+### src/styles/canvas.css
+- Background animation canvas, vermiculate canvas, `#canvas-container`, `#game-canvas`.
+
+### src/styles/panels.css
+- `#panels-container` overlay, panel base, upgrade buttons, resource rows, settings controls, credits.
+
+### src/styles/tabs.css
+- `.tab-bar`, `.tab-btn`, active/inactive states.
+
+### src/styles/components.css
+- Loading screen, loom cards, equation display (locked/unlocked), achievement cards.
+
+### src/styles/responsive.css
+- `@media` queries for landscape and desktop wider layout.
 
 ### src/app/game-app.ts
-- Main application orchestrator.
-- `startApp()` — bootstraps DOM, creates systems, runs game loop.
-- `handleAction()` — central action dispatcher (tap, purchase, unlock forge, upgrade loom, tab switch, save, reset).
-- `recomputeGenerators()` — recomputes generator ring positions on resize/tier unlock.
-- Game loop: sim tick (Looms + auto-tap) → particle update → render → UI update → auto-save.
+- Slim application bootstrap (DOM setup, panel wiring, pointer listeners, resize handler).
+- `startApp()` — creates systems and wires them via `app-actions` and `app-game-loop`.
+- Delegates action handling to `app-actions.ts` and game loop to `app-game-loop.ts`.
+
+### src/app/app-types.ts
+- `AppState` and `UIPanels` interfaces shared by app modules.
+
+### src/app/app-actions.ts
+- `handleAction()` — central action dispatcher.
+- `setActiveTab()` — panel visibility switching.
+- `updateVisiblePanels()` — refreshes the currently active panel.
+
+### src/app/app-game-loop.ts
+- `createGameLoop()` factory — creates the frame-by-frame game loop.
+- `GameLoopContext` interface — all dependencies injected.
+- Loop: sim tick → particle update → background → render → UI update → auto-save.
 
 ### src/data/tiers/tier-definitions.ts
 - Single source of truth for all 11 gemstone tiers (Sand through Nullstone).
@@ -77,11 +105,20 @@
 - `createEquationState()`, `applyEquationUpgrade()`, `unlockTier()`, `incrementTapCount()`, `unlockForge()`.
 
 ### src/sim/equation/equation-logic.ts
-- Tap value computation per segment and per tier (only when forge is unlocked).
+- Re-export barrel for backward compatibility.
+- Re-exports from `equation-tap.ts`, `equation-view.ts`, `equation-eval.ts`.
+
+### src/sim/equation/equation-tap.ts
+- `segmentTapValue()` — motes per tap for a single segment.
 - `computeTapGains()` — per-tier mote gains for a single tap (skips Sand foundation tier).
-- `buildEquationView()` — generates `EquationTermView[]` with `operator` field (EquationRole).
-- `buildStructuredEquationHtml()` — builds nested equation HTML from inside out (slot/wrapper model). Quartz sets f(…t), Ruby/Sunstone/Citrine/Emerald modify inner slots, Sapphire+ wrap the expression.
-- `computeEquationOutput()` — evaluates the structured equation for scoring.
+
+### src/sim/equation/equation-view.ts
+- `EquationTermView` interface — per-tier display data with `operator` field (EquationRole).
+- `buildEquationView()` — generates `EquationTermView[]` for canvas and DOM rendering.
+- `buildStructuredEquationHtml()` — builds nested equation HTML from inside out (slot/wrapper model).
+
+### src/sim/equation/equation-eval.ts
+- `computeEquationOutput()` — evaluates the structured equation for scoring. Pure function.
 
 ### src/sim/resources/resource-state.ts
 - Authoritative mote totals per tier and lifetime totals.
