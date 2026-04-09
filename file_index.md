@@ -33,9 +33,12 @@
 - Exports `LOOM_DEFINITIONS`, `LOOM_BY_TIER`, `loomUpgradeCost()`, `loomProductionRate()`.
 
 ### src/data/equation/equation-tier-roles.ts
-- Defines the mathematical role of each tier in the central equation.
-- Each role: `tierId`, `operator` (foundation/passive_time/manual_input/addition/multiplication/exponentiation/summation/product/factorial/integration/recursion), `symbol`, `baseValue`, `valuePerLevel`.
-- Exports `EQUATION_TIER_ROLES`, `EQUATION_ROLE_BY_TIER`.
+- Defines the mathematical role of each tier in the central equation using the slot-and-wrapper model.
+- Each role: `tierId`, `role` (EquationRole), `interaction` (slot/wrapper/argument/foundation), `operator` (alias for role), `symbol`, `baseValue`, `valuePerLevel`.
+- Slot tiers: Ruby (base_value), Sunstone (additive_slot), Citrine (multiplier_slot), Emerald (exponent_slot).
+- Wrapper tiers: Sapphire (summation_wrap), Iolite (product_wrap), Amethyst (factorial_wrap), Diamond (integral_wrap), Nullstone (recursion_wrap).
+- Special: Quartz (time_argument), Sand (foundation).
+- Exports `EQUATION_TIER_ROLES`, `EQUATION_ROLE_BY_TIER`, `EquationRole`, `EquationInteraction`.
 
 ### src/data/particles/particle-config.ts
 - All physics constants for particle simulation.
@@ -76,7 +79,8 @@
 ### src/sim/equation/equation-logic.ts
 - Tap value computation per segment and per tier (only when forge is unlocked).
 - `computeTapGains()` — per-tier mote gains for a single tap (skips Sand foundation tier).
-- `buildEquationView()` — generates `EquationTermView[]` for rendering with `operator` field.
+- `buildEquationView()` — generates `EquationTermView[]` with `operator` field (EquationRole).
+- `buildStructuredEquationHtml()` — builds nested equation HTML from inside out (slot/wrapper model). Quartz sets f(…t), Ruby/Sunstone/Citrine/Emerald modify inner slots, Sapphire+ wrap the expression.
 - `computeEquationOutput()` — evaluates the structured equation for scoring.
 
 ### src/sim/resources/resource-state.ts
@@ -172,13 +176,17 @@
 - Loading screen with company logo and fade-out transition.
 
 ### src/ui/tabs/tab-bar.ts
-- Bottom tab bar: Equation / Upgrades / Looms / Achievements / Settings.
+- Bottom tab bar: Equation / Looms / Tiers / Achievements / Settings.
+- Looms and Equation are the two main progression tabs.
 - `createTabBar()` — returns element and `setActiveTab()` method.
 
 ### src/ui/panels/equation-panel.ts
-- Equation tab content.
-- Shows only the colored f(t) equation display (no upgrades or unlock UI).
-- `buildStructuredEquation()` — generates HTML with colored spans per operator type.
+- Equation tab content — the central Equation Forge panel.
+- Before forge unlock: shows dormant locked forge state with description and unlock button (50 Sand).
+- After forge unlock: shows the structured nested f(t) equation display + equation upgrades grouped by tier.
+- `buildStructuredEquationHtml()` from sim layer generates the nested HTML.
+- Hovering an equation upgrade highlights the corresponding tier's equation fragments.
+- `createEquationPanel(dispatch)` — now takes dispatch handler for forge unlock and upgrade purchases.
 
 ### src/ui/panels/loom-panel.ts
 - Looms tab content.
@@ -186,10 +194,9 @@
 - Updates affordability and visibility based on game state.
 
 ### src/ui/panels/upgrade-panel.ts
-- Upgrade purchase buttons with gem icon sprites.
-- Includes "Unlock Equation Forge" button (50 Sand) shown before forge is unlocked.
-- Tier unlock buttons and per-tier upgrade buttons.
-- `update(state, isDevMode?)` — when devMode=true, shows all upgrades and enables all buttons.
+- Tier progression panel (renamed from Upgrades).
+- Contains only the tier unlock button for unlocking new gemstone tiers.
+- Equation upgrades and forge unlock have moved to the Equation panel.
 
 ### src/ui/panels/achievements-panel.ts
 - Achievements tab content.
@@ -208,8 +215,8 @@
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 3): includes Loom state, `isForgeUnlocked`, and achievement unlock set.
-- Backward-compatible with version 1 and 2 saves.
+- Versioned save format (version 4): includes Loom state, `isForgeUnlocked`, and achievement unlock set.
+- Backward-compatible with version 1, 2, and 3 saves.
 
 ### src/util/format.ts
 - `formatNumber()` — K/M/B/T suffix formatting.

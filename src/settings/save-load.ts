@@ -6,7 +6,7 @@ import { recomputeBonuses } from '../sim/achievements';
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 interface SaveData {
   version: number;
@@ -152,8 +152,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1, 2, or 3 (older saves lack some fields; defaults will apply)
-    if (data.version !== SAVE_VERSION && data.version !== 2 && data.version !== 1) return null;
+    // Accept versions 1, 2, 3, or 4 (older saves lack some fields; defaults will apply)
+    if (data.version !== SAVE_VERSION && data.version !== 3 && data.version !== 2 && data.version !== 1) return null;
     return deserializeGameState(data);
   } catch {
     return null;
