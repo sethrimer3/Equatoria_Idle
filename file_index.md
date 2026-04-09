@@ -33,9 +33,12 @@
 - Exports `LOOM_DEFINITIONS`, `LOOM_BY_TIER`, `loomUpgradeCost()`, `loomProductionRate()`.
 
 ### src/data/equation/equation-tier-roles.ts
-- Defines the mathematical role of each tier in the central equation.
-- Each role: `tierId`, `operator` (foundation/passive_time/manual_input/addition/multiplication/exponentiation/summation/product/factorial/integration/recursion), `symbol`, `baseValue`, `valuePerLevel`.
-- Exports `EQUATION_TIER_ROLES`, `EQUATION_ROLE_BY_TIER`.
+- Defines the mathematical role of each tier in the central equation using the slot-and-wrapper model.
+- Each role: `tierId`, `role` (EquationRole), `interaction` (slot/wrapper/argument/foundation), `operator` (alias for role), `symbol`, `baseValue`, `valuePerLevel`.
+- Slot tiers: Ruby (base_value), Sunstone (additive_slot), Citrine (multiplier_slot), Emerald (exponent_slot).
+- Wrapper tiers: Sapphire (summation_wrap), Iolite (product_wrap), Amethyst (factorial_wrap), Diamond (integral_wrap), Nullstone (recursion_wrap).
+- Special: Quartz (time_argument), Sand (foundation).
+- Exports `EQUATION_TIER_ROLES`, `EQUATION_ROLE_BY_TIER`, `EquationRole`, `EquationInteraction`.
 
 ### src/data/particles/particle-config.ts
 - All physics constants for particle simulation.
@@ -53,7 +56,8 @@
 - `upgradeCostAtLevel()` — cost formula.
 
 ### src/data/upgrades/upgrade-catalog.ts
-- All upgrade definitions: per-tier tap upgrades, auto-tap, global multiplier.
+- All equation upgrade definitions aligned to equation tier roles/operators.
+- Per-tier equation-part upgrades (Quartz → Nullstone), no global equation upgrades.
 - Exports `ALL_UPGRADES`, `UPGRADE_BY_ID`.
 
 ### src/data/balance/balance-constants.ts
@@ -64,7 +68,7 @@
 ### src/sim/looms/loom-state.ts
 - Per-tier Loom state: level, isUnlocked, accumulatorMs.
 - `createLoomState()` — Sand Loom starts unlocked at level 1.
-- `tickLooms()` — passive production tick returning motes per tier.
+- `tickLooms(state, deltaMs, productionBonus?)` — passive production tick; bonus multiplier applied to all rates.
 - `upgradeLoom()`, `unlockLoom()`, `getLoom()`, `getLoomRate()`, `getLoomCost()`.
 
 ### src/sim/equation/equation-state.ts
@@ -75,7 +79,8 @@
 ### src/sim/equation/equation-logic.ts
 - Tap value computation per segment and per tier (only when forge is unlocked).
 - `computeTapGains()` — per-tier mote gains for a single tap (skips Sand foundation tier).
-- `buildEquationView()` — generates `EquationTermView[]` for rendering with `operator` field.
+- `buildEquationView()` — generates `EquationTermView[]` with `operator` field (EquationRole).
+- `buildStructuredEquationHtml()` — builds nested equation HTML from inside out (slot/wrapper model). Quartz sets f(…t), Ruby/Sunstone/Citrine/Emerald modify inner slots, Sapphire+ wrap the expression.
 - `computeEquationOutput()` — evaluates the structured equation for scoring.
 
 ### src/sim/resources/resource-state.ts
@@ -87,12 +92,10 @@
 - `purchaseUpgrade()`, `getUpgradeCost()`, `canAffordUpgrade()`, `getAutoTapIntervalMs()`.
 
 ### src/sim/game-state.ts
-- Aggregate game state combining equation, resources, progression, forge, and Looms.
-- `tapEquation()` — main tap action (only works when forge is unlocked).
-- `tryPurchaseUpgrade()`, `tryUnlockNextTier()` — purchase actions.
-- `tryUnlockEquationForge()` — unlock forge for 50 Sand.
-- `tryUpgradeLoom()` — upgrade a tier's Loom.
-- `simTick()` — per-frame simulation: Loom production + auto-tap.
+- Aggregate game state combining equation, resources, progression, forge, Looms, and achievements.
+- `tapEquation()` — multiplies gains by `achievements.tapMultiplierBonus`.
+- `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)` — optional dev mode cost bypass.
+- `simTick()` — passes loom bonus from achievements; checks achievement unlock conditions each tick.
 
 ### src/sim/forge/forge-state.ts
 - `ForgeCrunchState` interface and factory.
@@ -125,7 +128,12 @@
 - Background animation player for 2402-frame WebP sequence.
 
 ### src/render/background/vermiculate-effect.ts
-- Decorative background tracer effect.
+- Decorative background tracer effect (worm-line style, ported from Thero Chapter 1).
+
+### src/render/background/substrate-effect.ts
+- Decorative background crystalline crack effect (Substrate style, ported from Thero Shin Spire / Chapter 6).
+- Exports `SubstrateEffect` interface and `createSubstrateEffect({ quality })` factory.
+- Quality parameter ('low' | 'medium' | 'high') scales seed count, max fronts, and grain density.
 
 ### src/render/particles/particle-system.ts
 - Full particle physics, merges, forge crunch, shockwaves.
@@ -145,9 +153,20 @@
 ### src/render/forge/forge-renderer.ts
 - Forge sprite rendering with crunch animation overlay.
 
+### src/data/achievements/achievement-definitions.ts
+- 9 achievement definitions for tiers sand through amethyst (last two tiers excluded).
+- Each achievement: id, displayName, description, requiresTierId, requiresLifetimeMotes, bonusKind, bonusMultiplier.
+- Bonus kinds: `tap_multiplier` (×tap gains) or `loom_multiplier` (×loom production).
+- Exports `ACHIEVEMENT_DEFINITIONS`, `ACHIEVEMENT_BY_ID`.
+
+### src/sim/achievements/achievement-state.ts
+- `AchievementState` — set of unlocked achievement IDs plus cached bonus multipliers.
+- `checkAndUnlockAchievements()` — checks lifetime motes for each tier and unlocks achievements.
+- `recomputeBonuses()` — recalculates `tapMultiplierBonus` and `loomMultiplierBonus` from unlocked set.
+
 ### src/input/input-handler.ts
 - `GameAction` type: tap, purchase_upgrade, unlock_next_tier, unlock_equation_forge, upgrade_loom, set_active_tab, save_game, reset_game.
-- `TabId` type: 'equation' | 'looms' | 'resources' | 'settings'.
+- `TabId` type: 'equation' | 'looms' | 'resources' | 'achievements' | 'settings'.
 - `setupInputListeners()` — pointer event → GameAction dispatch.
 
 ### src/input/particle-drag.ts
@@ -157,13 +176,17 @@
 - Loading screen with company logo and fade-out transition.
 
 ### src/ui/tabs/tab-bar.ts
-- Bottom tab bar: Equation / Upgrades / Looms / Settings.
+- Bottom tab bar: Equation / Looms / Tiers / Achievements / Settings.
+- Looms and Equation are the two main progression tabs.
 - `createTabBar()` — returns element and `setActiveTab()` method.
 
 ### src/ui/panels/equation-panel.ts
-- Equation tab content.
-- Shows only the colored f(t) equation display (no upgrades or unlock UI).
-- `buildStructuredEquation()` — generates HTML with colored spans per operator type.
+- Equation tab content — the central Equation Forge panel.
+- Before forge unlock: shows dormant locked forge state with description and unlock button (50 Sand).
+- After forge unlock: shows the structured nested f(t) equation display + equation upgrades grouped by tier.
+- `buildStructuredEquationHtml()` from sim layer generates the nested HTML.
+- Hovering an equation upgrade highlights the corresponding tier's equation fragments.
+- `createEquationPanel(dispatch)` — now takes dispatch handler for forge unlock and upgrade purchases.
 
 ### src/ui/panels/loom-panel.ts
 - Looms tab content.
@@ -171,24 +194,29 @@
 - Updates affordability and visibility based on game state.
 
 ### src/ui/panels/upgrade-panel.ts
-- Upgrade purchase buttons with gem icon sprites.
-- Includes "Unlock Equation Forge" button (50 Sand) shown before forge is unlocked.
-- Tier unlock buttons and per-tier upgrade buttons.
+- Tier progression panel (renamed from Upgrades).
+- Contains only the tier unlock button for unlocking new gemstone tiers.
+- Equation upgrades and forge unlock have moved to the Equation panel.
+
+### src/ui/panels/achievements-panel.ts
+- Achievements tab content.
+- Shows a card per achievement: name, bonus badge, description, progress/unlock status.
+- Locked achievements shown at reduced opacity; unlocked ones highlighted with trophy icon.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
 
 ### src/ui/panels/settings-panel.ts
-- Settings controls: volume, particles, shake, save, reset, credits.
+- Settings controls: volume, particles, shake, developer mode toggle, save, reset, credits.
 
 ### src/settings/settings-state.ts
 - User settings model and localStorage persistence.
+- `isDevMode: boolean` — when true, all game actions bypass cost checks.
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 2): now includes Loom state and `isForgeUnlocked`.
-- Backward-compatible with version 1 saves.
+- Versioned save format (version 4): includes Loom state, `isForgeUnlocked`, and achievement unlock set.
+- Backward-compatible with version 1, 2, and 3 saves.
 
 ### src/util/format.ts
 - `formatNumber()` — K/M/B/T suffix formatting.
-

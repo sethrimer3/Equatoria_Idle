@@ -1,146 +1,180 @@
 import type { GameState } from '../../sim';
-import { buildEquationView } from '../../sim/equation';
+import { buildEquationView, buildStructuredEquationHtml } from '../../sim/equation';
+import type { ActionHandler } from '../../input';
+import { TIER_BY_ID, type TierId } from '../../data/tiers';
+import { EQUATION_PART_UPGRADES } from '../../data/upgrades';
+import { EQUATION_FORGE_COST } from '../../data/balance';
+import { getUpgradeLevel, getUpgradeCost } from '../../sim/progression';
+import { getMotes } from '../../sim/resources';
+import { formatNumber } from '../../util';
+import { getGemIconPath } from '../../render/assets/asset-paths';
 
 /**
- * Equation panel — shows only the equation display.
- * All upgrades and unlock buttons live in the Upgrades tab.
+ * Equation panel — shows the Equation Forge.
+ * Before unlock: dormant locked forge state with unlock button.
+ * After unlock: structured nested equation + equation upgrades grouped by tier.
  */
 export interface EquationPanel {
   element: HTMLElement;
-  update(state: GameState): void;
+  update(state: GameState, isDevMode?: boolean): void;
 }
 
-export function createEquationPanel(): EquationPanel {
+export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
   const panel = document.createElement('div');
   panel.className = 'panel equation-panel';
+
+  // ── Locked forge section ──
+  const lockedSection = document.createElement('div');
+  lockedSection.className = 'forge-locked';
+  lockedSection.innerHTML = `
+    <div class="forge-locked-icon">&#x2726;</div>
+    <div class="forge-locked-title">Equation Forge</div>
+    <div class="forge-locked-desc">
+      The Equation Forge lies dormant, awaiting enough Sand to ignite its power.
+      <br/>Gather Sand from your Loom to awaken it.
+    </div>
+    <div class="forge-locked-cost">Requires <strong>${EQUATION_FORGE_COST} Sand</strong></div>
+  `;
+
+  const forgeUnlockBtn = document.createElement('button');
+  forgeUnlockBtn.className = 'upgrade-btn forge-unlock-btn';
+  forgeUnlockBtn.textContent = `🔥 Ignite the Forge — ${EQUATION_FORGE_COST} Sand`;
+  forgeUnlockBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    dispatch({ kind: 'unlock_equation_forge' });
+  });
+  lockedSection.appendChild(forgeUnlockBtn);
+  panel.appendChild(lockedSection);
+
+  // ── Unlocked forge section ──
+  const unlockedSection = document.createElement('div');
+  unlockedSection.className = 'forge-unlocked';
+  unlockedSection.style.display = 'none';
 
   const eqTitle = document.createElement('h3');
   eqTitle.className = 'panel-title equation-title';
   eqTitle.textContent = 'Equation Forge';
-  panel.appendChild(eqTitle);
+  unlockedSection.appendChild(eqTitle);
 
   const eqDisplay = document.createElement('div');
   eqDisplay.className = 'equation-display';
-  panel.appendChild(eqDisplay);
+  unlockedSection.appendChild(eqDisplay);
 
-  function update(state: GameState): void {
-    const terms = buildEquationView(state.equation);
-    if (terms.length === 0) {
-      eqDisplay.innerHTML = `
-        <span class="eq-prefix">f(t) = </span>
-        <span class="eq-dormant">...</span>
-      `;
+  // Equation upgrades section
+  const upgradesTitle = document.createElement('h4');
+  upgradesTitle.className = 'panel-title eq-upgrades-title';
+  upgradesTitle.textContent = 'Equation Upgrades';
+  unlockedSection.appendChild(upgradesTitle);
+
+  const upgradeButtons: Map<string, HTMLButtonElement> = new Map();
+
+  for (const def of EQUATION_PART_UPGRADES) {
+    const btn = document.createElement('button');
+    btn.className = 'upgrade-btn eq-upgrade-btn';
+    btn.dataset['upgradeId'] = def.id;
+    btn.dataset['tierId'] = def.tierId ?? '';
+
+    btn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      dispatch({ kind: 'purchase_upgrade', upgradeId: def.id });
+    });
+
+    // Hover highlight: add/remove class on the equation display
+    btn.addEventListener('pointerenter', () => {
+      if (def.tierId) {
+        highlightEquationTier(eqDisplay, def.tierId);
+      }
+    });
+    btn.addEventListener('pointerleave', () => {
+      clearEquationHighlight(eqDisplay);
+    });
+
+    unlockedSection.appendChild(btn);
+    upgradeButtons.set(def.id, btn);
+  }
+
+  panel.appendChild(unlockedSection);
+
+  function update(state: GameState, isDevMode = false): void {
+    if (state.equation.isForgeUnlocked) {
+      lockedSection.style.display = 'none';
+      unlockedSection.style.display = '';
+
+      // Update equation display
+      const terms = buildEquationView(state.equation);
+      const html = buildStructuredEquationHtml(terms);
+      if (html) {
+        eqDisplay.innerHTML = html;
+      } else {
+        eqDisplay.innerHTML = `
+          <span class="eq-prefix">f(t) = </span>
+          <span class="eq-dormant">…</span>
+        `;
+      }
+
+      // Update equation upgrade buttons
+      for (const def of EQUATION_PART_UPGRADES) {
+        const btn = upgradeButtons.get(def.id)!;
+        const level = getUpgradeLevel(state.progression, def.id);
+        const cost = getUpgradeCost(state.progression, def.id);
+        const isMaxed = cost === null;
+
+        const costTierId: TierId = def.tierId ?? 'sand';
+        const canAfford = isDevMode || (cost !== null && getMotes(state.resources, costTierId) >= cost);
+
+        // Show only if the tier is unlocked
+        const isVisible = isDevMode || def.tierId === null ||
+          state.equation.segments.some(s => s.tierId === def.tierId && s.isUnlocked);
+        btn.style.display = isVisible ? '' : 'none';
+
+        const tierColor = def.tierId ? TIER_BY_ID.get(def.tierId)?.color ?? '#888' : '#ecf0f1';
+        btn.style.borderColor = tierColor;
+
+        const iconSrc = def.tierId ? getGemIconPath(def.tierId) : '';
+        const iconHtml = def.tierId
+          ? `<img class="gem-icon" src="${iconSrc}" alt="" />`
+          : '';
+
+        if (isMaxed) {
+          btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} — MAX (Lv ${level})</span>`;
+          btn.disabled = true;
+        } else {
+          btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} Lv ${level} — ${formatNumber(cost!)} motes</span>`;
+          btn.disabled = !canAfford;
+        }
+      }
     } else {
-      let html = '<span class="eq-prefix">f(t) = </span>';
-      const operatorGroups = buildStructuredEquation(terms);
-      html += operatorGroups;
-      eqDisplay.innerHTML = html;
+      lockedSection.style.display = '';
+      unlockedSection.style.display = 'none';
+
+      // Update forge unlock button affordability
+      const sandMotes = getMotes(state.resources, 'sand');
+      forgeUnlockBtn.disabled = !isDevMode && sandMotes < EQUATION_FORGE_COST;
+      forgeUnlockBtn.textContent = `🔥 Ignite the Forge — ${formatNumber(sandMotes)} / ${EQUATION_FORGE_COST} Sand`;
     }
   }
 
   return { element: panel, update };
 }
 
-// ─── Helper: build structured equation HTML from terms ──────────
+// ─── Highlight helpers ──────────────────────────────────────────
 
-import type { EquationTermView } from '../../sim/equation';
-
-function buildStructuredEquation(terms: EquationTermView[]): string {
-  let html = '';
-  let needsParenWrap = false;
-
-  // Group terms by their structural role
-  const passiveTerms = terms.filter(t => t.operator === 'passive_time');
-  const manualTerms = terms.filter(t => t.operator === 'manual_input');
-  const additionTerms = terms.filter(t => t.operator === 'addition');
-  const multTerms = terms.filter(t => t.operator === 'multiplication');
-  const expTerms = terms.filter(t => t.operator === 'exponentiation');
-  const sumTerms = terms.filter(t => t.operator === 'summation');
-  const prodTerms = terms.filter(t => t.operator === 'product');
-  const factTerms = terms.filter(t => t.operator === 'factorial');
-  const intTerms = terms.filter(t => t.operator === 'integration');
-  const recTerms = terms.filter(t => t.operator === 'recursion');
-
-  // Build summation prefix if present
-  if (sumTerms.length > 0) {
-    const t = sumTerms[0];
-    html += `<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">Σ<sub>k=1</sub><sup>${Math.floor(t.paramValue)}</sup></span> `;
+function highlightEquationTier(display: HTMLElement, tierId: TierId): void {
+  const terms = display.querySelectorAll('.eq-term');
+  for (const el of terms) {
+    const htmlEl = el as HTMLElement;
+    if (htmlEl.dataset['tier'] === tierId) {
+      htmlEl.classList.add('eq-highlight');
+    } else {
+      htmlEl.classList.add('eq-dimmed');
+    }
   }
+}
 
-  // Build product prefix if present
-  if (prodTerms.length > 0) {
-    const t = prodTerms[0];
-    html += `<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">Π<sub>j=1</sub><sup>${Math.floor(t.paramValue)}</sup></span> `;
+function clearEquationHighlight(display: HTMLElement): void {
+  const terms = display.querySelectorAll('.eq-term');
+  for (const el of terms) {
+    const htmlEl = el as HTMLElement;
+    htmlEl.classList.remove('eq-highlight', 'eq-dimmed');
   }
-
-  // Build integration prefix if present
-  if (intTerms.length > 0) {
-    const t = intTerms[0];
-    html += `<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">∫</span> `;
-  }
-
-  // Build factorial wrapper if present
-  const hasFactorial = factTerms.length > 0;
-
-  // Core expression: build from inner terms
-  const innerParts: string[] = [];
-
-  for (const t of manualTerms) {
-    innerParts.push(`<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">${t.text}</span>`);
-  }
-
-  // Add addition operator between manual and passive
-  if (additionTerms.length > 0 && innerParts.length > 0 && passiveTerms.length > 0) {
-    const at = additionTerms[0];
-    innerParts.push(`<span class="eq-term eq-operator" data-tier="${at.tierId}" style="color:${at.color}"> + </span>`);
-  } else if (innerParts.length > 0 && passiveTerms.length > 0) {
-    innerParts.push('<span class="eq-operator"> + </span>');
-  }
-
-  for (const t of passiveTerms) {
-    innerParts.push(`<span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">${t.text}</span>`);
-  }
-
-  // Wrap in parens if multiplication or exponent follows
-  needsParenWrap = (multTerms.length > 0 || expTerms.length > 0) && innerParts.length > 1;
-
-  let coreExpr = innerParts.join('');
-  if (needsParenWrap) {
-    coreExpr = `(${coreExpr})`;
-  }
-
-  // Apply multiplication
-  if (multTerms.length > 0) {
-    const mt = multTerms[0];
-    coreExpr = `${coreExpr} <span class="eq-term" data-tier="${mt.tierId}" style="color:${mt.color}">${mt.text}</span>`;
-  }
-
-  // Apply exponentiation as superscript
-  if (expTerms.length > 0) {
-    const et = expTerms[0];
-    const expVal = et.text.replace('^ ', '');
-    coreExpr = `(${coreExpr})<sup class="eq-term" data-tier="${et.tierId}" style="color:${et.color}">${expVal}</sup>`;
-  }
-
-  // Apply factorial
-  if (hasFactorial) {
-    const ft = factTerms[0];
-    coreExpr = `(${coreExpr})<span class="eq-term" data-tier="${ft.tierId}" style="color:${ft.color}">!</span>`;
-  }
-
-  html += coreExpr;
-
-  // Integration suffix
-  if (intTerms.length > 0) {
-    const t = intTerms[0];
-    html += ` <span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}">dt</span>`;
-  }
-
-  // Recursion
-  if (recTerms.length > 0) {
-    const t = recTerms[0];
-    html += ` <span class="eq-term" data-tier="${t.tierId}" style="color:${t.color}"> · f(f)</span>`;
-  }
-
-  return html;
 }

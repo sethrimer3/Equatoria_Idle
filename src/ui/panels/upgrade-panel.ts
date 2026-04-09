@@ -1,19 +1,18 @@
 import type { GameState } from '../../sim';
 import type { ActionHandler } from '../../input';
-import { ALL_UPGRADES } from '../../data/upgrades';
-import { TIER_BY_ID, TIERS, type TierId } from '../../data/tiers';
-import { tierUnlockCost, EQUATION_FORGE_COST } from '../../data/balance';
-import { getUpgradeLevel, getUpgradeCost } from '../../sim/progression';
+import { TIER_BY_ID, TIERS } from '../../data/tiers';
+import { tierUnlockCost } from '../../data/balance';
 import { getMotes } from '../../sim/resources';
 import { formatNumber } from '../../util';
-import { getGemIconPath } from '../../render/assets/asset-paths';
 
 /**
- * Upgrade panel — DOM-based panel listing available upgrades.
+ * Upgrade panel — now shows only tier unlock progression.
+ * Equation upgrades have moved to the Equation tab.
+ * Forge unlock has moved to the Equation tab.
  */
 export interface UpgradePanel {
   element: HTMLElement;
-  update(state: GameState): void;
+  update(state: GameState, isDevMode?: boolean): void;
 }
 
 export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
@@ -22,21 +21,13 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
 
   const title = document.createElement('h3');
   title.className = 'panel-title';
-  title.textContent = 'Upgrades';
+  title.textContent = 'Tier Progression';
   panel.appendChild(title);
 
-  // Forge unlock button (shown only when forge is still locked)
-  const forgeUnlockSection = document.createElement('div');
-  forgeUnlockSection.className = 'upgrade-section';
-  const forgeUnlockBtn = document.createElement('button');
-  forgeUnlockBtn.className = 'upgrade-btn forge-unlock-btn';
-  forgeUnlockBtn.textContent = `🔥 Unlock Equation Forge — ${EQUATION_FORGE_COST} Sand`;
-  forgeUnlockBtn.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    dispatch({ kind: 'unlock_equation_forge' });
-  });
-  forgeUnlockSection.appendChild(forgeUnlockBtn);
-  panel.appendChild(forgeUnlockSection);
+  const subtitle = document.createElement('p');
+  subtitle.className = 'panel-subtitle';
+  subtitle.textContent = 'Unlock new gemstone tiers to expand the equation';
+  panel.appendChild(subtitle);
 
   // Tier unlock button
   const unlockSection = document.createElement('div');
@@ -50,79 +41,20 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
   unlockSection.appendChild(unlockBtn);
   panel.appendChild(unlockSection);
 
-  // Upgrade buttons
-  const upgradeButtons: Map<string, HTMLButtonElement> = new Map();
-
-  for (const def of ALL_UPGRADES) {
-    const btn = document.createElement('button');
-    btn.className = 'upgrade-btn';
-    btn.dataset['upgradeId'] = def.id;
-    btn.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      dispatch({ kind: 'purchase_upgrade', upgradeId: def.id });
-    });
-    panel.appendChild(btn);
-    upgradeButtons.set(def.id, btn);
-  }
-
-  function update(state: GameState): void {
-    // Update forge unlock button
-    if (state.equation.isForgeUnlocked) {
-      forgeUnlockSection.style.display = 'none';
-    } else {
-      forgeUnlockSection.style.display = '';
-      const sandMotes = getMotes(state.resources, 'sand');
-      forgeUnlockBtn.disabled = sandMotes < EQUATION_FORGE_COST;
-      forgeUnlockBtn.textContent = `🔥 Unlock Equation Forge — ${formatNumber(sandMotes)} / ${EQUATION_FORGE_COST} Sand`;
-    }
-
+  function update(state: GameState, isDevMode = false): void {
     // Update unlock button
     const nextIndex = state.progression.unlockedTierCount;
     if (nextIndex < TIERS.length && !TIERS[nextIndex].isSecret) {
       const nextTier = TIERS[nextIndex];
       const cost = tierUnlockCost(nextIndex);
       const payTierId = TIERS[nextIndex - 1]?.id ?? 'sand';
-      const canAfford = getMotes(state.resources, payTierId) >= cost;
+      const canAfford = isDevMode || getMotes(state.resources, payTierId) >= cost;
       unlockBtn.textContent = `🔓 Unlock ${nextTier.displayName} — ${formatNumber(cost)} ${TIER_BY_ID.get(payTierId)?.displayName ?? ''} motes`;
       unlockBtn.disabled = !canAfford;
       unlockBtn.style.borderColor = nextTier.color;
       unlockSection.style.display = '';
     } else {
       unlockSection.style.display = 'none';
-    }
-
-    // Update upgrade buttons
-    for (const def of ALL_UPGRADES) {
-      const btn = upgradeButtons.get(def.id)!;
-      const level = getUpgradeLevel(state.progression, def.id);
-      const cost = getUpgradeCost(state.progression, def.id);
-      const isMaxed = cost === null;
-
-      // Determine which tier's motes to check affordability
-      const costTierId: TierId = def.tierId ?? 'sand';
-      const canAfford = cost !== null && getMotes(state.resources, costTierId) >= cost;
-
-      // Check if upgrade is visible (tier must be unlocked for tier upgrades)
-      const isVisible = def.tierId === null ||
-        state.equation.segments.some(s => s.tierId === def.tierId && s.isUnlocked);
-      btn.style.display = isVisible ? '' : 'none';
-
-      const tierColor = def.tierId ? TIER_BY_ID.get(def.tierId)?.color ?? '#888' : '#ecf0f1';
-      btn.style.borderColor = tierColor;
-
-      // Build button content with gem icon
-      const iconSrc = def.tierId ? getGemIconPath(def.tierId) : '';
-      const iconHtml = def.tierId
-        ? `<img class="gem-icon" src="${iconSrc}" alt="" />`
-        : '';
-
-      if (isMaxed) {
-        btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} — MAX (Lv ${level})</span>`;
-        btn.disabled = true;
-      } else {
-        btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} Lv ${level} — ${formatNumber(cost!)} motes</span>`;
-        btn.disabled = !canAfford;
-      }
     }
   }
 

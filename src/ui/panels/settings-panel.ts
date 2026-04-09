@@ -43,12 +43,50 @@ export function createSettingsPanel(
   });
   panel.appendChild(particleRow);
 
+  // Graphics quality switch
+  const graphicsRow = createSelectRow(
+    'Graphics Quality',
+    settings.graphicsQuality,
+    [
+      { value: 'high', label: 'High' },
+      { value: 'low', label: 'Low' },
+    ],
+    (v) => {
+      settings.graphicsQuality = v as SettingsState['graphicsQuality'];
+      saveSettings(settings);
+    },
+  );
+  panel.appendChild(graphicsRow);
+
+  // Background style selector
+  const bgStyleRow = createSelectRow(
+    'Background Style',
+    settings.backgroundStyle,
+    [
+      { value: 'vermiculate', label: 'Vermiculate' },
+      { value: 'substrate',   label: 'Substrate (Crystal)' },
+      { value: 'none',        label: 'None' },
+    ],
+    (v) => {
+      settings.backgroundStyle = v as SettingsState['backgroundStyle'];
+      saveSettings(settings);
+    },
+  );
+  panel.appendChild(bgStyleRow);
+
   // Screen shake toggle
   const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
     settings.isScreenShakeEnabled = v;
     saveSettings(settings);
   });
   panel.appendChild(shakeRow);
+
+  // Developer mode toggle
+  const devModeRow = createToggleRow('Developer Mode', settings.isDevMode, (v) => {
+    settings.isDevMode = v;
+    saveSettings(settings);
+  });
+  panel.appendChild(devModeRow);
 
   // Save button
   const saveBtn = document.createElement('button');
@@ -143,6 +181,36 @@ function createToggleRow(
     onChange(checkbox.checked);
   });
   row.appendChild(checkbox);
+
+  return row;
+}
+
+function createSelectRow(
+  label: string,
+  initialValue: string,
+  options: Array<{ value: string; label: string }>,
+  onChange: (value: string) => void,
+): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'settings-row';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const select = document.createElement('select');
+  select.className = 'settings-select';
+  for (const optionDef of options) {
+    const option = document.createElement('option');
+    option.value = optionDef.value;
+    option.textContent = optionDef.label;
+    select.appendChild(option);
+  }
+  select.value = initialValue;
+  select.addEventListener('change', () => {
+    onChange(select.value);
+  });
+  row.appendChild(select);
 
   return row;
 }

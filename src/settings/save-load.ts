@@ -1,11 +1,12 @@
 import type { GameState } from '../sim/game-state';
 import type { TierId } from '../data/tiers';
 import { createGameState } from '../sim/game-state';
+import { recomputeBonuses } from '../sim/achievements';
 
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 4;
 
 interface SaveData {
   version: number;
@@ -27,6 +28,9 @@ interface SaveData {
   };
   looms: {
     looms: Array<{ tierId: string; level: number; isUnlocked: boolean }>;
+  };
+  achievements: {
+    unlockedIds: string[];
   };
   elapsedMs: number;
 }
@@ -67,6 +71,9 @@ export function serializeGameState(state: GameState): SaveData {
         level: l.level,
         isUnlocked: l.isUnlocked,
       })),
+    },
+    achievements: {
+      unlockedIds: Array.from(state.achievements.unlockedIds),
     },
     elapsedMs: state.elapsedMs,
   };
@@ -115,6 +122,14 @@ export function deserializeGameState(data: SaveData): GameState {
     }
   }
 
+  // Achievements
+  if (data.achievements?.unlockedIds) {
+    for (const id of data.achievements.unlockedIds) {
+      state.achievements.unlockedIds.add(id);
+    }
+    recomputeBonuses(state.achievements);
+  }
+
   state.elapsedMs = data.elapsedMs;
 
   return state;
@@ -137,8 +152,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept version 1 or 2 (v1 just won't have looms/forge data)
-    if (data.version !== SAVE_VERSION && data.version !== 1) return null;
+    // Accept versions 1, 2, 3, or 4 (older saves lack some fields; defaults will apply)
+    if (data.version !== SAVE_VERSION && data.version !== 3 && data.version !== 2 && data.version !== 1) return null;
     return deserializeGameState(data);
   } catch {
     return null;

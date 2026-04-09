@@ -7,3 +7,4 @@ export * from './progression';
 export * from './forge';
 export * from './particles';
 export * from './looms';
+export * from './achievements';

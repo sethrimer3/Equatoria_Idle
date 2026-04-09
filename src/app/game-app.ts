@@ -26,7 +26,7 @@ import {
 } from '../render';
 import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
 import { preloadForgeSprites } from '../render/forge/forge-renderer';
-import { createBackgroundAnimation, type BackgroundAnimation, createVermiculateEffect, type VermiculateEffect } from '../render/background';
+import { createBackgroundAnimation, type BackgroundAnimation, createVermiculateEffect, type VermiculateEffect, createSubstrateEffect, type SubstrateEffect } from '../render/background';
 import { setupInputListeners, type GameAction, type TabId } from '../input';
 import {
   createParticleDragState,
@@ -36,12 +36,13 @@ import {
   type ParticleDragState,
 } from '../input/particle-drag';
 import { createTabBar, type TabBar } from '../ui/tabs';
-import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel } from '../ui/panels';
+import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
 import type { UpgradePanel } from '../ui/panels/upgrade-panel';
 import type { ResourcePanel } from '../ui/panels/resource-panel';
 import type { SettingsPanel } from '../ui/panels/settings-panel';
 import type { LoomPanel } from '../ui/panels/loom-panel';
 import type { EquationPanel } from '../ui/panels/equation-panel';
+import type { AchievementsPanel } from '../ui/panels/achievements-panel';
 import { createLoadingScreen } from '../ui/loading';
 import { loadSettings, saveGame, loadGame, deleteSave } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
@@ -65,6 +66,18 @@ interface AppState {
   forge: ForgeCrunchState;
   generatorState: GeneratorState;
   particleDrag: ParticleDragState;
+}
+
+/** Configuration object grouping all UI panels for tab switching. */
+interface UIPanels {
+  tabBar: TabBar;
+  upgradePanel: UpgradePanel;
+  resourcePanel: ResourcePanel;
+  settingsPanel: SettingsPanel;
+  loomPanel: LoomPanel;
+  equationPanel: EquationPanel;
+  achievementsPanel: AchievementsPanel;
+  panelsContainer: HTMLElement;
 }
 
 // ─── Bootstrap ──────────────────────────────────────────────────
@@ -91,7 +104,7 @@ export async function startApp(): Promise<void> {
 
   const appState: AppState = {
     game,
-    activeTab: 'equation',
+    activeTab: 'looms',
     tapFlashAlpha: 0,
     animPulse: 0,
     forge,
@@ -105,6 +118,11 @@ export async function startApp(): Promise<void> {
 
   // ── Vermiculate background effect ──
   const vermiculateEffect: VermiculateEffect = createVermiculateEffect();
+
+  // ── Substrate background effect ──
+  const substrateEffect: SubstrateEffect = createSubstrateEffect({
+    quality: settings.graphicsQuality === 'low' ? 'low' : 'high',
+  });
 
   // ── Canvas container (full screen) ──
   const canvasContainer = document.createElement('div');
@@ -128,18 +146,31 @@ export async function startApp(): Promise<void> {
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch);
   const loomPanel = createLoomPanel(dispatch);
-  const equationPanel = createEquationPanel();
+  const equationPanel = createEquationPanel(dispatch);
+  const achievementsPanel = createAchievementsPanel();
 
   panelsInner.appendChild(equationPanel.element);
   panelsInner.appendChild(loomPanel.element);
   panelsInner.appendChild(upgradePanel.element);
   panelsInner.appendChild(resourcePanel.element);
+  panelsInner.appendChild(achievementsPanel.element);
   panelsInner.appendChild(settingsPanel.element);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
 
-  setActiveTab(appState, tabBar, upgradePanel, resourcePanel, settingsPanel, loomPanel, equationPanel, panelsContainer);
+  const uiPanels: UIPanels = {
+    tabBar,
+    upgradePanel,
+    resourcePanel,
+    settingsPanel,
+    loomPanel,
+    equationPanel,
+    achievementsPanel,
+    panelsContainer,
+  };
+
+  setActiveTab(appState, uiPanels);
 
   // ── Particle system ──
   const particles = new ParticleSystem();
@@ -189,6 +220,7 @@ export async function startApp(): Promise<void> {
     const h = canvasContainer.clientHeight;
     bgAnimation.resize(w, h);
     vermiculateEffect.reset();
+    substrateEffect.reset();
     recomputeGenerators();
   };
   window.addEventListener('resize', onResize);
@@ -197,6 +229,7 @@ export async function startApp(): Promise<void> {
   bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
   // ── Action handler ──
   function handleAction(state: AppState, action: GameAction): void {
+    const devMode = settings.isDevMode;
     switch (action.kind) {
       case 'tap': {
         if (!state.game.equation.isForgeUnlocked) break;
@@ -218,30 +251,30 @@ export async function startApp(): Promise<void> {
         break;
       }
       case 'purchase_upgrade':
-        tryPurchaseUpgrade(state.game, action.upgradeId);
+        tryPurchaseUpgrade(state.game, action.upgradeId, devMode);
         break;
       case 'unlock_next_tier':
-        tryUnlockNextTier(state.game);
+        tryUnlockNextTier(state.game, devMode);
         recomputeGenerators();
         break;
       case 'unlock_equation_forge':
-        tryUnlockEquationForge(state.game);
+        tryUnlockEquationForge(state.game, devMode);
         break;
       case 'upgrade_loom':
-        tryUpgradeLoom(state.game, action.tierId as TierId);
+        tryUpgradeLoom(state.game, action.tierId as TierId, devMode);
         break;
       case 'set_active_tab':
         state.activeTab = action.tabId;
-        setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel, loomPanel, equationPanel, panelsContainer);
+        setActiveTab(state, uiPanels);
         break;
       case 'save_game':
         saveGame(state.game);
         break;
       case 'reset_game':
         deleteSave();
-        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
+        Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'looms' });
         recomputeGenerators();
-        setActiveTab(state, tabBar, upgradePanel, resourcePanel, settingsPanel, loomPanel, equationPanel, panelsContainer);
+        setActiveTab(state, uiPanels);
         break;
     }
   }
@@ -299,6 +332,7 @@ export async function startApp(): Promise<void> {
 
     const equationCenterX = cc.widthPx / 2;
     const equationCenterY = cc.heightPx / 2;
+    const isLowGraphics = settings.graphicsQuality === 'low';
 
     // Ensure generators are initialized on first frame
     if (appState.generatorState.generators.length === 0) {
@@ -314,6 +348,7 @@ export async function startApp(): Promise<void> {
       cc.widthPx,
       cc.heightPx,
       appState.forge,
+      { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
     );
 
     // ── Update background animation ──
@@ -322,8 +357,14 @@ export async function startApp(): Promise<void> {
     // ── Render ──
     clearCanvas(cc);
     drawBackground(cc, '#000000');
-    vermiculateEffect.update(nowMs, cc.widthPx, cc.heightPx);
-    vermiculateEffect.draw(cc.ctx);
+    if (settings.backgroundStyle === 'vermiculate') {
+      vermiculateEffect.update(nowMs, cc.widthPx, cc.heightPx);
+      vermiculateEffect.draw(cc.ctx);
+    } else if (settings.backgroundStyle === 'substrate') {
+      substrateEffect.update(nowMs, cc.widthPx, cc.heightPx);
+      substrateEffect.draw(cc.ctx);
+    }
+    // 'none' → skip both
 
     drawGenerators(
       cc,
@@ -348,7 +389,7 @@ export async function startApp(): Promise<void> {
 
     drawScore(cc, getScore(appState.game));
 
-    particles.draw(cc);
+    particles.draw(cc, { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics });
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
       updateUI();
@@ -364,42 +405,40 @@ export async function startApp(): Promise<void> {
 
   function updateUI(): void {
     if (appState.activeTab === 'looms') {
-      loomPanel.update(appState.game);
+      uiPanels.loomPanel.update(appState.game);
     } else if (appState.activeTab === 'resources') {
-      upgradePanel.update(appState.game);
-      resourcePanel.update(appState.game);
+      uiPanels.equationPanel.update(appState.game, settings.isDevMode);
+      uiPanels.upgradePanel.update(appState.game, settings.isDevMode);
+      uiPanels.resourcePanel.update(appState.game);
+    } else if (appState.activeTab === 'achievements') {
+      uiPanels.achievementsPanel.update(appState.game);
     }
   }
 
-  function setActiveTab(
-    state: AppState,
-    bar: TabBar,
-    upPanel: UpgradePanel,
-    resPanel: ResourcePanel,
-    setPanel: SettingsPanel,
-    lPanel: LoomPanel,
-    eqPanel: EquationPanel,
-    panelsCont: HTMLElement,
-  ): void {
-    bar.setActiveTab(state.activeTab);
+  function setActiveTab(state: AppState, panels: UIPanels): void {
+    panels.tabBar.setActiveTab(state.activeTab);
 
-    // Equation tab is pure canvas render; other tabs show overlay panels.
+    // Equation tab shows canvas only; all other tabs show panel overlays
     const shouldShowPanels = state.activeTab !== 'equation';
-    panelsCont.classList.toggle('panels-visible', shouldShowPanels);
+    panels.panelsContainer.classList.toggle('panels-visible', shouldShowPanels);
 
     // Show/hide individual panels
-    eqPanel.element.style.display = state.activeTab === 'equation' ? '' : 'none';
-    lPanel.element.style.display = state.activeTab === 'looms' ? '' : 'none';
-    upPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
-    resPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
-    setPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
+    panels.equationPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
+    panels.loomPanel.element.style.display = state.activeTab === 'looms' ? '' : 'none';
+    panels.upgradePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
+    panels.resourcePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
+    panels.achievementsPanel.element.style.display = state.activeTab === 'achievements' ? '' : 'none';
+    panels.settingsPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
 
     // Immediately update visible panel
     if (state.activeTab === 'looms') {
-      lPanel.update(appState.game);
+      panels.loomPanel.update(appState.game);
     } else if (state.activeTab === 'resources') {
-      upPanel.update(appState.game);
-      resPanel.update(appState.game);
+      panels.equationPanel.update(appState.game, settings.isDevMode);
+      panels.upgradePanel.update(appState.game, settings.isDevMode);
+      panels.resourcePanel.update(appState.game);
+    } else if (state.activeTab === 'achievements') {
+      panels.achievementsPanel.update(appState.game);
     }
   }
 

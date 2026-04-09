@@ -5,8 +5,8 @@
 
 import type { TierId } from '../../data/tiers';
 
-/** Base path for all assets (served from public/). */
-const BASE = 'assets';
+/** Base path for all assets in the repository root. */
+const BASE = 'ASSETS';
 
 // ── Gem Icons ──────────────────────────────────────────────────
 
@@ -26,65 +26,55 @@ const GEM_ICON_MAP: Record<TierId, string> = {
 };
 
 export function getGemIconPath(tierId: TierId): string {
-  return `${BASE}/sprites/gemIcons/${GEM_ICON_MAP[tierId]}.webp`;
+  return `${BASE}/SPRITES/gemIcons/${GEM_ICON_MAP[tierId]}.webp`;
 }
 
 // ── Refined Gem Icons ──────────────────────────────────────────
 
 const REFINED_GEM_MAP: Record<TierId, string> = {
-  sand: 'sandRefinedGem',
-  quartz: 'quartzRefinedGem',
-  ruby: 'rubyRefinedGem',
-  sunstone: 'sunstoneRefinedGem',
-  citrine: 'citrineRefinedGem',
-  emerald: 'emeraldRefinedGem',
-  sapphire: 'sapphireRefinedGem',
-  iolite: 'ioliteRefinedGem',
-  amethyst: 'amethystRefinedGem',
-  diamond: 'diamondRefinedGem',
-  nullstone: 'nullstoneRefinedGem',
+  sand: 'refinedSand',
+  quartz: 'refinedQuartz',
+  ruby: 'refinedRuby',
+  sunstone: 'refinedSunstone',
+  citrine: 'refinedCitrine',
+  emerald: 'refinedEmerald',
+  sapphire: 'refinedSapphire',
+  iolite: 'refinedIolite',
+  amethyst: 'refinedAmethyst',
+  diamond: 'refinedDiamond',
+  nullstone: 'refinedNullstone',
 };
 
 export function getRefinedGemPath(tierId: TierId): string {
-  return `${BASE}/sprites/refinedGems/${REFINED_GEM_MAP[tierId]}.webp`;
+  return `${BASE}/SPRITES/refinedGems/${REFINED_GEM_MAP[tierId]}.webp`;
 }
 
-const LEGACY_REFINED_GEM_MAP: Record<TierId, string> = {
-  sand: 'aleph_resourceIcon',
-  quartz: 'quartzLens',
-  ruby: 'rubyLens',
-  sunstone: 'sunstoneLens',
-  citrine: 'citrineLens',
-  emerald: 'emeraldLens',
-  sapphire: 'sapphireLens',
-  iolite: 'ioliteLens',
-  amethyst: 'amethystLens',
-  diamond: 'diamondLens',
-  nullstone: 'nullstoneLens',
-};
-
+/**
+ * Legacy fallback path currently aliases to the same file set in ASSETS.
+ * Keep this helper to preserve onerror fallback call sites.
+ */
 export function getRefinedGemFallbackPath(tierId: TierId): string {
-  return `${BASE}/sprites/refinedGems/${LEGACY_REFINED_GEM_MAP[tierId]}.webp`;
+  return getRefinedGemPath(tierId);
 }
 
 // ── Generator Sprites ──────────────────────────────────────────
 
 /** Maps tier unlock order (0-based) to generator sprite index (1-based). */
 export function getGeneratorSpritePath(unlockOrder: number): string {
-  return `${BASE}/sprites/generators/tier${unlockOrder + 1}.webp`;
+  return `${BASE}/SPRITES/generators/tier${unlockOrder + 1}.webp`;
 }
 
 // ── Forge Sprites ──────────────────────────────────────────────
 
-export const FORGE_SPRITE_PATH = `${BASE}/sprites/equationForge/forge.webp`;
-export const FORGE_SPRITE_ALT_PATH = `${BASE}/sprites/equationForge/forge2.webp`;
-export const FORGE_SPRITE_LEGACY_PATH = `${BASE}/sprites/equationForge/forge.png`;
-export const FORGE_SPRITE_ALT_LEGACY_PATH = `${BASE}/sprites/equationForge/forge2.png`;
+export const FORGE_SPRITE_PATH = `${BASE}/SPRITES/equationForge/forge.webp`;
+export const FORGE_SPRITE_ALT_PATH = `${BASE}/SPRITES/equationForge/forge2.webp`;
+export const FORGE_SPRITE_LEGACY_PATH = `${BASE}/SPRITES/equationForge/ORIGINAL-forge.png`;
+export const FORGE_SPRITE_ALT_LEGACY_PATH = FORGE_SPRITE_ALT_PATH;
 
 // ── Logo ───────────────────────────────────────────────────────
 
-export const LOGO_PATH = `${BASE}/sprites/logo/gravy_thyme_logo.webp`;
-export const LOGO_ALT_PATH = `${BASE}/sprites/logo/gravy_thyme_logo_alt.webp`;
+export const LOGO_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo.webp`;
+export const LOGO_ALT_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo_alt.webp`;
 
 // ── Background Animation ───────────────────────────────────────
 
@@ -93,5 +83,5 @@ export const BG_ANIMATION_FPS = 24;
 
 export function getBgAnimationFramePath(frameIndex: number): string {
   const padded = String(frameIndex).padStart(5, '0');
-  return `${BASE}/animations/menuBackground_animation/menuBackground_animation_${padded}.webp`;
+  return `${BASE}/ANIMATIONS/menuBackground_animation/menuBackground_animation_${padded}.webp`;
 }

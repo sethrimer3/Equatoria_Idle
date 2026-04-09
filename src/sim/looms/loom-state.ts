@@ -81,14 +81,19 @@ export function unlockLoom(state: LoomState, tierId: TierId): boolean {
 /**
  * Tick all Looms, returning motes produced per tier.
  * Uses an accumulator to handle fractional production smoothly.
+ * @param productionBonus - multiplicative bonus applied to all loom rates (≥ 1).
  */
-export function tickLooms(state: LoomState, deltaMs: number): Map<TierId, number> {
+export function tickLooms(
+  state: LoomState,
+  deltaMs: number,
+  productionBonus = 1,
+): Map<TierId, number> {
   const produced = new Map<TierId, number>();
 
   for (const loom of state.looms) {
     if (!loom.isUnlocked || loom.level <= 0) continue;
 
-    const rate = getLoomRate(loom.tierId, loom.level);
+    const rate = getLoomRate(loom.tierId, loom.level) * productionBonus;
     if (rate <= 0) continue;
 
     // Accumulate fractional motes

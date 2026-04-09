@@ -3,8 +3,12 @@ export interface SettingsState {
   musicVolume: number;     // 0–1
   sfxVolume: number;       // 0–1
   isReducedParticles: boolean;
+  graphicsQuality: 'high' | 'low';
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
+  backgroundStyle: 'vermiculate' | 'substrate' | 'none';
+  /** When true: all upgrades/unlocks are available regardless of cost; costs are not deducted. */
+  isDevMode: boolean;
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -12,8 +16,11 @@ export function createDefaultSettings(): SettingsState {
     musicVolume: 0.5,
     sfxVolume: 0.7,
     isReducedParticles: false,
+    graphicsQuality: 'high',
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
+    backgroundStyle: 'vermiculate',
+    isDevMode: false,
   };
 }
 
