@@ -301,7 +301,6 @@ export function computeEquationOutput(
   if (!hasBase) return 0;
 
   // Build equation: ((base + additive) × multiplier) ^ exponent
-  const timeFactor = timeScale * Math.min(elapsedSec, MAX_PASSIVE_TIME_SEC);
   let coreValue = (baseValue + additiveValue) * multiplierValue;
   coreValue = Math.pow(Math.max(coreValue, 1), exponentValue);
 
@@ -316,14 +315,14 @@ export function computeEquationOutput(
   }
 
   if (integralFactor > 0) {
-    coreValue += integralFactor * timeFactor * 0.01;
+    coreValue += integralFactor * Math.min(elapsedSec, MAX_PASSIVE_TIME_SEC) * 0.01;
   }
 
   if (recursionFactor > 0) {
     coreValue *= (1 + recursionFactor * 0.1);
   }
 
-  // Apply time scale as a global factor
+  // Quartz time scale applied once as a global factor
   coreValue *= timeScale;
 
   return coreValue * globalMultiplier;

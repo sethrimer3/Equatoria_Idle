@@ -419,9 +419,8 @@ export async function startApp(): Promise<void> {
   function setActiveTab(state: AppState, panels: UIPanels): void {
     panels.tabBar.setActiveTab(state.activeTab);
 
-    // Equation tab shows both the canvas AND a panels overlay for upgrades/forge unlock.
-    // Other tabs show overlay panels only.
-    const shouldShowPanels = state.activeTab !== 'equation' || true;
+    // All tabs now show panel overlays (including Equation tab which has upgrades)
+    const shouldShowPanels = true;
     panels.panelsContainer.classList.toggle('panels-visible', shouldShowPanels);
 
     // Show/hide individual panels

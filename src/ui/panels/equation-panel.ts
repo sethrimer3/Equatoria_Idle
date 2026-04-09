@@ -27,7 +27,7 @@ export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
   const lockedSection = document.createElement('div');
   lockedSection.className = 'forge-locked';
   lockedSection.innerHTML = `
-    <div class="forge-locked-icon">⚒</div>
+    <div class="forge-locked-icon">&#x2726;</div>
     <div class="forge-locked-title">Equation Forge</div>
     <div class="forge-locked-desc">
       The Equation Forge lies dormant, awaiting enough Sand to ignite its power.
