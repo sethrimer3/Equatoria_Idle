@@ -6,7 +6,7 @@ import {
   tryUnlockEquationForge,
   tryUpgradeLoom,
   simTick,
-  getScore,
+  getEquivalence,
   buildEquationView,
   type GameState,
 } from '../sim';
@@ -98,6 +98,13 @@ export async function startApp(): Promise<void> {
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
   const settings = loadSettings();
+
+  // ── Preload Pixelify Sans font for canvas rendering ──
+  try {
+    await document.fonts.load("bold 12px 'Pixelify Sans'");
+  } catch {
+    // Font load failure is non-fatal; fall back to monospace
+  }
 
   const forge = createForgeCrunchState();
   const generatorState = createGeneratorState();
@@ -387,7 +394,7 @@ export async function startApp(): Promise<void> {
       }
     }
 
-    drawScore(cc, getScore(appState.game));
+    drawScore(cc, getEquivalence(appState.game.resources), particles.getOnScreenMoteCount(), settings.numberFormat);
 
     particles.draw(cc, { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics });
 

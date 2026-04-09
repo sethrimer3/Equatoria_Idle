@@ -42,6 +42,26 @@ export function getTotalMotes(state: ResourceState): number {
   return total;
 }
 
+/**
+ * Equivalence score: product of all per-tier mote totals that are > 0.
+ * Early game (only one tier) it equals that tier's total; once multiple
+ * tiers have motes it grows multiplicatively.
+ */
+export function getEquivalence(state: ResourceState): number {
+  let equivalence = 0;
+  let first = true;
+  for (const v of state.moteTotals.values()) {
+    if (v <= 0) continue;
+    if (first) {
+      equivalence = v;
+      first = false;
+    } else {
+      equivalence *= v;
+    }
+  }
+  return equivalence;
+}
+
 // ─── Mutations ──────────────────────────────────────────────────
 
 export function addMotes(state: ResourceState, tierId: TierId, amount: number): void {

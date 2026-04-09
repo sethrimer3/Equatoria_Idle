@@ -3,6 +3,7 @@ export {
   getMotes,
   getLifetimeMotes,
   getTotalMotes,
+  getEquivalence,
   addMotes,
   spendMotes,
 } from './resource-state';
