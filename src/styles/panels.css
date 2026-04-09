@@ -1,0 +1,243 @@
+/* ═══════════════════════════════════════════════════════════════
+   Panels Overlay Styles
+   Panel container, base panel, upgrades, resources, settings
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Panels overlay container ────────────────────────────────── */
+#panels-container {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: calc(100% - var(--tab-height) - var(--safe-bottom));
+  z-index: 5;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+
+  /* Slide-in transition from the right */
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+#panels-container.panels-visible {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* Panel overlay background — 80% opaque dark */
+#panels-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-overlay);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Custom scrollbar for panels */
+#panels-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+#panels-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#panels-container::-webkit-scrollbar-thumb {
+  background: var(--accent-glow);
+  border-radius: 3px;
+}
+
+/* Inner panel content padding */
+.panels-inner {
+  position: relative;
+  padding: 12px 12px;
+  padding-bottom: 16px;
+  min-height: 100%;
+}
+
+/* ── Panel base ──────────────────────────────────────────────── */
+.panel {
+  margin-bottom: 8px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.panel-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+/* ── Upgrade buttons ─────────────────────────────────────────── */
+.upgrade-section {
+  margin-bottom: 6px;
+}
+
+.upgrade-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  min-height: 44px;
+}
+
+.upgrade-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.upgrade-btn:not(:disabled):active {
+  background: rgba(201, 168, 76, 0.12);
+}
+
+.unlock-btn {
+  background: rgba(26, 26, 46, 0.85);
+  border-style: dashed;
+  justify-content: center;
+}
+
+.upgrade-btn .gem-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: auto;
+}
+
+.upgrade-btn .upgrade-text {
+  flex: 1;
+}
+
+/* ── Resource rows ───────────────────────────────────────────── */
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  min-height: 36px;
+}
+
+.resource-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: auto;
+}
+
+.resource-name {
+  font-weight: 700;
+  min-width: 60px;
+}
+
+.resource-value {
+  font-weight: 600;
+  flex: 1;
+  text-align: right;
+}
+
+.resource-lifetime {
+  color: var(--text-secondary);
+  font-size: 11px;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* ── Settings panel ──────────────────────────────────────────── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.settings-row label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.settings-slider {
+  width: 120px;
+  accent-color: var(--accent);
+}
+
+.settings-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.settings-select {
+  min-width: 96px;
+  padding: 4px 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  font-family: var(--font-primary);
+}
+
+.settings-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.settings-btn.danger {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.settings-btn:active {
+  background: rgba(201, 168, 76, 0.08);
+}
+
+.credits {
+  margin-top: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
