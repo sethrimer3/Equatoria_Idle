@@ -2,7 +2,7 @@ export type NumberFormat = 'letters' | 'scientific' | 'engineering';
 
 // Letter suffix names: K=Thousand, M=Million, B=Billion, T=Trillion,
 // Qa=Quadrillion, Qi=Quintillion, Sx=Sextillion, Sp=Septillion
-const _SUPERSCRIPT_MAP: Record<string, string> = {
+const SUPERSCRIPT_MAP: Record<string, string> = {
   '0': '\u2070', '1': '\u00b9', '2': '\u00b2', '3': '\u00b3',
   '4': '\u2074', '5': '\u2075', '6': '\u2076', '7': '\u2077',
   '8': '\u2078', '9': '\u2079', '-': '\u207b',
@@ -12,7 +12,7 @@ const _SUPERSCRIPT_MAP: Record<string, string> = {
  * Utility: format a number for UI display using the given format mode.
  */
 export function formatNumberAs(n: number, format: NumberFormat): string {
-  if (!isFinite(n) || isNaN(n)) return '0';
+  if (!isFinite(n)) return '0';
   if (n < 0) return '-' + formatNumberAs(-n, format);
   switch (format) {
     case 'scientific':  return _formatScientific(n);
@@ -57,5 +57,5 @@ function _formatEngineering(n: number): string {
 }
 
 function _toSuperscript(n: number): string {
-  return String(n).split('').map(c => _SUPERSCRIPT_MAP[c] ?? c).join('');
+  return String(n).split('').map(c => SUPERSCRIPT_MAP[c] ?? c).join('');
 }

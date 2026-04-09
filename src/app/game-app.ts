@@ -102,8 +102,8 @@ export async function startApp(): Promise<void> {
   // ── Preload Pixelify Sans font for canvas rendering ──
   try {
     await document.fonts.load("bold 12px 'Pixelify Sans'");
-  } catch {
-    // Font load failure is non-fatal; fall back to monospace
+  } catch (err) {
+    console.warn('Failed to preload Pixelify Sans font:', err);
   }
 
   const forge = createForgeCrunchState();
