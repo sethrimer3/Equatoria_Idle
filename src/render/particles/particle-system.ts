@@ -12,6 +12,7 @@ import {
   getSizeMinVelocityModifier,
   getSizeMaxVelocityModifier,
   getSizeForceModifier,
+  getSizeSmallEquivalent,
 } from '../../data/particles/size-tiers';
 import {
   BASE_PARTICLE_SIZE,
@@ -276,6 +277,15 @@ export class ParticleSystem {
   frameCount = 0;
 
   private readonly _pool: EquatoriaParticle[] = [];
+
+  /** Returns the total small-mote equivalents currently on screen (accounts for larger particle sizes). */
+  getOnScreenMoteCount(): number {
+    let total = 0;
+    for (const p of this.particles) {
+      total += getSizeSmallEquivalent(p.sizeIndex);
+    }
+    return total;
+  }
 
   private _acquireParticle(): EquatoriaParticle {
     return this._pool.pop() ?? createBlankParticle();

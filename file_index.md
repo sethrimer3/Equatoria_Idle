@@ -86,6 +86,7 @@
 ### src/sim/resources/resource-state.ts
 - Authoritative mote totals per tier and lifetime totals.
 - `addMotes()`, `spendMotes()`, `getMotes()`, `getTotalMotes()`.
+- `getEquivalence()` — product of all non-zero per-tier mote totals (player's "Equivalence" score).
 
 ### src/sim/progression/progression-state.ts
 - Upgrade levels, unlocked tier count, auto-tap level, global multiplier.
@@ -212,6 +213,7 @@
 ### src/settings/settings-state.ts
 - User settings model and localStorage persistence.
 - `isDevMode: boolean` — when true, all game actions bypass cost checks.
+- `numberFormat: 'letters' | 'scientific' | 'engineering'` — controls number display format across all UI panels and canvas score.
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
@@ -219,4 +221,6 @@
 - Backward-compatible with version 1, 2, and 3 saves.
 
 ### src/util/format.ts
-- `formatNumber()` — K/M/B/T suffix formatting.
+- `formatNumber()` — convenience wrapper, always uses 'letters' format.
+- `formatNumberAs(n, format)` — format using 'letters' (K/M/B/T/Qa/Qi/Sx/Sp), 'scientific' (1.23e9), or 'engineering' (1.23×10⁹) notation.
+- `NumberFormat` type — `'letters' | 'scientific' | 'engineering'`.

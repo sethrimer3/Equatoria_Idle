@@ -1,7 +1,7 @@
 import type { GameState } from '../../sim';
 import { ACHIEVEMENT_DEFINITIONS } from '../../data/achievements';
 import { TIER_BY_ID } from '../../data/tiers';
-import { formatNumber } from '../../util';
+import { formatNumberAs, type NumberFormat } from '../../util';
 import { getLifetimeMotes } from '../../sim/resources';
 
 /**
@@ -10,7 +10,7 @@ import { getLifetimeMotes } from '../../sim/resources';
  */
 export interface AchievementsPanel {
   element: HTMLElement;
-  update(state: GameState): void;
+  update(state: GameState, numberFormat: NumberFormat): void;
 }
 
 export function createAchievementsPanel(): AchievementsPanel {
@@ -72,7 +72,7 @@ export function createAchievementsPanel(): AchievementsPanel {
     cards.set(def.id, card);
   }
 
-  function update(state: GameState): void {
+  function update(state: GameState, numberFormat: NumberFormat): void {
     for (const def of ACHIEVEMENT_DEFINITIONS) {
       const card = cards.get(def.id);
       if (!card) continue;
@@ -92,7 +92,7 @@ export function createAchievementsPanel(): AchievementsPanel {
         if (isUnlocked) {
           progressEl.textContent = '✓ Unlocked';
         } else {
-          progressEl.textContent = `Progress: ${formatNumber(lifetime)} / ${formatNumber(def.requiresLifetimeMotes)} ${TIER_BY_ID.get(def.requiresTierId)?.displayName ?? ''} motes`;
+          progressEl.textContent = `Progress: ${formatNumberAs(lifetime, numberFormat)} / ${formatNumberAs(def.requiresLifetimeMotes, numberFormat)} ${TIER_BY_ID.get(def.requiresTierId)?.displayName ?? ''} motes`;
         }
       }
     }

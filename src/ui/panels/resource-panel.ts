@@ -1,7 +1,7 @@
 import type { GameState } from '../../sim';
 import { TIERS } from '../../data/tiers';
 import { getMotes, getLifetimeMotes } from '../../sim/resources';
-import { formatNumber } from '../../util';
+import { formatNumberAs, type NumberFormat } from '../../util';
 import { getRefinedGemFallbackPath, getRefinedGemPath } from '../../render/assets/asset-paths';
 
 /**
@@ -9,7 +9,7 @@ import { getRefinedGemFallbackPath, getRefinedGemPath } from '../../render/asset
  */
 export interface ResourcePanel {
   element: HTMLElement;
-  update(state: GameState): void;
+  update(state: GameState, numberFormat: NumberFormat): void;
 }
 
 export function createResourcePanel(): ResourcePanel {
@@ -31,7 +31,7 @@ export function createResourcePanel(): ResourcePanel {
     rows.set(tier.id, row);
   }
 
-  function update(state: GameState): void {
+  function update(state: GameState, numberFormat: NumberFormat): void {
     for (const tier of TIERS) {
       const row = rows.get(tier.id)!;
       const isUnlocked = state.equation.segments.some(
@@ -47,8 +47,8 @@ export function createResourcePanel(): ResourcePanel {
         row.innerHTML = `
           <img class="resource-icon" src="${iconSrc}" alt="" onerror="this.onerror=null;this.src='${fallbackIconSrc}'" />
           <span class="resource-name" style="color:${tier.color}">${tier.displayName}</span>
-          <span class="resource-value">${formatNumber(current)}</span>
-          <span class="resource-lifetime">(${formatNumber(lifetime)} total)</span>
+          <span class="resource-value">${formatNumberAs(current, numberFormat)}</span>
+          <span class="resource-lifetime">(${formatNumberAs(lifetime, numberFormat)} total)</span>
         `;
       }
     }

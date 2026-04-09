@@ -6,7 +6,7 @@ import {
   tryUnlockEquationForge,
   tryUpgradeLoom,
   simTick,
-  getScore,
+  getEquivalence,
   buildEquationView,
   type GameState,
 } from '../sim';
@@ -98,6 +98,13 @@ export async function startApp(): Promise<void> {
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
   const settings = loadSettings();
+
+  // ── Preload Pixelify Sans font for canvas rendering ──
+  try {
+    await document.fonts.load("bold 12px 'Pixelify Sans'");
+  } catch (err) {
+    console.warn('Failed to preload Pixelify Sans font:', err);
+  }
 
   const forge = createForgeCrunchState();
   const generatorState = createGeneratorState();
@@ -387,7 +394,7 @@ export async function startApp(): Promise<void> {
       }
     }
 
-    drawScore(cc, getScore(appState.game));
+    drawScore(cc, getEquivalence(appState.game.resources), particles.getOnScreenMoteCount(), settings.numberFormat);
 
     particles.draw(cc, { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics });
 
@@ -405,13 +412,13 @@ export async function startApp(): Promise<void> {
 
   function updateUI(): void {
     if (appState.activeTab === 'looms') {
-      uiPanels.loomPanel.update(appState.game);
+      uiPanels.loomPanel.update(appState.game, settings.numberFormat);
     } else if (appState.activeTab === 'resources') {
-      uiPanels.equationPanel.update(appState.game, settings.isDevMode);
-      uiPanels.upgradePanel.update(appState.game, settings.isDevMode);
-      uiPanels.resourcePanel.update(appState.game);
+      uiPanels.equationPanel.update(appState.game, settings.isDevMode, settings.numberFormat);
+      uiPanels.upgradePanel.update(appState.game, settings.isDevMode, settings.numberFormat);
+      uiPanels.resourcePanel.update(appState.game, settings.numberFormat);
     } else if (appState.activeTab === 'achievements') {
-      uiPanels.achievementsPanel.update(appState.game);
+      uiPanels.achievementsPanel.update(appState.game, settings.numberFormat);
     }
   }
 
@@ -432,13 +439,13 @@ export async function startApp(): Promise<void> {
 
     // Immediately update visible panel
     if (state.activeTab === 'looms') {
-      panels.loomPanel.update(appState.game);
+      panels.loomPanel.update(appState.game, settings.numberFormat);
     } else if (state.activeTab === 'resources') {
-      panels.equationPanel.update(appState.game, settings.isDevMode);
-      panels.upgradePanel.update(appState.game, settings.isDevMode);
-      panels.resourcePanel.update(appState.game);
+      panels.equationPanel.update(appState.game, settings.isDevMode, settings.numberFormat);
+      panels.upgradePanel.update(appState.game, settings.isDevMode, settings.numberFormat);
+      panels.resourcePanel.update(appState.game, settings.numberFormat);
     } else if (state.activeTab === 'achievements') {
-      panels.achievementsPanel.update(appState.game);
+      panels.achievementsPanel.update(appState.game, settings.numberFormat);
     }
   }
 
