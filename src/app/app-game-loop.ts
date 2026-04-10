@@ -12,9 +12,6 @@ import {
 import {
   clearCanvas,
   drawBackground,
-  drawEquation,
-  drawScore,
-  drawTapHint,
   drawGenerators,
   drawForge,
   drawForgeCrunch,
@@ -28,6 +25,7 @@ import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
 import { SMALL_SIZE_INDEX } from '../data/particles/size-tiers';
 import type { AppState, UIPanels } from './app-types';
 import { updateVisiblePanels } from './app-actions';
+import type { HudOverlay } from '../ui/hud/hud-overlay';
 
 // ─── Game loop context ──────────────────────────────────────────
 
@@ -41,6 +39,7 @@ export interface GameLoopContext {
   vermiculateEffect: VermiculateEffect;
   substrateEffect: SubstrateEffect;
   recomputeGenerators: () => void;
+  hudOverlay: HudOverlay;
   lastUnlockedTierCount: { value: number };
   lastFrameMs: { value: number };
 }
@@ -121,21 +120,25 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.generatorState.fadeIns,
     );
 
-    // Only draw forge and equation on canvas if forge is unlocked
+    // Only draw forge on canvas if forge is unlocked (equation is now in HUD)
     if (ctx.appState.game.equation.isForgeUnlocked) {
       drawForge(ctx.cc, equationCenterX, equationCenterY, ctx.particles.forgeRotation, ctx.appState.forge, nowMs);
-
-      const terms = buildEquationView(ctx.appState.game.equation);
-      drawEquation(ctx.cc, terms, ctx.appState.tapFlashAlpha);
-
       drawForgeCrunch(ctx.cc, equationCenterX, equationCenterY, ctx.appState.forge);
-
-      if (ctx.appState.game.equation.totalTapCount < 3) {
-        drawTapHint(ctx.cc, ctx.appState.animPulse);
-      }
     }
 
-    drawScore(ctx.cc, getEquivalence(ctx.appState.game.resources), ctx.particles.getOnScreenMoteCount(), ctx.settings.numberFormat);
+    const terms = buildEquationView(ctx.appState.game.equation);
+
+    // Update DOM HUD overlay (equation, score, motes — non-pixelated)
+    ctx.hudOverlay.update({
+      equivalence: getEquivalence(ctx.appState.game.resources),
+      onScreenMotes: ctx.particles.getOnScreenMoteCount(),
+      terms,
+      tapFlashAlpha: ctx.appState.tapFlashAlpha,
+      isForgeUnlocked: ctx.appState.game.equation.isForgeUnlocked,
+      totalTapCount: ctx.appState.game.equation.totalTapCount,
+      animPulse: ctx.appState.animPulse,
+      numberFormat: ctx.settings.numberFormat,
+    });
 
     ctx.particles.draw(ctx.cc, { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics });
 
