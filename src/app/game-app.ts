@@ -27,6 +27,7 @@ import {
 } from '../input/particle-drag';
 import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
+import { createHudOverlay } from '../ui/hud/hud-overlay';
 import { createLoadingScreen } from '../ui/loading';
 import { loadSettings, saveGame, loadGame, deleteSave } from '../settings';
 import { TIERS } from '../data/tiers';
@@ -72,7 +73,7 @@ export async function startApp(): Promise<void> {
 
   const appState: AppState = {
     game,
-    activeTab: 'looms',
+    activeTab: 'equation',
     tapFlashAlpha: 0,
     animPulse: 0,
     forge,
@@ -95,6 +96,10 @@ export async function startApp(): Promise<void> {
   root.appendChild(canvasContainer);
 
   const cc = createGameCanvas(canvasContainer);
+
+  // ── HUD overlay (DOM layer above canvas, non-pixelated) ──
+  const hudOverlay = createHudOverlay();
+  canvasContainer.appendChild(hudOverlay.element);
 
   // ── Panels overlay container ──
   const panelsContainer = document.createElement('div');
@@ -136,7 +141,7 @@ export async function startApp(): Promise<void> {
     }
     if (action.kind === 'reset_game') {
       deleteSave();
-      Object.assign(appState, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'looms' });
+      Object.assign(appState, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
       recomputeGenerators();
       setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
       return;
@@ -232,6 +237,7 @@ export async function startApp(): Promise<void> {
     vermiculateEffect,
     substrateEffect,
     recomputeGenerators,
+    hudOverlay,
     lastUnlockedTierCount: { value: appState.game.progression.unlockedTierCount },
     lastFrameMs: { value: performance.now() },
   });

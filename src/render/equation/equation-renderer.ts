@@ -11,7 +11,6 @@ import { formatNumberAs, type NumberFormat } from '../../util';
 export function drawEquation(
   cc: CanvasContext,
   terms: EquationTermView[],
-  tapFlashAlpha: number,
 ): void {
   const ctx = cc.ctx;
   const centerX = cc.widthPx / 2;
@@ -144,14 +143,6 @@ export function drawEquation(
     drawSegmentLine(ctx, line2, centerX, topY + fontSize * 0.8, charWidth);
   } else {
     drawSegmentLine(ctx, segments, centerX, topY, charWidth);
-  }
-
-  // Tap flash overlay
-  if (tapFlashAlpha > 0) {
-    ctx.globalAlpha = tapFlashAlpha * 0.15;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, topY - fontSize, cc.widthPx, fontSize * 2.5);
-    ctx.globalAlpha = 1;
   }
 }
 

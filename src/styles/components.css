@@ -52,6 +52,95 @@
   50% { opacity: 1; }
 }
 
+/* ── HUD overlay (DOM layer above the game canvas) ──────────── */
+#hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.hud-motes {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  line-height: 1.2;
+}
+
+.hud-motes-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.hud-motes-label {
+  font-size: 10px;
+  color: #666;
+}
+
+.hud-score {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.hud-score-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.hud-score-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+.hud-equation-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 92%;
+  text-align: center;
+}
+
+.hud-equation {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.hud-equation .eq-prefix {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.hud-equation .eq-term {
+  font-weight: 700;
+}
+
+.hud-equation .eq-dormant {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.hud-tap-hint {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
 /* ── Loom cards ──────────────────────────────────────────────── */
 .loom-card {
   background: var(--bg-secondary);

@@ -73,7 +73,7 @@ export function handleAction(
       // Handled directly — import kept light
       break;
     case 'reset_game':
-      Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'looms' });
+      Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
       recomputeGenerators();
       setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
       break;
