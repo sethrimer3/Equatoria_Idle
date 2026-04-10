@@ -19,6 +19,8 @@ export interface AchievementDefinition {
   readonly bonusKind: AchievementBonusKind;
   /** Multiplicative bonus value (e.g. 1.05 = +5%). */
   readonly bonusMultiplier: number;
+  /** Whether this is a secret achievement (hidden name/desc until claimed). */
+  readonly isSecret?: boolean;
 }
 
 /**
@@ -106,6 +108,26 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
     requiresLifetimeMotes: 1,
     bonusKind: 'tap_multiplier',
     bonusMultiplier: 1.50,
+  },
+  {
+    id: 'prismatic_heart',
+    displayName: 'Prismatic Heart',
+    description: 'A fragment of pure refracted light, crystallised into being.',
+    requiresTierId: 'diamond',
+    requiresLifetimeMotes: 1,
+    bonusKind: 'tap_multiplier',
+    bonusMultiplier: 2.0,
+    isSecret: true,
+  },
+  {
+    id: 'void_awakened',
+    displayName: 'Void Awakened',
+    description: 'Something stirs at the edge of the equation. It was always there.',
+    requiresTierId: 'nullstone',
+    requiresLifetimeMotes: 1,
+    bonusKind: 'loom_multiplier',
+    bonusMultiplier: 2.0,
+    isSecret: true,
   },
 ] as const;
 

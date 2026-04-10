@@ -146,3 +146,27 @@
 
 **Rationale**: Gives players a meaningful upgrade path. The hard floor prevents degenerate rapid tapping. The auto-tap triggers the same `tapEquation()` function as manual taps, keeping the code path unified.
 
+
+## Font Replacement: Poiret One
+
+**Decision**: Replaced Pixelify Sans with Poiret One as the primary UI font (`--font-primary`), used in all canvas labels (score, mote count, tap hint) and as the body font for DOM panels.
+
+**Rationale**: Per project specification. Poiret One has a more elegant, art-deco character while still being readable at small sizes.
+
+## BJ Cree Font for Secret Achievements
+
+**Decision**: Added BJ Cree as a secondary font used exclusively for the name and description of locked secret achievements. Letters are scrambled ASCII characters rendered in BJ Cree (which makes them look like cryptic symbols) and replaced every 600ms via `setInterval`.
+
+**Rationale**: Creates a mysterious, unreadable appearance for secret achievements before they are unlocked. The scramble changes letter identity but not count, preserving spatial layout while maximising visual crypticism.
+
+## Click-to-Claim Achievement System (Save Version 5)
+
+**Decision**: Achievements are now earned (unlock condition met) and claimed (player taps the glowing card) separately. Bonuses only apply once claimed. A `claimedIds` set was added to `AchievementState`. Save format bumped to v5; older saves auto-claim all previously-unlocked non-secret achievements on first load.
+
+**Rationale**: Adds a satisfying tactile moment to achievement rewards. The golden rotating sheen on unclaimed cards draws attention and communicates "something to do here". Old saves are migrated gracefully so no progress is lost.
+
+## Diamond Prismatic Sheen & Nullstone Glow (Visual)
+
+**Decision**: Diamond particles get a double-layer prismatic HSL overlay that cycles hues over time. The diamond generator gets a `screen`-mode radial gradient overlay plus cycling shadow glow. Nullstone generator has a dark purple (`#6a0dad`) radial glow and the influence-range circle is replaced with animated purple swirl arcs (`drawNullstoneRangeSwirl`).
+
+**Rationale**: Visual distinctiveness for the two rarest tiers. Diamond is light-refracting so prismatic rainbow is appropriate. Nullstone is void/darkness so a moody deep purple glow fits. Effects are contained in the render layer and are not authoritative simulation state.

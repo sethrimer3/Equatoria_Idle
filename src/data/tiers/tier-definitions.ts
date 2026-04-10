@@ -10,7 +10,9 @@ export type TierId =
   | 'iolite'
   | 'amethyst'
   | 'diamond'
-  | 'nullstone';
+  | 'nullstone'
+  | 'fracteryl'
+  | 'eigenstein';
 
 /** Full tier definition — single source of truth for colours, names, order. */
 export interface TierDefinition {
@@ -35,6 +37,8 @@ export const TIERS: readonly TierDefinition[] = [
   { id: 'amethyst',  displayName: 'Amethyst',  color: '#b464c8', glowColor: '#d088e0', unlockOrder: 8,  isSecret: false },
   { id: 'diamond',   displayName: 'Diamond',   color: '#f0f5fa', glowColor: '#ffffff', unlockOrder: 9,  isSecret: false },
   { id: 'nullstone', displayName: 'Nullstone', color: '#1e1e28', glowColor: '#9664c8', unlockOrder: 10, isSecret: false },
+  { id: 'fracteryl', displayName: 'Fracteryl', color: '#7A2CFF', glowColor: '#D6A3FF', unlockOrder: 11, isSecret: false },
+  { id: 'eigenstein', displayName: 'Eigenstein', color: '#A34728', glowColor: '#E38A4A', unlockOrder: 12, isSecret: false },
 ] as const;
 
 /** Quick lookup by id. */

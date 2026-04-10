@@ -12,6 +12,8 @@ import { getLifetimeMotes } from '../resources';
 export interface AchievementState {
   /** Set of unlocked achievement IDs. */
   unlockedIds: Set<string>;
+  /** Set of claimed achievement IDs (bonuses only apply when claimed). */
+  claimedIds: Set<string>;
   /** Cumulative tap multiplier bonus from achievements (≥ 1). */
   tapMultiplierBonus: number;
   /** Cumulative loom production multiplier bonus from achievements (≥ 1). */
@@ -23,6 +25,7 @@ export interface AchievementState {
 export function createAchievementState(): AchievementState {
   return {
     unlockedIds: new Set(),
+    claimedIds: new Set(),
     tapMultiplierBonus: 1,
     loomMultiplierBonus: 1,
   };
@@ -59,14 +62,15 @@ export function checkAndUnlockAchievements(
 }
 
 /**
- * Recompute the cached bonus multipliers from the current set of unlocked achievements.
+ * Recompute the cached bonus multipliers from the current set of *claimed* achievements.
+ * Unlocked but unclaimed achievements grant no bonus until the player claims them.
  */
 export function recomputeBonuses(state: AchievementState): void {
   let tapBonus = 1;
   let loomBonus = 1;
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
-    if (!state.unlockedIds.has(def.id)) continue;
+    if (!state.claimedIds.has(def.id)) continue;
     if (def.bonusKind === 'tap_multiplier') {
       tapBonus *= def.bonusMultiplier;
     } else {
@@ -76,4 +80,17 @@ export function recomputeBonuses(state: AchievementState): void {
 
   state.tapMultiplierBonus = tapBonus;
   state.loomMultiplierBonus = loomBonus;
+}
+
+/**
+ * Claim a specific achievement by id.
+ * Adds it to claimedIds and recomputes bonuses.
+ * Returns true if newly claimed, false if already claimed or not yet unlocked.
+ */
+export function claimAchievement(state: AchievementState, id: string): boolean {
+  if (!state.unlockedIds.has(id)) return false;
+  if (state.claimedIds.has(id)) return false;
+  state.claimedIds.add(id);
+  recomputeBonuses(state);
+  return true;
 }

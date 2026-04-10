@@ -57,6 +57,10 @@ function formatSlotValue(role: EquationRole, value: number): string {
       return `∫(${v})`;
     case 'recursion_wrap':
       return `∞(${v})`;
+    case 'fracture_wrap':
+      return `✶(${v})`;
+    case 'spectral_wrap':
+      return `λ(${v})`;
     default:
       return String(v);
   }
@@ -191,6 +195,20 @@ export function buildStructuredEquationHtml(terms: EquationTermView[]): string {
   if (nullstoneTerm) {
     const recVal = Math.round(nullstoneTerm.paramValue * 100) / 100;
     core = `<span class="eq-term" data-tier="${nullstoneTerm.tierId}" style="color:${nullstoneTerm.color}">lim</span><sub class="eq-term" data-tier="${nullstoneTerm.tierId}" style="color:${nullstoneTerm.color};font-size:0.6em">n→${recVal}</sub>(${core})`;
+  }
+
+  // Fracteryl: fractal shell
+  const fracterylTerm = byRole.get('fracture_wrap');
+  if (fracterylTerm) {
+    const fractalVal = Math.round(fracterylTerm.paramValue * 100) / 100;
+    core = `<span class="eq-term" data-tier="${fracterylTerm.tierId}" style="color:${fracterylTerm.color}">ℱ</span><sub class="eq-term" data-tier="${fracterylTerm.tierId}" style="color:${fracterylTerm.color};font-size:0.6em">d=${fractalVal}</sub>(${core})`;
+  }
+
+  // Eigenstein: spectral/eigen shell
+  const eigensteinTerm = byRole.get('spectral_wrap');
+  if (eigensteinTerm) {
+    const eigenVal = Math.round(eigensteinTerm.paramValue * 100) / 100;
+    core = `<span class="eq-term" data-tier="${eigensteinTerm.tierId}" style="color:${eigensteinTerm.color}">λ</span><sub class="eq-term" data-tier="${eigensteinTerm.tierId}" style="color:${eigensteinTerm.color};font-size:0.6em">${eigenVal}</sub>(${core})`;
   }
 
   return prefix + core;

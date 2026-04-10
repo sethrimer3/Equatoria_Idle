@@ -25,7 +25,9 @@ export type EquationRole =
   | 'product_wrap'     // Iolite: wraps in Π
   | 'factorial_wrap'   // Amethyst: wraps in factorial/gamma
   | 'integral_wrap'    // Diamond: wraps in ∫ accumulation
-  | 'recursion_wrap';  // Nullstone: wraps in self-referential layer
+  | 'recursion_wrap'   // Nullstone: wraps in self-referential layer
+  | 'fracture_wrap'    // Fracteryl: wraps with fractal recursion shell
+  | 'spectral_wrap';   // Eigenstein: wraps with spectral transform shell
 
 /** Whether a tier modifies a slot or wraps the entire expression. */
 export type EquationInteraction = 'slot' | 'wrapper' | 'argument' | 'foundation';
@@ -161,6 +163,26 @@ export const EQUATION_TIER_ROLES: readonly EquationTierRole[] = [
     roleDescription: 'Transcendent recursion and self-reference',
     baseValue: 1,
     valuePerLevel: 0.25,
+  },
+  {
+    tierId: 'fracteryl',
+    role: 'fracture_wrap',
+    interaction: 'wrapper',
+    operator: 'fracture_wrap',
+    symbol: '✶',
+    roleDescription: 'Prismatic fractal wrapping around recursive limits',
+    baseValue: 1,
+    valuePerLevel: 0.2,
+  },
+  {
+    tierId: 'eigenstein',
+    role: 'spectral_wrap',
+    interaction: 'wrapper',
+    operator: 'spectral_wrap',
+    symbol: 'λ',
+    roleDescription: 'Eigen-spectrum shell amplifying the full expression',
+    baseValue: 1,
+    valuePerLevel: 0.15,
   },
 ];
 
