@@ -75,16 +75,23 @@ export const PROCEDURAL_SEEK_SNAP_DIST = 3;
 /** Time after which a procedural merge forcibly completes (ms). */
 export const PROCEDURAL_MERGE_TIMEOUT_MS = 8000;
 
-// ─── Euler fluid dynamics ────────────────────────────────────────
-/** Master toggle for the Euler inter-particle fluid forces. */
-export const EULER_FLUID_ENABLED = true;
-/** Radius (canvas px) within which a higher-tier particle's field affects a lower-tier one. */
+// ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
+// The Euler inter-particle fluid system has been replaced by the
+// Particle Life interaction model.  See particle-life-config.ts and
+// interaction-matrix.ts for the new constants.
+//
+// Legacy constants kept below ONLY for backward-compatibility in case
+// any external code still imports them.  They are no longer used by
+// the particle system.
+/** @deprecated Replaced by Particle Life system. */
+export const EULER_FLUID_ENABLED = false;
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_INFLUENCE_RADIUS = 40;
-/** Base repulsion strength coefficient. */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_BASE_STRENGTH = 0.8;
-/** Additional strength added per tier level of difference between the two particles. */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_TIER_SCALE = 0.25;
-/** Maximum Euler force magnitude applied to a particle per frame (prevents extreme kicks). */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_MAX_FORCE = 2.0;
-/** Minimum effective distance used in the inverse-distance formula (prevents singularity). */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_CORE_RADIUS = 3.0;

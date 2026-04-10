@@ -105,11 +105,18 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 2. On tap, `emitAtPosition()` spawns small particles at pointer canvas coords
 3. Each frame `update()` runs:
    - Per-particle physics: generator gravity, forge attraction, veer, velocity clamping, bounce
+   - **Particle Life forces**: pairwise interactions governed by a 13×13 interaction matrix
+     - 1×1 motes are fully inert (no forces applied or received)
+     - Protected radius prevents singularity collapse
+     - Matrix-controlled mid-range forces with cosine taper
+     - Optional size-force bias: `sqrt(sizePixels)` scaling
+   - Velocity damping and max speed clamping
+   - Toroidal position wraparound
    - Merge detection: 100 small particles near a generator → upgrade to next size
    - Particle limit enforcement: auto-merge excess small particles
    - Forge crunch: eligible medium+ particles near forge → consumed after timer → next-tier output
    - Shockwave expansion and impulse application (spatial hash grid)
-4. `draw()` batches particles by color+size for efficient canvas rendering, then draws shockwave arcs
+4. `draw()` batches particles by color+size for efficient canvas rendering, then draws shockwave arcs and optional debug overlays
 
 ## Generator System
 

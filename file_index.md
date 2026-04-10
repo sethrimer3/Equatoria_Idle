@@ -71,6 +71,23 @@
 ### src/data/particles/particle-config.ts
 - All physics constants for particle simulation.
 - Velocities, forces, gravity strengths, merge thresholds, forge parameters, shockwave parameters.
+- Euler fluid constants are deprecated (replaced by Particle Life system).
+
+### src/data/particles/interaction-matrix.ts
+- 13×13 Particle Life interaction matrix.
+- `createDefaultInteractionMatrix()` — hand-tuned defaults for emergent behaviour.
+- `createRandomInteractionMatrix()` — random matrix for experimentation.
+- `cloneInteractionMatrix()` — deep-clone helper.
+- Serialization: `serializeInteractionMatrix()`, `deserializeInteractionMatrix()`.
+- `MOTE_TYPE_COUNT = 13`.
+
+### src/data/particles/particle-life-config.ts
+- All constants for the Particle Life simulation.
+- Radii: `PL_INTERACTION_RADIUS`, `PL_PROTECTED_RADIUS`.
+- Force strengths: `PL_MATRIX_FORCE_SCALE`, `PL_PROTECTED_REPULSION_STRENGTH`.
+- Velocity: `PL_VELOCITY_DAMPING`, `PL_MAX_VELOCITY`.
+- Size-force bias default: `PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT`.
+- Grid cell size: `PL_GRID_CELL_SIZE`.
 
 ### src/data/particles/size-tiers.ts
 - `SizeIndex` type (number, unlimited). Particle sizes 0, 1, 2, 3, …
@@ -218,10 +235,30 @@
 - `buildSpatialGrid()`, `forEachNearby()` — callback-based (no result array allocation).
 
 ### src/render/particles/particle-system.ts
-- Slim orchestrator class (~200 lines, reduced from 1112).
-- Owns particle array, merge/shockwave lists, and pool.
-- Runs per-frame update pipeline: physics → trails → Euler → merges → forge → shockwaves.
-- Delegates rendering to `particle-renderer.ts`.
+- Slim orchestrator class.
+- Owns particle array, merge/shockwave lists, pool, interaction matrix, and debug state.
+- Runs per-frame update pipeline: physics → trails → **Particle Life forces** → damping → wrap → merges → forge → shockwaves.
+- Delegates rendering to `particle-renderer.ts` and `particle-life-debug.ts`.
+- `interactionMatrix` — 13×13 matrix owned here, defaults from `createDefaultInteractionMatrix()`.
+- `enableSizeForceBias` — boolean toggle for size-based force scaling.
+- `debugState` — `ParticleLifeDebugState` for debug visualization toggles.
+
+### src/render/particles/particle-life.ts
+- Particle Life pairwise force computation (replaces euler-fluid.ts).
+- `applyParticleLifeForces()` — spatial-grid-based O(n·k) neighbour interaction.
+  - 1×1 inert mote rule: skips size-1 particles entirely.
+  - Zone 1 (protected radius): strong repulsion prevents collapse.
+  - Zone 2 (matrix-controlled): force from interactionMatrix[a][b] with cosine taper.
+  - Optional size-force bias: `sqrt(sizeA) * sqrt(sizeB)` scaling.
+  - Toroidal wrapped distance computation.
+- `applyParticleLifeDamping()` — velocity damping + max speed clamp.
+- `applyWrapAround()` — toroidal position wraparound.
+
+### src/render/particles/particle-life-debug.ts
+- Debug visualization tools for Particle Life system.
+- `ParticleLifeDebugState` — toggleable debug flags.
+- `drawParticleLifeDebug()` — entry point for all debug overlays.
+- Sub-tools: interaction radius circles, spatial grid view, inert mote highlights, size factor labels, interaction matrix color overlay.
 
 ### src/render/equation/equation-renderer.ts
 - `drawEquation()` — renders equation terms on canvas.

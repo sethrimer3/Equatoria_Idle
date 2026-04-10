@@ -38,9 +38,19 @@
 - [ ] Particles render smoothly at 60fps on desktop
 - [ ] Particles render acceptably on mobile
 - [ ] Particle trails display correctly
-- [ ] Particles bounce off canvas edges
+- [ ] Particles wrap around canvas edges (toroidal)
 - [ ] Particles fade out over their lifetime
 - [ ] Reduced Particles setting decreases particle count
+
+## Particle Life Behaviour
+- [ ] Different mote types visibly behave differently (some chase, some repel)
+- [ ] 1×1 motes drift inertly without interacting
+- [ ] 2×2+ motes interact normally with visible emergent motion
+- [ ] Short-range collapse prevention works (motes don't collapse into singularities)
+- [ ] Mote swarms, streams, and orbiting structures form naturally
+- [ ] Size-force bias makes larger motes feel stronger (when enabled)
+- [ ] Disabling size-force bias makes all sizes behave identically
+- [ ] Debug toggles work when activated (interaction radius, grid, inert highlights)
 
 ## Upgrade Purchasing
 - [ ] Upgrade buttons show correct cost and level
