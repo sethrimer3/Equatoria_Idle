@@ -19,10 +19,15 @@ export interface AchievementsPanel {
 
 // ─── Scrambled text helpers ─────────────────────────────────────
 
-const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+const UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS = Array.from(
+  { length: 0x1676 - 0x1401 + 1 },
+  (_, i) => String.fromCodePoint(0x1401 + i),
+).join('');
 
 function randomChar(): string {
-  return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+  return UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS[
+    Math.floor(Math.random() * UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS.length)
+  ];
 }
 
 function makeScrambledText(length: number): string {
@@ -174,6 +179,7 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
         if (def.isSecret) {
           nameEl.style.fontFamily = "'Poiret One', sans-serif";
           descEl.style.fontFamily = "'Poiret One', sans-serif";
+          descEl.style.letterSpacing = '';
           nameEl.style.color = TIER_BY_ID.get(def.requiresTierId)?.color ?? '#888';
         }
         nameEl.textContent = def.displayName;
