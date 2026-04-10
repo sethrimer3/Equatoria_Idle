@@ -4,7 +4,7 @@ import { TIER_BY_ID } from '../../data/tiers';
 import { LOOM_DEFINITIONS } from '../../data/looms';
 import { getLoom, getLoomRate, getLoomCost } from '../../sim/looms';
 import { getMotes } from '../../sim/resources';
-import { formatNumber } from '../../util';
+import { formatNumberAs, type NumberFormat } from '../../util';
 import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
 import { loadImage } from '../../render/assets/asset-loader';
 import { createTintedCanvas } from '../../render/assets/sprite-tint';
@@ -15,7 +15,7 @@ import { createTintedCanvas } from '../../render/assets/sprite-tint';
  */
 export interface LoomPanel {
   element: HTMLElement;
-  update(state: GameState): void;
+  update(state: GameState, numberFormat: NumberFormat): void;
 }
 
 /** Draw the tinted generator sprite onto a small icon canvas. */
@@ -97,7 +97,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
     upgradeButtons.set(def.tierId, btn);
   }
 
-  function update(state: GameState): void {
+  function update(state: GameState, numberFormat: NumberFormat): void {
     for (const def of LOOM_DEFINITIONS) {
       const card = cards.get(def.tierId);
       const btn = upgradeButtons.get(def.tierId);
@@ -120,15 +120,15 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
       if (statsEl) {
         statsEl.innerHTML = `
           <span class="loom-stat">Lv ${level}</span>
-          <span class="loom-stat">${formatNumber(rate)}/s</span>
-          <span class="loom-stat">${formatNumber(currentMotes)} motes</span>
+          <span class="loom-stat">${formatNumberAs(rate, numberFormat)}/s</span>
+          <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} motes</span>
         `;
       }
 
       // Update upgrade button
       const tier = TIER_BY_ID.get(def.tierId);
       if (cost !== null) {
-        btn.textContent = `⬆ Upgrade — ${formatNumber(cost)} ${tier?.displayName ?? ''}`;
+        btn.textContent = `⬆ Upgrade — ${formatNumberAs(cost, numberFormat)} ${tier?.displayName ?? ''}`;
         btn.disabled = !canAfford;
       } else {
         btn.textContent = '⬆ MAX';

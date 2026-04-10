@@ -7,6 +7,8 @@ export interface SettingsState {
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
   backgroundStyle: 'vermiculate' | 'substrate' | 'none';
+  /** Controls how large numbers are displayed: letter suffixes, scientific, or engineering notation. */
+  numberFormat: 'letters' | 'scientific' | 'engineering';
   /** When true: all upgrades/unlocks are available regardless of cost; costs are not deducted. */
   isDevMode: boolean;
 }
@@ -20,6 +22,7 @@ export function createDefaultSettings(): SettingsState {
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
     backgroundStyle: 'vermiculate',
+    numberFormat: 'letters',
     isDevMode: false,
   };
 }

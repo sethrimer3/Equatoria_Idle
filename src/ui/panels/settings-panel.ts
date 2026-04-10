@@ -74,6 +74,22 @@ export function createSettingsPanel(
   );
   panel.appendChild(bgStyleRow);
 
+  // Number format selector
+  const numberFormatRow = createSelectRow(
+    'Number Format',
+    settings.numberFormat,
+    [
+      { value: 'letters',     label: 'Letters (M, B…)' },
+      { value: 'scientific',  label: 'Scientific (1.23e6)' },
+      { value: 'engineering', label: 'Engineering (1.23×10⁶)' },
+    ],
+    (v) => {
+      settings.numberFormat = v as SettingsState['numberFormat'];
+      saveSettings(settings);
+    },
+  );
+  panel.appendChild(numberFormatRow);
+
   // Screen shake toggle
   const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
     settings.isScreenShakeEnabled = v;

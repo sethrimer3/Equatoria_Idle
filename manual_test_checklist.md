@@ -31,6 +31,7 @@
 - [ ] SFX and Music volume sliders move and save
 - [ ] Reduced Particles toggle saves
 - [ ] Screen Shake toggle saves
+- [ ] Number Format dropdown changes and saves (Letters / Scientific / Engineering)
 - [ ] Settings survive page reload
 
 ## Particle Performance
@@ -57,7 +58,11 @@
 - [ ] Secret tiers (prismatic, void) are not shown in normal unlock flow
 
 ## Late-Game Scaling
-- [ ] Score displays correctly with K/M/B/T suffixes
+- [ ] Numbers display correctly in Letters mode (K/M/B/T suffixes)
+- [ ] Numbers display correctly in Scientific mode (1.23e9)
+- [ ] Numbers display correctly in Engineering mode (1.23×10⁹)
+- [ ] Number format setting applies to all panels: Looms, Resources, Tiers, Achievements, Equation
+- [ ] Canvas Equivalence and on-screen mote count respect the format setting
 - [ ] Number formatting is consistent across UI
 - [ ] No NaN or Infinity displayed
 

@@ -3,7 +3,7 @@ import type { ActionHandler } from '../../input';
 import { TIER_BY_ID, TIERS } from '../../data/tiers';
 import { tierUnlockCost } from '../../data/balance';
 import { getMotes } from '../../sim/resources';
-import { formatNumber } from '../../util';
+import { formatNumberAs, type NumberFormat } from '../../util';
 
 /**
  * Upgrade panel — now shows only tier unlock progression.
@@ -12,7 +12,7 @@ import { formatNumber } from '../../util';
  */
 export interface UpgradePanel {
   element: HTMLElement;
-  update(state: GameState, isDevMode?: boolean): void;
+  update(state: GameState, isDevMode?: boolean, numberFormat?: NumberFormat): void;
 }
 
 export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
@@ -41,7 +41,7 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
   unlockSection.appendChild(unlockBtn);
   panel.appendChild(unlockSection);
 
-  function update(state: GameState, isDevMode = false): void {
+  function update(state: GameState, isDevMode = false, numberFormat: NumberFormat = 'letters'): void {
     // Update unlock button
     const nextIndex = state.progression.unlockedTierCount;
     if (nextIndex < TIERS.length && !TIERS[nextIndex].isSecret) {
@@ -49,7 +49,7 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
       const cost = tierUnlockCost(nextIndex);
       const payTierId = TIERS[nextIndex - 1]?.id ?? 'sand';
       const canAfford = isDevMode || getMotes(state.resources, payTierId) >= cost;
-      unlockBtn.textContent = `🔓 Unlock ${nextTier.displayName} — ${formatNumber(cost)} ${TIER_BY_ID.get(payTierId)?.displayName ?? ''} motes`;
+      unlockBtn.textContent = `🔓 Unlock ${nextTier.displayName} — ${formatNumberAs(cost, numberFormat)} ${TIER_BY_ID.get(payTierId)?.displayName ?? ''} motes`;
       unlockBtn.disabled = !canAfford;
       unlockBtn.style.borderColor = nextTier.color;
       unlockSection.style.display = '';

@@ -1,6 +1,7 @@
 import type { CanvasContext } from '../canvas';
 import type { EquationTermView } from '../../sim/equation';
 import type { EquationRole } from '../../data/equation';
+import { formatNumberAs, type NumberFormat } from '../../util';
 
 /**
  * Renders the structured nested equation on the canvas.
@@ -10,13 +11,12 @@ import type { EquationRole } from '../../data/equation';
 export function drawEquation(
   cc: CanvasContext,
   terms: EquationTermView[],
-  tapFlashAlpha: number,
 ): void {
   const ctx = cc.ctx;
   const centerX = cc.widthPx / 2;
   const topY = cc.heightPx / 2;
   const fontSize = 9;
-  ctx.font = `bold ${fontSize}px monospace`;
+  ctx.font = `bold ${fontSize}px 'Pixelify Sans', monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
@@ -144,14 +144,6 @@ export function drawEquation(
   } else {
     drawSegmentLine(ctx, segments, centerX, topY, charWidth);
   }
-
-  // Tap flash overlay
-  if (tapFlashAlpha > 0) {
-    ctx.globalAlpha = tapFlashAlpha * 0.15;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, topY - fontSize, cc.widthPx, fontSize * 2.5);
-    ctx.globalAlpha = 1;
-  }
 }
 
 function drawSegmentLine(
@@ -173,19 +165,37 @@ function drawSegmentLine(
 }
 
 /**
- * Draw the score display at the top of the canvas.
+ * Draw the Equivalence score (top-center) and on-screen mote count (top-left).
  */
-export function drawScore(cc: CanvasContext, score: number): void {
+export function drawScore(
+  cc: CanvasContext,
+  equivalence: number,
+  onScreenMotes: number,
+  numberFormat: NumberFormat,
+): void {
   const ctx = cc.ctx;
-  ctx.font = 'bold 12px monospace';
+
+  // ── Top-center: Equivalence (big number) ──
+  ctx.font = `bold 12px 'Pixelify Sans', monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#ecf0f1';
-  ctx.fillText(formatNumber(score), cc.widthPx / 2, 4);
+  ctx.fillText(formatNumberAs(equivalence, numberFormat), cc.widthPx / 2, 4);
 
-  ctx.font = '7px monospace';
+  ctx.font = `7px 'Pixelify Sans', monospace`;
   ctx.fillStyle = '#888';
-  ctx.fillText('motes', cc.widthPx / 2, 18);
+  ctx.fillText('Equivalence', cc.widthPx / 2, 18);
+
+  // ── Top-left: on-screen mote count (small) ──
+  ctx.font = `bold 7px 'Pixelify Sans', monospace`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#aaa';
+  ctx.fillText(formatNumberAs(onScreenMotes, numberFormat), 4, 4);
+
+  ctx.font = `6px 'Pixelify Sans', monospace`;
+  ctx.fillStyle = '#666';
+  ctx.fillText('motes', 4, 14);
 }
 
 /**
@@ -195,7 +205,7 @@ export function drawTapHint(cc: CanvasContext, pulse: number): void {
   const ctx = cc.ctx;
   const alpha = 0.3 + 0.3 * Math.sin(pulse);
   ctx.globalAlpha = alpha;
-  ctx.font = '8px monospace';
+  ctx.font = `8px 'Pixelify Sans', monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ecf0f1';
@@ -214,11 +224,4 @@ function drawOutlinedText(
   ctx.strokeStyle = '#000';
   ctx.strokeText(text, x, y);
   ctx.fillText(text, x, y);
-}
-
-function formatNumber(n: number): string {
-  if (n < 1_000) return Math.floor(n).toString();
-  if (n < 1_000_000) return (n / 1_000).toFixed(1) + 'K';
-  if (n < 1_000_000_000) return (n / 1_000_000).toFixed(2) + 'M';
-  return (n / 1_000_000_000).toFixed(2) + 'B';
 }

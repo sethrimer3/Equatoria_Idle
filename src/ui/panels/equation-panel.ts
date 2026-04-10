@@ -6,7 +6,7 @@ import { EQUATION_PART_UPGRADES } from '../../data/upgrades';
 import { EQUATION_FORGE_COST } from '../../data/balance';
 import { getUpgradeLevel, getUpgradeCost } from '../../sim/progression';
 import { getMotes } from '../../sim/resources';
-import { formatNumber } from '../../util';
+import { formatNumberAs, type NumberFormat } from '../../util';
 import { getGemIconPath } from '../../render/assets/asset-paths';
 
 /**
@@ -16,7 +16,7 @@ import { getGemIconPath } from '../../render/assets/asset-paths';
  */
 export interface EquationPanel {
   element: HTMLElement;
-  update(state: GameState, isDevMode?: boolean): void;
+  update(state: GameState, isDevMode?: boolean, numberFormat?: NumberFormat): void;
 }
 
 export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
@@ -95,7 +95,7 @@ export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
 
   panel.appendChild(unlockedSection);
 
-  function update(state: GameState, isDevMode = false): void {
+  function update(state: GameState, isDevMode = false, numberFormat: NumberFormat = 'letters'): void {
     if (state.equation.isForgeUnlocked) {
       lockedSection.style.display = 'none';
       unlockedSection.style.display = '';
@@ -139,7 +139,7 @@ export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
           btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} — MAX (Lv ${level})</span>`;
           btn.disabled = true;
         } else {
-          btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} Lv ${level} — ${formatNumber(cost!)} motes</span>`;
+          btn.innerHTML = `${iconHtml}<span class="upgrade-text">${def.icon} ${def.displayName} Lv ${level} — ${formatNumberAs(cost!, numberFormat)} motes</span>`;
           btn.disabled = !canAfford;
         }
       }
@@ -150,7 +150,7 @@ export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
       // Update forge unlock button affordability
       const sandMotes = getMotes(state.resources, 'sand');
       forgeUnlockBtn.disabled = !isDevMode && sandMotes < EQUATION_FORGE_COST;
-      forgeUnlockBtn.textContent = `🔥 Ignite the Forge — ${formatNumber(sandMotes)} / ${EQUATION_FORGE_COST} Sand`;
+      forgeUnlockBtn.textContent = `🔥 Ignite the Forge — ${formatNumberAs(sandMotes, numberFormat)} / ${EQUATION_FORGE_COST} Sand`;
     }
   }
 
