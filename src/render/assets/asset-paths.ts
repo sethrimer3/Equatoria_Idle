@@ -23,6 +23,8 @@ const GEM_ICON_MAP: Record<TierId, string> = {
   amethyst: 'amethyst',
   diamond: 'diamond',
   nullstone: 'nullstone',
+  fracteryl: 'nullstone',
+  eigenstein: 'nullstone',
 };
 
 export function getGemIconPath(tierId: TierId): string {
@@ -43,6 +45,8 @@ const REFINED_GEM_MAP: Record<TierId, string> = {
   amethyst: 'refinedAmethyst',
   diamond: 'refinedDiamond',
   nullstone: 'refinedNullstone',
+  fracteryl: 'refinedNullstone',
+  eigenstein: 'refinedNullstone',
 };
 
 export function getRefinedGemPath(tierId: TierId): string {
