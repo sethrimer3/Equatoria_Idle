@@ -72,6 +72,22 @@
 
 **Rationale**: Keeps physics intuitive to tune (constants feel like "per frame at 60fps") while remaining stable at lower frame rates. Delta is clamped to [0.01, 3] to prevent tunneling and wild behaviour after tab switches.
 
+## Particle Life Interaction System (replaced Euler Fluid Dynamics)
+
+**Decision**: Replace the Euler fluid-dynamics inter-particle force model with a Particle Life pairwise interaction system governed by a 13×13 asymmetric interaction matrix.
+
+**Key design choices**:
+- **13×13 interaction matrix**: Entry `matrix[a][b]` determines how type `a` affects type `b`. Positive = attraction, negative = repulsion. Asymmetry enables chasing, orbiting, and layered-cluster emergence.
+- **1×1 inert rule**: Any mote with size 1×1 (sizeIndex 0) is fully inert — it applies no forces, receives no forces, and is skipped during neighbour queries. This saves computation and creates decorative drift particles.
+- **Size-force bias**: When `enableSizeForceBias` is true, forces are scaled by `sqrt(sizeA) * sqrt(sizeB)`. Square-root scaling was chosen over linear (too aggressive) or squared (unstable). Toggle defaults to true.
+- **Two force zones**: Protected radius (always repulsion, prevents collapse) and matrix-controlled region (cosine taper to zero at outer radius). No inverse-square forces — all bounded.
+- **Toroidal wraparound**: Positions wrap at canvas edges; distance calculations use shortest wrapped distance.
+- **Spatial hash grid**: O(n·k) complexity with cell size = interaction radius. Reusable grid/cell arrays to avoid per-frame allocation.
+- **Velocity damping**: 0.96 per frame at 60fps (adjusts for variable timestep). Max velocity clamped at 2.5 px/frame.
+
+**Rationale**: Particle Life produces emergent behaviour (swarms, streams, orbiting structures, buffer shells) that is visually richer than the one-directional Euler repulsion model. The asymmetric matrix allows 13 types to exhibit meaningfully different relationships. The system remains performant through spatial partitioning and the inert-mote optimization.
+
+**Tuning**: Modify `src/data/particles/interaction-matrix.ts` for type relationships. Modify `src/data/particles/particle-life-config.ts` for radii, strengths, and damping. The matrix is serializable for future save/randomization support.
 
 ## Cost Scaling Formula
 

@@ -71,7 +71,7 @@ export function drawParticleLifeDebug(
   }
 
   if (debugState.showInteractionMatrix) {
-    drawInteractionMatrixOverlay(ctx, interactionMatrix, cc.widthPx, cc.heightPx);
+    drawInteractionMatrixOverlay(ctx, interactionMatrix, cc.widthPx);
   }
 }
 
@@ -157,7 +157,6 @@ function drawInteractionMatrixOverlay(
   ctx: CanvasRenderingContext2D,
   matrix: number[][],
   canvasWidth: number,
-  _canvasHeight: number,
 ): void {
   const n = matrix.length;
   const cellPx = Math.max(2, Math.floor(Math.min(canvasWidth * 0.4, 80) / n));

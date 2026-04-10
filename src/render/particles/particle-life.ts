@@ -81,14 +81,15 @@ function buildParticleLifeGrid(
 
 // ─── Pre-computed sqrt table for size-force bias ─────────────────
 // Sizes typically range 0–10ish; cache up to 32 for safety.
+// Entry i stores sqrt(i+1) which is sqrt(sizePixels) for sizeIndex i.
 const _sqrtCache = new Float64Array(32);
 for (let i = 0; i < _sqrtCache.length; i++) {
-  _sqrtCache[i] = Math.sqrt(i + 1);  // sizePixels = sizeIndex + 1
+  _sqrtCache[i] = Math.sqrt(i + 1);
 }
 
 function getSizeFactor(sizeIndex: number): number {
-  const px = sizeIndex + 1; // getSizePixels
-  return px < _sqrtCache.length ? _sqrtCache[px - 1] : Math.sqrt(px);
+  const sizePixels = sizeIndex + 1; // mirrors getSizePixels()
+  return sizePixels < _sqrtCache.length ? _sqrtCache[sizePixels - 1] : Math.sqrt(sizePixels);
 }
 
 // ─── Force envelope (smooth taper) ───────────────────────────────

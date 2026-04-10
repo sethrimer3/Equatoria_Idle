@@ -48,8 +48,7 @@ export const PL_PROTECTED_REPULSION_STRENGTH = 1.8;
 
 /**
  * Velocity damping factor applied each frame.
- * At 60 fps, effective per-second retention ≈ damping^60.
- * 0.96 → ~8 % per second remains after 60 frames.
+ * At 60 fps, effective per-second retention ≈ 0.96^60 ≈ 8.7 %.
  */
 export const PL_VELOCITY_DAMPING = 0.96;
 
