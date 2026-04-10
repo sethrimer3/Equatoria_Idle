@@ -121,6 +121,24 @@ export const LOOM_DEFINITIONS: readonly LoomDefinition[] = [
     baseCost: 50000000,
     costScaleFactor: 1.8,
   },
+  {
+    tierId: 'fracteryl',
+    displayName: 'Fracteryl Loom',
+    description: 'Splits light into recursive violet spectra.',
+    baseRate: 0.03,
+    ratePerLevel: 0.03,
+    baseCost: 250000000,
+    costScaleFactor: 1.9,
+  },
+  {
+    tierId: 'eigenstein',
+    displayName: 'Eigenstein Loom',
+    description: 'Forges resonant amber harmonics from deep heat.',
+    baseRate: 0.02,
+    ratePerLevel: 0.02,
+    baseCost: 1000000000,
+    costScaleFactor: 2,
+  },
 ];
 
 /** Quick lookup by tier ID. */

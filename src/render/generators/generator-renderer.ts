@@ -1,7 +1,7 @@
 import type { CanvasContext } from '../canvas';
 import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import type { TierId } from '../../data/tiers';
-import { TIER_BY_ID } from '../../data/tiers';
+import { TIER_BY_ID, TIERS } from '../../data/tiers';
 import { SPAWNER_SIZE } from '../../data/particles/particle-config';
 import { getGeneratorSpritePath } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
@@ -20,7 +20,7 @@ const HUE_CYCLE_DEG_PER_SEC = 90;
 
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
-  for (let i = 0; i < 11; i++) {
+  for (let i = 0; i < TIERS.length; i++) {
     loadImage(getGeneratorSpritePath(i));
   }
 }
