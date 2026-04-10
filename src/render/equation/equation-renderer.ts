@@ -219,7 +219,7 @@ function drawOutlinedText(
   x: number,
   y: number,
 ): void {
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 2.5;
   ctx.lineJoin = 'round';
   ctx.strokeStyle = '#000';
   ctx.strokeText(text, x, y);
