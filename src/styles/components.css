@@ -59,8 +59,6 @@
 .hud-motes-label,
 .hud-score-value,
 .hud-score-label,
-.hud-equation,
-.hud-equation *,
 .hud-tap-hint {
   -webkit-text-stroke: 1.5px #000;
   paint-order: stroke fill;
@@ -73,6 +71,18 @@
     -2px  2px 0 #000,
      0    2px 0 #000,
      2px  2px 0 #000;
+}
+
+/*
+ * Equation glyphs already contain many tightly packed symbols (sup/sub/operators).
+ * Using an 8-direction faux outline on every glyph makes the stroke look like
+ * multiple offset shadows. Keep equation text to a single real stroke.
+ */
+.hud-equation,
+.hud-equation * {
+  -webkit-text-stroke: 1px #000;
+  paint-order: stroke fill;
+  text-shadow: none;
 }
 
 #hud-overlay {
