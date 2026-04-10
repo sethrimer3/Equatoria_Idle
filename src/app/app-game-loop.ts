@@ -17,6 +17,7 @@ import {
   drawForgeCrunch,
   type ParticleSystem,
 } from '../render';
+import { updateGeneratorRendererTime } from '../render/generators/generator-renderer';
 import type { CanvasContext } from '../render/canvas';
 import type { BackgroundAnimation, VermiculateEffect, SubstrateEffect } from '../render/background';
 import type { SettingsState } from '../settings';
@@ -100,6 +101,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
 
     // ── Update background animation ──
     ctx.bgAnimation.update(deltaMs);
+    updateGeneratorRendererTime(deltaMs);
 
     // ── Render ──
     clearCanvas(ctx.cc);

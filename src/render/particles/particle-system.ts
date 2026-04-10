@@ -60,7 +60,7 @@ import {
 } from './particle-merge';
 import { checkAndStartForgeCrunch, completeForgeCrunch } from './particle-forge';
 import { updateShockwaves } from './particle-shockwave';
-import { drawParticles } from './particle-renderer';
+import { drawParticles, updateParticleRendererTime } from './particle-renderer';
 
 // Re-export types for backward compatibility
 export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions, ProceduralMerge };
@@ -149,6 +149,9 @@ export class ParticleSystem {
     this.frameCount++;
     const deltaRatio = deltaMs / (1000 / 60);
     const clampedDelta = Math.max(Math.min(deltaRatio, 3), 0.01);
+
+    // Advance renderer animation clock
+    updateParticleRendererTime(deltaMs);
 
     // Spawner rotations
     for (const [tierId] of this.spawnerRotations) {

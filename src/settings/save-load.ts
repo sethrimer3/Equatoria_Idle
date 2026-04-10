@@ -2,11 +2,12 @@ import type { GameState } from '../sim/game-state';
 import type { TierId } from '../data/tiers';
 import { createGameState } from '../sim/game-state';
 import { recomputeBonuses } from '../sim/achievements';
+import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 
 interface SaveData {
   version: number;
@@ -31,6 +32,7 @@ interface SaveData {
   };
   achievements: {
     unlockedIds: string[];
+    claimedIds: string[];
   };
   elapsedMs: number;
 }
@@ -74,6 +76,7 @@ export function serializeGameState(state: GameState): SaveData {
     },
     achievements: {
       unlockedIds: Array.from(state.achievements.unlockedIds),
+      claimedIds: Array.from(state.achievements.claimedIds),
     },
     elapsedMs: state.elapsedMs,
   };
@@ -127,6 +130,23 @@ export function deserializeGameState(data: SaveData): GameState {
     for (const id of data.achievements.unlockedIds) {
       state.achievements.unlockedIds.add(id);
     }
+    // claimedIds — v5+ save. Older saves had no click-to-claim; treat all
+    // previously-unlocked achievements as claimed for backward compatibility.
+    const savedClaimedIds: string[] | undefined = (data.achievements as { claimedIds?: string[] }).claimedIds;
+    if (savedClaimedIds && savedClaimedIds.length > 0) {
+      for (const id of savedClaimedIds) {
+        state.achievements.claimedIds.add(id);
+      }
+    } else {
+      // Migrate older saves: auto-claim all unlocked non-secret achievements.
+      // Secret achievements must always be manually claimed, even on migration.
+      for (const id of state.achievements.unlockedIds) {
+        const def = ACHIEVEMENT_BY_ID.get(id);
+        if (!def?.isSecret) {
+          state.achievements.claimedIds.add(id);
+        }
+      }
+    }
     recomputeBonuses(state.achievements);
   }
 
@@ -152,8 +172,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1, 2, 3, or 4 (older saves lack some fields; defaults will apply)
-    if (data.version !== SAVE_VERSION && data.version !== 3 && data.version !== 2 && data.version !== 1) return null;
+    // Accept versions 1, 2, 3, 4, or 5 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

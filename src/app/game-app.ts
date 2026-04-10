@@ -61,11 +61,18 @@ export async function startApp(): Promise<void> {
   const game = savedGame ?? createGameState();
   const settings = loadSettings();
 
-  // ── Preload Pixelify Sans font for canvas rendering ──
+  // ── Preload Poiret One font for canvas rendering ──
   try {
-    await document.fonts.load("bold 12px 'Pixelify Sans'");
+    await document.fonts.load("bold 12px 'Poiret One'");
   } catch (err) {
-    console.warn('Failed to preload Pixelify Sans font:', err);
+    console.warn('Failed to preload Poiret One font:', err);
+  }
+
+  // ── Preload BJ Cree font for secret achievement display ──
+  try {
+    await document.fonts.load("400 14px 'BJ Cree'");
+  } catch {
+    // non-critical
   }
 
   const forge = createForgeCrunchState();
@@ -155,7 +162,7 @@ export async function startApp(): Promise<void> {
   const settingsPanel = createSettingsPanel(settings, dispatch);
   const loomPanel = createLoomPanel(dispatch);
   const equationPanel = createEquationPanel(dispatch);
-  const achievementsPanel = createAchievementsPanel();
+  const achievementsPanel = createAchievementsPanel(dispatch);
 
   panelsInner.appendChild(equationPanel.element);
   panelsInner.appendChild(loomPanel.element);

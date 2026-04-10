@@ -5,6 +5,7 @@ export type GameAction =
   | { kind: 'unlock_next_tier' }
   | { kind: 'unlock_equation_forge' }
   | { kind: 'upgrade_loom'; tierId: string }
+  | { kind: 'claim_achievement'; achievementId: string }
   | { kind: 'set_active_tab'; tabId: TabId }
   | { kind: 'save_game' }
   | { kind: 'reset_game' };

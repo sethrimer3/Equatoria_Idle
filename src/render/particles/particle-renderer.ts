@@ -16,6 +16,17 @@ import type { EquatoriaParticle, Shockwave, ParticleRenderOptions } from './part
 import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
 import { getTrailPosition } from './particle-physics';
 
+// ─── Tier index constants ───────────────────────────────────────
+const DIAMOND_TIER_INDEX = 9;
+
+// Module-level animation time (accumulated ms) for shimmer effects
+let _animTimeMs = 0;
+
+/** Call once per frame with the elapsed time in milliseconds. */
+export function updateParticleRendererTime(deltaMs: number): void {
+  _animTimeMs += deltaMs;
+}
+
 // ─── Batch data structure ───────────────────────────────────────
 
 interface DrawBatch {
@@ -178,4 +189,46 @@ export function drawParticles(
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+
+  // ── Special effects: diamond prismatic sheen ──
+  if (options.enableGlow) {
+    drawDiamondPrismaticSheen(ctx, particles);
+  }
+}
+
+function drawDiamondPrismaticSheen(
+  ctx: CanvasRenderingContext2D,
+  particles: EquatoriaParticle[],
+): void {
+  const t = _animTimeMs / 1000;
+  for (let pi = 0, plen = particles.length; pi < plen; pi++) {
+    const p = particles[pi];
+    if (p.tierIndex !== DIAMOND_TIER_INDEX) continue;
+
+    // Cycle through hues over time; offset each particle by index so they look varied
+    const hueOffset = (t * 120 + pi * 47) % 360;
+    const half = p.size / 2;
+
+    drawPrismaticRect(ctx, p.x, p.y, half, p.size, hueOffset, 0.55);
+    drawPrismaticRect(ctx, p.x, p.y, half, p.size, (hueOffset + 120) % 360, 0.3);
+
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawPrismaticRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  half: number,
+  size: number,
+  hue: number,
+  alpha: number,
+): void {
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = size * 5;
+  ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
+  ctx.fillStyle = `hsl(${hue}, 100%, 75%)`;
+  ctx.fillRect(Math.floor(x - half), Math.floor(y - half), Math.ceil(size), Math.ceil(size));
 }
