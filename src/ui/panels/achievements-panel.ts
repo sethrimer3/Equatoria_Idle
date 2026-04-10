@@ -13,6 +13,8 @@ import type { ActionHandler } from '../../input';
 export interface AchievementsPanel {
   element: HTMLElement;
   update(state: GameState, numberFormat: NumberFormat): void;
+  /** Cancel all timers. Call when the panel is removed from the DOM. */
+  destroy(): void;
 }
 
 // ─── Scrambled text helpers ─────────────────────────────────────
@@ -42,6 +44,13 @@ function showRewardPopup(card: HTMLElement, bonusText: string): void {
 
   // Fade out and remove after animation completes
   setTimeout(() => popup.remove(), 2200);
+}
+
+/** Returns a display string like "+50% Tap" for an achievement's bonus. */
+function bonusText(bonusKind: string, bonusMultiplier: number): string {
+  const label = bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
+  const pct = Math.round((bonusMultiplier - 1) * 100);
+  return `+${pct}% ${label}`;
 }
 
 // ─── Panel factory ─────────────────────────────────────────────
@@ -93,9 +102,7 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
 
     const bonusEl = document.createElement('span');
     bonusEl.className = 'achievement-bonus';
-    const bonusLabel = def.bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
-    const bonusPct = Math.round((def.bonusMultiplier - 1) * 100);
-    bonusEl.textContent = def.isSecret ? '???' : `+${bonusPct}% ${bonusLabel}`;
+    bonusEl.textContent = def.isSecret ? '???' : bonusText(def.bonusKind, def.bonusMultiplier);
     header.appendChild(bonusEl);
 
     card.appendChild(header);
@@ -119,9 +126,7 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
       const isEarned = card.classList.contains('achievement-earned-unclaimed');
       if (!isEarned) return;
       dispatch({ kind: 'claim_achievement', achievementId: def.id });
-      const bonusLabel2 = def.bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
-      const bonusPct2 = Math.round((def.bonusMultiplier - 1) * 100);
-      showRewardPopup(card, `+${bonusPct2}% ${bonusLabel2}!`);
+      showRewardPopup(card, `${bonusText(def.bonusKind, def.bonusMultiplier)}!`);
     });
 
     panel.appendChild(card);
@@ -129,7 +134,7 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
   }
 
   // Periodically scramble text on locked secret achievements
-  setInterval(() => {
+  const scrambleIntervalId = setInterval(() => {
     for (const def of ACHIEVEMENT_DEFINITIONS) {
       if (!def.isSecret) continue;
       const refs = cardRefs.get(def.id);
@@ -142,6 +147,10 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
       }
     }
   }, 600);
+
+  function destroy(): void {
+    clearInterval(scrambleIntervalId);
+  }
 
   function update(state: GameState, numberFormat: NumberFormat): void {
     for (const def of ACHIEVEMENT_DEFINITIONS) {
@@ -157,8 +166,7 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
       card.classList.toggle('achievement-locked', !isUnlocked);
       card.classList.toggle('achievement-earned-unclaimed', isEarnedUnclaimed);
 
-      const bonusLabel = def.bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
-      const bonusPct = Math.round((def.bonusMultiplier - 1) * 100);
+      const defBonusText = bonusText(def.bonusKind, def.bonusMultiplier);
 
       if (isUnlocked) {
         iconEl.textContent = isClaimed ? '🏆' : '✨';
@@ -170,18 +178,18 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
         }
         nameEl.textContent = def.displayName;
         descEl.textContent = def.description;
-        bonusEl.textContent = isClaimed ? `+${bonusPct}% ${bonusLabel}` : '✨ Tap to claim!';
+        bonusEl.textContent = isClaimed ? defBonusText : '✨ Tap to claim!';
         bonusEl.style.color = isClaimed ? '#a0e080' : '#ffd700';
 
         const progressText = isClaimed ? '✓ Claimed' : '✨ Earned — tap to claim your bonus!';
         progressEl.textContent = progressText;
       } else {
-        iconEl.textContent = def.isSecret ? '🔒' : '🔒';
+        iconEl.textContent = '🔒';
         if (!def.isSecret) {
           // Normal locked achievement: show real name and progress
           nameEl.textContent = def.displayName;
           descEl.textContent = def.description;
-          bonusEl.textContent = `+${bonusPct}% ${bonusLabel}`;
+          bonusEl.textContent = defBonusText;
           bonusEl.style.color = '';
           const lifetime = getLifetimeMotes(state.resources, def.requiresTierId);
           progressEl.textContent = `Progress: ${formatNumberAs(lifetime, numberFormat)} / ${formatNumberAs(def.requiresLifetimeMotes, numberFormat)} ${TIER_BY_ID.get(def.requiresTierId)?.displayName ?? ''} motes`;
@@ -195,5 +203,5 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
     }
   }
 
-  return { element: panel, update };
+  return { element: panel, update, destroy };
 }

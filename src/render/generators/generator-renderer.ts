@@ -15,6 +15,9 @@ export function updateGeneratorRendererTime(deltaMs: number): void {
   _genAnimTimeMs += deltaMs;
 }
 
+/** Speed of prismatic hue cycling in degrees per second. */
+const HUE_CYCLE_DEG_PER_SEC = 90;
+
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
   for (let i = 0; i < 11; i++) {
@@ -96,7 +99,7 @@ function drawGeneratorTinted(
   // Diamond: cycling prismatic shadow glow around sprite
   if (isDiamond) {
     const t = _genAnimTimeMs / 1000;
-    const hue = (t * 90) % 360;
+    const hue = (t * HUE_CYCLE_DEG_PER_SEC) % 360;
     ctx.shadowBlur = size * 0.8;
     ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
   }
@@ -108,7 +111,7 @@ function drawGeneratorTinted(
   // Diamond: prismatic overlay shimmer on top of sprite
   if (isDiamond) {
     const t = _genAnimTimeMs / 1000;
-    const hue1 = (t * 90) % 360;
+    const hue1 = (t * HUE_CYCLE_DEG_PER_SEC) % 360;
     const hue2 = (hue1 + 120) % 360;
     ctx.save();
     ctx.globalAlpha = alpha * 0.25;
@@ -234,7 +237,7 @@ function drawGeneratorFallback(
 
   if (isDiamond) {
     const t = _genAnimTimeMs / 1000;
-    const hue = (t * 90) % 360;
+    const hue = (t * HUE_CYCLE_DEG_PER_SEC) % 360;
     ctx.shadowBlur = size * 3;
     ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
   } else if (isNullstone) {

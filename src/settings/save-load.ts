@@ -2,6 +2,7 @@ import type { GameState } from '../sim/game-state';
 import type { TierId } from '../data/tiers';
 import { createGameState } from '../sim/game-state';
 import { recomputeBonuses } from '../sim/achievements';
+import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 
 // ─── Save format ────────────────────────────────────────────────
 
@@ -137,9 +138,13 @@ export function deserializeGameState(data: SaveData): GameState {
         state.achievements.claimedIds.add(id);
       }
     } else {
-      // Migrate older saves: auto-claim all unlocked non-secret achievements
+      // Migrate older saves: auto-claim all unlocked non-secret achievements.
+      // Secret achievements must always be manually claimed, even on migration.
       for (const id of state.achievements.unlockedIds) {
-        state.achievements.claimedIds.add(id);
+        const def = ACHIEVEMENT_BY_ID.get(id);
+        if (!def?.isSecret) {
+          state.achievements.claimedIds.add(id);
+        }
       }
     }
     recomputeBonuses(state.achievements);

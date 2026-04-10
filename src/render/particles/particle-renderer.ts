@@ -207,22 +207,28 @@ function drawDiamondPrismaticSheen(
 
     // Cycle through hues over time; offset each particle by index so they look varied
     const hueOffset = (t * 120 + pi * 47) % 360;
-    const h1 = hueOffset;
-    const h2 = (hueOffset + 120) % 360;
-
-    ctx.globalAlpha = 0.55;
-    ctx.shadowBlur = p.size * 5;
-    ctx.shadowColor = `hsl(${h1}, 100%, 70%)`;
-    ctx.fillStyle = `hsl(${h1}, 100%, 75%)`;
     const half = p.size / 2;
-    ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(p.size), Math.ceil(p.size));
 
-    ctx.globalAlpha = 0.3;
-    ctx.shadowColor = `hsl(${h2}, 100%, 70%)`;
-    ctx.fillStyle = `hsl(${h2}, 100%, 75%)`;
-    ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(p.size), Math.ceil(p.size));
+    drawPrismaticRect(ctx, p.x, p.y, half, p.size, hueOffset, 0.55);
+    drawPrismaticRect(ctx, p.x, p.y, half, p.size, (hueOffset + 120) % 360, 0.3);
 
     ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1;
+}
+
+function drawPrismaticRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  half: number,
+  size: number,
+  hue: number,
+  alpha: number,
+): void {
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = size * 5;
+  ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
+  ctx.fillStyle = `hsl(${hue}, 100%, 75%)`;
+  ctx.fillRect(Math.floor(x - half), Math.floor(y - half), Math.ceil(size), Math.ceil(size));
 }
