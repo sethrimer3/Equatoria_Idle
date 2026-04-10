@@ -2,20 +2,24 @@
  * ParticleSystem — slim orchestrator that delegates to focused modules.
  *
  * Responsibilities:
- *  - Owns the particle array, merge/shockwave lists, and pool
- *  - Runs the per-frame update pipeline (physics → trails → Euler →
- *    merges → forge crunch → shockwaves)
+ *  - Owns the particle array, merge/shockwave lists, pool, and
+ *    Particle Life interaction matrix + settings
+ *  - Runs the per-frame update pipeline:
+ *      physics → trails → Particle Life forces → damping →
+ *      wrap → merges → forge crunch → shockwaves
  *  - Delegates rendering to particle-renderer.ts
  *
- * Split from the original monolithic file into:
- *  - particle-types.ts    — interfaces & type aliases
- *  - particle-pool.ts     — object pool & particle init
- *  - particle-physics.ts  — per-particle physics, edge repulsion, trails
- *  - particle-merge.ts    — traditional + procedural merge logic
- *  - particle-forge.ts    — forge crunch integration
- *  - particle-shockwave.ts — shockwave update + spatial grid
- *  - particle-renderer.ts — batched draw calls
- *  - spatial-grid.ts      — numeric-keyed spatial hash grid
+ * Split modules:
+ *  - particle-types.ts        — interfaces & type aliases
+ *  - particle-pool.ts         — object pool & particle init
+ *  - particle-physics.ts      — per-particle physics, edge repulsion, trails
+ *  - particle-life.ts         — Particle Life pairwise force computation
+ *  - particle-life-debug.ts   — debug visualizations for Particle Life
+ *  - particle-merge.ts        — traditional + procedural merge logic
+ *  - particle-forge.ts        — forge crunch integration
+ *  - particle-shockwave.ts    — shockwave update + spatial grid
+ *  - particle-renderer.ts     — batched draw calls
+ *  - spatial-grid.ts          — numeric-keyed spatial hash grid
  */
 
 import type { CanvasContext } from '../canvas';
@@ -32,9 +36,9 @@ import {
   FORGE_VALID_WAIT_TIME_MS,
   FORGE_SPIN_UP_DURATION_MS,
   FORGE_SPIN_DOWN_DURATION_MS,
-  EULER_FLUID_ENABLED,
 } from '../../data/particles/particle-config';
-import { applyEulerFluidForces } from './euler-fluid';
+import { createDefaultInteractionMatrix } from '../../data/particles/interaction-matrix';
+import { PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT } from '../../data/particles/particle-life-config';
 import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
 import { getForgeRotationMultiplier } from '../../sim/forge/forge-state';
@@ -52,6 +56,11 @@ import type {
 import { ParticlePool, initParticle } from './particle-pool';
 import { updateParticlePhysics, applyEdgeRepulsion, updateTrails, clearTrails } from './particle-physics';
 import {
+  applyParticleLifeForces,
+  applyParticleLifeDamping,
+  applyWrapAround,
+} from './particle-life';
+import {
   attemptMerge,
   processActiveMerges,
   enforceParticleLimit,
@@ -61,6 +70,8 @@ import {
 import { checkAndStartForgeCrunch, completeForgeCrunch } from './particle-forge';
 import { updateShockwaves } from './particle-shockwave';
 import { drawParticles, updateParticleRendererTime } from './particle-renderer';
+import type { ParticleLifeDebugState } from './particle-life-debug';
+import { drawParticleLifeDebug, createDefaultDebugState } from './particle-life-debug';
 
 // Re-export types for backward compatibility
 export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions, ProceduralMerge };
@@ -82,6 +93,14 @@ export class ParticleSystem {
   spawnerRotations: Map<TierId, number> = new Map();
   mergeCooldownFrames = 0;
   frameCount = 0;
+
+  // ── Particle Life state ──
+  /** 13×13 interaction matrix: matrix[source][target]. */
+  interactionMatrix: number[][] = createDefaultInteractionMatrix();
+  /** Whether larger motes exert stronger forces. */
+  enableSizeForceBias: boolean = PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT;
+  /** Debug visualization toggles. */
+  debugState: ParticleLifeDebugState = createDefaultDebugState();
 
   private readonly _pool = new ParticlePool();
 
@@ -134,7 +153,7 @@ export class ParticleSystem {
     }
   }
 
-  /** Full physics + merge + forge crunch update. */
+  /** Full physics + Particle Life + merge + forge crunch update. */
   update(
     deltaMs: number,
     nowMs: number,
@@ -166,7 +185,7 @@ export class ParticleSystem {
     );
     this.forgeRotation += FORGE_ROTATION_SPEED * spinMult * clampedDelta;
 
-    // Physics
+    // Per-particle physics (generator gravity, forge attraction, veer, clamping, bounce)
     const skipPhysics = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 === 0;
     if (!skipPhysics) {
       for (let i = 0, len = this.particles.length; i < len; i++) {
@@ -185,13 +204,29 @@ export class ParticleSystem {
       clearTrails(this.particles);
     }
 
-    // Euler fluid dynamics
-    if (EULER_FLUID_ENABLED) {
-      const skipEuler = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 !== 0;
-      if (!skipEuler) {
-        applyEulerFluidForces(this.particles, clampedDelta);
+    // ── Particle Life interaction forces ──
+    // Replaces the old Euler fluid dynamics system.
+    // Computes pairwise forces from the 13×13 interaction matrix.
+    // 1×1 motes are automatically skipped (inert rule).
+    {
+      const skipPL = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 !== 0;
+      if (!skipPL) {
+        applyParticleLifeForces(
+          this.particles,
+          this.interactionMatrix,
+          this.enableSizeForceBias,
+          clampedDelta,
+          canvasWidth,
+          canvasHeight,
+        );
       }
     }
+
+    // Velocity damping + max speed clamp
+    applyParticleLifeDamping(this.particles, clampedDelta);
+
+    // Toroidal wraparound
+    applyWrapAround(this.particles, canvasWidth, canvasHeight);
 
     // Merges
     if (this.mergeCooldownFrames > 0) this.mergeCooldownFrames--;
@@ -232,9 +267,16 @@ export class ParticleSystem {
     this.shockwaves = updateShockwaves(this.shockwaves, this.particles, nowMs);
   }
 
-  /** Render particles and shockwaves to canvas. */
+  /** Render particles, shockwaves, and optional debug overlays to canvas. */
   draw(cc: CanvasContext, options: ParticleRenderOptions): void {
     drawParticles(cc, this.particles, this.shockwaves, options);
+    drawParticleLifeDebug(
+      cc,
+      this.particles,
+      this.interactionMatrix,
+      this.enableSizeForceBias,
+      this.debugState,
+    );
   }
 
   get particleCount(): number {
