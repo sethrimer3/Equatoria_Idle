@@ -53,6 +53,28 @@
 }
 
 /* ── HUD overlay (DOM layer above the game canvas) ──────────── */
+
+/* Ensure all HUD text over the render has a clearly visible black outline. */
+.hud-motes-value,
+.hud-motes-label,
+.hud-score-value,
+.hud-score-label,
+.hud-equation,
+.hud-equation *,
+.hud-tap-hint {
+  -webkit-text-stroke: 1.5px #000;
+  paint-order: stroke fill;
+  text-shadow:
+    -2px -2px 0 #000,
+     0   -2px 0 #000,
+     2px -2px 0 #000,
+    -2px  0   0 #000,
+     2px  0   0 #000,
+    -2px  2px 0 #000,
+     0    2px 0 #000,
+     2px  2px 0 #000;
+}
+
 #hud-overlay {
   position: absolute;
   top: 0;
