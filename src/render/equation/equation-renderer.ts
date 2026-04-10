@@ -16,7 +16,7 @@ export function drawEquation(
   const centerX = cc.widthPx / 2;
   const topY = cc.heightPx / 2;
   const fontSize = 9;
-  ctx.font = `bold ${fontSize}px 'Pixelify Sans', monospace`;
+  ctx.font = `600 ${fontSize}px 'Cormorant Garamond', serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 

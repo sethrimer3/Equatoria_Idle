@@ -114,6 +114,7 @@
 }
 
 .hud-equation {
+  font-family: 'Cormorant Garamond', serif;
   font-size: 18px;
   font-weight: 700;
   line-height: 1.5;
@@ -251,10 +252,12 @@
 
 /* ── Equation panel — unlocked display ───────────────────────── */
 .equation-title {
+  font-family: 'Cormorant Garamond', serif;
   text-align: center;
 }
 
 .equation-display {
+  font-family: 'Cormorant Garamond', serif;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--accent-border);
   border-radius: var(--border-radius);
