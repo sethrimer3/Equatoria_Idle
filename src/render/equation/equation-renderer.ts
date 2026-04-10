@@ -176,26 +176,26 @@ export function drawScore(
   const ctx = cc.ctx;
 
   // ── Top-center: Equivalence (big number) ──
-  ctx.font = `bold 12px 'Pixelify Sans', monospace`;
+  ctx.font = `bold 12px 'Poiret One', monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#ecf0f1';
-  ctx.fillText(formatNumberAs(equivalence, numberFormat), cc.widthPx / 2, 4);
+  drawOutlinedText(ctx, formatNumberAs(equivalence, numberFormat), cc.widthPx / 2, 4);
 
-  ctx.font = `7px 'Pixelify Sans', monospace`;
+  ctx.font = `7px 'Poiret One', monospace`;
   ctx.fillStyle = '#888';
-  ctx.fillText('Equivalence', cc.widthPx / 2, 18);
+  drawOutlinedText(ctx, 'Equivalence', cc.widthPx / 2, 18);
 
   // ── Top-left: on-screen mote count (small) ──
-  ctx.font = `bold 7px 'Pixelify Sans', monospace`;
+  ctx.font = `bold 7px 'Poiret One', monospace`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#aaa';
-  ctx.fillText(formatNumberAs(onScreenMotes, numberFormat), 4, 4);
+  drawOutlinedText(ctx, formatNumberAs(onScreenMotes, numberFormat), 4, 4);
 
-  ctx.font = `6px 'Pixelify Sans', monospace`;
+  ctx.font = `6px 'Poiret One', monospace`;
   ctx.fillStyle = '#666';
-  ctx.fillText('motes', 4, 14);
+  drawOutlinedText(ctx, 'motes', 4, 14);
 }
 
 /**
@@ -205,7 +205,7 @@ export function drawTapHint(cc: CanvasContext, pulse: number): void {
   const ctx = cc.ctx;
   const alpha = 0.3 + 0.3 * Math.sin(pulse);
   ctx.globalAlpha = alpha;
-  ctx.font = `8px 'Pixelify Sans', monospace`;
+  ctx.font = `8px 'Poiret One', monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ecf0f1';

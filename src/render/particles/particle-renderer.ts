@@ -16,6 +16,17 @@ import type { EquatoriaParticle, Shockwave, ParticleRenderOptions } from './part
 import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
 import { getTrailPosition } from './particle-physics';
 
+// ─── Tier index constants ───────────────────────────────────────
+const DIAMOND_TIER_INDEX = 9;
+
+// Module-level animation time (accumulated ms) for shimmer effects
+let _animTimeMs = 0;
+
+/** Call once per frame with the elapsed time in milliseconds. */
+export function updateParticleRendererTime(deltaMs: number): void {
+  _animTimeMs += deltaMs;
+}
+
 // ─── Batch data structure ───────────────────────────────────────
 
 interface DrawBatch {
@@ -176,6 +187,42 @@ export function drawParticles(
     ctx.beginPath();
     ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
     ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // ── Special effects: diamond prismatic sheen ──
+  if (options.enableGlow) {
+    drawDiamondPrismaticSheen(ctx, particles);
+  }
+}
+
+function drawDiamondPrismaticSheen(
+  ctx: CanvasRenderingContext2D,
+  particles: EquatoriaParticle[],
+): void {
+  const t = _animTimeMs / 1000;
+  for (let pi = 0, plen = particles.length; pi < plen; pi++) {
+    const p = particles[pi];
+    if (p.tierIndex !== DIAMOND_TIER_INDEX) continue;
+
+    // Cycle through hues over time; offset each particle by index so they look varied
+    const hueOffset = (t * 120 + pi * 47) % 360;
+    const h1 = hueOffset;
+    const h2 = (hueOffset + 120) % 360;
+
+    ctx.globalAlpha = 0.55;
+    ctx.shadowBlur = p.size * 5;
+    ctx.shadowColor = `hsl(${h1}, 100%, 70%)`;
+    ctx.fillStyle = `hsl(${h1}, 100%, 75%)`;
+    const half = p.size / 2;
+    ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(p.size), Math.ceil(p.size));
+
+    ctx.globalAlpha = 0.3;
+    ctx.shadowColor = `hsl(${h2}, 100%, 70%)`;
+    ctx.fillStyle = `hsl(${h2}, 100%, 75%)`;
+    ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(p.size), Math.ceil(p.size));
+
+    ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1;
 }

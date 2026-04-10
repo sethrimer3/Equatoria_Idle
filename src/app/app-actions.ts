@@ -11,6 +11,7 @@ import {
   tryUnlockNextTier,
   tryUnlockEquationForge,
   tryUpgradeLoom,
+  claimAchievement,
 } from '../sim';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
@@ -64,6 +65,9 @@ export function handleAction(
       break;
     case 'upgrade_loom':
       tryUpgradeLoom(state.game, action.tierId as TierId, devMode);
+      break;
+    case 'claim_achievement':
+      claimAchievement(state.game.achievements, action.achievementId);
       break;
     case 'set_active_tab':
       state.activeTab = action.tabId;

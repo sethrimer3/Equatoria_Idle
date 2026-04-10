@@ -12,9 +12,25 @@
 }
 
 @font-face {
-  font-family: 'Pixelify Sans';
-  src: url('/ASSETS/font/Pixelify_Sans/static/PixelifySans-Regular.ttf') format('truetype');
+  font-family: 'Poiret One';
+  src: url('/ASSETS/font/Poiret_One/PoiretOne-Regular.ttf') format('truetype');
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BJ Cree';
+  src: url('/ASSETS/font/BJ_Cree/BJCree-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BJ Cree';
+  src: url('/ASSETS/font/BJ_Cree/BJCree-Bold.ttf') format('truetype');
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
@@ -29,7 +45,7 @@
   --accent: #c9a84c;
   --accent-glow: rgba(201, 168, 76, 0.3);
   --accent-border: rgba(201, 168, 76, 0.2);
-  --font-primary: 'Pixelify Sans', sans-serif;
+  --font-primary: 'Poiret One', sans-serif;
   --border-radius: 16px;
   --tab-height: 56px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
