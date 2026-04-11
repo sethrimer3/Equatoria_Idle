@@ -19,8 +19,6 @@ export interface HudUpdateParams {
   terms: EquationTermView[];
   tapFlashAlpha: number;
   isForgeUnlocked: boolean;
-  totalTapCount: number;
-  animPulse: number;
   numberFormat: NumberFormat;
 }
 
@@ -33,12 +31,6 @@ export interface HudOverlay {
 
 /** Maximum spread (px) of the gold glow drop-shadow on equation tap. */
 const MAX_GLOW_SPREAD_PX = 8;
-
-/** Base opacity for the pulsing tap-hint text. */
-const TAP_HINT_BASE_OPACITY = 0.3;
-
-/** Amplitude of the tap-hint pulse oscillation. */
-const TAP_HINT_PULSE_AMPLITUDE = 0.3;
 
 // ─── Factory ─────────────────────────────────────────────────────
 
@@ -81,13 +73,7 @@ export function createHudOverlay(): HudOverlay {
   const equationEl = document.createElement('div');
   equationEl.className = 'hud-equation';
 
-  const tapHintEl = document.createElement('div');
-  tapHintEl.className = 'hud-tap-hint';
-  tapHintEl.textContent = 'Tap the equation!';
-  tapHintEl.style.display = 'none';
-
   equationContainer.appendChild(equationEl);
-  equationContainer.appendChild(tapHintEl);
 
   overlay.appendChild(motesEl);
   overlay.appendChild(scoreEl);
@@ -105,8 +91,6 @@ export function createHudOverlay(): HudOverlay {
       terms,
       tapFlashAlpha,
       isForgeUnlocked,
-      totalTapCount,
-      animPulse,
       numberFormat,
     } = params;
 
@@ -143,15 +127,6 @@ export function createHudOverlay(): HudOverlay {
       equationEl.style.filter = `drop-shadow(0 0 ${spread}px rgba(201, 168, 76, ${tapFlashAlpha}))`;
     } else if (equationEl.style.filter) {
       equationEl.style.filter = '';
-    }
-
-    // Tap hint (shown for first 3 taps when forge is unlocked)
-    if (isForgeUnlocked && totalTapCount < 3) {
-      tapHintEl.style.display = '';
-      const alpha = TAP_HINT_BASE_OPACITY + TAP_HINT_PULSE_AMPLITUDE * Math.sin(animPulse);
-      tapHintEl.style.opacity = String(alpha);
-    } else if (tapHintEl.style.display !== 'none') {
-      tapHintEl.style.display = 'none';
     }
   }
 

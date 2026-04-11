@@ -205,7 +205,7 @@
 
 ### src/render/particles/particle-physics.ts
 - Per-particle physics: gravity, veer, velocity clamping, bounce.
-- `updateParticlePhysics()` — full per-particle physics step.
+- `updateParticlePhysics()` — full per-particle physics step. Accepts `isForgeUnlocked` flag; forge attraction is skipped when the forge is not yet unlocked.
 - `applyEdgeRepulsion()` — boundary push forces.
 - `updateTrails()` / `clearTrails()` — ring-buffer trail management.
 - `getTrailPosition()` — zero-allocation trail position reader.
@@ -229,6 +229,11 @@
 - Batched canvas rendering for trails, particles, and shockwaves.
 - Numeric batch keys `(tierIndex << 8 | sizeIndex)`, Float64Array position buffers.
 - `drawParticles()` — unified render function.
+- `getParticleRendererAnimTimeMs()` — returns accumulated animation time for external sync.
+
+### src/render/particles/particle-grab-visual.ts
+- Grab-radius circle overlay and spinning comet orbs drawn when the player holds down on the canvas.
+- `drawGrabVisual()` — draws a dashed circle at drag center, then one counterclockwise-spinning comet orb per unique tier of grabbed particles, with additive-blended trails.
 
 ### src/render/particles/spatial-grid.ts
 - Numeric-keyed spatial hash grid for collision queries.

@@ -108,6 +108,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.cc.heightPx,
       ctx.appState.forge,
       { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
+      ctx.appState.game.equation.isForgeUnlocked,
     );
 
     // Fire particle/forge audio events
@@ -161,12 +162,16 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       terms,
       tapFlashAlpha: ctx.appState.tapFlashAlpha,
       isForgeUnlocked: ctx.appState.game.equation.isForgeUnlocked,
-      totalTapCount: ctx.appState.game.equation.totalTapCount,
-      animPulse: ctx.appState.animPulse,
       numberFormat: ctx.settings.numberFormat,
     });
 
-    ctx.particles.draw(ctx.cc, { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics });
+    ctx.particles.draw(
+      ctx.cc,
+      { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
+      ctx.appState.particleDrag,
+      ctx.cc.widthPx,
+      ctx.cc.heightPx,
+    );
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
       updateVisiblePanels(ctx.appState, ctx.uiPanels, ctx.appState.game, ctx.settings.isDevMode, ctx.settings.numberFormat);
