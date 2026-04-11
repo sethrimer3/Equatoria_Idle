@@ -37,6 +37,13 @@ export interface AudioSystem {
   setMusicVolume(v: number): void;
   setSfxVolume(v: number): void;
 
+  /**
+   * Suspend or resume audio based on window focus state.
+   * Call with `false` when the window/tab loses focus, `true` when it regains it.
+   * Has no effect until the AudioContext has been started by a user gesture.
+   */
+  setFocused(focused: boolean): void;
+
   // Achievement events
   onAchievementUnlocked(isSecret: boolean): void;
   onAchievementClaimed(): void;
@@ -67,6 +74,7 @@ function createNoOpAudioSystem(): AudioSystem {
     resumeContext:          async () => {},
     setMusicVolume:         () => {},
     setSfxVolume:           () => {},
+    setFocused:             () => {},
     onAchievementUnlocked:  () => {},
     onAchievementClaimed:   () => {},
     onBuyEquationUpgrade:   () => {},
@@ -137,6 +145,18 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
     setSfxVolume(v: number): void {
       sfx.setVolume(v);
       ambiance.setSfxVolume(v);
+    },
+
+    setFocused(focused: boolean): void {
+      // No-op until the context has been started by a user gesture.
+      if (!_contextStarted) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (focused) {
+        void ctx.resume();
+      } else {
+        void ctx.suspend();
+      }
     },
 
     onAchievementUnlocked(isSecret: boolean): void {
