@@ -43,12 +43,10 @@ export interface EquatoriaParticle {
   trailCount: number;
   /** Frame counter for trail capture throttling. */
   trailFrameCounter: number;
-  /** Whether this particle is in a procedural seek-merge group. */
-  isProceduralSeeking: boolean;
-  /** Target centroid X for procedural seek-merge. */
-  proceduralTargetX: number;
-  /** Target centroid Y for procedural seek-merge. */
-  proceduralTargetY: number;
+  /** X position when this particle entered suction-merge state (used for trail rendering). */
+  suctionStartX: number;
+  /** Y position when this particle entered suction-merge state (used for trail rendering). */
+  suctionStartY: number;
 }
 
 /** Backward-compatible alias. */
@@ -65,16 +63,6 @@ export interface ActiveMerge {
   startTimeMs: number;
   isTierConversion: boolean;
   conversionCount: number;
-}
-
-/** Tracks a group of same-size particles that are seeking each other out. */
-export interface ProceduralMerge {
-  particles: EquatoriaParticle[];
-  sizeIndex: SizeIndex;
-  tierId: TierId;
-  startTimeMs: number;
-  centroidX: number;
-  centroidY: number;
 }
 
 // ─── Shockwave ───────────────────────────────────────────────────

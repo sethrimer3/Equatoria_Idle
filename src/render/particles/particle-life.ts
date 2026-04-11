@@ -255,6 +255,7 @@ export function applyWrapAround(
 ): void {
   for (let i = 0, len = particles.length; i < len; i++) {
     const p = particles[i];
+    if (p.isMerging) continue;
     // Wrap X
     if (p.x < 0) p.x += canvasWidth;
     else if (p.x > canvasWidth) p.x -= canvasWidth;

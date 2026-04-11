@@ -65,17 +65,19 @@ export const TRAIL_LENGTH_LARGE = 10;
 /** How many frames between trail position captures. */
 export const TRAIL_CAPTURE_INTERVAL = 2;
 
-// ─── Procedural merge (seek & combine) ─────────────────────────
-/** Number of same-size particles needed to trigger seeking behaviour. */
-export const PROCEDURAL_MERGE_THRESHOLD = 100;
-/** Base seek force when merge is first triggered. */
-export const PROCEDURAL_SEEK_BASE_FORCE = 0.15;
-/** Force increase per second while seeking. */
-export const PROCEDURAL_SEEK_RAMP_PER_SEC = 0.05;
-/** Distance at which seeking particles snap together. */
-export const PROCEDURAL_SEEK_SNAP_DIST = 3;
-/** Time after which a procedural merge forcibly completes (ms). */
-export const PROCEDURAL_MERGE_TIMEOUT_MS = 8000;
+// ─── Suction merge (global count → generator pull) ──────────────
+/**
+ * Speed at which particles travel toward their generator during a suction merge.
+ * Units: canvas pixels per frame-unit (clampedDelta ≈ 1 at 60 fps).
+ */
+export const SUCTION_GATHER_SPEED = 30.0;
+/** Safety timeout — suction merge forcibly completes after this many ms. */
+export const SUCTION_TIMEOUT_MS = 2000;
+/**
+ * Width multiplier for suction trail lines relative to the particle's rendered size.
+ * Applied as: lineWidth = max(1, particle.size * SUCTION_TRAIL_WIDTH_SCALE).
+ */
+export const SUCTION_TRAIL_WIDTH_SCALE = 0.7;
 
 // ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
 // The Euler inter-particle fluid system has been replaced by the
