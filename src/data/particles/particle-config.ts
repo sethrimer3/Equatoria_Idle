@@ -68,11 +68,16 @@ export const TRAIL_CAPTURE_INTERVAL = 2;
 // ─── Suction merge (global count → generator pull) ──────────────
 /**
  * Speed at which particles travel toward their generator during a suction merge.
- * Higher value = faster / more "instantaneous" feel.
+ * Units: canvas pixels per frame-unit (clampedDelta ≈ 1 at 60 fps).
  */
 export const SUCTION_GATHER_SPEED = 30.0;
 /** Safety timeout — suction merge forcibly completes after this many ms. */
 export const SUCTION_TIMEOUT_MS = 2000;
+/**
+ * Width multiplier for suction trail lines relative to the particle's rendered size.
+ * Applied as: lineWidth = max(1, particle.size * SUCTION_TRAIL_WIDTH_SCALE).
+ */
+export const SUCTION_TRAIL_WIDTH_SCALE = 0.7;
 
 // ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
 // The Euler inter-particle fluid system has been replaced by the

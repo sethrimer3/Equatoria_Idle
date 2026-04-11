@@ -14,6 +14,7 @@
 import type { CanvasContext } from '../canvas';
 import type { EquatoriaParticle, Shockwave, ParticleRenderOptions } from './particle-types';
 import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
+import { SUCTION_TRAIL_WIDTH_SCALE } from '../../data/particles/particle-config';
 import { getTrailPosition } from './particle-physics';
 
 // ─── Tier index constants ───────────────────────────────────────
@@ -39,7 +40,8 @@ const _colorRgbCache = new Map<string, [number, number, number]>();
 function getCachedRgb(colorString: string): [number, number, number] {
   let rgb = _colorRgbCache.get(colorString);
   if (!rgb) {
-    // Parse 6-digit hex (#RRGGBB) or fall back to white
+    // All tier colors are defined as 6-digit hex (#RRGGBB) in tier-definitions.ts.
+    // Parsing is therefore safe; non-hex values fall back to white (255,255,255).
     const h = colorString.startsWith('#') ? colorString.slice(1) : colorString;
     const r = parseInt(h.slice(0, 2), 16) || 255;
     const g = parseInt(h.slice(2, 4), 16) || 255;
@@ -134,7 +136,7 @@ function drawSuctionTrails(
     grad.addColorStop(1, `rgba(${r},${g},${b},0.85)`);
 
     // Line width proportional to particle size; minimum 1 px
-    const lineWidth = Math.max(1, p.size * 0.7);
+    const lineWidth = Math.max(1, p.size * SUCTION_TRAIL_WIDTH_SCALE);
 
     ctx.globalAlpha = 1;
     ctx.strokeStyle = grad;

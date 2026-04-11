@@ -97,10 +97,9 @@ function getGeneratorForTier(
 // ─── Suction merge (global count → generator pull) ───────────────
 
 /**
- * Check every (tierId, sizeIndex) group across ALL particles.
- * When any group reaches MERGE_THRESHOLD, immediately send all
- * MERGE_THRESHOLD particles flying toward their generator center.
- * Multiple types may be suctioned simultaneously.
+ * When any (tierId, sizeIndex) group reaches MERGE_THRESHOLD (100) particles,
+ * all MERGE_THRESHOLD particles are immediately suctioned toward their generator
+ * center. Multiple types may be suctioned simultaneously.
  */
 export function attemptSuctionMerge(
   particles: EquatoriaParticle[],
