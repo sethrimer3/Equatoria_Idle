@@ -67,9 +67,11 @@ import {
 } from './particle-merge';
 import { checkAndStartForgeCrunch, completeForgeCrunch } from './particle-forge';
 import { updateShockwaves } from './particle-shockwave';
-import { drawParticles, updateParticleRendererTime } from './particle-renderer';
+import { drawParticles, updateParticleRendererTime, getParticleRendererAnimTimeMs } from './particle-renderer';
 import type { ParticleLifeDebugState } from './particle-life-debug';
 import { drawParticleLifeDebug, createDefaultDebugState } from './particle-life-debug';
+import { drawGrabVisual } from './particle-grab-visual';
+import type { ParticleDragState } from '../../input/particle-drag';
 
 // Re-export types for backward compatibility
 export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions };
@@ -180,6 +182,7 @@ export class ParticleSystem {
     canvasHeight: number,
     crunchState: ForgeCrunchState,
     options: ParticleRenderOptions,
+    isForgeUnlocked: boolean,
   ): ParticleAudioEvents {
     this.frameCount++;
     const deltaRatio = deltaMs / (1000 / 60);
@@ -207,7 +210,7 @@ export class ParticleSystem {
       for (let i = 0, len = this.particles.length; i < len; i++) {
         updateParticlePhysics(
           this.particles[i], clampedDelta, nowMs, generators,
-          forgeX, forgeY, canvasWidth, canvasHeight,
+          forgeX, forgeY, canvasWidth, canvasHeight, isForgeUnlocked,
         );
       }
       applyEdgeRepulsion(this.particles, canvasWidth, canvasHeight, clampedDelta);
@@ -266,8 +269,10 @@ export class ParticleSystem {
     const wasCrunchActive = this._wasCrunchActive;
     const wasSpinningUp   = this._wasSpinningUp;
 
-    // Forge crunch
-    checkAndStartForgeCrunch(this.particles, crunchState, forgeX, forgeY, nowMs);
+    // Forge crunch (only when forge is unlocked)
+    if (isForgeUnlocked) {
+      checkAndStartForgeCrunch(this.particles, crunchState, forgeX, forgeY, nowMs);
+    }
     if (updateForgeCrunch(crunchState, nowMs)) {
       this.particles = completeForgeCrunch(
         this.particles, this._pool, this.spawnerRotations, forgeX, forgeY, nowMs,
@@ -295,9 +300,18 @@ export class ParticleSystem {
     return { mergesCompleted, forgeCrunchStarted, forgeSpinUpBegan, forgeSpinUpCancelled };
   }
 
-  /** Render particles, shockwaves, and optional debug overlays to canvas. */
-  draw(cc: CanvasContext, options: ParticleRenderOptions): void {
+  /** Render particles, shockwaves, grab overlay, and optional debug overlays to canvas. */
+  draw(
+    cc: CanvasContext,
+    options: ParticleRenderOptions,
+    dragState?: ParticleDragState,
+    canvasWidth?: number,
+    canvasHeight?: number,
+  ): void {
     drawParticles(cc, this.particles, this.shockwaves, options);
+    if (dragState !== undefined && canvasWidth !== undefined && canvasHeight !== undefined) {
+      drawGrabVisual(cc, dragState, this.particles, canvasWidth, canvasHeight, getParticleRendererAnimTimeMs());
+    }
     drawParticleLifeDebug(
       cc,
       this.particles,

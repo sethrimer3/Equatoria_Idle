@@ -33,6 +33,11 @@ export function updateParticleRendererTime(deltaMs: number): void {
   _animTimeMs += deltaMs;
 }
 
+/** Returns the accumulated animation time in milliseconds (for synchronized visual effects). */
+export function getParticleRendererAnimTimeMs(): number {
+  return _animTimeMs;
+}
+
 // ─── Hex color → RGB cache ──────────────────────────────────────
 
 const _colorRgbCache = new Map<string, [number, number, number]>();

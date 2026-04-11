@@ -44,6 +44,7 @@ export function updateParticlePhysics(
   forgeY: number,
   canvasWidth: number,
   canvasHeight: number,
+  isForgeUnlocked: boolean,
 ): void {
   let isInsideGeneratorField = false;
 
@@ -99,23 +100,25 @@ export function updateParticlePhysics(
       }
     }
 
-    // Forge attraction
-    const fdx = forgeX - p.x;
-    const fdy = forgeY - p.y;
-    const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
-    const isForgeAttractable = p.sizeIndex >= MEDIUM_SIZE_INDEX;
-    const forgeRange = p.sizeIndex >= EXTRA_LARGE_SIZE_INDEX ? Infinity : MAX_FORGE_ATTRACTION_DISTANCE;
-    if (isForgeAttractable && fdist <= forgeRange && fdist > 1) {
-      const force = (ATTRACTION_STRENGTH / (fdist * DISTANCE_SCALE)) * p.forceModifier;
-      const angle = Math.atan2(fdy, fdx);
-      p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
-      p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
-    }
-    if (p.sizeIndex === MEDIUM_SIZE_INDEX && fdist > 0.5) {
-      const force = (MEDIUM_TIER_FORGE_GRAVITY_STRENGTH / (fdist * DISTANCE_SCALE)) * p.forceModifier;
-      const angle = Math.atan2(fdy, fdx);
-      p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
-      p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
+    // Forge attraction (only when forge is unlocked)
+    if (isForgeUnlocked) {
+      const fdx = forgeX - p.x;
+      const fdy = forgeY - p.y;
+      const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
+      const isForgeAttractable = p.sizeIndex >= MEDIUM_SIZE_INDEX;
+      const forgeRange = p.sizeIndex >= EXTRA_LARGE_SIZE_INDEX ? Infinity : MAX_FORGE_ATTRACTION_DISTANCE;
+      if (isForgeAttractable && fdist <= forgeRange && fdist > 1) {
+        const force = (ATTRACTION_STRENGTH / (fdist * DISTANCE_SCALE)) * p.forceModifier;
+        const angle = Math.atan2(fdy, fdx);
+        p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
+        p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
+      }
+      if (p.sizeIndex === MEDIUM_SIZE_INDEX && fdist > 0.5) {
+        const force = (MEDIUM_TIER_FORGE_GRAVITY_STRENGTH / (fdist * DISTANCE_SCALE)) * p.forceModifier;
+        const angle = Math.atan2(fdy, fdx);
+        p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
+        p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
+      }
     }
   }
 
