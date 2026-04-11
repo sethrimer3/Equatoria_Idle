@@ -100,9 +100,8 @@ export class MusicPlayer {
         prevSlot.gain.gain.cancelScheduledValues(now);
         prevSlot.gain.gain.setValueAtTime(prevSlot.gain.gain.value, now);
         prevSlot.gain.gain.linearRampToValueAtTime(0, now + CROSSFADE_DURATION_S);
-        setTimeout(() => {
-          try { dyingSource.stop(); } catch { /* ignore */ }
-        }, (CROSSFADE_DURATION_S + 0.1) * 1000);
+        // Schedule stop via Web Audio API for sample-accurate timing
+        dyingSource.stop(now + CROSSFADE_DURATION_S + 0.1);
       }
 
       // Start the new source

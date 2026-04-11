@@ -182,10 +182,11 @@ export class SfxPlayer {
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(gain.gain.value, now);
       gain.gain.linearRampToValueAtTime(0, now + fadeSec);
-      setTimeout(() => {
-        try { source.stop(); }    catch { /* ignore */ }
+      // Use Web Audio scheduling for sample-accurate stop
+      source.stop(now + fadeSec);
+      source.onended = () => {
         try { gain.disconnect(); } catch { /* ignore */ }
-      }, fadeMs + 50);
+      };
     } catch {
       try { source.stop(); }    catch { /* ignore */ }
       try { gain.disconnect(); } catch { /* ignore */ }

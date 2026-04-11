@@ -24,7 +24,7 @@ import type { SettingsState } from '../settings';
 import { saveGame } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
 import { SMALL_SIZE_INDEX } from '../data/particles/size-tiers';
-import { ACHIEVEMENT_DEFINITIONS } from '../data/achievements';
+import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 import type { AppState, UIPanels } from './app-types';
 import { updateVisiblePanels } from './app-actions';
 import type { HudOverlay } from '../ui/hud/hud-overlay';
@@ -60,7 +60,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // Fire achievement audio events for anything newly unlocked this tick
     if (ctx.audioSystem && simResult.newlyUnlockedAchievementIds.length > 0) {
       for (const id of simResult.newlyUnlockedAchievementIds) {
-        const def = ACHIEVEMENT_DEFINITIONS.find(d => d.id === id);
+        const def = ACHIEVEMENT_BY_ID.get(id);
         ctx.audioSystem.onAchievementUnlocked(def?.isSecret === true);
       }
     }
