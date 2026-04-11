@@ -12,6 +12,9 @@ import { MUSIC_PATHS } from './audio-paths';
 
 const CROSSFADE_DURATION_S = 8;
 
+/** −6 dB expressed as a linear multiplier (~0.501). Applied to the master gain. */
+const MUSIC_DB_OFFSET_LINEAR = Math.pow(10, -6 / 20);
+
 interface TrackSlot {
   source: AudioBufferSourceNode | null;
   gain: GainNode;
@@ -46,7 +49,7 @@ export class MusicPlayer {
     this._volume = v;
     const ctx = getAudioContext();
     if (!ctx || !this._masterGain) return;
-    this._masterGain.gain.setTargetAtTime(v, ctx.currentTime, 0.05);
+    this._masterGain.gain.setTargetAtTime(v * MUSIC_DB_OFFSET_LINEAR, ctx.currentTime, 0.05);
   }
 
   private _setup(): void {
@@ -54,7 +57,7 @@ export class MusicPlayer {
     if (!ctx) return;
     try {
       this._masterGain = ctx.createGain();
-      this._masterGain.gain.setValueAtTime(this._volume, ctx.currentTime);
+      this._masterGain.gain.setValueAtTime(this._volume * MUSIC_DB_OFFSET_LINEAR, ctx.currentTime);
       this._masterGain.connect(ctx.destination);
 
       const slotA: TrackSlot = { source: null, gain: ctx.createGain() };

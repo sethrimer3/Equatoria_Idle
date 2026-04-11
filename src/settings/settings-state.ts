@@ -2,6 +2,8 @@
 export interface SettingsState {
   musicVolume: number;     // 0–1
   sfxVolume: number;       // 0–1
+  /** When true, music and SFX pause whenever the window loses focus or the tab is hidden. */
+  isMusicOnlyWhenFocused: boolean;
   isReducedParticles: boolean;
   graphicsQuality: 'high' | 'low';
   isScreenShakeEnabled: boolean;
@@ -16,7 +18,8 @@ export interface SettingsState {
 export function createDefaultSettings(): SettingsState {
   return {
     musicVolume: 0.5,
-    sfxVolume: 0.7,
+    sfxVolume: 0.5,
+    isMusicOnlyWhenFocused: true,
     isReducedParticles: false,
     graphicsQuality: 'high',
     isScreenShakeEnabled: true,

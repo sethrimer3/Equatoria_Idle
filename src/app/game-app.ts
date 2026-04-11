@@ -163,10 +163,33 @@ export async function startApp(): Promise<void> {
     handleActionImpl(appState, action, cc, particles, settings, uiPanels, recomputeGenerators, audioSystem);
   };
 
+  // ── Focus-aware audio pause ──
+  let _isWindowFocused = document.visibilityState === 'visible';
+
+  function applyFocusedAudio(): void {
+    // If the setting is off, always keep audio running.
+    audioSystem.setFocused(!settings.isMusicOnlyWhenFocused || _isWindowFocused);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    _isWindowFocused = document.visibilityState === 'visible';
+    applyFocusedAudio();
+  });
+
+  window.addEventListener('blur', () => {
+    _isWindowFocused = false;
+    applyFocusedAudio();
+  });
+
+  window.addEventListener('focus', () => {
+    _isWindowFocused = true;
+    applyFocusedAudio();
+  });
+
   // ── UI panels ──
   const upgradePanel = createUpgradePanel(dispatch);
   const resourcePanel = createResourcePanel();
-  const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem);
+  const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio);
   const loomPanel = createLoomPanel(dispatch);
   const equationPanel = createEquationPanel(dispatch);
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);

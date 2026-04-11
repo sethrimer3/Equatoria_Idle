@@ -193,6 +193,23 @@
   accent-color: var(--accent);
 }
 
+.settings-slider-wrapper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 2px 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.settings-slider-pct {
+  min-width: 36px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 0.2s, text-shadow 0.2s;
+}
+
 .settings-checkbox {
   width: 20px;
   height: 20px;

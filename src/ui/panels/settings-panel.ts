@@ -3,6 +3,21 @@ import type { SettingsState } from '../../settings';
 import { saveSettings } from '../../settings';
 import type { AudioSystem } from '../../audio';
 
+// ─── Slider glow constants ───────────────────────────────────────
+
+/** Dark gold RGB used at 0% slider value. */
+const DARK_GOLD_RGB  = [107,  79, 16] as const;
+/** Bright gold RGB used at 100% slider value. */
+const BRIGHT_GOLD_RGB = [240, 192, 64] as const;
+/** Maximum glow blur radius in px (at 100%). */
+const MAX_GLOW_RADIUS_PX = 8;
+/** Maximum glow alpha (at 100%). */
+const MAX_GLOW_ALPHA = 0.65;
+/** Maximum box-shadow blur radius in px for the slider wrapper border glow (at 100%). */
+const MAX_BORDER_GLOW_RADIUS_PX = 6;
+/** Slider value (0–1) below which glow is suppressed to avoid dim artefacts near 0%. */
+const MIN_GLOW_THRESHOLD = 0.25;
+
 /**
  * Settings panel — DOM-based settings controls.
  */
@@ -15,6 +30,7 @@ export function createSettingsPanel(
   settings: SettingsState,
   dispatch: ActionHandler,
   audioSystem?: AudioSystem,
+  onFocusSettingChange?: () => void,
 ): SettingsPanel {
   const panel = document.createElement('div');
   panel.className = 'panel settings-panel';
@@ -40,6 +56,14 @@ export function createSettingsPanel(
     audioSystem?.setMusicVolume(v);
   });
   panel.appendChild(musicRow);
+
+  // Music/SFX Only When Focused toggle
+  const focusRow = createToggleRow('Music/SFX Only When Focused', settings.isMusicOnlyWhenFocused, (v) => {
+    settings.isMusicOnlyWhenFocused = v;
+    saveSettings(settings);
+    onFocusSettingChange?.();
+  });
+  panel.appendChild(focusRow);
 
   // Reduced particles toggle
   const particleRow = createToggleRow('Reduced Particles', settings.isReducedParticles, (v) => {
@@ -174,16 +198,48 @@ function createSliderRow(
   lbl.textContent = label;
   row.appendChild(lbl);
 
+  const sliderWrapper = document.createElement('div');
+  sliderWrapper.className = 'settings-slider-wrapper';
+
   const slider = document.createElement('input');
   slider.type = 'range';
   slider.min = '0';
   slider.max = '100';
   slider.value = String(Math.round(initialValue * 100));
   slider.className = 'settings-slider';
+
+  const pctLabel = document.createElement('span');
+  pctLabel.className = 'settings-slider-pct';
+
+  function updateGlow(v: number): void {
+    // v is 0–1; interpolate between dark gold and bright gold
+    const r = Math.round(DARK_GOLD_RGB[0] + (BRIGHT_GOLD_RGB[0] - DARK_GOLD_RGB[0]) * v);
+    const g = Math.round(DARK_GOLD_RGB[1] + (BRIGHT_GOLD_RGB[1] - DARK_GOLD_RGB[1]) * v);
+    const b = Math.round(DARK_GOLD_RGB[2] + (BRIGHT_GOLD_RGB[2] - DARK_GOLD_RGB[2]) * v);
+    const color = `rgb(${r},${g},${b})`;
+    const glowPx = Math.round(v * MAX_GLOW_RADIUS_PX);
+    const glowAlpha = v * MAX_GLOW_ALPHA;
+    const glowColor = `rgba(${r},${g},${b},${glowAlpha})`;
+
+    pctLabel.textContent = `${Math.round(v * 100)}%`;
+    pctLabel.style.color = color;
+    pctLabel.style.textShadow = v > MIN_GLOW_THRESHOLD ? `0 0 ${glowPx}px ${glowColor}` : 'none';
+
+    sliderWrapper.style.borderColor = color;
+    sliderWrapper.style.boxShadow = v > MIN_GLOW_THRESHOLD ? `0 0 ${Math.round(v * MAX_BORDER_GLOW_RADIUS_PX)}px ${glowColor}` : 'none';
+  }
+
+  updateGlow(initialValue);
+
   slider.addEventListener('input', () => {
-    onChange(parseInt(slider.value) / 100);
+    const v = parseInt(slider.value) / 100;
+    updateGlow(v);
+    onChange(v);
   });
-  row.appendChild(slider);
+
+  sliderWrapper.appendChild(slider);
+  row.appendChild(sliderWrapper);
+  row.appendChild(pctLabel);
 
   return row;
 }
