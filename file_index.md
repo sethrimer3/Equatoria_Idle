@@ -311,7 +311,23 @@
 - Shows a card per unlocked tier's Loom: name, description, level, production rate, upgrade button.
 - Updates affordability and visibility based on game state.
 
-### src/ui/panels/upgrade-panel.ts
+### src/audio/
+
+Audio system — eight focused modules:
+
+- **`audio-paths.ts`** — All audio asset path constants, URL-encoded so spaces and `#` in filenames work with `fetch()`.
+- **`audio-context.ts`** — Web Audio `AudioContext` singleton with Safari `webkitAudioContext` fallback and `resumeAudioContext()` helper.
+- **`audio-loader.ts`** — `loadAudioBuffer(ctx, path)` — async fetch + `decodeAudioData` with in-flight deduplication and per-path caching. `preloadAudioBuffers()` for bulk warm-up.
+- **`music-player.ts`** — `MusicPlayer` — shuffled 3-track playlist with 8-second Web Audio crossfades. Two alternating `GainNode` slots. Play order is fixed at startup (random once).
+- **`ambiance-player.ts`** — `AmbiancePlayer` — looping `lowRumble.mp3` at −10 dB relative to SFX volume. Fades in/out (1 s) when the `equation` tab is entered/left.
+- **`sfx-player.ts`** — `SfxPlayer` — single SFX, random-from-list, polyphony-limited (motes merging, max 2), forge charging fade-in/out.
+- **`audio-system.ts`** — `AudioSystem` interface + `createAudioSystem(musicVolume, sfxVolume)` factory. No-op fallback when Web Audio API is unavailable.
+- **`index.ts`** — Barrel: exports `AudioSystem`, `createAudioSystem`.
+
+### src/data/particles/particle-config.ts
+- Added `FORGE_SPIN_UP_THRESHOLD_MS` — named constant for the elapsed-ms threshold at which the forge spin-up animation begins.
+
+
 - Tier progression panel (renamed from Upgrades).
 - Contains only the tier unlock button for unlocking new gemstone tiers.
 - Equation upgrades and forge unlock have moved to the Equation panel.

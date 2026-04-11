@@ -176,13 +176,15 @@ export interface SimTickResult {
   autoTapped: boolean;
   autoTapGains: Map<TierId, number> | null;
   loomGains: Map<TierId, number>;
+  /** Achievement IDs newly unlocked during this tick (empty array if none). */
+  newlyUnlockedAchievementIds: readonly string[];
 }
 
 /** Advance simulation by deltaMs. */
 export function simTick(state: GameState, deltaMs: number): SimTickResult {
   state.elapsedMs += deltaMs;
 
-  const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map() };
+  const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map(), newlyUnlockedAchievementIds: [] };
 
   // Tick Looms — passive production (with achievement loom bonus)
   const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus);
@@ -206,7 +208,7 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
   }
 
   // Check for newly-unlocked achievements
-  checkAndUnlockAchievements(state.achievements, state.resources);
+  result.newlyUnlockedAchievementIds = checkAndUnlockAchievements(state.achievements, state.resources);
 
   return result;
 }

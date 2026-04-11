@@ -24,9 +24,11 @@ import type { SettingsState } from '../settings';
 import { saveGame } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
 import { SMALL_SIZE_INDEX } from '../data/particles/size-tiers';
+import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 import type { AppState, UIPanels } from './app-types';
 import { updateVisiblePanels } from './app-actions';
 import type { HudOverlay } from '../ui/hud/hud-overlay';
+import type { AudioSystem } from '../audio';
 
 // ─── Game loop context ──────────────────────────────────────────
 
@@ -43,6 +45,7 @@ export interface GameLoopContext {
   hudOverlay: HudOverlay;
   lastUnlockedTierCount: { value: number };
   lastFrameMs: { value: number };
+  audioSystem?: AudioSystem;
 }
 
 // ─── Game loop ──────────────────────────────────────────────────
@@ -53,6 +56,14 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     ctx.lastFrameMs.value = nowMs;
 
     const simResult = simTick(ctx.appState.game, deltaMs);
+
+    // Fire achievement audio events for anything newly unlocked this tick
+    if (ctx.audioSystem && simResult.newlyUnlockedAchievementIds.length > 0) {
+      for (const id of simResult.newlyUnlockedAchievementIds) {
+        const def = ACHIEVEMENT_BY_ID.get(id);
+        ctx.audioSystem.onAchievementUnlocked(def?.isSecret === true);
+      }
+    }
 
     // Recompute generators when tiers are newly unlocked
     if (ctx.appState.game.progression.unlockedTierCount !== ctx.lastUnlockedTierCount.value) {
@@ -87,7 +98,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.recomputeGenerators();
     }
 
-    ctx.particles.update(
+    const particleAudioEvents = ctx.particles.update(
       deltaMs,
       nowMs,
       ctx.appState.generatorState.generators,
@@ -98,6 +109,19 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.forge,
       { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
     );
+
+    // Fire particle/forge audio events
+    if (ctx.audioSystem) {
+      if (particleAudioEvents.mergesCompleted > 0) {
+        ctx.audioSystem.onMotesMerged(particleAudioEvents.mergesCompleted);
+      }
+      if (particleAudioEvents.forgeSpinUpBegan)     ctx.audioSystem.onForgeSpinUpBegan();
+      if (particleAudioEvents.forgeCrunchStarted)   ctx.audioSystem.onForgeCrunchStarted();
+      if (particleAudioEvents.forgeSpinUpCancelled) ctx.audioSystem.onForgeSpinUpCancelled();
+
+      // Update ambiance based on active tab every frame
+      ctx.audioSystem.updateAmbianceForTab(ctx.appState.activeTab);
+    }
 
     // ── Update background animation ──
     ctx.bgAnimation.update(deltaMs);

@@ -20,6 +20,7 @@ import type { ParticleSystem } from '../render';
 import type { SettingsState } from '../settings';
 import type { AppState, UIPanels } from './app-types';
 import type { NumberFormat } from '../util';
+import type { AudioSystem } from '../audio';
 
 // ─── Action handler ─────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ export function handleAction(
   settings: SettingsState,
   uiPanels: UIPanels,
   recomputeGenerators: () => void,
+  audioSystem?: AudioSystem,
 ): void {
   const devMode = settings.isDevMode;
   switch (action.kind) {
@@ -53,24 +55,36 @@ export function handleAction(
       }
       break;
     }
-    case 'purchase_upgrade':
-      tryPurchaseUpgrade(state.game, action.upgradeId, devMode);
+    case 'purchase_upgrade': {
+      const ok = tryPurchaseUpgrade(state.game, action.upgradeId, devMode);
+      if (ok) audioSystem?.onBuyEquationUpgrade();
+      else     audioSystem?.onError();
       break;
-    case 'unlock_next_tier':
-      tryUnlockNextTier(state.game, devMode);
-      recomputeGenerators();
+    }
+    case 'unlock_next_tier': {
+      const ok = tryUnlockNextTier(state.game, devMode);
+      if (ok) { recomputeGenerators(); audioSystem?.onBuyEquationUpgrade(); }
+      else      audioSystem?.onError();
       break;
-    case 'unlock_equation_forge':
-      tryUnlockEquationForge(state.game, devMode);
+    }
+    case 'unlock_equation_forge': {
+      const ok = tryUnlockEquationForge(state.game, devMode);
+      if (ok) audioSystem?.onBuyEquationUpgrade();
+      else     audioSystem?.onError();
       break;
-    case 'upgrade_loom':
-      tryUpgradeLoom(state.game, action.tierId as TierId, devMode);
+    }
+    case 'upgrade_loom': {
+      const ok = tryUpgradeLoom(state.game, action.tierId as TierId, devMode);
+      if (ok) audioSystem?.onBuyLoomUpgrade();
+      else     audioSystem?.onError();
       break;
+    }
     case 'claim_achievement':
       claimAchievement(state.game.achievements, action.achievementId);
       break;
     case 'set_active_tab':
       state.activeTab = action.tabId;
+      audioSystem?.onTabChange(action.tabId);
       setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
       break;
     case 'save_game':

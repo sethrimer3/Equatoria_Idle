@@ -37,6 +37,7 @@ import {
   computeGeneratorPositions,
 } from '../sim/particles';
 import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
+import { createAudioSystem } from '../audio';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
@@ -77,6 +78,9 @@ export async function startApp(): Promise<void> {
 
   const forge = createForgeCrunchState();
   const generatorState = createGeneratorState();
+
+  // ── Audio system ──
+  const audioSystem = createAudioSystem(settings.musicVolume, settings.sfxVolume);
 
   const appState: AppState = {
     game,
@@ -141,6 +145,9 @@ export async function startApp(): Promise<void> {
 
   // ── Action dispatch ──
   const dispatch = (action: GameAction): void => {
+    // Resume audio context on user interaction (autoplay policy)
+    audioSystem.resumeContext().catch(() => { /* silently ignore */ });
+
     // Handle save/reset directly here since they need local closures
     if (action.kind === 'save_game') {
       saveGame(appState.game);
@@ -153,16 +160,16 @@ export async function startApp(): Promise<void> {
       setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
       return;
     }
-    handleActionImpl(appState, action, cc, particles, settings, uiPanels, recomputeGenerators);
+    handleActionImpl(appState, action, cc, particles, settings, uiPanels, recomputeGenerators, audioSystem);
   };
 
   // ── UI panels ──
   const upgradePanel = createUpgradePanel(dispatch);
   const resourcePanel = createResourcePanel();
-  const settingsPanel = createSettingsPanel(settings, dispatch);
+  const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem);
   const loomPanel = createLoomPanel(dispatch);
   const equationPanel = createEquationPanel(dispatch);
-  const achievementsPanel = createAchievementsPanel(dispatch);
+  const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
   panelsInner.appendChild(equationPanel.element);
   panelsInner.appendChild(loomPanel.element);
@@ -202,6 +209,7 @@ export async function startApp(): Promise<void> {
 
   cc.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     cc.canvas.setPointerCapture(e.pointerId);
+    audioSystem.resumeContext().catch(() => { /* silently ignore */ });
     const pos = getCanvasCoords(e);
     handleParticleDragDown(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles, cc.widthPx, cc.heightPx);
   });
@@ -247,6 +255,7 @@ export async function startApp(): Promise<void> {
     hudOverlay,
     lastUnlockedTierCount: { value: appState.game.progression.unlockedTierCount },
     lastFrameMs: { value: performance.now() },
+    audioSystem,
   });
 
   // Initial generator setup

@@ -4,6 +4,7 @@ import { TIER_BY_ID } from '../../data/tiers';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getLifetimeMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
+import type { AudioSystem } from '../../audio';
 
 /**
  * Achievements panel — shows all achievements, their requirements, and bonuses.
@@ -60,7 +61,7 @@ function bonusText(bonusKind: string, bonusMultiplier: number): string {
 
 // ─── Panel factory ─────────────────────────────────────────────
 
-export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPanel {
+export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: AudioSystem): AchievementsPanel {
   const panel = document.createElement('div');
   panel.className = 'panel achievements-panel';
 
@@ -131,6 +132,7 @@ export function createAchievementsPanel(dispatch: ActionHandler): AchievementsPa
       const isEarned = card.classList.contains('achievement-earned-unclaimed');
       if (!isEarned) return;
       dispatch({ kind: 'claim_achievement', achievementId: def.id });
+      audioSystem?.onAchievementClaimed();
       showRewardPopup(card, `${bonusText(def.bonusKind, def.bonusMultiplier)}!`);
     });
 

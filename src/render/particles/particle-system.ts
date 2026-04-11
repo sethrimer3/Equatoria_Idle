@@ -36,6 +36,7 @@ import {
   FORGE_VALID_WAIT_TIME_MS,
   FORGE_SPIN_UP_DURATION_MS,
   FORGE_SPIN_DOWN_DURATION_MS,
+  FORGE_SPIN_UP_THRESHOLD_MS,
 } from '../../data/particles/particle-config';
 import { createDefaultInteractionMatrix } from '../../data/particles/interaction-matrix';
 import { PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT } from '../../data/particles/particle-life-config';
@@ -76,6 +77,19 @@ import { drawParticleLifeDebug, createDefaultDebugState } from './particle-life-
 // Re-export types for backward compatibility
 export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions, ProceduralMerge };
 
+// ─── Audio events returned from update() ────────────────────────
+
+export interface ParticleAudioEvents {
+  /** Number of mote merges completed this frame (both traditional and procedural). */
+  mergesCompleted: number;
+  /** True on the frame the forge crunch animation begins. */
+  forgeCrunchStarted: boolean;
+  /** True on the frame the forge spin-up threshold is crossed. */
+  forgeSpinUpBegan: boolean;
+  /** True on the frame the spin-up is aborted without a crunch. */
+  forgeSpinUpCancelled: boolean;
+}
+
 // ─── Constants ───────────────────────────────────────────────────
 
 /** Fallback spawn position when no matching generator is found (canvas center at 320px width). */
@@ -103,6 +117,12 @@ export class ParticleSystem {
   debugState: ParticleLifeDebugState = createDefaultDebugState();
 
   private readonly _pool = new ParticlePool();
+
+  // ── Forge audio transition tracking ──
+  /** Whether the forge was in spin-up state at the end of the last frame. */
+  private _wasSpinningUp = false;
+  /** Whether the forge crunch was active at the end of the last frame. */
+  private _wasCrunchActive = false;
 
   /** Returns the total small-mote equivalents currently on screen. */
   getOnScreenMoteCount(): number {
@@ -153,7 +173,7 @@ export class ParticleSystem {
     }
   }
 
-  /** Full physics + Particle Life + merge + forge crunch update. */
+  /** Full physics + Particle Life + merge + forge crunch update. Returns audio events for this frame. */
   update(
     deltaMs: number,
     nowMs: number,
@@ -164,7 +184,7 @@ export class ParticleSystem {
     canvasHeight: number,
     crunchState: ForgeCrunchState,
     options: ParticleRenderOptions,
-  ): void {
+  ): ParticleAudioEvents {
     this.frameCount++;
     const deltaRatio = deltaMs / (1000 / 60);
     const clampedDelta = Math.max(Math.min(deltaRatio, 3), 0.01);
@@ -243,9 +263,11 @@ export class ParticleSystem {
     if (this.frameCount % 15 === 0) {
       attemptProceduralMerge(this.particles, this.proceduralMerges, nowMs);
     }
-    this.particles = updateProceduralMerges(
+    const proceduralMergeResult = updateProceduralMerges(
       this.particles, this.proceduralMerges, this.shockwaves, this._pool, nowMs, clampedDelta,
     );
+    this.particles = proceduralMergeResult.particles;
+    const totalMergesCompleted = proceduralMergeResult.completedCount;
 
     // Active merge processing
     const mergeResult = processActiveMerges(
@@ -254,6 +276,11 @@ export class ParticleSystem {
     );
     this.particles = mergeResult.particles;
     this.mergeCooldownFrames = Math.max(this.mergeCooldownFrames, mergeResult.mergeCooldownFrames);
+    const mergesCompleted = totalMergesCompleted + mergeResult.completedCount;
+
+    // Capture previous-frame forge state before updating
+    const wasCrunchActive = this._wasCrunchActive;
+    const wasSpinningUp   = this._wasSpinningUp;
 
     // Forge crunch
     checkAndStartForgeCrunch(this.particles, crunchState, forgeX, forgeY, nowMs);
@@ -263,8 +290,25 @@ export class ParticleSystem {
       );
     }
 
+    // Detect forge audio transitions
+    const isNowSpinningUp = (
+      crunchState.validParticlesTimerMs !== null &&
+      !crunchState.isActive &&
+      (nowMs - crunchState.validParticlesTimerMs >= FORGE_SPIN_UP_THRESHOLD_MS)
+    );
+    const isCrunchNowActive = crunchState.isActive;
+
+    const forgeCrunchStarted    = !wasCrunchActive && isCrunchNowActive;
+    const forgeSpinUpBegan      = !wasSpinningUp && isNowSpinningUp;
+    const forgeSpinUpCancelled  = wasSpinningUp && !isNowSpinningUp && !forgeCrunchStarted;
+
+    this._wasSpinningUp   = isNowSpinningUp;
+    this._wasCrunchActive = isCrunchNowActive;
+
     // Shockwaves
     this.shockwaves = updateShockwaves(this.shockwaves, this.particles, nowMs);
+
+    return { mergesCompleted, forgeCrunchStarted, forgeSpinUpBegan, forgeSpinUpCancelled };
   }
 
   /** Render particles, shockwaves, and optional debug overlays to canvas. */
