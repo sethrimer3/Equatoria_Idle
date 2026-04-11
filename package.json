@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "postbuild": "mkdir -p dist/ASSETS && cp -R ASSETS/SPRITES ASSETS/ANIMATIONS ASSETS/font dist/ASSETS/"
+    "postbuild": "mkdir -p dist/ASSETS && cp -R ASSETS/SPRITES ASSETS/ANIMATIONS ASSETS/font ASSETS/music ASSETS/sfx dist/ASSETS/"
   },
   "repository": {
     "type": "git",

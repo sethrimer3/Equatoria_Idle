@@ -1,6 +1,7 @@
 import type { ActionHandler } from '../../input';
 import type { SettingsState } from '../../settings';
 import { saveSettings } from '../../settings';
+import type { AudioSystem } from '../../audio';
 
 /**
  * Settings panel — DOM-based settings controls.
@@ -13,6 +14,7 @@ export interface SettingsPanel {
 export function createSettingsPanel(
   settings: SettingsState,
   dispatch: ActionHandler,
+  audioSystem?: AudioSystem,
 ): SettingsPanel {
   const panel = document.createElement('div');
   panel.className = 'panel settings-panel';
@@ -26,13 +28,16 @@ export function createSettingsPanel(
   const sfxRow = createSliderRow('SFX Volume', settings.sfxVolume, (v) => {
     settings.sfxVolume = v;
     saveSettings(settings);
+    audioSystem?.setSfxVolume(v);
+    audioSystem?.onSettingsChanged();
   });
   panel.appendChild(sfxRow);
 
-  // Music volume
+  // Music volume — does NOT trigger onSettingsChanged
   const musicRow = createSliderRow('Music Volume', settings.musicVolume, (v) => {
     settings.musicVolume = v;
     saveSettings(settings);
+    audioSystem?.setMusicVolume(v);
   });
   panel.appendChild(musicRow);
 
@@ -40,6 +45,7 @@ export function createSettingsPanel(
   const particleRow = createToggleRow('Reduced Particles', settings.isReducedParticles, (v) => {
     settings.isReducedParticles = v;
     saveSettings(settings);
+    audioSystem?.onSettingsChanged();
   });
   panel.appendChild(particleRow);
 
@@ -54,6 +60,7 @@ export function createSettingsPanel(
     (v) => {
       settings.graphicsQuality = v as SettingsState['graphicsQuality'];
       saveSettings(settings);
+      audioSystem?.onSettingsChanged();
     },
   );
   panel.appendChild(graphicsRow);
@@ -70,6 +77,7 @@ export function createSettingsPanel(
     (v) => {
       settings.backgroundStyle = v as SettingsState['backgroundStyle'];
       saveSettings(settings);
+      audioSystem?.onSettingsChanged();
     },
   );
   panel.appendChild(bgStyleRow);
@@ -86,6 +94,7 @@ export function createSettingsPanel(
     (v) => {
       settings.numberFormat = v as SettingsState['numberFormat'];
       saveSettings(settings);
+      audioSystem?.onSettingsChanged();
     },
   );
   panel.appendChild(numberFormatRow);
@@ -94,6 +103,7 @@ export function createSettingsPanel(
   const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
     settings.isScreenShakeEnabled = v;
     saveSettings(settings);
+    audioSystem?.onSettingsChanged();
   });
   panel.appendChild(shakeRow);
 
@@ -101,6 +111,7 @@ export function createSettingsPanel(
   const devModeRow = createToggleRow('Developer Mode', settings.isDevMode, (v) => {
     settings.isDevMode = v;
     saveSettings(settings);
+    audioSystem?.onSettingsChanged();
   });
   panel.appendChild(devModeRow);
 

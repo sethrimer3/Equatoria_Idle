@@ -36,13 +36,13 @@ export function createAchievementState(): AchievementState {
 /**
  * Check all achievement unlock conditions against current resource state.
  * Unlocks any newly-met achievements and updates the bonus cache.
- * Returns true if any new achievements were unlocked this call.
+ * Returns an array of newly unlocked achievement IDs (empty if none).
  */
 export function checkAndUnlockAchievements(
   state: AchievementState,
   resources: ResourceState,
-): boolean {
-  let anyNew = false;
+): string[] {
+  const newlyUnlocked: string[] = [];
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     if (state.unlockedIds.has(def.id)) continue;
@@ -50,15 +50,15 @@ export function checkAndUnlockAchievements(
     const lifetimeAmount = getLifetimeMotes(resources, def.requiresTierId);
     if (lifetimeAmount >= def.requiresLifetimeMotes) {
       state.unlockedIds.add(def.id);
-      anyNew = true;
+      newlyUnlocked.push(def.id);
     }
   }
 
-  if (anyNew) {
+  if (newlyUnlocked.length > 0) {
     recomputeBonuses(state);
   }
 
-  return anyNew;
+  return newlyUnlocked;
 }
 
 /**

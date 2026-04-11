@@ -183,9 +183,10 @@ export function processActiveMerges(
   spawnerRotations: Map<TierId, number>,
   nowMs: number,
   generators: readonly GeneratorInfo[],
-): { particles: EquatoriaParticle[]; mergeCooldownFrames: number } {
+): { particles: EquatoriaParticle[]; mergeCooldownFrames: number; completedCount: number } {
   const toRemove = new Set<EquatoriaParticle>();
   let cooldown = 0;
+  let completedCount = 0;
 
   let writeIdx = 0;
   for (let mi = 0, mlen = activeMerges.length; mi < mlen; mi++) {
@@ -245,6 +246,7 @@ export function processActiveMerges(
     }
 
     cooldown = Math.max(cooldown, 1);
+    completedCount++;
   }
   activeMerges.length = writeIdx;
 
@@ -259,7 +261,7 @@ export function processActiveMerges(
     particles.length = wp;
   }
 
-  return { particles, mergeCooldownFrames: cooldown };
+  return { particles, mergeCooldownFrames: cooldown, completedCount };
 }
 
 // ─── Enforce particle limit ─────────────────────────────────────
@@ -379,8 +381,9 @@ export function updateProceduralMerges(
   pool: ParticlePool,
   nowMs: number,
   clampedDelta: number,
-): EquatoriaParticle[] {
+): { particles: EquatoriaParticle[]; completedCount: number } {
   const toRemove = new Set<EquatoriaParticle>();
+  let completedCount = 0;
 
   let writeIdx = 0;
   for (let mi = 0, mlen = proceduralMerges.length; mi < mlen; mi++) {
@@ -449,6 +452,7 @@ export function updateProceduralMerges(
           });
         }
       }
+      completedCount++;
       continue; // don't keep this merge
     }
 
@@ -470,5 +474,5 @@ export function updateProceduralMerges(
     particles.length = wp;
   }
 
-  return particles;
+  return { particles, completedCount };
 }
