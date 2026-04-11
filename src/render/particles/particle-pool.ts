@@ -53,6 +53,8 @@ function createBlankParticle(): EquatoriaParticle {
     isMerging: false,
     mergeTargetX: 0,
     mergeTargetY: 0,
+    suctionStartX: 0,
+    suctionStartY: 0,
     isForgeCrunchParticle: false,
     isLockedToPointer: false,
     pointerTargetX: 0,
@@ -63,9 +65,6 @@ function createBlankParticle(): EquatoriaParticle {
     trailHead: 0,
     trailCount: 0,
     trailFrameCounter: 0,
-    isProceduralSeeking: false,
-    proceduralTargetX: 0,
-    proceduralTargetY: 0,
   };
 }
 
@@ -98,6 +97,8 @@ export function initParticle(
   p.isMerging = false;
   p.mergeTargetX = 0;
   p.mergeTargetY = 0;
+  p.suctionStartX = 0;
+  p.suctionStartY = 0;
   p.isForgeCrunchParticle = false;
   p.isLockedToPointer = false;
   p.pointerTargetX = 0;
@@ -106,9 +107,6 @@ export function initParticle(
   p.trailHead = 0;
   p.trailCount = 0;
   p.trailFrameCounter = 0;
-  p.isProceduralSeeking = false;
-  p.proceduralTargetX = 0;
-  p.proceduralTargetY = 0;
 }
 
 // ─── Pool ────────────────────────────────────────────────────────
@@ -124,7 +122,8 @@ export class ParticlePool {
     p.isActive = false;
     p.trailHead = 0;
     p.trailCount = 0;
-    p.isProceduralSeeking = false;
+    p.suctionStartX = 0;
+    p.suctionStartY = 0;
     this._pool.push(p);
   }
 }

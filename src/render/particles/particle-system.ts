@@ -49,7 +49,6 @@ import { updateForgeCrunch } from '../../sim/forge/forge-logic';
 import type {
   EquatoriaParticle,
   ActiveMerge,
-  ProceduralMerge,
   Shockwave,
   ParticleRenderOptions,
   Particle,
@@ -62,11 +61,9 @@ import {
   applyWrapAround,
 } from './particle-life';
 import {
-  attemptMerge,
+  attemptSuctionMerge,
   processActiveMerges,
   enforceParticleLimit,
-  attemptProceduralMerge,
-  updateProceduralMerges,
 } from './particle-merge';
 import { checkAndStartForgeCrunch, completeForgeCrunch } from './particle-forge';
 import { updateShockwaves } from './particle-shockwave';
@@ -75,7 +72,7 @@ import type { ParticleLifeDebugState } from './particle-life-debug';
 import { drawParticleLifeDebug, createDefaultDebugState } from './particle-life-debug';
 
 // Re-export types for backward compatibility
-export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions, ProceduralMerge };
+export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions };
 
 // ─── Audio events returned from update() ────────────────────────
 
@@ -101,7 +98,6 @@ const DEFAULT_SPAWN_Y = 160;
 export class ParticleSystem {
   particles: EquatoriaParticle[] = [];
   activeMerges: ActiveMerge[] = [];
-  proceduralMerges: ProceduralMerge[] = [];
   shockwaves: Shockwave[] = [];
   forgeRotation = 0;
   spawnerRotations: Map<TierId, number> = new Map();
@@ -248,26 +244,14 @@ export class ParticleSystem {
     // Toroidal wraparound
     applyWrapAround(this.particles, canvasWidth, canvasHeight);
 
-    // Merges
+    // Suction merges — check globally every 10 frames
     if (this.mergeCooldownFrames > 0) this.mergeCooldownFrames--;
     if (this.frameCount % 10 === 0) {
-      this.mergeCooldownFrames = attemptMerge(
-        this.particles, this.activeMerges, this.mergeCooldownFrames, generators, nowMs,
-      );
+      attemptSuctionMerge(this.particles, this.activeMerges, generators, nowMs);
     }
     if (this.frameCount % 30 === 0) {
       this.particles = enforceParticleLimit(this.particles, this._pool, generators, nowMs);
     }
-
-    // Procedural seek-merge
-    if (this.frameCount % 15 === 0) {
-      attemptProceduralMerge(this.particles, this.proceduralMerges, nowMs);
-    }
-    const proceduralMergeResult = updateProceduralMerges(
-      this.particles, this.proceduralMerges, this.shockwaves, this._pool, nowMs, clampedDelta,
-    );
-    this.particles = proceduralMergeResult.particles;
-    const totalMergesCompleted = proceduralMergeResult.completedCount;
 
     // Active merge processing
     const mergeResult = processActiveMerges(
@@ -276,7 +260,7 @@ export class ParticleSystem {
     );
     this.particles = mergeResult.particles;
     this.mergeCooldownFrames = Math.max(this.mergeCooldownFrames, mergeResult.mergeCooldownFrames);
-    const mergesCompleted = totalMergesCompleted + mergeResult.completedCount;
+    const mergesCompleted = mergeResult.completedCount;
 
     // Capture previous-frame forge state before updating
     const wasCrunchActive = this._wasCrunchActive;

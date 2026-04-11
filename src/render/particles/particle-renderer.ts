@@ -32,6 +32,24 @@ export function updateParticleRendererTime(deltaMs: number): void {
   _animTimeMs += deltaMs;
 }
 
+// ─── Hex color → RGB cache ──────────────────────────────────────
+
+const _colorRgbCache = new Map<string, [number, number, number]>();
+
+function getCachedRgb(colorString: string): [number, number, number] {
+  let rgb = _colorRgbCache.get(colorString);
+  if (!rgb) {
+    // Parse 6-digit hex (#RRGGBB) or fall back to white
+    const h = colorString.startsWith('#') ? colorString.slice(1) : colorString;
+    const r = parseInt(h.slice(0, 2), 16) || 255;
+    const g = parseInt(h.slice(2, 4), 16) || 255;
+    const b = parseInt(h.slice(4, 6), 16) || 255;
+    rgb = [r, g, b];
+    _colorRgbCache.set(colorString, rgb);
+  }
+  return rgb;
+}
+
 // ─── Batch data structure ───────────────────────────────────────
 
 interface DrawBatch {
@@ -81,6 +99,54 @@ function pushPosition(batch: DrawBatch, x: number, y: number): void {
  */
 const _trailPos = { x: 0, y: 0 };
 
+// ─── Suction trail rendering ────────────────────────────────────
+
+/**
+ * For each particle currently flying toward its generator (isMerging),
+ * draw a gradient streak from its starting position (transparent tail)
+ * to the generator center (opaque tip).
+ *
+ * Line width scales with particle size so larger particles leave
+ * visually heavier trails.
+ */
+function drawSuctionTrails(
+  ctx: CanvasRenderingContext2D,
+  particles: EquatoriaParticle[],
+): void {
+  ctx.save();
+  for (let pi = 0, plen = particles.length; pi < plen; pi++) {
+    const p = particles[pi];
+    if (!p.isMerging) continue;
+
+    const sx = p.suctionStartX;
+    const sy = p.suctionStartY;
+    const tx = p.mergeTargetX;
+    const ty = p.mergeTargetY;
+
+    // Skip if start and target are essentially the same point
+    const ddx = tx - sx;
+    const ddy = ty - sy;
+    if (ddx * ddx + ddy * ddy < 1) continue;
+
+    const [r, g, b] = getCachedRgb(p.colorString);
+    const grad = ctx.createLinearGradient(sx, sy, tx, ty);
+    grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0.85)`);
+
+    // Line width proportional to particle size; minimum 1 px
+    const lineWidth = Math.max(1, p.size * 0.7);
+
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // ─── Draw ────────────────────────────────────────────────────────
 
 export function drawParticles(
@@ -90,6 +156,9 @@ export function drawParticles(
   options: ParticleRenderOptions,
 ): void {
   const ctx = cc.ctx;
+
+  // ── Draw suction trails for in-flight merge particles ──
+  drawSuctionTrails(ctx, particles);
 
   // ── Draw trails for medium+ particles ──
   if (options.enableTrails) {

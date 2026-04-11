@@ -15,7 +15,7 @@ import {
   MAX_FORGE_ATTRACTION_DISTANCE,
   DISTANCE_SCALE,
   FORCE_SCALE,
-  MERGE_GATHER_SPEED,
+  SUCTION_GATHER_SPEED,
   VEER_ANGLE_MIN_DEG,
   VEER_ANGLE_MAX_DEG,
   VEER_INTERVAL_MIN_MS,
@@ -53,11 +53,9 @@ export function updateParticlePhysics(
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 1) {
       const angle = Math.atan2(dy, dx);
-      const gatherSpeed = MERGE_GATHER_SPEED * clampedDelta;
-      const swirlStrength = 0.3 * (1 - Math.min(dist / 50, 1));
-      const tangentAngle = angle + Math.PI / 2;
-      p.vx = Math.cos(angle) * gatherSpeed + Math.cos(tangentAngle) * swirlStrength * gatherSpeed;
-      p.vy = Math.sin(angle) * gatherSpeed + Math.sin(tangentAngle) * swirlStrength * gatherSpeed;
+      const gatherSpeed = SUCTION_GATHER_SPEED * clampedDelta;
+      p.vx = Math.cos(angle) * gatherSpeed;
+      p.vy = Math.sin(angle) * gatherSpeed;
     } else {
       p.vx = 0;
       p.vy = 0;
