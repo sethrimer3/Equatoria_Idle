@@ -40,6 +40,8 @@ export const FORGE_VALID_WAIT_TIME_MS = 5000;
 export const FORGE_CRUNCH_DURATION_MS = 1000;
 export const FORGE_SPIN_UP_DURATION_MS = 4000;
 export const FORGE_SPIN_DOWN_DURATION_MS = 3000;
+/** Elapsed ms after validParticlesTimerMs is set at which the spin-up animation begins. */
+export const FORGE_SPIN_UP_THRESHOLD_MS = FORGE_VALID_WAIT_TIME_MS - FORGE_SPIN_UP_DURATION_MS;
 export const CONVERSION_SPREAD_VELOCITY = 3;
 export const INTERACTION_RADIUS_FRACTION = 0.1;
 export const MOUSE_ATTRACTION_STRENGTH = 3.0;

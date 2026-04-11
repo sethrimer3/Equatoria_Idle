@@ -34,9 +34,6 @@ export function handleAction(
   recomputeGenerators: () => void,
   audioSystem?: AudioSystem,
 ): void {
-  // Resume audio context on every user interaction (autoplay policy)
-  audioSystem?.resumeContext().catch(() => { /* silently ignore */ });
-
   const devMode = settings.isDevMode;
   switch (action.kind) {
     case 'tap': {

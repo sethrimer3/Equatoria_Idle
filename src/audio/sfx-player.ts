@@ -160,7 +160,7 @@ export class SfxPlayer {
     return this._masterGain;
   }
 
-  private _stopCharging(fadeMs: number): void {
+  private _stopCharging(fadeDurationMs: number): void {
     const source = this._chargingSource;
     const gain   = this._chargingGain;
     this._chargingSource = null;
@@ -169,7 +169,7 @@ export class SfxPlayer {
     if (!source || !gain) return;
 
     const ctx = getAudioContext();
-    const fadeSec = fadeMs / 1000;
+    const fadeSec = fadeDurationMs / 1000;
 
     if (!ctx || fadeSec <= 0) {
       try { source.stop(); } catch { /* ignore */ }

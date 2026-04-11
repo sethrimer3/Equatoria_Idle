@@ -36,6 +36,7 @@ import {
   FORGE_VALID_WAIT_TIME_MS,
   FORGE_SPIN_UP_DURATION_MS,
   FORGE_SPIN_DOWN_DURATION_MS,
+  FORGE_SPIN_UP_THRESHOLD_MS,
 } from '../../data/particles/particle-config';
 import { createDefaultInteractionMatrix } from '../../data/particles/interaction-matrix';
 import { PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT } from '../../data/particles/particle-life-config';
@@ -290,11 +291,10 @@ export class ParticleSystem {
     }
 
     // Detect forge audio transitions
-    const spinUpThresholdMs = FORGE_VALID_WAIT_TIME_MS - FORGE_SPIN_UP_DURATION_MS; // 1000ms
     const isNowSpinningUp = (
       crunchState.validParticlesTimerMs !== null &&
       !crunchState.isActive &&
-      (nowMs - crunchState.validParticlesTimerMs >= spinUpThresholdMs)
+      (nowMs - crunchState.validParticlesTimerMs >= FORGE_SPIN_UP_THRESHOLD_MS)
     );
     const isCrunchNowActive = crunchState.isActive;
 

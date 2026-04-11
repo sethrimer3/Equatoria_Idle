@@ -181,7 +181,26 @@
 
 **Rationale**: Adds a satisfying tactile moment to achievement rewards. The golden rotating sheen on unclaimed cards draws attention and communicates "something to do here". Old saves are migrated gracefully so no progress is lost.
 
-## Diamond Prismatic Sheen & Nullstone Glow (Visual)
+## Audio System
+
+**Decision**: Use the Web Audio API exclusively for all audio playback (music, ambiance, SFX). All audio is routed through `GainNode` chains so volumes can be adjusted in real-time without restarting sources.
+
+**Rationale**: The Web Audio API allows sample-accurate scheduling (crossfades, fade-ins), gain automation (ramps), and efficient polyphony without DOM overhead. This is necessary for the 8-second music crossfade, the forge charging fade-in, and the −10 dB ambiance offset.
+
+**Music crossfade approach**: Two alternating `GainNode` "slots" share a master music gain. When a new track starts, its slot fades in (0→1 over 8 s) while the previous slot fades out (1→0 over 8 s). A `setTimeout` scheduled `(duration − 8 s)` after each track starts triggers the next crossfade. The random play order is determined once via Fisher-Yakes shuffle at startup, then cycles forever.
+
+**Ambiance**: A single looping `AudioBufferSourceNode` runs continuously once started. The `AmbiancePlayer` fades the gain in/out (over 1 s) when the player enters/leaves the `equation` tab. Target gain is `sfxVolume × 10^(−10/20) ≈ sfxVolume × 0.316` (−10 dB offset).
+
+**Forge charging**: A randomly selected charging hum from `equationForge/chargingUp/` is started with loop=true at gain 0, then ramped to 1 over `FORGE_SPIN_UP_DURATION_MS` (4 s). When the crunch animation begins, the gain is ramped to 0 over 200 ms and the source is stopped. If the spin-up is aborted, the gain is ramped to 0 over 500 ms.
+
+**Forge audio transition detection**: `ParticleSystem.update()` now returns `ParticleAudioEvents` with `forgeCrunchStarted`, `forgeSpinUpBegan`, and `forgeSpinUpCancelled`. These are detected by tracking `_wasSpinningUp` and `_wasCrunchActive` across frames. The spin-up threshold is the named constant `FORGE_SPIN_UP_THRESHOLD_MS`.
+
+**No-op fallback**: If `AudioContext` (and `webkitAudioContext`) are not available, `createAudioSystem()` returns a no-op implementation so the game runs silently without errors.
+
+**AudioContext resume**: `AudioContext` starts suspended due to browser autoplay policy. `resumeContext()` is called from the `dispatch` wrapper in `game-app.ts` on every user action, and separately from the canvas `pointerdown` handler (which handles drag interactions that don't go through `dispatch`).
+
+**Path encoding**: Audio file names that contain spaces (e.g. `pluck A1.m4a`) or hash characters (e.g. `tower_shot_kalimba_C#5.mp3`) are encoded with `encodeURIComponent` per path segment in `audio-paths.ts` so `fetch()` requests succeed.
+
 
 **Decision**: Diamond particles get a double-layer prismatic HSL overlay that cycles hues over time. The diamond generator gets a `screen`-mode radial gradient overlay plus cycling shadow glow. Nullstone generator has a dark purple (`#6a0dad`) radial glow and the influence-range circle is replaced with animated purple swirl arcs (`drawNullstoneRangeSwirl`).
 
