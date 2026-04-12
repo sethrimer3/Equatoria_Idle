@@ -171,6 +171,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.particleDrag,
       ctx.cc.widthPx,
       ctx.cc.heightPx,
+      nowMs,
     );
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
