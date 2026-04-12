@@ -6,6 +6,7 @@
 - `vite.config.ts` — Vite build configuration
 - `tsconfig.json` — TypeScript compiler configuration
 - `package.json` — Dependencies and scripts
+- `idle_progression_spreadsheet_guide.md` — Consolidated formulas/constants for modeling idle pacing in spreadsheets.
 
 ## src/
 
