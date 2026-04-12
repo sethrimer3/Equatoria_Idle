@@ -1,6 +1,7 @@
 import type { GameState } from '../../sim';
 import type { ActionHandler } from '../../input';
-import { TIER_BY_ID } from '../../data/tiers';
+import type { TierId } from '../../data/tiers';
+import { TIER_BY_ID, TIERS } from '../../data/tiers';
 import { LOOM_DEFINITIONS } from '../../data/looms';
 import { getLoom, getLoomRate, getLoomCost } from '../../sim/looms';
 import { getMotes } from '../../sim/resources';
@@ -8,15 +9,26 @@ import { formatNumberAs, computeOutputCompression, type NumberFormat } from '../
 import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
 import { loadImage } from '../../render/assets/asset-loader';
 import { createTintedCanvas } from '../../render/assets/sprite-tint';
+import {
+  isAlivened,
+  isTierAliveneable,
+  canAffordAliven,
+  getAlivenedTiersOrdered,
+  ALIVEN_COST,
+} from '../../sim/aliven';
+import { createDefaultInteractionMatrix } from '../../data/particles/interaction-matrix';
 
 /**
- * Looms panel — shows passive production Looms for each unlocked tier.
- * Each Loom card displays: tier name, production rate, level, upgrade cost.
+ * Looms panel — shows passive production Looms (Upgrades sub-tab) and
+ * the Particle Life Aliven matrix (Aliven sub-tab).
  */
 export interface LoomPanel {
   element: HTMLElement;
   update(state: GameState, numberFormat: NumberFormat): void;
 }
+
+// Pre-compute the default interaction matrix once for display purposes.
+const DEFAULT_MATRIX = createDefaultInteractionMatrix();
 
 /** Draw the tinted generator sprite onto a small icon canvas. */
 function renderLoomIconCanvas(canvas: HTMLCanvasElement, spritePath: string, color: string): void {
@@ -28,21 +40,42 @@ function renderLoomIconCanvas(canvas: HTMLCanvasElement, spritePath: string, col
     ctx.drawImage(tinted, 0, 0, canvas.width, canvas.height);
   }).catch(() => { /* sprite not available — leave canvas blank */ });
 }
+
 export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
   const panel = document.createElement('div');
   panel.className = 'panel loom-panel';
 
+  // ── Sub-tab bar ──────────────────────────────────────────────
+
+  const subTabBar = document.createElement('div');
+  subTabBar.className = 'looms-sub-tab-bar';
+  panel.appendChild(subTabBar);
+
+  const upgradesTabBtn = document.createElement('button');
+  upgradesTabBtn.className = 'looms-sub-tab-btn active';
+  upgradesTabBtn.textContent = 'Upgrades';
+  subTabBar.appendChild(upgradesTabBtn);
+
+  const alivenTabBtn = document.createElement('button');
+  alivenTabBtn.className = 'looms-sub-tab-btn';
+  alivenTabBtn.textContent = 'Aliven';
+  subTabBar.appendChild(alivenTabBtn);
+
+  // ── Upgrades pane ────────────────────────────────────────────
+
+  const upgradesPane = document.createElement('div');
+  upgradesPane.className = 'looms-sub-pane';
+
   const title = document.createElement('h3');
   title.className = 'panel-title';
   title.textContent = 'Looms';
-  panel.appendChild(title);
+  upgradesPane.appendChild(title);
 
   const subtitle = document.createElement('p');
   subtitle.className = 'panel-subtitle';
   subtitle.textContent = 'Passive mote production';
-  panel.appendChild(subtitle);
+  upgradesPane.appendChild(subtitle);
 
-  // Create a card for each Loom
   const cards: Map<string, HTMLElement> = new Map();
   const upgradeButtons: Map<string, HTMLButtonElement> = new Map();
 
@@ -57,7 +90,6 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
     const header = document.createElement('div');
     header.className = 'loom-header';
 
-    // Use a small canvas showing the tinted generator sprite
     const spritePath = getGeneratorSpritePath(tier.unlockOrder);
     const iconCanvas = document.createElement('canvas');
     iconCanvas.className = 'loom-icon';
@@ -92,51 +124,280 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
     });
     card.appendChild(btn);
 
-    panel.appendChild(card);
+    upgradesPane.appendChild(card);
     cards.set(def.tierId, card);
     upgradeButtons.set(def.tierId, btn);
   }
 
+  panel.appendChild(upgradesPane);
+
+  // ── Aliven pane ──────────────────────────────────────────────
+
+  const alivenPane = document.createElement('div');
+  alivenPane.className = 'looms-sub-pane';
+  alivenPane.style.display = 'none';
+
+  const alivenTitle = document.createElement('h3');
+  alivenTitle.className = 'panel-title';
+  alivenTitle.textContent = 'Aliven';
+  alivenPane.appendChild(alivenTitle);
+
+  const alivenSubtitle = document.createElement('p');
+  alivenSubtitle.className = 'panel-subtitle';
+  alivenSubtitle.textContent = 'Awaken motes to enable Particle Life interactions';
+  alivenPane.appendChild(alivenSubtitle);
+
+  // Aliven unlock rows — one per aliveneable tier (0–10)
+  const alivenRows: Map<string, HTMLElement> = new Map();
+  const alivenButtons: Map<string, HTMLButtonElement> = new Map();
+  const alivenRowsContainer = document.createElement('div');
+  alivenRowsContainer.className = 'aliven-rows';
+  alivenPane.appendChild(alivenRowsContainer);
+
+  for (const tier of TIERS) {
+    if (!isTierAliveneable(tier.id)) continue;
+
+    const row = document.createElement('div');
+    row.className = 'aliven-tier-row';
+    row.style.borderLeftColor = tier.color;
+
+    const rowHeader = document.createElement('div');
+    rowHeader.className = 'aliven-tier-row-header';
+
+    const nameBadge = document.createElement('span');
+    nameBadge.className = 'aliven-tier-name';
+    nameBadge.style.color = tier.color;
+    nameBadge.textContent = tier.displayName;
+    rowHeader.appendChild(nameBadge);
+
+    const statusBadge = document.createElement('span');
+    statusBadge.className = 'aliven-status-badge';
+    rowHeader.appendChild(statusBadge);
+
+    row.appendChild(rowHeader);
+
+    const btn = document.createElement('button');
+    btn.className = 'upgrade-btn aliven-btn';
+    btn.style.borderColor = tier.color;
+    btn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      dispatch({ kind: 'aliven_mote', tierId: tier.id });
+    });
+    row.appendChild(btn);
+
+    alivenRowsContainer.appendChild(row);
+    alivenRows.set(tier.id, row);
+    alivenButtons.set(tier.id, btn);
+  }
+
+  // Matrix display
+  const matrixSection = document.createElement('div');
+  matrixSection.className = 'aliven-matrix-section';
+  alivenPane.appendChild(matrixSection);
+
+  const matrixTitle = document.createElement('p');
+  matrixTitle.className = 'aliven-matrix-title';
+  matrixTitle.textContent = 'Interaction Matrix';
+  matrixSection.appendChild(matrixTitle);
+
+  const matrixNote = document.createElement('p');
+  matrixNote.className = 'aliven-matrix-note';
+  matrixNote.textContent = 'Row = source (exerts force) · Col = target (feels force) · Green = attraction · Red = repulsion';
+  matrixSection.appendChild(matrixNote);
+
+  const matrixContainer = document.createElement('div');
+  matrixContainer.className = 'aliven-matrix-wrap';
+  matrixSection.appendChild(matrixContainer);
+
+  // Track last rendered matrix key to avoid unnecessary DOM rebuilds
+  let lastMatrixKey = '';
+
+  panel.appendChild(alivenPane);
+
+  // ── Sub-tab switching ────────────────────────────────────────
+
+  let activeSubTab: 'upgrades' | 'aliven' = 'upgrades';
+
+  function setSubTab(tab: 'upgrades' | 'aliven'): void {
+    activeSubTab = tab;
+    upgradesTabBtn.classList.toggle('active', tab === 'upgrades');
+    alivenTabBtn.classList.toggle('active', tab === 'aliven');
+    upgradesPane.style.display = tab === 'upgrades' ? '' : 'none';
+    alivenPane.style.display = tab === 'aliven' ? '' : 'none';
+  }
+
+  upgradesTabBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    setSubTab('upgrades');
+  });
+  alivenTabBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    setSubTab('aliven');
+  });
+
+  // ── Matrix rendering helper ──────────────────────────────────
+
+  function rebuildMatrix(alivenedTierIds: readonly string[]): void {
+    matrixContainer.innerHTML = '';
+    if (alivenedTierIds.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'aliven-matrix-empty';
+      empty.textContent = 'No motes alivened yet. Aliven a mote type above to begin.';
+      matrixContainer.appendChild(empty);
+      return;
+    }
+
+    // Build the grid: (alivenCount+1) × (alivenCount+1) including header row/col
+    const n = alivenedTierIds.length;
+    const table = document.createElement('div');
+    table.className = 'aliven-matrix';
+    table.style.gridTemplateColumns = `auto repeat(${n}, 1fr)`;
+
+    // Top-left corner cell
+    const corner = document.createElement('div');
+    corner.className = 'aliven-matrix-corner';
+    corner.textContent = 'src \\ tgt';
+    table.appendChild(corner);
+
+    // Column headers
+    for (const targetId of alivenedTierIds) {
+      const tier = TIER_BY_ID.get(targetId as TierId);
+      const colHead = document.createElement('div');
+      colHead.className = 'aliven-matrix-col-head';
+      colHead.textContent = tier?.displayName.slice(0, 3) ?? '?';
+      colHead.title = tier?.displayName ?? targetId;
+      colHead.style.color = tier?.color ?? '#fff';
+      table.appendChild(colHead);
+    }
+
+    // Rows
+    for (const sourceId of alivenedTierIds) {
+      const sourceTier = TIER_BY_ID.get(sourceId as TierId);
+      const rowHead = document.createElement('div');
+      rowHead.className = 'aliven-matrix-row-head';
+      rowHead.textContent = sourceTier?.displayName.slice(0, 3) ?? '?';
+      rowHead.title = sourceTier?.displayName ?? sourceId;
+      rowHead.style.color = sourceTier?.color ?? '#fff';
+      table.appendChild(rowHead);
+
+      const srcIdx = sourceTier?.unlockOrder ?? 0;
+      for (const targetId of alivenedTierIds) {
+        const targetTier = TIER_BY_ID.get(targetId as TierId);
+        const tgtIdx = targetTier?.unlockOrder ?? 0;
+        const val = DEFAULT_MATRIX[srcIdx][tgtIdx];
+
+        const cell = document.createElement('div');
+        cell.className = 'aliven-matrix-cell';
+        cell.title = `${sourceTier?.displayName ?? ''} → ${targetTier?.displayName ?? ''}: ${val.toFixed(2)}`;
+
+        // Color: positive=green, negative=red, zero=neutral
+        const absVal = Math.abs(val);
+        if (val > 0.01) {
+          cell.style.background = `rgba(80, 200, 120, ${Math.min(absVal * 2, 0.85)})`;
+          cell.style.color = '#c8ffd8';
+        } else if (val < -0.01) {
+          cell.style.background = `rgba(220, 50, 50, ${Math.min(absVal * 2, 0.85)})`;
+          cell.style.color = '#ffc8c8';
+        } else {
+          cell.style.background = 'rgba(80,80,100,0.25)';
+          cell.style.color = '#888';
+        }
+        cell.textContent = val.toFixed(2);
+        table.appendChild(cell);
+      }
+    }
+
+    matrixContainer.appendChild(table);
+  }
+
+  // ── Update ───────────────────────────────────────────────────
+
   function update(state: GameState, numberFormat: NumberFormat): void {
-    for (const def of LOOM_DEFINITIONS) {
-      const card = cards.get(def.tierId);
-      const btn = upgradeButtons.get(def.tierId);
-      if (!card || !btn) continue;
+    // ── Upgrades pane update ──
+    if (activeSubTab === 'upgrades') {
+      for (const def of LOOM_DEFINITIONS) {
+        const card = cards.get(def.tierId);
+        const btn = upgradeButtons.get(def.tierId);
+        if (!card || !btn) continue;
 
-      const loom = getLoom(state.looms, def.tierId);
-      const isUnlocked = loom?.isUnlocked ?? false;
+        const loom = getLoom(state.looms, def.tierId);
+        const isUnlocked = loom?.isUnlocked ?? false;
 
-      card.style.display = isUnlocked ? '' : 'none';
-      if (!isUnlocked) continue;
+        card.style.display = isUnlocked ? '' : 'none';
+        if (!isUnlocked) continue;
 
-      const level = loom!.level;
-      const rate = getLoomRate(def.tierId, level);
-      const cost = getLoomCost(def.tierId, level);
-      const currentMotes = getMotes(state.resources, def.tierId);
-      const canAfford = cost !== null && currentMotes >= cost;
+        const level = loom!.level;
+        const rate = getLoomRate(def.tierId, level);
+        const cost = getLoomCost(def.tierId, level);
+        const currentMotes = getMotes(state.resources, def.tierId);
+        const canAfford = cost !== null && currentMotes >= cost;
 
-      // Update stats display
-      const statsEl = card.querySelector('.loom-stats');
-      if (statsEl) {
-        const effectiveRate = rate * state.achievements.loomMultiplierBonus;
-        const { sizeLabel, emitRatePerSec } = computeOutputCompression(effectiveRate);
-        statsEl.innerHTML = `
-          <span class="loom-stat">Lv ${level}</span>
-          <span class="loom-stat">${formatNumberAs(effectiveRate, numberFormat)}/s raw</span>
-          <span class="loom-stat loom-emit-size">Particle size: ${sizeLabel}</span>
-          <span class="loom-stat">Rate: ${formatNumberAs(emitRatePerSec, numberFormat)}/s</span>
-          <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} motes</span>
-        `;
+        const statsEl = card.querySelector('.loom-stats');
+        if (statsEl) {
+          const effectiveRate = rate * state.achievements.loomMultiplierBonus;
+          const { sizeLabel, emitRatePerSec } = computeOutputCompression(effectiveRate);
+          statsEl.innerHTML = `
+            <span class="loom-stat">Lv ${level}</span>
+            <span class="loom-stat">${formatNumberAs(effectiveRate, numberFormat)}/s raw</span>
+            <span class="loom-stat loom-emit-size">Particle size: ${sizeLabel}</span>
+            <span class="loom-stat">Rate: ${formatNumberAs(emitRatePerSec, numberFormat)}/s</span>
+            <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} motes</span>
+          `;
+        }
+
+        const tier = TIER_BY_ID.get(def.tierId);
+        if (cost !== null) {
+          btn.textContent = `⬆ Upgrade — ${formatNumberAs(cost, numberFormat)} ${tier?.displayName ?? ''}`;
+          btn.disabled = !canAfford;
+        } else {
+          btn.textContent = '⬆ MAX';
+          btn.disabled = true;
+        }
+      }
+    }
+
+    // ── Aliven pane update ──
+    if (activeSubTab === 'aliven') {
+      const unlockedCount = state.progression.unlockedTierCount;
+
+      for (const tier of TIERS) {
+        if (!isTierAliveneable(tier.id)) continue;
+        const row = alivenRows.get(tier.id);
+        const btn = alivenButtons.get(tier.id);
+        if (!row || !btn) continue;
+
+        // Hide rows for tiers not yet game-unlocked
+        const tierUnlocked = tier.unlockOrder < unlockedCount;
+        row.style.display = tierUnlocked ? '' : 'none';
+        if (!tierUnlocked) continue;
+
+        const alive = isAlivened(state.aliven, tier.id);
+        const affordable = canAffordAliven(state.resources, tier.id);
+
+        const statusBadge = row.querySelector('.aliven-status-badge') as HTMLElement | null;
+        if (statusBadge) {
+          statusBadge.textContent = alive ? '✦ Alive' : '';
+          statusBadge.style.color = tier.color;
+        }
+
+        row.classList.toggle('aliven-tier-row--alive', alive);
+
+        if (alive) {
+          btn.style.display = 'none';
+        } else {
+          btn.style.display = '';
+          btn.textContent = `✦ Aliven — ${formatNumberAs(ALIVEN_COST, numberFormat)} ${tier.displayName}`;
+          btn.disabled = !affordable;
+          btn.style.opacity = affordable ? '1' : '0.5';
+        }
       }
 
-      // Update upgrade button
-      const tier = TIER_BY_ID.get(def.tierId);
-      if (cost !== null) {
-        btn.textContent = `⬆ Upgrade — ${formatNumberAs(cost, numberFormat)} ${tier?.displayName ?? ''}`;
-        btn.disabled = !canAfford;
-      } else {
-        btn.textContent = '⬆ MAX';
-        btn.disabled = true;
+      // Rebuild matrix display only when aliven set changes
+      const alivenedTierIds = getAlivenedTiersOrdered(state.aliven);
+      const currentMatrixKey = alivenedTierIds.join(',');
+      if (lastMatrixKey !== currentMatrixKey) {
+        lastMatrixKey = currentMatrixKey;
+        rebuildMatrix(alivenedTierIds);
       }
     }
   }

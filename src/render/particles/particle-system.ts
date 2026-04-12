@@ -135,6 +135,12 @@ export class ParticleSystem {
   interactionMatrix: number[][] = createDefaultInteractionMatrix();
   /** Whether larger motes exert stronger forces. */
   enableSizeForceBias: boolean = PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT;
+  /**
+   * Set of tier indices (by unlockOrder) that have been alivened.
+   * Only alivened particles participate in Particle Life forces.
+   * Updated externally from game state each frame.
+   */
+  alivenedTierIndices: Set<number> = new Set();
   /** Debug visualization toggles. */
   debugState: ParticleLifeDebugState = createDefaultDebugState();
 
@@ -265,6 +271,7 @@ export class ParticleSystem {
         applyParticleLifeForces(
           this.particles,
           this.interactionMatrix,
+          this.alivenedTierIndices,
           this.enableSizeForceBias,
           FIXED_STEP_DELTA,
           canvasWidth,
@@ -378,6 +385,7 @@ export class ParticleSystem {
     this.activeMerges.length = 0;
     this.shockwaves.length = 0;
     this.spawnerRotations.clear();
+    this.alivenedTierIndices.clear();
     this.forgeRotation = 0;
     this.mergeCooldownFrames = 0;
     this.frameCount = 0;

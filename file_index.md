@@ -161,9 +161,10 @@
 - `purchaseUpgrade()`, `getUpgradeCost()`, `canAffordUpgrade()`, `getAutoTapIntervalMs()`.
 
 ### src/sim/game-state.ts
-- Aggregate game state combining equation, resources, progression, forge, Looms, and achievements.
+- Aggregate game state combining equation, resources, progression, forge, Looms, achievements, and aliven.
 - `tapEquation()` — multiplies gains by `achievements.tapMultiplierBonus`.
 - `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)` — optional dev mode cost bypass.
+- `tryAlivenMote(state, tierId, bypassCost?)` — spend 10,000 motes to aliven a mote type.
 - `simTick()` — passes loom bonus from achievements; checks achievement unlock conditions each tick.
 
 ### src/sim/forge/forge-state.ts
@@ -255,17 +256,18 @@
 
 ### src/render/particles/particle-system.ts
 - Slim orchestrator class.
-- Owns particle array, merge/shockwave lists, pool, interaction matrix, and debug state.
+- Owns particle array, merge/shockwave lists, pool, interaction matrix, aliven set, and debug state.
 - Runs per-frame update pipeline: physics → trails → **Particle Life forces** → damping → wrap → merges → forge → shockwaves.
-- Delegates rendering to `particle-renderer.ts` and `particle-life-debug.ts`.
+- `alivenedTierIndices` — `Set<number>` of tier indices that are alivened; synced from game state each frame by the game loop.
 - `interactionMatrix` — 13×13 matrix owned here, defaults from `createDefaultInteractionMatrix()`.
 - `enableSizeForceBias` — boolean toggle for size-based force scaling.
 - `debugState` — `ParticleLifeDebugState` for debug visualization toggles.
 
 ### src/render/particles/particle-life.ts
 - Particle Life pairwise force computation (replaces euler-fluid.ts).
-- `applyParticleLifeForces()` — spatial-grid-based O(n·k) neighbour interaction.
+- `applyParticleLifeForces(particles, matrix, alivenedTierIndices, ...)` — spatial-grid-based O(n·k) neighbour interaction.
   - 1×1 inert mote rule: skips size-1 particles entirely.
+  - Non-alivened rule: skips particles whose tier is not in `alivenedTierIndices`.
   - Zone 1 (protected radius): strong repulsion prevents collapse.
   - Zone 2 (matrix-controlled): force from interactionMatrix[a][b] with cosine taper.
   - Optional size-force bias: `sqrt(sizeA) * sqrt(sizeB)` scaling.
@@ -301,8 +303,17 @@
 - `checkAndUnlockAchievements()` — checks lifetime motes for each tier and unlocks achievements.
 - `recomputeBonuses()` — recalculates `tapMultiplierBonus` and `loomMultiplierBonus` from unlocked set.
 
+### src/sim/aliven/aliven-state.ts
+- Aliven system — tracks which mote types have been "alivened" (awakened for Particle Life).
+- `AlivenState` — `{ alivenedTierIds: Set<TierId> }`.
+- `ALIVEN_COST = 10_000` motes of own type per tier.
+- `MAX_ALIVENEABLE_UNLOCK_ORDER = 10` (Nullstone is last; Fracteryl and Eigenstein cannot be alivened).
+- `createAlivenState()`, `isTierAliveneable()`, `isAlivened()`, `canAffordAliven()`, `getAlivenCount()`.
+- `getAlivenedTiersOrdered()` — returns alivened tier IDs sorted by unlock order (defines matrix row/col order).
+- `tryAliven(state, resources, tierId, bypassCost?)` — deducts cost, adds tier to alivened set.
+
 ### src/input/input-handler.ts
-- `GameAction` type: tap, purchase_upgrade, unlock_next_tier, unlock_equation_forge, upgrade_loom, set_active_tab, save_game, reset_game.
+- `GameAction` type: tap, purchase_upgrade, unlock_next_tier, unlock_equation_forge, upgrade_loom, aliven_mote, set_active_tab, save_game, reset_game.
 - `TabId` type: 'equation' | 'looms' | 'resources' | 'achievements' | 'settings'.
 - `setupInputListeners()` — pointer event → GameAction dispatch.
 
@@ -326,9 +337,12 @@
 - `createEquationPanel(dispatch)` — now takes dispatch handler for forge unlock and upgrade purchases.
 
 ### src/ui/panels/loom-panel.ts
-- Looms tab content.
-- Shows a card per unlocked tier's Loom: name, description, level, production rate, upgrade button.
-- Updates affordability and visibility based on game state.
+- Looms tab content with two sub-tabs: **Upgrades** and **Aliven**.
+- **Upgrades sub-tab**: Shows a card per unlocked tier's Loom: name, description, level, production rate, upgrade button.
+- **Aliven sub-tab**: For each of tiers 0–10 (Nullstone), shows aliven unlock button (cost: 10,000 own motes) or ✦ Alive badge.
+  - Below unlock rows, shows the N×N interaction matrix for all currently alivened tiers.
+  - Matrix colors: green for attraction (positive), red for repulsion (negative), neutral for zero.
+  - Matrix is rebuilt only when aliven count changes (keyed by tier ID join string).
 
 ### src/audio/
 

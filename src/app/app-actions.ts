@@ -11,6 +11,7 @@ import {
   tryUnlockNextTier,
   tryUnlockEquationForge,
   tryUpgradeLoom,
+  tryAlivenMote,
   claimAchievement,
 } from '../sim';
 import type { TierId } from '../data/tiers';
@@ -77,6 +78,11 @@ export function handleAction(
       const ok = tryUpgradeLoom(state.game, action.tierId as TierId, devMode);
       if (ok) audioSystem?.onBuyLoomUpgrade();
       else     audioSystem?.onError();
+      break;
+    }
+    case 'aliven_mote': {
+      const ok = tryAlivenMote(state.game, action.tierId as TierId, devMode);
+      if (!ok) audioSystem?.onError();
       break;
     }
     case 'claim_achievement':
