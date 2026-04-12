@@ -7,7 +7,7 @@ import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 interface SaveData {
   version: number;
@@ -33,6 +33,9 @@ interface SaveData {
   achievements: {
     unlockedIds: string[];
     claimedIds: string[];
+  };
+  aliven: {
+    alivenedTierIds: string[];
   };
   elapsedMs: number;
 }
@@ -77,6 +80,9 @@ export function serializeGameState(state: GameState): SaveData {
     achievements: {
       unlockedIds: Array.from(state.achievements.unlockedIds),
       claimedIds: Array.from(state.achievements.claimedIds),
+    },
+    aliven: {
+      alivenedTierIds: Array.from(state.aliven.alivenedTierIds),
     },
     elapsedMs: state.elapsedMs,
   };
@@ -152,6 +158,13 @@ export function deserializeGameState(data: SaveData): GameState {
 
   state.elapsedMs = data.elapsedMs;
 
+  // Aliven state (v6+; older saves have no alivened tiers)
+  if (data.aliven?.alivenedTierIds) {
+    for (const id of data.aliven.alivenedTierIds) {
+      state.aliven.alivenedTierIds.add(id as TierId);
+    }
+  }
+
   return state;
 }
 
@@ -172,8 +185,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1, 2, 3, 4, or 5 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5].includes(data.version)) return null;
+    // Accept versions 1–6 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

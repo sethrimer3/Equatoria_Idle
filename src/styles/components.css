@@ -174,6 +174,167 @@
   letter-spacing: 1px;
 }
 
+/* ── Looms sub-tab bar ───────────────────────────────────────── */
+.looms-sub-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--accent-border);
+  padding-bottom: 4px;
+}
+
+.looms-sub-tab-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.looms-sub-tab-btn.active {
+  background: rgba(201, 168, 76, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.looms-sub-tab-btn:not(.active):hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+.looms-sub-pane {
+  /* no special layout needed; fills the panel naturally */
+}
+
+/* ── Aliven tier rows ────────────────────────────────────────── */
+.aliven-rows {
+  margin-bottom: 16px;
+}
+
+.aliven-tier-row {
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--border-radius);
+  padding: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.aliven-tier-row--alive {
+  opacity: 0.75;
+}
+
+.aliven-tier-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.aliven-tier-name {
+  font-size: 14px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.aliven-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.aliven-btn {
+  font-size: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* ── Aliven matrix ───────────────────────────────────────────── */
+.aliven-matrix-section {
+  margin-top: 8px;
+}
+
+.aliven-matrix-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.aliven-matrix-note {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.aliven-matrix-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.aliven-matrix-empty {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.aliven-matrix {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.aliven-matrix-corner {
+  font-size: 8px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.aliven-matrix-col-head {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap;
+}
+
+.aliven-matrix-row-head {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: right;
+  padding: 2px 6px 2px 2px;
+  border-right: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.aliven-matrix-cell {
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 2px;
+  border-radius: 2px;
+  min-width: 36px;
+  line-height: 1.2;
+}
+
 /* ── Loom cards ──────────────────────────────────────────────── */
 .loom-card {
   background: var(--bg-secondary);

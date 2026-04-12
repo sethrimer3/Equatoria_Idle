@@ -25,6 +25,7 @@ import type { SettingsState } from '../settings';
 import { saveGame } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
+import { TIER_BY_ID } from '../data/tiers';
 import type { TierId } from '../data/tiers';
 import { computeOutputCompression } from '../util/particle-compression';
 import type { AppState, UIPanels } from './app-types';
@@ -121,6 +122,14 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // Ensure generators are initialized on first frame
     if (ctx.appState.generatorState.generators.length === 0) {
       ctx.recomputeGenerators();
+    }
+
+    // Sync aliven state into particle system (cheap: at most 11 entries)
+    const alivenedTierIndices = ctx.particles.alivenedTierIndices;
+    alivenedTierIndices.clear();
+    for (const tierId of ctx.appState.game.aliven.alivenedTierIds) {
+      const tier = TIER_BY_ID.get(tierId as TierId);
+      if (tier) alivenedTierIndices.add(tier.unlockOrder);
     }
 
     const particleAudioEvents = ctx.particles.update(

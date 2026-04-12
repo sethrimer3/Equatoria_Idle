@@ -59,6 +59,7 @@ function acquireCell(): EquatoriaParticle[] {
 
 function buildParticleLifeGrid(
   particles: EquatoriaParticle[],
+  alivenedTierIndices: ReadonlySet<number>,
 ): void {
   // Return all cells to pool
   for (const cell of _gridCells.values()) {
@@ -71,6 +72,8 @@ function buildParticleLifeGrid(
     // Skip inert (1×1) and special-state particles
     if (getSizePixels(p.sizeIndex) === 1) continue;
     if (p.isMerging || p.isLockedToPointer) continue;
+    // Skip non-alivened mote types
+    if (!alivenedTierIndices.has(p.tierIndex)) continue;
 
     const cx = Math.floor(p.x * INV_CELL);
     const cy = Math.floor(p.y * INV_CELL);
@@ -154,6 +157,8 @@ function getDragEffectiveMaxVel(p: EquatoriaParticle, nowMs: number): number {
  *
  * @param particles      Active particle array.
  * @param interactionMatrix  13×13 matrix[source][target].
+ * @param alivenedTierIndices  Set of tier indices (by unlockOrder) that are alivened.
+ *                             Only alivened particles participate in Particle Life forces.
  * @param enableSizeBias Whether to scale forces by sqrt(size).
  * @param clampedDelta   Frame delta ratio (deltaMs / (1000/60)), clamped.
  * @param canvasWidth    Current canvas width in px.
@@ -163,13 +168,14 @@ function getDragEffectiveMaxVel(p: EquatoriaParticle, nowMs: number): number {
 export function applyParticleLifeForces(
   particles: EquatoriaParticle[],
   interactionMatrix: number[][],
+  alivenedTierIndices: ReadonlySet<number>,
   enableSizeBias: boolean,
   clampedDelta: number,
   canvasWidth: number,
   canvasHeight: number,
   nowMs: number,
 ): void {
-  buildParticleLifeGrid(particles);
+  buildParticleLifeGrid(particles, alivenedTierIndices);
 
   for (let bi = 0, blen = particles.length; bi < blen; bi++) {
     const b = particles[bi];
@@ -177,6 +183,8 @@ export function applyParticleLifeForces(
     // Rule 1: 1×1 motes are fully inert — skip entirely.
     if (getSizePixels(b.sizeIndex) === 1) continue;
     if (b.isMerging || b.isLockedToPointer) continue;
+    // Rule 2: Non-alivened mote types are inert — skip entirely.
+    if (!alivenedTierIndices.has(b.tierIndex)) continue;
 
     let totalFx = 0;
     let totalFy = 0;

@@ -46,6 +46,11 @@ import {
   checkAndUnlockAchievements,
   type AchievementState,
 } from './achievements';
+import {
+  createAlivenState,
+  tryAliven,
+  type AlivenState,
+} from './aliven';
 
 // ─── Aggregate game state ───────────────────────────────────────
 
@@ -56,6 +61,7 @@ export interface GameState {
   forge: ForgeCrunchState;
   looms: LoomState;
   achievements: AchievementState;
+  aliven: AlivenState;
   lastAutoTapMs: number;
   lastSaveMs: number;
   elapsedMs: number;
@@ -69,6 +75,7 @@ export function createGameState(): GameState {
     forge: createForgeCrunchState(),
     looms: createLoomState(),
     achievements: createAchievementState(),
+    aliven: createAlivenState(),
     lastAutoTapMs: 0,
     lastSaveMs: 0,
     elapsedMs: 0,
@@ -168,6 +175,11 @@ export function tryUpgradeLoom(state: GameState, tierId: TierId, bypassCost = fa
   }
   upgradeLoom(state.looms, tierId);
   return true;
+}
+
+/** Try to aliven a mote type. Returns true if successful. */
+export function tryAlivenMote(state: GameState, tierId: TierId, bypassCost = false): boolean {
+  return tryAliven(state.aliven, state.resources, tierId, bypassCost);
 }
 
 // ─── Simulation tick ────────────────────────────────────────────
