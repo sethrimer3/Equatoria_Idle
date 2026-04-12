@@ -36,19 +36,22 @@ export const PL_PROTECTED_RADIUS = 4.0;
  * Multiplier for the matrix-controlled mid-range force.
  * Higher values make the interaction matrix entries feel stronger.
  */
-export const PL_MATRIX_FORCE_SCALE = 0.6;
+export const PL_MATRIX_FORCE_SCALE = 0.4;
 
 /**
  * Strength of the protective short-range repulsion.
  * This acts independently of the matrix — always pushes apart.
  */
-export const PL_PROTECTED_REPULSION_STRENGTH = 1.8;
+export const PL_PROTECTED_REPULSION_STRENGTH = 1.4;
 
 // ─── Velocity integration ────────────────────────────────────────
 
 /**
- * Velocity damping factor applied each frame.
- * At 60 fps, effective per-second retention ≈ 0.992^60 ≈ 61.9 %.
+ * Velocity damping factor applied each simulation step.
+ * Applied as `Math.pow(PL_VELOCITY_DAMPING, clampedDelta)`, which scales
+ * correctly with fractional dt: two substeps at 0.5 dt each give the same
+ * per-frame retention as one step at 1.0 dt.
+ * Effective per-second retention ≈ 0.992^60 ≈ 61.9 % at 60 fps.
  * Low enough that thrown clusters coast visibly for several seconds
  * while Particle Life forces continue shaping their internal structure.
  */
@@ -56,21 +59,23 @@ export const PL_VELOCITY_DAMPING = 0.992;
 
 /**
  * Maximum velocity magnitude (canvas px per frame-unit).
- * Raised to allow thrown particles to travel at meaningful throw speed
- * without being immediately clamped back to near-zero values.
+ * Reduced to keep particles moving at a controlled, precise pace rather
+ * than racing across the canvas.  At 60 fps with two substeps per frame
+ * (each at 0.5 dt) max travel is ~3.5 px/frame = ~210 px/sec on a 320 px canvas.
  */
-export const PL_MAX_VELOCITY = 8.0;
+export const PL_MAX_VELOCITY = 3.5;
 
 // ─── Per-frame force cap ──────────────────────────────────────────
 
 /**
  * Maximum velocity change (canvas px per frame-unit) that Particle Life forces
- * can apply to any single particle per frame.  This prevents multi-tier repulsive
- * clusters from driving 2×2+ particles to PL_MAX_VELOCITY and "bouncing around
- * at high velocity."  Throw-derived velocity is set directly on vx/vy and is not
+ * can apply to any single particle per simulation step.  With fixed substeps each
+ * step uses a smaller dt (≈ 0.5 at 60 fps), so this cap applies more frequently
+ * and prevents multi-tier repulsive clusters from driving 2×2+ particles to
+ * PL_MAX_VELOCITY.  Throw-derived velocity is set directly on vx/vy and is not
  * limited by this cap — it decays naturally via PL_VELOCITY_DAMPING.
  */
-export const PL_MAX_FORCE_PER_FRAME = 2.0;
+export const PL_MAX_FORCE_PER_FRAME = 1.5;
 
 /**
  * Global toggle: when true, larger motes exert / receive stronger
