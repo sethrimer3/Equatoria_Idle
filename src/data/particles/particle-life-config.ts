@@ -36,7 +36,7 @@ export const PL_PROTECTED_RADIUS = 4.0;
  * Multiplier for the matrix-controlled mid-range force.
  * Higher values make the interaction matrix entries feel stronger.
  */
-export const PL_MATRIX_FORCE_SCALE = 0.4;
+export const PL_MATRIX_FORCE_SCALE = 0.10;
 
 /**
  * Strength of the protective short-range repulsion.
@@ -63,7 +63,7 @@ export const PL_VELOCITY_DAMPING = 0.992;
  * than racing across the canvas.  At 60 fps with two substeps per frame
  * (each at 0.5 dt) max travel is ~3.5 px/frame = ~210 px/sec on a 320 px canvas.
  */
-export const PL_MAX_VELOCITY = 3.5;
+export const PL_MAX_VELOCITY = 1.5;
 
 // ─── Per-frame force cap ──────────────────────────────────────────
 
