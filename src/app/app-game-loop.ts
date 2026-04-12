@@ -193,6 +193,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     ctx.hudOverlay.update({
       equivalence: getEquivalence(ctx.appState.game.resources),
       onScreenMotes: ctx.particles.getOnScreenMoteCount(),
+      onScreenParticleCount: ctx.particles.getOnScreenParticleCount(),
       terms,
       tapFlashAlpha: ctx.appState.tapFlashAlpha,
       isForgeUnlocked: ctx.appState.game.equation.isForgeUnlocked,

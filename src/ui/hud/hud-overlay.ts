@@ -16,6 +16,7 @@ import { formatNumberAs, type NumberFormat } from '../../util';
 export interface HudUpdateParams {
   equivalence: number;
   onScreenMotes: number;
+  onScreenParticleCount: number;
   terms: EquationTermView[];
   tapFlashAlpha: number;
   isForgeUnlocked: boolean;
@@ -88,6 +89,7 @@ export function createHudOverlay(): HudOverlay {
     const {
       equivalence,
       onScreenMotes,
+      onScreenParticleCount,
       terms,
       tapFlashAlpha,
       isForgeUnlocked,
@@ -98,7 +100,8 @@ export function createHudOverlay(): HudOverlay {
     scoreValue.textContent = formatNumberAs(equivalence, numberFormat);
 
     // Motes
-    motesValue.textContent = formatNumberAs(onScreenMotes, numberFormat);
+    motesValue.textContent =
+      `${formatNumberAs(onScreenMotes, numberFormat)} (${formatNumberAs(onScreenParticleCount, numberFormat)})`;
 
     // Equation — only rebuild HTML when content changes
     const termsKey = isForgeUnlocked

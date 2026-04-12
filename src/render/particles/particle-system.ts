@@ -164,6 +164,11 @@ export class ParticleSystem {
     return total;
   }
 
+  /** Returns the raw on-screen particle count (ignores size/value). */
+  getOnScreenParticleCount(): number {
+    return this.particles.length;
+  }
+
   /** Spawn a particle near the generator for this tier. */
   emit(
     tierId: TierId,
