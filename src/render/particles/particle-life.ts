@@ -28,6 +28,7 @@ import {
   PL_MAX_VELOCITY,
   PL_VELOCITY_DAMPING,
   PL_GRID_CELL_SIZE,
+  PL_MAX_FORCE_PER_FRAME,
 } from '../../data/particles/particle-life-config';
 import type { EquatoriaParticle } from './particle-types';
 import { getSizePixels } from '../../data/particles/size-tiers';
@@ -211,9 +212,18 @@ export function applyParticleLifeForces(
       }
     }
 
-    // Apply accumulated force to velocity
-    b.vx += totalFx * clampedDelta;
-    b.vy += totalFy * clampedDelta;
+    // Apply accumulated force to velocity, capped to prevent runaway PL-driven speed.
+    // Throw-derived velocity is set directly and is not affected by this cap.
+    const forceMag = Math.sqrt(totalFx * totalFx + totalFy * totalFy);
+    if (forceMag > 0) {
+      const frameDelta = clampedDelta > 0 ? clampedDelta : 1;
+      const maxDeltaV = PL_MAX_FORCE_PER_FRAME;
+      const appliedScale = (forceMag * frameDelta) > maxDeltaV
+        ? maxDeltaV / (forceMag * frameDelta)
+        : 1;
+      b.vx += totalFx * frameDelta * appliedScale;
+      b.vy += totalFy * frameDelta * appliedScale;
+    }
   }
 }
 

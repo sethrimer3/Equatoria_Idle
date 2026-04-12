@@ -79,6 +79,14 @@ export const SUCTION_TIMEOUT_MS = 2000;
  */
 export const SUCTION_TRAIL_WIDTH_SCALE = 0.7;
 
+// ─── Merge trail animation ───────────────────────────────────────
+/** Number of particles (of the 100 that merge) that display an animated trail. */
+export const MERGE_TRAIL_COUNT = 20;
+/** Duration of the draw phase (trail grows from particle toward generator). */
+export const MERGE_TRAIL_DRAW_DURATION_MS = 150;
+/** Duration of the erase phase (trail disappears from tail toward tip). */
+export const MERGE_TRAIL_ERASE_DURATION_MS = 150;
+
 // ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
 // The Euler inter-particle fluid system has been replaced by the
 // Particle Life interaction model.  See particle-life-config.ts and

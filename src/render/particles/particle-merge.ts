@@ -2,9 +2,12 @@
  * Particle merge logic — suction merge at generators.
  *
  * When any (tierId, sizeIndex) group reaches MERGE_THRESHOLD particles,
- * all 100 are immediately suctioned toward their generator center.
- * This replaces the old proximity-based merge and the procedural
- * seek-merge (gravity-toward-each-other) system.
+ * all 100 are immediately teleported to their generator center and an
+ * animated trail plays for MERGE_TRAIL_DRAW_DURATION_MS + MERGE_TRAIL_ERASE_DURATION_MS
+ * before the merge is finalised and the larger particle is spawned.
+ *
+ * Only MERGE_TRAIL_COUNT of the 100 particles display a trail; the rest are
+ * invisible during the animation (skipped in rendering).
  *
  * Performance notes:
  *  - selectRandom uses Fisher-Yates partial shuffle (O(k)) instead
@@ -26,10 +29,11 @@ import {
   PERFORMANCE_THRESHOLD,
   GENERATOR_CONVERSION_RADIUS,
   CONVERSION_SPREAD_VELOCITY,
-  MERGE_GATHER_THRESHOLD,
   SHOCKWAVE_MAX_RADIUS,
   MAX_SHOCKWAVES,
-  SUCTION_TIMEOUT_MS,
+  MERGE_TRAIL_COUNT,
+  MERGE_TRAIL_DRAW_DURATION_MS,
+  MERGE_TRAIL_ERASE_DURATION_MS,
 } from '../../data/particles/particle-config';
 import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import type { EquatoriaParticle, ActiveMerge, Shockwave } from './particle-types';
@@ -98,8 +102,10 @@ function getGeneratorForTier(
 
 /**
  * When any (tierId, sizeIndex) group reaches MERGE_THRESHOLD (100) particles,
- * all MERGE_THRESHOLD particles are immediately suctioned toward their generator
- * center. Multiple types may be suctioned simultaneously.
+ * all MERGE_THRESHOLD particles are immediately teleported to their generator
+ * center and an animated trail plays before the merge is finalised.
+ * Only MERGE_TRAIL_COUNT particles display a visible trail; the rest are
+ * held invisibly at the generator until the animation completes.
  */
 export function attemptSuctionMerge(
   particles: EquatoriaParticle[],
@@ -137,6 +143,25 @@ export function attemptSuctionMerge(
       ? group.particles.slice()
       : selectRandom(group.particles, MERGE_THRESHOLD);
 
+    // Select which particles display trails (up to MERGE_TRAIL_COUNT).
+    // We shuffle only the first MERGE_TRAIL_COUNT slots so the selection is random.
+    const numTrails = Math.min(MERGE_TRAIL_COUNT, toMerge.length);
+    const trailStartXY: number[] = [];
+    const trailCurveAngles: number[] = [];
+
+    for (let ti = 0; ti < numTrails; ti++) {
+      const j = ti + Math.floor(Math.random() * (toMerge.length - ti));
+      const tmp = toMerge[ti];
+      toMerge[ti] = toMerge[j];
+      toMerge[j] = tmp;
+      trailStartXY.push(toMerge[ti].x, toMerge[ti].y);
+      // Random curve angle between −10° and +10°
+      trailCurveAngles.push((Math.random() * 20 - 10) * (Math.PI / 180));
+    }
+
+    const tier = TIER_BY_ID.get(group.tierId);
+
+    // Teleport ALL particles to the generator immediately.
     for (let i = 0, len = toMerge.length; i < len; i++) {
       const p = toMerge[i];
       p.isMerging = true;
@@ -144,6 +169,15 @@ export function attemptSuctionMerge(
       p.mergeTargetY = gen.y;
       p.suctionStartX = p.x;
       p.suctionStartY = p.y;
+      // Teleport: place at generator with a tiny random scatter so they don't
+      // all stack exactly — keeps physics well-behaved during the wait.
+      p.x = gen.x + (Math.random() - 0.5) * 2;
+      p.y = gen.y + (Math.random() - 0.5) * 2;
+      p.vx = 0;
+      p.vy = 0;
+      // Clear stale trail data so no old positions bleed through.
+      p.trailHead = 0;
+      p.trailCount = 0;
     }
 
     activeMerges.push({
@@ -155,6 +189,13 @@ export function attemptSuctionMerge(
       startTimeMs: nowMs,
       isTierConversion: false,
       conversionCount: 1,
+      trailColor: tier?.color ?? '#ffffff',
+      trailStartXY,
+      trailCurveAngles,
+      trailCount: numTrails,
+      trailAnimStartMs: nowMs,
+      trailDrawDurationMs: MERGE_TRAIL_DRAW_DURATION_MS,
+      trailEraseDurationMs: MERGE_TRAIL_ERASE_DURATION_MS,
     });
 
     group.particles.length = 0;
@@ -179,18 +220,10 @@ export function processActiveMerges(
   let writeIdx = 0;
   for (let mi = 0, mlen = activeMerges.length; mi < mlen; mi++) {
     const merge = activeMerges[mi];
-    let allGathered = true;
-    for (let pi = 0, plen = merge.particles.length; pi < plen; pi++) {
-      const p = merge.particles[pi];
-      const dx = p.x - merge.targetX;
-      const dy = p.y - merge.targetY;
-      if (dx * dx + dy * dy >= MERGE_GATHER_THRESHOLD * MERGE_GATHER_THRESHOLD) {
-        allGathered = false;
-        break;
-      }
-    }
 
-    if (!allGathered && nowMs - merge.startTimeMs < SUCTION_TIMEOUT_MS) {
+    // Wait for the trail animation to finish before completing the merge.
+    const animDuration = merge.trailDrawDurationMs + merge.trailEraseDurationMs;
+    if (nowMs - merge.trailAnimStartMs < animDuration) {
       activeMerges[writeIdx++] = merge;
       continue;
     }

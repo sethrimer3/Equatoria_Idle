@@ -63,6 +63,18 @@ export interface ActiveMerge {
   startTimeMs: number;
   isTierConversion: boolean;
   conversionCount: number;
+  /**
+   * Trail animation data for suction merges (null for forge-crunch / tier-conversion).
+   * trailStartXY: flat [x0,y0, x1,y1, …] for up to MERGE_TRAIL_COUNT selected trails.
+   * trailCurveAngles: per-trail random curve offset in radians (−10°…+10°).
+   */
+  trailColor: string;
+  trailStartXY: number[] | null;
+  trailCurveAngles: number[] | null;
+  trailCount: number;
+  trailAnimStartMs: number;
+  trailDrawDurationMs: number;
+  trailEraseDurationMs: number;
 }
 
 // ─── Shockwave ───────────────────────────────────────────────────

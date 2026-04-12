@@ -155,6 +155,7 @@ export async function startApp(): Promise<void> {
     }
     if (action.kind === 'reset_game') {
       deleteSave();
+      particles.reset();
       Object.assign(appState, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
       recomputeGenerators();
       setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);

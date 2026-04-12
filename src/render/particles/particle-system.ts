@@ -307,8 +307,10 @@ export class ParticleSystem {
     dragState?: ParticleDragState,
     canvasWidth?: number,
     canvasHeight?: number,
+    nowMs?: number,
   ): void {
-    drawParticles(cc, this.particles, this.shockwaves, options);
+    const renderNow = nowMs ?? performance.now();
+    drawParticles(cc, this.particles, this.shockwaves, this.activeMerges, options, renderNow);
     if (dragState !== undefined && canvasWidth !== undefined && canvasHeight !== undefined) {
       drawGrabVisual(cc, dragState, this.particles, canvasWidth, canvasHeight, getParticleRendererAnimTimeMs());
     }
@@ -319,6 +321,26 @@ export class ParticleSystem {
       this.enableSizeForceBias,
       this.debugState,
     );
+  }
+
+  /**
+   * Clear all particles and reset transient visual state.
+   * Called on game reset so the particle simulation starts fresh.
+   */
+  reset(): void {
+    // Release all active particles back to the pool
+    for (let i = 0, len = this.particles.length; i < len; i++) {
+      this._pool.release(this.particles[i]);
+    }
+    this.particles.length = 0;
+    this.activeMerges.length = 0;
+    this.shockwaves.length = 0;
+    this.spawnerRotations.clear();
+    this.forgeRotation = 0;
+    this.mergeCooldownFrames = 0;
+    this.frameCount = 0;
+    this._wasSpinningUp = false;
+    this._wasCrunchActive = false;
   }
 
   get particleCount(): number {

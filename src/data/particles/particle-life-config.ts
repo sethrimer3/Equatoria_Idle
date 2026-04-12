@@ -61,7 +61,16 @@ export const PL_VELOCITY_DAMPING = 0.992;
  */
 export const PL_MAX_VELOCITY = 8.0;
 
-// ─── Size-force bias ─────────────────────────────────────────────
+// ─── Per-frame force cap ──────────────────────────────────────────
+
+/**
+ * Maximum velocity change (canvas px per frame-unit) that Particle Life forces
+ * can apply to any single particle per frame.  This prevents multi-tier repulsive
+ * clusters from driving 2×2+ particles to PL_MAX_VELOCITY and "bouncing around
+ * at high velocity."  Throw-derived velocity is set directly on vx/vy and is not
+ * limited by this cap — it decays naturally via PL_VELOCITY_DAMPING.
+ */
+export const PL_MAX_FORCE_PER_FRAME = 2.0;
 
 /**
  * Global toggle: when true, larger motes exert / receive stronger
