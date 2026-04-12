@@ -8,6 +8,7 @@ import {
   simTick,
   getEquivalence,
   buildEquationView,
+  getLoomRate,
 } from '../sim';
 import {
   clearCanvas,
@@ -23,8 +24,9 @@ import type { BackgroundAnimation, VermiculateEffect, SubstrateEffect } from '..
 import type { SettingsState } from '../settings';
 import { saveGame } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
-import { SMALL_SIZE_INDEX } from '../data/particles/size-tiers';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
+import type { TierId } from '../data/tiers';
+import { computeOutputCompression } from '../util/particle-compression';
 import type { AppState, UIPanels } from './app-types';
 import { updateVisiblePanels } from './app-actions';
 import type { HudOverlay } from '../ui/hud/hud-overlay';
@@ -51,6 +53,10 @@ export interface GameLoopContext {
 // ─── Game loop ──────────────────────────────────────────────────
 
 export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
+  // Per-loom fractional particle accumulator (render-side only, not persisted).
+  // Tracks sub-particle remainders so fractional emit rates average out correctly.
+  const particleEmitAccumulators = new Map<TierId, number>();
+
   function gameLoop(nowMs: number): void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
     ctx.lastFrameMs.value = nowMs;
@@ -79,9 +85,28 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       }
     }
 
-    // Emit particles at generator positions for loom production ticks
-    for (const [tierId] of simResult.loomGains) {
-      ctx.particles.emit(tierId, SMALL_SIZE_INDEX, ctx.appState.generatorState.generators, nowMs);
+    // Emit compressed particles at generator positions for loom production.
+    // Each loom emits only the single highest-value size appropriate for its
+    // current rate; no smaller-size leftovers are spawned.
+    // Fractional rates are handled by delta-time accumulation.
+    const deltaSec = deltaMs / 1000;
+    const loomMultiplier = ctx.appState.game.achievements.loomMultiplierBonus;
+    for (const loom of ctx.appState.game.looms.looms) {
+      if (!loom.isUnlocked || loom.level <= 0) continue;
+
+      const rawRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier;
+      if (rawRate <= 0) continue;
+
+      const { sizeIndex, emitRatePerSec } = computeOutputCompression(rawRate);
+
+      // Accumulate fractional emit count; spawn whole particles only
+      let acc = (particleEmitAccumulators.get(loom.tierId) ?? 0) + emitRatePerSec * deltaSec;
+      const toEmit = Math.floor(acc);
+      particleEmitAccumulators.set(loom.tierId, acc - toEmit);
+
+      for (let i = 0; i < toEmit; i++) {
+        ctx.particles.emit(loom.tierId, sizeIndex, ctx.appState.generatorState.generators, nowMs);
+      }
     }
 
     if (ctx.appState.tapFlashAlpha > 0) {

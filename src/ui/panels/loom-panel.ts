@@ -4,7 +4,7 @@ import { TIER_BY_ID } from '../../data/tiers';
 import { LOOM_DEFINITIONS } from '../../data/looms';
 import { getLoom, getLoomRate, getLoomCost } from '../../sim/looms';
 import { getMotes } from '../../sim/resources';
-import { formatNumberAs, type NumberFormat } from '../../util';
+import { formatNumberAs, computeOutputCompression, type NumberFormat } from '../../util';
 import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
 import { loadImage } from '../../render/assets/asset-loader';
 import { createTintedCanvas } from '../../render/assets/sprite-tint';
@@ -118,9 +118,13 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
       // Update stats display
       const statsEl = card.querySelector('.loom-stats');
       if (statsEl) {
+        const effectiveRate = rate * state.achievements.loomMultiplierBonus;
+        const { sizeLabel, emitRatePerSec } = computeOutputCompression(effectiveRate);
         statsEl.innerHTML = `
           <span class="loom-stat">Lv ${level}</span>
-          <span class="loom-stat">${formatNumberAs(rate, numberFormat)}/s</span>
+          <span class="loom-stat">${formatNumberAs(effectiveRate, numberFormat)}/s raw</span>
+          <span class="loom-stat loom-emit-size">Particle size: ${sizeLabel}</span>
+          <span class="loom-stat">Rate: ${formatNumberAs(emitRatePerSec, numberFormat)}/s</span>
           <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} motes</span>
         `;
       }

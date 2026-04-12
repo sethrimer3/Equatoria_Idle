@@ -362,3 +362,10 @@ Audio system — eight focused modules:
 - `formatNumber()` — convenience wrapper, always uses 'letters' format.
 - `formatNumberAs(n, format)` — format using 'letters' (K/M/B/T/Qa/Qi/Sx/Sp), 'scientific' (1.23e9), or 'engineering' (1.23×10⁹) notation.
 - `NumberFormat` type — `'letters' | 'scientific' | 'engineering'`.
+
+### src/util/particle-compression.ts
+- `computeOutputCompression(rawRatePerSec)` — converts raw 1×1 production rate into the single highest-value particle size to emit and its per-second emit rate.
+- Rule: `sizeIndex = floor(log(rawRate) / log(100))`; `emitRatePerSec = rawRate / 100^sizeIndex`.
+- Returns `{ sizeIndex, emitRatePerSec, sizeLabel }`.
+- Works for arbitrary sizes (not capped at 4×4).
+- Used by `app-game-loop.ts` for per-frame loom particle emission.
