@@ -29,7 +29,7 @@ import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
 import { createHudOverlay } from '../ui/hud/hud-overlay';
 import { createLoadingScreen } from '../ui/loading';
-import { loadSettings, saveGame, loadGame, deleteSave } from '../settings';
+import { loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp } from '../settings';
 import { TIERS } from '../data/tiers';
 import { createForgeCrunchState } from '../sim/forge';
 import {
@@ -42,6 +42,9 @@ import { createAudioSystem } from '../audio';
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
 import { createGameLoop } from './app-game-loop';
+import { createIdleOverlay } from '../ui/idle/idle-overlay';
+import { calculateIdleRewards } from '../sim/idle/idle-reward';
+import { applyIdleRewards } from '../sim/idle/apply-idle-rewards';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
@@ -58,6 +61,8 @@ export async function startApp(): Promise<void> {
   preloadForgeSprites();
 
   // ── Initialize game state ──
+  const lastActiveTs = readLastActiveTimestamp();
+  writeLastActiveTimestamp(); // immediately record so next session measures from now
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
   const settings = loadSettings();
@@ -111,6 +116,10 @@ export async function startApp(): Promise<void> {
   // ── HUD overlay (DOM layer above canvas, non-pixelated) ──
   const hudOverlay = createHudOverlay();
   canvasContainer.appendChild(hudOverlay.element);
+
+  // ── Idle reward overlay ──
+  const idleOverlay = createIdleOverlay();
+  root.appendChild(idleOverlay.element);
 
   // ── Panels overlay container ──
   const panelsContainer = document.createElement('div');
@@ -175,6 +184,10 @@ export async function startApp(): Promise<void> {
   document.addEventListener('visibilitychange', () => {
     _isWindowFocused = document.visibilityState === 'visible';
     applyFocusedAudio();
+    // Write the last-active timestamp whenever the tab is hidden.
+    if (document.visibilityState === 'hidden') {
+      writeLastActiveTimestamp();
+    }
   });
 
   window.addEventListener('blur', () => {
@@ -287,5 +300,18 @@ export async function startApp(): Promise<void> {
 
   // ── Fade out loading screen and start game loop ──
   await loadingScreen.fadeOut();
+
+  // ── Idle reward check ──
+  if (lastActiveTs !== null) {
+    const elapsedMs = Date.now() - lastActiveTs;
+    if (elapsedMs > 60_000) {
+      const summary = calculateIdleRewards(game, elapsedMs);
+      if (summary.tierRewards.some(r => r.totalMotes > 0)) {
+        applyIdleRewards(game, summary);
+        idleOverlay.show(summary);
+      }
+    }
+  }
+
   requestAnimationFrame(gameLoop);
 }

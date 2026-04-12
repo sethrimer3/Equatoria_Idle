@@ -205,3 +205,20 @@
 **Decision**: Diamond particles get a double-layer prismatic HSL overlay that cycles hues over time. The diamond generator gets a `screen`-mode radial gradient overlay plus cycling shadow glow. Nullstone generator has a dark purple (`#6a0dad`) radial glow and the influence-range circle is replaced with animated purple swirl arcs (`drawNullstoneRangeSwirl`).
 
 **Rationale**: Visual distinctiveness for the two rarest tiers. Diamond is light-refracting so prismatic rainbow is appropriate. Nullstone is void/darkness so a moody deep purple glow fits. Effects are contained in the render layer and are not authoritative simulation state.
+
+## Offline Progress Model
+
+**Decision**: When the player returns after ≥ 1 minute away, show an animated overlay listing Equivalence gained and per-tier Mote gains. Only Loom passive production counts toward offline rewards (no auto-tap offline). Offline time is measured by a side-channel `localStorage` key (`equatoria_last_active`) written on app start and on `visibilitychange` (hidden).
+
+**How it works**:
+1. On app start, `readLastActiveTimestamp()` reads the stored timestamp, then `writeLastActiveTimestamp()` immediately updates it to now.
+2. If `elapsed > 60 000 ms` and at least one tier has gains, `calculateIdleRewards()` computes a pure `IdleRewardSummary` (no state mutation).
+3. `applyIdleRewards()` adds the motes to live `GameState`.
+4. `idleOverlay.show(summary)` animates the results.
+5. On `visibilitychange → hidden`, the timestamp is refreshed so partial idle sessions accumulate correctly.
+
+**Scope**: Only Loom production is counted. Auto-tap does not fire offline. Achievement bonuses (`loomMultiplierBonus`) are applied.
+
+**Threshold**: 1 minute minimum to avoid trivial rewards on quick tab switches.
+
+**13-tier breakdown**: Each of the 13 tiers has its own row in the overlay (hidden with `hidden` + `aria-hidden="true"` if that tier's Loom is not yet unlocked).
