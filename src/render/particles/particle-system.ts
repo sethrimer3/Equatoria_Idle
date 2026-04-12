@@ -95,6 +95,30 @@ export interface ParticleAudioEvents {
 const DEFAULT_SPAWN_X = 160;
 const DEFAULT_SPAWN_Y = 160;
 
+// ─── Fixed-timestep substep constants ───────────────────────────
+
+/**
+ * Fixed simulation step size in milliseconds.
+ * Targets two substeps per 60 fps render frame (≈ 8.33 ms each), giving
+ * a stable, frame-rate-independent integration while keeping per-step
+ * displacement small.
+ */
+const FIXED_STEP_MS = 1000 / 120; // ≈ 8.33 ms
+
+/**
+ * Maximum substeps simulated per render frame.
+ * Caps work when the frame rate drops to prevent spiral-of-death behavior
+ * (the simulation lags behind real time rather than accelerating).
+ */
+const MAX_SUBSTEPS_PER_FRAME = 4;
+
+/**
+ * Pre-computed clampedDelta for one fixed step relative to a 60 fps frame.
+ * All per-step force and position integrations use this constant value so
+ * behaviour is independent of the render frame rate.
+ */
+const FIXED_STEP_DELTA = FIXED_STEP_MS / (1000 / 60); // ≈ 0.5
+
 // ─── ParticleSystem class ────────────────────────────────────────
 
 export class ParticleSystem {
@@ -115,6 +139,9 @@ export class ParticleSystem {
   debugState: ParticleLifeDebugState = createDefaultDebugState();
 
   private readonly _pool = new ParticlePool();
+
+  /** Accumulates unprocessed frame time for fixed-timestep substep integration. */
+  private _accumMs = 0;
 
   // ── Forge audio transition tracking ──
   /** Whether the forge was in spin-up state at the end of the last frame. */
@@ -185,36 +212,74 @@ export class ParticleSystem {
     isForgeUnlocked: boolean,
   ): ParticleAudioEvents {
     this.frameCount++;
-    const deltaRatio = deltaMs / (1000 / 60);
-    const clampedDelta = Math.max(Math.min(deltaRatio, 3), 0.01);
+
+    // ── Frame-level updates (once per render frame) ──────────────
 
     // Advance renderer animation clock
     updateParticleRendererTime(deltaMs);
 
-    // Spawner rotations
+    // Spawner and forge rotations use the actual frame delta so they
+    // remain smooth at any frame rate independently of the substep count.
+    const frameRatio = deltaMs / (1000 / 60);
+    const frameDelta = Math.max(Math.min(frameRatio, 3), 0.01);
+
     for (const [tierId] of this.spawnerRotations) {
       const rot = this.spawnerRotations.get(tierId) ?? 0;
-      this.spawnerRotations.set(tierId, rot + SPAWNER_ROTATION_SPEED * clampedDelta);
+      this.spawnerRotations.set(tierId, rot + SPAWNER_ROTATION_SPEED * frameDelta);
     }
 
-    // Forge rotation
     const spinMult = getForgeRotationMultiplier(
       crunchState, nowMs,
       FORGE_VALID_WAIT_TIME_MS, FORGE_SPIN_UP_DURATION_MS, FORGE_SPIN_DOWN_DURATION_MS,
     );
-    this.forgeRotation += FORGE_ROTATION_SPEED * spinMult * clampedDelta;
+    this.forgeRotation += FORGE_ROTATION_SPEED * spinMult * frameDelta;
 
-    // Per-particle physics (generator gravity, forge attraction, veer, clamping, bounce)
+    // ── Fixed-timestep simulation substeps ───────────────────────
+    // Accumulate frame time, then drain it in fixed-size steps.
+    // Capping the accumulator prevents spiral-of-death when frames are slow.
+    this._accumMs = Math.min(this._accumMs + deltaMs, FIXED_STEP_MS * MAX_SUBSTEPS_PER_FRAME);
+
+    // Performance flags are evaluated once per frame so even-/odd-frame
+    // alternation still alternates per render frame, not per substep.
     const skipPhysics = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 === 0;
-    if (!skipPhysics) {
-      for (let i = 0, len = this.particles.length; i < len; i++) {
-        updateParticlePhysics(
-          this.particles[i], clampedDelta, nowMs, generators,
-          forgeX, forgeY, canvasWidth, canvasHeight, isForgeUnlocked,
+    const skipPL      = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 !== 0;
+
+    while (this._accumMs >= FIXED_STEP_MS) {
+      this._accumMs -= FIXED_STEP_MS;
+
+      // Per-particle physics (generator gravity, forge attraction, veer, clamping, bounce)
+      if (!skipPhysics) {
+        for (let i = 0, len = this.particles.length; i < len; i++) {
+          updateParticlePhysics(
+            this.particles[i], FIXED_STEP_DELTA, nowMs, generators,
+            forgeX, forgeY, canvasWidth, canvasHeight, isForgeUnlocked,
+          );
+        }
+        applyEdgeRepulsion(this.particles, canvasWidth, canvasHeight, FIXED_STEP_DELTA);
+      }
+
+      // Particle Life interaction forces
+      // Computes pairwise forces from the 13×13 interaction matrix.
+      // 1×1 motes are automatically skipped (inert rule).
+      if (!skipPL) {
+        applyParticleLifeForces(
+          this.particles,
+          this.interactionMatrix,
+          this.enableSizeForceBias,
+          FIXED_STEP_DELTA,
+          canvasWidth,
+          canvasHeight,
         );
       }
-      applyEdgeRepulsion(this.particles, canvasWidth, canvasHeight, clampedDelta);
+
+      // Velocity damping + max speed clamp
+      applyParticleLifeDamping(this.particles, FIXED_STEP_DELTA);
+
+      // Toroidal wraparound
+      applyWrapAround(this.particles, canvasWidth, canvasHeight);
     }
+
+    // ── Post-simulation (once per render frame) ──────────────────
 
     // Trails
     if (options.enableTrails) {
@@ -222,30 +287,6 @@ export class ParticleSystem {
     } else {
       clearTrails(this.particles);
     }
-
-    // ── Particle Life interaction forces ──
-    // Replaces the old Euler fluid dynamics system.
-    // Computes pairwise forces from the 13×13 interaction matrix.
-    // 1×1 motes are automatically skipped (inert rule).
-    {
-      const skipPL = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 !== 0;
-      if (!skipPL) {
-        applyParticleLifeForces(
-          this.particles,
-          this.interactionMatrix,
-          this.enableSizeForceBias,
-          clampedDelta,
-          canvasWidth,
-          canvasHeight,
-        );
-      }
-    }
-
-    // Velocity damping + max speed clamp
-    applyParticleLifeDamping(this.particles, clampedDelta);
-
-    // Toroidal wraparound
-    applyWrapAround(this.particles, canvasWidth, canvasHeight);
 
     // Suction merges — check globally every 10 frames
     if (this.mergeCooldownFrames > 0) this.mergeCooldownFrames--;
@@ -339,6 +380,7 @@ export class ParticleSystem {
     this.forgeRotation = 0;
     this.mergeCooldownFrames = 0;
     this.frameCount = 0;
+    this._accumMs = 0;
     this._wasSpinningUp = false;
     this._wasCrunchActive = false;
   }
