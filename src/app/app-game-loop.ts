@@ -89,6 +89,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // Each loom emits only the single highest-value size appropriate for its
     // current rate; no smaller-size leftovers are spawned.
     // Fractional rates are handled by delta-time accumulation.
+    const deltaSec = deltaMs / 1000;
     const loomMultiplier = ctx.appState.game.achievements.loomMultiplierBonus;
     for (const loom of ctx.appState.game.looms.looms) {
       if (!loom.isUnlocked || loom.level <= 0) continue;
@@ -99,7 +100,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       const { sizeIndex, emitRatePerSec } = computeOutputCompression(rawRate);
 
       // Accumulate fractional emit count; spawn whole particles only
-      let acc = (particleEmitAccumulators.get(loom.tierId) ?? 0) + emitRatePerSec * deltaMs / 1000;
+      let acc = (particleEmitAccumulators.get(loom.tierId) ?? 0) + emitRatePerSec * deltaSec;
       const toEmit = Math.floor(acc);
       particleEmitAccumulators.set(loom.tierId, acc - toEmit);
 

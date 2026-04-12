@@ -123,7 +123,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
         statsEl.innerHTML = `
           <span class="loom-stat">Lv ${level}</span>
           <span class="loom-stat">${formatNumberAs(effectiveRate, numberFormat)}/s raw</span>
-          <span class="loom-stat loom-emit-size">Producing: ${sizeLabel} motes</span>
+          <span class="loom-stat loom-emit-size">Particle size: ${sizeLabel}</span>
           <span class="loom-stat">Rate: ${formatNumberAs(emitRatePerSec, numberFormat)}/s</span>
           <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} motes</span>
         `;
