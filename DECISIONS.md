@@ -28,11 +28,11 @@
 
 ## Save Format Strategy
 
-**Decision**: JSON in `localStorage` with a `version` field. On version mismatch, start fresh.
+**Decision**: JSON in `localStorage` with a `version` field. Current version: **7**. Versions 1–7 are accepted; older saves apply defaults for missing fields.
 
 **Rationale**: Simple and sufficient for early development. The version field enables future migration logic. The save structure mirrors game state closely for easy serialization.
 
-**Future**: Add migration functions when the save format changes.
+**Mote persistence (v7+)**: `resources.moteSizeCounts` stores per-tier mote counts encoded in base-100 (MERGE_THRESHOLD). The key is `tierId`; the value is `{ sizeIndex: count }`. For example, 350 sand motes is stored as `{ "0": 50, "1": 3 }`. On load the total is reconstructed as `sum(count × 100^sizeIndex)`. This allows idle rewards to be applied at size-0 with cascade merging before re-encoding to the compacted form. Saves from v1–6 used a flat `moteTotals: Record<string, number>` which is still decoded correctly.
 
 ## Canvas / UI Layering
 

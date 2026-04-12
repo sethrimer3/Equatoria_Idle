@@ -128,7 +128,8 @@
 - `calculateIdleRewards(game, elapsedMs)` — computes what was earned offline without mutating live state.
 
 ### src/sim/idle/apply-idle-rewards.ts
-- `applyIdleRewards(game, summary)` — commits idle reward mote gains to the live game state via `addMotes`.
+- `applyIdleRewards(game, summary)` — commits idle reward mote gains to the live game state.
+- Integer motes are deposited at size-0 and cascade-merged (100 at size N → 1 at size N+1) before updating `moteTotals`; fractional motes are added directly.
 
 ### src/sim/equation/equation-state.ts
 - Authoritative equation state: per-tier segments with levels and unlock flags.
@@ -155,6 +156,8 @@
 - Authoritative mote totals per tier and lifetime totals.
 - `addMotes()`, `spendMotes()`, `getMotes()`, `getTotalMotes()`.
 - `getEquivalence()` — product of all non-zero per-tier mote totals (player's "Equivalence" score).
+- `totalToSizeCounts(total)` — converts a float total to a `Map<SizeIndex, number>` in base-100 (Grain, Shard, Chunk, Mass, …). Used at save time and for display.
+- `sizeCountsToTotal(counts)` — inverse of `totalToSizeCounts`; reconstructs the float total from size counts. Used at load time.
 
 ### src/sim/progression/progression-state.ts
 - Upgrade levels, unlocked tier count, auto-tap level, global multiplier.
@@ -372,6 +375,7 @@ Audio system — eight focused modules:
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
+- Shows total mote count, lifetime total, and per-size breakdown (Grain/Shard/Chunk/Mass/…) derived from `totalToSizeCounts`.
 
 ### src/ui/idle/idle-overlay.ts
 - DOM overlay shown when the player returns after being away ≥ 1 minute.
@@ -390,8 +394,8 @@ Audio system — eight focused modules:
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 5): includes Loom state, `isForgeUnlocked`, achievement unlock/claim sets.
-- Backward-compatible with version 1–4 saves.
+- Versioned save format (version 7): motes persisted as `moteSizeCounts` (base-100 per-size counts per tier). Backward-compatible with versions 1–6 (flat `moteTotals`).
+- On load, size counts are decoded back to float totals; idle rewards are then applied at size-0 with cascade merging.
 
 ### src/settings/offline-time.ts
 - Lightweight last-active timestamp helpers using a separate localStorage key (`equatoria_last_active`).
