@@ -47,6 +47,12 @@ export interface EquatoriaParticle {
   suctionStartX: number;
   /** Y position when this particle entered suction-merge state (used for trail rendering). */
   suctionStartY: number;
+  /**
+   * Timestamp (ms) when this particle was last released from pointer drag.
+   * 0 means not recently dragged.  Used to apply the post-drag speed boost
+   * fade and Particle Life inertness fade over DRAG_RELEASE_FADE_MS.
+   */
+  dragReleaseTimeMs: number;
 }
 
 /** Backward-compatible alias. */

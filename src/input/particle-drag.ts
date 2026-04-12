@@ -114,6 +114,7 @@ export function handleParticleDragUp(
   for (const p of particles) {
     if (p.isLockedToPointer) {
       p.isLockedToPointer = false;
+      p.dragReleaseTimeMs = nowMs;
       if (isStationary) {
         // Finger lifted without a throw — settle to minimum wandering speed.
         const pSpeed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);

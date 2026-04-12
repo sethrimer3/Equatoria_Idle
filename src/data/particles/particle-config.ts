@@ -48,6 +48,18 @@ export const MOUSE_ATTRACTION_STRENGTH = 3.0;
 export const DRAG_RELEASE_STILLNESS_MS = 120;
 export const DRAG_RELEASE_SPEED_THRESHOLD = 0.02;
 export const GENERATOR_FADE_IN_DURATION_MS = 1000;
+
+/**
+ * Speed multiplier applied to the maximum particle velocity while a particle
+ * is locked to the pointer (being dragged).
+ */
+export const DRAG_BOOST_MULTIPLIER = 4;
+
+/**
+ * Duration in milliseconds over which the post-drag speed boost and Particle
+ * Life inertness both fade linearly back to their normal values.
+ */
+export const DRAG_RELEASE_FADE_MS = 5000;
 export const TRAIL_FADE = 0.15;
 export const MAX_SHOCKWAVES = 5;
 

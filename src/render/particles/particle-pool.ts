@@ -65,6 +65,7 @@ function createBlankParticle(): EquatoriaParticle {
     trailHead: 0,
     trailCount: 0,
     trailFrameCounter: 0,
+    dragReleaseTimeMs: 0,
   };
 }
 
@@ -107,6 +108,7 @@ export function initParticle(
   p.trailHead = 0;
   p.trailCount = 0;
   p.trailFrameCounter = 0;
+  p.dragReleaseTimeMs = 0;
 }
 
 // ─── Pool ────────────────────────────────────────────────────────
