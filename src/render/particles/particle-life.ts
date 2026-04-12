@@ -30,6 +30,10 @@ import {
   PL_GRID_CELL_SIZE,
   PL_MAX_FORCE_PER_FRAME,
 } from '../../data/particles/particle-life-config';
+import {
+  DRAG_BOOST_MULTIPLIER,
+  DRAG_RELEASE_FADE_MS,
+} from '../../data/particles/particle-config';
 import type { EquatoriaParticle } from './particle-types';
 import { getSizePixels } from '../../data/particles/size-tiers';
 
@@ -114,6 +118,35 @@ function wrapDelta(d: number, size: number): number {
   return d;
 }
 
+// ─── Drag-fade helpers ───────────────────────────────────────────
+
+/**
+ * Returns the Particle Life blend factor for a particle:
+ *  0 = fully inert (no forces received) — during or just after drag.
+ *  1 = fully normal — 5 s+ since last drag release.
+ * Linear interpolation between those extremes over DRAG_RELEASE_FADE_MS.
+ */
+function getDragBlend(p: EquatoriaParticle, nowMs: number): number {
+  if (p.isLockedToPointer) return 0;
+  if (p.dragReleaseTimeMs <= 0) return 1;
+  const elapsed = nowMs - p.dragReleaseTimeMs;
+  if (elapsed >= DRAG_RELEASE_FADE_MS) return 1;
+  return elapsed / DRAG_RELEASE_FADE_MS;
+}
+
+/**
+ * Returns the effective max velocity for a particle taking the drag
+ * boost and post-drag fade into account.
+ */
+function getDragEffectiveMaxVel(p: EquatoriaParticle, nowMs: number): number {
+  if (p.isLockedToPointer) return PL_MAX_VELOCITY * DRAG_BOOST_MULTIPLIER;
+  if (p.dragReleaseTimeMs <= 0) return PL_MAX_VELOCITY;
+  const elapsed = nowMs - p.dragReleaseTimeMs;
+  if (elapsed >= DRAG_RELEASE_FADE_MS) return PL_MAX_VELOCITY;
+  const t = elapsed / DRAG_RELEASE_FADE_MS;
+  return PL_MAX_VELOCITY * (DRAG_BOOST_MULTIPLIER - t * (DRAG_BOOST_MULTIPLIER - 1));
+}
+
 // ─── Main force application ──────────────────────────────────────
 
 /**
@@ -125,6 +158,7 @@ function wrapDelta(d: number, size: number): number {
  * @param clampedDelta   Frame delta ratio (deltaMs / (1000/60)), clamped.
  * @param canvasWidth    Current canvas width in px.
  * @param canvasHeight   Current canvas height in px.
+ * @param nowMs          Current frame timestamp in ms (used for drag-fade blend).
  */
 export function applyParticleLifeForces(
   particles: EquatoriaParticle[],
@@ -133,6 +167,7 @@ export function applyParticleLifeForces(
   clampedDelta: number,
   canvasWidth: number,
   canvasHeight: number,
+  nowMs: number,
 ): void {
   buildParticleLifeGrid(particles);
 
@@ -214,6 +249,8 @@ export function applyParticleLifeForces(
 
     // Apply accumulated force to velocity, capped to prevent runaway PL-driven speed.
     // Throw-derived velocity is set directly and is not affected by this cap.
+    // Recently-dragged particles are inert: forces scale linearly from 0→1 over
+    // DRAG_RELEASE_FADE_MS after the drag is released.
     if (clampedDelta <= 0) continue;
     const forceMag = Math.sqrt(totalFx * totalFx + totalFy * totalFy);
     if (forceMag > 0) {
@@ -221,8 +258,9 @@ export function applyParticleLifeForces(
       const appliedScale = rawDeltaV > PL_MAX_FORCE_PER_FRAME
         ? PL_MAX_FORCE_PER_FRAME / rawDeltaV
         : 1;
-      b.vx += totalFx * clampedDelta * appliedScale;
-      b.vy += totalFy * clampedDelta * appliedScale;
+      const dragBlend = getDragBlend(b, nowMs);
+      b.vx += totalFx * clampedDelta * appliedScale * dragBlend;
+      b.vy += totalFy * clampedDelta * appliedScale * dragBlend;
     }
   }
 }
@@ -230,10 +268,12 @@ export function applyParticleLifeForces(
 /**
  * Apply velocity damping and clamp max speed for all particles.
  * Called after force accumulation and before position integration.
+ * @param nowMs Current frame timestamp in ms (used for drag-fade effective max velocity).
  */
 export function applyParticleLifeDamping(
   particles: EquatoriaParticle[],
   clampedDelta: number,
+  nowMs: number,
 ): void {
   // Compute per-frame damping (adjust for variable timestep)
   const damping = Math.pow(PL_VELOCITY_DAMPING, clampedDelta);
@@ -245,10 +285,12 @@ export function applyParticleLifeDamping(
     p.vx *= damping;
     p.vy *= damping;
 
-    // Clamp maximum velocity
+    // Clamp maximum velocity — use elevated cap during post-drag fade so
+    // thrown particles retain the boosted speed while it winds back down.
+    const effectiveMaxVel = getDragEffectiveMaxVel(p, nowMs);
     const speedSq = p.vx * p.vx + p.vy * p.vy;
-    if (speedSq > PL_MAX_VELOCITY * PL_MAX_VELOCITY) {
-      const scale = PL_MAX_VELOCITY / Math.sqrt(speedSq);
+    if (speedSq > effectiveMaxVel * effectiveMaxVel) {
+      const scale = effectiveMaxVel / Math.sqrt(speedSq);
       p.vx *= scale;
       p.vy *= scale;
     }

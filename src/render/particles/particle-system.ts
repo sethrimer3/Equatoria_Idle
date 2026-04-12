@@ -269,11 +269,12 @@ export class ParticleSystem {
           FIXED_STEP_DELTA,
           canvasWidth,
           canvasHeight,
+          nowMs,
         );
       }
 
       // Velocity damping + max speed clamp
-      applyParticleLifeDamping(this.particles, FIXED_STEP_DELTA);
+      applyParticleLifeDamping(this.particles, FIXED_STEP_DELTA, nowMs);
 
       // Toroidal wraparound
       applyWrapAround(this.particles, canvasWidth, canvasHeight);

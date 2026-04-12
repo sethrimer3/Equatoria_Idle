@@ -25,6 +25,8 @@ import {
   TRAIL_LENGTH_MEDIUM,
   TRAIL_LENGTH_LARGE,
   TRAIL_CAPTURE_INTERVAL,
+  DRAG_BOOST_MULTIPLIER,
+  DRAG_RELEASE_FADE_MS,
 } from '../../data/particles/particle-config';
 import { PL_MAX_VELOCITY } from '../../data/particles/particle-life-config';
 import {
@@ -143,17 +145,33 @@ export function updateParticlePhysics(
   // Velocity clamping
   // Min: size-based floor to keep particles from stalling entirely.
   //      Generator fields use a boosted floor so particles stay active near spawners.
-  // Max: use PL_MAX_VELOCITY uniformly rather than the old per-particle cap or the
-  //      generator-field reduction (genMaxVel).  Generator fields constrain particles
-  //      through gravity force, not velocity capping, so removing the separate upper
-  //      limit here does not affect spawner behaviour while allowing throw momentum
-  //      to survive into the PL damping step unchanged.
+  // Max: effective max velocity accounts for the drag-boost fade.
+  //      While locked to pointer: 4× PL_MAX_VELOCITY.
+  //      Within DRAG_RELEASE_FADE_MS after release: linearly interpolates from
+  //      4× back to 1× PL_MAX_VELOCITY.
+  //      Otherwise: PL_MAX_VELOCITY unchanged.
   const genMinVel = p.minVelocity * Math.max(1, p.tierIndex + 1);
   const minVel = isInsideGeneratorField ? genMinVel : p.minVelocity;
+
+  let effectiveMaxVel: number;
+  if (p.isLockedToPointer) {
+    effectiveMaxVel = PL_MAX_VELOCITY * DRAG_BOOST_MULTIPLIER;
+  } else if (p.dragReleaseTimeMs > 0) {
+    const elapsed = nowMs - p.dragReleaseTimeMs;
+    if (elapsed < DRAG_RELEASE_FADE_MS) {
+      const t = elapsed / DRAG_RELEASE_FADE_MS;
+      effectiveMaxVel = PL_MAX_VELOCITY * (DRAG_BOOST_MULTIPLIER - t * (DRAG_BOOST_MULTIPLIER - 1));
+    } else {
+      effectiveMaxVel = PL_MAX_VELOCITY;
+    }
+  } else {
+    effectiveMaxVel = PL_MAX_VELOCITY;
+  }
+
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-  if (speed > PL_MAX_VELOCITY) {
-    p.vx = (p.vx / speed) * PL_MAX_VELOCITY;
-    p.vy = (p.vy / speed) * PL_MAX_VELOCITY;
+  if (speed > effectiveMaxVel) {
+    p.vx = (p.vx / speed) * effectiveMaxVel;
+    p.vy = (p.vy / speed) * effectiveMaxVel;
   } else if (speed < minVel && speed > 0) {
     p.vx = (p.vx / speed) * minVel;
     p.vy = (p.vy / speed) * minVel;
