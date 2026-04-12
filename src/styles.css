@@ -12,4 +12,5 @@
 @import './styles/panels.css';
 @import './styles/tabs.css';
 @import './styles/components.css';
+@import './styles/idle-overlay.css';
 @import './styles/responsive.css';

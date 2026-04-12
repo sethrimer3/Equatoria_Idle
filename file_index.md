@@ -30,6 +30,10 @@
 ### src/styles/components.css
 - Loading screen, loom cards, equation display (locked/unlocked), achievement cards.
 
+### src/styles/idle-overlay.css
+- Styles for the idle/offline reward overlay (`.idle-overlay`, `.idle-overlay__card`, tier rows, animations).
+- Uses CSS variables from `base.css`; `backdrop-filter: blur(4px)` guarded by `@supports`.
+
 ### src/styles/responsive.css
 - `@media` queries for landscape and desktop wider layout.
 
@@ -115,6 +119,15 @@
 - `createLoomState()` — Sand Loom starts unlocked at level 1.
 - `tickLooms(state, deltaMs, productionBonus?)` — passive production tick; bonus multiplier applied to all rates.
 - `upgradeLoom()`, `unlockLoom()`, `getLoom()`, `getLoomRate()`, `getLoomCost()`.
+
+### src/sim/idle/idle-reward.ts
+- Pure (no-side-effect) idle reward calculation.
+- `IdleTierReward` interface — per-tier reward data (tierId, displayName, color, ratePerMinute, totalMotes, isUnlocked).
+- `IdleRewardSummary` interface — full offline summary (minutesAway, equivalenceBefore/After/Gained, tierRewards[]).
+- `calculateIdleRewards(game, elapsedMs)` — computes what was earned offline without mutating live state.
+
+### src/sim/idle/apply-idle-rewards.ts
+- `applyIdleRewards(game, summary)` — commits idle reward mote gains to the live game state via `addMotes`.
 
 ### src/sim/equation/equation-state.ts
 - Authoritative equation state: per-tier segments with levels and unlock flags.
@@ -345,6 +358,13 @@ Audio system — eight focused modules:
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
 
+### src/ui/idle/idle-overlay.ts
+- DOM overlay shown when the player returns after being away ≥ 1 minute.
+- Lists Equivalence gained (always shown) and per-tier Mote gains (hidden if tier Loom is locked).
+- Numbers animate from 0 to their target over ~600 ms (ease-out cubic via requestAnimationFrame).
+- `IdleOverlay` interface — `{ element, show(summary), hide() }`.
+- `createIdleOverlay()` — factory function; tap/click anywhere to dismiss.
+
 ### src/ui/panels/settings-panel.ts
 - Settings controls: volume, particles, shake, developer mode toggle, save, reset, credits.
 
@@ -355,8 +375,13 @@ Audio system — eight focused modules:
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 4): includes Loom state, `isForgeUnlocked`, and achievement unlock set.
-- Backward-compatible with version 1, 2, and 3 saves.
+- Versioned save format (version 5): includes Loom state, `isForgeUnlocked`, achievement unlock/claim sets.
+- Backward-compatible with version 1–4 saves.
+
+### src/settings/offline-time.ts
+- Lightweight last-active timestamp helpers using a separate localStorage key (`equatoria_last_active`).
+- `readLastActiveTimestamp()` — returns stored ms timestamp or null.
+- `writeLastActiveTimestamp()` — writes `Date.now()` to the key; called on app start and on `visibilitychange` (hidden).
 
 ### src/util/format.ts
 - `formatNumber()` — convenience wrapper, always uses 'letters' format.
