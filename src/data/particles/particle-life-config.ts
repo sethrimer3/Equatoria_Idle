@@ -48,15 +48,18 @@ export const PL_PROTECTED_REPULSION_STRENGTH = 1.8;
 
 /**
  * Velocity damping factor applied each frame.
- * At 60 fps, effective per-second retention ≈ 0.96^60 ≈ 8.7 %.
+ * At 60 fps, effective per-second retention ≈ 0.992^60 ≈ 61.9 %.
+ * Low enough that thrown clusters coast visibly for several seconds
+ * while Particle Life forces continue shaping their internal structure.
  */
-export const PL_VELOCITY_DAMPING = 0.96;
+export const PL_VELOCITY_DAMPING = 0.992;
 
 /**
  * Maximum velocity magnitude (canvas px per frame-unit).
- * Prevents instability when forces spike.
+ * Raised to allow thrown particles to travel at meaningful throw speed
+ * without being immediately clamped back to near-zero values.
  */
-export const PL_MAX_VELOCITY = 2.5;
+export const PL_MAX_VELOCITY = 8.0;
 
 // ─── Size-force bias ─────────────────────────────────────────────
 

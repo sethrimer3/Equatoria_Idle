@@ -26,6 +26,7 @@ import {
   TRAIL_LENGTH_LARGE,
   TRAIL_CAPTURE_INTERVAL,
 } from '../../data/particles/particle-config';
+import { PL_MAX_VELOCITY } from '../../data/particles/particle-life-config';
 import {
   SMALL_SIZE_INDEX,
   MEDIUM_SIZE_INDEX,
@@ -140,14 +141,19 @@ export function updateParticlePhysics(
   }
 
   // Velocity clamping
+  // Min: size-based floor to keep particles from stalling entirely.
+  //      Generator fields use a boosted floor so particles stay active near spawners.
+  // Max: use PL_MAX_VELOCITY uniformly rather than the old per-particle cap or the
+  //      generator-field reduction (genMaxVel).  Generator fields constrain particles
+  //      through gravity force, not velocity capping, so removing the separate upper
+  //      limit here does not affect spawner behaviour while allowing throw momentum
+  //      to survive into the PL damping step unchanged.
   const genMinVel = p.minVelocity * Math.max(1, p.tierIndex + 1);
   const minVel = isInsideGeneratorField ? genMinVel : p.minVelocity;
-  const genMaxVel = genMinVel * 5 * 0.9;
-  const allowedMaxVel = isInsideGeneratorField ? Math.min(p.maxVelocity, genMaxVel) : p.maxVelocity;
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-  if (speed > allowedMaxVel) {
-    p.vx = (p.vx / speed) * allowedMaxVel;
-    p.vy = (p.vy / speed) * allowedMaxVel;
+  if (speed > PL_MAX_VELOCITY) {
+    p.vx = (p.vx / speed) * PL_MAX_VELOCITY;
+    p.vy = (p.vy / speed) * PL_MAX_VELOCITY;
   } else if (speed < minVel && speed > 0) {
     p.vx = (p.vx / speed) * minVel;
     p.vy = (p.vy / speed) * minVel;
