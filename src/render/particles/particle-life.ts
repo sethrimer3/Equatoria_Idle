@@ -72,7 +72,8 @@ function buildParticleLifeGrid(
     // Skip inert (1×1) and special-state particles
     if (getSizePixels(p.sizeIndex) === 1) continue;
     if (p.isMerging || p.isLockedToPointer) continue;
-    // Skip non-alivened mote types
+    // Only alivened mote types participate in the spatial grid so they
+    // can neither exert forces on others nor receive forces from others.
     if (!alivenedTierIndices.has(p.tierIndex)) continue;
 
     const cx = Math.floor(p.x * INV_CELL);
@@ -183,7 +184,10 @@ export function applyParticleLifeForces(
     // Rule 1: 1×1 motes are fully inert — skip entirely.
     if (getSizePixels(b.sizeIndex) === 1) continue;
     if (b.isMerging || b.isLockedToPointer) continue;
-    // Rule 2: Non-alivened mote types are inert — skip entirely.
+    // Rule 2: Non-alivened mote types are fully inert — they neither exert
+    // nor receive Particle Life forces until the player alivens them.
+    // Note: the spatial grid already excludes non-alivened sources (rule 2a),
+    // this check gates rule 2b — non-alivened targets do not receive forces.
     if (!alivenedTierIndices.has(b.tierIndex)) continue;
 
     let totalFx = 0;

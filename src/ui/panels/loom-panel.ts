@@ -1,5 +1,6 @@
 import type { GameState } from '../../sim';
 import type { ActionHandler } from '../../input';
+import type { TierId } from '../../data/tiers';
 import { TIER_BY_ID, TIERS } from '../../data/tiers';
 import { LOOM_DEFINITIONS } from '../../data/looms';
 import { getLoom, getLoomRate, getLoomCost } from '../../sim/looms';
@@ -208,6 +209,9 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
   matrixContainer.className = 'aliven-matrix-wrap';
   matrixSection.appendChild(matrixContainer);
 
+  // Track last rendered matrix key to avoid unnecessary DOM rebuilds
+  let lastMatrixKey = '';
+
   panel.appendChild(alivenPane);
 
   // ── Sub-tab switching ────────────────────────────────────────
@@ -257,7 +261,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
 
     // Column headers
     for (const targetId of alivenedTierIds) {
-      const tier = TIER_BY_ID.get(targetId as import('../../data/tiers').TierId);
+      const tier = TIER_BY_ID.get(targetId as TierId);
       const colHead = document.createElement('div');
       colHead.className = 'aliven-matrix-col-head';
       colHead.textContent = tier?.displayName.slice(0, 3) ?? '?';
@@ -268,7 +272,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
 
     // Rows
     for (const sourceId of alivenedTierIds) {
-      const sourceTier = TIER_BY_ID.get(sourceId as import('../../data/tiers').TierId);
+      const sourceTier = TIER_BY_ID.get(sourceId as TierId);
       const rowHead = document.createElement('div');
       rowHead.className = 'aliven-matrix-row-head';
       rowHead.textContent = sourceTier?.displayName.slice(0, 3) ?? '?';
@@ -278,7 +282,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
 
       const srcIdx = sourceTier?.unlockOrder ?? 0;
       for (const targetId of alivenedTierIds) {
-        const targetTier = TIER_BY_ID.get(targetId as import('../../data/tiers').TierId);
+        const targetTier = TIER_BY_ID.get(targetId as TierId);
         const tgtIdx = targetTier?.unlockOrder ?? 0;
         const val = DEFAULT_MATRIX[srcIdx][tgtIdx];
 
@@ -388,11 +392,11 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
         }
       }
 
-      // Rebuild matrix display (only when aliven count changes)
+      // Rebuild matrix display only when aliven set changes
       const alivenedTierIds = getAlivenedTiersOrdered(state.aliven);
       const currentMatrixKey = alivenedTierIds.join(',');
-      if (matrixContainer.dataset['matrixKey'] !== currentMatrixKey) {
-        matrixContainer.dataset['matrixKey'] = currentMatrixKey;
+      if (lastMatrixKey !== currentMatrixKey) {
+        lastMatrixKey = currentMatrixKey;
         rebuildMatrix(alivenedTierIds);
       }
     }
