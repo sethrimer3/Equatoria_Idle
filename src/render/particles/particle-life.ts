@@ -214,15 +214,15 @@ export function applyParticleLifeForces(
 
     // Apply accumulated force to velocity, capped to prevent runaway PL-driven speed.
     // Throw-derived velocity is set directly and is not affected by this cap.
+    if (clampedDelta <= 0) continue;
     const forceMag = Math.sqrt(totalFx * totalFx + totalFy * totalFy);
     if (forceMag > 0) {
-      const frameDelta = clampedDelta > 0 ? clampedDelta : 1;
-      const maxDeltaV = PL_MAX_FORCE_PER_FRAME;
-      const appliedScale = (forceMag * frameDelta) > maxDeltaV
-        ? maxDeltaV / (forceMag * frameDelta)
+      const rawDeltaV = forceMag * clampedDelta;
+      const appliedScale = rawDeltaV > PL_MAX_FORCE_PER_FRAME
+        ? PL_MAX_FORCE_PER_FRAME / rawDeltaV
         : 1;
-      b.vx += totalFx * frameDelta * appliedScale;
-      b.vy += totalFy * frameDelta * appliedScale;
+      b.vx += totalFx * clampedDelta * appliedScale;
+      b.vy += totalFy * clampedDelta * appliedScale;
     }
   }
 }

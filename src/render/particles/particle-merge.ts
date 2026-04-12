@@ -34,6 +34,7 @@ import {
   MERGE_TRAIL_COUNT,
   MERGE_TRAIL_DRAW_DURATION_MS,
   MERGE_TRAIL_ERASE_DURATION_MS,
+  MERGE_TRAIL_CURVE_ANGLE_DEG,
 } from '../../data/particles/particle-config';
 import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import type { EquatoriaParticle, ActiveMerge, Shockwave } from './particle-types';
@@ -155,8 +156,7 @@ export function attemptSuctionMerge(
       toMerge[ti] = toMerge[j];
       toMerge[j] = tmp;
       trailStartXY.push(toMerge[ti].x, toMerge[ti].y);
-      // Random curve angle between −10° and +10°
-      trailCurveAngles.push((Math.random() * 20 - 10) * (Math.PI / 180));
+      trailCurveAngles.push((Math.random() * 2 - 1) * MERGE_TRAIL_CURVE_ANGLE_DEG * (Math.PI / 180));
     }
 
     const tier = TIER_BY_ID.get(group.tierId);

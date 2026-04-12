@@ -86,6 +86,8 @@ export const MERGE_TRAIL_COUNT = 20;
 export const MERGE_TRAIL_DRAW_DURATION_MS = 150;
 /** Duration of the erase phase (trail disappears from tail toward tip). */
 export const MERGE_TRAIL_ERASE_DURATION_MS = 150;
+/** Maximum random curve angle for suction merge trails, in degrees. Trails curve randomly between ±this value. */
+export const MERGE_TRAIL_CURVE_ANGLE_DEG = 10;
 
 // ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
 // The Euler inter-particle fluid system has been replaced by the
