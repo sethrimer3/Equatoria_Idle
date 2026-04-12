@@ -13,7 +13,11 @@
 import type { TierId } from '../../data/tiers';
 import type { GameState } from '../game-state';
 import { totalToSizeCounts, sizeCountsToTotal } from '../resources';
+import { MERGE_THRESHOLD } from '../../data/particles/size-tiers';
 import type { IdleRewardSummary } from './idle-reward';
+
+/** Maximum size index to check during cascade merges (100^20 > 10^40, sufficient for any gameplay value). */
+const MAX_SIZE_LEVELS = 20;
 
 // ─── Mutation ────────────────────────────────────────────────────
 
@@ -42,12 +46,12 @@ export function applyIdleRewards(game: GameState, summary: IdleRewardSummary): v
     const sizeCounts = totalToSizeCounts(currentTotal);
     if (floorNew > 0) {
       sizeCounts.set(0, (sizeCounts.get(0) ?? 0) + floorNew);
-      // Cascade merges — 20 size levels covers up to 100^20 motes
-      for (let s = 0; s < 20; s++) {
+      // Cascade merges — MAX_SIZE_LEVELS covers up to MERGE_THRESHOLD^MAX_SIZE_LEVELS motes
+      for (let s = 0; s < MAX_SIZE_LEVELS; s++) {
         const count = sizeCounts.get(s) ?? 0;
-        if (count < 100) continue;
-        const promotes = Math.floor(count / 100);
-        const remainder = count % 100;
+        if (count < MERGE_THRESHOLD) continue;
+        const promotes = Math.floor(count / MERGE_THRESHOLD);
+        const remainder = count % MERGE_THRESHOLD;
         if (remainder === 0) {
           sizeCounts.delete(s);
         } else {
