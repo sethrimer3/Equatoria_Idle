@@ -14,6 +14,7 @@ import {
   tryAlivenMote,
   claimAchievement,
 } from '../sim';
+import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import type { CanvasContext } from '../render/canvas';
@@ -85,6 +86,15 @@ export function handleAction(
       if (!ok) audioSystem?.onError();
       break;
     }
+    case 'set_interaction_matrix_cell':
+      setInteractionMatrixCell(state.game.aliven, action.row, action.col, action.value);
+      // Sync immediately so the particle system picks up the change on the next frame
+      particles.interactionMatrix = state.game.aliven.interactionMatrix;
+      break;
+    case 'reset_interaction_matrix':
+      resetInteractionMatrix(state.game.aliven);
+      particles.interactionMatrix = state.game.aliven.interactionMatrix;
+      break;
     case 'claim_achievement':
       claimAchievement(state.game.achievements, action.achievementId);
       break;

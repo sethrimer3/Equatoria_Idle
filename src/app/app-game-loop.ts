@@ -131,6 +131,8 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       const tier = TIER_BY_ID.get(tierId as TierId);
       if (tier) alivenedTierIndices.add(tier.unlockOrder);
     }
+    // Sync editable interaction matrix to particle system
+    ctx.particles.interactionMatrix = ctx.appState.game.aliven.interactionMatrix;
 
     const particleAudioEvents = ctx.particles.update(
       deltaMs,

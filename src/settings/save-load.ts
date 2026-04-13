@@ -5,11 +5,15 @@ import { createGameState } from '../sim/game-state';
 import { recomputeBonuses } from '../sim/achievements';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 import { totalToSizeCounts, sizeCountsToTotal } from '../sim/resources';
+import {
+  serializeInteractionMatrix,
+  deserializeInteractionMatrix,
+} from '../data/particles/interaction-matrix';
 
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
 
 interface SaveData {
   version: number;
@@ -47,6 +51,8 @@ interface SaveData {
   };
   aliven: {
     alivenedTierIds: string[];
+    /** v8+: flat 169-element array for the 13×13 interaction matrix. Absent in older saves. */
+    interactionMatrix?: number[];
   };
   elapsedMs: number;
 }
@@ -103,6 +109,7 @@ export function serializeGameState(state: GameState): SaveData {
     },
     aliven: {
       alivenedTierIds: Array.from(state.aliven.alivenedTierIds),
+      interactionMatrix: serializeInteractionMatrix(state.aliven.interactionMatrix),
     },
     elapsedMs: state.elapsedMs,
   };
@@ -195,6 +202,16 @@ export function deserializeGameState(data: SaveData): GameState {
     }
   }
 
+  // Interaction matrix (v8+; older saves use the default matrix)
+  if (data.aliven?.interactionMatrix) {
+    const restored = deserializeInteractionMatrix(data.aliven.interactionMatrix);
+    for (let i = 0; i < restored.length; i++) {
+      for (let j = 0; j < restored[i].length; j++) {
+        state.aliven.interactionMatrix[i][j] = restored[i][j];
+      }
+    }
+  }
+
   return state;
 }
 
@@ -215,8 +232,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–7 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7].includes(data.version)) return null;
+    // Accept versions 1–8 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;
