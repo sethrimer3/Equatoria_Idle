@@ -15,6 +15,7 @@ import type { TierId } from '../../data/tiers';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { ResourceState } from '../resources';
 import { getMotes, spendMotes } from '../resources';
+import { createDefaultInteractionMatrix } from '../../data/particles/interaction-matrix';
 
 // ─── Constants ───────────────────────────────────────────────────
 
@@ -29,10 +30,18 @@ export const ALIVEN_COST = 10_000;
 export interface AlivenState {
   /** Set of tier IDs that have been alivened. */
   alivenedTierIds: Set<TierId>;
+  /**
+   * 13×13 Particle Life interaction matrix, editable by the player.
+   * Defaults to createDefaultInteractionMatrix(); persisted in save data.
+   */
+  interactionMatrix: number[][];
 }
 
 export function createAlivenState(): AlivenState {
-  return { alivenedTierIds: new Set() };
+  return {
+    alivenedTierIds: new Set(),
+    interactionMatrix: createDefaultInteractionMatrix(),
+  };
 }
 
 // ─── Queries ─────────────────────────────────────────────────────
@@ -98,4 +107,35 @@ export function tryAliven(
   }
   state.alivenedTierIds.add(tierId);
   return true;
+}
+
+/** Step size for player matrix edits. */
+export const MATRIX_EDIT_STEP = 0.05;
+
+/**
+ * Set a single cell of the interaction matrix to the given value,
+ * clamped to [-1, 1] and snapped to the nearest MATRIX_EDIT_STEP.
+ */
+export function setInteractionMatrixCell(
+  state: AlivenState,
+  row: number,
+  col: number,
+  value: number,
+): void {
+  const snapped = Math.round(value / MATRIX_EDIT_STEP) * MATRIX_EDIT_STEP;
+  const clamped = Math.max(-1, Math.min(1, snapped));
+  state.interactionMatrix[row][col] = clamped;
+}
+
+/**
+ * Reset the interaction matrix to the default hand-tuned values.
+ * Mutates in place so existing references remain valid.
+ */
+export function resetInteractionMatrix(state: AlivenState): void {
+  const defaults = createDefaultInteractionMatrix();
+  for (let i = 0; i < defaults.length; i++) {
+    for (let j = 0; j < defaults[i].length; j++) {
+      state.interactionMatrix[i][j] = defaults[i][j];
+    }
+  }
 }

@@ -9,7 +9,9 @@ export type GameAction =
   | { kind: 'claim_achievement'; achievementId: string }
   | { kind: 'set_active_tab'; tabId: TabId }
   | { kind: 'save_game' }
-  | { kind: 'reset_game' };
+  | { kind: 'reset_game' }
+  | { kind: 'set_interaction_matrix_cell'; row: number; col: number; value: number }
+  | { kind: 'reset_interaction_matrix' };
 
 export type TabId = 'equation' | 'looms' | 'resources' | 'achievements' | 'settings';
 
