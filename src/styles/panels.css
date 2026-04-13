@@ -138,6 +138,7 @@
 .resource-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 6px 10px;
   margin-bottom: 4px;
@@ -172,6 +173,14 @@
   font-size: 11px;
   min-width: 70px;
   text-align: right;
+}
+
+.resource-sizes {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-left: 2px;
+  letter-spacing: 0.02em;
 }
 
 /* ── Settings panel ──────────────────────────────────────────── */

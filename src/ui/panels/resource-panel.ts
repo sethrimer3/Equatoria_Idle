@@ -1,11 +1,24 @@
 import type { GameState } from '../../sim';
 import { TIERS } from '../../data/tiers';
-import { getMotes, getLifetimeMotes } from '../../sim/resources';
+import { getMotes, getLifetimeMotes, totalToSizeCounts } from '../../sim/resources';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getRefinedGemFallbackPath, getRefinedGemPath } from '../../render/assets/asset-paths';
+import { SMALL_SIZE_INDEX, MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX, EXTRA_LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
+
+/** Human-readable label for each size index. */
+const SIZE_LABELS: Record<number, string> = {
+  [SMALL_SIZE_INDEX]:       'Grain',
+  [MEDIUM_SIZE_INDEX]:      'Shard',
+  [LARGE_SIZE_INDEX]:       'Chunk',
+  [EXTRA_LARGE_SIZE_INDEX]: 'Mass',
+};
+
+function getSizeLabel(sizeIndex: number): string {
+  return SIZE_LABELS[sizeIndex] ?? `Size ${sizeIndex}`;
+}
 
 /**
- * Resources panel — shows per-tier mote totals and lifetime earnings.
+ * Resources panel — shows per-tier mote totals and per-size breakdown.
  */
 export interface ResourcePanel {
   element: HTMLElement;
@@ -44,11 +57,25 @@ export function createResourcePanel(): ResourcePanel {
         const lifetime = getLifetimeMotes(state.resources, tier.id);
         const iconSrc = getRefinedGemPath(tier.id);
         const fallbackIconSrc = getRefinedGemFallbackPath(tier.id);
+
+        // Build per-size breakdown string (largest size first, omit zeros)
+        const sizeCounts = totalToSizeCounts(current);
+        let sizeBreakdown = '';
+        if (sizeCounts.size > 0) {
+          const sortedSizes = Array.from(sizeCounts.entries())
+            .filter(([, c]) => c > 0)
+            .sort(([a], [b]) => b - a); // largest size first
+          sizeBreakdown = sortedSizes
+            .map(([s, c]) => `${c}×${getSizeLabel(s)}`)
+            .join(' + ');
+        }
+
         row.innerHTML = `
           <img class="resource-icon" src="${iconSrc}" alt="" onerror="this.onerror=null;this.src='${fallbackIconSrc}'" />
           <span class="resource-name" style="color:${tier.color}">${tier.displayName}</span>
           <span class="resource-value">${formatNumberAs(current, numberFormat)}</span>
           <span class="resource-lifetime">(${formatNumberAs(lifetime, numberFormat)} total)</span>
+          ${sizeBreakdown ? `<span class="resource-sizes">${sizeBreakdown}</span>` : ''}
         `;
       }
     }

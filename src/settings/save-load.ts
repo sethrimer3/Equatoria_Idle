@@ -1,13 +1,15 @@
 import type { GameState } from '../sim/game-state';
 import type { TierId } from '../data/tiers';
+import type { SizeIndex } from '../data/particles/size-tiers';
 import { createGameState } from '../sim/game-state';
 import { recomputeBonuses } from '../sim/achievements';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
+import { totalToSizeCounts, sizeCountsToTotal } from '../sim/resources';
 
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 
 interface SaveData {
   version: number;
@@ -18,7 +20,16 @@ interface SaveData {
     isForgeUnlocked: boolean;
   };
   resources: {
-    moteTotals: Record<string, number>;
+    /**
+     * v7+: per-size mote counts, encoded as base-MERGE_THRESHOLD.
+     * Key: tierId; value: { sizeIndex: count }.
+     */
+    moteSizeCounts?: Record<string, Record<string, number>>;
+    /**
+     * v1–6 backward compat: flat float totals.
+     * Absent in v7+ saves.
+     */
+    moteTotals?: Record<string, number>;
     lifetimeMotes: Record<string, number>;
   };
   progression: {
@@ -43,9 +54,18 @@ interface SaveData {
 // ─── Serialize ──────────────────────────────────────────────────
 
 export function serializeGameState(state: GameState): SaveData {
-  const moteTotals: Record<string, number> = {};
+  // Encode per-tier totals as base-MERGE_THRESHOLD size counts.
+  const moteSizeCounts: Record<string, Record<string, number>> = {};
+  for (const [tierId, total] of state.resources.moteTotals) {
+    const counts = totalToSizeCounts(total);
+    if (counts.size > 0) {
+      const sizeObj: Record<string, number> = {};
+      for (const [s, c] of counts) sizeObj[String(s)] = c;
+      moteSizeCounts[tierId] = sizeObj;
+    }
+  }
+
   const lifetimeMotes: Record<string, number> = {};
-  for (const [k, v] of state.resources.moteTotals) moteTotals[k] = v;
   for (const [k, v] of state.resources.lifetimeMotes) lifetimeMotes[k] = v;
 
   const upgradeLevels: Record<string, number> = {};
@@ -63,7 +83,7 @@ export function serializeGameState(state: GameState): SaveData {
       totalTapCount: state.equation.totalTapCount,
       isForgeUnlocked: state.equation.isForgeUnlocked,
     },
-    resources: { moteTotals, lifetimeMotes },
+    resources: { moteSizeCounts, lifetimeMotes },
     progression: {
       upgradeLevels,
       unlockedTierCount: state.progression.unlockedTierCount,
@@ -104,9 +124,19 @@ export function deserializeGameState(data: SaveData): GameState {
   state.equation.totalTapCount = data.equation.totalTapCount;
   state.equation.isForgeUnlocked = data.equation.isForgeUnlocked ?? false;
 
-  // Resources
-  for (const [key, val] of Object.entries(data.resources.moteTotals)) {
-    state.resources.moteTotals.set(key as TierId, val);
+  // Resources — v7+ uses moteSizeCounts; v1–6 used flat moteTotals
+  if (data.resources.moteSizeCounts) {
+    for (const [tierId, sizeObj] of Object.entries(data.resources.moteSizeCounts)) {
+      const counts = new Map<SizeIndex, number>();
+      for (const [s, c] of Object.entries(sizeObj)) {
+        counts.set(parseInt(s, 10), c);
+      }
+      state.resources.moteTotals.set(tierId as TierId, sizeCountsToTotal(counts));
+    }
+  } else if (data.resources.moteTotals) {
+    for (const [key, val] of Object.entries(data.resources.moteTotals)) {
+      state.resources.moteTotals.set(key as TierId, val);
+    }
   }
   for (const [key, val] of Object.entries(data.resources.lifetimeMotes)) {
     state.resources.lifetimeMotes.set(key as TierId, val);
@@ -185,8 +215,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–6 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6].includes(data.version)) return null;
+    // Accept versions 1–7 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;
