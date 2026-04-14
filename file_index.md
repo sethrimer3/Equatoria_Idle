@@ -182,8 +182,10 @@
 
 ### src/sim/particles/generator-state.ts
 - Generator ring positioning around the equation center.
-- Fixed 11-slot circular layout with 160px radius.
-- Generators start at 270° (12 o'clock) with equal angular spacing (360°/11).
+- Fixed 11-slot circular layout with 160px radius for tiers 1–11 (Sand through Nullstone).
+- **Fracteryl (12th tier)** placed directly above the forge at `GENERATOR_RADIUS_PX / 2` distance.
+- **Eigenstein (13th tier)** placed directly below the forge at `GENERATOR_RADIUS_PX / 2` distance.
+- `GENERATOR_RADIUS_PX` is now exported for use by other modules.
 
 ### src/sim/particles/merge-logic.ts
 - `ActiveMergeInfo` — descriptor for in-progress particle merge.
@@ -291,9 +293,21 @@
 
 ### src/render/generators/generator-renderer.ts
 - Generator sprite rendering with procedural fallback.
+- All tiers now show a swirling arc effect (`drawRangeSwirl`) in their tier color at 75% of physics range.
+- Previously only nullstone had the swirl; now generalized to all tiers via `colorWithAlpha` helper.
+- `INFLUENCE_VISUAL_SCALE = 0.75` — visual range is 25% smaller than physics range.
 
 ### src/render/forge/forge-renderer.ts
 - Forge sprite rendering with crunch animation overlay.
+- Influence circle is now a bidirectional fire-color swirl at 75% of `MAX_FORGE_ATTRACTION_DISTANCE`.
+- `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
+- Two arc sets rotate clockwise and counter-clockwise simultaneously.
+
+### src/render/ui/trace-effect.ts
+- Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
+- `createTraceEffect(mountTarget)` — returns `TraceEffect` with `setEquationTargets()` and `setMatrixTarget()`.
+- Used by equation-panel (upgrade hover) and loom-panel (matrix cell drag).
+- Two small golden circles trace the perimeter of the outlined rect using `perimeterPoint()`.
 
 ### src/data/achievements/achievement-definitions.ts
 - 9 achievement definitions for tiers sand through amethyst (last two tiers excluded).
@@ -336,8 +350,9 @@
 - Before forge unlock: shows dormant locked forge state with description and unlock button (50 Sand).
 - After forge unlock: shows the structured nested f(t) equation display + equation upgrades grouped by tier.
 - `buildStructuredEquationHtml()` from sim layer generates the nested HTML.
-- Hovering an equation upgrade highlights the corresponding tier's equation fragments.
-- `createEquationPanel(dispatch)` — now takes dispatch handler for forge unlock and upgrade purchases.
+- Hovering an equation upgrade highlights the corresponding tier's equation fragments with a golden glow.
+- When a `TraceEffect` is provided, the golden outline + tracing circles appear over the highlighted spans.
+- `createEquationPanel(dispatch, traceEffect?)` — optional trace effect parameter.
 
 ### src/ui/panels/loom-panel.ts
 - Looms tab content with two sub-tabs: **Upgrades** and **Aliven**.
@@ -346,6 +361,8 @@
   - Below unlock rows, shows the N×N interaction matrix for all currently alivened tiers.
   - Matrix colors: green for attraction (positive), red for repulsion (negative), neutral for zero.
   - Matrix is rebuilt only when aliven count changes (keyed by tier ID join string).
+  - During a click-and-hold drag on a cell, a `TraceEffect` golden outline + tracer circles appear around the cell.
+- `createLoomPanel(dispatch, traceEffect?)` — optional trace effect parameter.
 
 ### src/audio/
 

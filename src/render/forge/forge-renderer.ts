@@ -16,6 +16,20 @@ import {
 } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 
+/** Visual influence circle is drawn at 75 % of the physics range. */
+const FORGE_INFLUENCE_VISUAL_SCALE = 0.75;
+
+/** Fire gradient colors for the forge influence swirl (outer to inner heat). */
+const FORGE_FIRE_COLORS = [
+  '#FFB21A',
+  '#FFA31A',
+  '#FF8A14',
+  '#FF7412',
+  '#F25C0F',
+  '#D9470C',
+  '#B7370A',
+];
+
 /** Preload forge sprites. Call once at startup. */
 export function preloadForgeSprites(): void {
   loadImage(FORGE_SPRITE_PATH).catch(() => loadImage(FORGE_SPRITE_LEGACY_PATH).catch(() => undefined));
@@ -47,16 +61,79 @@ export function drawForge(
     drawForgeFallback(ctx, forgeX, forgeY, forgeSize, effectiveRotation);
   }
 
-  // Attraction radius indicator
+  // Attraction radius — bidirectional fire swirl, 25 % smaller than physics range
+  drawForgeInfluenceSwirl(ctx, forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE * FORGE_INFLUENCE_VISUAL_SCALE, nowMs);
+}
+
+/**
+ * Draw the forge influence circle as a bidirectional swirl using fire colors.
+ * One set of arcs rotates clockwise, the other counter-clockwise.
+ */
+function drawForgeInfluenceSwirl(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  range: number,
+  nowMs: number,
+): void {
+  const t = nowMs / 1000;
+  const numArcs = 5;
+  const arcSpan = (Math.PI * 2) / numArcs;
+  const colorCount = FORGE_FIRE_COLORS.length;
+
   ctx.save();
-  ctx.strokeStyle = 'rgba(150,150,200,0.1)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([5, 5]);
+  ctx.globalAlpha = 0.22;
+
+  for (let dir = 0; dir < 2; dir++) {
+    const sign = dir === 0 ? 1 : -1;
+    const speed = sign * 0.65;
+
+    for (let i = 0; i < numArcs; i++) {
+      const colorIndex = (i * 2) % colorCount;
+      const color = FORGE_FIRE_COLORS[colorIndex];
+      const colorNext = FORGE_FIRE_COLORS[(colorIndex + 1) % colorCount];
+
+      const startAngle = t * speed + i * arcSpan;
+      const endAngle = startAngle + arcSpan * 0.55;
+
+      const grad = ctx.createLinearGradient(
+        x + Math.cos(startAngle) * range,
+        y + Math.sin(startAngle) * range,
+        x + Math.cos(endAngle) * range,
+        y + Math.sin(endAngle) * range,
+      );
+      grad.addColorStop(0, hexWithAlpha(color, 0));
+      grad.addColorStop(0.5, hexWithAlpha(colorNext, 1));
+      grad.addColorStop(1, hexWithAlpha(color, 0));
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, range, startAngle, endAngle);
+      ctx.stroke();
+    }
+  }
+
+  // Faint boundary circle
+  ctx.globalAlpha = 0.1;
+  ctx.strokeStyle = FORGE_FIRE_COLORS[0];
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([2, 4]);
   ctx.beginPath();
-  ctx.arc(forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE, 0, Math.PI * 2);
+  ctx.arc(x, y, range, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
+}
+
+/** Matches a hex color like #RRGGBB for `hexWithAlpha`. */
+const HEX_COLOR_RE = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+
+/** Parse a #RRGGBB hex color and return rgba(...) with the given alpha. */
+function hexWithAlpha(hex: string, a: number): string {
+  const m = HEX_COLOR_RE.exec(hex);
+  if (!m) return hex;
+  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${a})`;
 }
 
 function drawForgeSprite(

@@ -560,8 +560,8 @@
 }
 
 .eq-term.eq-highlight {
-  text-shadow: 0 0 12px currentColor, 0 0 24px currentColor;
-  transform: scale(1.05);
+  text-shadow: 0 0 8px #FFB21A, 0 0 18px #FFB21A;
+  filter: brightness(1.25) saturate(1.1);
 }
 
 .eq-term.eq-dimmed {

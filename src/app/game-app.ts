@@ -38,6 +38,7 @@ import {
 } from '../sim/particles';
 import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
 import { createAudioSystem } from '../audio';
+import { createTraceEffect } from '../render/ui/trace-effect';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
@@ -200,12 +201,15 @@ export async function startApp(): Promise<void> {
     applyFocusedAudio();
   });
 
+  // ── Trace effect overlay (golden outline + tracer circles for UI highlights) ──
+  const traceEffect = createTraceEffect(root);
+
   // ── UI panels ──
   const upgradePanel = createUpgradePanel(dispatch);
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio);
-  const loomPanel = createLoomPanel(dispatch);
-  const equationPanel = createEquationPanel(dispatch);
+  const loomPanel = createLoomPanel(dispatch, traceEffect);
+  const equationPanel = createEquationPanel(dispatch, traceEffect);
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
   panelsInner.appendChild(equationPanel.element);
