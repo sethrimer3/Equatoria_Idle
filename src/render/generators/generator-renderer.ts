@@ -18,6 +18,14 @@ export function updateGeneratorRendererTime(deltaMs: number): void {
 /** Speed of prismatic hue cycling in degrees per second. */
 const HUE_CYCLE_DEG_PER_SEC = 90;
 
+/** Visual influence circle is drawn at 75 % of the physics range. */
+const INFLUENCE_VISUAL_SCALE = 0.75;
+
+/** Matches a hex color like #RRGGBB for `colorWithAlpha`. */
+const HEX_COLOR_RE = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+/** Matches rgb(r,g,b) or rgba(r,g,b,x) for `colorWithAlpha`. */
+const RGB_COLOR_RE = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/;
+
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
   for (let i = 0; i < TIERS.length; i++) {
@@ -129,35 +137,28 @@ function drawGeneratorTinted(
     ctx.restore();
   }
 
-  // Influence radius indicator
-  if (isNullstone) {
-    drawNullstoneRangeSwirl(ctx, x, y, influenceRange, alpha);
-  } else {
-    ctx.save();
-    ctx.globalAlpha = alpha * 0.15;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.arc(x, y, influenceRange, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
+  // Influence radius indicator — swirl in tier color, 25 % smaller than physics range
+  drawRangeSwirl(ctx, x, y, influenceRange * INFLUENCE_VISUAL_SCALE, alpha, color);
 }
 
-/** Draw a pulsing purple swirl around the nullstone generator's influence range. */
-function drawNullstoneRangeSwirl(
+/**
+ * Draw a pulsing color swirl around a generator's influence range.
+ * Used for all tiers; the nullstone used this exclusively before, now all do.
+ */
+function drawRangeSwirl(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   range: number,
   alpha: number,
+  color: string,
 ): void {
   const t = _genAnimTimeMs / 1000;
   const numArcs = 5;
   const arcSpan = (Math.PI * 2) / numArcs;
 
+  // Parse color into rgba components for gradient stops
+  // We pass the hex/rgb color as-is and embed alpha via globalAlpha.
   ctx.save();
   ctx.globalAlpha = alpha * 0.18;
 
@@ -171,9 +172,9 @@ function drawNullstoneRangeSwirl(
       x + Math.cos(endAngle) * range,
       y + Math.sin(endAngle) * range,
     );
-    grad.addColorStop(0, 'rgba(150,60,210,0)');
-    grad.addColorStop(0.5, 'rgba(150,60,210,1)');
-    grad.addColorStop(1, 'rgba(100,30,160,0)');
+    grad.addColorStop(0, colorWithAlpha(color, 0));
+    grad.addColorStop(0.5, colorWithAlpha(color, 1));
+    grad.addColorStop(1, colorWithAlpha(color, 0));
 
     ctx.strokeStyle = grad;
     ctx.lineWidth = 1.5;
@@ -182,9 +183,9 @@ function drawNullstoneRangeSwirl(
     ctx.stroke();
   }
 
-  // Also draw a faint dashed circle so the boundary is still readable
+  // Faint dashed boundary circle
   ctx.globalAlpha = alpha * 0.12;
-  ctx.strokeStyle = '#9640d0';
+  ctx.strokeStyle = color;
   ctx.lineWidth = 0.8;
   ctx.setLineDash([2, 4]);
   ctx.beginPath();
@@ -192,6 +193,28 @@ function drawNullstoneRangeSwirl(
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
+}
+
+/**
+ * Convert a CSS color (hex or rgb/rgba string) to an rgba string with the
+ * given alpha component. Supports #RRGGBB and rgb(...) inputs.
+ */
+function colorWithAlpha(color: string, a: number): string {
+  // Hex #RRGGBB
+  const hexMatch = HEX_COLOR_RE.exec(color);
+  if (hexMatch) {
+    const r = parseInt(hexMatch[1], 16);
+    const g = parseInt(hexMatch[2], 16);
+    const b = parseInt(hexMatch[3], 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  // rgb(r,g,b) or rgba(r,g,b,x) — strip existing alpha and reapply
+  const rgbMatch = RGB_COLOR_RE.exec(color);
+  if (rgbMatch) {
+    return `rgba(${rgbMatch[1]},${rgbMatch[2]},${rgbMatch[3]},${a})`;
+  }
+  // Fallback: just return the color as-is (opacity handled by globalAlpha)
+  return color;
 }
 
 function drawGeneratorFallback(
@@ -256,18 +279,6 @@ function drawGeneratorFallback(
 
   ctx.restore();
 
-  if (isNullstone) {
-    drawNullstoneRangeSwirl(ctx, x, y, influenceRange, alpha);
-  } else {
-    ctx.save();
-    ctx.globalAlpha = alpha * 0.15;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.arc(x, y, influenceRange, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
+  // Influence radius indicator — swirl in tier color, 25 % smaller than physics range
+  drawRangeSwirl(ctx, x, y, influenceRange * INFLUENCE_VISUAL_SCALE, alpha, color);
 }

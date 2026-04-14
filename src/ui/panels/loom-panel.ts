@@ -17,6 +17,7 @@ import {
   ALIVEN_COST,
   MATRIX_EDIT_STEP,
 } from '../../sim/aliven';
+import type { TraceEffect } from '../../render/ui/trace-effect';
 
 /**
  * Looms panel — shows passive production Looms (Upgrades sub-tab) and
@@ -60,7 +61,7 @@ function updateCellDisplay(cell: HTMLElement, val: number): void {
   cell.textContent = val.toFixed(2);
 }
 
-export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
+export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffect): LoomPanel {
   const panel = document.createElement('div');
   panel.className = 'panel loom-panel';
 
@@ -379,6 +380,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
           dragLastStepCount = 0;
           dragHasDragged = false;
           cell.setPointerCapture(e.pointerId);
+          if (traceEffect) traceEffect.setMatrixTarget(cell);
         });
 
         cell.addEventListener('pointermove', (e) => {
@@ -389,6 +391,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
         cell.addEventListener('pointerup', (e) => {
           if (dragRow !== srcIdx || dragCol !== tgtIdx) return;
           onCellDragEnd(e, srcIdx, tgtIdx);
+          if (traceEffect) traceEffect.setMatrixTarget(null);
         });
 
         cell.addEventListener('pointercancel', (_e) => {
@@ -397,6 +400,7 @@ export function createLoomPanel(dispatch: ActionHandler): LoomPanel {
           dragCol = -1;
           dragHasDragged = false;
           dragLastStepCount = 0;
+          if (traceEffect) traceEffect.setMatrixTarget(null);
         });
 
         cellElements.set(`${srcIdx},${tgtIdx}`, cell);
