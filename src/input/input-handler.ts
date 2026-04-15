@@ -18,6 +18,11 @@ export type TabId = 'equation' | 'looms' | 'resources' | 'achievements' | 'setti
 
 export type ActionHandler = (action: GameAction) => void;
 
+/** Maximum ms between two taps to qualify as a double-tap. */
+export const DOUBLE_TAP_MAX_MS = 350;
+/** Maximum canvas-space distance (px) between two taps to qualify as a double-tap. */
+export const DOUBLE_TAP_MAX_PX = 40;
+
 /**
  * Sets up touch and mouse event listeners on the game canvas area.
  * Translates raw input into GameActions.

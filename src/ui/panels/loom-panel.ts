@@ -665,8 +665,7 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
         const tier = TIER_BY_ID.get(def.tierId);
         const loom = getLoom(state.looms, def.tierId);
         const isUnlocked = loom?.isUnlocked ?? false;
-        const tierDef = TIER_BY_ID.get(def.tierId);
-        const tierOrderOk = tierDef ? tierDef.unlockOrder < unlockedCount : false;
+        const tierOrderOk = tier ? tier.unlockOrder < unlockedCount : false;
 
         card.style.display = isUnlocked && tierOrderOk ? '' : 'none';
         if (!isUnlocked || !tierOrderOk) continue;

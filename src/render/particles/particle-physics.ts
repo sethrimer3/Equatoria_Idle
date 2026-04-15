@@ -28,6 +28,8 @@ import {
   DRAG_BOOST_MULTIPLIER,
   DRAG_RELEASE_FADE_MS,
   GENERATOR_ROTATION_STRENGTH,
+  GENERATOR_ROTATION_PHASE_OFFSET,
+  GENERATOR_ROTATION_TIME_SCALE,
 } from '../../data/particles/particle-config';
 import { PL_MAX_VELOCITY } from '../../data/particles/particle-life-config';
 import {
@@ -95,7 +97,7 @@ export function updateParticlePhysics(
           p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
           p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
           // Rotational force — smooth CW/CCW variation per generator
-          const rotPhase = gen.tierIndex * 1.23 + nowMs * 0.00018;
+          const rotPhase = gen.tierIndex * GENERATOR_ROTATION_PHASE_OFFSET + nowMs * GENERATOR_ROTATION_TIME_SCALE;
           const rotStrength = Math.sin(rotPhase) * GENERATOR_ROTATION_STRENGTH;
           const perpX = -(dy / dist);
           const perpY = dx / dist;

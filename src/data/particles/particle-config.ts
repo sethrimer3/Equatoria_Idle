@@ -101,6 +101,12 @@ export const MERGE_TRAIL_ERASE_DURATION_MS = 150;
 /** Maximum random curve angle for suction merge trails, in degrees. Trails curve randomly between ±this value. */
 export const MERGE_TRAIL_CURVE_ANGLE_DEG = 10;
 export const GENERATOR_ROTATION_STRENGTH = 0.4;
+/** Per-generator phase offset multiplier for the rotation swirl sine wave. */
+export const GENERATOR_ROTATION_PHASE_OFFSET = 1.23;
+/** Time-based rotation speed for the swirl sine wave (radians per ms). */
+export const GENERATOR_ROTATION_TIME_SCALE = 0.00018;
+/** Canvas-space hit radius for detecting a tap on a generator (px). */
+export const GENERATOR_HIT_RADIUS_PX = 24;
 
 // ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
 // The Euler inter-particle fluid system has been replaced by the

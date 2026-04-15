@@ -18,12 +18,14 @@ import {
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
+import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
 import type { CanvasContext } from '../render/canvas';
 import type { ParticleSystem } from '../render';
 import type { SettingsState } from '../settings';
 import type { AppState, UIPanels } from './app-types';
 import type { NumberFormat } from '../util';
 import type { AudioSystem } from '../audio';
+import { GENERATOR_HIT_RADIUS_PX } from '../data/particles/particle-config';
 
 // ─── Action handler ─────────────────────────────────────────────
 
@@ -49,8 +51,6 @@ export function handleAction(
       const canvasY = (action.yScreen - rect.top) * scaleY;
 
       const nowMs = performance.now();
-      const DOUBLE_TAP_MAX_MS = 350;
-      const DOUBLE_TAP_MAX_PX = 40;
 
       const timeSinceLast = nowMs - state.lastTapTimeMs;
       if (timeSinceLast < DOUBLE_TAP_MAX_MS) {
@@ -61,8 +61,7 @@ export function handleAction(
           for (const gen of state.generatorState.generators) {
             const gdx = canvasX - gen.x;
             const gdy = canvasY - gen.y;
-            const SPAWNER_SIZE_VISUAL = 24;
-            if (gdx * gdx + gdy * gdy < SPAWNER_SIZE_VISUAL * SPAWNER_SIZE_VISUAL) {
+            if (gdx * gdx + gdy * gdy < GENERATOR_HIT_RADIUS_PX * GENERATOR_HIT_RADIUS_PX) {
               particles.gatherMotesToGenerator(gen.tierId, gen.x, gen.y);
               state.lastTapTimeMs = 0;
               break;
