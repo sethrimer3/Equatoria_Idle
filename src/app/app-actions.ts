@@ -124,6 +124,7 @@ export function setActiveTab(
   numberFormat: NumberFormat,
 ): void {
   panels.tabBar.setActiveTab(state.activeTab);
+  panels.tabBar.updateAchievementIndicator(game);
 
   // Equation tab shows canvas only; all other tabs show panel overlays
   const shouldShowPanels = state.activeTab !== 'equation';
@@ -135,6 +136,7 @@ export function setActiveTab(
   panels.upgradePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
   panels.resourcePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
   panels.achievementsPanel.element.style.display = state.activeTab === 'achievements' ? '' : 'none';
+  panels.achievementsPanel.setVisible(state.activeTab === 'achievements');
   panels.settingsPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
 
   // Immediately update visible panel
@@ -150,6 +152,8 @@ export function updateVisiblePanels(
   isDevMode: boolean,
   numberFormat: NumberFormat,
 ): void {
+  panels.tabBar.updateAchievementIndicator(game);
+
   if (state.activeTab === 'looms') {
     panels.loomPanel.update(game, numberFormat);
   } else if (state.activeTab === 'resources') {

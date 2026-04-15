@@ -10,6 +10,7 @@ export type AchievementBonusKind = 'tap_multiplier' | 'loom_multiplier';
 /** Single achievement definition — read-only data. */
 export interface AchievementDefinition {
   readonly id: string;
+  readonly groupId: string;
   readonly displayName: string;
   readonly description: string;
   /** The tier whose lifetime motes are checked for the unlock requirement. */
@@ -30,6 +31,7 @@ export interface AchievementDefinition {
 export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   {
     id: 'first_grain',
+    groupId: 'earthen',
     displayName: 'First Grain',
     description: 'Earn your first Sand mote.',
     requiresTierId: 'sand',
@@ -39,6 +41,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'crystal_clear',
+    groupId: 'earthen',
     displayName: 'Crystal Clear',
     description: 'Earn your first Quartz mote.',
     requiresTierId: 'quartz',
@@ -48,6 +51,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'fire_starter',
+    groupId: 'blazing',
     displayName: 'Fire Starter',
     description: 'Earn your first Ruby mote.',
     requiresTierId: 'ruby',
@@ -57,6 +61,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'solar_flare',
+    groupId: 'blazing',
     displayName: 'Solar Flare',
     description: 'Earn your first Sunstone mote.',
     requiresTierId: 'sunstone',
@@ -66,6 +71,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'golden_ratio',
+    groupId: 'golden',
     displayName: 'Golden Ratio',
     description: 'Earn your first Citrine mote.',
     requiresTierId: 'citrine',
@@ -75,6 +81,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'verdant_growth',
+    groupId: 'golden',
     displayName: 'Verdant Growth',
     description: 'Earn your first Emerald mote.',
     requiresTierId: 'emerald',
@@ -84,6 +91,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'ocean_depths',
+    groupId: 'celestial',
     displayName: 'Ocean Depths',
     description: 'Earn your first Sapphire mote.',
     requiresTierId: 'sapphire',
@@ -93,6 +101,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'violet_veil',
+    groupId: 'celestial',
     displayName: 'Violet Veil',
     description: 'Earn your first Iolite mote.',
     requiresTierId: 'iolite',
@@ -102,6 +111,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'twilight_crown',
+    groupId: 'celestial',
     displayName: 'Twilight Crown',
     description: 'Earn your first Amethyst mote.',
     requiresTierId: 'amethyst',
@@ -111,6 +121,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'prismatic_heart',
+    groupId: 'secret',
     displayName: 'Prismatic Heart',
     description: 'A fragment of pure refracted light, crystallised into being.',
     requiresTierId: 'diamond',
@@ -121,6 +132,7 @@ export const ACHIEVEMENT_DEFINITIONS: readonly AchievementDefinition[] = [
   },
   {
     id: 'void_awakened',
+    groupId: 'secret',
     displayName: 'Void Awakened',
     description: 'Something stirs at the edge of the equation. It was always there.',
     requiresTierId: 'nullstone',

@@ -592,6 +592,78 @@
 }
 
 /* ── Achievement cards ───────────────────────────────────────── */
+.achievement-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.achievement-group {
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: var(--border-radius);
+  background: rgba(20, 20, 30, 0.65);
+  overflow: hidden;
+}
+
+.achievement-group-toggle {
+  width: 100%;
+  border: 0;
+  border-left: 3px solid rgba(201, 168, 76, 0.25);
+  background: rgba(16, 16, 24, 0.9);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: background 0.2s ease, border-left-color 0.2s ease;
+}
+
+.achievement-group-toggle:active {
+  opacity: 0.8;
+}
+
+.achievement-group-toggle-left,
+.achievement-group-toggle-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.achievement-group-icon {
+  font-size: 15px;
+}
+
+.achievement-group-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.achievement-group-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.achievement-group-chevron {
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.achievement-group-toggle--expanded .achievement-group-chevron {
+  transform: rotate(180deg);
+}
+
+.achievement-group-content {
+  padding: 8px 8px 0;
+}
+
+.achievement-group-content:not(.achievement-group-content--expanded) {
+  display: none;
+}
+
 .achievement-card {
   background: var(--bg-secondary);
   border-left: 3px solid var(--accent);
@@ -653,6 +725,44 @@
   font-weight: 600;
 }
 
+/* ── Achievement sparkle (golden firefly orbs) ───────────────── */
+.achievement-sparkle-host {
+  position: relative;
+  overflow: hidden;
+}
+
+.achievement-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd700 0%, #ffecb3 40%, transparent 70%);
+  box-shadow: 0 0 6px 2px rgba(255, 215, 0, 0.6), 0 0 12px 4px rgba(255, 215, 0, 0.3);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  animation: sparkle-drift var(--sparkle-duration, 4000ms) ease-in-out forwards;
+}
+
+@keyframes sparkle-drift {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--sparkle-dx, 0px) * 0.15), calc(var(--sparkle-dy, 0px) * 0.15)) scale(var(--sparkle-scale, 1));
+  }
+  85% {
+    opacity: 0.8;
+    transform: translate(calc(var(--sparkle-dx, 0px) * 0.85), calc(var(--sparkle-dy, 0px) * 0.85)) scale(var(--sparkle-scale, 1));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sparkle-dx, 0px), var(--sparkle-dy, 0px)) scale(0.2);
+  }
+}
+
 /* ── Earned-but-unclaimed achievement: golden rotating sheen ─── */
 @keyframes golden-sheen-rotate {
   0%   { background-position: 0% 50%; }
@@ -693,33 +803,99 @@
   pointer-events: none;
 }
 
+.achievement-group-toggle--has-unclaimed {
+  position: relative;
+  overflow: hidden;
+  border-left-color: #ffd700 !important;
+}
+
+.achievement-group-toggle--has-unclaimed::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 215, 0, 0.1) 40%,
+    rgba(255, 240, 120, 0.18) 50%,
+    rgba(255, 215, 0, 0.1) 60%,
+    transparent 80%
+  );
+  background-size: 200% 200%;
+  animation: golden-sheen-rotate 2s linear infinite;
+  pointer-events: none;
+}
+
+.tab-btn--unclaimed-achievements {
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-btn--unclaimed-achievements::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 215, 0, 0.12) 40%,
+    rgba(255, 240, 120, 0.2) 50%,
+    rgba(255, 215, 0, 0.12) 60%,
+    transparent 80%
+  );
+  background-size: 200% 200%;
+  animation: golden-sheen-rotate 2s linear infinite;
+  pointer-events: none;
+}
+
 .achievement-earned-unclaimed:active {
   opacity: 0.75;
   transform: scale(0.98);
 }
 
-/* ── Reward popup ──────────────────────────────────────────────── */
-@keyframes reward-popup-fade {
-  0%   { opacity: 0; transform: translateY(0) scale(0.85); }
-  15%  { opacity: 1; transform: translateY(-8px) scale(1.05); }
-  70%  { opacity: 1; transform: translateY(-12px) scale(1); }
-  100% { opacity: 0; transform: translateY(-22px) scale(0.9); }
-}
-
-.achievement-reward-popup {
-  position: absolute;
-  top: 50%;
+/* ── Golden text reward queue ──────────────────────────────────── */
+.golden-text-container {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 16, 0, 0.92);
-  border: 1px solid #ffd700;
-  border-radius: 8px;
-  color: #ffd700;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 5px 12px;
+  z-index: 120;
   pointer-events: none;
+  width: min(90vw, 500px);
+  display: flex;
+  justify-content: center;
+}
+
+@keyframes golden-text-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  82% {
+    opacity: 1;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+.golden-text-reward {
+  background: rgba(12, 10, 0, 0.82);
+  border: 1px solid rgba(255, 215, 0, 0.6);
+  border-radius: 999px;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.7), 0 0 14px rgba(255, 215, 0, 0.35);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 14px;
   white-space: nowrap;
-  z-index: 10;
-  animation: reward-popup-fade 2.2s ease-out forwards;
+  animation: golden-text-float 2.8s ease forwards;
 }
