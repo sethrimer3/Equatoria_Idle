@@ -63,6 +63,7 @@ export function handleAction(
             const gdy = canvasY - gen.y;
             if (gdx * gdx + gdy * gdy < GENERATOR_HIT_RADIUS_PX * GENERATOR_HIT_RADIUS_PX) {
               particles.gatherMotesToGenerator(gen.tierId, gen.x, gen.y);
+              // Reset so a third tap within the window doesn't trigger again
               state.lastTapTimeMs = 0;
               break;
             }
