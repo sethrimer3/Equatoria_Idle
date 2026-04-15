@@ -310,10 +310,15 @@
 - Two small golden circles trace the perimeter of the outlined rect using `perimeterPoint()`.
 
 ### src/data/achievements/achievement-definitions.ts
-- 9 achievement definitions for tiers sand through amethyst (last two tiers excluded).
-- Each achievement: id, displayName, description, requiresTierId, requiresLifetimeMotes, bonusKind, bonusMultiplier.
+- 11 achievement definitions for tiers sand through nullstone.
+- Each achievement includes: id, `groupId`, displayName, description, requiresTierId, requiresLifetimeMotes, bonusKind, bonusMultiplier.
 - Bonus kinds: `tap_multiplier` (×tap gains) or `loom_multiplier` (×loom production).
 - Exports `ACHIEVEMENT_DEFINITIONS`, `ACHIEVEMENT_BY_ID`.
+
+### src/data/achievements/achievement-groups.ts
+- Canonical achievement category metadata used by the UI accordion.
+- `ACHIEVEMENT_GROUPS` defines the 5 groups: Earthen, Blazing, Golden, Celestial, Secret.
+- `ACHIEVEMENT_GROUP_BY_ID` provides quick lookup by group id.
 
 ### src/sim/achievements/achievement-state.ts
 - `AchievementState` — set of unlocked achievement IDs plus cached bonus multipliers.
@@ -342,8 +347,13 @@
 
 ### src/ui/tabs/tab-bar.ts
 - Bottom tab bar: Equation / Looms / Tiers / Achievements / Settings.
-- Looms and Equation are the two main progression tabs.
-- `createTabBar()` — returns element and `setActiveTab()` method.
+- Adds the achievements-tab unclaimed indicator (golden sheen + sparkle orbs).
+- `createTabBar()` — returns element plus `setActiveTab()` and `updateAchievementIndicator(state)`.
+- Reuses `hasUnclaimedAchievements(state)` to keep tab indicator active whenever any earned achievement is unclaimed.
+
+### src/ui/achievements/sparkle-shared.ts
+- Shared sparkle constants matching Thero timings and drift/scale ranges.
+- Exports `randomInRange()` utility used by both achievements panel and tab bar sparkle emitters.
 
 ### src/ui/panels/equation-panel.ts
 - Equation tab content — the central Equation Forge panel.
@@ -387,8 +397,11 @@ Audio system — eight focused modules:
 
 ### src/ui/panels/achievements-panel.ts
 - Achievements tab content.
-- Shows a card per achievement: name, bonus badge, description, progress/unlock status.
-- Locked achievements shown at reduced opacity; unlocked ones highlighted with trophy icon.
+- Renders grouped accordion categories with toggle rows (`icon + name + claimed/total`).
+- Group and card sparkle emitters are managed with timer-backed emitter maps and cleaned up on hide/destroy.
+- Unclaimed cards and group toggles use Thero-style golden shimmer + sparkle visuals.
+- Exports `hasUnclaimedAchievements(state)` for tab-bar indicator logic.
+- Includes a top-center queued golden reward text animation when claims are tapped.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.

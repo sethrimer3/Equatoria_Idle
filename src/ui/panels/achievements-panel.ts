@@ -1,19 +1,34 @@
 import type { GameState } from '../../sim';
-import { ACHIEVEMENT_DEFINITIONS } from '../../data/achievements';
+import { ACHIEVEMENT_DEFINITIONS, ACHIEVEMENT_GROUPS } from '../../data/achievements';
 import { TIER_BY_ID } from '../../data/tiers';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getLifetimeMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
 import type { AudioSystem } from '../../audio';
+import {
+  INITIAL_SPARKLE_DELAY_MS,
+  type SparkleEmitter,
+  SPARKLE_DRIFT_X_RANGE,
+  SPARKLE_DRIFT_Y_RANGE,
+  SPARKLE_MAX_DELAY_MS,
+  SPARKLE_MAX_DURATION_MS,
+  SPARKLE_MIN_DELAY_MS,
+  SPARKLE_MIN_DURATION_MS,
+  SPARKLE_SCALE_MAX,
+  SPARKLE_SCALE_MIN,
+  SPARKLE_SIZE,
+  SPARKLE_VERTICAL_BIAS_Y,
+  randomInRange,
+} from '../achievements/sparkle-shared';
 
 /**
- * Achievements panel — shows all achievements, their requirements, and bonuses.
+ * Achievements panel — grouped accordion cards with claim interactions.
  * Locked secret achievements show scrambled BJ Cree characters that animate.
- * Earned-but-unclaimed achievements show a golden sheen and can be clicked to claim.
  */
 export interface AchievementsPanel {
   element: HTMLElement;
   update(state: GameState, numberFormat: NumberFormat): void;
+  setVisible(isVisible: boolean): void;
   /** Cancel all timers. Call when the panel is removed from the DOM. */
   destroy(): void;
 }
@@ -37,26 +52,20 @@ function makeScrambledText(length: number): string {
   return s;
 }
 
-// ─── Reward popup ──────────────────────────────────────────────
-
-function showRewardPopup(card: HTMLElement, bonusText: string): void {
-  const existing = card.querySelector('.achievement-reward-popup');
-  if (existing) existing.remove();
-
-  const popup = document.createElement('div');
-  popup.className = 'achievement-reward-popup';
-  popup.textContent = bonusText;
-  card.appendChild(popup);
-
-  // Fade out and remove after animation completes
-  setTimeout(() => popup.remove(), 2200);
-}
-
 /** Returns a display string like "+50% Tap" for an achievement's bonus. */
 function bonusText(bonusKind: string, bonusMultiplier: number): string {
   const label = bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
   const pct = Math.round((bonusMultiplier - 1) * 100);
   return `+${pct}% ${label}`;
+}
+
+export function hasUnclaimedAchievements(state: GameState): boolean {
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    if (state.achievements.unlockedIds.has(def.id) && !state.achievements.claimedIds.has(def.id)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // ─── Panel factory ─────────────────────────────────────────────
@@ -72,8 +81,44 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
   const subtitle = document.createElement('p');
   subtitle.className = 'panel-subtitle';
-  subtitle.textContent = 'Unlock bonuses by earning motes';
+  subtitle.textContent = 'Tap glowing achievements to claim bonuses';
   panel.appendChild(subtitle);
+
+  const groupsRoot = document.createElement('div');
+  groupsRoot.className = 'achievement-groups';
+  panel.appendChild(groupsRoot);
+
+  const existingGoldenTextContainer = document.querySelector<HTMLElement>('.golden-text-container');
+  const createdGoldenTextContainer = !existingGoldenTextContainer;
+  const goldenTextContainer = existingGoldenTextContainer ?? document.createElement('div');
+  if (createdGoldenTextContainer) {
+    goldenTextContainer.className = 'golden-text-container';
+    document.body.appendChild(goldenTextContainer);
+  }
+
+  const rewardQueue: string[] = [];
+  let isRewardShowing = false;
+
+  function showNextReward(): void {
+    if (isRewardShowing) return;
+    const next = rewardQueue.shift();
+    if (!next) return;
+    isRewardShowing = true;
+    const rewardLine = document.createElement('div');
+    rewardLine.className = 'golden-text-reward';
+    rewardLine.textContent = next;
+    goldenTextContainer.appendChild(rewardLine);
+    rewardLine.addEventListener('animationend', () => {
+      rewardLine.remove();
+      isRewardShowing = false;
+      showNextReward();
+    }, { once: true });
+  }
+
+  function enqueueReward(text: string): void {
+    rewardQueue.push(text);
+    showNextReward();
+  }
 
   interface CardRefs {
     card: HTMLElement;
@@ -82,11 +127,153 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     bonusEl: HTMLElement;
     descEl: HTMLElement;
     progressEl: HTMLElement;
+    groupId: string;
   }
+  interface GroupRefs {
+    toggle: HTMLButtonElement;
+    countEl: HTMLElement;
+    content: HTMLElement;
+    achievementIds: string[];
+  }
+
   const cardRefs: Map<string, CardRefs> = new Map();
+  const groupRefs: Map<string, GroupRefs> = new Map();
+  const sparkleEmitters: Map<HTMLElement, SparkleEmitter> = new Map();
+
+  let expandedGroupId: string | null = ACHIEVEMENT_GROUPS[0]?.id ?? null;
+  let isPanelVisible = false;
+
+  function createSparkle(host: HTMLElement): void {
+    const sparkle = document.createElement('span');
+    sparkle.className = 'achievement-sparkle';
+    sparkle.style.width = `${SPARKLE_SIZE}px`;
+    sparkle.style.height = `${SPARKLE_SIZE}px`;
+    sparkle.style.left = `${Math.random() * 100}%`;
+    sparkle.style.top = `${Math.random() * 100}%`;
+
+    const driftX = randomInRange(-SPARKLE_DRIFT_X_RANGE / 2, SPARKLE_DRIFT_X_RANGE / 2);
+    const driftY = randomInRange(-SPARKLE_DRIFT_Y_RANGE / 2, SPARKLE_DRIFT_Y_RANGE / 2) + SPARKLE_VERTICAL_BIAS_Y;
+    const scale = randomInRange(SPARKLE_SCALE_MIN, SPARKLE_SCALE_MAX);
+    const durationMs = randomInRange(SPARKLE_MIN_DURATION_MS, SPARKLE_MAX_DURATION_MS);
+
+    sparkle.style.setProperty('--sparkle-dx', `${driftX.toFixed(2)}px`);
+    sparkle.style.setProperty('--sparkle-dy', `${driftY.toFixed(2)}px`);
+    sparkle.style.setProperty('--sparkle-scale', scale.toFixed(3));
+    sparkle.style.setProperty('--sparkle-duration', `${durationMs.toFixed(0)}ms`);
+
+    sparkle.addEventListener('animationend', () => sparkle.remove(), { once: true });
+    host.appendChild(sparkle);
+  }
+
+  function scheduleSparkles(host: HTMLElement): void {
+    const emitter = sparkleEmitters.get(host);
+    if (!emitter) return;
+    createSparkle(host);
+    const delayMs = randomInRange(SPARKLE_MIN_DELAY_MS, SPARKLE_MAX_DELAY_MS);
+    emitter.timeoutId = window.setTimeout(() => scheduleSparkles(host), delayMs);
+  }
+
+  function setSparkleEmitter(host: HTMLElement, enabled: boolean): void {
+    const existing = sparkleEmitters.get(host);
+    if (enabled) {
+      if (existing) return;
+      host.classList.add('achievement-sparkle-host');
+      const timeoutId = window.setTimeout(() => scheduleSparkles(host), INITIAL_SPARKLE_DELAY_MS);
+      sparkleEmitters.set(host, { timeoutId });
+      return;
+    }
+
+    if (!existing) return;
+    if (existing.timeoutId !== null) {
+      window.clearTimeout(existing.timeoutId);
+    }
+    sparkleEmitters.delete(host);
+    host.classList.remove('achievement-sparkle-host');
+    for (const sparkle of host.querySelectorAll('.achievement-sparkle')) {
+      sparkle.remove();
+    }
+  }
+
+  function stopAllSparkles(): void {
+    for (const host of sparkleEmitters.keys()) {
+      setSparkleEmitter(host, false);
+    }
+  }
+
+  function setExpandedGroup(nextGroupId: string | null): void {
+    expandedGroupId = nextGroupId;
+    for (const [groupId, refs] of groupRefs) {
+      const isExpanded = groupId === expandedGroupId;
+      refs.toggle.classList.toggle('achievement-group-toggle--expanded', isExpanded);
+      refs.content.classList.toggle('achievement-group-content--expanded', isExpanded);
+      refs.content.style.display = isExpanded ? '' : 'none';
+      if (!isExpanded) {
+        for (const achievementId of refs.achievementIds) {
+          const refsForCard = cardRefs.get(achievementId);
+          if (refsForCard) setSparkleEmitter(refsForCard.card, false);
+        }
+      }
+    }
+  }
+
+  for (const group of ACHIEVEMENT_GROUPS) {
+    const groupEl = document.createElement('section');
+    groupEl.className = 'achievement-group';
+
+    const toggle = document.createElement('button');
+    toggle.className = 'achievement-group-toggle';
+    toggle.type = 'button';
+
+    const left = document.createElement('span');
+    left.className = 'achievement-group-toggle-left';
+    const icon = document.createElement('span');
+    icon.className = 'achievement-group-icon';
+    icon.textContent = group.icon;
+    const label = document.createElement('span');
+    label.className = 'achievement-group-label';
+    label.textContent = group.name;
+    left.appendChild(icon);
+    left.appendChild(label);
+
+    const right = document.createElement('span');
+    right.className = 'achievement-group-toggle-right';
+    const countEl = document.createElement('span');
+    countEl.className = 'achievement-group-count';
+    countEl.textContent = '0/0';
+    const chevron = document.createElement('span');
+    chevron.className = 'achievement-group-chevron';
+    chevron.textContent = '▾';
+    right.appendChild(countEl);
+    right.appendChild(chevron);
+
+    toggle.appendChild(left);
+    toggle.appendChild(right);
+
+    const content = document.createElement('div');
+    content.className = 'achievement-group-content';
+
+    const achievementIds = ACHIEVEMENT_DEFINITIONS
+      .filter(def => def.groupId === group.id)
+      .map(def => def.id);
+
+    toggle.addEventListener('click', () => {
+      const next = expandedGroupId === group.id ? null : group.id;
+      setExpandedGroup(next);
+    });
+
+    groupEl.appendChild(toggle);
+    groupEl.appendChild(content);
+    groupsRoot.appendChild(groupEl);
+    groupRefs.set(group.id, { toggle, countEl, content, achievementIds });
+  }
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     const tier = TIER_BY_ID.get(def.requiresTierId);
+    const group = groupRefs.get(def.groupId);
+    if (!group) {
+      console.warn(`Unknown achievement groupId "${def.groupId}" for achievement "${def.id}"`);
+      continue;
+    }
 
     const card = document.createElement('div');
     card.className = 'achievement-card';
@@ -127,27 +314,27 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     progressEl.className = 'achievement-progress';
     card.appendChild(progressEl);
 
-    // Click to claim earned-but-unclaimed achievements
     card.addEventListener('click', () => {
       const isEarned = card.classList.contains('achievement-earned-unclaimed');
       if (!isEarned) return;
       dispatch({ kind: 'claim_achievement', achievementId: def.id });
       audioSystem?.onAchievementClaimed();
-      showRewardPopup(card, `${bonusText(def.bonusKind, def.bonusMultiplier)}!`);
+      enqueueReward(`${bonusText(def.bonusKind, def.bonusMultiplier)}!`);
     });
 
-    panel.appendChild(card);
-    cardRefs.set(def.id, { card, iconEl, nameEl, bonusEl, descEl, progressEl });
+    group.content.appendChild(card);
+    cardRefs.set(def.id, { card, iconEl, nameEl, bonusEl, descEl, progressEl, groupId: def.groupId });
   }
 
+  setExpandedGroup(expandedGroupId);
+
   // Periodically scramble text on locked secret achievements
-  const scrambleIntervalId = setInterval(() => {
+  const scrambleIntervalId = window.setInterval(() => {
     for (const def of ACHIEVEMENT_DEFINITIONS) {
       if (!def.isSecret) continue;
       const refs = cardRefs.get(def.id);
       if (!refs) continue;
       const { card, nameEl, descEl } = refs;
-      // Only scramble if still locked (not yet unlocked)
       if (card.classList.contains('achievement-locked')) {
         nameEl.textContent = makeScrambledText(def.displayName.length);
         descEl.textContent = makeScrambledText(def.description.length);
@@ -155,11 +342,30 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     }
   }, 600);
 
+  function setVisible(visible: boolean): void {
+    isPanelVisible = visible;
+    if (visible) return;
+    for (const refs of groupRefs.values()) {
+      setSparkleEmitter(refs.toggle, false);
+    }
+    for (const refs of cardRefs.values()) {
+      setSparkleEmitter(refs.card, false);
+    }
+  }
+
   function destroy(): void {
-    clearInterval(scrambleIntervalId);
+    window.clearInterval(scrambleIntervalId);
+    stopAllSparkles();
+    if (createdGoldenTextContainer) {
+      goldenTextContainer.remove();
+    }
   }
 
   function update(state: GameState, numberFormat: NumberFormat): void {
+    const unclaimedByGroup = new Map<string, number>();
+    const claimedByGroup = new Map<string, number>();
+    const totalByGroup = new Map<string, number>();
+
     for (const def of ACHIEVEMENT_DEFINITIONS) {
       const refs = cardRefs.get(def.id);
       if (!refs) continue;
@@ -189,12 +395,10 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
         bonusEl.textContent = isClaimed ? defBonusText : '✨ Tap to claim!';
         bonusEl.style.color = isClaimed ? '#a0e080' : '#ffd700';
 
-        const progressText = isClaimed ? '✓ Claimed' : '✨ Earned — tap to claim your bonus!';
-        progressEl.textContent = progressText;
+        progressEl.textContent = isClaimed ? '✓ Claimed' : '✨ Earned — tap to claim your bonus!';
       } else {
         iconEl.textContent = '🔒';
         if (!def.isSecret) {
-          // Normal locked achievement: show real name and progress
           nameEl.textContent = def.displayName;
           descEl.textContent = def.description;
           bonusEl.textContent = defBonusText;
@@ -202,14 +406,36 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
           const lifetime = getLifetimeMotes(state.resources, def.requiresTierId);
           progressEl.textContent = `Progress: ${formatNumberAs(lifetime, numberFormat)} / ${formatNumberAs(def.requiresLifetimeMotes, numberFormat)} ${TIER_BY_ID.get(def.requiresTierId)?.displayName ?? ''} motes`;
         } else {
-          // Secret locked achievement: scramble is handled by the interval above
           bonusEl.textContent = '???';
           bonusEl.style.color = '';
           progressEl.textContent = '???';
         }
       }
+
+      const total = totalByGroup.get(def.groupId) ?? 0;
+      totalByGroup.set(def.groupId, total + 1);
+      if (isClaimed) {
+        claimedByGroup.set(def.groupId, (claimedByGroup.get(def.groupId) ?? 0) + 1);
+      } else if (isEarnedUnclaimed) {
+        unclaimedByGroup.set(def.groupId, (unclaimedByGroup.get(def.groupId) ?? 0) + 1);
+      }
+
+      const cardShouldSparkle = isPanelVisible && isEarnedUnclaimed && expandedGroupId === def.groupId;
+      setSparkleEmitter(card, cardShouldSparkle);
+    }
+
+    for (const [groupId, refs] of groupRefs) {
+      const total = totalByGroup.get(groupId) ?? 0;
+      const claimed = claimedByGroup.get(groupId) ?? 0;
+      const hasUnclaimed = (unclaimedByGroup.get(groupId) ?? 0) > 0;
+
+      refs.countEl.textContent = `${claimed}/${total}`;
+      refs.toggle.classList.toggle('achievement-group-toggle--has-unclaimed', hasUnclaimed);
+
+      const groupShouldSparkle = isPanelVisible && hasUnclaimed;
+      setSparkleEmitter(refs.toggle, groupShouldSparkle);
     }
   }
 
-  return { element: panel, update, destroy };
+  return { element: panel, update, setVisible, destroy };
 }
