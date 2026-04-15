@@ -96,6 +96,9 @@ export async function startApp(): Promise<void> {
     forge,
     generatorState,
     particleDrag: createParticleDragState(),
+    lastTapCanvasX: 0,
+    lastTapCanvasY: 0,
+    lastTapTimeMs: 0,
   };
 
   // ── Background effects ──

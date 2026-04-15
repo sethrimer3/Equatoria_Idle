@@ -24,6 +24,9 @@ export interface AppState {
   forge: ForgeCrunchState;
   generatorState: GeneratorState;
   particleDrag: ParticleDragState;
+  lastTapCanvasX: number;
+  lastTapCanvasY: number;
+  lastTapTimeMs: number;
 }
 
 /** Configuration object grouping all UI panels for tab switching. */

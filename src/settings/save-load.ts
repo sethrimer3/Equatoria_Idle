@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 8;
+const SAVE_VERSION = 9;
 
 interface SaveData {
   version: number;
@@ -44,6 +44,7 @@ interface SaveData {
   };
   looms: {
     looms: Array<{ tierId: string; level: number; isUnlocked: boolean }>;
+    specialLoomPurchased?: string[];
   };
   achievements: {
     unlockedIds: string[];
@@ -102,6 +103,7 @@ export function serializeGameState(state: GameState): SaveData {
         level: l.level,
         isUnlocked: l.isUnlocked,
       })),
+      specialLoomPurchased: Array.from(state.looms.specialPurchased),
     },
     achievements: {
       unlockedIds: Array.from(state.achievements.unlockedIds),
@@ -164,6 +166,11 @@ export function deserializeGameState(data: SaveData): GameState {
       if (loom) {
         loom.level = saved.level;
         loom.isUnlocked = saved.isUnlocked;
+      }
+    }
+    if (data.looms.specialLoomPurchased) {
+      for (const tierId of data.looms.specialLoomPurchased) {
+        state.looms.specialPurchased.add(tierId as import('../data/tiers').TierId);
       }
     }
   }
@@ -233,7 +240,7 @@ export function loadGame(): GameState | null {
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
     // Accept versions 1–8 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8].includes(data.version)) return null;
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

@@ -2,8 +2,8 @@ import type { GameState } from '../../sim';
 import type { ActionHandler } from '../../input';
 import type { TierId } from '../../data/tiers';
 import { TIER_BY_ID, TIERS } from '../../data/tiers';
-import { LOOM_DEFINITIONS } from '../../data/looms';
-import { getLoom, getLoomRate, getLoomCost } from '../../sim/looms';
+import { LOOM_DEFINITIONS, SPECIAL_LOOM_DEFINITIONS } from '../../data/looms';
+import { getLoom, getLoomRate, getLoomCost, isSpecialLoomPurchased } from '../../sim/looms';
 import { getMotes } from '../../sim/resources';
 import { formatNumberAs, computeOutputCompression, type NumberFormat } from '../../util';
 import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
@@ -80,6 +80,11 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   alivenTabBtn.className = 'looms-sub-tab-btn';
   alivenTabBtn.textContent = 'Aliven';
   subTabBar.appendChild(alivenTabBtn);
+
+  const specialTabBtn = document.createElement('button');
+  specialTabBtn.className = 'looms-sub-tab-btn';
+  specialTabBtn.textContent = 'Special';
+  subTabBar.appendChild(specialTabBtn);
 
   // ── Upgrades pane ────────────────────────────────────────────
 
@@ -457,16 +462,81 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
 
   panel.appendChild(alivenPane);
 
+  // ── Special pane ─────────────────────────────────────────────
+
+  const specialPane = document.createElement('div');
+  specialPane.className = 'looms-sub-pane';
+  specialPane.style.display = 'none';
+
+  const specialTitle = document.createElement('h3');
+  specialTitle.className = 'panel-title';
+  specialTitle.textContent = 'Special Upgrades';
+  specialPane.appendChild(specialTitle);
+
+  const specialSubtitle = document.createElement('p');
+  specialSubtitle.className = 'panel-subtitle';
+  specialSubtitle.textContent = 'One-time upgrades that double Loom production';
+  specialPane.appendChild(specialSubtitle);
+
+  const specialCards: Map<string, HTMLElement> = new Map();
+  const specialButtons: Map<string, HTMLButtonElement> = new Map();
+
+  for (const def of SPECIAL_LOOM_DEFINITIONS) {
+    const tier = TIER_BY_ID.get(def.tierId);
+    if (!tier) continue;
+
+    const card = document.createElement('div');
+    card.className = 'loom-card';
+    card.style.borderLeftColor = tier.color;
+
+    const header = document.createElement('div');
+    header.className = 'loom-header';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'loom-name';
+    nameEl.style.color = tier.color;
+    nameEl.textContent = def.displayName;
+    header.appendChild(nameEl);
+
+    card.appendChild(header);
+
+    const desc = document.createElement('p');
+    desc.className = 'loom-desc';
+    desc.textContent = def.description;
+    card.appendChild(desc);
+
+    const stats = document.createElement('div');
+    stats.className = 'loom-stats';
+    card.appendChild(stats);
+
+    const btn = document.createElement('button');
+    btn.className = 'upgrade-btn loom-upgrade-btn';
+    btn.style.borderColor = tier.color;
+    btn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      dispatch({ kind: 'upgrade_special_loom', tierId: def.tierId });
+    });
+    card.appendChild(btn);
+
+    specialPane.appendChild(card);
+    specialCards.set(def.tierId, card);
+    specialButtons.set(def.tierId, btn);
+  }
+
+  panel.appendChild(specialPane);
+
   // ── Sub-tab switching ────────────────────────────────────────
 
-  let activeSubTab: 'upgrades' | 'aliven' = 'upgrades';
+  let activeSubTab: 'upgrades' | 'aliven' | 'special' = 'upgrades';
 
-  function setSubTab(tab: 'upgrades' | 'aliven'): void {
+  function setSubTab(tab: 'upgrades' | 'aliven' | 'special'): void {
     activeSubTab = tab;
     upgradesTabBtn.classList.toggle('active', tab === 'upgrades');
     alivenTabBtn.classList.toggle('active', tab === 'aliven');
+    specialTabBtn.classList.toggle('active', tab === 'special');
     upgradesPane.style.display = tab === 'upgrades' ? '' : 'none';
     alivenPane.style.display = tab === 'aliven' ? '' : 'none';
+    specialPane.style.display = tab === 'special' ? '' : 'none';
   }
 
   upgradesTabBtn.addEventListener('pointerdown', (e) => {
@@ -476,6 +546,10 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   alivenTabBtn.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     setSubTab('aliven');
+  });
+  specialTabBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    setSubTab('special');
   });
 
   // ── Update ───────────────────────────────────────────────────
@@ -576,6 +650,45 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
         const val = state.aliven.interactionMatrix[r][c];
         updateCellDisplay(cell, val);
         cell.title = `${cell.dataset.baseTitle ?? key}: ${val.toFixed(2)}`;
+      }
+    }
+
+    // ── Special pane update ──
+    if (activeSubTab === 'special') {
+      const unlockedCount = state.progression.unlockedTierCount;
+
+      for (const def of SPECIAL_LOOM_DEFINITIONS) {
+        const card = specialCards.get(def.tierId);
+        const btn = specialButtons.get(def.tierId);
+        if (!card || !btn) continue;
+
+        const tier = TIER_BY_ID.get(def.tierId);
+        const loom = getLoom(state.looms, def.tierId);
+        const isUnlocked = loom?.isUnlocked ?? false;
+        const tierDef = TIER_BY_ID.get(def.tierId);
+        const tierOrderOk = tierDef ? tierDef.unlockOrder < unlockedCount : false;
+
+        card.style.display = isUnlocked && tierOrderOk ? '' : 'none';
+        if (!isUnlocked || !tierOrderOk) continue;
+
+        const purchased = isSpecialLoomPurchased(state.looms, def.tierId);
+        const currentMotes = getMotes(state.resources, def.tierId);
+        const canAfford = currentMotes >= def.cost;
+
+        const statsEl = card.querySelector('.loom-stats');
+        if (statsEl) {
+          statsEl.innerHTML = `
+            <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} / ${formatNumberAs(def.cost, numberFormat)} ${tier?.displayName ?? ''}</span>
+          `;
+        }
+
+        if (purchased) {
+          btn.textContent = '✦ Purchased';
+          btn.disabled = true;
+        } else {
+          btn.textContent = `✦ Purchase — ${formatNumberAs(def.cost, numberFormat)} ${tier?.displayName ?? ''}`;
+          btn.disabled = !canAfford;
+        }
       }
     }
   }

@@ -27,6 +27,7 @@ import {
   TRAIL_CAPTURE_INTERVAL,
   DRAG_BOOST_MULTIPLIER,
   DRAG_RELEASE_FADE_MS,
+  GENERATOR_ROTATION_STRENGTH,
 } from '../../data/particles/particle-config';
 import { PL_MAX_VELOCITY } from '../../data/particles/particle-life-config';
 import {
@@ -93,8 +94,15 @@ export function updateParticlePhysics(
           const angle = Math.atan2(dy, dx);
           p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
           p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
+          // Rotational force — smooth CW/CCW variation per generator
+          const rotPhase = gen.tierIndex * 1.23 + nowMs * 0.00018;
+          const rotStrength = Math.sin(rotPhase) * GENERATOR_ROTATION_STRENGTH;
+          const perpX = -(dy / dist);
+          const perpY = dx / dist;
+          p.vx += perpX * rotStrength * FORCE_SCALE * clampedDelta;
+          p.vy += perpY * rotStrength * FORCE_SCALE * clampedDelta;
         }
-        if (p.sizeIndex === SMALL_SIZE_INDEX && dist > 0.5) {
+        if (p.sizeIndex === SMALL_SIZE_INDEX && dist > 0.5 && dist <= gen.range * 2) {
           const force = (SMALL_TIER_GENERATOR_GRAVITY_STRENGTH / (dist * DISTANCE_SCALE)) * p.forceModifier;
           const angle = Math.atan2(dy, dx);
           p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;

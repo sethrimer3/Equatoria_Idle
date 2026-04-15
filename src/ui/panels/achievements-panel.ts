@@ -206,7 +206,6 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       const isExpanded = groupId === expandedGroupId;
       refs.toggle.classList.toggle('achievement-group-toggle--expanded', isExpanded);
       refs.content.classList.toggle('achievement-group-content--expanded', isExpanded);
-      refs.content.style.display = isExpanded ? '' : 'none';
       if (!isExpanded) {
         for (const achievementId of refs.achievementIds) {
           const refsForCard = cardRefs.get(achievementId);

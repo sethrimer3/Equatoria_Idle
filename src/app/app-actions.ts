@@ -11,6 +11,7 @@ import {
   tryUnlockNextTier,
   tryUnlockEquationForge,
   tryUpgradeLoom,
+  tryPurchaseSpecialLoom,
   tryAlivenMote,
   claimAchievement,
 } from '../sim';
@@ -40,14 +41,41 @@ export function handleAction(
   switch (action.kind) {
     case 'tap': {
       if (!state.game.equation.isForgeUnlocked) break;
-      const result = tapEquation(state.game);
-      state.tapFlashAlpha = 1;
 
       const rect = cc.canvas.getBoundingClientRect();
       const scaleX = cc.widthPx / rect.width;
       const scaleY = cc.heightPx / rect.height;
       const canvasX = (action.xScreen - rect.left) * scaleX;
       const canvasY = (action.yScreen - rect.top) * scaleY;
+
+      const nowMs = performance.now();
+      const DOUBLE_TAP_MAX_MS = 350;
+      const DOUBLE_TAP_MAX_PX = 40;
+
+      const timeSinceLast = nowMs - state.lastTapTimeMs;
+      if (timeSinceLast < DOUBLE_TAP_MAX_MS) {
+        const dx = canvasX - state.lastTapCanvasX;
+        const dy = canvasY - state.lastTapCanvasY;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < DOUBLE_TAP_MAX_PX * DOUBLE_TAP_MAX_PX) {
+          for (const gen of state.generatorState.generators) {
+            const gdx = canvasX - gen.x;
+            const gdy = canvasY - gen.y;
+            const SPAWNER_SIZE_VISUAL = 24;
+            if (gdx * gdx + gdy * gdy < SPAWNER_SIZE_VISUAL * SPAWNER_SIZE_VISUAL) {
+              particles.gatherMotesToGenerator(gen.tierId, gen.x, gen.y);
+              state.lastTapTimeMs = 0;
+              break;
+            }
+          }
+        }
+      }
+      state.lastTapCanvasX = canvasX;
+      state.lastTapCanvasY = canvasY;
+      state.lastTapTimeMs = nowMs;
+
+      const result = tapEquation(state.game);
+      state.tapFlashAlpha = 1;
 
       for (const [tierId] of result.gains) {
         const count = settings.isReducedParticles
@@ -81,6 +109,12 @@ export function handleAction(
       else     audioSystem?.onError();
       break;
     }
+    case 'upgrade_special_loom': {
+      const ok = tryPurchaseSpecialLoom(state.game, action.tierId as TierId);
+      if (ok) audioSystem?.onBuyLoomUpgrade();
+      else     audioSystem?.onError();
+      break;
+    }
     case 'aliven_mote': {
       const ok = tryAlivenMote(state.game, action.tierId as TierId, devMode);
       if (!ok) audioSystem?.onError();
@@ -107,7 +141,7 @@ export function handleAction(
       // Handled directly — import kept light
       break;
     case 'reset_game':
-      Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
+      Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation', lastTapCanvasX: 0, lastTapCanvasY: 0, lastTapTimeMs: 0 });
       recomputeGenerators();
       setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
       break;
