@@ -5,6 +5,21 @@ import { formatNumberAs, type NumberFormat } from '../../util';
 import { getLifetimeMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
 import type { AudioSystem } from '../../audio';
+import {
+  INITIAL_SPARKLE_DELAY_MS,
+  type SparkleEmitter,
+  SPARKLE_DRIFT_X_RANGE,
+  SPARKLE_DRIFT_Y_RANGE,
+  SPARKLE_MAX_DELAY_MS,
+  SPARKLE_MAX_DURATION_MS,
+  SPARKLE_MIN_DELAY_MS,
+  SPARKLE_MIN_DURATION_MS,
+  SPARKLE_SCALE_MAX,
+  SPARKLE_SCALE_MIN,
+  SPARKLE_SIZE,
+  SPARKLE_VERTICAL_BIAS_Y,
+  randomInRange,
+} from '../achievements/sparkle-shared';
 
 /**
  * Achievements panel — grouped accordion cards with claim interactions.
@@ -18,31 +33,12 @@ export interface AchievementsPanel {
   destroy(): void;
 }
 
-interface SparkleEmitter {
-  timeoutId: number | null;
-}
-
-const SPARKLE_MIN_DURATION_MS = 3000;
-const SPARKLE_MAX_DURATION_MS = 5000;
-const SPARKLE_MIN_DELAY_MS = 1400;
-const SPARKLE_MAX_DELAY_MS = 2600;
-const INITIAL_SPARKLE_DELAY_MS = 1000;
-const SPARKLE_SIZE = 6;
-const SPARKLE_DRIFT_X_RANGE = 32;
-const SPARKLE_DRIFT_Y_RANGE = 26;
-const SPARKLE_SCALE_MIN = 0.6;
-const SPARKLE_SCALE_MAX = 1.3;
-
 // ─── Scrambled text helpers ─────────────────────────────────────
 
 const UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS = Array.from(
   { length: 0x1676 - 0x1401 + 1 },
   (_, i) => String.fromCodePoint(0x1401 + i),
 ).join('');
-
-function randomInRange(min: number, max: number): number {
-  return min + Math.random() * (max - min);
-}
 
 function randomChar(): string {
   return UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS[
@@ -92,9 +88,13 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   groupsRoot.className = 'achievement-groups';
   panel.appendChild(groupsRoot);
 
-  const goldenTextContainer = document.createElement('div');
-  goldenTextContainer.className = 'golden-text-container';
-  document.body.appendChild(goldenTextContainer);
+  const existingGoldenTextContainer = document.querySelector<HTMLElement>('.golden-text-container');
+  const createdGoldenTextContainer = !existingGoldenTextContainer;
+  const goldenTextContainer = existingGoldenTextContainer ?? document.createElement('div');
+  if (createdGoldenTextContainer) {
+    goldenTextContainer.className = 'golden-text-container';
+    document.body.appendChild(goldenTextContainer);
+  }
 
   const rewardQueue: string[] = [];
   let isRewardShowing = false;
@@ -152,7 +152,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     sparkle.style.top = `${Math.random() * 100}%`;
 
     const driftX = randomInRange(-SPARKLE_DRIFT_X_RANGE / 2, SPARKLE_DRIFT_X_RANGE / 2);
-    const driftY = randomInRange(-SPARKLE_DRIFT_Y_RANGE / 2, SPARKLE_DRIFT_Y_RANGE / 2) - 8;
+    const driftY = randomInRange(-SPARKLE_DRIFT_Y_RANGE / 2, SPARKLE_DRIFT_Y_RANGE / 2) + SPARKLE_VERTICAL_BIAS_Y;
     const scale = randomInRange(SPARKLE_SCALE_MIN, SPARKLE_SCALE_MAX);
     const durationMs = randomInRange(SPARKLE_MIN_DURATION_MS, SPARKLE_MAX_DURATION_MS);
 
@@ -270,7 +270,10 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     const tier = TIER_BY_ID.get(def.requiresTierId);
     const group = groupRefs.get(def.groupId);
-    if (!group) continue;
+    if (!group) {
+      console.warn(`Unknown achievement groupId "${def.groupId}" for achievement "${def.id}"`);
+      continue;
+    }
 
     const card = document.createElement('div');
     card.className = 'achievement-card';
@@ -353,7 +356,9 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   function destroy(): void {
     window.clearInterval(scrambleIntervalId);
     stopAllSparkles();
-    goldenTextContainer.remove();
+    if (createdGoldenTextContainer) {
+      goldenTextContainer.remove();
+    }
   }
 
   function update(state: GameState, numberFormat: NumberFormat): void {

@@ -351,6 +351,10 @@
 - `createTabBar()` — returns element plus `setActiveTab()` and `updateAchievementIndicator(state)`.
 - Reuses `hasUnclaimedAchievements(state)` to keep tab indicator active whenever any earned achievement is unclaimed.
 
+### src/ui/achievements/sparkle-shared.ts
+- Shared sparkle constants matching Thero timings and drift/scale ranges.
+- Exports `randomInRange()` utility used by both achievements panel and tab bar sparkle emitters.
+
 ### src/ui/panels/equation-panel.ts
 - Equation tab content — the central Equation Forge panel.
 - Before forge unlock: shows dormant locked forge state with description and unlock button (50 Sand).
