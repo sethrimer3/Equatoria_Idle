@@ -101,7 +101,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       const { sizeIndex, emitRatePerSec } = computeOutputCompression(rawRate);
 
       // Accumulate fractional emit count; spawn whole particles only
-      let acc = (particleEmitAccumulators.get(loom.tierId) ?? 0) + emitRatePerSec * deltaSec;
+      const acc = (particleEmitAccumulators.get(loom.tierId) ?? 0) + emitRatePerSec * deltaSec;
       const toEmit = Math.floor(acc);
       particleEmitAccumulators.set(loom.tierId, acc - toEmit);
 

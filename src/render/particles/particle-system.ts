@@ -37,6 +37,10 @@ import {
   FORGE_SPIN_UP_DURATION_MS,
   FORGE_SPIN_DOWN_DURATION_MS,
   FORGE_SPIN_UP_THRESHOLD_MS,
+  SUCTION_MERGE_INTERVAL_FRAMES,
+  PARTICLE_LIMIT_INTERVAL_FRAMES,
+  MAX_FRAME_DELTA_RATIO,
+  MIN_FRAME_DELTA_RATIO,
 } from '../../data/particles/particle-config';
 import { createDefaultInteractionMatrix } from '../../data/particles/interaction-matrix';
 import { PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT } from '../../data/particles/particle-life-config';
@@ -246,7 +250,7 @@ export class ParticleSystem {
     // Spawner and forge rotations use the actual frame delta so they
     // remain smooth at any frame rate independently of the substep count.
     const frameRatio = deltaMs / (1000 / 60);
-    const frameDelta = Math.max(Math.min(frameRatio, 3), 0.01);
+    const frameDelta = Math.max(Math.min(frameRatio, MAX_FRAME_DELTA_RATIO), MIN_FRAME_DELTA_RATIO);
 
     for (const [tierId] of this.spawnerRotations) {
       const rot = this.spawnerRotations.get(tierId) ?? 0;
@@ -317,10 +321,10 @@ export class ParticleSystem {
 
     // Suction merges — check globally every 10 frames
     if (this.mergeCooldownFrames > 0) this.mergeCooldownFrames--;
-    if (this.frameCount % 10 === 0) {
+    if (this.frameCount % SUCTION_MERGE_INTERVAL_FRAMES === 0) {
       attemptSuctionMerge(this.particles, this.activeMerges, generators, nowMs);
     }
-    if (this.frameCount % 30 === 0) {
+    if (this.frameCount % PARTICLE_LIMIT_INTERVAL_FRAMES === 0) {
       this.particles = enforceParticleLimit(this.particles, this._pool, generators, nowMs);
     }
 

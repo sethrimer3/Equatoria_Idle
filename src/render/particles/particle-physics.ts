@@ -27,6 +27,10 @@ import {
   TRAIL_CAPTURE_INTERVAL,
   DRAG_BOOST_MULTIPLIER,
   DRAG_RELEASE_FADE_MS,
+  POINTER_LOCKED_FORCE,
+  POINTER_LOCKED_DAMPING,
+  PARTICLE_WALL_BOUNCE,
+  GRAVITY_MIN_DIST,
   GENERATOR_ROTATION_STRENGTH,
   GENERATOR_ROTATION_PHASE_OFFSET,
   GENERATOR_ROTATION_TIME_SCALE,
@@ -72,12 +76,12 @@ export function updateParticlePhysics(
     const dy = p.pointerTargetY - p.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 1) {
-      const force = 3.0 * p.forceModifier;
+      const force = POINTER_LOCKED_FORCE * p.forceModifier;
       const angle = Math.atan2(dy, dx);
       p.vx += Math.cos(angle) * force * clampedDelta;
       p.vy += Math.sin(angle) * force * clampedDelta;
     } else {
-      const damping = Math.pow(0.8, clampedDelta);
+      const damping = Math.pow(POINTER_LOCKED_DAMPING, clampedDelta);
       p.vx *= damping;
       p.vy *= damping;
     }
@@ -90,7 +94,7 @@ export function updateParticlePhysics(
         const dx = gen.x - p.x;
         const dy = gen.y - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= gen.range && dist > 0.5) {
+        if (dist <= gen.range && dist > GRAVITY_MIN_DIST) {
           isInsideGeneratorField = true;
           const force = (SPAWNER_GRAVITY_STRENGTH / (dist * DISTANCE_SCALE)) * p.forceModifier;
           const angle = Math.atan2(dy, dx);
@@ -108,7 +112,7 @@ export function updateParticlePhysics(
         }
         // 1×1 motes get a stronger generator pull limited to 2× the generator's
         // gravity range (unlike larger motes, they are never attracted by the forge).
-        if (p.sizeIndex === SMALL_SIZE_INDEX && dist > 0.5 && dist <= gen.range * 2) {
+        if (p.sizeIndex === SMALL_SIZE_INDEX && dist > GRAVITY_MIN_DIST && dist <= gen.range * 2) {
           const force = (SMALL_TIER_GENERATOR_GRAVITY_STRENGTH / (dist * DISTANCE_SCALE)) * p.forceModifier;
           const angle = Math.atan2(dy, dx);
           p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
@@ -130,7 +134,7 @@ export function updateParticlePhysics(
         p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
         p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
       }
-      if (p.sizeIndex === MEDIUM_SIZE_INDEX && fdist > 0.5) {
+      if (p.sizeIndex === MEDIUM_SIZE_INDEX && fdist > GRAVITY_MIN_DIST) {
         const force = (MEDIUM_TIER_FORGE_GRAVITY_STRENGTH / (fdist * DISTANCE_SCALE)) * p.forceModifier;
         const angle = Math.atan2(fdy, fdx);
         p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
@@ -201,7 +205,7 @@ export function updateParticlePhysics(
 
   // Bounce / clamp
   if (!p.isLockedToPointer) {
-    const bounce = 0.8;
+    const bounce = PARTICLE_WALL_BOUNCE;
     if (p.x < 0) { p.x = 0; p.vx = Math.abs(p.vx) * bounce; }
     if (p.x > canvasWidth) { p.x = canvasWidth; p.vx = -Math.abs(p.vx) * bounce; }
     if (p.y < 0) { p.y = 0; p.vy = Math.abs(p.vy) * bounce; }

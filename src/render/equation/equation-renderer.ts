@@ -127,9 +127,7 @@ export function drawEquation(
   if (totalWidth > maxLineWidth) {
     // Find a good split point (after "= ")
     let splitIdx = 0;
-    let accWidth = 0;
     for (let i = 0; i < segments.length; i++) {
-      accWidth += segments[i].text.length * charWidth;
       if (segments[i].text.includes('=')) {
         splitIdx = i + 1;
         break;
