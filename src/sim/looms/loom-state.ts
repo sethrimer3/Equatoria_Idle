@@ -5,7 +5,9 @@
 
 import type { TierId } from '../../data/tiers';
 import { TIERS } from '../../data/tiers';
-import { LOOM_BY_TIER, loomProductionRate, loomUpgradeCost } from '../../data/looms';
+import { LOOM_BY_TIER, loomProductionRate, loomUpgradeCost, SPECIAL_LOOM_BY_TIER } from '../../data/looms';
+import type { ResourceState } from '../resources';
+import { getMotes, spendMotes } from '../resources';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -20,6 +22,8 @@ export interface LoomTierState {
 /** Full Loom state across all tiers. */
 export interface LoomState {
   looms: LoomTierState[];
+  /** Tier IDs that have had their special Resonance upgrade purchased. */
+  specialPurchased: Set<TierId>;
 }
 
 // ─── Factory ────────────────────────────────────────────────────
@@ -32,6 +36,7 @@ export function createLoomState(): LoomState {
       isUnlocked: t.id === 'sand',           // Only Sand Loom unlocked at start
       accumulatorMs: 0,
     })),
+    specialPurchased: new Set<TierId>(),
   };
 }
 
@@ -93,7 +98,8 @@ export function tickLooms(
   for (const loom of state.looms) {
     if (!loom.isUnlocked || loom.level <= 0) continue;
 
-    const rate = getLoomRate(loom.tierId, loom.level) * productionBonus;
+    const specialBonus = state.specialPurchased.has(loom.tierId) ? 2 : 1;
+    const rate = getLoomRate(loom.tierId, loom.level) * productionBonus * specialBonus;
     if (rate <= 0) continue;
 
     // Accumulate fractional motes
@@ -107,4 +113,28 @@ export function tickLooms(
   }
 
   return produced;
+}
+
+export function isSpecialLoomPurchased(state: LoomState, tierId: TierId): boolean {
+  return state.specialPurchased.has(tierId);
+}
+
+/** Purchase the special Resonance upgrade for a tier. Returns true if successful. */
+export function purchaseSpecialLoom(
+  state: LoomState,
+  resources: ResourceState,
+  tierId: TierId,
+  bypassCost = false,
+): boolean {
+  if (state.specialPurchased.has(tierId)) return false;
+  const loom = getLoom(state, tierId);
+  if (!loom || !loom.isUnlocked) return false;
+  const def = SPECIAL_LOOM_BY_TIER.get(tierId);
+  if (!def) return false;
+  if (!bypassCost && getMotes(resources, tierId) < def.cost) return false;
+  if (!bypassCost) {
+    spendMotes(resources, tierId, def.cost);
+  }
+  state.specialPurchased.add(tierId);
+  return true;
 }

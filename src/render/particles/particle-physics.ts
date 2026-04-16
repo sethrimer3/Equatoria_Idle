@@ -31,6 +31,9 @@ import {
   POINTER_LOCKED_DAMPING,
   PARTICLE_WALL_BOUNCE,
   GRAVITY_MIN_DIST,
+  GENERATOR_ROTATION_STRENGTH,
+  GENERATOR_ROTATION_PHASE_OFFSET,
+  GENERATOR_ROTATION_TIME_SCALE,
 } from '../../data/particles/particle-config';
 import { PL_MAX_VELOCITY } from '../../data/particles/particle-life-config';
 import {
@@ -97,8 +100,19 @@ export function updateParticlePhysics(
           const angle = Math.atan2(dy, dx);
           p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
           p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
+          // Rotational force — smooth CW/CCW variation per generator.
+          // nowMs is an absolute monotonic timestamp (performance.now()), so the
+          // phase advances continuously and consistently across frames.
+          const rotPhase = gen.tierIndex * GENERATOR_ROTATION_PHASE_OFFSET + nowMs * GENERATOR_ROTATION_TIME_SCALE;
+          const rotStrength = Math.sin(rotPhase) * GENERATOR_ROTATION_STRENGTH;
+          const perpX = -(dy / dist);
+          const perpY = dx / dist;
+          p.vx += perpX * rotStrength * FORCE_SCALE * clampedDelta;
+          p.vy += perpY * rotStrength * FORCE_SCALE * clampedDelta;
         }
-        if (p.sizeIndex === SMALL_SIZE_INDEX && dist > GRAVITY_MIN_DIST) {
+        // 1×1 motes get a stronger generator pull limited to 2× the generator's
+        // gravity range (unlike larger motes, they are never attracted by the forge).
+        if (p.sizeIndex === SMALL_SIZE_INDEX && dist > GRAVITY_MIN_DIST && dist <= gen.range * 2) {
           const force = (SMALL_TIER_GENERATOR_GRAVITY_STRENGTH / (dist * DISTANCE_SCALE)) * p.forceModifier;
           const angle = Math.atan2(dy, dx);
           p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;

@@ -213,6 +213,20 @@ export class ParticleSystem {
     }
   }
 
+  /** Rush all particles of the given tier toward the generator position. */
+  gatherMotesToGenerator(tierId: TierId, genX: number, genY: number): void {
+    for (const p of this.particles) {
+      if (p.tierId !== tierId) continue;
+      if (p.isLockedToPointer) continue;
+      const dx = genX - p.x;
+      const dy = genY - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const speed = 15.0;
+      p.vx = (dx / dist) * speed;
+      p.vy = (dy / dist) * speed;
+    }
+  }
+
   /** Full physics + Particle Life + merge + forge crunch update. Returns audio events for this frame. */
   update(
     deltaMs: number,

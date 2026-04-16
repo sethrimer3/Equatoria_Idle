@@ -39,6 +39,7 @@ import {
   unlockLoom,
   getLoom,
   getLoomCost,
+  purchaseSpecialLoom,
   type LoomState,
 } from './looms';
 import {
@@ -175,6 +176,11 @@ export function tryUpgradeLoom(state: GameState, tierId: TierId, bypassCost = fa
   }
   upgradeLoom(state.looms, tierId);
   return true;
+}
+
+/** Try to purchase the special Resonance upgrade for a Loom tier. Returns true if successful. */
+export function tryPurchaseSpecialLoom(state: GameState, tierId: TierId, bypassCost = false): boolean {
+  return purchaseSpecialLoom(state.looms, state.resources, tierId, bypassCost);
 }
 
 /** Try to aliven a mote type. Returns true if successful. */

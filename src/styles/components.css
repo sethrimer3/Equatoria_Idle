@@ -657,11 +657,15 @@
 }
 
 .achievement-group-content {
-  padding: 8px 8px 0;
+  padding: 0 8px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease;
 }
 
-.achievement-group-content:not(.achievement-group-content--expanded) {
-  display: none;
+.achievement-group-content--expanded {
+  max-height: 3000px;
+  padding: 8px 8px 0;
 }
 
 .achievement-card {
