@@ -7,5 +7,7 @@ export {
   upgradeLoom,
   unlockLoom,
   tickLooms,
+  isSpecialLoomPurchased,
+  purchaseSpecialLoom,
 } from './loom-state';
 export type { LoomState, LoomTierState } from './loom-state';
