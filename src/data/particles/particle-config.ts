@@ -101,6 +101,36 @@ export const MERGE_TRAIL_ERASE_DURATION_MS = 150;
 /** Maximum random curve angle for suction merge trails, in degrees. Trails curve randomly between ±this value. */
 export const MERGE_TRAIL_CURVE_ANGLE_DEG = 10;
 
+// ─── Pointer-locked particle physics ────────────────────────────
+/** Force strength applied toward the pointer target while a particle is locked to the pointer. */
+export const POINTER_LOCKED_FORCE = 3.0;
+/**
+ * Per-step velocity decay factor while a particle is locked to the pointer and stationary.
+ * Applied as Math.pow(POINTER_LOCKED_DAMPING, clampedDelta).
+ */
+export const POINTER_LOCKED_DAMPING = 0.8;
+
+// ─── Wall bounce ─────────────────────────────────────────────────
+/** Velocity coefficient retained after bouncing off a canvas edge (0–1). */
+export const PARTICLE_WALL_BOUNCE = 0.8;
+
+// ─── Gravity minimum distance ────────────────────────────────────
+/**
+ * Minimum distance (canvas units) for generator and forge gravity computations.
+ * Prevents extreme forces when a particle is very close to the attractor.
+ */
+export const GRAVITY_MIN_DIST = 0.5;
+
+// ─── Frame-interval constants for ParticleSystem ────────────────
+/** Number of render frames between suction-merge eligibility checks. */
+export const SUCTION_MERGE_INTERVAL_FRAMES = 10;
+/** Number of render frames between particle-count limit enforcement passes. */
+export const PARTICLE_LIMIT_INTERVAL_FRAMES = 30;
+/** Maximum frame-delta ratio cap, preventing spiral-of-death on slow frames. */
+export const MAX_FRAME_DELTA_RATIO = 3;
+/** Minimum frame-delta ratio floor, preventing effectively-zero time steps. */
+export const MIN_FRAME_DELTA_RATIO = 0.01;
+
 // ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
 // The Euler inter-particle fluid system has been replaced by the
 // Particle Life interaction model.  See particle-life-config.ts and
