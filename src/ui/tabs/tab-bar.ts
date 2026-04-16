@@ -35,7 +35,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: 'equation',     label: 'Equation',     icon: 'ƒ' },
   { id: 'resources',    label: 'Upgrades',     icon: '⬆' },
-  { id: 'looms',        label: 'Looms',        icon: '⚙' },
+  { id: 'rpg',          label: 'RPG',          icon: '⚔' },
   { id: 'achievements', label: 'Achievements', icon: '🏆' },
   { id: 'settings',     label: 'Settings',     icon: '☰' },
 ];

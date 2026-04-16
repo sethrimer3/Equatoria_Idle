@@ -39,6 +39,7 @@ import {
 import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
 import { createAudioSystem } from '../audio';
 import { createTraceEffect } from '../render/ui/trace-effect';
+import { createRpgRender } from '../render/rpg/rpg-render';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
@@ -211,16 +212,29 @@ export async function startApp(): Promise<void> {
   const upgradePanel = createUpgradePanel(dispatch);
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio);
-  const loomPanel = createLoomPanel(dispatch, traceEffect);
   const equationPanel = createEquationPanel(dispatch, traceEffect);
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
-  panelsInner.appendChild(equationPanel.element);
+  // Wrap the equation-related panels into a container so they can be
+  // injected as the "Equation" sub-tab of the combined Upgrades panel.
+  const equationContentDiv = document.createElement('div');
+  equationContentDiv.appendChild(equationPanel.element);
+  equationContentDiv.appendChild(upgradePanel.element);
+  equationContentDiv.appendChild(resourcePanel.element);
+
+  const loomPanel = createLoomPanel(dispatch, traceEffect, equationContentDiv);
+
   panelsInner.appendChild(loomPanel.element);
-  panelsInner.appendChild(upgradePanel.element);
-  panelsInner.appendChild(resourcePanel.element);
   panelsInner.appendChild(achievementsPanel.element);
   panelsInner.appendChild(settingsPanel.element);
+
+  // ── RPG container + render ──
+  const rpgContainer = document.createElement('div');
+  rpgContainer.id = 'rpg-container';
+  rpgContainer.style.display = 'none';
+  root.appendChild(rpgContainer);
+
+  const rpgRender = createRpgRender(rpgContainer);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
@@ -234,6 +248,9 @@ export async function startApp(): Promise<void> {
     equationPanel,
     achievementsPanel,
     panelsContainer,
+    mainCanvasContainer: canvasContainer,
+    rpgRender,
+    rpgContainer,
   };
 
   setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
@@ -281,6 +298,7 @@ export async function startApp(): Promise<void> {
     vermiculateEffect.reset();
     substrateEffect.reset();
     recomputeGenerators();
+    rpgRender.resize(rpgContainer);
   };
   window.addEventListener('resize', onResize);
   bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
