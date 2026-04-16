@@ -62,6 +62,13 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
     ctx.lastFrameMs.value = nowMs;
 
+    // ── RPG tab: run independent render, pause main sim ──────────
+    if (ctx.appState.activeTab === 'rpg') {
+      ctx.uiPanels.rpgRender.update(deltaMs);
+      requestAnimationFrame(gameLoop);
+      return;
+    }
+
     const simResult = simTick(ctx.appState.game, deltaMs);
 
     // Fire achievement audio events for anything newly unlocked this tick

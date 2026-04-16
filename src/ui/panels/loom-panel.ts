@@ -20,8 +20,10 @@ import {
 import type { TraceEffect } from '../../render/ui/trace-effect';
 
 /**
- * Looms panel — shows passive production Looms (Upgrades sub-tab) and
- * the Particle Life Aliven matrix (Aliven sub-tab).
+ * Looms panel — now serves as the combined Upgrades panel with three sub-tabs:
+ *   Equation  – equation forge + upgrade buttons + tier progression + resources
+ *   Loom      – passive production Looms + special one-time upgrades
+ *   Aliven    – the Particle Life Aliven matrix
  */
 export interface LoomPanel {
   element: HTMLElement;
@@ -61,7 +63,7 @@ function updateCellDisplay(cell: HTMLElement, val: number): void {
   cell.textContent = val.toFixed(2);
 }
 
-export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffect): LoomPanel {
+export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffect, equationContent?: HTMLElement): LoomPanel {
   const panel = document.createElement('div');
   panel.className = 'panel loom-panel';
 
@@ -71,9 +73,14 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   subTabBar.className = 'looms-sub-tab-bar';
   panel.appendChild(subTabBar);
 
+  const equationTabBtn = document.createElement('button');
+  equationTabBtn.className = 'looms-sub-tab-btn active';
+  equationTabBtn.textContent = 'Equation';
+  subTabBar.appendChild(equationTabBtn);
+
   const upgradesTabBtn = document.createElement('button');
-  upgradesTabBtn.className = 'looms-sub-tab-btn active';
-  upgradesTabBtn.textContent = 'Upgrades';
+  upgradesTabBtn.className = 'looms-sub-tab-btn';
+  upgradesTabBtn.textContent = 'Loom';
   subTabBar.appendChild(upgradesTabBtn);
 
   const alivenTabBtn = document.createElement('button');
@@ -81,15 +88,20 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   alivenTabBtn.textContent = 'Aliven';
   subTabBar.appendChild(alivenTabBtn);
 
-  const specialTabBtn = document.createElement('button');
-  specialTabBtn.className = 'looms-sub-tab-btn';
-  specialTabBtn.textContent = 'Special';
-  subTabBar.appendChild(specialTabBtn);
+  // ── Equation pane ─────────────────────────────────────────────
 
-  // ── Upgrades pane ────────────────────────────────────────────
+  const equationPane = document.createElement('div');
+  equationPane.className = 'looms-sub-pane';
+  if (equationContent) {
+    equationPane.appendChild(equationContent);
+  }
+  panel.appendChild(equationPane);
+
+  // ── Loom pane (passive production + special upgrades) ────────
 
   const upgradesPane = document.createElement('div');
   upgradesPane.className = 'looms-sub-pane';
+  upgradesPane.style.display = 'none';
 
   const title = document.createElement('h3');
   title.className = 'panel-title';
@@ -462,21 +474,18 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
 
   panel.appendChild(alivenPane);
 
-  // ── Special pane ─────────────────────────────────────────────
+  // ── Special upgrades section (inside Loom pane) ──────────────
 
-  const specialPane = document.createElement('div');
-  specialPane.className = 'looms-sub-pane';
-  specialPane.style.display = 'none';
-
-  const specialTitle = document.createElement('h3');
-  specialTitle.className = 'panel-title';
-  specialTitle.textContent = 'Special Upgrades';
-  specialPane.appendChild(specialTitle);
+  const specialSeparator = document.createElement('h3');
+  specialSeparator.className = 'panel-title';
+  specialSeparator.style.marginTop = '16px';
+  specialSeparator.textContent = 'Special Upgrades';
+  upgradesPane.appendChild(specialSeparator);
 
   const specialSubtitle = document.createElement('p');
   specialSubtitle.className = 'panel-subtitle';
   specialSubtitle.textContent = 'One-time upgrades that double Loom production';
-  specialPane.appendChild(specialSubtitle);
+  upgradesPane.appendChild(specialSubtitle);
 
   const specialCards: Map<string, HTMLElement> = new Map();
   const specialButtons: Map<string, HTMLButtonElement> = new Map();
@@ -518,45 +527,43 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     });
     card.appendChild(btn);
 
-    specialPane.appendChild(card);
+    upgradesPane.appendChild(card);
     specialCards.set(def.tierId, card);
     specialButtons.set(def.tierId, btn);
   }
 
-  panel.appendChild(specialPane);
-
   // ── Sub-tab switching ────────────────────────────────────────
 
-  let activeSubTab: 'upgrades' | 'aliven' | 'special' = 'upgrades';
+  let activeSubTab: 'equation' | 'loom' | 'aliven' = 'equation';
 
-  function setSubTab(tab: 'upgrades' | 'aliven' | 'special'): void {
+  function setSubTab(tab: 'equation' | 'loom' | 'aliven'): void {
     activeSubTab = tab;
-    upgradesTabBtn.classList.toggle('active', tab === 'upgrades');
+    equationTabBtn.classList.toggle('active', tab === 'equation');
+    upgradesTabBtn.classList.toggle('active', tab === 'loom');
     alivenTabBtn.classList.toggle('active', tab === 'aliven');
-    specialTabBtn.classList.toggle('active', tab === 'special');
-    upgradesPane.style.display = tab === 'upgrades' ? '' : 'none';
+    equationPane.style.display = tab === 'equation' ? '' : 'none';
+    upgradesPane.style.display = tab === 'loom' ? '' : 'none';
     alivenPane.style.display = tab === 'aliven' ? '' : 'none';
-    specialPane.style.display = tab === 'special' ? '' : 'none';
   }
 
+  equationTabBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    setSubTab('equation');
+  });
   upgradesTabBtn.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    setSubTab('upgrades');
+    setSubTab('loom');
   });
   alivenTabBtn.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     setSubTab('aliven');
   });
-  specialTabBtn.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    setSubTab('special');
-  });
 
   // ── Update ───────────────────────────────────────────────────
 
   function update(state: GameState, numberFormat: NumberFormat): void {
-    // ── Upgrades pane update ──
-    if (activeSubTab === 'upgrades') {
+    // ── Loom (upgrades) pane update ──
+    if (activeSubTab === 'loom') {
       for (const def of LOOM_DEFINITIONS) {
         const card = cards.get(def.tierId);
         const btn = upgradeButtons.get(def.tierId);
@@ -594,6 +601,42 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
         } else {
           btn.textContent = '⬆ MAX';
           btn.disabled = true;
+        }
+      }
+
+      // ── Special upgrades section update (inside Loom pane) ──
+      const unlockedCount = state.progression.unlockedTierCount;
+
+      for (const def of SPECIAL_LOOM_DEFINITIONS) {
+        const card = specialCards.get(def.tierId);
+        const btn = specialButtons.get(def.tierId);
+        if (!card || !btn) continue;
+
+        const tier = TIER_BY_ID.get(def.tierId);
+        const loom = getLoom(state.looms, def.tierId);
+        const isUnlocked = loom?.isUnlocked ?? false;
+        const tierOrderOk = tier ? tier.unlockOrder < unlockedCount : false;
+
+        card.style.display = isUnlocked && tierOrderOk ? '' : 'none';
+        if (!isUnlocked || !tierOrderOk) continue;
+
+        const purchased = isSpecialLoomPurchased(state.looms, def.tierId);
+        const currentMotes = getMotes(state.resources, def.tierId);
+        const canAfford = currentMotes >= def.cost;
+
+        const statsEl = card.querySelector('.loom-stats');
+        if (statsEl) {
+          statsEl.innerHTML = `
+            <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} / ${formatNumberAs(def.cost, numberFormat)} ${tier?.displayName ?? ''}</span>
+          `;
+        }
+
+        if (purchased) {
+          btn.textContent = '✦ Purchased';
+          btn.disabled = true;
+        } else {
+          btn.textContent = `✦ Purchase — ${formatNumberAs(def.cost, numberFormat)} ${tier?.displayName ?? ''}`;
+          btn.disabled = !canAfford;
         }
       }
     }
@@ -653,43 +696,6 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
       }
     }
 
-    // ── Special pane update ──
-    if (activeSubTab === 'special') {
-      const unlockedCount = state.progression.unlockedTierCount;
-
-      for (const def of SPECIAL_LOOM_DEFINITIONS) {
-        const card = specialCards.get(def.tierId);
-        const btn = specialButtons.get(def.tierId);
-        if (!card || !btn) continue;
-
-        const tier = TIER_BY_ID.get(def.tierId);
-        const loom = getLoom(state.looms, def.tierId);
-        const isUnlocked = loom?.isUnlocked ?? false;
-        const tierOrderOk = tier ? tier.unlockOrder < unlockedCount : false;
-
-        card.style.display = isUnlocked && tierOrderOk ? '' : 'none';
-        if (!isUnlocked || !tierOrderOk) continue;
-
-        const purchased = isSpecialLoomPurchased(state.looms, def.tierId);
-        const currentMotes = getMotes(state.resources, def.tierId);
-        const canAfford = currentMotes >= def.cost;
-
-        const statsEl = card.querySelector('.loom-stats');
-        if (statsEl) {
-          statsEl.innerHTML = `
-            <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} / ${formatNumberAs(def.cost, numberFormat)} ${tier?.displayName ?? ''}</span>
-          `;
-        }
-
-        if (purchased) {
-          btn.textContent = '✦ Purchased';
-          btn.disabled = true;
-        } else {
-          btn.textContent = `✦ Purchase — ${formatNumberAs(def.cost, numberFormat)} ${tier?.displayName ?? ''}`;
-          btn.disabled = !canAfford;
-        }
-      }
-    }
   }
 
   return { element: panel, update };

@@ -14,6 +14,7 @@ import type { SettingsPanel } from '../ui/panels/settings-panel';
 import type { LoomPanel } from '../ui/panels/loom-panel';
 import type { EquationPanel } from '../ui/panels/equation-panel';
 import type { AchievementsPanel } from '../ui/panels/achievements-panel';
+import type { RpgRender } from '../render/rpg/rpg-render';
 
 /** Mutable application-level state. */
 export interface AppState {
@@ -39,4 +40,10 @@ export interface UIPanels {
   equationPanel: EquationPanel;
   achievementsPanel: AchievementsPanel;
   panelsContainer: HTMLElement;
+  /** The main game canvas container — hidden while the RPG tab is active. */
+  mainCanvasContainer: HTMLElement;
+  /** The RPG render system and its canvas container. */
+  rpgRender: RpgRender;
+  /** Container that wraps the RPG canvas — shown only on the RPG tab. */
+  rpgContainer: HTMLElement;
 }

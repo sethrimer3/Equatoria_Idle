@@ -160,15 +160,21 @@ export function setActiveTab(
   panels.tabBar.setActiveTab(state.activeTab);
   panels.tabBar.updateAchievementIndicator(game);
 
-  // Equation tab shows canvas only; all other tabs show panel overlays
-  const shouldShowPanels = state.activeTab !== 'equation';
+  const isRpg = state.activeTab === 'rpg';
+  const isEquation = state.activeTab === 'equation';
+
+  // RPG tab hides the main canvas and shows its own canvas container.
+  // Equation tab shows the main canvas only (no panel overlay).
+  // All other tabs show the panel overlay on top of the main canvas.
+  panels.mainCanvasContainer.style.display = isRpg ? 'none' : '';
+  panels.rpgContainer.style.display = isRpg ? '' : 'none';
+
+  // Slide the panel overlay in for non-equation, non-RPG tabs.
+  const shouldShowPanels = !isEquation && !isRpg;
   panels.panelsContainer.classList.toggle('panels-visible', shouldShowPanels);
 
   // Show/hide individual panels
-  panels.equationPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
-  panels.loomPanel.element.style.display = state.activeTab === 'looms' ? '' : 'none';
-  panels.upgradePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
-  panels.resourcePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
+  panels.loomPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
   panels.achievementsPanel.element.style.display = state.activeTab === 'achievements' ? '' : 'none';
   panels.achievementsPanel.setVisible(state.activeTab === 'achievements');
   panels.settingsPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
@@ -188,9 +194,11 @@ export function updateVisiblePanels(
 ): void {
   panels.tabBar.updateAchievementIndicator(game);
 
-  if (state.activeTab === 'looms') {
+  if (state.activeTab === 'resources') {
+    // The combined Upgrades tab (loomPanel) handles all three sub-tabs:
+    // Equation, Loom, Aliven. Update the underlying panels so they stay
+    // current regardless of which sub-tab is showing.
     panels.loomPanel.update(game, numberFormat);
-  } else if (state.activeTab === 'resources') {
     panels.equationPanel.update(game, isDevMode, numberFormat);
     panels.upgradePanel.update(game, isDevMode, numberFormat);
     panels.resourcePanel.update(game, numberFormat);

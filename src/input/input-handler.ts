@@ -14,7 +14,7 @@ export type GameAction =
   | { kind: 'set_interaction_matrix_cell'; row: number; col: number; value: number }
   | { kind: 'reset_interaction_matrix' };
 
-export type TabId = 'equation' | 'looms' | 'resources' | 'achievements' | 'settings';
+export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 
 export type ActionHandler = (action: GameAction) => void;
 
