@@ -13,6 +13,7 @@ import type { CanvasContext } from '../canvas';
 import type { EquatoriaParticle } from './particle-types';
 import type { ParticleDragState } from '../../input/particle-drag';
 import { INTERACTION_RADIUS_FRACTION } from '../../data/particles/particle-config';
+import { parseHexToRgb } from '../assets/color-utils';
 
 // ─── Tuning constants ────────────────────────────────────────────
 
@@ -30,23 +31,6 @@ const TRAIL_STEPS = 20;
  * Larger = longer tail arc.
  */
 const TRAIL_ANGLE_SPREAD = Math.PI * 0.55;
-
-// ─── Color parsing helper ────────────────────────────────────────
-
-const _rgbCache = new Map<string, [number, number, number]>();
-
-function hexToRgb(color: string): [number, number, number] {
-  let rgb = _rgbCache.get(color);
-  if (!rgb) {
-    const h = color.startsWith('#') ? color.slice(1) : color;
-    const r = parseInt(h.slice(0, 2), 16) || 255;
-    const g = parseInt(h.slice(2, 4), 16) || 255;
-    const b = parseInt(h.slice(4, 6), 16) || 255;
-    rgb = [r, g, b];
-    _rgbCache.set(color, rgb);
-  }
-  return rgb;
-}
 
 // ─── Main draw function ──────────────────────────────────────────
 
@@ -103,7 +87,7 @@ export function drawGrabVisual(
 
   for (let i = 0; i < orbCount; i++) {
     const color = tierColors[i];
-    const [r, g, b] = hexToRgb(color);
+    const [r, g, b] = parseHexToRgb(color);
 
     // Each orb is evenly spaced and all rotate together counterclockwise.
     // Counterclockwise in canvas coords = decreasing angle over time.

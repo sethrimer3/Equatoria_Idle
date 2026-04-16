@@ -199,6 +199,12 @@
 ### src/render/assets/asset-loader.ts
 - Image loading utility with caching.
 
+### src/render/assets/color-utils.ts
+- Shared color parsing utilities for the render layer.
+- `colorWithAlpha(color, alpha)` — converts `#RRGGBB` or `rgb()` strings to `rgba()`, used by generator and forge renderers.
+- `parseHexToRgb(color)` — parses a hex color to a cached `[r, g, b]` tuple, used by particle renderers.
+- Eliminates duplicate hex-parsing implementations previously found in `particle-renderer.ts`, `particle-grab-visual.ts`, `generator-renderer.ts`, and `forge-renderer.ts`.
+
 ### src/render/background/background-animation.ts
 - Background animation player for 2402-frame WebP sequence.
 
@@ -257,6 +263,7 @@
 
 ### src/render/particles/spatial-grid.ts
 - Numeric-keyed spatial hash grid for collision queries.
+- `gridKey(cx, cy)` — exported shared key function (also used by `particle-life.ts` and `euler-fluid.ts`).
 - `buildSpatialGrid()`, `forEachNearby()` — callback-based (no result array allocation).
 
 ### src/render/particles/particle-system.ts
