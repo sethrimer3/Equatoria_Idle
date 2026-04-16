@@ -15,6 +15,7 @@ import type { CanvasContext } from '../canvas';
 import type { EquatoriaParticle, ActiveMerge, Shockwave, ParticleRenderOptions } from './particle-types';
 import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
 import { getTrailPosition } from './particle-physics';
+import { parseHexToRgb } from '../assets/color-utils';
 
 // ─── Tier index constants ───────────────────────────────────────
 const DIAMOND_TIER_INDEX = 9;
@@ -35,25 +36,6 @@ export function updateParticleRendererTime(deltaMs: number): void {
 /** Returns the accumulated animation time in milliseconds (for synchronized visual effects). */
 export function getParticleRendererAnimTimeMs(): number {
   return _animTimeMs;
-}
-
-// ─── Hex color → RGB cache ──────────────────────────────────────
-
-const _colorRgbCache = new Map<string, [number, number, number]>();
-
-function getCachedRgb(colorString: string): [number, number, number] {
-  let rgb = _colorRgbCache.get(colorString);
-  if (!rgb) {
-    // All tier colors are defined as 6-digit hex (#RRGGBB) in tier-definitions.ts.
-    // Parsing is therefore safe; non-hex values fall back to white (255,255,255).
-    const h = colorString.startsWith('#') ? colorString.slice(1) : colorString;
-    const r = parseInt(h.slice(0, 2), 16) || 255;
-    const g = parseInt(h.slice(2, 4), 16) || 255;
-    const b = parseInt(h.slice(4, 6), 16) || 255;
-    rgb = [r, g, b];
-    _colorRgbCache.set(colorString, rgb);
-  }
-  return rgb;
 }
 
 // ─── Batch data structure ───────────────────────────────────────
@@ -143,7 +125,7 @@ function drawActiveMergeTrails(
     const drawProgress = isDrawPhase ? elapsed / drawDur : 1.0;
     const eraseProgress = isDrawPhase ? 0.0 : (elapsed - drawDur) / eraseDur;
 
-    const [r, g, b] = getCachedRgb(merge.trailColor);
+    const [r, g, b] = parseHexToRgb(merge.trailColor);
 
     for (let ti = 0; ti < merge.trailCount; ti++) {
       const sx = merge.trailStartXY[ti * 2];
