@@ -6,6 +6,7 @@ import { SPAWNER_SIZE } from '../../data/particles/particle-config';
 import { getGeneratorSpritePath } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 import { getTintedSpriteCanvas } from '../assets/sprite-tint';
+import { colorWithAlpha } from '../assets/color-utils';
 
 // Module-level animation clock advanced by drawGenerators callers
 let _genAnimTimeMs = 0;
@@ -20,11 +21,6 @@ const HUE_CYCLE_DEG_PER_SEC = 90;
 
 /** Visual influence circle is drawn at 75 % of the physics range. */
 const INFLUENCE_VISUAL_SCALE = 0.75;
-
-/** Matches a hex color like #RRGGBB for `colorWithAlpha`. */
-const HEX_COLOR_RE = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
-/** Matches rgb(r,g,b) or rgba(r,g,b,x) for `colorWithAlpha`. */
-const RGB_COLOR_RE = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/;
 
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
@@ -193,28 +189,6 @@ function drawRangeSwirl(
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
-}
-
-/**
- * Convert a CSS color (hex or rgb/rgba string) to an rgba string with the
- * given alpha component. Supports #RRGGBB and rgb(...) inputs.
- */
-function colorWithAlpha(color: string, a: number): string {
-  // Hex #RRGGBB
-  const hexMatch = HEX_COLOR_RE.exec(color);
-  if (hexMatch) {
-    const r = parseInt(hexMatch[1], 16);
-    const g = parseInt(hexMatch[2], 16);
-    const b = parseInt(hexMatch[3], 16);
-    return `rgba(${r},${g},${b},${a})`;
-  }
-  // rgb(r,g,b) or rgba(r,g,b,x) — strip existing alpha and reapply
-  const rgbMatch = RGB_COLOR_RE.exec(color);
-  if (rgbMatch) {
-    return `rgba(${rgbMatch[1]},${rgbMatch[2]},${rgbMatch[3]},${a})`;
-  }
-  // Fallback: just return the color as-is (opacity handled by globalAlpha)
-  return color;
 }
 
 function drawGeneratorFallback(

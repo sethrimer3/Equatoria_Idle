@@ -11,7 +11,7 @@ import { SHOCKWAVE_MAX_RADIUS } from '../../data/particles/particle-config';
 export const GRID_CELL_SIZE = SHOCKWAVE_MAX_RADIUS;
 
 /** Interleave two 16-bit signed integers into a 32-bit numeric key. */
-function gridKey(cx: number, cy: number): number {
+export function gridKey(cx: number, cy: number): number {
   return ((cx & 0xFFFF) << 16) | (cy & 0xFFFF);
 }
 

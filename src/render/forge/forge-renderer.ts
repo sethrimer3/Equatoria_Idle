@@ -15,6 +15,7 @@ import {
   FORGE_SPRITE_PATH,
 } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
+import { colorWithAlpha } from '../assets/color-utils';
 
 /** Visual influence circle is drawn at 75 % of the physics range. */
 const FORGE_INFLUENCE_VISUAL_SCALE = 0.75;
@@ -102,9 +103,9 @@ function drawForgeInfluenceSwirl(
         x + Math.cos(endAngle) * range,
         y + Math.sin(endAngle) * range,
       );
-      grad.addColorStop(0, hexWithAlpha(color, 0));
-      grad.addColorStop(0.5, hexWithAlpha(colorNext, 1));
-      grad.addColorStop(1, hexWithAlpha(color, 0));
+      grad.addColorStop(0, colorWithAlpha(color, 0));
+      grad.addColorStop(0.5, colorWithAlpha(colorNext, 1));
+      grad.addColorStop(1, colorWithAlpha(color, 0));
 
       ctx.strokeStyle = grad;
       ctx.lineWidth = 1.5;
@@ -124,16 +125,6 @@ function drawForgeInfluenceSwirl(
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
-}
-
-/** Matches a hex color like #RRGGBB for `hexWithAlpha`. */
-const HEX_COLOR_RE = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
-
-/** Parse a #RRGGBB hex color and return rgba(...) with the given alpha. */
-function hexWithAlpha(hex: string, a: number): string {
-  const m = HEX_COLOR_RE.exec(hex);
-  if (!m) return hex;
-  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${a})`;
 }
 
 function drawForgeSprite(

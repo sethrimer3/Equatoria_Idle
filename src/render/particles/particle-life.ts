@@ -36,15 +36,12 @@ import {
 } from '../../data/particles/particle-config';
 import type { EquatoriaParticle } from './particle-types';
 import { getSizePixels } from '../../data/particles/size-tiers';
+import { gridKey } from './spatial-grid';
 
 // ─── Spatial grid (module-local, zero-allocation reuse) ──────────
 
 const INV_CELL = 1 / PL_GRID_CELL_SIZE;
 const R2 = PL_INTERACTION_RADIUS * PL_INTERACTION_RADIUS;
-
-function gridKey(cx: number, cy: number): number {
-  return ((cx & 0xFFFF) << 16) | (cy & 0xFFFF);
-}
 
 /** Reusable grid structure — cleared each frame, not reallocated. */
 const _gridCells = new Map<number, EquatoriaParticle[]>();
