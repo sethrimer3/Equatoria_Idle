@@ -271,8 +271,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   /**
    * Fires the player's current weapon at the nearest enemy within range.
-   * Handles all WeaponEffect variants. Enemies are removed after the attack
-   * loop via removeDeadEnemies().
+   * Handles all WeaponEffect variants. Call removeDeadEnemies() after this
+   * to clean up any enemies whose HP dropped to zero.
    */
   function performPlayerAttack(): void {
     if (enemies.length === 0) return;
@@ -284,10 +284,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     if (effect.kind === 'aoe') {
       // Hit every enemy within aoeRadius of the player.
-      const r = effect.aoeRadius;
+      const aoeRadius = effect.aoeRadius;
       for (const enemy of enemies) {
         const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
-        if (dx * dx + dy * dy <= r * r) {
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
           damageEnemy(enemy, rawDamage, 0);
           spawnHitVisuals(enemy.x, enemy.y, '#e6c850');
         }
