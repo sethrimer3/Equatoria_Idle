@@ -52,6 +52,11 @@ import {
   tryAliven,
   type AlivenState,
 } from './aliven';
+import {
+  createRpgSimState,
+  getWaveBoostMultiplier,
+  type RpgSimState,
+} from './rpg';
 
 // ─── Aggregate game state ───────────────────────────────────────
 
@@ -63,6 +68,7 @@ export interface GameState {
   looms: LoomState;
   achievements: AchievementState;
   aliven: AlivenState;
+  rpg: RpgSimState;
   lastAutoTapMs: number;
   lastSaveMs: number;
   elapsedMs: number;
@@ -77,6 +83,7 @@ export function createGameState(): GameState {
     looms: createLoomState(),
     achievements: createAchievementState(),
     aliven: createAlivenState(),
+    rpg: createRpgSimState(),
     lastAutoTapMs: 0,
     lastSaveMs: 0,
     elapsedMs: 0,
@@ -204,8 +211,9 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
 
   const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map(), newlyUnlockedAchievementIds: [] };
 
-  // Tick Looms — passive production (with achievement loom bonus)
-  const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus);
+  // Tick Looms — passive production (with achievement loom bonus × wave boost)
+  const waveBoost = getWaveBoostMultiplier(state.rpg);
+  const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus * waveBoost);
   for (const [tierId, amount] of loomProduction) {
     addMotes(state.resources, tierId, amount);
   }

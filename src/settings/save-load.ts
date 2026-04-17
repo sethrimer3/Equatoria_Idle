@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 9;
+const SAVE_VERSION = 10;
 
 interface SaveData {
   version: number;
@@ -54,6 +54,12 @@ interface SaveData {
     alivenedTierIds: string[];
     /** v8+: flat 169-element array for the 13×13 interaction matrix. Absent in older saves. */
     interactionMatrix?: number[];
+  };
+  /** v10+: RPG persistent state. Absent in older saves. */
+  rpg?: {
+    highestWaveReached: number;
+    purchasedWeaponIds: string[];
+    equippedWeaponId: string | null;
   };
   elapsedMs: number;
 }
@@ -112,6 +118,11 @@ export function serializeGameState(state: GameState): SaveData {
     aliven: {
       alivenedTierIds: Array.from(state.aliven.alivenedTierIds),
       interactionMatrix: serializeInteractionMatrix(state.aliven.interactionMatrix),
+    },
+    rpg: {
+      highestWaveReached: state.rpg.highestWaveReached,
+      purchasedWeaponIds: Array.from(state.rpg.purchasedWeaponIds),
+      equippedWeaponId: state.rpg.equippedWeaponId,
     },
     elapsedMs: state.elapsedMs,
   };
@@ -219,6 +230,17 @@ export function deserializeGameState(data: SaveData): GameState {
     }
   }
 
+  // RPG state (v10+; older saves default to no progress)
+  if (data.rpg) {
+    state.rpg.highestWaveReached = data.rpg.highestWaveReached ?? 0;
+    if (data.rpg.purchasedWeaponIds) {
+      for (const id of data.rpg.purchasedWeaponIds) {
+        state.rpg.purchasedWeaponIds.add(id);
+      }
+    }
+    state.rpg.equippedWeaponId = data.rpg.equippedWeaponId ?? null;
+  }
+
   return state;
 }
 
@@ -239,8 +261,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–8 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(data.version)) return null;
+    // Accept versions 1–10 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

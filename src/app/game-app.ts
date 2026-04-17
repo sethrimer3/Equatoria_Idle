@@ -40,6 +40,7 @@ import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
 import { createAudioSystem } from '../audio';
 import { createTraceEffect } from '../render/ui/trace-effect';
 import { createRpgRender } from '../render/rpg/rpg-render';
+import { createWeaponStorePanel } from '../ui/panels/weapon-store-panel';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
@@ -234,10 +235,26 @@ export async function startApp(): Promise<void> {
   rpgContainer.style.display = 'none';
   root.appendChild(rpgContainer);
 
-  const rpgRender = createRpgRender(rpgContainer);
+  const rpgRender = createRpgRender(rpgContainer, appState.game.rpg);
   // Stats panel is positioned in the root (above the tab bar); visibility
   // is toggled by setActiveTab alongside rpgContainer.
   root.appendChild(rpgRender.statsPanel);
+
+  // ── Weapon store panel (RPG tab overlay) ──
+  const weaponStorePanel = createWeaponStorePanel(dispatch);
+  weaponStorePanel.element.style.display = 'none';
+  root.appendChild(weaponStorePanel.element);
+
+  // ── Shop toggle button (appended to the stats panel by the renderer) ──
+  const shopToggleBtn = document.createElement('button');
+  shopToggleBtn.className = 'rpg-shop-btn';
+  shopToggleBtn.textContent = '🛒 Shop';
+  shopToggleBtn.setAttribute('aria-label', 'Open weapon store');
+  shopToggleBtn.addEventListener('click', () => {
+    const nowVisible = !weaponStorePanel.isVisible;
+    weaponStorePanel.setVisible(nowVisible);
+  });
+  rpgRender.statsPanel.appendChild(shopToggleBtn);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
@@ -254,6 +271,7 @@ export async function startApp(): Promise<void> {
     mainCanvasContainer: canvasContainer,
     rpgRender,
     rpgContainer,
+    weaponStorePanel,
   };
 
   setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);

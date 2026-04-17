@@ -16,6 +16,8 @@ import {
   claimAchievement,
 } from '../sim';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
+import { getMotes, spendMotes } from '../sim/resources';
+import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
@@ -132,6 +134,22 @@ export function handleAction(
     case 'claim_achievement':
       claimAchievement(state.game.achievements, action.achievementId);
       break;
+    case 'purchase_weapon': {
+      const weaponDef = WEAPON_BY_ID.get(action.weaponId);
+      if (!weaponDef) { audioSystem?.onError(); break; }
+      if (state.game.rpg.purchasedWeaponIds.has(action.weaponId)) break;
+      const balance = getMotes(state.game.resources, weaponDef.costTierId);
+      if (balance < weaponDef.cost) { audioSystem?.onError(); break; }
+      spendMotes(state.game.resources, weaponDef.costTierId, weaponDef.cost);
+      state.game.rpg.purchasedWeaponIds.add(action.weaponId);
+      audioSystem?.onBuyLoomUpgrade();
+      break;
+    }
+    case 'equip_weapon': {
+      if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
+      state.game.rpg.equippedWeaponId = action.weaponId;
+      break;
+    }
     case 'set_active_tab':
       state.activeTab = action.tabId;
       audioSystem?.onTabChange(action.tabId);
@@ -170,6 +188,8 @@ export function setActiveTab(
   panels.rpgContainer.style.display = isRpg ? '' : 'none';
   panels.rpgRender.statsPanel.style.display = isRpg ? '' : 'none';
   panels.rpgRender.setActive(isRpg);
+  // Hide weapon store when leaving RPG tab.
+  if (!isRpg) panels.weaponStorePanel.setVisible(false);
   // Resize now that the container is visible so the letterbox layout is correct.
   if (isRpg) {
     panels.rpgRender.resize(panels.rpgContainer);
@@ -210,5 +230,9 @@ export function updateVisiblePanels(
     panels.resourcePanel.update(game, numberFormat);
   } else if (state.activeTab === 'achievements') {
     panels.achievementsPanel.update(game, numberFormat);
+  } else if (state.activeTab === 'rpg') {
+    // Weapon store is only re-rendered when visible; calling update here
+    // pre-populates its state so it shows current data immediately when opened.
+    panels.weaponStorePanel.update(game.rpg, game.resources, numberFormat);
   }
 }

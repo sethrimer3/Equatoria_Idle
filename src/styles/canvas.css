@@ -129,3 +129,33 @@
   color: #7ce87c;
 }
 
+.rpg-stat-value--wave {
+  color: #c9a84c;
+}
+
+.rpg-stat-value--boost {
+  color: #64c8ff;
+  font-size: 14px;
+}
+
+/* ── RPG shop toggle button ────────────────────────────────────── */
+.rpg-shop-btn {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 12px;
+  padding: 6px 12px;
+  background: rgba(12, 12, 20, 0.92);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 8px;
+  color: var(--accent);
+  font-family: var(--font-primary);
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 4;
+  touch-action: manipulation;
+}
+
+.rpg-shop-btn:active {
+  background: rgba(201, 168, 76, 0.15);
+}
+
