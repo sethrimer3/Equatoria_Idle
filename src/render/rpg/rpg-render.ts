@@ -60,12 +60,30 @@ const LASER_PATROL_DAMPING    = 0.97;
 const LASER_PATROL_TURN_MS    = 2500;  // ms between random direction changes
 
 // ── Enemy spawning ──
-const ENEMY_SPAWN_INTERVAL_MS = 5000;
-const ENEMY_MAX_COUNT         =    5;
-const ENEMY_MIN_SPAWN_DIST    =  80;   // min distance from player on spawn
+const ENEMY_SPAWN_INTERVAL_MS       = 5000;
+const ENEMY_MAX_COUNT               =    5;
+const ENEMY_MIN_SPAWN_DIST          =   80;  // min distance from player on spawn
+/** Fraction of ENEMY_SPAWN_INTERVAL_MS used for the very first spawn. */
+const FIRST_ENEMY_SPAWN_DELAY_FACTOR = 0.5;
 
 // ── Hitbox ──
 const PLAYER_HIT_RADIUS = 4;           // forgiving overlap radius for combat
+
+// ── Attack trail visual ──
+/** Per-frame deceleration factor applied during the pre-dash stop phase. */
+const LASER_DECEL_FACTOR             = 0.80;
+/** Random bend applied to the bezier control angle (radians). */
+const ATTACK_TRAIL_CURVE_VARIATION   = 0.35;
+/** Scale factor converting geometric distance to dash-length (accounts for bezier arc). */
+const ATTACK_TRAIL_LENGTH_SCALE      = 1.1;
+/** Base alpha for the attack trail during the dash phase. */
+const ATTACK_TRAIL_ALPHA             = 0.9;
+/** How much the erase phase dims the trail at full progress (0 = none, 1 = fully hidden). */
+const ATTACK_TRAIL_ERASE_FADE        = 0.5;
+/** Multiplier range low-end for the patrol turn delay (× base interval). */
+const PATROL_TURN_DELAY_MIN_FACTOR   = 0.6;
+/** Random range added on top of the low-end factor. */
+const PATROL_TURN_DELAY_RANGE_FACTOR = 0.8;
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -226,7 +244,7 @@ export function createRpgRender(container: HTMLElement): RpgRender {
   };
 
   const enemies: LaserEnemy[] = [];
-  let spawnTimerMs      = ENEMY_SPAWN_INTERVAL_MS * 0.5; // first spawn at half interval
+  let spawnTimerMs      = ENEMY_SPAWN_INTERVAL_MS * FIRST_ENEMY_SPAWN_DELAY_FACTOR;
   let glowTimeS         = 0;
   let _isActive         = false;
 
@@ -379,7 +397,7 @@ export function createRpgRender(container: HTMLElement): RpgRender {
       const angle = Math.random() * Math.PI * 2;
       enemy.vx = Math.cos(angle) * LASER_PATROL_SPEED_MAX;
       enemy.vy = Math.sin(angle) * LASER_PATROL_SPEED_MAX;
-      enemy.patrolTimerMs = LASER_PATROL_TURN_MS * (0.6 + Math.random() * 0.8);
+      enemy.patrolTimerMs = LASER_PATROL_TURN_MS * (PATROL_TURN_DELAY_MIN_FACTOR + Math.random() * PATROL_TURN_DELAY_RANGE_FACTOR);
     }
 
     const dampFactor = Math.pow(LASER_PATROL_DAMPING, dt);
@@ -406,7 +424,7 @@ export function createRpgRender(container: HTMLElement): RpgRender {
     enemy.phaseElapsedMs += deltaMs;
 
     // Aggressive exponential deceleration to a near-stop over the phase duration.
-    const decelFactor = Math.pow(0.80, dt);
+    const decelFactor = Math.pow(LASER_DECEL_FACTOR, dt);
     enemy.vx *= decelFactor;
     enemy.vy *= decelFactor;
     enemy.x  += enemy.vx * dt;
@@ -442,7 +460,7 @@ export function createRpgRender(container: HTMLElement): RpgRender {
         startY:       enemy.y,
         endX:         enemy.x + enemy.dashDirX * LASER_DASH_DISTANCE,
         endY:         enemy.y + enemy.dashDirY * LASER_DASH_DISTANCE,
-        controlAngle: (Math.random() - 0.5) * 0.35,
+        controlAngle: (Math.random() - 0.5) * ATTACK_TRAIL_CURVE_VARIATION,
         trailStartMs: performance.now(),
         trailEndMs:   Infinity,
       };
@@ -612,7 +630,7 @@ export function createRpgRender(container: HTMLElement): RpgRender {
     const controlY   = midY + perpY * curveOffset;
 
     // Dash length slightly exceeds the geometric distance (covers bezier arc length).
-    const dashLen   = L * 1.1;
+    const dashLen   = L * ATTACK_TRAIL_LENGTH_SCALE;
     const dashOffset = isDashing
       ? dashLen * (1 - drawProgress)   // trail grows from start toward end
       : -(dashLen * eraseProgress);    // trail shrinks from start
@@ -623,7 +641,9 @@ export function createRpgRender(container: HTMLElement): RpgRender {
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    const alpha = isDashing ? 0.9 : 0.9 * (1 - eraseProgress * 0.5);
+    const alpha = isDashing
+      ? ATTACK_TRAIL_ALPHA
+      : ATTACK_TRAIL_ALPHA * (1 - eraseProgress * ATTACK_TRAIL_ERASE_FADE);
 
     // Glow pass.
     ctx.globalAlpha = alpha;

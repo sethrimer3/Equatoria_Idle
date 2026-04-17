@@ -21,6 +21,9 @@
 
 ### src/styles/canvas.css
 - Background animation canvas, vermiculate canvas, `#canvas-container`, `#game-canvas`.
+- `#rpg-container` — flex-centred container for the RPG canvas (height excludes stats panel + tab bar).
+- `#rpg-canvas` — fixed `aspect-ratio: 320/568` with `max-width/max-height: 100%` for uniform letterbox/pillarbox scaling on desktop; no independent X/Y stretch.
+- `#rpg-stats-panel` — DOM stats panel (3×tab-height) above the navigation bar, with `.rpg-stat`, `.rpg-stat-label`, `.rpg-stat-value` child classes.
 
 ### src/styles/panels.css
 - `#panels-container` overlay, panel base, upgrade buttons, resource rows, settings controls, credits.
@@ -48,7 +51,7 @@
 
 ### src/app/app-actions.ts
 - `handleAction()` — central action dispatcher.
-- `setActiveTab()` — panel visibility switching.
+- `setActiveTab()` — panel visibility switching; also calls `rpgRender.setActive()` and `rpgRender.resize()` when the RPG tab is activated so the letterbox layout is correct immediately.
 - `updateVisiblePanels()` — refreshes the currently active panel.
 
 ### src/app/app-game-loop.ts
@@ -309,6 +312,27 @@
 - Influence circle is now a bidirectional fire-color swirl at 75% of `MAX_FORGE_ATTRACTION_DISTANCE`.
 - `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
+
+### src/render/rpg/rpg-render.ts
+- Independent RPG canvas rendering system for the RPG tab.
+- Fixed internal resolution: `INTERNAL_WIDTH = 320`, `INTERNAL_HEIGHT = 568` (portrait 9:16).  CSS `aspect-ratio` provides letterbox/pillarbox scaling so pixels are always uniform on desktop.
+- **Player mote** — 3×3 sand-colored mote with:
+  - Touch joystick (appears at tap position; velocity capped to `JOYSTICK_OUTER_RADIUS`).
+  - Keyboard controls: WASD and Arrow keys (desktop); uses `e.code` for layout-independence.
+  - Always-on pulsing glow aura (sinusoidal, independent of movement).
+  - Long comet trail ring-buffer (capacity 60).
+  - Starting stats: HP=100, ATK=10, DEF=5.
+- **Laser enemy** — 2×2 red mote, HP=20, ATK=10, DEF=5, with five-phase AI:
+  - `idle` — random-wander patrol.
+  - `decelerate` — 0.5 s smooth stop after player enters 80 px attack radius (target position locked at entry).
+  - `dash` — 100 px dash at `LASER_DASH_SPEED`; damages player on hitbox overlap; emits bezier lineDash attack trail.
+  - `overshoot` — post-dash inertia with aggressive damping.
+  - `cooldown` — 1.25 s idle before next attack cycle.
+- **Attack trail** — bezier `quadraticCurveTo` with lineDashOffset animation (grow while dashing, erase after); matches the visual style of the mote-merge suction trail in `particle-renderer.ts`.
+- **Spawn system** — periodic spawn every 5 s (first at 2.5 s), max 5 enemies, min 80 px from player.
+- **Stats panel** — DOM element (`#rpg-stats-panel`) returned via `RpgRender.statsPanel`; shows HP/ATK/DEF live; callers append to root and toggle display with the tab.
+- Exports `createRpgRender(container)` factory and `RpgRender` interface.
+- Key interface methods: `update(deltaMs)`, `resize(container)`, `setActive(active)`.
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
