@@ -175,6 +175,8 @@ export interface RpgRender {
   update(deltaMs: number): void;
   resize(container: HTMLElement): void;
   setActive(active: boolean): void;
+  /** Re-reads rpgSimState.equippedWeaponId and immediately updates playerStats ATK/DEF. */
+  notifyEquip(): void;
 }
 
 function makeAttackTrail(): AttackTrailState {
@@ -932,6 +934,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
         }
       }
+    },
+
+    notifyEquip(): void {
+      applyEquipmentStats();
     },
   };
 }

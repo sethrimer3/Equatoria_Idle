@@ -57,7 +57,7 @@ export interface WeaponDefinition {
 // ─── Weapon catalogue ─────────────────────────────────────────────
 
 export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
-  // ── Starter / early game ──────────────────────────────────────
+  // ── Tier 0: Sand ──────────────────────────────────────────────
   {
     id: 'sand_blade',
     name: 'Sand Blade',
@@ -69,6 +69,21 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
       effect: { kind: 'single' },
     },
   },
+
+  // ── Tier 1: Quartz ────────────────────────────────────────────
+  {
+    id: 'quartz_shard',
+    name: 'Quartz Shard',
+    description: 'A crystal-clear shard that cuts with precision. Better damage and range than the Sand Blade.',
+    costTierId: 'quartz',
+    cost: 300,
+    stats: {
+      damage: 8, cooldownMs: 1100, range: 70, defBonus: 1,
+      effect: { kind: 'single' },
+    },
+  },
+
+  // ── Tier 2: Ruby ──────────────────────────────────────────────
   {
     id: 'ruby_lance',
     name: 'Ruby Lance',
@@ -80,6 +95,8 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
       effect: { kind: 'single' },
     },
   },
+
+  // ── Tier 3: Sunstone ──────────────────────────────────────────
   {
     id: 'sunstone_ward',
     name: 'Sunstone Ward',
@@ -92,22 +109,7 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     },
   },
 
-  // ── Multi-target (passive-play friendly) ──────────────────────
-  {
-    id: 'emerald_spray',
-    name: 'Emerald Spray',
-    description:
-      'Scatter-fires at the 3 nearest enemies each burst. Weaker per-hit but excellent ' +
-      'against packed waves — no manual targeting needed.',
-    costTierId: 'emerald',
-    cost: 100,
-    stats: {
-      damage: 7, cooldownMs: 1400, range: 90, defBonus: 0,
-      effect: { kind: 'multi', targetCount: 3 },
-    },
-  },
-
-  // ── AoE (active-play: get close to the pack) ──────────────────
+  // ── Tier 4: Citrine ───────────────────────────────────────────
   {
     id: 'citrine_nova',
     name: 'Citrine Nova',
@@ -122,7 +124,22 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     },
   },
 
-  // ── DEF-piercing (burst single-target) ────────────────────────
+  // ── Tier 5: Emerald ───────────────────────────────────────────
+  {
+    id: 'emerald_spray',
+    name: 'Emerald Spray',
+    description:
+      'Scatter-fires at the 3 nearest enemies each burst. Weaker per-hit but excellent ' +
+      'against packed waves — no manual targeting needed.',
+    costTierId: 'emerald',
+    cost: 100,
+    stats: {
+      damage: 7, cooldownMs: 1400, range: 90, defBonus: 0,
+      effect: { kind: 'multi', targetCount: 3 },
+    },
+  },
+
+  // ── Tier 6: Sapphire ──────────────────────────────────────────
   {
     id: 'sapphire_spike',
     name: 'Sapphire Spike',
@@ -134,6 +151,66 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     stats: {
       damage: 18, cooldownMs: 2200, range: 100, defBonus: 0,
       effect: { kind: 'piercing', defPierceRatio: 0.6 },
+    },
+  },
+
+  // ── Tier 7: Iolite ────────────────────────────────────────────
+  {
+    id: 'iolite_volley',
+    name: 'Iolite Volley',
+    description:
+      'Fires a volley that strikes the 4 nearest enemies simultaneously. ' +
+      'Fast cooldown makes it effective against relentless multi-enemy waves.',
+    costTierId: 'iolite',
+    cost: 40,
+    stats: {
+      damage: 10, cooldownMs: 1100, range: 95, defBonus: 1,
+      effect: { kind: 'multi', targetCount: 4 },
+    },
+  },
+
+  // ── Tier 8: Amethyst ──────────────────────────────────────────
+  {
+    id: 'amethyst_pierce',
+    name: 'Amethyst Pierce',
+    description:
+      'A deep-violet lance that bypasses 75 % of enemy DEF. Devastating against ' +
+      'heavily armoured late-game foes.',
+    costTierId: 'amethyst',
+    cost: 30,
+    stats: {
+      damage: 25, cooldownMs: 2000, range: 130, defBonus: 3,
+      effect: { kind: 'piercing', defPierceRatio: 0.75 },
+    },
+  },
+
+  // ── Tier 9: Diamond ───────────────────────────────────────────
+  {
+    id: 'diamond_bastion',
+    name: 'Diamond Bastion',
+    description:
+      'An impenetrable diamond core that fires rapid precision bursts. ' +
+      'Exceptional DEF bonus keeps you alive through the toughest waves.',
+    costTierId: 'diamond',
+    cost: 20,
+    stats: {
+      damage: 10, cooldownMs: 800, range: 65, defBonus: 15,
+      effect: { kind: 'single' },
+    },
+  },
+
+  // ── Tier 10: Nullstone ────────────────────────────────────────
+  {
+    id: 'nullstone_nova',
+    name: 'Nullstone Nova',
+    description:
+      'A void-energy detonation that obliterates ALL enemies within 85 px. ' +
+      'The most powerful area weapon — walk into enemy clusters and detonate.',
+    costTierId: 'nullstone',
+    cost: 10,
+    stats: {
+      damage: 50, cooldownMs: 2000, range: 85, defBonus: 5,
+      effect: { kind: 'aoe', aoeRadius: 85 },
     },
   },
 ];

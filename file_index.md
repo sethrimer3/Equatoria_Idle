@@ -322,7 +322,7 @@
 - **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
 - **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
 - **Stats panel** — DOM `#rpg-stats-panel` with five widgets: HP / ATK / DEF / WAVE / BOOST (loom boost %).  Callers append to root and toggle display with the tab.
-- **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped.
+- **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped. Called on `setActive(true)`, `doRestart()`, and via the public `notifyEquip()` method so stats update immediately when the player equips mid-run.
 - Accepts `rpgSimState: RpgSimState` as second factory argument so it can mutate persistent wave progress directly.
 - Exports `createRpgRender(container, rpgSimState)` factory and `RpgRender` interface.
 
@@ -332,8 +332,11 @@
 - `getWaveDefinition(waveNumber)` — returns predefined definition or generates one procedurally for waves beyond 10.
 
 ### src/data/rpg/weapon-definitions.ts
+- `WeaponEffect` — discriminated union: `single | multi | aoe | piercing`.
 - `WeaponStats` and `WeaponDefinition` types.
-- `WEAPON_DEFINITIONS` — three initial weapons: Sand Blade, Ruby Lance, Sunstone Ward.
+- `WEAPON_DEFINITIONS` — 11 weapons covering every non-secret tier in unlock order (Sand → Nullstone):
+  `sand_blade`, `quartz_shard`, `ruby_lance`, `sunstone_ward`, `citrine_nova`, `emerald_spray`,
+  `sapphire_spike`, `iolite_volley`, `amethyst_pierce`, `diamond_bastion`, `nullstone_nova`.
 - `WEAPON_BY_ID` — O(1) lookup map.
 
 ### src/sim/rpg/rpg-state.ts
