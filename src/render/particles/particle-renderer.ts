@@ -12,9 +12,10 @@
  */
 
 import type { CanvasContext } from '../canvas';
-import type { EquatoriaParticle, Shockwave, ParticleRenderOptions } from './particle-types';
+import type { EquatoriaParticle, ActiveMerge, Shockwave, ParticleRenderOptions } from './particle-types';
 import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
 import { getTrailPosition } from './particle-physics';
+import { parseHexToRgb } from '../assets/color-utils';
 
 // ─── Tier index constants ───────────────────────────────────────
 const DIAMOND_TIER_INDEX = 9;
@@ -30,6 +31,11 @@ let _animTimeMs = 0;
 /** Call once per frame with the elapsed time in milliseconds. */
 export function updateParticleRendererTime(deltaMs: number): void {
   _animTimeMs += deltaMs;
+}
+
+/** Returns the accumulated animation time in milliseconds (for synchronized visual effects). */
+export function getParticleRendererAnimTimeMs(): number {
+  return _animTimeMs;
 }
 
 // ─── Batch data structure ───────────────────────────────────────
@@ -81,20 +87,123 @@ function pushPosition(batch: DrawBatch, x: number, y: number): void {
  */
 const _trailPos = { x: 0, y: 0 };
 
+// ─── Animated merge trail rendering ──────────────────────────────
+
+/**
+ * Draw animated trails for all active suction merges.
+ *
+ * For each merge up to MERGE_TRAIL_COUNT trails are drawn as quadratic bezier
+ * curves from the particle's pre-teleport position to the generator.
+ *
+ * Each trail has two phases driven by lineDashOffset:
+ *   Draw  (0 → drawDur):  trail grows from tail (particle start) toward tip (generator).
+ *   Erase (0 → eraseDur): trail shrinks from tail, leaving tip last.
+ *
+ * lineDashOffset derivation (path length ≈ L, dash pattern [L, L]):
+ *   Draw  phase:  offset = L × (1 − drawProgress)   → [dashLen→0], tail appears first.
+ *   Erase phase:  offset = −L × eraseProgress        → [0→−dashLen], tail disappears first.
+ */
+function drawActiveMergeTrails(
+  ctx: CanvasRenderingContext2D,
+  activeMerges: ActiveMerge[],
+  nowMs: number,
+): void {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  for (let mi = 0, mlen = activeMerges.length; mi < mlen; mi++) {
+    const merge = activeMerges[mi];
+    if (!merge.trailStartXY || merge.trailCount === 0) continue;
+
+    const elapsed = nowMs - merge.trailAnimStartMs;
+    const drawDur = merge.trailDrawDurationMs;
+    const eraseDur = merge.trailEraseDurationMs;
+    if (elapsed < 0 || elapsed >= drawDur + eraseDur) continue;
+
+    const isDrawPhase = elapsed < drawDur;
+    const drawProgress = isDrawPhase ? elapsed / drawDur : 1.0;
+    const eraseProgress = isDrawPhase ? 0.0 : (elapsed - drawDur) / eraseDur;
+
+    const [r, g, b] = parseHexToRgb(merge.trailColor);
+
+    for (let ti = 0; ti < merge.trailCount; ti++) {
+      const sx = merge.trailStartXY[ti * 2];
+      const sy = merge.trailStartXY[ti * 2 + 1];
+      const tx = merge.targetX;
+      const ty = merge.targetY;
+
+      const ddx = tx - sx;
+      const ddy = ty - sy;
+      const L = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (L < 1) continue;
+
+      // Bezier control point: perpendicular offset at midpoint
+      const curveAngle = merge.trailCurveAngles![ti];
+      const midX = (sx + tx) * 0.5;
+      const midY = (sy + ty) * 0.5;
+      const perpX = -ddy / L;
+      const perpY = ddx / L;
+      const curveOffset = L * Math.tan(curveAngle);
+      const controlX = midX + perpX * curveOffset;
+      const controlY = midY + perpY * curveOffset;
+
+      // dashLen slightly exceeds straight-line distance to cover bezier arc length
+      const dashLen = L * 1.1;
+
+      // lineDashOffset animation (see function comment above)
+      const dashOffset = isDrawPhase
+        ? dashLen * (1 - drawProgress)
+        : -(dashLen * eraseProgress);
+
+      ctx.setLineDash([dashLen, dashLen]);
+      ctx.lineDashOffset = dashOffset;
+
+      // Alpha fades slightly during erase
+      ctx.globalAlpha = isDrawPhase ? 0.82 : 0.82 * (1 - eraseProgress * 0.5);
+
+      // Glow behind trail
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = `rgb(${r},${g},${b})`;
+      ctx.strokeStyle = `rgb(${r},${g},${b})`;
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(controlX, controlY, tx, ty);
+      ctx.stroke();
+    }
+  }
+
+  ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
 // ─── Draw ────────────────────────────────────────────────────────
 
 export function drawParticles(
   cc: CanvasContext,
   particles: EquatoriaParticle[],
   shockwaves: Shockwave[],
+  activeMerges: ActiveMerge[],
   options: ParticleRenderOptions,
+  nowMs: number,
 ): void {
   const ctx = cc.ctx;
+
+  // ── Draw animated merge trails ──
+  drawActiveMergeTrails(ctx, activeMerges, nowMs);
 
   // ── Draw trails for medium+ particles ──
   if (options.enableTrails) {
     for (let pi = 0, plen = particles.length; pi < plen; pi++) {
       const p = particles[pi];
+      // Skip suction-merge particles — they are at the generator and invisible.
+      // Forge-crunch particles (isForgeCrunchParticle) still fly visibly.
+      if (p.isMerging && !p.isForgeCrunchParticle) continue;
       if (p.sizeIndex < MEDIUM_SIZE_INDEX || p.trailCount < 2) continue;
       const isLarge = p.sizeIndex >= LARGE_SIZE_INDEX;
       const trailLen = p.trailCount;
@@ -150,6 +259,10 @@ export function drawParticles(
 
   for (let pi = 0, plen = particles.length; pi < plen; pi++) {
     const p = particles[pi];
+    // Suction-merge particles are teleported to the generator and should not
+    // be rendered (they are invisible behind it). Forge-crunch particles are
+    // still flying and should remain visible.
+    if (p.isMerging && !p.isForgeCrunchParticle) continue;
     const key = (p.tierIndex << 8) | p.sizeIndex;
     let batch = _batchMap.get(key);
     if (!batch || batch.count === 0) {

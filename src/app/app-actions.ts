@@ -11,15 +11,23 @@ import {
   tryUnlockNextTier,
   tryUnlockEquationForge,
   tryUpgradeLoom,
+  tryPurchaseSpecialLoom,
+  tryAlivenMote,
   claimAchievement,
 } from '../sim';
+import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
+import { getMotes, spendMotes } from '../sim/resources';
+import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
+import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
 import type { CanvasContext } from '../render/canvas';
 import type { ParticleSystem } from '../render';
 import type { SettingsState } from '../settings';
 import type { AppState, UIPanels } from './app-types';
 import type { NumberFormat } from '../util';
+import type { AudioSystem } from '../audio';
+import { GENERATOR_HIT_RADIUS_PX } from '../data/particles/particle-config';
 
 // ─── Action handler ─────────────────────────────────────────────
 
@@ -31,19 +39,45 @@ export function handleAction(
   settings: SettingsState,
   uiPanels: UIPanels,
   recomputeGenerators: () => void,
+  audioSystem?: AudioSystem,
 ): void {
   const devMode = settings.isDevMode;
   switch (action.kind) {
     case 'tap': {
       if (!state.game.equation.isForgeUnlocked) break;
-      const result = tapEquation(state.game);
-      state.tapFlashAlpha = 1;
 
       const rect = cc.canvas.getBoundingClientRect();
       const scaleX = cc.widthPx / rect.width;
       const scaleY = cc.heightPx / rect.height;
       const canvasX = (action.xScreen - rect.left) * scaleX;
       const canvasY = (action.yScreen - rect.top) * scaleY;
+
+      const nowMs = performance.now();
+
+      const timeSinceLast = nowMs - state.lastTapTimeMs;
+      if (timeSinceLast < DOUBLE_TAP_MAX_MS) {
+        const dx = canvasX - state.lastTapCanvasX;
+        const dy = canvasY - state.lastTapCanvasY;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < DOUBLE_TAP_MAX_PX * DOUBLE_TAP_MAX_PX) {
+          for (const gen of state.generatorState.generators) {
+            const gdx = canvasX - gen.x;
+            const gdy = canvasY - gen.y;
+            if (gdx * gdx + gdy * gdy < GENERATOR_HIT_RADIUS_PX * GENERATOR_HIT_RADIUS_PX) {
+              particles.gatherMotesToGenerator(gen.tierId, gen.x, gen.y);
+              // Reset so a third tap within the window doesn't trigger again
+              state.lastTapTimeMs = 0;
+              break;
+            }
+          }
+        }
+      }
+      state.lastTapCanvasX = canvasX;
+      state.lastTapCanvasY = canvasY;
+      state.lastTapTimeMs = nowMs;
+
+      const result = tapEquation(state.game);
+      state.tapFlashAlpha = 1;
 
       for (const [tierId] of result.gains) {
         const count = settings.isReducedParticles
@@ -53,31 +87,79 @@ export function handleAction(
       }
       break;
     }
-    case 'purchase_upgrade':
-      tryPurchaseUpgrade(state.game, action.upgradeId, devMode);
+    case 'purchase_upgrade': {
+      const ok = tryPurchaseUpgrade(state.game, action.upgradeId, devMode);
+      if (ok) audioSystem?.onBuyEquationUpgrade();
+      else     audioSystem?.onError();
       break;
-    case 'unlock_next_tier':
-      tryUnlockNextTier(state.game, devMode);
-      recomputeGenerators();
+    }
+    case 'unlock_next_tier': {
+      const ok = tryUnlockNextTier(state.game, devMode);
+      if (ok) { recomputeGenerators(); audioSystem?.onBuyEquationUpgrade(); }
+      else      audioSystem?.onError();
       break;
-    case 'unlock_equation_forge':
-      tryUnlockEquationForge(state.game, devMode);
+    }
+    case 'unlock_equation_forge': {
+      const ok = tryUnlockEquationForge(state.game, devMode);
+      if (ok) audioSystem?.onBuyEquationUpgrade();
+      else     audioSystem?.onError();
       break;
-    case 'upgrade_loom':
-      tryUpgradeLoom(state.game, action.tierId as TierId, devMode);
+    }
+    case 'upgrade_loom': {
+      const ok = tryUpgradeLoom(state.game, action.tierId as TierId, devMode);
+      if (ok) audioSystem?.onBuyLoomUpgrade();
+      else     audioSystem?.onError();
+      break;
+    }
+    case 'upgrade_special_loom': {
+      const ok = tryPurchaseSpecialLoom(state.game, action.tierId as TierId);
+      if (ok) audioSystem?.onBuyLoomUpgrade();
+      else     audioSystem?.onError();
+      break;
+    }
+    case 'aliven_mote': {
+      const ok = tryAlivenMote(state.game, action.tierId as TierId, devMode);
+      if (!ok) audioSystem?.onError();
+      break;
+    }
+    case 'set_interaction_matrix_cell':
+      setInteractionMatrixCell(state.game.aliven, action.row, action.col, action.value);
+      // Sync immediately so the particle system picks up the change on the next frame
+      particles.interactionMatrix = state.game.aliven.interactionMatrix;
+      break;
+    case 'reset_interaction_matrix':
+      resetInteractionMatrix(state.game.aliven);
+      particles.interactionMatrix = state.game.aliven.interactionMatrix;
       break;
     case 'claim_achievement':
       claimAchievement(state.game.achievements, action.achievementId);
       break;
+    case 'purchase_weapon': {
+      const weaponDef = WEAPON_BY_ID.get(action.weaponId);
+      if (!weaponDef) { audioSystem?.onError(); break; }
+      if (state.game.rpg.purchasedWeaponIds.has(action.weaponId)) break;
+      const balance = getMotes(state.game.resources, weaponDef.costTierId);
+      if (balance < weaponDef.cost) { audioSystem?.onError(); break; }
+      spendMotes(state.game.resources, weaponDef.costTierId, weaponDef.cost);
+      state.game.rpg.purchasedWeaponIds.add(action.weaponId);
+      audioSystem?.onBuyLoomUpgrade();
+      break;
+    }
+    case 'equip_weapon': {
+      if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
+      state.game.rpg.equippedWeaponId = action.weaponId;
+      break;
+    }
     case 'set_active_tab':
       state.activeTab = action.tabId;
+      audioSystem?.onTabChange(action.tabId);
       setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
       break;
     case 'save_game':
       // Handled directly — import kept light
       break;
     case 'reset_game':
-      Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
+      Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation', lastTapCanvasX: 0, lastTapCanvasY: 0, lastTapTimeMs: 0 });
       recomputeGenerators();
       setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
       break;
@@ -94,17 +176,33 @@ export function setActiveTab(
   numberFormat: NumberFormat,
 ): void {
   panels.tabBar.setActiveTab(state.activeTab);
+  panels.tabBar.updateAchievementIndicator(game);
 
-  // Equation tab shows canvas only; all other tabs show panel overlays
-  const shouldShowPanels = state.activeTab !== 'equation';
+  const isRpg = state.activeTab === 'rpg';
+  const isEquation = state.activeTab === 'equation';
+
+  // RPG tab hides the main canvas and shows its own canvas container.
+  // Equation tab shows the main canvas only (no panel overlay).
+  // All other tabs show the panel overlay on top of the main canvas.
+  panels.mainCanvasContainer.style.display = isRpg ? 'none' : '';
+  panels.rpgContainer.style.display = isRpg ? '' : 'none';
+  panels.rpgRender.statsPanel.style.display = isRpg ? '' : 'none';
+  panels.rpgRender.setActive(isRpg);
+  // Hide weapon store when leaving RPG tab.
+  if (!isRpg) panels.weaponStorePanel.setVisible(false);
+  // Resize now that the container is visible so the letterbox layout is correct.
+  if (isRpg) {
+    panels.rpgRender.resize(panels.rpgContainer);
+  }
+
+  // Slide the panel overlay in for non-equation, non-RPG tabs.
+  const shouldShowPanels = !isEquation && !isRpg;
   panels.panelsContainer.classList.toggle('panels-visible', shouldShowPanels);
 
   // Show/hide individual panels
-  panels.equationPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
-  panels.loomPanel.element.style.display = state.activeTab === 'looms' ? '' : 'none';
-  panels.upgradePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
-  panels.resourcePanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
+  panels.loomPanel.element.style.display = state.activeTab === 'resources' ? '' : 'none';
   panels.achievementsPanel.element.style.display = state.activeTab === 'achievements' ? '' : 'none';
+  panels.achievementsPanel.setVisible(state.activeTab === 'achievements');
   panels.settingsPanel.element.style.display = state.activeTab === 'settings' ? '' : 'none';
 
   // Immediately update visible panel
@@ -120,13 +218,21 @@ export function updateVisiblePanels(
   isDevMode: boolean,
   numberFormat: NumberFormat,
 ): void {
-  if (state.activeTab === 'looms') {
+  panels.tabBar.updateAchievementIndicator(game);
+
+  if (state.activeTab === 'resources') {
+    // The combined Upgrades tab (loomPanel) handles all three sub-tabs:
+    // Equation, Loom, Aliven. Update the underlying panels so they stay
+    // current regardless of which sub-tab is showing.
     panels.loomPanel.update(game, numberFormat);
-  } else if (state.activeTab === 'resources') {
     panels.equationPanel.update(game, isDevMode, numberFormat);
     panels.upgradePanel.update(game, isDevMode, numberFormat);
     panels.resourcePanel.update(game, numberFormat);
   } else if (state.activeTab === 'achievements') {
     panels.achievementsPanel.update(game, numberFormat);
+  } else if (state.activeTab === 'rpg') {
+    // Weapon store is only re-rendered when visible; calling update here
+    // pre-populates its state so it shows current data immediately when opened.
+    panels.weaponStorePanel.update(game.rpg, game.resources, numberFormat);
   }
 }

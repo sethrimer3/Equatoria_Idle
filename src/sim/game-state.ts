@@ -39,6 +39,7 @@ import {
   unlockLoom,
   getLoom,
   getLoomCost,
+  purchaseSpecialLoom,
   type LoomState,
 } from './looms';
 import {
@@ -46,6 +47,16 @@ import {
   checkAndUnlockAchievements,
   type AchievementState,
 } from './achievements';
+import {
+  createAlivenState,
+  tryAliven,
+  type AlivenState,
+} from './aliven';
+import {
+  createRpgSimState,
+  getWaveBoostMultiplier,
+  type RpgSimState,
+} from './rpg';
 
 // ─── Aggregate game state ───────────────────────────────────────
 
@@ -56,6 +67,8 @@ export interface GameState {
   forge: ForgeCrunchState;
   looms: LoomState;
   achievements: AchievementState;
+  aliven: AlivenState;
+  rpg: RpgSimState;
   lastAutoTapMs: number;
   lastSaveMs: number;
   elapsedMs: number;
@@ -69,6 +82,8 @@ export function createGameState(): GameState {
     forge: createForgeCrunchState(),
     looms: createLoomState(),
     achievements: createAchievementState(),
+    aliven: createAlivenState(),
+    rpg: createRpgSimState(),
     lastAutoTapMs: 0,
     lastSaveMs: 0,
     elapsedMs: 0,
@@ -170,22 +185,35 @@ export function tryUpgradeLoom(state: GameState, tierId: TierId, bypassCost = fa
   return true;
 }
 
+/** Try to purchase the special Resonance upgrade for a Loom tier. Returns true if successful. */
+export function tryPurchaseSpecialLoom(state: GameState, tierId: TierId, bypassCost = false): boolean {
+  return purchaseSpecialLoom(state.looms, state.resources, tierId, bypassCost);
+}
+
+/** Try to aliven a mote type. Returns true if successful. */
+export function tryAlivenMote(state: GameState, tierId: TierId, bypassCost = false): boolean {
+  return tryAliven(state.aliven, state.resources, tierId, bypassCost);
+}
+
 // ─── Simulation tick ────────────────────────────────────────────
 
 export interface SimTickResult {
   autoTapped: boolean;
   autoTapGains: Map<TierId, number> | null;
   loomGains: Map<TierId, number>;
+  /** Achievement IDs newly unlocked during this tick (empty array if none). */
+  newlyUnlockedAchievementIds: readonly string[];
 }
 
 /** Advance simulation by deltaMs. */
 export function simTick(state: GameState, deltaMs: number): SimTickResult {
   state.elapsedMs += deltaMs;
 
-  const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map() };
+  const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map(), newlyUnlockedAchievementIds: [] };
 
-  // Tick Looms — passive production (with achievement loom bonus)
-  const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus);
+  // Tick Looms — passive production (with achievement loom bonus × wave boost)
+  const waveBoost = getWaveBoostMultiplier(state.rpg);
+  const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus * waveBoost);
   for (const [tierId, amount] of loomProduction) {
     addMotes(state.resources, tierId, amount);
   }
@@ -206,7 +234,7 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
   }
 
   // Check for newly-unlocked achievements
-  checkAndUnlockAchievements(state.achievements, state.resources);
+  result.newlyUnlockedAchievementIds = checkAndUnlockAchievements(state.achievements, state.resources);
 
   return result;
 }

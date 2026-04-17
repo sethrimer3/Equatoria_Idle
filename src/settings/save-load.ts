@@ -1,13 +1,19 @@
 import type { GameState } from '../sim/game-state';
 import type { TierId } from '../data/tiers';
+import type { SizeIndex } from '../data/particles/size-tiers';
 import { createGameState } from '../sim/game-state';
 import { recomputeBonuses } from '../sim/achievements';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
+import { totalToSizeCounts, sizeCountsToTotal } from '../sim/resources';
+import {
+  serializeInteractionMatrix,
+  deserializeInteractionMatrix,
+} from '../data/particles/interaction-matrix';
 
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 10;
 
 interface SaveData {
   version: number;
@@ -18,7 +24,16 @@ interface SaveData {
     isForgeUnlocked: boolean;
   };
   resources: {
-    moteTotals: Record<string, number>;
+    /**
+     * v7+: per-size mote counts, encoded as base-MERGE_THRESHOLD.
+     * Key: tierId; value: { sizeIndex: count }.
+     */
+    moteSizeCounts?: Record<string, Record<string, number>>;
+    /**
+     * v1–6 backward compat: flat float totals.
+     * Absent in v7+ saves.
+     */
+    moteTotals?: Record<string, number>;
     lifetimeMotes: Record<string, number>;
   };
   progression: {
@@ -29,10 +44,22 @@ interface SaveData {
   };
   looms: {
     looms: Array<{ tierId: string; level: number; isUnlocked: boolean }>;
+    specialLoomPurchased?: string[];
   };
   achievements: {
     unlockedIds: string[];
     claimedIds: string[];
+  };
+  aliven: {
+    alivenedTierIds: string[];
+    /** v8+: flat 169-element array for the 13×13 interaction matrix. Absent in older saves. */
+    interactionMatrix?: number[];
+  };
+  /** v10+: RPG persistent state. Absent in older saves. */
+  rpg?: {
+    highestWaveReached: number;
+    purchasedWeaponIds: string[];
+    equippedWeaponId: string | null;
   };
   elapsedMs: number;
 }
@@ -40,9 +67,18 @@ interface SaveData {
 // ─── Serialize ──────────────────────────────────────────────────
 
 export function serializeGameState(state: GameState): SaveData {
-  const moteTotals: Record<string, number> = {};
+  // Encode per-tier totals as base-MERGE_THRESHOLD size counts.
+  const moteSizeCounts: Record<string, Record<string, number>> = {};
+  for (const [tierId, total] of state.resources.moteTotals) {
+    const counts = totalToSizeCounts(total);
+    if (counts.size > 0) {
+      const sizeObj: Record<string, number> = {};
+      for (const [s, c] of counts) sizeObj[String(s)] = c;
+      moteSizeCounts[tierId] = sizeObj;
+    }
+  }
+
   const lifetimeMotes: Record<string, number> = {};
-  for (const [k, v] of state.resources.moteTotals) moteTotals[k] = v;
   for (const [k, v] of state.resources.lifetimeMotes) lifetimeMotes[k] = v;
 
   const upgradeLevels: Record<string, number> = {};
@@ -60,7 +96,7 @@ export function serializeGameState(state: GameState): SaveData {
       totalTapCount: state.equation.totalTapCount,
       isForgeUnlocked: state.equation.isForgeUnlocked,
     },
-    resources: { moteTotals, lifetimeMotes },
+    resources: { moteSizeCounts, lifetimeMotes },
     progression: {
       upgradeLevels,
       unlockedTierCount: state.progression.unlockedTierCount,
@@ -73,10 +109,20 @@ export function serializeGameState(state: GameState): SaveData {
         level: l.level,
         isUnlocked: l.isUnlocked,
       })),
+      specialLoomPurchased: Array.from(state.looms.specialPurchased),
     },
     achievements: {
       unlockedIds: Array.from(state.achievements.unlockedIds),
       claimedIds: Array.from(state.achievements.claimedIds),
+    },
+    aliven: {
+      alivenedTierIds: Array.from(state.aliven.alivenedTierIds),
+      interactionMatrix: serializeInteractionMatrix(state.aliven.interactionMatrix),
+    },
+    rpg: {
+      highestWaveReached: state.rpg.highestWaveReached,
+      purchasedWeaponIds: Array.from(state.rpg.purchasedWeaponIds),
+      equippedWeaponId: state.rpg.equippedWeaponId,
     },
     elapsedMs: state.elapsedMs,
   };
@@ -98,9 +144,19 @@ export function deserializeGameState(data: SaveData): GameState {
   state.equation.totalTapCount = data.equation.totalTapCount;
   state.equation.isForgeUnlocked = data.equation.isForgeUnlocked ?? false;
 
-  // Resources
-  for (const [key, val] of Object.entries(data.resources.moteTotals)) {
-    state.resources.moteTotals.set(key as TierId, val);
+  // Resources — v7+ uses moteSizeCounts; v1–6 used flat moteTotals
+  if (data.resources.moteSizeCounts) {
+    for (const [tierId, sizeObj] of Object.entries(data.resources.moteSizeCounts)) {
+      const counts = new Map<SizeIndex, number>();
+      for (const [s, c] of Object.entries(sizeObj)) {
+        counts.set(parseInt(s, 10), c);
+      }
+      state.resources.moteTotals.set(tierId as TierId, sizeCountsToTotal(counts));
+    }
+  } else if (data.resources.moteTotals) {
+    for (const [key, val] of Object.entries(data.resources.moteTotals)) {
+      state.resources.moteTotals.set(key as TierId, val);
+    }
   }
   for (const [key, val] of Object.entries(data.resources.lifetimeMotes)) {
     state.resources.lifetimeMotes.set(key as TierId, val);
@@ -121,6 +177,11 @@ export function deserializeGameState(data: SaveData): GameState {
       if (loom) {
         loom.level = saved.level;
         loom.isUnlocked = saved.isUnlocked;
+      }
+    }
+    if (data.looms.specialLoomPurchased) {
+      for (const tierId of data.looms.specialLoomPurchased) {
+        state.looms.specialPurchased.add(tierId as import('../data/tiers').TierId);
       }
     }
   }
@@ -152,6 +213,34 @@ export function deserializeGameState(data: SaveData): GameState {
 
   state.elapsedMs = data.elapsedMs;
 
+  // Aliven state (v6+; older saves have no alivened tiers)
+  if (data.aliven?.alivenedTierIds) {
+    for (const id of data.aliven.alivenedTierIds) {
+      state.aliven.alivenedTierIds.add(id as TierId);
+    }
+  }
+
+  // Interaction matrix (v8+; older saves use the default matrix)
+  if (data.aliven?.interactionMatrix) {
+    const restored = deserializeInteractionMatrix(data.aliven.interactionMatrix);
+    for (let i = 0; i < restored.length; i++) {
+      for (let j = 0; j < restored[i].length; j++) {
+        state.aliven.interactionMatrix[i][j] = restored[i][j];
+      }
+    }
+  }
+
+  // RPG state (v10+; older saves default to no progress)
+  if (data.rpg) {
+    state.rpg.highestWaveReached = data.rpg.highestWaveReached ?? 0;
+    if (data.rpg.purchasedWeaponIds) {
+      for (const id of data.rpg.purchasedWeaponIds) {
+        state.rpg.purchasedWeaponIds.add(id);
+      }
+    }
+    state.rpg.equippedWeaponId = data.rpg.equippedWeaponId ?? null;
+  }
+
   return state;
 }
 
@@ -172,8 +261,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1, 2, 3, 4, or 5 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5].includes(data.version)) return null;
+    // Accept versions 1–10 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

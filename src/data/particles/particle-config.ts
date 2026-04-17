@@ -6,16 +6,16 @@ export const SIZE_MULTIPLIER = 2.5;
 export const EXTRA_LARGE_SIZE_BONUS = 1.5;
 export const MIN_VELOCITY = 0.312;
 export const MAX_VELOCITY = 2;
-export const ATTRACTION_STRENGTH = 1.5;
+export const ATTRACTION_STRENGTH = 3.0;
 const BASE_FORGE_RADIUS = 28;
 export const FORGE_RADIUS = BASE_FORGE_RADIUS * SCENE_ZOOM_SCALE;
 export const MAX_FORGE_ATTRACTION_DISTANCE = FORGE_RADIUS * 2 * 0.9 * 1.25;
 export const DISTANCE_SCALE = 0.01;
-export const FORCE_SCALE = 0.01;
+export const FORCE_SCALE = 0.006;
 export const SPAWNER_GRAVITY_STRENGTH = 1.5;
 export const SPAWNER_GRAVITY_RANGE_MULTIPLIER = 4;
-export const SMALL_TIER_GENERATOR_GRAVITY_STRENGTH = 0.24;
-export const MEDIUM_TIER_FORGE_GRAVITY_STRENGTH = 0.15;
+export const SMALL_TIER_GENERATOR_GRAVITY_STRENGTH = 1.5;
+export const MEDIUM_TIER_FORGE_GRAVITY_STRENGTH = 0.30;
 export const MAX_PARTICLES_FULL = 2000;
 export const PERFORMANCE_THRESHOLD = 1500;
 export const MERGE_GATHER_SPEED = 10.0;
@@ -40,12 +40,26 @@ export const FORGE_VALID_WAIT_TIME_MS = 5000;
 export const FORGE_CRUNCH_DURATION_MS = 1000;
 export const FORGE_SPIN_UP_DURATION_MS = 4000;
 export const FORGE_SPIN_DOWN_DURATION_MS = 3000;
+/** Elapsed ms after validParticlesTimerMs is set at which the spin-up animation begins. */
+export const FORGE_SPIN_UP_THRESHOLD_MS = FORGE_VALID_WAIT_TIME_MS - FORGE_SPIN_UP_DURATION_MS;
 export const CONVERSION_SPREAD_VELOCITY = 3;
 export const INTERACTION_RADIUS_FRACTION = 0.1;
 export const MOUSE_ATTRACTION_STRENGTH = 3.0;
 export const DRAG_RELEASE_STILLNESS_MS = 120;
 export const DRAG_RELEASE_SPEED_THRESHOLD = 0.02;
 export const GENERATOR_FADE_IN_DURATION_MS = 1000;
+
+/**
+ * Speed multiplier applied to the maximum particle velocity while a particle
+ * is locked to the pointer (being dragged).
+ */
+export const DRAG_BOOST_MULTIPLIER = 4;
+
+/**
+ * Duration in milliseconds over which the post-drag speed boost and Particle
+ * Life inertness both fade linearly back to their normal values.
+ */
+export const DRAG_RELEASE_FADE_MS = 5000;
 export const TRAIL_FADE = 0.15;
 export const MAX_SHOCKWAVES = 5;
 
@@ -63,28 +77,84 @@ export const TRAIL_LENGTH_LARGE = 10;
 /** How many frames between trail position captures. */
 export const TRAIL_CAPTURE_INTERVAL = 2;
 
-// ─── Procedural merge (seek & combine) ─────────────────────────
-/** Number of same-size particles needed to trigger seeking behaviour. */
-export const PROCEDURAL_MERGE_THRESHOLD = 100;
-/** Base seek force when merge is first triggered. */
-export const PROCEDURAL_SEEK_BASE_FORCE = 0.15;
-/** Force increase per second while seeking. */
-export const PROCEDURAL_SEEK_RAMP_PER_SEC = 0.05;
-/** Distance at which seeking particles snap together. */
-export const PROCEDURAL_SEEK_SNAP_DIST = 3;
-/** Time after which a procedural merge forcibly completes (ms). */
-export const PROCEDURAL_MERGE_TIMEOUT_MS = 8000;
+// ─── Suction merge (global count → generator pull) ──────────────
+/**
+ * Speed at which particles travel toward their generator during a suction merge.
+ * Units: canvas pixels per frame-unit (clampedDelta ≈ 1 at 60 fps).
+ */
+export const SUCTION_GATHER_SPEED = 30.0;
+/** Safety timeout — suction merge forcibly completes after this many ms. */
+export const SUCTION_TIMEOUT_MS = 2000;
+/**
+ * Width multiplier for suction trail lines relative to the particle's rendered size.
+ * Applied as: lineWidth = max(1, particle.size * SUCTION_TRAIL_WIDTH_SCALE).
+ */
+export const SUCTION_TRAIL_WIDTH_SCALE = 0.7;
 
-// ─── Euler fluid dynamics ────────────────────────────────────────
-/** Master toggle for the Euler inter-particle fluid forces. */
-export const EULER_FLUID_ENABLED = true;
-/** Radius (canvas px) within which a higher-tier particle's field affects a lower-tier one. */
+// ─── Merge trail animation ───────────────────────────────────────
+/** Number of particles (of the 100 that merge) that display an animated trail. */
+export const MERGE_TRAIL_COUNT = 20;
+/** Duration of the draw phase (trail grows from particle toward generator). */
+export const MERGE_TRAIL_DRAW_DURATION_MS = 150;
+/** Duration of the erase phase (trail disappears from tail toward tip). */
+export const MERGE_TRAIL_ERASE_DURATION_MS = 150;
+/** Maximum random curve angle for suction merge trails, in degrees. Trails curve randomly between ±this value. */
+export const MERGE_TRAIL_CURVE_ANGLE_DEG = 10;
+export const GENERATOR_ROTATION_STRENGTH = 0.4;
+/** Per-generator phase offset multiplier for the rotation swirl sine wave. */
+export const GENERATOR_ROTATION_PHASE_OFFSET = 1.23;
+/** Time-based rotation speed for the swirl sine wave (radians per ms). */
+export const GENERATOR_ROTATION_TIME_SCALE = 0.00018;
+/** Canvas-space hit radius for detecting a tap on a generator (px). */
+export const GENERATOR_HIT_RADIUS_PX = 24;
+
+// ─── Pointer-locked particle physics ────────────────────────────
+/** Force strength applied toward the pointer target while a particle is locked to the pointer. */
+export const POINTER_LOCKED_FORCE = 3.0;
+/**
+ * Per-step velocity decay factor while a particle is locked to the pointer and stationary.
+ * Applied as Math.pow(POINTER_LOCKED_DAMPING, clampedDelta).
+ */
+export const POINTER_LOCKED_DAMPING = 0.8;
+
+// ─── Wall bounce ─────────────────────────────────────────────────
+/** Velocity coefficient retained after bouncing off a canvas edge (0–1). */
+export const PARTICLE_WALL_BOUNCE = 0.8;
+
+// ─── Gravity minimum distance ────────────────────────────────────
+/**
+ * Minimum distance (canvas units) for generator and forge gravity computations.
+ * Prevents extreme forces when a particle is very close to the attractor.
+ */
+export const GRAVITY_MIN_DIST = 0.5;
+
+// ─── Frame-interval constants for ParticleSystem ────────────────
+/** Number of render frames between suction-merge eligibility checks. */
+export const SUCTION_MERGE_INTERVAL_FRAMES = 10;
+/** Number of render frames between particle-count limit enforcement passes. */
+export const PARTICLE_LIMIT_INTERVAL_FRAMES = 30;
+/** Maximum frame-delta ratio cap, preventing spiral-of-death on slow frames. */
+export const MAX_FRAME_DELTA_RATIO = 3;
+/** Minimum frame-delta ratio floor, preventing effectively-zero time steps. */
+export const MIN_FRAME_DELTA_RATIO = 0.01;
+
+// ─── Euler fluid dynamics (REMOVED) ──────────────────────────────
+// The Euler inter-particle fluid system has been replaced by the
+// Particle Life interaction model.  See particle-life-config.ts and
+// interaction-matrix.ts for the new constants.
+//
+// Legacy constants kept below ONLY for backward-compatibility in case
+// any external code still imports them.  They are no longer used by
+// the particle system.
+/** @deprecated Replaced by Particle Life system. */
+export const EULER_FLUID_ENABLED = false;
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_INFLUENCE_RADIUS = 40;
-/** Base repulsion strength coefficient. */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_BASE_STRENGTH = 0.8;
-/** Additional strength added per tier level of difference between the two particles. */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_TIER_SCALE = 0.25;
-/** Maximum Euler force magnitude applied to a particle per frame (prevents extreme kicks). */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_MAX_FORCE = 2.0;
-/** Minimum effective distance used in the inverse-distance formula (prevents singularity). */
+/** @deprecated Replaced by Particle Life system. */
 export const EULER_CORE_RADIUS = 3.0;

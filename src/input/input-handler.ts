@@ -5,14 +5,25 @@ export type GameAction =
   | { kind: 'unlock_next_tier' }
   | { kind: 'unlock_equation_forge' }
   | { kind: 'upgrade_loom'; tierId: string }
+  | { kind: 'upgrade_special_loom'; tierId: string }
+  | { kind: 'aliven_mote'; tierId: string }
   | { kind: 'claim_achievement'; achievementId: string }
   | { kind: 'set_active_tab'; tabId: TabId }
   | { kind: 'save_game' }
-  | { kind: 'reset_game' };
+  | { kind: 'reset_game' }
+  | { kind: 'set_interaction_matrix_cell'; row: number; col: number; value: number }
+  | { kind: 'reset_interaction_matrix' }
+  | { kind: 'purchase_weapon'; weaponId: string }
+  | { kind: 'equip_weapon'; weaponId: string };
 
-export type TabId = 'equation' | 'looms' | 'resources' | 'achievements' | 'settings';
+export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 
 export type ActionHandler = (action: GameAction) => void;
+
+/** Maximum ms between two taps to qualify as a double-tap. */
+export const DOUBLE_TAP_MAX_MS = 350;
+/** Maximum canvas-space distance (px) between two taps to qualify as a double-tap. */
+export const DOUBLE_TAP_MAX_PX = 40;
 
 /**
  * Sets up touch and mouse event listeners on the game canvas area.

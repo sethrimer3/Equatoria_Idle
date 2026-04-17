@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
     "preview": "vite preview",
-    "postbuild": "mkdir -p dist/ASSETS && cp -R ASSETS/SPRITES ASSETS/ANIMATIONS ASSETS/font dist/ASSETS/"
+    "postbuild": "mkdir -p dist/ASSETS && cp -R ASSETS/SPRITES ASSETS/ANIMATIONS ASSETS/font ASSETS/music ASSETS/sfx dist/ASSETS/"
   },
   "repository": {
     "type": "git",
@@ -27,7 +28,9 @@
   },
   "homepage": "https://github.com/sethrimer3/Equatoria_Idle#readme",
   "devDependencies": {
+    "eslint": "^10.2.0",
     "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.2",
     "vite": "^8.0.3"
   }
 }

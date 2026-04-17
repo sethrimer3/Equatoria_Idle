@@ -23,7 +23,7 @@ import type { ForgeParticleInfo } from '../../sim/forge/forge-logic';
  * We create new info objects (required since ForgeParticleInfo has
  * readonly properties) but reuse the outer array to reduce GC churn.
  */
-let _scratchInfos: ForgeParticleInfo[] = [];
+const _scratchInfos: ForgeParticleInfo[] = [];
 
 export function checkAndStartForgeCrunch(
   particles: EquatoriaParticle[],

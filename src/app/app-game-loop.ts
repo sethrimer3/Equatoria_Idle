@@ -8,6 +8,7 @@ import {
   simTick,
   getEquivalence,
   buildEquationView,
+  getLoomRate,
 } from '../sim';
 import {
   clearCanvas,
@@ -23,10 +24,14 @@ import type { BackgroundAnimation, VermiculateEffect, SubstrateEffect } from '..
 import type { SettingsState } from '../settings';
 import { saveGame } from '../settings';
 import { AUTO_SAVE_INTERVAL_MS } from '../data/balance';
-import { SMALL_SIZE_INDEX } from '../data/particles/size-tiers';
+import { ACHIEVEMENT_BY_ID } from '../data/achievements';
+import { TIER_BY_ID } from '../data/tiers';
+import type { TierId } from '../data/tiers';
+import { computeOutputCompression } from '../util/particle-compression';
 import type { AppState, UIPanels } from './app-types';
 import { updateVisiblePanels } from './app-actions';
 import type { HudOverlay } from '../ui/hud/hud-overlay';
+import type { AudioSystem } from '../audio';
 
 // ─── Game loop context ──────────────────────────────────────────
 
@@ -43,16 +48,36 @@ export interface GameLoopContext {
   hudOverlay: HudOverlay;
   lastUnlockedTierCount: { value: number };
   lastFrameMs: { value: number };
+  audioSystem?: AudioSystem;
 }
 
 // ─── Game loop ──────────────────────────────────────────────────
 
 export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
+  // Per-loom fractional particle accumulator (render-side only, not persisted).
+  // Tracks sub-particle remainders so fractional emit rates average out correctly.
+  const particleEmitAccumulators = new Map<TierId, number>();
+
   function gameLoop(nowMs: number): void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
     ctx.lastFrameMs.value = nowMs;
 
+    // ── RPG tab: run independent render, pause main sim ──────────
+    if (ctx.appState.activeTab === 'rpg') {
+      ctx.uiPanels.rpgRender.update(deltaMs);
+      requestAnimationFrame(gameLoop);
+      return;
+    }
+
     const simResult = simTick(ctx.appState.game, deltaMs);
+
+    // Fire achievement audio events for anything newly unlocked this tick
+    if (ctx.audioSystem && simResult.newlyUnlockedAchievementIds.length > 0) {
+      for (const id of simResult.newlyUnlockedAchievementIds) {
+        const def = ACHIEVEMENT_BY_ID.get(id);
+        ctx.audioSystem.onAchievementUnlocked(def?.isSecret === true);
+      }
+    }
 
     // Recompute generators when tiers are newly unlocked
     if (ctx.appState.game.progression.unlockedTierCount !== ctx.lastUnlockedTierCount.value) {
@@ -68,9 +93,28 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       }
     }
 
-    // Emit particles at generator positions for loom production ticks
-    for (const [tierId] of simResult.loomGains) {
-      ctx.particles.emit(tierId, SMALL_SIZE_INDEX, ctx.appState.generatorState.generators, nowMs);
+    // Emit compressed particles at generator positions for loom production.
+    // Each loom emits only the single highest-value size appropriate for its
+    // current rate; no smaller-size leftovers are spawned.
+    // Fractional rates are handled by delta-time accumulation.
+    const deltaSec = deltaMs / 1000;
+    const loomMultiplier = ctx.appState.game.achievements.loomMultiplierBonus;
+    for (const loom of ctx.appState.game.looms.looms) {
+      if (!loom.isUnlocked || loom.level <= 0) continue;
+
+      const rawRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier;
+      if (rawRate <= 0) continue;
+
+      const { sizeIndex, emitRatePerSec } = computeOutputCompression(rawRate);
+
+      // Accumulate fractional emit count; spawn whole particles only
+      const acc = (particleEmitAccumulators.get(loom.tierId) ?? 0) + emitRatePerSec * deltaSec;
+      const toEmit = Math.floor(acc);
+      particleEmitAccumulators.set(loom.tierId, acc - toEmit);
+
+      for (let i = 0; i < toEmit; i++) {
+        ctx.particles.emit(loom.tierId, sizeIndex, ctx.appState.generatorState.generators, nowMs);
+      }
     }
 
     if (ctx.appState.tapFlashAlpha > 0) {
@@ -87,7 +131,17 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.recomputeGenerators();
     }
 
-    ctx.particles.update(
+    // Sync aliven state into particle system (cheap: at most 11 entries)
+    const alivenedTierIndices = ctx.particles.alivenedTierIndices;
+    alivenedTierIndices.clear();
+    for (const tierId of ctx.appState.game.aliven.alivenedTierIds) {
+      const tier = TIER_BY_ID.get(tierId as TierId);
+      if (tier) alivenedTierIndices.add(tier.unlockOrder);
+    }
+    // Sync editable interaction matrix to particle system
+    ctx.particles.interactionMatrix = ctx.appState.game.aliven.interactionMatrix;
+
+    const particleAudioEvents = ctx.particles.update(
       deltaMs,
       nowMs,
       ctx.appState.generatorState.generators,
@@ -97,7 +151,21 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.cc.heightPx,
       ctx.appState.forge,
       { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
+      ctx.appState.game.equation.isForgeUnlocked,
     );
+
+    // Fire particle/forge audio events
+    if (ctx.audioSystem) {
+      if (particleAudioEvents.mergesCompleted > 0) {
+        ctx.audioSystem.onMotesMerged(particleAudioEvents.mergesCompleted);
+      }
+      if (particleAudioEvents.forgeSpinUpBegan)     ctx.audioSystem.onForgeSpinUpBegan();
+      if (particleAudioEvents.forgeCrunchStarted)   ctx.audioSystem.onForgeCrunchStarted();
+      if (particleAudioEvents.forgeSpinUpCancelled) ctx.audioSystem.onForgeSpinUpCancelled();
+
+      // Update ambiance based on active tab every frame
+      ctx.audioSystem.updateAmbianceForTab(ctx.appState.activeTab);
+    }
 
     // ── Update background animation ──
     ctx.bgAnimation.update(deltaMs);
@@ -134,15 +202,21 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     ctx.hudOverlay.update({
       equivalence: getEquivalence(ctx.appState.game.resources),
       onScreenMotes: ctx.particles.getOnScreenMoteCount(),
+      onScreenParticleCount: ctx.particles.getOnScreenParticleCount(),
       terms,
       tapFlashAlpha: ctx.appState.tapFlashAlpha,
       isForgeUnlocked: ctx.appState.game.equation.isForgeUnlocked,
-      totalTapCount: ctx.appState.game.equation.totalTapCount,
-      animPulse: ctx.appState.animPulse,
       numberFormat: ctx.settings.numberFormat,
     });
 
-    ctx.particles.draw(ctx.cc, { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics });
+    ctx.particles.draw(
+      ctx.cc,
+      { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
+      ctx.appState.particleDrag,
+      ctx.cc.widthPx,
+      ctx.cc.heightPx,
+      nowMs,
+    );
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
       updateVisiblePanels(ctx.appState, ctx.uiPanels, ctx.appState.game, ctx.settings.isDevMode, ctx.settings.numberFormat);

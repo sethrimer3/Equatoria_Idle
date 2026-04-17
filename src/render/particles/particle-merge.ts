@@ -1,6 +1,13 @@
 /**
- * Particle merge logic — traditional merge at generators and
- * procedural seek-merge anywhere on screen.
+ * Particle merge logic — suction merge at generators.
+ *
+ * When any (tierId, sizeIndex) group reaches MERGE_THRESHOLD particles,
+ * all 100 are immediately teleported to their generator center and an
+ * animated trail plays for MERGE_TRAIL_DRAW_DURATION_MS + MERGE_TRAIL_ERASE_DURATION_MS
+ * before the merge is finalised and the larger particle is spawned.
+ *
+ * Only MERGE_TRAIL_COUNT of the 100 particles display a trail; the rest are
+ * invisible during the animation (skipped in rendering).
  *
  * Performance notes:
  *  - selectRandom uses Fisher-Yates partial shuffle (O(k)) instead
@@ -22,18 +29,15 @@ import {
   PERFORMANCE_THRESHOLD,
   GENERATOR_CONVERSION_RADIUS,
   CONVERSION_SPREAD_VELOCITY,
-  MERGE_GATHER_THRESHOLD,
-  MERGE_TIMEOUT_MS,
   SHOCKWAVE_MAX_RADIUS,
   MAX_SHOCKWAVES,
-  PROCEDURAL_MERGE_THRESHOLD,
-  PROCEDURAL_SEEK_BASE_FORCE,
-  PROCEDURAL_SEEK_RAMP_PER_SEC,
-  PROCEDURAL_SEEK_SNAP_DIST,
-  PROCEDURAL_MERGE_TIMEOUT_MS,
+  MERGE_TRAIL_COUNT,
+  MERGE_TRAIL_DRAW_DURATION_MS,
+  MERGE_TRAIL_ERASE_DURATION_MS,
+  MERGE_TRAIL_CURVE_ANGLE_DEG,
 } from '../../data/particles/particle-config';
 import type { GeneratorInfo } from '../../sim/particles/generator-state';
-import type { EquatoriaParticle, ActiveMerge, ProceduralMerge, Shockwave } from './particle-types';
+import type { EquatoriaParticle, ActiveMerge, Shockwave } from './particle-types';
 import { ParticlePool, initParticle } from './particle-pool';
 import { getShockwaveScaleForSize } from './particle-shockwave';
 
@@ -95,29 +99,26 @@ function getGeneratorForTier(
   return null;
 }
 
-// ─── Traditional merge at generators ─────────────────────────────
+// ─── Suction merge (global count → generator pull) ───────────────
 
-export function attemptMerge(
+/**
+ * When any (tierId, sizeIndex) group reaches MERGE_THRESHOLD (100) particles,
+ * all MERGE_THRESHOLD particles are immediately teleported to their generator
+ * center and an animated trail plays before the merge is finalised.
+ * Only MERGE_TRAIL_COUNT particles display a visible trail; the rest are
+ * held invisibly at the generator until the animation completes.
+ */
+export function attemptSuctionMerge(
   particles: EquatoriaParticle[],
   activeMerges: ActiveMerge[],
-  mergeCooldownFrames: number,
   generators: readonly GeneratorInfo[],
   nowMs: number,
-): number {
-  if (activeMerges.length > 0 || mergeCooldownFrames > 0) return mergeCooldownFrames;
-
+): void {
   _groupMap.clear();
-  const convRadSq = GENERATOR_CONVERSION_RADIUS * GENERATOR_CONVERSION_RADIUS;
 
   for (let i = 0, len = particles.length; i < len; i++) {
     const p = particles[i];
-    if (p.isMerging) continue;
-    const gen = getGeneratorForTier(p.tierId, generators);
-    if (!gen) continue;
-    const dx = p.x - gen.x;
-    const dy = p.y - gen.y;
-    if (dx * dx + dy * dy > convRadSq) continue;
-
+    if (p.isMerging) continue; // already in-flight
     const key = groupKey(p.tierIndex, p.sizeIndex);
     let group = _groupMap.get(key);
     if (!group) {
@@ -127,50 +128,78 @@ export function attemptMerge(
     group.particles.push(p);
   }
 
-  // Find candidates
-  const candidates: TierSizeGroup[] = [];
   for (const group of _groupMap.values()) {
-    if (group.particles.length >= MERGE_THRESHOLD) {
-      candidates.push(group);
+    if (group.particles.length < MERGE_THRESHOLD) {
+      group.particles.length = 0;
+      continue;
     }
+
+    const gen = getGeneratorForTier(group.tierId, generators);
+    if (!gen) {
+      group.particles.length = 0;
+      continue;
+    }
+
+    const toMerge = group.particles.length === MERGE_THRESHOLD
+      ? group.particles.slice()
+      : selectRandom(group.particles, MERGE_THRESHOLD);
+
+    // Select which particles display trails (up to MERGE_TRAIL_COUNT).
+    // We shuffle only the first MERGE_TRAIL_COUNT slots so the selection is random.
+    const numTrails = Math.min(MERGE_TRAIL_COUNT, toMerge.length);
+    const trailStartXY: number[] = [];
+    const trailCurveAngles: number[] = [];
+
+    for (let ti = 0; ti < numTrails; ti++) {
+      const j = ti + Math.floor(Math.random() * (toMerge.length - ti));
+      const tmp = toMerge[ti];
+      toMerge[ti] = toMerge[j];
+      toMerge[j] = tmp;
+      trailStartXY.push(toMerge[ti].x, toMerge[ti].y);
+      trailCurveAngles.push((Math.random() * 2 - 1) * MERGE_TRAIL_CURVE_ANGLE_DEG * (Math.PI / 180));
+    }
+
+    const tier = TIER_BY_ID.get(group.tierId);
+
+    // Teleport ALL particles to the generator immediately.
+    for (let i = 0, len = toMerge.length; i < len; i++) {
+      const p = toMerge[i];
+      p.isMerging = true;
+      p.mergeTargetX = gen.x;
+      p.mergeTargetY = gen.y;
+      p.suctionStartX = p.x;
+      p.suctionStartY = p.y;
+      // Teleport: place at generator with a tiny random scatter so they don't
+      // all stack exactly — keeps physics well-behaved during the wait.
+      p.x = gen.x + (Math.random() - 0.5) * 2;
+      p.y = gen.y + (Math.random() - 0.5) * 2;
+      p.vx = 0;
+      p.vy = 0;
+      // Clear stale trail data so no old positions bleed through.
+      p.trailHead = 0;
+      p.trailCount = 0;
+    }
+
+    activeMerges.push({
+      particles: toMerge,
+      targetX: gen.x,
+      targetY: gen.y,
+      outputTierId: group.tierId,
+      outputSizeIndex: (group.sizeIndex + 1) as SizeIndex,
+      startTimeMs: nowMs,
+      isTierConversion: false,
+      conversionCount: 1,
+      trailColor: tier?.color ?? '#ffffff',
+      trailStartXY,
+      trailCurveAngles,
+      trailCount: numTrails,
+      trailAnimStartMs: nowMs,
+      trailDrawDurationMs: MERGE_TRAIL_DRAW_DURATION_MS,
+      trailEraseDurationMs: MERGE_TRAIL_ERASE_DURATION_MS,
+    });
+
+    group.particles.length = 0;
   }
-
-  // Clear group arrays for reuse (don't hold references)
-  for (const group of _groupMap.values()) {
-    if (!candidates.includes(group)) group.particles.length = 0;
-  }
-
-  if (candidates.length === 0) return mergeCooldownFrames;
-
-  const selected = candidates[Math.floor(Math.random() * candidates.length)];
-  const gen = getGeneratorForTier(selected.tierId, generators);
-  if (!gen) {
-    for (const c of candidates) c.particles.length = 0;
-    return mergeCooldownFrames;
-  }
-
-  const toMerge = selectRandom(selected.particles, MERGE_THRESHOLD);
-  for (let i = 0, len = toMerge.length; i < len; i++) {
-    const p = toMerge[i];
-    p.isMerging = true;
-    p.mergeTargetX = gen.x;
-    p.mergeTargetY = gen.y;
-  }
-  activeMerges.push({
-    particles: toMerge,
-    targetX: gen.x,
-    targetY: gen.y,
-    outputTierId: selected.tierId,
-    outputSizeIndex: (selected.sizeIndex + 1) as SizeIndex,
-    startTimeMs: nowMs,
-    isTierConversion: false,
-    conversionCount: 1,
-  });
-
-  // Clear remaining candidate arrays
-  for (const c of candidates) c.particles.length = 0;
-
-  return mergeCooldownFrames;
 }
 
 // ─── Process active merges ──────────────────────────────────────
@@ -183,25 +212,18 @@ export function processActiveMerges(
   spawnerRotations: Map<TierId, number>,
   nowMs: number,
   generators: readonly GeneratorInfo[],
-): { particles: EquatoriaParticle[]; mergeCooldownFrames: number } {
+): { particles: EquatoriaParticle[]; mergeCooldownFrames: number; completedCount: number } {
   const toRemove = new Set<EquatoriaParticle>();
   let cooldown = 0;
+  let completedCount = 0;
 
   let writeIdx = 0;
   for (let mi = 0, mlen = activeMerges.length; mi < mlen; mi++) {
     const merge = activeMerges[mi];
-    let allGathered = true;
-    for (let pi = 0, plen = merge.particles.length; pi < plen; pi++) {
-      const p = merge.particles[pi];
-      const dx = p.x - merge.targetX;
-      const dy = p.y - merge.targetY;
-      if (dx * dx + dy * dy >= MERGE_GATHER_THRESHOLD * MERGE_GATHER_THRESHOLD) {
-        allGathered = false;
-        break;
-      }
-    }
 
-    if (!allGathered && nowMs - merge.startTimeMs < MERGE_TIMEOUT_MS) {
+    // Wait for the trail animation to finish before completing the merge.
+    const animDuration = merge.trailDrawDurationMs + merge.trailEraseDurationMs;
+    if (nowMs - merge.trailAnimStartMs < animDuration) {
       activeMerges[writeIdx++] = merge;
       continue;
     }
@@ -245,6 +267,7 @@ export function processActiveMerges(
     }
 
     cooldown = Math.max(cooldown, 1);
+    completedCount++;
   }
   activeMerges.length = writeIdx;
 
@@ -259,7 +282,7 @@ export function processActiveMerges(
     particles.length = wp;
   }
 
-  return { particles, mergeCooldownFrames: cooldown };
+  return { particles, mergeCooldownFrames: cooldown, completedCount };
 }
 
 // ─── Enforce particle limit ─────────────────────────────────────
@@ -313,162 +336,4 @@ export function enforceParticleLimit(
   return particles;
 }
 
-// ─── Procedural merge (seek & combine anywhere) ──────────────────
 
-const _proceduralGroupMap = new Map<number, TierSizeGroup>();
-
-export function attemptProceduralMerge(
-  particles: EquatoriaParticle[],
-  proceduralMerges: ProceduralMerge[],
-  nowMs: number,
-): void {
-  _proceduralGroupMap.clear();
-
-  for (let i = 0, len = particles.length; i < len; i++) {
-    const p = particles[i];
-    if (p.isMerging || p.isProceduralSeeking) continue;
-    const key = groupKey(p.tierIndex, p.sizeIndex);
-    let group = _proceduralGroupMap.get(key);
-    if (!group) {
-      group = { tierId: p.tierId, sizeIndex: p.sizeIndex, particles: [] };
-      _proceduralGroupMap.set(key, group);
-    }
-    group.particles.push(p);
-  }
-
-  for (const group of _proceduralGroupMap.values()) {
-    if (group.particles.length < PROCEDURAL_MERGE_THRESHOLD) {
-      group.particles.length = 0;
-      continue;
-    }
-
-    const selected = selectRandom(group.particles, PROCEDURAL_MERGE_THRESHOLD);
-
-    let cx = 0, cy = 0;
-    for (let i = 0, len = selected.length; i < len; i++) {
-      cx += selected[i].x;
-      cy += selected[i].y;
-    }
-    cx /= selected.length;
-    cy /= selected.length;
-
-    for (let i = 0, len = selected.length; i < len; i++) {
-      const p = selected[i];
-      p.isProceduralSeeking = true;
-      p.proceduralTargetX = cx;
-      p.proceduralTargetY = cy;
-    }
-
-    proceduralMerges.push({
-      particles: selected,
-      sizeIndex: group.sizeIndex,
-      tierId: group.tierId,
-      startTimeMs: nowMs,
-      centroidX: cx,
-      centroidY: cy,
-    });
-
-    group.particles.length = 0;
-  }
-}
-
-export function updateProceduralMerges(
-  particles: EquatoriaParticle[],
-  proceduralMerges: ProceduralMerge[],
-  shockwaves: Shockwave[],
-  pool: ParticlePool,
-  nowMs: number,
-  clampedDelta: number,
-): EquatoriaParticle[] {
-  const toRemove = new Set<EquatoriaParticle>();
-
-  let writeIdx = 0;
-  for (let mi = 0, mlen = proceduralMerges.length; mi < mlen; mi++) {
-    const merge = proceduralMerges[mi];
-    const elapsedMs = nowMs - merge.startTimeMs;
-    const elapsedSec = elapsedMs / 1000;
-
-    let cx = 0, cy = 0, count = 0;
-    for (let pi = 0, plen = merge.particles.length; pi < plen; pi++) {
-      const p = merge.particles[pi];
-      if (!p.isActive) continue;
-      cx += p.x; cy += p.y; count++;
-    }
-    if (count === 0) continue;
-    cx /= count;
-    cy /= count;
-    merge.centroidX = cx;
-    merge.centroidY = cy;
-
-    const seekForce = PROCEDURAL_SEEK_BASE_FORCE + PROCEDURAL_SEEK_RAMP_PER_SEC * elapsedSec;
-
-    let allGathered = true;
-    for (let pi = 0, plen = merge.particles.length; pi < plen; pi++) {
-      const p = merge.particles[pi];
-      if (!p.isActive) continue;
-      const dx = cx - p.x;
-      const dy = cy - p.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > PROCEDURAL_SEEK_SNAP_DIST) {
-        allGathered = false;
-        const angle = Math.atan2(dy, dx);
-        p.vx += Math.cos(angle) * seekForce * clampedDelta;
-        p.vy += Math.sin(angle) * seekForce * clampedDelta;
-      }
-      p.proceduralTargetX = cx;
-      p.proceduralTargetY = cy;
-    }
-
-    if (allGathered || elapsedMs >= PROCEDURAL_MERGE_TIMEOUT_MS) {
-      for (let pi = 0, plen = merge.particles.length; pi < plen; pi++) {
-        const p = merge.particles[pi];
-        if (p.isActive) toRemove.add(p);
-      }
-
-      if (particles.length - toRemove.size + 1 <= MAX_PARTICLES_FULL) {
-        const np = pool.acquire();
-        const newSizeIndex = (merge.sizeIndex + 1) as SizeIndex;
-        initParticle(np, merge.tierId, newSizeIndex, cx, cy, nowMs);
-        np.vx = (Math.random() - 0.5) * CONVERSION_SPREAD_VELOCITY * 0.5;
-        np.vy = (Math.random() - 0.5) * CONVERSION_SPREAD_VELOCITY * 0.5;
-        particles.push(np);
-
-        if (shockwaves.length < MAX_SHOCKWAVES) {
-          const tier = TIER_BY_ID.get(merge.tierId);
-          const shockwaveScale = getShockwaveScaleForSize(newSizeIndex);
-          shockwaves.push({
-            x: cx,
-            y: cy,
-            radius: 0,
-            maxRadius: SHOCKWAVE_MAX_RADIUS * shockwaveScale,
-            edgeThickness: 10 * Math.max(shockwaveScale, 0.1),
-            pushForce: 2.5 * shockwaveScale,
-            alpha: 0.6,
-            timestampMs: nowMs,
-            color: tier?.color ?? '#fff',
-          });
-        }
-      }
-      continue; // don't keep this merge
-    }
-
-    proceduralMerges[writeIdx++] = merge;
-  }
-  proceduralMerges.length = writeIdx;
-
-  if (toRemove.size > 0) {
-    let wp = 0;
-    for (let i = 0, len = particles.length; i < len; i++) {
-      const p = particles[i];
-      if (toRemove.has(p)) {
-        p.isProceduralSeeking = false;
-        pool.release(p);
-      } else {
-        particles[wp++] = p;
-      }
-    }
-    particles.length = wp;
-  }
-
-  return particles;
-}

@@ -174,6 +174,236 @@
   letter-spacing: 1px;
 }
 
+/* ── Looms sub-tab bar ───────────────────────────────────────── */
+.looms-sub-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--accent-border);
+  padding-bottom: 4px;
+}
+
+.looms-sub-tab-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.looms-sub-tab-btn.active {
+  background: rgba(201, 168, 76, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.looms-sub-tab-btn:not(.active):hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+.looms-sub-pane {
+  /* no special layout needed; fills the panel naturally */
+}
+
+/* ── Aliven tier rows ────────────────────────────────────────── */
+.aliven-rows {
+  margin-bottom: 16px;
+}
+
+.aliven-tier-row {
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--border-radius);
+  padding: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.aliven-tier-row--alive {
+  opacity: 0.75;
+}
+
+.aliven-tier-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.aliven-tier-name {
+  font-size: 14px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.aliven-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.aliven-btn {
+  font-size: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* ── Aliven matrix ───────────────────────────────────────────── */
+.aliven-matrix-section {
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.aliven-matrix-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.aliven-matrix-note {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.aliven-matrix-controls {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.aliven-matrix-step-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  flex-shrink: 0;
+}
+
+.aliven-matrix-step-btn--add {
+  background: rgba(80, 200, 120, 0.12);
+  color: #c8ffd8;
+  border-color: rgba(80, 200, 120, 0.25);
+}
+
+.aliven-matrix-step-btn--add.selected {
+  background: rgba(80, 200, 120, 0.32);
+  border-color: #50c878;
+  box-shadow: 0 0 8px rgba(80, 200, 120, 0.5);
+}
+
+.aliven-matrix-step-btn--sub {
+  background: rgba(220, 50, 50, 0.12);
+  color: #ffc8c8;
+  border-color: rgba(220, 50, 50, 0.25);
+}
+
+.aliven-matrix-step-btn--sub.selected {
+  background: rgba(220, 50, 50, 0.32);
+  border-color: #dc3232;
+  box-shadow: 0 0 8px rgba(220, 50, 50, 0.5);
+}
+
+.aliven-matrix-reset-btn {
+  background: rgba(140, 140, 160, 0.1);
+  color: var(--text-secondary);
+  border-color: rgba(140, 140, 160, 0.2);
+  font-size: 16px;
+}
+
+.aliven-matrix-reset-btn:active {
+  background: rgba(140, 140, 160, 0.25);
+}
+
+.aliven-matrix-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.aliven-matrix-empty {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.aliven-matrix {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.aliven-matrix-corner {
+  font-size: 8px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.aliven-matrix-col-head {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap;
+}
+
+.aliven-matrix-row-head {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: right;
+  padding: 2px 6px 2px 2px;
+  border-right: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.aliven-matrix-cell {
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 2px;
+  min-width: 36px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  transition: filter 0.1s;
+}
+
+.aliven-matrix-cell:active {
+  filter: brightness(1.3);
+}
+
 /* ── Loom cards ──────────────────────────────────────────────── */
 .loom-card {
   background: var(--bg-secondary);
@@ -330,8 +560,8 @@
 }
 
 .eq-term.eq-highlight {
-  text-shadow: 0 0 12px currentColor, 0 0 24px currentColor;
-  transform: scale(1.05);
+  text-shadow: 0 0 8px #FFB21A, 0 0 18px #FFB21A;
+  filter: brightness(1.25) saturate(1.1);
 }
 
 .eq-term.eq-dimmed {
@@ -362,6 +592,82 @@
 }
 
 /* ── Achievement cards ───────────────────────────────────────── */
+.achievement-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.achievement-group {
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: var(--border-radius);
+  background: rgba(20, 20, 30, 0.65);
+  overflow: hidden;
+}
+
+.achievement-group-toggle {
+  width: 100%;
+  border: 0;
+  border-left: 3px solid rgba(201, 168, 76, 0.25);
+  background: rgba(16, 16, 24, 0.9);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: background 0.2s ease, border-left-color 0.2s ease;
+}
+
+.achievement-group-toggle:active {
+  opacity: 0.8;
+}
+
+.achievement-group-toggle-left,
+.achievement-group-toggle-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.achievement-group-icon {
+  font-size: 15px;
+}
+
+.achievement-group-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.achievement-group-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.achievement-group-chevron {
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.achievement-group-toggle--expanded .achievement-group-chevron {
+  transform: rotate(180deg);
+}
+
+.achievement-group-content {
+  padding: 0 8px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease;
+}
+
+.achievement-group-content--expanded {
+  max-height: 3000px;
+  padding: 8px 8px 0;
+}
+
 .achievement-card {
   background: var(--bg-secondary);
   border-left: 3px solid var(--accent);
@@ -423,6 +729,44 @@
   font-weight: 600;
 }
 
+/* ── Achievement sparkle (golden firefly orbs) ───────────────── */
+.achievement-sparkle-host {
+  position: relative;
+  overflow: hidden;
+}
+
+.achievement-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd700 0%, #ffecb3 40%, transparent 70%);
+  box-shadow: 0 0 6px 2px rgba(255, 215, 0, 0.6), 0 0 12px 4px rgba(255, 215, 0, 0.3);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  animation: sparkle-drift var(--sparkle-duration, 4000ms) ease-in-out forwards;
+}
+
+@keyframes sparkle-drift {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--sparkle-dx, 0px) * 0.15), calc(var(--sparkle-dy, 0px) * 0.15)) scale(var(--sparkle-scale, 1));
+  }
+  85% {
+    opacity: 0.8;
+    transform: translate(calc(var(--sparkle-dx, 0px) * 0.85), calc(var(--sparkle-dy, 0px) * 0.85)) scale(var(--sparkle-scale, 1));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sparkle-dx, 0px), var(--sparkle-dy, 0px)) scale(0.2);
+  }
+}
+
 /* ── Earned-but-unclaimed achievement: golden rotating sheen ─── */
 @keyframes golden-sheen-rotate {
   0%   { background-position: 0% 50%; }
@@ -463,33 +807,99 @@
   pointer-events: none;
 }
 
+.achievement-group-toggle--has-unclaimed {
+  position: relative;
+  overflow: hidden;
+  border-left-color: #ffd700 !important;
+}
+
+.achievement-group-toggle--has-unclaimed::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 215, 0, 0.1) 40%,
+    rgba(255, 240, 120, 0.18) 50%,
+    rgba(255, 215, 0, 0.1) 60%,
+    transparent 80%
+  );
+  background-size: 200% 200%;
+  animation: golden-sheen-rotate 2s linear infinite;
+  pointer-events: none;
+}
+
+.tab-btn--unclaimed-achievements {
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-btn--unclaimed-achievements::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 215, 0, 0.12) 40%,
+    rgba(255, 240, 120, 0.2) 50%,
+    rgba(255, 215, 0, 0.12) 60%,
+    transparent 80%
+  );
+  background-size: 200% 200%;
+  animation: golden-sheen-rotate 2s linear infinite;
+  pointer-events: none;
+}
+
 .achievement-earned-unclaimed:active {
   opacity: 0.75;
   transform: scale(0.98);
 }
 
-/* ── Reward popup ──────────────────────────────────────────────── */
-@keyframes reward-popup-fade {
-  0%   { opacity: 0; transform: translateY(0) scale(0.85); }
-  15%  { opacity: 1; transform: translateY(-8px) scale(1.05); }
-  70%  { opacity: 1; transform: translateY(-12px) scale(1); }
-  100% { opacity: 0; transform: translateY(-22px) scale(0.9); }
-}
-
-.achievement-reward-popup {
-  position: absolute;
-  top: 50%;
+/* ── Golden text reward queue ──────────────────────────────────── */
+.golden-text-container {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 16, 0, 0.92);
-  border: 1px solid #ffd700;
-  border-radius: 8px;
-  color: #ffd700;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 5px 12px;
+  z-index: 120;
   pointer-events: none;
+  width: min(90vw, 500px);
+  display: flex;
+  justify-content: center;
+}
+
+@keyframes golden-text-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  82% {
+    opacity: 1;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+.golden-text-reward {
+  background: rgba(12, 10, 0, 0.82);
+  border: 1px solid rgba(255, 215, 0, 0.6);
+  border-radius: 999px;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.7), 0 0 14px rgba(255, 215, 0, 0.35);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 14px;
   white-space: nowrap;
-  z-index: 10;
-  animation: reward-popup-fade 2.2s ease-out forwards;
+  animation: golden-text-float 2.8s ease forwards;
 }

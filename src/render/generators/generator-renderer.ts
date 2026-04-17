@@ -6,6 +6,7 @@ import { SPAWNER_SIZE } from '../../data/particles/particle-config';
 import { getGeneratorSpritePath } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 import { getTintedSpriteCanvas } from '../assets/sprite-tint';
+import { colorWithAlpha } from '../assets/color-utils';
 
 // Module-level animation clock advanced by drawGenerators callers
 let _genAnimTimeMs = 0;
@@ -17,6 +18,9 @@ export function updateGeneratorRendererTime(deltaMs: number): void {
 
 /** Speed of prismatic hue cycling in degrees per second. */
 const HUE_CYCLE_DEG_PER_SEC = 90;
+
+/** Visual influence circle is drawn at 75 % of the physics range. */
+const INFLUENCE_VISUAL_SCALE = 0.75;
 
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
@@ -129,35 +133,28 @@ function drawGeneratorTinted(
     ctx.restore();
   }
 
-  // Influence radius indicator
-  if (isNullstone) {
-    drawNullstoneRangeSwirl(ctx, x, y, influenceRange, alpha);
-  } else {
-    ctx.save();
-    ctx.globalAlpha = alpha * 0.15;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.arc(x, y, influenceRange, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
+  // Influence radius indicator — swirl in tier color, 25 % smaller than physics range
+  drawRangeSwirl(ctx, x, y, influenceRange * INFLUENCE_VISUAL_SCALE, alpha, color);
 }
 
-/** Draw a pulsing purple swirl around the nullstone generator's influence range. */
-function drawNullstoneRangeSwirl(
+/**
+ * Draw a pulsing color swirl around a generator's influence range.
+ * Used for all tiers; the nullstone used this exclusively before, now all do.
+ */
+function drawRangeSwirl(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   range: number,
   alpha: number,
+  color: string,
 ): void {
   const t = _genAnimTimeMs / 1000;
   const numArcs = 5;
   const arcSpan = (Math.PI * 2) / numArcs;
 
+  // Parse color into rgba components for gradient stops
+  // We pass the hex/rgb color as-is and embed alpha via globalAlpha.
   ctx.save();
   ctx.globalAlpha = alpha * 0.18;
 
@@ -171,9 +168,9 @@ function drawNullstoneRangeSwirl(
       x + Math.cos(endAngle) * range,
       y + Math.sin(endAngle) * range,
     );
-    grad.addColorStop(0, 'rgba(150,60,210,0)');
-    grad.addColorStop(0.5, 'rgba(150,60,210,1)');
-    grad.addColorStop(1, 'rgba(100,30,160,0)');
+    grad.addColorStop(0, colorWithAlpha(color, 0));
+    grad.addColorStop(0.5, colorWithAlpha(color, 1));
+    grad.addColorStop(1, colorWithAlpha(color, 0));
 
     ctx.strokeStyle = grad;
     ctx.lineWidth = 1.5;
@@ -182,9 +179,9 @@ function drawNullstoneRangeSwirl(
     ctx.stroke();
   }
 
-  // Also draw a faint dashed circle so the boundary is still readable
+  // Faint dashed boundary circle
   ctx.globalAlpha = alpha * 0.12;
-  ctx.strokeStyle = '#9640d0';
+  ctx.strokeStyle = color;
   ctx.lineWidth = 0.8;
   ctx.setLineDash([2, 4]);
   ctx.beginPath();
@@ -256,18 +253,6 @@ function drawGeneratorFallback(
 
   ctx.restore();
 
-  if (isNullstone) {
-    drawNullstoneRangeSwirl(ctx, x, y, influenceRange, alpha);
-  } else {
-    ctx.save();
-    ctx.globalAlpha = alpha * 0.15;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.arc(x, y, influenceRange, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
+  // Influence radius indicator — swirl in tier color, 25 % smaller than physics range
+  drawRangeSwirl(ctx, x, y, influenceRange * INFLUENCE_VISUAL_SCALE, alpha, color);
 }

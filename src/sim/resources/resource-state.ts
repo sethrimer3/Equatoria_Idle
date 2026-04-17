@@ -1,5 +1,7 @@
 import type { TierId } from '../../data/tiers';
 import { TIERS } from '../../data/tiers';
+import { MERGE_THRESHOLD } from '../../data/particles/size-tiers';
+import type { SizeIndex } from '../../data/particles/size-tiers';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -73,4 +75,38 @@ export function spendMotes(state: ResourceState, tierId: TierId, amount: number)
   if (current < amount) return false;
   state.moteTotals.set(tierId, current - amount);
   return true;
+}
+
+// ─── Size-based utilities ────────────────────────────────────────
+
+/**
+ * Convert a non-negative float total to a base-MERGE_THRESHOLD size count map.
+ * Only floor(total) is encoded; any fractional part is discarded.
+ *
+ * E.g., totalToSizeCounts(350.7) → Map { 0 → 50, 1 → 3 }
+ *   because 350 in base-100 is 3×100¹ + 50×100⁰.
+ */
+export function totalToSizeCounts(total: number): Map<SizeIndex, number> {
+  const counts = new Map<SizeIndex, number>();
+  let remaining = Math.floor(Math.max(0, total));
+  let s = 0;
+  while (remaining > 0) {
+    const digit = remaining % MERGE_THRESHOLD;
+    if (digit > 0) counts.set(s, digit);
+    remaining = Math.floor(remaining / MERGE_THRESHOLD);
+    s++;
+  }
+  return counts;
+}
+
+/**
+ * Convert size counts back to a float total.
+ * E.g., sizeCountsToTotal(Map { 0 → 50, 1 → 3 }) → 350
+ */
+export function sizeCountsToTotal(counts: Map<SizeIndex, number>): number {
+  let total = 0;
+  for (const [s, count] of counts) {
+    total += count * Math.pow(MERGE_THRESHOLD, s);
+  }
+  return total;
 }

@@ -1,0 +1,134 @@
+/* ═══════════════════════════════════════════════════════════════
+   Idle / Offline Reward Overlay
+   Shown when the player returns after being away ≥ 1 minute.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Backdrop ────────────────────────────────────────────────── */
+.idle-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50; /* above canvas (z:2), HUD (z:10), panels (z:5); below tab-bar (z:100) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 8, 16, 0.72);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+@supports (backdrop-filter: blur(4px)) {
+  .idle-overlay {
+    backdrop-filter: blur(4px);
+  }
+}
+
+.idle-overlay.idle-overlay--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Card ─────────────────────────────────────────────────────── */
+.idle-overlay__card {
+  width: min(92%, 400px);
+  max-height: calc(100% - var(--tab-height) - 32px);
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--border-radius);
+  padding: 20px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Heading ─────────────────────────────────────────────────── */
+.idle-overlay__heading {
+  text-align: center;
+}
+
+.idle-overlay__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.idle-overlay__duration {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* ── Divider ─────────────────────────────────────────────────── */
+.idle-overlay__divider {
+  border: none;
+  border-top: 1px solid var(--accent-border);
+  margin: 0;
+}
+
+/* ── Row list ─────────────────────────────────────────────────── */
+.idle-overlay__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* ── Equivalence row (always shown) ──────────────────────────── */
+.idle-overlay__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-panel, #12121e);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 13px;
+  min-height: 36px;
+}
+
+/* ── Tier rows ────────────────────────────────────────────────── */
+.idle-overlay__tier-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  /* color set inline per tier */
+}
+
+.idle-overlay__row-name {
+  font-weight: 700;
+  min-width: 70px;
+  color: var(--text-primary);
+}
+
+.idle-overlay__row-formula {
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idle-overlay__row-total {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Equivalence row uses accent color for total */
+.idle-overlay__row--equivalence .idle-overlay__row-total {
+  color: var(--accent);
+}
+
+/* ── Dismiss hint ─────────────────────────────────────────────── */
+.idle-overlay__dismiss {
+  text-align: center;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding-top: 4px;
+}

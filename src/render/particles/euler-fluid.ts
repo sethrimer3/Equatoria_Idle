@@ -23,6 +23,7 @@ import {
   EULER_MAX_FORCE,
   EULER_CORE_RADIUS,
 } from '../../data/particles/particle-config';
+import { gridKey } from './spatial-grid';
 
 // ─── Minimal particle interface ──────────────────────────────────
 // Using a structural interface avoids a circular import with
@@ -43,13 +44,6 @@ interface EulerParticle {
 /** Cell size matches the influence radius so each look-up touches at
  *  most a 3 × 3 neighbourhood of cells. */
 const EULER_CELL_SIZE = EULER_INFLUENCE_RADIUS;
-
-/** Interleave two 16-bit signed integers into a 32-bit numeric key.
- *  Works for grid coordinates within ±32767, which covers any
- *  reasonable canvas size. Avoids string allocation in the hot path. */
-function gridKey(cx: number, cy: number): number {
-  return ((cx & 0xFFFF) << 16) | (cy & 0xFFFF);
-}
 
 interface EulerGrid {
   cells: Map<number, EulerParticle[]>;

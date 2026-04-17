@@ -8,6 +8,7 @@ import { getUpgradeLevel, getUpgradeCost } from '../../sim/progression';
 import { getMotes } from '../../sim/resources';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getGemIconPath } from '../../render/assets/asset-paths';
+import type { TraceEffect } from '../../render/ui/trace-effect';
 
 /**
  * Equation panel — shows the Equation Forge.
@@ -19,7 +20,7 @@ export interface EquationPanel {
   update(state: GameState, isDevMode?: boolean, numberFormat?: NumberFormat): void;
 }
 
-export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
+export function createEquationPanel(dispatch: ActionHandler, traceEffect?: TraceEffect): EquationPanel {
   const panel = document.createElement('div');
   panel.className = 'panel equation-panel';
 
@@ -83,10 +84,17 @@ export function createEquationPanel(dispatch: ActionHandler): EquationPanel {
     btn.addEventListener('pointerenter', () => {
       if (def.tierId) {
         highlightEquationTier(eqDisplay, def.tierId);
+        if (traceEffect) {
+          const matching = Array.from(eqDisplay.querySelectorAll(`.eq-term[data-tier="${def.tierId}"]`));
+          traceEffect.setEquationTargets(matching);
+        }
       }
     });
     btn.addEventListener('pointerleave', () => {
       clearEquationHighlight(eqDisplay);
+      if (traceEffect) {
+        traceEffect.setEquationTargets([]);
+      }
     });
 
     unlockedSection.appendChild(btn);

@@ -4,6 +4,7 @@ import {
   DRAG_RELEASE_STILLNESS_MS,
   DRAG_RELEASE_SPEED_THRESHOLD,
 } from '../data/particles/particle-config';
+import { PL_MAX_VELOCITY } from '../data/particles/particle-life-config';
 
 export interface ParticleDragState {
   isDown: boolean;
@@ -101,10 +102,21 @@ export function handleParticleDragUp(
   const speed = Math.sqrt(state.velX * state.velX + state.velY * state.velY);
   const isStationary = dt > DRAG_RELEASE_STILLNESS_MS || speed < DRAG_RELEASE_SPEED_THRESHOLD;
 
+  // Convert pointer velocity (canvas px/ms) → particle velocity (canvas px/frame-unit at 60 fps).
+  // The game loop normalises time via clampedDelta = deltaMs / (1000/60), so a particle
+  // velocity of 1 means "1 canvas px per 60-fps frame" regardless of the actual frame rate.
+  // Multiplying px/ms by (1000/60) gives the equivalent px/clampedDelta value.
+  const MS_PER_FRAME = 1000 / 60;
+  const throwVx = state.velX * MS_PER_FRAME;
+  const throwVy = state.velY * MS_PER_FRAME;
+  const throwSpeedSq = throwVx * throwVx + throwVy * throwVy;
+
   for (const p of particles) {
     if (p.isLockedToPointer) {
       p.isLockedToPointer = false;
+      p.dragReleaseTimeMs = nowMs;
       if (isStationary) {
+        // Finger lifted without a throw — settle to minimum wandering speed.
         const pSpeed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
         const minVel = p.minVelocity;
         if (pSpeed > 0) {
@@ -115,6 +127,13 @@ export function handleParticleDragUp(
           p.vx = Math.cos(angle) * minVel;
           p.vy = Math.sin(angle) * minVel;
         }
+      } else if (throwSpeedSq > 0) {
+        // Transfer throw velocity so particles fly in the direction they were thrown.
+        // Cap at PL_MAX_VELOCITY to stay within the physics model's bounds.
+        const throwSpeed = Math.sqrt(throwSpeedSq);
+        const capScale = throwSpeed > PL_MAX_VELOCITY ? PL_MAX_VELOCITY / throwSpeed : 1;
+        p.vx = throwVx * capScale;
+        p.vy = throwVy * capScale;
       }
     }
   }

@@ -43,12 +43,16 @@ export interface EquatoriaParticle {
   trailCount: number;
   /** Frame counter for trail capture throttling. */
   trailFrameCounter: number;
-  /** Whether this particle is in a procedural seek-merge group. */
-  isProceduralSeeking: boolean;
-  /** Target centroid X for procedural seek-merge. */
-  proceduralTargetX: number;
-  /** Target centroid Y for procedural seek-merge. */
-  proceduralTargetY: number;
+  /** X position when this particle entered suction-merge state (used for trail rendering). */
+  suctionStartX: number;
+  /** Y position when this particle entered suction-merge state (used for trail rendering). */
+  suctionStartY: number;
+  /**
+   * Timestamp (ms) when this particle was last released from pointer drag.
+   * 0 means not recently dragged.  Used to apply the post-drag speed boost
+   * fade and Particle Life inertness fade over DRAG_RELEASE_FADE_MS.
+   */
+  dragReleaseTimeMs: number;
 }
 
 /** Backward-compatible alias. */
@@ -65,16 +69,18 @@ export interface ActiveMerge {
   startTimeMs: number;
   isTierConversion: boolean;
   conversionCount: number;
-}
-
-/** Tracks a group of same-size particles that are seeking each other out. */
-export interface ProceduralMerge {
-  particles: EquatoriaParticle[];
-  sizeIndex: SizeIndex;
-  tierId: TierId;
-  startTimeMs: number;
-  centroidX: number;
-  centroidY: number;
+  /**
+   * Trail animation data for suction merges (null for forge-crunch / tier-conversion).
+   * trailStartXY: flat [x0,y0, x1,y1, …] for up to MERGE_TRAIL_COUNT selected trails.
+   * trailCurveAngles: per-trail random curve offset in radians (−10°…+10°).
+   */
+  trailColor: string;
+  trailStartXY: number[] | null;
+  trailCurveAngles: number[] | null;
+  trailCount: number;
+  trailAnimStartMs: number;
+  trailDrawDurationMs: number;
+  trailEraseDurationMs: number;
 }
 
 // ─── Shockwave ───────────────────────────────────────────────────

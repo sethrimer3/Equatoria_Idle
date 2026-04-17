@@ -29,7 +29,7 @@ import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
 import { createHudOverlay } from '../ui/hud/hud-overlay';
 import { createLoadingScreen } from '../ui/loading';
-import { loadSettings, saveGame, loadGame, deleteSave } from '../settings';
+import { loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp } from '../settings';
 import { TIERS } from '../data/tiers';
 import { createForgeCrunchState } from '../sim/forge';
 import {
@@ -37,10 +37,17 @@ import {
   computeGeneratorPositions,
 } from '../sim/particles';
 import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
+import { createAudioSystem } from '../audio';
+import { createTraceEffect } from '../render/ui/trace-effect';
+import { createRpgRender } from '../render/rpg/rpg-render';
+import { createWeaponStorePanel } from '../ui/panels/weapon-store-panel';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
 import { createGameLoop } from './app-game-loop';
+import { createIdleOverlay } from '../ui/idle/idle-overlay';
+import { calculateIdleRewards } from '../sim/idle/idle-reward';
+import { applyIdleRewards } from '../sim/idle/apply-idle-rewards';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
@@ -57,6 +64,8 @@ export async function startApp(): Promise<void> {
   preloadForgeSprites();
 
   // ── Initialize game state ──
+  const lastActiveTs = readLastActiveTimestamp();
+  writeLastActiveTimestamp(); // immediately record so next session measures from now
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
   const settings = loadSettings();
@@ -78,6 +87,9 @@ export async function startApp(): Promise<void> {
   const forge = createForgeCrunchState();
   const generatorState = createGeneratorState();
 
+  // ── Audio system ──
+  const audioSystem = createAudioSystem(settings.musicVolume, settings.sfxVolume);
+
   const appState: AppState = {
     game,
     activeTab: 'equation',
@@ -86,6 +98,9 @@ export async function startApp(): Promise<void> {
     forge,
     generatorState,
     particleDrag: createParticleDragState(),
+    lastTapCanvasX: 0,
+    lastTapCanvasY: 0,
+    lastTapTimeMs: 0,
   };
 
   // ── Background effects ──
@@ -107,6 +122,10 @@ export async function startApp(): Promise<void> {
   // ── HUD overlay (DOM layer above canvas, non-pixelated) ──
   const hudOverlay = createHudOverlay();
   canvasContainer.appendChild(hudOverlay.element);
+
+  // ── Idle reward overlay ──
+  const idleOverlay = createIdleOverlay();
+  root.appendChild(idleOverlay.element);
 
   // ── Panels overlay container ──
   const panelsContainer = document.createElement('div');
@@ -141,6 +160,9 @@ export async function startApp(): Promise<void> {
 
   // ── Action dispatch ──
   const dispatch = (action: GameAction): void => {
+    // Resume audio context on user interaction (autoplay policy)
+    audioSystem.resumeContext().catch(() => { /* silently ignore */ });
+
     // Handle save/reset directly here since they need local closures
     if (action.kind === 'save_game') {
       saveGame(appState.game);
@@ -148,28 +170,91 @@ export async function startApp(): Promise<void> {
     }
     if (action.kind === 'reset_game') {
       deleteSave();
+      particles.reset();
       Object.assign(appState, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
       recomputeGenerators();
       setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
       return;
     }
-    handleActionImpl(appState, action, cc, particles, settings, uiPanels, recomputeGenerators);
+    handleActionImpl(appState, action, cc, particles, settings, uiPanels, recomputeGenerators, audioSystem);
   };
+
+  // ── Focus-aware audio pause ──
+  let _isWindowFocused = document.visibilityState === 'visible';
+
+  function applyFocusedAudio(): void {
+    // If the setting is off, always keep audio running.
+    audioSystem.setFocused(!settings.isMusicOnlyWhenFocused || _isWindowFocused);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    _isWindowFocused = document.visibilityState === 'visible';
+    applyFocusedAudio();
+    // Write the last-active timestamp whenever the tab is hidden.
+    if (document.visibilityState === 'hidden') {
+      writeLastActiveTimestamp();
+    }
+  });
+
+  window.addEventListener('blur', () => {
+    _isWindowFocused = false;
+    applyFocusedAudio();
+  });
+
+  window.addEventListener('focus', () => {
+    _isWindowFocused = true;
+    applyFocusedAudio();
+  });
+
+  // ── Trace effect overlay (golden outline + tracer circles for UI highlights) ──
+  const traceEffect = createTraceEffect(root);
 
   // ── UI panels ──
   const upgradePanel = createUpgradePanel(dispatch);
   const resourcePanel = createResourcePanel();
-  const settingsPanel = createSettingsPanel(settings, dispatch);
-  const loomPanel = createLoomPanel(dispatch);
-  const equationPanel = createEquationPanel(dispatch);
-  const achievementsPanel = createAchievementsPanel(dispatch);
+  const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio);
+  const equationPanel = createEquationPanel(dispatch, traceEffect);
+  const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
-  panelsInner.appendChild(equationPanel.element);
+  // Wrap the equation-related panels into a container so they can be
+  // injected as the "Equation" sub-tab of the combined Upgrades panel.
+  const equationContentDiv = document.createElement('div');
+  equationContentDiv.appendChild(equationPanel.element);
+  equationContentDiv.appendChild(upgradePanel.element);
+  equationContentDiv.appendChild(resourcePanel.element);
+
+  const loomPanel = createLoomPanel(dispatch, traceEffect, equationContentDiv);
+
   panelsInner.appendChild(loomPanel.element);
-  panelsInner.appendChild(upgradePanel.element);
-  panelsInner.appendChild(resourcePanel.element);
   panelsInner.appendChild(achievementsPanel.element);
   panelsInner.appendChild(settingsPanel.element);
+
+  // ── RPG container + render ──
+  const rpgContainer = document.createElement('div');
+  rpgContainer.id = 'rpg-container';
+  rpgContainer.style.display = 'none';
+  root.appendChild(rpgContainer);
+
+  const rpgRender = createRpgRender(rpgContainer, appState.game.rpg);
+  // Stats panel is positioned in the root (above the tab bar); visibility
+  // is toggled by setActiveTab alongside rpgContainer.
+  root.appendChild(rpgRender.statsPanel);
+
+  // ── Weapon store panel (RPG tab overlay) ──
+  const weaponStorePanel = createWeaponStorePanel(dispatch);
+  weaponStorePanel.element.style.display = 'none';
+  root.appendChild(weaponStorePanel.element);
+
+  // ── Shop toggle button (appended to the stats panel by the renderer) ──
+  const shopToggleBtn = document.createElement('button');
+  shopToggleBtn.className = 'rpg-shop-btn';
+  shopToggleBtn.textContent = '🛒 Shop';
+  shopToggleBtn.setAttribute('aria-label', 'Open weapon store');
+  shopToggleBtn.addEventListener('click', () => {
+    const nowVisible = !weaponStorePanel.isVisible;
+    weaponStorePanel.setVisible(nowVisible);
+  });
+  rpgRender.statsPanel.appendChild(shopToggleBtn);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
@@ -183,6 +268,10 @@ export async function startApp(): Promise<void> {
     equationPanel,
     achievementsPanel,
     panelsContainer,
+    mainCanvasContainer: canvasContainer,
+    rpgRender,
+    rpgContainer,
+    weaponStorePanel,
   };
 
   setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
@@ -202,6 +291,7 @@ export async function startApp(): Promise<void> {
 
   cc.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     cc.canvas.setPointerCapture(e.pointerId);
+    audioSystem.resumeContext().catch(() => { /* silently ignore */ });
     const pos = getCanvasCoords(e);
     handleParticleDragDown(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles, cc.widthPx, cc.heightPx);
   });
@@ -229,6 +319,7 @@ export async function startApp(): Promise<void> {
     vermiculateEffect.reset();
     substrateEffect.reset();
     recomputeGenerators();
+    rpgRender.resize(rpgContainer);
   };
   window.addEventListener('resize', onResize);
   bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
@@ -247,6 +338,7 @@ export async function startApp(): Promise<void> {
     hudOverlay,
     lastUnlockedTierCount: { value: appState.game.progression.unlockedTierCount },
     lastFrameMs: { value: performance.now() },
+    audioSystem,
   });
 
   // Initial generator setup
@@ -254,5 +346,18 @@ export async function startApp(): Promise<void> {
 
   // ── Fade out loading screen and start game loop ──
   await loadingScreen.fadeOut();
+
+  // ── Idle reward check ──
+  if (lastActiveTs !== null) {
+    const elapsedMs = Date.now() - lastActiveTs;
+    if (elapsedMs > 60_000) {
+      const summary = calculateIdleRewards(game, elapsedMs);
+      if (summary.tierRewards.some(r => r.totalMotes > 0)) {
+        applyIdleRewards(game, summary);
+        idleOverlay.show(summary);
+      }
+    }
+  }
+
   requestAnimationFrame(gameLoop);
 }
