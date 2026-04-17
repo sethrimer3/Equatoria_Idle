@@ -111,11 +111,17 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     // Stats row
     const statsRow = document.createElement('div');
     statsRow.className = 'weapon-store__card-stats';
+    const effect = weapon.stats.effect;
+    let effectLabel = 'Single target';
+    if (effect?.kind === 'multi')    effectLabel = `Hits ${effect.targetCount} targets`;
+    if (effect?.kind === 'aoe')      effectLabel = `AoE ${effect.aoeRadius}px`;
+    if (effect?.kind === 'piercing') effectLabel = `${Math.round(effect.defPierceRatio * 100)}% DEF pierce`;
     statsRow.innerHTML =
       `<span>+${weapon.stats.damage} ATK</span>` +
       `<span>+${weapon.stats.defBonus} DEF</span>` +
       `<span>${weapon.stats.cooldownMs}ms CD</span>` +
-      `<span>${weapon.stats.range}px RNG</span>`;
+      `<span>${weapon.stats.range}px RNG</span>` +
+      `<span>${effectLabel}</span>`;
     card.appendChild(statsRow);
 
     // Cost row

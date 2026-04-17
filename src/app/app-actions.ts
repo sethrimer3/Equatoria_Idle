@@ -148,6 +148,9 @@ export function handleAction(
     case 'equip_weapon': {
       if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
       state.game.rpg.equippedWeaponId = action.weaponId;
+      // Apply stat changes immediately so ATK/DEF in the stats panel update
+      // during a live run, not just on next restart.
+      uiPanels.rpgRender.notifyEquip();
       break;
     }
     case 'set_active_tab':

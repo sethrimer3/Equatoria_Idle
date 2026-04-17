@@ -10,6 +10,9 @@
  *   - A DOM stats panel (HP / ATK / DEF / WAVE / BOOST) above the navigation bar
  *   - A data-driven wave system (see src/data/rpg/wave-definitions.ts)
  *   - A smooth death to restart loop with visual transition effects
+ *   - Player auto-attack: shoots the closest enemy each cooldown tick.
+ *     Weapon effects: single (closest), multi (N closest), aoe (all in radius),
+ *     piercing (closest, partial DEF bypass).
  *
  * Internal resolution is FIXED at 320x568 (9:16 portrait). CSS letterboxes
  * or pillarboxes the canvas inside its container so pixels always scale uniformly
@@ -77,6 +80,16 @@ const DEATH_BURST_COUNT      = 20;
 /** Colors used for the radial death burst particles. */
 const DEATH_PARTICLE_COLORS  = ['#ffd764', '#ffe599', '#ffcc33', '#ffffff'] as const;
 
+// ── Player attack constants ────────────────────────────────────────
+/** Cooldown (ms) when no weapon is equipped. */
+const PLAYER_BASE_COOLDOWN_MS  = 1200;
+/** Attack range (px) when no weapon is equipped. */
+const PLAYER_BASE_RANGE_PX     = 50;
+/** Duration (ms) for the hit-flash visual effect. */
+const HIT_EFFECT_DURATION_MS   = 220;
+/** Duration (ms) for the shot-line visual effect. */
+const SHOT_LINE_DURATION_MS    = 120;
+
 interface RpgMote {
   x: number; y: number;
   vx: number; vy: number;
@@ -141,12 +154,29 @@ interface SpawnEntry {
   timerMs: number;
 }
 
+/** Visual flash drawn at the point an enemy is hit by the player. */
+interface HitEffect {
+  x: number; y: number;
+  timerMs: number;
+  color: string;
+}
+
+/** Visual line drawn from the player toward a struck enemy. */
+interface ShotLine {
+  x1: number; y1: number;
+  x2: number; y2: number;
+  timerMs: number;
+  color: string;
+}
+
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
   update(deltaMs: number): void;
   resize(container: HTMLElement): void;
   setActive(active: boolean): void;
+  /** Re-reads rpgSimState.equippedWeaponId and immediately updates playerStats ATK/DEF. */
+  notifyEquip(): void;
 }
 
 function makeAttackTrail(): AttackTrailState {
@@ -209,10 +239,116 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let restartFadeAlpha = 0;
   const deathParticles: DeathParticle[] = [];
 
+  // ── Player attack state ────────────────────────────────────────
+  let playerAttackTimerMs = 0;
+  const hitEffects: HitEffect[] = [];
+  const shotLines:  ShotLine[]  = [];
+
   function applyEquipmentStats(): void {
     const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
     playerStats.def = PLAYER_DEF_INIT + (weaponDef?.stats.defBonus ?? 0);
     playerStats.atk = PLAYER_ATK_INIT + (weaponDef?.stats.damage  ?? 0);
+  }
+
+  // ── Player attack helpers ──────────────────────────────────────
+
+  /** Deals damage from the player to one enemy, respecting DEF and a DEF pierce ratio. */
+  function damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): void {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(1, rawDamage - effectiveDef);
+    enemy.hp -= dmg;
+  }
+
+  /** Registers a hit-flash and shot-line visual for one target. */
+  function spawnHitVisuals(targetX: number, targetY: number, color: string): void {
+    hitEffects.push({ x: targetX, y: targetY, timerMs: HIT_EFFECT_DURATION_MS, color });
+    shotLines.push({
+      x1: mote.x, y1: mote.y,
+      x2: targetX, y2: targetY,
+      timerMs: SHOT_LINE_DURATION_MS, color,
+    });
+  }
+
+  /**
+   * Fires the player's current weapon at the nearest enemy within range.
+   * Handles all WeaponEffect variants. Call removeDeadEnemies() after this
+   * to clean up any enemies whose HP dropped to zero.
+   */
+  function performPlayerAttack(): void {
+    if (enemies.length === 0) return;
+    const weaponDef  = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    const range      = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
+    const rawDamage  = playerStats.atk;
+    const effect     = weaponDef?.stats.effect ?? { kind: 'single' as const };
+    const shotColor  = '#ffd764';
+
+    if (effect.kind === 'aoe') {
+      // Hit every enemy within aoeRadius of the player.
+      const aoeRadius = effect.aoeRadius;
+      for (const enemy of enemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          damageEnemy(enemy, rawDamage, 0);
+          spawnHitVisuals(enemy.x, enemy.y, '#e6c850');
+        }
+      }
+      return;
+    }
+
+    if (effect.kind === 'multi') {
+      // Collect enemies in range, sorted by distance, take the N closest.
+      const rangeSq = range * range;
+      const inRange = enemies
+        .filter(e => { const dx = e.x - mote.x, dy = e.y - mote.y; return dx * dx + dy * dy <= rangeSq; })
+        .sort((a, b) => {
+          const da = (a.x - mote.x) ** 2 + (a.y - mote.y) ** 2;
+          const db = (b.x - mote.x) ** 2 + (b.y - mote.y) ** 2;
+          return da - db;
+        })
+        .slice(0, effect.targetCount);
+      for (const enemy of inRange) {
+        damageEnemy(enemy, rawDamage, 0);
+        spawnHitVisuals(enemy.x, enemy.y, '#50b464');
+      }
+      return;
+    }
+
+    // single / piercing — target the single closest enemy in range.
+    const defPierceRatio = effect.kind === 'piercing' ? effect.defPierceRatio : 0;
+    const rangeSq = range * range;
+    let target: LaserEnemy | null = null;
+    let closestSq = Infinity;
+    for (const enemy of enemies) {
+      const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= rangeSq && distSq < closestSq) {
+        closestSq = distSq;
+        target = enemy;
+      }
+    }
+    if (target) {
+      damageEnemy(target, rawDamage, defPierceRatio);
+      spawnHitVisuals(target.x, target.y, effect.kind === 'piercing' ? '#74c0fc' : shotColor);
+    }
+  }
+
+  /** Removes any enemies whose HP has reached zero or below. */
+  function removeDeadEnemies(): void {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      if (enemies[i].hp <= 0) enemies.splice(i, 1);
+    }
+  }
+
+  /** Advances hit-flash and shot-line timers, pruning expired entries. */
+  function updateShotVisuals(deltaMs: number): void {
+    for (let i = hitEffects.length - 1; i >= 0; i--) {
+      hitEffects[i].timerMs -= deltaMs;
+      if (hitEffects[i].timerMs <= 0) hitEffects.splice(i, 1);
+    }
+    for (let i = shotLines.length - 1; i >= 0; i--) {
+      shotLines[i].timerMs -= deltaMs;
+      if (shotLines[i].timerMs <= 0) shotLines.splice(i, 1);
+    }
   }
 
   const statsPanel = document.createElement('div');
@@ -517,6 +653,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     currentWave = 0; isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
     screenDarken = 0;
+    playerAttackTimerMs = 0;
+    hitEffects.length = 0; shotLines.length = 0;
     applyEquipmentStats();
   }
 
@@ -578,6 +716,42 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   }
 
+  /** Draws thin tracer lines from the player toward each recently struck enemy. */
+  function drawShotLines(): void {
+    if (shotLines.length === 0) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const line of shotLines) {
+      const t = line.timerMs / SHOT_LINE_DURATION_MS;
+      ctx.globalAlpha = t * 0.7;
+      ctx.strokeStyle = line.color;
+      ctx.shadowBlur  = 3; ctx.shadowColor = line.color;
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(line.x1, line.y1);
+      ctx.lineTo(line.x2, line.y2);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /** Draws a small expanding square flash at each recently hit enemy position. */
+  function drawHitEffects(): void {
+    if (hitEffects.length === 0) return;
+    ctx.save();
+    for (const h of hitEffects) {
+      const t    = h.timerMs / HIT_EFFECT_DURATION_MS;
+      const size = 3 + (1 - t) * 5;
+      const half = size / 2;
+      ctx.globalAlpha = t * 0.9;
+      ctx.shadowBlur  = size * 3; ctx.shadowColor = h.color; ctx.fillStyle = h.color;
+      ctx.fillRect(Math.floor(h.x - half), Math.floor(h.y - half), Math.ceil(size), Math.ceil(size));
+    }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function drawWaveClearBanner(): void {
     if (!isInterWave || currentWave === 0) return;
     const t = 1 - interWaveTimerMs / INTER_WAVE_DELAY_MS;
@@ -605,6 +779,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.fillRect(0, 0, widthPx, heightPx);
 
     drawEnemies(nowMs);
+    drawShotLines();
 
     // Player comet trail — smoothly gated by glowMovementIntensity
     if (glowMovementIntensity > 0.02 && mote.trailCount >= 2) {
@@ -644,6 +819,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
 
+    drawHitEffects();
     if (deathParticles.length > 0) drawDeathParticles();
 
     if (joystick.isActive && rpgPhase === 'alive') {
@@ -723,6 +899,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       updatePhysics(deltaMs);
       updateEnemies(deltaMs, nowMs);
+
+      // ── Player auto-attack ────────────────────────────────────
+      playerAttackTimerMs -= deltaMs;
+      if (playerAttackTimerMs <= 0) {
+        const weaponDef  = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+        const cooldownMs = weaponDef?.stats.cooldownMs ?? PLAYER_BASE_COOLDOWN_MS;
+        playerAttackTimerMs = cooldownMs;
+        performPlayerAttack();
+        removeDeadEnemies();
+        checkWaveCompletion();
+      }
+      updateShotVisuals(deltaMs);
+
       if (playerStats.hp <= 0) triggerDeath();
       updateStatsPanelDom();
       draw(nowMs);
@@ -745,6 +934,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
         }
       }
+    },
+
+    notifyEquip(): void {
+      applyEquipmentStats();
     },
   };
 }
