@@ -74,6 +74,8 @@ const DEATH_ANIM_DURATION_MS = 1800;
 const DEATH_HOLD_DURATION_MS = 400;
 const RESTART_FADE_IN_MS     = 700;
 const DEATH_BURST_COUNT      = 20;
+/** Colors used for the radial death burst particles. */
+const DEATH_PARTICLE_COLORS  = ['#ffd764', '#ffe599', '#ffcc33', '#ffffff'] as const;
 
 interface RpgMote {
   x: number; y: number;
@@ -208,9 +210,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const deathParticles: DeathParticle[] = [];
 
   function applyEquipmentStats(): void {
-    const def = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
-    playerStats.def = PLAYER_DEF_INIT + (def?.stats.defBonus ?? 0);
-    playerStats.atk = PLAYER_ATK_INIT + (def?.stats.damage  ?? 0);
+    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    playerStats.def = PLAYER_DEF_INIT + (weaponDef?.stats.defBonus ?? 0);
+    playerStats.atk = PLAYER_ATK_INIT + (weaponDef?.stats.damage  ?? 0);
   }
 
   const statsPanel = document.createElement('div');
@@ -371,8 +373,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       enemy.vy = Math.sin(angle) * LASER_PATROL_SPEED_MAX;
       enemy.patrolTimerMs = LASER_PATROL_TURN_MS * (PATROL_TURN_DELAY_MIN_FACTOR + Math.random() * PATROL_TURN_DELAY_RANGE_FACTOR);
     }
-    const df = Math.pow(LASER_PATROL_DAMPING, dt);
-    enemy.vx *= df; enemy.vy *= df;
+    const dampFactor = Math.pow(LASER_PATROL_DAMPING, dt);
+    enemy.vx *= dampFactor; enemy.vy *= dampFactor;
     enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
     clampEnemyToBounds(enemy);
     const dx = mote.x - enemy.x; const dy = mote.y - enemy.y;
@@ -384,8 +386,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   function updateEnemyDecelerate(enemy: LaserEnemy, dt: number, deltaMs: number): void {
     enemy.phaseElapsedMs += deltaMs;
-    const df = Math.pow(LASER_DECEL_FACTOR, dt);
-    enemy.vx *= df; enemy.vy *= df;
+    const dampFactor = Math.pow(LASER_DECEL_FACTOR, dt);
+    enemy.vx *= dampFactor; enemy.vy *= dampFactor;
     enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
     clampEnemyToBounds(enemy);
     if (enemy.phaseElapsedMs >= LASER_DECEL_DURATION_MS) {
@@ -429,8 +431,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function updateEnemyOvershoot(enemy: LaserEnemy, dt: number): void {
-    const df = Math.pow(LASER_OVERSHOOT_DAMPING, dt);
-    enemy.vx *= df; enemy.vy *= df;
+    const dampFactor = Math.pow(LASER_OVERSHOOT_DAMPING, dt);
+    enemy.vx *= dampFactor; enemy.vy *= dampFactor;
     enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
     clampEnemyToBounds(enemy);
     if (Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy) < LASER_OVERSHOOT_STOP) {
@@ -494,7 +496,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function triggerDeath(): void {
     rpgPhase = 'dying'; phaseTimerMs = 0; deathAlpha = 1;
     deathParticles.length = 0;
-    const colors = ['#ffd764', '#ffe599', '#ffcc33', '#ffffff'];
     for (let i = 0; i < DEATH_BURST_COUNT; i++) {
       const angle = (i / DEATH_BURST_COUNT) * Math.PI * 2 + Math.random() * 0.35;
       const speed = 0.8 + Math.random() * 1.8;
@@ -502,7 +503,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         x: mote.x, y: mote.y,
         vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
         alpha: 1, size: 1.5 + Math.random() * 2,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: DEATH_PARTICLE_COLORS[Math.floor(Math.random() * DEATH_PARTICLE_COLORS.length)],
       });
     }
   }

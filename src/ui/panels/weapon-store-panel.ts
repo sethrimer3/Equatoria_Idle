@@ -15,7 +15,6 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
 import { getMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
-import type { TierId } from '../../data/tiers';
 import { formatNumberAs } from '../../util';
 import type { NumberFormat } from '../../util';
 
@@ -86,7 +85,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
 
     const isPurchased = rpgState.purchasedWeaponIds.has(weapon.id);
     const isEquipped  = rpgState.equippedWeaponId === weapon.id;
-    const balance     = getMotes(resources, weapon.costTierId as TierId);
+    const balance     = getMotes(resources, weapon.costTierId);
     const canAfford   = balance >= weapon.cost;
 
     if (isEquipped) card.classList.add('weapon-store__card--equipped');

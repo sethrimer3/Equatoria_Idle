@@ -138,9 +138,9 @@ export function handleAction(
       const weaponDef = WEAPON_BY_ID.get(action.weaponId);
       if (!weaponDef) { audioSystem?.onError(); break; }
       if (state.game.rpg.purchasedWeaponIds.has(action.weaponId)) break;
-      const balance = getMotes(state.game.resources, weaponDef.costTierId as TierId);
+      const balance = getMotes(state.game.resources, weaponDef.costTierId);
       if (balance < weaponDef.cost) { audioSystem?.onError(); break; }
-      spendMotes(state.game.resources, weaponDef.costTierId as TierId, weaponDef.cost);
+      spendMotes(state.game.resources, weaponDef.costTierId, weaponDef.cost);
       state.game.rpg.purchasedWeaponIds.add(action.weaponId);
       audioSystem?.onBuyLoomUpgrade();
       break;

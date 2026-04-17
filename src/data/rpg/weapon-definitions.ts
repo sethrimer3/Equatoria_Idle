@@ -5,6 +5,8 @@
  * cost, and combat stats. New weapons are added here without modifying store logic.
  */
 
+import type { TierId } from '../tiers';
+
 // ─── Types ────────────────────────────────────────────────────────
 
 /** Combat stats granted by equipping this weapon. */
@@ -28,7 +30,7 @@ export interface WeaponDefinition {
   /** Short flavour/stats description. */
   description: string;
   /** TierId of the mote currency used to purchase. */
-  costTierId: string;
+  costTierId: TierId;
   /** Purchase price in the specified mote tier. */
   cost: number;
   stats: WeaponStats;
