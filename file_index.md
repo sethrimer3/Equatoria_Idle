@@ -316,23 +316,38 @@
 ### src/render/rpg/rpg-render.ts
 - Independent RPG canvas rendering system for the RPG tab.
 - Fixed internal resolution: `INTERNAL_WIDTH = 320`, `INTERNAL_HEIGHT = 568` (portrait 9:16).  CSS `aspect-ratio` provides letterbox/pillarbox scaling so pixels are always uniform on desktop.
-- **Player mote** — 3×3 sand-colored mote with:
-  - Touch joystick (appears at tap position; velocity capped to `JOYSTICK_OUTER_RADIUS`).
-  - Keyboard controls: WASD and Arrow keys (desktop); uses `e.code` for layout-independence.
-  - Always-on pulsing glow aura (sinusoidal, independent of movement).
-  - Long comet trail ring-buffer (capacity 60).
-  - Starting stats: HP=100, ATK=10, DEF=5.
-- **Laser enemy** — 2×2 red mote, HP=20, ATK=10, DEF=5, with five-phase AI:
-  - `idle` — random-wander patrol.
-  - `decelerate` — 0.5 s smooth stop after player enters 80 px attack radius (target position locked at entry).
-  - `dash` — 100 px dash at `LASER_DASH_SPEED`; damages player on hitbox overlap; emits bezier lineDash attack trail.
-  - `overshoot` — post-dash inertia with aggressive damping.
-  - `cooldown` — 1.25 s idle before next attack cycle.
-- **Attack trail** — bezier `quadraticCurveTo` with lineDashOffset animation (grow while dashing, erase after); matches the visual style of the mote-merge suction trail in `particle-renderer.ts`.
-- **Spawn system** — periodic spawn every 5 s (first at 2.5 s), max 5 enemies, min 80 px from player.
-- **Stats panel** — DOM element (`#rpg-stats-panel`) returned via `RpgRender.statsPanel`; shows HP/ATK/DEF live; callers append to root and toggle display with the tab.
-- Exports `createRpgRender(container)` factory and `RpgRender` interface.
-- Key interface methods: `update(deltaMs)`, `resize(container)`, `setActive(active)`.
+- **Player mote** — 3×3 sand-colored mote with touch joystick, WASD/Arrow key controls, always-on pulsing glow, smoothly-interpolated comet trail, and starting stats HP=100 ATK=10 DEF=5.
+- **Movement glow smoothing** — `glowMovementIntensity` (0–1) LERP-ramps up (`GLOW_MOVE_RAMP_UP`) when moving and down (`GLOW_MOVE_RAMP_DOWN`) when stopped; gates trail and halo brightness.
+- **Laser enemy** — 2×2 red mote with five-phase AI: `idle`, `decelerate`, `dash`, `overshoot`, `cooldown`.  Bezier lineDash attack-trail with draw/erase phases.
+- **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
+- **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
+- **Stats panel** — DOM `#rpg-stats-panel` with five widgets: HP / ATK / DEF / WAVE / BOOST (loom boost %).  Callers append to root and toggle display with the tab.
+- **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped.
+- Accepts `rpgSimState: RpgSimState` as second factory argument so it can mutate persistent wave progress directly.
+- Exports `createRpgRender(container, rpgSimState)` factory and `RpgRender` interface.
+
+### src/data/rpg/wave-definitions.ts
+- `WaveSpawn` and `WaveDefinition` types.
+- `WAVE_DEFINITIONS` — hand-authored waves 1–10 (laser enemy, increasing count and tighter delays).
+- `getWaveDefinition(waveNumber)` — returns predefined definition or generates one procedurally for waves beyond 10.
+
+### src/data/rpg/weapon-definitions.ts
+- `WeaponStats` and `WeaponDefinition` types.
+- `WEAPON_DEFINITIONS` — three initial weapons: Sand Blade, Ruby Lance, Sunstone Ward.
+- `WEAPON_BY_ID` — O(1) lookup map.
+
+### src/sim/rpg/rpg-state.ts
+- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponId`.
+- `createRpgSimState()` — zero-state factory.
+- `getWaveBoostMultiplier(state)` — returns loom production multiplier = 1 + (highestWave^1.2)/100.
+- `formatWaveBoostPercent(state)` — returns display string like "+6.9%".
+
+### src/ui/panels/weapon-store-panel.ts
+- `WeaponStorePanel` interface and `createWeaponStorePanel(dispatch)` factory.
+- Renders purchasable weapons from `WEAPON_DEFINITIONS` as cards.
+- Shows affordability from ResourceState; dispatches `purchase_weapon` / `equip_weapon` actions.
+- `update(rpgState, resources, numberFormat)` — refreshes card list.
+- `setVisible(visible)` — toggles the overlay.
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.

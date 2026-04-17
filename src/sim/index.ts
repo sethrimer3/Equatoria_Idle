@@ -9,3 +9,4 @@ export * from './particles';
 export * from './looms';
 export * from './achievements';
 export * from './aliven';
+export * from './rpg';

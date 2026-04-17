@@ -222,3 +222,43 @@
 **Threshold**: 1 minute minimum to avoid trivial rewards on quick tab switches.
 
 **13-tier breakdown**: Each of the 13 tiers has its own row in the overlay (hidden with `hidden` + `aria-hidden="true"` if that tier's Loom is not yet unlocked).
+
+## RPG Wave System
+
+**Decision**: Enemy waves are defined as `WaveDefinition` data objects in `src/data/rpg/wave-definitions.ts`.  Waves 1–10 are hand-authored; waves beyond 10 are generated procedurally.  New enemy types register a new `enemyTypeId` in the data file and add a `spawnEnemyById` case in `rpg-render.ts` — no core logic changes required.
+
+**Wave completion detection**: After the spawn queue empties and all enemies are dead, the wave is marked complete and an `INTER_WAVE_DELAY_MS` (2.5 s) pause begins before the next wave auto-starts.
+
+**Persistence**: `highestWaveReached` lives in `RpgSimState` (part of `GameState`) and is persisted via save format v10.  It is updated immediately when a new highest wave begins.
+
+## Wave Progression Loom Boost
+
+**Decision**: `boostPercent = highestWaveReached ^ 1.2`.  Applied as a multiplicative bonus to loom production in `simTick`:  `loomBoostMultiplier = 1 + boostPercent / 100`.
+
+**Rationale**: Superlinear exponent (1.2) ensures the boost accelerates meaningfully at high waves without being linear, rewarding player progression non-trivially.  Uses `highestWaveReached` (not current wave) so the bonus never regresses after a death.
+
+**Display**: The BOOST stat in the RPG stats panel shows the current bonus as "+N.N%".
+
+## Death / Restart Loop
+
+**Decision**: Death triggers a phased visual transition managed by `rpgPhase: RpgPhase` (`alive | dying | restarting`).  Dying phase lasts `DEATH_ANIM_DURATION_MS` (1.8 s) plus `DEATH_HOLD_DURATION_MS` (0.4 s); restart fade-in takes `RESTART_FADE_IN_MS` (0.7 s).
+
+**Visual effects**: On death, `DEATH_BURST_COUNT` radial gold/white particles are emitted; the player sprite fades from alpha 1 → 0 while the screen darkens (0 → 85 % black).  On restart, the reset state fades in from pure black.  Enemy actions and player input are suppressed during the dying and restarting phases.
+
+**No wave counter reset on death**: Only the within-run combat state resets.  `highestWaveReached` in `RpgSimState` is never decremented.
+
+## Movement Glow Smoothing
+
+**Decision**: A `glowMovementIntensity` float (0–1) LERP-ramps toward 1 when `|velocity| > TRAIL_SPEED_THRESHOLD` at rate `GLOW_MOVE_RAMP_UP` per ms, and toward 0 at rate `GLOW_MOVE_RAMP_DOWN` per ms when the player stops.  All trail/halo alpha values are multiplied by this intensity.
+
+**Rationale**: Eliminates the abrupt brightness jump that occurred when movement started.  The asymmetric ramp rates (ramp-up slightly faster than ramp-down) give a snappy start and a soft linger after stopping.
+
+## Weapon Store
+
+**Decision**: The store is a full-screen overlay (`#weapon-store-panel`) shown when the player taps the "🛒 Shop" button in the RPG stats panel.  Weapon data is defined in `src/data/rpg/weapon-definitions.ts`; new weapons are added there without touching store logic.
+
+**Currency**: Weapons are purchased with refined motes of the tier specified by `WeaponDefinition.costTierId`.  `spendMotes()` deducts the cost from `GameState.resources` on purchase.
+
+**Equipping**: Purchased weapons can be equipped via the `equip_weapon` action.  `rpg-render.ts` reads `rpgSimState.equippedWeaponId` and calls `applyEquipmentStats()` to add weapon ATK/DEF bonuses to the player stats.
+
+**Save format v10**: `rpg.purchasedWeaponIds[]` and `rpg.equippedWeaponId` are persisted.  Older saves default to no purchases.

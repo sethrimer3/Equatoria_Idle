@@ -12,7 +12,9 @@ export type GameAction =
   | { kind: 'save_game' }
   | { kind: 'reset_game' }
   | { kind: 'set_interaction_matrix_cell'; row: number; col: number; value: number }
-  | { kind: 'reset_interaction_matrix' };
+  | { kind: 'reset_interaction_matrix' }
+  | { kind: 'purchase_weapon'; weaponId: string }
+  | { kind: 'equip_weapon'; weaponId: string };
 
 export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 
