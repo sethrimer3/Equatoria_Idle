@@ -168,6 +168,12 @@ export function setActiveTab(
   // All other tabs show the panel overlay on top of the main canvas.
   panels.mainCanvasContainer.style.display = isRpg ? 'none' : '';
   panels.rpgContainer.style.display = isRpg ? '' : 'none';
+  panels.rpgRender.statsPanel.style.display = isRpg ? '' : 'none';
+  panels.rpgRender.setActive(isRpg);
+  // Resize now that the container is visible so the letterbox layout is correct.
+  if (isRpg) {
+    panels.rpgRender.resize(panels.rpgContainer);
+  }
 
   // Slide the panel overlay in for non-equation, non-RPG tabs.
   const shouldShowPanels = !isEquation && !isRpg;

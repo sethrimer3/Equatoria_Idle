@@ -235,6 +235,9 @@ export async function startApp(): Promise<void> {
   root.appendChild(rpgContainer);
 
   const rpgRender = createRpgRender(rpgContainer);
+  // Stats panel is positioned in the root (above the tab bar); visibility
+  // is toggled by setActiveTab alongside rpgContainer.
+  root.appendChild(rpgRender.statsPanel);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
