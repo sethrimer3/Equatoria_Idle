@@ -57,6 +57,8 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   // Per-loom fractional particle accumulator (render-side only, not persisted).
   // Tracks sub-particle remainders so fractional emit rates average out correctly.
   const particleEmitAccumulators = new Map<TierId, number>();
+  // Reused map for generator equation label rates (avoids per-frame allocation).
+  const _generatorRatesPerSec = new Map<TierId, number>();
 
   function gameLoop(nowMs: number): void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
@@ -188,6 +190,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.generatorState.generators,
       ctx.particles.spawnerRotations,
       ctx.appState.generatorState.fadeIns,
+      _buildGeneratorRates(ctx, _generatorRatesPerSec),
     );
 
     // Only draw forge on canvas if forge is unlocked (equation is now in HUD)
@@ -231,4 +234,24 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   }
 
   return gameLoop;
+}
+
+/**
+ * Populate and return a map of effective mote production rates (motes/sec) per tier,
+ * accounting for loom level, achievement multiplier, and special loom bonus.
+ * Mutates and returns the provided map to avoid per-frame allocation.
+ */
+function _buildGeneratorRates(
+  ctx: GameLoopContext,
+  out: Map<TierId, number>,
+): ReadonlyMap<TierId, number> {
+  out.clear();
+  const loomMultiplier = ctx.appState.game.achievements.loomMultiplierBonus;
+  for (const loom of ctx.appState.game.looms.looms) {
+    if (!loom.isUnlocked || loom.level <= 0) continue;
+    const baseRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier;
+    const specialBonus = ctx.appState.game.looms.specialPurchased.has(loom.tierId) ? 2 : 1;
+    out.set(loom.tierId, baseRate * specialBonus);
+  }
+  return out;
 }
