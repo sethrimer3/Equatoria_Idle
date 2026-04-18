@@ -23,6 +23,12 @@ const HUE_CYCLE_DEG_PER_SEC = 90;
 /** Visual influence circle is drawn at 75 % of the physics range. */
 const INFLUENCE_VISUAL_SCALE = 0.75;
 
+/** Font size (px) for the motes/sec equation label drawn beside each generator. */
+const GENERATOR_LABEL_FONT_SIZE = 5;
+
+/** Extra padding (canvas px) between the sprite edge and the equation label center. */
+const GENERATOR_LABEL_PADDING_PX = 7;
+
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
   for (let i = 0; i < TIERS.length; i++) {
@@ -73,7 +79,7 @@ export function drawGenerators(
       const dist = Math.sqrt(dx * dx + dy * dy);
       const nx = dist > 0 ? dx / dist : 0;
       const ny = dist > 0 ? dy / dist : 1;
-      const labelOffset = SPAWNER_SIZE * 5 / 2 + 7;
+      const labelOffset = SPAWNER_SIZE * 5 / 2 + GENERATOR_LABEL_PADDING_PX;
       const labelX = gen.x + nx * labelOffset;
       const labelY = gen.y + ny * labelOffset;
       ctx.globalAlpha = fadeAlpha;
@@ -299,28 +305,23 @@ function drawGeneratorEquationLabel(
   rate: number,
   tierColor: string,
 ): void {
-  const fontSize = 5;
-  ctx.font = `600 ${fontSize}px 'Cormorant Garamond', serif`;
-  ctx.textAlign = 'center';
+  ctx.font = `600 ${GENERATOR_LABEL_FONT_SIZE}px 'Cormorant Garamond', serif`;
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
   const rateStr = formatGeneratorRate(rate);
-  const charWidth = ctx.measureText('0').width;
+  const rateWidth = ctx.measureText(rateStr).width;
+  const suffixWidth = ctx.measureText('/s').width;
+  const totalWidth = rateWidth + suffixWidth;
 
-  const segments: Array<{ text: string; color: string }> = [
-    { text: rateStr, color: tierColor },
-    { text: '/s', color: '#888' },
-  ];
+  // Center the combined label at x
+  const startX = x - totalWidth / 2;
 
-  let totalWidth = 0;
-  for (const seg of segments) totalWidth += seg.text.length * charWidth;
-  let drawX = x - totalWidth / 2;
+  ctx.fillStyle = tierColor;
+  drawEquationOutlinedText(ctx, rateStr, startX, y);
 
-  for (const seg of segments) {
-    ctx.fillStyle = seg.color;
-    drawEquationOutlinedText(ctx, seg.text, drawX + (seg.text.length * charWidth) / 2, y);
-    drawX += seg.text.length * charWidth;
-  }
+  ctx.fillStyle = '#888';
+  drawEquationOutlinedText(ctx, '/s', startX + rateWidth, y);
 }
 
 /**

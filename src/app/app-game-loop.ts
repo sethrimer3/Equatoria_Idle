@@ -58,7 +58,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   // Tracks sub-particle remainders so fractional emit rates average out correctly.
   const particleEmitAccumulators = new Map<TierId, number>();
   // Reused map for generator equation label rates (avoids per-frame allocation).
-  const _generatorRatesPerSec = new Map<TierId, number>();
+  const generatorRatesPerSec = new Map<TierId, number>();
 
   function gameLoop(nowMs: number): void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
@@ -190,7 +190,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.generatorState.generators,
       ctx.particles.spawnerRotations,
       ctx.appState.generatorState.fadeIns,
-      _buildGeneratorRates(ctx, _generatorRatesPerSec),
+      _buildGeneratorRates(ctx, generatorRatesPerSec),
     );
 
     // Only draw forge on canvas if forge is unlocked (equation is now in HUD)
