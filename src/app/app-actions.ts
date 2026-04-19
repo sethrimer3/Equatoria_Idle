@@ -138,9 +138,11 @@ export function handleAction(
       const weaponDef = WEAPON_BY_ID.get(action.weaponId);
       if (!weaponDef) { audioSystem?.onError(); break; }
       if (state.game.rpg.purchasedWeaponIds.has(action.weaponId)) break;
-      const balance = getMotes(state.game.resources, weaponDef.costTierId);
-      if (balance < weaponDef.cost) { audioSystem?.onError(); break; }
-      spendMotes(state.game.resources, weaponDef.costTierId, weaponDef.cost);
+      if (!devMode) {
+        const balance = getMotes(state.game.resources, weaponDef.costTierId);
+        if (balance < weaponDef.cost) { audioSystem?.onError(); break; }
+        spendMotes(state.game.resources, weaponDef.costTierId, weaponDef.cost);
+      }
       state.game.rpg.purchasedWeaponIds.add(action.weaponId);
       audioSystem?.onBuyLoomUpgrade();
       break;
@@ -236,6 +238,6 @@ export function updateVisiblePanels(
   } else if (state.activeTab === 'rpg') {
     // Weapon store is only re-rendered when visible; calling update here
     // pre-populates its state so it shows current data immediately when opened.
-    panels.weaponStorePanel.update(game.rpg, game.resources, numberFormat);
+    panels.weaponStorePanel.update(game.rpg, game.resources, numberFormat, isDevMode);
   }
 }

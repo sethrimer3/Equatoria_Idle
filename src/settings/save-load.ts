@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 10;
+const SAVE_VERSION = 11;
 
 interface SaveData {
   version: number;
@@ -60,6 +60,8 @@ interface SaveData {
     highestWaveReached: number;
     purchasedWeaponIds: string[];
     equippedWeaponId: string | null;
+    /** v11+: accumulated XP. Absent in older saves (defaults to 0). */
+    xp?: number;
   };
   elapsedMs: number;
 }
@@ -123,6 +125,7 @@ export function serializeGameState(state: GameState): SaveData {
       highestWaveReached: state.rpg.highestWaveReached,
       purchasedWeaponIds: Array.from(state.rpg.purchasedWeaponIds),
       equippedWeaponId: state.rpg.equippedWeaponId,
+      xp: state.rpg.xp,
     },
     elapsedMs: state.elapsedMs,
   };
@@ -239,6 +242,8 @@ export function deserializeGameState(data: SaveData): GameState {
       }
     }
     state.rpg.equippedWeaponId = data.rpg.equippedWeaponId ?? null;
+    // v11+: accumulated XP
+    state.rpg.xp = data.rpg.xp ?? 0;
   }
 
   return state;
@@ -261,8 +266,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–10 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(data.version)) return null;
+    // Accept versions 1–11 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;
