@@ -28,6 +28,7 @@ export interface WeaponStorePanel {
     rpgState: RpgSimState,
     resources: ResourceState,
     numberFormat: NumberFormat,
+    isDevMode?: boolean,
   ): void;
   /** Show or hide the store overlay. */
   setVisible(visible: boolean): void;
@@ -71,6 +72,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
   let lastRpgState: RpgSimState | null = null;
   let lastResources: ResourceState | null = null;
   let lastFormat: NumberFormat = 'letters';
+  let lastIsDevMode = false;
 
   // ── Card builders ─────────────────────────────────────────────
 
@@ -79,6 +81,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     rpgState: RpgSimState,
     resources: ResourceState,
     numberFormat: NumberFormat,
+    isDevMode: boolean,
   ): HTMLElement {
     const card = document.createElement('div');
     card.className = 'weapon-store__card';
@@ -86,7 +89,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     const isPurchased = rpgState.purchasedWeaponIds.has(weapon.id);
     const isEquipped  = rpgState.equippedWeaponId === weapon.id;
     const balance     = getMotes(resources, weapon.costTierId);
-    const canAfford   = balance >= weapon.cost;
+    const canAfford   = isDevMode || balance >= weapon.cost;
 
     if (isEquipped) card.classList.add('weapon-store__card--equipped');
 
@@ -159,7 +162,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     if (!lastRpgState || !lastResources) return;
     list.innerHTML = '';
     for (const weapon of WEAPON_DEFINITIONS) {
-      list.appendChild(buildCard(weapon, lastRpgState, lastResources, lastFormat));
+      list.appendChild(buildCard(weapon, lastRpgState, lastResources, lastFormat, lastIsDevMode));
     }
   }
 
@@ -168,10 +171,11 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
   const panel: WeaponStorePanel = {
     element,
 
-    update(rpgState, resources, numberFormat): void {
+    update(rpgState, resources, numberFormat, isDevMode = false): void {
       lastRpgState  = rpgState;
       lastResources = resources;
       lastFormat    = numberFormat;
+      lastIsDevMode = isDevMode;
       if (isVisible) render();
     },
 

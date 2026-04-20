@@ -20,6 +20,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import { getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp } from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 
@@ -246,8 +247,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   function applyEquipmentStats(): void {
     const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
-    playerStats.def = PLAYER_DEF_INIT + (weaponDef?.stats.defBonus ?? 0);
-    playerStats.atk = PLAYER_ATK_INIT + (weaponDef?.stats.damage  ?? 0);
+    playerStats.def = PLAYER_DEF_INIT + (weaponDef?.stats.defBonus ?? 0) + getXpDefBonus(rpgSimState.xp);
+    playerStats.atk = PLAYER_ATK_INIT + (weaponDef?.stats.damage  ?? 0) + getXpAtkBonus(rpgSimState.xp);
   }
 
   // ── Player attack helpers ──────────────────────────────────────
@@ -332,10 +333,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  /** Removes any enemies whose HP has reached zero or below. */
+  /** Removes any enemies whose HP has reached zero or below, awarding XP for each. */
   function removeDeadEnemies(): void {
+    let totalXpFromKills = 0;
     for (let i = enemies.length - 1; i >= 0; i--) {
-      if (enemies[i].hp <= 0) enemies.splice(i, 1);
+      if (enemies[i].hp <= 0) {
+        totalXpFromKills += getXpPerKill(currentWave);
+        enemies.splice(i, 1);
+      }
+    }
+    if (totalXpFromKills > 0) {
+      rpgSimState.xp += totalXpFromKills;
+      // Recalculate player stats so ATK/DEF bonuses update immediately.
+      applyEquipmentStats();
     }
   }
 
@@ -374,6 +384,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const defWidget   = makeStatWidget('DEF',   '');
   const waveWidget  = makeStatWidget('WAVE',  'rpg-stat-value--wave');
   const boostWidget = makeStatWidget('BOOST', 'rpg-stat-value--boost');
+  const xpWidget    = makeStatWidget('XP',    'rpg-stat-value--xp');
 
   function updateStatsPanelDom(): void {
     hpWidget.valueEl.textContent   = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
@@ -383,6 +394,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     boostWidget.valueEl.textContent = rpgSimState.highestWaveReached > 0
       ? '+' + Math.pow(rpgSimState.highestWaveReached, 1.2).toFixed(1) + '%'
       : '+0.0%';
+    xpWidget.valueEl.textContent   = formatXp(rpgSimState.xp);
   }
   updateStatsPanelDom();
 
@@ -806,9 +818,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (playerVisible) {
       const pa = rpgPhase === 'dying' ? deathAlpha : 1;
       const pulseT   = (Math.sin(glowTimeS * GLOW_PULSE_SPEED) + 1) * 0.5;
-      const glowSize = RPG_MOTE_SIZE * (2.2 + pulseT * 1.4);
+      // Dampen the stationary glow while the player is moving — the comet
+      // trail already gives strong visual feedback during motion.
+      const glowDampeningFactor = 1 - glowMovementIntensity * 0.65;
+      const glowSize = RPG_MOTE_SIZE * (2.2 + pulseT * 1.4 * glowDampeningFactor);
       const glowHalf = glowSize / 2;
-      ctx.globalAlpha = (0.18 + pulseT * 0.22) * pa;
+      ctx.globalAlpha = (0.18 + pulseT * 0.22) * glowDampeningFactor * pa;
       ctx.shadowBlur  = glowSize * 3; ctx.shadowColor = RPG_MOTE_GLOW; ctx.fillStyle = RPG_MOTE_GLOW;
       ctx.fillRect(Math.floor(mote.x - glowHalf), Math.floor(mote.y - glowHalf), Math.ceil(glowSize), Math.ceil(glowSize));
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;

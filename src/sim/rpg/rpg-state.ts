@@ -14,6 +14,12 @@ export interface RpgSimState {
   purchasedWeaponIds: Set<string>;
   /** Currently equipped weapon id, or null if no weapon is equipped. */
   equippedWeaponId: string | null;
+  /**
+   * Accumulated XP across all sessions.  Persisted in save data.
+   * Higher-wave enemies award exponentially more XP, incentivising
+   * the player to push into harder content.
+   */
+  xp: number;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -23,6 +29,7 @@ export function createRpgSimState(): RpgSimState {
     highestWaveReached: 0,
     purchasedWeaponIds: new Set(),
     equippedWeaponId: null,
+    xp: 0,
   };
 }
 
@@ -50,4 +57,56 @@ export function formatWaveBoostPercent(state: RpgSimState): string {
   if (state.highestWaveReached <= 0) return '+0.0%';
   const pct = Math.pow(state.highestWaveReached, 1.2);
   return `+${pct.toFixed(1)}%`;
+}
+
+// ─── XP system ───────────────────────────────────────────────────
+
+/**
+ * XP awarded for killing one enemy on `waveNumber`.
+ *
+ * The formula grows super-linearly so higher-wave enemies are
+ * dramatically more rewarding:
+ *   Wave  1 →    1 XP/kill
+ *   Wave  5 →   19 XP/kill
+ *   Wave 10 →   63 XP/kill
+ *   Wave 20 →  212 XP/kill
+ *   Wave 50 → 1 174 XP/kill
+ */
+export function getXpPerKill(waveNumber: number): number {
+  return Math.ceil(Math.pow(Math.max(1, waveNumber), 1.8));
+}
+
+/**
+ * Flat ATK bonus from accumulated XP.
+ *
+ * Formula: floor(log10(xp + 1) × 5)
+ *   xp =      0 →  0 ATK
+ *   xp =     10 →  5 ATK
+ *   xp =    100 → 10 ATK
+ *   xp =  1 000 → 15 ATK
+ *   xp = 10 000 → 20 ATK
+ *
+ * The logarithmic curve creates early satisfaction while requiring
+ * exponentially more XP (i.e., higher-wave kills) for each +5 step.
+ */
+export function getXpAtkBonus(xp: number): number {
+  return Math.floor(Math.log10(xp + 1) * 5);
+}
+
+/**
+ * Flat DEF bonus from accumulated XP (half of the ATK bonus).
+ *
+ * Formula: floor(log10(xp + 1) × 2)
+ */
+export function getXpDefBonus(xp: number): number {
+  return Math.floor(Math.log10(xp + 1) * 2);
+}
+
+/**
+ * Formats a raw XP total for compact display (e.g. "1.2K", "4.5M").
+ */
+export function formatXp(xp: number): string {
+  if (xp < 1_000) return String(Math.floor(xp));
+  if (xp < 1_000_000) return (xp / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return (xp / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
 }
