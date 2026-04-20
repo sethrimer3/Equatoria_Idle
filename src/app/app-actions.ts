@@ -20,6 +20,7 @@ import { getMotes, spendMotes } from '../sim/resources';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import { RPG_UPGRADE_BY_ID } from '../data/rpg/rpg-upgrade-definitions';
 import { getRpgUpgradeLevel } from '../sim/rpg/rpg-state';
+import { getWeaponTierUpgradeCost } from '../sim/rpg/rpg-state';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
@@ -163,7 +164,7 @@ export function handleAction(
       if (!weaponDef) { audioSystem?.onError(); break; }
       if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
       const currentTier = state.game.rpg.weaponTiersByWeaponId.get(action.weaponId) ?? 1;
-      const tierUpgradeCost = Math.pow(currentTier, 2) * weaponDef.cost;
+      const tierUpgradeCost = getWeaponTierUpgradeCost(weaponDef.cost, currentTier);
       if (!devMode) {
         const balance = getMotes(state.game.resources, weaponDef.costTierId);
         if (balance < tierUpgradeCost) { audioSystem?.onError(); break; }

@@ -147,12 +147,16 @@ const ORBIT_PROJ_RADIUS      = 20;
 const ORBIT_PROJ_SIZE        = 3;
 /** Trail capacity for the orbit projectile. */
 const ORBIT_PROJ_TRAIL_CAP   = 20;
+/** Trail capacity for the equipped-weapon orbit particle. */
+const WEAPON_ORBIT_TRAIL_CAP = 20;
 /** Hit radius for orbit projectile — enemy collision detection. */
 const ORBIT_PROJ_HIT_RADIUS  = 5;
 /** Damage dealt per orbit-projectile hit. */
 const ORBIT_PROJ_DAMAGE      = 15;
 /** Cooldown between orbit-projectile hits on the same enemy (ms). */
 const ORBIT_PROJ_HIT_CD_MS   = 500;
+/** Font string for damage number rendering. */
+const DAMAGE_NUM_FONT_FAMILY = '"Pixelify Sans", monospace';
 
 interface RpgMote {
   x: number; y: number;
@@ -380,8 +384,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       angle: 0,
       x: mote.x + WEAPON_PARTICLE_ORBIT_RADIUS,
       y: mote.y,
-      trailX: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
-      trailY: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
+      trailX: new Float64Array(WEAPON_ORBIT_TRAIL_CAP),
+      trailY: new Float64Array(WEAPON_ORBIT_TRAIL_CAP),
       trailHead: 0, trailCount: 0,
       color, glowColor, size,
     };
@@ -406,14 +410,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   function applyEquipmentStats(): void {
     const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
-    const speedMul  = getRpgSpeedMultiplier(rpgSimState);
     playerStats.def = PLAYER_DEF_INIT + (weaponDef?.stats.defBonus ?? 0) + getXpDefBonus(rpgSimState.xp);
     playerStats.atk = PLAYER_ATK_INIT + (weaponDef?.stats.damage  ?? 0) + getXpAtkBonus(rpgSimState.xp);
     // Rebuild visual particles so they reflect the current weapon/upgrade state.
     weaponOrbitParticle = buildWeaponOrbitParticle();
     orbitProjectile     = buildOrbitProjectile();
-    // Apply speed upgrade — stored externally; re-read via getter each physics frame.
-    void speedMul; // referenced in updatePhysics via getRpgSpeedMultiplier
+    // Speed upgrade is applied per-frame via getRpgSpeedMultiplier() in updatePhysics().
   }
 
   // ── Player attack helpers ──────────────────────────────────────
@@ -948,10 +950,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       p.angle += 0.05;
     }
     p.x = newX; p.y = newY;
+    // Update trail
     p.trailX[p.trailHead] = p.x;
     p.trailY[p.trailHead] = p.y;
-    p.trailHead = (p.trailHead + 1) % ORBIT_PROJ_TRAIL_CAP;
-    if (p.trailCount < ORBIT_PROJ_TRAIL_CAP) p.trailCount++;
+    p.trailHead = (p.trailHead + 1) % WEAPON_ORBIT_TRAIL_CAP;
+    if (p.trailCount < WEAPON_ORBIT_TRAIL_CAP) p.trailCount++;
   }
 
   /** Updates the orbiting projectile: angle, trail, and enemy collision. */
@@ -1127,7 +1130,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const alpha = t > 0.33 ? 1.0 : t / 0.33;
       ctx.globalAlpha = alpha;
       const fontPx = Math.max(1, Math.round(dn.fontPx));
-      ctx.font = `bold ${fontPx}px "Pixelify Sans", monospace`;
+      ctx.font = `bold ${fontPx}px ${DAMAGE_NUM_FONT_FAMILY}`;
       ctx.shadowBlur  = fontPx * 2;
       ctx.shadowColor = dn.color;
       ctx.fillStyle   = dn.color;
@@ -1146,7 +1149,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (p.trailCount >= 2) {
       for (let i = 0; i < p.trailCount; i++) {
         const t      = i / p.trailCount;
-        const bufIdx = (p.trailHead - p.trailCount + i + ORBIT_PROJ_TRAIL_CAP) % ORBIT_PROJ_TRAIL_CAP;
+        const bufIdx = (p.trailHead - p.trailCount + i + WEAPON_ORBIT_TRAIL_CAP) % WEAPON_ORBIT_TRAIL_CAP;
         const trailSize = p.size * t * 1.2;
         if (trailSize < 0.3) continue;
         const half = trailSize / 2;

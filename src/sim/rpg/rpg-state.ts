@@ -138,3 +138,17 @@ export function getRpgSpeedMultiplier(state: RpgSimState): number {
   const level = getRpgUpgradeLevel(state, 'speed');
   return 1 + level * 0.1;
 }
+
+/**
+ * Returns the mote cost to upgrade a weapon from its current tier to the next tier.
+ *
+ * Formula: currentTier² × baseCost
+ *
+ * Examples (for a weapon with baseCost 100):
+ *   Tier 1 → Tier 2:  100  (1² × 100)
+ *   Tier 2 → Tier 3:  400  (2² × 100)
+ *   Tier 3 → Tier 4:  900  (3² × 100)
+ */
+export function getWeaponTierUpgradeCost(baseCost: number, currentTier: number): number {
+  return Math.pow(currentTier, 2) * baseCost;
+}

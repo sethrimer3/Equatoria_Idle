@@ -15,6 +15,7 @@ import type { RpgUpgradeDefinition } from '../../data/rpg/rpg-upgrade-definition
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
+import { getWeaponTierUpgradeCost } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
 import { getMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
@@ -258,7 +259,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
       }
 
       // Tier upgrade button (always shown for purchased weapons; cost paid in motes)
-      const tierUpgradeCost = Math.pow(currentTier, 2) * weapon.cost;
+      const tierUpgradeCost = getWeaponTierUpgradeCost(weapon.cost, currentTier);
       const canAffordTier = isDevMode || balance >= tierUpgradeCost;
       const tierUpgradeBtn = document.createElement('button');
       tierUpgradeBtn.className = 'weapon-store__btn';
