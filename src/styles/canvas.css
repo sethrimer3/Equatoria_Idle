@@ -64,18 +64,15 @@
 }
 
 /*
- * Fixed internal resolution: 320×568 (≈9:16 portrait).
- * max-width/max-height + aspect-ratio provide letterbox/pillarbox behaviour:
- * the browser scales the canvas to fit the container while preserving the
- * 320/568 aspect ratio, so pixels always scale uniformly.
+ * The RPG canvas fills the full container so the gameplay area exactly
+ * matches the visible width of the stats bar and tab bar — no pillarboxing.
+ * The internal resolution is updated dynamically in resize() to match the
+ * container's client dimensions.
  */
 #rpg-canvas {
   display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  aspect-ratio: 320 / 568;
+  width: 100%;
+  height: 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   touch-action: none;
@@ -148,8 +145,8 @@
   font-size: 14px;
 }
 
-/* ── RPG shop toggle button ────────────────────────────────────── */
-.rpg-shop-btn {
+/* ── RPG menu toggle button ────────────────────────────────────── */
+.rpg-menu-btn {
   position: absolute;
   bottom: calc(100% + 6px);
   right: 12px;
@@ -167,7 +164,213 @@
   pointer-events: auto;
 }
 
-.rpg-shop-btn:active {
+.rpg-menu-btn:active {
   background: rgba(201, 168, 76, 0.15);
+}
+
+/* ── RPG menu panel (replaces weapon-store-panel) ─────────────── */
+#rpg-menu-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Sits above the canvas but below the tab bar */
+  bottom: calc(var(--tab-height) + var(--safe-bottom));
+  z-index: 6;
+  background: rgba(8, 8, 16, 0.97);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rpg-menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 0;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+  position: relative;
+  background: rgba(8, 8, 16, 0.97);
+  flex-shrink: 0;
+}
+
+.rpg-menu__title {
+  font-family: var(--font-primary);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.rpg-menu__close {
+  background: none;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.rpg-menu__close:active {
+  background: rgba(201, 168, 76, 0.1);
+}
+
+/* ── RPG menu tabs ─────────────────────────────────────────────── */
+.rpg-menu__tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+  flex-shrink: 0;
+}
+
+.rpg-menu__tab {
+  flex: 1;
+  padding: 10px 8px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: color 0.15s, border-bottom-color 0.15s;
+}
+
+.rpg-menu__tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.rpg-menu__tab:active {
+  background: rgba(201, 168, 76, 0.05);
+}
+
+/* ── RPG menu tab content ──────────────────────────────────────── */
+.rpg-menu__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+}
+
+/* ── RPG menu: general settings rows ──────────────────────────── */
+.rpg-menu__setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rpg-menu__setting-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.rpg-menu__setting-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.rpg-menu__setting-label-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── RPG upgrade cards ─────────────────────────────────────────── */
+.rpg-upgrade__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rpg-upgrade__card {
+  background: rgba(26, 26, 46, 0.8);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rpg-upgrade__card--maxed {
+  border-color: rgba(201, 168, 76, 0.4);
+  background: rgba(201, 168, 76, 0.04);
+}
+
+.rpg-upgrade__name {
+  font-family: var(--font-primary);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rpg-upgrade__desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.rpg-upgrade__level {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.rpg-upgrade__cost {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.rpg-upgrade__cost--cannot-afford {
+  color: #e74c3c;
+}
+
+.rpg-upgrade__btn {
+  padding: 8px 16px;
+  background: rgba(201, 168, 76, 0.12);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 8px;
+  color: var(--accent);
+  font-family: var(--font-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 44px;
+  align-self: flex-start;
+}
+
+.rpg-upgrade__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rpg-upgrade__btn:not(:disabled):active {
+  background: rgba(201, 168, 76, 0.22);
+}
+
+/* ── Weapon tier badge ─────────────────────────────────────────── */
+.weapon-tier-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.5px;
 }
 
