@@ -3,7 +3,7 @@
  *
  * This module is sim-layer only: no DOM, no rendering, no mutation.
  * Call calculateIdleRewards() to get a summary, then pass it to
- * applyIdleRewards() (in apply-idle-rewards.ts) to commit the gains.
+ * queueIdleRewards() (in apply-idle-rewards.ts) to commit the gains.
  */
 
 import type { TierId } from '../../data/tiers';

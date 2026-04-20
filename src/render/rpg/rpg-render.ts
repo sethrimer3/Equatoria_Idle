@@ -889,20 +889,29 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
         mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
       } else if (_autoMoveEnabled && enemies.length > 0) {
-        // Auto-move: find nearest enemy and steer toward it.
-        let nearestDist = Infinity;
+        // Auto-move: find nearest enemy and steer toward it, stopping when
+        // the enemy is within the equipped weapon's effective range so the
+        // player can attack without colliding.
+        const weaponDef = rpgSimState.equippedWeaponId
+          ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId)
+          : undefined;
+        // Use the weapon's range as the stop distance. If multiple weapons are
+        // ever supported, use the shortest range so every weapon can reach.
+        const autoMoveStopRange = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
+
+        let nearestDistSq = Infinity;
         let nearestEnemy: LaserEnemy | null = null;
         for (const enemy of enemies) {
           const ex = enemy.x - mote.x;
           const ey = enemy.y - mote.y;
           const d = ex * ex + ey * ey;
-          if (d < nearestDist) { nearestDist = d; nearestEnemy = enemy; }
+          if (d < nearestDistSq) { nearestDistSq = d; nearestEnemy = enemy; }
         }
         if (nearestEnemy !== null) {
           const ex = nearestEnemy.x - mote.x;
           const ey = nearestEnemy.y - mote.y;
           const d = Math.sqrt(ex * ex + ey * ey);
-          if (d > PLAYER_HIT_RADIUS * 2) {
+          if (d > autoMoveStopRange) {
             mote.vx = (ex / d) * effectiveMaxSpeed;
             mote.vy = (ey / d) * effectiveMaxSpeed;
           } else {

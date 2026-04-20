@@ -1,70 +1,66 @@
 /**
- * apply-idle-rewards.ts — Commits idle reward gains to the live game state.
+ * apply-idle-rewards.ts — Queues idle reward gains for frame-by-frame drip-addition.
  *
  * Kept separate from calculateIdleRewards() so the pure calculation can
  * be tested or displayed without side effects.
  *
- * Idle motes are added as size-0 with cascade merging so that the
- * per-size distribution stored on the next save reflects true merged
- * state (e.g. 100 size-0 → 1 size-1).  The float total is preserved
- * (merging is value-neutral) and lifetimeMotes is updated normally.
+ * Idle motes are decomposed into size counts (base-MERGE_THRESHOLD) and
+ * enqueued as PendingMoteEntry items ordered lowest-tier-first,
+ * largest-size-first within each tier.  simTick() drains one entry per
+ * frame, adding motes one "visual mote" at a time so the player sees
+ * the gains trickle in rather than appearing all at once.
+ *
+ * Call queueIdleRewards() after calculateIdleRewards() to commit the gains.
  */
 
-import type { TierId } from '../../data/tiers';
+import { TIERS } from '../../data/tiers';
 import type { GameState } from '../game-state';
-import { totalToSizeCounts, sizeCountsToTotal } from '../resources';
-import { MERGE_THRESHOLD } from '../../data/particles/size-tiers';
+import { totalToSizeCounts } from '../resources';
 import type { IdleRewardSummary } from './idle-reward';
 
-/** Maximum size index to check during cascade merges (100^20 > 10^40, sufficient for any gameplay value). */
-const MAX_SIZE_LEVELS = 20;
-
-// ─── Mutation ────────────────────────────────────────────────────
+// ─── Queue builder ───────────────────────────────────────────────
 
 /**
- * Apply the computed idle rewards to the real game state.
- * Must be called after calculateIdleRewards() and before showing the overlay.
+ * Decompose idle rewards into size-based entries and append them to
+ * game.pendingIdleMotes.  Entries are ordered:
+ *   - Tiers from lowest unlockOrder to highest
+ *   - Within each tier: largest sizeIndex first down to 0
  *
- * Integer motes are deposited at size-0 and cascade-merged upward so
- * that the next save encodes the compacted per-size distribution.
- * Fractional motes (<1) are added to the running float total directly
- * and will round off in future saves (negligible in practice).
+ * Each PendingMoteEntry.count decremented by 1 per simTick frame
+ * results in `MERGE_THRESHOLD^sizeIndex` motes being added to resources.
+ *
+ * Does NOT apply motes directly — simTick() does that incrementally.
  */
-export function applyIdleRewards(game: GameState, summary: IdleRewardSummary): void {
-  for (const reward of summary.tierRewards) {
-    if (reward.totalMotes <= 0) continue;
+export function queueIdleRewards(game: GameState, summary: IdleRewardSummary): void {
+  // TIERS is already ordered by unlockOrder (lowest first).
+  for (const tier of TIERS) {
+    const reward = summary.tierRewards.find(r => r.tierId === tier.id);
+    if (!reward || reward.totalMotes <= 0) continue;
 
-    const tierId = reward.tierId as TierId;
-    const currentTotal = game.resources.moteTotals.get(tierId) ?? 0;
-    const fracPart = currentTotal - Math.floor(currentTotal);
+    const floorMotes = Math.floor(reward.totalMotes);
 
-    // Decode current integer total to size counts, add new motes at size-0,
-    // cascade merges (100 at size N → 1 at size N+1), re-encode to total.
-    const floorNew = Math.floor(reward.totalMotes);
-    const fracNew  = reward.totalMotes - floorNew;
-
-    const sizeCounts = totalToSizeCounts(currentTotal);
-    if (floorNew > 0) {
-      sizeCounts.set(0, (sizeCounts.get(0) ?? 0) + floorNew);
-      // Cascade merges — MAX_SIZE_LEVELS covers up to MERGE_THRESHOLD^MAX_SIZE_LEVELS motes
-      for (let s = 0; s < MAX_SIZE_LEVELS; s++) {
-        const count = sizeCounts.get(s) ?? 0;
-        if (count < MERGE_THRESHOLD) continue;
-        const promotes = Math.floor(count / MERGE_THRESHOLD);
-        const remainder = count % MERGE_THRESHOLD;
-        if (remainder === 0) {
-          sizeCounts.delete(s);
-        } else {
-          sizeCounts.set(s, remainder);
+    if (floorMotes > 0) {
+      const sizeCounts = totalToSizeCounts(floorMotes);
+      // Collect sizes in descending order (largest first).
+      const sizes = Array.from(sizeCounts.keys()).sort((a, b) => b - a);
+      for (const sizeIndex of sizes) {
+        const count = sizeCounts.get(sizeIndex) ?? 0;
+        if (count > 0) {
+          game.pendingIdleMotes.push({ tierId: tier.id, sizeIndex, count });
         }
-        sizeCounts.set(s + 1, (sizeCounts.get(s + 1) ?? 0) + promotes);
       }
     }
 
-    const newTotal = sizeCountsToTotal(sizeCounts) + fracPart + fracNew;
-    game.resources.moteTotals.set(tierId, newTotal);
-
-    const lifetime = game.resources.lifetimeMotes.get(tierId) ?? 0;
-    game.resources.lifetimeMotes.set(tierId, lifetime + reward.totalMotes);
+    // Preserve fractional motes (<1) by applying them directly now.
+    // The fraction is imperceptible to the player but avoids rounding loss.
+    const fracPart = reward.totalMotes - floorMotes;
+    if (fracPart > 0) {
+      const current = game.resources.moteTotals.get(tier.id) ?? 0;
+      game.resources.moteTotals.set(tier.id, current + fracPart);
+      game.resources.lifetimeMotes.set(
+        tier.id,
+        (game.resources.lifetimeMotes.get(tier.id) ?? 0) + fracPart,
+      );
+    }
   }
 }
