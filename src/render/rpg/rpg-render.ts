@@ -1,31 +1,40 @@
 /**
  * rpg-render.ts — RPG tab rendering system.
  *
- * Manages an independent low-resolution canvas with:
+ * Manages an independent canvas that dynamically fills its container with:
  *   - A player-controllable sand mote (3x3 pixels, always-glowing)
  *   - Touch joystick (mobile) and WASD / Arrow key (desktop) controls
+ *   - Auto-move mode: player moves toward nearest enemy when enabled
  *   - A smoothly interpolated comet-glow effect behind the player mote
  *   - Laser enemies (2x2 red motes) with patrol, attack-detect, dash, and cooldown phases
  *   - A bezier lineDash attack-trail effect during the enemy dash
- *   - A DOM stats panel (HP / ATK / DEF / WAVE / BOOST) above the navigation bar
+ *   - A DOM stats panel (HP / ATK / DEF / WAVE / BOOST / weapon) above the navigation bar
  *   - A data-driven wave system (see src/data/rpg/wave-definitions.ts)
  *   - A smooth death to restart loop with visual transition effects
  *   - Player auto-attack: shoots the closest enemy each cooldown tick.
  *     Weapon effects: single (closest), multi (N closest), aoe (all in radius),
  *     piercing (closest, partial DEF bypass).
+ *   - Equipped-weapon visual particle: a mote of the weapon's tier color
+ *     perpetually orbits the player to communicate the equipped weapon.
+ *   - Orbiting projectile upgrade: a comet projectile orbits the player,
+ *     damaging enemies on contact (requires 'orbit_projectile' upgrade).
  *
- * Internal resolution is FIXED at 320x568 (9:16 portrait). CSS letterboxes
- * or pillarboxes the canvas inside its container so pixels always scale uniformly
- * rather than stretching to fill on desktop.
+ * Internal resolution is computed dynamically from the container at each
+ * resize() call so the canvas fills the full gameplay area without
+ * pillarboxing/letterboxing, matching the width of the stats bar.
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp } from '../../sim/rpg/rpg-state';
+import { getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { TIER_BY_ID } from '../../data/tiers';
 
-const INTERNAL_WIDTH  = 320;
-const INTERNAL_HEIGHT = 568;
+// ── Dynamic internal resolution ───────────────────────────────────
+// These are updated by resize() to match the container's client dimensions.
+// The default values kick in before the first resize() call.
+let INTERNAL_WIDTH  = 320;
+let INTERNAL_HEIGHT = 568;
 
 const RPG_TRAIL_CAPACITY   = 60;
 const MAX_RPG_SPEED        = 3.0;
@@ -98,10 +107,10 @@ const IFRAME_FLICKER_INTERVAL_MS = 62.5;
 // ── Damage numbers ─────────────────────────────────────────────
 /** How long a damage number stays visible (ms). */
 const DAMAGE_NUM_DURATION_MS   = 900;
-/** Minimum font size for a nearly-zero-damage hit (internal canvas px). */
-const DAMAGE_NUM_MIN_FONT_PX   = 4;
-/** Maximum font size for a 100 %-health hit (internal canvas px). */
-const DAMAGE_NUM_MAX_FONT_PX   = 14;
+/** Minimum font size for a nearly-zero-damage hit (internal canvas px). 3× original. */
+const DAMAGE_NUM_MIN_FONT_PX   = 12;
+/** Maximum font size for a 100 %-health hit (internal canvas px). 3× original. */
+const DAMAGE_NUM_MAX_FONT_PX   = 42;
 /** Initial travel speed of a damage number (px per dt unit). */
 const DAMAGE_NUM_INITIAL_SPEED = 1.8;
 /** Per-frame velocity damping factor (at 60 fps scale). */
@@ -116,6 +125,34 @@ const PLAYER_IFRAME_MAX_ADD_MS = 1200;
 // ── Knockback ───────────────────────────────────────────────────
 /** Maximum knockback speed applied at 100 % relative damage. */
 const PLAYER_KNOCKBACK_MAX     = 7.0;
+
+// ── Auto-move ──────────────────────────────────────────────────
+/** Minimum joystick displacement (canvas px) to count as active manual control. */
+const AUTO_MOVE_JOYSTICK_DEAD_ZONE = 1.0;
+
+// ── Equipped-weapon visual particle ───────────────────────────
+/** Angular speed of the equipped-weapon orbit particle (radians per second). */
+const WEAPON_PARTICLE_ORBIT_SPEED  = 2.2;
+/** Orbit radius for the equipped-weapon particle (internal px). */
+const WEAPON_PARTICLE_ORBIT_RADIUS = 12;
+/** Minimum speed so the particle never appears frozen. */
+const WEAPON_PARTICLE_MIN_SPEED    = 0.5;
+
+// ── Orbiting projectile upgrade ───────────────────────────────
+/** Angular speed of the orbit projectile (radians per second). */
+const ORBIT_PROJ_SPEED_RAD   = 3.5;
+/** Orbit radius for the orbit projectile (internal px). */
+const ORBIT_PROJ_RADIUS      = 20;
+/** Size (px) of the orbit projectile mote. */
+const ORBIT_PROJ_SIZE        = 3;
+/** Trail capacity for the orbit projectile. */
+const ORBIT_PROJ_TRAIL_CAP   = 20;
+/** Hit radius for orbit projectile — enemy collision detection. */
+const ORBIT_PROJ_HIT_RADIUS  = 5;
+/** Damage dealt per orbit-projectile hit. */
+const ORBIT_PROJ_DAMAGE      = 15;
+/** Cooldown between orbit-projectile hits on the same enemy (ms). */
+const ORBIT_PROJ_HIT_CD_MS   = 500;
 
 interface RpgMote {
   x: number; y: number;
@@ -206,13 +243,44 @@ interface DamageNumber {
   timerMs: number;
 }
 
+/** Visual-only orbit particle for the equipped weapon. */
+interface WeaponOrbitParticle {
+  /** Current angle in radians (advances each frame). */
+  angle: number;
+  /** Current computed position (updated from angle + player position). */
+  x: number; y: number;
+  /** Comet trail positions. */
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+  /** Tier color for this particle. */
+  color: string;
+  /** Glow color. */
+  glowColor: string;
+  /** Size in pixels (= weapon tier). */
+  size: number;
+}
+
+/** Orbit projectile that damages enemies. */
+interface OrbitProjectile {
+  /** Current angle in radians. */
+  angle: number;
+  /** Computed position. */
+  x: number; y: number;
+  /** Comet trail. */
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+  /** Per-enemy cooldown tracking: enemyIndex → remaining cd ms.
+   *  We use a WeakMap-like approach using the enemy object itself. */
+  hitCooldowns: Map<LaserEnemy, number>;
+}
+
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
-  update(deltaMs: number): void;
+  update(deltaMs: number, autoMoveEnabled?: boolean): void;
   resize(container: HTMLElement): void;
   setActive(active: boolean): void;
-  /** Re-reads rpgSimState.equippedWeaponId and immediately updates playerStats ATK/DEF. */
+  /** Re-reads rpgSimState.equippedWeaponId and immediately updates playerStats ATK/DEF + weapon particle. */
   notifyEquip(): void;
 }
 
@@ -244,11 +312,23 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   container.appendChild(canvas);
 
   const ctx = canvas.getContext('2d')!;
-  const widthPx  = INTERNAL_WIDTH;
-  const heightPx = INTERNAL_HEIGHT;
+  let widthPx  = INTERNAL_WIDTH;
+  let heightPx = INTERNAL_HEIGHT;
 
-  function doResize(): void { canvas.width = widthPx; canvas.height = heightPx; }
-  doResize();
+  function doResize(cont: HTMLElement): void {
+    const w = cont.clientWidth  || INTERNAL_WIDTH;
+    const h = cont.clientHeight || INTERNAL_HEIGHT;
+    if (w !== widthPx || h !== heightPx) {
+      // Update module-level defaults so newly spawned entities use correct bounds.
+      INTERNAL_WIDTH  = w;
+      INTERNAL_HEIGHT = h;
+      widthPx  = w;
+      heightPx = h;
+    }
+    canvas.width  = widthPx;
+    canvas.height = heightPx;
+  }
+  doResize(container);
 
   const mote: RpgMote = {
     x: widthPx / 2, y: heightPx / 2, vx: 0, vy: 0,
@@ -283,10 +363,57 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const damageNumbers: DamageNumber[] = [];
   let playerIFramesMs = 0;
 
+  // ── Equipped weapon visual particle ───────────────────────────
+  let weaponOrbitParticle: WeaponOrbitParticle | null = null;
+
+  function buildWeaponOrbitParticle(): WeaponOrbitParticle | null {
+    const weaponId = rpgSimState.equippedWeaponId;
+    if (!weaponId) return null;
+    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    if (!weaponDef) return null;
+    const tierDef = TIER_BY_ID.get(weaponDef.costTierId);
+    const color     = tierDef?.color     ?? '#ffd764';
+    const glowColor = tierDef?.glowColor ?? '#ffe599';
+    const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+    const size = Math.max(1, tier);
+    return {
+      angle: 0,
+      x: mote.x + WEAPON_PARTICLE_ORBIT_RADIUS,
+      y: mote.y,
+      trailX: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
+      trailY: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
+      trailHead: 0, trailCount: 0,
+      color, glowColor, size,
+    };
+  }
+
+  // ── Orbiting projectile upgrade ───────────────────────────────
+  let orbitProjectile: OrbitProjectile | null = null;
+
+  function buildOrbitProjectile(): OrbitProjectile | null {
+    const hasUpgrade = getRpgUpgradeLevel(rpgSimState, 'orbit_projectile') >= 1;
+    if (!hasUpgrade) return null;
+    return {
+      angle: Math.PI,   // start on the opposite side from weapon particle
+      x: mote.x - ORBIT_PROJ_RADIUS,
+      y: mote.y,
+      trailX: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
+      trailY: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
+      trailHead: 0, trailCount: 0,
+      hitCooldowns: new Map(),
+    };
+  }
+
   function applyEquipmentStats(): void {
     const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    const speedMul  = getRpgSpeedMultiplier(rpgSimState);
     playerStats.def = PLAYER_DEF_INIT + (weaponDef?.stats.defBonus ?? 0) + getXpDefBonus(rpgSimState.xp);
     playerStats.atk = PLAYER_ATK_INIT + (weaponDef?.stats.damage  ?? 0) + getXpAtkBonus(rpgSimState.xp);
+    // Rebuild visual particles so they reflect the current weapon/upgrade state.
+    weaponOrbitParticle = buildWeaponOrbitParticle();
+    orbitProjectile     = buildOrbitProjectile();
+    // Apply speed upgrade — stored externally; re-read via getter each physics frame.
+    void speedMul; // referenced in updatePhysics via getRpgSpeedMultiplier
   }
 
   // ── Player attack helpers ──────────────────────────────────────
@@ -471,12 +598,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return { root, valueEl };
   }
 
-  const hpWidget    = makeStatWidget('HP',    'rpg-stat-value--hp');
-  const atkWidget   = makeStatWidget('ATK',   '');
-  const defWidget   = makeStatWidget('DEF',   '');
-  const waveWidget  = makeStatWidget('WAVE',  'rpg-stat-value--wave');
-  const boostWidget = makeStatWidget('BOOST', 'rpg-stat-value--boost');
-  const xpWidget    = makeStatWidget('XP',    'rpg-stat-value--xp');
+  const hpWidget      = makeStatWidget('HP',     'rpg-stat-value--hp');
+  const atkWidget     = makeStatWidget('ATK',    '');
+  const defWidget     = makeStatWidget('DEF',    '');
+  const waveWidget    = makeStatWidget('WAVE',   'rpg-stat-value--wave');
+  const boostWidget   = makeStatWidget('BOOST',  'rpg-stat-value--boost');
+  const xpWidget      = makeStatWidget('XP',     'rpg-stat-value--xp');
+  const weaponWidget  = makeStatWidget('WEAPON', 'rpg-stat-value--weapon');
 
   function updateStatsPanelDom(): void {
     hpWidget.valueEl.textContent   = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
@@ -487,6 +615,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ? '+' + Math.pow(rpgSimState.highestWaveReached, 1.2).toFixed(1) + '%'
       : '+0.0%';
     xpWidget.valueEl.textContent   = formatXp(rpgSimState.xp);
+
+    const equippedId = rpgSimState.equippedWeaponId;
+    if (equippedId) {
+      const weaponDef = WEAPON_BY_ID.get(equippedId);
+      const tier = rpgSimState.weaponTiersByWeaponId.get(equippedId) ?? 1;
+      weaponWidget.valueEl.textContent = weaponDef ? `${weaponDef.name} T${tier}` : equippedId;
+      const tierDef = weaponDef ? TIER_BY_ID.get(weaponDef.costTierId) : undefined;
+      weaponWidget.valueEl.style.color = tierDef?.color ?? '#c9a84c';
+    } else {
+      weaponWidget.valueEl.textContent = 'None';
+      weaponWidget.valueEl.style.color = '';
+    }
   }
   updateStatsPanelDom();
 
@@ -716,21 +856,64 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  /** Flag set at the start of each update() call; drives auto-move logic. */
+  let _autoMoveEnabled = false;
+
   function updatePhysics(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const speedMul = getRpgSpeedMultiplier(rpgSimState);
+    const effectiveMaxSpeed = MAX_RPG_SPEED * speedMul;
+
     if (joystick.isActive) {
       const dx = joystick.thumbX - joystick.baseX;
       const dy = joystick.thumbY - joystick.baseY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0.5) { const speed = (dist / JOYSTICK_OUTER_RADIUS) * MAX_RPG_SPEED; mote.vx = (dx / dist) * speed; mote.vy = (dy / dist) * speed; }
-      else { mote.vx *= RPG_VELOCITY_DAMPING; mote.vy *= RPG_VELOCITY_DAMPING; }
+      if (dist > AUTO_MOVE_JOYSTICK_DEAD_ZONE) {
+        // Manual joystick input overrides auto-move.
+        const speed = (dist / JOYSTICK_OUTER_RADIUS) * effectiveMaxSpeed;
+        mote.vx = (dx / dist) * speed;
+        mote.vy = (dy / dist) * speed;
+      } else {
+        mote.vx *= RPG_VELOCITY_DAMPING;
+        mote.vy *= RPG_VELOCITY_DAMPING;
+      }
     } else {
       const dirX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
       const dirY = (keys.down  ? 1 : 0) - (keys.up   ? 1 : 0);
       const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
-      if (dirLen > 0) { mote.vx = (dirX / dirLen) * MAX_RPG_SPEED; mote.vy = (dirY / dirLen) * MAX_RPG_SPEED; }
-      else { mote.vx *= RPG_VELOCITY_DAMPING; mote.vy *= RPG_VELOCITY_DAMPING; }
+      const hasKeyInput = dirLen > 0;
+      if (hasKeyInput) {
+        // Keyboard input also overrides auto-move while held.
+        mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
+        mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
+      } else if (_autoMoveEnabled && enemies.length > 0) {
+        // Auto-move: find nearest enemy and steer toward it.
+        let nearestDist = Infinity;
+        let nearestEnemy: LaserEnemy | null = null;
+        for (const enemy of enemies) {
+          const ex = enemy.x - mote.x;
+          const ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDist) { nearestDist = d; nearestEnemy = enemy; }
+        }
+        if (nearestEnemy !== null) {
+          const ex = nearestEnemy.x - mote.x;
+          const ey = nearestEnemy.y - mote.y;
+          const d = Math.sqrt(ex * ex + ey * ey);
+          if (d > PLAYER_HIT_RADIUS * 2) {
+            mote.vx = (ex / d) * effectiveMaxSpeed;
+            mote.vy = (ey / d) * effectiveMaxSpeed;
+          } else {
+            mote.vx *= RPG_VELOCITY_DAMPING;
+            mote.vy *= RPG_VELOCITY_DAMPING;
+          }
+        }
+      } else {
+        mote.vx *= RPG_VELOCITY_DAMPING;
+        mote.vy *= RPG_VELOCITY_DAMPING;
+      }
     }
+
     mote.x += mote.vx * dt; mote.y += mote.vy * dt;
     const half = RPG_MOTE_SIZE / 2;
     if (mote.x < half)            { mote.x = half;            mote.vx = 0; }
@@ -747,6 +930,64 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       glowMovementIntensity = Math.min(1, glowMovementIntensity + GLOW_MOVE_RAMP_UP * deltaMs);
     } else {
       glowMovementIntensity = Math.max(0, glowMovementIntensity - GLOW_MOVE_RAMP_DOWN * deltaMs);
+    }
+  }
+
+  /** Updates the equipped-weapon visual orbit particle position and trail. */
+  function updateWeaponOrbitParticle(deltaMs: number): void {
+    const p = weaponOrbitParticle;
+    if (!p) return;
+    const dt = deltaMs / 1000;
+    p.angle += WEAPON_PARTICLE_ORBIT_SPEED * dt;
+    const newX = mote.x + Math.cos(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
+    const newY = mote.y + Math.sin(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
+    // Minimum speed guard: if computed displacement is too small, nudge the angle.
+    const dx = newX - p.x, dy = newY - p.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < WEAPON_PARTICLE_MIN_SPEED * dt) {
+      p.angle += 0.05;
+    }
+    p.x = newX; p.y = newY;
+    p.trailX[p.trailHead] = p.x;
+    p.trailY[p.trailHead] = p.y;
+    p.trailHead = (p.trailHead + 1) % ORBIT_PROJ_TRAIL_CAP;
+    if (p.trailCount < ORBIT_PROJ_TRAIL_CAP) p.trailCount++;
+  }
+
+  /** Updates the orbiting projectile: angle, trail, and enemy collision. */
+  function updateOrbitProjectile(deltaMs: number): void {
+    const op = orbitProjectile;
+    if (!op) return;
+    const dt = deltaMs / 1000;
+    op.angle += ORBIT_PROJ_SPEED_RAD * dt;
+    op.x = mote.x + Math.cos(op.angle) * ORBIT_PROJ_RADIUS;
+    op.y = mote.y + Math.sin(op.angle) * ORBIT_PROJ_RADIUS;
+    op.trailX[op.trailHead] = op.x;
+    op.trailY[op.trailHead] = op.y;
+    op.trailHead = (op.trailHead + 1) % ORBIT_PROJ_TRAIL_CAP;
+    if (op.trailCount < ORBIT_PROJ_TRAIL_CAP) op.trailCount++;
+
+    // Advance per-enemy hit cooldowns.
+    for (const [enemy, cdMs] of op.hitCooldowns) {
+      const newCd = cdMs - deltaMs;
+      if (newCd <= 0) op.hitCooldowns.delete(enemy);
+      else            op.hitCooldowns.set(enemy, newCd);
+    }
+
+    // Collision detection with enemies.
+    for (const enemy of enemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x;
+      const dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = Math.max(0, ORBIT_PROJ_DAMAGE - enemy.def);
+        if (dmg > 0) enemy.hp -= dmg;
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        // Spawn explosion effect at enemy.
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        const ratio = dmg / enemy.maxHp;
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), ratio, '#ffaa44');
+      }
     }
   }
 
@@ -886,13 +1127,82 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const alpha = t > 0.33 ? 1.0 : t / 0.33;
       ctx.globalAlpha = alpha;
       const fontPx = Math.max(1, Math.round(dn.fontPx));
-      ctx.font = `bold ${fontPx}px "Poiret One", sans-serif`;
+      ctx.font = `bold ${fontPx}px "Pixelify Sans", monospace`;
       ctx.shadowBlur  = fontPx * 2;
       ctx.shadowColor = dn.color;
       ctx.fillStyle   = dn.color;
       ctx.fillText(dn.text, Math.round(dn.x), Math.round(dn.y));
     }
     ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /** Draws the equipped-weapon visual orbit particle with comet trail. */
+  function drawWeaponOrbitParticle(): void {
+    const p = weaponOrbitParticle;
+    if (!p) return;
+    ctx.save();
+    // Draw trail first
+    if (p.trailCount >= 2) {
+      for (let i = 0; i < p.trailCount; i++) {
+        const t      = i / p.trailCount;
+        const bufIdx = (p.trailHead - p.trailCount + i + ORBIT_PROJ_TRAIL_CAP) % ORBIT_PROJ_TRAIL_CAP;
+        const trailSize = p.size * t * 1.2;
+        if (trailSize < 0.3) continue;
+        const half = trailSize / 2;
+        ctx.globalAlpha = t * 0.5;
+        ctx.shadowBlur = trailSize * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
+        ctx.fillRect(Math.floor(p.trailX[bufIdx] - half), Math.floor(p.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
+        ctx.shadowBlur = 0;
+      }
+    }
+    // Draw main particle
+    const half = p.size / 2;
+    ctx.globalAlpha = 0.9;
+    ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
+    ctx.fillRect(Math.floor(p.x - half * 1.8), Math.floor(p.y - half * 1.8), Math.ceil(p.size * 1.8), Math.ceil(p.size * 1.8));
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(p.size), Math.ceil(p.size));
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  /** Draws the orbiting projectile with comet trail. */
+  function drawOrbitProjectile(): void {
+    const op = orbitProjectile;
+    if (!op) return;
+    const projColor   = '#ffaa44';
+    const projGlow    = '#ffcc88';
+    ctx.save();
+    // Trail
+    if (op.trailCount >= 2) {
+      for (let i = 0; i < op.trailCount; i++) {
+        const t      = i / op.trailCount;
+        const bufIdx = (op.trailHead - op.trailCount + i + ORBIT_PROJ_TRAIL_CAP) % ORBIT_PROJ_TRAIL_CAP;
+        const trailSize = ORBIT_PROJ_SIZE * t * 1.3;
+        if (trailSize < 0.3) continue;
+        const half = trailSize / 2;
+        ctx.globalAlpha = t * 0.45;
+        ctx.shadowBlur = trailSize * 6; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
+        const gh = half * 2.2;
+        ctx.fillRect(Math.floor(op.trailX[bufIdx] - gh), Math.floor(op.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = t * 0.7;
+        ctx.fillStyle = projColor;
+        ctx.fillRect(Math.floor(op.trailX[bufIdx] - half), Math.floor(op.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
+      }
+    }
+    // Main projectile body
+    const half = ORBIT_PROJ_SIZE / 2;
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = ORBIT_PROJ_SIZE * 5; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
+    const gh = half * 2.2;
+    ctx.fillRect(Math.floor(op.x - gh), Math.floor(op.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = projColor;
+    ctx.fillRect(Math.floor(op.x - half), Math.floor(op.y - half), ORBIT_PROJ_SIZE, ORBIT_PROJ_SIZE);
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     ctx.restore();
   }
 
@@ -977,6 +1287,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawDamageNumbers();
     if (deathParticles.length > 0) drawDeathParticles();
 
+    // Draw weapon orbit particle and orbit projectile above the player.
+    if (rpgPhase === 'alive') {
+      drawWeaponOrbitParticle();
+      drawOrbitProjectile();
+    }
+
     if (joystick.isActive && rpgPhase === 'alive') {
       ctx.save();
       ctx.globalAlpha = 0.35; ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 1;
@@ -1027,9 +1343,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     canvas,
     statsPanel,
 
-    update(deltaMs: number): void {
+    update(deltaMs: number, autoMoveEnabled = false): void {
       const nowMs = performance.now();
       glowTimeS += deltaMs / 1000;
+      _autoMoveEnabled = autoMoveEnabled;
 
       if (rpgPhase === 'dying') {
         updateDying(deltaMs);
@@ -1054,6 +1371,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       updatePhysics(deltaMs);
       updateEnemies(deltaMs, nowMs);
+      updateWeaponOrbitParticle(deltaMs);
+      updateOrbitProjectile(deltaMs);
+      removeDeadEnemies();
+      checkWaveCompletion();
 
       // ── Player auto-attack ────────────────────────────────────
       playerAttackTimerMs -= deltaMs;
@@ -1073,8 +1394,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       draw(nowMs);
     },
 
-    resize(_cont: HTMLElement): void {
-      doResize();
+    resize(cont: HTMLElement): void {
+      doResize(cont);
       const half = RPG_MOTE_SIZE / 2;
       mote.x = Math.max(half, Math.min(widthPx  - half, mote.x));
       mote.y = Math.max(half, Math.min(heightPx - half, mote.y));

@@ -20,6 +20,16 @@ export interface RpgSimState {
    * the player to push into harder content.
    */
   xp: number;
+  /**
+   * Per-weapon current tier (1-based).  Buying a weapon starts it at tier 1.
+   * Key = weaponId, value = tier number (≥ 1).
+   */
+  weaponTiersByWeaponId: Map<string, number>;
+  /**
+   * Per-RPG-upgrade purchase level.
+   * Key = upgradeId (from RPG_UPGRADE_DEFINITIONS), value = current level (≥ 0).
+   */
+  rpgUpgradeLevels: Map<string, number>;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -30,6 +40,8 @@ export function createRpgSimState(): RpgSimState {
     purchasedWeaponIds: new Set(),
     equippedWeaponId: null,
     xp: 0,
+    weaponTiersByWeaponId: new Map(),
+    rpgUpgradeLevels: new Map(),
   };
 }
 
@@ -109,4 +121,20 @@ export function formatXp(xp: number): string {
   if (xp < 1_000) return String(Math.floor(xp));
   if (xp < 1_000_000) return (xp / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
   return (xp / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+}
+
+// ─── Upgrade helpers ─────────────────────────────────────────────
+
+/** Returns the current level of an RPG upgrade (defaults to 0 if not purchased). */
+export function getRpgUpgradeLevel(state: RpgSimState, upgradeId: string): number {
+  return state.rpgUpgradeLevels.get(upgradeId) ?? 0;
+}
+
+/**
+ * Speed multiplier from the speed upgrade.
+ * Each level adds 10% to base speed.
+ */
+export function getRpgSpeedMultiplier(state: RpgSimState): number {
+  const level = getRpgUpgradeLevel(state, 'speed');
+  return 1 + level * 0.1;
 }

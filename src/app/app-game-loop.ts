@@ -66,7 +66,8 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
 
     // ── RPG tab: run independent render, pause main sim ──────────
     if (ctx.appState.activeTab === 'rpg') {
-      ctx.uiPanels.rpgRender.update(deltaMs);
+      const autoMove = ctx.uiPanels.rpgMenuPanel.isAutoMoveEnabled;
+      ctx.uiPanels.rpgRender.update(deltaMs, autoMove);
       requestAnimationFrame(gameLoop);
       return;
     }
