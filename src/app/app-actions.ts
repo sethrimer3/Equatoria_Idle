@@ -145,6 +145,9 @@ export function handleAction(
       }
       state.game.rpg.purchasedWeaponIds.add(action.weaponId);
       audioSystem?.onBuyLoomUpgrade();
+      // Re-render the weapon store immediately so the purchased state is visible
+      // without the player needing to close and re-open the menu.
+      uiPanels.weaponStorePanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
     case 'equip_weapon': {
@@ -153,6 +156,8 @@ export function handleAction(
       // Apply stat changes immediately so ATK/DEF in the stats panel update
       // during a live run, not just on next restart.
       uiPanels.rpgRender.notifyEquip();
+      // Re-render the weapon store so the equipped badge updates live.
+      uiPanels.weaponStorePanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
     case 'set_active_tab':

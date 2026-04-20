@@ -45,7 +45,7 @@ const PLAYER_DEF_INIT =   5;
 const JOYSTICK_OUTER_RADIUS = 28;
 const JOYSTICK_THUMB_RADIUS = 12;
 
-const LASER_ENEMY_SIZE        =   2;
+const LASER_ENEMY_SIZE        =   4;
 const LASER_ENEMY_COLOR       = '#ff3333';
 const LASER_ENEMY_GLOW        = '#ff6666';
 const LASER_HP_INIT           =  20;
@@ -90,6 +90,32 @@ const PLAYER_BASE_RANGE_PX     = 50;
 const HIT_EFFECT_DURATION_MS   = 220;
 /** Duration (ms) for the shot-line visual effect. */
 const SHOT_LINE_DURATION_MS    = 120;
+/** Target frame time in ms at 60 FPS — used to normalise dt-scaled physics. */
+const TARGET_FRAME_MS          = 16.667;
+/** Flicker on/off interval (ms) while the player has invincibility frames (~8 Hz). */
+const IFRAME_FLICKER_INTERVAL_MS = 62.5;
+
+// ── Damage numbers ─────────────────────────────────────────────
+/** How long a damage number stays visible (ms). */
+const DAMAGE_NUM_DURATION_MS   = 900;
+/** Minimum font size for a nearly-zero-damage hit (internal canvas px). */
+const DAMAGE_NUM_MIN_FONT_PX   = 4;
+/** Maximum font size for a 100 %-health hit (internal canvas px). */
+const DAMAGE_NUM_MAX_FONT_PX   = 14;
+/** Initial travel speed of a damage number (px per dt unit). */
+const DAMAGE_NUM_INITIAL_SPEED = 1.8;
+/** Per-frame velocity damping factor (at 60 fps scale). */
+const DAMAGE_NUM_DECEL         = 0.88;
+
+// ── Invincibility frames ────────────────────────────────────────
+/** Minimum iframes duration after any hit (ms). */
+const PLAYER_IFRAME_MIN_MS     = 280;
+/** Additional iframes earned for a full-HP (100 %) hit (ms). */
+const PLAYER_IFRAME_MAX_ADD_MS = 1200;
+
+// ── Knockback ───────────────────────────────────────────────────
+/** Maximum knockback speed applied at 100 % relative damage. */
+const PLAYER_KNOCKBACK_MAX     = 7.0;
 
 interface RpgMote {
   x: number; y: number;
@@ -170,6 +196,16 @@ interface ShotLine {
   color: string;
 }
 
+/** Floating text showing damage dealt or "BLOCKED". */
+interface DamageNumber {
+  x: number; y: number;
+  vx: number; vy: number;
+  text: string;
+  fontPx: number;
+  color: string;
+  timerMs: number;
+}
+
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
@@ -244,6 +280,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let playerAttackTimerMs = 0;
   const hitEffects: HitEffect[] = [];
   const shotLines:  ShotLine[]  = [];
+  const damageNumbers: DamageNumber[] = [];
+  let playerIFramesMs = 0;
 
   function applyEquipmentStats(): void {
     const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
@@ -253,21 +291,59 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Player attack helpers ──────────────────────────────────────
 
-  /** Deals damage from the player to one enemy, respecting DEF and a DEF pierce ratio. */
-  function damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): void {
+  /** Deals damage from the player to one enemy, respecting DEF and a DEF pierce ratio.
+   *  Returns the actual damage dealt (0 if DEF fully absorbed the hit). */
+  function damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(1, rawDamage - effectiveDef);
-    enemy.hp -= dmg;
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
   }
 
-  /** Registers a hit-flash and shot-line visual for one target. */
-  function spawnHitVisuals(targetX: number, targetY: number, color: string): void {
-    hitEffects.push({ x: targetX, y: targetY, timerMs: HIT_EFFECT_DURATION_MS, color });
+  /**
+   * Spawns a floating damage/blocked number at (x, y) travelling in (dirX, dirY).
+   * `ratio` is dmg / maxHp clamped to [0, 1] and controls font size.
+   */
+  function spawnDamageNumber(
+    x: number, y: number,
+    dirX: number, dirY: number,
+    text: string,
+    ratio: number,
+    color: string,
+  ): void {
+    const clampedRatio = Math.min(1, Math.max(0, ratio));
+    const fontPx = DAMAGE_NUM_MIN_FONT_PX + clampedRatio * (DAMAGE_NUM_MAX_FONT_PX - DAMAGE_NUM_MIN_FONT_PX);
+    const initialSpeed  = DAMAGE_NUM_INITIAL_SPEED * (0.5 + clampedRatio * 0.5);
+    damageNumbers.push({
+      x, y,
+      vx: dirX * initialSpeed,
+      vy: dirY * initialSpeed,
+      text,
+      fontPx: Math.max(DAMAGE_NUM_MIN_FONT_PX, fontPx),
+      color,
+      timerMs: DAMAGE_NUM_DURATION_MS,
+    });
+  }
+
+  /** Registers a hit-flash and shot-line visual for one target, and spawns a damage number. */
+  function spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string): void {
+    hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color });
     shotLines.push({
       x1: mote.x, y1: mote.y,
-      x2: targetX, y2: targetY,
+      x2: enemy.x, y2: enemy.y,
       timerMs: SHOT_LINE_DURATION_MS, color,
     });
+    // Damage number floats away from the player (opposite to where the attack came from).
+    const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dirX = dist > 0.01 ? dx / dist : 0;
+    const dirY = dist > 0.01 ? dy / dist : -1;
+    if (dmg <= 0) {
+      spawnDamageNumber(enemy.x, enemy.y, dirX, dirY, 'BLOCKED', 0.25, '#74c0fc');
+    } else {
+      const ratio = dmg / enemy.maxHp;
+      spawnDamageNumber(enemy.x, enemy.y, dirX, dirY, String(Math.round(dmg)), ratio, '#ffffff');
+    }
   }
 
   /**
@@ -289,8 +365,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       for (const enemy of enemies) {
         const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
         if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
-          damageEnemy(enemy, rawDamage, 0);
-          spawnHitVisuals(enemy.x, enemy.y, '#e6c850');
+          const dmg = damageEnemy(enemy, rawDamage, 0);
+          spawnHitVisuals(enemy, dmg, '#e6c850');
         }
       }
       return;
@@ -308,8 +384,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         })
         .slice(0, effect.targetCount);
       for (const enemy of inRange) {
-        damageEnemy(enemy, rawDamage, 0);
-        spawnHitVisuals(enemy.x, enemy.y, '#50b464');
+        const dmg = damageEnemy(enemy, rawDamage, 0);
+        spawnHitVisuals(enemy, dmg, '#50b464');
       }
       return;
     }
@@ -328,8 +404,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
     }
     if (target) {
-      damageEnemy(target, rawDamage, defPierceRatio);
-      spawnHitVisuals(target.x, target.y, effect.kind === 'piercing' ? '#74c0fc' : shotColor);
+      const dmg = damageEnemy(target, rawDamage, defPierceRatio);
+      spawnHitVisuals(target, dmg, effect.kind === 'piercing' ? '#74c0fc' : shotColor);
     }
   }
 
@@ -359,6 +435,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       shotLines[i].timerMs -= deltaMs;
       if (shotLines[i].timerMs <= 0) shotLines.splice(i, 1);
     }
+  }
+
+  /** Advances damage-number positions (decelerating velocity) and iframes timer. */
+  function updateDamageNumbers(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const decelFactor = Math.pow(DAMAGE_NUM_DECEL, dt);
+    for (let i = damageNumbers.length - 1; i >= 0; i--) {
+      const dn = damageNumbers[i];
+      dn.timerMs -= deltaMs;
+      if (dn.timerMs <= 0) { damageNumbers.splice(i, 1); continue; }
+      dn.x += dn.vx * dt;
+      dn.y += dn.vy * dt;
+      dn.vx *= decelFactor;
+      dn.vy *= decelFactor;
+    }
+    if (playerIFramesMs > 0) playerIFramesMs = Math.max(0, playerIFramesMs - deltaMs);
   }
 
   const statsPanel = document.createElement('div');
@@ -565,9 +657,26 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (!enemy.hasHitPlayer) {
       const dx = enemy.x - mote.x; const dy = enemy.y - mote.y;
       if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-        const dmg = Math.max(1, enemy.atk - playerStats.def);
-        playerStats.hp = Math.max(0, playerStats.hp - dmg);
         enemy.hasHitPlayer = true;
+        if (playerIFramesMs <= 0) {
+          const rawDmg = enemy.atk - playerStats.def;
+          const dmg = Math.max(0, rawDmg);
+          if (dmg <= 0) {
+            // DEF fully absorbed the hit — show "BLOCKED", no HP loss.
+            spawnDamageNumber(mote.x, mote.y, enemy.dashDirX, enemy.dashDirY, 'BLOCKED', 0.25, '#74c0fc');
+          } else {
+            playerStats.hp = Math.max(0, playerStats.hp - dmg);
+            const ratio = Math.min(1, dmg / playerStats.maxHp);
+            // Knockback: push player in the direction the attack came from.
+            mote.vx += enemy.dashDirX * PLAYER_KNOCKBACK_MAX * ratio;
+            mote.vy += enemy.dashDirY * PLAYER_KNOCKBACK_MAX * ratio;
+            // Invincibility frames scale with relative damage.
+            playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+            // Damage number floats in attack direction (opposite side from attacker).
+            spawnDamageNumber(mote.x, mote.y, enemy.dashDirX, enemy.dashDirY,
+              String(Math.round(dmg)), ratio, '#ff6666');
+          }
+        }
       }
     }
     if (enemy.dashTraveled >= LASER_DASH_DISTANCE) {
@@ -595,7 +704,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function updateEnemies(deltaMs: number, nowMs: number): void {
-    const dt = Math.min(deltaMs / 16.667, 3);
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     for (const enemy of enemies) {
       switch (enemy.phase) {
         case 'idle':       updateEnemyIdle(enemy, dt, deltaMs);       break;
@@ -608,7 +717,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function updatePhysics(deltaMs: number): void {
-    const dt = Math.min(deltaMs / 16.667, 3);
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     if (joystick.isActive) {
       const dx = joystick.thumbX - joystick.baseX;
       const dy = joystick.thumbY - joystick.baseY;
@@ -667,6 +776,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     screenDarken = 0;
     playerAttackTimerMs = 0;
     hitEffects.length = 0; shotLines.length = 0;
+    damageNumbers.length = 0; playerIFramesMs = 0;
     applyEquipmentStats();
   }
 
@@ -764,6 +874,28 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.restore();
   }
 
+  /** Draws floating damage numbers and "BLOCKED" labels. */
+  function drawDamageNumbers(): void {
+    if (damageNumbers.length === 0) return;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const dn of damageNumbers) {
+      const t = dn.timerMs / DAMAGE_NUM_DURATION_MS;
+      // Fade in sharply, then hold, then fade out in the last third.
+      const alpha = t > 0.33 ? 1.0 : t / 0.33;
+      ctx.globalAlpha = alpha;
+      const fontPx = Math.max(1, Math.round(dn.fontPx));
+      ctx.font = `bold ${fontPx}px "Poiret One", sans-serif`;
+      ctx.shadowBlur  = fontPx * 2;
+      ctx.shadowColor = dn.color;
+      ctx.fillStyle   = dn.color;
+      ctx.fillText(dn.text, Math.round(dn.x), Math.round(dn.y));
+    }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function drawWaveClearBanner(): void {
     if (!isInterWave || currentWave === 0) return;
     const t = 1 - interWaveTimerMs / INTER_WAVE_DELAY_MS;
@@ -821,20 +953,28 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // Dampen the stationary glow while the player is moving — the comet
       // trail already gives strong visual feedback during motion.
       const glowDampeningFactor = 1 - glowMovementIntensity * 0.65;
+      // During iframes: tint the glow blue and flicker the sprite at ~8 Hz.
+      const inIFrames = playerIFramesMs > 0;
+      const iFrameFlicker = inIFrames && (Math.floor(playerIFramesMs / IFRAME_FLICKER_INTERVAL_MS) % 2 === 0);
+      const moteGlowColor  = inIFrames ? '#74c0fc' : RPG_MOTE_GLOW;
+      const moteBodyColor  = inIFrames ? '#b0d4ff' : RPG_MOTE_COLOR;
       const glowSize = RPG_MOTE_SIZE * (2.2 + pulseT * 1.4 * glowDampeningFactor);
       const glowHalf = glowSize / 2;
       ctx.globalAlpha = (0.18 + pulseT * 0.22) * glowDampeningFactor * pa;
-      ctx.shadowBlur  = glowSize * 3; ctx.shadowColor = RPG_MOTE_GLOW; ctx.fillStyle = RPG_MOTE_GLOW;
+      ctx.shadowBlur  = glowSize * 3; ctx.shadowColor = moteGlowColor; ctx.fillStyle = moteGlowColor;
       ctx.fillRect(Math.floor(mote.x - glowHalf), Math.floor(mote.y - glowHalf), Math.ceil(glowSize), Math.ceil(glowSize));
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-      ctx.globalAlpha = pa;
-      ctx.shadowBlur  = RPG_MOTE_SIZE * 5; ctx.shadowColor = RPG_MOTE_GLOW; ctx.fillStyle = RPG_MOTE_COLOR;
-      const mh = RPG_MOTE_SIZE / 2;
-      ctx.fillRect(Math.floor(mote.x - mh), Math.floor(mote.y - mh), RPG_MOTE_SIZE, RPG_MOTE_SIZE);
-      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      if (!iFrameFlicker) {
+        ctx.globalAlpha = pa;
+        ctx.shadowBlur  = RPG_MOTE_SIZE * 5; ctx.shadowColor = moteGlowColor; ctx.fillStyle = moteBodyColor;
+        const mh = RPG_MOTE_SIZE / 2;
+        ctx.fillRect(Math.floor(mote.x - mh), Math.floor(mote.y - mh), RPG_MOTE_SIZE, RPG_MOTE_SIZE);
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      }
     }
 
     drawHitEffects();
+    drawDamageNumbers();
     if (deathParticles.length > 0) drawDeathParticles();
 
     if (joystick.isActive && rpgPhase === 'alive') {
@@ -926,6 +1066,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         checkWaveCompletion();
       }
       updateShotVisuals(deltaMs);
+      updateDamageNumbers(deltaMs);
 
       if (playerStats.hp <= 0) triggerDeath();
       updateStatsPanelDom();
