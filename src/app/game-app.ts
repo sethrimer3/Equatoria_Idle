@@ -47,7 +47,7 @@ import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
 import { createGameLoop } from './app-game-loop';
 import { createIdleOverlay } from '../ui/idle/idle-overlay';
 import { calculateIdleRewards } from '../sim/idle/idle-reward';
-import { applyIdleRewards } from '../sim/idle/apply-idle-rewards';
+import { queueIdleRewards } from '../sim/idle/apply-idle-rewards';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
@@ -363,7 +363,7 @@ export async function startApp(): Promise<void> {
     if (elapsedMs > 60_000) {
       const summary = calculateIdleRewards(game, elapsedMs);
       if (summary.tierRewards.some(r => r.totalMotes > 0)) {
-        applyIdleRewards(game, summary);
+        queueIdleRewards(game, summary);
         idleOverlay.show(summary);
       }
     }

@@ -1,4 +1,4 @@
-import type { GameState } from '../sim/game-state';
+import type { GameState, PendingMoteEntry } from '../sim/game-state';
 import type { TierId } from '../data/tiers';
 import type { SizeIndex } from '../data/particles/size-tiers';
 import { createGameState } from '../sim/game-state';
@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 12;
+const SAVE_VERSION = 13;
 
 interface SaveData {
   version: number;
@@ -68,6 +68,8 @@ interface SaveData {
     rpgUpgradeLevels?: Record<string, number>;
   };
   elapsedMs: number;
+  /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
+  pendingIdleMotes?: Array<{ tierId: string; sizeIndex: number; count: number }>;
 }
 
 // ─── Serialize ──────────────────────────────────────────────────
@@ -134,6 +136,11 @@ export function serializeGameState(state: GameState): SaveData {
       rpgUpgradeLevels: Object.fromEntries(state.rpg.rpgUpgradeLevels),
     },
     elapsedMs: state.elapsedMs,
+    pendingIdleMotes: state.pendingIdleMotes.map(e => ({
+      tierId: e.tierId,
+      sizeIndex: e.sizeIndex,
+      count: e.count,
+    })),
   };
 }
 
@@ -269,6 +276,19 @@ export function deserializeGameState(data: SaveData): GameState {
     }
   }
 
+  // v13+: pending idle-mote drip queue (absent in older saves → empty array)
+  if (data.pendingIdleMotes && data.pendingIdleMotes.length > 0) {
+    for (const entry of data.pendingIdleMotes) {
+      if (entry.count > 0) {
+        state.pendingIdleMotes.push({
+          tierId: entry.tierId as TierId,
+          sizeIndex: entry.sizeIndex,
+          count: entry.count,
+        } satisfies PendingMoteEntry);
+      }
+    }
+  }
+
   return state;
 }
 
@@ -289,8 +309,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–12 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(data.version)) return null;
+    // Accept versions 1–13 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

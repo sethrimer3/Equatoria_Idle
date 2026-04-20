@@ -131,8 +131,10 @@
 - `calculateIdleRewards(game, elapsedMs)` — computes what was earned offline without mutating live state.
 
 ### src/sim/idle/apply-idle-rewards.ts
-- `applyIdleRewards(game, summary)` — commits idle reward mote gains to the live game state.
-- Integer motes are deposited at size-0 and cascade-merged (100 at size N → 1 at size N+1) before updating `moteTotals`; fractional motes are added directly.
+- `queueIdleRewards(game, summary)` — decomposes idle rewards into size-based `PendingMoteEntry` items and appends them to `game.pendingIdleMotes`.
+- Entries are ordered: lowest tier first, largest `sizeIndex` first within each tier.
+- `simTick()` drains one entry per frame (adds `MERGE_THRESHOLD^sizeIndex` motes), so rewards trickle in rather than appearing all at once.
+- Fractional motes (<1) are applied directly to avoid rounding loss.
 
 ### src/sim/equation/equation-state.ts
 - Authoritative equation state: per-tier segments with levels and unlock flags.
@@ -167,11 +169,13 @@
 - `purchaseUpgrade()`, `getUpgradeCost()`, `canAffordUpgrade()`, `getAutoTapIntervalMs()`.
 
 ### src/sim/game-state.ts
-- Aggregate game state combining equation, resources, progression, forge, Looms, achievements, and aliven.
+- Aggregate game state combining equation, resources, progression, forge, Looms, achievements, aliven, and RPG.
+- `PendingMoteEntry` interface — `{tierId, sizeIndex, count}` for drip-adding idle motes one per frame.
+- `pendingMoteValue(sizeIndex)` — value of one mote at a given size (`MERGE_THRESHOLD^sizeIndex`).
 - `tapEquation()` — multiplies gains by `achievements.tapMultiplierBonus`.
 - `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)` — optional dev mode cost bypass.
 - `tryAlivenMote(state, tierId, bypassCost?)` — spend 10,000 motes to aliven a mote type.
-- `simTick()` — passes loom bonus from achievements; checks achievement unlock conditions each tick.
+- `simTick()` — passes loom bonus from achievements; drains one pending idle mote each frame; checks achievement unlock conditions each tick.
 
 ### src/sim/forge/forge-state.ts
 - `ForgeCrunchState` interface and factory.
@@ -321,7 +325,7 @@
 - **Laser enemy** — 2×2 red mote with five-phase AI: `idle`, `decelerate`, `dash`, `overshoot`, `cooldown`.  Bezier lineDash attack-trail with draw/erase phases.
 - **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
 - **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
-- **Stats panel** — DOM `#rpg-stats-panel` with five widgets: HP / ATK / DEF / WAVE / BOOST (loom boost %).  Callers append to root and toggle display with the tab.
+- **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy and stops when the enemy is within the equipped weapon's effective range (`WeaponDefinition.stats.range`; falls back to `PLAYER_BASE_RANGE_PX` if no weapon equipped). Manual joystick/keyboard input always overrides.
 - **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped. Called on `setActive(true)`, `doRestart()`, and via the public `notifyEquip()` method so stats update immediately when the player equips mid-run.
 - Accepts `rpgSimState: RpgSimState` as second factory argument so it can mutate persistent wave progress directly.
 - Exports `createRpgRender(container, rpgSimState)` factory and `RpgRender` interface.
@@ -473,8 +477,9 @@ Audio system — eight focused modules:
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 7): motes persisted as `moteSizeCounts` (base-100 per-size counts per tier). Backward-compatible with versions 1–6 (flat `moteTotals`).
-- On load, size counts are decoded back to float totals; idle rewards are then applied at size-0 with cascade merging.
+- Versioned save format (version 13): adds `pendingIdleMotes` array for the idle-mote drip queue. Backward-compatible with versions 1–12 (absent field defaults to empty array).
+- Motes persisted as `moteSizeCounts` (base-100 per-size counts per tier) since version 7. Backward-compatible with versions 1–6 (flat `moteTotals`).
+- On load, size counts are decoded back to float totals; pending idle motes resume dripping where they left off.
 
 ### src/settings/offline-time.ts
 - Lightweight last-active timestamp helpers using a separate localStorage key (`equatoria_last_active`).
