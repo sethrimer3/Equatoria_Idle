@@ -317,8 +317,20 @@
 - `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
+### src/render/rpg/rpg-fluid.ts
+- Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
+- Grid-based velocity and dye field (60 × 80 cells).  Solver: inject forces → decay → diffuse velocity → advect tracer particles.
+- **No ambient injection** — velocity enters only via `addForce()` and `addExplosion()` calls from gameplay systems.
+- Tracer particle trail opacity scales with exponentially-smoothed local speed via `smoothstep`, so the background fades when nothing moves.
+- Particles sample the dye colour field to inherit entity colours; colour blends smoothly via weighted lerp toward the dominant dye source.
+- Trail segments are batched by (hue-bucket × alpha-bucket) → at most 60 canvas state changes per frame.
+- Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
+
 ### src/render/rpg/rpg-render.ts
 - Independent RPG canvas rendering system for the RPG tab.
+- Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
+- Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
+- Calls `fluid.step(deltaMs)` each update frame (including dying/restarting phases) and `fluid.reset()` on restart.
 - Fixed internal resolution: `INTERNAL_WIDTH = 320`, `INTERNAL_HEIGHT = 568` (portrait 9:16).  CSS `aspect-ratio` provides letterbox/pillarbox scaling so pixels are always uniform on desktop.
 - **Player mote** — 3×3 sand-colored mote with touch joystick, WASD/Arrow key controls, always-on pulsing glow, smoothly-interpolated comet trail, and starting stats HP=100 ATK=10 DEF=5.
 - **Movement glow smoothing** — `glowMovementIntensity` (0–1) LERP-ramps up (`GLOW_MOVE_RAMP_UP`) when moving and down (`GLOW_MOVE_RAMP_DOWN`) when stopped; gates trail and halo brightness.
