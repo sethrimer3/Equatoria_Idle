@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 13;
+const SAVE_VERSION = 14;
 
 interface SaveData {
   version: number;
@@ -59,7 +59,10 @@ interface SaveData {
   rpg?: {
     highestWaveReached: number;
     purchasedWeaponIds: string[];
-    equippedWeaponId: string | null;
+    /** v10–v13 compat: single equipped weapon id. Absent in v14+. */
+    equippedWeaponId?: string | null;
+    /** v14+: set of all equipped weapon ids. Absent in older saves. */
+    equippedWeaponIds?: string[];
     /** v11+: accumulated XP. Absent in older saves (defaults to 0). */
     xp?: number;
     /** v12+: per-weapon tier levels. Absent in older saves. */
@@ -130,7 +133,7 @@ export function serializeGameState(state: GameState): SaveData {
     rpg: {
       highestWaveReached: state.rpg.highestWaveReached,
       purchasedWeaponIds: Array.from(state.rpg.purchasedWeaponIds),
-      equippedWeaponId: state.rpg.equippedWeaponId,
+      equippedWeaponIds: Array.from(state.rpg.equippedWeaponIds),
       xp: state.rpg.xp,
       weaponTiersByWeaponId: Object.fromEntries(state.rpg.weaponTiersByWeaponId),
       rpgUpgradeLevels: Object.fromEntries(state.rpg.rpgUpgradeLevels),
@@ -254,7 +257,14 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.purchasedWeaponIds.add(id);
       }
     }
-    state.rpg.equippedWeaponId = data.rpg.equippedWeaponId ?? null;
+    // v14+: equippedWeaponIds set; v10–v13 compat: migrate from equippedWeaponId
+    if (data.rpg.equippedWeaponIds) {
+      for (const id of data.rpg.equippedWeaponIds) {
+        state.rpg.equippedWeaponIds.add(id);
+      }
+    } else if (data.rpg.equippedWeaponId) {
+      state.rpg.equippedWeaponIds.add(data.rpg.equippedWeaponId);
+    }
     // v11+: accumulated XP
     state.rpg.xp = data.rpg.xp ?? 0;
     // v12+: weapon tiers (default tier 1 for already-purchased weapons without saved tiers)
@@ -309,8 +319,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–13 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(data.version)) return null;
+    // Accept versions 1–14 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

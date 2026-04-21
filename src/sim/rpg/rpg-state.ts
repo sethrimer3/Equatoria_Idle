@@ -5,6 +5,14 @@
  * progression boost is automatically applied to loom production via simTick.
  */
 
+// ─── Constants ────────────────────────────────────────────────────
+
+/** Base player ATK used as the multiplier baseline. */
+export const PLAYER_BASE_ATK = 10;
+
+/** Maximum tier level any weapon can reach. */
+export const MAX_WEAPON_TIER = 7;
+
 // ─── Types ────────────────────────────────────────────────────────
 
 export interface RpgSimState {
@@ -12,8 +20,11 @@ export interface RpgSimState {
   highestWaveReached: number;
   /** Weapon IDs the player has purchased. */
   purchasedWeaponIds: Set<string>;
-  /** Currently equipped weapon id, or null if no weapon is equipped. */
-  equippedWeaponId: string | null;
+  /**
+   * Set of currently equipped weapon IDs.
+   * Maximum size = getMaxEquippedWeapons(state).
+   */
+  equippedWeaponIds: Set<string>;
   /**
    * Accumulated XP across all sessions.  Persisted in save data.
    * Higher-wave enemies award exponentially more XP, incentivising
@@ -21,7 +32,7 @@ export interface RpgSimState {
    */
   xp: number;
   /**
-   * Per-weapon current tier (1-based).  Buying a weapon starts it at tier 1.
+   * Per-weapon current tier (1-based, capped at MAX_WEAPON_TIER).
    * Key = weaponId, value = tier number (≥ 1).
    */
   weaponTiersByWeaponId: Map<string, number>;
@@ -38,7 +49,7 @@ export function createRpgSimState(): RpgSimState {
   return {
     highestWaveReached: 0,
     purchasedWeaponIds: new Set(),
-    equippedWeaponId: null,
+    equippedWeaponIds: new Set(),
     xp: 0,
     weaponTiersByWeaponId: new Map(),
     rpgUpgradeLevels: new Map(),
@@ -140,6 +151,14 @@ export function getRpgSpeedMultiplier(state: RpgSimState): number {
 }
 
 /**
+ * Returns the maximum number of weapons that can be equipped simultaneously.
+ * Base: 1. Each `extra_weapon_slot` upgrade level adds 1.
+ */
+export function getMaxEquippedWeapons(state: RpgSimState): number {
+  return 1 + getRpgUpgradeLevel(state, 'extra_weapon_slot');
+}
+
+/**
  * Returns the mote cost to upgrade a weapon from its current tier to the next tier.
  *
  * Formula: currentTier² × baseCost
@@ -151,4 +170,29 @@ export function getRpgSpeedMultiplier(state: RpgSimState): number {
  */
 export function getWeaponTierUpgradeCost(baseCost: number, currentTier: number): number {
   return Math.pow(currentTier, 2) * baseCost;
+}
+
+/**
+ * Returns the effective damage for a weapon at a given tier, multiplied by
+ * the player's ATK multiplier.
+ *
+ * Formula: baseDamage × tier × (playerAtk / PLAYER_BASE_ATK)
+ *
+ * Examples (baseDamage=10, PLAYER_BASE_ATK=10):
+ *   Tier 1, playerAtk=10 → 10   (1× base, no XP bonus)
+ *   Tier 3, playerAtk=20 → 60   (3× tier, 2× ATK)
+ *   Tier 7, playerAtk=15 → 105  (7× tier, 1.5× ATK)
+ */
+export function getScaledWeaponDamage(baseDamage: number, tier: number, playerAtk: number): number {
+  return baseDamage * tier * (playerAtk / PLAYER_BASE_ATK);
+}
+
+/**
+ * Returns the cooldown (ms) for a weapon at a given tier.
+ * Each tier reduces the cooldown by 15%.
+ *
+ * Formula: baseCooldownMs × 0.85^(tier-1)
+ */
+export function getScaledWeaponCooldown(baseCooldownMs: number, tier: number): number {
+  return baseCooldownMs * Math.pow(0.85, tier - 1);
 }

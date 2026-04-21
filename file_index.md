@@ -337,6 +337,10 @@
 - **Laser enemy** — 2×2 red mote with five-phase AI: `idle`, `decelerate`, `dash`, `overshoot`, `cooldown`.  Bezier lineDash attack-trail with draw/erase phases.
 - **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
 - **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
+- **Multiple equipped weapons** — `equippedWeaponIds: Set<string>` from RpgSimState; `weaponAttackTimers: Map<weaponId, number>` for independent per-weapon attack cadence; one `WeaponOrbitParticle` per weapon (evenly-spaced orbits); one `ChainWhipState` per chainWhip weapon.
+- **Weapon tier damage** — `getScaledWeaponDamage(baseDamage, tier, playerAtk)` and `getScaledWeaponCooldown(baseCooldownMs, tier)` imported from `rpg-state.ts` and applied per attack.
+- **Damage number deviation** — each damage number direction has a ±15° triangular-distribution random angle jitter in `spawnHitVisualsAt`.
+- **Softbody chain whip** — `ChainWhipState` has per-node velocity arrays (`nodesVx`, `nodesVy`). Inertia/size gradient: node 0 (closest to player) = smallest (radius 2px) + most responsive (inverseMass 1/0.8); tip (index CHAIN_NODES-1) = largest (radius 6px) + most inertia (inverseMass 1/4.0). Spring physics (CHAIN_SPRING_K=0.4) link adjacent nodes; CHAIN_ANCHOR_K=0.6 ties node 0 to player. On lash: tip gets CHAIN_LASH_SPEED=20 px/dt impulse; all other nodes follow through spring tension.
 - **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy and stops when the enemy is within the equipped weapon's effective range (`WeaponDefinition.stats.range`; falls back to `PLAYER_BASE_RANGE_PX` if no weapon equipped). Manual joystick/keyboard input always overrides.
 - **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped. Called on `setActive(true)`, `doRestart()`, and via the public `notifyEquip()` method so stats update immediately when the player equips mid-run.
 - Accepts `rpgSimState: RpgSimState` as second factory argument so it can mutate persistent wave progress directly.
@@ -356,10 +360,14 @@
 - `WEAPON_BY_ID` — O(1) lookup map.
 
 ### src/sim/rpg/rpg-state.ts
-- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponId`.
+- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids).
+- Exports `PLAYER_BASE_ATK = 10` (baseline ATK multiplier constant) and `MAX_WEAPON_TIER = 7`.
 - `createRpgSimState()` — zero-state factory.
 - `getWaveBoostMultiplier(state)` — returns loom production multiplier = 1 + (highestWave^1.2)/100.
 - `formatWaveBoostPercent(state)` — returns display string like "+6.9%".
+- `getMaxEquippedWeapons(state)` — returns 1 + extra_weapon_slot upgrade level.
+- `getScaledWeaponDamage(baseDamage, tier, playerAtk)` — effective damage = baseDamage × tier × (playerAtk / PLAYER_BASE_ATK).
+- `getScaledWeaponCooldown(baseCooldownMs, tier)` — cooldown = baseCooldownMs × 0.85^(tier-1) (15% faster per tier).
 
 ### src/ui/panels/weapon-store-panel.ts
 - `WeaponStorePanel` interface and `createWeaponStorePanel(dispatch)` factory.
@@ -489,7 +497,8 @@ Audio system — eight focused modules:
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 13): adds `pendingIdleMotes` array for the idle-mote drip queue. Backward-compatible with versions 1–12 (absent field defaults to empty array).
+- Versioned save format (version 14): replaces `equippedWeaponId` with `equippedWeaponIds` (array). Backward-compatible with versions 1–13 (single `equippedWeaponId` migrated to the set on load).
+- v13 adds `pendingIdleMotes` array for the idle-mote drip queue.
 - Motes persisted as `moteSizeCounts` (base-100 per-size counts per tier) since version 7. Backward-compatible with versions 1–6 (flat `moteTotals`).
 - On load, size counts are decoded back to float totals; pending idle motes resume dripping where they left off.
 

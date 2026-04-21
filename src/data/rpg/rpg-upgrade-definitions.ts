@@ -50,6 +50,16 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
     costPerLevel: 2_500,
     maxLevel: 1,
   },
+  {
+    id: 'extra_weapon_slot',
+    name: 'Extra Weapon Slot',
+    description:
+      'Equip one additional weapon simultaneously. ' +
+      'Can be purchased up to 4 times, allowing up to 5 weapons at once.',
+    costTierId: 'ruby',
+    costPerLevel: 5_000,
+    maxLevel: 4,
+  },
 ];
 
 /** Lookup map for O(1) access by upgrade id. */

@@ -19,8 +19,7 @@ import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven'
 import { getMotes, spendMotes } from '../sim/resources';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import { RPG_UPGRADE_BY_ID } from '../data/rpg/rpg-upgrade-definitions';
-import { getRpgUpgradeLevel } from '../sim/rpg/rpg-state';
-import { getWeaponTierUpgradeCost } from '../sim/rpg/rpg-state';
+import { getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER } from '../sim/rpg/rpg-state';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
@@ -154,7 +153,15 @@ export function handleAction(
     }
     case 'equip_weapon': {
       if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
-      state.game.rpg.equippedWeaponId = action.weaponId;
+      const maxSlots = getMaxEquippedWeapons(state.game.rpg);
+      if (state.game.rpg.equippedWeaponIds.size >= maxSlots) { audioSystem?.onError(); break; }
+      state.game.rpg.equippedWeaponIds.add(action.weaponId);
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'unequip_weapon': {
+      state.game.rpg.equippedWeaponIds.delete(action.weaponId);
       uiPanels.rpgRender.notifyEquip();
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
@@ -164,6 +171,7 @@ export function handleAction(
       if (!weaponDef) { audioSystem?.onError(); break; }
       if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
       const currentTier = state.game.rpg.weaponTiersByWeaponId.get(action.weaponId) ?? 1;
+      if (currentTier >= MAX_WEAPON_TIER) { audioSystem?.onError(); break; }
       const tierUpgradeCost = getWeaponTierUpgradeCost(weaponDef.cost, currentTier);
       if (!devMode) {
         const balance = getMotes(state.game.resources, weaponDef.costTierId);

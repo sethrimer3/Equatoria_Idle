@@ -25,7 +25,10 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
+import {
+  getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel,
+  PLAYER_BASE_ATK, getScaledWeaponDamage, getScaledWeaponCooldown,
+} from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
@@ -49,7 +52,7 @@ const GLOW_MOVE_RAMP_UP   = 0.007;
 const GLOW_MOVE_RAMP_DOWN = 0.004;
 
 const PLAYER_HP_INIT  = 100;
-const PLAYER_ATK_INIT =  10;
+const PLAYER_ATK_INIT = PLAYER_BASE_ATK;
 const PLAYER_DEF_INIT =   5;
 
 const JOYSTICK_OUTER_RADIUS = 28;
@@ -198,15 +201,35 @@ const SAND_PROJ_COLOR      = '#ddc080';
 const SAND_PROJ_GLOW       = '#ffe8a0';
 
 // ── Quartz chain whip constants ────────────────────────────────
-const CHAIN_NODES          =   5;
-const CHAIN_NODE_RADIUS    =   4;    // circle radius per node (px)
-const CHAIN_NODE_COLOR     = '#a0d8ef';
-const CHAIN_NODE_GLOW      = '#c8eeff';
-const CHAIN_LINE_COLOR     = '#88c8e8';
-const CHAIN_LASH_MS        = 280;   // ms for tip to reach target
-const CHAIN_RETRACT_MS     = 220;   // ms to retract
+const CHAIN_NODES           =   5;
+/** Radius of node 0 (closest to player, smallest). */
+const CHAIN_MIN_RADIUS      =   2;
+/** Radius of node CHAIN_NODES-1 (tip, farthest from player, largest). */
+const CHAIN_MAX_RADIUS      =   6;
+const CHAIN_NODE_COLOR      = '#a0d8ef';
+const CHAIN_NODE_GLOW       = '#c8eeff';
+const CHAIN_LINE_COLOR      = '#88c8e8';
+const CHAIN_LASH_MS         = 280;   // ms for tip to lash toward target
+const CHAIN_RETRACT_MS      = 320;   // ms in retracting phase before returning to idle
 /** Damage ticks per I-frame interval (ms). */
-const CHAIN_HIT_CD_MS      =  62.5;
+const CHAIN_HIT_CD_MS       =  62.5;
+// ── Softbody whip physics constants ──
+/** Rest spacing (px) between adjacent nodes. */
+const CHAIN_REST_LENGTH     =  10;
+/** Spring stiffness between adjacent nodes. */
+const CHAIN_SPRING_K        =   0.40;
+/** Anchor spring pulling node 0 toward the player (idle). */
+const CHAIN_ANCHOR_K        =   0.60;
+/** Anchor spring during retract phase (stronger pull). */
+const CHAIN_RETRACT_ANCHOR_K = 2.0;
+/** Per-dt velocity damping factor (applied as pow(DAMPING, dt)). */
+const CHAIN_DAMPING         =   0.85;
+/** Initial speed given to the tip node when a lash is triggered (px/dt). */
+const CHAIN_LASH_SPEED      =  20;
+/** Inertia of node 0 (closest to player, most responsive). */
+const CHAIN_MIN_INERTIA     =   0.8;
+/** Inertia of tip node (farthest, least responsive / most momentum). */
+const CHAIN_MAX_INERTIA     =   4.0;
 
 // ── Ruby laser beam constants ──────────────────────────────────
 const LASER_BEAM_VISIBLE_MS  = 400;   // how long the beam stays on screen
@@ -387,6 +410,8 @@ interface SandProjectile {
   x: number; y: number;
   vx: number; vy: number;
   lifeMs: number;
+  /** Damage to deal on hit (computed at spawn from weapon tier + player ATK). */
+  damage: number;
 }
 
 // ── Quartz chain whip ──────────────────────────────────────────
@@ -399,8 +424,14 @@ interface ChainWhipState {
   cooldownMs: number;
   /** Tip lash target in world space. */
   targetX: number; targetY: number;
-  /** Computed node positions (index 0 = player anchor, CHAIN_NODES-1 = tip). */
+  /**
+   * Node positions.
+   * Index 0 = closest to player (smallest, least inertia).
+   * Index CHAIN_NODES-1 = tip / attacker (largest, most inertia).
+   */
   nodesX: Float64Array; nodesY: Float64Array;
+  /** Node velocities for softbody physics. */
+  nodesVx: Float64Array; nodesVy: Float64Array;
   /** Per-target hit cooldown for persistent damage. */
   hitCooldowns: Map<object, number>;
 }
@@ -421,7 +452,7 @@ export interface RpgRender {
   update(deltaMs: number, autoMoveEnabled?: boolean): void;
   resize(container: HTMLElement): void;
   setActive(active: boolean): void;
-  /** Re-reads rpgSimState.equippedWeaponId and immediately updates playerStats ATK/DEF + weapon particle. */
+  /** Re-reads rpgSimState.equippedWeaponIds and immediately updates playerStats ATK/DEF + weapon particles. */
   notifyEquip(): void;
 }
 
@@ -525,7 +556,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const deathParticles: DeathParticle[] = [];
 
   // ── Player attack state ────────────────────────────────────────
-  let playerAttackTimerMs = 0;
   const hitEffects: HitEffect[] = [];
   const shotLines:  ShotLine[]  = [];
   const damageNumbers: DamageNumber[] = [];
@@ -535,15 +565,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const sapphireEnemies: SapphireEnemy[]  = [];
   const sapphireMissiles: SapphireMissile[] = [];
   const sandProjectiles: SandProjectile[] = [];
-  let chainWhipState: ChainWhipState | null = null;
+  /** Chain whip states keyed by weaponId (for each equipped chainWhip weapon). */
+  const chainWhipStates: Map<string, ChainWhipState> = new Map();
   let laserBeamEffect: LaserBeamEffect | null = null;
 
-  // ── Equipped weapon visual particle ───────────────────────────
-  let weaponOrbitParticle: WeaponOrbitParticle | null = null;
+  // ── Equipped weapon visual particles (one per equipped weapon) ────
+  const weaponOrbitParticles: WeaponOrbitParticle[] = [];
 
-  function buildWeaponOrbitParticle(): WeaponOrbitParticle | null {
-    const weaponId = rpgSimState.equippedWeaponId;
-    if (!weaponId) return null;
+  // ── Per-weapon attack timers ───────────────────────────────────
+  const weaponAttackTimers: Map<string, number> = new Map();
+
+  function buildWeaponOrbitParticle(weaponId: string, startAngle: number): WeaponOrbitParticle | null {
     const weaponDef = WEAPON_BY_ID.get(weaponId);
     if (!weaponDef) return null;
     const tierDef = TIER_BY_ID.get(weaponDef.costTierId);
@@ -552,9 +584,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
     const size = Math.max(1, tier);
     return {
-      angle: 0,
-      x: mote.x + WEAPON_PARTICLE_ORBIT_RADIUS,
-      y: mote.y,
+      angle: startAngle,
+      x: mote.x + Math.cos(startAngle) * WEAPON_PARTICLE_ORBIT_RADIUS,
+      y: mote.y + Math.sin(startAngle) * WEAPON_PARTICLE_ORBIT_RADIUS,
       trailX: new Float64Array(WEAPON_ORBIT_TRAIL_CAP),
       trailY: new Float64Array(WEAPON_ORBIT_TRAIL_CAP),
       trailHead: 0, trailCount: 0,
@@ -580,13 +612,35 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function applyEquipmentStats(): void {
-    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
-    playerStats.def = PLAYER_DEF_INIT + (weaponDef?.stats.defBonus ?? 0) + getXpDefBonus(rpgSimState.xp);
-    playerStats.atk = PLAYER_ATK_INIT + (weaponDef?.stats.damage  ?? 0) + getXpAtkBonus(rpgSimState.xp);
-    // Rebuild visual particles so they reflect the current weapon/upgrade state.
-    weaponOrbitParticle = buildWeaponOrbitParticle();
-    orbitProjectile     = buildOrbitProjectile();
-    // Speed upgrade is applied per-frame via getRpgSpeedMultiplier() in updatePhysics().
+    // Aggregate DEF from all equipped weapons.
+    let totalDefBonus = 0;
+    for (const weaponId of rpgSimState.equippedWeaponIds) {
+      const weaponDef = WEAPON_BY_ID.get(weaponId);
+      if (weaponDef) totalDefBonus += weaponDef.stats.defBonus;
+    }
+    playerStats.def = PLAYER_DEF_INIT + totalDefBonus + getXpDefBonus(rpgSimState.xp);
+    // Player ATK is the base multiplier (not including per-weapon tier damage).
+    playerStats.atk = PLAYER_ATK_INIT + getXpAtkBonus(rpgSimState.xp);
+
+    // Rebuild weapon orbit particles (one per equipped weapon, evenly spaced).
+    weaponOrbitParticles.length = 0;
+    const equippedIds = Array.from(rpgSimState.equippedWeaponIds);
+    const angleStep = equippedIds.length > 0 ? (2 * Math.PI) / equippedIds.length : 0;
+    for (let i = 0; i < equippedIds.length; i++) {
+      const p = buildWeaponOrbitParticle(equippedIds[i], i * angleStep);
+      if (p) weaponOrbitParticles.push(p);
+    }
+
+    // Remove chain whip states for weapons that are no longer equipped.
+    for (const weaponId of Array.from(chainWhipStates.keys())) {
+      if (!rpgSimState.equippedWeaponIds.has(weaponId)) chainWhipStates.delete(weaponId);
+    }
+    // Remove attack timers for unequipped weapons.
+    for (const weaponId of Array.from(weaponAttackTimers.keys())) {
+      if (!rpgSimState.equippedWeaponIds.has(weaponId)) weaponAttackTimers.delete(weaponId);
+    }
+
+    orbitProjectile = buildOrbitProjectile();
   }
 
   // ── Player attack helpers ──────────────────────────────────────
@@ -662,8 +716,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     shotLines.push({ x1: mote.x, y1: mote.y, x2: tx, y2: ty, timerMs: SHOT_LINE_DURATION_MS, color });
     const dx = tx - mote.x, dy = ty - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const dirX = dist > 0.01 ? dx / dist : 0;
-    const dirY = dist > 0.01 ? dy / dist : -1;
+    let dirX = dist > 0.01 ? dx / dist : 0;
+    let dirY = dist > 0.01 ? dy / dist : -1;
+    // Apply ±15° random angle deviation with triangular distribution (lower probability at extremes).
+    const deviation = (Math.random() + Math.random() - 1) * (Math.PI / 12);
+    const cosD = Math.cos(deviation), sinD = Math.sin(deviation);
+    const rotX = dirX * cosD - dirY * sinD;
+    const rotY = dirX * sinD + dirY * cosD;
+    dirX = rotX; dirY = rotY;
     if (dmg <= 0) {
       spawnDamageNumber(tx, ty, dirX, dirY, 'BLOCKED', 0.25, '#74c0fc');
     } else {
@@ -734,7 +794,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Sand gatling projectile system ─────────────────────────────
 
-  function spawnSandProjectile(targetX: number, targetY: number): void {
+  function spawnSandProjectile(targetX: number, targetY: number, damage: number): void {
     const dx = targetX - mote.x, dy = targetY - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 0.01) return;
@@ -743,16 +803,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       vx: (dx / dist) * SAND_PROJ_SPEED,
       vy: (dy / dist) * SAND_PROJ_SPEED,
       lifeMs: SAND_PROJ_LIFE_MS,
+      damage,
     });
   }
 
   function updateSandProjectiles(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
-    const damage = weaponDef?.stats.damage ?? 2;
 
     for (let i = sandProjectiles.length - 1; i >= 0; i--) {
       const p = sandProjectiles[i];
+      const damage = p.damage;
       p.lifeMs -= deltaMs;
       if (p.lifeMs <= 0) { sandProjectiles.splice(i, 1); continue; }
       p.x += p.vx * dt; p.y += p.vy * dt;
@@ -827,76 +887,129 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Quartz chain whip system ───────────────────────────────────
 
-  function buildChainWhip(): ChainWhipState {
-    const nodesX = new Float64Array(CHAIN_NODES);
-    const nodesY = new Float64Array(CHAIN_NODES);
+  /**
+   * Returns the radius of chain node at index i.
+   * i=0 (closest to player) is smallest; i=CHAIN_NODES-1 (tip) is largest.
+   */
+  function chainNodeRadius(i: number): number {
+    return CHAIN_MIN_RADIUS + (CHAIN_MAX_RADIUS - CHAIN_MIN_RADIUS) * i / (CHAIN_NODES - 1);
+  }
+
+  /**
+   * Returns 1/inertia for node at index i.
+   * Higher inverseMass = more responsive to forces.
+   * i=0 (closest to player) has lowest inertia → most responsive (highest inverseMass).
+   * i=CHAIN_NODES-1 (tip) has highest inertia → least responsive (lowest inverseMass).
+   */
+  function chainNodeInvMass(i: number): number {
+    const inertia = CHAIN_MIN_INERTIA + (CHAIN_MAX_INERTIA - CHAIN_MIN_INERTIA) * i / (CHAIN_NODES - 1);
+    return 1.0 / inertia;
+  }
+
+  function buildChainWhip(weaponId: string): ChainWhipState {
+    const nodesX  = new Float64Array(CHAIN_NODES);
+    const nodesY  = new Float64Array(CHAIN_NODES);
+    const nodesVx = new Float64Array(CHAIN_NODES);
+    const nodesVy = new Float64Array(CHAIN_NODES);
     for (let i = 0; i < CHAIN_NODES; i++) { nodesX[i] = mote.x; nodesY[i] = mote.y; }
-    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    const weaponDef = WEAPON_BY_ID.get(weaponId);
     return {
       phase: 'idle',
       phaseMs: 0,
       cooldownMs: weaponDef?.stats.cooldownMs ?? 2500,
       targetX: mote.x, targetY: mote.y,
-      nodesX, nodesY,
+      nodesX, nodesY, nodesVx, nodesVy,
       hitCooldowns: new Map(),
     };
   }
 
-  function updateChainWhipCooldowns(deltaMs: number): void {
-    if (!chainWhipState) return;
-    for (const [key, cd] of chainWhipState.hitCooldowns) {
+  function updateChainWhipCooldowns(ws: ChainWhipState, deltaMs: number): void {
+    for (const [key, cd] of ws.hitCooldowns) {
       const next = cd - deltaMs;
-      if (next <= 0) chainWhipState.hitCooldowns.delete(key);
-      else chainWhipState.hitCooldowns.set(key, next);
+      if (next <= 0) ws.hitCooldowns.delete(key);
+      else ws.hitCooldowns.set(key, next);
     }
   }
 
-  function updateChainWhip(deltaMs: number): void {
-    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+  /**
+   * Advances the softbody spring physics for all chain nodes.
+   * anchorK controls how strongly node 0 is pulled toward the player.
+   */
+  function stepChainPhysics(ws: ChainWhipState, dt: number, anchorK: number): void {
+    // Node 0: spring anchor toward player (rest length 0)
+    ws.nodesVx[0] += (mote.x - ws.nodesX[0]) * anchorK * chainNodeInvMass(0) * dt;
+    ws.nodesVy[0] += (mote.y - ws.nodesY[0]) * anchorK * chainNodeInvMass(0) * dt;
+
+    // Spring forces between adjacent pairs
+    for (let i = 0; i < CHAIN_NODES - 1; i++) {
+      const sdx = ws.nodesX[i + 1] - ws.nodesX[i];
+      const sdy = ws.nodesY[i + 1] - ws.nodesY[i];
+      const sdist = Math.sqrt(sdx * sdx + sdy * sdy);
+      if (sdist < 0.001) continue;
+      const stretch = sdist - CHAIN_REST_LENGTH;
+      const fx = (sdx / sdist) * stretch * CHAIN_SPRING_K;
+      const fy = (sdy / sdist) * stretch * CHAIN_SPRING_K;
+      ws.nodesVx[i]     += fx * chainNodeInvMass(i)     * dt;
+      ws.nodesVy[i]     += fy * chainNodeInvMass(i)     * dt;
+      ws.nodesVx[i + 1] -= fx * chainNodeInvMass(i + 1) * dt;
+      ws.nodesVy[i + 1] -= fy * chainNodeInvMass(i + 1) * dt;
+    }
+
+    // Integrate positions + apply damping
+    const dampFactor = Math.pow(CHAIN_DAMPING, dt);
+    for (let i = 0; i < CHAIN_NODES; i++) {
+      ws.nodesVx[i] *= dampFactor;
+      ws.nodesVy[i] *= dampFactor;
+      ws.nodesX[i] += ws.nodesVx[i] * dt;
+      ws.nodesY[i] += ws.nodesVy[i] * dt;
+    }
+  }
+
+  function updateChainWhip(weaponId: string, deltaMs: number): void {
+    const weaponDef = WEAPON_BY_ID.get(weaponId);
     if (!weaponDef || weaponDef.stats.effect?.kind !== 'chainWhip') {
-      chainWhipState = null;
+      chainWhipStates.delete(weaponId);
       return;
     }
-    if (!chainWhipState) chainWhipState = buildChainWhip();
-    const ws = chainWhipState;
+    if (!chainWhipStates.has(weaponId)) chainWhipStates.set(weaponId, buildChainWhip(weaponId));
+    const ws = chainWhipStates.get(weaponId)!;
     const range = weaponDef.stats.range;
-    const contactDamage = weaponDef.stats.damage;
+    const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+    const contactDamage = getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk);
 
-    updateChainWhipCooldowns(deltaMs);
+    updateChainWhipCooldowns(ws, deltaMs);
+
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
 
     if (ws.phase === 'idle') {
-      // Nodes drift back to player
-      for (let i = 0; i < CHAIN_NODES; i++) {
-        ws.nodesX[i] += (mote.x - ws.nodesX[i]) * 0.15;
-        ws.nodesY[i] += (mote.y - ws.nodesY[i]) * 0.15;
-      }
+      // Soft anchor during idle — nodes settle back toward player
+      stepChainPhysics(ws, dt, CHAIN_ANCHOR_K);
       ws.phaseMs += deltaMs;
       if (ws.phaseMs >= ws.cooldownMs) {
-        // Look for a target to lash
         const target = findClosestEnemy(range * range);
         if (target) {
           ws.targetX = target.x; ws.targetY = target.y;
+          // Give the tip (CHAIN_NODES-1) a sudden velocity toward the target
+          const tipX = ws.nodesX[CHAIN_NODES - 1], tipY = ws.nodesY[CHAIN_NODES - 1];
+          const tdx = ws.targetX - tipX, tdy = ws.targetY - tipY;
+          const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
+          if (tdist > 0.01) {
+            ws.nodesVx[CHAIN_NODES - 1] = (tdx / tdist) * CHAIN_LASH_SPEED;
+            ws.nodesVy[CHAIN_NODES - 1] = (tdy / tdist) * CHAIN_LASH_SPEED;
+          }
           ws.phase = 'lashing'; ws.phaseMs = 0;
         } else {
-          ws.phaseMs = ws.cooldownMs; // try again next frame
+          ws.phaseMs = ws.cooldownMs;
         }
       }
     } else if (ws.phase === 'lashing') {
       ws.phaseMs += deltaMs;
-      const t = Math.min(ws.phaseMs / CHAIN_LASH_MS, 1);
-      // Move tip toward target with easing
-      const tipX = mote.x + (ws.targetX - mote.x) * t;
-      const tipY = mote.y + (ws.targetY - mote.y) * t;
-      // Distribute nodes along curve from player to tip
-      for (let i = 0; i < CHAIN_NODES; i++) {
-        const u = i / (CHAIN_NODES - 1);
-        ws.nodesX[i] = mote.x + (tipX - mote.x) * u;
-        ws.nodesY[i] = mote.y + (tipY - mote.y) * u;
-      }
+      stepChainPhysics(ws, dt, CHAIN_ANCHOR_K);
 
       // Contact damage: check all nodes against all enemies
       const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy): void => {
-        const r = CHAIN_NODE_RADIUS + LASER_ENEMY_SIZE;
+        const nodeR = chainNodeRadius(CHAIN_NODES - 1); // use tip radius for hit detection
+        const r = nodeR + LASER_ENEMY_SIZE;
         const dx = tx - target.x, dy = ty - target.y;
         if (dx * dx + dy * dy < r * r) {
           if (!ws.hitCooldowns.has(target)) {
@@ -914,13 +1027,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       };
       for (let ni = 0; ni < CHAIN_NODES; ni++) {
         const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
-        for (const e of enemies)          applyContactDamage(nx, ny, e);
-        for (const e of sapphireEnemies)  applyContactDamage(nx, ny, e);
+        for (const e of enemies)         applyContactDamage(nx, ny, e);
+        for (const e of sapphireEnemies) applyContactDamage(nx, ny, e);
       }
 
-      if (t >= 1) { ws.phase = 'retracting'; ws.phaseMs = 0; }
-
-      // Inject chain whip lash force along its length — spread across nodes.
+      // Inject fluid force along the chain length
       const tipDx = ws.targetX - mote.x;
       const tipDy = ws.targetY - mote.y;
       const tipDist = Math.sqrt(tipDx * tipDx + tipDy * tipDy);
@@ -935,23 +1046,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           });
         }
       }
+
+      if (ws.phaseMs >= CHAIN_LASH_MS) { ws.phase = 'retracting'; ws.phaseMs = 0; }
     } else if (ws.phase === 'retracting') {
       ws.phaseMs += deltaMs;
-      const t = Math.min(ws.phaseMs / CHAIN_RETRACT_MS, 1);
-      const tipX = ws.targetX + (mote.x - ws.targetX) * t;
-      const tipY = ws.targetY + (mote.y - ws.targetY) * t;
-      for (let i = 0; i < CHAIN_NODES; i++) {
-        const u = i / (CHAIN_NODES - 1);
-        ws.nodesX[i] = mote.x + (tipX - mote.x) * u;
-        ws.nodesY[i] = mote.y + (tipY - mote.y) * u;
-      }
-      if (t >= 1) { ws.phase = 'idle'; ws.phaseMs = 0; }
+      // Use stronger anchor spring to pull nodes back toward player
+      stepChainPhysics(ws, dt, CHAIN_RETRACT_ANCHOR_K);
+      if (ws.phaseMs >= CHAIN_RETRACT_MS) { ws.phase = 'idle'; ws.phaseMs = 0; }
     }
   }
 
-  function drawChainWhip(): void {
-    if (!chainWhipState || chainWhipState.phase === 'idle') return;
-    const ws = chainWhipState;
+  function drawChainWhip(ws: ChainWhipState): void {
+    if (ws.phase === 'idle' && ws.phaseMs < ws.cooldownMs * 0.1) return;
     ctx.save();
     ctx.lineWidth = 1.5;
     ctx.lineCap   = 'round';
@@ -965,18 +1071,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (let i = 1; i < CHAIN_NODES; i++) ctx.lineTo(ws.nodesX[i], ws.nodesY[i]);
     ctx.stroke();
     ctx.shadowBlur = 0;
-    // Draw node circles
+    // Draw node circles with graduated sizes
     for (let i = 0; i < CHAIN_NODES; i++) {
+      const r = chainNodeRadius(i);
       ctx.globalAlpha = 0.9;
-      ctx.shadowBlur  = CHAIN_NODE_RADIUS * 3; ctx.shadowColor = CHAIN_NODE_GLOW;
+      ctx.shadowBlur  = r * 3; ctx.shadowColor = CHAIN_NODE_GLOW;
       ctx.fillStyle   = CHAIN_NODE_GLOW;
       ctx.beginPath();
-      ctx.arc(ws.nodesX[i], ws.nodesY[i], CHAIN_NODE_RADIUS * 1.4, 0, Math.PI * 2);
+      ctx.arc(ws.nodesX[i], ws.nodesY[i], r * 1.4, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.fillStyle  = CHAIN_NODE_COLOR;
       ctx.beginPath();
-      ctx.arc(ws.nodesX[i], ws.nodesY[i], CHAIN_NODE_RADIUS, 0, Math.PI * 2);
+      ctx.arc(ws.nodesX[i], ws.nodesY[i], r, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
@@ -985,7 +1092,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Ruby laser beam system ─────────────────────────────────────
 
-  function fireLaserBeam(targetX: number, targetY: number): void {
+  function fireLaserBeam(targetX: number, targetY: number, weaponId: string): void {
     const dx = targetX - mote.x, dy = targetY - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 0.01) return;
@@ -1001,8 +1108,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const endX = mote.x + dirX * tMax;
     const endY = mote.y + dirY * tMax;
 
-    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
-    const baseDamage = weaponDef?.stats.damage ?? 80;
+    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+    const baseDamage = getScaledWeaponDamage(weaponDef?.stats.damage ?? 80, tier, playerStats.atk);
 
     // Hit every laser enemy on the beam path
     for (const e of enemies) {
@@ -1306,23 +1414,25 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   /**
-   * Fires the player's current weapon at the nearest enemy within range.
-   * Handles all WeaponEffect variants. Call removeDeadEnemies() after this
-   * to clean up any enemies whose HP dropped to zero.
+   * Fires the specified weapon at the nearest enemy within range.
+   * Handles all WeaponEffect variants. Call removeDeadEnemies() after this.
    */
-  function performPlayerAttack(): void {
+  function performWeaponAttack(weaponId: string): void {
     const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length;
     if (totalTargets === 0) return;
-    const weaponDef  = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const range      = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
-    const rawDamage  = playerStats.atk;
+    const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+    const rawDamage  = weaponDef
+      ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
+      : playerStats.atk;
     const effect     = weaponDef?.stats.effect ?? { kind: 'single' as const };
     const shotColor  = '#ffd764';
 
     // ── Gatling gun ────────────────────────────────────────────
     if (effect.kind === 'gatling') {
       const target = findClosestTarget(range * range);
-      if (target) spawnSandProjectile(target.x, target.y);
+      if (target) spawnSandProjectile(target.x, target.y, rawDamage);
       return;
     }
 
@@ -1334,14 +1444,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     // ── Ruby laser beam ────────────────────────────────────────
     if (effect.kind === 'laserBeam') {
-      // Fire in the direction of the closest target (enemies only, not missiles)
       const target = findClosestTarget(range * range);
-      if (target) fireLaserBeam(target.x, target.y);
+      if (target) fireLaserBeam(target.x, target.y, weaponId);
       return;
     }
 
     if (effect.kind === 'aoe') {
-      // Hit every enemy within aoeRadius of the player.
       const aoeRadius = effect.aoeRadius;
       for (const enemy of enemies) {
         const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
@@ -1357,14 +1465,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
         }
       }
-      // AoE pulse: inject a radial explosion in player color at the epicentre.
       fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
         FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
       return;
     }
 
     if (effect.kind === 'multi') {
-      // Collect enemies in range, sorted by distance, take the N closest.
       type SortEntry = { distSq: number; laser?: LaserEnemy; sapphire?: SapphireEnemy; missile?: SapphireMissile };
       const rangeSq = range * range;
       const inRange: SortEntry[] = [];
@@ -1399,7 +1505,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       return;
     }
 
-    // single / piercing — target the single closest targetable in range.
+    // single / piercing
     const defPierceRatio = effect.kind === 'piercing' ? effect.defPierceRatio : 0;
     const closestT = findClosestTarget(range * range);
     if (!closestT) return;
@@ -1522,12 +1628,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       : '+0.0%';
     xpWidget.valueEl.textContent   = formatXp(rpgSimState.xp);
 
-    const equippedId = rpgSimState.equippedWeaponId;
-    if (equippedId) {
-      const weaponDef = WEAPON_BY_ID.get(equippedId);
-      const tier = rpgSimState.weaponTiersByWeaponId.get(equippedId) ?? 1;
-      weaponWidget.valueEl.textContent = weaponDef ? `${weaponDef.name} T${tier}` : equippedId;
-      const tierDef = weaponDef ? TIER_BY_ID.get(weaponDef.costTierId) : undefined;
+    const equippedIds = Array.from(rpgSimState.equippedWeaponIds);
+    if (equippedIds.length > 0) {
+      const labels = equippedIds.map(id => {
+        const wd = WEAPON_BY_ID.get(id);
+        const tier = rpgSimState.weaponTiersByWeaponId.get(id) ?? 1;
+        return wd ? `${wd.name} T${tier}` : id;
+      });
+      weaponWidget.valueEl.textContent = labels.join(', ');
+      const firstDef = WEAPON_BY_ID.get(equippedIds[0]);
+      const tierDef = firstDef ? TIER_BY_ID.get(firstDef.costTierId) : undefined;
       weaponWidget.valueEl.style.color = tierDef?.color ?? '#c9a84c';
     } else {
       weaponWidget.valueEl.textContent = 'None';
@@ -1817,14 +1927,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
       } else if (_autoMoveEnabled && (enemies.length > 0 || sapphireEnemies.length > 0)) {
         // Auto-move: find nearest enemy and steer toward it, stopping when
-        // the enemy is within the equipped weapon's effective range so the
-        // player can attack without colliding.
-        const weaponDef = rpgSimState.equippedWeaponId
-          ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId)
-          : undefined;
-        // Use the weapon's range as the stop distance. If multiple weapons are
-        // ever supported, use the shortest range so every weapon can reach.
-        const autoMoveStopRange = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
+        // the player is within the shortest range of any equipped weapon.
+        let autoMoveStopRange = PLAYER_BASE_RANGE_PX;
+        let hasWeapon = false;
+        for (const weaponId of rpgSimState.equippedWeaponIds) {
+          const wd = WEAPON_BY_ID.get(weaponId);
+          if (wd) {
+            autoMoveStopRange = hasWeapon ? Math.min(autoMoveStopRange, wd.stats.range) : wd.stats.range;
+            hasWeapon = true;
+          }
+        }
 
         let nearestDistSq = Infinity;
         let nearestX = 0, nearestY = 0;
@@ -1884,26 +1996,29 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  /** Updates the equipped-weapon visual orbit particle position and trail. */
-  function updateWeaponOrbitParticle(deltaMs: number): void {
-    const p = weaponOrbitParticle;
-    if (!p) return;
+  /** Updates all equipped-weapon visual orbit particles. */
+  function updateWeaponOrbitParticles(deltaMs: number): void {
+    if (weaponOrbitParticles.length === 0) return;
     const dt = deltaMs / 1000;
-    p.angle += WEAPON_PARTICLE_ORBIT_SPEED * dt;
-    const newX = mote.x + Math.cos(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
-    const newY = mote.y + Math.sin(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
-    // Minimum speed guard: if computed displacement is too small, nudge the angle.
-    const dx = newX - p.x, dy = newY - p.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < WEAPON_PARTICLE_MIN_SPEED * dt) {
-      p.angle += 0.05;
+    const angleStep = weaponOrbitParticles.length > 0 ? (2 * Math.PI) / weaponOrbitParticles.length : 0;
+    for (let idx = 0; idx < weaponOrbitParticles.length; idx++) {
+      const p = weaponOrbitParticles[idx];
+      p.angle += WEAPON_PARTICLE_ORBIT_SPEED * dt;
+      // Keep evenly spaced when multiple weapons are equipped
+      const targetAngle = idx * angleStep + (Date.now() / 1000) * WEAPON_PARTICLE_ORBIT_SPEED;
+      const angleDelta = ((targetAngle - p.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      p.angle += angleDelta * 0.05;
+      const newX = mote.x + Math.cos(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
+      const newY = mote.y + Math.sin(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
+      const dx = newX - p.x, dy = newY - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < WEAPON_PARTICLE_MIN_SPEED * dt) p.angle += 0.05;
+      p.x = newX; p.y = newY;
+      p.trailX[p.trailHead] = p.x;
+      p.trailY[p.trailHead] = p.y;
+      p.trailHead = (p.trailHead + 1) % WEAPON_ORBIT_TRAIL_CAP;
+      if (p.trailCount < WEAPON_ORBIT_TRAIL_CAP) p.trailCount++;
     }
-    p.x = newX; p.y = newY;
-    // Update trail
-    p.trailX[p.trailHead] = p.x;
-    p.trailY[p.trailHead] = p.y;
-    p.trailHead = (p.trailHead + 1) % WEAPON_ORBIT_TRAIL_CAP;
-    if (p.trailCount < WEAPON_ORBIT_TRAIL_CAP) p.trailCount++;
   }
 
   /** Updates the orbiting projectile: angle, trail, and enemy collision. */
@@ -1983,7 +2098,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     enemies.length = 0; spawnQueue.length = 0;
     sapphireEnemies.length = 0; sapphireMissiles.length = 0;
     sandProjectiles.length = 0;
-    chainWhipState = null;
+    chainWhipStates.clear();
     laserBeamEffect = null;
     mote.x = widthPx / 2; mote.y = heightPx / 2;
     mote.vx = mote.vy = 0; mote.trailHead = 0; mote.trailCount = 0;
@@ -1991,7 +2106,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     currentWave = 0; isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
     screenDarken = 0;
-    playerAttackTimerMs = 0;
+    weaponAttackTimers.clear();
     hitEffects.length = 0; shotLines.length = 0;
     damageNumbers.length = 0; playerIFramesMs = 0;
     fluid.reset();
@@ -2114,10 +2229,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.restore();
   }
 
-  /** Draws the equipped-weapon visual orbit particle with comet trail. */
-  function drawWeaponOrbitParticle(): void {
-    const p = weaponOrbitParticle;
-    if (!p) return;
+  /** Draws one equipped-weapon visual orbit particle with comet trail. */
+  function drawWeaponOrbitParticle(p: WeaponOrbitParticle): void {
     ctx.save();
     // Draw trail first
     if (p.trailCount >= 2) {
@@ -2271,11 +2384,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawDamageNumbers();
     if (deathParticles.length > 0) drawDeathParticles();
 
-    // Draw weapon orbit particle, orbit projectile, and special weapon visuals above the player.
+    // Draw weapon orbit particles, orbit projectile, and special weapon visuals above the player.
     if (rpgPhase === 'alive') {
-      drawWeaponOrbitParticle();
+      for (const p of weaponOrbitParticles) drawWeaponOrbitParticle(p);
       drawOrbitProjectile();
-      drawChainWhip();
+      for (const ws of chainWhipStates.values()) drawChainWhip(ws);
     }
 
     if (joystick.isActive && rpgPhase === 'alive') {
@@ -2360,23 +2473,50 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateEnemies(deltaMs, nowMs);
       updateSapphireEnemies(deltaMs, nowMs);
       updateSapphireMissiles(deltaMs);
-      updateWeaponOrbitParticle(deltaMs);
+      updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(deltaMs);
       updateSandProjectiles(deltaMs);
-      updateChainWhip(deltaMs);
+      // Update chain whip for all equipped chainWhip weapons
+      for (const weaponId of rpgSimState.equippedWeaponIds) {
+        const wd = WEAPON_BY_ID.get(weaponId);
+        if (wd?.stats.effect?.kind === 'chainWhip') updateChainWhip(weaponId, deltaMs);
+      }
       updateLaserBeamEffect(deltaMs);
       removeDeadEnemies();
       checkWaveCompletion();
 
-      // ── Player auto-attack ────────────────────────────────────
-      playerAttackTimerMs -= deltaMs;
-      if (playerAttackTimerMs <= 0) {
-        const weaponDef  = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
-        const cooldownMs = weaponDef?.stats.cooldownMs ?? PLAYER_BASE_COOLDOWN_MS;
-        playerAttackTimerMs = cooldownMs;
-        performPlayerAttack();
-        removeDeadEnemies();
-        checkWaveCompletion();
+      // ── Per-weapon auto-attack timers ─────────────────────────────
+      for (const weaponId of rpgSimState.equippedWeaponIds) {
+        const weaponDef = WEAPON_BY_ID.get(weaponId);
+        // Chain whip fires itself via updateChainWhip's internal cooldown
+        if (weaponDef?.stats.effect?.kind === 'chainWhip') continue;
+        const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+        const cooldownMs = weaponDef
+          ? getScaledWeaponCooldown(weaponDef.stats.cooldownMs, tier)
+          : PLAYER_BASE_COOLDOWN_MS;
+        const current = weaponAttackTimers.get(weaponId) ?? 0;
+        const next = current - deltaMs;
+        if (next <= 0) {
+          weaponAttackTimers.set(weaponId, cooldownMs);
+          performWeaponAttack(weaponId);
+          removeDeadEnemies();
+          checkWaveCompletion();
+        } else {
+          weaponAttackTimers.set(weaponId, next);
+        }
+      }
+      // If no weapons equipped, use base attack with default cooldown
+      if (rpgSimState.equippedWeaponIds.size === 0) {
+        const current = weaponAttackTimers.get('__base__') ?? 0;
+        const next = current - deltaMs;
+        if (next <= 0) {
+          weaponAttackTimers.set('__base__', PLAYER_BASE_COOLDOWN_MS);
+          performWeaponAttack('');
+          removeDeadEnemies();
+          checkWaveCompletion();
+        } else {
+          weaponAttackTimers.set('__base__', next);
+        }
       }
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);
