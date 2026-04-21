@@ -29,6 +29,7 @@ import { getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultip
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
+import { createRpgFluid } from './rpg-fluid';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -212,6 +213,31 @@ const LASER_BEAM_VISIBLE_MS  = 400;   // how long the beam stays on screen
 const LASER_BEAM_COLOR       = '#ff2222';
 const LASER_BEAM_GLOW        = '#ff8888';
 const LASER_BEAM_WIDTH       =   2.5;
+
+// ── Fluid background force scales ─────────────────────────────
+// Multiplier applied to entity velocity (px/frame → px/s) before injection.
+// Lower values = gentler disturbance; higher = more reactive.
+const FLUID_PX_PER_S = 1000 / TARGET_FRAME_MS;  // factor to convert px/frame → px/s
+const FLUID_PLAYER_STRENGTH    = 1.4;
+const FLUID_ENEMY_STRENGTH     = 1.8;
+const FLUID_PROJECTILE_STRENGTH = 2.0;
+const FLUID_MISSILE_STRENGTH   = 2.5;
+const FLUID_LASER_BEAM_STRENGTH = 4.0;
+const FLUID_EXPLOSION_STRENGTH = 3.5;
+// Laser enemy colours decoded as r,g,b for fluid injection.
+const FLUID_LASER_R = 255, FLUID_LASER_G =  51, FLUID_LASER_B =  51;
+// Sapphire enemy colour.
+const FLUID_SAPPH_R =  91, FLUID_SAPPH_G = 154, FLUID_SAPPH_B = 255;
+// Player colour.
+const FLUID_PLAYER_R = 255, FLUID_PLAYER_G = 215, FLUID_PLAYER_B = 100;
+// Missile colour.
+const FLUID_MISSILE_R = 255, FLUID_MISSILE_G = 119, FLUID_MISSILE_B =  51;
+// Sand projectile colour.
+const FLUID_SAND_R = 221, FLUID_SAND_G = 192, FLUID_SAND_B = 128;
+// Chain whip colour.
+const FLUID_CHAIN_R = 160, FLUID_CHAIN_G = 216, FLUID_CHAIN_B = 239;
+// Laser beam colour.
+const FLUID_BEAM_R = 255, FLUID_BEAM_G =  34, FLUID_BEAM_B =  34;
 
 interface RpgMote {
   x: number; y: number;
@@ -452,6 +478,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let widthPx  = INTERNAL_WIDTH;
   let heightPx = INTERNAL_HEIGHT;
 
+  // ── Euler fluid background ─────────────────────────────────────
+  const fluid = createRpgFluid();
+
   function doResize(cont: HTMLElement): void {
     const w = cont.clientWidth  || INTERNAL_WIDTH;
     const h = cont.clientHeight || INTERNAL_HEIGHT;
@@ -464,6 +493,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
     canvas.width  = widthPx;
     canvas.height = heightPx;
+    fluid.resize(widthPx, heightPx);
   }
   doResize(container);
 
@@ -726,6 +756,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (p.lifeMs <= 0) { sandProjectiles.splice(i, 1); continue; }
       p.x += p.vx * dt; p.y += p.vy * dt;
 
+      // Inject sand-projectile motion into fluid.
+      fluid.addForce({
+        x: p.x, y: p.y,
+        vx: p.vx * FLUID_PX_PER_S,
+        vy: p.vy * FLUID_PX_PER_S,
+        r: FLUID_SAND_R, g: FLUID_SAND_G, b: FLUID_SAND_B,
+        strength: FLUID_PROJECTILE_STRENGTH,
+      });
+
       // Bounds check
       if (p.x < 0 || p.x > widthPx || p.y < 0 || p.y > heightPx) {
         sandProjectiles.splice(i, 1); continue;
@@ -879,6 +918,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
 
       if (t >= 1) { ws.phase = 'retracting'; ws.phaseMs = 0; }
+
+      // Inject chain whip lash force along its length — spread across nodes.
+      const tipDx = ws.targetX - mote.x;
+      const tipDy = ws.targetY - mote.y;
+      const tipDist = Math.sqrt(tipDx * tipDx + tipDy * tipDy);
+      if (tipDist > 0.1) {
+        for (let ni = 0; ni < CHAIN_NODES; ni++) {
+          fluid.addForce({
+            x: ws.nodesX[ni], y: ws.nodesY[ni],
+            vx: (tipDx / tipDist) * FLUID_PX_PER_S * 1.5,
+            vy: (tipDy / tipDist) * FLUID_PX_PER_S * 1.5,
+            r: FLUID_CHAIN_R, g: FLUID_CHAIN_G, b: FLUID_CHAIN_B,
+            strength: 1.2,
+          });
+        }
+      }
     } else if (ws.phase === 'retracting') {
       ws.phaseMs += deltaMs;
       const t = Math.min(ws.phaseMs / CHAIN_RETRACT_MS, 1);
@@ -990,6 +1045,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     laserBeamEffect.startX = mote.x; laserBeamEffect.startY = mote.y;
     laserBeamEffect.endX = endX;
     laserBeamEffect.endY = endY;
+
+    // Inject beam force along its length: sample multiple points from muzzle
+    // to edge, creating a strong directional fluid channel in the beam color.
+    const beamLen = tMax;
+    const beamSteps = Math.max(4, Math.floor(beamLen / 20));
+    for (let k = 0; k <= beamSteps; k++) {
+      const t = k / beamSteps;
+      fluid.addForce({
+        x: mote.x + dirX * beamLen * t,
+        y: mote.y + dirY * beamLen * t,
+        vx: dirX * FLUID_PX_PER_S * 3.0,
+        vy: dirY * FLUID_PX_PER_S * 3.0,
+        r: FLUID_BEAM_R, g: FLUID_BEAM_G, b: FLUID_BEAM_B,
+        strength: FLUID_LASER_BEAM_STRENGTH,
+      });
+    }
   }
 
   function updateLaserBeamEffect(deltaMs: number): void {
@@ -1028,6 +1099,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       enemy.x, enemy.y,
       dirX * MISSILE_SPEED, dirY * MISSILE_SPEED,
     ));
+    // Inject a gun-fire impulse in the launch direction.
+    fluid.addForce({
+      x: enemy.x, y: enemy.y,
+      vx: dirX * FLUID_PX_PER_S * 2.0,
+      vy: dirY * FLUID_PX_PER_S * 2.0,
+      r: FLUID_MISSILE_R, g: FLUID_MISSILE_G, b: FLUID_MISSILE_B,
+      strength: FLUID_PROJECTILE_STRENGTH * 1.5,
+    });
   }
 
   function updateSapphireEnemies(deltaMs: number, _nowMs: number): void {
@@ -1050,6 +1129,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (enemy.x > widthPx  - half)  { enemy.x = widthPx  - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
       if (enemy.y < half)             { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
       if (enemy.y > heightPx - half)  { enemy.y = heightPx - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+
+      // Inject sapphire-enemy movement into fluid.
+      const sespd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
+      if (sespd > 0.04) {
+        fluid.addForce({
+          x: enemy.x, y: enemy.y,
+          vx: enemy.vx * FLUID_PX_PER_S,
+          vy: enemy.vy * FLUID_PX_PER_S,
+          r: FLUID_SAPPH_R, g: FLUID_SAPPH_G, b: FLUID_SAPPH_B,
+          strength: FLUID_ENEMY_STRENGTH,
+        });
+      }
 
       // Missile firing
       enemy.missileTimerMs -= deltaMs;
@@ -1082,6 +1173,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
 
       m.x += m.vx * dt; m.y += m.vy * dt;
+
+      // Inject missile motion into fluid every frame — produces the curved
+      // heat-seeker trail required by the acceptance criteria.
+      fluid.addForce({
+        x: m.x, y: m.y,
+        vx: m.vx * FLUID_PX_PER_S,
+        vy: m.vy * FLUID_PX_PER_S,
+        r: FLUID_MISSILE_R, g: FLUID_MISSILE_G, b: FLUID_MISSILE_B,
+        strength: FLUID_MISSILE_STRENGTH,
+      });
 
       // Record trail
       m.trailX[m.trailHead] = m.x; m.trailY[m.trailHead] = m.y;
@@ -1255,6 +1356,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
         }
       }
+      // AoE pulse: inject a radial explosion in player color at the epicentre.
+      fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
+        FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
       return;
     }
 
@@ -1315,18 +1419,37 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     let totalXpFromKills = 0;
     for (let i = enemies.length - 1; i >= 0; i--) {
       if (enemies[i].hp <= 0) {
+        // Explosion effect at the laser enemy's position.
+        fluid.addExplosion(
+          enemies[i].x, enemies[i].y,
+          FLUID_EXPLOSION_STRENGTH,
+          FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
+        );
         totalXpFromKills += getXpPerKill(currentWave);
         enemies.splice(i, 1);
       }
     }
     for (let i = sapphireEnemies.length - 1; i >= 0; i--) {
       if (sapphireEnemies[i].hp <= 0) {
+        // Larger explosion for sapphire enemies.
+        fluid.addExplosion(
+          sapphireEnemies[i].x, sapphireEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 1.4,
+          FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
+        );
         totalXpFromKills += getXpPerKill(currentWave) * 3;  // more XP for sapphire enemies
         sapphireEnemies.splice(i, 1);
       }
     }
     for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
-      if (sapphireMissiles[i].hp <= 0) sapphireMissiles.splice(i, 1);
+      if (sapphireMissiles[i].hp <= 0) {
+        fluid.addExplosion(
+          sapphireMissiles[i].x, sapphireMissiles[i].y,
+          FLUID_EXPLOSION_STRENGTH * 0.6,
+          FLUID_MISSILE_R, FLUID_MISSILE_G, FLUID_MISSILE_B,
+        );
+        sapphireMissiles.splice(i, 1);
+      }
     }
     if (totalXpFromKills > 0) {
       rpgSimState.xp += totalXpFromKills;
@@ -1647,6 +1770,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         case 'overshoot':  updateEnemyOvershoot(enemy, dt);           break;
         case 'cooldown':   updateEnemyCooldown(enemy, deltaMs);       break;
       }
+      // Inject laser-enemy movement into fluid.
+      const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
+      if (espd > 0.05) {
+        fluid.addForce({
+          x: enemy.x, y: enemy.y,
+          vx: enemy.vx * FLUID_PX_PER_S,
+          vy: enemy.vy * FLUID_PX_PER_S,
+          r: FLUID_LASER_R, g: FLUID_LASER_G, b: FLUID_LASER_B,
+          strength: FLUID_ENEMY_STRENGTH,
+        });
+      }
     }
   }
 
@@ -1736,6 +1870,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       glowMovementIntensity = Math.min(1, glowMovementIntensity + GLOW_MOVE_RAMP_UP * deltaMs);
     } else {
       glowMovementIntensity = Math.max(0, glowMovementIntensity - GLOW_MOVE_RAMP_DOWN * deltaMs);
+    }
+    // Inject player movement into the fluid (only when meaningfully moving).
+    if (speed > TRAIL_SPEED_THRESHOLD) {
+      fluid.addForce({
+        x: mote.x, y: mote.y,
+        vx: mote.vx * FLUID_PX_PER_S,
+        vy: mote.vy * FLUID_PX_PER_S,
+        r: FLUID_PLAYER_R, g: FLUID_PLAYER_G, b: FLUID_PLAYER_B,
+        strength: FLUID_PLAYER_STRENGTH,
+      });
     }
   }
 
@@ -1849,6 +1993,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerAttackTimerMs = 0;
     hitEffects.length = 0; shotLines.length = 0;
     damageNumbers.length = 0; playerIFramesMs = 0;
+    fluid.reset();
     applyEquipmentStats();
   }
 
@@ -2063,6 +2208,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, 0, widthPx, heightPx);
 
+    // Fluid background — rendered first so all gameplay elements appear above it.
+    fluid.render(ctx);
+
     drawEnemies(nowMs);
     drawSapphireEnemies();
     drawSapphireMissiles();
@@ -2186,12 +2334,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       if (rpgPhase === 'dying') {
         updateDying(deltaMs);
+        fluid.step(deltaMs);
         draw(nowMs);
         updateStatsPanelDom();
         return;
       }
       if (rpgPhase === 'restarting') {
         updateRestarting(deltaMs);
+        fluid.step(deltaMs);
         draw(nowMs);
         updateStatsPanelDom();
         return;
@@ -2232,6 +2382,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       if (playerStats.hp <= 0) triggerDeath();
       updateStatsPanelDom();
+      fluid.step(deltaMs);
       draw(nowMs);
     },
 
