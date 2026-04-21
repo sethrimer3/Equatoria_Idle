@@ -101,6 +101,8 @@ const PLAYER_BASE_COOLDOWN_MS  = 1200;
 const PLAYER_BASE_RANGE_PX     = 50;
 /** Duration (ms) for the hit-flash visual effect. */
 const HIT_EFFECT_DURATION_MS   = 220;
+/** Sentinel weapon id used in `weaponAttackTimers` when no weapon is equipped. */
+const BASE_ATTACK_TIMER_KEY    = '__base__';
 /** Duration (ms) for the shot-line visual effect. */
 const SHOT_LINE_DURATION_MS    = 120;
 /** Target frame time in ms at 60 FPS — used to normalise dt-scaled physics. */
@@ -410,8 +412,8 @@ interface SandProjectile {
   x: number; y: number;
   vx: number; vy: number;
   lifeMs: number;
-  /** Damage to deal on hit (computed at spawn from weapon tier + player ATK). */
-  damage: number;
+  /** Damage to deal on hit (pre-scaled: weapon tier × player ATK already applied at spawn). */
+  scaledDamage: number;
 }
 
 // ── Quartz chain whip ──────────────────────────────────────────
@@ -719,6 +721,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     let dirX = dist > 0.01 ? dx / dist : 0;
     let dirY = dist > 0.01 ? dy / dist : -1;
     // Apply ±15° random angle deviation with triangular distribution (lower probability at extremes).
+    // Summing two uniform [0,1] random numbers and subtracting 1 gives a triangular distribution
+    // on [-1, 1], making extreme angles (±15°) less likely than small deviations near 0.
     const deviation = (Math.random() + Math.random() - 1) * (Math.PI / 12);
     const cosD = Math.cos(deviation), sinD = Math.sin(deviation);
     const rotX = dirX * cosD - dirY * sinD;
@@ -803,7 +807,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       vx: (dx / dist) * SAND_PROJ_SPEED,
       vy: (dy / dist) * SAND_PROJ_SPEED,
       lifeMs: SAND_PROJ_LIFE_MS,
-      damage,
+      scaledDamage: damage,
     });
   }
 
@@ -812,7 +816,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     for (let i = sandProjectiles.length - 1; i >= 0; i--) {
       const p = sandProjectiles[i];
-      const damage = p.damage;
+      const damage = p.scaledDamage;
       p.lifeMs -= deltaMs;
       if (p.lifeMs <= 0) { sandProjectiles.splice(i, 1); continue; }
       p.x += p.vx * dt; p.y += p.vy * dt;
@@ -2507,15 +2511,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
       // If no weapons equipped, use base attack with default cooldown
       if (rpgSimState.equippedWeaponIds.size === 0) {
-        const current = weaponAttackTimers.get('__base__') ?? 0;
+        const current = weaponAttackTimers.get(BASE_ATTACK_TIMER_KEY) ?? 0;
         const next = current - deltaMs;
         if (next <= 0) {
-          weaponAttackTimers.set('__base__', PLAYER_BASE_COOLDOWN_MS);
-          performWeaponAttack('');
+          weaponAttackTimers.set(BASE_ATTACK_TIMER_KEY, PLAYER_BASE_COOLDOWN_MS);
+          performWeaponAttack(BASE_ATTACK_TIMER_KEY);
           removeDeadEnemies();
           checkWaveCompletion();
         } else {
-          weaponAttackTimers.set('__base__', next);
+          weaponAttackTimers.set(BASE_ATTACK_TIMER_KEY, next);
         }
       }
       updateShotVisuals(deltaMs);
