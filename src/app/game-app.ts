@@ -200,6 +200,7 @@ export async function startApp(): Promise<void> {
     // Write the last-active timestamp whenever the tab is hidden.
     if (document.visibilityState === 'hidden') {
       writeLastActiveTimestamp();
+      saveGame(game);
     }
   });
 

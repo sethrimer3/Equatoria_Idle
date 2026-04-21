@@ -64,15 +64,23 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
     ctx.lastFrameMs.value = nowMs;
 
-    // ── RPG tab: run independent render, pause main sim ──────────
+    // ── Always tick the main sim so looms, auto-tap, and pending idle motes
+    // ── continue to run regardless of which tab is active. ──────────────
+    const simResult = simTick(ctx.appState.game, deltaMs);
+
+    // ── Auto-save (runs on every tab) ────────────────────────────
+    if (nowMs - ctx.appState.game.lastSaveMs > AUTO_SAVE_INTERVAL_MS) {
+      ctx.appState.game.lastSaveMs = nowMs;
+      saveGame(ctx.appState.game);
+    }
+
+    // ── RPG tab: run independent render then skip main canvas draw ────────
     if (ctx.appState.activeTab === 'rpg') {
       const autoMove = ctx.uiPanels.rpgMenuPanel.isAutoMoveEnabled;
       ctx.uiPanels.rpgRender.update(deltaMs, autoMove);
       requestAnimationFrame(gameLoop);
       return;
     }
-
-    const simResult = simTick(ctx.appState.game, deltaMs);
 
     // Fire achievement audio events for anything newly unlocked this tick
     if (ctx.audioSystem && simResult.newlyUnlockedAchievementIds.length > 0) {
@@ -224,11 +232,6 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
       updateVisiblePanels(ctx.appState, ctx.uiPanels, ctx.appState.game, ctx.settings.isDevMode, ctx.settings.numberFormat);
-    }
-
-    if (nowMs - ctx.appState.game.lastSaveMs > AUTO_SAVE_INTERVAL_MS) {
-      ctx.appState.game.lastSaveMs = nowMs;
-      saveGame(ctx.appState.game);
     }
 
     requestAnimationFrame(gameLoop);

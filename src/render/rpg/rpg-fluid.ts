@@ -73,10 +73,10 @@ const INITIAL_PARTICLE_B     = 220;
 
 // ── Force injection ───────────────────────────────────────────────────────────
 /** Gaussian σ (grid cells) for force / colour splats. */
-const FORCE_SIGMA_CELLS   = 3.2;
+const FORCE_SIGMA_CELLS   = 2.0;
 const FORCE_TWO_SIGMA_SQ  = 2.0 * FORCE_SIGMA_CELLS * FORCE_SIGMA_CELLS;
 /** Max injected velocity magnitude (grid cells / s). */
-const MAX_INJECT_VEL      = 38.0;
+const MAX_INJECT_VEL      = 20.0;
 
 // ── Particle lifecycle ────────────────────────────────────────────────────────
 /** Grid-space speed below which a particle is respawned. */
