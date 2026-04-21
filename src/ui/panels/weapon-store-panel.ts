@@ -87,7 +87,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     card.className = 'weapon-store__card';
 
     const isPurchased = rpgState.purchasedWeaponIds.has(weapon.id);
-    const isEquipped  = rpgState.equippedWeaponId === weapon.id;
+    const isEquipped  = rpgState.equippedWeaponIds.has(weapon.id);
     const balance     = getMotes(resources, weapon.costTierId);
     const canAfford   = isDevMode || balance >= weapon.cost;
 

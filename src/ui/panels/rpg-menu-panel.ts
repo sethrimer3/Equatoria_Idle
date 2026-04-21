@@ -14,8 +14,7 @@ import { RPG_UPGRADE_DEFINITIONS } from '../../data/rpg/rpg-upgrade-definitions'
 import type { RpgUpgradeDefinition } from '../../data/rpg/rpg-upgrade-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
-import { getWeaponTierUpgradeCost } from '../../sim/rpg/rpg-state';
+import { getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
 import { getMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
@@ -170,10 +169,12 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
     card.className = 'weapon-store__card';
 
     const isPurchased = rpgState.purchasedWeaponIds.has(weapon.id);
-    const isEquipped  = rpgState.equippedWeaponId === weapon.id;
+    const isEquipped  = rpgState.equippedWeaponIds.has(weapon.id);
     const balance     = getMotes(resources, weapon.costTierId);
     const canAfford   = isDevMode || balance >= weapon.cost;
     const currentTier = rpgState.weaponTiersByWeaponId.get(weapon.id) ?? 1;
+    const maxSlots    = getMaxEquippedWeapons(rpgState);
+    const canEquipMore = rpgState.equippedWeaponIds.size < maxSlots;
 
     if (isEquipped) card.classList.add('weapon-store__card--equipped');
 
@@ -247,30 +248,40 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
       if (!isEquipped) {
         const equipBtn = document.createElement('button');
         equipBtn.className = 'weapon-store__btn';
-        equipBtn.textContent = 'Equip';
+        equipBtn.textContent = canEquipMore ? 'Equip' : `Full (${maxSlots}/${maxSlots})`;
+        equipBtn.disabled = !canEquipMore;
         equipBtn.addEventListener('click', () => dispatch({ kind: 'equip_weapon', weaponId: weapon.id }));
         btnRow.appendChild(equipBtn);
       } else {
-        const equippedBtn = document.createElement('button');
-        equippedBtn.className = 'weapon-store__btn weapon-store__btn--equipped';
-        equippedBtn.textContent = 'Equipped';
-        equippedBtn.disabled = true;
-        btnRow.appendChild(equippedBtn);
+        const unequipBtn = document.createElement('button');
+        unequipBtn.className = 'weapon-store__btn weapon-store__btn--equipped';
+        unequipBtn.textContent = 'Unequip';
+        unequipBtn.addEventListener('click', () => dispatch({ kind: 'unequip_weapon', weaponId: weapon.id }));
+        btnRow.appendChild(unequipBtn);
       }
 
-      // Tier upgrade button (always shown for purchased weapons; cost paid in motes)
-      const tierUpgradeCost = getWeaponTierUpgradeCost(weapon.cost, currentTier);
-      const canAffordTier = isDevMode || balance >= tierUpgradeCost;
-      const tierUpgradeBtn = document.createElement('button');
-      tierUpgradeBtn.className = 'weapon-store__btn';
-      tierUpgradeBtn.style.background = 'rgba(100,200,255,0.1)';
-      tierUpgradeBtn.style.borderColor = 'rgba(100,200,255,0.35)';
-      tierUpgradeBtn.style.color = '#64c8ff';
-      const tierCostText = formatNumberAs(Math.round(tierUpgradeCost), numberFormat);
-      tierUpgradeBtn.textContent = `Tier ${currentTier + 1} (${tierCostText} ${weapon.costTierId})`;
-      tierUpgradeBtn.disabled = !canAffordTier;
-      tierUpgradeBtn.addEventListener('click', () => dispatch({ kind: 'upgrade_weapon_tier', weaponId: weapon.id }));
-      btnRow.appendChild(tierUpgradeBtn);
+      // Tier upgrade button (max tier = MAX_WEAPON_TIER)
+      if (currentTier < MAX_WEAPON_TIER) {
+        const tierUpgradeCost = getWeaponTierUpgradeCost(weapon.cost, currentTier);
+        const canAffordTier = isDevMode || balance >= tierUpgradeCost;
+        const tierUpgradeBtn = document.createElement('button');
+        tierUpgradeBtn.className = 'weapon-store__btn';
+        tierUpgradeBtn.style.background = 'rgba(100,200,255,0.1)';
+        tierUpgradeBtn.style.borderColor = 'rgba(100,200,255,0.35)';
+        tierUpgradeBtn.style.color = '#64c8ff';
+        const tierCostText = formatNumberAs(Math.round(tierUpgradeCost), numberFormat);
+        tierUpgradeBtn.textContent = `Tier ${currentTier + 1} (${tierCostText} ${weapon.costTierId})`;
+        tierUpgradeBtn.disabled = !canAffordTier;
+        tierUpgradeBtn.addEventListener('click', () => dispatch({ kind: 'upgrade_weapon_tier', weaponId: weapon.id }));
+        btnRow.appendChild(tierUpgradeBtn);
+      } else {
+        const maxedEl = document.createElement('span');
+        maxedEl.style.color = '#64c8ff';
+        maxedEl.style.fontSize = '0.8em';
+        maxedEl.style.alignSelf = 'center';
+        maxedEl.textContent = `Max Tier (${MAX_WEAPON_TIER})`;
+        btnRow.appendChild(maxedEl);
+      }
     }
 
     card.appendChild(btnRow);
@@ -280,6 +291,14 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
   function renderWeaponsTab(): void {
     if (!lastRpgState || !lastResources) return;
     content.innerHTML = '';
+
+    // Slot count info
+    const slotsInfo = document.createElement('div');
+    slotsInfo.style.cssText = 'text-align:center;margin-bottom:8px;color:#c9a84c;font-size:0.85em;';
+    const maxSlots = getMaxEquippedWeapons(lastRpgState);
+    slotsInfo.textContent = `Equipped: ${lastRpgState.equippedWeaponIds.size} / ${maxSlots} slot${maxSlots !== 1 ? 's' : ''}`;
+    content.appendChild(slotsInfo);
+
     const list = document.createElement('div');
     list.className = 'weapon-store__list';
     for (const weapon of WEAPON_DEFINITIONS) {
