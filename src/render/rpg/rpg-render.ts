@@ -514,6 +514,7 @@ interface LaserBeamEffect {
 type EmeraldPhase = 'patrol' | 'charging' | 'blinking' | 'cooldown';
 
 interface EmeraldEnemy {
+  readonly kind: 'emerald';
   x: number; y: number;
   vx: number; vy: number;
   hp: number; maxHp: number;
@@ -529,6 +530,7 @@ interface EmeraldEnemy {
 // ── Amber enemy (fan-gunner) ───────────────────────────────────
 
 interface AmberEnemy {
+  readonly kind: 'amber';
   x: number; y: number;
   vx: number; vy: number;
   hp: number; maxHp: number;
@@ -551,6 +553,7 @@ interface AmberShard {
 // ── Void enemy (slow bruiser) ──────────────────────────────────
 
 interface VoidEnemy {
+  readonly kind: 'void';
   x: number; y: number;
   vx: number; vy: number;
   hp: number; maxHp: number;
@@ -613,6 +616,7 @@ function makeSapphireMissile(x: number, y: number, vx: number, vy: number): Sapp
 
 function makeEmeraldEnemy(x: number, y: number): EmeraldEnemy {
   return {
+    kind: 'emerald',
     x, y, vx: 0, vy: 0,
     hp: EMERALD_HP_INIT, maxHp: EMERALD_HP_INIT,
     atk: EMERALD_ATK_INIT, def: EMERALD_DEF_INIT,
@@ -625,6 +629,7 @@ function makeEmeraldEnemy(x: number, y: number): EmeraldEnemy {
 
 function makeAmberEnemy(x: number, y: number): AmberEnemy {
   return {
+    kind: 'amber',
     x, y, vx: 0, vy: 0,
     hp: AMBER_HP_INIT, maxHp: AMBER_HP_INIT,
     atk: AMBER_ATK_INIT, def: AMBER_DEF_INIT,
@@ -647,6 +652,7 @@ function makeAmberShard(x: number, y: number, vx: number, vy: number): AmberShar
 
 function makeVoidEnemy(x: number, y: number): VoidEnemy {
   return {
+    kind: 'void',
     x, y, vx: 0, vy: 0,
     hp: VOID_HP_INIT, maxHp: VOID_HP_INIT,
     atk: VOID_ATK_INIT, def: VOID_DEF_INIT,
@@ -935,7 +941,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Closest-target helpers ─────────────────────────────────────
 
   /** Represents any targetable entity. */
-  type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'amberShard' | 'void';
+  type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void';
   interface ClosestTarget {
     kind: TargetKind;
     x: number; y: number;
@@ -945,7 +951,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     missile?: SapphireMissile;
     emerald?: EmeraldEnemy;
     amber?: AmberEnemy;
-    amberShard?: AmberShard;
+    ambershard?: AmberShard;
     void?: VoidEnemy;
   }
 
@@ -985,7 +991,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (const s of amberShards) {
       const dx = s.x - mote.x, dy = s.y - mote.y;
       const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'amberShard', x: s.x, y: s.y, distSq: d, amberShard: s }; }
+      if (d <= bestSq) { bestSq = d; best = { kind: 'ambershard', x: s.x, y: s.y, distSq: d, ambershard: s }; }
     }
     for (const e of voidEnemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
@@ -1298,12 +1304,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
             let dmg = 0;
             if ('shieldHp' in target) {
               dmg = damageSapphireEnemy(target, contactDamage, 0, false);
-            } else if ('ghostAlpha' in target) {
-              dmg = damageEmeraldEnemy(target, contactDamage, 0);
-            } else if ('missileTimerMs' in target) {
-              dmg = damageAmberEnemy(target, contactDamage, 0);
-            } else if ('contactCdMs' in target) {
-              dmg = damageVoidEnemy(target, contactDamage, 0);
+            } else if ('kind' in target) {
+              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy;
+              if (t.kind === 'emerald')      dmg = damageEmeraldEnemy(t, contactDamage, 0);
+              else if (t.kind === 'amber')   dmg = damageAmberEnemy(t, contactDamage, 0);
+              else if (t.kind === 'void')    dmg = damageVoidEnemy(t, contactDamage, 0);
             } else {
               dmg = damageEnemy(target as LaserEnemy, contactDamage, 0);
             }
@@ -1837,7 +1842,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       type SortEntry = {
         distSq: number;
         laser?: LaserEnemy; sapphire?: SapphireEnemy; missile?: SapphireMissile;
-        emerald?: EmeraldEnemy; amber?: AmberEnemy; amberShard?: AmberShard; void?: VoidEnemy;
+        emerald?: EmeraldEnemy; amber?: AmberEnemy; ambershard?: AmberShard; void?: VoidEnemy;
       };
       const rangeSq = range * range;
       const inRange: SortEntry[] = [];
@@ -1869,7 +1874,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       for (const s of amberShards) {
         const dx = s.x - mote.x, dy = s.y - mote.y;
         const d = dx * dx + dy * dy;
-        if (d <= rangeSq) inRange.push({ distSq: d, amberShard: s });
+        if (d <= rangeSq) inRange.push({ distSq: d, ambershard: s });
       }
       for (const e of voidEnemies) {
         const dx = e.x - mote.x, dy = e.y - mote.y;
@@ -1893,8 +1898,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         } else if (t.amber) {
           const dmg = damageAmberEnemy(t.amber, rawDamage, 0);
           spawnHitVisualsAt(t.amber.x, t.amber.y, t.amber.maxHp, dmg, '#50b464');
-        } else if (t.amberShard) {
-          damageAmberShard(t.amberShard, rawDamage);
+        } else if (t.ambershard) {
+          damageAmberShard(t.ambershard, rawDamage);
         } else if (t.void) {
           const dmg = damageVoidEnemy(t.void, rawDamage, 0);
           spawnHitVisualsAt(t.void.x, t.void.y, t.void.maxHp, dmg, '#50b464');
@@ -1924,8 +1929,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const dmg = damageAmberEnemy(closestT.amber, rawDamage, defPierceRatio);
       spawnHitVisualsAt(closestT.amber.x, closestT.amber.y, closestT.amber.maxHp, dmg,
         effect.kind === 'piercing' ? '#74c0fc' : AMBER_ENEMY_GLOW);
-    } else if (closestT.amberShard) {
-      damageAmberShard(closestT.amberShard, rawDamage);
+    } else if (closestT.ambershard) {
+      damageAmberShard(closestT.ambershard, rawDamage);
     } else if (closestT.void) {
       const dmg = damageVoidEnemy(closestT.void, rawDamage, defPierceRatio);
       spawnHitVisualsAt(closestT.void.x, closestT.void.y, closestT.void.maxHp, dmg,
