@@ -217,7 +217,8 @@ const LASER_BEAM_WIDTH       =   2.5;
 // ── Fluid background force scales ─────────────────────────────
 // Multiplier applied to entity velocity (px/frame → px/s) before injection.
 // Lower values = gentler disturbance; higher = more reactive.
-const FLUID_PX_PER_S = 1000 / TARGET_FRAME_MS;  // factor to convert px/frame → px/s
+/** Converts entity velocity from px/frame units to px/s for fluid injection. */
+const FLUID_VEL_FRAME_TO_PX_S = 1000 / TARGET_FRAME_MS;  // = ~60 at 60 fps
 const FLUID_PLAYER_STRENGTH    = 1.4;
 const FLUID_ENEMY_STRENGTH     = 1.8;
 const FLUID_PROJECTILE_STRENGTH = 2.0;
@@ -759,8 +760,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // Inject sand-projectile motion into fluid.
       fluid.addForce({
         x: p.x, y: p.y,
-        vx: p.vx * FLUID_PX_PER_S,
-        vy: p.vy * FLUID_PX_PER_S,
+        vx: p.vx * FLUID_VEL_FRAME_TO_PX_S,
+        vy: p.vy * FLUID_VEL_FRAME_TO_PX_S,
         r: FLUID_SAND_R, g: FLUID_SAND_G, b: FLUID_SAND_B,
         strength: FLUID_PROJECTILE_STRENGTH,
       });
@@ -927,8 +928,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         for (let ni = 0; ni < CHAIN_NODES; ni++) {
           fluid.addForce({
             x: ws.nodesX[ni], y: ws.nodesY[ni],
-            vx: (tipDx / tipDist) * FLUID_PX_PER_S * 1.5,
-            vy: (tipDy / tipDist) * FLUID_PX_PER_S * 1.5,
+            vx: (tipDx / tipDist) * FLUID_VEL_FRAME_TO_PX_S * 1.5,
+            vy: (tipDy / tipDist) * FLUID_VEL_FRAME_TO_PX_S * 1.5,
             r: FLUID_CHAIN_R, g: FLUID_CHAIN_G, b: FLUID_CHAIN_B,
             strength: 1.2,
           });
@@ -1055,8 +1056,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       fluid.addForce({
         x: mote.x + dirX * beamLen * t,
         y: mote.y + dirY * beamLen * t,
-        vx: dirX * FLUID_PX_PER_S * 3.0,
-        vy: dirY * FLUID_PX_PER_S * 3.0,
+        vx: dirX * FLUID_VEL_FRAME_TO_PX_S * 3.0,
+        vy: dirY * FLUID_VEL_FRAME_TO_PX_S * 3.0,
         r: FLUID_BEAM_R, g: FLUID_BEAM_G, b: FLUID_BEAM_B,
         strength: FLUID_LASER_BEAM_STRENGTH,
       });
@@ -1102,8 +1103,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // Inject a gun-fire impulse in the launch direction.
     fluid.addForce({
       x: enemy.x, y: enemy.y,
-      vx: dirX * FLUID_PX_PER_S * 2.0,
-      vy: dirY * FLUID_PX_PER_S * 2.0,
+      vx: dirX * FLUID_VEL_FRAME_TO_PX_S * 2.0,
+      vy: dirY * FLUID_VEL_FRAME_TO_PX_S * 2.0,
       r: FLUID_MISSILE_R, g: FLUID_MISSILE_G, b: FLUID_MISSILE_B,
       strength: FLUID_PROJECTILE_STRENGTH * 1.5,
     });
@@ -1135,8 +1136,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (sespd > 0.04) {
         fluid.addForce({
           x: enemy.x, y: enemy.y,
-          vx: enemy.vx * FLUID_PX_PER_S,
-          vy: enemy.vy * FLUID_PX_PER_S,
+          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
+          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
           r: FLUID_SAPPH_R, g: FLUID_SAPPH_G, b: FLUID_SAPPH_B,
           strength: FLUID_ENEMY_STRENGTH,
         });
@@ -1178,8 +1179,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // heat-seeker trail required by the acceptance criteria.
       fluid.addForce({
         x: m.x, y: m.y,
-        vx: m.vx * FLUID_PX_PER_S,
-        vy: m.vy * FLUID_PX_PER_S,
+        vx: m.vx * FLUID_VEL_FRAME_TO_PX_S,
+        vy: m.vy * FLUID_VEL_FRAME_TO_PX_S,
         r: FLUID_MISSILE_R, g: FLUID_MISSILE_G, b: FLUID_MISSILE_B,
         strength: FLUID_MISSILE_STRENGTH,
       });
@@ -1775,8 +1776,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (espd > 0.05) {
         fluid.addForce({
           x: enemy.x, y: enemy.y,
-          vx: enemy.vx * FLUID_PX_PER_S,
-          vy: enemy.vy * FLUID_PX_PER_S,
+          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
+          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
           r: FLUID_LASER_R, g: FLUID_LASER_G, b: FLUID_LASER_B,
           strength: FLUID_ENEMY_STRENGTH,
         });
@@ -1875,8 +1876,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (speed > TRAIL_SPEED_THRESHOLD) {
       fluid.addForce({
         x: mote.x, y: mote.y,
-        vx: mote.vx * FLUID_PX_PER_S,
-        vy: mote.vy * FLUID_PX_PER_S,
+        vx: mote.vx * FLUID_VEL_FRAME_TO_PX_S,
+        vy: mote.vy * FLUID_VEL_FRAME_TO_PX_S,
         r: FLUID_PLAYER_R, g: FLUID_PLAYER_G, b: FLUID_PLAYER_B,
         strength: FLUID_PLAYER_STRENGTH,
       });

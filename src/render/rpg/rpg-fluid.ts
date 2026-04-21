@@ -59,6 +59,18 @@ const DYE_RETAIN_PER_SEC  = 0.28;
  */
 const MAX_GRID_VEL        = 48.0;
 
+// ── Colour helpers ─────────────────────────────────────────────────────────────
+/** Minimum RGB magnitude (0–255 space) for the dye field to influence a particle's colour. */
+const MIN_DYE_MAG_FOR_BLEND  = 8.0;
+/** RGB delta below which a colour is considered near-grey for hue-bucket assignment. */
+const HUE_GREY_THRESHOLD     = 8;
+/** Hue-bucket index used when RGB is near-grey (maps to ~210° violet for visual appeal). */
+const HUE_GREY_BUCKET        = 7;
+/** Default initial particle colour channels (R, G, B: 0–255) — cool violet hue. */
+const INITIAL_PARTICLE_R     = 120;
+const INITIAL_PARTICLE_G     =  90;
+const INITIAL_PARTICLE_B     = 220;
+
 // ── Force injection ───────────────────────────────────────────────────────────
 /** Gaussian σ (grid cells) for force / colour splats. */
 const FORCE_SIGMA_CELLS   = 3.2;
@@ -106,7 +118,7 @@ function _hueBucket(r: number, g: number, b: number): number {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const d   = max - min;
-  if (d < 8) return 7; // near-grey → violet bucket for aesthetic appeal
+  if (d < HUE_GREY_THRESHOLD) return HUE_GREY_BUCKET;
   let h: number;
   if (max === r)      h = ((g - b) / d + 6.0) % 6.0;
   else if (max === g) h = (b - r) / d + 2.0;
@@ -164,7 +176,9 @@ function _makeParticle(): FluidParticle {
     trailCount: 0,
     smoothedSpeed: 0,
     hueIdx: Math.floor(Math.random() * HUE_STEPS),
-    r: 120, g: 90, b: 220, // initial cool-violet hue
+    r: INITIAL_PARTICLE_R,
+    g: INITIAL_PARTICLE_G,
+    b: INITIAL_PARTICLE_B,
   };
 }
 
@@ -400,7 +414,7 @@ export function createRpgFluid(): RpgFluid {
         const sg  = _bilerp(dyeG, p.x, p.y);
         const sb  = _bilerp(dyeB, p.x, p.y);
         const mag = Math.sqrt(sr * sr + sg * sg + sb * sb);
-        if (mag > 8) {
+        if (mag > MIN_DYE_MAG_FOR_BLEND) {
           // Normalise the dye sample to [0,255] range, then blend.
           const inv   = 255.0 / mag;
           // Stronger speed → faster colour adoption; preserves vividness.
