@@ -18,9 +18,15 @@ import type { TierId } from '../tiers';
 /** Discriminated union describing the special behaviour of a weapon attack. */
 export type WeaponEffect =
   | { kind: 'single' }
-  | { kind: 'multi';    targetCount: number }
-  | { kind: 'aoe';      aoeRadius: number }
-  | { kind: 'piercing'; defPierceRatio: number };
+  | { kind: 'multi';      targetCount: number }
+  | { kind: 'aoe';        aoeRadius: number }
+  | { kind: 'piercing';   defPierceRatio: number }
+  /** Rapid-fire projectiles flying toward the nearest target. */
+  | { kind: 'gatling' }
+  /** Chain whip of 5 circles that lashes toward the nearest target periodically. */
+  | { kind: 'chainWhip' }
+  /** Infinite-length laser beam that pierces all enemies and shields. */
+  | { kind: 'laserBeam' };
 
 /** Combat stats granted by equipping this weapon. */
 export interface WeaponStats {
@@ -60,39 +66,39 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   // ── Tier 0: Sand ──────────────────────────────────────────────
   {
     id: 'sand_blade',
-    name: 'Sand Blade',
-    description: 'A blade condensed from sand motes. Reliable single-target strikes.',
+    name: 'Sand Gatling',
+    description: 'A rapid-fire sand cannon. Low damage per shot, but blazing fire rate.',
     costTierId: 'sand',
     cost: 500,
     stats: {
-      damage: 5, cooldownMs: 1000, range: 60, defBonus: 0,
-      effect: { kind: 'single' },
+      damage: 2, cooldownMs: 100, range: 90, defBonus: 0,
+      effect: { kind: 'gatling' },
     },
   },
 
   // ── Tier 1: Quartz ────────────────────────────────────────────
   {
     id: 'quartz_shard',
-    name: 'Quartz Shard',
-    description: 'A crystal-clear shard that cuts with precision. Better damage and range than the Sand Blade.',
+    name: 'Quartz Chain Whip',
+    description: 'A linked chain of 5 quartz circles that lashes at the nearest enemy periodically. Deals persistent contact damage.',
     costTierId: 'quartz',
     cost: 300,
     stats: {
-      damage: 8, cooldownMs: 1100, range: 70, defBonus: 1,
-      effect: { kind: 'single' },
+      damage: 4, cooldownMs: 2500, range: 75, defBonus: 1,
+      effect: { kind: 'chainWhip' },
     },
   },
 
   // ── Tier 2: Ruby ──────────────────────────────────────────────
   {
     id: 'ruby_lance',
-    name: 'Ruby Lance',
-    description: 'A focused lance of ruby resonance. Strong single-target hit with a bit of protection.',
+    name: 'Ruby Laser',
+    description: 'A devastating beam of ruby resonance. Immense power, very slow fire rate. Pierces all enemies and shields from one edge to the other.',
     costTierId: 'ruby',
     cost: 200,
     stats: {
-      damage: 12, cooldownMs: 1500, range: 80, defBonus: 2,
-      effect: { kind: 'single' },
+      damage: 80, cooldownMs: 4000, range: 9999, defBonus: 2,
+      effect: { kind: 'laserBeam' },
     },
   },
 

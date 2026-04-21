@@ -29,16 +29,46 @@ export interface WaveDefinition {
 
 /** Hand-authored wave definitions. */
 export const WAVE_DEFINITIONS: WaveDefinition[] = [
-  { waveNumber:  1, spawns: [{ enemyTypeId: 'laser', count: 1, spawnDelay:    0 }] },
-  { waveNumber:  2, spawns: [{ enemyTypeId: 'laser', count: 2, spawnDelay:  800 }] },
-  { waveNumber:  3, spawns: [{ enemyTypeId: 'laser', count: 2, spawnDelay:  600 }] },
-  { waveNumber:  4, spawns: [{ enemyTypeId: 'laser', count: 3, spawnDelay:  700 }] },
-  { waveNumber:  5, spawns: [{ enemyTypeId: 'laser', count: 3, spawnDelay:  500 }] },
-  { waveNumber:  6, spawns: [{ enemyTypeId: 'laser', count: 4, spawnDelay:  600 }] },
-  { waveNumber:  7, spawns: [{ enemyTypeId: 'laser', count: 4, spawnDelay:  500 }] },
-  { waveNumber:  8, spawns: [{ enemyTypeId: 'laser', count: 5, spawnDelay:  600 }] },
-  { waveNumber:  9, spawns: [{ enemyTypeId: 'laser', count: 5, spawnDelay:  400 }] },
-  { waveNumber: 10, spawns: [{ enemyTypeId: 'laser', count: 6, spawnDelay:  500 }] },
+  { waveNumber:  1, spawns: [{ enemyTypeId: 'laser',    count: 1, spawnDelay:    0 }] },
+  { waveNumber:  2, spawns: [{ enemyTypeId: 'laser',    count: 2, spawnDelay:  800 }] },
+  { waveNumber:  3, spawns: [{ enemyTypeId: 'laser',    count: 2, spawnDelay:  600 }] },
+  { waveNumber:  4, spawns: [{ enemyTypeId: 'laser',    count: 3, spawnDelay:  700 }] },
+  { waveNumber:  5, spawns: [{ enemyTypeId: 'laser',    count: 3, spawnDelay:  500 }] },
+  {
+    waveNumber: 6,
+    spawns: [
+      { enemyTypeId: 'laser',    count: 2, spawnDelay: 700 },
+      { enemyTypeId: 'sapphire', count: 1, spawnDelay: 900 },
+    ],
+  },
+  {
+    waveNumber: 7,
+    spawns: [
+      { enemyTypeId: 'laser',    count: 3, spawnDelay: 600 },
+      { enemyTypeId: 'sapphire', count: 1, spawnDelay: 900 },
+    ],
+  },
+  {
+    waveNumber: 8,
+    spawns: [
+      { enemyTypeId: 'laser',    count: 3, spawnDelay: 600 },
+      { enemyTypeId: 'sapphire', count: 2, spawnDelay: 1200 },
+    ],
+  },
+  {
+    waveNumber: 9,
+    spawns: [
+      { enemyTypeId: 'laser',    count: 3, spawnDelay: 500 },
+      { enemyTypeId: 'sapphire', count: 2, spawnDelay: 1100 },
+    ],
+  },
+  {
+    waveNumber: 10,
+    spawns: [
+      { enemyTypeId: 'laser',    count: 4, spawnDelay: 500 },
+      { enemyTypeId: 'sapphire', count: 2, spawnDelay: 1000 },
+    ],
+  },
 ];
 
 // ─── Procedural generator ─────────────────────────────────────────
@@ -53,10 +83,14 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (predefined) return predefined;
 
   // Procedural: count grows slowly; delay tightens as waves increase.
-  const count = Math.min(3 + Math.floor(waveNumber * 0.6), 12);
+  const laserCount   = Math.min(2 + Math.floor(waveNumber * 0.4), 8);
+  const sapphireCount = Math.min(1 + Math.floor((waveNumber - 5) * 0.25), 4);
   const delay = Math.max(150, 600 - waveNumber * 18);
   return {
     waveNumber,
-    spawns: [{ enemyTypeId: 'laser', count, spawnDelay: delay }],
+    spawns: [
+      { enemyTypeId: 'laser',    count: laserCount,    spawnDelay: delay },
+      { enemyTypeId: 'sapphire', count: sapphireCount, spawnDelay: delay + 400 },
+    ],
   };
 }

@@ -139,8 +139,8 @@ const WEAPON_PARTICLE_ORBIT_RADIUS = 12;
 const WEAPON_PARTICLE_MIN_SPEED    = 0.5;
 
 // ── Orbiting projectile upgrade ───────────────────────────────
-/** Angular speed of the orbit projectile (radians per second). */
-const ORBIT_PROJ_SPEED_RAD   = 3.5;
+/** Angular speed of the orbit projectile (radians per second). Counter-clockwise = positive value applied negatively. */
+const ORBIT_PROJ_SPEED_RAD   = 7.0;  // 2× original speed; direction is negated in update
 /** Orbit radius for the orbit projectile (internal px). */
 const ORBIT_PROJ_RADIUS      = 20;
 /** Size (px) of the orbit projectile mote. */
@@ -157,6 +157,55 @@ const ORBIT_PROJ_DAMAGE      = 15;
 const ORBIT_PROJ_HIT_CD_MS   = 500;
 /** Font string for damage number rendering. */
 const DAMAGE_NUM_FONT_FAMILY = '"Pixelify Sans", monospace';
+
+// ── Sapphire enemy constants ───────────────────────────────────
+const SAPPHIRE_ENEMY_SIZE      =   6;
+const SAPPHIRE_ENEMY_COLOR     = '#5b9aff';
+const SAPPHIRE_ENEMY_GLOW      = '#88bbff';
+const SAPPHIRE_HP_INIT         = 250;
+const SAPPHIRE_ATK_INIT        =  15;
+const SAPPHIRE_DEF_INIT        =   8;
+const SAPPHIRE_SHIELD_RADIUS   =  18;  // circle shield radius (px)
+const SAPPHIRE_SHIELD_HP_INIT  = 120;
+const SAPPHIRE_PATROL_SPEED    =   0.45;
+const SAPPHIRE_PATROL_TURN_MS  = 3200;
+const SAPPHIRE_MISSILE_CD_MS   = 4000;  // ms between missiles
+const SAPPHIRE_MISSILE_JITTER  =  800;  // ±random offset to missile CD
+
+// ── Sapphire missile constants ─────────────────────────────────
+const MISSILE_SIZE        =    3;
+const MISSILE_SPEED       =    1.2;   // initial speed (px/frame at 60fps)
+const MISSILE_SEEK_STR    =    0.025; // fraction of remaining error corrected per frame
+const MISSILE_MAX_SPEED   =    1.8;
+const MISSILE_HP_INIT     =   30;
+const MISSILE_ATK_INIT    =   18;
+const MISSILE_TRAIL_CAP   =   40;
+const MISSILE_COLOR       = '#ff7733';
+const MISSILE_GLOW        = '#ffaa55';
+
+// ── Sand gatling projectile constants ──────────────────────────
+const SAND_PROJ_SPEED      =   5.0;
+const SAND_PROJ_SIZE       =   2;
+const SAND_PROJ_LIFE_MS    = 800;
+const SAND_PROJ_COLOR      = '#ddc080';
+const SAND_PROJ_GLOW       = '#ffe8a0';
+
+// ── Quartz chain whip constants ────────────────────────────────
+const CHAIN_NODES          =   5;
+const CHAIN_NODE_RADIUS    =   4;    // circle radius per node (px)
+const CHAIN_NODE_COLOR     = '#a0d8ef';
+const CHAIN_NODE_GLOW      = '#c8eeff';
+const CHAIN_LINE_COLOR     = '#88c8e8';
+const CHAIN_LASH_MS        = 280;   // ms for tip to reach target
+const CHAIN_RETRACT_MS     = 220;   // ms to retract
+/** Damage ticks per I-frame interval (ms). */
+const CHAIN_HIT_CD_MS      =  62.5;
+
+// ── Ruby laser beam constants ──────────────────────────────────
+const LASER_BEAM_VISIBLE_MS  = 400;   // how long the beam stays on screen
+const LASER_BEAM_COLOR       = '#ff2222';
+const LASER_BEAM_GLOW        = '#ff8888';
+const LASER_BEAM_WIDTH       =   2.5;
 
 interface RpgMote {
   x: number; y: number;
@@ -273,9 +322,64 @@ interface OrbitProjectile {
   /** Comet trail. */
   trailX: Float64Array; trailY: Float64Array;
   trailHead: number; trailCount: number;
-  /** Per-enemy cooldown tracking: enemyIndex → remaining cd ms.
-   *  We use a WeakMap-like approach using the enemy object itself. */
-  hitCooldowns: Map<LaserEnemy, number>;
+  /** Per-target cooldown tracking (uses object identity as key). */
+  hitCooldowns: Map<object, number>;
+}
+
+// ── Sapphire enemy and missile interfaces ─────────────────────
+
+interface SapphireEnemy {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  shieldHp: number; maxShieldHp: number;
+  missileTimerMs: number;
+  patrolTimerMs: number;
+}
+
+interface SapphireMissile {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+  hasHitPlayer: boolean;
+}
+
+// ── Sand gatling projectile ────────────────────────────────────
+
+interface SandProjectile {
+  x: number; y: number;
+  vx: number; vy: number;
+  lifeMs: number;
+}
+
+// ── Quartz chain whip ──────────────────────────────────────────
+
+type ChainPhase = 'idle' | 'lashing' | 'retracting';
+
+interface ChainWhipState {
+  phase: ChainPhase;
+  phaseMs: number;
+  cooldownMs: number;
+  /** Tip lash target in world space. */
+  targetX: number; targetY: number;
+  /** Computed node positions (index 0 = player anchor, CHAIN_NODES-1 = tip). */
+  nodesX: Float64Array; nodesY: Float64Array;
+  /** Per-target hit cooldown for persistent damage. */
+  hitCooldowns: Map<object, number>;
+}
+
+// ── Ruby laser beam visual ─────────────────────────────────────
+
+interface LaserBeamEffect {
+  active: boolean;
+  startX: number; startY: number;
+  endX: number; endY: number;
+  dirX: number; dirY: number;
+  timerMs: number;
 }
 
 export interface RpgRender {
@@ -303,6 +407,29 @@ function makeLaserEnemy(x: number, y: number): LaserEnemy {
     lockedTargetX: 0, lockedTargetY: 0,
     attackTrail: makeAttackTrail(),
     patrolTimerMs: Math.random() * LASER_PATROL_TURN_MS,
+    hasHitPlayer: false,
+  };
+}
+
+function makeSapphireEnemy(x: number, y: number): SapphireEnemy {
+  return {
+    x, y, vx: 0, vy: 0,
+    hp: SAPPHIRE_HP_INIT, maxHp: SAPPHIRE_HP_INIT,
+    atk: SAPPHIRE_ATK_INIT, def: SAPPHIRE_DEF_INIT,
+    shieldHp: SAPPHIRE_SHIELD_HP_INIT, maxShieldHp: SAPPHIRE_SHIELD_HP_INIT,
+    missileTimerMs: SAPPHIRE_MISSILE_CD_MS + Math.random() * SAPPHIRE_MISSILE_JITTER,
+    patrolTimerMs: Math.random() * SAPPHIRE_PATROL_TURN_MS,
+  };
+}
+
+function makeSapphireMissile(x: number, y: number, vx: number, vy: number): SapphireMissile {
+  return {
+    x, y, vx, vy,
+    hp: MISSILE_HP_INIT, maxHp: MISSILE_HP_INIT,
+    atk: MISSILE_ATK_INIT,
+    trailX: new Float64Array(MISSILE_TRAIL_CAP),
+    trailY: new Float64Array(MISSILE_TRAIL_CAP),
+    trailHead: 0, trailCount: 0,
     hasHitPlayer: false,
   };
 }
@@ -367,6 +494,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const damageNumbers: DamageNumber[] = [];
   let playerIFramesMs = 0;
 
+  // ── Sapphire enemies, missiles, and new weapon state ──────────
+  const sapphireEnemies: SapphireEnemy[]  = [];
+  const sapphireMissiles: SapphireMissile[] = [];
+  const sandProjectiles: SandProjectile[] = [];
+  let chainWhipState: ChainWhipState | null = null;
+  let laserBeamEffect: LaserBeamEffect | null = null;
+
   // ── Equipped weapon visual particle ───────────────────────────
   let weaponOrbitParticle: WeaponOrbitParticle | null = null;
 
@@ -420,12 +554,43 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Player attack helpers ──────────────────────────────────────
 
-  /** Deals damage from the player to one enemy, respecting DEF and a DEF pierce ratio.
+  /** Deals damage from the player to one laser enemy, respecting DEF and a DEF pierce ratio.
    *  Returns the actual damage dealt (0 if DEF fully absorbed the hit). */
   function damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
     if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  /**
+   * Deals damage to a sapphire enemy, handling the shield.
+   * bypassShield = true means the ruby laser is firing — ignore the shield.
+   * Returns { dmg, wasShield } where dmg is the effective damage applied.
+   */
+  function damageSapphireEnemy(
+    enemy: SapphireEnemy,
+    rawDamage: number,
+    defPierceRatio: number,
+    bypassShield: boolean,
+  ): number {
+    if (!bypassShield && enemy.shieldHp > 0) {
+      // Hit the shield.
+      const dmg = Math.max(1, rawDamage);
+      enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
+      return dmg;
+    }
+    // Hit the enemy body.
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  /** Deals damage to a missile (no DEF, no shield). Returns actual damage dealt. */
+  function damageMissile(missile: SapphireMissile, rawDamage: number): number {
+    const dmg = Math.max(1, rawDamage);
+    missile.hp = Math.max(0, missile.hp - dmg);
     return dmg;
   }
 
@@ -454,25 +619,582 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     });
   }
 
-  /** Registers a hit-flash and shot-line visual for one target, and spawns a damage number. */
-  function spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string): void {
-    hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color });
-    shotLines.push({
-      x1: mote.x, y1: mote.y,
-      x2: enemy.x, y2: enemy.y,
-      timerMs: SHOT_LINE_DURATION_MS, color,
-    });
-    // Damage number floats away from the player (opposite to where the attack came from).
-    const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+  /** Registers a hit-flash and shot-line visual for one target position, and spawns a damage number. */
+  function spawnHitVisualsAt(tx: number, ty: number, maxHp: number, dmg: number, color: string): void {
+    hitEffects.push({ x: tx, y: ty, timerMs: HIT_EFFECT_DURATION_MS, color });
+    shotLines.push({ x1: mote.x, y1: mote.y, x2: tx, y2: ty, timerMs: SHOT_LINE_DURATION_MS, color });
+    const dx = tx - mote.x, dy = ty - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const dirX = dist > 0.01 ? dx / dist : 0;
     const dirY = dist > 0.01 ? dy / dist : -1;
     if (dmg <= 0) {
-      spawnDamageNumber(enemy.x, enemy.y, dirX, dirY, 'BLOCKED', 0.25, '#74c0fc');
+      spawnDamageNumber(tx, ty, dirX, dirY, 'BLOCKED', 0.25, '#74c0fc');
     } else {
-      const ratio = dmg / enemy.maxHp;
-      spawnDamageNumber(enemy.x, enemy.y, dirX, dirY, String(Math.round(dmg)), ratio, '#ffffff');
+      spawnDamageNumber(tx, ty, dirX, dirY, String(Math.round(dmg)), dmg / maxHp, '#ffffff');
     }
+  }
+
+  /** Registers a hit-flash and shot-line visual for one laser enemy, and spawns a damage number. */
+  function spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string): void {
+    spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, color);
+  }
+
+  // ── Closest-target helpers ─────────────────────────────────────
+
+  /** Represents any targetable entity (laser enemy, sapphire enemy, or missile). */
+  type TargetKind = 'laser' | 'sapphire' | 'missile';
+  interface ClosestTarget {
+    kind: TargetKind;
+    x: number; y: number;
+    distSq: number;
+    laser?: LaserEnemy;
+    sapphire?: SapphireEnemy;
+    missile?: SapphireMissile;
+  }
+
+  /**
+   * Returns the closest targetable entity (laser enemy, sapphire enemy, or missile)
+   * within rangeSq squared distance. Returns null if nothing is in range.
+   */
+  function findClosestTarget(rangeSq: number): ClosestTarget | null {
+    let best: ClosestTarget | null = null;
+    let bestSq = rangeSq;
+
+    for (const e of enemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'laser', x: e.x, y: e.y, distSq: d, laser: e }; }
+    }
+    for (const e of sapphireEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'sapphire', x: e.x, y: e.y, distSq: d, sapphire: e }; }
+    }
+    for (const m of sapphireMissiles) {
+      const dx = m.x - mote.x, dy = m.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'missile', x: m.x, y: m.y, distSq: d, missile: m }; }
+    }
+    return best;
+  }
+
+  /** Returns the closest enemy (laser or sapphire, NOT missiles) within rangeSq. */
+  function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | null {
+    let bestSq = rangeSq;
+    let best: LaserEnemy | SapphireEnemy | null = null;
+    for (const e of enemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of sapphireEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    return best;
+  }
+
+  // ── Sand gatling projectile system ─────────────────────────────
+
+  function spawnSandProjectile(targetX: number, targetY: number): void {
+    const dx = targetX - mote.x, dy = targetY - mote.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.01) return;
+    sandProjectiles.push({
+      x: mote.x, y: mote.y,
+      vx: (dx / dist) * SAND_PROJ_SPEED,
+      vy: (dy / dist) * SAND_PROJ_SPEED,
+      lifeMs: SAND_PROJ_LIFE_MS,
+    });
+  }
+
+  function updateSandProjectiles(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    const damage = weaponDef?.stats.damage ?? 2;
+
+    for (let i = sandProjectiles.length - 1; i >= 0; i--) {
+      const p = sandProjectiles[i];
+      p.lifeMs -= deltaMs;
+      if (p.lifeMs <= 0) { sandProjectiles.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+
+      // Bounds check
+      if (p.x < 0 || p.x > widthPx || p.y < 0 || p.y > heightPx) {
+        sandProjectiles.splice(i, 1); continue;
+      }
+
+      // Collision with laser enemies
+      let hit = false;
+      for (const e of enemies) {
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < (LASER_ENEMY_SIZE * 2) ** 2) {
+          const dmg = damageEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with sapphire enemies
+      for (const e of sapphireEnemies) {
+        const hitR = SAPPHIRE_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageSapphireEnemy(e, damage, 0, false);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with missiles
+      for (const m of sapphireMissiles) {
+        const dx = p.x - m.x, dy = p.y - m.y;
+        if (dx * dx + dy * dy < (MISSILE_SIZE * 2.5) ** 2) {
+          const dmg = damageMissile(m, damage);
+          spawnHitVisualsAt(m.x, m.y, m.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); break;
+        }
+      }
+    }
+  }
+
+  function drawSandProjectiles(): void {
+    if (sandProjectiles.length === 0) return;
+    ctx.save();
+    for (const p of sandProjectiles) {
+      const alpha = p.lifeMs / SAND_PROJ_LIFE_MS;
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.shadowBlur  = SAND_PROJ_SIZE * 4; ctx.shadowColor = SAND_PROJ_GLOW;
+      ctx.fillStyle   = SAND_PROJ_GLOW;
+      const gr = SAND_PROJ_SIZE * 1.5;
+      ctx.fillRect(Math.floor(p.x - gr), Math.floor(p.y - gr), Math.ceil(gr * 2), Math.ceil(gr * 2));
+      ctx.shadowBlur = 0;
+      ctx.fillStyle  = SAND_PROJ_COLOR;
+      ctx.fillRect(Math.floor(p.x - SAND_PROJ_SIZE / 2), Math.floor(p.y - SAND_PROJ_SIZE / 2), SAND_PROJ_SIZE, SAND_PROJ_SIZE);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // ── Quartz chain whip system ───────────────────────────────────
+
+  function buildChainWhip(): ChainWhipState {
+    const nodesX = new Float64Array(CHAIN_NODES);
+    const nodesY = new Float64Array(CHAIN_NODES);
+    for (let i = 0; i < CHAIN_NODES; i++) { nodesX[i] = mote.x; nodesY[i] = mote.y; }
+    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    return {
+      phase: 'idle',
+      phaseMs: 0,
+      cooldownMs: weaponDef?.stats.cooldownMs ?? 2500,
+      targetX: mote.x, targetY: mote.y,
+      nodesX, nodesY,
+      hitCooldowns: new Map(),
+    };
+  }
+
+  function updateChainWhipCooldowns(deltaMs: number): void {
+    if (!chainWhipState) return;
+    for (const [key, cd] of chainWhipState.hitCooldowns) {
+      const next = cd - deltaMs;
+      if (next <= 0) chainWhipState.hitCooldowns.delete(key);
+      else chainWhipState.hitCooldowns.set(key, next);
+    }
+  }
+
+  function updateChainWhip(deltaMs: number): void {
+    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    if (!weaponDef || weaponDef.stats.effect?.kind !== 'chainWhip') {
+      chainWhipState = null;
+      return;
+    }
+    if (!chainWhipState) chainWhipState = buildChainWhip();
+    const ws = chainWhipState;
+    const range = weaponDef.stats.range;
+    const contactDamage = weaponDef.stats.damage;
+
+    updateChainWhipCooldowns(deltaMs);
+
+    if (ws.phase === 'idle') {
+      // Nodes drift back to player
+      for (let i = 0; i < CHAIN_NODES; i++) {
+        ws.nodesX[i] += (mote.x - ws.nodesX[i]) * 0.15;
+        ws.nodesY[i] += (mote.y - ws.nodesY[i]) * 0.15;
+      }
+      ws.phaseMs += deltaMs;
+      if (ws.phaseMs >= ws.cooldownMs) {
+        // Look for a target to lash
+        const target = findClosestEnemy(range * range);
+        if (target) {
+          ws.targetX = target.x; ws.targetY = target.y;
+          ws.phase = 'lashing'; ws.phaseMs = 0;
+        } else {
+          ws.phaseMs = ws.cooldownMs; // try again next frame
+        }
+      }
+    } else if (ws.phase === 'lashing') {
+      ws.phaseMs += deltaMs;
+      const t = Math.min(ws.phaseMs / CHAIN_LASH_MS, 1);
+      // Move tip toward target with easing
+      const tipX = mote.x + (ws.targetX - mote.x) * t;
+      const tipY = mote.y + (ws.targetY - mote.y) * t;
+      // Distribute nodes along curve from player to tip
+      for (let i = 0; i < CHAIN_NODES; i++) {
+        const u = i / (CHAIN_NODES - 1);
+        ws.nodesX[i] = mote.x + (tipX - mote.x) * u;
+        ws.nodesY[i] = mote.y + (tipY - mote.y) * u;
+      }
+
+      // Contact damage: check all nodes against all enemies
+      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy): void => {
+        const r = CHAIN_NODE_RADIUS + LASER_ENEMY_SIZE;
+        const dx = tx - target.x, dy = ty - target.y;
+        if (dx * dx + dy * dy < r * r) {
+          if (!ws.hitCooldowns.has(target)) {
+            let dmg = 0;
+            if ('shieldHp' in target) {
+              dmg = damageSapphireEnemy(target, contactDamage, 0, false);
+            } else {
+              dmg = damageEnemy(target, contactDamage, 0);
+            }
+            ws.hitCooldowns.set(target, CHAIN_HIT_CD_MS);
+            hitEffects.push({ x: target.x, y: target.y, timerMs: HIT_EFFECT_DURATION_MS, color: CHAIN_NODE_COLOR });
+            spawnDamageNumber(target.x, target.y, 0, -1, String(Math.round(dmg)), dmg / target.maxHp, CHAIN_NODE_COLOR);
+          }
+        }
+      };
+      for (let ni = 0; ni < CHAIN_NODES; ni++) {
+        const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
+        for (const e of enemies)          applyContactDamage(nx, ny, e);
+        for (const e of sapphireEnemies)  applyContactDamage(nx, ny, e);
+      }
+
+      if (t >= 1) { ws.phase = 'retracting'; ws.phaseMs = 0; }
+    } else if (ws.phase === 'retracting') {
+      ws.phaseMs += deltaMs;
+      const t = Math.min(ws.phaseMs / CHAIN_RETRACT_MS, 1);
+      const tipX = ws.targetX + (mote.x - ws.targetX) * t;
+      const tipY = ws.targetY + (mote.y - ws.targetY) * t;
+      for (let i = 0; i < CHAIN_NODES; i++) {
+        const u = i / (CHAIN_NODES - 1);
+        ws.nodesX[i] = mote.x + (tipX - mote.x) * u;
+        ws.nodesY[i] = mote.y + (tipY - mote.y) * u;
+      }
+      if (t >= 1) { ws.phase = 'idle'; ws.phaseMs = 0; }
+    }
+  }
+
+  function drawChainWhip(): void {
+    if (!chainWhipState || chainWhipState.phase === 'idle') return;
+    const ws = chainWhipState;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.lineCap   = 'round';
+    ctx.lineJoin  = 'round';
+    // Draw chain links (lines between nodes)
+    ctx.strokeStyle = CHAIN_LINE_COLOR;
+    ctx.shadowBlur  = 4; ctx.shadowColor = CHAIN_NODE_GLOW;
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(ws.nodesX[0], ws.nodesY[0]);
+    for (let i = 1; i < CHAIN_NODES; i++) ctx.lineTo(ws.nodesX[i], ws.nodesY[i]);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Draw node circles
+    for (let i = 0; i < CHAIN_NODES; i++) {
+      ctx.globalAlpha = 0.9;
+      ctx.shadowBlur  = CHAIN_NODE_RADIUS * 3; ctx.shadowColor = CHAIN_NODE_GLOW;
+      ctx.fillStyle   = CHAIN_NODE_GLOW;
+      ctx.beginPath();
+      ctx.arc(ws.nodesX[i], ws.nodesY[i], CHAIN_NODE_RADIUS * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle  = CHAIN_NODE_COLOR;
+      ctx.beginPath();
+      ctx.arc(ws.nodesX[i], ws.nodesY[i], CHAIN_NODE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // ── Ruby laser beam system ─────────────────────────────────────
+
+  function fireLaserBeam(targetX: number, targetY: number): void {
+    const dx = targetX - mote.x, dy = targetY - mote.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.01) return;
+    const dirX = dx / dist, dirY = dy / dist;
+    laserBeamEffect = { active: true, startX: mote.x, startY: mote.y, dirX, dirY, timerMs: LASER_BEAM_VISIBLE_MS, endX: 0, endY: 0 };
+
+    // Compute the endpoint (extend to canvas edge)
+    let tMax = Infinity;
+    if (dirX > 0)  tMax = Math.min(tMax, (widthPx  - mote.x) / dirX);
+    if (dirX < 0)  tMax = Math.min(tMax, -mote.x / dirX);
+    if (dirY > 0)  tMax = Math.min(tMax, (heightPx - mote.y) / dirY);
+    if (dirY < 0)  tMax = Math.min(tMax, -mote.y / dirY);
+    const endX = mote.x + dirX * tMax;
+    const endY = mote.y + dirY * tMax;
+
+    const weaponDef = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
+    const baseDamage = weaponDef?.stats.damage ?? 80;
+
+    // Hit every laser enemy on the beam path
+    for (const e of enemies) {
+      // Point-to-line distance
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= LASER_ENEMY_SIZE * 2) {
+        const dmg = damageEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit every sapphire enemy on the beam path (bypasses shield)
+    for (const e of sapphireEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= SAPPHIRE_SHIELD_RADIUS + 2) {
+        const dmg = damageSapphireEnemy(e, baseDamage, 1.0, true);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit missiles on the beam path
+    for (const m of sapphireMissiles) {
+      const ex = m.x - mote.x, ey = m.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= MISSILE_SIZE * 2) {
+        damageMissile(m, baseDamage);
+      }
+    }
+
+    // Store end coords for drawing
+    laserBeamEffect.startX = mote.x; laserBeamEffect.startY = mote.y;
+    laserBeamEffect.endX = endX;
+    laserBeamEffect.endY = endY;
+  }
+
+  function updateLaserBeamEffect(deltaMs: number): void {
+    if (!laserBeamEffect || !laserBeamEffect.active) return;
+    laserBeamEffect.timerMs -= deltaMs;
+    if (laserBeamEffect.timerMs <= 0) laserBeamEffect.active = false;
+  }
+
+  function drawLaserBeamEffect(): void {
+    if (!laserBeamEffect || !laserBeamEffect.active) return;
+    const endX = laserBeamEffect.endX;
+    const endY = laserBeamEffect.endY;
+    const t = laserBeamEffect.timerMs / LASER_BEAM_VISIBLE_MS;
+    ctx.save();
+    ctx.globalAlpha = t * 0.9;
+    ctx.lineCap = 'round';
+    // Glow pass
+    ctx.shadowBlur = 12; ctx.shadowColor = LASER_BEAM_GLOW;
+    ctx.strokeStyle = LASER_BEAM_GLOW; ctx.lineWidth = LASER_BEAM_WIDTH * 3;
+    ctx.beginPath(); ctx.moveTo(laserBeamEffect.startX, laserBeamEffect.startY); ctx.lineTo(endX, endY); ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Core pass
+    ctx.strokeStyle = LASER_BEAM_COLOR; ctx.lineWidth = LASER_BEAM_WIDTH;
+    ctx.beginPath(); ctx.moveTo(laserBeamEffect.startX, laserBeamEffect.startY); ctx.lineTo(endX, endY); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.restore();
+  }
+
+  // ── Sapphire enemy system ──────────────────────────────────────
+
+  function spawnMissileFromEnemy(enemy: SapphireEnemy): void {
+    const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dirX = dist > 0.01 ? dx / dist : 0;
+    const dirY = dist > 0.01 ? dy / dist : 1;
+    sapphireMissiles.push(makeSapphireMissile(
+      enemy.x, enemy.y,
+      dirX * MISSILE_SPEED, dirY * MISSILE_SPEED,
+    ));
+  }
+
+  function updateSapphireEnemies(deltaMs: number, _nowMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of sapphireEnemies) {
+      // Patrol
+      enemy.patrolTimerMs -= deltaMs;
+      if (enemy.patrolTimerMs <= 0) {
+        const angle = Math.random() * Math.PI * 2;
+        enemy.vx = Math.cos(angle) * SAPPHIRE_PATROL_SPEED;
+        enemy.vy = Math.sin(angle) * SAPPHIRE_PATROL_SPEED;
+        enemy.patrolTimerMs = SAPPHIRE_PATROL_TURN_MS * (0.5 + Math.random() * 0.8);
+      }
+      enemy.vx *= Math.pow(LASER_PATROL_DAMPING, dt);
+      enemy.vy *= Math.pow(LASER_PATROL_DAMPING, dt);
+      enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      // Clamp to bounds
+      const half = SAPPHIRE_ENEMY_SIZE / 2;
+      if (enemy.x < half)             { enemy.x = half;             enemy.vx =  Math.abs(enemy.vx) * 0.5; }
+      if (enemy.x > widthPx  - half)  { enemy.x = widthPx  - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+      if (enemy.y < half)             { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
+      if (enemy.y > heightPx - half)  { enemy.y = heightPx - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+
+      // Missile firing
+      enemy.missileTimerMs -= deltaMs;
+      if (enemy.missileTimerMs <= 0) {
+        spawnMissileFromEnemy(enemy);
+        enemy.missileTimerMs = SAPPHIRE_MISSILE_CD_MS + (Math.random() - 0.5) * SAPPHIRE_MISSILE_JITTER;
+      }
+    }
+  }
+
+  function updateSapphireMissiles(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
+      const m = sapphireMissiles[i];
+      if (m.hp <= 0) { sapphireMissiles.splice(i, 1); continue; }
+
+      // Heat-seeking toward player
+      const dx = mote.x - m.x, dy = mote.y - m.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0.01) {
+        const seekDirX = dx / dist, seekDirY = dy / dist;
+        m.vx += seekDirX * MISSILE_SEEK_STR;
+        m.vy += seekDirY * MISSILE_SEEK_STR;
+      }
+      // Cap speed
+      const speed = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+      if (speed > MISSILE_MAX_SPEED) {
+        m.vx = (m.vx / speed) * MISSILE_MAX_SPEED;
+        m.vy = (m.vy / speed) * MISSILE_MAX_SPEED;
+      }
+
+      m.x += m.vx * dt; m.y += m.vy * dt;
+
+      // Record trail
+      m.trailX[m.trailHead] = m.x; m.trailY[m.trailHead] = m.y;
+      m.trailHead = (m.trailHead + 1) % MISSILE_TRAIL_CAP;
+      if (m.trailCount < MISSILE_TRAIL_CAP) m.trailCount++;
+
+      // Hit player
+      if (!m.hasHitPlayer) {
+        const pdx = mote.x - m.x, pdy = mote.y - m.y;
+        if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          m.hasHitPlayer = true;
+          if (playerIFramesMs <= 0) {
+            const rawDmg = m.atk - playerStats.def;
+            const dmg = Math.max(0, rawDmg);
+            if (dmg <= 0) {
+              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+            } else {
+              playerStats.hp = Math.max(0, playerStats.hp - dmg);
+              const ratio = Math.min(1, dmg / playerStats.maxHp);
+              const dirX = m.vx / (speed + 0.001), dirY = m.vy / (speed + 0.001);
+              mote.vx += dirX * PLAYER_KNOCKBACK_MAX * ratio;
+              mote.vy += dirY * PLAYER_KNOCKBACK_MAX * ratio;
+              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+              spawnDamageNumber(mote.x, mote.y, dirX, dirY, String(Math.round(dmg)), ratio, '#ff6666');
+            }
+          }
+          sapphireMissiles.splice(i, 1);
+        }
+      }
+
+      // Despawn if far out of bounds
+      const margin = 20;
+      if (m.x < -margin || m.x > widthPx + margin || m.y < -margin || m.y > heightPx + margin) {
+        sapphireMissiles.splice(i, 1);
+      }
+    }
+  }
+
+  function drawSapphireEnemies(): void {
+    for (const enemy of sapphireEnemies) {
+      // Draw shield circle
+      const shieldAlpha = enemy.shieldHp / enemy.maxShieldHp;
+      if (enemy.shieldHp > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.25 + shieldAlpha * 0.35;
+        ctx.shadowBlur  = SAPPHIRE_SHIELD_RADIUS * 2; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
+        ctx.strokeStyle = SAPPHIRE_ENEMY_GLOW; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = shieldAlpha * 0.18;
+        ctx.fillStyle = SAPPHIRE_ENEMY_GLOW;
+        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+      // HP bar
+      const barW = SAPPHIRE_SHIELD_RADIUS * 2;
+      const barH = 2;
+      const barX = enemy.x - barW / 2;
+      const barY = enemy.y + SAPPHIRE_SHIELD_RADIUS + 3;
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = SAPPHIRE_ENEMY_COLOR;
+      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+      // Shield HP bar (below HP bar)
+      if (enemy.shieldHp > 0) {
+        ctx.fillStyle = '#333'; ctx.fillRect(barX, barY + barH + 1, barW, barH);
+        ctx.fillStyle = '#88ccff';
+        ctx.fillRect(barX, barY + barH + 1, barW * (enemy.shieldHp / enemy.maxShieldHp), barH);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      // Enemy body (square)
+      const half = SAPPHIRE_ENEMY_SIZE / 2;
+      ctx.shadowBlur = SAPPHIRE_ENEMY_SIZE * 5; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
+      ctx.fillStyle = SAPPHIRE_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function drawSapphireMissiles(): void {
+    if (sapphireMissiles.length === 0) return;
+    ctx.save();
+    for (const m of sapphireMissiles) {
+      // Draw trail using lineDash style similar to laser attack trail
+      if (m.trailCount >= 2) {
+        const dashLen = MISSILE_TRAIL_CAP * 0.6;
+        const startIdx = (m.trailHead - m.trailCount + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
+        const lastIdx  = (m.trailHead - 1 + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
+        const sx = m.trailX[startIdx], sy = m.trailY[startIdx];
+        const ex = m.trailX[lastIdx],  ey = m.trailY[lastIdx];
+        ctx.save();
+        ctx.setLineDash([dashLen, dashLen]);
+        ctx.lineDashOffset = -(dashLen * (1 - m.trailCount / MISSILE_TRAIL_CAP));
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.globalAlpha = 0.7; ctx.shadowBlur = 5; ctx.shadowColor = MISSILE_GLOW;
+        ctx.strokeStyle = MISSILE_GLOW; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = MISSILE_COLOR; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+      // Missile body
+      const half = MISSILE_SIZE / 2;
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = MISSILE_SIZE * 5; ctx.shadowColor = MISSILE_GLOW;
+      ctx.fillStyle = MISSILE_GLOW;
+      const gh = half * 2;
+      ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = MISSILE_COLOR;
+      ctx.fillRect(Math.floor(m.x - half), Math.floor(m.y - half), MISSILE_SIZE, MISSILE_SIZE);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
   }
 
   /**
@@ -481,12 +1203,34 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * to clean up any enemies whose HP dropped to zero.
    */
   function performPlayerAttack(): void {
-    if (enemies.length === 0) return;
+    const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length;
+    if (totalTargets === 0) return;
     const weaponDef  = rpgSimState.equippedWeaponId ? WEAPON_BY_ID.get(rpgSimState.equippedWeaponId) : undefined;
     const range      = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
     const rawDamage  = playerStats.atk;
     const effect     = weaponDef?.stats.effect ?? { kind: 'single' as const };
     const shotColor  = '#ffd764';
+
+    // ── Gatling gun ────────────────────────────────────────────
+    if (effect.kind === 'gatling') {
+      const target = findClosestTarget(range * range);
+      if (target) spawnSandProjectile(target.x, target.y);
+      return;
+    }
+
+    // ── Chain whip ─────────────────────────────────────────────
+    if (effect.kind === 'chainWhip') {
+      // The chain whip handles its own lash triggering in updateChainWhip().
+      return;
+    }
+
+    // ── Ruby laser beam ────────────────────────────────────────
+    if (effect.kind === 'laserBeam') {
+      // Fire in the direction of the closest target (enemies only, not missiles)
+      const target = findClosestTarget(range * range);
+      if (target) fireLaserBeam(target.x, target.y);
+      return;
+    }
 
     if (effect.kind === 'aoe') {
       // Hit every enemy within aoeRadius of the player.
@@ -498,43 +1242,65 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisuals(enemy, dmg, '#e6c850');
         }
       }
+      for (const enemy of sapphireEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageSapphireEnemy(enemy, rawDamage, 0, false);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
       return;
     }
 
     if (effect.kind === 'multi') {
       // Collect enemies in range, sorted by distance, take the N closest.
+      type SortEntry = { distSq: number; laser?: LaserEnemy; sapphire?: SapphireEnemy; missile?: SapphireMissile };
       const rangeSq = range * range;
-      const inRange = enemies
-        .filter(e => { const dx = e.x - mote.x, dy = e.y - mote.y; return dx * dx + dy * dy <= rangeSq; })
-        .sort((a, b) => {
-          const da = (a.x - mote.x) ** 2 + (a.y - mote.y) ** 2;
-          const db = (b.x - mote.x) ** 2 + (b.y - mote.y) ** 2;
-          return da - db;
-        })
-        .slice(0, effect.targetCount);
-      for (const enemy of inRange) {
-        const dmg = damageEnemy(enemy, rawDamage, 0);
-        spawnHitVisuals(enemy, dmg, '#50b464');
+      const inRange: SortEntry[] = [];
+      for (const e of enemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, laser: e });
+      }
+      for (const e of sapphireEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, sapphire: e });
+      }
+      for (const m of sapphireMissiles) {
+        const dx = m.x - mote.x, dy = m.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, missile: m });
+      }
+      inRange.sort((a, b) => a.distSq - b.distSq);
+      const targets = inRange.slice(0, effect.targetCount);
+      for (const t of targets) {
+        if (t.laser) {
+          const dmg = damageEnemy(t.laser, rawDamage, 0);
+          spawnHitVisuals(t.laser, dmg, '#50b464');
+        } else if (t.sapphire) {
+          const dmg = damageSapphireEnemy(t.sapphire, rawDamage, 0, false);
+          spawnHitVisualsAt(t.sapphire.x, t.sapphire.y, t.sapphire.maxHp, dmg, '#50b464');
+        } else if (t.missile) {
+          damageMissile(t.missile, rawDamage);
+        }
       }
       return;
     }
 
-    // single / piercing — target the single closest enemy in range.
+    // single / piercing — target the single closest targetable in range.
     const defPierceRatio = effect.kind === 'piercing' ? effect.defPierceRatio : 0;
-    const rangeSq = range * range;
-    let target: LaserEnemy | null = null;
-    let closestSq = Infinity;
-    for (const enemy of enemies) {
-      const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
-      const distSq = dx * dx + dy * dy;
-      if (distSq <= rangeSq && distSq < closestSq) {
-        closestSq = distSq;
-        target = enemy;
-      }
-    }
-    if (target) {
-      const dmg = damageEnemy(target, rawDamage, defPierceRatio);
-      spawnHitVisuals(target, dmg, effect.kind === 'piercing' ? '#74c0fc' : shotColor);
+    const closestT = findClosestTarget(range * range);
+    if (!closestT) return;
+    if (closestT.laser) {
+      const dmg = damageEnemy(closestT.laser, rawDamage, defPierceRatio);
+      spawnHitVisuals(closestT.laser, dmg, effect.kind === 'piercing' ? '#74c0fc' : shotColor);
+    } else if (closestT.sapphire) {
+      const dmg = damageSapphireEnemy(closestT.sapphire, rawDamage, defPierceRatio, false);
+      spawnHitVisualsAt(closestT.sapphire.x, closestT.sapphire.y, closestT.sapphire.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : SAPPHIRE_ENEMY_GLOW);
+    } else if (closestT.missile) {
+      damageMissile(closestT.missile, rawDamage);
     }
   }
 
@@ -547,9 +1313,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         enemies.splice(i, 1);
       }
     }
+    for (let i = sapphireEnemies.length - 1; i >= 0; i--) {
+      if (sapphireEnemies[i].hp <= 0) {
+        totalXpFromKills += getXpPerKill(currentWave) * 3;  // more XP for sapphire enemies
+        sapphireEnemies.splice(i, 1);
+      }
+    }
+    for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
+      if (sapphireMissiles[i].hp <= 0) sapphireMissiles.splice(i, 1);
+    }
     if (totalXpFromKills > 0) {
       rpgSimState.xp += totalXpFromKills;
-      // Recalculate player stats so ATK/DEF bonuses update immediately.
       applyEquipmentStats();
     }
   }
@@ -702,17 +1476,29 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function spawnEnemyById(enemyTypeId: string): void {
-    if (enemyTypeId !== 'laser') return;
-    const half = LASER_ENEMY_SIZE / 2;
+    const minDist = 80;
     let spawnX = 0, spawnY = 0, attempts = 0;
-    do {
-      spawnX = half + Math.random() * (widthPx  - LASER_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - LASER_ENEMY_SIZE);
-      const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= 80 * 80) break;
-      attempts++;
-    } while (attempts < 20);
-    enemies.push(makeLaserEnemy(spawnX, spawnY));
+    if (enemyTypeId === 'laser') {
+      const half = LASER_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - LASER_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - LASER_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      enemies.push(makeLaserEnemy(spawnX, spawnY));
+    } else if (enemyTypeId === 'sapphire') {
+      const half = SAPPHIRE_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - SAPPHIRE_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - SAPPHIRE_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY));
+    }
   }
 
   function startNextWave(): void {
@@ -731,7 +1517,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function checkWaveCompletion(): void {
-    if (isInterWave || spawnQueue.length > 0 || enemies.length > 0) return;
+    if (isInterWave || spawnQueue.length > 0 || enemies.length > 0 || sapphireEnemies.length > 0) return;
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS;
   }
@@ -888,7 +1674,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         // Keyboard input also overrides auto-move while held.
         mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
         mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
-      } else if (_autoMoveEnabled && enemies.length > 0) {
+      } else if (_autoMoveEnabled && (enemies.length > 0 || sapphireEnemies.length > 0)) {
         // Auto-move: find nearest enemy and steer toward it, stopping when
         // the enemy is within the equipped weapon's effective range so the
         // player can attack without colliding.
@@ -900,16 +1686,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const autoMoveStopRange = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
 
         let nearestDistSq = Infinity;
-        let nearestEnemy: LaserEnemy | null = null;
+        let nearestX = 0, nearestY = 0;
         for (const enemy of enemies) {
-          const ex = enemy.x - mote.x;
-          const ey = enemy.y - mote.y;
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
           const d = ex * ex + ey * ey;
-          if (d < nearestDistSq) { nearestDistSq = d; nearestEnemy = enemy; }
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
         }
-        if (nearestEnemy !== null) {
-          const ex = nearestEnemy.x - mote.x;
-          const ey = nearestEnemy.y - mote.y;
+        for (const enemy of sapphireEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        if (nearestDistSq < Infinity) {
+          const ex = nearestX - mote.x, ey = nearestY - mote.y;
           const d = Math.sqrt(ex * ex + ey * ey);
           if (d > autoMoveStopRange) {
             mote.vx = (ex / d) * effectiveMaxSpeed;
@@ -971,7 +1760,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const op = orbitProjectile;
     if (!op) return;
     const dt = deltaMs / 1000;
-    op.angle += ORBIT_PROJ_SPEED_RAD * dt;
+    op.angle -= ORBIT_PROJ_SPEED_RAD * dt;  // counter-clockwise, doubled speed
     op.x = mote.x + Math.cos(op.angle) * ORBIT_PROJ_RADIUS;
     op.y = mote.y + Math.sin(op.angle) * ORBIT_PROJ_RADIUS;
     op.trailX[op.trailHead] = op.x;
@@ -986,7 +1775,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       else            op.hitCooldowns.set(enemy, newCd);
     }
 
-    // Collision detection with enemies.
+    // Collision detection with laser enemies.
     for (const enemy of enemies) {
       if (op.hitCooldowns.has(enemy)) continue;
       const dx = op.x - enemy.x;
@@ -995,10 +1784,30 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const dmg = Math.max(0, ORBIT_PROJ_DAMAGE - enemy.def);
         if (dmg > 0) enemy.hp -= dmg;
         op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
-        // Spawn explosion effect at enemy.
         hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
         const ratio = dmg / enemy.maxHp;
         spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), ratio, '#ffaa44');
+      }
+    }
+    // Collision detection with sapphire enemies (hits shield first).
+    for (const enemy of sapphireEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageSapphireEnemy(enemy, ORBIT_PROJ_DAMAGE, 0, false);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with missiles.
+    for (const m of sapphireMissiles) {
+      if (op.hitCooldowns.has(m)) continue;
+      const dx = op.x - m.x, dy = op.y - m.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        damageMissile(m, ORBIT_PROJ_DAMAGE);
+        op.hitCooldowns.set(m, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: m.x, y: m.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
       }
     }
   }
@@ -1021,6 +1830,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function doRestart(): void {
     playerStats.hp = playerStats.maxHp;
     enemies.length = 0; spawnQueue.length = 0;
+    sapphireEnemies.length = 0; sapphireMissiles.length = 0;
+    sandProjectiles.length = 0;
+    chainWhipState = null;
+    laserBeamEffect = null;
     mote.x = widthPx / 2; mote.y = heightPx / 2;
     mote.vx = mote.vy = 0; mote.trailHead = 0; mote.trailCount = 0;
     deathParticles.length = 0; glowMovementIntensity = 0;
@@ -1245,7 +2058,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.fillRect(0, 0, widthPx, heightPx);
 
     drawEnemies(nowMs);
+    drawSapphireEnemies();
+    drawSapphireMissiles();
     drawShotLines();
+    drawSandProjectiles();
+    drawLaserBeamEffect();
 
     // Player comet trail — smoothly gated by glowMovementIntensity
     if (glowMovementIntensity > 0.02 && mote.trailCount >= 2) {
@@ -1299,10 +2116,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawDamageNumbers();
     if (deathParticles.length > 0) drawDeathParticles();
 
-    // Draw weapon orbit particle and orbit projectile above the player.
+    // Draw weapon orbit particle, orbit projectile, and special weapon visuals above the player.
     if (rpgPhase === 'alive') {
       drawWeaponOrbitParticle();
       drawOrbitProjectile();
+      drawChainWhip();
     }
 
     if (joystick.isActive && rpgPhase === 'alive') {
@@ -1383,8 +2201,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       updatePhysics(deltaMs);
       updateEnemies(deltaMs, nowMs);
+      updateSapphireEnemies(deltaMs, nowMs);
+      updateSapphireMissiles(deltaMs);
       updateWeaponOrbitParticle(deltaMs);
       updateOrbitProjectile(deltaMs);
+      updateSandProjectiles(deltaMs);
+      updateChainWhip(deltaMs);
+      updateLaserBeamEffect(deltaMs);
       removeDeadEnemies();
       checkWaveCompletion();
 
