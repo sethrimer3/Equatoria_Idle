@@ -219,12 +219,12 @@ const LASER_BEAM_WIDTH       =   2.5;
 // Lower values = gentler disturbance; higher = more reactive.
 /** Converts entity velocity from px/frame units to px/s for fluid injection. */
 const FLUID_VEL_FRAME_TO_PX_S = 1000 / TARGET_FRAME_MS;  // = ~60 at 60 fps
-const FLUID_PLAYER_STRENGTH    = 1.4;
-const FLUID_ENEMY_STRENGTH     = 1.8;
-const FLUID_PROJECTILE_STRENGTH = 2.0;
-const FLUID_MISSILE_STRENGTH   = 2.5;
-const FLUID_LASER_BEAM_STRENGTH = 4.0;
-const FLUID_EXPLOSION_STRENGTH = 3.5;
+const FLUID_PLAYER_STRENGTH    = 0.18;
+const FLUID_ENEMY_STRENGTH     = 0.22;
+const FLUID_PROJECTILE_STRENGTH = 0.25;
+const FLUID_MISSILE_STRENGTH   = 0.35;
+const FLUID_LASER_BEAM_STRENGTH = 0.55;
+const FLUID_EXPLOSION_STRENGTH = 0.90;
 // Laser enemy colours decoded as r,g,b for fluid injection.
 const FLUID_LASER_R = 255, FLUID_LASER_G =  51, FLUID_LASER_B =  51;
 // Sapphire enemy colour.
