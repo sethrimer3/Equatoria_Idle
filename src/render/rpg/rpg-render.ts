@@ -139,8 +139,8 @@ const WEAPON_PARTICLE_ORBIT_RADIUS = 12;
 const WEAPON_PARTICLE_MIN_SPEED    = 0.5;
 
 // ── Orbiting projectile upgrade ───────────────────────────────
-/** Angular speed of the orbit projectile (radians per second). Counter-clockwise = positive value applied negatively. */
-const ORBIT_PROJ_SPEED_RAD   = 7.0;  // 2× original speed; direction is negated in update
+/** Angular speed of the orbit projectile (radians per second). Rotation is counter-clockwise (angle is decremented each frame). */
+const ORBIT_PROJ_SPEED_RAD   = 7.0;  // 2× original speed
 /** Orbit radius for the orbit projectile (internal px). */
 const ORBIT_PROJ_RADIUS      = 20;
 /** Size (px) of the orbit projectile mote. */
@@ -173,15 +173,21 @@ const SAPPHIRE_MISSILE_CD_MS   = 4000;  // ms between missiles
 const SAPPHIRE_MISSILE_JITTER  =  800;  // ±random offset to missile CD
 
 // ── Sapphire missile constants ─────────────────────────────────
-const MISSILE_SIZE        =    3;
-const MISSILE_SPEED       =    1.2;   // initial speed (px/frame at 60fps)
-const MISSILE_SEEK_STR    =    0.025; // fraction of remaining error corrected per frame
-const MISSILE_MAX_SPEED   =    1.8;
-const MISSILE_HP_INIT     =   30;
-const MISSILE_ATK_INIT    =   18;
-const MISSILE_TRAIL_CAP   =   40;
-const MISSILE_COLOR       = '#ff7733';
-const MISSILE_GLOW        = '#ffaa55';
+const MISSILE_SIZE              =   3;
+const MISSILE_SPEED             =   1.2;   // initial speed (px/frame at 60fps)
+const MISSILE_SEEK_STR          =   0.025; // fraction of remaining error corrected per frame
+const MISSILE_MAX_SPEED         =   1.8;
+const MISSILE_HP_INIT           =  30;
+const MISSILE_ATK_INIT          =  18;
+const MISSILE_TRAIL_CAP         =  40;
+const MISSILE_COLOR             = '#ff7733';
+const MISSILE_GLOW              = '#ffaa55';
+/** Fraction of MISSILE_TRAIL_CAP used for the dash segment in the trail lineDash effect. */
+const MISSILE_TRAIL_DASH_RATIO  =   0.6;
+/** Minimum shield damage — shields always take at least this much damage per hit. */
+const MINIMUM_SHIELD_DAMAGE     =   1;
+/** Small epsilon used to guard against division-by-zero in speed normalisation. */
+const SPEED_EPSILON             =   0.001;
 
 // ── Sand gatling projectile constants ──────────────────────────
 const SAND_PROJ_SPEED      =   5.0;
@@ -575,8 +581,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bypassShield: boolean,
   ): number {
     if (!bypassShield && enemy.shieldHp > 0) {
-      // Hit the shield.
-      const dmg = Math.max(1, rawDamage);
+      // Shields always absorb at least MINIMUM_SHIELD_DAMAGE, making chip damage possible.
+      const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
       enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
       return dmg;
     }
@@ -589,7 +595,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   /** Deals damage to a missile (no DEF, no shield). Returns actual damage dealt. */
   function damageMissile(missile: SapphireMissile, rawDamage: number): number {
-    const dmg = Math.max(1, rawDamage);
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     missile.hp = Math.max(0, missile.hp - dmg);
     return dmg;
   }
@@ -1095,7 +1101,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
             } else {
               playerStats.hp = Math.max(0, playerStats.hp - dmg);
               const ratio = Math.min(1, dmg / playerStats.maxHp);
-              const dirX = m.vx / (speed + 0.001), dirY = m.vy / (speed + 0.001);
+              const dirX = m.vx / (speed + SPEED_EPSILON), dirY = m.vy / (speed + SPEED_EPSILON);
               mote.vx += dirX * PLAYER_KNOCKBACK_MAX * ratio;
               mote.vy += dirY * PLAYER_KNOCKBACK_MAX * ratio;
               playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
@@ -1164,7 +1170,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (const m of sapphireMissiles) {
       // Draw trail using lineDash style similar to laser attack trail
       if (m.trailCount >= 2) {
-        const dashLen = MISSILE_TRAIL_CAP * 0.6;
+        const dashLen = MISSILE_TRAIL_CAP * MISSILE_TRAIL_DASH_RATIO;
         const startIdx = (m.trailHead - m.trailCount + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
         const lastIdx  = (m.trailHead - 1 + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
         const sx = m.trailX[startIdx], sy = m.trailY[startIdx];
