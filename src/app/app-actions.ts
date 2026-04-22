@@ -201,6 +201,14 @@ export function handleAction(
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
+    case 'set_respawn_wave': {
+      const w = action.wave;
+      if (w !== 0 && w % 10 !== 0) break;
+      if (w > state.game.rpg.highestWaveReached && w !== 0) break;
+      state.game.rpg.respawnWave = w;
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
     case 'set_active_tab':
       state.activeTab = action.tabId;
       audioSystem?.onTabChange(action.tabId);
