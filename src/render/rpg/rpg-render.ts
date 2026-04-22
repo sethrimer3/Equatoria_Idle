@@ -24,1063 +24,180 @@
  * pillarboxing/letterboxing, matching the width of the stats bar.
  */
 
+
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
   getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel,
-  PLAYER_BASE_ATK, getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale,
+  getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale,
 } from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import { createRpgFluid } from './rpg-fluid';
+import {
+  RPG_TRAIL_CAPACITY, MAX_RPG_SPEED, RPG_VELOCITY_DAMPING, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
+  TRAIL_SPEED_THRESHOLD, GLOW_PULSE_SPEED, GLOW_MOVE_RAMP_UP, GLOW_MOVE_RAMP_DOWN,
+  PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT,
+  JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
+  LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
+  LASER_ATTACK_RADIUS, LASER_DECEL_DURATION_MS, LASER_DASH_SPEED, LASER_DASH_DISTANCE,
+  LASER_COOLDOWN_MS, LASER_OVERSHOOT_DAMPING, LASER_OVERSHOOT_STOP, LASER_TRAIL_ERASE_MS,
+  LASER_PATROL_SPEED_MAX, LASER_PATROL_DAMPING, LASER_PATROL_TURN_MS,
+  PLAYER_HIT_RADIUS,
+  LASER_DECEL_FACTOR, ATTACK_TRAIL_CURVE_VARIATION, ATTACK_TRAIL_LENGTH_SCALE,
+  ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE,
+  PATROL_TURN_DELAY_MIN_FACTOR, PATROL_TURN_DELAY_RANGE_FACTOR,
+  INTER_WAVE_DELAY_MS, DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
+  DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
+  PLAYER_BASE_COOLDOWN_MS, PLAYER_BASE_RANGE_PX, HIT_EFFECT_DURATION_MS,
+  BASE_ATTACK_TIMER_KEY, SHOT_LINE_DURATION_MS, TARGET_FRAME_MS, IFRAME_FLICKER_INTERVAL_MS,
+  DAMAGE_NUM_DURATION_MS, DAMAGE_NUM_MIN_FONT_PX, DAMAGE_NUM_MAX_FONT_PX,
+  DAMAGE_NUM_INITIAL_SPEED, DAMAGE_NUM_DECEL, DAMAGE_NUM_FONT_FAMILY,
+  PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS, PLAYER_KNOCKBACK_MAX,
+  AUTO_MOVE_JOYSTICK_DEAD_ZONE,
+  WEAPON_PARTICLE_ORBIT_SPEED, WEAPON_PARTICLE_ORBIT_RADIUS, WEAPON_PARTICLE_MIN_SPEED,
+  ORBIT_PROJ_SPEED_RAD, ORBIT_PROJ_RADIUS, ORBIT_PROJ_SIZE, ORBIT_PROJ_TRAIL_CAP,
+  WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_DAMAGE, ORBIT_PROJ_HIT_CD_MS,
+  SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_COLOR, SAPPHIRE_ENEMY_GLOW,
+  SAPPHIRE_SHIELD_RADIUS, SAPPHIRE_PATROL_SPEED,
+  SAPPHIRE_PATROL_TURN_MS, SAPPHIRE_MISSILE_CD_MS, SAPPHIRE_MISSILE_JITTER,
+  MISSILE_SIZE, MISSILE_SPEED, MISSILE_SEEK_STR, MISSILE_MAX_SPEED,
+  MISSILE_TRAIL_CAP, MISSILE_COLOR, MISSILE_GLOW,
+  MISSILE_TRAIL_DASH_RATIO, MINIMUM_SHIELD_DAMAGE, SPEED_EPSILON,
+  SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, SAND_PROJ_GLOW,
+  CHAIN_NODES, CHAIN_MIN_RADIUS, CHAIN_MAX_RADIUS, CHAIN_NODE_COLOR, CHAIN_NODE_GLOW,
+  CHAIN_LINE_COLOR, CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
+  CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
+  CHAIN_DAMPING, CHAIN_LASH_SPEED, CHAIN_MIN_INERTIA, CHAIN_MAX_INERTIA,
+  LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW, LASER_BEAM_WIDTH,
+  VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
+  VORTEX_COLOR, VORTEX_GLOW, VORTEX_SPIN_RATE,
+  SWORD_SWING1_MS, SWORD_SWING2_MS, SWORD_SPIN_MS, SWORD_COLOR, SWORD_GLOW,
+  SWORD_TRAIL_CAP, SWORD_PRISMATIC_COLORS, SWORD_TOTAL_COMBO_MS,
+  POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
+  POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
+  POISON_BOLT_GLOW, POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
+  EMERALD_ENEMY_SIZE, EMERALD_ENEMY_COLOR, EMERALD_ENEMY_GLOW,
+  EMERALD_PATROL_SPEED, EMERALD_PATROL_TURN_MS, EMERALD_ATTACK_RADIUS,
+  EMERALD_CHARGE_MS, EMERALD_BLINK_OFFSET, EMERALD_COOLDOWN_MS,
+  EMERALD_GHOST_FADE_MS, EMERALD_PATROL_DAMPING,
+  AMBER_ENEMY_SIZE, AMBER_ENEMY_COLOR, AMBER_ENEMY_GLOW,
+  AMBER_PATROL_SPEED, AMBER_PATROL_TURN_MS, AMBER_PATROL_DAMPING,
+  AMBER_MISSILE_CD_MS, AMBER_MISSILE_JITTER, AMBER_SHARD_SPREAD_RAD, AMBER_SHARD_COUNT,
+  AMBER_SHARD_SPEED, AMBER_SHARD_MAX_SPEED, AMBER_SHARD_SEEK_STR, AMBER_SHARD_SIZE,
+  AMBER_SHARD_TRAIL_CAP,
+  AMBER_SHARD_COLOR, AMBER_SHARD_GLOW,
+  VOID_ENEMY_SIZE, VOID_ENEMY_COLOR, VOID_ENEMY_GLOW,
+  VOID_PURSUE_SPEED, VOID_CONTACT_RADIUS, VOID_CONTACT_CD_MS,
+  VOID_AURA_PULSE_MS, VOID_AURA_RADIUS,
+  QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_COLOR, QUARTZ_ENEMY_GLOW,
+  QUARTZ_PREFERRED_DIST, QUARTZ_APPROACH_SPEED, QUARTZ_STRAFE_SPEED,
+  QUARTZ_SPIKE_CD_MS, QUARTZ_SPIKE_JITTER,
+  QUARTZ_SPIKE_SPEED, QUARTZ_SPIKE_SIZE,
+  QUARTZ_SPIKE_COLOR, QUARTZ_SPIKE_GLOW,
+  RUBY_ENEMY_SIZE, RUBY_ENEMY_COLOR, RUBY_ENEMY_GLOW,
+  RUBY_PATROL_SPEED, RUBY_BOLT_CD_MS, RUBY_BOLT_JITTER, RUBY_PREFERRED_DIST,
+  RUBY_BOLT_SPEED, RUBY_BOLT_SIZE,
+  RUBY_BOLT_COLOR, RUBY_BOLT_GLOW,
+  SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_COLOR, SUNSTONE_ENEMY_GLOW,
+  SUNSTONE_PREFERRED_DIST, SUNSTONE_ORBIT_SPEED,
+  SUNSTONE_PULSE_CD_MS, SUNSTONE_PULSE_JITTER,
+  CITRINE_ENEMY_SIZE, CITRINE_ENEMY_COLOR, CITRINE_ENEMY_GLOW,
+  CITRINE_PATROL_SPEED, CITRINE_PATROL_TURN_MS,
+  CITRINE_BOLT_CD_MS, CITRINE_BOLT_JITTER,
+  CITRINE_BOLT_SPEED, CITRINE_BOLT_MAX_SPEED, CITRINE_BOLT_SEEK, CITRINE_BOLT_SIZE,
+  CITRINE_BOLT_TRAIL_CAP,
+  CITRINE_BOLT_COLOR, CITRINE_BOLT_GLOW,
+  IOLITE_ENEMY_SIZE, IOLITE_ENEMY_COLOR, IOLITE_ENEMY_GLOW,
+  IOLITE_PATROL_SPEED, IOLITE_PATROL_TURN_MS,
+  IOLITE_BEAM_CD_MS, IOLITE_BEAM_JITTER, IOLITE_BEAM_RANGE,
+  IOLITE_BEAM_COUNT, IOLITE_BEAM_SPREAD_RAD,
+  AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_COLOR, AMETHYST_ENEMY_GLOW,
+  AMETHYST_PATROL_SPEED, AMETHYST_PATROL_TURN_MS,
+  AMETHYST_BURST_CD_MS, AMETHYST_BURST_JITTER, AMETHYST_BURST_COUNT,
+  AMETHYST_SHARD_SPEED, AMETHYST_SHARD_SIZE,
+  AMETHYST_SHARD_COLOR, AMETHYST_SHARD_GLOW,
+  DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_COLOR, DIAMOND_ENEMY_GLOW,
+  DIAMOND_PHASE_INVULN_MS, DIAMOND_PHASE_VULN_MS,
+  DIAMOND_PATROL_SPEED, DIAMOND_ORBIT_SPEED,
+  DIAMOND_SHARD_CD_MS, DIAMOND_SHARD_COUNT, DIAMOND_SHARD_COLOR, DIAMOND_SHARD_GLOW,
+  DIAMOND_SHARD_SPEED, DIAMOND_SHARD_SIZE,
+  NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_COLOR, NULLSTONE_ENEMY_GLOW,
+  NULLSTONE_GRAVITY_STRENGTH, NULLSTONE_GRAVITY_RADIUS,
+  NULLSTONE_ABSORB_MS, NULLSTONE_ABSORB_CD_MS,
+  NULLSTONE_PATROL_SPEED, NULLSTONE_PATROL_TURN_MS,
+  NULLSTONE_TENDRIL_CD_MS, NULLSTONE_TENDRIL_COUNT,
+  VOID_TENDRIL_SPEED, VOID_TENDRIL_SIZE,
+  VOID_TENDRIL_COLOR, VOID_TENDRIL_GLOW,
+  LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
+  QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
+  IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
+  BOSS_SIZE_BASE, BOSS_HP_INIT, BOSS_ATK_INIT, BOSS_DEF_INIT, BOSS_SHIELD_INIT,
+  BOSS_PROJ_LIFE_MS, BOSS_PROJ_SIZE,
+  BOSS_PHASE2_HP_RATIO, BOSS_PHASE3_HP_RATIO, BOSS_PHASE_TRANSITION_MS,
+  BOSS_ATTACK1_CD_BASE, BOSS_ATTACK1_CD_P1, BOSS_ATTACK1_CD_P2,
+  BOSS_ATTACK2_CD_BASE, BOSS_ATTACK2_CD_P1, BOSS_ATTACK2_CD_P2,
+  BOSS_PROJ_SPEED, BOSS_PROJ_SPEED_FAST,
+  BOSS_GRAV_STRENGTH, BOSS_GRAV_RADIUS,
+  BOSS_INVULN_ON_MS, BOSS_INVULN_OFF_MS, BOSS_INVULN_ON_P1, BOSS_INVULN_OFF_P1,
+  BOSS_INVULN_ON_P2, BOSS_INVULN_OFF_P2,
+  BOSS_COLORS, BOSS_GLOW_COLORS, BOSS_NAMES,
+  FLUID_VEL_FRAME_TO_PX_S, FLUID_PLAYER_STRENGTH, FLUID_ENEMY_STRENGTH,
+  FLUID_PROJECTILE_STRENGTH, FLUID_MISSILE_STRENGTH, FLUID_LASER_BEAM_STRENGTH,
+  FLUID_EXPLOSION_STRENGTH,
+  FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
+  FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
+  FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B,
+  FLUID_MISSILE_R, FLUID_MISSILE_G, FLUID_MISSILE_B,
+  FLUID_SAND_R, FLUID_SAND_G, FLUID_SAND_B,
+  FLUID_CHAIN_R, FLUID_CHAIN_G, FLUID_CHAIN_B,
+  FLUID_BEAM_R, FLUID_BEAM_G, FLUID_BEAM_B,
+  FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
+  FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
+  FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
+  FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
+  FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
+  FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
+  FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
+  FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
+  FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
+  FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
+  FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
+} from './rpg-constants';
+import type {
+  RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
+  LaserEnemy,
+  RpgPhase, DeathParticle, SpawnEntry, HitEffect, ShotLine, DamageNumber,
+  WeaponOrbitParticle, OrbitProjectile,
+  SapphireEnemy, SapphireMissile, SandProjectile,
+  ChainWhipState, LaserBeamEffect,
+  NullstoneVortex, VortexWeaponState,
+  SwordComboState,
+  IolitePoisonBolt, PoisonDebuff,
+  EmeraldEnemy,
+  AmberEnemy, AmberShard,
+  VoidEnemy, QuartzEnemy, QuartzSpike,
+  RubyEnemy, RubyBolt,
+  SunstoneEnemy, CitrineEnemy, CitrineBolt,
+  IoliteEnemy, AmethystEnemy, AmethystShard,
+  DiamondEnemy, DiamondShard,
+  NullstoneEnemy, VoidTendril,
+  BossEnemy, BossProjectile,
+} from './rpg-types';
+import {
+  makeLaserEnemy, makeSapphireEnemy, makeSapphireMissile,
+  makeEmeraldEnemy, makeAmberEnemy, makeAmberShard, makeVoidEnemy,
+  makeQuartzEnemy, makeQuartzSpike, makeRubyEnemy, makeRubyBolt,
+  makeSunstoneEnemy, makeCitrineEnemy, makeCitrineBolt, makeIoliteEnemy,
+  makeAmethystEnemy, makeAmethystShard, makeDiamondEnemy, makeDiamondShard,
+  makeNullstoneEnemy, makeVoidTendril,
+} from './rpg-factories';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
 // The default values kick in before the first resize() call.
 let INTERNAL_WIDTH  = 320;
 let INTERNAL_HEIGHT = 568;
-
-const RPG_TRAIL_CAPACITY   = 60;
-const MAX_RPG_SPEED        = 3.0;
-const RPG_VELOCITY_DAMPING = 0.88;
-const RPG_MOTE_SIZE        = 3;
-const RPG_MOTE_COLOR       = '#ffd764';
-const RPG_MOTE_GLOW        = '#ffe599';
-const TRAIL_SPEED_THRESHOLD = 0.15;
-const GLOW_PULSE_SPEED      = 2.5;
-const GLOW_MOVE_RAMP_UP   = 0.007;
-const GLOW_MOVE_RAMP_DOWN = 0.004;
-
-const PLAYER_HP_INIT  = 100;
-const PLAYER_ATK_INIT = PLAYER_BASE_ATK;
-const PLAYER_DEF_INIT =   5;
-
-const JOYSTICK_OUTER_RADIUS = 28;
-const JOYSTICK_THUMB_RADIUS = 12;
-
-const LASER_ENEMY_SIZE        =   4;
-const LASER_ENEMY_COLOR       = '#ff3333';
-const LASER_ENEMY_GLOW        = '#ff6666';
-const LASER_HP_INIT           =  20;
-const LASER_ATK_INIT          =  10;
-const LASER_DEF_INIT          =   5;
-const LASER_ATTACK_RADIUS     =  80;
-const LASER_DECEL_DURATION_MS = 500;
-const LASER_DASH_SPEED        =   8.0;
-const LASER_DASH_DISTANCE     = 100;
-const LASER_COOLDOWN_MS       = 1250;
-const LASER_OVERSHOOT_DAMPING = 0.72;
-const LASER_OVERSHOOT_STOP    = 0.15;
-const LASER_TRAIL_ERASE_MS    = 450;
-const LASER_PATROL_SPEED_MAX  = 0.7;
-const LASER_PATROL_DAMPING    = 0.97;
-const LASER_PATROL_TURN_MS    = 2500;
-
-const PLAYER_HIT_RADIUS = 4;
-
-const LASER_DECEL_FACTOR             = 0.80;
-const ATTACK_TRAIL_CURVE_VARIATION   = 0.35;
-const ATTACK_TRAIL_LENGTH_SCALE      = 1.1;
-const ATTACK_TRAIL_ALPHA             = 0.9;
-const ATTACK_TRAIL_ERASE_FADE        = 0.5;
-const PATROL_TURN_DELAY_MIN_FACTOR   = 0.6;
-const PATROL_TURN_DELAY_RANGE_FACTOR = 0.8;
-
-const INTER_WAVE_DELAY_MS = 2500;
-const DEATH_ANIM_DURATION_MS = 1800;
-const DEATH_HOLD_DURATION_MS = 400;
-const RESTART_FADE_IN_MS     = 700;
-const DEATH_BURST_COUNT      = 20;
-/** Colors used for the radial death burst particles. */
-const DEATH_PARTICLE_COLORS  = ['#ffd764', '#ffe599', '#ffcc33', '#ffffff'] as const;
-
-// ── Player attack constants ────────────────────────────────────────
-/** Cooldown (ms) when no weapon is equipped. */
-const PLAYER_BASE_COOLDOWN_MS  = 1200;
-/** Attack range (px) when no weapon is equipped. */
-const PLAYER_BASE_RANGE_PX     = 50;
-/** Duration (ms) for the hit-flash visual effect. */
-const HIT_EFFECT_DURATION_MS   = 220;
-/** Sentinel weapon id used in `weaponAttackTimers` when no weapon is equipped. */
-const BASE_ATTACK_TIMER_KEY    = '__base__';
-/** Duration (ms) for the shot-line visual effect. */
-const SHOT_LINE_DURATION_MS    = 120;
-/** Target frame time in ms at 60 FPS — used to normalise dt-scaled physics. */
-const TARGET_FRAME_MS          = 16.667;
-/** Flicker on/off interval (ms) while the player has invincibility frames (~8 Hz). */
-const IFRAME_FLICKER_INTERVAL_MS = 62.5;
-
-// ── Damage numbers ─────────────────────────────────────────────
-/** How long a damage number stays visible (ms). */
-const DAMAGE_NUM_DURATION_MS   = 900;
-/** Minimum font size for a nearly-zero-damage hit (internal canvas px). 3× original. */
-const DAMAGE_NUM_MIN_FONT_PX   = 12;
-/** Maximum font size for a 100 %-health hit (internal canvas px). 3× original. */
-const DAMAGE_NUM_MAX_FONT_PX   = 42;
-/** Initial travel speed of a damage number (px per dt unit). */
-const DAMAGE_NUM_INITIAL_SPEED = 1.8;
-/** Per-frame velocity damping factor (at 60 fps scale). */
-const DAMAGE_NUM_DECEL         = 0.88;
-
-// ── Invincibility frames ────────────────────────────────────────
-/** Minimum iframes duration after any hit (ms). */
-const PLAYER_IFRAME_MIN_MS     = 280;
-/** Additional iframes earned for a full-HP (100 %) hit (ms). */
-const PLAYER_IFRAME_MAX_ADD_MS = 1200;
-
-// ── Knockback ───────────────────────────────────────────────────
-/** Maximum knockback speed applied at 100 % relative damage. */
-const PLAYER_KNOCKBACK_MAX     = 7.0;
-
-// ── Auto-move ──────────────────────────────────────────────────
-/** Minimum joystick displacement (canvas px) to count as active manual control. */
-const AUTO_MOVE_JOYSTICK_DEAD_ZONE = 1.0;
-
-// ── Equipped-weapon visual particle ───────────────────────────
-/** Angular speed of the equipped-weapon orbit particle (radians per second). */
-const WEAPON_PARTICLE_ORBIT_SPEED  = 2.2;
-/** Orbit radius for the equipped-weapon particle (internal px). */
-const WEAPON_PARTICLE_ORBIT_RADIUS = 12;
-/** Minimum speed so the particle never appears frozen. */
-const WEAPON_PARTICLE_MIN_SPEED    = 0.5;
-
-// ── Orbiting projectile upgrade ───────────────────────────────
-/** Angular speed of the orbit projectile (radians per second). Rotation is counter-clockwise (angle is decremented each frame). */
-const ORBIT_PROJ_SPEED_RAD   = 7.0;  // 2× original speed
-/** Orbit radius for the orbit projectile (internal px). */
-const ORBIT_PROJ_RADIUS      = 20;
-/** Size (px) of the orbit projectile mote. */
-const ORBIT_PROJ_SIZE        = 3;
-/** Trail capacity for the orbit projectile. */
-const ORBIT_PROJ_TRAIL_CAP   = 20;
-/** Trail capacity for the equipped-weapon orbit particle. */
-const WEAPON_ORBIT_TRAIL_CAP = 20;
-/** Hit radius for orbit projectile — enemy collision detection. */
-const ORBIT_PROJ_HIT_RADIUS  = 5;
-/** Damage dealt per orbit-projectile hit. */
-const ORBIT_PROJ_DAMAGE      = 15;
-/** Cooldown between orbit-projectile hits on the same enemy (ms). */
-const ORBIT_PROJ_HIT_CD_MS   = 500;
-/** Font string for damage number rendering. */
-const DAMAGE_NUM_FONT_FAMILY = '"Pixelify Sans", monospace';
-
-// ── Sapphire enemy constants ───────────────────────────────────
-const SAPPHIRE_ENEMY_SIZE      =   6;
-const SAPPHIRE_ENEMY_COLOR     = '#5b9aff';
-const SAPPHIRE_ENEMY_GLOW      = '#88bbff';
-const SAPPHIRE_HP_INIT         = 250;
-const SAPPHIRE_ATK_INIT        =  15;
-const SAPPHIRE_DEF_INIT        =   8;
-const SAPPHIRE_SHIELD_RADIUS   =  18;  // circle shield radius (px)
-const SAPPHIRE_SHIELD_HP_INIT  = 120;
-const SAPPHIRE_PATROL_SPEED    =   0.45;
-const SAPPHIRE_PATROL_TURN_MS  = 3200;
-const SAPPHIRE_MISSILE_CD_MS   = 4000;  // ms between missiles
-const SAPPHIRE_MISSILE_JITTER  =  800;  // ±random offset to missile CD
-
-// ── Sapphire missile constants ─────────────────────────────────
-const MISSILE_SIZE              =   3;
-const MISSILE_SPEED             =   1.2;   // initial speed (px/frame at 60fps)
-const MISSILE_SEEK_STR          =   0.025; // fraction of remaining error corrected per frame
-const MISSILE_MAX_SPEED         =   1.8;
-const MISSILE_HP_INIT           =  30;
-const MISSILE_ATK_INIT          =  18;
-const MISSILE_TRAIL_CAP         =  40;
-const MISSILE_COLOR             = '#ff7733';
-const MISSILE_GLOW              = '#ffaa55';
-/** Fraction of MISSILE_TRAIL_CAP used for the dash segment in the trail lineDash effect. */
-const MISSILE_TRAIL_DASH_RATIO  =   0.6;
-/** Minimum shield damage — shields always take at least this much damage per hit. */
-const MINIMUM_SHIELD_DAMAGE     =   1;
-/** Small epsilon used to guard against division-by-zero in speed normalisation. */
-const SPEED_EPSILON             =   0.001;
-
-// ── Sand gatling projectile constants ──────────────────────────
-const SAND_PROJ_SPEED      =   5.0;
-const SAND_PROJ_SIZE       =   2;
-const SAND_PROJ_LIFE_MS    = 800;
-const SAND_PROJ_COLOR      = '#ddc080';
-const SAND_PROJ_GLOW       = '#ffe8a0';
-
-// ── Quartz chain whip constants ────────────────────────────────
-const CHAIN_NODES           =   5;
-/** Radius of node 0 (closest to player, smallest). */
-const CHAIN_MIN_RADIUS      =   2;
-/** Radius of node CHAIN_NODES-1 (tip, farthest from player, largest). */
-const CHAIN_MAX_RADIUS      =   6;
-const CHAIN_NODE_COLOR      = '#a0d8ef';
-const CHAIN_NODE_GLOW       = '#c8eeff';
-const CHAIN_LINE_COLOR      = '#88c8e8';
-const CHAIN_LASH_MS         = 280;   // ms for tip to lash toward target
-const CHAIN_RETRACT_MS      = 320;   // ms in retracting phase before returning to idle
-/** Damage ticks per I-frame interval (ms). */
-const CHAIN_HIT_CD_MS       =  62.5;
-// ── Softbody whip physics constants ──
-/** Rest spacing (px) between adjacent nodes. */
-const CHAIN_REST_LENGTH     =  10;
-/** Spring stiffness between adjacent nodes. */
-const CHAIN_SPRING_K        =   0.40;
-/** Anchor spring pulling node 0 toward the player (idle). */
-const CHAIN_ANCHOR_K        =   0.60;
-/** Anchor spring during retract phase (stronger pull). */
-const CHAIN_RETRACT_ANCHOR_K = 2.0;
-/** Per-dt velocity damping factor (applied as pow(DAMPING, dt)). */
-const CHAIN_DAMPING         =   0.85;
-/** Initial speed given to the tip node when a lash is triggered (px/dt). */
-const CHAIN_LASH_SPEED      =  20;
-/** Inertia of node 0 (closest to player, most responsive). */
-const CHAIN_MIN_INERTIA     =   0.8;
-/** Inertia of tip node (farthest, least responsive / most momentum). */
-const CHAIN_MAX_INERTIA     =   4.0;
-
-// ── Ruby laser beam constants ──────────────────────────────────
-const LASER_BEAM_VISIBLE_MS  = 400;   // how long the beam stays on screen
-const LASER_BEAM_COLOR       = '#ff2222';
-const LASER_BEAM_GLOW        = '#ff8888';
-const LASER_BEAM_WIDTH       =   2.5;
-
-// ── Nullstone vortex weapon constants ─────────────────────────
-const VORTEX_PULL_STRENGTH      = 0.6;    // px/frame gravity pull toward vortex center
-const VORTEX_DAMAGE_INTERVAL_MS = 1000;   // ms between damage ticks
-const VORTEX_SPAWN_DIST         = 60;     // px from player center at spawn
-const VORTEX_COLOR              = '#9664c8';
-const VORTEX_GLOW               = '#c496f0';
-const VORTEX_SPIN_RATE          = 2.0;    // rad/s
-
-// ── Diamond sword combo constants ─────────────────────────────
-const SWORD_SWING1_MS  = 280;   // duration of right arc swing phase
-const SWORD_SWING2_MS  = 280;   // duration of left arc swing phase
-const SWORD_SPIN_MS    = 450;   // duration of full spin phase
-const SWORD_COLOR      = '#88ddff';
-const SWORD_GLOW       = '#ccf4ff';
-const SWORD_TRAIL_CAP  = 20;
-const SWORD_PRISMATIC_COLORS: readonly string[] =
-  ['#ff0000', '#ff6600', '#ffff00', '#00ff00', '#0066ff', '#8800ff', '#ff00ff'];
-const SWORD_TOTAL_COMBO_MS         = SWORD_SWING1_MS + SWORD_SWING2_MS + SWORD_SPIN_MS;
-
-// ── Iolite poison bolt constants ───────────────────────────────
-const POISON_ARMOR_IGNORE_PER_TIER = 0.1;   // armorIgnore = tier * this
-const POISON_DURATION_BASE_TIER    = 8;      // (base - tier) * POISON_DURATION_MS_PER_TIER
-const POISON_DURATION_MS_PER_TIER  = 10000;  // ms per tier offset
-const POISON_TOTAL_MULTIPLIER      = 10;     // poisonTotal = rawDamage * tier * this
-const POISON_BOLT_SPEED       = 2.0;   // px/frame (slow, magical)
-const POISON_BOLT_SIZE        = 3;
-const POISON_BOLT_COLOR       = '#8844ff';
-const POISON_BOLT_GLOW        = '#aa88ff';
-const POISON_BOLT_LIFE_MS     = 5000;  // max life before expiry
-const POISON_BOLT_TRAIL_CAP   = 30;
-const POISON_TICK_INTERVAL_MS = 2000;  // ms between poison ticks
-
-// ── Emerald enemy constants ────────────────────────────────────
-const EMERALD_ENEMY_SIZE     =   5;
-const EMERALD_ENEMY_COLOR    = '#22dd66';
-const EMERALD_ENEMY_GLOW     = '#55ff99';
-const EMERALD_HP_INIT        =  90;
-const EMERALD_ATK_INIT       =  14;
-const EMERALD_DEF_INIT       =   4;
-const EMERALD_PATROL_SPEED   =   0.55;
-const EMERALD_PATROL_TURN_MS = 2200;
-const EMERALD_ATTACK_RADIUS  = 110;    // px — detect range that triggers blink
-const EMERALD_CHARGE_MS      = 380;    // ms charging before blink
-const EMERALD_BLINK_OFFSET   =   8;   // px offset from player center after blink
-const EMERALD_COOLDOWN_MS    = 2500;  // ms cooldown after a blink attack
-const EMERALD_GHOST_FADE_MS  = 420;   // ms for ghost afterimage to fade out
-const EMERALD_PATROL_DAMPING = 0.97;
-
-// ── Amber enemy constants ──────────────────────────────────────
-const AMBER_ENEMY_SIZE       =   7;
-const AMBER_ENEMY_COLOR      = '#ffaa22';
-const AMBER_ENEMY_GLOW       = '#ffcc66';
-const AMBER_HP_INIT          = 380;
-const AMBER_ATK_INIT         =  20;
-const AMBER_DEF_INIT         =   8;
-const AMBER_PATROL_SPEED     =   0.35;
-const AMBER_PATROL_TURN_MS   = 3500;
-const AMBER_PATROL_DAMPING   =   0.97;
-const AMBER_MISSILE_CD_MS    = 3800;  // ms between fan bursts
-const AMBER_MISSILE_JITTER   =  700;  // ±random offset to burst CD
-const AMBER_SHARD_SPREAD_RAD =   0.38; // ±spread angle (radians) for fan
-const AMBER_SHARD_COUNT      =   3;
-
-// ── Amber shard (projectile) constants ────────────────────────
-const AMBER_SHARD_SPEED      =   1.4;
-const AMBER_SHARD_MAX_SPEED  =   2.0;
-const AMBER_SHARD_SEEK_STR   =   0.018;
-const AMBER_SHARD_SIZE       =   3;
-const AMBER_SHARD_HP_INIT    =  25;
-const AMBER_SHARD_ATK_INIT   =  22;
-const AMBER_SHARD_TRAIL_CAP  =  35;
-const AMBER_SHARD_COLOR      = '#ff8833';
-const AMBER_SHARD_GLOW       = '#ffaa55';
-
-// ── Void enemy constants ───────────────────────────────────────
-const VOID_ENEMY_SIZE        =   8;
-const VOID_ENEMY_COLOR       = '#9933ff';
-const VOID_ENEMY_GLOW        = '#bb66ff';
-const VOID_HP_INIT           = 750;
-const VOID_ATK_INIT          =  28;
-const VOID_DEF_INIT          =  14;
-const VOID_PURSUE_SPEED      =   0.60; // constant homing speed (px/frame)
-const VOID_CONTACT_RADIUS    =   9;   // px — contact damage distance
-const VOID_CONTACT_CD_MS     = 1200;  // ms between contact damage ticks
-const VOID_AURA_PULSE_MS     = 1400;  // ms for one full aura pulse cycle
-const VOID_AURA_RADIUS       =  14;   // px — aura ring radius
-
-// ── Quartz enemy constants ─────────────────────────────────────
-const QUARTZ_ENEMY_SIZE        =   5;
-const QUARTZ_ENEMY_COLOR       = '#f5f0eb';
-const QUARTZ_ENEMY_GLOW        = '#faf8f5';
-const QUARTZ_HP_INIT           =  35;
-const QUARTZ_ATK_INIT          =   8;
-const QUARTZ_DEF_INIT          =   3;
-const QUARTZ_PREFERRED_DIST    =  90;
-const QUARTZ_APPROACH_SPEED    =   0.6;
-const QUARTZ_STRAFE_SPEED      =   0.5;
-const QUARTZ_SPIKE_CD_MS       = 2200;
-const QUARTZ_SPIKE_JITTER      =  400;
-// ── Quartz spike (projectile) constants ────────────────────────
-const QUARTZ_SPIKE_SPEED       =   1.0;
-const QUARTZ_SPIKE_SIZE        =   3;
-const QUARTZ_SPIKE_HP_INIT     =  20;
-const QUARTZ_SPIKE_ATK_INIT    =  12;
-const QUARTZ_SPIKE_LIFE_MS     = 3000;
-const QUARTZ_SPIKE_COLOR       = '#f0e8d8';
-const QUARTZ_SPIKE_GLOW        = '#faf8f5';
-
-// ── Ruby enemy constants ───────────────────────────────────────
-const RUBY_ENEMY_SIZE          =   5;
-const RUBY_ENEMY_COLOR         = '#dc3232';
-const RUBY_ENEMY_GLOW          = '#ff6b6b';
-const RUBY_HP_INIT             = 120;
-const RUBY_ATK_INIT            =  18;
-const RUBY_DEF_INIT            =   5;
-const RUBY_PATROL_SPEED        =   0.8;
-const RUBY_BOLT_CD_MS          = 1200;
-const RUBY_BOLT_JITTER         =  300;
-const RUBY_PREFERRED_DIST      =  60;
-// ── Ruby bolt (projectile) constants ──────────────────────────
-const RUBY_BOLT_SPEED          =   2.8;
-const RUBY_BOLT_SIZE           =   2;
-const RUBY_BOLT_HP_INIT        =  15;
-const RUBY_BOLT_ATK_INIT       =  15;
-const RUBY_BOLT_LIFE_MS        = 1500;
-const RUBY_BOLT_COLOR          = '#ff4444';
-const RUBY_BOLT_GLOW           = '#ff8888';
-
-// ── Sunstone enemy constants ───────────────────────────────────
-const SUNSTONE_ENEMY_SIZE      =   7;
-const SUNSTONE_ENEMY_COLOR     = '#ff8c3c';
-const SUNSTONE_ENEMY_GLOW      = '#ffb366';
-const SUNSTONE_HP_INIT         = 200;
-const SUNSTONE_ATK_INIT        =  16;
-const SUNSTONE_DEF_INIT        =   6;
-const SUNSTONE_PREFERRED_DIST  = 120;
-const SUNSTONE_ORBIT_SPEED     =   0.4;
-const SUNSTONE_PULSE_CD_MS     = 3500;
-const SUNSTONE_PULSE_JITTER    =  600;
-
-// ── Citrine enemy constants ────────────────────────────────────
-const CITRINE_ENEMY_SIZE       =   5;
-const CITRINE_ENEMY_COLOR      = '#e6c850';
-const CITRINE_ENEMY_GLOW       = '#f0d870';
-const CITRINE_HP_INIT          = 150;
-const CITRINE_ATK_INIT         =  22;
-const CITRINE_DEF_INIT         =   4;
-const CITRINE_PATROL_SPEED     =   0.9;
-const CITRINE_PATROL_TURN_MS   = 1800;
-const CITRINE_BOLT_CD_MS       = 2800;
-const CITRINE_BOLT_JITTER      =  400;
-// ── Citrine bolt (homing) constants ───────────────────────────
-const CITRINE_BOLT_SPEED       =   1.5;
-const CITRINE_BOLT_MAX_SPEED   =   2.4;
-const CITRINE_BOLT_SEEK        =   0.035;
-const CITRINE_BOLT_SIZE        =   3;
-const CITRINE_BOLT_HP_INIT     =  20;
-const CITRINE_BOLT_ATK_INIT    =  20;
-const CITRINE_BOLT_TRAIL_CAP   =  30;
-const CITRINE_BOLT_COLOR       = '#e6c850';
-const CITRINE_BOLT_GLOW        = '#ffe080';
-
-// ── Iolite enemy constants ─────────────────────────────────────
-const IOLITE_ENEMY_SIZE        =   8;
-const IOLITE_ENEMY_COLOR       = '#6464b4';
-const IOLITE_ENEMY_GLOW        = '#8888cc';
-const IOLITE_HP_INIT           = 500;
-const IOLITE_ATK_INIT          =  24;
-const IOLITE_DEF_INIT          =  12;
-const IOLITE_PATROL_SPEED      =   0.3;
-const IOLITE_PATROL_TURN_MS    = 4000;
-const IOLITE_BEAM_CD_MS        = 4000;
-const IOLITE_BEAM_JITTER       =  800;
-const IOLITE_BEAM_RANGE        = 120;
-const IOLITE_BEAM_COUNT        =   5;
-const IOLITE_BEAM_SPREAD_RAD   =   1.047; // ~60 degrees each side
-
-// ── Amethyst enemy constants ───────────────────────────────────
-const AMETHYST_ENEMY_SIZE      =   7;
-const AMETHYST_ENEMY_COLOR     = '#b464c8';
-const AMETHYST_ENEMY_GLOW      = '#d088e0';
-const AMETHYST_HP_INIT         = 800;
-const AMETHYST_ATK_INIT        =  28;
-const AMETHYST_DEF_INIT        =  15;
-const AMETHYST_SHIELD_HP_INIT  = 400;
-const AMETHYST_PATROL_SPEED    =   0.4;
-const AMETHYST_PATROL_TURN_MS  = 3500;
-const AMETHYST_BURST_CD_MS     = 3200;
-const AMETHYST_BURST_JITTER    =  500;
-const AMETHYST_BURST_COUNT     =   8;
-// ── Amethyst shard constants ───────────────────────────────────
-const AMETHYST_SHARD_SPEED     =   1.8;
-const AMETHYST_SHARD_SIZE      =   3;
-const AMETHYST_SHARD_HP_INIT   =  25;
-const AMETHYST_SHARD_ATK_INIT  =  24;
-const AMETHYST_SHARD_LIFE_MS   = 1800;
-const AMETHYST_SHARD_COLOR     = '#c87ae0';
-const AMETHYST_SHARD_GLOW      = '#d88af0';
-
-// ── Diamond enemy constants ────────────────────────────────────
-const DIAMOND_ENEMY_SIZE       =   9;
-const DIAMOND_ENEMY_COLOR      = '#e8f0fa';
-const DIAMOND_ENEMY_GLOW       = '#ffffff';
-const DIAMOND_HP_INIT          = 1500;
-const DIAMOND_ATK_INIT         =  35;
-const DIAMOND_DEF_INIT         =  20;
-const DIAMOND_PHASE_INVULN_MS  = 2000;
-const DIAMOND_PHASE_VULN_MS    = 4000;
-const DIAMOND_PATROL_SPEED     =   0.5;
-const DIAMOND_ORBIT_SPEED      =   0.3;
-const DIAMOND_SHARD_CD_MS      = 2500;
-const DIAMOND_SHARD_COUNT      =   6;
-const DIAMOND_SHARD_COLOR      = '#c0e0ff';
-const DIAMOND_SHARD_GLOW       = '#ffffff';
-// ── Diamond shard constants ────────────────────────────────────
-const DIAMOND_SHARD_SPEED      =   2.2;
-const DIAMOND_SHARD_SIZE       =   3;
-const DIAMOND_SHARD_HP_INIT    =  30;
-const DIAMOND_SHARD_ATK_INIT   =  30;
-const DIAMOND_SHARD_LIFE_MS    = 1400;
-
-// ── Nullstone enemy constants ──────────────────────────────────
-const NULLSTONE_ENEMY_SIZE         =  10;
-const NULLSTONE_ENEMY_COLOR        = '#1e1e28';
-const NULLSTONE_ENEMY_GLOW         = '#9664c8';
-const NULLSTONE_HP_INIT            = 2500;
-const NULLSTONE_ATK_INIT           =   42;
-const NULLSTONE_DEF_INIT           =   25;
-const NULLSTONE_GRAVITY_STRENGTH   =   0.0015;
-const NULLSTONE_GRAVITY_RADIUS     =  200;
-const NULLSTONE_ABSORB_MS          = 2500;
-const NULLSTONE_ABSORB_CD_MS       = 5000;
-const NULLSTONE_PATROL_SPEED       =   0.25;
-const NULLSTONE_PATROL_TURN_MS     = 5000;
-const NULLSTONE_TENDRIL_CD_MS      = 3000;
-const NULLSTONE_TENDRIL_COUNT      =   3;
-// ── Void tendril (nullstone projectile) constants ──────────────
-const VOID_TENDRIL_SPEED       =   1.8;
-const VOID_TENDRIL_SIZE        =   4;
-const VOID_TENDRIL_HP_INIT     =  40;
-const VOID_TENDRIL_ATK_INIT    =  35;
-const VOID_TENDRIL_LIFE_MS     = 2000;
-const VOID_TENDRIL_COLOR       = '#4d2280';
-const VOID_TENDRIL_GLOW        = '#9664c8';
-
-// ── XP multipliers per enemy type ─────────────────────────────
-const LASER_XP_MULT     = 1;
-const SAPPHIRE_XP_MULT  = 3;
-const EMERALD_XP_MULT   = 2;
-const AMBER_XP_MULT     = 4;
-const VOID_XP_MULT      = 6;
-const QUARTZ_XP_MULT    = 1.5;
-const RUBY_XP_MULT      = 2.5;
-const SUNSTONE_XP_MULT  = 3;
-const CITRINE_XP_MULT   = 3.5;
-const IOLITE_XP_MULT    = 5;
-const AMETHYST_XP_MULT  = 6;
-const DIAMOND_XP_MULT   = 8;
-const NULLSTONE_XP_MULT = 10;
-
-// ── Boss constants ─────────────────────────────────────────────
-const BOSS_SIZE_BASE    = 14;
-const BOSS_HP_INIT      = 3000;
-const BOSS_ATK_INIT     = 50;
-const BOSS_DEF_INIT     = 30;
-const BOSS_SHIELD_INIT  = 1500;
-const BOSS_PROJ_LIFE_MS = 3500;
-const BOSS_PROJ_SIZE    = 5;
-const BOSS_PHASE2_HP_RATIO = 0.66;
-const BOSS_PHASE3_HP_RATIO = 0.33;
-const BOSS_PHASE_TRANSITION_MS = 800;
-const BOSS_ATTACK1_CD_BASE = 1800;
-const BOSS_ATTACK1_CD_P1   = 1300;
-const BOSS_ATTACK1_CD_P2   = 900;
-const BOSS_ATTACK2_CD_BASE = 3500;
-const BOSS_ATTACK2_CD_P1   = 2500;
-const BOSS_ATTACK2_CD_P2   = 1800;
-const BOSS_PROJ_SPEED      = 1.4;
-const BOSS_PROJ_SPEED_FAST = 2.2;
-const BOSS_GRAV_STRENGTH   = 0.0025;
-const BOSS_GRAV_RADIUS     = 250;
-const BOSS_INVULN_ON_MS    = 2500;
-const BOSS_INVULN_OFF_MS   = 3500;
-const BOSS_INVULN_ON_P1    = 2000;
-const BOSS_INVULN_OFF_P1   = 2500;
-const BOSS_INVULN_ON_P2    = 1800;
-const BOSS_INVULN_OFF_P2   = 1500;
-const BOSS_COLORS: readonly string[] = [
-  '', '#f5f0eb', '#dc3232', '#ff8c3c', '#e6c850',
-  '#6464b4', '#b464c8', '#e8f0fa', '#1e1e28', '#9664c8', '#ffd764',
-];
-const BOSS_GLOW_COLORS: readonly string[] = [
-  '', '#faf8f5', '#ff6b6b', '#ffb366', '#f0d870',
-  '#8888cc', '#d088e0', '#ffffff', '#9664c8', '#c090ff', '#ffe599',
-];
-const BOSS_NAMES: readonly string[] = [
-  '', 'Quartz Sovereign', 'Ruby King', 'Sunstone Herald', 'Citrine Weaver',
-  'Iolite Colossus', 'Amethyst Breaker', 'Diamond Eternal', 'Nullstone Devourer',
-  'Void Nexus', 'Equation Incarnate',
-];
-
-// ── Fluid background force scales ─────────────────────────────
-// Multiplier applied to entity velocity (px/frame → px/s) before injection.
-// Lower values = gentler disturbance; higher = more reactive.
-/** Converts entity velocity from px/frame units to px/s for fluid injection. */
-const FLUID_VEL_FRAME_TO_PX_S = 1000 / TARGET_FRAME_MS;  // = ~60 at 60 fps
-const FLUID_PLAYER_STRENGTH    = 0.18;
-const FLUID_ENEMY_STRENGTH     = 0.22;
-const FLUID_PROJECTILE_STRENGTH = 0.25;
-const FLUID_MISSILE_STRENGTH   = 0.35;
-const FLUID_LASER_BEAM_STRENGTH = 0.55;
-const FLUID_EXPLOSION_STRENGTH = 0.90;
-// Laser enemy colours decoded as r,g,b for fluid injection.
-const FLUID_LASER_R = 255, FLUID_LASER_G =  51, FLUID_LASER_B =  51;
-// Sapphire enemy colour.
-const FLUID_SAPPH_R =  91, FLUID_SAPPH_G = 154, FLUID_SAPPH_B = 255;
-// Player colour.
-const FLUID_PLAYER_R = 255, FLUID_PLAYER_G = 215, FLUID_PLAYER_B = 100;
-// Missile colour.
-const FLUID_MISSILE_R = 255, FLUID_MISSILE_G = 119, FLUID_MISSILE_B =  51;
-// Sand projectile colour.
-const FLUID_SAND_R = 221, FLUID_SAND_G = 192, FLUID_SAND_B = 128;
-// Chain whip colour.
-const FLUID_CHAIN_R = 160, FLUID_CHAIN_G = 216, FLUID_CHAIN_B = 239;
-// Laser beam colour.
-const FLUID_BEAM_R = 255, FLUID_BEAM_G =  34, FLUID_BEAM_B =  34;
-// Emerald enemy colour.
-const FLUID_EMERALD_R =  34, FLUID_EMERALD_G = 221, FLUID_EMERALD_B = 102;
-// Amber enemy colour.
-const FLUID_AMBER_R = 255, FLUID_AMBER_G = 170, FLUID_AMBER_B =  34;
-// Void enemy colour.
-const FLUID_VOID_R = 153, FLUID_VOID_G =  51, FLUID_VOID_B = 255;
-// Quartz enemy colour.
-const FLUID_QUARTZ_R = 245, FLUID_QUARTZ_G = 240, FLUID_QUARTZ_B = 235;
-// Ruby enemy colour.
-const FLUID_RUBY_R = 220, FLUID_RUBY_G =  50, FLUID_RUBY_B =  50;
-// Sunstone enemy colour.
-const FLUID_SUNSTONE_R = 255, FLUID_SUNSTONE_G = 140, FLUID_SUNSTONE_B =  60;
-// Citrine enemy colour.
-const FLUID_CITRINE_R = 230, FLUID_CITRINE_G = 200, FLUID_CITRINE_B =  80;
-// Iolite enemy colour.
-const FLUID_IOLITE_R = 100, FLUID_IOLITE_G = 100, FLUID_IOLITE_B = 180;
-// Amethyst enemy colour.
-const FLUID_AMETHYST_R = 180, FLUID_AMETHYST_G = 100, FLUID_AMETHYST_B = 200;
-// Diamond enemy colour.
-const FLUID_DIAMOND_R = 232, FLUID_DIAMOND_G = 240, FLUID_DIAMOND_B = 250;
-// Nullstone enemy colour.
-const FLUID_NULLSTONE_R =  30, FLUID_NULLSTONE_G =  30, FLUID_NULLSTONE_B =  40;
-
-interface RpgMote {
-  x: number; y: number;
-  vx: number; vy: number;
-  trailX: Float64Array; trailY: Float64Array;
-  trailHead: number; trailCount: number;
-}
-
-interface RpgJoystick {
-  isActive: boolean; pointerId: number;
-  baseX: number; baseY: number;
-  thumbX: number; thumbY: number;
-}
-
-interface RpgKeyState {
-  left: boolean; right: boolean;
-  up: boolean; down: boolean;
-}
-
-interface RpgPlayerStats {
-  hp: number; maxHp: number;
-  atk: number; def: number;
-}
-
-type LaserPhase = 'idle' | 'decelerate' | 'dash' | 'overshoot' | 'cooldown';
-
-interface AttackTrailState {
-  active: boolean;
-  startX: number; startY: number;
-  endX:   number; endY:   number;
-  controlAngle: number;
-  trailStartMs: number;
-  trailEndMs:   number;
-}
-
-interface LaserEnemy {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  phase: LaserPhase;
-  phaseElapsedMs: number;
-  dashDirX: number; dashDirY: number;
-  dashTraveled: number;
-  lockedTargetX: number; lockedTargetY: number;
-  attackTrail: AttackTrailState;
-  patrolTimerMs: number;
-  hasHitPlayer: boolean;
-}
-
-type RpgPhase = 'alive' | 'dying' | 'restarting';
-
-interface DeathParticle {
-  x: number; y: number;
-  vx: number; vy: number;
-  alpha: number;
-  size: number;
-  color: string;
-}
-
-interface SpawnEntry {
-  enemyTypeId: string;
-  timerMs: number;
-}
-
-/** Visual flash drawn at the point an enemy is hit by the player. */
-interface HitEffect {
-  x: number; y: number;
-  timerMs: number;
-  color: string;
-}
-
-/** Visual line drawn from the player toward a struck enemy. */
-interface ShotLine {
-  x1: number; y1: number;
-  x2: number; y2: number;
-  timerMs: number;
-  color: string;
-}
-
-/** Floating text showing damage dealt or "BLOCKED". */
-interface DamageNumber {
-  x: number; y: number;
-  vx: number; vy: number;
-  text: string;
-  fontPx: number;
-  color: string;
-  timerMs: number;
-}
-
-/** Visual-only orbit particle for the equipped weapon. */
-interface WeaponOrbitParticle {
-  /** Current angle in radians (advances each frame). */
-  angle: number;
-  /** Current computed position (updated from angle + player position). */
-  x: number; y: number;
-  /** Comet trail positions. */
-  trailX: Float64Array; trailY: Float64Array;
-  trailHead: number; trailCount: number;
-  /** Tier color for this particle. */
-  color: string;
-  /** Glow color. */
-  glowColor: string;
-  /** Size in pixels (= weapon tier). */
-  size: number;
-}
-
-/** Orbit projectile that damages enemies. */
-interface OrbitProjectile {
-  /** Current angle in radians. */
-  angle: number;
-  /** Computed position. */
-  x: number; y: number;
-  /** Comet trail. */
-  trailX: Float64Array; trailY: Float64Array;
-  trailHead: number; trailCount: number;
-  /** Per-target cooldown tracking (uses object identity as key). */
-  hitCooldowns: Map<object, number>;
-}
-
-// ── Sapphire enemy and missile interfaces ─────────────────────
-
-interface SapphireEnemy {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  shieldHp: number; maxShieldHp: number;
-  missileTimerMs: number;
-  patrolTimerMs: number;
-}
-
-interface SapphireMissile {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  trailX: Float64Array; trailY: Float64Array;
-  trailHead: number; trailCount: number;
-  hasHitPlayer: boolean;
-}
-
-// ── Sand gatling projectile ────────────────────────────────────
-
-interface SandProjectile {
-  x: number; y: number;
-  vx: number; vy: number;
-  lifeMs: number;
-  /** Damage to deal on hit (pre-scaled: weapon tier × player ATK already applied at spawn). */
-  scaledDamage: number;
-}
-
-// ── Quartz chain whip ──────────────────────────────────────────
-
-type ChainPhase = 'idle' | 'lashing' | 'retracting';
-
-interface ChainWhipState {
-  phase: ChainPhase;
-  phaseMs: number;
-  cooldownMs: number;
-  /** Tip lash target in world space. */
-  targetX: number; targetY: number;
-  /**
-   * Node positions.
-   * Index 0 = closest to player (smallest, least inertia).
-   * Index CHAIN_NODES-1 = tip / attacker (largest, most inertia).
-   */
-  nodesX: Float64Array; nodesY: Float64Array;
-  /** Node velocities for softbody physics. */
-  nodesVx: Float64Array; nodesVy: Float64Array;
-  /** Per-target hit cooldown for persistent damage. */
-  hitCooldowns: Map<object, number>;
-}
-
-// ── Ruby laser beam visual ─────────────────────────────────────
-
-interface LaserBeamEffect {
-  active: boolean;
-  startX: number; startY: number;
-  endX: number; endY: number;
-  dirX: number; dirY: number;
-  timerMs: number;
-}
-
-// ── Nullstone vortex weapon interfaces ────────────────────────
-
-interface NullstoneVortex {
-  x: number; y: number;
-  radiusPx: number;
-  durationMs: number;
-  maxDurationMs: number;
-  spinAngle: number;
-  damageTimerMs: number;
-  /** Damage per tick, pre-computed at spawn (rawDamage / 3). */
-  scaledDamage: number;
-  weaponId: string;
-}
-
-interface VortexWeaponState {
-  /** Countdown until the next vortex fire. */
-  cooldownMs: number;
-}
-
-// ── Diamond sword combo interfaces ────────────────────────────
-
-type SwordComboPhase = 'idle' | 'swing1' | 'swing2' | 'spin' | 'cooldown';
-
-interface SwordComboState {
-  phase: SwordComboPhase;
-  /** Milliseconds elapsed in the current phase. */
-  phaseMs: number;
-  /** Total ms of cooldown before next combo starts (or remaining cooldown time). */
-  cooldownMs: number;
-  /** Enemies already struck in the current swing phase (reset each phase). */
-  hitThisSwing: Set<object>;
-  /** Prismatic trail points for the sword tip. */
-  trailPoints: Array<{ x: number; y: number; color: string; alpha: number }>;
-}
-
-// ── Iolite poison bolt interfaces ─────────────────────────────
-
-interface IolitePoisonBolt {
-  x: number; y: number;
-  vx: number; vy: number;
-  lifeMs: number;
-  scaledDamage: number;
-  tier: number;
-  weaponId: string;
-  trailX: Float64Array; trailY: Float64Array;
-  trailHead: number; trailCount: number;
-}
-
-interface PoisonDebuff {
-  remainingDamage: number;
-  damagePerTick: number;
-  tickTimerMs: number;
-  maxHp: number;
-  /** Returns true while the target enemy is still alive (hp > 0). */
-  isAlive: () => boolean;
-  /** Applies one tick of poison damage; returns actual damage dealt. */
-  applyTick: (tick: number) => number;
-  /** Returns current world position of the poisoned enemy for damage number display. */
-  getPos: () => { x: number; y: number };
-}
-
-// ── Emerald enemy (blink-striker) ─────────────────────────────
-
-type EmeraldPhase = 'patrol' | 'charging' | 'blinking' | 'cooldown';
-
-interface EmeraldEnemy {
-  readonly kind: 'emerald';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  phase: EmeraldPhase;
-  phaseMs: number;
-  patrolTimerMs: number;
-  /** Origin of the last blink — fades as a ghost afterimage. */
-  ghostX: number; ghostY: number; ghostAlpha: number;
-  hasHitPlayer: boolean;
-}
-
-// ── Amber enemy (fan-gunner) ───────────────────────────────────
-
-interface AmberEnemy {
-  readonly kind: 'amber';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  missileTimerMs: number;
-  patrolTimerMs: number;
-}
-
-/** Amber shard — homing projectile fired in a fan spread by amber enemies. */
-interface AmberShard {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  trailX: Float64Array; trailY: Float64Array;
-  trailHead: number; trailCount: number;
-  hasHitPlayer: boolean;
-}
-
-// ── Void enemy (slow bruiser) ──────────────────────────────────
-
-interface VoidEnemy {
-  readonly kind: 'void';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  contactCdMs: number;   // ms until next contact damage tick
-  pulseMs: number;       // accumulator for aura pulse animation
-}
-
-// ── Quartz enemy (crystal orbiter) ────────────────────────────
-
-interface QuartzEnemy {
-  readonly kind: 'quartz';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  spikeTimerMs: number;
-  strafeDirFlipMs: number;
-  strafeDir: 1 | -1;
-}
-
-interface QuartzSpike {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  hasHitPlayer: boolean;
-  lifeMs: number;
-}
-
-// ── Ruby enemy (fast patroller) ────────────────────────────────
-
-interface RubyEnemy {
-  readonly kind: 'ruby';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  boltTimerMs: number;
-  patrolTimerMs: number;
-  consecutiveShots: number;
-}
-
-interface RubyBolt {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  hasHitPlayer: boolean;
-  lifeMs: number;
-}
-
-// ── Sunstone enemy (orbiter) ───────────────────────────────────
-
-interface SunstoneEnemy {
-  readonly kind: 'sunstone';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  pulseTimerMs: number;
-  orbitAngle: number;
-}
-
-// ── Citrine enemy (fast patrol + homing bolts) ─────────────────
-
-interface CitrineEnemy {
-  readonly kind: 'citrine';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  boltTimerMs: number;
-  patrolTimerMs: number;
-}
-
-interface CitrineBolt {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  hasHitPlayer: boolean;
-  trailX: Float64Array; trailY: Float64Array;
-  trailHead: number; trailCount: number;
-}
-
-// ── Iolite enemy (tanky beam-blaster) ─────────────────────────
-
-interface IoliteEnemy {
-  readonly kind: 'iolite';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  beamTimerMs: number;
-  patrolTimerMs: number;
-}
-
-// ── Amethyst enemy (crystal-shielder ring-burst) ──────────────
-
-interface AmethystEnemy {
-  readonly kind: 'amethyst';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  shieldHp: number; maxShieldHp: number;
-  burstTimerMs: number;
-  patrolTimerMs: number;
-}
-
-interface AmethystShard {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  hasHitPlayer: boolean;
-  lifeMs: number;
-}
-
-// ── Diamond enemy (phase-shifter) ─────────────────────────────
-
-interface DiamondEnemy {
-  readonly kind: 'diamond';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  phaseInvuln: boolean;
-  phaseTimerMs: number;
-  shardTimerMs: number;
-  orbitAngle: number;
-}
-
-interface DiamondShard {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  hasHitPlayer: boolean;
-  lifeMs: number;
-}
-
-// ── Nullstone enemy (gravity well) ────────────────────────────
-
-interface NullstoneEnemy {
-  readonly kind: 'nullstone';
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  isAbsorbing: boolean;
-  absorbTimerMs: number;
-  absorbCdMs: number;
-  tendrilTimerMs: number;
-  patrolTimerMs: number;
-  pulseMs: number;
-}
-
-interface VoidTendril {
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number;
-  hasHitPlayer: boolean;
-  lifeMs: number;
-}
-
-// ── Boss enemy (unique per-100-wave boss) ─────────────────────────
-
-interface BossEnemy {
-  readonly kind: 'boss';
-  bossId: number;
-  phaseIndex: 0 | 1 | 2;
-  x: number; y: number;
-  vx: number; vy: number;
-  hp: number; maxHp: number;
-  atk: number; def: number;
-  attackTimerMs: number;
-  secondaryTimerMs: number;
-  orbitAngle: number;
-  pulseMs: number;
-  shieldHp: number;
-  maxShieldHp: number;
-  isInvuln: boolean;
-  invulnTimerMs: number;
-  isAbsorbing: boolean;
-  absorbTimerMs: number;
-  contactCdMs: number;
-  phaseTransitionMs: number;
-}
-
-interface BossProjectile {
-  x: number; y: number;
-  vx: number; vy: number;
-  atk: number;
-  hasHitPlayer: boolean;
-  lifeMs: number;
-  maxLifeMs: number;
-  color: string;
-  glowColor: string;
-  size: number;
-  seekStr: number;
-}
 
 export interface RpgRender {
   canvas: HTMLCanvasElement;
@@ -1090,268 +207,6 @@ export interface RpgRender {
   setActive(active: boolean): void;
   /** Re-reads rpgSimState.equippedWeaponIds and immediately updates playerStats ATK/DEF + weapon particles. */
   notifyEquip(): void;
-}
-
-function makeAttackTrail(): AttackTrailState {
-  return { active: false, startX: 0, startY: 0, endX: 0, endY: 0,
-           controlAngle: 0, trailStartMs: 0, trailEndMs: Infinity };
-}
-
-function makeLaserEnemy(x: number, y: number, waveNumber: number): LaserEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(LASER_HP_INIT * scale), maxHp: Math.ceil(LASER_HP_INIT * scale),
-    atk: Math.ceil(LASER_ATK_INIT * scale), def: Math.ceil(LASER_DEF_INIT * scale),
-    phase: 'idle', phaseElapsedMs: 0,
-    dashDirX: 0, dashDirY: 0, dashTraveled: 0,
-    lockedTargetX: 0, lockedTargetY: 0,
-    attackTrail: makeAttackTrail(),
-    patrolTimerMs: Math.random() * LASER_PATROL_TURN_MS,
-    hasHitPlayer: false,
-  };
-}
-
-function makeSapphireEnemy(x: number, y: number, waveNumber: number): SapphireEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(SAPPHIRE_HP_INIT * scale), maxHp: Math.ceil(SAPPHIRE_HP_INIT * scale),
-    atk: Math.ceil(SAPPHIRE_ATK_INIT * scale), def: Math.ceil(SAPPHIRE_DEF_INIT * scale),
-    shieldHp: Math.ceil(SAPPHIRE_SHIELD_HP_INIT * scale), maxShieldHp: Math.ceil(SAPPHIRE_SHIELD_HP_INIT * scale),
-    missileTimerMs: SAPPHIRE_MISSILE_CD_MS + Math.random() * SAPPHIRE_MISSILE_JITTER,
-    patrolTimerMs: Math.random() * SAPPHIRE_PATROL_TURN_MS,
-  };
-}
-
-function makeSapphireMissile(x: number, y: number, vx: number, vy: number): SapphireMissile {
-  return {
-    x, y, vx, vy,
-    hp: MISSILE_HP_INIT, maxHp: MISSILE_HP_INIT,
-    atk: MISSILE_ATK_INIT,
-    trailX: new Float64Array(MISSILE_TRAIL_CAP),
-    trailY: new Float64Array(MISSILE_TRAIL_CAP),
-    trailHead: 0, trailCount: 0,
-    hasHitPlayer: false,
-  };
-}
-
-function makeEmeraldEnemy(x: number, y: number, waveNumber: number): EmeraldEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'emerald',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(EMERALD_HP_INIT * scale), maxHp: Math.ceil(EMERALD_HP_INIT * scale),
-    atk: Math.ceil(EMERALD_ATK_INIT * scale), def: Math.ceil(EMERALD_DEF_INIT * scale),
-    phase: 'patrol', phaseMs: 0,
-    patrolTimerMs: Math.random() * EMERALD_PATROL_TURN_MS,
-    ghostX: x, ghostY: y, ghostAlpha: 0,
-    hasHitPlayer: false,
-  };
-}
-
-function makeAmberEnemy(x: number, y: number, waveNumber: number): AmberEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'amber',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(AMBER_HP_INIT * scale), maxHp: Math.ceil(AMBER_HP_INIT * scale),
-    atk: Math.ceil(AMBER_ATK_INIT * scale), def: Math.ceil(AMBER_DEF_INIT * scale),
-    missileTimerMs: AMBER_MISSILE_CD_MS + Math.random() * AMBER_MISSILE_JITTER,
-    patrolTimerMs: Math.random() * AMBER_PATROL_TURN_MS,
-  };
-}
-
-function makeAmberShard(x: number, y: number, vx: number, vy: number): AmberShard {
-  return {
-    x, y, vx, vy,
-    hp: AMBER_SHARD_HP_INIT, maxHp: AMBER_SHARD_HP_INIT,
-    atk: AMBER_SHARD_ATK_INIT,
-    trailX: new Float64Array(AMBER_SHARD_TRAIL_CAP),
-    trailY: new Float64Array(AMBER_SHARD_TRAIL_CAP),
-    trailHead: 0, trailCount: 0,
-    hasHitPlayer: false,
-  };
-}
-
-function makeVoidEnemy(x: number, y: number, waveNumber: number): VoidEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'void',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(VOID_HP_INIT * scale), maxHp: Math.ceil(VOID_HP_INIT * scale),
-    atk: Math.ceil(VOID_ATK_INIT * scale), def: Math.ceil(VOID_DEF_INIT * scale),
-    contactCdMs: 0,
-    pulseMs: Math.random() * VOID_AURA_PULSE_MS,
-  };
-}
-
-function makeQuartzEnemy(x: number, y: number, waveNumber: number): QuartzEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'quartz',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(QUARTZ_HP_INIT * scale), maxHp: Math.ceil(QUARTZ_HP_INIT * scale),
-    atk: Math.ceil(QUARTZ_ATK_INIT * scale), def: Math.ceil(QUARTZ_DEF_INIT * scale),
-    spikeTimerMs: QUARTZ_SPIKE_CD_MS + Math.random() * QUARTZ_SPIKE_JITTER,
-    strafeDirFlipMs: 2000 + Math.random() * 2000,
-    strafeDir: (Math.random() < 0.5 ? 1 : -1) as 1 | -1,
-  };
-}
-
-function makeQuartzSpike(x: number, y: number, vx: number, vy: number): QuartzSpike {
-  return {
-    x, y, vx, vy,
-    hp: QUARTZ_SPIKE_HP_INIT, maxHp: QUARTZ_SPIKE_HP_INIT,
-    atk: QUARTZ_SPIKE_ATK_INIT,
-    hasHitPlayer: false,
-    lifeMs: QUARTZ_SPIKE_LIFE_MS,
-  };
-}
-
-function makeRubyEnemy(x: number, y: number, waveNumber: number): RubyEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'ruby',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(RUBY_HP_INIT * scale), maxHp: Math.ceil(RUBY_HP_INIT * scale),
-    atk: Math.ceil(RUBY_ATK_INIT * scale), def: Math.ceil(RUBY_DEF_INIT * scale),
-    boltTimerMs: RUBY_BOLT_CD_MS + Math.random() * RUBY_BOLT_JITTER,
-    patrolTimerMs: Math.random() * 2000,
-    consecutiveShots: 0,
-  };
-}
-
-function makeRubyBolt(x: number, y: number, vx: number, vy: number): RubyBolt {
-  return {
-    x, y, vx, vy,
-    hp: RUBY_BOLT_HP_INIT, maxHp: RUBY_BOLT_HP_INIT,
-    atk: RUBY_BOLT_ATK_INIT,
-    hasHitPlayer: false,
-    lifeMs: RUBY_BOLT_LIFE_MS,
-  };
-}
-
-function makeSunstoneEnemy(x: number, y: number, waveNumber: number): SunstoneEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'sunstone',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(SUNSTONE_HP_INIT * scale), maxHp: Math.ceil(SUNSTONE_HP_INIT * scale),
-    atk: Math.ceil(SUNSTONE_ATK_INIT * scale), def: Math.ceil(SUNSTONE_DEF_INIT * scale),
-    pulseTimerMs: SUNSTONE_PULSE_CD_MS + Math.random() * SUNSTONE_PULSE_JITTER,
-    orbitAngle: Math.random() * Math.PI * 2,
-  };
-}
-
-function makeCitrineEnemy(x: number, y: number, waveNumber: number): CitrineEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'citrine',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(CITRINE_HP_INIT * scale), maxHp: Math.ceil(CITRINE_HP_INIT * scale),
-    atk: Math.ceil(CITRINE_ATK_INIT * scale), def: Math.ceil(CITRINE_DEF_INIT * scale),
-    boltTimerMs: CITRINE_BOLT_CD_MS + Math.random() * CITRINE_BOLT_JITTER,
-    patrolTimerMs: Math.random() * CITRINE_PATROL_TURN_MS,
-  };
-}
-
-function makeCitrineBolt(x: number, y: number, vx: number, vy: number): CitrineBolt {
-  return {
-    x, y, vx, vy,
-    hp: CITRINE_BOLT_HP_INIT, maxHp: CITRINE_BOLT_HP_INIT,
-    atk: CITRINE_BOLT_ATK_INIT,
-    hasHitPlayer: false,
-    trailX: new Float64Array(CITRINE_BOLT_TRAIL_CAP),
-    trailY: new Float64Array(CITRINE_BOLT_TRAIL_CAP),
-    trailHead: 0, trailCount: 0,
-  };
-}
-
-function makeIoliteEnemy(x: number, y: number, waveNumber: number): IoliteEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'iolite',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(IOLITE_HP_INIT * scale), maxHp: Math.ceil(IOLITE_HP_INIT * scale),
-    atk: Math.ceil(IOLITE_ATK_INIT * scale), def: Math.ceil(IOLITE_DEF_INIT * scale),
-    beamTimerMs: IOLITE_BEAM_CD_MS + Math.random() * IOLITE_BEAM_JITTER,
-    patrolTimerMs: Math.random() * IOLITE_PATROL_TURN_MS,
-  };
-}
-
-function makeAmethystEnemy(x: number, y: number, waveNumber: number): AmethystEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'amethyst',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(AMETHYST_HP_INIT * scale), maxHp: Math.ceil(AMETHYST_HP_INIT * scale),
-    atk: Math.ceil(AMETHYST_ATK_INIT * scale), def: Math.ceil(AMETHYST_DEF_INIT * scale),
-    shieldHp: Math.ceil(AMETHYST_SHIELD_HP_INIT * scale),
-    maxShieldHp: Math.ceil(AMETHYST_SHIELD_HP_INIT * scale),
-    burstTimerMs: AMETHYST_BURST_CD_MS + Math.random() * AMETHYST_BURST_JITTER,
-    patrolTimerMs: Math.random() * AMETHYST_PATROL_TURN_MS,
-  };
-}
-
-function makeAmethystShard(x: number, y: number, vx: number, vy: number): AmethystShard {
-  return {
-    x, y, vx, vy,
-    hp: AMETHYST_SHARD_HP_INIT, maxHp: AMETHYST_SHARD_HP_INIT,
-    atk: AMETHYST_SHARD_ATK_INIT,
-    hasHitPlayer: false,
-    lifeMs: AMETHYST_SHARD_LIFE_MS,
-  };
-}
-
-function makeDiamondEnemy(x: number, y: number, waveNumber: number): DiamondEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'diamond',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(DIAMOND_HP_INIT * scale), maxHp: Math.ceil(DIAMOND_HP_INIT * scale),
-    atk: Math.ceil(DIAMOND_ATK_INIT * scale), def: Math.ceil(DIAMOND_DEF_INIT * scale),
-    phaseInvuln: false,
-    phaseTimerMs: DIAMOND_PHASE_VULN_MS,
-    shardTimerMs: DIAMOND_SHARD_CD_MS + Math.random() * 500,
-    orbitAngle: Math.random() * Math.PI * 2,
-  };
-}
-
-function makeDiamondShard(x: number, y: number, vx: number, vy: number): DiamondShard {
-  return {
-    x, y, vx, vy,
-    hp: DIAMOND_SHARD_HP_INIT, maxHp: DIAMOND_SHARD_HP_INIT,
-    atk: DIAMOND_SHARD_ATK_INIT,
-    hasHitPlayer: false,
-    lifeMs: DIAMOND_SHARD_LIFE_MS,
-  };
-}
-
-function makeNullstoneEnemy(x: number, y: number, waveNumber: number): NullstoneEnemy {
-  const scale = getWaveStatScale(waveNumber);
-  return {
-    kind: 'nullstone',
-    x, y, vx: 0, vy: 0,
-    hp: Math.ceil(NULLSTONE_HP_INIT * scale), maxHp: Math.ceil(NULLSTONE_HP_INIT * scale),
-    atk: Math.ceil(NULLSTONE_ATK_INIT * scale), def: Math.ceil(NULLSTONE_DEF_INIT * scale),
-    isAbsorbing: false,
-    absorbTimerMs: NULLSTONE_ABSORB_MS,
-    absorbCdMs: NULLSTONE_ABSORB_CD_MS,
-    tendrilTimerMs: NULLSTONE_TENDRIL_CD_MS + Math.random() * 1000,
-    patrolTimerMs: Math.random() * NULLSTONE_PATROL_TURN_MS,
-    pulseMs: Math.random() * 2000,
-  };
-}
-
-function makeVoidTendril(x: number, y: number, vx: number, vy: number): VoidTendril {
-  return {
-    x, y, vx, vy,
-    hp: VOID_TENDRIL_HP_INIT, maxHp: VOID_TENDRIL_HP_INIT,
-    atk: VOID_TENDRIL_ATK_INIT,
-    hasHitPlayer: false,
-    lifeMs: VOID_TENDRIL_LIFE_MS,
-  };
 }
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState): RpgRender {

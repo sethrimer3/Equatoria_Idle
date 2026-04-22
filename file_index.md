@@ -317,6 +317,23 @@
 - `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
+### src/render/rpg/rpg-constants.ts
+- All module-level numeric and string constants for the RPG rendering system (~551 lines).
+- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, sword combo, poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, and Euler-fluid injection constants.
+- Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
+- Exports all constants; consumed by `rpg-render.ts` and `rpg-factories.ts`.
+
+### src/render/rpg/rpg-types.ts
+- All internal interfaces and type aliases for the RPG rendering system (~496 lines).
+- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces (`HitEffect`, `ShotLine`, `DamageNumber`, etc.).
+- No runtime dependencies (types only).
+- Exports all types; consumed by `rpg-render.ts` and `rpg-factories.ts`.
+
+### src/render/rpg/rpg-factories.ts
+- `make*` factory functions for every RPG entity type (~305 lines).
+- Imports constants from `rpg-constants.ts`, types from `rpg-types.ts`, and `getWaveStatScale` from `rpg-state.ts`.
+- Exports: `makeAttackTrail`, `makeLaserEnemy`, `makeSapphireEnemy`, `makeSapphireMissile`, `makeEmeraldEnemy`, `makeAmberEnemy`, `makeAmberShard`, `makeVoidEnemy`, `makeQuartzEnemy`, `makeQuartzSpike`, `makeRubyEnemy`, `makeRubyBolt`, `makeSunstoneEnemy`, `makeCitrineEnemy`, `makeCitrineBolt`, `makeIoliteEnemy`, `makeAmethystEnemy`, `makeAmethystShard`, `makeDiamondEnemy`, `makeDiamondShard`, `makeNullstoneEnemy`, `makeVoidTendril`.
+
 ### src/render/rpg/rpg-fluid.ts
 - Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
 - Grid-based velocity and dye field (60 × 80 cells).  Solver: inject forces → decay → diffuse velocity → advect tracer particles.
@@ -327,7 +344,10 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab.
+- Independent RPG canvas rendering system for the RPG tab (~6,183 lines).
+- Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
+- Exports `RpgRender` interface and `createRpgRender()` factory.
+- Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
 - Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
 - Calls `fluid.step(deltaMs)` each update frame (including dying/restarting phases) and `fluid.reset()` on restart.
