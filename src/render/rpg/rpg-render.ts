@@ -239,6 +239,61 @@ const LASER_BEAM_COLOR       = '#ff2222';
 const LASER_BEAM_GLOW        = '#ff8888';
 const LASER_BEAM_WIDTH       =   2.5;
 
+// ── Emerald enemy constants ────────────────────────────────────
+const EMERALD_ENEMY_SIZE     =   5;
+const EMERALD_ENEMY_COLOR    = '#22dd66';
+const EMERALD_ENEMY_GLOW     = '#55ff99';
+const EMERALD_HP_INIT        =  90;
+const EMERALD_ATK_INIT       =  14;
+const EMERALD_DEF_INIT       =   4;
+const EMERALD_PATROL_SPEED   =   0.55;
+const EMERALD_PATROL_TURN_MS = 2200;
+const EMERALD_ATTACK_RADIUS  = 110;    // px — detect range that triggers blink
+const EMERALD_CHARGE_MS      = 380;    // ms charging before blink
+const EMERALD_BLINK_OFFSET   =   8;   // px offset from player center after blink
+const EMERALD_COOLDOWN_MS    = 2500;  // ms cooldown after a blink attack
+const EMERALD_GHOST_FADE_MS  = 420;   // ms for ghost afterimage to fade out
+const EMERALD_PATROL_DAMPING = 0.97;
+
+// ── Amber enemy constants ──────────────────────────────────────
+const AMBER_ENEMY_SIZE       =   7;
+const AMBER_ENEMY_COLOR      = '#ffaa22';
+const AMBER_ENEMY_GLOW       = '#ffcc66';
+const AMBER_HP_INIT          = 380;
+const AMBER_ATK_INIT         =  20;
+const AMBER_DEF_INIT         =   8;
+const AMBER_PATROL_SPEED     =   0.35;
+const AMBER_PATROL_TURN_MS   = 3500;
+const AMBER_PATROL_DAMPING   =   0.97;
+const AMBER_MISSILE_CD_MS    = 3800;  // ms between fan bursts
+const AMBER_MISSILE_JITTER   =  700;  // ±random offset to burst CD
+const AMBER_SHARD_SPREAD_RAD =   0.38; // ±spread angle (radians) for fan
+const AMBER_SHARD_COUNT      =   3;
+
+// ── Amber shard (projectile) constants ────────────────────────
+const AMBER_SHARD_SPEED      =   1.4;
+const AMBER_SHARD_MAX_SPEED  =   2.0;
+const AMBER_SHARD_SEEK_STR   =   0.018;
+const AMBER_SHARD_SIZE       =   3;
+const AMBER_SHARD_HP_INIT    =  25;
+const AMBER_SHARD_ATK_INIT   =  22;
+const AMBER_SHARD_TRAIL_CAP  =  35;
+const AMBER_SHARD_COLOR      = '#ff8833';
+const AMBER_SHARD_GLOW       = '#ffaa55';
+
+// ── Void enemy constants ───────────────────────────────────────
+const VOID_ENEMY_SIZE        =   8;
+const VOID_ENEMY_COLOR       = '#9933ff';
+const VOID_ENEMY_GLOW        = '#bb66ff';
+const VOID_HP_INIT           = 750;
+const VOID_ATK_INIT          =  28;
+const VOID_DEF_INIT          =  14;
+const VOID_PURSUE_SPEED      =   0.60; // constant homing speed (px/frame)
+const VOID_CONTACT_RADIUS    =   9;   // px — contact damage distance
+const VOID_CONTACT_CD_MS     = 1200;  // ms between contact damage ticks
+const VOID_AURA_PULSE_MS     = 1400;  // ms for one full aura pulse cycle
+const VOID_AURA_RADIUS       =  14;   // px — aura ring radius
+
 // ── Fluid background force scales ─────────────────────────────
 // Multiplier applied to entity velocity (px/frame → px/s) before injection.
 // Lower values = gentler disturbance; higher = more reactive.
@@ -264,6 +319,12 @@ const FLUID_SAND_R = 221, FLUID_SAND_G = 192, FLUID_SAND_B = 128;
 const FLUID_CHAIN_R = 160, FLUID_CHAIN_G = 216, FLUID_CHAIN_B = 239;
 // Laser beam colour.
 const FLUID_BEAM_R = 255, FLUID_BEAM_G =  34, FLUID_BEAM_B =  34;
+// Emerald enemy colour.
+const FLUID_EMERALD_R =  34, FLUID_EMERALD_G = 221, FLUID_EMERALD_B = 102;
+// Amber enemy colour.
+const FLUID_AMBER_R = 255, FLUID_AMBER_G = 170, FLUID_AMBER_B =  34;
+// Void enemy colour.
+const FLUID_VOID_R = 153, FLUID_VOID_G =  51, FLUID_VOID_B = 255;
 
 interface RpgMote {
   x: number; y: number;
@@ -448,6 +509,59 @@ interface LaserBeamEffect {
   timerMs: number;
 }
 
+// ── Emerald enemy (blink-striker) ─────────────────────────────
+
+type EmeraldPhase = 'patrol' | 'charging' | 'blinking' | 'cooldown';
+
+interface EmeraldEnemy {
+  readonly kind: 'emerald';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  phase: EmeraldPhase;
+  phaseMs: number;
+  patrolTimerMs: number;
+  /** Origin of the last blink — fades as a ghost afterimage. */
+  ghostX: number; ghostY: number; ghostAlpha: number;
+  hasHitPlayer: boolean;
+}
+
+// ── Amber enemy (fan-gunner) ───────────────────────────────────
+
+interface AmberEnemy {
+  readonly kind: 'amber';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  missileTimerMs: number;
+  patrolTimerMs: number;
+}
+
+/** Amber shard — homing projectile fired in a fan spread by amber enemies. */
+interface AmberShard {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+  hasHitPlayer: boolean;
+}
+
+// ── Void enemy (slow bruiser) ──────────────────────────────────
+
+interface VoidEnemy {
+  readonly kind: 'void';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  contactCdMs: number;   // ms until next contact damage tick
+  pulseMs: number;       // accumulator for aura pulse animation
+}
+
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
@@ -497,6 +611,53 @@ function makeSapphireMissile(x: number, y: number, vx: number, vy: number): Sapp
     trailY: new Float64Array(MISSILE_TRAIL_CAP),
     trailHead: 0, trailCount: 0,
     hasHitPlayer: false,
+  };
+}
+
+function makeEmeraldEnemy(x: number, y: number): EmeraldEnemy {
+  return {
+    kind: 'emerald',
+    x, y, vx: 0, vy: 0,
+    hp: EMERALD_HP_INIT, maxHp: EMERALD_HP_INIT,
+    atk: EMERALD_ATK_INIT, def: EMERALD_DEF_INIT,
+    phase: 'patrol', phaseMs: 0,
+    patrolTimerMs: Math.random() * EMERALD_PATROL_TURN_MS,
+    ghostX: x, ghostY: y, ghostAlpha: 0,
+    hasHitPlayer: false,
+  };
+}
+
+function makeAmberEnemy(x: number, y: number): AmberEnemy {
+  return {
+    kind: 'amber',
+    x, y, vx: 0, vy: 0,
+    hp: AMBER_HP_INIT, maxHp: AMBER_HP_INIT,
+    atk: AMBER_ATK_INIT, def: AMBER_DEF_INIT,
+    missileTimerMs: AMBER_MISSILE_CD_MS + Math.random() * AMBER_MISSILE_JITTER,
+    patrolTimerMs: Math.random() * AMBER_PATROL_TURN_MS,
+  };
+}
+
+function makeAmberShard(x: number, y: number, vx: number, vy: number): AmberShard {
+  return {
+    x, y, vx, vy,
+    hp: AMBER_SHARD_HP_INIT, maxHp: AMBER_SHARD_HP_INIT,
+    atk: AMBER_SHARD_ATK_INIT,
+    trailX: new Float64Array(AMBER_SHARD_TRAIL_CAP),
+    trailY: new Float64Array(AMBER_SHARD_TRAIL_CAP),
+    trailHead: 0, trailCount: 0,
+    hasHitPlayer: false,
+  };
+}
+
+function makeVoidEnemy(x: number, y: number): VoidEnemy {
+  return {
+    kind: 'void',
+    x, y, vx: 0, vy: 0,
+    hp: VOID_HP_INIT, maxHp: VOID_HP_INIT,
+    atk: VOID_ATK_INIT, def: VOID_DEF_INIT,
+    contactCdMs: 0,
+    pulseMs: Math.random() * VOID_AURA_PULSE_MS,
   };
 }
 
@@ -570,6 +731,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Chain whip states keyed by weaponId (for each equipped chainWhip weapon). */
   const chainWhipStates: Map<string, ChainWhipState> = new Map();
   let laserBeamEffect: LaserBeamEffect | null = null;
+
+  // ── New enemy type arrays ──────────────────────────────────────
+  const emeraldEnemies: EmeraldEnemy[] = [];
+  const amberEnemies: AmberEnemy[]     = [];
+  const amberShards: AmberShard[]      = [];
+  const voidEnemies: VoidEnemy[]       = [];
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
   const weaponOrbitParticles: WeaponOrbitParticle[] = [];
@@ -687,6 +854,37 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return dmg;
   }
 
+  /** Deals damage to an emerald enemy. Returns actual damage dealt. */
+  function damageEmeraldEnemy(enemy: EmeraldEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  /** Deals damage to an amber enemy. Returns actual damage dealt. */
+  function damageAmberEnemy(enemy: AmberEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  /** Deals damage to an amber shard (no DEF). Returns actual damage dealt. */
+  function damageAmberShard(shard: AmberShard, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    shard.hp = Math.max(0, shard.hp - dmg);
+    return dmg;
+  }
+
+  /** Deals damage to a void enemy (high DEF). Returns actual damage dealt. */
+  function damageVoidEnemy(enemy: VoidEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
   /**
    * Spawns a floating damage/blocked number at (x, y) travelling in (dirX, dirY).
    * `ratio` is dmg / maxHp clamped to [0, 1] and controls font size.
@@ -742,8 +940,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Closest-target helpers ─────────────────────────────────────
 
-  /** Represents any targetable entity (laser enemy, sapphire enemy, or missile). */
-  type TargetKind = 'laser' | 'sapphire' | 'missile';
+  /** Represents any targetable entity. */
+  type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void';
   interface ClosestTarget {
     kind: TargetKind;
     x: number; y: number;
@@ -751,11 +949,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     laser?: LaserEnemy;
     sapphire?: SapphireEnemy;
     missile?: SapphireMissile;
+    emerald?: EmeraldEnemy;
+    amber?: AmberEnemy;
+    ambershard?: AmberShard;
+    void?: VoidEnemy;
   }
 
   /**
-   * Returns the closest targetable entity (laser enemy, sapphire enemy, or missile)
-   * within rangeSq squared distance. Returns null if nothing is in range.
+   * Returns the closest targetable entity within rangeSq squared distance.
+   * Returns null if nothing is in range.
    */
   function findClosestTarget(rangeSq: number): ClosestTarget | null {
     let best: ClosestTarget | null = null;
@@ -776,19 +978,54 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = { kind: 'missile', x: m.x, y: m.y, distSq: d, missile: m }; }
     }
+    for (const e of emeraldEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'emerald', x: e.x, y: e.y, distSq: d, emerald: e }; }
+    }
+    for (const e of amberEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'amber', x: e.x, y: e.y, distSq: d, amber: e }; }
+    }
+    for (const s of amberShards) {
+      const dx = s.x - mote.x, dy = s.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'ambershard', x: s.x, y: s.y, distSq: d, ambershard: s }; }
+    }
+    for (const e of voidEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'void', x: e.x, y: e.y, distSq: d, void: e }; }
+    }
     return best;
   }
 
-  /** Returns the closest enemy (laser or sapphire, NOT missiles) within rangeSq. */
-  function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | null {
+  /** Returns the closest enemy body (not projectiles) within rangeSq. */
+  function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | null {
     let bestSq = rangeSq;
-    let best: LaserEnemy | SapphireEnemy | null = null;
+    let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | null = null;
     for (const e of enemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = e; }
     }
     for (const e of sapphireEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of emeraldEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of amberEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of voidEnemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = e; }
@@ -865,6 +1102,53 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (dx * dx + dy * dy < (MISSILE_SIZE * 2.5) ** 2) {
           const dmg = damageMissile(m, damage);
           spawnHitVisualsAt(m.x, m.y, m.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with emerald enemies
+      for (const e of emeraldEnemies) {
+        const hitR = EMERALD_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageEmeraldEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with amber enemies
+      for (const e of amberEnemies) {
+        const hitR = AMBER_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageAmberEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with amber shards
+      for (const s of amberShards) {
+        const dx = p.x - s.x, dy = p.y - s.y;
+        if (dx * dx + dy * dy < (AMBER_SHARD_SIZE * 2.5) ** 2) {
+          const dmg = damageAmberShard(s, damage);
+          spawnHitVisualsAt(s.x, s.y, s.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with void enemies
+      for (const e of voidEnemies) {
+        const hitR = VOID_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageVoidEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
           sandProjectiles.splice(i, 1); break;
         }
       }
@@ -1011,7 +1295,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       stepChainPhysics(ws, dt, CHAIN_ANCHOR_K);
 
       // Contact damage: check all nodes against all enemies
-      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy): void => {
+      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy): void => {
         const nodeR = chainNodeRadius(CHAIN_NODES - 1); // use tip radius for hit detection
         const r = nodeR + LASER_ENEMY_SIZE;
         const dx = tx - target.x, dy = ty - target.y;
@@ -1020,8 +1304,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
             let dmg = 0;
             if ('shieldHp' in target) {
               dmg = damageSapphireEnemy(target, contactDamage, 0, false);
+            } else if ('kind' in target) {
+              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy;
+              if (t.kind === 'emerald')      dmg = damageEmeraldEnemy(t, contactDamage, 0);
+              else if (t.kind === 'amber')   dmg = damageAmberEnemy(t, contactDamage, 0);
+              else if (t.kind === 'void')    dmg = damageVoidEnemy(t, contactDamage, 0);
             } else {
-              dmg = damageEnemy(target, contactDamage, 0);
+              dmg = damageEnemy(target as LaserEnemy, contactDamage, 0);
             }
             ws.hitCooldowns.set(target, CHAIN_HIT_CD_MS);
             hitEffects.push({ x: target.x, y: target.y, timerMs: HIT_EFFECT_DURATION_MS, color: CHAIN_NODE_COLOR });
@@ -1033,6 +1322,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
         for (const e of enemies)         applyContactDamage(nx, ny, e);
         for (const e of sapphireEnemies) applyContactDamage(nx, ny, e);
+        for (const e of emeraldEnemies)  applyContactDamage(nx, ny, e);
+        for (const e of amberEnemies)    applyContactDamage(nx, ny, e);
+        for (const e of voidEnemies)     applyContactDamage(nx, ny, e);
       }
 
       // Inject fluid force along the chain length
@@ -1151,6 +1443,56 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const perpDist = Math.abs(ex * dirY - ey * dirX);
       if (perpDist <= MISSILE_SIZE * 2) {
         damageMissile(m, baseDamage);
+      }
+    }
+
+    // Hit emerald enemies on the beam path
+    for (const e of emeraldEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= EMERALD_ENEMY_SIZE * 2) {
+        const dmg = damageEmeraldEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit amber enemies on the beam path
+    for (const e of amberEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= AMBER_ENEMY_SIZE * 2) {
+        const dmg = damageAmberEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit amber shards on the beam path
+    for (const s of amberShards) {
+      const ex = s.x - mote.x, ey = s.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= AMBER_SHARD_SIZE * 2) {
+        damageAmberShard(s, baseDamage);
+      }
+    }
+
+    // Hit void enemies on the beam path
+    for (const e of voidEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= VOID_ENEMY_SIZE * 2) {
+        const dmg = damageVoidEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
       }
     }
 
@@ -1422,7 +1764,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * Handles all WeaponEffect variants. Call removeDeadEnemies() after this.
    */
   function performWeaponAttack(weaponId: string): void {
-    const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length;
+    const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length
+      + emeraldEnemies.length + amberEnemies.length + amberShards.length + voidEnemies.length;
     if (totalTargets === 0) return;
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const range      = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
@@ -1469,13 +1812,38 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
         }
       }
+      for (const enemy of emeraldEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageEmeraldEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of amberEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageAmberEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of voidEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageVoidEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
       fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
         FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
       return;
     }
 
     if (effect.kind === 'multi') {
-      type SortEntry = { distSq: number; laser?: LaserEnemy; sapphire?: SapphireEnemy; missile?: SapphireMissile };
+      type SortEntry = {
+        distSq: number;
+        laser?: LaserEnemy; sapphire?: SapphireEnemy; missile?: SapphireMissile;
+        emerald?: EmeraldEnemy; amber?: AmberEnemy; ambershard?: AmberShard; void?: VoidEnemy;
+      };
       const rangeSq = range * range;
       const inRange: SortEntry[] = [];
       for (const e of enemies) {
@@ -1493,6 +1861,26 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const d = dx * dx + dy * dy;
         if (d <= rangeSq) inRange.push({ distSq: d, missile: m });
       }
+      for (const e of emeraldEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, emerald: e });
+      }
+      for (const e of amberEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, amber: e });
+      }
+      for (const s of amberShards) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, ambershard: s });
+      }
+      for (const e of voidEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, void: e });
+      }
       inRange.sort((a, b) => a.distSq - b.distSq);
       const targets = inRange.slice(0, effect.targetCount);
       for (const t of targets) {
@@ -1504,6 +1892,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(t.sapphire.x, t.sapphire.y, t.sapphire.maxHp, dmg, '#50b464');
         } else if (t.missile) {
           damageMissile(t.missile, rawDamage);
+        } else if (t.emerald) {
+          const dmg = damageEmeraldEnemy(t.emerald, rawDamage, 0);
+          spawnHitVisualsAt(t.emerald.x, t.emerald.y, t.emerald.maxHp, dmg, '#50b464');
+        } else if (t.amber) {
+          const dmg = damageAmberEnemy(t.amber, rawDamage, 0);
+          spawnHitVisualsAt(t.amber.x, t.amber.y, t.amber.maxHp, dmg, '#50b464');
+        } else if (t.ambershard) {
+          damageAmberShard(t.ambershard, rawDamage);
+        } else if (t.void) {
+          const dmg = damageVoidEnemy(t.void, rawDamage, 0);
+          spawnHitVisualsAt(t.void.x, t.void.y, t.void.maxHp, dmg, '#50b464');
         }
       }
       return;
@@ -1522,6 +1921,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         effect.kind === 'piercing' ? '#74c0fc' : SAPPHIRE_ENEMY_GLOW);
     } else if (closestT.missile) {
       damageMissile(closestT.missile, rawDamage);
+    } else if (closestT.emerald) {
+      const dmg = damageEmeraldEnemy(closestT.emerald, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.emerald.x, closestT.emerald.y, closestT.emerald.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : EMERALD_ENEMY_GLOW);
+    } else if (closestT.amber) {
+      const dmg = damageAmberEnemy(closestT.amber, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.amber.x, closestT.amber.y, closestT.amber.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : AMBER_ENEMY_GLOW);
+    } else if (closestT.ambershard) {
+      damageAmberShard(closestT.ambershard, rawDamage);
+    } else if (closestT.void) {
+      const dmg = damageVoidEnemy(closestT.void, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.void.x, closestT.void.y, closestT.void.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : VOID_ENEMY_GLOW);
     }
   }
 
@@ -1530,7 +1943,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     let totalXpFromKills = 0;
     for (let i = enemies.length - 1; i >= 0; i--) {
       if (enemies[i].hp <= 0) {
-        // Explosion effect at the laser enemy's position.
         fluid.addExplosion(
           enemies[i].x, enemies[i].y,
           FLUID_EXPLOSION_STRENGTH,
@@ -1542,13 +1954,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
     for (let i = sapphireEnemies.length - 1; i >= 0; i--) {
       if (sapphireEnemies[i].hp <= 0) {
-        // Larger explosion for sapphire enemies.
         fluid.addExplosion(
           sapphireEnemies[i].x, sapphireEnemies[i].y,
           FLUID_EXPLOSION_STRENGTH * 1.4,
           FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 3;  // more XP for sapphire enemies
+        totalXpFromKills += getXpPerKill(currentWave) * 3;
         sapphireEnemies.splice(i, 1);
       }
     }
@@ -1560,6 +1971,49 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_MISSILE_R, FLUID_MISSILE_G, FLUID_MISSILE_B,
         );
         sapphireMissiles.splice(i, 1);
+      }
+    }
+    for (let i = emeraldEnemies.length - 1; i >= 0; i--) {
+      if (emeraldEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          emeraldEnemies[i].x, emeraldEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 1.1,
+          FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 2;
+        emeraldEnemies.splice(i, 1);
+      }
+    }
+    for (let i = amberEnemies.length - 1; i >= 0; i--) {
+      if (amberEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          amberEnemies[i].x, amberEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 1.5,
+          FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 4;
+        amberEnemies.splice(i, 1);
+      }
+    }
+    for (let i = amberShards.length - 1; i >= 0; i--) {
+      if (amberShards[i].hp <= 0) {
+        fluid.addExplosion(
+          amberShards[i].x, amberShards[i].y,
+          FLUID_EXPLOSION_STRENGTH * 0.5,
+          FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
+        );
+        amberShards.splice(i, 1);
+      }
+    }
+    for (let i = voidEnemies.length - 1; i >= 0; i--) {
+      if (voidEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          voidEnemies[i].x, voidEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 2.0,
+          FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 6;
+        voidEnemies.splice(i, 1);
       }
     }
     if (totalXpFromKills > 0) {
@@ -1742,6 +2196,34 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         attempts++;
       } while (attempts < 20);
       sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY));
+    } else if (enemyTypeId === 'emerald') {
+      const half = EMERALD_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - EMERALD_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - EMERALD_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      emeraldEnemies.push(makeEmeraldEnemy(spawnX, spawnY));
+    } else if (enemyTypeId === 'amber') {
+      const half = AMBER_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - AMBER_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - AMBER_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      amberEnemies.push(makeAmberEnemy(spawnX, spawnY));
+    } else if (enemyTypeId === 'void') {
+      // Void enemies spawn at edges so they approach from a distance.
+      const edge = Math.floor(Math.random() * 4);
+      if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
+      else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
+      else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
+      else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
+      voidEnemies.push(makeVoidEnemy(spawnX, spawnY));
     }
   }
 
@@ -1761,7 +2243,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function checkWaveCompletion(): void {
-    if (isInterWave || spawnQueue.length > 0 || enemies.length > 0 || sapphireEnemies.length > 0) return;
+    if (isInterWave || spawnQueue.length > 0
+        || enemies.length > 0 || sapphireEnemies.length > 0
+        || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0) return;
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS;
   }
@@ -1929,7 +2413,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         // Keyboard input also overrides auto-move while held.
         mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
         mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
-      } else if (_autoMoveEnabled && (enemies.length > 0 || sapphireEnemies.length > 0)) {
+      } else if (_autoMoveEnabled && (enemies.length > 0 || sapphireEnemies.length > 0
+          || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0)) {
         // Auto-move: find nearest enemy and steer toward it, stopping when
         // the player is within the shortest range of any equipped weapon.
         let autoMoveStopRange = PLAYER_BASE_RANGE_PX;
@@ -1950,6 +2435,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
         }
         for (const enemy of sapphireEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of emeraldEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of amberEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of voidEnemies) {
           const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
           const d = ex * ex + ey * ey;
           if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
@@ -2080,6 +2580,49 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         hitEffects.push({ x: m.x, y: m.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
       }
     }
+    // Collision detection with emerald enemies.
+    for (const enemy of emeraldEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageEmeraldEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with amber enemies.
+    for (const enemy of amberEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageAmberEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with amber shards.
+    for (const s of amberShards) {
+      if (op.hitCooldowns.has(s)) continue;
+      const dx = op.x - s.x, dy = op.y - s.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        damageAmberShard(s, ORBIT_PROJ_DAMAGE);
+        op.hitCooldowns.set(s, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: s.x, y: s.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+      }
+    }
+    // Collision detection with void enemies.
+    for (const enemy of voidEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageVoidEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
   }
 
   function triggerDeath(): void {
@@ -2101,6 +2644,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerStats.hp = playerStats.maxHp;
     enemies.length = 0; spawnQueue.length = 0;
     sapphireEnemies.length = 0; sapphireMissiles.length = 0;
+    emeraldEnemies.length = 0;
+    amberEnemies.length = 0; amberShards.length = 0;
+    voidEnemies.length = 0;
     sandProjectiles.length = 0;
     chainWhipStates.clear();
     laserBeamEffect = null;
@@ -2115,6 +2661,436 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageNumbers.length = 0; playerIFramesMs = 0;
     fluid.reset();
     applyEquipmentStats();
+  }
+
+  // ── Emerald enemy system (blink-striker) ──────────────────────
+
+  function updateEmeraldEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of emeraldEnemies) {
+      // Fade ghost afterimage
+      if (enemy.ghostAlpha > 0) {
+        enemy.ghostAlpha = Math.max(0, enemy.ghostAlpha - deltaMs / EMERALD_GHOST_FADE_MS);
+      }
+
+      if (enemy.phase === 'patrol') {
+        // Random patrol movement
+        enemy.patrolTimerMs -= deltaMs;
+        if (enemy.patrolTimerMs <= 0) {
+          const angle = Math.random() * Math.PI * 2;
+          enemy.vx = Math.cos(angle) * EMERALD_PATROL_SPEED;
+          enemy.vy = Math.sin(angle) * EMERALD_PATROL_SPEED;
+          enemy.patrolTimerMs = EMERALD_PATROL_TURN_MS * (0.5 + Math.random() * 0.8);
+        }
+        const dampFactor = Math.pow(EMERALD_PATROL_DAMPING, dt);
+        enemy.vx *= dampFactor; enemy.vy *= dampFactor;
+        enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
+        // Clamp
+        const half = EMERALD_ENEMY_SIZE / 2;
+        if (enemy.x < half)            { enemy.x = half;            enemy.vx =  Math.abs(enemy.vx) * 0.5; }
+        if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+        if (enemy.y < half)            { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
+        if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+
+        // Fluid from patrol movement
+        const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
+        if (espd > 0.04) {
+          fluid.addForce({
+            x: enemy.x, y: enemy.y,
+            vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
+            vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
+            r: FLUID_EMERALD_R, g: FLUID_EMERALD_G, b: FLUID_EMERALD_B,
+            strength: FLUID_ENEMY_STRENGTH,
+          });
+        }
+
+        // Detect player
+        const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+        if (dx * dx + dy * dy < EMERALD_ATTACK_RADIUS * EMERALD_ATTACK_RADIUS) {
+          enemy.phase = 'charging'; enemy.phaseMs = 0; enemy.hasHitPlayer = false;
+          enemy.vx = 0; enemy.vy = 0;
+        }
+
+      } else if (enemy.phase === 'charging') {
+        enemy.phaseMs += deltaMs;
+        // Brief charge-up — enemy freezes and pulses
+        if (enemy.phaseMs >= EMERALD_CHARGE_MS) {
+          // Blink: store ghost at current position, teleport near player
+          enemy.ghostX = enemy.x; enemy.ghostY = enemy.y; enemy.ghostAlpha = 1;
+          const angle = Math.random() * Math.PI * 2;
+          enemy.x = mote.x + Math.cos(angle) * EMERALD_BLINK_OFFSET;
+          enemy.y = mote.y + Math.sin(angle) * EMERALD_BLINK_OFFSET;
+          // Clamp to bounds after blink
+          const half = EMERALD_ENEMY_SIZE / 2;
+          enemy.x = Math.max(half, Math.min(widthPx  - half, enemy.x));
+          enemy.y = Math.max(half, Math.min(heightPx - half, enemy.y));
+          enemy.phase = 'blinking'; enemy.phaseMs = 0;
+          // Flash of fluid at both origin and destination
+          fluid.addForce({
+            x: enemy.ghostX, y: enemy.ghostY,
+            vx: (mote.x - enemy.ghostX) * 0.02 * FLUID_VEL_FRAME_TO_PX_S,
+            vy: (mote.y - enemy.ghostY) * 0.02 * FLUID_VEL_FRAME_TO_PX_S,
+            r: FLUID_EMERALD_R, g: FLUID_EMERALD_G, b: FLUID_EMERALD_B,
+            strength: 1.2,
+          });
+        }
+
+      } else if (enemy.phase === 'blinking') {
+        // One-frame blink — deliver contact damage then go to cooldown
+        if (!enemy.hasHitPlayer) {
+          enemy.hasHitPlayer = true;
+          if (playerIFramesMs <= 0) {
+            const rawDmg = enemy.atk - playerStats.def;
+            const dmg = Math.max(0, rawDmg);
+            if (dmg <= 0) {
+              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+            } else {
+              playerStats.hp = Math.max(0, playerStats.hp - dmg);
+              const ratio = Math.min(1, dmg / playerStats.maxHp);
+              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+              spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
+            }
+          }
+        }
+        enemy.phase = 'cooldown'; enemy.phaseMs = 0;
+
+      } else if (enemy.phase === 'cooldown') {
+        enemy.phaseMs += deltaMs;
+        if (enemy.phaseMs >= EMERALD_COOLDOWN_MS) {
+          enemy.phase = 'patrol'; enemy.phaseMs = 0;
+          enemy.patrolTimerMs = EMERALD_PATROL_TURN_MS * Math.random();
+        }
+      }
+    }
+  }
+
+  function drawEmeraldEnemies(): void {
+    for (const enemy of emeraldEnemies) {
+      // Draw ghost afterimage at blink origin
+      if (enemy.ghostAlpha > 0.02) {
+        const half = EMERALD_ENEMY_SIZE / 2;
+        ctx.save();
+        ctx.globalAlpha = enemy.ghostAlpha * 0.5;
+        ctx.shadowBlur  = EMERALD_ENEMY_SIZE * 6; ctx.shadowColor = EMERALD_ENEMY_GLOW;
+        ctx.fillStyle   = EMERALD_ENEMY_GLOW;
+        ctx.fillRect(Math.floor(enemy.ghostX - half), Math.floor(enemy.ghostY - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+      // HP bar
+      const barW = EMERALD_ENEMY_SIZE * 2.5;
+      const barH = 2;
+      const barX = enemy.x - barW / 2;
+      const barY = enemy.y + EMERALD_ENEMY_SIZE / 2 + 3;
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = EMERALD_ENEMY_COLOR;
+      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      // Body — pulses brighter during charging phase
+      const chargeGlow = enemy.phase === 'charging' ? (enemy.phaseMs / EMERALD_CHARGE_MS) * 0.6 : 0;
+      const half = EMERALD_ENEMY_SIZE / 2;
+      ctx.shadowBlur  = EMERALD_ENEMY_SIZE * (5 + chargeGlow * 8); ctx.shadowColor = EMERALD_ENEMY_GLOW;
+      ctx.fillStyle   = EMERALD_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ── Amber enemy system (fan-gunner) ───────────────────────────
+
+  function spawnAmberFanBurst(enemy: AmberEnemy): void {
+    const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const baseDirX = dist > 0.01 ? dx / dist : 0;
+    const baseDirY = dist > 0.01 ? dy / dist : 1;
+    const baseAngle = Math.atan2(baseDirY, baseDirX);
+    for (let i = 0; i < AMBER_SHARD_COUNT; i++) {
+      const spread = (i - (AMBER_SHARD_COUNT - 1) / 2) * AMBER_SHARD_SPREAD_RAD;
+      const angle = baseAngle + spread;
+      const vx = Math.cos(angle) * AMBER_SHARD_SPEED;
+      const vy = Math.sin(angle) * AMBER_SHARD_SPEED;
+      amberShards.push(makeAmberShard(enemy.x, enemy.y, vx, vy));
+    }
+    fluid.addForce({
+      x: enemy.x, y: enemy.y,
+      vx: baseDirX * FLUID_VEL_FRAME_TO_PX_S * 2.0,
+      vy: baseDirY * FLUID_VEL_FRAME_TO_PX_S * 2.0,
+      r: FLUID_AMBER_R, g: FLUID_AMBER_G, b: FLUID_AMBER_B,
+      strength: FLUID_PROJECTILE_STRENGTH * 1.5,
+    });
+  }
+
+  function updateAmberEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of amberEnemies) {
+      // Patrol
+      enemy.patrolTimerMs -= deltaMs;
+      if (enemy.patrolTimerMs <= 0) {
+        const angle = Math.random() * Math.PI * 2;
+        enemy.vx = Math.cos(angle) * AMBER_PATROL_SPEED;
+        enemy.vy = Math.sin(angle) * AMBER_PATROL_SPEED;
+        enemy.patrolTimerMs = AMBER_PATROL_TURN_MS * (0.5 + Math.random() * 0.8);
+      }
+      const dampFactor = Math.pow(AMBER_PATROL_DAMPING, dt);
+      enemy.vx *= dampFactor; enemy.vy *= dampFactor;
+      enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      const half = AMBER_ENEMY_SIZE / 2;
+      if (enemy.x < half)            { enemy.x = half;            enemy.vx =  Math.abs(enemy.vx) * 0.5; }
+      if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+      if (enemy.y < half)            { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
+      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+
+      // Fluid from movement
+      const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
+      if (espd > 0.04) {
+        fluid.addForce({
+          x: enemy.x, y: enemy.y,
+          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
+          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
+          r: FLUID_AMBER_R, g: FLUID_AMBER_G, b: FLUID_AMBER_B,
+          strength: FLUID_ENEMY_STRENGTH,
+        });
+      }
+
+      // Fan-burst timer
+      enemy.missileTimerMs -= deltaMs;
+      if (enemy.missileTimerMs <= 0) {
+        spawnAmberFanBurst(enemy);
+        enemy.missileTimerMs = AMBER_MISSILE_CD_MS + (Math.random() - 0.5) * AMBER_MISSILE_JITTER;
+      }
+    }
+  }
+
+  function updateAmberShards(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = amberShards.length - 1; i >= 0; i--) {
+      const s = amberShards[i];
+      if (s.hp <= 0) { amberShards.splice(i, 1); continue; }
+
+      // Heat-seeking toward player
+      const dx = mote.x - s.x, dy = mote.y - s.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0.01) {
+        s.vx += (dx / dist) * AMBER_SHARD_SEEK_STR;
+        s.vy += (dy / dist) * AMBER_SHARD_SEEK_STR;
+      }
+      const speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
+      if (speed > AMBER_SHARD_MAX_SPEED) {
+        s.vx = (s.vx / speed) * AMBER_SHARD_MAX_SPEED;
+        s.vy = (s.vy / speed) * AMBER_SHARD_MAX_SPEED;
+      }
+      s.x += s.vx * dt; s.y += s.vy * dt;
+
+      // Fluid trail
+      fluid.addForce({
+        x: s.x, y: s.y,
+        vx: s.vx * FLUID_VEL_FRAME_TO_PX_S,
+        vy: s.vy * FLUID_VEL_FRAME_TO_PX_S,
+        r: FLUID_AMBER_R, g: FLUID_AMBER_G, b: FLUID_AMBER_B,
+        strength: FLUID_MISSILE_STRENGTH * 0.7,
+      });
+
+      // Trail recording
+      s.trailX[s.trailHead] = s.x; s.trailY[s.trailHead] = s.y;
+      s.trailHead = (s.trailHead + 1) % AMBER_SHARD_TRAIL_CAP;
+      if (s.trailCount < AMBER_SHARD_TRAIL_CAP) s.trailCount++;
+
+      // Player hit
+      if (!s.hasHitPlayer) {
+        const pdx = mote.x - s.x, pdy = mote.y - s.y;
+        if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          s.hasHitPlayer = true;
+          if (playerIFramesMs <= 0) {
+            const rawDmg = s.atk - playerStats.def;
+            const dmg = Math.max(0, rawDmg);
+            if (dmg <= 0) {
+              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+            } else {
+              playerStats.hp = Math.max(0, playerStats.hp - dmg);
+              const ratio = Math.min(1, dmg / playerStats.maxHp);
+              const curSpeed = speed + SPEED_EPSILON;
+              mote.vx += (s.vx / curSpeed) * PLAYER_KNOCKBACK_MAX * ratio;
+              mote.vy += (s.vy / curSpeed) * PLAYER_KNOCKBACK_MAX * ratio;
+              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+              spawnDamageNumber(mote.x, mote.y, s.vx / curSpeed, s.vy / curSpeed, String(Math.round(dmg)), ratio, '#ff6666');
+            }
+          }
+          amberShards.splice(i, 1); continue;
+        }
+      }
+
+      // Despawn if out of bounds
+      const margin = 20;
+      if (s.x < -margin || s.x > widthPx + margin || s.y < -margin || s.y > heightPx + margin) {
+        amberShards.splice(i, 1);
+      }
+    }
+  }
+
+  function drawAmberEnemies(): void {
+    for (const enemy of amberEnemies) {
+      const barW = AMBER_ENEMY_SIZE * 2.5;
+      const barH = 2;
+      const barX = enemy.x - barW / 2;
+      const barY = enemy.y + AMBER_ENEMY_SIZE / 2 + 3;
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = AMBER_ENEMY_COLOR;
+      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      const half = AMBER_ENEMY_SIZE / 2;
+      ctx.shadowBlur  = AMBER_ENEMY_SIZE * 5; ctx.shadowColor = AMBER_ENEMY_GLOW;
+      ctx.fillStyle   = AMBER_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMBER_ENEMY_SIZE, AMBER_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function drawAmberShards(): void {
+    if (amberShards.length === 0) return;
+    ctx.save();
+    for (const s of amberShards) {
+      // Trail
+      if (s.trailCount >= 2) {
+        const dashLen = AMBER_SHARD_TRAIL_CAP * 0.6;
+        const startIdx = (s.trailHead - s.trailCount + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
+        const lastIdx  = (s.trailHead - 1 + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
+        ctx.save();
+        ctx.setLineDash([dashLen, dashLen]);
+        ctx.lineDashOffset = -(dashLen * (1 - s.trailCount / AMBER_SHARD_TRAIL_CAP));
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.globalAlpha = 0.65; ctx.shadowBlur = 4; ctx.shadowColor = AMBER_SHARD_GLOW;
+        ctx.strokeStyle = AMBER_SHARD_GLOW; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(s.trailX[startIdx], s.trailY[startIdx]);
+        ctx.lineTo(s.trailX[lastIdx],  s.trailY[lastIdx]);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = AMBER_SHARD_COLOR; ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(s.trailX[startIdx], s.trailY[startIdx]);
+        ctx.lineTo(s.trailX[lastIdx],  s.trailY[lastIdx]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+      // Shard body
+      const half = AMBER_SHARD_SIZE / 2;
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = AMBER_SHARD_SIZE * 5; ctx.shadowColor = AMBER_SHARD_GLOW;
+      ctx.fillStyle = AMBER_SHARD_GLOW;
+      const gh = half * 2;
+      ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = AMBER_SHARD_COLOR;
+      ctx.fillRect(Math.floor(s.x - half), Math.floor(s.y - half), AMBER_SHARD_SIZE, AMBER_SHARD_SIZE);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // ── Void enemy system (slow bruiser) ──────────────────────────
+
+  function updateVoidEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of voidEnemies) {
+      enemy.pulseMs = (enemy.pulseMs + deltaMs) % VOID_AURA_PULSE_MS;
+
+      // Constant pursuit of player
+      const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0.01) {
+        enemy.vx = (dx / dist) * VOID_PURSUE_SPEED;
+        enemy.vy = (dy / dist) * VOID_PURSUE_SPEED;
+      } else {
+        enemy.vx = 0; enemy.vy = 0;
+      }
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+
+      // Clamp to bounds
+      const half = VOID_ENEMY_SIZE / 2;
+      if (enemy.x < half)            { enemy.x = half; }
+      if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; }
+      if (enemy.y < half)            { enemy.y = half; }
+      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; }
+
+      // Fluid from movement
+      const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
+      if (espd > 0.04) {
+        fluid.addForce({
+          x: enemy.x, y: enemy.y,
+          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
+          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
+          r: FLUID_VOID_R, g: FLUID_VOID_G, b: FLUID_VOID_B,
+          strength: FLUID_ENEMY_STRENGTH * 1.3,
+        });
+      }
+
+      // Contact damage (with cooldown per tick)
+      if (enemy.contactCdMs > 0) {
+        enemy.contactCdMs = Math.max(0, enemy.contactCdMs - deltaMs);
+      }
+      if (enemy.contactCdMs <= 0) {
+        const cdx = mote.x - enemy.x, cdy = mote.y - enemy.y;
+        if (cdx * cdx + cdy * cdy < VOID_CONTACT_RADIUS * VOID_CONTACT_RADIUS) {
+          if (playerIFramesMs <= 0) {
+            const rawDmg = enemy.atk - playerStats.def;
+            const dmg = Math.max(0, rawDmg);
+            if (dmg <= 0) {
+              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+            } else {
+              playerStats.hp = Math.max(0, playerStats.hp - dmg);
+              const ratio = Math.min(1, dmg / playerStats.maxHp);
+              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+              spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
+            }
+          }
+          enemy.contactCdMs = VOID_CONTACT_CD_MS;
+        }
+      }
+    }
+  }
+
+  function drawVoidEnemies(): void {
+    for (const enemy of voidEnemies) {
+      // Pulsing aura rings
+      const pulseT = enemy.pulseMs / VOID_AURA_PULSE_MS;
+      const auraAlpha = Math.sin(pulseT * Math.PI * 2) * 0.3 + 0.35;
+      ctx.save();
+      ctx.globalAlpha = auraAlpha * 0.4;
+      ctx.shadowBlur  = VOID_AURA_RADIUS * 2; ctx.shadowColor = VOID_ENEMY_GLOW;
+      ctx.strokeStyle = VOID_ENEMY_GLOW; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, VOID_AURA_RADIUS * (1 + pulseT * 0.3), 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = auraAlpha * 0.15;
+      ctx.fillStyle = VOID_ENEMY_GLOW;
+      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, VOID_AURA_RADIUS, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      // HP bar
+      const barW = VOID_ENEMY_SIZE * 3;
+      const barH = 2;
+      const barX = enemy.x - barW / 2;
+      const barY = enemy.y + VOID_AURA_RADIUS + 3;
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = VOID_ENEMY_COLOR;
+      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      // Body
+      const half = VOID_ENEMY_SIZE / 2;
+      ctx.shadowBlur  = VOID_ENEMY_SIZE * 6; ctx.shadowColor = VOID_ENEMY_GLOW;
+      ctx.fillStyle   = VOID_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), VOID_ENEMY_SIZE, VOID_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+    }
   }
 
   function drawAttackTrail(enemy: LaserEnemy, nowMs: number): void {
@@ -2332,6 +3308,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawEnemies(nowMs);
     drawSapphireEnemies();
     drawSapphireMissiles();
+    drawEmeraldEnemies();
+    drawAmberEnemies();
+    drawAmberShards();
+    drawVoidEnemies();
     drawShotLines();
     drawSandProjectiles();
     drawLaserBeamEffect();
@@ -2477,6 +3457,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateEnemies(deltaMs, nowMs);
       updateSapphireEnemies(deltaMs, nowMs);
       updateSapphireMissiles(deltaMs);
+      updateEmeraldEnemies(deltaMs);
+      updateAmberEnemies(deltaMs);
+      updateAmberShards(deltaMs);
+      updateVoidEnemies(deltaMs);
       updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(deltaMs);
       updateSandProjectiles(deltaMs);
