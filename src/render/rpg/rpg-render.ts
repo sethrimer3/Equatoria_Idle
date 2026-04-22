@@ -825,6 +825,8 @@ interface PoisonDebuff {
   damagePerTick: number;
   tickTimerMs: number;
   maxHp: number;
+  /** Returns true while the target enemy is still alive (hp > 0). */
+  isAlive: () => boolean;
   /** Applies one tick of poison damage; returns actual damage dealt. */
   applyTick: (tick: number) => number;
   /** Returns current world position of the poisoned enemy for damage number display. */
@@ -2668,7 +2670,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // Fluid inward swirl
       fluid.addForce({
         x: v.x, y: v.y, vx: 0, vy: 0,
-        r: 0x96 / 255, g: 0x64 / 255, b: 0xc8 / 255,
+        r: 150, g: 100, b: 200,
         strength: 0.4,
       });
 
@@ -2961,6 +2963,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       damagePerTick,
       tickTimerMs: POISON_TICK_INTERVAL_MS,
       maxHp: target.maxHp,
+      isAlive: () => target.hp > 0,
       applyTick:  (tick: number) => target.hp > 0 ? damageFn(target, tick, armorIgnore) : 0,
       getPos: () => ({ x: target.x, y: target.y }),
     });
@@ -2987,7 +2990,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         x: p.x, y: p.y,
         vx: p.vx * FLUID_VEL_FRAME_TO_PX_S * 0.4,
         vy: p.vy * FLUID_VEL_FRAME_TO_PX_S * 0.4,
-        r: 0x88 / 255, g: 0x44 / 255, b: 1.0,
+        r: 136, g: 68, b: 255,
         strength: 0.1,
       });
 
@@ -3043,11 +3046,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function updatePoisonDebuffs(deltaMs: number): void {
     for (const [target, debuff] of poisonDebuffs) {
       if (debuff.remainingDamage <= 0) { poisonDebuffs.delete(target); continue; }
-      // applyTick returns 0 when the enemy is dead (hp <= 0 guard in the closure).
-      // Detect "dead and done" by attempting a zero-cost tick check.
-      if (debuff.applyTick(0) === 0 && debuff.damagePerTick > 0) {
-        poisonDebuffs.delete(target); continue;
-      }
+      // Remove the debuff if the target has already been killed.
+      if (!debuff.isAlive()) { poisonDebuffs.delete(target); continue; }
 
       debuff.tickTimerMs -= deltaMs;
       if (debuff.tickTimerMs <= 0) {
