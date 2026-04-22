@@ -88,6 +88,13 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   groupsRoot.className = 'achievement-groups';
   panel.appendChild(groupsRoot);
 
+  // Small page break at the end of the achievements section
+  const pageBreakEnd = document.createElement('img');
+  pageBreakEnd.src = '/ASSETS/SPRITES/menuElements/pageBreak_small.png';
+  pageBreakEnd.alt = '';
+  pageBreakEnd.className = 'page-break-small';
+  panel.appendChild(pageBreakEnd);
+
   const existingGoldenTextContainer = document.querySelector<HTMLElement>('.golden-text-container');
   const createdGoldenTextContainer = !existingGoldenTextContainer;
   const goldenTextContainer = existingGoldenTextContainer ?? document.createElement('div');

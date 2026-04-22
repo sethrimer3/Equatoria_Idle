@@ -46,7 +46,7 @@ export interface RpgMenuPanel {
 
 /** Returns the CSS color string for a given weapon's cost tier. */
 function tierColor(tierId: string): string {
-  return TIER_BY_ID.get(tierId as import('../../data/tiers').TierId)?.color ?? '#c9a84c';
+  return TIER_BY_ID.get(tierId as import('../../data/tiers').TierId)?.color ?? '#fff172';
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
 
       const cpSelect = document.createElement('select');
       cpSelect.className = 'settings-select';
-      cpSelect.style.cssText = 'background:#1a1a2e;color:#c9a84c;border:1px solid rgba(201,168,76,0.4);padding:4px 8px;border-radius:4px;font-size:0.85em;width:100%;';
+      cpSelect.style.cssText = 'background:#1a1a2e;color:#fff172;border:1px solid rgba(255, 241, 114,0.4);padding:4px 8px;border-radius:4px;font-size:0.85em;width:100%;';
 
       const opt0 = document.createElement('option');
       opt0.value = '0';
@@ -344,7 +344,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
 
     // Slot count info
     const slotsInfo = document.createElement('div');
-    slotsInfo.style.cssText = 'text-align:center;margin-bottom:8px;color:#c9a84c;font-size:0.85em;';
+    slotsInfo.style.cssText = 'text-align:center;margin-bottom:8px;color:#fff172;font-size:0.85em;';
     const maxSlots = getMaxEquippedWeapons(lastRpgState);
     slotsInfo.textContent = `Equipped: ${lastRpgState.equippedWeaponIds.size} / ${maxSlots} slot${maxSlots !== 1 ? 's' : ''}`;
     content.appendChild(slotsInfo);

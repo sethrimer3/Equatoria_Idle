@@ -58,9 +58,9 @@
   --bg-overlay: rgba(8, 8, 16, 0.88);
   --text-primary: #e6e6ea;
   --text-secondary: #8a8a9a;
-  --accent: #c9a84c;
-  --accent-glow: rgba(201, 168, 76, 0.3);
-  --accent-border: rgba(201, 168, 76, 0.2);
+  --accent: #fff172;
+  --accent-glow: rgba(255, 241, 114, 0.3);
+  --accent-border: rgba(255, 241, 114, 0.2);
   --font-primary: 'Poiret One', sans-serif;
   --border-radius: 16px;
   --tab-height: 56px;

@@ -18,6 +18,7 @@ import {
   MATRIX_EDIT_STEP,
 } from '../../sim/aliven';
 import type { TraceEffect } from '../../render/ui/trace-effect';
+import { makePageBreak } from '../ui-helpers';
 
 /**
  * Looms panel — now serves as the combined Upgrades panel with three sub-tabs:
@@ -165,6 +166,9 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     cards.set(def.tierId, card);
     upgradeButtons.set(def.tierId, btn);
   }
+
+  // Small page break after loom cards section
+  upgradesPane.appendChild(makePageBreak('small'));
 
   panel.appendChild(upgradesPane);
 
@@ -473,6 +477,10 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   }
 
   panel.appendChild(alivenPane);
+  // alivenPane DOM order: title, subtitle, matrixSection, [page break], alivenRowsContainer, [page break]
+  // matrixSection is the first section; alivenRowsContainer is the second.
+  alivenPane.insertBefore(makePageBreak('small'), alivenRowsContainer);
+  alivenPane.appendChild(makePageBreak('small'));
 
   // ── Special upgrades section (inside Loom pane) ──────────────
 
@@ -531,6 +539,9 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     specialCards.set(def.tierId, card);
     specialButtons.set(def.tierId, btn);
   }
+
+  // Small page break after special upgrades section
+  upgradesPane.appendChild(makePageBreak('small'));
 
   // ── Sub-tab switching ────────────────────────────────────────
 

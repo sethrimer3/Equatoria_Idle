@@ -3158,7 +3158,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       weaponWidget.valueEl.textContent = labels.join(', ');
       const firstDef = WEAPON_BY_ID.get(equippedIds[0]);
       const tierDef = firstDef ? TIER_BY_ID.get(firstDef.costTierId) : undefined;
-      weaponWidget.valueEl.style.color = tierDef?.color ?? '#c9a84c';
+      weaponWidget.valueEl.style.color = tierDef?.color ?? '#fff172';
     } else {
       weaponWidget.valueEl.textContent = 'None';
       weaponWidget.valueEl.style.color = '';
@@ -5882,7 +5882,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       : `Wave ${currentWave} Cleared!`;
     ctx.fillText(bannerText, widthPx / 2, heightPx / 2 - 8);
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#c9a84c'; ctx.font = '10px "Poiret One", sans-serif';
+    ctx.fillStyle = '#fff172'; ctx.font = '10px "Poiret One", sans-serif';
     ctx.fillText('Next wave incoming\u2026', widthPx / 2, heightPx / 2 + 10);
     if (currentWave > 0 && currentWave % 10 === 0) {
       ctx.fillStyle = '#69db7c'; ctx.font = '9px "Poiret One", sans-serif';
@@ -5992,10 +5992,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     if (joystick.isActive && rpgPhase === 'alive') {
       ctx.save();
-      ctx.globalAlpha = 0.35; ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.35; ctx.strokeStyle = '#fff172'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, JOYSTICK_OUTER_RADIUS, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 0.55; ctx.fillStyle = '#c9a84c';
-      ctx.shadowBlur = JOYSTICK_THUMB_RADIUS * 2; ctx.shadowColor = 'rgba(201, 168, 76, 0.6)';
+      ctx.globalAlpha = 0.55; ctx.fillStyle = '#fff172';
+      ctx.shadowBlur = JOYSTICK_THUMB_RADIUS * 2; ctx.shadowColor = 'rgba(255, 241, 114, 0.6)';
       ctx.beginPath(); ctx.arc(joystick.thumbX, joystick.thumbY, JOYSTICK_THUMB_RADIUS, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0; ctx.restore();
     }
