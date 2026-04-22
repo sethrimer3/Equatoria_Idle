@@ -99,6 +99,11 @@ export function getXpPerKill(waveNumber: number): number {
   return Math.ceil(Math.pow(Math.max(1, waveNumber), 1.8));
 }
 
+/** Multiplier applied to base enemy HP, ATK, DEF for a given wave. */
+export function getWaveStatScale(waveNumber: number): number {
+  return Math.max(1, Math.pow(Math.max(1, waveNumber), 0.65));
+}
+
 /**
  * Flat ATK bonus from accumulated XP.
  *

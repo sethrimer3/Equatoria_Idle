@@ -27,7 +27,7 @@
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
   getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel,
-  PLAYER_BASE_ATK, getScaledWeaponDamage, getScaledWeaponCooldown,
+  PLAYER_BASE_ATK, getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale,
 } from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
@@ -294,6 +294,164 @@ const VOID_CONTACT_CD_MS     = 1200;  // ms between contact damage ticks
 const VOID_AURA_PULSE_MS     = 1400;  // ms for one full aura pulse cycle
 const VOID_AURA_RADIUS       =  14;   // px — aura ring radius
 
+// ── Quartz enemy constants ─────────────────────────────────────
+const QUARTZ_ENEMY_SIZE        =   5;
+const QUARTZ_ENEMY_COLOR       = '#f5f0eb';
+const QUARTZ_ENEMY_GLOW        = '#faf8f5';
+const QUARTZ_HP_INIT           =  35;
+const QUARTZ_ATK_INIT          =   8;
+const QUARTZ_DEF_INIT          =   3;
+const QUARTZ_PREFERRED_DIST    =  90;
+const QUARTZ_APPROACH_SPEED    =   0.6;
+const QUARTZ_STRAFE_SPEED      =   0.5;
+const QUARTZ_SPIKE_CD_MS       = 2200;
+const QUARTZ_SPIKE_JITTER      =  400;
+// ── Quartz spike (projectile) constants ────────────────────────
+const QUARTZ_SPIKE_SPEED       =   1.0;
+const QUARTZ_SPIKE_SIZE        =   3;
+const QUARTZ_SPIKE_HP_INIT     =  20;
+const QUARTZ_SPIKE_ATK_INIT    =  12;
+const QUARTZ_SPIKE_LIFE_MS     = 3000;
+const QUARTZ_SPIKE_COLOR       = '#f0e8d8';
+const QUARTZ_SPIKE_GLOW        = '#faf8f5';
+
+// ── Ruby enemy constants ───────────────────────────────────────
+const RUBY_ENEMY_SIZE          =   5;
+const RUBY_ENEMY_COLOR         = '#dc3232';
+const RUBY_ENEMY_GLOW          = '#ff6b6b';
+const RUBY_HP_INIT             = 120;
+const RUBY_ATK_INIT            =  18;
+const RUBY_DEF_INIT            =   5;
+const RUBY_PATROL_SPEED        =   0.8;
+const RUBY_BOLT_CD_MS          = 1200;
+const RUBY_BOLT_JITTER         =  300;
+const RUBY_PREFERRED_DIST      =  60;
+// ── Ruby bolt (projectile) constants ──────────────────────────
+const RUBY_BOLT_SPEED          =   2.8;
+const RUBY_BOLT_SIZE           =   2;
+const RUBY_BOLT_HP_INIT        =  15;
+const RUBY_BOLT_ATK_INIT       =  15;
+const RUBY_BOLT_LIFE_MS        = 1500;
+const RUBY_BOLT_COLOR          = '#ff4444';
+const RUBY_BOLT_GLOW           = '#ff8888';
+
+// ── Sunstone enemy constants ───────────────────────────────────
+const SUNSTONE_ENEMY_SIZE      =   7;
+const SUNSTONE_ENEMY_COLOR     = '#ff8c3c';
+const SUNSTONE_ENEMY_GLOW      = '#ffb366';
+const SUNSTONE_HP_INIT         = 200;
+const SUNSTONE_ATK_INIT        =  16;
+const SUNSTONE_DEF_INIT        =   6;
+const SUNSTONE_PREFERRED_DIST  = 120;
+const SUNSTONE_ORBIT_SPEED     =   0.4;
+const SUNSTONE_PULSE_CD_MS     = 3500;
+const SUNSTONE_PULSE_JITTER    =  600;
+
+// ── Citrine enemy constants ────────────────────────────────────
+const CITRINE_ENEMY_SIZE       =   5;
+const CITRINE_ENEMY_COLOR      = '#e6c850';
+const CITRINE_ENEMY_GLOW       = '#f0d870';
+const CITRINE_HP_INIT          = 150;
+const CITRINE_ATK_INIT         =  22;
+const CITRINE_DEF_INIT         =   4;
+const CITRINE_PATROL_SPEED     =   0.9;
+const CITRINE_PATROL_TURN_MS   = 1800;
+const CITRINE_BOLT_CD_MS       = 2800;
+const CITRINE_BOLT_JITTER      =  400;
+// ── Citrine bolt (homing) constants ───────────────────────────
+const CITRINE_BOLT_SPEED       =   1.5;
+const CITRINE_BOLT_MAX_SPEED   =   2.4;
+const CITRINE_BOLT_SEEK        =   0.035;
+const CITRINE_BOLT_SIZE        =   3;
+const CITRINE_BOLT_HP_INIT     =  20;
+const CITRINE_BOLT_ATK_INIT    =  20;
+const CITRINE_BOLT_TRAIL_CAP   =  30;
+const CITRINE_BOLT_COLOR       = '#e6c850';
+const CITRINE_BOLT_GLOW        = '#ffe080';
+
+// ── Iolite enemy constants ─────────────────────────────────────
+const IOLITE_ENEMY_SIZE        =   8;
+const IOLITE_ENEMY_COLOR       = '#6464b4';
+const IOLITE_ENEMY_GLOW        = '#8888cc';
+const IOLITE_HP_INIT           = 500;
+const IOLITE_ATK_INIT          =  24;
+const IOLITE_DEF_INIT          =  12;
+const IOLITE_PATROL_SPEED      =   0.3;
+const IOLITE_PATROL_TURN_MS    = 4000;
+const IOLITE_BEAM_CD_MS        = 4000;
+const IOLITE_BEAM_JITTER       =  800;
+const IOLITE_BEAM_RANGE        = 120;
+const IOLITE_BEAM_COUNT        =   5;
+const IOLITE_BEAM_SPREAD_RAD   =   1.047; // ~60 degrees each side
+
+// ── Amethyst enemy constants ───────────────────────────────────
+const AMETHYST_ENEMY_SIZE      =   7;
+const AMETHYST_ENEMY_COLOR     = '#b464c8';
+const AMETHYST_ENEMY_GLOW      = '#d088e0';
+const AMETHYST_HP_INIT         = 800;
+const AMETHYST_ATK_INIT        =  28;
+const AMETHYST_DEF_INIT        =  15;
+const AMETHYST_SHIELD_HP_INIT  = 400;
+const AMETHYST_PATROL_SPEED    =   0.4;
+const AMETHYST_PATROL_TURN_MS  = 3500;
+const AMETHYST_BURST_CD_MS     = 3200;
+const AMETHYST_BURST_JITTER    =  500;
+const AMETHYST_BURST_COUNT     =   8;
+// ── Amethyst shard constants ───────────────────────────────────
+const AMETHYST_SHARD_SPEED     =   1.8;
+const AMETHYST_SHARD_SIZE      =   3;
+const AMETHYST_SHARD_HP_INIT   =  25;
+const AMETHYST_SHARD_ATK_INIT  =  24;
+const AMETHYST_SHARD_LIFE_MS   = 1800;
+const AMETHYST_SHARD_COLOR     = '#c87ae0';
+const AMETHYST_SHARD_GLOW      = '#d88af0';
+
+// ── Diamond enemy constants ────────────────────────────────────
+const DIAMOND_ENEMY_SIZE       =   9;
+const DIAMOND_ENEMY_COLOR      = '#e8f0fa';
+const DIAMOND_ENEMY_GLOW       = '#ffffff';
+const DIAMOND_HP_INIT          = 1500;
+const DIAMOND_ATK_INIT         =  35;
+const DIAMOND_DEF_INIT         =  20;
+const DIAMOND_PHASE_INVULN_MS  = 2000;
+const DIAMOND_PHASE_VULN_MS    = 4000;
+const DIAMOND_PATROL_SPEED     =   0.5;
+const DIAMOND_ORBIT_SPEED      =   0.3;
+const DIAMOND_SHARD_CD_MS      = 2500;
+const DIAMOND_SHARD_COUNT      =   6;
+const DIAMOND_SHARD_COLOR      = '#c0e0ff';
+const DIAMOND_SHARD_GLOW       = '#ffffff';
+// ── Diamond shard constants ────────────────────────────────────
+const DIAMOND_SHARD_SPEED      =   2.2;
+const DIAMOND_SHARD_SIZE       =   3;
+const DIAMOND_SHARD_HP_INIT    =  30;
+const DIAMOND_SHARD_ATK_INIT   =  30;
+const DIAMOND_SHARD_LIFE_MS    = 1400;
+
+// ── Nullstone enemy constants ──────────────────────────────────
+const NULLSTONE_ENEMY_SIZE         =  10;
+const NULLSTONE_ENEMY_COLOR        = '#1e1e28';
+const NULLSTONE_ENEMY_GLOW         = '#9664c8';
+const NULLSTONE_HP_INIT            = 2500;
+const NULLSTONE_ATK_INIT           =   42;
+const NULLSTONE_DEF_INIT           =   25;
+const NULLSTONE_GRAVITY_STRENGTH   =   0.0015;
+const NULLSTONE_GRAVITY_RADIUS     =  200;
+const NULLSTONE_ABSORB_MS          = 2500;
+const NULLSTONE_ABSORB_CD_MS       = 5000;
+const NULLSTONE_PATROL_SPEED       =   0.25;
+const NULLSTONE_PATROL_TURN_MS     = 5000;
+const NULLSTONE_TENDRIL_CD_MS      = 3000;
+const NULLSTONE_TENDRIL_COUNT      =   3;
+// ── Void tendril (nullstone projectile) constants ──────────────
+const VOID_TENDRIL_SPEED       =   1.8;
+const VOID_TENDRIL_SIZE        =   4;
+const VOID_TENDRIL_HP_INIT     =  40;
+const VOID_TENDRIL_ATK_INIT    =  35;
+const VOID_TENDRIL_LIFE_MS     = 2000;
+const VOID_TENDRIL_COLOR       = '#4d2280';
+const VOID_TENDRIL_GLOW        = '#9664c8';
+
 // ── Fluid background force scales ─────────────────────────────
 // Multiplier applied to entity velocity (px/frame → px/s) before injection.
 // Lower values = gentler disturbance; higher = more reactive.
@@ -325,6 +483,22 @@ const FLUID_EMERALD_R =  34, FLUID_EMERALD_G = 221, FLUID_EMERALD_B = 102;
 const FLUID_AMBER_R = 255, FLUID_AMBER_G = 170, FLUID_AMBER_B =  34;
 // Void enemy colour.
 const FLUID_VOID_R = 153, FLUID_VOID_G =  51, FLUID_VOID_B = 255;
+// Quartz enemy colour.
+const FLUID_QUARTZ_R = 245, FLUID_QUARTZ_G = 240, FLUID_QUARTZ_B = 235;
+// Ruby enemy colour.
+const FLUID_RUBY_R = 220, FLUID_RUBY_G =  50, FLUID_RUBY_B =  50;
+// Sunstone enemy colour.
+const FLUID_SUNSTONE_R = 255, FLUID_SUNSTONE_G = 140, FLUID_SUNSTONE_B =  60;
+// Citrine enemy colour.
+const FLUID_CITRINE_R = 230, FLUID_CITRINE_G = 200, FLUID_CITRINE_B =  80;
+// Iolite enemy colour.
+const FLUID_IOLITE_R = 100, FLUID_IOLITE_G = 100, FLUID_IOLITE_B = 180;
+// Amethyst enemy colour.
+const FLUID_AMETHYST_R = 180, FLUID_AMETHYST_G = 100, FLUID_AMETHYST_B = 200;
+// Diamond enemy colour.
+const FLUID_DIAMOND_R = 232, FLUID_DIAMOND_G = 240, FLUID_DIAMOND_B = 250;
+// Nullstone enemy colour.
+const FLUID_NULLSTONE_R =  30, FLUID_NULLSTONE_G =  30, FLUID_NULLSTONE_B =  40;
 
 interface RpgMote {
   x: number; y: number;
@@ -562,6 +736,166 @@ interface VoidEnemy {
   pulseMs: number;       // accumulator for aura pulse animation
 }
 
+// ── Quartz enemy (crystal orbiter) ────────────────────────────
+
+interface QuartzEnemy {
+  readonly kind: 'quartz';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  spikeTimerMs: number;
+  strafeDirFlipMs: number;
+  strafeDir: 1 | -1;
+}
+
+interface QuartzSpike {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  lifeMs: number;
+}
+
+// ── Ruby enemy (fast patroller) ────────────────────────────────
+
+interface RubyEnemy {
+  readonly kind: 'ruby';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  boltTimerMs: number;
+  patrolTimerMs: number;
+  consecutiveShots: number;
+}
+
+interface RubyBolt {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  lifeMs: number;
+}
+
+// ── Sunstone enemy (orbiter) ───────────────────────────────────
+
+interface SunstoneEnemy {
+  readonly kind: 'sunstone';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  pulseTimerMs: number;
+  orbitAngle: number;
+}
+
+// ── Citrine enemy (fast patrol + homing bolts) ─────────────────
+
+interface CitrineEnemy {
+  readonly kind: 'citrine';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  boltTimerMs: number;
+  patrolTimerMs: number;
+}
+
+interface CitrineBolt {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}
+
+// ── Iolite enemy (tanky beam-blaster) ─────────────────────────
+
+interface IoliteEnemy {
+  readonly kind: 'iolite';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  beamTimerMs: number;
+  patrolTimerMs: number;
+}
+
+// ── Amethyst enemy (crystal-shielder ring-burst) ──────────────
+
+interface AmethystEnemy {
+  readonly kind: 'amethyst';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  shieldHp: number; maxShieldHp: number;
+  burstTimerMs: number;
+  patrolTimerMs: number;
+}
+
+interface AmethystShard {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  lifeMs: number;
+}
+
+// ── Diamond enemy (phase-shifter) ─────────────────────────────
+
+interface DiamondEnemy {
+  readonly kind: 'diamond';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  phaseInvuln: boolean;
+  phaseTimerMs: number;
+  shardTimerMs: number;
+  orbitAngle: number;
+}
+
+interface DiamondShard {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  lifeMs: number;
+}
+
+// ── Nullstone enemy (gravity well) ────────────────────────────
+
+interface NullstoneEnemy {
+  readonly kind: 'nullstone';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  isAbsorbing: boolean;
+  absorbTimerMs: number;
+  absorbCdMs: number;
+  tendrilTimerMs: number;
+  patrolTimerMs: number;
+  pulseMs: number;
+}
+
+interface VoidTendril {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  lifeMs: number;
+}
+
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
@@ -577,11 +911,12 @@ function makeAttackTrail(): AttackTrailState {
            controlAngle: 0, trailStartMs: 0, trailEndMs: Infinity };
 }
 
-function makeLaserEnemy(x: number, y: number): LaserEnemy {
+function makeLaserEnemy(x: number, y: number, waveNumber: number): LaserEnemy {
+  const scale = getWaveStatScale(waveNumber);
   return {
     x, y, vx: 0, vy: 0,
-    hp: LASER_HP_INIT, maxHp: LASER_HP_INIT,
-    atk: LASER_ATK_INIT, def: LASER_DEF_INIT,
+    hp: Math.ceil(LASER_HP_INIT * scale), maxHp: Math.ceil(LASER_HP_INIT * scale),
+    atk: Math.ceil(LASER_ATK_INIT * scale), def: Math.ceil(LASER_DEF_INIT * scale),
     phase: 'idle', phaseElapsedMs: 0,
     dashDirX: 0, dashDirY: 0, dashTraveled: 0,
     lockedTargetX: 0, lockedTargetY: 0,
@@ -591,12 +926,13 @@ function makeLaserEnemy(x: number, y: number): LaserEnemy {
   };
 }
 
-function makeSapphireEnemy(x: number, y: number): SapphireEnemy {
+function makeSapphireEnemy(x: number, y: number, waveNumber: number): SapphireEnemy {
+  const scale = getWaveStatScale(waveNumber);
   return {
     x, y, vx: 0, vy: 0,
-    hp: SAPPHIRE_HP_INIT, maxHp: SAPPHIRE_HP_INIT,
-    atk: SAPPHIRE_ATK_INIT, def: SAPPHIRE_DEF_INIT,
-    shieldHp: SAPPHIRE_SHIELD_HP_INIT, maxShieldHp: SAPPHIRE_SHIELD_HP_INIT,
+    hp: Math.ceil(SAPPHIRE_HP_INIT * scale), maxHp: Math.ceil(SAPPHIRE_HP_INIT * scale),
+    atk: Math.ceil(SAPPHIRE_ATK_INIT * scale), def: Math.ceil(SAPPHIRE_DEF_INIT * scale),
+    shieldHp: Math.ceil(SAPPHIRE_SHIELD_HP_INIT * scale), maxShieldHp: Math.ceil(SAPPHIRE_SHIELD_HP_INIT * scale),
     missileTimerMs: SAPPHIRE_MISSILE_CD_MS + Math.random() * SAPPHIRE_MISSILE_JITTER,
     patrolTimerMs: Math.random() * SAPPHIRE_PATROL_TURN_MS,
   };
@@ -614,12 +950,13 @@ function makeSapphireMissile(x: number, y: number, vx: number, vy: number): Sapp
   };
 }
 
-function makeEmeraldEnemy(x: number, y: number): EmeraldEnemy {
+function makeEmeraldEnemy(x: number, y: number, waveNumber: number): EmeraldEnemy {
+  const scale = getWaveStatScale(waveNumber);
   return {
     kind: 'emerald',
     x, y, vx: 0, vy: 0,
-    hp: EMERALD_HP_INIT, maxHp: EMERALD_HP_INIT,
-    atk: EMERALD_ATK_INIT, def: EMERALD_DEF_INIT,
+    hp: Math.ceil(EMERALD_HP_INIT * scale), maxHp: Math.ceil(EMERALD_HP_INIT * scale),
+    atk: Math.ceil(EMERALD_ATK_INIT * scale), def: Math.ceil(EMERALD_DEF_INIT * scale),
     phase: 'patrol', phaseMs: 0,
     patrolTimerMs: Math.random() * EMERALD_PATROL_TURN_MS,
     ghostX: x, ghostY: y, ghostAlpha: 0,
@@ -627,12 +964,13 @@ function makeEmeraldEnemy(x: number, y: number): EmeraldEnemy {
   };
 }
 
-function makeAmberEnemy(x: number, y: number): AmberEnemy {
+function makeAmberEnemy(x: number, y: number, waveNumber: number): AmberEnemy {
+  const scale = getWaveStatScale(waveNumber);
   return {
     kind: 'amber',
     x, y, vx: 0, vy: 0,
-    hp: AMBER_HP_INIT, maxHp: AMBER_HP_INIT,
-    atk: AMBER_ATK_INIT, def: AMBER_DEF_INIT,
+    hp: Math.ceil(AMBER_HP_INIT * scale), maxHp: Math.ceil(AMBER_HP_INIT * scale),
+    atk: Math.ceil(AMBER_ATK_INIT * scale), def: Math.ceil(AMBER_DEF_INIT * scale),
     missileTimerMs: AMBER_MISSILE_CD_MS + Math.random() * AMBER_MISSILE_JITTER,
     patrolTimerMs: Math.random() * AMBER_PATROL_TURN_MS,
   };
@@ -650,14 +988,183 @@ function makeAmberShard(x: number, y: number, vx: number, vy: number): AmberShar
   };
 }
 
-function makeVoidEnemy(x: number, y: number): VoidEnemy {
+function makeVoidEnemy(x: number, y: number, waveNumber: number): VoidEnemy {
+  const scale = getWaveStatScale(waveNumber);
   return {
     kind: 'void',
     x, y, vx: 0, vy: 0,
-    hp: VOID_HP_INIT, maxHp: VOID_HP_INIT,
-    atk: VOID_ATK_INIT, def: VOID_DEF_INIT,
+    hp: Math.ceil(VOID_HP_INIT * scale), maxHp: Math.ceil(VOID_HP_INIT * scale),
+    atk: Math.ceil(VOID_ATK_INIT * scale), def: Math.ceil(VOID_DEF_INIT * scale),
     contactCdMs: 0,
     pulseMs: Math.random() * VOID_AURA_PULSE_MS,
+  };
+}
+
+function makeQuartzEnemy(x: number, y: number, waveNumber: number): QuartzEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'quartz',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(QUARTZ_HP_INIT * scale), maxHp: Math.ceil(QUARTZ_HP_INIT * scale),
+    atk: Math.ceil(QUARTZ_ATK_INIT * scale), def: Math.ceil(QUARTZ_DEF_INIT * scale),
+    spikeTimerMs: QUARTZ_SPIKE_CD_MS + Math.random() * QUARTZ_SPIKE_JITTER,
+    strafeDirFlipMs: 2000 + Math.random() * 2000,
+    strafeDir: (Math.random() < 0.5 ? 1 : -1) as 1 | -1,
+  };
+}
+
+function makeQuartzSpike(x: number, y: number, vx: number, vy: number): QuartzSpike {
+  return {
+    x, y, vx, vy,
+    hp: QUARTZ_SPIKE_HP_INIT, maxHp: QUARTZ_SPIKE_HP_INIT,
+    atk: QUARTZ_SPIKE_ATK_INIT,
+    hasHitPlayer: false,
+    lifeMs: QUARTZ_SPIKE_LIFE_MS,
+  };
+}
+
+function makeRubyEnemy(x: number, y: number, waveNumber: number): RubyEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'ruby',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(RUBY_HP_INIT * scale), maxHp: Math.ceil(RUBY_HP_INIT * scale),
+    atk: Math.ceil(RUBY_ATK_INIT * scale), def: Math.ceil(RUBY_DEF_INIT * scale),
+    boltTimerMs: RUBY_BOLT_CD_MS + Math.random() * RUBY_BOLT_JITTER,
+    patrolTimerMs: Math.random() * 2000,
+    consecutiveShots: 0,
+  };
+}
+
+function makeRubyBolt(x: number, y: number, vx: number, vy: number): RubyBolt {
+  return {
+    x, y, vx, vy,
+    hp: RUBY_BOLT_HP_INIT, maxHp: RUBY_BOLT_HP_INIT,
+    atk: RUBY_BOLT_ATK_INIT,
+    hasHitPlayer: false,
+    lifeMs: RUBY_BOLT_LIFE_MS,
+  };
+}
+
+function makeSunstoneEnemy(x: number, y: number, waveNumber: number): SunstoneEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'sunstone',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(SUNSTONE_HP_INIT * scale), maxHp: Math.ceil(SUNSTONE_HP_INIT * scale),
+    atk: Math.ceil(SUNSTONE_ATK_INIT * scale), def: Math.ceil(SUNSTONE_DEF_INIT * scale),
+    pulseTimerMs: SUNSTONE_PULSE_CD_MS + Math.random() * SUNSTONE_PULSE_JITTER,
+    orbitAngle: Math.random() * Math.PI * 2,
+  };
+}
+
+function makeCitrineEnemy(x: number, y: number, waveNumber: number): CitrineEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'citrine',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(CITRINE_HP_INIT * scale), maxHp: Math.ceil(CITRINE_HP_INIT * scale),
+    atk: Math.ceil(CITRINE_ATK_INIT * scale), def: Math.ceil(CITRINE_DEF_INIT * scale),
+    boltTimerMs: CITRINE_BOLT_CD_MS + Math.random() * CITRINE_BOLT_JITTER,
+    patrolTimerMs: Math.random() * CITRINE_PATROL_TURN_MS,
+  };
+}
+
+function makeCitrineBolt(x: number, y: number, vx: number, vy: number): CitrineBolt {
+  return {
+    x, y, vx, vy,
+    hp: CITRINE_BOLT_HP_INIT, maxHp: CITRINE_BOLT_HP_INIT,
+    atk: CITRINE_BOLT_ATK_INIT,
+    hasHitPlayer: false,
+    trailX: new Float64Array(CITRINE_BOLT_TRAIL_CAP),
+    trailY: new Float64Array(CITRINE_BOLT_TRAIL_CAP),
+    trailHead: 0, trailCount: 0,
+  };
+}
+
+function makeIoliteEnemy(x: number, y: number, waveNumber: number): IoliteEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'iolite',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(IOLITE_HP_INIT * scale), maxHp: Math.ceil(IOLITE_HP_INIT * scale),
+    atk: Math.ceil(IOLITE_ATK_INIT * scale), def: Math.ceil(IOLITE_DEF_INIT * scale),
+    beamTimerMs: IOLITE_BEAM_CD_MS + Math.random() * IOLITE_BEAM_JITTER,
+    patrolTimerMs: Math.random() * IOLITE_PATROL_TURN_MS,
+  };
+}
+
+function makeAmethystEnemy(x: number, y: number, waveNumber: number): AmethystEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'amethyst',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(AMETHYST_HP_INIT * scale), maxHp: Math.ceil(AMETHYST_HP_INIT * scale),
+    atk: Math.ceil(AMETHYST_ATK_INIT * scale), def: Math.ceil(AMETHYST_DEF_INIT * scale),
+    shieldHp: Math.ceil(AMETHYST_SHIELD_HP_INIT * scale),
+    maxShieldHp: Math.ceil(AMETHYST_SHIELD_HP_INIT * scale),
+    burstTimerMs: AMETHYST_BURST_CD_MS + Math.random() * AMETHYST_BURST_JITTER,
+    patrolTimerMs: Math.random() * AMETHYST_PATROL_TURN_MS,
+  };
+}
+
+function makeAmethystShard(x: number, y: number, vx: number, vy: number): AmethystShard {
+  return {
+    x, y, vx, vy,
+    hp: AMETHYST_SHARD_HP_INIT, maxHp: AMETHYST_SHARD_HP_INIT,
+    atk: AMETHYST_SHARD_ATK_INIT,
+    hasHitPlayer: false,
+    lifeMs: AMETHYST_SHARD_LIFE_MS,
+  };
+}
+
+function makeDiamondEnemy(x: number, y: number, waveNumber: number): DiamondEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'diamond',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(DIAMOND_HP_INIT * scale), maxHp: Math.ceil(DIAMOND_HP_INIT * scale),
+    atk: Math.ceil(DIAMOND_ATK_INIT * scale), def: Math.ceil(DIAMOND_DEF_INIT * scale),
+    phaseInvuln: false,
+    phaseTimerMs: DIAMOND_PHASE_VULN_MS,
+    shardTimerMs: DIAMOND_SHARD_CD_MS + Math.random() * 500,
+    orbitAngle: Math.random() * Math.PI * 2,
+  };
+}
+
+function makeDiamondShard(x: number, y: number, vx: number, vy: number): DiamondShard {
+  return {
+    x, y, vx, vy,
+    hp: DIAMOND_SHARD_HP_INIT, maxHp: DIAMOND_SHARD_HP_INIT,
+    atk: DIAMOND_SHARD_ATK_INIT,
+    hasHitPlayer: false,
+    lifeMs: DIAMOND_SHARD_LIFE_MS,
+  };
+}
+
+function makeNullstoneEnemy(x: number, y: number, waveNumber: number): NullstoneEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'nullstone',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(NULLSTONE_HP_INIT * scale), maxHp: Math.ceil(NULLSTONE_HP_INIT * scale),
+    atk: Math.ceil(NULLSTONE_ATK_INIT * scale), def: Math.ceil(NULLSTONE_DEF_INIT * scale),
+    isAbsorbing: false,
+    absorbTimerMs: NULLSTONE_ABSORB_MS,
+    absorbCdMs: NULLSTONE_ABSORB_CD_MS,
+    tendrilTimerMs: NULLSTONE_TENDRIL_CD_MS + Math.random() * 1000,
+    patrolTimerMs: Math.random() * NULLSTONE_PATROL_TURN_MS,
+    pulseMs: Math.random() * 2000,
+  };
+}
+
+function makeVoidTendril(x: number, y: number, vx: number, vy: number): VoidTendril {
+  return {
+    x, y, vx, vy,
+    hp: VOID_TENDRIL_HP_INIT, maxHp: VOID_TENDRIL_HP_INIT,
+    atk: VOID_TENDRIL_ATK_INIT,
+    hasHitPlayer: false,
+    lifeMs: VOID_TENDRIL_LIFE_MS,
   };
 }
 
@@ -737,6 +1244,24 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const amberEnemies: AmberEnemy[]     = [];
   const amberShards: AmberShard[]      = [];
   const voidEnemies: VoidEnemy[]       = [];
+
+  // ── Crystal hierarchy enemy arrays ────────────────────────────
+  const quartzEnemies: QuartzEnemy[]       = [];
+  const quartzSpikes: QuartzSpike[]        = [];
+  const rubyEnemies: RubyEnemy[]           = [];
+  const rubyBolts: RubyBolt[]              = [];
+  const sunstoneEnemies: SunstoneEnemy[]   = [];
+  const citrineEnemies: CitrineEnemy[]     = [];
+  const citrineBolts: CitrineBolt[]        = [];
+  const ioliteEnemies: IoliteEnemy[]       = [];
+  const amethystEnemies: AmethystEnemy[]   = [];
+  const amethystShards: AmethystShard[]    = [];
+  const diamondEnemies: DiamondEnemy[]     = [];
+  const diamondShards: DiamondShard[]      = [];
+  const nullstoneEnemies: NullstoneEnemy[] = [];
+  const voidTendrils: VoidTendril[]        = [];
+
+  const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x140A); // ᑩᒱᕓᐊ — UCAS characters chosen for aesthetic angular appearance
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
   const weaponOrbitParticles: WeaponOrbitParticle[] = [];
@@ -885,6 +1410,105 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return dmg;
   }
 
+  function damageQuartzEnemy(enemy: QuartzEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageQuartzSpike(spike: QuartzSpike, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    spike.hp = Math.max(0, spike.hp - dmg);
+    return dmg;
+  }
+
+  function damageRubyEnemy(enemy: RubyEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageRubyBolt(bolt: RubyBolt, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    bolt.hp = Math.max(0, bolt.hp - dmg);
+    return dmg;
+  }
+
+  function damageSunstoneEnemy(enemy: SunstoneEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageCitrineEnemy(enemy: CitrineEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageCitrineBolt(bolt: CitrineBolt, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    bolt.hp = Math.max(0, bolt.hp - dmg);
+    return dmg;
+  }
+
+  function damageIoliteEnemy(enemy: IoliteEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageAmethystEnemy(enemy: AmethystEnemy, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number {
+    if (!bypassShield && enemy.shieldHp > 0) {
+      const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+      enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
+      return dmg;
+    }
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageAmethystShard(shard: AmethystShard, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    shard.hp = Math.max(0, shard.hp - dmg);
+    return dmg;
+  }
+
+  function damageDiamondEnemy(enemy: DiamondEnemy, rawDamage: number, defPierceRatio: number): number {
+    if (enemy.phaseInvuln) return 0;
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageDiamondShard(shard: DiamondShard, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    shard.hp = Math.max(0, shard.hp - dmg);
+    return dmg;
+  }
+
+  function damageNullstoneEnemy(enemy: NullstoneEnemy, rawDamage: number, defPierceRatio: number): number {
+    if (enemy.isAbsorbing) return 0;
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageVoidTendril(tendril: VoidTendril, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    tendril.hp = Math.max(0, tendril.hp - dmg);
+    return dmg;
+  }
+
   /**
    * Spawns a floating damage/blocked number at (x, y) travelling in (dirX, dirY).
    * `ratio` is dmg / maxHp clamped to [0, 1] and controls font size.
@@ -941,7 +1565,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Closest-target helpers ─────────────────────────────────────
 
   /** Represents any targetable entity. */
-  type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void';
+  type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
+    | 'quartz' | 'quartzspike' | 'ruby' | 'rubybolt' | 'sunstone' | 'citrine' | 'citrinebolt'
+    | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril';
   interface ClosestTarget {
     kind: TargetKind;
     x: number; y: number;
@@ -953,6 +1579,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     amber?: AmberEnemy;
     ambershard?: AmberShard;
     void?: VoidEnemy;
+    quartz?: QuartzEnemy;
+    quartzspike?: QuartzSpike;
+    ruby?: RubyEnemy;
+    rubybolt?: RubyBolt;
+    sunstone?: SunstoneEnemy;
+    citrine?: CitrineEnemy;
+    citrinebolt?: CitrineBolt;
+    iolite?: IoliteEnemy;
+    amethyst?: AmethystEnemy;
+    amethystshard?: AmethystShard;
+    diamond?: DiamondEnemy;
+    diamondshard?: DiamondShard;
+    nullstone?: NullstoneEnemy;
+    voidtendril?: VoidTendril;
   }
 
   /**
@@ -998,13 +1638,85 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = { kind: 'void', x: e.x, y: e.y, distSq: d, void: e }; }
     }
+    for (const e of quartzEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'quartz', x: e.x, y: e.y, distSq: d, quartz: e }; }
+    }
+    for (const s of quartzSpikes) {
+      const dx = s.x - mote.x, dy = s.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'quartzspike', x: s.x, y: s.y, distSq: d, quartzspike: s }; }
+    }
+    for (const e of rubyEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'ruby', x: e.x, y: e.y, distSq: d, ruby: e }; }
+    }
+    for (const b of rubyBolts) {
+      const dx = b.x - mote.x, dy = b.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'rubybolt', x: b.x, y: b.y, distSq: d, rubybolt: b }; }
+    }
+    for (const e of sunstoneEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'sunstone', x: e.x, y: e.y, distSq: d, sunstone: e }; }
+    }
+    for (const e of citrineEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'citrine', x: e.x, y: e.y, distSq: d, citrine: e }; }
+    }
+    for (const b of citrineBolts) {
+      const dx = b.x - mote.x, dy = b.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'citrinebolt', x: b.x, y: b.y, distSq: d, citrinebolt: b }; }
+    }
+    for (const e of ioliteEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'iolite', x: e.x, y: e.y, distSq: d, iolite: e }; }
+    }
+    for (const e of amethystEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'amethyst', x: e.x, y: e.y, distSq: d, amethyst: e }; }
+    }
+    for (const s of amethystShards) {
+      const dx = s.x - mote.x, dy = s.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'amethystshard', x: s.x, y: s.y, distSq: d, amethystshard: s }; }
+    }
+    for (const e of diamondEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'diamond', x: e.x, y: e.y, distSq: d, diamond: e }; }
+    }
+    for (const s of diamondShards) {
+      const dx = s.x - mote.x, dy = s.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'diamondshard', x: s.x, y: s.y, distSq: d, diamondshard: s }; }
+    }
+    for (const e of nullstoneEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'nullstone', x: e.x, y: e.y, distSq: d, nullstone: e }; }
+    }
+    for (const t of voidTendrils) {
+      const dx = t.x - mote.x, dy = t.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'voidtendril', x: t.x, y: t.y, distSq: d, voidtendril: t }; }
+    }
     return best;
   }
 
   /** Returns the closest enemy body (not projectiles) within rangeSq. */
-  function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | null {
+  function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
+    | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | null {
     let bestSq = rangeSq;
-    let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | null = null;
+    let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
+      | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | null = null;
     for (const e of enemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
@@ -1026,6 +1738,46 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (d <= bestSq) { bestSq = d; best = e; }
     }
     for (const e of voidEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of quartzEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of rubyEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of sunstoneEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of citrineEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of ioliteEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of amethystEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of diamondEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of nullstoneEnemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = e; }
@@ -1149,6 +1901,162 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (dx * dx + dy * dy < hitR * hitR) {
           const dmg = damageVoidEnemy(e, damage, 0);
           spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with quartz enemies
+      for (const e of quartzEnemies) {
+        const hitR = QUARTZ_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageQuartzEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with quartz spikes
+      for (const s of quartzSpikes) {
+        const dx = p.x - s.x, dy = p.y - s.y;
+        if (dx * dx + dy * dy < (QUARTZ_SPIKE_SIZE * 2.5) ** 2) {
+          damageQuartzSpike(s, damage);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with ruby enemies
+      for (const e of rubyEnemies) {
+        const hitR = RUBY_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageRubyEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with ruby bolts
+      for (const b of rubyBolts) {
+        const dx = p.x - b.x, dy = p.y - b.y;
+        if (dx * dx + dy * dy < (RUBY_BOLT_SIZE * 2.5) ** 2) {
+          damageRubyBolt(b, damage);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with sunstone enemies
+      for (const e of sunstoneEnemies) {
+        const hitR = SUNSTONE_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageSunstoneEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with citrine enemies
+      for (const e of citrineEnemies) {
+        const hitR = CITRINE_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageCitrineEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with citrine bolts
+      for (const b of citrineBolts) {
+        const dx = p.x - b.x, dy = p.y - b.y;
+        if (dx * dx + dy * dy < (CITRINE_BOLT_SIZE * 2.5) ** 2) {
+          damageCitrineBolt(b, damage);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with iolite enemies
+      for (const e of ioliteEnemies) {
+        const hitR = IOLITE_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageIoliteEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with amethyst enemies
+      for (const e of amethystEnemies) {
+        const hitR = AMETHYST_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageAmethystEnemy(e, damage, 0, false);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with amethyst shards
+      for (const s of amethystShards) {
+        const dx = p.x - s.x, dy = p.y - s.y;
+        if (dx * dx + dy * dy < (AMETHYST_SHARD_SIZE * 2.5) ** 2) {
+          damageAmethystShard(s, damage);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with diamond enemies
+      for (const e of diamondEnemies) {
+        const hitR = DIAMOND_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageDiamondEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with diamond shards
+      for (const s of diamondShards) {
+        const dx = p.x - s.x, dy = p.y - s.y;
+        if (dx * dx + dy * dy < (DIAMOND_SHARD_SIZE * 2.5) ** 2) {
+          damageDiamondShard(s, damage);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with nullstone enemies
+      for (const e of nullstoneEnemies) {
+        const hitR = NULLSTONE_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageNullstoneEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with void tendrils
+      for (const t of voidTendrils) {
+        const dx = p.x - t.x, dy = p.y - t.y;
+        if (dx * dx + dy * dy < (VOID_TENDRIL_SIZE * 2.5) ** 2) {
+          damageVoidTendril(t, damage);
           sandProjectiles.splice(i, 1); break;
         }
       }
@@ -1295,20 +2203,32 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       stepChainPhysics(ws, dt, CHAIN_ANCHOR_K);
 
       // Contact damage: check all nodes against all enemies
-      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy): void => {
+      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy): void => {
         const nodeR = chainNodeRadius(CHAIN_NODES - 1); // use tip radius for hit detection
         const r = nodeR + LASER_ENEMY_SIZE;
         const dx = tx - target.x, dy = ty - target.y;
         if (dx * dx + dy * dy < r * r) {
           if (!ws.hitCooldowns.has(target)) {
             let dmg = 0;
-            if ('shieldHp' in target) {
-              dmg = damageSapphireEnemy(target, contactDamage, 0, false);
+            // Sapphire is the only enemy type with `shieldHp` but without a `kind` discriminator.
+            // Amethyst also has `shieldHp` but carries `kind: 'amethyst'`, so the `!('kind' in target)` check correctly excludes it.
+            if ('shieldHp' in target && !('kind' in target)) {
+              dmg = damageSapphireEnemy(target as SapphireEnemy, contactDamage, 0, false);
             } else if ('kind' in target) {
-              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy;
-              if (t.kind === 'emerald')      dmg = damageEmeraldEnemy(t, contactDamage, 0);
-              else if (t.kind === 'amber')   dmg = damageAmberEnemy(t, contactDamage, 0);
-              else if (t.kind === 'void')    dmg = damageVoidEnemy(t, contactDamage, 0);
+              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy;
+              switch (t.kind) {
+                case 'emerald':   dmg = damageEmeraldEnemy(t, contactDamage, 0); break;
+                case 'amber':     dmg = damageAmberEnemy(t, contactDamage, 0); break;
+                case 'void':      dmg = damageVoidEnemy(t, contactDamage, 0); break;
+                case 'quartz':    dmg = damageQuartzEnemy(t, contactDamage, 0); break;
+                case 'ruby':      dmg = damageRubyEnemy(t, contactDamage, 0); break;
+                case 'sunstone':  dmg = damageSunstoneEnemy(t, contactDamage, 0); break;
+                case 'citrine':   dmg = damageCitrineEnemy(t, contactDamage, 0); break;
+                case 'iolite':    dmg = damageIoliteEnemy(t, contactDamage, 0); break;
+                case 'amethyst':  dmg = damageAmethystEnemy(t, contactDamage, 0, false); break;
+                case 'diamond':   dmg = damageDiamondEnemy(t, contactDamage, 0); break;
+                case 'nullstone': dmg = damageNullstoneEnemy(t, contactDamage, 0); break;
+              }
             } else {
               dmg = damageEnemy(target as LaserEnemy, contactDamage, 0);
             }
@@ -1320,11 +2240,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       };
       for (let ni = 0; ni < CHAIN_NODES; ni++) {
         const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
-        for (const e of enemies)         applyContactDamage(nx, ny, e);
-        for (const e of sapphireEnemies) applyContactDamage(nx, ny, e);
-        for (const e of emeraldEnemies)  applyContactDamage(nx, ny, e);
-        for (const e of amberEnemies)    applyContactDamage(nx, ny, e);
-        for (const e of voidEnemies)     applyContactDamage(nx, ny, e);
+        for (const e of enemies)          applyContactDamage(nx, ny, e);
+        for (const e of sapphireEnemies)  applyContactDamage(nx, ny, e);
+        for (const e of emeraldEnemies)   applyContactDamage(nx, ny, e);
+        for (const e of amberEnemies)     applyContactDamage(nx, ny, e);
+        for (const e of voidEnemies)      applyContactDamage(nx, ny, e);
+        for (const e of quartzEnemies)    applyContactDamage(nx, ny, e);
+        for (const e of rubyEnemies)      applyContactDamage(nx, ny, e);
+        for (const e of sunstoneEnemies)  applyContactDamage(nx, ny, e);
+        for (const e of citrineEnemies)   applyContactDamage(nx, ny, e);
+        for (const e of ioliteEnemies)    applyContactDamage(nx, ny, e);
+        for (const e of amethystEnemies)  applyContactDamage(nx, ny, e);
+        for (const e of diamondEnemies)   applyContactDamage(nx, ny, e);
+        for (const e of nullstoneEnemies) applyContactDamage(nx, ny, e);
       }
 
       // Inject fluid force along the chain length
@@ -1491,6 +2419,110 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const perpDist = Math.abs(ex * dirY - ey * dirX);
       if (perpDist <= VOID_ENEMY_SIZE * 2) {
         const dmg = damageVoidEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit quartz enemies on the beam path
+    for (const e of quartzEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= QUARTZ_ENEMY_SIZE * 2) {
+        const dmg = damageQuartzEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit ruby enemies on the beam path
+    for (const e of rubyEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= RUBY_ENEMY_SIZE * 2) {
+        const dmg = damageRubyEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit sunstone enemies on the beam path
+    for (const e of sunstoneEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= SUNSTONE_ENEMY_SIZE * 2) {
+        const dmg = damageSunstoneEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit citrine enemies on the beam path
+    for (const e of citrineEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= CITRINE_ENEMY_SIZE * 2) {
+        const dmg = damageCitrineEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit iolite enemies on the beam path
+    for (const e of ioliteEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= IOLITE_ENEMY_SIZE * 2) {
+        const dmg = damageIoliteEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit amethyst enemies on the beam path (bypasses shield)
+    for (const e of amethystEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= AMETHYST_ENEMY_SIZE * 2) {
+        const dmg = damageAmethystEnemy(e, baseDamage, 1.0, true);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit diamond enemies on the beam path
+    for (const e of diamondEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= DIAMOND_ENEMY_SIZE * 2) {
+        const dmg = damageDiamondEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit nullstone enemies on the beam path
+    for (const e of nullstoneEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= NULLSTONE_ENEMY_SIZE * 2) {
+        const dmg = damageNullstoneEnemy(e, baseDamage, 1.0);
         hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
         spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
       }
@@ -1765,7 +2797,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    */
   function performWeaponAttack(weaponId: string): void {
     const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length
-      + emeraldEnemies.length + amberEnemies.length + amberShards.length + voidEnemies.length;
+      + emeraldEnemies.length + amberEnemies.length + amberShards.length + voidEnemies.length
+      + quartzEnemies.length + quartzSpikes.length + rubyEnemies.length + rubyBolts.length
+      + sunstoneEnemies.length + citrineEnemies.length + citrineBolts.length
+      + ioliteEnemies.length + amethystEnemies.length + amethystShards.length
+      + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length;
     if (totalTargets === 0) return;
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const range      = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
@@ -1833,6 +2869,62 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
         }
       }
+      for (const enemy of quartzEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageQuartzEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of rubyEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageRubyEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of sunstoneEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageSunstoneEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of citrineEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageCitrineEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of ioliteEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageIoliteEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of amethystEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageAmethystEnemy(enemy, rawDamage, 0, false);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of diamondEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageDiamondEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of nullstoneEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageNullstoneEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
       fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
         FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
       return;
@@ -1843,6 +2935,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         distSq: number;
         laser?: LaserEnemy; sapphire?: SapphireEnemy; missile?: SapphireMissile;
         emerald?: EmeraldEnemy; amber?: AmberEnemy; ambershard?: AmberShard; void?: VoidEnemy;
+        quartz?: QuartzEnemy; quartzspike?: QuartzSpike; ruby?: RubyEnemy; rubybolt?: RubyBolt;
+        sunstone?: SunstoneEnemy; citrine?: CitrineEnemy; citrinebolt?: CitrineBolt;
+        iolite?: IoliteEnemy; amethyst?: AmethystEnemy; amethystshard?: AmethystShard;
+        diamond?: DiamondEnemy; diamondshard?: DiamondShard; nullstone?: NullstoneEnemy; voidtendril?: VoidTendril;
       };
       const rangeSq = range * range;
       const inRange: SortEntry[] = [];
@@ -1881,6 +2977,76 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const d = dx * dx + dy * dy;
         if (d <= rangeSq) inRange.push({ distSq: d, void: e });
       }
+      for (const e of quartzEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, quartz: e });
+      }
+      for (const s of quartzSpikes) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, quartzspike: s });
+      }
+      for (const e of rubyEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, ruby: e });
+      }
+      for (const b of rubyBolts) {
+        const dx = b.x - mote.x, dy = b.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, rubybolt: b });
+      }
+      for (const e of sunstoneEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, sunstone: e });
+      }
+      for (const e of citrineEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, citrine: e });
+      }
+      for (const b of citrineBolts) {
+        const dx = b.x - mote.x, dy = b.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, citrinebolt: b });
+      }
+      for (const e of ioliteEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, iolite: e });
+      }
+      for (const e of amethystEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, amethyst: e });
+      }
+      for (const s of amethystShards) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, amethystshard: s });
+      }
+      for (const e of diamondEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, diamond: e });
+      }
+      for (const s of diamondShards) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, diamondshard: s });
+      }
+      for (const e of nullstoneEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, nullstone: e });
+      }
+      for (const t of voidTendrils) {
+        const dx = t.x - mote.x, dy = t.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, voidtendril: t });
+      }
       inRange.sort((a, b) => a.distSq - b.distSq);
       const targets = inRange.slice(0, effect.targetCount);
       for (const t of targets) {
@@ -1903,6 +3069,42 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         } else if (t.void) {
           const dmg = damageVoidEnemy(t.void, rawDamage, 0);
           spawnHitVisualsAt(t.void.x, t.void.y, t.void.maxHp, dmg, '#50b464');
+        } else if (t.quartz) {
+          const dmg = damageQuartzEnemy(t.quartz, rawDamage, 0);
+          spawnHitVisualsAt(t.quartz.x, t.quartz.y, t.quartz.maxHp, dmg, '#50b464');
+        } else if (t.quartzspike) {
+          damageQuartzSpike(t.quartzspike, rawDamage);
+        } else if (t.ruby) {
+          const dmg = damageRubyEnemy(t.ruby, rawDamage, 0);
+          spawnHitVisualsAt(t.ruby.x, t.ruby.y, t.ruby.maxHp, dmg, '#50b464');
+        } else if (t.rubybolt) {
+          damageRubyBolt(t.rubybolt, rawDamage);
+        } else if (t.sunstone) {
+          const dmg = damageSunstoneEnemy(t.sunstone, rawDamage, 0);
+          spawnHitVisualsAt(t.sunstone.x, t.sunstone.y, t.sunstone.maxHp, dmg, '#50b464');
+        } else if (t.citrine) {
+          const dmg = damageCitrineEnemy(t.citrine, rawDamage, 0);
+          spawnHitVisualsAt(t.citrine.x, t.citrine.y, t.citrine.maxHp, dmg, '#50b464');
+        } else if (t.citrinebolt) {
+          damageCitrineBolt(t.citrinebolt, rawDamage);
+        } else if (t.iolite) {
+          const dmg = damageIoliteEnemy(t.iolite, rawDamage, 0);
+          spawnHitVisualsAt(t.iolite.x, t.iolite.y, t.iolite.maxHp, dmg, '#50b464');
+        } else if (t.amethyst) {
+          const dmg = damageAmethystEnemy(t.amethyst, rawDamage, 0, false);
+          spawnHitVisualsAt(t.amethyst.x, t.amethyst.y, t.amethyst.maxHp, dmg, '#50b464');
+        } else if (t.amethystshard) {
+          damageAmethystShard(t.amethystshard, rawDamage);
+        } else if (t.diamond) {
+          const dmg = damageDiamondEnemy(t.diamond, rawDamage, 0);
+          spawnHitVisualsAt(t.diamond.x, t.diamond.y, t.diamond.maxHp, dmg, '#50b464');
+        } else if (t.diamondshard) {
+          damageDiamondShard(t.diamondshard, rawDamage);
+        } else if (t.nullstone) {
+          const dmg = damageNullstoneEnemy(t.nullstone, rawDamage, 0);
+          spawnHitVisualsAt(t.nullstone.x, t.nullstone.y, t.nullstone.maxHp, dmg, '#50b464');
+        } else if (t.voidtendril) {
+          damageVoidTendril(t.voidtendril, rawDamage);
         }
       }
       return;
@@ -1935,6 +3137,50 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const dmg = damageVoidEnemy(closestT.void, rawDamage, defPierceRatio);
       spawnHitVisualsAt(closestT.void.x, closestT.void.y, closestT.void.maxHp, dmg,
         effect.kind === 'piercing' ? '#74c0fc' : VOID_ENEMY_GLOW);
+    } else if (closestT.quartz) {
+      const dmg = damageQuartzEnemy(closestT.quartz, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.quartz.x, closestT.quartz.y, closestT.quartz.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : QUARTZ_ENEMY_GLOW);
+    } else if (closestT.quartzspike) {
+      damageQuartzSpike(closestT.quartzspike, rawDamage);
+    } else if (closestT.ruby) {
+      const dmg = damageRubyEnemy(closestT.ruby, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.ruby.x, closestT.ruby.y, closestT.ruby.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : RUBY_ENEMY_GLOW);
+    } else if (closestT.rubybolt) {
+      damageRubyBolt(closestT.rubybolt, rawDamage);
+    } else if (closestT.sunstone) {
+      const dmg = damageSunstoneEnemy(closestT.sunstone, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.sunstone.x, closestT.sunstone.y, closestT.sunstone.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : SUNSTONE_ENEMY_GLOW);
+    } else if (closestT.citrine) {
+      const dmg = damageCitrineEnemy(closestT.citrine, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.citrine.x, closestT.citrine.y, closestT.citrine.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : CITRINE_ENEMY_GLOW);
+    } else if (closestT.citrinebolt) {
+      damageCitrineBolt(closestT.citrinebolt, rawDamage);
+    } else if (closestT.iolite) {
+      const dmg = damageIoliteEnemy(closestT.iolite, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.iolite.x, closestT.iolite.y, closestT.iolite.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : IOLITE_ENEMY_GLOW);
+    } else if (closestT.amethyst) {
+      const dmg = damageAmethystEnemy(closestT.amethyst, rawDamage, defPierceRatio, false);
+      spawnHitVisualsAt(closestT.amethyst.x, closestT.amethyst.y, closestT.amethyst.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : AMETHYST_ENEMY_GLOW);
+    } else if (closestT.amethystshard) {
+      damageAmethystShard(closestT.amethystshard, rawDamage);
+    } else if (closestT.diamond) {
+      const dmg = damageDiamondEnemy(closestT.diamond, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.diamond.x, closestT.diamond.y, closestT.diamond.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : DIAMOND_ENEMY_GLOW);
+    } else if (closestT.diamondshard) {
+      damageDiamondShard(closestT.diamondshard, rawDamage);
+    } else if (closestT.nullstone) {
+      const dmg = damageNullstoneEnemy(closestT.nullstone, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.nullstone.x, closestT.nullstone.y, closestT.nullstone.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : NULLSTONE_ENEMY_GLOW);
+    } else if (closestT.voidtendril) {
+      damageVoidTendril(closestT.voidtendril, rawDamage);
     }
   }
 
@@ -2016,6 +3262,112 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         voidEnemies.splice(i, 1);
       }
     }
+    for (let i = quartzEnemies.length - 1; i >= 0; i--) {
+      if (quartzEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          quartzEnemies[i].x, quartzEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH,
+          FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 1.5;
+        quartzEnemies.splice(i, 1);
+      }
+    }
+    for (let i = quartzSpikes.length - 1; i >= 0; i--) {
+      if (quartzSpikes[i].hp <= 0 || quartzSpikes[i].lifeMs <= 0) quartzSpikes.splice(i, 1);
+    }
+    for (let i = rubyEnemies.length - 1; i >= 0; i--) {
+      if (rubyEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          rubyEnemies[i].x, rubyEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 1.2,
+          FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 2.5;
+        rubyEnemies.splice(i, 1);
+      }
+    }
+    for (let i = rubyBolts.length - 1; i >= 0; i--) {
+      if (rubyBolts[i].hp <= 0 || rubyBolts[i].lifeMs <= 0) rubyBolts.splice(i, 1);
+    }
+    for (let i = sunstoneEnemies.length - 1; i >= 0; i--) {
+      if (sunstoneEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          sunstoneEnemies[i].x, sunstoneEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 1.6,
+          FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 3;
+        sunstoneEnemies.splice(i, 1);
+      }
+    }
+    for (let i = citrineEnemies.length - 1; i >= 0; i--) {
+      if (citrineEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          citrineEnemies[i].x, citrineEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 1.8,
+          FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 3.5;
+        citrineEnemies.splice(i, 1);
+      }
+    }
+    for (let i = citrineBolts.length - 1; i >= 0; i--) {
+      if (citrineBolts[i].hp <= 0) citrineBolts.splice(i, 1);
+    }
+    for (let i = ioliteEnemies.length - 1; i >= 0; i--) {
+      if (ioliteEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          ioliteEnemies[i].x, ioliteEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 2.2,
+          FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 5;
+        ioliteEnemies.splice(i, 1);
+      }
+    }
+    for (let i = amethystEnemies.length - 1; i >= 0; i--) {
+      if (amethystEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          amethystEnemies[i].x, amethystEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 2.5,
+          FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 6;
+        amethystEnemies.splice(i, 1);
+      }
+    }
+    for (let i = amethystShards.length - 1; i >= 0; i--) {
+      if (amethystShards[i].hp <= 0 || amethystShards[i].lifeMs <= 0) amethystShards.splice(i, 1);
+    }
+    for (let i = diamondEnemies.length - 1; i >= 0; i--) {
+      if (diamondEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          diamondEnemies[i].x, diamondEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 3.0,
+          FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 8;
+        diamondEnemies.splice(i, 1);
+      }
+    }
+    for (let i = diamondShards.length - 1; i >= 0; i--) {
+      if (diamondShards[i].hp <= 0 || diamondShards[i].lifeMs <= 0) diamondShards.splice(i, 1);
+    }
+    for (let i = nullstoneEnemies.length - 1; i >= 0; i--) {
+      if (nullstoneEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          nullstoneEnemies[i].x, nullstoneEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 4.0,
+          FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * 10;
+        nullstoneEnemies.splice(i, 1);
+      }
+    }
+    for (let i = voidTendrils.length - 1; i >= 0; i--) {
+      if (voidTendrils[i].hp <= 0 || voidTendrils[i].lifeMs <= 0) voidTendrils.splice(i, 1);
+    }
     if (totalXpFromKills > 0) {
       rpgSimState.xp += totalXpFromKills;
       applyEquipmentStats();
@@ -2054,7 +3406,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   statsPanel.id = 'rpg-stats-panel';
   statsPanel.style.display = 'none';
 
-  function makeStatWidget(label: string, extraClass: string): { root: HTMLElement; valueEl: HTMLSpanElement } {
+  function makeStatWidget(label: string, extraClass: string): { root: HTMLElement; labelEl: HTMLSpanElement; valueEl: HTMLSpanElement } {
     const root = document.createElement('div');
     root.className = 'rpg-stat';
     const labelEl = document.createElement('span');
@@ -2065,7 +3417,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     root.appendChild(labelEl);
     root.appendChild(valueEl);
     statsPanel.appendChild(root);
-    return { root, valueEl };
+    return { root, labelEl, valueEl };
   }
 
   const hpWidget      = makeStatWidget('HP',     'rpg-stat-value--hp');
@@ -2080,7 +3432,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     hpWidget.valueEl.textContent   = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
     atkWidget.valueEl.textContent  = String(playerStats.atk);
     defWidget.valueEl.textContent  = String(playerStats.def);
-    waveWidget.valueEl.textContent = String(currentWave);
+    const isBossWave = currentWave > 0 && currentWave % 100 === 0;
+    waveWidget.labelEl.textContent = isBossWave ? BOSS_GLYPH_LABEL : 'WAVE';
+    if (isBossWave) {
+      waveWidget.labelEl.style.fontFamily = 'monospace';
+    } else {
+      waveWidget.labelEl.style.removeProperty('fontFamily');
+    }
+    waveWidget.valueEl.textContent = isBossWave ? String(currentWave / 100) : String(currentWave);
     boostWidget.valueEl.textContent = rpgSimState.highestWaveReached > 0
       ? '+' + Math.pow(rpgSimState.highestWaveReached, 1.2).toFixed(1) + '%'
       : '+0.0%';
@@ -2165,8 +3524,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   document.addEventListener('keydown', handleKeyDown);
   document.addEventListener('keyup',   handleKeyUp);
 
-  function clampEnemyToBounds(enemy: LaserEnemy): void {
-    const half = LASER_ENEMY_SIZE / 2;
+  /** Keeps an enemy within the arena, bouncing velocity. Uses a fixed margin of 2.5px. */
+  function clampEnemyToBounds(enemy: { x: number; y: number; vx: number; vy: number }): void {
+    const half = 2.5; // Conservative margin that works for all enemy sizes
     if (enemy.x < half)            { enemy.x = half;            enemy.vx =  Math.abs(enemy.vx) * 0.5; }
     if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
     if (enemy.y < half)            { enemy.y = half;            enemy.vy =  Math.abs(enemy.vy) * 0.5; }
@@ -2176,6 +3536,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function spawnEnemyById(enemyTypeId: string): void {
     const minDist = 80;
     let spawnX = 0, spawnY = 0, attempts = 0;
+    const wn = currentWave;
     if (enemyTypeId === 'laser') {
       const half = LASER_ENEMY_SIZE / 2;
       do {
@@ -2185,7 +3546,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (dx * dx + dy * dy >= minDist * minDist) break;
         attempts++;
       } while (attempts < 20);
-      enemies.push(makeLaserEnemy(spawnX, spawnY));
+      enemies.push(makeLaserEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'sapphire') {
       const half = SAPPHIRE_ENEMY_SIZE / 2;
       do {
@@ -2195,7 +3556,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (dx * dx + dy * dy >= minDist * minDist) break;
         attempts++;
       } while (attempts < 20);
-      sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY));
+      sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'emerald') {
       const half = EMERALD_ENEMY_SIZE / 2;
       do {
@@ -2205,7 +3566,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (dx * dx + dy * dy >= minDist * minDist) break;
         attempts++;
       } while (attempts < 20);
-      emeraldEnemies.push(makeEmeraldEnemy(spawnX, spawnY));
+      emeraldEnemies.push(makeEmeraldEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'amber') {
       const half = AMBER_ENEMY_SIZE / 2;
       do {
@@ -2215,7 +3576,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (dx * dx + dy * dy >= minDist * minDist) break;
         attempts++;
       } while (attempts < 20);
-      amberEnemies.push(makeAmberEnemy(spawnX, spawnY));
+      amberEnemies.push(makeAmberEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'void') {
       // Void enemies spawn at edges so they approach from a distance.
       const edge = Math.floor(Math.random() * 4);
@@ -2223,7 +3584,85 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
       else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
       else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
-      voidEnemies.push(makeVoidEnemy(spawnX, spawnY));
+      voidEnemies.push(makeVoidEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'quartz') {
+      const half = QUARTZ_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - QUARTZ_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - QUARTZ_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      quartzEnemies.push(makeQuartzEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'ruby') {
+      const half = RUBY_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - RUBY_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - RUBY_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      rubyEnemies.push(makeRubyEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'sunstone') {
+      const half = SUNSTONE_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - SUNSTONE_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - SUNSTONE_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      sunstoneEnemies.push(makeSunstoneEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'citrine') {
+      const half = CITRINE_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - CITRINE_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - CITRINE_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      citrineEnemies.push(makeCitrineEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'iolite') {
+      const half = IOLITE_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - IOLITE_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - IOLITE_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      ioliteEnemies.push(makeIoliteEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'amethyst') {
+      const half = AMETHYST_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - AMETHYST_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - AMETHYST_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      amethystEnemies.push(makeAmethystEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'diamond') {
+      const half = DIAMOND_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - DIAMOND_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - DIAMOND_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      diamondEnemies.push(makeDiamondEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'nullstone') {
+      // Nullstone spawns at edges to approach from a distance.
+      const edge = Math.floor(Math.random() * 4);
+      if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
+      else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
+      else if (edge === 2) { spawnX = 0;       spawnY = Math.random() * heightPx; }
+      else                 { spawnX = widthPx; spawnY = Math.random() * heightPx; }
+      nullstoneEnemies.push(makeNullstoneEnemy(spawnX, spawnY, wn));
     }
   }
 
@@ -2245,7 +3684,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function checkWaveCompletion(): void {
     if (isInterWave || spawnQueue.length > 0
         || enemies.length > 0 || sapphireEnemies.length > 0
-        || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0) return;
+        || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0
+        || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
+        || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
+        || diamondEnemies.length > 0 || nullstoneEnemies.length > 0) return;
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS;
   }
@@ -2414,7 +3856,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
         mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
       } else if (_autoMoveEnabled && (enemies.length > 0 || sapphireEnemies.length > 0
-          || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0)) {
+          || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0
+          || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
+          || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
+          || diamondEnemies.length > 0 || nullstoneEnemies.length > 0)) {
         // Auto-move: find nearest enemy and steer toward it, stopping when
         // the player is within the shortest range of any equipped weapon.
         let autoMoveStopRange = PLAYER_BASE_RANGE_PX;
@@ -2450,6 +3895,46 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
         }
         for (const enemy of voidEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of quartzEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of rubyEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of sunstoneEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of citrineEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of ioliteEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of amethystEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of diamondEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of nullstoneEnemies) {
           const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
           const d = ex * ex + ey * ey;
           if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
@@ -2623,6 +4108,112 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
       }
     }
+    // Collision detection with quartz enemies.
+    for (const enemy of quartzEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageQuartzEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with ruby enemies.
+    for (const enemy of rubyEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageRubyEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with sunstone enemies.
+    for (const enemy of sunstoneEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageSunstoneEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with citrine enemies.
+    for (const enemy of citrineEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageCitrineEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with iolite enemies.
+    for (const enemy of ioliteEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageIoliteEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with amethyst enemies.
+    for (const enemy of amethystEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageAmethystEnemy(enemy, ORBIT_PROJ_DAMAGE, 0, false);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with diamond enemies.
+    for (const enemy of diamondEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageDiamondEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with nullstone enemies.
+    for (const enemy of nullstoneEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageNullstoneEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+  }
+
+  /**
+   * Applies raw enemy ATK damage to the player after subtracting player DEF,
+   * subject to iframes. Mutates playerStats.hp and playerIFramesMs.
+   */
+  function dealDamageToPlayer(atkValue: number): void {
+    if (playerIFramesMs > 0) return;
+    const rawDmg = atkValue - playerStats.def;
+    const dmg = Math.max(0, rawDmg);
+    if (dmg <= 0) {
+      spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+    } else {
+      playerStats.hp = Math.max(0, playerStats.hp - dmg);
+      const ratio = Math.min(1, dmg / playerStats.maxHp);
+      playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+      spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
+    }
   }
 
   function triggerDeath(): void {
@@ -2647,6 +4238,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     emeraldEnemies.length = 0;
     amberEnemies.length = 0; amberShards.length = 0;
     voidEnemies.length = 0;
+    quartzEnemies.length = 0; quartzSpikes.length = 0;
+    rubyEnemies.length = 0; rubyBolts.length = 0;
+    sunstoneEnemies.length = 0;
+    citrineEnemies.length = 0; citrineBolts.length = 0;
+    ioliteEnemies.length = 0;
+    amethystEnemies.length = 0; amethystShards.length = 0;
+    diamondEnemies.length = 0; diamondShards.length = 0;
+    nullstoneEnemies.length = 0; voidTendrils.length = 0;
     sandProjectiles.length = 0;
     chainWhipStates.clear();
     laserBeamEffect = null;
@@ -3093,6 +4692,660 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  // ── Quartz enemy system ────────────────────────────────────────
+
+  function updateQuartzEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of quartzEnemies) {
+      const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist > QUARTZ_PREFERRED_DIST + 20) {
+        enemy.vx += (dx / dist) * QUARTZ_APPROACH_SPEED;
+        enemy.vy += (dy / dist) * QUARTZ_APPROACH_SPEED;
+      } else if (dist < QUARTZ_PREFERRED_DIST - 20) {
+        enemy.vx -= (dx / dist) * QUARTZ_APPROACH_SPEED;
+        enemy.vy -= (dy / dist) * QUARTZ_APPROACH_SPEED;
+      } else {
+        const perpX = -dy / dist, perpY = dx / dist;
+        enemy.vx += perpX * QUARTZ_STRAFE_SPEED * enemy.strafeDir;
+        enemy.vy += perpY * QUARTZ_STRAFE_SPEED * enemy.strafeDir;
+      }
+      const speed = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
+      if (speed > 2.0) { enemy.vx = (enemy.vx / speed) * 2.0; enemy.vy = (enemy.vy / speed) * 2.0; }
+      enemy.vx *= 0.85; enemy.vy *= 0.85;
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      clampEnemyToBounds(enemy);
+      enemy.strafeDirFlipMs -= deltaMs;
+      if (enemy.strafeDirFlipMs <= 0) {
+        enemy.strafeDir = (enemy.strafeDir === 1 ? -1 : 1) as 1 | -1;
+        enemy.strafeDirFlipMs = 2000 + Math.random() * 2000;
+      }
+      enemy.spikeTimerMs -= deltaMs;
+      if (enemy.spikeTimerMs <= 0) {
+        enemy.spikeTimerMs = QUARTZ_SPIKE_CD_MS + Math.random() * QUARTZ_SPIKE_JITTER;
+        const sdx = mote.x - enemy.x, sdy = mote.y - enemy.y;
+        const slen = Math.sqrt(sdx * sdx + sdy * sdy) || 1;
+        quartzSpikes.push(makeQuartzSpike(enemy.x, enemy.y, (sdx / slen) * QUARTZ_SPIKE_SPEED, (sdy / slen) * QUARTZ_SPIKE_SPEED));
+      }
+    }
+  }
+
+  function updateQuartzSpikes(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = quartzSpikes.length - 1; i >= 0; i--) {
+      const s = quartzSpikes[i];
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      s.lifeMs -= deltaMs;
+      if (s.lifeMs <= 0 || s.x < 0 || s.x > widthPx || s.y < 0 || s.y > heightPx) {
+        quartzSpikes.splice(i, 1); continue;
+      }
+      if (!s.hasHitPlayer) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          s.hasHitPlayer = true;
+          dealDamageToPlayer(s.atk);
+        }
+      }
+    }
+  }
+
+  function drawQuartzEnemies(): void {
+    for (const enemy of quartzEnemies) {
+      const half = QUARTZ_ENEMY_SIZE / 2;
+      ctx.save();
+      ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
+      ctx.rotate(Math.PI / 4);
+      ctx.shadowBlur = QUARTZ_ENEMY_SIZE * 4; ctx.shadowColor = QUARTZ_ENEMY_GLOW;
+      ctx.fillStyle = QUARTZ_ENEMY_COLOR;
+      ctx.fillRect(-half, -half, QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      const barW = QUARTZ_ENEMY_SIZE * 2.5; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = QUARTZ_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  function drawQuartzSpikes(): void {
+    for (const s of quartzSpikes) {
+      ctx.save();
+      ctx.translate(Math.floor(s.x), Math.floor(s.y));
+      ctx.rotate(Math.PI / 4);
+      const half = QUARTZ_SPIKE_SIZE / 2;
+      ctx.shadowBlur = QUARTZ_SPIKE_SIZE * 3; ctx.shadowColor = QUARTZ_SPIKE_GLOW;
+      ctx.fillStyle = QUARTZ_SPIKE_COLOR;
+      ctx.fillRect(-half, -half, QUARTZ_SPIKE_SIZE, QUARTZ_SPIKE_SIZE);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+  }
+
+  // ── Ruby enemy system ──────────────────────────────────────────
+
+  function updateRubyEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of rubyEnemies) {
+      enemy.patrolTimerMs -= deltaMs;
+      if (enemy.patrolTimerMs <= 0) {
+        const angle = Math.random() * Math.PI * 2;
+        enemy.vx = Math.cos(angle) * RUBY_PATROL_SPEED;
+        enemy.vy = Math.sin(angle) * RUBY_PATROL_SPEED;
+        enemy.patrolTimerMs = 800 + Math.random() * 1200;
+      }
+      const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist > RUBY_PREFERRED_DIST) {
+        enemy.vx = (dx / dist) * RUBY_PATROL_SPEED;
+        enemy.vy = (dy / dist) * RUBY_PATROL_SPEED;
+      }
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      clampEnemyToBounds(enemy);
+      enemy.boltTimerMs -= deltaMs;
+      if (enemy.boltTimerMs <= 0) {
+        enemy.boltTimerMs = RUBY_BOLT_CD_MS + Math.random() * RUBY_BOLT_JITTER;
+        const bdx = mote.x - enemy.x, bdy = mote.y - enemy.y;
+        const blen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
+        enemy.consecutiveShots++;
+        const burstCount = enemy.consecutiveShots >= 3 ? 3 : 2;
+        if (enemy.consecutiveShots >= 3) enemy.consecutiveShots = 0;
+        for (let b = 0; b < burstCount; b++) {
+          const spread = (b - (burstCount - 1) / 2) * 0.15;
+          const cos = Math.cos(spread), sin = Math.sin(spread);
+          const bvx = ((bdx / blen) * cos - (bdy / blen) * sin) * RUBY_BOLT_SPEED;
+          const bvy = ((bdx / blen) * sin + (bdy / blen) * cos) * RUBY_BOLT_SPEED;
+          rubyBolts.push(makeRubyBolt(enemy.x, enemy.y, bvx, bvy));
+        }
+      }
+    }
+  }
+
+  function updateRubyBolts(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = rubyBolts.length - 1; i >= 0; i--) {
+      const b = rubyBolts[i];
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      b.lifeMs -= deltaMs;
+      if (b.lifeMs <= 0 || b.x < 0 || b.x > widthPx || b.y < 0 || b.y > heightPx) {
+        rubyBolts.splice(i, 1); continue;
+      }
+      if (!b.hasHitPlayer) {
+        const dx = b.x - mote.x, dy = b.y - mote.y;
+        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          b.hasHitPlayer = true;
+          dealDamageToPlayer(b.atk);
+        }
+      }
+    }
+  }
+
+  function drawRubyEnemies(): void {
+    for (const enemy of rubyEnemies) {
+      const half = RUBY_ENEMY_SIZE / 2;
+      ctx.shadowBlur = RUBY_ENEMY_SIZE * 5; ctx.shadowColor = RUBY_ENEMY_GLOW;
+      ctx.fillStyle = RUBY_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), RUBY_ENEMY_SIZE, RUBY_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+      const barW = RUBY_ENEMY_SIZE * 2.5; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = RUBY_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  function drawRubyBolts(): void {
+    for (const b of rubyBolts) {
+      const half = RUBY_BOLT_SIZE / 2;
+      ctx.shadowBlur = RUBY_BOLT_SIZE * 4; ctx.shadowColor = RUBY_BOLT_GLOW;
+      ctx.fillStyle = RUBY_BOLT_COLOR;
+      ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), RUBY_BOLT_SIZE, RUBY_BOLT_SIZE);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ── Sunstone enemy system ─────────────────────────────────────
+
+  function updateSunstoneEnemies(deltaMs: number): void {
+    for (const enemy of sunstoneEnemies) {
+      enemy.orbitAngle += SUNSTONE_ORBIT_SPEED * (deltaMs / 1000);
+      enemy.x = mote.x + Math.cos(enemy.orbitAngle) * SUNSTONE_PREFERRED_DIST;
+      enemy.y = mote.y + Math.sin(enemy.orbitAngle) * SUNSTONE_PREFERRED_DIST;
+      const half = SUNSTONE_ENEMY_SIZE / 2;
+      enemy.x = Math.max(half, Math.min(widthPx - half, enemy.x));
+      enemy.y = Math.max(half, Math.min(heightPx - half, enemy.y));
+      enemy.pulseTimerMs -= deltaMs;
+      if (enemy.pulseTimerMs <= 0) {
+        enemy.pulseTimerMs = SUNSTONE_PULSE_CD_MS + Math.random() * SUNSTONE_PULSE_JITTER;
+        const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= SUNSTONE_PREFERRED_DIST + 20) {
+          dealDamageToPlayer(enemy.atk);
+          hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: SUNSTONE_ENEMY_GLOW });
+        }
+      }
+    }
+  }
+
+  function drawSunstoneEnemies(): void {
+    for (const enemy of sunstoneEnemies) {
+      const half = SUNSTONE_ENEMY_SIZE / 2;
+      ctx.save();
+      ctx.shadowBlur = SUNSTONE_ENEMY_SIZE * 5; ctx.shadowColor = SUNSTONE_ENEMY_GLOW;
+      ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_SIZE);
+      ctx.globalAlpha = 0.3; ctx.strokeStyle = SUNSTONE_ENEMY_GLOW; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SUNSTONE_ENEMY_SIZE * 1.6, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      ctx.restore();
+      const barW = SUNSTONE_ENEMY_SIZE * 3; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  // ── Citrine enemy system ──────────────────────────────────────
+
+  function updateCitrineEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of citrineEnemies) {
+      enemy.patrolTimerMs -= deltaMs;
+      if (enemy.patrolTimerMs <= 0) {
+        enemy.patrolTimerMs = CITRINE_PATROL_TURN_MS * (0.5 + Math.random());
+        const angle = Math.random() * Math.PI * 2;
+        enemy.vx = Math.cos(angle) * CITRINE_PATROL_SPEED;
+        enemy.vy = Math.sin(angle) * CITRINE_PATROL_SPEED;
+      }
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      clampEnemyToBounds(enemy);
+      enemy.boltTimerMs -= deltaMs;
+      if (enemy.boltTimerMs <= 0) {
+        enemy.boltTimerMs = CITRINE_BOLT_CD_MS + Math.random() * CITRINE_BOLT_JITTER;
+        const bdx = mote.x - enemy.x, bdy = mote.y - enemy.y;
+        const blen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
+        citrineBolts.push(makeCitrineBolt(enemy.x, enemy.y, (bdx / blen) * CITRINE_BOLT_SPEED, (bdy / blen) * CITRINE_BOLT_SPEED));
+      }
+    }
+  }
+
+  function updateCitrineBolts(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = citrineBolts.length - 1; i >= 0; i--) {
+      const b = citrineBolts[i];
+      // Homing seek toward player
+      const dx = mote.x - b.x, dy = mote.y - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      b.vx += (dx / dist) * CITRINE_BOLT_SEEK;
+      b.vy += (dy / dist) * CITRINE_BOLT_SEEK;
+      const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+      if (speed > CITRINE_BOLT_MAX_SPEED) { b.vx = (b.vx / speed) * CITRINE_BOLT_MAX_SPEED; b.vy = (b.vy / speed) * CITRINE_BOLT_MAX_SPEED; }
+      // Trail recording
+      b.trailX[b.trailHead] = b.x; b.trailY[b.trailHead] = b.y;
+      b.trailHead = (b.trailHead + 1) % CITRINE_BOLT_TRAIL_CAP;
+      if (b.trailCount < CITRINE_BOLT_TRAIL_CAP) b.trailCount++;
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (b.x < 0 || b.x > widthPx || b.y < 0 || b.y > heightPx) {
+        citrineBolts.splice(i, 1); continue;
+      }
+      if (!b.hasHitPlayer) {
+        const pdx = b.x - mote.x, pdy = b.y - mote.y;
+        if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          b.hasHitPlayer = true;
+          dealDamageToPlayer(b.atk);
+        }
+      }
+    }
+  }
+
+  function drawCitrineEnemies(): void {
+    for (const enemy of citrineEnemies) {
+      const half = CITRINE_ENEMY_SIZE / 2;
+      ctx.shadowBlur = CITRINE_ENEMY_SIZE * 5; ctx.shadowColor = CITRINE_ENEMY_GLOW;
+      ctx.fillStyle = CITRINE_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), CITRINE_ENEMY_SIZE, CITRINE_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+      const barW = CITRINE_ENEMY_SIZE * 2.5; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = CITRINE_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  function drawCitrineBolts(): void {
+    for (const b of citrineBolts) {
+      // Draw trail
+      if (b.trailCount >= 2) {
+        ctx.save();
+        for (let i = 0; i < b.trailCount; i++) {
+          const t = i / b.trailCount;
+          const bufIdx = (b.trailHead - b.trailCount + i + CITRINE_BOLT_TRAIL_CAP) % CITRINE_BOLT_TRAIL_CAP;
+          ctx.globalAlpha = t * 0.35;
+          ctx.fillStyle = CITRINE_BOLT_COLOR;
+          const ts = CITRINE_BOLT_SIZE * 0.7;
+          ctx.fillRect(Math.floor(b.trailX[bufIdx] - ts / 2), Math.floor(b.trailY[bufIdx] - ts / 2), Math.ceil(ts), Math.ceil(ts));
+        }
+        ctx.globalAlpha = 1; ctx.restore();
+      }
+      const half = CITRINE_BOLT_SIZE / 2;
+      ctx.shadowBlur = CITRINE_BOLT_SIZE * 4; ctx.shadowColor = CITRINE_BOLT_GLOW;
+      ctx.fillStyle = CITRINE_BOLT_COLOR;
+      ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), CITRINE_BOLT_SIZE, CITRINE_BOLT_SIZE);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ── Iolite enemy system ───────────────────────────────────────
+
+  function updateIoliteEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of ioliteEnemies) {
+      enemy.patrolTimerMs -= deltaMs;
+      if (enemy.patrolTimerMs <= 0) {
+        enemy.patrolTimerMs = IOLITE_PATROL_TURN_MS * (0.5 + Math.random());
+        const angle = Math.random() * Math.PI * 2;
+        enemy.vx = Math.cos(angle) * IOLITE_PATROL_SPEED;
+        enemy.vy = Math.sin(angle) * IOLITE_PATROL_SPEED;
+      }
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      clampEnemyToBounds(enemy);
+      enemy.beamTimerMs -= deltaMs;
+      if (enemy.beamTimerMs <= 0) {
+        enemy.beamTimerMs = IOLITE_BEAM_CD_MS + Math.random() * IOLITE_BEAM_JITTER;
+        const bdx = mote.x - enemy.x, bdy = mote.y - enemy.y;
+        const baseAngle = Math.atan2(bdy, bdx);
+        for (let b = 0; b < IOLITE_BEAM_COUNT; b++) {
+          const spreadAngle = baseAngle + (b - Math.floor(IOLITE_BEAM_COUNT / 2)) * (IOLITE_BEAM_SPREAD_RAD / (IOLITE_BEAM_COUNT - 1));
+          const bdirX = Math.cos(spreadAngle), bdirY = Math.sin(spreadAngle);
+          const pdx2 = mote.x - enemy.x, pdy2 = mote.y - enemy.y;
+          const tProj = pdx2 * bdirX + pdy2 * bdirY;
+          if (tProj >= 0 && tProj <= IOLITE_BEAM_RANGE) {
+            const perpDist = Math.abs(pdx2 * bdirY - pdy2 * bdirX);
+            if (perpDist <= PLAYER_HIT_RADIUS) {
+              dealDamageToPlayer(enemy.atk);
+            }
+          }
+          shotLines.push({ x1: enemy.x, y1: enemy.y, x2: enemy.x + bdirX * IOLITE_BEAM_RANGE, y2: enemy.y + bdirY * IOLITE_BEAM_RANGE, timerMs: 200, color: IOLITE_ENEMY_GLOW });
+        }
+      }
+    }
+  }
+
+  function drawIoliteEnemies(): void {
+    for (const enemy of ioliteEnemies) {
+      const half = IOLITE_ENEMY_SIZE / 2;
+      ctx.save();
+      ctx.shadowBlur = IOLITE_ENEMY_SIZE * 5; ctx.shadowColor = IOLITE_ENEMY_GLOW;
+      ctx.fillStyle = IOLITE_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), IOLITE_ENEMY_SIZE, IOLITE_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      const barW = IOLITE_ENEMY_SIZE * 3; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = IOLITE_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  // ── Amethyst enemy system ─────────────────────────────────────
+
+  function updateAmethystEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of amethystEnemies) {
+      enemy.patrolTimerMs -= deltaMs;
+      if (enemy.patrolTimerMs <= 0) {
+        enemy.patrolTimerMs = AMETHYST_PATROL_TURN_MS * (0.5 + Math.random());
+        const angle = Math.random() * Math.PI * 2;
+        enemy.vx = Math.cos(angle) * AMETHYST_PATROL_SPEED;
+        enemy.vy = Math.sin(angle) * AMETHYST_PATROL_SPEED;
+      }
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      clampEnemyToBounds(enemy);
+      enemy.burstTimerMs -= deltaMs;
+      if (enemy.burstTimerMs <= 0) {
+        enemy.burstTimerMs = AMETHYST_BURST_CD_MS + Math.random() * AMETHYST_BURST_JITTER;
+        for (let b = 0; b < AMETHYST_BURST_COUNT; b++) {
+          const angle = (b / AMETHYST_BURST_COUNT) * Math.PI * 2;
+          amethystShards.push(makeAmethystShard(enemy.x, enemy.y, Math.cos(angle) * AMETHYST_SHARD_SPEED, Math.sin(angle) * AMETHYST_SHARD_SPEED));
+        }
+      }
+    }
+  }
+
+  function updateAmethystShards(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = amethystShards.length - 1; i >= 0; i--) {
+      const s = amethystShards[i];
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      s.lifeMs -= deltaMs;
+      if (s.lifeMs <= 0 || s.x < 0 || s.x > widthPx || s.y < 0 || s.y > heightPx) {
+        amethystShards.splice(i, 1); continue;
+      }
+      if (!s.hasHitPlayer) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          s.hasHitPlayer = true;
+          dealDamageToPlayer(s.atk);
+        }
+      }
+    }
+  }
+
+  function drawAmethystEnemies(): void {
+    for (const enemy of amethystEnemies) {
+      if (enemy.shieldHp > 0) {
+        const shieldRatio = enemy.shieldHp / enemy.maxShieldHp;
+        ctx.save();
+        ctx.globalAlpha = 0.3 + shieldRatio * 0.4;
+        ctx.strokeStyle = AMETHYST_ENEMY_GLOW; ctx.lineWidth = 2;
+        ctx.shadowBlur = AMETHYST_ENEMY_SIZE * 4; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
+        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, AMETHYST_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
+      }
+      const half = AMETHYST_ENEMY_SIZE / 2;
+      ctx.shadowBlur = AMETHYST_ENEMY_SIZE * 5; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
+      ctx.fillStyle = AMETHYST_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+      const barW = AMETHYST_ENEMY_SIZE * 3; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = AMETHYST_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  function drawAmethystShards(): void {
+    for (const s of amethystShards) {
+      const half = AMETHYST_SHARD_SIZE / 2;
+      ctx.save();
+      ctx.translate(Math.floor(s.x), Math.floor(s.y));
+      ctx.rotate(Math.PI / 4);
+      ctx.shadowBlur = AMETHYST_SHARD_SIZE * 3; ctx.shadowColor = AMETHYST_SHARD_GLOW;
+      ctx.fillStyle = AMETHYST_SHARD_COLOR;
+      ctx.fillRect(-half, -half, AMETHYST_SHARD_SIZE, AMETHYST_SHARD_SIZE);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+  }
+
+  // ── Diamond enemy system ──────────────────────────────────────
+
+  function updateDiamondEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of diamondEnemies) {
+      enemy.phaseTimerMs -= deltaMs;
+      if (enemy.phaseTimerMs <= 0) {
+        if (enemy.phaseInvuln) {
+          enemy.phaseInvuln = false;
+          enemy.phaseTimerMs = DIAMOND_PHASE_VULN_MS;
+        } else {
+          enemy.phaseInvuln = true;
+          enemy.phaseTimerMs = DIAMOND_PHASE_INVULN_MS;
+        }
+      }
+      if (enemy.phaseInvuln) {
+        enemy.orbitAngle += DIAMOND_ORBIT_SPEED * (deltaMs / 1000);
+        enemy.x = mote.x + Math.cos(enemy.orbitAngle) * 80;
+        enemy.y = mote.y + Math.sin(enemy.orbitAngle) * 80;
+        const half = DIAMOND_ENEMY_SIZE / 2;
+        enemy.x = Math.max(half, Math.min(widthPx - half, enemy.x));
+        enemy.y = Math.max(half, Math.min(heightPx - half, enemy.y));
+      } else {
+        const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        enemy.vx = (dx / dist) * DIAMOND_PATROL_SPEED;
+        enemy.vy = (dy / dist) * DIAMOND_PATROL_SPEED;
+        enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+        clampEnemyToBounds(enemy);
+        enemy.shardTimerMs -= deltaMs;
+        if (enemy.shardTimerMs <= 0) {
+          enemy.shardTimerMs = DIAMOND_SHARD_CD_MS + Math.random() * 500;
+          for (let b = 0; b < DIAMOND_SHARD_COUNT; b++) {
+            const angle = (b / DIAMOND_SHARD_COUNT) * Math.PI * 2;
+            diamondShards.push(makeDiamondShard(enemy.x, enemy.y, Math.cos(angle) * DIAMOND_SHARD_SPEED, Math.sin(angle) * DIAMOND_SHARD_SPEED));
+          }
+        }
+      }
+    }
+  }
+
+  function updateDiamondShards(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = diamondShards.length - 1; i >= 0; i--) {
+      const s = diamondShards[i];
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      s.lifeMs -= deltaMs;
+      if (s.lifeMs <= 0 || s.x < 0 || s.x > widthPx || s.y < 0 || s.y > heightPx) {
+        diamondShards.splice(i, 1); continue;
+      }
+      if (!s.hasHitPlayer) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          s.hasHitPlayer = true;
+          dealDamageToPlayer(s.atk);
+        }
+      }
+    }
+  }
+
+  function drawDiamondEnemies(): void {
+    for (const enemy of diamondEnemies) {
+      const half = DIAMOND_ENEMY_SIZE / 2;
+      ctx.save();
+      ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
+      ctx.rotate(Math.PI / 4);
+      const glowColor = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_GLOW;
+      ctx.shadowBlur = DIAMOND_ENEMY_SIZE * (enemy.phaseInvuln ? 10 : 5);
+      ctx.shadowColor = glowColor;
+      ctx.fillStyle = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_COLOR;
+      ctx.globalAlpha = enemy.phaseInvuln ? 0.6 : 1;
+      ctx.fillRect(-half, -half, DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_SIZE);
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      ctx.restore();
+      const barW = DIAMOND_ENEMY_SIZE * 3; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = DIAMOND_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  function drawDiamondShards(): void {
+    for (const s of diamondShards) {
+      const half = DIAMOND_SHARD_SIZE / 2;
+      ctx.save();
+      ctx.translate(Math.floor(s.x), Math.floor(s.y));
+      ctx.rotate(Math.PI / 4);
+      ctx.shadowBlur = DIAMOND_SHARD_SIZE * 4; ctx.shadowColor = DIAMOND_SHARD_GLOW;
+      ctx.fillStyle = DIAMOND_SHARD_COLOR;
+      ctx.fillRect(-half, -half, DIAMOND_SHARD_SIZE, DIAMOND_SHARD_SIZE);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+  }
+
+  // ── Nullstone enemy system ────────────────────────────────────
+
+  function updateNullstoneEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of nullstoneEnemies) {
+      enemy.pulseMs += deltaMs;
+      // Gravity pull on player
+      const gdx = enemy.x - mote.x, gdy = enemy.y - mote.y;
+      const gdist = Math.sqrt(gdx * gdx + gdy * gdy);
+      if (gdist > 0 && gdist < NULLSTONE_GRAVITY_RADIUS) {
+        mote.vx += (gdx / gdist) * NULLSTONE_GRAVITY_STRENGTH * gdist * dt;
+        mote.vy += (gdy / gdist) * NULLSTONE_GRAVITY_STRENGTH * gdist * dt;
+      }
+      // Absorb / immunity cycling
+      if (enemy.isAbsorbing) {
+        enemy.absorbTimerMs -= deltaMs;
+        if (enemy.absorbTimerMs <= 0) { enemy.isAbsorbing = false; enemy.absorbCdMs = NULLSTONE_ABSORB_CD_MS; }
+      } else {
+        enemy.absorbCdMs -= deltaMs;
+        if (enemy.absorbCdMs <= 0) { enemy.isAbsorbing = true; enemy.absorbTimerMs = NULLSTONE_ABSORB_MS; }
+      }
+      // Patrol
+      enemy.patrolTimerMs -= deltaMs;
+      if (enemy.patrolTimerMs <= 0) {
+        enemy.patrolTimerMs = NULLSTONE_PATROL_TURN_MS * (0.5 + Math.random());
+        const angle = Math.random() * Math.PI * 2;
+        enemy.vx = Math.cos(angle) * NULLSTONE_PATROL_SPEED;
+        enemy.vy = Math.sin(angle) * NULLSTONE_PATROL_SPEED;
+      }
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      clampEnemyToBounds(enemy);
+      // Tendril attack
+      enemy.tendrilTimerMs -= deltaMs;
+      if (enemy.tendrilTimerMs <= 0) {
+        enemy.tendrilTimerMs = NULLSTONE_TENDRIL_CD_MS + Math.random() * 1000;
+        const tdx = mote.x - enemy.x, tdy = mote.y - enemy.y;
+        const tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+        for (let t = 0; t < NULLSTONE_TENDRIL_COUNT; t++) {
+          const spread = (t - Math.floor(NULLSTONE_TENDRIL_COUNT / 2)) * 0.4;
+          const cos = Math.cos(spread), sin = Math.sin(spread);
+          const tvx = ((tdx / tlen) * cos - (tdy / tlen) * sin) * VOID_TENDRIL_SPEED;
+          const tvy = ((tdx / tlen) * sin + (tdy / tlen) * cos) * VOID_TENDRIL_SPEED;
+          voidTendrils.push(makeVoidTendril(enemy.x, enemy.y, tvx, tvy));
+        }
+      }
+    }
+  }
+
+  function updateVoidTendrils(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = voidTendrils.length - 1; i >= 0; i--) {
+      const t = voidTendrils[i];
+      t.x += t.vx * dt; t.y += t.vy * dt;
+      t.lifeMs -= deltaMs;
+      if (t.lifeMs <= 0 || t.x < 0 || t.x > widthPx || t.y < 0 || t.y > heightPx) {
+        voidTendrils.splice(i, 1); continue;
+      }
+      if (!t.hasHitPlayer) {
+        const dx = t.x - mote.x, dy = t.y - mote.y;
+        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          t.hasHitPlayer = true;
+          dealDamageToPlayer(t.atk);
+        }
+      }
+    }
+  }
+
+  function drawNullstoneEnemies(): void {
+    for (const enemy of nullstoneEnemies) {
+      // Gravity field ring
+      const pulseT = (enemy.pulseMs % 2000) / 2000;
+      ctx.save();
+      ctx.globalAlpha = 0.15 * (1 - pulseT);
+      ctx.strokeStyle = NULLSTONE_ENEMY_GLOW; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, NULLSTONE_GRAVITY_RADIUS * pulseT, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.restore();
+      // Absorb glow
+      if (enemy.isAbsorbing) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.shadowBlur = NULLSTONE_ENEMY_SIZE * 8; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
+        ctx.strokeStyle = NULLSTONE_ENEMY_GLOW; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, NULLSTONE_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
+      }
+      // Body
+      const half = NULLSTONE_ENEMY_SIZE / 2;
+      ctx.shadowBlur = NULLSTONE_ENEMY_SIZE * 6; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
+      ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
+      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_SIZE);
+      ctx.shadowBlur = 0;
+      const barW = NULLSTONE_ENEMY_SIZE * 3; const barH = 2;
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW, barH);
+      ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
+      ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
+
+  function drawVoidTendrils(): void {
+    for (const t of voidTendrils) {
+      const half = VOID_TENDRIL_SIZE / 2;
+      ctx.shadowBlur = VOID_TENDRIL_SIZE * 3; ctx.shadowColor = VOID_TENDRIL_GLOW;
+      ctx.fillStyle = VOID_TENDRIL_COLOR;
+      ctx.fillRect(Math.floor(t.x - half), Math.floor(t.y - half), VOID_TENDRIL_SIZE, VOID_TENDRIL_SIZE);
+      ctx.shadowBlur = 0;
+    }
+  }
+
   function drawAttackTrail(enemy: LaserEnemy, nowMs: number): void {
     const trail = enemy.attackTrail;
     if (!trail.active) return;
@@ -3290,7 +5543,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.fillStyle = '#ffd764'; ctx.font = 'bold 14px "Poiret One", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.shadowBlur = 8; ctx.shadowColor = '#ffe599';
-    ctx.fillText('Wave ' + currentWave + ' Cleared!', widthPx / 2, heightPx / 2 - 8);
+    const isBoss = currentWave > 0 && currentWave % 100 === 0;
+    const bannerText = isBoss
+      ? `${BOSS_GLYPH_LABEL} ${currentWave / 100} Cleared!`
+      : `Wave ${currentWave} Cleared!`;
+    ctx.fillText(bannerText, widthPx / 2, heightPx / 2 - 8);
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#c9a84c'; ctx.font = '10px "Poiret One", sans-serif';
     ctx.fillText('Next wave incoming\u2026', widthPx / 2, heightPx / 2 + 10);
@@ -3312,6 +5569,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawAmberEnemies();
     drawAmberShards();
     drawVoidEnemies();
+    drawQuartzEnemies();
+    drawQuartzSpikes();
+    drawRubyEnemies();
+    drawRubyBolts();
+    drawSunstoneEnemies();
+    drawCitrineEnemies();
+    drawCitrineBolts();
+    drawIoliteEnemies();
+    drawAmethystEnemies();
+    drawAmethystShards();
+    drawDiamondEnemies();
+    drawDiamondShards();
+    drawNullstoneEnemies();
+    drawVoidTendrils();
     drawShotLines();
     drawSandProjectiles();
     drawLaserBeamEffect();
@@ -3461,6 +5732,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateAmberEnemies(deltaMs);
       updateAmberShards(deltaMs);
       updateVoidEnemies(deltaMs);
+      updateQuartzEnemies(deltaMs);
+      updateQuartzSpikes(deltaMs);
+      updateRubyEnemies(deltaMs);
+      updateRubyBolts(deltaMs);
+      updateSunstoneEnemies(deltaMs);
+      updateCitrineEnemies(deltaMs);
+      updateCitrineBolts(deltaMs);
+      updateIoliteEnemies(deltaMs);
+      updateAmethystEnemies(deltaMs);
+      updateAmethystShards(deltaMs);
+      updateDiamondEnemies(deltaMs);
+      updateDiamondShards(deltaMs);
+      updateNullstoneEnemies(deltaMs);
+      updateVoidTendrils(deltaMs);
       updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(deltaMs);
       updateSandProjectiles(deltaMs);
