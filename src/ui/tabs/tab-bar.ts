@@ -117,6 +117,8 @@ const TABS: TabDef[] = [
 interface UpgradesAnimState {
   frameProgress: number;
   targetProgress: number;
+  /** Most recently displayed frame index (0-based), used to skip unnecessary src updates. */
+  currentFrameIdx: number;
   rafId: number | null;
   lastTimestampMs: number;
   imgEl: HTMLImageElement;
@@ -128,6 +130,7 @@ function createUpgradesAnimState(imgEl: HTMLImageElement): UpgradesAnimState {
   return {
     frameProgress: 0,
     targetProgress: 0,
+    currentFrameIdx: 0,
     rafId: null,
     lastTimestampMs: 0,
     imgEl,
@@ -159,9 +162,10 @@ function upgradesAnimStart(anim: UpgradesAnimState): void {
     }
 
     const frameIdx = Math.round(anim.frameProgress);
-    const newSrc = UPGRADES_FRAMES[frameIdx] ?? UPGRADES_FRAMES[0];
-    if (anim.imgEl.src !== newSrc) {
-      anim.imgEl.src = newSrc;
+    // Only update the DOM if the displayed frame actually changed
+    if (frameIdx !== anim.currentFrameIdx) {
+      anim.currentFrameIdx = frameIdx;
+      anim.imgEl.src = UPGRADES_FRAMES[frameIdx] ?? UPGRADES_FRAMES[0];
     }
 
     if (Math.abs(anim.frameProgress - anim.targetProgress) < 0.01) {
@@ -184,7 +188,6 @@ function upgradesAnimStart(anim: UpgradesAnimState): void {
  * Returns the container and (if animated) the animation state.
  */
 function buildTabIconEl(
-  _tabId: TabId,
   sprites: TabSprites,
 ): { container: HTMLElement; animState?: UpgradesAnimState } {
   const container = document.createElement('div');
@@ -220,11 +223,14 @@ function buildTabIconEl(
   imgEl.alt = '';
   container.appendChild(imgEl);
 
-  // Preload all animation frames
-  for (const frameSrc of sprites.frames) {
-    const preload = new Image();
-    preload.src = frameSrc;
-  }
+  // Preload animation frames asynchronously after the current task completes
+  // so the initial render is not delayed.
+  setTimeout(() => {
+    for (const frameSrc of sprites.frames) {
+      const preload = new Image();
+      preload.src = frameSrc;
+    }
+  }, 0);
 
   const animState = createUpgradesAnimState(imgEl);
   return { container, animState };
@@ -245,7 +251,7 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
     btn.className = 'tab-btn';
     btn.dataset['tabId'] = tab.id;
 
-    const { container, animState } = buildTabIconEl(tab.id, sprites);
+    const { container, animState } = buildTabIconEl(sprites);
     btn.appendChild(container);
 
     const labelEl = document.createElement('span');

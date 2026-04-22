@@ -18,6 +18,7 @@ import {
   MATRIX_EDIT_STEP,
 } from '../../sim/aliven';
 import type { TraceEffect } from '../../render/ui/trace-effect';
+import { makePageBreak } from '../ui-helpers';
 
 /**
  * Looms panel — now serves as the combined Upgrades panel with three sub-tabs:
@@ -61,15 +62,6 @@ function updateCellDisplay(cell: HTMLElement, val: number): void {
     cell.style.color = '#888';
   }
   cell.textContent = val.toFixed(2);
-}
-
-/** Creates a page-break decorative image element. */
-function makePageBreak(size: 'large' | 'small'): HTMLImageElement {
-  const img = document.createElement('img');
-  img.src = `/ASSETS/SPRITES/menuElements/pageBreak_${size}.png`;
-  img.alt = '';
-  img.className = `page-break-${size}`;
-  return img;
 }
 
 export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffect, equationContent?: HTMLElement): LoomPanel {
@@ -485,7 +477,8 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   }
 
   panel.appendChild(alivenPane);
-  // Add page break after matrix section and after aliven rows
+  // alivenPane DOM order: title, subtitle, matrixSection, [page break], alivenRowsContainer, [page break]
+  // matrixSection is the first section; alivenRowsContainer is the second.
   alivenPane.insertBefore(makePageBreak('small'), alivenRowsContainer);
   alivenPane.appendChild(makePageBreak('small'));
 

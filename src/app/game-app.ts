@@ -48,18 +48,9 @@ import { createGameLoop } from './app-game-loop';
 import { createIdleOverlay } from '../ui/idle/idle-overlay';
 import { calculateIdleRewards } from '../sim/idle/idle-reward';
 import { queueIdleRewards } from '../sim/idle/apply-idle-rewards';
+import { makePageBreak } from '../ui/ui-helpers';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
-
-// ─── Page break helper ──────────────────────────────────────────
-
-function makePageBreak(size: 'large' | 'small'): HTMLImageElement {
-  const img = document.createElement('img');
-  img.src = `/ASSETS/SPRITES/menuElements/pageBreak_${size}.png`;
-  img.alt = '';
-  img.className = `page-break-${size}`;
-  return img;
-}
 
 export async function startApp(): Promise<void> {
   const root = document.getElementById('app')!;
