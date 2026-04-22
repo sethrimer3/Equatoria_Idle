@@ -239,6 +239,39 @@ const LASER_BEAM_COLOR       = '#ff2222';
 const LASER_BEAM_GLOW        = '#ff8888';
 const LASER_BEAM_WIDTH       =   2.5;
 
+// ── Nullstone vortex weapon constants ─────────────────────────
+const VORTEX_PULL_STRENGTH      = 0.6;    // px/frame gravity pull toward vortex center
+const VORTEX_DAMAGE_INTERVAL_MS = 1000;   // ms between damage ticks
+const VORTEX_SPAWN_DIST         = 60;     // px from player center at spawn
+const VORTEX_COLOR              = '#9664c8';
+const VORTEX_GLOW               = '#c496f0';
+const VORTEX_SPIN_RATE          = 2.0;    // rad/s
+
+// ── Diamond sword combo constants ─────────────────────────────
+const SWORD_SWING1_MS  = 280;   // duration of right arc swing phase
+const SWORD_SWING2_MS  = 280;   // duration of left arc swing phase
+const SWORD_SPIN_MS    = 450;   // duration of full spin phase
+const SWORD_COLOR      = '#88ddff';
+const SWORD_GLOW       = '#ccf4ff';
+const SWORD_TRAIL_CAP  = 20;
+const SWORD_PRISMATIC_COLORS: readonly string[] =
+  ['#ff0000', '#ff6600', '#ffff00', '#00ff00', '#0066ff', '#8800ff', '#ff00ff'];
+
+const POISON_ARMOR_IGNORE_PER_TIER = 0.1;   // armorIgnore = tier * this
+const POISON_DURATION_BASE_TIER    = 8;      // (base - tier) * POISON_DURATION_MS_PER_TIER
+const POISON_DURATION_MS_PER_TIER  = 10000;  // ms per tier offset
+const POISON_TOTAL_MULTIPLIER      = 10;     // poisonTotal = rawDamage * tier * this
+const SWORD_TOTAL_COMBO_MS         = SWORD_SWING1_MS + SWORD_SWING2_MS + SWORD_SPIN_MS;
+
+// ── Iolite poison bolt constants ───────────────────────────────
+const POISON_BOLT_SPEED       = 2.0;   // px/frame (slow, magical)
+const POISON_BOLT_SIZE        = 3;
+const POISON_BOLT_COLOR       = '#8844ff';
+const POISON_BOLT_GLOW        = '#aa88ff';
+const POISON_BOLT_LIFE_MS     = 5000;  // max life before expiry
+const POISON_BOLT_TRAIL_CAP   = 30;
+const POISON_TICK_INTERVAL_MS = 2000;  // ms between poison ticks
+
 // ── Emerald enemy constants ────────────────────────────────────
 const EMERALD_ENEMY_SIZE     =   5;
 const EMERALD_ENEMY_COLOR    = '#22dd66';
@@ -737,6 +770,65 @@ interface LaserBeamEffect {
   endX: number; endY: number;
   dirX: number; dirY: number;
   timerMs: number;
+}
+
+// ── Nullstone vortex weapon interfaces ────────────────────────
+
+interface NullstoneVortex {
+  x: number; y: number;
+  radiusPx: number;
+  durationMs: number;
+  maxDurationMs: number;
+  spinAngle: number;
+  damageTimerMs: number;
+  /** Damage per tick, pre-computed at spawn (rawDamage / 3). */
+  scaledDamage: number;
+  weaponId: string;
+}
+
+interface VortexWeaponState {
+  /** Countdown until the next vortex fire. */
+  cooldownMs: number;
+}
+
+// ── Diamond sword combo interfaces ────────────────────────────
+
+type SwordComboPhase = 'idle' | 'swing1' | 'swing2' | 'spin' | 'cooldown';
+
+interface SwordComboState {
+  phase: SwordComboPhase;
+  /** Milliseconds elapsed in the current phase. */
+  phaseMs: number;
+  /** Total ms of cooldown before next combo starts (or remaining cooldown time). */
+  cooldownMs: number;
+  /** Enemies already struck in the current swing phase (reset each phase). */
+  hitThisSwing: Set<object>;
+  /** Prismatic trail points for the sword tip. */
+  trailPoints: Array<{ x: number; y: number; color: string; alpha: number }>;
+}
+
+// ── Iolite poison bolt interfaces ─────────────────────────────
+
+interface IolitePoisonBolt {
+  x: number; y: number;
+  vx: number; vy: number;
+  lifeMs: number;
+  scaledDamage: number;
+  tier: number;
+  weaponId: string;
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}
+
+interface PoisonDebuff {
+  remainingDamage: number;
+  damagePerTick: number;
+  tickTimerMs: number;
+  maxHp: number;
+  /** Applies one tick of poison damage; returns actual damage dealt. */
+  applyTick: (tick: number) => number;
+  /** Returns current world position of the poisoned enemy for damage number display. */
+  getPos: () => { x: number; y: number };
 }
 
 // ── Emerald enemy (blink-striker) ─────────────────────────────
@@ -1354,6 +1446,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const nullstoneEnemies: NullstoneEnemy[] = [];
   const voidTendrils: VoidTendril[]        = [];
 
+  // ── Vortex weapon state ────────────────────────────────────────
+  const activeVortexes: NullstoneVortex[]                = [];
+  const vortexWeaponStates: Map<string, VortexWeaponState> = new Map();
+
+  // ── Diamond sword combo state ──────────────────────────────────
+  const swordComboStates: Map<string, SwordComboState> = new Map();
+
+  // ── Iolite poison bolt state ───────────────────────────────────
+  const poisonBolts: IolitePoisonBolt[]            = [];
+  const poisonDebuffs: Map<object, PoisonDebuff>   = new Map();
+
+  // ── Aim direction tracker (updated each physics frame) ────────
+  let playerAimAngle = -Math.PI / 2;  // default: upward
+
   let bossEnemy: BossEnemy | null = null;
   const bossProjectiles: BossProjectile[] = [];
 
@@ -1424,6 +1530,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // Remove chain whip states for weapons that are no longer equipped.
     for (const weaponId of Array.from(chainWhipStates.keys())) {
       if (!rpgSimState.equippedWeaponIds.has(weaponId)) chainWhipStates.delete(weaponId);
+    }
+    // Remove vortex weapon states for unequipped weapons.
+    for (const weaponId of Array.from(vortexWeaponStates.keys())) {
+      if (!rpgSimState.equippedWeaponIds.has(weaponId)) vortexWeaponStates.delete(weaponId);
+    }
+    // Remove sword combo states for unequipped weapons.
+    for (const weaponId of Array.from(swordComboStates.keys())) {
+      if (!rpgSimState.equippedWeaponIds.has(weaponId)) swordComboStates.delete(weaponId);
     }
     // Remove attack timers for unequipped weapons.
     for (const weaponId of Array.from(weaponAttackTimers.keys())) {
@@ -2464,6 +2578,525 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.restore();
   }
 
+  // ── Nullstone vortex system ────────────────────────────────────
+
+  function getVortexTierRadius(tier: number): number  { return 40 + (tier - 1) * 10; }
+  function getVortexTierDurationMs(tier: number): number { return 3000 + (tier - 1) * 200; }
+  function getVortexCount(tier: number): number        { return tier >= 7 ? 3 : tier >= 4 ? 2 : 1; }
+
+  function fireVortex(weaponId: string, tier: number): void {
+    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    const rawDamage = weaponDef
+      ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
+      : playerStats.atk;
+    const radiusPx    = getVortexTierRadius(tier);
+    const durationMs  = getVortexTierDurationMs(tier);
+    const count       = getVortexCount(tier);
+    // Set the per-weapon cooldown to 2× duration before spawning vortexes.
+    vortexWeaponStates.set(weaponId, { cooldownMs: durationMs * 2 });
+    for (let i = 0; i < count; i++) {
+      const angle = playerAimAngle + (i / count) * Math.PI * 2;
+      activeVortexes.push({
+        x: mote.x + Math.cos(angle) * VORTEX_SPAWN_DIST,
+        y: mote.y + Math.sin(angle) * VORTEX_SPAWN_DIST,
+        radiusPx,
+        durationMs,
+        maxDurationMs: durationMs,
+        spinAngle: 0,
+        damageTimerMs: VORTEX_DAMAGE_INTERVAL_MS,
+        scaledDamage: rawDamage / 3,
+        weaponId,
+      });
+    }
+  }
+
+  function updateVortexWeapon(weaponId: string, deltaMs: number): void {
+    const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+    if (!vortexWeaponStates.has(weaponId)) vortexWeaponStates.set(weaponId, { cooldownMs: 0 });
+    const state = vortexWeaponStates.get(weaponId)!;
+    state.cooldownMs -= deltaMs;
+    if (state.cooldownMs <= 0) fireVortex(weaponId, tier);
+  }
+
+  /** Applies vortex damage to one enemy; shows a damage number if any dealt. */
+  function applyVortexTickToEnemy<T extends { x: number; y: number; maxHp: number }>(
+    vortex: NullstoneVortex,
+    e: T,
+    damageFn: (enemy: T, dmg: number, pierce: number) => number,
+  ): void {
+    const dx = e.x - vortex.x, dy = e.y - vortex.y;
+    if (dx * dx + dy * dy > vortex.radiusPx * vortex.radiusPx) return;
+    const dmg = damageFn(e, vortex.scaledDamage, 0);
+    if (dmg > 0) spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, VORTEX_COLOR);
+  }
+
+  function updateVortexes(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const pull = VORTEX_PULL_STRENGTH * dt;
+
+    for (let i = activeVortexes.length - 1; i >= 0; i--) {
+      const v = activeVortexes[i];
+      v.durationMs -= deltaMs;
+      if (v.durationMs <= 0) { activeVortexes.splice(i, 1); continue; }
+
+      v.spinAngle += VORTEX_SPIN_RATE * deltaMs / 1000;
+
+      // Gravity pull — nudge each enemy toward the vortex center.
+      const applyPull = (e: { x: number; y: number }) => {
+        const dx = v.x - e.x, dy = v.y - e.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.01 && dist <= v.radiusPx) {
+          e.x += (dx / dist) * pull;
+          e.y += (dy / dist) * pull;
+        }
+      };
+      for (const e of enemies)          applyPull(e);
+      for (const e of sapphireEnemies)  applyPull(e);
+      for (const e of emeraldEnemies)   applyPull(e);
+      for (const e of amberEnemies)     applyPull(e);
+      for (const e of voidEnemies)      applyPull(e);
+      for (const e of quartzEnemies)    applyPull(e);
+      for (const e of rubyEnemies)      applyPull(e);
+      for (const e of sunstoneEnemies)  applyPull(e);
+      for (const e of citrineEnemies)   applyPull(e);
+      for (const e of ioliteEnemies)    applyPull(e);
+      for (const e of amethystEnemies)  applyPull(e);
+      for (const e of diamondEnemies)   applyPull(e);
+      for (const e of nullstoneEnemies) applyPull(e);
+      if (bossEnemy) applyPull(bossEnemy);
+
+      // Fluid inward swirl
+      fluid.addForce({
+        x: v.x, y: v.y, vx: 0, vy: 0,
+        r: 0x96 / 255, g: 0x64 / 255, b: 0xc8 / 255,
+        strength: 0.4,
+      });
+
+      // Damage ticks
+      v.damageTimerMs -= deltaMs;
+      if (v.damageTimerMs <= 0) {
+        v.damageTimerMs += VORTEX_DAMAGE_INTERVAL_MS;
+        for (const e of enemies)          applyVortexTickToEnemy(v, e, damageEnemy);
+        for (const e of sapphireEnemies)  applyVortexTickToEnemy(v, e, (en, dmg, p) => damageSapphireEnemy(en, dmg, p, false));
+        for (const e of emeraldEnemies)   applyVortexTickToEnemy(v, e, damageEmeraldEnemy);
+        for (const e of amberEnemies)     applyVortexTickToEnemy(v, e, damageAmberEnemy);
+        for (const e of voidEnemies)      applyVortexTickToEnemy(v, e, damageVoidEnemy);
+        for (const e of quartzEnemies)    applyVortexTickToEnemy(v, e, damageQuartzEnemy);
+        for (const e of rubyEnemies)      applyVortexTickToEnemy(v, e, damageRubyEnemy);
+        for (const e of sunstoneEnemies)  applyVortexTickToEnemy(v, e, damageSunstoneEnemy);
+        for (const e of citrineEnemies)   applyVortexTickToEnemy(v, e, damageCitrineEnemy);
+        for (const e of ioliteEnemies)    applyVortexTickToEnemy(v, e, damageIoliteEnemy);
+        for (const e of amethystEnemies)  applyVortexTickToEnemy(v, e, (en, dmg, p) => damageAmethystEnemy(en, dmg, p, false));
+        for (const e of diamondEnemies)   applyVortexTickToEnemy(v, e, damageDiamondEnemy);
+        for (const e of nullstoneEnemies) applyVortexTickToEnemy(v, e, damageNullstoneEnemy);
+        if (bossEnemy) {
+          const bx = bossEnemy.x - v.x, by = bossEnemy.y - v.y;
+          if (bx * bx + by * by <= v.radiusPx * v.radiusPx) {
+            const dmg = damageBossEnemy(v.scaledDamage, 0);
+            if (dmg > 0) spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, VORTEX_COLOR);
+          }
+        }
+        removeDeadEnemies();
+        checkWaveCompletion();
+      }
+    }
+  }
+
+  function drawVortexes(): void {
+    if (activeVortexes.length === 0) return;
+    ctx.save();
+    for (const v of activeVortexes) {
+      const alpha = v.durationMs / v.maxDurationMs;
+      const r = v.radiusPx;
+      // Outer ring glow
+      ctx.globalAlpha = alpha * 0.6;
+      ctx.shadowBlur = r * 0.5; ctx.shadowColor = VORTEX_GLOW;
+      ctx.strokeStyle = VORTEX_COLOR; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Rotating concentric arcs showing spin
+      const arcCount = 5;
+      for (let j = 0; j < arcCount; j++) {
+        const baseAngle = v.spinAngle + (j / arcCount) * Math.PI * 2;
+        const scale     = 0.25 + j * 0.16;
+        ctx.globalAlpha = alpha * 0.4 * (1 - j / arcCount);
+        ctx.beginPath();
+        ctx.arc(v.x, v.y, r * scale, baseAngle, baseAngle + Math.PI * 0.8);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
+    ctx.restore();
+  }
+
+  // ── Diamond sword combo system ─────────────────────────────────
+
+  function getSwordLength(tier: number): number { return 30 + (tier - 1) * 8; }
+
+  function buildSwordCombo(weaponId: string): SwordComboState {
+    const weaponDef  = WEAPON_BY_ID.get(weaponId);
+    const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+    const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? 4000, tier);
+    return { phase: 'idle', phaseMs: 0, cooldownMs, hitThisSwing: new Set(), trailPoints: [] };
+  }
+
+  /**
+   * Returns true if angle `a` lies within the arc that sweeps counterclockwise
+   * from `start` to `end` (angles in radians).
+   */
+  function angleInArc(a: number, start: number, end: number): boolean {
+    const diff = ((a - start) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    const span = ((end - start) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    return diff <= span;
+  }
+
+  function swordHitInArc(
+    state: SwordComboState,
+    swordLength: number,
+    rawDamage: number,
+    arcStart: number,
+    arcEnd: number,
+  ): void {
+    const hitColor = SWORD_COLOR;
+    const check = <T extends { x: number; y: number; maxHp: number }>(
+      e: T,
+      damageFn: (enemy: T, dmg: number, pierce: number) => number,
+    ) => {
+      if (state.hitThisSwing.has(e)) return;
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      if (dx * dx + dy * dy > swordLength * swordLength) return;
+      if (!angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) return;
+      const dmg = damageFn(e, rawDamage, 1.0);
+      state.hitThisSwing.add(e);
+      hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
+      spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, hitColor);
+    };
+    for (const e of enemies)          check(e, damageEnemy);
+    for (const e of sapphireEnemies)  check(e, (en, d, p) => damageSapphireEnemy(en, d, p, false));
+    for (const e of emeraldEnemies)   check(e, damageEmeraldEnemy);
+    for (const e of amberEnemies)     check(e, damageAmberEnemy);
+    for (const e of voidEnemies)      check(e, damageVoidEnemy);
+    for (const e of quartzEnemies)    check(e, damageQuartzEnemy);
+    for (const e of rubyEnemies)      check(e, damageRubyEnemy);
+    for (const e of sunstoneEnemies)  check(e, damageSunstoneEnemy);
+    for (const e of citrineEnemies)   check(e, damageCitrineEnemy);
+    for (const e of ioliteEnemies)    check(e, damageIoliteEnemy);
+    for (const e of amethystEnemies)  check(e, (en, d, p) => damageAmethystEnemy(en, d, p, false));
+    for (const e of diamondEnemies)   check(e, damageDiamondEnemy);
+    for (const e of nullstoneEnemies) check(e, damageNullstoneEnemy);
+    if (bossEnemy && !state.hitThisSwing.has(bossEnemy)) {
+      const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+      if (dx * dx + dy * dy <= swordLength * swordLength &&
+          angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) {
+        const dmg = damageBossEnemy(rawDamage, 1.0);
+        state.hitThisSwing.add(bossEnemy);
+        if (dmg > 0) {
+          hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
+          spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, hitColor);
+        }
+      }
+    }
+  }
+
+  function updateSwordCombo(weaponId: string, deltaMs: number): void {
+    if (!swordComboStates.has(weaponId)) swordComboStates.set(weaponId, buildSwordCombo(weaponId));
+    const state      = swordComboStates.get(weaponId)!;
+    const weaponDef  = WEAPON_BY_ID.get(weaponId);
+    const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+    const rawDamage  = weaponDef
+      ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
+      : playerStats.atk;
+    const swordLength    = getSwordLength(tier);
+    const fullCooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? 4000, tier);
+
+    // Fade trail points.
+    for (let i = state.trailPoints.length - 1; i >= 0; i--) {
+      state.trailPoints[i].alpha -= deltaMs / 600;
+      if (state.trailPoints[i].alpha <= 0) state.trailPoints.splice(i, 1);
+    }
+
+    state.phaseMs += deltaMs;
+
+    if (state.phase === 'idle') {
+      if (state.phaseMs >= state.cooldownMs) {
+        state.phase = 'swing1'; state.phaseMs = 0; state.hitThisSwing.clear();
+      }
+      return;
+    }
+
+    const addTrailPoint = (x: number, y: number) => {
+      const colorIdx = state.trailPoints.length % SWORD_PRISMATIC_COLORS.length;
+      if (state.trailPoints.length >= SWORD_TRAIL_CAP) state.trailPoints.shift();
+      state.trailPoints.push({ x, y, color: SWORD_PRISMATIC_COLORS[colorIdx], alpha: 1.0 });
+    };
+
+    if (state.phase === 'swing1') {
+      // Right arc: aim-60° → aim+20°
+      const arcStart = playerAimAngle - Math.PI / 3;
+      const arcEnd   = playerAimAngle + Math.PI / 9;
+      const t        = Math.min(1, state.phaseMs / SWORD_SWING1_MS);
+      addTrailPoint(
+        mote.x + Math.cos(arcStart + t * (arcEnd - arcStart)) * swordLength,
+        mote.y + Math.sin(arcStart + t * (arcEnd - arcStart)) * swordLength,
+      );
+      swordHitInArc(state, swordLength, rawDamage, arcStart, arcEnd);
+      if (state.phaseMs >= SWORD_SWING1_MS) {
+        state.phase = 'swing2'; state.phaseMs = 0; state.hitThisSwing.clear();
+        removeDeadEnemies(); checkWaveCompletion();
+      }
+      return;
+    }
+
+    if (state.phase === 'swing2') {
+      // Left arc: aim+20° → aim-160° (counterclockwise 180°)
+      const arcStart = playerAimAngle + Math.PI / 9;
+      const arcEnd   = playerAimAngle - Math.PI * (8 / 9);
+      const t        = Math.min(1, state.phaseMs / SWORD_SWING2_MS);
+      addTrailPoint(
+        mote.x + Math.cos(arcStart + t * (arcEnd - arcStart)) * swordLength,
+        mote.y + Math.sin(arcStart + t * (arcEnd - arcStart)) * swordLength,
+      );
+      swordHitInArc(state, swordLength, rawDamage, arcStart, arcEnd);
+      if (state.phaseMs >= SWORD_SWING2_MS) {
+        state.phase = 'spin'; state.phaseMs = 0; state.hitThisSwing.clear();
+        removeDeadEnemies(); checkWaveCompletion();
+      }
+      return;
+    }
+
+    if (state.phase === 'spin') {
+      const t = Math.min(1, state.phaseMs / SWORD_SPIN_MS);
+      addTrailPoint(
+        mote.x + Math.cos(playerAimAngle + t * Math.PI * 2) * swordLength,
+        mote.y + Math.sin(playerAimAngle + t * Math.PI * 2) * swordLength,
+      );
+      // Full circle: any enemy within swordLength is hit once.
+      swordHitInArc(state, swordLength, rawDamage, 0, Math.PI * 2);
+      if (state.phaseMs >= SWORD_SPIN_MS) {
+        const remainingCooldown = fullCooldownMs - SWORD_TOTAL_COMBO_MS;
+        state.phase = 'cooldown'; state.phaseMs = 0;
+        state.cooldownMs = Math.max(0, remainingCooldown);
+        state.hitThisSwing.clear();
+        removeDeadEnemies(); checkWaveCompletion();
+      }
+      return;
+    }
+
+    if (state.phase === 'cooldown') {
+      if (state.phaseMs >= state.cooldownMs) {
+        state.phase = 'idle'; state.phaseMs = 0; state.cooldownMs = fullCooldownMs;
+      }
+    }
+  }
+
+  function drawSwordCombos(): void {
+    for (const [weaponId, state] of swordComboStates) {
+      if (state.phase === 'idle' || state.phase === 'cooldown') continue;
+      const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+      const swordLength = getSwordLength(tier);
+      ctx.save();
+      // Prismatic trail dots
+      for (const pt of state.trailPoints) {
+        ctx.globalAlpha = pt.alpha * 0.7;
+        ctx.shadowBlur  = 4; ctx.shadowColor = pt.color; ctx.fillStyle = pt.color;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      // Current blade line
+      const t = Math.min(1, state.phaseMs / (
+        state.phase === 'swing1' ? SWORD_SWING1_MS :
+        state.phase === 'swing2' ? SWORD_SWING2_MS : SWORD_SPIN_MS
+      ));
+      let curAngle: number;
+      if (state.phase === 'swing1') {
+        curAngle = (playerAimAngle - Math.PI / 3) + t * (Math.PI / 3 + Math.PI / 9);
+      } else if (state.phase === 'swing2') {
+        curAngle = (playerAimAngle + Math.PI / 9) + t * (-(Math.PI / 9 + Math.PI * (8 / 9)));
+      } else {
+        curAngle = playerAimAngle + t * Math.PI * 2;
+      }
+      const tipX = mote.x + Math.cos(curAngle) * swordLength;
+      const tipY = mote.y + Math.sin(curAngle) * swordLength;
+      ctx.globalAlpha = 0.9;
+      ctx.shadowBlur = 8; ctx.shadowColor = SWORD_GLOW;
+      ctx.strokeStyle = SWORD_COLOR; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(mote.x, mote.y); ctx.lineTo(tipX, tipY); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.lineWidth = 1;
+      ctx.restore();
+    }
+  }
+
+  // ── Iolite poison bolt system ──────────────────────────────────
+
+  function spawnPoisonBolt(targetX: number, targetY: number, weaponId: string, tier: number, rawDamage: number): void {
+    const dx = targetX - mote.x, dy = targetY - mote.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.01) return;
+    poisonBolts.push({
+      x: mote.x, y: mote.y,
+      vx: (dx / dist) * POISON_BOLT_SPEED,
+      vy: (dy / dist) * POISON_BOLT_SPEED,
+      lifeMs: POISON_BOLT_LIFE_MS,
+      scaledDamage: rawDamage,
+      tier, weaponId,
+      trailX: new Float64Array(POISON_BOLT_TRAIL_CAP),
+      trailY: new Float64Array(POISON_BOLT_TRAIL_CAP),
+      trailHead: 0, trailCount: 0,
+    });
+  }
+
+  /** Attaches or refreshes a poison debuff on a target, using a closure for typed damage dispatch. */
+  function attachPoisonDebuff<T extends { x: number; y: number; hp: number; maxHp: number }>(
+    target: T,
+    rawDamage: number,
+    tier: number,
+    damageFn: (enemy: T, dmg: number, pierce: number) => number,
+  ): void {
+    const armorIgnore   = tier * POISON_ARMOR_IGNORE_PER_TIER;
+    const durationMs    = (POISON_DURATION_BASE_TIER - tier) * POISON_DURATION_MS_PER_TIER;
+    const poisonTotal   = rawDamage * tier * POISON_TOTAL_MULTIPLIER;
+    const damagePerTick = poisonTotal / (durationMs / POISON_TICK_INTERVAL_MS);
+    poisonDebuffs.set(target, {
+      remainingDamage: poisonTotal,
+      damagePerTick,
+      tickTimerMs: POISON_TICK_INTERVAL_MS,
+      maxHp: target.maxHp,
+      applyTick:  (tick: number) => target.hp > 0 ? damageFn(target, tick, armorIgnore) : 0,
+      getPos: () => ({ x: target.x, y: target.y }),
+    });
+  }
+
+  function updatePoisonBolts(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const hitR = POISON_BOLT_SIZE * 3;
+
+    for (let i = poisonBolts.length - 1; i >= 0; i--) {
+      const p = poisonBolts[i];
+      p.lifeMs -= deltaMs;
+      if (p.lifeMs <= 0) { poisonBolts.splice(i, 1); continue; }
+
+      p.x += p.vx * dt; p.y += p.vy * dt;
+
+      // Trail ring buffer
+      p.trailX[p.trailHead] = p.x; p.trailY[p.trailHead] = p.y;
+      p.trailHead = (p.trailHead + 1) % POISON_BOLT_TRAIL_CAP;
+      if (p.trailCount < POISON_BOLT_TRAIL_CAP) p.trailCount++;
+
+      // Fluid injection
+      fluid.addForce({
+        x: p.x, y: p.y,
+        vx: p.vx * FLUID_VEL_FRAME_TO_PX_S * 0.4,
+        vy: p.vy * FLUID_VEL_FRAME_TO_PX_S * 0.4,
+        r: 0x88 / 255, g: 0x44 / 255, b: 1.0,
+        strength: 0.1,
+      });
+
+      if (p.x < 0 || p.x > widthPx || p.y < 0 || p.y > heightPx) {
+        poisonBolts.splice(i, 1); continue;
+      }
+
+      // Collision — first hit ends the bolt.
+      let hit = false;
+      const tryHit = <T extends { x: number; y: number; hp: number; maxHp: number }>(
+        e: T,
+        damageFn: (enemy: T, dmg: number, pierce: number) => number,
+      ): boolean => {
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy >= hitR * hitR) return false;
+        const dmg = damageFn(e, p.scaledDamage, 0);
+        spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, POISON_BOLT_COLOR);
+        attachPoisonDebuff(e, p.scaledDamage, p.tier, damageFn);
+        return true;
+      };
+
+      for (const e of enemies)          { if (tryHit(e, damageEnemy))                                         { hit = true; break; } }
+      if (!hit) for (const e of sapphireEnemies)  { if (tryHit(e, (en, d, r) => damageSapphireEnemy(en, d, r, false))) { hit = true; break; } }
+      if (!hit) for (const e of emeraldEnemies)   { if (tryHit(e, damageEmeraldEnemy))                        { hit = true; break; } }
+      if (!hit) for (const e of amberEnemies)     { if (tryHit(e, damageAmberEnemy))                          { hit = true; break; } }
+      if (!hit) for (const e of voidEnemies)      { if (tryHit(e, damageVoidEnemy))                           { hit = true; break; } }
+      if (!hit) for (const e of quartzEnemies)    { if (tryHit(e, damageQuartzEnemy))                         { hit = true; break; } }
+      if (!hit) for (const e of rubyEnemies)      { if (tryHit(e, damageRubyEnemy))                           { hit = true; break; } }
+      if (!hit) for (const e of sunstoneEnemies)  { if (tryHit(e, damageSunstoneEnemy))                       { hit = true; break; } }
+      if (!hit) for (const e of citrineEnemies)   { if (tryHit(e, damageCitrineEnemy))                        { hit = true; break; } }
+      if (!hit) for (const e of ioliteEnemies)    { if (tryHit(e, damageIoliteEnemy))                         { hit = true; break; } }
+      if (!hit) for (const e of amethystEnemies)  { if (tryHit(e, (en, d, r) => damageAmethystEnemy(en, d, r, false))) { hit = true; break; } }
+      if (!hit) for (const e of diamondEnemies)   { if (tryHit(e, damageDiamondEnemy))                        { hit = true; break; } }
+      if (!hit) for (const e of nullstoneEnemies) { if (tryHit(e, damageNullstoneEnemy))                      { hit = true; break; } }
+      if (!hit && bossEnemy) {
+        const boss = bossEnemy;
+        const dx = p.x - boss.x, dy = p.y - boss.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageBossEnemy(p.scaledDamage, 0);
+          if (dmg > 0) spawnHitVisualsAt(boss.x, boss.y, boss.maxHp, dmg, POISON_BOLT_COLOR);
+          attachPoisonDebuff(boss, p.scaledDamage, p.tier, (_b, d, r) => damageBossEnemy(d, r));
+          hit = true;
+        }
+      }
+
+      if (hit) {
+        poisonBolts.splice(i, 1);
+        removeDeadEnemies(); checkWaveCompletion();
+      }
+    }
+  }
+
+  function updatePoisonDebuffs(deltaMs: number): void {
+    for (const [target, debuff] of poisonDebuffs) {
+      if (debuff.remainingDamage <= 0) { poisonDebuffs.delete(target); continue; }
+      // applyTick returns 0 when the enemy is dead (hp <= 0 guard in the closure).
+      // Detect "dead and done" by attempting a zero-cost tick check.
+      if (debuff.applyTick(0) === 0 && debuff.damagePerTick > 0) {
+        poisonDebuffs.delete(target); continue;
+      }
+
+      debuff.tickTimerMs -= deltaMs;
+      if (debuff.tickTimerMs <= 0) {
+        debuff.tickTimerMs += POISON_TICK_INTERVAL_MS;
+        const tick = Math.min(debuff.damagePerTick, debuff.remainingDamage);
+        debuff.remainingDamage -= tick;
+        const dmg = debuff.applyTick(tick);
+        if (dmg > 0) {
+          const pos = debuff.getPos();
+          spawnDamageNumber(pos.x, pos.y, 0, -1, String(Math.round(dmg)), dmg / debuff.maxHp, POISON_BOLT_COLOR);
+        }
+        if (debuff.remainingDamage <= 0) poisonDebuffs.delete(target);
+      }
+    }
+    removeDeadEnemies();
+    checkWaveCompletion();
+  }
+
+  function drawPoisonBolts(): void {
+    if (poisonBolts.length === 0) return;
+    ctx.save();
+    for (const p of poisonBolts) {
+      const alpha = p.lifeMs / POISON_BOLT_LIFE_MS;
+      // Trail
+      if (p.trailCount >= 2) {
+        for (let i = 0; i < p.trailCount; i++) {
+          const idx = (p.trailHead - p.trailCount + i + POISON_BOLT_TRAIL_CAP) % POISON_BOLT_TRAIL_CAP;
+          const t   = i / p.trailCount;
+          const r   = POISON_BOLT_SIZE * t * 0.8;
+          if (r < 0.3) continue;
+          ctx.globalAlpha = t * alpha * 0.5;
+          ctx.fillStyle = POISON_BOLT_COLOR;
+          ctx.fillRect(Math.floor(p.trailX[idx] - r), Math.floor(p.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
+        }
+      }
+      // Bolt core
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.shadowBlur  = POISON_BOLT_SIZE * 4; ctx.shadowColor = POISON_BOLT_GLOW;
+      ctx.fillStyle   = POISON_BOLT_GLOW;
+      const gr = POISON_BOLT_SIZE * 1.5;
+      ctx.fillRect(Math.floor(p.x - gr), Math.floor(p.y - gr), Math.ceil(gr * 2), Math.ceil(gr * 2));
+      ctx.shadowBlur = 0;
+      ctx.fillStyle  = POISON_BOLT_COLOR;
+      ctx.fillRect(Math.floor(p.x - POISON_BOLT_SIZE / 2), Math.floor(p.y - POISON_BOLT_SIZE / 2), POISON_BOLT_SIZE, POISON_BOLT_SIZE);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
   // ── Ruby laser beam system ─────────────────────────────────────
 
   function fireLaserBeam(targetX: number, targetY: number, weaponId: string): void {
@@ -2990,6 +3623,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // ── Chain whip ─────────────────────────────────────────────
     if (effect.kind === 'chainWhip') {
       // The chain whip handles its own lash triggering in updateChainWhip().
+      return;
+    }
+
+    // ── Vortex / sword combo — self-managed, never called here ─
+    if (effect.kind === 'vortex' || effect.kind === 'swordCombo') return;
+
+    // ── Poison bolt ────────────────────────────────────────────
+    if (effect.kind === 'poisonBolt') {
+      const target = findClosestTarget(range * range);
+      if (target) spawnPoisonBolt(target.x, target.y, weaponId, tier, rawDamage);
       return;
     }
 
@@ -4182,6 +4825,32 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     } else {
       glowMovementIntensity = Math.max(0, glowMovementIntensity - GLOW_MOVE_RAMP_DOWN * deltaMs);
     }
+    // Track aim direction for vortex / sword weapons.
+    if (speed > 0.1) {
+      playerAimAngle = Math.atan2(mote.vy, mote.vx);
+    } else {
+      // Fallback: aim toward nearest visible enemy.
+      let nearestAimDistSq = Infinity;
+      const checkAimEnemy = (e: { x: number; y: number }) => {
+        const ax = e.x - mote.x, ay = e.y - mote.y;
+        const d = ax * ax + ay * ay;
+        if (d < nearestAimDistSq) { nearestAimDistSq = d; playerAimAngle = Math.atan2(ay, ax); }
+      };
+      for (const e of enemies)          checkAimEnemy(e);
+      for (const e of sapphireEnemies)  checkAimEnemy(e);
+      for (const e of emeraldEnemies)   checkAimEnemy(e);
+      for (const e of amberEnemies)     checkAimEnemy(e);
+      for (const e of voidEnemies)      checkAimEnemy(e);
+      for (const e of quartzEnemies)    checkAimEnemy(e);
+      for (const e of rubyEnemies)      checkAimEnemy(e);
+      for (const e of sunstoneEnemies)  checkAimEnemy(e);
+      for (const e of citrineEnemies)   checkAimEnemy(e);
+      for (const e of ioliteEnemies)    checkAimEnemy(e);
+      for (const e of amethystEnemies)  checkAimEnemy(e);
+      for (const e of diamondEnemies)   checkAimEnemy(e);
+      for (const e of nullstoneEnemies) checkAimEnemy(e);
+      if (bossEnemy) checkAimEnemy(bossEnemy);
+    }
     // Inject player movement into the fluid (only when meaningfully moving).
     if (speed > TRAIL_SPEED_THRESHOLD) {
       fluid.addForce({
@@ -4469,6 +5138,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossProjectiles.length = 0;
     sandProjectiles.length = 0;
     chainWhipStates.clear();
+    activeVortexes.length = 0; vortexWeaponStates.clear();
+    swordComboStates.clear();
+    poisonBolts.length = 0; poisonDebuffs.clear();
     laserBeamEffect = null;
     mote.x = widthPx / 2; mote.y = heightPx / 2;
     mote.vx = mote.vy = 0; mote.trailHead = 0; mote.trailCount = 0;
@@ -6398,7 +7070,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawBossProjectiles();
     drawBossEnemy();
     drawShotLines();
+    drawVortexes();
     drawSandProjectiles();
+    drawPoisonBolts();
     drawLaserBeamEffect();
 
     // Player comet trail — smoothly gated by glowMovementIntensity
@@ -6458,6 +7132,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       for (const p of weaponOrbitParticles) drawWeaponOrbitParticle(p);
       drawOrbitProjectile();
       for (const ws of chainWhipStates.values()) drawChainWhip(ws);
+      drawSwordCombos();
     }
 
     if (joystick.isActive && rpgPhase === 'alive') {
@@ -6570,6 +7245,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const wd = WEAPON_BY_ID.get(weaponId);
         if (wd?.stats.effect?.kind === 'chainWhip') updateChainWhip(weaponId, deltaMs);
       }
+      // Update vortex and sword combo systems
+      for (const weaponId of rpgSimState.equippedWeaponIds) {
+        const wd = WEAPON_BY_ID.get(weaponId);
+        if (wd?.stats.effect?.kind === 'vortex')    updateVortexWeapon(weaponId, deltaMs);
+        if (wd?.stats.effect?.kind === 'swordCombo') updateSwordCombo(weaponId, deltaMs);
+      }
+      updateVortexes(deltaMs);
+      updatePoisonBolts(deltaMs);
+      updatePoisonDebuffs(deltaMs);
       updateLaserBeamEffect(deltaMs);
       removeDeadEnemies();
       checkWaveCompletion();
@@ -6577,8 +7261,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // ── Per-weapon auto-attack timers ─────────────────────────────
       for (const weaponId of rpgSimState.equippedWeaponIds) {
         const weaponDef = WEAPON_BY_ID.get(weaponId);
-        // Chain whip fires itself via updateChainWhip's internal cooldown
-        if (weaponDef?.stats.effect?.kind === 'chainWhip') continue;
+        // These weapon kinds manage their own timing.
+        if (weaponDef?.stats.effect?.kind === 'chainWhip'  ||
+            weaponDef?.stats.effect?.kind === 'vortex'     ||
+            weaponDef?.stats.effect?.kind === 'swordCombo') continue;
         const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
         const cooldownMs = weaponDef
           ? getScaledWeaponCooldown(weaponDef.stats.cooldownMs, tier)

@@ -26,7 +26,24 @@ export type WeaponEffect =
   /** Chain whip of 5 circles that lashes toward the nearest target periodically. */
   | { kind: 'chainWhip' }
   /** Infinite-length laser beam that pierces all enemies and shields. */
-  | { kind: 'laserBeam' };
+  | { kind: 'laserBeam' }
+  /**
+   * Gravity vortex placed in the aim direction. Sucks enemies toward its center
+   * and deals low persistent damage. Cooldown = 2 × duration. Tier 4+ fires two
+   * vortexes, tier 7 fires three, equidistant in angle.
+   */
+  | { kind: 'vortex' }
+  /**
+   * Melee sword combo: right swing → left swing → 360 spin.
+   * Leaves a prismatic trail. Ignores all DEF. Slow between-combo cooldown.
+   * Sword length (reach) scales with weapon tier.
+   */
+  | { kind: 'swordCombo' }
+  /**
+   * Single-target poison magic projectile. On hit applies a poison DoT whose
+   * total damage, duration, and armour-ignore ratio all scale with tier.
+   */
+  | { kind: 'poisonBolt' };
 
 /** Combat stats granted by equipping this weapon. */
 export interface WeaponStats {
@@ -163,15 +180,16 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   // ── Tier 7: Iolite ────────────────────────────────────────────
   {
     id: 'iolite_volley',
-    name: 'Iolite Volley',
+    name: 'Iolite Poison Bolt',
     description:
-      'Fires a volley that strikes the 4 nearest enemies simultaneously. ' +
-      'Fast cooldown makes it effective against relentless multi-enemy waves.',
+      'A sickly violet magic projectile that saturates a single target with virulent poison. ' +
+      'Each tier ignores 10 % more of the target\'s armour (poison damage only, up to 70 % at tier 7). ' +
+      'Higher tiers deliver the full payload faster and increase total poison damage up to 7 000 % of base.',
     costTierId: 'iolite',
     cost: 40,
     stats: {
-      damage: 10, cooldownMs: 1100, range: 95, defBonus: 1,
-      effect: { kind: 'multi', targetCount: 4 },
+      damage: 10, cooldownMs: 2200, range: 110, defBonus: 1,
+      effect: { kind: 'poisonBolt' },
     },
   },
 
@@ -193,30 +211,35 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   // ── Tier 9: Diamond ───────────────────────────────────────────
   {
     id: 'diamond_bastion',
-    name: 'Diamond Bastion',
+    name: 'Diamond Sword',
     description:
-      'An impenetrable diamond core that fires rapid precision bursts. ' +
-      'Exceptional DEF bonus keeps you alive through the toughest waves.',
+      'An impossibly sharp diamond blade that tears through armour completely. ' +
+      'Performs an epic three-part combo: right swing, left swing, then a full 360 spin, ' +
+      'leaving a brilliant prismatic trail in its wake. Ignores all enemy DEF. ' +
+      'Hard to wield — slow between combos. Higher tiers extend the blade\'s reach.',
     costTierId: 'diamond',
     cost: 20,
     stats: {
-      damage: 10, cooldownMs: 800, range: 65, defBonus: 15,
-      effect: { kind: 'single' },
+      damage: 22, cooldownMs: 3500, range: 70, defBonus: 8,
+      effect: { kind: 'swordCombo' },
     },
   },
 
   // ── Tier 10: Nullstone ────────────────────────────────────────
   {
     id: 'nullstone_nova',
-    name: 'Nullstone Nova',
+    name: 'Nullstone Vortex',
     description:
-      'A void-energy detonation that obliterates ALL enemies within 85 px. ' +
-      'The most powerful area weapon — walk into enemy clusters and detonate.',
+      'Conjures a massive gravity vortex in the direction you are moving, relentlessly ' +
+      'pulling all nearby enemies toward its core while dealing low, persistent void damage. ' +
+      'Fire rate is exactly twice the vortex duration. Higher tiers create a larger, ' +
+      'longer-lasting vortex. Tier 4+ fires two vortexes simultaneously; tier 7 fires three, ' +
+      'spread equidistant in angle.',
     costTierId: 'nullstone',
     cost: 10,
     stats: {
-      damage: 50, cooldownMs: 2000, range: 85, defBonus: 5,
-      effect: { kind: 'aoe', aoeRadius: 85 },
+      damage: 8, cooldownMs: 6000, range: 120, defBonus: 5,
+      effect: { kind: 'vortex' },
     },
   },
 ];
