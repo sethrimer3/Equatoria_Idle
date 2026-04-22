@@ -256,14 +256,13 @@ const SWORD_GLOW       = '#ccf4ff';
 const SWORD_TRAIL_CAP  = 20;
 const SWORD_PRISMATIC_COLORS: readonly string[] =
   ['#ff0000', '#ff6600', '#ffff00', '#00ff00', '#0066ff', '#8800ff', '#ff00ff'];
+const SWORD_TOTAL_COMBO_MS         = SWORD_SWING1_MS + SWORD_SWING2_MS + SWORD_SPIN_MS;
 
+// ── Iolite poison bolt constants ───────────────────────────────
 const POISON_ARMOR_IGNORE_PER_TIER = 0.1;   // armorIgnore = tier * this
 const POISON_DURATION_BASE_TIER    = 8;      // (base - tier) * POISON_DURATION_MS_PER_TIER
 const POISON_DURATION_MS_PER_TIER  = 10000;  // ms per tier offset
 const POISON_TOTAL_MULTIPLIER      = 10;     // poisonTotal = rawDamage * tier * this
-const SWORD_TOTAL_COMBO_MS         = SWORD_SWING1_MS + SWORD_SWING2_MS + SWORD_SPIN_MS;
-
-// ── Iolite poison bolt constants ───────────────────────────────
 const POISON_BOLT_SPEED       = 2.0;   // px/frame (slow, magical)
 const POISON_BOLT_SIZE        = 3;
 const POISON_BOLT_COLOR       = '#8844ff';
@@ -2954,8 +2953,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     tier: number,
     damageFn: (enemy: T, dmg: number, pierce: number) => number,
   ): void {
-    const armorIgnore   = tier * POISON_ARMOR_IGNORE_PER_TIER;
-    const durationMs    = (POISON_DURATION_BASE_TIER - tier) * POISON_DURATION_MS_PER_TIER;
+    const armorIgnore   = Math.min(1, tier * POISON_ARMOR_IGNORE_PER_TIER);
+    const clampedTier   = Math.min(tier, POISON_DURATION_BASE_TIER - 1);
+    const durationMs    = (POISON_DURATION_BASE_TIER - clampedTier) * POISON_DURATION_MS_PER_TIER;
     const poisonTotal   = rawDamage * tier * POISON_TOTAL_MULTIPLIER;
     const damagePerTick = poisonTotal / (durationMs / POISON_TICK_INTERVAL_MS);
     poisonDebuffs.set(target, {

@@ -183,8 +183,9 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     name: 'Iolite Poison Bolt',
     description:
       'A sickly violet magic projectile that saturates a single target with virulent poison. ' +
-      'Each tier ignores 10 % more of the target\'s armour (poison damage only, up to 70 % at tier 7). ' +
-      'Higher tiers deliver the full payload faster and increase total poison damage up to 7 000 % of base.',
+      'Each tier ignores 10 % more of the target\'s armour on poison ticks only (up to 70 % at tier 7). ' +
+      'Total poison damage scales as tier × 1 000 % of base (1 000 % at tier 1, 7 000 % at tier 7). ' +
+      'Higher tiers also deliver the full payload faster: 70 s at tier 1 down to 10 s at tier 7.',
     costTierId: 'iolite',
     cost: 40,
     stats: {
