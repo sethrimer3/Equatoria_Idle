@@ -15,7 +15,7 @@ import type { LoomPanel } from '../ui/panels/loom-panel';
 import type { EquationPanel } from '../ui/panels/equation-panel';
 import type { AchievementsPanel } from '../ui/panels/achievements-panel';
 import type { RpgRender } from '../render/rpg/rpg-render';
-import type { WeaponStorePanel } from '../ui/panels/weapon-store-panel';
+import type { RpgMenuPanel } from '../ui/panels/rpg-menu-panel';
 
 /** Mutable application-level state. */
 export interface AppState {
@@ -47,6 +47,6 @@ export interface UIPanels {
   rpgRender: RpgRender;
   /** Container that wraps the RPG canvas — shown only on the RPG tab. */
   rpgContainer: HTMLElement;
-  /** Weapon purchase store — shown as an overlay on the RPG tab. */
-  weaponStorePanel: WeaponStorePanel;
+  /** Tabbed RPG menu (Menu / Weapons / Upgrades). */
+  rpgMenuPanel: RpgMenuPanel;
 }

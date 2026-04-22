@@ -1,5 +1,7 @@
 import type { TierId } from '../data/tiers';
 import { TIERS } from '../data/tiers';
+import type { SizeIndex } from '../data/particles/size-tiers';
+import { MERGE_THRESHOLD } from '../data/particles/size-tiers';
 import {
   INITIAL_UNLOCKED_TIER_COUNT,
   tierUnlockCost,
@@ -58,6 +60,26 @@ import {
   type RpgSimState,
 } from './rpg';
 
+// ─── Pending idle mote queue ────────────────────────────────────
+
+/**
+ * A single entry in the pending idle-mote drip queue.
+ * Each entry represents a batch of motes of the same tier and size
+ * waiting to be added to resources one-by-one (one per simTick frame).
+ */
+export interface PendingMoteEntry {
+  tierId: TierId;
+  /** Size index in base-MERGE_THRESHOLD representation (0 = 1×1, 1 = 2×2, …). */
+  sizeIndex: SizeIndex;
+  /** Remaining motes of this size to add. Decremented by 1 per frame. */
+  count: number;
+}
+
+/** Value of one pending mote at a given sizeIndex (MERGE_THRESHOLD ^ sizeIndex). */
+export function pendingMoteValue(sizeIndex: SizeIndex): number {
+  return Math.pow(MERGE_THRESHOLD, sizeIndex);
+}
+
 // ─── Aggregate game state ───────────────────────────────────────
 
 export interface GameState {
@@ -72,6 +94,8 @@ export interface GameState {
   lastAutoTapMs: number;
   lastSaveMs: number;
   elapsedMs: number;
+  /** Idle motes queued for frame-by-frame drip-addition to resources. */
+  pendingIdleMotes: PendingMoteEntry[];
 }
 
 export function createGameState(): GameState {
@@ -87,6 +111,7 @@ export function createGameState(): GameState {
     lastAutoTapMs: 0,
     lastSaveMs: 0,
     elapsedMs: 0,
+    pendingIdleMotes: [],
   };
 }
 
@@ -230,6 +255,18 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
         result.autoTapped = true;
         result.autoTapGains = tapResult.gains;
       }
+    }
+  }
+
+  // Drain one pending idle mote per frame (drip-add from idle reward queue).
+  // Queue is ordered: lowest tier first, largest size first within each tier.
+  if (state.pendingIdleMotes.length > 0) {
+    const entry = state.pendingIdleMotes[0];
+    const moteValue = pendingMoteValue(entry.sizeIndex);
+    addMotes(state.resources, entry.tierId, moteValue);
+    entry.count--;
+    if (entry.count <= 0) {
+      state.pendingIdleMotes.shift();
     }
   }
 

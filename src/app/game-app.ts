@@ -40,14 +40,14 @@ import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
 import { createAudioSystem } from '../audio';
 import { createTraceEffect } from '../render/ui/trace-effect';
 import { createRpgRender } from '../render/rpg/rpg-render';
-import { createWeaponStorePanel } from '../ui/panels/weapon-store-panel';
+import { createRpgMenuPanel } from '../ui/panels/rpg-menu-panel';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
 import { createGameLoop } from './app-game-loop';
 import { createIdleOverlay } from '../ui/idle/idle-overlay';
 import { calculateIdleRewards } from '../sim/idle/idle-reward';
-import { applyIdleRewards } from '../sim/idle/apply-idle-rewards';
+import { queueIdleRewards } from '../sim/idle/apply-idle-rewards';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
@@ -75,6 +75,13 @@ export async function startApp(): Promise<void> {
     await document.fonts.load("bold 12px 'Poiret One'");
   } catch (err) {
     console.warn('Failed to preload Poiret One font:', err);
+  }
+
+  // ── Preload Pixelify Sans font for damage numbers ──
+  try {
+    await document.fonts.load("bold 14px 'Pixelify Sans'");
+  } catch {
+    // non-critical
   }
 
   // ── Preload BJ Cree font for secret achievement display ──
@@ -193,6 +200,7 @@ export async function startApp(): Promise<void> {
     // Write the last-active timestamp whenever the tab is hidden.
     if (document.visibilityState === 'hidden') {
       writeLastActiveTimestamp();
+      saveGame(game);
     }
   });
 
@@ -240,21 +248,24 @@ export async function startApp(): Promise<void> {
   // is toggled by setActiveTab alongside rpgContainer.
   root.appendChild(rpgRender.statsPanel);
 
-  // ── Weapon store panel (RPG tab overlay) ──
-  const weaponStorePanel = createWeaponStorePanel(dispatch);
-  weaponStorePanel.element.style.display = 'none';
-  root.appendChild(weaponStorePanel.element);
+  // ── RPG menu panel (replaces weapon store) ──
+  const rpgMenuPanel = createRpgMenuPanel(dispatch);
+  rpgMenuPanel.element.style.display = 'none';
+  root.appendChild(rpgMenuPanel.element);
 
-  // ── Shop toggle button (appended to the stats panel by the renderer) ──
-  const shopToggleBtn = document.createElement('button');
-  shopToggleBtn.className = 'rpg-shop-btn';
-  shopToggleBtn.textContent = '🛒 Shop';
-  shopToggleBtn.setAttribute('aria-label', 'Open weapon store');
-  shopToggleBtn.addEventListener('click', () => {
-    const nowVisible = !weaponStorePanel.isVisible;
-    weaponStorePanel.setVisible(nowVisible);
+  // ── Menu toggle button (appended to the stats panel by the renderer) ──
+  const menuToggleBtn = document.createElement('button');
+  menuToggleBtn.className = 'rpg-menu-btn';
+  menuToggleBtn.textContent = '⚔ Menu';
+  menuToggleBtn.setAttribute('aria-label', 'Open RPG menu');
+  menuToggleBtn.addEventListener('click', () => {
+    const nowVisible = !rpgMenuPanel.isVisible;
+    rpgMenuPanel.setVisible(nowVisible);
+    if (nowVisible) {
+      rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
+    }
   });
-  rpgRender.statsPanel.appendChild(shopToggleBtn);
+  rpgRender.statsPanel.appendChild(menuToggleBtn);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
@@ -271,7 +282,7 @@ export async function startApp(): Promise<void> {
     mainCanvasContainer: canvasContainer,
     rpgRender,
     rpgContainer,
-    weaponStorePanel,
+    rpgMenuPanel,
   };
 
   setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
@@ -353,7 +364,7 @@ export async function startApp(): Promise<void> {
     if (elapsedMs > 60_000) {
       const summary = calculateIdleRewards(game, elapsedMs);
       if (summary.tierRewards.some(r => r.totalMotes > 0)) {
-        applyIdleRewards(game, summary);
+        queueIdleRewards(game, summary);
         idleOverlay.show(summary);
       }
     }

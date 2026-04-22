@@ -1,4 +1,4 @@
-import type { GameState } from '../sim/game-state';
+import type { GameState, PendingMoteEntry } from '../sim/game-state';
 import type { TierId } from '../data/tiers';
 import type { SizeIndex } from '../data/particles/size-tiers';
 import { createGameState } from '../sim/game-state';
@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 10;
+const SAVE_VERSION = 15;
 
 interface SaveData {
   version: number;
@@ -59,9 +59,22 @@ interface SaveData {
   rpg?: {
     highestWaveReached: number;
     purchasedWeaponIds: string[];
-    equippedWeaponId: string | null;
+    /** v10–v13 compat: single equipped weapon id. Absent in v14+. */
+    equippedWeaponId?: string | null;
+    /** v14+: set of all equipped weapon ids. Absent in older saves. */
+    equippedWeaponIds?: string[];
+    /** v11+: accumulated XP. Absent in older saves (defaults to 0). */
+    xp?: number;
+    /** v12+: per-weapon tier levels. Absent in older saves. */
+    weaponTiersByWeaponId?: Record<string, number>;
+    /** v12+: RPG upgrade levels. Absent in older saves. */
+    rpgUpgradeLevels?: Record<string, number>;
+    /** v15+: respawn checkpoint wave. Absent in older saves (defaults to 0). */
+    respawnWave?: number;
   };
   elapsedMs: number;
+  /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
+  pendingIdleMotes?: Array<{ tierId: string; sizeIndex: number; count: number }>;
 }
 
 // ─── Serialize ──────────────────────────────────────────────────
@@ -122,9 +135,18 @@ export function serializeGameState(state: GameState): SaveData {
     rpg: {
       highestWaveReached: state.rpg.highestWaveReached,
       purchasedWeaponIds: Array.from(state.rpg.purchasedWeaponIds),
-      equippedWeaponId: state.rpg.equippedWeaponId,
+      equippedWeaponIds: Array.from(state.rpg.equippedWeaponIds),
+      xp: state.rpg.xp,
+      weaponTiersByWeaponId: Object.fromEntries(state.rpg.weaponTiersByWeaponId),
+      rpgUpgradeLevels: Object.fromEntries(state.rpg.rpgUpgradeLevels),
+      respawnWave: state.rpg.respawnWave,
     },
     elapsedMs: state.elapsedMs,
+    pendingIdleMotes: state.pendingIdleMotes.map(e => ({
+      tierId: e.tierId,
+      sizeIndex: e.sizeIndex,
+      count: e.count,
+    })),
   };
 }
 
@@ -238,7 +260,48 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.purchasedWeaponIds.add(id);
       }
     }
-    state.rpg.equippedWeaponId = data.rpg.equippedWeaponId ?? null;
+    // v14+: equippedWeaponIds set; v10–v13 compat: migrate from equippedWeaponId
+    if (data.rpg.equippedWeaponIds) {
+      for (const id of data.rpg.equippedWeaponIds) {
+        state.rpg.equippedWeaponIds.add(id);
+      }
+    } else if (data.rpg.equippedWeaponId) {
+      state.rpg.equippedWeaponIds.add(data.rpg.equippedWeaponId);
+    }
+    // v11+: accumulated XP
+    state.rpg.xp = data.rpg.xp ?? 0;
+    // v12+: weapon tiers (default tier 1 for already-purchased weapons without saved tiers)
+    if (data.rpg.weaponTiersByWeaponId) {
+      for (const [weaponId, tier] of Object.entries(data.rpg.weaponTiersByWeaponId)) {
+        state.rpg.weaponTiersByWeaponId.set(weaponId, tier);
+      }
+    } else {
+      // Migrate pre-v12 saves: give all purchased weapons tier 1
+      for (const weaponId of state.rpg.purchasedWeaponIds) {
+        state.rpg.weaponTiersByWeaponId.set(weaponId, 1);
+      }
+    }
+    // v12+: RPG upgrade levels
+    if (data.rpg.rpgUpgradeLevels) {
+      for (const [upgradeId, level] of Object.entries(data.rpg.rpgUpgradeLevels)) {
+        state.rpg.rpgUpgradeLevels.set(upgradeId, level);
+      }
+    }
+    // v15+: respawn checkpoint wave
+    state.rpg.respawnWave = data.rpg.respawnWave ?? 0;
+  }
+
+  // v13+: pending idle-mote drip queue (absent in older saves → empty array)
+  if (data.pendingIdleMotes && data.pendingIdleMotes.length > 0) {
+    for (const entry of data.pendingIdleMotes) {
+      if (entry.count > 0) {
+        state.pendingIdleMotes.push({
+          tierId: entry.tierId as TierId,
+          sizeIndex: entry.sizeIndex,
+          count: entry.count,
+        } satisfies PendingMoteEntry);
+      }
+    }
   }
 
   return state;
@@ -261,8 +324,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–10 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(data.version)) return null;
+    // Accept versions 1–15 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

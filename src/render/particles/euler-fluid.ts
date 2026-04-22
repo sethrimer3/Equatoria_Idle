@@ -21,7 +21,6 @@ import {
   EULER_BASE_STRENGTH,
   EULER_TIER_SCALE,
   EULER_MAX_FORCE,
-  EULER_CORE_RADIUS,
 } from '../../data/particles/particle-config';
 import { gridKey } from './spatial-grid';
 
@@ -129,7 +128,14 @@ export function applyEulerFluidForces(
 
           const tierDiff = a.tierIndex - b.tierIndex;
           const strength = EULER_BASE_STRENGTH + EULER_TIER_SCALE * tierDiff;
-          const force = strength / (dist + EULER_CORE_RADIUS);
+
+          // Quadratic falloff: t = 1 at the source, 0 at the influence
+          // boundary.  Squaring t concentrates the effect near the source
+          // and ensures the force reaches exactly zero at EULER_INFLUENCE_RADIUS,
+          // preventing particles from accumulating in a ring at the edge.
+          const t = 1.0 - dist / EULER_INFLUENCE_RADIUS;
+          if (t <= 0) continue;
+          const force = strength * t * t;
 
           const nx = dx / dist;
           const ny = dy / dist;

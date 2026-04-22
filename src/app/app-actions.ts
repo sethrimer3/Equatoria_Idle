@@ -18,6 +18,8 @@ import {
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import { getMotes, spendMotes } from '../sim/resources';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
+import { RPG_UPGRADE_BY_ID } from '../data/rpg/rpg-upgrade-definitions';
+import { getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER } from '../sim/rpg/rpg-state';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
@@ -138,16 +140,73 @@ export function handleAction(
       const weaponDef = WEAPON_BY_ID.get(action.weaponId);
       if (!weaponDef) { audioSystem?.onError(); break; }
       if (state.game.rpg.purchasedWeaponIds.has(action.weaponId)) break;
-      const balance = getMotes(state.game.resources, weaponDef.costTierId);
-      if (balance < weaponDef.cost) { audioSystem?.onError(); break; }
-      spendMotes(state.game.resources, weaponDef.costTierId, weaponDef.cost);
+      if (!devMode) {
+        const balance = getMotes(state.game.resources, weaponDef.costTierId);
+        if (balance < weaponDef.cost) { audioSystem?.onError(); break; }
+        spendMotes(state.game.resources, weaponDef.costTierId, weaponDef.cost);
+      }
       state.game.rpg.purchasedWeaponIds.add(action.weaponId);
+      state.game.rpg.weaponTiersByWeaponId.set(action.weaponId, 1);
       audioSystem?.onBuyLoomUpgrade();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
     case 'equip_weapon': {
       if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
-      state.game.rpg.equippedWeaponId = action.weaponId;
+      const maxSlots = getMaxEquippedWeapons(state.game.rpg);
+      if (state.game.rpg.equippedWeaponIds.size >= maxSlots) { audioSystem?.onError(); break; }
+      state.game.rpg.equippedWeaponIds.add(action.weaponId);
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'unequip_weapon': {
+      state.game.rpg.equippedWeaponIds.delete(action.weaponId);
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'upgrade_weapon_tier': {
+      const weaponDef = WEAPON_BY_ID.get(action.weaponId);
+      if (!weaponDef) { audioSystem?.onError(); break; }
+      if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
+      const currentTier = state.game.rpg.weaponTiersByWeaponId.get(action.weaponId) ?? 1;
+      if (currentTier >= MAX_WEAPON_TIER) { audioSystem?.onError(); break; }
+      const tierUpgradeCost = getWeaponTierUpgradeCost(weaponDef.cost, currentTier);
+      if (!devMode) {
+        const balance = getMotes(state.game.resources, weaponDef.costTierId);
+        if (balance < tierUpgradeCost) { audioSystem?.onError(); break; }
+        spendMotes(state.game.resources, weaponDef.costTierId, tierUpgradeCost);
+      }
+      state.game.rpg.weaponTiersByWeaponId.set(action.weaponId, currentTier + 1);
+      audioSystem?.onBuyLoomUpgrade();
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'purchase_rpg_upgrade': {
+      const upgradeDef = RPG_UPGRADE_BY_ID.get(action.upgradeId);
+      if (!upgradeDef) { audioSystem?.onError(); break; }
+      const currentLevel = getRpgUpgradeLevel(state.game.rpg, action.upgradeId);
+      if (currentLevel >= upgradeDef.maxLevel) break;
+      if (!devMode) {
+        const balance = getMotes(state.game.resources, upgradeDef.costTierId);
+        if (balance < upgradeDef.costPerLevel) { audioSystem?.onError(); break; }
+        spendMotes(state.game.resources, upgradeDef.costTierId, upgradeDef.costPerLevel);
+      }
+      state.game.rpg.rpgUpgradeLevels.set(action.upgradeId, currentLevel + 1);
+      audioSystem?.onBuyLoomUpgrade();
+      // Notify the render so speed multiplier updates immediately.
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'set_respawn_wave': {
+      const w = action.wave;
+      if (w !== 0 && w % 10 !== 0) break;
+      if (w > state.game.rpg.highestWaveReached && w !== 0) break;
+      state.game.rpg.respawnWave = w;
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
     case 'set_active_tab':
@@ -188,9 +247,9 @@ export function setActiveTab(
   panels.rpgContainer.style.display = isRpg ? '' : 'none';
   panels.rpgRender.statsPanel.style.display = isRpg ? '' : 'none';
   panels.rpgRender.setActive(isRpg);
-  // Hide weapon store when leaving RPG tab.
-  if (!isRpg) panels.weaponStorePanel.setVisible(false);
-  // Resize now that the container is visible so the letterbox layout is correct.
+  // Hide RPG menu when leaving RPG tab.
+  if (!isRpg) panels.rpgMenuPanel.setVisible(false);
+  // Resize now that the container is visible so the canvas fills correctly.
   if (isRpg) {
     panels.rpgRender.resize(panels.rpgContainer);
   }
@@ -231,8 +290,8 @@ export function updateVisiblePanels(
   } else if (state.activeTab === 'achievements') {
     panels.achievementsPanel.update(game, numberFormat);
   } else if (state.activeTab === 'rpg') {
-    // Weapon store is only re-rendered when visible; calling update here
+    // RPG menu is only re-rendered when visible; calling update here
     // pre-populates its state so it shows current data immediately when opened.
-    panels.weaponStorePanel.update(game.rpg, game.resources, numberFormat);
+    panels.rpgMenuPanel.update(game.rpg, game.resources, numberFormat, isDevMode);
   }
 }

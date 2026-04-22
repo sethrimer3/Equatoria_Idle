@@ -7,6 +7,7 @@ import { getGeneratorSpritePath } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 import { getTintedSpriteCanvas } from '../assets/sprite-tint';
 import { colorWithAlpha } from '../assets/color-utils';
+import { formatNumber } from '../../util';
 
 // Module-level animation clock advanced by drawGenerators callers
 let _genAnimTimeMs = 0;
@@ -22,6 +23,12 @@ const HUE_CYCLE_DEG_PER_SEC = 90;
 /** Visual influence circle is drawn at 75 % of the physics range. */
 const INFLUENCE_VISUAL_SCALE = 0.75;
 
+/** Font size (px) for the motes/sec equation label drawn beside each generator. */
+const GENERATOR_LABEL_FONT_SIZE = 5;
+
+/** Extra padding (canvas px) between the sprite edge and the equation label center. */
+const GENERATOR_LABEL_PADDING_PX = 7;
+
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
   for (let i = 0; i < TIERS.length; i++) {
@@ -34,8 +41,11 @@ export function drawGenerators(
   generators: readonly GeneratorInfo[],
   spawnerRotations: ReadonlyMap<TierId, number>,
   fadeIns: ReadonlyMap<TierId, number>,
+  ratesPerSec: ReadonlyMap<TierId, number>,
 ): void {
   const ctx = cc.ctx;
+  const canvasCenterX = cc.widthPx / 2;
+  const canvasCenterY = cc.heightPx / 2;
   for (const gen of generators) {
     const rotation = spawnerRotations.get(gen.tierId) ?? 0;
     const fadeAlpha = fadeIns.get(gen.tierId) ?? 1;
@@ -59,6 +69,22 @@ export function drawGenerators(
         // Fallback: draw procedural generator while sprite loads
         drawGeneratorFallback(ctx, gen.x, gen.y, tier.color, tier.glowColor, rotation, fadeAlpha, gen.range, isDiamond, isNullstone);
       }
+    }
+
+    // Draw motes-per-second equation label outward from canvas center
+    const rate = ratesPerSec.get(gen.tierId) ?? 0;
+    if (rate > 0) {
+      const dx = gen.x - canvasCenterX;
+      const dy = gen.y - canvasCenterY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const nx = dist > 0 ? dx / dist : 0;
+      const ny = dist > 0 ? dy / dist : 1;
+      const labelOffset = SPAWNER_SIZE * 5 / 2 + GENERATOR_LABEL_PADDING_PX;
+      const labelX = gen.x + nx * labelOffset;
+      const labelY = gen.y + ny * labelOffset;
+      ctx.globalAlpha = fadeAlpha;
+      drawGeneratorEquationLabel(ctx, labelX, labelY, rate, tier.color);
+      ctx.globalAlpha = 1;
     }
   }
 }
@@ -255,4 +281,65 @@ function drawGeneratorFallback(
 
   // Influence radius indicator — swirl in tier color, 25 % smaller than physics range
   drawRangeSwirl(ctx, x, y, influenceRange * INFLUENCE_VISUAL_SCALE, alpha, color);
+}
+
+/**
+ * Format a motes/sec rate for the generator equation label.
+ * Shows decimals for sub-1 rates, integers for small values, and abbreviated for large.
+ */
+function formatGeneratorRate(rate: number): string {
+  if (rate < 1) return rate.toFixed(2);
+  if (rate < 1000) return String(Math.floor(rate));
+  return formatNumber(rate);
+}
+
+/**
+ * Draw a motes-per-second equation label near a generator, using the same
+ * outlined text style as the main equation forge.
+ * Segments: rate in tier color, "/s" in neutral grey.
+ */
+function drawGeneratorEquationLabel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rate: number,
+  tierColor: string,
+): void {
+  ctx.font = `600 ${GENERATOR_LABEL_FONT_SIZE}px 'Cormorant Garamond', serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  const rateStr = formatGeneratorRate(rate);
+  const rateWidth = ctx.measureText(rateStr).width;
+  const suffixWidth = ctx.measureText('/s').width;
+  const totalWidth = rateWidth + suffixWidth;
+
+  // Center the combined label at x
+  const startX = x - totalWidth / 2;
+
+  ctx.fillStyle = tierColor;
+  drawEquationOutlinedText(ctx, rateStr, startX, y);
+
+  ctx.fillStyle = '#888';
+  drawEquationOutlinedText(ctx, '/s', startX + rateWidth, y);
+}
+
+/**
+ * Draw outlined text in the same style as the main equation: white outer stroke,
+ * black inner stroke, then fill.
+ */
+function drawEquationOutlinedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+): void {
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#fff';
+  ctx.strokeText(text, x, y);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
 }

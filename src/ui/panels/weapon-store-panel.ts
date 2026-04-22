@@ -28,6 +28,7 @@ export interface WeaponStorePanel {
     rpgState: RpgSimState,
     resources: ResourceState,
     numberFormat: NumberFormat,
+    isDevMode?: boolean,
   ): void;
   /** Show or hide the store overlay. */
   setVisible(visible: boolean): void;
@@ -71,6 +72,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
   let lastRpgState: RpgSimState | null = null;
   let lastResources: ResourceState | null = null;
   let lastFormat: NumberFormat = 'letters';
+  let lastIsDevMode = false;
 
   // ── Card builders ─────────────────────────────────────────────
 
@@ -79,14 +81,15 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     rpgState: RpgSimState,
     resources: ResourceState,
     numberFormat: NumberFormat,
+    isDevMode: boolean,
   ): HTMLElement {
     const card = document.createElement('div');
     card.className = 'weapon-store__card';
 
     const isPurchased = rpgState.purchasedWeaponIds.has(weapon.id);
-    const isEquipped  = rpgState.equippedWeaponId === weapon.id;
+    const isEquipped  = rpgState.equippedWeaponIds.has(weapon.id);
     const balance     = getMotes(resources, weapon.costTierId);
-    const canAfford   = balance >= weapon.cost;
+    const canAfford   = isDevMode || balance >= weapon.cost;
 
     if (isEquipped) card.classList.add('weapon-store__card--equipped');
 
@@ -111,11 +114,17 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     // Stats row
     const statsRow = document.createElement('div');
     statsRow.className = 'weapon-store__card-stats';
+    const effect = weapon.stats.effect;
+    let effectLabel = 'Single target';
+    if (effect?.kind === 'multi')    effectLabel = `Hits ${effect.targetCount} targets`;
+    if (effect?.kind === 'aoe')      effectLabel = `AoE ${effect.aoeRadius}px`;
+    if (effect?.kind === 'piercing') effectLabel = `${Math.round(effect.defPierceRatio * 100)}% DEF pierce`;
     statsRow.innerHTML =
       `<span>+${weapon.stats.damage} ATK</span>` +
       `<span>+${weapon.stats.defBonus} DEF</span>` +
       `<span>${weapon.stats.cooldownMs}ms CD</span>` +
-      `<span>${weapon.stats.range}px RNG</span>`;
+      `<span>${weapon.stats.range}px RNG</span>` +
+      `<span>${effectLabel}</span>`;
     card.appendChild(statsRow);
 
     // Cost row
@@ -153,7 +162,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     if (!lastRpgState || !lastResources) return;
     list.innerHTML = '';
     for (const weapon of WEAPON_DEFINITIONS) {
-      list.appendChild(buildCard(weapon, lastRpgState, lastResources, lastFormat));
+      list.appendChild(buildCard(weapon, lastRpgState, lastResources, lastFormat, lastIsDevMode));
     }
   }
 
@@ -162,10 +171,11 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
   const panel: WeaponStorePanel = {
     element,
 
-    update(rpgState, resources, numberFormat): void {
+    update(rpgState, resources, numberFormat, isDevMode = false): void {
       lastRpgState  = rpgState;
       lastResources = resources;
       lastFormat    = numberFormat;
+      lastIsDevMode = isDevMode;
       if (isVisible) render();
     },
 

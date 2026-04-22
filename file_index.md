@@ -131,8 +131,10 @@
 - `calculateIdleRewards(game, elapsedMs)` — computes what was earned offline without mutating live state.
 
 ### src/sim/idle/apply-idle-rewards.ts
-- `applyIdleRewards(game, summary)` — commits idle reward mote gains to the live game state.
-- Integer motes are deposited at size-0 and cascade-merged (100 at size N → 1 at size N+1) before updating `moteTotals`; fractional motes are added directly.
+- `queueIdleRewards(game, summary)` — decomposes idle rewards into size-based `PendingMoteEntry` items and appends them to `game.pendingIdleMotes`.
+- Entries are ordered: lowest tier first, largest `sizeIndex` first within each tier.
+- `simTick()` drains one entry per frame (adds `MERGE_THRESHOLD^sizeIndex` motes), so rewards trickle in rather than appearing all at once.
+- Fractional motes (<1) are applied directly to avoid rounding loss.
 
 ### src/sim/equation/equation-state.ts
 - Authoritative equation state: per-tier segments with levels and unlock flags.
@@ -167,11 +169,13 @@
 - `purchaseUpgrade()`, `getUpgradeCost()`, `canAffordUpgrade()`, `getAutoTapIntervalMs()`.
 
 ### src/sim/game-state.ts
-- Aggregate game state combining equation, resources, progression, forge, Looms, achievements, and aliven.
+- Aggregate game state combining equation, resources, progression, forge, Looms, achievements, aliven, and RPG.
+- `PendingMoteEntry` interface — `{tierId, sizeIndex, count}` for drip-adding idle motes one per frame.
+- `pendingMoteValue(sizeIndex)` — value of one mote at a given size (`MERGE_THRESHOLD^sizeIndex`).
 - `tapEquation()` — multiplies gains by `achievements.tapMultiplierBonus`.
 - `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)` — optional dev mode cost bypass.
 - `tryAlivenMote(state, tierId, bypassCost?)` — spend 10,000 motes to aliven a mote type.
-- `simTick()` — passes loom bonus from achievements; checks achievement unlock conditions each tick.
+- `simTick()` — passes loom bonus from achievements; drains one pending idle mote each frame; checks achievement unlock conditions each tick.
 
 ### src/sim/forge/forge-state.ts
 - `ForgeCrunchState` interface and factory.
@@ -313,16 +317,52 @@
 - `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
+### src/render/rpg/rpg-constants.ts
+- All module-level numeric and string constants for the RPG rendering system (~551 lines).
+- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, sword combo, poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, and Euler-fluid injection constants.
+- Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
+- Exports all constants; consumed by `rpg-render.ts` and `rpg-factories.ts`.
+
+### src/render/rpg/rpg-types.ts
+- All internal interfaces and type aliases for the RPG rendering system (~496 lines).
+- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces (`HitEffect`, `ShotLine`, `DamageNumber`, etc.).
+- No runtime dependencies (types only).
+- Exports all types; consumed by `rpg-render.ts` and `rpg-factories.ts`.
+
+### src/render/rpg/rpg-factories.ts
+- `make*` factory functions for every RPG entity type (~305 lines).
+- Imports constants from `rpg-constants.ts`, types from `rpg-types.ts`, and `getWaveStatScale` from `rpg-state.ts`.
+- Exports: `makeAttackTrail`, `makeLaserEnemy`, `makeSapphireEnemy`, `makeSapphireMissile`, `makeEmeraldEnemy`, `makeAmberEnemy`, `makeAmberShard`, `makeVoidEnemy`, `makeQuartzEnemy`, `makeQuartzSpike`, `makeRubyEnemy`, `makeRubyBolt`, `makeSunstoneEnemy`, `makeCitrineEnemy`, `makeCitrineBolt`, `makeIoliteEnemy`, `makeAmethystEnemy`, `makeAmethystShard`, `makeDiamondEnemy`, `makeDiamondShard`, `makeNullstoneEnemy`, `makeVoidTendril`.
+
+### src/render/rpg/rpg-fluid.ts
+- Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
+- Grid-based velocity and dye field (60 × 80 cells).  Solver: inject forces → decay → diffuse velocity → advect tracer particles.
+- **No ambient injection** — velocity enters only via `addForce()` and `addExplosion()` calls from gameplay systems.
+- Tracer particle trail opacity scales with exponentially-smoothed local speed via `smoothstep`, so the background fades when nothing moves.
+- Particles sample the dye colour field to inherit entity colours; colour blends smoothly via weighted lerp toward the dominant dye source.
+- Trail segments are batched by (hue-bucket × alpha-bucket) → at most 60 canvas state changes per frame.
+- Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab.
+- Independent RPG canvas rendering system for the RPG tab (~6,183 lines).
+- Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
+- Exports `RpgRender` interface and `createRpgRender()` factory.
+- Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
+- Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
+- Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
+- Calls `fluid.step(deltaMs)` each update frame (including dying/restarting phases) and `fluid.reset()` on restart.
 - Fixed internal resolution: `INTERNAL_WIDTH = 320`, `INTERNAL_HEIGHT = 568` (portrait 9:16).  CSS `aspect-ratio` provides letterbox/pillarbox scaling so pixels are always uniform on desktop.
 - **Player mote** — 3×3 sand-colored mote with touch joystick, WASD/Arrow key controls, always-on pulsing glow, smoothly-interpolated comet trail, and starting stats HP=100 ATK=10 DEF=5.
 - **Movement glow smoothing** — `glowMovementIntensity` (0–1) LERP-ramps up (`GLOW_MOVE_RAMP_UP`) when moving and down (`GLOW_MOVE_RAMP_DOWN`) when stopped; gates trail and halo brightness.
 - **Laser enemy** — 2×2 red mote with five-phase AI: `idle`, `decelerate`, `dash`, `overshoot`, `cooldown`.  Bezier lineDash attack-trail with draw/erase phases.
 - **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
 - **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
-- **Stats panel** — DOM `#rpg-stats-panel` with five widgets: HP / ATK / DEF / WAVE / BOOST (loom boost %).  Callers append to root and toggle display with the tab.
-- **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped.
+- **Multiple equipped weapons** — `equippedWeaponIds: Set<string>` from RpgSimState; `weaponAttackTimers: Map<weaponId, number>` for independent per-weapon attack cadence; one `WeaponOrbitParticle` per weapon (evenly-spaced orbits); one `ChainWhipState` per chainWhip weapon.
+- **Weapon tier damage** — `getScaledWeaponDamage(baseDamage, tier, playerAtk)` and `getScaledWeaponCooldown(baseCooldownMs, tier)` imported from `rpg-state.ts` and applied per attack.
+- **Damage number deviation** — each damage number direction has a ±15° triangular-distribution random angle jitter in `spawnHitVisualsAt`.
+- **Softbody chain whip** — `ChainWhipState` has per-node velocity arrays (`nodesVx`, `nodesVy`). Inertia/size gradient: node 0 (closest to player) = smallest (radius 2px) + most responsive (inverseMass 1/0.8); tip (index CHAIN_NODES-1) = largest (radius 6px) + most inertia (inverseMass 1/4.0). Spring physics (CHAIN_SPRING_K=0.4) link adjacent nodes; CHAIN_ANCHOR_K=0.6 ties node 0 to player. On lash: tip gets CHAIN_LASH_SPEED=20 px/dt impulse; all other nodes follow through spring tension.
+- **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy and stops when the enemy is within the equipped weapon's effective range (`WeaponDefinition.stats.range`; falls back to `PLAYER_BASE_RANGE_PX` if no weapon equipped). Manual joystick/keyboard input always overrides.
+- **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped. Called on `setActive(true)`, `doRestart()`, and via the public `notifyEquip()` method so stats update immediately when the player equips mid-run.
 - Accepts `rpgSimState: RpgSimState` as second factory argument so it can mutate persistent wave progress directly.
 - Exports `createRpgRender(container, rpgSimState)` factory and `RpgRender` interface.
 
@@ -332,15 +372,22 @@
 - `getWaveDefinition(waveNumber)` — returns predefined definition or generates one procedurally for waves beyond 10.
 
 ### src/data/rpg/weapon-definitions.ts
+- `WeaponEffect` — discriminated union: `single | multi | aoe | piercing`.
 - `WeaponStats` and `WeaponDefinition` types.
-- `WEAPON_DEFINITIONS` — three initial weapons: Sand Blade, Ruby Lance, Sunstone Ward.
+- `WEAPON_DEFINITIONS` — 11 weapons covering every non-secret tier in unlock order (Sand → Nullstone):
+  `sand_blade`, `quartz_shard`, `ruby_lance`, `sunstone_ward`, `citrine_nova`, `emerald_spray`,
+  `sapphire_spike`, `iolite_volley`, `amethyst_pierce`, `diamond_bastion`, `nullstone_nova`.
 - `WEAPON_BY_ID` — O(1) lookup map.
 
 ### src/sim/rpg/rpg-state.ts
-- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponId`.
+- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids).
+- Exports `PLAYER_BASE_ATK = 10` (baseline ATK multiplier constant) and `MAX_WEAPON_TIER = 7`.
 - `createRpgSimState()` — zero-state factory.
 - `getWaveBoostMultiplier(state)` — returns loom production multiplier = 1 + (highestWave^1.2)/100.
 - `formatWaveBoostPercent(state)` — returns display string like "+6.9%".
+- `getMaxEquippedWeapons(state)` — returns 1 + extra_weapon_slot upgrade level.
+- `getScaledWeaponDamage(baseDamage, tier, playerAtk)` — effective damage = baseDamage × tier × (playerAtk / PLAYER_BASE_ATK).
+- `getScaledWeaponCooldown(baseCooldownMs, tier)` — cooldown = baseCooldownMs × 0.85^(tier-1) (15% faster per tier).
 
 ### src/ui/panels/weapon-store-panel.ts
 - `WeaponStorePanel` interface and `createWeaponStorePanel(dispatch)` factory.
@@ -470,8 +517,10 @@ Audio system — eight focused modules:
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 7): motes persisted as `moteSizeCounts` (base-100 per-size counts per tier). Backward-compatible with versions 1–6 (flat `moteTotals`).
-- On load, size counts are decoded back to float totals; idle rewards are then applied at size-0 with cascade merging.
+- Versioned save format (version 14): replaces `equippedWeaponId` with `equippedWeaponIds` (array). Backward-compatible with versions 1–13 (single `equippedWeaponId` migrated to the set on load).
+- v13 adds `pendingIdleMotes` array for the idle-mote drip queue.
+- Motes persisted as `moteSizeCounts` (base-100 per-size counts per tier) since version 7. Backward-compatible with versions 1–6 (flat `moteTotals`).
+- On load, size counts are decoded back to float totals; pending idle motes resume dripping where they left off.
 
 ### src/settings/offline-time.ts
 - Lightweight last-active timestamp helpers using a separate localStorage key (`equatoria_last_active`).

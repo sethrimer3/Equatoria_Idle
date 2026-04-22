@@ -57,19 +57,30 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   // Per-loom fractional particle accumulator (render-side only, not persisted).
   // Tracks sub-particle remainders so fractional emit rates average out correctly.
   const particleEmitAccumulators = new Map<TierId, number>();
+  // Reused map for generator equation label rates (avoids per-frame allocation).
+  const generatorRatesPerSec = new Map<TierId, number>();
 
   function gameLoop(nowMs: number): void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
     ctx.lastFrameMs.value = nowMs;
 
-    // ── RPG tab: run independent render, pause main sim ──────────
+    // ── Always tick the main sim so looms, auto-tap, and pending idle motes
+    // ── continue to run regardless of which tab is active. ──────────────
+    const simResult = simTick(ctx.appState.game, deltaMs);
+
+    // ── Auto-save (runs on every tab) ────────────────────────────
+    if (nowMs - ctx.appState.game.lastSaveMs > AUTO_SAVE_INTERVAL_MS) {
+      ctx.appState.game.lastSaveMs = nowMs;
+      saveGame(ctx.appState.game);
+    }
+
+    // ── RPG tab: run independent render then skip main canvas draw ────────
     if (ctx.appState.activeTab === 'rpg') {
-      ctx.uiPanels.rpgRender.update(deltaMs);
+      const autoMove = ctx.uiPanels.rpgMenuPanel.isAutoMoveEnabled;
+      ctx.uiPanels.rpgRender.update(deltaMs, autoMove);
       requestAnimationFrame(gameLoop);
       return;
     }
-
-    const simResult = simTick(ctx.appState.game, deltaMs);
 
     // Fire achievement audio events for anything newly unlocked this tick
     if (ctx.audioSystem && simResult.newlyUnlockedAchievementIds.length > 0) {
@@ -188,6 +199,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.generatorState.generators,
       ctx.particles.spawnerRotations,
       ctx.appState.generatorState.fadeIns,
+      _buildGeneratorRates(ctx, generatorRatesPerSec),
     );
 
     // Only draw forge on canvas if forge is unlocked (equation is now in HUD)
@@ -222,13 +234,28 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       updateVisiblePanels(ctx.appState, ctx.uiPanels, ctx.appState.game, ctx.settings.isDevMode, ctx.settings.numberFormat);
     }
 
-    if (nowMs - ctx.appState.game.lastSaveMs > AUTO_SAVE_INTERVAL_MS) {
-      ctx.appState.game.lastSaveMs = nowMs;
-      saveGame(ctx.appState.game);
-    }
-
     requestAnimationFrame(gameLoop);
   }
 
   return gameLoop;
+}
+
+/**
+ * Populate and return a map of effective mote production rates (motes/sec) per tier,
+ * accounting for loom level, achievement multiplier, and special loom bonus.
+ * Mutates and returns the provided map to avoid per-frame allocation.
+ */
+function _buildGeneratorRates(
+  ctx: GameLoopContext,
+  out: Map<TierId, number>,
+): ReadonlyMap<TierId, number> {
+  out.clear();
+  const loomMultiplier = ctx.appState.game.achievements.loomMultiplierBonus;
+  for (const loom of ctx.appState.game.looms.looms) {
+    if (!loom.isUnlocked || loom.level <= 0) continue;
+    const baseRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier;
+    const specialBonus = ctx.appState.game.looms.specialPurchased.has(loom.tierId) ? 2 : 1;
+    out.set(loom.tierId, baseRate * specialBonus);
+  }
+  return out;
 }

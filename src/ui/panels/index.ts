@@ -10,3 +10,5 @@ export { createEquationPanel } from './equation-panel';
 export type { EquationPanel } from './equation-panel';
 export { createAchievementsPanel } from './achievements-panel';
 export type { AchievementsPanel } from './achievements-panel';
+export { createRpgMenuPanel } from './rpg-menu-panel';
+export type { RpgMenuPanel } from './rpg-menu-panel';

@@ -167,3 +167,20 @@ The monolithic CSS was split by concern into focused stylesheets:
 | `responsive.css` | Media queries for landscape/desktop | 20 |
 
 The original `styles.css` now contains only `@import` directives in the correct cascade order. Vite handles CSS `@import` natively during bundling.
+
+---
+
+## Phase 3: rpg-render.ts (7,328 → 4 files)
+
+The RPG rendering file was the largest remaining monolithic file at 7,328 lines. It contained constants, type/interface definitions, factory functions, and the main `createRpgRender` rendering closure. The module-level declarations have been split by concern:
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `rpg-constants.ts` | All numeric/string constants for every RPG entity, weapon, and fluid | 551 |
+| `rpg-types.ts` | All interfaces and type aliases (enemy, projectile, weapon-state, visual-effect) | 496 |
+| `rpg-factories.ts` | `make*` factory functions for every RPG entity type | 305 |
+| `rpg-render.ts` | `RpgRender` interface + `createRpgRender()` closure (all update/draw logic) | 6,183 |
+
+**Why `createRpgRender` was not split further:** every update/draw function inside the closure shares mutable local state (player mote, enemy arrays, canvas context, fluid instance, dimension variables, etc.) via JavaScript closure. Extracting individual enemy systems would require threading a large context object through all call sites — a change with significant regression risk and no performance benefit. The 6,183-line closure is self-contained and coherent; the three extracted files give future agents a clean, navigable entry point to constants and types without touching the rendering logic.
+
+**No logic changes.** This refactor is a purely mechanical extraction: `tsc --noEmit` passes with zero errors before and after.
