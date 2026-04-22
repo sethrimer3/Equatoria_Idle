@@ -18,6 +18,8 @@ export const MAX_WEAPON_TIER = 7;
 export interface RpgSimState {
   /** Highest wave number the player has cleared during this run. */
   highestWaveReached: number;
+  /** Wave to restart at on death (a multiple of 10 that has been unlocked). 0 = start from wave 1. */
+  respawnWave: number;
   /** Weapon IDs the player has purchased. */
   purchasedWeaponIds: Set<string>;
   /**
@@ -48,6 +50,7 @@ export interface RpgSimState {
 export function createRpgSimState(): RpgSimState {
   return {
     highestWaveReached: 0,
+    respawnWave: 0,
     purchasedWeaponIds: new Set(),
     equippedWeaponIds: new Set(),
     xp: 0,

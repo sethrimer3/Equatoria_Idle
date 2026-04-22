@@ -467,6 +467,47 @@ const AMETHYST_XP_MULT  = 6;
 const DIAMOND_XP_MULT   = 8;
 const NULLSTONE_XP_MULT = 10;
 
+// ── Boss constants ─────────────────────────────────────────────
+const BOSS_SIZE_BASE    = 14;
+const BOSS_HP_INIT      = 3000;
+const BOSS_ATK_INIT     = 50;
+const BOSS_DEF_INIT     = 30;
+const BOSS_SHIELD_INIT  = 1500;
+const BOSS_PROJ_LIFE_MS = 3500;
+const BOSS_PROJ_SIZE    = 5;
+const BOSS_PHASE2_HP_RATIO = 0.66;
+const BOSS_PHASE3_HP_RATIO = 0.33;
+const BOSS_PHASE_TRANSITION_MS = 800;
+const BOSS_ATTACK1_CD_BASE = 1800;
+const BOSS_ATTACK1_CD_P1   = 1300;
+const BOSS_ATTACK1_CD_P2   = 900;
+const BOSS_ATTACK2_CD_BASE = 3500;
+const BOSS_ATTACK2_CD_P1   = 2500;
+const BOSS_ATTACK2_CD_P2   = 1800;
+const BOSS_PROJ_SPEED      = 1.4;
+const BOSS_PROJ_SPEED_FAST = 2.2;
+const BOSS_GRAV_STRENGTH   = 0.0025;
+const BOSS_GRAV_RADIUS     = 250;
+const BOSS_INVULN_ON_MS    = 2500;
+const BOSS_INVULN_OFF_MS   = 3500;
+const BOSS_INVULN_ON_P1    = 2000;
+const BOSS_INVULN_OFF_P1   = 2500;
+const BOSS_INVULN_ON_P2    = 1800;
+const BOSS_INVULN_OFF_P2   = 1500;
+const BOSS_COLORS: readonly string[] = [
+  '', '#f5f0eb', '#dc3232', '#ff8c3c', '#e6c850',
+  '#6464b4', '#b464c8', '#e8f0fa', '#1e1e28', '#9664c8', '#ffd764',
+];
+const BOSS_GLOW_COLORS: readonly string[] = [
+  '', '#faf8f5', '#ff6b6b', '#ffb366', '#f0d870',
+  '#8888cc', '#d088e0', '#ffffff', '#9664c8', '#c090ff', '#ffe599',
+];
+const BOSS_NAMES: readonly string[] = [
+  '', 'Quartz Sovereign', 'Ruby King', 'Sunstone Herald', 'Citrine Weaver',
+  'Iolite Colossus', 'Amethyst Breaker', 'Diamond Eternal', 'Nullstone Devourer',
+  'Void Nexus', 'Equation Incarnate',
+];
+
 // ── Fluid background force scales ─────────────────────────────
 // Multiplier applied to entity velocity (px/frame → px/s) before injection.
 // Lower values = gentler disturbance; higher = more reactive.
@@ -911,6 +952,43 @@ interface VoidTendril {
   lifeMs: number;
 }
 
+// ── Boss enemy (unique per-100-wave boss) ─────────────────────────
+
+interface BossEnemy {
+  readonly kind: 'boss';
+  bossId: number;
+  phaseIndex: 0 | 1 | 2;
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  attackTimerMs: number;
+  secondaryTimerMs: number;
+  orbitAngle: number;
+  pulseMs: number;
+  shieldHp: number;
+  maxShieldHp: number;
+  isInvuln: boolean;
+  invulnTimerMs: number;
+  isAbsorbing: boolean;
+  absorbTimerMs: number;
+  contactCdMs: number;
+  phaseTransitionMs: number;
+}
+
+interface BossProjectile {
+  x: number; y: number;
+  vx: number; vy: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  lifeMs: number;
+  maxLifeMs: number;
+  color: string;
+  glowColor: string;
+  size: number;
+  seekStr: number;
+}
+
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
@@ -1276,6 +1354,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const nullstoneEnemies: NullstoneEnemy[] = [];
   const voidTendrils: VoidTendril[]        = [];
 
+  let bossEnemy: BossEnemy | null = null;
+  const bossProjectiles: BossProjectile[] = [];
+
   const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x140A); // ᑩᒱᕓᐊ — UCAS characters chosen for aesthetic angular appearance
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
@@ -1524,6 +1605,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return dmg;
   }
 
+  function damageBossEnemy(rawDamage: number, defPierceRatio: number): number {
+    const boss = bossEnemy;
+    if (!boss) return 0;
+    if (boss.isInvuln || (boss.bossId === 8 && boss.isAbsorbing)) return 0;
+    if (boss.shieldHp > 0) {
+      const shieldDmg = Math.min(boss.shieldHp, rawDamage);
+      boss.shieldHp -= shieldDmg;
+      return shieldDmg;
+    }
+    const effectiveDef = boss.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    boss.hp = Math.max(0, boss.hp - dmg);
+    return dmg;
+  }
+
   /**
    * Spawns a floating damage/blocked number at (x, y) travelling in (dirX, dirY).
    * `ratio` is dmg / maxHp clamped to [0, 1] and controls font size.
@@ -1582,7 +1678,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Represents any targetable entity. */
   type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
     | 'quartz' | 'quartzspike' | 'ruby' | 'rubybolt' | 'sunstone' | 'citrine' | 'citrinebolt'
-    | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril';
+    | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril' | 'boss';
   interface ClosestTarget {
     kind: TargetKind;
     x: number; y: number;
@@ -1608,6 +1704,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     diamondshard?: DiamondShard;
     nullstone?: NullstoneEnemy;
     voidtendril?: VoidTendril;
+    boss?: BossEnemy;
   }
 
   /**
@@ -1723,15 +1820,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = { kind: 'voidtendril', x: t.x, y: t.y, distSq: d, voidtendril: t }; }
     }
+    if (bossEnemy) {
+      const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'boss', x: bossEnemy.x, y: bossEnemy.y, distSq: d, boss: bossEnemy }; }
+    }
     return best;
   }
 
   /** Returns the closest enemy body (not projectiles) within rangeSq. */
   function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
-    | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | null {
+    | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | BossEnemy | null {
     let bestSq = rangeSq;
     let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
-      | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | null = null;
+      | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | BossEnemy | null = null;
     for (const e of enemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
@@ -1796,6 +1898,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    if (bossEnemy) {
+      const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = bossEnemy; }
     }
     return best;
   }
@@ -2072,7 +2179,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const dx = p.x - t.x, dy = p.y - t.y;
         if (dx * dx + dy * dy < (VOID_TENDRIL_SIZE * 2.5) ** 2) {
           damageVoidTendril(t, damage);
-          sandProjectiles.splice(i, 1); break;
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with boss
+      if (bossEnemy) {
+        const bossHitSize = BOSS_SIZE_BASE + bossEnemy.bossId * 1.5;
+        const hitR = bossHitSize / 2 + SAND_PROJ_SIZE;
+        const dx = p.x - bossEnemy.x, dy = p.y - bossEnemy.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageBossEnemy(damage, 0);
+          if (dmg > 0) spawnHitVisualsAt(bossEnemy.x, bossEnemy.y, bossEnemy.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1);
         }
       }
     }
@@ -2268,6 +2388,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         for (const e of amethystEnemies)  applyContactDamage(nx, ny, e);
         for (const e of diamondEnemies)   applyContactDamage(nx, ny, e);
         for (const e of nullstoneEnemies) applyContactDamage(nx, ny, e);
+      }
+      // Apply chain whip damage to boss
+      if (bossEnemy) {
+        const bossHitR = BOSS_SIZE_BASE + bossEnemy.bossId * 1.5 + chainNodeRadius(CHAIN_NODES - 1);
+        for (let ni = 0; ni < CHAIN_NODES; ni++) {
+          const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
+          if (ws.hitCooldowns.has(bossEnemy)) break;
+          const dx = nx - bossEnemy.x, dy = ny - bossEnemy.y;
+          if (dx * dx + dy * dy < bossHitR * bossHitR) {
+            const dmg = damageBossEnemy(contactDamage, 0);
+            ws.hitCooldowns.set(bossEnemy, CHAIN_HIT_CD_MS);
+            hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: CHAIN_NODE_COLOR });
+            if (dmg > 0) spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, CHAIN_NODE_COLOR);
+          }
+        }
       }
 
       // Inject fluid force along the chain length
@@ -2540,6 +2675,23 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const dmg = damageNullstoneEnemy(e, baseDamage, 1.0);
         hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
         spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit boss on the beam path
+    if (bossEnemy) {
+      const bossSize = BOSS_SIZE_BASE + bossEnemy.bossId * 1.5;
+      const ex = bossEnemy.x - mote.x, ey = bossEnemy.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj >= 0 && tProj <= tMax) {
+        const perpDist = Math.abs(ex * dirY - ey * dirX);
+        if (perpDist <= bossSize) {
+          const dmg = damageBossEnemy(baseDamage, 1.0);
+          if (dmg > 0) {
+            hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+            spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, LASER_BEAM_COLOR);
+          }
+        }
       }
     }
 
@@ -2816,7 +2968,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       + quartzEnemies.length + quartzSpikes.length + rubyEnemies.length + rubyBolts.length
       + sunstoneEnemies.length + citrineEnemies.length + citrineBolts.length
       + ioliteEnemies.length + amethystEnemies.length + amethystShards.length
-      + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length;
+      + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length
+      + (bossEnemy ? 1 : 0);
     if (totalTargets === 0) return;
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const range      = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
@@ -2940,6 +3093,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
         }
       }
+      if (bossEnemy) {
+        const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageBossEnemy(rawDamage, 0);
+          if (dmg > 0) spawnHitVisualsAt(bossEnemy.x, bossEnemy.y, bossEnemy.maxHp, dmg, '#e6c850');
+        }
+      }
       fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
         FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
       return;
@@ -2954,6 +3114,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         sunstone?: SunstoneEnemy; citrine?: CitrineEnemy; citrinebolt?: CitrineBolt;
         iolite?: IoliteEnemy; amethyst?: AmethystEnemy; amethystshard?: AmethystShard;
         diamond?: DiamondEnemy; diamondshard?: DiamondShard; nullstone?: NullstoneEnemy; voidtendril?: VoidTendril;
+        boss?: BossEnemy;
       };
       const rangeSq = range * range;
       const inRange: SortEntry[] = [];
@@ -3062,6 +3223,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const d = dx * dx + dy * dy;
         if (d <= rangeSq) inRange.push({ distSq: d, voidtendril: t });
       }
+      if (bossEnemy) {
+        const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, boss: bossEnemy });
+      }
       inRange.sort((a, b) => a.distSq - b.distSq);
       const targets = inRange.slice(0, effect.targetCount);
       for (const t of targets) {
@@ -3120,6 +3286,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(t.nullstone.x, t.nullstone.y, t.nullstone.maxHp, dmg, '#50b464');
         } else if (t.voidtendril) {
           damageVoidTendril(t.voidtendril, rawDamage);
+        } else if (t.boss) {
+          const dmg = damageBossEnemy(rawDamage, 0);
+          if (dmg > 0) spawnHitVisualsAt(t.boss.x, t.boss.y, t.boss.maxHp, dmg, '#50b464');
         }
       }
       return;
@@ -3196,6 +3365,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         effect.kind === 'piercing' ? '#74c0fc' : NULLSTONE_ENEMY_GLOW);
     } else if (closestT.voidtendril) {
       damageVoidTendril(closestT.voidtendril, rawDamage);
+    } else if (closestT.boss) {
+      const dmg = damageBossEnemy(rawDamage, defPierceRatio);
+      if (dmg > 0) spawnHitVisualsAt(closestT.boss.x, closestT.boss.y, closestT.boss.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : BOSS_GLOW_COLORS[Math.min(closestT.boss.bossId, BOSS_GLOW_COLORS.length - 1)]);
     }
   }
 
@@ -3383,6 +3556,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (let i = voidTendrils.length - 1; i >= 0; i--) {
       if (voidTendrils[i].hp <= 0 || voidTendrils[i].lifeMs <= 0) voidTendrils.splice(i, 1);
     }
+    // Boss defeat
+    if (bossEnemy && bossEnemy.hp <= 0) {
+      const bossXp = Math.ceil(getXpPerKill(currentWave) * getWaveStatScale(currentWave) * 5.0);
+      rpgSimState.xp += bossXp;
+      applyEquipmentStats();
+      const glowC = BOSS_GLOW_COLORS[Math.min(bossEnemy.bossId, BOSS_GLOW_COLORS.length - 1)];
+      spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP`, 1.0, glowC);
+      fluid.addExplosion(bossEnemy.x, bossEnemy.y, FLUID_EXPLOSION_STRENGTH * 2.5, FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B);
+      bossEnemy = null;
+      bossProjectiles.length = 0;
+    }
     if (totalXpFromKills > 0) {
       rpgSimState.xp += totalXpFromKills;
       applyEquipmentStats();
@@ -3455,6 +3639,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       waveWidget.labelEl.style.removeProperty('fontFamily');
     }
     waveWidget.valueEl.textContent = isBossWave ? String(currentWave / 100) : String(currentWave);
+    if (isBossWave) {
+      const bossId = Math.min(Math.ceil(currentWave / 100), BOSS_NAMES.length - 1);
+      waveWidget.valueEl.title = BOSS_NAMES[bossId] ?? 'Boss';
+    } else {
+      waveWidget.valueEl.title = '';
+    }
     boostWidget.valueEl.textContent = rpgSimState.highestWaveReached > 0
       ? '+' + Math.pow(rpgSimState.highestWaveReached, 1.2).toFixed(1) + '%'
       : '+0.0%';
@@ -3678,6 +3868,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       else if (edge === 2) { spawnX = 0;       spawnY = Math.random() * heightPx; }
       else                 { spawnX = widthPx; spawnY = Math.random() * heightPx; }
       nullstoneEnemies.push(makeNullstoneEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'boss') {
+      const rawBossId = Math.ceil(wn / 100);
+      bossEnemy = makeBossEnemy(rawBossId, wn);
     }
   }
 
@@ -3702,7 +3895,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0
         || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
         || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
-        || diamondEnemies.length > 0 || nullstoneEnemies.length > 0) return;
+        || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
+        || bossEnemy !== null) return;
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS;
   }
@@ -4211,6 +4405,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
       }
     }
+    // Collision detection with boss.
+    if (bossEnemy && !op.hitCooldowns.has(bossEnemy)) {
+      const dx = op.x - bossEnemy.x, dy = op.y - bossEnemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageBossEnemy(ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(bossEnemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        if (dmg > 0) spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, '#ffaa44');
+      }
+    }
   }
 
   /**
@@ -4261,13 +4465,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     amethystEnemies.length = 0; amethystShards.length = 0;
     diamondEnemies.length = 0; diamondShards.length = 0;
     nullstoneEnemies.length = 0; voidTendrils.length = 0;
+    bossEnemy = null;
+    bossProjectiles.length = 0;
     sandProjectiles.length = 0;
     chainWhipStates.clear();
     laserBeamEffect = null;
     mote.x = widthPx / 2; mote.y = heightPx / 2;
     mote.vx = mote.vy = 0; mote.trailHead = 0; mote.trailCount = 0;
     deathParticles.length = 0; glowMovementIntensity = 0;
-    currentWave = 0; isInterWave = true;
+    currentWave = rpgSimState.respawnWave; isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
     screenDarken = 0;
     weaponAttackTimers.clear();
@@ -5544,6 +5750,591 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.restore();
   }
 
+  // ── Boss enemy system ──────────────────────────────────────────
+
+  function makeBossEnemy(rawBossId: number, waveNumber: number): BossEnemy {
+    const bossScale = getWaveStatScale(waveNumber) * 4.0;
+    const bossNum = ((rawBossId - 1) % 10) + 1;
+    const extraScale = Math.floor((rawBossId - 1) / 10) + 1;
+    const hp = Math.ceil(BOSS_HP_INIT * bossScale * extraScale);
+    const atk = Math.ceil(BOSS_ATK_INIT * getWaveStatScale(waveNumber) * extraScale);
+    const def = Math.ceil(BOSS_DEF_INIT * getWaveStatScale(waveNumber) * extraScale);
+    const shieldHp = bossNum === 6 ? Math.ceil(BOSS_SHIELD_INIT * bossScale * extraScale) : 0;
+    return {
+      kind: 'boss',
+      bossId: bossNum,
+      phaseIndex: 0,
+      x: widthPx / 2, y: heightPx * 0.25,
+      vx: 0, vy: 0,
+      hp, maxHp: hp,
+      atk, def,
+      attackTimerMs: 1000,
+      secondaryTimerMs: 2000,
+      orbitAngle: 0,
+      pulseMs: 0,
+      shieldHp, maxShieldHp: shieldHp,
+      isInvuln: false, invulnTimerMs: 0,
+      isAbsorbing: false, absorbTimerMs: 0,
+      contactCdMs: 0,
+      phaseTransitionMs: 0,
+    };
+  }
+
+  function updateBossEnemy(deltaMs: number): void {
+    const boss = bossEnemy;
+    if (!boss) return;
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    boss.pulseMs = (boss.pulseMs + deltaMs) % 3000;
+    if (boss.contactCdMs > 0) boss.contactCdMs = Math.max(0, boss.contactCdMs - deltaMs);
+
+    const hpRatio = boss.hp / boss.maxHp;
+    const targetPhase: 0|1|2 = hpRatio <= BOSS_PHASE3_HP_RATIO ? 2 : hpRatio <= BOSS_PHASE2_HP_RATIO ? 1 : 0;
+    if (targetPhase > boss.phaseIndex) {
+      boss.phaseIndex = targetPhase;
+      boss.phaseTransitionMs = BOSS_PHASE_TRANSITION_MS;
+      const blastCount = 8;
+      for (let i = 0; i < blastCount; i++) {
+        const angle = (i / blastCount) * Math.PI * 2;
+        fluid.addForce({
+          x: boss.x, y: boss.y,
+          vx: Math.cos(angle) * FLUID_VEL_FRAME_TO_PX_S * 5,
+          vy: Math.sin(angle) * FLUID_VEL_FRAME_TO_PX_S * 5,
+          r: FLUID_VOID_R, g: FLUID_VOID_G, b: FLUID_VOID_B,
+          strength: 2.5,
+        });
+      }
+    }
+    if (boss.phaseTransitionMs > 0) boss.phaseTransitionMs = Math.max(0, boss.phaseTransitionMs - deltaMs);
+
+    const atk1Cd = boss.phaseIndex === 2 ? BOSS_ATTACK1_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK1_CD_P1 : BOSS_ATTACK1_CD_BASE;
+    const atk2Cd = boss.phaseIndex === 2 ? BOSS_ATTACK2_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK2_CD_P1 : BOSS_ATTACK2_CD_BASE;
+    boss.attackTimerMs -= deltaMs;
+    boss.secondaryTimerMs -= deltaMs;
+
+    const bossId = boss.bossId;
+    const dx = mote.x - boss.x, dy = mote.y - boss.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dirX = dist > 0.01 ? dx / dist : 0;
+    const dirY = dist > 0.01 ? dy / dist : 0;
+    const bossSize = BOSS_SIZE_BASE + bossId * 1.5;
+    const half = bossSize / 2;
+
+    if (bossId === 1) {
+      const preferredDist = 100 + boss.phaseIndex * 20;
+      const approachSpd = 0.5 + boss.phaseIndex * 0.15;
+      if (dist > preferredDist + 20) { boss.vx += dirX * approachSpd * 0.15; boss.vy += dirY * approachSpd * 0.15; }
+      else if (dist < preferredDist - 20) { boss.vx -= dirX * approachSpd * 0.1; boss.vy -= dirY * approachSpd * 0.1; }
+      boss.orbitAngle += 0.008 * dt * (1 + boss.phaseIndex * 0.5);
+      boss.vx += Math.cos(boss.orbitAngle) * 0.05;
+      boss.vy += Math.sin(boss.orbitAngle) * 0.05;
+      boss.vx *= 0.95; boss.vy *= 0.95;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const count = 6 + boss.phaseIndex * 3;
+        for (let i = 0; i < count; i++) {
+          const a = (i / count) * Math.PI * 2;
+          const spd = BOSS_PROJ_SPEED * (1 + boss.phaseIndex * 0.3);
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+            color: BOSS_COLORS[1], glowColor: BOSS_GLOW_COLORS[1], size: BOSS_PROJ_SIZE, seekStr: 0 });
+        }
+      }
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        if (boss.phaseIndex >= 1) {
+          for (let i = -1; i <= 1; i++) {
+            const a = Math.atan2(dirY, dirX) + i * 0.25;
+            const life = BOSS_PROJ_LIFE_MS;
+            bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST,
+              atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+              color: '#f0e8d8', glowColor: BOSS_GLOW_COLORS[1], size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
+          }
+        }
+      }
+    } else if (bossId === 2) {
+      const preferredDist = 60 + boss.phaseIndex * 10;
+      const speed = 0.9 + boss.phaseIndex * 0.35;
+      if (dist > preferredDist) { boss.vx += dirX * speed * 0.25; boss.vy += dirY * speed * 0.25; }
+      boss.vx *= 0.92; boss.vy *= 0.92;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const burstCount = 1 + boss.phaseIndex;
+        for (let b = 0; b < burstCount; b++) {
+          const spread = (b - (burstCount - 1) / 2) * 0.22;
+          const a = Math.atan2(dirY, dirX) + spread;
+          const spd = BOSS_PROJ_SPEED_FAST * (1 + boss.phaseIndex * 0.2);
+          const life = BOSS_PROJ_LIFE_MS * 0.6;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: BOSS_COLORS[2], glowColor: BOSS_GLOW_COLORS[2], size: BOSS_PROJ_SIZE - 1, seekStr: 0.012 });
+        }
+      }
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        if (boss.phaseIndex >= 1 && dist > 30) {
+          boss.vx = dirX * (8 + boss.phaseIndex * 4);
+          boss.vy = dirY * (8 + boss.phaseIndex * 4);
+        }
+      }
+    } else if (bossId === 3) {
+      const targetDist = 120 - boss.phaseIndex * 20;
+      const orbitSpd = 0.006 + boss.phaseIndex * 0.003;
+      boss.orbitAngle += orbitSpd * dt * (2 + boss.phaseIndex);
+      const targetX = mote.x + Math.cos(boss.orbitAngle) * targetDist;
+      const targetY = mote.y + Math.sin(boss.orbitAngle) * targetDist;
+      const tdx = targetX - boss.x, tdy = targetY - boss.y;
+      const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
+      if (tdist > 2) { boss.vx += (tdx / tdist) * 0.6; boss.vy += (tdy / tdist) * 0.6; }
+      boss.vx *= 0.88; boss.vy *= 0.88;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const ringCount = 8 + boss.phaseIndex * 4;
+        for (let i = 0; i < ringCount; i++) {
+          const a = (i / ringCount) * Math.PI * 2;
+          const spd = BOSS_PROJ_SPEED * (1.2 + boss.phaseIndex * 0.4);
+          const life = BOSS_PROJ_LIFE_MS * 0.8;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: BOSS_COLORS[3], glowColor: BOSS_GLOW_COLORS[3], size: BOSS_PROJ_SIZE, seekStr: 0 });
+        }
+      }
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        if (boss.phaseIndex >= 1) {
+          const ringCount = 8 + boss.phaseIndex * 4;
+          for (let i = 0; i < ringCount; i++) {
+            const a = (i / ringCount) * Math.PI * 2 + Math.PI / ringCount;
+            const life = BOSS_PROJ_LIFE_MS * 0.7;
+            bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED * 1.4, vy: Math.sin(a) * BOSS_PROJ_SPEED * 1.4,
+              atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+              color: '#ffcc88', glowColor: '#ffe0aa', size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
+          }
+        }
+      }
+    } else if (bossId === 4) {
+      boss.orbitAngle += 0.015 * dt;
+      boss.vx += Math.cos(boss.orbitAngle) * 0.3 + dirX * 0.1;
+      boss.vy += Math.sin(boss.orbitAngle) * 0.3 + dirY * 0.1;
+      boss.vx *= 0.93; boss.vy *= 0.93;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const count = 2 + boss.phaseIndex * 2;
+        for (let i = 0; i < count; i++) {
+          const spread = (Math.random() - 0.5) * 0.6;
+          const a = Math.atan2(dirY, dirX) + spread;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED * 1.2, vy: Math.sin(a) * BOSS_PROJ_SPEED * 1.2,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+            color: BOSS_COLORS[4], glowColor: BOSS_GLOW_COLORS[4], size: BOSS_PROJ_SIZE - 1, seekStr: 0.03 + boss.phaseIndex * 0.01 });
+        }
+      }
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        if (boss.phaseIndex >= 1) {
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2;
+            const life = BOSS_PROJ_LIFE_MS * 0.7;
+            bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST,
+              atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+              color: '#f0d870', glowColor: BOSS_GLOW_COLORS[4], size: BOSS_PROJ_SIZE, seekStr: 0 });
+          }
+        }
+      }
+    } else if (bossId === 5) {
+      const speed5 = (0.25 + boss.phaseIndex * 0.3) * (boss.phaseIndex >= 2 ? 2.0 : 1.0);
+      if (dist > 40) { boss.vx += dirX * speed5 * 0.2; boss.vy += dirY * speed5 * 0.2; }
+      boss.vx *= 0.94; boss.vy *= 0.94;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const fanCount = 5 + boss.phaseIndex * 2;
+        const angleToPlayer = Math.atan2(dirY, dirX);
+        const fanSpread = Math.PI / 2.5;
+        for (let i = 0; i < fanCount; i++) {
+          const a = angleToPlayer - fanSpread / 2 + (i / (fanCount - 1)) * fanSpread;
+          const life = BOSS_PROJ_LIFE_MS * 0.5;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST * 1.3, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST * 1.3,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: BOSS_COLORS[5], glowColor: BOSS_GLOW_COLORS[5], size: BOSS_PROJ_SIZE + 1, seekStr: 0 });
+        }
+      }
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        if (boss.phaseIndex >= 2) {
+          boss.vx = dirX * 12; boss.vy = dirY * 12;
+        }
+      }
+    } else if (bossId === 6) {
+      const preferredDist6 = 90 + boss.phaseIndex * 15;
+      const speed6 = 0.5 + boss.phaseIndex * 0.15;
+      if (dist > preferredDist6 + 20) { boss.vx += dirX * speed6 * 0.2; boss.vy += dirY * speed6 * 0.2; }
+      else if (dist < preferredDist6 - 20) { boss.vx -= dirX * speed6 * 0.15; boss.vy -= dirY * speed6 * 0.15; }
+      boss.vx *= 0.93; boss.vy *= 0.93;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const count6 = 8 + boss.phaseIndex * 4;
+        for (let i = 0; i < count6; i++) {
+          const a = (i / count6) * Math.PI * 2;
+          const life = BOSS_PROJ_LIFE_MS * 0.9;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED * 1.3, vy: Math.sin(a) * BOSS_PROJ_SPEED * 1.3,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: BOSS_COLORS[6], glowColor: BOSS_GLOW_COLORS[6], size: BOSS_PROJ_SIZE, seekStr: 0 });
+        }
+      }
+      if (boss.phaseIndex >= 1 && boss.shieldHp < boss.maxShieldHp) {
+        boss.shieldHp = Math.min(boss.maxShieldHp, boss.shieldHp + deltaMs * 0.8);
+      }
+    } else if (bossId === 7) {
+      const onTime  = boss.phaseIndex === 2 ? BOSS_INVULN_ON_P2  : boss.phaseIndex === 1 ? BOSS_INVULN_ON_P1  : BOSS_INVULN_ON_MS;
+      const offTime = boss.phaseIndex === 2 ? BOSS_INVULN_OFF_P2 : boss.phaseIndex === 1 ? BOSS_INVULN_OFF_P1 : BOSS_INVULN_OFF_MS;
+      boss.invulnTimerMs -= deltaMs;
+      if (boss.invulnTimerMs <= 0) {
+        boss.isInvuln = !boss.isInvuln;
+        boss.invulnTimerMs = boss.isInvuln ? onTime : offTime;
+      }
+      if (boss.isInvuln) {
+        boss.orbitAngle += 0.01 * dt * (1 + boss.phaseIndex * 0.5);
+        const orbitDist = 110;
+        const tx7 = mote.x + Math.cos(boss.orbitAngle) * orbitDist;
+        const ty7 = mote.y + Math.sin(boss.orbitAngle) * orbitDist;
+        const tdx7 = tx7 - boss.x, tdy7 = ty7 - boss.y;
+        const td7 = Math.sqrt(tdx7 * tdx7 + tdy7 * tdy7);
+        if (td7 > 2) { boss.vx += (tdx7 / td7) * 0.7; boss.vy += (tdy7 / td7) * 0.7; }
+      } else {
+        if (dist > 40) { boss.vx += dirX * 0.5; boss.vy += dirY * 0.5; }
+      }
+      boss.vx *= 0.9; boss.vy *= 0.9;
+      if (!boss.isInvuln && boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const count7 = 6 + boss.phaseIndex * 3;
+        for (let i = 0; i < count7; i++) {
+          const a = (i / count7) * Math.PI * 2;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED * 1.5, vy: Math.sin(a) * BOSS_PROJ_SPEED * 1.5,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+            color: BOSS_COLORS[7], glowColor: BOSS_GLOW_COLORS[7], size: BOSS_PROJ_SIZE, seekStr: 0 });
+        }
+      }
+    } else if (bossId === 8) {
+      if (dist > 0 && dist < BOSS_GRAV_RADIUS) {
+        const gravStr = BOSS_GRAV_STRENGTH * (1 + boss.phaseIndex * 0.5) * (boss.isAbsorbing ? 2.5 : 1.0);
+        mote.vx -= dirX * gravStr * dist;
+        mote.vy -= dirY * gravStr * dist;
+      }
+      if (boss.phaseIndex >= 2 && !boss.isAbsorbing && dist < BOSS_GRAV_RADIUS) {
+        mote.vx += dirX * BOSS_GRAV_STRENGTH * 0.7 * dist;
+        mote.vy += dirY * BOSS_GRAV_STRENGTH * 0.7 * dist;
+      }
+      boss.orbitAngle += 0.003 * dt;
+      boss.vx += Math.cos(boss.orbitAngle) * 0.08;
+      boss.vy += Math.sin(boss.orbitAngle) * 0.08;
+      boss.vx *= 0.97; boss.vy *= 0.97;
+      boss.absorbTimerMs -= deltaMs;
+      if (boss.absorbTimerMs <= 0) {
+        boss.isAbsorbing = !boss.isAbsorbing;
+        boss.absorbTimerMs = boss.isAbsorbing ? 2500 : 5000;
+      }
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const count8 = 3 + boss.phaseIndex * 2;
+        for (let i = 0; i < count8; i++) {
+          const spread = (i - (count8 - 1) / 2) * 0.3;
+          const a = Math.atan2(dirY, dirX) + spread;
+          const life = BOSS_PROJ_LIFE_MS * 1.2;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED, vy: Math.sin(a) * BOSS_PROJ_SPEED,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: '#4d2280', glowColor: BOSS_GLOW_COLORS[8], size: BOSS_PROJ_SIZE + 1, seekStr: 0.008 });
+        }
+      }
+    } else if (bossId === 9) {
+      boss.orbitAngle += 0.012 * dt * (1 + boss.phaseIndex * 0.4);
+      boss.vx += Math.cos(boss.orbitAngle) * 0.25 + dirX * 0.15 * boss.phaseIndex;
+      boss.vy += Math.sin(boss.orbitAngle) * 0.25 + dirY * 0.15 * boss.phaseIndex;
+      boss.vx *= 0.92; boss.vy *= 0.92;
+      if (boss.phaseIndex >= 2 && dist < BOSS_GRAV_RADIUS) {
+        const gravStr9 = BOSS_GRAV_STRENGTH * 0.8;
+        mote.vx -= dirX * gravStr9 * dist;
+        mote.vy -= dirY * gravStr9 * dist;
+      }
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const count9 = 10 + boss.phaseIndex * 4;
+        for (let i = 0; i < count9; i++) {
+          const a = (i / count9) * Math.PI * 2;
+          const spd9 = i % 2 === 0 ? BOSS_PROJ_SPEED : BOSS_PROJ_SPEED_FAST;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd9, vy: Math.sin(a) * spd9,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+            color: BOSS_COLORS[9], glowColor: BOSS_GLOW_COLORS[9], size: BOSS_PROJ_SIZE, seekStr: 0.005 });
+        }
+      }
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        const cnt9b = 4 + boss.phaseIndex * 2;
+        for (let i = 0; i < cnt9b; i++) {
+          const spread = (i - (cnt9b - 1) / 2) * 0.2;
+          const a = Math.atan2(dirY, dirX) + spread;
+          const life = BOSS_PROJ_LIFE_MS * 0.8;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: '#c090ff', glowColor: '#e0c0ff', size: BOSS_PROJ_SIZE - 1, seekStr: 0.02 });
+        }
+      }
+    } else {
+      // Boss 10: The Equation Incarnate
+      boss.orbitAngle += 0.01 * dt * (1 + boss.phaseIndex * 0.6);
+      boss.vx += Math.cos(boss.orbitAngle) * 0.2 + dirX * 0.2;
+      boss.vy += Math.sin(boss.orbitAngle) * 0.2 + dirY * 0.2;
+      boss.vx *= 0.91; boss.vy *= 0.91;
+      if (boss.phaseIndex >= 1 && dist < BOSS_GRAV_RADIUS) {
+        mote.vx -= dirX * BOSS_GRAV_STRENGTH * 0.6 * dist;
+        mote.vy -= dirY * BOSS_GRAV_STRENGTH * 0.6 * dist;
+      }
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        for (let ring = 0; ring < 1 + boss.phaseIndex; ring++) {
+          const count10 = 8 + ring * 4;
+          const offset = ring * (Math.PI / count10);
+          for (let i = 0; i < count10; i++) {
+            const a = (i / count10) * Math.PI * 2 + offset;
+            const spd10 = BOSS_PROJ_SPEED * (1 + ring * 0.3);
+            bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd10, vy: Math.sin(a) * spd10,
+              atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+              color: BOSS_COLORS[10] ?? '#ffd764', glowColor: BOSS_GLOW_COLORS[10] ?? '#ffe599', size: BOSS_PROJ_SIZE, seekStr: 0.006 });
+          }
+        }
+      }
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        const cnt10b = 5 + boss.phaseIndex * 3;
+        for (let i = 0; i < cnt10b; i++) {
+          const a = Math.atan2(dirY, dirX) + (i - (cnt10b - 1) / 2) * 0.18;
+          const life = BOSS_PROJ_LIFE_MS * 0.6;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST * 1.3, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST * 1.3,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: '#ffe599', glowColor: '#ffffff', size: BOSS_PROJ_SIZE, seekStr: 0.015 });
+        }
+      }
+    }
+
+    // Contact damage
+    if (dist < bossSize + PLAYER_HIT_RADIUS + 2 && playerIFramesMs <= 0 && boss.contactCdMs <= 0) {
+      const rawDmg = boss.atk - playerStats.def;
+      const dmg = Math.max(0, rawDmg);
+      if (dmg > 0) {
+        playerStats.hp = Math.max(0, playerStats.hp - dmg);
+        const ratio = Math.min(1, dmg / playerStats.maxHp);
+        playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+        boss.contactCdMs = 800;
+        spawnDamageNumber(mote.x, mote.y, -dirX, -dirY, String(Math.round(dmg)), ratio, '#ff6666');
+      }
+    }
+
+    // Movement clamp + fluid
+    boss.x += boss.vx * dt; boss.y += boss.vy * dt;
+    if (boss.x < half)            { boss.x = half;            boss.vx =  Math.abs(boss.vx) * 0.5; }
+    if (boss.x > widthPx  - half) { boss.x = widthPx  - half; boss.vx = -Math.abs(boss.vx) * 0.5; }
+    if (boss.y < half)            { boss.y = half;             boss.vy =  Math.abs(boss.vy) * 0.5; }
+    if (boss.y > heightPx - half) { boss.y = heightPx - half; boss.vy = -Math.abs(boss.vy) * 0.5; }
+    const espd = Math.sqrt(boss.vx * boss.vx + boss.vy * boss.vy);
+    if (espd > 0.04) {
+      fluid.addForce({
+        x: boss.x, y: boss.y,
+        vx: boss.vx * FLUID_VEL_FRAME_TO_PX_S,
+        vy: boss.vy * FLUID_VEL_FRAME_TO_PX_S,
+        r: 0.4, g: 0.2, b: 0.8,
+        strength: FLUID_ENEMY_STRENGTH * 2.0,
+      });
+    }
+  }
+
+  function updateBossProjectiles(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+      const p = bossProjectiles[i];
+      p.lifeMs -= deltaMs;
+      if (p.lifeMs <= 0) { bossProjectiles.splice(i, 1); continue; }
+
+      if (p.seekStr > 0) {
+        const sdx = mote.x - p.x, sdy = mote.y - p.y;
+        const sd = Math.sqrt(sdx * sdx + sdy * sdy);
+        if (sd > 0.01) { p.vx += (sdx / sd) * p.seekStr; p.vy += (sdy / sd) * p.seekStr; }
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        const maxSpd = BOSS_PROJ_SPEED_FAST * 1.5;
+        if (spd > maxSpd) { p.vx = (p.vx / spd) * maxSpd; p.vy = (p.vy / spd) * maxSpd; }
+      }
+
+      p.x += p.vx * dt; p.y += p.vy * dt;
+
+      fluid.addForce({
+        x: p.x, y: p.y,
+        vx: p.vx * FLUID_VEL_FRAME_TO_PX_S,
+        vy: p.vy * FLUID_VEL_FRAME_TO_PX_S,
+        r: 0.4, g: 0.2, b: 0.8,
+        strength: FLUID_MISSILE_STRENGTH * 0.8,
+      });
+
+      if (!p.hasHitPlayer) {
+        const pdx = mote.x - p.x, pdy = mote.y - p.y;
+        if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
+          p.hasHitPlayer = true;
+          if (playerIFramesMs <= 0) {
+            const rawDmg = p.atk - playerStats.def;
+            const dmg = Math.max(0, rawDmg);
+            if (dmg <= 0) {
+              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+            } else {
+              playerStats.hp = Math.max(0, playerStats.hp - dmg);
+              const ratio = Math.min(1, dmg / playerStats.maxHp);
+              const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy) + 0.01;
+              mote.vx += (p.vx / spd) * PLAYER_KNOCKBACK_MAX * ratio * 0.6;
+              mote.vy += (p.vy / spd) * PLAYER_KNOCKBACK_MAX * ratio * 0.6;
+              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+              spawnDamageNumber(mote.x, mote.y, p.vx / spd, p.vy / spd, String(Math.round(dmg)), ratio, '#ff6666');
+            }
+          }
+          bossProjectiles.splice(i, 1); continue;
+        }
+      }
+
+      const margin = 30;
+      if (p.x < -margin || p.x > widthPx + margin || p.y < -margin || p.y > heightPx + margin) {
+        bossProjectiles.splice(i, 1);
+      }
+    }
+  }
+
+  function drawBossProjectiles(): void {
+    if (bossProjectiles.length === 0) return;
+    ctx.save();
+    for (const p of bossProjectiles) {
+      const lifeRatio = p.lifeMs / p.maxLifeMs;
+      const alpha = Math.min(1, lifeRatio * 3.0);
+      const ph = p.size / 2;
+      ctx.globalAlpha = alpha;
+      ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
+      const gh = ph * 2.2;
+      ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(Math.floor(p.x - ph), Math.floor(p.y - ph), p.size, p.size);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  function drawBossEnemy(): void {
+    const boss = bossEnemy;
+    if (!boss) return;
+    const bossSize = BOSS_SIZE_BASE + boss.bossId * 1.5;
+    const half = bossSize / 2;
+    const pulseT = boss.pulseMs / 3000;
+    const pulseFactor = (Math.sin(pulseT * Math.PI * 2) + 1) * 0.5;
+    const color     = BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)];
+    const glowColor = BOSS_GLOW_COLORS[Math.min(boss.bossId, BOSS_GLOW_COLORS.length - 1)];
+
+    ctx.save();
+
+    if (boss.phaseTransitionMs > 0) {
+      const flashT = boss.phaseTransitionMs / BOSS_PHASE_TRANSITION_MS;
+      ctx.globalAlpha = flashT * 0.6;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, widthPx, heightPx);
+      ctx.globalAlpha = 1;
+    }
+
+    let drawColor   = color;
+    let drawGlow    = glowColor;
+    if (boss.bossId === 7 && boss.isInvuln) {
+      const hue = (glowTimeS * 120) % 360;
+      drawColor = `hsl(${hue}, 90%, 80%)`;
+      drawGlow  = `hsl(${hue}, 100%, 90%)`;
+    }
+    if (boss.bossId === 8 && boss.isAbsorbing) {
+      drawGlow = '#d090ff';
+    }
+
+    const ringCount = 1 + boss.phaseIndex;
+    for (let r = 0; r < ringCount; r++) {
+      const ringR = bossSize * (1.5 + r * 0.7 + pulseFactor * 0.4);
+      ctx.globalAlpha = (0.15 - r * 0.04) * (0.6 + pulseFactor * 0.4);
+      ctx.shadowBlur = ringR * 2; ctx.shadowColor = drawGlow;
+      ctx.strokeStyle = drawGlow; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(boss.x, boss.y, ringR, 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+
+    const barW = bossSize * 5;
+    const barH = 4;
+    const barX = boss.x - barW / 2;
+    const barY = boss.y - bossSize - 12;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#111'; ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = drawColor; ctx.fillRect(barX, barY, barW * (boss.hp / boss.maxHp), barH);
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff';
+    ctx.fillRect(barX + barW * BOSS_PHASE2_HP_RATIO - 0.5, barY, 1.5, barH);
+    ctx.fillRect(barX + barW * BOSS_PHASE3_HP_RATIO - 0.5, barY, 1.5, barH);
+    ctx.globalAlpha = 1;
+
+    if (boss.maxShieldHp > 0) {
+      const sBarY = barY - 6;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#111'; ctx.fillRect(barX, sBarY, barW, 3);
+      ctx.fillStyle = '#74c0fc'; ctx.fillRect(barX, sBarY, barW * (boss.shieldHp / boss.maxShieldHp), 3);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.shadowBlur = bossSize * (4 + pulseFactor * 4); ctx.shadowColor = drawGlow;
+    if (boss.bossId === 7 || boss.bossId === 10) {
+      ctx.save();
+      ctx.translate(boss.x, boss.y);
+      ctx.rotate(Math.PI / 4 + glowTimeS * 0.3);
+      ctx.fillStyle = drawColor;
+      ctx.fillRect(-half * 0.85, -half * 0.85, bossSize * 0.85, bossSize * 0.85);
+      ctx.restore();
+    } else if (boss.bossId === 8) {
+      ctx.fillStyle = drawColor;
+      ctx.fillRect(Math.floor(boss.x - half), Math.floor(boss.y - half), Math.ceil(bossSize), Math.ceil(bossSize));
+      ctx.shadowBlur = 0;
+      for (let r = 1; r <= 3; r++) {
+        const ringAlpha = boss.isAbsorbing ? 0.5 - r * 0.1 : 0.2 - r * 0.04;
+        ctx.globalAlpha = Math.max(0, ringAlpha) * (0.7 + pulseFactor * 0.3);
+        ctx.shadowBlur = 6; ctx.shadowColor = drawGlow;
+        ctx.strokeStyle = drawGlow; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(boss.x, boss.y, bossSize * (0.9 + r * 0.55), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    } else {
+      ctx.fillStyle = drawColor;
+      ctx.fillRect(Math.floor(boss.x - half), Math.floor(boss.y - half), Math.ceil(bossSize), Math.ceil(bossSize));
+    }
+    ctx.shadowBlur = 0;
+
+    const pipRadius = 2;
+    const pipSpacing = 8;
+    const totalPips = 3;
+    const pipsStartX = boss.x - (totalPips - 1) * pipSpacing / 2;
+    const pipY = boss.y + half + 8;
+    for (let p = 0; p < totalPips; p++) {
+      const filled = p <= boss.phaseIndex;
+      ctx.globalAlpha = filled ? 0.95 : 0.25;
+      ctx.shadowBlur = filled ? 5 : 0; ctx.shadowColor = drawGlow;
+      ctx.fillStyle = filled ? drawGlow : '#444';
+      ctx.beginPath(); ctx.arc(pipsStartX + p * pipSpacing, pipY, pipRadius, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+    if (boss.bossId === 7 && boss.isInvuln) {
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = drawGlow;
+      ctx.font = '7px "Poiret One", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 4; ctx.shadowColor = drawGlow;
+      ctx.fillText('INVULN', boss.x, boss.y - half - 20);
+      ctx.shadowBlur = 0; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
   function drawWaveClearBanner(): void {
     if (!isInterWave || currentWave === 0) return;
     const t = 1 - interWaveTimerMs / INTER_WAVE_DELAY_MS;
@@ -5566,6 +6357,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#c9a84c'; ctx.font = '10px "Poiret One", sans-serif';
     ctx.fillText('Next wave incoming\u2026', widthPx / 2, heightPx / 2 + 10);
+    if (currentWave > 0 && currentWave % 10 === 0) {
+      ctx.fillStyle = '#69db7c'; ctx.font = '9px "Poiret One", sans-serif';
+      ctx.shadowBlur = 6; ctx.shadowColor = '#69db7c';
+      ctx.fillText('✦ Checkpoint unlocked! See RPG Menu.', widthPx / 2, heightPx / 2 + 22);
+      ctx.shadowBlur = 0;
+    }
     ctx.restore();
   }
 
@@ -5598,6 +6395,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawDiamondShards();
     drawNullstoneEnemies();
     drawVoidTendrils();
+    drawBossProjectiles();
+    drawBossEnemy();
     drawShotLines();
     drawSandProjectiles();
     drawLaserBeamEffect();
@@ -5761,6 +6560,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateDiamondShards(deltaMs);
       updateNullstoneEnemies(deltaMs);
       updateVoidTendrils(deltaMs);
+      updateBossEnemy(deltaMs);
+      updateBossProjectiles(deltaMs);
       updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(deltaMs);
       updateSandProjectiles(deltaMs);

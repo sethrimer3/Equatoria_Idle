@@ -243,21 +243,12 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   const predefined = WAVE_DEFINITIONS.find(w => w.waveNumber === waveNumber);
   if (predefined) return predefined;
 
-  // Boss wave every 100 waves
+  // Boss wave every 100 waves — single unique boss enemy
   if (waveNumber % 100 === 0) {
-    const bossCount = waveNumber / 100;
-    const spawns: WaveSpawn[] = [
-      { enemyTypeId: 'laser',     count: 3 + bossCount, spawnDelay: 300 },
-      { enemyTypeId: 'quartz',    count: 3 + bossCount, spawnDelay: 300 },
-      { enemyTypeId: 'ruby',      count: 3 + bossCount, spawnDelay: 400 },
-      { enemyTypeId: 'sunstone',  count: 2 + bossCount, spawnDelay: 500 },
-      { enemyTypeId: 'citrine',   count: 2 + bossCount, spawnDelay: 600 },
-      { enemyTypeId: 'iolite',    count: 1 + bossCount, spawnDelay: 800 },
-      { enemyTypeId: 'amethyst',  count: 1 + bossCount, spawnDelay: 1000 },
-      { enemyTypeId: 'diamond',   count: bossCount,      spawnDelay: 1500 },
-      { enemyTypeId: 'nullstone', count: bossCount,      spawnDelay: 2000 },
-    ].filter(s => s.count > 0);
-    return { waveNumber, spawns };
+    return {
+      waveNumber,
+      spawns: [{ enemyTypeId: 'boss', count: 1, spawnDelay: 0 }],
+    };
   }
 
   // Procedural: count grows slowly; delay tightens as waves increase.

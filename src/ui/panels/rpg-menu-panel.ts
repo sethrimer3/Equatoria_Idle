@@ -154,6 +154,56 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
     row.appendChild(labelGroup);
     row.appendChild(checkbox);
     content.appendChild(row);
+
+    // Checkpoint selector
+    const checkpointCount = lastRpgState ? Math.floor(lastRpgState.highestWaveReached / 10) : 0;
+    if (checkpointCount > 0) {
+      const sep = document.createElement('hr');
+      sep.style.cssText = 'border:none;border-top:1px solid rgba(255,255,255,0.1);margin:8px 0;';
+      content.appendChild(sep);
+
+      const cpSection = document.createElement('div');
+      cpSection.className = 'rpg-menu__setting-row';
+      cpSection.style.flexDirection = 'column';
+      cpSection.style.alignItems = 'flex-start';
+      cpSection.style.gap = '6px';
+
+      const cpLabel = document.createElement('span');
+      cpLabel.className = 'rpg-menu__setting-label';
+      cpLabel.textContent = 'Respawn Wave';
+      cpSection.appendChild(cpLabel);
+
+      const cpDesc = document.createElement('span');
+      cpDesc.className = 'rpg-menu__setting-desc';
+      cpDesc.textContent = 'Choose which checkpoint to restart from on death. Unlocked every 10 waves cleared.';
+      cpSection.appendChild(cpDesc);
+
+      const cpSelect = document.createElement('select');
+      cpSelect.className = 'settings-select';
+      cpSelect.style.cssText = 'background:#1a1a2e;color:#c9a84c;border:1px solid rgba(201,168,76,0.4);padding:4px 8px;border-radius:4px;font-size:0.85em;width:100%;';
+
+      const opt0 = document.createElement('option');
+      opt0.value = '0';
+      opt0.textContent = 'Wave 1 (default)';
+      if (lastRpgState?.respawnWave === 0) opt0.selected = true;
+      cpSelect.appendChild(opt0);
+
+      for (let i = 1; i <= checkpointCount; i++) {
+        const waveNum = i * 10;
+        const opt = document.createElement('option');
+        opt.value = String(waveNum);
+        opt.textContent = `Wave ${waveNum}`;
+        if (lastRpgState?.respawnWave === waveNum) opt.selected = true;
+        cpSelect.appendChild(opt);
+      }
+
+      cpSelect.addEventListener('change', () => {
+        dispatch({ kind: 'set_respawn_wave', wave: parseInt(cpSelect.value, 10) });
+      });
+
+      cpSection.appendChild(cpSelect);
+      content.appendChild(cpSection);
+    }
   }
 
   // ── Weapons tab ───────────────────────────────────────────────

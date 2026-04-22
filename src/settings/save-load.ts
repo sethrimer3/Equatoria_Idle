@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 14;
+const SAVE_VERSION = 15;
 
 interface SaveData {
   version: number;
@@ -69,6 +69,8 @@ interface SaveData {
     weaponTiersByWeaponId?: Record<string, number>;
     /** v12+: RPG upgrade levels. Absent in older saves. */
     rpgUpgradeLevels?: Record<string, number>;
+    /** v15+: respawn checkpoint wave. Absent in older saves (defaults to 0). */
+    respawnWave?: number;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
@@ -137,6 +139,7 @@ export function serializeGameState(state: GameState): SaveData {
       xp: state.rpg.xp,
       weaponTiersByWeaponId: Object.fromEntries(state.rpg.weaponTiersByWeaponId),
       rpgUpgradeLevels: Object.fromEntries(state.rpg.rpgUpgradeLevels),
+      respawnWave: state.rpg.respawnWave,
     },
     elapsedMs: state.elapsedMs,
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
@@ -284,6 +287,8 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.rpgUpgradeLevels.set(upgradeId, level);
       }
     }
+    // v15+: respawn checkpoint wave
+    state.rpg.respawnWave = data.rpg.respawnWave ?? 0;
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)
@@ -319,8 +324,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–14 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(data.version)) return null;
+    // Accept versions 1–15 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;
