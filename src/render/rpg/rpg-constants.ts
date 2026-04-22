@@ -1,4 +1,11 @@
-// rpg-constants.ts — extracted from rpg-render.ts
+/**
+ * rpg-constants.ts — Numeric and string constants for the RPG rendering system.
+ *
+ * Extracted from rpg-render.ts to keep the constant pool navigable.
+ * Imports PLAYER_BASE_ATK from rpg-state.ts solely to initialise PLAYER_ATK_INIT;
+ * rpg-render.ts therefore has an indirect dependency on rpg-state.ts for this value
+ * via the rpg-constants → rpg-state chain.
+ */
 import { PLAYER_BASE_ATK } from '../../sim/rpg/rpg-state';
 
 export const RPG_TRAIL_CAPACITY   = 60;
