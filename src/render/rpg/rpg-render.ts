@@ -452,6 +452,21 @@ const VOID_TENDRIL_LIFE_MS     = 2000;
 const VOID_TENDRIL_COLOR       = '#4d2280';
 const VOID_TENDRIL_GLOW        = '#9664c8';
 
+// ── XP multipliers per enemy type ─────────────────────────────
+const LASER_XP_MULT     = 1;
+const SAPPHIRE_XP_MULT  = 3;
+const EMERALD_XP_MULT   = 2;
+const AMBER_XP_MULT     = 4;
+const VOID_XP_MULT      = 6;
+const QUARTZ_XP_MULT    = 1.5;
+const RUBY_XP_MULT      = 2.5;
+const SUNSTONE_XP_MULT  = 3;
+const CITRINE_XP_MULT   = 3.5;
+const IOLITE_XP_MULT    = 5;
+const AMETHYST_XP_MULT  = 6;
+const DIAMOND_XP_MULT   = 8;
+const NULLSTONE_XP_MULT = 10;
+
 // ── Fluid background force scales ─────────────────────────────
 // Multiplier applied to entity velocity (px/frame → px/s) before injection.
 // Lower values = gentler disturbance; higher = more reactive.
@@ -3194,7 +3209,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH,
           FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave);
+        totalXpFromKills += getXpPerKill(currentWave) * LASER_XP_MULT;
         enemies.splice(i, 1);
       }
     }
@@ -3205,7 +3220,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 1.4,
           FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 3;
+        totalXpFromKills += getXpPerKill(currentWave) * SAPPHIRE_XP_MULT;
         sapphireEnemies.splice(i, 1);
       }
     }
@@ -3226,7 +3241,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 1.1,
           FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 2;
+        totalXpFromKills += getXpPerKill(currentWave) * EMERALD_XP_MULT;
         emeraldEnemies.splice(i, 1);
       }
     }
@@ -3237,7 +3252,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 1.5,
           FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 4;
+        totalXpFromKills += getXpPerKill(currentWave) * AMBER_XP_MULT;
         amberEnemies.splice(i, 1);
       }
     }
@@ -3258,7 +3273,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 2.0,
           FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 6;
+        totalXpFromKills += getXpPerKill(currentWave) * VOID_XP_MULT;
         voidEnemies.splice(i, 1);
       }
     }
@@ -3269,7 +3284,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH,
           FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 1.5;
+        totalXpFromKills += getXpPerKill(currentWave) * QUARTZ_XP_MULT;
         quartzEnemies.splice(i, 1);
       }
     }
@@ -3283,7 +3298,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 1.2,
           FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 2.5;
+        totalXpFromKills += getXpPerKill(currentWave) * RUBY_XP_MULT;
         rubyEnemies.splice(i, 1);
       }
     }
@@ -3297,7 +3312,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 1.6,
           FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 3;
+        totalXpFromKills += getXpPerKill(currentWave) * SUNSTONE_XP_MULT;
         sunstoneEnemies.splice(i, 1);
       }
     }
@@ -3308,7 +3323,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 1.8,
           FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 3.5;
+        totalXpFromKills += getXpPerKill(currentWave) * CITRINE_XP_MULT;
         citrineEnemies.splice(i, 1);
       }
     }
@@ -3322,7 +3337,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 2.2,
           FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 5;
+        totalXpFromKills += getXpPerKill(currentWave) * IOLITE_XP_MULT;
         ioliteEnemies.splice(i, 1);
       }
     }
@@ -3333,7 +3348,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 2.5,
           FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 6;
+        totalXpFromKills += getXpPerKill(currentWave) * AMETHYST_XP_MULT;
         amethystEnemies.splice(i, 1);
       }
     }
@@ -3347,7 +3362,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 3.0,
           FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 8;
+        totalXpFromKills += getXpPerKill(currentWave) * DIAMOND_XP_MULT;
         diamondEnemies.splice(i, 1);
       }
     }
@@ -3361,7 +3376,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EXPLOSION_STRENGTH * 4.0,
           FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
         );
-        totalXpFromKills += getXpPerKill(currentWave) * 10;
+        totalXpFromKills += getXpPerKill(currentWave) * NULLSTONE_XP_MULT;
         nullstoneEnemies.splice(i, 1);
       }
     }
