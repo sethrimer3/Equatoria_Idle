@@ -39,18 +39,18 @@
   pointer-events: none;
 }
 
-/* Custom scrollbar for panels */
-#panels-container::-webkit-scrollbar {
-  width: 6px;
+/* Hide scrollbars while keeping scroll functionality */
+#panels-container,
+#weapon-store-panel,
+#rpg-menu-panel .rpg-menu__content {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
-#panels-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-#panels-container::-webkit-scrollbar-thumb {
-  background: var(--accent-glow);
-  border-radius: 3px;
+#panels-container::-webkit-scrollbar,
+#weapon-store-panel::-webkit-scrollbar,
+#rpg-menu-panel .rpg-menu__content::-webkit-scrollbar {
+  display: none;
 }
 
 /* Inner panel content padding */
@@ -59,6 +59,28 @@
   padding: 12px 12px;
   padding-bottom: 16px;
   min-height: 100%;
+}
+
+/* ── Page break sprites ──────────────────────────────────────── */
+.page-break-large {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.page-break-small {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ── Panel base ──────────────────────────────────────────────── */
@@ -113,7 +135,7 @@
 }
 
 .upgrade-btn:not(:disabled):active {
-  background: rgba(201, 168, 76, 0.12);
+  background: rgba(255, 241, 114, 0.12);
 }
 
 .unlock-btn {
@@ -257,7 +279,7 @@
 }
 
 .settings-btn:active {
-  background: rgba(201, 168, 76, 0.08);
+  background: rgba(255, 241, 114, 0.08);
 }
 
 .credits {
@@ -292,7 +314,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px 10px;
-  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+  border-bottom: 1px solid rgba(255, 241, 114, 0.15);
   position: sticky;
   top: 0;
   background: rgba(8, 8, 16, 0.97);
@@ -309,7 +331,7 @@
 
 .weapon-store__close {
   background: none;
-  border: 1px solid rgba(201, 168, 76, 0.3);
+  border: 1px solid rgba(255, 241, 114, 0.3);
   border-radius: 6px;
   color: var(--text-secondary);
   font-size: 14px;
@@ -325,7 +347,7 @@
 }
 
 .weapon-store__close:active {
-  background: rgba(201, 168, 76, 0.1);
+  background: rgba(255, 241, 114, 0.1);
 }
 
 .weapon-store__list {
@@ -337,7 +359,7 @@
 
 .weapon-store__card {
   background: rgba(26, 26, 46, 0.8);
-  border: 1px solid rgba(201, 168, 76, 0.15);
+  border: 1px solid rgba(255, 241, 114, 0.15);
   border-radius: 12px;
   padding: 14px;
   display: flex;
@@ -346,8 +368,8 @@
 }
 
 .weapon-store__card--equipped {
-  border-color: rgba(201, 168, 76, 0.5);
-  background: rgba(201, 168, 76, 0.06);
+  border-color: rgba(255, 241, 114, 0.5);
+  background: rgba(255, 241, 114, 0.06);
 }
 
 .weapon-store__card-name {
@@ -364,8 +386,8 @@
   font-size: 10px;
   font-weight: 600;
   color: var(--accent);
-  background: rgba(201, 168, 76, 0.15);
-  border: 1px solid rgba(201, 168, 76, 0.3);
+  background: rgba(255, 241, 114, 0.15);
+  border: 1px solid rgba(255, 241, 114, 0.3);
   border-radius: 4px;
   padding: 1px 6px;
   letter-spacing: 1px;
@@ -399,8 +421,8 @@
 
 .weapon-store__btn {
   padding: 8px 16px;
-  background: rgba(201, 168, 76, 0.12);
-  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(255, 241, 114, 0.12);
+  border: 1px solid rgba(255, 241, 114, 0.35);
   border-radius: 8px;
   color: var(--accent);
   font-family: var(--font-primary);
@@ -418,10 +440,10 @@
 }
 
 .weapon-store__btn--equipped {
-  border-color: rgba(201, 168, 76, 0.6);
+  border-color: rgba(255, 241, 114, 0.6);
   color: var(--accent);
 }
 
 .weapon-store__btn:not(:disabled):active {
-  background: rgba(201, 168, 76, 0.22);
+  background: rgba(255, 241, 114, 0.22);
 }

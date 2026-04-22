@@ -127,7 +127,7 @@ export function createHudOverlay(): HudOverlay {
     // Tap flash — gold drop-shadow glow that fades with tapFlashAlpha
     if (tapFlashAlpha > 0) {
       const spread = tapFlashAlpha * MAX_GLOW_SPREAD_PX;
-      equationEl.style.filter = `drop-shadow(0 0 ${spread}px rgba(201, 168, 76, ${tapFlashAlpha}))`;
+      equationEl.style.filter = `drop-shadow(0 0 ${spread}px rgba(255, 241, 114, ${tapFlashAlpha}))`;
     } else if (equationEl.style.filter) {
       equationEl.style.filter = '';
     }

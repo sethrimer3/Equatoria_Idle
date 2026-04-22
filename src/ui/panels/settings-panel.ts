@@ -6,9 +6,9 @@ import type { AudioSystem } from '../../audio';
 // ─── Slider glow constants ───────────────────────────────────────
 
 /** Dark gold RGB used at 0% slider value. */
-const DARK_GOLD_RGB  = [107,  79, 16] as const;
+const DARK_GOLD_RGB  = [100,  95, 45] as const;
 /** Bright gold RGB used at 100% slider value. */
-const BRIGHT_GOLD_RGB = [240, 192, 64] as const;
+const BRIGHT_GOLD_RGB = [255, 241, 114] as const;
 /** Maximum glow blur radius in px (at 100%). */
 const MAX_GLOW_RADIUS_PX = 8;
 /** Maximum glow alpha (at 100%). */
@@ -179,6 +179,13 @@ export function createSettingsPanel(
     <p>A mathematical idle adventure</p>
   `;
   panel.appendChild(credits);
+
+  // Small page break at the end of the settings panel
+  const pageBreakEnd = document.createElement('img');
+  pageBreakEnd.src = '/ASSETS/SPRITES/menuElements/pageBreak_small.png';
+  pageBreakEnd.alt = '';
+  pageBreakEnd.className = 'page-break-small';
+  panel.appendChild(pageBreakEnd);
 
   return {
     element: panel,

@@ -63,6 +63,15 @@ function updateCellDisplay(cell: HTMLElement, val: number): void {
   cell.textContent = val.toFixed(2);
 }
 
+/** Creates a page-break decorative image element. */
+function makePageBreak(size: 'large' | 'small'): HTMLImageElement {
+  const img = document.createElement('img');
+  img.src = `/ASSETS/SPRITES/menuElements/pageBreak_${size}.png`;
+  img.alt = '';
+  img.className = `page-break-${size}`;
+  return img;
+}
+
 export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffect, equationContent?: HTMLElement): LoomPanel {
   const panel = document.createElement('div');
   panel.className = 'panel loom-panel';
@@ -165,6 +174,9 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     cards.set(def.tierId, card);
     upgradeButtons.set(def.tierId, btn);
   }
+
+  // Small page break after loom cards section
+  upgradesPane.appendChild(makePageBreak('small'));
 
   panel.appendChild(upgradesPane);
 
@@ -473,6 +485,9 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   }
 
   panel.appendChild(alivenPane);
+  // Add page break after matrix section and after aliven rows
+  alivenPane.insertBefore(makePageBreak('small'), alivenRowsContainer);
+  alivenPane.appendChild(makePageBreak('small'));
 
   // ── Special upgrades section (inside Loom pane) ──────────────
 
@@ -531,6 +546,9 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     specialCards.set(def.tierId, card);
     specialButtons.set(def.tierId, btn);
   }
+
+  // Small page break after special upgrades section
+  upgradesPane.appendChild(makePageBreak('small'));
 
   // ── Sub-tab switching ────────────────────────────────────────
 

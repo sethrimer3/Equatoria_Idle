@@ -51,6 +51,16 @@ import { queueIdleRewards } from '../sim/idle/apply-idle-rewards';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
+// ─── Page break helper ──────────────────────────────────────────
+
+function makePageBreak(size: 'large' | 'small'): HTMLImageElement {
+  const img = document.createElement('img');
+  img.src = `/ASSETS/SPRITES/menuElements/pageBreak_${size}.png`;
+  img.alt = '';
+  img.className = `page-break-${size}`;
+  return img;
+}
+
 export async function startApp(): Promise<void> {
   const root = document.getElementById('app')!;
   root.innerHTML = '';
@@ -226,12 +236,21 @@ export async function startApp(): Promise<void> {
 
   // Wrap the equation-related panels into a container so they can be
   // injected as the "Equation" sub-tab of the combined Upgrades panel.
+  // Small page breaks separate each section.
   const equationContentDiv = document.createElement('div');
   equationContentDiv.appendChild(equationPanel.element);
+  equationContentDiv.appendChild(makePageBreak('small'));
   equationContentDiv.appendChild(upgradePanel.element);
+  equationContentDiv.appendChild(makePageBreak('small'));
   equationContentDiv.appendChild(resourcePanel.element);
+  equationContentDiv.appendChild(makePageBreak('small'));
 
   const loomPanel = createLoomPanel(dispatch, traceEffect, equationContentDiv);
+
+  // Prepend large page break to the top of each scrollable panel
+  loomPanel.element.prepend(makePageBreak('large'));
+  achievementsPanel.element.prepend(makePageBreak('large'));
+  settingsPanel.element.prepend(makePageBreak('large'));
 
   panelsInner.appendChild(loomPanel.element);
   panelsInner.appendChild(achievementsPanel.element);

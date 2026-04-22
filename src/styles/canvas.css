@@ -95,7 +95,7 @@
   height: calc(var(--tab-height) * 3);
   z-index: 3;
   background: rgba(12, 12, 20, 0.95);
-  border-top: 1px solid rgba(201, 168, 76, 0.15);
+  border-top: 1px solid rgba(255, 241, 114, 0.15);
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -132,7 +132,7 @@
 }
 
 .rpg-stat-value--wave {
-  color: #c9a84c;
+  color: #fff172;
 }
 
 .rpg-stat-value--boost {
@@ -152,7 +152,7 @@
   right: 12px;
   padding: 6px 12px;
   background: rgba(12, 12, 20, 0.92);
-  border: 1px solid rgba(201, 168, 76, 0.35);
+  border: 1px solid rgba(255, 241, 114, 0.35);
   border-radius: 8px;
   color: var(--accent);
   font-family: var(--font-primary);
@@ -165,7 +165,7 @@
 }
 
 .rpg-menu-btn:active {
-  background: rgba(201, 168, 76, 0.15);
+  background: rgba(255, 241, 114, 0.15);
 }
 
 /* ── RPG menu panel (replaces weapon-store-panel) ─────────────── */
@@ -188,7 +188,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px 0;
-  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+  border-bottom: 1px solid rgba(255, 241, 114, 0.15);
   position: relative;
   background: rgba(8, 8, 16, 0.97);
   flex-shrink: 0;
@@ -204,7 +204,7 @@
 
 .rpg-menu__close {
   background: none;
-  border: 1px solid rgba(201, 168, 76, 0.3);
+  border: 1px solid rgba(255, 241, 114, 0.3);
   border-radius: 6px;
   color: var(--text-secondary);
   font-size: 14px;
@@ -220,13 +220,13 @@
 }
 
 .rpg-menu__close:active {
-  background: rgba(201, 168, 76, 0.1);
+  background: rgba(255, 241, 114, 0.1);
 }
 
 /* ── RPG menu tabs ─────────────────────────────────────────────── */
 .rpg-menu__tabs {
   display: flex;
-  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+  border-bottom: 1px solid rgba(255, 241, 114, 0.15);
   flex-shrink: 0;
 }
 
@@ -253,7 +253,7 @@
 }
 
 .rpg-menu__tab:active {
-  background: rgba(201, 168, 76, 0.05);
+  background: rgba(255, 241, 114, 0.05);
 }
 
 /* ── RPG menu tab content ──────────────────────────────────────── */
@@ -299,7 +299,7 @@
 
 .rpg-upgrade__card {
   background: rgba(26, 26, 46, 0.8);
-  border: 1px solid rgba(201, 168, 76, 0.15);
+  border: 1px solid rgba(255, 241, 114, 0.15);
   border-radius: 12px;
   padding: 14px;
   display: flex;
@@ -308,8 +308,8 @@
 }
 
 .rpg-upgrade__card--maxed {
-  border-color: rgba(201, 168, 76, 0.4);
-  background: rgba(201, 168, 76, 0.04);
+  border-color: rgba(255, 241, 114, 0.4);
+  background: rgba(255, 241, 114, 0.04);
 }
 
 .rpg-upgrade__name {
@@ -342,8 +342,8 @@
 
 .rpg-upgrade__btn {
   padding: 8px 16px;
-  background: rgba(201, 168, 76, 0.12);
-  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(255, 241, 114, 0.12);
+  border: 1px solid rgba(255, 241, 114, 0.35);
   border-radius: 8px;
   color: var(--accent);
   font-family: var(--font-primary);
@@ -361,7 +361,7 @@
 }
 
 .rpg-upgrade__btn:not(:disabled):active {
-  background: rgba(201, 168, 76, 0.22);
+  background: rgba(255, 241, 114, 0.22);
 }
 
 /* ── Weapon tier badge ─────────────────────────────────────────── */

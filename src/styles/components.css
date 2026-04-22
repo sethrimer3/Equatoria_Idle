@@ -199,7 +199,7 @@
 }
 
 .looms-sub-tab-btn.active {
-  background: rgba(201, 168, 76, 0.12);
+  background: rgba(255, 241, 114, 0.12);
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -499,7 +499,7 @@
 }
 
 .forge-unlock-btn {
-  background: rgba(201, 168, 76, 0.1);
+  background: rgba(255, 241, 114, 0.1);
   border-color: var(--accent) !important;
   color: var(--accent);
   justify-content: center;
@@ -509,7 +509,7 @@
 }
 
 .forge-unlock-btn:not(:disabled):active {
-  background: rgba(201, 168, 76, 0.25);
+  background: rgba(255, 241, 114, 0.25);
 }
 
 /* ── Equation panel — unlocked display ───────────────────────── */
@@ -599,7 +599,7 @@
 }
 
 .achievement-group {
-  border: 1px solid rgba(201, 168, 76, 0.2);
+  border: 1px solid rgba(255, 241, 114, 0.2);
   border-radius: var(--border-radius);
   background: rgba(20, 20, 30, 0.65);
   overflow: hidden;
@@ -608,7 +608,7 @@
 .achievement-group-toggle {
   width: 100%;
   border: 0;
-  border-left: 3px solid rgba(201, 168, 76, 0.25);
+  border-left: 3px solid rgba(255, 241, 114, 0.25);
   background: rgba(16, 16, 24, 0.9);
   color: var(--text-primary);
   display: flex;

@@ -12,7 +12,7 @@
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: rgba(12, 12, 20, 0.95);
-  border-top: 1px solid rgba(201, 168, 76, 0.15);
+  border-top: 1px solid rgba(255, 241, 114, 0.15);
   z-index: 10;
 }
 
@@ -32,12 +32,45 @@
   border-radius: var(--border-radius);
   transition: color 0.15s, background 0.15s;
   min-height: 44px;
+  position: relative;
+  overflow: hidden;
 }
 
-.tab-btn .tab-icon {
-  font-size: 22px;
-  line-height: 1;
-  font-family: var(--font-primary);
+/* ── Sprite icon container ───────────────────────────────────── */
+.tab-icon-sprite {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.tab-icon-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  transition: opacity 0.18s ease;
+}
+
+/* Static tabs: three layered images */
+.tab-icon-img--normal   { opacity: 1; }
+.tab-icon-img--hover    { opacity: 0; }
+.tab-icon-img--selected { opacity: 0; }
+
+/* Hover state — show hover image, hide normal */
+.tab-btn:not(.active):hover .tab-icon-img--normal { opacity: 0; }
+.tab-btn:not(.active):hover .tab-icon-img--hover  { opacity: 1; }
+
+/* Active/selected state — show selected image, hide normal */
+.tab-btn.active .tab-icon-img--normal   { opacity: 0; }
+.tab-btn.active .tab-icon-img--selected { opacity: 1; }
+
+/* Animated tab (upgrades): single image driven by JS, always visible */
+.tab-icon-img--animated {
+  opacity: 1;
 }
 
 .tab-btn .tab-label {
@@ -47,9 +80,10 @@
 
 .tab-btn.active {
   color: var(--accent);
-  background: rgba(201, 168, 76, 0.08);
+  background: rgba(255, 241, 114, 0.08);
 }
 
 .tab-btn:active {
   opacity: 0.7;
 }
+
