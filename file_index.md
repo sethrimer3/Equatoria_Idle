@@ -318,14 +318,16 @@
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
 ### src/render/rpg/rpg-constants.ts
-- All module-level numeric and string constants for the RPG rendering system (~551 lines).
-- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, sword combo, poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, and Euler-fluid injection constants.
+- All module-level numeric and string constants for the RPG rendering system (~590 lines).
+- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, and Euler-fluid injection constants.
+- Also exports `SWORD_SHARD_SHAPES` — readonly polygon vertex data for the 7 prismatic blade shards.
 - Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
 - Exports all constants; consumed by `rpg-render.ts` and `rpg-factories.ts`.
 
 ### src/render/rpg/rpg-types.ts
-- All internal interfaces and type aliases for the RPG rendering system (~496 lines).
-- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces (`HitEffect`, `ShotLine`, `DamageNumber`, etc.).
+- All internal interfaces and type aliases for the RPG rendering system (~530 lines).
+- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces.
+- Diamond sword interfaces: `SwordComboState` (phase `idle | swing | cooldown`, hinge angle+velocity, shard angles chain, swipe/beam effect lists), `SwipeEffect` (disconnected arc visual), `PrismaticBeamEffect` (tail-to-tip appear/fade beam).
 - No runtime dependencies (types only).
 - Exports all types; consumed by `rpg-render.ts` and `rpg-factories.ts`.
 

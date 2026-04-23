@@ -74,9 +74,9 @@ import {
   VORTEX_COLOR, VORTEX_GLOW, VORTEX_SPIN_RATE,
   SWORD_SWING_MS, SWORD_COLOR, SWORD_PRISMATIC_COLORS,
   SWORD_SHARD_COUNT, SWORD_SHARD_SIZE_BASE, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
-  SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
+  SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY, SWORD_SHARD_SHAPES,
   SWORD_BEAM_DURATION_MS, SWORD_SWIPE_VISUAL_MS, SWORD_SWIPE_ARC_HALF_RAD,
-  SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR,
+  SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
   POISON_BOLT_GLOW, POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
@@ -1612,7 +1612,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function buildSwordCombo(weaponId: string): SwordComboState {
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-    const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? 900, tier);
+    const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
     const initAngle  = playerAimAngle;
     return {
       phase: 'idle', phaseMs: 0, cooldownMs,
@@ -1726,9 +1726,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
       : playerStats.atk;
     const swordLength    = getSwordLength(tier);
-    const fullCooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? 900, tier);
+    const fullCooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
+    const nowMs = Date.now();
 
-    // ── 1. Update hinge physics (always, regardless of phase) ──
+    // ── 1. Update hinge physics: angular velocity updated every frame;
+    //       angle integration is skipped during the swing animation (which drives angle directly). ──
     const angleDiff = wrapAngleDiff(playerAimAngle - state.swordAngle);
     state.swordAngularVel += angleDiff * SWORD_HINGE_SPRING_K;
     state.swordAngularVel *= SWORD_HINGE_DAMPING;
@@ -1765,7 +1767,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // ── 3. Add fluid forces from sword drag (each shard per frame) ──
     if (state.phase !== 'cooldown') {
       const dists = getShardDistances(swordLength);
-      const colIdx = Math.floor(Date.now() / 80) % SWORD_PRISMATIC_COLORS.length;
+      const colIdx = Math.floor(nowMs / 80) % SWORD_PRISMATIC_COLORS.length;
       const hexColor = SWORD_PRISMATIC_COLORS[colIdx];
       const pr = parseInt(hexColor.slice(1, 3), 16);
       const pg = parseInt(hexColor.slice(3, 5), 16);
@@ -1837,7 +1839,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       // Add stronger crescent fluid forces during the swipe.
       const numSamples = 6;
-      const colIdx2 = Math.floor(Date.now() / 60) % SWORD_PRISMATIC_COLORS.length;
+      const colIdx2 = Math.floor(nowMs / 60) % SWORD_PRISMATIC_COLORS.length;
       const hexC2 = SWORD_PRISMATIC_COLORS[colIdx2];
       const sr = parseInt(hexC2.slice(1, 3), 16);
       const sg = parseInt(hexC2.slice(3, 5), 16);
@@ -1875,39 +1877,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       state.swipeEffects[i].timerMs -= deltaMs;
       if (state.swipeEffects[i].timerMs <= 0) state.swipeEffects.splice(i, 1);
     }
-    for (const beam of state.beamEffects) {
-      beam.progress += deltaMs / (beam.maxTimerMs * 0.5);
-    }
     for (let i = state.beamEffects.length - 1; i >= 0; i--) {
+      state.beamEffects[i].progress += deltaMs / (state.beamEffects[i].maxTimerMs * 0.5);
       if (state.beamEffects[i].progress >= 2) state.beamEffects.splice(i, 1);
     }
   }
-
-  // ── Polygon shape definitions for the prismatic shards ──────────
-  // Each shape is a list of [cos-offset, sin-offset] multipliers (unit vectors * radius).
-  // Applied as vertex = (cx + cos_off*r, cy + sin_off*r).
-  const SHARD_SHAPES: ReadonlyArray<ReadonlyArray<[number, number]>> = [
-    // Tall diamond (4-gon)
-    [[0, -1.4], [0.6, 0], [0, 1.4], [-0.6, 0]],
-    // Wide triangle
-    [[0, -1], [1.1, 0.8], [-1.1, 0.8]],
-    // Thin rhombus (rotated diamond)
-    [[0.4, -1.1], [1.0, 0], [0.4, 1.1], [-0.6, 0]],
-    // Compact hexagon
-    [[0.5, -0.9], [1.0, 0], [0.5, 0.9], [-0.5, 0.9], [-1.0, 0], [-0.5, -0.9]],
-    // Elongated diamond
-    [[0, -1.6], [0.5, 0], [0, 1.6], [-0.5, 0]],
-    // Inverted triangle
-    [[-1.1, -0.8], [1.1, -0.8], [0, 1.0]],
-    // Small asymmetric shard
-    [[0.3, -1.2], [1.1, 0.3], [-0.1, 1.0], [-0.9, -0.1]],
-  ] as const;
 
   /** Assign a deterministic shape and size to each shard index. */
   function getShardStyle(index: number): { shapeIdx: number; radius: number } {
     // Vary size slightly along the blade: tip shards slightly larger.
     const radius = SWORD_SHARD_SIZE_BASE * (0.85 + 0.3 * (index / (SWORD_SHARD_COUNT - 1)));
-    const shapeIdx = index % SHARD_SHAPES.length;
+    const shapeIdx = index % SWORD_SHARD_SHAPES.length;
     return { shapeIdx, radius };
   }
 
@@ -1927,7 +1907,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const colorIdx = (i + Math.floor(nowMs / 80)) % SWORD_PRISMATIC_COLORS.length;
         const color = SWORD_PRISMATIC_COLORS[colorIdx];
         const { shapeIdx, radius } = getShardStyle(i);
-        const verts = SHARD_SHAPES[shapeIdx];
+        const verts = SWORD_SHARD_SHAPES[shapeIdx];
         // Rotate the shard polygon to align with the blade angle.
         const cosA = Math.cos(state.shardAngles[i]);
         const sinA = Math.sin(state.shardAngles[i]);

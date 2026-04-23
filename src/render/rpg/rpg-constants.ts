@@ -244,6 +244,30 @@ export const SWORD_SWIPE_ARC_HALF_RAD = 1.2;
 export const SWORD_FLUID_DRAG_STR    = 0.4;
 /** Fluid force strength during a swipe (per arc sample). */
 export const SWORD_FLUID_SWIPE_STR   = 2.0;
+/** Default cooldown (ms) when no weapon def is found. */
+export const SWORD_DEFAULT_COOLDOWN_MS = 900;
+
+/**
+ * Polygon shard shapes for the prismatic diamond blade.
+ * Each shape is a list of [cos-offset, sin-offset] multipliers (radius-relative).
+ * Applied as vertex = (cx + cos_off*r, cy + sin_off*r), then rotated by blade angle.
+ */
+export const SWORD_SHARD_SHAPES: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  // Tall diamond (4-gon)
+  [[0, -1.4], [0.6, 0], [0, 1.4], [-0.6, 0]],
+  // Wide triangle
+  [[0, -1], [1.1, 0.8], [-1.1, 0.8]],
+  // Thin rhombus (rotated diamond)
+  [[0.4, -1.1], [1.0, 0], [0.4, 1.1], [-0.6, 0]],
+  // Compact hexagon
+  [[0.5, -0.9], [1.0, 0], [0.5, 0.9], [-0.5, 0.9], [-1.0, 0], [-0.5, -0.9]],
+  // Elongated diamond
+  [[0, -1.6], [0.5, 0], [0, 1.6], [-0.5, 0]],
+  // Inverted triangle
+  [[-1.1, -0.8], [1.1, -0.8], [0, 1.0]],
+  // Small asymmetric shard
+  [[0.3, -1.2], [1.1, 0.3], [-0.1, 1.0], [-0.9, -0.1]],
+] as const;
 
 // ── Iolite poison bolt constants ───────────────────────────────
 export const POISON_ARMOR_IGNORE_PER_TIER = 0.1;   // armorIgnore = tier * this

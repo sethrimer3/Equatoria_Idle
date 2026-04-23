@@ -262,3 +262,20 @@
 **Equipping**: Purchased weapons can be equipped via the `equip_weapon` action.  `rpg-render.ts` reads `rpgSimState.equippedWeaponId` and calls `applyEquipmentStats()` to add weapon ATK/DEF bonuses to the player stats.
 
 **Save format v10**: `rpg.purchasedWeaponIds[]` and `rpg.equippedWeaponId` are persisted.  Older saves default to no purchases.
+
+## Diamond Sword — Prismatic Shard Blade System
+
+**Decision**: The Diamond Sword (`swordCombo` effect) was redesigned from a 3-phase combo (right swing → left swing → 360 spin) to a fast single-swipe system. The visual blade is now 7 prismatic polygon shards (`SWORD_SHARD_SHAPES` in `rpg-constants.ts`) arranged along the blade line, each a distinct small polygon (diamonds, triangles, hexagons, etc.) of roughly half the player size.
+
+**Inertia physics**: The blade hinge uses an angular spring (`SWORD_HINGE_SPRING_K`) + damping (`SWORD_HINGE_DAMPING`) so the sword trails the player's aim direction. Each shard delays the previous with exponential smoothing (`SWORD_SHARD_FOLLOW_BASE` − `i * SWORD_SHARD_FOLLOW_DECAY`), creating a flexible chain-lag from handle to tip.
+
+**Attack**: On cooldown expiry, the nearest enemy within sword range is targeted. A single crescent swipe (`SWORD_SWIPE_ARC_HALF_RAD` ≈ ±69°) sweeps through the enemy. Hit detection uses `swordHitInArc`. All DEF is ignored. Cooldown is fast (900 ms base, scales with tier). Damage lowered (12 base) to compensate.
+
+**Effects on hit**:
+1. Disconnected swipe-arc visual (`SwipeEffect`): a bright prismatic multi-segment arc at the player's position that fades quickly.
+2. Prismatic beam (`PrismaticBeamEffect`): a thin rhombus that appears tail-to-tip cutting across the enemy, then fades tail-to-tip. Positioned slightly perpendicular to the swipe direction.
+3. Euler fluid: crescent-pattern `addForce()` calls during the swing, prismatic-colored, pushing fluid particles in the swipe arc.
+
+**Fluid interaction during drag**: Each frame (outside cooldown), every shard adds a gentle perpendicular `addForce()` to the fluid at its position, with a cycling prismatic color. This makes fluid particles take on prismatic hues as the sword moves.
+
+**Mobile drag fix (same PR)**: Added `canvas.style.touchAction = 'none'` to `game-canvas.ts`. This prevents the browser from firing `pointercancel` when the user begins a scroll gesture, which was the root cause of mote dragging stopping after a few frames on mobile.
