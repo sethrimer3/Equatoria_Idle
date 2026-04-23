@@ -54,6 +54,9 @@ export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   cc.canvas.style.height = '100%';
   cc.canvas.style.imageRendering = 'pixelated';
   cc.canvas.style.display = 'block';
+  // Prevent browser from claiming touch events for scrolling/panning,
+  // which would fire pointercancel and break mote dragging on mobile.
+  cc.canvas.style.touchAction = 'none';
 }
 
 /** Clear the canvas. */

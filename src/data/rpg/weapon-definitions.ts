@@ -214,14 +214,15 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     id: 'diamond_bastion',
     name: 'Diamond Sword',
     description:
-      'An impossibly sharp diamond blade that tears through armour completely. ' +
-      'Performs an epic three-part combo: right swing, left swing, then a full 360 spin, ' +
-      'leaving a brilliant prismatic trail in its wake. Ignores all enemy DEF. ' +
-      'Hard to wield — slow between combos. Higher tiers extend the blade\'s reach.',
+      'A blade of prismatic diamond shards that trails behind the player like a loose hinge. ' +
+      'Automatically swipes at the nearest enemy in range with a blazing-fast crescent cut, ' +
+      'leaving a bright prismatic arc and firing a thin prismatic beam that cuts through the target. ' +
+      'Ignores all enemy DEF. Very fast swipe rate but moderate damage. ' +
+      'Higher tiers extend the blade\'s reach.',
     costTierId: 'diamond',
     cost: 20,
     stats: {
-      damage: 22, cooldownMs: 3500, range: 70, defBonus: 8,
+      damage: 12, cooldownMs: 900, range: 70, defBonus: 8,
       effect: { kind: 'swordCombo' },
     },
   },
