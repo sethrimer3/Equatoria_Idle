@@ -215,16 +215,59 @@ export const VORTEX_COLOR              = '#9664c8';
 export const VORTEX_GLOW               = '#c496f0';
 export const VORTEX_SPIN_RATE          = 2.0;    // rad/s
 
-// ── Diamond sword combo constants ─────────────────────────────
-export const SWORD_SWING1_MS  = 280;   // duration of right arc swing phase
-export const SWORD_SWING2_MS  = 280;   // duration of left arc swing phase
-export const SWORD_SPIN_MS    = 450;   // duration of full spin phase
+// ── Diamond sword constants ────────────────────────────────────
+/** Duration of the single swipe animation (ms). */
+export const SWORD_SWING_MS   = 160;
 export const SWORD_COLOR      = '#88ddff';
 export const SWORD_GLOW       = '#ccf4ff';
-export const SWORD_TRAIL_CAP  = 20;
 export const SWORD_PRISMATIC_COLORS: readonly string[] =
   ['#ff0000', '#ff6600', '#ffff00', '#00ff00', '#0066ff', '#8800ff', '#ff00ff'];
-export const SWORD_TOTAL_COMBO_MS         = SWORD_SWING1_MS + SWORD_SWING2_MS + SWORD_SPIN_MS;
+/** Number of prismatic polygon shards making up the blade. */
+export const SWORD_SHARD_COUNT      = 7;
+/** Base radius (px) of each shard polygon. */
+export const SWORD_SHARD_SIZE_BASE  = 1.5;
+/** Spring stiffness for the blade hinge — pulls swordAngle toward playerAimAngle. */
+export const SWORD_HINGE_SPRING_K   = 0.07;
+/** Per-frame angular-velocity damping for the hinge. */
+export const SWORD_HINGE_DAMPING    = 0.88;
+/** How closely shard[0] (handle) follows the hinge angle per frame (0-1). */
+export const SWORD_SHARD_FOLLOW_BASE  = 0.55;
+/** How much the follow-rate decreases per shard index (tip = most lag). */
+export const SWORD_SHARD_FOLLOW_DECAY = 0.06;
+/** Duration (ms) of the prismatic beam visual after a hit. */
+export const SWORD_BEAM_DURATION_MS   = 400;
+/** Duration (ms) of the disconnected swipe-arc visual. */
+export const SWORD_SWIPE_VISUAL_MS    = 280;
+/** Half-width of the swipe arc in radians (~70°). */
+export const SWORD_SWIPE_ARC_HALF_RAD = 1.2;
+/** Fluid force strength from sword drag (added each frame per shard). */
+export const SWORD_FLUID_DRAG_STR    = 0.4;
+/** Fluid force strength during a swipe (per arc sample). */
+export const SWORD_FLUID_SWIPE_STR   = 2.0;
+/** Default cooldown (ms) when no weapon def is found. */
+export const SWORD_DEFAULT_COOLDOWN_MS = 900;
+
+/**
+ * Polygon shard shapes for the prismatic diamond blade.
+ * Each shape is a list of [cos-offset, sin-offset] multipliers (radius-relative).
+ * Applied as vertex = (cx + cos_off*r, cy + sin_off*r), then rotated by blade angle.
+ */
+export const SWORD_SHARD_SHAPES: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  // Tall diamond (4-gon)
+  [[0, -1.4], [0.6, 0], [0, 1.4], [-0.6, 0]],
+  // Wide triangle
+  [[0, -1], [1.1, 0.8], [-1.1, 0.8]],
+  // Thin rhombus (rotated diamond)
+  [[0.4, -1.1], [1.0, 0], [0.4, 1.1], [-0.6, 0]],
+  // Compact hexagon
+  [[0.5, -0.9], [1.0, 0], [0.5, 0.9], [-0.5, 0.9], [-1.0, 0], [-0.5, -0.9]],
+  // Elongated diamond
+  [[0, -1.6], [0.5, 0], [0, 1.6], [-0.5, 0]],
+  // Inverted triangle
+  [[-1.1, -0.8], [1.1, -0.8], [0, 1.0]],
+  // Small asymmetric shard
+  [[0.3, -1.2], [1.1, 0.3], [-0.1, 1.0], [-0.9, -0.1]],
+] as const;
 
 // ── Iolite poison bolt constants ───────────────────────────────
 export const POISON_ARMOR_IGNORE_PER_TIER = 0.1;   // armorIgnore = tier * this

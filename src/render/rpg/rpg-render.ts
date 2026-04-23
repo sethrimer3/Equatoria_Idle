@@ -72,8 +72,11 @@ import {
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW, LASER_BEAM_WIDTH,
   VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
   VORTEX_COLOR, VORTEX_GLOW, VORTEX_SPIN_RATE,
-  SWORD_SWING1_MS, SWORD_SWING2_MS, SWORD_SPIN_MS, SWORD_COLOR, SWORD_GLOW,
-  SWORD_TRAIL_CAP, SWORD_PRISMATIC_COLORS, SWORD_TOTAL_COMBO_MS,
+  SWORD_SWING_MS, SWORD_COLOR, SWORD_PRISMATIC_COLORS,
+  SWORD_SHARD_COUNT, SWORD_SHARD_SIZE_BASE, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
+  SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY, SWORD_SHARD_SHAPES,
+  SWORD_BEAM_DURATION_MS, SWORD_SWIPE_VISUAL_MS, SWORD_SWIPE_ARC_HALF_RAD,
+  SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
   POISON_BOLT_GLOW, POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
@@ -1585,20 +1588,45 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.restore();
   }
 
-  // ── Diamond sword combo system ─────────────────────────────────
+  // ── Diamond sword system ───────────────────────────────────────
 
   function getSwordLength(tier: number): number { return 30 + (tier - 1) * 8; }
+
+  /** Returns an array of evenly-spaced distances from handle to tip for the shards. */
+  function getShardDistances(swordLength: number): number[] {
+    const handleDist = 5;
+    const dists: number[] = [];
+    for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
+      dists.push(handleDist + (swordLength - handleDist) * (i / (SWORD_SHARD_COUNT - 1)));
+    }
+    return dists;
+  }
+
+  /** Wrap angle delta to [-π, π]. */
+  function wrapAngleDiff(a: number): number {
+    while (a >  Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+  }
 
   function buildSwordCombo(weaponId: string): SwordComboState {
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-    const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? 4000, tier);
-    return { phase: 'idle', phaseMs: 0, cooldownMs, hitThisSwing: new Set(), trailPoints: [] };
+    const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
+    const initAngle  = playerAimAngle;
+    return {
+      phase: 'idle', phaseMs: 0, cooldownMs,
+      hitThisSwing: new Set(),
+      swordAngle: initAngle, swordAngularVel: 0,
+      shardAngles: Array.from({ length: SWORD_SHARD_COUNT }, () => initAngle),
+      swipeArcStart: 0, swipeArcEnd: 0,
+      swipeEffects: [], beamEffects: [],
+    };
   }
 
   /**
-   * Returns true if angle `a` lies within the arc that sweeps counterclockwise
-   * from `start` to `end` (angles in radians).
+   * Returns true if angle `a` lies within the arc swept from `start` toward `end`
+   * in the short (≤ 2π) direction.
    */
   function angleInArc(a: number, start: number, end: number): boolean {
     const diff = ((a - start) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
@@ -1626,6 +1654,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       state.hitThisSwing.add(e);
       hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
       spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, hitColor);
+      // Spawn prismatic beam through the hit enemy.
+      spawnSwordBeam(state, e.x, e.y, arcStart, arcEnd, swordLength);
     };
     for (const e of enemies)          check(e, damageEnemy);
     for (const e of sapphireEnemies)  check(e, (en, d, p) => damageSapphireEnemy(en, d, p, false));
@@ -1649,9 +1679,42 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (dmg > 0) {
           hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
           spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, hitColor);
+          spawnSwordBeam(state, bossEnemy.x, bossEnemy.y, arcStart, arcEnd, swordLength);
         }
       }
     }
+  }
+
+  /**
+   * Spawn a prismatic beam effect cutting across the enemy position.
+   * The beam originates "out of thin air" beside the player, in the swipe direction.
+   */
+  function spawnSwordBeam(
+    state: SwordComboState,
+    enemyX: number, enemyY: number,
+    arcStart: number, arcEnd: number,
+    swordLength: number,
+  ): void {
+    // Direction of the cut: midpoint of the swipe arc.
+    const midAngle = arcStart + wrapAngleDiff(arcEnd - arcStart) * 0.5;
+    const dirX = Math.cos(midAngle);
+    const dirY = Math.sin(midAngle);
+    // Perpendicular offset so the beam appears slightly beside the player.
+    const perpX = -dirY; const perpY = dirX;
+    const perpOffset = 4; // px perpendicular offset
+    // Position the beam so it passes through the enemy, extending from tail to past it.
+    const beamLen = swordLength * 1.5;
+    const halfLen = beamLen * 0.5;
+    const beamCx = enemyX + perpX * perpOffset;
+    const beamCy = enemyY + perpY * perpOffset;
+    state.beamEffects.push({
+      tailX: beamCx - dirX * halfLen,
+      tailY: beamCy - dirY * halfLen,
+      tipX:  beamCx + dirX * halfLen,
+      tipY:  beamCy + dirY * halfLen,
+      progress: 0,
+      maxTimerMs: SWORD_BEAM_DURATION_MS,
+    });
   }
 
   function updateSwordCombo(weaponId: string, deltaMs: number): void {
@@ -1663,121 +1726,302 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
       : playerStats.atk;
     const swordLength    = getSwordLength(tier);
-    const fullCooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? 4000, tier);
+    const fullCooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
+    const nowMs = Date.now();
 
-    // Fade trail points.
-    for (let i = state.trailPoints.length - 1; i >= 0; i--) {
-      state.trailPoints[i].alpha -= deltaMs / 600;
-      if (state.trailPoints[i].alpha <= 0) state.trailPoints.splice(i, 1);
+    // ── 1. Update hinge physics: angular velocity updated every frame;
+    //       angle integration is skipped during the swing animation (which drives angle directly). ──
+    const angleDiff = wrapAngleDiff(playerAimAngle - state.swordAngle);
+    state.swordAngularVel += angleDiff * SWORD_HINGE_SPRING_K;
+    state.swordAngularVel *= SWORD_HINGE_DAMPING;
+    // During swing, override with the animated arc angle.
+    if (state.phase !== 'swing') {
+      state.swordAngle += state.swordAngularVel;
     }
 
+    // ── 2. Update shard chain (each shard lags the previous) ──
+    const followBase = SWORD_SHARD_FOLLOW_BASE;
+    const followDecay = SWORD_SHARD_FOLLOW_DECAY;
+    if (state.phase !== 'swing') {
+      // Shard 0 follows the main hinge angle.
+      const d0 = wrapAngleDiff(state.swordAngle - state.shardAngles[0]);
+      state.shardAngles[0] += d0 * followBase;
+      for (let i = 1; i < SWORD_SHARD_COUNT; i++) {
+        const followRate = Math.max(0.08, followBase - i * followDecay);
+        const di = wrapAngleDiff(state.shardAngles[i - 1] - state.shardAngles[i]);
+        state.shardAngles[i] += di * followRate;
+      }
+    } else {
+      // During swing: drive the blade through the arc; shards follow with their chain lag.
+      const t = Math.min(1, state.phaseMs / SWORD_SWING_MS);
+      const swingAngle = state.swipeArcStart + wrapAngleDiff(state.swipeArcEnd - state.swipeArcStart) * t;
+      state.swordAngle = swingAngle;
+      state.shardAngles[0] = swingAngle;
+      for (let i = 1; i < SWORD_SHARD_COUNT; i++) {
+        const followRate = Math.max(0.08, followBase - i * followDecay);
+        const di = wrapAngleDiff(state.shardAngles[i - 1] - state.shardAngles[i]);
+        state.shardAngles[i] += di * followRate;
+      }
+    }
+
+    // ── 3. Add fluid forces from sword drag (each shard per frame) ──
+    if (state.phase !== 'cooldown') {
+      const dists = getShardDistances(swordLength);
+      const colIdx = Math.floor(nowMs / 80) % SWORD_PRISMATIC_COLORS.length;
+      const hexColor = SWORD_PRISMATIC_COLORS[colIdx];
+      const pr = parseInt(hexColor.slice(1, 3), 16);
+      const pg = parseInt(hexColor.slice(3, 5), 16);
+      const pb = parseInt(hexColor.slice(5, 7), 16);
+      for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
+        const sx = mote.x + Math.cos(state.shardAngles[i]) * dists[i];
+        const sy = mote.y + Math.sin(state.shardAngles[i]) * dists[i];
+        // Push perpendicular to blade direction.
+        const perpX = -Math.sin(state.shardAngles[i]);
+        const perpY =  Math.cos(state.shardAngles[i]);
+        fluid.addForce({
+          x: sx, y: sy,
+          vx: perpX * SWORD_FLUID_DRAG_STR * FLUID_VEL_FRAME_TO_PX_S,
+          vy: perpY * SWORD_FLUID_DRAG_STR * FLUID_VEL_FRAME_TO_PX_S,
+          r: pr, g: pg, b: pb,
+          strength: FLUID_PROJECTILE_STRENGTH * 0.5,
+        });
+      }
+    }
+
+    // ── 4. Phase state machine ──
     state.phaseMs += deltaMs;
 
     if (state.phase === 'idle') {
       if (state.phaseMs >= state.cooldownMs) {
-        state.phase = 'swing1'; state.phaseMs = 0; state.hitThisSwing.clear();
+        // Find closest enemy within sword range.
+        const rangeSq = swordLength * swordLength;
+        let bestDist = Infinity;
+        let bestAngle = playerAimAngle;
+        const checkEnemy = (e: { x: number; y: number }) => {
+          const dx = e.x - mote.x, dy = e.y - mote.y;
+          const d = dx * dx + dy * dy;
+          if (d < bestDist && d <= rangeSq) { bestDist = d; bestAngle = Math.atan2(dy, dx); }
+        };
+        for (const e of enemies)          checkEnemy(e);
+        for (const e of sapphireEnemies)  checkEnemy(e);
+        for (const e of emeraldEnemies)   checkEnemy(e);
+        for (const e of amberEnemies)     checkEnemy(e);
+        for (const e of voidEnemies)      checkEnemy(e);
+        for (const e of quartzEnemies)    checkEnemy(e);
+        for (const e of rubyEnemies)      checkEnemy(e);
+        for (const e of sunstoneEnemies)  checkEnemy(e);
+        for (const e of citrineEnemies)   checkEnemy(e);
+        for (const e of ioliteEnemies)    checkEnemy(e);
+        for (const e of amethystEnemies)  checkEnemy(e);
+        for (const e of diamondEnemies)   checkEnemy(e);
+        for (const e of nullstoneEnemies) checkEnemy(e);
+        if (bossEnemy) checkEnemy(bossEnemy);
+
+        if (bestDist <= rangeSq) {
+          // Enemy in range — trigger a swipe centered on that enemy.
+          const half = SWORD_SWIPE_ARC_HALF_RAD;
+          state.swipeArcStart = bestAngle - half;
+          state.swipeArcEnd   = bestAngle + half;
+          state.phase = 'swing'; state.phaseMs = 0; state.hitThisSwing.clear();
+          // Spawn disconnected swipe visual.
+          state.swipeEffects.push({
+            x: mote.x, y: mote.y,
+            arcStart: state.swipeArcStart, arcEnd: state.swipeArcEnd,
+            swordLength,
+            timerMs: SWORD_SWIPE_VISUAL_MS,
+            maxTimerMs: SWORD_SWIPE_VISUAL_MS,
+          });
+        }
       }
-      return;
-    }
+    } else if (state.phase === 'swing') {
+      // Hit detection during the swing.
+      swordHitInArc(state, swordLength, rawDamage, state.swipeArcStart, state.swipeArcEnd);
 
-    const addTrailPoint = (x: number, y: number) => {
-      const colorIdx = state.trailPoints.length % SWORD_PRISMATIC_COLORS.length;
-      if (state.trailPoints.length >= SWORD_TRAIL_CAP) state.trailPoints.shift();
-      state.trailPoints.push({ x, y, color: SWORD_PRISMATIC_COLORS[colorIdx], alpha: 1.0 });
-    };
-
-    if (state.phase === 'swing1') {
-      // Right arc: aim-60° → aim+20°
-      const arcStart = playerAimAngle - Math.PI / 3;
-      const arcEnd   = playerAimAngle + Math.PI / 9;
-      const t        = Math.min(1, state.phaseMs / SWORD_SWING1_MS);
-      addTrailPoint(
-        mote.x + Math.cos(arcStart + t * (arcEnd - arcStart)) * swordLength,
-        mote.y + Math.sin(arcStart + t * (arcEnd - arcStart)) * swordLength,
-      );
-      swordHitInArc(state, swordLength, rawDamage, arcStart, arcEnd);
-      if (state.phaseMs >= SWORD_SWING1_MS) {
-        state.phase = 'swing2'; state.phaseMs = 0; state.hitThisSwing.clear();
-        removeDeadEnemies(); checkWaveCompletion();
+      // Add stronger crescent fluid forces during the swipe.
+      const numSamples = 6;
+      const colIdx2 = Math.floor(nowMs / 60) % SWORD_PRISMATIC_COLORS.length;
+      const hexC2 = SWORD_PRISMATIC_COLORS[colIdx2];
+      const sr = parseInt(hexC2.slice(1, 3), 16);
+      const sg = parseInt(hexC2.slice(3, 5), 16);
+      const sb = parseInt(hexC2.slice(5, 7), 16);
+      const t2 = Math.min(1, state.phaseMs / SWORD_SWING_MS);
+      const arcSpan = wrapAngleDiff(state.swipeArcEnd - state.swipeArcStart);
+      for (let s = 0; s < numSamples; s++) {
+        const frac = s / (numSamples - 1);
+        const angle = state.swipeArcStart + arcSpan * frac;
+        // Use the tip position for maximum reach.
+        fluid.addForce({
+          x: mote.x + Math.cos(angle) * swordLength,
+          y: mote.y + Math.sin(angle) * swordLength,
+          vx: Math.cos(angle) * SWORD_FLUID_SWIPE_STR * FLUID_VEL_FRAME_TO_PX_S * t2,
+          vy: Math.sin(angle) * SWORD_FLUID_SWIPE_STR * FLUID_VEL_FRAME_TO_PX_S * t2,
+          r: sr, g: sg, b: sb,
+          strength: FLUID_PROJECTILE_STRENGTH * 2.0,
+        });
       }
-      return;
-    }
 
-    if (state.phase === 'swing2') {
-      // Left arc: aim+20° → aim-160° (counterclockwise 180°)
-      const arcStart = playerAimAngle + Math.PI / 9;
-      const arcEnd   = playerAimAngle - Math.PI * (8 / 9);
-      const t        = Math.min(1, state.phaseMs / SWORD_SWING2_MS);
-      addTrailPoint(
-        mote.x + Math.cos(arcStart + t * (arcEnd - arcStart)) * swordLength,
-        mote.y + Math.sin(arcStart + t * (arcEnd - arcStart)) * swordLength,
-      );
-      swordHitInArc(state, swordLength, rawDamage, arcStart, arcEnd);
-      if (state.phaseMs >= SWORD_SWING2_MS) {
-        state.phase = 'spin'; state.phaseMs = 0; state.hitThisSwing.clear();
-        removeDeadEnemies(); checkWaveCompletion();
-      }
-      return;
-    }
-
-    if (state.phase === 'spin') {
-      const t = Math.min(1, state.phaseMs / SWORD_SPIN_MS);
-      addTrailPoint(
-        mote.x + Math.cos(playerAimAngle + t * Math.PI * 2) * swordLength,
-        mote.y + Math.sin(playerAimAngle + t * Math.PI * 2) * swordLength,
-      );
-      // Full circle: any enemy within swordLength is hit once.
-      swordHitInArc(state, swordLength, rawDamage, 0, Math.PI * 2);
-      if (state.phaseMs >= SWORD_SPIN_MS) {
-        const remainingCooldown = fullCooldownMs - SWORD_TOTAL_COMBO_MS;
+      if (state.phaseMs >= SWORD_SWING_MS) {
         state.phase = 'cooldown'; state.phaseMs = 0;
-        state.cooldownMs = Math.max(0, remainingCooldown);
+        state.cooldownMs = Math.max(0, fullCooldownMs - SWORD_SWING_MS);
         state.hitThisSwing.clear();
         removeDeadEnemies(); checkWaveCompletion();
       }
-      return;
-    }
-
-    if (state.phase === 'cooldown') {
+    } else if (state.phase === 'cooldown') {
       if (state.phaseMs >= state.cooldownMs) {
         state.phase = 'idle'; state.phaseMs = 0; state.cooldownMs = fullCooldownMs;
       }
     }
+
+    // ── 5. Age swipe and beam effects (unconditional) ──
+    for (let i = state.swipeEffects.length - 1; i >= 0; i--) {
+      state.swipeEffects[i].timerMs -= deltaMs;
+      if (state.swipeEffects[i].timerMs <= 0) state.swipeEffects.splice(i, 1);
+    }
+    for (let i = state.beamEffects.length - 1; i >= 0; i--) {
+      state.beamEffects[i].progress += deltaMs / (state.beamEffects[i].maxTimerMs * 0.5);
+      if (state.beamEffects[i].progress >= 2) state.beamEffects.splice(i, 1);
+    }
+  }
+
+  /** Assign a deterministic shape and size to each shard index. */
+  function getShardStyle(index: number): { shapeIdx: number; radius: number } {
+    // Vary size slightly along the blade: tip shards slightly larger.
+    const radius = SWORD_SHARD_SIZE_BASE * (0.85 + 0.3 * (index / (SWORD_SHARD_COUNT - 1)));
+    const shapeIdx = index % SWORD_SHARD_SHAPES.length;
+    return { shapeIdx, radius };
   }
 
   function drawSwordCombos(): void {
     for (const [weaponId, state] of swordComboStates) {
-      if (state.phase === 'idle' || state.phase === 'cooldown') continue;
       const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
       const swordLength = getSwordLength(tier);
+      const dists = getShardDistances(swordLength);
+      const nowMs = Date.now();
+
       ctx.save();
-      // Prismatic trail dots
-      for (const pt of state.trailPoints) {
-        ctx.globalAlpha = pt.alpha * 0.7;
-        ctx.shadowBlur  = 4; ctx.shadowColor = pt.color; ctx.fillStyle = pt.color;
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2); ctx.fill();
+
+      // ── A. Draw prismatic polygon shards ──────────────────────
+      for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
+        const sx = mote.x + Math.cos(state.shardAngles[i]) * dists[i];
+        const sy = mote.y + Math.sin(state.shardAngles[i]) * dists[i];
+        const colorIdx = (i + Math.floor(nowMs / 80)) % SWORD_PRISMATIC_COLORS.length;
+        const color = SWORD_PRISMATIC_COLORS[colorIdx];
+        const { shapeIdx, radius } = getShardStyle(i);
+        const verts = SWORD_SHARD_SHAPES[shapeIdx];
+        // Rotate the shard polygon to align with the blade angle.
+        const cosA = Math.cos(state.shardAngles[i]);
+        const sinA = Math.sin(state.shardAngles[i]);
+
+        ctx.globalAlpha = state.phase === 'swing' ? 1.0 : 0.85;
+        ctx.fillStyle = color;
+        ctx.shadowBlur = 5 + (state.phase === 'swing' ? 4 : 0);
+        ctx.shadowColor = color;
+        ctx.beginPath();
+        for (let v = 0; v < verts.length; v++) {
+          const [cu, su] = verts[v];
+          // Rotate local vertex by blade angle.
+          const vx = sx + (cu * cosA - su * sinA) * radius;
+          const vy = sy + (cu * sinA + su * cosA) * radius;
+          if (v === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
+        }
+        ctx.closePath();
+        ctx.fill();
         ctx.shadowBlur = 0;
+
+        // White core highlight for each shard.
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(sx, sy, radius * 0.3, 0, Math.PI * 2); ctx.fill();
       }
-      // Current blade line
-      const t = Math.min(1, state.phaseMs / (
-        state.phase === 'swing1' ? SWORD_SWING1_MS :
-        state.phase === 'swing2' ? SWORD_SWING2_MS : SWORD_SPIN_MS
-      ));
-      let curAngle: number;
-      if (state.phase === 'swing1') {
-        curAngle = (playerAimAngle - Math.PI / 3) + t * (Math.PI / 3 + Math.PI / 9);
-      } else if (state.phase === 'swing2') {
-        curAngle = (playerAimAngle + Math.PI / 9) + t * (-(Math.PI / 9 + Math.PI * (8 / 9)));
-      } else {
-        curAngle = playerAimAngle + t * Math.PI * 2;
+
+      // ── B. Draw disconnected swipe-arc visuals ─────────────────
+      for (const fx of state.swipeEffects) {
+        const elapsed = fx.maxTimerMs - fx.timerMs;
+        const lifeRatio = elapsed / fx.maxTimerMs;           // 0→1 as effect ages
+        const alpha = (1 - lifeRatio) * 0.85;
+        const arcSpan = wrapAngleDiff(fx.arcEnd - fx.arcStart);
+        const numArcs = SWORD_PRISMATIC_COLORS.length;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = alpha;
+        for (let ci = 0; ci < numArcs; ci++) {
+          const angOffset = (ci / numArcs) * arcSpan;
+          const segStart = fx.arcStart + angOffset;
+          const segEnd   = segStart + arcSpan / numArcs;
+          ctx.strokeStyle = SWORD_PRISMATIC_COLORS[ci];
+          ctx.shadowBlur  = 8; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
+          ctx.beginPath();
+          ctx.arc(fx.x, fx.y, fx.swordLength, segStart, segEnd);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+        ctx.lineWidth = 1;
       }
-      const tipX = mote.x + Math.cos(curAngle) * swordLength;
-      const tipY = mote.y + Math.sin(curAngle) * swordLength;
-      ctx.globalAlpha = 0.9;
-      ctx.shadowBlur = 8; ctx.shadowColor = SWORD_GLOW;
-      ctx.strokeStyle = SWORD_COLOR; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(mote.x, mote.y); ctx.lineTo(tipX, tipY); ctx.stroke();
-      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.lineWidth = 1;
+
+      // ── C. Draw prismatic beam effects ─────────────────────────
+      for (const beam of state.beamEffects) {
+        const prog = beam.progress;
+        if (prog >= 2) continue;
+
+        let drawTailX: number, drawTailY: number;
+        let drawTipX:  number, drawTipY:  number;
+        let alpha: number;
+
+        if (prog < 1) {
+          // Appearing: beam draws from tail toward tip.
+          drawTailX = beam.tailX;
+          drawTailY = beam.tailY;
+          drawTipX  = beam.tailX + (beam.tipX - beam.tailX) * prog;
+          drawTipY  = beam.tailY + (beam.tipY - beam.tailY) * prog;
+          alpha = 0.95;
+        } else {
+          // Fading: beam erases from tail toward tip.
+          const fadeT = prog - 1;
+          drawTailX = beam.tailX + (beam.tipX - beam.tailX) * fadeT;
+          drawTailY = beam.tailY + (beam.tipY - beam.tailY) * fadeT;
+          drawTipX  = beam.tipX;
+          drawTipY  = beam.tipY;
+          alpha = 1 - fadeT * 0.9;
+        }
+
+        const dx = drawTipX - drawTailX, dy = drawTipY - drawTailY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 0.1) continue;
+        const nx = dx / len, ny = dy / len; // unit along beam
+        const px = -ny, py = nx;            // perpendicular
+
+        // Draw as a thin diamond (rhombus): 4 vertices.
+        const halfWidth = 1.0; // px half-width at centre
+        const cx = (drawTailX + drawTipX) * 0.5;
+        const cy = (drawTailY + drawTipY) * 0.5;
+
+        const colorIdx3 = Math.floor(nowMs / 50) % SWORD_PRISMATIC_COLORS.length;
+        const bColor = SWORD_PRISMATIC_COLORS[colorIdx3];
+
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = bColor;
+        ctx.shadowBlur = 10; ctx.shadowColor = bColor;
+        ctx.beginPath();
+        ctx.moveTo(drawTailX, drawTailY);
+        ctx.lineTo(cx + px * halfWidth, cy + py * halfWidth);
+        ctx.lineTo(drawTipX, drawTipY);
+        ctx.lineTo(cx - px * halfWidth, cy - py * halfWidth);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Bright white core.
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(drawTailX, drawTailY);
+        ctx.lineTo(cx + px * halfWidth * 0.4, cy + py * halfWidth * 0.4);
+        ctx.lineTo(drawTipX, drawTipY);
+        ctx.lineTo(cx - px * halfWidth * 0.4, cy - py * halfWidth * 0.4);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
       ctx.restore();
     }
   }

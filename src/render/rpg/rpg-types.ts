@@ -204,18 +204,57 @@ export interface VortexWeaponState {
 
 // ── Diamond sword combo interfaces ────────────────────────────
 
-export type SwordComboPhase = 'idle' | 'swing1' | 'swing2' | 'spin' | 'cooldown';
+export type SwordComboPhase = 'idle' | 'swing' | 'cooldown';
+
+/** A disconnected prismatic arc visual spawned when the sword swipes. */
+export interface SwipeEffect {
+  /** Player position at moment of swipe. */
+  x: number; y: number;
+  /** Arc start angle (radians). */
+  arcStart: number;
+  /** Arc end angle (radians). */
+  arcEnd: number;
+  /** Sword reach used for the arc radius. */
+  swordLength: number;
+  timerMs: number;
+  maxTimerMs: number;
+}
+
+/**
+ * A thin prismatic diamond-shaped beam that appears from tail to tip,
+ * then fades from tail to tip.
+ */
+export interface PrismaticBeamEffect {
+  tailX: number; tailY: number;
+  tipX:  number; tipY:  number;
+  /** Animation progress: 0→1 = appearing, 1→2 = fading. */
+  progress: number;
+  /** Total duration in ms (split equally between appear and fade). */
+  maxTimerMs: number;
+}
 
 export interface SwordComboState {
   phase: SwordComboPhase;
   /** Milliseconds elapsed in the current phase. */
   phaseMs: number;
-  /** Total ms of cooldown before next combo starts (or remaining cooldown time). */
+  /** Total ms of cooldown before next swing starts. */
   cooldownMs: number;
-  /** Enemies already struck in the current swing phase (reset each phase). */
+  /** Enemies already struck in the current swing (reset each swing). */
   hitThisSwing: Set<object>;
-  /** Prismatic trail points for the sword tip. */
-  trailPoints: Array<{ x: number; y: number; color: string; alpha: number }>;
+  /** Current blade hinge angle (maintained with spring+inertia). */
+  swordAngle: number;
+  /** Angular velocity of the hinge. */
+  swordAngularVel: number;
+  /** Per-shard angles chained from handle (0) to tip (N-1). */
+  shardAngles: number[];
+  /** Swipe arc start angle (set when a swing begins). */
+  swipeArcStart: number;
+  /** Swipe arc end angle (set when a swing begins). */
+  swipeArcEnd: number;
+  /** Disconnected swipe-arc visuals. */
+  swipeEffects: SwipeEffect[];
+  /** Prismatic beam visuals spawned on enemy hit. */
+  beamEffects: PrismaticBeamEffect[];
 }
 
 // ── Iolite poison bolt interfaces ─────────────────────────────
