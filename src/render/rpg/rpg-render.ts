@@ -166,6 +166,17 @@ import {
   FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
   FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
   FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
+  FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
+  FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
+  FRACTERYL_ENEMY_COLOR, FRACTERYL_ENEMY_GLOW,
+  FRACTERYL_ENEMY_SIZE, FRACTERYL_BURST_CD_MS, FRACTERYL_BURST_JITTER,
+  FRACTERYL_PATROL_TURN_MS,
+  EIGENSTEIN_ENEMY_COLOR, EIGENSTEIN_ENEMY_GLOW,
+  EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_BEAM_CD_MS, EIGENSTEIN_BEAM_JITTER,
+  EIGENSTEIN_PATROL_TURN_MS, EIGENSTEIN_BEAM_CHARGE_MS, EIGENSTEIN_BEAM_FIRE_MS,
+  DANMAKU_BULLET_SPEED, DANMAKU_SAFE_ANGLE_WIDTH,
+  DANMAKU_RING_COUNT, DANMAKU_TELEPORT_MARGIN,
+  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
 } from './rpg-constants';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
@@ -186,6 +197,9 @@ import type {
   DiamondEnemy, DiamondShard,
   NullstoneEnemy, VoidTendril,
   BossEnemy, BossProjectile,
+  FracterylEnemy, FracterylShard,
+  EigensteinEnemy, EigensteinBeam,
+  DanmakuSafeZone,
 } from './rpg-types';
 import {
   makeLaserEnemy, makeSapphireEnemy, makeSapphireMissile,
@@ -194,6 +208,8 @@ import {
   makeSunstoneEnemy, makeCitrineEnemy, makeCitrineBolt, makeIoliteEnemy,
   makeAmethystEnemy, makeAmethystShard, makeDiamondEnemy, makeDiamondShard,
   makeNullstoneEnemy, makeVoidTendril,
+  makeFracterylEnemy, makeFracterylShard,
+  makeEigensteinEnemy, makeDanmakuSafeZone,
 } from './rpg-factories';
 
 // ── Dynamic internal resolution ───────────────────────────────────
@@ -304,6 +320,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const diamondShards: DiamondShard[]      = [];
   const nullstoneEnemies: NullstoneEnemy[] = [];
   const voidTendrils: VoidTendril[]        = [];
+  const fracterylEnemies: FracterylEnemy[] = [];
+  const fracterylShards: FracterylShard[]  = [];
+  const eigensteinEnemies: EigensteinEnemy[] = [];
+  const eigensteinBeams: EigensteinBeam[]  = [];
 
   // ── Vortex weapon state ────────────────────────────────────────
   const activeVortexes: NullstoneVortex[]                = [];
@@ -320,6 +340,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let playerAimAngle = -Math.PI / 2;  // default: upward
 
   let bossEnemy: BossEnemy | null = null;
+  let danmakuSafeZone: DanmakuSafeZone | null = null;
   const bossProjectiles: BossProjectile[] = [];
 
   const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x140A); // ᑩᒱᕓᐊ — UCAS characters chosen for aesthetic angular appearance
@@ -578,6 +599,26 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return dmg;
   }
 
+  function damageFracterylEnemy(enemy: FracterylEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
+  function damageFracterylShard(shard: FracterylShard, rawDamage: number): number {
+    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+    shard.hp = Math.max(0, shard.hp - dmg);
+    return dmg;
+  }
+
+  function damageEigensteinEnemy(enemy: EigensteinEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) enemy.hp -= dmg;
+    return dmg;
+  }
+
   function damageBossEnemy(rawDamage: number, defPierceRatio: number): number {
     const boss = bossEnemy;
     if (!boss) return 0;
@@ -651,7 +692,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Represents any targetable entity. */
   type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
     | 'quartz' | 'quartzspike' | 'ruby' | 'rubybolt' | 'sunstone' | 'citrine' | 'citrinebolt'
-    | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril' | 'boss';
+    | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril'
+    | 'fracteryl' | 'fracterylshard' | 'eigenstein'
+    | 'boss';
   interface ClosestTarget {
     kind: TargetKind;
     x: number; y: number;
@@ -677,6 +720,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     diamondshard?: DiamondShard;
     nullstone?: NullstoneEnemy;
     voidtendril?: VoidTendril;
+    fracteryl?: FracterylEnemy;
+    fracterylshard?: FracterylShard;
+    eigenstein?: EigensteinEnemy;
     boss?: BossEnemy;
   }
 
@@ -793,6 +839,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = { kind: 'voidtendril', x: t.x, y: t.y, distSq: d, voidtendril: t }; }
     }
+    for (const e of fracterylEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'fracteryl', x: e.x, y: e.y, distSq: d, fracteryl: e }; }
+    }
+    for (const s of fracterylShards) {
+      const dx = s.x - mote.x, dy = s.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'fracterylshard', x: s.x, y: s.y, distSq: d, fracterylshard: s }; }
+    }
+    for (const e of eigensteinEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'eigenstein', x: e.x, y: e.y, distSq: d, eigenstein: e }; }
+    }
     if (bossEnemy) {
       const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
       const d = dx * dx + dy * dy;
@@ -803,10 +864,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   /** Returns the closest enemy body (not projectiles) within rangeSq. */
   function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
-    | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | BossEnemy | null {
+    | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
+    | FracterylEnemy | EigensteinEnemy | BossEnemy | null {
     let bestSq = rangeSq;
     let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
-      | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | BossEnemy | null = null;
+      | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
+      | FracterylEnemy | EigensteinEnemy | BossEnemy | null = null;
     for (const e of enemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
@@ -868,6 +931,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (d <= bestSq) { bestSq = d; best = e; }
     }
     for (const e of nullstoneEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of fracterylEnemies) {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
+    for (const e of eigensteinEnemies) {
       const dx = e.x - mote.x, dy = e.y - mote.y;
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = e; }
@@ -1157,6 +1230,38 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
       if (hit) continue;
 
+      // Collision with fracteryl enemies and shards
+      for (const e of fracterylEnemies) {
+        const hitR = FRACTERYL_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageFracterylEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+      for (const s of fracterylShards) {
+        const dx = p.x - s.x, dy = p.y - s.y;
+        if (dx * dx + dy * dy < (FRACTERYL_ENEMY_SIZE * 0.5 + SAND_PROJ_SIZE) ** 2) {
+          damageFracterylShard(s, damage);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with eigenstein enemies
+      for (const e of eigensteinEnemies) {
+        const hitR = EIGENSTEIN_ENEMY_SIZE + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageEigensteinEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
       // Collision with boss
       if (bossEnemy) {
         const bossHitSize = BOSS_SIZE_BASE + bossEnemy.bossId * 1.5;
@@ -1311,7 +1416,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       stepChainPhysics(ws, dt, CHAIN_ANCHOR_K);
 
       // Contact damage: check all nodes against all enemies
-      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy): void => {
+      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy): void => {
         const nodeR = chainNodeRadius(CHAIN_NODES - 1); // use tip radius for hit detection
         const r = nodeR + LASER_ENEMY_SIZE;
         const dx = tx - target.x, dy = ty - target.y;
@@ -1323,19 +1428,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
             if ('shieldHp' in target && !('kind' in target)) {
               dmg = damageSapphireEnemy(target as SapphireEnemy, contactDamage, 0, false);
             } else if ('kind' in target) {
-              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy;
+              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy;
               switch (t.kind) {
-                case 'emerald':   dmg = damageEmeraldEnemy(t, contactDamage, 0); break;
-                case 'amber':     dmg = damageAmberEnemy(t, contactDamage, 0); break;
-                case 'void':      dmg = damageVoidEnemy(t, contactDamage, 0); break;
-                case 'quartz':    dmg = damageQuartzEnemy(t, contactDamage, 0); break;
-                case 'ruby':      dmg = damageRubyEnemy(t, contactDamage, 0); break;
-                case 'sunstone':  dmg = damageSunstoneEnemy(t, contactDamage, 0); break;
-                case 'citrine':   dmg = damageCitrineEnemy(t, contactDamage, 0); break;
-                case 'iolite':    dmg = damageIoliteEnemy(t, contactDamage, 0); break;
-                case 'amethyst':  dmg = damageAmethystEnemy(t, contactDamage, 0, false); break;
-                case 'diamond':   dmg = damageDiamondEnemy(t, contactDamage, 0); break;
-                case 'nullstone': dmg = damageNullstoneEnemy(t, contactDamage, 0); break;
+                case 'emerald':    dmg = damageEmeraldEnemy(t, contactDamage, 0); break;
+                case 'amber':      dmg = damageAmberEnemy(t, contactDamage, 0); break;
+                case 'void':       dmg = damageVoidEnemy(t, contactDamage, 0); break;
+                case 'quartz':     dmg = damageQuartzEnemy(t, contactDamage, 0); break;
+                case 'ruby':       dmg = damageRubyEnemy(t, contactDamage, 0); break;
+                case 'sunstone':   dmg = damageSunstoneEnemy(t, contactDamage, 0); break;
+                case 'citrine':    dmg = damageCitrineEnemy(t, contactDamage, 0); break;
+                case 'iolite':     dmg = damageIoliteEnemy(t, contactDamage, 0); break;
+                case 'amethyst':   dmg = damageAmethystEnemy(t, contactDamage, 0, false); break;
+                case 'diamond':    dmg = damageDiamondEnemy(t, contactDamage, 0); break;
+                case 'nullstone':  dmg = damageNullstoneEnemy(t, contactDamage, 0); break;
+                case 'fracteryl':  dmg = damageFracterylEnemy(t, contactDamage, 0); break;
+                case 'eigenstein': dmg = damageEigensteinEnemy(t, contactDamage, 0); break;
               }
             } else {
               dmg = damageEnemy(target as LaserEnemy, contactDamage, 0);
@@ -1361,6 +1468,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         for (const e of amethystEnemies)  applyContactDamage(nx, ny, e);
         for (const e of diamondEnemies)   applyContactDamage(nx, ny, e);
         for (const e of nullstoneEnemies) applyContactDamage(nx, ny, e);
+        for (const e of fracterylEnemies) applyContactDamage(nx, ny, e);
+        for (const e of eigensteinEnemies) applyContactDamage(nx, ny, e);
       }
       // Apply chain whip damage to boss
       if (bossEnemy) {
@@ -1522,6 +1631,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       for (const e of amethystEnemies)  applyPull(e);
       for (const e of diamondEnemies)   applyPull(e);
       for (const e of nullstoneEnemies) applyPull(e);
+      for (const e of fracterylEnemies) applyPull(e);
+      for (const e of eigensteinEnemies) applyPull(e);
       if (bossEnemy) applyPull(bossEnemy);
 
       // Fluid inward swirl
@@ -1548,6 +1659,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         for (const e of amethystEnemies)  applyVortexTickToEnemy(v, e, (en, dmg, p) => damageAmethystEnemy(en, dmg, p, false));
         for (const e of diamondEnemies)   applyVortexTickToEnemy(v, e, damageDiamondEnemy);
         for (const e of nullstoneEnemies) applyVortexTickToEnemy(v, e, damageNullstoneEnemy);
+        for (const e of fracterylEnemies) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageFracterylEnemy(en, dmg, p));
+        for (const e of eigensteinEnemies) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEigensteinEnemy(en, dmg, p));
         if (bossEnemy) {
           const bx = bossEnemy.x - v.x, by = bossEnemy.y - v.y;
           if (bx * bx + by * by <= v.radiusPx * v.radiusPx) {
@@ -1670,6 +1783,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (const e of amethystEnemies)  check(e, (en, d, p) => damageAmethystEnemy(en, d, p, false));
     for (const e of diamondEnemies)   check(e, damageDiamondEnemy);
     for (const e of nullstoneEnemies) check(e, damageNullstoneEnemy);
+    for (const e of fracterylEnemies) check(e, (en, d, p) => damageFracterylEnemy(en, d, p));
+    for (const e of eigensteinEnemies) check(e, (en, d, p) => damageEigensteinEnemy(en, d, p));
     if (bossEnemy && !state.hitThisSwing.has(bossEnemy)) {
       const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
       if (dx * dx + dy * dy <= swordLength * swordLength &&
@@ -2124,6 +2239,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (!hit) for (const e of amethystEnemies)  { if (tryHit(e, (en, d, r) => damageAmethystEnemy(en, d, r, false))) { hit = true; break; } }
       if (!hit) for (const e of diamondEnemies)   { if (tryHit(e, damageDiamondEnemy))                        { hit = true; break; } }
       if (!hit) for (const e of nullstoneEnemies) { if (tryHit(e, damageNullstoneEnemy))                      { hit = true; break; } }
+      if (!hit) for (const e of fracterylEnemies) { if (tryHit(e, (en, d, r) => damageFracterylEnemy(en, d, r))) { hit = true; break; } }
+      if (!hit) for (const e of eigensteinEnemies) { if (tryHit(e, (en, d, r) => damageEigensteinEnemy(en, d, r))) { hit = true; break; } }
       if (!hit && bossEnemy) {
         const boss = bossEnemy;
         const dx = p.x - boss.x, dy = p.y - boss.y;
@@ -2405,6 +2522,32 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const perpDist = Math.abs(ex * dirY - ey * dirX);
       if (perpDist <= NULLSTONE_ENEMY_SIZE * 2) {
         const dmg = damageNullstoneEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit fracteryl enemies on the beam path
+    for (const e of fracterylEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= FRACTERYL_ENEMY_SIZE * 2) {
+        const dmg = damageFracterylEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit eigenstein enemies on the beam path
+    for (const e of eigensteinEnemies) {
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= EIGENSTEIN_ENEMY_SIZE * 2) {
+        const dmg = damageEigensteinEnemy(e, baseDamage, 1.0);
         hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
         spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
       }
@@ -2701,6 +2844,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       + sunstoneEnemies.length + citrineEnemies.length + citrineBolts.length
       + ioliteEnemies.length + amethystEnemies.length + amethystShards.length
       + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length
+      + fracterylEnemies.length + fracterylShards.length + eigensteinEnemies.length
       + (bossEnemy ? 1 : 0);
     if (totalTargets === 0) return;
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
@@ -2835,6 +2979,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
         }
       }
+      for (const enemy of fracterylEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageFracterylEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
+      for (const enemy of eigensteinEnemies) {
+        const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
+        if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
+          const dmg = damageEigensteinEnemy(enemy, rawDamage, 0);
+          spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+        }
+      }
       if (bossEnemy) {
         const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
         if (dx * dx + dy * dy <= aoeRadius * aoeRadius) {
@@ -2856,6 +3014,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         sunstone?: SunstoneEnemy; citrine?: CitrineEnemy; citrinebolt?: CitrineBolt;
         iolite?: IoliteEnemy; amethyst?: AmethystEnemy; amethystshard?: AmethystShard;
         diamond?: DiamondEnemy; diamondshard?: DiamondShard; nullstone?: NullstoneEnemy; voidtendril?: VoidTendril;
+        fracteryl?: FracterylEnemy; fracterylshard?: FracterylShard; eigenstein?: EigensteinEnemy;
         boss?: BossEnemy;
       };
       const rangeSq = range * range;
@@ -2965,6 +3124,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const d = dx * dx + dy * dy;
         if (d <= rangeSq) inRange.push({ distSq: d, voidtendril: t });
       }
+      for (const e of fracterylEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, fracteryl: e });
+      }
+      for (const s of fracterylShards) {
+        const dx = s.x - mote.x, dy = s.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, fracterylshard: s });
+      }
+      for (const e of eigensteinEnemies) {
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= rangeSq) inRange.push({ distSq: d, eigenstein: e });
+      }
       if (bossEnemy) {
         const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
         const d = dx * dx + dy * dy;
@@ -3028,6 +3202,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           spawnHitVisualsAt(t.nullstone.x, t.nullstone.y, t.nullstone.maxHp, dmg, '#50b464');
         } else if (t.voidtendril) {
           damageVoidTendril(t.voidtendril, rawDamage);
+        } else if (t.fracteryl) {
+          const dmg = damageFracterylEnemy(t.fracteryl, rawDamage, 0);
+          spawnHitVisualsAt(t.fracteryl.x, t.fracteryl.y, t.fracteryl.maxHp, dmg, '#50b464');
+        } else if (t.fracterylshard) {
+          damageFracterylShard(t.fracterylshard, rawDamage);
+        } else if (t.eigenstein) {
+          const dmg = damageEigensteinEnemy(t.eigenstein, rawDamage, 0);
+          spawnHitVisualsAt(t.eigenstein.x, t.eigenstein.y, t.eigenstein.maxHp, dmg, '#50b464');
         } else if (t.boss) {
           const dmg = damageBossEnemy(rawDamage, 0);
           if (dmg > 0) spawnHitVisualsAt(t.boss.x, t.boss.y, t.boss.maxHp, dmg, '#50b464');
@@ -3107,6 +3289,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         effect.kind === 'piercing' ? '#74c0fc' : NULLSTONE_ENEMY_GLOW);
     } else if (closestT.voidtendril) {
       damageVoidTendril(closestT.voidtendril, rawDamage);
+    } else if (closestT.fracteryl) {
+      const dmg = damageFracterylEnemy(closestT.fracteryl, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.fracteryl.x, closestT.fracteryl.y, closestT.fracteryl.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : FRACTERYL_ENEMY_GLOW);
+    } else if (closestT.fracterylshard) {
+      damageFracterylShard(closestT.fracterylshard, rawDamage);
+    } else if (closestT.eigenstein) {
+      const dmg = damageEigensteinEnemy(closestT.eigenstein, rawDamage, defPierceRatio);
+      spawnHitVisualsAt(closestT.eigenstein.x, closestT.eigenstein.y, closestT.eigenstein.maxHp, dmg,
+        effect.kind === 'piercing' ? '#74c0fc' : EIGENSTEIN_ENEMY_GLOW);
     } else if (closestT.boss) {
       const dmg = damageBossEnemy(rawDamage, defPierceRatio);
       if (dmg > 0) spawnHitVisualsAt(closestT.boss.x, closestT.boss.y, closestT.boss.maxHp, dmg,
@@ -3298,6 +3490,31 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (let i = voidTendrils.length - 1; i >= 0; i--) {
       if (voidTendrils[i].hp <= 0 || voidTendrils[i].lifeMs <= 0) voidTendrils.splice(i, 1);
     }
+    for (let i = fracterylEnemies.length - 1; i >= 0; i--) {
+      if (fracterylEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          fracterylEnemies[i].x, fracterylEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 3.5,
+          FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * FRACTERYL_XP_MULT;
+        fracterylEnemies.splice(i, 1);
+      }
+    }
+    for (let i = fracterylShards.length - 1; i >= 0; i--) {
+      if (fracterylShards[i].hp <= 0 || fracterylShards[i].lifeMs <= 0) fracterylShards.splice(i, 1);
+    }
+    for (let i = eigensteinEnemies.length - 1; i >= 0; i--) {
+      if (eigensteinEnemies[i].hp <= 0) {
+        fluid.addExplosion(
+          eigensteinEnemies[i].x, eigensteinEnemies[i].y,
+          FLUID_EXPLOSION_STRENGTH * 4.5,
+          FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
+        );
+        totalXpFromKills += getXpPerKill(currentWave) * EIGENSTEIN_XP_MULT;
+        eigensteinEnemies.splice(i, 1);
+      }
+    }
     // Boss defeat
     if (bossEnemy && bossEnemy.hp <= 0) {
       const bossXp = Math.ceil(getXpPerKill(currentWave) * getWaveStatScale(currentWave) * 5.0);
@@ -3373,16 +3590,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     hpWidget.valueEl.textContent   = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
     atkWidget.valueEl.textContent  = String(playerStats.atk);
     defWidget.valueEl.textContent  = String(playerStats.def);
-    const isBossWave = currentWave > 0 && currentWave % 100 === 0;
+    const isBossWave = currentWave > 0 && currentWave % 5 === 0;
     waveWidget.labelEl.textContent = isBossWave ? BOSS_GLYPH_LABEL : 'WAVE';
     if (isBossWave) {
       waveWidget.labelEl.style.fontFamily = 'monospace';
     } else {
       waveWidget.labelEl.style.removeProperty('fontFamily');
     }
-    waveWidget.valueEl.textContent = isBossWave ? String(currentWave / 100) : String(currentWave);
+    waveWidget.valueEl.textContent = isBossWave ? String(Math.ceil(currentWave / 5)) : String(currentWave);
     if (isBossWave) {
-      const bossId = Math.min(Math.ceil(currentWave / 100), BOSS_NAMES.length - 1);
+      const rawBossId = Math.ceil(currentWave / 5);
+      const bossId = ((rawBossId - 1) % 12) + 1;
       waveWidget.valueEl.title = BOSS_NAMES[bossId] ?? 'Boss';
     } else {
       waveWidget.valueEl.title = '';
@@ -3610,8 +3828,28 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       else if (edge === 2) { spawnX = 0;       spawnY = Math.random() * heightPx; }
       else                 { spawnX = widthPx; spawnY = Math.random() * heightPx; }
       nullstoneEnemies.push(makeNullstoneEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'fracteryl') {
+      const half = FRACTERYL_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - FRACTERYL_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - FRACTERYL_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      fracterylEnemies.push(makeFracterylEnemy(spawnX, spawnY, wn));
+    } else if (enemyTypeId === 'eigenstein') {
+      const half = EIGENSTEIN_ENEMY_SIZE / 2;
+      do {
+        spawnX = half + Math.random() * (widthPx  - EIGENSTEIN_ENEMY_SIZE);
+        spawnY = half + Math.random() * (heightPx - EIGENSTEIN_ENEMY_SIZE);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'boss') {
-      const rawBossId = Math.ceil(wn / 100);
+      const rawBossId = Math.ceil(wn / 5);
       bossEnemy = makeBossEnemy(rawBossId, wn);
     }
   }
@@ -3638,6 +3876,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
         || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
         || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
+        || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
         || bossEnemy !== null) return;
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS;
@@ -3810,7 +4049,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0
           || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
           || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
-          || diamondEnemies.length > 0 || nullstoneEnemies.length > 0)) {
+          || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
+          || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0)) {
         // Auto-move: find nearest enemy and steer toward it, stopping when
         // the player is within the shortest range of any equipped weapon.
         let autoMoveStopRange = PLAYER_BASE_RANGE_PX;
@@ -3890,6 +4130,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           const d = ex * ex + ey * ey;
           if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
         }
+        for (const enemy of fracterylEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
+        for (const enemy of eigensteinEnemies) {
+          const ex = enemy.x - mote.x, ey = enemy.y - mote.y;
+          const d = ex * ex + ey * ey;
+          if (d < nearestDistSq) { nearestDistSq = d; nearestX = enemy.x; nearestY = enemy.y; }
+        }
         if (nearestDistSq < Infinity) {
           const ex = nearestX - mote.x, ey = nearestY - mote.y;
           const d = Math.sqrt(ex * ex + ey * ey);
@@ -3948,6 +4198,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       for (const e of amethystEnemies)  checkAimEnemy(e);
       for (const e of diamondEnemies)   checkAimEnemy(e);
       for (const e of nullstoneEnemies) checkAimEnemy(e);
+      for (const e of fracterylEnemies) checkAimEnemy(e);
+      for (const e of eigensteinEnemies) checkAimEnemy(e);
       if (bossEnemy) checkAimEnemy(bossEnemy);
     }
     // Inject player movement into the fluid (only when meaningfully moving).
@@ -4173,6 +4425,28 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
       }
     }
+    // Collision detection with fracteryl enemies.
+    for (const enemy of fracterylEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageFracterylEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
+    // Collision detection with eigenstein enemies.
+    for (const enemy of eigensteinEnemies) {
+      if (op.hitCooldowns.has(enemy)) continue;
+      const dx = op.x - enemy.x, dy = op.y - enemy.y;
+      if (dx * dx + dy * dy < ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS) {
+        const dmg = damageEigensteinEnemy(enemy, ORBIT_PROJ_DAMAGE, 0);
+        op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
+        hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: '#ffaa44' });
+        spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), dmg / enemy.maxHp, '#ffaa44');
+      }
+    }
     // Collision detection with boss.
     if (bossEnemy && !op.hitCooldowns.has(bossEnemy)) {
       const dx = op.x - bossEnemy.x, dy = op.y - bossEnemy.y;
@@ -4233,6 +4507,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     amethystEnemies.length = 0; amethystShards.length = 0;
     diamondEnemies.length = 0; diamondShards.length = 0;
     nullstoneEnemies.length = 0; voidTendrils.length = 0;
+    fracterylEnemies.length = 0; fracterylShards.length = 0;
+    eigensteinEnemies.length = 0; eigensteinBeams.length = 0;
+    danmakuSafeZone = null;
     bossEnemy = null;
     bossProjectiles.length = 0;
     sandProjectiles.length = 0;
@@ -5338,6 +5615,209 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  function updateFracterylEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of fracterylEnemies) {
+      enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
+      if (enemy.patrolTimerMs > 0) {
+        enemy.patrolTimerMs = Math.max(0, enemy.patrolTimerMs - deltaMs);
+      } else {
+        enemy.patrolTimerMs = FRACTERYL_PATROL_TURN_MS + Math.random() * FRACTERYL_BURST_JITTER;
+        enemy.orbitAngle = Math.random() * Math.PI * 2;
+      }
+      enemy.vx += Math.cos(enemy.orbitAngle) * 0.15;
+      enemy.vy += Math.sin(enemy.orbitAngle) * 0.15;
+      enemy.vx *= 0.92; enemy.vy *= 0.92;
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      const half = FRACTERYL_ENEMY_SIZE / 2;
+      if (enemy.x < half)            { enemy.x = half;            enemy.vx = Math.abs(enemy.vx) * 0.5; }
+      if (enemy.x > widthPx - half)  { enemy.x = widthPx - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+      if (enemy.y < half)            { enemy.y = half;             enemy.vy = Math.abs(enemy.vy) * 0.5; }
+      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+
+      enemy.burstTimerMs -= deltaMs;
+      if (enemy.burstTimerMs <= 0) {
+        enemy.burstTimerMs = FRACTERYL_BURST_CD_MS + Math.random() * FRACTERYL_BURST_JITTER;
+        const shardCount = 6;
+        const speed = 1.5;
+        for (let i = 0; i < shardCount; i++) {
+          const angle = (i / shardCount) * Math.PI * 2;
+          fracterylShards.push(makeFracterylShard(
+            enemy.x, enemy.y,
+            Math.cos(angle) * speed, Math.sin(angle) * speed,
+            0,
+          ));
+        }
+        fluid.addForce({ x: enemy.x, y: enemy.y,
+          vx: 0, vy: 0,
+          r: FLUID_FRACTERYL_R, g: FLUID_FRACTERYL_G, b: FLUID_FRACTERYL_B,
+          strength: 1.2 });
+      }
+    }
+    for (let i = fracterylShards.length - 1; i >= 0; i--) {
+      const shard = fracterylShards[i];
+      shard.lifeMs -= deltaMs;
+      if (shard.lifeMs <= 0) { fracterylShards.splice(i, 1); continue; }
+      shard.x += shard.vx * dt; shard.y += shard.vy * dt;
+      if (!shard.hasHitPlayer) {
+        const sdx = mote.x - shard.x, sdy = mote.y - shard.y;
+        if (sdx * sdx + sdy * sdy < (FRACTERYL_ENEMY_SIZE / 2 + PLAYER_HIT_RADIUS) ** 2) {
+          dealDamageToPlayer(shard.atk);
+          shard.hasHitPlayer = true;
+          fracterylShards.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  function updateEigensteinEnemies(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (const enemy of eigensteinEnemies) {
+      enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
+      if (enemy.patrolTimerMs > 0) {
+        enemy.patrolTimerMs = Math.max(0, enemy.patrolTimerMs - deltaMs);
+      } else {
+        enemy.patrolTimerMs = EIGENSTEIN_PATROL_TURN_MS + Math.random() * EIGENSTEIN_BEAM_JITTER;
+        enemy.beamAngle = Math.random() * Math.PI * 2;
+      }
+      enemy.vx += Math.cos(enemy.beamAngle) * 0.12;
+      enemy.vy += Math.sin(enemy.beamAngle) * 0.12;
+      enemy.vx *= 0.91; enemy.vy *= 0.91;
+      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+      const half = EIGENSTEIN_ENEMY_SIZE / 2;
+      if (enemy.x < half)            { enemy.x = half;            enemy.vx = Math.abs(enemy.vx) * 0.5; }
+      if (enemy.x > widthPx - half)  { enemy.x = widthPx - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+      if (enemy.y < half)            { enemy.y = half;             enemy.vy = Math.abs(enemy.vy) * 0.5; }
+      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+
+      enemy.beamTimerMs -= deltaMs;
+      if (enemy.beamTimerMs <= 0) {
+        enemy.beamTimerMs = EIGENSTEIN_BEAM_CD_MS + Math.random() * EIGENSTEIN_BEAM_JITTER;
+        const aimAngle = Math.atan2(mote.y - enemy.y, mote.x - enemy.x);
+        const totalMs = EIGENSTEIN_BEAM_CHARGE_MS + EIGENSTEIN_BEAM_FIRE_MS;
+        eigensteinBeams.push({
+          originX: enemy.x, originY: enemy.y,
+          angle: aimAngle,
+          atk: enemy.atk,
+          isActive: false,
+          timerMs: EIGENSTEIN_BEAM_CHARGE_MS,
+          maxTimerMs: totalMs,
+        });
+        fluid.addForce({ x: enemy.x, y: enemy.y,
+          vx: 0, vy: 0,
+          r: FLUID_EIGENSTEIN_R, g: FLUID_EIGENSTEIN_G, b: FLUID_EIGENSTEIN_B,
+          strength: 1.5 });
+      }
+    }
+  }
+
+  function updateEigensteinBeams(deltaMs: number): void {
+    const beamLen = Math.sqrt(widthPx * widthPx + heightPx * heightPx);
+    for (let i = eigensteinBeams.length - 1; i >= 0; i--) {
+      const beam = eigensteinBeams[i];
+      beam.timerMs -= deltaMs;
+      if (!beam.isActive && beam.timerMs <= 0) {
+        beam.isActive = true;
+        beam.timerMs = EIGENSTEIN_BEAM_FIRE_MS;
+      }
+      if (beam.isActive) {
+        if (beam.timerMs <= 0) { eigensteinBeams.splice(i, 1); continue; }
+        const dx = mote.x - beam.originX, dy = mote.y - beam.originY;
+        const proj = dx * Math.cos(beam.angle) + dy * Math.sin(beam.angle);
+        if (proj > 0 && proj < beamLen) {
+          const perp = Math.abs(-dx * Math.sin(beam.angle) + dy * Math.cos(beam.angle));
+          if (perp < PLAYER_HIT_RADIUS + 3) {
+            dealDamageToPlayer(beam.atk * (deltaMs / 1000) * 60);
+          }
+        }
+      }
+    }
+  }
+
+  function drawFracterylEnemies(): void {
+    for (const enemy of fracterylEnemies) {
+      const half = FRACTERYL_ENEMY_SIZE / 2;
+      const pulse = Math.sin(enemy.pulseMs * 0.002) * 2;
+      ctx.shadowBlur = 8 + pulse; ctx.shadowColor = FRACTERYL_ENEMY_GLOW;
+      ctx.fillStyle = FRACTERYL_ENEMY_COLOR;
+      ctx.save();
+      ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
+      ctx.rotate(enemy.pulseMs * 0.002);
+      ctx.fillRect(-half, -half, FRACTERYL_ENEMY_SIZE, FRACTERYL_ENEMY_SIZE);
+      ctx.restore();
+      ctx.shadowBlur = 0;
+    }
+    for (const shard of fracterylShards) {
+      ctx.globalAlpha = Math.min(1, shard.lifeMs / 200);
+      ctx.fillStyle = FRACTERYL_ENEMY_COLOR;
+      ctx.beginPath();
+      ctx.arc(Math.round(shard.x), Math.round(shard.y), 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawEigensteinEnemies(): void {
+    for (const enemy of eigensteinEnemies) {
+      const half = EIGENSTEIN_ENEMY_SIZE / 2;
+      const pulse = Math.sin(enemy.pulseMs * 0.002) * 3;
+      ctx.shadowBlur = 10 + pulse; ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
+      ctx.fillStyle = EIGENSTEIN_ENEMY_COLOR;
+      ctx.save();
+      ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
+      ctx.rotate(enemy.pulseMs * 0.0015);
+      ctx.fillRect(-half, -half, EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE);
+      ctx.restore();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function drawEigensteinBeams(): void {
+    const beamLen = Math.sqrt(widthPx * widthPx + heightPx * heightPx);
+    for (const beam of eigensteinBeams) {
+      const alpha = beam.isActive ? 0.8 : (1 - beam.timerMs / EIGENSTEIN_BEAM_CHARGE_MS) * 0.45;
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.strokeStyle = EIGENSTEIN_ENEMY_GLOW;
+      ctx.lineWidth = beam.isActive ? 5 : 2;
+      ctx.shadowBlur = beam.isActive ? 12 : 4;
+      ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
+      ctx.beginPath();
+      ctx.moveTo(beam.originX, beam.originY);
+      ctx.lineTo(beam.originX + Math.cos(beam.angle) * beamLen, beam.originY + Math.sin(beam.angle) * beamLen);
+      ctx.stroke();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    }
+  }
+
+  function drawDanmakuSafeZone(): void {
+    const boss = bossEnemy;
+    if (!boss || !danmakuSafeZone || boss.danmakuLevel === 0) return;
+    const sz = danmakuSafeZone;
+    const halfAngle = sz.width / 2;
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#00ff88';
+    ctx.beginPath();
+    ctx.moveTo(sz.x, sz.y);
+    ctx.arc(sz.x, sz.y, 80, sz.angle - halfAngle, sz.angle + halfAngle);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+    const warnProgress = 1 - Math.min(1, sz.timerMs / sz.maxTimerMs);
+    if (warnProgress < 1) {
+      ctx.globalAlpha = 0.7 * (1 - warnProgress);
+      ctx.fillStyle = '#00ff88';
+      ctx.font = '6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SAFE', Math.round(sz.x + Math.cos(sz.angle) * 50), Math.round(sz.y + Math.sin(sz.angle) * 50));
+      ctx.globalAlpha = 1;
+    }
+  }
+
   function drawAttackTrail(enemy: LaserEnemy, nowMs: number): void {
     const trail = enemy.attackTrail;
     if (!trail.active) return;
@@ -5525,8 +6005,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   function makeBossEnemy(rawBossId: number, waveNumber: number): BossEnemy {
     const bossScale = getWaveStatScale(waveNumber) * 4.0;
-    const bossNum = ((rawBossId - 1) % 10) + 1;
-    const extraScale = Math.floor((rawBossId - 1) / 10) + 1;
+    const bossNum = ((rawBossId - 1) % 12) + 1;
+    const extraScale = Math.floor((rawBossId - 1) / 12) + 1;
     const hp = Math.ceil(BOSS_HP_INIT * bossScale * extraScale);
     const atk = Math.ceil(BOSS_ATK_INIT * getWaveStatScale(waveNumber) * extraScale);
     const def = Math.ceil(BOSS_DEF_INIT * getWaveStatScale(waveNumber) * extraScale);
@@ -5548,6 +6028,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       isAbsorbing: false, absorbTimerMs: 0,
       contactCdMs: 0,
       phaseTransitionMs: 0,
+      danmakuLevel: 0,
     };
   }
 
@@ -5563,6 +6044,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (targetPhase > boss.phaseIndex) {
       boss.phaseIndex = targetPhase;
       boss.phaseTransitionMs = BOSS_PHASE_TRANSITION_MS;
+      // Activate danmaku for phases 1 and 2
+      boss.danmakuLevel = targetPhase;
+      // Teleport for danmaku phases — pick a random edge position, announce safe zone
+      if (boss.danmakuLevel > 0) {
+        boss.x = DANMAKU_TELEPORT_MARGIN + Math.random() * (widthPx - DANMAKU_TELEPORT_MARGIN * 2);
+        boss.y = DANMAKU_TELEPORT_MARGIN + Math.random() * (heightPx * 0.5);
+        boss.vx = 0; boss.vy = 0;
+        const safeAngle = Math.random() * Math.PI * 2;
+        danmakuSafeZone = makeDanmakuSafeZone(boss.x, boss.y, safeAngle, DANMAKU_SAFE_ANGLE_WIDTH);
+      }
       const blastCount = 8;
       for (let i = 0; i < blastCount; i++) {
         const angle = (i / blastCount) * Math.PI * 2;
@@ -5847,8 +6338,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
             color: '#c090ff', glowColor: '#e0c0ff', size: BOSS_PROJ_SIZE - 1, seekStr: 0.02 });
         }
       }
-    } else {
-      // Boss 10: The Equation Incarnate
+    } else if (bossId === 10) {
+      // The Equation Incarnate — multi-ring spiral
       boss.orbitAngle += 0.01 * dt * (1 + boss.phaseIndex * 0.6);
       boss.vx += Math.cos(boss.orbitAngle) * 0.2 + dirX * 0.2;
       boss.vy += Math.sin(boss.orbitAngle) * 0.2 + dirY * 0.2;
@@ -5880,6 +6371,64 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST * 1.3, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST * 1.3,
             atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
             color: '#ffe599', glowColor: '#ffffff', size: BOSS_PROJ_SIZE, seekStr: 0.015 });
+        }
+      }
+    } else if (bossId === 11) {
+      // Fracteryl Manifestation — fractal burst danmaku with teleport on phase transitions
+      boss.orbitAngle += 0.015 * dt * (1 + boss.phaseIndex * 0.5);
+      boss.vx += Math.cos(boss.orbitAngle) * 0.3 + dirX * 0.1;
+      boss.vy += Math.sin(boss.orbitAngle) * 0.3 + dirY * 0.1;
+      boss.vx *= 0.90; boss.vy *= 0.90;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const ringCount = DANMAKU_RING_COUNT + boss.phaseIndex * 8;
+        const safeAngle = danmakuSafeZone ? danmakuSafeZone.angle : Math.random() * Math.PI * 2;
+        const halfSafe = DANMAKU_SAFE_ANGLE_WIDTH / 2;
+        for (let i = 0; i < ringCount; i++) {
+          const a = (i / ringCount) * Math.PI * 2;
+          const aRel = ((a - safeAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+          if (aRel < halfSafe || aRel > Math.PI * 2 - halfSafe) continue;
+          const spd = DANMAKU_BULLET_SPEED * (1 + boss.phaseIndex * 0.2);
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS * 1.5, maxLifeMs: BOSS_PROJ_LIFE_MS * 1.5,
+            color: BOSS_COLORS[11], glowColor: BOSS_GLOW_COLORS[11], size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
+        }
+        // After firing, update safe zone for next burst
+        danmakuSafeZone = makeDanmakuSafeZone(boss.x, boss.y, safeAngle + Math.PI * 0.6, DANMAKU_SAFE_ANGLE_WIDTH);
+      }
+    } else {
+      // bossId === 12: Eigenstein Entity — perpendicular beam walls + danmaku
+      boss.orbitAngle += 0.008 * dt * (1 + boss.phaseIndex * 0.4);
+      boss.vx += Math.cos(boss.orbitAngle + Math.PI / 2) * 0.25 + dirX * 0.12;
+      boss.vy += Math.sin(boss.orbitAngle + Math.PI / 2) * 0.25 + dirY * 0.12;
+      boss.vx *= 0.91; boss.vy *= 0.91;
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        const ringCount12 = DANMAKU_RING_COUNT + boss.phaseIndex * 6;
+        const safeAngle12 = danmakuSafeZone ? danmakuSafeZone.angle : Math.random() * Math.PI * 2;
+        const halfSafe12 = DANMAKU_SAFE_ANGLE_WIDTH / 2;
+        for (let i = 0; i < ringCount12; i++) {
+          const a = (i / ringCount12) * Math.PI * 2;
+          const aRel = ((a - safeAngle12) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+          if (aRel < halfSafe12 || aRel > Math.PI * 2 - halfSafe12) continue;
+          const spd12 = DANMAKU_BULLET_SPEED * (1.2 + boss.phaseIndex * 0.15);
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd12, vy: Math.sin(a) * spd12,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+            color: BOSS_COLORS[12], glowColor: BOSS_GLOW_COLORS[12], size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
+        }
+        danmakuSafeZone = makeDanmakuSafeZone(boss.x, boss.y, safeAngle12 + Math.PI * 0.7, DANMAKU_SAFE_ANGLE_WIDTH);
+      }
+      // Second attack: aim at player
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        const aimCount = 3 + boss.phaseIndex * 2;
+        for (let i = 0; i < aimCount; i++) {
+          const spread = (i - (aimCount - 1) / 2) * 0.22;
+          const a = Math.atan2(dirY, dirX) + spread;
+          const life = BOSS_PROJ_LIFE_MS * 0.7;
+          bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST,
+            atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
+            color: BOSS_COLORS[12], glowColor: BOSS_GLOW_COLORS[12], size: BOSS_PROJ_SIZE, seekStr: 0.01 });
         }
       }
     }
@@ -6166,6 +6715,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawDiamondShards();
     drawNullstoneEnemies();
     drawVoidTendrils();
+    drawFracterylEnemies();
+    drawEigensteinEnemies();
+    drawEigensteinBeams();
+    drawDanmakuSafeZone();
     drawBossProjectiles();
     drawBossEnemy();
     drawShotLines();
@@ -6334,6 +6887,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateDiamondShards(deltaMs);
       updateNullstoneEnemies(deltaMs);
       updateVoidTendrils(deltaMs);
+      updateFracterylEnemies(deltaMs);
+      updateEigensteinEnemies(deltaMs);
+      updateEigensteinBeams(deltaMs);
       updateBossEnemy(deltaMs);
       updateBossProjectiles(deltaMs);
       updateWeaponOrbitParticles(deltaMs);
