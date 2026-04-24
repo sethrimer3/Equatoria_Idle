@@ -3590,16 +3590,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     hpWidget.valueEl.textContent   = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
     atkWidget.valueEl.textContent  = String(playerStats.atk);
     defWidget.valueEl.textContent  = String(playerStats.def);
-    const isBossWave = currentWave > 0 && currentWave % 5 === 0;
+    const isBossWave = currentWave > 0 && currentWave % 100 === 0;
     waveWidget.labelEl.textContent = isBossWave ? BOSS_GLYPH_LABEL : 'WAVE';
     if (isBossWave) {
       waveWidget.labelEl.style.fontFamily = 'monospace';
     } else {
       waveWidget.labelEl.style.removeProperty('fontFamily');
     }
-    waveWidget.valueEl.textContent = isBossWave ? String(Math.ceil(currentWave / 5)) : String(currentWave);
+    waveWidget.valueEl.textContent = isBossWave ? String(Math.ceil(currentWave / 100)) : String(currentWave);
     if (isBossWave) {
-      const rawBossId = Math.ceil(currentWave / 5);
+      const rawBossId = Math.ceil(currentWave / 100);
       const bossId = ((rawBossId - 1) % 12) + 1;
       waveWidget.valueEl.title = BOSS_NAMES[bossId] ?? 'Boss';
     } else {
@@ -3849,8 +3849,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       } while (attempts < 20);
       eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'boss') {
-      const rawBossId = Math.ceil(wn / 5);
-      bossEnemy = makeBossEnemy(rawBossId, wn);
+      bossEnemy = makeBossEnemy(Math.ceil(wn / 100), wn);
     }
   }
 

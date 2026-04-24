@@ -310,8 +310,8 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   const predefined = WAVE_DEFINITIONS.find(w => w.waveNumber === waveNumber);
   if (predefined) return predefined;
 
-  // Boss wave every 5 waves — boss with a small escort
-  if (waveNumber % 5 === 0) {
+  // Boss wave every 100 waves — boss with a small escort
+  if (waveNumber % 100 === 0) {
     const delay = Math.max(130, 600 - waveNumber * 18);
     const escort: WaveSpawn[] = [];
     const laserCount  = Math.min(2 + Math.floor(waveNumber * 0.15), 6);
@@ -327,37 +327,37 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
 
   // Procedural: count grows slowly; delay tightens as waves increase.
   const laserCount     = Math.min(2 + Math.floor(waveNumber * 0.4), 9);
-  const sapphireCount  = Math.min(1 + Math.floor((waveNumber -  5) * 0.25), 5);
-  const emeraldCount   = Math.min(1 + Math.floor((waveNumber -  8) * 0.22), 5);
-  const amberCount     = Math.min(1 + Math.floor((waveNumber - 11) * 0.18), 4);
-  const voidCount      = Math.min(1 + Math.floor((waveNumber - 14) * 0.12), 3);
   const quartzCount    = Math.min(2 + Math.floor(waveNumber * 0.35), 8);
-  const rubyCount      = waveNumber >= 10  ? Math.min(1 + Math.floor((waveNumber -  9) * 0.25), 6) : 0;
-  const sunstoneCount  = waveNumber >= 20  ? Math.min(1 + Math.floor((waveNumber - 19) * 0.2),  5) : 0;
-  const citrineCount   = waveNumber >= 30  ? Math.min(1 + Math.floor((waveNumber - 29) * 0.15), 4) : 0;
-  const ioliteCount    = waveNumber >= 40  ? Math.min(1 + Math.floor((waveNumber - 39) * 0.12), 3) : 0;
-  const amethystCount  = waveNumber >= 50  ? Math.min(1 + Math.floor((waveNumber - 49) * 0.10), 3) : 0;
-  const diamondCount   = waveNumber >= 60  ? Math.min(1 + Math.floor((waveNumber - 59) * 0.06), 2) : 0;
-  const nullstoneCount = waveNumber >= 70  ? Math.min(1 + Math.floor((waveNumber - 69) * 0.04), 2) : 0;
-  const fracterylCount = waveNumber >= 80  ? Math.min(1 + Math.floor((waveNumber - 79) * 0.03), 2) : 0;
-  const eigensteinCount= waveNumber >= 90  ? Math.min(1 + Math.floor((waveNumber - 89) * 0.02), 2) : 0;
+  const rubyCount      = waveNumber >= 5   ? Math.min(1 + Math.floor((waveNumber -  4) * 0.25), 6) : 0;
+  const sunstoneCount  = waveNumber >= 10  ? Math.min(1 + Math.floor((waveNumber -  9) * 0.22), 5) : 0;
+  const citrineCount   = waveNumber >= 15  ? Math.min(1 + Math.floor((waveNumber - 14) * 0.18), 5) : 0;
+  const amberCount     = waveNumber >= 18  ? Math.min(1 + Math.floor((waveNumber - 17) * 0.15), 4) : 0;
+  const emeraldCount   = waveNumber >= 21  ? Math.min(1 + Math.floor((waveNumber - 20) * 0.22), 5) : 0;
+  const voidCount      = waveNumber >= 24  ? Math.min(1 + Math.floor((waveNumber - 23) * 0.12), 3) : 0;
+  const sapphireCount  = waveNumber >= 27  ? Math.min(1 + Math.floor((waveNumber - 26) * 0.20), 5) : 0;
+  const ioliteCount    = waveNumber >= 33  ? Math.min(1 + Math.floor((waveNumber - 32) * 0.14), 4) : 0;
+  const amethystCount  = waveNumber >= 42  ? Math.min(1 + Math.floor((waveNumber - 41) * 0.11), 3) : 0;
+  const diamondCount   = waveNumber >= 52  ? Math.min(1 + Math.floor((waveNumber - 51) * 0.08), 3) : 0;
+  const nullstoneCount = waveNumber >= 63  ? Math.min(1 + Math.floor((waveNumber - 62) * 0.05), 2) : 0;
+  const fracterylCount = waveNumber >= 74  ? Math.min(1 + Math.floor((waveNumber - 73) * 0.04), 2) : 0;
+  const eigensteinCount= waveNumber >= 85  ? Math.min(1 + Math.floor((waveNumber - 84) * 0.03), 2) : 0;
   const delay = Math.max(130, 600 - waveNumber * 18);
   const spawns: WaveSpawn[] = [
-    { enemyTypeId: 'laser',    count: laserCount,    spawnDelay: delay },
-    { enemyTypeId: 'quartz',   count: quartzCount,   spawnDelay: delay },
-    { enemyTypeId: 'sapphire', count: sapphireCount, spawnDelay: delay + 400 },
-    { enemyTypeId: 'emerald',  count: emeraldCount,  spawnDelay: delay + 350 },
+    { enemyTypeId: 'laser',  count: laserCount,  spawnDelay: delay },
+    { enemyTypeId: 'quartz', count: quartzCount, spawnDelay: delay },
   ];
-  if (waveNumber >= 10)  spawns.push({ enemyTypeId: 'ruby',       count: rubyCount,       spawnDelay: delay + 300 });
-  if (waveNumber >= 12)  spawns.push({ enemyTypeId: 'amber',      count: amberCount,      spawnDelay: delay + 600 });
-  if (waveNumber >= 15)  spawns.push({ enemyTypeId: 'void',       count: voidCount,       spawnDelay: delay + 900 });
-  if (waveNumber >= 20)  spawns.push({ enemyTypeId: 'sunstone',   count: sunstoneCount,   spawnDelay: delay + 500 });
-  if (waveNumber >= 30)  spawns.push({ enemyTypeId: 'citrine',    count: citrineCount,    spawnDelay: delay + 600 });
-  if (waveNumber >= 40)  spawns.push({ enemyTypeId: 'iolite',     count: ioliteCount,     spawnDelay: delay + 800 });
-  if (waveNumber >= 50)  spawns.push({ enemyTypeId: 'amethyst',   count: amethystCount,   spawnDelay: delay + 1000 });
-  if (waveNumber >= 60)  spawns.push({ enemyTypeId: 'diamond',    count: diamondCount,    spawnDelay: delay + 1200 });
-  if (waveNumber >= 70)  spawns.push({ enemyTypeId: 'nullstone',  count: nullstoneCount,  spawnDelay: delay + 1500 });
-  if (waveNumber >= 80)  spawns.push({ enemyTypeId: 'fracteryl',  count: fracterylCount,  spawnDelay: delay + 1700 });
-  if (waveNumber >= 90)  spawns.push({ enemyTypeId: 'eigenstein', count: eigensteinCount, spawnDelay: delay + 2000 });
+  if (waveNumber >= 5)   spawns.push({ enemyTypeId: 'ruby',       count: rubyCount,       spawnDelay: delay + 300 });
+  if (waveNumber >= 10)  spawns.push({ enemyTypeId: 'sunstone',   count: sunstoneCount,   spawnDelay: delay + 400 });
+  if (waveNumber >= 15)  spawns.push({ enemyTypeId: 'citrine',    count: citrineCount,    spawnDelay: delay + 500 });
+  if (waveNumber >= 18)  spawns.push({ enemyTypeId: 'amber',      count: amberCount,      spawnDelay: delay + 600 });
+  if (waveNumber >= 21)  spawns.push({ enemyTypeId: 'emerald',    count: emeraldCount,    spawnDelay: delay + 350 });
+  if (waveNumber >= 24)  spawns.push({ enemyTypeId: 'void',       count: voidCount,       spawnDelay: delay + 900 });
+  if (waveNumber >= 27)  spawns.push({ enemyTypeId: 'sapphire',   count: sapphireCount,   spawnDelay: delay + 400 });
+  if (waveNumber >= 33)  spawns.push({ enemyTypeId: 'iolite',     count: ioliteCount,     spawnDelay: delay + 800 });
+  if (waveNumber >= 42)  spawns.push({ enemyTypeId: 'amethyst',   count: amethystCount,   spawnDelay: delay + 1000 });
+  if (waveNumber >= 52)  spawns.push({ enemyTypeId: 'diamond',    count: diamondCount,    spawnDelay: delay + 1200 });
+  if (waveNumber >= 63)  spawns.push({ enemyTypeId: 'nullstone',  count: nullstoneCount,  spawnDelay: delay + 1500 });
+  if (waveNumber >= 74)  spawns.push({ enemyTypeId: 'fracteryl',  count: fracterylCount,  spawnDelay: delay + 1700 });
+  if (waveNumber >= 85)  spawns.push({ enemyTypeId: 'eigenstein', count: eigensteinCount, spawnDelay: delay + 2000 });
   return { waveNumber, spawns };
 }
