@@ -343,6 +343,86 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let danmakuSafeZone: DanmakuSafeZone | null = null;
   const bossProjectiles: BossProjectile[] = [];
 
+  // ── Boss wave management ───────────────────────────────────────
+  /** True while a boss wave is active (from spawn until defeat or death). */
+  let isBossWaveActive = false;
+  /** Saved set of weapon IDs before boss wave; restored on exit. */
+  let bossPreWaveEquippedIds: Set<string> = new Set();
+  /** Saved weapon tiers before boss wave (so temp tier-1 forced on diamond_bastion). */
+  let bossPreWaveWeaponTiers: Map<string, number> = new Map();
+
+  interface TeleportParticle {
+    x: number; y: number; vx: number; vy: number;
+    alpha: number; color: string;
+  }
+  const teleportParticles: TeleportParticle[] = [];
+
+  /** Safe zone position: bottom-middle of playing field. */
+  function getSafeZoneX(): number { return widthPx / 2; }
+  function getSafeZoneY(): number { return heightPx * 0.85; }
+
+  const BOSS_BOTTOM_SAFE_ZONE_R = 22;
+  const TELEPORT_PRISMATIC_COLORS = ['#e8f0fa', '#ffffff', '#b0c8ff', '#d6aaff', '#a0f0d0', '#fff4a0'];
+
+  function isInBottomSafeZone(px: number, py: number): boolean {
+    const dx = px - getSafeZoneX(), dy = py - getSafeZoneY();
+    return dx * dx + dy * dy <= BOSS_BOTTOM_SAFE_ZONE_R * BOSS_BOTTOM_SAFE_ZONE_R;
+  }
+
+  function teleportPlayerToSafeZone(): void {
+    const tx = getSafeZoneX(), ty = getSafeZoneY();
+    // Spawn comet trail particles fanning from current player position toward the safe zone
+    for (let i = 0; i < 20; i++) {
+      const t = i / 20;
+      const px = mote.x + (tx - mote.x) * t + (Math.random() - 0.5) * 14;
+      const py = mote.y + (ty - mote.y) * t + (Math.random() - 0.5) * 14;
+      const angle = Math.atan2(ty - mote.y, tx - mote.x) + (Math.random() - 0.5) * 0.7;
+      const spd = 1.2 + Math.random() * 2.5;
+      teleportParticles.push({
+        x: px, y: py,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        alpha: 0.85 + Math.random() * 0.15,
+        color: TELEPORT_PRISMATIC_COLORS[Math.floor(Math.random() * TELEPORT_PRISMATIC_COLORS.length)],
+      });
+    }
+    mote.x = tx; mote.y = ty;
+    mote.vx = 0; mote.vy = 0;
+    mote.trailHead = 0; mote.trailCount = 0;
+    playerIFramesMs = 1400; // brief invulnerability after teleport
+  }
+
+  function enterBossWave(): void {
+    if (isBossWaveActive) return;
+    isBossWaveActive = true;
+    // Save equipped weapon state
+    bossPreWaveEquippedIds = new Set(rpgSimState.equippedWeaponIds);
+    bossPreWaveWeaponTiers = new Map(rpgSimState.weaponTiersByWeaponId);
+    // Temporarily equip only diamond_bastion at tier 1
+    rpgSimState.equippedWeaponIds = new Set(['diamond_bastion']);
+    rpgSimState.weaponTiersByWeaponId.set('diamond_bastion', 1);
+    // Move player to safe zone at bottom-middle
+    mote.x = getSafeZoneX(); mote.y = getSafeZoneY();
+    mote.vx = 0; mote.vy = 0;
+    mote.trailHead = 0; mote.trailCount = 0;
+    playerIFramesMs = 1000;
+    applyEquipmentStats();
+  }
+
+  function exitBossWave(): void {
+    if (!isBossWaveActive) return;
+    isBossWaveActive = false;
+    // Restore pre-boss equipped weapons and tiers
+    rpgSimState.equippedWeaponIds = bossPreWaveEquippedIds;
+    for (const [id, tier] of bossPreWaveWeaponTiers) {
+      rpgSimState.weaponTiersByWeaponId.set(id, tier);
+    }
+    bossPreWaveEquippedIds = new Set();
+    bossPreWaveWeaponTiers = new Map();
+    teleportParticles.length = 0;
+    applyEquipmentStats();
+  }
+
   const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x140A); // ᑩᒱᕓᐊ — UCAS characters chosen for aesthetic angular appearance
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
@@ -619,10 +699,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return dmg;
   }
 
-  function damageBossEnemy(rawDamage: number, defPierceRatio: number): number {
+  function damageBossEnemy(rawDamage: number, defPierceRatio: number, fromDiamondBlade = false): number {
     const boss = bossEnemy;
     if (!boss) return 0;
     if (boss.isInvuln || (boss.bossId === 8 && boss.isAbsorbing)) return 0;
+    // During a boss wave only the diamond_bastion (swordCombo blade) can deal damage
+    if (isBossWaveActive && !fromDiamondBlade) {
+      const glowC = BOSS_GLOW_COLORS[Math.min(boss.bossId, BOSS_GLOW_COLORS.length - 1)];
+      spawnDamageNumber(boss.x, boss.y, 0, -1, '∞', 0.3, glowC);
+      return 0;
+    }
     if (boss.shieldHp > 0) {
       const shieldDmg = Math.min(boss.shieldHp, rawDamage);
       boss.shieldHp -= shieldDmg;
@@ -631,6 +717,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const effectiveDef = boss.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
     boss.hp = Math.max(0, boss.hp - dmg);
+    if (dmg > 0 && isBossWaveActive) {
+      // Each successful hit teleports player to safe zone and ups difficulty
+      boss.danmakuLevel += 1;
+      teleportPlayerToSafeZone();
+    }
     return dmg;
   }
 
@@ -1753,8 +1844,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rawDamage: number,
     arcStart: number,
     arcEnd: number,
+    weaponId: string,
   ): void {
     const hitColor = SWORD_COLOR;
+    const isDiamondBlade = weaponId === 'diamond_bastion';
     const check = <T extends { x: number; y: number; maxHp: number }>(
       e: T,
       damageFn: (enemy: T, dmg: number, pierce: number) => number,
@@ -1789,7 +1882,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
       if (dx * dx + dy * dy <= swordLength * swordLength &&
           angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) {
-        const dmg = damageBossEnemy(rawDamage, 1.0);
+        const dmg = damageBossEnemy(rawDamage, 1.0, isDiamondBlade);
         state.hitThisSwing.add(bossEnemy);
         if (dmg > 0) {
           hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
@@ -1950,7 +2043,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
     } else if (state.phase === 'swing') {
       // Hit detection during the swing.
-      swordHitInArc(state, swordLength, rawDamage, state.swipeArcStart, state.swipeArcEnd);
+      swordHitInArc(state, swordLength, rawDamage, state.swipeArcStart, state.swipeArcEnd, weaponId);
 
       // Add stronger crescent fluid forces during the swipe.
       const numSamples = 6;
@@ -3519,7 +3612,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (bossEnemy && bossEnemy.hp <= 0) {
       const bossXp = Math.ceil(getXpPerKill(currentWave) * getWaveStatScale(currentWave) * 5.0);
       rpgSimState.xp += bossXp;
-      applyEquipmentStats();
+      exitBossWave();
       const glowC = BOSS_GLOW_COLORS[Math.min(bossEnemy.bossId, BOSS_GLOW_COLORS.length - 1)];
       spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP`, 1.0, glowC);
       fluid.addExplosion(bossEnemy.x, bossEnemy.y, FLUID_EXPLOSION_STRENGTH * 2.5, FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B);
@@ -3850,6 +3943,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'boss') {
       bossEnemy = makeBossEnemy(Math.ceil(wn / 100), wn);
+      enterBossWave();
     }
   }
 
@@ -4044,7 +4138,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         // Keyboard input also overrides auto-move while held.
         mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
         mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
-      } else if (_autoMoveEnabled && (enemies.length > 0 || sapphireEnemies.length > 0
+      } else if (_autoMoveEnabled && !isBossWaveActive && (enemies.length > 0 || sapphireEnemies.length > 0
           || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0
           || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
           || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
@@ -4509,6 +4603,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fracterylEnemies.length = 0; fracterylShards.length = 0;
     eigensteinEnemies.length = 0; eigensteinBeams.length = 0;
     danmakuSafeZone = null;
+    exitBossWave();
     bossEnemy = null;
     bossProjectiles.length = 0;
     sandProjectiles.length = 0;
@@ -5817,6 +5912,51 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  /** Draws the prismatic bottom-safe-zone circle (visible during boss waves). */
+  function drawBottomSafeZone(): void {
+    if (!isBossWaveActive) return;
+    const szX = getSafeZoneX(), szY = getSafeZoneY();
+    const hue = (glowTimeS * 60) % 360;
+    ctx.save();
+    ctx.globalAlpha = 0.30 + Math.sin(glowTimeS * 3) * 0.08;
+    ctx.shadowBlur = 16; ctx.shadowColor = `hsl(${hue}, 100%, 80%)`;
+    ctx.strokeStyle = `hsl(${hue}, 80%, 75%)`; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.10;
+    ctx.fillStyle = `hsl(${hue}, 80%, 75%)`;
+    ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  /** Updates comet-trail teleport particles. */
+  function updateTeleportParticles(deltaMs: number): void {
+    if (teleportParticles.length === 0) return;
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = teleportParticles.length - 1; i >= 0; i--) {
+      const p = teleportParticles[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 0.90; p.vy *= 0.90;
+      p.alpha -= deltaMs / 350;
+      if (p.alpha <= 0) teleportParticles.splice(i, 1);
+    }
+  }
+
+  /** Draws comet-trail teleport particles. */
+  function drawTeleportParticles(): void {
+    if (teleportParticles.length === 0) return;
+    ctx.save();
+    for (const p of teleportParticles) {
+      const a = Math.max(0, p.alpha);
+      ctx.globalAlpha = a;
+      ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(Math.floor(p.x - 1.5), Math.floor(p.y - 1.5), 3, 3);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
   function drawAttackTrail(enemy: LaserEnemy, nowMs: number): void {
     const trail = enemy.attackTrail;
     if (!trail.active) return;
@@ -6079,6 +6219,96 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const dirY = dist > 0.01 ? dy / dist : 0;
     const bossSize = BOSS_SIZE_BASE + bossId * 1.5;
     const half = bossSize / 2;
+
+    // During a boss wave the boss is pinned to top-middle with gentle side drift
+    if (isBossWaveActive) {
+      const targetX = widthPx / 2 + Math.sin(boss.orbitAngle) * widthPx * 0.18;
+      const targetY = heightPx * 0.12;
+      boss.orbitAngle += 0.006 * dt;
+      boss.vx += (targetX - boss.x) * 0.06;
+      boss.vy += (targetY - boss.y) * 0.10;
+      boss.vx *= 0.82; boss.vy *= 0.82;
+      boss.x = Math.max(half, Math.min(widthPx - half, boss.x + boss.vx * dt));
+      boss.y = Math.max(half, Math.min(heightPx * 0.30, boss.y + boss.vy * dt));
+      // Danmaku attack patterns — scale with danmakuLevel
+      const dl = boss.danmakuLevel;
+      const bulletSpeed = BOSS_PROJ_SPEED * (1.0 + dl * 0.12);
+      const bulletSpeedFast = BOSS_PROJ_SPEED_FAST * (1.0 + dl * 0.08);
+      const bossColor = BOSS_COLORS[Math.min(bossId, BOSS_COLORS.length - 1)];
+      const bossGlow  = BOSS_GLOW_COLORS[Math.min(bossId, BOSS_GLOW_COLORS.length - 1)];
+      const seekStr = Math.min(0.025, 0.002 + dl * 0.003);
+
+      if (boss.attackTimerMs <= 0) {
+        boss.attackTimerMs = atk1Cd;
+        // Ring burst: number of bullets grows with danmakuLevel
+        const ringCount = 6 + dl * 2 + boss.phaseIndex * 4;
+        const rotOffset = boss.orbitAngle;
+        for (let i = 0; i < ringCount; i++) {
+          const a = rotOffset + (i / ringCount) * Math.PI * 2;
+          bossProjectiles.push({
+            x: boss.x, y: boss.y,
+            vx: Math.cos(a) * bulletSpeed, vy: Math.sin(a) * bulletSpeed,
+            atk: boss.atk, hasHitPlayer: false,
+            lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+            color: bossColor, glowColor: bossGlow,
+            size: BOSS_PROJ_SIZE, seekStr: 0,
+          });
+        }
+        // Second offset ring at danmakuLevel 3+
+        if (dl >= 3) {
+          const ring2 = 8 + dl;
+          const offset2 = Math.PI / ring2;
+          for (let i = 0; i < ring2; i++) {
+            const a = rotOffset + offset2 + (i / ring2) * Math.PI * 2;
+            bossProjectiles.push({
+              x: boss.x, y: boss.y,
+              vx: Math.cos(a) * bulletSpeed * 0.8, vy: Math.sin(a) * bulletSpeed * 0.8,
+              atk: boss.atk, hasHitPlayer: false,
+              lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+              color: bossColor, glowColor: bossGlow,
+              size: BOSS_PROJ_SIZE - 1, seekStr: 0,
+            });
+          }
+        }
+        // Spiral burst at danmakuLevel 5+
+        if (dl >= 5) {
+          const spiralCount = 12 + boss.phaseIndex * 3;
+          for (let i = 0; i < spiralCount; i++) {
+            const a = rotOffset * 2 + (i / spiralCount) * Math.PI * 2;
+            const spd = bulletSpeed * (0.7 + (i / spiralCount) * 0.6);
+            bossProjectiles.push({
+              x: boss.x, y: boss.y,
+              vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+              atk: boss.atk, hasHitPlayer: false,
+              lifeMs: BOSS_PROJ_LIFE_MS * 0.9, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.9,
+              color: bossGlow, glowColor: bossColor,
+              size: BOSS_PROJ_SIZE, seekStr: seekStr * 0.5,
+            });
+          }
+        }
+      }
+
+      if (boss.secondaryTimerMs <= 0) {
+        boss.secondaryTimerMs = atk2Cd;
+        // Aimed cluster toward player
+        const aimAngle = Math.atan2(dy, dx);
+        const spread = 3 + Math.floor(dl * 0.8);
+        for (let i = 0; i < spread; i++) {
+          const offset = (i - (spread - 1) / 2) * (0.18 + dl * 0.015);
+          const a = aimAngle + offset;
+          bossProjectiles.push({
+            x: boss.x, y: boss.y,
+            vx: Math.cos(a) * bulletSpeedFast, vy: Math.sin(a) * bulletSpeedFast,
+            atk: boss.atk, hasHitPlayer: false,
+            lifeMs: BOSS_PROJ_LIFE_MS * 0.7, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.7,
+            color: bossGlow, glowColor: bossColor,
+            size: BOSS_PROJ_SIZE - 1, seekStr,
+          });
+        }
+      }
+      return; // skip the non-boss-wave movement/attack code below
+    }
+
 
     if (bossId === 1) {
       const preferredDist = 100 + boss.phaseIndex * 20;
@@ -6481,6 +6711,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       p.x += p.vx * dt; p.y += p.vy * dt;
 
+      // Boss projectiles are destroyed when they enter the bottom safe zone
+      if (isBossWaveActive && isInBottomSafeZone(p.x, p.y)) {
+        bossProjectiles.splice(i, 1); continue;
+      }
+
       fluid.addForce({
         x: p.x, y: p.y,
         vx: p.vx * FLUID_VEL_FRAME_TO_PX_S,
@@ -6490,6 +6725,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       });
 
       if (!p.hasHitPlayer) {
+        // Player is immune inside the bottom safe zone
+        if (isBossWaveActive && isInBottomSafeZone(mote.x, mote.y)) continue;
         const pdx = mote.x - p.x, pdy = mote.y - p.y;
         if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
           p.hasHitPlayer = true;
@@ -6717,9 +6954,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawFracterylEnemies();
     drawEigensteinEnemies();
     drawEigensteinBeams();
+    drawBottomSafeZone();
     drawDanmakuSafeZone();
     drawBossProjectiles();
     drawBossEnemy();
+    drawTeleportParticles();
     drawShotLines();
     drawVortexes();
     drawSandProjectiles();
@@ -6891,6 +7130,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateEigensteinBeams(deltaMs);
       updateBossEnemy(deltaMs);
       updateBossProjectiles(deltaMs);
+      updateTeleportParticles(deltaMs);
       updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(deltaMs);
       updateSandProjectiles(deltaMs);
