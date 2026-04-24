@@ -18,7 +18,8 @@ export type GameAction =
   | { kind: 'unequip_weapon'; weaponId: string }
   | { kind: 'upgrade_weapon_tier'; weaponId: string }
   | { kind: 'purchase_rpg_upgrade'; upgradeId: string }
-  | { kind: 'set_respawn_wave'; wave: number };
+  | { kind: 'set_respawn_wave'; wave: number }
+  | { kind: 'dev_jump_wave'; wave: number };
 
 export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 

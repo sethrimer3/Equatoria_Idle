@@ -263,22 +263,35 @@
 
 **Save format v10**: `rpg.purchasedWeaponIds[]` and `rpg.equippedWeaponId` are persisted.  Older saves default to no purchases.
 
-## Diamond Sword — Prismatic Shard Blade System
+## Diamond Sword — Prismatic Shard Blade System (v2)
 
-**Decision**: The Diamond Sword (`swordCombo` effect) was redesigned from a 3-phase combo (right swing → left swing → 360 spin) to a fast single-swipe system. The visual blade is now 7 prismatic polygon shards (`SWORD_SHARD_SHAPES` in `rpg-constants.ts`) arranged along the blade line, each a distinct small polygon (diamonds, triangles, hexagons, etc.) of roughly half the player size.
+**Decision**: The Diamond Sword (`swordCombo` effect) was redesigned from its earlier single-swipe model into an alternating 180° arc system with a 4-hit spin combo.
 
-**Inertia physics**: The blade hinge uses an angular spring (`SWORD_HINGE_SPRING_K`) + damping (`SWORD_HINGE_DAMPING`) so the sword trails the player's aim direction. Each shard delays the previous with exponential smoothing (`SWORD_SHARD_FOLLOW_BASE` − `i * SWORD_SHARD_FOLLOW_DECAY`), creating a flexible chain-lag from handle to tip.
+**Idle position**: The sword rests to the RIGHT of the player (angle 0). The hinge spring pulls toward `SWORD_IDLE_ANGLE = 0` rather than the player's aim direction.
 
-**Attack**: On cooldown expiry, the nearest enemy within sword range is targeted. A single crescent swipe (`SWORD_SWIPE_ARC_HALF_RAD` ≈ ±69°) sweeps through the enemy. Hit detection uses `swordHitInArc`. All DEF is ignored. Cooldown is fast (900 ms base, scales with tier). Damage lowered (12 base) to compensate.
+**Pastel colors**: `SWORD_PRISMATIC_COLORS` now uses 10 very light, pastel shades (light blue base with rainbow sheen) instead of saturated rainbow colors.
 
-**Effects on hit**:
-1. Disconnected swipe-arc visual (`SwipeEffect`): a bright prismatic multi-segment arc at the player's position that fades quickly.
-2. Prismatic beam (`PrismaticBeamEffect`): a thin rhombus that appears tail-to-tip cutting across the enemy, then fades tail-to-tip. Positioned slightly perpendicular to the swipe direction.
-3. Euler fluid: crescent-pattern `addForce()` calls during the swing, prismatic-colored, pushing fluid particles in the swipe arc.
+**Alternating arc swings**: Each swing covers a 180° arc (π radians) centered on the nearest enemy. Swings alternate direction each time:
+- R→L (`swingIsRightToLeft=true`): sword drives from `arcStart` (enemyAngle − π/2) to `arcEnd` (enemyAngle + π/2).
+- L→R (`swingIsRightToLeft=false`): sword drives from `arcEnd` back to `arcStart`.
+Hit detection (`swordHitInArc`) always checks the same `arcStart→arcEnd` window, so the enemy is always hit.
 
-**Fluid interaction during drag**: Each frame (outside cooldown), every shard adds a gentle perpendicular `addForce()` to the fluid at its position, with a cycling prismatic color. This makes fluid particles take on prismatic hues as the sword moves.
+**Faster swings**: `SWORD_SWING_MS` reduced from 160 ms to 60 ms. `SWORD_DEFAULT_COOLDOWN_MS` reduced from 900 ms to 220 ms.
 
-**Mobile drag fix (same PR)**: Added `canvas.style.touchAction = 'none'` to `game-canvas.ts`. This prevents the browser from firing `pointercancel` when the user begins a scroll gesture, which was the root cause of mote dragging stopping after a few frames on mobile.
+**4-hit spin combo**: After 4 consecutive swings all hitting the same entity, if the 4th swing is a L→R motion, the sword enters `'spin_combo'` phase:
+- Spins 3 × 360° (`SWORD_COMBO_SPIN_TURNS`) in 450 ms (`SWORD_COMBO_SPIN_MS`).
+- Applies 1 damage tick per completed rotation (normal damage) across a full 360° arc at 2× range (`SWORD_COMBO_RANGE_MULT`).
+- Ends with the sword snapped back to `SWORD_IDLE_ANGLE` (right), ready for R→L again.
+- Visually: shards grow 1.5× and a glowing prismatic ring sweeps around the player.
+
+**Boss engagement**: `damageBossEnemy` now uses a `bossHitsInRound` counter. The boss only increments danmaku difficulty and teleports the player back to the safe zone after every 4th hit (`SWORD_COMBO_THRESHOLD`), giving the player exactly enough hits to complete the spin combo before being teleported.
+
+**Inertia physics**: Unchanged — spring/damping hinge + shard chain-lag from handle to tip.
+
+**Effects on hit**: Same as before (SwipeEffect, PrismaticBeamEffect, fluid forces).
+
+**Dev wave jump**: Dev mode now exposes a "Jump to Wave" control in the RPG Menu tab, dispatching `dev_jump_wave` to `RpgRender.devJumpToWave(wave)`. Waves 1 and 10, 20, 30, … up to 1000 are offered.
+
 
 ## rpg-render.ts Phase 5 Extraction — Enemy Update Systems
 

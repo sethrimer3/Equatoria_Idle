@@ -204,7 +204,7 @@ export interface VortexWeaponState {
 
 // ── Diamond sword combo interfaces ────────────────────────────
 
-export type SwordComboPhase = 'idle' | 'swing' | 'cooldown';
+export type SwordComboPhase = 'idle' | 'swing' | 'cooldown' | 'spin_combo';
 
 /** A disconnected prismatic arc visual spawned when the sword swipes. */
 export interface SwipeEffect {
@@ -255,6 +255,16 @@ export interface SwordComboState {
   swipeEffects: SwipeEffect[];
   /** Prismatic beam visuals spawned on enemy hit. */
   beamEffects: PrismaticBeamEffect[];
+  /** True when the current (or next) swing moves from right to left. Alternates each swing. */
+  swingIsRightToLeft: boolean;
+  /** The last entity that was struck; used to count consecutive hits. */
+  lastHitEntity: object | null;
+  /** How many consecutive swings have hit the same entity in a row. */
+  consecHitsOnSameEnemy: number;
+  /** Current spin angle during 'spin_combo' phase (radians, 0 → 6π). */
+  spinComboAngle: number;
+  /** How many full-rotation damage ticks have been applied during the combo so far. */
+  spinComboDamageTicks: number;
 }
 
 // ── Iolite poison bolt interfaces ─────────────────────────────
