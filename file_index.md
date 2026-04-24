@@ -325,11 +325,12 @@
 - Exports all constants; consumed by `rpg-render.ts` and `rpg-factories.ts`.
 
 ### src/render/rpg/rpg-types.ts
-- All internal interfaces and type aliases for the RPG rendering system (~530 lines).
-- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces.
+- All internal interfaces and type aliases for the RPG rendering system (~600 lines).
+- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`, `FracterylEnemy`, `EigensteinEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces.
 - Diamond sword interfaces: `SwordComboState` (phase `idle | swing | cooldown`, hinge angle+velocity, shard angles chain, swipe/beam effect lists), `SwipeEffect` (disconnected arc visual), `PrismaticBeamEffect` (tail-to-tip appear/fade beam).
+- Also exports `TeleportParticle` — comet-trail particle used during player teleport visuals.
 - No runtime dependencies (types only).
-- Exports all types; consumed by `rpg-render.ts` and `rpg-factories.ts`.
+- Exports all types; consumed by `rpg-render.ts`, `rpg-factories.ts`, and `rpg-entity-draw.ts`.
 
 ### src/render/rpg/rpg-factories.ts
 - `make*` factory functions for every RPG entity type (~305 lines).
@@ -345,9 +346,17 @@
 - Trail segments are batched by (hue-bucket × alpha-bucket) → at most 60 canvas state changes per frame.
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
+### src/render/rpg/rpg-entity-draw.ts
+- 35 exported pure draw functions extracted from the `rpg-render.ts` closure (~864 lines).
+- Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays, effect objects, or scalar values.
+- Covers every enemy type (laser, sapphire, sand projectile, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, fracteryl, eigenstein, boss ring), plus: particles (teleport, death-burst, forge, gem, mote, orbit-weapon), attack trails, weapon projectiles (missiles, bolts), eigenstein beams, laser beam effect, orbit projectile, and support visuals (damage numbers, HP bars).
+- Imports constants from `rpg-constants.ts` and types from `rpg-types.ts`.
+- No runtime side-effects; safe to call from any rendering context.
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~6,183 lines).
+- Independent RPG canvas rendering system for the RPG tab (~6,465 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
+- Entity draw functions have been extracted to `rpg-entity-draw.ts`; all 35 call sites updated to pass `ctx` and entity arrays explicitly.
 - Exports `RpgRender` interface and `createRpgRender()` factory.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
@@ -397,6 +406,22 @@
 - Shows affordability from ResourceState; dispatches `purchase_weapon` / `equip_weapon` actions.
 - `update(rpgState, resources, numberFormat)` — refreshes card list.
 - `setVisible(visible)` — toggles the overlay.
+
+### src/ui/panels/rpg-menu-tab.ts
+- Menu sub-tab pane for the RPG overlay panel (auto-move toggle + respawn-wave checkpoint selector).
+- `RpgMenuTabPane` interface; `createRpgMenuTabPane(dispatch, onAutoMoveChange)` factory.
+- Exposes `isAutoMoveEnabled` (writable) updated immediately on checkbox change; parent reads it via `onAutoMoveChange` callback.
+- `update(rpgState)` rebuilds content from current state.
+
+### src/ui/panels/rpg-weapons-tab.ts
+- Weapons sub-tab pane for the RPG overlay panel (weapon purchase / equip / unequip / tier-upgrade cards).
+- `RpgWeaponsTabPane` interface; `createRpgWeaponsTabPane(dispatch)` factory.
+- `update(rpgState, resources, numberFormat, isDevMode)` rebuilds the full weapon list.
+
+### src/ui/panels/rpg-upgrades-tab.ts
+- Upgrades sub-tab pane for the RPG overlay panel (per-upgrade purchase cards).
+- `RpgUpgradesTabPane` interface; `createRpgUpgradesTabPane(dispatch)` factory.
+- `update(rpgState, resources, numberFormat, isDevMode)` rebuilds the upgrade list.
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.

@@ -593,3 +593,9 @@ export interface DanmakuSafeZone {
   maxTimerMs: number;
 }
 
+
+// ── Teleport particle ─────────────────────────────────────────────
+export interface TeleportParticle {
+  x: number; y: number; vx: number; vy: number;
+  alpha: number; color: string;
+}
