@@ -32,7 +32,10 @@ const GENERATOR_LABEL_PADDING_PX = 7;
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
   for (let i = 0; i < TIERS.length; i++) {
-    loadImage(getGeneratorSpritePath(i));
+    loadImage(getGeneratorSpritePath(i)).catch(() => {
+      // Sprite missing or failed to load; drawGenerators will fall back to
+      // the procedural generator shape until it is available.
+    });
   }
 }
 

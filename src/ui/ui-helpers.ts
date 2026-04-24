@@ -9,7 +9,7 @@
  */
 export function makePageBreak(size: 'large' | 'small'): HTMLImageElement {
   const img = document.createElement('img');
-  img.src = `/ASSETS/SPRITES/menuElements/pageBreak_${size}.png`;
+  img.src = `ASSETS/SPRITES/menuElements/pageBreak_${size}.png`;
   img.alt = '';
   img.className = `page-break-${size}`;
   return img;

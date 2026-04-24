@@ -5,6 +5,7 @@ import { formatNumberAs, type NumberFormat } from '../../util';
 import { getLifetimeMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
 import type { AudioSystem } from '../../audio';
+import { makePageBreak } from '../ui-helpers';
 import {
   INITIAL_SPARKLE_DELAY_MS,
   type SparkleEmitter,
@@ -89,11 +90,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   panel.appendChild(groupsRoot);
 
   // Small page break at the end of the achievements section
-  const pageBreakEnd = document.createElement('img');
-  pageBreakEnd.src = '/ASSETS/SPRITES/menuElements/pageBreak_small.png';
-  pageBreakEnd.alt = '';
-  pageBreakEnd.className = 'page-break-small';
-  panel.appendChild(pageBreakEnd);
+  panel.appendChild(makePageBreak('small'));
 
   const existingGoldenTextContainer = document.querySelector<HTMLElement>('.golden-text-container');
   const createdGoldenTextContainer = !existingGoldenTextContainer;
