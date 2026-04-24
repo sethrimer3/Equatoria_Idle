@@ -460,14 +460,23 @@
 - `createEquationPanel(dispatch, traceEffect?)` — optional trace effect parameter.
 
 ### src/ui/panels/loom-panel.ts
-- Looms tab content with two sub-tabs: **Upgrades** and **Aliven**.
-- **Upgrades sub-tab**: Shows a card per unlocked tier's Loom: name, description, level, production rate, upgrade button.
-- **Aliven sub-tab**: For each of tiers 0–10 (Nullstone), shows aliven unlock button (cost: 10,000 own motes) or ✦ Alive badge.
-  - Below unlock rows, shows the N×N interaction matrix for all currently alivened tiers.
-  - Matrix colors: green for attraction (positive), red for repulsion (negative), neutral for zero.
-  - Matrix is rebuilt only when aliven count changes (keyed by tier ID join string).
-  - During a click-and-hold drag on a cell, a `TraceEffect` golden outline + tracer circles appear around the cell.
-- `createLoomPanel(dispatch, traceEffect?)` — optional trace effect parameter.
+- Slim orchestrator for the combined Upgrades panel (three sub-tabs: Equation, Loom, Aliven).
+- Owns sub-tab bar and switching logic; delegates all content to sub-pane modules.
+- `createLoomPanel(dispatch, traceEffect?, equationContent?)` — wires sub-panes.
+
+### src/ui/panels/loom-upgrades-pane.ts
+- "Loom" sub-tab content: passive-production Loom upgrade cards + special one-time upgrade cards.
+- One card per colour tier; cards show level, effective rate, particle-size label, and upgrade button.
+- Special upgrade cards show purchase cost and purchased state.
+- `createLoomUpgradesPane(dispatch)` → `{ element, update(state, fmt) }`.
+
+### src/ui/panels/aliven-pane.ts
+- "Aliven" sub-tab content: per-tier aliven rows + interactive NxN interaction-matrix grid.
+- Aliven rows show unlock button (cost 10,000 own motes) or ✦ Alive badge.
+- Interaction matrix cells support tap (apply selected ±0.05 step) and drag (continuous adjustment).
+- Matrix is rebuilt only when the alivened tier set changes (keyed by join string).
+- During a cell drag, `TraceEffect` golden outline + tracer circles appear around the cell.
+- `createAlivenPane(dispatch, traceEffect?)` → `{ element, update(state, fmt) }`.
 
 ### src/audio/
 
