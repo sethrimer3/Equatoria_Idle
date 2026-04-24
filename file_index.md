@@ -407,6 +407,22 @@
 - `update(rpgState, resources, numberFormat)` — refreshes card list.
 - `setVisible(visible)` — toggles the overlay.
 
+### src/ui/panels/rpg-menu-tab.ts
+- Menu sub-tab pane for the RPG overlay panel (auto-move toggle + respawn-wave checkpoint selector).
+- `RpgMenuTabPane` interface; `createRpgMenuTabPane(dispatch, onAutoMoveChange)` factory.
+- Exposes `isAutoMoveEnabled` (writable) updated immediately on checkbox change; parent reads it via `onAutoMoveChange` callback.
+- `update(rpgState)` rebuilds content from current state.
+
+### src/ui/panels/rpg-weapons-tab.ts
+- Weapons sub-tab pane for the RPG overlay panel (weapon purchase / equip / unequip / tier-upgrade cards).
+- `RpgWeaponsTabPane` interface; `createRpgWeaponsTabPane(dispatch)` factory.
+- `update(rpgState, resources, numberFormat, isDevMode)` rebuilds the full weapon list.
+
+### src/ui/panels/rpg-upgrades-tab.ts
+- Upgrades sub-tab pane for the RPG overlay panel (per-upgrade purchase cards).
+- `RpgUpgradesTabPane` interface; `createRpgUpgradesTabPane(dispatch)` factory.
+- `update(rpgState, resources, numberFormat, isDevMode)` rebuilds the upgrade list.
+
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
 - `createTraceEffect(mountTarget)` — returns `TraceEffect` with `setEquationTargets()` and `setMatrixTarget()`.
