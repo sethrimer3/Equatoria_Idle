@@ -184,3 +184,19 @@ The RPG rendering file was the largest remaining monolithic file at 7,328 lines.
 **Why `createRpgRender` was not split further:** every update/draw function inside the closure shares mutable local state (player mote, enemy arrays, canvas context, fluid instance, dimension variables, etc.) via JavaScript closure. Extracting individual enemy systems would require threading a large context object through all call sites — a change with significant regression risk and no performance benefit. The 6,183-line closure is self-contained and coherent; the three extracted files give future agents a clean, navigable entry point to constants and types without touching the rendering logic.
 
 **No logic changes.** This refactor is a purely mechanical extraction: `tsc --noEmit` passes with zero errors before and after.
+
+---
+
+## Phase 4: loom-panel.ts (713 → 3 files)
+
+The combined Upgrades panel contained three distinct sub-tab concerns in a single factory function. Split into focused sub-pane modules:
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `loom-upgrades-pane.ts` | "Loom" sub-tab: passive Loom cards + special upgrade cards | 263 |
+| `aliven-pane.ts` | "Aliven" sub-tab: aliven rows + interactive NxN interaction-matrix | 428 |
+| `loom-panel.ts` | Outer shell: sub-tab bar + switching + sub-pane wiring | 106 |
+
+Each sub-pane exports a factory: `create*Pane(dispatch, ...) → { element, update(state, fmt) }`. The outer `loom-panel.ts` calls `update()` on the active sub-pane only (preserving the existing lazy-update optimisation). The `updateCellDisplay` helper and matrix drag constants (`DRAG_THRESHOLD_PX`, `DRAG_PX_PER_STEP`) moved to `aliven-pane.ts`; the `renderLoomIconCanvas` helper moved to `loom-upgrades-pane.ts`.
+
+**No logic changes.** `tsc --noEmit` passes with zero errors before and after.
