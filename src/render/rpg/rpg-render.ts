@@ -4429,6 +4429,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /**
    * Applies damage to the player with a directional knockback impulse.
    * Used exclusively by Amber shards which carry velocity-based knockback.
+   * Prefer `dealDamageToPlayer` for all other enemy contact/projectile damage.
    * @param atkValue - raw attack value (defence subtracted internally)
    * @param normDirX - normalised knockback / damage-number direction X
    * @param normDirY - normalised knockback / damage-number direction Y
@@ -4438,7 +4439,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const rawDmg = atkValue - playerStats.def;
     const dmg = Math.max(0, rawDmg);
     if (dmg <= 0) {
-      spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+      spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, 'BLOCKED', 0.25, '#74c0fc');
     } else {
       playerStats.hp = Math.max(0, playerStats.hp - dmg);
       const ratio = Math.min(1, dmg / playerStats.maxHp);

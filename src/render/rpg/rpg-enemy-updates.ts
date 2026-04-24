@@ -5,7 +5,7 @@
  * shared RpgEnemyCtx that holds the handful of cross-cutting references
  * (player position, canvas dimensions, fluid, callback delegates).
  *
- * Extracted from rpg-render.ts Phase 5 to keep that closure under ~5 500 lines
+ * Extracted from rpg-render.ts Phase 5 to keep that closure under ~5,500 lines
  * and give each enemy system a navigable, self-contained home.
  *
  * Sections (in wave-unlock order):
