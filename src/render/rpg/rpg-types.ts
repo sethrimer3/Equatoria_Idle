@@ -518,6 +518,7 @@ export interface BossEnemy {
   absorbTimerMs: number;
   contactCdMs: number;
   phaseTransitionMs: number;
+  danmakuLevel: number;
 }
 
 export interface BossProjectile {
@@ -531,5 +532,64 @@ export interface BossProjectile {
   glowColor: string;
   size: number;
   seekStr: number;
+}
+
+// ── Fracteryl enemy (tier 11) ─────────────────────────────────────
+
+export interface FracterylEnemy {
+  readonly kind: 'fracteryl';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  burstTimerMs: number;
+  patrolTimerMs: number;
+  orbitAngle: number;
+  pulseMs: number;
+}
+
+export interface FracterylShard {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number;
+  hasHitPlayer: boolean;
+  lifeMs: number;
+  generation: number;
+}
+
+// ── Eigenstein enemy (tier 12) ────────────────────────────────────
+
+export interface EigensteinEnemy {
+  readonly kind: 'eigenstein';
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  beamAngle: number;
+  beamTimerMs: number;
+  beamChargeMs: number;
+  isChargingBeam: boolean;
+  patrolTimerMs: number;
+  pulseMs: number;
+}
+
+export interface EigensteinBeam {
+  originX: number; originY: number;
+  angle: number;
+  atk: number;
+  isActive: boolean;
+  timerMs: number;
+  maxTimerMs: number;
+}
+
+// ── Danmaku safe-zone warning ─────────────────────────────────────
+
+export interface DanmakuSafeZone {
+  x: number; y: number;
+  angle: number;
+  width: number;
+  timerMs: number;
+  maxTimerMs: number;
 }
 

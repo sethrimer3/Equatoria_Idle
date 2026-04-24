@@ -509,6 +509,42 @@ export const IOLITE_XP_MULT    = 5;
 export const AMETHYST_XP_MULT  = 6;
 export const DIAMOND_XP_MULT   = 8;
 export const NULLSTONE_XP_MULT = 10;
+export const FRACTERYL_XP_MULT = 14;
+export const EIGENSTEIN_XP_MULT = 18;
+
+// ── Fracteryl enemy constants (tier 11) ───────────────────────────
+export const FRACTERYL_HP_INIT           = 3200;
+export const FRACTERYL_ATK_INIT          = 65;
+export const FRACTERYL_DEF_INIT          = 35;
+export const FRACTERYL_ENEMY_SIZE        = 11;
+export const FRACTERYL_BURST_CD_MS       = 2800;
+export const FRACTERYL_BURST_JITTER      = 800;
+export const FRACTERYL_PATROL_TURN_MS    = 2500;
+export const FRACTERYL_SHARD_HP_INIT     = 30;
+export const FRACTERYL_SHARD_ATK_INIT    = 22;
+export const FRACTERYL_SHARD_LIFE_MS     = 1800;
+export const FRACTERYL_ENEMY_COLOR       = '#cc44ff';
+export const FRACTERYL_ENEMY_GLOW        = '#ee88ff';
+
+// ── Eigenstein enemy constants (tier 12) ──────────────────────────
+export const EIGENSTEIN_HP_INIT          = 4500;
+export const EIGENSTEIN_ATK_INIT         = 80;
+export const EIGENSTEIN_DEF_INIT         = 45;
+export const EIGENSTEIN_ENEMY_SIZE       = 12;
+export const EIGENSTEIN_BEAM_CD_MS       = 3500;
+export const EIGENSTEIN_BEAM_JITTER      = 1000;
+export const EIGENSTEIN_BEAM_CHARGE_MS   = 900;
+export const EIGENSTEIN_BEAM_FIRE_MS     = 300;
+export const EIGENSTEIN_PATROL_TURN_MS   = 3000;
+export const EIGENSTEIN_ENEMY_COLOR      = '#44ccff';
+export const EIGENSTEIN_ENEMY_GLOW       = '#88eeff';
+
+// ── Danmaku boss system constants ─────────────────────────────────
+export const DANMAKU_WARN_MS             = 1200;
+export const DANMAKU_BULLET_SPEED        = 1.8;
+export const DANMAKU_SAFE_ANGLE_WIDTH    = Math.PI * 0.45;
+export const DANMAKU_RING_COUNT          = 24;
+export const DANMAKU_TELEPORT_MARGIN     = 40;
 
 // ── Boss constants ─────────────────────────────────────────────
 export const BOSS_SIZE_BASE    = 14;
@@ -537,18 +573,21 @@ export const BOSS_INVULN_ON_P1    = 2000;
 export const BOSS_INVULN_OFF_P1   = 2500;
 export const BOSS_INVULN_ON_P2    = 1800;
 export const BOSS_INVULN_OFF_P2   = 1500;
-export const BOSS_COLORS: readonly string[] = [
+export const BOSS_COLORS: string[] = [
   '', '#f5f0eb', '#dc3232', '#ff8c3c', '#e6c850',
   '#6464b4', '#b464c8', '#e8f0fa', '#1e1e28', '#9664c8', '#ffd764',
+  '#cc44ff', '#44ccff',
 ];
-export const BOSS_GLOW_COLORS: readonly string[] = [
+export const BOSS_GLOW_COLORS: string[] = [
   '', '#faf8f5', '#ff6b6b', '#ffb366', '#f0d870',
   '#8888cc', '#d088e0', '#ffffff', '#9664c8', '#c090ff', '#ffe599',
+  '#ee88ff', '#88eeff',
 ];
-export const BOSS_NAMES: readonly string[] = [
+export const BOSS_NAMES: string[] = [
   '', 'Quartz Sovereign', 'Ruby King', 'Sunstone Herald', 'Citrine Weaver',
   'Iolite Colossus', 'Amethyst Breaker', 'Diamond Eternal', 'Nullstone Devourer',
   'Void Nexus', 'Equation Incarnate',
+  'Fracteryl Manifestation', 'Eigenstein Entity',
 ];
 
 // ── Fluid background force scales ─────────────────────────────
@@ -598,4 +637,9 @@ export const FLUID_AMETHYST_R = 180, FLUID_AMETHYST_G = 100, FLUID_AMETHYST_B = 
 export const FLUID_DIAMOND_R = 232, FLUID_DIAMOND_G = 240, FLUID_DIAMOND_B = 250;
 // Nullstone enemy colour.
 export const FLUID_NULLSTONE_R =  30, FLUID_NULLSTONE_G =  30, FLUID_NULLSTONE_B =  40;
+// Fracteryl enemy colour.
+export const FLUID_FRACTERYL_R = 204, FLUID_FRACTERYL_G =  68, FLUID_FRACTERYL_B = 255;
+// Eigenstein enemy colour.
+export const FLUID_EIGENSTEIN_R =  68, FLUID_EIGENSTEIN_G = 204, FLUID_EIGENSTEIN_B = 255;
+
 

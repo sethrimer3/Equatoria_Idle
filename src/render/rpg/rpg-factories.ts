@@ -6,6 +6,7 @@ import {
   RubyEnemy, RubyBolt, SunstoneEnemy, CitrineEnemy, CitrineBolt,
   IoliteEnemy, AmethystEnemy, AmethystShard, DiamondEnemy, DiamondShard,
   NullstoneEnemy, VoidTendril,
+  FracterylEnemy, FracterylShard, EigensteinEnemy, DanmakuSafeZone,
 } from './rpg-types';
 import {
   LASER_HP_INIT, LASER_ATK_INIT, LASER_DEF_INIT, LASER_PATROL_TURN_MS,
@@ -39,6 +40,12 @@ import {
   NULLSTONE_HP_INIT, NULLSTONE_ATK_INIT, NULLSTONE_DEF_INIT,
   NULLSTONE_ABSORB_MS, NULLSTONE_ABSORB_CD_MS, NULLSTONE_TENDRIL_CD_MS, NULLSTONE_PATROL_TURN_MS,
   VOID_TENDRIL_HP_INIT, VOID_TENDRIL_ATK_INIT, VOID_TENDRIL_LIFE_MS,
+  FRACTERYL_HP_INIT, FRACTERYL_ATK_INIT, FRACTERYL_DEF_INIT,
+  FRACTERYL_BURST_CD_MS, FRACTERYL_BURST_JITTER, FRACTERYL_PATROL_TURN_MS,
+  FRACTERYL_SHARD_HP_INIT, FRACTERYL_SHARD_ATK_INIT, FRACTERYL_SHARD_LIFE_MS,
+  EIGENSTEIN_HP_INIT, EIGENSTEIN_ATK_INIT, EIGENSTEIN_DEF_INIT,
+  EIGENSTEIN_BEAM_CD_MS, EIGENSTEIN_BEAM_JITTER, EIGENSTEIN_PATROL_TURN_MS,
+  DANMAKU_WARN_MS,
 } from './rpg-constants';
 
 export function makeAttackTrail(): AttackTrailState {
@@ -301,5 +308,50 @@ export function makeVoidTendril(x: number, y: number, vx: number, vy: number): V
     hasHitPlayer: false,
     lifeMs: VOID_TENDRIL_LIFE_MS,
   };
+}
+
+export function makeFracterylEnemy(x: number, y: number, waveNumber: number): FracterylEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'fracteryl',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(FRACTERYL_HP_INIT * scale), maxHp: Math.ceil(FRACTERYL_HP_INIT * scale),
+    atk: Math.ceil(FRACTERYL_ATK_INIT * scale), def: Math.ceil(FRACTERYL_DEF_INIT * scale),
+    burstTimerMs: FRACTERYL_BURST_CD_MS + Math.random() * FRACTERYL_BURST_JITTER,
+    patrolTimerMs: Math.random() * FRACTERYL_PATROL_TURN_MS,
+    orbitAngle: Math.random() * Math.PI * 2,
+    pulseMs: Math.random() * 2000,
+  };
+}
+
+export function makeFracterylShard(x: number, y: number, vx: number, vy: number, generation: number): FracterylShard {
+  return {
+    x, y, vx, vy,
+    hp: FRACTERYL_SHARD_HP_INIT, maxHp: FRACTERYL_SHARD_HP_INIT,
+    atk: FRACTERYL_SHARD_ATK_INIT,
+    hasHitPlayer: false,
+    lifeMs: FRACTERYL_SHARD_LIFE_MS * (generation === 0 ? 1 : 0.6),
+    generation,
+  };
+}
+
+export function makeEigensteinEnemy(x: number, y: number, waveNumber: number): EigensteinEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  return {
+    kind: 'eigenstein',
+    x, y, vx: 0, vy: 0,
+    hp: Math.ceil(EIGENSTEIN_HP_INIT * scale), maxHp: Math.ceil(EIGENSTEIN_HP_INIT * scale),
+    atk: Math.ceil(EIGENSTEIN_ATK_INIT * scale), def: Math.ceil(EIGENSTEIN_DEF_INIT * scale),
+    beamAngle: Math.random() * Math.PI * 2,
+    beamTimerMs: EIGENSTEIN_BEAM_CD_MS + Math.random() * EIGENSTEIN_BEAM_JITTER,
+    beamChargeMs: 0,
+    isChargingBeam: false,
+    patrolTimerMs: Math.random() * EIGENSTEIN_PATROL_TURN_MS,
+    pulseMs: Math.random() * 2000,
+  };
+}
+
+export function makeDanmakuSafeZone(x: number, y: number, angle: number, width: number): DanmakuSafeZone {
+  return { x, y, angle, width, timerMs: DANMAKU_WARN_MS, maxTimerMs: DANMAKU_WARN_MS };
 }
 
