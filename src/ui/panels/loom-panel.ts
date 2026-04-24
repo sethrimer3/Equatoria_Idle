@@ -77,9 +77,9 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     equationTabBtn.classList.toggle('active', tab === 'equation');
     upgradesTabBtn.classList.toggle('active', tab === 'loom');
     alivenTabBtn.classList.toggle('active', tab === 'aliven');
-    equationPane.style.display           = tab === 'equation' ? '' : 'none';
-    loomUpgradesPane.element.style.display = tab === 'loom'     ? '' : 'none';
-    alivenPane.element.style.display       = tab === 'aliven'   ? '' : 'none';
+    equationPane.style.display = tab === 'equation' ? '' : 'none';
+    loomUpgradesPane.element.style.display = tab === 'loom' ? '' : 'none';
+    alivenPane.element.style.display = tab === 'aliven' ? '' : 'none';
   }
 
   equationTabBtn.addEventListener('pointerdown', (e) => {
