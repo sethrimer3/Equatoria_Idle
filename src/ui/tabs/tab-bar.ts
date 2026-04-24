@@ -29,7 +29,7 @@ export interface TabBar {
 // ─── Sprite configuration ────────────────────────────────────────
 
 /** Base path for tab icon sprites. */
-const ICON_BASE = '/ASSETS/SPRITES/menuElements/icons';
+const ICON_BASE = 'ASSETS/SPRITES/menuElements/icons';
 
 /** Number of animation frames for the upgrades tab. */
 const UPGRADES_ANIM_FRAME_COUNT = 36;

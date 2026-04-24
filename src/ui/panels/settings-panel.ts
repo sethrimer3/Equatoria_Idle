@@ -2,6 +2,7 @@ import type { ActionHandler } from '../../input';
 import type { SettingsState } from '../../settings';
 import { saveSettings } from '../../settings';
 import type { AudioSystem } from '../../audio';
+import { makePageBreak } from '../ui-helpers';
 
 // ─── Slider glow constants ───────────────────────────────────────
 
@@ -181,11 +182,7 @@ export function createSettingsPanel(
   panel.appendChild(credits);
 
   // Small page break at the end of the settings panel
-  const pageBreakEnd = document.createElement('img');
-  pageBreakEnd.src = '/ASSETS/SPRITES/menuElements/pageBreak_small.png';
-  pageBreakEnd.alt = '';
-  pageBreakEnd.className = 'page-break-small';
-  panel.appendChild(pageBreakEnd);
+  panel.appendChild(makePageBreak('small'));
 
   return {
     element: panel,
