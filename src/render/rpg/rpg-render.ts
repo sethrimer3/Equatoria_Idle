@@ -41,36 +41,29 @@ import {
   JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
   LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
   LASER_ATTACK_RADIUS, LASER_DECEL_DURATION_MS, LASER_DASH_SPEED, LASER_DASH_DISTANCE,
-  LASER_COOLDOWN_MS, LASER_OVERSHOOT_DAMPING, LASER_OVERSHOOT_STOP, LASER_TRAIL_ERASE_MS,
-  LASER_PATROL_SPEED_MAX, LASER_PATROL_DAMPING, LASER_PATROL_TURN_MS,
+  LASER_COOLDOWN_MS, LASER_OVERSHOOT_DAMPING, LASER_OVERSHOOT_STOP, LASER_PATROL_SPEED_MAX, LASER_PATROL_DAMPING, LASER_PATROL_TURN_MS,
   PLAYER_HIT_RADIUS,
-  LASER_DECEL_FACTOR, ATTACK_TRAIL_CURVE_VARIATION, ATTACK_TRAIL_LENGTH_SCALE,
-  ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE,
-  PATROL_TURN_DELAY_MIN_FACTOR, PATROL_TURN_DELAY_RANGE_FACTOR,
+  LASER_DECEL_FACTOR, ATTACK_TRAIL_CURVE_VARIATION, PATROL_TURN_DELAY_MIN_FACTOR, PATROL_TURN_DELAY_RANGE_FACTOR,
   INTER_WAVE_DELAY_MS, DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
   DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
   PLAYER_BASE_COOLDOWN_MS, PLAYER_BASE_RANGE_PX, HIT_EFFECT_DURATION_MS,
   BASE_ATTACK_TIMER_KEY, SHOT_LINE_DURATION_MS, TARGET_FRAME_MS, IFRAME_FLICKER_INTERVAL_MS,
   DAMAGE_NUM_DURATION_MS, DAMAGE_NUM_MIN_FONT_PX, DAMAGE_NUM_MAX_FONT_PX,
-  DAMAGE_NUM_INITIAL_SPEED, DAMAGE_NUM_DECEL, DAMAGE_NUM_FONT_FAMILY,
-  PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS, PLAYER_KNOCKBACK_MAX,
+  DAMAGE_NUM_INITIAL_SPEED, DAMAGE_NUM_DECEL, PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS, PLAYER_KNOCKBACK_MAX,
   AUTO_MOVE_JOYSTICK_DEAD_ZONE,
   WEAPON_PARTICLE_ORBIT_SPEED, WEAPON_PARTICLE_ORBIT_RADIUS, WEAPON_PARTICLE_MIN_SPEED,
-  ORBIT_PROJ_SPEED_RAD, ORBIT_PROJ_RADIUS, ORBIT_PROJ_SIZE, ORBIT_PROJ_TRAIL_CAP,
+  ORBIT_PROJ_SPEED_RAD, ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_DAMAGE, ORBIT_PROJ_HIT_CD_MS,
-  SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_COLOR, SAPPHIRE_ENEMY_GLOW,
+  SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_GLOW,
   SAPPHIRE_SHIELD_RADIUS, SAPPHIRE_PATROL_SPEED,
   SAPPHIRE_PATROL_TURN_MS, SAPPHIRE_MISSILE_CD_MS, SAPPHIRE_MISSILE_JITTER,
   MISSILE_SIZE, MISSILE_SPEED, MISSILE_SEEK_STR, MISSILE_MAX_SPEED,
-  MISSILE_TRAIL_CAP, MISSILE_COLOR, MISSILE_GLOW,
-  MISSILE_TRAIL_DASH_RATIO, MINIMUM_SHIELD_DAMAGE, SPEED_EPSILON,
-  SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, SAND_PROJ_GLOW,
-  CHAIN_NODES, CHAIN_MIN_RADIUS, CHAIN_MAX_RADIUS, CHAIN_NODE_COLOR, CHAIN_NODE_GLOW,
+  MISSILE_TRAIL_CAP, MINIMUM_SHIELD_DAMAGE, SPEED_EPSILON,
+  SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, CHAIN_NODES, CHAIN_MIN_RADIUS, CHAIN_MAX_RADIUS, CHAIN_NODE_COLOR, CHAIN_NODE_GLOW,
   CHAIN_LINE_COLOR, CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
   CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
   CHAIN_DAMPING, CHAIN_LASH_SPEED, CHAIN_MIN_INERTIA, CHAIN_MAX_INERTIA,
-  LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW, LASER_BEAM_WIDTH,
-  VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
+  LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW, VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
   VORTEX_COLOR, VORTEX_GLOW, VORTEX_SPIN_RATE,
   SWORD_SWING_MS, SWORD_COLOR, SWORD_PRISMATIC_COLORS,
   SWORD_SHARD_COUNT, SWORD_SHARD_SIZE_BASE, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
@@ -79,59 +72,51 @@ import {
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
-  POISON_BOLT_GLOW, POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
-  EMERALD_ENEMY_SIZE, EMERALD_ENEMY_COLOR, EMERALD_ENEMY_GLOW,
+  POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
+  EMERALD_ENEMY_SIZE, EMERALD_ENEMY_GLOW,
   EMERALD_PATROL_SPEED, EMERALD_PATROL_TURN_MS, EMERALD_ATTACK_RADIUS,
   EMERALD_CHARGE_MS, EMERALD_BLINK_OFFSET, EMERALD_COOLDOWN_MS,
   EMERALD_GHOST_FADE_MS, EMERALD_PATROL_DAMPING,
-  AMBER_ENEMY_SIZE, AMBER_ENEMY_COLOR, AMBER_ENEMY_GLOW,
+  AMBER_ENEMY_SIZE, AMBER_ENEMY_GLOW,
   AMBER_PATROL_SPEED, AMBER_PATROL_TURN_MS, AMBER_PATROL_DAMPING,
   AMBER_MISSILE_CD_MS, AMBER_MISSILE_JITTER, AMBER_SHARD_SPREAD_RAD, AMBER_SHARD_COUNT,
   AMBER_SHARD_SPEED, AMBER_SHARD_MAX_SPEED, AMBER_SHARD_SEEK_STR, AMBER_SHARD_SIZE,
   AMBER_SHARD_TRAIL_CAP,
-  AMBER_SHARD_COLOR, AMBER_SHARD_GLOW,
-  VOID_ENEMY_SIZE, VOID_ENEMY_COLOR, VOID_ENEMY_GLOW,
+  VOID_ENEMY_SIZE, VOID_ENEMY_GLOW,
   VOID_PURSUE_SPEED, VOID_CONTACT_RADIUS, VOID_CONTACT_CD_MS,
-  VOID_AURA_PULSE_MS, VOID_AURA_RADIUS,
-  QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_COLOR, QUARTZ_ENEMY_GLOW,
+  VOID_AURA_PULSE_MS, QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_GLOW,
   QUARTZ_PREFERRED_DIST, QUARTZ_APPROACH_SPEED, QUARTZ_STRAFE_SPEED,
   QUARTZ_SPIKE_CD_MS, QUARTZ_SPIKE_JITTER,
   QUARTZ_SPIKE_SPEED, QUARTZ_SPIKE_SIZE,
-  QUARTZ_SPIKE_COLOR, QUARTZ_SPIKE_GLOW,
-  RUBY_ENEMY_SIZE, RUBY_ENEMY_COLOR, RUBY_ENEMY_GLOW,
+  RUBY_ENEMY_SIZE, RUBY_ENEMY_GLOW,
   RUBY_PATROL_SPEED, RUBY_BOLT_CD_MS, RUBY_BOLT_JITTER, RUBY_PREFERRED_DIST,
   RUBY_BOLT_SPEED, RUBY_BOLT_SIZE,
-  RUBY_BOLT_COLOR, RUBY_BOLT_GLOW,
-  SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_COLOR, SUNSTONE_ENEMY_GLOW,
+  SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_GLOW,
   SUNSTONE_PREFERRED_DIST, SUNSTONE_ORBIT_SPEED,
   SUNSTONE_PULSE_CD_MS, SUNSTONE_PULSE_JITTER,
-  CITRINE_ENEMY_SIZE, CITRINE_ENEMY_COLOR, CITRINE_ENEMY_GLOW,
+  CITRINE_ENEMY_SIZE, CITRINE_ENEMY_GLOW,
   CITRINE_PATROL_SPEED, CITRINE_PATROL_TURN_MS,
   CITRINE_BOLT_CD_MS, CITRINE_BOLT_JITTER,
   CITRINE_BOLT_SPEED, CITRINE_BOLT_MAX_SPEED, CITRINE_BOLT_SEEK, CITRINE_BOLT_SIZE,
   CITRINE_BOLT_TRAIL_CAP,
-  CITRINE_BOLT_COLOR, CITRINE_BOLT_GLOW,
-  IOLITE_ENEMY_SIZE, IOLITE_ENEMY_COLOR, IOLITE_ENEMY_GLOW,
+  IOLITE_ENEMY_SIZE, IOLITE_ENEMY_GLOW,
   IOLITE_PATROL_SPEED, IOLITE_PATROL_TURN_MS,
   IOLITE_BEAM_CD_MS, IOLITE_BEAM_JITTER, IOLITE_BEAM_RANGE,
   IOLITE_BEAM_COUNT, IOLITE_BEAM_SPREAD_RAD,
-  AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_COLOR, AMETHYST_ENEMY_GLOW,
+  AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_GLOW,
   AMETHYST_PATROL_SPEED, AMETHYST_PATROL_TURN_MS,
   AMETHYST_BURST_CD_MS, AMETHYST_BURST_JITTER, AMETHYST_BURST_COUNT,
   AMETHYST_SHARD_SPEED, AMETHYST_SHARD_SIZE,
-  AMETHYST_SHARD_COLOR, AMETHYST_SHARD_GLOW,
-  DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_COLOR, DIAMOND_ENEMY_GLOW,
+  DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_GLOW,
   DIAMOND_PHASE_INVULN_MS, DIAMOND_PHASE_VULN_MS,
   DIAMOND_PATROL_SPEED, DIAMOND_ORBIT_SPEED,
-  DIAMOND_SHARD_CD_MS, DIAMOND_SHARD_COUNT, DIAMOND_SHARD_COLOR, DIAMOND_SHARD_GLOW,
-  DIAMOND_SHARD_SPEED, DIAMOND_SHARD_SIZE,
-  NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_COLOR, NULLSTONE_ENEMY_GLOW,
+  DIAMOND_SHARD_CD_MS, DIAMOND_SHARD_COUNT, DIAMOND_SHARD_SPEED, DIAMOND_SHARD_SIZE,
+  NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_GLOW,
   NULLSTONE_GRAVITY_STRENGTH, NULLSTONE_GRAVITY_RADIUS,
   NULLSTONE_ABSORB_MS, NULLSTONE_ABSORB_CD_MS,
   NULLSTONE_PATROL_SPEED, NULLSTONE_PATROL_TURN_MS,
   NULLSTONE_TENDRIL_CD_MS, NULLSTONE_TENDRIL_COUNT,
   VOID_TENDRIL_SPEED, VOID_TENDRIL_SIZE,
-  VOID_TENDRIL_COLOR, VOID_TENDRIL_GLOW,
   LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
   QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
   IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
@@ -168,16 +153,40 @@ import {
   FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
   FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
   FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
-  FRACTERYL_ENEMY_COLOR, FRACTERYL_ENEMY_GLOW,
+  FRACTERYL_ENEMY_GLOW,
   FRACTERYL_ENEMY_SIZE, FRACTERYL_BURST_CD_MS, FRACTERYL_BURST_JITTER,
   FRACTERYL_PATROL_TURN_MS,
-  EIGENSTEIN_ENEMY_COLOR, EIGENSTEIN_ENEMY_GLOW,
+  EIGENSTEIN_ENEMY_GLOW,
   EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_BEAM_CD_MS, EIGENSTEIN_BEAM_JITTER,
   EIGENSTEIN_PATROL_TURN_MS, EIGENSTEIN_BEAM_CHARGE_MS, EIGENSTEIN_BEAM_FIRE_MS,
   DANMAKU_BULLET_SPEED, DANMAKU_SAFE_ANGLE_WIDTH,
   DANMAKU_RING_COUNT, DANMAKU_TELEPORT_MARGIN,
-  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
+  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT
 } from './rpg-constants';
+import {
+  drawSapphireEnemies, drawSapphireMissiles,
+  drawEmeraldEnemies,
+  drawAmberEnemies, drawAmberShards,
+  drawVoidEnemies,
+  drawQuartzEnemies, drawQuartzSpikes,
+  drawRubyEnemies, drawRubyBolts,
+  drawSunstoneEnemies,
+  drawCitrineEnemies, drawCitrineBolts,
+  drawIoliteEnemies,
+  drawAmethystEnemies, drawAmethystShards,
+  drawDiamondEnemies, drawDiamondShards,
+  drawNullstoneEnemies, drawVoidTendrils,
+  drawFracterylEnemies,
+  drawEigensteinEnemies, drawEigensteinBeams,
+  drawBossProjectiles,
+  drawSandProjectiles,
+  drawPoisonBolts,
+  drawLaserBeamEffect,
+  drawTeleportParticles,
+  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
+  drawAttackTrail,
+  drawWeaponOrbitParticle, drawOrbitProjectile,
+} from './rpg-entity-draw';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
   LaserEnemy,
@@ -200,6 +209,7 @@ import type {
   FracterylEnemy, FracterylShard,
   EigensteinEnemy, EigensteinBeam,
   DanmakuSafeZone,
+  TeleportParticle,
 } from './rpg-types';
 import {
   makeLaserEnemy, makeSapphireEnemy, makeSapphireMissile,
@@ -351,10 +361,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Saved weapon tiers before boss wave (so temp tier-1 forced on diamond_bastion). */
   let bossPreWaveWeaponTiers: Map<string, number> = new Map();
 
-  interface TeleportParticle {
-    x: number; y: number; vx: number; vy: number;
-    alpha: number; color: string;
-  }
   const teleportParticles: TeleportParticle[] = [];
 
   /** Safe zone position: bottom-middle of playing field. */
@@ -1367,23 +1373,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawSandProjectiles(): void {
-    if (sandProjectiles.length === 0) return;
-    ctx.save();
-    for (const p of sandProjectiles) {
-      const alpha = p.lifeMs / SAND_PROJ_LIFE_MS;
-      ctx.globalAlpha = alpha * 0.9;
-      ctx.shadowBlur  = SAND_PROJ_SIZE * 4; ctx.shadowColor = SAND_PROJ_GLOW;
-      ctx.fillStyle   = SAND_PROJ_GLOW;
-      const gr = SAND_PROJ_SIZE * 1.5;
-      ctx.fillRect(Math.floor(p.x - gr), Math.floor(p.y - gr), Math.ceil(gr * 2), Math.ceil(gr * 2));
-      ctx.shadowBlur = 0;
-      ctx.fillStyle  = SAND_PROJ_COLOR;
-      ctx.fillRect(Math.floor(p.x - SAND_PROJ_SIZE / 2), Math.floor(p.y - SAND_PROJ_SIZE / 2), SAND_PROJ_SIZE, SAND_PROJ_SIZE);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
   // ── Quartz chain whip system ───────────────────────────────────
 
@@ -2375,36 +2364,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     checkWaveCompletion();
   }
 
-  function drawPoisonBolts(): void {
-    if (poisonBolts.length === 0) return;
-    ctx.save();
-    for (const p of poisonBolts) {
-      const alpha = p.lifeMs / POISON_BOLT_LIFE_MS;
-      // Trail
-      if (p.trailCount >= 2) {
-        for (let i = 0; i < p.trailCount; i++) {
-          const idx = (p.trailHead - p.trailCount + i + POISON_BOLT_TRAIL_CAP) % POISON_BOLT_TRAIL_CAP;
-          const t   = i / p.trailCount;
-          const r   = POISON_BOLT_SIZE * t * 0.8;
-          if (r < 0.3) continue;
-          ctx.globalAlpha = t * alpha * 0.5;
-          ctx.fillStyle = POISON_BOLT_COLOR;
-          ctx.fillRect(Math.floor(p.trailX[idx] - r), Math.floor(p.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
-        }
-      }
-      // Bolt core
-      ctx.globalAlpha = alpha * 0.9;
-      ctx.shadowBlur  = POISON_BOLT_SIZE * 4; ctx.shadowColor = POISON_BOLT_GLOW;
-      ctx.fillStyle   = POISON_BOLT_GLOW;
-      const gr = POISON_BOLT_SIZE * 1.5;
-      ctx.fillRect(Math.floor(p.x - gr), Math.floor(p.y - gr), Math.ceil(gr * 2), Math.ceil(gr * 2));
-      ctx.shadowBlur = 0;
-      ctx.fillStyle  = POISON_BOLT_COLOR;
-      ctx.fillRect(Math.floor(p.x - POISON_BOLT_SIZE / 2), Math.floor(p.y - POISON_BOLT_SIZE / 2), POISON_BOLT_SIZE, POISON_BOLT_SIZE);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
   // ── Ruby laser beam system ─────────────────────────────────────
 
@@ -2691,24 +2650,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (laserBeamEffect.timerMs <= 0) laserBeamEffect.active = false;
   }
 
-  function drawLaserBeamEffect(): void {
-    if (!laserBeamEffect || !laserBeamEffect.active) return;
-    const endX = laserBeamEffect.endX;
-    const endY = laserBeamEffect.endY;
-    const t = laserBeamEffect.timerMs / LASER_BEAM_VISIBLE_MS;
-    ctx.save();
-    ctx.globalAlpha = t * 0.9;
-    ctx.lineCap = 'round';
-    // Glow pass
-    ctx.shadowBlur = 12; ctx.shadowColor = LASER_BEAM_GLOW;
-    ctx.strokeStyle = LASER_BEAM_GLOW; ctx.lineWidth = LASER_BEAM_WIDTH * 3;
-    ctx.beginPath(); ctx.moveTo(laserBeamEffect.startX, laserBeamEffect.startY); ctx.lineTo(endX, endY); ctx.stroke();
-    ctx.shadowBlur = 0;
-    // Core pass
-    ctx.strokeStyle = LASER_BEAM_COLOR; ctx.lineWidth = LASER_BEAM_WIDTH;
-    ctx.beginPath(); ctx.moveTo(laserBeamEffect.startX, laserBeamEffect.startY); ctx.lineTo(endX, endY); ctx.stroke();
-    ctx.globalAlpha = 1; ctx.restore();
-  }
 
   // ── Sapphire enemy system ──────────────────────────────────────
 
@@ -2843,88 +2784,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawSapphireEnemies(): void {
-    for (const enemy of sapphireEnemies) {
-      // Draw shield circle
-      const shieldAlpha = enemy.shieldHp / enemy.maxShieldHp;
-      if (enemy.shieldHp > 0) {
-        ctx.save();
-        ctx.globalAlpha = 0.25 + shieldAlpha * 0.35;
-        ctx.shadowBlur  = SAPPHIRE_SHIELD_RADIUS * 2; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
-        ctx.strokeStyle = SAPPHIRE_ENEMY_GLOW; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = shieldAlpha * 0.18;
-        ctx.fillStyle = SAPPHIRE_ENEMY_GLOW;
-        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.restore();
-      }
-      // HP bar
-      const barW = SAPPHIRE_SHIELD_RADIUS * 2;
-      const barH = 2;
-      const barX = enemy.x - barW / 2;
-      const barY = enemy.y + SAPPHIRE_SHIELD_RADIUS + 3;
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = SAPPHIRE_ENEMY_COLOR;
-      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
-      // Shield HP bar (below HP bar)
-      if (enemy.shieldHp > 0) {
-        ctx.fillStyle = '#333'; ctx.fillRect(barX, barY + barH + 1, barW, barH);
-        ctx.fillStyle = '#88ccff';
-        ctx.fillRect(barX, barY + barH + 1, barW * (enemy.shieldHp / enemy.maxShieldHp), barH);
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      // Enemy body (square)
-      const half = SAPPHIRE_ENEMY_SIZE / 2;
-      ctx.shadowBlur = SAPPHIRE_ENEMY_SIZE * 5; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
-      ctx.fillStyle = SAPPHIRE_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-    }
-  }
 
-  function drawSapphireMissiles(): void {
-    if (sapphireMissiles.length === 0) return;
-    ctx.save();
-    for (const m of sapphireMissiles) {
-      // Draw trail using lineDash style similar to laser attack trail
-      if (m.trailCount >= 2) {
-        const dashLen = MISSILE_TRAIL_CAP * MISSILE_TRAIL_DASH_RATIO;
-        const startIdx = (m.trailHead - m.trailCount + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
-        const lastIdx  = (m.trailHead - 1 + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
-        const sx = m.trailX[startIdx], sy = m.trailY[startIdx];
-        const ex = m.trailX[lastIdx],  ey = m.trailY[lastIdx];
-        ctx.save();
-        ctx.setLineDash([dashLen, dashLen]);
-        ctx.lineDashOffset = -(dashLen * (1 - m.trailCount / MISSILE_TRAIL_CAP));
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.globalAlpha = 0.7; ctx.shadowBlur = 5; ctx.shadowColor = MISSILE_GLOW;
-        ctx.strokeStyle = MISSILE_GLOW; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = MISSILE_COLOR; ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-      // Missile body
-      const half = MISSILE_SIZE / 2;
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = MISSILE_SIZE * 5; ctx.shadowColor = MISSILE_GLOW;
-      ctx.fillStyle = MISSILE_GLOW;
-      const gh = half * 2;
-      ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = MISSILE_COLOR;
-      ctx.fillRect(Math.floor(m.x - half), Math.floor(m.y - half), MISSILE_SIZE, MISSILE_SIZE);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
   /**
    * Fires the specified weapon at the nearest enemy within range.
@@ -4726,40 +4586,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawEmeraldEnemies(): void {
-    for (const enemy of emeraldEnemies) {
-      // Draw ghost afterimage at blink origin
-      if (enemy.ghostAlpha > 0.02) {
-        const half = EMERALD_ENEMY_SIZE / 2;
-        ctx.save();
-        ctx.globalAlpha = enemy.ghostAlpha * 0.5;
-        ctx.shadowBlur  = EMERALD_ENEMY_SIZE * 6; ctx.shadowColor = EMERALD_ENEMY_GLOW;
-        ctx.fillStyle   = EMERALD_ENEMY_GLOW;
-        ctx.fillRect(Math.floor(enemy.ghostX - half), Math.floor(enemy.ghostY - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-        ctx.restore();
-      }
-      // HP bar
-      const barW = EMERALD_ENEMY_SIZE * 2.5;
-      const barH = 2;
-      const barX = enemy.x - barW / 2;
-      const barY = enemy.y + EMERALD_ENEMY_SIZE / 2 + 3;
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = EMERALD_ENEMY_COLOR;
-      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      // Body — pulses brighter during charging phase
-      const chargeGlow = enemy.phase === 'charging' ? (enemy.phaseMs / EMERALD_CHARGE_MS) * 0.6 : 0;
-      const half = EMERALD_ENEMY_SIZE / 2;
-      ctx.shadowBlur  = EMERALD_ENEMY_SIZE * (5 + chargeGlow * 8); ctx.shadowColor = EMERALD_ENEMY_GLOW;
-      ctx.fillStyle   = EMERALD_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-    }
-  }
 
   // ── Amber enemy system (fan-gunner) ───────────────────────────
 
@@ -4892,69 +4718,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawAmberEnemies(): void {
-    for (const enemy of amberEnemies) {
-      const barW = AMBER_ENEMY_SIZE * 2.5;
-      const barH = 2;
-      const barX = enemy.x - barW / 2;
-      const barY = enemy.y + AMBER_ENEMY_SIZE / 2 + 3;
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = AMBER_ENEMY_COLOR;
-      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      const half = AMBER_ENEMY_SIZE / 2;
-      ctx.shadowBlur  = AMBER_ENEMY_SIZE * 5; ctx.shadowColor = AMBER_ENEMY_GLOW;
-      ctx.fillStyle   = AMBER_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMBER_ENEMY_SIZE, AMBER_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-    }
-  }
 
-  function drawAmberShards(): void {
-    if (amberShards.length === 0) return;
-    ctx.save();
-    for (const s of amberShards) {
-      // Trail
-      if (s.trailCount >= 2) {
-        const dashLen = AMBER_SHARD_TRAIL_CAP * 0.6;
-        const startIdx = (s.trailHead - s.trailCount + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
-        const lastIdx  = (s.trailHead - 1 + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
-        ctx.save();
-        ctx.setLineDash([dashLen, dashLen]);
-        ctx.lineDashOffset = -(dashLen * (1 - s.trailCount / AMBER_SHARD_TRAIL_CAP));
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.globalAlpha = 0.65; ctx.shadowBlur = 4; ctx.shadowColor = AMBER_SHARD_GLOW;
-        ctx.strokeStyle = AMBER_SHARD_GLOW; ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(s.trailX[startIdx], s.trailY[startIdx]);
-        ctx.lineTo(s.trailX[lastIdx],  s.trailY[lastIdx]);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = AMBER_SHARD_COLOR; ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(s.trailX[startIdx], s.trailY[startIdx]);
-        ctx.lineTo(s.trailX[lastIdx],  s.trailY[lastIdx]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-      // Shard body
-      const half = AMBER_SHARD_SIZE / 2;
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = AMBER_SHARD_SIZE * 5; ctx.shadowColor = AMBER_SHARD_GLOW;
-      ctx.fillStyle = AMBER_SHARD_GLOW;
-      const gh = half * 2;
-      ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = AMBER_SHARD_COLOR;
-      ctx.fillRect(Math.floor(s.x - half), Math.floor(s.y - half), AMBER_SHARD_SIZE, AMBER_SHARD_SIZE);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
   // ── Void enemy system (slow bruiser) ──────────────────────────
 
@@ -5018,42 +4782,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawVoidEnemies(): void {
-    for (const enemy of voidEnemies) {
-      // Pulsing aura rings
-      const pulseT = enemy.pulseMs / VOID_AURA_PULSE_MS;
-      const auraAlpha = Math.sin(pulseT * Math.PI * 2) * 0.3 + 0.35;
-      ctx.save();
-      ctx.globalAlpha = auraAlpha * 0.4;
-      ctx.shadowBlur  = VOID_AURA_RADIUS * 2; ctx.shadowColor = VOID_ENEMY_GLOW;
-      ctx.strokeStyle = VOID_ENEMY_GLOW; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, VOID_AURA_RADIUS * (1 + pulseT * 0.3), 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = auraAlpha * 0.15;
-      ctx.fillStyle = VOID_ENEMY_GLOW;
-      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, VOID_AURA_RADIUS, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      // HP bar
-      const barW = VOID_ENEMY_SIZE * 3;
-      const barH = 2;
-      const barX = enemy.x - barW / 2;
-      const barY = enemy.y + VOID_AURA_RADIUS + 3;
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = VOID_ENEMY_COLOR;
-      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      // Body
-      const half = VOID_ENEMY_SIZE / 2;
-      ctx.shadowBlur  = VOID_ENEMY_SIZE * 6; ctx.shadowColor = VOID_ENEMY_GLOW;
-      ctx.fillStyle   = VOID_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), VOID_ENEMY_SIZE, VOID_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-    }
-  }
 
   // ── Quartz enemy system ────────────────────────────────────────
 
@@ -5112,39 +4840,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawQuartzEnemies(): void {
-    for (const enemy of quartzEnemies) {
-      const half = QUARTZ_ENEMY_SIZE / 2;
-      ctx.save();
-      ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
-      ctx.rotate(Math.PI / 4);
-      ctx.shadowBlur = QUARTZ_ENEMY_SIZE * 4; ctx.shadowColor = QUARTZ_ENEMY_GLOW;
-      ctx.fillStyle = QUARTZ_ENEMY_COLOR;
-      ctx.fillRect(-half, -half, QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-      const barW = QUARTZ_ENEMY_SIZE * 2.5; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = QUARTZ_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
-  function drawQuartzSpikes(): void {
-    for (const s of quartzSpikes) {
-      ctx.save();
-      ctx.translate(Math.floor(s.x), Math.floor(s.y));
-      ctx.rotate(Math.PI / 4);
-      const half = QUARTZ_SPIKE_SIZE / 2;
-      ctx.shadowBlur = QUARTZ_SPIKE_SIZE * 3; ctx.shadowColor = QUARTZ_SPIKE_GLOW;
-      ctx.fillStyle = QUARTZ_SPIKE_COLOR;
-      ctx.fillRect(-half, -half, QUARTZ_SPIKE_SIZE, QUARTZ_SPIKE_SIZE);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-    }
-  }
 
   // ── Ruby enemy system ──────────────────────────────────────────
 
@@ -5204,31 +4900,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawRubyEnemies(): void {
-    for (const enemy of rubyEnemies) {
-      const half = RUBY_ENEMY_SIZE / 2;
-      ctx.shadowBlur = RUBY_ENEMY_SIZE * 5; ctx.shadowColor = RUBY_ENEMY_GLOW;
-      ctx.fillStyle = RUBY_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), RUBY_ENEMY_SIZE, RUBY_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-      const barW = RUBY_ENEMY_SIZE * 2.5; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = RUBY_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
-  function drawRubyBolts(): void {
-    for (const b of rubyBolts) {
-      const half = RUBY_BOLT_SIZE / 2;
-      ctx.shadowBlur = RUBY_BOLT_SIZE * 4; ctx.shadowColor = RUBY_BOLT_GLOW;
-      ctx.fillStyle = RUBY_BOLT_COLOR;
-      ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), RUBY_BOLT_SIZE, RUBY_BOLT_SIZE);
-      ctx.shadowBlur = 0;
-    }
-  }
 
   // ── Sunstone enemy system ─────────────────────────────────────
 
@@ -5253,25 +4925,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawSunstoneEnemies(): void {
-    for (const enemy of sunstoneEnemies) {
-      const half = SUNSTONE_ENEMY_SIZE / 2;
-      ctx.save();
-      ctx.shadowBlur = SUNSTONE_ENEMY_SIZE * 5; ctx.shadowColor = SUNSTONE_ENEMY_GLOW;
-      ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_SIZE);
-      ctx.globalAlpha = 0.3; ctx.strokeStyle = SUNSTONE_ENEMY_GLOW; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SUNSTONE_ENEMY_SIZE * 1.6, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-      ctx.restore();
-      const barW = SUNSTONE_ENEMY_SIZE * 3; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
   // ── Citrine enemy system ──────────────────────────────────────
 
@@ -5326,44 +4979,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawCitrineEnemies(): void {
-    for (const enemy of citrineEnemies) {
-      const half = CITRINE_ENEMY_SIZE / 2;
-      ctx.shadowBlur = CITRINE_ENEMY_SIZE * 5; ctx.shadowColor = CITRINE_ENEMY_GLOW;
-      ctx.fillStyle = CITRINE_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), CITRINE_ENEMY_SIZE, CITRINE_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-      const barW = CITRINE_ENEMY_SIZE * 2.5; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = CITRINE_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
-  function drawCitrineBolts(): void {
-    for (const b of citrineBolts) {
-      // Draw trail
-      if (b.trailCount >= 2) {
-        ctx.save();
-        for (let i = 0; i < b.trailCount; i++) {
-          const t = i / b.trailCount;
-          const bufIdx = (b.trailHead - b.trailCount + i + CITRINE_BOLT_TRAIL_CAP) % CITRINE_BOLT_TRAIL_CAP;
-          ctx.globalAlpha = t * 0.35;
-          ctx.fillStyle = CITRINE_BOLT_COLOR;
-          const ts = CITRINE_BOLT_SIZE * 0.7;
-          ctx.fillRect(Math.floor(b.trailX[bufIdx] - ts / 2), Math.floor(b.trailY[bufIdx] - ts / 2), Math.ceil(ts), Math.ceil(ts));
-        }
-        ctx.globalAlpha = 1; ctx.restore();
-      }
-      const half = CITRINE_BOLT_SIZE / 2;
-      ctx.shadowBlur = CITRINE_BOLT_SIZE * 4; ctx.shadowColor = CITRINE_BOLT_GLOW;
-      ctx.fillStyle = CITRINE_BOLT_COLOR;
-      ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), CITRINE_BOLT_SIZE, CITRINE_BOLT_SIZE);
-      ctx.shadowBlur = 0;
-    }
-  }
 
   // ── Iolite enemy system ───────────────────────────────────────
 
@@ -5401,23 +5017,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawIoliteEnemies(): void {
-    for (const enemy of ioliteEnemies) {
-      const half = IOLITE_ENEMY_SIZE / 2;
-      ctx.save();
-      ctx.shadowBlur = IOLITE_ENEMY_SIZE * 5; ctx.shadowColor = IOLITE_ENEMY_GLOW;
-      ctx.fillStyle = IOLITE_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), IOLITE_ENEMY_SIZE, IOLITE_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-      const barW = IOLITE_ENEMY_SIZE * 3; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = IOLITE_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
   // ── Amethyst enemy system ─────────────────────────────────────
 
@@ -5463,44 +5062,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawAmethystEnemies(): void {
-    for (const enemy of amethystEnemies) {
-      if (enemy.shieldHp > 0) {
-        const shieldRatio = enemy.shieldHp / enemy.maxShieldHp;
-        ctx.save();
-        ctx.globalAlpha = 0.3 + shieldRatio * 0.4;
-        ctx.strokeStyle = AMETHYST_ENEMY_GLOW; ctx.lineWidth = 2;
-        ctx.shadowBlur = AMETHYST_ENEMY_SIZE * 4; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
-        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, AMETHYST_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
-      }
-      const half = AMETHYST_ENEMY_SIZE / 2;
-      ctx.shadowBlur = AMETHYST_ENEMY_SIZE * 5; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
-      ctx.fillStyle = AMETHYST_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-      const barW = AMETHYST_ENEMY_SIZE * 3; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = AMETHYST_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
-  function drawAmethystShards(): void {
-    for (const s of amethystShards) {
-      const half = AMETHYST_SHARD_SIZE / 2;
-      ctx.save();
-      ctx.translate(Math.floor(s.x), Math.floor(s.y));
-      ctx.rotate(Math.PI / 4);
-      ctx.shadowBlur = AMETHYST_SHARD_SIZE * 3; ctx.shadowColor = AMETHYST_SHARD_GLOW;
-      ctx.fillStyle = AMETHYST_SHARD_COLOR;
-      ctx.fillRect(-half, -half, AMETHYST_SHARD_SIZE, AMETHYST_SHARD_SIZE);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-    }
-  }
 
   // ── Diamond enemy system ──────────────────────────────────────
 
@@ -5562,42 +5124,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawDiamondEnemies(): void {
-    for (const enemy of diamondEnemies) {
-      const half = DIAMOND_ENEMY_SIZE / 2;
-      ctx.save();
-      ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
-      ctx.rotate(Math.PI / 4);
-      const glowColor = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_GLOW;
-      ctx.shadowBlur = DIAMOND_ENEMY_SIZE * (enemy.phaseInvuln ? 10 : 5);
-      ctx.shadowColor = glowColor;
-      ctx.fillStyle = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_COLOR;
-      ctx.globalAlpha = enemy.phaseInvuln ? 0.6 : 1;
-      ctx.fillRect(-half, -half, DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_SIZE);
-      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      ctx.restore();
-      const barW = DIAMOND_ENEMY_SIZE * 3; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = DIAMOND_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
-  function drawDiamondShards(): void {
-    for (const s of diamondShards) {
-      const half = DIAMOND_SHARD_SIZE / 2;
-      ctx.save();
-      ctx.translate(Math.floor(s.x), Math.floor(s.y));
-      ctx.rotate(Math.PI / 4);
-      ctx.shadowBlur = DIAMOND_SHARD_SIZE * 4; ctx.shadowColor = DIAMOND_SHARD_GLOW;
-      ctx.fillStyle = DIAMOND_SHARD_COLOR;
-      ctx.fillRect(-half, -half, DIAMOND_SHARD_SIZE, DIAMOND_SHARD_SIZE);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-    }
-  }
 
   // ── Nullstone enemy system ────────────────────────────────────
 
@@ -5666,48 +5193,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawNullstoneEnemies(): void {
-    for (const enemy of nullstoneEnemies) {
-      // Gravity field ring
-      const pulseT = (enemy.pulseMs % 2000) / 2000;
-      ctx.save();
-      ctx.globalAlpha = 0.15 * (1 - pulseT);
-      ctx.strokeStyle = NULLSTONE_ENEMY_GLOW; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, NULLSTONE_GRAVITY_RADIUS * pulseT, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1; ctx.restore();
-      // Absorb glow
-      if (enemy.isAbsorbing) {
-        ctx.save();
-        ctx.globalAlpha = 0.5;
-        ctx.shadowBlur = NULLSTONE_ENEMY_SIZE * 8; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
-        ctx.strokeStyle = NULLSTONE_ENEMY_GLOW; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, NULLSTONE_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
-      }
-      // Body
-      const half = NULLSTONE_ENEMY_SIZE / 2;
-      ctx.shadowBlur = NULLSTONE_ENEMY_SIZE * 6; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
-      ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-      const barW = NULLSTONE_ENEMY_SIZE * 3; const barH = 2;
-      ctx.save(); ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW, barH);
-      ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
-      ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-  }
 
-  function drawVoidTendrils(): void {
-    for (const t of voidTendrils) {
-      const half = VOID_TENDRIL_SIZE / 2;
-      ctx.shadowBlur = VOID_TENDRIL_SIZE * 3; ctx.shadowColor = VOID_TENDRIL_GLOW;
-      ctx.fillStyle = VOID_TENDRIL_COLOR;
-      ctx.fillRect(Math.floor(t.x - half), Math.floor(t.y - half), VOID_TENDRIL_SIZE, VOID_TENDRIL_SIZE);
-      ctx.shadowBlur = 0;
-    }
-  }
 
   function updateFracterylEnemies(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
@@ -5828,60 +5314,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawFracterylEnemies(): void {
-    for (const enemy of fracterylEnemies) {
-      const half = FRACTERYL_ENEMY_SIZE / 2;
-      const pulse = Math.sin(enemy.pulseMs * 0.002) * 2;
-      ctx.shadowBlur = 8 + pulse; ctx.shadowColor = FRACTERYL_ENEMY_GLOW;
-      ctx.fillStyle = FRACTERYL_ENEMY_COLOR;
-      ctx.save();
-      ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
-      ctx.rotate(enemy.pulseMs * 0.002);
-      ctx.fillRect(-half, -half, FRACTERYL_ENEMY_SIZE, FRACTERYL_ENEMY_SIZE);
-      ctx.restore();
-      ctx.shadowBlur = 0;
-    }
-    for (const shard of fracterylShards) {
-      ctx.globalAlpha = Math.min(1, shard.lifeMs / 200);
-      ctx.fillStyle = FRACTERYL_ENEMY_COLOR;
-      ctx.beginPath();
-      ctx.arc(Math.round(shard.x), Math.round(shard.y), 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  }
 
-  function drawEigensteinEnemies(): void {
-    for (const enemy of eigensteinEnemies) {
-      const half = EIGENSTEIN_ENEMY_SIZE / 2;
-      const pulse = Math.sin(enemy.pulseMs * 0.002) * 3;
-      ctx.shadowBlur = 10 + pulse; ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
-      ctx.fillStyle = EIGENSTEIN_ENEMY_COLOR;
-      ctx.save();
-      ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
-      ctx.rotate(enemy.pulseMs * 0.0015);
-      ctx.fillRect(-half, -half, EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE);
-      ctx.restore();
-      ctx.shadowBlur = 0;
-    }
-  }
 
-  function drawEigensteinBeams(): void {
-    const beamLen = Math.sqrt(widthPx * widthPx + heightPx * heightPx);
-    for (const beam of eigensteinBeams) {
-      const alpha = beam.isActive ? 0.8 : (1 - beam.timerMs / EIGENSTEIN_BEAM_CHARGE_MS) * 0.45;
-      ctx.globalAlpha = Math.max(0, alpha);
-      ctx.strokeStyle = EIGENSTEIN_ENEMY_GLOW;
-      ctx.lineWidth = beam.isActive ? 5 : 2;
-      ctx.shadowBlur = beam.isActive ? 12 : 4;
-      ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
-      ctx.beginPath();
-      ctx.moveTo(beam.originX, beam.originY);
-      ctx.lineTo(beam.originX + Math.cos(beam.angle) * beamLen, beam.originY + Math.sin(beam.angle) * beamLen);
-      ctx.stroke();
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    }
-  }
 
   function drawDanmakuSafeZone(): void {
     const boss = bossEnemy;
@@ -5943,61 +5377,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   /** Draws comet-trail teleport particles. */
-  function drawTeleportParticles(): void {
-    if (teleportParticles.length === 0) return;
-    ctx.save();
-    for (const p of teleportParticles) {
-      const a = Math.max(0, p.alpha);
-      ctx.globalAlpha = a;
-      ctx.shadowBlur = 8; ctx.shadowColor = p.color;
-      ctx.fillStyle = p.color;
-      ctx.fillRect(Math.floor(p.x - 1.5), Math.floor(p.y - 1.5), 3, 3);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
-  function drawAttackTrail(enemy: LaserEnemy, nowMs: number): void {
-    const trail = enemy.attackTrail;
-    if (!trail.active) return;
-    const isDashing = trail.trailEndMs === Infinity;
-    let drawProgress: number, eraseProgress: number;
-    if (isDashing) {
-      drawProgress = Math.min(enemy.dashTraveled / LASER_DASH_DISTANCE, 1.0);
-      eraseProgress = 0;
-    } else {
-      drawProgress = 1.0;
-      eraseProgress = Math.min((nowMs - trail.trailEndMs) / LASER_TRAIL_ERASE_MS, 1.0);
-      if (eraseProgress >= 1.0) { trail.active = false; return; }
-    }
-    const sx = trail.startX, sy = trail.startY, tx = trail.endX, ty = trail.endY;
-    const ddx = tx - sx, ddy = ty - sy;
-    const L = Math.sqrt(ddx * ddx + ddy * ddy);
-    if (L < 1) return;
-    const midX = (sx + tx) * 0.5, midY = (sy + ty) * 0.5;
-    const perpX = -ddy / L, perpY = ddx / L;
-    const curveOffset = L * Math.tan(trail.controlAngle);
-    const controlX = midX + perpX * curveOffset, controlY = midY + perpY * curveOffset;
-    const dashLen    = L * ATTACK_TRAIL_LENGTH_SCALE;
-    const dashOffset = isDashing ? dashLen * (1 - drawProgress) : -(dashLen * eraseProgress);
-    const alpha = isDashing ? ATTACK_TRAIL_ALPHA : ATTACK_TRAIL_ALPHA * (1 - eraseProgress * ATTACK_TRAIL_ERASE_FADE);
-    ctx.save();
-    ctx.setLineDash([dashLen, dashLen]);
-    ctx.lineDashOffset = dashOffset;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.globalAlpha = alpha;
-    ctx.shadowBlur = 5; ctx.shadowColor = LASER_ENEMY_GLOW;
-    ctx.strokeStyle = LASER_ENEMY_GLOW; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = LASER_ENEMY_COLOR; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
-    ctx.restore();
-  }
 
   function drawEnemies(nowMs: number): void {
     for (const enemy of enemies) {
-      drawAttackTrail(enemy, nowMs);
+      drawAttackTrail(ctx, enemy, nowMs);
       const half = LASER_ENEMY_SIZE / 2;
       ctx.shadowBlur = LASER_ENEMY_SIZE * 5; ctx.shadowColor = LASER_ENEMY_GLOW;
       ctx.fillStyle = LASER_ENEMY_COLOR;
@@ -6006,139 +5390,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawDeathParticles(): void {
-    for (const p of deathParticles) {
-      ctx.globalAlpha = p.alpha; ctx.shadowBlur = p.size * 3; ctx.shadowColor = p.color;
-      ctx.fillStyle = p.color;
-      ctx.fillRect(Math.floor(p.x - p.size / 2), Math.floor(p.y - p.size / 2), Math.ceil(p.size), Math.ceil(p.size));
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  }
 
   /** Draws thin tracer lines from the player toward each recently struck enemy. */
-  function drawShotLines(): void {
-    if (shotLines.length === 0) return;
-    ctx.save();
-    ctx.lineCap = 'round';
-    for (const line of shotLines) {
-      const t = line.timerMs / SHOT_LINE_DURATION_MS;
-      ctx.globalAlpha = t * 0.7;
-      ctx.strokeStyle = line.color;
-      ctx.shadowBlur  = 3; ctx.shadowColor = line.color;
-      ctx.lineWidth   = 1;
-      ctx.beginPath();
-      ctx.moveTo(line.x1, line.y1);
-      ctx.lineTo(line.x2, line.y2);
-      ctx.stroke();
-    }
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-    ctx.restore();
-  }
 
   /** Draws a small expanding square flash at each recently hit enemy position. */
-  function drawHitEffects(): void {
-    if (hitEffects.length === 0) return;
-    ctx.save();
-    for (const h of hitEffects) {
-      const t    = h.timerMs / HIT_EFFECT_DURATION_MS;
-      const size = 3 + (1 - t) * 5;
-      const half = size / 2;
-      ctx.globalAlpha = t * 0.9;
-      ctx.shadowBlur  = size * 3; ctx.shadowColor = h.color; ctx.fillStyle = h.color;
-      ctx.fillRect(Math.floor(h.x - half), Math.floor(h.y - half), Math.ceil(size), Math.ceil(size));
-    }
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-    ctx.restore();
-  }
 
   /** Draws floating damage numbers and "BLOCKED" labels. */
-  function drawDamageNumbers(): void {
-    if (damageNumbers.length === 0) return;
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (const dn of damageNumbers) {
-      const t = dn.timerMs / DAMAGE_NUM_DURATION_MS;
-      // Fade in sharply, then hold, then fade out in the last third.
-      const alpha = t > 0.33 ? 1.0 : t / 0.33;
-      ctx.globalAlpha = alpha;
-      const fontPx = Math.max(1, Math.round(dn.fontPx));
-      ctx.font = `bold ${fontPx}px ${DAMAGE_NUM_FONT_FAMILY}`;
-      ctx.shadowBlur  = fontPx * 2;
-      ctx.shadowColor = dn.color;
-      ctx.fillStyle   = dn.color;
-      ctx.fillText(dn.text, Math.round(dn.x), Math.round(dn.y));
-    }
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-    ctx.restore();
-  }
 
   /** Draws one equipped-weapon visual orbit particle with comet trail. */
-  function drawWeaponOrbitParticle(p: WeaponOrbitParticle): void {
-    ctx.save();
-    // Draw trail first
-    if (p.trailCount >= 2) {
-      for (let i = 0; i < p.trailCount; i++) {
-        const t      = i / p.trailCount;
-        const bufIdx = (p.trailHead - p.trailCount + i + WEAPON_ORBIT_TRAIL_CAP) % WEAPON_ORBIT_TRAIL_CAP;
-        const trailSize = p.size * t * 1.2;
-        if (trailSize < 0.3) continue;
-        const half = trailSize / 2;
-        ctx.globalAlpha = t * 0.5;
-        ctx.shadowBlur = trailSize * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
-        ctx.fillRect(Math.floor(p.trailX[bufIdx] - half), Math.floor(p.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
-        ctx.shadowBlur = 0;
-      }
-    }
-    // Draw main particle
-    const half = p.size / 2;
-    ctx.globalAlpha = 0.9;
-    ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
-    ctx.fillRect(Math.floor(p.x - half * 1.8), Math.floor(p.y - half * 1.8), Math.ceil(p.size * 1.8), Math.ceil(p.size * 1.8));
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(p.size), Math.ceil(p.size));
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
   /** Draws the orbiting projectile with comet trail. */
-  function drawOrbitProjectile(): void {
-    const op = orbitProjectile;
-    if (!op) return;
-    const projColor   = '#ffaa44';
-    const projGlow    = '#ffcc88';
-    ctx.save();
-    // Trail
-    if (op.trailCount >= 2) {
-      for (let i = 0; i < op.trailCount; i++) {
-        const t      = i / op.trailCount;
-        const bufIdx = (op.trailHead - op.trailCount + i + ORBIT_PROJ_TRAIL_CAP) % ORBIT_PROJ_TRAIL_CAP;
-        const trailSize = ORBIT_PROJ_SIZE * t * 1.3;
-        if (trailSize < 0.3) continue;
-        const half = trailSize / 2;
-        ctx.globalAlpha = t * 0.45;
-        ctx.shadowBlur = trailSize * 6; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
-        const gh = half * 2.2;
-        ctx.fillRect(Math.floor(op.trailX[bufIdx] - gh), Math.floor(op.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = t * 0.7;
-        ctx.fillStyle = projColor;
-        ctx.fillRect(Math.floor(op.trailX[bufIdx] - half), Math.floor(op.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
-      }
-    }
-    // Main projectile body
-    const half = ORBIT_PROJ_SIZE / 2;
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = ORBIT_PROJ_SIZE * 5; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
-    const gh = half * 2.2;
-    ctx.fillRect(Math.floor(op.x - gh), Math.floor(op.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = projColor;
-    ctx.fillRect(Math.floor(op.x - half), Math.floor(op.y - half), ORBIT_PROJ_SIZE, ORBIT_PROJ_SIZE);
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
   // ── Boss enemy system ──────────────────────────────────────────
 
@@ -6756,24 +6017,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawBossProjectiles(): void {
-    if (bossProjectiles.length === 0) return;
-    ctx.save();
-    for (const p of bossProjectiles) {
-      const lifeRatio = p.lifeMs / p.maxLifeMs;
-      const alpha = Math.min(1, lifeRatio * 3.0);
-      const ph = p.size / 2;
-      ctx.globalAlpha = alpha;
-      ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
-      const gh = ph * 2.2;
-      ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = p.color;
-      ctx.fillRect(Math.floor(p.x - ph), Math.floor(p.y - ph), p.size, p.size);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 
   function drawBossEnemy(): void {
     const boss = bossEnemy;
@@ -6931,39 +6174,39 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid.render(ctx);
 
     drawEnemies(nowMs);
-    drawSapphireEnemies();
-    drawSapphireMissiles();
-    drawEmeraldEnemies();
-    drawAmberEnemies();
-    drawAmberShards();
-    drawVoidEnemies();
-    drawQuartzEnemies();
-    drawQuartzSpikes();
-    drawRubyEnemies();
-    drawRubyBolts();
-    drawSunstoneEnemies();
-    drawCitrineEnemies();
-    drawCitrineBolts();
-    drawIoliteEnemies();
-    drawAmethystEnemies();
-    drawAmethystShards();
-    drawDiamondEnemies();
-    drawDiamondShards();
-    drawNullstoneEnemies();
-    drawVoidTendrils();
-    drawFracterylEnemies();
-    drawEigensteinEnemies();
-    drawEigensteinBeams();
+    drawSapphireEnemies(ctx, sapphireEnemies);
+    drawSapphireMissiles(ctx, sapphireMissiles);
+    drawEmeraldEnemies(ctx, emeraldEnemies);
+    drawAmberEnemies(ctx, amberEnemies);
+    drawAmberShards(ctx, amberShards);
+    drawVoidEnemies(ctx, voidEnemies);
+    drawQuartzEnemies(ctx, quartzEnemies);
+    drawQuartzSpikes(ctx, quartzSpikes);
+    drawRubyEnemies(ctx, rubyEnemies);
+    drawRubyBolts(ctx, rubyBolts);
+    drawSunstoneEnemies(ctx, sunstoneEnemies);
+    drawCitrineEnemies(ctx, citrineEnemies);
+    drawCitrineBolts(ctx, citrineBolts);
+    drawIoliteEnemies(ctx, ioliteEnemies);
+    drawAmethystEnemies(ctx, amethystEnemies);
+    drawAmethystShards(ctx, amethystShards);
+    drawDiamondEnemies(ctx, diamondEnemies);
+    drawDiamondShards(ctx, diamondShards);
+    drawNullstoneEnemies(ctx, nullstoneEnemies);
+    drawVoidTendrils(ctx, voidTendrils);
+    drawFracterylEnemies(ctx, fracterylEnemies, fracterylShards);
+    drawEigensteinEnemies(ctx, eigensteinEnemies);
+    drawEigensteinBeams(ctx, eigensteinBeams, widthPx, heightPx);
     drawBottomSafeZone();
     drawDanmakuSafeZone();
-    drawBossProjectiles();
+    drawBossProjectiles(ctx, bossProjectiles);
     drawBossEnemy();
-    drawTeleportParticles();
-    drawShotLines();
+    drawTeleportParticles(ctx, teleportParticles);
+    drawShotLines(ctx, shotLines);
     drawVortexes();
-    drawSandProjectiles();
-    drawPoisonBolts();
-    drawLaserBeamEffect();
+    drawSandProjectiles(ctx, sandProjectiles);
+    drawPoisonBolts(ctx, poisonBolts);
+    drawLaserBeamEffect(ctx, laserBeamEffect);
 
     // Player comet trail — smoothly gated by glowMovementIntensity
     if (glowMovementIntensity > 0.02 && mote.trailCount >= 2) {
@@ -7013,14 +6256,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
     }
 
-    drawHitEffects();
-    drawDamageNumbers();
-    if (deathParticles.length > 0) drawDeathParticles();
+    drawHitEffects(ctx, hitEffects);
+    drawDamageNumbers(ctx, damageNumbers);
+    if (deathParticles.length > 0) drawDeathParticles(ctx, deathParticles);
 
     // Draw weapon orbit particles, orbit projectile, and special weapon visuals above the player.
     if (rpgPhase === 'alive') {
-      for (const p of weaponOrbitParticles) drawWeaponOrbitParticle(p);
-      drawOrbitProjectile();
+      for (const p of weaponOrbitParticles) drawWeaponOrbitParticle(ctx, p);
+      drawOrbitProjectile(ctx, orbitProjectile);
       for (const ws of chainWhipStates.values()) drawChainWhip(ws);
       drawSwordCombos();
     }
