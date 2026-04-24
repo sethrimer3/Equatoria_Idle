@@ -279,3 +279,15 @@
 **Fluid interaction during drag**: Each frame (outside cooldown), every shard adds a gentle perpendicular `addForce()` to the fluid at its position, with a cycling prismatic color. This makes fluid particles take on prismatic hues as the sword moves.
 
 **Mobile drag fix (same PR)**: Added `canvas.style.touchAction = 'none'` to `game-canvas.ts`. This prevents the browser from firing `pointercancel` when the user begins a scroll gesture, which was the root cause of mote dragging stopping after a few frames on mobile.
+
+## rpg-render.ts Phase 5 Extraction — Enemy Update Systems
+
+**Context**: `rpg-render.ts` reached ~6,465 lines after previous extract phases (constants → `rpg-constants.ts`, types → `rpg-types.ts`, factories → `rpg-factories.ts`, draw functions → `rpg-entity-draw.ts`). The next largest block was the per-frame enemy update functions (~890 lines) for 13 non-boss enemy types.
+
+**Decision**: Extract all enemy update functions into `rpg-enemy-updates.ts` (~1,048 lines) with an explicit `RpgEnemyCtx` interface as the shared-state boundary. `rpg-render.ts` reduced to ~5,666 lines.
+
+**RpgEnemyCtx design**: The context object holds live references (`mote`, `dim`, `fluid`, `hitEffects`, `shotLines`) and two delegate callbacks (`dealDamageToPlayer`, `dealDamageToPlayerKnockback`). The `dim: { w, h }` box is a single shared mutable object updated on each `resize()` call, so enemy update functions always see current canvas bounds without requiring closures or getter functions.
+
+**Function signatures**: Each update function takes its entity array(s) as explicit first parameters (`updateAmberEnemies(enemies, shards, ctx, deltaMs)`), making data flow visible at call sites and keeping the functions pure with respect to the closure.
+
+**Knockback callback**: Amber shards are the only entity that applies velocity-based knockback to the player. A dedicated `dealDamageToPlayerKnockback(atk, normDirX, normDirY)` callback was added to `RpgEnemyCtx` to handle this without exposing `playerStats`, `playerIFramesMs`, or `spawnDamageNumber` to the external module.
