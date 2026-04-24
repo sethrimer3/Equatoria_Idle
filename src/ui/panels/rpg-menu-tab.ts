@@ -4,12 +4,18 @@
  * Renders the "Menu" sub-tab content:
  *   • Auto Move toggle checkbox
  *   • Respawn Wave checkpoint selector (visible once waves have been cleared)
+ *   • Dev Mode: Jump to Wave selector (visible only when isDevMode is true)
  *
  * Extracted from rpg-menu-panel.ts to keep each sub-tab in its own module.
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
+
+// ─── Constants ─────────────────────────────────────────────────────
+
+/** Highest wave available in the dev "Jump to Wave" selector. */
+const DEV_WAVE_JUMP_MAX = 1000;
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -18,7 +24,7 @@ export interface RpgMenuTabPane {
   /** Whether auto-move is currently enabled. Updated immediately on checkbox change. */
   isAutoMoveEnabled: boolean;
   /** Re-render the menu tab with fresh RPG state. */
-  update(rpgState: RpgSimState | null): void;
+  update(rpgState: RpgSimState | null, isDevMode?: boolean): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────
@@ -31,7 +37,7 @@ export function createRpgMenuTabPane(
 
   let isAutoMoveEnabled = false;
 
-  function update(rpgState: RpgSimState | null): void {
+  function update(rpgState: RpgSimState | null, isDevMode = false): void {
     element.innerHTML = '';
 
     // ── Auto Move row ──
@@ -111,6 +117,60 @@ export function createRpgMenuTabPane(
 
       cpSection.appendChild(cpSelect);
       element.appendChild(cpSection);
+    }
+
+    // ── Dev Mode: Jump to Wave ──
+    if (isDevMode) {
+      const devSep = document.createElement('hr');
+      devSep.style.cssText = 'border:none;border-top:1px solid rgba(255,180,50,0.3);margin:8px 0;';
+      element.appendChild(devSep);
+
+      const devSection = document.createElement('div');
+      devSection.className = 'rpg-menu__setting-row';
+      devSection.style.flexDirection = 'column';
+      devSection.style.alignItems = 'flex-start';
+      devSection.style.gap = '6px';
+
+      const devLabel = document.createElement('span');
+      devLabel.className = 'rpg-menu__setting-label';
+      devLabel.style.color = '#ffcc44';
+      devLabel.textContent = '⚙ Dev: Jump to Wave';
+      devSection.appendChild(devLabel);
+
+      const devDesc = document.createElement('span');
+      devDesc.className = 'rpg-menu__setting-desc';
+      devDesc.textContent = 'Immediately start at any wave (dev mode only). No save required.';
+      devSection.appendChild(devDesc);
+
+      const devSelect = document.createElement('select');
+      devSelect.className = 'settings-select';
+      devSelect.style.cssText = 'background:#1a1a2e;color:#ffcc44;border:1px solid rgba(255,204,68,0.4);padding:4px 8px;border-radius:4px;font-size:0.85em;width:100%;';
+
+      // Offer waves 1, 10, 20, … up to dev-accessible ceiling.
+      const devOpt1 = document.createElement('option');
+      devOpt1.value = '1';
+      devOpt1.textContent = 'Wave 1';
+      devSelect.appendChild(devOpt1);
+      for (let w = 10; w <= DEV_WAVE_JUMP_MAX; w += 10) {
+        const o = document.createElement('option');
+        o.value = String(w);
+        o.textContent = `Wave ${w}`;
+        devSelect.appendChild(o);
+      }
+
+      const jumpBtn = document.createElement('button');
+      jumpBtn.textContent = 'Jump';
+      jumpBtn.style.cssText = 'background:#2a1a00;color:#ffcc44;border:1px solid rgba(255,204,68,0.5);padding:4px 10px;border-radius:4px;font-size:0.85em;cursor:pointer;';
+      jumpBtn.addEventListener('click', () => {
+        dispatch({ kind: 'dev_jump_wave', wave: parseInt(devSelect.value, 10) });
+      });
+
+      const devRow = document.createElement('div');
+      devRow.style.cssText = 'display:flex;gap:6px;align-items:center;width:100%;';
+      devRow.appendChild(devSelect);
+      devRow.appendChild(jumpBtn);
+      devSection.appendChild(devRow);
+      element.appendChild(devSection);
     }
   }
 

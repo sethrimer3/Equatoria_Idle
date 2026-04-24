@@ -139,7 +139,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
     showActivePane();
     switch (activeTab) {
       case 'menu':
-        menuTabPane.update(lastRpgState);
+        menuTabPane.update(lastRpgState, lastIsDevMode);
         break;
       case 'weapons':
         weaponsTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);

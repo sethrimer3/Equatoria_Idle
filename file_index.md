@@ -327,7 +327,7 @@
 ### src/render/rpg/rpg-types.ts
 - All internal interfaces and type aliases for the RPG rendering system (~600 lines).
 - Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`, `FracterylEnemy`, `EigensteinEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces.
-- Diamond sword interfaces: `SwordComboState` (phase `idle | swing | cooldown`, hinge angle+velocity, shard angles chain, swipe/beam effect lists), `SwipeEffect` (disconnected arc visual), `PrismaticBeamEffect` (tail-to-tip appear/fade beam).
+- Diamond sword interfaces: `SwordComboState` (phase `idle | swing | cooldown | spin_combo`, hinge angle+velocity, shard angles chain, alternating `swingIsRightToLeft`, consecutive-hit tracking `consecHitsOnSameEnemy`/`lastHitEntity`, spin combo state `spinComboAngle`/`spinComboDamageTicks`, swipe/beam effect lists), `SwipeEffect` (disconnected arc visual), `PrismaticBeamEffect` (tail-to-tip appear/fade beam).
 - Also exports `TeleportParticle` — comet-trail particle used during player teleport visuals.
 - No runtime dependencies (types only).
 - Exports all types; consumed by `rpg-render.ts`, `rpg-factories.ts`, and `rpg-entity-draw.ts`.
@@ -417,10 +417,10 @@
 - `setVisible(visible)` — toggles the overlay.
 
 ### src/ui/panels/rpg-menu-tab.ts
-- Menu sub-tab pane for the RPG overlay panel (auto-move toggle + respawn-wave checkpoint selector).
+- Menu sub-tab pane for the RPG overlay panel (auto-move toggle + respawn-wave checkpoint selector + dev wave jump).
 - `RpgMenuTabPane` interface; `createRpgMenuTabPane(dispatch, onAutoMoveChange)` factory.
 - Exposes `isAutoMoveEnabled` (writable) updated immediately on checkbox change; parent reads it via `onAutoMoveChange` callback.
-- `update(rpgState)` rebuilds content from current state.
+- `update(rpgState, isDevMode?)` rebuilds content from current state. When `isDevMode=true`, shows a "Dev: Jump to Wave" section with a wave selector (Wave 1, 10, 20, … 1000) and Jump button that dispatches `dev_jump_wave`.
 
 ### src/ui/panels/rpg-weapons-tab.ts
 - Weapons sub-tab pane for the RPG overlay panel (weapon purchase / equip / unequip / tier-upgrade cards).

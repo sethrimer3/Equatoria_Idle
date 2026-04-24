@@ -216,17 +216,31 @@ export const VORTEX_GLOW               = '#c496f0';
 export const VORTEX_SPIN_RATE          = 2.0;    // rad/s
 
 // ── Diamond sword constants ────────────────────────────────────
-/** Duration of the single swipe animation (ms). */
-export const SWORD_SWING_MS   = 160;
-export const SWORD_COLOR      = '#88ddff';
-export const SWORD_GLOW       = '#ccf4ff';
-export const SWORD_PRISMATIC_COLORS: readonly string[] =
-  ['#ff0000', '#ff6600', '#ffff00', '#00ff00', '#0066ff', '#8800ff', '#ff00ff'];
+/** Duration of the single swipe animation (ms). Much faster than before. */
+export const SWORD_SWING_MS   = 60;
+export const SWORD_COLOR      = '#b8e8ff';
+export const SWORD_GLOW       = '#e0f4ff';
+/**
+ * Pastel prismatic colors for the diamond sword shards.
+ * Very light blue base with a rainbow sheen.
+ */
+export const SWORD_PRISMATIC_COLORS: readonly string[] = [
+  '#c8e8ff', // very light blue (base)
+  '#d4d8ff', // lavender blue
+  '#e0ccff', // soft violet
+  '#f0ccff', // light mauve
+  '#ffd4f0', // soft pink
+  '#ffd8d0', // light peach
+  '#fff4cc', // pale yellow
+  '#d8ffcc', // mint green
+  '#ccf4f0', // ice blue
+  '#cce8ff', // sky blue
+];
 /** Number of prismatic polygon shards making up the blade. */
 export const SWORD_SHARD_COUNT      = 7;
 /** Base radius (px) of each shard polygon. */
 export const SWORD_SHARD_SIZE_BASE  = 1.5;
-/** Spring stiffness for the blade hinge — pulls swordAngle toward playerAimAngle. */
+/** Spring stiffness for the blade hinge — pulls swordAngle toward the rest angle. */
 export const SWORD_HINGE_SPRING_K   = 0.07;
 /** Per-frame angular-velocity damping for the hinge. */
 export const SWORD_HINGE_DAMPING    = 0.88;
@@ -235,17 +249,29 @@ export const SWORD_SHARD_FOLLOW_BASE  = 0.55;
 /** How much the follow-rate decreases per shard index (tip = most lag). */
 export const SWORD_SHARD_FOLLOW_DECAY = 0.06;
 /** Duration (ms) of the prismatic beam visual after a hit. */
-export const SWORD_BEAM_DURATION_MS   = 400;
+export const SWORD_BEAM_DURATION_MS   = 280;
 /** Duration (ms) of the disconnected swipe-arc visual. */
-export const SWORD_SWIPE_VISUAL_MS    = 280;
-/** Half-width of the swipe arc in radians (~70°). */
-export const SWORD_SWIPE_ARC_HALF_RAD = 1.2;
+export const SWORD_SWIPE_VISUAL_MS    = 160;
+/** Arc width is exactly π radians (180°) for the full right-to-left / left-to-right sweep. */
+export const SWORD_SWIPE_ARC_HALF_RAD = Math.PI / 2;
 /** Fluid force strength from sword drag (added each frame per shard). */
 export const SWORD_FLUID_DRAG_STR    = 0.4;
 /** Fluid force strength during a swipe (per arc sample). */
 export const SWORD_FLUID_SWIPE_STR   = 2.0;
-/** Default cooldown (ms) when no weapon def is found. */
-export const SWORD_DEFAULT_COOLDOWN_MS = 900;
+/** Default cooldown (ms) when no weapon def is found. Reduced for fast alternating cuts. */
+export const SWORD_DEFAULT_COOLDOWN_MS = 220;
+/** Rest angle of the sword when idle (0 = right of player). */
+export const SWORD_IDLE_ANGLE = 0;
+/** Number of consecutive same-enemy hits required to trigger the spin combo. */
+export const SWORD_COMBO_THRESHOLD = 4;
+/** Number of full 360° rotations during the spin combo. */
+export const SWORD_COMBO_SPIN_TURNS = 3;
+/** Total duration (ms) of the spin combo animation (3 fast spins). */
+export const SWORD_COMBO_SPIN_MS = 450;
+/** Damage multiplier per rotation tick during the spin combo (3 ticks × 1× = 3× total). */
+export const SWORD_COMBO_DAMAGE_MULT = 1;
+/** Range multiplier during the spin combo. */
+export const SWORD_COMBO_RANGE_MULT = 2;
 
 /**
  * Polygon shard shapes for the prismatic diamond blade.
