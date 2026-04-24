@@ -18,6 +18,8 @@ export const TRAIL_SPEED_THRESHOLD = 0.15;
 export const GLOW_PULSE_SPEED      = 2.5;
 export const GLOW_MOVE_RAMP_UP   = 0.007;
 export const GLOW_MOVE_RAMP_DOWN = 0.004;
+/** Minimum distance (px) player must move before adding a new trail point — prevents bunching at high refresh rates. */
+export const MIN_TRAIL_DISTANCE  = 1.5;
 
 export const PLAYER_HP_INIT  = 100;
 export const PLAYER_ATK_INIT = PLAYER_BASE_ATK;
