@@ -353,10 +353,19 @@
 - Imports constants from `rpg-constants.ts` and types from `rpg-types.ts`.
 - No runtime side-effects; safe to call from any rendering context.
 
+### src/render/rpg/rpg-enemy-updates.ts
+- 23 exported enemy update functions extracted from the `rpg-render.ts` closure (~1,048 lines).
+- Covers all non-boss, non-laser/sapphire enemy types: emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
+- Exports the `RpgEnemyCtx` interface: a minimal shared-reference object (`mote`, `dim`, `fluid`, `hitEffects`, `shotLines`, `dealDamageToPlayer`, `dealDamageToPlayerKnockback`, `clampEnemyToBounds`).
+- `dim: { w, h }` is a live object kept in sync with `widthPx`/`heightPx` on each resize; no getter indirection needed.
+- Each function takes its own entity arrays as explicit parameters (e.g. `updateAmberEnemies(enemies, shards, ctx, deltaMs)`), making data flow visible at call sites in rpg-render.ts.
+- No closure dependencies; pure transformation over given arrays + ctx reference.
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~6,465 lines).
+- Independent RPG canvas rendering system for the RPG tab (~5,666 lines after Phase 5 extraction).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Entity draw functions have been extracted to `rpg-entity-draw.ts`; all 35 call sites updated to pass `ctx` and entity arrays explicitly.
+- Per-frame enemy update functions extracted to `rpg-enemy-updates.ts`; called via `enemyCtx: RpgEnemyCtx` object.
 - Exports `RpgRender` interface and `createRpgRender()` factory.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.

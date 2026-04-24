@@ -74,49 +74,23 @@ import {
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
   POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
   EMERALD_ENEMY_SIZE, EMERALD_ENEMY_GLOW,
-  EMERALD_PATROL_SPEED, EMERALD_PATROL_TURN_MS, EMERALD_ATTACK_RADIUS,
-  EMERALD_CHARGE_MS, EMERALD_BLINK_OFFSET, EMERALD_COOLDOWN_MS,
-  EMERALD_GHOST_FADE_MS, EMERALD_PATROL_DAMPING,
   AMBER_ENEMY_SIZE, AMBER_ENEMY_GLOW,
-  AMBER_PATROL_SPEED, AMBER_PATROL_TURN_MS, AMBER_PATROL_DAMPING,
-  AMBER_MISSILE_CD_MS, AMBER_MISSILE_JITTER, AMBER_SHARD_SPREAD_RAD, AMBER_SHARD_COUNT,
-  AMBER_SHARD_SPEED, AMBER_SHARD_MAX_SPEED, AMBER_SHARD_SEEK_STR, AMBER_SHARD_SIZE,
-  AMBER_SHARD_TRAIL_CAP,
+  AMBER_SHARD_SIZE,
   VOID_ENEMY_SIZE, VOID_ENEMY_GLOW,
-  VOID_PURSUE_SPEED, VOID_CONTACT_RADIUS, VOID_CONTACT_CD_MS,
-  VOID_AURA_PULSE_MS, QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_GLOW,
-  QUARTZ_PREFERRED_DIST, QUARTZ_APPROACH_SPEED, QUARTZ_STRAFE_SPEED,
-  QUARTZ_SPIKE_CD_MS, QUARTZ_SPIKE_JITTER,
-  QUARTZ_SPIKE_SPEED, QUARTZ_SPIKE_SIZE,
+  QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_GLOW,
+  QUARTZ_SPIKE_SIZE,
   RUBY_ENEMY_SIZE, RUBY_ENEMY_GLOW,
-  RUBY_PATROL_SPEED, RUBY_BOLT_CD_MS, RUBY_BOLT_JITTER, RUBY_PREFERRED_DIST,
-  RUBY_BOLT_SPEED, RUBY_BOLT_SIZE,
+  RUBY_BOLT_SIZE,
   SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_GLOW,
-  SUNSTONE_PREFERRED_DIST, SUNSTONE_ORBIT_SPEED,
-  SUNSTONE_PULSE_CD_MS, SUNSTONE_PULSE_JITTER,
   CITRINE_ENEMY_SIZE, CITRINE_ENEMY_GLOW,
-  CITRINE_PATROL_SPEED, CITRINE_PATROL_TURN_MS,
-  CITRINE_BOLT_CD_MS, CITRINE_BOLT_JITTER,
-  CITRINE_BOLT_SPEED, CITRINE_BOLT_MAX_SPEED, CITRINE_BOLT_SEEK, CITRINE_BOLT_SIZE,
-  CITRINE_BOLT_TRAIL_CAP,
+  CITRINE_BOLT_SIZE,
   IOLITE_ENEMY_SIZE, IOLITE_ENEMY_GLOW,
-  IOLITE_PATROL_SPEED, IOLITE_PATROL_TURN_MS,
-  IOLITE_BEAM_CD_MS, IOLITE_BEAM_JITTER, IOLITE_BEAM_RANGE,
-  IOLITE_BEAM_COUNT, IOLITE_BEAM_SPREAD_RAD,
   AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_GLOW,
-  AMETHYST_PATROL_SPEED, AMETHYST_PATROL_TURN_MS,
-  AMETHYST_BURST_CD_MS, AMETHYST_BURST_JITTER, AMETHYST_BURST_COUNT,
-  AMETHYST_SHARD_SPEED, AMETHYST_SHARD_SIZE,
+  AMETHYST_SHARD_SIZE,
   DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_GLOW,
-  DIAMOND_PHASE_INVULN_MS, DIAMOND_PHASE_VULN_MS,
-  DIAMOND_PATROL_SPEED, DIAMOND_ORBIT_SPEED,
-  DIAMOND_SHARD_CD_MS, DIAMOND_SHARD_COUNT, DIAMOND_SHARD_SPEED, DIAMOND_SHARD_SIZE,
+  DIAMOND_SHARD_SIZE,
   NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_GLOW,
-  NULLSTONE_GRAVITY_STRENGTH, NULLSTONE_GRAVITY_RADIUS,
-  NULLSTONE_ABSORB_MS, NULLSTONE_ABSORB_CD_MS,
-  NULLSTONE_PATROL_SPEED, NULLSTONE_PATROL_TURN_MS,
-  NULLSTONE_TENDRIL_CD_MS, NULLSTONE_TENDRIL_COUNT,
-  VOID_TENDRIL_SPEED, VOID_TENDRIL_SIZE,
+  VOID_TENDRIL_SIZE,
   LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
   QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
   IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
@@ -154,11 +128,9 @@ import {
   FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
   FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
   FRACTERYL_ENEMY_GLOW,
-  FRACTERYL_ENEMY_SIZE, FRACTERYL_BURST_CD_MS, FRACTERYL_BURST_JITTER,
-  FRACTERYL_PATROL_TURN_MS,
+  FRACTERYL_ENEMY_SIZE,
   EIGENSTEIN_ENEMY_GLOW,
-  EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_BEAM_CD_MS, EIGENSTEIN_BEAM_JITTER,
-  EIGENSTEIN_PATROL_TURN_MS, EIGENSTEIN_BEAM_CHARGE_MS, EIGENSTEIN_BEAM_FIRE_MS,
+  EIGENSTEIN_ENEMY_SIZE,
   DANMAKU_BULLET_SPEED, DANMAKU_SAFE_ANGLE_WIDTH,
   DANMAKU_RING_COUNT, DANMAKU_TELEPORT_MARGIN,
   FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT
@@ -213,14 +185,31 @@ import type {
 } from './rpg-types';
 import {
   makeLaserEnemy, makeSapphireEnemy, makeSapphireMissile,
-  makeEmeraldEnemy, makeAmberEnemy, makeAmberShard, makeVoidEnemy,
-  makeQuartzEnemy, makeQuartzSpike, makeRubyEnemy, makeRubyBolt,
-  makeSunstoneEnemy, makeCitrineEnemy, makeCitrineBolt, makeIoliteEnemy,
-  makeAmethystEnemy, makeAmethystShard, makeDiamondEnemy, makeDiamondShard,
-  makeNullstoneEnemy, makeVoidTendril,
-  makeFracterylEnemy, makeFracterylShard,
+  makeEmeraldEnemy, makeAmberEnemy, makeVoidEnemy,
+  makeQuartzEnemy, makeRubyEnemy,
+  makeSunstoneEnemy, makeCitrineEnemy, makeIoliteEnemy,
+  makeAmethystEnemy, makeDiamondEnemy,
+  makeNullstoneEnemy,
+  makeFracterylEnemy,
   makeEigensteinEnemy, makeDanmakuSafeZone,
 } from './rpg-factories';
+import {
+  type RpgEnemyCtx,
+  updateEmeraldEnemies,
+  updateAmberEnemies, updateAmberShards,
+  updateVoidEnemies,
+  updateQuartzEnemies, updateQuartzSpikes,
+  updateRubyEnemies, updateRubyBolts,
+  updateSunstoneEnemies,
+  updateCitrineEnemies, updateCitrineBolts,
+  updateIoliteEnemies,
+  updateAmethystEnemies, updateAmethystShards,
+  updateDiamondEnemies, updateDiamondShards,
+  updateNullstoneEnemies, updateVoidTendrils,
+  updateFracterylEnemies,
+  updateEigensteinEnemies, updateEigensteinBeams,
+  updateTeleportParticles,
+} from './rpg-enemy-updates';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -250,6 +239,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let widthPx  = INTERNAL_WIDTH;
   let heightPx = INTERNAL_HEIGHT;
 
+  // ── Shared dimensions box (kept in sync with widthPx/heightPx on resize) ──
+  // Passed to rpg-enemy-updates functions via RpgEnemyCtx so they always see
+  // current canvas bounds without requiring a closure rebuild.
+  const dim = { w: widthPx, h: heightPx };
+
   // ── Euler fluid background ─────────────────────────────────────
   const fluid = createRpgFluid();
 
@@ -262,6 +256,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       INTERNAL_HEIGHT = h;
       widthPx  = w;
       heightPx = h;
+      dim.w = w;
+      dim.h = h;
     }
     canvas.width  = widthPx;
     canvas.height = heightPx;
@@ -4430,6 +4426,41 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  /**
+   * Applies damage to the player with a directional knockback impulse.
+   * Used exclusively by Amber shards which carry velocity-based knockback.
+   * @param atkValue - raw attack value (defence subtracted internally)
+   * @param normDirX - normalised knockback / damage-number direction X
+   * @param normDirY - normalised knockback / damage-number direction Y
+   */
+  function dealDamageToPlayerKnockback(atkValue: number, normDirX: number, normDirY: number): void {
+    if (playerIFramesMs > 0) return;
+    const rawDmg = atkValue - playerStats.def;
+    const dmg = Math.max(0, rawDmg);
+    if (dmg <= 0) {
+      spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+    } else {
+      playerStats.hp = Math.max(0, playerStats.hp - dmg);
+      const ratio = Math.min(1, dmg / playerStats.maxHp);
+      mote.vx += normDirX * PLAYER_KNOCKBACK_MAX * ratio;
+      mote.vy += normDirY * PLAYER_KNOCKBACK_MAX * ratio;
+      playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
+      spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, String(Math.round(dmg)), ratio, '#ff6666');
+    }
+  }
+
+  // ── Enemy update context (shared reference object for rpg-enemy-updates) ──
+  const enemyCtx: RpgEnemyCtx = {
+    mote,
+    dim,
+    fluid,
+    hitEffects,
+    shotLines,
+    dealDamageToPlayer,
+    dealDamageToPlayerKnockback,
+    clampEnemyToBounds,
+  };
+
   function triggerDeath(): void {
     rpgPhase = 'dying'; phaseTimerMs = 0; deathAlpha = 1;
     deathParticles.length = 0;
@@ -4485,837 +4516,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     applyEquipmentStats();
   }
 
-  // ── Emerald enemy system (blink-striker) ──────────────────────
-
-  function updateEmeraldEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of emeraldEnemies) {
-      // Fade ghost afterimage
-      if (enemy.ghostAlpha > 0) {
-        enemy.ghostAlpha = Math.max(0, enemy.ghostAlpha - deltaMs / EMERALD_GHOST_FADE_MS);
-      }
-
-      if (enemy.phase === 'patrol') {
-        // Random patrol movement
-        enemy.patrolTimerMs -= deltaMs;
-        if (enemy.patrolTimerMs <= 0) {
-          const angle = Math.random() * Math.PI * 2;
-          enemy.vx = Math.cos(angle) * EMERALD_PATROL_SPEED;
-          enemy.vy = Math.sin(angle) * EMERALD_PATROL_SPEED;
-          enemy.patrolTimerMs = EMERALD_PATROL_TURN_MS * (0.5 + Math.random() * 0.8);
-        }
-        const dampFactor = Math.pow(EMERALD_PATROL_DAMPING, dt);
-        enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-        enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-        // Clamp
-        const half = EMERALD_ENEMY_SIZE / 2;
-        if (enemy.x < half)            { enemy.x = half;            enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-        if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-        if (enemy.y < half)            { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-        if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-
-        // Fluid from patrol movement
-        const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
-        if (espd > 0.04) {
-          fluid.addForce({
-            x: enemy.x, y: enemy.y,
-            vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
-            vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
-            r: FLUID_EMERALD_R, g: FLUID_EMERALD_G, b: FLUID_EMERALD_B,
-            strength: FLUID_ENEMY_STRENGTH,
-          });
-        }
-
-        // Detect player
-        const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-        if (dx * dx + dy * dy < EMERALD_ATTACK_RADIUS * EMERALD_ATTACK_RADIUS) {
-          enemy.phase = 'charging'; enemy.phaseMs = 0; enemy.hasHitPlayer = false;
-          enemy.vx = 0; enemy.vy = 0;
-        }
-
-      } else if (enemy.phase === 'charging') {
-        enemy.phaseMs += deltaMs;
-        // Brief charge-up — enemy freezes and pulses
-        if (enemy.phaseMs >= EMERALD_CHARGE_MS) {
-          // Blink: store ghost at current position, teleport near player
-          enemy.ghostX = enemy.x; enemy.ghostY = enemy.y; enemy.ghostAlpha = 1;
-          const angle = Math.random() * Math.PI * 2;
-          enemy.x = mote.x + Math.cos(angle) * EMERALD_BLINK_OFFSET;
-          enemy.y = mote.y + Math.sin(angle) * EMERALD_BLINK_OFFSET;
-          // Clamp to bounds after blink
-          const half = EMERALD_ENEMY_SIZE / 2;
-          enemy.x = Math.max(half, Math.min(widthPx  - half, enemy.x));
-          enemy.y = Math.max(half, Math.min(heightPx - half, enemy.y));
-          enemy.phase = 'blinking'; enemy.phaseMs = 0;
-          // Flash of fluid at both origin and destination
-          fluid.addForce({
-            x: enemy.ghostX, y: enemy.ghostY,
-            vx: (mote.x - enemy.ghostX) * 0.02 * FLUID_VEL_FRAME_TO_PX_S,
-            vy: (mote.y - enemy.ghostY) * 0.02 * FLUID_VEL_FRAME_TO_PX_S,
-            r: FLUID_EMERALD_R, g: FLUID_EMERALD_G, b: FLUID_EMERALD_B,
-            strength: 1.2,
-          });
-        }
-
-      } else if (enemy.phase === 'blinking') {
-        // One-frame blink — deliver contact damage then go to cooldown
-        if (!enemy.hasHitPlayer) {
-          enemy.hasHitPlayer = true;
-          if (playerIFramesMs <= 0) {
-            const rawDmg = enemy.atk - playerStats.def;
-            const dmg = Math.max(0, rawDmg);
-            if (dmg <= 0) {
-              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
-            } else {
-              playerStats.hp = Math.max(0, playerStats.hp - dmg);
-              const ratio = Math.min(1, dmg / playerStats.maxHp);
-              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
-              spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
-            }
-          }
-        }
-        enemy.phase = 'cooldown'; enemy.phaseMs = 0;
-
-      } else if (enemy.phase === 'cooldown') {
-        enemy.phaseMs += deltaMs;
-        if (enemy.phaseMs >= EMERALD_COOLDOWN_MS) {
-          enemy.phase = 'patrol'; enemy.phaseMs = 0;
-          enemy.patrolTimerMs = EMERALD_PATROL_TURN_MS * Math.random();
-        }
-      }
-    }
-  }
-
-
-  // ── Amber enemy system (fan-gunner) ───────────────────────────
-
-  function spawnAmberFanBurst(enemy: AmberEnemy): void {
-    const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const baseDirX = dist > 0.01 ? dx / dist : 0;
-    const baseDirY = dist > 0.01 ? dy / dist : 1;
-    const baseAngle = Math.atan2(baseDirY, baseDirX);
-    for (let i = 0; i < AMBER_SHARD_COUNT; i++) {
-      const spread = (i - (AMBER_SHARD_COUNT - 1) / 2) * AMBER_SHARD_SPREAD_RAD;
-      const angle = baseAngle + spread;
-      const vx = Math.cos(angle) * AMBER_SHARD_SPEED;
-      const vy = Math.sin(angle) * AMBER_SHARD_SPEED;
-      amberShards.push(makeAmberShard(enemy.x, enemy.y, vx, vy));
-    }
-    fluid.addForce({
-      x: enemy.x, y: enemy.y,
-      vx: baseDirX * FLUID_VEL_FRAME_TO_PX_S * 2.0,
-      vy: baseDirY * FLUID_VEL_FRAME_TO_PX_S * 2.0,
-      r: FLUID_AMBER_R, g: FLUID_AMBER_G, b: FLUID_AMBER_B,
-      strength: FLUID_PROJECTILE_STRENGTH * 1.5,
-    });
-  }
-
-  function updateAmberEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of amberEnemies) {
-      // Patrol
-      enemy.patrolTimerMs -= deltaMs;
-      if (enemy.patrolTimerMs <= 0) {
-        const angle = Math.random() * Math.PI * 2;
-        enemy.vx = Math.cos(angle) * AMBER_PATROL_SPEED;
-        enemy.vy = Math.sin(angle) * AMBER_PATROL_SPEED;
-        enemy.patrolTimerMs = AMBER_PATROL_TURN_MS * (0.5 + Math.random() * 0.8);
-      }
-      const dampFactor = Math.pow(AMBER_PATROL_DAMPING, dt);
-      enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-      enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      const half = AMBER_ENEMY_SIZE / 2;
-      if (enemy.x < half)            { enemy.x = half;            enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-      if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-      if (enemy.y < half)            { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-
-      // Fluid from movement
-      const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
-      if (espd > 0.04) {
-        fluid.addForce({
-          x: enemy.x, y: enemy.y,
-          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
-          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
-          r: FLUID_AMBER_R, g: FLUID_AMBER_G, b: FLUID_AMBER_B,
-          strength: FLUID_ENEMY_STRENGTH,
-        });
-      }
-
-      // Fan-burst timer
-      enemy.missileTimerMs -= deltaMs;
-      if (enemy.missileTimerMs <= 0) {
-        spawnAmberFanBurst(enemy);
-        enemy.missileTimerMs = AMBER_MISSILE_CD_MS + (Math.random() - 0.5) * AMBER_MISSILE_JITTER;
-      }
-    }
-  }
-
-  function updateAmberShards(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = amberShards.length - 1; i >= 0; i--) {
-      const s = amberShards[i];
-      if (s.hp <= 0) { amberShards.splice(i, 1); continue; }
-
-      // Heat-seeking toward player
-      const dx = mote.x - s.x, dy = mote.y - s.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0.01) {
-        s.vx += (dx / dist) * AMBER_SHARD_SEEK_STR;
-        s.vy += (dy / dist) * AMBER_SHARD_SEEK_STR;
-      }
-      const speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
-      if (speed > AMBER_SHARD_MAX_SPEED) {
-        s.vx = (s.vx / speed) * AMBER_SHARD_MAX_SPEED;
-        s.vy = (s.vy / speed) * AMBER_SHARD_MAX_SPEED;
-      }
-      s.x += s.vx * dt; s.y += s.vy * dt;
-
-      // Fluid trail
-      fluid.addForce({
-        x: s.x, y: s.y,
-        vx: s.vx * FLUID_VEL_FRAME_TO_PX_S,
-        vy: s.vy * FLUID_VEL_FRAME_TO_PX_S,
-        r: FLUID_AMBER_R, g: FLUID_AMBER_G, b: FLUID_AMBER_B,
-        strength: FLUID_MISSILE_STRENGTH * 0.7,
-      });
-
-      // Trail recording
-      s.trailX[s.trailHead] = s.x; s.trailY[s.trailHead] = s.y;
-      s.trailHead = (s.trailHead + 1) % AMBER_SHARD_TRAIL_CAP;
-      if (s.trailCount < AMBER_SHARD_TRAIL_CAP) s.trailCount++;
-
-      // Player hit
-      if (!s.hasHitPlayer) {
-        const pdx = mote.x - s.x, pdy = mote.y - s.y;
-        if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          s.hasHitPlayer = true;
-          if (playerIFramesMs <= 0) {
-            const rawDmg = s.atk - playerStats.def;
-            const dmg = Math.max(0, rawDmg);
-            if (dmg <= 0) {
-              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
-            } else {
-              playerStats.hp = Math.max(0, playerStats.hp - dmg);
-              const ratio = Math.min(1, dmg / playerStats.maxHp);
-              const curSpeed = speed + SPEED_EPSILON;
-              mote.vx += (s.vx / curSpeed) * PLAYER_KNOCKBACK_MAX * ratio;
-              mote.vy += (s.vy / curSpeed) * PLAYER_KNOCKBACK_MAX * ratio;
-              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
-              spawnDamageNumber(mote.x, mote.y, s.vx / curSpeed, s.vy / curSpeed, String(Math.round(dmg)), ratio, '#ff6666');
-            }
-          }
-          amberShards.splice(i, 1); continue;
-        }
-      }
-
-      // Despawn if out of bounds
-      const margin = 20;
-      if (s.x < -margin || s.x > widthPx + margin || s.y < -margin || s.y > heightPx + margin) {
-        amberShards.splice(i, 1);
-      }
-    }
-  }
-
-
-
-  // ── Void enemy system (slow bruiser) ──────────────────────────
-
-  function updateVoidEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of voidEnemies) {
-      enemy.pulseMs = (enemy.pulseMs + deltaMs) % VOID_AURA_PULSE_MS;
-
-      // Constant pursuit of player
-      const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0.01) {
-        enemy.vx = (dx / dist) * VOID_PURSUE_SPEED;
-        enemy.vy = (dy / dist) * VOID_PURSUE_SPEED;
-      } else {
-        enemy.vx = 0; enemy.vy = 0;
-      }
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-
-      // Clamp to bounds
-      const half = VOID_ENEMY_SIZE / 2;
-      if (enemy.x < half)            { enemy.x = half; }
-      if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; }
-      if (enemy.y < half)            { enemy.y = half; }
-      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; }
-
-      // Fluid from movement
-      const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
-      if (espd > 0.04) {
-        fluid.addForce({
-          x: enemy.x, y: enemy.y,
-          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
-          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
-          r: FLUID_VOID_R, g: FLUID_VOID_G, b: FLUID_VOID_B,
-          strength: FLUID_ENEMY_STRENGTH * 1.3,
-        });
-      }
-
-      // Contact damage (with cooldown per tick)
-      if (enemy.contactCdMs > 0) {
-        enemy.contactCdMs = Math.max(0, enemy.contactCdMs - deltaMs);
-      }
-      if (enemy.contactCdMs <= 0) {
-        const cdx = mote.x - enemy.x, cdy = mote.y - enemy.y;
-        if (cdx * cdx + cdy * cdy < VOID_CONTACT_RADIUS * VOID_CONTACT_RADIUS) {
-          if (playerIFramesMs <= 0) {
-            const rawDmg = enemy.atk - playerStats.def;
-            const dmg = Math.max(0, rawDmg);
-            if (dmg <= 0) {
-              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
-            } else {
-              playerStats.hp = Math.max(0, playerStats.hp - dmg);
-              const ratio = Math.min(1, dmg / playerStats.maxHp);
-              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
-              spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
-            }
-          }
-          enemy.contactCdMs = VOID_CONTACT_CD_MS;
-        }
-      }
-    }
-  }
-
-
-  // ── Quartz enemy system ────────────────────────────────────────
-
-  function updateQuartzEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of quartzEnemies) {
-      const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      if (dist > QUARTZ_PREFERRED_DIST + 20) {
-        enemy.vx += (dx / dist) * QUARTZ_APPROACH_SPEED;
-        enemy.vy += (dy / dist) * QUARTZ_APPROACH_SPEED;
-      } else if (dist < QUARTZ_PREFERRED_DIST - 20) {
-        enemy.vx -= (dx / dist) * QUARTZ_APPROACH_SPEED;
-        enemy.vy -= (dy / dist) * QUARTZ_APPROACH_SPEED;
-      } else {
-        const perpX = -dy / dist, perpY = dx / dist;
-        enemy.vx += perpX * QUARTZ_STRAFE_SPEED * enemy.strafeDir;
-        enemy.vy += perpY * QUARTZ_STRAFE_SPEED * enemy.strafeDir;
-      }
-      const speed = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
-      if (speed > 2.0) { enemy.vx = (enemy.vx / speed) * 2.0; enemy.vy = (enemy.vy / speed) * 2.0; }
-      enemy.vx *= 0.85; enemy.vy *= 0.85;
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      clampEnemyToBounds(enemy);
-      enemy.strafeDirFlipMs -= deltaMs;
-      if (enemy.strafeDirFlipMs <= 0) {
-        enemy.strafeDir = (enemy.strafeDir === 1 ? -1 : 1) as 1 | -1;
-        enemy.strafeDirFlipMs = 2000 + Math.random() * 2000;
-      }
-      enemy.spikeTimerMs -= deltaMs;
-      if (enemy.spikeTimerMs <= 0) {
-        enemy.spikeTimerMs = QUARTZ_SPIKE_CD_MS + Math.random() * QUARTZ_SPIKE_JITTER;
-        const sdx = mote.x - enemy.x, sdy = mote.y - enemy.y;
-        const slen = Math.sqrt(sdx * sdx + sdy * sdy) || 1;
-        quartzSpikes.push(makeQuartzSpike(enemy.x, enemy.y, (sdx / slen) * QUARTZ_SPIKE_SPEED, (sdy / slen) * QUARTZ_SPIKE_SPEED));
-      }
-    }
-  }
-
-  function updateQuartzSpikes(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = quartzSpikes.length - 1; i >= 0; i--) {
-      const s = quartzSpikes[i];
-      s.x += s.vx * dt; s.y += s.vy * dt;
-      s.lifeMs -= deltaMs;
-      if (s.lifeMs <= 0 || s.x < 0 || s.x > widthPx || s.y < 0 || s.y > heightPx) {
-        quartzSpikes.splice(i, 1); continue;
-      }
-      if (!s.hasHitPlayer) {
-        const dx = s.x - mote.x, dy = s.y - mote.y;
-        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          s.hasHitPlayer = true;
-          dealDamageToPlayer(s.atk);
-        }
-      }
-    }
-  }
-
-
-
-  // ── Ruby enemy system ──────────────────────────────────────────
-
-  function updateRubyEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of rubyEnemies) {
-      enemy.patrolTimerMs -= deltaMs;
-      if (enemy.patrolTimerMs <= 0) {
-        const angle = Math.random() * Math.PI * 2;
-        enemy.vx = Math.cos(angle) * RUBY_PATROL_SPEED;
-        enemy.vy = Math.sin(angle) * RUBY_PATROL_SPEED;
-        enemy.patrolTimerMs = 800 + Math.random() * 1200;
-      }
-      const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      if (dist > RUBY_PREFERRED_DIST) {
-        enemy.vx = (dx / dist) * RUBY_PATROL_SPEED;
-        enemy.vy = (dy / dist) * RUBY_PATROL_SPEED;
-      }
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      clampEnemyToBounds(enemy);
-      enemy.boltTimerMs -= deltaMs;
-      if (enemy.boltTimerMs <= 0) {
-        enemy.boltTimerMs = RUBY_BOLT_CD_MS + Math.random() * RUBY_BOLT_JITTER;
-        const bdx = mote.x - enemy.x, bdy = mote.y - enemy.y;
-        const blen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
-        enemy.consecutiveShots++;
-        const burstCount = enemy.consecutiveShots >= 3 ? 3 : 2;
-        if (enemy.consecutiveShots >= 3) enemy.consecutiveShots = 0;
-        for (let b = 0; b < burstCount; b++) {
-          const spread = (b - (burstCount - 1) / 2) * 0.15;
-          const cos = Math.cos(spread), sin = Math.sin(spread);
-          const bvx = ((bdx / blen) * cos - (bdy / blen) * sin) * RUBY_BOLT_SPEED;
-          const bvy = ((bdx / blen) * sin + (bdy / blen) * cos) * RUBY_BOLT_SPEED;
-          rubyBolts.push(makeRubyBolt(enemy.x, enemy.y, bvx, bvy));
-        }
-      }
-    }
-  }
-
-  function updateRubyBolts(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = rubyBolts.length - 1; i >= 0; i--) {
-      const b = rubyBolts[i];
-      b.x += b.vx * dt; b.y += b.vy * dt;
-      b.lifeMs -= deltaMs;
-      if (b.lifeMs <= 0 || b.x < 0 || b.x > widthPx || b.y < 0 || b.y > heightPx) {
-        rubyBolts.splice(i, 1); continue;
-      }
-      if (!b.hasHitPlayer) {
-        const dx = b.x - mote.x, dy = b.y - mote.y;
-        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          b.hasHitPlayer = true;
-          dealDamageToPlayer(b.atk);
-        }
-      }
-    }
-  }
-
-
-
-  // ── Sunstone enemy system ─────────────────────────────────────
-
-  function updateSunstoneEnemies(deltaMs: number): void {
-    for (const enemy of sunstoneEnemies) {
-      enemy.orbitAngle += SUNSTONE_ORBIT_SPEED * (deltaMs / 1000);
-      enemy.x = mote.x + Math.cos(enemy.orbitAngle) * SUNSTONE_PREFERRED_DIST;
-      enemy.y = mote.y + Math.sin(enemy.orbitAngle) * SUNSTONE_PREFERRED_DIST;
-      const half = SUNSTONE_ENEMY_SIZE / 2;
-      enemy.x = Math.max(half, Math.min(widthPx - half, enemy.x));
-      enemy.y = Math.max(half, Math.min(heightPx - half, enemy.y));
-      enemy.pulseTimerMs -= deltaMs;
-      if (enemy.pulseTimerMs <= 0) {
-        enemy.pulseTimerMs = SUNSTONE_PULSE_CD_MS + Math.random() * SUNSTONE_PULSE_JITTER;
-        const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= SUNSTONE_PREFERRED_DIST + 20) {
-          dealDamageToPlayer(enemy.atk);
-          hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: SUNSTONE_ENEMY_GLOW });
-        }
-      }
-    }
-  }
-
-
-  // ── Citrine enemy system ──────────────────────────────────────
-
-  function updateCitrineEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of citrineEnemies) {
-      enemy.patrolTimerMs -= deltaMs;
-      if (enemy.patrolTimerMs <= 0) {
-        enemy.patrolTimerMs = CITRINE_PATROL_TURN_MS * (0.5 + Math.random());
-        const angle = Math.random() * Math.PI * 2;
-        enemy.vx = Math.cos(angle) * CITRINE_PATROL_SPEED;
-        enemy.vy = Math.sin(angle) * CITRINE_PATROL_SPEED;
-      }
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      clampEnemyToBounds(enemy);
-      enemy.boltTimerMs -= deltaMs;
-      if (enemy.boltTimerMs <= 0) {
-        enemy.boltTimerMs = CITRINE_BOLT_CD_MS + Math.random() * CITRINE_BOLT_JITTER;
-        const bdx = mote.x - enemy.x, bdy = mote.y - enemy.y;
-        const blen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
-        citrineBolts.push(makeCitrineBolt(enemy.x, enemy.y, (bdx / blen) * CITRINE_BOLT_SPEED, (bdy / blen) * CITRINE_BOLT_SPEED));
-      }
-    }
-  }
-
-  function updateCitrineBolts(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = citrineBolts.length - 1; i >= 0; i--) {
-      const b = citrineBolts[i];
-      // Homing seek toward player
-      const dx = mote.x - b.x, dy = mote.y - b.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      b.vx += (dx / dist) * CITRINE_BOLT_SEEK;
-      b.vy += (dy / dist) * CITRINE_BOLT_SEEK;
-      const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-      if (speed > CITRINE_BOLT_MAX_SPEED) { b.vx = (b.vx / speed) * CITRINE_BOLT_MAX_SPEED; b.vy = (b.vy / speed) * CITRINE_BOLT_MAX_SPEED; }
-      // Trail recording
-      b.trailX[b.trailHead] = b.x; b.trailY[b.trailHead] = b.y;
-      b.trailHead = (b.trailHead + 1) % CITRINE_BOLT_TRAIL_CAP;
-      if (b.trailCount < CITRINE_BOLT_TRAIL_CAP) b.trailCount++;
-      b.x += b.vx * dt; b.y += b.vy * dt;
-      if (b.x < 0 || b.x > widthPx || b.y < 0 || b.y > heightPx) {
-        citrineBolts.splice(i, 1); continue;
-      }
-      if (!b.hasHitPlayer) {
-        const pdx = b.x - mote.x, pdy = b.y - mote.y;
-        if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          b.hasHitPlayer = true;
-          dealDamageToPlayer(b.atk);
-        }
-      }
-    }
-  }
-
-
-
-  // ── Iolite enemy system ───────────────────────────────────────
-
-  function updateIoliteEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of ioliteEnemies) {
-      enemy.patrolTimerMs -= deltaMs;
-      if (enemy.patrolTimerMs <= 0) {
-        enemy.patrolTimerMs = IOLITE_PATROL_TURN_MS * (0.5 + Math.random());
-        const angle = Math.random() * Math.PI * 2;
-        enemy.vx = Math.cos(angle) * IOLITE_PATROL_SPEED;
-        enemy.vy = Math.sin(angle) * IOLITE_PATROL_SPEED;
-      }
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      clampEnemyToBounds(enemy);
-      enemy.beamTimerMs -= deltaMs;
-      if (enemy.beamTimerMs <= 0) {
-        enemy.beamTimerMs = IOLITE_BEAM_CD_MS + Math.random() * IOLITE_BEAM_JITTER;
-        const bdx = mote.x - enemy.x, bdy = mote.y - enemy.y;
-        const baseAngle = Math.atan2(bdy, bdx);
-        for (let b = 0; b < IOLITE_BEAM_COUNT; b++) {
-          const spreadAngle = baseAngle + (b - Math.floor(IOLITE_BEAM_COUNT / 2)) * (IOLITE_BEAM_SPREAD_RAD / (IOLITE_BEAM_COUNT - 1));
-          const bdirX = Math.cos(spreadAngle), bdirY = Math.sin(spreadAngle);
-          const pdx2 = mote.x - enemy.x, pdy2 = mote.y - enemy.y;
-          const tProj = pdx2 * bdirX + pdy2 * bdirY;
-          if (tProj >= 0 && tProj <= IOLITE_BEAM_RANGE) {
-            const perpDist = Math.abs(pdx2 * bdirY - pdy2 * bdirX);
-            if (perpDist <= PLAYER_HIT_RADIUS) {
-              dealDamageToPlayer(enemy.atk);
-            }
-          }
-          shotLines.push({ x1: enemy.x, y1: enemy.y, x2: enemy.x + bdirX * IOLITE_BEAM_RANGE, y2: enemy.y + bdirY * IOLITE_BEAM_RANGE, timerMs: 200, color: IOLITE_ENEMY_GLOW });
-        }
-      }
-    }
-  }
-
-
-  // ── Amethyst enemy system ─────────────────────────────────────
-
-  function updateAmethystEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of amethystEnemies) {
-      enemy.patrolTimerMs -= deltaMs;
-      if (enemy.patrolTimerMs <= 0) {
-        enemy.patrolTimerMs = AMETHYST_PATROL_TURN_MS * (0.5 + Math.random());
-        const angle = Math.random() * Math.PI * 2;
-        enemy.vx = Math.cos(angle) * AMETHYST_PATROL_SPEED;
-        enemy.vy = Math.sin(angle) * AMETHYST_PATROL_SPEED;
-      }
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      clampEnemyToBounds(enemy);
-      enemy.burstTimerMs -= deltaMs;
-      if (enemy.burstTimerMs <= 0) {
-        enemy.burstTimerMs = AMETHYST_BURST_CD_MS + Math.random() * AMETHYST_BURST_JITTER;
-        for (let b = 0; b < AMETHYST_BURST_COUNT; b++) {
-          const angle = (b / AMETHYST_BURST_COUNT) * Math.PI * 2;
-          amethystShards.push(makeAmethystShard(enemy.x, enemy.y, Math.cos(angle) * AMETHYST_SHARD_SPEED, Math.sin(angle) * AMETHYST_SHARD_SPEED));
-        }
-      }
-    }
-  }
-
-  function updateAmethystShards(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = amethystShards.length - 1; i >= 0; i--) {
-      const s = amethystShards[i];
-      s.x += s.vx * dt; s.y += s.vy * dt;
-      s.lifeMs -= deltaMs;
-      if (s.lifeMs <= 0 || s.x < 0 || s.x > widthPx || s.y < 0 || s.y > heightPx) {
-        amethystShards.splice(i, 1); continue;
-      }
-      if (!s.hasHitPlayer) {
-        const dx = s.x - mote.x, dy = s.y - mote.y;
-        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          s.hasHitPlayer = true;
-          dealDamageToPlayer(s.atk);
-        }
-      }
-    }
-  }
-
-
-
-  // ── Diamond enemy system ──────────────────────────────────────
-
-  function updateDiamondEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of diamondEnemies) {
-      enemy.phaseTimerMs -= deltaMs;
-      if (enemy.phaseTimerMs <= 0) {
-        if (enemy.phaseInvuln) {
-          enemy.phaseInvuln = false;
-          enemy.phaseTimerMs = DIAMOND_PHASE_VULN_MS;
-        } else {
-          enemy.phaseInvuln = true;
-          enemy.phaseTimerMs = DIAMOND_PHASE_INVULN_MS;
-        }
-      }
-      if (enemy.phaseInvuln) {
-        enemy.orbitAngle += DIAMOND_ORBIT_SPEED * (deltaMs / 1000);
-        enemy.x = mote.x + Math.cos(enemy.orbitAngle) * 80;
-        enemy.y = mote.y + Math.sin(enemy.orbitAngle) * 80;
-        const half = DIAMOND_ENEMY_SIZE / 2;
-        enemy.x = Math.max(half, Math.min(widthPx - half, enemy.x));
-        enemy.y = Math.max(half, Math.min(heightPx - half, enemy.y));
-      } else {
-        const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        enemy.vx = (dx / dist) * DIAMOND_PATROL_SPEED;
-        enemy.vy = (dy / dist) * DIAMOND_PATROL_SPEED;
-        enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-        clampEnemyToBounds(enemy);
-        enemy.shardTimerMs -= deltaMs;
-        if (enemy.shardTimerMs <= 0) {
-          enemy.shardTimerMs = DIAMOND_SHARD_CD_MS + Math.random() * 500;
-          for (let b = 0; b < DIAMOND_SHARD_COUNT; b++) {
-            const angle = (b / DIAMOND_SHARD_COUNT) * Math.PI * 2;
-            diamondShards.push(makeDiamondShard(enemy.x, enemy.y, Math.cos(angle) * DIAMOND_SHARD_SPEED, Math.sin(angle) * DIAMOND_SHARD_SPEED));
-          }
-        }
-      }
-    }
-  }
-
-  function updateDiamondShards(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = diamondShards.length - 1; i >= 0; i--) {
-      const s = diamondShards[i];
-      s.x += s.vx * dt; s.y += s.vy * dt;
-      s.lifeMs -= deltaMs;
-      if (s.lifeMs <= 0 || s.x < 0 || s.x > widthPx || s.y < 0 || s.y > heightPx) {
-        diamondShards.splice(i, 1); continue;
-      }
-      if (!s.hasHitPlayer) {
-        const dx = s.x - mote.x, dy = s.y - mote.y;
-        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          s.hasHitPlayer = true;
-          dealDamageToPlayer(s.atk);
-        }
-      }
-    }
-  }
-
-
-
-  // ── Nullstone enemy system ────────────────────────────────────
-
-  function updateNullstoneEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of nullstoneEnemies) {
-      enemy.pulseMs += deltaMs;
-      // Gravity pull on player
-      const gdx = enemy.x - mote.x, gdy = enemy.y - mote.y;
-      const gdist = Math.sqrt(gdx * gdx + gdy * gdy);
-      if (gdist > 0 && gdist < NULLSTONE_GRAVITY_RADIUS) {
-        mote.vx += (gdx / gdist) * NULLSTONE_GRAVITY_STRENGTH * gdist * dt;
-        mote.vy += (gdy / gdist) * NULLSTONE_GRAVITY_STRENGTH * gdist * dt;
-      }
-      // Absorb / immunity cycling
-      if (enemy.isAbsorbing) {
-        enemy.absorbTimerMs -= deltaMs;
-        if (enemy.absorbTimerMs <= 0) { enemy.isAbsorbing = false; enemy.absorbCdMs = NULLSTONE_ABSORB_CD_MS; }
-      } else {
-        enemy.absorbCdMs -= deltaMs;
-        if (enemy.absorbCdMs <= 0) { enemy.isAbsorbing = true; enemy.absorbTimerMs = NULLSTONE_ABSORB_MS; }
-      }
-      // Patrol
-      enemy.patrolTimerMs -= deltaMs;
-      if (enemy.patrolTimerMs <= 0) {
-        enemy.patrolTimerMs = NULLSTONE_PATROL_TURN_MS * (0.5 + Math.random());
-        const angle = Math.random() * Math.PI * 2;
-        enemy.vx = Math.cos(angle) * NULLSTONE_PATROL_SPEED;
-        enemy.vy = Math.sin(angle) * NULLSTONE_PATROL_SPEED;
-      }
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      clampEnemyToBounds(enemy);
-      // Tendril attack
-      enemy.tendrilTimerMs -= deltaMs;
-      if (enemy.tendrilTimerMs <= 0) {
-        enemy.tendrilTimerMs = NULLSTONE_TENDRIL_CD_MS + Math.random() * 1000;
-        const tdx = mote.x - enemy.x, tdy = mote.y - enemy.y;
-        const tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-        for (let t = 0; t < NULLSTONE_TENDRIL_COUNT; t++) {
-          const spread = (t - Math.floor(NULLSTONE_TENDRIL_COUNT / 2)) * 0.4;
-          const cos = Math.cos(spread), sin = Math.sin(spread);
-          const tvx = ((tdx / tlen) * cos - (tdy / tlen) * sin) * VOID_TENDRIL_SPEED;
-          const tvy = ((tdx / tlen) * sin + (tdy / tlen) * cos) * VOID_TENDRIL_SPEED;
-          voidTendrils.push(makeVoidTendril(enemy.x, enemy.y, tvx, tvy));
-        }
-      }
-    }
-  }
-
-  function updateVoidTendrils(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = voidTendrils.length - 1; i >= 0; i--) {
-      const t = voidTendrils[i];
-      t.x += t.vx * dt; t.y += t.vy * dt;
-      t.lifeMs -= deltaMs;
-      if (t.lifeMs <= 0 || t.x < 0 || t.x > widthPx || t.y < 0 || t.y > heightPx) {
-        voidTendrils.splice(i, 1); continue;
-      }
-      if (!t.hasHitPlayer) {
-        const dx = t.x - mote.x, dy = t.y - mote.y;
-        if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          t.hasHitPlayer = true;
-          dealDamageToPlayer(t.atk);
-        }
-      }
-    }
-  }
-
-
-
-  function updateFracterylEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of fracterylEnemies) {
-      enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
-      if (enemy.patrolTimerMs > 0) {
-        enemy.patrolTimerMs = Math.max(0, enemy.patrolTimerMs - deltaMs);
-      } else {
-        enemy.patrolTimerMs = FRACTERYL_PATROL_TURN_MS + Math.random() * FRACTERYL_BURST_JITTER;
-        enemy.orbitAngle = Math.random() * Math.PI * 2;
-      }
-      enemy.vx += Math.cos(enemy.orbitAngle) * 0.15;
-      enemy.vy += Math.sin(enemy.orbitAngle) * 0.15;
-      enemy.vx *= 0.92; enemy.vy *= 0.92;
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      const half = FRACTERYL_ENEMY_SIZE / 2;
-      if (enemy.x < half)            { enemy.x = half;            enemy.vx = Math.abs(enemy.vx) * 0.5; }
-      if (enemy.x > widthPx - half)  { enemy.x = widthPx - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-      if (enemy.y < half)            { enemy.y = half;             enemy.vy = Math.abs(enemy.vy) * 0.5; }
-      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-
-      enemy.burstTimerMs -= deltaMs;
-      if (enemy.burstTimerMs <= 0) {
-        enemy.burstTimerMs = FRACTERYL_BURST_CD_MS + Math.random() * FRACTERYL_BURST_JITTER;
-        const shardCount = 6;
-        const speed = 1.5;
-        for (let i = 0; i < shardCount; i++) {
-          const angle = (i / shardCount) * Math.PI * 2;
-          fracterylShards.push(makeFracterylShard(
-            enemy.x, enemy.y,
-            Math.cos(angle) * speed, Math.sin(angle) * speed,
-            0,
-          ));
-        }
-        fluid.addForce({ x: enemy.x, y: enemy.y,
-          vx: 0, vy: 0,
-          r: FLUID_FRACTERYL_R, g: FLUID_FRACTERYL_G, b: FLUID_FRACTERYL_B,
-          strength: 1.2 });
-      }
-    }
-    for (let i = fracterylShards.length - 1; i >= 0; i--) {
-      const shard = fracterylShards[i];
-      shard.lifeMs -= deltaMs;
-      if (shard.lifeMs <= 0) { fracterylShards.splice(i, 1); continue; }
-      shard.x += shard.vx * dt; shard.y += shard.vy * dt;
-      if (!shard.hasHitPlayer) {
-        const sdx = mote.x - shard.x, sdy = mote.y - shard.y;
-        if (sdx * sdx + sdy * sdy < (FRACTERYL_ENEMY_SIZE / 2 + PLAYER_HIT_RADIUS) ** 2) {
-          dealDamageToPlayer(shard.atk);
-          shard.hasHitPlayer = true;
-          fracterylShards.splice(i, 1);
-        }
-      }
-    }
-  }
-
-  function updateEigensteinEnemies(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of eigensteinEnemies) {
-      enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
-      if (enemy.patrolTimerMs > 0) {
-        enemy.patrolTimerMs = Math.max(0, enemy.patrolTimerMs - deltaMs);
-      } else {
-        enemy.patrolTimerMs = EIGENSTEIN_PATROL_TURN_MS + Math.random() * EIGENSTEIN_BEAM_JITTER;
-        enemy.beamAngle = Math.random() * Math.PI * 2;
-      }
-      enemy.vx += Math.cos(enemy.beamAngle) * 0.12;
-      enemy.vy += Math.sin(enemy.beamAngle) * 0.12;
-      enemy.vx *= 0.91; enemy.vy *= 0.91;
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      const half = EIGENSTEIN_ENEMY_SIZE / 2;
-      if (enemy.x < half)            { enemy.x = half;            enemy.vx = Math.abs(enemy.vx) * 0.5; }
-      if (enemy.x > widthPx - half)  { enemy.x = widthPx - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-      if (enemy.y < half)            { enemy.y = half;             enemy.vy = Math.abs(enemy.vy) * 0.5; }
-      if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-
-      enemy.beamTimerMs -= deltaMs;
-      if (enemy.beamTimerMs <= 0) {
-        enemy.beamTimerMs = EIGENSTEIN_BEAM_CD_MS + Math.random() * EIGENSTEIN_BEAM_JITTER;
-        const aimAngle = Math.atan2(mote.y - enemy.y, mote.x - enemy.x);
-        const totalMs = EIGENSTEIN_BEAM_CHARGE_MS + EIGENSTEIN_BEAM_FIRE_MS;
-        eigensteinBeams.push({
-          originX: enemy.x, originY: enemy.y,
-          angle: aimAngle,
-          atk: enemy.atk,
-          isActive: false,
-          timerMs: EIGENSTEIN_BEAM_CHARGE_MS,
-          maxTimerMs: totalMs,
-        });
-        fluid.addForce({ x: enemy.x, y: enemy.y,
-          vx: 0, vy: 0,
-          r: FLUID_EIGENSTEIN_R, g: FLUID_EIGENSTEIN_G, b: FLUID_EIGENSTEIN_B,
-          strength: 1.5 });
-      }
-    }
-  }
-
-  function updateEigensteinBeams(deltaMs: number): void {
-    const beamLen = Math.sqrt(widthPx * widthPx + heightPx * heightPx);
-    for (let i = eigensteinBeams.length - 1; i >= 0; i--) {
-      const beam = eigensteinBeams[i];
-      beam.timerMs -= deltaMs;
-      if (!beam.isActive && beam.timerMs <= 0) {
-        beam.isActive = true;
-        beam.timerMs = EIGENSTEIN_BEAM_FIRE_MS;
-      }
-      if (beam.isActive) {
-        if (beam.timerMs <= 0) { eigensteinBeams.splice(i, 1); continue; }
-        const dx = mote.x - beam.originX, dy = mote.y - beam.originY;
-        const proj = dx * Math.cos(beam.angle) + dy * Math.sin(beam.angle);
-        if (proj > 0 && proj < beamLen) {
-          const perp = Math.abs(-dx * Math.sin(beam.angle) + dy * Math.cos(beam.angle));
-          if (perp < PLAYER_HIT_RADIUS + 3) {
-            dealDamageToPlayer(beam.atk * (deltaMs / 1000) * 60);
-          }
-        }
-      }
-    }
-  }
-
-
-
+  // ── Enemy update systems ──────────────────────────────────────
+  // All per-frame enemy update functions below are implemented in
+  // rpg-enemy-updates.ts and called via the enemyCtx object.
+  // updateEmeraldEnemies, updateAmberEnemies, updateAmberShards,
+  // updateVoidEnemies, updateQuartzEnemies, updateQuartzSpikes,
+  // updateRubyEnemies, updateRubyBolts, updateSunstoneEnemies,
+  // updateCitrineEnemies, updateCitrineBolts, updateIoliteEnemies,
+  // updateAmethystEnemies, updateAmethystShards,
+  // updateDiamondEnemies, updateDiamondShards,
+  // updateNullstoneEnemies, updateVoidTendrils,
+  // updateFracterylEnemies, updateEigensteinEnemies, updateEigensteinBeams,
+  // updateTeleportParticles
+
+  // ── Boss safe-zone draw helpers ───────────────────────────────
 
   function drawDanmakuSafeZone(): void {
     const boss = bossEnemy;
@@ -5361,19 +4575,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     ctx.restore();
-  }
-
-  /** Updates comet-trail teleport particles. */
-  function updateTeleportParticles(deltaMs: number): void {
-    if (teleportParticles.length === 0) return;
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = teleportParticles.length - 1; i >= 0; i--) {
-      const p = teleportParticles[i];
-      p.x += p.vx * dt; p.y += p.vy * dt;
-      p.vx *= 0.90; p.vy *= 0.90;
-      p.alpha -= deltaMs / 350;
-      if (p.alpha <= 0) teleportParticles.splice(i, 1);
-    }
   }
 
   /** Draws comet-trail teleport particles. */
@@ -6350,30 +5551,30 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateEnemies(deltaMs, nowMs);
       updateSapphireEnemies(deltaMs, nowMs);
       updateSapphireMissiles(deltaMs);
-      updateEmeraldEnemies(deltaMs);
-      updateAmberEnemies(deltaMs);
-      updateAmberShards(deltaMs);
-      updateVoidEnemies(deltaMs);
-      updateQuartzEnemies(deltaMs);
-      updateQuartzSpikes(deltaMs);
-      updateRubyEnemies(deltaMs);
-      updateRubyBolts(deltaMs);
-      updateSunstoneEnemies(deltaMs);
-      updateCitrineEnemies(deltaMs);
-      updateCitrineBolts(deltaMs);
-      updateIoliteEnemies(deltaMs);
-      updateAmethystEnemies(deltaMs);
-      updateAmethystShards(deltaMs);
-      updateDiamondEnemies(deltaMs);
-      updateDiamondShards(deltaMs);
-      updateNullstoneEnemies(deltaMs);
-      updateVoidTendrils(deltaMs);
-      updateFracterylEnemies(deltaMs);
-      updateEigensteinEnemies(deltaMs);
-      updateEigensteinBeams(deltaMs);
+      updateEmeraldEnemies(emeraldEnemies, enemyCtx, deltaMs);
+      updateAmberEnemies(amberEnemies, amberShards, enemyCtx, deltaMs);
+      updateAmberShards(amberShards, enemyCtx, deltaMs);
+      updateVoidEnemies(voidEnemies, enemyCtx, deltaMs);
+      updateQuartzEnemies(quartzEnemies, quartzSpikes, enemyCtx, deltaMs);
+      updateQuartzSpikes(quartzSpikes, enemyCtx, deltaMs);
+      updateRubyEnemies(rubyEnemies, rubyBolts, enemyCtx, deltaMs);
+      updateRubyBolts(rubyBolts, enemyCtx, deltaMs);
+      updateSunstoneEnemies(sunstoneEnemies, enemyCtx, deltaMs);
+      updateCitrineEnemies(citrineEnemies, citrineBolts, enemyCtx, deltaMs);
+      updateCitrineBolts(citrineBolts, enemyCtx, deltaMs);
+      updateIoliteEnemies(ioliteEnemies, enemyCtx, deltaMs);
+      updateAmethystEnemies(amethystEnemies, amethystShards, enemyCtx, deltaMs);
+      updateAmethystShards(amethystShards, enemyCtx, deltaMs);
+      updateDiamondEnemies(diamondEnemies, diamondShards, enemyCtx, deltaMs);
+      updateDiamondShards(diamondShards, enemyCtx, deltaMs);
+      updateNullstoneEnemies(nullstoneEnemies, voidTendrils, enemyCtx, deltaMs);
+      updateVoidTendrils(voidTendrils, enemyCtx, deltaMs);
+      updateFracterylEnemies(fracterylEnemies, fracterylShards, enemyCtx, deltaMs);
+      updateEigensteinEnemies(eigensteinEnemies, eigensteinBeams, enemyCtx, deltaMs);
+      updateEigensteinBeams(eigensteinBeams, enemyCtx, deltaMs);
       updateBossEnemy(deltaMs);
       updateBossProjectiles(deltaMs);
-      updateTeleportParticles(deltaMs);
+      updateTeleportParticles(teleportParticles, deltaMs);
       updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(deltaMs);
       updateSandProjectiles(deltaMs);
