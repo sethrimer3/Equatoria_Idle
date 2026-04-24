@@ -36,7 +36,7 @@ import { TIER_BY_ID } from '../../data/tiers';
 import { createRpgFluid } from './rpg-fluid';
 import {
   RPG_TRAIL_CAPACITY, MAX_RPG_SPEED, RPG_VELOCITY_DAMPING, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
-  TRAIL_SPEED_THRESHOLD, GLOW_PULSE_SPEED, GLOW_MOVE_RAMP_UP, GLOW_MOVE_RAMP_DOWN,
+  TRAIL_SPEED_THRESHOLD, GLOW_PULSE_SPEED, GLOW_MOVE_RAMP_UP, GLOW_MOVE_RAMP_DOWN, MIN_TRAIL_DISTANCE,
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT,
   JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
   LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
@@ -4265,10 +4265,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (mote.x > widthPx  - half) { mote.x = widthPx  - half; mote.vx = 0; }
     if (mote.y < half)            { mote.y = half;            mote.vy = 0; }
     if (mote.y > heightPx - half) { mote.y = heightPx - half; mote.vy = 0; }
-    mote.trailX[mote.trailHead] = mote.x;
-    mote.trailY[mote.trailHead] = mote.y;
-    mote.trailHead = (mote.trailHead + 1) % RPG_TRAIL_CAPACITY;
-    if (mote.trailCount < RPG_TRAIL_CAPACITY) mote.trailCount++;
+
+    // Distance-based trail update: only add a trail point if player moved far enough.
+    // This prevents trail bunching at high refresh rates (e.g. 144 Hz).
+    const MIN_TRAIL_DISTANCE_SQ = MIN_TRAIL_DISTANCE * MIN_TRAIL_DISTANCE;
+    const lastTrailIdx = (mote.trailHead - 1 + RPG_TRAIL_CAPACITY) % RPG_TRAIL_CAPACITY;
+    const dx = mote.x - mote.trailX[lastTrailIdx];
+    const dy = mote.y - mote.trailY[lastTrailIdx];
+    const distSq = dx * dx + dy * dy;
+
+    if (mote.trailCount === 0 || distSq >= MIN_TRAIL_DISTANCE_SQ) {
+      mote.trailX[mote.trailHead] = mote.x;
+      mote.trailY[mote.trailHead] = mote.y;
+      mote.trailHead = (mote.trailHead + 1) % RPG_TRAIL_CAPACITY;
+      if (mote.trailCount < RPG_TRAIL_CAPACITY) mote.trailCount++;
+    }
     // Movement glow smoothing via LERP
     const speed = Math.sqrt(mote.vx * mote.vx + mote.vy * mote.vy);
     if (speed > TRAIL_SPEED_THRESHOLD) {
@@ -4334,10 +4345,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < WEAPON_PARTICLE_MIN_SPEED * dt) p.angle += 0.05;
       p.x = newX; p.y = newY;
-      p.trailX[p.trailHead] = p.x;
-      p.trailY[p.trailHead] = p.y;
-      p.trailHead = (p.trailHead + 1) % WEAPON_ORBIT_TRAIL_CAP;
-      if (p.trailCount < WEAPON_ORBIT_TRAIL_CAP) p.trailCount++;
+
+      // Distance-based trail update for weapon particles to prevent jittering at high refresh rates.
+      const MIN_TRAIL_DISTANCE_SQ = MIN_TRAIL_DISTANCE * MIN_TRAIL_DISTANCE;
+      const lastTrailIdx = (p.trailHead - 1 + WEAPON_ORBIT_TRAIL_CAP) % WEAPON_ORBIT_TRAIL_CAP;
+      const trailDx = p.x - p.trailX[lastTrailIdx];
+      const trailDy = p.y - p.trailY[lastTrailIdx];
+      const trailDistSq = trailDx * trailDx + trailDy * trailDy;
+
+      if (p.trailCount === 0 || trailDistSq >= MIN_TRAIL_DISTANCE_SQ) {
+        p.trailX[p.trailHead] = p.x;
+        p.trailY[p.trailHead] = p.y;
+        p.trailHead = (p.trailHead + 1) % WEAPON_ORBIT_TRAIL_CAP;
+        if (p.trailCount < WEAPON_ORBIT_TRAIL_CAP) p.trailCount++;
+      }
     }
   }
 
@@ -4349,10 +4370,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     op.angle -= ORBIT_PROJ_SPEED_RAD * dt;  // counter-clockwise, doubled speed
     op.x = mote.x + Math.cos(op.angle) * ORBIT_PROJ_RADIUS;
     op.y = mote.y + Math.sin(op.angle) * ORBIT_PROJ_RADIUS;
-    op.trailX[op.trailHead] = op.x;
-    op.trailY[op.trailHead] = op.y;
-    op.trailHead = (op.trailHead + 1) % ORBIT_PROJ_TRAIL_CAP;
-    if (op.trailCount < ORBIT_PROJ_TRAIL_CAP) op.trailCount++;
+
+    // Distance-based trail update for orbit projectile to prevent jittering at high refresh rates.
+    const MIN_TRAIL_DISTANCE_SQ = MIN_TRAIL_DISTANCE * MIN_TRAIL_DISTANCE;
+    const lastTrailIdx = (op.trailHead - 1 + ORBIT_PROJ_TRAIL_CAP) % ORBIT_PROJ_TRAIL_CAP;
+    const trailDx = op.x - op.trailX[lastTrailIdx];
+    const trailDy = op.y - op.trailY[lastTrailIdx];
+    const trailDistSq = trailDx * trailDx + trailDy * trailDy;
+
+    if (op.trailCount === 0 || trailDistSq >= MIN_TRAIL_DISTANCE_SQ) {
+      op.trailX[op.trailHead] = op.x;
+      op.trailY[op.trailHead] = op.y;
+      op.trailHead = (op.trailHead + 1) % ORBIT_PROJ_TRAIL_CAP;
+      if (op.trailCount < ORBIT_PROJ_TRAIL_CAP) op.trailCount++;
+    }
 
     // Advance per-enemy hit cooldowns.
     for (const [enemy, cdMs] of op.hitCooldowns) {
