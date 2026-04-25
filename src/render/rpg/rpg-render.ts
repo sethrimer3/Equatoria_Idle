@@ -70,7 +70,7 @@ import {
   SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
   SWORD_BEAM_DURATION_MS, SWORD_SWIPE_VISUAL_MS,
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
-  SWORD_IDLE_ANGLE, SWORD_COMBO_THRESHOLD, SWORD_COMBO_SPIN_TURNS,
+  SWORD_COMBO_THRESHOLD, SWORD_COMBO_SPIN_TURNS,
   SWORD_COMBO_SPIN_MS, SWORD_COMBO_DAMAGE_MULT, SWORD_COMBO_RANGE_MULT,
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
@@ -1717,7 +1717,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
     const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
-    const initAngle  = SWORD_IDLE_ANGLE;
+    const initAngle  = playerAimAngle + Math.PI / 2;
     return {
       phase: 'idle', phaseMs: 0, cooldownMs,
       hitThisSwing: new Set(),
@@ -1842,9 +1842,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const fullCooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
     const nowMs = Date.now();
 
-    // ── 1. Update hinge physics: spring pulls toward the idle rest angle (right = 0) ──
-    //       Overridden during swing/spin animations which drive the angle directly.
-    const restAngle = SWORD_IDLE_ANGLE;
+    // ── 1. Update hinge physics: spring pulls toward right-hand rest angle based on
+    //       last movement facing (playerAimAngle). Overridden during swing/spin.
+    const restAngle = playerAimAngle + Math.PI / 2;
     const angleDiff = wrapAngleDiff(restAngle - state.swordAngle);
     state.swordAngularVel += angleDiff * SWORD_HINGE_SPRING_K;
     state.swordAngularVel *= SWORD_HINGE_DAMPING;
@@ -2088,9 +2088,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
 
       if (state.phaseMs >= SWORD_COMBO_SPIN_MS) {
-        // Snap sword back to idle right position.
-        state.swordAngle = SWORD_IDLE_ANGLE;
-        for (let i = 0; i < SWORD_SHARD_COUNT; i++) state.shardAngles[i] = SWORD_IDLE_ANGLE;
+        // Snap sword back to right-hand rest position based on current facing.
+        const restAngle = playerAimAngle + Math.PI / 2;
+        state.swordAngle = restAngle;
+        for (let i = 0; i < SWORD_SHARD_COUNT; i++) state.shardAngles[i] = restAngle;
         state.swingIsRightToLeft = true; // next swing is R→L
         state.phase = 'cooldown'; state.phaseMs = 0;
         state.cooldownMs = Math.max(0, fullCooldownMs - SWORD_SWING_MS);
