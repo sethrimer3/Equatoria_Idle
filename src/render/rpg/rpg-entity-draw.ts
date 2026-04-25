@@ -30,7 +30,7 @@ import type {
   LaserEnemy,
   WeaponOrbitParticle, OrbitProjectile,
   TeleportParticle,
-  EmeraldPlayerMissile,
+  EmeraldPlayerMissile, EmeraldSubMissile,
   SunstoneMine,
 } from './rpg-types';
 
@@ -66,6 +66,7 @@ import {
   LASER_DASH_DISTANCE, LASER_TRAIL_ERASE_MS, ATTACK_TRAIL_LENGTH_SCALE,
   ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE, LASER_ENEMY_GLOW, LASER_ENEMY_COLOR,
   EMERALD_MISSILE_SIZE, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_GLOW, EMERALD_MISSILE_TRAIL_CAP,
+  EMERALD_SUB_MISSILE_SIZE, EMERALD_SUB_MISSILE_TRAIL_CAP,
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_SIZE, SUNSTONE_MINE_COLOR, SUNSTONE_MINE_GLOW,
   SUNSTONE_MINE_DANGER_COLOR,
 } from './rpg-constants';
@@ -875,9 +876,16 @@ export function drawEmeraldPlayerMissiles(
   missiles: EmeraldPlayerMissile[],
 ): void {
   if (missiles.length === 0) return;
+  const now = performance.now();
   ctx.save();
   for (const m of missiles) {
+    // Flickering alpha for fizzling missiles.
+    const baseAlpha = m.isFizzling
+      ? 0.5 + 0.5 * Math.abs(Math.sin(now * 0.015))
+      : 1;
+
     // Comet trail — layered glow fading from bright tip to dark tail.
+    // Glow is 25% smaller: shadowBlur and outer glow rect reduced by factor 0.75.
     if (m.trailCount >= 2) {
       for (let i = 0; i < m.trailCount; i++) {
         const t      = i / m.trailCount;
@@ -885,29 +893,77 @@ export function drawEmeraldPlayerMissiles(
         const trailSize = EMERALD_MISSILE_SIZE * t * 1.8;
         if (trailSize < 0.2) continue;
         const half = trailSize / 2;
-        // Outer glow layer.
-        ctx.globalAlpha = t * 0.5;
-        ctx.shadowBlur  = trailSize * 7; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+        // Outer glow layer (glow radius reduced 25%).
+        ctx.globalAlpha = t * 0.5 * baseAlpha;
+        ctx.shadowBlur  = trailSize * 5.25; ctx.shadowColor = EMERALD_MISSILE_GLOW;
         ctx.fillStyle   = EMERALD_MISSILE_GLOW;
-        const gh = half * 2.5;
+        const gh = half * 1.875;
         ctx.fillRect(Math.floor(m.trailX[bufIdx] - gh), Math.floor(m.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
         ctx.shadowBlur = 0;
         // Inner core layer.
-        ctx.globalAlpha = t * 0.75;
+        ctx.globalAlpha = t * 0.75 * baseAlpha;
         ctx.fillStyle   = EMERALD_MISSILE_COLOR;
         ctx.fillRect(Math.floor(m.trailX[bufIdx] - half), Math.floor(m.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
       }
     }
-    // Missile body — bright emerald core.
+    // Missile body — bright emerald core (glow 25% smaller).
     const half = EMERALD_MISSILE_SIZE / 2;
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur  = EMERALD_MISSILE_SIZE * 6; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+    ctx.globalAlpha = baseAlpha;
+    ctx.shadowBlur  = EMERALD_MISSILE_SIZE * 4.5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
     ctx.fillStyle   = EMERALD_MISSILE_GLOW;
-    const gh = half * 2.4;
+    const gh = half * 1.8;
     ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
     ctx.shadowBlur = 0;
     ctx.fillStyle  = EMERALD_MISSILE_COLOR;
     ctx.fillRect(Math.floor(m.x - half), Math.floor(m.y - half), EMERALD_MISSILE_SIZE, EMERALD_MISSILE_SIZE);
+  }
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── Emerald sub-missiles (tiny heat-seekers) ──────────────────────────────────
+
+export function drawEmeraldSubMissiles(
+  ctx: CanvasRenderingContext2D,
+  missiles: EmeraldSubMissile[],
+): void {
+  if (missiles.length === 0) return;
+  const now = performance.now();
+  ctx.save();
+  for (const s of missiles) {
+    const baseAlpha = s.isFizzling
+      ? 0.4 + 0.6 * Math.abs(Math.sin(now * 0.018))
+      : 1;
+
+    // Short comet trail.
+    if (s.trailCount >= 2) {
+      for (let i = 0; i < s.trailCount; i++) {
+        const t      = i / s.trailCount;
+        const bufIdx = (s.trailHead - s.trailCount + i + EMERALD_SUB_MISSILE_TRAIL_CAP) % EMERALD_SUB_MISSILE_TRAIL_CAP;
+        const trailSize = EMERALD_SUB_MISSILE_SIZE * t * 1.6;
+        if (trailSize < 0.15) continue;
+        const half = trailSize / 2;
+        ctx.globalAlpha = t * 0.45 * baseAlpha;
+        ctx.shadowBlur  = trailSize * 5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+        ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+        const gh = half * 1.8;
+        ctx.fillRect(Math.floor(s.trailX[bufIdx] - gh), Math.floor(s.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = t * 0.65 * baseAlpha;
+        ctx.fillStyle   = EMERALD_MISSILE_COLOR;
+        ctx.fillRect(Math.floor(s.trailX[bufIdx] - half), Math.floor(s.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
+      }
+    }
+    // Sub-missile body.
+    const half = EMERALD_SUB_MISSILE_SIZE / 2;
+    ctx.globalAlpha = baseAlpha;
+    ctx.shadowBlur  = EMERALD_SUB_MISSILE_SIZE * 4; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+    ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+    const gh = half * 1.8;
+    ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+    ctx.shadowBlur = 0;
+    ctx.fillStyle  = EMERALD_MISSILE_COLOR;
+    ctx.fillRect(Math.floor(s.x - half), Math.floor(s.y - half), Math.ceil(EMERALD_SUB_MISSILE_SIZE), Math.ceil(EMERALD_SUB_MISSILE_SIZE));
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.restore();

@@ -617,7 +617,30 @@ export interface EmeraldPlayerMissile {
   vx: number; vy: number;
   /** Scaled damage to deal on impact. */
   scaledDamage: number;
+  /** Weapon tier — determines how many sub-missiles spawn on explosion. */
+  tier: number;
+  /** Accumulated ms during which no enemy was within detection range. */
+  noTargetMs: number;
+  /** True while decelerating to a stop (no enemy could be reached). */
+  isFizzling: boolean;
   trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}
+
+// ── Emerald sub-missile (tiny heat-seeker spawned from main missile) ───────────
+
+export interface EmeraldSubMissile {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Damage dealt on impact (fraction of parent damage). */
+  scaledDamage: number;
+  /** Phase offset for squiggle wobble (radians). */
+  squigglePhase: number;
+  /** Accumulated ms without being near any enemy → fizzle and AOE. */
+  noTargetMs: number;
+  /** True while decelerating to a stop before AOE detonation. */
+  isFizzling: boolean;
+  trailX: Float32Array; trailY: Float32Array;
   trailHead: number; trailCount: number;
 }
 
