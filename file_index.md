@@ -354,8 +354,8 @@
 - No runtime side-effects; safe to call from any rendering context.
 
 ### src/render/rpg/rpg-enemy-updates.ts
-- 13 exported enemy update functions covering wave 1–30 enemy types (~616 lines).
-- Covers: emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts.
+- 19 exported enemy update functions covering laser, sapphire, and wave 1–30 enemy types (~880 lines).
+- Covers: **laser enemies** (idle/decelerate/dash/overshoot/cooldown phases via `updateLaserEnemies`), **sapphire enemies + missiles** (`updateSapphireEnemies`, `updateSapphireMissiles`), emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts.
 - Exports the `RpgEnemyCtx` interface: a minimal shared-reference object (`mote`, `dim`, `fluid`, `hitEffects`, `shotLines`, `dealDamageToPlayer`, `dealDamageToPlayerKnockback`, `clampEnemyToBounds`).
 - `dim: { w, h }` is a live object kept in sync with `widthPx`/`heightPx` on each resize; no getter indirection needed.
 - Each function takes its own entity arrays as explicit parameters, making data flow visible at call sites.
@@ -367,16 +367,23 @@
 - Imports `RpgEnemyCtx` from `rpg-enemy-updates.ts`; follows identical contract.
 - Split from `rpg-enemy-updates.ts` to keep both files under ~650 lines.
 
+### src/render/rpg/rpg-boss-update.ts
+- 2 exported boss update functions extracted from `rpg-render.ts` (~380 lines).
+- Exports `BossUpdateCtx` interface and `updateBossEnemy(boss, ctx, deltaMs)`, `updateBossProjectiles(bossProjectiles, ctx, deltaMs)`.
+- `BossUpdateCtx` exposes mutable closure state (danmakuSafeZone, playerIFramesMs, isBossWaveActive) via getter/setter callbacks.
+- Includes `isInBottomSafeZone(px, py, dim)` local helper for the bottom safe zone check.
+
 ### src/render/rpg/rpg-boss-draw.ts
 - 4 exported pure draw functions for boss wave HUD elements (~265 lines).
 - Covers: `drawBossEnemy` (sprite, HP bar, phase pips, INVULN label), `drawBottomSafeZone` (prismatic ring), `drawDanmakuSafeZone` (safe-angle wedge), `drawWaveClearBanner` (fade-in/out clear overlay).
 - Each function takes `ctx: CanvasRenderingContext2D` plus explicit parameters — no closure dependencies.
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~5,377 lines after Phase 6 extraction).
+- Independent RPG canvas rendering system for the RPG tab (~4,560 lines after Phase 8 extraction).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Entity draw functions have been extracted to `rpg-entity-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
-- Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30) and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
+- Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (laser, sapphire, wave 1–30) and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
+- Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
