@@ -239,6 +239,8 @@ export interface RpgRender {
   notifyEquip(): void;
   /** Dev-mode only: immediately jump to the given wave number (must be multiple of 10). */
   devJumpToWave(wave: number): void;
+  /** Immediately restart at the current respawnWave with the visual restart transition. */
+  respawnNow(): void;
 }
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState): RpgRender {
@@ -5373,6 +5375,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       rpgSimState.respawnWave = savedRespawnWave;
       // Immediately advance past the inter-wave delay so the wave starts quickly.
       interWaveTimerMs = 0;
+    },
+
+    respawnNow(): void {
+      doRestart();
+      rpgPhase = 'restarting'; phaseTimerMs = 0; restartFadeAlpha = 0;
     },
   };
 }

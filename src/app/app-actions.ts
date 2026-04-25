@@ -217,6 +217,11 @@ export function handleAction(
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
+    case 'respawn_now': {
+      uiPanels.rpgRender.respawnNow();
+      uiPanels.rpgMenuPanel.setVisible(false);
+      break;
+    }
     case 'set_active_tab':
       state.activeTab = action.tabId;
       audioSystem?.onTabChange(action.tabId);

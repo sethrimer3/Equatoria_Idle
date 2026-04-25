@@ -18,6 +18,7 @@ import { getMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
 import { formatNumberAs } from '../../util';
 import type { NumberFormat } from '../../util';
+import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -182,12 +183,15 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     slotsInfo.textContent = `Equipped: ${rpgState.equippedWeaponIds.size} / ${maxSlots} slot${maxSlots !== 1 ? 's' : ''}`;
     element.appendChild(slotsInfo);
 
+    element.appendChild(makePageBreak('small'));
+
     const list = document.createElement('div');
     list.className = 'weapon-store__list';
     for (const weapon of WEAPON_DEFINITIONS) {
       list.appendChild(buildWeaponCard(weapon, rpgState, resources, numberFormat, isDevMode));
     }
     element.appendChild(list);
+    element.appendChild(makePageBreak('small'));
   }
 
   return { element, update };

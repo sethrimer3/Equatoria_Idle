@@ -19,6 +19,7 @@ import type { NumberFormat } from '../../util';
 import { createRpgMenuTabPane } from './rpg-menu-tab';
 import { createRpgWeaponsTabPane } from './rpg-weapons-tab';
 import { createRpgUpgradesTabPane } from './rpg-upgrades-tab';
+import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
   // All pane elements live in the content area; we show/hide per active tab.
   const content = document.createElement('div');
   content.className = 'rpg-menu__content';
+  content.appendChild(makePageBreak('large'));
   content.appendChild(menuTabPane.element);
   content.appendChild(weaponsTabPane.element);
   content.appendChild(upgradesTabPane.element);

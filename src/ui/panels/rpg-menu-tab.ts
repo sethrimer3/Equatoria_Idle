@@ -11,6 +11,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
+import { makePageBreak } from '../ui-helpers';
 
 // ─── Constants ─────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ export function createRpgMenuTabPane(
   const element = document.createElement('div');
 
   let isAutoMoveEnabled = false;
+  let isConfirmingRespawn = false;
 
   function update(rpgState: RpgSimState | null, isDevMode = false): void {
     element.innerHTML = '';
@@ -72,9 +74,7 @@ export function createRpgMenuTabPane(
     // ── Checkpoint selector ──
     const checkpointCount = rpgState ? Math.floor(rpgState.highestWaveReached / 10) : 0;
     if (checkpointCount > 0) {
-      const sep = document.createElement('hr');
-      sep.style.cssText = 'border:none;border-top:1px solid rgba(255,255,255,0.1);margin:8px 0;';
-      element.appendChild(sep);
+      element.appendChild(makePageBreak('small'));
 
       const cpSection = document.createElement('div');
       cpSection.className = 'rpg-menu__setting-row';
@@ -112,18 +112,41 @@ export function createRpgMenuTabPane(
       }
 
       cpSelect.addEventListener('change', () => {
+        isConfirmingRespawn = false;
         dispatch({ kind: 'set_respawn_wave', wave: parseInt(cpSelect.value, 10) });
       });
 
       cpSection.appendChild(cpSelect);
+
+      // ── Respawn button ──
+      const respawnBtn = document.createElement('button');
+      respawnBtn.style.cssText = 'margin-top:6px;width:100%;padding:8px 0;border-radius:4px;font-size:0.9em;font-weight:600;cursor:pointer;touch-action:manipulation;background:#2a0a0a;color:#ff6666;border:1px solid rgba(255,100,100,0.4);';
+      respawnBtn.textContent = isConfirmingRespawn ? 'Confirm?' : 'Respawn';
+      if (isConfirmingRespawn) {
+        respawnBtn.style.background = '#4a0000';
+        respawnBtn.style.color = '#ff4444';
+        respawnBtn.style.borderColor = 'rgba(255,68,68,0.7)';
+      }
+      respawnBtn.addEventListener('click', () => {
+        if (!isConfirmingRespawn) {
+          isConfirmingRespawn = true;
+          respawnBtn.textContent = 'Confirm?';
+          respawnBtn.style.background = '#4a0000';
+          respawnBtn.style.color = '#ff4444';
+          respawnBtn.style.borderColor = 'rgba(255,68,68,0.7)';
+        } else {
+          isConfirmingRespawn = false;
+          dispatch({ kind: 'respawn_now' });
+        }
+      });
+
+      cpSection.appendChild(respawnBtn);
       element.appendChild(cpSection);
     }
 
     // ── Dev Mode: Jump to Wave ──
     if (isDevMode) {
-      const devSep = document.createElement('hr');
-      devSep.style.cssText = 'border:none;border-top:1px solid rgba(255,180,50,0.3);margin:8px 0;';
-      element.appendChild(devSep);
+      element.appendChild(makePageBreak('small'));
 
       const devSection = document.createElement('div');
       devSection.className = 'rpg-menu__setting-row';

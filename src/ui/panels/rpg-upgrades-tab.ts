@@ -16,6 +16,7 @@ import { getMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
 import { formatNumberAs } from '../../util';
 import type { NumberFormat } from '../../util';
+import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ export function createRpgUpgradesTabPane(dispatch: ActionHandler): RpgUpgradesTa
       list.appendChild(buildUpgradeCard(upgradeDef, rpgState, resources, numberFormat, isDevMode));
     }
     element.appendChild(list);
+    element.appendChild(makePageBreak('small'));
   }
 
   return { element, update };
