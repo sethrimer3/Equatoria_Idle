@@ -40,10 +40,6 @@ import {
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT,
   JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
   LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
-  LASER_ATTACK_RADIUS, LASER_DECEL_DURATION_MS, LASER_DASH_SPEED, LASER_DASH_DISTANCE,
-  LASER_COOLDOWN_MS, LASER_OVERSHOOT_DAMPING, LASER_OVERSHOOT_STOP, LASER_PATROL_SPEED_MAX, LASER_PATROL_DAMPING, LASER_PATROL_TURN_MS,
-  PLAYER_HIT_RADIUS,
-  LASER_DECEL_FACTOR, ATTACK_TRAIL_CURVE_VARIATION, PATROL_TURN_DELAY_MIN_FACTOR, PATROL_TURN_DELAY_RANGE_FACTOR,
   INTER_WAVE_DELAY_MS, DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
   DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
   PLAYER_BASE_COOLDOWN_MS, PLAYER_BASE_RANGE_PX, HIT_EFFECT_DURATION_MS,
@@ -55,10 +51,8 @@ import {
   ORBIT_PROJ_SPEED_RAD, ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_DAMAGE, ORBIT_PROJ_HIT_CD_MS,
   SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_GLOW,
-  SAPPHIRE_SHIELD_RADIUS, SAPPHIRE_PATROL_SPEED,
-  SAPPHIRE_PATROL_TURN_MS, SAPPHIRE_MISSILE_CD_MS, SAPPHIRE_MISSILE_JITTER,
-  MISSILE_SIZE, MISSILE_SPEED, MISSILE_SEEK_STR, MISSILE_MAX_SPEED,
-  MISSILE_TRAIL_CAP, MINIMUM_SHIELD_DAMAGE, SPEED_EPSILON,
+  SAPPHIRE_SHIELD_RADIUS,
+  MISSILE_SIZE, MINIMUM_SHIELD_DAMAGE,
   SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, CHAIN_NODES, CHAIN_NODE_COLOR,
   CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
   CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
@@ -99,8 +93,8 @@ import {
   BOSS_SIZE_BASE,
   BOSS_GLOW_COLORS, BOSS_NAMES,
   BOSS_GLYPH_LABEL,
-  FLUID_VEL_FRAME_TO_PX_S, FLUID_PLAYER_STRENGTH, FLUID_ENEMY_STRENGTH,
-  FLUID_PROJECTILE_STRENGTH, FLUID_MISSILE_STRENGTH, FLUID_LASER_BEAM_STRENGTH,
+  FLUID_VEL_FRAME_TO_PX_S, FLUID_PLAYER_STRENGTH,
+  FLUID_PROJECTILE_STRENGTH, FLUID_LASER_BEAM_STRENGTH,
   FLUID_EXPLOSION_STRENGTH,
   FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
   FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
@@ -177,7 +171,7 @@ import type {
   TeleportParticle,
 } from './rpg-types';
 import {
-  makeLaserEnemy, makeSapphireEnemy, makeSapphireMissile,
+  makeLaserEnemy, makeSapphireEnemy,
   makeEmeraldEnemy, makeAmberEnemy, makeVoidEnemy,
   makeQuartzEnemy, makeRubyEnemy,
   makeSunstoneEnemy, makeCitrineEnemy, makeIoliteEnemy,
@@ -195,6 +189,8 @@ import { drawChainWhip, drawVortexes, drawSwordCombos } from './rpg-weapon-draw'
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner } from './rpg-boss-draw';
 import {
   type RpgEnemyCtx,
+  updateLaserEnemies,
+  updateSapphireEnemies, updateSapphireMissiles,
   updateEmeraldEnemies,
   updateAmberEnemies, updateAmberShards,
   updateVoidEnemies,
@@ -2552,140 +2548,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
 
-  // ── Sapphire enemy system ──────────────────────────────────────
-
-  function spawnMissileFromEnemy(enemy: SapphireEnemy): void {
-    const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const dirX = dist > 0.01 ? dx / dist : 0;
-    const dirY = dist > 0.01 ? dy / dist : 1;
-    sapphireMissiles.push(makeSapphireMissile(
-      enemy.x, enemy.y,
-      dirX * MISSILE_SPEED, dirY * MISSILE_SPEED,
-    ));
-    // Inject a gun-fire impulse in the launch direction.
-    fluid.addForce({
-      x: enemy.x, y: enemy.y,
-      vx: dirX * FLUID_VEL_FRAME_TO_PX_S * 2.0,
-      vy: dirY * FLUID_VEL_FRAME_TO_PX_S * 2.0,
-      r: FLUID_MISSILE_R, g: FLUID_MISSILE_G, b: FLUID_MISSILE_B,
-      strength: FLUID_PROJECTILE_STRENGTH * 1.5,
-    });
-  }
-
-  function updateSapphireEnemies(deltaMs: number, _nowMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of sapphireEnemies) {
-      // Patrol
-      enemy.patrolTimerMs -= deltaMs;
-      if (enemy.patrolTimerMs <= 0) {
-        const angle = Math.random() * Math.PI * 2;
-        enemy.vx = Math.cos(angle) * SAPPHIRE_PATROL_SPEED;
-        enemy.vy = Math.sin(angle) * SAPPHIRE_PATROL_SPEED;
-        enemy.patrolTimerMs = SAPPHIRE_PATROL_TURN_MS * (0.5 + Math.random() * 0.8);
-      }
-      enemy.vx *= Math.pow(LASER_PATROL_DAMPING, dt);
-      enemy.vy *= Math.pow(LASER_PATROL_DAMPING, dt);
-      enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      // Clamp to bounds
-      const half = SAPPHIRE_ENEMY_SIZE / 2;
-      if (enemy.x < half)             { enemy.x = half;             enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-      if (enemy.x > widthPx  - half)  { enemy.x = widthPx  - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-      if (enemy.y < half)             { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-      if (enemy.y > heightPx - half)  { enemy.y = heightPx - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-
-      // Inject sapphire-enemy movement into fluid.
-      const sespd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
-      if (sespd > 0.04) {
-        fluid.addForce({
-          x: enemy.x, y: enemy.y,
-          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
-          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
-          r: FLUID_SAPPH_R, g: FLUID_SAPPH_G, b: FLUID_SAPPH_B,
-          strength: FLUID_ENEMY_STRENGTH,
-        });
-      }
-
-      // Missile firing
-      enemy.missileTimerMs -= deltaMs;
-      if (enemy.missileTimerMs <= 0) {
-        spawnMissileFromEnemy(enemy);
-        enemy.missileTimerMs = SAPPHIRE_MISSILE_CD_MS + (Math.random() - 0.5) * SAPPHIRE_MISSILE_JITTER;
-      }
-    }
-  }
-
-  function updateSapphireMissiles(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
-      const m = sapphireMissiles[i];
-      if (m.hp <= 0) { sapphireMissiles.splice(i, 1); continue; }
-
-      // Heat-seeking toward player
-      const dx = mote.x - m.x, dy = mote.y - m.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0.01) {
-        const seekDirX = dx / dist, seekDirY = dy / dist;
-        m.vx += seekDirX * MISSILE_SEEK_STR;
-        m.vy += seekDirY * MISSILE_SEEK_STR;
-      }
-      // Cap speed
-      const speed = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
-      if (speed > MISSILE_MAX_SPEED) {
-        m.vx = (m.vx / speed) * MISSILE_MAX_SPEED;
-        m.vy = (m.vy / speed) * MISSILE_MAX_SPEED;
-      }
-
-      m.x += m.vx * dt; m.y += m.vy * dt;
-
-      // Inject missile motion into fluid every frame — produces the curved
-      // heat-seeker trail required by the acceptance criteria.
-      fluid.addForce({
-        x: m.x, y: m.y,
-        vx: m.vx * FLUID_VEL_FRAME_TO_PX_S,
-        vy: m.vy * FLUID_VEL_FRAME_TO_PX_S,
-        r: FLUID_MISSILE_R, g: FLUID_MISSILE_G, b: FLUID_MISSILE_B,
-        strength: FLUID_MISSILE_STRENGTH,
-      });
-
-      // Record trail
-      m.trailX[m.trailHead] = m.x; m.trailY[m.trailHead] = m.y;
-      m.trailHead = (m.trailHead + 1) % MISSILE_TRAIL_CAP;
-      if (m.trailCount < MISSILE_TRAIL_CAP) m.trailCount++;
-
-      // Hit player
-      if (!m.hasHitPlayer) {
-        const pdx = mote.x - m.x, pdy = mote.y - m.y;
-        if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-          m.hasHitPlayer = true;
-          if (playerIFramesMs <= 0) {
-            const rawDmg = m.atk - playerStats.def;
-            const dmg = Math.max(0, rawDmg);
-            if (dmg <= 0) {
-              spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
-            } else {
-              playerStats.hp = Math.max(0, playerStats.hp - dmg);
-              const ratio = Math.min(1, dmg / playerStats.maxHp);
-              const dirX = m.vx / (speed + SPEED_EPSILON), dirY = m.vy / (speed + SPEED_EPSILON);
-              mote.vx += dirX * PLAYER_KNOCKBACK_MAX * ratio;
-              mote.vy += dirY * PLAYER_KNOCKBACK_MAX * ratio;
-              playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
-              spawnDamageNumber(mote.x, mote.y, dirX, dirY, String(Math.round(dmg)), ratio, '#ff6666');
-            }
-          }
-          sapphireMissiles.splice(i, 1);
-        }
-      }
-
-      // Despawn if far out of bounds
-      const margin = 20;
-      if (m.x < -margin || m.x > widthPx + margin || m.y < -margin || m.y > heightPx + margin) {
-        sapphireMissiles.splice(i, 1);
-      }
-    }
-  }
-
-
 
   /**
    * Fires the specified weapon at the nearest enemy within range.
@@ -3747,128 +3609,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function updateEnemyIdle(enemy: LaserEnemy, dt: number, deltaMs: number): void {
-    enemy.patrolTimerMs -= deltaMs;
-    if (enemy.patrolTimerMs <= 0) {
-      const angle = Math.random() * Math.PI * 2;
-      enemy.vx = Math.cos(angle) * LASER_PATROL_SPEED_MAX;
-      enemy.vy = Math.sin(angle) * LASER_PATROL_SPEED_MAX;
-      enemy.patrolTimerMs = LASER_PATROL_TURN_MS * (PATROL_TURN_DELAY_MIN_FACTOR + Math.random() * PATROL_TURN_DELAY_RANGE_FACTOR);
-    }
-    const dampFactor = Math.pow(LASER_PATROL_DAMPING, dt);
-    enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-    enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    clampEnemyToBounds(enemy);
-    const dx = mote.x - enemy.x; const dy = mote.y - enemy.y;
-    if (dx * dx + dy * dy < LASER_ATTACK_RADIUS * LASER_ATTACK_RADIUS) {
-      enemy.lockedTargetX = mote.x; enemy.lockedTargetY = mote.y;
-      enemy.phase = 'decelerate'; enemy.phaseElapsedMs = 0;
-    }
-  }
-
-  function updateEnemyDecelerate(enemy: LaserEnemy, dt: number, deltaMs: number): void {
-    enemy.phaseElapsedMs += deltaMs;
-    const dampFactor = Math.pow(LASER_DECEL_FACTOR, dt);
-    enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-    enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    clampEnemyToBounds(enemy);
-    if (enemy.phaseElapsedMs >= LASER_DECEL_DURATION_MS) {
-      enemy.vx = 0; enemy.vy = 0;
-      const dx = enemy.lockedTargetX - enemy.x; const dy = enemy.lockedTargetY - enemy.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0.1) { enemy.dashDirX = dx / dist; enemy.dashDirY = dy / dist; }
-      else { const a = Math.random() * Math.PI * 2; enemy.dashDirX = Math.cos(a); enemy.dashDirY = Math.sin(a); }
-      enemy.dashTraveled = 0; enemy.hasHitPlayer = false;
-      enemy.phase = 'dash'; enemy.phaseElapsedMs = 0;
-      enemy.attackTrail = {
-        active: true,
-        startX: enemy.x, startY: enemy.y,
-        endX: enemy.x + enemy.dashDirX * LASER_DASH_DISTANCE,
-        endY: enemy.y + enemy.dashDirY * LASER_DASH_DISTANCE,
-        controlAngle: (Math.random() - 0.5) * ATTACK_TRAIL_CURVE_VARIATION,
-        trailStartMs: performance.now(), trailEndMs: Infinity,
-      };
-    }
-  }
-
-  function updateEnemyDash(enemy: LaserEnemy, dt: number, nowMs: number): void {
-    const stepDist = LASER_DASH_SPEED * dt;
-    enemy.x += enemy.dashDirX * stepDist; enemy.y += enemy.dashDirY * stepDist;
-    enemy.dashTraveled += stepDist;
-    clampEnemyToBounds(enemy);
-    if (!enemy.hasHitPlayer) {
-      const dx = enemy.x - mote.x; const dy = enemy.y - mote.y;
-      if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
-        enemy.hasHitPlayer = true;
-        if (playerIFramesMs <= 0) {
-          const rawDmg = enemy.atk - playerStats.def;
-          const dmg = Math.max(0, rawDmg);
-          if (dmg <= 0) {
-            // DEF fully absorbed the hit — show "BLOCKED", no HP loss.
-            spawnDamageNumber(mote.x, mote.y, enemy.dashDirX, enemy.dashDirY, 'BLOCKED', 0.25, '#74c0fc');
-          } else {
-            playerStats.hp = Math.max(0, playerStats.hp - dmg);
-            const ratio = Math.min(1, dmg / playerStats.maxHp);
-            // Knockback: push player in the direction the attack came from.
-            mote.vx += enemy.dashDirX * PLAYER_KNOCKBACK_MAX * ratio;
-            mote.vy += enemy.dashDirY * PLAYER_KNOCKBACK_MAX * ratio;
-            // Invincibility frames scale with relative damage.
-            playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
-            // Damage number floats in attack direction (opposite side from attacker).
-            spawnDamageNumber(mote.x, mote.y, enemy.dashDirX, enemy.dashDirY,
-              String(Math.round(dmg)), ratio, '#ff6666');
-          }
-        }
-      }
-    }
-    if (enemy.dashTraveled >= LASER_DASH_DISTANCE) {
-      enemy.attackTrail.trailEndMs = nowMs;
-      enemy.vx = enemy.dashDirX * LASER_DASH_SPEED;
-      enemy.vy = enemy.dashDirY * LASER_DASH_SPEED;
-      enemy.phase = 'overshoot'; enemy.phaseElapsedMs = 0;
-    }
-  }
-
-  function updateEnemyOvershoot(enemy: LaserEnemy, dt: number): void {
-    const dampFactor = Math.pow(LASER_OVERSHOOT_DAMPING, dt);
-    enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-    enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    clampEnemyToBounds(enemy);
-    if (Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy) < LASER_OVERSHOOT_STOP) {
-      enemy.vx = 0; enemy.vy = 0;
-      enemy.phase = 'cooldown'; enemy.phaseElapsedMs = 0;
-    }
-  }
-
-  function updateEnemyCooldown(enemy: LaserEnemy, deltaMs: number): void {
-    enemy.phaseElapsedMs += deltaMs;
-    if (enemy.phaseElapsedMs >= LASER_COOLDOWN_MS) { enemy.phase = 'idle'; enemy.phaseElapsedMs = 0; }
-  }
-
-  function updateEnemies(deltaMs: number, nowMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (const enemy of enemies) {
-      switch (enemy.phase) {
-        case 'idle':       updateEnemyIdle(enemy, dt, deltaMs);       break;
-        case 'decelerate': updateEnemyDecelerate(enemy, dt, deltaMs); break;
-        case 'dash':       updateEnemyDash(enemy, dt, nowMs);         break;
-        case 'overshoot':  updateEnemyOvershoot(enemy, dt);           break;
-        case 'cooldown':   updateEnemyCooldown(enemy, deltaMs);       break;
-      }
-      // Inject laser-enemy movement into fluid.
-      const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
-      if (espd > 0.05) {
-        fluid.addForce({
-          x: enemy.x, y: enemy.y,
-          vx: enemy.vx * FLUID_VEL_FRAME_TO_PX_S,
-          vy: enemy.vy * FLUID_VEL_FRAME_TO_PX_S,
-          r: FLUID_LASER_R, g: FLUID_LASER_G, b: FLUID_LASER_B,
-          strength: FLUID_ENEMY_STRENGTH,
-        });
-      }
-    }
-  }
-
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
 
@@ -4469,8 +4209,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   // ── Enemy update systems ──────────────────────────────────────
-  // All per-frame enemy update functions below are implemented in
-  // rpg-enemy-updates.ts and called via the enemyCtx object.
+  // All per-frame enemy update functions are implemented in
+  // rpg-enemy-updates.ts (and rpg-enemy-updates-adv.ts) and called via enemyCtx.
+  // updateLaserEnemies, updateSapphireEnemies, updateSapphireMissiles,
   // updateEmeraldEnemies, updateAmberEnemies, updateAmberShards,
   // updateVoidEnemies, updateQuartzEnemies, updateQuartzSpikes,
   // updateRubyEnemies, updateRubyBolts, updateSunstoneEnemies,
@@ -4686,9 +4427,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
 
       updatePhysics(deltaMs);
-      updateEnemies(deltaMs, nowMs);
-      updateSapphireEnemies(deltaMs, nowMs);
-      updateSapphireMissiles(deltaMs);
+      updateLaserEnemies(enemies, enemyCtx, deltaMs, nowMs);
+      updateSapphireEnemies(sapphireEnemies, sapphireMissiles, enemyCtx, deltaMs);
+      updateSapphireMissiles(sapphireMissiles, enemyCtx, deltaMs);
       updateEmeraldEnemies(emeraldEnemies, enemyCtx, deltaMs);
       updateAmberEnemies(amberEnemies, amberShards, enemyCtx, deltaMs);
       updateAmberShards(amberShards, enemyCtx, deltaMs);
