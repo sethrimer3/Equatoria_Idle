@@ -261,17 +261,8 @@
 ### src/render/particles/particle-renderer.ts
 - Batched canvas rendering for trails, particles, and shockwaves.
 - Numeric batch keys `(tierIndex << 8 | sizeIndex)`, Float64Array position buffers.
-- Calls `drawClusterGlows()` (from `particle-glow.ts`) before drawing particle bodies.
 - `drawParticles()` — unified render function.
 - `getParticleRendererAnimTimeMs()` — returns accumulated animation time for external sync.
-
-### src/render/particles/particle-glow.ts
-- Cluster-based gradient glow rendering — replaces per-batch `shadowBlur`.
-- Groups same-colour nearby particles (grid cell size 24 px) into one radial-gradient glow per cluster to avoid N halos stacking into white noise.
-- Uses `screen` compositing so overlapping glows of different colours blend (red + blue → magenta) instead of washing to grey.
-- For cells containing multiple distinct glow colours: assigns equidistant angular offsets so each colour fans into its own sector, blending into its neighbours at sector boundaries.
-- Pooled inner Maps and `ColorAccum` objects; insertion sort on fixed-size scratch buffer — no per-frame heap allocation in the hot path.
-- `drawClusterGlows(ctx, particles)` — public API.
 
 ### src/render/particles/particle-grab-visual.ts
 - Grab-radius circle overlay and spinning comet orbs drawn when the player holds down on the canvas.
