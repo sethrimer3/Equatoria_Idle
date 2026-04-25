@@ -456,6 +456,35 @@
   font-size: 12px;
 }
 
+/* ── Equation panel — sticky header + two-column body ─────────── */
+.equation-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(8, 8, 16, 0.97);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--accent-border);
+}
+
+.equation-columns-body {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.equation-left-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.equation-right-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ── Equation panel — locked forge presentation ──────────────── */
 .forge-locked {
   text-align: center;

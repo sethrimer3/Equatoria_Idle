@@ -222,19 +222,21 @@ export async function startApp(): Promise<void> {
   const upgradePanel = createUpgradePanel(dispatch);
   const resourcePanel = createResourcePanel();
   const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio);
-  const equationPanel = createEquationPanel(dispatch, traceEffect);
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
-  // Wrap the equation-related panels into a container so they can be
-  // injected as the "Equation" sub-tab of the combined Upgrades panel.
-  // Small page breaks separate each section.
+  // Right column of the Equation sub-tab: mote resources on top, tier unlock
+  // button at the bottom so new resources appear right above it when unlocked.
+  const equationRightCol = document.createElement('div');
+  equationRightCol.appendChild(resourcePanel.element);
+  equationRightCol.appendChild(upgradePanel.element);
+
+  // Equation panel with the right column injected into its two-column body.
+  const equationPanel = createEquationPanel(dispatch, traceEffect, equationRightCol);
+
+  // Wrap the equation panel in a thin container so it can be injected as the
+  // "Equation" sub-tab of the combined Upgrades panel.
   const equationContentDiv = document.createElement('div');
   equationContentDiv.appendChild(equationPanel.element);
-  equationContentDiv.appendChild(makePageBreak('small'));
-  equationContentDiv.appendChild(upgradePanel.element);
-  equationContentDiv.appendChild(makePageBreak('small'));
-  equationContentDiv.appendChild(resourcePanel.element);
-  equationContentDiv.appendChild(makePageBreak('small'));
 
   const loomPanel = createLoomPanel(dispatch, traceEffect, equationContentDiv);
 
