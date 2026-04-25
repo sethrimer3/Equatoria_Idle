@@ -636,12 +636,21 @@ export interface EmeraldSubMissile {
   scaledDamage: number;
   /** Phase offset for squiggle wobble (radians). */
   squigglePhase: number;
-  /** Accumulated ms without being near any enemy → fizzle and AOE. */
-  noTargetMs: number;
-  /** True while decelerating to a stop before AOE detonation. */
-  isFizzling: boolean;
+  /** Accumulated ms alive — drives the fuel/deceleration lifecycle. */
+  lifetimeMs: number;
+  /** Accumulated ms spent at near-zero speed after fuel runs out (triggers post-stop explosion). */
+  stoppedMs: number;
   trailX: Float32Array; trailY: Float32Array;
   trailHead: number; trailCount: number;
+}
+
+// ── Emerald swirl particle (visual-only, spawned by sub-missile AOE explosion) ─
+
+export interface EmeraldSwirlParticle {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Remaining life (ms). */
+  lifeMs: number;
 }
 
 // ── Sunstone mine ─────────────────────────────────────────────────

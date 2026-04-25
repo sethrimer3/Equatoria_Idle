@@ -129,10 +129,13 @@ import {
   EMERALD_SUB_MISSILE_SPEED, EMERALD_SUB_MISSILE_MAX_SPEED, EMERALD_SUB_MISSILE_SEEK_STR,
   EMERALD_SUB_MISSILE_TRAIL_CAP, EMERALD_SUB_MISSILE_HIT_RADIUS,
   EMERALD_SUB_MISSILE_SQUIGGLE, EMERALD_SUB_MISSILE_SQUIGGLE_HZ,
-  EMERALD_SUB_MISSILE_DETECT_PX, EMERALD_SUB_MISSILE_NO_TARGET_MS,
+  EMERALD_SUB_MISSILE_DETECT_PX,
+  EMERALD_SUB_MISSILE_FUEL_MS, EMERALD_SUB_MISSILE_DECEL_START_MS,
   EMERALD_SUB_MISSILE_FIZZLE_DRAG, EMERALD_SUB_MISSILE_STOP_SPEED,
+  EMERALD_SUB_MISSILE_POST_STOP_DELAY_MS,
   EMERALD_SUB_MISSILE_AOE_PX, EMERALD_SUB_MISSILE_DAMAGE_MULT,
   EMERALD_SUB_MISSILE_CONE_SPREAD,
+  EMERALD_SWIRL_COUNT, EMERALD_SWIRL_LIFE_MS, EMERALD_SWIRL_SPEED, EMERALD_SWIRL_DRAG,
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_PROXIMITY_PX, SUNSTONE_MINE_AOE_BASE_PX,
   SUNSTONE_MINE_AOE_PER_TIER_PX, SUNSTONE_MINE_HP, SUNSTONE_MINE_SIZE,
 } from './rpg-constants';
@@ -159,7 +162,7 @@ import {
   drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   drawAttackTrail,
   drawWeaponOrbitParticle, drawOrbitProjectile,
-  drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawSunstoneMines,
+  drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
 } from './rpg-entity-draw';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
@@ -184,7 +187,7 @@ import type {
   EigensteinEnemy, EigensteinBeam,
   DanmakuSafeZone,
   TeleportParticle,
-  EmeraldPlayerMissile, EmeraldSubMissile,
+  EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
   SunstoneMine,
 } from './rpg-types';
 import {
@@ -369,6 +372,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Emerald player missiles (heat-seeking) ─────────────────────
   const emeraldPlayerMissiles: EmeraldPlayerMissile[] = [];
   const emeraldSubMissiles: EmeraldSubMissile[]       = [];
+  const emeraldSwirlParticles: EmeraldSwirlParticle[] = [];
 
   // ── Sunstone mines ─────────────────────────────────────────────
   const sunstoneMines: SunstoneMine[] = [];
@@ -2329,8 +2333,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         vy: Math.sin(angle) * EMERALD_SUB_MISSILE_SPEED,
         scaledDamage: scaledDamage * EMERALD_SUB_MISSILE_DAMAGE_MULT,
         squigglePhase: Math.random() * Math.PI * 2,
-        noTargetMs: 0,
-        isFizzling: false,
+        lifetimeMs: 0,
+        stoppedMs: 0,
         trailX: new Float32Array(EMERALD_SUB_MISSILE_TRAIL_CAP),
         trailY: new Float32Array(EMERALD_SUB_MISSILE_TRAIL_CAP),
         trailHead: 0, trailCount: 0,
@@ -2497,86 +2501,110 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  function spawnEmeraldSwirlExplosion(ox: number, oy: number): void {
+    for (let k = 0; k < EMERALD_SWIRL_COUNT; k++) {
+      // Equidistant angles with a random offset for visual variety.
+      const baseAngle = (k / EMERALD_SWIRL_COUNT) * Math.PI * 2 + Math.random() * 0.3;
+      // Tangential component creates the swirl; outward component spreads the ring.
+      const outward   = EMERALD_SWIRL_SPEED * (0.6 + Math.random() * 0.4);
+      const tangential = EMERALD_SWIRL_SPEED * (0.5 + Math.random() * 0.5);
+      const outX = Math.cos(baseAngle), outY = Math.sin(baseAngle);
+      const tanX = -outY, tanY =  outX;
+      emeraldSwirlParticles.push({
+        x: ox, y: oy,
+        vx: outX * outward + tanX * tangential,
+        vy: outY * outward + tanY * tangential,
+        lifeMs: EMERALD_SWIRL_LIFE_MS,
+      });
+    }
+  }
+
   function updateEmeraldSubMissiles(deltaMs: number): void {
     const dt          = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     const hitR2       = EMERALD_SUB_MISSILE_HIT_RADIUS * EMERALD_SUB_MISSILE_HIT_RADIUS;
     const detectR2    = EMERALD_SUB_MISSILE_DETECT_PX * EMERALD_SUB_MISSILE_DETECT_PX;
-    const fizzleDrag  = Math.pow(EMERALD_SUB_MISSILE_FIZZLE_DRAG, dt);
+    const decelDrag   = Math.pow(EMERALD_SUB_MISSILE_FIZZLE_DRAG, dt);
 
     for (let i = emeraldSubMissiles.length - 1; i >= 0; i--) {
       const s = emeraldSubMissiles[i];
 
-      // Find nearest enemy.
-      let nearestX: number | null = null;
-      let nearestY: number | null = null;
-      let nearestDist2 = Infinity;
-      const checkTarget = (ex: number, ey: number) => {
-        const d = (ex - s.x) * (ex - s.x) + (ey - s.y) * (ey - s.y);
-        if (d < nearestDist2) { nearestDist2 = d; nearestX = ex; nearestY = ey; }
-      };
-      for (const e of enemies)          checkTarget(e.x, e.y);
-      for (const e of sapphireEnemies)  checkTarget(e.x, e.y);
-      for (const e of emeraldEnemies)   checkTarget(e.x, e.y);
-      for (const e of amberEnemies)     checkTarget(e.x, e.y);
-      for (const e of voidEnemies)      checkTarget(e.x, e.y);
-      for (const e of quartzEnemies)    checkTarget(e.x, e.y);
-      for (const e of rubyEnemies)      checkTarget(e.x, e.y);
-      for (const e of sunstoneEnemies)  checkTarget(e.x, e.y);
-      for (const e of citrineEnemies)   checkTarget(e.x, e.y);
-      for (const e of ioliteEnemies)    checkTarget(e.x, e.y);
-      for (const e of amethystEnemies)  checkTarget(e.x, e.y);
-      for (const e of diamondEnemies)   checkTarget(e.x, e.y);
-      for (const e of nullstoneEnemies) checkTarget(e.x, e.y);
-      for (const e of fracterylEnemies) checkTarget(e.x, e.y);
-      for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
-      if (bossEnemy) checkTarget(bossEnemy.x, bossEnemy.y);
+      // Advance total lifetime.
+      s.lifetimeMs += deltaMs;
 
-      if (nearestDist2 <= detectR2 && nearestX !== null && nearestY !== null) {
-        s.noTargetMs = 0;
-        s.isFizzling = false;
-
-        const ex = nearestX - s.x, ey = nearestY - s.y;
-        const eDist = Math.sqrt(ex * ex + ey * ey);
-        if (eDist > 0.01) {
-          s.vx += (ex / eDist) * EMERALD_SUB_MISSILE_SEEK_STR * dt;
-          s.vy += (ey / eDist) * EMERALD_SUB_MISSILE_SEEK_STR * dt;
-        }
-      } else {
-        s.noTargetMs += deltaMs;
-        if (s.noTargetMs >= EMERALD_SUB_MISSILE_NO_TARGET_MS) {
-          s.isFizzling = true;
-        }
+      // Fuel phase: homing active while lifetime < DECEL_START_MS.
+      // Hard cutoff: if lifetime exceeds FUEL_MS, force stopped to trigger explosion.
+      const isDecelerating = s.lifetimeMs >= EMERALD_SUB_MISSILE_DECEL_START_MS;
+      if (s.lifetimeMs >= EMERALD_SUB_MISSILE_FUEL_MS) {
+        s.vx = 0; s.vy = 0;
       }
 
-      // Squiggle wobble — perpendicular impulse following a sine wave.
-      s.squigglePhase += EMERALD_SUB_MISSILE_SQUIGGLE_HZ * dt;
-      const spd0 = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
-      if (spd0 > 0.01) {
-        const perpX = -s.vy / spd0;
-        const perpY =  s.vx / spd0;
-        const wobble = Math.sin(s.squigglePhase) * EMERALD_SUB_MISSILE_SQUIGGLE * dt;
-        s.vx += perpX * wobble;
-        s.vy += perpY * wobble;
-      }
+      if (!isDecelerating) {
+        // Still has fuel — seek nearest enemy within detection range.
+        let nearestX: number | null = null;
+        let nearestY: number | null = null;
+        let nearestDist2 = Infinity;
+        const checkTarget = (ex: number, ey: number) => {
+          const d = (ex - s.x) * (ex - s.x) + (ey - s.y) * (ey - s.y);
+          if (d < nearestDist2) { nearestDist2 = d; nearestX = ex; nearestY = ey; }
+        };
+        for (const e of enemies)           checkTarget(e.x, e.y);
+        for (const e of sapphireEnemies)   checkTarget(e.x, e.y);
+        for (const e of emeraldEnemies)    checkTarget(e.x, e.y);
+        for (const e of amberEnemies)      checkTarget(e.x, e.y);
+        for (const e of voidEnemies)       checkTarget(e.x, e.y);
+        for (const e of quartzEnemies)     checkTarget(e.x, e.y);
+        for (const e of rubyEnemies)       checkTarget(e.x, e.y);
+        for (const e of sunstoneEnemies)   checkTarget(e.x, e.y);
+        for (const e of citrineEnemies)    checkTarget(e.x, e.y);
+        for (const e of ioliteEnemies)     checkTarget(e.x, e.y);
+        for (const e of amethystEnemies)   checkTarget(e.x, e.y);
+        for (const e of diamondEnemies)    checkTarget(e.x, e.y);
+        for (const e of nullstoneEnemies)  checkTarget(e.x, e.y);
+        for (const e of fracterylEnemies)  checkTarget(e.x, e.y);
+        for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
+        if (bossEnemy) checkTarget(bossEnemy.x, bossEnemy.y);
 
-      if (s.isFizzling) {
-        s.vx *= fizzleDrag;
-        s.vy *= fizzleDrag;
-      } else {
+        if (nearestDist2 <= detectR2 && nearestX !== null && nearestY !== null) {
+          const ex = nearestX - s.x, ey = nearestY - s.y;
+          const eDist = Math.sqrt(ex * ex + ey * ey);
+          if (eDist > 0.01) {
+            s.vx += (ex / eDist) * EMERALD_SUB_MISSILE_SEEK_STR * dt;
+            s.vy += (ey / eDist) * EMERALD_SUB_MISSILE_SEEK_STR * dt;
+          }
+        }
+
+        // Speed clamp while powered.
         const spd = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
         if (spd > EMERALD_SUB_MISSILE_MAX_SPEED) {
           const scale = EMERALD_SUB_MISSILE_MAX_SPEED / spd;
           s.vx *= scale; s.vy *= scale;
+        }
+      } else {
+        // Fuel ran out — apply drag to gradually stop between seconds 2 and 4.
+        s.vx *= decelDrag;
+        s.vy *= decelDrag;
+      }
+
+      // Squiggle wobble while still powered.
+      if (!isDecelerating) {
+        s.squigglePhase += EMERALD_SUB_MISSILE_SQUIGGLE_HZ * dt;
+        const spd0 = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
+        if (spd0 > 0.01) {
+          const perpX = -s.vy / spd0;
+          const perpY =  s.vx / spd0;
+          const wobble = Math.sin(s.squigglePhase) * EMERALD_SUB_MISSILE_SQUIGGLE * dt;
+          s.vx += perpX * wobble;
+          s.vy += perpY * wobble;
         }
       }
 
       s.x += s.vx * dt; s.y += s.vy * dt;
 
       // Wall bounce.
-      if (s.x < 0)          { s.x = 0;          s.vx =  Math.abs(s.vx); }
-      else if (s.x > widthPx)   { s.x = widthPx;   s.vx = -Math.abs(s.vx); }
-      if (s.y < 0)          { s.y = 0;          s.vy =  Math.abs(s.vy); }
-      else if (s.y > heightPx)  { s.y = heightPx;  s.vy = -Math.abs(s.vy); }
+      if (s.x < 0)              { s.x = 0;          s.vx =  Math.abs(s.vx); }
+      else if (s.x > widthPx)   { s.x = widthPx;    s.vx = -Math.abs(s.vx); }
+      if (s.y < 0)              { s.y = 0;           s.vy =  Math.abs(s.vy); }
+      else if (s.y > heightPx)  { s.y = heightPx;    s.vy = -Math.abs(s.vy); }
 
       // Trail update.
       s.trailX[s.trailHead] = s.x; s.trailY[s.trailHead] = s.y;
@@ -2592,50 +2620,57 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         strength: FLUID_PROJECTILE_STRENGTH * 0.4,
       });
 
-      // Stopped while fizzling → AOE explosion.
-      if (s.isFizzling && Math.sqrt(s.vx * s.vx + s.vy * s.vy) < EMERALD_SUB_MISSILE_STOP_SPEED) {
-        const aoeR2 = EMERALD_SUB_MISSILE_AOE_PX * EMERALD_SUB_MISSILE_AOE_PX;
-        fluid.addExplosion(s.x, s.y, FLUID_EXPLOSION_STRENGTH * 0.4,
-          FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
-        const applyAoe = <T extends { x: number; y: number; hp: number; maxHp: number }>(
-          arr: T[], damageFn: (e: T, dmg: number, pierce: number) => number,
-        ) => {
-          for (const e of arr) {
-            const ddx = e.x - s.x, ddy = e.y - s.y;
-            if (ddx * ddx + ddy * ddy <= aoeR2) {
-              const dmg = damageFn(e, s.scaledDamage, 0);
-              if (dmg > 0) spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, EMERALD_MISSILE_COLOR);
+      // Post-stop delay: once decelerated and nearly stopped, count down then explode.
+      if (isDecelerating && Math.sqrt(s.vx * s.vx + s.vy * s.vy) < EMERALD_SUB_MISSILE_STOP_SPEED) {
+        s.stoppedMs += deltaMs;
+        if (s.stoppedMs >= EMERALD_SUB_MISSILE_POST_STOP_DELAY_MS) {
+          // AOE explosion with swirling green particles.
+          const aoeR2 = EMERALD_SUB_MISSILE_AOE_PX * EMERALD_SUB_MISSILE_AOE_PX;
+          fluid.addExplosion(s.x, s.y, FLUID_EXPLOSION_STRENGTH * 0.4,
+            FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
+          spawnEmeraldSwirlExplosion(s.x, s.y);
+          const applyAoe = <T extends { x: number; y: number; hp: number; maxHp: number }>(
+            arr: T[], damageFn: (e: T, dmg: number, pierce: number) => number,
+          ) => {
+            for (const e of arr) {
+              const ddx = e.x - s.x, ddy = e.y - s.y;
+              if (ddx * ddx + ddy * ddy <= aoeR2) {
+                const dmg = damageFn(e, s.scaledDamage, 0);
+                if (dmg > 0) spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, EMERALD_MISSILE_COLOR);
+              }
+            }
+          };
+          applyAoe(enemies,          damageEnemy);
+          applyAoe(sapphireEnemies,  (e, d, p) => damageSapphireEnemy(e, d, p, false));
+          applyAoe(emeraldEnemies,   damageEmeraldEnemy);
+          applyAoe(amberEnemies,     damageAmberEnemy);
+          applyAoe(voidEnemies,      damageVoidEnemy);
+          applyAoe(quartzEnemies,    damageQuartzEnemy);
+          applyAoe(rubyEnemies,      damageRubyEnemy);
+          applyAoe(sunstoneEnemies,  damageSunstoneEnemy);
+          applyAoe(citrineEnemies,   damageCitrineEnemy);
+          applyAoe(ioliteEnemies,    damageIoliteEnemy);
+          applyAoe(amethystEnemies,  (e, d, p) => damageAmethystEnemy(e, d, p, false));
+          applyAoe(diamondEnemies,   damageDiamondEnemy);
+          applyAoe(nullstoneEnemies, damageNullstoneEnemy);
+          applyAoe(fracterylEnemies, (e, d, p) => damageFracterylEnemy(e, d, p));
+          applyAoe(eigensteinEnemies,(e, d, p) => damageEigensteinEnemy(e, d, p));
+          if (bossEnemy) {
+            const bdx = bossEnemy.x - s.x, bdy = bossEnemy.y - s.y;
+            if (bdx * bdx + bdy * bdy <= aoeR2) {
+              const dmg = damageBossEnemy(s.scaledDamage, 0);
+              if (dmg > 0) spawnHitVisualsAt(bossEnemy.x, bossEnemy.y, bossEnemy.maxHp, dmg, EMERALD_MISSILE_COLOR);
             }
           }
-        };
-        applyAoe(enemies,          damageEnemy);
-        applyAoe(sapphireEnemies,  (e, d, p) => damageSapphireEnemy(e, d, p, false));
-        applyAoe(emeraldEnemies,   damageEmeraldEnemy);
-        applyAoe(amberEnemies,     damageAmberEnemy);
-        applyAoe(voidEnemies,      damageVoidEnemy);
-        applyAoe(quartzEnemies,    damageQuartzEnemy);
-        applyAoe(rubyEnemies,      damageRubyEnemy);
-        applyAoe(sunstoneEnemies,  damageSunstoneEnemy);
-        applyAoe(citrineEnemies,   damageCitrineEnemy);
-        applyAoe(ioliteEnemies,    damageIoliteEnemy);
-        applyAoe(amethystEnemies,  (e, d, p) => damageAmethystEnemy(e, d, p, false));
-        applyAoe(diamondEnemies,   damageDiamondEnemy);
-        applyAoe(nullstoneEnemies, damageNullstoneEnemy);
-        applyAoe(fracterylEnemies, (e, d, p) => damageFracterylEnemy(e, d, p));
-        applyAoe(eigensteinEnemies,(e, d, p) => damageEigensteinEnemy(e, d, p));
-        if (bossEnemy) {
-          const bdx = bossEnemy.x - s.x, bdy = bossEnemy.y - s.y;
-          if (bdx * bdx + bdy * bdy <= aoeR2) {
-            const dmg = damageBossEnemy(s.scaledDamage, 0);
-            if (dmg > 0) spawnHitVisualsAt(bossEnemy.x, bossEnemy.y, bossEnemy.maxHp, dmg, EMERALD_MISSILE_COLOR);
-          }
+          emeraldSubMissiles.splice(i, 1);
+          removeDeadEnemies(); checkWaveCompletion();
+          continue;
         }
-        emeraldSubMissiles.splice(i, 1);
-        removeDeadEnemies(); checkWaveCompletion();
+        // Still in post-stop delay — skip collision detection (missile is inert).
         continue;
       }
 
-      // Collision detection — direct hit.
+      // Collision detection — direct hit (only while in motion).
       let hit = false;
       const tryHitSub = <T extends { x: number; y: number; hp: number; maxHp: number }>(
         e: T,
@@ -2681,6 +2716,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         emeraldSubMissiles.splice(i, 1);
         removeDeadEnemies(); checkWaveCompletion();
       }
+    }
+  }
+
+  function updateEmeraldSwirlParticles(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const drag = Math.pow(EMERALD_SWIRL_DRAG, dt);
+    for (let i = emeraldSwirlParticles.length - 1; i >= 0; i--) {
+      const p = emeraldSwirlParticles[i];
+      p.lifeMs -= deltaMs;
+      if (p.lifeMs <= 0) { emeraldSwirlParticles.splice(i, 1); continue; }
+      p.vx *= drag; p.vy *= drag;
+      p.x += p.vx * dt; p.y += p.vy * dt;
     }
   }
 
@@ -4872,6 +4919,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawPoisonBolts(ctx, poisonBolts);
     drawEmeraldPlayerMissiles(ctx, emeraldPlayerMissiles);
     drawEmeraldSubMissiles(ctx, emeraldSubMissiles);
+    drawEmeraldSwirlParticles(ctx, emeraldSwirlParticles);
     drawSunstoneMines(ctx, sunstoneMines);
     drawLaserBeamEffect(ctx, laserBeamEffect);
 
@@ -5060,6 +5108,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updatePoisonDebuffs(deltaMs);
       updateEmeraldPlayerMissiles(deltaMs);
       updateEmeraldSubMissiles(deltaMs);
+      updateEmeraldSwirlParticles(deltaMs);
       updateSunstoneMines(deltaMs);
       updateLaserBeamEffect(deltaMs);
       removeDeadEnemies();
