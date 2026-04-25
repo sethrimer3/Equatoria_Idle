@@ -131,7 +131,8 @@ import {
   EMERALD_SUB_MISSILE_SQUIGGLE, EMERALD_SUB_MISSILE_SQUIGGLE_HZ,
   EMERALD_SUB_MISSILE_DETECT_PX, EMERALD_SUB_MISSILE_NO_TARGET_MS,
   EMERALD_SUB_MISSILE_FIZZLE_DRAG, EMERALD_SUB_MISSILE_STOP_SPEED,
-  EMERALD_SUB_MISSILE_AOE_PX,
+  EMERALD_SUB_MISSILE_AOE_PX, EMERALD_SUB_MISSILE_DAMAGE_MULT,
+  EMERALD_SUB_MISSILE_CONE_SPREAD,
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_PROXIMITY_PX, SUNSTONE_MINE_AOE_BASE_PX,
   SUNSTONE_MINE_AOE_PER_TIER_PX, SUNSTONE_MINE_HP, SUNSTONE_MINE_SIZE,
 } from './rpg-constants';
@@ -2319,14 +2320,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         // Equidistant full-circle spread.
         angle = (k / count) * Math.PI * 2;
       } else {
-        // Random within ±45° of cone direction.
-        angle = coneAngle + (Math.random() - 0.5) * (Math.PI / 2);
+        // Random within the configured half-angle of the cone direction.
+        angle = coneAngle + (Math.random() - 0.5) * 2 * EMERALD_SUB_MISSILE_CONE_SPREAD;
       }
       emeraldSubMissiles.push({
         x: ox, y: oy,
         vx: Math.cos(angle) * EMERALD_SUB_MISSILE_SPEED,
         vy: Math.sin(angle) * EMERALD_SUB_MISSILE_SPEED,
-        scaledDamage: scaledDamage * 0.6,
+        scaledDamage: scaledDamage * EMERALD_SUB_MISSILE_DAMAGE_MULT,
         squigglePhase: Math.random() * Math.PI * 2,
         noTargetMs: 0,
         isFizzling: false,
