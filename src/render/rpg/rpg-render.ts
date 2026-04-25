@@ -370,10 +370,25 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Boss wave management ───────────────────────────────────────
   /** True while a boss wave is active (from spawn until defeat or death). */
   let isBossWaveActive = false;
-  /** Saved set of weapon IDs before boss wave; restored on exit. */
-  let bossPreWaveEquippedIds: Set<string> = new Set();
+  /**
+   * Temporary equipped-weapon override used only during boss waves.
+   * The player's actual rpgSimState.equippedWeaponIds is never mutated by boss
+   * wave logic, so equip/unequip actions and saves always reflect real equipment.
+   */
+  let bossActiveEquipIds: Set<string> | null = null;
   /** Saved weapon tiers before boss wave (so temp tier-1 forced on diamond_bastion). */
   let bossPreWaveWeaponTiers: Map<string, number> = new Map();
+
+  /**
+   * Returns the weapon IDs that are "active" for combat/rendering purposes.
+   * During a boss wave this is the boss override set (always {diamond_bastion});
+   * otherwise it is the player's actual equipped set.
+   */
+  function getEffectiveEquippedIds(): Set<string> {
+    return (isBossWaveActive && bossActiveEquipIds !== null)
+      ? bossActiveEquipIds
+      : rpgSimState.equippedWeaponIds;
+  }
 
   const teleportParticles: TeleportParticle[] = [];
 
@@ -415,11 +430,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function enterBossWave(): void {
     if (isBossWaveActive) return;
     isBossWaveActive = true;
-    // Save equipped weapon state
-    bossPreWaveEquippedIds = new Set(rpgSimState.equippedWeaponIds);
+    // Save weapon tiers so we can restore them after the boss fight.
     bossPreWaveWeaponTiers = new Map(rpgSimState.weaponTiersByWeaponId);
-    // Temporarily equip only diamond_bastion at tier 1
-    rpgSimState.equippedWeaponIds = new Set(['diamond_bastion']);
+    // Override active weapons to diamond_bastion at tier 1 for boss combat.
+    // The player's rpgSimState.equippedWeaponIds is intentionally NOT modified,
+    // so equip actions, saves, and the weapons UI are unaffected.
+    bossActiveEquipIds = new Set(['diamond_bastion']);
     rpgSimState.weaponTiersByWeaponId.set('diamond_bastion', 1);
     // Move player to safe zone at bottom-middle
     mote.x = getSafeZoneX(); mote.y = getSafeZoneY();
@@ -432,12 +448,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function exitBossWave(): void {
     if (!isBossWaveActive) return;
     isBossWaveActive = false;
-    // Restore pre-boss equipped weapons and tiers
-    rpgSimState.equippedWeaponIds = bossPreWaveEquippedIds;
+    // Clear the boss-fight weapon override before rebuilding stats.
+    bossActiveEquipIds = null;
+    // Restore weapon tiers that may have been overridden during the boss fight.
     for (const [id, tier] of bossPreWaveWeaponTiers) {
       rpgSimState.weaponTiersByWeaponId.set(id, tier);
     }
-    bossPreWaveEquippedIds = new Set();
     bossPreWaveWeaponTiers = new Map();
     teleportParticles.length = 0;
     applyEquipmentStats();
@@ -486,9 +502,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function applyEquipmentStats(): void {
+    const effectiveIds = getEffectiveEquippedIds();
     // Aggregate DEF from all equipped weapons.
     let totalDefBonus = 0;
-    for (const weaponId of rpgSimState.equippedWeaponIds) {
+    for (const weaponId of effectiveIds) {
       const weaponDef = WEAPON_BY_ID.get(weaponId);
       if (weaponDef) totalDefBonus += weaponDef.stats.defBonus;
     }
@@ -498,28 +515,28 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     // Rebuild weapon orbit particles (one per equipped weapon, evenly spaced).
     weaponOrbitParticles.length = 0;
-    const equippedIds = Array.from(rpgSimState.equippedWeaponIds);
+    const equippedIds = Array.from(effectiveIds);
     const angleStep = equippedIds.length > 0 ? (2 * Math.PI) / equippedIds.length : 0;
     for (let i = 0; i < equippedIds.length; i++) {
       const p = buildWeaponOrbitParticle(equippedIds[i], i * angleStep);
       if (p) weaponOrbitParticles.push(p);
     }
 
-    // Remove chain whip states for weapons that are no longer equipped.
+    // Remove chain whip states for weapons that are no longer effectively equipped.
     for (const weaponId of Array.from(chainWhipStates.keys())) {
-      if (!rpgSimState.equippedWeaponIds.has(weaponId)) chainWhipStates.delete(weaponId);
+      if (!effectiveIds.has(weaponId)) chainWhipStates.delete(weaponId);
     }
     // Remove vortex weapon states for unequipped weapons.
     for (const weaponId of Array.from(vortexWeaponStates.keys())) {
-      if (!rpgSimState.equippedWeaponIds.has(weaponId)) vortexWeaponStates.delete(weaponId);
+      if (!effectiveIds.has(weaponId)) vortexWeaponStates.delete(weaponId);
     }
     // Remove sword combo states for unequipped weapons.
     for (const weaponId of Array.from(swordComboStates.keys())) {
-      if (!rpgSimState.equippedWeaponIds.has(weaponId)) swordComboStates.delete(weaponId);
+      if (!effectiveIds.has(weaponId)) swordComboStates.delete(weaponId);
     }
     // Remove attack timers for unequipped weapons.
     for (const weaponId of Array.from(weaponAttackTimers.keys())) {
-      if (!rpgSimState.equippedWeaponIds.has(weaponId)) weaponAttackTimers.delete(weaponId);
+      if (!effectiveIds.has(weaponId)) weaponAttackTimers.delete(weaponId);
     }
 
     orbitProjectile = buildOrbitProjectile();
@@ -3457,7 +3474,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       : '+0.0%';
     xpWidget.valueEl.textContent   = formatXp(rpgSimState.xp);
 
-    const equippedIds = Array.from(rpgSimState.equippedWeaponIds);
+    const equippedIds = Array.from(getEffectiveEquippedIds());
     if (equippedIds.length > 0) {
       const labels = equippedIds.map(id => {
         const wd = WEAPON_BY_ID.get(id);
@@ -3902,7 +3919,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         // the player is within the shortest range of any equipped weapon.
         let autoMoveStopRange = PLAYER_BASE_RANGE_PX;
         let hasWeapon = false;
-        for (const weaponId of rpgSimState.equippedWeaponIds) {
+        for (const weaponId of getEffectiveEquippedIds()) {
           const wd = WEAPON_BY_ID.get(weaponId);
           if (wd) {
             autoMoveStopRange = hasWeapon ? Math.min(autoMoveStopRange, wd.stats.range) : wd.stats.range;
@@ -5283,12 +5300,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateOrbitProjectile(deltaMs);
       updateSandProjectiles(deltaMs);
       // Update chain whip for all equipped chainWhip weapons
-      for (const weaponId of rpgSimState.equippedWeaponIds) {
+      for (const weaponId of getEffectiveEquippedIds()) {
         const wd = WEAPON_BY_ID.get(weaponId);
         if (wd?.stats.effect?.kind === 'chainWhip') updateChainWhip(weaponId, deltaMs);
       }
       // Update vortex and sword combo systems
-      for (const weaponId of rpgSimState.equippedWeaponIds) {
+      for (const weaponId of getEffectiveEquippedIds()) {
         const wd = WEAPON_BY_ID.get(weaponId);
         if (wd?.stats.effect?.kind === 'vortex')    updateVortexWeapon(weaponId, deltaMs);
         if (wd?.stats.effect?.kind === 'swordCombo') updateSwordCombo(weaponId, deltaMs);
@@ -5301,7 +5318,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       checkWaveCompletion();
 
       // ── Per-weapon auto-attack timers ─────────────────────────────
-      for (const weaponId of rpgSimState.equippedWeaponIds) {
+      for (const weaponId of getEffectiveEquippedIds()) {
         const weaponDef = WEAPON_BY_ID.get(weaponId);
         // These weapon kinds manage their own timing.
         if (weaponDef?.stats.effect?.kind === 'chainWhip'  ||
@@ -5323,7 +5340,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         }
       }
       // If no weapons equipped, use base attack with default cooldown
-      if (rpgSimState.equippedWeaponIds.size === 0) {
+      if (getEffectiveEquippedIds().size === 0) {
         const current = weaponAttackTimers.get(BASE_ATTACK_TIMER_KEY) ?? 0;
         const next = current - deltaMs;
         if (next <= 0) {
