@@ -687,6 +687,42 @@ export const EMERALD_MISSILE_TRAIL_CAP    =   50;
 export const EMERALD_MISSILE_COLOR        = '#22ff88'; // vivid emerald green
 export const EMERALD_MISSILE_GLOW         = '#88ffcc'; // bright teal glow
 export const EMERALD_MISSILE_HIT_RADIUS   =   6;
+/** px from an enemy centre that triggers the sub-missile cone burst. */
+export const EMERALD_MISSILE_PROXIMITY_PX = 30;
+/** px range within which a missile "sees" enemies (no-target timer resets). */
+export const EMERALD_MISSILE_DETECT_PX    = 90;
+/** ms with no enemy in detect range before the missile starts fizzling. */
+export const EMERALD_MISSILE_NO_TARGET_MS = 1400;
+/** Per-frame speed multiplier while fizzling (drag). */
+export const EMERALD_MISSILE_FIZZLE_DRAG  = 0.93;
+/** px/frame threshold below which a fizzling missile is considered stopped. */
+export const EMERALD_MISSILE_STOP_SPEED   = 0.05;
+/** Base number of sub-missiles released at tier 1. */
+export const EMERALD_MISSILE_SUB_BASE     = 5;
+/** Extra sub-missiles per additional tier. */
+export const EMERALD_MISSILE_SUB_PER_TIER = 2;
+
+// ── Emerald sub-missile (tiny heat-seeker) ────────────────────
+export const EMERALD_SUB_MISSILE_SPEED       =  2.2;
+export const EMERALD_SUB_MISSILE_MAX_SPEED   =  3.5;
+export const EMERALD_SUB_MISSILE_SEEK_STR    =  0.07;
+export const EMERALD_SUB_MISSILE_SIZE        =  1.5;
+export const EMERALD_SUB_MISSILE_TRAIL_CAP   =  25;
+export const EMERALD_SUB_MISSILE_HIT_RADIUS  =  4;
+/** Amplitude of the perpendicular squiggle impulse per frame. */
+export const EMERALD_SUB_MISSILE_SQUIGGLE    =  0.10;
+/** Angular frequency of the squiggle (radians added to phase per frame). */
+export const EMERALD_SUB_MISSILE_SQUIGGLE_HZ =  0.22;
+/** px range within which a sub-missile "sees" enemies. */
+export const EMERALD_SUB_MISSILE_DETECT_PX   = 80;
+/** ms with no enemy in detect range before sub-missile fizzles. */
+export const EMERALD_SUB_MISSILE_NO_TARGET_MS = 2200;
+/** Per-frame speed multiplier while sub-missile is fizzling. */
+export const EMERALD_SUB_MISSILE_FIZZLE_DRAG =  0.91;
+/** px/frame threshold below which a fizzling sub-missile is stopped. */
+export const EMERALD_SUB_MISSILE_STOP_SPEED  =  0.05;
+/** AOE explosion radius of a stopped sub-missile (px). */
+export const EMERALD_SUB_MISSILE_AOE_PX      = 14;
 
 // ── Sunstone mine ─────────────────────────────────────────────
 /** Total fuse duration before a mine auto-detonates (ms). */
