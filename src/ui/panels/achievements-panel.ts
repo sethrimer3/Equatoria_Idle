@@ -1,8 +1,11 @@
 import type { GameState } from '../../sim';
 import { ACHIEVEMENT_DEFINITIONS, ACHIEVEMENT_GROUPS } from '../../data/achievements';
+import type { AchievementCondition } from '../../data/achievements/achievement-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getLifetimeMotes } from '../../sim/resources';
+import { MAX_WEAPON_TIER } from '../../sim/rpg/rpg-state';
+import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import type { ActionHandler } from '../../input';
 import type { AudioSystem } from '../../audio';
 import { makePageBreak } from '../ui-helpers';
@@ -58,6 +61,69 @@ function bonusText(bonusKind: string, bonusMultiplier: number): string {
   const label = bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
   const pct = Math.round((bonusMultiplier - 1) * 100);
   return `+${pct}% ${label}`;
+}
+
+/**
+ * Returns the accent colour for an achievement card — uses `displayColor` when
+ * provided, otherwise falls back to the mote-tier colour for `lifetime_motes`
+ * conditions, or a neutral grey.
+ */
+function getAccentColor(condition: AchievementCondition, displayColor?: string): string {
+  if (displayColor) return displayColor;
+  if (condition.kind === 'lifetime_motes') {
+    return TIER_BY_ID.get(condition.tierId)?.color ?? '#888';
+  }
+  return '#888';
+}
+
+/**
+ * Returns a human-readable progress string for a locked (not yet unlocked)
+ * achievement given the current game state.
+ */
+function getProgressText(
+  condition: AchievementCondition,
+  state: GameState,
+  numberFormat: NumberFormat,
+): string {
+  switch (condition.kind) {
+    case 'lifetime_motes': {
+      const lifetime = getLifetimeMotes(state.resources, condition.tierId);
+      const tierName = TIER_BY_ID.get(condition.tierId)?.displayName ?? '';
+      return `Progress: ${formatNumberAs(lifetime, numberFormat)} / ${formatNumberAs(condition.amount, numberFormat)} ${tierName} motes`;
+    }
+    case 'forge_unlocked':
+      return 'Unlock the Equation Forge';
+    case 'tap_count': {
+      const current = state.equation.totalTapCount;
+      return `Taps: ${formatNumberAs(current, numberFormat)} / ${formatNumberAs(condition.count, numberFormat)}`;
+    }
+    case 'equation_tiers': {
+      const current = state.equation.segments.filter(s => s.isUnlocked).length;
+      return `Tiers unlocked: ${current} / ${condition.count}`;
+    }
+    case 'wave_reached': {
+      const current = state.rpg.highestWaveReached;
+      return `Highest wave: ${current} / ${condition.wave}`;
+    }
+    case 'weapon_purchased': {
+      const weaponName = WEAPON_BY_ID.get(condition.weaponId)?.name ?? condition.weaponId;
+      return `Purchase: ${weaponName}`;
+    }
+    case 'any_weapon_max_tier': {
+      let best = 0;
+      for (const tier of state.rpg.weaponTiersByWeaponId.values()) {
+        if (tier > best) best = tier;
+      }
+      return `Best weapon tier: ${best} / ${MAX_WEAPON_TIER}`;
+    }
+    case 'xp_reached': {
+      return `XP: ${formatNumberAs(state.rpg.xp, numberFormat)} / ${formatNumberAs(condition.xp, numberFormat)}`;
+    }
+    case 'boss_defeated': {
+      const defeated = Math.floor(state.rpg.highestWaveReached / 100);
+      return `Bosses defeated: ${defeated} / ${condition.count}`;
+    }
+  }
 }
 
 export function hasUnclaimedAchievements(state: GameState): boolean {
@@ -271,7 +337,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
-    const tier = TIER_BY_ID.get(def.requiresTierId);
+    const accentColor = getAccentColor(def.condition, def.displayColor);
     const group = groupRefs.get(def.groupId);
     if (!group) {
       console.warn(`Unknown achievement groupId "${def.groupId}" for achievement "${def.id}"`);
@@ -280,7 +346,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
     const card = document.createElement('div');
     card.className = 'achievement-card';
-    card.style.borderLeftColor = tier?.color ?? '#888';
+    card.style.borderLeftColor = accentColor;
 
     const header = document.createElement('div');
     header.className = 'achievement-header';
@@ -292,7 +358,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
     const nameEl = document.createElement('span');
     nameEl.className = 'achievement-name';
-    nameEl.style.color = tier?.color ?? '#888';
+    nameEl.style.color = accentColor;
     nameEl.textContent = def.isSecret ? makeScrambledText(def.displayName.length) : def.displayName;
     header.appendChild(nameEl);
 
@@ -391,7 +457,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
           nameEl.style.fontFamily = "'Poiret One', sans-serif";
           descEl.style.fontFamily = "'Poiret One', sans-serif";
           descEl.style.letterSpacing = '';
-          nameEl.style.color = TIER_BY_ID.get(def.requiresTierId)?.color ?? '#888';
+          nameEl.style.color = getAccentColor(def.condition, def.displayColor);
         }
         nameEl.textContent = def.displayName;
         descEl.textContent = def.description;
@@ -406,8 +472,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
           descEl.textContent = def.description;
           bonusEl.textContent = defBonusText;
           bonusEl.style.color = '';
-          const lifetime = getLifetimeMotes(state.resources, def.requiresTierId);
-          progressEl.textContent = `Progress: ${formatNumberAs(lifetime, numberFormat)} / ${formatNumberAs(def.requiresLifetimeMotes, numberFormat)} ${TIER_BY_ID.get(def.requiresTierId)?.displayName ?? ''} motes`;
+          progressEl.textContent = getProgressText(def.condition, state, numberFormat);
         } else {
           bonusEl.textContent = '???';
           bonusEl.style.color = '';

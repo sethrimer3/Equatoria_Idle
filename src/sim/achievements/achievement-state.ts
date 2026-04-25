@@ -4,8 +4,12 @@
  */
 
 import { ACHIEVEMENT_DEFINITIONS } from '../../data/achievements';
+import type { AchievementCondition } from '../../data/achievements/achievement-definitions';
 import type { ResourceState } from '../resources';
 import { getLifetimeMotes } from '../resources';
+import type { EquationState } from '../equation';
+import type { RpgSimState } from '../rpg';
+import { MAX_WEAPON_TIER } from '../rpg/rpg-state';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -31,24 +35,73 @@ export function createAchievementState(): AchievementState {
   };
 }
 
+// ─── Condition evaluator ─────────────────────────────────────────
+
+/**
+ * Returns true if the given condition is satisfied by the current game state.
+ */
+function isConditionMet(
+  condition: AchievementCondition,
+  resources: ResourceState,
+  equation: EquationState,
+  rpg: RpgSimState,
+): boolean {
+  switch (condition.kind) {
+    case 'lifetime_motes':
+      return getLifetimeMotes(resources, condition.tierId) >= condition.amount;
+
+    case 'forge_unlocked':
+      return equation.isForgeUnlocked;
+
+    case 'tap_count':
+      return equation.totalTapCount >= condition.count;
+
+    case 'equation_tiers': {
+      const unlockedCount = equation.segments.filter(s => s.isUnlocked).length;
+      return unlockedCount >= condition.count;
+    }
+
+    case 'wave_reached':
+      return rpg.highestWaveReached >= condition.wave;
+
+    case 'weapon_purchased':
+      return rpg.purchasedWeaponIds.has(condition.weaponId);
+
+    case 'any_weapon_max_tier': {
+      for (const tier of rpg.weaponTiersByWeaponId.values()) {
+        if (tier >= MAX_WEAPON_TIER) return true;
+      }
+      return false;
+    }
+
+    case 'xp_reached':
+      return rpg.xp >= condition.xp;
+
+    case 'boss_defeated':
+      // Bosses occur at every multiple of 100 waves; reaching wave N×100 means N bosses beaten.
+      return Math.floor(rpg.highestWaveReached / 100) >= condition.count;
+  }
+}
+
 // ─── Mutations ──────────────────────────────────────────────────
 
 /**
- * Check all achievement unlock conditions against current resource state.
+ * Check all achievement unlock conditions against current game state.
  * Unlocks any newly-met achievements and updates the bonus cache.
  * Returns an array of newly unlocked achievement IDs (empty if none).
  */
 export function checkAndUnlockAchievements(
   state: AchievementState,
   resources: ResourceState,
+  equation: EquationState,
+  rpg: RpgSimState,
 ): string[] {
   const newlyUnlocked: string[] = [];
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     if (state.unlockedIds.has(def.id)) continue;
 
-    const lifetimeAmount = getLifetimeMotes(resources, def.requiresTierId);
-    if (lifetimeAmount >= def.requiresLifetimeMotes) {
+    if (isConditionMet(def.condition, resources, equation, rpg)) {
       state.unlockedIds.add(def.id);
       newlyUnlocked.push(def.id);
     }

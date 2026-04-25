@@ -796,91 +796,31 @@
   }
 }
 
-/* ── Earned-but-unclaimed achievement: golden rotating sheen ─── */
-@keyframes golden-sheen-rotate {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes achievement-claim-pulse {
-  0%, 100% { box-shadow: 0 0 6px 2px rgba(255, 215, 0, 0.4), inset 0 0 8px rgba(255,215,0,0.08); }
-  50%       { box-shadow: 0 0 14px 5px rgba(255, 215, 0, 0.75), inset 0 0 14px rgba(255,215,0,0.15); }
-}
+/* ── Earned-but-unclaimed achievement: static golden outline ──── */
 
 .achievement-earned-unclaimed {
   cursor: pointer;
   opacity: 1;
   position: relative;
   overflow: hidden;
-  animation: achievement-claim-pulse 1.8s ease-in-out infinite;
   border-left-color: #ffd700 !important;
-}
-
-/* Rotating golden shimmer overlay */
-.achievement-earned-unclaimed::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    115deg,
-    transparent 20%,
-    rgba(255, 215, 0, 0.18) 40%,
-    rgba(255, 240, 120, 0.28) 50%,
-    rgba(255, 215, 0, 0.18) 60%,
-    transparent 80%
-  );
-  background-size: 200% 200%;
-  animation: golden-sheen-rotate 2s linear infinite;
-  pointer-events: none;
+  outline: 1.5px solid rgba(255, 215, 0, 0.65);
+  outline-offset: -1px;
 }
 
 .achievement-group-toggle--has-unclaimed {
   position: relative;
   overflow: hidden;
   border-left-color: #ffd700 !important;
-}
-
-.achievement-group-toggle--has-unclaimed::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    115deg,
-    transparent 20%,
-    rgba(255, 215, 0, 0.1) 40%,
-    rgba(255, 240, 120, 0.18) 50%,
-    rgba(255, 215, 0, 0.1) 60%,
-    transparent 80%
-  );
-  background-size: 200% 200%;
-  animation: golden-sheen-rotate 2s linear infinite;
-  pointer-events: none;
+  outline: 1.5px solid rgba(255, 215, 0, 0.45);
+  outline-offset: -1px;
 }
 
 .tab-btn--unclaimed-achievements {
   position: relative;
   overflow: hidden;
-}
-
-.tab-btn--unclaimed-achievements::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    115deg,
-    transparent 20%,
-    rgba(255, 215, 0, 0.12) 40%,
-    rgba(255, 240, 120, 0.2) 50%,
-    rgba(255, 215, 0, 0.12) 60%,
-    transparent 80%
-  );
-  background-size: 200% 200%;
-  animation: golden-sheen-rotate 2s linear infinite;
-  pointer-events: none;
+  outline: 1.5px solid rgba(255, 215, 0, 0.45);
+  outline-offset: -1px;
 }
 
 .achievement-earned-unclaimed:active {
