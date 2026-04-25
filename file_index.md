@@ -333,9 +333,9 @@
 - Exports all types; consumed by `rpg-render.ts`, `rpg-factories.ts`, and `rpg-entity-draw.ts`.
 
 ### src/render/rpg/rpg-factories.ts
-- `make*` factory functions for every RPG entity type (~305 lines).
+- `make*` factory functions for every RPG entity type (~398 lines).
 - Imports constants from `rpg-constants.ts`, types from `rpg-types.ts`, and `getWaveStatScale` from `rpg-state.ts`.
-- Exports: `makeAttackTrail`, `makeLaserEnemy`, `makeSapphireEnemy`, `makeSapphireMissile`, `makeEmeraldEnemy`, `makeAmberEnemy`, `makeAmberShard`, `makeVoidEnemy`, `makeQuartzEnemy`, `makeQuartzSpike`, `makeRubyEnemy`, `makeRubyBolt`, `makeSunstoneEnemy`, `makeCitrineEnemy`, `makeCitrineBolt`, `makeIoliteEnemy`, `makeAmethystEnemy`, `makeAmethystShard`, `makeDiamondEnemy`, `makeDiamondShard`, `makeNullstoneEnemy`, `makeVoidTendril`.
+- Exports: `makeAttackTrail`, `makeLaserEnemy`, `makeSapphireEnemy`, `makeSapphireMissile`, `makeEmeraldEnemy`, `makeAmberEnemy`, `makeAmberShard`, `makeVoidEnemy`, `makeQuartzEnemy`, `makeQuartzSpike`, `makeRubyEnemy`, `makeRubyBolt`, `makeSunstoneEnemy`, `makeCitrineEnemy`, `makeCitrineBolt`, `makeIoliteEnemy`, `makeAmethystEnemy`, `makeAmethystShard`, `makeDiamondEnemy`, `makeDiamondShard`, `makeNullstoneEnemy`, `makeVoidTendril`, `makeBossEnemy`.
 
 ### src/render/rpg/rpg-fluid.ts
 - Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
@@ -354,18 +354,32 @@
 - No runtime side-effects; safe to call from any rendering context.
 
 ### src/render/rpg/rpg-enemy-updates.ts
-- 23 exported enemy update functions extracted from the `rpg-render.ts` closure (~1,048 lines).
-- Covers all non-boss, non-laser/sapphire enemy types: emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
+- 13 exported enemy update functions covering wave 1–30 enemy types (~616 lines).
+- Covers: emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts.
 - Exports the `RpgEnemyCtx` interface: a minimal shared-reference object (`mote`, `dim`, `fluid`, `hitEffects`, `shotLines`, `dealDamageToPlayer`, `dealDamageToPlayerKnockback`, `clampEnemyToBounds`).
 - `dim: { w, h }` is a live object kept in sync with `widthPx`/`heightPx` on each resize; no getter indirection needed.
-- Each function takes its own entity arrays as explicit parameters (e.g. `updateAmberEnemies(enemies, shards, ctx, deltaMs)`), making data flow visible at call sites in rpg-render.ts.
+- Each function takes its own entity arrays as explicit parameters, making data flow visible at call sites.
 - No closure dependencies; pure transformation over given arrays + ctx reference.
 
+### src/render/rpg/rpg-enemy-updates-adv.ts
+- 10 exported enemy update functions covering wave 40–70+ enemy types (~459 lines).
+- Covers: iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
+- Imports `RpgEnemyCtx` from `rpg-enemy-updates.ts`; follows identical contract.
+- Split from `rpg-enemy-updates.ts` to keep both files under ~650 lines.
+
+### src/render/rpg/rpg-boss-draw.ts
+- 4 exported pure draw functions for boss wave HUD elements (~265 lines).
+- Covers: `drawBossEnemy` (sprite, HP bar, phase pips, INVULN label), `drawBottomSafeZone` (prismatic ring), `drawDanmakuSafeZone` (safe-angle wedge), `drawWaveClearBanner` (fade-in/out clear overlay).
+- Each function takes `ctx: CanvasRenderingContext2D` plus explicit parameters — no closure dependencies.
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~5,666 lines after Phase 5 extraction).
+- Independent RPG canvas rendering system for the RPG tab (~5,377 lines after Phase 6 extraction).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
-- Entity draw functions have been extracted to `rpg-entity-draw.ts`; all 35 call sites updated to pass `ctx` and entity arrays explicitly.
-- Per-frame enemy update functions extracted to `rpg-enemy-updates.ts`; called via `enemyCtx: RpgEnemyCtx` object.
+- Entity draw functions have been extracted to `rpg-entity-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
+- Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30) and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
+- Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
+- Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
+- Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
 - Exports `RpgRender` interface and `createRpgRender()` factory.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.

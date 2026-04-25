@@ -7,6 +7,7 @@ import {
   IoliteEnemy, AmethystEnemy, AmethystShard, DiamondEnemy, DiamondShard,
   NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard, EigensteinEnemy, DanmakuSafeZone,
+  BossEnemy,
 } from './rpg-types';
 import {
   LASER_HP_INIT, LASER_ATK_INIT, LASER_DEF_INIT, LASER_PATROL_TURN_MS,
@@ -46,6 +47,7 @@ import {
   EIGENSTEIN_HP_INIT, EIGENSTEIN_ATK_INIT, EIGENSTEIN_DEF_INIT,
   EIGENSTEIN_BEAM_CD_MS, EIGENSTEIN_BEAM_JITTER, EIGENSTEIN_PATROL_TURN_MS,
   DANMAKU_WARN_MS,
+  BOSS_HP_INIT, BOSS_ATK_INIT, BOSS_DEF_INIT, BOSS_SHIELD_INIT,
 } from './rpg-constants';
 
 export function makeAttackTrail(): AttackTrailState {
@@ -353,5 +355,44 @@ export function makeEigensteinEnemy(x: number, y: number, waveNumber: number): E
 
 export function makeDanmakuSafeZone(x: number, y: number, angle: number, width: number): DanmakuSafeZone {
   return { x, y, angle, width, timerMs: DANMAKU_WARN_MS, maxTimerMs: DANMAKU_WARN_MS };
+}
+
+/**
+ * Creates a new BossEnemy for the given raw boss ID and wave number.
+ *
+ * @param rawBossId  Monotonically increasing boss counter (1-based); cycles
+ *                   through 12 visual bosses with increasing extra scale every
+ *                   12 bosses.
+ * @param waveNumber Current wave number — used to scale boss stats.
+ * @param w          Canvas width in pixels — used to centre the initial X position.
+ * @param h          Canvas height in pixels — used to set the initial Y position.
+ */
+export function makeBossEnemy(rawBossId: number, waveNumber: number, w: number, h: number): BossEnemy {
+  const bossScale = getWaveStatScale(waveNumber) * 4.0;
+  const bossNum = ((rawBossId - 1) % 12) + 1;
+  const extraScale = Math.floor((rawBossId - 1) / 12) + 1;
+  const hp = Math.ceil(BOSS_HP_INIT * bossScale * extraScale);
+  const atk = Math.ceil(BOSS_ATK_INIT * getWaveStatScale(waveNumber) * extraScale);
+  const def = Math.ceil(BOSS_DEF_INIT * getWaveStatScale(waveNumber) * extraScale);
+  const shieldHp = bossNum === 6 ? Math.ceil(BOSS_SHIELD_INIT * bossScale * extraScale) : 0;
+  return {
+    kind: 'boss',
+    bossId: bossNum,
+    phaseIndex: 0,
+    x: w / 2, y: h * 0.25,
+    vx: 0, vy: 0,
+    hp, maxHp: hp,
+    atk, def,
+    attackTimerMs: 1000,
+    secondaryTimerMs: 2000,
+    orbitAngle: 0,
+    pulseMs: 0,
+    shieldHp, maxShieldHp: shieldHp,
+    isInvuln: false, invulnTimerMs: 0,
+    isAbsorbing: false, absorbTimerMs: 0,
+    contactCdMs: 0,
+    phaseTransitionMs: 0,
+    danmakuLevel: 0,
+  };
 }
 
