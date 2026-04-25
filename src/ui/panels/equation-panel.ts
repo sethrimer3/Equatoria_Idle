@@ -13,18 +13,24 @@ import type { TraceEffect } from '../../render/ui/trace-effect';
 /**
  * Equation panel — shows the Equation Forge.
  * Before unlock: dormant locked forge state with unlock button.
- * After unlock: structured nested equation + equation upgrades grouped by tier.
+ * After unlock: sticky equation display at top + two-column body:
+ *   left column  — equation upgrade buttons
+ *   right column — injected content (mote resources + tier unlock)
  */
 export interface EquationPanel {
   element: HTMLElement;
   update(state: GameState, isDevMode?: boolean, numberFormat?: NumberFormat): void;
 }
 
-export function createEquationPanel(dispatch: ActionHandler, traceEffect?: TraceEffect): EquationPanel {
+export function createEquationPanel(
+  dispatch: ActionHandler,
+  traceEffect?: TraceEffect,
+  rightColumnElement?: HTMLElement,
+): EquationPanel {
   const panel = document.createElement('div');
   panel.className = 'panel equation-panel';
 
-  // ── Locked forge section ──
+  // ── Locked forge section (full-width, shown before forge unlock) ──
   const lockedSection = document.createElement('div');
   lockedSection.className = 'forge-locked';
   lockedSection.innerHTML = `
@@ -52,20 +58,49 @@ export function createEquationPanel(dispatch: ActionHandler, traceEffect?: Trace
   unlockedSection.className = 'forge-unlocked';
   unlockedSection.style.display = 'none';
 
+  // Sticky header — stays visible while the player scrolls through upgrades
+  const stickyHeader = document.createElement('div');
+  stickyHeader.className = 'equation-sticky-header';
+
   const eqTitle = document.createElement('h3');
   eqTitle.className = 'panel-title equation-title';
   eqTitle.textContent = 'Equation Forge';
-  unlockedSection.appendChild(eqTitle);
+  stickyHeader.appendChild(eqTitle);
 
   const eqDisplay = document.createElement('div');
   eqDisplay.className = 'equation-display';
-  unlockedSection.appendChild(eqDisplay);
+  stickyHeader.appendChild(eqDisplay);
 
-  // Equation upgrades section
+  unlockedSection.appendChild(stickyHeader);
+
+  // Two-column body: left = upgrade buttons, right = injected content
+  const columnsBody = document.createElement('div');
+  columnsBody.className = 'equation-columns-body';
+
+  // Left column — equation upgrades
+  const leftCol = document.createElement('div');
+  leftCol.className = 'equation-left-col';
+
   const upgradesTitle = document.createElement('h4');
   upgradesTitle.className = 'panel-title eq-upgrades-title';
   upgradesTitle.textContent = 'Equation Upgrades';
-  unlockedSection.appendChild(upgradesTitle);
+  leftCol.appendChild(upgradesTitle);
+
+  columnsBody.appendChild(leftCol);
+
+  // Right column — mote resources + tier unlock button (injected from outside)
+  if (rightColumnElement) {
+    const rightCol = document.createElement('div');
+    rightCol.className = 'equation-right-col';
+    rightCol.appendChild(rightColumnElement);
+    columnsBody.appendChild(rightCol);
+  }
+
+  unlockedSection.appendChild(columnsBody);
+  panel.appendChild(unlockedSection);
+
+  // Track which tier is currently hovered so the highlight survives innerHTML replacement
+  let hoveredTierId: TierId | null = null;
 
   const upgradeButtons: Map<string, HTMLButtonElement> = new Map();
 
@@ -80,9 +115,10 @@ export function createEquationPanel(dispatch: ActionHandler, traceEffect?: Trace
       dispatch({ kind: 'purchase_upgrade', upgradeId: def.id });
     });
 
-    // Hover highlight: add/remove class on the equation display
+    // Hover highlight: persist across innerHTML replacement by tracking hoveredTierId
     btn.addEventListener('pointerenter', () => {
       if (def.tierId) {
+        hoveredTierId = def.tierId;
         highlightEquationTier(eqDisplay, def.tierId);
         if (traceEffect) {
           const matching = Array.from(eqDisplay.querySelectorAll(`.eq-term[data-tier="${def.tierId}"]`));
@@ -91,24 +127,23 @@ export function createEquationPanel(dispatch: ActionHandler, traceEffect?: Trace
       }
     });
     btn.addEventListener('pointerleave', () => {
+      hoveredTierId = null;
       clearEquationHighlight(eqDisplay);
       if (traceEffect) {
         traceEffect.setEquationTargets([]);
       }
     });
 
-    unlockedSection.appendChild(btn);
+    leftCol.appendChild(btn);
     upgradeButtons.set(def.id, btn);
   }
-
-  panel.appendChild(unlockedSection);
 
   function update(state: GameState, isDevMode = false, numberFormat: NumberFormat = 'letters'): void {
     if (state.equation.isForgeUnlocked) {
       lockedSection.style.display = 'none';
       unlockedSection.style.display = '';
 
-      // Update equation display
+      // Update equation display, then re-apply any active hover highlight
       const terms = buildEquationView(state.equation);
       const html = buildStructuredEquationHtml(terms);
       if (html) {
@@ -118,6 +153,15 @@ export function createEquationPanel(dispatch: ActionHandler, traceEffect?: Trace
           <span class="eq-prefix">f(t) = </span>
           <span class="eq-dormant">…</span>
         `;
+      }
+
+      // Re-apply highlight after innerHTML replacement to keep it persistent
+      if (hoveredTierId) {
+        highlightEquationTier(eqDisplay, hoveredTierId);
+        if (traceEffect) {
+          const matching = Array.from(eqDisplay.querySelectorAll(`.eq-term[data-tier="${hoveredTierId}"]`));
+          traceEffect.setEquationTargets(matching);
+        }
       }
 
       // Update equation upgrade buttons
