@@ -30,6 +30,8 @@ import type {
   LaserEnemy,
   WeaponOrbitParticle, OrbitProjectile,
   TeleportParticle,
+  EmeraldPlayerMissile,
+  SunstoneMine,
 } from './rpg-types';
 
 import {
@@ -63,6 +65,9 @@ import {
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_TRAIL_CAP, ORBIT_PROJ_SIZE,
   LASER_DASH_DISTANCE, LASER_TRAIL_ERASE_MS, ATTACK_TRAIL_LENGTH_SCALE,
   ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE, LASER_ENEMY_GLOW, LASER_ENEMY_COLOR,
+  EMERALD_MISSILE_SIZE, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_GLOW, EMERALD_MISSILE_TRAIL_CAP,
+  SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_SIZE, SUNSTONE_MINE_COLOR, SUNSTONE_MINE_GLOW,
+  SUNSTONE_MINE_DANGER_COLOR,
 } from './rpg-constants';
 
 export function drawSandProjectiles(ctx: CanvasRenderingContext2D, sandProjectiles: SandProjectile[]): void {
@@ -862,3 +867,115 @@ export function drawBossProjectiles(ctx: CanvasRenderingContext2D, projectiles: 
   ctx.restore();
 }
 
+
+// ── Emerald player missiles (heat-seeking, gorgeous comet trails) ──────────────
+
+export function drawEmeraldPlayerMissiles(
+  ctx: CanvasRenderingContext2D,
+  missiles: EmeraldPlayerMissile[],
+): void {
+  if (missiles.length === 0) return;
+  ctx.save();
+  for (const m of missiles) {
+    // Comet trail — layered glow fading from bright tip to dark tail.
+    if (m.trailCount >= 2) {
+      for (let i = 0; i < m.trailCount; i++) {
+        const t      = i / m.trailCount;
+        const bufIdx = (m.trailHead - m.trailCount + i + EMERALD_MISSILE_TRAIL_CAP) % EMERALD_MISSILE_TRAIL_CAP;
+        const trailSize = EMERALD_MISSILE_SIZE * t * 1.8;
+        if (trailSize < 0.2) continue;
+        const half = trailSize / 2;
+        // Outer glow layer.
+        ctx.globalAlpha = t * 0.5;
+        ctx.shadowBlur  = trailSize * 7; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+        ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+        const gh = half * 2.5;
+        ctx.fillRect(Math.floor(m.trailX[bufIdx] - gh), Math.floor(m.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+        ctx.shadowBlur = 0;
+        // Inner core layer.
+        ctx.globalAlpha = t * 0.75;
+        ctx.fillStyle   = EMERALD_MISSILE_COLOR;
+        ctx.fillRect(Math.floor(m.trailX[bufIdx] - half), Math.floor(m.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
+      }
+    }
+    // Missile body — bright emerald core.
+    const half = EMERALD_MISSILE_SIZE / 2;
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur  = EMERALD_MISSILE_SIZE * 6; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+    ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+    const gh = half * 2.4;
+    ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+    ctx.shadowBlur = 0;
+    ctx.fillStyle  = EMERALD_MISSILE_COLOR;
+    ctx.fillRect(Math.floor(m.x - half), Math.floor(m.y - half), EMERALD_MISSILE_SIZE, EMERALD_MISSILE_SIZE);
+  }
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── Sunstone mines ────────────────────────────────────────────────────────────
+
+export function drawSunstoneMines(
+  ctx: CanvasRenderingContext2D,
+  mines: SunstoneMine[],
+): void {
+  if (mines.length === 0) return;
+  const nowMs = Date.now();
+  ctx.save();
+  for (const mine of mines) {
+    const fuseRatio = mine.fuseMs / SUNSTONE_MINE_FUSE_MS;
+    // Danger threshold: last 4 seconds the mine pulses red.
+    const isDanger = mine.fuseMs <= 4000;
+    const pulseT   = isDanger ? (Math.sin(nowMs / 120) + 1) * 0.5 : 0;
+    const bodyColor = isDanger
+      ? lerpColor(SUNSTONE_MINE_COLOR, SUNSTONE_MINE_DANGER_COLOR, pulseT)
+      : SUNSTONE_MINE_COLOR;
+    const glowColor = isDanger
+      ? lerpColor(SUNSTONE_MINE_GLOW, '#ff6600', pulseT)
+      : SUNSTONE_MINE_GLOW;
+
+    const half = SUNSTONE_MINE_SIZE / 2;
+
+    // Outer glow.
+    ctx.globalAlpha = 0.7;
+    ctx.shadowBlur  = SUNSTONE_MINE_SIZE * 5; ctx.shadowColor = glowColor;
+    ctx.fillStyle   = glowColor;
+    const gh = half * 2;
+    ctx.fillRect(Math.floor(mine.x - gh), Math.floor(mine.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+    ctx.shadowBlur = 0;
+
+    // Mine body.
+    ctx.globalAlpha = 1;
+    ctx.fillStyle   = bodyColor;
+    ctx.fillRect(Math.floor(mine.x - half), Math.floor(mine.y - half), SUNSTONE_MINE_SIZE, SUNSTONE_MINE_SIZE);
+
+    // Fuse ring indicator: arc around mine showing remaining fuse time.
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = bodyColor;
+    ctx.shadowBlur  = 3; ctx.shadowColor = glowColor;
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.arc(mine.x, mine.y, SUNSTONE_MINE_SIZE + 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * fuseRatio);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1; ctx.lineWidth = 1; ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+/**
+ * Linearly interpolates between two CSS hex colours.
+ * Both colors must be 7-character '#rrggbb' strings.
+ */
+function lerpColor(a: string, b: string, t: number): string {
+  const ar = parseInt(a.slice(1, 3), 16);
+  const ag = parseInt(a.slice(3, 5), 16);
+  const ab = parseInt(a.slice(5, 7), 16);
+  const br = parseInt(b.slice(1, 3), 16);
+  const bg = parseInt(b.slice(3, 5), 16);
+  const bb = parseInt(b.slice(5, 7), 16);
+  const r  = Math.round(ar + (br - ar) * t);
+  const g  = Math.round(ag + (bg - ag) * t);
+  const bv = Math.round(ab + (bb - ab) * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bv.toString(16).padStart(2, '0')}`;
+}

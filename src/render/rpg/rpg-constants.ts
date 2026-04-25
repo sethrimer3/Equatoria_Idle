@@ -283,8 +283,10 @@ export const SWORD_COMBO_RANGE_MULT = 2;
 export const SWORD_SHARD_SHAPES: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
   // Tall diamond (4-gon)
   [[0, -1.4], [0.6, 0], [0, 1.4], [-0.6, 0]],
-  // Wide triangle
-  [[0, -1], [1.1, 0.8], [-1.1, 0.8]],
+  // Crossguard: thin rectangle perpendicular to the blade
+  // (x = along blade, y = perpendicular).  The 4px half-height spans ~5px
+  // at typical tier-1 scale, giving a visible bar across the handle.
+  [[0.2, -4.0], [-0.2, -4.0], [-0.2, 4.0], [0.2, 4.0]],
   // Thin rhombus (rotated diamond)
   [[0.4, -1.1], [1.0, 0], [0.4, 1.1], [-0.6, 0]],
   // Compact hexagon
@@ -676,4 +678,29 @@ export const FLUID_FRACTERYL_R = 204, FLUID_FRACTERYL_G =  68, FLUID_FRACTERYL_B
 // Eigenstein enemy colour.
 export const FLUID_EIGENSTEIN_R =  68, FLUID_EIGENSTEIN_G = 204, FLUID_EIGENSTEIN_B = 255;
 
+// ── Emerald player missile (heat-seeking) ─────────────────────
+export const EMERALD_MISSILE_SPEED        =   1.4;    // initial speed (px/frame at 60fps)
+export const EMERALD_MISSILE_MAX_SPEED    =   3.0;    // max homing speed
+export const EMERALD_MISSILE_SEEK_STR     =   0.04;   // homing correction per frame
+export const EMERALD_MISSILE_SIZE         =   3;
+export const EMERALD_MISSILE_TRAIL_CAP    =   50;
+export const EMERALD_MISSILE_COLOR        = '#22ff88'; // vivid emerald green
+export const EMERALD_MISSILE_GLOW         = '#88ffcc'; // bright teal glow
+export const EMERALD_MISSILE_HIT_RADIUS   =   6;
 
+// ── Sunstone mine ─────────────────────────────────────────────
+/** Total fuse duration before a mine auto-detonates (ms). */
+export const SUNSTONE_MINE_FUSE_MS          = 15000;
+/** Proximity radius (px) — mine detonates when an enemy enters this range. */
+export const SUNSTONE_MINE_PROXIMITY_PX     =   22;
+/** Base AOE explosion radius at tier 1 (px). */
+export const SUNSTONE_MINE_AOE_BASE_PX      =   35;
+/** AOE radius increase per additional tier (px). */
+export const SUNSTONE_MINE_AOE_PER_TIER_PX  =    8;
+/** Mine HP — when reduced to 0 by enemy damage the mine detonates prematurely. */
+export const SUNSTONE_MINE_HP               =   20;
+/** Visual radius of the mine dot (px). */
+export const SUNSTONE_MINE_SIZE             =    5;
+export const SUNSTONE_MINE_COLOR            = '#ffaa22';
+export const SUNSTONE_MINE_GLOW             = '#ffcc55';
+export const SUNSTONE_MINE_DANGER_COLOR     = '#ff4400'; // pulsing red near detonation
