@@ -12,6 +12,11 @@ import { formatNumber } from '../../util';
 // Module-level animation clock advanced by drawGenerators callers
 let _genAnimTimeMs = 0;
 
+/** Clamp a value to [0, 1]. */
+function _clampNorm(n: number): number {
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
 /** Advance the generator renderer animation clock. Call once per frame. */
 export function updateGeneratorRendererTime(deltaMs: number): void {
   _genAnimTimeMs += deltaMs;
@@ -24,10 +29,33 @@ const HUE_CYCLE_DEG_PER_SEC = 90;
 const INFLUENCE_VISUAL_SCALE = 0.75;
 
 /** Font size (px) for the motes/sec equation label drawn beside each generator. */
-const GENERATOR_LABEL_FONT_SIZE = 5;
+const GENERATOR_LABEL_FONT_SIZE = 12;
 
 /** Extra padding (canvas px) between the sprite edge and the equation label center. */
-const GENERATOR_LABEL_PADDING_PX = 7;
+const GENERATOR_LABEL_PADDING_PX = 16;
+
+/**
+ * Maximum canvas-space distance at which a generator label is fully visible.
+ * Beyond this threshold the label fades toward transparent.
+ */
+const LABEL_FADE_START_PX = 30;
+const LABEL_FADE_END_PX   = 90;
+
+// ── Pointer position (canvas space) for proximity-based label opacity ──────
+let _pointerX: number | null = null;
+let _pointerY: number | null = null;
+
+/** Update the current pointer position in canvas (internal resolution) space. */
+export function updateGeneratorPointerPos(x: number, y: number): void {
+  _pointerX = x;
+  _pointerY = y;
+}
+
+/** Clear the pointer position (e.g. on pointerleave). */
+export function clearGeneratorPointerPos(): void {
+  _pointerX = null;
+  _pointerY = null;
+}
 
 /** Preload generator sprites for all tiers. Call once at startup. */
 export function preloadGeneratorSprites(): void {
@@ -85,9 +113,26 @@ export function drawGenerators(
       const labelOffset = SPAWNER_SIZE * 5 / 2 + GENERATOR_LABEL_PADDING_PX;
       const labelX = gen.x + nx * labelOffset;
       const labelY = gen.y + ny * labelOffset;
-      ctx.globalAlpha = fadeAlpha;
-      drawGeneratorEquationLabel(ctx, labelX, labelY, rate, tier.color);
-      ctx.globalAlpha = 1;
+
+      // Opacity is proportional to how close the pointer is to this generator.
+      // Touching (≤LABEL_FADE_START_PX away) → fully visible; beyond LABEL_FADE_END_PX → invisible.
+      let labelAlpha: number;
+      if (_pointerX !== null && _pointerY !== null) {
+        const pdx   = _pointerX - gen.x;
+        const pdy   = _pointerY - gen.y;
+        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+        const t     = _clampNorm((pdist - LABEL_FADE_START_PX) / (LABEL_FADE_END_PX - LABEL_FADE_START_PX));
+        // Quadratic ease-out: fast fade near the threshold, gentle tail at distance.
+        labelAlpha  = fadeAlpha * (1 - t * t);
+      } else {
+        labelAlpha = 0;
+      }
+
+      if (labelAlpha > 0.01) {
+        ctx.globalAlpha = labelAlpha;
+        drawGeneratorEquationLabel(ctx, labelX, labelY, rate, tier.color);
+        ctx.globalAlpha = 1;
+      }
     }
   }
 }

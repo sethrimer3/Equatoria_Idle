@@ -15,7 +15,7 @@ import {
   resizeCanvas,
   ParticleSystem,
 } from '../render';
-import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
+import { preloadGeneratorSprites, updateGeneratorPointerPos, clearGeneratorPointerPos } from '../render/generators/generator-renderer';
 import { preloadForgeSprites } from '../render/forge/forge-renderer';
 import { createBackgroundAnimation, createVermiculateEffect, createSubstrateEffect } from '../render/background';
 import { setupInputListeners, type GameAction } from '../input';
@@ -220,7 +220,12 @@ export async function startApp(): Promise<void> {
 
   // ── UI panels ──
   const upgradePanel = createUpgradePanel(dispatch);
-  const resourcePanel = createResourcePanel();
+  // Equation panel is created first so we can pass its highlight callback to the resource panel.
+  // We use a late-binding ref to avoid a circular setup order.
+  let equationPanelRef: ReturnType<typeof createEquationPanel> | null = null;
+  const resourcePanel = createResourcePanel((tierId) => {
+    equationPanelRef?.setHighlightedTier(tierId);
+  });
   const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio);
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
@@ -232,6 +237,7 @@ export async function startApp(): Promise<void> {
 
   // Equation panel with the right column injected into its two-column body.
   const equationPanel = createEquationPanel(dispatch, traceEffect, equationRightCol);
+  equationPanelRef = equationPanel;
 
   // Wrap the equation panel in a thin container so it can be injected as the
   // "Equation" sub-tab of the combined Upgrades panel.
@@ -316,21 +322,33 @@ export async function startApp(): Promise<void> {
     cc.canvas.setPointerCapture(e.pointerId);
     audioSystem.resumeContext().catch(() => { /* silently ignore */ });
     const pos = getCanvasCoords(e);
+    if (appState.activeTab !== 'rpg') {
+      updateGeneratorPointerPos(pos.x, pos.y);
+    }
     handleParticleDragDown(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles, cc.widthPx, cc.heightPx);
   });
   cc.canvas.addEventListener('pointermove', (e: PointerEvent) => {
+    const pos = getCanvasCoords(e);
+    // Track pointer for generator label proximity opacity (idle canvas only).
+    if (appState.activeTab !== 'rpg') {
+      updateGeneratorPointerPos(pos.x, pos.y);
+    }
     if (!appState.particleDrag.isDown) return;
     e.preventDefault();
-    const pos = getCanvasCoords(e);
     handleParticleDragMove(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
   }, { passive: false });
+  cc.canvas.addEventListener('pointerleave', () => {
+    clearGeneratorPointerPos();
+  });
   cc.canvas.addEventListener('pointerup', (e: PointerEvent) => {
     const pos = getCanvasCoords(e);
     handleParticleDragUp(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
+    clearGeneratorPointerPos();
   });
   cc.canvas.addEventListener('pointercancel', (e: PointerEvent) => {
     const pos = getCanvasCoords(e);
     handleParticleDragUp(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
+    clearGeneratorPointerPos();
   });
 
   // ── Resize handler ──

@@ -20,6 +20,8 @@ import type { TraceEffect } from '../../render/ui/trace-effect';
 export interface EquationPanel {
   element: HTMLElement;
   update(state: GameState, isDevMode?: boolean, numberFormat?: NumberFormat): void;
+  /** Highlight (or clear) equation segments matching a given tier. */
+  setHighlightedTier(tierId: TierId | null): void;
 }
 
 export function createEquationPanel(
@@ -206,7 +208,24 @@ export function createEquationPanel(
     }
   }
 
-  return { element: panel, update };
+  function setHighlightedTier(tierId: TierId | null): void {
+    if (tierId) {
+      hoveredTierId = tierId;
+      highlightEquationTier(eqDisplay, tierId);
+      if (traceEffect) {
+        const matching = Array.from(eqDisplay.querySelectorAll(`.eq-term[data-tier="${tierId}"]`));
+        traceEffect.setEquationTargets(matching);
+      }
+    } else {
+      hoveredTierId = null;
+      clearEquationHighlight(eqDisplay);
+      if (traceEffect) {
+        traceEffect.setEquationTargets([]);
+      }
+    }
+  }
+
+  return { element: panel, update, setHighlightedTier };
 }
 
 // ─── Highlight helpers ──────────────────────────────────────────
