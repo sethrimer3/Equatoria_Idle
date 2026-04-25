@@ -293,20 +293,7 @@ Hit detection (`swordHitInArc`) always checks the same `arcStart→arcEnd` windo
 **Dev wave jump**: Dev mode now exposes a "Jump to Wave" control in the RPG Menu tab, dispatching `dev_jump_wave` to `RpgRender.devJumpToWave(wave)`. Waves 1 and 10, 20, 30, … up to 1000 are offered.
 
 
-## Particle Glow Blending
-
-**Decision**: Replace per-batch `shadowBlur` glow with cluster-based radial-gradient glows drawn using `screen` compositing (`src/render/particles/particle-glow.ts`).
-
-**Problem**: The previous approach used `ctx.shadowBlur` on batched `fillRect` calls.  Shadows are drawn additively via `source-over`, so when two or more particles of different colours overlap their glows mixed towards grey/white rather than producing a pleasing colour blend.
-
-**Approach**:
-- A spatial grid (cell size 24 px) groups particles into clusters per colour per cell.  Same-colour particles in the same cell share one radial-gradient glow centred at their centroid, eliminating stacked halos.
-- All glow draws use `globalCompositeOperation = 'screen'`.  Screen blending computes `result = 1 − (1−a)(1−b)`, so red + blue → magenta rather than grey.  Overlapping glows of different colours create visible gradient blends between them.
-- When a cell contains N ≥ 2 distinct colours (co-located particles), each colour's glow centre is nudged `COLOCATION_OFFSET_FRACTION × glowRadius` (0.35) in its assigned angular direction.  The N directions are equidistant (360° / N apart) with a deterministic per-cell base angle derived from a cheap integer hash of the cell coordinates.  This makes each colour fan into its own visible sector while blending into neighbours at sector edges.
-
-**Performance**: Inner Maps and `ColorAccum` accumulators are pooled across frames; the sorted-entry scratch buffer is fixed-size (16 slots, ≥ TIER_COUNT); sorting uses in-place insertion sort.  Worst-case draw calls = unique (colour × cell) combinations, far fewer than one `createRadialGradient` per particle.
-
-
+## rpg-render.ts Phase 5 Extraction — Enemy Update Systems
 
 **Context**: `rpg-render.ts` reached ~6,465 lines after previous extract phases (constants → `rpg-constants.ts`, types → `rpg-types.ts`, factories → `rpg-factories.ts`, draw functions → `rpg-entity-draw.ts`). The next largest block was the per-frame enemy update functions (~890 lines) for 13 non-boss enemy types.
 

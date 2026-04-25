@@ -16,7 +16,6 @@ import type { EquatoriaParticle, ActiveMerge, Shockwave, ParticleRenderOptions }
 import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
 import { getTrailPosition } from './particle-physics';
 import { parseHexToRgb } from '../assets/color-utils';
-import { drawClusterGlows } from './particle-glow';
 
 // ─── Tier index constants ───────────────────────────────────────
 const DIAMOND_TIER_INDEX = 9;
@@ -43,6 +42,7 @@ export function getParticleRendererAnimTimeMs(): number {
 
 interface DrawBatch {
   color: string;
+  glow: string | null;
   size: number;
   /** Flat array of [x0,y0, x1,y1, …] positions. */
   positions: Float64Array;
@@ -55,13 +55,14 @@ interface DrawBatch {
  */
 const _batchMap = new Map<number, DrawBatch>();
 
-function getBatch(key: number, color: string, size: number): DrawBatch {
+function getBatch(key: number, color: string, glow: string | null, size: number): DrawBatch {
   let batch = _batchMap.get(key);
   if (!batch) {
-    batch = { color, size, positions: new Float64Array(512), count: 0 };
+    batch = { color, glow, size, positions: new Float64Array(512), count: 0 };
     _batchMap.set(key, batch);
   }
   batch.color = color;
+  batch.glow = glow;
   batch.size = size;
   batch.count = 0;
   return batch;
@@ -252,11 +253,6 @@ export function drawParticles(
   ctx.globalAlpha = 1;
   ctx.shadowBlur = 0;
 
-  // ── Draw cluster glows (before particle bodies so glow appears behind fill) ──
-  if (options.enableGlow) {
-    drawClusterGlows(ctx, particles);
-  }
-
   // ── Batch particles by numeric key ──
   // Reset counts on existing batches
   for (const batch of _batchMap.values()) batch.count = 0;
@@ -270,15 +266,20 @@ export function drawParticles(
     const key = (p.tierIndex << 8) | p.sizeIndex;
     let batch = _batchMap.get(key);
     if (!batch || batch.count === 0) {
-      batch = getBatch(key, p.colorString, p.size);
+      batch = getBatch(key, p.colorString, p.glowColorString, p.size);
     }
     pushPosition(batch, p.x, p.y);
   }
 
-  // ── Draw each batch (glow is handled by drawClusterGlows above) ──
-  ctx.shadowBlur = 0;
+  // ── Draw each batch ──
   for (const batch of _batchMap.values()) {
     if (batch.count === 0) continue;
+    if (options.enableGlow && batch.glow) {
+      ctx.shadowBlur = batch.size * 3;
+      ctx.shadowColor = batch.glow;
+    } else {
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle = batch.color;
     const half = batch.size / 2;
     const positions = batch.positions;
@@ -293,6 +294,7 @@ export function drawParticles(
       );
     }
   }
+  ctx.shadowBlur = 0;
 
   // ── Draw shockwaves ──
   for (let i = 0, len = shockwaves.length; i < len; i++) {
