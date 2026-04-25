@@ -120,20 +120,20 @@ export function createRpgMenuTabPane(
 
       // ── Respawn button ──
       const respawnBtn = document.createElement('button');
-      respawnBtn.style.cssText = 'margin-top:6px;width:100%;padding:8px 0;border-radius:4px;font-size:0.9em;font-weight:600;cursor:pointer;touch-action:manipulation;background:#2a0a0a;color:#ff6666;border:1px solid rgba(255,100,100,0.4);';
-      respawnBtn.textContent = isConfirmingRespawn ? 'Confirm?' : 'Respawn';
-      if (isConfirmingRespawn) {
-        respawnBtn.style.background = '#4a0000';
-        respawnBtn.style.color = '#ff4444';
-        respawnBtn.style.borderColor = 'rgba(255,68,68,0.7)';
+      respawnBtn.style.cssText = 'margin-top:6px;width:100%;padding:8px 0;border-radius:4px;font-size:0.9em;font-weight:600;cursor:pointer;touch-action:manipulation;';
+
+      function applyRespawnBtnState(confirming: boolean): void {
+        respawnBtn.textContent = confirming ? 'Confirm?' : 'Respawn';
+        respawnBtn.style.background  = confirming ? '#4a0000' : '#2a0a0a';
+        respawnBtn.style.color       = confirming ? '#ff4444' : '#ff6666';
+        respawnBtn.style.border      = confirming ? '1px solid rgba(255,68,68,0.7)' : '1px solid rgba(255,100,100,0.4)';
       }
+
+      applyRespawnBtnState(isConfirmingRespawn);
       respawnBtn.addEventListener('click', () => {
         if (!isConfirmingRespawn) {
           isConfirmingRespawn = true;
-          respawnBtn.textContent = 'Confirm?';
-          respawnBtn.style.background = '#4a0000';
-          respawnBtn.style.color = '#ff4444';
-          respawnBtn.style.borderColor = 'rgba(255,68,68,0.7)';
+          applyRespawnBtnState(true);
         } else {
           isConfirmingRespawn = false;
           dispatch({ kind: 'respawn_now' });
