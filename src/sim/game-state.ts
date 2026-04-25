@@ -271,7 +271,12 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
   }
 
   // Check for newly-unlocked achievements
-  result.newlyUnlockedAchievementIds = checkAndUnlockAchievements(state.achievements, state.resources);
+  result.newlyUnlockedAchievementIds = checkAndUnlockAchievements(
+    state.achievements,
+    state.resources,
+    state.equation,
+    state.rpg,
+  );
 
   return result;
 }
