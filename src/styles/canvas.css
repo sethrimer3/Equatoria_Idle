@@ -145,6 +145,37 @@
   font-size: 14px;
 }
 
+/* ── DPS widget with mini bar chart ───────────────────────────── */
+.rpg-stat-dps {
+  flex: 1.5;
+  min-width: 80px;
+}
+
+.rpg-stat-value--dps {
+  color: #ff6b6b;
+  font-size: 16px;
+}
+
+.rpg-dps-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+  width: 100%;
+  max-width: 80px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+  padding: 2px;
+}
+
+.rpg-dps-bar {
+  flex: 1;
+  background: linear-gradient(to top, #ff6b6b, #ffb86c);
+  min-height: 2px;
+  border-radius: 1px;
+  transition: height 0.15s ease-out;
+}
+
 /* ── RPG menu toggle button ────────────────────────────────────── */
 .rpg-menu-btn {
   position: absolute;

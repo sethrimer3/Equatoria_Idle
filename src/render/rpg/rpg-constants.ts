@@ -760,3 +760,58 @@ export const SUNSTONE_MINE_SIZE             =    5;
 export const SUNSTONE_MINE_COLOR            = '#ffaa22';
 export const SUNSTONE_MINE_GLOW             = '#ffcc55';
 export const SUNSTONE_MINE_DANGER_COLOR     = '#ff4400'; // pulsing red near detonation
+
+// ── Sapphire companion ship constants ─────────────────────────
+/** Interval (ms) between laser shots per ship. */
+export const SAPPHIRE_SHIP_FIRE_MS          = 250;
+/** Orbit radius (px) around target when close. */
+export const SAPPHIRE_SHIP_ORBIT_RADIUS     = 30;
+/** Max movement speed of ship (px/frame at 60fps). */
+export const SAPPHIRE_SHIP_MAX_SPEED        = 2.5;
+/** Range (px) within which the ship can pick nearby enemies to fire at. */
+export const SAPPHIRE_SHIP_LASER_RANGE      = 60;
+/** Trail capacity for sapphire ships. */
+export const SAPPHIRE_SHIP_TRAIL_CAP        = 30;
+/** Ship visual size (px). */
+export const SAPPHIRE_SHIP_SIZE             = 3;
+
+// ── Sapphire laser projectile constants ───────────────────────
+export const SAPPHIRE_LASER_SPEED           = 3.5;   // px/frame at 60fps
+export const SAPPHIRE_LASER_LIFE_MS         = 700;   // max lifetime before fizzle
+export const SAPPHIRE_LASER_HIT_RADIUS      = 4;     // collision radius (px)
+export const SAPPHIRE_LASER_SIZE            = 2;     // visual radius (px)
+export const SAPPHIRE_LASER_TRAIL_CAP       = 15;    // trail buffer capacity
+export const SAPPHIRE_LASER_COLOR           = '#4488ff';
+export const SAPPHIRE_LASER_GLOW            = '#88bbff';
+/** Max angular deviation (radians) for laser fire direction. */
+export const SAPPHIRE_LASER_SPREAD_RAD      = Math.PI / 12;  // ±15°
+/** Per-frame rotation rate (radians) giving gentle curve. */
+export const SAPPHIRE_LASER_CURVE_RATE      = 0.009;
+/** Initial perpendicular (lateral) velocity magnitude. */
+export const SAPPHIRE_LASER_LATERAL_VEL     = 0.6;
+/** Per-frame decay of the lateral velocity component. */
+export const SAPPHIRE_LASER_LATERAL_DECAY   = 0.92;
+
+// ── Amethyst companion ship constants ─────────────────────────
+/** Interval (ms) between laser shots per ship. */
+export const AMETHYST_SHIP_FIRE_MS          = 3000;
+/** Max movement speed of ship (px/frame at 60fps). */
+export const AMETHYST_SHIP_MAX_SPEED        = 1.4;
+/** Orbit radius (px) around assigned target. */
+export const AMETHYST_SHIP_ORBIT_RADIUS     = 35;
+/** Trail capacity for amethyst ships. */
+export const AMETHYST_SHIP_TRAIL_CAP        = 40;
+/** Ship visual size (px). */
+export const AMETHYST_SHIP_SIZE             = 3;
+/** Damage multiplier for amethyst laser (30×). */
+export const AMETHYST_LASER_DAMAGE_MULT     = 30;
+
+// ── Amethyst spiraling laser projectile constants ─────────────
+export const AMETHYST_LASER_INITIAL_RADIUS  = 50;    // starting spiral radius (px)
+export const AMETHYST_LASER_ANGULAR_SPEED   = 0.08;  // radians per frame
+export const AMETHYST_LASER_DURATION_MS     = 1500;  // max life before dissipate
+export const AMETHYST_LASER_HIT_RADIUS      = 5;     // collision radius (px)
+export const AMETHYST_LASER_SIZE            = 3;     // visual radius (px)
+export const AMETHYST_LASER_TRAIL_CAP       = 20;    // trail buffer capacity
+export const AMETHYST_LASER_COLOR           = '#9933ff';
+export const AMETHYST_LASER_GLOW            = '#cc99ff';

@@ -670,3 +670,70 @@ export interface SunstoneMine {
   /** Proximity trigger radius (px) — explodes when an enemy enters this range. */
   proximityRadius: number;
 }
+
+// ── Sapphire companion ship ───────────────────────────────────────
+
+export interface SapphireShip {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Current orbital angle around target (radians). */
+  orbitAngle: number;
+  /** ms until next laser fires. */
+  fireCooldownMs: number;
+  /** Weapon base damage (pre-scaled). */
+  baseDamage: number;
+  /** Trail for motion visualization. */
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}
+
+export interface SapphireLaser {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Lateral (perpendicular) velocity component for curving effect. */
+  lateralVx: number; lateralVy: number;
+  /** Per-frame rotation applied to velocity vector. */
+  curveDir: number; // +1 or -1
+  /** Remaining life (ms). */
+  lifeMs: number;
+  /** Pre-computed scaled damage. */
+  scaledDamage: number;
+  /** Trail. */
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}
+
+// ── Amethyst companion ship ───────────────────────────────────────
+
+export interface AmethystShip {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Current orbital angle around target (radians). */
+  orbitAngle: number;
+  /** ms until next laser fires. */
+  fireCooldownMs: number;
+  /** Weapon base damage (pre-scaled, then 30× multiplier applied). */
+  baseDamage: number;
+  /** Trail for motion visualization. */
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}
+
+export interface AmethystLaser {
+  x: number; y: number;
+  /** Center point of the spiral. */
+  centerX: number; centerY: number;
+  /** Current spiral radius (shrinks over time). */
+  radius: number;
+  /** Current spiral angle (radians). */
+  angle: number;
+  /** Remaining life (ms). */
+  lifeMs: number;
+  /** Pre-computed scaled damage (30× base). */
+  scaledDamage: number;
+  /** Enemies already pierced this lifetime (avoid repeat hits). */
+  piercedEnemies: Set<object>;
+  /** Trail. */
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}

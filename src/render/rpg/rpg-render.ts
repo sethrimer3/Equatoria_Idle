@@ -138,6 +138,14 @@ import {
   EMERALD_SWIRL_COUNT, EMERALD_SWIRL_LIFE_MS, EMERALD_SWIRL_SPEED, EMERALD_SWIRL_DRAG,
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_PROXIMITY_PX, SUNSTONE_MINE_AOE_BASE_PX,
   SUNSTONE_MINE_AOE_PER_TIER_PX, SUNSTONE_MINE_HP, SUNSTONE_MINE_SIZE,
+  SAPPHIRE_SHIP_FIRE_MS, SAPPHIRE_SHIP_ORBIT_RADIUS, SAPPHIRE_SHIP_MAX_SPEED,
+  SAPPHIRE_SHIP_LASER_RANGE, SAPPHIRE_SHIP_TRAIL_CAP,
+  SAPPHIRE_LASER_SPEED, SAPPHIRE_LASER_LIFE_MS, SAPPHIRE_LASER_HIT_RADIUS,
+  SAPPHIRE_LASER_TRAIL_CAP, SAPPHIRE_LASER_SPREAD_RAD,
+  SAPPHIRE_LASER_CURVE_RATE, SAPPHIRE_LASER_LATERAL_VEL, SAPPHIRE_LASER_LATERAL_DECAY,
+  AMETHYST_SHIP_FIRE_MS, AMETHYST_SHIP_ORBIT_RADIUS, AMETHYST_SHIP_MAX_SPEED, AMETHYST_SHIP_TRAIL_CAP,
+  AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
+  AMETHYST_LASER_ANGULAR_SPEED, AMETHYST_LASER_DURATION_MS, AMETHYST_LASER_HIT_RADIUS, AMETHYST_LASER_TRAIL_CAP,
 } from './rpg-constants';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
@@ -163,6 +171,10 @@ import {
   drawAttackTrail,
   drawWeaponOrbitParticle, drawOrbitProjectile,
   drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
+  drawSapphireShips, drawSapphireLasers,
+  drawAmethystShips, drawAmethystLasers,
+  drawTargetReticle,
+  setLowGraphicsMode as setEntityLowGraphics,
 } from './rpg-entity-draw';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
@@ -189,6 +201,8 @@ import type {
   TeleportParticle,
   EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
   SunstoneMine,
+  SapphireShip, SapphireLaser,
+  AmethystShip, AmethystLaser,
 } from './rpg-types';
 import {
   makeLaserEnemy, makeSapphireEnemy,
@@ -205,8 +219,8 @@ import {
   getSwordLength, getShardDistances, wrapAngleDiff,
   getVortexTierRadius, getVortexTierDurationMs, getVortexCount,
 } from './rpg-helpers';
-import { drawChainWhip, drawVortexes, drawSwordCombos } from './rpg-weapon-draw';
-import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner } from './rpg-boss-draw';
+import { drawChainWhip, drawVortexes, drawSwordCombos, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
+import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import {
   type RpgEnemyCtx,
   updateLaserEnemies,
@@ -252,6 +266,8 @@ export interface RpgRender {
   devJumpToWave(wave: number): void;
   /** Immediately restart at the current respawnWave with the visual restart transition. */
   respawnNow(): void;
+  /** Enable/disable low graphics mode (skips glows and expensive effects). */
+  setLowGraphicsMode(enabled: boolean): void;
 }
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState): RpgRender {
@@ -376,6 +392,30 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Sunstone mines ─────────────────────────────────────────────
   const sunstoneMines: SunstoneMine[] = [];
+
+  // ── Sapphire companion ships and lasers ───────────────────────
+  const sapphireShips: SapphireShip[] = [];
+  const sapphireLasers: SapphireLaser[] = [];
+
+  // ── Amethyst companion ships and lasers ───────────────────────
+  const amethystShips: AmethystShip[] = [];
+  const amethystLasers: AmethystLaser[] = [];
+
+  // ── Tap-to-target state ───────────────────────────────────────
+  /** The currently targeted enemy object, or null for automatic targeting. */
+  let targetedEnemy: object | null = null;
+
+  // ── DPS tracking state ────────────────────────────────────────
+  /** Sliding window of damage events for DPS calculation (timestamp, damage, color). */
+  const dpsWindow: Array<{ t: number; dmg: number; color: string }> = [];
+  const DPS_WINDOW_MS = 3000;
+
+  /** Records a damage event for DPS tracking. */
+  function recordDps(dmg: number, color: string = '#fff'): void {
+    if (dmg > 0) {
+      dpsWindow.push({ t: Date.now(), dmg, color });
+    }
+  }
 
   // ── Aim direction tracker (updated each physics frame) ────────
   let playerAimAngle = -Math.PI / 2;  // default: upward
@@ -563,7 +603,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#d3f3ff');
+    }
     return dmg;
   }
 
@@ -582,12 +625,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // Shields always absorb at least MINIMUM_SHIELD_DAMAGE, making chip damage possible.
       const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
       enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
+      recordDps(dmg, '#6bd9ff');
       return dmg;
     }
     // Hit the enemy body.
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#6bd9ff');
+    }
     return dmg;
   }
 
@@ -595,6 +642,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function damageMissile(missile: SapphireMissile, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     missile.hp = Math.max(0, missile.hp - dmg);
+    recordDps(dmg, '#6bd9ff');
     return dmg;
   }
 
@@ -602,7 +650,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function damageEmeraldEnemy(enemy: EmeraldEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#8fff8f');
+    }
     return dmg;
   }
 
@@ -610,7 +661,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function damageAmberEnemy(enemy: AmberEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#ffb86c');
+    }
     return dmg;
   }
 
@@ -618,6 +672,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function damageAmberShard(shard: AmberShard, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     shard.hp = Math.max(0, shard.hp - dmg);
+    recordDps(dmg, '#ffb86c');
     return dmg;
   }
 
@@ -625,60 +680,81 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function damageVoidEnemy(enemy: VoidEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#7b68ee');
+    }
     return dmg;
   }
 
   function damageQuartzEnemy(enemy: QuartzEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#e0e0e0');
+    }
     return dmg;
   }
 
   function damageQuartzSpike(spike: QuartzSpike, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     spike.hp = Math.max(0, spike.hp - dmg);
+    recordDps(dmg, '#e0e0e0');
     return dmg;
   }
 
   function damageRubyEnemy(enemy: RubyEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#ff6b6b');
+    }
     return dmg;
   }
 
   function damageRubyBolt(bolt: RubyBolt, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     bolt.hp = Math.max(0, bolt.hp - dmg);
+    recordDps(dmg, '#ff6b6b');
     return dmg;
   }
 
   function damageSunstoneEnemy(enemy: SunstoneEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#ffd700');
+    }
     return dmg;
   }
 
   function damageCitrineEnemy(enemy: CitrineEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#fff176');
+    }
     return dmg;
   }
 
   function damageCitrineBolt(bolt: CitrineBolt, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     bolt.hp = Math.max(0, bolt.hp - dmg);
+    recordDps(dmg, '#fff176');
     return dmg;
   }
 
   function damageIoliteEnemy(enemy: IoliteEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#9b59b6');
+    }
     return dmg;
   }
 
@@ -686,17 +762,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (!bypassShield && enemy.shieldHp > 0) {
       const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
       enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
+      recordDps(dmg, '#b388ff');
       return dmg;
     }
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#b388ff');
+    }
     return dmg;
   }
 
   function damageAmethystShard(shard: AmethystShard, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     shard.hp = Math.max(0, shard.hp - dmg);
+    recordDps(dmg, '#b388ff');
     return dmg;
   }
 
@@ -704,13 +785,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (enemy.phaseInvuln) return 0;
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#e0e0ff');
+    }
     return dmg;
   }
 
   function damageDiamondShard(shard: DiamondShard, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     shard.hp = Math.max(0, shard.hp - dmg);
+    recordDps(dmg, '#e0e0ff');
     return dmg;
   }
 
@@ -718,33 +803,44 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (enemy.isAbsorbing) return 0;
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#2c2c2c');
+    }
     return dmg;
   }
 
   function damageVoidTendril(tendril: VoidTendril, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     tendril.hp = Math.max(0, tendril.hp - dmg);
+    recordDps(dmg, '#7b68ee');
     return dmg;
   }
 
   function damageFracterylEnemy(enemy: FracterylEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#ff69b4');
+    }
     return dmg;
   }
 
   function damageFracterylShard(shard: FracterylShard, rawDamage: number): number {
     const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
     shard.hp = Math.max(0, shard.hp - dmg);
+    recordDps(dmg, '#ff69b4');
     return dmg;
   }
 
   function damageEigensteinEnemy(enemy: EigensteinEnemy, rawDamage: number, defPierceRatio: number): number {
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) enemy.hp -= dmg;
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#00ffff');
+    }
     return dmg;
   }
 
@@ -761,18 +857,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (boss.shieldHp > 0) {
       const shieldDmg = Math.min(boss.shieldHp, rawDamage);
       boss.shieldHp -= shieldDmg;
+      recordDps(shieldDmg, '#ffd700');
       return shieldDmg;
     }
     const effectiveDef = boss.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
     boss.hp = Math.max(0, boss.hp - dmg);
-    if (dmg > 0 && isBossWaveActive) {
-      // Allow SWORD_COMBO_THRESHOLD hits before teleporting — gives the player
-      // exactly enough hits to build up and complete the 4-hit spin combo.
-      bossHitsInRound += 1;
-      if (bossHitsInRound >= SWORD_COMBO_THRESHOLD) {
-        boss.danmakuLevel += 1;
-        teleportPlayerToSafeZone(); // resets bossHitsInRound to 0
+    if (dmg > 0) {
+      recordDps(dmg, '#ffd700');
+      if (isBossWaveActive) {
+        // Allow SWORD_COMBO_THRESHOLD hits before teleporting — gives the player
+        // exactly enough hits to build up and complete the 4-hit spin combo.
+        bossHitsInRound += 1;
+        if (bossHitsInRound >= SWORD_COMBO_THRESHOLD) {
+          boss.danmakuLevel += 1;
+          teleportPlayerToSafeZone(); // resets bossHitsInRound to 0
+        }
       }
     }
     return dmg;
@@ -1094,6 +1194,171 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = bossEnemy; }
     }
+    return best;
+  }
+
+  // ── Tap-to-target system ───────────────────────────────────────
+
+  /** Radius (px) around tap point to detect an enemy for targeting. */
+  const TAP_TARGET_RADIUS = 20;
+  const TAP_TARGET_RADIUS_SQ = TAP_TARGET_RADIUS * TAP_TARGET_RADIUS;
+
+  /**
+   * Given a tap position, finds the closest enemy body (not projectile) within
+   * TAP_TARGET_RADIUS and sets it as the targeted enemy. If no enemy found,
+   * clears the target.
+   */
+  function tryTargetEnemyAt(tapX: number, tapY: number): void {
+    let bestSq = TAP_TARGET_RADIUS_SQ;
+    let bestEnemy: object | null = null;
+
+    // Helper to check distance from tap
+    const checkEnemy = (e: { x: number; y: number }) => {
+      const dx = e.x - tapX, dy = e.y - tapY;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; bestEnemy = e; }
+    };
+
+    for (const e of enemies) checkEnemy(e);
+    for (const e of sapphireEnemies) checkEnemy(e);
+    for (const e of emeraldEnemies) checkEnemy(e);
+    for (const e of amberEnemies) checkEnemy(e);
+    for (const e of voidEnemies) checkEnemy(e);
+    for (const e of quartzEnemies) checkEnemy(e);
+    for (const e of rubyEnemies) checkEnemy(e);
+    for (const e of sunstoneEnemies) checkEnemy(e);
+    for (const e of citrineEnemies) checkEnemy(e);
+    for (const e of ioliteEnemies) checkEnemy(e);
+    for (const e of amethystEnemies) checkEnemy(e);
+    for (const e of diamondEnemies) checkEnemy(e);
+    for (const e of nullstoneEnemies) checkEnemy(e);
+    for (const e of fracterylEnemies) checkEnemy(e);
+    for (const e of eigensteinEnemies) checkEnemy(e);
+    if (bossEnemy) checkEnemy(bossEnemy);
+
+    targetedEnemy = bestEnemy;
+  }
+
+  /**
+   * Returns the currently targeted enemy if it's still alive, or falls back to
+   * closest enemy from player. Automatically clears stale targets.
+   */
+  function getTargetedEnemy(): ClosestTarget | null {
+    // Validate existing target is still alive
+    if (targetedEnemy) {
+      // Check all enemy arrays to see if target still exists
+      const isAlive =
+        enemies.includes(targetedEnemy as LaserEnemy) ||
+        sapphireEnemies.includes(targetedEnemy as SapphireEnemy) ||
+        emeraldEnemies.includes(targetedEnemy as EmeraldEnemy) ||
+        amberEnemies.includes(targetedEnemy as AmberEnemy) ||
+        voidEnemies.includes(targetedEnemy as VoidEnemy) ||
+        quartzEnemies.includes(targetedEnemy as QuartzEnemy) ||
+        rubyEnemies.includes(targetedEnemy as RubyEnemy) ||
+        sunstoneEnemies.includes(targetedEnemy as SunstoneEnemy) ||
+        citrineEnemies.includes(targetedEnemy as CitrineEnemy) ||
+        ioliteEnemies.includes(targetedEnemy as IoliteEnemy) ||
+        amethystEnemies.includes(targetedEnemy as AmethystEnemy) ||
+        diamondEnemies.includes(targetedEnemy as DiamondEnemy) ||
+        nullstoneEnemies.includes(targetedEnemy as NullstoneEnemy) ||
+        fracterylEnemies.includes(targetedEnemy as FracterylEnemy) ||
+        eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy) ||
+        (bossEnemy === targetedEnemy);
+
+      if (!isAlive) {
+        targetedEnemy = null;
+      } else {
+        // Build a ClosestTarget from the targeted enemy
+        const e = targetedEnemy as { x: number; y: number };
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        const distSq = dx * dx + dy * dy;
+
+        if (enemies.includes(targetedEnemy as LaserEnemy)) {
+          return { kind: 'laser', x: e.x, y: e.y, distSq, laser: targetedEnemy as LaserEnemy };
+        }
+        if (sapphireEnemies.includes(targetedEnemy as SapphireEnemy)) {
+          return { kind: 'sapphire', x: e.x, y: e.y, distSq, sapphire: targetedEnemy as SapphireEnemy };
+        }
+        if (emeraldEnemies.includes(targetedEnemy as EmeraldEnemy)) {
+          return { kind: 'emerald', x: e.x, y: e.y, distSq, emerald: targetedEnemy as EmeraldEnemy };
+        }
+        if (amberEnemies.includes(targetedEnemy as AmberEnemy)) {
+          return { kind: 'amber', x: e.x, y: e.y, distSq, amber: targetedEnemy as AmberEnemy };
+        }
+        if (voidEnemies.includes(targetedEnemy as VoidEnemy)) {
+          return { kind: 'void', x: e.x, y: e.y, distSq, void: targetedEnemy as VoidEnemy };
+        }
+        if (quartzEnemies.includes(targetedEnemy as QuartzEnemy)) {
+          return { kind: 'quartz', x: e.x, y: e.y, distSq, quartz: targetedEnemy as QuartzEnemy };
+        }
+        if (rubyEnemies.includes(targetedEnemy as RubyEnemy)) {
+          return { kind: 'ruby', x: e.x, y: e.y, distSq, ruby: targetedEnemy as RubyEnemy };
+        }
+        if (sunstoneEnemies.includes(targetedEnemy as SunstoneEnemy)) {
+          return { kind: 'sunstone', x: e.x, y: e.y, distSq, sunstone: targetedEnemy as SunstoneEnemy };
+        }
+        if (citrineEnemies.includes(targetedEnemy as CitrineEnemy)) {
+          return { kind: 'citrine', x: e.x, y: e.y, distSq, citrine: targetedEnemy as CitrineEnemy };
+        }
+        if (ioliteEnemies.includes(targetedEnemy as IoliteEnemy)) {
+          return { kind: 'iolite', x: e.x, y: e.y, distSq, iolite: targetedEnemy as IoliteEnemy };
+        }
+        if (amethystEnemies.includes(targetedEnemy as AmethystEnemy)) {
+          return { kind: 'amethyst', x: e.x, y: e.y, distSq, amethyst: targetedEnemy as AmethystEnemy };
+        }
+        if (diamondEnemies.includes(targetedEnemy as DiamondEnemy)) {
+          return { kind: 'diamond', x: e.x, y: e.y, distSq, diamond: targetedEnemy as DiamondEnemy };
+        }
+        if (nullstoneEnemies.includes(targetedEnemy as NullstoneEnemy)) {
+          return { kind: 'nullstone', x: e.x, y: e.y, distSq, nullstone: targetedEnemy as NullstoneEnemy };
+        }
+        if (fracterylEnemies.includes(targetedEnemy as FracterylEnemy)) {
+          return { kind: 'fracteryl', x: e.x, y: e.y, distSq, fracteryl: targetedEnemy as FracterylEnemy };
+        }
+        if (eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy)) {
+          return { kind: 'eigenstein', x: e.x, y: e.y, distSq, eigenstein: targetedEnemy as EigensteinEnemy };
+        }
+        if (bossEnemy === targetedEnemy) {
+          return { kind: 'boss', x: e.x, y: e.y, distSq, boss: bossEnemy };
+        }
+      }
+    }
+
+    // Fallback to closest target
+    return findClosestTarget(Infinity);
+  }
+
+  /**
+   * Finds the enemy body that is furthest from the player.
+   * Used by amethyst ships for targeting.
+   */
+  function findFurthestEnemy(): { x: number; y: number } | null {
+    let bestSq = 0;
+    let best: { x: number; y: number } | null = null;
+
+    const checkEnemy = (e: { x: number; y: number }) => {
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d >= bestSq) { bestSq = d; best = e; }
+    };
+
+    for (const e of enemies) checkEnemy(e);
+    for (const e of sapphireEnemies) checkEnemy(e);
+    for (const e of emeraldEnemies) checkEnemy(e);
+    for (const e of amberEnemies) checkEnemy(e);
+    for (const e of voidEnemies) checkEnemy(e);
+    for (const e of quartzEnemies) checkEnemy(e);
+    for (const e of rubyEnemies) checkEnemy(e);
+    for (const e of sunstoneEnemies) checkEnemy(e);
+    for (const e of citrineEnemies) checkEnemy(e);
+    for (const e of ioliteEnemies) checkEnemy(e);
+    for (const e of amethystEnemies) checkEnemy(e);
+    for (const e of diamondEnemies) checkEnemy(e);
+    for (const e of nullstoneEnemies) checkEnemy(e);
+    for (const e of fracterylEnemies) checkEnemy(e);
+    for (const e of eigensteinEnemies) checkEnemy(e);
+    if (bossEnemy) checkEnemy(bossEnemy);
+
     return best;
   }
 
@@ -3147,6 +3412,402 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (laserBeamEffect.timerMs <= 0) laserBeamEffect.active = false;
   }
 
+  // ── Sapphire / Amethyst Companion Ship Systems ────────────────
+
+  /**
+   * Syncs sapphire ships to match equipped weapon tier.
+   * Call when weapon equip state changes.
+   */
+  function syncSapphireShips(): void {
+    // Find equipped sapphire_spike weapon
+    let equippedTier = 0;
+    for (const weaponId of getEffectiveEquippedIds()) {
+      const wd = WEAPON_BY_ID.get(weaponId);
+      if (wd?.stats.effect?.kind === 'sapphireShip') {
+        equippedTier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+        break;
+      }
+    }
+
+    // Adjust ship count
+    while (sapphireShips.length > equippedTier) sapphireShips.pop();
+    while (sapphireShips.length < equippedTier) {
+      const angle = (sapphireShips.length / equippedTier) * Math.PI * 2;
+      sapphireShips.push({
+        x: mote.x + Math.cos(angle) * SAPPHIRE_SHIP_ORBIT_RADIUS,
+        y: mote.y + Math.sin(angle) * SAPPHIRE_SHIP_ORBIT_RADIUS,
+        angle,
+        orbitAngle: angle,
+        targetEnemy: null,
+        cooldownMs: SAPPHIRE_SHIP_FIRE_COOLDOWN_MS,
+      });
+    }
+  }
+
+  /**
+   * Syncs amethyst ships to match equipped weapon tier.
+   * Call when weapon equip state changes.
+   */
+  function syncAmethystShips(): void {
+    // Find equipped amethyst_pierce weapon
+    let equippedTier = 0;
+    for (const weaponId of getEffectiveEquippedIds()) {
+      const wd = WEAPON_BY_ID.get(weaponId);
+      if (wd?.stats.effect?.kind === 'amethystShip') {
+        equippedTier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+        break;
+      }
+    }
+
+    // Adjust ship count
+    while (amethystShips.length > equippedTier) amethystShips.pop();
+    while (amethystShips.length < equippedTier) {
+      const angle = (amethystShips.length / equippedTier) * Math.PI * 2;
+      amethystShips.push({
+        x: mote.x + Math.cos(angle) * AMETHYST_SHIP_ORBIT_RADIUS,
+        y: mote.y + Math.sin(angle) * AMETHYST_SHIP_ORBIT_RADIUS,
+        angle,
+        orbitAngle: angle,
+        targetEnemy: null,
+        cooldownMs: AMETHYST_SHIP_FIRE_COOLDOWN_MS,
+      });
+    }
+  }
+
+  /**
+   * Updates sapphire ships: orbit around targeted enemy (or player),
+   * fire curving lasers at nearby enemies.
+   */
+  function updateSapphireShips(deltaMs: number): void {
+    if (sapphireShips.length === 0) return;
+
+    // Get the target: targeted enemy or player position
+    const effectiveTarget = getTargetedEnemy();
+    const targetX = effectiveTarget ? effectiveTarget.x : mote.x;
+    const targetY = effectiveTarget ? effectiveTarget.y : mote.y;
+
+    for (let i = 0; i < sapphireShips.length; i++) {
+      const ship = sapphireShips[i];
+
+      // Update orbit angle
+      ship.orbitAngle += SAPPHIRE_SHIP_ORBIT_SPEED * (deltaMs / 1000);
+
+      // Calculate desired position (orbiting the target)
+      const angleOffset = (i / sapphireShips.length) * Math.PI * 2;
+      const desiredX = targetX + Math.cos(ship.orbitAngle + angleOffset) * SAPPHIRE_SHIP_ORBIT_RADIUS;
+      const desiredY = targetY + Math.sin(ship.orbitAngle + angleOffset) * SAPPHIRE_SHIP_ORBIT_RADIUS;
+
+      // Smoothly move toward desired position
+      const dx = desiredX - ship.x;
+      const dy = desiredY - ship.y;
+      const moveSpeed = SAPPHIRE_SHIP_MOVE_SPEED * (deltaMs / 1000);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > moveSpeed) {
+        ship.x += (dx / dist) * moveSpeed;
+        ship.y += (dy / dist) * moveSpeed;
+      } else {
+        ship.x = desiredX;
+        ship.y = desiredY;
+      }
+
+      // Update ship facing angle to point at nearest enemy
+      const nearestEnemy = findClosestEnemy(SAPPHIRE_LASER_RANGE * SAPPHIRE_LASER_RANGE);
+      if (nearestEnemy) {
+        const toEnemyAngle = Math.atan2(nearestEnemy.y - ship.y, nearestEnemy.x - ship.x);
+        ship.angle = toEnemyAngle;
+      }
+
+      // Fire lasers if cooldown allows
+      ship.cooldownMs -= deltaMs;
+      if (ship.cooldownMs <= 0 && nearestEnemy) {
+        ship.cooldownMs = SAPPHIRE_SHIP_FIRE_COOLDOWN_MS;
+        spawnSapphireLaser(ship, nearestEnemy);
+      }
+    }
+  }
+
+  /**
+   * Spawns a sapphire laser from a ship toward a target enemy.
+   */
+  function spawnSapphireLaser(ship: SapphireShip, target: { x: number; y: number }): void {
+    const dx = target.x - ship.x;
+    const dy = target.y - ship.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 1) return;
+
+    // Calculate damage based on weapon tier
+    let damage = 20;
+    for (const weaponId of getEffectiveEquippedIds()) {
+      const wd = WEAPON_BY_ID.get(weaponId);
+      if (wd?.stats.effect?.kind === 'sapphireShip') {
+        const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+        damage = getScaledWeaponDamage(wd.stats.damage, tier, playerStats.atk);
+        break;
+      }
+    }
+
+    sapphireLasers.push({
+      x: ship.x,
+      y: ship.y,
+      vx: (dx / dist) * SAPPHIRE_LASER_SPEED,
+      vy: (dy / dist) * SAPPHIRE_LASER_SPEED,
+      targetX: target.x,
+      targetY: target.y,
+      damage,
+      age: 0,
+      curveDir: Math.random() > 0.5 ? 1 : -1,
+    });
+  }
+
+  /**
+   * Updates sapphire lasers: move with curve, check collisions, despawn.
+   */
+  function updateSapphireLasers(deltaMs: number): void {
+    const deltaSec = deltaMs / 1000;
+
+    for (let i = sapphireLasers.length - 1; i >= 0; i--) {
+      const laser = sapphireLasers[i];
+      laser.age += deltaMs;
+
+      // Apply curving: rotate velocity slightly toward target
+      const toTargetX = laser.targetX - laser.x;
+      const toTargetY = laser.targetY - laser.y;
+      const toTargetDist = Math.sqrt(toTargetX * toTargetX + toTargetY * toTargetY);
+
+      if (toTargetDist > 10) {
+        const currentAngle = Math.atan2(laser.vy, laser.vx);
+        const targetAngle = Math.atan2(toTargetY, toTargetX);
+        let angleDiff = targetAngle - currentAngle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        const turnAmount = Math.min(SAPPHIRE_LASER_CURVE_RATE * deltaSec, Math.abs(angleDiff)) * Math.sign(angleDiff);
+        const newAngle = currentAngle + turnAmount;
+        const speed = Math.sqrt(laser.vx * laser.vx + laser.vy * laser.vy);
+        laser.vx = Math.cos(newAngle) * speed;
+        laser.vy = Math.sin(newAngle) * speed;
+      }
+
+      // Move
+      laser.x += laser.vx * deltaSec;
+      laser.y += laser.vy * deltaSec;
+
+      // Check collision with enemies
+      let hit = false;
+      const hitRadius = SAPPHIRE_LASER_RADIUS + 8;
+
+      // Helper to check collision and deal damage
+      const checkHit = <T extends { x: number; y: number; hp: number; maxHp: number }>(
+        enemies: T[],
+        damageFunc: (e: T, dmg: number, pierce: number) => number
+      ) => {
+        for (const e of enemies) {
+          const dx = e.x - laser.x, dy = e.y - laser.y;
+          if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+            const dmg = damageFunc(e, laser.damage, 0.2);
+            spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, SAPPHIRE_LASER_COLOR);
+            hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: SAPPHIRE_LASER_GLOW });
+            hit = true;
+            return;
+          }
+        }
+      };
+
+      checkHit(enemies, damageEnemy);
+      if (!hit) checkHit(sapphireEnemies, (e, d, p) => damageSapphireEnemy(e, d, p, false));
+      if (!hit) checkHit(emeraldEnemies, damageEmeraldEnemy);
+      if (!hit) checkHit(amberEnemies, damageAmberEnemy);
+      if (!hit) checkHit(voidEnemies, damageVoidEnemy);
+      if (!hit) checkHit(quartzEnemies, damageQuartzEnemy);
+      if (!hit) checkHit(rubyEnemies, damageRubyEnemy);
+      if (!hit) checkHit(sunstoneEnemies, damageSunstoneEnemy);
+      if (!hit) checkHit(citrineEnemies, damageCitrineEnemy);
+      if (!hit) checkHit(ioliteEnemies, damageIoliteEnemy);
+      if (!hit) checkHit(amethystEnemies, (e, d, p) => damageAmethystEnemy(e, d, p, false));
+      if (!hit) checkHit(diamondEnemies, damageDiamondEnemy);
+      if (!hit) checkHit(nullstoneEnemies, damageNullstoneEnemy);
+      if (!hit) checkHit(fracterylEnemies, damageFracterylEnemy);
+      if (!hit) checkHit(eigensteinEnemies, damageEigensteinEnemy);
+
+      // Boss hit
+      if (!hit && bossEnemy) {
+        const dx = bossEnemy.x - laser.x, dy = bossEnemy.y - laser.y;
+        if (dx * dx + dy * dy <= (hitRadius + BOSS_RADIUS) * (hitRadius + BOSS_RADIUS)) {
+          const dmg = damageBossEnemy(laser.damage, 0.2);
+          spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, SAPPHIRE_LASER_COLOR);
+          hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: SAPPHIRE_LASER_GLOW });
+          hit = true;
+        }
+      }
+
+      // Remove if hit or expired or out of bounds
+      if (hit || laser.age > SAPPHIRE_LASER_LIFETIME_MS ||
+          laser.x < -50 || laser.x > widthPx + 50 ||
+          laser.y < -50 || laser.y > heightPx + 50) {
+        sapphireLasers.splice(i, 1);
+      }
+    }
+  }
+
+  /**
+   * Updates amethyst ships: orbit around furthest enemy (or player),
+   * fire spiraling pierce lasers every 3 seconds.
+   */
+  function updateAmethystShips(deltaMs: number): void {
+    if (amethystShips.length === 0) return;
+
+    // Get the target: furthest enemy or player position
+    const furthestEnemy = findFurthestEnemy();
+    const targetX = furthestEnemy ? furthestEnemy.x : mote.x;
+    const targetY = furthestEnemy ? furthestEnemy.y : mote.y;
+
+    for (let i = 0; i < amethystShips.length; i++) {
+      const ship = amethystShips[i];
+
+      // Update orbit angle
+      ship.orbitAngle += AMETHYST_SHIP_ORBIT_SPEED * (deltaMs / 1000);
+
+      // Calculate desired position (orbiting the target)
+      const angleOffset = (i / amethystShips.length) * Math.PI * 2;
+      const desiredX = targetX + Math.cos(ship.orbitAngle + angleOffset) * AMETHYST_SHIP_ORBIT_RADIUS;
+      const desiredY = targetY + Math.sin(ship.orbitAngle + angleOffset) * AMETHYST_SHIP_ORBIT_RADIUS;
+
+      // Smoothly move toward desired position
+      const dx = desiredX - ship.x;
+      const dy = desiredY - ship.y;
+      const moveSpeed = AMETHYST_SHIP_MOVE_SPEED * (deltaMs / 1000);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > moveSpeed) {
+        ship.x += (dx / dist) * moveSpeed;
+        ship.y += (dy / dist) * moveSpeed;
+      } else {
+        ship.x = desiredX;
+        ship.y = desiredY;
+      }
+
+      // Update ship facing angle to point at target
+      if (furthestEnemy) {
+        const toEnemyAngle = Math.atan2(furthestEnemy.y - ship.y, furthestEnemy.x - ship.x);
+        ship.angle = toEnemyAngle;
+      }
+
+      // Fire lasers if cooldown allows
+      ship.cooldownMs -= deltaMs;
+      if (ship.cooldownMs <= 0 && furthestEnemy) {
+        ship.cooldownMs = AMETHYST_SHIP_FIRE_COOLDOWN_MS;
+        spawnAmethystLaser(ship, furthestEnemy);
+      }
+    }
+  }
+
+  /**
+   * Spawns an amethyst laser from a ship toward a target enemy.
+   */
+  function spawnAmethystLaser(ship: AmethystShip, target: { x: number; y: number }): void {
+    const dx = target.x - ship.x;
+    const dy = target.y - ship.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 1) return;
+
+    // Calculate damage based on weapon tier (30× base damage)
+    let damage = 60 * 30;
+    for (const weaponId of getEffectiveEquippedIds()) {
+      const wd = WEAPON_BY_ID.get(weaponId);
+      if (wd?.stats.effect?.kind === 'amethystShip') {
+        const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+        damage = getScaledWeaponDamage(wd.stats.damage, tier, playerStats.atk) * 30;
+        break;
+      }
+    }
+
+    amethystLasers.push({
+      x: ship.x,
+      y: ship.y,
+      vx: (dx / dist) * AMETHYST_LASER_SPEED,
+      vy: (dy / dist) * AMETHYST_LASER_SPEED,
+      damage,
+      age: 0,
+      spiralAngle: 0,
+      hitEnemies: new Set(),
+    });
+  }
+
+  /**
+   * Updates amethyst lasers: move with spiral, pierce through enemies.
+   */
+  function updateAmethystLasers(deltaMs: number): void {
+    const deltaSec = deltaMs / 1000;
+
+    for (let i = amethystLasers.length - 1; i >= 0; i--) {
+      const laser = amethystLasers[i];
+      laser.age += deltaMs;
+
+      // Apply spiraling motion
+      laser.spiralAngle += AMETHYST_LASER_SPIRAL_RATE * deltaSec;
+      const spiralOffset = Math.sin(laser.spiralAngle) * AMETHYST_LASER_SPIRAL_AMP;
+      const perpX = -laser.vy;
+      const perpY = laser.vx;
+      const perpLen = Math.sqrt(perpX * perpX + perpY * perpY);
+
+      // Move with spiral offset
+      laser.x += laser.vx * deltaSec + (perpX / perpLen) * spiralOffset * deltaSec;
+      laser.y += laser.vy * deltaSec + (perpY / perpLen) * spiralOffset * deltaSec;
+
+      // Check collision with enemies (pierce through all)
+      const hitRadius = AMETHYST_LASER_RADIUS + 8;
+
+      // Helper to check collision and deal damage (piercing)
+      const checkPierceHit = <T extends { x: number; y: number; hp: number; maxHp: number }>(
+        enemies: T[],
+        damageFunc: (e: T, dmg: number, pierce: number) => number
+      ) => {
+        for (const e of enemies) {
+          if (laser.hitEnemies.has(e)) continue; // Already hit this enemy
+          const dx = e.x - laser.x, dy = e.y - laser.y;
+          if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+            laser.hitEnemies.add(e);
+            const dmg = damageFunc(e, laser.damage, 0.5);
+            spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, AMETHYST_LASER_COLOR);
+            hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: AMETHYST_LASER_GLOW });
+          }
+        }
+      };
+
+      checkPierceHit(enemies, damageEnemy);
+      checkPierceHit(sapphireEnemies, (e, d, p) => damageSapphireEnemy(e, d, p, true));
+      checkPierceHit(emeraldEnemies, damageEmeraldEnemy);
+      checkPierceHit(amberEnemies, damageAmberEnemy);
+      checkPierceHit(voidEnemies, damageVoidEnemy);
+      checkPierceHit(quartzEnemies, damageQuartzEnemy);
+      checkPierceHit(rubyEnemies, damageRubyEnemy);
+      checkPierceHit(sunstoneEnemies, damageSunstoneEnemy);
+      checkPierceHit(citrineEnemies, damageCitrineEnemy);
+      checkPierceHit(ioliteEnemies, damageIoliteEnemy);
+      checkPierceHit(amethystEnemies, (e, d, p) => damageAmethystEnemy(e, d, p, true));
+      checkPierceHit(diamondEnemies, damageDiamondEnemy);
+      checkPierceHit(nullstoneEnemies, damageNullstoneEnemy);
+      checkPierceHit(fracterylEnemies, damageFracterylEnemy);
+      checkPierceHit(eigensteinEnemies, damageEigensteinEnemy);
+
+      // Boss hit (piercing)
+      if (bossEnemy && !laser.hitEnemies.has(bossEnemy)) {
+        const dx = bossEnemy.x - laser.x, dy = bossEnemy.y - laser.y;
+        if (dx * dx + dy * dy <= (hitRadius + BOSS_RADIUS) * (hitRadius + BOSS_RADIUS)) {
+          laser.hitEnemies.add(bossEnemy);
+          const dmg = damageBossEnemy(laser.damage, 0.5);
+          spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / bossEnemy.maxHp, AMETHYST_LASER_COLOR);
+          hitEffects.push({ x: bossEnemy.x, y: bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: AMETHYST_LASER_GLOW });
+        }
+      }
+
+      // Remove if expired or out of bounds
+      if (laser.age > AMETHYST_LASER_LIFETIME_MS ||
+          laser.x < -100 || laser.x > widthPx + 100 ||
+          laser.y < -100 || laser.y > heightPx + 100) {
+        amethystLasers.splice(i, 1);
+      }
+    }
+  }
+
 
 
   /**
@@ -3918,7 +4579,30 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const waveWidget    = makeStatWidget('WAVE',   'rpg-stat-value--wave');
   const boostWidget   = makeStatWidget('BOOST',  'rpg-stat-value--boost');
   const xpWidget      = makeStatWidget('XP',     'rpg-stat-value--xp');
-  const weaponWidget  = makeStatWidget('WEAPON', 'rpg-stat-value--weapon');
+
+  // ── DPS Chart Widget ────────────────────────────────────────────
+  const dpsWidget = document.createElement('div');
+  dpsWidget.className = 'rpg-stat rpg-stat-dps';
+  const dpsLabelEl = document.createElement('span');
+  dpsLabelEl.className = 'rpg-stat-label';
+  dpsLabelEl.textContent = 'DPS';
+  const dpsValueEl = document.createElement('span');
+  dpsValueEl.className = 'rpg-stat-value rpg-stat-value--dps';
+  dpsValueEl.textContent = '0';
+  const dpsChartEl = document.createElement('div');
+  dpsChartEl.className = 'rpg-dps-chart';
+  // Create 8 bars for rolling DPS visualization
+  const dpsBars: HTMLDivElement[] = [];
+  for (let i = 0; i < 8; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'rpg-dps-bar';
+    dpsBars.push(bar);
+    dpsChartEl.appendChild(bar);
+  }
+  dpsWidget.appendChild(dpsLabelEl);
+  dpsWidget.appendChild(dpsValueEl);
+  dpsWidget.appendChild(dpsChartEl);
+  statsPanel.appendChild(dpsWidget);
 
   function updateStatsPanelDom(): void {
     hpWidget.valueEl.textContent   = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
@@ -3944,20 +4628,28 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       : '+0.0%';
     xpWidget.valueEl.textContent   = formatXp(rpgSimState.xp);
 
-    const equippedIds = Array.from(getEffectiveEquippedIds());
-    if (equippedIds.length > 0) {
-      const labels = equippedIds.map(id => {
-        const wd = WEAPON_BY_ID.get(id);
-        const tier = rpgSimState.weaponTiersByWeaponId.get(id) ?? 1;
-        return wd ? `${wd.name} T${tier}` : id;
-      });
-      weaponWidget.valueEl.textContent = labels.join(', ');
-      const firstDef = WEAPON_BY_ID.get(equippedIds[0]);
-      const tierDef = firstDef ? TIER_BY_ID.get(firstDef.costTierId) : undefined;
-      weaponWidget.valueEl.style.color = tierDef?.color ?? '#fff172';
-    } else {
-      weaponWidget.valueEl.textContent = 'None';
-      weaponWidget.valueEl.style.color = '';
+    // ── DPS chart update ──────────────────────────────────────────
+    const now = Date.now();
+    // Remove old events outside the window
+    while (dpsWindow.length > 0 && now - dpsWindow[0].t > DPS_WINDOW_MS) {
+      dpsWindow.shift();
+    }
+    // Calculate total DPS
+    const totalDmg = dpsWindow.reduce((sum, e) => sum + e.dmg, 0);
+    const dps = totalDmg / (DPS_WINDOW_MS / 1000);
+    dpsValueEl.textContent = dps >= 1000 ? (dps / 1000).toFixed(1) + 'k' : Math.round(dps).toString();
+    // Update bar heights based on time buckets
+    const bucketMs = DPS_WINDOW_MS / dpsBars.length;
+    const bucketDmg: number[] = new Array(dpsBars.length).fill(0);
+    for (const e of dpsWindow) {
+      const age = now - e.t;
+      const idx = Math.min(dpsBars.length - 1, Math.floor(age / bucketMs));
+      bucketDmg[dpsBars.length - 1 - idx] += e.dmg;
+    }
+    const maxBucket = Math.max(1, ...bucketDmg);
+    for (let i = 0; i < dpsBars.length; i++) {
+      const pct = (bucketDmg[i] / maxBucket) * 100;
+      dpsBars[i].style.height = pct + '%';
     }
   }
   updateStatsPanelDom();
@@ -3969,6 +4661,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
   }
 
+  // ── Tap-to-target tracking ──────────────────────────────────────
+  let pointerDownTime = 0;
+  let pointerDownX = 0;
+  let pointerDownY = 0;
+  const TAP_MAX_MS = 250;       // max duration for a tap
+  const TAP_MAX_MOVE_PX = 10;   // max movement for a tap
+
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     e.preventDefault(); e.stopPropagation();
     canvas.setPointerCapture(e.pointerId);
@@ -3976,6 +4675,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     joystick.isActive = true; joystick.pointerId = e.pointerId;
     joystick.baseX = pos.x; joystick.baseY = pos.y;
     joystick.thumbX = pos.x; joystick.thumbY = pos.y;
+    // Record for tap detection
+    pointerDownTime = Date.now();
+    pointerDownX = pos.x;
+    pointerDownY = pos.y;
   }, { passive: false });
 
   canvas.addEventListener('pointermove', (e: PointerEvent) => {
@@ -3993,11 +4696,25 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }, { passive: false });
 
-  function endJoystick(pointerId: number): void {
+  function endJoystick(pointerId: number, pos?: { x: number; y: number }): void {
     if (pointerId !== joystick.pointerId) return;
+    // Check for tap-to-target
+    if (pos) {
+      const elapsed = Date.now() - pointerDownTime;
+      const dx = pos.x - pointerDownX;
+      const dy = pos.y - pointerDownY;
+      const moveDist = Math.sqrt(dx * dx + dy * dy);
+      if (elapsed <= TAP_MAX_MS && moveDist <= TAP_MAX_MOVE_PX) {
+        // This is a tap — find enemy at tap location
+        tryTargetEnemyAt(pos.x, pos.y);
+      }
+    }
     joystick.isActive = false; joystick.pointerId = -1;
   }
-  canvas.addEventListener('pointerup',     (e: PointerEvent) => endJoystick(e.pointerId));
+  canvas.addEventListener('pointerup', (e: PointerEvent) => {
+    const pos = toCanvasCoords(e.clientX, e.clientY);
+    endJoystick(e.pointerId, pos);
+  });
   canvas.addEventListener('pointercancel', (e: PointerEvent) => endJoystick(e.pointerId));
 
   function handleKeyDown(e: KeyboardEvent): void {
@@ -4981,6 +5698,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       drawOrbitProjectile(ctx, orbitProjectile);
       for (const ws of chainWhipStates.values()) drawChainWhip(ctx, ws);
       drawSwordCombos(ctx, swordComboStates, mote, rpgSimState.weaponTiersByWeaponId);
+      // ── Companion ships and lasers ────────────────────────────────
+      drawSapphireShips(ctx, sapphireShips);
+      drawSapphireLasers(ctx, sapphireLasers);
+      drawAmethystShips(ctx, amethystShips);
+      drawAmethystLasers(ctx, amethystLasers);
+      // ── Target reticle ────────────────────────────────────────────
+      if (targetedEnemy) {
+        const te = targetedEnemy as { x: number; y: number };
+        drawTargetReticle(ctx, te.x, te.y, glowTimeS);
+      }
     }
 
     if (joystick.isActive && rpgPhase === 'alive') {
@@ -5111,6 +5838,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateEmeraldSwirlParticles(deltaMs);
       updateSunstoneMines(deltaMs);
       updateLaserBeamEffect(deltaMs);
+      // ── Companion ship systems ────────────────────────────────────
+      updateSapphireShips(deltaMs);
+      updateSapphireLasers(deltaMs);
+      updateAmethystShips(deltaMs);
+      updateAmethystLasers(deltaMs);
       removeDeadEnemies();
       checkWaveCompletion();
 
@@ -5120,7 +5852,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         // These weapon kinds manage their own timing.
         if (weaponDef?.stats.effect?.kind === 'chainWhip'  ||
             weaponDef?.stats.effect?.kind === 'vortex'     ||
-            weaponDef?.stats.effect?.kind === 'swordCombo') continue;
+            weaponDef?.stats.effect?.kind === 'swordCombo' ||
+            weaponDef?.stats.effect?.kind === 'sapphireShip' ||
+            weaponDef?.stats.effect?.kind === 'amethystShip') continue;
         const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
         const cooldownMs = weaponDef
           ? getScaledWeaponCooldown(weaponDef.stats.cooldownMs, tier)
@@ -5179,6 +5913,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     notifyEquip(): void {
       applyEquipmentStats();
+      // Sync companion ships to match equipped weapon tiers
+      syncSapphireShips();
+      syncAmethystShips();
     },
 
     devJumpToWave(wave: number): void {

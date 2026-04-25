@@ -22,6 +22,14 @@ import {
 } from './rpg-constants';
 import { chainNodeRadius, getSwordLength, getShardDistances, getShardStyle } from './rpg-helpers';
 
+// ── Low-graphics mode flag ────────────────────────────────────
+let isLowGraphicsMode = false;
+
+/** Sets low-graphics mode for RPG weapon draw functions (skips glow effects). */
+export function setLowGraphicsMode(enabled: boolean): void {
+  isLowGraphicsMode = enabled;
+}
+
 // ── Chain whip ────────────────────────────────────────────────────────────────
 
 /**
@@ -37,7 +45,9 @@ export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState)
   ctx.lineJoin  = 'round';
   // Draw chain links (lines between nodes)
   ctx.strokeStyle = CHAIN_LINE_COLOR;
-  ctx.shadowBlur  = 4; ctx.shadowColor = CHAIN_NODE_GLOW;
+  if (!isLowGraphicsMode) {
+    ctx.shadowBlur  = 4; ctx.shadowColor = CHAIN_NODE_GLOW;
+  }
   ctx.globalAlpha = 0.75;
   ctx.beginPath();
   ctx.moveTo(ws.nodesX[0], ws.nodesY[0]);
@@ -48,12 +58,14 @@ export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState)
   for (let i = 0; i < CHAIN_NODES; i++) {
     const r = chainNodeRadius(i);
     ctx.globalAlpha = 0.9;
-    ctx.shadowBlur  = r * 3; ctx.shadowColor = CHAIN_NODE_GLOW;
-    ctx.fillStyle   = CHAIN_NODE_GLOW;
-    ctx.beginPath();
-    ctx.arc(ws.nodesX[i], ws.nodesY[i], r * 1.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur  = r * 3; ctx.shadowColor = CHAIN_NODE_GLOW;
+      ctx.fillStyle   = CHAIN_NODE_GLOW;
+      ctx.beginPath();
+      ctx.arc(ws.nodesX[i], ws.nodesY[i], r * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle  = CHAIN_NODE_COLOR;
     ctx.beginPath();
     ctx.arc(ws.nodesX[i], ws.nodesY[i], r, 0, Math.PI * 2);
@@ -72,9 +84,11 @@ export function drawVortexes(ctx: CanvasRenderingContext2D, vortexes: NullstoneV
   for (const v of vortexes) {
     const alpha = v.durationMs / v.maxDurationMs;
     const r = v.radiusPx;
-    // Outer ring glow
+    // Outer ring (glow only in high-graphics mode)
     ctx.globalAlpha = alpha * 0.6;
-    ctx.shadowBlur = r * 0.5; ctx.shadowColor = VORTEX_GLOW;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur = r * 0.5; ctx.shadowColor = VORTEX_GLOW;
+    }
     ctx.strokeStyle = VORTEX_COLOR; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, Math.PI * 2); ctx.stroke();
     ctx.shadowBlur = 0;
@@ -130,7 +144,9 @@ export function drawSwordCombos(
         const segEnd   = segStart + (Math.PI * 2) / numArcs;
         ctx.globalAlpha = ringAlpha * 0.8;
         ctx.strokeStyle = SWORD_PRISMATIC_COLORS[ci];
-        ctx.shadowBlur  = 14; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
+        if (!isLowGraphicsMode) {
+          ctx.shadowBlur  = 14; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
+        }
         ctx.beginPath();
         ctx.arc(mote.x, mote.y, swordLength, segStart, segEnd);
         ctx.stroke();
@@ -155,8 +171,10 @@ export function drawSwordCombos(
       const shardAlpha = isSpinCombo ? 1.0 : (state.phase === 'swing' ? 1.0 : 0.85);
       ctx.globalAlpha = shardAlpha;
       ctx.fillStyle = color;
-      ctx.shadowBlur = (isSpinCombo ? 12 : 5) + (state.phase === 'swing' ? 4 : 0);
-      ctx.shadowColor = color;
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = (isSpinCombo ? 12 : 5) + (state.phase === 'swing' ? 4 : 0);
+        ctx.shadowColor = color;
+      }
       ctx.beginPath();
       for (let v = 0; v < verts.length; v++) {
         const [cu, su] = verts[v];
@@ -188,7 +206,9 @@ export function drawSwordCombos(
         const segStart = fx.arcStart + angOffset;
         const segEnd   = segStart + arcSpan / numArcs;
         ctx.strokeStyle = SWORD_PRISMATIC_COLORS[ci];
-        ctx.shadowBlur  = 8; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
+        if (!isLowGraphicsMode) {
+          ctx.shadowBlur  = 8; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
+        }
         ctx.beginPath();
         ctx.arc(fx.x, fx.y, fx.swordLength, segStart, segEnd);
         ctx.stroke();
@@ -236,7 +256,9 @@ export function drawSwordCombos(
 
       ctx.globalAlpha = alpha;
       ctx.fillStyle = bColor;
-      ctx.shadowBlur = 10; ctx.shadowColor = bColor;
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = 10; ctx.shadowColor = bColor;
+      }
       ctx.beginPath();
       ctx.moveTo(drawTailX, drawTailY);
       ctx.lineTo(bcx + bpx * halfWidth, bcy + bpy * halfWidth);
