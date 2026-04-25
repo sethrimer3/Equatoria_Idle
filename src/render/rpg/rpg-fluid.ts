@@ -342,7 +342,12 @@ export function createRpgFluid(): RpgFluid {
     const gvyRaw = impulse.vy / cellH;
     const gspd   = Math.sqrt(gvxRaw * gvxRaw + gvyRaw * gvyRaw);
     const scale  = gspd > MAX_INJECT_VEL ? MAX_INJECT_VEL / gspd : 1.0;
-    _splat(gx, gy, gvxRaw * scale, gvyRaw * scale, impulse.r, impulse.g, impulse.b, str);
+    // Exponential (quadratic) dropoff: slow movements barely disturb the
+    // fluid, fast movements disturb it proportionally more.  This prevents
+    // even tiny entity displacements from sending fluid particles flying.
+    const normSpd     = _clamp(gspd / MAX_INJECT_VEL, 0, 1);
+    const speedFactor = normSpd * normSpd;
+    _splat(gx, gy, gvxRaw * scale, gvyRaw * scale, impulse.r, impulse.g, impulse.b, str * speedFactor);
   }
 
   function addExplosion(

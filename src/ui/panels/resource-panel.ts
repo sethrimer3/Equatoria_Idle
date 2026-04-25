@@ -1,5 +1,5 @@
 import type { GameState } from '../../sim';
-import { TIERS } from '../../data/tiers';
+import { TIERS, type TierId } from '../../data/tiers';
 import { getMotes, getLifetimeMotes, totalToSizeCounts } from '../../sim/resources';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getRefinedGemFallbackPath, getRefinedGemPath } from '../../render/assets/asset-paths';
@@ -25,7 +25,7 @@ export interface ResourcePanel {
   update(state: GameState, numberFormat: NumberFormat): void;
 }
 
-export function createResourcePanel(): ResourcePanel {
+export function createResourcePanel(onHoverTier?: (tierId: TierId | null) => void): ResourcePanel {
   const panel = document.createElement('div');
   panel.className = 'panel resource-panel';
 
@@ -40,6 +40,10 @@ export function createResourcePanel(): ResourcePanel {
     const row = document.createElement('div');
     row.className = 'resource-row';
     row.style.borderLeftColor = tier.color;
+    if (onHoverTier) {
+      row.addEventListener('pointerenter', () => onHoverTier(tier.id));
+      row.addEventListener('pointerleave', () => onHoverTier(null));
+    }
     panel.appendChild(row);
     rows.set(tier.id, row);
   }

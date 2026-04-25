@@ -53,6 +53,9 @@ export function drawForge(
   );
   const effectiveRotation = forgeRotation * spinMult;
 
+  // ── Large soft glow — drawn first so it sits just above the background ──
+  drawForgeBackgroundGlow(ctx, forgeX, forgeY, forgeSize, nowMs);
+
   const sprite = getCachedImage(FORGE_SPRITE_PATH) ?? getCachedImage(FORGE_SPRITE_LEGACY_PATH);
   const spriteAlt = getCachedImage(FORGE_SPRITE_ALT_PATH) ?? getCachedImage(FORGE_SPRITE_ALT_LEGACY_PATH);
 
@@ -64,6 +67,35 @@ export function drawForge(
 
   // Attraction radius — bidirectional fire swirl, 25 % smaller than physics range
   drawForgeInfluenceSwirl(ctx, forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE * FORGE_INFLUENCE_VISUAL_SCALE, nowMs);
+}
+
+/**
+ * Draw a large, soft ambient glow behind the forge.
+ * Uses a slow-pulsing radial gradient in warm golden tones so the forge
+ * feels like a heat source — visible through the background animation.
+ */
+function drawForgeBackgroundGlow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  forgeSize: number,
+  nowMs: number,
+): void {
+  const t     = nowMs / 1000;
+  const pulse = 0.75 + 0.25 * Math.sin(t * 0.9);
+  const r     = forgeSize * 5.5 * pulse;
+
+  ctx.save();
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+  grad.addColorStop(0,   `rgba(255, 200, 80, ${0.28 * pulse})`);
+  grad.addColorStop(0.3, `rgba(255, 140, 40, ${0.18 * pulse})`);
+  grad.addColorStop(0.6, `rgba(200,  80, 20, ${0.08 * pulse})`);
+  grad.addColorStop(1,   'rgba(120, 40,  10, 0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 /**

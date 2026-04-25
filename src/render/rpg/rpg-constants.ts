@@ -629,8 +629,8 @@ export const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x1
 // Lower values = gentler disturbance; higher = more reactive.
 /** Converts entity velocity from px/frame units to px/s for fluid injection. */
 export const FLUID_VEL_FRAME_TO_PX_S = 1000 / TARGET_FRAME_MS;  // = ~60 at 60 fps
-export const FLUID_PLAYER_STRENGTH    = 0.18;
-export const FLUID_ENEMY_STRENGTH     = 0.22;
+export const FLUID_PLAYER_STRENGTH    = 0.06;
+export const FLUID_ENEMY_STRENGTH     = 0.08;
 export const FLUID_PROJECTILE_STRENGTH = 0.25;
 export const FLUID_MISSILE_STRENGTH   = 0.35;
 export const FLUID_LASER_BEAM_STRENGTH = 0.55;

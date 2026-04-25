@@ -186,6 +186,7 @@
 .looms-sub-tab-btn {
   flex: 1;
   padding: 6px 12px;
+  font-family: var(--font-primary);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 1px;
