@@ -717,16 +717,32 @@ export const EMERALD_SUB_MISSILE_SQUIGGLE     =  0.10;
 export const EMERALD_SUB_MISSILE_SQUIGGLE_HZ  =  0.22;
 /** px range within which a sub-missile "sees" enemies. */
 export const EMERALD_SUB_MISSILE_DETECT_PX    = 80;
-/** ms with no enemy in detect range before sub-missile fizzles. */
-export const EMERALD_SUB_MISSILE_NO_TARGET_MS = 2200;
-/** Per-frame speed multiplier while sub-missile is fizzling. */
-export const EMERALD_SUB_MISSILE_FIZZLE_DRAG  =  0.91;
-/** px/frame threshold below which a fizzling sub-missile is stopped. */
-export const EMERALD_SUB_MISSILE_STOP_SPEED   =  0.05;
+/** Total fuel lifetime: sub-missile stops seeking after this many ms. */
+export const EMERALD_SUB_MISSILE_FUEL_MS          = 4000;
+/** ms into lifetime at which deceleration drag begins (gradual stop between 2 s and 4 s). */
+export const EMERALD_SUB_MISSILE_DECEL_START_MS   = 2000;
+/** Per-frame speed multiplier once deceleration begins. */
+export const EMERALD_SUB_MISSILE_FIZZLE_DRAG      =  0.91;
+/** px/frame threshold below which a decelerating sub-missile is considered stopped. */
+export const EMERALD_SUB_MISSILE_STOP_SPEED       =  0.05;
+/** ms to wait after coming to a complete stop before detonating. */
+export const EMERALD_SUB_MISSILE_POST_STOP_DELAY_MS = 500;
 /** AOE explosion radius of a stopped sub-missile (px). */
-export const EMERALD_SUB_MISSILE_AOE_PX       = 14;
+export const EMERALD_SUB_MISSILE_AOE_PX           = 14;
 /** Damage fraction delivered by each sub-missile relative to the parent. */
-export const EMERALD_SUB_MISSILE_DAMAGE_MULT  =  0.6;
+export const EMERALD_SUB_MISSILE_DAMAGE_MULT      =  0.6;
+
+// ── Emerald sub-missile AOE swirl particle effect ─────────────
+/** Number of swirl particles spawned per sub-missile explosion. */
+export const EMERALD_SWIRL_COUNT    = 12;
+/** Lifetime of each swirl particle (ms). */
+export const EMERALD_SWIRL_LIFE_MS  = 700;
+/** Initial speed of swirl particles (px/frame at 60 fps). */
+export const EMERALD_SWIRL_SPEED    = 1.5;
+/** Per-frame drag applied to swirl particles. */
+export const EMERALD_SWIRL_DRAG     = 0.90;
+/** Radius of each swirl particle (px). */
+export const EMERALD_SWIRL_SIZE     = 2.0;
 
 // ── Sunstone mine ─────────────────────────────────────────────
 /** Total fuse duration before a mine auto-detonates (ms). */

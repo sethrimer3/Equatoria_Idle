@@ -30,7 +30,7 @@ import type {
   LaserEnemy,
   WeaponOrbitParticle, OrbitProjectile,
   TeleportParticle,
-  EmeraldPlayerMissile, EmeraldSubMissile,
+  EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
   SunstoneMine,
 } from './rpg-types';
 
@@ -66,7 +66,8 @@ import {
   LASER_DASH_DISTANCE, LASER_TRAIL_ERASE_MS, ATTACK_TRAIL_LENGTH_SCALE,
   ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE, LASER_ENEMY_GLOW, LASER_ENEMY_COLOR,
   EMERALD_MISSILE_SIZE, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_GLOW, EMERALD_MISSILE_TRAIL_CAP,
-  EMERALD_SUB_MISSILE_SIZE, EMERALD_SUB_MISSILE_TRAIL_CAP,
+  EMERALD_SUB_MISSILE_SIZE, EMERALD_SUB_MISSILE_TRAIL_CAP, EMERALD_SUB_MISSILE_DECEL_START_MS,
+  EMERALD_SWIRL_LIFE_MS, EMERALD_SWIRL_SIZE,
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_SIZE, SUNSTONE_MINE_COLOR, SUNSTONE_MINE_GLOW,
   SUNSTONE_MINE_DANGER_COLOR,
 } from './rpg-constants';
@@ -931,7 +932,8 @@ export function drawEmeraldSubMissiles(
   const now = performance.now();
   ctx.save();
   for (const s of missiles) {
-    const baseAlpha = s.isFizzling
+    const isDecelerating = s.lifetimeMs >= EMERALD_SUB_MISSILE_DECEL_START_MS;
+    const baseAlpha = isDecelerating
       ? 0.4 + 0.6 * Math.abs(Math.sin(now * 0.018))
       : 1;
 
@@ -964,6 +966,31 @@ export function drawEmeraldSubMissiles(
     ctx.shadowBlur = 0;
     ctx.fillStyle  = EMERALD_MISSILE_COLOR;
     ctx.fillRect(Math.floor(s.x - half), Math.floor(s.y - half), Math.ceil(EMERALD_SUB_MISSILE_SIZE), Math.ceil(EMERALD_SUB_MISSILE_SIZE));
+  }
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── Emerald swirl particles (visual-only, spawned by sub-missile AOE explosion) ─
+
+export function drawEmeraldSwirlParticles(
+  ctx: CanvasRenderingContext2D,
+  particles: EmeraldSwirlParticle[],
+): void {
+  if (particles.length === 0) return;
+  ctx.save();
+  for (const p of particles) {
+    const alpha = Math.max(0, p.lifeMs / EMERALD_SWIRL_LIFE_MS);
+    const half  = EMERALD_SWIRL_SIZE / 2;
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.shadowBlur  = EMERALD_SWIRL_SIZE * 5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+    ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+    const gh = half * 2;
+    ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle   = EMERALD_MISSILE_COLOR;
+    ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(EMERALD_SWIRL_SIZE), Math.ceil(EMERALD_SWIRL_SIZE));
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.restore();

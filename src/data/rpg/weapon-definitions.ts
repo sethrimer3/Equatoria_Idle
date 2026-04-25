@@ -173,7 +173,7 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     costTierId: 'emerald',
     cost: 100,
     stats: {
-      damage: 7, cooldownMs: 1400, range: 90, defBonus: 0,
+      damage: 7, cooldownMs: 2800, range: 90, defBonus: 0,
       effect: { kind: 'emeraldMissile' },
     },
   },
