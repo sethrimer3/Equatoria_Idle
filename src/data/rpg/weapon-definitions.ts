@@ -43,7 +43,20 @@ export type WeaponEffect =
    * Single-target poison magic projectile. On hit applies a poison DoT whose
    * total damage, duration, and armour-ignore ratio all scale with tier.
    */
-  | { kind: 'poisonBolt' };
+  | { kind: 'poisonBolt' }
+  /**
+   * Heat-seeking emerald missiles fired at the nearest enemy.
+   * Each missile homes toward its target and leaves a gorgeous emerald comet trail.
+   * Higher tiers increase damage and fire rate.
+   */
+  | { kind: 'emeraldMissile' }
+  /**
+   * Lays proximity/fuse mines at the player's current position.
+   * Each mine explodes after a fixed fuse time or when an enemy gets close.
+   * Taking damage detonates the mine prematurely. Higher tiers increase
+   * fire rate (up to 2/s), base damage, and AOE explosion radius.
+   */
+  | { kind: 'sunstoneMine' };
 
 /** Combat stats granted by equipping this weapon. */
 export interface WeaponStats {
@@ -122,13 +135,16 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   // ── Tier 3: Sunstone ──────────────────────────────────────────
   {
     id: 'sunstone_ward',
-    name: 'Sunstone Ward',
-    description: 'A warm defensive ward. Boosts survivability and still pokes nearby foes.',
+    name: 'Sunstone Mine Layer',
+    description:
+      'Plants proximity mines that detonate after 15 seconds or when an enemy steps close. ' +
+      'Mines hit by enemy attacks explode immediately. Massive AOE damage on detonation. ' +
+      'Higher tiers increase mine-laying speed (up to 2 per second), base damage, and explosion radius.',
     costTierId: 'sunstone',
     cost: 150,
     stats: {
-      damage: 2, cooldownMs: 2000, range: 40, defBonus: 8,
-      effect: { kind: 'single' },
+      damage: 40, cooldownMs: 2000, range: 9999, defBonus: 8,
+      effect: { kind: 'sunstoneMine' },
     },
   },
 
@@ -150,15 +166,15 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   // ── Tier 5: Emerald ───────────────────────────────────────────
   {
     id: 'emerald_spray',
-    name: 'Emerald Spray',
+    name: 'Emerald RPG',
     description:
-      'Scatter-fires at the 3 nearest enemies each burst. Weaker per-hit but excellent ' +
-      'against packed waves — no manual targeting needed.',
+      'Fires heat-seeking emerald missiles that home relentlessly toward their target, ' +
+      'leaving a gorgeous emerald comet trail. Higher tiers increase damage and fire rate.',
     costTierId: 'emerald',
     cost: 100,
     stats: {
       damage: 7, cooldownMs: 1400, range: 90, defBonus: 0,
-      effect: { kind: 'multi', targetCount: 3 },
+      effect: { kind: 'emeraldMissile' },
     },
   },
 

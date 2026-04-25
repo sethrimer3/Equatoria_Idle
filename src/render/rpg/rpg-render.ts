@@ -120,7 +120,11 @@ import {
   FRACTERYL_ENEMY_SIZE,
   EIGENSTEIN_ENEMY_GLOW,
   EIGENSTEIN_ENEMY_SIZE,
-  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT
+  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
+  EMERALD_MISSILE_SPEED, EMERALD_MISSILE_MAX_SPEED, EMERALD_MISSILE_SEEK_STR,
+  EMERALD_MISSILE_TRAIL_CAP, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_HIT_RADIUS,
+  SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_PROXIMITY_PX, SUNSTONE_MINE_AOE_BASE_PX,
+  SUNSTONE_MINE_AOE_PER_TIER_PX, SUNSTONE_MINE_HP, SUNSTONE_MINE_SIZE,
 } from './rpg-constants';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
@@ -145,6 +149,7 @@ import {
   drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   drawAttackTrail,
   drawWeaponOrbitParticle, drawOrbitProjectile,
+  drawEmeraldPlayerMissiles, drawSunstoneMines,
 } from './rpg-entity-draw';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
@@ -169,6 +174,8 @@ import type {
   EigensteinEnemy, EigensteinBeam,
   DanmakuSafeZone,
   TeleportParticle,
+  EmeraldPlayerMissile,
+  SunstoneMine,
 } from './rpg-types';
 import {
   makeLaserEnemy, makeSapphireEnemy,
@@ -348,6 +355,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Iolite poison bolt state ───────────────────────────────────
   const poisonBolts: IolitePoisonBolt[]            = [];
   const poisonDebuffs: Map<object, PoisonDebuff>   = new Map();
+
+  // ── Emerald player missiles (heat-seeking) ─────────────────────
+  const emeraldPlayerMissiles: EmeraldPlayerMissile[] = [];
+
+  // ── Sunstone mines ─────────────────────────────────────────────
+  const sunstoneMines: SunstoneMine[] = [];
 
   // ── Aim direction tracker (updated each physics frame) ────────
   let playerAimAngle = -Math.PI / 2;  // default: upward
@@ -2262,6 +2275,274 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
 
+  // ── Emerald heat-seeking missile system ───────────────────────
+
+  function spawnEmeraldMissile(targetX: number, targetY: number, scaledDamage: number): void {
+    const dx = targetX - mote.x, dy = targetY - mote.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.01) return;
+    emeraldPlayerMissiles.push({
+      x: mote.x, y: mote.y,
+      vx: (dx / dist) * EMERALD_MISSILE_SPEED,
+      vy: (dy / dist) * EMERALD_MISSILE_SPEED,
+      scaledDamage,
+      trailX: new Float64Array(EMERALD_MISSILE_TRAIL_CAP),
+      trailY: new Float64Array(EMERALD_MISSILE_TRAIL_CAP),
+      trailHead: 0, trailCount: 0,
+    });
+  }
+
+  function updateEmeraldPlayerMissiles(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const hitR = EMERALD_MISSILE_HIT_RADIUS;
+
+    for (let i = emeraldPlayerMissiles.length - 1; i >= 0; i--) {
+      const m = emeraldPlayerMissiles[i];
+
+      // Heat-seeking: home toward nearest enemy at all times.
+      let nearestEnemyX: number | null = null;
+      let nearestEnemyY: number | null = null;
+      let nearestDistSq = Infinity;
+      const checkTarget = (ex: number, ey: number) => {
+        const d = (ex - m.x) * (ex - m.x) + (ey - m.y) * (ey - m.y);
+        if (d < nearestDistSq) { nearestDistSq = d; nearestEnemyX = ex; nearestEnemyY = ey; }
+      };
+      for (const e of enemies)          checkTarget(e.x, e.y);
+      for (const e of sapphireEnemies)  checkTarget(e.x, e.y);
+      for (const e of emeraldEnemies)   checkTarget(e.x, e.y);
+      for (const e of amberEnemies)     checkTarget(e.x, e.y);
+      for (const e of voidEnemies)      checkTarget(e.x, e.y);
+      for (const e of quartzEnemies)    checkTarget(e.x, e.y);
+      for (const e of rubyEnemies)      checkTarget(e.x, e.y);
+      for (const e of sunstoneEnemies)  checkTarget(e.x, e.y);
+      for (const e of citrineEnemies)   checkTarget(e.x, e.y);
+      for (const e of ioliteEnemies)    checkTarget(e.x, e.y);
+      for (const e of amethystEnemies)  checkTarget(e.x, e.y);
+      for (const e of diamondEnemies)   checkTarget(e.x, e.y);
+      for (const e of nullstoneEnemies) checkTarget(e.x, e.y);
+      for (const e of fracterylEnemies) checkTarget(e.x, e.y);
+      for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
+      if (bossEnemy) checkTarget(bossEnemy.x, bossEnemy.y);
+
+      if (nearestEnemyX !== null && nearestEnemyY !== null) {
+        const ex = nearestEnemyX - m.x, ey = nearestEnemyY - m.y;
+        const eDist = Math.sqrt(ex * ex + ey * ey);
+        if (eDist > 0.01) {
+          m.vx += (ex / eDist) * EMERALD_MISSILE_SEEK_STR * dt;
+          m.vy += (ey / eDist) * EMERALD_MISSILE_SEEK_STR * dt;
+        }
+      }
+
+      // Clamp speed.
+      const spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+      if (spd > EMERALD_MISSILE_MAX_SPEED) {
+        const s = EMERALD_MISSILE_MAX_SPEED / spd;
+        m.vx *= s; m.vy *= s;
+      }
+
+      m.x += m.vx * dt; m.y += m.vy * dt;
+
+      // Trail update.
+      m.trailX[m.trailHead] = m.x; m.trailY[m.trailHead] = m.y;
+      m.trailHead = (m.trailHead + 1) % EMERALD_MISSILE_TRAIL_CAP;
+      if (m.trailCount < EMERALD_MISSILE_TRAIL_CAP) m.trailCount++;
+
+      // Fluid injection — emerald comet sweep.
+      fluid.addForce({
+        x: m.x, y: m.y,
+        vx: m.vx * FLUID_VEL_FRAME_TO_PX_S * 0.5,
+        vy: m.vy * FLUID_VEL_FRAME_TO_PX_S * 0.5,
+        r: FLUID_EMERALD_R, g: FLUID_EMERALD_G, b: FLUID_EMERALD_B,
+        strength: FLUID_PROJECTILE_STRENGTH * 0.8,
+      });
+
+      // Out-of-bounds expiry.
+      if (m.x < -20 || m.x > widthPx + 20 || m.y < -20 || m.y > heightPx + 20) {
+        emeraldPlayerMissiles.splice(i, 1); continue;
+      }
+
+      // Collision detection — hit first matching enemy.
+      let hit = false;
+      const tryHit = <T extends { x: number; y: number; hp: number; maxHp: number }>(
+        e: T,
+        damageFn: (enemy: T, dmg: number, pierce: number) => number,
+      ): boolean => {
+        const dx = m.x - e.x, dy = m.y - e.y;
+        if (dx * dx + dy * dy >= hitR * hitR) return false;
+        const dmg = damageFn(e, m.scaledDamage, 0);
+        spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, EMERALD_MISSILE_COLOR);
+        fluid.addExplosion(e.x, e.y, FLUID_EXPLOSION_STRENGTH * 0.35,
+          FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
+        return true;
+      };
+
+      for (const e of enemies)          { if (tryHit(e, damageEnemy))                                          { hit = true; break; } }
+      if (!hit) for (const e of sapphireEnemies)  { if (tryHit(e, (en, d, p) => damageSapphireEnemy(en, d, p, false))) { hit = true; break; } }
+      if (!hit) for (const e of emeraldEnemies)   { if (tryHit(e, damageEmeraldEnemy))                         { hit = true; break; } }
+      if (!hit) for (const e of amberEnemies)     { if (tryHit(e, damageAmberEnemy))                           { hit = true; break; } }
+      if (!hit) for (const e of voidEnemies)      { if (tryHit(e, damageVoidEnemy))                            { hit = true; break; } }
+      if (!hit) for (const e of quartzEnemies)    { if (tryHit(e, damageQuartzEnemy))                          { hit = true; break; } }
+      if (!hit) for (const e of rubyEnemies)      { if (tryHit(e, damageRubyEnemy))                            { hit = true; break; } }
+      if (!hit) for (const e of sunstoneEnemies)  { if (tryHit(e, damageSunstoneEnemy))                        { hit = true; break; } }
+      if (!hit) for (const e of citrineEnemies)   { if (tryHit(e, damageCitrineEnemy))                         { hit = true; break; } }
+      if (!hit) for (const e of ioliteEnemies)    { if (tryHit(e, damageIoliteEnemy))                          { hit = true; break; } }
+      if (!hit) for (const e of amethystEnemies)  { if (tryHit(e, (en, d, p) => damageAmethystEnemy(en, d, p, false))) { hit = true; break; } }
+      if (!hit) for (const e of diamondEnemies)   { if (tryHit(e, damageDiamondEnemy))                         { hit = true; break; } }
+      if (!hit) for (const e of nullstoneEnemies) { if (tryHit(e, damageNullstoneEnemy))                       { hit = true; break; } }
+      if (!hit) for (const e of fracterylEnemies) { if (tryHit(e, (en, d, p) => damageFracterylEnemy(en, d, p))) { hit = true; break; } }
+      if (!hit) for (const e of eigensteinEnemies) { if (tryHit(e, (en, d, p) => damageEigensteinEnemy(en, d, p))) { hit = true; break; } }
+      if (!hit && bossEnemy) {
+        const boss = bossEnemy;
+        const dx = m.x - boss.x, dy = m.y - boss.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageBossEnemy(m.scaledDamage, 0);
+          if (dmg > 0) {
+            spawnHitVisualsAt(boss.x, boss.y, boss.maxHp, dmg, EMERALD_MISSILE_COLOR);
+            fluid.addExplosion(boss.x, boss.y, FLUID_EXPLOSION_STRENGTH * 0.35,
+              FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
+          }
+          hit = true;
+        }
+      }
+
+      if (hit) {
+        emeraldPlayerMissiles.splice(i, 1);
+        removeDeadEnemies(); checkWaveCompletion();
+      }
+    }
+  }
+
+
+  // ── Sunstone mine system ───────────────────────────────────────
+
+  function layMine(scaledDamage: number, tier: number): void {
+    const aoeRadius = SUNSTONE_MINE_AOE_BASE_PX + (tier - 1) * SUNSTONE_MINE_AOE_PER_TIER_PX;
+    sunstoneMines.push({
+      x: mote.x, y: mote.y,
+      fuseMs: SUNSTONE_MINE_FUSE_MS,
+      maxFuseMs: SUNSTONE_MINE_FUSE_MS,
+      hp: SUNSTONE_MINE_HP,
+      maxHp: SUNSTONE_MINE_HP,
+      scaledDamage,
+      aoeRadius,
+      proximityRadius: SUNSTONE_MINE_PROXIMITY_PX,
+    });
+  }
+
+  /**
+   * Detonates a mine at the given index (removes it and applies AOE damage
+   * to all enemies in aoeRadius).
+   */
+  function detonateMine(index: number): void {
+    const mine = sunstoneMines[index];
+    sunstoneMines.splice(index, 1);
+
+    fluid.addExplosion(mine.x, mine.y, FLUID_EXPLOSION_STRENGTH * 1.4,
+      255, 140, 40);
+
+    const r2 = mine.aoeRadius * mine.aoeRadius;
+    const applyAoe = <T extends { x: number; y: number; hp: number; maxHp: number }>(
+      arr: T[],
+      damageFn: (e: T, dmg: number, pierce: number) => number,
+      color: string,
+    ) => {
+      for (const e of arr) {
+        const dx = e.x - mine.x, dy = e.y - mine.y;
+        if (dx * dx + dy * dy <= r2) {
+          const dmg = damageFn(e, mine.scaledDamage, 0);
+          if (dmg > 0) spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, color);
+        }
+      }
+    };
+    const col = '#ffaa22';
+    applyAoe(enemies,          damageEnemy, col);
+    applyAoe(sapphireEnemies,  (e, d, p) => damageSapphireEnemy(e, d, p, false), col);
+    applyAoe(emeraldEnemies,   damageEmeraldEnemy, col);
+    applyAoe(amberEnemies,     damageAmberEnemy, col);
+    applyAoe(voidEnemies,      damageVoidEnemy, col);
+    applyAoe(quartzEnemies,    damageQuartzEnemy, col);
+    applyAoe(rubyEnemies,      damageRubyEnemy, col);
+    applyAoe(sunstoneEnemies,  damageSunstoneEnemy, col);
+    applyAoe(citrineEnemies,   damageCitrineEnemy, col);
+    applyAoe(ioliteEnemies,    damageIoliteEnemy, col);
+    applyAoe(amethystEnemies,  (e, d, p) => damageAmethystEnemy(e, d, p, false), col);
+    applyAoe(diamondEnemies,   damageDiamondEnemy, col);
+    applyAoe(nullstoneEnemies, damageNullstoneEnemy, col);
+    applyAoe(fracterylEnemies, (e, d, p) => damageFracterylEnemy(e, d, p), col);
+    applyAoe(eigensteinEnemies,(e, d, p) => damageEigensteinEnemy(e, d, p), col);
+    if (bossEnemy) {
+      const dx = bossEnemy.x - mine.x, dy = bossEnemy.y - mine.y;
+      if (dx * dx + dy * dy <= r2) {
+        const dmg = damageBossEnemy(mine.scaledDamage, 0);
+        if (dmg > 0) spawnHitVisualsAt(bossEnemy.x, bossEnemy.y, bossEnemy.maxHp, dmg, col);
+      }
+    }
+    removeDeadEnemies(); checkWaveCompletion();
+  }
+
+  function updateSunstoneMines(deltaMs: number): void {
+    for (let i = sunstoneMines.length - 1; i >= 0; i--) {
+      const mine = sunstoneMines[i];
+
+      // Fuse countdown.
+      mine.fuseMs -= deltaMs;
+
+      // Apply incoming damage from enemies that overlap the mine.
+      const mineHitR = SUNSTONE_MINE_SIZE + 2;
+      const mineHitR2 = mineHitR * mineHitR;
+      const checkEnemyContact = (ex: number, ey: number, atk: number) => {
+        const dx = ex - mine.x, dy = ey - mine.y;
+        if (dx * dx + dy * dy <= mineHitR2) {
+          mine.hp -= atk;
+        }
+      };
+      for (const e of enemies)          checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of sapphireEnemies)  checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of emeraldEnemies)   checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of amberEnemies)     checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of voidEnemies)      checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of quartzEnemies)    checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of rubyEnemies)      checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of sunstoneEnemies)  checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of citrineEnemies)   checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of ioliteEnemies)    checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of amethystEnemies)  checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of diamondEnemies)   checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of nullstoneEnemies) checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of fracterylEnemies) checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of eigensteinEnemies) checkEnemyContact(e.x, e.y, e.atk);
+
+      // Proximity check — detonate if any enemy enters trigger radius.
+      let triggered = false;
+      const prox2 = mine.proximityRadius * mine.proximityRadius;
+      const inProximity = (ex: number, ey: number) => {
+        const dx = ex - mine.x, dy = ey - mine.y;
+        return dx * dx + dy * dy <= prox2;
+      };
+      if (!triggered) for (const e of enemies)          { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of sapphireEnemies)  { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of emeraldEnemies)   { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of amberEnemies)     { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of voidEnemies)      { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of quartzEnemies)    { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of rubyEnemies)      { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of sunstoneEnemies)  { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of citrineEnemies)   { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of ioliteEnemies)    { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of amethystEnemies)  { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of diamondEnemies)   { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of nullstoneEnemies) { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of fracterylEnemies) { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of eigensteinEnemies) { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+
+      // Detonate if fuse expired, proximity triggered, or HP depleted by incoming damage.
+      if (mine.fuseMs <= 0 || triggered || mine.hp <= 0) {
+        detonateMine(i);
+      }
+    }
+  }
+
+
   // ── Ruby laser beam system ─────────────────────────────────────
 
   function fireLaserBeam(targetX: number, targetY: number, weaponId: string): void {
@@ -2554,6 +2835,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * Handles all WeaponEffect variants. Call removeDeadEnemies() after this.
    */
   function performWeaponAttack(weaponId: string): void {
+    const weaponDef  = WEAPON_BY_ID.get(weaponId);
+
+    // Sunstone mines can always be placed (no target needed).
+    if (weaponDef?.stats.effect?.kind === 'sunstoneMine') {
+      const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+      const rawDamage  = weaponDef
+        ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
+        : playerStats.atk;
+      layMine(rawDamage, tier);
+      return;
+    }
+
     const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length
       + emeraldEnemies.length + amberEnemies.length + amberShards.length + voidEnemies.length
       + quartzEnemies.length + quartzSpikes.length + rubyEnemies.length + rubyBolts.length
@@ -2563,7 +2856,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       + fracterylEnemies.length + fracterylShards.length + eigensteinEnemies.length
       + (bossEnemy ? 1 : 0);
     if (totalTargets === 0) return;
-    const weaponDef  = WEAPON_BY_ID.get(weaponId);
     const range      = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
     const tier       = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
     const rawDamage  = weaponDef
@@ -2592,6 +2884,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (effect.kind === 'poisonBolt') {
       const target = findClosestTarget(range * range);
       if (target) spawnPoisonBolt(target.x, target.y, weaponId, tier, rawDamage);
+      return;
+    }
+
+    // ── Emerald heat-seeking missile ───────────────────────────
+    if (effect.kind === 'emeraldMissile') {
+      const target = findClosestTarget(range * range);
+      if (target) spawnEmeraldMissile(target.x, target.y, rawDamage);
       return;
     }
 
@@ -3652,7 +3951,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         for (const weaponId of getEffectiveEquippedIds()) {
           const wd = WEAPON_BY_ID.get(weaponId);
           if (wd) {
-            autoMoveStopRange = hasWeapon ? Math.min(autoMoveStopRange, wd.stats.range) : wd.stats.range;
+            // For the diamond sword (swordCombo), the actual attack range is determined
+            // by the blade length which grows with tier — not the static stats.range.
+            // Use getSwordLength(tier) so auto-move keeps the player close enough to swing.
+            let effectiveRange: number;
+            if (wd.stats.effect?.kind === 'swordCombo') {
+              const t = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+              effectiveRange = getSwordLength(t);
+            } else {
+              effectiveRange = wd.stats.range;
+            }
+            autoMoveStopRange = hasWeapon ? Math.min(autoMoveStopRange, effectiveRange) : effectiveRange;
             hasWeapon = true;
           }
         }
@@ -4193,6 +4502,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     activeVortexes.length = 0; vortexWeaponStates.clear();
     swordComboStates.clear();
     poisonBolts.length = 0; poisonDebuffs.clear();
+    emeraldPlayerMissiles.length = 0;
+    sunstoneMines.length = 0;
     laserBeamEffect = null;
     mote.x = widthPx / 2; mote.y = heightPx / 2;
     mote.vx = mote.vy = 0; mote.trailHead = 0; mote.trailCount = 0;
@@ -4286,6 +4597,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawVortexes(ctx, activeVortexes);
     drawSandProjectiles(ctx, sandProjectiles);
     drawPoisonBolts(ctx, poisonBolts);
+    drawEmeraldPlayerMissiles(ctx, emeraldPlayerMissiles);
+    drawSunstoneMines(ctx, sunstoneMines);
     drawLaserBeamEffect(ctx, laserBeamEffect);
 
     // Player comet trail — smoothly gated by glowMovementIntensity
@@ -4471,6 +4784,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateVortexes(deltaMs);
       updatePoisonBolts(deltaMs);
       updatePoisonDebuffs(deltaMs);
+      updateEmeraldPlayerMissiles(deltaMs);
+      updateSunstoneMines(deltaMs);
       updateLaserBeamEffect(deltaMs);
       removeDeadEnemies();
       checkWaveCompletion();

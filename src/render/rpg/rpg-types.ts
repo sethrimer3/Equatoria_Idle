@@ -609,3 +609,32 @@ export interface TeleportParticle {
   x: number; y: number; vx: number; vy: number;
   alpha: number; color: string;
 }
+
+// ── Emerald player missile (heat-seeking) ─────────────────────────
+
+export interface EmeraldPlayerMissile {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Scaled damage to deal on impact. */
+  scaledDamage: number;
+  trailX: Float64Array; trailY: Float64Array;
+  trailHead: number; trailCount: number;
+}
+
+// ── Sunstone mine ─────────────────────────────────────────────────
+
+export interface SunstoneMine {
+  x: number; y: number;
+  /** Remaining fuse time in ms. Reaches 0 → explode. */
+  fuseMs: number;
+  maxFuseMs: number;
+  /** Mine HP — when it reaches 0 the mine explodes prematurely. */
+  hp: number;
+  maxHp: number;
+  /** Scaled damage delivered by the explosion. */
+  scaledDamage: number;
+  /** AOE explosion radius (px). */
+  aoeRadius: number;
+  /** Proximity trigger radius (px) — explodes when an enemy enters this range. */
+  proximityRadius: number;
+}
