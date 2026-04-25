@@ -56,7 +56,17 @@ export type WeaponEffect =
    * Taking damage detonates the mine prematurely. Higher tiers increase
    * fire rate (up to 2/s), base damage, and AOE explosion radius.
    */
-  | { kind: 'sunstoneMine' };
+  | { kind: 'sunstoneMine' }
+  /**
+   * Sapphire companion ships that orbit and fire at the targeted enemy.
+   * Ship count = weapon tier (1-7). Ships fire small curving lasers at nearby enemies.
+   */
+  | { kind: 'sapphireShip' }
+  /**
+   * Amethyst companion ships that target the furthest enemies from the player.
+   * Ship count = weapon tier (1-7). Ships fire spiraling lasers that pierce enemies.
+   */
+  | { kind: 'amethystShip' };
 
 /** Combat stats granted by equipping this weapon. */
 export interface WeaponStats {
@@ -181,15 +191,16 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   // ── Tier 6: Sapphire ──────────────────────────────────────────
   {
     id: 'sapphire_spike',
-    name: 'Sapphire Spike',
+    name: 'Sapphire Ships',
     description:
-      'A focused sapphire bolt that ignores 60 % of enemy DEF. Slow fire rate but ' +
-      'devastates heavily-armoured solo targets.',
+      'Deploys companion ships that orbit the targeted enemy and fire small curving lasers. ' +
+      'Higher tiers deploy more ships (tier = ship count). Ships prioritize nearby enemies first, ' +
+      'then fall back to the player\'s targeted enemy.',
     costTierId: 'sapphire',
     cost: 50,
     stats: {
-      damage: 18, cooldownMs: 2200, range: 100, defBonus: 0,
-      effect: { kind: 'piercing', defPierceRatio: 0.6 },
+      damage: 2, cooldownMs: 250, range: 60, defBonus: 0,
+      effect: { kind: 'sapphireShip' },
     },
   },
 
@@ -213,15 +224,16 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   // ── Tier 8: Amethyst ──────────────────────────────────────────
   {
     id: 'amethyst_pierce',
-    name: 'Amethyst Pierce',
+    name: 'Amethyst Ships',
     description:
-      'A deep-violet lance that bypasses 75 % of enemy DEF. Devastating against ' +
-      'heavily armoured late-game foes.',
+      'Deploys companion ships that orbit the furthest enemy from the player and fire spiraling lasers. ' +
+      'Lasers deal 30× base damage, pierce through multiple enemies, and ignore shields. ' +
+      'Higher tiers deploy more ships (tier = ship count).',
     costTierId: 'amethyst',
     cost: 30,
     stats: {
-      damage: 25, cooldownMs: 2000, range: 130, defBonus: 3,
-      effect: { kind: 'piercing', defPierceRatio: 0.75 },
+      damage: 1, cooldownMs: 3000, range: 0, defBonus: 3,
+      effect: { kind: 'amethystShip' },
     },
   },
 

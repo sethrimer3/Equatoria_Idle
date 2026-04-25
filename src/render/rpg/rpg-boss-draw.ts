@@ -22,6 +22,14 @@ import {
   INTER_WAVE_DELAY_MS,
 } from './rpg-constants';
 
+// ── Low-graphics mode flag ────────────────────────────────────
+let isLowGraphicsMode = false;
+
+/** Sets low-graphics mode for RPG boss draw functions (skips glow effects). */
+export function setLowGraphicsMode(enabled: boolean): void {
+  isLowGraphicsMode = enabled;
+}
+
 // ── Boss enemy ────────────────────────────────────────────────────────────────
 
 /**
@@ -72,7 +80,9 @@ export function drawBossEnemy(
   for (let r = 0; r < ringCount; r++) {
     const ringR = bossSize * (1.5 + r * 0.7 + pulseFactor * 0.4);
     ctx.globalAlpha = (0.15 - r * 0.04) * (0.6 + pulseFactor * 0.4);
-    ctx.shadowBlur = ringR * 2; ctx.shadowColor = drawGlow;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur = ringR * 2; ctx.shadowColor = drawGlow;
+    }
     ctx.strokeStyle = drawGlow; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(boss.x, boss.y, ringR, 0, Math.PI * 2); ctx.stroke();
     ctx.shadowBlur = 0;
@@ -99,7 +109,9 @@ export function drawBossEnemy(
     ctx.globalAlpha = 1;
   }
 
-  ctx.shadowBlur = bossSize * (4 + pulseFactor * 4); ctx.shadowColor = drawGlow;
+  if (!isLowGraphicsMode) {
+    ctx.shadowBlur = bossSize * (4 + pulseFactor * 4); ctx.shadowColor = drawGlow;
+  }
   if (boss.bossId === 7 || boss.bossId === 10) {
     ctx.save();
     ctx.translate(boss.x, boss.y);
@@ -114,7 +126,9 @@ export function drawBossEnemy(
     for (let r = 1; r <= 3; r++) {
       const ringAlpha = boss.isAbsorbing ? 0.5 - r * 0.1 : 0.2 - r * 0.04;
       ctx.globalAlpha = Math.max(0, ringAlpha) * (0.7 + pulseFactor * 0.3);
-      ctx.shadowBlur = 6; ctx.shadowColor = drawGlow;
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = 6; ctx.shadowColor = drawGlow;
+      }
       ctx.strokeStyle = drawGlow; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(boss.x, boss.y, bossSize * (0.9 + r * 0.55), 0, Math.PI * 2); ctx.stroke();
     }
@@ -133,9 +147,12 @@ export function drawBossEnemy(
   for (let p = 0; p < totalPips; p++) {
     const filled = p <= boss.phaseIndex;
     ctx.globalAlpha = filled ? 0.95 : 0.25;
-    ctx.shadowBlur = filled ? 5 : 0; ctx.shadowColor = drawGlow;
+    if (!isLowGraphicsMode && filled) {
+      ctx.shadowBlur = 5; ctx.shadowColor = drawGlow;
+    }
     ctx.fillStyle = filled ? drawGlow : '#444';
     ctx.beginPath(); ctx.arc(pipsStartX + p * pipSpacing, pipY, pipRadius, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
@@ -144,7 +161,9 @@ export function drawBossEnemy(
     ctx.fillStyle = drawGlow;
     ctx.font = '7px "Poiret One", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowBlur = 4; ctx.shadowColor = drawGlow;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur = 4; ctx.shadowColor = drawGlow;
+    }
     ctx.fillText('INVULN', boss.x, boss.y - half - 20);
     ctx.shadowBlur = 0; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.globalAlpha = 1;
@@ -171,7 +190,9 @@ export function drawBottomSafeZone(
   const hue = (glowTimeS * 60) % 360;
   ctx.save();
   ctx.globalAlpha = 0.30 + Math.sin(glowTimeS * 3) * 0.08;
-  ctx.shadowBlur = 16; ctx.shadowColor = `hsl(${hue}, 100%, 80%)`;
+  if (!isLowGraphicsMode) {
+    ctx.shadowBlur = 16; ctx.shadowColor = `hsl(${hue}, 100%, 80%)`;
+  }
   ctx.strokeStyle = `hsl(${hue}, 80%, 75%)`; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.stroke();
   ctx.globalAlpha = 0.10;
@@ -246,7 +267,9 @@ export function drawWaveClearBanner(
   ctx.fillRect(0, heightPx / 2 - 32, widthPx, 64);
   ctx.fillStyle = '#ffd764'; ctx.font = 'bold 14px "Poiret One", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.shadowBlur = 8; ctx.shadowColor = '#ffe599';
+  if (!isLowGraphicsMode) {
+    ctx.shadowBlur = 8; ctx.shadowColor = '#ffe599';
+  }
   const isBoss = currentWave > 0 && currentWave % 100 === 0;
   const bannerText = isBoss
     ? `${BOSS_GLYPH_LABEL} ${currentWave / 100} Cleared!`
@@ -257,7 +280,9 @@ export function drawWaveClearBanner(
   ctx.fillText('Next wave incoming\u2026', widthPx / 2, heightPx / 2 + 10);
   if (currentWave > 0 && currentWave % 10 === 0) {
     ctx.fillStyle = '#69db7c'; ctx.font = '9px "Poiret One", sans-serif';
-    ctx.shadowBlur = 6; ctx.shadowColor = '#69db7c';
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur = 6; ctx.shadowColor = '#69db7c';
+    }
     ctx.fillText('✦ Checkpoint unlocked! See RPG Menu.', widthPx / 2, heightPx / 2 + 22);
     ctx.shadowBlur = 0;
   }
