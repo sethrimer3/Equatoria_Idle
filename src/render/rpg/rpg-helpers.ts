@@ -55,7 +55,7 @@ export function getShardDistances(swordLength: number): number[] {
 }
 
 /**
- * Normalises an angle difference to (−π, π].
+ * Normalises an angle difference to [−π, π].
  * Used to compute the shortest angular path between two blade angles.
  */
 export function wrapAngleDiff(a: number): number {

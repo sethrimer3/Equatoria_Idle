@@ -25,7 +25,6 @@ import type {
   EigensteinEnemy, EigensteinBeam,
   TeleportParticle,
 } from './rpg-types';
-import type { FluidImpulse } from './rpg-fluid';
 import {
   TARGET_FRAME_MS, PLAYER_HIT_RADIUS,
   IOLITE_PATROL_SPEED, IOLITE_PATROL_TURN_MS,
@@ -344,7 +343,7 @@ export function updateFracterylEnemies(
       fluid.addForce({ x: enemy.x, y: enemy.y,
         vx: 0, vy: 0,
         r: FLUID_FRACTERYL_R, g: FLUID_FRACTERYL_G, b: FLUID_FRACTERYL_B,
-        strength: 1.2 } as FluidImpulse);
+        strength: 1.2 });
     }
   }
   for (let i = shards.length - 1; i >= 0; i--) {
@@ -407,7 +406,7 @@ export function updateEigensteinEnemies(
       fluid.addForce({ x: enemy.x, y: enemy.y,
         vx: 0, vy: 0,
         r: FLUID_EIGENSTEIN_R, g: FLUID_EIGENSTEIN_G, b: FLUID_EIGENSTEIN_B,
-        strength: 1.5 } as FluidImpulse);
+        strength: 1.5 });
     }
   }
 }
