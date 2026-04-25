@@ -618,6 +618,12 @@ export const BOSS_NAMES: string[] = [
   'Fracteryl Manifestation', 'Eigenstein Entity',
 ];
 
+/** Radius (px) of the prismatic safe-zone circle at the bottom of the canvas during boss waves. */
+export const BOSS_BOTTOM_SAFE_ZONE_R = 22;
+
+/** UCAS glyph label displayed when a boss wave is cleared (angular aesthetic glyphs). */
+export const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x140A); // ᑩᒱᕓᐊ
+
 // ── Fluid background force scales ─────────────────────────────
 // Multiplier applied to entity velocity (px/frame → px/s) before injection.
 // Lower values = gentler disturbance; higher = more reactive.

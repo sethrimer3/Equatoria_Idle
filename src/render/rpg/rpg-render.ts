@@ -59,15 +59,15 @@ import {
   SAPPHIRE_PATROL_TURN_MS, SAPPHIRE_MISSILE_CD_MS, SAPPHIRE_MISSILE_JITTER,
   MISSILE_SIZE, MISSILE_SPEED, MISSILE_SEEK_STR, MISSILE_MAX_SPEED,
   MISSILE_TRAIL_CAP, MINIMUM_SHIELD_DAMAGE, SPEED_EPSILON,
-  SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, CHAIN_NODES, CHAIN_MIN_RADIUS, CHAIN_MAX_RADIUS, CHAIN_NODE_COLOR, CHAIN_NODE_GLOW,
-  CHAIN_LINE_COLOR, CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
+  SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, CHAIN_NODES, CHAIN_NODE_COLOR,
+  CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
   CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
-  CHAIN_DAMPING, CHAIN_LASH_SPEED, CHAIN_MIN_INERTIA, CHAIN_MAX_INERTIA,
+  CHAIN_DAMPING, CHAIN_LASH_SPEED,
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW, VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
-  VORTEX_COLOR, VORTEX_GLOW, VORTEX_SPIN_RATE,
+  VORTEX_COLOR, VORTEX_SPIN_RATE,
   SWORD_SWING_MS, SWORD_COLOR, SWORD_PRISMATIC_COLORS,
-  SWORD_SHARD_COUNT, SWORD_SHARD_SIZE_BASE, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
-  SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY, SWORD_SHARD_SHAPES,
+  SWORD_SHARD_COUNT, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
+  SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
   SWORD_BEAM_DURATION_MS, SWORD_SWIPE_VISUAL_MS,
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
   SWORD_IDLE_ANGLE, SWORD_COMBO_THRESHOLD, SWORD_COMBO_SPIN_TURNS,
@@ -96,7 +96,7 @@ import {
   LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
   QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
   IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
-  BOSS_SIZE_BASE, BOSS_HP_INIT, BOSS_ATK_INIT, BOSS_DEF_INIT, BOSS_SHIELD_INIT,
+  BOSS_SIZE_BASE,
   BOSS_PROJ_LIFE_MS, BOSS_PROJ_SIZE,
   BOSS_PHASE2_HP_RATIO, BOSS_PHASE3_HP_RATIO, BOSS_PHASE_TRANSITION_MS,
   BOSS_ATTACK1_CD_BASE, BOSS_ATTACK1_CD_P1, BOSS_ATTACK1_CD_P2,
@@ -106,6 +106,7 @@ import {
   BOSS_INVULN_ON_MS, BOSS_INVULN_OFF_MS, BOSS_INVULN_ON_P1, BOSS_INVULN_OFF_P1,
   BOSS_INVULN_ON_P2, BOSS_INVULN_OFF_P2,
   BOSS_COLORS, BOSS_GLOW_COLORS, BOSS_NAMES,
+  BOSS_GLYPH_LABEL, BOSS_BOTTOM_SAFE_ZONE_R,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PLAYER_STRENGTH, FLUID_ENEMY_STRENGTH,
   FLUID_PROJECTILE_STRENGTH, FLUID_MISSILE_STRENGTH, FLUID_LASER_BEAM_STRENGTH,
   FLUID_EXPLOSION_STRENGTH,
@@ -193,8 +194,15 @@ import {
   makeAmethystEnemy, makeDiamondEnemy,
   makeNullstoneEnemy,
   makeFracterylEnemy,
-  makeEigensteinEnemy, makeDanmakuSafeZone,
+  makeEigensteinEnemy, makeDanmakuSafeZone, makeBossEnemy,
 } from './rpg-factories';
+import {
+  chainNodeRadius, chainNodeInvMass,
+  getSwordLength, getShardDistances, wrapAngleDiff,
+  getVortexTierRadius, getVortexTierDurationMs, getVortexCount,
+} from './rpg-helpers';
+import { drawChainWhip, drawVortexes, drawSwordCombos } from './rpg-weapon-draw';
+import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner } from './rpg-boss-draw';
 import {
   type RpgEnemyCtx,
   updateEmeraldEnemies,
@@ -204,6 +212,8 @@ import {
   updateRubyEnemies, updateRubyBolts,
   updateSunstoneEnemies,
   updateCitrineEnemies, updateCitrineBolts,
+} from './rpg-enemy-updates';
+import {
   updateIoliteEnemies,
   updateAmethystEnemies, updateAmethystShards,
   updateDiamondEnemies, updateDiamondShards,
@@ -211,7 +221,7 @@ import {
   updateFracterylEnemies,
   updateEigensteinEnemies, updateEigensteinBeams,
   updateTeleportParticles,
-} from './rpg-enemy-updates';
+} from './rpg-enemy-updates-adv';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -369,7 +379,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function getSafeZoneX(): number { return widthPx / 2; }
   function getSafeZoneY(): number { return heightPx * 0.85; }
 
-  const BOSS_BOTTOM_SAFE_ZONE_R = 22;
   const TELEPORT_PRISMATIC_COLORS = ['#e8f0fa', '#ffffff', '#b0c8ff', '#d6aaff', '#a0f0d0', '#fff4a0'];
 
   function isInBottomSafeZone(px: number, py: number): boolean {
@@ -431,8 +440,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     teleportParticles.length = 0;
     applyEquipmentStats();
   }
-
-  const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x140A); // ᑩᒱᕓᐊ — UCAS characters chosen for aesthetic angular appearance
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
   const weaponOrbitParticles: WeaponOrbitParticle[] = [];
@@ -1383,25 +1390,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Quartz chain whip system ───────────────────────────────────
 
-  /**
-   * Returns the radius of chain node at index i.
-   * i=0 (closest to player) is smallest; i=CHAIN_NODES-1 (tip) is largest.
-   */
-  function chainNodeRadius(i: number): number {
-    return CHAIN_MIN_RADIUS + (CHAIN_MAX_RADIUS - CHAIN_MIN_RADIUS) * i / (CHAIN_NODES - 1);
-  }
-
-  /**
-   * Returns 1/inertia for node at index i.
-   * Higher inverseMass = more responsive to forces.
-   * i=0 (closest to player) has lowest inertia → most responsive (highest inverseMass).
-   * i=CHAIN_NODES-1 (tip) has highest inertia → least responsive (lowest inverseMass).
-   */
-  function chainNodeInvMass(i: number): number {
-    const inertia = CHAIN_MIN_INERTIA + (CHAIN_MAX_INERTIA - CHAIN_MIN_INERTIA) * i / (CHAIN_NODES - 1);
-    return 1.0 / inertia;
-  }
-
   function buildChainWhip(weaponId: string): ChainWhipState {
     const nodesX  = new Float64Array(CHAIN_NODES);
     const nodesY  = new Float64Array(CHAIN_NODES);
@@ -1599,45 +1587,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawChainWhip(ws: ChainWhipState): void {
-    if (ws.phase === 'idle' && ws.phaseMs < ws.cooldownMs * 0.1) return;
-    ctx.save();
-    ctx.lineWidth = 1.5;
-    ctx.lineCap   = 'round';
-    ctx.lineJoin  = 'round';
-    // Draw chain links (lines between nodes)
-    ctx.strokeStyle = CHAIN_LINE_COLOR;
-    ctx.shadowBlur  = 4; ctx.shadowColor = CHAIN_NODE_GLOW;
-    ctx.globalAlpha = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(ws.nodesX[0], ws.nodesY[0]);
-    for (let i = 1; i < CHAIN_NODES; i++) ctx.lineTo(ws.nodesX[i], ws.nodesY[i]);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    // Draw node circles with graduated sizes
-    for (let i = 0; i < CHAIN_NODES; i++) {
-      const r = chainNodeRadius(i);
-      ctx.globalAlpha = 0.9;
-      ctx.shadowBlur  = r * 3; ctx.shadowColor = CHAIN_NODE_GLOW;
-      ctx.fillStyle   = CHAIN_NODE_GLOW;
-      ctx.beginPath();
-      ctx.arc(ws.nodesX[i], ws.nodesY[i], r * 1.4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle  = CHAIN_NODE_COLOR;
-      ctx.beginPath();
-      ctx.arc(ws.nodesX[i], ws.nodesY[i], r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
-
   // ── Nullstone vortex system ────────────────────────────────────
-
-  function getVortexTierRadius(tier: number): number  { return 40 + (tier - 1) * 10; }
-  function getVortexTierDurationMs(tier: number): number { return 3000 + (tier - 1) * 200; }
-  function getVortexCount(tier: number): number        { return tier >= 7 ? 3 : tier >= 4 ? 2 : 1; }
 
   function fireVortex(weaponId: string, tier: number): void {
     const weaponDef = WEAPON_BY_ID.get(weaponId);
@@ -1761,53 +1711,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
-  function drawVortexes(): void {
-    if (activeVortexes.length === 0) return;
-    ctx.save();
-    for (const v of activeVortexes) {
-      const alpha = v.durationMs / v.maxDurationMs;
-      const r = v.radiusPx;
-      // Outer ring glow
-      ctx.globalAlpha = alpha * 0.6;
-      ctx.shadowBlur = r * 0.5; ctx.shadowColor = VORTEX_GLOW;
-      ctx.strokeStyle = VORTEX_COLOR; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0;
-      // Rotating concentric arcs showing spin
-      const arcCount = 5;
-      for (let j = 0; j < arcCount; j++) {
-        const baseAngle = v.spinAngle + (j / arcCount) * Math.PI * 2;
-        const scale     = 0.25 + j * 0.16;
-        ctx.globalAlpha = alpha * 0.4 * (1 - j / arcCount);
-        ctx.beginPath();
-        ctx.arc(v.x, v.y, r * scale, baseAngle, baseAngle + Math.PI * 0.8);
-        ctx.stroke();
-      }
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
-    ctx.restore();
-  }
-
   // ── Diamond sword system ───────────────────────────────────────
-
-  function getSwordLength(tier: number): number { return 30 + (tier - 1) * 8; }
-
-  /** Returns an array of evenly-spaced distances from handle to tip for the shards. */
-  function getShardDistances(swordLength: number): number[] {
-    const handleDist = 5;
-    const dists: number[] = [];
-    for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
-      dists.push(handleDist + (swordLength - handleDist) * (i / (SWORD_SHARD_COUNT - 1)));
-    }
-    return dists;
-  }
-
-  /** Wrap angle delta to [-π, π]. */
-  function wrapAngleDiff(a: number): number {
-    while (a >  Math.PI) a -= Math.PI * 2;
-    while (a < -Math.PI) a += Math.PI * 2;
-    return a;
-  }
 
   function buildSwordCombo(weaponId: string): SwordComboState {
     const weaponDef  = WEAPON_BY_ID.get(weaponId);
@@ -2207,168 +2111,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (let i = state.beamEffects.length - 1; i >= 0; i--) {
       state.beamEffects[i].progress += deltaMs / (state.beamEffects[i].maxTimerMs * 0.5);
       if (state.beamEffects[i].progress >= 2) state.beamEffects.splice(i, 1);
-    }
-  }
-
-  /** Assign a deterministic shape and size to each shard index. */
-  function getShardStyle(index: number): { shapeIdx: number; radius: number } {
-    // Vary size slightly along the blade: tip shards slightly larger.
-    const radius = SWORD_SHARD_SIZE_BASE * (0.85 + 0.3 * (index / (SWORD_SHARD_COUNT - 1)));
-    const shapeIdx = index % SWORD_SHARD_SHAPES.length;
-    return { shapeIdx, radius };
-  }
-
-  function drawSwordCombos(): void {
-    for (const [weaponId, state] of swordComboStates) {
-      const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-      const baseSwordLength = getSwordLength(tier);
-      const isSpinCombo = state.phase === 'spin_combo';
-      const swordLength = isSpinCombo ? baseSwordLength * SWORD_COMBO_RANGE_MULT : baseSwordLength;
-      const dists = getShardDistances(swordLength);
-      const nowMs = Date.now();
-
-      ctx.save();
-
-      // ── D. Spin combo ring: draw a glowing 360° arc for each rotation tick ──
-      if (isSpinCombo) {
-        const spinT = Math.min(1, state.phaseMs / SWORD_COMBO_SPIN_MS);
-        const ringAlpha = 0.55 + 0.4 * Math.abs(Math.sin(spinT * Math.PI * SWORD_COMBO_SPIN_TURNS));
-        const numArcs = SWORD_PRISMATIC_COLORS.length;
-        ctx.lineWidth = 3;
-        for (let ci = 0; ci < numArcs; ci++) {
-          const segStart = (ci / numArcs) * Math.PI * 2 + state.spinComboAngle;
-          const segEnd   = segStart + (Math.PI * 2) / numArcs;
-          ctx.globalAlpha = ringAlpha * 0.8;
-          ctx.strokeStyle = SWORD_PRISMATIC_COLORS[ci];
-          ctx.shadowBlur  = 14; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
-          ctx.beginPath();
-          ctx.arc(mote.x, mote.y, swordLength, segStart, segEnd);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-        }
-        ctx.lineWidth = 1;
-      }
-
-      // ── A. Draw prismatic polygon shards ──────────────────────
-      for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
-        const sx = mote.x + Math.cos(state.shardAngles[i]) * dists[i];
-        const sy = mote.y + Math.sin(state.shardAngles[i]) * dists[i];
-        const colorIdx = (i + Math.floor(nowMs / 60)) % SWORD_PRISMATIC_COLORS.length;
-        const color = SWORD_PRISMATIC_COLORS[colorIdx];
-        const { shapeIdx, radius } = getShardStyle(i);
-        const verts = SWORD_SHARD_SHAPES[shapeIdx];
-        const scaledRadius = isSpinCombo ? radius * 1.5 : radius;
-        // Rotate the shard polygon to align with the blade angle.
-        const cosA = Math.cos(state.shardAngles[i]);
-        const sinA = Math.sin(state.shardAngles[i]);
-
-        const shardAlpha = isSpinCombo ? 1.0 : (state.phase === 'swing' ? 1.0 : 0.85);
-        ctx.globalAlpha = shardAlpha;
-        ctx.fillStyle = color;
-        ctx.shadowBlur = (isSpinCombo ? 12 : 5) + (state.phase === 'swing' ? 4 : 0);
-        ctx.shadowColor = color;
-        ctx.beginPath();
-        for (let v = 0; v < verts.length; v++) {
-          const [cu, su] = verts[v];
-          const vx = sx + (cu * cosA - su * sinA) * scaledRadius;
-          const vy = sy + (cu * sinA + su * cosA) * scaledRadius;
-          if (v === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // White core highlight for each shard.
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); ctx.arc(sx, sy, scaledRadius * 0.3, 0, Math.PI * 2); ctx.fill();
-      }
-
-      // ── B. Draw disconnected swipe-arc visuals ─────────────────
-      for (const fx of state.swipeEffects) {
-        const elapsed = fx.maxTimerMs - fx.timerMs;
-        const lifeRatio = elapsed / fx.maxTimerMs;
-        const alpha = (1 - lifeRatio) * 0.85;
-        const arcSpan = fx.arcEnd - fx.arcStart; // fixed 180° span
-        const numArcs = SWORD_PRISMATIC_COLORS.length;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = alpha;
-        for (let ci = 0; ci < numArcs; ci++) {
-          const angOffset = (ci / numArcs) * arcSpan;
-          const segStart = fx.arcStart + angOffset;
-          const segEnd   = segStart + arcSpan / numArcs;
-          ctx.strokeStyle = SWORD_PRISMATIC_COLORS[ci];
-          ctx.shadowBlur  = 8; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
-          ctx.beginPath();
-          ctx.arc(fx.x, fx.y, fx.swordLength, segStart, segEnd);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-        }
-        ctx.lineWidth = 1;
-      }
-
-      // ── C. Draw prismatic beam effects ─────────────────────────
-      for (const beam of state.beamEffects) {
-        const prog = beam.progress;
-        if (prog >= 2) continue;
-
-        let drawTailX: number, drawTailY: number;
-        let drawTipX:  number, drawTipY:  number;
-        let alpha: number;
-
-        if (prog < 1) {
-          drawTailX = beam.tailX;
-          drawTailY = beam.tailY;
-          drawTipX  = beam.tailX + (beam.tipX - beam.tailX) * prog;
-          drawTipY  = beam.tailY + (beam.tipY - beam.tailY) * prog;
-          alpha = 0.95;
-        } else {
-          const fadeT = prog - 1;
-          drawTailX = beam.tailX + (beam.tipX - beam.tailX) * fadeT;
-          drawTailY = beam.tailY + (beam.tipY - beam.tailY) * fadeT;
-          drawTipX  = beam.tipX;
-          drawTipY  = beam.tipY;
-          alpha = 1 - fadeT * 0.9;
-        }
-
-        const bdx = drawTipX - drawTailX, bdy = drawTipY - drawTailY;
-        const len = Math.sqrt(bdx * bdx + bdy * bdy);
-        if (len < 0.1) continue;
-        const nx = bdx / len, ny = bdy / len;
-        const bpx = -ny, bpy = nx;
-
-        const halfWidth = 1.0;
-        const bcx = (drawTailX + drawTipX) * 0.5;
-        const bcy = (drawTailY + drawTipY) * 0.5;
-
-        const colorIdx3 = Math.floor(nowMs / 50) % SWORD_PRISMATIC_COLORS.length;
-        const bColor = SWORD_PRISMATIC_COLORS[colorIdx3];
-
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = bColor;
-        ctx.shadowBlur = 10; ctx.shadowColor = bColor;
-        ctx.beginPath();
-        ctx.moveTo(drawTailX, drawTailY);
-        ctx.lineTo(bcx + bpx * halfWidth, bcy + bpy * halfWidth);
-        ctx.lineTo(drawTipX, drawTipY);
-        ctx.lineTo(bcx - bpx * halfWidth, bcy - bpy * halfWidth);
-        ctx.closePath();
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        ctx.globalAlpha = alpha * 0.5;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(drawTailX, drawTailY);
-        ctx.lineTo(bcx + bpx * halfWidth * 0.4, bcy + bpy * halfWidth * 0.4);
-        ctx.lineTo(drawTipX, drawTipY);
-        ctx.lineTo(bcx - bpx * halfWidth * 0.4, bcy - bpy * halfWidth * 0.4);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
-      ctx.restore();
     }
   }
 
@@ -3951,7 +3693,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       } while (attempts < 20);
       eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
     } else if (enemyTypeId === 'boss') {
-      bossEnemy = makeBossEnemy(Math.ceil(wn / 100), wn);
+      bossEnemy = makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx);
       enterBossWave();
     }
   }
@@ -4715,57 +4457,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // updateFracterylEnemies, updateEigensteinEnemies, updateEigensteinBeams,
   // updateTeleportParticles
 
-  // ── Boss safe-zone draw helpers ───────────────────────────────
-
-  function drawDanmakuSafeZone(): void {
-    const boss = bossEnemy;
-    if (!boss || !danmakuSafeZone || boss.danmakuLevel === 0) return;
-    const sz = danmakuSafeZone;
-    const halfAngle = sz.width / 2;
-    ctx.save();
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = '#00ff88';
-    ctx.beginPath();
-    ctx.moveTo(sz.x, sz.y);
-    ctx.arc(sz.x, sz.y, 80, sz.angle - halfAngle, sz.angle + halfAngle);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 0.55;
-    ctx.strokeStyle = '#00ff88';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-    const warnProgress = 1 - Math.min(1, sz.timerMs / sz.maxTimerMs);
-    if (warnProgress < 1) {
-      ctx.globalAlpha = 0.7 * (1 - warnProgress);
-      ctx.fillStyle = '#00ff88';
-      ctx.font = '6px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('SAFE', Math.round(sz.x + Math.cos(sz.angle) * 50), Math.round(sz.y + Math.sin(sz.angle) * 50));
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  /** Draws the prismatic bottom-safe-zone circle (visible during boss waves). */
-  function drawBottomSafeZone(): void {
-    if (!isBossWaveActive) return;
-    const szX = getSafeZoneX(), szY = getSafeZoneY();
-    const hue = (glowTimeS * 60) % 360;
-    ctx.save();
-    ctx.globalAlpha = 0.30 + Math.sin(glowTimeS * 3) * 0.08;
-    ctx.shadowBlur = 16; ctx.shadowColor = `hsl(${hue}, 100%, 80%)`;
-    ctx.strokeStyle = `hsl(${hue}, 80%, 75%)`; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = 0.10;
-    ctx.fillStyle = `hsl(${hue}, 80%, 75%)`;
-    ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-  }
-
-  /** Draws comet-trail teleport particles. */
-
-
   function drawEnemies(nowMs: number): void {
     for (const enemy of enemies) {
       drawAttackTrail(ctx, enemy, nowMs);
@@ -4789,35 +4480,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Draws the orbiting projectile with comet trail. */
 
   // ── Boss enemy system ──────────────────────────────────────────
-
-  function makeBossEnemy(rawBossId: number, waveNumber: number): BossEnemy {
-    const bossScale = getWaveStatScale(waveNumber) * 4.0;
-    const bossNum = ((rawBossId - 1) % 12) + 1;
-    const extraScale = Math.floor((rawBossId - 1) / 12) + 1;
-    const hp = Math.ceil(BOSS_HP_INIT * bossScale * extraScale);
-    const atk = Math.ceil(BOSS_ATK_INIT * getWaveStatScale(waveNumber) * extraScale);
-    const def = Math.ceil(BOSS_DEF_INIT * getWaveStatScale(waveNumber) * extraScale);
-    const shieldHp = bossNum === 6 ? Math.ceil(BOSS_SHIELD_INIT * bossScale * extraScale) : 0;
-    return {
-      kind: 'boss',
-      bossId: bossNum,
-      phaseIndex: 0,
-      x: widthPx / 2, y: heightPx * 0.25,
-      vx: 0, vy: 0,
-      hp, maxHp: hp,
-      atk, def,
-      attackTimerMs: 1000,
-      secondaryTimerMs: 2000,
-      orbitAngle: 0,
-      pulseMs: 0,
-      shieldHp, maxShieldHp: shieldHp,
-      isInvuln: false, invulnTimerMs: 0,
-      isAbsorbing: false, absorbTimerMs: 0,
-      contactCdMs: 0,
-      phaseTransitionMs: 0,
-      danmakuLevel: 0,
-    };
-  }
 
   function updateBossEnemy(deltaMs: number): void {
     const boss = bossEnemy;
@@ -5405,153 +5067,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
 
-  function drawBossEnemy(): void {
-    const boss = bossEnemy;
-    if (!boss) return;
-    const bossSize = BOSS_SIZE_BASE + boss.bossId * 1.5;
-    const half = bossSize / 2;
-    const pulseT = boss.pulseMs / 3000;
-    const pulseFactor = (Math.sin(pulseT * Math.PI * 2) + 1) * 0.5;
-    const color     = BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)];
-    const glowColor = BOSS_GLOW_COLORS[Math.min(boss.bossId, BOSS_GLOW_COLORS.length - 1)];
-
-    ctx.save();
-
-    if (boss.phaseTransitionMs > 0) {
-      const flashT = boss.phaseTransitionMs / BOSS_PHASE_TRANSITION_MS;
-      ctx.globalAlpha = flashT * 0.6;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, widthPx, heightPx);
-      ctx.globalAlpha = 1;
-    }
-
-    let drawColor   = color;
-    let drawGlow    = glowColor;
-    if (boss.bossId === 7 && boss.isInvuln) {
-      const hue = (glowTimeS * 120) % 360;
-      drawColor = `hsl(${hue}, 90%, 80%)`;
-      drawGlow  = `hsl(${hue}, 100%, 90%)`;
-    }
-    if (boss.bossId === 8 && boss.isAbsorbing) {
-      drawGlow = '#d090ff';
-    }
-
-    const ringCount = 1 + boss.phaseIndex;
-    for (let r = 0; r < ringCount; r++) {
-      const ringR = bossSize * (1.5 + r * 0.7 + pulseFactor * 0.4);
-      ctx.globalAlpha = (0.15 - r * 0.04) * (0.6 + pulseFactor * 0.4);
-      ctx.shadowBlur = ringR * 2; ctx.shadowColor = drawGlow;
-      ctx.strokeStyle = drawGlow; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(boss.x, boss.y, ringR, 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-    ctx.globalAlpha = 1;
-
-    const barW = bossSize * 5;
-    const barH = 4;
-    const barX = boss.x - barW / 2;
-    const barY = boss.y - bossSize - 12;
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = '#111'; ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = drawColor; ctx.fillRect(barX, barY, barW * (boss.hp / boss.maxHp), barH);
-    ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff';
-    ctx.fillRect(barX + barW * BOSS_PHASE2_HP_RATIO - 0.5, barY, 1.5, barH);
-    ctx.fillRect(barX + barW * BOSS_PHASE3_HP_RATIO - 0.5, barY, 1.5, barH);
-    ctx.globalAlpha = 1;
-
-    if (boss.maxShieldHp > 0) {
-      const sBarY = barY - 6;
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#111'; ctx.fillRect(barX, sBarY, barW, 3);
-      ctx.fillStyle = '#74c0fc'; ctx.fillRect(barX, sBarY, barW * (boss.shieldHp / boss.maxShieldHp), 3);
-      ctx.globalAlpha = 1;
-    }
-
-    ctx.shadowBlur = bossSize * (4 + pulseFactor * 4); ctx.shadowColor = drawGlow;
-    if (boss.bossId === 7 || boss.bossId === 10) {
-      ctx.save();
-      ctx.translate(boss.x, boss.y);
-      ctx.rotate(Math.PI / 4 + glowTimeS * 0.3);
-      ctx.fillStyle = drawColor;
-      ctx.fillRect(-half * 0.85, -half * 0.85, bossSize * 0.85, bossSize * 0.85);
-      ctx.restore();
-    } else if (boss.bossId === 8) {
-      ctx.fillStyle = drawColor;
-      ctx.fillRect(Math.floor(boss.x - half), Math.floor(boss.y - half), Math.ceil(bossSize), Math.ceil(bossSize));
-      ctx.shadowBlur = 0;
-      for (let r = 1; r <= 3; r++) {
-        const ringAlpha = boss.isAbsorbing ? 0.5 - r * 0.1 : 0.2 - r * 0.04;
-        ctx.globalAlpha = Math.max(0, ringAlpha) * (0.7 + pulseFactor * 0.3);
-        ctx.shadowBlur = 6; ctx.shadowColor = drawGlow;
-        ctx.strokeStyle = drawGlow; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(boss.x, boss.y, bossSize * (0.9 + r * 0.55), 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    } else {
-      ctx.fillStyle = drawColor;
-      ctx.fillRect(Math.floor(boss.x - half), Math.floor(boss.y - half), Math.ceil(bossSize), Math.ceil(bossSize));
-    }
-    ctx.shadowBlur = 0;
-
-    const pipRadius = 2;
-    const pipSpacing = 8;
-    const totalPips = 3;
-    const pipsStartX = boss.x - (totalPips - 1) * pipSpacing / 2;
-    const pipY = boss.y + half + 8;
-    for (let p = 0; p < totalPips; p++) {
-      const filled = p <= boss.phaseIndex;
-      ctx.globalAlpha = filled ? 0.95 : 0.25;
-      ctx.shadowBlur = filled ? 5 : 0; ctx.shadowColor = drawGlow;
-      ctx.fillStyle = filled ? drawGlow : '#444';
-      ctx.beginPath(); ctx.arc(pipsStartX + p * pipSpacing, pipY, pipRadius, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-
-    if (boss.bossId === 7 && boss.isInvuln) {
-      ctx.globalAlpha = 0.8;
-      ctx.fillStyle = drawGlow;
-      ctx.font = '7px "Poiret One", sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.shadowBlur = 4; ctx.shadowColor = drawGlow;
-      ctx.fillText('INVULN', boss.x, boss.y - half - 20);
-      ctx.shadowBlur = 0; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.globalAlpha = 1;
-    }
-
-    ctx.restore();
-  }
-
-  function drawWaveClearBanner(): void {
-    if (!isInterWave || currentWave === 0) return;
-    const t = 1 - interWaveTimerMs / INTER_WAVE_DELAY_MS;
-    const fadeIn  = Math.min(t / 0.15, 1);
-    const fadeOut = t > 0.75 ? Math.max(0, 1 - (t - 0.75) / 0.15) : 1;
-    const alpha   = fadeIn * fadeOut * 0.85;
-    if (alpha < 0.01) return;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'rgba(10, 10, 18, 0.75)';
-    ctx.fillRect(0, heightPx / 2 - 32, widthPx, 64);
-    ctx.fillStyle = '#ffd764'; ctx.font = 'bold 14px "Poiret One", sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowBlur = 8; ctx.shadowColor = '#ffe599';
-    const isBoss = currentWave > 0 && currentWave % 100 === 0;
-    const bannerText = isBoss
-      ? `${BOSS_GLYPH_LABEL} ${currentWave / 100} Cleared!`
-      : `Wave ${currentWave} Cleared!`;
-    ctx.fillText(bannerText, widthPx / 2, heightPx / 2 - 8);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fff172'; ctx.font = '10px "Poiret One", sans-serif';
-    ctx.fillText('Next wave incoming\u2026', widthPx / 2, heightPx / 2 + 10);
-    if (currentWave > 0 && currentWave % 10 === 0) {
-      ctx.fillStyle = '#69db7c'; ctx.font = '9px "Poiret One", sans-serif';
-      ctx.shadowBlur = 6; ctx.shadowColor = '#69db7c';
-      ctx.fillText('✦ Checkpoint unlocked! See RPG Menu.', widthPx / 2, heightPx / 2 + 22);
-      ctx.shadowBlur = 0;
-    }
-    ctx.restore();
-  }
-
   function draw(nowMs: number): void {
     ctx.clearRect(0, 0, widthPx, heightPx);
     ctx.fillStyle = '#0a0a12';
@@ -5584,13 +5099,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawFracterylEnemies(ctx, fracterylEnemies, fracterylShards);
     drawEigensteinEnemies(ctx, eigensteinEnemies);
     drawEigensteinBeams(ctx, eigensteinBeams, widthPx, heightPx);
-    drawBottomSafeZone();
-    drawDanmakuSafeZone();
+    drawBottomSafeZone(ctx, isBossWaveActive, widthPx, heightPx, glowTimeS);
+    drawDanmakuSafeZone(ctx, bossEnemy, danmakuSafeZone);
     drawBossProjectiles(ctx, bossProjectiles);
-    drawBossEnemy();
+    drawBossEnemy(ctx, bossEnemy, glowTimeS);
     drawTeleportParticles(ctx, teleportParticles);
     drawShotLines(ctx, shotLines);
-    drawVortexes();
+    drawVortexes(ctx, activeVortexes);
     drawSandProjectiles(ctx, sandProjectiles);
     drawPoisonBolts(ctx, poisonBolts);
     drawLaserBeamEffect(ctx, laserBeamEffect);
@@ -5651,8 +5166,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (rpgPhase === 'alive') {
       for (const p of weaponOrbitParticles) drawWeaponOrbitParticle(ctx, p);
       drawOrbitProjectile(ctx, orbitProjectile);
-      for (const ws of chainWhipStates.values()) drawChainWhip(ws);
-      drawSwordCombos();
+      for (const ws of chainWhipStates.values()) drawChainWhip(ctx, ws);
+      drawSwordCombos(ctx, swordComboStates, mote, rpgSimState.weaponTiersByWeaponId);
     }
 
     if (joystick.isActive && rpgPhase === 'alive') {
@@ -5665,7 +5180,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ctx.shadowBlur = 0; ctx.restore();
     }
 
-    if (rpgPhase === 'alive') drawWaveClearBanner();
+    if (rpgPhase === 'alive') drawWaveClearBanner(ctx, isInterWave, currentWave, interWaveTimerMs, widthPx, heightPx);
 
     if (screenDarken > 0) {
       ctx.globalAlpha = screenDarken; ctx.fillStyle = '#000000';
