@@ -529,6 +529,8 @@ export interface BossEnemy {
   contactCdMs: number;
   phaseTransitionMs: number;
   danmakuLevel: number;
+  /** Set when the boss is hit; cleared once the player is teleported back to safe zone. */
+  isFiringPaused: boolean;
 }
 
 export interface BossProjectile {

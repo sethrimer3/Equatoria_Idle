@@ -43,7 +43,7 @@ export interface WaveDefinition {
 
 // ─── Pre-defined waves ────────────────────────────────────────────
 
-/** Hand-authored wave definitions. Boss waves every 5th wave. */
+/** Hand-authored wave definitions for early progression. */
 export const WAVE_DEFINITIONS: WaveDefinition[] = [
   {
     waveNumber: 1,
@@ -73,14 +73,12 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'quartz', count: 2, spawnDelay: 600 },
     ],
   },
-  // Wave 5: first boss wave — Quartz Sovereign appears after a small escort
+  // Wave 5: no boss before wave 100
   {
     waveNumber: 5,
-    isBossWave: true,
     spawns: [
       { enemyTypeId: 'laser',  count: 2, spawnDelay: 600 },
       { enemyTypeId: 'quartz', count: 1, spawnDelay: 700 },
-      { enemyTypeId: 'boss',   count: 1, spawnDelay: 2000 },
     ],
   },
   {
@@ -116,15 +114,13 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'emerald',  count: 1, spawnDelay: 1300 },
     ],
   },
-  // Wave 10: second boss wave — Ruby King
+  // Wave 10: no boss before wave 100
   {
     waveNumber: 10,
-    isBossWave: true,
     spawns: [
       { enemyTypeId: 'laser',    count: 3, spawnDelay: 500 },
       { enemyTypeId: 'quartz',   count: 2, spawnDelay: 480 },
       { enemyTypeId: 'sapphire', count: 1, spawnDelay: 1000 },
-      { enemyTypeId: 'boss',     count: 1, spawnDelay: 2500 },
     ],
   },
   {
@@ -166,16 +162,14 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'amber',    count: 2, spawnDelay: 1200 },
     ],
   },
-  // Wave 15: third boss wave — Sunstone Herald
+  // Wave 15: no boss before wave 100
   {
     waveNumber: 15,
-    isBossWave: true,
     spawns: [
       { enemyTypeId: 'laser',    count: 4, spawnDelay: 450 },
       { enemyTypeId: 'quartz',   count: 2, spawnDelay: 420 },
       { enemyTypeId: 'emerald',  count: 2, spawnDelay: 900 },
       { enemyTypeId: 'amber',    count: 1, spawnDelay: 1100 },
-      { enemyTypeId: 'boss',     count: 1, spawnDelay: 3000 },
     ],
   },
   {
@@ -222,17 +216,15 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'void',     count: 2, spawnDelay: 1500 },
     ],
   },
-  // Wave 20: fourth boss wave — Citrine Weaver
+  // Wave 20: no boss before wave 100
   {
     waveNumber: 20,
-    isBossWave: true,
     spawns: [
       { enemyTypeId: 'laser',    count: 4, spawnDelay: 380 },
       { enemyTypeId: 'quartz',   count: 3, spawnDelay: 360 },
       { enemyTypeId: 'sapphire', count: 2, spawnDelay: 820 },
       { enemyTypeId: 'amber',    count: 2, spawnDelay: 950 },
       { enemyTypeId: 'void',     count: 1, spawnDelay: 1400 },
-      { enemyTypeId: 'boss',     count: 1, spawnDelay: 3500 },
     ],
   },
   {
@@ -282,10 +274,9 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'ruby',     count: 3, spawnDelay: 860 },
     ],
   },
-  // Wave 25: fifth boss wave — Iolite Colossus
+  // Wave 25: no boss before wave 100
   {
     waveNumber: 25,
-    isBossWave: true,
     spawns: [
       { enemyTypeId: 'laser',    count: 5, spawnDelay: 300 },
       { enemyTypeId: 'quartz',   count: 3, spawnDelay: 280 },
@@ -293,7 +284,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'amber',    count: 2, spawnDelay: 880 },
       { enemyTypeId: 'void',     count: 2, spawnDelay: 1250 },
       { enemyTypeId: 'ruby',     count: 2, spawnDelay: 860 },
-      { enemyTypeId: 'boss',     count: 1, spawnDelay: 4000 },
     ],
   },
 ];
@@ -304,7 +294,7 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
  * Returns the WaveDefinition for the given wave number.
  * Waves beyond WAVE_DEFINITIONS are generated procedurally, scaling
  * enemy count and tightening spawn delay as the wave number grows.
- * Every 5th wave is a boss wave with a smaller escort pack.
+ * Boss waves begin at wave 100 and repeat every 100 waves.
  */
 export function getWaveDefinition(waveNumber: number): WaveDefinition {
   const predefined = WAVE_DEFINITIONS.find(w => w.waveNumber === waveNumber);

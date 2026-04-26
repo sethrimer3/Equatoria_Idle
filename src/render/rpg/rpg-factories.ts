@@ -393,6 +393,6 @@ export function makeBossEnemy(rawBossId: number, waveNumber: number, w: number, 
     contactCdMs: 0,
     phaseTransitionMs: 0,
     danmakuLevel: 0,
+    isFiringPaused: false,
   };
 }
-
