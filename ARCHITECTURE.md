@@ -141,6 +141,15 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 - On pointer move: locked particles follow the pointer
 - On pointer up: particles are released; if stationary, velocity is reduced to minimum
 
+## RPG Combat Rendering
+
+- `createRpgRender()` owns transient RPG combat entities, input state, weapon timers, companion ships, projectiles, visual effects, and the RPG stats panel DOM
+- Persistent RPG progression lives in `RpgSimState`; equipped weapon ids and weapon tiers are read from sim state rather than duplicated in rendering code
+- Sapphire and Amethyst companion ships are persistent render/combat entities while their weapons are equipped; ship count is derived from weapon tier
+- Sapphire ships use nearest-enemy targeting. Amethyst ships sort enemies by distance from the player and distribute ships across the furthest targets
+- The RPG stats panel is DOM-based and includes a compact per-equipped-weapon DPS widget using a rolling 10 second damage sample
+- Low graphics mode is passed from settings through the app game loop into RPG draw modules, where glow and trail-heavy passes are skipped without changing combat state
+
 ## UI Structure
 
 - **Tab Bar** (bottom): Equation / Looms / Tiers / Achievements / Settings — always visible over game canvas

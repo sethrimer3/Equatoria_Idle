@@ -731,6 +731,8 @@ export interface AmethystLaser {
   lifeMs: number;
   /** Pre-computed scaled damage (30× base). */
   scaledDamage: number;
+  /** Intended target; laser dissipates when this target dies or is hit. */
+  targetEnemy: object | null;
   /** Enemies already pierced this lifetime (avoid repeat hits). */
   piercedEnemies: Set<object>;
   /** Trail. */

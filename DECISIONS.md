@@ -259,9 +259,31 @@
 
 **Currency**: Weapons are purchased with refined motes of the tier specified by `WeaponDefinition.costTierId`.  `spendMotes()` deducts the cost from `GameState.resources` on purchase.
 
-**Equipping**: Purchased weapons can be equipped via the `equip_weapon` action.  `rpg-render.ts` reads `rpgSimState.equippedWeaponId` and calls `applyEquipmentStats()` to add weapon ATK/DEF bonuses to the player stats.
+**Equipping**: Purchased weapons can be equipped via the `equip_weapon` action.  `rpg-render.ts` reads `rpgSimState.equippedWeaponIds` and calls `applyEquipmentStats()` to add equipped weapon ATK/DEF bonuses to the player stats.
 
-**Save format v10**: `rpg.purchasedWeaponIds[]` and `rpg.equippedWeaponId` are persisted.  Older saves default to no purchases.
+**Save format**: `rpg.purchasedWeaponIds[]` and `rpg.equippedWeaponIds[]` are persisted. Older single-weapon saves are migrated by `save-load.ts`.
+
+## RPG Companion Ship Weapons
+
+**Decision**: Sapphire and Amethyst RPG weapons use persistent companion ships while equipped instead of timer-spawned projectiles. Ship count equals weapon tier. Sapphire ships orbit the nearest available enemy and fire fast, small curving lasers at enemies in range. Amethyst ships assign themselves to the furthest enemies from the player, spreading across distinct targets first and sharing targets evenly when there are more ships than enemies.
+
+**Damage model**: Sapphire lasers use the weapon's scaled base damage per shot and a fast 250 ms fire cadence. Amethyst lasers fire every 3 seconds, apply a 30x scaled base-damage multiplier, pierce non-target enemies once per laser, and dissipate only when the intended target is hit or gone.
+
+**Rationale**: Persistent ships match the tier-count progression better than repeatedly spawning temporary missiles. Keeping ship state in `rpg-render.ts` preserves the current RPG architecture: weapon companions are visual combat entities, while authoritative weapon ownership and tier data remain in `RpgSimState` and `weapon-definitions.ts`.
+
+## RPG Low Graphics Mode
+
+**Decision**: RPG low graphics mode disables glow and trail-heavy passes for weapons, projectiles, enemies, player movement glow, and boss/advanced enemy draw helpers. Core bodies, bars, and readable combat cues remain visible.
+
+**Rationale**: The low graphics setting should reduce visual cost and brightness without changing combat behavior. The setting is plumbed from `app-game-loop.ts` into the RPG renderer and then into extracted draw modules via `setLowGraphicsMode()`.
+
+## RPG DPS Widget
+
+**Decision**: Replace the right-side `WEAPON:` text in the RPG stats panel with a compact square DPS widget. The widget shows one row per equipped weapon using a three-letter tier abbreviation and a colored bar. Damage events are sampled over a rolling 10 second window and grouped by weapon id.
+
+**Scaling**: The bar axis lerps toward the current lowest and highest equipped-weapon DPS values, and the DOM rows update at 1 Hz while CSS transitions smooth bar movement.
+
+**Rationale**: Multiple equipped weapons make a single weapon-name label misleading. A rolling per-weapon DPS chart gives immediate comparison while keeping the stats bar compact.
 
 ## Diamond Sword — Prismatic Shard Blade System (v2)
 

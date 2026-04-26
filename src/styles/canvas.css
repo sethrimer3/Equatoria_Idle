@@ -146,34 +146,71 @@
 }
 
 /* ── DPS widget with mini bar chart ───────────────────────────── */
-.rpg-stat-dps {
-  flex: 1.5;
-  min-width: 80px;
+.rpg-dps-widget {
+  height: 90%;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  margin: auto 0 auto auto;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 241, 114, 0.18);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.rpg-stat-value--dps {
-  color: #ff6b6b;
-  font-size: 16px;
+.rpg-dps-widget .rpg-stat-label,
+.rpg-dps-widget .rpg-stat-value {
+  display: none;
 }
 
 .rpg-dps-chart {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: center;
   gap: 2px;
-  height: 16px;
   width: 100%;
-  max-width: 80px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 2px;
-  padding: 2px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.rpg-dps-row {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 3px;
+  min-height: 8px;
+}
+
+.rpg-dps-label {
+  color: var(--text-secondary);
+  font-size: 7px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rpg-dps-track {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
 }
 
 .rpg-dps-bar {
-  flex: 1;
-  background: linear-gradient(to top, #ff6b6b, #ffb86c);
-  min-height: 2px;
-  border-radius: 1px;
-  transition: height 0.15s ease-out;
+  width: 0%;
+  height: 100%;
+  transition: width 0.45s ease-out;
+}
+
+.rpg-dps-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: 6px;
+  line-height: 1;
+  opacity: 0.75;
 }
 
 /* ── RPG menu toggle button ────────────────────────────────────── */

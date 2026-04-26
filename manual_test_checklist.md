@@ -93,3 +93,16 @@
 - [ ] Touch on buttons triggers actions
 - [ ] Buttons are large enough to tap comfortably (44px+ touch targets)
 - [ ] No accidental zoom or scroll on double-tap
+
+## RPG Combat
+- [ ] Low graphics mode removes visible RPG weapon, projectile, enemy, player-movement, and boss glows/trails while preserving readable bodies and bars
+- [ ] Sapphire Ships persist while equipped, one ship per weapon tier
+- [ ] Sapphire Ships move toward the nearest enemy, orbit it, and fire small curving blue lasers
+- [ ] Sapphire Ships shoot enemies in range while moving toward their orbit target
+- [ ] Amethyst Ships persist while equipped, one ship per weapon tier
+- [ ] Amethyst Ships choose the furthest enemies from the player, spread across targets first, and share targets evenly when ships outnumber enemies
+- [ ] Amethyst lasers fire slowly, spiral inward, pierce non-target enemies, and end on the intended target
+- [ ] The RPG stats panel no longer shows the old `WEAPON:` text
+- [ ] The right-side RPG stats widget shows one DPS row per equipped weapon with three-letter color abbreviations and colored bars
+- [ ] The DPS widget shows low/high axis labels that move with the sampled 10 second DPS range
+- [ ] DPS bars update smoothly over a rolling 10 second damage window

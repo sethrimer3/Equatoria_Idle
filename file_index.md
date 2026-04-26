@@ -24,6 +24,7 @@
 - `#rpg-container` — flex-centred container for the RPG canvas (height excludes stats panel + tab bar).
 - `#rpg-canvas` — fixed `aspect-ratio: 320/568` with `max-width/max-height: 100%` for uniform letterbox/pillarbox scaling on desktop; no independent X/Y stretch.
 - `#rpg-stats-panel` — DOM stats panel (3×tab-height) above the navigation bar, with `.rpg-stat`, `.rpg-stat-label`, `.rpg-stat-value` child classes.
+- `.rpg-dps-widget` — compact square right-side RPG stats widget with per-equipped-weapon DPS rows, low/high axis labels, tracks, and animated colored bars.
 
 ### src/styles/panels.css
 - `#panels-container` overlay, panel base, upgrade buttons, resource rows, settings controls, credits.
@@ -322,12 +323,14 @@
 - Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, and Euler-fluid injection constants.
 - Also exports `SWORD_SHARD_SHAPES` — readonly polygon vertex data for the 7 prismatic blade shards.
 - Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
-- Exports all constants; consumed by `rpg-render.ts` and `rpg-factories.ts`.
+- Exports companion-ship and laser constants for Sapphire/Amethyst persistent ship weapons.
+- Exports all constants; consumed by `rpg-render.ts`, `rpg-factories.ts`, and RPG draw modules.
 
 ### src/render/rpg/rpg-types.ts
 - All internal interfaces and type aliases for the RPG rendering system (~600 lines).
 - Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`, `FracterylEnemy`, `EigensteinEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces.
 - Diamond sword interfaces: `SwordComboState` (phase `idle | swing | cooldown | spin_combo`, hinge angle+velocity, shard angles chain, alternating `swingIsRightToLeft`, consecutive-hit tracking `consecHitsOnSameEnemy`/`lastHitEntity`, spin combo state `spinComboAngle`/`spinComboDamageTicks`, swipe/beam effect lists), `SwipeEffect` (disconnected arc visual), `PrismaticBeamEffect` (tail-to-tip appear/fade beam).
+- Companion ship interfaces: `SapphireShip`, `SapphireLaser`, `AmethystShip`, and `AmethystLaser` with ring-buffer trails and pre-scaled damage fields.
 - Also exports `TeleportParticle` — comet-trail particle used during player teleport visuals.
 - No runtime dependencies (types only).
 - Exports all types; consumed by `rpg-render.ts`, `rpg-factories.ts`, and `rpg-entity-draw.ts`.
@@ -349,7 +352,8 @@
 ### src/render/rpg/rpg-entity-draw.ts
 - 35 exported pure draw functions extracted from the `rpg-render.ts` closure (~864 lines).
 - Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays, effect objects, or scalar values.
-- Covers every enemy type (laser, sapphire, sand projectile, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, fracteryl, eigenstein, boss ring), plus: particles (teleport, death-burst, forge, gem, mote, orbit-weapon), attack trails, weapon projectiles (missiles, bolts), eigenstein beams, laser beam effect, orbit projectile, and support visuals (damage numbers, HP bars).
+- Covers every enemy type (laser, sapphire, sand projectile, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, fracteryl, eigenstein, boss ring), plus: particles (teleport, death-burst, forge, gem, mote, orbit-weapon), attack trails, weapon projectiles (missiles, bolts), Sapphire/Amethyst companion ships and lasers, eigenstein beams, laser beam effect, orbit projectile, and support visuals (damage numbers, HP bars).
+- Exposes `setLowGraphicsMode()` so RPG glow/trail-heavy draw passes can be disabled from settings.
 - Imports constants from `rpg-constants.ts` and types from `rpg-types.ts`.
 - No runtime side-effects; safe to call from any rendering context.
 
@@ -399,6 +403,9 @@
 - **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
 - **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
 - **Multiple equipped weapons** — `equippedWeaponIds: Set<string>` from RpgSimState; `weaponAttackTimers: Map<weaponId, number>` for independent per-weapon attack cadence; one `WeaponOrbitParticle` per weapon (evenly-spaced orbits); one `ChainWhipState` per chainWhip weapon.
+- **Companion ship weapons** — Sapphire/Amethyst weapon effects create persistent ships while equipped. Sapphire ships orbit nearest enemies and fire fast curving lasers; Amethyst ships distribute across furthest enemies and fire slow spiraling pierce lasers.
+- **DPS widget** — Rolling 10-second damage samples are attributed by weapon id and rendered into the right-side stats panel as per-equipped-weapon bars.
+- **Low graphics mode** — Public `setLowGraphicsMode()` forwards the graphics setting into RPG entity, weapon, and boss draw modules, disabling glow/trail-heavy passes without changing combat logic.
 - **Weapon tier damage** — `getScaledWeaponDamage(baseDamage, tier, playerAtk)` and `getScaledWeaponCooldown(baseCooldownMs, tier)` imported from `rpg-state.ts` and applied per attack.
 - **Damage number deviation** — each damage number direction has a ±15° triangular-distribution random angle jitter in `spawnHitVisualsAt`.
 - **Softbody chain whip** — `ChainWhipState` has per-node velocity arrays (`nodesVx`, `nodesVy`). Inertia/size gradient: node 0 (closest to player) = smallest (radius 2px) + most responsive (inverseMass 1/0.8); tip (index CHAIN_NODES-1) = largest (radius 6px) + most inertia (inverseMass 1/4.0). Spring physics (CHAIN_SPRING_K=0.4) link adjacent nodes; CHAIN_ANCHOR_K=0.6 ties node 0 to player. On lash: tip gets CHAIN_LASH_SPEED=20 px/dt impulse; all other nodes follow through spring tension.
@@ -413,11 +420,12 @@
 - `getWaveDefinition(waveNumber)` — returns predefined definition or generates one procedurally for waves beyond 10.
 
 ### src/data/rpg/weapon-definitions.ts
-- `WeaponEffect` — discriminated union: `single | multi | aoe | piercing`.
+- `WeaponEffect` — discriminated union: `single | multi | aoe | piercing | sapphireShip | amethystShip`.
 - `WeaponStats` and `WeaponDefinition` types.
 - `WEAPON_DEFINITIONS` — 11 weapons covering every non-secret tier in unlock order (Sand → Nullstone):
   `sand_blade`, `quartz_shard`, `ruby_lance`, `sunstone_ward`, `citrine_nova`, `emerald_spray`,
   `sapphire_spike`, `iolite_volley`, `amethyst_pierce`, `diamond_bastion`, `nullstone_nova`.
+- Sapphire and Amethyst definitions use persistent companion ship effects rather than the generic piercing effect.
 - `WEAPON_BY_ID` — O(1) lookup map.
 
 ### src/sim/rpg/rpg-state.ts

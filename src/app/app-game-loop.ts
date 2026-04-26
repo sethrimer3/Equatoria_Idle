@@ -77,6 +77,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // ── RPG tab: run independent render then skip main canvas draw ────────
     if (ctx.appState.activeTab === 'rpg') {
       const autoMove = ctx.uiPanels.rpgMenuPanel.isAutoMoveEnabled;
+      ctx.uiPanels.rpgRender.setLowGraphicsMode(ctx.settings.graphicsQuality === 'low');
       ctx.uiPanels.rpgRender.update(deltaMs, autoMove);
       requestAnimationFrame(gameLoop);
       return;

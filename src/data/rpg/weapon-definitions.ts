@@ -58,7 +58,7 @@ export type WeaponEffect =
    */
   | { kind: 'sunstoneMine' }
   /**
-   * Sapphire companion ships that orbit and fire at the targeted enemy.
+   * Sapphire companion ships that orbit and fire at the nearest enemy.
    * Ship count = weapon tier (1-7). Ships fire small curving lasers at nearby enemies.
    */
   | { kind: 'sapphireShip' }
@@ -193,9 +193,9 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     id: 'sapphire_spike',
     name: 'Sapphire Ships',
     description:
-      'Deploys companion ships that orbit the targeted enemy and fire small curving lasers. ' +
+      'Deploys companion ships that orbit the nearest enemy and fire small curving lasers. ' +
       'Higher tiers deploy more ships (tier = ship count). Ships prioritize nearby enemies first, ' +
-      'then fall back to the player\'s targeted enemy.',
+      'then fall back to the nearest enemy.',
     costTierId: 'sapphire',
     cost: 50,
     stats: {

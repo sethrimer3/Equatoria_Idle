@@ -167,7 +167,7 @@ export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: Sapp
     if (enemy.shieldHp > 0) {
       ctx.save();
       ctx.globalAlpha = 0.25 + shieldAlpha * 0.35;
-      ctx.shadowBlur  = SAPPHIRE_SHIELD_RADIUS * 2; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
+      ctx.shadowBlur  = isLowGraphicsMode ? 0 : SAPPHIRE_SHIELD_RADIUS * 2; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
       ctx.strokeStyle = SAPPHIRE_ENEMY_GLOW; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.stroke();
       ctx.shadowBlur = 0;
@@ -197,7 +197,7 @@ export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: Sapp
     ctx.restore();
     // Enemy body (square)
     const half = SAPPHIRE_ENEMY_SIZE / 2;
-    ctx.shadowBlur = SAPPHIRE_ENEMY_SIZE * 5; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : SAPPHIRE_ENEMY_SIZE * 5; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW;
     ctx.fillStyle = SAPPHIRE_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -209,7 +209,7 @@ export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: Sa
   ctx.save();
   for (const m of missiles) {
     // Draw trail using lineDash style similar to laser attack trail
-    if (m.trailCount >= 2) {
+    if (!isLowGraphicsMode && m.trailCount >= 2) {
       const dashLen = MISSILE_TRAIL_CAP * MISSILE_TRAIL_DASH_RATIO;
       const startIdx = (m.trailHead - m.trailCount + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
       const lastIdx  = (m.trailHead - 1 + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
@@ -219,7 +219,7 @@ export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: Sa
       ctx.setLineDash([dashLen, dashLen]);
       ctx.lineDashOffset = -(dashLen * (1 - m.trailCount / MISSILE_TRAIL_CAP));
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.globalAlpha = 0.7; ctx.shadowBlur = 5; ctx.shadowColor = MISSILE_GLOW;
+      ctx.globalAlpha = 0.7; ctx.shadowBlur = isLowGraphicsMode ? 0 : 5; ctx.shadowColor = MISSILE_GLOW;
       ctx.strokeStyle = MISSILE_GLOW; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       ctx.shadowBlur = 0;
@@ -231,11 +231,13 @@ export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: Sa
     // Missile body
     const half = MISSILE_SIZE / 2;
     ctx.globalAlpha = 1;
-    ctx.shadowBlur = MISSILE_SIZE * 5; ctx.shadowColor = MISSILE_GLOW;
-    ctx.fillStyle = MISSILE_GLOW;
-    const gh = half * 2;
-    ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-    ctx.shadowBlur = 0;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur = MISSILE_SIZE * 5; ctx.shadowColor = MISSILE_GLOW;
+      ctx.fillStyle = MISSILE_GLOW;
+      const gh = half * 2;
+      ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle = MISSILE_COLOR;
     ctx.fillRect(Math.floor(m.x - half), Math.floor(m.y - half), MISSILE_SIZE, MISSILE_SIZE);
   }
@@ -250,7 +252,7 @@ export function drawEmeraldEnemies(ctx: CanvasRenderingContext2D, enemies: Emera
       const half = EMERALD_ENEMY_SIZE / 2;
       ctx.save();
       ctx.globalAlpha = enemy.ghostAlpha * 0.5;
-      ctx.shadowBlur  = EMERALD_ENEMY_SIZE * 6; ctx.shadowColor = EMERALD_ENEMY_GLOW;
+      ctx.shadowBlur  = isLowGraphicsMode ? 0 : EMERALD_ENEMY_SIZE * 6; ctx.shadowColor = EMERALD_ENEMY_GLOW;
       ctx.fillStyle   = EMERALD_ENEMY_GLOW;
       ctx.fillRect(Math.floor(enemy.ghostX - half), Math.floor(enemy.ghostY - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
@@ -271,7 +273,7 @@ export function drawEmeraldEnemies(ctx: CanvasRenderingContext2D, enemies: Emera
     // Body — pulses brighter during charging phase
     const chargeGlow = enemy.phase === 'charging' ? (enemy.phaseMs / EMERALD_CHARGE_MS) * 0.6 : 0;
     const half = EMERALD_ENEMY_SIZE / 2;
-    ctx.shadowBlur  = EMERALD_ENEMY_SIZE * (5 + chargeGlow * 8); ctx.shadowColor = EMERALD_ENEMY_GLOW;
+    ctx.shadowBlur  = isLowGraphicsMode ? 0 : EMERALD_ENEMY_SIZE * (5 + chargeGlow * 8); ctx.shadowColor = EMERALD_ENEMY_GLOW;
     ctx.fillStyle   = EMERALD_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -292,7 +294,7 @@ export function drawAmberEnemies(ctx: CanvasRenderingContext2D, enemies: AmberEn
     ctx.globalAlpha = 1;
     ctx.restore();
     const half = AMBER_ENEMY_SIZE / 2;
-    ctx.shadowBlur  = AMBER_ENEMY_SIZE * 5; ctx.shadowColor = AMBER_ENEMY_GLOW;
+    ctx.shadowBlur  = isLowGraphicsMode ? 0 : AMBER_ENEMY_SIZE * 5; ctx.shadowColor = AMBER_ENEMY_GLOW;
     ctx.fillStyle   = AMBER_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMBER_ENEMY_SIZE, AMBER_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -304,7 +306,7 @@ export function drawAmberShards(ctx: CanvasRenderingContext2D, shards: AmberShar
   ctx.save();
   for (const s of shards) {
     // Trail
-    if (s.trailCount >= 2) {
+    if (!isLowGraphicsMode && s.trailCount >= 2) {
       const dashLen = AMBER_SHARD_TRAIL_CAP * 0.6;
       const startIdx = (s.trailHead - s.trailCount + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
       const lastIdx  = (s.trailHead - 1 + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
@@ -312,7 +314,7 @@ export function drawAmberShards(ctx: CanvasRenderingContext2D, shards: AmberShar
       ctx.setLineDash([dashLen, dashLen]);
       ctx.lineDashOffset = -(dashLen * (1 - s.trailCount / AMBER_SHARD_TRAIL_CAP));
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.globalAlpha = 0.65; ctx.shadowBlur = 4; ctx.shadowColor = AMBER_SHARD_GLOW;
+      ctx.globalAlpha = 0.65; ctx.shadowBlur = isLowGraphicsMode ? 0 : 4; ctx.shadowColor = AMBER_SHARD_GLOW;
       ctx.strokeStyle = AMBER_SHARD_GLOW; ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(s.trailX[startIdx], s.trailY[startIdx]);
@@ -330,11 +332,13 @@ export function drawAmberShards(ctx: CanvasRenderingContext2D, shards: AmberShar
     // Shard body
     const half = AMBER_SHARD_SIZE / 2;
     ctx.globalAlpha = 1;
-    ctx.shadowBlur = AMBER_SHARD_SIZE * 5; ctx.shadowColor = AMBER_SHARD_GLOW;
-    ctx.fillStyle = AMBER_SHARD_GLOW;
-    const gh = half * 2;
-    ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-    ctx.shadowBlur = 0;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur = AMBER_SHARD_SIZE * 5; ctx.shadowColor = AMBER_SHARD_GLOW;
+      ctx.fillStyle = AMBER_SHARD_GLOW;
+      const gh = half * 2;
+      ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle = AMBER_SHARD_COLOR;
     ctx.fillRect(Math.floor(s.x - half), Math.floor(s.y - half), AMBER_SHARD_SIZE, AMBER_SHARD_SIZE);
   }
@@ -349,7 +353,7 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
     const auraAlpha = Math.sin(pulseT * Math.PI * 2) * 0.3 + 0.35;
     ctx.save();
     ctx.globalAlpha = auraAlpha * 0.4;
-    ctx.shadowBlur  = VOID_AURA_RADIUS * 2; ctx.shadowColor = VOID_ENEMY_GLOW;
+    ctx.shadowBlur  = isLowGraphicsMode ? 0 : VOID_AURA_RADIUS * 2; ctx.shadowColor = VOID_ENEMY_GLOW;
     ctx.strokeStyle = VOID_ENEMY_GLOW; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(enemy.x, enemy.y, VOID_AURA_RADIUS * (1 + pulseT * 0.3), 0, Math.PI * 2); ctx.stroke();
     ctx.shadowBlur = 0;
@@ -372,7 +376,7 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
     ctx.restore();
     // Body
     const half = VOID_ENEMY_SIZE / 2;
-    ctx.shadowBlur  = VOID_ENEMY_SIZE * 6; ctx.shadowColor = VOID_ENEMY_GLOW;
+    ctx.shadowBlur  = isLowGraphicsMode ? 0 : VOID_ENEMY_SIZE * 6; ctx.shadowColor = VOID_ENEMY_GLOW;
     ctx.fillStyle   = VOID_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), VOID_ENEMY_SIZE, VOID_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -385,7 +389,7 @@ export function drawQuartzEnemies(ctx: CanvasRenderingContext2D, enemies: Quartz
     ctx.save();
     ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
     ctx.rotate(Math.PI / 4);
-    ctx.shadowBlur = QUARTZ_ENEMY_SIZE * 4; ctx.shadowColor = QUARTZ_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : QUARTZ_ENEMY_SIZE * 4; ctx.shadowColor = QUARTZ_ENEMY_GLOW;
     ctx.fillStyle = QUARTZ_ENEMY_COLOR;
     ctx.fillRect(-half, -half, QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -405,7 +409,7 @@ export function drawQuartzSpikes(ctx: CanvasRenderingContext2D, spikes: QuartzSp
     ctx.translate(Math.floor(s.x), Math.floor(s.y));
     ctx.rotate(Math.PI / 4);
     const half = QUARTZ_SPIKE_SIZE / 2;
-    ctx.shadowBlur = QUARTZ_SPIKE_SIZE * 3; ctx.shadowColor = QUARTZ_SPIKE_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : QUARTZ_SPIKE_SIZE * 3; ctx.shadowColor = QUARTZ_SPIKE_GLOW;
     ctx.fillStyle = QUARTZ_SPIKE_COLOR;
     ctx.fillRect(-half, -half, QUARTZ_SPIKE_SIZE, QUARTZ_SPIKE_SIZE);
     ctx.shadowBlur = 0;
@@ -416,7 +420,7 @@ export function drawQuartzSpikes(ctx: CanvasRenderingContext2D, spikes: QuartzSp
 export function drawRubyEnemies(ctx: CanvasRenderingContext2D, enemies: RubyEnemy[]): void {
   for (const enemy of enemies) {
     const half = RUBY_ENEMY_SIZE / 2;
-    ctx.shadowBlur = RUBY_ENEMY_SIZE * 5; ctx.shadowColor = RUBY_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : RUBY_ENEMY_SIZE * 5; ctx.shadowColor = RUBY_ENEMY_GLOW;
     ctx.fillStyle = RUBY_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), RUBY_ENEMY_SIZE, RUBY_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -432,7 +436,7 @@ export function drawRubyEnemies(ctx: CanvasRenderingContext2D, enemies: RubyEnem
 export function drawRubyBolts(ctx: CanvasRenderingContext2D, bolts: RubyBolt[]): void {
   for (const b of bolts) {
     const half = RUBY_BOLT_SIZE / 2;
-    ctx.shadowBlur = RUBY_BOLT_SIZE * 4; ctx.shadowColor = RUBY_BOLT_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : RUBY_BOLT_SIZE * 4; ctx.shadowColor = RUBY_BOLT_GLOW;
     ctx.fillStyle = RUBY_BOLT_COLOR;
     ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), RUBY_BOLT_SIZE, RUBY_BOLT_SIZE);
     ctx.shadowBlur = 0;
@@ -443,7 +447,7 @@ export function drawSunstoneEnemies(ctx: CanvasRenderingContext2D, enemies: Suns
   for (const enemy of enemies) {
     const half = SUNSTONE_ENEMY_SIZE / 2;
     ctx.save();
-    ctx.shadowBlur = SUNSTONE_ENEMY_SIZE * 5; ctx.shadowColor = SUNSTONE_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : SUNSTONE_ENEMY_SIZE * 5; ctx.shadowColor = SUNSTONE_ENEMY_GLOW;
     ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_SIZE);
     ctx.globalAlpha = 0.3; ctx.strokeStyle = SUNSTONE_ENEMY_GLOW; ctx.lineWidth = 1;
@@ -462,7 +466,7 @@ export function drawSunstoneEnemies(ctx: CanvasRenderingContext2D, enemies: Suns
 export function drawCitrineEnemies(ctx: CanvasRenderingContext2D, enemies: CitrineEnemy[]): void {
   for (const enemy of enemies) {
     const half = CITRINE_ENEMY_SIZE / 2;
-    ctx.shadowBlur = CITRINE_ENEMY_SIZE * 5; ctx.shadowColor = CITRINE_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : CITRINE_ENEMY_SIZE * 5; ctx.shadowColor = CITRINE_ENEMY_GLOW;
     ctx.fillStyle = CITRINE_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), CITRINE_ENEMY_SIZE, CITRINE_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -478,7 +482,7 @@ export function drawCitrineEnemies(ctx: CanvasRenderingContext2D, enemies: Citri
 export function drawCitrineBolts(ctx: CanvasRenderingContext2D, bolts: CitrineBolt[]): void {
   for (const b of bolts) {
     // Draw trail
-    if (b.trailCount >= 2) {
+    if (!isLowGraphicsMode && b.trailCount >= 2) {
       ctx.save();
       for (let i = 0; i < b.trailCount; i++) {
         const t = i / b.trailCount;
@@ -491,7 +495,7 @@ export function drawCitrineBolts(ctx: CanvasRenderingContext2D, bolts: CitrineBo
       ctx.globalAlpha = 1; ctx.restore();
     }
     const half = CITRINE_BOLT_SIZE / 2;
-    ctx.shadowBlur = CITRINE_BOLT_SIZE * 4; ctx.shadowColor = CITRINE_BOLT_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : CITRINE_BOLT_SIZE * 4; ctx.shadowColor = CITRINE_BOLT_GLOW;
     ctx.fillStyle = CITRINE_BOLT_COLOR;
     ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), CITRINE_BOLT_SIZE, CITRINE_BOLT_SIZE);
     ctx.shadowBlur = 0;
@@ -502,7 +506,7 @@ export function drawIoliteEnemies(ctx: CanvasRenderingContext2D, enemies: Iolite
   for (const enemy of enemies) {
     const half = IOLITE_ENEMY_SIZE / 2;
     ctx.save();
-    ctx.shadowBlur = IOLITE_ENEMY_SIZE * 5; ctx.shadowColor = IOLITE_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : IOLITE_ENEMY_SIZE * 5; ctx.shadowColor = IOLITE_ENEMY_GLOW;
     ctx.fillStyle = IOLITE_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), IOLITE_ENEMY_SIZE, IOLITE_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -523,12 +527,12 @@ export function drawAmethystEnemies(ctx: CanvasRenderingContext2D, enemies: Amet
       ctx.save();
       ctx.globalAlpha = 0.3 + shieldRatio * 0.4;
       ctx.strokeStyle = AMETHYST_ENEMY_GLOW; ctx.lineWidth = 2;
-      ctx.shadowBlur = AMETHYST_ENEMY_SIZE * 4; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
+      ctx.shadowBlur = isLowGraphicsMode ? 0 : AMETHYST_ENEMY_SIZE * 4; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
       ctx.beginPath(); ctx.arc(enemy.x, enemy.y, AMETHYST_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
       ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
     }
     const half = AMETHYST_ENEMY_SIZE / 2;
-    ctx.shadowBlur = AMETHYST_ENEMY_SIZE * 5; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : AMETHYST_ENEMY_SIZE * 5; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
     ctx.fillStyle = AMETHYST_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -547,7 +551,7 @@ export function drawAmethystShards(ctx: CanvasRenderingContext2D, shards: Amethy
     ctx.save();
     ctx.translate(Math.floor(s.x), Math.floor(s.y));
     ctx.rotate(Math.PI / 4);
-    ctx.shadowBlur = AMETHYST_SHARD_SIZE * 3; ctx.shadowColor = AMETHYST_SHARD_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : AMETHYST_SHARD_SIZE * 3; ctx.shadowColor = AMETHYST_SHARD_GLOW;
     ctx.fillStyle = AMETHYST_SHARD_COLOR;
     ctx.fillRect(-half, -half, AMETHYST_SHARD_SIZE, AMETHYST_SHARD_SIZE);
     ctx.shadowBlur = 0;
@@ -562,7 +566,7 @@ export function drawDiamondEnemies(ctx: CanvasRenderingContext2D, enemies: Diamo
     ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
     ctx.rotate(Math.PI / 4);
     const glowColor = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_GLOW;
-    ctx.shadowBlur = DIAMOND_ENEMY_SIZE * (enemy.phaseInvuln ? 10 : 5);
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : DIAMOND_ENEMY_SIZE * (enemy.phaseInvuln ? 10 : 5);
     ctx.shadowColor = glowColor;
     ctx.fillStyle = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_COLOR;
     ctx.globalAlpha = enemy.phaseInvuln ? 0.6 : 1;
@@ -584,7 +588,7 @@ export function drawDiamondShards(ctx: CanvasRenderingContext2D, shards: Diamond
     ctx.save();
     ctx.translate(Math.floor(s.x), Math.floor(s.y));
     ctx.rotate(Math.PI / 4);
-    ctx.shadowBlur = DIAMOND_SHARD_SIZE * 4; ctx.shadowColor = DIAMOND_SHARD_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : DIAMOND_SHARD_SIZE * 4; ctx.shadowColor = DIAMOND_SHARD_GLOW;
     ctx.fillStyle = DIAMOND_SHARD_COLOR;
     ctx.fillRect(-half, -half, DIAMOND_SHARD_SIZE, DIAMOND_SHARD_SIZE);
     ctx.shadowBlur = 0;
@@ -605,14 +609,14 @@ export function drawNullstoneEnemies(ctx: CanvasRenderingContext2D, enemies: Nul
     if (enemy.isAbsorbing) {
       ctx.save();
       ctx.globalAlpha = 0.5;
-      ctx.shadowBlur = NULLSTONE_ENEMY_SIZE * 8; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
+      ctx.shadowBlur = isLowGraphicsMode ? 0 : NULLSTONE_ENEMY_SIZE * 8; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
       ctx.strokeStyle = NULLSTONE_ENEMY_GLOW; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(enemy.x, enemy.y, NULLSTONE_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
       ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
     }
     // Body
     const half = NULLSTONE_ENEMY_SIZE / 2;
-    ctx.shadowBlur = NULLSTONE_ENEMY_SIZE * 6; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : NULLSTONE_ENEMY_SIZE * 6; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
     ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_SIZE);
     ctx.shadowBlur = 0;
@@ -628,7 +632,7 @@ export function drawNullstoneEnemies(ctx: CanvasRenderingContext2D, enemies: Nul
 export function drawVoidTendrils(ctx: CanvasRenderingContext2D, tendrils: VoidTendril[]): void {
   for (const t of tendrils) {
     const half = VOID_TENDRIL_SIZE / 2;
-    ctx.shadowBlur = VOID_TENDRIL_SIZE * 3; ctx.shadowColor = VOID_TENDRIL_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : VOID_TENDRIL_SIZE * 3; ctx.shadowColor = VOID_TENDRIL_GLOW;
     ctx.fillStyle = VOID_TENDRIL_COLOR;
     ctx.fillRect(Math.floor(t.x - half), Math.floor(t.y - half), VOID_TENDRIL_SIZE, VOID_TENDRIL_SIZE);
     ctx.shadowBlur = 0;
@@ -639,7 +643,7 @@ export function drawFracterylEnemies(ctx: CanvasRenderingContext2D, enemies: Fra
   for (const enemy of enemies) {
     const half = FRACTERYL_ENEMY_SIZE / 2;
     const pulse = Math.sin(enemy.pulseMs * 0.002) * 2;
-    ctx.shadowBlur = 8 + pulse; ctx.shadowColor = FRACTERYL_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : 8 + pulse; ctx.shadowColor = FRACTERYL_ENEMY_GLOW;
     ctx.fillStyle = FRACTERYL_ENEMY_COLOR;
     ctx.save();
     ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
@@ -662,7 +666,7 @@ export function drawEigensteinEnemies(ctx: CanvasRenderingContext2D, enemies: Ei
   for (const enemy of enemies) {
     const half = EIGENSTEIN_ENEMY_SIZE / 2;
     const pulse = Math.sin(enemy.pulseMs * 0.002) * 3;
-    ctx.shadowBlur = 10 + pulse; ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : 10 + pulse; ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
     ctx.fillStyle = EIGENSTEIN_ENEMY_COLOR;
     ctx.save();
     ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
@@ -680,7 +684,7 @@ export function drawEigensteinBeams(ctx: CanvasRenderingContext2D, beams: Eigens
     ctx.globalAlpha = Math.max(0, alpha);
     ctx.strokeStyle = EIGENSTEIN_ENEMY_GLOW;
     ctx.lineWidth = beam.isActive ? 5 : 2;
-    ctx.shadowBlur = beam.isActive ? 12 : 4;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : (beam.isActive ? 12 : 4);
     ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
     ctx.beginPath();
     ctx.moveTo(beam.originX, beam.originY);
@@ -696,7 +700,7 @@ export function drawTeleportParticles(ctx: CanvasRenderingContext2D, particles: 
   for (const p of particles) {
     const a = Math.max(0, p.alpha);
     ctx.globalAlpha = a;
-    ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+    ctx.shadowBlur = isLowGraphicsMode ? 0 : 8; ctx.shadowColor = p.color;
     ctx.fillStyle = p.color;
     ctx.fillRect(Math.floor(p.x - 1.5), Math.floor(p.y - 1.5), 3, 3);
   }
@@ -733,7 +737,7 @@ export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy
   ctx.lineDashOffset = dashOffset;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.globalAlpha = alpha;
-  ctx.shadowBlur = 5; ctx.shadowColor = LASER_ENEMY_GLOW;
+  ctx.shadowBlur = isLowGraphicsMode ? 0 : 5; ctx.shadowColor = LASER_ENEMY_GLOW;
   ctx.strokeStyle = LASER_ENEMY_GLOW; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
   ctx.shadowBlur = 0;
@@ -744,7 +748,7 @@ export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy
 
 export function drawDeathParticles(ctx: CanvasRenderingContext2D, particles: DeathParticle[]): void {
   for (const p of particles) {
-    ctx.globalAlpha = p.alpha; ctx.shadowBlur = p.size * 3; ctx.shadowColor = p.color;
+    ctx.globalAlpha = p.alpha; ctx.shadowBlur = isLowGraphicsMode ? 0 : p.size * 3; ctx.shadowColor = p.color;
     ctx.fillStyle = p.color;
     ctx.fillRect(Math.floor(p.x - p.size / 2), Math.floor(p.y - p.size / 2), Math.ceil(p.size), Math.ceil(p.size));
   }
@@ -759,7 +763,7 @@ export function drawShotLines(ctx: CanvasRenderingContext2D, lines: ShotLine[]):
     const t = line.timerMs / SHOT_LINE_DURATION_MS;
     ctx.globalAlpha = t * 0.7;
     ctx.strokeStyle = line.color;
-    ctx.shadowBlur  = 3; ctx.shadowColor = line.color;
+    ctx.shadowBlur  = isLowGraphicsMode ? 0 : 3; ctx.shadowColor = line.color;
     ctx.lineWidth   = 1;
     ctx.beginPath();
     ctx.moveTo(line.x1, line.y1);
@@ -778,7 +782,7 @@ export function drawHitEffects(ctx: CanvasRenderingContext2D, effects: HitEffect
     const size = 3 + (1 - t) * 5;
     const half = size / 2;
     ctx.globalAlpha = t * 0.9;
-    ctx.shadowBlur  = size * 3; ctx.shadowColor = h.color; ctx.fillStyle = h.color;
+    ctx.shadowBlur  = isLowGraphicsMode ? 0 : size * 3; ctx.shadowColor = h.color; ctx.fillStyle = h.color;
     ctx.fillRect(Math.floor(h.x - half), Math.floor(h.y - half), Math.ceil(size), Math.ceil(size));
   }
   ctx.shadowBlur = 0; ctx.globalAlpha = 1;
@@ -797,7 +801,7 @@ export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: Damage
     ctx.globalAlpha = alpha;
     const fontPx = Math.max(1, Math.round(dn.fontPx));
     ctx.font = `bold ${fontPx}px ${DAMAGE_NUM_FONT_FAMILY}`;
-    ctx.shadowBlur  = fontPx * 2;
+    ctx.shadowBlur  = isLowGraphicsMode ? 0 : fontPx * 2;
     ctx.shadowColor = dn.color;
     ctx.fillStyle   = dn.color;
     ctx.fillText(dn.text, Math.round(dn.x), Math.round(dn.y));
@@ -809,7 +813,7 @@ export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: Damage
 export function drawWeaponOrbitParticle(ctx: CanvasRenderingContext2D, p: WeaponOrbitParticle): void {
   ctx.save();
   // Draw trail first
-  if (p.trailCount >= 2) {
+  if (!isLowGraphicsMode && p.trailCount >= 2) {
     for (let i = 0; i < p.trailCount; i++) {
       const t      = i / p.trailCount;
       const bufIdx = (p.trailHead - p.trailCount + i + WEAPON_ORBIT_TRAIL_CAP) % WEAPON_ORBIT_TRAIL_CAP;
@@ -817,7 +821,7 @@ export function drawWeaponOrbitParticle(ctx: CanvasRenderingContext2D, p: Weapon
       if (trailSize < 0.3) continue;
       const half = trailSize / 2;
       ctx.globalAlpha = t * 0.5;
-      ctx.shadowBlur = trailSize * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
+      ctx.shadowBlur = isLowGraphicsMode ? 0 : trailSize * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
       ctx.fillRect(Math.floor(p.trailX[bufIdx] - half), Math.floor(p.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
       ctx.shadowBlur = 0;
     }
@@ -825,9 +829,11 @@ export function drawWeaponOrbitParticle(ctx: CanvasRenderingContext2D, p: Weapon
   // Draw main particle
   const half = p.size / 2;
   ctx.globalAlpha = 0.9;
-  ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
-  ctx.fillRect(Math.floor(p.x - half * 1.8), Math.floor(p.y - half * 1.8), Math.ceil(p.size * 1.8), Math.ceil(p.size * 1.8));
-  ctx.shadowBlur = 0;
+  if (!isLowGraphicsMode) {
+    ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
+    ctx.fillRect(Math.floor(p.x - half * 1.8), Math.floor(p.y - half * 1.8), Math.ceil(p.size * 1.8), Math.ceil(p.size * 1.8));
+    ctx.shadowBlur = 0;
+  }
   ctx.fillStyle = p.color;
   ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(p.size), Math.ceil(p.size));
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
@@ -840,7 +846,7 @@ export function drawOrbitProjectile(ctx: CanvasRenderingContext2D, op: OrbitProj
   const projGlow    = '#ffcc88';
   ctx.save();
   // Trail
-  if (op.trailCount >= 2) {
+  if (!isLowGraphicsMode && op.trailCount >= 2) {
     for (let i = 0; i < op.trailCount; i++) {
       const t      = i / op.trailCount;
       const bufIdx = (op.trailHead - op.trailCount + i + ORBIT_PROJ_TRAIL_CAP) % ORBIT_PROJ_TRAIL_CAP;
@@ -848,7 +854,7 @@ export function drawOrbitProjectile(ctx: CanvasRenderingContext2D, op: OrbitProj
       if (trailSize < 0.3) continue;
       const half = trailSize / 2;
       ctx.globalAlpha = t * 0.45;
-      ctx.shadowBlur = trailSize * 6; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
+      ctx.shadowBlur = isLowGraphicsMode ? 0 : trailSize * 6; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
       const gh = half * 2.2;
       ctx.fillRect(Math.floor(op.trailX[bufIdx] - gh), Math.floor(op.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
       ctx.shadowBlur = 0;
@@ -860,10 +866,12 @@ export function drawOrbitProjectile(ctx: CanvasRenderingContext2D, op: OrbitProj
   // Main projectile body
   const half = ORBIT_PROJ_SIZE / 2;
   ctx.globalAlpha = 1;
-  ctx.shadowBlur = ORBIT_PROJ_SIZE * 5; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
-  const gh = half * 2.2;
-  ctx.fillRect(Math.floor(op.x - gh), Math.floor(op.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-  ctx.shadowBlur = 0;
+  if (!isLowGraphicsMode) {
+    ctx.shadowBlur = ORBIT_PROJ_SIZE * 5; ctx.shadowColor = projGlow; ctx.fillStyle = projGlow;
+    const gh = half * 2.2;
+    ctx.fillRect(Math.floor(op.x - gh), Math.floor(op.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+    ctx.shadowBlur = 0;
+  }
   ctx.fillStyle = projColor;
   ctx.fillRect(Math.floor(op.x - half), Math.floor(op.y - half), ORBIT_PROJ_SIZE, ORBIT_PROJ_SIZE);
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
@@ -878,10 +886,12 @@ export function drawBossProjectiles(ctx: CanvasRenderingContext2D, projectiles: 
     const alpha = Math.min(1, lifeRatio * 3.0);
     const ph = p.size / 2;
     ctx.globalAlpha = alpha;
-    ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
-    const gh = ph * 2.2;
-    ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-    ctx.shadowBlur = 0;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
+      const gh = ph * 2.2;
+      ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle = p.color;
     ctx.fillRect(Math.floor(p.x - ph), Math.floor(p.y - ph), p.size, p.size);
   }
@@ -907,7 +917,7 @@ export function drawEmeraldPlayerMissiles(
 
     // Comet trail — layered glow fading from bright tip to dark tail.
     // Glow is 25% smaller: shadowBlur and outer glow rect reduced by factor 0.75.
-    if (m.trailCount >= 2) {
+    if (!isLowGraphicsMode && m.trailCount >= 2) {
       for (let i = 0; i < m.trailCount; i++) {
         const t      = i / m.trailCount;
         const bufIdx = (m.trailHead - m.trailCount + i + EMERALD_MISSILE_TRAIL_CAP) % EMERALD_MISSILE_TRAIL_CAP;
@@ -930,11 +940,13 @@ export function drawEmeraldPlayerMissiles(
     // Missile body — bright emerald core (glow 25% smaller).
     const half = EMERALD_MISSILE_SIZE / 2;
     ctx.globalAlpha = baseAlpha;
-    ctx.shadowBlur  = EMERALD_MISSILE_SIZE * 4.5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
-    ctx.fillStyle   = EMERALD_MISSILE_GLOW;
-    const gh = half * 1.8;
-    ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-    ctx.shadowBlur = 0;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur  = EMERALD_MISSILE_SIZE * 4.5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+      ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+      const gh = half * 1.8;
+      ctx.fillRect(Math.floor(m.x - gh), Math.floor(m.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle  = EMERALD_MISSILE_COLOR;
     ctx.fillRect(Math.floor(m.x - half), Math.floor(m.y - half), EMERALD_MISSILE_SIZE, EMERALD_MISSILE_SIZE);
   }
@@ -958,7 +970,7 @@ export function drawEmeraldSubMissiles(
       : 1;
 
     // Short comet trail.
-    if (s.trailCount >= 2) {
+    if (!isLowGraphicsMode && s.trailCount >= 2) {
       for (let i = 0; i < s.trailCount; i++) {
         const t      = i / s.trailCount;
         const bufIdx = (s.trailHead - s.trailCount + i + EMERALD_SUB_MISSILE_TRAIL_CAP) % EMERALD_SUB_MISSILE_TRAIL_CAP;
@@ -979,11 +991,13 @@ export function drawEmeraldSubMissiles(
     // Sub-missile body.
     const half = EMERALD_SUB_MISSILE_SIZE / 2;
     ctx.globalAlpha = baseAlpha;
-    ctx.shadowBlur  = EMERALD_SUB_MISSILE_SIZE * 4; ctx.shadowColor = EMERALD_MISSILE_GLOW;
-    ctx.fillStyle   = EMERALD_MISSILE_GLOW;
-    const gh = half * 1.8;
-    ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-    ctx.shadowBlur = 0;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur  = EMERALD_SUB_MISSILE_SIZE * 4; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+      ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+      const gh = half * 1.8;
+      ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle  = EMERALD_MISSILE_COLOR;
     ctx.fillRect(Math.floor(s.x - half), Math.floor(s.y - half), Math.ceil(EMERALD_SUB_MISSILE_SIZE), Math.ceil(EMERALD_SUB_MISSILE_SIZE));
   }
@@ -1003,11 +1017,13 @@ export function drawEmeraldSwirlParticles(
     const alpha = Math.max(0, p.lifeMs / EMERALD_SWIRL_LIFE_MS);
     const half  = EMERALD_SWIRL_SIZE / 2;
     ctx.globalAlpha = alpha * 0.85;
-    ctx.shadowBlur  = EMERALD_SWIRL_SIZE * 5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
-    ctx.fillStyle   = EMERALD_MISSILE_GLOW;
-    const gh = half * 2;
-    ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-    ctx.shadowBlur = 0;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur  = EMERALD_SWIRL_SIZE * 5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
+      ctx.fillStyle   = EMERALD_MISSILE_GLOW;
+      const gh = half * 2;
+      ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+    }
     ctx.globalAlpha = alpha;
     ctx.fillStyle   = EMERALD_MISSILE_COLOR;
     ctx.fillRect(Math.floor(p.x - half), Math.floor(p.y - half), Math.ceil(EMERALD_SWIRL_SIZE), Math.ceil(EMERALD_SWIRL_SIZE));
