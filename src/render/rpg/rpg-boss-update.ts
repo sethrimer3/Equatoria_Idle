@@ -122,8 +122,13 @@ export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: nu
 
   const atk1Cd = boss.phaseIndex === 2 ? BOSS_ATTACK1_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK1_CD_P1 : BOSS_ATTACK1_CD_BASE;
   const atk2Cd = boss.phaseIndex === 2 ? BOSS_ATTACK2_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK2_CD_P1 : BOSS_ATTACK2_CD_BASE;
-  boss.attackTimerMs -= deltaMs;
-  boss.secondaryTimerMs -= deltaMs;
+  if (boss.isFiringPaused) {
+    boss.attackTimerMs = Math.max(boss.attackTimerMs, atk1Cd);
+    boss.secondaryTimerMs = Math.max(boss.secondaryTimerMs, atk2Cd);
+  } else {
+    boss.attackTimerMs -= deltaMs;
+    boss.secondaryTimerMs -= deltaMs;
+  }
 
   const bossId = boss.bossId;
   const dx = ctx.mote.x - boss.x, dy = ctx.mote.y - boss.y;

@@ -507,6 +507,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     mote.trailHead = 0; mote.trailCount = 0;
     playerIFramesMs = 1400; // brief invulnerability after teleport
     bossHitsInRound = 0; // reset hit counter for the next engagement
+    if (bossEnemy) {
+      bossEnemy.isFiringPaused = false;
+      bossEnemy.attackTimerMs = Math.max(bossEnemy.attackTimerMs, 450);
+      bossEnemy.secondaryTimerMs = Math.max(bossEnemy.secondaryTimerMs, 650);
+    }
   }
 
   function enterBossWave(): void {
@@ -895,6 +900,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     boss.hp = Math.max(0, boss.hp - dmg);
     if (dmg > 0) {
       recordDps(dmg, '#ffd700');
+      boss.isFiringPaused = true;
       if (isBossWaveActive) {
         // Allow SWORD_COMBO_THRESHOLD hits before teleporting — gives the player
         // exactly enough hits to build up and complete the 4-hit spin combo.
