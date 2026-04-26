@@ -124,6 +124,38 @@ export function createSettingsPanel(
   );
   panel.appendChild(numberFormatRow);
 
+  const enemyIndicatorRow = createSelectRow(
+    'RPG Enemy Indicator',
+    settings.rpgEnemyIndicatorStyle,
+    [
+      { value: 'triangle', label: 'Triangle' },
+      { value: 'outline',  label: 'Red Outline' },
+      { value: 'off',      label: 'OFF' },
+    ],
+    (v) => {
+      settings.rpgEnemyIndicatorStyle = v as SettingsState['rpgEnemyIndicatorStyle'];
+      saveSettings(settings);
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  panel.appendChild(enemyIndicatorRow);
+
+  const generatorEquationVisibilityRow = createSelectRow(
+    'Loom Equation Visibility',
+    settings.generatorEquationVisibility,
+    [
+      { value: 'always',    label: 'Always On' },
+      { value: 'proximity', label: 'Proximity' },
+      { value: 'off',       label: 'Always Off' },
+    ],
+    (v) => {
+      settings.generatorEquationVisibility = v as SettingsState['generatorEquationVisibility'];
+      saveSettings(settings);
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  panel.appendChild(generatorEquationVisibilityRow);
+
   // Screen shake toggle
   const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
     settings.isScreenShakeEnabled = v;

@@ -1130,8 +1130,13 @@ export function drawSapphireShips(
       ctx.shadowBlur = SAPPHIRE_SHIP_SIZE * 3; ctx.shadowColor = SAPPHIRE_LASER_GLOW;
     }
     ctx.fillStyle = SAPPHIRE_LASER_COLOR;
-    const half = SAPPHIRE_SHIP_SIZE;
-    ctx.fillRect(Math.floor(ship.x - half), Math.floor(ship.y - half), Math.ceil(half * 2), Math.ceil(half * 2));
+    const radius = SAPPHIRE_SHIP_SIZE + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(ship.x, ship.y - radius);
+    ctx.lineTo(ship.x - radius, ship.y + radius * 0.8);
+    ctx.lineTo(ship.x + radius, ship.y + radius * 0.8);
+    ctx.closePath();
+    ctx.fill();
     ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
@@ -1201,8 +1206,13 @@ export function drawAmethystShips(
       ctx.shadowBlur = AMETHYST_SHIP_SIZE * 3; ctx.shadowColor = AMETHYST_LASER_GLOW;
     }
     ctx.fillStyle = AMETHYST_LASER_COLOR;
-    const half = AMETHYST_SHIP_SIZE;
-    ctx.fillRect(Math.floor(ship.x - half), Math.floor(ship.y - half), Math.ceil(half * 2), Math.ceil(half * 2));
+    const radius = AMETHYST_SHIP_SIZE + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(ship.x, ship.y - radius);
+    ctx.lineTo(ship.x - radius, ship.y + radius * 0.8);
+    ctx.lineTo(ship.x + radius, ship.y + radius * 0.8);
+    ctx.closePath();
+    ctx.fill();
     ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
@@ -1219,12 +1229,26 @@ export function drawAmethystLasers(
     const alpha = laser.lifeMs / 1500;
     // Trail (skip in low-graphics mode)
     if (!isLowGraphicsMode && laser.trailCount >= 2) {
+      const oldestIdx = (laser.trailHead - laser.trailCount + AMETHYST_LASER_TRAIL_CAP) % AMETHYST_LASER_TRAIL_CAP;
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = AMETHYST_LASER_COLOR;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = AMETHYST_LASER_GLOW;
+      ctx.beginPath();
+      ctx.moveTo(laser.trailX[oldestIdx], laser.trailY[oldestIdx]);
+      for (let i = 1; i < laser.trailCount; i++) {
+        const idx = (oldestIdx + i) % AMETHYST_LASER_TRAIL_CAP;
+        ctx.lineTo(laser.trailX[idx], laser.trailY[idx]);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
       for (let i = 0; i < laser.trailCount; i++) {
         const idx = (laser.trailHead - laser.trailCount + i + AMETHYST_LASER_TRAIL_CAP) % AMETHYST_LASER_TRAIL_CAP;
         const t   = i / laser.trailCount;
-        const r   = AMETHYST_LASER_SIZE * t * 0.8;
+        const r   = AMETHYST_LASER_SIZE * t * 1.6;
         if (r < 0.3) continue;
-        ctx.globalAlpha = t * alpha * 0.5;
+        ctx.globalAlpha = t * alpha * 0.8;
         ctx.fillStyle = AMETHYST_LASER_COLOR;
         ctx.fillRect(Math.floor(laser.trailX[idx] - r), Math.floor(laser.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
       }

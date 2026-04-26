@@ -12,11 +12,6 @@ import { formatNumber } from '../../util';
 // Module-level animation clock advanced by drawGenerators callers
 let _genAnimTimeMs = 0;
 
-/** Clamp a value to [0, 1]. */
-function _clampNorm(n: number): number {
-  return n < 0 ? 0 : n > 1 ? 1 : n;
-}
-
 /** Advance the generator renderer animation clock. Call once per frame. */
 export function updateGeneratorRendererTime(deltaMs: number): void {
   _genAnimTimeMs += deltaMs;
@@ -28,18 +23,14 @@ const HUE_CYCLE_DEG_PER_SEC = 90;
 /** Visual influence circle is drawn at 75 % of the physics range. */
 const INFLUENCE_VISUAL_SCALE = 0.75;
 
-/** Font size (px) for the motes/sec equation label drawn beside each generator. */
-const GENERATOR_LABEL_FONT_SIZE = 12;
-
-/** Extra padding (canvas px) between the sprite edge and the equation label center. */
-const GENERATOR_LABEL_PADDING_PX = 16;
-
 /**
  * Maximum canvas-space distance at which a generator label is fully visible.
  * Beyond this threshold the label fades toward transparent.
  */
 const LABEL_FADE_START_PX = 30;
 const LABEL_FADE_END_PX   = 90;
+export const GENERATOR_LABEL_FADE_START_PX = LABEL_FADE_START_PX;
+export const GENERATOR_LABEL_FADE_END_PX = LABEL_FADE_END_PX;
 
 // ── Pointer position (canvas space) for proximity-based label opacity ──────
 let _pointerX: number | null = null;
@@ -55,6 +46,10 @@ export function updateGeneratorPointerPos(x: number, y: number): void {
 export function clearGeneratorPointerPos(): void {
   _pointerX = null;
   _pointerY = null;
+}
+
+export function getGeneratorPointerPos(): { x: number | null; y: number | null } {
+  return { x: _pointerX, y: _pointerY };
 }
 
 /** Preload generator sprites for all tiers. Call once at startup. */
@@ -75,8 +70,6 @@ export function drawGenerators(
   ratesPerSec: ReadonlyMap<TierId, number>,
 ): void {
   const ctx = cc.ctx;
-  const canvasCenterX = cc.widthPx / 2;
-  const canvasCenterY = cc.heightPx / 2;
   for (const gen of generators) {
     const rotation = spawnerRotations.get(gen.tierId) ?? 0;
     const fadeAlpha = fadeIns.get(gen.tierId) ?? 1;
@@ -102,38 +95,7 @@ export function drawGenerators(
       }
     }
 
-    // Draw motes-per-second equation label outward from canvas center
-    const rate = ratesPerSec.get(gen.tierId) ?? 0;
-    if (rate > 0) {
-      const dx = gen.x - canvasCenterX;
-      const dy = gen.y - canvasCenterY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const nx = dist > 0 ? dx / dist : 0;
-      const ny = dist > 0 ? dy / dist : 1;
-      const labelOffset = SPAWNER_SIZE * 5 / 2 + GENERATOR_LABEL_PADDING_PX;
-      const labelX = gen.x + nx * labelOffset;
-      const labelY = gen.y + ny * labelOffset;
-
-      // Opacity is proportional to how close the pointer is to this generator.
-      // Touching (≤LABEL_FADE_START_PX away) → fully visible; beyond LABEL_FADE_END_PX → invisible.
-      let labelAlpha: number;
-      if (_pointerX !== null && _pointerY !== null) {
-        const pdx   = _pointerX - gen.x;
-        const pdy   = _pointerY - gen.y;
-        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
-        const t     = _clampNorm((pdist - LABEL_FADE_START_PX) / (LABEL_FADE_END_PX - LABEL_FADE_START_PX));
-        // Quadratic ease-out: fast fade near the threshold, gentle tail at distance.
-        labelAlpha  = fadeAlpha * (1 - t * t);
-      } else {
-        labelAlpha = 0;
-      }
-
-      if (labelAlpha > 0.01) {
-        ctx.globalAlpha = labelAlpha;
-        drawGeneratorEquationLabel(ctx, labelX, labelY, rate, tier.color);
-        ctx.globalAlpha = 1;
-      }
-    }
+    void ratesPerSec;
   }
 }
 
@@ -335,59 +297,8 @@ function drawGeneratorFallback(
  * Format a motes/sec rate for the generator equation label.
  * Shows decimals for sub-1 rates, integers for small values, and abbreviated for large.
  */
-function formatGeneratorRate(rate: number): string {
+export function formatGeneratorRate(rate: number): string {
   if (rate < 1) return rate.toFixed(2);
   if (rate < 1000) return String(Math.floor(rate));
   return formatNumber(rate);
-}
-
-/**
- * Draw a motes-per-second equation label near a generator, using the same
- * outlined text style as the main equation forge.
- * Segments: rate in tier color, "/s" in neutral grey.
- */
-function drawGeneratorEquationLabel(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  rate: number,
-  tierColor: string,
-): void {
-  ctx.font = `600 ${GENERATOR_LABEL_FONT_SIZE}px 'Cormorant Garamond', serif`;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-
-  const rateStr = formatGeneratorRate(rate);
-  const rateWidth = ctx.measureText(rateStr).width;
-  const suffixWidth = ctx.measureText('/s').width;
-  const totalWidth = rateWidth + suffixWidth;
-
-  // Center the combined label at x
-  const startX = x - totalWidth / 2;
-
-  ctx.fillStyle = tierColor;
-  drawEquationOutlinedText(ctx, rateStr, startX, y);
-
-  ctx.fillStyle = '#888';
-  drawEquationOutlinedText(ctx, '/s', startX + rateWidth, y);
-}
-
-/**
- * Draw outlined text in the same style as the main equation: white outer stroke,
- * black inner stroke, then fill.
- */
-function drawEquationOutlinedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-): void {
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = '#fff';
-  ctx.strokeText(text, x, y);
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = '#000';
-  ctx.strokeText(text, x, y);
-  ctx.fillText(text, x, y);
 }

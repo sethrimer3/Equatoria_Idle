@@ -174,6 +174,27 @@
   letter-spacing: 1px;
 }
 
+.hud-generator-equations {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-generator-eq {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-weight: 700;
+  -webkit-text-stroke: 1px #000;
+  paint-order: stroke fill;
+  white-space: nowrap;
+}
+
+.hud-generator-suffix {
+  color: #888;
+}
+
 /* ── Looms sub-tab bar ───────────────────────────────────────── */
 .looms-sub-tab-bar {
   display: flex;
