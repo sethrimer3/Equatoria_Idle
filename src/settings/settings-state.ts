@@ -11,6 +11,10 @@ export interface SettingsState {
   backgroundStyle: 'vermiculate' | 'substrate' | 'none';
   /** Controls how large numbers are displayed: letter suffixes, scientific, or engineering notation. */
   numberFormat: 'letters' | 'scientific' | 'engineering';
+  /** RPG enemy marker style. */
+  rpgEnemyIndicatorStyle: 'triangle' | 'outline' | 'off';
+  /** Visibility mode for generator/loom equations in the HUD overlay. */
+  generatorEquationVisibility: 'always' | 'proximity' | 'off';
   /** When true: all upgrades/unlocks are available regardless of cost; costs are not deducted. */
   isDevMode: boolean;
 }
@@ -26,6 +30,8 @@ export function createDefaultSettings(): SettingsState {
     colorTheme: 'dark',
     backgroundStyle: 'vermiculate',
     numberFormat: 'letters',
+    rpgEnemyIndicatorStyle: 'triangle',
+    generatorEquationVisibility: 'proximity',
     isDevMode: false,
   };
 }

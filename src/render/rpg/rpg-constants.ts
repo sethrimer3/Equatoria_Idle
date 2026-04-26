@@ -812,6 +812,6 @@ export const AMETHYST_LASER_ANGULAR_SPEED   = 0.08;  // radians per frame
 export const AMETHYST_LASER_DURATION_MS     = 1500;  // max life before dissipate
 export const AMETHYST_LASER_HIT_RADIUS      = 5;     // collision radius (px)
 export const AMETHYST_LASER_SIZE            = 3;     // visual radius (px)
-export const AMETHYST_LASER_TRAIL_CAP       = 20;    // trail buffer capacity
+export const AMETHYST_LASER_TRAIL_CAP       = 52;    // trail buffer capacity (long comet trail)
 export const AMETHYST_LASER_COLOR           = '#9933ff';
 export const AMETHYST_LASER_GLOW            = '#cc99ff';

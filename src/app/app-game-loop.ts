@@ -18,7 +18,7 @@ import {
   drawForgeCrunch,
   type ParticleSystem,
 } from '../render';
-import { updateGeneratorRendererTime } from '../render/generators/generator-renderer';
+import { getGeneratorPointerPos, updateGeneratorRendererTime } from '../render/generators/generator-renderer';
 import type { CanvasContext } from '../render/canvas';
 import type { BackgroundAnimation, VermiculateEffect, SubstrateEffect } from '../render/background';
 import type { SettingsState } from '../settings';
@@ -78,6 +78,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     if (ctx.appState.activeTab === 'rpg') {
       const autoMove = ctx.uiPanels.rpgMenuPanel.isAutoMoveEnabled;
       ctx.uiPanels.rpgRender.setLowGraphicsMode(ctx.settings.graphicsQuality === 'low');
+      ctx.uiPanels.rpgRender.setEnemyIndicatorStyle(ctx.settings.rpgEnemyIndicatorStyle);
       ctx.uiPanels.rpgRender.update(deltaMs, autoMove);
       requestAnimationFrame(gameLoop);
       return;
@@ -212,6 +213,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     const terms = buildEquationView(ctx.appState.game.equation);
 
     // Update DOM HUD overlay (equation, score, motes — non-pixelated)
+    const pointerPos = getGeneratorPointerPos();
     ctx.hudOverlay.update({
       equivalence: getEquivalence(ctx.appState.game.resources),
       onScreenMotes: ctx.particles.getOnScreenMoteCount(),
@@ -220,6 +222,13 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       tapFlashAlpha: ctx.appState.tapFlashAlpha,
       isForgeUnlocked: ctx.appState.game.equation.isForgeUnlocked,
       numberFormat: ctx.settings.numberFormat,
+      generatorInfos: ctx.appState.generatorState.generators,
+      generatorRatesPerSec: generatorRatesPerSec,
+      canvasWidthPx: ctx.cc.widthPx,
+      canvasHeightPx: ctx.cc.heightPx,
+      pointerX: pointerPos.x,
+      pointerY: pointerPos.y,
+      generatorEquationVisibility: ctx.settings.generatorEquationVisibility,
     });
 
     ctx.particles.draw(

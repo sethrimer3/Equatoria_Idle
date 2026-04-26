@@ -269,6 +269,8 @@ export interface RpgRender {
   respawnNow(): void;
   /** Enable/disable low graphics mode (skips glows and expensive effects). */
   setLowGraphicsMode(enabled: boolean): void;
+  /** Sets enemy indicator style for RPG enemies. */
+  setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void;
 }
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState): RpgRender {
@@ -283,6 +285,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let widthPx  = INTERNAL_WIDTH;
   let heightPx = INTERNAL_HEIGHT;
   let isLowGraphicsMode = false;
+  let enemyIndicatorStyle: 'triangle' | 'outline' | 'off' = 'triangle';
 
   // ── Shared dimensions box (kept in sync with widthPx/heightPx on resize) ──
   // Passed to rpg-enemy-updates functions via RpgEnemyCtx so they always see
@@ -5618,6 +5621,54 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  function drawEnemyIndicators(): void {
+    if (enemyIndicatorStyle === 'off') return;
+    const drawMarker = (x: number, y: number, size: number): void => {
+      if (enemyIndicatorStyle === 'outline') {
+        ctx.save();
+        ctx.strokeStyle = '#ff3b30';
+        ctx.lineWidth = 1.5;
+        if (!isLowGraphicsMode) {
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = '#ff3b30';
+        }
+        ctx.strokeRect(x - size / 2 - 2, y - size / 2 - 2, size + 4, size + 4);
+        ctx.restore();
+        return;
+      }
+      ctx.save();
+      const markerY = y - size * 0.9 - 5;
+      ctx.fillStyle = '#ff3b30';
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#ff3b30';
+      }
+      ctx.beginPath();
+      ctx.moveTo(x, markerY);
+      ctx.lineTo(x - 3, markerY - 5);
+      ctx.lineTo(x + 3, markerY - 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+    for (const enemy of enemies) drawMarker(enemy.x, enemy.y, LASER_ENEMY_SIZE);
+    for (const enemy of sapphireEnemies) drawMarker(enemy.x, enemy.y, SAPPHIRE_ENEMY_SIZE);
+    for (const enemy of emeraldEnemies) drawMarker(enemy.x, enemy.y, EMERALD_ENEMY_SIZE);
+    for (const enemy of amberEnemies) drawMarker(enemy.x, enemy.y, AMBER_ENEMY_SIZE);
+    for (const enemy of voidEnemies) drawMarker(enemy.x, enemy.y, VOID_ENEMY_SIZE);
+    for (const enemy of quartzEnemies) drawMarker(enemy.x, enemy.y, QUARTZ_ENEMY_SIZE);
+    for (const enemy of rubyEnemies) drawMarker(enemy.x, enemy.y, RUBY_ENEMY_SIZE);
+    for (const enemy of sunstoneEnemies) drawMarker(enemy.x, enemy.y, SUNSTONE_ENEMY_SIZE);
+    for (const enemy of citrineEnemies) drawMarker(enemy.x, enemy.y, CITRINE_ENEMY_SIZE);
+    for (const enemy of ioliteEnemies) drawMarker(enemy.x, enemy.y, IOLITE_ENEMY_SIZE);
+    for (const enemy of amethystEnemies) drawMarker(enemy.x, enemy.y, AMETHYST_ENEMY_SIZE);
+    for (const enemy of diamondEnemies) drawMarker(enemy.x, enemy.y, DIAMOND_ENEMY_SIZE);
+    for (const enemy of nullstoneEnemies) drawMarker(enemy.x, enemy.y, NULLSTONE_ENEMY_SIZE);
+    for (const enemy of fracterylEnemies) drawMarker(enemy.x, enemy.y, FRACTERYL_ENEMY_SIZE);
+    for (const enemy of eigensteinEnemies) drawMarker(enemy.x, enemy.y, EIGENSTEIN_ENEMY_SIZE);
+    if (bossEnemy) drawMarker(bossEnemy.x, bossEnemy.y, BOSS_SIZE_BASE * 2);
+  }
+
 
   /** Draws thin tracer lines from the player toward each recently struck enemy. */
 
@@ -5676,6 +5727,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawEmeraldSwirlParticles(ctx, emeraldSwirlParticles);
     drawSunstoneMines(ctx, sunstoneMines);
     drawLaserBeamEffect(ctx, laserBeamEffect);
+    drawEnemyIndicators();
 
     // Player comet trail — smoothly gated by glowMovementIntensity
     if (!isLowGraphicsMode && glowMovementIntensity > 0.02 && mote.trailCount >= 2) {
@@ -5984,6 +6036,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       setEntityLowGraphics(enabled);
       setWeaponLowGraphics(enabled);
       setBossLowGraphics(enabled);
+    },
+
+    setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {
+      enemyIndicatorStyle = style;
     },
   };
 }
