@@ -23,17 +23,13 @@
 import {
   PL_INTERACTION_RADIUS,
   PL_PROTECTED_RADIUS,
-  PL_MATRIX_FORCE_SCALE,
-  PL_PROTECTED_REPULSION_STRENGTH,
-  PL_MAX_VELOCITY,
-  PL_VELOCITY_DAMPING,
   PL_GRID_CELL_SIZE,
   PL_MAX_FORCE_PER_FRAME,
 } from '../../data/particles/particle-life-config';
 import {
-  DRAG_BOOST_MULTIPLIER,
   DRAG_RELEASE_FADE_MS,
 } from '../../data/particles/particle-config';
+import { particleTweaks } from '../../data/particles/particle-tweaks';
 import type { EquatoriaParticle } from './particle-types';
 import { getSizePixels } from '../../data/particles/size-tiers';
 import { gridKey } from './spatial-grid';
@@ -140,12 +136,12 @@ function getDragBlend(p: EquatoriaParticle, nowMs: number): number {
  * boost and post-drag fade into account.
  */
 function getDragEffectiveMaxVel(p: EquatoriaParticle, nowMs: number): number {
-  if (p.isLockedToPointer) return PL_MAX_VELOCITY * DRAG_BOOST_MULTIPLIER;
-  if (p.dragReleaseTimeMs <= 0) return PL_MAX_VELOCITY;
+  if (p.isLockedToPointer) return particleTweaks.plMaxVelocity * particleTweaks.dragBoostMultiplier;
+  if (p.dragReleaseTimeMs <= 0) return particleTweaks.plMaxVelocity;
   const elapsed = nowMs - p.dragReleaseTimeMs;
-  if (elapsed >= DRAG_RELEASE_FADE_MS) return PL_MAX_VELOCITY;
+  if (elapsed >= DRAG_RELEASE_FADE_MS) return particleTweaks.plMaxVelocity;
   const t = elapsed / DRAG_RELEASE_FADE_MS;
-  return PL_MAX_VELOCITY * (DRAG_BOOST_MULTIPLIER - t * (DRAG_BOOST_MULTIPLIER - 1));
+  return particleTweaks.plMaxVelocity * (particleTweaks.dragBoostMultiplier - t * (particleTweaks.dragBoostMultiplier - 1));
 }
 
 // ─── Main force application ──────────────────────────────────────
@@ -229,7 +225,7 @@ export function applyParticleLifeForces(
             // Zone 1 — Protected radius: strong repulsion.
             // Force increases as distance approaches 0 (linear ramp).
             const t = 1 - dist / PL_PROTECTED_RADIUS; // 1 at center, 0 at boundary
-            const repulse = PL_PROTECTED_REPULSION_STRENGTH * t;
+            const repulse = particleTweaks.plProtectedRepulsionStrength * t;
             fx = nx * repulse;
             fy = ny * repulse;
           } else {
@@ -237,7 +233,7 @@ export function applyParticleLifeForces(
             // a exerts force on b: interactionMatrix[a.type][b.type]
             const matrixVal = interactionMatrix[a.tierIndex][bType];
             const env = envelope(dist);
-            const strength = matrixVal * PL_MATRIX_FORCE_SCALE * env;
+            const strength = matrixVal * particleTweaks.plMatrixForceScale * env;
 
             // Size-force bias: larger motes exert/receive stronger forces
             const aSizeFactor = enableSizeBias ? getSizeFactor(a.sizeIndex) : 1;
@@ -285,7 +281,7 @@ export function applyParticleLifeDamping(
   nowMs: number,
 ): void {
   // Compute per-frame damping (adjust for variable timestep)
-  const damping = Math.pow(PL_VELOCITY_DAMPING, clampedDelta);
+  const damping = Math.pow(particleTweaks.plVelocityDamping, clampedDelta);
 
   for (let i = 0, len = particles.length; i < len; i++) {
     const p = particles[i];
