@@ -19,13 +19,15 @@ import type { NumberFormat } from '../../util';
 import { createRpgMenuTabPane } from './rpg-menu-tab';
 import { createRpgWeaponsTabPane } from './rpg-weapons-tab';
 import { createRpgUpgradesTabPane } from './rpg-upgrades-tab';
+import { createRpgBossesTabPane } from './rpg-bosses-tab';
+import type { RpgBossesTabPane } from './rpg-bosses-tab';
 import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ────────────────────────────────────────────────────────
 
 // ─── Types ────────────────────────────────────────────────────────
 
-type RpgMenuTab = 'menu' | 'weapons' | 'upgrades';
+type RpgMenuTab = 'menu' | 'weapons' | 'upgrades' | 'bosses';
 
 export interface RpgMenuPanel {
   /** Root element — append to #app root, above the tab bar. */
@@ -79,6 +81,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
     { id: 'menu',     label: 'Menu' },
     { id: 'weapons',  label: 'Weapons' },
     { id: 'upgrades', label: 'Upgrades' },
+    { id: 'bosses',   label: 'Bosses' },
   ];
 
   const tabBtns: Map<RpgMenuTab, HTMLButtonElement> = new Map();
@@ -105,6 +108,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
   });
   const weaponsTabPane  = createRpgWeaponsTabPane(dispatch);
   const upgradesTabPane = createRpgUpgradesTabPane(dispatch);
+  const bossesTabPane: RpgBossesTabPane = createRpgBossesTabPane(dispatch);
 
   // All pane elements live in the content area; we show/hide per active tab.
   const content = document.createElement('div');
@@ -113,6 +117,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
   content.appendChild(menuTabPane.element);
   content.appendChild(weaponsTabPane.element);
   content.appendChild(upgradesTabPane.element);
+  content.appendChild(bossesTabPane.element);
   element.appendChild(content);
 
   // ── Internal state ────────────────────────────────────────────
@@ -134,6 +139,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
     menuTabPane.element.style.display    = activeTab === 'menu'     ? '' : 'none';
     weaponsTabPane.element.style.display  = activeTab === 'weapons'  ? '' : 'none';
     upgradesTabPane.element.style.display = activeTab === 'upgrades' ? '' : 'none';
+    bossesTabPane.element.style.display   = activeTab === 'bosses'   ? '' : 'none';
   }
 
   function renderActiveTab(): void {
@@ -148,6 +154,9 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
         break;
       case 'upgrades':
         upgradesTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
+        break;
+      case 'bosses':
+        bossesTabPane.update(lastRpgState);
         break;
     }
   }

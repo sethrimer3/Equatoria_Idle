@@ -28,7 +28,7 @@
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
   getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel,
-  getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale,
+  getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale, getBossXpMultiplier,
 } from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
@@ -271,6 +271,8 @@ export interface RpgRender {
   setLowGraphicsMode(enabled: boolean): void;
   /** Sets enemy indicator style for RPG enemies. */
   setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void;
+  /** Launch a boss fight for the given 1-based bossId from the RPG menu. */
+  startBossFight(bossId: number): void;
 }
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState): RpgRender {
@@ -456,6 +458,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const bossProjectiles: BossProjectile[] = [];
   /** Counts successive diamond-blade hits on the boss; resets to 0 after every teleport. */
   let bossHitsInRound = 0;
+  /** True when the current boss fight was launched from the RPG menu. */
+  let isBossFightFromMenu = false;
 
   // ── Boss wave management ───────────────────────────────────────
   /** True while a boss wave is active (from spawn until defeat or death). */
@@ -547,6 +551,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossPreWaveWeaponTiers = new Map();
     teleportParticles.length = 0;
     applyEquipmentStats();
+  }
+
+  function startBossFight(bossId: number): void {
+    if (isBossWaveActive) return;
+    const waveForScaling = Math.max(bossId * 100, rpgSimState.highestWaveReached);
+    bossEnemy = makeBossEnemy(bossId, waveForScaling, widthPx, heightPx);
+    isBossFightFromMenu = true;
+    enterBossWave();
   }
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
@@ -4496,11 +4508,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
     // Boss defeat
     if (bossEnemy && bossEnemy.hp <= 0) {
-      const bossXp = Math.ceil(getXpPerKill(currentWave) * getWaveStatScale(currentWave) * 5.0);
+      const speedPct = rpgSimState.bossSpeedPct;
+      const xpMult = getBossXpMultiplier(speedPct);
+      const bossXp = Math.ceil(getXpPerKill(currentWave) * getWaveStatScale(currentWave) * 5.0 * xpMult);
       rpgSimState.xp += bossXp;
+      if (isBossFightFromMenu) {
+        const prevBest = rpgSimState.bossCompletions.get(bossEnemy.bossId) ?? 0;
+        if (speedPct > prevBest) {
+          rpgSimState.bossCompletions.set(bossEnemy.bossId, speedPct);
+        }
+      }
+      isBossFightFromMenu = false;
       exitBossWave();
       const glowC = BOSS_GLOW_COLORS[Math.min(bossEnemy.bossId, BOSS_GLOW_COLORS.length - 1)];
-      spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP`, 1.0, glowC);
+      spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP (${xpMult.toFixed(0)}x)`, 1.0, glowC);
       fluid.addExplosion(bossEnemy.x, bossEnemy.y, FLUID_EXPLOSION_STRENGTH * 2.5, FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B);
       bossEnemy = null;
       bossProjectiles.length = 0;
@@ -4945,6 +4966,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   function startNextWave(): void {
     currentWave += 1;
+    // Boss waves (multiples of 100) are fought via the RPG menu, not auto-progression.
+    while (currentWave > 0 && currentWave % 100 === 0) {
+      currentWave += 1;
+    }
     if (currentWave > rpgSimState.highestWaveReached) {
       rpgSimState.highestWaveReached = currentWave;
     }
@@ -5569,6 +5594,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eigensteinEnemies.length = 0; eigensteinBeams.length = 0;
     danmakuSafeZone = null;
     exitBossWave();
+    isBossFightFromMenu = false;
     bossEnemy = null;
     bossProjectiles.length = 0;
     sandProjectiles.length = 0;
@@ -5907,8 +5933,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateFracterylEnemies(fracterylEnemies, fracterylShards, enemyCtx, deltaMs);
       updateEigensteinEnemies(eigensteinEnemies, eigensteinBeams, enemyCtx, deltaMs);
       updateEigensteinBeams(eigensteinBeams, enemyCtx, deltaMs);
-      if (bossEnemy) updateBossEnemy(bossEnemy, bossCtx, deltaMs);
-      updateBossProjectiles(bossProjectiles, bossCtx, deltaMs);
+      if (bossEnemy) {
+        const bossSpeedMult = isBossWaveActive ? (rpgSimState.bossSpeedPct / 100) : 1;
+        updateBossEnemy(bossEnemy, bossCtx, deltaMs * bossSpeedMult);
+        updateBossProjectiles(bossProjectiles, bossCtx, deltaMs * bossSpeedMult);
+      } else {
+        updateBossProjectiles(bossProjectiles, bossCtx, deltaMs);
+      }
       updateTeleportParticles(teleportParticles, deltaMs);
       updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(deltaMs);
@@ -6040,6 +6071,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {
       enemyIndicatorStyle = style;
+    },
+
+    startBossFight(bossId: number): void {
+      startBossFight(bossId);
     },
   };
 }

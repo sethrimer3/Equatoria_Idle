@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 15;
+const SAVE_VERSION = 16;
 
 interface SaveData {
   version: number;
@@ -71,6 +71,10 @@ interface SaveData {
     rpgUpgradeLevels?: Record<string, number>;
     /** v15+: respawn checkpoint wave. Absent in older saves (defaults to 0). */
     respawnWave?: number;
+    /** v16+: per-boss highest speed completion (bossId→speedPct). Absent in older saves. */
+    bossCompletions?: Record<string, number>;
+    /** v16+: boss fight speed setting (10–100). Absent in older saves (defaults to 100). */
+    bossSpeedPct?: number;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
@@ -140,6 +144,8 @@ export function serializeGameState(state: GameState): SaveData {
       weaponTiersByWeaponId: Object.fromEntries(state.rpg.weaponTiersByWeaponId),
       rpgUpgradeLevels: Object.fromEntries(state.rpg.rpgUpgradeLevels),
       respawnWave: state.rpg.respawnWave,
+      bossCompletions: Object.fromEntries(state.rpg.bossCompletions),
+      bossSpeedPct: state.rpg.bossSpeedPct,
     },
     elapsedMs: state.elapsedMs,
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
@@ -289,6 +295,13 @@ export function deserializeGameState(data: SaveData): GameState {
     }
     // v15+: respawn checkpoint wave
     state.rpg.respawnWave = data.rpg.respawnWave ?? 0;
+    // v16+: boss completions and speed
+    if (data.rpg.bossCompletions) {
+      for (const [idStr, speedPct] of Object.entries(data.rpg.bossCompletions)) {
+        state.rpg.bossCompletions.set(parseInt(idStr, 10), speedPct);
+      }
+    }
+    state.rpg.bossSpeedPct = data.rpg.bossSpeedPct ?? 100;
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)
@@ -325,7 +338,7 @@ export function loadGame(): GameState | null {
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
     // Accept versions 1–15 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(data.version)) return null;
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

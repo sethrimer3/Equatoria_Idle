@@ -19,7 +19,7 @@ import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven'
 import { getMotes, spendMotes } from '../sim/resources';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import { RPG_UPGRADE_BY_ID } from '../data/rpg/rpg-upgrade-definitions';
-import { getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER } from '../sim/rpg/rpg-state';
+import { getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER, isBossUnlocked, MIN_BOSS_SPEED_PCT, MAX_BOSS_SPEED_PCT, BOSS_SPEED_STEP } from '../sim/rpg/rpg-state';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
@@ -222,6 +222,25 @@ export function handleAction(
     case 'respawn_now': {
       uiPanels.rpgRender.respawnNow();
       uiPanels.rpgMenuPanel.setVisible(false);
+      break;
+    }
+    case 'start_boss_fight': {
+      const { bossId } = action;
+      if (bossId < 1 || bossId > 10) { audioSystem?.onError(); break; }
+      if (!isBossUnlocked(bossId, state.game.rpg.highestWaveReached) && !devMode) {
+        audioSystem?.onError(); break;
+      }
+      uiPanels.rpgMenuPanel.setVisible(false);
+      uiPanels.rpgRender.startBossFight(bossId);
+      break;
+    }
+    case 'set_boss_speed': {
+      const { pct } = action;
+      if (pct < MIN_BOSS_SPEED_PCT || pct > MAX_BOSS_SPEED_PCT || pct % BOSS_SPEED_STEP !== 0) {
+        audioSystem?.onError(); break;
+      }
+      state.game.rpg.bossSpeedPct = pct;
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
     case 'set_active_tab':

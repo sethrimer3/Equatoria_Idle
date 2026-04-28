@@ -13,6 +13,15 @@ export const PLAYER_BASE_ATK = 10;
 /** Maximum tier level any weapon can reach. */
 export const MAX_WEAPON_TIER = 7;
 
+/** Minimum boss speed percentage. */
+export const MIN_BOSS_SPEED_PCT = 10;
+/** Maximum boss speed percentage. */
+export const MAX_BOSS_SPEED_PCT = 100;
+/** Step increment for boss speed selector. */
+export const BOSS_SPEED_STEP = 10;
+/** Total number of bosses in the game (each unlocks at wave N*100). */
+export const TOTAL_BOSS_COUNT = 10;
+
 // ─── Types ────────────────────────────────────────────────────────
 
 export interface RpgSimState {
@@ -43,6 +52,16 @@ export interface RpgSimState {
    * Key = upgradeId (from RPG_UPGRADE_DEFINITIONS), value = current level (≥ 0).
    */
   rpgUpgradeLevels: Map<string, number>;
+  /**
+   * Per-boss highest speed percentage at which the boss was defeated (10–100).
+   * Key = bossId (1-based); value = highest speed % completed (0 = never beaten).
+   */
+  bossCompletions: Map<number, number>;
+  /**
+   * Boss fight speed setting (10–100, in steps of 10).
+   * Lower speed = easier dodging but lower XP multiplier.
+   */
+  bossSpeedPct: number;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -56,6 +75,8 @@ export function createRpgSimState(): RpgSimState {
     xp: 0,
     weaponTiersByWeaponId: new Map(),
     rpgUpgradeLevels: new Map(),
+    bossCompletions: new Map(),
+    bossSpeedPct: 100,
   };
 }
 
@@ -203,4 +224,20 @@ export function getScaledWeaponDamage(baseDamage: number, tier: number, playerAt
  */
 export function getScaledWeaponCooldown(baseCooldownMs: number, tier: number): number {
   return baseCooldownMs * Math.pow(0.85, tier - 1);
+}
+
+/**
+ * Returns the XP multiplier for a boss fight at the given speed %.
+ * Formula: speedPct / 10  (100% → 10x, 60% → 6x, 10% → 1x).
+ */
+export function getBossXpMultiplier(speedPct: number): number {
+  return speedPct / 10;
+}
+
+/**
+ * Returns true when the boss with the given 1-based ID has been unlocked.
+ * Boss N is unlocked once the player has reached wave N*100.
+ */
+export function isBossUnlocked(bossId: number, highestWaveReached: number): boolean {
+  return highestWaveReached >= bossId * 100;
 }
