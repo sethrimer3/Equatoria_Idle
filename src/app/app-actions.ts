@@ -29,7 +29,7 @@ import type { SettingsState } from '../settings';
 import type { AppState, UIPanels } from './app-types';
 import type { NumberFormat } from '../util';
 import type { AudioSystem } from '../audio';
-import { GENERATOR_HIT_RADIUS_PX } from '../data/particles/particle-config';
+import { GENERATOR_HIT_RADIUS_PX, MAX_FORGE_ATTRACTION_DISTANCE } from '../data/particles/particle-config';
 
 // ─── Action handler ─────────────────────────────────────────────
 
@@ -56,6 +56,7 @@ export function handleAction(
 
       const nowMs = performance.now();
 
+      // Double-tap generator gather — works at any position, no forge-radius restriction.
       const timeSinceLast = nowMs - state.lastTapTimeMs;
       if (timeSinceLast < DOUBLE_TAP_MAX_MS) {
         const dx = canvasX - state.lastTapCanvasX;
@@ -78,15 +79,16 @@ export function handleAction(
       state.lastTapCanvasY = canvasY;
       state.lastTapTimeMs = nowMs;
 
-      const result = tapEquation(state.game);
-      state.tapFlashAlpha = 1;
+      // Equation tap only registers within the forge's radius of influence.
+      const forgeCenterX = cc.widthPx / 2;
+      const forgeCenterY = cc.heightPx / 2;
+      const tapDx = canvasX - forgeCenterX;
+      const tapDy = canvasY - forgeCenterY;
+      const forgeInfluenceRadiusSq = MAX_FORGE_ATTRACTION_DISTANCE * MAX_FORGE_ATTRACTION_DISTANCE;
+      if (tapDx * tapDx + tapDy * tapDy > forgeInfluenceRadiusSq) break;
 
-      for (const [tierId] of result.gains) {
-        const count = settings.isReducedParticles
-          ? Math.ceil(result.particleCount / 3)
-          : result.particleCount;
-        particles.emitAtPosition(canvasX, canvasY, count, tierId, performance.now());
-      }
+      tapEquation(state.game);
+      state.tapFlashAlpha = 1;
       break;
     }
     case 'purchase_upgrade': {
