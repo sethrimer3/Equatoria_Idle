@@ -189,6 +189,9 @@ export async function startApp(): Promise<void> {
 
   // ── Focus-aware audio pause ──
   let _isWindowFocused = document.visibilityState === 'visible';
+  // Tracks whether the tab has been hidden at least once since app start,
+  // so we can run an idle-reward check when the player returns to the tab.
+  let _wasHiddenSinceStart = false;
 
   function applyFocusedAudio(): void {
     // If the setting is off, always keep audio running.
@@ -198,10 +201,24 @@ export async function startApp(): Promise<void> {
   document.addEventListener('visibilitychange', () => {
     _isWindowFocused = document.visibilityState === 'visible';
     applyFocusedAudio();
-    // Write the last-active timestamp whenever the tab is hidden.
     if (document.visibilityState === 'hidden') {
+      _wasHiddenSinceStart = true;
       writeLastActiveTimestamp();
       saveGame(game);
+    } else if (document.visibilityState === 'visible' && _wasHiddenSinceStart) {
+      // Player returned to the tab — check for idle rewards for the time away.
+      // The hidden handler already wrote the departure timestamp, so just read it.
+      const hiddenTs = readLastActiveTimestamp();
+      if (hiddenTs !== null) {
+        const elapsedMs = Date.now() - hiddenTs;
+        if (elapsedMs > 60_000) {
+          const summary = calculateIdleRewards(game, elapsedMs);
+          if (summary.tierRewards.some(r => r.totalMotes > 0)) {
+            queueIdleRewards(game, summary);
+            idleOverlay.show(summary);
+          }
+        }
+      }
     }
   });
 
