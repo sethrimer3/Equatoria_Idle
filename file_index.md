@@ -98,6 +98,13 @@
 - Size-force bias default: `PL_ENABLE_SIZE_FORCE_BIAS_DEFAULT`.
 - Grid cell size: `PL_GRID_CELL_SIZE`.
 
+### src/data/particles/particle-tweaks.ts
+- Mutable runtime config that mirrors a subset of `particle-config.ts` and `particle-life-config.ts`.
+- `particleTweaks` — live object read by physics hot-paths; change at runtime for instant effect.
+- `PARTICLE_TWEAKS_DEFAULTS` — immutable snapshot of original defaults.
+- `resetParticleTweaks()` — restores all tweaks to defaults.
+- Used by the developer-mode particle tweaks panel in settings.
+
 ### src/data/particles/size-tiers.ts
 - `SizeIndex` type (number, unlimited). Particle sizes 0, 1, 2, 3, …
 - Each size is (sizeIndex + 1) virtual pixels wide/tall (1×1, 2×2, 3×3, …).
@@ -592,6 +599,7 @@ Audio system — eight focused modules:
 
 ### src/ui/panels/settings-panel.ts
 - Settings controls: volume, particles, shake, developer mode toggle, save, reset, credits.
+- When `isDevMode` is enabled, shows a particle-tweaks section at the bottom with live editable fields and a reset-to-defaults button.
 
 ### src/settings/settings-state.ts
 - User settings model and localStorage persistence.

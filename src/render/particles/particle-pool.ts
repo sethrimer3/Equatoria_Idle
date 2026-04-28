@@ -16,11 +16,11 @@ import {
 } from '../../data/particles/size-tiers';
 import {
   BASE_PARTICLE_SIZE,
-  MIN_VELOCITY,
   MAX_VELOCITY,
   VEER_INTERVAL_MIN_MS,
   VEER_INTERVAL_MAX_MS,
 } from '../../data/particles/particle-config';
+import { particleTweaks } from '../../data/particles/particle-tweaks';
 import type { EquatoriaParticle } from './particle-types';
 
 // ─── Pre-computed tier-index lookup ──────────────────────────────
@@ -46,7 +46,7 @@ function createBlankParticle(): EquatoriaParticle {
     colorString: '#fff',
     glowColorString: null,
     size: 1,
-    minVelocity: MIN_VELOCITY,
+    minVelocity: particleTweaks.minVelocity,
     maxVelocity: MAX_VELOCITY,
     forceModifier: 1,
     tierIndex: 0,
@@ -91,7 +91,7 @@ export function initParticle(
   p.colorString = tier?.color ?? '#fff';
   p.glowColorString = tier?.glowColor ?? null;
   p.size = BASE_PARTICLE_SIZE * getSizeScaleMultiplier(sizeIndex);
-  p.minVelocity = MIN_VELOCITY * getSizeMinVelocityModifier(sizeIndex);
+  p.minVelocity = particleTweaks.minVelocity * getSizeMinVelocityModifier(sizeIndex);
   p.maxVelocity = MAX_VELOCITY * getSizeMaxVelocityModifier(sizeIndex);
   p.forceModifier = getSizeForceModifier(sizeIndex);
   p.tierIndex = tierIndex;
