@@ -165,7 +165,8 @@ export function createSettingsPanel(
   });
   panel.appendChild(shakeRow);
 
-  // Developer mode toggle
+  // Developer mode toggle — devSection is created here so the toggle callback can
+  // reference it immediately; it is appended to the panel later (after credits).
   const devSection = createDevTweaksSection();
   devSection.style.display = settings.isDevMode ? '' : 'none';
 
@@ -391,7 +392,7 @@ function createDevTweaksSection(): HTMLElement {
     input.addEventListener('change', () => {
       const parsed = parseFloat(input.value);
       if (!isNaN(parsed)) {
-        (particleTweaks as unknown as Record<string, number>)[field.key] = parsed;
+        particleTweaks[field.key] = parsed;
       } else {
         // Revert to current tweak value on invalid input
         input.value = String(particleTweaks[field.key]);
