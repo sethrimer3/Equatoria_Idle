@@ -429,14 +429,16 @@
 - `WEAPON_BY_ID` — O(1) lookup map.
 
 ### src/sim/rpg/rpg-state.ts
-- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids).
-- Exports `PLAYER_BASE_ATK = 10` (baseline ATK multiplier constant) and `MAX_WEAPON_TIER = 7`.
+- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100).
+- Exports `PLAYER_BASE_ATK = 10`, `MAX_WEAPON_TIER = 7`, `MIN_BOSS_SPEED_PCT = 10`, `MAX_BOSS_SPEED_PCT = 100`, `BOSS_SPEED_STEP = 10`, `TOTAL_BOSS_COUNT = 10`.
 - `createRpgSimState()` — zero-state factory.
 - `getWaveBoostMultiplier(state)` — returns loom production multiplier = 1 + (highestWave^1.2)/100.
 - `formatWaveBoostPercent(state)` — returns display string like "+6.9%".
 - `getMaxEquippedWeapons(state)` — returns 1 + extra_weapon_slot upgrade level.
 - `getScaledWeaponDamage(baseDamage, tier, playerAtk)` — effective damage = baseDamage × tier × (playerAtk / PLAYER_BASE_ATK).
 - `getScaledWeaponCooldown(baseCooldownMs, tier)` — cooldown = baseCooldownMs × 0.85^(tier-1) (15% faster per tier).
+- `getBossXpMultiplier(speedPct)` — XP multiplier = speedPct / 10 (100%→10x, 10%→1x).
+- `isBossUnlocked(bossId, highestWaveReached)` — true when highestWaveReached >= bossId * 100.
 
 ### src/ui/panels/weapon-store-panel.ts
 - `WeaponStorePanel` interface and `createWeaponStorePanel(dispatch)` factory.
@@ -460,6 +462,13 @@
 - Upgrades sub-tab pane for the RPG overlay panel (per-upgrade purchase cards).
 - `RpgUpgradesTabPane` interface; `createRpgUpgradesTabPane(dispatch)` factory.
 - `update(rpgState, resources, numberFormat, isDevMode)` rebuilds the upgrade list.
+
+### src/ui/panels/rpg-bosses-tab.ts
+- Bosses sub-tab pane for the RPG overlay panel (boss list + speed selector).
+- `RpgBossesTabPane` interface; `createRpgBossesTabPane(dispatch)` factory.
+- `update(rpgState)` rebuilds boss list, speed buttons, and next-unlock hint.
+- Dispatches `start_boss_fight` (closes menu, triggers boss fight via rpgRender) and `set_boss_speed` actions.
+- Each boss entry shows lock status, best completion speed, XP multiplier, and Fight button.
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
@@ -591,7 +600,9 @@ Audio system — eight focused modules:
 
 ### src/settings/save-load.ts
 - Game state serialization/deserialization.
-- Versioned save format (version 14): replaces `equippedWeaponId` with `equippedWeaponIds` (array). Backward-compatible with versions 1–13 (single `equippedWeaponId` migrated to the set on load).
+- Versioned save format (version 16): adds `bossCompletions` (Record<string,number>) and `bossSpeedPct` (number) to rpg block. Backward-compatible with versions 1–15.
+- v15 adds `respawnWave` for respawn checkpoint.
+- v14 replaces `equippedWeaponId` with `equippedWeaponIds` (array). Backward-compatible with versions 1–13.
 - v13 adds `pendingIdleMotes` array for the idle-mote drip queue.
 - Motes persisted as `moteSizeCounts` (base-100 per-size counts per tier) since version 7. Backward-compatible with versions 1–6 (flat `moteTotals`).
 - On load, size counts are decoded back to float totals; pending idle motes resume dripping where they left off.

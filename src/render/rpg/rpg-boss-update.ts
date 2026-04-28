@@ -158,70 +158,132 @@ export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: nu
 
     if (boss.attackTimerMs <= 0) {
       boss.attackTimerMs = atk1Cd;
-      // Ring burst: number of bullets grows with danmakuLevel
-      const ringCount = 6 + dl * 2 + boss.phaseIndex * 4;
+      boss.isFiringPaused = false;
       const rotOffset = boss.orbitAngle;
-      for (let i = 0; i < ringCount; i++) {
-        const a = rotOffset + (i / ringCount) * Math.PI * 2;
-        ctx.bossProjectiles.push({
-          x: boss.x, y: boss.y,
-          vx: Math.cos(a) * bulletSpeed, vy: Math.sin(a) * bulletSpeed,
-          atk: boss.atk, hasHitPlayer: false,
-          lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-          color: bossColor, glowColor: bossGlow,
-          size: BOSS_PROJ_SIZE, seekStr: 0,
-        });
-      }
-      // Second offset ring at danmakuLevel 3+
-      if (dl >= 3) {
-        const ring2 = 8 + dl;
-        const offset2 = Math.PI / ring2;
-        for (let i = 0; i < ring2; i++) {
-          const a = rotOffset + offset2 + (i / ring2) * Math.PI * 2;
+      // Three rotating patterns: 0=flower ring, 1=spiral burst, 2=star formation
+      const patternType = (Math.floor(boss.pulseMs / 3000) + boss.phaseIndex) % 3;
+
+      if (patternType === 0) {
+        // ── Flower ring: petal-shaped speed variation ──
+        const petalCount = 6 + dl * 2 + boss.phaseIndex * 4;
+        for (let i = 0; i < petalCount; i++) {
+          const a = rotOffset + (i / petalCount) * Math.PI * 2;
+          const petalFactor = 0.8 + 0.4 * Math.abs(Math.sin(i * Math.PI * 2 / 6));
           ctx.bossProjectiles.push({
             x: boss.x, y: boss.y,
-            vx: Math.cos(a) * bulletSpeed * 0.8, vy: Math.sin(a) * bulletSpeed * 0.8,
+            vx: Math.cos(a) * bulletSpeed * petalFactor,
+            vy: Math.sin(a) * bulletSpeed * petalFactor,
             atk: boss.atk, hasHitPlayer: false,
             lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
             color: bossColor, glowColor: bossGlow,
-            size: BOSS_PROJ_SIZE - 1, seekStr: 0,
+            size: BOSS_PROJ_SIZE, seekStr: 0,
           });
         }
-      }
-      // Spiral burst at danmakuLevel 5+
-      if (dl >= 5) {
-        const spiralCount = 12 + boss.phaseIndex * 3;
+        // Inner offset ring at dl >= 1
+        if (dl >= 1) {
+          const innerOffset = Math.PI / petalCount;
+          for (let i = 0; i < petalCount; i++) {
+            const a = rotOffset + innerOffset + (i / petalCount) * Math.PI * 2;
+            ctx.bossProjectiles.push({
+              x: boss.x, y: boss.y,
+              vx: Math.cos(a) * bulletSpeed * 0.65,
+              vy: Math.sin(a) * bulletSpeed * 0.65,
+              atk: boss.atk, hasHitPlayer: false,
+              lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+              color: bossGlow, glowColor: bossColor,
+              size: BOSS_PROJ_SIZE - 1, seekStr: 0,
+            });
+          }
+        }
+      } else if (patternType === 1) {
+        // ── Spiral burst: counter-rotating double spiral ──
+        const spiralCount = Math.max(8, 10 + dl * 3 + boss.phaseIndex * 4);
+        const turns = 1 + boss.phaseIndex * 0.5;
         for (let i = 0; i < spiralCount; i++) {
-          const a = rotOffset * 2 + (i / spiralCount) * Math.PI * 2;
-          const spd = bulletSpeed * (0.7 + (i / spiralCount) * 0.6);
+          const t = i / spiralCount;
+          const a = rotOffset + t * Math.PI * 2 * turns;
           ctx.bossProjectiles.push({
             x: boss.x, y: boss.y,
-            vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+            vx: Math.cos(a) * bulletSpeed * (0.6 + t * 0.8),
+            vy: Math.sin(a) * bulletSpeed * (0.6 + t * 0.8),
             atk: boss.atk, hasHitPlayer: false,
-            lifeMs: BOSS_PROJ_LIFE_MS * 0.9, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.9,
-            color: bossGlow, glowColor: bossColor,
-            size: BOSS_PROJ_SIZE, seekStr: seekStr * 0.5,
+            lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+            color: bossColor, glowColor: bossGlow,
+            size: BOSS_PROJ_SIZE, seekStr: 0,
           });
+        }
+        if (dl >= 1) {
+          const cCount = Math.max(6, 8 + dl * 2);
+          for (let i = 0; i < cCount; i++) {
+            const t = i / cCount;
+            const a = -rotOffset + t * Math.PI * 2 * turns;
+            ctx.bossProjectiles.push({
+              x: boss.x, y: boss.y,
+              vx: Math.cos(a) * bulletSpeed * (0.5 + t * 0.7),
+              vy: Math.sin(a) * bulletSpeed * (0.5 + t * 0.7),
+              atk: boss.atk, hasHitPlayer: false,
+              lifeMs: BOSS_PROJ_LIFE_MS * 0.8, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.8,
+              color: bossGlow, glowColor: bossColor,
+              size: BOSS_PROJ_SIZE - 1, seekStr: 0,
+            });
+          }
+        }
+      } else {
+        // ── Star formation: multi-point star ──
+        const starPoints = 4 + dl + boss.phaseIndex * 2;
+        const spikesPerPoint = 2 + dl;
+        for (let p = 0; p < starPoints; p++) {
+          const baseAngle = rotOffset + (p / starPoints) * Math.PI * 2;
+          for (let s = 0; s < spikesPerPoint; s++) {
+            const spread = 0.15 * (spikesPerPoint - 1);
+            const a = baseAngle + (s - (spikesPerPoint - 1) / 2) * spread / spikesPerPoint;
+            ctx.bossProjectiles.push({
+              x: boss.x, y: boss.y,
+              vx: Math.cos(a) * bulletSpeed * (0.9 + s * 0.15),
+              vy: Math.sin(a) * bulletSpeed * (0.9 + s * 0.15),
+              atk: boss.atk, hasHitPlayer: false,
+              lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+              color: bossColor, glowColor: bossGlow,
+              size: BOSS_PROJ_SIZE, seekStr: 0,
+            });
+          }
         }
       }
     }
 
     if (boss.secondaryTimerMs <= 0) {
       boss.secondaryTimerMs = atk2Cd;
-      // Aimed cluster toward player
+      // Elegant fan spread toward player
       const aimAngle = Math.atan2(dy, dx);
-      const spread = 3 + Math.floor(dl * 0.8);
+      const spread = 3 + Math.floor(dl * 0.7);
+      const fanWidth = 0.40 + dl * 0.04;
       for (let i = 0; i < spread; i++) {
-        const offset = (i - (spread - 1) / 2) * (0.18 + dl * 0.015);
-        const a = aimAngle + offset;
+        const t = spread > 1 ? i / (spread - 1) : 0.5;
+        const a = aimAngle + (t - 0.5) * fanWidth;
         ctx.bossProjectiles.push({
           x: boss.x, y: boss.y,
-          vx: Math.cos(a) * bulletSpeedFast, vy: Math.sin(a) * bulletSpeedFast,
+          vx: Math.cos(a) * bulletSpeedFast * (0.85 + t * 0.3),
+          vy: Math.sin(a) * bulletSpeedFast * (0.85 + t * 0.3),
           atk: boss.atk, hasHitPlayer: false,
-          lifeMs: BOSS_PROJ_LIFE_MS * 0.7, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.7,
+          lifeMs: BOSS_PROJ_LIFE_MS * 0.75, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.75,
           color: bossGlow, glowColor: bossColor,
           size: BOSS_PROJ_SIZE - 1, seekStr,
         });
+      }
+      // Phase 2: flanking perpendicular shots
+      if (boss.phaseIndex >= 2) {
+        const perpAngle = aimAngle + Math.PI / 2;
+        for (let side = -1; side <= 1; side += 2) {
+          ctx.bossProjectiles.push({
+            x: boss.x, y: boss.y,
+            vx: Math.cos(perpAngle + side * 0.3) * bulletSpeedFast * 0.9,
+            vy: Math.sin(perpAngle + side * 0.3) * bulletSpeedFast * 0.9,
+            atk: boss.atk, hasHitPlayer: false,
+            lifeMs: BOSS_PROJ_LIFE_MS * 0.6, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.6,
+            color: bossColor, glowColor: bossGlow,
+            size: BOSS_PROJ_SIZE, seekStr: seekStr * 0.3,
+          });
+        }
       }
     }
     return; // skip the non-boss-wave movement/attack code below
