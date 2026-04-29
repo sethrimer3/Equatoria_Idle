@@ -326,13 +326,22 @@
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
 ### src/render/rpg/rpg-constants.ts
-- All module-level numeric and string constants for the RPG rendering system (~820 lines after luck additions).
-- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, Euler-fluid injection constants, and lucky mote drop constants.
+- All module-level numeric and string constants for the RPG rendering system (~580 lines after extraction).
+- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, boss, Euler-fluid injection constants, and lucky mote drop constants.
 - Also exports `SWORD_SHARD_SHAPES` — readonly polygon vertex data for the 7 prismatic blade shards.
 - Exports `LUCKY_*` constants: `LUCKY_MOTE_RADIUS`, `LUCKY_MOTE_BORDER_COLOR`, `LUCKY_MOTE_MAGNET_DIST`, `LUCKY_MOTE_COLLECT_DIST`, `LUCKY_MOTE_MAGNET_SPEED`, `LUCKY_MOTE_BONUS_PCT`, `LUCKY_MOTE_SPAWN_SPEED`, `LUCKY_MOTE_DAMPING`, `LUCKY_POPUP_DURATION_MS`, `LUCKY_POPUP_SPEED`, `LUCKY_POPUP_DECEL`, `LUCKY_PULSE_SPEED`.
 - Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
 - Exports companion-ship and laser constants for Sapphire/Amethyst persistent ship weapons.
+- Per-enemy-type constants for non-starter enemies have been moved to `rpg-enemy-constants.ts`.
 - Exports all constants; consumed by `rpg-render.ts`, `rpg-factories.ts`, and RPG draw modules.
+
+### src/render/rpg/rpg-enemy-constants.ts
+- Per-enemy-type constants for all non-starter enemy types (~230 lines).
+- Covers: Emerald, Amber, Void, Quartz, Ruby, Sunstone, Citrine, Iolite, Amethyst, Diamond, Nullstone, Fracteryl, Eigenstein (and their projectiles/shards).
+- Also contains the XP multiplier table for all enemy types (including Laser and Sapphire).
+- No imports — all values are primitive literals.
+- Extracted from `rpg-constants.ts` to keep that file under ~600 lines.
+- Consumed by `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, and `rpg-render.ts`.
 
 ### src/render/rpg/rpg-types.ts
 - All internal interfaces and type aliases for the RPG rendering system (~800 lines after luck additions).
