@@ -236,8 +236,6 @@ import {
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import {
   type RpgEnemyCtx,
-  updateLaserEnemies,
-  updateSapphireEnemies, updateSapphireMissiles,
   updateEmeraldEnemies,
   updateAmberEnemies, updateAmberShards,
   updateVoidEnemies,
@@ -246,6 +244,10 @@ import {
   updateSunstoneEnemies,
   updateCitrineEnemies, updateCitrineBolts,
 } from './rpg-enemy-updates';
+import {
+  updateLaserEnemies,
+  updateSapphireEnemies, updateSapphireMissiles,
+} from './rpg-enemy-updates-basic';
 import {
   updateIoliteEnemies,
   updateAmethystEnemies, updateAmethystShards,
