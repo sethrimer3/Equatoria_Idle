@@ -62,6 +62,23 @@ export interface RpgSimState {
    * Lower speed = easier dodging but lower XP multiplier.
    */
   bossSpeedPct: number;
+  /**
+   * The stat the player has permanently wired their XP source to.
+   * null = not yet chosen. Once set, it cannot be changed.
+   * When wired, all newly-earned XP flows only into that stat's XP pool;
+   * the other allocatable stat loses its XP bonus.
+   */
+  xpAllocatedStat: 'atk' | 'def' | null;
+  /**
+   * Cumulative XP that has flowed into ATK while wired to ATK.
+   * Used to drive the ATK XP bonus when xpAllocatedStat === 'atk'.
+   */
+  xpAllocatedToAtk: number;
+  /**
+   * Cumulative XP that has flowed into DEF while wired to DEF.
+   * Used to drive the DEF XP bonus when xpAllocatedStat === 'def'.
+   */
+  xpAllocatedToDef: number;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -77,6 +94,9 @@ export function createRpgSimState(): RpgSimState {
     rpgUpgradeLevels: new Map(),
     bossCompletions: new Map(),
     bossSpeedPct: 100,
+    xpAllocatedStat: null,
+    xpAllocatedToAtk: 0,
+    xpAllocatedToDef: 0,
   };
 }
 
@@ -190,6 +210,47 @@ export function formatXp(xp: number): string {
   if (xp < 1_000) return String(Math.floor(xp));
   if (xp < 1_000_000) return (xp / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
   return (xp / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+}
+
+/**
+ * Adds `amount` XP to the total and — if a stat is wired — also increments
+ * the per-stat allocation counter.  Call this instead of `state.xp += amount`
+ * everywhere XP is earned to keep all three counters in sync.
+ */
+export function addXpWithAllocation(state: RpgSimState, amount: number): void {
+  state.xp += amount;
+  if (state.xpAllocatedStat === 'atk') {
+    state.xpAllocatedToAtk += amount;
+  } else if (state.xpAllocatedStat === 'def') {
+    state.xpAllocatedToDef += amount;
+  }
+}
+
+/**
+ * Returns the effective ATK XP bonus given the current allocation state.
+ *
+ * - If wired to ATK: uses the dedicated `xpAllocatedToAtk` pool so growth is
+ *   tracked per-stat but the bonus formula is identical to the global one.
+ * - If wired to DEF: ATK no longer receives an XP bonus (returns 0).
+ * - If not wired yet: falls back to the global `xp` total (legacy behaviour).
+ */
+export function getEffectiveXpAtkBonus(state: RpgSimState): number {
+  if (state.xpAllocatedStat === 'def') return 0;
+  if (state.xpAllocatedStat === 'atk') return getXpAtkBonus(state.xpAllocatedToAtk);
+  return getXpAtkBonus(state.xp);
+}
+
+/**
+ * Returns the effective DEF XP bonus given the current allocation state.
+ *
+ * - If wired to DEF: uses the dedicated `xpAllocatedToDef` pool.
+ * - If wired to ATK: DEF no longer receives an XP bonus (returns 0).
+ * - If not wired yet: falls back to the global `xp` total (legacy behaviour).
+ */
+export function getEffectiveXpDefBonus(state: RpgSimState): number {
+  if (state.xpAllocatedStat === 'atk') return 0;
+  if (state.xpAllocatedStat === 'def') return getXpDefBonus(state.xpAllocatedToDef);
+  return getXpDefBonus(state.xp);
 }
 
 // ─── Upgrade helpers ─────────────────────────────────────────────

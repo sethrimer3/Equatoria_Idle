@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 16;
+const SAVE_VERSION = 17;
 
 interface SaveData {
   version: number;
@@ -75,6 +75,12 @@ interface SaveData {
     bossCompletions?: Record<string, number>;
     /** v16+: boss fight speed setting (10–100). Absent in older saves (defaults to 100). */
     bossSpeedPct?: number;
+    /** v17+: which stat XP is permanently wired to. Absent in older saves (defaults to null). */
+    xpAllocatedStat?: 'atk' | 'def' | null;
+    /** v17+: XP accumulated while wired to ATK. Absent in older saves (defaults to 0). */
+    xpAllocatedToAtk?: number;
+    /** v17+: XP accumulated while wired to DEF. Absent in older saves (defaults to 0). */
+    xpAllocatedToDef?: number;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
@@ -146,6 +152,9 @@ export function serializeGameState(state: GameState): SaveData {
       respawnWave: state.rpg.respawnWave,
       bossCompletions: Object.fromEntries(state.rpg.bossCompletions),
       bossSpeedPct: state.rpg.bossSpeedPct,
+      xpAllocatedStat: state.rpg.xpAllocatedStat,
+      xpAllocatedToAtk: state.rpg.xpAllocatedToAtk,
+      xpAllocatedToDef: state.rpg.xpAllocatedToDef,
     },
     elapsedMs: state.elapsedMs,
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
@@ -302,6 +311,10 @@ export function deserializeGameState(data: SaveData): GameState {
       }
     }
     state.rpg.bossSpeedPct = data.rpg.bossSpeedPct ?? 100;
+    // v17+: XP stat wiring
+    state.rpg.xpAllocatedStat = data.rpg.xpAllocatedStat ?? null;
+    state.rpg.xpAllocatedToAtk = data.rpg.xpAllocatedToAtk ?? 0;
+    state.rpg.xpAllocatedToDef = data.rpg.xpAllocatedToDef ?? 0;
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)
@@ -337,8 +350,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–15 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(data.version)) return null;
+    // Accept versions 1–17 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

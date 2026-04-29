@@ -104,6 +104,102 @@
   pointer-events: none;
 }
 
+/* ── Player stats box (HP / ATK / DEF grouped with XP at top) ── */
+.rpg-player-stats-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 6px;
+  padding: 4px 8px 5px;
+  background: rgba(0, 0, 0, 0.25);
+  /* Make pointer-events work for the XP node inside */
+  pointer-events: auto;
+}
+
+/* Row holding HP / ATK / DEF widgets */
+.rpg-player-stats-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* ── XP wiring node ────────────────────────────────────────────── */
+.rpg-xp-node {
+  font-size: 10px;
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: 1px;
+  cursor: crosshair;
+  user-select: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  background: rgba(167, 139, 250, 0.08);
+  transition: border-color 0.15s, background 0.15s;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.rpg-xp-node:hover {
+  border-color: rgba(167, 139, 250, 0.75);
+  background: rgba(167, 139, 250, 0.18);
+}
+
+.rpg-xp-node--locked {
+  cursor: default;
+  border-color: rgba(167, 139, 250, 0.6);
+  background: rgba(167, 139, 250, 0.15);
+}
+
+/* ── Sub-text under ATK / DEF (base value + allocated XP) ─────── */
+.rpg-stat-sub {
+  font-size: 8px;
+  color: var(--text-secondary);
+  line-height: 1.1;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.rpg-stat-sub--base {
+  color: rgba(180, 180, 200, 0.6);
+}
+
+.rpg-stat-sub--alloc {
+  color: #a78bfa;
+  opacity: 0.9;
+}
+
+/* ── Wired stat glow ────────────────────────────────────────────── */
+@keyframes rpg-wired-glow {
+  0%   { text-shadow: 0 0 4px currentColor, 0 0 10px currentColor; }
+  50%  { text-shadow: 0 0 8px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+  100% { text-shadow: 0 0 4px currentColor, 0 0 10px currentColor; }
+}
+
+.rpg-stat--wired .rpg-stat-value {
+  animation: rpg-wired-glow 1.8s ease-in-out infinite;
+  color: #c4b5fd;
+}
+
+/* ── Wire rope SVG overlay ─────────────────────────────────────── */
+.rpg-wire-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+}
+
+.rpg-wire-rope {
+  filter: drop-shadow(0 0 3px rgba(167, 139, 250, 0.6));
+}
+
 .rpg-stat {
   display: flex;
   flex-direction: column;
@@ -137,11 +233,6 @@
 
 .rpg-stat-value--boost {
   color: #64c8ff;
-  font-size: 14px;
-}
-
-.rpg-stat-value--xp {
-  color: #a78bfa;
   font-size: 14px;
 }
 

@@ -326,3 +326,21 @@ Hit detection (`swordHitInArc`) always checks the same `arcStart→arcEnd` windo
 **Function signatures**: Each update function takes its entity array(s) as explicit first parameters (`updateAmberEnemies(enemies, shards, ctx, deltaMs)`), making data flow visible at call sites and keeping the functions pure with respect to the closure.
 
 **Knockback callback**: Amber shards are the only entity that applies velocity-based knockback to the player. A dedicated `dealDamageToPlayerKnockback(atk, normDirX, normDirY)` callback was added to `RpgEnemyCtx` to handle this without exposing `playerStats`, `playerIFramesMs`, or `spawnDamageNumber` to the external module.
+
+
+## XP Stat Wiring System (v17)
+
+**Context**: The RPG stats bar displayed HP, ATK, DEF, WAVE, BOOST, XP, LUCK, and DPS as flat widgets. XP provided a uniform logarithmic bonus to both ATK and DEF (`getXpAtkBonus`, `getXpDefBonus`). Players had no control over which stat benefited from new XP.
+
+**Decision**: Added an interactive XP-wiring mechanic that allows players to permanently direct all future XP gains toward either ATK or DEF.
+
+**Mechanics**:
+- `rpgSimState` gains three new fields: `xpAllocatedStat: 'atk' | 'def' | null`, `xpAllocatedToAtk: number`, `xpAllocatedToDef: number`.
+- Once wired to a stat, the other stat loses its XP bonus entirely. This is intentional: the player must commit and can never change the choice.
+- `addXpWithAllocation(state, amount)` replaces all `state.xp += amount` calls; it increments both `xp` and the per-stat counter simultaneously.
+- `getEffectiveXpAtkBonus` / `getEffectiveXpDefBonus` encapsulate the allocation logic so `applyEquipmentStats` in rpg-render.ts stays clean.
+- When the player first wires to a stat, `xpAllocatedToAtk/Def` is pre-seeded with the current total XP so the stat value doesn't drop at the moment of wiring.
+
+**UI**: The stats bar now has a `rpg-player-stats-box` container grouping HP/ATK/DEF with a draggable `rpg-xp-node` label at its top. The player drags from the XP node to ATK or DEF to connect. An SVG overlay with a Verlet-integrated rope (12 nodes, gravity=0.35, damping=0.97) visualises the cable with soft-body physics each frame. Once locked the wire renders in the target stat's colour and the stat value pulses with a CSS glow animation. Under each stat two sub-text lines show the base value (without any XP contribution) and the cumulative XP that has flowed to that stat.
+
+**Save format**: Bumped to v17. All three new fields are optional in the schema and default to `null`/`0` on older saves.
