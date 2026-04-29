@@ -200,3 +200,26 @@ The combined Upgrades panel contained three distinct sub-tab concerns in a singl
 Each sub-pane exports a factory: `create*Pane(dispatch, ...) → { element, update(state, fmt) }`. The outer `loom-panel.ts` calls `update()` on the active sub-pane only (preserving the existing lazy-update optimisation). The `updateCellDisplay` helper and matrix drag constants (`DRAG_THRESHOLD_PX`, `DRAG_PX_PER_STEP`) moved to `aliven-pane.ts`; the `renderLoomIconCanvas` helper moved to `loom-upgrades-pane.ts`.
 
 **No logic changes.** `tsc --noEmit` passes with zero errors before and after.
+
+---
+
+## Phase 5: rpg-entity-draw.ts + rpg-render.ts (further extractions)
+
+### rpg-entity-draw.ts (1,315 → 730 lines) + new rpg-enemy-draw.ts (609 lines)
+
+`rpg-entity-draw.ts` was over the 1,000-line guideline. The 24 enemy-body draw functions (sapphire through eigenstein + teleport particles) were split into a dedicated `rpg-enemy-draw.ts`. Each file has its own independent `isLowGraphicsMode` flag and `setLowGraphicsMode()` export; `rpg-render.ts` calls both.
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `rpg-enemy-draw.ts` | Enemy body draw functions (24 types) | 609 |
+| `rpg-entity-draw.ts` | Weapon projectiles, effects, ships, reticle | 730 |
+
+### rpg-lucky-motes.ts (new, 222 lines) extracted from rpg-render.ts
+
+The lucky mote drop system (spawn, magnetism, collection, draw, popup) was extracted from the `createRpgRender` closure into a pure-function module. Functions now take explicit parameters (entity arrays, player position, callbacks) instead of relying on closure capture. `getCachedLuckPercent()` remains as a private helper in `rpg-render.ts`.
+
+### rpg-damage.ts (new, 307 lines) extracted from rpg-render.ts
+
+24 per-entity damage functions (`damageEnemy` through `damageEigensteinEnemy`) were extracted via a `createDamageFns(ctx: DamageCtx)` factory pattern. The factory takes a `recordDps` callback and returns all damage functions with identical call signatures, so no call sites in `rpg-render.ts` needed changes. `damageBossEnemy` stays in `rpg-render.ts` due to boss-specific closure dependencies.
+
+**Net result:** rpg-render.ts reduced from 6,587 to ~6,175 lines; no logic changes; `tsc --noEmit` passes with zero errors.

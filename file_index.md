@@ -359,12 +359,17 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts
-- 35 exported pure draw functions extracted from the `rpg-render.ts` closure (~864 lines).
-- Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays, effect objects, or scalar values.
-- Covers every enemy type (laser, sapphire, sand projectile, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, fracteryl, eigenstein, boss ring), plus: particles (teleport, death-burst, forge, gem, mote, orbit-weapon), attack trails, weapon projectiles (missiles, bolts), Sapphire/Amethyst companion ships and lasers, eigenstein beams, laser beam effect, orbit projectile, and support visuals (damage numbers, HP bars).
-- Exposes `setLowGraphicsMode()` so RPG glow/trail-heavy draw passes can be disabled from settings.
-- Imports constants from `rpg-constants.ts` and types from `rpg-types.ts`.
+- 11 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, and support visuals (~730 lines after enemy functions were moved to `rpg-enemy-draw.ts`).
+- Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays or scalar values.
+- Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle.
+- Exposes its own `setLowGraphicsMode()` (independent of `rpg-enemy-draw.ts`).
 - No runtime side-effects; safe to call from any rendering context.
+
+### src/render/rpg/rpg-enemy-draw.ts
+- 24 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~609 lines).
+- Covers every enemy body + associated projectiles/shards: sapphire+missiles, emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
+- Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
+- Has its own independent `isLowGraphicsMode` flag and `setLowGraphicsMode()` export, called from `rpg-render.ts` alongside the entity-draw and weapon-draw equivalents.
 
 ### src/render/rpg/rpg-enemy-updates.ts
 - 19 exported enemy update functions covering laser, sapphire, and wave 1–30 enemy types (~880 lines).
@@ -392,15 +397,25 @@
 - Each function takes `ctx: CanvasRenderingContext2D` plus explicit parameters — no closure dependencies.
 
 ### src/render/rpg/rpg-damage.ts
-- 24 per-entity damage functions extracted from `rpg-render.ts` via factory pattern.
+- 24 per-entity damage functions extracted from `rpg-render.ts` via factory pattern (~307 lines).
 - Exports `DamageCtx` interface (`recordDps` callback) and `createDamageFns(ctx)` factory.
-- `createDamageFns` returns all damage helpers (`damageEnemy`, `damageSapphireEnemy`, `damageMissile`, etc.) with identical signatures and behaviour; `damageBossEnemy` is NOT included (stays in `rpg-render.ts` due to closure-specific references).
+- `createDamageFns` returns all damage helpers (`damageEnemy`, `damageSapphireEnemy`, `damageMissile`, etc.) with identical signatures and behaviour, so call sites in `rpg-render.ts` are unchanged.
+- `damageBossEnemy` is NOT included (stays in `rpg-render.ts` due to closure-specific references: `bossEnemy`, `isBossWaveActive`, `teleportPlayerToSafeZone`, etc.).
 - Imports entity types from `./rpg-types` and `MINIMUM_SHIELD_DAMAGE` from `./rpg-constants`.
 
+### src/render/rpg/rpg-lucky-motes.ts
+- Pure-function module for the lucky mote drop system (~222 lines).
+- Exports: `ENEMY_TYPE_TO_TIER` (enemy-type → tier ID map), `trySpawnLuckyMote`, `updateLuckyMotes`, `updateLuckyMotePopups`, `drawLuckyMotes`, `drawLuckyMotePopups`.
+- All functions take explicit parameters (no closures): entity arrays, mote position, deltaMs, callbacks, isLowGraphicsMode.
+- `trySpawnLuckyMote(luckyMotes, enemyTypeId, x, y, luckPct)` takes the pre-computed luck percent as a parameter; the caller (`rpg-render.ts`) provides `getCachedLuckPercent()`.
+- Imports `LuckyMote`, `LuckyMotePopup` from `./rpg-types`; constants from `./rpg-constants`; `TIER_BY_ID`, `TierId` from `../../data/tiers`.
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~6,100 lines).
+- Independent RPG canvas rendering system for the RPG tab (~6,175 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
-- Entity draw functions have been extracted to `rpg-entity-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
+- Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
+- Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
+- 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (laser, sapphire, wave 1–30) and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
 - Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
