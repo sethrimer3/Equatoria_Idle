@@ -8,18 +8,20 @@
  */
 
 import type {
-  BossProjectile,
   SandProjectile,
   IolitePoisonBolt,
   LaserBeamEffect,
   DeathParticle, ShotLine, HitEffect, DamageNumber,
   LaserEnemy,
   WeaponOrbitParticle, OrbitProjectile,
+} from './rpg-types';
+import type {
+  BossProjectile,
   EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
   SunstoneMine,
   SapphireShip, SapphireLaser,
   AmethystShip, AmethystLaser,
-} from './rpg-types';
+} from './rpg-enemy-types';
 
 import {
   SAND_PROJ_LIFE_MS, SAND_PROJ_SIZE, SAND_PROJ_GLOW, SAND_PROJ_COLOR,

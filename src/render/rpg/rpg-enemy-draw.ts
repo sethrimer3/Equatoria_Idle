@@ -11,6 +11,8 @@
 
 import type {
   SapphireEnemy, SapphireMissile,
+} from './rpg-types';
+import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
   VoidEnemy,
@@ -25,7 +27,7 @@ import type {
   FracterylEnemy, FracterylShard,
   EigensteinEnemy, EigensteinBeam,
   TeleportParticle,
-} from './rpg-types';
+} from './rpg-enemy-types';
 
 import {
   SAPPHIRE_SHIELD_RADIUS, SAPPHIRE_ENEMY_GLOW, SAPPHIRE_ENEMY_COLOR, SAPPHIRE_ENEMY_SIZE,

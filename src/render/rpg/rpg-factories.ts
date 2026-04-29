@@ -2,13 +2,15 @@
 import { getWaveStatScale } from '../../sim/rpg/rpg-state';
 import {
   AttackTrailState, LaserEnemy, SapphireEnemy, SapphireMissile,
+} from './rpg-types';
+import type {
   EmeraldEnemy, AmberEnemy, AmberShard, VoidEnemy, QuartzEnemy, QuartzSpike,
   RubyEnemy, RubyBolt, SunstoneEnemy, CitrineEnemy, CitrineBolt,
   IoliteEnemy, AmethystEnemy, AmethystShard, DiamondEnemy, DiamondShard,
   NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard, EigensteinEnemy, DanmakuSafeZone,
   BossEnemy,
-} from './rpg-types';
+} from './rpg-enemy-types';
 import {
   LASER_HP_INIT, LASER_ATK_INIT, LASER_DEF_INIT, LASER_PATROL_TURN_MS,
   SAPPHIRE_HP_INIT, SAPPHIRE_ATK_INIT, SAPPHIRE_DEF_INIT, SAPPHIRE_SHIELD_HP_INIT,

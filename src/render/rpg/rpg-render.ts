@@ -196,6 +196,8 @@ import type {
   NullstoneVortex, VortexWeaponState,
   SwordComboState,
   IolitePoisonBolt, PoisonDebuff,
+} from './rpg-types';
+import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
   VoidEnemy, QuartzEnemy, QuartzSpike,
@@ -214,7 +216,7 @@ import type {
   SapphireShip, SapphireLaser,
   AmethystShip, AmethystLaser,
   LuckyMote, LuckyMotePopup,
-} from './rpg-types';
+} from './rpg-enemy-types';
 import {
   makeLaserEnemy, makeSapphireEnemy,
   makeEmeraldEnemy, makeAmberEnemy, makeVoidEnemy,

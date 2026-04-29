@@ -9,6 +9,8 @@
 import type {
   LaserEnemy,
   SapphireEnemy, SapphireMissile,
+} from './rpg-types';
+import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
   VoidEnemy,
@@ -22,7 +24,7 @@ import type {
   NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard,
   EigensteinEnemy,
-} from './rpg-types';
+} from './rpg-enemy-types';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
 
 export interface DamageCtx {

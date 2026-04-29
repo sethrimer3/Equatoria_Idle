@@ -344,14 +344,17 @@
 - Consumed by `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, and `rpg-render.ts`.
 
 ### src/render/rpg/rpg-types.ts
-- All internal interfaces and type aliases for the RPG rendering system (~800 lines after luck additions).
-- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`, `FracterylEnemy`, `EigensteinEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces.
-- Diamond sword interfaces: `SwordComboState` (phase `idle | swing | cooldown | spin_combo`, hinge angle+velocity, shard angles chain, alternating `swingIsRightToLeft`, consecutive-hit tracking `consecHitsOnSameEnemy`/`lastHitEntity`, spin combo state `spinComboAngle`/`spinComboDamageTicks`, swipe/beam effect lists), `SwipeEffect` (disconnected arc visual), `PrismaticBeamEffect` (tail-to-tip appear/fade beam).
-- Companion ship interfaces: `SapphireShip`, `SapphireLaser`, `AmethystShip`, and `AmethystLaser` with ring-buffer trails and pre-scaled damage fields.
-- Lucky mote interfaces: `LuckyMote` (position, velocity, tierId, color, glowColor, bonusPct, pulseTimeS) and `LuckyMotePopup` (position, velocity, text, color, swatchColor, timerMs).
-- Also exports `TeleportParticle` — comet-trail particle used during player teleport visuals.
+- Core interfaces and type aliases for the RPG rendering system (~299 lines after enemy types extracted).
+- Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, `RpgPhase`, `SpawnEntry`, starter enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `SapphireMissile`), projectile interfaces, weapon-effect state (`AttackTrailState`, `ChainWhipState`, `NullstoneVortex`, `VortexWeaponState`, `SwordComboState`, `SwipeEffect`, `PrismaticBeamEffect`), visual-effect interfaces (`DeathParticle`, `HitEffect`, `ShotLine`, `DamageNumber`, `LaserBeamEffect`, `WeaponOrbitParticle`, `OrbitProjectile`), `SandProjectile`, `IolitePoisonBolt`, `PoisonDebuff`.
+- All non-starter enemy interfaces (EmeraldEnemy → LuckyMotePopup) have been moved to `rpg-enemy-types.ts`.
 - No runtime dependencies (types only).
-- Exports all types; consumed by `rpg-render.ts`, `rpg-factories.ts`, and `rpg-entity-draw.ts`.
+
+### src/render/rpg/rpg-enemy-types.ts
+- All non-starter enemy interfaces and related projectile/particle/ship entity types (~491 lines).
+- Extracted from `rpg-types.ts` to keep that file under ~300 lines.
+- Covers: `EmeraldPhase`, `EmeraldEnemy`, `AmberEnemy`, `AmberShard`, `VoidEnemy`, `QuartzEnemy`, `QuartzSpike`, `RubyEnemy`, `RubyBolt`, `SunstoneEnemy`, `CitrineEnemy`, `CitrineBolt`, `IoliteEnemy`, `AmethystEnemy`, `AmethystShard`, `DiamondEnemy`, `DiamondShard`, `NullstoneEnemy`, `VoidTendril`, `BossEnemy`, `BossProjectile`, `FracterylEnemy`, `FracterylShard`, `EigensteinEnemy`, `EigensteinBeam`, `DanmakuSafeZone`, `TeleportParticle`, `EmeraldPlayerMissile`, `EmeraldSubMissile`, `EmeraldSwirlParticle`, `SunstoneMine`, `SapphireShip`, `SapphireLaser`, `AmethystShip`, `AmethystLaser`, `LuckyMote`, `LuckyMotePopup`.
+- No runtime dependencies (types only; all fields are primitive or built-in TS types).
+- Consumed by: `rpg-render.ts`, `rpg-factories.ts`, `rpg-entity-draw.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-damage.ts`, `rpg-boss-draw.ts`, `rpg-boss-update.ts`, `rpg-lucky-motes.ts`.
 
 ### src/render/rpg/rpg-factories.ts
 - `make*` factory functions for every RPG entity type (~398 lines).

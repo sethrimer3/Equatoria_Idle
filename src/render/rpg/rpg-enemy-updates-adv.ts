@@ -24,7 +24,7 @@ import type {
   FracterylEnemy, FracterylShard,
   EigensteinEnemy, EigensteinBeam,
   TeleportParticle,
-} from './rpg-types';
+} from './rpg-enemy-types';
 import {
   TARGET_FRAME_MS, PLAYER_HIT_RADIUS,
   FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,

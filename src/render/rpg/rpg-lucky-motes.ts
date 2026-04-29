@@ -7,7 +7,7 @@
  * All functions take explicit state parameters — no closure captures.
  */
 
-import type { LuckyMote, LuckyMotePopup } from './rpg-types';
+import type { LuckyMote, LuckyMotePopup } from './rpg-enemy-types';
 import {
   LUCKY_MOTE_RADIUS, LUCKY_MOTE_BORDER_COLOR, LUCKY_MOTE_MAGNET_DIST, LUCKY_MOTE_COLLECT_DIST,
   LUCKY_MOTE_MAGNET_SPEED, LUCKY_MOTE_BONUS_PCT, LUCKY_MOTE_SPAWN_SPEED, LUCKY_MOTE_DAMPING,

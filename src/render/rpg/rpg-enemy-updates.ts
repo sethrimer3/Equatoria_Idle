@@ -26,6 +26,9 @@
  */
 
 import type {
+  HitEffect, ShotLine,
+} from './rpg-types';
+import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
   VoidEnemy,
@@ -33,8 +36,7 @@ import type {
   RubyEnemy, RubyBolt,
   SunstoneEnemy,
   CitrineEnemy, CitrineBolt,
-  HitEffect, ShotLine,
-} from './rpg-types';
+} from './rpg-enemy-types';
 import type { FluidImpulse } from './rpg-fluid';
 import {
   TARGET_FRAME_MS,
