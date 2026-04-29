@@ -37,6 +37,7 @@ import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
 import { createRpgFluid } from './rpg-fluid';
+import { createDamageFns } from './rpg-damage';
 import {
   RPG_TRAIL_CAPACITY, MAX_RPG_SPEED, RPG_VELOCITY_DAMPING, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
   TRAIL_SPEED_THRESHOLD, GLOW_PULSE_SPEED, GLOW_MOVE_RAMP_UP, GLOW_MOVE_RAMP_DOWN, MIN_TRAIL_DISTANCE,
@@ -55,7 +56,7 @@ import {
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_DAMAGE, ORBIT_PROJ_HIT_CD_MS,
   SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_GLOW,
   SAPPHIRE_SHIELD_RADIUS,
-  MISSILE_SIZE, MINIMUM_SHIELD_DAMAGE,
+  MISSILE_SIZE,
   SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, CHAIN_NODES, CHAIN_NODE_COLOR,
   CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
   CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
@@ -489,6 +490,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
   }
 
+  const {
+    damageEnemy, damageSapphireEnemy, damageMissile,
+    damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
+    damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
+    damageRubyEnemy, damageRubyBolt, damageSunstoneEnemy,
+    damageCitrineEnemy, damageCitrineBolt, damageIoliteEnemy,
+    damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
+    damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
+    damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+  } = createDamageFns({ recordDps });
+
   // ── Aim direction tracker (updated each physics frame) ────────
   let playerAimAngle = -Math.PI / 2;  // default: upward
 
@@ -683,254 +695,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     orbitProjectile = buildOrbitProjectile();
     syncSapphireShips();
     syncAmethystShips();
-  }
-
-  // ── Player attack helpers ──────────────────────────────────────
-
-  /** Deals damage from the player to one laser enemy, respecting DEF and a DEF pierce ratio.
-   *  Returns the actual damage dealt (0 if DEF fully absorbed the hit). */
-  function damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#d3f3ff');
-    }
-    return dmg;
-  }
-
-  /**
-   * Deals damage to a sapphire enemy, handling the shield.
-   * bypassShield = true means the ruby laser is firing — ignore the shield.
-   * Returns { dmg, wasShield } where dmg is the effective damage applied.
-   */
-  function damageSapphireEnemy(
-    enemy: SapphireEnemy,
-    rawDamage: number,
-    defPierceRatio: number,
-    bypassShield: boolean,
-  ): number {
-    if (!bypassShield && enemy.shieldHp > 0) {
-      // Shields always absorb at least MINIMUM_SHIELD_DAMAGE, making chip damage possible.
-      const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-      enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
-      recordDps(dmg, '#6bd9ff');
-      return dmg;
-    }
-    // Hit the enemy body.
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#6bd9ff');
-    }
-    return dmg;
-  }
-
-  /** Deals damage to a missile (no DEF, no shield). Returns actual damage dealt. */
-  function damageMissile(missile: SapphireMissile, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    missile.hp = Math.max(0, missile.hp - dmg);
-    recordDps(dmg, '#6bd9ff');
-    return dmg;
-  }
-
-  /** Deals damage to an emerald enemy. Returns actual damage dealt. */
-  function damageEmeraldEnemy(enemy: EmeraldEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#8fff8f');
-    }
-    return dmg;
-  }
-
-  /** Deals damage to an amber enemy. Returns actual damage dealt. */
-  function damageAmberEnemy(enemy: AmberEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ffb86c');
-    }
-    return dmg;
-  }
-
-  /** Deals damage to an amber shard (no DEF). Returns actual damage dealt. */
-  function damageAmberShard(shard: AmberShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#ffb86c');
-    return dmg;
-  }
-
-  /** Deals damage to a void enemy (high DEF). Returns actual damage dealt. */
-  function damageVoidEnemy(enemy: VoidEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#7b68ee');
-    }
-    return dmg;
-  }
-
-  function damageQuartzEnemy(enemy: QuartzEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#e0e0e0');
-    }
-    return dmg;
-  }
-
-  function damageQuartzSpike(spike: QuartzSpike, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    spike.hp = Math.max(0, spike.hp - dmg);
-    recordDps(dmg, '#e0e0e0');
-    return dmg;
-  }
-
-  function damageRubyEnemy(enemy: RubyEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ff6b6b');
-    }
-    return dmg;
-  }
-
-  function damageRubyBolt(bolt: RubyBolt, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    bolt.hp = Math.max(0, bolt.hp - dmg);
-    recordDps(dmg, '#ff6b6b');
-    return dmg;
-  }
-
-  function damageSunstoneEnemy(enemy: SunstoneEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ffd700');
-    }
-    return dmg;
-  }
-
-  function damageCitrineEnemy(enemy: CitrineEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#fff176');
-    }
-    return dmg;
-  }
-
-  function damageCitrineBolt(bolt: CitrineBolt, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    bolt.hp = Math.max(0, bolt.hp - dmg);
-    recordDps(dmg, '#fff176');
-    return dmg;
-  }
-
-  function damageIoliteEnemy(enemy: IoliteEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#9b59b6');
-    }
-    return dmg;
-  }
-
-  function damageAmethystEnemy(enemy: AmethystEnemy, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number {
-    if (!bypassShield && enemy.shieldHp > 0) {
-      const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-      enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
-      recordDps(dmg, '#b388ff');
-      return dmg;
-    }
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#b388ff');
-    }
-    return dmg;
-  }
-
-  function damageAmethystShard(shard: AmethystShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#b388ff');
-    return dmg;
-  }
-
-  function damageDiamondEnemy(enemy: DiamondEnemy, rawDamage: number, defPierceRatio: number): number {
-    if (enemy.phaseInvuln) return 0;
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#e0e0ff');
-    }
-    return dmg;
-  }
-
-  function damageDiamondShard(shard: DiamondShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#e0e0ff');
-    return dmg;
-  }
-
-  function damageNullstoneEnemy(enemy: NullstoneEnemy, rawDamage: number, defPierceRatio: number): number {
-    if (enemy.isAbsorbing) return 0;
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#2c2c2c');
-    }
-    return dmg;
-  }
-
-  function damageVoidTendril(tendril: VoidTendril, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    tendril.hp = Math.max(0, tendril.hp - dmg);
-    recordDps(dmg, '#7b68ee');
-    return dmg;
-  }
-
-  function damageFracterylEnemy(enemy: FracterylEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ff69b4');
-    }
-    return dmg;
-  }
-
-  function damageFracterylShard(shard: FracterylShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#ff69b4');
-    return dmg;
-  }
-
-  function damageEigensteinEnemy(enemy: EigensteinEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#00ffff');
-    }
-    return dmg;
   }
 
   function damageBossEnemy(rawDamage: number, defPierceRatio: number, fromDiamondBlade = false): number {

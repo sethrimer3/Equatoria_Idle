@@ -391,8 +391,15 @@
 - Covers: `drawBossEnemy` (sprite, HP bar, phase pips, INVULN label), `drawBottomSafeZone` (prismatic ring), `drawDanmakuSafeZone` (safe-angle wedge), `drawWaveClearBanner` (fade-in/out clear overlay).
 - Each function takes `ctx: CanvasRenderingContext2D` plus explicit parameters — no closure dependencies.
 
+### src/render/rpg/rpg-damage.ts
+- 24 per-entity damage functions extracted from `rpg-render.ts` via factory pattern.
+- Exports `DamageCtx` interface (`recordDps` callback) and `createDamageFns(ctx)` factory.
+- `createDamageFns` returns all damage helpers (`damageEnemy`, `damageSapphireEnemy`, `damageMissile`, etc.) with identical signatures and behaviour; `damageBossEnemy` is NOT included (stays in `rpg-render.ts` due to closure-specific references).
+- Imports entity types from `./rpg-types` and `MINIMUM_SHIELD_DAMAGE` from `./rpg-constants`.
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~4,700 lines after luck additions).
+- Independent RPG canvas rendering system for the RPG tab (~6,100 lines).
+- Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Entity draw functions have been extracted to `rpg-entity-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (laser, sapphire, wave 1–30) and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
