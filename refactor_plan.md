@@ -244,3 +244,19 @@ Per-enemy-type constants for all non-starter enemy types (Emerald through Eigens
 Updated import paths in: `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, `rpg-render.ts`.
 
 **No logic changes. `tsc --noEmit` passes with zero errors.**
+
+---
+
+## Phase 7: rpg-types.ts split → rpg-enemy-types.ts
+
+### rpg-types.ts (786 → 299 lines) + new rpg-enemy-types.ts (507 lines)
+
+`rpg-types.ts` contained both weapon-system/player interfaces (lines 3–295) and all enemy-entity interfaces (lines 296–786). The enemy interfaces were extracted to `rpg-enemy-types.ts`.
+
+**`rpg-types.ts` retains (299 lines):** RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats, LaserPhase, AttackTrailState, LaserEnemy, RpgPhase, DeathParticle, SpawnEntry, HitEffect, ShotLine, DamageNumber, WeaponOrbitParticle, OrbitProjectile, SapphireEnemy, SapphireMissile, SandProjectile, ChainPhase, ChainWhipState, LaserBeamEffect, NullstoneVortex, VortexWeaponState, SwordComboPhase, SwipeEffect, PrismaticBeamEffect, SwordComboState, IolitePoisonBolt, PoisonDebuff.
+
+**`rpg-enemy-types.ts` holds (507 lines):** EmeraldEnemy → LuckyMotePopup — all enemy, projectile, mine, ship, and lucky mote interfaces.
+
+Updated import paths in 10 consumer files: `rpg-damage.ts`, `rpg-boss-draw.ts`, `rpg-boss-update.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-entity-draw.ts`, `rpg-factories.ts`, `rpg-lucky-motes.ts`, `rpg-render.ts`.
+
+**No logic changes. `tsc --noEmit` passes with zero errors.**
