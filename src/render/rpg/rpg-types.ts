@@ -741,3 +741,46 @@ export interface AmethystLaser {
   trailX: Float64Array; trailY: Float64Array;
   trailHead: number; trailCount: number;
 }
+
+// ── Lucky mote drop (luck mechanic) ───────────────────────────────
+
+/**
+ * A lucky mote drop spawned on an enemy's death when the luck check passes.
+ * Floats near the death position and magnetizes toward the player when they
+ * are close. Collecting it applies a percentage bonus to the matching mote
+ * tier in the player's resource pool.
+ */
+export interface LuckyMote {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Tier identifier — determines mote color and resource bonus target. */
+  tierId: string;
+  /** Main fill color (from TierDefinition). */
+  color: string;
+  /** Glow/border color (from TierDefinition, or golden override). */
+  glowColor: string;
+  /** Percentage bonus applied to tierId mote total when collected (e.g. 0.5 = +0.5%). */
+  bonusPct: number;
+  /** Accumulated time for pulse animation (seconds). */
+  pulseTimeS: number;
+}
+
+/**
+ * Floating popup text shown when the player collects a lucky mote.
+ * Appears at the player's position and floats in the direction from the
+ * player toward where the mote was, then decelerates quickly.
+ */
+export interface LuckyMotePopup {
+  x: number; y: number;
+  vx: number; vy: number;
+  /** Text to display (e.g. "+0.5%"). */
+  text: string;
+  /** Text color (tier color). */
+  color: string;
+  /** Small swatch color (same as tier mote). */
+  swatchColor: string;
+  /** Remaining life in ms. */
+  timerMs: number;
+  /** Total duration in ms. */
+  maxTimerMs: number;
+}

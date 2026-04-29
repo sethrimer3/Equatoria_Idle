@@ -41,6 +41,7 @@ import { createAudioSystem } from '../audio';
 import { createTraceEffect } from '../render/ui/trace-effect';
 import { createRpgRender } from '../render/rpg/rpg-render';
 import { createRpgMenuPanel } from '../ui/panels/rpg-menu-panel';
+import { addMotes } from '../sim/resources/resource-state';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
@@ -278,7 +279,15 @@ export async function startApp(): Promise<void> {
   rpgContainer.style.display = 'none';
   root.appendChild(rpgContainer);
 
-  const rpgRender = createRpgRender(rpgContainer, appState.game.rpg);
+  const rpgRender = createRpgRender(rpgContainer, appState.game.rpg, {
+    onLuckyMoteCollected: (tierId: TierId, bonusPct: number) => {
+      const current = appState.game.resources.moteTotals.get(tierId) ?? 0;
+      const bonus = current * bonusPct / 100;
+      if (bonus > 0) {
+        addMotes(appState.game.resources, tierId, bonus);
+      }
+    },
+  });
   // Stats panel is positioned in the root (above the tab bar); visibility
   // is toggled by setActiveTab alongside rpgContainer.
   root.appendChild(rpgRender.statsPanel);

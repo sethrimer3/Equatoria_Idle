@@ -29,10 +29,12 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
   getXpPerKill, getXpAtkBonus, getXpDefBonus, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel,
   getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale, getBossXpMultiplier,
+  getLuckPercent, formatLuckPercent,
 } from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
+import type { TierId } from '../../data/tiers';
 import { createRpgFluid } from './rpg-fluid';
 import {
   RPG_TRAIL_CAPACITY, MAX_RPG_SPEED, RPG_VELOCITY_DAMPING, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
@@ -147,6 +149,9 @@ import {
   AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
   AMETHYST_LASER_ANGULAR_SPEED, AMETHYST_LASER_DURATION_MS, AMETHYST_LASER_HIT_RADIUS, AMETHYST_LASER_TRAIL_CAP,
   AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW,
+  LUCKY_MOTE_RADIUS, LUCKY_MOTE_BORDER_COLOR, LUCKY_MOTE_MAGNET_DIST, LUCKY_MOTE_COLLECT_DIST,
+  LUCKY_MOTE_MAGNET_SPEED, LUCKY_MOTE_BONUS_PCT, LUCKY_MOTE_SPAWN_SPEED, LUCKY_MOTE_DAMPING,
+  LUCKY_POPUP_DURATION_MS, LUCKY_POPUP_SPEED, LUCKY_POPUP_DECEL, LUCKY_PULSE_SPEED,
 } from './rpg-constants';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
@@ -204,6 +209,7 @@ import type {
   SunstoneMine,
   SapphireShip, SapphireLaser,
   AmethystShip, AmethystLaser,
+  LuckyMote, LuckyMotePopup,
 } from './rpg-types';
 import {
   makeLaserEnemy, makeSapphireEnemy,
@@ -275,7 +281,17 @@ export interface RpgRender {
   startBossFight(bossId: number): void;
 }
 
-export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState): RpgRender {
+/** Options passed to createRpgRender. */
+export interface RpgRenderOptions {
+  /**
+   * Called when the player collects a lucky mote drop.
+   * @param tierId  The mote tier that was collected.
+   * @param bonusPct  The percentage bonus to apply to that tier's mote total (e.g. 0.5 = +0.5%).
+   */
+  onLuckyMoteCollected?: (tierId: TierId, bonusPct: number) => void;
+}
+
+export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState, options: RpgRenderOptions = {}): RpgRender {
 
   const canvas = document.createElement('canvas');
   canvas.id = 'rpg-canvas';
@@ -408,7 +424,186 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const amethystShips: AmethystShip[] = [];
   const amethystLasers: AmethystLaser[] = [];
 
-  // ── Tap-to-target state ───────────────────────────────────────
+  // ── Lucky mote drops (luck mechanic) ─────────────────────────
+  const luckyMotes: LuckyMote[] = [];
+  const luckyMotePopups: LuckyMotePopup[] = [];
+
+  /** Maps enemy type strings to the mote tier they drop. */
+  const ENEMY_TYPE_TO_TIER: Record<string, TierId> = {
+    laser:      'sand',
+    quartz:     'quartz',
+    sapphire:   'sapphire',
+    emerald:    'emerald',
+    amber:      'sunstone',
+    void:       'nullstone',
+    ruby:       'ruby',
+    sunstone:   'sunstone',
+    citrine:    'citrine',
+    iolite:     'iolite',
+    amethyst:   'amethyst',
+    diamond:    'diamond',
+    nullstone:  'nullstone',
+    fracteryl:  'fracteryl',
+    eigenstein: 'eigenstein',
+  };
+
+  /**
+   * Tries to spawn a lucky mote at (x, y) for the given enemy type.
+   * Rolls against current luck%. Does nothing if luck check fails.
+   */
+  function trySpawnLuckyMote(enemyTypeId: string, x: number, y: number): void {
+    const luckPct = getLuckPercent(rpgSimState.xp);
+    if (luckPct <= 0 || Math.random() * 100 > luckPct) return;
+    const tierId = ENEMY_TYPE_TO_TIER[enemyTypeId];
+    if (!tierId) return;
+    const tierDef = TIER_BY_ID.get(tierId);
+    if (!tierDef) return;
+    const angle = Math.random() * Math.PI * 2;
+    luckyMotes.push({
+      x, y,
+      vx: Math.cos(angle) * LUCKY_MOTE_SPAWN_SPEED,
+      vy: Math.sin(angle) * LUCKY_MOTE_SPAWN_SPEED,
+      tierId,
+      color: tierDef.color,
+      glowColor: tierDef.glowColor,
+      bonusPct: LUCKY_MOTE_BONUS_PCT,
+      pulseTimeS: 0,
+    });
+  }
+
+  /** Updates lucky motes: magnetism, collection, and popup spawning. */
+  function updateLuckyMotes(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = luckyMotes.length - 1; i >= 0; i--) {
+      const lm = luckyMotes[i];
+      lm.pulseTimeS += deltaMs / 1000;
+      const dx = mote.x - lm.x;
+      const dy = mote.y - lm.y;
+      const distSq = dx * dx + dy * dy;
+      const collectDistSq = LUCKY_MOTE_COLLECT_DIST * LUCKY_MOTE_COLLECT_DIST;
+      if (distSq <= collectDistSq) {
+        // Collected — apply bonus via callback and spawn popup
+        options.onLuckyMoteCollected?.(lm.tierId as TierId, lm.bonusPct);
+        // Direction vector: from player toward where the mote was
+        const dist = Math.sqrt(distSq) || 1;
+        const nx = -dx / dist;
+        const ny = -dy / dist;
+        luckyMotePopups.push({
+          x: mote.x,
+          y: mote.y,
+          vx: nx * LUCKY_POPUP_SPEED,
+          vy: ny * LUCKY_POPUP_SPEED - 1.2,
+          text: '+' + lm.bonusPct.toFixed(1) + '% ↑',
+          color: lm.color,
+          swatchColor: lm.color,
+          timerMs: LUCKY_POPUP_DURATION_MS,
+          maxTimerMs: LUCKY_POPUP_DURATION_MS,
+        });
+        luckyMotes.splice(i, 1);
+        continue;
+      }
+      // Magnetism when player is close enough
+      const magnetDistSq = LUCKY_MOTE_MAGNET_DIST * LUCKY_MOTE_MAGNET_DIST;
+      if (distSq <= magnetDistSq) {
+        const dist = Math.sqrt(distSq);
+        const pullStr = LUCKY_MOTE_MAGNET_SPEED * dt * (1 - dist / LUCKY_MOTE_MAGNET_DIST + 0.3);
+        lm.vx += (dx / dist) * pullStr;
+        lm.vy += (dy / dist) * pullStr;
+      }
+      lm.x += lm.vx * dt;
+      lm.y += lm.vy * dt;
+      lm.vx *= Math.pow(LUCKY_MOTE_DAMPING, dt);
+      lm.vy *= Math.pow(LUCKY_MOTE_DAMPING, dt);
+    }
+  }
+
+  /** Updates floating lucky mote popup texts. */
+  function updateLuckyMotePopups(deltaMs: number): void {
+    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    for (let i = luckyMotePopups.length - 1; i >= 0; i--) {
+      const p = luckyMotePopups[i];
+      p.timerMs -= deltaMs;
+      if (p.timerMs <= 0) { luckyMotePopups.splice(i, 1); continue; }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= Math.pow(LUCKY_POPUP_DECEL, dt);
+      p.vy *= Math.pow(LUCKY_POPUP_DECEL, dt);
+    }
+  }
+
+  /** Draws lucky motes: colored fill + pulsing golden border. */
+  function drawLuckyMotes(nowMs: number): void {
+    void nowMs;
+    if (luckyMotes.length === 0) return;
+    ctx.save();
+    for (const lm of luckyMotes) {
+      const pulseT = (Math.sin(lm.pulseTimeS * LUCKY_PULSE_SPEED) + 1) * 0.5;
+      const borderAlpha = 0.65 + pulseT * 0.35;
+      const outerR = LUCKY_MOTE_RADIUS + 1.5 + pulseT * 1.5;
+      // Golden glow halo
+      if (!isLowGraphicsMode) {
+        ctx.globalAlpha = borderAlpha * 0.45;
+        ctx.shadowBlur = outerR * 3;
+        ctx.shadowColor = LUCKY_MOTE_BORDER_COLOR;
+        ctx.fillStyle = LUCKY_MOTE_BORDER_COLOR;
+        ctx.beginPath();
+        ctx.arc(lm.x, lm.y, outerR + 1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      // Golden border ring
+      ctx.globalAlpha = borderAlpha;
+      ctx.strokeStyle = LUCKY_MOTE_BORDER_COLOR;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(lm.x, lm.y, outerR, 0, Math.PI * 2);
+      ctx.stroke();
+      // Tier-colored fill
+      ctx.globalAlpha = 1;
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = LUCKY_MOTE_RADIUS * 3;
+        ctx.shadowColor = lm.glowColor;
+      }
+      ctx.fillStyle = lm.color;
+      ctx.beginPath();
+      ctx.arc(lm.x, lm.y, LUCKY_MOTE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /** Draws floating "+X% ↑" popups for lucky mote collection. */
+  function drawLuckyMotePopups(): void {
+    if (luckyMotePopups.length === 0) return;
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 9px "Pixelify Sans", monospace';
+    for (const p of luckyMotePopups) {
+      const progress = 1 - p.timerMs / p.maxTimerMs;
+      const alpha = progress < 0.15 ? progress / 0.15 : Math.max(0, 1 - (progress - 0.5) / 0.5);
+      if (alpha <= 0) continue;
+      ctx.globalAlpha = alpha;
+      // Small colored swatch circle
+      const swatchR = 3;
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = swatchR * 3;
+        ctx.shadowColor = p.swatchColor;
+      }
+      ctx.fillStyle = p.swatchColor;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, swatchR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // Text
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, p.x + swatchR + 2, p.y + 3);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
   /** The currently targeted enemy object, or null for automatic targeting. */
   let targetedEnemy: object | null = null;
 
@@ -4308,6 +4503,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * LASER_XP_MULT;
+        trySpawnLuckyMote('laser', enemies[i].x, enemies[i].y);
         enemies.splice(i, 1);
       }
     }
@@ -4319,6 +4515,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * SAPPHIRE_XP_MULT;
+        trySpawnLuckyMote('sapphire', sapphireEnemies[i].x, sapphireEnemies[i].y);
         sapphireEnemies.splice(i, 1);
       }
     }
@@ -4340,6 +4537,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * EMERALD_XP_MULT;
+        trySpawnLuckyMote('emerald', emeraldEnemies[i].x, emeraldEnemies[i].y);
         emeraldEnemies.splice(i, 1);
       }
     }
@@ -4351,6 +4549,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * AMBER_XP_MULT;
+        trySpawnLuckyMote('amber', amberEnemies[i].x, amberEnemies[i].y);
         amberEnemies.splice(i, 1);
       }
     }
@@ -4372,6 +4571,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * VOID_XP_MULT;
+        trySpawnLuckyMote('void', voidEnemies[i].x, voidEnemies[i].y);
         voidEnemies.splice(i, 1);
       }
     }
@@ -4383,6 +4583,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * QUARTZ_XP_MULT;
+        trySpawnLuckyMote('quartz', quartzEnemies[i].x, quartzEnemies[i].y);
         quartzEnemies.splice(i, 1);
       }
     }
@@ -4397,6 +4598,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * RUBY_XP_MULT;
+        trySpawnLuckyMote('ruby', rubyEnemies[i].x, rubyEnemies[i].y);
         rubyEnemies.splice(i, 1);
       }
     }
@@ -4411,6 +4613,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * SUNSTONE_XP_MULT;
+        trySpawnLuckyMote('sunstone', sunstoneEnemies[i].x, sunstoneEnemies[i].y);
         sunstoneEnemies.splice(i, 1);
       }
     }
@@ -4422,6 +4625,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * CITRINE_XP_MULT;
+        trySpawnLuckyMote('citrine', citrineEnemies[i].x, citrineEnemies[i].y);
         citrineEnemies.splice(i, 1);
       }
     }
@@ -4436,6 +4640,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * IOLITE_XP_MULT;
+        trySpawnLuckyMote('iolite', ioliteEnemies[i].x, ioliteEnemies[i].y);
         ioliteEnemies.splice(i, 1);
       }
     }
@@ -4447,6 +4652,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * AMETHYST_XP_MULT;
+        trySpawnLuckyMote('amethyst', amethystEnemies[i].x, amethystEnemies[i].y);
         amethystEnemies.splice(i, 1);
       }
     }
@@ -4461,6 +4667,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * DIAMOND_XP_MULT;
+        trySpawnLuckyMote('diamond', diamondEnemies[i].x, diamondEnemies[i].y);
         diamondEnemies.splice(i, 1);
       }
     }
@@ -4475,6 +4682,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * NULLSTONE_XP_MULT;
+        trySpawnLuckyMote('nullstone', nullstoneEnemies[i].x, nullstoneEnemies[i].y);
         nullstoneEnemies.splice(i, 1);
       }
     }
@@ -4489,6 +4697,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * FRACTERYL_XP_MULT;
+        trySpawnLuckyMote('fracteryl', fracterylEnemies[i].x, fracterylEnemies[i].y);
         fracterylEnemies.splice(i, 1);
       }
     }
@@ -4503,6 +4712,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * EIGENSTEIN_XP_MULT;
+        trySpawnLuckyMote('eigenstein', eigensteinEnemies[i].x, eigensteinEnemies[i].y);
         eigensteinEnemies.splice(i, 1);
       }
     }
@@ -4584,6 +4794,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const waveWidget    = makeStatWidget('WAVE',   'rpg-stat-value--wave');
   const boostWidget   = makeStatWidget('BOOST',  'rpg-stat-value--boost');
   const xpWidget      = makeStatWidget('XP',     'rpg-stat-value--xp');
+  const luckWidget    = makeStatWidget('LUCK',   'rpg-stat-value--luck');
 
   // ── DPS Chart Widget ────────────────────────────────────────────
   const dpsWidget = document.createElement('div');
@@ -4671,6 +4882,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ? '+' + Math.pow(rpgSimState.highestWaveReached, 1.2).toFixed(1) + '%'
       : '+0.0%';
     xpWidget.valueEl.textContent   = formatXp(rpgSimState.xp);
+    luckWidget.valueEl.textContent = formatLuckPercent(rpgSimState.xp);
 
     // ── DPS chart update ──────────────────────────────────────────
     const now = Date.now();
@@ -5616,6 +5828,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     weaponAttackTimers.clear();
     hitEffects.length = 0; shotLines.length = 0;
     damageNumbers.length = 0; playerIFramesMs = 0;
+    luckyMotes.length = 0; luckyMotePopups.length = 0;
     fluid.reset();
     applyEquipmentStats();
   }
@@ -5809,7 +6022,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
 
     drawHitEffects(ctx, hitEffects);
+    drawLuckyMotes(performance.now());
     drawDamageNumbers(ctx, damageNumbers);
+    drawLuckyMotePopups();
     if (deathParticles.length > 0) drawDeathParticles(ctx, deathParticles);
 
     // Draw weapon orbit particles, orbit projectile, and special weapon visuals above the player.
@@ -6014,6 +6229,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);
+      updateLuckyMotes(deltaMs);
+      updateLuckyMotePopups(deltaMs);
 
       if (playerStats.hp <= 0) triggerDeath();
       updateStatsPanelDom();
