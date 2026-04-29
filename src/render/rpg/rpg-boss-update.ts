@@ -11,7 +11,7 @@
  * made inside these functions are always reflected back in the closure.
  */
 
-import type { BossEnemy, BossProjectile, DanmakuSafeZone } from './rpg-types';
+import type { BossEnemy, BossProjectile, DanmakuSafeZone } from './rpg-enemy-types';
 import type { FluidImpulse } from './rpg-fluid';
 import {
   TARGET_FRAME_MS,

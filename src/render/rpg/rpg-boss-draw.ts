@@ -14,7 +14,7 @@
  *   - drawWaveClearBanner  — centre-screen "Wave N Cleared!" overlay
  */
 
-import type { BossEnemy, DanmakuSafeZone } from './rpg-types';
+import type { BossEnemy, DanmakuSafeZone } from './rpg-enemy-types';
 import {
   BOSS_SIZE_BASE, BOSS_COLORS, BOSS_GLOW_COLORS,
   BOSS_PHASE_TRANSITION_MS, BOSS_PHASE2_HP_RATIO, BOSS_PHASE3_HP_RATIO,

@@ -37,6 +37,7 @@ import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
 import { createRpgFluid } from './rpg-fluid';
+import { createDamageFns } from './rpg-damage';
 import {
   RPG_TRAIL_CAPACITY, MAX_RPG_SPEED, RPG_VELOCITY_DAMPING, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
   TRAIL_SPEED_THRESHOLD, GLOW_PULSE_SPEED, GLOW_MOVE_RAMP_UP, GLOW_MOVE_RAMP_DOWN, MIN_TRAIL_DISTANCE,
@@ -55,7 +56,7 @@ import {
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_DAMAGE, ORBIT_PROJ_HIT_CD_MS,
   SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_GLOW,
   SAPPHIRE_SHIELD_RADIUS,
-  MISSILE_SIZE, MINIMUM_SHIELD_DAMAGE,
+  MISSILE_SIZE,
   SAND_PROJ_SPEED, SAND_PROJ_SIZE, SAND_PROJ_LIFE_MS, SAND_PROJ_COLOR, CHAIN_NODES, CHAIN_NODE_COLOR,
   CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
   CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
@@ -72,27 +73,6 @@ import {
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
   POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
-  EMERALD_ENEMY_SIZE, EMERALD_ENEMY_GLOW,
-  AMBER_ENEMY_SIZE, AMBER_ENEMY_GLOW,
-  AMBER_SHARD_SIZE,
-  VOID_ENEMY_SIZE, VOID_ENEMY_GLOW,
-  QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_GLOW,
-  QUARTZ_SPIKE_SIZE,
-  RUBY_ENEMY_SIZE, RUBY_ENEMY_GLOW,
-  RUBY_BOLT_SIZE,
-  SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_GLOW,
-  CITRINE_ENEMY_SIZE, CITRINE_ENEMY_GLOW,
-  CITRINE_BOLT_SIZE,
-  IOLITE_ENEMY_SIZE, IOLITE_ENEMY_GLOW,
-  AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_GLOW,
-  AMETHYST_SHARD_SIZE,
-  DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_GLOW,
-  DIAMOND_SHARD_SIZE,
-  NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_GLOW,
-  VOID_TENDRIL_SIZE,
-  LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
-  QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
-  IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
   BOSS_SIZE_BASE,
   BOSS_GLOW_COLORS, BOSS_NAMES,
   BOSS_GLYPH_LABEL,
@@ -119,11 +99,6 @@ import {
   FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
   FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
   FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
-  FRACTERYL_ENEMY_GLOW,
-  FRACTERYL_ENEMY_SIZE,
-  EIGENSTEIN_ENEMY_GLOW,
-  EIGENSTEIN_ENEMY_SIZE,
-  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
   EMERALD_MISSILE_SPEED, EMERALD_MISSILE_MAX_SPEED, EMERALD_MISSILE_SEEK_STR,
   EMERALD_MISSILE_TRAIL_CAP, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_HIT_RADIUS,
   EMERALD_MISSILE_PROXIMITY_PX, EMERALD_MISSILE_DETECT_PX, EMERALD_MISSILE_NO_TARGET_MS,
@@ -150,10 +125,35 @@ import {
   AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
   AMETHYST_LASER_ANGULAR_SPEED, AMETHYST_LASER_DURATION_MS, AMETHYST_LASER_HIT_RADIUS, AMETHYST_LASER_TRAIL_CAP,
   AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW,
-  LUCKY_MOTE_RADIUS, LUCKY_MOTE_BORDER_COLOR, LUCKY_MOTE_MAGNET_DIST, LUCKY_MOTE_COLLECT_DIST,
-  LUCKY_MOTE_MAGNET_SPEED, LUCKY_MOTE_BONUS_PCT, LUCKY_MOTE_SPAWN_SPEED, LUCKY_MOTE_DAMPING,
-  LUCKY_POPUP_DURATION_MS, LUCKY_POPUP_SPEED, LUCKY_POPUP_DECEL, LUCKY_PULSE_SPEED,
 } from './rpg-constants';
+import {
+  EMERALD_ENEMY_SIZE, EMERALD_ENEMY_GLOW,
+  AMBER_ENEMY_SIZE, AMBER_ENEMY_GLOW,
+  AMBER_SHARD_SIZE,
+  VOID_ENEMY_SIZE, VOID_ENEMY_GLOW,
+  QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_GLOW,
+  QUARTZ_SPIKE_SIZE,
+  RUBY_ENEMY_SIZE, RUBY_ENEMY_GLOW,
+  RUBY_BOLT_SIZE,
+  SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_GLOW,
+  CITRINE_ENEMY_SIZE, CITRINE_ENEMY_GLOW,
+  CITRINE_BOLT_SIZE,
+  IOLITE_ENEMY_SIZE, IOLITE_ENEMY_GLOW,
+  AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_GLOW,
+  AMETHYST_SHARD_SIZE,
+  DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_GLOW,
+  DIAMOND_SHARD_SIZE,
+  NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_GLOW,
+  VOID_TENDRIL_SIZE,
+  LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
+  QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
+  IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
+  FRACTERYL_ENEMY_GLOW,
+  FRACTERYL_ENEMY_SIZE,
+  EIGENSTEIN_ENEMY_GLOW,
+  EIGENSTEIN_ENEMY_SIZE,
+  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
+} from './rpg-enemy-constants';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
   drawEmeraldEnemies,
@@ -169,11 +169,14 @@ import {
   drawNullstoneEnemies, drawVoidTendrils,
   drawFracterylEnemies,
   drawEigensteinEnemies, drawEigensteinBeams,
+  drawTeleportParticles,
+  setLowGraphicsMode as setEnemyLowGraphics,
+} from './rpg-enemy-draw';
+import {
   drawBossProjectiles,
   drawSandProjectiles,
   drawPoisonBolts,
   drawLaserBeamEffect,
-  drawTeleportParticles,
   drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   drawAttackTrail,
   drawWeaponOrbitParticle, drawOrbitProjectile,
@@ -193,6 +196,8 @@ import type {
   NullstoneVortex, VortexWeaponState,
   SwordComboState,
   IolitePoisonBolt, PoisonDebuff,
+} from './rpg-types';
+import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
   VoidEnemy, QuartzEnemy, QuartzSpike,
@@ -211,7 +216,7 @@ import type {
   SapphireShip, SapphireLaser,
   AmethystShip, AmethystLaser,
   LuckyMote, LuckyMotePopup,
-} from './rpg-types';
+} from './rpg-enemy-types';
 import {
   makeLaserEnemy, makeSapphireEnemy,
   makeEmeraldEnemy, makeAmberEnemy, makeVoidEnemy,
@@ -228,11 +233,13 @@ import {
   getVortexTierRadius, getVortexTierDurationMs, getVortexCount,
 } from './rpg-helpers';
 import { drawChainWhip, drawVortexes, drawSwordCombos, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
+import {
+  trySpawnLuckyMote, updateLuckyMotes, updateLuckyMotePopups,
+  drawLuckyMotes, drawLuckyMotePopups,
+} from './rpg-lucky-motes';
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import {
   type RpgEnemyCtx,
-  updateLaserEnemies,
-  updateSapphireEnemies, updateSapphireMissiles,
   updateEmeraldEnemies,
   updateAmberEnemies, updateAmberShards,
   updateVoidEnemies,
@@ -241,6 +248,10 @@ import {
   updateSunstoneEnemies,
   updateCitrineEnemies, updateCitrineBolts,
 } from './rpg-enemy-updates';
+import {
+  updateLaserEnemies,
+  updateSapphireEnemies, updateSapphireMissiles,
+} from './rpg-enemy-updates-basic';
 import {
   updateIoliteEnemies,
   updateAmethystEnemies, updateAmethystShards,
@@ -429,30 +440,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const luckyMotes: LuckyMote[] = [];
   const luckyMotePopups: LuckyMotePopup[] = [];
 
-  /** Maps enemy type strings to the mote tier they drop.
-   * Most enemies map to the tier of the same name. Exceptions:
-   *   'laser'  → 'sand'      (laser enemy is the basic yellow-sand tier enemy)
-   *   'amber'  → 'sunstone'  (amber/orange enemy maps to the orange sunstone tier)
-   *   'void'   → 'nullstone' (void/dark enemy maps to the dark nullstone tier)
-   */
-  const ENEMY_TYPE_TO_TIER: Record<string, TierId> = {
-    laser:      'sand',
-    quartz:     'quartz',
-    sapphire:   'sapphire',
-    emerald:    'emerald',
-    amber:      'sunstone',  // amber → sunstone (closest orange tier)
-    void:       'nullstone', // void  → nullstone (closest dark/void tier)
-    ruby:       'ruby',
-    sunstone:   'sunstone',
-    citrine:    'citrine',
-    iolite:     'iolite',
-    amethyst:   'amethyst',
-    diamond:    'diamond',
-    nullstone:  'nullstone',
-    fracteryl:  'fracteryl',
-    eigenstein: 'eigenstein',
-  };
-
   /**
    * Cached luck percentage — updated whenever XP changes.
    * Avoids calling Math.log10 on every enemy death in hot combat.
@@ -468,163 +455,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return _cachedLuckPct;
   }
 
-  /**
-   * Tries to spawn a lucky mote at (x, y) for the given enemy type.
-   * Rolls against current luck%. Does nothing if luck check fails.
-   */
-  function trySpawnLuckyMote(enemyTypeId: string, x: number, y: number): void {
-    const luckPct = getCachedLuckPercent();
-    if (luckPct <= 0 || Math.random() * 100 > luckPct) return;
-    const tierId = ENEMY_TYPE_TO_TIER[enemyTypeId];
-    if (!tierId) return;
-    const tierDef = TIER_BY_ID.get(tierId);
-    if (!tierDef) return;
-    const angle = Math.random() * Math.PI * 2;
-    luckyMotes.push({
-      x, y,
-      vx: Math.cos(angle) * LUCKY_MOTE_SPAWN_SPEED,
-      vy: Math.sin(angle) * LUCKY_MOTE_SPAWN_SPEED,
-      tierId,
-      color: tierDef.color,
-      glowColor: tierDef.glowColor,
-      bonusPct: LUCKY_MOTE_BONUS_PCT,
-      pulseTimeS: 0,
-    });
-  }
-
-  /** Updates lucky motes: magnetism, collection, and popup spawning. */
-  function updateLuckyMotes(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = luckyMotes.length - 1; i >= 0; i--) {
-      const lm = luckyMotes[i];
-      lm.pulseTimeS += deltaMs / 1000;
-      const dx = mote.x - lm.x;
-      const dy = mote.y - lm.y;
-      const distSq = dx * dx + dy * dy;
-      const collectDistSq = LUCKY_MOTE_COLLECT_DIST * LUCKY_MOTE_COLLECT_DIST;
-      if (distSq <= collectDistSq) {
-        // Collected — apply bonus via callback and spawn popup
-        options.onLuckyMoteCollected?.(lm.tierId as TierId, lm.bonusPct);
-        // Direction vector: from player toward where the mote was
-        const dist = Math.sqrt(distSq) || 1;
-        const nx = -dx / dist;
-        const ny = -dy / dist;
-        luckyMotePopups.push({
-          x: mote.x,
-          y: mote.y,
-          vx: nx * LUCKY_POPUP_SPEED,
-          vy: ny * LUCKY_POPUP_SPEED - 1.2,
-          text: '+' + lm.bonusPct.toFixed(1) + '% ↑',
-          color: lm.color,
-          swatchColor: lm.color,
-          timerMs: LUCKY_POPUP_DURATION_MS,
-          maxTimerMs: LUCKY_POPUP_DURATION_MS,
-        });
-        luckyMotes.splice(i, 1);
-        continue;
-      }
-      // Magnetism when player is close enough
-      const magnetDistSq = LUCKY_MOTE_MAGNET_DIST * LUCKY_MOTE_MAGNET_DIST;
-      if (distSq <= magnetDistSq) {
-        const dist = Math.sqrt(distSq);
-        const pullStr = LUCKY_MOTE_MAGNET_SPEED * dt * (1 - dist / LUCKY_MOTE_MAGNET_DIST + 0.3);
-        lm.vx += (dx / dist) * pullStr;
-        lm.vy += (dy / dist) * pullStr;
-      }
-      lm.x += lm.vx * dt;
-      lm.y += lm.vy * dt;
-      lm.vx *= Math.pow(LUCKY_MOTE_DAMPING, dt);
-      lm.vy *= Math.pow(LUCKY_MOTE_DAMPING, dt);
-    }
-  }
-
-  /** Updates floating lucky mote popup texts. */
-  function updateLuckyMotePopups(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    for (let i = luckyMotePopups.length - 1; i >= 0; i--) {
-      const p = luckyMotePopups[i];
-      p.timerMs -= deltaMs;
-      if (p.timerMs <= 0) { luckyMotePopups.splice(i, 1); continue; }
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vx *= Math.pow(LUCKY_POPUP_DECEL, dt);
-      p.vy *= Math.pow(LUCKY_POPUP_DECEL, dt);
-    }
-  }
-
-  /** Draws lucky motes: colored fill + pulsing golden border. */
-  function drawLuckyMotes(nowMs: number): void {
-    void nowMs;
-    if (luckyMotes.length === 0) return;
-    ctx.save();
-    for (const lm of luckyMotes) {
-      const pulseT = (Math.sin(lm.pulseTimeS * LUCKY_PULSE_SPEED) + 1) * 0.5;
-      const borderAlpha = 0.65 + pulseT * 0.35;
-      const outerR = LUCKY_MOTE_RADIUS + 1.5 + pulseT * 1.5;
-      // Golden glow halo
-      if (!isLowGraphicsMode) {
-        ctx.globalAlpha = borderAlpha * 0.45;
-        ctx.shadowBlur = outerR * 3;
-        ctx.shadowColor = LUCKY_MOTE_BORDER_COLOR;
-        ctx.fillStyle = LUCKY_MOTE_BORDER_COLOR;
-        ctx.beginPath();
-        ctx.arc(lm.x, lm.y, outerR + 1, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-      // Golden border ring
-      ctx.globalAlpha = borderAlpha;
-      ctx.strokeStyle = LUCKY_MOTE_BORDER_COLOR;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(lm.x, lm.y, outerR, 0, Math.PI * 2);
-      ctx.stroke();
-      // Tier-colored fill
-      ctx.globalAlpha = 1;
-      if (!isLowGraphicsMode) {
-        ctx.shadowBlur = LUCKY_MOTE_RADIUS * 3;
-        ctx.shadowColor = lm.glowColor;
-      }
-      ctx.fillStyle = lm.color;
-      ctx.beginPath();
-      ctx.arc(lm.x, lm.y, LUCKY_MOTE_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  }
-
-  /** Draws floating "+X% ↑" popups for lucky mote collection. */
-  function drawLuckyMotePopups(): void {
-    if (luckyMotePopups.length === 0) return;
-    ctx.save();
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 9px "Pixelify Sans", monospace';
-    for (const p of luckyMotePopups) {
-      const progress = 1 - p.timerMs / p.maxTimerMs;
-      const alpha = progress < 0.15 ? progress / 0.15 : Math.max(0, 1 - (progress - 0.5) / 0.5);
-      if (alpha <= 0) continue;
-      ctx.globalAlpha = alpha;
-      // Small colored swatch circle
-      const swatchR = 3;
-      if (!isLowGraphicsMode) {
-        ctx.shadowBlur = swatchR * 3;
-        ctx.shadowColor = p.swatchColor;
-      }
-      ctx.fillStyle = p.swatchColor;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, swatchR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      // Text
-      ctx.fillStyle = p.color;
-      ctx.fillText(p.text, p.x + swatchR + 2, p.y + 3);
-    }
-    ctx.globalAlpha = 1;
-    ctx.textAlign = 'left';
-    ctx.restore();
-  }
   /** The currently targeted enemy object, or null for automatic targeting. */
   let targetedEnemy: object | null = null;
 
@@ -665,6 +495,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       dpsWindow.push({ t: Date.now(), dmg, weaponId: activeDamageWeaponId });
     }
   }
+
+  const {
+    damageEnemy, damageSapphireEnemy, damageMissile,
+    damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
+    damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
+    damageRubyEnemy, damageRubyBolt, damageSunstoneEnemy,
+    damageCitrineEnemy, damageCitrineBolt, damageIoliteEnemy,
+    damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
+    damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
+    damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+  } = createDamageFns({ recordDps });
 
   // ── Aim direction tracker (updated each physics frame) ────────
   let playerAimAngle = -Math.PI / 2;  // default: upward
@@ -860,254 +701,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     orbitProjectile = buildOrbitProjectile();
     syncSapphireShips();
     syncAmethystShips();
-  }
-
-  // ── Player attack helpers ──────────────────────────────────────
-
-  /** Deals damage from the player to one laser enemy, respecting DEF and a DEF pierce ratio.
-   *  Returns the actual damage dealt (0 if DEF fully absorbed the hit). */
-  function damageEnemy(enemy: LaserEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#d3f3ff');
-    }
-    return dmg;
-  }
-
-  /**
-   * Deals damage to a sapphire enemy, handling the shield.
-   * bypassShield = true means the ruby laser is firing — ignore the shield.
-   * Returns { dmg, wasShield } where dmg is the effective damage applied.
-   */
-  function damageSapphireEnemy(
-    enemy: SapphireEnemy,
-    rawDamage: number,
-    defPierceRatio: number,
-    bypassShield: boolean,
-  ): number {
-    if (!bypassShield && enemy.shieldHp > 0) {
-      // Shields always absorb at least MINIMUM_SHIELD_DAMAGE, making chip damage possible.
-      const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-      enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
-      recordDps(dmg, '#6bd9ff');
-      return dmg;
-    }
-    // Hit the enemy body.
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#6bd9ff');
-    }
-    return dmg;
-  }
-
-  /** Deals damage to a missile (no DEF, no shield). Returns actual damage dealt. */
-  function damageMissile(missile: SapphireMissile, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    missile.hp = Math.max(0, missile.hp - dmg);
-    recordDps(dmg, '#6bd9ff');
-    return dmg;
-  }
-
-  /** Deals damage to an emerald enemy. Returns actual damage dealt. */
-  function damageEmeraldEnemy(enemy: EmeraldEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#8fff8f');
-    }
-    return dmg;
-  }
-
-  /** Deals damage to an amber enemy. Returns actual damage dealt. */
-  function damageAmberEnemy(enemy: AmberEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ffb86c');
-    }
-    return dmg;
-  }
-
-  /** Deals damage to an amber shard (no DEF). Returns actual damage dealt. */
-  function damageAmberShard(shard: AmberShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#ffb86c');
-    return dmg;
-  }
-
-  /** Deals damage to a void enemy (high DEF). Returns actual damage dealt. */
-  function damageVoidEnemy(enemy: VoidEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#7b68ee');
-    }
-    return dmg;
-  }
-
-  function damageQuartzEnemy(enemy: QuartzEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#e0e0e0');
-    }
-    return dmg;
-  }
-
-  function damageQuartzSpike(spike: QuartzSpike, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    spike.hp = Math.max(0, spike.hp - dmg);
-    recordDps(dmg, '#e0e0e0');
-    return dmg;
-  }
-
-  function damageRubyEnemy(enemy: RubyEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ff6b6b');
-    }
-    return dmg;
-  }
-
-  function damageRubyBolt(bolt: RubyBolt, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    bolt.hp = Math.max(0, bolt.hp - dmg);
-    recordDps(dmg, '#ff6b6b');
-    return dmg;
-  }
-
-  function damageSunstoneEnemy(enemy: SunstoneEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ffd700');
-    }
-    return dmg;
-  }
-
-  function damageCitrineEnemy(enemy: CitrineEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#fff176');
-    }
-    return dmg;
-  }
-
-  function damageCitrineBolt(bolt: CitrineBolt, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    bolt.hp = Math.max(0, bolt.hp - dmg);
-    recordDps(dmg, '#fff176');
-    return dmg;
-  }
-
-  function damageIoliteEnemy(enemy: IoliteEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#9b59b6');
-    }
-    return dmg;
-  }
-
-  function damageAmethystEnemy(enemy: AmethystEnemy, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number {
-    if (!bypassShield && enemy.shieldHp > 0) {
-      const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-      enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
-      recordDps(dmg, '#b388ff');
-      return dmg;
-    }
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#b388ff');
-    }
-    return dmg;
-  }
-
-  function damageAmethystShard(shard: AmethystShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#b388ff');
-    return dmg;
-  }
-
-  function damageDiamondEnemy(enemy: DiamondEnemy, rawDamage: number, defPierceRatio: number): number {
-    if (enemy.phaseInvuln) return 0;
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#e0e0ff');
-    }
-    return dmg;
-  }
-
-  function damageDiamondShard(shard: DiamondShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#e0e0ff');
-    return dmg;
-  }
-
-  function damageNullstoneEnemy(enemy: NullstoneEnemy, rawDamage: number, defPierceRatio: number): number {
-    if (enemy.isAbsorbing) return 0;
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#2c2c2c');
-    }
-    return dmg;
-  }
-
-  function damageVoidTendril(tendril: VoidTendril, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    tendril.hp = Math.max(0, tendril.hp - dmg);
-    recordDps(dmg, '#7b68ee');
-    return dmg;
-  }
-
-  function damageFracterylEnemy(enemy: FracterylEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#ff69b4');
-    }
-    return dmg;
-  }
-
-  function damageFracterylShard(shard: FracterylShard, rawDamage: number): number {
-    const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
-    shard.hp = Math.max(0, shard.hp - dmg);
-    recordDps(dmg, '#ff69b4');
-    return dmg;
-  }
-
-  function damageEigensteinEnemy(enemy: EigensteinEnemy, rawDamage: number, defPierceRatio: number): number {
-    const effectiveDef = enemy.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    if (dmg > 0) {
-      enemy.hp -= dmg;
-      recordDps(dmg, '#00ffff');
-    }
-    return dmg;
   }
 
   function damageBossEnemy(rawDamage: number, defPierceRatio: number, fromDiamondBlade = false): number {
@@ -4524,7 +4117,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * LASER_XP_MULT;
-        trySpawnLuckyMote('laser', enemies[i].x, enemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'laser', enemies[i].x, enemies[i].y, getCachedLuckPercent());
         enemies.splice(i, 1);
       }
     }
@@ -4536,7 +4129,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * SAPPHIRE_XP_MULT;
-        trySpawnLuckyMote('sapphire', sapphireEnemies[i].x, sapphireEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'sapphire', sapphireEnemies[i].x, sapphireEnemies[i].y, getCachedLuckPercent());
         sapphireEnemies.splice(i, 1);
       }
     }
@@ -4558,7 +4151,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * EMERALD_XP_MULT;
-        trySpawnLuckyMote('emerald', emeraldEnemies[i].x, emeraldEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'emerald', emeraldEnemies[i].x, emeraldEnemies[i].y, getCachedLuckPercent());
         emeraldEnemies.splice(i, 1);
       }
     }
@@ -4570,7 +4163,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * AMBER_XP_MULT;
-        trySpawnLuckyMote('amber', amberEnemies[i].x, amberEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'amber', amberEnemies[i].x, amberEnemies[i].y, getCachedLuckPercent());
         amberEnemies.splice(i, 1);
       }
     }
@@ -4592,7 +4185,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * VOID_XP_MULT;
-        trySpawnLuckyMote('void', voidEnemies[i].x, voidEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'void', voidEnemies[i].x, voidEnemies[i].y, getCachedLuckPercent());
         voidEnemies.splice(i, 1);
       }
     }
@@ -4604,7 +4197,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * QUARTZ_XP_MULT;
-        trySpawnLuckyMote('quartz', quartzEnemies[i].x, quartzEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'quartz', quartzEnemies[i].x, quartzEnemies[i].y, getCachedLuckPercent());
         quartzEnemies.splice(i, 1);
       }
     }
@@ -4619,7 +4212,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * RUBY_XP_MULT;
-        trySpawnLuckyMote('ruby', rubyEnemies[i].x, rubyEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'ruby', rubyEnemies[i].x, rubyEnemies[i].y, getCachedLuckPercent());
         rubyEnemies.splice(i, 1);
       }
     }
@@ -4634,7 +4227,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * SUNSTONE_XP_MULT;
-        trySpawnLuckyMote('sunstone', sunstoneEnemies[i].x, sunstoneEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'sunstone', sunstoneEnemies[i].x, sunstoneEnemies[i].y, getCachedLuckPercent());
         sunstoneEnemies.splice(i, 1);
       }
     }
@@ -4646,7 +4239,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * CITRINE_XP_MULT;
-        trySpawnLuckyMote('citrine', citrineEnemies[i].x, citrineEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'citrine', citrineEnemies[i].x, citrineEnemies[i].y, getCachedLuckPercent());
         citrineEnemies.splice(i, 1);
       }
     }
@@ -4661,7 +4254,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * IOLITE_XP_MULT;
-        trySpawnLuckyMote('iolite', ioliteEnemies[i].x, ioliteEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'iolite', ioliteEnemies[i].x, ioliteEnemies[i].y, getCachedLuckPercent());
         ioliteEnemies.splice(i, 1);
       }
     }
@@ -4673,7 +4266,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * AMETHYST_XP_MULT;
-        trySpawnLuckyMote('amethyst', amethystEnemies[i].x, amethystEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'amethyst', amethystEnemies[i].x, amethystEnemies[i].y, getCachedLuckPercent());
         amethystEnemies.splice(i, 1);
       }
     }
@@ -4688,7 +4281,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * DIAMOND_XP_MULT;
-        trySpawnLuckyMote('diamond', diamondEnemies[i].x, diamondEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'diamond', diamondEnemies[i].x, diamondEnemies[i].y, getCachedLuckPercent());
         diamondEnemies.splice(i, 1);
       }
     }
@@ -4703,7 +4296,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * NULLSTONE_XP_MULT;
-        trySpawnLuckyMote('nullstone', nullstoneEnemies[i].x, nullstoneEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'nullstone', nullstoneEnemies[i].x, nullstoneEnemies[i].y, getCachedLuckPercent());
         nullstoneEnemies.splice(i, 1);
       }
     }
@@ -4718,7 +4311,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * FRACTERYL_XP_MULT;
-        trySpawnLuckyMote('fracteryl', fracterylEnemies[i].x, fracterylEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'fracteryl', fracterylEnemies[i].x, fracterylEnemies[i].y, getCachedLuckPercent());
         fracterylEnemies.splice(i, 1);
       }
     }
@@ -4733,7 +4326,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
         );
         totalXpFromKills += getXpPerKill(currentWave) * EIGENSTEIN_XP_MULT;
-        trySpawnLuckyMote('eigenstein', eigensteinEnemies[i].x, eigensteinEnemies[i].y);
+        trySpawnLuckyMote(luckyMotes, 'eigenstein', eigensteinEnemies[i].x, eigensteinEnemies[i].y, getCachedLuckPercent());
         eigensteinEnemies.splice(i, 1);
       }
     }
@@ -6312,9 +5905,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
 
     drawHitEffects(ctx, hitEffects);
-    drawLuckyMotes(performance.now());
+    drawLuckyMotes(ctx, luckyMotes, isLowGraphicsMode);
     drawDamageNumbers(ctx, damageNumbers);
-    drawLuckyMotePopups();
+    drawLuckyMotePopups(ctx, luckyMotePopups, isLowGraphicsMode);
     if (deathParticles.length > 0) drawDeathParticles(ctx, deathParticles);
 
     // Draw weapon orbit particles, orbit projectile, and special weapon visuals above the player.
@@ -6519,8 +6112,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);
-      updateLuckyMotes(deltaMs);
-      updateLuckyMotePopups(deltaMs);
+      updateLuckyMotes(luckyMotes, luckyMotePopups, mote.x, mote.y, deltaMs, options.onLuckyMoteCollected ?? (() => {}));
+      updateLuckyMotePopups(luckyMotePopups, deltaMs);
 
       if (playerStats.hp <= 0) triggerDeath();
       updateStatsPanelDom();
@@ -6572,6 +6165,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setLowGraphicsMode(enabled: boolean): void {
       isLowGraphicsMode = enabled;
       setEntityLowGraphics(enabled);
+      setEnemyLowGraphics(enabled);
       setWeaponLowGraphics(enabled);
       setBossLowGraphics(enabled);
     },
