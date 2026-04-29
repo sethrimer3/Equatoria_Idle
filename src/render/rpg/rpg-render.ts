@@ -4899,9 +4899,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Verlet rope state ────────────────────────────────────────────
   const ROPE_N         = 12;   // number of nodes
-  const ROPE_GRAVITY   = 0.35; // px per substep²
-  const ROPE_DAMPING   = 0.97; // velocity retention per substep
-  const ROPE_ITERS     = 5;    // constraint iterations per frame
+  const ROPE_GRAVITY   = 0.35; // px added to vy per frame (gravity acceleration)
+  const ROPE_DAMPING   = 0.97; // velocity retention per frame
+  const ROPE_ITERS     = 5;    // constraint relaxation iterations per frame
   const ROPE_SLACK     = 1.25; // rest length = slack × euclidean-distance / (N-1)
 
   interface RopeNode { x: number; y: number; px: number; py: number; }
@@ -5019,7 +5019,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // Lock the wire permanently
       rpgSimState.xpAllocatedStat = landed;
       wireState = 'locked';
-      // Also seed the allocated counter with current XP so the stat doesn't drop
+      // Seed the per-stat counter to the current total XP so the wired stat
+      // continues from the same bonus value it had before wiring, rather than
+      // dropping to 0 and slowly recovering.  Future XP increments flow on top.
       if (landed === 'atk') rpgSimState.xpAllocatedToAtk = rpgSimState.xp;
       else                   rpgSimState.xpAllocatedToDef = rpgSimState.xp;
       applyEquipmentStats();
