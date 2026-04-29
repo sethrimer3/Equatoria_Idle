@@ -282,10 +282,10 @@ export async function startApp(): Promise<void> {
   const rpgRender = createRpgRender(rpgContainer, appState.game.rpg, {
     onLuckyMoteCollected: (tierId: TierId, bonusPct: number) => {
       const current = appState.game.resources.moteTotals.get(tierId) ?? 0;
-      const bonus = current * bonusPct / 100;
-      if (bonus > 0) {
-        addMotes(appState.game.resources, tierId, bonus);
-      }
+      // Apply percentage bonus; ensure at least 1 mote so the drop is never worthless
+      // even when the player has not yet collected any motes of this tier.
+      const bonus = Math.max(1, current * bonusPct / 100);
+      addMotes(appState.game.resources, tierId, bonus);
     },
   });
   // Stats panel is positioned in the root (above the tab bar); visibility

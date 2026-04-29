@@ -428,14 +428,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const luckyMotes: LuckyMote[] = [];
   const luckyMotePopups: LuckyMotePopup[] = [];
 
-  /** Maps enemy type strings to the mote tier they drop. */
+  /** Maps enemy type strings to the mote tier they drop.
+   * Most enemies map to the tier of the same name. Exceptions:
+   *   'laser'  → 'sand'      (laser enemy is the basic yellow-sand tier enemy)
+   *   'amber'  → 'sunstone'  (amber/orange enemy maps to the orange sunstone tier)
+   *   'void'   → 'nullstone' (void/dark enemy maps to the dark nullstone tier)
+   */
   const ENEMY_TYPE_TO_TIER: Record<string, TierId> = {
     laser:      'sand',
     quartz:     'quartz',
     sapphire:   'sapphire',
     emerald:    'emerald',
-    amber:      'sunstone',
-    void:       'nullstone',
+    amber:      'sunstone',  // amber → sunstone (closest orange tier)
+    void:       'nullstone', // void  → nullstone (closest dark/void tier)
     ruby:       'ruby',
     sunstone:   'sunstone',
     citrine:    'citrine',
@@ -448,11 +453,26 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   };
 
   /**
+   * Cached luck percentage — updated whenever XP changes.
+   * Avoids calling Math.log10 on every enemy death in hot combat.
+   */
+  let _cachedLuckXp = -1;
+  let _cachedLuckPct = 0;
+
+  function getCachedLuckPercent(): number {
+    if (rpgSimState.xp !== _cachedLuckXp) {
+      _cachedLuckXp = rpgSimState.xp;
+      _cachedLuckPct = getLuckPercent(rpgSimState.xp);
+    }
+    return _cachedLuckPct;
+  }
+
+  /**
    * Tries to spawn a lucky mote at (x, y) for the given enemy type.
    * Rolls against current luck%. Does nothing if luck check fails.
    */
   function trySpawnLuckyMote(enemyTypeId: string, x: number, y: number): void {
-    const luckPct = getLuckPercent(rpgSimState.xp);
+    const luckPct = getCachedLuckPercent();
     if (luckPct <= 0 || Math.random() * 100 > luckPct) return;
     const tierId = ENEMY_TYPE_TO_TIER[enemyTypeId];
     if (!tierId) return;
