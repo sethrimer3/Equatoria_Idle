@@ -223,3 +223,24 @@ The lucky mote drop system (spawn, magnetism, collection, draw, popup) was extra
 24 per-entity damage functions (`damageEnemy` through `damageEigensteinEnemy`) were extracted via a `createDamageFns(ctx: DamageCtx)` factory pattern. The factory takes a `recordDps` callback and returns all damage functions with identical call signatures, so no call sites in `rpg-render.ts` needed changes. `damageBossEnemy` stays in `rpg-render.ts` due to boss-specific closure dependencies.
 
 **Net result:** rpg-render.ts reduced from 6,587 to ~6,175 lines; no logic changes; `tsc --noEmit` passes with zero errors.
+
+---
+
+## Phase 6: rpg-enemy-updates.ts + rpg-constants.ts (further splits)
+
+### rpg-enemy-updates.ts (880 → 619 lines) + new rpg-enemy-updates-basic.ts (279 lines)
+
+`rpg-enemy-updates.ts` grew to 880 lines after earlier wave enemies were accumulated. The Laser and Sapphire systems (the two wave-1 enemy types) were moved to a new `rpg-enemy-updates-basic.ts`. `RpgEnemyCtx` interface stays in `rpg-enemy-updates.ts` (shared by all three update files).
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `rpg-enemy-updates-basic.ts` | Laser + Sapphire enemy update systems | 279 |
+| `rpg-enemy-updates.ts` | Emerald → Citrine enemy update systems + RpgEnemyCtx | 619 |
+
+### rpg-constants.ts (843 → 586 lines) + new rpg-enemy-constants.ts (266 lines)
+
+Per-enemy-type constants for all non-starter enemy types (Emerald through Eigenstein, including XP multipliers) were extracted to `rpg-enemy-constants.ts`. Laser, Sapphire, and all weapon/player/boss/fluid constants remain in `rpg-constants.ts`.
+
+Updated import paths in: `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, `rpg-render.ts`.
+
+**No logic changes. `tsc --noEmit` passes with zero errors.**
