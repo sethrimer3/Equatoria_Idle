@@ -145,6 +145,11 @@
   font-size: 14px;
 }
 
+.rpg-stat-value--luck {
+  color: #ffd764;
+  font-size: 14px;
+}
+
 /* ── DPS widget with mini bar chart ───────────────────────────── */
 .rpg-dps-widget {
   height: 90%;

@@ -155,6 +155,35 @@ export function getXpDefBonus(xp: number): number {
 }
 
 /**
+ * Returns the player's current luck percentage (0–100).
+ *
+ * Luck is the chance that a killed enemy drops a lucky mote of its type.
+ * It rises logarithmically, requiring exponentially more XP per percent
+ * gain (roughly 10× more XP for each additional ~11% of luck):
+ *
+ *   xp =           0 →   0.0%
+ *   xp =         100 →  ~22.2%
+ *   xp =       1 000 →  ~33.3%
+ *   xp =      10 000 →  ~44.4%
+ *   xp =     100 000 →  ~55.6%
+ *   xp =   1 000 000 →  ~66.7%
+ *   xp = 100 000 000 →  ~88.9%
+ *   xp = 1 000 000 000 → 100.0%
+ */
+export function getLuckPercent(xp: number): number {
+  if (xp <= 0) return 0;
+  const LUCK_LOG_DIVISOR = 9; // log10(1e9) = 9 → 100% at 1 billion XP
+  return Math.min(100, (Math.log10(xp + 1) / LUCK_LOG_DIVISOR) * 100);
+}
+
+/**
+ * Formats the luck percentage for display (e.g. "34.5%").
+ */
+export function formatLuckPercent(xp: number): string {
+  return getLuckPercent(xp).toFixed(1) + '%';
+}
+
+/**
  * Formats a raw XP total for compact display (e.g. "1.2K", "4.5M").
  */
 export function formatXp(xp: number): string {

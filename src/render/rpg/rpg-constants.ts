@@ -815,3 +815,29 @@ export const AMETHYST_LASER_SIZE            = 3;     // visual radius (px)
 export const AMETHYST_LASER_TRAIL_CAP       = 52;    // trail buffer capacity (long comet trail)
 export const AMETHYST_LASER_COLOR           = '#9933ff';
 export const AMETHYST_LASER_GLOW            = '#cc99ff';
+
+// ── Lucky mote drop constants ──────────────────────────────────
+/** Visual radius (px) of a lucky mote. */
+export const LUCKY_MOTE_RADIUS              =  4;
+/** Pulsing golden glow border color on lucky motes. */
+export const LUCKY_MOTE_BORDER_COLOR        = '#ffd764';
+/** Distance (px) at which a lucky mote starts magnetizing toward the player. */
+export const LUCKY_MOTE_MAGNET_DIST         = 55;
+/** Distance (px) at which a lucky mote is collected by the player. */
+export const LUCKY_MOTE_COLLECT_DIST        =  6;
+/** Magnetism speed (px per dt unit at 60fps). */
+export const LUCKY_MOTE_MAGNET_SPEED        =  3.5;
+/** Percentage bonus applied to the matching mote tier on collection (e.g. 0.5 = +0.5%). */
+export const LUCKY_MOTE_BONUS_PCT           =  0.5;
+/** Initial random drift speed at spawn (px/frame). */
+export const LUCKY_MOTE_SPAWN_SPEED         =  0.9;
+/** Velocity damping per dt tick. */
+export const LUCKY_MOTE_DAMPING             =  0.96;
+/** Duration of the lucky mote popup text (ms). */
+export const LUCKY_POPUP_DURATION_MS        = 1100;
+/** Initial speed of the popup text (px/frame at 60fps). */
+export const LUCKY_POPUP_SPEED              =  2.2;
+/** Per-frame velocity decay for popup text. */
+export const LUCKY_POPUP_DECEL             =  0.87;
+/** Pulse animation speed (radians per second) for lucky mote border glow. */
+export const LUCKY_PULSE_SPEED             =  3.8;

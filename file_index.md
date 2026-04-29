@@ -326,18 +326,20 @@
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
 ### src/render/rpg/rpg-constants.ts
-- All module-level numeric and string constants for the RPG rendering system (~590 lines).
-- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, and Euler-fluid injection constants.
+- All module-level numeric and string constants for the RPG rendering system (~820 lines after luck additions).
+- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, emerald, amber, void, quartz, ruby, sunstone, citrine, iolite, amethyst, diamond, nullstone, boss, Euler-fluid injection constants, and lucky mote drop constants.
 - Also exports `SWORD_SHARD_SHAPES` — readonly polygon vertex data for the 7 prismatic blade shards.
+- Exports `LUCKY_*` constants: `LUCKY_MOTE_RADIUS`, `LUCKY_MOTE_BORDER_COLOR`, `LUCKY_MOTE_MAGNET_DIST`, `LUCKY_MOTE_COLLECT_DIST`, `LUCKY_MOTE_MAGNET_SPEED`, `LUCKY_MOTE_BONUS_PCT`, `LUCKY_MOTE_SPAWN_SPEED`, `LUCKY_MOTE_DAMPING`, `LUCKY_POPUP_DURATION_MS`, `LUCKY_POPUP_SPEED`, `LUCKY_POPUP_DECEL`, `LUCKY_PULSE_SPEED`.
 - Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
 - Exports companion-ship and laser constants for Sapphire/Amethyst persistent ship weapons.
 - Exports all constants; consumed by `rpg-render.ts`, `rpg-factories.ts`, and RPG draw modules.
 
 ### src/render/rpg/rpg-types.ts
-- All internal interfaces and type aliases for the RPG rendering system (~600 lines).
+- All internal interfaces and type aliases for the RPG rendering system (~800 lines after luck additions).
 - Covers: `RpgMote`, `RpgJoystick`, `RpgKeyState`, `RpgPlayerStats`, enemy interfaces (`LaserEnemy`, `SapphireEnemy`, `EmeraldEnemy`, `AmberEnemy`, `VoidEnemy`, `QuartzEnemy`, `RubyEnemy`, `SunstoneEnemy`, `CitrineEnemy`, `IoliteEnemy`, `AmethystEnemy`, `DiamondEnemy`, `NullstoneEnemy`, `BossEnemy`, `FracterylEnemy`, `EigensteinEnemy`), projectile interfaces, weapon-effect state, visual-effect interfaces.
 - Diamond sword interfaces: `SwordComboState` (phase `idle | swing | cooldown | spin_combo`, hinge angle+velocity, shard angles chain, alternating `swingIsRightToLeft`, consecutive-hit tracking `consecHitsOnSameEnemy`/`lastHitEntity`, spin combo state `spinComboAngle`/`spinComboDamageTicks`, swipe/beam effect lists), `SwipeEffect` (disconnected arc visual), `PrismaticBeamEffect` (tail-to-tip appear/fade beam).
 - Companion ship interfaces: `SapphireShip`, `SapphireLaser`, `AmethystShip`, and `AmethystLaser` with ring-buffer trails and pre-scaled damage fields.
+- Lucky mote interfaces: `LuckyMote` (position, velocity, tierId, color, glowColor, bonusPct, pulseTimeS) and `LuckyMotePopup` (position, velocity, text, color, swatchColor, timerMs).
 - Also exports `TeleportParticle` — comet-trail particle used during player teleport visuals.
 - No runtime dependencies (types only).
 - Exports all types; consumed by `rpg-render.ts`, `rpg-factories.ts`, and `rpg-entity-draw.ts`.
@@ -390,7 +392,7 @@
 - Each function takes `ctx: CanvasRenderingContext2D` plus explicit parameters — no closure dependencies.
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~4,560 lines after Phase 8 extraction).
+- Independent RPG canvas rendering system for the RPG tab (~4,700 lines after luck additions).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Entity draw functions have been extracted to `rpg-entity-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (laser, sapphire, wave 1–30) and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
@@ -398,7 +400,7 @@
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
-- Exports `RpgRender` interface and `createRpgRender()` factory.
+- Exports `RpgRender` interface, `RpgRenderOptions` interface, and `createRpgRender()` factory.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
 - Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
@@ -418,8 +420,9 @@
 - **Softbody chain whip** — `ChainWhipState` has per-node velocity arrays (`nodesVx`, `nodesVy`). Inertia/size gradient: node 0 (closest to player) = smallest (radius 2px) + most responsive (inverseMass 1/0.8); tip (index CHAIN_NODES-1) = largest (radius 6px) + most inertia (inverseMass 1/4.0). Spring physics (CHAIN_SPRING_K=0.4) link adjacent nodes; CHAIN_ANCHOR_K=0.6 ties node 0 to player. On lash: tip gets CHAIN_LASH_SPEED=20 px/dt impulse; all other nodes follow through spring tension.
 - **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy and stops when the enemy is within the equipped weapon's effective range (`WeaponDefinition.stats.range`; falls back to `PLAYER_BASE_RANGE_PX` if no weapon equipped). Manual joystick/keyboard input always overrides.
 - **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped. Called on `setActive(true)`, `doRestart()`, and via the public `notifyEquip()` method so stats update immediately when the player equips mid-run.
-- Accepts `rpgSimState: RpgSimState` as second factory argument so it can mutate persistent wave progress directly.
-- Exports `createRpgRender(container, rpgSimState)` factory and `RpgRender` interface.
+- **Luck stat** — `LUCK` widget in stats panel shows `formatLuckPercent(xp)`. On each enemy kill, `trySpawnLuckyMote()` rolls against `getCachedLuckPercent()` (cached to avoid repeated log calls). On success, a `LuckyMote` of the enemy's tier spawns at the death position with random drift. Lucky motes magnetize to the player within `LUCKY_MOTE_MAGNET_DIST` px and are collected within `LUCKY_MOTE_COLLECT_DIST` px, triggering `onLuckyMoteCollected` callback and spawning a `LuckyMotePopup` floating text. Enemy-to-tier mapping: laser→sand, amber→sunstone, void→nullstone; all others map to matching tier.
+- Accepts `rpgSimState: RpgSimState` and optional `options: RpgRenderOptions` (`onLuckyMoteCollected` callback) as factory arguments.
+- Exports `createRpgRender(container, rpgSimState, options?)` factory and `RpgRender` / `RpgRenderOptions` interfaces.
 
 ### src/data/rpg/wave-definitions.ts
 - `WaveSpawn` and `WaveDefinition` types.
@@ -446,6 +449,8 @@
 - `getScaledWeaponCooldown(baseCooldownMs, tier)` — cooldown = baseCooldownMs × 0.85^(tier-1) (15% faster per tier).
 - `getBossXpMultiplier(speedPct)` — XP multiplier = speedPct / 10 (100%→10x, 10%→1x).
 - `isBossUnlocked(bossId, highestWaveReached)` — true when highestWaveReached >= bossId * 100.
+- `getLuckPercent(xp)` — returns 0–100 luck % using logarithmic formula (100% at ~1B XP; every 10× more XP gains ~11%).
+- `formatLuckPercent(xp)` — returns display string like "34.5%".
 
 ### src/ui/panels/weapon-store-panel.ts
 - `WeaponStorePanel` interface and `createWeaponStorePanel(dispatch)` factory.
