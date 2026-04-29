@@ -169,11 +169,14 @@ import {
   drawNullstoneEnemies, drawVoidTendrils,
   drawFracterylEnemies,
   drawEigensteinEnemies, drawEigensteinBeams,
+  drawTeleportParticles,
+  setLowGraphicsMode as setEnemyLowGraphics,
+} from './rpg-enemy-draw';
+import {
   drawBossProjectiles,
   drawSandProjectiles,
   drawPoisonBolts,
   drawLaserBeamEffect,
-  drawTeleportParticles,
   drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   drawAttackTrail,
   drawWeaponOrbitParticle, drawOrbitProjectile,
@@ -6572,6 +6575,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setLowGraphicsMode(enabled: boolean): void {
       isLowGraphicsMode = enabled;
       setEntityLowGraphics(enabled);
+      setEnemyLowGraphics(enabled);
       setWeaponLowGraphics(enabled);
       setBossLowGraphics(enabled);
     },
