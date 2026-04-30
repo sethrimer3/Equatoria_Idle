@@ -293,6 +293,54 @@ export interface PoisonDebuff {
   getPos: () => { x: number; y: number };
 }
 
+// ── Targeting types ───────────────────────────────────────────────
+// Shared by rpg-render.ts (targeting helpers) and rpg-weapon-systems.ts.
+
+import type {
+  EmeraldEnemy, AmberEnemy, AmberShard, VoidEnemy, QuartzEnemy, QuartzSpike,
+  RubyEnemy, RubyBolt, SunstoneEnemy, CitrineEnemy, CitrineBolt,
+  IoliteEnemy, AmethystEnemy, AmethystShard, DiamondEnemy, DiamondShard,
+  NullstoneEnemy, VoidTendril, FracterylEnemy, FracterylShard, EigensteinEnemy,
+  BossEnemy,
+} from './rpg-enemy-types';
+
+export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
+  | 'quartz' | 'quartzspike' | 'ruby' | 'rubybolt' | 'sunstone' | 'citrine' | 'citrinebolt'
+  | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril'
+  | 'fracteryl' | 'fracterylshard' | 'eigenstein'
+  | 'boss';
+
+export interface ClosestTarget {
+  kind: TargetKind;
+  x: number; y: number;
+  distSq: number;
+  laser?: LaserEnemy;
+  sapphire?: SapphireEnemy;
+  missile?: SapphireMissile;
+  emerald?: EmeraldEnemy;
+  amber?: AmberEnemy;
+  ambershard?: AmberShard;
+  void?: VoidEnemy;
+  quartz?: QuartzEnemy;
+  quartzspike?: QuartzSpike;
+  ruby?: RubyEnemy;
+  rubybolt?: RubyBolt;
+  sunstone?: SunstoneEnemy;
+  citrine?: CitrineEnemy;
+  citrinebolt?: CitrineBolt;
+  iolite?: IoliteEnemy;
+  amethyst?: AmethystEnemy;
+  amethystshard?: AmethystShard;
+  diamond?: DiamondEnemy;
+  diamondshard?: DiamondShard;
+  nullstone?: NullstoneEnemy;
+  voidtendril?: VoidTendril;
+  fracteryl?: FracterylEnemy;
+  fracterylshard?: FracterylShard;
+  eigenstein?: EigensteinEnemy;
+  boss?: BossEnemy;
+}
+
 // ── Enemy entity types ─────────────────────────────────────────────
 // All enemy-entity interfaces (EmeraldEnemy → LuckyMotePopup) have been
 // moved to rpg-enemy-types.ts.
