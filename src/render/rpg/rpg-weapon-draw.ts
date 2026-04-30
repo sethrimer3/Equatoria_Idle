@@ -8,9 +8,10 @@
  * Extracted from rpg-render.ts to reduce that closure's line count.
  *
  * Sections:
- *   - drawChainWhip     — quartz chain whip node chain
- *   - drawVortexes      — nullstone vortex rings
- *   - drawSwordCombos   — diamond sword prismatic shards + beam effects
+ *   - drawChainWhip       — quartz chain whip node chain
+ *   - drawVortexes        — nullstone vortex rings
+ *   - drawSwordCombos     — diamond sword prismatic shards + beam effects
+ *   - drawSandBladeCombo  — starter sand blade (sand-colored shards + polygon trails)
  */
 
 import type { ChainWhipState, NullstoneVortex, SwordComboState } from './rpg-types';
@@ -19,6 +20,7 @@ import {
   VORTEX_COLOR, VORTEX_GLOW,
   SWORD_PRISMATIC_COLORS, SWORD_SHARD_COUNT, SWORD_SHARD_SHAPES,
   SWORD_COMBO_RANGE_MULT, SWORD_COMBO_SPIN_MS, SWORD_COMBO_SPIN_TURNS,
+  SAND_BLADE_COLORS,
 } from './rpg-constants';
 import { chainNodeRadius, getSwordLength, getShardDistances, getShardStyle } from './rpg-helpers';
 
@@ -282,4 +284,149 @@ export function drawSwordCombos(
     ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
     ctx.restore();
   }
+}
+
+// ── Sand blade combo ──────────────────────────────────────────────────────────
+
+/**
+ * Draws the starter sand blade when no weapon is equipped.
+ * Visually mirrors the diamond sword but uses warm sand / amber colors,
+ * and adds a thin per-polygon sand trail behind each shard during a swing.
+ *
+ * @param state  The SwordComboState stored under BASE_ATTACK_TIMER_KEY.
+ *               Pass `undefined` to skip drawing (e.g. before the first swing).
+ * @param mote   Player position.
+ */
+export function drawSandBladeCombo(
+  ctx: CanvasRenderingContext2D,
+  state: SwordComboState | undefined,
+  mote: { x: number; y: number },
+): void {
+  if (!state) return;
+
+  const swordLength    = getSwordLength(1);
+  const isSpinCombo    = state.phase === 'spin_combo';
+  const comboLength    = isSpinCombo ? swordLength * SWORD_COMBO_RANGE_MULT : swordLength;
+  const dists          = getShardDistances(comboLength);
+  const nowMs          = Date.now();
+
+  ctx.save();
+
+  // ── Spin combo ring (sand-colored) ──
+  if (isSpinCombo) {
+    const spinT      = Math.min(1, state.phaseMs / SWORD_COMBO_SPIN_MS);
+    const ringAlpha  = 0.55 + 0.4 * Math.abs(Math.sin(spinT * Math.PI * SWORD_COMBO_SPIN_TURNS));
+    const numArcs    = SAND_BLADE_COLORS.length;
+    ctx.lineWidth    = 3;
+    for (let ci = 0; ci < numArcs; ci++) {
+      const segStart = (ci / numArcs) * Math.PI * 2 + state.spinComboAngle;
+      const segEnd   = segStart + (Math.PI * 2) / numArcs;
+      ctx.globalAlpha = ringAlpha * 0.7;
+      ctx.strokeStyle = SAND_BLADE_COLORS[ci];
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = 12; ctx.shadowColor = SAND_BLADE_COLORS[ci];
+      }
+      ctx.beginPath();
+      ctx.arc(mote.x, mote.y, comboLength, segStart, segEnd);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    ctx.lineWidth = 1;
+  }
+
+  // ── Prismatic shard polygons + per-polygon sand trail ──
+  /** Angular offset per trail ghost during a swing (radians). */
+  const TRAIL_ANGLE_STEP = 0.07;
+  const TRAIL_STEPS      = 4;
+
+  for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
+    const colorIdx     = (i + Math.floor(nowMs / 80)) % SAND_BLADE_COLORS.length;
+    const color        = SAND_BLADE_COLORS[colorIdx];
+    const { shapeIdx, radius } = getShardStyle(i);
+    const verts        = SWORD_SHARD_SHAPES[shapeIdx];
+    const scaledRadius = isSpinCombo ? radius * 1.5 : radius;
+
+    // ── Sand trail: ghost copies behind each shard during swing ──
+    if (state.phase === 'swing') {
+      // "Behind" = opposite swing direction so trail follows the shard.
+      const trailSign = state.swingIsRightToLeft ? -1 : 1;
+      for (let k = 1; k <= TRAIL_STEPS; k++) {
+        const trailAngle = state.shardAngles[i] + trailSign * k * TRAIL_ANGLE_STEP;
+        const tsx        = mote.x + Math.cos(trailAngle) * dists[i];
+        const tsy        = mote.y + Math.sin(trailAngle) * dists[i];
+        const cosT       = Math.cos(trailAngle);
+        const sinT       = Math.sin(trailAngle);
+        const trailAlpha = (1 - k / (TRAIL_STEPS + 1)) * 0.45;
+        ctx.globalAlpha  = trailAlpha;
+        ctx.fillStyle    = color;
+        ctx.beginPath();
+        for (let v = 0; v < verts.length; v++) {
+          const [cu, su] = verts[v];
+          const vx = tsx + (cu * cosT - su * sinT) * scaledRadius * 0.85;
+          const vy = tsy + (cu * sinT + su * cosT) * scaledRadius * 0.85;
+          if (v === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // ── Main shard polygon ──
+    const sx          = mote.x + Math.cos(state.shardAngles[i]) * dists[i];
+    const sy          = mote.y + Math.sin(state.shardAngles[i]) * dists[i];
+    const cosA        = Math.cos(state.shardAngles[i]);
+    const sinA        = Math.sin(state.shardAngles[i]);
+    const shardAlpha  = isSpinCombo ? 1.0 : (state.phase === 'swing' ? 1.0 : 0.85);
+
+    ctx.globalAlpha = shardAlpha;
+    ctx.fillStyle   = color;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur  = (isSpinCombo ? 10 : 4) + (state.phase === 'swing' ? 3 : 0);
+      ctx.shadowColor = color;
+    }
+    ctx.beginPath();
+    for (let v = 0; v < verts.length; v++) {
+      const [cu, su] = verts[v];
+      const vx = sx + (cu * cosA - su * sinA) * scaledRadius;
+      const vy = sy + (cu * sinA + su * cosA) * scaledRadius;
+      if (v === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Sandy highlight dot at shard center.
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle   = '#fffbe0';
+    ctx.beginPath();
+    ctx.arc(sx, sy, scaledRadius * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── Swipe-arc visuals (sand-colored crescent) ──
+  for (const fx of state.swipeEffects) {
+    const elapsed   = fx.maxTimerMs - fx.timerMs;
+    const lifeRatio = elapsed / fx.maxTimerMs;
+    const alpha     = (1 - lifeRatio) * 0.75;
+    const arcSpan   = fx.arcEnd - fx.arcStart;
+    const numArcs   = SAND_BLADE_COLORS.length;
+    ctx.lineWidth   = 2;
+    ctx.globalAlpha = alpha;
+    for (let ci = 0; ci < numArcs; ci++) {
+      const segStart = fx.arcStart + (ci / numArcs) * arcSpan;
+      const segEnd   = segStart + arcSpan / numArcs;
+      ctx.strokeStyle = SAND_BLADE_COLORS[ci];
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = 6; ctx.shadowColor = SAND_BLADE_COLORS[ci];
+      }
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.swordLength, segStart, segEnd);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    ctx.lineWidth = 1;
+  }
+
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
+  ctx.restore();
 }

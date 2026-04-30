@@ -541,19 +541,25 @@ export function drawSapphireShips(
         ctx.fillRect(Math.floor(ship.trailX[idx] - r), Math.floor(ship.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
       }
     }
-    // Ship body
+    // Ship body — triangle rotated to face direction of travel
     ctx.globalAlpha = 1;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = SAPPHIRE_SHIP_SIZE * 3; ctx.shadowColor = SAPPHIRE_LASER_GLOW;
     }
     ctx.fillStyle = SAPPHIRE_LASER_COLOR;
-    const radius = SAPPHIRE_SHIP_SIZE + 0.5;
+    const radius  = SAPPHIRE_SHIP_SIZE + 0.5;
+    const speed   = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy);
+    const heading = speed > 0.05 ? Math.atan2(ship.vy, ship.vx) : -Math.PI / 2;
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+    ctx.rotate(heading + Math.PI / 2); // rotate so tip faces direction of motion
     ctx.beginPath();
-    ctx.moveTo(ship.x, ship.y - radius);
-    ctx.lineTo(ship.x - radius, ship.y + radius * 0.8);
-    ctx.lineTo(ship.x + radius, ship.y + radius * 0.8);
+    ctx.moveTo(0, -radius);
+    ctx.lineTo(-radius, radius * 0.8);
+    ctx.lineTo(radius, radius * 0.8);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
     ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
@@ -617,19 +623,25 @@ export function drawAmethystShips(
         ctx.fillRect(Math.floor(ship.trailX[idx] - r), Math.floor(ship.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
       }
     }
-    // Ship body
+    // Ship body — triangle rotated to face direction of travel
     ctx.globalAlpha = 1;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = AMETHYST_SHIP_SIZE * 3; ctx.shadowColor = AMETHYST_LASER_GLOW;
     }
     ctx.fillStyle = AMETHYST_LASER_COLOR;
-    const radius = AMETHYST_SHIP_SIZE + 0.5;
+    const radius  = AMETHYST_SHIP_SIZE + 0.5;
+    const speed   = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy);
+    const heading = speed > 0.05 ? Math.atan2(ship.vy, ship.vx) : -Math.PI / 2;
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+    ctx.rotate(heading + Math.PI / 2); // rotate so tip faces direction of motion
     ctx.beginPath();
-    ctx.moveTo(ship.x, ship.y - radius);
-    ctx.lineTo(ship.x - radius, ship.y + radius * 0.8);
-    ctx.lineTo(ship.x + radius, ship.y + radius * 0.8);
+    ctx.moveTo(0, -radius);
+    ctx.lineTo(-radius, radius * 0.8);
+    ctx.lineTo(radius, radius * 0.8);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
     ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
