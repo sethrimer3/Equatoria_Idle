@@ -111,6 +111,7 @@
   align-items: center;
   gap: 2px;
   flex: 0 0 auto;
+  align-self: stretch;
   border: 1px solid rgba(167, 139, 250, 0.35);
   border-radius: 6px;
   padding: 4px 8px 5px;

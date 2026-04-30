@@ -95,6 +95,7 @@ export function makeSapphireMissile(x: number, y: number, vx: number, vy: number
     trailY: new Float64Array(MISSILE_TRAIL_CAP),
     trailHead: 0, trailCount: 0,
     hasHitPlayer: false,
+    lifetimeMs: 0,
   };
 }
 

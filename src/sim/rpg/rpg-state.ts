@@ -63,12 +63,12 @@ export interface RpgSimState {
    */
   bossSpeedPct: number;
   /**
-   * The stat the player has permanently wired their XP source to.
-   * null = not yet chosen. Once set, it cannot be changed.
+   * The stat the player has wired their XP source to.
+   * null = not yet chosen. Can be changed by re-wiring (old pool is preserved).
    * When wired, all newly-earned XP flows only into that stat's XP pool;
-   * the other allocatable stat loses its XP bonus.
+   * the other allocatable stats lose their XP bonus.
    */
-  xpAllocatedStat: 'atk' | 'def' | null;
+  xpAllocatedStat: 'atk' | 'def' | 'luck' | 'hp' | null;
   /**
    * Cumulative XP that has flowed into ATK while wired to ATK.
    * Used to drive the ATK XP bonus when xpAllocatedStat === 'atk'.
@@ -79,6 +79,16 @@ export interface RpgSimState {
    * Used to drive the DEF XP bonus when xpAllocatedStat === 'def'.
    */
   xpAllocatedToDef: number;
+  /**
+   * Cumulative XP that has flowed into LUCK while wired to LUCK.
+   * Used to compute the extended luck bonus (can exceed 100%).
+   */
+  xpAllocatedToLuck: number;
+  /**
+   * Cumulative XP that has flowed into HP while wired to HP.
+   * Used to compute the bonus max-HP from XP allocation.
+   */
+  xpAllocatedToHp: number;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -97,6 +107,8 @@ export function createRpgSimState(): RpgSimState {
     xpAllocatedStat: null,
     xpAllocatedToAtk: 0,
     xpAllocatedToDef: 0,
+    xpAllocatedToLuck: 0,
+    xpAllocatedToHp: 0,
   };
 }
 
@@ -197,10 +209,11 @@ export function getLuckPercent(xp: number): number {
 }
 
 /**
- * Formats the luck percentage for display (e.g. "34.5%").
+ * Formats the luck percentage for display (e.g. "34.5%" or "134.5%").
+ * Accepts the full effective luck value (which may exceed 100).
  */
-export function formatLuckPercent(xp: number): string {
-  return getLuckPercent(xp).toFixed(1) + '%';
+export function formatLuckPercent(effectiveLuck: number): string {
+  return effectiveLuck.toFixed(1) + '%';
 }
 
 /**
@@ -223,6 +236,10 @@ export function addXpWithAllocation(state: RpgSimState, amount: number): void {
     state.xpAllocatedToAtk += amount;
   } else if (state.xpAllocatedStat === 'def') {
     state.xpAllocatedToDef += amount;
+  } else if (state.xpAllocatedStat === 'luck') {
+    state.xpAllocatedToLuck += amount;
+  } else if (state.xpAllocatedStat === 'hp') {
+    state.xpAllocatedToHp += amount;
   }
 }
 
@@ -235,7 +252,7 @@ export function addXpWithAllocation(state: RpgSimState, amount: number): void {
  * - If not wired yet: falls back to the global `xp` total (legacy behaviour).
  */
 export function getEffectiveXpAtkBonus(state: RpgSimState): number {
-  if (state.xpAllocatedStat === 'def') return 0;
+  if (state.xpAllocatedStat === 'def' || state.xpAllocatedStat === 'luck' || state.xpAllocatedStat === 'hp') return 0;
   if (state.xpAllocatedStat === 'atk') return getXpAtkBonus(state.xpAllocatedToAtk);
   return getXpAtkBonus(state.xp);
 }
@@ -244,13 +261,43 @@ export function getEffectiveXpAtkBonus(state: RpgSimState): number {
  * Returns the effective DEF XP bonus given the current allocation state.
  *
  * - If wired to DEF: uses the dedicated `xpAllocatedToDef` pool.
- * - If wired to ATK: DEF no longer receives an XP bonus (returns 0).
+ * - If wired to ATK/LUCK/HP: DEF no longer receives an XP bonus (returns 0).
  * - If not wired yet: falls back to the global `xp` total (legacy behaviour).
  */
 export function getEffectiveXpDefBonus(state: RpgSimState): number {
-  if (state.xpAllocatedStat === 'atk') return 0;
+  if (state.xpAllocatedStat === 'atk' || state.xpAllocatedStat === 'luck' || state.xpAllocatedStat === 'hp') return 0;
   if (state.xpAllocatedStat === 'def') return getXpDefBonus(state.xpAllocatedToDef);
   return getXpDefBonus(state.xp);
+}
+
+/**
+ * Returns the effective luck bonus from XP allocation.
+ *
+ * When wired to LUCK, the XP pool extends the base luck percentage
+ * (from getLuckPercent) beyond 100%.  The result can exceed 100 — values
+ * above 100% mean the player has a chance at double-drop motes on each kill.
+ *
+ * Formula: base luck + extra derived from xpAllocatedToLuck via the same
+ * log10 curve shifted so that 0 allocation = 0 extra.
+ */
+export function getEffectiveXpLuckBonus(state: RpgSimState): number {
+  if (state.xpAllocatedStat !== 'luck') return 0;
+  if (state.xpAllocatedToLuck <= 0) return 0;
+  // Same log10 curve as getLuckPercent but applied to the dedicated luck pool.
+  const LUCK_LOG_DIVISOR = 9;
+  return (Math.log10(state.xpAllocatedToLuck + 1) / LUCK_LOG_DIVISOR) * 100;
+}
+
+/**
+ * Returns the bonus max-HP granted by XP allocation to the HP stat.
+ *
+ * Formula: floor(log10(xp + 1) × 10) — gives roughly +10 maxHp per
+ * decade of XP accumulated while wired to HP.
+ */
+export function getEffectiveXpHpBonus(state: RpgSimState): number {
+  if (state.xpAllocatedStat !== 'hp') return 0;
+  if (state.xpAllocatedToHp <= 0) return 0;
+  return Math.floor(Math.log10(state.xpAllocatedToHp + 1) * 10);
 }
 
 // ─── Upgrade helpers ─────────────────────────────────────────────

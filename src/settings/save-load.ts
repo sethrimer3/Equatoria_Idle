@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 17;
+const SAVE_VERSION = 18;
 
 interface SaveData {
   version: number;
@@ -75,12 +75,16 @@ interface SaveData {
     bossCompletions?: Record<string, number>;
     /** v16+: boss fight speed setting (10–100). Absent in older saves (defaults to 100). */
     bossSpeedPct?: number;
-    /** v17+: which stat XP is permanently wired to. Absent in older saves (defaults to null). */
-    xpAllocatedStat?: 'atk' | 'def' | null;
+    /** v17+: which stat XP is wired to. Absent in older saves (defaults to null). */
+    xpAllocatedStat?: 'atk' | 'def' | 'luck' | 'hp' | null;
     /** v17+: XP accumulated while wired to ATK. Absent in older saves (defaults to 0). */
     xpAllocatedToAtk?: number;
     /** v17+: XP accumulated while wired to DEF. Absent in older saves (defaults to 0). */
     xpAllocatedToDef?: number;
+    /** v18+: XP accumulated while wired to LUCK. Absent in older saves (defaults to 0). */
+    xpAllocatedToLuck?: number;
+    /** v18+: XP accumulated while wired to HP. Absent in older saves (defaults to 0). */
+    xpAllocatedToHp?: number;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
@@ -155,6 +159,8 @@ export function serializeGameState(state: GameState): SaveData {
       xpAllocatedStat: state.rpg.xpAllocatedStat,
       xpAllocatedToAtk: state.rpg.xpAllocatedToAtk,
       xpAllocatedToDef: state.rpg.xpAllocatedToDef,
+      xpAllocatedToLuck: state.rpg.xpAllocatedToLuck,
+      xpAllocatedToHp: state.rpg.xpAllocatedToHp,
     },
     elapsedMs: state.elapsedMs,
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
@@ -315,6 +321,9 @@ export function deserializeGameState(data: SaveData): GameState {
     state.rpg.xpAllocatedStat = data.rpg.xpAllocatedStat ?? null;
     state.rpg.xpAllocatedToAtk = data.rpg.xpAllocatedToAtk ?? 0;
     state.rpg.xpAllocatedToDef = data.rpg.xpAllocatedToDef ?? 0;
+    // v18+: luck and HP XP allocation pools
+    state.rpg.xpAllocatedToLuck = data.rpg.xpAllocatedToLuck ?? 0;
+    state.rpg.xpAllocatedToHp = data.rpg.xpAllocatedToHp ?? 0;
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)
@@ -350,8 +359,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–17 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(data.version)) return null;
+    // Accept versions 1–18 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

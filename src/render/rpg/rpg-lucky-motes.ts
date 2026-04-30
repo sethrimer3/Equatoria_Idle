@@ -42,8 +42,12 @@ export const ENEMY_TYPE_TO_TIER: Record<string, TierId> = {
 };
 
 /**
- * Tries to spawn a lucky mote at (x, y) for the given enemy type.
- * Rolls against the provided luckPct. Does nothing if luck check fails.
+ * Tries to spawn lucky mote(s) at (x, y) for the given enemy type.
+ *
+ * Rolls against the provided luckPct.  If luckPct ≥ 100 a mote is always
+ * spawned for the base drop; each additional full 100% guarantees another
+ * mote, and the fractional remainder is the probability of one more.
+ * For example: luckPct = 175 → 1 guaranteed mote + 75% chance of a second.
  */
 export function trySpawnLuckyMote(
   luckyMotes: LuckyMote[],
@@ -52,22 +56,33 @@ export function trySpawnLuckyMote(
   y: number,
   luckPct: number,
 ): void {
-  if (luckPct <= 0 || Math.random() * 100 > luckPct) return;
+  if (luckPct <= 0) return;
+  // Determine how many motes to spawn.
+  const guaranteed = Math.floor(luckPct / 100);
+  const remainderPct = luckPct % 100;
+  const extraDrop    = Math.random() * 100 < remainderPct ? 1 : 0;
+  const totalDrops  = guaranteed + extraDrop;
+  // If luck < 100% the roll fails when fractional roll misses.
+  if (totalDrops === 0) return;
+
   const tierId = ENEMY_TYPE_TO_TIER[enemyTypeId];
   if (!tierId) return;
   const tierDef = TIER_BY_ID.get(tierId);
   if (!tierDef) return;
-  const angle = Math.random() * Math.PI * 2;
-  luckyMotes.push({
-    x, y,
-    vx: Math.cos(angle) * LUCKY_MOTE_SPAWN_SPEED,
-    vy: Math.sin(angle) * LUCKY_MOTE_SPAWN_SPEED,
-    tierId,
-    color: tierDef.color,
-    glowColor: tierDef.glowColor,
-    bonusPct: LUCKY_MOTE_BONUS_PCT,
-    pulseTimeS: 0,
-  });
+
+  for (let d = 0; d < totalDrops; d++) {
+    const angle = Math.random() * Math.PI * 2;
+    luckyMotes.push({
+      x, y,
+      vx: Math.cos(angle) * LUCKY_MOTE_SPAWN_SPEED,
+      vy: Math.sin(angle) * LUCKY_MOTE_SPAWN_SPEED,
+      tierId,
+      color: tierDef.color,
+      glowColor: tierDef.glowColor,
+      bonusPct: LUCKY_MOTE_BONUS_PCT,
+      pulseTimeS: 0,
+    });
+  }
 }
 
 /** Updates lucky motes: magnetism, collection, and popup spawning. */

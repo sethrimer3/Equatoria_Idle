@@ -19,6 +19,7 @@ import {
   SAPPHIRE_ENEMY_SIZE, SAPPHIRE_PATROL_SPEED, SAPPHIRE_PATROL_TURN_MS,
   SAPPHIRE_MISSILE_CD_MS, SAPPHIRE_MISSILE_JITTER,
   MISSILE_SPEED, MISSILE_SEEK_STR, MISSILE_MAX_SPEED, MISSILE_TRAIL_CAP,
+  MISSILE_MAX_LIFETIME_MS,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_ENEMY_STRENGTH, FLUID_PROJECTILE_STRENGTH,
   FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
   FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
@@ -112,6 +113,14 @@ export function updateSapphireMissiles(
   for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
     const m = sapphireMissiles[i];
     if (m.hp <= 0) { sapphireMissiles.splice(i, 1); continue; }
+
+    // Age the missile and destroy it if it has chased the player for too long
+    // without landing a hit (prevents missiles circling forever in centre).
+    m.lifetimeMs += deltaMs;
+    if (m.lifetimeMs >= MISSILE_MAX_LIFETIME_MS) {
+      sapphireMissiles.splice(i, 1);
+      continue;
+    }
 
     // Heat-seeking toward player
     const dx = mote.x - m.x, dy = mote.y - m.y;
