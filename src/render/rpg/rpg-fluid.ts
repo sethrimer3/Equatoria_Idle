@@ -399,6 +399,12 @@ export function createRpgFluid(): RpgFluid {
     _diffuseVelocity(0.09);
 
     // 4. Advect tracer particles through the velocity field.
+    // Pre-compute teleport grid constants (used in near-invisible particle check).
+    const _tpGridCols = 10;
+    const _tpGridRows = Math.ceil(PARTICLE_COUNT / _tpGridCols);
+    const _tpCellW    = FLUID_COLS / _tpGridCols;
+    const _tpCellH    = FLUID_ROWS / _tpGridRows;
+
     for (let i = 0; i < particles.length; i++) {
       const p  = particles[i];
       const vx = _bilerp(vxGrid, p.x, p.y);
@@ -446,6 +452,24 @@ export function createRpgFluid(): RpgFluid {
         np.hueIdx   = p.hueIdx;
         np.r = p.r; np.g = p.g; np.b = p.b;
         particles[i] = np;
+        continue;
+      }
+
+      // Teleport near-invisible particles to prevent spatial clumping.
+      // When a particle's smoothed speed is so low its trail opacity would
+      // fall below 1%, redistribute it across the grid with jitter so the
+      // next velocity impulse fans particles out from multiple locations
+      // rather than all converging in one high-activity region.
+      const osEstimate = _smoothstep(p.smoothedSpeed / SPEED_FULL_OPACITY);
+      if (osEstimate < 0.01) {
+        // Divide the grid into a coarse cell for each particle slot so
+        // teleport targets are spread evenly, with randomness within each cell.
+        const slot = i % (_tpGridCols * _tpGridRows);
+        const sx   = slot % _tpGridCols;
+        const sy   = Math.floor(slot / _tpGridCols);
+        p.x = (sx + 0.1 + Math.random() * 0.8) * _tpCellW;
+        p.y = (sy + 0.1 + Math.random() * 0.8) * _tpCellH;
+        p.trailCount = 0; // suppress visual jump from old trail
       }
     }
   }
