@@ -412,6 +412,14 @@ export function drawSandBladeCombo(
   const COMET_SEGMENTS  = 20;
   const COMET_MIN_WIDTH = 0.5;
   const COMET_MAX_WIDTH = 5.0;
+  const COMET_WID_RANGE = COMET_MAX_WIDTH - COMET_MIN_WIDTH;
+
+  /** Width at normalised arc position t [0,1]: thin → peak at t=0.2 → slow taper to thin. */
+  function _cometWidth(t: number): number {
+    return t < 0.2
+      ? COMET_MIN_WIDTH + COMET_WID_RANGE * (t / 0.2)
+      : COMET_MAX_WIDTH - COMET_WID_RANGE * ((t - 0.2) / 0.8);
+  }
 
   for (const fx of state.swipeEffects) {
     const elapsed   = fx.maxTimerMs - fx.timerMs;
@@ -424,15 +432,8 @@ export function drawSandBladeCombo(
     for (let seg = 0; seg < COMET_SEGMENTS; seg++) {
       const t0 = seg       / COMET_SEGMENTS;
       const t1 = (seg + 1) / COMET_SEGMENTS;
-      // Comet width profile: thin → quickly thick (at t≈0.2) → slowly thin.
-      const w0 = t0 < 0.2
-        ? COMET_MIN_WIDTH + (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * (t0 / 0.2)
-        : COMET_MAX_WIDTH - (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * ((t0 - 0.2) / 0.8);
-      const w1 = t1 < 0.2
-        ? COMET_MIN_WIDTH + (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * (t1 / 0.2)
-        : COMET_MAX_WIDTH - (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * ((t1 - 0.2) / 0.8);
-      // Average width for this segment.
-      const segW  = (w0 + w1) * 0.5;
+      // Average of segment endpoints for lineWidth.
+      const segW     = (_cometWidth(t0) + _cometWidth(t1)) * 0.5;
       const colorIdx = Math.floor(t0 * SAND_BLADE_COLORS.length) % SAND_BLADE_COLORS.length;
       const color    = SAND_BLADE_COLORS[colorIdx];
       ctx.lineWidth  = segW;
