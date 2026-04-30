@@ -138,7 +138,7 @@ import type {
   RpgPhase, DeathParticle, SpawnEntry, HitEffect, ShotLine, DamageNumber,
   WeaponOrbitParticle, OrbitProjectile,
   SapphireEnemy, SapphireMissile,
-  ClosestTarget, TargetKind,
+  ClosestTarget, TargetKind, SwordComboPhase,
 } from './rpg-types';
 import { createRpgWeaponSystems, type RpgWeaponCtx, type RpgWeaponHandle } from './rpg-weapon-systems';
 import type {
@@ -168,7 +168,7 @@ import {
   makeEigensteinEnemy, makeBossEnemy,
 } from './rpg-factories';
 import { getSwordLength } from './rpg-helpers';
-import { drawChainWhip, drawVortexes, drawSwordCombos, drawSandBladeCombo, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
+import { drawChainWhip, drawVortexes, drawSwordCombos, drawSandBladeCombo, spawnSandSwingPixels, updateSandDriftPixels, drawSandDriftPixels, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
 import {
   trySpawnLuckyMote, updateLuckyMotes, updateLuckyMotePopups,
   drawLuckyMotes, drawLuckyMotePopups,
@@ -310,6 +310,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const shotLines:  ShotLine[]  = [];
   const damageNumbers: DamageNumber[] = [];
   let playerIFramesMs = 0;
+
+  // ── Sand blade swing tracking (for sand drift pixel spawning) ──
+  /** Phase of the sand blade from the previous frame — used to detect new swing starts. */
+  let prevSandBladePhase: SwordComboPhase = 'idle';
 
   // ── Sapphire enemies, missiles, and new weapon state ──────────
   const sapphireEnemies: SapphireEnemy[]  = [];
@@ -3013,10 +3017,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       for (const p of weaponOrbitParticles) drawWeaponOrbitParticle(ctx, p);
       drawOrbitProjectile(ctx, orbitProjectile);
       for (const ws of weaponSystems.chainWhipStates.values()) drawChainWhip(ctx, ws);
-      drawSwordCombos(ctx, weaponSystems.swordComboStates, mote, rpgSimState.weaponTiersByWeaponId);
+      const effectiveEquippedIds = getEffectiveEquippedIds();
+      // Only draw equipped weapon combos with prismatic colors when weapons are present.
+      if (effectiveEquippedIds.size > 0) {
+        drawSwordCombos(ctx, weaponSystems.swordComboStates, mote, rpgSimState.weaponTiersByWeaponId);
+      }
       // Draw the sand blade when no weapon is equipped.
-      if (getEffectiveEquippedIds().size === 0) {
+      if (effectiveEquippedIds.size === 0) {
         drawSandBladeCombo(ctx, weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY), mote);
+        drawSandDriftPixels(ctx);
       }
       // ── Companion ships and lasers ────────────────────────────────
       drawSapphireShips(ctx, weaponSystems.sapphireShips);
@@ -3202,6 +3211,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       // If no weapons equipped, the sand blade handles its own swing timing.
       if (getEffectiveEquippedIds().size === 0) {
         weaponSystems.updateSandBlade(deltaMs);
+        // Detect new sand blade swing start and spawn drift pixels.
+        const sandState = weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY);
+        if (sandState) {
+          if (sandState.phase === 'swing' && prevSandBladePhase !== 'swing') {
+            spawnSandSwingPixels(mote.x, mote.y, sandState.swipeArcStart, sandState.swipeArcEnd, getSwordLength(1));
+          }
+          prevSandBladePhase = sandState.phase;
+        }
+        updateSandDriftPixels(deltaMs);
       }
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);

@@ -283,10 +283,11 @@ export const SWORD_COMBO_RANGE_MULT = 2;
 export const SWORD_SHARD_SHAPES: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
   // Tall diamond (4-gon)
   [[0, -1.4], [0.6, 0], [0, 1.4], [-0.6, 0]],
-  // Crossguard: thin rectangle perpendicular to the blade
+  // Crossguard: rectangle perpendicular to the blade
   // (x = along blade, y = perpendicular).  The 4px half-height spans ~5px
   // at typical tier-1 scale, giving a visible bar across the handle.
-  [[0.2, -4.0], [-0.2, -4.0], [-0.2, 4.0], [0.2, 4.0]],
+  // Width doubled (0.2 → 0.4) for a more prominent crossguard.
+  [[0.4, -4.0], [-0.4, -4.0], [-0.4, 4.0], [0.4, 4.0]],
   // Thin rhombus (rotated diamond)
   [[0.4, -1.1], [1.0, 0], [0.4, 1.1], [-0.6, 0]],
   // Compact hexagon

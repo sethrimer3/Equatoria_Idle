@@ -8,10 +8,11 @@
  * Extracted from rpg-render.ts to reduce that closure's line count.
  *
  * Sections:
- *   - drawChainWhip       — quartz chain whip node chain
- *   - drawVortexes        — nullstone vortex rings
- *   - drawSwordCombos     — diamond sword prismatic shards + beam effects
- *   - drawSandBladeCombo  — starter sand blade (sand-colored shards + polygon trails)
+ *   - drawChainWhip           — quartz chain whip node chain
+ *   - drawVortexes            — nullstone vortex rings
+ *   - drawSwordCombos         — diamond sword prismatic shards + beam effects
+ *   - drawSandBladeCombo      — starter sand blade (sand-colored shards + polygon trails)
+ *   - Sand drift pixels       — 2×2 sand pixels spawned per swing, drift + fade over 2 s
  */
 
 import type { ChainWhipState, NullstoneVortex, SwordComboState } from './rpg-types';
@@ -403,30 +404,123 @@ export function drawSandBladeCombo(
     ctx.fill();
   }
 
-  // ── Swipe-arc visuals (sand-colored crescent) ──
+  // ── Swipe-arc visuals (sand-colored crescent, comet profile) ──
+  //
+  // Each crescent arc uses a varying lineWidth that starts thin at arcStart,
+  // quickly peaks to thick (~20% through), then slowly tapers back to thin at
+  // arcEnd — producing a comet-like appearance.
+  const COMET_SEGMENTS  = 20;
+  const COMET_MIN_WIDTH = 0.5;
+  const COMET_MAX_WIDTH = 5.0;
+
   for (const fx of state.swipeEffects) {
     const elapsed   = fx.maxTimerMs - fx.timerMs;
     const lifeRatio = elapsed / fx.maxTimerMs;
-    const alpha     = (1 - lifeRatio) * 0.75;
+    const baseAlpha = (1 - lifeRatio) * 0.85;
     const arcSpan   = fx.arcEnd - fx.arcStart;
-    const numArcs   = SAND_BLADE_COLORS.length;
-    ctx.lineWidth   = 2;
-    ctx.globalAlpha = alpha;
-    for (let ci = 0; ci < numArcs; ci++) {
-      const segStart = fx.arcStart + (ci / numArcs) * arcSpan;
-      const segEnd   = segStart + arcSpan / numArcs;
-      ctx.strokeStyle = SAND_BLADE_COLORS[ci];
+    ctx.globalAlpha = baseAlpha;
+    ctx.lineCap     = 'round';
+
+    for (let seg = 0; seg < COMET_SEGMENTS; seg++) {
+      const t0 = seg       / COMET_SEGMENTS;
+      const t1 = (seg + 1) / COMET_SEGMENTS;
+      // Comet width profile: thin → quickly thick (at t≈0.2) → slowly thin.
+      const w0 = t0 < 0.2
+        ? COMET_MIN_WIDTH + (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * (t0 / 0.2)
+        : COMET_MAX_WIDTH - (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * ((t0 - 0.2) / 0.8);
+      const w1 = t1 < 0.2
+        ? COMET_MIN_WIDTH + (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * (t1 / 0.2)
+        : COMET_MAX_WIDTH - (COMET_MAX_WIDTH - COMET_MIN_WIDTH) * ((t1 - 0.2) / 0.8);
+      // Average width for this segment.
+      const segW  = (w0 + w1) * 0.5;
+      const colorIdx = Math.floor(t0 * SAND_BLADE_COLORS.length) % SAND_BLADE_COLORS.length;
+      const color    = SAND_BLADE_COLORS[colorIdx];
+      ctx.lineWidth  = segW;
+      ctx.strokeStyle = color;
       if (!isLowGraphicsMode) {
-        ctx.shadowBlur = 6; ctx.shadowColor = SAND_BLADE_COLORS[ci];
+        ctx.shadowBlur = segW * 1.5; ctx.shadowColor = color;
       }
       ctx.beginPath();
-      ctx.arc(fx.x, fx.y, fx.swordLength, segStart, segEnd);
+      ctx.arc(fx.x, fx.y, fx.swordLength, fx.arcStart + arcSpan * t0, fx.arcStart + arcSpan * t1);
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
-    ctx.lineWidth = 1;
+    ctx.lineCap = 'butt';
   }
 
   ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
+  ctx.restore();
+}
+
+// ── Sand drift pixels ─────────────────────────────────────────────────────────
+//
+// When the sand blade swings, 30 tiny 2×2 px sand-colored pixels are emitted
+// along the swing arc.  Each drifts slowly in a random direction and fades
+// out over 2 seconds.
+
+/** Total lifetime of each sand drift pixel (ms). */
+const SAND_PIXEL_LIFE_MS    = 2000;
+/** Number of pixels spawned per swing. */
+const SAND_PIXEL_SPAWN_COUNT = 30;
+/** Pixel size in canvas px. */
+const SAND_PIXEL_SIZE        = 2;
+/** Max drift speed (px/ms). */
+const SAND_PIXEL_MAX_SPEED   = 0.08;
+
+interface SandDriftPixel {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Remaining lifetime, counts down from SAND_PIXEL_LIFE_MS to 0. */
+  lifeMs: number;
+  color: string;
+}
+
+const _sandDriftPixels: SandDriftPixel[] = [];
+
+/**
+ * Spawn sand drift pixels along the sword arc when a new swing begins.
+ * Called by rpg-render.ts on the first frame of each sand blade swing.
+ */
+export function spawnSandSwingPixels(
+  mx: number, my: number,
+  arcStart: number, arcEnd: number,
+  swordLength: number,
+): void {
+  for (let i = 0; i < SAND_PIXEL_SPAWN_COUNT; i++) {
+    const angle  = arcStart + Math.random() * (arcEnd - arcStart);
+    const dist   = swordLength * (0.25 + Math.random() * 0.75);
+    const x      = mx + Math.cos(angle) * dist;
+    const y      = my + Math.sin(angle) * dist;
+    const dir    = Math.random() * Math.PI * 2;
+    const speed  = SAND_PIXEL_MAX_SPEED * (0.3 + Math.random() * 0.7);
+    const color  = SAND_BLADE_COLORS[Math.floor(Math.random() * SAND_BLADE_COLORS.length)];
+    _sandDriftPixels.push({ x, y, vx: Math.cos(dir) * speed, vy: Math.sin(dir) * speed, lifeMs: SAND_PIXEL_LIFE_MS, color });
+  }
+}
+
+/** Advance sand drift pixels by deltaMs. Call once per frame when sand blade is active. */
+export function updateSandDriftPixels(deltaMs: number): void {
+  for (let i = _sandDriftPixels.length - 1; i >= 0; i--) {
+    const p = _sandDriftPixels[i];
+    p.x      += p.vx * deltaMs;
+    p.y      += p.vy * deltaMs;
+    p.lifeMs -= deltaMs;
+    if (p.lifeMs <= 0) _sandDriftPixels.splice(i, 1);
+  }
+}
+
+/** Draw all active sand drift pixels as 2×2 sand-colored squares that fade over time. */
+export function drawSandDriftPixels(ctx: CanvasRenderingContext2D): void {
+  if (_sandDriftPixels.length === 0) return;
+  ctx.save();
+  for (const p of _sandDriftPixels) {
+    const alpha = p.lifeMs / SAND_PIXEL_LIFE_MS;
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.fillStyle   = p.color;
+    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), SAND_PIXEL_SIZE, SAND_PIXEL_SIZE);
+  }
+  ctx.globalAlpha = 1;
   ctx.restore();
 }

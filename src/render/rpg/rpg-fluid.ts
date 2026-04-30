@@ -446,6 +446,28 @@ export function createRpgFluid(): RpgFluid {
         np.hueIdx   = p.hueIdx;
         np.r = p.r; np.g = p.g; np.b = p.b;
         particles[i] = np;
+        continue;
+      }
+
+      // Teleport near-invisible particles to prevent spatial clumping.
+      // When a particle's smoothed speed is so low its trail opacity would
+      // fall below 1%, redistribute it across the grid with jitter so the
+      // next velocity impulse fans particles out from multiple locations
+      // rather than all converging in one high-activity region.
+      const osEstimate = _smoothstep(p.smoothedSpeed / SPEED_FULL_OPACITY);
+      if (osEstimate < 0.01) {
+        // Divide the grid into a coarse cell for each particle slot so
+        // teleport targets are spread evenly, with randomness within each cell.
+        const gridCols   = 10;
+        const gridRows   = Math.ceil(PARTICLE_COUNT / gridCols);
+        const cellW_tp   = FLUID_COLS / gridCols;
+        const cellH_tp   = FLUID_ROWS / gridRows;
+        const slot       = i % (gridCols * gridRows);
+        const sx         = slot % gridCols;
+        const sy         = Math.floor(slot / gridCols);
+        p.x = (sx + 0.1 + Math.random() * 0.8) * cellW_tp;
+        p.y = (sy + 0.1 + Math.random() * 0.8) * cellH_tp;
+        p.trailCount = 0; // suppress visual jump from old trail
       }
     }
   }
