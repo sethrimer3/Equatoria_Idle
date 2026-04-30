@@ -89,15 +89,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   statsPanel.id = 'rpg-stats-panel';
   statsPanel.style.display = 'none';
 
-  // HP fraction row — sits just to the left of the XP box, outside it
+  // HP box — centered between the XP box and the DPS box
   const hpFractionEl = document.createElement('div');
-  hpFractionEl.style.cssText = [
-    'display:flex',
-    'flex-direction:column',
-    'align-items:center',
-    'gap:2px',
-    'flex:0 0 auto',
-  ].join(';');
+  hpFractionEl.className = 'rpg-hp-box';
   const hpFractionLabel = document.createElement('span');
   hpFractionLabel.className = 'rpg-stat-label';
   hpFractionLabel.textContent = 'HP';
@@ -106,13 +100,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   hpFractionValue.style.fontSize = '13px';
   hpFractionEl.appendChild(hpFractionLabel);
   hpFractionEl.appendChild(hpFractionValue);
-  statsPanel.appendChild(hpFractionEl);
 
   // Player stats box (XP box — ATK / DEF / LUCK / MAXHP + XP node)
   const playerStatsBox = document.createElement('div');
   playerStatsBox.className = 'rpg-player-stats-box';
-  // Make the XP box match the DPS box height.
-  playerStatsBox.style.alignSelf = 'stretch';
 
   // XP node — the draggable source at the top of the player stats box
   const xpNodeEl = document.createElement('div');
@@ -189,6 +180,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   luckWidget.root.appendChild(luckAllocEl);
 
   statsPanel.appendChild(playerStatsBox);
+  // HP box sits between the XP box and the DPS box, filling available width.
+  statsPanel.appendChild(hpFractionEl);
 
   // ── DPS Chart Widget ──────────────────────────────────────────────
   const dpsWidget = document.createElement('div');
