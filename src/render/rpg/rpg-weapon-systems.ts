@@ -28,12 +28,12 @@ import {
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW,
   VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
   VORTEX_COLOR, VORTEX_SPIN_RATE,
-  SWORD_SWING_MS, SWORD_COLOR, SWORD_PRISMATIC_COLORS,
+  SWORD_SWING_MS, SWORD_COLOR, SWORD_PRISMATIC_COLORS, SAND_BLADE_COLORS,
   SWORD_SHARD_COUNT, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
   SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
   SWORD_BEAM_DURATION_MS, SWORD_SWIPE_VISUAL_MS,
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
-  SWORD_COMBO_THRESHOLD, SWORD_COMBO_SPIN_TURNS,
+  SWORD_COMBO_THRESHOLD, SWORD_COMBO_WINDOW_MS, SWORD_COMBO_SPIN_TURNS,
   SWORD_COMBO_SPIN_MS, SWORD_COMBO_DAMAGE_MULT, SWORD_COMBO_RANGE_MULT,
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
@@ -972,8 +972,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       swipeArcStart: 0, swipeArcEnd: 0,
       swipeEffects: [], beamEffects: [],
       swingIsRightToLeft: true,
-      lastHitEntity: null,
-      consecHitsOnSameEnemy: 0,
+      comboCount: 0,
       spinComboAngle: 0,
       spinComboDamageTicks: 0,
     };
@@ -1094,7 +1093,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     const angleDiff = wrapAngleDiff(restAngle - state.swordAngle);
     state.swordAngularVel += angleDiff * SWORD_HINGE_SPRING_K;
     state.swordAngularVel *= SWORD_HINGE_DAMPING;
-    if (state.phase !== 'swing' && state.phase !== 'spin_combo') {
+    if (state.phase !== 'swing' && state.phase !== 'spin_combo' && state.phase !== 'combo_window') {
       state.swordAngle += state.swordAngularVel;
     }
 
@@ -1135,14 +1134,22 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     }
 
     // ── 3. Add fluid forces from sword drag (each shard per frame) ──
+    const isSandBlade = weaponId === BASE_ATTACK_TIMER_KEY;
     const comboLength = state.phase === 'spin_combo' ? swordLength * SWORD_COMBO_RANGE_MULT : swordLength;
-    if (state.phase !== 'cooldown') {
+    if (state.phase !== 'combo_window') {
       const dists = getShardDistances(comboLength);
-      const colIdx = Math.floor(nowMs / 60) % SWORD_PRISMATIC_COLORS.length;
-      const hexColor = SWORD_PRISMATIC_COLORS[colIdx];
-      const pr = parseInt(hexColor.slice(1, 3), 16);
-      const pg = parseInt(hexColor.slice(3, 5), 16);
-      const pb = parseInt(hexColor.slice(5, 7), 16);
+      const colorPaletteDrag = isSandBlade ? SAND_BLADE_COLORS : SWORD_PRISMATIC_COLORS;
+      const colIdx = Math.floor(nowMs / 60) % colorPaletteDrag.length;
+      const hexColor = colorPaletteDrag[colIdx];
+      let pr = parseInt(hexColor.slice(1, 3), 16);
+      let pg = parseInt(hexColor.slice(3, 5), 16);
+      let pb = parseInt(hexColor.slice(5, 7), 16);
+      if (isSandBlade) {
+        const bright = 0.7 + 0.3 * (1 + Math.sin(nowMs * 0.007));
+        pr = Math.min(255, Math.round(pr * bright));
+        pg = Math.min(255, Math.round(pg * bright));
+        pb = Math.min(255, Math.round(pb * bright));
+      }
       for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
         const sx = mote.x + Math.cos(state.shardAngles[i]) * dists[i];
         const sy = mote.y + Math.sin(state.shardAngles[i]) * dists[i];
@@ -1234,11 +1241,18 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
 
       // Add stronger crescent fluid forces during the swipe.
       const numSamples = 6;
-      const colIdx2 = Math.floor(nowMs / 60) % SWORD_PRISMATIC_COLORS.length;
-      const hexC2 = SWORD_PRISMATIC_COLORS[colIdx2];
-      const sr = parseInt(hexC2.slice(1, 3), 16);
-      const sg = parseInt(hexC2.slice(3, 5), 16);
-      const sb = parseInt(hexC2.slice(5, 7), 16);
+      const colorPaletteSwing = isSandBlade ? SAND_BLADE_COLORS : SWORD_PRISMATIC_COLORS;
+      const colIdx2 = Math.floor(nowMs / 60) % colorPaletteSwing.length;
+      const hexC2 = colorPaletteSwing[colIdx2];
+      let sr = parseInt(hexC2.slice(1, 3), 16);
+      let sg = parseInt(hexC2.slice(3, 5), 16);
+      let sb = parseInt(hexC2.slice(5, 7), 16);
+      if (isSandBlade) {
+        const bright = 0.7 + 0.3 * (1 + Math.sin(nowMs * 0.007 + 1.0));
+        sr = Math.min(255, Math.round(sr * bright));
+        sg = Math.min(255, Math.round(sg * bright));
+        sb = Math.min(255, Math.round(sb * bright));
+      }
       const t2 = Math.min(1, state.phaseMs / SWORD_SWING_MS);
       const arcSpan = state.swipeArcEnd - state.swipeArcStart;
       for (let s = 0; s < numSamples; s++) {
@@ -1255,47 +1269,28 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       }
 
       if (state.phaseMs >= SWORD_SWING_MS) {
-        // Update consecutive-hit tracking before flipping direction.
-        // 'justFinishedLeftToRight' = the swing that just completed was L→R (swingIsRightToLeft=false).
-        const justFinishedLeftToRight = !state.swingIsRightToLeft;
-        if (state.hitThisSwing.size > 0) {
-          const hitEntity = state.hitThisSwing.values().next().value as object;
-          if (hitEntity === state.lastHitEntity) {
-            state.consecHitsOnSameEnemy += 1;
-          } else {
-            state.lastHitEntity = hitEntity;
-            state.consecHitsOnSameEnemy = 1;
-          }
-        } else {
-          state.consecHitsOnSameEnemy = 0;
-          state.lastHitEntity = null;
-        }
-
-        // Flip swing direction for next swing.
+        // Flip swing direction for next slash and count this completed slash.
         state.swingIsRightToLeft = !state.swingIsRightToLeft;
+        state.comboCount += 1;
+        state.hitThisSwing.clear();
+        removeDeadEnemies(); checkWaveCompletion();
 
-        // Check for spin combo: triggered on the 4th consecutive hit ending on a L→R swing.
-        // L→R swings end at arcStart (enemy center − π/2), which is the natural starting
-        // position for spinning clockwise back through arcEnd and beyond.
-        if (justFinishedLeftToRight && state.consecHitsOnSameEnemy >= SWORD_COMBO_THRESHOLD) {
-          // Enter the spin combo — 3 rapid 360° rotations.
-          // The sword is at swipeArcStart at the end of a L→R swing (drive ends at arcStart).
+        if (state.comboCount >= SWORD_COMBO_THRESHOLD) {
+          // 4 slashes complete — enter the 360° spinning 5th attack.
+          // The spin starts from the endpoint of the last swing.
           const spinStartAngle = state.swipeArcStart;
           state.phase = 'spin_combo';
           state.phaseMs = 0;
           state.spinComboAngle = spinStartAngle;
-          // swipeArcEnd is reused to store the spin start angle (semantic overload for
-          // efficiency — avoids adding a new field to SwordComboState).
+          // swipeArcEnd stores the spin start angle (reuse to avoid adding a field).
           state.swipeArcEnd = spinStartAngle;
           state.spinComboDamageTicks = 0;
           state.hitThisSwing.clear();
-          state.consecHitsOnSameEnemy = 0;
-          state.lastHitEntity = null;
         } else {
-          state.phase = 'cooldown'; state.phaseMs = 0;
-          state.cooldownMs = Math.max(0, fullCooldownMs - SWORD_SWING_MS);
-          state.hitThisSwing.clear();
-          removeDeadEnemies(); checkWaveCompletion();
+          // Enter the 1-second combo window — sword held in place, waiting for next slash.
+          state.phase = 'combo_window';
+          state.phaseMs = 0;
+          state.swordAngularVel = 0; // freeze sword at its current end-of-swing position
         }
       }
     } else if (state.phase === 'spin_combo') {
@@ -1316,10 +1311,17 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
         swordHitInArc(state, comboRange, rawDamage * SWORD_COMBO_DAMAGE_MULT, 0, Math.PI * 2, weaponId);
         // Wide fluid burst for the combo.
         const numS = 12;
-        const hexC3 = SWORD_PRISMATIC_COLORS[Math.floor(nowMs / 40) % SWORD_PRISMATIC_COLORS.length];
-        const crr = parseInt(hexC3.slice(1, 3), 16);
-        const crg = parseInt(hexC3.slice(3, 5), 16);
-        const crb = parseInt(hexC3.slice(5, 7), 16);
+        const colorPaletteSpin = isSandBlade ? SAND_BLADE_COLORS : SWORD_PRISMATIC_COLORS;
+        const hexC3 = colorPaletteSpin[Math.floor(nowMs / 40) % colorPaletteSpin.length];
+        let crr = parseInt(hexC3.slice(1, 3), 16);
+        let crg = parseInt(hexC3.slice(3, 5), 16);
+        let crb = parseInt(hexC3.slice(5, 7), 16);
+        if (isSandBlade) {
+          const bright = 0.7 + 0.3 * (1 + Math.sin(nowMs * 0.011));
+          crr = Math.min(255, Math.round(crr * bright));
+          crg = Math.min(255, Math.round(crg * bright));
+          crb = Math.min(255, Math.round(crb * bright));
+        }
         for (let s = 0; s < numS; s++) {
           const a = (s / numS) * Math.PI * 2;
           fluid.addForce({
@@ -1334,19 +1336,85 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       }
 
       if (state.phaseMs >= SWORD_COMBO_SPIN_MS) {
-        // Snap sword back to right-hand rest position based on current facing.
+        // Snap sword back to right-hand rest position and reset combo.
         const restAngle = ctx.playerAimAngle + Math.PI / 2;
         state.swordAngle = restAngle;
         for (let i = 0; i < SWORD_SHARD_COUNT; i++) state.shardAngles[i] = restAngle;
-        state.swingIsRightToLeft = true; // next swing is R→L
-        state.phase = 'cooldown'; state.phaseMs = 0;
-        state.cooldownMs = Math.max(0, fullCooldownMs - SWORD_SWING_MS);
+        state.swingIsRightToLeft = true;
+        state.comboCount = 0;
+        state.phase = 'idle'; state.phaseMs = 0;
+        state.cooldownMs = fullCooldownMs;
         state.hitThisSwing.clear();
         removeDeadEnemies(); checkWaveCompletion();
       }
-    } else if (state.phase === 'cooldown') {
-      if (state.phaseMs >= state.cooldownMs) {
-        state.phase = 'idle'; state.phaseMs = 0; state.cooldownMs = fullCooldownMs;
+    } else if (state.phase === 'combo_window') {
+      // ── Combo window: immediately start next slash if enemy in range; break combo on timeout ──
+      const rangeSq = swordLength * swordLength;
+      let anyInRange = false;
+      const checkCombo = (e: { x: number; y: number }) => {
+        if (anyInRange) return;
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        if (dx * dx + dy * dy <= rangeSq) anyInRange = true;
+      };
+      for (const e of enemies)           checkCombo(e);
+      for (const e of sapphireEnemies)   checkCombo(e);
+      for (const e of emeraldEnemies)    checkCombo(e);
+      for (const e of amberEnemies)      checkCombo(e);
+      for (const e of voidEnemies)       checkCombo(e);
+      for (const e of quartzEnemies)     checkCombo(e);
+      for (const e of rubyEnemies)       checkCombo(e);
+      for (const e of sunstoneEnemies)   checkCombo(e);
+      for (const e of citrineEnemies)    checkCombo(e);
+      for (const e of ioliteEnemies)     checkCombo(e);
+      for (const e of amethystEnemies)   checkCombo(e);
+      for (const e of diamondEnemies)    checkCombo(e);
+      for (const e of nullstoneEnemies)  checkCombo(e);
+      for (const e of fracterylEnemies)  checkCombo(e);
+      for (const e of eigensteinEnemies) checkCombo(e);
+      if (ctx.bossEnemy) checkCombo(ctx.bossEnemy);
+
+      if (anyInRange) {
+        // Enemy in range — start the next slash in the combo.
+        let bestDistSq = Infinity;
+        let bestAngle  = 0;
+        const findNearest = (e: { x: number; y: number }) => {
+          const dx = e.x - mote.x, dy = e.y - mote.y;
+          const d = dx * dx + dy * dy;
+          if (d < bestDistSq) { bestDistSq = d; bestAngle = Math.atan2(dy, dx); }
+        };
+        for (const e of enemies)           findNearest(e);
+        for (const e of sapphireEnemies)   findNearest(e);
+        for (const e of emeraldEnemies)    findNearest(e);
+        for (const e of amberEnemies)      findNearest(e);
+        for (const e of voidEnemies)       findNearest(e);
+        for (const e of quartzEnemies)     findNearest(e);
+        for (const e of rubyEnemies)       findNearest(e);
+        for (const e of sunstoneEnemies)   findNearest(e);
+        for (const e of citrineEnemies)    findNearest(e);
+        for (const e of ioliteEnemies)     findNearest(e);
+        for (const e of amethystEnemies)   findNearest(e);
+        for (const e of diamondEnemies)    findNearest(e);
+        for (const e of nullstoneEnemies)  findNearest(e);
+        for (const e of fracterylEnemies)  findNearest(e);
+        for (const e of eigensteinEnemies) findNearest(e);
+        if (ctx.bossEnemy) findNearest(ctx.bossEnemy);
+
+        state.swipeArcStart = bestAngle - Math.PI / 2;
+        state.swipeArcEnd   = bestAngle + Math.PI / 2;
+        state.phase = 'swing'; state.phaseMs = 0; state.hitThisSwing.clear();
+        state.swipeEffects.push({
+          x: mote.x, y: mote.y,
+          arcStart: state.swipeArcStart, arcEnd: state.swipeArcEnd,
+          swordLength,
+          timerMs: SWORD_SWIPE_VISUAL_MS,
+          maxTimerMs: SWORD_SWIPE_VISUAL_MS,
+        });
+      } else if (state.phaseMs >= SWORD_COMBO_WINDOW_MS) {
+        // Combo window expired — break the combo and return to idle.
+        state.comboCount = 0;
+        state.swingIsRightToLeft = true; // reset to default starting direction
+        state.phase = 'idle'; state.phaseMs = 0;
+        state.cooldownMs = fullCooldownMs;
       }
     }
 

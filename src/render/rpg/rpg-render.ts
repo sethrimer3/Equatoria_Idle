@@ -2842,6 +2842,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ctx.fillStyle = LASER_ENEMY_COLOR;
       ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), LASER_ENEMY_SIZE, LASER_ENEMY_SIZE);
       ctx.shadowBlur = 0;
+      // Health bar
+      const barW = LASER_ENEMY_SIZE * 2.5;
+      const barH = 2;
+      const barX = enemy.x - barW / 2;
+      const barY = enemy.y + half + 2;
+      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = LASER_ENEMY_COLOR;
+      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
     }
   }
 
@@ -2953,21 +2961,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawLaserBeamEffect(ctx, weaponSystems.laserBeamEffect);
     drawEnemyIndicators();
 
-    // Player comet trail — smoothly gated by glowMovementIntensity
+    // Player comet trail — shrinks from tail to tip as movement intensity drops,
+    // so the trail vanishes by retreating toward the player rather than fading in place.
     if (!isLowGraphicsMode && glowMovementIntensity > 0.02 && mote.trailCount >= 2) {
-      const trailLen = mote.trailCount;
+      const trailLen = Math.max(0, Math.floor(mote.trailCount * glowMovementIntensity));
       for (let i = 0; i < trailLen; i++) {
         const t      = i / trailLen;
         const bufIdx = (mote.trailHead - trailLen + i + RPG_TRAIL_CAPACITY) % RPG_TRAIL_CAPACITY;
         const trailSize = RPG_MOTE_SIZE * t * 1.3;
         if (trailSize < 0.3) continue;
         const half = trailSize / 2;
-        ctx.globalAlpha = t * 0.45 * glowMovementIntensity;
+        ctx.globalAlpha = t * 0.45;
         ctx.shadowBlur  = trailSize * 6; ctx.shadowColor = RPG_MOTE_GLOW; ctx.fillStyle = RPG_MOTE_GLOW;
         const gh = half * 2.2;
         ctx.fillRect(Math.floor(mote.trailX[bufIdx] - gh), Math.floor(mote.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
         ctx.shadowBlur = 0;
-        ctx.globalAlpha = t * 0.7 * glowMovementIntensity;
+        ctx.globalAlpha = t * 0.7;
         ctx.fillStyle   = RPG_MOTE_COLOR;
         ctx.fillRect(Math.floor(mote.trailX[bufIdx] - half), Math.floor(mote.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
       }

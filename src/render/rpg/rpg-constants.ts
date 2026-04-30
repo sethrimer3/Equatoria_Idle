@@ -264,8 +264,10 @@ export const SWORD_FLUID_SWIPE_STR   = 2.0;
 export const SWORD_DEFAULT_COOLDOWN_MS = 220;
 /** Rest angle of the sword when idle (0 = right of player). */
 export const SWORD_IDLE_ANGLE = 0;
-/** Number of consecutive same-enemy hits required to trigger the spin combo. */
+/** Number of consecutive crescent slashes required before the spin combo triggers. */
 export const SWORD_COMBO_THRESHOLD = 4;
+/** Time window (ms) after a slash during which the next slash must begin to continue the combo. */
+export const SWORD_COMBO_WINDOW_MS = 1000;
 /** Number of full 360° rotations during the spin combo. */
 export const SWORD_COMBO_SPIN_TURNS = 3;
 /** Total duration (ms) of the spin combo animation (3 fast spins). */
