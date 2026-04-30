@@ -1145,7 +1145,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       let pg = parseInt(hexColor.slice(3, 5), 16);
       let pb = parseInt(hexColor.slice(5, 7), 16);
       if (isSandBlade) {
-        const bright = 0.7 + Math.random() * 0.6;
+        const bright = 0.7 + 0.3 * (1 + Math.sin(nowMs * 0.007));
         pr = Math.min(255, Math.round(pr * bright));
         pg = Math.min(255, Math.round(pg * bright));
         pb = Math.min(255, Math.round(pb * bright));
@@ -1248,7 +1248,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       let sg = parseInt(hexC2.slice(3, 5), 16);
       let sb = parseInt(hexC2.slice(5, 7), 16);
       if (isSandBlade) {
-        const bright = 0.7 + Math.random() * 0.6;
+        const bright = 0.7 + 0.3 * (1 + Math.sin(nowMs * 0.007 + 1.0));
         sr = Math.min(255, Math.round(sr * bright));
         sg = Math.min(255, Math.round(sg * bright));
         sb = Math.min(255, Math.round(sb * bright));
@@ -1317,7 +1317,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
         let crg = parseInt(hexC3.slice(3, 5), 16);
         let crb = parseInt(hexC3.slice(5, 7), 16);
         if (isSandBlade) {
-          const bright = 0.7 + Math.random() * 0.6;
+          const bright = 0.7 + 0.3 * (1 + Math.sin(nowMs * 0.011));
           crr = Math.min(255, Math.round(crr * bright));
           crg = Math.min(255, Math.round(crg * bright));
           crb = Math.min(255, Math.round(crb * bright));
