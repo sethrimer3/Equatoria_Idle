@@ -67,9 +67,10 @@ import {
   AMETHYST_SHIP_FIRE_MS, AMETHYST_SHIP_ORBIT_RADIUS, AMETHYST_SHIP_MAX_SPEED, AMETHYST_SHIP_TRAIL_CAP,
   AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
   AMETHYST_LASER_ANGULAR_SPEED, AMETHYST_LASER_DURATION_MS, AMETHYST_LASER_HIT_RADIUS, AMETHYST_LASER_TRAIL_CAP,
-  AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW,
+  AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW, AMETHYST_SHIP_ATTACK_RANGE,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PROJECTILE_STRENGTH, FLUID_LASER_BEAM_STRENGTH,
   LASER_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE, SAPPHIRE_SHIELD_RADIUS, MISSILE_SIZE, SAND_PROJ_SIZE,
+  BASE_ATTACK_TIMER_KEY,
 } from './rpg-constants';
 import {
   EMERALD_ENEMY_SIZE, AMBER_ENEMY_SIZE, AMBER_SHARD_SIZE,
@@ -252,6 +253,8 @@ export interface RpgWeaponHandle {
   updateSapphireLasers: (deltaMs: number) => void;
   updateAmethystShips: (deltaMs: number) => void;
   updateAmethystLasers: (deltaMs: number) => void;
+  /** Updates the sand blade when no weapon is equipped. */
+  updateSandBlade: (deltaMs: number) => void;
 
   // Companion ship sync (called by applyEquipmentStats and notifyEquip)
   syncSapphireShips: () => void;
@@ -2611,8 +2614,13 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
 
       ship.fireCooldownMs -= deltaMs;
       if (ship.fireCooldownMs <= 0 && target) {
-        ship.fireCooldownMs += AMETHYST_SHIP_FIRE_MS;
-        spawnAmethystLaser(ship, target);
+        const dxFire = target.x - ship.x, dyFire = target.y - ship.y;
+        const inRange = dxFire * dxFire + dyFire * dyFire <= AMETHYST_SHIP_ATTACK_RANGE * AMETHYST_SHIP_ATTACK_RANGE;
+        if (inRange) {
+          ship.fireCooldownMs += AMETHYST_SHIP_FIRE_MS;
+          spawnAmethystLaser(ship, target);
+        }
+        // When out of range the cooldown stays ≤0 so the ship fires as soon as it closes in.
       }
     }
   }
@@ -2710,6 +2718,16 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
 
 
 
+  // ── Sand blade (starter weapon, no weapon equipped) ───────────────
+
+  /**
+   * Updates the sand blade combo state when no weapon is equipped.
+   * Reuses the sword combo state machine under the sentinel key __base__.
+   */
+  function updateSandBlade(deltaMs: number): void {
+    ctx.withDamageSource(null, () => updateSwordCombo(BASE_ATTACK_TIMER_KEY, deltaMs));
+  }
+
   // ── Expose laserBeamEffect as getter so handle stays in sync ──
   // (laserBeamEffect is a let variable that gets replaced, not mutated)
   return {
@@ -2745,6 +2763,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     updateSapphireLasers,
     updateAmethystShips,
     updateAmethystLasers,
+    updateSandBlade,
 
     syncSapphireShips,
     syncAmethystShips,

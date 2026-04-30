@@ -168,7 +168,7 @@ import {
   makeEigensteinEnemy, makeBossEnemy,
 } from './rpg-factories';
 import { getSwordLength } from './rpg-helpers';
-import { drawChainWhip, drawVortexes, drawSwordCombos, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
+import { drawChainWhip, drawVortexes, drawSwordCombos, drawSandBladeCombo, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
 import {
   trySpawnLuckyMote, updateLuckyMotes, updateLuckyMotePopups,
   drawLuckyMotes, drawLuckyMotePopups,
@@ -3014,6 +3014,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       drawOrbitProjectile(ctx, orbitProjectile);
       for (const ws of weaponSystems.chainWhipStates.values()) drawChainWhip(ctx, ws);
       drawSwordCombos(ctx, weaponSystems.swordComboStates, mote, rpgSimState.weaponTiersByWeaponId);
+      // Draw the sand blade when no weapon is equipped.
+      if (getEffectiveEquippedIds().size === 0) {
+        drawSandBladeCombo(ctx, weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY), mote);
+      }
       // ── Companion ships and lasers ────────────────────────────────
       drawSapphireShips(ctx, weaponSystems.sapphireShips);
       drawSapphireLasers(ctx, weaponSystems.sapphireLasers);
@@ -3195,18 +3199,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           weaponAttackTimers.set(weaponId, next);
         }
       }
-      // If no weapons equipped, use base attack with default cooldown
+      // If no weapons equipped, the sand blade handles its own swing timing.
       if (getEffectiveEquippedIds().size === 0) {
-        const current = weaponAttackTimers.get(BASE_ATTACK_TIMER_KEY) ?? 0;
-        const next = current - deltaMs;
-        if (next <= 0) {
-          weaponAttackTimers.set(BASE_ATTACK_TIMER_KEY, PLAYER_BASE_COOLDOWN_MS);
-          statsPanel.withDamageSource(null, () => performWeaponAttack(BASE_ATTACK_TIMER_KEY));
-          removeDeadEnemies();
-          checkWaveCompletion();
-        } else {
-          weaponAttackTimers.set(BASE_ATTACK_TIMER_KEY, next);
-        }
+        weaponSystems.updateSandBlade(deltaMs);
       }
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);
