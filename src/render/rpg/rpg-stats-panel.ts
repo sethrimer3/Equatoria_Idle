@@ -51,7 +51,7 @@ const STAT_WIRE_COLOR: Record<'atk' | 'def' | 'luck' | 'hp', string> = {
 };
 
 const SLURP_DURATION_MS = 400;
-const BLEED_RATE        = 0.0015; // wireColorBleedT advance per ms (reaches 0.5 in ~333 frames @ 60fps)
+const BLEED_RATE        = 0.0015; // wireColorBleedT advance per ms (reaches 0.5 after ~333 ms)
 
 export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle {
   const { rpgSimState, playerStats } = ctx;
@@ -285,8 +285,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     ropeNodes = [];
     for (let i = 0; i < ROPE_N; i++) {
       const t = i / (ROPE_N - 1);
-      ropeNodes.push({ x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t,
-                       px: x0 + (x1 - x0) * t, py: y0 + (y1 - y0) * t });
+      const xi = x0 + (x1 - x0) * t;
+      const yi = y0 + (y1 - y0) * t;
+      ropeNodes.push({ x: xi, y: yi, px: xi, py: yi });
     }
   }
 
@@ -645,8 +646,13 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     // MAXHP
     maxHpWidget.valueEl.textContent = String(playerStats.maxHp);
     const hpBonus = getEffectiveXpHpBonus(rpgSimState);
-    maxHpAllocEl.textContent = hpBonus > 0
-      ? '+' + hpBonus + ' bonus' : (rpgSimState.xpAllocatedToHp > 0 ? formatXp(rpgSimState.xpAllocatedToHp) + ' xp' : '');
+    if (hpBonus > 0) {
+      maxHpAllocEl.textContent = '+' + hpBonus + ' bonus';
+    } else if (rpgSimState.xpAllocatedToHp > 0) {
+      maxHpAllocEl.textContent = formatXp(rpgSimState.xpAllocatedToHp) + ' xp';
+    } else {
+      maxHpAllocEl.textContent = '';
+    }
 
     // LUCK — display the full effective luck (base + bonus), may exceed 100%
     const baseLuck = getLuckPercent(rpgSimState.xp);

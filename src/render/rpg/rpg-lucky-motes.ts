@@ -59,8 +59,8 @@ export function trySpawnLuckyMote(
   if (luckPct <= 0) return;
   // Determine how many motes to spawn.
   const guaranteed = Math.floor(luckPct / 100);
-  const fractional  = luckPct % 100;
-  const extraDrop   = Math.random() * 100 < fractional ? 1 : 0;
+  const remainderPct = luckPct % 100;
+  const extraDrop    = Math.random() * 100 < remainderPct ? 1 : 0;
   const totalDrops  = guaranteed + extraDrop;
   // If luck < 100% the roll fails when fractional roll misses.
   if (totalDrops === 0) return;
