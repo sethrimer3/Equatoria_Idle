@@ -113,16 +113,16 @@ export function drawVortexes(ctx: CanvasRenderingContext2D, vortexes: NullstoneV
 // ── Diamond sword crescent constants ─────────────────────────────────────────
 // Crescent arc profile: rises steeply to peak at 15% of the arc, then tapers
 // slowly toward the back — creating a wider-front, thinner-back comet shape.
-const DIAMOND_COMET_SEGS      = 20;
-const DIAMOND_COMET_MIN_WIDTH = 0.5;
-const DIAMOND_COMET_MAX_WIDTH = 7.0;
-const DIAMOND_COMET_WID_RANGE = DIAMOND_COMET_MAX_WIDTH - DIAMOND_COMET_MIN_WIDTH;
+const DIAMOND_COMET_SEGS        = 20;
+const DIAMOND_COMET_MIN_WIDTH   = 0.5;
+const DIAMOND_COMET_MAX_WIDTH   = 7.0;
+const DIAMOND_COMET_WIDTH_RANGE = DIAMOND_COMET_MAX_WIDTH - DIAMOND_COMET_MIN_WIDTH;
 
-/** Width at normalised arc position t [0,1]: thin → quick peak at t=0.15 → slow taper. */
+/** Width at normalized arc position t [0,1]: thin → quick peak at t=0.15 → slow taper. */
 function _diamondCometWidth(t: number): number {
   return t < 0.15
-    ? DIAMOND_COMET_MIN_WIDTH + DIAMOND_COMET_WID_RANGE * (t / 0.15)
-    : DIAMOND_COMET_MAX_WIDTH - DIAMOND_COMET_WID_RANGE * ((t - 0.15) / 0.85);
+    ? DIAMOND_COMET_MIN_WIDTH + DIAMOND_COMET_WIDTH_RANGE * (t / 0.15)
+    : DIAMOND_COMET_MAX_WIDTH - DIAMOND_COMET_WIDTH_RANGE * ((t - 0.15) / 0.85);
 }
 
 // ── Diamond sword combos ──────────────────────────────────────────────────────
