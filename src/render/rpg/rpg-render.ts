@@ -31,6 +31,7 @@ import {
   getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale, getBossXpMultiplier,
   getLuckPercent,
   addXpWithAllocation, getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
+  getEffectiveXpLuckBonus, getEffectiveXpHpBonus,
 } from '../../sim/rpg/rpg-state';
 import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
@@ -348,6 +349,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const luckyMotes: LuckyMote[] = [];
   const luckyMotePopups: LuckyMotePopup[] = [];
 
+  // ── Wave canvas overlay (top-left wave number display) ────────
+  /** Alpha for the top-left wave text; dims toward 0.30 when entities overlap it. */
+  let waveOverlapAlpha = 1.0;
+
   /**
    * Cached luck percentage — updated whenever XP changes.
    * Avoids calling Math.log10 on every enemy death in hot combat.
@@ -358,7 +363,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function getCachedLuckPercent(): number {
     if (rpgSimState.xp !== _cachedLuckXp) {
       _cachedLuckXp = rpgSimState.xp;
-      _cachedLuckPct = getLuckPercent(rpgSimState.xp);
+      _cachedLuckPct = getLuckPercent(rpgSimState.xp) + getEffectiveXpLuckBonus(rpgSimState);
     }
     return _cachedLuckPct;
   }
@@ -558,6 +563,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerStats.def = PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState);
     // Player ATK is the base multiplier (not including per-weapon tier damage).
     playerStats.atk = PLAYER_ATK_INIT + getEffectiveXpAtkBonus(rpgSimState);
+    // Bonus max-HP from XP wired to HP stat.
+    const hpBonus = getEffectiveXpHpBonus(rpgSimState);
+    const newMaxHp = PLAYER_HP_INIT + hpBonus;
+    if (newMaxHp !== playerStats.maxHp) {
+      const delta = newMaxHp - playerStats.maxHp;
+      playerStats.maxHp = newMaxHp;
+      // Also adjust current HP proportionally so the bar doesn't jump.
+      if (delta > 0) playerStats.hp = Math.min(playerStats.hp + delta, newMaxHp);
+      else playerStats.hp = Math.min(playerStats.hp, newMaxHp);
+    }
 
     // Rebuild weapon orbit particles (one per equipped weapon, evenly spaced).
     weaponOrbitParticles.length = 0;
@@ -1911,8 +1926,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getCurrentWave: () => currentWave,
     getEffectiveEquippedIds,
     onXpWireLock: (stat) => {
-      if (stat === 'atk') rpgSimState.xpAllocatedToAtk = rpgSimState.xp;
-      else                rpgSimState.xpAllocatedToDef = rpgSimState.xp;
+      if (stat === 'atk')        rpgSimState.xpAllocatedToAtk  = rpgSimState.xp;
+      else if (stat === 'def')   rpgSimState.xpAllocatedToDef  = rpgSimState.xp;
+      else if (stat === 'luck')  rpgSimState.xpAllocatedToLuck = rpgSimState.xp;
+      else if (stat === 'hp')    rpgSimState.xpAllocatedToHp   = rpgSimState.xp;
       applyEquipmentStats();
     },
   });
@@ -3059,6 +3076,40 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
 
     if (rpgPhase === 'alive') drawWaveClearBanner(ctx, isInterWave, currentWave, interWaveTimerMs, widthPx, heightPx);
+
+    // ── Top-left wave number overlay ──────────────────────────────
+    if (currentWave > 0) {
+      // Check if any enemy or player is near the top-left corner region
+      const TL_X = 80, TL_Y = 30;
+      let anyOverlap = false;
+      const moteNear = mote.x < TL_X && mote.y < TL_Y;
+      if (moteNear) {
+        anyOverlap = true;
+      } else {
+        for (const e of enemies) {
+          if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
+        }
+        if (!anyOverlap) {
+          for (const e of sapphireEnemies) {
+            if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
+          }
+        }
+        if (!anyOverlap) {
+          for (const e of emeraldEnemies) {
+            if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
+          }
+        }
+      }
+      const targetAlpha = anyOverlap ? 0.30 : 1.0;
+      waveOverlapAlpha += (targetAlpha - waveOverlapAlpha) * 0.1;
+
+      ctx.save();
+      ctx.globalAlpha = waveOverlapAlpha;
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#fff172';
+      ctx.fillText('W' + currentWave, 5, 13);
+      ctx.restore();
+    }
 
     if (screenDarken > 0) {
       ctx.globalAlpha = screenDarken; ctx.fillStyle = '#000000';

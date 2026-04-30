@@ -144,6 +144,37 @@ export function createRpgMenuTabPane(
       element.appendChild(cpSection);
     }
 
+    // ── Boost percentage display row ──
+    if (rpgState) {
+      element.appendChild(makePageBreak('small'));
+
+      const boostRow = document.createElement('div');
+      boostRow.className = 'rpg-menu__setting-row';
+
+      const boostLabelGroup = document.createElement('div');
+      boostLabelGroup.className = 'rpg-menu__setting-label-group';
+      const boostLabel = document.createElement('span');
+      boostLabel.className = 'rpg-menu__setting-label';
+      boostLabel.textContent = 'Wave Boost';
+      const boostDesc = document.createElement('span');
+      boostDesc.className = 'rpg-menu__setting-desc';
+      boostDesc.textContent = 'Bonus percentage to all resource gains, based on your highest wave cleared.';
+      boostLabelGroup.appendChild(boostLabel);
+      boostLabelGroup.appendChild(boostDesc);
+
+      const boostValue = document.createElement('span');
+      boostValue.className = 'rpg-stat-value--boost';
+      boostValue.style.cssText = 'color:#64c8ff;font-weight:700;font-size:14px;white-space:nowrap;';
+      const boostPct = rpgState.highestWaveReached > 0
+        ? '+' + Math.pow(rpgState.highestWaveReached, 1.2).toFixed(1) + '%'
+        : '+0.0%';
+      boostValue.textContent = boostPct;
+
+      boostRow.appendChild(boostLabelGroup);
+      boostRow.appendChild(boostValue);
+      element.appendChild(boostRow);
+    }
+
     // ── Dev Mode: Jump to Wave ──
     if (isDevMode) {
       element.appendChild(makePageBreak('small'));

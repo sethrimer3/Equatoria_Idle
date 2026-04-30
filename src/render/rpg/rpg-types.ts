@@ -139,6 +139,8 @@ export interface SapphireMissile {
   trailX: Float64Array; trailY: Float64Array;
   trailHead: number; trailCount: number;
   hasHitPlayer: boolean;
+  /** Elapsed lifetime in ms — missile self-destructs after MISSILE_MAX_LIFETIME_MS. */
+  lifetimeMs: number;
 }
 
 // ── Sand gatling projectile ────────────────────────────────────

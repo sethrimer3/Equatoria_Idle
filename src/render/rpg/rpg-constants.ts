@@ -160,6 +160,8 @@ export const MISSILE_COLOR             = '#ff7733';
 export const MISSILE_GLOW              = '#ffaa55';
 /** Fraction of MISSILE_TRAIL_CAP used for the dash segment in the trail lineDash effect. */
 export const MISSILE_TRAIL_DASH_RATIO  =   0.6;
+/** Maximum missile lifetime in ms — missile self-destructs if it has not hit the player after this long. */
+export const MISSILE_MAX_LIFETIME_MS   = 6000;
 /** Minimum shield damage — shields always take at least this much damage per hit. */
 export const MINIMUM_SHIELD_DAMAGE     =   1;
 /** Small epsilon used to guard against division-by-zero in speed normalisation. */
