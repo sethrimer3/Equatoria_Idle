@@ -117,6 +117,10 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
 
   // ── Sapphire ship system ──────────────────────────────────────────
 
+  /**
+   * Syncs sapphire ships to match equipped weapon tier.
+   * Call when weapon equip state changes.
+   */
   function syncSapphireShips(): void {
     let equippedTier = 0;
     let baseDamage = 0;
