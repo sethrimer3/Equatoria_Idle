@@ -428,6 +428,22 @@
 - `trySpawnLuckyMote(luckyMotes, enemyTypeId, x, y, luckPct)` takes the pre-computed luck percent as a parameter; the caller (`rpg-render.ts`) provides `getCachedLuckPercent()`.
 - Imports `LuckyMote`, `LuckyMotePopup` from `./rpg-types`; constants from `./rpg-constants`; `TIER_BY_ID`, `TierId` from `../../data/tiers`.
 
+### src/render/rpg/rpg-weapon-systems.ts
+- All player weapon update logic for the RPG tab (~2,434 lines).
+- Extracted from `rpg-render.ts`; companion ship systems further delegated to `rpg-weapon-ships.ts`.
+- Exports `RpgWeaponCtx` interface (dependency-injection context), `RpgWeaponHandle` interface, and `createRpgWeaponSystems(ctx)` factory.
+- Covers: sand gatling projectiles, chain whip softbody, nullstone vortexes, diamond sword combo, iolite poison bolts, emerald heat-seeking missiles, sunstone mines, ruby laser beam, and sand blade (starter weapon).
+- Companion ship systems (sapphire/amethyst) are implemented in `rpg-weapon-ships.ts` and composed via `createShipWeaponSystems(ctx)`.
+- Instantiates `ships = createShipWeaponSystems(ctx)` and delegates all ship state arrays and update functions through the returned `RpgWeaponHandle`.
+- `reset()` method clears all local weapon state AND calls `ships.reset()` to clear in-flight ship lasers.
+
+### src/render/rpg/rpg-weapon-ships.ts
+- Companion ship weapon systems extracted from `rpg-weapon-systems.ts` (~465 lines).
+- Exports `ShipWeaponCtx` interface (structural subset of `RpgWeaponCtx`), `ShipWeaponHandle` interface, and `createShipWeaponSystems(ctx)` factory.
+- Covers: sapphire ships (orbit targeted enemy, fire fast curving lasers) and amethyst ships (distribute across furthest enemies, fire slow spiraling pierce lasers).
+- Private helpers: `updateShipTrail` (circular trail buffer) and `getTargetMaxHp` (extracts max HP from a `ClosestTarget`).
+- `reset()` clears all four arrays (sapphireShips, sapphireLasers, amethystShips, amethystLasers); called by the parent reset on restart.
+
 ### src/render/rpg/rpg-render.ts
 - Independent RPG canvas rendering system for the RPG tab (~6,175 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
