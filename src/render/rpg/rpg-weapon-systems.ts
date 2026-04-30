@@ -14,7 +14,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
+import { getScaledWeaponDamage, getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import {
   HIT_EFFECT_DURATION_MS, TARGET_FRAME_MS,
@@ -38,26 +38,10 @@ import {
   POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
   BOSS_SIZE_BASE,
   FLUID_EXPLOSION_STRENGTH,
-  FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
-  FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
-  FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B,
-  FLUID_MISSILE_R, FLUID_MISSILE_G, FLUID_MISSILE_B,
   FLUID_SAND_R, FLUID_SAND_G, FLUID_SAND_B,
   FLUID_CHAIN_R, FLUID_CHAIN_G, FLUID_CHAIN_B,
   FLUID_BEAM_R, FLUID_BEAM_G, FLUID_BEAM_B,
   FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
-  FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
-  FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
-  FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
-  FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
-  FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
-  FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
-  FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
-  FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
-  FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
-  FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
-  FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
-  FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
   EMERALD_MISSILE_SPEED, EMERALD_MISSILE_MAX_SPEED, EMERALD_MISSILE_SEEK_STR,
   EMERALD_MISSILE_TRAIL_CAP, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_HIT_RADIUS,
   EMERALD_MISSILE_PROXIMITY_PX, EMERALD_MISSILE_DETECT_PX, EMERALD_MISSILE_NO_TARGET_MS,
@@ -84,17 +68,30 @@ import {
   AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
   AMETHYST_LASER_ANGULAR_SPEED, AMETHYST_LASER_DURATION_MS, AMETHYST_LASER_HIT_RADIUS, AMETHYST_LASER_TRAIL_CAP,
   AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW,
+  FLUID_VEL_FRAME_TO_PX_S, FLUID_PROJECTILE_STRENGTH, FLUID_LASER_BEAM_STRENGTH,
+  LASER_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE, SAPPHIRE_SHIELD_RADIUS, MISSILE_SIZE, SAND_PROJ_SIZE,
 } from './rpg-constants';
+import {
+  EMERALD_ENEMY_SIZE, AMBER_ENEMY_SIZE, AMBER_SHARD_SIZE,
+  VOID_ENEMY_SIZE, QUARTZ_ENEMY_SIZE, QUARTZ_SPIKE_SIZE,
+  RUBY_ENEMY_SIZE, RUBY_BOLT_SIZE,
+  SUNSTONE_ENEMY_SIZE, CITRINE_ENEMY_SIZE, CITRINE_BOLT_SIZE,
+  IOLITE_ENEMY_SIZE, AMETHYST_ENEMY_SIZE, AMETHYST_SHARD_SIZE,
+  DIAMOND_ENEMY_SIZE, DIAMOND_SHARD_SIZE,
+  NULLSTONE_ENEMY_SIZE, VOID_TENDRIL_SIZE,
+  FRACTERYL_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE,
+} from './rpg-enemy-constants';
 import {
   chainNodeRadius, chainNodeInvMass,
   getSwordLength, getShardDistances, wrapAngleDiff,
   getVortexTierRadius, getVortexTierDurationMs, getVortexCount,
 } from './rpg-helpers';
+import type { FluidImpulse } from './rpg-fluid';
 import type { RpgPlayerStats } from './rpg-types';
 import type {
-  SandProjectile, ChainWhipState, ChainPhase,
+  SandProjectile, ChainWhipState,
   LaserBeamEffect, NullstoneVortex, VortexWeaponState,
-  SwordComboState, SwordComboPhase, SwipeEffect, PrismaticBeamEffect,
+  SwordComboState,
   IolitePoisonBolt, PoisonDebuff,
   LaserEnemy, SapphireEnemy, SapphireMissile, HitEffect,
 } from './rpg-types';
@@ -187,9 +184,9 @@ export interface RpgWeaponCtx {
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
 
   // Generic multi-type targeting and damage
-  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, isPierce?: boolean) => number;
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   findClosestTarget: (rangeSq: number) => ClosestTarget | null;
-  findClosestEnemy: (rangeSq: number) => ClosestTarget | null;
+  findClosestEnemy: (rangeSq: number) => { x: number; y: number } | null;
   collectEnemyBodyTargets: () => ClosestTarget[];
   findClosestEnemyFrom: (x: number, y: number, rangeSq: number) => ClosestTarget | null;
   getTargetedEnemy: () => ClosestTarget | null;
@@ -201,8 +198,8 @@ export interface RpgWeaponCtx {
 
   // Fluid simulation
   fluid: {
-    addForce: (x: number, y: number, vx: number, vy: number) => void;
-    addExplosion: (x: number, y: number, strength: number, r: number, g: number, b: number) => void;
+    addForce(impulse: FluidImpulse): void;
+    addExplosion(x: number, y: number, strength: number, r: number, g: number, b: number): void;
   };
 
   // Game-flow callbacks
@@ -215,6 +212,7 @@ export interface RpgWeaponCtx {
   // Weapon utility
   findEquippedWeaponIdByEffect: (effectKind: string) => string | null;
   getCachedLuckPercent: () => number;
+  getEffectiveEquippedIds: () => Set<string>;
 }
 
 // ── Weapon system handle returned to rpg-render.ts ────────────────────────
@@ -292,17 +290,13 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
     damageBossEnemy, damageBodyTarget,
-    findClosestTarget, findClosestEnemy, collectEnemyBodyTargets,
+    findClosestEnemy, collectEnemyBodyTargets,
     findClosestEnemyFrom, getTargetedEnemy,
-    spawnDamageNumber, spawnHitVisuals, spawnHitVisualsAt,
+    spawnDamageNumber, spawnHitVisualsAt,
     hitEffects, fluid, rpgSimState, playerStats, mote, dim,
     removeDeadEnemies, checkWaveCompletion,
-    withDamageSource: _withDamageSource,
-    findEquippedWeaponIdByEffect, getCachedLuckPercent,
+    findEquippedWeaponIdByEffect, getEffectiveEquippedIds,
   } = ctx;
-
-  // withDamageSource is renamed to avoid conflicts with the outer ctx name.
-  const withDamageSource = _withDamageSource;
 
   // ── Weapon state ───────────────────────────────────────────────
   const sandProjectiles: SandProjectile[] = [];
