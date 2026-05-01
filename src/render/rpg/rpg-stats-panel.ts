@@ -74,16 +74,18 @@ const STAT_WIRE_COLOR: Record<'atk' | 'def' | 'luck' | 'hp', string> = {
   hp:   '#fde68a', // light yellow
 };
 
-const MAX_WIRES         = 3;
-const ROPE_N            = 24;   // doubled for smoother wire appearance
-const ROPE_GRAVITY      = 0.35;
-const ROPE_DAMPING      = 0.97;
-const ROPE_ITERS        = 5;
-const ROPE_SLACK        = 1.25;
+const MAX_WIRES              = 3;
+const ROPE_N                 = 24;   // doubled for smoother wire appearance
+const ROPE_GRAVITY           = 0.35;
+const ROPE_DAMPING           = 0.97;
+const ROPE_ITERS             = 5;
+const ROPE_SLACK             = 1.25;
 // How long in ms to slurp one link; total slurp = SLURP_MS_PER_LINK * ROPE_N
-const SLURP_MS_PER_LINK = 20;
-const SLURP_TOTAL_MS    = SLURP_MS_PER_LINK * ROPE_N;
-const BLEED_RATE        = 0.0015; // wireColorBleedT advance per ms
+const SLURP_MS_PER_LINK      = 20;
+const SLURP_TOTAL_MS         = SLURP_MS_PER_LINK * ROPE_N;
+const SLURP_RATE             = 1 / SLURP_TOTAL_MS; // pre-computed for hot-path division avoidance
+const BLEED_RATE             = 0.0015; // wireColorBleedT advance per ms
+const TAP_MOVEMENT_THRESHOLD = 8;     // px — move beyond this to distinguish drag from tap
 
 export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle {
   const { rpgSimState, playerStats } = ctx;
@@ -401,56 +403,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     ].join(';');
     statsPanel.appendChild(tipHandle);
 
-    // Attach tip-drag listeners
-    tipHandle.addEventListener('pointerdown', (e: PointerEvent) => {
-      if (!lockedWires.includes(wd)) return;
-      e.stopPropagation();
-      // Switch to dragging-tip mode for this wire
-      if (dragKind !== 'none') return;
-      dragKind = 'tip';
-      dragSourceWire = wd;
-      wireDragClientX = e.clientX;
-      wireDragClientY = e.clientY;
-      tipHandle.setPointerCapture(e.pointerId);
-    }, { passive: true });
-
-    tipHandle.addEventListener('pointermove', (e: PointerEvent) => {
-      if (dragKind !== 'tip' || dragSourceWire !== wd) return;
-      wireDragClientX = e.clientX;
-      wireDragClientY = e.clientY;
-    }, { passive: true });
-
-    tipHandle.addEventListener('pointerup', (e: PointerEvent) => {
-      if (dragKind !== 'tip' || dragSourceWire !== wd) return;
-      const targetStat = landedStat(e.clientX, e.clientY);
-      if (targetStat && targetStat !== wd.stat && !isStatWired(targetStat)) {
-        // Reconnect to new stat
-        disconnectWire(wd);
-        addWireToStat(targetStat);
-      } else if (targetStat === wd.stat) {
-        // Dropped back on same stat — no change
-        dragKind = 'none';
-        dragSourceWire = null;
-      } else {
-        // Dropped nowhere valid — slurp this wire
-        wd.isSlurping = true;
-        wd.slurpMs = 0;
-        dragKind = 'none';
-        dragSourceWire = null;
-      }
-    }, { passive: true });
-
-    tipHandle.addEventListener('pointercancel', () => {
-      if (dragKind === 'tip' && dragSourceWire === wd) {
-        wd.isSlurping = true;
-        wd.slurpMs = 0;
-        dragKind = 'none';
-        dragSourceWire = null;
-      }
-    }, { passive: true });
-
-    // Capture wd after creation (wd is assigned below)
-    let wd!: WireData;
+    // Create the WireData object first so event listeners can reference it directly.
     const data: WireData = {
       stat,
       nodes: [],
@@ -465,7 +418,55 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       isSlurping: false,
       slurpMs: 0,
     };
-    wd = data;
+
+    // Attach tip-drag listeners (close over `data` directly)
+    tipHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (!lockedWires.includes(data)) return;
+      e.stopPropagation();
+      // Switch to dragging-tip mode for this wire
+      if (dragKind !== 'none') return;
+      dragKind = 'tip';
+      dragSourceWire = data;
+      wireDragClientX = e.clientX;
+      wireDragClientY = e.clientY;
+      tipHandle.setPointerCapture(e.pointerId);
+    }, { passive: true });
+
+    tipHandle.addEventListener('pointermove', (e: PointerEvent) => {
+      if (dragKind !== 'tip' || dragSourceWire !== data) return;
+      wireDragClientX = e.clientX;
+      wireDragClientY = e.clientY;
+    }, { passive: true });
+
+    tipHandle.addEventListener('pointerup', (e: PointerEvent) => {
+      if (dragKind !== 'tip' || dragSourceWire !== data) return;
+      const targetStat = landedStat(e.clientX, e.clientY);
+      if (targetStat && targetStat !== data.stat && !isStatWired(targetStat)) {
+        // Reconnect to new stat
+        disconnectWire(data);
+        addWireToStat(targetStat);
+      } else if (targetStat === data.stat) {
+        // Dropped back on same stat — no change
+        dragKind = 'none';
+        dragSourceWire = null;
+      } else {
+        // Dropped nowhere valid — slurp this wire
+        data.isSlurping = true;
+        data.slurpMs = 0;
+        dragKind = 'none';
+        dragSourceWire = null;
+      }
+    }, { passive: true });
+
+    tipHandle.addEventListener('pointercancel', () => {
+      if (dragKind === 'tip' && dragSourceWire === data) {
+        data.isSlurping = true;
+        data.slurpMs = 0;
+        dragKind = 'none';
+        dragSourceWire = null;
+      }
+    }, { passive: true });
+
     return data;
   }
 
@@ -613,7 +614,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       return;
     }
     // Has wires — detect tap vs. drag
-    const moved = Math.hypot(e.clientX - xpTapStartX, e.clientY - xpTapStartY) > 8;
+    const moved = Math.hypot(e.clientX - xpTapStartX, e.clientY - xpTapStartY) > TAP_MOVEMENT_THRESHOLD;
     if (!moved) return;
     xpTapMoved = true;
     const activeWireCount = lockedWires.filter(w => !w.isSlurping).length;
@@ -651,7 +652,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     // Check for tap-to-slurp-all
     if (!xpTapMoved) {
       const activeWireCount = lockedWires.filter(w => !w.isSlurping).length;
-      if (activeWireCount >= MAX_WIRES && Math.hypot(e.clientX - xpTapStartX, e.clientY - xpTapStartY) > 8) {
+      if (activeWireCount >= MAX_WIRES && Math.hypot(e.clientX - xpTapStartX, e.clientY - xpTapStartY) > TAP_MOVEMENT_THRESHOLD) {
         // They tried to drag from max wires — show error
         triggerErrorFeedback();
         return;
@@ -786,7 +787,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   function updateSlurpingWire(wire: WireData, xpC: { x: number; y: number }, deltaMs: number): void {
     wire.slurpMs += deltaMs;
     // Compute how many links have been consumed from the stat end
-    const slurpedLinks = Math.floor((wire.slurpMs / SLURP_TOTAL_MS) * ROPE_N);
+    const slurpProgress = wire.slurpMs * SLURP_RATE;
+    const slurpedLinks = Math.floor(slurpProgress * ROPE_N);
     if (slurpedLinks >= ROPE_N) {
       // All links consumed — mark done
       wire.polyline.style.display = 'none';
@@ -796,7 +798,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
     const visibleCount = ROPE_N - slurpedLinks;
     // Pull the visible tip progressively toward XP
-    const tipProgress = (wire.slurpMs / SLURP_TOTAL_MS) * ROPE_N - slurpedLinks; // 0..1 within current link
+    const tipProgress = slurpProgress * ROPE_N - slurpedLinks; // 0..1 within current link
     const tipLerpEase = 1 - Math.pow(1 - tipProgress, 2);
     const lastVisible = wire.nodes[visibleCount - 1];
     const pullX = lastVisible.x + (xpC.x - lastVisible.x) * tipLerpEase * 0.15;
@@ -850,9 +852,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
    * Format a stat value (ATK, DEF, MAXHP) using the player's selected notation.
    * Values under 1000 are shown as integers; larger values use the number format.
    */
-  function formatStatValue(value: number): string {
+  function formatStatValue(value: number, fmt: NumberFormat): string {
     if (value < 1000) return Math.floor(value).toString();
-    return formatNumberAs(value, ctx.getNumberFormat());
+    return formatNumberAs(value, fmt);
   }
 
   /**
@@ -917,6 +919,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   function updateStatsPanelDom(): void {
     const nowMs = performance.now();
+    // Read number format once per frame to avoid repeated calls
+    const numFmt = ctx.getNumberFormat();
 
     // HP fraction (outside the box)
     hpFractionValue.textContent = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
@@ -925,13 +929,13 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     xpNodeEl.textContent = 'XP  ' + formatXp(rpgSimState.xp);
 
     // ATK
-    atkWidget.valueEl.textContent = formatStatValue(playerStats.atk);
+    atkWidget.valueEl.textContent = formatStatValue(playerStats.atk, numFmt);
     atkBaseEl.textContent  = '(' + PLAYER_ATK_INIT + ')';
     atkAllocEl.textContent = rpgSimState.xpAllocatedToAtk > 0
       ? formatXp(rpgSimState.xpAllocatedToAtk) + ' xp' : '';
 
     // DEF
-    defWidget.valueEl.textContent = formatStatValue(playerStats.def);
+    defWidget.valueEl.textContent = formatStatValue(playerStats.def, numFmt);
     const defXpContrib = getEffectiveXpDefBonus(rpgSimState);
     const baseDef = playerStats.def - defXpContrib;
     defBaseEl.textContent  = '(' + baseDef + ')';
@@ -939,7 +943,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       ? formatXp(rpgSimState.xpAllocatedToDef) + ' xp' : '';
 
     // MAXHP
-    maxHpWidget.valueEl.textContent = formatStatValue(playerStats.maxHp);
+    maxHpWidget.valueEl.textContent = formatStatValue(playerStats.maxHp, numFmt);
     const hpBonus = getEffectiveXpHpBonus(rpgSimState);
     if (hpBonus > 0) {
       maxHpAllocEl.textContent = '+' + hpBonus + ' bonus';

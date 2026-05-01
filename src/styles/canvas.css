@@ -142,8 +142,9 @@
   transition: border-color 0.15s, background 0.15s, color 0.15s;
   touch-action: none;
   pointer-events: auto;
-  /* Fixed width so the box never grows/shrinks as the XP number changes */
-  min-width: 80px;
+  /* Fixed width so the box never grows/shrinks as the XP number changes.
+   * 120px accommodates "XP  1.23e+100" (scientific notation, up to exponent 3 digits) */
+  min-width: 120px;
   text-align: center;
   white-space: nowrap;
 }
