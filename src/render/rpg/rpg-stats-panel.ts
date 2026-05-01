@@ -610,6 +610,11 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
    * Compute the ordered list of DPS display slots from the currently equipped
    * weapon IDs.  Sand weapons (sand_blade, __base__) are collapsed into a
    * single SAND_SLOT_KEY entry that always appears first.
+   *
+   * The sand slot is shown only when no non-sand weapon is equipped, or when
+   * the sand gatling (sand_blade) is explicitly one of the equipped weapons.
+   * If other weapons are equipped without sand_blade, the sand slot is hidden
+   * because the base sand attack is superseded.
    */
   function buildDisplaySlots(equippedIds: string[]): string[] {
     const slots: string[] = [];
@@ -625,8 +630,15 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
         slots.push(slot);
       }
     }
-    // Sand slot is always shown (base attack is always available).
-    if (!hasSandSlot) slots.unshift(SAND_SLOT_KEY);
+    // Show the sand slot only when there are no non-sand weapons equipped
+    // (i.e. the base sand attack is the only source of damage), or when the
+    // sand gatling is itself the equipped weapon (sand_blade in equippedIds).
+    if (!hasSandSlot) {
+      const allWeaponsAreSand = equippedIds.every(id => SAND_SLOT_MEMBERS.has(id));
+      if (allWeaponsAreSand) {
+        slots.unshift(SAND_SLOT_KEY);
+      }
+    }
     return slots;
   }
 

@@ -127,7 +127,9 @@ export function updateLuckyMotes(
     const magnetDistSq = LUCKY_MOTE_MAGNET_DIST * LUCKY_MOTE_MAGNET_DIST;
     if (distSq <= magnetDistSq) {
       const dist = Math.sqrt(distSq);
-      const pullStr = LUCKY_MOTE_MAGNET_SPEED * dt * (1 - dist / LUCKY_MOTE_MAGNET_DIST + 0.3);
+      // Linear falloff: full pull strength at center, zero at the magnet boundary.
+      // No base constant so the pull is smooth (no discontinuity at entry).
+      const pullStr = LUCKY_MOTE_MAGNET_SPEED * dt * (1 - dist / LUCKY_MOTE_MAGNET_DIST);
       lm.vx += (dx / dist) * pullStr;
       lm.vy += (dy / dist) * pullStr;
     }

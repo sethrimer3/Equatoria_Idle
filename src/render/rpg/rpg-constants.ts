@@ -611,6 +611,15 @@ export const AMETHYST_LASER_SIZE            = 1.2;
 export const AMETHYST_LASER_TRAIL_CAP       = 104;
 export const AMETHYST_LASER_COLOR           = '#9933ff';
 export const AMETHYST_LASER_GLOW            = '#cc99ff';
+// ── Amethyst laser neon trail visual constants ────────────────
+/** Core line width at the trail head (newest/closest point). */
+export const AMETHYST_LASER_TRAIL_CORE_HEAD_W = 2.5;
+/** Core line width at the trail tail (oldest/outermost point). */
+export const AMETHYST_LASER_TRAIL_CORE_TAIL_W = 0.3;
+/** Glow pass line width (glow-canvas coordinate space). */
+export const AMETHYST_LASER_TRAIL_GLOW_W     = 7.0;
+/** Number of taper segments for the core trail (higher = smoother). */
+export const AMETHYST_LASER_TRAIL_TAPER      = 5;
 
 // ── Lucky mote drop constants ──────────────────────────────────
 /** Visual radius (px) of a lucky mote. */
@@ -621,14 +630,14 @@ export const LUCKY_MOTE_BORDER_COLOR        = '#ffd764';
 export const LUCKY_MOTE_MAGNET_DIST         = 55;
 /** Distance (px) at which a lucky mote is collected by the player. */
 export const LUCKY_MOTE_COLLECT_DIST        =  6;
-/** Magnetism speed (px per dt unit at 60fps). */
-export const LUCKY_MOTE_MAGNET_SPEED        =  3.5;
+/** Magnetism acceleration (px per dt unit at 60fps) — kept gentle to avoid violent snapping. */
+export const LUCKY_MOTE_MAGNET_SPEED        =  1.8;
 /** Percentage bonus applied to the matching mote tier on collection (e.g. 0.5 = +0.5%). */
 export const LUCKY_MOTE_BONUS_PCT           =  0.5;
 /** Initial random drift speed at spawn (px/frame). */
 export const LUCKY_MOTE_SPAWN_SPEED         =  0.9;
-/** Velocity damping per dt tick. */
-export const LUCKY_MOTE_DAMPING             =  0.96;
+/** Velocity damping per dt tick — stronger than before to prevent velocity buildup. */
+export const LUCKY_MOTE_DAMPING             =  0.88;
 /** Duration of the lucky mote popup text (ms). */
 export const LUCKY_POPUP_DURATION_MS        = 1100;
 /** Initial speed of the popup text (px/frame at 60fps). */
