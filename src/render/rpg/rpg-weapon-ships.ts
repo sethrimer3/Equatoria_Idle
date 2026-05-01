@@ -31,7 +31,11 @@ import {
   AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
   AMETHYST_LASER_ANGULAR_SPEED, AMETHYST_LASER_DURATION_MS, AMETHYST_LASER_HIT_RADIUS, AMETHYST_LASER_TRAIL_CAP,
   AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW, AMETHYST_SHIP_ATTACK_RANGE,
+  FLUID_VEL_FRAME_TO_PX_S, FLUID_PROJECTILE_STRENGTH,
+  FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
+  FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
 } from './rpg-constants';
+import type { FluidImpulse } from './rpg-fluid';
 import type { RpgPlayerStats, HitEffect, ClosestTarget } from './rpg-types';
 import type { SapphireShip, SapphireLaser, AmethystShip, AmethystLaser } from './rpg-enemy-types';
 
@@ -44,6 +48,7 @@ export interface ShipWeaponCtx {
   rpgSimState: RpgSimState;
   playerStats: RpgPlayerStats;
   hitEffects: HitEffect[];
+  fluid: { addForce(impulse: FluidImpulse): void };
   getEffectiveEquippedIds: () => Set<string>;
   findEquippedWeaponIdByEffect: (effectKind: string) => string | null;
   findClosestEnemyFrom: (x: number, y: number, rangeSq: number) => ClosestTarget | null;
@@ -81,7 +86,7 @@ export interface ShipWeaponHandle {
 
 export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
   const {
-    mote, dim, rpgSimState, playerStats, hitEffects,
+    mote, dim, rpgSimState, playerStats, hitEffects, fluid,
     getEffectiveEquippedIds, findEquippedWeaponIdByEffect,
     findClosestEnemyFrom, getTargetedEnemy, collectEnemyBodyTargets,
     damageBodyTarget, spawnDamageNumber,
@@ -260,6 +265,15 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
         laser.lateralVy *= Math.pow(SAPPHIRE_LASER_LATERAL_DECAY, dt);
         updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser, SAPPHIRE_LASER_TRAIL_MIN_DIST);
 
+        // Inject forward-motion force into the fluid field (adds sapphire color swirls).
+        fluid.addForce({
+          x: laser.x, y: laser.y,
+          vx: laser.vx * FLUID_VEL_FRAME_TO_PX_S,
+          vy: laser.vy * FLUID_VEL_FRAME_TO_PX_S,
+          r: FLUID_SAPPH_R, g: FLUID_SAPPH_G, b: FLUID_SAPPH_B,
+          strength: FLUID_PROJECTILE_STRENGTH * 0.5,
+        });
+
         const hitTarget = findClosestEnemyFrom(laser.x, laser.y, SAPPHIRE_LASER_HIT_RADIUS * SAPPHIRE_LASER_HIT_RADIUS);
         if (hitTarget) {
           const dmg = damageBodyTarget(hitTarget, laser.scaledDamage, 0.2, false);
@@ -430,6 +444,26 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
         laser.x = laser.centerX + Math.cos(laser.angle) * laser.radius;
         laser.y = laser.centerY + Math.sin(laser.angle) * laser.radius;
         updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser);
+
+        // Inject swirling + inward fluid force in the direction the laser is traveling.
+        // Tangential direction (CCW rotation at current angle) plus inward pull toward center.
+        if (laser.radius > 1) {
+          const tangentX = -Math.sin(laser.angle);
+          const tangentY =  Math.cos(laser.angle);
+          const dxC = laser.centerX - laser.x;
+          const dyC = laser.centerY - laser.y;
+          const rr  = Math.sqrt(dxC * dxC + dyC * dyC) || 1;
+          const inwardX = dxC / rr;
+          const inwardY = dyC / rr;
+          const spiralSpeed = laser.radius * AMETHYST_LASER_ANGULAR_SPEED * FLUID_VEL_FRAME_TO_PX_S;
+          fluid.addForce({
+            x: laser.x, y: laser.y,
+            vx: (tangentX * 0.6 + inwardX * 0.4) * spiralSpeed,
+            vy: (tangentY * 0.6 + inwardY * 0.4) * spiralSpeed,
+            r: FLUID_AMETHYST_R, g: FLUID_AMETHYST_G, b: FLUID_AMETHYST_B,
+            strength: FLUID_PROJECTILE_STRENGTH,
+          });
+        }
 
         let hitIntendedTarget = false;
         for (const target of liveTargets) {

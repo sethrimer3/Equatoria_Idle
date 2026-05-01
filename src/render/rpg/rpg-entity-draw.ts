@@ -46,6 +46,9 @@ import {
   SAPPHIRE_LASER_TRAIL_GLOW_W, SAPPHIRE_LASER_TRAIL_TAPER,
   AMETHYST_SHIP_SIZE, AMETHYST_SHIP_TRAIL_CAP,
   AMETHYST_LASER_SIZE, AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW, AMETHYST_LASER_TRAIL_CAP,
+  AMETHYST_LASER_TRAIL_CORE_HEAD_W, AMETHYST_LASER_TRAIL_CORE_TAIL_W,
+  AMETHYST_LASER_TRAIL_GLOW_W, AMETHYST_LASER_TRAIL_TAPER,
+  AMETHYST_LASER_DURATION_MS,
 } from './rpg-constants';
 import {
   beginNeonGlowBatch, endNeonGlowBatch,
@@ -71,6 +74,15 @@ const _sapphireLaserTrailCfg: NeonTrailConfig = {
   coreTailWidth:  SAPPHIRE_LASER_TRAIL_CORE_TAIL_W,
   glowWidth:      SAPPHIRE_LASER_TRAIL_GLOW_W,
   taperSegments:  SAPPHIRE_LASER_TRAIL_TAPER,
+};
+
+const _amethystLaserTrailCfg: NeonTrailConfig = {
+  coreColor:      AMETHYST_LASER_COLOR,
+  glowColor:      AMETHYST_LASER_GLOW,
+  coreHeadWidth:  AMETHYST_LASER_TRAIL_CORE_HEAD_W,
+  coreTailWidth:  AMETHYST_LASER_TRAIL_CORE_TAIL_W,
+  glowWidth:      AMETHYST_LASER_TRAIL_GLOW_W,
+  taperSegments:  AMETHYST_LASER_TRAIL_TAPER,
 };
 
 // ── Low-graphics mode flag ────────────────────────────────────
@@ -700,35 +712,28 @@ export function drawAmethystLasers(
 ): void {
   if (lasers.length === 0) return;
   ctx.save();
-  for (const laser of lasers) {
-    const alpha = laser.lifeMs / 1500;
-    // Trail (skip in low-graphics mode)
-    if (!isLowGraphicsMode && laser.trailCount >= 2) {
-      const oldestIdx = (laser.trailHead - laser.trailCount + AMETHYST_LASER_TRAIL_CAP) % AMETHYST_LASER_TRAIL_CAP;
-      ctx.globalAlpha = alpha * 0.45;
-      ctx.lineWidth = 2.2;
-      ctx.strokeStyle = AMETHYST_LASER_COLOR;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = AMETHYST_LASER_GLOW;
-      ctx.beginPath();
-      ctx.moveTo(laser.trailX[oldestIdx], laser.trailY[oldestIdx]);
-      for (let i = 1; i < laser.trailCount; i++) {
-        const idx = (oldestIdx + i) % AMETHYST_LASER_TRAIL_CAP;
-        ctx.lineTo(laser.trailX[idx], laser.trailY[idx]);
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      for (let i = 0; i < laser.trailCount; i++) {
-        const idx = (laser.trailHead - laser.trailCount + i + AMETHYST_LASER_TRAIL_CAP) % AMETHYST_LASER_TRAIL_CAP;
-        const t   = i / laser.trailCount;
-        const r   = AMETHYST_LASER_SIZE * t * 1.6;
-        if (r < 0.3) continue;
-        ctx.globalAlpha = t * alpha * 0.8;
-        ctx.fillStyle = AMETHYST_LASER_COLOR;
-        ctx.fillRect(Math.floor(laser.trailX[idx] - r), Math.floor(laser.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
+
+  if (!isLowGraphicsMode) {
+    // ── Neon trail glow pass (accumulated on offscreen canvas, then composited) ──
+    beginNeonGlowBatch(ctx);
+    for (const laser of lasers) {
+      if (laser.trailCount >= 2) {
+        drawNeonTrailGlow(laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, AMETHYST_LASER_TRAIL_CAP, _amethystLaserTrailCfg, laser.lifeMs / AMETHYST_LASER_DURATION_MS);
       }
     }
-    // Laser core
+    endNeonGlowBatch(ctx);
+
+    // ── Neon trail core pass (tapered, shrinks from tail to tip as life drops) ──
+    for (const laser of lasers) {
+      if (laser.trailCount >= 2) {
+        drawNeonTrailCore(ctx, laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, AMETHYST_LASER_TRAIL_CAP, _amethystLaserTrailCfg, laser.lifeMs / AMETHYST_LASER_DURATION_MS);
+      }
+    }
+  }
+
+  // ── Laser head ──
+  for (const laser of lasers) {
+    const alpha = laser.lifeMs / AMETHYST_LASER_DURATION_MS;
     ctx.globalAlpha = alpha * 0.9;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = AMETHYST_LASER_SIZE * 5; ctx.shadowColor = AMETHYST_LASER_GLOW;
