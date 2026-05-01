@@ -1930,6 +1930,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       else if (stat === 'def')   rpgSimState.xpAllocatedToDef  = rpgSimState.xp;
       else if (stat === 'luck')  rpgSimState.xpAllocatedToLuck = rpgSimState.xp;
       else if (stat === 'hp')    rpgSimState.xpAllocatedToHp   = rpgSimState.xp;
+      // Wiring changes xpAllocatedStat (and possibly xpAllocatedToLuck),
+      // so the cached luck % is stale even though rpgSimState.xp didn't change.
+      _cachedLuckXp = -1;
       applyEquipmentStats();
     },
   });

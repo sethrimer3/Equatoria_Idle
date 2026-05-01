@@ -9,6 +9,7 @@ import {
   getEquivalence,
   buildEquationView,
   getLoomRate,
+  getWaveBoostMultiplier,
 } from '../sim';
 import {
   clearCanvas,
@@ -261,9 +262,10 @@ function _buildGeneratorRates(
 ): ReadonlyMap<TierId, number> {
   out.clear();
   const loomMultiplier = ctx.appState.game.achievements.loomMultiplierBonus;
+  const waveBoost = getWaveBoostMultiplier(ctx.appState.game.rpg);
   for (const loom of ctx.appState.game.looms.looms) {
     if (!loom.isUnlocked || loom.level <= 0) continue;
-    const baseRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier;
+    const baseRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier * waveBoost;
     const specialBonus = ctx.appState.game.looms.specialPurchased.has(loom.tierId) ? 2 : 1;
     out.set(loom.tierId, baseRate * specialBonus);
   }

@@ -116,7 +116,7 @@ export function handleAction(
       break;
     }
     case 'upgrade_special_loom': {
-      const ok = tryPurchaseSpecialLoom(state.game, action.tierId as TierId);
+      const ok = tryPurchaseSpecialLoom(state.game, action.tierId as TierId, devMode);
       if (ok) audioSystem?.onBuyLoomUpgrade();
       else     audioSystem?.onError();
       break;
