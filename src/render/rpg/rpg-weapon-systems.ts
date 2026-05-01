@@ -33,7 +33,7 @@ import {
   SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
   SWORD_BEAM_DURATION_MS, SWORD_SWIPE_VISUAL_MS,
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
-  SWORD_COMBO_THRESHOLD, SWORD_COMBO_WINDOW_MS, SWORD_COMBO_SPIN_TURNS,
+  SWORD_COMBO_THRESHOLD, SWORD_COMBO_WINDOW_MS, SWORD_COMBO_MIN_SWIPE_DELAY_MS, SWORD_COMBO_SPIN_TURNS,
   SWORD_COMBO_SPIN_MS, SWORD_COMBO_DAMAGE_MULT,
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
@@ -1376,7 +1376,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       for (const e of eigensteinEnemies) checkCombo(e);
       if (ctx.bossEnemy) checkCombo(ctx.bossEnemy);
 
-      if (anyInRange && state.phaseMs >= 500) {
+      if (anyInRange && state.phaseMs >= SWORD_COMBO_MIN_SWIPE_DELAY_MS) {
         // Enemy in range and minimum inter-swipe delay elapsed — start the next slash.
         let bestDistSq = Infinity;
         let bestAngle  = 0;

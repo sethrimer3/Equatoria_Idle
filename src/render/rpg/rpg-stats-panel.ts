@@ -28,6 +28,10 @@ import { PLAYER_ATK_INIT, BASE_ATTACK_TIMER_KEY } from './rpg-constants';
 // Sand blade (base attack) and sand gatling share a single "SAN" DPS slot so
 // that transitioning between the two doesn't change the chart layout.
 const SAND_SLOT_KEY = '__sand__';
+/**
+ * All weapon IDs that belong to the unified "sand" DPS slot.
+ * Update this set whenever a new sand-tier weapon is added to weapon-definitions.ts.
+ */
 const SAND_SLOT_MEMBERS = new Set<string>(['sand_blade', BASE_ATTACK_TIMER_KEY]);
 
 /** Map a weapon ID to its canonical DPS slot key. */
@@ -613,7 +617,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     for (const id of equippedIds) {
       const slot = dpsSlotKey(id);
       if (slot === SAND_SLOT_KEY) {
-        if (!hasSandSlot) { hasSandSlot = true; slots.push(SAND_SLOT_KEY); }
+        if (!hasSandSlot) {
+          hasSandSlot = true;
+          slots.push(SAND_SLOT_KEY);
+        }
       } else {
         slots.push(slot);
       }
