@@ -58,6 +58,7 @@ import {
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_DAMAGE, ORBIT_PROJ_HIT_CD_MS,
   SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_GLOW,
   SWORD_COMBO_THRESHOLD,
+  MAX_DANMAKU_LEVEL,
   BOSS_SIZE_BASE,
   BOSS_GLOW_COLORS,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PLAYER_STRENGTH,
@@ -497,6 +498,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (const [id, tier] of bossPreWaveWeaponTiers) {
       rpgSimState.weaponTiersByWeaponId.set(id, tier);
     }
+    // Remove any entry that was injected by enterBossWave but was not in the
+    // pre-fight snapshot (e.g. the temporary diamond_bastion tier-1 entry added
+    // for bosses the player has never purchased).
+    for (const id of Array.from(rpgSimState.weaponTiersByWeaponId.keys())) {
+      if (!bossPreWaveWeaponTiers.has(id)) rpgSimState.weaponTiersByWeaponId.delete(id);
+    }
     bossPreWaveWeaponTiers = new Map();
     teleportParticles.length = 0;
     applyEquipmentStats();
@@ -632,7 +639,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         // exactly enough hits to build up and complete the 4-hit spin combo.
         bossHitsInRound += 1;
         if (bossHitsInRound >= SWORD_COMBO_THRESHOLD) {
-          boss.danmakuLevel += 1;
+          boss.danmakuLevel = Math.min(boss.danmakuLevel + 1, MAX_DANMAKU_LEVEL);
           teleportPlayerToSafeZone(); // resets bossHitsInRound to 0
         }
       }

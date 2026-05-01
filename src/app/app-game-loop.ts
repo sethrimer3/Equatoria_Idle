@@ -113,10 +113,12 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // Fractional rates are handled by delta-time accumulation.
     const deltaSec = deltaMs / 1000;
     const loomMultiplier = ctx.appState.game.achievements.loomMultiplierBonus;
+    const loomWaveBoost = getWaveBoostMultiplier(ctx.appState.game.rpg);
     for (const loom of ctx.appState.game.looms.looms) {
       if (!loom.isUnlocked || loom.level <= 0) continue;
 
-      const rawRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier;
+      const specialBonus = ctx.appState.game.looms.specialPurchased.has(loom.tierId) ? 2 : 1;
+      const rawRate = getLoomRate(loom.tierId, loom.level) * loomMultiplier * loomWaveBoost * specialBonus;
       if (rawRate <= 0) continue;
 
       const { sizeIndex, emitRatePerSec } = computeOutputCompression(rawRate);
