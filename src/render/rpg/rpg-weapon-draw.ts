@@ -20,7 +20,7 @@ import {
   CHAIN_LINE_COLOR, CHAIN_NODE_COLOR, CHAIN_NODE_GLOW, CHAIN_NODES,
   VORTEX_COLOR, VORTEX_GLOW,
   SWORD_PRISMATIC_COLORS, SWORD_SHARD_COUNT, SWORD_SHARD_SHAPES,
-  SWORD_COMBO_RANGE_MULT, SWORD_COMBO_SPIN_MS, SWORD_COMBO_SPIN_TURNS,
+  SWORD_COMBO_SPIN_MS, SWORD_COMBO_SPIN_TURNS,
   SAND_BLADE_COLORS,
 } from './rpg-constants';
 import { chainNodeRadius, getSwordLength, getShardDistances, getShardStyle } from './rpg-helpers';
@@ -145,7 +145,7 @@ export function drawSwordCombos(
     const tier = weaponTiers.get(weaponId) ?? 1;
     const baseSwordLength = getSwordLength(tier);
     const isSpinCombo = state.phase === 'spin_combo';
-    const swordLength = isSpinCombo ? baseSwordLength * SWORD_COMBO_RANGE_MULT : baseSwordLength;
+    const swordLength = baseSwordLength;
     const dists = getShardDistances(swordLength);
     const nowMs = Date.now();
 
@@ -327,7 +327,7 @@ export function drawSandBladeCombo(
 
   const swordLength    = getSwordLength(1);
   const isSpinCombo    = state.phase === 'spin_combo';
-  const comboLength    = isSpinCombo ? swordLength * SWORD_COMBO_RANGE_MULT : swordLength;
+  const comboLength    = swordLength;
   const dists          = getShardDistances(comboLength);
   const nowMs          = Date.now();
 

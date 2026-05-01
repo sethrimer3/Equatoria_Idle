@@ -3080,7 +3080,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // ── Top-left wave number overlay ──────────────────────────────
     if (currentWave > 0) {
       // Check if any enemy or player is near the top-left corner region
-      const TL_X = 80, TL_Y = 30;
+      const TL_X = 190, TL_Y = 55;
       let anyOverlap = false;
       const moteNear = mote.x < TL_X && mote.y < TL_Y;
       if (moteNear) {
@@ -3105,9 +3105,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       ctx.save();
       ctx.globalAlpha = waveOverlapAlpha;
-      ctx.font = 'bold 11px monospace';
+      ctx.font = 'bold 22px monospace';
       ctx.fillStyle = '#fff172';
-      ctx.fillText('W' + currentWave, 5, 13);
+      ctx.fillText('Wave: x' + currentWave, 8, 30);
       ctx.restore();
     }
 

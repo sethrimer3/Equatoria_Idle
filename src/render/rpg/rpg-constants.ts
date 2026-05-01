@@ -270,6 +270,8 @@ export const SWORD_IDLE_ANGLE = 0;
 export const SWORD_COMBO_THRESHOLD = 4;
 /** Time window (ms) after a slash during which the next slash must begin to continue the combo. */
 export const SWORD_COMBO_WINDOW_MS = 1000;
+/** Minimum delay (ms) between individual swipes within a combo. */
+export const SWORD_COMBO_MIN_SWIPE_DELAY_MS = 500;
 /** Number of full 360° rotations during the spin combo. */
 export const SWORD_COMBO_SPIN_TURNS = 3;
 /** Total duration (ms) of the spin combo animation (3 fast spins). */

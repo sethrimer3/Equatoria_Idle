@@ -33,8 +33,8 @@ import {
   SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
   SWORD_BEAM_DURATION_MS, SWORD_SWIPE_VISUAL_MS,
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
-  SWORD_COMBO_THRESHOLD, SWORD_COMBO_WINDOW_MS, SWORD_COMBO_SPIN_TURNS,
-  SWORD_COMBO_SPIN_MS, SWORD_COMBO_DAMAGE_MULT, SWORD_COMBO_RANGE_MULT,
+  SWORD_COMBO_THRESHOLD, SWORD_COMBO_WINDOW_MS, SWORD_COMBO_MIN_SWIPE_DELAY_MS, SWORD_COMBO_SPIN_TURNS,
+  SWORD_COMBO_SPIN_MS, SWORD_COMBO_DAMAGE_MULT,
   POISON_ARMOR_IGNORE_PER_TIER, POISON_DURATION_BASE_TIER, POISON_DURATION_MS_PER_TIER,
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
   POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
@@ -266,6 +266,9 @@ export interface RpgWeaponHandle {
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────
+
+/** Progress thresholds (0–1) at which the spin combo deals a damage tick. */
+const SPIN_TICK_THRESHOLDS = [0, 0.5, 1.0] as const;
 
 export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
   // Unpack stable references from ctx (arrays are live because objects are references).
@@ -1135,7 +1138,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
 
     // ── 3. Add fluid forces from sword drag (each shard per frame) ──
     const isSandBlade = weaponId === BASE_ATTACK_TIMER_KEY;
-    const comboLength = state.phase === 'spin_combo' ? swordLength * SWORD_COMBO_RANGE_MULT : swordLength;
+    const comboLength = swordLength;
     if (state.phase !== 'combo_window') {
       const dists = getShardDistances(comboLength);
       const colorPaletteDrag = isSandBlade ? SAND_BLADE_COLORS : SWORD_PRISMATIC_COLORS;
@@ -1294,22 +1297,22 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
         }
       }
     } else if (state.phase === 'spin_combo') {
-      // ── Spin combo: 3 rapid full rotations, triple damage at 2× range ──
+      // ── Spin combo: 3 rapid full rotations, damage at beginning/middle/end ──
       const spinProgress = state.phaseMs / SWORD_COMBO_SPIN_MS; // 0 → 1
       const totalSpin = SWORD_COMBO_SPIN_TURNS * Math.PI * 2;   // 6π
       // swipeArcEnd stores the spin start angle (set when combo was triggered).
       state.spinComboAngle = state.swipeArcEnd + totalSpin * Math.min(spinProgress, 1);
 
-      // Apply one damage tick per completed full rotation.
-      const rotationsDone = Math.floor(spinProgress * SWORD_COMBO_SPIN_TURNS);
-      if (rotationsDone > state.spinComboDamageTicks) {
-        state.spinComboDamageTicks = rotationsDone;
-        // Clear hit-set so the same enemy can be struck on each rotation.
+      // Apply damage at 3 fixed checkpoints: beginning (0%), middle (50%), end (100%).
+      // The hit-set is cleared before each tick so every enemy can be struck each time.
+      for (let tick = state.spinComboDamageTicks; tick < SPIN_TICK_THRESHOLDS.length; tick++) {
+        if (spinProgress < SPIN_TICK_THRESHOLDS[tick]) break;
+        state.spinComboDamageTicks = tick + 1;
         state.hitThisSwing.clear();
-        // Deal damage in a full 360° arc at 2× range.
-        const comboRange = swordLength * SWORD_COMBO_RANGE_MULT;
+        // Hitbox radius = sword length (same as the visible ring).
+        const comboRange = swordLength;
         swordHitInArc(state, comboRange, rawDamage * SWORD_COMBO_DAMAGE_MULT, 0, Math.PI * 2, weaponId);
-        // Wide fluid burst for the combo.
+        // Wide fluid burst for each tick.
         const numS = 12;
         const colorPaletteSpin = isSandBlade ? SAND_BLADE_COLORS : SWORD_PRISMATIC_COLORS;
         const hexC3 = colorPaletteSpin[Math.floor(nowMs / 40) % colorPaletteSpin.length];
@@ -1373,8 +1376,8 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       for (const e of eigensteinEnemies) checkCombo(e);
       if (ctx.bossEnemy) checkCombo(ctx.bossEnemy);
 
-      if (anyInRange) {
-        // Enemy in range — start the next slash in the combo.
+      if (anyInRange && state.phaseMs >= SWORD_COMBO_MIN_SWIPE_DELAY_MS) {
+        // Enemy in range and minimum inter-swipe delay elapsed — start the next slash.
         let bestDistSq = Infinity;
         let bestAngle  = 0;
         const findNearest = (e: { x: number; y: number }) => {
@@ -2435,7 +2438,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
    * Reuses the sword combo state machine under the sentinel key __base__.
    */
   function updateSandBlade(deltaMs: number): void {
-    ctx.withDamageSource(null, () => updateSwordCombo(BASE_ATTACK_TIMER_KEY, deltaMs));
+    ctx.withDamageSource(BASE_ATTACK_TIMER_KEY, () => updateSwordCombo(BASE_ATTACK_TIMER_KEY, deltaMs));
   }
 
   // ── Expose laserBeamEffect as getter so handle stays in sync ──
