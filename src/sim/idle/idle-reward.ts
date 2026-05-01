@@ -10,6 +10,7 @@ import type { TierId } from '../../data/tiers';
 import { TIERS } from '../../data/tiers';
 import type { GameState } from '../game-state';
 import { getLoom, getLoomRate } from '../looms';
+import { getWaveBoostMultiplier } from '../rpg/rpg-state';
 import {
   createResourceState,
   addMotes,
@@ -48,6 +49,7 @@ export function calculateIdleRewards(
 ): IdleRewardSummary {
   const minutesAway = elapsedMs / 60_000;
   const loomBonus = game.achievements.loomMultiplierBonus;
+  const waveBoost = getWaveBoostMultiplier(game.rpg);
 
   const tierRewards: IdleTierReward[] = TIERS.map((tier) => {
     const loom = getLoom(game.looms, tier.id);
@@ -57,7 +59,8 @@ export function calculateIdleRewards(
     let totalMotes = 0;
 
     if (isUnlocked && loom) {
-      const ratePerSec = getLoomRate(tier.id, loom.level) * loomBonus;
+      const specialBonus = game.looms.specialPurchased.has(tier.id) ? 2 : 1;
+      const ratePerSec = getLoomRate(tier.id, loom.level) * loomBonus * waveBoost * specialBonus;
       ratePerMinute = ratePerSec * 60;
       totalMotes = ratePerSec * (elapsedMs / 1000);
     }

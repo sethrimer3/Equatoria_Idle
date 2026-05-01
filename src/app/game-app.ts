@@ -38,6 +38,7 @@ import {
 } from '../sim/particles';
 import { SPAWNER_GRAVITY_RADIUS } from '../data/particles/particle-config';
 import { createAudioSystem } from '../audio';
+import { MAX_OFFLINE_HOURS } from '../data/balance';
 import { createTraceEffect } from '../render/ui/trace-effect';
 import { createRpgRender } from '../render/rpg/rpg-render';
 import { createRpgMenuPanel } from '../ui/panels/rpg-menu-panel';
@@ -211,7 +212,7 @@ export async function startApp(): Promise<void> {
       // The hidden handler already wrote the departure timestamp, so just read it.
       const hiddenTs = readLastActiveTimestamp();
       if (hiddenTs !== null) {
-        const elapsedMs = Date.now() - hiddenTs;
+        const elapsedMs = Math.min(Date.now() - hiddenTs, MAX_OFFLINE_HOURS * 3_600_000);
         if (elapsedMs > 60_000) {
           const summary = calculateIdleRewards(game, elapsedMs);
           if (summary.tierRewards.some(r => r.totalMotes > 0)) {
@@ -416,7 +417,7 @@ export async function startApp(): Promise<void> {
 
   // ── Idle reward check ──
   if (lastActiveTs !== null) {
-    const elapsedMs = Date.now() - lastActiveTs;
+    const elapsedMs = Math.min(Date.now() - lastActiveTs, MAX_OFFLINE_HOURS * 3_600_000);
     if (elapsedMs > 60_000) {
       const summary = calculateIdleRewards(game, elapsedMs);
       if (summary.tierRewards.some(r => r.totalMotes > 0)) {

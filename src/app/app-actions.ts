@@ -5,7 +5,6 @@
  */
 
 import {
-  createGameState,
   tapEquation,
   tryPurchaseUpgrade,
   tryUnlockNextTier,
@@ -116,7 +115,7 @@ export function handleAction(
       break;
     }
     case 'upgrade_special_loom': {
-      const ok = tryPurchaseSpecialLoom(state.game, action.tierId as TierId);
+      const ok = tryPurchaseSpecialLoom(state.game, action.tierId as TierId, devMode);
       if (ok) audioSystem?.onBuyLoomUpgrade();
       else     audioSystem?.onError();
       break;
@@ -249,13 +248,10 @@ export function handleAction(
       setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
       break;
     case 'save_game':
-      // Handled directly — import kept light
+      // Handled directly in game-app.ts before this function is reached.
       break;
-    case 'reset_game':
-      Object.assign(state, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation', lastTapCanvasX: 0, lastTapCanvasY: 0, lastTapTimeMs: 0 });
-      recomputeGenerators();
-      setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
-      break;
+    // Note: 'reset_game' is also intercepted in game-app.ts (calls deleteSave +
+    // particles.reset) and never reaches this handler. No case needed here.
   }
 }
 

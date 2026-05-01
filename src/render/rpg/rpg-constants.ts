@@ -280,6 +280,8 @@ export const SWORD_COMBO_SPIN_MS = 450;
 export const SWORD_COMBO_DAMAGE_MULT = 1;
 /** Range multiplier during the spin combo. */
 export const SWORD_COMBO_RANGE_MULT = 2;
+/** Maximum danmakuLevel a boss can reach via per-combo increments (prevents runaway bullet counts). */
+export const MAX_DANMAKU_LEVEL = 6;
 
 /**
  * Polygon shard shapes for the prismatic diamond blade.
