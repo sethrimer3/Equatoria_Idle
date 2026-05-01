@@ -37,6 +37,7 @@ import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
+import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import { createDamageFns } from './rpg-damage';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
@@ -229,6 +230,8 @@ export interface RpgRender {
   setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void;
   /** Launch a boss fight for the given 1-based bossId from the RPG menu. */
   startBossFight(bossId: number): void;
+  /** Update the number-format setting used to render stat values in the stats panel. */
+  setNumberFormat(format: NumberFormat): void;
 }
 
 /** Options passed to createRpgRender. */
@@ -239,6 +242,11 @@ export interface RpgRenderOptions {
    * @param bonusPct  The percentage bonus to apply to that tier's mote total (e.g. 0.5 = +0.5%).
    */
   onLuckyMoteCollected?: (tierId: TierId, bonusPct: number) => void;
+  /**
+   * Called when the player triggers an error interaction (e.g. attempting
+   * to add a 4th XP wire).  Callers should play the error SFX.
+   */
+  onError?: () => void;
 }
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState, options: RpgRenderOptions = {}): RpgRender {
@@ -254,6 +262,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let heightPx = INTERNAL_HEIGHT;
   let isLowGraphicsMode = false;
   let enemyIndicatorStyle: 'triangle' | 'outline' | 'off' = 'triangle';
+  let currentNumberFormat: NumberFormat = 'letters';
 
   // ── Shared dimensions box (kept in sync with widthPx/heightPx on resize) ──
   // Passed to rpg-enemy-updates functions via RpgEnemyCtx so they always see
@@ -1932,16 +1941,24 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerStats,
     getCurrentWave: () => currentWave,
     getEffectiveEquippedIds,
-    onXpWireLock: (stat) => {
-      if (stat === 'atk')        rpgSimState.xpAllocatedToAtk  = rpgSimState.xp;
-      else if (stat === 'def')   rpgSimState.xpAllocatedToDef  = rpgSimState.xp;
-      else if (stat === 'luck')  rpgSimState.xpAllocatedToLuck = rpgSimState.xp;
-      else if (stat === 'hp')    rpgSimState.xpAllocatedToHp   = rpgSimState.xp;
-      // Wiring changes xpAllocatedStat (and possibly xpAllocatedToLuck),
+    getNumberFormat: () => currentNumberFormat,
+    onXpWireConnect: (stat) => {
+      // Seed the stat's XP pool with the current total so the bonus starts
+      // from the player's accumulated XP rather than 0.
+      if (stat === 'atk')       rpgSimState.xpAllocatedToAtk  = rpgSimState.xp;
+      else if (stat === 'def')  rpgSimState.xpAllocatedToDef  = rpgSimState.xp;
+      else if (stat === 'luck') rpgSimState.xpAllocatedToLuck = rpgSimState.xp;
+      else if (stat === 'hp')   rpgSimState.xpAllocatedToHp   = rpgSimState.xp;
+      // Wiring changes xpAllocatedStats (and possibly luck),
       // so the cached luck % is stale even though rpgSimState.xp didn't change.
       _cachedLuckXp = -1;
       applyEquipmentStats();
     },
+    onXpWireDisconnect: () => {
+      _cachedLuckXp = -1;
+      applyEquipmentStats();
+    },
+    onError: () => { options.onError?.(); },
   });
   _forwardRecordDps = (dmg, color) => statsPanel.recordDps(dmg, color);
 
@@ -3357,6 +3374,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     startBossFight(bossId: number): void {
       startBossFight(bossId);
+    },
+
+    setNumberFormat(format: NumberFormat): void {
+      currentNumberFormat = format;
     },
   };
 }

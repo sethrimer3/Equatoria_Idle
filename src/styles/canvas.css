@@ -104,23 +104,6 @@
   pointer-events: none;
 }
 
-/* ── Player stats box (HP / ATK / DEF grouped with XP at top) ── */
-.rpg-player-stats-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  flex: 0 0 auto;
-  height: 90%;
-  margin: auto 0;
-  border: 1px solid rgba(167, 139, 250, 0.35);
-  border-radius: 6px;
-  padding: 4px 8px 5px;
-  background: rgba(0, 0, 0, 0.25);
-  /* Make pointer-events work for the XP node inside */
-  pointer-events: auto;
-}
-
 /* Row holding HP / ATK / DEF widgets */
 .rpg-player-stats-row {
   display: flex;
@@ -156,9 +139,14 @@
   border-radius: 3px;
   border: 1px solid rgba(167, 139, 250, 0.4);
   background: rgba(167, 139, 250, 0.08);
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
   touch-action: none;
   pointer-events: auto;
+  /* Fixed width so the box never grows/shrinks as the XP number changes.
+   * 120px accommodates "XP  1.23e+100" (scientific notation, up to exponent 3 digits) */
+  min-width: 120px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .rpg-xp-node:hover {
@@ -170,6 +158,48 @@
   cursor: default;
   border-color: rgba(167, 139, 250, 0.6);
   background: rgba(167, 139, 250, 0.15);
+}
+
+/* Error feedback: red shake, then fades back to purple */
+@keyframes rpg-xp-error-shake {
+  0%   { transform: translateX(0);    border-color: rgba(239, 68, 68, 0.9);  background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+  15%  { transform: translateX(-5px); border-color: rgba(239, 68, 68, 0.9);  background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+  30%  { transform: translateX(5px);  border-color: rgba(239, 68, 68, 0.9);  background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+  45%  { transform: translateX(-3px); border-color: rgba(239, 68, 68, 0.9);  background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+  60%  { transform: translateX(3px);  border-color: rgba(239, 68, 68, 0.7);  background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+  80%  { transform: translateX(0);    border-color: rgba(239, 68, 68, 0.4);  background: rgba(239, 68, 68, 0.08); color: #e0a0f0; }
+  100% { transform: translateX(0);    border-color: rgba(167, 139, 250, 0.4); background: rgba(167, 139, 250, 0.08); color: #a78bfa; }
+}
+
+.rpg-xp-node--error {
+  animation: rpg-xp-error-shake 0.6s ease-out forwards;
+}
+
+/* Plug socket circles in the wire SVG */
+.rpg-plug-socket {
+  pointer-events: none;
+  transition: r 0.15s;
+}
+
+/* ── Player stats box — fixed size to prevent growing/shrinking ─── */
+.rpg-player-stats-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  height: 90%;
+  margin: auto 0;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 6px;
+  padding: 4px 8px 5px;
+  background: rgba(0, 0, 0, 0.25);
+  /* Make pointer-events work for the XP node inside */
+  pointer-events: auto;
+  /* Prevent box from growing or shrinking as stat values change */
+  min-width: 120px;
+  width: 120px;
+  overflow: hidden;
 }
 
 /* ── Sub-text under ATK / DEF (base value + allocated XP) ─────── */
