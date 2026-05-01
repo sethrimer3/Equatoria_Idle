@@ -615,8 +615,8 @@ export function drawSapphireLasers(
     beginNeonGlowBatch(ctx);
     for (const laser of lasers) {
       if (laser.trailCount >= 2) {
-        const lifeAlpha = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
-        drawNeonTrailGlow(laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeAlpha);
+        const lifeFraction = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
+        drawNeonTrailGlow(laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeFraction);
       }
     }
     endNeonGlowBatch(ctx);
@@ -624,8 +624,8 @@ export function drawSapphireLasers(
     // ── Neon trail core pass ──
     for (const laser of lasers) {
       if (laser.trailCount >= 2) {
-        const lifeAlpha = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
-        drawNeonTrailCore(ctx, laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeAlpha);
+        const lifeFraction = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
+        drawNeonTrailCore(ctx, laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeFraction);
       }
     }
   }
