@@ -22,9 +22,10 @@ import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import {
   HIT_EFFECT_DURATION_MS, TARGET_FRAME_MS,
   SAPPHIRE_SHIP_FIRE_MS, SAPPHIRE_SHIP_ORBIT_RADIUS, SAPPHIRE_SHIP_MAX_SPEED,
-  SAPPHIRE_SHIP_LASER_RANGE, SAPPHIRE_SHIP_TRAIL_CAP,
+  SAPPHIRE_SHIP_LASER_RANGE, SAPPHIRE_SHIP_TRAIL_CAP, SAPPHIRE_SHIP_TRAIL_MIN_DIST,
   SAPPHIRE_LASER_SPEED, SAPPHIRE_LASER_LIFE_MS, SAPPHIRE_LASER_HIT_RADIUS,
-  SAPPHIRE_LASER_TRAIL_CAP, SAPPHIRE_LASER_COLOR, SAPPHIRE_LASER_GLOW, SAPPHIRE_LASER_SPREAD_RAD,
+  SAPPHIRE_LASER_TRAIL_CAP, SAPPHIRE_LASER_TRAIL_MIN_DIST,
+  SAPPHIRE_LASER_COLOR, SAPPHIRE_LASER_GLOW, SAPPHIRE_LASER_SPREAD_RAD,
   SAPPHIRE_LASER_CURVE_RATE, SAPPHIRE_LASER_LATERAL_VEL, SAPPHIRE_LASER_LATERAL_DECAY,
   AMETHYST_SHIP_FIRE_MS, AMETHYST_SHIP_ORBIT_RADIUS, AMETHYST_SHIP_MAX_SPEED, AMETHYST_SHIP_TRAIL_CAP,
   AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
@@ -93,14 +94,25 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
 
   // ── Helpers ──────────────────────────────────────────────────────
 
-  /** Appends the current position to a circular trail buffer. */
+  /** Appends the current position to a circular trail buffer.
+   *  @param minDist  Minimum distance (px) the entity must have moved since the
+   *                  last recorded point before a new point is added.  0 means
+   *                  always add (no minimum-distance guard).
+   */
   function updateShipTrail(
     x: number,
     y: number,
     trailX: Float64Array,
     trailY: Float64Array,
     state: { trailHead: number; trailCount: number },
+    minDist: number = 0,
   ): void {
+    if (minDist > 0 && state.trailCount > 0) {
+      const prevIdx = (state.trailHead - 1 + trailX.length) % trailX.length;
+      const dx = x - trailX[prevIdx];
+      const dy = y - trailY[prevIdx];
+      if (dx * dx + dy * dy < minDist * minDist) return;
+    }
     trailX[state.trailHead] = x;
     trailY[state.trailHead] = y;
     state.trailHead = (state.trailHead + 1) % trailX.length;
@@ -186,7 +198,7 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
         ship.x = desiredX;
         ship.y = desiredY;
       }
-      updateShipTrail(ship.x, ship.y, ship.trailX, ship.trailY, ship);
+      updateShipTrail(ship.x, ship.y, ship.trailX, ship.trailY, ship, SAPPHIRE_SHIP_TRAIL_MIN_DIST);
 
       const nearestEnemy = findClosestEnemyFrom(ship.x, ship.y, SAPPHIRE_SHIP_LASER_RANGE * SAPPHIRE_SHIP_LASER_RANGE);
       ship.fireCooldownMs -= deltaMs;
@@ -246,7 +258,7 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
         laser.y += (laser.vy + laser.lateralVy) * dt;
         laser.lateralVx *= Math.pow(SAPPHIRE_LASER_LATERAL_DECAY, dt);
         laser.lateralVy *= Math.pow(SAPPHIRE_LASER_LATERAL_DECAY, dt);
-        updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser);
+        updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser, SAPPHIRE_LASER_TRAIL_MIN_DIST);
 
         const hitTarget = findClosestEnemyFrom(laser.x, laser.y, SAPPHIRE_LASER_HIT_RADIUS * SAPPHIRE_LASER_HIT_RADIUS);
         if (hitTarget) {

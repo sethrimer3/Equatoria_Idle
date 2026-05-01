@@ -541,6 +541,17 @@ export const SAPPHIRE_SHIP_LASER_RANGE      = 105;
 export const SAPPHIRE_SHIP_TRAIL_CAP        = 30;
 /** Ship visual size (px) — 2× original 3 px. */
 export const SAPPHIRE_SHIP_SIZE             = 6;
+// ── Sapphire ship neon trail visual config ─────────────────────
+/** Core trail lineWidth at the head (newest point), px on main canvas. */
+export const SAPPHIRE_SHIP_TRAIL_CORE_HEAD_W  = 2.0;
+/** Core trail lineWidth at the tail (oldest point), px on main canvas. */
+export const SAPPHIRE_SHIP_TRAIL_CORE_TAIL_W  = 0.3;
+/** Glow trail lineWidth (px on half-resolution glow canvas). */
+export const SAPPHIRE_SHIP_TRAIL_GLOW_W       = 4.5;
+/** Number of taper passes for the ship core trail (higher = smoother). */
+export const SAPPHIRE_SHIP_TRAIL_TAPER        = 4;
+/** Minimum travel distance (px) before adding a new ship trail point. */
+export const SAPPHIRE_SHIP_TRAIL_MIN_DIST     = 0.8;
 
 // ── Sapphire laser projectile constants ───────────────────────
 export const SAPPHIRE_LASER_SPEED           = 3.5;   // px/frame at 60fps
@@ -559,6 +570,17 @@ export const SAPPHIRE_LASER_CURVE_RATE      = 0.009;
 export const SAPPHIRE_LASER_LATERAL_VEL     = 0.6;
 /** Per-frame decay of the lateral velocity component. */
 export const SAPPHIRE_LASER_LATERAL_DECAY   = 0.92;
+// ── Sapphire laser neon trail visual config ────────────────────
+/** Core trail lineWidth at the head (newest point), px on main canvas. */
+export const SAPPHIRE_LASER_TRAIL_CORE_HEAD_W = 1.5;
+/** Core trail lineWidth at the tail (oldest point), px on main canvas. */
+export const SAPPHIRE_LASER_TRAIL_CORE_TAIL_W = 0.25;
+/** Glow trail lineWidth (px on half-resolution glow canvas). */
+export const SAPPHIRE_LASER_TRAIL_GLOW_W      = 3.5;
+/** Number of taper passes for the laser core trail (higher = smoother). */
+export const SAPPHIRE_LASER_TRAIL_TAPER       = 4;
+/** Minimum travel distance (px) before adding a new laser trail point. */
+export const SAPPHIRE_LASER_TRAIL_MIN_DIST    = 1.2;
 
 // ── Amethyst companion ship constants ─────────────────────────
 /** Interval (ms) between laser shots per ship. */
