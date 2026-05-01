@@ -22,7 +22,18 @@ import {
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
-import { PLAYER_ATK_INIT } from './rpg-constants';
+import { PLAYER_ATK_INIT, BASE_ATTACK_TIMER_KEY } from './rpg-constants';
+
+// ── DPS slot grouping ─────────────────────────────────────────────────────────
+// Sand blade (base attack) and sand gatling share a single "SAN" DPS slot so
+// that transitioning between the two doesn't change the chart layout.
+const SAND_SLOT_KEY = '__sand__';
+const SAND_SLOT_MEMBERS = new Set<string>(['sand_blade', BASE_ATTACK_TIMER_KEY]);
+
+/** Map a weapon ID to its canonical DPS slot key. */
+function dpsSlotKey(weaponId: string): string {
+  return SAND_SLOT_MEMBERS.has(weaponId) ? SAND_SLOT_KEY : weaponId;
+}
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -80,7 +91,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   function recordDps(dmg: number, _legacyColor = '#fff'): void {
     void _legacyColor;
     if (dmg > 0 && activeDamageWeaponId !== null) {
-      dpsWindow.push({ t: Date.now(), dmg, weaponId: activeDamageWeaponId });
+      dpsWindow.push({ t: Date.now(), dmg, weaponId: dpsSlotKey(activeDamageWeaponId) });
     }
   }
 
@@ -576,11 +587,13 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   }
 
   function weaponAbbrev(weaponId: string): string {
+    if (weaponId === SAND_SLOT_KEY) return 'SAN';
     const tierId = WEAPON_BY_ID.get(weaponId)?.costTierId ?? 'sand';
     return tierId.slice(0, 3).toUpperCase();
   }
 
   function weaponColor(weaponId: string): string {
+    if (weaponId === SAND_SLOT_KEY) return TIER_BY_ID.get('sand')?.color ?? '#ffd764';
     const tierId = WEAPON_BY_ID.get(weaponId)?.costTierId;
     return (tierId ? TIER_BY_ID.get(tierId)?.color : null) ?? '#ffd764';
   }
@@ -589,23 +602,44 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return value >= 1000 ? formatXp(value) : Math.round(value).toString();
   }
 
-  function rebuildDpsRows(equippedIds: string[]): void {
+  /**
+   * Compute the ordered list of DPS display slots from the currently equipped
+   * weapon IDs.  Sand weapons (sand_blade, __base__) are collapsed into a
+   * single SAND_SLOT_KEY entry that always appears first.
+   */
+  function buildDisplaySlots(equippedIds: string[]): string[] {
+    const slots: string[] = [];
+    let hasSandSlot = false;
+    for (const id of equippedIds) {
+      const slot = dpsSlotKey(id);
+      if (slot === SAND_SLOT_KEY) {
+        if (!hasSandSlot) { hasSandSlot = true; slots.push(SAND_SLOT_KEY); }
+      } else {
+        slots.push(slot);
+      }
+    }
+    // Sand slot is always shown (base attack is always available).
+    if (!hasSandSlot) slots.unshift(SAND_SLOT_KEY);
+    return slots;
+  }
+
+  function rebuildDpsRows(displaySlots: string[]): void {
     dpsChartEl.textContent = '';
-    dpsLabelEl.textContent = equippedIds.length > 0 ? '' : 'DPS';
+    dpsLabelEl.textContent = '';
     dpsValueEl.textContent = '';
-    dpsAxisEl.hidden = equippedIds.length === 0;
-    for (const weaponId of equippedIds) {
+    dpsAxisEl.hidden = false;
+    for (const slotId of displaySlots) {
       const row = document.createElement('div');
       row.className = 'rpg-dps-row';
-      row.dataset.weaponId = weaponId;
+      row.dataset.weaponId = slotId;
       const label = document.createElement('span');
       label.className = 'rpg-dps-label';
-      label.textContent = weaponAbbrev(weaponId);
+      label.textContent = weaponAbbrev(slotId);
       const track = document.createElement('div');
       track.className = 'rpg-dps-track';
       const bar = document.createElement('div');
       bar.className = 'rpg-dps-bar';
-      bar.style.background = weaponColor(weaponId);
+      bar.style.background = weaponColor(slotId);
       track.appendChild(bar);
       row.appendChild(label);
       row.appendChild(track);
@@ -673,22 +707,23 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       dpsWindow.shift();
     }
     const equippedIds = Array.from(ctx.getEffectiveEquippedIds());
-    const equipKey = equippedIds.join('|');
-    if (equipKey !== lastDpsEquipKey) {
-      lastDpsEquipKey = equipKey;
-      rebuildDpsRows(equippedIds);
+    const displaySlots = buildDisplaySlots(equippedIds);
+    const slotsKey = displaySlots.join('|');
+    if (slotsKey !== lastDpsEquipKey) {
+      lastDpsEquipKey = slotsKey;
+      rebuildDpsRows(displaySlots);
     }
-    if (now - lastDpsDomUpdateMs < DPS_DOM_UPDATE_MS && equipKey !== '') return;
+    if (now - lastDpsDomUpdateMs < DPS_DOM_UPDATE_MS && slotsKey !== '') return;
     lastDpsDomUpdateMs = now;
 
-    const dpsByWeapon = new Map<string, number>();
-    for (const weaponId of equippedIds) dpsByWeapon.set(weaponId, 0);
+    const dpsBySlot = new Map<string, number>();
+    for (const slotId of displaySlots) dpsBySlot.set(slotId, 0);
     for (const e of dpsWindow) {
-      if (dpsByWeapon.has(e.weaponId)) {
-        dpsByWeapon.set(e.weaponId, (dpsByWeapon.get(e.weaponId) ?? 0) + e.dmg / (DPS_WINDOW_MS / 1000));
+      if (dpsBySlot.has(e.weaponId)) {
+        dpsBySlot.set(e.weaponId, (dpsBySlot.get(e.weaponId) ?? 0) + e.dmg / (DPS_WINDOW_MS / 1000));
       }
     }
-    const dpsValues = equippedIds.map(id => dpsByWeapon.get(id) ?? 0);
+    const dpsValues = displaySlots.map(id => dpsBySlot.get(id) ?? 0);
     const rawMin = dpsValues.length > 0 ? Math.min(...dpsValues) : 0;
     const rawMax = Math.max(1, ...(dpsValues.length > 0 ? dpsValues : [1]));
     dpsAxisMin += (rawMin - dpsAxisMin) * DPS_AXIS_LERP;
@@ -696,14 +731,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     if (dpsAxisMax <= dpsAxisMin + 0.001) dpsAxisMax = dpsAxisMin + 1;
     dpsAxisLowEl.textContent  = formatDpsAxis(dpsAxisMin);
     dpsAxisHighEl.textContent = formatDpsAxis(dpsAxisMax);
-    for (const weaponId of equippedIds) {
-      const row = dpsChartEl.querySelector<HTMLElement>(`.rpg-dps-row[data-weapon-id="${weaponId}"]`);
+    for (const slotId of displaySlots) {
+      const row = dpsChartEl.querySelector<HTMLElement>(`.rpg-dps-row[data-weapon-id="${slotId}"]`);
       const bar = row?.querySelector<HTMLElement>('.rpg-dps-bar');
       if (!bar || !row) continue;
-      const dps = dpsByWeapon.get(weaponId) ?? 0;
+      const dps = dpsBySlot.get(slotId) ?? 0;
       const pct = dps <= 0 ? 0 : Math.max(8, Math.min(100, ((dps - dpsAxisMin) / (dpsAxisMax - dpsAxisMin)) * 100));
       bar.style.width = pct + '%';
-      row.title = `${weaponAbbrev(weaponId)} ${dps.toFixed(1)} DPS`;
+      row.title = `${weaponAbbrev(slotId)} ${dps.toFixed(1)} DPS`;
     }
   }
 
