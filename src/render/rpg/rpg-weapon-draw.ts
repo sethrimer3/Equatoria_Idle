@@ -110,6 +110,21 @@ export function drawVortexes(ctx: CanvasRenderingContext2D, vortexes: NullstoneV
   ctx.restore();
 }
 
+// ── Diamond sword crescent constants ─────────────────────────────────────────
+// Crescent arc profile: rises steeply to peak at 15% of the arc, then tapers
+// slowly toward the back — creating a wider-front, thinner-back comet shape.
+const DIAMOND_COMET_SEGS        = 20;
+const DIAMOND_COMET_MIN_WIDTH   = 0.5;
+const DIAMOND_COMET_MAX_WIDTH   = 7.0;
+const DIAMOND_COMET_WIDTH_RANGE = DIAMOND_COMET_MAX_WIDTH - DIAMOND_COMET_MIN_WIDTH;
+
+/** Width at normalized arc position t [0,1]: thin → quick peak at t=0.15 → slow taper. */
+function _diamondCometWidth(t: number): number {
+  return t < 0.15
+    ? DIAMOND_COMET_MIN_WIDTH + DIAMOND_COMET_WIDTH_RANGE * (t / 0.15)
+    : DIAMOND_COMET_MAX_WIDTH - DIAMOND_COMET_WIDTH_RANGE * ((t - 0.15) / 0.85);
+}
+
 // ── Diamond sword combos ──────────────────────────────────────────────────────
 
 /**
@@ -195,29 +210,34 @@ export function drawSwordCombos(
       ctx.beginPath(); ctx.arc(sx, sy, scaledRadius * 0.3, 0, Math.PI * 2); ctx.fill();
     }
 
-    // ── B. Draw disconnected swipe-arc visuals ─────────────────
+    // ── B. Draw disconnected swipe-arc visuals (prismatic crescent) ────────────
+    // Each crescent arc varies in lineWidth: thin at the leading edge, rising
+    // quickly to a wide peak (~15% through), then slowly tapering to thin at
+    // the trailing end — a wider-front comet profile.
     for (const fx of state.swipeEffects) {
-      const elapsed = fx.maxTimerMs - fx.timerMs;
+      const elapsed   = fx.maxTimerMs - fx.timerMs;
       const lifeRatio = elapsed / fx.maxTimerMs;
-      const alpha = (1 - lifeRatio) * 0.85;
-      const arcSpan = fx.arcEnd - fx.arcStart; // fixed 180° span
-      const numArcs = SWORD_PRISMATIC_COLORS.length;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = alpha;
-      for (let ci = 0; ci < numArcs; ci++) {
-        const angOffset = (ci / numArcs) * arcSpan;
-        const segStart = fx.arcStart + angOffset;
-        const segEnd   = segStart + arcSpan / numArcs;
-        ctx.strokeStyle = SWORD_PRISMATIC_COLORS[ci];
+      const baseAlpha = (1 - lifeRatio) * 0.9;
+      const arcSpan   = fx.arcEnd - fx.arcStart;
+      ctx.globalAlpha = baseAlpha;
+      ctx.lineCap     = 'round';
+      for (let seg = 0; seg < DIAMOND_COMET_SEGS; seg++) {
+        const t0       = seg       / DIAMOND_COMET_SEGS;
+        const t1       = (seg + 1) / DIAMOND_COMET_SEGS;
+        const segW     = (_diamondCometWidth(t0) + _diamondCometWidth(t1)) * 0.5;
+        const colorIdx = Math.floor(t0 * SWORD_PRISMATIC_COLORS.length) % SWORD_PRISMATIC_COLORS.length;
+        const color    = SWORD_PRISMATIC_COLORS[colorIdx];
+        ctx.lineWidth  = segW;
+        ctx.strokeStyle = color;
         if (!isLowGraphicsMode) {
-          ctx.shadowBlur  = 8; ctx.shadowColor = SWORD_PRISMATIC_COLORS[ci];
+          ctx.shadowBlur = segW * 2; ctx.shadowColor = color;
         }
         ctx.beginPath();
-        ctx.arc(fx.x, fx.y, fx.swordLength, segStart, segEnd);
+        ctx.arc(fx.x, fx.y, fx.swordLength, fx.arcStart + arcSpan * t0, fx.arcStart + arcSpan * t1);
         ctx.stroke();
         ctx.shadowBlur = 0;
       }
-      ctx.lineWidth = 1;
+      ctx.lineCap = 'butt';
     }
 
     // ── C. Draw prismatic beam effects ─────────────────────────
