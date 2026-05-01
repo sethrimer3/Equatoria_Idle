@@ -371,11 +371,24 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts
-- 11 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, and support visuals (~730 lines after enemy functions were moved to `rpg-enemy-draw.ts`).
+- 11 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, and support visuals (~750 lines after neon trail system integration).
 - Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays or scalar values.
 - Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle.
 - Exposes its own `setLowGraphicsMode()` (independent of `rpg-enemy-draw.ts`).
+- `drawSapphireShips` and `drawSapphireLasers` use the neon trail system from `neon-trail-draw.ts`.
+- Module-level `_sapphireShipTrailCfg` and `_sapphireLaserTrailCfg` — cached NeonTrailConfig objects (no per-frame allocation).
 - No runtime side-effects; safe to call from any rendering context.
+
+### src/render/rpg/neon-trail-draw.ts
+- Reusable neon particle trail rendering system for Float64Array ring-buffer trails.
+- Exports `NeonTrailConfig` interface — create at module level to avoid per-frame allocation.
+- Exports `beginNeonGlowBatch(mainCtx)` — clears module-level half-resolution offscreen glow canvas.
+- Exports `drawNeonTrailGlow(trailXArr, trailYArr, trailHead, trailCount, trailCap, cfg, headAlpha)` — draws soft additive glow layer onto the offscreen canvas.
+- Exports `drawNeonTrailCore(mainCtx, ...)` — draws a crisp, tapered, smooth quadratic bezier trail directly on the main canvas.
+- Exports `endNeonGlowBatch(mainCtx)` — composites the accumulated glow back with `'lighter'` additive blending.
+- Zero per-frame heap allocations; one drawImage call per batch.
+- Glow canvas maintained at 0.5× main canvas resolution for fill-rate efficiency.
+- Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
 - 24 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~609 lines).

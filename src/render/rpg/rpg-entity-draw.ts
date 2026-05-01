@@ -38,10 +38,40 @@ import {
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_SIZE, SUNSTONE_MINE_COLOR, SUNSTONE_MINE_GLOW,
   SUNSTONE_MINE_DANGER_COLOR,
   SAPPHIRE_SHIP_SIZE, SAPPHIRE_SHIP_TRAIL_CAP,
+  SAPPHIRE_SHIP_TRAIL_CORE_HEAD_W, SAPPHIRE_SHIP_TRAIL_CORE_TAIL_W,
+  SAPPHIRE_SHIP_TRAIL_GLOW_W, SAPPHIRE_SHIP_TRAIL_TAPER,
   SAPPHIRE_LASER_SIZE, SAPPHIRE_LASER_COLOR, SAPPHIRE_LASER_GLOW, SAPPHIRE_LASER_TRAIL_CAP,
+  SAPPHIRE_LASER_LIFE_MS,
+  SAPPHIRE_LASER_TRAIL_CORE_HEAD_W, SAPPHIRE_LASER_TRAIL_CORE_TAIL_W,
+  SAPPHIRE_LASER_TRAIL_GLOW_W, SAPPHIRE_LASER_TRAIL_TAPER,
   AMETHYST_SHIP_SIZE, AMETHYST_SHIP_TRAIL_CAP,
   AMETHYST_LASER_SIZE, AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW, AMETHYST_LASER_TRAIL_CAP,
 } from './rpg-constants';
+import {
+  beginNeonGlowBatch, endNeonGlowBatch,
+  drawNeonTrailGlow, drawNeonTrailCore,
+  type NeonTrailConfig,
+} from './neon-trail-draw';
+
+// ── Module-level cached neon trail configs (no per-frame allocation) ─────────
+
+const _sapphireShipTrailCfg: NeonTrailConfig = {
+  coreColor:      SAPPHIRE_LASER_COLOR,
+  glowColor:      SAPPHIRE_LASER_GLOW,
+  coreHeadWidth:  SAPPHIRE_SHIP_TRAIL_CORE_HEAD_W,
+  coreTailWidth:  SAPPHIRE_SHIP_TRAIL_CORE_TAIL_W,
+  glowWidth:      SAPPHIRE_SHIP_TRAIL_GLOW_W,
+  taperSegments:  SAPPHIRE_SHIP_TRAIL_TAPER,
+};
+
+const _sapphireLaserTrailCfg: NeonTrailConfig = {
+  coreColor:      SAPPHIRE_LASER_COLOR,
+  glowColor:      SAPPHIRE_LASER_GLOW,
+  coreHeadWidth:  SAPPHIRE_LASER_TRAIL_CORE_HEAD_W,
+  coreTailWidth:  SAPPHIRE_LASER_TRAIL_CORE_TAIL_W,
+  glowWidth:      SAPPHIRE_LASER_TRAIL_GLOW_W,
+  taperSegments:  SAPPHIRE_LASER_TRAIL_TAPER,
+};
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -528,20 +558,27 @@ export function drawSapphireShips(
 ): void {
   if (ships.length === 0) return;
   ctx.save();
-  for (const ship of ships) {
-    // Trail (skip in low-graphics mode)
-    if (!isLowGraphicsMode && ship.trailCount >= 2) {
-      for (let i = 0; i < ship.trailCount; i++) {
-        const idx = (ship.trailHead - ship.trailCount + i + SAPPHIRE_SHIP_TRAIL_CAP) % SAPPHIRE_SHIP_TRAIL_CAP;
-        const t   = i / ship.trailCount;
-        const r   = SAPPHIRE_SHIP_SIZE * t * 0.6;
-        if (r < 0.3) continue;
-        ctx.globalAlpha = t * 0.4;
-        ctx.fillStyle = SAPPHIRE_LASER_COLOR;
-        ctx.fillRect(Math.floor(ship.trailX[idx] - r), Math.floor(ship.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
+
+  if (!isLowGraphicsMode) {
+    // ── Neon trail glow pass (accumulated on offscreen canvas, then composited) ──
+    beginNeonGlowBatch(ctx);
+    for (const ship of ships) {
+      if (ship.trailCount >= 2) {
+        drawNeonTrailGlow(ship.trailX, ship.trailY, ship.trailHead, ship.trailCount, SAPPHIRE_SHIP_TRAIL_CAP, _sapphireShipTrailCfg, 1.0);
       }
     }
-    // Ship body — triangle rotated to face direction of travel
+    endNeonGlowBatch(ctx);
+
+    // ── Neon trail core pass (drawn directly on main canvas) ──
+    for (const ship of ships) {
+      if (ship.trailCount >= 2) {
+        drawNeonTrailCore(ctx, ship.trailX, ship.trailY, ship.trailHead, ship.trailCount, SAPPHIRE_SHIP_TRAIL_CAP, _sapphireShipTrailCfg, 1.0);
+      }
+    }
+  }
+
+  // ── Ship body — triangle rotated to face direction of travel ──
+  for (const ship of ships) {
     ctx.globalAlpha = 1;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = SAPPHIRE_SHIP_SIZE * 3; ctx.shadowColor = SAPPHIRE_LASER_GLOW;
@@ -572,21 +609,30 @@ export function drawSapphireLasers(
 ): void {
   if (lasers.length === 0) return;
   ctx.save();
-  for (const laser of lasers) {
-    const alpha = laser.lifeMs / 700;
-    // Trail (skip in low-graphics mode)
-    if (!isLowGraphicsMode && laser.trailCount >= 2) {
-      for (let i = 0; i < laser.trailCount; i++) {
-        const idx = (laser.trailHead - laser.trailCount + i + SAPPHIRE_LASER_TRAIL_CAP) % SAPPHIRE_LASER_TRAIL_CAP;
-        const t   = i / laser.trailCount;
-        const r   = SAPPHIRE_LASER_SIZE * t * 0.8;
-        if (r < 0.3) continue;
-        ctx.globalAlpha = t * alpha * 0.5;
-        ctx.fillStyle = SAPPHIRE_LASER_COLOR;
-        ctx.fillRect(Math.floor(laser.trailX[idx] - r), Math.floor(laser.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
+
+  if (!isLowGraphicsMode) {
+    // ── Neon trail glow pass ──
+    beginNeonGlowBatch(ctx);
+    for (const laser of lasers) {
+      if (laser.trailCount >= 2) {
+        const lifeFraction = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
+        drawNeonTrailGlow(laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeFraction);
       }
     }
-    // Laser core
+    endNeonGlowBatch(ctx);
+
+    // ── Neon trail core pass ──
+    for (const laser of lasers) {
+      if (laser.trailCount >= 2) {
+        const lifeFraction = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
+        drawNeonTrailCore(ctx, laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeFraction);
+      }
+    }
+  }
+
+  // ── Laser head ──
+  for (const laser of lasers) {
+    const alpha = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
     ctx.globalAlpha = alpha * 0.9;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = SAPPHIRE_LASER_SIZE * 4; ctx.shadowColor = SAPPHIRE_LASER_GLOW;
