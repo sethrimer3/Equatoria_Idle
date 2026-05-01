@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 18;
+const SAVE_VERSION = 19;
 
 interface SaveData {
   version: number;
@@ -75,8 +75,10 @@ interface SaveData {
     bossCompletions?: Record<string, number>;
     /** v16+: boss fight speed setting (10–100). Absent in older saves (defaults to 100). */
     bossSpeedPct?: number;
-    /** v17+: which stat XP is wired to. Absent in older saves (defaults to null). */
+    /** v17–v18 compat: single stat XP is wired to. Absent in v19+. */
     xpAllocatedStat?: 'atk' | 'def' | 'luck' | 'hp' | null;
+    /** v19+: all stats XP is wired to (up to 3). Absent in older saves. */
+    xpAllocatedStats?: string[];
     /** v17+: XP accumulated while wired to ATK. Absent in older saves (defaults to 0). */
     xpAllocatedToAtk?: number;
     /** v17+: XP accumulated while wired to DEF. Absent in older saves (defaults to 0). */
@@ -156,7 +158,7 @@ export function serializeGameState(state: GameState): SaveData {
       respawnWave: state.rpg.respawnWave,
       bossCompletions: Object.fromEntries(state.rpg.bossCompletions),
       bossSpeedPct: state.rpg.bossSpeedPct,
-      xpAllocatedStat: state.rpg.xpAllocatedStat,
+      xpAllocatedStats: Array.from(state.rpg.xpAllocatedStats),
       xpAllocatedToAtk: state.rpg.xpAllocatedToAtk,
       xpAllocatedToDef: state.rpg.xpAllocatedToDef,
       xpAllocatedToLuck: state.rpg.xpAllocatedToLuck,
@@ -317,8 +319,16 @@ export function deserializeGameState(data: SaveData): GameState {
       }
     }
     state.rpg.bossSpeedPct = data.rpg.bossSpeedPct ?? 100;
-    // v17+: XP stat wiring
-    state.rpg.xpAllocatedStat = data.rpg.xpAllocatedStat ?? null;
+    // v19+: XP multi-wire stats; v17–v18 compat: migrate single xpAllocatedStat
+    if (data.rpg.xpAllocatedStats) {
+      const validStats = new Set(['atk', 'def', 'luck', 'hp']);
+      state.rpg.xpAllocatedStats = (data.rpg.xpAllocatedStats as string[])
+        .filter(s => validStats.has(s)) as Array<'atk' | 'def' | 'luck' | 'hp'>;
+    } else if (data.rpg.xpAllocatedStat) {
+      state.rpg.xpAllocatedStats = [data.rpg.xpAllocatedStat];
+    } else {
+      state.rpg.xpAllocatedStats = [];
+    }
     state.rpg.xpAllocatedToAtk = data.rpg.xpAllocatedToAtk ?? 0;
     state.rpg.xpAllocatedToDef = data.rpg.xpAllocatedToDef ?? 0;
     // v18+: luck and HP XP allocation pools

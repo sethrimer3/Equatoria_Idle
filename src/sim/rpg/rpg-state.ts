@@ -63,20 +63,19 @@ export interface RpgSimState {
    */
   bossSpeedPct: number;
   /**
-   * The stat the player has wired their XP source to.
-   * null = not yet chosen. Can be changed by re-wiring (old pool is preserved).
-   * When wired, all newly-earned XP flows only into that stat's XP pool;
-   * the other allocatable stats lose their XP bonus.
+   * The set of stats the player has wired their XP source to (up to 3).
+   * Empty array = not yet wired. When multiple stats are wired, XP is
+   * split evenly among them (each receives amount/n per earn event).
    */
-  xpAllocatedStat: 'atk' | 'def' | 'luck' | 'hp' | null;
+  xpAllocatedStats: Array<'atk' | 'def' | 'luck' | 'hp'>;
   /**
    * Cumulative XP that has flowed into ATK while wired to ATK.
-   * Used to drive the ATK XP bonus when xpAllocatedStat === 'atk'.
+   * Used to drive the ATK XP bonus when 'atk' is in xpAllocatedStats.
    */
   xpAllocatedToAtk: number;
   /**
    * Cumulative XP that has flowed into DEF while wired to DEF.
-   * Used to drive the DEF XP bonus when xpAllocatedStat === 'def'.
+   * Used to drive the DEF XP bonus when 'def' is in xpAllocatedStats.
    */
   xpAllocatedToDef: number;
   /**
@@ -104,7 +103,7 @@ export function createRpgSimState(): RpgSimState {
     rpgUpgradeLevels: new Map(),
     bossCompletions: new Map(),
     bossSpeedPct: 100,
-    xpAllocatedStat: null,
+    xpAllocatedStats: [],
     xpAllocatedToAtk: 0,
     xpAllocatedToDef: 0,
     xpAllocatedToLuck: 0,
@@ -232,14 +231,14 @@ export function formatXp(xp: number): string {
  */
 export function addXpWithAllocation(state: RpgSimState, amount: number): void {
   state.xp += amount;
-  if (state.xpAllocatedStat === 'atk') {
-    state.xpAllocatedToAtk += amount;
-  } else if (state.xpAllocatedStat === 'def') {
-    state.xpAllocatedToDef += amount;
-  } else if (state.xpAllocatedStat === 'luck') {
-    state.xpAllocatedToLuck += amount;
-  } else if (state.xpAllocatedStat === 'hp') {
-    state.xpAllocatedToHp += amount;
+  const n = state.xpAllocatedStats.length;
+  if (n === 0) return;
+  const share = amount / n;
+  for (const stat of state.xpAllocatedStats) {
+    if (stat === 'atk')       state.xpAllocatedToAtk  += share;
+    else if (stat === 'def')  state.xpAllocatedToDef  += share;
+    else if (stat === 'luck') state.xpAllocatedToLuck += share;
+    else if (stat === 'hp')   state.xpAllocatedToHp   += share;
   }
 }
 
@@ -252,9 +251,10 @@ export function addXpWithAllocation(state: RpgSimState, amount: number): void {
  * - If not wired yet: falls back to the global `xp` total (legacy behaviour).
  */
 export function getEffectiveXpAtkBonus(state: RpgSimState): number {
-  if (state.xpAllocatedStat === 'def' || state.xpAllocatedStat === 'luck' || state.xpAllocatedStat === 'hp') return 0;
-  if (state.xpAllocatedStat === 'atk') return getXpAtkBonus(state.xpAllocatedToAtk);
-  return getXpAtkBonus(state.xp);
+  const stats = state.xpAllocatedStats;
+  if (stats.length === 0) return getXpAtkBonus(state.xp); // legacy: not wired yet
+  if (!stats.includes('atk')) return 0; // wired to other stats only
+  return getXpAtkBonus(state.xpAllocatedToAtk);
 }
 
 /**
@@ -265,9 +265,10 @@ export function getEffectiveXpAtkBonus(state: RpgSimState): number {
  * - If not wired yet: falls back to the global `xp` total (legacy behaviour).
  */
 export function getEffectiveXpDefBonus(state: RpgSimState): number {
-  if (state.xpAllocatedStat === 'atk' || state.xpAllocatedStat === 'luck' || state.xpAllocatedStat === 'hp') return 0;
-  if (state.xpAllocatedStat === 'def') return getXpDefBonus(state.xpAllocatedToDef);
-  return getXpDefBonus(state.xp);
+  const stats = state.xpAllocatedStats;
+  if (stats.length === 0) return getXpDefBonus(state.xp); // legacy: not wired yet
+  if (!stats.includes('def')) return 0; // wired to other stats only
+  return getXpDefBonus(state.xpAllocatedToDef);
 }
 
 /**
@@ -281,7 +282,7 @@ export function getEffectiveXpDefBonus(state: RpgSimState): number {
  * log10 curve shifted so that 0 allocation = 0 extra.
  */
 export function getEffectiveXpLuckBonus(state: RpgSimState): number {
-  if (state.xpAllocatedStat !== 'luck') return 0;
+  if (!state.xpAllocatedStats.includes('luck')) return 0;
   if (state.xpAllocatedToLuck <= 0) return 0;
   // Same log10 curve as getLuckPercent but applied to the dedicated luck pool.
   const LUCK_LOG_DIVISOR = 9;
@@ -295,7 +296,7 @@ export function getEffectiveXpLuckBonus(state: RpgSimState): number {
  * decade of XP accumulated while wired to HP.
  */
 export function getEffectiveXpHpBonus(state: RpgSimState): number {
-  if (state.xpAllocatedStat !== 'hp') return 0;
+  if (!state.xpAllocatedStats.includes('hp')) return 0;
   if (state.xpAllocatedToHp <= 0) return 0;
   return Math.floor(Math.log10(state.xpAllocatedToHp + 1) * 10);
 }

@@ -288,7 +288,9 @@ export async function startApp(): Promise<void> {
       const bonus = Math.max(1, current * bonusPct / 100);
       addMotes(appState.game.resources, tierId, bonus);
     },
+    onError: () => { audioSystem.onError(); },
   });
+  rpgRender.setNumberFormat(settings.numberFormat);
   // Stats panel is positioned in the root (above the tab bar); visibility
   // is toggled by setActiveTab alongside rpgContainer.
   root.appendChild(rpgRender.statsPanel);

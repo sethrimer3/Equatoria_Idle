@@ -6,8 +6,10 @@
  *
  * Wire mechanic:
  *   - Drag from the XP node to ATK / DEF / LUCK / MAXHP to allocate future XP.
- *   - Tap the XP node while wired to "slurp" the wire back (undo wiring).
- *   - Grab the wire's tip handle and drag it to a different stat to re-attach.
+ *   - Up to 3 wires can be active simultaneously; XP efficacy is split evenly.
+ *   - Tap the XP node while wired to "slurp" all wires back (undo wiring).
+ *   - Grab a wire's tip handle and drag it to a different stat to re-attach.
+ *   - Attempting a 4th wire triggers error feedback on the XP node.
  *
  * Created via `createRpgStatsPanel(ctx)`.  The caller is responsible for
  * appending `handle.element` to the document and calling `handle.update()`
@@ -23,6 +25,7 @@ import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
 import { PLAYER_ATK_INIT, BASE_ATTACK_TIMER_KEY } from './rpg-constants';
+import { formatNumberAs, type NumberFormat } from '../../util/format';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
 // Sand blade (base attack) and sand gatling share a single "SAN" DPS slot so
@@ -46,7 +49,13 @@ export interface RpgStatsPanelCtx {
   playerStats: RpgPlayerStats;
   getCurrentWave(): number;
   getEffectiveEquippedIds(): Set<string>;
-  onXpWireLock(stat: 'atk' | 'def' | 'luck' | 'hp'): void;
+  getNumberFormat(): NumberFormat;
+  /** Called when a wire is newly connected to a stat. */
+  onXpWireConnect(stat: 'atk' | 'def' | 'luck' | 'hp'): void;
+  /** Called whenever the set of wired stats changes (wire removed or added). */
+  onXpWireDisconnect(): void;
+  /** Called when the player attempts an invalid wire action (too many wires). */
+  onError(): void;
 }
 
 export interface RpgStatsPanelHandle {
@@ -65,8 +74,16 @@ const STAT_WIRE_COLOR: Record<'atk' | 'def' | 'luck' | 'hp', string> = {
   hp:   '#fde68a', // light yellow
 };
 
-const SLURP_DURATION_MS = 400;
-const BLEED_RATE        = 0.0015; // wireColorBleedT advance per ms (reaches 0.5 after ~333 ms)
+const MAX_WIRES         = 3;
+const ROPE_N            = 24;   // doubled for smoother wire appearance
+const ROPE_GRAVITY      = 0.35;
+const ROPE_DAMPING      = 0.97;
+const ROPE_ITERS        = 5;
+const ROPE_SLACK        = 1.25;
+// How long in ms to slurp one link; total slurp = SLURP_MS_PER_LINK * ROPE_N
+const SLURP_MS_PER_LINK = 20;
+const SLURP_TOTAL_MS    = SLURP_MS_PER_LINK * ROPE_N;
+const BLEED_RATE        = 0.0015; // wireColorBleedT advance per ms
 
 export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle {
   const { rpgSimState, playerStats } = ctx;
@@ -124,7 +141,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   const xpNodeEl = document.createElement('div');
   xpNodeEl.className = 'rpg-xp-node';
   xpNodeEl.textContent = 'XP';
-  xpNodeEl.title = 'Drag to ATK / DEF / LUCK / MAXHP to allocate future XP to that stat. Tap to retract wire.';
+  xpNodeEl.title = 'Drag to ATK / DEF / LUCK / MAXHP (up to 3 wires). Tap to retract all wires.';
   playerStatsBox.appendChild(xpNodeEl);
 
   // Stats row 1: ATK | DEF
@@ -229,114 +246,304 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   wireSvg.setAttribute('class', 'rpg-wire-svg');
   wireSvg.setAttribute('aria-hidden', 'true');
 
-  // Gradient definition for wire colour bleed
   const wireDefs = document.createElementNS(wireSvgNS, 'defs') as SVGDefsElement;
-  const wireGrad = document.createElementNS(wireSvgNS, 'linearGradient') as SVGLinearGradientElement;
-  wireGrad.setAttribute('id', 'rpg-wire-gradient');
-  wireGrad.setAttribute('gradientUnits', 'userSpaceOnUse');
-  const gradStop0 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
-  gradStop0.setAttribute('offset', '0%');
-  gradStop0.setAttribute('stop-color', '#a78bfa'); // XP purple (always at XP end)
-  const gradStop1 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
-  gradStop1.setAttribute('offset', '100%');         // transition midpoint (bleeds inward)
-  gradStop1.setAttribute('stop-color', '#a78bfa');
-  const gradStop2 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
-  gradStop2.setAttribute('offset', '100%');
-  gradStop2.setAttribute('stop-color', '#a78bfa'); // stat color (always at stat end)
-  wireGrad.appendChild(gradStop0);
-  wireGrad.appendChild(gradStop1);
-  wireGrad.appendChild(gradStop2);
-  wireDefs.appendChild(wireGrad);
   wireSvg.appendChild(wireDefs);
 
-  const wirePolyline = document.createElementNS(wireSvgNS, 'polyline') as SVGPolylineElement;
-  wirePolyline.setAttribute('class', 'rpg-wire-rope');
-  wirePolyline.setAttribute('fill', 'none');
-  wirePolyline.setAttribute('stroke', 'url(#rpg-wire-gradient)');
-  wirePolyline.setAttribute('stroke-width', '2');
-  wirePolyline.setAttribute('stroke-linecap', 'round');
-  wirePolyline.setAttribute('stroke-linejoin', 'round');
-  wirePolyline.style.display = 'none';
-  wireSvg.appendChild(wirePolyline);
+  // Plug socket circles — one for XP node, one per stat
+  let _plugGradIdSeq = 0;
+  function createPlugCircle(color: string): SVGCircleElement {
+    const radGradId = `rpg-plug-radgrad-${_plugGradIdSeq++}`;
+    const radGrad = document.createElementNS(wireSvgNS, 'radialGradient') as SVGRadialGradientElement;
+    radGrad.setAttribute('id', radGradId);
+    const rs0 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
+    rs0.setAttribute('offset', '0%');
+    rs0.setAttribute('stop-color', color);
+    rs0.setAttribute('stop-opacity', '0.5');
+    const rs1 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
+    rs1.setAttribute('offset', '100%');
+    rs1.setAttribute('stop-color', color);
+    rs1.setAttribute('stop-opacity', '0');
+    radGrad.appendChild(rs0);
+    radGrad.appendChild(rs1);
+    wireDefs.appendChild(radGrad);
+
+    const circle = document.createElementNS(wireSvgNS, 'circle') as SVGCircleElement;
+    circle.setAttribute('r', '5');
+    circle.setAttribute('fill', `url(#${radGradId})`);
+    circle.setAttribute('stroke', color);
+    circle.setAttribute('stroke-width', '1.5');
+    circle.setAttribute('stroke-opacity', '0.6');
+    circle.setAttribute('class', 'rpg-plug-socket');
+    wireSvg.appendChild(circle);
+    return circle;
+  }
+
+  const plugXpCircle   = createPlugCircle('#a78bfa');
+  const plugAtkCircle  = createPlugCircle(STAT_WIRE_COLOR.atk);
+  const plugDefCircle  = createPlugCircle(STAT_WIRE_COLOR.def);
+  const plugLuckCircle = createPlugCircle(STAT_WIRE_COLOR.luck);
+  const plugHpCircle   = createPlugCircle(STAT_WIRE_COLOR.hp);
+
   statsPanel.appendChild(wireSvg);
 
-  // Invisible wire-tip drag handle (positioned over the locked rope tip)
-  const wireTipHandle = document.createElement('div');
-  wireTipHandle.style.cssText = [
-    'position:absolute',
-    'width:18px',
-    'height:18px',
-    'border-radius:50%',
-    'transform:translate(-50%,-50%)',
-    'pointer-events:auto',
-    'cursor:grab',
-    'display:none',
-    'z-index:6',
-    'touch-action:none',
-  ].join(';');
-  statsPanel.appendChild(wireTipHandle);
-
-  // ── Verlet rope state ─────────────────────────────────────────────
-  const ROPE_N       = 12;
-  const ROPE_GRAVITY = 0.35;
-  const ROPE_DAMPING = 0.97;
-  const ROPE_ITERS   = 5;
-  const ROPE_SLACK   = 1.25;
-
+  // ── Rope physics helpers ──────────────────────────────────────────
   interface RopeNode { x: number; y: number; px: number; py: number; }
-  let ropeNodes: RopeNode[] = [];
-  let ropeSegLen = 1;
 
-  function initRope(x0: number, y0: number, x1: number, y1: number): void {
+  function initRope(
+    nodes: RopeNode[],
+    x0: number, y0: number,
+    x1: number, y1: number,
+  ): number /* segLen */ {
     const dist = Math.hypot(x1 - x0, y1 - y0);
-    ropeSegLen = (dist * ROPE_SLACK) / (ROPE_N - 1);
-    ropeNodes = [];
+    const segLen = (dist * ROPE_SLACK) / (ROPE_N - 1);
+    nodes.length = 0;
     for (let i = 0; i < ROPE_N; i++) {
       const t = i / (ROPE_N - 1);
       const xi = x0 + (x1 - x0) * t;
       const yi = y0 + (y1 - y0) * t;
-      ropeNodes.push({ x: xi, y: yi, px: xi, py: yi });
+      nodes.push({ x: xi, y: yi, px: xi, py: yi });
     }
+    return segLen;
   }
 
-  function updateRope(x0: number, y0: number, x1: number, y1: number): void {
-    if (ropeNodes.length !== ROPE_N) { initRope(x0, y0, x1, y1); return; }
-    for (let i = 1; i < ROPE_N - 1; i++) {
-      const n = ropeNodes[i];
+  function updateRope(
+    nodes: RopeNode[],
+    segLen: number,
+    x0: number, y0: number,
+    x1: number, y1: number,
+    visibleCount = ROPE_N,
+  ): void {
+    if (nodes.length !== ROPE_N) return;
+    const lastIdx = visibleCount - 1;
+    for (let i = 1; i < lastIdx; i++) {
+      const n = nodes[i];
       const vx = (n.x - n.px) * ROPE_DAMPING;
       const vy = (n.y - n.py) * ROPE_DAMPING;
       n.px = n.x; n.py = n.y;
       n.x += vx; n.y += vy + ROPE_GRAVITY;
     }
-    const a = ropeNodes[0];
-    a.x = x0; a.y = y0; a.px = x0; a.py = y0;
-    const b = ropeNodes[ROPE_N - 1];
-    b.x = x1; b.y = y1; b.px = x1; b.py = y1;
+    nodes[0].x = x0; nodes[0].y = y0; nodes[0].px = x0; nodes[0].py = y0;
+    nodes[lastIdx].x = x1; nodes[lastIdx].y = y1;
+    nodes[lastIdx].px = x1; nodes[lastIdx].py = y1;
     for (let iter = 0; iter < ROPE_ITERS; iter++) {
-      for (let i = 0; i < ROPE_N - 1; i++) {
-        const na = ropeNodes[i], nb = ropeNodes[i + 1];
+      for (let i = 0; i < lastIdx; i++) {
+        const na = nodes[i], nb = nodes[i + 1];
         const dx = nb.x - na.x, dy = nb.y - na.y;
         const dist = Math.hypot(dx, dy);
         if (dist < 0.001) continue;
-        const diff = ((dist - ropeSegLen) / dist) * 0.5;
+        const diff = ((dist - segLen) / dist) * 0.5;
         const cx = dx * diff, cy = dy * diff;
-        if (i > 0)           { na.x += cx; na.y += cy; }
-        if (i < ROPE_N - 2)  { nb.x -= cx; nb.y -= cy; }
+        if (i > 0)            { na.x += cx; na.y += cy; }
+        if (i < lastIdx - 1)  { nb.x -= cx; nb.y -= cy; }
       }
     }
   }
 
-  // ── Wire drag / lock state ────────────────────────────────────────
-  type WireState = 'idle' | 'dragging' | 'locked' | 'dragging-end' | 'slurping';
-  let wireState: WireState = rpgSimState.xpAllocatedStat ? 'locked' : 'idle';
-  let wireDragClientX = 0;
-  let wireDragClientY = 0;
-  let slurpMs = 0;           // elapsed ms in slurp animation
-  let slurpFromX = 0;        // stat centre x at slurp start
-  let slurpFromY = 0;        // stat centre y at slurp start
-  let wireColorBleedT = rpgSimState.xpAllocatedStat ? 0.5 : 0; // gradient bleed progress
-  let lastFrameTime = 0;     // for delta-time on gradient lerp
+  // ── Per-wire data ─────────────────────────────────────────────────
+  interface WireData {
+    stat: 'atk' | 'def' | 'luck' | 'hp';
+    nodes: RopeNode[];
+    segLen: number;
+    polyline: SVGPolylineElement;
+    gradient: SVGLinearGradientElement;
+    gradStop0: SVGStopElement;
+    gradStop1: SVGStopElement;
+    gradStop2: SVGStopElement;
+    tipHandle: HTMLDivElement;
+    colorBleedT: number;
+    isSlurping: boolean;
+    slurpMs: number;
+  }
 
+  let _wireGradSeq = 0;
+
+  function createWireData(stat: 'atk' | 'def' | 'luck' | 'hp'): WireData {
+    const gradId = `rpg-wire-grad-${_wireGradSeq++}`;
+    const gradient = document.createElementNS(wireSvgNS, 'linearGradient') as SVGLinearGradientElement;
+    gradient.setAttribute('id', gradId);
+    gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
+    const gs0 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
+    gs0.setAttribute('offset', '0%');
+    gs0.setAttribute('stop-color', '#a78bfa');
+    const gs1 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
+    gs1.setAttribute('offset', '100%');
+    gs1.setAttribute('stop-color', '#a78bfa');
+    const gs2 = document.createElementNS(wireSvgNS, 'stop') as SVGStopElement;
+    gs2.setAttribute('offset', '100%');
+    gs2.setAttribute('stop-color', '#a78bfa');
+    gradient.appendChild(gs0);
+    gradient.appendChild(gs1);
+    gradient.appendChild(gs2);
+    wireDefs.appendChild(gradient);
+
+    const polyline = document.createElementNS(wireSvgNS, 'polyline') as SVGPolylineElement;
+    polyline.setAttribute('class', 'rpg-wire-rope');
+    polyline.setAttribute('fill', 'none');
+    polyline.setAttribute('stroke', `url(#${gradId})`);
+    polyline.setAttribute('stroke-width', '2');
+    polyline.setAttribute('stroke-linecap', 'round');
+    polyline.setAttribute('stroke-linejoin', 'round');
+    polyline.style.display = 'none';
+    wireSvg.appendChild(polyline);
+
+    const tipHandle = document.createElement('div') as HTMLDivElement;
+    tipHandle.style.cssText = [
+      'position:absolute',
+      'width:18px',
+      'height:18px',
+      'border-radius:50%',
+      'transform:translate(-50%,-50%)',
+      'pointer-events:auto',
+      'cursor:grab',
+      'display:none',
+      'z-index:6',
+      'touch-action:none',
+    ].join(';');
+    statsPanel.appendChild(tipHandle);
+
+    // Attach tip-drag listeners
+    tipHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (!lockedWires.includes(wd)) return;
+      e.stopPropagation();
+      // Switch to dragging-tip mode for this wire
+      if (dragKind !== 'none') return;
+      dragKind = 'tip';
+      dragSourceWire = wd;
+      wireDragClientX = e.clientX;
+      wireDragClientY = e.clientY;
+      tipHandle.setPointerCapture(e.pointerId);
+    }, { passive: true });
+
+    tipHandle.addEventListener('pointermove', (e: PointerEvent) => {
+      if (dragKind !== 'tip' || dragSourceWire !== wd) return;
+      wireDragClientX = e.clientX;
+      wireDragClientY = e.clientY;
+    }, { passive: true });
+
+    tipHandle.addEventListener('pointerup', (e: PointerEvent) => {
+      if (dragKind !== 'tip' || dragSourceWire !== wd) return;
+      const targetStat = landedStat(e.clientX, e.clientY);
+      if (targetStat && targetStat !== wd.stat && !isStatWired(targetStat)) {
+        // Reconnect to new stat
+        disconnectWire(wd);
+        addWireToStat(targetStat);
+      } else if (targetStat === wd.stat) {
+        // Dropped back on same stat — no change
+        dragKind = 'none';
+        dragSourceWire = null;
+      } else {
+        // Dropped nowhere valid — slurp this wire
+        wd.isSlurping = true;
+        wd.slurpMs = 0;
+        dragKind = 'none';
+        dragSourceWire = null;
+      }
+    }, { passive: true });
+
+    tipHandle.addEventListener('pointercancel', () => {
+      if (dragKind === 'tip' && dragSourceWire === wd) {
+        wd.isSlurping = true;
+        wd.slurpMs = 0;
+        dragKind = 'none';
+        dragSourceWire = null;
+      }
+    }, { passive: true });
+
+    // Capture wd after creation (wd is assigned below)
+    let wd!: WireData;
+    const data: WireData = {
+      stat,
+      nodes: [],
+      segLen: 1,
+      polyline,
+      gradient,
+      gradStop0: gs0,
+      gradStop1: gs1,
+      gradStop2: gs2,
+      tipHandle,
+      colorBleedT: 0,
+      isSlurping: false,
+      slurpMs: 0,
+    };
+    wd = data;
+    return data;
+  }
+
+  // Active locked wires (up to MAX_WIRES)
+  const lockedWires: WireData[] = [];
+
+  // Drag state (new wire from XP, or re-dragging a tip)
+  type DragKind = 'none' | 'new' | 'tip';
+  let dragKind: DragKind = 'none';
+  let dragSourceWire: WireData | null = null; // set when dragKind === 'tip'
+  let wireDragClientX = 0, wireDragClientY = 0;
+  // Drag rope (shared — only one drag at a time)
+  const dragNodes: RopeNode[] = [];
+  let dragSegLen = 1;
+  const dragPolylineSvg = document.createElementNS(wireSvgNS, 'polyline') as SVGPolylineElement;
+  dragPolylineSvg.setAttribute('class', 'rpg-wire-rope');
+  dragPolylineSvg.setAttribute('fill', 'none');
+  dragPolylineSvg.setAttribute('stroke', '#a78bfa');
+  dragPolylineSvg.setAttribute('stroke-width', '2');
+  dragPolylineSvg.setAttribute('stroke-linecap', 'round');
+  dragPolylineSvg.setAttribute('stroke-linejoin', 'round');
+  dragPolylineSvg.style.display = 'none';
+  wireSvg.appendChild(dragPolylineSvg);
+
+  let lastFrameTime = 0;
+
+  // ── Wire management helpers ───────────────────────────────────────
+  function isStatWired(stat: 'atk' | 'def' | 'luck' | 'hp'): boolean {
+    return lockedWires.some(w => w.stat === stat && !w.isSlurping);
+  }
+
+  function disconnectWire(wire: WireData): void {
+    wire.isSlurping = true;
+    wire.slurpMs = 0;
+    dragKind = 'none';
+    dragSourceWire = null;
+    // Remove from rpgSimState immediately so XP stops flowing to it
+    const idx = rpgSimState.xpAllocatedStats.indexOf(wire.stat);
+    if (idx !== -1) {
+      rpgSimState.xpAllocatedStats.splice(idx, 1);
+      ctx.onXpWireDisconnect();
+    }
+  }
+
+  function finalizeWireRemoval(wire: WireData): void {
+    const idx = lockedWires.indexOf(wire);
+    if (idx !== -1) lockedWires.splice(idx, 1);
+    wire.polyline.remove();
+    wire.gradient.remove();
+    wire.tipHandle.remove();
+  }
+
+  function addWireToStat(stat: 'atk' | 'def' | 'luck' | 'hp'): WireData {
+    const wire = createWireData(stat);
+    lockedWires.push(wire);
+    // Initialize rope
+    const xpC   = elementCentreInPanel(xpNodeEl);
+    const statEl = statRoot(stat)!;
+    const statC  = elementCentreInPanel(statEl);
+    wire.segLen  = initRope(wire.nodes, xpC.x, xpC.y, statC.x, statC.y);
+    wire.colorBleedT = 0;
+    // Update sim state
+    rpgSimState.xpAllocatedStats.push(stat);
+    ctx.onXpWireConnect(stat);
+    dragKind = 'none';
+    dragSourceWire = null;
+    return wire;
+  }
+
+  // ── Restore wires from saved state ─────────────────────────────────
+  for (const stat of rpgSimState.xpAllocatedStats) {
+    const wire = createWireData(stat);
+    wire.colorBleedT = 0.5; // already blended
+    lockedWires.push(wire);
+    // Rope will be initialized on first updateWireVisual call once DOM is ready
+  }
+
+  // ── Coordinate helpers ────────────────────────────────────────────
   function toPanelCoords(clientX: number, clientY: number): { x: number; y: number } {
     const r = statsPanel.getBoundingClientRect();
     return { x: clientX - r.left, y: clientY - r.top };
@@ -348,12 +555,11 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return { x: r.left + r.width / 2 - p.left, y: r.top + r.height / 2 - p.top };
   }
 
-  function lockedStatRoot(): HTMLElement | null {
-    const s = rpgSimState.xpAllocatedStat;
-    if (s === 'atk')  return atkWidget.root;
-    if (s === 'def')  return defWidget.root;
-    if (s === 'luck') return luckWidget.root;
-    if (s === 'hp')   return maxHpWidget.root;
+  function statRoot(stat: 'atk' | 'def' | 'luck' | 'hp'): HTMLElement | null {
+    if (stat === 'atk')  return atkWidget.root;
+    if (stat === 'def')  return defWidget.root;
+    if (stat === 'luck') return luckWidget.root;
+    if (stat === 'hp')   return maxHpWidget.root;
     return null;
   }
 
@@ -370,224 +576,258 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return null;
   }
 
-  function startSlurp(): void {
-    if (ropeNodes.length > 0) {
-      slurpFromX = ropeNodes[ROPE_N - 1].x;
-      slurpFromY = ropeNodes[ROPE_N - 1].y;
-    } else {
-      const target = lockedStatRoot();
-      const sc = target ? elementCentreInPanel(target) : { x: 0, y: 0 };
-      slurpFromX = sc.x; slurpFromY = sc.y;
-    }
-    slurpMs = 0;
-    wireState = 'slurping';
-  }
-
-  function lockToStat(stat: 'atk' | 'def' | 'luck' | 'hp'): void {
-    rpgSimState.xpAllocatedStat = stat;
-    wireColorBleedT = 0;
-    wireState = 'locked';
-    ctx.onXpWireLock(stat);
-    const target = lockedStatRoot()!;
-    const xpC   = elementCentreInPanel(xpNodeEl);
-    const statC = elementCentreInPanel(target);
-    initRope(xpC.x, xpC.y, statC.x, statC.y);
-  }
-
-  // ── XP node events (drag to stat, or tap to retract) ─────────────
+  // ── XP node events ────────────────────────────────────────────────
   let xpTapStartX = 0, xpTapStartY = 0, xpTapMoved = false;
 
   xpNodeEl.addEventListener('pointerdown', (e: PointerEvent) => {
     e.stopPropagation();
-    if (wireState === 'locked') {
-      // Start tap tracking — move will cancel tap
+    if (dragKind !== 'none') return;
+    const activeWireCount = lockedWires.filter(w => !w.isSlurping).length;
+    if (activeWireCount >= MAX_WIRES) {
+      // At max wires — track for tap-to-slurp; block new drags
       xpTapStartX = e.clientX; xpTapStartY = e.clientY; xpTapMoved = false;
       xpNodeEl.setPointerCapture(e.pointerId);
       return;
     }
-    if (wireState !== 'idle') return;
-    wireState = 'dragging';
+    if (activeWireCount > 0) {
+      // Has wires but not at max — track for tap-to-slurp OR new drag
+      xpTapStartX = e.clientX; xpTapStartY = e.clientY; xpTapMoved = false;
+      xpNodeEl.setPointerCapture(e.pointerId);
+      // Will switch to new-drag mode in pointermove if user moves enough
+      return;
+    }
+    // No wires — start drag immediately
+    dragKind = 'new';
     wireDragClientX = e.clientX;
     wireDragClientY = e.clientY;
     const xpC = elementCentreInPanel(xpNodeEl);
     const dragP = toPanelCoords(e.clientX, e.clientY);
-    initRope(xpC.x, xpC.y, dragP.x, dragP.y);
+    dragSegLen = initRope(dragNodes, xpC.x, xpC.y, dragP.x, dragP.y);
     xpNodeEl.setPointerCapture(e.pointerId);
   }, { passive: true });
 
   xpNodeEl.addEventListener('pointermove', (e: PointerEvent) => {
-    if (wireState === 'locked') {
-      if (Math.hypot(e.clientX - xpTapStartX, e.clientY - xpTapStartY) > 6) {
-        xpTapMoved = true;
-      }
+    if (dragKind === 'new') {
+      wireDragClientX = e.clientX;
+      wireDragClientY = e.clientY;
       return;
     }
-    if (wireState !== 'dragging') return;
+    // Has wires — detect tap vs. drag
+    const moved = Math.hypot(e.clientX - xpTapStartX, e.clientY - xpTapStartY) > 8;
+    if (!moved) return;
+    xpTapMoved = true;
+    const activeWireCount = lockedWires.filter(w => !w.isSlurping).length;
+    if (activeWireCount >= MAX_WIRES) {
+      // Max wires — can't start new drag; show error if this is first big move
+      // (only once per gesture)
+      return;
+    }
+    // Has wires but not max — start a new drag
+    dragKind = 'new';
     wireDragClientX = e.clientX;
     wireDragClientY = e.clientY;
+    const xpC = elementCentreInPanel(xpNodeEl);
+    const dragP = toPanelCoords(e.clientX, e.clientY);
+    dragSegLen = initRope(dragNodes, xpC.x, xpC.y, dragP.x, dragP.y);
   }, { passive: true });
 
   xpNodeEl.addEventListener('pointerup', (e: PointerEvent) => {
-    if (wireState === 'locked') {
-      // Tap without drag → slurp retract
-      if (!xpTapMoved) {
-        startSlurp();
+    if (dragKind === 'new') {
+      const stat = landedStat(e.clientX, e.clientY);
+      if (stat && !isStatWired(stat)) {
+        dragPolylineSvg.style.display = 'none';
+        addWireToStat(stat);
+      } else if (stat && isStatWired(stat)) {
+        // Already wired to this stat — treat as error
+        triggerErrorFeedback();
+        dragKind = 'none';
+        dragPolylineSvg.style.display = 'none';
+      } else {
+        dragKind = 'none';
+        dragPolylineSvg.style.display = 'none';
       }
       return;
     }
-    if (wireState !== 'dragging') return;
-    const stat = landedStat(e.clientX, e.clientY);
-    if (stat) {
-      lockToStat(stat);
+    // Check for tap-to-slurp-all
+    if (!xpTapMoved) {
+      const activeWireCount = lockedWires.filter(w => !w.isSlurping).length;
+      if (activeWireCount >= MAX_WIRES && Math.hypot(e.clientX - xpTapStartX, e.clientY - xpTapStartY) > 8) {
+        // They tried to drag from max wires — show error
+        triggerErrorFeedback();
+        return;
+      }
+      // Tap — slurp all active wires
+      const hadWires = lockedWires.some(w => !w.isSlurping);
+      if (hadWires) {
+        for (const wire of lockedWires) {
+          if (!wire.isSlurping) disconnectWire(wire);
+        }
+      }
     } else {
-      wireState = 'idle';
-      ropeNodes = [];
+      // They moved while at max — show error
+      const activeWireCount = lockedWires.filter(w => !w.isSlurping).length;
+      if (activeWireCount >= MAX_WIRES) {
+        triggerErrorFeedback();
+      }
     }
   }, { passive: true });
 
   xpNodeEl.addEventListener('pointercancel', () => {
-    if (wireState === 'dragging') { wireState = 'idle'; ropeNodes = []; }
-    xpTapMoved = true; // cancel any pending tap
-  }, { passive: true });
-
-  // ── Wire-tip drag handle events ───────────────────────────────────
-  wireTipHandle.addEventListener('pointerdown', (e: PointerEvent) => {
-    if (wireState !== 'locked') return;
-    e.stopPropagation();
-    wireState = 'dragging-end';
-    wireDragClientX = e.clientX;
-    wireDragClientY = e.clientY;
-    wireTipHandle.setPointerCapture(e.pointerId);
-  }, { passive: true });
-
-  wireTipHandle.addEventListener('pointermove', (e: PointerEvent) => {
-    if (wireState !== 'dragging-end') return;
-    wireDragClientX = e.clientX;
-    wireDragClientY = e.clientY;
-  }, { passive: true });
-
-  wireTipHandle.addEventListener('pointerup', (e: PointerEvent) => {
-    if (wireState !== 'dragging-end') return;
-    const stat = landedStat(e.clientX, e.clientY);
-    if (stat) {
-      lockToStat(stat);
-    } else {
-      startSlurp();
+    if (dragKind === 'new') {
+      dragKind = 'none';
+      dragPolylineSvg.style.display = 'none';
     }
+    xpTapMoved = true;
   }, { passive: true });
 
-  wireTipHandle.addEventListener('pointercancel', () => {
-    if (wireState === 'dragging-end') startSlurp();
-  }, { passive: true });
+  // ── Error feedback ─────────────────────────────────────────────────
+  let errorAnimTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function triggerErrorFeedback(): void {
+    ctx.onError();
+    xpNodeEl.classList.add('rpg-xp-node--error');
+    if (errorAnimTimeout !== null) clearTimeout(errorAnimTimeout);
+    errorAnimTimeout = setTimeout(() => {
+      xpNodeEl.classList.remove('rpg-xp-node--error');
+      errorAnimTimeout = null;
+    }, 600);
+  }
 
   // ── Wire rendering (called each frame from updateStatsPanelDom) ───
   function updateWireVisual(nowMs: number): void {
     const deltaMs = lastFrameTime > 0 ? Math.min(nowMs - lastFrameTime, 100) : 16;
     lastFrameTime = nowMs;
 
-    // Handle slurp animation
-    if (wireState === 'slurping') {
-      slurpMs += deltaMs;
-      const t = Math.min(slurpMs / SLURP_DURATION_MS, 1);
-      // ease-out cubic
-      const ease = 1 - Math.pow(1 - t, 3);
-      const xpC = elementCentreInPanel(xpNodeEl);
-      const tipX = slurpFromX + (xpC.x - slurpFromX) * ease;
-      const tipY = slurpFromY + (xpC.y - slurpFromY) * ease;
-      updateRope(xpC.x, xpC.y, tipX, tipY);
-      if (t >= 1) {
-        // Animation complete — unlock
-        rpgSimState.xpAllocatedStat = null;
-        wireState = 'idle';
-        ropeNodes = [];
-        wireColorBleedT = 0;
-      }
-    }
-
-    if (wireState === 'idle') {
-      wirePolyline.style.display = 'none';
-      wireTipHandle.style.display = 'none';
-      return;
-    }
-
     // Sync SVG viewport to panel size
     const panelW = statsPanel.clientWidth;
     const panelH = statsPanel.clientHeight;
     wireSvg.setAttribute('viewBox', `0 0 ${panelW} ${panelH}`);
 
+    // Update plug socket positions
     const xpC = elementCentreInPanel(xpNodeEl);
-    let tipX: number, tipY: number;
+    updatePlugCircle(plugXpCircle, xpC.x, xpC.y, false);
+    updatePlugCircle(plugAtkCircle,  elementCentreInPanel(atkWidget.root).x,   elementCentreInPanel(atkWidget.root).y,   isStatWired('atk'));
+    updatePlugCircle(plugDefCircle,  elementCentreInPanel(defWidget.root).x,   elementCentreInPanel(defWidget.root).y,   isStatWired('def'));
+    updatePlugCircle(plugLuckCircle, elementCentreInPanel(luckWidget.root).x,  elementCentreInPanel(luckWidget.root).y,  isStatWired('luck'));
+    updatePlugCircle(plugHpCircle,   elementCentreInPanel(maxHpWidget.root).x, elementCentreInPanel(maxHpWidget.root).y, isStatWired('hp'));
 
-    if (wireState === 'dragging') {
-      const p = toPanelCoords(wireDragClientX, wireDragClientY);
-      tipX = p.x; tipY = p.y;
-    } else if (wireState === 'dragging-end') {
-      const p = toPanelCoords(wireDragClientX, wireDragClientY);
-      tipX = p.x; tipY = p.y;
-    } else if (wireState === 'locked') {
-      const target = lockedStatRoot();
-      if (!target) { wirePolyline.style.display = 'none'; wireTipHandle.style.display = 'none'; return; }
-      const statC = elementCentreInPanel(target);
-      tipX = statC.x; tipY = statC.y;
-    } else {
-      // slurping — tip was already set above
-      if (ropeNodes.length < ROPE_N) {
-        wirePolyline.style.display = 'none'; wireTipHandle.style.display = 'none'; return;
+    // Update locked wires
+    for (let i = lockedWires.length - 1; i >= 0; i--) {
+      const wire = lockedWires[i];
+      if (wire.isSlurping) {
+        updateSlurpingWire(wire, xpC, deltaMs);
+        if (wire.nodes.length === 0) {
+          finalizeWireRemoval(wire);
+        }
+      } else {
+        updateLockedWire(wire, xpC, deltaMs);
       }
-      tipX = ropeNodes[ROPE_N - 1].x;
-      tipY = ropeNodes[ROPE_N - 1].y;
     }
 
-    if (wireState !== 'slurping') {
-      updateRope(xpC.x, xpC.y, tipX, tipY);
+    // Update drag wire
+    if (dragKind === 'new' && dragNodes.length === ROPE_N) {
+      const dragP = toPanelCoords(wireDragClientX, wireDragClientY);
+      updateRope(dragNodes, dragSegLen, xpC.x, xpC.y, dragP.x, dragP.y);
+      const pts = dragNodes.map(n => `${n.x.toFixed(1)},${n.y.toFixed(1)}`).join(' ');
+      dragPolylineSvg.setAttribute('points', pts);
+      dragPolylineSvg.style.display = '';
+    } else if (dragKind !== 'new') {
+      dragPolylineSvg.style.display = 'none';
     }
+  }
 
-    if (ropeNodes.length < ROPE_N) {
-      wirePolyline.style.display = 'none'; wireTipHandle.style.display = 'none'; return;
+  function updatePlugCircle(
+    circle: SVGCircleElement,
+    cx: number,
+    cy: number,
+    isActive: boolean,
+  ): void {
+    circle.setAttribute('cx', cx.toFixed(1));
+    circle.setAttribute('cy', cy.toFixed(1));
+    circle.setAttribute('stroke-opacity', isActive ? '1' : '0.45');
+    circle.setAttribute('r', isActive ? '6' : '5');
+  }
+
+  function updateLockedWire(wire: WireData, xpC: { x: number; y: number }, deltaMs: number): void {
+    // Initialize rope if not yet done (e.g. just restored from save)
+    if (wire.nodes.length !== ROPE_N) {
+      const statEl = statRoot(wire.stat)!;
+      const statC = elementCentreInPanel(statEl);
+      wire.segLen = initRope(wire.nodes, xpC.x, xpC.y, statC.x, statC.y);
     }
-
-    const pts = ropeNodes.map(n => `${n.x.toFixed(1)},${n.y.toFixed(1)}`).join(' ');
-    wirePolyline.setAttribute('points', pts);
-    wirePolyline.style.display = '';
-
-    // Update gradient direction to match rope endpoints
-    const r0 = ropeNodes[0];
-    const r1 = ropeNodes[ROPE_N - 1];
-    wireGrad.setAttribute('x1', r0.x.toFixed(1));
-    wireGrad.setAttribute('y1', r0.y.toFixed(1));
-    wireGrad.setAttribute('x2', r1.x.toFixed(1));
-    wireGrad.setAttribute('y2', r1.y.toFixed(1));
-
-    // Determine stat colour for the bleed
-    let statColor = '#a78bfa';
-    if (wireState === 'locked' || wireState === 'dragging-end' || wireState === 'slurping') {
-      const s = rpgSimState.xpAllocatedStat;
-      if (s) statColor = STAT_WIRE_COLOR[s];
-    }
-
-    // Advance colour bleed when locked (toward equilibrium at 0.5)
-    if (wireState === 'locked') {
-      wireColorBleedT = Math.min(0.5, wireColorBleedT + BLEED_RATE * deltaMs);
-    }
-
-    // Update gradient stops:
-    //   stop0 at 0%  = purple (XP end always purple)
-    //   stop1 at (1-bleedT)*100% = purple (where colour starts bleeding in)
-    //   stop2 at 100% = stat colour
-    const bleedPct = ((1 - wireColorBleedT) * 100).toFixed(1);
-    gradStop0.setAttribute('stop-color', '#a78bfa');
-    gradStop1.setAttribute('offset', bleedPct + '%');
-    gradStop1.setAttribute('stop-color', '#a78bfa');
-    gradStop2.setAttribute('stop-color', statColor);
-
-    // Tip handle position — only visible while locked or dragging-end
-    if (wireState === 'locked') {
-      wireTipHandle.style.display = 'block';
-      wireTipHandle.style.left = r1.x.toFixed(1) + 'px';
-      wireTipHandle.style.top  = r1.y.toFixed(1) + 'px';
+    const isDraggingTip = dragKind === 'tip' && dragSourceWire === wire;
+    let tipX: number, tipY: number;
+    if (isDraggingTip) {
+      const p = toPanelCoords(wireDragClientX, wireDragClientY);
+      tipX = p.x; tipY = p.y;
     } else {
-      wireTipHandle.style.display = 'none';
+      const statEl = statRoot(wire.stat)!;
+      const statC = elementCentreInPanel(statEl);
+      tipX = statC.x; tipY = statC.y;
     }
+    updateRope(wire.nodes, wire.segLen, xpC.x, xpC.y, tipX, tipY);
+
+    // Advance colour bleed
+    wire.colorBleedT = Math.min(0.5, wire.colorBleedT + BLEED_RATE * deltaMs);
+
+    renderWirePolyline(wire, xpC.x, xpC.y, tipX, tipY, ROPE_N);
+
+    // Tip handle (only visible when locked and not dragging-tip)
+    if (!isDraggingTip) {
+      const r1 = wire.nodes[ROPE_N - 1];
+      wire.tipHandle.style.display = 'block';
+      wire.tipHandle.style.left = r1.x.toFixed(1) + 'px';
+      wire.tipHandle.style.top  = r1.y.toFixed(1) + 'px';
+    } else {
+      wire.tipHandle.style.display = 'none';
+    }
+  }
+
+  function updateSlurpingWire(wire: WireData, xpC: { x: number; y: number }, deltaMs: number): void {
+    wire.slurpMs += deltaMs;
+    // Compute how many links have been consumed from the stat end
+    const slurpedLinks = Math.floor((wire.slurpMs / SLURP_TOTAL_MS) * ROPE_N);
+    if (slurpedLinks >= ROPE_N) {
+      // All links consumed — mark done
+      wire.polyline.style.display = 'none';
+      wire.tipHandle.style.display = 'none';
+      wire.nodes.length = 0; // signal for removal
+      return;
+    }
+    const visibleCount = ROPE_N - slurpedLinks;
+    // Pull the visible tip progressively toward XP
+    const tipProgress = (wire.slurpMs / SLURP_TOTAL_MS) * ROPE_N - slurpedLinks; // 0..1 within current link
+    const tipLerpEase = 1 - Math.pow(1 - tipProgress, 2);
+    const lastVisible = wire.nodes[visibleCount - 1];
+    const pullX = lastVisible.x + (xpC.x - lastVisible.x) * tipLerpEase * 0.15;
+    const pullY = lastVisible.y + (xpC.y - lastVisible.y) * tipLerpEase * 0.15;
+    updateRope(wire.nodes, wire.segLen, xpC.x, xpC.y, pullX, pullY, visibleCount);
+    renderWirePolyline(wire, xpC.x, xpC.y, pullX, pullY, visibleCount);
+    wire.tipHandle.style.display = 'none';
+  }
+
+  function renderWirePolyline(
+    wire: WireData,
+    x0: number, y0: number,
+    x1: number, y1: number,
+    visibleCount: number,
+  ): void {
+    if (wire.nodes.length < ROPE_N) { wire.polyline.style.display = 'none'; return; }
+    const pts = wire.nodes.slice(0, visibleCount).map(n => `${n.x.toFixed(1)},${n.y.toFixed(1)}`).join(' ');
+    wire.polyline.setAttribute('points', pts);
+    wire.polyline.style.display = '';
+
+    // Gradient from XP end (purple) to stat end (stat color)
+    wire.gradient.setAttribute('x1', x0.toFixed(1));
+    wire.gradient.setAttribute('y1', y0.toFixed(1));
+    wire.gradient.setAttribute('x2', x1.toFixed(1));
+    wire.gradient.setAttribute('y2', y1.toFixed(1));
+    const statColor = wire.isSlurping ? '#a78bfa' : STAT_WIRE_COLOR[wire.stat];
+    const bleedPct = ((1 - wire.colorBleedT) * 100).toFixed(1);
+    wire.gradStop0.setAttribute('stop-color', '#a78bfa');
+    wire.gradStop1.setAttribute('offset', bleedPct + '%');
+    wire.gradStop1.setAttribute('stop-color', '#a78bfa');
+    wire.gradStop2.setAttribute('stop-color', statColor);
   }
 
   function weaponAbbrev(weaponId: string): string {
@@ -604,6 +844,15 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   function formatDpsAxis(value: number): string {
     return value >= 1000 ? formatXp(value) : Math.round(value).toString();
+  }
+
+  /**
+   * Format a stat value (ATK, DEF, MAXHP) using the player's selected notation.
+   * Values under 1000 are shown as integers; larger values use the number format.
+   */
+  function formatStatValue(value: number): string {
+    if (value < 1000) return Math.floor(value).toString();
+    return formatNumberAs(value, ctx.getNumberFormat());
   }
 
   /**
@@ -672,17 +921,17 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     // HP fraction (outside the box)
     hpFractionValue.textContent = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
 
-    // XP node label
+    // XP node label — fixed-width so the box doesn't grow/shrink
     xpNodeEl.textContent = 'XP  ' + formatXp(rpgSimState.xp);
 
     // ATK
-    atkWidget.valueEl.textContent = String(playerStats.atk);
+    atkWidget.valueEl.textContent = formatStatValue(playerStats.atk);
     atkBaseEl.textContent  = '(' + PLAYER_ATK_INIT + ')';
     atkAllocEl.textContent = rpgSimState.xpAllocatedToAtk > 0
       ? formatXp(rpgSimState.xpAllocatedToAtk) + ' xp' : '';
 
     // DEF
-    defWidget.valueEl.textContent = String(playerStats.def);
+    defWidget.valueEl.textContent = formatStatValue(playerStats.def);
     const defXpContrib = getEffectiveXpDefBonus(rpgSimState);
     const baseDef = playerStats.def - defXpContrib;
     defBaseEl.textContent  = '(' + baseDef + ')';
@@ -690,7 +939,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       ? formatXp(rpgSimState.xpAllocatedToDef) + ' xp' : '';
 
     // MAXHP
-    maxHpWidget.valueEl.textContent = String(playerStats.maxHp);
+    maxHpWidget.valueEl.textContent = formatStatValue(playerStats.maxHp);
     const hpBonus = getEffectiveXpHpBonus(rpgSimState);
     if (hpBonus > 0) {
       maxHpAllocEl.textContent = '+' + hpBonus + ' bonus';
@@ -708,14 +957,15 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     luckAllocEl.textContent = rpgSimState.xpAllocatedToLuck > 0
       ? formatXp(rpgSimState.xpAllocatedToLuck) + ' xp' : '';
 
-    // Glow on the wired stat widget
-    atkWidget.root.classList.toggle('rpg-stat--wired',    rpgSimState.xpAllocatedStat === 'atk');
-    defWidget.root.classList.toggle('rpg-stat--wired',    rpgSimState.xpAllocatedStat === 'def');
-    luckWidget.root.classList.toggle('rpg-stat--wired',   rpgSimState.xpAllocatedStat === 'luck');
-    maxHpWidget.root.classList.toggle('rpg-stat--wired',  rpgSimState.xpAllocatedStat === 'hp');
+    // Glow on the wired stat widgets
+    atkWidget.root.classList.toggle('rpg-stat--wired',    isStatWired('atk'));
+    defWidget.root.classList.toggle('rpg-stat--wired',    isStatWired('def'));
+    luckWidget.root.classList.toggle('rpg-stat--wired',   isStatWired('luck'));
+    maxHpWidget.root.classList.toggle('rpg-stat--wired',  isStatWired('hp'));
 
-    // XP node locked indicator
-    xpNodeEl.classList.toggle('rpg-xp-node--locked', wireState === 'locked' || wireState === 'slurping' || wireState === 'dragging-end');
+    // XP node locked indicator (any active wire)
+    const hasActiveWire = lockedWires.some(w => !w.isSlurping);
+    xpNodeEl.classList.toggle('rpg-xp-node--locked', hasActiveWire || dragKind !== 'none');
 
     // Wire visual update (rope physics + SVG redraw + gradient)
     updateWireVisual(nowMs);
