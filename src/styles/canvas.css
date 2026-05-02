@@ -135,16 +135,60 @@
 }
 
 .rpg-xp-box-1 {
-  width: 40px;
+  width: 30px;
+  /* tighter padding so the 20px plug slots fit in the 26px inner width */
+  padding: 4px 2px;
+  gap: 4px;
 }
 
 .rpg-xp-box-2 {
-  width: 120px;
+  /* Width makes each of the 4 stacked sub-cells a square */
+  width: calc((var(--tab-height) * 3 - 8px) / 4);
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 0;
+  gap: 0;
+}
+
+/* ── Box-2 sub-cells (4 equal stacked squares) ──────────────────── */
+.rpg-xp-box-2__cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.12);
+}
+
+.rpg-xp-box-2__cell:last-child {
+  border-bottom: none;
 }
 
 .rpg-xp-box-3 {
   flex: 1 1 auto;
   width: 0; /* flex-basis overridden by flex: 1 */
+  /* override base column direction: sub-cells are arranged in a row */
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  gap: 0;
+}
+
+/* ── Box-3 sub-cells (6 equal-width columns) ────────────────────── */
+.rpg-xp-box-3__cell {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid rgba(167, 139, 250, 0.1);
+  padding: 2px 0;
+}
+
+.rpg-xp-box-3__cell:last-child {
+  border-right: none;
 }
 
 /* ── HP box — current hit-points, sits in the right column ── */
@@ -214,7 +258,57 @@
   display: block;
 }
 
-/* ── XP wiring node ────────────────────────────────────────────── */
+/* ── Player icon inside box 1 ──────────────────────────────────── */
+.rpg-player-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.rpg-player-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Plug container inside box 1 ───────────────────────────────── */
+/*
+ * Holds the 4 rounded-square plug slots (one per stat anchor), evenly
+ * spaced below the player icon.
+ */
+.rpg-plug-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  flex: 1;
+  width: 100%;
+  gap: 3px;
+}
+
+/* ── Plug slot — square container with rounded edges ────────────── */
+.rpg-plug-slot {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Slot border colour tinted to match each stat */
+.rpg-plug-slot--atk  { border-color: rgba(252, 165, 165, 0.30); }
+.rpg-plug-slot--def  { border-color: rgba(147, 197, 253, 0.30); }
+.rpg-plug-slot--hp   { border-color: rgba(253, 230, 138, 0.30); }
+.rpg-plug-slot--luck { border-color: rgba(134, 239, 172, 0.30); }
+
+
 .rpg-xp-node {
   font-size: 10px;
   font-weight: 700;
@@ -222,18 +316,41 @@
   letter-spacing: 1px;
   cursor: crosshair;
   user-select: none;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border-radius: 3px;
   border: 1px solid rgba(167, 139, 250, 0.4);
   background: rgba(167, 139, 250, 0.08);
   transition: border-color 0.15s, background 0.15s, color 0.15s;
   touch-action: none;
   pointer-events: auto;
-  /* Fixed width so the box never grows/shrinks as the XP number changes.
-   * 120px accommodates "XP  1.23e+100" (scientific notation, up to exponent 3 digits) */
-  min-width: 120px;
+  /* Compact two-line layout: "XP" label above the value */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 88%;
   text-align: center;
   white-space: nowrap;
+}
+
+/* XP label line ("XP") */
+.rpg-xp-label-text {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  line-height: 1;
+}
+
+/* XP amount line (formatted value) */
+.rpg-xp-amount-text {
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+  opacity: 0.85;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .rpg-xp-node:hover {
