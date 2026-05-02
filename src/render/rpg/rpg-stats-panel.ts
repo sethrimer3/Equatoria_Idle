@@ -128,115 +128,45 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   statsPanel.id = 'rpg-stats-panel';
   statsPanel.style.display = 'none';
 
-  // ── XP Box 1 (thin) — player icon + 4 plug slots ─────────────────
+  // ── Box 6 (thin) — glowing sand-grain player icon + 5 sand-coloured plug slots ──
   const xpBox1 = document.createElement('div');
   xpBox1.className = 'rpg-xp-box rpg-xp-box-1';
 
-  // Player icon at the top of box 1
+  // Player icon: a glowing sand grain matching the actual RPG player mote
   const playerIconEl = document.createElement('div');
   playerIconEl.className = 'rpg-player-icon';
-  playerIconEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 26" fill="none">'
-    + '<circle cx="10" cy="5.5" r="4.5" fill="rgba(167,139,250,0.5)" stroke="rgba(167,139,250,0.85)" stroke-width="0.75"/>'
-    + '<path d="M4 13 Q4 10 10 10 Q16 10 16 13 L16 22 Q16 24 14 24 L6 24 Q4 24 4 22 Z" fill="rgba(167,139,250,0.35)" stroke="rgba(167,139,250,0.75)" stroke-width="0.75"/>'
-    + '<line x1="7" y1="22" x2="5.5" y2="26" stroke="rgba(167,139,250,0.65)" stroke-width="1.2" stroke-linecap="round"/>'
-    + '<line x1="13" y1="22" x2="14.5" y2="26" stroke="rgba(167,139,250,0.65)" stroke-width="1.2" stroke-linecap="round"/>'
+  playerIconEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none">'
+    + '<defs><radialGradient id="rpg-sg-grad" cx="40%" cy="35%" r="60%">'
+    + '<stop offset="0%" stop-color="#fff8d0"/>'
+    + '<stop offset="45%" stop-color="#ffd764"/>'
+    + '<stop offset="100%" stop-color="#e8a820" stop-opacity="0.7"/>'
+    + '</radialGradient></defs>'
+    + '<circle cx="10" cy="10" r="9" fill="#ffd764" opacity="0.07"/>'
+    + '<circle cx="10" cy="10" r="7" fill="#ffd764" opacity="0.13"/>'
+    + '<circle cx="10" cy="10" r="5.5" fill="url(#rpg-sg-grad)"/>'
+    + '<circle cx="8.5" cy="8" r="1.4" fill="#fffde0" opacity="0.65"/>'
     + '</svg>';
   xpBox1.appendChild(playerIconEl);
 
-  // Plug container — holds 4 rounded-square slots for all stat plug anchors
+  // Plug container — holds 5 sand-coloured rounded-square slots.
+  // These plugs are visual stubs (not wired to stats for now).
+  // The first 4 also contain the functional wire-anchor elements used by the XP wire system.
   const plugContainerEl = document.createElement('div');
   plugContainerEl.className = 'rpg-plug-container';
   xpBox1.appendChild(plugContainerEl);
 
-  // ── XP Box 2 (4 stacked squares) — XP node in top cell ───────────
-  const xpBox2 = document.createElement('div');
-  xpBox2.className = 'rpg-xp-box rpg-xp-box-2';
-
-  // 4 sub-cells stacked vertically inside box 2
-  const xpBox2Cells: HTMLDivElement[] = [];
-  for (let i = 0; i < 4; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'rpg-xp-box-2__cell';
-    xpBox2.appendChild(cell);
-    xpBox2Cells.push(cell);
-  }
-
-  // XP node — compact two-line widget, sits in the first (top) cell of box 2
-  const xpNodeEl = document.createElement('div');
-  xpNodeEl.className = 'rpg-xp-node';
-  xpNodeEl.title = 'Drag to ATK / DEF / LUCK / MAXHP (up to 3 wires). Tap to retract all wires.';
-  const xpLabelTextEl = document.createElement('span');
-  xpLabelTextEl.className = 'rpg-xp-label-text';
-  xpLabelTextEl.textContent = 'XP';
-  const xpAmountEl = document.createElement('span');
-  xpAmountEl.className = 'rpg-xp-amount-text';
-  xpAmountEl.textContent = '0';
-  xpNodeEl.appendChild(xpLabelTextEl);
-  xpNodeEl.appendChild(xpAmountEl);
-  xpBox2Cells[0].appendChild(xpNodeEl);
-
-  // ── XP Box 3 (fills rest) — 6 equal sub-cells, stats in first 4 ──
-  const xpBox3 = document.createElement('div');
-  xpBox3.className = 'rpg-xp-box rpg-xp-box-3';
-
-  // 6 equal sub-cells arranged in a row
-  const xpBox3Cells: HTMLDivElement[] = [];
-  for (let i = 0; i < 6; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'rpg-xp-box-3__cell';
-    xpBox3.appendChild(cell);
-    xpBox3Cells.push(cell);
-  }
-
-  function makeStatWidget(
-    label: string,
-    extraClass: string,
-    container: HTMLElement,
-  ): { root: HTMLElement; labelEl: HTMLSpanElement; valueEl: HTMLSpanElement } {
-    const root = document.createElement('div');
-    root.className = 'rpg-stat';
-    const labelEl = document.createElement('span');
-    labelEl.className = 'rpg-stat-label';
-    labelEl.textContent = label;
-    const valueEl = document.createElement('span');
-    valueEl.className = 'rpg-stat-value' + (extraClass ? (' ' + extraClass) : '');
-    root.appendChild(labelEl);
-    root.appendChild(valueEl);
-    container.appendChild(root);
-    return { root, labelEl, valueEl };
-  }
-
-  // ATK, DEF, MAXHP, LUCK — all four stat widgets go into box 3 sub-cells 0–3
-  const atkWidget   = makeStatWidget('ATK',   '', xpBox3Cells[0]);
-  const defWidget   = makeStatWidget('DEF',   '', xpBox3Cells[1]);
-  const maxHpWidget = makeStatWidget('MAXHP', '', xpBox3Cells[2]);
-  const luckWidget  = makeStatWidget('LUCK',  'rpg-stat-value--luck', xpBox3Cells[3]);
-
-  // Apply stat colors inline so they persist regardless of the wired-glow CSS.
-  atkWidget.labelEl.style.color  = '#fca5a5';
-  atkWidget.valueEl.style.color  = '#fca5a5';
-  defWidget.labelEl.style.color  = '#93c5fd';
-  defWidget.valueEl.style.color  = '#93c5fd';
-  maxHpWidget.labelEl.style.color = '#fde68a';
-  maxHpWidget.valueEl.style.color = '#fde68a';
-  maxHpWidget.valueEl.style.fontSize = '14px';
-  luckWidget.labelEl.style.color  = '#86efac';
-  luckWidget.valueEl.style.color  = '#86efac';
-
-  // Plug slots inside box 1 — one per stat, each in a rounded-square container.
-  // The SVG plug-socket circles are centred on these anchors so the wire visually
-  // plugs into box 1 rather than into the individual stat widgets.
-  function makePlugSlot(statKey: string): HTMLDivElement {
+  function makePlugSlot(extraClass: string): HTMLDivElement {
     const slot = document.createElement('div');
-    slot.className = `rpg-plug-slot rpg-plug-slot--${statKey}`;
+    slot.className = `rpg-plug-slot rpg-plug-slot--sand${extraClass ? ' ' + extraClass : ''}`;
     plugContainerEl.appendChild(slot);
     return slot;
   }
 
-  const atkPlugSlot  = makePlugSlot('atk');
-  const defPlugSlot  = makePlugSlot('def');
-  const hpPlugSlot   = makePlugSlot('hp');
-  const luckPlugSlot = makePlugSlot('luck');
+  const atkPlugSlot  = makePlugSlot('');
+  const defPlugSlot  = makePlugSlot('');
+  const hpPlugSlot   = makePlugSlot('');
+  const luckPlugSlot = makePlugSlot('');
+  makePlugSlot(''); // 5th stub plug slot
 
   const atkPlugAnchor  = document.createElement('div');
   atkPlugAnchor.className = 'rpg-stat-plug-anchor';
@@ -254,7 +184,137 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   luckPlugAnchor.className = 'rpg-stat-plug-anchor';
   luckPlugSlot.appendChild(luckPlugAnchor);
 
-  // Append the three XP boxes to the panel
+  // ── Box 5 — 4 separate boxes: XP box + roman-numeral boxes I/II/III ──
+  // Each box is a row containing a label on the left and a plug slot on the right.
+  const xpBox2 = document.createElement('div');
+  xpBox2.className = 'rpg-box5-wrapper';
+
+  // Helper: build one Box-5 row box
+  function makeBox5Row(label: string | HTMLElement): HTMLDivElement {
+    const box = document.createElement('div');
+    box.className = 'rpg-xp-box rpg-box5-cell';
+    if (typeof label === 'string') {
+      const span = document.createElement('span');
+      span.className = 'rpg-box5-label';
+      span.textContent = label;
+      box.appendChild(span);
+    } else {
+      box.appendChild(label);
+    }
+    // Plug slot (square with rounded corners)
+    const plugSlot = document.createElement('div');
+    plugSlot.className = 'rpg-plug-slot rpg-plug-slot--sand';
+    box.appendChild(plugSlot);
+    return box;
+  }
+
+  // XP node — compact two-line widget (remains the drag source for wires)
+  const xpNodeEl = document.createElement('div');
+  xpNodeEl.className = 'rpg-xp-node';
+  xpNodeEl.title = 'Drag to ATK / DEF / LUCK / MAXHP (up to 3 wires). Tap to retract all wires.';
+  xpNodeEl.style.flex = '1 1 0';
+  xpNodeEl.style.width = 'auto';
+  const xpLabelTextEl = document.createElement('span');
+  xpLabelTextEl.className = 'rpg-xp-label-text';
+  xpLabelTextEl.textContent = 'XP';
+  const xpAmountEl = document.createElement('span');
+  xpAmountEl.className = 'rpg-xp-amount-text';
+  xpAmountEl.textContent = '0';
+  xpNodeEl.appendChild(xpLabelTextEl);
+  xpNodeEl.appendChild(xpAmountEl);
+
+  xpBox2.appendChild(makeBox5Row(xpNodeEl));
+  xpBox2.appendChild(makeBox5Row('I'));
+  xpBox2.appendChild(makeBox5Row('II'));
+  xpBox2.appendChild(makeBox5Row('III'));
+
+  // ── Box 4 — 6 separate wide short row-boxes ───────────────────────
+  // Layout:
+  //   Row 0 (labels): ATK | DEF | MAXHP | LUCK | STR | AGI
+  //   Row 1 (values): live stat values for first 4, stub "0" for last 2
+  //   Rows 2–5:       all stub "0" values
+  const xpBox3 = document.createElement('div');
+  xpBox3.className = 'rpg-box4-wrapper';
+
+  function makeBox4Row(): HTMLDivElement[] {
+    const rowBox = document.createElement('div');
+    rowBox.className = 'rpg-xp-box rpg-box4-row';
+    const cells: HTMLDivElement[] = [];
+    for (let c = 0; c < 6; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'rpg-box4-cell' + (c === 5 ? ' rpg-box4-cell--last' : '');
+      rowBox.appendChild(cell);
+      cells.push(cell);
+    }
+    xpBox3.appendChild(rowBox);
+    return cells;
+  }
+
+  // Row 0 — label cells
+  const box4LabelsRow = makeBox4Row();
+  const statLabelDefs: Array<[string, string]> = [
+    ['ATK', '#fca5a5'], ['DEF', '#93c5fd'], ['MAXHP', '#fde68a'],
+    ['LUCK', '#86efac'], ['STR', 'rgba(255,255,255,0.3)'], ['AGI', 'rgba(255,255,255,0.3)'],
+  ];
+  statLabelDefs.forEach(([text, color], i) => {
+    const span = document.createElement('span');
+    span.className = 'rpg-stat-label';
+    span.textContent = text;
+    span.style.color = color;
+    box4LabelsRow[i].appendChild(span);
+  });
+
+  // Row 1 — value cells (live stat values + stubs)
+  const box4ValuesRow = makeBox4Row();
+
+  // Build stat widget references so the rest of the file can update them
+  // root = value cell (used for pointer-over and rpg-stat--wired glow)
+  function makeStatWidget(
+    extraClass: string,
+    valueCell: HTMLDivElement,
+  ): { root: HTMLElement; labelEl: HTMLSpanElement; valueEl: HTMLSpanElement } {
+    const valueEl = document.createElement('span');
+    valueEl.className = 'rpg-stat-value' + (extraClass ? ' ' + extraClass : '');
+    valueCell.appendChild(valueEl);
+    // labelEl placeholder — label text is rendered separately in the labels row
+    const labelEl = document.createElement('span');
+    return { root: valueCell, labelEl, valueEl };
+  }
+
+  const atkWidget   = makeStatWidget('', box4ValuesRow[0]);
+  const defWidget   = makeStatWidget('', box4ValuesRow[1]);
+  const maxHpWidget = makeStatWidget('', box4ValuesRow[2]);
+  const luckWidget  = makeStatWidget('rpg-stat-value--luck', box4ValuesRow[3]);
+
+  // Apply stat colors to value elements
+  atkWidget.valueEl.style.color   = '#fca5a5';
+  defWidget.valueEl.style.color   = '#93c5fd';
+  maxHpWidget.valueEl.style.color = '#fde68a';
+  maxHpWidget.valueEl.style.fontSize = '14px';
+  luckWidget.valueEl.style.color  = '#86efac';
+
+  // Stub value elements for columns 4–5 of the values row
+  for (let c = 4; c < 6; c++) {
+    const stub = document.createElement('span');
+    stub.className = 'rpg-stat-value';
+    stub.style.color = 'rgba(255,255,255,0.25)';
+    stub.textContent = '0';
+    box4ValuesRow[c].appendChild(stub);
+  }
+
+  // Stub rows 2–5
+  for (let r = 0; r < 4; r++) {
+    const cells = makeBox4Row();
+    for (const cell of cells) {
+      const stub = document.createElement('span');
+      stub.className = 'rpg-stat-value';
+      stub.style.color = 'rgba(255,255,255,0.18)';
+      stub.textContent = '0';
+      cell.appendChild(stub);
+    }
+  }
+
+  // Append the three layout groups to the panel
   statsPanel.appendChild(xpBox1);
   statsPanel.appendChild(xpBox2);
   statsPanel.appendChild(xpBox3);

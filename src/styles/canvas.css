@@ -258,7 +258,7 @@
   display: block;
 }
 
-/* ── Player icon inside box 1 ──────────────────────────────────── */
+/* ── Player icon inside box 6 — glowing sand grain ────────────── */
 .rpg-player-icon {
   width: 22px;
   height: 22px;
@@ -274,10 +274,10 @@
   height: 100%;
 }
 
-/* ── Plug container inside box 1 ───────────────────────────────── */
+/* ── Plug container inside box 6 ───────────────────────────────── */
 /*
- * Holds the 4 rounded-square plug slots (one per stat anchor), evenly
- * spaced below the player icon.
+ * Holds 5 sand-coloured rounded-square plug slots below the player icon.
+ * All slots are visual stubs (not wired to stats for now).
  */
 .rpg-plug-container {
   display: flex;
@@ -307,6 +307,84 @@
 .rpg-plug-slot--def  { border-color: rgba(147, 197, 253, 0.30); }
 .rpg-plug-slot--hp   { border-color: rgba(253, 230, 138, 0.30); }
 .rpg-plug-slot--luck { border-color: rgba(134, 239, 172, 0.30); }
+
+/* Sand-coloured plug slot used in box 6 (all stubs) and box 5 */
+.rpg-plug-slot--sand { border-color: rgba(255, 215, 100, 0.35); }
+
+/* ── Box 5 wrapper — 4 separate row boxes stacked vertically ──── */
+.rpg-box5-wrapper {
+  width: calc((var(--tab-height) * 3 - 8px) / 4);
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  margin: 4px 0;
+  gap: 2px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Individual row inside box 5 — label on left, plug slot on right */
+.rpg-box5-cell {
+  flex: 1;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 2px 4px !important;
+  gap: 3px;
+  overflow: hidden;
+}
+
+/* Label or XP node inside a box-5 cell */
+.rpg-box5-label {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 215, 100, 0.75);
+  letter-spacing: 0.5px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ── Box 4 wrapper — 6 separate wide short row-boxes ──────────── */
+.rpg-box4-wrapper {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  margin: 4px 0;
+  gap: 2px;
+  position: relative;
+}
+
+/* Individual row box inside box 4 */
+.rpg-box4-row {
+  flex: 1;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  padding: 0 !important;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Cell inside a box 4 row (1 of 6 equal columns) */
+.rpg-box4-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid rgba(167, 139, 250, 0.1);
+  padding: 1px 2px;
+  overflow: hidden;
+}
+
+.rpg-box4-cell--last,
+.rpg-box4-cell:last-child {
+  border-right: none;
+}
 
 
 .rpg-xp-node {
