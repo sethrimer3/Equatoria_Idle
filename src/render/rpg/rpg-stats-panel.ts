@@ -60,6 +60,8 @@ export interface RpgStatsPanelCtx {
 
 export interface RpgStatsPanelHandle {
   element: HTMLElement;
+  /** Container inside the right column where the RPG menu button should be appended. */
+  menuButtonContainer: HTMLElement;
   recordDps(dmg: number, _legacyColor?: string): void;
   withDamageSource<T>(weaponId: string | null, fn: () => T): T;
   update(): void;
@@ -75,6 +77,7 @@ const STAT_WIRE_COLOR: Record<'atk' | 'def' | 'luck' | 'hp', string> = {
 };
 
 const MAX_WIRES              = 3;
+const MAX_DPS_SLOTS          = 5;   // maximum DPS bars shown in the chart
 const ROPE_N                 = 24;   // doubled for smoother wire appearance
 const ROPE_GRAVITY           = 0.35;
 const ROPE_DAMPING           = 0.97;
@@ -123,38 +126,29 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   statsPanel.id = 'rpg-stats-panel';
   statsPanel.style.display = 'none';
 
-  // HP box — centered between the XP box and the DPS box
-  const hpFractionEl = document.createElement('div');
-  hpFractionEl.className = 'rpg-hp-box';
-  const hpFractionLabel = document.createElement('span');
-  hpFractionLabel.className = 'rpg-stat-label';
-  hpFractionLabel.textContent = 'HP';
-  const hpFractionValue = document.createElement('span');
-  hpFractionValue.className = 'rpg-stat-value rpg-stat-value--hp';
-  hpFractionValue.style.fontSize = '13px';
-  hpFractionEl.appendChild(hpFractionLabel);
-  hpFractionEl.appendChild(hpFractionValue);
+  // ── XP Box 1 (thin) — ATK stat ────────────────────────────────────
+  const xpBox1 = document.createElement('div');
+  xpBox1.className = 'rpg-xp-box rpg-xp-box-1';
 
-  // Player stats box (XP box — ATK / DEF / LUCK / MAXHP + XP node)
-  const playerStatsBox = document.createElement('div');
-  playerStatsBox.className = 'rpg-player-stats-box';
+  // ── XP Box 2 (3× thin) — XP node + DEF stat ──────────────────────
+  const xpBox2 = document.createElement('div');
+  xpBox2.className = 'rpg-xp-box rpg-xp-box-2';
 
-  // XP node — the draggable source at the top of the player stats box
+  // XP node — the draggable source at the top of xpBox2
   const xpNodeEl = document.createElement('div');
   xpNodeEl.className = 'rpg-xp-node';
   xpNodeEl.textContent = 'XP';
   xpNodeEl.title = 'Drag to ATK / DEF / LUCK / MAXHP (up to 3 wires). Tap to retract all wires.';
-  playerStatsBox.appendChild(xpNodeEl);
+  xpBox2.appendChild(xpNodeEl);
 
-  // Stats row 1: ATK | DEF
-  const playerStatsRow1 = document.createElement('div');
-  playerStatsRow1.className = 'rpg-player-stats-row';
-  playerStatsBox.appendChild(playerStatsRow1);
+  // ── XP Box 3 (fills rest) — MAXHP + LUCK stats ───────────────────
+  const xpBox3 = document.createElement('div');
+  xpBox3.className = 'rpg-xp-box rpg-xp-box-3';
 
-  // Stats row 2: MAXHP | LUCK
-  const playerStatsRow2 = document.createElement('div');
-  playerStatsRow2.className = 'rpg-player-stats-row';
-  playerStatsBox.appendChild(playerStatsRow2);
+  // Stats row in box 3: MAXHP | LUCK
+  const xpBox3StatsRow = document.createElement('div');
+  xpBox3StatsRow.className = 'rpg-player-stats-row';
+  xpBox3.appendChild(xpBox3StatsRow);
 
   function makeStatWidget(
     label: string,
@@ -174,10 +168,11 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return { root, labelEl, valueEl };
   }
 
-  const atkWidget  = makeStatWidget('ATK',   '', playerStatsRow1);
-  const defWidget  = makeStatWidget('DEF',   '', playerStatsRow1);
-  const maxHpWidget = makeStatWidget('MAXHP', '', playerStatsRow2);
-  const luckWidget  = makeStatWidget('LUCK',  'rpg-stat-value--luck', playerStatsRow2);
+  // ATK in box 1, DEF in box 2 (below XP node), MAXHP + LUCK in box 3
+  const atkWidget   = makeStatWidget('ATK',   '', xpBox1);
+  const defWidget   = makeStatWidget('DEF',   '', xpBox2);
+  const maxHpWidget = makeStatWidget('MAXHP', '', xpBox3StatsRow);
+  const luckWidget  = makeStatWidget('LUCK',  'rpg-stat-value--luck', xpBox3StatsRow);
 
   // Apply stat colors inline so they persist regardless of the wired-glow CSS.
   atkWidget.labelEl.style.color  = '#fca5a5';
@@ -210,9 +205,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   luckPlugAnchor.className = 'rpg-stat-plug-anchor';
   luckWidget.root.appendChild(luckPlugAnchor);
 
-  statsPanel.appendChild(playerStatsBox);
-  // HP box sits between the XP box and the DPS box, filling available width.
-  statsPanel.appendChild(hpFractionEl);
+  // Append the three XP boxes to the panel
+  statsPanel.appendChild(xpBox1);
+  statsPanel.appendChild(xpBox2);
+  statsPanel.appendChild(xpBox3);
+
+  // ── Right column — DPS + HP + menu area ───────────────────────────
+  const rightColumn = document.createElement('div');
+  rightColumn.className = 'rpg-right-column';
 
   // ── DPS Chart Widget ──────────────────────────────────────────────
   const dpsWidget = document.createElement('div');
@@ -237,7 +237,27 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   dpsWidget.appendChild(dpsValueEl);
   dpsWidget.appendChild(dpsChartEl);
   dpsWidget.appendChild(dpsAxisEl);
-  statsPanel.appendChild(dpsWidget);
+
+  // ── HP box — current hit-points, below DPS in the right column ────
+  const hpFractionEl = document.createElement('div');
+  hpFractionEl.className = 'rpg-hp-box';
+  const hpFractionLabel = document.createElement('span');
+  hpFractionLabel.className = 'rpg-stat-label';
+  hpFractionLabel.textContent = 'HP';
+  const hpFractionValue = document.createElement('span');
+  hpFractionValue.className = 'rpg-stat-value rpg-stat-value--hp';
+  hpFractionValue.style.fontSize = '11px';
+  hpFractionEl.appendChild(hpFractionLabel);
+  hpFractionEl.appendChild(hpFractionValue);
+
+  // ── Menu area — RPG menu button lives here ─────────────────────────
+  const menuArea = document.createElement('div');
+  menuArea.className = 'rpg-menu-area';
+
+  rightColumn.appendChild(dpsWidget);
+  rightColumn.appendChild(hpFractionEl);
+  rightColumn.appendChild(menuArea);
+  statsPanel.appendChild(rightColumn);
 
   // ── Wire SVG overlay (sits above all panel content) ───────────────
   const wireSvgNS = 'http://www.w3.org/2000/svg';
@@ -897,6 +917,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
         slots.unshift(SAND_SLOT_KEY);
       }
     }
+    // Cap to maximum number of DPS slots shown in the chart.
+    if (slots.length > MAX_DPS_SLOTS) slots.length = MAX_DPS_SLOTS;
     return slots;
   }
 
@@ -1005,6 +1027,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   return {
     element: statsPanel,
+    menuButtonContainer: menuArea,
     recordDps,
     withDamageSource,
     update(): void {

@@ -98,9 +98,9 @@
   border-top: 1px solid rgba(255, 241, 114, 0.15);
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  padding: 0 20px;
-  gap: 12px;
+  justify-content: flex-start;
+  padding: 0 8px;
+  gap: 4px;
   pointer-events: none;
 }
 
@@ -111,11 +111,46 @@
   gap: 6px;
 }
 
-/* ── HP box — current hit-points, sits between XP box and DPS box ── */
-.rpg-hp-box {
+/* ── XP box base — shared by all three left-side boxes ─────────── */
+/*
+ * The single playerStatsBox is replaced by three side-by-side XP boxes.
+ * Box 1 is thin, box 2 is 3× that width, box 3 fills the rest of the
+ * left area up to the right column.
+ */
+.rpg-xp-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  margin: 4px 0;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 6px;
+  padding: 4px 3px;
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  flex: 0 0 auto;
+  pointer-events: auto;
+}
+
+.rpg-xp-box-1 {
+  width: 40px;
+}
+
+.rpg-xp-box-2 {
+  width: 120px;
+}
+
+.rpg-xp-box-3 {
   flex: 1 1 auto;
-  height: 90%;
-  margin: auto 0;
+  width: 0; /* flex-basis overridden by flex: 1 */
+}
+
+/* ── HP box — current hit-points, sits in the right column ── */
+.rpg-hp-box {
+  width: var(--rpg-dps-box-size);
+  height: calc(var(--rpg-dps-box-size) * 2 / 3);
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -124,6 +159,26 @@
   border: 1px solid rgba(124, 232, 124, 0.3);
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+/* ── Right column — DPS + HP + menu area, stacked vertically ─── */
+.rpg-right-column {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+/* ── Menu area — holds the RPG menu toggle button ──────────────── */
+.rpg-menu-area {
+  width: var(--rpg-dps-box-size);
+  height: calc(var(--rpg-dps-box-size) / 3);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   pointer-events: none;
 }
 
@@ -196,27 +251,6 @@
   background: rgba(167, 139, 250, 0.04);
   pointer-events: none;
   flex-shrink: 0;
-}
-
-/* ── Player stats box — fixed size to prevent growing/shrinking ─── */
-.rpg-player-stats-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  flex: 0 0 auto;
-  height: 90%;
-  margin: auto 0;
-  border: 1px solid rgba(167, 139, 250, 0.35);
-  border-radius: 6px;
-  padding: 4px 8px 5px;
-  background: rgba(0, 0, 0, 0.25);
-  /* Make pointer-events work for the XP node inside */
-  pointer-events: auto;
-  /* Prevent box from growing or shrinking as stat values change */
-  min-width: 120px;
-  width: 120px;
-  overflow: hidden;
 }
 
 /* ── LEGACY: per-stat XP allocation sub-texts (removed from stats panel DOM) ── */
@@ -297,11 +331,19 @@
 }
 
 /* ── DPS widget with mini bar chart ───────────────────────────── */
+/*
+ * Half the original size: was height:90% aspect-ratio:1 (≈ 90% of 3×tab-height
+ * square); now explicitly sized to half that via --rpg-dps-box-size.
+ * Sits at the top of the right column.
+ */
+:root {
+  --rpg-dps-box-size: calc(var(--tab-height) * 1.35);
+}
+
 .rpg-dps-widget {
-  height: 90%;
-  aspect-ratio: 1;
+  width: var(--rpg-dps-box-size);
+  height: var(--rpg-dps-box-size);
   flex: 0 0 auto;
-  margin: auto 0 auto auto;
   padding: 4px;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 241, 114, 0.18);
@@ -336,7 +378,7 @@
 }
 
 .rpg-dps-label {
-  color: var(--text-secondary);
+  color: #ffffff;
   font-size: 7px;
   font-weight: 700;
   line-height: 1;
@@ -358,24 +400,21 @@
   display: flex;
   justify-content: space-between;
   gap: 2px;
-  color: var(--text-secondary);
+  color: #ffffff;
   font-size: 6px;
   line-height: 1;
-  opacity: 0.75;
+  opacity: 0.9;
 }
 
 /* ── RPG menu toggle button ────────────────────────────────────── */
 .rpg-menu-btn {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  right: 12px;
-  padding: 6px 12px;
+  padding: 4px 8px;
   background: rgba(12, 12, 20, 0.92);
   border: 1px solid rgba(255, 241, 114, 0.35);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--accent);
   font-family: var(--font-primary);
-  font-size: 12px;
+  font-size: 10px;
   cursor: pointer;
   z-index: 4;
   touch-action: manipulation;

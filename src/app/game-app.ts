@@ -312,7 +312,7 @@ export async function startApp(): Promise<void> {
       rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
     }
   });
-  rpgRender.statsPanel.appendChild(menuToggleBtn);
+  rpgRender.menuButtonContainer.appendChild(menuToggleBtn);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);

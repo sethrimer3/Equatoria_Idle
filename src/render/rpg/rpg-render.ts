@@ -215,6 +215,8 @@ let INTERNAL_HEIGHT = 568;
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
+  /** Container inside the right column of the stats panel where the RPG menu button should be appended. */
+  menuButtonContainer: HTMLElement;
   update(deltaMs: number, autoMoveEnabled?: boolean): void;
   resize(container: HTMLElement): void;
   setActive(active: boolean): void;
@@ -3175,6 +3177,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   return {
     canvas,
     statsPanel: statsPanel.element,
+    menuButtonContainer: statsPanel.menuButtonContainer,
 
     update(deltaMs: number, autoMoveEnabled = false): void {
       const nowMs = performance.now();
