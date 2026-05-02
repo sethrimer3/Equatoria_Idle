@@ -24,7 +24,7 @@ import {
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
-import { BASE_ATTACK_TIMER_KEY } from './rpg-constants';
+import { BASE_ATTACK_TIMER_KEY, GLOW_PULSE_SPEED, RPG_MOTE_COLOR, RPG_MOTE_GLOW } from './rpg-constants';
 import { formatNumberAs, type NumberFormat } from '../../util/format';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
@@ -128,24 +128,77 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   statsPanel.id = 'rpg-stats-panel';
   statsPanel.style.display = 'none';
 
-  // ── Box 6 (thin) — glowing sand-grain player icon + 5 sand-coloured plug slots ──
+  // ── Box 1 (thin) — animated idle-state player icon + 5 sand-coloured plug slots ──
   const xpBox1 = document.createElement('div');
   xpBox1.className = 'rpg-xp-box rpg-xp-box-1';
 
-  // Player icon: a glowing sand grain matching the actual RPG player mote
+  // Player icon: an animated canvas rendering the player mote idle state (pulsing glow)
   const playerIconEl = document.createElement('div');
   playerIconEl.className = 'rpg-player-icon';
-  playerIconEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none">'
-    + '<defs><radialGradient id="rpg-sg-grad" cx="40%" cy="35%" r="60%">'
-    + '<stop offset="0%" stop-color="#fff8d0"/>'
-    + '<stop offset="45%" stop-color="#ffd764"/>'
-    + '<stop offset="100%" stop-color="#e8a820" stop-opacity="0.7"/>'
-    + '</radialGradient></defs>'
-    + '<circle cx="10" cy="10" r="9" fill="#ffd764" opacity="0.07"/>'
-    + '<circle cx="10" cy="10" r="7" fill="#ffd764" opacity="0.13"/>'
-    + '<circle cx="10" cy="10" r="5.5" fill="url(#rpg-sg-grad)"/>'
-    + '<circle cx="8.5" cy="8" r="1.4" fill="#fffde0" opacity="0.65"/>'
-    + '</svg>';
+
+  // Use a 2× resolution canvas for crispness (44×44 drawn into 22×22 CSS pixels)
+  const ICON_CANVAS_SIZE = 44;
+  const iconCanvas = document.createElement('canvas');
+  iconCanvas.width  = ICON_CANVAS_SIZE;
+  iconCanvas.height = ICON_CANVAS_SIZE;
+  iconCanvas.style.width  = '22px';
+  iconCanvas.style.height = '22px';
+  playerIconEl.appendChild(iconCanvas);
+
+  const iconCtx2d = iconCanvas.getContext('2d');
+  const ICON_SCALE    = 2;            // upscale factor matching the 2× canvas
+  const ICON_MOTE_PX  = 3 * ICON_SCALE; // body is 6px on the 44px canvas
+  const ICON_CX       = ICON_CANVAS_SIZE / 2;
+  const ICON_CY       = ICON_CANVAS_SIZE / 2;
+  let iconAnimTs      = 0;            // accumulated seconds
+
+  /** Draw one frame of the player idle animation onto iconCanvas. */
+  function drawPlayerIdleFrame(deltaMs: number): void {
+    if (!iconCtx2d) return;
+    iconAnimTs += Math.min(deltaMs, 100) / 1000;
+    const pulseT  = (Math.sin(iconAnimTs * GLOW_PULSE_SPEED) + 1) * 0.5; // 0–1
+
+    iconCtx2d.clearRect(0, 0, ICON_CANVAS_SIZE, ICON_CANVAS_SIZE);
+
+    // Outer soft glow — pulsing size
+    const glowSize = ICON_MOTE_PX * (2.2 + pulseT * 1.4);
+    const glowHalf = glowSize / 2;
+    iconCtx2d.globalAlpha = 0.18 + pulseT * 0.22;
+    iconCtx2d.shadowBlur  = glowSize * 3;
+    iconCtx2d.shadowColor = RPG_MOTE_GLOW;
+    iconCtx2d.fillStyle   = RPG_MOTE_GLOW;
+    iconCtx2d.fillRect(
+      Math.floor(ICON_CX - glowHalf), Math.floor(ICON_CY - glowHalf),
+      Math.ceil(glowSize), Math.ceil(glowSize),
+    );
+    iconCtx2d.globalAlpha = 1;
+    iconCtx2d.shadowBlur  = 0;
+
+    // Body square with inner glow
+    iconCtx2d.shadowBlur  = ICON_MOTE_PX * 5;
+    iconCtx2d.shadowColor = RPG_MOTE_GLOW;
+    iconCtx2d.fillStyle   = RPG_MOTE_COLOR;
+    const bh = ICON_MOTE_PX / 2;
+    iconCtx2d.fillRect(
+      Math.floor(ICON_CX - bh), Math.floor(ICON_CY - bh),
+      ICON_MOTE_PX, ICON_MOTE_PX,
+    );
+    iconCtx2d.shadowBlur = 0;
+  }
+
+  // Lightweight RAF loop for the player icon animation.
+  // Skips drawing while the stats panel is hidden (display:none) to avoid
+  // unnecessary GPU work when the RPG tab is not active.
+  let iconPrevMs = 0;
+  function iconAnimLoop(ms: number): void {
+    if (statsPanel.style.display !== 'none') {
+      drawPlayerIdleFrame(ms - iconPrevMs);
+    }
+    iconPrevMs = ms;
+    requestAnimationFrame(iconAnimLoop);
+  }
+  requestAnimationFrame((ms) => { iconPrevMs = ms; requestAnimationFrame(iconAnimLoop); });
+
   xpBox1.appendChild(playerIconEl);
 
   // Plug container — holds 5 sand-coloured rounded-square slots.
@@ -368,9 +421,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   statsPanel.appendChild(rightColumn);
 
   // ── Dev mode box number badges ────────────────────────────────────
-  // Numbered top-to-bottom, right-to-left:
-  //   1=DPS widget, 2=HP box, 3=menu area (right column, top→bottom)
-  //   4=box 3 (wide stats area), 5=box 2 (XP column), 6=box 1 (plug column)
+  // Numbered top-to-bottom, left-to-right:
+  //   1=box 1 (plug column, leftmost), 2=box 2 (XP column),
+  //   3=box 3 (wide stats area), 4=DPS widget, 5=HP box, 6=menu area
   function makeBoxBadge(container: HTMLElement, num: number): HTMLSpanElement {
     const badge = document.createElement('span');
     badge.className = 'rpg-dev-box-num';
@@ -378,12 +431,12 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     container.appendChild(badge);
     return badge;
   }
-  makeBoxBadge(xpBox1, 6);
-  makeBoxBadge(xpBox2, 5);
-  makeBoxBadge(xpBox3, 4);
-  makeBoxBadge(dpsWidget, 1);
-  makeBoxBadge(hpFractionEl, 2);
-  makeBoxBadge(menuArea, 3);
+  makeBoxBadge(xpBox1, 1);
+  makeBoxBadge(xpBox2, 2);
+  makeBoxBadge(xpBox3, 3);
+  makeBoxBadge(dpsWidget, 4);
+  makeBoxBadge(hpFractionEl, 5);
+  makeBoxBadge(menuArea, 6);
 
   // ── Wire SVG overlay (sits above all panel content) ───────────────
   const wireSvgNS = 'http://www.w3.org/2000/svg';

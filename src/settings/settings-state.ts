@@ -17,6 +17,8 @@ export interface SettingsState {
   generatorEquationVisibility: 'always' | 'proximity' | 'off';
   /** When true: all upgrades/unlocks are available regardless of cost; costs are not deducted. */
   isDevMode: boolean;
+  /** When true, the RPG stats bar is anchored to the top of the screen instead of the bottom. */
+  rpgBarAtTop: boolean;
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -33,6 +35,7 @@ export function createDefaultSettings(): SettingsState {
     rpgEnemyIndicatorStyle: 'triangle',
     generatorEquationVisibility: 'proximity',
     isDevMode: false,
+    rpgBarAtTop: false,
   };
 }
 

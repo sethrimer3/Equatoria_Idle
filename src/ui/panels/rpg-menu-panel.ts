@@ -44,11 +44,16 @@ export interface RpgMenuPanel {
   isVisible: boolean;
   /** Whether auto-move is currently enabled (session-only, not persisted). */
   isAutoMoveEnabled: boolean;
+  /** Sync the persisted rpgBarAtTop value into the menu tab so the checkbox reflects current state. */
+  setRpgBarAtTop(atTop: boolean): void;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
 
-export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
+export function createRpgMenuPanel(
+  dispatch: ActionHandler,
+  onRpgBarAtTopChange: (atTop: boolean) => void = () => undefined,
+): RpgMenuPanel {
   const element = document.createElement('div');
   element.id = 'rpg-menu-panel';
   element.style.display = 'none';
@@ -103,9 +108,11 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
 
   // ── Sub-panes ─────────────────────────────────────────────────
 
-  const menuTabPane = createRpgMenuTabPane(dispatch, (enabled) => {
-    panel.isAutoMoveEnabled = enabled;
-  });
+  const menuTabPane = createRpgMenuTabPane(
+    dispatch,
+    (enabled) => { panel.isAutoMoveEnabled = enabled; },
+    (atTop) => { onRpgBarAtTopChange(atTop); },
+  );
   const weaponsTabPane  = createRpgWeaponsTabPane(dispatch);
   const upgradesTabPane = createRpgUpgradesTabPane(dispatch);
   const bossesTabPane: RpgBossesTabPane = createRpgBossesTabPane(dispatch);
@@ -126,6 +133,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
   let lastResources: ResourceState | null = null;
   let lastFormat: NumberFormat = 'letters';
   let lastIsDevMode = false;
+  let lastRpgBarAtTop = false;
 
   function updateTabHighlight(): void {
     for (const [id, btn] of tabBtns) {
@@ -147,7 +155,7 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
     showActivePane();
     switch (activeTab) {
       case 'menu':
-        menuTabPane.update(lastRpgState, lastIsDevMode);
+        menuTabPane.update(lastRpgState, lastIsDevMode, lastRpgBarAtTop);
         break;
       case 'weapons':
         weaponsTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
@@ -182,6 +190,11 @@ export function createRpgMenuPanel(dispatch: ActionHandler): RpgMenuPanel {
       element.style.display = visible ? 'flex' : 'none';
       panel.isVisible = visible;
       if (visible) renderActiveTab();
+    },
+
+    setRpgBarAtTop(atTop: boolean): void {
+      lastRpgBarAtTop = atTop;
+      menuTabPane.setRpgBarAtTop(atTop);
     },
 
     isVisible: false,

@@ -29,7 +29,7 @@ import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
 import { createHudOverlay } from '../ui/hud/hud-overlay';
 import { createLoadingScreen } from '../ui/loading';
-import { loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp } from '../settings';
+import { loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp, saveSettings } from '../settings';
 import { TIERS } from '../data/tiers';
 import { createForgeCrunchState } from '../sim/forge';
 import {
@@ -295,10 +295,26 @@ export async function startApp(): Promise<void> {
   // is toggled by setActiveTab alongside rpgContainer.
   root.appendChild(rpgRender.statsPanel);
 
+  // ── Helper: apply the RPG bar position setting to DOM elements ──
+  function applyRpgBarPosition(atTop: boolean): void {
+    rpgRender.statsPanel.classList.toggle('rpg-bar-at-top', atTop);
+    rpgContainer.classList.toggle('rpg-bar-at-top', atTop);
+    rpgMenuPanel.element.classList.toggle('rpg-bar-at-top', atTop);
+  }
+
   // ── RPG menu panel (replaces weapon store) ──
-  const rpgMenuPanel = createRpgMenuPanel(dispatch);
+  const rpgMenuPanel = createRpgMenuPanel(dispatch, (atTop) => {
+    settings.rpgBarAtTop = atTop;
+    saveSettings(settings);
+    applyRpgBarPosition(atTop);
+    rpgMenuPanel.setRpgBarAtTop(atTop);
+  });
   rpgMenuPanel.element.style.display = 'none';
   root.appendChild(rpgMenuPanel.element);
+
+  // Apply saved bar position immediately after panel is in the DOM
+  applyRpgBarPosition(settings.rpgBarAtTop);
+  rpgMenuPanel.setRpgBarAtTop(settings.rpgBarAtTop);
 
   // ── Menu toggle button (appended to the stats panel by the renderer) ──
   const menuToggleBtn = document.createElement('button');
