@@ -644,14 +644,16 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     const nodesY  = new Float64Array(CHAIN_NODES);
     const nodesVx = new Float64Array(CHAIN_NODES);
     const nodesVy = new Float64Array(CHAIN_NODES);
+    const linkSides = new Uint8Array(CHAIN_NODES);
     for (let i = 0; i < CHAIN_NODES; i++) { nodesX[i] = mote.x; nodesY[i] = mote.y; }
+    for (let i = 0; i < CHAIN_NODES; i++) linkSides[i] = 3 + Math.floor(Math.random() * 5);
     const weaponDef = WEAPON_BY_ID.get(weaponId);
     return {
       phase: 'idle',
       phaseMs: 0,
       cooldownMs: weaponDef?.stats.cooldownMs ?? 2500,
       targetX: mote.x, targetY: mote.y,
-      nodesX, nodesY, nodesVx, nodesVy,
+      nodesX, nodesY, nodesVx, nodesVy, linkSides,
       hitCooldowns: new Map(),
     };
   }
@@ -669,7 +671,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
    * anchorK controls how strongly node 0 is pulled toward the player.
    *
    * Force asymmetry: the force an inner node exerts on the outer node it is
-   * connected to is twice as strong as the force the outer node exerts back on
+   * connected to is 1.1x as strong as the force the outer node exerts back on
    * the inner node.  This propagates energy outward like a real whip crack.
    */
   function stepChainPhysics(ws: ChainWhipState, dt: number, anchorK: number): void {
@@ -678,7 +680,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     ws.nodesVy[0] += (mote.y - ws.nodesY[0]) * anchorK * chainNodeInvMass(0) * dt;
 
     // Asymmetric spring forces between adjacent pairs.
-    // The inner node (i) exerts 2× force on the outer node (i+1), while the
+    // The inner node (i) exerts 1.1× force on the outer node (i+1), while the
     // outer node exerts only 1× force back on the inner node.
     for (let i = 0; i < CHAIN_NODES - 1; i++) {
       const sdx = ws.nodesX[i + 1] - ws.nodesX[i];
@@ -688,9 +690,9 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       const stretch = sdist - CHAIN_REST_LENGTH;
       const fx = (sdx / sdist) * stretch * CHAIN_SPRING_K;
       const fy = (sdy / sdist) * stretch * CHAIN_SPRING_K;
-      // Outer node pulled/pushed by inner with 2× force
-      ws.nodesVx[i + 1] -= fx * 2 * chainNodeInvMass(i + 1) * dt;
-      ws.nodesVy[i + 1] -= fy * 2 * chainNodeInvMass(i + 1) * dt;
+      // Outer node pulled/pushed by inner with 1.1× force
+      ws.nodesVx[i + 1] -= fx * 1.1 * chainNodeInvMass(i + 1) * dt;
+      ws.nodesVy[i + 1] -= fy * 1.1 * chainNodeInvMass(i + 1) * dt;
       // Inner node pulled/pushed by outer with 1× force
       ws.nodesVx[i]     += fx * chainNodeInvMass(i)     * dt;
       ws.nodesVy[i]     += fy * chainNodeInvMass(i)     * dt;

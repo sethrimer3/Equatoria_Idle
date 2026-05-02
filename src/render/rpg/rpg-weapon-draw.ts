@@ -45,8 +45,8 @@ export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState)
   if (ws.phase === 'idle' && ws.phaseMs < ws.cooldownMs * 0.1) return;
   ctx.save();
 
-  // Half-length of each polygon link along the chain direction, with gap applied.
-  const halfLen = (CHAIN_REST_LENGTH * CHAIN_LINK_GAP_RATIO) * 0.5;
+  // Keep links compact/squarish/circular rather than elongated.
+  const baseRadius = (CHAIN_REST_LENGTH * CHAIN_LINK_GAP_RATIO) * 0.52;
 
   for (let i = 0; i < CHAIN_NODES; i++) {
     const cx = ws.nodesX[i];
@@ -66,28 +66,23 @@ export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState)
     const dlen = Math.sqrt(dirX * dirX + dirY * dirY);
     const axX = dlen > 0.001 ? dirX / dlen : 1;
     const axY = dlen > 0.001 ? dirY / dlen : 0;
-    // Perpendicular axis (half-width)
-    const hw = chainNodeRadius(i);
-    const pxX = -axY * hw;
-    const pxY =  axX * hw;
-
-    // Four corners of the link rectangle (elongated along chain, narrower perp)
-    const x0 = cx - axX * halfLen;
-    const y0 = cy - axY * halfLen;
-    const x1 = cx + axX * halfLen;
-    const y1 = cy + axY * halfLen;
+    const radiusScale = i === CHAIN_NODES - 1 ? 3 : 1;
+    const r = Math.max(baseRadius, chainNodeRadius(i) * 0.95) * radiusScale;
+    const sides = Math.max(3, Math.min(7, ws.linkSides[i] ?? 4));
 
     ctx.globalAlpha = 0.9;
 
     if (!isLowGraphicsMode) {
-      ctx.shadowBlur  = hw * 2.5;
+      ctx.shadowBlur  = r * 1.8;
       ctx.shadowColor = CHAIN_NODE_GLOW;
       ctx.fillStyle   = CHAIN_NODE_GLOW;
       ctx.beginPath();
-      ctx.moveTo(x0 - pxX * 1.5, y0 - pxY * 1.5);
-      ctx.lineTo(x0 + pxX * 1.5, y0 + pxY * 1.5);
-      ctx.lineTo(x1 + pxX * 1.5, y1 + pxY * 1.5);
-      ctx.lineTo(x1 - pxX * 1.5, y1 - pxY * 1.5);
+      for (let s = 0; s < sides; s++) {
+        const a = Math.atan2(axY, axX) + (s / sides) * Math.PI * 2;
+        const px = cx + Math.cos(a) * r * 1.22;
+        const py = cy + Math.sin(a) * r * 1.22;
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
       ctx.closePath();
       ctx.fill();
       ctx.shadowBlur = 0;
@@ -96,10 +91,12 @@ export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState)
     // Main link polygon — tip link uses CHAIN_LINE_COLOR to mark the business end.
     ctx.fillStyle = i === CHAIN_NODES - 1 ? CHAIN_LINE_COLOR : CHAIN_NODE_COLOR;
     ctx.beginPath();
-    ctx.moveTo(x0 - pxX, y0 - pxY);
-    ctx.lineTo(x0 + pxX, y0 + pxY);
-    ctx.lineTo(x1 + pxX, y1 + pxY);
-    ctx.lineTo(x1 - pxX, y1 - pxY);
+    for (let s = 0; s < sides; s++) {
+      const a = Math.atan2(axY, axX) + (s / sides) * Math.PI * 2;
+      const px = cx + Math.cos(a) * r;
+      const py = cy + Math.sin(a) * r;
+      if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
     ctx.closePath();
     ctx.fill();
 
@@ -107,12 +104,40 @@ export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState)
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.moveTo(x0 - pxX * 0.4, y0 - pxY * 0.4);
-    ctx.lineTo(x0 + pxX * 0.4, y0 + pxY * 0.4);
-    ctx.lineTo(x1 + pxX * 0.4, y1 + pxY * 0.4);
-    ctx.lineTo(x1 - pxX * 0.4, y1 - pxY * 0.4);
+    for (let s = 0; s < sides; s++) {
+      const a = Math.atan2(axY, axX) + (s / sides) * Math.PI * 2;
+      const px = cx + Math.cos(a) * r * 0.46;
+      const py = cy + Math.sin(a) * r * 0.46;
+      if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
     ctx.closePath();
     ctx.fill();
+
+    // Tip-only quartz comet trail similar to emerald missile, but quartz-colored.
+    if (i === CHAIN_NODES - 1) {
+      const vx = ws.nodesVx[i];
+      const vy = ws.nodesVy[i];
+      const vLen = Math.sqrt(vx * vx + vy * vy);
+      if (vLen > 0.01) {
+        const nx = vx / vLen;
+        const ny = vy / vLen;
+        const trailLen = Math.min(42, 10 + vLen * 2.6);
+        const tx = cx - nx * trailLen;
+        const ty = cy - ny * trailLen;
+        const trailW = r * 0.95;
+        const qx = -ny * trailW;
+        const qy = nx * trailW;
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#dff5ff';
+        ctx.beginPath();
+        ctx.moveTo(cx + qx, cy + qy);
+        ctx.lineTo(cx - qx, cy - qy);
+        ctx.lineTo(tx - qx * 0.2, ty - qy * 0.2);
+        ctx.lineTo(tx + qx * 0.2, ty + qy * 0.2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
   }
 
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;

@@ -171,6 +171,8 @@ export interface ChainWhipState {
   nodesX: Float64Array; nodesY: Float64Array;
   /** Node velocities for softbody physics. */
   nodesVx: Float64Array; nodesVy: Float64Array;
+  /** Per-link polygon side counts (3-7), generated once when weapon spawns. */
+  linkSides: Uint8Array;
   /** Per-target hit cooldown for persistent damage. */
   hitCooldowns: Map<object, number>;
 }
@@ -344,4 +346,3 @@ export interface ClosestTarget {
 // ── Enemy entity types ─────────────────────────────────────────────
 // All enemy-entity interfaces (EmeraldEnemy → LuckyMotePopup) have been
 // moved to rpg-enemy-types.ts.
-
