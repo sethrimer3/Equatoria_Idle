@@ -189,7 +189,7 @@ export const CHAIN_RETRACT_MS      = 480;   // ms in retracting phase before ret
 export const CHAIN_HIT_CD_MS       =  62.5;
 // ── Softbody whip physics constants ──
 /** Rest spacing (px) between adjacent nodes.
- *  30 nodes × 3px = 87px natural length — slightly longer than weapon range (75px)
+ *  29 segments × 3px = 87px natural length — slightly longer than weapon range (75px)
  *  for a natural droop when idle. */
 export const CHAIN_REST_LENGTH     =   3;
 /** Spring stiffness between adjacent nodes. */

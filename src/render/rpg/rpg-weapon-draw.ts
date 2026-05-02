@@ -93,12 +93,8 @@ export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState)
       ctx.shadowBlur = 0;
     }
 
-    // Main link polygon
-    ctx.fillStyle = i === CHAIN_NODES - 1 ? CHAIN_NODE_GLOW : CHAIN_NODE_COLOR;
-    // Tip link is slightly brighter to mark the business end.
-    if (i === CHAIN_NODES - 1) {
-      ctx.fillStyle = CHAIN_LINE_COLOR;
-    }
+    // Main link polygon — tip link uses CHAIN_LINE_COLOR to mark the business end.
+    ctx.fillStyle = i === CHAIN_NODES - 1 ? CHAIN_LINE_COLOR : CHAIN_NODE_COLOR;
     ctx.beginPath();
     ctx.moveTo(x0 - pxX, y0 - pxY);
     ctx.lineTo(x0 + pxX, y0 + pxY);
