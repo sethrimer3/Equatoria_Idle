@@ -25,7 +25,9 @@ export interface RpgMenuTabPane {
   /** Whether auto-move is currently enabled. Updated immediately on checkbox change. */
   isAutoMoveEnabled: boolean;
   /** Re-render the menu tab with fresh RPG state. */
-  update(rpgState: RpgSimState | null, isDevMode?: boolean): void;
+  update(rpgState: RpgSimState | null, isDevMode?: boolean, rpgBarAtTop?: boolean): void;
+  /** Sync the stored rpgBarAtTop value without a full re-render. */
+  setRpgBarAtTop(atTop: boolean): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────
@@ -33,13 +35,16 @@ export interface RpgMenuTabPane {
 export function createRpgMenuTabPane(
   dispatch: ActionHandler,
   onAutoMoveChange: (enabled: boolean) => void,
+  onRpgBarAtTopChange: (atTop: boolean) => void,
 ): RpgMenuTabPane {
   const element = document.createElement('div');
 
   let isAutoMoveEnabled = false;
   let isConfirmingRespawn = false;
+  let rpgBarAtTop = false;
 
-  function update(rpgState: RpgSimState | null, isDevMode = false): void {
+  function update(rpgState: RpgSimState | null, isDevMode = false, barAtTop = false): void {
+    rpgBarAtTop = barAtTop;
     element.innerHTML = '';
 
     // ── Auto Move row ──
@@ -70,6 +75,34 @@ export function createRpgMenuTabPane(
     row.appendChild(labelGroup);
     row.appendChild(checkbox);
     element.appendChild(row);
+
+    // ── Bar at Top row ──
+    const barTopRow = document.createElement('div');
+    barTopRow.className = 'rpg-menu__setting-row';
+
+    const barTopLabelGroup = document.createElement('div');
+    barTopLabelGroup.className = 'rpg-menu__setting-label-group';
+    const barTopLabel = document.createElement('span');
+    barTopLabel.className = 'rpg-menu__setting-label';
+    barTopLabel.textContent = 'Bar at Top';
+    const barTopDesc = document.createElement('span');
+    barTopDesc.className = 'rpg-menu__setting-desc';
+    barTopDesc.textContent = 'Show the RPG stats bar at the top of the screen instead of the bottom.';
+    barTopLabelGroup.appendChild(barTopLabel);
+    barTopLabelGroup.appendChild(barTopDesc);
+
+    const barTopCheckbox = document.createElement('input');
+    barTopCheckbox.type = 'checkbox';
+    barTopCheckbox.className = 'settings-checkbox';
+    barTopCheckbox.checked = rpgBarAtTop;
+    barTopCheckbox.addEventListener('change', () => {
+      rpgBarAtTop = barTopCheckbox.checked;
+      onRpgBarAtTopChange(rpgBarAtTop);
+    });
+
+    barTopRow.appendChild(barTopLabelGroup);
+    barTopRow.appendChild(barTopCheckbox);
+    element.appendChild(barTopRow);
 
     // ── Checkpoint selector ──
     const checkpointCount = rpgState ? Math.floor(rpgState.highestWaveReached / 10) : 0;
@@ -232,6 +265,9 @@ export function createRpgMenuTabPane(
     element,
     isAutoMoveEnabled,
     update,
+    setRpgBarAtTop(atTop: boolean): void {
+      rpgBarAtTop = atTop;
+    },
   };
 
   return pane;
