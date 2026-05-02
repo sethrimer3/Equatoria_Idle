@@ -181,6 +181,23 @@
   transition: r 0.15s;
 }
 
+/* ── Plug anchor — the landing-zone for XP wires inside each stat widget ── */
+/*
+ * This small element sits at the bottom of each stat widget in the space that
+ * was previously occupied by the per-stat allocation sub-texts (LEGACY).
+ * The SVG plug-socket circle is positioned at this element's centre so that
+ * the wire visually plugs in below the stat value.
+ */
+.rpg-stat-plug-anchor {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px dashed rgba(167, 139, 250, 0.25);
+  background: rgba(167, 139, 250, 0.04);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
 /* ── Player stats box — fixed size to prevent growing/shrinking ─── */
 .rpg-player-stats-box {
   display: flex;
@@ -202,23 +219,13 @@
   overflow: hidden;
 }
 
-/* ── Sub-text under ATK / DEF (base value + allocated XP) ─────── */
-.rpg-stat-sub {
-  font-size: 8px;
-  color: var(--text-secondary);
-  line-height: 1.1;
-  text-align: center;
-  opacity: 0.8;
-}
-
-.rpg-stat-sub--base {
-  color: rgba(180, 180, 200, 0.6);
-}
-
-.rpg-stat-sub--alloc {
-  color: #a78bfa;
-  opacity: 0.9;
-}
+/* ── LEGACY: per-stat XP allocation sub-texts (removed from stats panel DOM) ── */
+/*
+ * These classes are retained for reference only.  The DOM elements they styled
+ * (atkBaseEl, atkAllocEl, defBaseEl, defAllocEl, maxHpAllocEl, luckAllocEl)
+ * have been removed.  The space below each stat value is now used by the
+ * rpg-stat-plug-anchor element.
+ */
 
 /* ── Wired stat glow ────────────────────────────────────────────── */
 @keyframes rpg-wired-glow {

@@ -18,13 +18,13 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
-  formatXp, formatLuckPercent, getEffectiveXpDefBonus,
-  getLuckPercent, getEffectiveXpLuckBonus, getEffectiveXpHpBonus,
+  formatXp, formatLuckPercent,
+  getLuckPercent, getEffectiveXpLuckBonus,
 } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
-import { PLAYER_ATK_INIT, BASE_ATTACK_TIMER_KEY } from './rpg-constants';
+import { BASE_ATTACK_TIMER_KEY } from './rpg-constants';
 import { formatNumberAs, type NumberFormat } from '../../util/format';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
@@ -190,28 +190,25 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   luckWidget.labelEl.style.color  = '#86efac';
   luckWidget.valueEl.style.color  = '#86efac';
 
-  // Sub-texts under ATK and DEF (base value + allocated XP counter)
-  const atkBaseEl  = document.createElement('span');
-  atkBaseEl.className = 'rpg-stat-sub rpg-stat-sub--base';
-  atkWidget.root.appendChild(atkBaseEl);
-  const atkAllocEl = document.createElement('span');
-  atkAllocEl.className = 'rpg-stat-sub rpg-stat-sub--alloc';
-  atkWidget.root.appendChild(atkAllocEl);
+  // Plug anchors — one per stat widget.  The SVG plug-socket circles are
+  // positioned at the centre of these elements so the plug appears below the
+  // stat value (the space previously occupied by the LEGACY per-stat XP
+  // allocation sub-texts).
+  const atkPlugAnchor  = document.createElement('div');
+  atkPlugAnchor.className = 'rpg-stat-plug-anchor';
+  atkWidget.root.appendChild(atkPlugAnchor);
 
-  const defBaseEl  = document.createElement('span');
-  defBaseEl.className = 'rpg-stat-sub rpg-stat-sub--base';
-  defWidget.root.appendChild(defBaseEl);
-  const defAllocEl = document.createElement('span');
-  defAllocEl.className = 'rpg-stat-sub rpg-stat-sub--alloc';
-  defWidget.root.appendChild(defAllocEl);
+  const defPlugAnchor  = document.createElement('div');
+  defPlugAnchor.className = 'rpg-stat-plug-anchor';
+  defWidget.root.appendChild(defPlugAnchor);
 
-  const maxHpAllocEl = document.createElement('span');
-  maxHpAllocEl.className = 'rpg-stat-sub rpg-stat-sub--alloc';
-  maxHpWidget.root.appendChild(maxHpAllocEl);
+  const hpPlugAnchor  = document.createElement('div');
+  hpPlugAnchor.className = 'rpg-stat-plug-anchor';
+  maxHpWidget.root.appendChild(hpPlugAnchor);
 
-  const luckAllocEl = document.createElement('span');
-  luckAllocEl.className = 'rpg-stat-sub rpg-stat-sub--alloc';
-  luckWidget.root.appendChild(luckAllocEl);
+  const luckPlugAnchor  = document.createElement('div');
+  luckPlugAnchor.className = 'rpg-stat-plug-anchor';
+  luckWidget.root.appendChild(luckPlugAnchor);
 
   statsPanel.appendChild(playerStatsBox);
   // HP box sits between the XP box and the DPS box, filling available width.
@@ -522,11 +519,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   function addWireToStat(stat: 'atk' | 'def' | 'luck' | 'hp'): WireData {
     const wire = createWireData(stat);
     lockedWires.push(wire);
-    // Initialize rope
-    const xpC   = elementCentreInPanel(xpNodeEl);
-    const statEl = statRoot(stat)!;
-    const statC  = elementCentreInPanel(statEl);
-    wire.segLen  = initRope(wire.nodes, xpC.x, xpC.y, statC.x, statC.y);
+    // Initialize rope anchored at the stat's plug anchor element
+    const xpC     = elementCentreInPanel(xpNodeEl);
+    const statC   = elementCentreInPanel(statPlugAnchor(stat));
+    wire.segLen   = initRope(wire.nodes, xpC.x, xpC.y, statC.x, statC.y);
     wire.colorBleedT = 0;
     // Update sim state
     rpgSimState.xpAllocatedStats.push(stat);
@@ -556,12 +552,11 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return { x: r.left + r.width / 2 - p.left, y: r.top + r.height / 2 - p.top };
   }
 
-  function statRoot(stat: 'atk' | 'def' | 'luck' | 'hp'): HTMLElement | null {
-    if (stat === 'atk')  return atkWidget.root;
-    if (stat === 'def')  return defWidget.root;
-    if (stat === 'luck') return luckWidget.root;
-    if (stat === 'hp')   return maxHpWidget.root;
-    return null;
+  function statPlugAnchor(stat: 'atk' | 'def' | 'luck' | 'hp'): HTMLElement {
+    if (stat === 'atk')  return atkPlugAnchor;
+    if (stat === 'def')  return defPlugAnchor;
+    if (stat === 'luck') return luckPlugAnchor;
+    return hpPlugAnchor;
   }
 
   function pointerOverElement(el: HTMLElement, clientX: number, clientY: number): boolean {
@@ -578,10 +573,16 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   }
 
   // ── XP node events ────────────────────────────────────────────────
+  // xpPointerIsDown tracks whether a pointerdown has been received on the XP
+  // node without a corresponding pointerup/cancel.  This guards the pointermove
+  // handler so that simply hovering over the XP node cannot accidentally start
+  // a wire drag without an explicit click/tap.
+  let xpPointerIsDown = false;
   let xpTapStartX = 0, xpTapStartY = 0, xpTapMoved = false;
 
   xpNodeEl.addEventListener('pointerdown', (e: PointerEvent) => {
     e.stopPropagation();
+    xpPointerIsDown = true;
     if (dragKind !== 'none') return;
     const activeWireCount = lockedWires.filter(w => !w.isSlurping).length;
     if (activeWireCount >= MAX_WIRES) {
@@ -608,6 +609,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   }, { passive: true });
 
   xpNodeEl.addEventListener('pointermove', (e: PointerEvent) => {
+    // Only process movement when a pointerdown was received first.
+    // Without this guard, hovering over the XP node (without clicking) would
+    // inadvertently start a drag because xpTapStartX/Y default to 0,0.
+    if (!xpPointerIsDown) return;
     if (dragKind === 'new') {
       wireDragClientX = e.clientX;
       wireDragClientY = e.clientY;
@@ -633,6 +638,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   }, { passive: true });
 
   xpNodeEl.addEventListener('pointerup', (e: PointerEvent) => {
+    xpPointerIsDown = false;
     if (dragKind === 'new') {
       const stat = landedStat(e.clientX, e.clientY);
       if (stat && !isStatWired(stat)) {
@@ -674,6 +680,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   }, { passive: true });
 
   xpNodeEl.addEventListener('pointercancel', () => {
+    xpPointerIsDown = false;
     if (dragKind === 'new') {
       dragKind = 'none';
       dragPolylineSvg.style.display = 'none';
@@ -704,13 +711,13 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     const panelH = statsPanel.clientHeight;
     wireSvg.setAttribute('viewBox', `0 0 ${panelW} ${panelH}`);
 
-    // Update plug socket positions
+    // Update plug socket positions — circles sit at the plug anchor of each stat
     const xpC = elementCentreInPanel(xpNodeEl);
     updatePlugCircle(plugXpCircle, xpC.x, xpC.y, false);
-    updatePlugCircle(plugAtkCircle,  elementCentreInPanel(atkWidget.root).x,   elementCentreInPanel(atkWidget.root).y,   isStatWired('atk'));
-    updatePlugCircle(plugDefCircle,  elementCentreInPanel(defWidget.root).x,   elementCentreInPanel(defWidget.root).y,   isStatWired('def'));
-    updatePlugCircle(plugLuckCircle, elementCentreInPanel(luckWidget.root).x,  elementCentreInPanel(luckWidget.root).y,  isStatWired('luck'));
-    updatePlugCircle(plugHpCircle,   elementCentreInPanel(maxHpWidget.root).x, elementCentreInPanel(maxHpWidget.root).y, isStatWired('hp'));
+    updatePlugCircle(plugAtkCircle,  elementCentreInPanel(atkPlugAnchor).x,  elementCentreInPanel(atkPlugAnchor).y,  isStatWired('atk'));
+    updatePlugCircle(plugDefCircle,  elementCentreInPanel(defPlugAnchor).x,  elementCentreInPanel(defPlugAnchor).y,  isStatWired('def'));
+    updatePlugCircle(plugLuckCircle, elementCentreInPanel(luckPlugAnchor).x, elementCentreInPanel(luckPlugAnchor).y, isStatWired('luck'));
+    updatePlugCircle(plugHpCircle,   elementCentreInPanel(hpPlugAnchor).x,   elementCentreInPanel(hpPlugAnchor).y,   isStatWired('hp'));
 
     // Update locked wires
     for (let i = lockedWires.length - 1; i >= 0; i--) {
@@ -752,8 +759,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   function updateLockedWire(wire: WireData, xpC: { x: number; y: number }, deltaMs: number): void {
     // Initialize rope if not yet done (e.g. just restored from save)
     if (wire.nodes.length !== ROPE_N) {
-      const statEl = statRoot(wire.stat)!;
-      const statC = elementCentreInPanel(statEl);
+      const anchorEl = statPlugAnchor(wire.stat);
+      const statC = elementCentreInPanel(anchorEl);
       wire.segLen = initRope(wire.nodes, xpC.x, xpC.y, statC.x, statC.y);
     }
     const isDraggingTip = dragKind === 'tip' && dragSourceWire === wire;
@@ -762,8 +769,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       const p = toPanelCoords(wireDragClientX, wireDragClientY);
       tipX = p.x; tipY = p.y;
     } else {
-      const statEl = statRoot(wire.stat)!;
-      const statC = elementCentreInPanel(statEl);
+      const anchorEl = statPlugAnchor(wire.stat);
+      const statC = elementCentreInPanel(anchorEl);
       tipX = statC.x; tipY = statC.y;
     }
     updateRope(wire.nodes, wire.segLen, xpC.x, xpC.y, tipX, tipY);
@@ -930,36 +937,17 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
     // ATK
     atkWidget.valueEl.textContent = formatStatValue(playerStats.atk, numFmt);
-    atkBaseEl.textContent  = '(' + PLAYER_ATK_INIT + ')';
-    atkAllocEl.textContent = rpgSimState.xpAllocatedToAtk > 0
-      ? formatXp(rpgSimState.xpAllocatedToAtk) + ' xp' : '';
 
     // DEF
     defWidget.valueEl.textContent = formatStatValue(playerStats.def, numFmt);
-    const defXpContrib = getEffectiveXpDefBonus(rpgSimState);
-    const baseDef = playerStats.def - defXpContrib;
-    defBaseEl.textContent  = '(' + baseDef + ')';
-    defAllocEl.textContent = rpgSimState.xpAllocatedToDef > 0
-      ? formatXp(rpgSimState.xpAllocatedToDef) + ' xp' : '';
 
     // MAXHP
     maxHpWidget.valueEl.textContent = formatStatValue(playerStats.maxHp, numFmt);
-    const hpBonus = getEffectiveXpHpBonus(rpgSimState);
-    if (hpBonus > 0) {
-      maxHpAllocEl.textContent = '+' + hpBonus + ' bonus';
-    } else if (rpgSimState.xpAllocatedToHp > 0) {
-      maxHpAllocEl.textContent = formatXp(rpgSimState.xpAllocatedToHp) + ' xp';
-    } else {
-      maxHpAllocEl.textContent = '';
-    }
 
-    // LUCK — display the full effective luck (base + bonus), may exceed 100%
-    const baseLuck = getLuckPercent(rpgSimState.xp);
+    // LUCK — display the full effective luck (base + XP-allocation bonus), may exceed 100%
+    const baseLuck  = getLuckPercent(rpgSimState.xp);
     const luckBonus = getEffectiveXpLuckBonus(rpgSimState);
-    const totalLuck = baseLuck + luckBonus;
-    luckWidget.valueEl.textContent = formatLuckPercent(totalLuck);
-    luckAllocEl.textContent = rpgSimState.xpAllocatedToLuck > 0
-      ? formatXp(rpgSimState.xpAllocatedToLuck) + ' xp' : '';
+    luckWidget.valueEl.textContent = formatLuckPercent(baseLuck + luckBonus);
 
     // Glow on the wired stat widgets
     atkWidget.root.classList.toggle('rpg-stat--wired',    isStatWired('atk'));
