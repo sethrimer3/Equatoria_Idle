@@ -24,7 +24,7 @@ import {
   CHAIN_NODES, CHAIN_NODE_COLOR,
   CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
   CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
-  CHAIN_DAMPING, CHAIN_LASH_SPEED,
+  CHAIN_DAMPING,
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW,
   VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
   VORTEX_COLOR, VORTEX_SPIN_RATE,
@@ -732,20 +732,6 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
         const target = findClosestEnemy(range * range);
         if (target) {
           ws.targetX = target.x; ws.targetY = target.y;
-          // Cascade impulse across all nodes: inner nodes get a smaller fraction,
-          // outer nodes get progressively more — mimics a whip crack initiation.
-          const tipX = ws.nodesX[CHAIN_NODES - 1], tipY = ws.nodesY[CHAIN_NODES - 1];
-          const tdx = ws.targetX - tipX, tdy = ws.targetY - tipY;
-          const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
-          if (tdist > 0.01) {
-            const nx = tdx / tdist, ny = tdy / tdist;
-            for (let ni = 0; ni < CHAIN_NODES; ni++) {
-              // Scale: 0.15 at node 0, 1.0 at tip
-              const scale = 0.15 + 0.85 * (ni / (CHAIN_NODES - 1));
-              ws.nodesVx[ni] = nx * CHAIN_LASH_SPEED * scale;
-              ws.nodesVy[ni] = ny * CHAIN_LASH_SPEED * scale;
-            }
-          }
           ws.phase = 'lashing'; ws.phaseMs = 0;
         } else {
           ws.phaseMs = ws.cooldownMs;
