@@ -145,7 +145,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   iconCanvas.style.height = '22px';
   playerIconEl.appendChild(iconCanvas);
 
-  const iconCtx2d = iconCanvas.getContext('2d')!;
+  const iconCtx2d = iconCanvas.getContext('2d');
   const ICON_SCALE    = 2;            // upscale factor matching the 2× canvas
   const ICON_MOTE_PX  = 3 * ICON_SCALE; // body is 6px on the 44px canvas
   const ICON_CX       = ICON_CANVAS_SIZE / 2;
@@ -154,6 +154,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   /** Draw one frame of the player idle animation onto iconCanvas. */
   function drawPlayerIdleFrame(deltaMs: number): void {
+    if (!iconCtx2d) return;
     iconAnimTs += Math.min(deltaMs, 100) / 1000;
     const pulseT  = (Math.sin(iconAnimTs * GLOW_PULSE_SPEED) + 1) * 0.5; // 0–1
 
@@ -185,10 +186,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     iconCtx2d.shadowBlur = 0;
   }
 
-  // Lightweight RAF loop for the player icon animation
+  // Lightweight RAF loop for the player icon animation.
+  // Skips drawing while the stats panel is hidden (display:none) to avoid
+  // unnecessary GPU work when the RPG tab is not active.
   let iconPrevMs = 0;
   function iconAnimLoop(ms: number): void {
-    drawPlayerIdleFrame(ms - iconPrevMs);
+    if (statsPanel.style.display !== 'none') {
+      drawPlayerIdleFrame(ms - iconPrevMs);
+    }
     iconPrevMs = ms;
     requestAnimationFrame(iconAnimLoop);
   }
