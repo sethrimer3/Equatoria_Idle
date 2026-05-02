@@ -237,12 +237,12 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   luckPlugAnchor.className = 'rpg-stat-plug-anchor';
   luckPlugSlot.appendChild(luckPlugAnchor);
 
-  // ── Box 5 — 4 separate boxes: XP box + roman-numeral boxes I/II/III ──
+  // ── Boxes 2–5 — 4 separate boxes: XP box + roman-numeral boxes I/II/III ──
   // Each box is a row containing a label on the left and a plug slot on the right.
   const xpBox2 = document.createElement('div');
   xpBox2.className = 'rpg-box5-wrapper';
 
-  // Helper: build one Box-5 row box
+  // Helper: build one row box for boxes 2–5
   function makeBox5Row(label: string | HTMLElement): HTMLDivElement {
     const box = document.createElement('div');
     box.className = 'rpg-xp-box rpg-box5-cell';
@@ -276,12 +276,16 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   xpNodeEl.appendChild(xpLabelTextEl);
   xpNodeEl.appendChild(xpAmountEl);
 
-  xpBox2.appendChild(makeBox5Row(xpNodeEl));
-  xpBox2.appendChild(makeBox5Row('I'));
-  xpBox2.appendChild(makeBox5Row('II'));
-  xpBox2.appendChild(makeBox5Row('III'));
+  const box5Cell2 = makeBox5Row(xpNodeEl); // box 2
+  const box5Cell3 = makeBox5Row('I');       // box 3
+  const box5Cell4 = makeBox5Row('II');      // box 4
+  const box5Cell5 = makeBox5Row('III');     // box 5
+  xpBox2.appendChild(box5Cell2);
+  xpBox2.appendChild(box5Cell3);
+  xpBox2.appendChild(box5Cell4);
+  xpBox2.appendChild(box5Cell5);
 
-  // ── Box 4 — 6 separate wide short row-boxes ───────────────────────
+  // ── Boxes 6–11 — 6 separate wide short row-boxes ───────────────────────
   // Layout:
   //   Row 0 (labels): ATK | DEF | MAXHP | LUCK | STR | AGI
   //   Row 1 (values): live stat values for first 4, stub "0" for last 2
@@ -289,9 +293,12 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   const xpBox3 = document.createElement('div');
   xpBox3.className = 'rpg-box4-wrapper';
 
+  const box4RowEls: HTMLDivElement[] = []; // row elements in order; used for badges 6–11
+
   function makeBox4Row(): HTMLDivElement[] {
     const rowBox = document.createElement('div');
     rowBox.className = 'rpg-xp-box rpg-box4-row';
+    box4RowEls.push(rowBox);
     const cells: HTMLDivElement[] = [];
     for (let c = 0; c < 6; c++) {
       const cell = document.createElement('div');
@@ -421,9 +428,11 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   statsPanel.appendChild(rightColumn);
 
   // ── Dev mode box number badges ────────────────────────────────────
-  // Numbered top-to-bottom, left-to-right:
-  //   1=box 1 (plug column, leftmost), 2=box 2 (XP column),
-  //   3=box 3 (wide stats area), 4=DPS widget, 5=HP box, 6=menu area
+  // 14 boxes total:
+  //   1  = box 1 (plug column, leftmost)
+  //   2–5 = boxes 2–5 (XP column sub-cells: XP, I, II, III)
+  //   6–11 = boxes 6–11 (wide stats area row sub-cells)
+  //   12 = DPS widget, 13 = HP box, 14 = menu area
   function makeBoxBadge(container: HTMLElement, num: number): HTMLSpanElement {
     const badge = document.createElement('span');
     badge.className = 'rpg-dev-box-num';
@@ -432,11 +441,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return badge;
   }
   makeBoxBadge(xpBox1, 1);
-  makeBoxBadge(xpBox2, 2);
-  makeBoxBadge(xpBox3, 3);
-  makeBoxBadge(dpsWidget, 4);
-  makeBoxBadge(hpFractionEl, 5);
-  makeBoxBadge(menuArea, 6);
+  makeBoxBadge(box5Cell2, 2);
+  makeBoxBadge(box5Cell3, 3);
+  makeBoxBadge(box5Cell4, 4);
+  makeBoxBadge(box5Cell5, 5);
+  box4RowEls.forEach((row, i) => makeBoxBadge(row, 6 + i));
+  makeBoxBadge(dpsWidget, 12);
+  makeBoxBadge(hpFractionEl, 13);
+  makeBoxBadge(menuArea, 14);
 
   // ── Wire SVG overlay (sits above all panel content) ───────────────
   const wireSvgNS = 'http://www.w3.org/2000/svg';
