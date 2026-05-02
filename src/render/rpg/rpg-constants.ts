@@ -175,35 +175,43 @@ export const SAND_PROJ_COLOR      = '#ddc080';
 export const SAND_PROJ_GLOW       = '#ffe8a0';
 
 // ── Quartz chain whip constants ────────────────────────────────
-export const CHAIN_NODES           =   5;
-/** Radius of node 0 (closest to player, smallest). */
-export const CHAIN_MIN_RADIUS      =   2;
-/** Radius of node CHAIN_NODES-1 (tip, farthest from player, largest). */
-export const CHAIN_MAX_RADIUS      =   6;
+export const CHAIN_NODES           =  30;
+/** Visual half-width of each polygon link (perpendicular to chain direction). */
+export const CHAIN_MIN_RADIUS      =   1.5;
+/** Visual half-width of tip link (farthest from player, slightly wider). */
+export const CHAIN_MAX_RADIUS      =   3.5;
 export const CHAIN_NODE_COLOR      = '#a0d8ef';
 export const CHAIN_NODE_GLOW       = '#c8eeff';
 export const CHAIN_LINE_COLOR      = '#88c8e8';
-export const CHAIN_LASH_MS         = 280;   // ms for tip to lash toward target
-export const CHAIN_RETRACT_MS      = 320;   // ms in retracting phase before returning to idle
+export const CHAIN_LASH_MS         = 420;   // ms for tip to lash toward target (longer for 30-node chain)
+export const CHAIN_RETRACT_MS      = 480;   // ms in retracting phase before returning to idle
 /** Damage ticks per I-frame interval (ms). */
 export const CHAIN_HIT_CD_MS       =  62.5;
 // ── Softbody whip physics constants ──
-/** Rest spacing (px) between adjacent nodes. */
-export const CHAIN_REST_LENGTH     =  10;
+/** Rest spacing (px) between adjacent nodes.
+ *  29 segments × 3px = 87px natural length — slightly longer than weapon range (75px)
+ *  for a natural droop when idle. */
+export const CHAIN_REST_LENGTH     =   3;
 /** Spring stiffness between adjacent nodes. */
-export const CHAIN_SPRING_K        =   0.40;
+export const CHAIN_SPRING_K        =   0.55;
 /** Anchor spring pulling node 0 toward the player (idle). */
-export const CHAIN_ANCHOR_K        =   0.60;
+export const CHAIN_ANCHOR_K        =   0.70;
 /** Anchor spring during retract phase (stronger pull). */
-export const CHAIN_RETRACT_ANCHOR_K = 2.0;
+export const CHAIN_RETRACT_ANCHOR_K = 2.5;
 /** Per-dt velocity damping factor (applied as pow(DAMPING, dt)). */
-export const CHAIN_DAMPING         =   0.85;
-/** Initial speed given to the tip node when a lash is triggered (px/dt). */
-export const CHAIN_LASH_SPEED      =  20;
+export const CHAIN_DAMPING         =   0.80;
+/** Initial speed given to nodes when a lash is triggered (px/dt).
+ *  Applied with a cascade: inner nodes get a smaller impulse, outer nodes get more. */
+export const CHAIN_LASH_SPEED      =  14;
 /** Inertia of node 0 (closest to player, most responsive). */
-export const CHAIN_MIN_INERTIA     =   0.8;
+export const CHAIN_MIN_INERTIA     =   0.6;
 /** Inertia of tip node (farthest, least responsive / most momentum). */
-export const CHAIN_MAX_INERTIA     =   4.0;
+export const CHAIN_MAX_INERTIA     =   3.5;
+/**
+ * Visual gap ratio: each polygon link is rendered at this fraction of
+ * CHAIN_REST_LENGTH so there is always a small gap between adjacent links.
+ */
+export const CHAIN_LINK_GAP_RATIO  =   0.55;
 
 // ── Ruby laser beam constants ──────────────────────────────────
 export const LASER_BEAM_VISIBLE_MS  = 400;   // how long the beam stays on screen

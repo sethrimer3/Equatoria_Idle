@@ -667,13 +667,19 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
   /**
    * Advances the softbody spring physics for all chain nodes.
    * anchorK controls how strongly node 0 is pulled toward the player.
+   *
+   * Force asymmetry: the force an inner node exerts on the outer node it is
+   * connected to is twice as strong as the force the outer node exerts back on
+   * the inner node.  This propagates energy outward like a real whip crack.
    */
   function stepChainPhysics(ws: ChainWhipState, dt: number, anchorK: number): void {
     // Node 0: spring anchor toward player (rest length 0)
     ws.nodesVx[0] += (mote.x - ws.nodesX[0]) * anchorK * chainNodeInvMass(0) * dt;
     ws.nodesVy[0] += (mote.y - ws.nodesY[0]) * anchorK * chainNodeInvMass(0) * dt;
 
-    // Spring forces between adjacent pairs
+    // Asymmetric spring forces between adjacent pairs.
+    // The inner node (i) exerts 2× force on the outer node (i+1), while the
+    // outer node exerts only 1× force back on the inner node.
     for (let i = 0; i < CHAIN_NODES - 1; i++) {
       const sdx = ws.nodesX[i + 1] - ws.nodesX[i];
       const sdy = ws.nodesY[i + 1] - ws.nodesY[i];
@@ -682,10 +688,12 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       const stretch = sdist - CHAIN_REST_LENGTH;
       const fx = (sdx / sdist) * stretch * CHAIN_SPRING_K;
       const fy = (sdy / sdist) * stretch * CHAIN_SPRING_K;
+      // Outer node pulled/pushed by inner with 2× force
+      ws.nodesVx[i + 1] -= fx * 2 * chainNodeInvMass(i + 1) * dt;
+      ws.nodesVy[i + 1] -= fy * 2 * chainNodeInvMass(i + 1) * dt;
+      // Inner node pulled/pushed by outer with 1× force
       ws.nodesVx[i]     += fx * chainNodeInvMass(i)     * dt;
       ws.nodesVy[i]     += fy * chainNodeInvMass(i)     * dt;
-      ws.nodesVx[i + 1] -= fx * chainNodeInvMass(i + 1) * dt;
-      ws.nodesVy[i + 1] -= fy * chainNodeInvMass(i + 1) * dt;
     }
 
     // Integrate positions + apply damping
@@ -722,13 +730,19 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
         const target = findClosestEnemy(range * range);
         if (target) {
           ws.targetX = target.x; ws.targetY = target.y;
-          // Give the tip (CHAIN_NODES-1) a sudden velocity toward the target
+          // Cascade impulse across all nodes: inner nodes get a smaller fraction,
+          // outer nodes get progressively more — mimics a whip crack initiation.
           const tipX = ws.nodesX[CHAIN_NODES - 1], tipY = ws.nodesY[CHAIN_NODES - 1];
           const tdx = ws.targetX - tipX, tdy = ws.targetY - tipY;
           const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
           if (tdist > 0.01) {
-            ws.nodesVx[CHAIN_NODES - 1] = (tdx / tdist) * CHAIN_LASH_SPEED;
-            ws.nodesVy[CHAIN_NODES - 1] = (tdy / tdist) * CHAIN_LASH_SPEED;
+            const nx = tdx / tdist, ny = tdy / tdist;
+            for (let ni = 0; ni < CHAIN_NODES; ni++) {
+              // Scale: 0.15 at node 0, 1.0 at tip
+              const scale = 0.15 + 0.85 * (ni / (CHAIN_NODES - 1));
+              ws.nodesVx[ni] = nx * CHAIN_LASH_SPEED * scale;
+              ws.nodesVy[ni] = ny * CHAIN_LASH_SPEED * scale;
+            }
           }
           ws.phase = 'lashing'; ws.phaseMs = 0;
         } else {

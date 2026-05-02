@@ -65,6 +65,8 @@ export interface RpgStatsPanelHandle {
   recordDps(dmg: number, _legacyColor?: string): void;
   withDamageSource<T>(weaponId: string | null, fn: () => T): T;
   update(): void;
+  /** Show or hide the dev-mode numerical designators on each panel box. */
+  setDevMode(enabled: boolean): void;
 }
 
 // ── Wire colour map ───────────────────────────────────────────────────────────
@@ -257,6 +259,23 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   rightColumn.appendChild(hpFractionEl);
   rightColumn.appendChild(menuArea);
   statsPanel.appendChild(rightColumn);
+
+  // ── Dev mode box number badges ────────────────────────────────────
+  // Numbered top-to-bottom, left-to-right: 1=ATK box, 2=XP/DEF box,
+  // 3=MAXHP/LUCK box, 4=DPS widget, 5=HP box, 6=menu area.
+  function makeBoxBadge(container: HTMLElement, num: number): HTMLSpanElement {
+    const badge = document.createElement('span');
+    badge.className = 'rpg-dev-box-num';
+    badge.textContent = String(num);
+    container.appendChild(badge);
+    return badge;
+  }
+  makeBoxBadge(xpBox1, 1);
+  makeBoxBadge(xpBox2, 2);
+  makeBoxBadge(xpBox3, 3);
+  makeBoxBadge(dpsWidget, 4);
+  makeBoxBadge(hpFractionEl, 5);
+  makeBoxBadge(menuArea, 6);
 
   // ── Wire SVG overlay (sits above all panel content) ───────────────
   const wireSvgNS = 'http://www.w3.org/2000/svg';
@@ -1031,6 +1050,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     withDamageSource,
     update(): void {
       updateStatsPanelDom();
+    },
+    setDevMode(enabled: boolean): void {
+      if (enabled) statsPanel.classList.add('rpg-dev-mode');
+      else statsPanel.classList.remove('rpg-dev-mode');
     },
   };
 }

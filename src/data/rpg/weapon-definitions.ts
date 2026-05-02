@@ -120,7 +120,7 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
   {
     id: 'quartz_shard',
     name: 'Quartz Chain Whip',
-    description: 'A linked chain of 5 quartz circles that lashes at the nearest enemy periodically. Deals persistent contact damage.',
+    description: 'A fluid whip of 30 linked quartz polygons that lashes at the nearest enemy periodically. Deals persistent contact damage.',
     costTierId: 'quartz',
     cost: 300,
     stats: {
