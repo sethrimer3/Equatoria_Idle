@@ -118,6 +118,7 @@
  * left area up to the right column.
  */
 .rpg-xp-box {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -148,6 +149,7 @@
 
 /* ── HP box — current hit-points, sits in the right column ── */
 .rpg-hp-box {
+  position: relative;
   width: var(--rpg-dps-box-size);
   height: calc(var(--rpg-dps-box-size) * 2 / 3);
   flex: 0 0 auto;
@@ -178,6 +180,7 @@
 
 /* ── Menu area — holds the RPG menu toggle button ──────────────── */
 .rpg-menu-area {
+  position: relative;
   width: var(--rpg-dps-box-size);
   height: calc(var(--rpg-dps-box-size) / 3);
   flex: 0 0 auto;
@@ -185,6 +188,30 @@
   align-items: center;
   justify-content: flex-end;
   pointer-events: none;
+}
+
+/* ── Dev mode box number badge ─────────────────────────────────── */
+/*
+ * Shown only when developer mode is on. A small pink numeral in the
+ * top-right corner of each RPG stats panel box, giving each a fixed
+ * numerical designator for communication purposes.
+ */
+.rpg-dev-box-num {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #f9a8d4;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+  text-shadow: 0 0 3px rgba(249, 168, 212, 0.7);
+}
+
+.rpg-dev-mode .rpg-dev-box-num {
+  display: block;
 }
 
 /* ── XP wiring node ────────────────────────────────────────────── */
@@ -346,6 +373,7 @@
 }
 
 .rpg-dps-widget {
+  position: relative;
   width: var(--rpg-dps-box-size);
   height: var(--rpg-dps-box-size);
   flex: 0 0 auto;

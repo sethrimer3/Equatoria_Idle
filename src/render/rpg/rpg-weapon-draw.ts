@@ -18,6 +18,7 @@
 import type { ChainWhipState, NullstoneVortex, SwordComboState } from './rpg-types';
 import {
   CHAIN_LINE_COLOR, CHAIN_NODE_COLOR, CHAIN_NODE_GLOW, CHAIN_NODES,
+  CHAIN_REST_LENGTH, CHAIN_LINK_GAP_RATIO,
   VORTEX_COLOR, VORTEX_GLOW,
   SWORD_PRISMATIC_COLORS, SWORD_SHARD_COUNT, SWORD_SHARD_SHAPES,
   SWORD_COMBO_SPIN_MS, SWORD_COMBO_SPIN_TURNS,
@@ -36,44 +37,88 @@ export function setLowGraphicsMode(enabled: boolean): void {
 // ── Chain whip ────────────────────────────────────────────────────────────────
 
 /**
- * Draws the quartz chain-whip — node chain lines and graduated node circles.
- * Call only while phase !== 'idle' (or very early in cooldown) to avoid
- * drawing an invisible chain.
+ * Draws the quartz chain-whip as 30 small polygon links with visual gaps
+ * between them.  Each link is a short parallelogram oriented along the
+ * chain segment, visually similar to the sand / diamond sword polygon style.
  */
 export function drawChainWhip(ctx: CanvasRenderingContext2D, ws: ChainWhipState): void {
   if (ws.phase === 'idle' && ws.phaseMs < ws.cooldownMs * 0.1) return;
   ctx.save();
-  ctx.lineWidth = 1.5;
-  ctx.lineCap   = 'round';
-  ctx.lineJoin  = 'round';
-  // Draw chain links (lines between nodes)
-  ctx.strokeStyle = CHAIN_LINE_COLOR;
-  if (!isLowGraphicsMode) {
-    ctx.shadowBlur  = 4; ctx.shadowColor = CHAIN_NODE_GLOW;
-  }
-  ctx.globalAlpha = 0.75;
-  ctx.beginPath();
-  ctx.moveTo(ws.nodesX[0], ws.nodesY[0]);
-  for (let i = 1; i < CHAIN_NODES; i++) ctx.lineTo(ws.nodesX[i], ws.nodesY[i]);
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-  // Draw node circles with graduated sizes
+
+  // Half-length of each polygon link along the chain direction, with gap applied.
+  const halfLen = (CHAIN_REST_LENGTH * CHAIN_LINK_GAP_RATIO) * 0.5;
+
   for (let i = 0; i < CHAIN_NODES; i++) {
-    const r = chainNodeRadius(i);
+    const cx = ws.nodesX[i];
+    const cy = ws.nodesY[i];
+
+    // Determine orientation: align polygon along the chain direction.
+    // Use vectors to adjacent nodes; fall back to zero angle at chain ends.
+    let dirX = 0, dirY = 0;
+    if (i < CHAIN_NODES - 1) {
+      dirX += ws.nodesX[i + 1] - cx;
+      dirY += ws.nodesY[i + 1] - cy;
+    }
+    if (i > 0) {
+      dirX += cx - ws.nodesX[i - 1];
+      dirY += cy - ws.nodesY[i - 1];
+    }
+    const dlen = Math.sqrt(dirX * dirX + dirY * dirY);
+    const axX = dlen > 0.001 ? dirX / dlen : 1;
+    const axY = dlen > 0.001 ? dirY / dlen : 0;
+    // Perpendicular axis (half-width)
+    const hw = chainNodeRadius(i);
+    const pxX = -axY * hw;
+    const pxY =  axX * hw;
+
+    // Four corners of the link rectangle (elongated along chain, narrower perp)
+    const x0 = cx - axX * halfLen;
+    const y0 = cy - axY * halfLen;
+    const x1 = cx + axX * halfLen;
+    const y1 = cy + axY * halfLen;
+
     ctx.globalAlpha = 0.9;
+
     if (!isLowGraphicsMode) {
-      ctx.shadowBlur  = r * 3; ctx.shadowColor = CHAIN_NODE_GLOW;
+      ctx.shadowBlur  = hw * 2.5;
+      ctx.shadowColor = CHAIN_NODE_GLOW;
       ctx.fillStyle   = CHAIN_NODE_GLOW;
       ctx.beginPath();
-      ctx.arc(ws.nodesX[i], ws.nodesY[i], r * 1.4, 0, Math.PI * 2);
+      ctx.moveTo(x0 - pxX * 1.5, y0 - pxY * 1.5);
+      ctx.lineTo(x0 + pxX * 1.5, y0 + pxY * 1.5);
+      ctx.lineTo(x1 + pxX * 1.5, y1 + pxY * 1.5);
+      ctx.lineTo(x1 - pxX * 1.5, y1 - pxY * 1.5);
+      ctx.closePath();
       ctx.fill();
       ctx.shadowBlur = 0;
     }
-    ctx.fillStyle  = CHAIN_NODE_COLOR;
+
+    // Main link polygon
+    ctx.fillStyle = i === CHAIN_NODES - 1 ? CHAIN_NODE_GLOW : CHAIN_NODE_COLOR;
+    // Tip link is slightly brighter to mark the business end.
+    if (i === CHAIN_NODES - 1) {
+      ctx.fillStyle = CHAIN_LINE_COLOR;
+    }
     ctx.beginPath();
-    ctx.arc(ws.nodesX[i], ws.nodesY[i], r, 0, Math.PI * 2);
+    ctx.moveTo(x0 - pxX, y0 - pxY);
+    ctx.lineTo(x0 + pxX, y0 + pxY);
+    ctx.lineTo(x1 + pxX, y1 + pxY);
+    ctx.lineTo(x1 - pxX, y1 - pxY);
+    ctx.closePath();
+    ctx.fill();
+
+    // White highlight core on each link
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(x0 - pxX * 0.4, y0 - pxY * 0.4);
+    ctx.lineTo(x0 + pxX * 0.4, y0 + pxY * 0.4);
+    ctx.lineTo(x1 + pxX * 0.4, y1 + pxY * 0.4);
+    ctx.lineTo(x1 - pxX * 0.4, y1 - pxY * 0.4);
+    ctx.closePath();
     ctx.fill();
   }
+
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.restore();
 }

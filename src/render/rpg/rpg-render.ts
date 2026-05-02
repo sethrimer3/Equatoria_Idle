@@ -234,6 +234,8 @@ export interface RpgRender {
   startBossFight(bossId: number): void;
   /** Update the number-format setting used to render stat values in the stats panel. */
   setNumberFormat(format: NumberFormat): void;
+  /** Show or hide dev-mode numerical designators on each RPG stats panel box. */
+  setDevMode(enabled: boolean): void;
 }
 
 /** Options passed to createRpgRender. */
@@ -3381,6 +3383,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setNumberFormat(format: NumberFormat): void {
       currentNumberFormat = format;
+    },
+
+    setDevMode(enabled: boolean): void {
+      statsPanel.setDevMode(enabled);
     },
   };
 }
