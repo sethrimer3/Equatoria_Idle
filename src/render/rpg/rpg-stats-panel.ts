@@ -246,7 +246,6 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   hpFractionLabel.textContent = 'HP';
   const hpFractionValue = document.createElement('span');
   hpFractionValue.className = 'rpg-stat-value rpg-stat-value--hp';
-  hpFractionValue.style.fontSize = '11px';
   hpFractionEl.appendChild(hpFractionLabel);
   hpFractionEl.appendChild(hpFractionValue);
 

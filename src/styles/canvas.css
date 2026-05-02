@@ -162,6 +162,11 @@
   pointer-events: none;
 }
 
+/* Smaller font for the HP value to fit the compact box height */
+.rpg-hp-box .rpg-stat-value {
+  font-size: 11px;
+}
+
 /* ── Right column — DPS + HP + menu area, stacked vertically ─── */
 .rpg-right-column {
   display: flex;
