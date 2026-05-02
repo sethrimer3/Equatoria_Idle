@@ -270,22 +270,21 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   // Build stat widget references so the rest of the file can update them
   // root = value cell (used for pointer-over and rpg-stat--wired glow)
   function makeStatWidget(
-    _label: string,
     extraClass: string,
     valueCell: HTMLDivElement,
   ): { root: HTMLElement; labelEl: HTMLSpanElement; valueEl: HTMLSpanElement } {
     const valueEl = document.createElement('span');
     valueEl.className = 'rpg-stat-value' + (extraClass ? ' ' + extraClass : '');
     valueCell.appendChild(valueEl);
-    // labelEl is the corresponding label span in row 0 (already created above)
-    const labelEl = document.createElement('span'); // placeholder – styled via row 0
+    // labelEl placeholder — label text is rendered separately in the labels row
+    const labelEl = document.createElement('span');
     return { root: valueCell, labelEl, valueEl };
   }
 
-  const atkWidget   = makeStatWidget('ATK',   '', box4ValuesRow[0]);
-  const defWidget   = makeStatWidget('DEF',   '', box4ValuesRow[1]);
-  const maxHpWidget = makeStatWidget('MAXHP', '', box4ValuesRow[2]);
-  const luckWidget  = makeStatWidget('LUCK',  'rpg-stat-value--luck', box4ValuesRow[3]);
+  const atkWidget   = makeStatWidget('', box4ValuesRow[0]);
+  const defWidget   = makeStatWidget('', box4ValuesRow[1]);
+  const maxHpWidget = makeStatWidget('', box4ValuesRow[2]);
+  const luckWidget  = makeStatWidget('rpg-stat-value--luck', box4ValuesRow[3]);
 
   // Apply stat colors to value elements
   atkWidget.valueEl.style.color   = '#fca5a5';

@@ -199,7 +199,7 @@ export const CHAIN_ANCHOR_K        =   0.70;
 /** Anchor spring during retract phase (stronger pull). */
 export const CHAIN_RETRACT_ANCHOR_K = 2.5;
 /** Per-dt velocity damping factor (applied as pow(DAMPING, dt)).
- *  Set to 0.98 so the dampening force is 10% of its previous value,
+ *  Set to 0.98 so the damping force is 10% of its previous value,
  *  giving the chain much more free-swinging energy. */
 export const CHAIN_DAMPING         =   0.98;
 /** Initial speed given to nodes when a lash is triggered (px/dt).
