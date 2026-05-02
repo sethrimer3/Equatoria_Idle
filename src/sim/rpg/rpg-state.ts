@@ -69,23 +69,27 @@ export interface RpgSimState {
    */
   xpAllocatedStats: Array<'atk' | 'def' | 'luck' | 'hp'>;
   /**
-   * Cumulative XP that has flowed into ATK while wired to ATK.
-   * Used to drive the ATK XP bonus when 'atk' is in xpAllocatedStats.
+   * LEGACY — The cumulative XP that has flowed into ATK while wired to ATK.
+   * This value is still accumulated and used to drive the ATK XP bonus, but
+   * the per-stat allocation display in the stats panel has been removed.
    */
   xpAllocatedToAtk: number;
   /**
-   * Cumulative XP that has flowed into DEF while wired to DEF.
-   * Used to drive the DEF XP bonus when 'def' is in xpAllocatedStats.
+   * LEGACY — The cumulative XP that has flowed into DEF while wired to DEF.
+   * This value is still accumulated and used to drive the DEF XP bonus, but
+   * the per-stat allocation display in the stats panel has been removed.
    */
   xpAllocatedToDef: number;
   /**
-   * Cumulative XP that has flowed into LUCK while wired to LUCK.
-   * Used to compute the extended luck bonus (can exceed 100%).
+   * LEGACY — The cumulative XP that has flowed into LUCK while wired to LUCK.
+   * This value is still accumulated and used to compute the extended luck bonus,
+   * but the per-stat allocation display in the stats panel has been removed.
    */
   xpAllocatedToLuck: number;
   /**
-   * Cumulative XP that has flowed into HP while wired to HP.
-   * Used to compute the bonus max-HP from XP allocation.
+   * LEGACY — The cumulative XP that has flowed into HP while wired to HP.
+   * This value is still accumulated and used to compute the bonus max-HP,
+   * but the per-stat allocation display in the stats panel has been removed.
    */
   xpAllocatedToHp: number;
 }
