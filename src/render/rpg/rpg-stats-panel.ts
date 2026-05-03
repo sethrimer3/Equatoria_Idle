@@ -20,7 +20,7 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
   formatXp,
 } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { WEAPON_BY_ID, INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
 import { BASE_ATTACK_TIMER_KEY, GLOW_PULSE_SPEED, RPG_MOTE_COLOR, RPG_MOTE_GLOW } from './rpg-constants';
@@ -1078,14 +1078,13 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return (Number.isInteger(secs) ? secs.toString() : secs.toFixed(1)) + 's';
   }
 
-  /** Format weapon range: 9999 (infinite) → "∞", otherwise raw value. */
+  /** Format weapon range: INFINITE_RANGE (unlimited) → "∞", otherwise raw value. */
   function formatWeaponRng(range: number): string {
-    return range >= 9999 ? '∞' : String(range);
+    return range >= INFINITE_RANGE ? '∞' : String(range);
   }
 
-  /** Return the pierce percentage (0-100) for a weapon definition, or 0 for non-piercing weapons. */
+  /** Return the pierce percentage (0-100) for a weapon, or 0 for non-piercing weapons. */
   function weaponPiercePercent(weaponId: string): number {
-    if (weaponId === SAND_SLOT_KEY) return 0;
     const effect = WEAPON_BY_ID.get(weaponId)?.stats.effect;
     if (!effect || effect.kind !== 'piercing') return 0;
     return Math.round(effect.defPierceRatio * 100);
@@ -1158,7 +1157,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
     // ── Box 13: HP / Reg / Def ────────────────────────────────────
     hpFractionValue.textContent = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
-    regValue.textContent = playerStats.regen.toFixed(1) + '%';
+    regValue.textContent = (Number.isInteger(playerStats.regen) ? playerStats.regen.toString() : playerStats.regen.toFixed(1)) + '%';
     defValue.textContent = Math.round(Math.min(100, playerStats.def)) + '%';
 
     // XP amount — update the value span inside the XP node
