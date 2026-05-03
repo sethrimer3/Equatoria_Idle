@@ -497,9 +497,9 @@ export function createSwordWeaponSystem(ctx: SwordWeaponCtx): SwordWeaponHandle 
 
       if (state.phaseMs >= SWORD_COMBO_SPIN_MS) {
         // Snap sword back to right-hand rest position and reset combo.
-        const spinEndAngle = ctx.playerAimAngle + Math.PI / 2;
-        state.swordAngle = spinEndAngle;
-        for (let i = 0; i < SWORD_SHARD_COUNT; i++) state.shardAngles[i] = spinEndAngle;
+        const restAngle = ctx.playerAimAngle + Math.PI / 2;
+        state.swordAngle = restAngle;
+        for (let i = 0; i < SWORD_SHARD_COUNT; i++) state.shardAngles[i] = restAngle;
         state.swingIsRightToLeft = true;
         state.comboCount = 0;
         state.phase = 'idle'; state.phaseMs = 0;
