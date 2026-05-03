@@ -442,13 +442,37 @@
 - Imports `LuckyMote`, `LuckyMotePopup` from `./rpg-types`; constants from `./rpg-constants`; `TIER_BY_ID`, `TierId` from `../../data/tiers`.
 
 ### src/render/rpg/rpg-weapon-systems.ts
-- All player weapon update logic for the RPG tab (~2,434 lines).
-- Extracted from `rpg-render.ts`; companion ship systems further delegated to `rpg-weapon-ships.ts`.
+- Orchestrator for all player weapon update logic for the RPG tab (~950 lines).
 - Exports `RpgWeaponCtx` interface (dependency-injection context), `RpgWeaponHandle` interface, and `createRpgWeaponSystems(ctx)` factory.
-- Covers: sand gatling projectiles, chain whip softbody, nullstone vortexes, diamond sword combo, iolite poison bolts, emerald heat-seeking missiles, sunstone mines, ruby laser beam, and sand blade (starter weapon).
-- Companion ship systems (sapphire/amethyst) are implemented in `rpg-weapon-ships.ts` and composed via `createShipWeaponSystems(ctx)`.
-- Instantiates `ships = createShipWeaponSystems(ctx)` and delegates all ship state arrays and update functions through the returned `RpgWeaponHandle`.
-- `reset()` method clears all local weapon state AND calls `ships.reset()` to clear in-flight ship lasers.
+- Directly implements: chain whip softbody, nullstone vortexes, iolite poison bolts, sunstone mines, and sand blade (starter weapon).
+- Delegates sand gatling, diamond sword combo, emerald missiles, and ruby laser beam to four extracted sub-modules; delegates companion ships to `rpg-weapon-ships.ts`.
+- Instantiates: `sand = createSandWeaponSystem(ctx)`, `sword = createSwordWeaponSystem(ctx)`, `emerald = createEmeraldWeaponSystem(ctx)`, `laserBeam = createLaserBeamWeaponSystem(ctx)`, `ships = createShipWeaponSystems(ctx)`.
+- `reset()` calls reset on all five sub-modules and clears local state.
+
+### src/render/rpg/rpg-weapon-sand.ts
+- Sand gatling projectile weapon system extracted from `rpg-weapon-systems.ts` (~474 lines).
+- Exports `SandWeaponCtx` interface, `SandWeaponHandle` interface, and `createSandWeaponSystem(ctx)` factory.
+- Owns `sandProjectiles: SandProjectile[]`; exposes via getter on handle.
+- Covers: `spawnSandProjectile`, `updateSandProjectiles` (movement, fluid injection, collision with all entity types including projectiles/shards).
+
+### src/render/rpg/rpg-weapon-sword.ts
+- Diamond sword combo system extracted from `rpg-weapon-systems.ts` (~599 lines).
+- Exports `SwordWeaponCtx` interface, `SwordWeaponHandle` interface, and `createSwordWeaponSystem(ctx)` factory.
+- Contains `SPIN_TICK_THRESHOLDS` constant (moved from rpg-weapon-systems.ts).
+- Owns `swordComboStates: Map<string, SwordComboState>`; exposes via getter on handle.
+- Covers: `updateSwordCombo` (hinge physics, shard chain, fluid drag, swing/spin combo, hit detection, beam effects).
+
+### src/render/rpg/rpg-weapon-emerald.ts
+- Emerald heat-seeking missile system extracted from `rpg-weapon-systems.ts` (~584 lines).
+- Exports `EmeraldWeaponCtx` interface, `EmeraldWeaponHandle` interface, and `createEmeraldWeaponSystem(ctx)` factory.
+- Owns `emeraldPlayerMissiles`, `emeraldSubMissiles`, `emeraldSwirlParticles`; all exposed via getters on handle.
+- Covers: `spawnEmeraldMissile`, `updateEmeraldPlayerMissiles`, `updateEmeraldSubMissiles`, `updateEmeraldSwirlParticles`.
+
+### src/render/rpg/rpg-weapon-laser-beam.ts
+- Ruby laser beam weapon system extracted from `rpg-weapon-systems.ts` (~421 lines).
+- Exports `LaserBeamWeaponCtx` interface, `LaserBeamWeaponHandle` interface, and `createLaserBeamWeaponSystem(ctx)` factory.
+- Owns `let laserBeamEffect: LaserBeamEffect | null`; exposed via getter on handle.
+- Covers: `fireLaserBeam` (instantaneous ray cast + fluid beam injection), `updateLaserBeamEffect` (aging/deactivation).
 
 ### src/render/rpg/rpg-weapon-ships.ts
 - Companion ship weapon systems extracted from `rpg-weapon-systems.ts` (~465 lines).
@@ -457,8 +481,15 @@
 - Private helpers: `updateShipTrail` (circular trail buffer) and `getTargetMaxHp` (extracts max HP from a `ClosestTarget`).
 - `reset()` clears all four arrays (sapphireShips, sapphireLasers, amethystShips, amethystLasers); called by the parent reset on restart.
 
+### src/render/rpg/rpg-wave-manager.ts
+- Wave lifecycle management extracted from `rpg-render.ts` (~616 lines).
+- Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
+- Scalar state (`currentWave`, `isInterWave`, `bossEnemy`, `isBossFightFromMenu`, `interWaveTimerMs`) is accessed through getter/setter lambdas on `WaveManagerCtx` so `rpg-render.ts` retains authoritative ownership.
+- Covers five functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `spawnEnemyById` (random-position spawn per type), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue).
+- `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~6,175 lines).
+- Independent RPG canvas rendering system for the RPG tab (~2,960 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
@@ -468,7 +499,7 @@
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
-- Exports `RpgRender` interface, `RpgRenderOptions` interface, and `createRpgRender()` factory.
+- Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
 - Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
