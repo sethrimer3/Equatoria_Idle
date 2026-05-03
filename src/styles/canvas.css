@@ -218,18 +218,57 @@
   flex: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: space-between;
   gap: 2px;
   border: 1px solid rgba(124, 232, 124, 0.3);
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.25);
   pointer-events: none;
+  padding: 3px 4px;
+  box-sizing: border-box;
 }
 
-/* Smaller font for the HP value to fit the compact box height */
+/* Top section — HP label + fraction value */
+.rpg-hp-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+  justify-content: center;
+}
+
+/* Bottom section — Reg and Def side by side */
+.rpg-hp-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(124, 232, 124, 0.15);
+  padding-top: 2px;
+  gap: 2px;
+}
+
+/* Each sub-stat (Reg / Def) inside the bottom row */
+.rpg-hp-sub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Smaller font for HP-box stat values */
 .rpg-hp-box .rpg-stat-value {
   font-size: 11px;
+}
+
+/* Even smaller for Reg/Def sub-values to fit the narrow column */
+.rpg-hp-sub-value {
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* ── Right column — DPS + HP + menu area, stacked vertically ─── */
@@ -420,6 +459,15 @@
   border-right: none;
 }
 
+/* Weapon stat values inside boxes 7–11 — slightly smaller to fit 5 columns */
+.rpg-box4-weapon-stat {
+  font-size: 10px !important;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 
 .rpg-xp-node {
   font-size: 10px;

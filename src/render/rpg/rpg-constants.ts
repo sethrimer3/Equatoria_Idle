@@ -21,9 +21,10 @@ export const GLOW_MOVE_RAMP_DOWN = 0.004;
 /** Minimum distance (px) player must move before adding a new trail point — prevents bunching at high refresh rates. */
 export const MIN_TRAIL_DISTANCE  = 1.5;
 
-export const PLAYER_HP_INIT  = 100;
-export const PLAYER_ATK_INIT = PLAYER_BASE_ATK;
-export const PLAYER_DEF_INIT =   5;
+export const PLAYER_HP_INIT    = 100;
+export const PLAYER_ATK_INIT   = PLAYER_BASE_ATK;
+export const PLAYER_DEF_INIT   =   5;  // base defence in % (percentage of damage blocked)
+export const PLAYER_REGEN_INIT =   1;  // base HP regen in %/s of maxHp
 
 export const JOYSTICK_OUTER_RADIUS = 28;
 export const JOYSTICK_THUMB_RADIUS = 12;

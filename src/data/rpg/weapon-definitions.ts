@@ -100,6 +100,11 @@ export interface WeaponDefinition {
   stats: WeaponStats;
 }
 
+// ─── Constants ────────────────────────────────────────────────────
+
+/** Sentinel value for weapons with unlimited attack range (e.g. laser beam, mine layer). */
+export const INFINITE_RANGE = 9999;
+
 // ─── Weapon catalogue ─────────────────────────────────────────────
 
 export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
@@ -137,7 +142,7 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     costTierId: 'ruby',
     cost: 200,
     stats: {
-      damage: 80, cooldownMs: 4000, range: 9999, defBonus: 2,
+      damage: 80, cooldownMs: 4000, range: INFINITE_RANGE, defBonus: 2,
       effect: { kind: 'laserBeam' },
     },
   },
@@ -153,7 +158,7 @@ export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
     costTierId: 'sunstone',
     cost: 150,
     stats: {
-      damage: 40, cooldownMs: 2000, range: 9999, defBonus: 8,
+      damage: 40, cooldownMs: 2000, range: INFINITE_RANGE, defBonus: 8,
       effect: { kind: 'sunstoneMine' },
     },
   },

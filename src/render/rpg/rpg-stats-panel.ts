@@ -18,14 +18,13 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
-  formatXp, formatLuckPercent,
-  getLuckPercent, getEffectiveXpLuckBonus,
+  formatXp,
 } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { WEAPON_BY_ID, INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
 import { BASE_ATTACK_TIMER_KEY, GLOW_PULSE_SPEED, RPG_MOTE_COLOR, RPG_MOTE_GLOW } from './rpg-constants';
-import { formatNumberAs, type NumberFormat } from '../../util/format';
+import type { NumberFormat } from '../../util/format';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
 // Sand blade (base attack) and sand gatling share a single "SAN" DPS slot so
@@ -287,9 +286,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   // ── Boxes 6–11 — 6 separate wide short row-boxes ───────────────────────
   // Layout:
-  //   Row 0 (labels): ATK | DEF | MAXHP | LUCK | STR | AGI
-  //   Row 1 (values): live stat values for first 4, stub "0" for last 2
-  //   Rows 2–5:       all stub "0" values
+  //   Row 0 (box 6):  column headers: Weap | ATK | Spd | Rng | Prc
+  //   Rows 1–5 (boxes 7–11): one row per equipped weapon, showing base stats
   const xpBox3 = document.createElement('div');
   xpBox3.className = 'rpg-box4-wrapper';
 
@@ -300,9 +298,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     rowBox.className = 'rpg-xp-box rpg-box4-row';
     box4RowEls.push(rowBox);
     const cells: HTMLDivElement[] = [];
-    for (let c = 0; c < 6; c++) {
+    for (let c = 0; c < 5; c++) {
       const cell = document.createElement('div');
-      cell.className = 'rpg-box4-cell' + (c === 5 ? ' rpg-box4-cell--last' : '');
+      cell.className = 'rpg-box4-cell';
       rowBox.appendChild(cell);
       cells.push(cell);
     }
@@ -310,13 +308,16 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return cells;
   }
 
-  // Row 0 — label cells
+  // Row 0 — header labels: Weap | ATK | Spd | Rng | Prc
   const box4LabelsRow = makeBox4Row();
-  const statLabelDefs: Array<[string, string]> = [
-    ['ATK', '#fca5a5'], ['DEF', '#93c5fd'], ['MAXHP', '#fde68a'],
-    ['LUCK', '#86efac'], ['STR', 'rgba(255,255,255,0.3)'], ['AGI', 'rgba(255,255,255,0.3)'],
+  const weaponColDefs: Array<[string, string]> = [
+    ['Weap', 'rgba(255,255,255,0.5)'],
+    ['ATK',  '#fca5a5'],
+    ['Spd',  '#86efac'],
+    ['Rng',  '#93c5fd'],
+    ['Prc',  '#fde68a'],
   ];
-  statLabelDefs.forEach(([text, color], i) => {
+  weaponColDefs.forEach(([text, color], i) => {
     const span = document.createElement('span');
     span.className = 'rpg-stat-label';
     span.textContent = text;
@@ -324,54 +325,21 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     box4LabelsRow[i].appendChild(span);
   });
 
-  // Row 1 — value cells (live stat values + stubs)
-  const box4ValuesRow = makeBox4Row();
-
-  // Build stat widget references so the rest of the file can update them
-  // root = value cell (used for pointer-over and rpg-stat--wired glow)
-  function makeStatWidget(
-    extraClass: string,
-    valueCell: HTMLDivElement,
-  ): { root: HTMLElement; labelEl: HTMLSpanElement; valueEl: HTMLSpanElement } {
-    const valueEl = document.createElement('span');
-    valueEl.className = 'rpg-stat-value' + (extraClass ? ' ' + extraClass : '');
-    valueCell.appendChild(valueEl);
-    // labelEl placeholder — label text is rendered separately in the labels row
-    const labelEl = document.createElement('span');
-    return { root: valueCell, labelEl, valueEl };
-  }
-
-  const atkWidget   = makeStatWidget('', box4ValuesRow[0]);
-  const defWidget   = makeStatWidget('', box4ValuesRow[1]);
-  const maxHpWidget = makeStatWidget('', box4ValuesRow[2]);
-  const luckWidget  = makeStatWidget('rpg-stat-value--luck', box4ValuesRow[3]);
-
-  // Apply stat colors to value elements
-  atkWidget.valueEl.style.color   = '#fca5a5';
-  defWidget.valueEl.style.color   = '#93c5fd';
-  maxHpWidget.valueEl.style.color = '#fde68a';
-  maxHpWidget.valueEl.style.fontSize = '14px';
-  luckWidget.valueEl.style.color  = '#86efac';
-
-  // Stub value elements for columns 4–5 of the values row
-  for (let c = 4; c < 6; c++) {
-    const stub = document.createElement('span');
-    stub.className = 'rpg-stat-value';
-    stub.style.color = 'rgba(255,255,255,0.25)';
-    stub.textContent = '0';
-    box4ValuesRow[c].appendChild(stub);
-  }
-
-  // Stub rows 2–5
-  for (let r = 0; r < 4; r++) {
+  // Rows 1–5 — weapon data rows (boxes 7–11)
+  // Each row holds 5 span references for live updates.
+  const WEAPON_ROW_COUNT = 5;
+  const weaponRowSpans: Array<HTMLSpanElement[]> = [];
+  for (let r = 0; r < WEAPON_ROW_COUNT; r++) {
     const cells = makeBox4Row();
-    for (const cell of cells) {
-      const stub = document.createElement('span');
-      stub.className = 'rpg-stat-value';
-      stub.style.color = 'rgba(255,255,255,0.18)';
-      stub.textContent = '0';
-      cell.appendChild(stub);
-    }
+    const spans = cells.map(cell => {
+      const span = document.createElement('span');
+      span.className = 'rpg-stat-value rpg-box4-weapon-stat';
+      span.style.color = 'rgba(255,255,255,0.18)';
+      span.textContent = '—';
+      cell.appendChild(span);
+      return span;
+    });
+    weaponRowSpans.push(spans);
   }
 
   // Append the three layout groups to the panel
@@ -407,16 +375,53 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   dpsWidget.appendChild(dpsChartEl);
   dpsWidget.appendChild(dpsAxisEl);
 
-  // ── HP box — current hit-points, below DPS in the right column ────
+  // ── HP box — current hit-points, regen %, and defence %, below DPS ────
+  // Layout: top half = HP label + current/max value;
+  //         bottom half = Reg% (left) and Def% (right) side by side.
   const hpFractionEl = document.createElement('div');
   hpFractionEl.className = 'rpg-hp-box';
+
+  // Top section — HP label + fraction value
+  const hpTopSection = document.createElement('div');
+  hpTopSection.className = 'rpg-hp-top';
   const hpFractionLabel = document.createElement('span');
   hpFractionLabel.className = 'rpg-stat-label';
   hpFractionLabel.textContent = 'HP';
   const hpFractionValue = document.createElement('span');
   hpFractionValue.className = 'rpg-stat-value rpg-stat-value--hp';
-  hpFractionEl.appendChild(hpFractionLabel);
-  hpFractionEl.appendChild(hpFractionValue);
+  hpTopSection.appendChild(hpFractionLabel);
+  hpTopSection.appendChild(hpFractionValue);
+  hpFractionEl.appendChild(hpTopSection);
+
+  // Bottom section — Reg and Def side by side
+  const hpBottomSection = document.createElement('div');
+  hpBottomSection.className = 'rpg-hp-bottom';
+
+  // Reg (regen %) — bottom left
+  const regSubEl = document.createElement('div');
+  regSubEl.className = 'rpg-hp-sub';
+  const regLabel = document.createElement('span');
+  regLabel.className = 'rpg-stat-label';
+  regLabel.textContent = 'Reg';
+  const regValue = document.createElement('span');
+  regValue.className = 'rpg-stat-value rpg-hp-sub-value';
+  regSubEl.appendChild(regLabel);
+  regSubEl.appendChild(regValue);
+
+  // Def (defence %) — bottom right
+  const defSubEl = document.createElement('div');
+  defSubEl.className = 'rpg-hp-sub';
+  const defLabel = document.createElement('span');
+  defLabel.className = 'rpg-stat-label';
+  defLabel.textContent = 'Def';
+  const defValue = document.createElement('span');
+  defValue.className = 'rpg-stat-value rpg-hp-sub-value';
+  defSubEl.appendChild(defLabel);
+  defSubEl.appendChild(defValue);
+
+  hpBottomSection.appendChild(regSubEl);
+  hpBottomSection.appendChild(defSubEl);
+  hpFractionEl.appendChild(hpBottomSection);
 
   // ── Menu area — RPG menu button lives here ─────────────────────────
   const menuArea = document.createElement('div');
@@ -776,10 +781,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   }
 
   function landedStat(clientX: number, clientY: number): 'atk' | 'def' | 'luck' | 'hp' | null {
-    if (pointerOverElement(atkWidget.root,   clientX, clientY)) return 'atk';
-    if (pointerOverElement(defWidget.root,   clientX, clientY)) return 'def';
-    if (pointerOverElement(luckWidget.root,  clientX, clientY)) return 'luck';
-    if (pointerOverElement(maxHpWidget.root, clientX, clientY)) return 'hp';
+    if (pointerOverElement(atkPlugSlot,  clientX, clientY)) return 'atk';
+    if (pointerOverElement(defPlugSlot,  clientX, clientY)) return 'def';
+    if (pointerOverElement(luckPlugSlot, clientX, clientY)) return 'luck';
+    if (pointerOverElement(hpPlugSlot,   clientX, clientY)) return 'hp';
     return null;
   }
 
@@ -1066,13 +1071,23 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return value >= 1000 ? formatXp(value) : Math.round(value).toString();
   }
 
-  /**
-   * Format a stat value (ATK, DEF, MAXHP) using the player's selected notation.
-   * Values under 1000 are shown as integers; larger values use the number format.
-   */
-  function formatStatValue(value: number, fmt: NumberFormat): string {
-    if (value < 1000) return Math.floor(value).toString();
-    return formatNumberAs(value, fmt);
+  /** Format weapon cooldown for compact display: sub-second → "Xms", longer → "X.Xs". */
+  function formatWeaponSpd(cooldownMs: number): string {
+    if (cooldownMs < 1000) return cooldownMs + 'ms';
+    const secs = cooldownMs / 1000;
+    return (Number.isInteger(secs) ? secs.toString() : secs.toFixed(1)) + 's';
+  }
+
+  /** Format weapon range: INFINITE_RANGE (unlimited) → "∞", otherwise raw value. */
+  function formatWeaponRng(range: number): string {
+    return range >= INFINITE_RANGE ? '∞' : String(range);
+  }
+
+  /** Return the pierce percentage (0-100) for a weapon, or 0 for non-piercing weapons. */
+  function weaponPiercePercent(weaponId: string): number {
+    const effect = WEAPON_BY_ID.get(weaponId)?.stats.effect;
+    if (!effect || effect.kind !== 'piercing') return 0;
+    return Math.round(effect.defPierceRatio * 100);
   }
 
   /**
@@ -1139,34 +1154,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   function updateStatsPanelDom(): void {
     const nowMs = performance.now();
-    // Read number format once per frame to avoid repeated calls
-    const numFmt = ctx.getNumberFormat();
 
-    // HP fraction (outside the box)
+    // ── Box 13: HP / Reg / Def ────────────────────────────────────
     hpFractionValue.textContent = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
+    regValue.textContent = (Number.isInteger(playerStats.regen) ? playerStats.regen.toString() : playerStats.regen.toFixed(1)) + '%';
+    defValue.textContent = Math.round(Math.min(100, playerStats.def)) + '%';
 
     // XP amount — update the value span inside the XP node
     xpAmountEl.textContent = formatXp(rpgSimState.xp);
-
-    // ATK
-    atkWidget.valueEl.textContent = formatStatValue(playerStats.atk, numFmt);
-
-    // DEF
-    defWidget.valueEl.textContent = formatStatValue(playerStats.def, numFmt);
-
-    // MAXHP
-    maxHpWidget.valueEl.textContent = formatStatValue(playerStats.maxHp, numFmt);
-
-    // LUCK — display the full effective luck (base + XP-allocation bonus), may exceed 100%
-    const baseLuck  = getLuckPercent(rpgSimState.xp);
-    const luckBonus = getEffectiveXpLuckBonus(rpgSimState);
-    luckWidget.valueEl.textContent = formatLuckPercent(baseLuck + luckBonus);
-
-    // Glow on the wired stat widgets
-    atkWidget.root.classList.toggle('rpg-stat--wired',    isStatWired('atk'));
-    defWidget.root.classList.toggle('rpg-stat--wired',    isStatWired('def'));
-    luckWidget.root.classList.toggle('rpg-stat--wired',   isStatWired('luck'));
-    maxHpWidget.root.classList.toggle('rpg-stat--wired',  isStatWired('hp'));
 
     // XP node locked indicator (any active wire)
     const hasActiveWire = lockedWires.some(w => !w.isSlurping);
@@ -1189,6 +1184,41 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
     if (now - lastDpsDomUpdateMs < DPS_DOM_UPDATE_MS && slotsKey !== '') return;
     lastDpsDomUpdateMs = now;
+
+    // ── Boxes 7–11: weapon stat rows ─────────────────────────────
+    // Show one equipped weapon per row; empty rows show dashes.
+    for (let r = 0; r < WEAPON_ROW_COUNT; r++) {
+      const spans = weaponRowSpans[r];
+      const weaponId = equippedIds[r];
+      if (!weaponId) {
+        // Empty slot
+        for (const sp of spans) {
+          sp.style.color = 'rgba(255,255,255,0.18)';
+          sp.textContent = '—';
+        }
+        continue;
+      }
+      const def = WEAPON_BY_ID.get(weaponId);
+      const color = weaponColor(weaponId);
+      spans[0].style.color = color;
+      spans[0].textContent = weaponAbbrev(weaponId);
+      if (def) {
+        const dim = 'rgba(255,255,255,0.7)';
+        spans[1].style.color = dim;
+        spans[1].textContent = String(def.stats.damage);
+        spans[2].style.color = dim;
+        spans[2].textContent = formatWeaponSpd(def.stats.cooldownMs);
+        spans[3].style.color = dim;
+        spans[3].textContent = formatWeaponRng(def.stats.range);
+        spans[4].style.color = dim;
+        spans[4].textContent = weaponPiercePercent(weaponId) + '%';
+      } else {
+        for (let c = 1; c < 5; c++) {
+          spans[c].style.color = 'rgba(255,255,255,0.18)';
+          spans[c].textContent = '—';
+        }
+      }
+    }
 
     const dpsBySlot = new Map<string, number>();
     for (const slotId of displaySlots) dpsBySlot.set(slotId, 0);
