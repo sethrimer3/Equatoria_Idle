@@ -21,6 +21,8 @@ export interface RpgKeyState {
 export interface RpgPlayerStats {
   hp: number; maxHp: number;
   atk: number; def: number;
+  /** HP regenerated per second, expressed as a percentage of maxHp (e.g. 1 = 1 %/s). */
+  regen: number;
 }
 
 export type LaserPhase = 'idle' | 'decelerate' | 'dash' | 'overshoot' | 'cooldown';

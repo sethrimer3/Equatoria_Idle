@@ -44,7 +44,7 @@ import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel
 import {
   RPG_TRAIL_CAPACITY, MAX_RPG_SPEED, RPG_VELOCITY_DAMPING, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
   TRAIL_SPEED_THRESHOLD, GLOW_PULSE_SPEED, GLOW_MOVE_RAMP_UP, GLOW_MOVE_RAMP_DOWN, MIN_TRAIL_DISTANCE,
-  PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT,
+  PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT, PLAYER_REGEN_INIT,
   JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
   LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
   INTER_WAVE_DELAY_MS, DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
@@ -303,7 +303,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   const joystick: RpgJoystick = { isActive: false, pointerId: -1, baseX: 0, baseY: 0, thumbX: 0, thumbY: 0 };
   const keys: RpgKeyState = { left: false, right: false, up: false, down: false };
-  const playerStats: RpgPlayerStats = { hp: PLAYER_HP_INIT, maxHp: PLAYER_HP_INIT, atk: PLAYER_ATK_INIT, def: PLAYER_DEF_INIT };
+  const playerStats: RpgPlayerStats = { hp: PLAYER_HP_INIT, maxHp: PLAYER_HP_INIT, atk: PLAYER_ATK_INIT, def: PLAYER_DEF_INIT, regen: PLAYER_REGEN_INIT };
 
   let glowMovementIntensity = 0;
   let currentWave      = 0;
@@ -581,6 +581,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (weaponDef) totalDefBonus += weaponDef.stats.defBonus;
     }
     playerStats.def = PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState);
+    // Regen is a fixed base value (weapon/XP bonuses can be added here in future).
+    playerStats.regen = PLAYER_REGEN_INIT;
     // Player ATK is the base multiplier (not including per-weapon tier damage).
     playerStats.atk = PLAYER_ATK_INIT + getEffectiveXpAtkBonus(rpgSimState);
     // Bonus max-HP from XP wired to HP stat.
@@ -2746,13 +2748,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   /**
-   * Applies raw enemy ATK damage to the player after subtracting player DEF,
+   * Applies raw enemy ATK damage to the player after blocking a percentage equal
+   * to playerStats.def (e.g. def=5 blocks 5 % of incoming damage),
    * subject to iframes. Mutates playerStats.hp and playerIFramesMs.
    */
   function dealDamageToPlayer(atkValue: number): void {
     if (playerIFramesMs > 0) return;
-    const rawDmg = atkValue - playerStats.def;
-    const dmg = Math.max(0, rawDmg);
+    const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
     } else {
@@ -2767,14 +2769,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * Applies damage to the player with a directional knockback impulse.
    * Used exclusively by Amber shards which carry velocity-based knockback.
    * Prefer `dealDamageToPlayer` for all other enemy contact/projectile damage.
-   * @param atkValue - raw attack value (defence subtracted internally)
+   * @param atkValue - raw attack value (defence percentage applied internally)
    * @param normDirX - normalised knockback / damage-number direction X
    * @param normDirY - normalised knockback / damage-number direction Y
    */
   function dealDamageToPlayerKnockback(atkValue: number, normDirX: number, normDirY: number): void {
     if (playerIFramesMs > 0) return;
-    const rawDmg = atkValue - playerStats.def;
-    const dmg = Math.max(0, rawDmg);
+    const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, 'BLOCKED', 0.25, '#74c0fc');
     } else {
@@ -3317,6 +3318,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateDamageNumbers(deltaMs);
       updateLuckyMotes(luckyMotes, luckyMotePopups, mote.x, mote.y, deltaMs, options.onLuckyMoteCollected ?? (() => {}));
       updateLuckyMotePopups(luckyMotePopups, deltaMs);
+
+      // Apply HP regen: regenerate regen% of maxHp per second when alive.
+      if (rpgPhase === 'alive' && playerStats.hp > 0 && playerStats.hp < playerStats.maxHp) {
+        playerStats.hp = Math.min(
+          playerStats.maxHp,
+          playerStats.hp + (playerStats.regen / 100) * playerStats.maxHp * (deltaMs / 1000),
+        );
+      }
 
       if (playerStats.hp <= 0) triggerDeath();
       statsPanel.update();
