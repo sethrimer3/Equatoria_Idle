@@ -234,7 +234,6 @@ export interface RpgWeaponHandle {
 
 // ── Factory ───────────────────────────────────────────────────────────────
 
-/** Progress thresholds (0–1) at which the spin combo deals a damage tick. */
 export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
   // Unpack stable references from ctx (arrays are live because objects are references).
   // For scalar live values (bossEnemy, playerAimAngle), access via ctx.xxx each call.
