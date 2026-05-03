@@ -442,13 +442,37 @@
 - Imports `LuckyMote`, `LuckyMotePopup` from `./rpg-types`; constants from `./rpg-constants`; `TIER_BY_ID`, `TierId` from `../../data/tiers`.
 
 ### src/render/rpg/rpg-weapon-systems.ts
-- All player weapon update logic for the RPG tab (~2,434 lines).
-- Extracted from `rpg-render.ts`; companion ship systems further delegated to `rpg-weapon-ships.ts`.
+- Orchestrator for all player weapon update logic for the RPG tab (~950 lines).
 - Exports `RpgWeaponCtx` interface (dependency-injection context), `RpgWeaponHandle` interface, and `createRpgWeaponSystems(ctx)` factory.
-- Covers: sand gatling projectiles, chain whip softbody, nullstone vortexes, diamond sword combo, iolite poison bolts, emerald heat-seeking missiles, sunstone mines, ruby laser beam, and sand blade (starter weapon).
-- Companion ship systems (sapphire/amethyst) are implemented in `rpg-weapon-ships.ts` and composed via `createShipWeaponSystems(ctx)`.
-- Instantiates `ships = createShipWeaponSystems(ctx)` and delegates all ship state arrays and update functions through the returned `RpgWeaponHandle`.
-- `reset()` method clears all local weapon state AND calls `ships.reset()` to clear in-flight ship lasers.
+- Directly implements: chain whip softbody, nullstone vortexes, iolite poison bolts, sunstone mines, and sand blade (starter weapon).
+- Delegates sand gatling, diamond sword combo, emerald missiles, and ruby laser beam to four extracted sub-modules; delegates companion ships to `rpg-weapon-ships.ts`.
+- Instantiates: `sand = createSandWeaponSystem(ctx)`, `sword = createSwordWeaponSystem(ctx)`, `emerald = createEmeraldWeaponSystem(ctx)`, `laserBeam = createLaserBeamWeaponSystem(ctx)`, `ships = createShipWeaponSystems(ctx)`.
+- `reset()` calls reset on all five sub-modules and clears local state.
+
+### src/render/rpg/rpg-weapon-sand.ts
+- Sand gatling projectile weapon system extracted from `rpg-weapon-systems.ts` (~474 lines).
+- Exports `SandWeaponCtx` interface, `SandWeaponHandle` interface, and `createSandWeaponSystem(ctx)` factory.
+- Owns `sandProjectiles: SandProjectile[]`; exposes via getter on handle.
+- Covers: `spawnSandProjectile`, `updateSandProjectiles` (movement, fluid injection, collision with all entity types including projectiles/shards).
+
+### src/render/rpg/rpg-weapon-sword.ts
+- Diamond sword combo system extracted from `rpg-weapon-systems.ts` (~599 lines).
+- Exports `SwordWeaponCtx` interface, `SwordWeaponHandle` interface, and `createSwordWeaponSystem(ctx)` factory.
+- Contains `SPIN_TICK_THRESHOLDS` constant (moved from rpg-weapon-systems.ts).
+- Owns `swordComboStates: Map<string, SwordComboState>`; exposes via getter on handle.
+- Covers: `updateSwordCombo` (hinge physics, shard chain, fluid drag, swing/spin combo, hit detection, beam effects).
+
+### src/render/rpg/rpg-weapon-emerald.ts
+- Emerald heat-seeking missile system extracted from `rpg-weapon-systems.ts` (~584 lines).
+- Exports `EmeraldWeaponCtx` interface, `EmeraldWeaponHandle` interface, and `createEmeraldWeaponSystem(ctx)` factory.
+- Owns `emeraldPlayerMissiles`, `emeraldSubMissiles`, `emeraldSwirlParticles`; all exposed via getters on handle.
+- Covers: `spawnEmeraldMissile`, `updateEmeraldPlayerMissiles`, `updateEmeraldSubMissiles`, `updateEmeraldSwirlParticles`.
+
+### src/render/rpg/rpg-weapon-laser-beam.ts
+- Ruby laser beam weapon system extracted from `rpg-weapon-systems.ts` (~421 lines).
+- Exports `LaserBeamWeaponCtx` interface, `LaserBeamWeaponHandle` interface, and `createLaserBeamWeaponSystem(ctx)` factory.
+- Owns `let laserBeamEffect: LaserBeamEffect | null`; exposed via getter on handle.
+- Covers: `fireLaserBeam` (instantaneous ray cast + fluid beam injection), `updateLaserBeamEffect` (aging/deactivation).
 
 ### src/render/rpg/rpg-weapon-ships.ts
 - Companion ship weapon systems extracted from `rpg-weapon-systems.ts` (~465 lines).
