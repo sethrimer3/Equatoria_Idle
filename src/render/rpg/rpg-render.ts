@@ -27,13 +27,12 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
-  getXpPerKill, formatXp, getRpgSpeedMultiplier, getRpgUpgradeLevel,
-  getScaledWeaponDamage, getScaledWeaponCooldown, getWaveStatScale, getBossXpMultiplier,
+  getRpgSpeedMultiplier, getRpgUpgradeLevel,
+  getScaledWeaponDamage, getScaledWeaponCooldown,
   getLuckPercent,
-  addXpWithAllocation, getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
+  getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpLuckBonus, getEffectiveXpHpBonus,
 } from '../../sim/rpg/rpg-state';
-import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
@@ -64,23 +63,7 @@ import {
   BOSS_GLOW_COLORS,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PLAYER_STRENGTH,
   FLUID_EXPLOSION_STRENGTH,
-  FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
-  FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
   FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B,
-  FLUID_MISSILE_R, FLUID_MISSILE_G, FLUID_MISSILE_B,
-  FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
-  FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
-  FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
-  FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
-  FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
-  FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
-  FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
-  FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
-  FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
-  FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
-  FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
-  FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
-  FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
 } from './rpg-constants';
 import {
   EMERALD_ENEMY_SIZE, EMERALD_ENEMY_GLOW,
@@ -94,14 +77,10 @@ import {
   AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_GLOW,
   DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_GLOW,
   NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_GLOW,
-  LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
-  QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
-  IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
   FRACTERYL_ENEMY_GLOW,
   FRACTERYL_ENEMY_SIZE,
   EIGENSTEIN_ENEMY_GLOW,
   EIGENSTEIN_ENEMY_SIZE,
-  FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
 } from './rpg-enemy-constants';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
@@ -160,20 +139,12 @@ import type {
   TeleportParticle,
   LuckyMote, LuckyMotePopup,
 } from './rpg-enemy-types';
-import {
-  makeLaserEnemy, makeSapphireEnemy,
-  makeEmeraldEnemy, makeAmberEnemy, makeVoidEnemy,
-  makeQuartzEnemy, makeRubyEnemy,
-  makeSunstoneEnemy, makeCitrineEnemy, makeIoliteEnemy,
-  makeAmethystEnemy, makeDiamondEnemy,
-  makeNullstoneEnemy,
-  makeFracterylEnemy,
-  makeEigensteinEnemy, makeBossEnemy,
-} from './rpg-factories';
+import { makeBossEnemy } from './rpg-factories';
 import { getSwordLength } from './rpg-helpers';
 import { drawChainWhip, drawVortexes, drawSwordCombos, drawSandBladeCombo, spawnSandSwingPixels, updateSandDriftPixels, drawSandDriftPixels, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
+import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
 import {
-  trySpawnLuckyMote, updateLuckyMotes, updateLuckyMotePopups,
+  updateLuckyMotes, updateLuckyMotePopups,
   drawLuckyMotes, drawLuckyMotePopups,
 } from './rpg-lucky-motes';
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
@@ -389,6 +360,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // statsPanel is declared with ! assertion; initialized during setup before any call-site runs.
   let statsPanel!: RpgStatsPanelHandle;
   let weaponSystems!: RpgWeaponHandle;
+  let waveManager!: WaveManagerHandle;
   let _forwardRecordDps: (dmg: number, _legacyColor?: string) => void = () => {};
   function recordDps(dmg: number, _legacyColor?: string): void {
     _forwardRecordDps(dmg, _legacyColor);
@@ -1602,255 +1574,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   /** Removes any enemies whose HP has reached zero or below, awarding XP for each. */
-  function removeDeadEnemies(): void {
-    let totalXpFromKills = 0;
-    for (let i = enemies.length - 1; i >= 0; i--) {
-      if (enemies[i].hp <= 0) {
-        fluid.addExplosion(
-          enemies[i].x, enemies[i].y,
-          FLUID_EXPLOSION_STRENGTH,
-          FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * LASER_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'laser', enemies[i].x, enemies[i].y, getCachedLuckPercent());
-        enemies.splice(i, 1);
-      }
-    }
-    for (let i = sapphireEnemies.length - 1; i >= 0; i--) {
-      if (sapphireEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          sapphireEnemies[i].x, sapphireEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 1.4,
-          FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * SAPPHIRE_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'sapphire', sapphireEnemies[i].x, sapphireEnemies[i].y, getCachedLuckPercent());
-        sapphireEnemies.splice(i, 1);
-      }
-    }
-    for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
-      if (sapphireMissiles[i].hp <= 0) {
-        fluid.addExplosion(
-          sapphireMissiles[i].x, sapphireMissiles[i].y,
-          FLUID_EXPLOSION_STRENGTH * 0.6,
-          FLUID_MISSILE_R, FLUID_MISSILE_G, FLUID_MISSILE_B,
-        );
-        sapphireMissiles.splice(i, 1);
-      }
-    }
-    for (let i = emeraldEnemies.length - 1; i >= 0; i--) {
-      if (emeraldEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          emeraldEnemies[i].x, emeraldEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 1.1,
-          FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * EMERALD_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'emerald', emeraldEnemies[i].x, emeraldEnemies[i].y, getCachedLuckPercent());
-        emeraldEnemies.splice(i, 1);
-      }
-    }
-    for (let i = amberEnemies.length - 1; i >= 0; i--) {
-      if (amberEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          amberEnemies[i].x, amberEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 1.5,
-          FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * AMBER_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'amber', amberEnemies[i].x, amberEnemies[i].y, getCachedLuckPercent());
-        amberEnemies.splice(i, 1);
-      }
-    }
-    for (let i = amberShards.length - 1; i >= 0; i--) {
-      if (amberShards[i].hp <= 0) {
-        fluid.addExplosion(
-          amberShards[i].x, amberShards[i].y,
-          FLUID_EXPLOSION_STRENGTH * 0.5,
-          FLUID_AMBER_R, FLUID_AMBER_G, FLUID_AMBER_B,
-        );
-        amberShards.splice(i, 1);
-      }
-    }
-    for (let i = voidEnemies.length - 1; i >= 0; i--) {
-      if (voidEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          voidEnemies[i].x, voidEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 2.0,
-          FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * VOID_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'void', voidEnemies[i].x, voidEnemies[i].y, getCachedLuckPercent());
-        voidEnemies.splice(i, 1);
-      }
-    }
-    for (let i = quartzEnemies.length - 1; i >= 0; i--) {
-      if (quartzEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          quartzEnemies[i].x, quartzEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH,
-          FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * QUARTZ_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'quartz', quartzEnemies[i].x, quartzEnemies[i].y, getCachedLuckPercent());
-        quartzEnemies.splice(i, 1);
-      }
-    }
-    for (let i = quartzSpikes.length - 1; i >= 0; i--) {
-      if (quartzSpikes[i].hp <= 0 || quartzSpikes[i].lifeMs <= 0) quartzSpikes.splice(i, 1);
-    }
-    for (let i = rubyEnemies.length - 1; i >= 0; i--) {
-      if (rubyEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          rubyEnemies[i].x, rubyEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 1.2,
-          FLUID_RUBY_R, FLUID_RUBY_G, FLUID_RUBY_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * RUBY_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'ruby', rubyEnemies[i].x, rubyEnemies[i].y, getCachedLuckPercent());
-        rubyEnemies.splice(i, 1);
-      }
-    }
-    for (let i = rubyBolts.length - 1; i >= 0; i--) {
-      if (rubyBolts[i].hp <= 0 || rubyBolts[i].lifeMs <= 0) rubyBolts.splice(i, 1);
-    }
-    for (let i = sunstoneEnemies.length - 1; i >= 0; i--) {
-      if (sunstoneEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          sunstoneEnemies[i].x, sunstoneEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 1.6,
-          FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * SUNSTONE_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'sunstone', sunstoneEnemies[i].x, sunstoneEnemies[i].y, getCachedLuckPercent());
-        sunstoneEnemies.splice(i, 1);
-      }
-    }
-    for (let i = citrineEnemies.length - 1; i >= 0; i--) {
-      if (citrineEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          citrineEnemies[i].x, citrineEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 1.8,
-          FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * CITRINE_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'citrine', citrineEnemies[i].x, citrineEnemies[i].y, getCachedLuckPercent());
-        citrineEnemies.splice(i, 1);
-      }
-    }
-    for (let i = citrineBolts.length - 1; i >= 0; i--) {
-      if (citrineBolts[i].hp <= 0) citrineBolts.splice(i, 1);
-    }
-    for (let i = ioliteEnemies.length - 1; i >= 0; i--) {
-      if (ioliteEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          ioliteEnemies[i].x, ioliteEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 2.2,
-          FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * IOLITE_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'iolite', ioliteEnemies[i].x, ioliteEnemies[i].y, getCachedLuckPercent());
-        ioliteEnemies.splice(i, 1);
-      }
-    }
-    for (let i = amethystEnemies.length - 1; i >= 0; i--) {
-      if (amethystEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          amethystEnemies[i].x, amethystEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 2.5,
-          FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * AMETHYST_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'amethyst', amethystEnemies[i].x, amethystEnemies[i].y, getCachedLuckPercent());
-        amethystEnemies.splice(i, 1);
-      }
-    }
-    for (let i = amethystShards.length - 1; i >= 0; i--) {
-      if (amethystShards[i].hp <= 0 || amethystShards[i].lifeMs <= 0) amethystShards.splice(i, 1);
-    }
-    for (let i = diamondEnemies.length - 1; i >= 0; i--) {
-      if (diamondEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          diamondEnemies[i].x, diamondEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 3.0,
-          FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * DIAMOND_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'diamond', diamondEnemies[i].x, diamondEnemies[i].y, getCachedLuckPercent());
-        diamondEnemies.splice(i, 1);
-      }
-    }
-    for (let i = diamondShards.length - 1; i >= 0; i--) {
-      if (diamondShards[i].hp <= 0 || diamondShards[i].lifeMs <= 0) diamondShards.splice(i, 1);
-    }
-    for (let i = nullstoneEnemies.length - 1; i >= 0; i--) {
-      if (nullstoneEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          nullstoneEnemies[i].x, nullstoneEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 4.0,
-          FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * NULLSTONE_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'nullstone', nullstoneEnemies[i].x, nullstoneEnemies[i].y, getCachedLuckPercent());
-        nullstoneEnemies.splice(i, 1);
-      }
-    }
-    for (let i = voidTendrils.length - 1; i >= 0; i--) {
-      if (voidTendrils[i].hp <= 0 || voidTendrils[i].lifeMs <= 0) voidTendrils.splice(i, 1);
-    }
-    for (let i = fracterylEnemies.length - 1; i >= 0; i--) {
-      if (fracterylEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          fracterylEnemies[i].x, fracterylEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 3.5,
-          FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * FRACTERYL_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'fracteryl', fracterylEnemies[i].x, fracterylEnemies[i].y, getCachedLuckPercent());
-        fracterylEnemies.splice(i, 1);
-      }
-    }
-    for (let i = fracterylShards.length - 1; i >= 0; i--) {
-      if (fracterylShards[i].hp <= 0 || fracterylShards[i].lifeMs <= 0) fracterylShards.splice(i, 1);
-    }
-    for (let i = eigensteinEnemies.length - 1; i >= 0; i--) {
-      if (eigensteinEnemies[i].hp <= 0) {
-        fluid.addExplosion(
-          eigensteinEnemies[i].x, eigensteinEnemies[i].y,
-          FLUID_EXPLOSION_STRENGTH * 4.5,
-          FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
-        );
-        totalXpFromKills += getXpPerKill(currentWave) * EIGENSTEIN_XP_MULT;
-        trySpawnLuckyMote(luckyMotes, 'eigenstein', eigensteinEnemies[i].x, eigensteinEnemies[i].y, getCachedLuckPercent());
-        eigensteinEnemies.splice(i, 1);
-      }
-    }
-    // Boss defeat
-    if (bossEnemy && bossEnemy.hp <= 0) {
-      const speedPct = rpgSimState.bossSpeedPct;
-      const xpMult = getBossXpMultiplier(speedPct);
-      const bossXp = Math.ceil(getXpPerKill(currentWave) * getWaveStatScale(currentWave) * 5.0 * xpMult);
-      addXpWithAllocation(rpgSimState, bossXp);
-      if (isBossFightFromMenu) {
-        const prevBest = rpgSimState.bossCompletions.get(bossEnemy.bossId) ?? 0;
-        if (speedPct > prevBest) {
-          rpgSimState.bossCompletions.set(bossEnemy.bossId, speedPct);
-        }
-      }
-      isBossFightFromMenu = false;
-      exitBossWave();
-      const glowC = BOSS_GLOW_COLORS[Math.min(bossEnemy.bossId, BOSS_GLOW_COLORS.length - 1)];
-      spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP (${xpMult.toFixed(0)}x)`, 1.0, glowC);
-      fluid.addExplosion(bossEnemy.x, bossEnemy.y, FLUID_EXPLOSION_STRENGTH * 2.5, FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B);
-      bossEnemy = null;
-      bossProjectiles.length = 0;
-    }
-    if (totalXpFromKills > 0) {
-      addXpWithAllocation(rpgSimState, totalXpFromKills);
-      applyEquipmentStats();
-    }
-  }
-
+  function removeDeadEnemies(): void { waveManager.removeDeadEnemies(); }
   /** Advances hit-flash and shot-line timers, pruning expired entries. */
   function updateShotVisuals(deltaMs: number): void {
     for (let i = hitEffects.length - 1; i >= 0; i--) {
@@ -1878,6 +1602,35 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
     if (playerIFramesMs > 0) playerIFramesMs = Math.max(0, playerIFramesMs - deltaMs);
   }
+
+  // ── Create wave manager ────────────────────────────────────────
+  // All helper functions referenced in waveManagerCtx are function declarations
+  // and are hoisted, so this is safe even though they appear later in the file.
+  waveManager = createWaveManager({
+    dim,
+    mote,
+    rpgSimState,
+    enemies, sapphireMissiles, sapphireEnemies, emeraldEnemies,
+    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
+    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
+    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    bossProjectiles, spawnQueue, luckyMotes, fluid,
+    getCachedLuckPercent,
+    applyEquipmentStats: () => applyEquipmentStats(),
+    spawnDamageNumber:   (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
+    getBossEnemy:            () => bossEnemy,
+    setBossEnemy:            (b) => { bossEnemy = b; },
+    getIsBossFightFromMenu:  () => isBossFightFromMenu,
+    setIsBossFightFromMenu:  (b) => { isBossFightFromMenu = b; },
+    getCurrentWave:          () => currentWave,
+    setCurrentWave:          (w) => { currentWave = w; },
+    getIsInterWave:          () => isInterWave,
+    setIsInterWave:          (b) => { isInterWave = b; },
+    setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
+    enterBossWave:           () => enterBossWave(),
+    exitBossWave:            () => exitBossWave(),
+  });
 
   // ── Create weapon systems ──────────────────────────────────────
   // All helper functions referenced in weaponCtx are function declarations
@@ -2063,205 +1816,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
   }
 
-  function spawnEnemyById(enemyTypeId: string): void {
-    const minDist = 80;
-    let spawnX = 0, spawnY = 0, attempts = 0;
-    const wn = currentWave;
-    if (enemyTypeId === 'laser') {
-      const half = LASER_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - LASER_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - LASER_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      enemies.push(makeLaserEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'sapphire') {
-      const half = SAPPHIRE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - SAPPHIRE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - SAPPHIRE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'emerald') {
-      const half = EMERALD_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - EMERALD_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - EMERALD_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      emeraldEnemies.push(makeEmeraldEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'amber') {
-      const half = AMBER_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - AMBER_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - AMBER_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      amberEnemies.push(makeAmberEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'void') {
-      // Void enemies spawn at edges so they approach from a distance.
-      const edge = Math.floor(Math.random() * 4);
-      if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
-      else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
-      else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
-      else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
-      voidEnemies.push(makeVoidEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'quartz') {
-      const half = QUARTZ_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - QUARTZ_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - QUARTZ_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      quartzEnemies.push(makeQuartzEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'ruby') {
-      const half = RUBY_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - RUBY_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - RUBY_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      rubyEnemies.push(makeRubyEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'sunstone') {
-      const half = SUNSTONE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - SUNSTONE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - SUNSTONE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      sunstoneEnemies.push(makeSunstoneEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'citrine') {
-      const half = CITRINE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - CITRINE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - CITRINE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      citrineEnemies.push(makeCitrineEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'iolite') {
-      const half = IOLITE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - IOLITE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - IOLITE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      ioliteEnemies.push(makeIoliteEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'amethyst') {
-      const half = AMETHYST_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - AMETHYST_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - AMETHYST_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      amethystEnemies.push(makeAmethystEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'diamond') {
-      const half = DIAMOND_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - DIAMOND_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - DIAMOND_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      diamondEnemies.push(makeDiamondEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'nullstone') {
-      // Nullstone spawns at edges to approach from a distance.
-      const edge = Math.floor(Math.random() * 4);
-      if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
-      else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
-      else if (edge === 2) { spawnX = 0;       spawnY = Math.random() * heightPx; }
-      else                 { spawnX = widthPx; spawnY = Math.random() * heightPx; }
-      nullstoneEnemies.push(makeNullstoneEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'fracteryl') {
-      const half = FRACTERYL_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - FRACTERYL_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - FRACTERYL_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      fracterylEnemies.push(makeFracterylEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'eigenstein') {
-      const half = EIGENSTEIN_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - EIGENSTEIN_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - EIGENSTEIN_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'boss') {
-      bossEnemy = makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx);
-      enterBossWave();
-    }
-  }
-
-  function startNextWave(): void {
-    currentWave += 1;
-    // Boss waves (multiples of 100) are fought via the RPG menu, not auto-progression.
-    while (currentWave > 0 && currentWave % 100 === 0) {
-      currentWave += 1;
-    }
-    if (currentWave > rpgSimState.highestWaveReached) {
-      rpgSimState.highestWaveReached = currentWave;
-    }
-    const waveDef = getWaveDefinition(currentWave);
-    spawnQueue.length = 0;
-    for (const spawn of waveDef.spawns) {
-      for (let i = 0; i < spawn.count; i++) {
-        spawnQueue.push({ enemyTypeId: spawn.enemyTypeId, timerMs: spawn.spawnDelay * i });
-      }
-    }
-    isInterWave = false;
-  }
-
-  function checkWaveCompletion(): void {
-    if (isInterWave || spawnQueue.length > 0
-        || enemies.length > 0 || sapphireEnemies.length > 0
-        || emeraldEnemies.length > 0 || amberEnemies.length > 0 || voidEnemies.length > 0
-        || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
-        || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
-        || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
-        || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
-        || bossEnemy !== null) return;
-    isInterWave = true;
-    interWaveTimerMs = INTER_WAVE_DELAY_MS;
-  }
-
-  function tickSpawnQueue(deltaMs: number): void {
-    if (isInterWave) return;
-    for (let i = spawnQueue.length - 1; i >= 0; i--) {
-      spawnQueue[i].timerMs -= deltaMs;
-      if (spawnQueue[i].timerMs <= 0) {
-        spawnEnemyById(spawnQueue[i].enemyTypeId);
-        spawnQueue.splice(i, 1);
-      }
-    }
-  }
-
+  function startNextWave(): void { waveManager.startNextWave(); }
+  function checkWaveCompletion(): void { waveManager.checkWaveCompletion(); }
+  function tickSpawnQueue(deltaMs: number): void { waveManager.tickSpawnQueue(deltaMs); }
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
 

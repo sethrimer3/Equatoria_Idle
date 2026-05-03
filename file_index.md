@@ -481,8 +481,15 @@
 - Private helpers: `updateShipTrail` (circular trail buffer) and `getTargetMaxHp` (extracts max HP from a `ClosestTarget`).
 - `reset()` clears all four arrays (sapphireShips, sapphireLasers, amethystShips, amethystLasers); called by the parent reset on restart.
 
+### src/render/rpg/rpg-wave-manager.ts
+- Wave lifecycle management extracted from `rpg-render.ts` (~616 lines).
+- Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
+- Scalar state (`currentWave`, `isInterWave`, `bossEnemy`, `isBossFightFromMenu`, `interWaveTimerMs`) is accessed through getter/setter lambdas on `WaveManagerCtx` so `rpg-render.ts` retains authoritative ownership.
+- Covers five functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `spawnEnemyById` (random-position spawn per type), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue).
+- `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~6,175 lines).
+- Independent RPG canvas rendering system for the RPG tab (~2,960 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
@@ -492,7 +499,7 @@
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
-- Exports `RpgRender` interface, `RpgRenderOptions` interface, and `createRpgRender()` factory.
+- Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
 - Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
