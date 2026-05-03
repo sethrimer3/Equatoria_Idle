@@ -198,17 +198,18 @@ export const CHAIN_SPRING_K        =   0.55;
 export const CHAIN_ANCHOR_K        =   0.70;
 /** Anchor spring during retract phase (stronger pull). */
 export const CHAIN_RETRACT_ANCHOR_K = 2.5;
-/** Per-dt velocity damping factor (applied as pow(DAMPING, dt)).
- *  Set to 0.98 so the damping force is 10% of its previous value,
- *  giving the chain much more free-swinging energy. */
-export const CHAIN_DAMPING         =   0.98;
+/** Base linear velocity damping coefficient per simulation dt.
+ *  Tuned to be 10× stronger than the prior chain damping. */
+export const CHAIN_DAMPING_COEFF   =   0.20;
+/** Additional linear damping gain per px/dt of node speed. */
+export const CHAIN_DAMPING_SPEED_SCALE = 0.12;
 /** Initial speed given to nodes when a lash is triggered (px/dt).
  *  Applied with a cascade: inner nodes get a smaller impulse, outer nodes get more. */
 export const CHAIN_LASH_SPEED      =  14;
 /** Inertia of node 0 (closest to player, most responsive). */
 export const CHAIN_MIN_INERTIA     =   0.6;
 /** Inertia of tip node (farthest, least responsive / most momentum). */
-export const CHAIN_MAX_INERTIA     =   3.5;
+export const CHAIN_MAX_INERTIA     =   3.0;
 /**
  * Visual gap ratio: each polygon link is rendered at this fraction of
  * CHAIN_REST_LENGTH so there is always a small gap between adjacent links.

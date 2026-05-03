@@ -24,7 +24,8 @@ import {
   CHAIN_NODES, CHAIN_NODE_COLOR,
   CHAIN_LASH_MS, CHAIN_RETRACT_MS, CHAIN_HIT_CD_MS,
   CHAIN_REST_LENGTH, CHAIN_SPRING_K, CHAIN_ANCHOR_K, CHAIN_RETRACT_ANCHOR_K,
-  CHAIN_DAMPING,
+  CHAIN_DAMPING_COEFF,
+  CHAIN_DAMPING_SPEED_SCALE,
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW,
   VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS, VORTEX_SPAWN_DIST,
   VORTEX_COLOR, VORTEX_SPIN_RATE,
@@ -671,7 +672,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
    * anchorK controls how strongly node 0 is pulled toward the player.
    *
    * Force asymmetry: the force an inner node exerts on the outer node it is
-   * connected to is 1.1x as strong as the force the outer node exerts back on
+   * connected to is 2.2x as strong as the force the outer node exerts back on
    * the inner node.  This propagates energy outward like a real whip crack.
    */
   function stepChainPhysics(ws: ChainWhipState, dt: number, anchorK: number): void {
@@ -680,7 +681,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     ws.nodesVy[0] += (mote.y - ws.nodesY[0]) * anchorK * chainNodeInvMass(0) * dt;
 
     // Asymmetric spring forces between adjacent pairs.
-    // The inner node (i) exerts 1.1× force on the outer node (i+1), while the
+    // The inner node (i) exerts 2.2× force on the outer node (i+1), while the
     // outer node exerts only 1× force back on the inner node.
     for (let i = 0; i < CHAIN_NODES - 1; i++) {
       const sdx = ws.nodesX[i + 1] - ws.nodesX[i];
@@ -690,19 +691,23 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       const stretch = sdist - CHAIN_REST_LENGTH;
       const fx = (sdx / sdist) * stretch * CHAIN_SPRING_K;
       const fy = (sdy / sdist) * stretch * CHAIN_SPRING_K;
-      // Outer node pulled/pushed by inner with 1.1× force
-      ws.nodesVx[i + 1] -= fx * 1.1 * chainNodeInvMass(i + 1) * dt;
-      ws.nodesVy[i + 1] -= fy * 1.1 * chainNodeInvMass(i + 1) * dt;
+      // Outer node pulled/pushed by inner with 2.2× force
+      ws.nodesVx[i + 1] -= fx * 2.2 * chainNodeInvMass(i + 1) * dt;
+      ws.nodesVy[i + 1] -= fy * 2.2 * chainNodeInvMass(i + 1) * dt;
       // Inner node pulled/pushed by outer with 1× force
       ws.nodesVx[i]     += fx * chainNodeInvMass(i)     * dt;
       ws.nodesVy[i]     += fy * chainNodeInvMass(i)     * dt;
     }
 
-    // Integrate positions + apply damping
-    const dampFactor = Math.pow(CHAIN_DAMPING, dt);
+    // Integrate positions + apply damping that rises linearly with node speed.
     for (let i = 0; i < CHAIN_NODES; i++) {
-      ws.nodesVx[i] *= dampFactor;
-      ws.nodesVy[i] *= dampFactor;
+      const vx = ws.nodesVx[i];
+      const vy = ws.nodesVy[i];
+      const speed = Math.hypot(vx, vy);
+      const linearDamp = Math.min(0.98, CHAIN_DAMPING_COEFF * (1 + CHAIN_DAMPING_SPEED_SCALE * speed) * dt);
+      const retain = 1 - linearDamp;
+      ws.nodesVx[i] *= retain;
+      ws.nodesVy[i] *= retain;
       ws.nodesX[i] += ws.nodesVx[i] * dt;
       ws.nodesY[i] += ws.nodesVy[i] * dt;
     }
