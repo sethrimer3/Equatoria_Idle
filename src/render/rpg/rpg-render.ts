@@ -82,15 +82,21 @@ import {
   drawSandProjectiles,
   drawPoisonBolts,
   drawLaserBeamEffect,
-  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   drawWeaponOrbitParticle, drawOrbitProjectile,
   drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
-  drawSapphireShips, drawSapphireLasers,
-  drawAmethystShips, drawAmethystLasers,
   drawTargetReticle,
   drawPlayerMote,
   setLowGraphicsMode as setEntityLowGraphics,
 } from './rpg-entity-draw';
+import {
+  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
+  setLowGraphicsMode as setCombatEffectsLowGraphics,
+} from './rpg-combat-effects-draw';
+import {
+  drawSapphireShips, drawSapphireLasers,
+  drawAmethystShips, drawAmethystLasers,
+  setLowGraphicsMode as setCompanionLowGraphics,
+} from './rpg-companion-draw';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
   LaserEnemy,
@@ -1536,6 +1542,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       setEnemyLowGraphics(enabled);
       setWeaponLowGraphics(enabled);
       setBossLowGraphics(enabled);
+      setCombatEffectsLowGraphics(enabled);
+      setCompanionLowGraphics(enabled);
     },
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {

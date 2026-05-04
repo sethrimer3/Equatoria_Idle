@@ -35,6 +35,8 @@ import {
   SAPPHIRE_SHIELD_RADIUS, SAPPHIRE_ENEMY_GLOW, SAPPHIRE_ENEMY_COLOR, SAPPHIRE_ENEMY_SIZE,
   MISSILE_TRAIL_CAP, MISSILE_TRAIL_DASH_RATIO, MISSILE_GLOW, MISSILE_COLOR, MISSILE_SIZE,
   LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
+  LASER_DASH_DISTANCE, LASER_TRAIL_ERASE_MS, ATTACK_TRAIL_LENGTH_SCALE,
+  ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE,
   BOSS_SIZE_BASE,
 } from './rpg-constants';
 import {
@@ -59,7 +61,6 @@ import {
   FRACTERYL_ENEMY_SIZE, FRACTERYL_ENEMY_GLOW, FRACTERYL_ENEMY_COLOR,
   EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_ENEMY_GLOW, EIGENSTEIN_ENEMY_COLOR, EIGENSTEIN_BEAM_CHARGE_MS,
 } from './rpg-enemy-constants';
-import { drawAttackTrail } from './rpg-entity-draw';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -67,6 +68,48 @@ let isLowGraphicsMode = false;
 /** Sets low-graphics mode for RPG enemy draw functions (skips glow & trails). */
 export function setLowGraphicsMode(enabled: boolean): void {
   isLowGraphicsMode = enabled;
+}
+
+/**
+ * Draws the curved dashed trail left by a laser enemy during its dash attack.
+ * Moved here from rpg-entity-draw.ts since this is the sole consumer.
+ */
+export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy, nowMs: number): void {
+  const trail = enemy.attackTrail;
+  if (!trail.active) return;
+  const isDashing = trail.trailEndMs === Infinity;
+  let drawProgress: number, eraseProgress: number;
+  if (isDashing) {
+    drawProgress = Math.min(enemy.dashTraveled / LASER_DASH_DISTANCE, 1.0);
+    eraseProgress = 0;
+  } else {
+    drawProgress = 1.0;
+    eraseProgress = Math.min((nowMs - trail.trailEndMs) / LASER_TRAIL_ERASE_MS, 1.0);
+    if (eraseProgress >= 1.0) { trail.active = false; return; }
+  }
+  const sx = trail.startX, sy = trail.startY, tx = trail.endX, ty = trail.endY;
+  const ddx = tx - sx, ddy = ty - sy;
+  const L = Math.sqrt(ddx * ddx + ddy * ddy);
+  if (L < 1) return;
+  const midX = (sx + tx) * 0.5, midY = (sy + ty) * 0.5;
+  const perpX = -ddy / L, perpY = ddx / L;
+  const curveOffset = L * Math.tan(trail.controlAngle);
+  const controlX = midX + perpX * curveOffset, controlY = midY + perpY * curveOffset;
+  const dashLen    = L * ATTACK_TRAIL_LENGTH_SCALE;
+  const dashOffset = isDashing ? dashLen * (1 - drawProgress) : -(dashLen * eraseProgress);
+  const alpha = isDashing ? ATTACK_TRAIL_ALPHA : ATTACK_TRAIL_ALPHA * (1 - eraseProgress * ATTACK_TRAIL_ERASE_FADE);
+  ctx.save();
+  ctx.setLineDash([dashLen, dashLen]);
+  ctx.lineDashOffset = dashOffset;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = isLowGraphicsMode ? 0 : 5; ctx.shadowColor = LASER_ENEMY_GLOW;
+  ctx.strokeStyle = LASER_ENEMY_GLOW; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = LASER_ENEMY_COLOR; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
+  ctx.restore();
 }
 
 export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: SapphireEnemy[]): void {

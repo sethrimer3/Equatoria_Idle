@@ -1,6 +1,12 @@
 /**
  * rpg-entity-draw.ts — Pure entity draw functions extracted from rpg-render.ts.
  *
+ * Covers weapon projectiles (sand, poison, laser beam, boss projectiles, emerald
+ * missiles, sunstone mines), player/orbit visuals, and the target reticle.
+ * Companion ship draw has moved to rpg-companion-draw.ts.
+ * Combat feedback visuals (death particles, shot lines, hit effects, damage
+ * numbers) have moved to rpg-combat-effects-draw.ts.
+ *
  * Each function takes an explicit `ctx: CanvasRenderingContext2D` as its first
  * parameter, plus the entity array(s) it needs, instead of capturing them from
  * a closure.  This lets callers (including tests) use these functions without
@@ -11,8 +17,6 @@ import type {
   SandProjectile,
   IolitePoisonBolt,
   LaserBeamEffect,
-  DeathParticle, ShotLine, HitEffect, DamageNumber,
-  LaserEnemy,
   WeaponOrbitParticle, OrbitProjectile,
   RpgMote, RpgPhase,
 } from './rpg-types';
@@ -20,73 +24,21 @@ import type {
   BossProjectile,
   EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
   SunstoneMine,
-  SapphireShip, SapphireLaser,
-  AmethystShip, AmethystLaser,
 } from './rpg-enemy-types';
 
 import {
   SAND_PROJ_LIFE_MS, SAND_PROJ_SIZE, SAND_PROJ_GLOW, SAND_PROJ_COLOR,
   POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_BOLT_SIZE, POISON_BOLT_COLOR, POISON_BOLT_GLOW,
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_GLOW, LASER_BEAM_COLOR, LASER_BEAM_WIDTH,
-  SHOT_LINE_DURATION_MS, HIT_EFFECT_DURATION_MS,
-  DAMAGE_NUM_DURATION_MS, DAMAGE_NUM_FONT_FAMILY,
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_TRAIL_CAP, ORBIT_PROJ_SIZE,
-  LASER_DASH_DISTANCE, LASER_TRAIL_ERASE_MS, ATTACK_TRAIL_LENGTH_SCALE,
-  ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE, LASER_ENEMY_GLOW, LASER_ENEMY_COLOR,
   EMERALD_MISSILE_SIZE, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_GLOW, EMERALD_MISSILE_TRAIL_CAP,
   EMERALD_SUB_MISSILE_SIZE, EMERALD_SUB_MISSILE_TRAIL_CAP, EMERALD_SUB_MISSILE_DECEL_START_MS,
   EMERALD_SWIRL_LIFE_MS, EMERALD_SWIRL_SIZE,
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_SIZE, SUNSTONE_MINE_COLOR, SUNSTONE_MINE_GLOW,
   SUNSTONE_MINE_DANGER_COLOR,
-  SAPPHIRE_SHIP_SIZE, SAPPHIRE_SHIP_TRAIL_CAP,
-  SAPPHIRE_SHIP_TRAIL_CORE_HEAD_W, SAPPHIRE_SHIP_TRAIL_CORE_TAIL_W,
-  SAPPHIRE_SHIP_TRAIL_GLOW_W, SAPPHIRE_SHIP_TRAIL_TAPER,
-  SAPPHIRE_LASER_SIZE, SAPPHIRE_LASER_COLOR, SAPPHIRE_LASER_GLOW, SAPPHIRE_LASER_TRAIL_CAP,
-  SAPPHIRE_LASER_LIFE_MS,
-  SAPPHIRE_LASER_TRAIL_CORE_HEAD_W, SAPPHIRE_LASER_TRAIL_CORE_TAIL_W,
-  SAPPHIRE_LASER_TRAIL_GLOW_W, SAPPHIRE_LASER_TRAIL_TAPER,
-  AMETHYST_SHIP_SIZE, AMETHYST_SHIP_TRAIL_CAP,
-  AMETHYST_LASER_SIZE, AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW, AMETHYST_LASER_TRAIL_CAP,
-  AMETHYST_LASER_TRAIL_CORE_HEAD_W, AMETHYST_LASER_TRAIL_CORE_TAIL_W,
-  AMETHYST_LASER_TRAIL_GLOW_W, AMETHYST_LASER_TRAIL_TAPER,
-  AMETHYST_LASER_DURATION_MS,
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
   GLOW_PULSE_SPEED, IFRAME_FLICKER_INTERVAL_MS,
 } from './rpg-constants';
-import {
-  beginNeonGlowBatch, endNeonGlowBatch,
-  drawNeonTrailGlow, drawNeonTrailCore,
-  type NeonTrailConfig,
-} from './neon-trail-draw';
-
-// ── Module-level cached neon trail configs (no per-frame allocation) ─────────
-
-const _sapphireShipTrailCfg: NeonTrailConfig = {
-  coreColor:      SAPPHIRE_LASER_COLOR,
-  glowColor:      SAPPHIRE_LASER_GLOW,
-  coreHeadWidth:  SAPPHIRE_SHIP_TRAIL_CORE_HEAD_W,
-  coreTailWidth:  SAPPHIRE_SHIP_TRAIL_CORE_TAIL_W,
-  glowWidth:      SAPPHIRE_SHIP_TRAIL_GLOW_W,
-  taperSegments:  SAPPHIRE_SHIP_TRAIL_TAPER,
-};
-
-const _sapphireLaserTrailCfg: NeonTrailConfig = {
-  coreColor:      SAPPHIRE_LASER_COLOR,
-  glowColor:      SAPPHIRE_LASER_GLOW,
-  coreHeadWidth:  SAPPHIRE_LASER_TRAIL_CORE_HEAD_W,
-  coreTailWidth:  SAPPHIRE_LASER_TRAIL_CORE_TAIL_W,
-  glowWidth:      SAPPHIRE_LASER_TRAIL_GLOW_W,
-  taperSegments:  SAPPHIRE_LASER_TRAIL_TAPER,
-};
-
-const _amethystLaserTrailCfg: NeonTrailConfig = {
-  coreColor:      AMETHYST_LASER_COLOR,
-  glowColor:      AMETHYST_LASER_GLOW,
-  coreHeadWidth:  AMETHYST_LASER_TRAIL_CORE_HEAD_W,
-  coreTailWidth:  AMETHYST_LASER_TRAIL_CORE_TAIL_W,
-  glowWidth:      AMETHYST_LASER_TRAIL_GLOW_W,
-  taperSegments:  AMETHYST_LASER_TRAIL_TAPER,
-};
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -168,108 +120,6 @@ export function drawLaserBeamEffect(ctx: CanvasRenderingContext2D, effect: Laser
   ctx.strokeStyle = LASER_BEAM_COLOR; ctx.lineWidth = LASER_BEAM_WIDTH;
   ctx.beginPath(); ctx.moveTo(effect.startX, effect.startY); ctx.lineTo(endX, endY); ctx.stroke();
   ctx.globalAlpha = 1; ctx.restore();
-}
-
-export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy, nowMs: number): void {
-  const trail = enemy.attackTrail;
-  if (!trail.active) return;
-  const isDashing = trail.trailEndMs === Infinity;
-  let drawProgress: number, eraseProgress: number;
-  if (isDashing) {
-    drawProgress = Math.min(enemy.dashTraveled / LASER_DASH_DISTANCE, 1.0);
-    eraseProgress = 0;
-  } else {
-    drawProgress = 1.0;
-    eraseProgress = Math.min((nowMs - trail.trailEndMs) / LASER_TRAIL_ERASE_MS, 1.0);
-    if (eraseProgress >= 1.0) { trail.active = false; return; }
-  }
-  const sx = trail.startX, sy = trail.startY, tx = trail.endX, ty = trail.endY;
-  const ddx = tx - sx, ddy = ty - sy;
-  const L = Math.sqrt(ddx * ddx + ddy * ddy);
-  if (L < 1) return;
-  const midX = (sx + tx) * 0.5, midY = (sy + ty) * 0.5;
-  const perpX = -ddy / L, perpY = ddx / L;
-  const curveOffset = L * Math.tan(trail.controlAngle);
-  const controlX = midX + perpX * curveOffset, controlY = midY + perpY * curveOffset;
-  const dashLen    = L * ATTACK_TRAIL_LENGTH_SCALE;
-  const dashOffset = isDashing ? dashLen * (1 - drawProgress) : -(dashLen * eraseProgress);
-  const alpha = isDashing ? ATTACK_TRAIL_ALPHA : ATTACK_TRAIL_ALPHA * (1 - eraseProgress * ATTACK_TRAIL_ERASE_FADE);
-  ctx.save();
-  ctx.setLineDash([dashLen, dashLen]);
-  ctx.lineDashOffset = dashOffset;
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.globalAlpha = alpha;
-  ctx.shadowBlur = isLowGraphicsMode ? 0 : 5; ctx.shadowColor = LASER_ENEMY_GLOW;
-  ctx.strokeStyle = LASER_ENEMY_GLOW; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = LASER_ENEMY_COLOR; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
-  ctx.restore();
-}
-
-export function drawDeathParticles(ctx: CanvasRenderingContext2D, particles: DeathParticle[]): void {
-  for (const p of particles) {
-    ctx.globalAlpha = p.alpha; ctx.shadowBlur = isLowGraphicsMode ? 0 : p.size * 3; ctx.shadowColor = p.color;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x - p.size / 2), Math.floor(p.y - p.size / 2), Math.ceil(p.size), Math.ceil(p.size));
-  }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-}
-
-export function drawShotLines(ctx: CanvasRenderingContext2D, lines: ShotLine[]): void {
-  if (lines.length === 0) return;
-  ctx.save();
-  ctx.lineCap = 'round';
-  for (const line of lines) {
-    const t = line.timerMs / SHOT_LINE_DURATION_MS;
-    ctx.globalAlpha = t * 0.7;
-    ctx.strokeStyle = line.color;
-    ctx.shadowBlur  = isLowGraphicsMode ? 0 : 3; ctx.shadowColor = line.color;
-    ctx.lineWidth   = 1;
-    ctx.beginPath();
-    ctx.moveTo(line.x1, line.y1);
-    ctx.lineTo(line.x2, line.y2);
-    ctx.stroke();
-  }
-  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-export function drawHitEffects(ctx: CanvasRenderingContext2D, effects: HitEffect[]): void {
-  if (effects.length === 0) return;
-  ctx.save();
-  for (const h of effects) {
-    const t    = h.timerMs / HIT_EFFECT_DURATION_MS;
-    const size = 3 + (1 - t) * 5;
-    const half = size / 2;
-    ctx.globalAlpha = t * 0.9;
-    ctx.shadowBlur  = isLowGraphicsMode ? 0 : size * 3; ctx.shadowColor = h.color; ctx.fillStyle = h.color;
-    ctx.fillRect(Math.floor(h.x - half), Math.floor(h.y - half), Math.ceil(size), Math.ceil(size));
-  }
-  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: DamageNumber[]): void {
-  if (numbers.length === 0) return;
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  for (const dn of numbers) {
-    const t = dn.timerMs / DAMAGE_NUM_DURATION_MS;
-    // Fade in sharply, then hold, then fade out in the last third.
-    const alpha = t > 0.33 ? 1.0 : t / 0.33;
-    ctx.globalAlpha = alpha;
-    const fontPx = Math.max(1, Math.round(dn.fontPx));
-    ctx.font = `bold ${fontPx}px ${DAMAGE_NUM_FONT_FAMILY}`;
-    ctx.shadowBlur  = isLowGraphicsMode ? 0 : fontPx * 2;
-    ctx.shadowColor = dn.color;
-    ctx.fillStyle   = dn.color;
-    ctx.fillText(dn.text, Math.round(dn.x), Math.round(dn.y));
-  }
-  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  ctx.restore();
 }
 
 export function drawWeaponOrbitParticle(ctx: CanvasRenderingContext2D, p: WeaponOrbitParticle): void {
@@ -563,193 +413,6 @@ function lerpColor(a: string, b: string, t: number): string {
   const g  = Math.round(ag + (bg - ag) * t);
   const bv = Math.round(ab + (bb - ab) * t);
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bv.toString(16).padStart(2, '0')}`;
-}
-
-// ── Sapphire companion ship draw functions ────────────────────
-
-export function drawSapphireShips(
-  ctx: CanvasRenderingContext2D,
-  ships: SapphireShip[],
-): void {
-  if (ships.length === 0) return;
-  ctx.save();
-
-  if (!isLowGraphicsMode) {
-    // ── Neon trail glow pass (accumulated on offscreen canvas, then composited) ──
-    beginNeonGlowBatch(ctx);
-    for (const ship of ships) {
-      if (ship.trailCount >= 2) {
-        drawNeonTrailGlow(ship.trailX, ship.trailY, ship.trailHead, ship.trailCount, SAPPHIRE_SHIP_TRAIL_CAP, _sapphireShipTrailCfg, 1.0);
-      }
-    }
-    endNeonGlowBatch(ctx);
-
-    // ── Neon trail core pass (drawn directly on main canvas) ──
-    for (const ship of ships) {
-      if (ship.trailCount >= 2) {
-        drawNeonTrailCore(ctx, ship.trailX, ship.trailY, ship.trailHead, ship.trailCount, SAPPHIRE_SHIP_TRAIL_CAP, _sapphireShipTrailCfg, 1.0);
-      }
-    }
-  }
-
-  // ── Ship body — triangle rotated to face direction of travel ──
-  for (const ship of ships) {
-    ctx.globalAlpha = 1;
-    if (!isLowGraphicsMode) {
-      ctx.shadowBlur = SAPPHIRE_SHIP_SIZE * 3; ctx.shadowColor = SAPPHIRE_LASER_GLOW;
-    }
-    ctx.fillStyle = SAPPHIRE_LASER_COLOR;
-    const radius  = SAPPHIRE_SHIP_SIZE + 0.5;
-    const speed   = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy);
-    const heading = speed > 0.05 ? Math.atan2(ship.vy, ship.vx) : -Math.PI / 2;
-    ctx.save();
-    ctx.translate(ship.x, ship.y);
-    ctx.rotate(heading + Math.PI / 2); // rotate so tip faces direction of motion
-    ctx.beginPath();
-    ctx.moveTo(0, -radius);
-    ctx.lineTo(-radius, radius * 0.8);
-    ctx.lineTo(radius, radius * 0.8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-    ctx.shadowBlur = 0;
-  }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  ctx.restore();
-}
-
-export function drawSapphireLasers(
-  ctx: CanvasRenderingContext2D,
-  lasers: SapphireLaser[],
-): void {
-  if (lasers.length === 0) return;
-  ctx.save();
-
-  if (!isLowGraphicsMode) {
-    // ── Neon trail glow pass ──
-    beginNeonGlowBatch(ctx);
-    for (const laser of lasers) {
-      if (laser.trailCount >= 2) {
-        const lifeFraction = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
-        drawNeonTrailGlow(laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeFraction);
-      }
-    }
-    endNeonGlowBatch(ctx);
-
-    // ── Neon trail core pass ──
-    for (const laser of lasers) {
-      if (laser.trailCount >= 2) {
-        const lifeFraction = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
-        drawNeonTrailCore(ctx, laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, SAPPHIRE_LASER_TRAIL_CAP, _sapphireLaserTrailCfg, lifeFraction);
-      }
-    }
-  }
-
-  // ── Laser head ──
-  for (const laser of lasers) {
-    const alpha = laser.lifeMs / SAPPHIRE_LASER_LIFE_MS;
-    ctx.globalAlpha = alpha * 0.9;
-    if (!isLowGraphicsMode) {
-      ctx.shadowBlur = SAPPHIRE_LASER_SIZE * 4; ctx.shadowColor = SAPPHIRE_LASER_GLOW;
-      ctx.fillStyle  = SAPPHIRE_LASER_GLOW;
-      const gr = SAPPHIRE_LASER_SIZE * 1.5;
-      ctx.fillRect(Math.floor(laser.x - gr), Math.floor(laser.y - gr), Math.ceil(gr * 2), Math.ceil(gr * 2));
-      ctx.shadowBlur = 0;
-    }
-    ctx.fillStyle = SAPPHIRE_LASER_COLOR;
-    ctx.fillRect(Math.floor(laser.x - SAPPHIRE_LASER_SIZE / 2), Math.floor(laser.y - SAPPHIRE_LASER_SIZE / 2), SAPPHIRE_LASER_SIZE, SAPPHIRE_LASER_SIZE);
-  }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  ctx.restore();
-}
-
-// ── Amethyst companion ship draw functions ────────────────────
-
-export function drawAmethystShips(
-  ctx: CanvasRenderingContext2D,
-  ships: AmethystShip[],
-): void {
-  if (ships.length === 0) return;
-  ctx.save();
-  for (const ship of ships) {
-    // Trail (skip in low-graphics mode)
-    if (!isLowGraphicsMode && ship.trailCount >= 2) {
-      for (let i = 0; i < ship.trailCount; i++) {
-        const idx = (ship.trailHead - ship.trailCount + i + AMETHYST_SHIP_TRAIL_CAP) % AMETHYST_SHIP_TRAIL_CAP;
-        const t   = i / ship.trailCount;
-        const r   = AMETHYST_SHIP_SIZE * t * 0.6;
-        if (r < 0.3) continue;
-        ctx.globalAlpha = t * 0.4;
-        ctx.fillStyle = AMETHYST_LASER_COLOR;
-        ctx.fillRect(Math.floor(ship.trailX[idx] - r), Math.floor(ship.trailY[idx] - r), Math.ceil(r * 2), Math.ceil(r * 2));
-      }
-    }
-    // Ship body — triangle rotated to face direction of travel
-    ctx.globalAlpha = 1;
-    if (!isLowGraphicsMode) {
-      ctx.shadowBlur = AMETHYST_SHIP_SIZE * 3; ctx.shadowColor = AMETHYST_LASER_GLOW;
-    }
-    ctx.fillStyle = AMETHYST_LASER_COLOR;
-    const radius  = AMETHYST_SHIP_SIZE + 0.5;
-    const speed   = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy);
-    const heading = speed > 0.05 ? Math.atan2(ship.vy, ship.vx) : -Math.PI / 2;
-    ctx.save();
-    ctx.translate(ship.x, ship.y);
-    ctx.rotate(heading + Math.PI / 2); // rotate so tip faces direction of motion
-    ctx.beginPath();
-    ctx.moveTo(0, -radius);
-    ctx.lineTo(-radius, radius * 0.8);
-    ctx.lineTo(radius, radius * 0.8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-    ctx.shadowBlur = 0;
-  }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  ctx.restore();
-}
-
-export function drawAmethystLasers(
-  ctx: CanvasRenderingContext2D,
-  lasers: AmethystLaser[],
-): void {
-  if (lasers.length === 0) return;
-  ctx.save();
-
-  if (!isLowGraphicsMode) {
-    // ── Neon trail glow pass (accumulated on offscreen canvas, then composited) ──
-    beginNeonGlowBatch(ctx);
-    for (const laser of lasers) {
-      if (laser.trailCount >= 2) {
-        drawNeonTrailGlow(laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, AMETHYST_LASER_TRAIL_CAP, _amethystLaserTrailCfg, laser.lifeMs / AMETHYST_LASER_DURATION_MS);
-      }
-    }
-    endNeonGlowBatch(ctx);
-
-    // ── Neon trail core pass (tapered, shrinks from tail to tip as life drops) ──
-    for (const laser of lasers) {
-      if (laser.trailCount >= 2) {
-        drawNeonTrailCore(ctx, laser.trailX, laser.trailY, laser.trailHead, laser.trailCount, AMETHYST_LASER_TRAIL_CAP, _amethystLaserTrailCfg, laser.lifeMs / AMETHYST_LASER_DURATION_MS);
-      }
-    }
-  }
-
-  // ── Laser head ──
-  for (const laser of lasers) {
-    const alpha = laser.lifeMs / AMETHYST_LASER_DURATION_MS;
-    ctx.globalAlpha = alpha * 0.9;
-    if (!isLowGraphicsMode) {
-      ctx.shadowBlur = AMETHYST_LASER_SIZE * 5; ctx.shadowColor = AMETHYST_LASER_GLOW;
-      ctx.fillStyle  = AMETHYST_LASER_GLOW;
-      const gr = AMETHYST_LASER_SIZE * 1.5;
-      ctx.fillRect(Math.floor(laser.x - gr), Math.floor(laser.y - gr), Math.ceil(gr * 2), Math.ceil(gr * 2));
-      ctx.shadowBlur = 0;
-    }
-    ctx.fillStyle = AMETHYST_LASER_COLOR;
-    ctx.fillRect(Math.floor(laser.x - AMETHYST_LASER_SIZE / 2), Math.floor(laser.y - AMETHYST_LASER_SIZE / 2), AMETHYST_LASER_SIZE, AMETHYST_LASER_SIZE);
-  }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  ctx.restore();
 }
 
 // ── Target reticle draw function ──────────────────────────────
