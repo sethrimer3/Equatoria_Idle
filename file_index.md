@@ -371,14 +371,37 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts
-- 12 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, support visuals, and the player mote (~875 lines after player mote extraction).
-- Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays or scalar values.
-- Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle, and **player mote** (comet trail + body draw with iframe flicker).
+- Exported pure draw functions for weapon projectiles and player-side combat visuals (~538 lines after refactoring).
+- Covers: sand projectiles, poison bolts, laser beam effect, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, target reticle, and **player mote** (comet trail + body draw with iframe flicker).
 - `drawPlayerMote(ctx, mote, glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs)` — replaces the inline draw block that was in `rpg-render.ts`; respects `isLowGraphicsMode` via the module flag.
 - Exposes its own `setLowGraphicsMode()` (independent of `rpg-enemy-draw.ts`).
-- `drawSapphireShips` and `drawSapphireLasers` use the neon trail system from `neon-trail-draw.ts`.
-- Module-level `_sapphireShipTrailCfg` and `_sapphireLaserTrailCfg` — cached NeonTrailConfig objects (no per-frame allocation).
+- **Companion ship draw** has moved to `rpg-companion-draw.ts`.
+- **Combat feedback visuals** (death particles, shot lines, hit effects, damage numbers) have moved to `rpg-combat-effects-draw.ts`.
+- **`drawAttackTrail`** (laser enemy dash trail) has moved to `rpg-enemy-draw.ts`.
 - No runtime side-effects; safe to call from any rendering context.
+
+### src/render/rpg/rpg-companion-draw.ts
+- Pure draw functions for Sapphire and Amethyst companion ships and their lasers (~257 lines).
+- Extracted from `rpg-entity-draw.ts` to keep that file focused on weapon projectiles.
+- Covers: `drawSapphireShips`, `drawSapphireLasers`, `drawAmethystShips`, `drawAmethystLasers`.
+- Uses the neon trail system (`neon-trail-draw.ts`) for high-quality trail rendering.
+- Module-level `_sapphireShipTrailCfg`, `_sapphireLaserTrailCfg`, `_amethystLaserTrailCfg` — cached `NeonTrailConfig` objects (no per-frame allocation).
+- Has its own `setLowGraphicsMode()` export; called from `rpg-render.ts` at startup.
+
+### src/render/rpg/rpg-combat-effects-draw.ts
+- Pure draw functions for per-hit feedback visuals (~95 lines).
+- Extracted from `rpg-entity-draw.ts`.
+- Covers: `drawDeathParticles`, `drawShotLines`, `drawHitEffects`, `drawDamageNumbers`.
+- All functions are stateless: they accept a canvas context and the relevant entity array.
+- Has its own `setLowGraphicsMode()` export; called from `rpg-render.ts`.
+
+### src/render/rpg/rpg-boss-wave.ts
+- Boss wave lifecycle management extracted from `rpg-render.ts` (~218 lines).
+- Exports `BossWaveCtx` interface, `BossWaveHandle` interface, and `createBossWaveManager(ctx)` factory.
+- Owns: `teleportPlayerToSafeZone`, `enterBossWave`, `exitBossWave`, `startBossFight`, `damageBossEnemy`.
+- `BossWaveCtx` exposes all mutable closure state via getter/setter callbacks (same pattern as `BossUpdateCtx`, `WaveManagerCtx`).
+- `rpg-render.ts` retains `isBossWaveActive`, `bossActiveEquipIds`, and `bossPreWaveWeaponTiers` as let-variables; `getEffectiveEquippedIds()` stays in `rpg-render.ts` and reads them directly.
+- Initialized after `statsPanel` is created (which sets up `recordDps`), since `damageBossEnemy` and `spawnDamageNumber` callbacks are required.
 
 ### src/render/rpg/neon-trail-draw.ts
 - Reusable neon particle trail rendering system for Float64Array ring-buffer trails.
@@ -392,10 +415,11 @@
 - Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
-- 26 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~712 lines).
+- 27 exported pure draw functions for all RPG enemy types (~755 lines).
 - Covers every enemy body + associated projectiles/shards: sapphire+missiles, emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
 - Also exports `drawLaserEnemies(ctx, enemies, nowMs)` — draws the basic "laser" enemy type with health bar and attack trail; formerly `drawEnemies()` inlined in `rpg-render.ts`.
 - Also exports `drawEnemyIndicators(ctx, style, enemies..., bossEnemy)` — draws red triangle or outline markers above all living enemies; formerly inlined in `rpg-render.ts`.
+- **`drawAttackTrail`** (laser enemy curved dash trail) moved here from `rpg-entity-draw.ts` since this is its sole consumer.
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
 - Has its own independent `isLowGraphicsMode` flag and `setLowGraphicsMode()` export, called from `rpg-render.ts` alongside the entity-draw and weapon-draw equivalents.
 
@@ -434,7 +458,7 @@
 - 24 per-entity damage functions extracted from `rpg-render.ts` via factory pattern (~307 lines).
 - Exports `DamageCtx` interface (`recordDps` callback) and `createDamageFns(ctx)` factory.
 - `createDamageFns` returns all damage helpers (`damageEnemy`, `damageSapphireEnemy`, `damageMissile`, etc.) with identical signatures and behaviour, so call sites in `rpg-render.ts` are unchanged.
-- `damageBossEnemy` is NOT included (stays in `rpg-render.ts` due to closure-specific references: `bossEnemy`, `isBossWaveActive`, `teleportPlayerToSafeZone`, etc.).
+- `damageBossEnemy` is NOT included; it lives in `rpg-boss-wave.ts` (part of boss wave lifecycle management).
 - Imports entity types from `./rpg-types` and `MINIMUM_SHIELD_DAMAGE` from `./rpg-constants`.
 
 ### src/render/rpg/rpg-lucky-motes.ts
