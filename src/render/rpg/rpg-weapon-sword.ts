@@ -19,7 +19,6 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage, getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import {
-  HIT_EFFECT_DURATION_MS,
   SWORD_SWING_MS, SWORD_COLOR, SWORD_PRISMATIC_COLORS, SAND_BLADE_COLORS,
   SWORD_SHARD_COUNT, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
   SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
@@ -27,6 +26,9 @@ import {
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
   SWORD_COMBO_THRESHOLD, SWORD_COMBO_WINDOW_MS, SWORD_COMBO_MIN_SWIPE_DELAY_MS,
   SWORD_COMBO_SPIN_TURNS, SWORD_COMBO_SPIN_MS, SWORD_COMBO_DAMAGE_MULT,
+} from './rpg-weapon-constants';
+import {
+  HIT_EFFECT_DURATION_MS,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PROJECTILE_STRENGTH,
   BASE_ATTACK_TIMER_KEY,
 } from './rpg-constants';

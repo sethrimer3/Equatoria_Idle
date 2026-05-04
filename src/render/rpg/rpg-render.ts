@@ -60,6 +60,10 @@ import {
   drawEmeraldEnemies,
   drawAmberEnemies, drawAmberShards,
   drawVoidEnemies,
+  drawLaserEnemies, drawEnemyIndicators,
+  setLowGraphicsMode as setEnemyLowGraphics,
+} from './rpg-enemy-draw';
+import {
   drawQuartzEnemies, drawQuartzSpikes,
   drawRubyEnemies, drawRubyBolts,
   drawSunstoneEnemies,
@@ -71,9 +75,7 @@ import {
   drawFracterylEnemies,
   drawEigensteinEnemies, drawEigensteinBeams,
   drawTeleportParticles,
-  drawLaserEnemies, drawEnemyIndicators,
-  setLowGraphicsMode as setEnemyLowGraphics,
-} from './rpg-enemy-draw';
+} from './rpg-enemy-draw-adv';
 import {
   drawBossProjectiles,
   drawSandProjectiles,

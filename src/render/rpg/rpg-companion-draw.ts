@@ -25,7 +25,7 @@ import {
   AMETHYST_LASER_TRAIL_CORE_HEAD_W, AMETHYST_LASER_TRAIL_CORE_TAIL_W,
   AMETHYST_LASER_TRAIL_GLOW_W, AMETHYST_LASER_TRAIL_TAPER,
   AMETHYST_LASER_DURATION_MS,
-} from './rpg-constants';
+} from './rpg-weapon-constants';
 import {
   beginNeonGlowBatch, endNeonGlowBatch,
   drawNeonTrailGlow, drawNeonTrailCore,

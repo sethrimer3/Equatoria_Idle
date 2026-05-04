@@ -326,22 +326,24 @@
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
 ### src/render/rpg/rpg-constants.ts
-- All module-level numeric and string constants for the RPG rendering system (~580 lines after extraction).
-- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, boss, Euler-fluid injection constants, and lucky mote drop constants.
-- Also exports `SWORD_SHARD_SHAPES` — readonly polygon vertex data for the 7 prismatic blade shards.
-- Exports `LUCKY_*` constants: `LUCKY_MOTE_RADIUS`, `LUCKY_MOTE_BORDER_COLOR`, `LUCKY_MOTE_MAGNET_DIST`, `LUCKY_MOTE_COLLECT_DIST`, `LUCKY_MOTE_MAGNET_SPEED`, `LUCKY_MOTE_BONUS_PCT`, `LUCKY_MOTE_SPAWN_SPEED`, `LUCKY_MOTE_DAMPING`, `LUCKY_POPUP_DURATION_MS`, `LUCKY_POPUP_SPEED`, `LUCKY_POPUP_DECEL`, `LUCKY_PULSE_SPEED`.
+- Core numeric and string constants for the RPG rendering system (~311 lines after weapon extraction).
+- Covers: player, mote, joystick, laser/sapphire starter enemies, missile, boss, damage numbers, iframes, fluid injection forces, and lucky mote drop constants.
 - Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
-- Exports companion-ship and laser constants for Sapphire/Amethyst persistent ship weapons.
-- Per-enemy-type constants for non-starter enemies have been moved to `rpg-enemy-constants.ts`.
-- Exports all constants; consumed by `rpg-render.ts`, `rpg-factories.ts`, and RPG draw modules.
+- Exports all constants; consumed by `rpg-render.ts`, `rpg-factories.ts`, and RPG draw/update modules.
+- Weapon-specific constants (chain whip, laser beam, vortex, sword, poison, emerald missiles, sunstone mines, companion ships) have been moved to `rpg-weapon-constants.ts`.
+
+### src/render/rpg/rpg-weapon-constants.ts
+- All player-weapon and weapon-projectile constants (~374 lines).
+- Covers: sand projectiles, chain whip physics/visual, ruby laser beam, nullstone vortex, diamond sword (shard shapes, combo system, `SAND_BLADE_COLORS`), poison bolt, emerald player + sub-missiles + swirl particles, sunstone mines, sapphire/amethyst companion ships + spiral lasers.
+- No imports — all values are primitive literals or simple math expressions.
+- Consumed by all weapon system modules (`rpg-weapon-chain.ts`, `rpg-weapon-sword.ts`, `rpg-weapon-vortex.ts`, `rpg-weapon-poison.ts`, `rpg-weapon-emerald.ts`, `rpg-weapon-sunstone.ts`, `rpg-weapon-ships.ts`, `rpg-weapon-draw.ts`, `rpg-weapon-laser-beam.ts`, `rpg-weapon-sand.ts`) plus `rpg-companion-draw.ts`, `rpg-entity-draw.ts`, `rpg-helpers.ts`, `rpg-boss-wave.ts`.
 
 ### src/render/rpg/rpg-enemy-constants.ts
 - Per-enemy-type constants for all non-starter enemy types (~230 lines).
 - Covers: Emerald, Amber, Void, Quartz, Ruby, Sunstone, Citrine, Iolite, Amethyst, Diamond, Nullstone, Fracteryl, Eigenstein (and their projectiles/shards).
 - Also contains the XP multiplier table for all enemy types (including Laser and Sapphire).
 - No imports — all values are primitive literals.
-- Extracted from `rpg-constants.ts` to keep that file under ~600 lines.
-- Consumed by `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, and `rpg-render.ts`.
+- Consumed by `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-draw-adv.ts`, and `rpg-render.ts`.
 
 ### src/render/rpg/rpg-types.ts
 - Core interfaces and type aliases for the RPG rendering system (~299 lines after enemy types extracted).
@@ -415,13 +417,18 @@
 - Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
-- 27 exported pure draw functions for all RPG enemy types (~755 lines).
-- Covers every enemy body + associated projectiles/shards: sapphire+missiles, emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
-- Also exports `drawLaserEnemies(ctx, enemies, nowMs)` — draws the basic "laser" enemy type with health bar and attack trail; formerly `drawEnemies()` inlined in `rpg-render.ts`.
-- Also exports `drawEnemyIndicators(ctx, style, enemies..., bossEnemy)` — draws red triangle or outline markers above all living enemies; formerly inlined in `rpg-render.ts`.
-- **`drawAttackTrail`** (laser enemy curved dash trail) moved here from `rpg-entity-draw.ts` since this is its sole consumer.
+- Exported pure draw functions for starter-through-Void tier enemies (~431 lines).
+- Covers: Sapphire+missiles, Emerald, Amber+shards, Void, Laser, plus `drawAttackTrail` and `drawEnemyIndicators` (shared infrastructure used by all tiers).
+- Advanced enemy draw functions (Quartz and above) have been split out to `rpg-enemy-draw-adv.ts`.
+- `setLowGraphicsMode()` propagates to `rpg-enemy-draw-adv.ts` so callers only need one call.
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
-- Has its own independent `isLowGraphicsMode` flag and `setLowGraphicsMode()` export, called from `rpg-render.ts` alongside the entity-draw and weapon-draw equivalents.
+
+### src/render/rpg/rpg-enemy-draw-adv.ts
+- Exported pure draw functions for advanced (Quartz-tier and above) enemies (~376 lines).
+- Covers: Quartz+spikes, Ruby+bolts, Sunstone, Citrine+bolts, Iolite, Amethyst+shards, Diamond+shards, Nullstone+tendrils, Fracteryl+shards, Eigenstein+beams, teleport particles.
+- Extracted from `rpg-enemy-draw.ts` (formerly 755 lines) to keep both files under ~450 lines.
+- Has its own `isLowGraphicsMode` flag set via `setLowGraphicsMode()` (called through `rpg-enemy-draw.ts`'s `setLowGraphicsMode` which delegates here).
+- Imported directly by `rpg-render.ts` alongside `rpg-enemy-draw.ts`.
 
 ### src/render/rpg/rpg-enemy-updates.ts
 - 16 exported enemy update functions covering wave 1–30 enemy types (~616 lines).

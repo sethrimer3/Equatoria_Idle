@@ -20,9 +20,11 @@ import type { RpgMote } from './rpg-types';
 import type { BossEnemy, TeleportParticle } from './rpg-enemy-types';
 import { makeBossEnemy } from './rpg-factories';
 import {
-  BOSS_GLOW_COLORS,
   SWORD_COMBO_THRESHOLD,
   MAX_DANMAKU_LEVEL,
+} from './rpg-weapon-constants';
+import {
+  BOSS_GLOW_COLORS,
 } from './rpg-constants';
 
 // ── Context interface ─────────────────────────────────────────────────────────

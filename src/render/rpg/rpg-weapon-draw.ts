@@ -23,7 +23,7 @@ import {
   SWORD_PRISMATIC_COLORS, SWORD_SHARD_COUNT, SWORD_SHARD_SHAPES,
   SWORD_COMBO_SPIN_MS, SWORD_COMBO_SPIN_TURNS,
   SAND_BLADE_COLORS,
-} from './rpg-constants';
+} from './rpg-weapon-constants';
 import { chainNodeRadius, getSwordLength, getShardDistances, getShardStyle } from './rpg-helpers';
 
 // ── Low-graphics mode flag ────────────────────────────────────
