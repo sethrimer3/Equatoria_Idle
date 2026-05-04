@@ -314,6 +314,9 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
   }
 
   function tryTargetEnemyAt(tapX: number, tapY: number): void {
+    // Manual tap-to-target is currently disabled by design — the function clears
+    // the stored target so the next getTargetedEnemy() call falls back to the
+    // closest automatic target.  The tap position is received but not yet used.
     void tapX;
     void tapY;
     targetedEnemy = null;
