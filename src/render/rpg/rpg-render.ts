@@ -161,6 +161,7 @@ import {
   type PlayerMovementCtx,
   type PlayerMovementState,
 } from './rpg-player-movement';
+import { createRpgInput } from './rpg-input';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -958,91 +959,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnDamageNumber: (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
   };
 
-  function toCanvasCoords(clientX: number, clientY: number): { x: number; y: number } {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width  > 0 ? widthPx  / rect.width  : 1;
-    const scaleY = rect.height > 0 ? heightPx / rect.height : 1;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
-  }
-
-  // ── Tap-to-target tracking ──────────────────────────────────────
-  let pointerDownTime = 0;
-  let pointerDownX = 0;
-  let pointerDownY = 0;
-  const TAP_MAX_MS = 250;       // max duration for a tap
-  const TAP_MAX_MOVE_PX = 10;   // max movement for a tap
-
-  canvas.addEventListener('pointerdown', (e: PointerEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    canvas.setPointerCapture(e.pointerId);
-    const pos = toCanvasCoords(e.clientX, e.clientY);
-    joystick.isActive = true; joystick.pointerId = e.pointerId;
-    joystick.baseX = pos.x; joystick.baseY = pos.y;
-    joystick.thumbX = pos.x; joystick.thumbY = pos.y;
-    // Record for tap detection
-    pointerDownTime = Date.now();
-    pointerDownX = pos.x;
-    pointerDownY = pos.y;
-  }, { passive: false });
-
-  canvas.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!joystick.isActive || e.pointerId !== joystick.pointerId) return;
-    e.preventDefault();
-    const pos = toCanvasCoords(e.clientX, e.clientY);
-    const dx = pos.x - joystick.baseX;
-    const dy = pos.y - joystick.baseY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > JOYSTICK_OUTER_RADIUS) {
-      joystick.thumbX = joystick.baseX + (dx / dist) * JOYSTICK_OUTER_RADIUS;
-      joystick.thumbY = joystick.baseY + (dy / dist) * JOYSTICK_OUTER_RADIUS;
-    } else {
-      joystick.thumbX = pos.x; joystick.thumbY = pos.y;
-    }
-  }, { passive: false });
-
-  function endJoystick(pointerId: number, pos?: { x: number; y: number }): void {
-    if (pointerId !== joystick.pointerId) return;
-    // Check for tap-to-target
-    if (pos) {
-      const elapsed = Date.now() - pointerDownTime;
-      const dx = pos.x - pointerDownX;
-      const dy = pos.y - pointerDownY;
-      const moveDist = Math.sqrt(dx * dx + dy * dy);
-      if (elapsed <= TAP_MAX_MS && moveDist <= TAP_MAX_MOVE_PX) {
-        // This is a tap — find enemy at tap location
-        tryTargetEnemyAt(pos.x, pos.y);
-      }
-    }
-    joystick.isActive = false; joystick.pointerId = -1;
-  }
-  canvas.addEventListener('pointerup', (e: PointerEvent) => {
-    const pos = toCanvasCoords(e.clientX, e.clientY);
-    endJoystick(e.pointerId, pos);
+  createRpgInput({
+    canvas,
+    dim,
+    joystick,
+    keys,
+    getIsActive: () => _isActive,
+    tryTargetEnemyAt,
   });
-  canvas.addEventListener('pointercancel', (e: PointerEvent) => endJoystick(e.pointerId));
-
-  function handleKeyDown(e: KeyboardEvent): void {
-    if (!_isActive) return;
-    switch (e.code) {
-      case 'ArrowLeft': case 'KeyA':  keys.left  = true; break;
-      case 'ArrowRight': case 'KeyD': keys.right = true; break;
-      case 'ArrowUp': case 'KeyW':    keys.up    = true; break;
-      case 'ArrowDown': case 'KeyS':  keys.down  = true; break;
-      default: return;
-    }
-    if (e.code.startsWith('Arrow')) e.preventDefault();
-  }
-  function handleKeyUp(e: KeyboardEvent): void {
-    if (!_isActive) return;
-    switch (e.code) {
-      case 'ArrowLeft': case 'KeyA':  keys.left  = false; break;
-      case 'ArrowRight': case 'KeyD': keys.right = false; break;
-      case 'ArrowUp': case 'KeyW':    keys.up    = false; break;
-      case 'ArrowDown': case 'KeyS':  keys.down  = false; break;
-    }
-  }
-  document.addEventListener('keydown', handleKeyDown);
-  document.addEventListener('keyup',   handleKeyUp);
 
   /** Keeps an enemy within the arena, bouncing velocity. Uses a fixed margin of 2.5px. */
   function clampEnemyToBounds(enemy: { x: number; y: number; vx: number; vy: number }): void {

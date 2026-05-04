@@ -445,12 +445,35 @@
 - Imports `LuckyMote`, `LuckyMotePopup` from `./rpg-types`; constants from `./rpg-constants`; `TIER_BY_ID`, `TierId` from `../../data/tiers`.
 
 ### src/render/rpg/rpg-weapon-systems.ts
-- Orchestrator for all player weapon update logic for the RPG tab (~950 lines).
+- Orchestrator for all player weapon update logic for the RPG tab (~300 lines).
 - Exports `RpgWeaponCtx` interface (dependency-injection context), `RpgWeaponHandle` interface, and `createRpgWeaponSystems(ctx)` factory.
-- Directly implements: chain whip softbody, nullstone vortexes, iolite poison bolts, sunstone mines, and sand blade (starter weapon).
-- Delegates sand gatling, diamond sword combo, emerald missiles, and ruby laser beam to four extracted sub-modules; delegates companion ships to `rpg-weapon-ships.ts`.
-- Instantiates: `sand = createSandWeaponSystem(ctx)`, `sword = createSwordWeaponSystem(ctx)`, `emerald = createEmeraldWeaponSystem(ctx)`, `laserBeam = createLaserBeamWeaponSystem(ctx)`, `ships = createShipWeaponSystems(ctx)`.
-- `reset()` calls reset on all five sub-modules and clears local state.
+- Directly implements: sand blade starter weapon only (delegates everything else to sub-modules).
+- Instantiates: `chain`, `vortex`, `poison`, `sunstone`, `sand`, `sword`, `emerald`, `laserBeam`, `ships`.
+- `reset()` calls reset on all nine sub-modules.
+
+### src/render/rpg/rpg-weapon-chain.ts
+- Quartz chain whip weapon system extracted from `rpg-weapon-systems.ts` (~250 lines).
+- Exports `ChainWeaponCtx` interface, `ChainWeaponHandle` interface, and `createChainWeaponSystem(ctx)` factory.
+- Owns `chainWhipStates: Map<string, ChainWhipState>`; exposes via getter on handle.
+- Covers: `buildChainWhip` (rope node init), `stepChainPhysics` (asymmetric spring + damping), `updateChainWhip` (idle/lashing/retracting state machine, contact damage, fluid injection).
+
+### src/render/rpg/rpg-weapon-vortex.ts
+- Nullstone vortex weapon system extracted from `rpg-weapon-systems.ts` (~210 lines).
+- Exports `VortexWeaponCtx` interface, `VortexWeaponHandle` interface, and `createVortexWeaponSystem(ctx)` factory.
+- Owns `activeVortexes: NullstoneVortex[]` and `vortexWeaponStates: Map<string, VortexWeaponState>`; both exposed via getters.
+- Covers: `fireVortex` (spawn spread), `updateVortexWeapon` (cooldown), `updateVortexes` (pull, spin, damage ticks, fluid swirl).
+
+### src/render/rpg/rpg-weapon-poison.ts
+- Iolite poison bolt weapon system extracted from `rpg-weapon-systems.ts` (~230 lines).
+- Exports `PoisonWeaponCtx` interface, `PoisonWeaponHandle` interface, and `createPoisonWeaponSystem(ctx)` factory.
+- Owns `poisonBolts: IolitePoisonBolt[]`; exposed via getter on handle.
+- Covers: `spawnPoisonBolt`, `attachPoisonDebuff` (closure-based per-enemy debuff), `updatePoisonBolts` (movement, trail, fluid, collision), `updatePoisonDebuffs` (tick damage).
+
+### src/render/rpg/rpg-weapon-sunstone.ts
+- Sunstone mine weapon system extracted from `rpg-weapon-systems.ts` (~230 lines).
+- Exports `SunstoneWeaponCtx` interface, `SunstoneWeaponHandle` interface, and `createSunstoneWeaponSystem(ctx)` factory.
+- Owns `sunstoneMines: SunstoneMine[]`; exposed via getter on handle.
+- Covers: `layMine`, `detonateMine` (AOE damage + fluid explosion), `updateSunstoneMines` (fuse countdown, enemy contact damage, proximity trigger).
 
 ### src/render/rpg/rpg-weapon-sand.ts
 - Sand gatling projectile weapon system extracted from `rpg-weapon-systems.ts` (~474 lines).
@@ -512,6 +535,16 @@
 - Covers: angle/position update (counter-clockwise, ORBIT_PROJ_SPEED_RAD), distance-gated trail, per-enemy hit cooldown advancement, and collision detection vs. all enemy types + boss.
 - `rpg-render.ts` owns `orbitProjectileCtx: OrbitProjectileCtx` and passes `orbitProjectile` (nullable) each frame.
 
+### src/render/rpg/rpg-input.ts
+- Pointer and keyboard input handling for the RPG tab (~140 lines).
+- Extracted from `rpg-render.ts` to isolate input translation from game logic.
+- Exports `RpgInputCtx` interface, `RpgInputHandle` interface, and `createRpgInput(ctx)` factory.
+- Registers canvas pointer events (pointerdown/move/up/cancel) → virtual joystick state.
+- Registers document keyboard events (WASD + Arrow keys) → `RpgKeyState`.
+- Detects short taps (≤250ms, ≤10px movement) and calls `tryTargetEnemyAt` for manual enemy targeting.
+- Provides `dispose()` to remove document-level keyboard listeners.
+- `rpg-render.ts` calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
+
 ### src/render/rpg/rpg-wave-manager.ts
 - Wave lifecycle management extracted from `rpg-render.ts` (~616 lines).
 - Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
@@ -520,12 +553,13 @@
 - `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~1,633 lines).
+- Independent RPG canvas rendering system for the RPG tab (~1,557 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
 - Player physics and movement (`updatePhysics`) extracted to `rpg-player-movement.ts`; rpg-render.ts owns `playerMovementState: PlayerMovementState` and `movementCtx: PlayerMovementCtx` and calls `updatePlayerMovement(movementCtx, playerMovementState, deltaMs)`.
 - Orbit projectile update (`updateOrbitProjectile`) extracted to `rpg-orbit-projectile.ts`; rpg-render.ts owns `orbitProjectileCtx: OrbitProjectileCtx` and calls `updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs)`.
+- Pointer + keyboard input handling extracted to `rpg-input.ts`; rpg-render.ts calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
 - Laser enemy draw (`drawLaserEnemies`) and all-enemy indicator markers (`drawEnemyIndicators`) extracted to `rpg-enemy-draw.ts`; called with explicit arrays and `enemyIndicatorStyle`.
 - Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-entity-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
@@ -553,7 +587,6 @@
 - **Low graphics mode** — Public `setLowGraphicsMode()` forwards the graphics setting into RPG entity, weapon, and boss draw modules, disabling glow/trail-heavy passes without changing combat logic.
 - **Weapon tier damage** — `getScaledWeaponDamage(baseDamage, tier, playerAtk)` and `getScaledWeaponCooldown(baseCooldownMs, tier)` imported from `rpg-state.ts` and applied per attack.
 - **Damage number deviation** — each damage number direction has a ±15° triangular-distribution random angle jitter in `spawnHitVisualsAt`.
-- **Softbody chain whip** — `ChainWhipState` has per-node velocity arrays (`nodesVx`, `nodesVy`). Inertia/size gradient: node 0 (closest to player) = smallest (radius 2px) + most responsive (inverseMass 1/0.8); tip (index CHAIN_NODES-1) = largest (radius 6px) + most inertia (inverseMass 1/4.0). Spring physics (CHAIN_SPRING_K=0.4) link adjacent nodes; CHAIN_ANCHOR_K=0.6 ties node 0 to player. On lash: tip gets CHAIN_LASH_SPEED=20 px/dt impulse; all other nodes follow through spring tension.
 - **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy (via `rpg-player-movement.ts`) and stops when within weapon effective range. Manual joystick/keyboard input always overrides.
 - **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped. Called on `setActive(true)`, `doRestart()`, and via the public `notifyEquip()` method so stats update immediately when the player equips mid-run.
 - **Luck stat** — `LUCK` widget in stats panel shows `formatLuckPercent(xp)`. On each enemy kill, `trySpawnLuckyMote()` rolls against `getCachedLuckPercent()` (cached to avoid repeated log calls). On success, a `LuckyMote` of the enemy's tier spawns at the death position with random drift. Lucky motes magnetize to the player within `LUCKY_MOTE_MAGNET_DIST` px and are collected within `LUCKY_MOTE_COLLECT_DIST` px, triggering `onLuckyMoteCollected` callback and spawning a `LuckyMotePopup` floating text. Enemy-to-tier mapping: laser→sand, amber→sunstone, void→nullstone; all others map to matching tier.
