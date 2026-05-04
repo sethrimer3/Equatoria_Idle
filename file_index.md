@@ -371,9 +371,10 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts
-- 11 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, and support visuals (~750 lines after neon trail system integration).
+- 12 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, support visuals, and the player mote (~875 lines after player mote extraction).
 - Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays or scalar values.
-- Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle.
+- Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle, and **player mote** (comet trail + body draw with iframe flicker).
+- `drawPlayerMote(ctx, mote, glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs)` — replaces the inline draw block that was in `rpg-render.ts`; respects `isLowGraphicsMode` via the module flag.
 - Exposes its own `setLowGraphicsMode()` (independent of `rpg-enemy-draw.ts`).
 - `drawSapphireShips` and `drawSapphireLasers` use the neon trail system from `neon-trail-draw.ts`.
 - Module-level `_sapphireShipTrailCfg` and `_sapphireLaserTrailCfg` — cached NeonTrailConfig objects (no per-frame allocation).
@@ -391,8 +392,10 @@
 - Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
-- 24 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~609 lines).
+- 26 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~712 lines).
 - Covers every enemy body + associated projectiles/shards: sapphire+missiles, emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
+- Also exports `drawLaserEnemies(ctx, enemies, nowMs)` — draws the basic "laser" enemy type with health bar and attack trail; formerly `drawEnemies()` inlined in `rpg-render.ts`.
+- Also exports `drawEnemyIndicators(ctx, style, enemies..., bossEnemy)` — draws red triangle or outline markers above all living enemies; formerly inlined in `rpg-render.ts`.
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
 - Has its own independent `isLowGraphicsMode` flag and `setLowGraphicsMode()` export, called from `rpg-render.ts` alongside the entity-draw and weapon-draw equivalents.
 
@@ -494,6 +497,21 @@
 - Handles all weapon effect kinds: `single`, `multi`, `aoe`, `piercing`, `gatling`, `poisonBolt`, `emeraldMissile`, `laserBeam`, `sunstoneMine`, `chainWhip`, `vortex`, `swordCombo`.
 - `rpg-render.ts` initialises `playerAttackCtx` after `weaponSystems` is created and delegates `performWeaponAttack` to this module.
 
+### src/render/rpg/rpg-player-movement.ts
+- Player physics and movement extracted from `rpg-render.ts` (~288 lines).
+- Exports `PlayerMovementCtx` interface, `PlayerMovementState` interface, and `updatePlayerMovement(ctx, state, deltaMs)` function.
+- `PlayerMovementCtx` carries the mote, joystick, keyboard state, canvas dimensions, all enemy arrays (for auto-move), fluid handle, rpgSimState, and effective-weapon-ids accessor.
+- `PlayerMovementState` holds `glowMovementIntensity` and `playerAimAngle` — both are read and mutated in place each frame.
+- Covers: joystick/keyboard input → velocity, auto-move nearest-enemy steering, position clamping, distance-gated comet trail, glow intensity LERP ramp, aim angle tracking, and player-movement fluid injection.
+- `rpg-render.ts` owns `playerMovementState: PlayerMovementState` (shared with `weaponCtx.playerAimAngle` getter and the draw trail).
+
+### src/render/rpg/rpg-orbit-projectile.ts
+- Orbit projectile update logic extracted from `rpg-render.ts` (~297 lines).
+- Exports `OrbitProjectileCtx` interface and `updateOrbitProjectile(ctx, op, deltaMs)` function.
+- `OrbitProjectileCtx` carries the player mote, a `bossEnemy` getter, all 17 enemy arrays, `hitEffects` array, 18 per-enemy damage functions, and `spawnDamageNumber` callback.
+- Covers: angle/position update (counter-clockwise, ORBIT_PROJ_SPEED_RAD), distance-gated trail, per-enemy hit cooldown advancement, and collision detection vs. all enemy types + boss.
+- `rpg-render.ts` owns `orbitProjectileCtx: OrbitProjectileCtx` and passes `orbitProjectile` (nullable) each frame.
+
 ### src/render/rpg/rpg-wave-manager.ts
 - Wave lifecycle management extracted from `rpg-render.ts` (~616 lines).
 - Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
@@ -502,11 +520,15 @@
 - `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~2,170 lines).
+- Independent RPG canvas rendering system for the RPG tab (~1,633 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
+- Player physics and movement (`updatePhysics`) extracted to `rpg-player-movement.ts`; rpg-render.ts owns `playerMovementState: PlayerMovementState` and `movementCtx: PlayerMovementCtx` and calls `updatePlayerMovement(movementCtx, playerMovementState, deltaMs)`.
+- Orbit projectile update (`updateOrbitProjectile`) extracted to `rpg-orbit-projectile.ts`; rpg-render.ts owns `orbitProjectileCtx: OrbitProjectileCtx` and calls `updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs)`.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
+- Laser enemy draw (`drawLaserEnemies`) and all-enemy indicator markers (`drawEnemyIndicators`) extracted to `rpg-enemy-draw.ts`; called with explicit arrays and `enemyIndicatorStyle`.
+- Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-entity-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30 excluding laser/sapphire), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
@@ -521,7 +543,7 @@
 - Calls `fluid.step(deltaMs)` each update frame (including dying/restarting phases) and `fluid.reset()` on restart.
 - Fixed internal resolution: `INTERNAL_WIDTH = 320`, `INTERNAL_HEIGHT = 568` (portrait 9:16).  CSS `aspect-ratio` provides letterbox/pillarbox scaling so pixels are always uniform on desktop.
 - **Player mote** — 3×3 sand-colored mote with touch joystick, WASD/Arrow key controls, always-on pulsing glow, smoothly-interpolated comet trail, and starting stats HP=100 ATK=10 DEF=5.
-- **Movement glow smoothing** — `glowMovementIntensity` (0–1) LERP-ramps up (`GLOW_MOVE_RAMP_UP`) when moving and down (`GLOW_MOVE_RAMP_DOWN`) when stopped; gates trail and halo brightness.
+- **Movement glow smoothing** — `playerMovementState.glowMovementIntensity` (0–1) LERP-ramps up when moving and down when stopped; gates trail and halo brightness. Owned by `playerMovementState: PlayerMovementState`.
 - **Laser enemy** — 2×2 red mote with five-phase AI: `idle`, `decelerate`, `dash`, `overshoot`, `cooldown`.  Bezier lineDash attack-trail with draw/erase phases.
 - **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
 - **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
@@ -532,7 +554,7 @@
 - **Weapon tier damage** — `getScaledWeaponDamage(baseDamage, tier, playerAtk)` and `getScaledWeaponCooldown(baseCooldownMs, tier)` imported from `rpg-state.ts` and applied per attack.
 - **Damage number deviation** — each damage number direction has a ±15° triangular-distribution random angle jitter in `spawnHitVisualsAt`.
 - **Softbody chain whip** — `ChainWhipState` has per-node velocity arrays (`nodesVx`, `nodesVy`). Inertia/size gradient: node 0 (closest to player) = smallest (radius 2px) + most responsive (inverseMass 1/0.8); tip (index CHAIN_NODES-1) = largest (radius 6px) + most inertia (inverseMass 1/4.0). Spring physics (CHAIN_SPRING_K=0.4) link adjacent nodes; CHAIN_ANCHOR_K=0.6 ties node 0 to player. On lash: tip gets CHAIN_LASH_SPEED=20 px/dt impulse; all other nodes follow through spring tension.
-- **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy and stops when the enemy is within the equipped weapon's effective range (`WeaponDefinition.stats.range`; falls back to `PLAYER_BASE_RANGE_PX` if no weapon equipped). Manual joystick/keyboard input always overrides.
+- **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy (via `rpg-player-movement.ts`) and stops when within weapon effective range. Manual joystick/keyboard input always overrides.
 - **Equipment stats** — `applyEquipmentStats()` reads `rpgSimState.equippedWeaponId` and adds `WeaponDefinition.stats` bonuses when a weapon is equipped. Called on `setActive(true)`, `doRestart()`, and via the public `notifyEquip()` method so stats update immediately when the player equips mid-run.
 - **Luck stat** — `LUCK` widget in stats panel shows `formatLuckPercent(xp)`. On each enemy kill, `trySpawnLuckyMote()` rolls against `getCachedLuckPercent()` (cached to avoid repeated log calls). On success, a `LuckyMote` of the enemy's tier spawns at the death position with random drift. Lucky motes magnetize to the player within `LUCKY_MOTE_MAGNET_DIST` px and are collected within `LUCKY_MOTE_COLLECT_DIST` px, triggering `onLuckyMoteCollected` callback and spawning a `LuckyMotePopup` floating text. Enemy-to-tier mapping: laser→sand, amber→sunstone, void→nullstone; all others map to matching tier.
 - Accepts `rpgSimState: RpgSimState` and optional `options: RpgRenderOptions` (`onLuckyMoteCollected` callback) as factory arguments.
