@@ -41,41 +41,23 @@ import { createRpgFluid } from './rpg-fluid';
 import { createDamageFns } from './rpg-damage';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
 import {
-  RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
-  GLOW_PULSE_SPEED, MIN_TRAIL_DISTANCE,
+  RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
+  MIN_TRAIL_DISTANCE,
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT, PLAYER_REGEN_INIT,
   JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
-  LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
   INTER_WAVE_DELAY_MS, DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
   DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
   PLAYER_BASE_COOLDOWN_MS, HIT_EFFECT_DURATION_MS,
-  BASE_ATTACK_TIMER_KEY, SHOT_LINE_DURATION_MS, TARGET_FRAME_MS, IFRAME_FLICKER_INTERVAL_MS,
+  BASE_ATTACK_TIMER_KEY, SHOT_LINE_DURATION_MS, TARGET_FRAME_MS,
   DAMAGE_NUM_DURATION_MS, DAMAGE_NUM_MIN_FONT_PX, DAMAGE_NUM_MAX_FONT_PX,
   DAMAGE_NUM_INITIAL_SPEED, DAMAGE_NUM_DECEL, PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS, PLAYER_KNOCKBACK_MAX,
   WEAPON_PARTICLE_ORBIT_SPEED, WEAPON_PARTICLE_ORBIT_RADIUS, WEAPON_PARTICLE_MIN_SPEED,
   ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
   WEAPON_ORBIT_TRAIL_CAP,
-  SAPPHIRE_ENEMY_SIZE,
   SWORD_COMBO_THRESHOLD,
   MAX_DANMAKU_LEVEL,
-  BOSS_SIZE_BASE,
   BOSS_GLOW_COLORS,
 } from './rpg-constants';
-import {
-  EMERALD_ENEMY_SIZE,
-  AMBER_ENEMY_SIZE,
-  VOID_ENEMY_SIZE,
-  QUARTZ_ENEMY_SIZE,
-  RUBY_ENEMY_SIZE,
-  SUNSTONE_ENEMY_SIZE,
-  CITRINE_ENEMY_SIZE,
-  IOLITE_ENEMY_SIZE,
-  AMETHYST_ENEMY_SIZE,
-  DIAMOND_ENEMY_SIZE,
-  NULLSTONE_ENEMY_SIZE,
-  FRACTERYL_ENEMY_SIZE,
-  EIGENSTEIN_ENEMY_SIZE,
-} from './rpg-enemy-constants';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
   drawEmeraldEnemies,
@@ -92,6 +74,7 @@ import {
   drawFracterylEnemies,
   drawEigensteinEnemies, drawEigensteinBeams,
   drawTeleportParticles,
+  drawLaserEnemies, drawEnemyIndicators,
   setLowGraphicsMode as setEnemyLowGraphics,
 } from './rpg-enemy-draw';
 import {
@@ -100,12 +83,12 @@ import {
   drawPoisonBolts,
   drawLaserBeamEffect,
   drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
-  drawAttackTrail,
   drawWeaponOrbitParticle, drawOrbitProjectile,
   drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
   drawSapphireShips, drawSapphireLasers,
   drawAmethystShips, drawAmethystLasers,
   drawTargetReticle,
+  drawPlayerMote,
   setLowGraphicsMode as setEntityLowGraphics,
 } from './rpg-entity-draw';
 import type {
@@ -1245,74 +1228,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // updateFracterylEnemies, updateEigensteinEnemies, updateEigensteinBeams,
   // updateTeleportParticles
 
-  function drawEnemies(nowMs: number): void {
-    for (const enemy of enemies) {
-      drawAttackTrail(ctx, enemy, nowMs);
-      const half = LASER_ENEMY_SIZE / 2;
-      if (!isLowGraphicsMode) {
-        ctx.shadowBlur = LASER_ENEMY_SIZE * 5; ctx.shadowColor = LASER_ENEMY_GLOW;
-      }
-      ctx.fillStyle = LASER_ENEMY_COLOR;
-      ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), LASER_ENEMY_SIZE, LASER_ENEMY_SIZE);
-      ctx.shadowBlur = 0;
-      // Health bar
-      const barW = LASER_ENEMY_SIZE * 2.5;
-      const barH = 2;
-      const barX = enemy.x - barW / 2;
-      const barY = enemy.y + half + 2;
-      ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = LASER_ENEMY_COLOR;
-      ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
-    }
-  }
 
-  function drawEnemyIndicators(): void {
-    if (enemyIndicatorStyle === 'off') return;
-    const drawMarker = (x: number, y: number, size: number): void => {
-      if (enemyIndicatorStyle === 'outline') {
-        ctx.save();
-        ctx.strokeStyle = '#ff3b30';
-        ctx.lineWidth = 1.5;
-        if (!isLowGraphicsMode) {
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = '#ff3b30';
-        }
-        ctx.strokeRect(x - size / 2 - 2, y - size / 2 - 2, size + 4, size + 4);
-        ctx.restore();
-        return;
-      }
-      ctx.save();
-      const markerY = y - size * 0.9 - 5;
-      ctx.fillStyle = '#ff3b30';
-      if (!isLowGraphicsMode) {
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = '#ff3b30';
-      }
-      ctx.beginPath();
-      ctx.moveTo(x, markerY);
-      ctx.lineTo(x - 3, markerY - 5);
-      ctx.lineTo(x + 3, markerY - 5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    };
-    for (const enemy of enemies) drawMarker(enemy.x, enemy.y, LASER_ENEMY_SIZE);
-    for (const enemy of sapphireEnemies) drawMarker(enemy.x, enemy.y, SAPPHIRE_ENEMY_SIZE);
-    for (const enemy of emeraldEnemies) drawMarker(enemy.x, enemy.y, EMERALD_ENEMY_SIZE);
-    for (const enemy of amberEnemies) drawMarker(enemy.x, enemy.y, AMBER_ENEMY_SIZE);
-    for (const enemy of voidEnemies) drawMarker(enemy.x, enemy.y, VOID_ENEMY_SIZE);
-    for (const enemy of quartzEnemies) drawMarker(enemy.x, enemy.y, QUARTZ_ENEMY_SIZE);
-    for (const enemy of rubyEnemies) drawMarker(enemy.x, enemy.y, RUBY_ENEMY_SIZE);
-    for (const enemy of sunstoneEnemies) drawMarker(enemy.x, enemy.y, SUNSTONE_ENEMY_SIZE);
-    for (const enemy of citrineEnemies) drawMarker(enemy.x, enemy.y, CITRINE_ENEMY_SIZE);
-    for (const enemy of ioliteEnemies) drawMarker(enemy.x, enemy.y, IOLITE_ENEMY_SIZE);
-    for (const enemy of amethystEnemies) drawMarker(enemy.x, enemy.y, AMETHYST_ENEMY_SIZE);
-    for (const enemy of diamondEnemies) drawMarker(enemy.x, enemy.y, DIAMOND_ENEMY_SIZE);
-    for (const enemy of nullstoneEnemies) drawMarker(enemy.x, enemy.y, NULLSTONE_ENEMY_SIZE);
-    for (const enemy of fracterylEnemies) drawMarker(enemy.x, enemy.y, FRACTERYL_ENEMY_SIZE);
-    for (const enemy of eigensteinEnemies) drawMarker(enemy.x, enemy.y, EIGENSTEIN_ENEMY_SIZE);
-    if (bossEnemy) drawMarker(bossEnemy.x, bossEnemy.y, BOSS_SIZE_BASE * 2);
-  }
 
 
   /** Draws thin tracer lines from the player toward each recently struck enemy. */
@@ -1334,7 +1250,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // Fluid background — rendered first so all gameplay elements appear above it.
     fluid.render(ctx);
 
-    drawEnemies(nowMs);
+    drawLaserEnemies(ctx, enemies, nowMs);
     drawSapphireEnemies(ctx, sapphireEnemies);
     drawSapphireMissiles(ctx, sapphireMissiles);
     drawEmeraldEnemies(ctx, emeraldEnemies);
@@ -1372,61 +1288,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawEmeraldSwirlParticles(ctx, weaponSystems.emeraldSwirlParticles);
     drawSunstoneMines(ctx, weaponSystems.sunstoneMines);
     drawLaserBeamEffect(ctx, weaponSystems.laserBeamEffect);
-    drawEnemyIndicators();
+    drawEnemyIndicators(ctx, enemyIndicatorStyle,
+      enemies, sapphireEnemies, emeraldEnemies, amberEnemies, voidEnemies,
+      quartzEnemies, rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies,
+      amethystEnemies, diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
+      bossEnemy);
 
-    // Player comet trail — shrinks from tail to tip as movement intensity drops,
-    // so the trail vanishes by retreating toward the player rather than fading in place.
-    if (!isLowGraphicsMode && playerMovementState.glowMovementIntensity > 0.02 && mote.trailCount >= 2) {
-      const trailLen = Math.max(0, Math.floor(mote.trailCount * playerMovementState.glowMovementIntensity));
-      for (let i = 0; i < trailLen; i++) {
-        const t      = i / trailLen;
-        const bufIdx = (mote.trailHead - trailLen + i + RPG_TRAIL_CAPACITY) % RPG_TRAIL_CAPACITY;
-        const trailSize = RPG_MOTE_SIZE * t * 1.3;
-        if (trailSize < 0.3) continue;
-        const half = trailSize / 2;
-        ctx.globalAlpha = t * 0.45;
-        ctx.shadowBlur  = trailSize * 6; ctx.shadowColor = RPG_MOTE_GLOW; ctx.fillStyle = RPG_MOTE_GLOW;
-        const gh = half * 2.2;
-        ctx.fillRect(Math.floor(mote.trailX[bufIdx] - gh), Math.floor(mote.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = t * 0.7;
-        ctx.fillStyle   = RPG_MOTE_COLOR;
-        ctx.fillRect(Math.floor(mote.trailX[bufIdx] - half), Math.floor(mote.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
-      }
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    }
-
-    const playerVisible = rpgPhase === 'alive' || rpgPhase === 'dying';
-    if (playerVisible) {
-      const pa = rpgPhase === 'dying' ? deathAlpha : 1;
-      const pulseT   = (Math.sin(glowTimeS * GLOW_PULSE_SPEED) + 1) * 0.5;
-      // Dampen the stationary glow while the player is moving — the comet
-      // trail already gives strong visual feedback during motion.
-      const glowDampeningFactor = 1 - playerMovementState.glowMovementIntensity * 0.65;
-      // During iframes: tint the glow blue and flicker the sprite at ~8 Hz.
-      const inIFrames = playerIFramesMs > 0;
-      const iFrameFlicker = inIFrames && (Math.floor(playerIFramesMs / IFRAME_FLICKER_INTERVAL_MS) % 2 === 0);
-      const moteGlowColor  = inIFrames ? '#74c0fc' : RPG_MOTE_GLOW;
-      const moteBodyColor  = inIFrames ? '#b0d4ff' : RPG_MOTE_COLOR;
-      const glowSize = RPG_MOTE_SIZE * (2.2 + pulseT * 1.4 * glowDampeningFactor);
-      const glowHalf = glowSize / 2;
-      if (!isLowGraphicsMode) {
-        ctx.globalAlpha = (0.18 + pulseT * 0.22) * glowDampeningFactor * pa;
-        ctx.shadowBlur  = glowSize * 3; ctx.shadowColor = moteGlowColor; ctx.fillStyle = moteGlowColor;
-        ctx.fillRect(Math.floor(mote.x - glowHalf), Math.floor(mote.y - glowHalf), Math.ceil(glowSize), Math.ceil(glowSize));
-        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-      }
-      if (!iFrameFlicker) {
-        ctx.globalAlpha = pa;
-        if (!isLowGraphicsMode) {
-          ctx.shadowBlur  = RPG_MOTE_SIZE * 5; ctx.shadowColor = moteGlowColor;
-        }
-        ctx.fillStyle = moteBodyColor;
-        const mh = RPG_MOTE_SIZE / 2;
-        ctx.fillRect(Math.floor(mote.x - mh), Math.floor(mote.y - mh), RPG_MOTE_SIZE, RPG_MOTE_SIZE);
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      }
-    }
+    drawPlayerMote(ctx, mote, playerMovementState.glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs);
 
     drawHitEffects(ctx, hitEffects);
     drawLuckyMotes(ctx, luckyMotes, isLowGraphicsMode);

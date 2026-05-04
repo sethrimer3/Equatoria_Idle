@@ -14,6 +14,7 @@ import type {
   DeathParticle, ShotLine, HitEffect, DamageNumber,
   LaserEnemy,
   WeaponOrbitParticle, OrbitProjectile,
+  RpgMote, RpgPhase,
 } from './rpg-types';
 import type {
   BossProjectile,
@@ -49,6 +50,8 @@ import {
   AMETHYST_LASER_TRAIL_CORE_HEAD_W, AMETHYST_LASER_TRAIL_CORE_TAIL_W,
   AMETHYST_LASER_TRAIL_GLOW_W, AMETHYST_LASER_TRAIL_TAPER,
   AMETHYST_LASER_DURATION_MS,
+  RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
+  GLOW_PULSE_SPEED, IFRAME_FLICKER_INTERVAL_MS,
 } from './rpg-constants';
 import {
   beginNeonGlowBatch, endNeonGlowBatch,
@@ -792,4 +795,81 @@ export function drawTargetReticle(
   ctx.setLineDash([]);
   ctx.shadowBlur = 0;
   ctx.restore();
+}
+
+// ── Player mote draw ──────────────────────────────────────────────────────────
+
+/**
+ * Draws the player mote: comet trail (shrinks when stationary) and the pulsing
+ * glow + body square.  During iframes the glow/body tints blue and flickers.
+ *
+ * @param mote                   Player position and trail ring-buffer.
+ * @param glowMovementIntensity  0–1 motion scalar from PlayerMovementState.
+ * @param rpgPhase               Current game phase ('alive' | 'dying' | 'restarting').
+ * @param deathAlpha             Alpha multiplier during the death animation (1 when alive).
+ * @param glowTimeS              Accumulated seconds since game start, used for the pulse sine.
+ * @param playerIFramesMs        Remaining invincibility-frame milliseconds; 0 = not in iframes.
+ */
+export function drawPlayerMote(
+  ctx: CanvasRenderingContext2D,
+  mote: RpgMote,
+  glowMovementIntensity: number,
+  rpgPhase: RpgPhase,
+  deathAlpha: number,
+  glowTimeS: number,
+  playerIFramesMs: number,
+): void {
+  // Player comet trail — shrinks from tail to tip as movement intensity drops,
+  // so the trail vanishes by retreating toward the player rather than fading in place.
+  if (!isLowGraphicsMode && glowMovementIntensity > 0.02 && mote.trailCount >= 2) {
+    const trailLen = Math.max(0, Math.floor(mote.trailCount * glowMovementIntensity));
+    for (let i = 0; i < trailLen; i++) {
+      const t      = i / trailLen;
+      const bufIdx = (mote.trailHead - trailLen + i + RPG_TRAIL_CAPACITY) % RPG_TRAIL_CAPACITY;
+      const trailSize = RPG_MOTE_SIZE * t * 1.3;
+      if (trailSize < 0.3) continue;
+      const half = trailSize / 2;
+      ctx.globalAlpha = t * 0.45;
+      ctx.shadowBlur  = trailSize * 6; ctx.shadowColor = RPG_MOTE_GLOW; ctx.fillStyle = RPG_MOTE_GLOW;
+      const gh = half * 2.2;
+      ctx.fillRect(Math.floor(mote.trailX[bufIdx] - gh), Math.floor(mote.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = t * 0.7;
+      ctx.fillStyle   = RPG_MOTE_COLOR;
+      ctx.fillRect(Math.floor(mote.trailX[bufIdx] - half), Math.floor(mote.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+
+  const playerVisible = rpgPhase === 'alive' || rpgPhase === 'dying';
+  if (!playerVisible) return;
+
+  const pa = rpgPhase === 'dying' ? deathAlpha : 1;
+  const pulseT   = (Math.sin(glowTimeS * GLOW_PULSE_SPEED) + 1) * 0.5;
+  // Dampen the stationary glow while the player is moving — the comet
+  // trail already gives strong visual feedback during motion.
+  const glowDampeningFactor = 1 - glowMovementIntensity * 0.65;
+  // During iframes: tint the glow blue and flicker the sprite at ~8 Hz.
+  const inIFrames = playerIFramesMs > 0;
+  const iFrameFlicker = inIFrames && (Math.floor(playerIFramesMs / IFRAME_FLICKER_INTERVAL_MS) % 2 === 0);
+  const moteGlowColor  = inIFrames ? '#74c0fc' : RPG_MOTE_GLOW;
+  const moteBodyColor  = inIFrames ? '#b0d4ff' : RPG_MOTE_COLOR;
+  const glowSize = RPG_MOTE_SIZE * (2.2 + pulseT * 1.4 * glowDampeningFactor);
+  const glowHalf = glowSize / 2;
+  if (!isLowGraphicsMode) {
+    ctx.globalAlpha = (0.18 + pulseT * 0.22) * glowDampeningFactor * pa;
+    ctx.shadowBlur  = glowSize * 3; ctx.shadowColor = moteGlowColor; ctx.fillStyle = moteGlowColor;
+    ctx.fillRect(Math.floor(mote.x - glowHalf), Math.floor(mote.y - glowHalf), Math.ceil(glowSize), Math.ceil(glowSize));
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+  if (!iFrameFlicker) {
+    ctx.globalAlpha = pa;
+    if (!isLowGraphicsMode) {
+      ctx.shadowBlur  = RPG_MOTE_SIZE * 5; ctx.shadowColor = moteGlowColor;
+    }
+    ctx.fillStyle = moteBodyColor;
+    const mh = RPG_MOTE_SIZE / 2;
+    ctx.fillRect(Math.floor(mote.x - mh), Math.floor(mote.y - mh), RPG_MOTE_SIZE, RPG_MOTE_SIZE);
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  }
 }

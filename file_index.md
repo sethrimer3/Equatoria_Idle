@@ -371,9 +371,10 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts
-- 11 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, and support visuals (~750 lines after neon trail system integration).
+- 12 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, support visuals, and the player mote (~875 lines after player mote extraction).
 - Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays or scalar values.
-- Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle.
+- Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle, and **player mote** (comet trail + body draw with iframe flicker).
+- `drawPlayerMote(ctx, mote, glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs)` — replaces the inline draw block that was in `rpg-render.ts`; respects `isLowGraphicsMode` via the module flag.
 - Exposes its own `setLowGraphicsMode()` (independent of `rpg-enemy-draw.ts`).
 - `drawSapphireShips` and `drawSapphireLasers` use the neon trail system from `neon-trail-draw.ts`.
 - Module-level `_sapphireShipTrailCfg` and `_sapphireLaserTrailCfg` — cached NeonTrailConfig objects (no per-frame allocation).
@@ -391,8 +392,10 @@
 - Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
-- 24 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~609 lines).
+- 26 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~712 lines).
 - Covers every enemy body + associated projectiles/shards: sapphire+missiles, emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
+- Also exports `drawLaserEnemies(ctx, enemies, nowMs)` — draws the basic "laser" enemy type with health bar and attack trail; formerly `drawEnemies()` inlined in `rpg-render.ts`.
+- Also exports `drawEnemyIndicators(ctx, style, enemies..., bossEnemy)` — draws red triangle or outline markers above all living enemies; formerly inlined in `rpg-render.ts`.
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
 - Has its own independent `isLowGraphicsMode` flag and `setLowGraphicsMode()` export, called from `rpg-render.ts` alongside the entity-draw and weapon-draw equivalents.
 
@@ -517,13 +520,15 @@
 - `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~1,765 lines).
+- Independent RPG canvas rendering system for the RPG tab (~1,633 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
 - Player physics and movement (`updatePhysics`) extracted to `rpg-player-movement.ts`; rpg-render.ts owns `playerMovementState: PlayerMovementState` and `movementCtx: PlayerMovementCtx` and calls `updatePlayerMovement(movementCtx, playerMovementState, deltaMs)`.
 - Orbit projectile update (`updateOrbitProjectile`) extracted to `rpg-orbit-projectile.ts`; rpg-render.ts owns `orbitProjectileCtx: OrbitProjectileCtx` and calls `updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs)`.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
+- Laser enemy draw (`drawLaserEnemies`) and all-enemy indicator markers (`drawEnemyIndicators`) extracted to `rpg-enemy-draw.ts`; called with explicit arrays and `enemyIndicatorStyle`.
+- Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-entity-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30 excluding laser/sapphire), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
