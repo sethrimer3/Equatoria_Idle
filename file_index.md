@@ -444,10 +444,18 @@
 - Split from `rpg-enemy-updates.ts` to keep both files under ~650 lines.
 
 ### src/render/rpg/rpg-boss-update.ts
-- 2 exported boss update functions extracted from `rpg-render.ts` (~380 lines).
-- Exports `BossUpdateCtx` interface and `updateBossEnemy(boss, ctx, deltaMs)`, `updateBossProjectiles(bossProjectiles, ctx, deltaMs)`.
+- Per-frame update orchestration for the boss enemy and boss projectiles (~234 lines).
+- Exports `BossUpdateCtx` interface, `updateBossEnemy(boss, ctx, deltaMs)`, and `updateBossProjectiles(bossProjectiles, ctx, deltaMs)`.
+- `updateBossEnemy` handles: dt computation, pulse/phase-transition/timer ticks, direction vectors, delegates to `updateBossBehavior` (rpg-boss-behaviors.ts), then applies contact damage and position clamp for non-wave frames.
 - `BossUpdateCtx` exposes mutable closure state (danmakuSafeZone, playerIFramesMs, isBossWaveActive) via getter/setter callbacks.
-- Includes `isInBottomSafeZone(px, py, dim)` local helper for the bottom safe zone check.
+- Includes `isInBottomSafeZone(px, py, dim)` local helper.
+
+### src/render/rpg/rpg-boss-behaviors.ts
+- Per-boss-ID movement and attack patterns (~581 lines), extracted from `rpg-boss-update.ts`.
+- Exports `BossBehaviorCtx` (minimal subset of `BossUpdateCtx`) and `updateBossBehavior(boss, ctx, dt, dx, dy, dirX, dirY, dist, atk1Cd, atk2Cd, deltaMs): boolean`.
+- Returns `true` (boss-wave danmaku mode — position already clamped) or `false` (velocities only changed — caller applies position clamp).
+- Boss-wave block: three danmaku patterns (flower ring, spiral burst, star formation) that scale with `danmakuLevel`.
+- Per-boss blocks: bossId 1–12 movement + attack logic, gravity wells (bossId 8/9/10), invulnerability cycling (bossId 7), danmaku ring attacks (bossId 11/12).
 
 ### src/render/rpg/rpg-boss-draw.ts
 - 4 exported pure draw functions for boss wave HUD elements (~265 lines).
@@ -576,7 +584,21 @@
 - Covers five functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `spawnEnemyById` (random-position spawn per type), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue).
 - `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
 
-### src/render/rpg/rpg-render.ts
+### src/render/rpg/rpg-stats-panel.ts
+- RPG stats panel DOM construction and per-frame update (~649 lines).
+- Exports `RpgStatsPanelCtx` interface, `RpgStatsPanelHandle` interface, and `createRpgStatsPanel(ctx)` factory.
+- Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display, weapon stat rows, XP amount display.
+- XP wire interaction is fully delegated to `createXpWireSystem` from `rpg-xp-wire.ts`; stats panel just calls `xpWire.update(nowMs)` per frame.
+- `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
+
+### src/render/rpg/rpg-xp-wire.ts
+- Verlet-rope XP wire interaction system extracted from `rpg-stats-panel.ts` (~655 lines).
+- Exports `WireStat` type alias, `STAT_WIRE_COLOR` map, `XpWireCtx` interface, `XpWireHandle` interface, and `createXpWireSystem(ctx)` factory.
+- Owns the SVG overlay, plug socket circles, rope physics (Verlet integration with constraint solving), all pointer event listeners, and wire colour bleed animation.
+- Wire mechanic: drag from XP node to stat anchor → create wire; tap XP node → slurp all wires back; drag wire tip handle to different stat → re-attach; 3-wire max limit with error feedback.
+- `XpWireCtx` provides: `panelEl`, `xpNodeEl`, `statPlugAnchors`, `statPlugSlots`, `rpgSimState`, `onWireConnect`, `onWireDisconnect`, `onError`.
+- `update(nowMs)` updates rope physics, SVG rendering, and toggles `rpg-xp-node--locked` class; must be called once per frame.
+
 - Independent RPG canvas rendering system for the RPG tab (~1,557 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
@@ -590,7 +612,7 @@
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30 excluding laser/sapphire), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
-- Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; called via `bossCtx: BossUpdateCtx` object.
+- Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; per-boss-ID behavior dispatch extracted further to `rpg-boss-behaviors.ts`; called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
