@@ -120,9 +120,10 @@ import type {
   RpgPhase, DeathParticle, SpawnEntry, HitEffect, ShotLine, DamageNumber,
   WeaponOrbitParticle, OrbitProjectile,
   SapphireEnemy, SapphireMissile,
-  ClosestTarget, TargetKind, SwordComboPhase,
+  ClosestTarget, SwordComboPhase,
 } from './rpg-types';
 import { createRpgWeaponSystems, type RpgWeaponCtx, type RpgWeaponHandle } from './rpg-weapon-systems';
+import { createRpgTargeting, type RpgTargetingHandle } from './rpg-targeting';
 import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
@@ -354,7 +355,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   /** The currently targeted enemy object, or null for automatic targeting. */
-  let targetedEnemy: object | null = null;
+  // targetedEnemy state has moved into createRpgTargeting (rpg-targeting.ts).
 
   // ── DPS tracking ── forwarded to statsPanel after it is created below
   // statsPanel is declared with ! assertion; initialized during setup before any call-site runs.
@@ -384,6 +385,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
   } = createDamageFns({ recordDps });
+
+  let targeting!: RpgTargetingHandle;
 
   // ── Aim direction tracker (updated each physics frame) ────────
   let playerAimAngle = -Math.PI / 2;  // default: upward
@@ -693,228 +696,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * Returns the closest targetable entity within rangeSq squared distance.
    * Returns null if nothing is in range.
    */
-  function findClosestTarget(rangeSq: number): ClosestTarget | null {
-    let best: ClosestTarget | null = null;
-    let bestSq = rangeSq;
-
-    for (const e of enemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'laser', x: e.x, y: e.y, distSq: d, laser: e }; }
-    }
-    for (const e of sapphireEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'sapphire', x: e.x, y: e.y, distSq: d, sapphire: e }; }
-    }
-    for (const m of sapphireMissiles) {
-      const dx = m.x - mote.x, dy = m.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'missile', x: m.x, y: m.y, distSq: d, missile: m }; }
-    }
-    for (const e of emeraldEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'emerald', x: e.x, y: e.y, distSq: d, emerald: e }; }
-    }
-    for (const e of amberEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'amber', x: e.x, y: e.y, distSq: d, amber: e }; }
-    }
-    for (const s of amberShards) {
-      const dx = s.x - mote.x, dy = s.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'ambershard', x: s.x, y: s.y, distSq: d, ambershard: s }; }
-    }
-    for (const e of voidEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'void', x: e.x, y: e.y, distSq: d, void: e }; }
-    }
-    for (const e of quartzEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'quartz', x: e.x, y: e.y, distSq: d, quartz: e }; }
-    }
-    for (const s of quartzSpikes) {
-      const dx = s.x - mote.x, dy = s.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'quartzspike', x: s.x, y: s.y, distSq: d, quartzspike: s }; }
-    }
-    for (const e of rubyEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'ruby', x: e.x, y: e.y, distSq: d, ruby: e }; }
-    }
-    for (const b of rubyBolts) {
-      const dx = b.x - mote.x, dy = b.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'rubybolt', x: b.x, y: b.y, distSq: d, rubybolt: b }; }
-    }
-    for (const e of sunstoneEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'sunstone', x: e.x, y: e.y, distSq: d, sunstone: e }; }
-    }
-    for (const e of citrineEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'citrine', x: e.x, y: e.y, distSq: d, citrine: e }; }
-    }
-    for (const b of citrineBolts) {
-      const dx = b.x - mote.x, dy = b.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'citrinebolt', x: b.x, y: b.y, distSq: d, citrinebolt: b }; }
-    }
-    for (const e of ioliteEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'iolite', x: e.x, y: e.y, distSq: d, iolite: e }; }
-    }
-    for (const e of amethystEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'amethyst', x: e.x, y: e.y, distSq: d, amethyst: e }; }
-    }
-    for (const s of amethystShards) {
-      const dx = s.x - mote.x, dy = s.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'amethystshard', x: s.x, y: s.y, distSq: d, amethystshard: s }; }
-    }
-    for (const e of diamondEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'diamond', x: e.x, y: e.y, distSq: d, diamond: e }; }
-    }
-    for (const s of diamondShards) {
-      const dx = s.x - mote.x, dy = s.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'diamondshard', x: s.x, y: s.y, distSq: d, diamondshard: s }; }
-    }
-    for (const e of nullstoneEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'nullstone', x: e.x, y: e.y, distSq: d, nullstone: e }; }
-    }
-    for (const t of voidTendrils) {
-      const dx = t.x - mote.x, dy = t.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'voidtendril', x: t.x, y: t.y, distSq: d, voidtendril: t }; }
-    }
-    for (const e of fracterylEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'fracteryl', x: e.x, y: e.y, distSq: d, fracteryl: e }; }
-    }
-    for (const s of fracterylShards) {
-      const dx = s.x - mote.x, dy = s.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'fracterylshard', x: s.x, y: s.y, distSq: d, fracterylshard: s }; }
-    }
-    for (const e of eigensteinEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'eigenstein', x: e.x, y: e.y, distSq: d, eigenstein: e }; }
-    }
-    if (bossEnemy) {
-      const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = { kind: 'boss', x: bossEnemy.x, y: bossEnemy.y, distSq: d, boss: bossEnemy }; }
-    }
-    return best;
-  }
+  function findClosestTarget(rangeSq: number): ClosestTarget | null { return targeting.findClosestTarget(rangeSq); }
 
   /** Returns the closest enemy body (not projectiles) within rangeSq. */
   function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-    | FracterylEnemy | EigensteinEnemy | BossEnemy | null {
-    let bestSq = rangeSq;
-    let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
-      | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-      | FracterylEnemy | EigensteinEnemy | BossEnemy | null = null;
-    for (const e of enemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of sapphireEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of emeraldEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of amberEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of voidEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of quartzEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of rubyEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of sunstoneEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of citrineEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of ioliteEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of amethystEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of diamondEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of nullstoneEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of fracterylEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    for (const e of eigensteinEnemies) {
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = e; }
-    }
-    if (bossEnemy) {
-      const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) { bestSq = d; best = bossEnemy; }
-    }
-    return best;
-  }
+    | FracterylEnemy | EigensteinEnemy | BossEnemy | null { return targeting.findClosestEnemy(rangeSq); }
 
   // ── Tap-to-target system ───────────────────────────────────────
 
@@ -923,163 +710,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * Manual targeting is currently disabled by design; sapphire ships use
    * nearest-enemy targeting.
    */
-  function tryTargetEnemyAt(tapX: number, tapY: number): void {
-    void tapX;
-    void tapY;
-    targetedEnemy = null;
-  }
+  function tryTargetEnemyAt(tapX: number, tapY: number): void { targeting.tryTargetEnemyAt(tapX, tapY); }
 
   /**
    * Returns the currently targeted enemy if it's still alive, or falls back to
    * closest enemy from player. Automatically clears stale targets.
    */
-  function getTargetedEnemy(): ClosestTarget | null {
-    // Validate existing target is still alive
-    if (targetedEnemy) {
-      // Check all enemy arrays to see if target still exists
-      const isAlive =
-        enemies.includes(targetedEnemy as LaserEnemy) ||
-        sapphireEnemies.includes(targetedEnemy as SapphireEnemy) ||
-        emeraldEnemies.includes(targetedEnemy as EmeraldEnemy) ||
-        amberEnemies.includes(targetedEnemy as AmberEnemy) ||
-        voidEnemies.includes(targetedEnemy as VoidEnemy) ||
-        quartzEnemies.includes(targetedEnemy as QuartzEnemy) ||
-        rubyEnemies.includes(targetedEnemy as RubyEnemy) ||
-        sunstoneEnemies.includes(targetedEnemy as SunstoneEnemy) ||
-        citrineEnemies.includes(targetedEnemy as CitrineEnemy) ||
-        ioliteEnemies.includes(targetedEnemy as IoliteEnemy) ||
-        amethystEnemies.includes(targetedEnemy as AmethystEnemy) ||
-        diamondEnemies.includes(targetedEnemy as DiamondEnemy) ||
-        nullstoneEnemies.includes(targetedEnemy as NullstoneEnemy) ||
-        fracterylEnemies.includes(targetedEnemy as FracterylEnemy) ||
-        eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy) ||
-        (bossEnemy === targetedEnemy);
+  function getTargetedEnemy(): ClosestTarget | null { return targeting.getTargetedEnemy(); }
 
-      if (!isAlive) {
-        targetedEnemy = null;
-      } else {
-        // Build a ClosestTarget from the targeted enemy
-        const e = targetedEnemy as { x: number; y: number };
-        const dx = e.x - mote.x, dy = e.y - mote.y;
-        const distSq = dx * dx + dy * dy;
+  function collectEnemyBodyTargets(): ClosestTarget[] { return targeting.collectEnemyBodyTargets(); }
 
-        if (enemies.includes(targetedEnemy as LaserEnemy)) {
-          return { kind: 'laser', x: e.x, y: e.y, distSq, laser: targetedEnemy as LaserEnemy };
-        }
-        if (sapphireEnemies.includes(targetedEnemy as SapphireEnemy)) {
-          return { kind: 'sapphire', x: e.x, y: e.y, distSq, sapphire: targetedEnemy as SapphireEnemy };
-        }
-        if (emeraldEnemies.includes(targetedEnemy as EmeraldEnemy)) {
-          return { kind: 'emerald', x: e.x, y: e.y, distSq, emerald: targetedEnemy as EmeraldEnemy };
-        }
-        if (amberEnemies.includes(targetedEnemy as AmberEnemy)) {
-          return { kind: 'amber', x: e.x, y: e.y, distSq, amber: targetedEnemy as AmberEnemy };
-        }
-        if (voidEnemies.includes(targetedEnemy as VoidEnemy)) {
-          return { kind: 'void', x: e.x, y: e.y, distSq, void: targetedEnemy as VoidEnemy };
-        }
-        if (quartzEnemies.includes(targetedEnemy as QuartzEnemy)) {
-          return { kind: 'quartz', x: e.x, y: e.y, distSq, quartz: targetedEnemy as QuartzEnemy };
-        }
-        if (rubyEnemies.includes(targetedEnemy as RubyEnemy)) {
-          return { kind: 'ruby', x: e.x, y: e.y, distSq, ruby: targetedEnemy as RubyEnemy };
-        }
-        if (sunstoneEnemies.includes(targetedEnemy as SunstoneEnemy)) {
-          return { kind: 'sunstone', x: e.x, y: e.y, distSq, sunstone: targetedEnemy as SunstoneEnemy };
-        }
-        if (citrineEnemies.includes(targetedEnemy as CitrineEnemy)) {
-          return { kind: 'citrine', x: e.x, y: e.y, distSq, citrine: targetedEnemy as CitrineEnemy };
-        }
-        if (ioliteEnemies.includes(targetedEnemy as IoliteEnemy)) {
-          return { kind: 'iolite', x: e.x, y: e.y, distSq, iolite: targetedEnemy as IoliteEnemy };
-        }
-        if (amethystEnemies.includes(targetedEnemy as AmethystEnemy)) {
-          return { kind: 'amethyst', x: e.x, y: e.y, distSq, amethyst: targetedEnemy as AmethystEnemy };
-        }
-        if (diamondEnemies.includes(targetedEnemy as DiamondEnemy)) {
-          return { kind: 'diamond', x: e.x, y: e.y, distSq, diamond: targetedEnemy as DiamondEnemy };
-        }
-        if (nullstoneEnemies.includes(targetedEnemy as NullstoneEnemy)) {
-          return { kind: 'nullstone', x: e.x, y: e.y, distSq, nullstone: targetedEnemy as NullstoneEnemy };
-        }
-        if (fracterylEnemies.includes(targetedEnemy as FracterylEnemy)) {
-          return { kind: 'fracteryl', x: e.x, y: e.y, distSq, fracteryl: targetedEnemy as FracterylEnemy };
-        }
-        if (eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy)) {
-          return { kind: 'eigenstein', x: e.x, y: e.y, distSq, eigenstein: targetedEnemy as EigensteinEnemy };
-        }
-        if (bossEnemy === targetedEnemy) {
-          return { kind: 'boss', x: e.x, y: e.y, distSq, boss: bossEnemy };
-        }
-      }
-    }
+  function findClosestEnemyFrom(x: number, y: number, rangeSq: number): ClosestTarget | null { return targeting.findClosestEnemyFrom(x, y, rangeSq); }
 
-    // Fallback to closest enemy body from the player.
-    return findClosestEnemyFrom(mote.x, mote.y, Infinity);
-  }
-
-  function collectEnemyBodyTargets(): ClosestTarget[] {
-    const targets: ClosestTarget[] = [];
-    const addTarget = <T extends { x: number; y: number }>(
-      kind: TargetKind,
-      enemy: T,
-      key: keyof ClosestTarget,
-    ) => {
-      const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
-      targets.push({ kind, x: enemy.x, y: enemy.y, distSq: dx * dx + dy * dy, [key]: enemy } as ClosestTarget);
-    };
-    for (const e of enemies) addTarget('laser', e, 'laser');
-    for (const e of sapphireEnemies) addTarget('sapphire', e, 'sapphire');
-    for (const e of emeraldEnemies) addTarget('emerald', e, 'emerald');
-    for (const e of amberEnemies) addTarget('amber', e, 'amber');
-    for (const e of voidEnemies) addTarget('void', e, 'void');
-    for (const e of quartzEnemies) addTarget('quartz', e, 'quartz');
-    for (const e of rubyEnemies) addTarget('ruby', e, 'ruby');
-    for (const e of sunstoneEnemies) addTarget('sunstone', e, 'sunstone');
-    for (const e of citrineEnemies) addTarget('citrine', e, 'citrine');
-    for (const e of ioliteEnemies) addTarget('iolite', e, 'iolite');
-    for (const e of amethystEnemies) addTarget('amethyst', e, 'amethyst');
-    for (const e of diamondEnemies) addTarget('diamond', e, 'diamond');
-    for (const e of nullstoneEnemies) addTarget('nullstone', e, 'nullstone');
-    for (const e of fracterylEnemies) addTarget('fracteryl', e, 'fracteryl');
-    for (const e of eigensteinEnemies) addTarget('eigenstein', e, 'eigenstein');
-    if (bossEnemy) addTarget('boss', bossEnemy, 'boss');
-    return targets;
-  }
-
-  function findClosestEnemyFrom(x: number, y: number, rangeSq: number): ClosestTarget | null {
-    let best: ClosestTarget | null = null;
-    let bestSq = rangeSq;
-    for (const target of collectEnemyBodyTargets()) {
-      const dx = target.x - x, dy = target.y - y;
-      const d = dx * dx + dy * dy;
-      if (d <= bestSq) {
-        bestSq = d;
-        best = { ...target, distSq: d };
-      }
-    }
-    return best;
-  }
-
-  function damageBodyTarget(target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number {
-    if (target.laser) return damageEnemy(target.laser, rawDamage, defPierceRatio);
-    if (target.sapphire) return damageSapphireEnemy(target.sapphire, rawDamage, defPierceRatio, bypassShield);
-    if (target.emerald) return damageEmeraldEnemy(target.emerald, rawDamage, defPierceRatio);
-    if (target.amber) return damageAmberEnemy(target.amber, rawDamage, defPierceRatio);
-    if (target.void) return damageVoidEnemy(target.void, rawDamage, defPierceRatio);
-    if (target.quartz) return damageQuartzEnemy(target.quartz, rawDamage, defPierceRatio);
-    if (target.ruby) return damageRubyEnemy(target.ruby, rawDamage, defPierceRatio);
-    if (target.sunstone) return damageSunstoneEnemy(target.sunstone, rawDamage, defPierceRatio);
-    if (target.citrine) return damageCitrineEnemy(target.citrine, rawDamage, defPierceRatio);
-    if (target.iolite) return damageIoliteEnemy(target.iolite, rawDamage, defPierceRatio);
-    if (target.amethyst) return damageAmethystEnemy(target.amethyst, rawDamage, defPierceRatio, bypassShield);
-    if (target.diamond) return damageDiamondEnemy(target.diamond, rawDamage, defPierceRatio);
-    if (target.nullstone) return damageNullstoneEnemy(target.nullstone, rawDamage, defPierceRatio);
-    if (target.fracteryl) return damageFracterylEnemy(target.fracteryl, rawDamage, defPierceRatio);
-    if (target.eigenstein) return damageEigensteinEnemy(target.eigenstein, rawDamage, defPierceRatio);
-    if (target.boss) return damageBossEnemy(rawDamage, defPierceRatio);
-    return 0;
-  }
+  function damageBodyTarget(target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number { return targeting.damageBodyTarget(target, rawDamage, defPierceRatio, bypassShield); }
 
   // ── Weapon systems (extracted to rpg-weapon-systems.ts) ──────────
   // weaponCtx and weaponSystems are initialized below after all helper
@@ -1602,6 +1245,26 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     }
     if (playerIFramesMs > 0) playerIFramesMs = Math.max(0, playerIFramesMs - deltaMs);
   }
+
+  // ── Create targeting system ───────────────────────────────────
+  targeting = createRpgTargeting({
+    mote,
+    get bossEnemy() { return bossEnemy; },
+    enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
+    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
+    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
+    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    damageEnemy, damageSapphireEnemy, damageMissile,
+    damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
+    damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
+    damageRubyEnemy, damageRubyBolt, damageSunstoneEnemy,
+    damageCitrineEnemy, damageCitrineBolt, damageIoliteEnemy,
+    damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
+    damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
+    damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+    damageBossEnemy: (raw, pierce, fromDiamond) => damageBossEnemy(raw, pierce, fromDiamond),
+  });
 
   // ── Create wave manager ────────────────────────────────────────
   // All helper functions referenced in waveManagerCtx are function declarations
@@ -2648,8 +2311,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       drawAmethystShips(ctx, weaponSystems.amethystShips);
       drawAmethystLasers(ctx, weaponSystems.amethystLasers);
       // ── Target reticle ────────────────────────────────────────────
-      if (targetedEnemy) {
-        const te = targetedEnemy as { x: number; y: number };
+      const te = targeting.getTargetedEnemy();
+      if (te) {
         drawTargetReticle(ctx, te.x, te.y, 10, performance.now());
       }
     }

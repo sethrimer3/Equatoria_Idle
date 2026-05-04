@@ -481,6 +481,12 @@
 - Private helpers: `updateShipTrail` (circular trail buffer) and `getTargetMaxHp` (extracts max HP from a `ClosestTarget`).
 - `reset()` clears all four arrays (sapphireShips, sapphireLasers, amethystShips, amethystLasers); called by the parent reset on restart.
 
+### src/render/rpg/rpg-targeting.ts
+- Targeting system for the RPG tab extracted from `rpg-render.ts` (~290 lines).
+- Exports `RpgTargetingCtx` interface, `RpgTargetingHandle` interface, and `createRpgTargeting(ctx)` factory.
+- Owns `targetedEnemy: object | null` state (moved from `rpg-render.ts`).
+- Covers: `findClosestTarget` (closest entity including projectiles), `findClosestEnemy` (closest enemy body only), `collectEnemyBodyTargets` (all enemy bodies as `ClosestTarget[]`), `findClosestEnemyFrom` (closest enemy from arbitrary position), `getTargetedEnemy` (validates stored target or falls back to closest), `tryTargetEnemyAt` (stub that clears target), `damageBodyTarget` (dispatches damage to correct type-specific damage fn).
+
 ### src/render/rpg/rpg-wave-manager.ts
 - Wave lifecycle management extracted from `rpg-render.ts` (~616 lines).
 - Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
@@ -489,8 +495,9 @@
 - `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~2,960 lines).
+- Independent RPG canvas rendering system for the RPG tab (~2,570 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
+- Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
