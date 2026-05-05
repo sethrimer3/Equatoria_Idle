@@ -77,6 +77,11 @@ import {
   drawTeleportParticles,
 } from './rpg-enemy-draw-adv';
 import {
+  updateBossAttacks, setBossAttacksLowGraphics, type BossAttackUpdateCtx,
+} from './rpg-boss-attack-update';
+import { drawBossAttacks, setDrawBossAttacksLowGraphics } from './rpg-boss-attacks-draw';
+import { createBossAttackState, type BossAttackState } from './rpg-boss-attack-types';
+import {
   drawBossProjectiles,
   drawSandProjectiles,
   drawPoisonBolts,
@@ -392,6 +397,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let danmakuSafeZone: DanmakuSafeZone | null = null;
   const bossProjectiles: BossProjectile[] = [];
   const teleportParticles: TeleportParticle[] = [];
+  const bossAttackState: BossAttackState = createBossAttackState();
   /** Counts successive diamond-blade hits on the boss; resets to 0 after every teleport. */
   let bossHitsInRound = 0;
   /** True when the current boss fight was launched from the RPG menu. */
@@ -983,6 +989,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnDamageNumber,
   };
 
+  const bossAttackCtx: BossAttackUpdateCtx = {
+    dim,
+    get playerX() { return mote.x; },
+    get playerY() { return mote.y; },
+    playerStats,
+    getPlayerIFramesMs:  () => playerIFramesMs,
+    setPlayerIFramesMs:  (n) => { playerIFramesMs = n; },
+    spawnDamageNumber: (x, y, dirX, dirY, text, ratio, color) =>
+      spawnDamageNumber(x, y, dirX, dirY, text, ratio, color),
+    setPlayerHp: (hp) => { playerStats.hp = hp; },
+  };
+
   function triggerDeath(): void {
     rpgPhase = 'dying'; phaseTimerMs = 0; deathAlpha = 1;
     deathParticles.length = 0;
@@ -1020,6 +1038,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     isBossFightFromMenu = false;
     bossEnemy = null;
     bossProjectiles.length = 0;
+    bossAttackState.attacks.length = 0;
+    bossAttackState.schedulerCooldowns.clear();
+    bossAttackState.activePressure = 0;
     weaponSystems.reset();
     mote.x = widthPx / 2; mote.y = heightPx / 2;
     mote.vx = mote.vy = 0; mote.trailHead = 0; mote.trailCount = 0;
@@ -1099,6 +1120,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawBottomSafeZone(ctx, isBossWaveActive, widthPx, heightPx, glowTimeS);
     drawDanmakuSafeZone(ctx, bossEnemy, danmakuSafeZone);
     drawBossProjectiles(ctx, bossProjectiles);
+    drawBossAttacks(ctx, bossAttackState);
     drawBossEnemy(ctx, bossEnemy, glowTimeS);
     drawTeleportParticles(ctx, teleportParticles);
     drawShotLines(ctx, shotLines);
@@ -1296,6 +1318,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       } else {
         updateBossProjectiles(bossProjectiles, bossCtx, deltaMs);
       }
+      updateBossAttacks(bossAttackState, bossAttackCtx, bossEnemy, deltaMs);
       updateTeleportParticles(teleportParticles, deltaMs);
       updateWeaponOrbitParticles(deltaMs);
       updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs);
@@ -1438,6 +1461,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       setBossLowGraphics(enabled);
       setCombatEffectsLowGraphics(enabled);
       setCompanionLowGraphics(enabled);
+      setBossAttacksLowGraphics(enabled);
+      setDrawBossAttacksLowGraphics(enabled);
     },
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {

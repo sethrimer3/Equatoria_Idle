@@ -485,6 +485,51 @@
 - Covers: `drawBossEnemy` (sprite, HP bar, phase pips, INVULN label), `drawBottomSafeZone` (prismatic ring), `drawDanmakuSafeZone` (safe-angle wedge), `drawWaveClearBanner` (fade-in/out clear overlay).
 - Each function takes `ctx: CanvasRenderingContext2D` plus explicit parameters — no closure dependencies.
 
+### src/render/rpg/rpg-boss-attack-types.ts
+- Type definitions for all six boss special attack families: `grav`, `hexTrail`, `mandala`, `vermiculate`, `missileRing`, `motherSwarm`.
+- Exports: `createPrng` (mulberry32), `HazardMode` union, `TrailRing` + helpers (`createTrailRing`, `trailPush`), all attack instance interfaces, `BossAttackInstance` union, `BossAttackState`, `createBossAttackState`.
+- Trail ring buffers use Float64Array for neon-trail-draw.ts compatibility.
+
+### src/render/rpg/rpg-boss-attack-config.ts
+- Data-driven attack profiles for all 10 bosses (IDs 1–10).
+- Exports: `BossAttackKind`, `BossAttackKindConfig`, `BossAttackProfileConfig`, `BOSS_ATTACK_PROFILES`, `getBossAttackProfile`.
+- Each boss has phase0/1/2 configs with cooldownMs, pressureScore, durationMs, and kind-specific params.
+
+### src/render/rpg/rpg-boss-attack-update.ts
+- Scheduler and per-frame update orchestrator for all boss special attacks (~230 lines).
+- Exports: `BossAttackUpdateCtx` (getter/setter lambda pattern), `updateBossAttacks`, `applyBossAttackCollision`, `setBossAttacksLowGraphics`.
+- Caps: MAX_ACTIVE_ATTACKS=6. Pressure-based spawn gating, per-boss-per-kind cooldowns.
+- Collision uses circle/capsule geometry; delegates hit detection to per-family hazard functions.
+
+### src/render/rpg/rpg-boss-attacks-draw.ts
+- Visual rendering for all six attack families (~290 lines).
+- Exports: `drawBossAttacks`, `setDrawBossAttacksLowGraphics`.
+- Module-level NeonTrailConfig constants (never allocated per frame). Wraps all draws in beginNeonGlowBatch/endNeonGlowBatch.
+
+### src/render/rpg/attacks/rpg-attack-grav.ts
+- Gravitational orbital body attack: softened Newtonian gravity, well orbiting, bounce off bounds, Float64Array trail rings.
+- Exports: `spawnGravAttack`, `updateGravAttack`, `getGravHazardCircles`.
+
+### src/render/rpg/attacks/rpg-attack-hex.ts
+- Hex-grid crawling lightning bolt attack: flat-top axial coordinates, warning phase, player-biased direction, segment aging.
+- Exports: `hexToWorld`, `hexNeighborDir`, `spawnHexAttack`, `updateHexAttack`, `getHexHazardCapsules`, `getHexHeadCircles`.
+
+### src/render/rpg/attacks/rpg-attack-mandala.ts
+- Radial wave projectile burst attack: safe gaps near player, angular drift per wave, MAX_PROJECTILES=48 cap.
+- Exports: `spawnMandalaAttack`, `updateMandalaAttack`, `getMandalaHazardCircles`.
+
+### src/render/rpg/attacks/rpg-attack-vermiculate.ts
+- Sinuous worm attack: deterministic sin-based angular noise + player bias, bounce off walls, trail ring.
+- Exports: `spawnVermiculateAttack`, `updateVermiculateAttack`, `getVermiculateHazardCircles`.
+
+### src/render/rpg/attacks/rpg-attack-missile.ts
+- Guided missile attack: state machine (flying→exploding→lingering→fading), homing, expanding ring hazard.
+- Exports: `spawnMissileAttack`, `updateMissileAttack`, `getMissileHazardCircles`.
+
+### src/render/rpg/attacks/rpg-attack-swarm.ts
+- Mother + follower swarm attack: mother steers toward player with noise, followers attracted to mother, index-based deterministic noise.
+- Exports: `spawnSwarmAttack`, `updateSwarmAttack`, `getSwarmHazardCircles`.
+
 ### src/render/rpg/rpg-damage.ts
 - 24 per-entity damage functions extracted from `rpg-render.ts` via factory pattern (~307 lines).
 - Exports `DamageCtx` interface (`recordDps` callback) and `createDamageFns(ctx)` factory.
