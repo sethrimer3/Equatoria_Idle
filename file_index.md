@@ -333,10 +333,11 @@
 - Weapon-specific constants (chain whip, laser beam, vortex, sword, poison, emerald missiles, sunstone mines, companion ships) have been moved to `rpg-weapon-constants.ts`.
 
 ### src/render/rpg/rpg-weapon-constants.ts
-- All player-weapon and weapon-projectile constants (~374 lines).
+- All player-weapon and weapon-projectile constants.
 - Covers: sand projectiles, chain whip physics/visual, ruby laser beam, nullstone vortex, diamond sword (shard shapes, combo system, `SAND_BLADE_COLORS`), poison bolt, emerald player + sub-missiles + swirl particles, sunstone mines, sapphire/amethyst companion ships + spiral lasers.
-- No imports — all values are primitive literals or simple math expressions.
-- Consumed by all weapon system modules (`rpg-weapon-chain.ts`, `rpg-weapon-sword.ts`, `rpg-weapon-vortex.ts`, `rpg-weapon-poison.ts`, `rpg-weapon-emerald.ts`, `rpg-weapon-sunstone.ts`, `rpg-weapon-ships.ts`, `rpg-weapon-draw.ts`, `rpg-weapon-laser-beam.ts`, `rpg-weapon-sand.ts`) plus `rpg-companion-draw.ts`, `rpg-entity-draw.ts`, `rpg-helpers.ts`, `rpg-boss-wave.ts`.
+- **Chain whip physics parameters are mutable `let` exports** to support runtime dev-mode tuning.
+- Exports `ChainWhipParamKey`, `ChainWhipParams`, `CHAIN_WHIP_PARAM_DEFAULTS`, `getChainWhipParams()`, `setChainWhipParam(key, value)`, `resetChainWhipParams()`.
+- Consumed by all weapon system modules plus `rpg-weapons-tab.ts` (dev tuning panel).
 
 ### src/render/rpg/rpg-enemy-constants.ts
 - Per-enemy-type constants for all non-starter enemy types (~230 lines).
@@ -711,6 +712,7 @@
 - Weapons sub-tab pane for the RPG overlay panel (weapon purchase / equip / unequip / tier-upgrade cards).
 - `RpgWeaponsTabPane` interface; `createRpgWeaponsTabPane(dispatch)` factory.
 - `update(rpgState, resources, numberFormat, isDevMode)` rebuilds the full weapon list.
+- In dev mode: appends a **Quartz Whip Physics** section at the bottom with labelled number inputs for all 15 tunable `CHAIN_*` constants (via `setChainWhipParam` / `resetChainWhipParams` from `rpg-weapon-constants.ts`).
 
 ### src/ui/panels/rpg-upgrades-tab.ts
 - Upgrades sub-tab pane for the RPG overlay panel (per-upgrade purchase cards).
@@ -723,6 +725,15 @@
 - `update(rpgState)` rebuilds boss list, speed buttons, and next-unlock hint.
 - Dispatches `start_boss_fight` (closes menu, triggers boss fight via rpgRender) and `set_boss_speed` actions.
 - Each boss entry shows lock status, best completion speed, XP multiplier, and Fight button.
+
+### src/ui/panels/rpg-enemies-tab.ts
+- Enemies sub-tab (bestiary) for the RPG overlay panel.
+- `RpgEnemiesTabPane` interface; `createRpgEnemiesTabPane(dispatch)` factory.
+- `update(rpgState, isDevMode)` rebuilds the enemy and boss catalog.
+- Each entry contains a 40×40 canvas icon (drawn with color/glow/shape from constants), base HP/ATK/DEF stats, and a one-sentence description.
+- **Regular enemies** are visible once `highestWaveReached >= firstWave`; all are visible in dev mode.
+- **Bosses** are visible once beaten (`bossCompletions` has non-zero entry); all are visible in dev mode.
+- Uses color/size constants from `rpg-constants.ts` and `rpg-enemy-constants.ts`.
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
