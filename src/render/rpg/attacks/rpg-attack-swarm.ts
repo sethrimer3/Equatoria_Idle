@@ -179,11 +179,11 @@ function _bouncePoint(
 
 export function getSwarmHazardCircles(
   atk: SwarmAttackInstance,
-): Array<{ x: number; y: number; r: number; atk: number }> {
-  const result: Array<{ x: number; y: number; r: number; atk: number }> = [];
-  result.push({ x: atk.mother.x, y: atk.mother.y, r: atk.mother.radius + 3, atk: 12 });
+): Array<{ x: number; y: number; r: number; damage: number }> {
+  const result: Array<{ x: number; y: number; r: number; damage: number }> = [];
+  result.push({ x: atk.mother.x, y: atk.mother.y, r: atk.mother.radius + 3, damage: 12 });
   for (const f of atk.followers) {
-    result.push({ x: f.x, y: f.y, r: f.radius + 1, atk: 7 });
+    result.push({ x: f.x, y: f.y, r: f.radius + 1, damage: 7 });
   }
   return result;
 }

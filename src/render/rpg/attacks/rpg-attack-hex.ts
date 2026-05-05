@@ -132,10 +132,11 @@ export function updateHexAttack(
     if (bolt.progress >= 1) {
       // Record the completed segment
       const from = hexToWorld(bolt.qNow, bolt.rNow, atk.cellSize, atk.originX, atk.originY);
-      const to   = hexToWorld(bolt.qNext !== 0 || bolt.rNext !== 0 ? bolt.qNext : bolt.qNow,
-                               bolt.qNext !== 0 || bolt.rNext !== 0 ? bolt.rNext : bolt.rNow,
-                               atk.cellSize, atk.originX, atk.originY);
-      if (bolt.segments.length > 0 || bolt.qNext !== bolt.qNow || bolt.rNext !== bolt.rNow) {
+      const hasNext = bolt.qNext !== bolt.qNow || bolt.rNext !== bolt.rNow;
+      const toQ = hasNext ? bolt.qNext : bolt.qNow;
+      const toR = hasNext ? bolt.rNext : bolt.rNow;
+      const to  = hexToWorld(toQ, toR, atk.cellSize, atk.originX, atk.originY);
+      if (bolt.segments.length > 0 || hasNext) {
         bolt.segments.push({
           x1: from.x, y1: from.y,
           x2: to.x,   y2: to.y,
@@ -189,12 +190,12 @@ function worldToHex(
 
 export function getHexHazardCapsules(
   atk: HexAttackInstance,
-): Array<{ x1: number; y1: number; x2: number; y2: number; r: number; atk: number }> {
-  const result: Array<{ x1: number; y1: number; x2: number; y2: number; r: number; atk: number }> = [];
+): Array<{ x1: number; y1: number; x2: number; y2: number; r: number; damage: number }> {
+  const result: Array<{ x1: number; y1: number; x2: number; y2: number; r: number; damage: number }> = [];
   for (const bolt of atk.bolts) {
     for (const seg of bolt.segments) {
       if (seg.ageMs < seg.hazardMs) {
-        result.push({ x1: seg.x1, y1: seg.y1, x2: seg.x2, y2: seg.y2, r: 4, atk: 10 });
+        result.push({ x1: seg.x1, y1: seg.y1, x2: seg.x2, y2: seg.y2, r: 4, damage: 10 });
       }
     }
   }
@@ -203,11 +204,11 @@ export function getHexHazardCapsules(
 
 export function getHexHeadCircles(
   atk: HexAttackInstance,
-): Array<{ x: number; y: number; r: number; atk: number }> {
-  const result: Array<{ x: number; y: number; r: number; atk: number }> = [];
+): Array<{ x: number; y: number; r: number; damage: number }> {
+  const result: Array<{ x: number; y: number; r: number; damage: number }> = [];
   for (const bolt of atk.bolts) {
     const pos = hexToWorld(bolt.qNow, bolt.rNow, atk.cellSize, atk.originX, atk.originY);
-    result.push({ x: pos.x, y: pos.y, r: 6, atk: 10 });
+    result.push({ x: pos.x, y: pos.y, r: 6, damage: 10 });
   }
   return result;
 }

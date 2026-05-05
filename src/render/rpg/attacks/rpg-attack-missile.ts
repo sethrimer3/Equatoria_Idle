@@ -155,15 +155,15 @@ function _guideMissile(
 
 export function getMissileHazardCircles(
   atk: MissileAttackInstance,
-): Array<{ x: number; y: number; r: number; atk: number }> {
-  const result: Array<{ x: number; y: number; r: number; atk: number }> = [];
+): Array<{ x: number; y: number; r: number; damage: number }> {
+  const result: Array<{ x: number; y: number; r: number; damage: number }> = [];
   for (const m of atk.missiles) {
     if (!m.hasFired) continue;
     if (m.state === 'flying') {
-      result.push({ x: m.x, y: m.y, r: 5, atk: 11 });
+      result.push({ x: m.x, y: m.y, r: 5, damage: 11 });
     } else if (m.state === 'exploding' || m.state === 'lingering') {
       // Ring-edge collision — check if player is on the ring
-      result.push({ x: m.x, y: m.y, r: m.explodeRingRadius + 4, atk: 14 });
+      result.push({ x: m.x, y: m.y, r: m.explodeRingRadius + 4, damage: 14 });
     }
   }
   return result;

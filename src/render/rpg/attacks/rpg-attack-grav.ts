@@ -147,11 +147,11 @@ export function updateGravAttack(
 
 export function getGravHazardCircles(
   atk: GravAttackInstance,
-): Array<{ x: number; y: number; r: number; atk: number }> {
-  const result: Array<{ x: number; y: number; r: number; atk: number }> = [];
+): Array<{ x: number; y: number; r: number; damage: number }> {
+  const result: Array<{ x: number; y: number; r: number; damage: number }> = [];
   for (const body of atk.bodies) {
     if (body.hazardMode === 'headOnly') {
-      result.push({ x: body.x, y: body.y, r: body.radius + 2, atk: 8 });
+      result.push({ x: body.x, y: body.y, r: body.radius + 2, damage: 8 });
     }
   }
   return result;

@@ -166,8 +166,7 @@ function _tryScheduleAttack(
   }
 }
 
-import type { BossAttackKindConfig } from './rpg-boss-attack-config';
-import type { BossAttackProfileConfig } from './rpg-boss-attack-config';
+import type { BossAttackKindConfig, BossAttackProfileConfig } from './rpg-boss-attack-config';
 
 function _getPhaseAttacks(
   profile: BossAttackProfileConfig,

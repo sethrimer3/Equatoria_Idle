@@ -189,7 +189,7 @@ function _drawHex(ctx: CanvasRenderingContext2D, atk: HexAttackInstance): void {
     ctx.restore();
 
     // Warning indicator: dim target cell
-    if (bolt.isWarning && bolt.qNext !== bolt.qNow || bolt.rNext !== bolt.rNow) {
+    if (bolt.isWarning && (bolt.qNext !== bolt.qNow || bolt.rNext !== bolt.rNow)) {
       const warnPos = hexToWorld(bolt.qNext, bolt.rNext, atk.cellSize, atk.originX, atk.originY);
       ctx.save();
       ctx.globalAlpha = 0.4 * globalFade;

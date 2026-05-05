@@ -149,10 +149,10 @@ function _fireWave(
 
 export function getMandalaHazardCircles(
   atk: MandalaAttackInstance,
-): Array<{ x: number; y: number; r: number; atk: number }> {
-  const result: Array<{ x: number; y: number; r: number; atk: number }> = [];
+): Array<{ x: number; y: number; r: number; damage: number }> {
+  const result: Array<{ x: number; y: number; r: number; damage: number }> = [];
   for (const p of atk.projectiles) {
-    result.push({ x: p.x, y: p.y, r: 4, atk: 9 });
+    result.push({ x: p.x, y: p.y, r: 4, damage: 9 });
   }
   return result;
 }

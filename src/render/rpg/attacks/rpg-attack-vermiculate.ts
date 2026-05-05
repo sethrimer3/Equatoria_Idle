@@ -129,10 +129,10 @@ function _calcPlayerBias(
 
 export function getVermiculateHazardCircles(
   atk: VermiculateAttackInstance,
-): Array<{ x: number; y: number; r: number; atk: number }> {
-  const result: Array<{ x: number; y: number; r: number; atk: number }> = [];
+): Array<{ x: number; y: number; r: number; damage: number }> {
+  const result: Array<{ x: number; y: number; r: number; damage: number }> = [];
   for (const worm of atk.worms) {
-    result.push({ x: worm.x, y: worm.y, r: worm.radius + 2, atk: 9 });
+    result.push({ x: worm.x, y: worm.y, r: worm.radius + 2, damage: 9 });
   }
   return result;
 }
