@@ -560,9 +560,20 @@ export function createRpgFluid(): RpgFluid {
 
   function setLowGraphicsMode(enabled: boolean): void {
     const newCount = enabled ? PARTICLE_COUNT_LOW : PARTICLE_COUNT_HIGH;
-    if (newCount !== currentParticleCount) {
-      currentParticleCount = newCount;
-      reset();
+    if (newCount === currentParticleCount) return;
+    currentParticleCount = newCount;
+    if (newCount > particles.length) {
+      // Add particles, inheriting the colour of a random existing particle so
+      // the palette doesn't abruptly reset on the newly-added entries.
+      const source = particles[0];
+      for (let i = particles.length; i < newCount; i++) {
+        const np = _makeParticle();
+        if (source) { np.r = source.r; np.g = source.g; np.b = source.b; np.hueIdx = source.hueIdx; }
+        particles.push(np);
+      }
+    } else {
+      // Shed excess particles; no need to reset the grid.
+      particles.length = newCount;
     }
   }
 

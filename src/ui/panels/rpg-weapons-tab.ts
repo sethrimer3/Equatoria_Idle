@@ -74,7 +74,9 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     if (e.target === slotPopupOverlay) slotPopupOverlay.style.display = 'none';
   });
 
-  document.body.appendChild(slotPopupOverlay);
+  // Append to element so the popup is cleaned up with the tab pane;
+  // position:fixed ensures it still overlays the full viewport.
+  element.appendChild(slotPopupOverlay);
 
   /** Show the slot picker for the given weapon / state snapshot. */
   function showSlotPicker(weaponId: string, weaponName: string, rpgState: RpgSimState): void {

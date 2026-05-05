@@ -384,8 +384,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–20 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(data.version)) return null;
+    // Accept all versions up to the current SAVE_VERSION (older saves lack some fields; defaults will apply)
+    if (typeof data.version !== 'number' || data.version < 1 || data.version > SAVE_VERSION) return null;
     return deserializeGameState(data);
   } catch {
     return null;
