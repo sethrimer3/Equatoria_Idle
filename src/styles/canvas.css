@@ -566,37 +566,6 @@
   animation: rpg-xp-error-shake 0.6s ease-out forwards;
 }
 
-/* Plug socket circles in the wire SVG */
-.rpg-plug-socket {
-  pointer-events: none;
-  transition: r 0.15s;
-}
-
-/* ── Plug anchor — the landing-zone for XP wires inside each stat widget ── */
-/*
- * This small element sits at the bottom of each stat widget in the space that
- * was previously occupied by the per-stat allocation sub-texts (LEGACY).
- * The SVG plug-socket circle is positioned at this element's centre so that
- * the wire visually plugs in below the stat value.
- */
-.rpg-stat-plug-anchor {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px dashed rgba(167, 139, 250, 0.25);
-  background: rgba(167, 139, 250, 0.04);
-  pointer-events: none;
-  flex-shrink: 0;
-}
-
-/* ── LEGACY: per-stat XP allocation sub-texts (removed from stats panel DOM) ── */
-/*
- * These classes are retained for reference only.  The DOM elements they styled
- * (atkBaseEl, atkAllocEl, defBaseEl, defAllocEl, maxHpAllocEl, luckAllocEl)
- * have been removed.  The space below each stat value is now used by the
- * rpg-stat-plug-anchor element.
- */
-
 /* ── Wired stat glow ────────────────────────────────────────────── */
 @keyframes rpg-wired-glow {
   0%   { text-shadow: 0 0 4px currentColor, 0 0 10px currentColor; }
@@ -609,19 +578,7 @@
   color: #c4b5fd;
 }
 
-/* ── Wire rope SVG overlay ─────────────────────────────────────── */
-.rpg-wire-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-  z-index: 5;
-}
-
-.rpg-wire-rope {
+/* ── Wire rope SVG overlay (used by soft-body wire renderer) ───── */
   filter: drop-shadow(0 0 3px rgba(167, 139, 250, 0.6));
 }
 
@@ -670,7 +627,7 @@
   background: rgba(100, 220, 150, 0.1);
 }
 
-/* ── Equip wire SVG overlay ─────────────────────────────────────── */
+/* ── Equip wire SVG overlay (shared by all soft-body wires) ─────── */
 .rpg-equip-wire-svg {
   position: absolute;
   top: 0;
@@ -680,19 +637,6 @@
   pointer-events: none;
   overflow: visible;
   z-index: 6;
-}
-
-.rpg-equip-wire-line {
-  stroke-width: 1.5;
-  fill: none;
-  stroke-linecap: round;
-}
-
-.rpg-equip-wire-drag-preview {
-  stroke-width: 1.5;
-  fill: none;
-  stroke-linecap: round;
-  stroke-dasharray: 4 4;
 }
 
 .rpg-stat {

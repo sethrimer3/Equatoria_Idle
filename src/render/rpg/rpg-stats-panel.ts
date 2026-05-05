@@ -25,10 +25,8 @@ import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
 import { BASE_ATTACK_TIMER_KEY, GLOW_PULSE_SPEED, RPG_MOTE_COLOR, RPG_MOTE_GLOW } from './rpg-constants';
 import type { NumberFormat } from '../../util/format';
-import { createXpWireSystem } from './rpg-xp-wire';
 import {
   createEquipWiringSystem,
-  createEquipWiringState,
 } from './rpg-equip-wiring';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
@@ -54,11 +52,7 @@ export interface RpgStatsPanelCtx {
   getCurrentWave(): number;
   getEffectiveEquippedIds(): Set<string>;
   getNumberFormat(): NumberFormat;
-  /** Called when a wire is newly connected to a stat. */
-  onXpWireConnect(stat: 'atk' | 'def' | 'luck' | 'hp'): void;
-  /** Called whenever the set of wired stats changes (wire removed or added). */
-  onXpWireDisconnect(): void;
-  /** Called when the player attempts an invalid wire action (too many wires). */
+  /** Called when the player attempts an invalid wire action. */
   onError(): void;
 }
 
@@ -189,46 +183,6 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   plugContainerEl.className = 'rpg-plug-container';
   xpBox1.appendChild(plugContainerEl);
 
-  // Hidden anchors for the XP wire system — kept off-screen to avoid breaking
-  // the existing wire mechanic while not occupying visible plug slots.
-  function makeHiddenAnchor(): HTMLDivElement {
-    const el = document.createElement('div');
-    el.className = 'rpg-stat-plug-anchor';
-    el.style.visibility = 'hidden';
-    el.style.position = 'absolute';
-    el.style.width = '0';
-    el.style.height = '0';
-    statsPanel.appendChild(el);
-    return el;
-  }
-  const atkPlugAnchor  = makeHiddenAnchor();
-  const defPlugAnchor  = makeHiddenAnchor();
-  const hpPlugAnchor   = makeHiddenAnchor();
-  const luckPlugAnchor = makeHiddenAnchor();
-
-  // Hidden plug slots for the XP wire system hit-testing
-  function makeHiddenSlot(): HTMLDivElement {
-    const el = document.createElement('div');
-    el.className = 'rpg-plug-slot rpg-plug-slot--sand';
-    el.style.visibility = 'hidden';
-    el.style.position = 'absolute';
-    el.style.width = '0';
-    el.style.height = '0';
-    el.appendChild(document.createElement('div')); // inner anchor appended below
-    statsPanel.appendChild(el);
-    return el;
-  }
-  const atkPlugSlot  = makeHiddenSlot();
-  const defPlugSlot  = makeHiddenSlot();
-  const hpPlugSlot   = makeHiddenSlot();
-  const luckPlugSlot = makeHiddenSlot();
-
-  // Add anchors into their hidden slots so XP wire positioning still works
-  atkPlugSlot.appendChild(atkPlugAnchor);
-  defPlugSlot.appendChild(defPlugAnchor);
-  hpPlugSlot.appendChild(hpPlugAnchor);
-  luckPlugSlot.appendChild(luckPlugAnchor);
-
   // Weapon source plugs (box 1 — 5 circle plugs, slot 1 unlocked initially)
   const weaponSourcePlugEls: HTMLDivElement[] = [];
   for (let i = 0; i < 5; i++) {
@@ -295,10 +249,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return { box, xpInPlug, outPlug };
   }
 
-  // XP node — compact two-line widget (remains the drag source for wires)
+  // XP node — compact two-line display widget
   const xpNodeEl = document.createElement('div');
   xpNodeEl.className = 'rpg-xp-node';
-  xpNodeEl.title = 'Drag to ATK / DEF / LUCK / MAXHP (up to 3 wires). Tap to retract all wires.';
+  xpNodeEl.title = 'Current XP';
   xpNodeEl.style.flex = '1 1 0';
   xpNodeEl.style.width = 'auto';
   const xpLabelTextEl = document.createElement('span');
@@ -509,28 +463,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   makeBoxBadge(hpFractionEl, 13);
   makeBoxBadge(menuArea, 14);
 
-  // ── XP wire system (managed by rpg-xp-wire.ts) ─────────────────────
-  const xpWire = createXpWireSystem({
-    panelEl:        statsPanel,
-    xpNodeEl,
-    statPlugAnchors: { atk: atkPlugAnchor, def: defPlugAnchor, hp: hpPlugAnchor, luck: luckPlugAnchor },
-    statPlugSlots:   { atk: atkPlugSlot,   def: defPlugSlot,   hp: hpPlugSlot,   luck: luckPlugSlot   },
-    rpgSimState,
-    onWireConnect:    (stat) => ctx.onXpWireConnect(stat),
-    onWireDisconnect: () => ctx.onXpWireDisconnect(),
-    onError:          () => ctx.onError(),
-  });
-
   // ── Equip wiring system ───────────────────────────────────────────
-  // Manages drag-to-connect wires for weapon source, modifier, and stat plugs.
+  // Manages drag-to-connect soft-body wires for all visible plugs.
   // State is ephemeral (reset on page load) — not persisted in sim state.
-  const equipWiringState = createEquipWiringState();
   const equipWiring = createEquipWiringSystem({
-    panelEl:          statsPanel,
+    panelEl:           statsPanel,
     getMaxWeaponSlots: () => getMaxEquippedWeapons(rpgSimState),
-    wiringState:      equipWiringState,
-    onWireConnect:    (_from, _to) => { /* ephemeral — connections stored in equipWiringState */ },
-    onWireDisconnect: (_from, _to) => { /* ephemeral */ },
+    onWireConnect:     (_from, _to) => { /* ephemeral */ },
+    onWireDisconnect:  (_from, _to) => { /* ephemeral */ },
   });
 
   // Register box 1 weapon source plugs
@@ -668,17 +608,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     // XP amount — update the value span inside the XP node
     xpAmountEl.textContent = formatXp(rpgSimState.xp);
 
-    // XP wire: rope physics, SVG redraw, and locked-class toggle
-    xpWire.update(nowMs);
-
     // Update weapon source plug lock states based on current max slots
     const maxWeaponSlots = getMaxEquippedWeapons(rpgSimState);
     for (let i = 0; i < weaponSourcePlugEls.length; i++) {
       equipWiring.setPlugLocked(`weaponSource:${i + 1}`, i >= maxWeaponSlots);
     }
 
-    // Equip wiring: redraw wire SVG
-    equipWiring.update();
+    // Equip wiring: advance rope physics and redraw all wires
+    equipWiring.update(nowMs);
 
     // ── DPS chart update ──────────────────────────────────────────
     const now = Date.now();
