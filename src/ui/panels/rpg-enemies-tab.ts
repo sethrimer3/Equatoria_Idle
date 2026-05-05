@@ -205,7 +205,7 @@ const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: IOLITE_ENEMY_SIZE,
     hp: IOLITE_HP_INIT, atk: IOLITE_ATK_INIT, def: IOLITE_DEF_INIT,
     firstWave: 40,
-    description: 'A heavily armoured indigo titan that fires a spread of five beams in a wide arc.',
+    description: 'A heavily armored indigo titan that fires a spread of five beams in a wide arc.',
     shape: 'circle',
   },
   {
@@ -624,10 +624,10 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     }
 
     if (!anyBossVisible) {
-      const noBosse = document.createElement('div');
-      noBosse.style.cssText = 'font-size:0.78em;color:#666;text-align:center;padding:6px 0;';
-      noBosse.textContent = 'No bosses defeated yet.';
-      element.appendChild(noBosse);
+      const noBosses = document.createElement('div');
+      noBosses.style.cssText = 'font-size:0.78em;color:#666;text-align:center;padding:6px 0;';
+      noBosses.textContent = 'No bosses defeated yet.';
+      element.appendChild(noBosses);
     }
   }
 

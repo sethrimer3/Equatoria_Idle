@@ -300,10 +300,11 @@ function buildChainWhipDevPanel(): HTMLElement {
     'font-size:0.78em;font-weight:600;cursor:pointer;touch-action:manipulation;';
   resetAllBtn.addEventListener('click', () => {
     resetChainWhipParams();
-    // Refresh displayed values
+    // Refresh displayed values in order matching CHAIN_PARAM_ORDER
     const inputs = grid.querySelectorAll('input[type="number"]');
-    const defaults = Object.values(CHAIN_WHIP_PARAM_DEFAULTS) as number[];
-    inputs.forEach((el, i) => { (el as HTMLInputElement).value = String(defaults[i]); });
+    CHAIN_PARAM_ORDER.forEach((key, i) => {
+      (inputs[i] as HTMLInputElement).value = String(CHAIN_WHIP_PARAM_DEFAULTS[key]);
+    });
   });
   panel.appendChild(resetAllBtn);
 
