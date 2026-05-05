@@ -125,7 +125,8 @@ import type {
 } from './rpg-enemy-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { getSwordLength } from './rpg-helpers';
-import { drawChainWhip, drawVortexes, drawSwordCombos, drawSandBladeCombo, spawnSandSwingPixels, updateSandDriftPixels, drawSandDriftPixels, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
+import { drawChainWhip, drawVortexes, setLowGraphicsMode as setWeaponChainLowGraphics } from './rpg-weapon-draw';
+import { drawSwordCombos, drawSandBladeCombo, spawnSandSwingPixels, updateSandDriftPixels, drawSandDriftPixels, setLowGraphicsMode as setWeaponSwordLowGraphics } from './rpg-weapon-draw-sword';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
 import {
   updateLuckyMotes, updateLuckyMotePopups,
@@ -1447,7 +1448,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       isLowGraphicsMode = enabled;
       setEntityLowGraphics(enabled);
       setEnemyLowGraphics(enabled);
-      setWeaponLowGraphics(enabled);
+      setWeaponChainLowGraphics(enabled);
+      setWeaponSwordLowGraphics(enabled);
       setBossLowGraphics(enabled);
       setCombatEffectsLowGraphics(enabled);
       setCompanionLowGraphics(enabled);

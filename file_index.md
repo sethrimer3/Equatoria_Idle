@@ -397,6 +397,19 @@
 - All functions are stateless: they accept a canvas context and the relevant entity array.
 - Has its own `setLowGraphicsMode()` export; called from `rpg-render.ts`.
 
+### src/render/rpg/rpg-weapon-draw.ts
+- Canvas draw functions for chain-whip and vortex weapon visuals (~173 lines).
+- Extracted from `rpg-render.ts`; sword/sand blade drawing further extracted to `rpg-weapon-draw-sword.ts`.
+- Exports `drawChainWhip(ctx, state, mote)` and `drawVortexes(ctx, vortexes)`.
+- Has its own `setLowGraphicsMode()` export for chain-whip glow; called from `rpg-render.ts`.
+
+### src/render/rpg/rpg-weapon-draw-sword.ts
+- Canvas draw functions for diamond sword and sand blade weapon visuals (~340 lines).
+- Extracted from `rpg-weapon-draw.ts` to keep that file focused on chain/vortex drawing.
+- Exports `drawSwordCombos(ctx, comboStates, mote, weaponTiers)` and `drawSandBladeCombo(ctx, state, mote)`.
+- Exports sand drift pixel system: `spawnSandSwingPixels`, `updateSandDriftPixels`, `drawSandDriftPixels`.
+- Has its own `setLowGraphicsMode()` export for sword glow; both weapon draw setters are called from `rpg-render.ts`.
+
 ### src/render/rpg/rpg-boss-wave.ts
 - Boss wave lifecycle management extracted from `rpg-render.ts` (~218 lines).
 - Exports `BossWaveCtx` interface, `BossWaveHandle` interface, and `createBossWaveManager(ctx)` factory.
@@ -585,11 +598,18 @@
 - `rpg-render.ts` calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
 
 ### src/render/rpg/rpg-wave-manager.ts
-- Wave lifecycle management extracted from `rpg-render.ts` (~616 lines).
+- Wave lifecycle management extracted from `rpg-render.ts` (~444 lines after spawn extraction).
 - Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
 - Scalar state (`currentWave`, `isInterWave`, `bossEnemy`, `isBossFightFromMenu`, `interWaveTimerMs`) is accessed through getter/setter lambdas on `WaveManagerCtx` so `rpg-render.ts` retains authoritative ownership.
-- Covers five functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `spawnEnemyById` (random-position spawn per type), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue).
-- `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
+- Covers four functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue, delegates spawning to `rpg-enemy-spawn.ts`).
+- Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; `tickSpawnQueue` calls `spawnEnemyById(ctx, enemyTypeId)` from that module.
+- `rpg-render.ts` keeps 4 one-liner forwarding stubs for backward-compatible call sites.
+
+### src/render/rpg/rpg-enemy-spawn.ts
+- Enemy placement logic extracted from `rpg-wave-manager.ts` (~210 lines).
+- Exports `EnemySpawnCtx` interface (minimal subset of `WaveManagerCtx`) and `spawnEnemyById(ctx, enemyTypeId)` function.
+- Selects a random canvas position via rejection sampling (stays ≥80 px from the player); void and nullstone enemies spawn at canvas edges.
+- Imports all enemy factory functions from `rpg-factories.ts` and enemy/canvas size constants from `rpg-constants.ts` / `rpg-enemy-constants.ts`.
 
 ### src/render/rpg/rpg-stats-panel.ts
 - RPG stats panel DOM construction and per-frame update (~649 lines).
@@ -621,7 +641,7 @@
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30 excluding laser/sapphire), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
 - Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; per-boss-ID behavior dispatch extracted further to `rpg-boss-behaviors.ts`; called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
-- Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
+- Chain whip and vortex draw functions extracted to `rpg-weapon-draw.ts`; sword combo and sand blade draw functions extracted to `rpg-weapon-draw-sword.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
 - Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.

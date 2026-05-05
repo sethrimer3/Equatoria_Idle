@@ -5,14 +5,15 @@
  * and drawing. This module owns the full lifecycle of enemy waves:
  *
  *   • removeDeadEnemies — sweeps dead enemies, awards XP, handles boss defeat
- *   • spawnEnemyById    — places a single enemy by type-id at a valid position
  *   • startNextWave     — increments wave counter and builds the spawn queue
  *   • checkWaveCompletion — detects all-clear and starts the inter-wave delay
  *   • tickSpawnQueue    — drains the timed spawn queue each frame
  *
+ * Enemy placement logic (spawnEnemyById) has been extracted to rpg-enemy-spawn.ts.
+ *
  * The factory `createWaveManager(ctx)` receives a `WaveManagerCtx`
  * dependency-injection object and returns a `WaveManagerHandle` exposing the
- * five public functions called by rpg-render.ts.
+ * four public functions called by rpg-render.ts.
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
@@ -41,30 +42,15 @@ import {
   FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
   FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
   FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
-  LASER_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE,
 } from './rpg-constants';
 import {
   LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
   QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
   IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
   FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
-  EMERALD_ENEMY_SIZE, AMBER_ENEMY_SIZE,
-  QUARTZ_ENEMY_SIZE, RUBY_ENEMY_SIZE, SUNSTONE_ENEMY_SIZE,
-  CITRINE_ENEMY_SIZE, IOLITE_ENEMY_SIZE, AMETHYST_ENEMY_SIZE,
-  DIAMOND_ENEMY_SIZE,
-  FRACTERYL_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE,
 } from './rpg-enemy-constants';
-import {
-  makeLaserEnemy, makeSapphireEnemy,
-  makeEmeraldEnemy, makeAmberEnemy, makeVoidEnemy,
-  makeQuartzEnemy, makeRubyEnemy,
-  makeSunstoneEnemy, makeCitrineEnemy, makeIoliteEnemy,
-  makeAmethystEnemy, makeDiamondEnemy,
-  makeNullstoneEnemy,
-  makeFracterylEnemy,
-  makeEigensteinEnemy, makeBossEnemy,
-} from './rpg-factories';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
+import { spawnEnemyById } from './rpg-enemy-spawn';
 import type {
   LaserEnemy, SapphireEnemy, SapphireMissile, SpawnEntry,
 } from './rpg-types';
@@ -141,7 +127,6 @@ export interface WaveManagerCtx {
 
 export interface WaveManagerHandle {
   removeDeadEnemies(): void;
-  spawnEnemyById(enemyTypeId: string): void;
   startNextWave(): void;
   checkWaveCompletion(): void;
   tickSpawnQueue(deltaMs: number): void;
@@ -151,7 +136,7 @@ export interface WaveManagerHandle {
 
 export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
   const {
-    dim, mote, rpgSimState,
+    rpgSimState,
     enemies, sapphireMissiles, sapphireEnemies, emeraldEnemies,
     amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
@@ -411,163 +396,6 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     }
   }
 
-  function spawnEnemyById(enemyTypeId: string): void {
-    const minDist = 80;
-    let spawnX = 0, spawnY = 0, attempts = 0;
-    const wn = ctx.getCurrentWave();
-    const widthPx = dim.w, heightPx = dim.h;
-    if (enemyTypeId === 'laser') {
-      const half = LASER_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - LASER_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - LASER_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      enemies.push(makeLaserEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'sapphire') {
-      const half = SAPPHIRE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - SAPPHIRE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - SAPPHIRE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'emerald') {
-      const half = EMERALD_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - EMERALD_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - EMERALD_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      emeraldEnemies.push(makeEmeraldEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'amber') {
-      const half = AMBER_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - AMBER_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - AMBER_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      amberEnemies.push(makeAmberEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'void') {
-      // Void enemies spawn at edges so they approach from a distance.
-      const edge = Math.floor(Math.random() * 4);
-      if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
-      else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
-      else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
-      else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
-      voidEnemies.push(makeVoidEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'quartz') {
-      const half = QUARTZ_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - QUARTZ_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - QUARTZ_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      quartzEnemies.push(makeQuartzEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'ruby') {
-      const half = RUBY_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - RUBY_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - RUBY_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      rubyEnemies.push(makeRubyEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'sunstone') {
-      const half = SUNSTONE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - SUNSTONE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - SUNSTONE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      sunstoneEnemies.push(makeSunstoneEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'citrine') {
-      const half = CITRINE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - CITRINE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - CITRINE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      citrineEnemies.push(makeCitrineEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'iolite') {
-      const half = IOLITE_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - IOLITE_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - IOLITE_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      ioliteEnemies.push(makeIoliteEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'amethyst') {
-      const half = AMETHYST_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - AMETHYST_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - AMETHYST_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      amethystEnemies.push(makeAmethystEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'diamond') {
-      const half = DIAMOND_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - DIAMOND_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - DIAMOND_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      diamondEnemies.push(makeDiamondEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'nullstone') {
-      // Nullstone spawns at edges to approach from a distance.
-      const edge = Math.floor(Math.random() * 4);
-      if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
-      else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
-      else if (edge === 2) { spawnX = 0;       spawnY = Math.random() * heightPx; }
-      else                 { spawnX = widthPx; spawnY = Math.random() * heightPx; }
-      nullstoneEnemies.push(makeNullstoneEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'fracteryl') {
-      const half = FRACTERYL_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - FRACTERYL_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - FRACTERYL_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      fracterylEnemies.push(makeFracterylEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'eigenstein') {
-      const half = EIGENSTEIN_ENEMY_SIZE / 2;
-      do {
-        spawnX = half + Math.random() * (widthPx  - EIGENSTEIN_ENEMY_SIZE);
-        spawnY = half + Math.random() * (heightPx - EIGENSTEIN_ENEMY_SIZE);
-        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
-        attempts++;
-      } while (attempts < 20);
-      eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
-    } else if (enemyTypeId === 'boss') {
-      ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx));
-      ctx.enterBossWave();
-    }
-  }
-
   function startNextWave(): void {
     let wave = ctx.getCurrentWave() + 1;
     // Boss waves (multiples of 100) are fought via the RPG menu, not auto-progression.
@@ -606,11 +434,11 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     for (let i = spawnQueue.length - 1; i >= 0; i--) {
       spawnQueue[i].timerMs -= deltaMs;
       if (spawnQueue[i].timerMs <= 0) {
-        spawnEnemyById(spawnQueue[i].enemyTypeId);
+        spawnEnemyById(ctx, spawnQueue[i].enemyTypeId);
         spawnQueue.splice(i, 1);
       }
     }
   }
 
-  return { removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue };
+  return { removeDeadEnemies, startNextWave, checkWaveCompletion, tickSpawnQueue };
 }
