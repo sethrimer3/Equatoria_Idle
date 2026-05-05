@@ -19,6 +19,11 @@ import type { ActionHandler } from '../../input';
 import { formatNumberAs } from '../../util';
 import type { NumberFormat } from '../../util';
 import { makePageBreak } from '../ui-helpers';
+import {
+  getChainWhipParams, setChainWhipParam, resetChainWhipParams,
+  CHAIN_WHIP_PARAM_DEFAULTS,
+} from '../../render/rpg/rpg-weapon-constants';
+import type { ChainWhipParamKey } from '../../render/rpg/rpg-weapon-constants';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -192,7 +197,115 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     }
     element.appendChild(list);
     element.appendChild(makePageBreak('small'));
+
+    if (isDevMode) {
+      element.appendChild(buildChainWhipDevPanel());
+    }
   }
 
   return { element, update };
+}
+
+// ── Quartz whip physics dev panel ─────────────────────────────────────────────
+
+const CHAIN_PARAM_LABELS: Record<ChainWhipParamKey, string> = {
+  CHAIN_MIN_RADIUS:          'Min link radius (px)',
+  CHAIN_MAX_RADIUS:          'Max link radius (px)',
+  CHAIN_LASH_MS:             'Lash duration (ms)',
+  CHAIN_RETRACT_MS:          'Retract duration (ms)',
+  CHAIN_HIT_CD_MS:           'Hit cooldown (ms)',
+  CHAIN_REST_LENGTH:         'Rest length (px/node)',
+  CHAIN_SPRING_K:            'Spring stiffness K',
+  CHAIN_ANCHOR_K:            'Anchor spring K (idle)',
+  CHAIN_RETRACT_ANCHOR_K:    'Anchor spring K (retract)',
+  CHAIN_DAMPING_COEFF:       'Damping coefficient',
+  CHAIN_DAMPING_SPEED_SCALE: 'Damping speed scale',
+  CHAIN_LASH_SPEED:          'Lash impulse speed (px/dt)',
+  CHAIN_MIN_INERTIA:         'Min inertia (node 0)',
+  CHAIN_MAX_INERTIA:         'Max inertia (tip node)',
+  CHAIN_LINK_GAP_RATIO:      'Link gap ratio',
+};
+
+const CHAIN_PARAM_ORDER: ChainWhipParamKey[] = [
+  'CHAIN_LASH_MS', 'CHAIN_RETRACT_MS', 'CHAIN_HIT_CD_MS',
+  'CHAIN_REST_LENGTH', 'CHAIN_SPRING_K', 'CHAIN_ANCHOR_K', 'CHAIN_RETRACT_ANCHOR_K',
+  'CHAIN_DAMPING_COEFF', 'CHAIN_DAMPING_SPEED_SCALE',
+  'CHAIN_LASH_SPEED', 'CHAIN_MIN_INERTIA', 'CHAIN_MAX_INERTIA',
+  'CHAIN_MIN_RADIUS', 'CHAIN_MAX_RADIUS', 'CHAIN_LINK_GAP_RATIO',
+];
+
+function buildChainWhipDevPanel(): HTMLElement {
+  const panel = document.createElement('div');
+  panel.style.cssText = 'margin-top:12px;background:rgba(20,10,30,0.85);border:1px solid rgba(160,216,239,0.35);border-radius:6px;padding:12px;';
+
+  const heading = document.createElement('div');
+  heading.style.cssText = 'color:#a0d8ef;font-weight:700;font-size:0.85em;letter-spacing:0.05em;margin-bottom:8px;';
+  heading.textContent = '🔧 Quartz Whip Physics (Dev Mode)';
+  panel.appendChild(heading);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;';
+
+  const current = getChainWhipParams();
+
+  for (const key of CHAIN_PARAM_ORDER) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-direction:column;gap:2px;';
+
+    const label = document.createElement('label');
+    label.style.cssText = 'font-size:0.72em;color:#88b8cc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    label.textContent = CHAIN_PARAM_LABELS[key];
+
+    const inputRow = document.createElement('div');
+    inputRow.style.cssText = 'display:flex;gap:4px;align-items:center;';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = String(current[key]);
+    input.step = key.includes('_MS') ? '10' : '0.01';
+    input.style.cssText =
+      'width:80px;background:rgba(0,0,0,0.5);border:1px solid rgba(160,216,239,0.35);' +
+      'border-radius:3px;color:#e0f0ff;font-size:0.8em;padding:2px 4px;';
+    input.addEventListener('change', () => {
+      const val = parseFloat(input.value);
+      if (!isNaN(val)) setChainWhipParam(key, val);
+    });
+
+    const dflt = CHAIN_WHIP_PARAM_DEFAULTS[key];
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = '↺';
+    resetBtn.title = `Reset to default (${dflt})`;
+    resetBtn.style.cssText =
+      'padding:2px 5px;background:rgba(40,40,60,0.8);border:1px solid rgba(160,216,239,0.25);' +
+      'border-radius:3px;color:#a0d8ef;font-size:0.75em;cursor:pointer;touch-action:manipulation;';
+    resetBtn.addEventListener('click', () => {
+      setChainWhipParam(key, dflt);
+      input.value = String(dflt);
+    });
+
+    inputRow.appendChild(input);
+    inputRow.appendChild(resetBtn);
+    row.appendChild(label);
+    row.appendChild(inputRow);
+    grid.appendChild(row);
+  }
+
+  panel.appendChild(grid);
+
+  const resetAllBtn = document.createElement('button');
+  resetAllBtn.textContent = '↺ Reset All to Defaults';
+  resetAllBtn.style.cssText =
+    'margin-top:10px;width:100%;padding:5px;background:rgba(40,20,60,0.8);' +
+    'border:1px solid rgba(160,216,239,0.35);border-radius:4px;color:#a0d8ef;' +
+    'font-size:0.78em;font-weight:600;cursor:pointer;touch-action:manipulation;';
+  resetAllBtn.addEventListener('click', () => {
+    resetChainWhipParams();
+    // Refresh displayed values
+    const inputs = grid.querySelectorAll('input[type="number"]');
+    const defaults = Object.values(CHAIN_WHIP_PARAM_DEFAULTS) as number[];
+    inputs.forEach((el, i) => { (el as HTMLInputElement).value = String(defaults[i]); });
+  });
+  panel.appendChild(resetAllBtn);
+
+  return panel;
 }
