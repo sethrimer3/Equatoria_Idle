@@ -579,6 +579,7 @@
 }
 
 /* ── Wire rope SVG overlay (used by soft-body wire renderer) ───── */
+.rpg-wire-rope {
   filter: drop-shadow(0 0 3px rgba(167, 139, 250, 0.6));
 }
 
