@@ -615,11 +615,23 @@
 - Imports all enemy factory functions from `rpg-factories.ts` and enemy/canvas size constants from `rpg-constants.ts` / `rpg-enemy-constants.ts`.
 
 ### src/render/rpg/rpg-stats-panel.ts
-- RPG stats panel DOM construction and per-frame update (~649 lines).
+- RPG stats panel DOM construction and per-frame update.
 - Exports `RpgStatsPanelCtx` interface, `RpgStatsPanelHandle` interface, and `createRpgStatsPanel(ctx)` factory.
 - Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display, weapon stat rows, XP amount display.
 - XP wire interaction is fully delegated to `createXpWireSystem` from `rpg-xp-wire.ts`; stats panel just calls `xpWire.update(nowMs)` per frame.
+- Equip wiring system (`createEquipWiringSystem` from `rpg-equip-wiring.ts`) manages weapon-source, modifier, and stat plugs. State is ephemeral (not persisted).
+- Box 1: 5 weapon-source output plugs (slot 1 unlocked; 2–5 unlock via `getMaxEquippedWeapons`). XP wire anchors are hidden in the panel for backward compatibility.
 - `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
+
+### src/render/rpg/rpg-equip-wiring.ts
+- Plug wiring system for weapon-source/modifier/stat connections in the RPG stats panel.
+- Exports `PlugType`, `EquipWireConnection`, `EquipWiringState`, `EquipWiringCtx`, `EquipWiringHandle`, `createEquipWiringState()`, and `createEquipWiringSystem(ctx)`.
+- Allowed connections: `weaponSourceOut→weaponSlotIn`, `xpOut→modifierXpIn`, `modifierOut→statIn`.
+- Drag behaviour: `pointerdown` on output plug starts drag; `pointerup` over valid input plug commits connection; mismatched/locked/full plugs are rejected.
+- Renders wires as SVG lines in a `.rpg-equip-wire-svg` overlay on `panelEl`. Drag preview uses a dashed stroke.
+- Wire colours: warm orange (weaponSource→slot), purple (xpOut→modifier), green (modifier→stat).
+- `setPlugLocked(plugId, locked)` toggles `rpg-plug--locked` class and prevents drag from/to locked plugs.
+- State is ephemeral — connections reset on page load. Persist via `onWireConnect`/`onWireDisconnect` callbacks if needed.
 
 ### src/render/rpg/rpg-xp-wire.ts
 - Verlet-rope XP wire interaction system extracted from `rpg-stats-panel.ts` (~655 lines).

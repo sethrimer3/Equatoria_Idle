@@ -74,14 +74,14 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     if (e.target === slotPopupOverlay) slotPopupOverlay.style.display = 'none';
   });
 
-  // Append to element so the popup is cleaned up with the tab pane;
-  // position:fixed ensures it still overlays the full viewport.
-  element.appendChild(slotPopupOverlay);
+  // Append to document.body so update()'s innerHTML clear doesn't destroy the overlay.
+  // position:fixed ensures it overlays the full viewport regardless of where it lives in the DOM.
+  document.body.appendChild(slotPopupOverlay);
 
   /** Show the slot picker for the given weapon / state snapshot. */
-  function showSlotPicker(weaponId: string, weaponName: string, rpgState: RpgSimState): void {
+  function showSlotPicker(weaponId: string, _weaponName: string, rpgState: RpgSimState): void {
     const maxSlots = getMaxEquippedWeapons(rpgState);
-    slotPopupTitle.textContent = `Equip "${weaponName}" to slot:`;
+    slotPopupTitle.textContent = `Equip to which slot?`;
     slotPopupGrid.textContent = '';
 
     for (let s = 0; s < 5; s++) {

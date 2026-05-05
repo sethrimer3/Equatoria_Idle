@@ -379,8 +379,9 @@
 .rpg-plug-slot--sand { border-color: rgba(255, 215, 100, 0.35); }
 
 /* ── Boxes 2–5 wrapper — 4 separate row boxes stacked vertically ──── */
+/* ── Boxes 2–5 wider layout ─────────────────────────────────────── */
 .rpg-box5-wrapper {
-  width: calc((var(--tab-height) * 3 - 4px) / 4);
+  width: calc((var(--tab-height) * 3 - 4px) / 4 * 1.5);
   display: flex;
   flex-direction: column;
   align-self: stretch;
@@ -479,14 +480,20 @@
   padding: 1px 2px;
 }
 
-/* Circle plug — small filled circle on the left of each weapon cell */
+/* Circle plug — small filled circle on the left of each weapon cell.
+   Visual size is 12px; touch/click area is expanded via padding to ~18px. */
 .rpg-box4-circle-plug {
-  width: 6px;
-  height: 6px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: rgba(167, 139, 250, 0.45);
   border: 1px solid rgba(167, 139, 250, 0.65);
   flex-shrink: 0;
+  padding: 3px;
+  box-sizing: content-box;
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
 }
 
 .rpg-xp-node {
@@ -616,6 +623,76 @@
 
 .rpg-wire-rope {
   filter: drop-shadow(0 0 3px rgba(167, 139, 250, 0.6));
+}
+
+/* ── Weapon source plugs (box 1) ────────────────────────────────── */
+.rpg-weapon-source-plug {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 215, 100, 0.5);
+  background: rgba(255, 215, 100, 0.12);
+  cursor: crosshair;
+  pointer-events: auto;
+  transition: border-color 0.1s, box-shadow 0.1s;
+  touch-action: none;
+}
+
+.rpg-weapon-source-plug.rpg-plug--locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Valid target highlight (any plug type) ─────────────────────── */
+.rpg-plug--valid-target {
+  box-shadow: 0 0 8px 2px currentColor;
+  border-color: currentColor;
+}
+
+/* ── Modifier plugs (boxes 3–5) ─────────────────────────────────── */
+.rpg-modifier-plug {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.rpg-modifier-plug--xp-in {
+  border: 1.5px solid rgba(167, 139, 250, 0.5);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+.rpg-modifier-plug--out {
+  border: 1.5px solid rgba(100, 220, 150, 0.5);
+  background: rgba(100, 220, 150, 0.1);
+}
+
+/* ── Equip wire SVG overlay ─────────────────────────────────────── */
+.rpg-equip-wire-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 6;
+}
+
+.rpg-equip-wire-line {
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.rpg-equip-wire-drag-preview {
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 4 4;
 }
 
 .rpg-stat {

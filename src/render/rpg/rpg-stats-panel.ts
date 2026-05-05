@@ -18,7 +18,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
-  formatXp,
+  formatXp, getMaxEquippedWeapons,
 } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID, INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
@@ -26,6 +26,10 @@ import type { RpgPlayerStats } from './rpg-types';
 import { BASE_ATTACK_TIMER_KEY, GLOW_PULSE_SPEED, RPG_MOTE_COLOR, RPG_MOTE_GLOW } from './rpg-constants';
 import type { NumberFormat } from '../../util/format';
 import { createXpWireSystem } from './rpg-xp-wire';
+import {
+  createEquipWiringSystem,
+  createEquipWiringState,
+} from './rpg-equip-wiring';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
 // Sand blade (base attack) and sand gatling share a single "SAN" DPS slot so
@@ -179,49 +183,74 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   xpBox1.appendChild(playerIconEl);
 
-  // Plug container — holds 5 sand-coloured rounded-square slots.
-  // These plugs are visual stubs (not wired to stats for now).
-  // The first 4 also contain the functional wire-anchor elements used by the XP wire system.
+  // Plug container — holds 5 weapon source output plugs.
+  // Slot 1 starts unlocked; slots 2–5 unlock as getMaxEquippedWeapons increases.
   const plugContainerEl = document.createElement('div');
   plugContainerEl.className = 'rpg-plug-container';
   xpBox1.appendChild(plugContainerEl);
 
-  function makePlugSlot(extraClass: string): HTMLDivElement {
-    const slot = document.createElement('div');
-    slot.className = `rpg-plug-slot rpg-plug-slot--sand${extraClass ? ' ' + extraClass : ''}`;
-    plugContainerEl.appendChild(slot);
-    return slot;
+  // Hidden anchors for the XP wire system — kept off-screen to avoid breaking
+  // the existing wire mechanic while not occupying visible plug slots.
+  function makeHiddenAnchor(): HTMLDivElement {
+    const el = document.createElement('div');
+    el.className = 'rpg-stat-plug-anchor';
+    el.style.visibility = 'hidden';
+    el.style.position = 'absolute';
+    el.style.width = '0';
+    el.style.height = '0';
+    statsPanel.appendChild(el);
+    return el;
   }
+  const atkPlugAnchor  = makeHiddenAnchor();
+  const defPlugAnchor  = makeHiddenAnchor();
+  const hpPlugAnchor   = makeHiddenAnchor();
+  const luckPlugAnchor = makeHiddenAnchor();
 
-  const atkPlugSlot  = makePlugSlot('');
-  const defPlugSlot  = makePlugSlot('');
-  const hpPlugSlot   = makePlugSlot('');
-  const luckPlugSlot = makePlugSlot('');
-  makePlugSlot(''); // 5th stub plug slot
+  // Hidden plug slots for the XP wire system hit-testing
+  function makeHiddenSlot(): HTMLDivElement {
+    const el = document.createElement('div');
+    el.className = 'rpg-plug-slot rpg-plug-slot--sand';
+    el.style.visibility = 'hidden';
+    el.style.position = 'absolute';
+    el.style.width = '0';
+    el.style.height = '0';
+    el.appendChild(document.createElement('div')); // inner anchor appended below
+    statsPanel.appendChild(el);
+    return el;
+  }
+  const atkPlugSlot  = makeHiddenSlot();
+  const defPlugSlot  = makeHiddenSlot();
+  const hpPlugSlot   = makeHiddenSlot();
+  const luckPlugSlot = makeHiddenSlot();
 
-  const atkPlugAnchor  = document.createElement('div');
-  atkPlugAnchor.className = 'rpg-stat-plug-anchor';
+  // Add anchors into their hidden slots so XP wire positioning still works
   atkPlugSlot.appendChild(atkPlugAnchor);
-
-  const defPlugAnchor  = document.createElement('div');
-  defPlugAnchor.className = 'rpg-stat-plug-anchor';
   defPlugSlot.appendChild(defPlugAnchor);
-
-  const hpPlugAnchor  = document.createElement('div');
-  hpPlugAnchor.className = 'rpg-stat-plug-anchor';
   hpPlugSlot.appendChild(hpPlugAnchor);
-
-  const luckPlugAnchor  = document.createElement('div');
-  luckPlugAnchor.className = 'rpg-stat-plug-anchor';
   luckPlugSlot.appendChild(luckPlugAnchor);
 
+  // Weapon source plugs (box 1 — 5 circle plugs, slot 1 unlocked initially)
+  const weaponSourcePlugEls: HTMLDivElement[] = [];
+  for (let i = 0; i < 5; i++) {
+    const plug = document.createElement('div');
+    plug.className = 'rpg-plug-slot rpg-weapon-source-plug';
+    if (i > 0) plug.classList.add('rpg-plug--locked');
+    plugContainerEl.appendChild(plug);
+    weaponSourcePlugEls.push(plug);
+  }
+
   // ── Boxes 2–5 — 4 separate boxes: XP box + roman-numeral boxes I/II/III ──
-  // Each box is a row containing a label on the left and a plug slot on the right.
+  // Box 2: label (XP node) on left + one xpOut plug on the right.
+  // Boxes 3–5: label (I/II/III) on left + two modifier plugs stacked on right
+  //            (top = modifierXpIn, bottom = modifierOut).
   const xpBox2 = document.createElement('div');
   xpBox2.className = 'rpg-box5-wrapper';
 
-  // Helper: build one row box for boxes 2–5
-  function makeBox5Row(label: string | HTMLElement): HTMLDivElement {
+  // Helper: build box 2 row (xpNodeEl + single xpOut plug)
+  function makeBox5Row(label: string | HTMLElement): {
+    box: HTMLDivElement;
+    xpOutPlug: HTMLDivElement;
+  } {
     const box = document.createElement('div');
     box.className = 'rpg-xp-box rpg-box5-cell';
     if (typeof label === 'string') {
@@ -232,11 +261,38 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     } else {
       box.appendChild(label);
     }
-    // Plug slot (square with rounded corners)
-    const plugSlot = document.createElement('div');
-    plugSlot.className = 'rpg-plug-slot rpg-plug-slot--sand';
-    box.appendChild(plugSlot);
-    return box;
+    const xpOutPlug = document.createElement('div');
+    xpOutPlug.className = 'rpg-plug-slot rpg-plug-slot--sand';
+    box.appendChild(xpOutPlug);
+    return { box, xpOutPlug };
+  }
+
+  // Helper: build a modifier box row (boxes 3–5) with two plugs stacked on the right.
+  function makeModifierBox5Row(label: string): {
+    box: HTMLDivElement;
+    xpInPlug: HTMLDivElement;
+    outPlug: HTMLDivElement;
+  } {
+    const box = document.createElement('div');
+    box.className = 'rpg-xp-box rpg-box5-cell';
+    const span = document.createElement('span');
+    span.className = 'rpg-box5-label';
+    span.textContent = label;
+    box.appendChild(span);
+
+    const plugStack = document.createElement('div');
+    plugStack.style.cssText = 'display:flex;flex-direction:column;gap:2px;flex-shrink:0;';
+
+    const xpInPlug = document.createElement('div');
+    xpInPlug.className = 'rpg-modifier-plug rpg-modifier-plug--xp-in';
+
+    const outPlug = document.createElement('div');
+    outPlug.className = 'rpg-modifier-plug rpg-modifier-plug--out';
+
+    plugStack.appendChild(xpInPlug);
+    plugStack.appendChild(outPlug);
+    box.appendChild(plugStack);
+    return { box, xpInPlug, outPlug };
   }
 
   // XP node — compact two-line widget (remains the drag source for wires)
@@ -254,10 +310,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   xpNodeEl.appendChild(xpLabelTextEl);
   xpNodeEl.appendChild(xpAmountEl);
 
-  const box5Cell2 = makeBox5Row(xpNodeEl); // box 2
-  const box5Cell3 = makeBox5Row('I');       // box 3
-  const box5Cell4 = makeBox5Row('II');      // box 4
-  const box5Cell5 = makeBox5Row('III');     // box 5
+  const { box: box5Cell2, xpOutPlug: xpOutPlugEl } = makeBox5Row(xpNodeEl); // box 2
+  const { box: box5Cell3, xpInPlug: mod1XpIn, outPlug: mod1Out } = makeModifierBox5Row('I');    // box 3
+  const { box: box5Cell4, xpInPlug: mod2XpIn, outPlug: mod2Out } = makeModifierBox5Row('II');   // box 4
+  const { box: box5Cell5, xpInPlug: mod3XpIn, outPlug: mod3Out } = makeModifierBox5Row('III');  // box 5
   xpBox2.appendChild(box5Cell2);
   xpBox2.appendChild(box5Cell3);
   xpBox2.appendChild(box5Cell4);
@@ -288,8 +344,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return cells;
   }
 
-  /** Build one weapon-data cell with a circle plug on the left and a span on the right. */
-  function makeWeaponCell(cell: HTMLDivElement): HTMLSpanElement {
+  /** Build one weapon-data cell with a circle plug on the left and a span on the right.
+   *  Returns the plug element and the stat value span. */
+  function makeWeaponCell(cell: HTMLDivElement): { plug: HTMLSpanElement; span: HTMLSpanElement } {
     cell.classList.add('rpg-box4-cell--weapon');
     const plug = document.createElement('span');
     plug.className = 'rpg-box4-circle-plug';
@@ -299,7 +356,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     span.textContent = '—';
     cell.appendChild(plug);
     cell.appendChild(span);
-    return span;
+    return { plug, span };
   }
 
   // Row 0 — header labels: Weap | ATK | Spd | Rng | Prc
@@ -324,10 +381,19 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   // Each cell has a circle plug on the left and the value on the right.
   const WEAPON_ROW_COUNT = 5;
   const weaponRowSpans: Array<HTMLSpanElement[]> = [];
+  // Plug elements for each weapon row — indexed [row][col] where col 0=WEAP, 1=ATK, 2=SPD, 3=RNG, 4=PRC
+  const weaponRowPlugEls: Array<HTMLSpanElement[]> = [];
   for (let r = 0; r < WEAPON_ROW_COUNT; r++) {
     const cells = makeBox4Row();
-    const spans = cells.map(cell => makeWeaponCell(cell));
+    const spans: HTMLSpanElement[] = [];
+    const plugElsRow: HTMLSpanElement[] = [];
+    for (const cell of cells) {
+      const { plug, span } = makeWeaponCell(cell);
+      spans.push(span);
+      plugElsRow.push(plug);
+    }
     weaponRowSpans.push(spans);
+    weaponRowPlugEls.push(plugElsRow);
   }
 
   // Append the three layout groups to the panel
@@ -455,6 +521,45 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     onError:          () => ctx.onError(),
   });
 
+  // ── Equip wiring system ───────────────────────────────────────────
+  // Manages drag-to-connect wires for weapon source, modifier, and stat plugs.
+  // State is ephemeral (reset on page load) — not persisted in sim state.
+  const equipWiringState = createEquipWiringState();
+  const equipWiring = createEquipWiringSystem({
+    panelEl:          statsPanel,
+    getMaxWeaponSlots: () => getMaxEquippedWeapons(rpgSimState),
+    wiringState:      equipWiringState,
+    onWireConnect:    (_from, _to) => { /* ephemeral — connections stored in equipWiringState */ },
+    onWireDisconnect: (_from, _to) => { /* ephemeral */ },
+  });
+
+  // Register box 1 weapon source plugs
+  for (let i = 0; i < weaponSourcePlugEls.length; i++) {
+    equipWiring.registerPlug(`weaponSource:${i + 1}`, 'weaponSourceOut', weaponSourcePlugEls[i]);
+    equipWiring.setPlugLocked(`weaponSource:${i + 1}`, i > 0);
+  }
+
+  // Register box 2 xpOut plug
+  equipWiring.registerPlug('xp:out', 'xpOut', xpOutPlugEl);
+
+  // Register boxes 3–5 modifier plugs
+  equipWiring.registerPlug('modifier:1:xpIn', 'modifierXpIn', mod1XpIn);
+  equipWiring.registerPlug('modifier:1:out',  'modifierOut',  mod1Out);
+  equipWiring.registerPlug('modifier:2:xpIn', 'modifierXpIn', mod2XpIn);
+  equipWiring.registerPlug('modifier:2:out',  'modifierOut',  mod2Out);
+  equipWiring.registerPlug('modifier:3:xpIn', 'modifierXpIn', mod3XpIn);
+  equipWiring.registerPlug('modifier:3:out',  'modifierOut',  mod3Out);
+
+  // Register boxes 7–11 weapon row plugs
+  const weaponSlotColIds = ['weapIn', 'atkIn', 'spdIn', 'rngIn', 'prcIn'] as const;
+  const weaponSlotColTypes = ['weaponSlotIn', 'statIn', 'statIn', 'statIn', 'statIn'] as const;
+  for (let r = 0; r < WEAPON_ROW_COUNT; r++) {
+    for (let c = 0; c < 5; c++) {
+      const plugId = `weaponSlot:${r + 1}:${weaponSlotColIds[c]}`;
+      equipWiring.registerPlug(plugId, weaponSlotColTypes[c], weaponRowPlugEls[r][c]);
+    }
+  }
+
     function weaponAbbrev(weaponId: string): string {
     if (weaponId === SAND_SLOT_KEY) return 'SAN';
     const tierId = WEAPON_BY_ID.get(weaponId)?.costTierId ?? 'sand';
@@ -565,6 +670,15 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
     // XP wire: rope physics, SVG redraw, and locked-class toggle
     xpWire.update(nowMs);
+
+    // Update weapon source plug lock states based on current max slots
+    const maxWeaponSlots = getMaxEquippedWeapons(rpgSimState);
+    for (let i = 0; i < weaponSourcePlugEls.length; i++) {
+      equipWiring.setPlugLocked(`weaponSource:${i + 1}`, i >= maxWeaponSlots);
+    }
+
+    // Equip wiring: redraw wire SVG
+    equipWiring.update();
 
     // ── DPS chart update ──────────────────────────────────────────
     const now = Date.now();
