@@ -8,7 +8,7 @@
  * Extracted from rpg-menu-panel.ts to keep each sub-tab in its own module.
  */
 
-import { WEAPON_DEFINITIONS } from '../../data/rpg/weapon-definitions';
+import { WEAPON_DEFINITIONS, WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import type { WeaponDefinition } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
@@ -42,6 +42,68 @@ function tierColor(tierId: string): string {
 
 export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabPane {
   const element = document.createElement('div');
+
+  // ── Slot picker popup ──────────────────────────────────────────
+  // Shown when the user clicks "Equip" on a purchased weapon.
+  // Overlays the full viewport; user picks which of the 5 stat-panel
+  // slots (boxes 7–11) to equip the weapon into.
+  const slotPopupOverlay = document.createElement('div');
+  slotPopupOverlay.className = 'weapon-slot-popup-overlay';
+  slotPopupOverlay.style.display = 'none';
+
+  const slotPopupBox = document.createElement('div');
+  slotPopupBox.className = 'weapon-slot-popup-box';
+
+  const slotPopupTitle = document.createElement('div');
+  slotPopupTitle.className = 'weapon-slot-popup-title';
+  slotPopupBox.appendChild(slotPopupTitle);
+
+  const slotPopupGrid = document.createElement('div');
+  slotPopupGrid.className = 'weapon-slot-popup-grid';
+  slotPopupBox.appendChild(slotPopupGrid);
+
+  const slotPopupCancel = document.createElement('button');
+  slotPopupCancel.className = 'weapon-store__btn weapon-slot-popup-cancel';
+  slotPopupCancel.textContent = 'Cancel';
+  slotPopupCancel.addEventListener('click', () => { slotPopupOverlay.style.display = 'none'; });
+  slotPopupBox.appendChild(slotPopupCancel);
+
+  slotPopupOverlay.appendChild(slotPopupBox);
+  // Clicking the dark backdrop also closes the popup
+  slotPopupOverlay.addEventListener('click', (e) => {
+    if (e.target === slotPopupOverlay) slotPopupOverlay.style.display = 'none';
+  });
+
+  // Append to element so the popup is cleaned up with the tab pane;
+  // position:fixed ensures it still overlays the full viewport.
+  element.appendChild(slotPopupOverlay);
+
+  /** Show the slot picker for the given weapon / state snapshot. */
+  function showSlotPicker(weaponId: string, weaponName: string, rpgState: RpgSimState): void {
+    const maxSlots = getMaxEquippedWeapons(rpgState);
+    slotPopupTitle.textContent = `Equip "${weaponName}" to slot:`;
+    slotPopupGrid.textContent = '';
+
+    for (let s = 0; s < 5; s++) {
+      const btn = document.createElement('button');
+      btn.className = 'weapon-store__btn weapon-slot-popup-slot-btn';
+      const isLocked = s >= maxSlots;
+      const occupant = rpgState.equippedWeaponSlots.get(s);
+      const occupantDef = occupant ? WEAPON_BY_ID.get(occupant) : undefined;
+      const occupantName = occupantDef ? occupantDef.name : (occupant ?? 'Empty');
+      btn.textContent = `Slot ${s + 1}: ${isLocked ? '🔒 Locked' : (occupant ? occupantName : 'Empty')}`;
+      btn.disabled = isLocked;
+      if (!isLocked) {
+        btn.addEventListener('click', () => {
+          slotPopupOverlay.style.display = 'none';
+          dispatch({ kind: 'equip_weapon_to_slot', weaponId, slotIndex: s });
+        });
+      }
+      slotPopupGrid.appendChild(btn);
+    }
+
+    slotPopupOverlay.style.display = 'flex';
+  }
 
   function buildWeaponCard(
     weapon: WeaponDefinition,
@@ -135,7 +197,7 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
         equipBtn.className = 'weapon-store__btn';
         equipBtn.textContent = canEquipMore ? 'Equip' : `Full (${maxSlots}/${maxSlots})`;
         equipBtn.disabled = !canEquipMore;
-        equipBtn.addEventListener('click', () => dispatch({ kind: 'equip_weapon', weaponId: weapon.id }));
+        equipBtn.addEventListener('click', () => showSlotPicker(weapon.id, weapon.name, rpgState));
         btnRow.appendChild(equipBtn);
       } else {
         const unequipBtn = document.createElement('button');

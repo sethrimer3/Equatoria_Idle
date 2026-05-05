@@ -15,6 +15,7 @@ export type GameAction =
   | { kind: 'reset_interaction_matrix' }
   | { kind: 'purchase_weapon'; weaponId: string }
   | { kind: 'equip_weapon'; weaponId: string }
+  | { kind: 'equip_weapon_to_slot'; weaponId: string; slotIndex: number }
   | { kind: 'unequip_weapon'; weaponId: string }
   | { kind: 'upgrade_weapon_tier'; weaponId: string }
   | { kind: 'purchase_rpg_upgrade'; upgradeId: string }

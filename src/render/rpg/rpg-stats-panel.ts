@@ -267,6 +267,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   // Layout:
   //   Row 0 (box 6):  column headers: Weap | ATK | Spd | Rng | Prc
   //   Rows 1–5 (boxes 7–11): one row per equipped weapon, showing base stats
+  //   Each cell in rows 7–11 has a circle plug on the left + value on the right.
   const xpBox3 = document.createElement('div');
   xpBox3.className = 'rpg-box4-wrapper';
 
@@ -285,6 +286,20 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
     xpBox3.appendChild(rowBox);
     return cells;
+  }
+
+  /** Build one weapon-data cell with a circle plug on the left and a span on the right. */
+  function makeWeaponCell(cell: HTMLDivElement): HTMLSpanElement {
+    cell.classList.add('rpg-box4-cell--weapon');
+    const plug = document.createElement('span');
+    plug.className = 'rpg-box4-circle-plug';
+    const span = document.createElement('span');
+    span.className = 'rpg-stat-value rpg-box4-weapon-stat';
+    span.style.color = 'rgba(255,255,255,0.18)';
+    span.textContent = '—';
+    cell.appendChild(plug);
+    cell.appendChild(span);
+    return span;
   }
 
   // Row 0 — header labels: Weap | ATK | Spd | Rng | Prc
@@ -306,18 +321,12 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   // Rows 1–5 — weapon data rows (boxes 7–11)
   // Each row holds 5 span references for live updates.
+  // Each cell has a circle plug on the left and the value on the right.
   const WEAPON_ROW_COUNT = 5;
   const weaponRowSpans: Array<HTMLSpanElement[]> = [];
   for (let r = 0; r < WEAPON_ROW_COUNT; r++) {
     const cells = makeBox4Row();
-    const spans = cells.map(cell => {
-      const span = document.createElement('span');
-      span.className = 'rpg-stat-value rpg-box4-weapon-stat';
-      span.style.color = 'rgba(255,255,255,0.18)';
-      span.textContent = '—';
-      cell.appendChild(span);
-      return span;
-    });
+    const spans = cells.map(cell => makeWeaponCell(cell));
     weaponRowSpans.push(spans);
   }
 
@@ -573,10 +582,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     lastDpsDomUpdateMs = now;
 
     // ── Boxes 7–11: weapon stat rows ─────────────────────────────
-    // Show one equipped weapon per row; empty rows show dashes.
+    // Show the weapon assigned to each slot (0–4); empty slots show dashes.
     for (let r = 0; r < WEAPON_ROW_COUNT; r++) {
       const spans = weaponRowSpans[r];
-      const weaponId = equippedIds[r];
+      const weaponId = rpgSimState.equippedWeaponSlots.get(r);
       if (!weaponId) {
         // Empty slot
         for (const sp of spans) {
@@ -587,6 +596,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       }
       const def = WEAPON_BY_ID.get(weaponId);
       const color = weaponColor(weaponId);
+      // WEAP column: show the tier abbreviation (short name)
       spans[0].style.color = color;
       spans[0].textContent = weaponAbbrev(weaponId);
       if (def) {

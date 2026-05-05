@@ -466,7 +466,27 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+}
+
+/* Weapon cell layout: circle plug on the left, value on the right */
+.rpg-box4-cell--weapon {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 1px 2px;
+}
+
+/* Circle plug — small filled circle on the left of each weapon cell */
+.rpg-box4-circle-plug {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(167, 139, 250, 0.45);
+  border: 1px solid rgba(167, 139, 250, 0.65);
+  flex-shrink: 0;
 }
 
 .rpg-xp-node {
@@ -950,4 +970,72 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   letter-spacing: 0.5px;
 }
+
+/* ── Weapon slot picker popup ───────────────────────────────────────────── */
+
+/* Full-screen backdrop */
+.weapon-slot-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* Centered popup card */
+.weapon-slot-popup-box {
+  background: rgba(15, 10, 30, 0.97);
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+/* Title text */
+.weapon-slot-popup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+/* Slot button grid — stacked vertically */
+.weapon-slot-popup-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Individual slot buttons */
+.weapon-slot-popup-slot-btn {
+  text-align: left !important;
+  font-size: 12px !important;
+  padding: 7px 10px !important;
+}
+
+.weapon-slot-popup-slot-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Cancel button — slightly different style */
+.weapon-slot-popup-cancel {
+  align-self: center;
+  font-size: 11px !important;
+  padding: 5px 18px !important;
+  background: rgba(60, 20, 20, 0.6) !important;
+  border-color: rgba(252, 165, 165, 0.35) !important;
+  color: #fca5a5 !important;
+}
+
 
