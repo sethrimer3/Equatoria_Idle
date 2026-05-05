@@ -326,22 +326,24 @@
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
 
 ### src/render/rpg/rpg-constants.ts
-- All module-level numeric and string constants for the RPG rendering system (~580 lines after extraction).
-- Covers: player, laser enemy, sapphire, missile, sand projectile, chain whip, laser beam, vortex, diamond sword (shard system), poison bolt, boss, Euler-fluid injection constants, and lucky mote drop constants.
-- Also exports `SWORD_SHARD_SHAPES` — readonly polygon vertex data for the 7 prismatic blade shards.
-- Exports `LUCKY_*` constants: `LUCKY_MOTE_RADIUS`, `LUCKY_MOTE_BORDER_COLOR`, `LUCKY_MOTE_MAGNET_DIST`, `LUCKY_MOTE_COLLECT_DIST`, `LUCKY_MOTE_MAGNET_SPEED`, `LUCKY_MOTE_BONUS_PCT`, `LUCKY_MOTE_SPAWN_SPEED`, `LUCKY_MOTE_DAMPING`, `LUCKY_POPUP_DURATION_MS`, `LUCKY_POPUP_SPEED`, `LUCKY_POPUP_DECEL`, `LUCKY_PULSE_SPEED`.
+- Core numeric and string constants for the RPG rendering system (~311 lines after weapon extraction).
+- Covers: player, mote, joystick, laser/sapphire starter enemies, missile, boss, damage numbers, iframes, fluid injection forces, and lucky mote drop constants.
 - Imports `PLAYER_BASE_ATK` from `rpg-state.ts` (used to initialise `PLAYER_ATK_INIT`).
-- Exports companion-ship and laser constants for Sapphire/Amethyst persistent ship weapons.
-- Per-enemy-type constants for non-starter enemies have been moved to `rpg-enemy-constants.ts`.
-- Exports all constants; consumed by `rpg-render.ts`, `rpg-factories.ts`, and RPG draw modules.
+- Exports all constants; consumed by `rpg-render.ts`, `rpg-factories.ts`, and RPG draw/update modules.
+- Weapon-specific constants (chain whip, laser beam, vortex, sword, poison, emerald missiles, sunstone mines, companion ships) have been moved to `rpg-weapon-constants.ts`.
+
+### src/render/rpg/rpg-weapon-constants.ts
+- All player-weapon and weapon-projectile constants (~374 lines).
+- Covers: sand projectiles, chain whip physics/visual, ruby laser beam, nullstone vortex, diamond sword (shard shapes, combo system, `SAND_BLADE_COLORS`), poison bolt, emerald player + sub-missiles + swirl particles, sunstone mines, sapphire/amethyst companion ships + spiral lasers.
+- No imports — all values are primitive literals or simple math expressions.
+- Consumed by all weapon system modules (`rpg-weapon-chain.ts`, `rpg-weapon-sword.ts`, `rpg-weapon-vortex.ts`, `rpg-weapon-poison.ts`, `rpg-weapon-emerald.ts`, `rpg-weapon-sunstone.ts`, `rpg-weapon-ships.ts`, `rpg-weapon-draw.ts`, `rpg-weapon-laser-beam.ts`, `rpg-weapon-sand.ts`) plus `rpg-companion-draw.ts`, `rpg-entity-draw.ts`, `rpg-helpers.ts`, `rpg-boss-wave.ts`.
 
 ### src/render/rpg/rpg-enemy-constants.ts
 - Per-enemy-type constants for all non-starter enemy types (~230 lines).
 - Covers: Emerald, Amber, Void, Quartz, Ruby, Sunstone, Citrine, Iolite, Amethyst, Diamond, Nullstone, Fracteryl, Eigenstein (and their projectiles/shards).
 - Also contains the XP multiplier table for all enemy types (including Laser and Sapphire).
 - No imports — all values are primitive literals.
-- Extracted from `rpg-constants.ts` to keep that file under ~600 lines.
-- Consumed by `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, and `rpg-render.ts`.
+- Consumed by `rpg-factories.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-draw-adv.ts`, and `rpg-render.ts`.
 
 ### src/render/rpg/rpg-types.ts
 - Core interfaces and type aliases for the RPG rendering system (~299 lines after enemy types extracted).
@@ -371,14 +373,50 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts
-- 12 exported pure draw functions for weapon projectiles, player/weapon effects, companion ships, support visuals, and the player mote (~875 lines after player mote extraction).
-- Each function takes `ctx: CanvasRenderingContext2D` as its first parameter; all other inputs are explicit entity arrays or scalar values.
-- Covers: sand projectiles, poison bolts, laser beam effect, attack trail (laser enemy), death particles, shot lines, hit effects, damage numbers, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, Sapphire/Amethyst companion ships and lasers, target reticle, and **player mote** (comet trail + body draw with iframe flicker).
+- Exported pure draw functions for weapon projectiles and player-side combat visuals (~538 lines after refactoring).
+- Covers: sand projectiles, poison bolts, laser beam effect, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, target reticle, and **player mote** (comet trail + body draw with iframe flicker).
 - `drawPlayerMote(ctx, mote, glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs)` — replaces the inline draw block that was in `rpg-render.ts`; respects `isLowGraphicsMode` via the module flag.
 - Exposes its own `setLowGraphicsMode()` (independent of `rpg-enemy-draw.ts`).
-- `drawSapphireShips` and `drawSapphireLasers` use the neon trail system from `neon-trail-draw.ts`.
-- Module-level `_sapphireShipTrailCfg` and `_sapphireLaserTrailCfg` — cached NeonTrailConfig objects (no per-frame allocation).
+- **Companion ship draw** has moved to `rpg-companion-draw.ts`.
+- **Combat feedback visuals** (death particles, shot lines, hit effects, damage numbers) have moved to `rpg-combat-effects-draw.ts`.
+- **`drawAttackTrail`** (laser enemy dash trail) has moved to `rpg-enemy-draw.ts`.
 - No runtime side-effects; safe to call from any rendering context.
+
+### src/render/rpg/rpg-companion-draw.ts
+- Pure draw functions for Sapphire and Amethyst companion ships and their lasers (~257 lines).
+- Extracted from `rpg-entity-draw.ts` to keep that file focused on weapon projectiles.
+- Covers: `drawSapphireShips`, `drawSapphireLasers`, `drawAmethystShips`, `drawAmethystLasers`.
+- Uses the neon trail system (`neon-trail-draw.ts`) for high-quality trail rendering.
+- Module-level `_sapphireShipTrailCfg`, `_sapphireLaserTrailCfg`, `_amethystLaserTrailCfg` — cached `NeonTrailConfig` objects (no per-frame allocation).
+- Has its own `setLowGraphicsMode()` export; called from `rpg-render.ts` at startup.
+
+### src/render/rpg/rpg-combat-effects-draw.ts
+- Pure draw functions for per-hit feedback visuals (~95 lines).
+- Extracted from `rpg-entity-draw.ts`.
+- Covers: `drawDeathParticles`, `drawShotLines`, `drawHitEffects`, `drawDamageNumbers`.
+- All functions are stateless: they accept a canvas context and the relevant entity array.
+- Has its own `setLowGraphicsMode()` export; called from `rpg-render.ts`.
+
+### src/render/rpg/rpg-weapon-draw.ts
+- Canvas draw functions for chain-whip and vortex weapon visuals (~173 lines).
+- Extracted from `rpg-render.ts`; sword/sand blade drawing further extracted to `rpg-weapon-draw-sword.ts`.
+- Exports `drawChainWhip(ctx, state, mote)` and `drawVortexes(ctx, vortexes)`.
+- Has its own `setLowGraphicsMode()` export for chain-whip glow; called from `rpg-render.ts`.
+
+### src/render/rpg/rpg-weapon-draw-sword.ts
+- Canvas draw functions for diamond sword and sand blade weapon visuals (~340 lines).
+- Extracted from `rpg-weapon-draw.ts` to keep that file focused on chain/vortex drawing.
+- Exports `drawSwordCombos(ctx, comboStates, mote, weaponTiers)` and `drawSandBladeCombo(ctx, state, mote)`.
+- Exports sand drift pixel system: `spawnSandSwingPixels`, `updateSandDriftPixels`, `drawSandDriftPixels`.
+- Has its own `setLowGraphicsMode()` export for sword glow; both weapon draw setters are called from `rpg-render.ts`.
+
+### src/render/rpg/rpg-boss-wave.ts
+- Boss wave lifecycle management extracted from `rpg-render.ts` (~218 lines).
+- Exports `BossWaveCtx` interface, `BossWaveHandle` interface, and `createBossWaveManager(ctx)` factory.
+- Owns: `teleportPlayerToSafeZone`, `enterBossWave`, `exitBossWave`, `startBossFight`, `damageBossEnemy`.
+- `BossWaveCtx` exposes all mutable closure state via getter/setter callbacks (same pattern as `BossUpdateCtx`, `WaveManagerCtx`).
+- `rpg-render.ts` retains `isBossWaveActive`, `bossActiveEquipIds`, and `bossPreWaveWeaponTiers` as let-variables; `getEffectiveEquippedIds()` stays in `rpg-render.ts` and reads them directly.
+- Initialized after `statsPanel` is created (which sets up `recordDps`), since `damageBossEnemy` and `spawnDamageNumber` callbacks are required.
 
 ### src/render/rpg/neon-trail-draw.ts
 - Reusable neon particle trail rendering system for Float64Array ring-buffer trails.
@@ -392,12 +430,18 @@
 - Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
-- 26 exported pure draw functions for all RPG enemy types, extracted from the former `rpg-entity-draw.ts` (~712 lines).
-- Covers every enemy body + associated projectiles/shards: sapphire+missiles, emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts, iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
-- Also exports `drawLaserEnemies(ctx, enemies, nowMs)` — draws the basic "laser" enemy type with health bar and attack trail; formerly `drawEnemies()` inlined in `rpg-render.ts`.
-- Also exports `drawEnemyIndicators(ctx, style, enemies..., bossEnemy)` — draws red triangle or outline markers above all living enemies; formerly inlined in `rpg-render.ts`.
+- Exported pure draw functions for starter-through-Void tier enemies (~431 lines).
+- Covers: Sapphire+missiles, Emerald, Amber+shards, Void, Laser, plus `drawAttackTrail` and `drawEnemyIndicators` (shared infrastructure used by all tiers).
+- Advanced enemy draw functions (Quartz and above) have been split out to `rpg-enemy-draw-adv.ts`.
+- `setLowGraphicsMode()` propagates to `rpg-enemy-draw-adv.ts` so callers only need one call.
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
-- Has its own independent `isLowGraphicsMode` flag and `setLowGraphicsMode()` export, called from `rpg-render.ts` alongside the entity-draw and weapon-draw equivalents.
+
+### src/render/rpg/rpg-enemy-draw-adv.ts
+- Exported pure draw functions for advanced (Quartz-tier and above) enemies (~376 lines).
+- Covers: Quartz+spikes, Ruby+bolts, Sunstone, Citrine+bolts, Iolite, Amethyst+shards, Diamond+shards, Nullstone+tendrils, Fracteryl+shards, Eigenstein+beams, teleport particles.
+- Extracted from `rpg-enemy-draw.ts` (formerly 755 lines) to keep both files under ~450 lines.
+- Has its own `isLowGraphicsMode` flag set via `setLowGraphicsMode()` (called through `rpg-enemy-draw.ts`'s `setLowGraphicsMode` which delegates here).
+- Imported directly by `rpg-render.ts` alongside `rpg-enemy-draw.ts`.
 
 ### src/render/rpg/rpg-enemy-updates.ts
 - 16 exported enemy update functions covering wave 1–30 enemy types (~616 lines).
@@ -420,10 +464,18 @@
 - Split from `rpg-enemy-updates.ts` to keep both files under ~650 lines.
 
 ### src/render/rpg/rpg-boss-update.ts
-- 2 exported boss update functions extracted from `rpg-render.ts` (~380 lines).
-- Exports `BossUpdateCtx` interface and `updateBossEnemy(boss, ctx, deltaMs)`, `updateBossProjectiles(bossProjectiles, ctx, deltaMs)`.
+- Per-frame update orchestration for the boss enemy and boss projectiles (~234 lines).
+- Exports `BossUpdateCtx` interface, `updateBossEnemy(boss, ctx, deltaMs)`, and `updateBossProjectiles(bossProjectiles, ctx, deltaMs)`.
+- `updateBossEnemy` handles: dt computation, pulse/phase-transition/timer ticks, direction vectors, delegates to `updateBossBehavior` (rpg-boss-behaviors.ts), then applies contact damage and position clamp for non-wave frames.
 - `BossUpdateCtx` exposes mutable closure state (danmakuSafeZone, playerIFramesMs, isBossWaveActive) via getter/setter callbacks.
-- Includes `isInBottomSafeZone(px, py, dim)` local helper for the bottom safe zone check.
+- Includes `isInBottomSafeZone(px, py, dim)` local helper.
+
+### src/render/rpg/rpg-boss-behaviors.ts
+- Per-boss-ID movement and attack patterns (~581 lines), extracted from `rpg-boss-update.ts`.
+- Exports `BossBehaviorCtx` (minimal subset of `BossUpdateCtx`) and `updateBossBehavior(boss, ctx, dt, dx, dy, dirX, dirY, dist, atk1Cd, atk2Cd, deltaMs): boolean`.
+- Returns `true` (boss-wave danmaku mode — position already clamped) or `false` (velocities only changed — caller applies position clamp).
+- Boss-wave block: three danmaku patterns (flower ring, spiral burst, star formation) that scale with `danmakuLevel`.
+- Per-boss blocks: bossId 1–12 movement + attack logic, gravity wells (bossId 8/9/10), invulnerability cycling (bossId 7), danmaku ring attacks (bossId 11/12).
 
 ### src/render/rpg/rpg-boss-draw.ts
 - 4 exported pure draw functions for boss wave HUD elements (~265 lines).
@@ -434,7 +486,7 @@
 - 24 per-entity damage functions extracted from `rpg-render.ts` via factory pattern (~307 lines).
 - Exports `DamageCtx` interface (`recordDps` callback) and `createDamageFns(ctx)` factory.
 - `createDamageFns` returns all damage helpers (`damageEnemy`, `damageSapphireEnemy`, `damageMissile`, etc.) with identical signatures and behaviour, so call sites in `rpg-render.ts` are unchanged.
-- `damageBossEnemy` is NOT included (stays in `rpg-render.ts` due to closure-specific references: `bossEnemy`, `isBossWaveActive`, `teleportPlayerToSafeZone`, etc.).
+- `damageBossEnemy` is NOT included; it lives in `rpg-boss-wave.ts` (part of boss wave lifecycle management).
 - Imports entity types from `./rpg-types` and `MINIMUM_SHIELD_DAMAGE` from `./rpg-constants`.
 
 ### src/render/rpg/rpg-lucky-motes.ts
@@ -546,13 +598,34 @@
 - `rpg-render.ts` calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
 
 ### src/render/rpg/rpg-wave-manager.ts
-- Wave lifecycle management extracted from `rpg-render.ts` (~616 lines).
+- Wave lifecycle management extracted from `rpg-render.ts` (~444 lines after spawn extraction).
 - Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
 - Scalar state (`currentWave`, `isInterWave`, `bossEnemy`, `isBossFightFromMenu`, `interWaveTimerMs`) is accessed through getter/setter lambdas on `WaveManagerCtx` so `rpg-render.ts` retains authoritative ownership.
-- Covers five functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `spawnEnemyById` (random-position spawn per type), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue).
-- `rpg-render.ts` keeps 5 one-liner forwarding stubs for backward-compatible call sites (e.g. `weaponCtx.removeDeadEnemies`, update loop references).
+- Covers four functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue, delegates spawning to `rpg-enemy-spawn.ts`).
+- Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; `tickSpawnQueue` calls `spawnEnemyById(ctx, enemyTypeId)` from that module.
+- `rpg-render.ts` keeps 4 one-liner forwarding stubs for backward-compatible call sites.
 
-### src/render/rpg/rpg-render.ts
+### src/render/rpg/rpg-enemy-spawn.ts
+- Enemy placement logic extracted from `rpg-wave-manager.ts` (~210 lines).
+- Exports `EnemySpawnCtx` interface (minimal subset of `WaveManagerCtx`) and `spawnEnemyById(ctx, enemyTypeId)` function.
+- Selects a random canvas position via rejection sampling (stays ≥80 px from the player); void and nullstone enemies spawn at canvas edges.
+- Imports all enemy factory functions from `rpg-factories.ts` and enemy/canvas size constants from `rpg-constants.ts` / `rpg-enemy-constants.ts`.
+
+### src/render/rpg/rpg-stats-panel.ts
+- RPG stats panel DOM construction and per-frame update (~649 lines).
+- Exports `RpgStatsPanelCtx` interface, `RpgStatsPanelHandle` interface, and `createRpgStatsPanel(ctx)` factory.
+- Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display, weapon stat rows, XP amount display.
+- XP wire interaction is fully delegated to `createXpWireSystem` from `rpg-xp-wire.ts`; stats panel just calls `xpWire.update(nowMs)` per frame.
+- `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
+
+### src/render/rpg/rpg-xp-wire.ts
+- Verlet-rope XP wire interaction system extracted from `rpg-stats-panel.ts` (~655 lines).
+- Exports `WireStat` type alias, `STAT_WIRE_COLOR` map, `XpWireCtx` interface, `XpWireHandle` interface, and `createXpWireSystem(ctx)` factory.
+- Owns the SVG overlay, plug socket circles, rope physics (Verlet integration with constraint solving), all pointer event listeners, and wire colour bleed animation.
+- Wire mechanic: drag from XP node to stat anchor → create wire; tap XP node → slurp all wires back; drag wire tip handle to different stat → re-attach; 3-wire max limit with error feedback.
+- `XpWireCtx` provides: `panelEl`, `xpNodeEl`, `statPlugAnchors`, `statPlugSlots`, `rpgSimState`, `onWireConnect`, `onWireDisconnect`, `onError`.
+- `update(nowMs)` updates rope physics, SVG rendering, and toggles `rpg-xp-node--locked` class; must be called once per frame.
+
 - Independent RPG canvas rendering system for the RPG tab (~1,557 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
@@ -566,9 +639,9 @@
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30 excluding laser/sapphire), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
-- Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; called via `bossCtx: BossUpdateCtx` object.
+- Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; per-boss-ID behavior dispatch extracted further to `rpg-boss-behaviors.ts`; called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
-- Chain whip, vortex, and sword combo draw functions extracted to `rpg-weapon-draw.ts`.
+- Chain whip and vortex draw functions extracted to `rpg-weapon-draw.ts`; sword combo and sand blade draw functions extracted to `rpg-weapon-draw-sword.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
 - Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.

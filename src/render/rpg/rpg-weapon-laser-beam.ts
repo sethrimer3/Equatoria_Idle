@@ -20,8 +20,10 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import {
-  HIT_EFFECT_DURATION_MS,
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW,
+} from './rpg-weapon-constants';
+import {
+  HIT_EFFECT_DURATION_MS,
   BOSS_SIZE_BASE,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_LASER_BEAM_STRENGTH,
   FLUID_BEAM_R, FLUID_BEAM_G, FLUID_BEAM_B,

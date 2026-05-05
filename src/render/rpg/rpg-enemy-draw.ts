@@ -1,8 +1,11 @@
 /**
- * rpg-enemy-draw.ts — Enemy-type draw functions extracted from rpg-entity-draw.ts.
+ * rpg-enemy-draw.ts — Draw functions for starter/mid-tier enemies.
  *
- * Contains draw functions for all enemy types and their associated projectiles/effects
- * (missiles, shards, spikes, bolts, tendrils, beams, teleport particles, etc.).
+ * Contains draw functions for Laser, Sapphire, Emerald, Amber, and Void enemies
+ * (the starter-through-Void tier), plus shared infrastructure (drawAttackTrail,
+ * drawLaserEnemies, drawEnemyIndicators).
+ *
+ * Advanced enemy draw functions (Quartz and above) live in rpg-enemy-draw-adv.ts.
  *
  * Each function takes an explicit `ctx: CanvasRenderingContext2D` as its first
  * parameter, plus the entity array(s) it needs, instead of capturing them from
@@ -17,17 +20,16 @@ import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
   VoidEnemy,
-  QuartzEnemy, QuartzSpike,
-  RubyEnemy, RubyBolt,
+  QuartzEnemy,
+  RubyEnemy,
   SunstoneEnemy,
-  CitrineEnemy, CitrineBolt,
+  CitrineEnemy,
   IoliteEnemy,
-  AmethystEnemy, AmethystShard,
-  DiamondEnemy, DiamondShard,
-  NullstoneEnemy, VoidTendril,
-  FracterylEnemy, FracterylShard,
-  EigensteinEnemy, EigensteinBeam,
-  TeleportParticle,
+  AmethystEnemy,
+  DiamondEnemy,
+  NullstoneEnemy,
+  FracterylEnemy,
+  EigensteinEnemy,
   BossEnemy,
 } from './rpg-enemy-types';
 
@@ -35,6 +37,8 @@ import {
   SAPPHIRE_SHIELD_RADIUS, SAPPHIRE_ENEMY_GLOW, SAPPHIRE_ENEMY_COLOR, SAPPHIRE_ENEMY_SIZE,
   MISSILE_TRAIL_CAP, MISSILE_TRAIL_DASH_RATIO, MISSILE_GLOW, MISSILE_COLOR, MISSILE_SIZE,
   LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
+  LASER_DASH_DISTANCE, LASER_TRAIL_ERASE_MS, ATTACK_TRAIL_LENGTH_SCALE,
+  ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE,
   BOSS_SIZE_BASE,
 } from './rpg-constants';
 import {
@@ -42,31 +46,71 @@ import {
   AMBER_ENEMY_SIZE, AMBER_ENEMY_COLOR, AMBER_ENEMY_GLOW,
   AMBER_SHARD_TRAIL_CAP, AMBER_SHARD_GLOW, AMBER_SHARD_COLOR, AMBER_SHARD_SIZE,
   VOID_AURA_PULSE_MS, VOID_ENEMY_GLOW, VOID_AURA_RADIUS, VOID_ENEMY_COLOR, VOID_ENEMY_SIZE,
-  QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_GLOW, QUARTZ_ENEMY_COLOR,
-  QUARTZ_SPIKE_SIZE, QUARTZ_SPIKE_GLOW, QUARTZ_SPIKE_COLOR,
-  RUBY_ENEMY_SIZE, RUBY_ENEMY_GLOW, RUBY_ENEMY_COLOR,
-  RUBY_BOLT_SIZE, RUBY_BOLT_GLOW, RUBY_BOLT_COLOR,
-  SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_GLOW, SUNSTONE_ENEMY_COLOR,
-  CITRINE_ENEMY_SIZE, CITRINE_ENEMY_GLOW, CITRINE_ENEMY_COLOR,
-  CITRINE_BOLT_TRAIL_CAP, CITRINE_BOLT_COLOR, CITRINE_BOLT_SIZE, CITRINE_BOLT_GLOW,
-  IOLITE_ENEMY_SIZE, IOLITE_ENEMY_GLOW, IOLITE_ENEMY_COLOR,
-  AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_GLOW, AMETHYST_ENEMY_COLOR,
-  AMETHYST_SHARD_SIZE, AMETHYST_SHARD_GLOW, AMETHYST_SHARD_COLOR,
-  DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_GLOW, DIAMOND_ENEMY_COLOR,
-  DIAMOND_SHARD_SIZE, DIAMOND_SHARD_GLOW, DIAMOND_SHARD_COLOR,
-  NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_GLOW, NULLSTONE_ENEMY_COLOR, NULLSTONE_GRAVITY_RADIUS,
-  VOID_TENDRIL_SIZE, VOID_TENDRIL_GLOW, VOID_TENDRIL_COLOR,
-  FRACTERYL_ENEMY_SIZE, FRACTERYL_ENEMY_GLOW, FRACTERYL_ENEMY_COLOR,
-  EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_ENEMY_GLOW, EIGENSTEIN_ENEMY_COLOR, EIGENSTEIN_BEAM_CHARGE_MS,
+  QUARTZ_ENEMY_SIZE,
+  RUBY_ENEMY_SIZE,
+  SUNSTONE_ENEMY_SIZE,
+  CITRINE_ENEMY_SIZE,
+  IOLITE_ENEMY_SIZE,
+  AMETHYST_ENEMY_SIZE,
+  DIAMOND_ENEMY_SIZE,
+  NULLSTONE_ENEMY_SIZE,
+  FRACTERYL_ENEMY_SIZE,
+  EIGENSTEIN_ENEMY_SIZE,
 } from './rpg-enemy-constants';
-import { drawAttackTrail } from './rpg-entity-draw';
+import { setLowGraphicsMode as setAdvLowGraphics } from './rpg-enemy-draw-adv';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
 
-/** Sets low-graphics mode for RPG enemy draw functions (skips glow & trails). */
+/**
+ * Sets low-graphics mode for all enemy draw functions.
+ * Propagates to rpg-enemy-draw-adv.ts so only one call-site is needed.
+ */
 export function setLowGraphicsMode(enabled: boolean): void {
   isLowGraphicsMode = enabled;
+  setAdvLowGraphics(enabled);
+}
+
+/**
+ * Draws the curved dashed trail left by a laser enemy during its dash attack.
+ * Moved here from rpg-entity-draw.ts since this is the sole consumer.
+ */
+export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy, nowMs: number): void {
+  const trail = enemy.attackTrail;
+  if (!trail.active) return;
+  const isDashing = trail.trailEndMs === Infinity;
+  let drawProgress: number, eraseProgress: number;
+  if (isDashing) {
+    drawProgress = Math.min(enemy.dashTraveled / LASER_DASH_DISTANCE, 1.0);
+    eraseProgress = 0;
+  } else {
+    drawProgress = 1.0;
+    eraseProgress = Math.min((nowMs - trail.trailEndMs) / LASER_TRAIL_ERASE_MS, 1.0);
+    if (eraseProgress >= 1.0) { trail.active = false; return; }
+  }
+  const sx = trail.startX, sy = trail.startY, tx = trail.endX, ty = trail.endY;
+  const ddx = tx - sx, ddy = ty - sy;
+  const L = Math.sqrt(ddx * ddx + ddy * ddy);
+  if (L < 1) return;
+  const midX = (sx + tx) * 0.5, midY = (sy + ty) * 0.5;
+  const perpX = -ddy / L, perpY = ddx / L;
+  const curveOffset = L * Math.tan(trail.controlAngle);
+  const controlX = midX + perpX * curveOffset, controlY = midY + perpY * curveOffset;
+  const dashLen    = L * ATTACK_TRAIL_LENGTH_SCALE;
+  const dashOffset = isDashing ? dashLen * (1 - drawProgress) : -(dashLen * eraseProgress);
+  const alpha = isDashing ? ATTACK_TRAIL_ALPHA : ATTACK_TRAIL_ALPHA * (1 - eraseProgress * ATTACK_TRAIL_ERASE_FADE);
+  ctx.save();
+  ctx.setLineDash([dashLen, dashLen]);
+  ctx.lineDashOffset = dashOffset;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = isLowGraphicsMode ? 0 : 5; ctx.shadowColor = LASER_ENEMY_GLOW;
+  ctx.strokeStyle = LASER_ENEMY_GLOW; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = LASER_ENEMY_COLOR; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(controlX, controlY, tx, ty); ctx.stroke();
+  ctx.restore();
 }
 
 export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: SapphireEnemy[]): void {
@@ -290,331 +334,6 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), VOID_ENEMY_SIZE, VOID_ENEMY_SIZE);
     ctx.shadowBlur = 0;
   }
-}
-
-export function drawQuartzEnemies(ctx: CanvasRenderingContext2D, enemies: QuartzEnemy[]): void {
-  for (const enemy of enemies) {
-    const half = QUARTZ_ENEMY_SIZE / 2;
-    ctx.save();
-    ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
-    ctx.rotate(Math.PI / 4);
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : QUARTZ_ENEMY_SIZE * 4; ctx.shadowColor = QUARTZ_ENEMY_GLOW;
-    ctx.fillStyle = QUARTZ_ENEMY_COLOR;
-    ctx.fillRect(-half, -half, QUARTZ_ENEMY_SIZE, QUARTZ_ENEMY_SIZE);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-    const barW = QUARTZ_ENEMY_SIZE * 2.5; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = QUARTZ_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawQuartzSpikes(ctx: CanvasRenderingContext2D, spikes: QuartzSpike[]): void {
-  for (const s of spikes) {
-    ctx.save();
-    ctx.translate(Math.floor(s.x), Math.floor(s.y));
-    ctx.rotate(Math.PI / 4);
-    const half = QUARTZ_SPIKE_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : QUARTZ_SPIKE_SIZE * 3; ctx.shadowColor = QUARTZ_SPIKE_GLOW;
-    ctx.fillStyle = QUARTZ_SPIKE_COLOR;
-    ctx.fillRect(-half, -half, QUARTZ_SPIKE_SIZE, QUARTZ_SPIKE_SIZE);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-  }
-}
-
-export function drawRubyEnemies(ctx: CanvasRenderingContext2D, enemies: RubyEnemy[]): void {
-  for (const enemy of enemies) {
-    const half = RUBY_ENEMY_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : RUBY_ENEMY_SIZE * 5; ctx.shadowColor = RUBY_ENEMY_GLOW;
-    ctx.fillStyle = RUBY_ENEMY_COLOR;
-    ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), RUBY_ENEMY_SIZE, RUBY_ENEMY_SIZE);
-    ctx.shadowBlur = 0;
-    const barW = RUBY_ENEMY_SIZE * 2.5; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = RUBY_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawRubyBolts(ctx: CanvasRenderingContext2D, bolts: RubyBolt[]): void {
-  for (const b of bolts) {
-    const half = RUBY_BOLT_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : RUBY_BOLT_SIZE * 4; ctx.shadowColor = RUBY_BOLT_GLOW;
-    ctx.fillStyle = RUBY_BOLT_COLOR;
-    ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), RUBY_BOLT_SIZE, RUBY_BOLT_SIZE);
-    ctx.shadowBlur = 0;
-  }
-}
-
-export function drawSunstoneEnemies(ctx: CanvasRenderingContext2D, enemies: SunstoneEnemy[]): void {
-  for (const enemy of enemies) {
-    const half = SUNSTONE_ENEMY_SIZE / 2;
-    ctx.save();
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : SUNSTONE_ENEMY_SIZE * 5; ctx.shadowColor = SUNSTONE_ENEMY_GLOW;
-    ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
-    ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_SIZE);
-    ctx.globalAlpha = 0.3; ctx.strokeStyle = SUNSTONE_ENEMY_GLOW; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SUNSTONE_ENEMY_SIZE * 1.6, 0, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.restore();
-    const barW = SUNSTONE_ENEMY_SIZE * 3; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawCitrineEnemies(ctx: CanvasRenderingContext2D, enemies: CitrineEnemy[]): void {
-  for (const enemy of enemies) {
-    const half = CITRINE_ENEMY_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : CITRINE_ENEMY_SIZE * 5; ctx.shadowColor = CITRINE_ENEMY_GLOW;
-    ctx.fillStyle = CITRINE_ENEMY_COLOR;
-    ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), CITRINE_ENEMY_SIZE, CITRINE_ENEMY_SIZE);
-    ctx.shadowBlur = 0;
-    const barW = CITRINE_ENEMY_SIZE * 2.5; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = CITRINE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawCitrineBolts(ctx: CanvasRenderingContext2D, bolts: CitrineBolt[]): void {
-  for (const b of bolts) {
-    // Draw trail
-    if (!isLowGraphicsMode && b.trailCount >= 2) {
-      ctx.save();
-      for (let i = 0; i < b.trailCount; i++) {
-        const t = i / b.trailCount;
-        const bufIdx = (b.trailHead - b.trailCount + i + CITRINE_BOLT_TRAIL_CAP) % CITRINE_BOLT_TRAIL_CAP;
-        ctx.globalAlpha = t * 0.35;
-        ctx.fillStyle = CITRINE_BOLT_COLOR;
-        const ts = CITRINE_BOLT_SIZE * 0.7;
-        ctx.fillRect(Math.floor(b.trailX[bufIdx] - ts / 2), Math.floor(b.trailY[bufIdx] - ts / 2), Math.ceil(ts), Math.ceil(ts));
-      }
-      ctx.globalAlpha = 1; ctx.restore();
-    }
-    const half = CITRINE_BOLT_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : CITRINE_BOLT_SIZE * 4; ctx.shadowColor = CITRINE_BOLT_GLOW;
-    ctx.fillStyle = CITRINE_BOLT_COLOR;
-    ctx.fillRect(Math.floor(b.x - half), Math.floor(b.y - half), CITRINE_BOLT_SIZE, CITRINE_BOLT_SIZE);
-    ctx.shadowBlur = 0;
-  }
-}
-
-export function drawIoliteEnemies(ctx: CanvasRenderingContext2D, enemies: IoliteEnemy[]): void {
-  for (const enemy of enemies) {
-    const half = IOLITE_ENEMY_SIZE / 2;
-    ctx.save();
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : IOLITE_ENEMY_SIZE * 5; ctx.shadowColor = IOLITE_ENEMY_GLOW;
-    ctx.fillStyle = IOLITE_ENEMY_COLOR;
-    ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), IOLITE_ENEMY_SIZE, IOLITE_ENEMY_SIZE);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-    const barW = IOLITE_ENEMY_SIZE * 3; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = IOLITE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawAmethystEnemies(ctx: CanvasRenderingContext2D, enemies: AmethystEnemy[]): void {
-  for (const enemy of enemies) {
-    if (enemy.shieldHp > 0) {
-      const shieldRatio = enemy.shieldHp / enemy.maxShieldHp;
-      ctx.save();
-      ctx.globalAlpha = 0.3 + shieldRatio * 0.4;
-      ctx.strokeStyle = AMETHYST_ENEMY_GLOW; ctx.lineWidth = 2;
-      ctx.shadowBlur = isLowGraphicsMode ? 0 : AMETHYST_ENEMY_SIZE * 4; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
-      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, AMETHYST_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
-    }
-    const half = AMETHYST_ENEMY_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : AMETHYST_ENEMY_SIZE * 5; ctx.shadowColor = AMETHYST_ENEMY_GLOW;
-    ctx.fillStyle = AMETHYST_ENEMY_COLOR;
-    ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMETHYST_ENEMY_SIZE, AMETHYST_ENEMY_SIZE);
-    ctx.shadowBlur = 0;
-    const barW = AMETHYST_ENEMY_SIZE * 3; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = AMETHYST_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawAmethystShards(ctx: CanvasRenderingContext2D, shards: AmethystShard[]): void {
-  for (const s of shards) {
-    const half = AMETHYST_SHARD_SIZE / 2;
-    ctx.save();
-    ctx.translate(Math.floor(s.x), Math.floor(s.y));
-    ctx.rotate(Math.PI / 4);
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : AMETHYST_SHARD_SIZE * 3; ctx.shadowColor = AMETHYST_SHARD_GLOW;
-    ctx.fillStyle = AMETHYST_SHARD_COLOR;
-    ctx.fillRect(-half, -half, AMETHYST_SHARD_SIZE, AMETHYST_SHARD_SIZE);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-  }
-}
-
-export function drawDiamondEnemies(ctx: CanvasRenderingContext2D, enemies: DiamondEnemy[]): void {
-  for (const enemy of enemies) {
-    const half = DIAMOND_ENEMY_SIZE / 2;
-    ctx.save();
-    ctx.translate(Math.floor(enemy.x), Math.floor(enemy.y));
-    ctx.rotate(Math.PI / 4);
-    const glowColor = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_GLOW;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : DIAMOND_ENEMY_SIZE * (enemy.phaseInvuln ? 10 : 5);
-    ctx.shadowColor = glowColor;
-    ctx.fillStyle = enemy.phaseInvuln ? '#aaddff' : DIAMOND_ENEMY_COLOR;
-    ctx.globalAlpha = enemy.phaseInvuln ? 0.6 : 1;
-    ctx.fillRect(-half, -half, DIAMOND_ENEMY_SIZE, DIAMOND_ENEMY_SIZE);
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-    ctx.restore();
-    const barW = DIAMOND_ENEMY_SIZE * 3; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = DIAMOND_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawDiamondShards(ctx: CanvasRenderingContext2D, shards: DiamondShard[]): void {
-  for (const s of shards) {
-    const half = DIAMOND_SHARD_SIZE / 2;
-    ctx.save();
-    ctx.translate(Math.floor(s.x), Math.floor(s.y));
-    ctx.rotate(Math.PI / 4);
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : DIAMOND_SHARD_SIZE * 4; ctx.shadowColor = DIAMOND_SHARD_GLOW;
-    ctx.fillStyle = DIAMOND_SHARD_COLOR;
-    ctx.fillRect(-half, -half, DIAMOND_SHARD_SIZE, DIAMOND_SHARD_SIZE);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-  }
-}
-
-export function drawNullstoneEnemies(ctx: CanvasRenderingContext2D, enemies: NullstoneEnemy[]): void {
-  for (const enemy of enemies) {
-    // Gravity field ring
-    const pulseT = (enemy.pulseMs % 2000) / 2000;
-    ctx.save();
-    ctx.globalAlpha = 0.15 * (1 - pulseT);
-    ctx.strokeStyle = NULLSTONE_ENEMY_GLOW; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(enemy.x, enemy.y, NULLSTONE_GRAVITY_RADIUS * pulseT, 0, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = 1; ctx.restore();
-    // Absorb glow
-    if (enemy.isAbsorbing) {
-      ctx.save();
-      ctx.globalAlpha = 0.5;
-      ctx.shadowBlur = isLowGraphicsMode ? 0 : NULLSTONE_ENEMY_SIZE * 8; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
-      ctx.strokeStyle = NULLSTONE_ENEMY_GLOW; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(enemy.x, enemy.y, NULLSTONE_ENEMY_SIZE * 1.8, 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
-    }
-    // Body
-    const half = NULLSTONE_ENEMY_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : NULLSTONE_ENEMY_SIZE * 6; ctx.shadowColor = NULLSTONE_ENEMY_GLOW;
-    ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
-    ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), NULLSTONE_ENEMY_SIZE, NULLSTONE_ENEMY_SIZE);
-    ctx.shadowBlur = 0;
-    const barW = NULLSTONE_ENEMY_SIZE * 3; const barH = 2;
-    ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
-}
-
-export function drawVoidTendrils(ctx: CanvasRenderingContext2D, tendrils: VoidTendril[]): void {
-  for (const t of tendrils) {
-    const half = VOID_TENDRIL_SIZE / 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : VOID_TENDRIL_SIZE * 3; ctx.shadowColor = VOID_TENDRIL_GLOW;
-    ctx.fillStyle = VOID_TENDRIL_COLOR;
-    ctx.fillRect(Math.floor(t.x - half), Math.floor(t.y - half), VOID_TENDRIL_SIZE, VOID_TENDRIL_SIZE);
-    ctx.shadowBlur = 0;
-  }
-}
-
-export function drawFracterylEnemies(ctx: CanvasRenderingContext2D, enemies: FracterylEnemy[], shards: FracterylShard[]): void {
-  for (const enemy of enemies) {
-    const half = FRACTERYL_ENEMY_SIZE / 2;
-    const pulse = Math.sin(enemy.pulseMs * 0.002) * 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : 8 + pulse; ctx.shadowColor = FRACTERYL_ENEMY_GLOW;
-    ctx.fillStyle = FRACTERYL_ENEMY_COLOR;
-    ctx.save();
-    ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
-    ctx.rotate(enemy.pulseMs * 0.002);
-    ctx.fillRect(-half, -half, FRACTERYL_ENEMY_SIZE, FRACTERYL_ENEMY_SIZE);
-    ctx.restore();
-    ctx.shadowBlur = 0;
-  }
-  for (const shard of shards) {
-    ctx.globalAlpha = Math.min(1, shard.lifeMs / 200);
-    ctx.fillStyle = FRACTERYL_ENEMY_COLOR;
-    ctx.beginPath();
-    ctx.arc(Math.round(shard.x), Math.round(shard.y), 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-}
-
-export function drawEigensteinEnemies(ctx: CanvasRenderingContext2D, enemies: EigensteinEnemy[]): void {
-  for (const enemy of enemies) {
-    const half = EIGENSTEIN_ENEMY_SIZE / 2;
-    const pulse = Math.sin(enemy.pulseMs * 0.002) * 3;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : 10 + pulse; ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
-    ctx.fillStyle = EIGENSTEIN_ENEMY_COLOR;
-    ctx.save();
-    ctx.translate(Math.round(enemy.x), Math.round(enemy.y));
-    ctx.rotate(enemy.pulseMs * 0.0015);
-    ctx.fillRect(-half, -half, EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE);
-    ctx.restore();
-    ctx.shadowBlur = 0;
-  }
-}
-
-export function drawEigensteinBeams(ctx: CanvasRenderingContext2D, beams: EigensteinBeam[], widthPx: number, heightPx: number): void {
-  const beamLen = Math.sqrt(widthPx * widthPx + heightPx * heightPx);
-  for (const beam of beams) {
-    const alpha = beam.isActive ? 0.8 : (1 - beam.timerMs / EIGENSTEIN_BEAM_CHARGE_MS) * 0.45;
-    ctx.globalAlpha = Math.max(0, alpha);
-    ctx.strokeStyle = EIGENSTEIN_ENEMY_GLOW;
-    ctx.lineWidth = beam.isActive ? 5 : 2;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : (beam.isActive ? 12 : 4);
-    ctx.shadowColor = EIGENSTEIN_ENEMY_GLOW;
-    ctx.beginPath();
-    ctx.moveTo(beam.originX, beam.originY);
-    ctx.lineTo(beam.originX + Math.cos(beam.angle) * beamLen, beam.originY + Math.sin(beam.angle) * beamLen);
-    ctx.stroke();
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  }
-}
-
-export function drawTeleportParticles(ctx: CanvasRenderingContext2D, particles: TeleportParticle[]): void {
-  if (particles.length === 0) return;
-  ctx.save();
-  for (const p of particles) {
-    const a = Math.max(0, p.alpha);
-    ctx.globalAlpha = a;
-    ctx.shadowBlur = isLowGraphicsMode ? 0 : 8; ctx.shadowColor = p.color;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x - 1.5), Math.floor(p.y - 1.5), 3, 3);
-  }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  ctx.restore();
 }
 
 // ── Laser enemy draw (first enemy type, inline health bar) ───────────────────

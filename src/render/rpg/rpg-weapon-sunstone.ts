@@ -20,6 +20,8 @@ import {
   SUNSTONE_MINE_FUSE_MS, SUNSTONE_MINE_PROXIMITY_PX,
   SUNSTONE_MINE_AOE_BASE_PX, SUNSTONE_MINE_AOE_PER_TIER_PX,
   SUNSTONE_MINE_HP, SUNSTONE_MINE_SIZE,
+} from './rpg-weapon-constants';
+import {
   FLUID_EXPLOSION_STRENGTH,
 } from './rpg-constants';
 import type { LaserEnemy, SapphireEnemy } from './rpg-types';

@@ -20,6 +20,8 @@ import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
 import {
   VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS,
   VORTEX_SPAWN_DIST, VORTEX_COLOR, VORTEX_SPIN_RATE,
+} from './rpg-weapon-constants';
+import {
   TARGET_FRAME_MS,
 } from './rpg-constants';
 import { getVortexTierRadius, getVortexTierDurationMs, getVortexCount } from './rpg-helpers';

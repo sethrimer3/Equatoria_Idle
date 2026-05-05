@@ -17,7 +17,7 @@ import {
   CHAIN_MIN_RADIUS, CHAIN_MAX_RADIUS, CHAIN_NODES,
   CHAIN_MIN_INERTIA, CHAIN_MAX_INERTIA,
   SWORD_SHARD_SIZE_BASE, SWORD_SHARD_COUNT, SWORD_SHARD_SHAPES,
-} from './rpg-constants';
+} from './rpg-weapon-constants';
 
 // ── Chain whip node helpers ────────────────────────────────────────────────────
 

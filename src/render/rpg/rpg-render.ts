@@ -54,15 +54,16 @@ import {
   WEAPON_PARTICLE_ORBIT_SPEED, WEAPON_PARTICLE_ORBIT_RADIUS, WEAPON_PARTICLE_MIN_SPEED,
   ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
   WEAPON_ORBIT_TRAIL_CAP,
-  SWORD_COMBO_THRESHOLD,
-  MAX_DANMAKU_LEVEL,
-  BOSS_GLOW_COLORS,
 } from './rpg-constants';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
   drawEmeraldEnemies,
   drawAmberEnemies, drawAmberShards,
   drawVoidEnemies,
+  drawLaserEnemies, drawEnemyIndicators,
+  setLowGraphicsMode as setEnemyLowGraphics,
+} from './rpg-enemy-draw';
+import {
   drawQuartzEnemies, drawQuartzSpikes,
   drawRubyEnemies, drawRubyBolts,
   drawSunstoneEnemies,
@@ -74,23 +75,27 @@ import {
   drawFracterylEnemies,
   drawEigensteinEnemies, drawEigensteinBeams,
   drawTeleportParticles,
-  drawLaserEnemies, drawEnemyIndicators,
-  setLowGraphicsMode as setEnemyLowGraphics,
-} from './rpg-enemy-draw';
+} from './rpg-enemy-draw-adv';
 import {
   drawBossProjectiles,
   drawSandProjectiles,
   drawPoisonBolts,
   drawLaserBeamEffect,
-  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   drawWeaponOrbitParticle, drawOrbitProjectile,
   drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
-  drawSapphireShips, drawSapphireLasers,
-  drawAmethystShips, drawAmethystLasers,
   drawTargetReticle,
   drawPlayerMote,
   setLowGraphicsMode as setEntityLowGraphics,
 } from './rpg-entity-draw';
+import {
+  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
+  setLowGraphicsMode as setCombatEffectsLowGraphics,
+} from './rpg-combat-effects-draw';
+import {
+  drawSapphireShips, drawSapphireLasers,
+  drawAmethystShips, drawAmethystLasers,
+  setLowGraphicsMode as setCompanionLowGraphics,
+} from './rpg-companion-draw';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
   LaserEnemy,
@@ -118,9 +123,10 @@ import type {
   TeleportParticle,
   LuckyMote, LuckyMotePopup,
 } from './rpg-enemy-types';
-import { makeBossEnemy } from './rpg-factories';
+import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { getSwordLength } from './rpg-helpers';
-import { drawChainWhip, drawVortexes, drawSwordCombos, drawSandBladeCombo, spawnSandSwingPixels, updateSandDriftPixels, drawSandDriftPixels, setLowGraphicsMode as setWeaponLowGraphics } from './rpg-weapon-draw';
+import { drawChainWhip, drawVortexes, setLowGraphicsMode as setWeaponChainLowGraphics } from './rpg-weapon-draw';
+import { drawSwordCombos, drawSandBladeCombo, spawnSandSwingPixels, updateSandDriftPixels, drawSandDriftPixels, setLowGraphicsMode as setWeaponSwordLowGraphics } from './rpg-weapon-draw-sword';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
 import {
   updateLuckyMotes, updateLuckyMotePopups,
@@ -354,6 +360,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let statsPanel!: RpgStatsPanelHandle;
   let weaponSystems!: RpgWeaponHandle;
   let waveManager!: WaveManagerHandle;
+  let bossWave!: BossWaveHandle;
   let _forwardRecordDps: (dmg: number, _legacyColor?: string) => void = () => {};
   function recordDps(dmg: number, _legacyColor?: string): void {
     _forwardRecordDps(dmg, _legacyColor);
@@ -384,6 +391,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let bossEnemy: BossEnemy | null = null;
   let danmakuSafeZone: DanmakuSafeZone | null = null;
   const bossProjectiles: BossProjectile[] = [];
+  const teleportParticles: TeleportParticle[] = [];
   /** Counts successive diamond-blade hits on the boss; resets to 0 after every teleport. */
   let bossHitsInRound = 0;
   /** True when the current boss fight was launched from the RPG menu. */
@@ -410,89 +418,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return (isBossWaveActive && bossActiveEquipIds !== null)
       ? bossActiveEquipIds
       : rpgSimState.equippedWeaponIds;
-  }
-
-  const teleportParticles: TeleportParticle[] = [];
-
-  /** Safe zone position: bottom-middle of playing field. */
-  function getSafeZoneX(): number { return widthPx / 2; }
-  function getSafeZoneY(): number { return heightPx * 0.85; }
-
-  const TELEPORT_PRISMATIC_COLORS = ['#e8f0fa', '#ffffff', '#b0c8ff', '#d6aaff', '#a0f0d0', '#fff4a0'];
-
-  function teleportPlayerToSafeZone(): void {
-    const tx = getSafeZoneX(), ty = getSafeZoneY();
-    // Spawn comet trail particles fanning from current player position toward the safe zone
-    for (let i = 0; i < 20; i++) {
-      const t = i / 20;
-      const px = mote.x + (tx - mote.x) * t + (Math.random() - 0.5) * 14;
-      const py = mote.y + (ty - mote.y) * t + (Math.random() - 0.5) * 14;
-      const angle = Math.atan2(ty - mote.y, tx - mote.x) + (Math.random() - 0.5) * 0.7;
-      const spd = 1.2 + Math.random() * 2.5;
-      teleportParticles.push({
-        x: px, y: py,
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd,
-        alpha: 0.85 + Math.random() * 0.15,
-        color: TELEPORT_PRISMATIC_COLORS[Math.floor(Math.random() * TELEPORT_PRISMATIC_COLORS.length)],
-      });
-    }
-    mote.x = tx; mote.y = ty;
-    mote.vx = 0; mote.vy = 0;
-    mote.trailHead = 0; mote.trailCount = 0;
-    playerIFramesMs = 1400; // brief invulnerability after teleport
-    bossHitsInRound = 0; // reset hit counter for the next engagement
-    if (bossEnemy) {
-      bossEnemy.isFiringPaused = false;
-      bossEnemy.attackTimerMs = Math.max(bossEnemy.attackTimerMs, 450);
-      bossEnemy.secondaryTimerMs = Math.max(bossEnemy.secondaryTimerMs, 650);
-    }
-  }
-
-  function enterBossWave(): void {
-    if (isBossWaveActive) return;
-    isBossWaveActive = true;
-    // Save weapon tiers so we can restore them after the boss fight.
-    bossPreWaveWeaponTiers = new Map(rpgSimState.weaponTiersByWeaponId);
-    // Override active weapons to diamond_bastion at tier 1 for boss combat.
-    // The player's rpgSimState.equippedWeaponIds is intentionally NOT modified,
-    // so equip actions, saves, and the weapons UI are unaffected.
-    bossActiveEquipIds = new Set(['diamond_bastion']);
-    rpgSimState.weaponTiersByWeaponId.set('diamond_bastion', 1);
-    // Move player to safe zone at bottom-middle
-    mote.x = getSafeZoneX(); mote.y = getSafeZoneY();
-    mote.vx = 0; mote.vy = 0;
-    mote.trailHead = 0; mote.trailCount = 0;
-    playerIFramesMs = 1000;
-    applyEquipmentStats();
-  }
-
-  function exitBossWave(): void {
-    if (!isBossWaveActive) return;
-    isBossWaveActive = false;
-    // Clear the boss-fight weapon override before rebuilding stats.
-    bossActiveEquipIds = null;
-    // Restore weapon tiers that may have been overridden during the boss fight.
-    for (const [id, tier] of bossPreWaveWeaponTiers) {
-      rpgSimState.weaponTiersByWeaponId.set(id, tier);
-    }
-    // Remove any entry that was injected by enterBossWave but was not in the
-    // pre-fight snapshot (e.g. the temporary diamond_bastion tier-1 entry added
-    // for bosses the player has never purchased).
-    for (const id of Array.from(rpgSimState.weaponTiersByWeaponId.keys())) {
-      if (!bossPreWaveWeaponTiers.has(id)) rpgSimState.weaponTiersByWeaponId.delete(id);
-    }
-    bossPreWaveWeaponTiers = new Map();
-    teleportParticles.length = 0;
-    applyEquipmentStats();
-  }
-
-  function startBossFight(bossId: number): void {
-    if (isBossWaveActive) return;
-    const waveForScaling = Math.max(bossId * 100, rpgSimState.highestWaveReached);
-    bossEnemy = makeBossEnemy(bossId, waveForScaling, widthPx, heightPx);
-    isBossFightFromMenu = true;
-    enterBossWave();
   }
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
@@ -590,41 +515,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     orbitProjectile = buildOrbitProjectile();
     weaponSystems.syncSapphireShips();
     weaponSystems.syncAmethystShips();
-  }
-
-  function damageBossEnemy(rawDamage: number, defPierceRatio: number, fromDiamondBlade = false): number {
-    const boss = bossEnemy;
-    if (!boss) return 0;
-    if (boss.isInvuln || (boss.bossId === 8 && boss.isAbsorbing)) return 0;
-    // During a boss wave only the diamond_bastion (swordCombo blade) can deal damage
-    if (isBossWaveActive && !fromDiamondBlade) {
-      const glowC = BOSS_GLOW_COLORS[Math.min(boss.bossId, BOSS_GLOW_COLORS.length - 1)];
-      spawnDamageNumber(boss.x, boss.y, 0, -1, '∞', 0.3, glowC);
-      return 0;
-    }
-    if (boss.shieldHp > 0) {
-      const shieldDmg = Math.min(boss.shieldHp, rawDamage);
-      boss.shieldHp -= shieldDmg;
-      recordDps(shieldDmg, '#ffd700');
-      return shieldDmg;
-    }
-    const effectiveDef = boss.def * (1 - defPierceRatio);
-    const dmg = Math.max(0, rawDamage - effectiveDef);
-    boss.hp = Math.max(0, boss.hp - dmg);
-    if (dmg > 0) {
-      recordDps(dmg, '#ffd700');
-      boss.isFiringPaused = true;
-      if (isBossWaveActive) {
-        // Allow SWORD_COMBO_THRESHOLD hits before teleporting — gives the player
-        // exactly enough hits to build up and complete the 4-hit spin combo.
-        bossHitsInRound += 1;
-        if (bossHitsInRound >= SWORD_COMBO_THRESHOLD) {
-          boss.danmakuLevel = Math.min(boss.danmakuLevel + 1, MAX_DANMAKU_LEVEL);
-          teleportPlayerToSafeZone(); // resets bossHitsInRound to 0
-        }
-      }
-    }
-    return dmg;
   }
 
   /**
@@ -770,7 +660,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
-    damageBossEnemy: (raw, pierce, fromDiamond) => damageBossEnemy(raw, pierce, fromDiamond),
+    damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
   });
 
   // ── Create wave manager ────────────────────────────────────────
@@ -798,8 +688,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsInterWave:          () => isInterWave,
     setIsInterWave:          (b) => { isInterWave = b; },
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
-    enterBossWave:           () => enterBossWave(),
-    exitBossWave:            () => exitBossWave(),
+    enterBossWave:           () => bossWave.enterBossWave(),
+    exitBossWave:            () => bossWave.exitBossWave(),
   });
 
   // ── Create weapon systems ──────────────────────────────────────
@@ -825,7 +715,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
-    damageBossEnemy:         (raw, pierce, fromDiamond) => damageBossEnemy(raw, pierce, fromDiamond),
+    damageBossEnemy:         (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     findClosestTarget:       (rangeSq) => findClosestTarget(rangeSq),
     findClosestEnemy:        (rangeSq) => findClosestEnemy(rangeSq),
     collectEnemyBodyTargets: () => collectEnemyBodyTargets(),
@@ -883,7 +773,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
-    damageBossEnemy:      (raw, pierce, fromDiamond) => damageBossEnemy(raw, pierce, fromDiamond),
+    damageBossEnemy:      (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     spawnHitVisuals:      (enemy, dmg, color) => spawnHitVisuals(enemy, dmg, color),
     spawnHitVisualsAt:    (x, y, maxHp, dmg, color) => spawnHitVisualsAt(x, y, maxHp, dmg, color),
     fluid,
@@ -921,6 +811,30 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   });
   _forwardRecordDps = (dmg, color) => statsPanel.recordDps(dmg, color);
 
+  // ── Boss wave manager (depends on spawnDamageNumber, recordDps, applyEquipmentStats) ──
+  bossWave = createBossWaveManager({
+    mote,
+    dim,
+    rpgSimState,
+    teleportParticles,
+    getIsBossWaveActive:        () => isBossWaveActive,
+    setIsBossWaveActive:        (v) => { isBossWaveActive = v; },
+    getBossActiveEquipIds:      () => bossActiveEquipIds,
+    setBossActiveEquipIds:      (v) => { bossActiveEquipIds = v; },
+    getBossPreWaveWeaponTiers:  () => bossPreWaveWeaponTiers,
+    setBossPreWaveWeaponTiers:  (v) => { bossPreWaveWeaponTiers = v; },
+    getBossHitsInRound:         () => bossHitsInRound,
+    setBossHitsInRound:         (v) => { bossHitsInRound = v; },
+    getBossEnemy:               () => bossEnemy,
+    setBossEnemy:               (v) => { bossEnemy = v; },
+    getPlayerIFramesMs:         () => playerIFramesMs,
+    setPlayerIFramesMs:         (v) => { playerIFramesMs = v; },
+    setIsBossFightFromMenu:     (v) => { isBossFightFromMenu = v; },
+    applyEquipmentStats:        () => applyEquipmentStats(),
+    spawnDamageNumber:          (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
+    recordDps:                  (dmg, color) => recordDps(dmg, color),
+  });
+
   // ── Player movement context (wired to rpg-player-movement.ts) ───
   const movementCtx: PlayerMovementCtx = {
     mote,
@@ -955,7 +869,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageSunstoneEnemy, damageCitrineEnemy, damageIoliteEnemy,
     damageAmethystEnemy, damageDiamondEnemy, damageNullstoneEnemy,
     damageFracterylEnemy, damageEigensteinEnemy,
-    damageBossEnemy: (raw, pierce) => damageBossEnemy(raw, pierce),
+    damageBossEnemy: (raw, pierce) => bossWave.damageBossEnemy(raw, pierce),
     spawnDamageNumber: (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
   };
 
@@ -1118,7 +1032,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fracterylEnemies.length = 0; fracterylShards.length = 0;
     eigensteinEnemies.length = 0; eigensteinBeams.length = 0;
     danmakuSafeZone = null;
-    exitBossWave();
+    bossWave.exitBossWave();
     isBossFightFromMenu = false;
     bossEnemy = null;
     bossProjectiles.length = 0;
@@ -1534,8 +1448,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       isLowGraphicsMode = enabled;
       setEntityLowGraphics(enabled);
       setEnemyLowGraphics(enabled);
-      setWeaponLowGraphics(enabled);
+      setWeaponChainLowGraphics(enabled);
+      setWeaponSwordLowGraphics(enabled);
       setBossLowGraphics(enabled);
+      setCombatEffectsLowGraphics(enabled);
+      setCompanionLowGraphics(enabled);
     },
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {
@@ -1543,7 +1460,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     startBossFight(bossId: number): void {
-      startBossFight(bossId);
+      bossWave.startBossFight(bossId);
     },
 
     setNumberFormat(format: NumberFormat): void {
