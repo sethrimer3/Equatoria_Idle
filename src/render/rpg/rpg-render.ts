@@ -791,22 +791,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getCurrentWave: () => currentWave,
     getEffectiveEquippedIds,
     getNumberFormat: () => currentNumberFormat,
-    onXpWireConnect: (stat) => {
-      // Seed the stat's XP pool with the current total so the bonus starts
-      // from the player's accumulated XP rather than 0.
-      if (stat === 'atk')       rpgSimState.xpAllocatedToAtk  = rpgSimState.xp;
-      else if (stat === 'def')  rpgSimState.xpAllocatedToDef  = rpgSimState.xp;
-      else if (stat === 'luck') rpgSimState.xpAllocatedToLuck = rpgSimState.xp;
-      else if (stat === 'hp')   rpgSimState.xpAllocatedToHp   = rpgSimState.xp;
-      // Wiring changes xpAllocatedStats (and possibly luck),
-      // so the cached luck % is stale even though rpgSimState.xp didn't change.
-      _cachedLuckXp = -1;
-      applyEquipmentStats();
-    },
-    onXpWireDisconnect: () => {
-      _cachedLuckXp = -1;
-      applyEquipmentStats();
-    },
     onError: () => { options.onError?.(); },
   });
   _forwardRecordDps = (dmg, color) => statsPanel.recordDps(dmg, color);

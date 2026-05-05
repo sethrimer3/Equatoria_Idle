@@ -614,13 +614,19 @@
 - Selects a random canvas position via rejection sampling (stays ≥80 px from the player); void and nullstone enemies spawn at canvas edges.
 - Imports all enemy factory functions from `rpg-factories.ts` and enemy/canvas size constants from `rpg-constants.ts` / `rpg-enemy-constants.ts`.
 
+### src/render/rpg/rpg-soft-wire.ts
+- Shared soft-body wire renderer for all visible wires in the RPG stats panel.
+- Exports `RopeNode`, `SoftWireData`, `SoftWireRenderer`, and `createSoftWireRenderer(panelEl)` factory.
+- Owns: SVG overlay element, Verlet-rope physics (ROPE_N=24 nodes), per-wire linearGradient colour bleed, slurp/retract animation, shared drag-preview rope polyline.
+- `createWire(srcColor, dstColor)` allocates SVG elements and a tip-handle div for one wire.
+- `updateLockedWire` / `updateSlurpingWire` / `setDragPreview` / `updateDragPreviewPhysics` / `hideDragPreview` are called per-frame by `rpg-equip-wiring.ts`.
+
 ### src/render/rpg/rpg-stats-panel.ts
 - RPG stats panel DOM construction and per-frame update.
 - Exports `RpgStatsPanelCtx` interface, `RpgStatsPanelHandle` interface, and `createRpgStatsPanel(ctx)` factory.
 - Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display, weapon stat rows, XP amount display.
-- XP wire interaction is fully delegated to `createXpWireSystem` from `rpg-xp-wire.ts`; stats panel just calls `xpWire.update(nowMs)` per frame.
-- Equip wiring system (`createEquipWiringSystem` from `rpg-equip-wiring.ts`) manages weapon-source, modifier, and stat plugs. State is ephemeral (not persisted).
-- Box 1: 5 weapon-source output plugs (slot 1 unlocked; 2–5 unlock via `getMaxEquippedWeapons`). XP wire anchors are hidden in the panel for backward compatibility.
+- All visible wires use the unified soft-body system via `createEquipWiringSystem` (see `rpg-equip-wiring.ts`). The old separate XP wire system has been removed.
+- Box 1: 5 weapon-source output plugs (slot 1 unlocked; 2–5 unlock via `getMaxEquippedWeapons`).
 - `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
 
 ### src/render/rpg/rpg-equip-wiring.ts
@@ -628,18 +634,11 @@
 - Exports `PlugType`, `EquipWireConnection`, `EquipWiringState`, `EquipWiringCtx`, `EquipWiringHandle`, `createEquipWiringState()`, and `createEquipWiringSystem(ctx)`.
 - Allowed connections: `weaponSourceOut→weaponSlotIn`, `xpOut→modifierXpIn`, `modifierOut→statIn`.
 - Drag behaviour: `pointerdown` on output plug starts drag; `pointerup` over valid input plug commits connection; mismatched/locked/full plugs are rejected.
-- Renders wires as SVG lines in a `.rpg-equip-wire-svg` overlay on `panelEl`. Drag preview uses a dashed stroke.
-- Wire colours: warm orange (weaponSource→slot), purple (xpOut→modifier), green (modifier→stat).
+- All visual rendering (rope physics, gradient colour bleed, slurp animation) is delegated to `createSoftWireRenderer` from `rpg-soft-wire.ts`.
+- Wire source colours: warm orange (weaponSourceOut), purple (xpOut), green (modifierOut). Destination colours blend toward orange/purple/blue-grey.
 - `setPlugLocked(plugId, locked)` toggles `rpg-plug--locked` class and prevents drag from/to locked plugs.
-- State is ephemeral — connections reset on page load. Persist via `onWireConnect`/`onWireDisconnect` callbacks if needed.
-
-### src/render/rpg/rpg-xp-wire.ts
-- Verlet-rope XP wire interaction system extracted from `rpg-stats-panel.ts` (~655 lines).
-- Exports `WireStat` type alias, `STAT_WIRE_COLOR` map, `XpWireCtx` interface, `XpWireHandle` interface, and `createXpWireSystem(ctx)` factory.
-- Owns the SVG overlay, plug socket circles, rope physics (Verlet integration with constraint solving), all pointer event listeners, and wire colour bleed animation.
-- Wire mechanic: drag from XP node to stat anchor → create wire; tap XP node → slurp all wires back; drag wire tip handle to different stat → re-attach; 3-wire max limit with error feedback.
-- `XpWireCtx` provides: `panelEl`, `xpNodeEl`, `statPlugAnchors`, `statPlugSlots`, `rpgSimState`, `onWireConnect`, `onWireDisconnect`, `onError`.
-- `update(nowMs)` updates rope physics, SVG rendering, and toggles `rpg-xp-node--locked` class; must be called once per frame.
+- `update(nowMs)` advances rope physics for all active and slurping wires; must be called once per frame.
+- State is ephemeral — connections reset on page load.
 
 - Independent RPG canvas rendering system for the RPG tab (~1,557 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.

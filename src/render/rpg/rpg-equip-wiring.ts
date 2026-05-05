@@ -7,14 +7,17 @@
  *   - Boxes 3–5: modifier XP input (modifierXpIn) and output (modifierOut) plugs
  *   - Boxes 7–11: WEAP column inputs (weaponSlotIn) and stat inputs (statIn)
  *
- * Wires are drawn as SVG lines overlaid on the stats panel. Drag behaviour
- * uses pointer events on the panel element for pointer capture.
+ * Wires are rendered as Verlet-rope soft-body polylines via SoftWireRenderer.
+ * Drag behaviour uses pointer events on the panel element for pointer capture.
  *
  * Allowed connection types:
  *   weaponSourceOut → weaponSlotIn
  *   xpOut           → modifierXpIn
  *   modifierOut     → statIn
  */
+
+import { createSoftWireRenderer } from './rpg-soft-wire';
+import type { SoftWireData } from './rpg-soft-wire';
 
 // ── Plug types ────────────────────────────────────────────────────────────────
 
@@ -59,15 +62,20 @@ function maxIncoming(type: PlugType): number {
 
 // ── Wire colours ──────────────────────────────────────────────────────────────
 
-const WEAPON_WIRE_COLOR   = 'rgba(255, 200, 150, 0.7)'; // warm orange: weaponSourceOut → weaponSlotIn
-const XP_WIRE_COLOR       = 'rgba(167, 139, 250, 0.7)'; // purple: xpOut → modifierXpIn
-const MODIFIER_WIRE_COLOR = 'rgba(100, 220, 150, 0.7)'; // green: modifierOut → statIn
-
+/** Source colour for a given output plug type. */
 function wireColor(fromType: PlugType): string {
-  if (fromType === 'weaponSourceOut') return WEAPON_WIRE_COLOR;
-  if (fromType === 'xpOut')           return XP_WIRE_COLOR;
-  if (fromType === 'modifierOut')     return MODIFIER_WIRE_COLOR;
-  return 'rgba(255, 255, 255, 0.5)';
+  if (fromType === 'weaponSourceOut') return '#ffc896'; // warm orange
+  if (fromType === 'xpOut')           return '#a78bfa'; // purple
+  if (fromType === 'modifierOut')     return '#64dc96'; // green
+  return '#ffffff';
+}
+
+/** Destination colour for a given input plug type. */
+function wireDstColor(toType: PlugType): string {
+  if (toType === 'weaponSlotIn')  return '#ffc896'; // warm orange
+  if (toType === 'modifierXpIn')  return '#a78bfa'; // purple
+  if (toType === 'statIn')        return '#93c5fd'; // light blue-grey
+  return '#ffffff';
 }
 
 // ── Data model ────────────────────────────────────────────────────────────────
@@ -90,7 +98,6 @@ export function createEquipWiringState(): EquipWiringState {
 export interface EquipWiringCtx {
   panelEl: HTMLElement;
   getMaxWeaponSlots(): number;
-  wiringState: EquipWiringState;
   onWireConnect(from: string, to: string): void;
   onWireDisconnect(from: string, to: string): void;
 }
@@ -99,10 +106,11 @@ export interface EquipWiringHandle {
   registerPlug(plugId: string, type: PlugType, el: HTMLElement): void;
   unregisterPlug(plugId: string): void;
   setPlugLocked(plugId: string, locked: boolean): void;
-  update(): void;
+  /** Call once per frame; advances rope physics and re-renders all wires. */
+  update(nowMs: number): void;
 }
 
-// ── Internal plug record ──────────────────────────────────────────────────────
+// ── Internal types ────────────────────────────────────────────────────────────
 
 interface PlugRecord {
   plugId: string;
@@ -111,41 +119,52 @@ interface PlugRecord {
   locked: boolean;
 }
 
+interface WireEntry {
+  wire:       SoftWireData;
+  fromPlugId: string;
+  toPlugId:   string;
+}
+
 // ── System factory ────────────────────────────────────────────────────────────
 
 export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle {
-  const { panelEl, wiringState } = ctx;
+  const { panelEl } = ctx;
+
+  // Internal wiring state (ephemeral — not persisted)
+  const wiringState = createEquipWiringState();
 
   // ── Plug registry ─────────────────────────────────────────────────
   const plugs = new Map<string, PlugRecord>();
 
-  // ── SVG overlay ───────────────────────────────────────────────────
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.className.baseVal = 'rpg-equip-wire-svg';
-  panelEl.appendChild(svg);
+  // ── Soft-wire renderer ────────────────────────────────────────────
+  const softRenderer = createSoftWireRenderer(panelEl);
+  panelEl.appendChild(softRenderer.svgEl);
 
-  // Group for committed wire lines
-  const wireGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  svg.appendChild(wireGroup);
+  // ── Wire tracking ─────────────────────────────────────────────────
+  // Active (locked) wires keyed by "fromPlugId|toPlugId"
+  const wireEntries = new Map<string, WireEntry>();
+  // Wires that have been disconnected and are retracting toward their source
+  const slurpingEntries: Array<{ wire: SoftWireData; fromPlugId: string }> = [];
 
-  // Single element for the drag-preview line
-  const dragPreviewLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  dragPreviewLine.className.baseVal = 'rpg-equip-wire-drag-preview';
-  dragPreviewLine.style.display = 'none';
-  svg.appendChild(dragPreviewLine);
+  function wireKey(fromId: string, toId: string): string {
+    return fromId + '|' + toId;
+  }
 
   // ── Drag state ────────────────────────────────────────────────────
   interface DragState {
-    fromPlugId: string;
-    fromType: PlugType;
+    fromPlugId:       string;
+    fromType:         PlugType;
     /** Plug that was disconnected to start this drag (if any). */
     disconnectedFrom: string | null;
-    startX: number;
-    startY: number;
+    startX:   number;
+    startY:   number;
     currentX: number;
     currentY: number;
   }
   let drag: DragState | null = null;
+
+  // ── Per-frame timing ──────────────────────────────────────────────
+  let lastUpdateMs = 0;
 
   // ── Utility helpers ───────────────────────────────────────────────
 
@@ -169,7 +188,19 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     return wiringState.connections.filter(c => c.toPlugId === plugId).length;
   }
 
-  /** Remove all connections involving a plug ID and fire callbacks. */
+  /** Trigger slurp on the visual wire for a connection (does NOT remove from wiringState). */
+  function triggerSlurp(fromId: string, toId: string): void {
+    const key = wireKey(fromId, toId);
+    const entry = wireEntries.get(key);
+    if (entry) {
+      wireEntries.delete(key);
+      entry.wire.isSlurping = true;
+      entry.wire.slurpMs = 0;
+      slurpingEntries.push({ wire: entry.wire, fromPlugId: fromId });
+    }
+  }
+
+  /** Remove all connections involving a plug ID, fire callbacks, and trigger slurps. */
   function disconnectPlug(plugId: string): void {
     const toRemove = wiringState.connections.filter(
       c => c.fromPlugId === plugId || c.toPlugId === plugId,
@@ -178,10 +209,11 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
       const idx = wiringState.connections.indexOf(conn);
       if (idx !== -1) wiringState.connections.splice(idx, 1);
       ctx.onWireDisconnect(conn.fromPlugId, conn.toPlugId);
+      triggerSlurp(conn.fromPlugId, conn.toPlugId);
     }
   }
 
-  /** Remove a specific connection and fire callback. */
+  /** Remove a specific connection, fire callback, and trigger slurp. */
   function disconnectPair(fromId: string, toId: string): void {
     const idx = wiringState.connections.findIndex(
       c => c.fromPlugId === fromId && c.toPlugId === toId,
@@ -189,52 +221,8 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     if (idx !== -1) {
       wiringState.connections.splice(idx, 1);
       ctx.onWireDisconnect(fromId, toId);
+      triggerSlurp(fromId, toId);
     }
-  }
-
-  // ── Wire rendering ────────────────────────────────────────────────
-
-  function redrawWires(): void {
-    wireGroup.textContent = '';
-    for (const conn of wiringState.connections) {
-      const fromRecord = plugs.get(conn.fromPlugId);
-      const toRecord   = plugs.get(conn.toPlugId);
-      if (!fromRecord || !toRecord) continue;
-
-      const from = plugCenter(fromRecord.el);
-      const to   = plugCenter(toRecord.el);
-      const color = wireColor(fromRecord.type);
-
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.className.baseVal = 'rpg-equip-wire-line';
-      line.setAttribute('x1', String(from.x));
-      line.setAttribute('y1', String(from.y));
-      line.setAttribute('x2', String(to.x));
-      line.setAttribute('y2', String(to.y));
-      line.setAttribute('stroke', color);
-      wireGroup.appendChild(line);
-    }
-  }
-
-  function updateDragPreview(): void {
-    if (!drag) {
-      dragPreviewLine.style.display = 'none';
-      return;
-    }
-    const fromRecord = plugs.get(drag.fromPlugId);
-    if (!fromRecord) {
-      dragPreviewLine.style.display = 'none';
-      return;
-    }
-    const from = plugCenter(fromRecord.el);
-    const color = wireColor(drag.fromType);
-
-    dragPreviewLine.style.display = '';
-    dragPreviewLine.setAttribute('x1', String(from.x));
-    dragPreviewLine.setAttribute('y1', String(from.y));
-    dragPreviewLine.setAttribute('x2', String(drag.currentX));
-    dragPreviewLine.setAttribute('y2', String(drag.currentY));
-    dragPreviewLine.setAttribute('stroke', color);
   }
 
   // ── Valid target highlighting ─────────────────────────────────────
@@ -242,8 +230,7 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
   function setValidTargetHighlights(fromType: PlugType | null): void {
     for (const record of plugs.values()) {
       if (fromType !== null && isCompatible(fromType, record.type) && !record.locked) {
-        // statIn accepts unlimited connections — always highlight
-        // other input types only highlight when they have room
+        // statIn accepts unlimited connections; other input types need a free slot
         const hasRoom = record.type === 'statIn' || incomingCount(record.plugId) < maxIncoming(record.type);
         if (hasRoom) {
           record.el.classList.add('rpg-plug--valid-target');
@@ -254,6 +241,47 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
         record.el.classList.remove('rpg-plug--valid-target');
       }
     }
+  }
+
+  // ── Tip handle listeners ──────────────────────────────────────────
+
+  /**
+   * Attach pointer listeners to a wire's tip handle so the user can drag the
+   * tip to reconnect the wire to a different target plug.
+   */
+  function attachTipHandleListeners(
+    wire: SoftWireData,
+    fromPlugId: string,
+    toPlugId: string,
+  ): void {
+    wire.tipHandle.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (drag !== null) return; // another drag already in progress
+      e.stopPropagation();
+
+      const fromRecord = plugs.get(fromPlugId);
+      if (!fromRecord) return;
+
+      // Disconnect the current connection and start a fresh drag from the same source
+      disconnectPair(fromPlugId, toPlugId);
+
+      panelEl.setPointerCapture(e.pointerId);
+
+      const local = toLocalCoords(e.clientX, e.clientY);
+      drag = {
+        fromPlugId,
+        fromType:         fromRecord.type,
+        disconnectedFrom: toPlugId,
+        startX:   local.x,
+        startY:   local.y,
+        currentX: local.x,
+        currentY: local.y,
+      };
+
+      const from = plugCenter(fromRecord.el);
+      softRenderer.setDragPreview(from.x, from.y, local.x, local.y, wireColor(fromRecord.type));
+      setValidTargetHighlights(fromRecord.type);
+    });
+    // pointermove / pointerup / pointercancel are handled by panelEl listeners
   }
 
   // ── Pointer event handlers ────────────────────────────────────────
@@ -288,30 +316,28 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     const local = toLocalCoords(e.clientX, e.clientY);
     let disconnectedFrom: string | null = null;
 
-    // If already at max connections, disconnect the oldest (first) connection and
-    // start a fresh drag — this gives a simple "replace" UX without a confirmation prompt.
+    // If already at max connections, disconnect the oldest and start a fresh drag.
     if (outgoingCount(target.plugId) >= maxOutgoing(target.type)) {
-      // Find the first existing connection and disconnect it
       const existing = wiringState.connections.find(c => c.fromPlugId === target.plugId);
       if (existing) {
         disconnectedFrom = existing.toPlugId;
         disconnectPair(target.plugId, existing.toPlugId);
-        redrawWires();
       }
     }
 
     drag = {
-      fromPlugId: target.plugId,
-      fromType: target.type,
+      fromPlugId:       target.plugId,
+      fromType:         target.type,
       disconnectedFrom,
-      startX: local.x,
-      startY: local.y,
+      startX:   local.x,
+      startY:   local.y,
       currentX: local.x,
       currentY: local.y,
     };
 
+    const from = plugCenter(target.el);
+    softRenderer.setDragPreview(from.x, from.y, local.x, local.y, wireColor(target.type));
     setValidTargetHighlights(target.type);
-    updateDragPreview();
   });
 
   panelEl.addEventListener('pointermove', (e: PointerEvent) => {
@@ -319,7 +345,6 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     const local = toLocalCoords(e.clientX, e.clientY);
     drag.currentX = local.x;
     drag.currentY = local.y;
-    updateDragPreview();
   });
 
   panelEl.addEventListener('pointerup', (e: PointerEvent) => {
@@ -327,20 +352,25 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
 
     const dropTarget = findPlugUnderPointer(e.clientX, e.clientY);
 
-    if (dropTarget &&
-        isCompatible(drag.fromType, dropTarget.type) &&
-        !dropTarget.locked &&
-        (dropTarget.type === 'statIn' || incomingCount(dropTarget.plugId) < maxIncoming(dropTarget.type))
+    if (
+      dropTarget &&
+      isCompatible(drag.fromType, dropTarget.type) &&
+      !dropTarget.locked &&
+      (dropTarget.type === 'statIn' || incomingCount(dropTarget.plugId) < maxIncoming(dropTarget.type))
     ) {
-      // Successful connection
+      const key = wireKey(drag.fromPlugId, dropTarget.plugId);
+      const srcColor = wireColor(drag.fromType);
+      const dstColor = wireDstColor(dropTarget.type);
+      const wire = softRenderer.createWire(srcColor, dstColor);
+      attachTipHandleListeners(wire, drag.fromPlugId, dropTarget.plugId);
+      wireEntries.set(key, { wire, fromPlugId: drag.fromPlugId, toPlugId: dropTarget.plugId });
       wiringState.connections.push({ fromPlugId: drag.fromPlugId, toPlugId: dropTarget.plugId });
       ctx.onWireConnect(drag.fromPlugId, dropTarget.plugId);
     }
 
     drag = null;
-    dragPreviewLine.style.display = 'none';
+    softRenderer.hideDragPreview();
     setValidTargetHighlights(null);
-    redrawWires();
 
     if (panelEl.hasPointerCapture(e.pointerId)) {
       panelEl.releasePointerCapture(e.pointerId);
@@ -350,9 +380,8 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
   panelEl.addEventListener('pointercancel', (e: PointerEvent) => {
     if (!drag) return;
     drag = null;
-    dragPreviewLine.style.display = 'none';
+    softRenderer.hideDragPreview();
     setValidTargetHighlights(null);
-    redrawWires();
     if (panelEl.hasPointerCapture(e.pointerId)) {
       panelEl.releasePointerCapture(e.pointerId);
     }
@@ -367,7 +396,6 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
   function unregisterPlug(plugId: string): void {
     disconnectPlug(plugId);
     plugs.delete(plugId);
-    redrawWires();
   }
 
   function setPlugLocked(plugId: string, locked: boolean): void {
@@ -381,8 +409,53 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     }
   }
 
-  function update(): void {
-    redrawWires();
+  function update(nowMs: number): void {
+    // Cap at 100ms to prevent physics instability after tab switches or long pauses;
+    // default to ~16ms (one frame at 60 fps) on the very first update.
+    const deltaMs = lastUpdateMs > 0 ? Math.min(nowMs - lastUpdateMs, 100) : 16;
+    lastUpdateMs = nowMs;
+
+    softRenderer.setViewBox(panelEl.clientWidth, panelEl.clientHeight);
+
+    // Advance drag-preview rope physics while dragging
+    if (drag) {
+      const fromRecord = plugs.get(drag.fromPlugId);
+      if (fromRecord) {
+        const from = plugCenter(fromRecord.el);
+        softRenderer.updateDragPreviewPhysics(from.x, from.y, drag.currentX, drag.currentY);
+      }
+    }
+
+    // Update all active (connected) wires
+    for (const entry of wireEntries.values()) {
+      const fromRecord = plugs.get(entry.fromPlugId);
+      const toRecord   = plugs.get(entry.toPlugId);
+      if (!fromRecord || !toRecord) continue;
+      const from = plugCenter(fromRecord.el);
+      const to   = plugCenter(toRecord.el);
+      softRenderer.updateLockedWire(entry.wire, from.x, from.y, to.x, to.y, deltaMs);
+    }
+
+    // Update slurping (retracting) wires
+    for (let i = slurpingEntries.length - 1; i >= 0; i--) {
+      const { wire, fromPlugId } = slurpingEntries[i];
+      const fromRecord = plugs.get(fromPlugId);
+      let ax: number, ay: number;
+      if (fromRecord) {
+        const from = plugCenter(fromRecord.el);
+        ax = from.x; ay = from.y;
+      } else {
+        // Source plug was unregistered during slurp — retract toward last known node position.
+        const lastNode = wire.nodes[0];
+        ax = lastNode ? lastNode.x : 0;
+        ay = lastNode ? lastNode.y : 0;
+      }
+      const done = softRenderer.updateSlurpingWire(wire, ax, ay, deltaMs);
+      if (done) {
+        softRenderer.finalizeWireRemoval(wire);
+        slurpingEntries.splice(i, 1);
+      }
+    }
   }
 
   return { registerPlug, unregisterPlug, setPlugLocked, update };
