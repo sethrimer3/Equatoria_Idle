@@ -209,13 +209,13 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
     phase0Attacks: [
       {
         kind: 'motherSwarm', cooldownMs: 7000, pressureScore: 2, durationMs: 16000,
-        params: { motherCount: 1, followerCount: 30, attractionStr: 0.08, hazardMode: 'headOnly' },
+        params: { followerCount: 30, attractionStr: 0.08, hazardMode: 'headOnly' },
       },
     ],
     phase1Attacks: [
       {
         kind: 'motherSwarm', cooldownMs: 6000, pressureScore: 2, durationMs: 16000,
-        params: { motherCount: 1, followerCount: 50, attractionStr: 0.10, hazardMode: 'headOnly' },
+        params: { followerCount: 50, attractionStr: 0.10, hazardMode: 'headOnly' },
       },
       {
         kind: 'missileRing', cooldownMs: 9000, pressureScore: 1, durationMs: 12000,
@@ -225,7 +225,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
     phase2Attacks: [
       {
         kind: 'motherSwarm', cooldownMs: 5000, pressureScore: 2, durationMs: 16000,
-        params: { motherCount: 2, followerCount: 60, attractionStr: 0.12, hazardMode: 'filledCircleHazard' },
+        params: { followerCount: 60, attractionStr: 0.12, hazardMode: 'filledCircleHazard' },
       },
       {
         kind: 'missileRing', cooldownMs: 7000, pressureScore: 2, durationMs: 12000,
@@ -279,7 +279,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
       },
       {
         kind: 'motherSwarm', cooldownMs: 8000, pressureScore: 2, durationMs: 14000,
-        params: { motherCount: 1, followerCount: 40, hazardMode: 'headOnly' },
+        params: { followerCount: 40, hazardMode: 'headOnly' },
       },
       {
         kind: 'missileRing', cooldownMs: 10000, pressureScore: 2, durationMs: 14000,
@@ -293,7 +293,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
       },
       {
         kind: 'motherSwarm', cooldownMs: 7000, pressureScore: 2, durationMs: 14000,
-        params: { motherCount: 2, followerCount: 50, hazardMode: 'headOnly' },
+        params: { followerCount: 50, hazardMode: 'headOnly' },
       },
       {
         kind: 'missileRing', cooldownMs: 8000, pressureScore: 2, durationMs: 14000,
@@ -307,7 +307,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
       },
       {
         kind: 'motherSwarm', cooldownMs: 6000, pressureScore: 2, durationMs: 14000,
-        params: { motherCount: 2, followerCount: 70, hazardMode: 'filledCircleHazard' },
+        params: { followerCount: 70, hazardMode: 'filledCircleHazard' },
       },
       {
         kind: 'missileRing', cooldownMs: 6000, pressureScore: 2, durationMs: 14000,
@@ -344,7 +344,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
       },
       {
         kind: 'motherSwarm', cooldownMs: 7000, pressureScore: 2, durationMs: 14000,
-        params: { motherCount: 2, followerCount: 50, hazardMode: 'headOnly' },
+        params: { followerCount: 50, hazardMode: 'headOnly' },
       },
     ],
     phase2Attacks: [
@@ -362,7 +362,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
       },
       {
         kind: 'motherSwarm', cooldownMs: 5000, pressureScore: 2, durationMs: 14000,
-        params: { motherCount: 2, followerCount: 80, hazardMode: 'filledCircleHazard' },
+        params: { followerCount: 80, hazardMode: 'filledCircleHazard' },
       },
       {
         kind: 'missileRing', cooldownMs: 5000, pressureScore: 2, durationMs: 14000,

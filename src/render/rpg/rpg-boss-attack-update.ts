@@ -162,6 +162,8 @@ function _tryScheduleAttack(
 
   if (instance) {
     state.attacks.push(instance);
+    // Total cooldown = per-kind config + minimum global scheduler gap to prevent
+    // rapid re-firing of the same kind immediately after it expires.
     state.schedulerCooldowns.set(key, cfg.cooldownMs + SCHEDULER_COOLDOWN_MS);
   }
 }

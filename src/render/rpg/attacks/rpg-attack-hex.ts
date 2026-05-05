@@ -161,7 +161,11 @@ export function updateHexAttack(
         const pos = hexToWorld(nq, nr, atk.cellSize, atk.originX, atk.originY);
         if (pos.x < -atk.cellSize * 2 || pos.x > dim.w + atk.cellSize * 2) continue;
         if (pos.y < -atk.cellSize * 2 || pos.y > dim.h + atk.cellSize * 2) continue;
-        const score = (dq * dqPlayer + dr * drPlayer) + atk.rng() * 2.5;
+        // Score each hex direction: bias toward player + deterministic noise.
+        // HEX_NOISE_WEIGHT ≈ 2.5: random noise is roughly equal weight to
+        // player-bias so the bolt does not purely home in on the player.
+        const HEX_NOISE_WEIGHT = 2.5;
+        const score = (dq * dqPlayer + dr * drPlayer) + atk.rng() * HEX_NOISE_WEIGHT;
         if (score > bestScore) { bestScore = score; bestDir = d; }
       }
       if (bestDir === -1) bestDir = Math.floor(atk.rng() * 6);

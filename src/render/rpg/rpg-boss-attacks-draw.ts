@@ -32,11 +32,6 @@ const GRAV_TRAIL_CFG: NeonTrailConfig = {
   coreHeadWidth: 2.5, coreTailWidth: 0.5, glowWidth: 7, taperSegments: 8,
 };
 
-const HEX_HEAD_CFG: NeonTrailConfig = {
-  coreColor: '#88ffcc', glowColor: '#44ffaa',
-  coreHeadWidth: 3.5, coreTailWidth: 0.8, glowWidth: 10, taperSegments: 6,
-};
-
 const MANDALA_TRAIL_CFG: NeonTrailConfig = {
   coreColor: '#ffcc44', glowColor: '#ffaa00',
   coreHeadWidth: 2.0, coreTailWidth: 0.5, glowWidth: 6, taperSegments: 6,
@@ -216,15 +211,24 @@ function _drawHex(ctx: CanvasRenderingContext2D, atk: HexAttackInstance): void {
   }
   ctx.restore();
 
-  // Draw hex grid trail using NeonTrailConfig for each bolt head
+  // Draw hex bolt heads as simple circles (avoids per-frame Float64Array allocation)
   for (const bolt of atk.bolts) {
     const headPos = hexToWorld(bolt.qNow, bolt.rNow, atk.cellSize, atk.originX, atk.originY);
-    drawNeonTrailGlow(
-      new Float64Array([headPos.x]), new Float64Array([headPos.y]),
-      0, 1, 1,
-      { ...HEX_HEAD_CFG, coreColor: bolt.color, glowColor: bolt.glowColor },
-      globalFade,
-    );
+    ctx.save();
+    ctx.globalAlpha = globalFade * 0.95;
+    if (!_lowGraphics) { ctx.shadowBlur = 10; ctx.shadowColor = bolt.glowColor; }
+    ctx.fillStyle = bolt.color;
+    ctx.beginPath();
+    ctx.arc(headPos.x, headPos.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Inner bright core
+    ctx.globalAlpha = globalFade;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(headPos.x, headPos.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
   }
 }
 

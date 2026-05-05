@@ -124,8 +124,10 @@ export function updateGravAttack(
       body.vy = (body.vy / spd) * velCap;
     }
 
-    body.x += body.vx * deltaMs / TARGET_FRAME_MS_LOCAL;
-    body.y += body.vy * deltaMs / TARGET_FRAME_MS_LOCAL;
+    // Velocity is in px/frame at 60fps; convert to px/sec for dtSec integration.
+    const dtSec = deltaMs / 1000;
+    body.x += body.vx * dtSec * 60;
+    body.y += body.vy * dtSec * 60;
 
     // Bounce off bounds
     const margin = 4;
@@ -157,5 +159,4 @@ export function getGravHazardCircles(
   return result;
 }
 
-// Target frame ms constant (avoids importing rpg-constants to prevent circular chains)
-const TARGET_FRAME_MS_LOCAL = 16.667;
+
