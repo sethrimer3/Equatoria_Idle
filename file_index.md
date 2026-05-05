@@ -368,9 +368,11 @@
 - Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
 - Grid-based velocity and dye field (60 × 80 cells).  Solver: inject forces → decay → diffuse velocity → advect tracer particles.
 - **No ambient injection** — velocity enters only via `addForce()` and `addExplosion()` calls from gameplay systems.
-- Tracer particle trail opacity scales with exponentially-smoothed local speed via `smoothstep`, so the background fades when nothing moves.
+- **Lifecycle/activation particle model**: particles are dormant until local speed exceeds `PARTICLE_WAKE_SPEED`.  On wake, each particle receives an `activation` (0–1, nonlinear in disturbance speed) and a finite `lifetimeSec`.  Trail opacity fades from `activation × smoothstep(lifeFrac) × maxAlphaScale` → 0, so slow movement is faint and short-lived while fast movement is vivid and long-lived.
+- Expired or out-of-bounds particles are recycled into underpopulated coarse cells (10 × 14 occupancy grid) to prevent density clustering.  `trailCount` is cleared on recycle to eliminate teleport streaks.
 - Particles sample the dye colour field to inherit entity colours; colour blends smoothly via weighted lerp toward the dominant dye source.
 - Trail segments are batched by (hue-bucket × alpha-bucket) → at most 60 canvas state changes per frame.
+- Key tuning constants: `PARTICLE_WAKE_SPEED`, `PARTICLE_MIN/MAX_LIFETIME_SEC`, `PARTICLE_ACTIVATION_POWER`, `PARTICLE_REWAKE_BOOST`, `SPARSE_RESPAWN_COLS/ROWS`.
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts

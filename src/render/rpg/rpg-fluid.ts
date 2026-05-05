@@ -31,19 +31,52 @@ const TRAIL_LENGTH     = 22;
 /** Canvas-space line width for trail segments. */
 const TRAIL_LINE_WIDTH = 1.4;
 
-// ── Opacity model ─────────────────────────────────────────────────────────────
+// ── Opacity / colour-blend reference ──────────────────────────────────────────
 /**
- * Grid-space speed (cells per second) at which a particle's trail reaches
- * full opacity.  Conservative / low so motion is clearly visible.
+ * Grid-space speed (cells / s) used as a reference for dye-colour blending
+ * and for the PARTICLE_FULL_ACT_SPEED derivation.  No longer drives trail
+ * opacity directly — that is now handled by the lifecycle model below.
  */
 const SPEED_FULL_OPACITY  = 2.0;
-/** Peak alpha value at the newest trail segment tip. */
+/** Peak alpha value for the brightest trail segments. */
 const TRAIL_PEAK_ALPHA    = 0.68;
 /**
  * Per-frame exponential smoothing coefficient for particle speed.
- * Prevents flickering while still reacting quickly to velocity changes.
+ * Retained for colour-blend weighting only.
  */
 const SPEED_SMOOTH_ALPHA  = 0.14;
+
+// ── Particle lifecycle constants ───────────────────────────────────────────────
+/**
+ * Grid-space speed (cells / s) a particle must exceed to wake from dormancy.
+ * Sub-threshold motion is ignored, so micro-jitter does not create visible trails.
+ */
+const PARTICLE_WAKE_SPEED        = 0.3;
+/**
+ * Grid-space speed (cells / s) at which activation reaches ~1.0 before the
+ * power curve is applied.  Derived from SPEED_FULL_OPACITY so fast combat
+ * produces vivid, saturated trails.
+ */
+const PARTICLE_FULL_ACT_SPEED    = SPEED_FULL_OPACITY * 4.0;
+/** Shortest visible lifetime (seconds) — produced by the weakest disturbances. */
+const PARTICLE_MIN_LIFETIME_SEC  = 0.8;
+/** Longest visible lifetime (seconds) — produced by strong/fast disturbances. */
+const PARTICLE_MAX_LIFETIME_SEC  = 4.0;
+/**
+ * Exponent applied to the normalised activation fraction.
+ * Values > 1 compress weak disturbances toward 0 so tiny movement stays faint.
+ */
+const PARTICLE_ACTIVATION_POWER  = 1.8;
+/**
+ * Fractional boost added to an already-active particle's activation when
+ * re-disturbed before its lifetime expires.  Prevents re-waking from instantly
+ * jumping to full brightness.
+ */
+const PARTICLE_REWAKE_BOOST      = 0.35;
+/** Coarse occupancy grid — column count for sparse-area respawn targeting. */
+const SPARSE_RESPAWN_COLS        = 10;
+/** Coarse occupancy grid — row count for sparse-area respawn targeting. */
+const SPARSE_RESPAWN_ROWS        = 14;
 
 // ── Field parameters ──────────────────────────────────────────────────────────
 /**
@@ -82,9 +115,7 @@ const FORCE_TWO_SIGMA_SQ  = 2.0 * FORCE_SIGMA_CELLS * FORCE_SIGMA_CELLS;
 const MAX_INJECT_VEL      = 20.0;
 
 // ── Particle lifecycle ────────────────────────────────────────────────────────
-/** Grid-space speed below which a particle is respawned. */
-const RESPAWN_SLOW_THRESH  = 0.05;
-/** Cells beyond the grid boundary before a particle is respawned. */
+/** Cells beyond the grid boundary before a particle is recycled. */
 const OOB_MARGIN_CELLS     = 2;
 /** Relative size change that triggers a full reset on resize. */
 const RESIZE_THRESHOLD_FR  = 0.06;
@@ -159,7 +190,7 @@ interface FluidParticle {
   trailY: Float32Array;
   trailHead:  number;
   trailCount: number;
-  /** Exponentially-smoothed particle speed (grid cells / s). */
+  /** Exponentially-smoothed particle speed (grid cells / s) — used for colour blending. */
   smoothedSpeed: number;
   /** Current hue bucket [0 … HUE_STEPS). */
   hueIdx: number;
@@ -167,6 +198,17 @@ interface FluidParticle {
   r: number;
   g: number;
   b: number;
+  // ── Lifecycle fields ────────────────────────────────────────────────────────
+  /** Whether this particle has been woken by a disturbance and is in its visible phase. */
+  isActive:      boolean;
+  /** Seconds elapsed since this particle was last woken. */
+  ageSec:        number;
+  /** Total visible duration (seconds) assigned at wake time. */
+  lifetimeSec:   number;
+  /** 0–1 activation strength set at wake based on disturbance speed. */
+  activation:    number;
+  /** Per-particle alpha variation (0.7–1.0) — prevents synchronised fade-outs. */
+  maxAlphaScale: number;
 }
 
 function _makeParticle(): FluidParticle {
@@ -182,6 +224,12 @@ function _makeParticle(): FluidParticle {
     r: INITIAL_PARTICLE_R,
     g: INITIAL_PARTICLE_G,
     b: INITIAL_PARTICLE_B,
+    // Lifecycle — dormant until woken by a force disturbance.
+    isActive:      false,
+    ageSec:        0.0,
+    lifetimeSec:   PARTICLE_MIN_LIFETIME_SEC,
+    activation:    0.0,
+    maxAlphaScale: 0.7 + Math.random() * 0.3,
   };
 }
 
@@ -269,6 +317,13 @@ export function createRpgFluid(): RpgFluid {
   let particles: FluidParticle[] = [];
   for (let i = 0; i < currentParticleCount; i++) particles.push(_makeParticle());
 
+  // ── Sparse occupancy grid (pre-allocated, rebuilt each step) ─────────────────
+  // Maps coarse cells → particle count.  Used to steer lifecycle-expired
+  // particles toward underpopulated regions without O(n²) nearest-neighbour checks.
+  const _occupancy  = new Int16Array(SPARSE_RESPAWN_COLS * SPARSE_RESPAWN_ROWS);
+  const _sparseCellW = FLUID_COLS / SPARSE_RESPAWN_COLS;
+  const _sparseCellH = FLUID_ROWS / SPARSE_RESPAWN_ROWS;
+
   // ── Coordinate helpers ──────────────────────────────────────────────────────
   function _toGX(wx: number): number { return wx / cellW; }
   function _toGY(wy: number): number { return wy / cellH; }
@@ -325,6 +380,27 @@ export function createRpgFluid(): RpgFluid {
     }
     vxGrid.set(tmpVx);
     vyGrid.set(tmpVy);
+  }
+
+  // ── Sparse respawn helper ───────────────────────────────────────────────────
+  /**
+   * Return the index in _occupancy with the lowest particle count.
+   * A random start offset breaks ties so consecutive respawns scatter
+   * rather than always targeting the same cell.  O(140) — negligible cost.
+   */
+  function _findSparseCell(): number {
+    const n      = _occupancy.length;
+    const offset = Math.floor(Math.random() * n);
+    let minVal   = 32767;
+    let minIdx   = 0;
+    for (let k = 0; k < n; k++) {
+      const i = (offset + k) % n;
+      if (_occupancy[i] < minVal) {
+        minVal = _occupancy[i];
+        minIdx = i;
+      }
+    }
+    return minIdx;
   }
 
   // ── Public methods ──────────────────────────────────────────────────────────
@@ -407,12 +483,25 @@ export function createRpgFluid(): RpgFluid {
     // 3. Light diffusion — smooths velocity for fluid-looking trails.
     _diffuseVelocity(0.09);
 
-    // 4. Advect tracer particles through the velocity field.
-    // Pre-compute teleport grid constants (used in near-invisible particle check).
-    const _tpGridCols = 10;
-    const _tpGridRows = Math.ceil(particles.length / _tpGridCols);
-    const _tpCellW    = FLUID_COLS / _tpGridCols;
-    const _tpCellH    = FLUID_ROWS / _tpGridRows;
+    // 4. Advect tracer particles through the velocity field using a
+    //    lifecycle/activation model.
+    //
+    //    Each particle is dormant until meaningfully disturbed (speed > PARTICLE_WAKE_SPEED).
+    //    On wake, it receives an activation strength (0–1, nonlinear in disturbance speed)
+    //    and a finite lifetime proportional to that activation.  Trail opacity fades from
+    //    activation → 0 over the lifetime.  When the lifetime expires or the particle
+    //    leaves the grid, it is recycled into a sparse region of the coarse occupancy
+    //    grid so the pool redistributes naturally rather than clustering in old
+    //    high-activity areas.  No teleport streaks: trailCount is cleared on recycle.
+
+    // Rebuild coarse occupancy from current particle positions.
+    // Recycled particles increment the target cell so consecutive respawns scatter.
+    _occupancy.fill(0);
+    for (let i = 0; i < particles.length; i++) {
+      const oc   = _clamp(Math.floor(particles[i].x / _sparseCellW), 0, SPARSE_RESPAWN_COLS - 1);
+      const oRow = _clamp(Math.floor(particles[i].y / _sparseCellH), 0, SPARSE_RESPAWN_ROWS - 1);
+      _occupancy[oRow * SPARSE_RESPAWN_COLS + oc]++;
+    }
 
     for (let i = 0; i < particles.length; i++) {
       const p  = particles[i];
@@ -423,19 +512,54 @@ export function createRpgFluid(): RpgFluid {
       p.x += vx * dt;
       p.y += vy * dt;
 
-      // Update smoothed speed estimate.
       const spd = Math.sqrt(vx * vx + vy * vy);
-      p.smoothedSpeed += (spd - p.smoothedSpeed) * SPEED_SMOOTH_ALPHA;
 
-      // Sample dye colour when the particle is moving meaningfully.
-      // Blend toward the local dye colour, weighted by particle speed.
-      if (spd > RESPAWN_SLOW_THRESH * 3) {
+      // ── Lifecycle: wake or re-boost on meaningful disturbance ─────────────
+      // activation = clamp((speed − wakeSpeed) / usefulRange, 0, 1)^power
+      // so tiny movement produces dim, short-lived trails while fast
+      // movement produces bright, long-lived trails.
+      if (spd > PARTICLE_WAKE_SPEED) {
+        const t      = _clamp(
+          (spd - PARTICLE_WAKE_SPEED) / (PARTICLE_FULL_ACT_SPEED - PARTICLE_WAKE_SPEED),
+          0, 1,
+        );
+        const rawAct = Math.pow(t, PARTICLE_ACTIVATION_POWER);
+
+        if (!p.isActive) {
+          // Fresh wake from dormancy.
+          p.isActive   = true;
+          p.ageSec     = 0.0;
+          p.activation = rawAct;
+          // Lifetime scales with activation; per-particle jitter prevents
+          // all nearby particles from fading out simultaneously.
+          const baseLife = PARTICLE_MIN_LIFETIME_SEC +
+            rawAct * (PARTICLE_MAX_LIFETIME_SEC - PARTICLE_MIN_LIFETIME_SEC);
+          p.lifetimeSec  = baseLife * (0.8 + Math.random() * 0.4);
+        } else {
+          // Re-disturbance while already active: boost activation and extend life.
+          const boosted = _clamp(p.activation + rawAct * PARTICLE_REWAKE_BOOST, 0, 1);
+          if (boosted > p.activation) {
+            p.activation  = boosted;
+            const remaining = Math.max(0, p.lifetimeSec - p.ageSec);
+            p.lifetimeSec = p.ageSec + Math.min(
+              PARTICLE_MAX_LIFETIME_SEC * boosted,
+              remaining + PARTICLE_MIN_LIFETIME_SEC,
+            );
+          }
+        }
+      }
+
+      // Advance visible-life timer for active particles.
+      if (p.isActive) p.ageSec += dt;
+
+      // ── Colour blending (retained from original model) ───────────────────
+      p.smoothedSpeed += (spd - p.smoothedSpeed) * SPEED_SMOOTH_ALPHA;
+      if (spd > PARTICLE_WAKE_SPEED) {
         const sr  = _bilerp(dyeR, p.x, p.y);
         const sg  = _bilerp(dyeG, p.x, p.y);
         const sb  = _bilerp(dyeB, p.x, p.y);
         const mag = Math.sqrt(sr * sr + sg * sg + sb * sb);
         if (mag > MIN_DYE_MAG_FOR_BLEND) {
-          // Normalise the dye sample to [0,255] range, then blend.
           const inv   = 255.0 / mag;
           // Stronger speed → faster colour adoption; preserves vividness.
           const blend = _clamp(spd / (SPEED_FULL_OPACITY * 2.0), 0, 1) * 0.3;
@@ -452,33 +576,28 @@ export function createRpgFluid(): RpgFluid {
       p.trailHead = (p.trailHead + 1) % TRAIL_LENGTH;
       if (p.trailCount < TRAIL_LENGTH) p.trailCount++;
 
-      // Respawn if out of bounds or stalled.
-      const oob = p.x < -OOB_MARGIN_CELLS || p.x > FLUID_COLS + OOB_MARGIN_CELLS ||
-                  p.y < -OOB_MARGIN_CELLS || p.y > FLUID_ROWS + OOB_MARGIN_CELLS;
-      if (oob || p.smoothedSpeed < RESPAWN_SLOW_THRESH) {
-        const np    = _makeParticle();
-        // Preserve colour on respawn so the palette doesn't reset abruptly.
-        np.hueIdx   = p.hueIdx;
-        np.r = p.r; np.g = p.g; np.b = p.b;
-        particles[i] = np;
-        continue;
-      }
+      // ── Recycle if out of bounds or lifetime expired ──────────────────────
+      const oob     = p.x < -OOB_MARGIN_CELLS || p.x > FLUID_COLS + OOB_MARGIN_CELLS ||
+                      p.y < -OOB_MARGIN_CELLS || p.y > FLUID_ROWS + OOB_MARGIN_CELLS;
+      const expired = p.isActive && p.ageSec >= p.lifetimeSec;
 
-      // Teleport near-invisible particles to prevent spatial clumping.
-      // When a particle's smoothed speed is so low its trail opacity would
-      // fall below 1%, redistribute it across the grid with jitter so the
-      // next velocity impulse fans particles out from multiple locations
-      // rather than all converging in one high-activity region.
-      const osEstimate = _smoothstep(p.smoothedSpeed / SPEED_FULL_OPACITY);
-      if (osEstimate < 0.01) {
-        // Divide the grid into a coarse cell for each particle slot so
-        // teleport targets are spread evenly, with randomness within each cell.
-        const slot = i % (_tpGridCols * _tpGridRows);
-        const sx   = slot % _tpGridCols;
-        const sy   = Math.floor(slot / _tpGridCols);
-        p.x = (sx + 0.1 + Math.random() * 0.8) * _tpCellW;
-        p.y = (sy + 0.1 + Math.random() * 0.8) * _tpCellH;
-        p.trailCount = 0; // suppress visual jump from old trail
+      if (oob || expired) {
+        // Move to an underpopulated coarse cell — prevents density clustering.
+        const cellIdx = _findSparseCell();
+        const sx = cellIdx % SPARSE_RESPAWN_COLS;
+        const sy = Math.floor(cellIdx / SPARSE_RESPAWN_COLS);
+        p.x           = (sx + 0.1 + Math.random() * 0.8) * _sparseCellW;
+        p.y           = (sy + 0.1 + Math.random() * 0.8) * _sparseCellH;
+        p.trailCount  = 0; // clear trail — no teleport streak
+        p.trailHead   = 0;
+        p.isActive    = false;
+        p.ageSec      = 0.0;
+        p.activation  = 0.0;
+        p.smoothedSpeed = 0.0;
+        p.maxAlphaScale = 0.7 + Math.random() * 0.3;
+        _occupancy[cellIdx]++;
+        // Preserve colour so the palette does not abruptly reset.
+        continue;
       }
     }
   }
@@ -492,20 +611,24 @@ export function createRpgFluid(): RpgFluid {
     }
 
     // Bin every trail segment into its (hueIdx, alphaBucket) slot.
-    // The effective bucket merges trail age (j/n) and speed (opacityScale)
-    // so that slow particles produce dim tails even at their heads.
+    // opacityScale fuses activation strength, lifetime fade, and per-particle
+    // alpha variation so the bucket captures the full visible range.
     for (let pi = 0; pi < particles.length; pi++) {
       const p = particles[pi];
-      if (p.trailCount < 2) continue;
+      // Skip dormant or invisibly new particles.
+      if (!p.isActive || p.trailCount < 2) continue;
 
-      const opacityScale = _smoothstep(p.smoothedSpeed / SPEED_FULL_OPACITY);
+      // Opacity = activation × smoothstepped lifetime fade × per-particle scale.
+      // Slow disturbances produce faint, short trails; fast ones are vivid and longer.
+      const lifeFrac     = _clamp(1.0 - p.ageSec / p.lifetimeSec, 0, 1);
+      const opacityScale = p.activation * _smoothstep(lifeFrac) * p.maxAlphaScale;
       if (opacityScale < 0.02) continue;
 
       const hue = p.hueIdx;
       const n   = p.trailCount;
 
       for (let j = 1; j < n; j++) {
-        // Combined alpha = (trail-age fraction) × (speed fraction) × peak
+        // Combined alpha = (trail-age fraction) × (activation/lifetime) × peak
         const ageFrac  = j / n;
         const bkt = _clamp(Math.floor(ageFrac * opacityScale * ALPHA_BUCKETS), 0, ALPHA_BUCKETS - 1);
         const prev = (p.trailHead - n + j - 1 + TRAIL_LENGTH) % TRAIL_LENGTH;
