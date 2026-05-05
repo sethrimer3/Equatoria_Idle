@@ -59,10 +59,14 @@ function maxIncoming(type: PlugType): number {
 
 // ── Wire colours ──────────────────────────────────────────────────────────────
 
+const WEAPON_WIRE_COLOR   = 'rgba(255, 200, 150, 0.7)'; // warm orange: weaponSourceOut → weaponSlotIn
+const XP_WIRE_COLOR       = 'rgba(167, 139, 250, 0.7)'; // purple: xpOut → modifierXpIn
+const MODIFIER_WIRE_COLOR = 'rgba(100, 220, 150, 0.7)'; // green: modifierOut → statIn
+
 function wireColor(fromType: PlugType): string {
-  if (fromType === 'weaponSourceOut') return 'rgba(255, 200, 150, 0.7)';
-  if (fromType === 'xpOut')           return 'rgba(167, 139, 250, 0.7)';
-  if (fromType === 'modifierOut')     return 'rgba(100, 220, 150, 0.7)';
+  if (fromType === 'weaponSourceOut') return WEAPON_WIRE_COLOR;
+  if (fromType === 'xpOut')           return XP_WIRE_COLOR;
+  if (fromType === 'modifierOut')     return MODIFIER_WIRE_COLOR;
   return 'rgba(255, 255, 255, 0.5)';
 }
 
@@ -284,7 +288,8 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     const local = toLocalCoords(e.clientX, e.clientY);
     let disconnectedFrom: string | null = null;
 
-    // If already at max connections, disconnect first then start fresh drag
+    // If already at max connections, disconnect the oldest (first) connection and
+    // start a fresh drag — this gives a simple "replace" UX without a confirmation prompt.
     if (outgoingCount(target.plugId) >= maxOutgoing(target.type)) {
       // Find the first existing connection and disconnect it
       const existing = wiringState.connections.find(c => c.fromPlugId === target.plugId);

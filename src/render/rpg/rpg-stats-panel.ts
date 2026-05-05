@@ -345,18 +345,18 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   }
 
   /** Build one weapon-data cell with a circle plug on the left and a span on the right.
-   *  Returns the plug element and the stat value span. */
-  function makeWeaponCell(cell: HTMLDivElement): { plug: HTMLSpanElement; span: HTMLSpanElement } {
+   *  Returns the plugElement (circle) and the valueSpan (stat display). */
+  function makeWeaponCell(cell: HTMLDivElement): { plugElement: HTMLSpanElement; valueSpan: HTMLSpanElement } {
     cell.classList.add('rpg-box4-cell--weapon');
-    const plug = document.createElement('span');
-    plug.className = 'rpg-box4-circle-plug';
-    const span = document.createElement('span');
-    span.className = 'rpg-stat-value rpg-box4-weapon-stat';
-    span.style.color = 'rgba(255,255,255,0.18)';
-    span.textContent = '—';
-    cell.appendChild(plug);
-    cell.appendChild(span);
-    return { plug, span };
+    const plugElement = document.createElement('span');
+    plugElement.className = 'rpg-box4-circle-plug';
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'rpg-stat-value rpg-box4-weapon-stat';
+    valueSpan.style.color = 'rgba(255,255,255,0.18)';
+    valueSpan.textContent = '—';
+    cell.appendChild(plugElement);
+    cell.appendChild(valueSpan);
+    return { plugElement, valueSpan };
   }
 
   // Row 0 — header labels: Weap | ATK | Spd | Rng | Prc
@@ -388,9 +388,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     const spans: HTMLSpanElement[] = [];
     const plugElsRow: HTMLSpanElement[] = [];
     for (const cell of cells) {
-      const { plug, span } = makeWeaponCell(cell);
-      spans.push(span);
-      plugElsRow.push(plug);
+      const { plugElement, valueSpan } = makeWeaponCell(cell);
+      spans.push(valueSpan);
+      plugElsRow.push(plugElement);
     }
     weaponRowSpans.push(spans);
     weaponRowPlugEls.push(plugElsRow);
