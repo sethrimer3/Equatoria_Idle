@@ -37,6 +37,12 @@ export interface RpgSimState {
    */
   equippedWeaponIds: Set<string>;
   /**
+   * Maps a slot index (0–4) to the weapon ID equipped in that slot.
+   * Slot indices correspond to stat-panel boxes 7–11.
+   * Kept in sync with equippedWeaponIds.
+   */
+  equippedWeaponSlots: Map<number, string>;
+  /**
    * Accumulated XP across all sessions.  Persisted in save data.
    * Higher-wave enemies award exponentially more XP, incentivising
    * the player to push into harder content.
@@ -102,6 +108,7 @@ export function createRpgSimState(): RpgSimState {
     respawnWave: 0,
     purchasedWeaponIds: new Set(),
     equippedWeaponIds: new Set(),
+    equippedWeaponSlots: new Map(),
     xp: 0,
     weaponTiersByWeaponId: new Map(),
     rpgUpgradeLevels: new Map(),

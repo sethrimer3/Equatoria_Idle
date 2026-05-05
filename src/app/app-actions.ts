@@ -156,13 +156,49 @@ export function handleAction(
       if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
       const maxSlots = getMaxEquippedWeapons(state.game.rpg);
       if (state.game.rpg.equippedWeaponIds.size >= maxSlots) { audioSystem?.onError(); break; }
+      // Find the first empty slot
+      let firstEmpty = -1;
+      for (let s = 0; s < maxSlots; s++) {
+        if (!state.game.rpg.equippedWeaponSlots.has(s)) { firstEmpty = s; break; }
+      }
+      if (firstEmpty === -1) { audioSystem?.onError(); break; }
       state.game.rpg.equippedWeaponIds.add(action.weaponId);
+      state.game.rpg.equippedWeaponSlots.set(firstEmpty, action.weaponId);
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'equip_weapon_to_slot': {
+      if (!state.game.rpg.purchasedWeaponIds.has(action.weaponId)) { audioSystem?.onError(); break; }
+      const maxSlots = getMaxEquippedWeapons(state.game.rpg);
+      if (action.slotIndex < 0 || action.slotIndex >= maxSlots) { audioSystem?.onError(); break; }
+      // Remove any weapon already in this slot
+      const prevWeapon = state.game.rpg.equippedWeaponSlots.get(action.slotIndex);
+      if (prevWeapon) {
+        state.game.rpg.equippedWeaponIds.delete(prevWeapon);
+        state.game.rpg.equippedWeaponSlots.delete(action.slotIndex);
+      }
+      // Remove the new weapon from any other slot it might currently occupy
+      for (const [slot, wid] of state.game.rpg.equippedWeaponSlots) {
+        if (wid === action.weaponId) {
+          state.game.rpg.equippedWeaponSlots.delete(slot);
+          break;
+        }
+      }
+      state.game.rpg.equippedWeaponIds.add(action.weaponId);
+      state.game.rpg.equippedWeaponSlots.set(action.slotIndex, action.weaponId);
       uiPanels.rpgRender.notifyEquip();
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
     case 'unequip_weapon': {
       state.game.rpg.equippedWeaponIds.delete(action.weaponId);
+      for (const [slot, wid] of state.game.rpg.equippedWeaponSlots) {
+        if (wid === action.weaponId) {
+          state.game.rpg.equippedWeaponSlots.delete(slot);
+          break;
+        }
+      }
       uiPanels.rpgRender.notifyEquip();
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;

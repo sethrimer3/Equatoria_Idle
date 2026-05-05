@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 19;
+const SAVE_VERSION = 20;
 
 interface SaveData {
   version: number;
@@ -63,6 +63,8 @@ interface SaveData {
     equippedWeaponId?: string | null;
     /** v14+: set of all equipped weapon ids. Absent in older saves. */
     equippedWeaponIds?: string[];
+    /** v20+: slot-index → weapon-id mapping for boxes 7–11. Absent in older saves. */
+    equippedWeaponSlots?: Array<[number, string]>;
     /** v11+: accumulated XP. Absent in older saves (defaults to 0). */
     xp?: number;
     /** v12+: per-weapon tier levels. Absent in older saves. */
@@ -152,6 +154,7 @@ export function serializeGameState(state: GameState): SaveData {
       highestWaveReached: state.rpg.highestWaveReached,
       purchasedWeaponIds: Array.from(state.rpg.purchasedWeaponIds),
       equippedWeaponIds: Array.from(state.rpg.equippedWeaponIds),
+      equippedWeaponSlots: Array.from(state.rpg.equippedWeaponSlots.entries()),
       xp: state.rpg.xp,
       weaponTiersByWeaponId: Object.fromEntries(state.rpg.weaponTiersByWeaponId),
       rpgUpgradeLevels: Object.fromEntries(state.rpg.rpgUpgradeLevels),
@@ -291,6 +294,18 @@ export function deserializeGameState(data: SaveData): GameState {
     } else if (data.rpg.equippedWeaponId) {
       state.rpg.equippedWeaponIds.add(data.rpg.equippedWeaponId);
     }
+    // v20+: explicit slot assignment; older saves derive slots from equippedWeaponIds order
+    if (data.rpg.equippedWeaponSlots && data.rpg.equippedWeaponSlots.length > 0) {
+      for (const [slot, wid] of data.rpg.equippedWeaponSlots) {
+        state.rpg.equippedWeaponSlots.set(slot, wid);
+      }
+    } else {
+      // Migrate pre-v20 saves: assign equipped weapons to slots 0, 1, 2… in order
+      let migrateSlot = 0;
+      for (const id of state.rpg.equippedWeaponIds) {
+        state.rpg.equippedWeaponSlots.set(migrateSlot++, id);
+      }
+    }
     // v11+: accumulated XP
     state.rpg.xp = data.rpg.xp ?? 0;
     // v12+: weapon tiers (default tier 1 for already-purchased weapons without saved tiers)
@@ -369,8 +384,8 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw) as SaveData;
-    // Accept versions 1–18 (older saves lack some fields; defaults will apply)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(data.version)) return null;
+    // Accept versions 1–20 (older saves lack some fields; defaults will apply)
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(data.version)) return null;
     return deserializeGameState(data);
   } catch {
     return null;

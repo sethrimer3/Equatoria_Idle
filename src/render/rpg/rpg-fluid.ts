@@ -23,7 +23,10 @@ const FLUID_ROWS = 80;
 const FLUID_SIZE = FLUID_COLS * FLUID_ROWS; // 4 800 cells
 
 // ── Particle settings (structure from Thero EulerFluidEffect) ────────────────
-const PARTICLE_COUNT   = 140;
+/** Particle count on low-graphics mode. */
+const PARTICLE_COUNT_LOW  = 140;
+/** Particle count on high-graphics mode — 3× low. */
+const PARTICLE_COUNT_HIGH = 420;
 const TRAIL_LENGTH     = 22;
 /** Canvas-space line width for trail segments. */
 const TRAIL_LINE_WIDTH = 1.4;
@@ -235,6 +238,11 @@ export interface RpgFluid {
   render(ctx: CanvasRenderingContext2D): void;
   /** Clear all grid and particle state (call on restart). */
   reset(): void;
+  /**
+   * Toggle low-graphics mode.
+   * High graphics uses 3× more particles for a denser fluid background.
+   */
+  setLowGraphicsMode(enabled: boolean): void;
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────────
@@ -257,8 +265,9 @@ export function createRpgFluid(): RpgFluid {
   const tmpVy  = new Float32Array(FLUID_SIZE);
 
   // ── Particle pool ───────────────────────────────────────────────────────────
+  let currentParticleCount = PARTICLE_COUNT_HIGH; // default: high graphics
   let particles: FluidParticle[] = [];
-  for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(_makeParticle());
+  for (let i = 0; i < currentParticleCount; i++) particles.push(_makeParticle());
 
   // ── Coordinate helpers ──────────────────────────────────────────────────────
   function _toGX(wx: number): number { return wx / cellW; }
@@ -401,7 +410,7 @@ export function createRpgFluid(): RpgFluid {
     // 4. Advect tracer particles through the velocity field.
     // Pre-compute teleport grid constants (used in near-invisible particle check).
     const _tpGridCols = 10;
-    const _tpGridRows = Math.ceil(PARTICLE_COUNT / _tpGridCols);
+    const _tpGridRows = Math.ceil(particles.length / _tpGridCols);
     const _tpCellW    = FLUID_COLS / _tpGridCols;
     const _tpCellH    = FLUID_ROWS / _tpGridRows;
 
@@ -546,8 +555,16 @@ export function createRpgFluid(): RpgFluid {
     dyeG.fill(0);
     dyeB.fill(0);
     particles = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(_makeParticle());
+    for (let i = 0; i < currentParticleCount; i++) particles.push(_makeParticle());
   }
 
-  return { resize, addForce, addExplosion, step, render, reset };
+  function setLowGraphicsMode(enabled: boolean): void {
+    const newCount = enabled ? PARTICLE_COUNT_LOW : PARTICLE_COUNT_HIGH;
+    if (newCount !== currentParticleCount) {
+      currentParticleCount = newCount;
+      reset();
+    }
+  }
+
+  return { resize, addForce, addExplosion, step, render, reset, setLowGraphicsMode };
 }

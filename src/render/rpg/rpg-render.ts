@@ -1446,6 +1446,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setLowGraphicsMode(enabled: boolean): void {
       isLowGraphicsMode = enabled;
+      fluid.setLowGraphicsMode(enabled);
       setEntityLowGraphics(enabled);
       setEnemyLowGraphics(enabled);
       setWeaponChainLowGraphics(enabled);
