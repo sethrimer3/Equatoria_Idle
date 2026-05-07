@@ -620,6 +620,13 @@
 - Handles all weapon effect kinds: `single`, `multi`, `aoe`, `piercing`, `gatling`, `poisonBolt`, `emeraldMissile`, `laserBeam`, `sunstoneMine`, `chainWhip`, `vortex`, `swordCombo`.
 - `rpg-render.ts` initialises `playerAttackCtx` after `weaponSystems` is created and delegates `performWeaponAttack` to this module.
 
+### src/render/rpg/rpg-player-damage.ts
+- Player damage application and hit-visual helpers extracted from `rpg-render.ts` (~198 lines).
+- Exports `PlayerDamageCtx` interface, `PlayerDamageHandle` interface, and `createPlayerDamageFns(ctx)` factory.
+- `PlayerDamageCtx` carries live references to `mote`, `playerStats`, getter/setter for `playerIFramesMs`, and the `hitEffects`, `shotLines`, and `damageNumbers` arrays.
+- Covers: `spawnDamageNumber` (floating text with font-size proportional to damage ratio), `spawnHitVisualsAt` (hit flash + shot line + damage number), `spawnHitVisuals` (thin wrapper for laser enemies), `dealDamageToPlayer` (defence-reduced iframe-gated damage), `dealDamageToPlayerKnockback` (same with directional mote velocity impulse), `updateShotVisuals` (timer advancement + pruning), `updateDamageNumbers` (decelerating float + iframe timer).
+- `rpg-render.ts` constructs `playerDamageCtx` early (after state declarations) and destructures all seven functions from the handle.
+
 ### src/render/rpg/rpg-player-movement.ts
 - Player physics and movement extracted from `rpg-render.ts` (~288 lines).
 - Exports `PlayerMovementCtx` interface, `PlayerMovementState` interface, and `updatePlayerMovement(ctx, state, deltaMs)` function.
@@ -685,10 +692,11 @@
 - `update(nowMs)` advances rope physics for all active and slurping wires; must be called once per frame.
 - State is ephemeral — connections reset on page load.
 
-- Independent RPG canvas rendering system for the RPG tab (~1,557 lines).
+- Independent RPG canvas rendering system for the RPG tab (~1,382 lines).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
+- Player damage helpers (spawnDamageNumber, spawnHitVisualsAt, dealDamageToPlayer, etc.) extracted to `rpg-player-damage.ts` via `createPlayerDamageFns` factory; rpg-render.ts constructs `playerDamageCtx` and destructures all seven returned functions.
 - Player physics and movement (`updatePhysics`) extracted to `rpg-player-movement.ts`; rpg-render.ts owns `playerMovementState: PlayerMovementState` and `movementCtx: PlayerMovementCtx` and calls `updatePlayerMovement(movementCtx, playerMovementState, deltaMs)`.
 - Orbit projectile update (`updateOrbitProjectile`) extracted to `rpg-orbit-projectile.ts`; rpg-render.ts owns `orbitProjectileCtx: OrbitProjectileCtx` and calls `updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs)`.
 - Pointer + keyboard input handling extracted to `rpg-input.ts`; rpg-render.ts calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
@@ -785,13 +793,19 @@
 - Each boss entry shows lock status, best completion speed, XP multiplier, and Fight button.
 
 ### src/ui/panels/rpg-enemies-tab.ts
-- Enemies sub-tab (bestiary) for the RPG overlay panel.
+- Enemies sub-tab (bestiary) for the RPG overlay panel (~384 lines).
 - `RpgEnemiesTabPane` interface; `createRpgEnemiesTabPane(dispatch)` factory.
-- `update(rpgState, isDevMode)` rebuilds the enemy and boss catalog.
+- `update(rpgState, isDevMode)` rebuilds the enemy and boss catalog from imported data.
 - Each entry contains a 40×40 canvas icon (drawn with color/glow/shape from constants), base HP/ATK/DEF stats, and a one-sentence description.
 - **Regular enemies** are visible once `highestWaveReached >= firstWave`; all are visible in dev mode.
 - **Bosses** are visible once beaten (`bossCompletions` has non-zero entry); all are visible in dev mode.
-- Uses color/size constants from `rpg-constants.ts` and `rpg-enemy-constants.ts`.
+- Catalog data (enemy entries, boss descriptions) imported from `rpg-enemies-catalog.ts`.
+
+### src/ui/panels/rpg-enemies-catalog.ts
+- Static bestiary data for the RPG enemies tab (~265 lines).
+- Exports `EnemyShape` type, `EnemyCatalogEntry` interface, `ENEMY_CATALOG` (15-entry array of regular enemies), and `BOSS_DESCRIPTIONS` (12-entry boss description strings).
+- Extracted from `rpg-enemies-tab.ts` to keep UI rendering logic separate from data definitions.
+- Imports size/color/stat constants directly from `rpg-constants.ts` and `rpg-enemy-constants.ts`.
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
