@@ -47,10 +47,8 @@ import {
   JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
   INTER_WAVE_DELAY_MS, DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
   DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
-  PLAYER_BASE_COOLDOWN_MS, HIT_EFFECT_DURATION_MS,
-  BASE_ATTACK_TIMER_KEY, SHOT_LINE_DURATION_MS, TARGET_FRAME_MS,
-  DAMAGE_NUM_DURATION_MS, DAMAGE_NUM_MIN_FONT_PX, DAMAGE_NUM_MAX_FONT_PX,
-  DAMAGE_NUM_INITIAL_SPEED, DAMAGE_NUM_DECEL, PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS, PLAYER_KNOCKBACK_MAX,
+  PLAYER_BASE_COOLDOWN_MS,
+  BASE_ATTACK_TIMER_KEY,
   WEAPON_PARTICLE_ORBIT_SPEED, WEAPON_PARTICLE_ORBIT_RADIUS, WEAPON_PARTICLE_MIN_SPEED,
   ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
   WEAPON_ORBIT_TRAIL_CAP,
@@ -86,12 +84,15 @@ import {
   drawSandProjectiles,
   drawPoisonBolts,
   drawLaserBeamEffect,
-  drawWeaponOrbitParticle, drawOrbitProjectile,
   drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
-  drawTargetReticle,
-  drawPlayerMote,
   setLowGraphicsMode as setEntityLowGraphics,
 } from './rpg-entity-draw';
+import {
+  drawWeaponOrbitParticle, drawOrbitProjectile,
+  drawTargetReticle,
+  drawPlayerMote,
+  setLowGraphicsMode as setPlayerDrawLowGraphics,
+} from './rpg-player-draw';
 import {
   drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   setLowGraphicsMode as setCombatEffectsLowGraphics,
@@ -173,6 +174,7 @@ import {
   type PlayerMovementState,
 } from './rpg-player-movement';
 import { createRpgInput } from './rpg-input';
+import { createPlayerDamageFns, type PlayerDamageCtx } from './rpg-player-damage';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -523,58 +525,25 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     weaponSystems.syncAmethystShips();
   }
 
-  /**
-   * Spawns a floating damage/blocked number at (x, y) travelling in (dirX, dirY).
-   * `ratio` is dmg / maxHp clamped to [0, 1] and controls font size.
-   */
-  function spawnDamageNumber(
-    x: number, y: number,
-    dirX: number, dirY: number,
-    text: string,
-    ratio: number,
-    color: string,
-  ): void {
-    const clampedRatio = Math.min(1, Math.max(0, ratio));
-    const fontPx = DAMAGE_NUM_MIN_FONT_PX + clampedRatio * (DAMAGE_NUM_MAX_FONT_PX - DAMAGE_NUM_MIN_FONT_PX);
-    const initialSpeed  = DAMAGE_NUM_INITIAL_SPEED * (0.5 + clampedRatio * 0.5);
-    damageNumbers.push({
-      x, y,
-      vx: dirX * initialSpeed,
-      vy: dirY * initialSpeed,
-      text,
-      fontPx: Math.max(DAMAGE_NUM_MIN_FONT_PX, fontPx),
-      color,
-      timerMs: DAMAGE_NUM_DURATION_MS,
-    });
-  }
-
-  /** Registers a hit-flash and shot-line visual for one target position, and spawns a damage number. */
-  function spawnHitVisualsAt(tx: number, ty: number, maxHp: number, dmg: number, color: string): void {
-    hitEffects.push({ x: tx, y: ty, timerMs: HIT_EFFECT_DURATION_MS, color });
-    shotLines.push({ x1: mote.x, y1: mote.y, x2: tx, y2: ty, timerMs: SHOT_LINE_DURATION_MS, color });
-    const dx = tx - mote.x, dy = ty - mote.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    let dirX = dist > 0.01 ? dx / dist : 0;
-    let dirY = dist > 0.01 ? dy / dist : -1;
-    // Apply ±15° random angle deviation with triangular distribution (lower probability at extremes).
-    // Summing two uniform [0,1] random numbers and subtracting 1 gives a triangular distribution
-    // on [-1, 1], making extreme angles (±15°) less likely than small deviations near 0.
-    const deviation = (Math.random() + Math.random() - 1) * (Math.PI / 12);
-    const cosD = Math.cos(deviation), sinD = Math.sin(deviation);
-    const rotX = dirX * cosD - dirY * sinD;
-    const rotY = dirX * sinD + dirY * cosD;
-    dirX = rotX; dirY = rotY;
-    if (dmg <= 0) {
-      spawnDamageNumber(tx, ty, dirX, dirY, 'BLOCKED', 0.25, '#74c0fc');
-    } else {
-      spawnDamageNumber(tx, ty, dirX, dirY, String(Math.round(dmg)), dmg / maxHp, '#ffffff');
-    }
-  }
-
-  /** Registers a hit-flash and shot-line visual for one laser enemy, and spawns a damage number. */
-  function spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string): void {
-    spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, color);
-  }
+  // ── Player damage helpers (extracted to rpg-player-damage.ts) ──────
+  const playerDamageCtx: PlayerDamageCtx = {
+    mote,
+    playerStats,
+    getPlayerIFramesMs:  () => playerIFramesMs,
+    setPlayerIFramesMs:  (ms) => { playerIFramesMs = ms; },
+    hitEffects,
+    shotLines,
+    damageNumbers,
+  };
+  const {
+    spawnDamageNumber,
+    spawnHitVisualsAt,
+    spawnHitVisuals,
+    dealDamageToPlayer,
+    dealDamageToPlayerKnockback,
+    updateShotVisuals,
+    updateDamageNumbers,
+  } = createPlayerDamageFns(playerDamageCtx);
 
   // ── Closest-target helpers ─────────────────────────────────────
 
@@ -621,33 +590,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   /** Removes any enemies whose HP has reached zero or below, awarding XP for each. */
   function removeDeadEnemies(): void { waveManager.removeDeadEnemies(); }
-  /** Advances hit-flash and shot-line timers, pruning expired entries. */
-  function updateShotVisuals(deltaMs: number): void {
-    for (let i = hitEffects.length - 1; i >= 0; i--) {
-      hitEffects[i].timerMs -= deltaMs;
-      if (hitEffects[i].timerMs <= 0) hitEffects.splice(i, 1);
-    }
-    for (let i = shotLines.length - 1; i >= 0; i--) {
-      shotLines[i].timerMs -= deltaMs;
-      if (shotLines[i].timerMs <= 0) shotLines.splice(i, 1);
-    }
-  }
-
-  /** Advances damage-number positions (decelerating velocity) and iframes timer. */
-  function updateDamageNumbers(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    const decelFactor = Math.pow(DAMAGE_NUM_DECEL, dt);
-    for (let i = damageNumbers.length - 1; i >= 0; i--) {
-      const dn = damageNumbers[i];
-      dn.timerMs -= deltaMs;
-      if (dn.timerMs <= 0) { damageNumbers.splice(i, 1); continue; }
-      dn.x += dn.vx * dt;
-      dn.y += dn.vy * dt;
-      dn.vx *= decelFactor;
-      dn.vy *= decelFactor;
-    }
-    if (playerIFramesMs > 0) playerIFramesMs = Math.max(0, playerIFramesMs - deltaMs);
-  }
 
   // ── Create targeting system ───────────────────────────────────
   targeting = createRpgTargeting({
@@ -919,47 +861,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         p.trailHead = (p.trailHead + 1) % WEAPON_ORBIT_TRAIL_CAP;
         if (p.trailCount < WEAPON_ORBIT_TRAIL_CAP) p.trailCount++;
       }
-    }
-  }
-
-  /**
-   * Applies raw enemy ATK damage to the player after blocking a percentage equal
-   * to playerStats.def (e.g. def=5 blocks 5 % of incoming damage),
-   * subject to iframes. Mutates playerStats.hp and playerIFramesMs.
-   */
-  function dealDamageToPlayer(atkValue: number): void {
-    if (playerIFramesMs > 0) return;
-    const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
-    if (dmg <= 0) {
-      spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
-    } else {
-      playerStats.hp = Math.max(0, playerStats.hp - dmg);
-      const ratio = Math.min(1, dmg / playerStats.maxHp);
-      playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
-      spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
-    }
-  }
-
-  /**
-   * Applies damage to the player with a directional knockback impulse.
-   * Used exclusively by Amber shards which carry velocity-based knockback.
-   * Prefer `dealDamageToPlayer` for all other enemy contact/projectile damage.
-   * @param atkValue - raw attack value (defence percentage applied internally)
-   * @param normDirX - normalised knockback / damage-number direction X
-   * @param normDirY - normalised knockback / damage-number direction Y
-   */
-  function dealDamageToPlayerKnockback(atkValue: number, normDirX: number, normDirY: number): void {
-    if (playerIFramesMs > 0) return;
-    const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
-    if (dmg <= 0) {
-      spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, 'BLOCKED', 0.25, '#74c0fc');
-    } else {
-      playerStats.hp = Math.max(0, playerStats.hp - dmg);
-      const ratio = Math.min(1, dmg / playerStats.maxHp);
-      mote.vx += normDirX * PLAYER_KNOCKBACK_MAX * ratio;
-      mote.vy += normDirY * PLAYER_KNOCKBACK_MAX * ratio;
-      playerIFramesMs = PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS;
-      spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, String(Math.round(dmg)), ratio, '#ff6666');
     }
   }
 
@@ -1455,6 +1356,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       isLowGraphicsMode = enabled;
       fluid.setLowGraphicsMode(enabled);
       setEntityLowGraphics(enabled);
+      setPlayerDrawLowGraphics(enabled);
       setEnemyLowGraphics(enabled);
       setWeaponChainLowGraphics(enabled);
       setWeaponSwordLowGraphics(enabled);
