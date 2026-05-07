@@ -84,12 +84,15 @@ import {
   drawSandProjectiles,
   drawPoisonBolts,
   drawLaserBeamEffect,
-  drawWeaponOrbitParticle, drawOrbitProjectile,
   drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
-  drawTargetReticle,
-  drawPlayerMote,
   setLowGraphicsMode as setEntityLowGraphics,
 } from './rpg-entity-draw';
+import {
+  drawWeaponOrbitParticle, drawOrbitProjectile,
+  drawTargetReticle,
+  drawPlayerMote,
+  setLowGraphicsMode as setPlayerDrawLowGraphics,
+} from './rpg-player-draw';
 import {
   drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
   setLowGraphicsMode as setCombatEffectsLowGraphics,
@@ -1353,6 +1356,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       isLowGraphicsMode = enabled;
       fluid.setLowGraphicsMode(enabled);
       setEntityLowGraphics(enabled);
+      setPlayerDrawLowGraphics(enabled);
       setEnemyLowGraphics(enabled);
       setWeaponChainLowGraphics(enabled);
       setWeaponSwordLowGraphics(enabled);

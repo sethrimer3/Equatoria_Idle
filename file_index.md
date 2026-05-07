@@ -376,14 +376,22 @@
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 
 ### src/render/rpg/rpg-entity-draw.ts
-- Exported pure draw functions for weapon projectiles and player-side combat visuals (~538 lines after refactoring).
-- Covers: sand projectiles, poison bolts, laser beam effect, weapon orbit particle, orbit projectile, boss projectiles, emerald missiles (player + sub + swirl), sunstone mines, target reticle, and **player mote** (comet trail + body draw with iframe flicker).
-- `drawPlayerMote(ctx, mote, glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs)` — replaces the inline draw block that was in `rpg-render.ts`; respects `isLowGraphicsMode` via the module flag.
-- Exposes its own `setLowGraphicsMode()` (independent of `rpg-enemy-draw.ts`).
+- Exported pure draw functions for weapon projectiles (~346 lines after player-draw extraction).
+- Covers: sand projectiles, poison bolts, laser beam effect, boss projectiles, emerald missiles (player + sub + swirl), and sunstone mines.
+- Player mote, orbit particle, orbit projectile, and target reticle draws have moved to `rpg-player-draw.ts`.
+- Exposes its own `setLowGraphicsMode()` (independent of other draw modules); called from `rpg-render.ts`.
 - **Companion ship draw** has moved to `rpg-companion-draw.ts`.
 - **Combat feedback visuals** (death particles, shot lines, hit effects, damage numbers) have moved to `rpg-combat-effects-draw.ts`.
 - **`drawAttackTrail`** (laser enemy dash trail) has moved to `rpg-enemy-draw.ts`.
 - No runtime side-effects; safe to call from any rendering context.
+
+### src/render/rpg/rpg-player-draw.ts
+- Pure draw functions for player mote, weapon orbit particle, orbit projectile, and target reticle (~215 lines).
+- Extracted from `rpg-entity-draw.ts` to group all player-visual rendering in one focused module.
+- `drawPlayerMote(ctx, mote, glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs)` — respects `isLowGraphicsMode` via the module flag.
+- `drawWeaponOrbitParticle(ctx, p)` and `drawOrbitProjectile(ctx, op)` — orbit visuals with comet trails.
+- `drawTargetReticle(ctx, x, y, radius, nowMs)` — pulsing corner-bracket + dashed inner ring.
+- Exposes its own `setLowGraphicsMode()` export; called from `rpg-render.ts` alongside `setEntityLowGraphics`.
 
 ### src/render/rpg/rpg-companion-draw.ts
 - Pure draw functions for Sapphire and Amethyst companion ships and their lasers (~257 lines).
@@ -674,12 +682,21 @@
 - `updateLockedWire` / `updateSlurpingWire` / `setDragPreview` / `updateDragPreviewPhysics` / `hideDragPreview` are called per-frame by `rpg-equip-wiring.ts`.
 
 ### src/render/rpg/rpg-stats-panel.ts
-- RPG stats panel DOM construction and per-frame update.
+- RPG stats panel logic layer: DPS tracking, equip-wiring registration, and per-frame update (~360 lines after DOM extraction).
 - Exports `RpgStatsPanelCtx` interface, `RpgStatsPanelHandle` interface, and `createRpgStatsPanel(ctx)` factory.
-- Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display, weapon stat rows, XP amount display.
-- All visible wires use the unified soft-body system via `createEquipWiringSystem` (see `rpg-equip-wiring.ts`). The old separate XP wire system has been removed.
+- DOM construction delegated to `rpg-stats-panel-dom.ts` via `buildStatsPanelDom()`.
+- Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display updates, weapon stat rows, XP amount display, and equip-wiring plug registrations.
+- All visible wires use the unified soft-body system via `createEquipWiringSystem` (see `rpg-equip-wiring.ts`).
 - Box 1: 5 weapon-source output plugs (slot 1 unlocked; 2–5 unlock via `getMaxEquippedWeapons`).
 - `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
+
+### src/render/rpg/rpg-stats-panel-dom.ts
+- DOM element construction for the RPG stats panel (~290 lines).
+- Extracted from `rpg-stats-panel.ts` to isolate HTML element creation from update logic.
+- Exports `StatsPanelDomRefs` interface and `buildStatsPanelDom()` factory.
+- Builds: box 1 (player icon canvas + weapon-source plug slots), boxes 2–5 (XP node + I/II/III modifier rows), boxes 6–11 (weapon stat rows with header), right column (DPS chart widget + HP box + menu area), and dev-mode number badges.
+- Side-effect: starts a `requestAnimationFrame` loop for the player-icon idle animation (pulsing glow); skips draw while the panel is hidden to avoid unnecessary GPU work.
+- Returns `StatsPanelDomRefs` containing all ~20 live element references needed by `rpg-stats-panel.ts` for updates and wiring registrations.
 
 ### src/render/rpg/rpg-equip-wiring.ts
 - Plug wiring system for weapon-source/modifier/stat connections in the RPG stats panel.
@@ -702,7 +719,7 @@
 - Pointer + keyboard input handling extracted to `rpg-input.ts`; rpg-render.ts calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
 - Laser enemy draw (`drawLaserEnemies`) and all-enemy indicator markers (`drawEnemyIndicators`) extracted to `rpg-enemy-draw.ts`; called with explicit arrays and `enemyIndicatorStyle`.
-- Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-entity-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
+- Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-player-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30 excluding laser/sapphire), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
