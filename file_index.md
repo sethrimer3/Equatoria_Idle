@@ -10,6 +10,11 @@
 
 ## src/
 
+### src/buildInfo.ts
+- Single source of truth for the build number.
+- Exports `BUILD_NUMBER` — increment by 1 with every PR/change.
+- Imported by `settings-panel.ts` to display "Build #N" in the Settings tab footer.
+
 ### src/main.ts
 - Entry point. Boots the app when DOM is ready.
 

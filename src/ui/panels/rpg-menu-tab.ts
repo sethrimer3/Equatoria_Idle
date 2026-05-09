@@ -28,6 +28,8 @@ export interface RpgMenuTabPane {
   update(rpgState: RpgSimState | null, isDevMode?: boolean, rpgBarAtTop?: boolean): void;
   /** Sync the stored rpgBarAtTop value without a full re-render. */
   setRpgBarAtTop(atTop: boolean): void;
+  /** Sync the stored isInvincibilityMode value without a full re-render. */
+  setInvincibilityMode(enabled: boolean): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ export function createRpgMenuTabPane(
   let isAutoMoveEnabled = false;
   let isConfirmingRespawn = false;
   let rpgBarAtTop = false;
+  let isInvincibilityMode = false;
 
   function update(rpgState: RpgSimState | null, isDevMode = false, barAtTop = false): void {
     rpgBarAtTop = barAtTop;
@@ -257,6 +260,37 @@ export function createRpgMenuTabPane(
       devRow.appendChild(devSelect);
       devRow.appendChild(jumpBtn);
       devSection.appendChild(devRow);
+
+      // ── Invincibility Mode ──
+      const invincRow = document.createElement('div');
+      invincRow.className = 'rpg-menu__setting-row';
+      invincRow.style.marginTop = '6px';
+
+      const invincLabelGroup = document.createElement('div');
+      invincLabelGroup.className = 'rpg-menu__setting-label-group';
+      const invincLabel = document.createElement('span');
+      invincLabel.className = 'rpg-menu__setting-label';
+      invincLabel.style.color = '#ffcc44';
+      invincLabel.textContent = '⚙ Invincibility Mode';
+      const invincDesc = document.createElement('span');
+      invincDesc.className = 'rpg-menu__setting-desc';
+      invincDesc.textContent = 'Player takes no damage from any source (dev mode only).';
+      invincLabelGroup.appendChild(invincLabel);
+      invincLabelGroup.appendChild(invincDesc);
+
+      const invincCheckbox = document.createElement('input');
+      invincCheckbox.type = 'checkbox';
+      invincCheckbox.className = 'settings-checkbox';
+      invincCheckbox.checked = isInvincibilityMode;
+      invincCheckbox.addEventListener('change', () => {
+        isInvincibilityMode = invincCheckbox.checked;
+        dispatch({ kind: 'set_invincibility_mode', enabled: isInvincibilityMode });
+      });
+
+      invincRow.appendChild(invincLabelGroup);
+      invincRow.appendChild(invincCheckbox);
+      devSection.appendChild(invincRow);
+
       element.appendChild(devSection);
     }
   }
@@ -267,6 +301,9 @@ export function createRpgMenuTabPane(
     update,
     setRpgBarAtTop(atTop: boolean): void {
       rpgBarAtTop = atTop;
+    },
+    setInvincibilityMode(enabled: boolean): void {
+      isInvincibilityMode = enabled;
     },
   };
 

@@ -48,6 +48,8 @@ export interface RpgMenuPanel {
   isAutoMoveEnabled: boolean;
   /** Sync the persisted rpgBarAtTop value into the menu tab so the checkbox reflects current state. */
   setRpgBarAtTop(atTop: boolean): void;
+  /** Sync the invincibility mode setting into the menu tab so the checkbox reflects current state. */
+  setInvincibilityMode(enabled: boolean): void;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -204,6 +206,10 @@ export function createRpgMenuPanel(
     setRpgBarAtTop(atTop: boolean): void {
       lastRpgBarAtTop = atTop;
       menuTabPane.setRpgBarAtTop(atTop);
+    },
+
+    setInvincibilityMode(enabled: boolean): void {
+      menuTabPane.setInvincibilityMode(enabled);
     },
 
     isVisible: false,

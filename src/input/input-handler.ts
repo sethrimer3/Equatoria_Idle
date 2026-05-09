@@ -23,7 +23,8 @@ export type GameAction =
   | { kind: 'dev_jump_wave'; wave: number }
   | { kind: 'respawn_now' }
   | { kind: 'start_boss_fight'; bossId: number }
-  | { kind: 'set_boss_speed'; pct: number };
+  | { kind: 'set_boss_speed'; pct: number }
+  | { kind: 'set_invincibility_mode'; enabled: boolean };
 
 export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 

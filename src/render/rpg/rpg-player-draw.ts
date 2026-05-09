@@ -46,9 +46,9 @@ export function drawWeaponOrbitParticle(ctx: CanvasRenderingContext2D, p: Weapon
       ctx.shadowBlur = 0;
     }
   }
-  // Draw main particle
+  // Draw main particle at 25% opacity
   const half = p.size / 2;
-  ctx.globalAlpha = 0.9;
+  ctx.globalAlpha = 0.25;
   if (!isLowGraphicsMode) {
     ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
     ctx.fillRect(Math.floor(p.x - half * 1.8), Math.floor(p.y - half * 1.8), Math.ceil(p.size * 1.8), Math.ceil(p.size * 1.8));
@@ -177,12 +177,12 @@ export function drawPlayerMote(
       const trailSize = RPG_MOTE_SIZE * t * 1.3;
       if (trailSize < 0.3) continue;
       const half = trailSize / 2;
-      ctx.globalAlpha = t * 0.45;
+      ctx.globalAlpha = t * 0.15;
       ctx.shadowBlur  = trailSize * 6; ctx.shadowColor = RPG_MOTE_GLOW; ctx.fillStyle = RPG_MOTE_GLOW;
       const gh = half * 2.2;
       ctx.fillRect(Math.floor(mote.trailX[bufIdx] - gh), Math.floor(mote.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
       ctx.shadowBlur = 0;
-      ctx.globalAlpha = t * 0.7;
+      ctx.globalAlpha = t * 0.15;
       ctx.fillStyle   = RPG_MOTE_COLOR;
       ctx.fillRect(Math.floor(mote.trailX[bufIdx] - half), Math.floor(mote.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
     }

@@ -4,6 +4,7 @@ import { saveSettings } from '../../settings';
 import type { AudioSystem } from '../../audio';
 import { makePageBreak } from '../ui-helpers';
 import { particleTweaks, PARTICLE_TWEAKS_DEFAULTS, resetParticleTweaks } from '../../data/particles/particle-tweaks';
+import { BUILD_NUMBER } from '../../buildInfo';
 
 // ─── Slider glow constants ───────────────────────────────────────
 
@@ -214,7 +215,7 @@ export function createSettingsPanel(
   const credits = document.createElement('div');
   credits.className = 'credits';
   credits.innerHTML = `
-    <p>Equatoria Idle v0.1.0</p>
+    <p>Equatoria Idle — Build #${BUILD_NUMBER}</p>
     <p>A mathematical idle adventure</p>
   `;
   panel.appendChild(credits);
