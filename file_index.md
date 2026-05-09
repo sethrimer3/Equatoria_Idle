@@ -353,16 +353,38 @@
 - No runtime dependencies (types only).
 
 ### src/render/rpg/rpg-enemy-types.ts
-- All non-starter enemy interfaces and related projectile/particle/ship entity types (~491 lines).
+- All non-starter enemy interfaces and related projectile/particle/ship entity types.
 - Extracted from `rpg-types.ts` to keep that file under ~300 lines.
 - Covers: `EmeraldPhase`, `EmeraldEnemy`, `AmberEnemy`, `AmberShard`, `VoidEnemy`, `QuartzEnemy`, `QuartzSpike`, `RubyEnemy`, `RubyBolt`, `SunstoneEnemy`, `CitrineEnemy`, `CitrineBolt`, `IoliteEnemy`, `AmethystEnemy`, `AmethystShard`, `DiamondEnemy`, `DiamondShard`, `NullstoneEnemy`, `VoidTendril`, `BossEnemy`, `BossProjectile`, `FracterylEnemy`, `FracterylShard`, `EigensteinEnemy`, `EigensteinBeam`, `DanmakuSafeZone`, `TeleportParticle`, `EmeraldPlayerMissile`, `EmeraldSubMissile`, `EmeraldSwirlParticle`, `SunstoneMine`, `SapphireShip`, `SapphireLaser`, `AmethystShip`, `AmethystLaser`, `LuckyMote`, `LuckyMotePopup`.
+- Also exports `EliteTier` (union of 8 tier names) and `EliteEnemy` (the rare polygon mini-boss entity with full state machine fields).
 - No runtime dependencies (types only; all fields are primitive or built-in TS types).
-- Consumed by: `rpg-render.ts`, `rpg-factories.ts`, `rpg-entity-draw.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-damage.ts`, `rpg-boss-draw.ts`, `rpg-boss-update.ts`, `rpg-lucky-motes.ts`.
+- Consumed by: `rpg-render.ts`, `rpg-factories.ts`, `rpg-entity-draw.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-damage.ts`, `rpg-boss-draw.ts`, `rpg-boss-update.ts`, `rpg-lucky-motes.ts`, `rpg-elite-enemy-updates.ts`, `rpg-elite-enemy-draw.ts`.
+
+### src/render/rpg/rpg-elite-enemy-updates.ts
+- Per-frame update logic for all 8 elite polygon enemies (quartz → nullstone).
+- Exports `updateEliteEnemies(elites, ctx, deltaMs)` and `EliteEnemyCtx` (extends `RpgEnemyCtx` with projectile arrays).
+- Each tier has 2 distinct attacks reusing existing projectile arrays (`quartzSpikes`, `rubyBolts`, etc.):
+  - **Quartz (3)**: Crystal Salvo (two staggered 3-spike bursts) + Crystal Nova (9-spike ring).
+  - **Ruby (4)**: Cardinal Burst (4 bolts N/E/S/W) + Triple Shot (tight 3-bolt spread).
+  - **Sunstone (5)**: Star Flare (5 homing citrine bolts) + Corona Pulse (10-spike ring).
+  - **Citrine (6)**: Hex Swarm (6 homing citrine bolts) + Laser Hex (6 instant beams via fluid).
+  - **Iolite (7)**: Prism Fan (7 bolts in wide arc) + Gravity Well (pulls player 2.5 s).
+  - **Amethyst (8)**: Crystal Storm (two staggered 8-shard rings) + reactive shield burst.
+  - **Diamond (9)**: Nine-Star burst + phase cycle (invuln orbit ↔ vulnerable patrol).
+  - **Nullstone (10)**: Tendril Swarm + Event Horizon (20-tendril ring when HP < 30%).
+- All elites share patrol movement (random-direction turns every 2 s with velocity damping).
+
+### src/render/rpg/rpg-elite-enemy-draw.ts
+- Draw functions for elite polygon enemies.
+- Each elite is a rotating regular polygon (3–10 sides) with glow, HP bar, and a star-crown indicator.
+- Exports `drawEliteEnemies(ctx, elites)` and `setLowGraphicsMode(enabled)`.
+- Amethyst elite also renders a shield arc around its body.
+- Diamond elite pulses with opacity during its invuln orbit phase.
 
 ### src/render/rpg/rpg-factories.ts
-- `make*` factory functions for every RPG entity type (~398 lines).
+- `make*` factory functions for every RPG entity type.
 - Imports constants from `rpg-constants.ts`, types from `rpg-types.ts`, and `getWaveStatScale` from `rpg-state.ts`.
-- Exports: `makeAttackTrail`, `makeLaserEnemy`, `makeSapphireEnemy`, `makeSapphireMissile`, `makeEmeraldEnemy`, `makeAmberEnemy`, `makeAmberShard`, `makeVoidEnemy`, `makeQuartzEnemy`, `makeQuartzSpike`, `makeRubyEnemy`, `makeRubyBolt`, `makeSunstoneEnemy`, `makeCitrineEnemy`, `makeCitrineBolt`, `makeIoliteEnemy`, `makeAmethystEnemy`, `makeAmethystShard`, `makeDiamondEnemy`, `makeDiamondShard`, `makeNullstoneEnemy`, `makeVoidTendril`, `makeBossEnemy`.
+- Now also exports `makeEliteEnemy(tier, x, y, waveNumber)` which reads the HP/ATK/DEF/cooldown maps from `rpg-enemy-constants.ts` and scales with wave number.
 
 ### src/render/rpg/rpg-fluid.ts
 - Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
