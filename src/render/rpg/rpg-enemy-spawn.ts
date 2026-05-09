@@ -18,7 +18,7 @@ import type {
   RubyEnemy, SunstoneEnemy, CitrineEnemy,
   IoliteEnemy, AmethystEnemy, DiamondEnemy,
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy,
-  BossEnemy,
+  BossEnemy, EliteEnemy, EliteTier,
 } from './rpg-enemy-types';
 import {
   LASER_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE,
@@ -39,6 +39,7 @@ import {
   makeNullstoneEnemy,
   makeFracterylEnemy,
   makeEigensteinEnemy, makeBossEnemy,
+  makeEliteEnemy,
 } from './rpg-factories';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
@@ -71,6 +72,7 @@ export interface EnemySpawnCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
 }
 
 // ── Spawn helper ──────────────────────────────────────────────────────────────
@@ -240,5 +242,19 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'boss') {
     ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx));
     ctx.enterBossWave();
+  } else if (
+    enemyTypeId === 'elite_quartz' || enemyTypeId === 'elite_ruby'   ||
+    enemyTypeId === 'elite_sunstone' || enemyTypeId === 'elite_citrine' ||
+    enemyTypeId === 'elite_iolite'  || enemyTypeId === 'elite_amethyst' ||
+    enemyTypeId === 'elite_diamond' || enemyTypeId === 'elite_nullstone'
+  ) {
+    // Elite enemies spawn at canvas edges so the player sees them approaching.
+    const tier = enemyTypeId.slice(6) as EliteTier; // strip "elite_"
+    const edge = Math.floor(Math.random() * 4);
+    if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
+    else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
+    else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
+    else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
+    ctx.eliteEnemies.push(makeEliteEnemy(tier, spawnX, spawnY, wn));
   }
 }

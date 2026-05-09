@@ -36,6 +36,7 @@ import {
   IOLITE_ENEMY_SIZE, AMETHYST_ENEMY_SIZE,
   DIAMOND_ENEMY_SIZE, NULLSTONE_ENEMY_SIZE,
   FRACTERYL_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE,
+  ELITE_NULLSTONE_RADIUS,
 } from './rpg-enemy-constants';
 import type { FluidImpulse } from './rpg-fluid';
 import type { RpgPlayerStats, LaserBeamEffect, HitEffect, LaserEnemy, SapphireEnemy, SapphireMissile } from './rpg-types';
@@ -45,7 +46,7 @@ import type {
   RubyEnemy, SunstoneEnemy, CitrineEnemy,
   IoliteEnemy, AmethystEnemy,
   DiamondEnemy, NullstoneEnemy,
-  FracterylEnemy, EigensteinEnemy, BossEnemy,
+  FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
@@ -76,6 +77,7 @@ export interface LaserBeamWeaponCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
   damageMissile: (missile: SapphireMissile, dmg: number) => number;
@@ -93,6 +95,7 @@ export interface LaserBeamWeaponCtx {
   damageNullstoneEnemy: (enemy: NullstoneEnemy, dmg: number, armorMult: number) => number;
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
 }
@@ -116,12 +119,12 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
     emeraldEnemies, amberEnemies, amberShards,
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
-    nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
+    nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageBossEnemy,
+    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
     spawnDamageNumber,
   } = ctx;
 
@@ -362,6 +365,20 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
       const perpDist = Math.abs(ex * dirY - ey * dirX);
       if (perpDist <= EIGENSTEIN_ENEMY_SIZE * 2) {
         const dmg = damageEigensteinEnemy(e, baseDamage, 1.0);
+        hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
+        spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
+      }
+    }
+
+    // Hit elite enemies on the beam path
+    for (const e of eliteEnemies) {
+      if (e.isInvuln) continue;
+      const ex = e.x - mote.x, ey = e.y - mote.y;
+      const tProj = ex * dirX + ey * dirY;
+      if (tProj < 0 || tProj > tMax) continue;
+      const perpDist = Math.abs(ex * dirY - ey * dirX);
+      if (perpDist <= ELITE_NULLSTONE_RADIUS * 2) {
+        const dmg = damageEliteEnemy(e, baseDamage, 1.0);
         hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: LASER_BEAM_GLOW });
         spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, LASER_BEAM_COLOR);
       }

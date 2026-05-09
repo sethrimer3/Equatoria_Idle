@@ -30,7 +30,7 @@ import type { NullstoneVortex, VortexWeaponState, LaserEnemy, SapphireEnemy } fr
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
-  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy,
+  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
@@ -59,6 +59,7 @@ export interface VortexWeaponCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   // Damage functions (body enemies)
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
@@ -75,6 +76,7 @@ export interface VortexWeaponCtx {
   damageNullstoneEnemy: (enemy: NullstoneEnemy, dmg: number, armorMult: number) => number;
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   // Visual feedback
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
@@ -104,7 +106,7 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageBossEnemy,
+    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
   } = ctx;
 
   const activeVortexes: NullstoneVortex[] = [];
@@ -191,6 +193,7 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
       for (const e of ctx.nullstoneEnemies)  applyPull(e);
       for (const e of ctx.fracterylEnemies)  applyPull(e);
       for (const e of ctx.eigensteinEnemies) applyPull(e);
+      for (const e of ctx.eliteEnemies) applyPull(e);
       if (ctx.bossEnemy) applyPull(ctx.bossEnemy);
 
       // Fluid inward swirl
@@ -219,6 +222,7 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
         for (const e of ctx.nullstoneEnemies)  applyVortexTickToEnemy(v, e, damageNullstoneEnemy);
         for (const e of ctx.fracterylEnemies)  applyVortexTickToEnemy(v, e, (en, dmg, p) => damageFracterylEnemy(en, dmg, p));
         for (const e of ctx.eigensteinEnemies) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEigensteinEnemy(en, dmg, p));
+        for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEliteEnemy(en, dmg, p)); }
         if (ctx.bossEnemy) {
           const bx = ctx.bossEnemy.x - v.x, by = ctx.bossEnemy.y - v.y;
           if (bx * bx + by * by <= v.radiusPx * v.radiusPx) {

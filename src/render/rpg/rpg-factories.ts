@@ -9,7 +9,7 @@ import type {
   IoliteEnemy, AmethystEnemy, AmethystShard, DiamondEnemy, DiamondShard,
   NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard, EigensteinEnemy, DanmakuSafeZone,
-  BossEnemy,
+  BossEnemy, EliteEnemy, EliteTier,
 } from './rpg-enemy-types';
 import {
   LASER_HP_INIT, LASER_ATK_INIT, LASER_DEF_INIT, LASER_PATROL_TURN_MS,
@@ -52,6 +52,23 @@ import {
   FRACTERYL_SHARD_HP_INIT, FRACTERYL_SHARD_ATK_INIT, FRACTERYL_SHARD_LIFE_MS,
   EIGENSTEIN_HP_INIT, EIGENSTEIN_ATK_INIT, EIGENSTEIN_DEF_INIT,
   EIGENSTEIN_BEAM_CD_MS, EIGENSTEIN_BEAM_JITTER, EIGENSTEIN_PATROL_TURN_MS,
+  ELITE_QUARTZ_HP, ELITE_QUARTZ_ATK, ELITE_QUARTZ_DEF,
+  ELITE_RUBY_HP, ELITE_RUBY_ATK, ELITE_RUBY_DEF,
+  ELITE_SUNSTONE_HP, ELITE_SUNSTONE_ATK, ELITE_SUNSTONE_DEF,
+  ELITE_CITRINE_HP, ELITE_CITRINE_ATK, ELITE_CITRINE_DEF,
+  ELITE_IOLITE_HP, ELITE_IOLITE_ATK, ELITE_IOLITE_DEF,
+  ELITE_AMETHYST_HP, ELITE_AMETHYST_ATK, ELITE_AMETHYST_DEF, ELITE_AMETHYST_SHIELD,
+  ELITE_DIAMOND_HP, ELITE_DIAMOND_ATK, ELITE_DIAMOND_DEF,
+  ELITE_NULLSTONE_HP, ELITE_NULLSTONE_ATK, ELITE_NULLSTONE_DEF,
+  ELITE_QUARTZ_A1_CD_MS, ELITE_QUARTZ_A2_CD_MS,
+  ELITE_RUBY_A1_CD_MS, ELITE_RUBY_A2_CD_MS,
+  ELITE_SUNSTONE_A1_CD_MS, ELITE_SUNSTONE_A2_CD_MS,
+  ELITE_CITRINE_A1_CD_MS, ELITE_CITRINE_A2_CD_MS,
+  ELITE_IOLITE_A1_CD_MS, ELITE_IOLITE_A2_CD_MS,
+  ELITE_AMETHYST_A1_CD_MS,
+  ELITE_DIAMOND_A1_CD_MS, ELITE_DIAMOND_VULN_MS,
+  ELITE_NULLSTONE_A1_CD_MS,
+  ELITE_PATROL_TURN_MS,
 } from './rpg-enemy-constants';
 
 export function makeAttackTrail(): AttackTrailState {
@@ -360,6 +377,61 @@ export function makeEigensteinEnemy(x: number, y: number, waveNumber: number): E
 
 export function makeDanmakuSafeZone(x: number, y: number, angle: number, width: number): DanmakuSafeZone {
   return { x, y, angle, width, timerMs: DANMAKU_WARN_MS, maxTimerMs: DANMAKU_WARN_MS };
+}
+
+/** Creates an elite enemy of the given tier at (x, y), scaling stats by waveNumber. */
+export function makeEliteEnemy(tier: EliteTier, x: number, y: number, waveNumber: number): EliteEnemy {
+  const scale = getWaveStatScale(waveNumber);
+  const HP_MAP:  Record<EliteTier, number> = {
+    quartz: ELITE_QUARTZ_HP,  ruby: ELITE_RUBY_HP,  sunstone: ELITE_SUNSTONE_HP,
+    citrine: ELITE_CITRINE_HP, iolite: ELITE_IOLITE_HP, amethyst: ELITE_AMETHYST_HP,
+    diamond: ELITE_DIAMOND_HP, nullstone: ELITE_NULLSTONE_HP,
+  };
+  const ATK_MAP: Record<EliteTier, number> = {
+    quartz: ELITE_QUARTZ_ATK, ruby: ELITE_RUBY_ATK, sunstone: ELITE_SUNSTONE_ATK,
+    citrine: ELITE_CITRINE_ATK, iolite: ELITE_IOLITE_ATK, amethyst: ELITE_AMETHYST_ATK,
+    diamond: ELITE_DIAMOND_ATK, nullstone: ELITE_NULLSTONE_ATK,
+  };
+  const DEF_MAP: Record<EliteTier, number> = {
+    quartz: ELITE_QUARTZ_DEF, ruby: ELITE_RUBY_DEF, sunstone: ELITE_SUNSTONE_DEF,
+    citrine: ELITE_CITRINE_DEF, iolite: ELITE_IOLITE_DEF, amethyst: ELITE_AMETHYST_DEF,
+    diamond: ELITE_DIAMOND_DEF, nullstone: ELITE_NULLSTONE_DEF,
+  };
+  const A1_MAP: Record<EliteTier, number> = {
+    quartz: ELITE_QUARTZ_A1_CD_MS,  ruby: ELITE_RUBY_A1_CD_MS,
+    sunstone: ELITE_SUNSTONE_A1_CD_MS, citrine: ELITE_CITRINE_A1_CD_MS,
+    iolite: ELITE_IOLITE_A1_CD_MS,  amethyst: ELITE_AMETHYST_A1_CD_MS,
+    diamond: ELITE_DIAMOND_A1_CD_MS, nullstone: ELITE_NULLSTONE_A1_CD_MS,
+  };
+  const A2_MAP: Record<EliteTier, number> = {
+    quartz: ELITE_QUARTZ_A2_CD_MS,  ruby: ELITE_RUBY_A2_CD_MS,
+    sunstone: ELITE_SUNSTONE_A2_CD_MS, citrine: ELITE_CITRINE_A2_CD_MS,
+    iolite: ELITE_IOLITE_A2_CD_MS,
+    amethyst: 0,       // amethyst uses reactive shield burst, timer unused
+    diamond: ELITE_DIAMOND_VULN_MS, // diamond phase cycle initialized as vulnerable
+    nullstone: 0,      // nullstone uses HP-threshold trigger, timer unused
+  };
+  const hp    = Math.ceil(HP_MAP[tier]  * scale);
+  const atk   = Math.ceil(ATK_MAP[tier] * scale);
+  const def   = Math.ceil(DEF_MAP[tier] * scale);
+  const shield = tier === 'amethyst' ? Math.ceil(ELITE_AMETHYST_SHIELD * scale) : 0;
+  return {
+    kind: 'elite', tier,
+    x, y, vx: 0, vy: 0,
+    hp, maxHp: hp, atk, def,
+    attack1TimerMs: A1_MAP[tier] * (0.5 + Math.random() * 0.5),
+    attack2TimerMs: A2_MAP[tier],
+    pulseMs: 0,
+    orbitAngle: Math.random() * Math.PI * 2,
+    isInvuln: false,
+    invulnTimerMs: 0,
+    gravityTimerMs: 0,
+    patrolTimerMs: ELITE_PATROL_TURN_MS * Math.random(),
+    shieldHp: shield,
+    maxShieldHp: shield,
+    hasTriggeredLowHp: false,
+    pendingSalvoMs: -1,
+  };
 }
 
 /**

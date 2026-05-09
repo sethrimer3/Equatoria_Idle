@@ -43,7 +43,7 @@ import type { LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy,
-  DiamondEnemy, NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy,
+  DiamondEnemy, NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
   EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
 } from './rpg-enemy-types';
 
@@ -73,6 +73,7 @@ export interface EmeraldWeaponCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
   damageEmeraldEnemy: (enemy: EmeraldEnemy, dmg: number, armorMult: number) => number;
@@ -88,6 +89,7 @@ export interface EmeraldWeaponCtx {
   damageNullstoneEnemy: (enemy: NullstoneEnemy, dmg: number, armorMult: number) => number;
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
   removeDeadEnemies: () => void;
@@ -115,11 +117,11 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies,
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
-    nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
+    nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageBossEnemy,
+    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
     spawnHitVisualsAt,
     removeDeadEnemies, checkWaveCompletion,
   } = ctx;
@@ -213,6 +215,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       for (const e of nullstoneEnemies) checkTarget(e.x, e.y);
       for (const e of fracterylEnemies) checkTarget(e.x, e.y);
       for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
+      for (const e of eliteEnemies) { if (!e.isInvuln) checkTarget(e.x, e.y); }
       if (ctx.bossEnemy) checkTarget(ctx.bossEnemy.x, ctx.bossEnemy.y);
 
       // If an enemy is close enough to detect, reset fizzle timer and home toward it.
@@ -318,6 +321,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       if (!hit) for (const e of nullstoneEnemies) { if (tryHit(e, damageNullstoneEnemy))                       { hit = true; break; } }
       if (!hit) for (const e of fracterylEnemies) { if (tryHit(e, (en, d, p) => damageFracterylEnemy(en, d, p))) { hit = true; break; } }
       if (!hit) for (const e of eigensteinEnemies) { if (tryHit(e, (en, d, p) => damageEigensteinEnemy(en, d, p))) { hit = true; break; } }
+      if (!hit) for (const e of eliteEnemies) { if (e.isInvuln) continue; if (tryHit(e, (en, d, p) => damageEliteEnemy(en, d, p))) { hit = true; break; } }
       if (!hit && ctx.bossEnemy) {
         const boss = ctx.bossEnemy;
         const dx = m.x - boss.x, dy = m.y - boss.y;
@@ -400,6 +404,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
         for (const e of nullstoneEnemies)  checkTarget(e.x, e.y);
         for (const e of fracterylEnemies)  checkTarget(e.x, e.y);
         for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
+        for (const e of eliteEnemies) { if (!e.isInvuln) checkTarget(e.x, e.y); }
         if (ctx.bossEnemy) checkTarget(ctx.bossEnemy.x, ctx.bossEnemy.y);
 
         if (nearestDist2 <= detectR2 && nearestX !== null && nearestY !== null) {
@@ -493,6 +498,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
           applyAoe(nullstoneEnemies, damageNullstoneEnemy);
           applyAoe(fracterylEnemies, (e, d, p) => damageFracterylEnemy(e, d, p));
           applyAoe(eigensteinEnemies,(e, d, p) => damageEigensteinEnemy(e, d, p));
+          applyAoe(eliteEnemies.filter(e => !e.isInvuln), (e, d, p) => damageEliteEnemy(e, d, p));
           if (ctx.bossEnemy) {
             const bdx = ctx.bossEnemy.x - s.x, bdy = ctx.bossEnemy.y - s.y;
             if (bdx * bdx + bdy * bdy <= aoeR2) {
@@ -537,6 +543,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       if (!hit) for (const e of nullstoneEnemies) { if (tryHitSub(e, damageNullstoneEnemy))                        { hit = true; break; } }
       if (!hit) for (const e of fracterylEnemies) { if (tryHitSub(e, (en, d, p) => damageFracterylEnemy(en, d, p))) { hit = true; break; } }
       if (!hit) for (const e of eigensteinEnemies) { if (tryHitSub(e, (en, d, p) => damageEigensteinEnemy(en, d, p))) { hit = true; break; } }
+      if (!hit) for (const e of eliteEnemies) { if (e.isInvuln) continue; if (tryHitSub(e, (en, d, p) => damageEliteEnemy(en, d, p))) { hit = true; break; } }
       if (!hit && ctx.bossEnemy) {
         const boss = ctx.bossEnemy;
         const dx = s.x - boss.x, dy = s.y - boss.y;

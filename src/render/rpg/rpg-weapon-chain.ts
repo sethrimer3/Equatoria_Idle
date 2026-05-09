@@ -36,7 +36,7 @@ import type { ChainWhipState, ChainPhase, HitEffect, LaserEnemy, SapphireEnemy }
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
-  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy,
+  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
@@ -64,6 +64,7 @@ export interface ChainWeaponCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   // Damage functions (body enemies only — projectile damage not needed)
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
@@ -80,6 +81,7 @@ export interface ChainWeaponCtx {
   damageNullstoneEnemy: (enemy: NullstoneEnemy, dmg: number, armorMult: number) => number;
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   // Visual feedback
   hitEffects: HitEffect[];
@@ -105,7 +107,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageBossEnemy,
+    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
   } = ctx;
 
   const chainWhipStates: Map<string, ChainWhipState> = new Map();
@@ -215,7 +217,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
       stepChainPhysics(ws, dt, CHAIN_ANCHOR_K);
 
       // Contact damage: check all nodes against all enemies
-      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy): void => {
+      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy): void => {
         const nodeR = chainNodeRadius(CHAIN_NODES - 1); // use tip radius for hit detection
         const r = nodeR + LASER_ENEMY_SIZE;
         const dx = tx - target.x, dy = ty - target.y;
@@ -226,7 +228,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
             if ('shieldHp' in target && !('kind' in target)) {
               dmg = damageSapphireEnemy(target as SapphireEnemy, contactDamage, 0, false);
             } else if ('kind' in target) {
-              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy;
+              const t = target as EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy;
               switch (t.kind) {
                 case 'emerald':    dmg = damageEmeraldEnemy(t, contactDamage, 0); break;
                 case 'amber':      dmg = damageAmberEnemy(t, contactDamage, 0); break;
@@ -241,6 +243,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
                 case 'nullstone':  dmg = damageNullstoneEnemy(t, contactDamage, 0); break;
                 case 'fracteryl':  dmg = damageFracterylEnemy(t, contactDamage, 0); break;
                 case 'eigenstein': dmg = damageEigensteinEnemy(t, contactDamage, 0); break;
+                case 'elite':      dmg = damageEliteEnemy(t, contactDamage, 0); break;
               }
             } else {
               dmg = damageEnemy(target as LaserEnemy, contactDamage, 0);
@@ -268,6 +271,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
         for (const e of ctx.nullstoneEnemies)  applyContactDamage(nx, ny, e);
         for (const e of ctx.fracterylEnemies)  applyContactDamage(nx, ny, e);
         for (const e of ctx.eigensteinEnemies) applyContactDamage(nx, ny, e);
+        for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyContactDamage(nx, ny, e); }
       }
       // Apply chain whip damage to boss
       if (ctx.bossEnemy) {

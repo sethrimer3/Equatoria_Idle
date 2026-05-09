@@ -24,8 +24,14 @@ import type {
   NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard,
   EigensteinEnemy,
+  EliteEnemy,
 } from './rpg-enemy-types';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
+import {
+  ELITE_AMETHYST_GLOW, ELITE_CITRINE_GLOW, ELITE_DIAMOND_GLOW,
+  ELITE_IOLITE_GLOW, ELITE_NULLSTONE_GLOW, ELITE_QUARTZ_GLOW,
+  ELITE_RUBY_GLOW, ELITE_SUNSTONE_GLOW,
+} from './rpg-enemy-constants';
 
 export interface DamageCtx {
   recordDps(dmg: number, color?: string): void;
@@ -280,6 +286,39 @@ export function createDamageFns(ctx: DamageCtx) {
     return dmg;
   }
 
+  /**
+   * Deals damage to an elite enemy.
+   *
+   * - Diamond elite is immune while isInvuln (fast-orbit phase).
+   * - Nullstone elite is immune while isInvuln (singularity burst).
+   * - Amethyst elite shield blocks damage first (min MINIMUM_SHIELD_DAMAGE).
+   */
+  function damageEliteEnemy(enemy: EliteEnemy, rawDamage: number, defPierceRatio: number): number {
+    // Invuln check for diamond and nullstone elites
+    if (enemy.isInvuln && (enemy.tier === 'diamond' || enemy.tier === 'nullstone')) return 0;
+
+    // Amethyst elite shield
+    if (enemy.tier === 'amethyst' && enemy.shieldHp > 0) {
+      const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
+      enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
+      recordDps(dmg, ELITE_AMETHYST_GLOW);
+      return dmg;
+    }
+
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      const GLOW_MAP: Record<string, string> = {
+        quartz: ELITE_QUARTZ_GLOW, ruby: ELITE_RUBY_GLOW, sunstone: ELITE_SUNSTONE_GLOW,
+        citrine: ELITE_CITRINE_GLOW, iolite: ELITE_IOLITE_GLOW, amethyst: ELITE_AMETHYST_GLOW,
+        diamond: ELITE_DIAMOND_GLOW, nullstone: ELITE_NULLSTONE_GLOW,
+      };
+      recordDps(dmg, GLOW_MAP[enemy.tier] ?? '#ffffff');
+    }
+    return dmg;
+  }
+
   return {
     damageEnemy,
     damageSapphireEnemy,
@@ -305,5 +344,6 @@ export function createDamageFns(ctx: DamageCtx) {
     damageFracterylEnemy,
     damageFracterylShard,
     damageEigensteinEnemy,
+    damageEliteEnemy,
   };
 }

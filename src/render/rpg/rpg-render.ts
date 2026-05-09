@@ -128,6 +128,7 @@ import type {
   DanmakuSafeZone,
   TeleportParticle,
   LuckyMote, LuckyMotePopup,
+  EliteEnemy,
 } from './rpg-enemy-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { getSwordLength } from './rpg-helpers';
@@ -162,6 +163,13 @@ import {
   updateEigensteinEnemies, updateEigensteinBeams,
   updateTeleportParticles,
 } from './rpg-enemy-updates-adv';
+import {
+  drawEliteEnemies,
+  setLowGraphicsMode as setEliteDrawLowGraphics,
+} from './rpg-elite-enemy-draw';
+import {
+  updateEliteEnemies, type EliteEnemyCtx,
+} from './rpg-elite-enemy-updates';
 import {
   type BossUpdateCtx,
   updateBossEnemy,
@@ -333,6 +341,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const fracterylShards: FracterylShard[]  = [];
   const eigensteinEnemies: EigensteinEnemy[] = [];
   const eigensteinBeams: EigensteinBeam[]  = [];
+  const eliteEnemies: EliteEnemy[]         = [];
 
   // ── Lucky mote drops (luck mechanic) ─────────────────────────
   const luckyMotes: LuckyMote[] = [];
@@ -390,6 +399,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+    damageEliteEnemy,
   } = createDamageFns({ recordDps });
 
   let targeting!: RpgTargetingHandle;
@@ -556,7 +566,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Returns the closest enemy body (not projectiles) within rangeSq. */
   function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-    | FracterylEnemy | EigensteinEnemy | BossEnemy | null { return targeting.findClosestEnemy(rangeSq); }
+    | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy | null { return targeting.findClosestEnemy(rangeSq); }
 
   // ── Tap-to-target system ───────────────────────────────────────
 
@@ -600,6 +610,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    eliteEnemies,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -608,6 +619,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+    damageEliteEnemy,
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
   });
 
@@ -623,6 +635,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    eliteEnemies,
     bossProjectiles, spawnQueue, luckyMotes, fluid,
     getCachedLuckPercent,
     applyEquipmentStats: () => applyEquipmentStats(),
@@ -663,6 +676,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+    damageEliteEnemy,
     damageBossEnemy:         (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     findClosestTarget:       (rangeSq) => findClosestTarget(rangeSq),
     findClosestEnemy:        (rangeSq) => findClosestEnemy(rangeSq),
@@ -700,6 +714,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fracterylEnemies,
     fracterylShards,
     eigensteinEnemies,
+    eliteEnemies,
   };
   weaponSystems = createRpgWeaponSystems(weaponCtx);
 
@@ -713,6 +728,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    eliteEnemies,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -721,6 +737,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+    damageEliteEnemy,
     damageBossEnemy:      (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     spawnHitVisuals:      (enemy, dmg, color) => spawnHitVisuals(enemy, dmg, color),
     spawnHitVisualsAt:    (x, y, maxHp, dmg, color) => spawnHitVisualsAt(x, y, maxHp, dmg, color),
@@ -776,7 +793,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies,
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
-    nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
+    nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
     get bossEnemy()         { return bossEnemy; },
     get isBossWaveActive()  { return isBossWaveActive; },
     get autoMoveEnabled()   { return _autoMoveEnabled; },
@@ -794,6 +811,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies,
     amethystEnemies, diamondEnemies, nullstoneEnemies,
     fracterylEnemies, eigensteinEnemies,
+    eliteEnemies,
     hitEffects,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
@@ -801,6 +819,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageSunstoneEnemy, damageCitrineEnemy, damageIoliteEnemy,
     damageAmethystEnemy, damageDiamondEnemy, damageNullstoneEnemy,
     damageFracterylEnemy, damageEigensteinEnemy,
+    damageEliteEnemy,
     damageBossEnemy: (raw, pierce) => bossWave.damageBossEnemy(raw, pierce),
     spawnDamageNumber: (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
   };
@@ -876,6 +895,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     clampEnemyToBounds,
   };
 
+  // EliteEnemyCtx extends RpgEnemyCtx with the projectile arrays elites fire into.
+  const eliteEnemyCtx: EliteEnemyCtx = {
+    ...enemyCtx,
+    quartzSpikes,
+    rubyBolts,
+    citrineBolts,
+    amethystShards,
+    diamondShards,
+    voidTendrils,
+  };
+
   const bossCtx: BossUpdateCtx = {
     mote,
     dim,
@@ -934,6 +964,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nullstoneEnemies.length = 0; voidTendrils.length = 0;
     fracterylEnemies.length = 0; fracterylShards.length = 0;
     eigensteinEnemies.length = 0; eigensteinBeams.length = 0;
+    eliteEnemies.length = 0;
     danmakuSafeZone = null;
     bossWave.exitBossWave();
     isBossFightFromMenu = false;
@@ -1018,6 +1049,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawFracterylEnemies(ctx, fracterylEnemies, fracterylShards);
     drawEigensteinEnemies(ctx, eigensteinEnemies);
     drawEigensteinBeams(ctx, eigensteinBeams, widthPx, heightPx);
+    drawEliteEnemies(ctx, eliteEnemies);
     drawBottomSafeZone(ctx, isBossWaveActive, widthPx, heightPx, glowTimeS);
     drawDanmakuSafeZone(ctx, bossEnemy, danmakuSafeZone);
     drawBossProjectiles(ctx, bossProjectiles);
@@ -1212,6 +1244,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateFracterylEnemies(fracterylEnemies, fracterylShards, enemyCtx, deltaMs);
       updateEigensteinEnemies(eigensteinEnemies, eigensteinBeams, enemyCtx, deltaMs);
       updateEigensteinBeams(eigensteinBeams, enemyCtx, deltaMs);
+      updateEliteEnemies(eliteEnemies, eliteEnemyCtx, deltaMs);
       if (bossEnemy) {
         const bossSpeedMult = isBossWaveActive ? (rpgSimState.bossSpeedPct / 100) : 1;
         updateBossEnemy(bossEnemy, bossCtx, deltaMs * bossSpeedMult);
@@ -1365,6 +1398,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       setCompanionLowGraphics(enabled);
       setBossAttacksLowGraphics(enabled);
       setDrawBossAttacksLowGraphics(enabled);
+      setEliteDrawLowGraphics(enabled);
     },
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {

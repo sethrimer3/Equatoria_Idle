@@ -221,6 +221,117 @@ export const VOID_TENDRIL_LIFE_MS     = 2000;
 export const VOID_TENDRIL_COLOR       = '#4d2280';
 export const VOID_TENDRIL_GLOW        = '#9664c8';
 
+// ── Elite enemy constants (polygon mini-bosses, one per tier) ──────────────────────────────
+// Stats are ~5× the base tier; they appear sparsely and have flashy attacks.
+
+// Quartz elite — triangle (3 sides)
+export const ELITE_QUARTZ_RADIUS   =  10;
+export const ELITE_QUARTZ_COLOR    = '#f8f2ea';
+export const ELITE_QUARTZ_GLOW     = '#ffffff';
+export const ELITE_QUARTZ_HP       =  175;
+export const ELITE_QUARTZ_ATK      =   24;
+export const ELITE_QUARTZ_DEF      =    6;
+
+// Ruby elite — square (4 sides)
+export const ELITE_RUBY_RADIUS     =  10;
+export const ELITE_RUBY_COLOR      = '#ff2222';
+export const ELITE_RUBY_GLOW       = '#ff7777';
+export const ELITE_RUBY_HP         =  600;
+export const ELITE_RUBY_ATK        =   54;
+export const ELITE_RUBY_DEF        =   10;
+
+// Sunstone elite — pentagon (5 sides)
+export const ELITE_SUNSTONE_RADIUS =  11;
+export const ELITE_SUNSTONE_COLOR  = '#ff6600';
+export const ELITE_SUNSTONE_GLOW   = '#ffaa44';
+export const ELITE_SUNSTONE_HP     = 1000;
+export const ELITE_SUNSTONE_ATK    =   48;
+export const ELITE_SUNSTONE_DEF    =   12;
+
+// Citrine elite — hexagon (6 sides)
+export const ELITE_CITRINE_RADIUS  =  11;
+export const ELITE_CITRINE_COLOR   = '#d4a800';
+export const ELITE_CITRINE_GLOW    = '#ffe060';
+export const ELITE_CITRINE_HP      =  750;
+export const ELITE_CITRINE_ATK     =   66;
+export const ELITE_CITRINE_DEF     =    8;
+
+// Iolite elite — heptagon (7 sides)
+export const ELITE_IOLITE_RADIUS   =  12;
+export const ELITE_IOLITE_COLOR    = '#4444a0';
+export const ELITE_IOLITE_GLOW     = '#8888ee';
+export const ELITE_IOLITE_HP       = 2500;
+export const ELITE_IOLITE_ATK      =   72;
+export const ELITE_IOLITE_DEF      =   24;
+
+// Amethyst elite — octagon (8 sides)
+export const ELITE_AMETHYST_RADIUS  =  12;
+export const ELITE_AMETHYST_COLOR   = '#a044cc';
+export const ELITE_AMETHYST_GLOW    = '#cc88ff';
+export const ELITE_AMETHYST_HP      = 4000;
+export const ELITE_AMETHYST_ATK     =   84;
+export const ELITE_AMETHYST_DEF     =   30;
+export const ELITE_AMETHYST_SHIELD  = 1200;
+
+// Diamond elite — nonagon (9 sides)
+export const ELITE_DIAMOND_RADIUS   =  13;
+export const ELITE_DIAMOND_COLOR    = '#c8e8ff';
+export const ELITE_DIAMOND_GLOW     = '#ffffff';
+export const ELITE_DIAMOND_HP       = 7500;
+export const ELITE_DIAMOND_ATK      =  105;
+export const ELITE_DIAMOND_DEF      =   40;
+
+// Nullstone elite — decagon (10 sides)
+export const ELITE_NULLSTONE_RADIUS =  14;
+export const ELITE_NULLSTONE_COLOR  = '#0a0a16';
+export const ELITE_NULLSTONE_GLOW   = '#cc88ff';
+export const ELITE_NULLSTONE_HP     = 12500;
+export const ELITE_NULLSTONE_ATK    =   126;
+export const ELITE_NULLSTONE_DEF    =    50;
+
+// ── Elite attack timing ──────────────────────────────────────────
+export const ELITE_QUARTZ_A1_CD_MS    = 2800;  // Crystal Salvo
+export const ELITE_QUARTZ_A2_CD_MS    = 8000;  // Crystal Nova ring
+export const ELITE_QUARTZ_SALVO_MS    =  600;  // delay between first and second salvo burst
+
+export const ELITE_RUBY_A1_CD_MS      = 2000;  // Cardinal Burst (N/E/S/W)
+export const ELITE_RUBY_A2_CD_MS      = 5000;  // Triple Shot spread
+
+export const ELITE_SUNSTONE_A1_CD_MS  = 3000;  // Star Flare (homing bolts)
+export const ELITE_SUNSTONE_A2_CD_MS  = 7000;  // Corona Pulse ring
+
+export const ELITE_CITRINE_A1_CD_MS   = 2500;  // Hex Swarm
+export const ELITE_CITRINE_A2_CD_MS   = 6500;  // Laser Hex
+
+export const ELITE_IOLITE_A1_CD_MS    = 3500;  // Prism Fan (7-beam arc)
+export const ELITE_IOLITE_A2_CD_MS    = 9000;  // Gravity Well
+export const ELITE_IOLITE_GRAVITY_MS  = 2500;  // gravity-pull duration
+
+export const ELITE_AMETHYST_A1_CD_MS  = 3200;  // Crystal Storm (double ring)
+export const ELITE_AMETHYST_SALVO_MS  =  500;  // delay between the two rings
+export const ELITE_AMETHYST_SHIELD_REGEN_RATE = 1200 / 8000; // hp/ms for full regen in 8 s
+
+export const ELITE_DIAMOND_A1_CD_MS   = 2200;  // Nine-Star burst
+export const ELITE_DIAMOND_INVULN_MS  = 2000;  // invuln-phase duration (fast orbit)
+export const ELITE_DIAMOND_VULN_MS    = 4000;  // vuln-phase duration (patrol + fire)
+
+export const ELITE_NULLSTONE_A1_CD_MS = 3500;  // Tendril Swarm
+
+// ── Elite shared movement ────────────────────────────────────────
+export const ELITE_PATROL_SPEED       =   0.35;
+export const ELITE_PATROL_TURN_MS     = 3000;
+export const ELITE_PATROL_DAMPING     =   0.96;
+
+// ── XP multipliers per elite tier ───────────────────────────────
+export const ELITE_QUARTZ_XP_MULT    =   7.5;
+export const ELITE_RUBY_XP_MULT      =  12.5;
+export const ELITE_SUNSTONE_XP_MULT  =  15;
+export const ELITE_CITRINE_XP_MULT   =  17.5;
+export const ELITE_IOLITE_XP_MULT    =  25;
+export const ELITE_AMETHYST_XP_MULT  =  30;
+export const ELITE_DIAMOND_XP_MULT   =  40;
+export const ELITE_NULLSTONE_XP_MULT =  50;
+
 // ── XP multipliers per enemy type ─────────────────────────────
 export const LASER_XP_MULT     = 1;
 export const SAPPHIRE_XP_MULT  = 3;
