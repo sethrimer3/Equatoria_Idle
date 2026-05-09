@@ -182,7 +182,7 @@ export function drawPlayerMote(
       const gh = half * 2.2;
       ctx.fillRect(Math.floor(mote.trailX[bufIdx] - gh), Math.floor(mote.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
       ctx.shadowBlur = 0;
-      ctx.globalAlpha = t * 0.15;
+      ctx.globalAlpha = t * 0.30;
       ctx.fillStyle   = RPG_MOTE_COLOR;
       ctx.fillRect(Math.floor(mote.trailX[bufIdx] - half), Math.floor(mote.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
     }

@@ -180,7 +180,9 @@ export async function startApp(): Promise<void> {
     }
     if (action.kind === 'reset_game') {
       // Clear the persisted game save (covers idle + RPG state), then refresh
-      // the page so all in-memory state (particles, RPG render, etc.) is reset cleanly.
+      // the page. A page reload is required because RPG render holds significant
+      // in-memory state (enemies, particles, weapons, wave manager) that cannot
+      // be cleanly reset without re-running the full createRpgRender() bootstrap.
       deleteSave();
       location.reload();
       return;
