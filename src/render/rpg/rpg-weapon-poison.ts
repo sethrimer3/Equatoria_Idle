@@ -30,7 +30,7 @@ import type { IolitePoisonBolt, PoisonDebuff, LaserEnemy, SapphireEnemy } from '
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
-  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy,
+  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
@@ -57,6 +57,7 @@ export interface PoisonWeaponCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   // Damage functions (body enemies)
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
@@ -73,6 +74,7 @@ export interface PoisonWeaponCtx {
   damageNullstoneEnemy: (enemy: NullstoneEnemy, dmg: number, armorMult: number) => number;
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   // Visual feedback
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
@@ -102,7 +104,7 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageBossEnemy,
+    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
   } = ctx;
 
   const poisonBolts: IolitePoisonBolt[] = [];
@@ -206,6 +208,7 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
       if (!hit) for (const e of ctx.nullstoneEnemies)  { if (tryHit(e, damageNullstoneEnemy))                             { hit = true; break; } }
       if (!hit) for (const e of ctx.fracterylEnemies)  { if (tryHit(e, (en, d, r) => damageFracterylEnemy(en, d, r)))    { hit = true; break; } }
       if (!hit) for (const e of ctx.eigensteinEnemies) { if (tryHit(e, (en, d, r) => damageEigensteinEnemy(en, d, r)))   { hit = true; break; } }
+      if (!hit) for (const e of ctx.eliteEnemies) { if (e.isInvuln) continue; if (tryHit(e, (en, d, r) => damageEliteEnemy(en, d, r))) { hit = true; break; } }
       if (!hit && ctx.bossEnemy) {
         const boss = ctx.bossEnemy;
         const dx = p.x - boss.x, dy = p.y - boss.y;

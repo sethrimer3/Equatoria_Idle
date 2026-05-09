@@ -38,7 +38,7 @@ import type { RpgPlayerStats, SwordComboState, HitEffect, LaserEnemy, SapphireEn
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy,
-  DiamondEnemy, NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy,
+  DiamondEnemy, NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
@@ -67,6 +67,7 @@ export interface SwordWeaponCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
   damageEmeraldEnemy: (enemy: EmeraldEnemy, dmg: number, armorMult: number) => number;
@@ -82,6 +83,7 @@ export interface SwordWeaponCtx {
   damageNullstoneEnemy: (enemy: NullstoneEnemy, dmg: number, armorMult: number) => number;
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   removeDeadEnemies: () => void;
@@ -108,11 +110,11 @@ export function createSwordWeaponSystem(ctx: SwordWeaponCtx): SwordWeaponHandle 
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies,
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
-    nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
+    nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageBossEnemy,
+    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
     spawnDamageNumber,
     removeDeadEnemies, checkWaveCompletion,
   } = ctx;
@@ -190,6 +192,7 @@ export function createSwordWeaponSystem(ctx: SwordWeaponCtx): SwordWeaponHandle 
     for (const e of nullstoneEnemies) check(e, damageNullstoneEnemy);
     for (const e of fracterylEnemies) check(e, (en, d, p) => damageFracterylEnemy(en, d, p));
     for (const e of eigensteinEnemies) check(e, (en, d, p) => damageEigensteinEnemy(en, d, p));
+    for (const e of eliteEnemies) { if (e.isInvuln) continue; check(e, (en, d, p) => damageEliteEnemy(en, d, p)); }
     if (ctx.bossEnemy && !state.hitThisSwing.has(ctx.bossEnemy)) {
       const dx = ctx.bossEnemy.x - mote.x, dy = ctx.bossEnemy.y - mote.y;
       if (dx * dx + dy * dy <= swordLength * swordLength &&
@@ -355,6 +358,7 @@ export function createSwordWeaponSystem(ctx: SwordWeaponCtx): SwordWeaponHandle 
         for (const e of nullstoneEnemies)  checkEnemy(e);
         for (const e of fracterylEnemies)  checkEnemy(e);
         for (const e of eigensteinEnemies) checkEnemy(e);
+        for (const e of eliteEnemies) { if (!e.isInvuln) checkEnemy(e); }
         if (ctx.bossEnemy) checkEnemy(ctx.bossEnemy);
 
         if (anyInRange) {
@@ -381,6 +385,7 @@ export function createSwordWeaponSystem(ctx: SwordWeaponCtx): SwordWeaponHandle 
           for (const e of nullstoneEnemies)  findNearest(e);
           for (const e of fracterylEnemies)  findNearest(e);
           for (const e of eigensteinEnemies) findNearest(e);
+          for (const e of eliteEnemies) { if (!e.isInvuln) findNearest(e); }
           if (ctx.bossEnemy) findNearest(ctx.bossEnemy);
 
           // Arc is centered on the enemy; half-width = π/2 gives a 180° sweep.
@@ -533,6 +538,7 @@ export function createSwordWeaponSystem(ctx: SwordWeaponCtx): SwordWeaponHandle 
       for (const e of nullstoneEnemies)  checkCombo(e);
       for (const e of fracterylEnemies)  checkCombo(e);
       for (const e of eigensteinEnemies) checkCombo(e);
+      for (const e of eliteEnemies) checkCombo(e);
       if (ctx.bossEnemy) checkCombo(ctx.bossEnemy);
 
       if (anyInRange && state.phaseMs >= SWORD_COMBO_MIN_SWIPE_DELAY_MS) {
@@ -559,6 +565,7 @@ export function createSwordWeaponSystem(ctx: SwordWeaponCtx): SwordWeaponHandle 
         for (const e of nullstoneEnemies)  findNearest(e);
         for (const e of fracterylEnemies)  findNearest(e);
         for (const e of eigensteinEnemies) findNearest(e);
+        for (const e of eliteEnemies) { if (!e.isInvuln) findNearest(e); }
         if (ctx.bossEnemy) findNearest(ctx.bossEnemy);
 
         state.swipeArcStart = bestAngle - Math.PI / 2;

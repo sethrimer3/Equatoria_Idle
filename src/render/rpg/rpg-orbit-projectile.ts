@@ -17,7 +17,7 @@ import type {
   RubyEnemy, SunstoneEnemy, CitrineEnemy,
   IoliteEnemy, AmethystEnemy, DiamondEnemy,
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy,
-  BossEnemy,
+  BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
 import {
   ORBIT_PROJ_SPEED_RAD, ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
@@ -52,6 +52,7 @@ export interface OrbitProjectileCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
 
   /** Hit-flash effect list (pushed to on each hit). */
   hitEffects: HitEffect[];
@@ -74,6 +75,7 @@ export interface OrbitProjectileCtx {
   damageNullstoneEnemy(enemy: NullstoneEnemy, dmg: number, armorMult: number): number;
   damageFracterylEnemy(enemy: FracterylEnemy, dmg: number, armorMult: number): number;
   damageEigensteinEnemy(enemy: EigensteinEnemy, dmg: number, armorMult: number): number;
+  damageEliteEnemy(enemy: EliteEnemy, dmg: number, armorMult: number): number;
   damageBossEnemy(rawDamage: number, defPierceRatio: number): number;
 
   /** Spawns a floating damage number at (x, y) travelling in (vx, vy). */
@@ -283,6 +285,14 @@ export function updateOrbitProjectile(
   for (const enemy of ctx.eigensteinEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
       () => ctx.damageEigensteinEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      enemy.maxHp);
+  }
+
+  // ── Elite enemies ───────────────────────────────────────────────
+  for (const enemy of ctx.eliteEnemies) {
+    if (enemy.isInvuln) continue;
+    tryHit(op, enemy, enemy.x, enemy.y,
+      () => ctx.damageEliteEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
       enemy.maxHp);
   }
 

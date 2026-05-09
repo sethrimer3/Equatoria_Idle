@@ -29,6 +29,7 @@ import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy, SunstoneMine,
+  EliteEnemy,
 } from './rpg-enemy-types';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
@@ -56,6 +57,7 @@ export interface SunstoneWeaponCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   // Damage functions (body enemies)
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
@@ -72,6 +74,7 @@ export interface SunstoneWeaponCtx {
   damageNullstoneEnemy: (enemy: NullstoneEnemy, dmg: number, armorMult: number) => number;
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   // Visual feedback
   spawnHitVisualsAt: (tx: number, ty: number, maxHp: number, dmg: number, color: string) => void;
@@ -99,7 +102,7 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageBossEnemy,
+    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
   } = ctx;
 
   const sunstoneMines: SunstoneMine[] = [];
@@ -157,6 +160,7 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
     applyAoe(ctx.nullstoneEnemies, damageNullstoneEnemy);
     applyAoe(ctx.fracterylEnemies, (e, d, p) => damageFracterylEnemy(e, d, p));
     applyAoe(ctx.eigensteinEnemies,(e, d, p) => damageEigensteinEnemy(e, d, p));
+    applyAoe(ctx.eliteEnemies.filter(e => !e.isInvuln), (e, d, p) => damageEliteEnemy(e, d, p));
     if (ctx.bossEnemy) {
       const dx = ctx.bossEnemy.x - mine.x, dy = ctx.bossEnemy.y - mine.y;
       if (dx * dx + dy * dy <= r2) {
@@ -198,6 +202,7 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
       for (const e of ctx.nullstoneEnemies)  checkEnemyContact(e.x, e.y, e.atk);
       for (const e of ctx.fracterylEnemies)  checkEnemyContact(e.x, e.y, e.atk);
       for (const e of ctx.eigensteinEnemies) checkEnemyContact(e.x, e.y, e.atk);
+      for (const e of ctx.eliteEnemies) if (!e.isInvuln) checkEnemyContact(e.x, e.y, e.atk);
 
       // Proximity check — detonate if any enemy enters trigger radius.
       let triggered = false;
@@ -221,6 +226,7 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
       if (!triggered) for (const e of ctx.nullstoneEnemies)  { if (inProximity(e.x, e.y)) { triggered = true; break; } }
       if (!triggered) for (const e of ctx.fracterylEnemies)  { if (inProximity(e.x, e.y)) { triggered = true; break; } }
       if (!triggered) for (const e of ctx.eigensteinEnemies) { if (inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const e of ctx.eliteEnemies)      { if (!e.isInvuln && inProximity(e.x, e.y)) { triggered = true; break; } }
 
       // Detonate if fuse expired, proximity triggered, or HP depleted by incoming damage.
       if (mine.fuseMs <= 0 || triggered || mine.hp <= 0) {

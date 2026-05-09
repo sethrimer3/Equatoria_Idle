@@ -18,7 +18,7 @@ import type {
   NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard,
   EigensteinEnemy,
-  BossEnemy,
+  BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
 
 export interface RpgTargetingCtx {
@@ -48,6 +48,7 @@ export interface RpgTargetingCtx {
   fracterylEnemies: FracterylEnemy[];
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   damageEnemy: (e: LaserEnemy, raw: number, pierce: number) => number;
   damageSapphireEnemy: (e: SapphireEnemy, raw: number, pierce: number, bypass: boolean) => number;
   damageMissile: (m: SapphireMissile, raw: number, pierce: number) => number;
@@ -72,6 +73,7 @@ export interface RpgTargetingCtx {
   damageFracterylEnemy: (e: FracterylEnemy, raw: number, pierce: number) => number;
   damageFracterylShard: (s: FracterylShard, raw: number, pierce: number) => number;
   damageEigensteinEnemy: (e: EigensteinEnemy, raw: number, pierce: number) => number;
+  damageEliteEnemy: (e: EliteEnemy, raw: number, pierce: number) => number;
   damageBossEnemy: (raw: number, pierce: number, fromDiamond?: boolean) => number;
 }
 
@@ -79,7 +81,7 @@ export interface RpgTargetingHandle {
   findClosestTarget(rangeSq: number): ClosestTarget | null;
   findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy
-    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | BossEnemy | null;
+    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy | null;
   collectEnemyBodyTargets(): ClosestTarget[];
   findClosestEnemyFrom(x: number, y: number, rangeSq: number): ClosestTarget | null;
   getTargetedEnemy(): ClosestTarget | null;
@@ -215,6 +217,11 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = { kind: 'eigenstein', x: e.x, y: e.y, distSq: d, eigenstein: e }; }
     }
+    for (const e of ctx.eliteEnemies) {
+      const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = { kind: 'elite', x: e.x, y: e.y, distSq: d, elite: e }; }
+    }
     if (ctx.bossEnemy) {
       const dx = ctx.bossEnemy.x - ctx.mote.x, dy = ctx.bossEnemy.y - ctx.mote.y;
       const d = dx * dx + dy * dy;
@@ -225,11 +232,11 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
 
   function findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-    | FracterylEnemy | EigensteinEnemy | BossEnemy | null {
+    | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy | null {
     let bestSq = rangeSq;
     let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
       | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-      | FracterylEnemy | EigensteinEnemy | BossEnemy | null = null;
+      | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy | null = null;
     for (const e of ctx.enemies) {
       const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
       const d = dx * dx + dy * dy;
@@ -305,6 +312,11 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = e; }
     }
+    for (const e of ctx.eliteEnemies) {
+      const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) { bestSq = d; best = e; }
+    }
     if (ctx.bossEnemy) {
       const dx = ctx.bossEnemy.x - ctx.mote.x, dy = ctx.bossEnemy.y - ctx.mote.y;
       const d = dx * dx + dy * dy;
@@ -342,6 +354,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
         ctx.nullstoneEnemies.includes(targetedEnemy as NullstoneEnemy) ||
         ctx.fracterylEnemies.includes(targetedEnemy as FracterylEnemy) ||
         ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy) ||
+        ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy) ||
         (ctx.bossEnemy === targetedEnemy);
 
       if (!isAlive) {
@@ -397,6 +410,9 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
         if (ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy)) {
           return { kind: 'eigenstein', x: e.x, y: e.y, distSq, eigenstein: targetedEnemy as EigensteinEnemy };
         }
+        if (ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy)) {
+          return { kind: 'elite', x: e.x, y: e.y, distSq, elite: targetedEnemy as EliteEnemy };
+        }
         if (ctx.bossEnemy === targetedEnemy) {
           return { kind: 'boss', x: e.x, y: e.y, distSq, boss: ctx.bossEnemy };
         }
@@ -432,6 +448,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     for (const e of ctx.nullstoneEnemies) addTarget('nullstone', e, 'nullstone');
     for (const e of ctx.fracterylEnemies) addTarget('fracteryl', e, 'fracteryl');
     for (const e of ctx.eigensteinEnemies) addTarget('eigenstein', e, 'eigenstein');
+    for (const e of ctx.eliteEnemies) addTarget('elite', e, 'elite');
     if (ctx.bossEnemy) addTarget('boss', ctx.bossEnemy, 'boss');
     return targets;
   }
@@ -466,6 +483,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.nullstone) return ctx.damageNullstoneEnemy(target.nullstone, rawDamage, defPierceRatio);
     if (target.fracteryl) return ctx.damageFracterylEnemy(target.fracteryl, rawDamage, defPierceRatio);
     if (target.eigenstein) return ctx.damageEigensteinEnemy(target.eigenstein, rawDamage, defPierceRatio);
+    if (target.elite) return ctx.damageEliteEnemy(target.elite, rawDamage, defPierceRatio);
     if (target.boss) return ctx.damageBossEnemy(rawDamage, defPierceRatio);
     return 0;
   }

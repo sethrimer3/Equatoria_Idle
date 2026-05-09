@@ -349,5 +349,26 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (waveNumber >= 63)  spawns.push({ enemyTypeId: 'nullstone',  count: nullstoneCount,  spawnDelay: delay + 1500 });
   if (waveNumber >= 74)  spawns.push({ enemyTypeId: 'fracteryl',  count: fracterylCount,  spawnDelay: delay + 1700 });
   if (waveNumber >= 85)  spawns.push({ enemyTypeId: 'eigenstein', count: eigensteinCount, spawnDelay: delay + 2000 });
+
+  // Elite spawns: one per wave at the correct tier unlock threshold, then sparse thereafter.
+  // Each elite spawns well after the main pack to give it a dramatic entrance.
+  // Frequency: approximately one elite per 4–6 waves (seeded by wave number for consistency).
+  const eliteSpawnRoll = (waveNumber * 7919 + 3571) % 17; // 0-16; threshold ≤ 3 = ~24% chance
+  if (eliteSpawnRoll <= 3) {
+    // Pick the highest tier available for this wave
+    let eliteTier: string | null = null;
+    if (waveNumber >= 63)       eliteTier = 'elite_nullstone';
+    else if (waveNumber >= 52)  eliteTier = 'elite_diamond';
+    else if (waveNumber >= 42)  eliteTier = 'elite_amethyst';
+    else if (waveNumber >= 33)  eliteTier = 'elite_iolite';
+    else if (waveNumber >= 15)  eliteTier = 'elite_citrine';
+    else if (waveNumber >= 10)  eliteTier = 'elite_sunstone';
+    else if (waveNumber >= 5)   eliteTier = 'elite_ruby';
+    else if (waveNumber >= 2)   eliteTier = 'elite_quartz';
+    if (eliteTier !== null) {
+      spawns.push({ enemyTypeId: eliteTier, count: 1, spawnDelay: delay + 2500 });
+    }
+  }
+
   return { waveNumber, spawns };
 }

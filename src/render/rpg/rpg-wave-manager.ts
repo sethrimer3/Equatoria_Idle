@@ -48,6 +48,9 @@ import {
   QUARTZ_XP_MULT, RUBY_XP_MULT, SUNSTONE_XP_MULT, CITRINE_XP_MULT,
   IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
   FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
+  ELITE_QUARTZ_XP_MULT, ELITE_RUBY_XP_MULT, ELITE_SUNSTONE_XP_MULT,
+  ELITE_CITRINE_XP_MULT, ELITE_IOLITE_XP_MULT, ELITE_AMETHYST_XP_MULT,
+  ELITE_DIAMOND_XP_MULT, ELITE_NULLSTONE_XP_MULT,
 } from './rpg-enemy-constants';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
 import { spawnEnemyById } from './rpg-enemy-spawn';
@@ -62,7 +65,7 @@ import type {
   DiamondEnemy, DiamondShard, NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard, EigensteinEnemy,
   BossEnemy, BossProjectile,
-  LuckyMote,
+  LuckyMote, EliteEnemy,
 } from './rpg-enemy-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
@@ -97,6 +100,7 @@ export interface WaveManagerCtx {
   fracterylEnemies: FracterylEnemy[];
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   bossProjectiles: BossProjectile[];
   spawnQueue: SpawnEntry[];
   luckyMotes: LuckyMote[];
@@ -142,6 +146,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    eliteEnemies,
     bossProjectiles, spawnQueue, luckyMotes, fluid,
     getCachedLuckPercent, applyEquipmentStats, spawnDamageNumber,
   } = ctx;
@@ -369,6 +374,36 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         eigensteinEnemies.splice(i, 1);
       }
     }
+    for (let i = eliteEnemies.length - 1; i >= 0; i--) {
+      if (eliteEnemies[i].hp <= 0) {
+        const elite = eliteEnemies[i];
+        const ELITE_FLUID: Record<string, [number, number, number]> = {
+          quartz:    [FLUID_QUARTZ_R,    FLUID_QUARTZ_G,    FLUID_QUARTZ_B],
+          ruby:      [FLUID_RUBY_R,      FLUID_RUBY_G,      FLUID_RUBY_B],
+          sunstone:  [FLUID_SUNSTONE_R,  FLUID_SUNSTONE_G,  FLUID_SUNSTONE_B],
+          citrine:   [FLUID_CITRINE_R,   FLUID_CITRINE_G,   FLUID_CITRINE_B],
+          iolite:    [FLUID_IOLITE_R,    FLUID_IOLITE_G,    FLUID_IOLITE_B],
+          amethyst:  [FLUID_AMETHYST_R,  FLUID_AMETHYST_G,  FLUID_AMETHYST_B],
+          diamond:   [FLUID_DIAMOND_R,   FLUID_DIAMOND_G,   FLUID_DIAMOND_B],
+          nullstone: [FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B],
+        };
+        const ELITE_XP_MAP: Record<string, number> = {
+          quartz: ELITE_QUARTZ_XP_MULT, ruby: ELITE_RUBY_XP_MULT,
+          sunstone: ELITE_SUNSTONE_XP_MULT, citrine: ELITE_CITRINE_XP_MULT,
+          iolite: ELITE_IOLITE_XP_MULT, amethyst: ELITE_AMETHYST_XP_MULT,
+          diamond: ELITE_DIAMOND_XP_MULT, nullstone: ELITE_NULLSTONE_XP_MULT,
+        };
+        const [fr, fg, fb] = ELITE_FLUID[elite.tier] ?? [255, 255, 255];
+        fluid.addExplosion(elite.x, elite.y, FLUID_EXPLOSION_STRENGTH * 5.0, fr, fg, fb);
+        // Second colorful burst for spectacle
+        fluid.addExplosion(elite.x, elite.y, FLUID_EXPLOSION_STRENGTH * 2.5, fb, fr, fg);
+        const xpMult = ELITE_XP_MAP[elite.tier] ?? 10;
+        totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * xpMult;
+        trySpawnLuckyMote(luckyMotes, elite.tier, elite.x, elite.y, getCachedLuckPercent() * 2.5);
+        spawnDamageNumber(elite.x, elite.y, 0, -1.2, `ELITE! +${formatXp(getXpPerKill(ctx.getCurrentWave()) * xpMult)} XP`, 1.0, '#ffe060');
+        eliteEnemies.splice(i, 1);
+      }
+    }
     // Boss defeat
     const bossEnemy = ctx.getBossEnemy();
     if (bossEnemy && bossEnemy.hp <= 0) {
@@ -424,6 +459,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
         || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
         || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
+        || eliteEnemies.length > 0
         || ctx.getBossEnemy() !== null) return;
     ctx.setIsInterWave(true);
     ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS);

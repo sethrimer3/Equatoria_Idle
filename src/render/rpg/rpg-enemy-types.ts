@@ -327,6 +327,71 @@ export interface DanmakuSafeZone {
 }
 
 
+// ── Elite enemies (one per tier, polygon-shaped mini-bosses) ─────────────────
+
+/**
+ * One tier per elite: quartz=triangle, ruby=square, sunstone=pentagon, citrine=hexagon,
+ * iolite=heptagon, amethyst=octagon, diamond=nonagon, nullstone=decagon.
+ */
+export type EliteTier =
+  | 'quartz' | 'ruby' | 'sunstone' | 'citrine'
+  | 'iolite' | 'amethyst' | 'diamond' | 'nullstone';
+
+/**
+ * Elite enemy — rare polygon mini-boss for each crystal tier.
+ * Body is a regular polygon (sides = tier index + 3, starting at 3 for quartz).
+ * Reuses existing projectile arrays (quartzSpikes, rubyBolts, etc.) for its attacks.
+ */
+export interface EliteEnemy {
+  readonly kind: 'elite';
+  tier: EliteTier;
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  /** Primary attack countdown. */
+  attack1TimerMs: number;
+  /** Secondary attack countdown (also used for phase cycling by diamond elite). */
+  attack2TimerMs: number;
+  /** Animation pulse accumulator (ms). */
+  pulseMs: number;
+  /** Orbit angle — used by diamond elite during its invuln phase. */
+  orbitAngle: number;
+  /**
+   * True while immune to damage.
+   * Diamond elite: true while in the fast-orbit invuln phase.
+   * Nullstone elite: briefly true during the Event Horizon singularity burst.
+   */
+  isInvuln: boolean;
+  /** Counts down the current invuln-phase duration (ms). */
+  invulnTimerMs: number;
+  /**
+   * Multi-purpose timer:
+   * Iolite elite: counts down active gravity-well duration (> 0 = gravity active).
+   * Others: unused.
+   */
+  gravityTimerMs: number;
+  /** Patrol direction-change timer. */
+  patrolTimerMs: number;
+  /** Current shield HP (amethyst elite only). */
+  shieldHp: number;
+  /** Max shield HP (amethyst elite only). */
+  maxShieldHp: number;
+  /**
+   * Flag for one-shot events:
+   * Nullstone elite: true after the Event Horizon burst has fired.
+   * Amethyst elite: true while the shield-burst has fired in this shield-break cycle;
+   *   reset to false when the shield regenerates fully.
+   */
+  hasTriggeredLowHp: boolean;
+  /**
+   * Countdown for a pending second attack salvo (ms).  -1 = inactive.
+   * Quartz elite:    fires a second set of 3 spikes when this reaches 0.
+   * Amethyst elite:  fires a second ring of 8 shards when this reaches 0.
+   */
+  pendingSalvoMs: number;
+}
+
 // ── Teleport particle ─────────────────────────────────────────────
 export interface TeleportParticle {
   x: number; y: number; vx: number; vy: number;

@@ -13,7 +13,7 @@ import type { RpgMote, RpgJoystick, RpgKeyState, LaserEnemy, SapphireEnemy } fro
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
-  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy,
+  NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgSpeedMultiplier } from '../../sim/rpg/rpg-state';
@@ -58,6 +58,7 @@ export interface PlayerMovementCtx {
   nullstoneEnemies: NullstoneEnemy[];
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
 
   /** Live getter — bossEnemy changes during gameplay. */
   readonly bossEnemy: BossEnemy | null;
@@ -224,6 +225,7 @@ export function updatePlayerMovement(
     for (const e of ctx.nullstoneEnemies) checkAimEnemy(e);
     for (const e of ctx.fracterylEnemies) checkAimEnemy(e);
     for (const e of ctx.eigensteinEnemies) checkAimEnemy(e);
+    for (const e of ctx.eliteEnemies) checkAimEnemy(e);
     const boss = ctx.bossEnemy;
     if (boss) checkAimEnemy(boss);
   }
@@ -252,7 +254,8 @@ function _anyEnemiesPresent(ctx: PlayerMovementCtx): boolean {
     ctx.citrineEnemies.length > 0    || ctx.ioliteEnemies.length > 0     ||
     ctx.amethystEnemies.length > 0   || ctx.diamondEnemies.length > 0    ||
     ctx.nullstoneEnemies.length > 0  ||
-    ctx.fracterylEnemies.length > 0  || ctx.eigensteinEnemies.length > 0
+    ctx.fracterylEnemies.length > 0  || ctx.eigensteinEnemies.length > 0 ||
+    ctx.eliteEnemies.length > 0
   );
 }
 
@@ -283,6 +286,7 @@ function _findNearestEnemy(ctx: PlayerMovementCtx): { distSq: number; x: number;
   for (const e of ctx.nullstoneEnemies) check(e);
   for (const e of ctx.fracterylEnemies) check(e);
   for (const e of ctx.eigensteinEnemies) check(e);
+  for (const e of ctx.eliteEnemies) check(e);
 
   return { distSq: nearestDistSq, x: nearestX, y: nearestY };
 }

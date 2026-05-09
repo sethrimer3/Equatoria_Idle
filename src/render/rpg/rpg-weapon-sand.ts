@@ -34,6 +34,7 @@ import {
   DIAMOND_ENEMY_SIZE, DIAMOND_SHARD_SIZE,
   NULLSTONE_ENEMY_SIZE, VOID_TENDRIL_SIZE,
   FRACTERYL_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE,
+  ELITE_NULLSTONE_RADIUS,
 } from './rpg-enemy-constants';
 import type { FluidImpulse } from './rpg-fluid';
 import type { SandProjectile, LaserEnemy, SapphireEnemy, SapphireMissile } from './rpg-types';
@@ -44,6 +45,7 @@ import type {
   IoliteEnemy, AmethystEnemy, AmethystShard,
   DiamondEnemy, DiamondShard, NullstoneEnemy, VoidTendril,
   FracterylEnemy, FracterylShard, EigensteinEnemy,
+  EliteEnemy,
   BossEnemy,
 } from './rpg-enemy-types';
 
@@ -79,6 +81,7 @@ export interface SandWeaponCtx {
   fracterylEnemies: FracterylEnemy[];
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
+  eliteEnemies: EliteEnemy[];
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
   damageSapphireEnemy: (enemy: SapphireEnemy, dmg: number, armorMult: number, isImpact: boolean) => number;
   damageMissile: (missile: SapphireMissile, dmg: number) => number;
@@ -103,6 +106,7 @@ export interface SandWeaponCtx {
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageFracterylShard: (shard: FracterylShard, dmg: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
 }
@@ -127,7 +131,7 @@ export function createSandWeaponSystem(ctx: SandWeaponCtx): SandWeaponHandle {
     rubyEnemies, rubyBolts, sunstoneEnemies,
     citrineEnemies, citrineBolts, ioliteEnemies,
     amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies, eliteEnemies,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -135,7 +139,7 @@ export function createSandWeaponSystem(ctx: SandWeaponCtx): SandWeaponHandle {
     damageCitrineEnemy, damageCitrineBolt, damageIoliteEnemy,
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
-    damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
+    damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy, damageEliteEnemy,
     damageBossEnemy,
     spawnHitVisualsAt,
   } = ctx;
@@ -445,6 +449,19 @@ export function createSandWeaponSystem(ctx: SandWeaponCtx): SandWeaponHandle {
         const dx = p.x - e.x, dy = p.y - e.y;
         if (dx * dx + dy * dy < hitR * hitR) {
           const dmg = damageEigensteinEnemy(e, damage, 0);
+          spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
+          sandProjectiles.splice(i, 1); hit = true; break;
+        }
+      }
+      if (hit) continue;
+
+      // Collision with elite enemies
+      for (const e of eliteEnemies) {
+        if (e.isInvuln) continue;
+        const hitR = ELITE_NULLSTONE_RADIUS + SAND_PROJ_SIZE;
+        const dx = p.x - e.x, dy = p.y - e.y;
+        if (dx * dx + dy * dy < hitR * hitR) {
+          const dmg = damageEliteEnemy(e, damage, 0);
           spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, SAND_PROJ_COLOR);
           sandProjectiles.splice(i, 1); hit = true; break;
         }
