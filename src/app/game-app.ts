@@ -67,6 +67,11 @@ export async function startApp(): Promise<void> {
   preloadForgeSprites();
 
   // ── Initialize game state ──
+  const resetPending = sessionStorage.getItem('equatoria_reset_pending') === '1';
+  if (resetPending) {
+    deleteSave();
+    sessionStorage.removeItem('equatoria_reset_pending');
+  }
   const lastActiveTs = readLastActiveTimestamp();
   writeLastActiveTimestamp(); // immediately record so next session measures from now
   const savedGame = loadGame();
@@ -169,6 +174,8 @@ export async function startApp(): Promise<void> {
   }
 
   // ── Action dispatch ──
+  let isResettingGame = false;
+
   const dispatch = (action: GameAction): void => {
     // Resume audio context on user interaction (autoplay policy)
     audioSystem.resumeContext().catch(() => { /* silently ignore */ });
@@ -183,6 +190,8 @@ export async function startApp(): Promise<void> {
       // the page. A page reload is required because RPG render holds significant
       // in-memory state (enemies, particles, weapons, wave manager) that cannot
       // be cleanly reset without re-running the full createRpgRender() bootstrap.
+      isResettingGame = true;
+      sessionStorage.setItem('equatoria_reset_pending', '1');
       deleteSave();
       location.reload();
       return;
@@ -207,7 +216,9 @@ export async function startApp(): Promise<void> {
     if (document.visibilityState === 'hidden') {
       _wasHiddenSinceStart = true;
       writeLastActiveTimestamp();
-      saveGame(game);
+      if (!isResettingGame) {
+        saveGame(game);
+      }
     } else if (document.visibilityState === 'visible' && _wasHiddenSinceStart) {
       // Player returned to the tab — check for idle rewards for the time away.
       // The hidden handler already wrote the departure timestamp, so just read it.
