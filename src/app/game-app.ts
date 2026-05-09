@@ -179,11 +179,12 @@ export async function startApp(): Promise<void> {
       return;
     }
     if (action.kind === 'reset_game') {
+      // Clear the persisted game save (covers idle + RPG state), then refresh
+      // the page. A page reload is required because RPG render holds significant
+      // in-memory state (enemies, particles, weapons, wave manager) that cannot
+      // be cleanly reset without re-running the full createRpgRender() bootstrap.
       deleteSave();
-      particles.reset();
-      Object.assign(appState, { game: createGameState(), tapFlashAlpha: 0, activeTab: 'equation' });
-      recomputeGenerators();
-      setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
+      location.reload();
       return;
     }
     handleActionImpl(appState, action, cc, particles, settings, uiPanels, recomputeGenerators, audioSystem);

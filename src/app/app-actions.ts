@@ -25,6 +25,7 @@ import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
 import type { CanvasContext } from '../render/canvas';
 import type { ParticleSystem } from '../render';
 import type { SettingsState } from '../settings';
+import { saveSettings } from '../settings';
 import type { AppState, UIPanels } from './app-types';
 import type { NumberFormat } from '../util';
 import type { AudioSystem } from '../audio';
@@ -276,6 +277,13 @@ export function handleAction(
       }
       state.game.rpg.bossSpeedPct = pct;
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'set_invincibility_mode': {
+      settings.isInvincibilityMode = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setInvincibilityMode(action.enabled);
+      uiPanels.rpgRender.setInvincibilityMode(action.enabled);
       break;
     }
     case 'set_active_tab':

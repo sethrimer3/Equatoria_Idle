@@ -1,5 +1,18 @@
 # AI Agent Guidelines for Equatoria Idle
 
+## ⚡ Build Number Requirement
+
+**Every time you make a code change or prepare a pull request, increment the build number in `src/buildInfo.ts` by 1.**
+
+The `BUILD_NUMBER` constant in that file is the single source of truth. The Settings tab displays it as "Build #N". Do not skip this step unless the change is documentation-only and the user explicitly says not to bump the build number.
+
+```ts
+// src/buildInfo.ts
+export const BUILD_NUMBER = N;  // ← increment this by 1
+```
+
+---
+
 This document defines the required standards for AI coding agents working on the Equatoria Idle repository.
 
 The project is a mobile-first idle game written in **HTML + CSS + TypeScript**. It uses a **low native internal resolution** that is then upscaled for display, creating a slightly pixelated look while preserving crisp UI and readable math notation. The game must work well on both **mobile and desktop**, in both **portrait and landscape**, with responsive layouts and clean scaling behavior.

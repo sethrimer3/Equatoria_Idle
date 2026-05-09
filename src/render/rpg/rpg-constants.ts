@@ -117,8 +117,8 @@ export const AUTO_MOVE_JOYSTICK_DEAD_ZONE = 1.0;
 // ── Equipped-weapon visual particle ───────────────────────────
 /** Angular speed of the equipped-weapon orbit particle (radians per second). */
 export const WEAPON_PARTICLE_ORBIT_SPEED  = 2.2;
-/** Orbit radius for the equipped-weapon particle (internal px). */
-export const WEAPON_PARTICLE_ORBIT_RADIUS = 12;
+/** Orbit radius for the equipped-weapon particle (internal px). Increased slightly for visual clarity. */
+export const WEAPON_PARTICLE_ORBIT_RADIUS = 13;
 /** Minimum speed so the particle never appears frozen. */
 export const WEAPON_PARTICLE_MIN_SPEED    = 0.5;
 

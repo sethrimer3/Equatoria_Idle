@@ -30,6 +30,8 @@ export interface PlayerDamageCtx {
   hitEffects: HitEffect[];
   shotLines: ShotLine[];
   damageNumbers: DamageNumber[];
+  /** Returns true when invincibility mode is enabled (dev mode feature). */
+  isInvincibilityMode(): boolean;
 }
 
 // ── Return handle ────────────────────────────────────────────────────
@@ -132,6 +134,10 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
 
   function dealDamageToPlayer(atkValue: number): void {
     if (pCtx.getPlayerIFramesMs() > 0) return;
+    if (pCtx.isInvincibilityMode()) {
+      spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+      return;
+    }
     const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
@@ -145,6 +151,10 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
 
   function dealDamageToPlayerKnockback(atkValue: number, normDirX: number, normDirY: number): void {
     if (pCtx.getPlayerIFramesMs() > 0) return;
+    if (pCtx.isInvincibilityMode()) {
+      spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, 'BLOCKED', 0.25, '#74c0fc');
+      return;
+    }
     const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, 'BLOCKED', 0.25, '#74c0fc');

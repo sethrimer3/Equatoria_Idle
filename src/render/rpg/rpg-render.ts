@@ -214,6 +214,8 @@ export interface RpgRender {
   setNumberFormat(format: NumberFormat): void;
   /** Show or hide dev-mode numerical designators on each RPG stats panel box. */
   setDevMode(enabled: boolean): void;
+  /** Enable/disable invincibility mode — player takes no damage (dev mode only). */
+  setInvincibilityMode(enabled: boolean): void;
 }
 
 /** Options passed to createRpgRender. */
@@ -245,6 +247,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let isLowGraphicsMode = false;
   let enemyIndicatorStyle: 'triangle' | 'outline' | 'off' = 'triangle';
   let currentNumberFormat: NumberFormat = 'letters';
+  let isInvincibilityMode = false;
 
   // ── Shared dimensions box (kept in sync with widthPx/heightPx on resize) ──
   // Passed to rpg-enemy-updates functions via RpgEnemyCtx so they always see
@@ -451,7 +454,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const color     = tierDef?.color     ?? '#ffd764';
     const glowColor = tierDef?.glowColor ?? '#ffe599';
     const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-    const size = Math.max(1, tier);
+    // Level-based size increase is halved to reduce visual clutter at high tiers.
+    // Base size stays 1 at tier 1; growth is 0.5 per tier instead of 1.
+    const size = 1 + (tier - 1) * 0.5;
     return {
       angle: startAngle,
       x: mote.x + Math.cos(startAngle) * WEAPON_PARTICLE_ORBIT_RADIUS,
@@ -544,6 +549,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     hitEffects,
     shotLines,
     damageNumbers,
+    isInvincibilityMode: () => isInvincibilityMode,
   };
   const {
     spawnDamageNumber,
@@ -1415,6 +1421,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setDevMode(enabled: boolean): void {
       statsPanel.setDevMode(enabled);
+    },
+
+    setInvincibilityMode(enabled: boolean): void {
+      isInvincibilityMode = enabled;
     },
   };
 }
