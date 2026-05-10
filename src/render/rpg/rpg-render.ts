@@ -141,6 +141,12 @@ import {
 } from './rpg-lucky-motes';
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import {
+  updateAlivenGroups, type AlivenUpdateCtx,
+} from './rpg-aliven-updates';
+import { drawAlivenGroups, setAlivenLowGraphics } from './rpg-aliven-draw';
+import { damageAlivenParticle } from './rpg-damage';
+import type { AlivenParticleGroup } from './rpg-aliven-types';
+import {
   type RpgEnemyCtx,
   updateEmeraldEnemies,
   updateAmberEnemies, updateAmberShards,
@@ -345,6 +351,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const eigensteinEnemies: EigensteinEnemy[] = [];
   const eigensteinBeams: EigensteinBeam[]  = [];
   const eliteEnemies: EliteEnemy[]         = [];
+  const alivenGroups: AlivenParticleGroup[] = [];
 
   // ── Lucky mote drops (luck mechanic) ─────────────────────────
   const luckyMotes: LuckyMote[] = [];
@@ -617,6 +624,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     eliteEnemies,
+    alivenGroups,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -626,6 +634,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
     damageEliteEnemy,
+    damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
   });
 
@@ -641,7 +650,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies,
+    eliteEnemies, alivenGroups,
     bossProjectiles, spawnQueue, luckyMotes, fluid,
     getCachedLuckPercent,
     applyEquipmentStats: () => applyEquipmentStats(),
@@ -912,6 +921,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     voidTendrils,
   };
 
+  // AlivenUpdateCtx: used each frame to update all aliven particle groups.
+  const alivenUpdateCtx: AlivenUpdateCtx = {
+    get playerX()       { return mote.x; },
+    get playerY()       { return mote.y; },
+    get playerRadius()  { return RPG_MOTE_SIZE / 2 + 1; },
+    get playerIFramesMs() { return playerIFramesMs; },
+    get canvasW()       { return dim.w; },
+    get canvasH()       { return dim.h; },
+    dealContactDamageToPlayer(atk: number) {
+      dealDamageToPlayerKnockback(atk, 0, 0);
+    },
+  };
+
   const bossCtx: BossUpdateCtx = {
     mote,
     dim,
@@ -971,6 +993,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fracterylEnemies.length = 0; fracterylShards.length = 0;
     eigensteinEnemies.length = 0; eigensteinBeams.length = 0;
     eliteEnemies.length = 0;
+    alivenGroups.length = 0;
     danmakuSafeZone = null;
     bossWave.exitBossWave();
     isBossFightFromMenu = false;
@@ -1056,6 +1079,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawEigensteinEnemies(ctx, eigensteinEnemies);
     drawEigensteinBeams(ctx, eigensteinBeams, widthPx, heightPx);
     drawEliteEnemies(ctx, eliteEnemies);
+    drawAlivenGroups(ctx, alivenGroups);
     drawBottomSafeZone(ctx, isBossWaveActive, widthPx, heightPx, glowTimeS);
     drawDanmakuSafeZone(ctx, bossEnemy, danmakuSafeZone);
     drawBossProjectiles(ctx, bossProjectiles);
@@ -1251,6 +1275,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateEigensteinEnemies(eigensteinEnemies, eigensteinBeams, enemyCtx, deltaMs);
       updateEigensteinBeams(eigensteinBeams, enemyCtx, deltaMs);
       updateEliteEnemies(eliteEnemies, eliteEnemyCtx, deltaMs);
+      // AlivenParticle group updates (contact damage, particle-life physics, special abilities)
+      updateAlivenGroups(alivenGroups, alivenUpdateCtx, deltaMs);
       if (bossEnemy) {
         const bossSpeedMult = isBossWaveActive ? (rpgSimState.bossSpeedPct / 100) : 1;
         updateBossEnemy(bossEnemy, bossCtx, deltaMs * bossSpeedMult);
@@ -1405,6 +1431,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       setBossAttacksLowGraphics(enabled);
       setDrawBossAttacksLowGraphics(enabled);
       setEliteDrawLowGraphics(enabled);
+      setAlivenLowGraphics(enabled);
     },
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {

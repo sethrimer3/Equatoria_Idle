@@ -386,6 +386,27 @@
 - Amethyst elite also renders a shield arc around its body.
 - Diamond elite pulses with opacity during its invuln orbit phase.
 
+### src/render/rpg/rpg-aliven-types.ts
+- Type definitions for the AlivenParticle enemy system.
+- Exports: `AlivenParticle`, `AlivenParticleGroup`, `AlivenBullet`, `AlivenTrailPoint`, `AlivenSpecialKind`, `AlivenVariantParams`.
+
+### src/render/rpg/rpg-aliven-constants.ts
+- Tuning constants and per-variant parameter table for the AlivenParticle enemy system.
+- Exports: `ALIVEN_VARIANTS`, `AlivenVariantId`, `ALIVEN_VARIANT_PARAMS`, `ALIVEN_FLUID_COLORS`, and all physics/timer constants.
+
+### src/render/rpg/rpg-aliven-factories.ts
+- Factory functions for AlivenParticle enemies.
+- Exports: `makeAlivenParticle(params, waveStatScale)`, `makeAlivenGroup(variantId, x, y, waveNumber)`.
+
+### src/render/rpg/rpg-aliven-updates.ts
+- Per-frame physics, special-ability, and bullet updates for the AlivenParticle system.
+- Exports: `updateAlivenGroups(groups, ctx, deltaMs)`, `handleAlivenParticleDeath(group, dead)`, `AlivenUpdateCtx`.
+- Special kinds: spitter, dasher, pulser, healer, ember, splitter, orbiter.
+
+### src/render/rpg/rpg-aliven-draw.ts
+- Canvas rendering for AlivenParticle groups: pulsing glow circles, comet trails, windup rings, bullets.
+- Exports: `drawAlivenGroups(ctx, groups)`, `setAlivenLowGraphics(enabled)`.
+
 ### src/render/rpg/rpg-factories.ts
 - `make*` factory functions for every RPG entity type.
 - Imports constants from `rpg-constants.ts`, types from `rpg-types.ts`, and `getWaveStatScale` from `rpg-state.ts`.

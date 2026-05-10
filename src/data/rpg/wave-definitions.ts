@@ -350,6 +350,16 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (waveNumber >= 74)  spawns.push({ enemyTypeId: 'fracteryl',  count: fracterylCount,  spawnDelay: delay + 1700 });
   if (waveNumber >= 85)  spawns.push({ enemyTypeId: 'eigenstein', count: eigensteinCount, spawnDelay: delay + 2000 });
 
+  // Aliven particle group spawns — each entry spawns one group (count always 1).
+  // Capped at 1 group per wave to avoid overlapping too many swarms.
+  if (waveNumber >= 2)   spawns.push({ enemyTypeId: 'aliven_spark_cluster',  count: 1, spawnDelay: delay + 700 });
+  if (waveNumber >= 5)   spawns.push({ enemyTypeId: 'aliven_shard_bloom',    count: 1, spawnDelay: delay + 900 });
+  if (waveNumber >= 8)   spawns.push({ enemyTypeId: 'aliven_pulse_swarm',    count: 1, spawnDelay: delay + 1100 });
+  if (waveNumber >= 12)  spawns.push({ enemyTypeId: 'aliven_ember_ring',     count: 1, spawnDelay: delay + 1300 });
+  if (waveNumber >= 18)  spawns.push({ enemyTypeId: 'aliven_void_splinters', count: 1, spawnDelay: delay + 1500 });
+  if (waveNumber >= 22)  spawns.push({ enemyTypeId: 'aliven_healer_nodes',   count: 1, spawnDelay: delay + 1700 });
+  if (waveNumber >= 28)  spawns.push({ enemyTypeId: 'aliven_orbit_bloom',    count: 1, spawnDelay: delay + 1900 });
+
   // Elite spawns: one per wave at the correct tier unlock threshold, then sparse thereafter.
   // Each elite spawns well after the main pack to give it a dramatic entrance.
   // Frequency: approximately one elite per 4–6 waves (seeded by wave number for consistency).

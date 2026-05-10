@@ -41,6 +41,8 @@ import {
   makeEigensteinEnemy, makeBossEnemy,
   makeEliteEnemy,
 } from './rpg-factories';
+import { makeAlivenGroup } from './rpg-aliven-factories';
+import { ALIVEN_VARIANTS } from './rpg-aliven-constants';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -73,6 +75,7 @@ export interface EnemySpawnCtx {
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
 }
 
 // ── Spawn helper ──────────────────────────────────────────────────────────────
@@ -256,5 +259,17 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
     else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
     ctx.eliteEnemies.push(makeEliteEnemy(tier, spawnX, spawnY, wn));
+  } else if (ALIVEN_VARIANTS.includes(enemyTypeId as typeof ALIVEN_VARIANTS[number])) {
+    // Aliven particle groups spawn near the edge, away from the player.
+    const margin = 30;
+    const edge = Math.floor(Math.random() * 4);
+    if      (edge === 0) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = margin; }
+    else if (edge === 1) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = heightPx - margin; }
+    else if (edge === 2) { spawnX = margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
+    else                 { spawnX = widthPx - margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
+    ctx.alivenGroups.push(makeAlivenGroup(
+      enemyTypeId as typeof ALIVEN_VARIANTS[number],
+      spawnX, spawnY, wn,
+    ));
   }
 }
