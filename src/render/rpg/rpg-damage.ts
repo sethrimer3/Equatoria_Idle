@@ -26,6 +26,9 @@ import type {
   EigensteinEnemy,
   EliteEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
+import { handleAlivenParticleDeath } from './rpg-aliven-updates';
+import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
 import {
   ELITE_AMETHYST_GLOW, ELITE_CITRINE_GLOW, ELITE_DIAMOND_GLOW,
@@ -345,5 +348,31 @@ export function createDamageFns(ctx: DamageCtx) {
     damageFracterylShard,
     damageEigensteinEnemy,
     damageEliteEnemy,
+    damageAlivenParticle,
   };
+}
+
+/**
+ * Deals damage to an individual AlivenParticle.
+ * Handles hit-flash, death, and splitter on-death.
+ * Returns the actual damage dealt.
+ */
+export function damageAlivenParticle(
+  particle: AlivenParticle,
+  group: AlivenParticleGroup,
+  rawDamage: number,
+  recordDps: (dmg: number, color?: string) => void,
+): number {
+  if (!particle.isAlive) return 0;
+  const dmg = Math.max(1, Math.floor(rawDamage));
+  particle.hp -= dmg;
+  particle.hitFlashMs = ALIVEN_HIT_FLASH_MS;
+  recordDps(dmg, particle.glowColor);
+  if (particle.hp <= 0) {
+    particle.hp     = 0;
+    particle.isAlive = false;
+    particle.trail.length = 0;
+    handleAlivenParticleDeath(group, particle);
+  }
+  return dmg;
 }

@@ -54,6 +54,7 @@ import {
 } from './rpg-enemy-constants';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
 import { spawnEnemyById } from './rpg-enemy-spawn';
+import { ALIVEN_FLUID_COLORS } from './rpg-aliven-constants';
 import type {
   LaserEnemy, SapphireEnemy, SapphireMissile, SpawnEntry,
 } from './rpg-types';
@@ -101,6 +102,7 @@ export interface WaveManagerCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
   bossProjectiles: BossProjectile[];
   spawnQueue: SpawnEntry[];
   luckyMotes: LuckyMote[];
@@ -146,7 +148,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies,
+    eliteEnemies, alivenGroups,
     bossProjectiles, spawnQueue, luckyMotes, fluid,
     getCachedLuckPercent, applyEquipmentStats, spawnDamageNumber,
   } = ctx;
@@ -404,6 +406,19 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         eliteEnemies.splice(i, 1);
       }
     }
+    // Aliven group defeat: award XP when all spawned particles are dead
+    for (let i = alivenGroups.length - 1; i >= 0; i--) {
+      const group = alivenGroups[i];
+      if (group.spawnedCount < group.targetCount) continue;
+      if (group.aliveCount > 0) continue;
+      const [fr, fg, fb] = ALIVEN_FLUID_COLORS[group.tierId] ?? [180, 180, 255];
+      fluid.addExplosion(group.x, group.y, FLUID_EXPLOSION_STRENGTH * 1.5, fr, fg, fb);
+      const groupXp = getXpPerKill(ctx.getCurrentWave()) * group.xpMult;
+      totalXpFromKills += groupXp;
+      trySpawnLuckyMote(luckyMotes, group.tierId, group.x, group.y, getCachedLuckPercent());
+      spawnDamageNumber(group.x, group.y, 0, -0.8, `+${formatXp(groupXp)} XP`, 0.8, '#aaeeff');
+      alivenGroups.splice(i, 1);
+    }
     // Boss defeat
     const bossEnemy = ctx.getBossEnemy();
     if (bossEnemy && bossEnemy.hp <= 0) {
@@ -461,6 +476,10 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
         || eliteEnemies.length > 0
         || ctx.getBossEnemy() !== null) return;
+    // Aliven groups alive: either still partially spawned or still have live particles
+    for (const group of alivenGroups) {
+      if (group.spawnedCount < group.targetCount || group.aliveCount > 0) return;
+    }
     ctx.setIsInterWave(true);
     ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS);
   }

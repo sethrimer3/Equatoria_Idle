@@ -307,12 +307,14 @@ import type {
   NullstoneEnemy, VoidTendril, FracterylEnemy, FracterylShard, EigensteinEnemy,
   BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticle } from './rpg-aliven-types';
 
 export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
   | 'quartz' | 'quartzspike' | 'ruby' | 'rubybolt' | 'sunstone' | 'citrine' | 'citrinebolt'
   | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril'
   | 'fracteryl' | 'fracterylshard' | 'eigenstein'
   | 'elite'
+  | 'aliven_particle'
   | 'boss';
 
 export interface ClosestTarget {
@@ -344,6 +346,10 @@ export interface ClosestTarget {
   fracterylshard?: FracterylShard;
   eigenstein?: EigensteinEnemy;
   elite?: EliteEnemy;
+  /** AlivenParticle individual particle (aliven_particle targets). */
+  alivenParticle?: AlivenParticle;
+  /** Parent group of the targeted AlivenParticle. */
+  alivenGroup?: import('./rpg-aliven-types').AlivenParticleGroup;
   boss?: BossEnemy;
 }
 

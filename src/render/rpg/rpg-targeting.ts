@@ -20,6 +20,7 @@ import type {
   EigensteinEnemy,
   BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticleGroup } from './rpg-aliven-types';
 
 export interface RpgTargetingCtx {
   mote: { x: number; y: number };
@@ -49,6 +50,7 @@ export interface RpgTargetingCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  alivenGroups: AlivenParticleGroup[];
   damageEnemy: (e: LaserEnemy, raw: number, pierce: number) => number;
   damageSapphireEnemy: (e: SapphireEnemy, raw: number, pierce: number, bypass: boolean) => number;
   damageMissile: (m: SapphireMissile, raw: number, pierce: number) => number;
@@ -74,6 +76,7 @@ export interface RpgTargetingCtx {
   damageFracterylShard: (s: FracterylShard, raw: number, pierce: number) => number;
   damageEigensteinEnemy: (e: EigensteinEnemy, raw: number, pierce: number) => number;
   damageEliteEnemy: (e: EliteEnemy, raw: number, pierce: number) => number;
+  damageAlivenParticle: (particle: import('./rpg-aliven-types').AlivenParticle, group: AlivenParticleGroup, raw: number) => number;
   damageBossEnemy: (raw: number, pierce: number, fromDiamond?: boolean) => number;
 }
 
@@ -221,6 +224,15 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
       const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
       const d = dx * dx + dy * dy;
       if (d <= bestSq) { bestSq = d; best = { kind: 'elite', x: e.x, y: e.y, distSq: d, elite: e }; }
+    }
+    // Aliven particle groups — target individual particles
+    for (const group of ctx.alivenGroups) {
+      for (const p of group.particles) {
+        if (!p.isAlive) continue;
+        const dx = p.x - ctx.mote.x, dy = p.y - ctx.mote.y;
+        const d = dx * dx + dy * dy;
+        if (d <= bestSq) { bestSq = d; best = { kind: 'aliven_particle', x: p.x, y: p.y, distSq: d, alivenParticle: p, alivenGroup: group }; }
+      }
     }
     if (ctx.bossEnemy) {
       const dx = ctx.bossEnemy.x - ctx.mote.x, dy = ctx.bossEnemy.y - ctx.mote.y;
@@ -449,6 +461,14 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     for (const e of ctx.fracterylEnemies) addTarget('fracteryl', e, 'fracteryl');
     for (const e of ctx.eigensteinEnemies) addTarget('eigenstein', e, 'eigenstein');
     for (const e of ctx.eliteEnemies) addTarget('elite', e, 'elite');
+    // Aliven: add each alive particle as an individual target
+    for (const group of ctx.alivenGroups) {
+      for (const p of group.particles) {
+        if (!p.isAlive) continue;
+        const dx = p.x - ctx.mote.x, dy = p.y - ctx.mote.y;
+        targets.push({ kind: 'aliven_particle', x: p.x, y: p.y, distSq: dx * dx + dy * dy, alivenParticle: p, alivenGroup: group });
+      }
+    }
     if (ctx.bossEnemy) addTarget('boss', ctx.bossEnemy, 'boss');
     return targets;
   }
@@ -484,6 +504,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.fracteryl) return ctx.damageFracterylEnemy(target.fracteryl, rawDamage, defPierceRatio);
     if (target.eigenstein) return ctx.damageEigensteinEnemy(target.eigenstein, rawDamage, defPierceRatio);
     if (target.elite) return ctx.damageEliteEnemy(target.elite, rawDamage, defPierceRatio);
+    if (target.alivenParticle && target.alivenGroup) return ctx.damageAlivenParticle(target.alivenParticle, target.alivenGroup, rawDamage);
     if (target.boss) return ctx.damageBossEnemy(rawDamage, defPierceRatio);
     return 0;
   }
