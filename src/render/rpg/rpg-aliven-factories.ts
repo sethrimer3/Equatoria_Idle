@@ -63,5 +63,6 @@ export function makeAlivenGroup(
     spawnedCount: 0,
     targetCount:  params.particleCount,
     spawnCdMs:    0,
+    aliveCount:   0,
   };
 }

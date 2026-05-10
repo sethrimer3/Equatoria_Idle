@@ -78,6 +78,8 @@ export interface AlivenParticleGroup {
   x: number;
   y: number;
   particles: AlivenParticle[];
+  /** Cached count of alive particles — updated by updateCentroid each frame. */
+  aliveCount: number;
   bullets: AlivenBullet[];
   /** How many particles have been activated so far (spawn-over-time). */
   spawnedCount: number;

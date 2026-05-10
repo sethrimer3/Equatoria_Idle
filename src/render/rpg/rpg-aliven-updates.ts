@@ -135,6 +135,7 @@ function updateCentroid(group: AlivenParticleGroup): void {
     if (!p.isAlive) continue;
     sx += p.x; sy += p.y; count++;
   }
+  group.aliveCount = count;
   if (count > 0) {
     group.cx = sx / count;
     group.cy = sy / count;
@@ -221,7 +222,7 @@ function tickVisuals(p: AlivenParticle, deltaMs: number): void {
 
 function tickContact(
   p: AlivenParticle,
-  group: AlivenParticleGroup,
+  _group: AlivenParticleGroup,
   ctx: AlivenUpdateCtx,
   _deltaMs: number,
 ): void {
@@ -235,7 +236,6 @@ function tickContact(
   ctx.dealContactDamageToPlayer(getAtk(p));
   p.contactCdMs = ALIVEN_CONTACT_CD_MS;
   p.hitFlashMs  = ALIVEN_HIT_FLASH_MS;
-  void group; // group kept for potential future use
 }
 
 // ── Special abilities ─────────────────────────────────────────────────────
@@ -388,6 +388,7 @@ export function handleAlivenParticleDeath(
   const liveCount = group.particles.filter(q => q.isAlive).length;
   const canAdd = ALIVEN_MAX_PARTICLES - group.particles.length;
   const toSpawn = Math.min(2, canAdd);
+  if (liveCount === 0 || toSpawn === 0) return; // no room or group already defeated
   for (let i = 0; i < toSpawn; i++) {
     // Child is weaker: half the radius and one third maxHp
     const childHp = Math.max(1, Math.ceil(dead.maxHp / 3));

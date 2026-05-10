@@ -410,7 +410,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     for (let i = alivenGroups.length - 1; i >= 0; i--) {
       const group = alivenGroups[i];
       if (group.spawnedCount < group.targetCount) continue;
-      if (group.particles.some(p => p.isAlive)) continue;
+      if (group.aliveCount > 0) continue;
       const [fr, fg, fb] = ALIVEN_FLUID_COLORS[group.tierId] ?? [180, 180, 255];
       fluid.addExplosion(group.x, group.y, FLUID_EXPLOSION_STRENGTH * 1.5, fr, fg, fb);
       const groupXp = getXpPerKill(ctx.getCurrentWave()) * group.xpMult;
@@ -478,7 +478,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || ctx.getBossEnemy() !== null) return;
     // Aliven groups alive: either still partially spawned or still have live particles
     for (const group of alivenGroups) {
-      if (group.spawnedCount < group.targetCount || group.particles.some(p => p.isAlive)) return;
+      if (group.spawnedCount < group.targetCount || group.aliveCount > 0) return;
     }
     ctx.setIsInterWave(true);
     ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS);
