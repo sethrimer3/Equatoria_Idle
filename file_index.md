@@ -511,12 +511,18 @@
 - Imported directly by `rpg-render.ts` alongside `rpg-enemy-draw.ts`.
 
 ### src/render/rpg/rpg-enemy-updates.ts
-- 16 exported enemy update functions covering wave 1–30 enemy types (~616 lines).
-- Covers: emerald, amber+shards, void, quartz+spikes, ruby+bolts, sunstone, citrine+bolts.
+- 9 exported enemy update functions covering early-wave enemy types (~390 lines).
+- Covers: emerald, amber+shards, void.
 - Exports the `RpgEnemyCtx` interface: a minimal shared-reference object (`mote`, `dim`, `fluid`, `hitEffects`, `shotLines`, `dealDamageToPlayer`, `dealDamageToPlayerKnockback`, `clampEnemyToBounds`).
 - `dim: { w, h }` is a live object kept in sync with `widthPx`/`heightPx` on each resize; no getter indirection needed.
 - Each function takes its own entity arrays as explicit parameters, making data flow visible at call sites.
 - No closure dependencies; pure transformation over given arrays + ctx reference.
+
+### src/render/rpg/rpg-enemy-updates-mid.ts
+- 7 exported enemy update functions covering mid-wave enemy types (~230 lines).
+- Covers: quartz+spikes, ruby+bolts, sunstone, citrine+bolts.
+- Imports `RpgEnemyCtx` from `rpg-enemy-updates.ts`; follows identical contract.
+- Split from `rpg-enemy-updates.ts` to keep that file under ~400 lines.
 
 ### src/render/rpg/rpg-enemy-updates-basic.ts
 - 3 exported enemy update functions for the earliest wave types (~279 lines).
@@ -793,7 +799,7 @@
 - Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-player-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
-- Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (wave 1–30 excluding laser/sapphire), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
+- Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (early wave: emerald/amber/void), `rpg-enemy-updates-mid.ts` (mid-wave: quartz/ruby/sunstone/citrine), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
 - Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; per-boss-ID behavior dispatch extracted further to `rpg-boss-behaviors.ts`; called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip and vortex draw functions extracted to `rpg-weapon-draw.ts`; sword combo and sand blade draw functions extracted to `rpg-weapon-draw-sword.ts`.
