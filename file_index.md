@@ -365,9 +365,18 @@
 - No runtime dependencies (types only; all fields are primitive or built-in TS types).
 - Consumed by: `rpg-render.ts`, `rpg-factories.ts`, `rpg-entity-draw.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-damage.ts`, `rpg-boss-draw.ts`, `rpg-boss-update.ts`, `rpg-lucky-motes.ts`, `rpg-elite-enemy-updates.ts`, `rpg-elite-enemy-draw.ts`.
 
+### src/render/rpg/rpg-elite-enemy-helpers.ts
+- Shared context type and projectile-spawning helpers for elite polygon enemies (~274 lines).
+- Exports `EliteEnemyCtx` (extends `RpgEnemyCtx` with the 6 projectile arrays elites fire into).
+- Exports `TIER_FLUID` — per-tier (r, g, b) fluid-color lookup.
+- Exports movement helper `patrolStep`, fluid helper `eliteFluidExplosion`, and utility `clamp`.
+- Exports projectile spawn helpers: `fireSpikeFan`, `fireSpikeRing`, `fireBoltFan`, `fireHomingBolts`, `fireShardsRing`, `fireDiamondRing`, `fireTendrilRing`.
+- Extracted from `rpg-elite-enemy-updates.ts` to keep behavioral logic and boilerplate helpers in separate files.
+
 ### src/render/rpg/rpg-elite-enemy-updates.ts
-- Per-frame update logic for all 8 elite polygon enemies (quartz → nullstone).
-- Exports `updateEliteEnemies(elites, ctx, deltaMs)` and `EliteEnemyCtx` (extends `RpgEnemyCtx` with projectile arrays).
+- Per-frame update logic for all 8 elite polygon enemies (quartz → nullstone) (~488 lines).
+- Exports `updateEliteEnemies(elites, ctx, deltaMs)` and re-exports `EliteEnemyCtx` from helpers.
+- Each tier is implemented as a private named function (`updateEliteQuartz`, `updateEliteRuby`, …) called from a compact dispatcher switch; this keeps each tier's logic self-contained and easy to navigate.
 - Each tier has 2 distinct attacks reusing existing projectile arrays (`quartzSpikes`, `rubyBolts`, etc.):
   - **Quartz (3)**: Crystal Salvo (two staggered 3-spike bursts) + Crystal Nova (9-spike ring).
   - **Ruby (4)**: Cardinal Burst (4 bolts N/E/S/W) + Triple Shot (tight 3-bolt spread).
@@ -377,7 +386,6 @@
   - **Amethyst (8)**: Crystal Storm (two staggered 8-shard rings) + reactive shield burst.
   - **Diamond (9)**: Nine-Star burst + phase cycle (invuln orbit ↔ vulnerable patrol).
   - **Nullstone (10)**: Tendril Swarm + Event Horizon (20-tendril ring when HP < 30%).
-- All elites share patrol movement (random-direction turns every 2 s with velocity damping).
 
 ### src/render/rpg/rpg-elite-enemy-draw.ts
 - Draw functions for elite polygon enemies.
@@ -670,11 +678,26 @@
 - Covers: `findClosestTarget` (closest entity including projectiles), `findClosestEnemy` (closest enemy body only), `collectEnemyBodyTargets` (all enemy bodies as `ClosestTarget[]`), `findClosestEnemyFrom` (closest enemy from arbitrary position), `getTargetedEnemy` (validates stored target or falls back to closest), `tryTargetEnemyAt` (stub that clears target), `damageBodyTarget` (dispatches damage to correct type-specific damage fn).
 
 ### src/render/rpg/rpg-player-attack.ts
-- Player auto-attack dispatch extracted from `rpg-render.ts` (~490 lines).
-- Exports `RpgPlayerAttackCtx` interface and `performWeaponAttack(ctx, weaponId)` function.
+- Player auto-attack context and dispatcher (~222 lines).
+- Exports `RpgPlayerAttackCtx` interface and `performWeaponAttack(ctx, weaponId)`.
 - `RpgPlayerAttackCtx` carries all enemy arrays, damage functions, visual spawners, fluid reference, targeting callback, and weapon-system spawn callbacks via DI.
-- Handles all weapon effect kinds: `single`, `multi`, `aoe`, `piercing`, `gatling`, `poisonBolt`, `emeraldMissile`, `laserBeam`, `sunstoneMine`, `chainWhip`, `vortex`, `swordCombo`.
-- `rpg-render.ts` initialises `playerAttackCtx` after `weaponSystems` is created and delegates `performWeaponAttack` to this module.
+- Handles delegating weapon kinds inline (gatling, chainWhip, vortex, swordCombo, poisonBolt, emeraldMissile, laserBeam, sunstoneMine) and delegates aoe/multi/single to the three handler modules below.
+- `rpg-render.ts` initialises `playerAttackCtx` after `weaponSystems` is created.
+
+### src/render/rpg/rpg-player-attack-aoe.ts
+- AOE weapon attack handler (~158 lines). Exported: `performAoeAttack(ctx, rawDamage, aoeRadius)`.
+- Loops all enemy arrays to damage everything within `aoeRadius` of the mote, then emits a fluid explosion.
+- Extracted from `rpg-player-attack.ts` to keep the dispatcher under ~225 lines.
+
+### src/render/rpg/rpg-player-attack-multi.ts
+- Multi-target weapon attack handler (~298 lines). Exported: `performMultiAttack(ctx, rawDamage, rangeSq, targetCount)`.
+- Collects all in-range entities into a typed `MultiSortEntry[]`, sorts by distance, damages the closest N.
+- Extracted from `rpg-player-attack.ts` to keep the dispatcher under ~225 lines.
+
+### src/render/rpg/rpg-player-attack-single.ts
+- Single and piercing weapon attack handler (~131 lines). Exported: `performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, shotColor)`.
+- Uses `findClosestTarget` then dispatches to the matching damage/visual call.
+- Extracted from `rpg-player-attack.ts` to keep the dispatcher under ~225 lines.
 
 ### src/render/rpg/rpg-player-damage.ts
 - Player damage application and hit-visual helpers extracted from `rpg-render.ts` (~198 lines).
