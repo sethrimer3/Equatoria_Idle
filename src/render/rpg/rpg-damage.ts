@@ -364,6 +364,7 @@ export function damageAlivenParticle(
   recordDps: (dmg: number, color?: string) => void,
 ): number {
   if (!particle.isAlive) return 0;
+  if (particle.ghostMs > 0) return 0;
   const dmg = Math.max(1, Math.floor(rawDamage));
   particle.hp -= dmg;
   particle.hitFlashMs = ALIVEN_HIT_FLASH_MS;

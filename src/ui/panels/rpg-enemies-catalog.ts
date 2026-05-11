@@ -60,7 +60,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────
 
-export type EnemyShape = 'square' | 'diamond' | 'circle';
+export type EnemyShape = 'square' | 'diamond' | 'circle' | 'polygon';
 
 export interface EnemyCatalogEntry {
   id: string;
@@ -75,6 +75,8 @@ export interface EnemyCatalogEntry {
   firstWave: number;
   description: string;
   shape: EnemyShape;
+  /** Number of polygon sides — required when shape === 'polygon'. Range: 3 (triangle) to 10 (decagon). */
+  sides?: number;
   /** Optional second ring/aura radius for special visual effects. */
   auraRadius?: number;
   /** Show a shield circle around the enemy in the icon. */
@@ -271,7 +273,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_QUARTZ_HP, atk: ELITE_QUARTZ_ATK, def: ELITE_QUARTZ_DEF,
     firstWave: 2,
     description: 'A crowned quartz crystal wreathed in a violet halo that fires double spike bursts with relentless precision.',
-    shape: 'diamond',
+    shape: 'polygon',
+    sides: 3,
   },
   {
     id: 'elite_ruby',
@@ -282,7 +285,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_RUBY_HP, atk: ELITE_RUBY_ATK, def: ELITE_RUBY_DEF,
     firstWave: 5,
     description: 'A blazing crimson hunter crowned in fire that charges at terrifying speed and unleashes devastating bolt salvos.',
-    shape: 'square',
+    shape: 'polygon',
+    sides: 4,
   },
   {
     id: 'elite_sunstone',
@@ -293,7 +297,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_SUNSTONE_HP, atk: ELITE_SUNSTONE_ATK, def: ELITE_SUNSTONE_DEF,
     firstWave: 10,
     description: 'A searing elite sun that orbits at close range and floods the arena with overlapping area pulses.',
-    shape: 'circle',
+    shape: 'polygon',
+    sides: 5,
   },
   {
     id: 'elite_citrine',
@@ -304,7 +309,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_CITRINE_HP, atk: ELITE_CITRINE_ATK, def: ELITE_CITRINE_DEF,
     firstWave: 15,
     description: 'A golden elite tracker that barrages the player with double volleys of tightly curved homing bolts.',
-    shape: 'square',
+    shape: 'polygon',
+    sides: 6,
   },
   {
     id: 'elite_iolite',
@@ -315,7 +321,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_IOLITE_HP, atk: ELITE_IOLITE_ATK, def: ELITE_IOLITE_DEF,
     firstWave: 33,
     description: 'A titanic indigo colossus that periodically deploys a crushing gravity well alongside its wide-arc beam barrage.',
-    shape: 'circle',
+    shape: 'polygon',
+    sides: 7,
   },
   {
     id: 'elite_amethyst',
@@ -326,7 +333,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_AMETHYST_HP, atk: ELITE_AMETHYST_ATK, def: ELITE_AMETHYST_DEF,
     firstWave: 42,
     description: 'A violet siege fortress that regenerates its massive shield and unleashes double ring-burst explosions on each break.',
-    shape: 'circle',
+    shape: 'polygon',
+    sides: 8,
     hasShield: true,
     shieldRadius: ELITE_AMETHYST_RADIUS * 2.6,
     shieldColor: ELITE_AMETHYST_GLOW,
@@ -340,7 +348,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_DIAMOND_HP, atk: ELITE_DIAMOND_ATK, def: ELITE_DIAMOND_DEF,
     firstWave: 52,
     description: 'A prismatic elite that orbits at blinding speed during invulnerability and fires a nine-star shard burst when vulnerable.',
-    shape: 'diamond',
+    shape: 'polygon',
+    sides: 9,
   },
   {
     id: 'elite_nullstone',
@@ -351,7 +360,8 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: ELITE_NULLSTONE_HP, atk: ELITE_NULLSTONE_ATK, def: ELITE_NULLSTONE_DEF,
     firstWave: 63,
     description: 'An apex void entity that triggers Event Horizon singularity bursts and launches void tendrils from all directions.',
-    shape: 'circle',
+    shape: 'polygon',
+    sides: 10,
   },
   // ─── Aliven particle enemies ─────────────────────────────────────────────
   {
@@ -429,6 +439,39 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hp: 95, atk: 18, def: 0,
     firstWave: 28,
     description: 'A ruby-red swarm of 12 orbiter particles that circle a drifting centroid while relentlessly seeking the player. Beautiful and deadly.',
+    shape: 'circle',
+  },
+  {
+    id: 'aliven_quartz_ghost',
+    name: 'Aliven Quartz Ghost',
+    color: '#d8e8f0',
+    glowColor: '#aaccee',
+    size: 6,
+    hp: 22, atk: 10, def: 0,
+    firstWave: 4,
+    description: 'A pale quartz swarm of 10 particles that periodically phase into an invulnerable ghost state — time your attacks between their flickers.',
+    shape: 'circle',
+  },
+  {
+    id: 'aliven_iolite_prism',
+    name: 'Aliven Iolite Prism',
+    color: '#6464b4',
+    glowColor: '#8888cc',
+    size: 6,
+    hp: 80, atk: 18, def: 0,
+    firstWave: 38,
+    description: 'A dense iolite cluster of 14 pulser particles that simultaneously detonate area shockwaves — stay mobile or be overwhelmed.',
+    shape: 'circle',
+  },
+  {
+    id: 'aliven_fracteryl_storm',
+    name: 'Aliven Fracteryl Storm',
+    color: '#cc44ff',
+    glowColor: '#ee88ff',
+    size: 5,
+    hp: 120, atk: 22, def: 0,
+    firstWave: 65,
+    description: 'A fractal cascade of 18 splitter particles that erupts into smaller fragments on death — dealing with one triggers two more.',
     shape: 'circle',
   },
 ] as const;
