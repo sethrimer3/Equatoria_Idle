@@ -32,6 +32,7 @@ export function makeAlivenParticle(
     specialCdMin: params.specialCdMin,
     specialCdMax: params.specialCdMax,
     windupMs:     0,
+    ghostMs:      0,
     trail:        [],
   };
 }

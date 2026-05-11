@@ -25,6 +25,7 @@ import {
   ALIVEN_HEAL_FRACTION,
   ALIVEN_HEALER_RANGE_SQ,
   ALIVEN_ORBIT_STRENGTH,
+  ALIVEN_GHOST_DURATION_MS,
   ALIVEN_FRICTION,
   ALIVEN_WANDER_STRENGTH,
   ALIVEN_SEEK_STRENGTH,
@@ -251,6 +252,7 @@ function tickSpecial(
     case 'dasher':   tickDasher(p, ctx, deltaMs);          break;
     case 'pulser':   tickPulser(p, ctx, deltaMs);          break;
     case 'healer':   tickHealer(p, group, deltaMs);        break;
+    case 'ghost':    tickGhost(p, deltaMs);                break;
     case 'ember':    /* trail only, no extra logic */       break;
     case 'splitter': /* handled in death, not per-frame */  break;
     case 'orbiter':  /* centripetal handled in movement */  break;
@@ -337,6 +339,19 @@ function tickHealer(p: AlivenParticle, group: AlivenParticleGroup, deltaMs: numb
     const dx = other.x - p.x, dy = other.y - p.y;
     if (dx * dx + dy * dy > ALIVEN_HEALER_RANGE_SQ) continue;
     other.hp = Math.min(other.maxHp, other.hp + Math.ceil(other.maxHp * ALIVEN_HEAL_FRACTION));
+  }
+}
+
+// Ghost — periodically enters an invulnerable phase (ghostMs > 0 blocks incoming damage).
+function tickGhost(p: AlivenParticle, deltaMs: number): void {
+  if (p.ghostMs > 0) {
+    p.ghostMs = Math.max(0, p.ghostMs - deltaMs);
+    return;
+  }
+  p.specialCdMs -= deltaMs;
+  if (p.specialCdMs <= 0) {
+    p.ghostMs     = ALIVEN_GHOST_DURATION_MS;
+    p.specialCdMs = p.specialCdMin + Math.random() * (p.specialCdMax - p.specialCdMin);
   }
 }
 

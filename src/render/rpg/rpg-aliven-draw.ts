@@ -35,6 +35,7 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: AlivenParticle): void {
   const pulse = 0.78 + 0.22 * Math.sin(p.pulseMs / 420);
   const r     = p.radiusPx * pulse;
   const isFlashing = p.hitFlashMs > 0;
+  const isGhost    = p.ghostMs > 0;
 
   // Comet trail (ember and dasher only, skip in low-graphics mode)
   if (!_lowGraphics && p.trail.length >= 2) {
@@ -54,6 +55,30 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: AlivenParticle): void {
   }
 
   ctx.save();
+
+  if (isGhost) {
+    // Ghost phase: semi-transparent with pulsing ring indicator
+    const ghostPulse = 0.3 + 0.25 * Math.sin(p.pulseMs / 150);
+    ctx.globalAlpha = ghostPulse;
+    ctx.fillStyle   = p.color;
+    if (!_lowGraphics) {
+      ctx.shadowBlur  = r * 2;
+      ctx.shadowColor = p.glowColor;
+    }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    // Faint outer ring to indicate ghost state
+    ctx.globalAlpha = ghostPulse * 0.6;
+    ctx.strokeStyle = p.glowColor;
+    ctx.lineWidth   = 0.8;
+    ctx.shadowBlur  = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r + 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
 
   // Glow (skip in low-graphics mode)
   if (!_lowGraphics) {

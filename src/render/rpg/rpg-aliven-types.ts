@@ -15,7 +15,8 @@ export type AlivenSpecialKind =
   | 'healer'    // restores HP to nearby particles on cooldown
   | 'ember'     // leaves short-lived trail points (visual, no damage in v1)
   | 'splitter'  // spawns 2 child particles on death
-  | 'orbiter';  // orbits around group centroid
+  | 'orbiter'   // orbits around group centroid
+  | 'ghost';    // periodically phases — invulnerable to damage during ghostMs
 
 /** A single trail sample position. */
 export interface AlivenTrailPoint {
@@ -48,6 +49,8 @@ export interface AlivenParticle {
   specialCdMax: number;
   /** Spitter only: remaining ms of windup animation before the bullet fires. */
   windupMs: number;
+  /** Ghost only: remaining ms of ghost phase (particle cannot be damaged). */
+  ghostMs: number;
   /** Short trail of recent positions for the comet effect. */
   trail: AlivenTrailPoint[];
 }

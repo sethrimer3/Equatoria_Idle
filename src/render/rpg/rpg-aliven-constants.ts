@@ -17,6 +17,9 @@ export const ALIVEN_VARIANTS = [
   'aliven_void_splinters',
   'aliven_healer_nodes',
   'aliven_orbit_bloom',
+  'aliven_quartz_ghost',
+  'aliven_iolite_prism',
+  'aliven_fracteryl_storm',
 ] as const satisfies readonly string[];
 
 export type AlivenVariantId = typeof ALIVEN_VARIANTS[number];
@@ -88,6 +91,11 @@ export const ALIVEN_HEALER_RANGE_SQ = 32 * 32;
 
 /** Centripetal attraction strength toward the group centroid (added per ms). */
 export const ALIVEN_ORBIT_STRENGTH = 0.00005;
+
+// ── Ghost ──────────────────────────────────────────────────────────────────
+
+/** How long each ghost phase (invulnerability) lasts on a ghost particle (ms). */
+export const ALIVEN_GHOST_DURATION_MS = 900;
 
 // ── Movement physics ───────────────────────────────────────────────────────
 
@@ -208,6 +216,51 @@ export const ALIVEN_VARIANT_PARAMS: Record<AlivenVariantId, AlivenVariantParams>
     specialCdMin:    9999,
     specialCdMax:    9999,
   },
+  /** H – Aliven Quartz Ghost: ghost particles that periodically phase (invulnerable). */
+  aliven_quartz_ghost: {
+    tierId:          'quartz',
+    color:           '#d8e8f0',
+    glowColor:       '#aaccee',
+    particleCount:   10,
+    radiusPx:        2.8,
+    hpBase:          22,
+    atkBase:         10,
+    xpMult:          3.5,
+    spawnIntervalMs: 450,
+    specialKind:     'ghost',
+    specialCdMin:    3500,
+    specialCdMax:    5500,
+  },
+  /** I – Aliven Iolite Prism: heavy iolite pulsers in a dense cluster. */
+  aliven_iolite_prism: {
+    tierId:          'iolite',
+    color:           '#6464b4',
+    glowColor:       '#8888cc',
+    particleCount:   14,
+    radiusPx:        3.0,
+    hpBase:          80,
+    atkBase:         18,
+    xpMult:          7,
+    spawnIntervalMs: 320,
+    specialKind:     'pulser',
+    specialCdMin:    3000,
+    specialCdMax:    5000,
+  },
+  /** J – Aliven Fracteryl Storm: swarm of fractal splitters that cascade on death. */
+  aliven_fracteryl_storm: {
+    tierId:          'fracteryl',
+    color:           '#cc44ff',
+    glowColor:       '#ee88ff',
+    particleCount:   18,
+    radiusPx:        2.0,
+    hpBase:          120,
+    atkBase:         22,
+    xpMult:          14,
+    spawnIntervalMs: 250,
+    specialKind:     'splitter',
+    specialCdMin:    9999,
+    specialCdMax:    9999,
+  },
 };
 
 /** Fluid explosion colour per aliven tierId.
@@ -220,4 +273,7 @@ export const ALIVEN_FLUID_COLORS: Record<string, [number, number, number]> = {
   nullstone: [ 30,  30,  40],
   amethyst:  [180, 100, 200],
   ruby:      [255,  51,  51],
+  quartz:    [216, 232, 240],
+  iolite:    [100, 100, 180],
+  fracteryl: [200,  68, 255],
 };
