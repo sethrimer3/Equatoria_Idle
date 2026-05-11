@@ -151,11 +151,13 @@ import {
   updateEmeraldEnemies,
   updateAmberEnemies, updateAmberShards,
   updateVoidEnemies,
+} from './rpg-enemy-updates';
+import {
   updateQuartzEnemies, updateQuartzSpikes,
   updateRubyEnemies, updateRubyBolts,
   updateSunstoneEnemies,
   updateCitrineEnemies, updateCitrineBolts,
-} from './rpg-enemy-updates';
+} from './rpg-enemy-updates-mid';
 import {
   updateLaserEnemies,
   updateSapphireEnemies, updateSapphireMissiles,
