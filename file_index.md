@@ -1090,3 +1090,29 @@ Audio system — eight focused modules:
 - Returns `{ sizeIndex, emitRatePerSec, sizeLabel }`.
 - Works for arbitrary sizes (not capped at 4×4).
 - Used by `app-game-loop.ts` for per-frame loom particle emission.
+
+### src/ui/panels/balance-forecast/balance-forecast-types.ts
+- Shared types and constants for the Balance Forecast dev panel.
+- Exports `formatDuration(seconds)` — compact human-readable duration string.
+- Exports `ForecastTarget`, `ForecastResult`, `ForecastCategory`, `RequirementEta`, `EtaStatus`.
+- Exports `Milestone`, `StrategyResult`, `StrategyId`, `PacingWarning`, `WarningKind`.
+- Exports `BALANCE_WARNING_THRESHOLDS` — tunable thresholds for pacing warnings.
+
+### src/ui/panels/balance-forecast/balance-forecast-engine.ts
+- Core analysis and simulation engine. Never mutates real game state.
+- `runBalanceForecast(game, options)` — runs all three analyses and returns `ForecastResult`.
+- Section 1: Static ETA analysis — computes `ForecastTarget` list from current player state.
+- Section 2: Fresh-run milestone timeline — Cheapest First strategy on fresh state.
+- Section 3: Strategy-based simulation — runs Wait Only / Cheapest First / Best Efficiency / Rush Next Tier.
+- `SimState` — lightweight isolated simulation model (cloned from GameState or fresh).
+- Four strategy functions: `strategyWaitOnly`, `strategyCheapestFirst`, `strategyBestEfficiency`, `strategyRushNextTier`.
+- Adaptive time stepping: jumps to next affordable purchase rather than stepping every frame.
+- Safeguards: MAX_ITERATIONS cap, stuck-detection, Infinity/NaN guards.
+
+### src/ui/panels/balance-forecast/balance-forecast-panel.ts
+- Dev-only DOM panel for the Balance Forecast system.
+- `createBalanceForecastPanel()` — returns `BalanceForecastPanel` interface.
+- Renders: Next Meaningful Events, Static ETA table, Fresh-Run Timeline, Strategy Comparison, Pacing Warnings.
+- Controls: max-sim-time selector, ↺ Run Analysis button, 📋 Copy Results button.
+- Runs simulation lazily (on open or refresh click) — never runs on every frame.
+- Hidden unless `setDevMode(true)` is called.

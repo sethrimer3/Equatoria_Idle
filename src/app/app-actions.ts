@@ -363,6 +363,11 @@ export function updateVisiblePanels(
     panels.resourcePanel.update(game, numberFormat);
   } else if (state.activeTab === 'achievements') {
     panels.achievementsPanel.update(game, numberFormat);
+  } else if (state.activeTab === 'settings') {
+    // Update the Balance Forecast panel if dev mode is enabled
+    if (isDevMode) {
+      panels.settingsPanel.balanceForecastPanel.update(game);
+    }
   } else if (state.activeTab === 'rpg') {
     // RPG menu is only re-rendered when visible; calling update here
     // pre-populates its state so it shows current data immediately when opened.

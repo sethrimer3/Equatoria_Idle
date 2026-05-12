@@ -5,6 +5,7 @@ import type { AudioSystem } from '../../audio';
 import { makePageBreak } from '../ui-helpers';
 import { particleTweaks, PARTICLE_TWEAKS_DEFAULTS, resetParticleTweaks } from '../../data/particles/particle-tweaks';
 import { BUILD_NUMBER } from '../../buildInfo';
+import { createBalanceForecastPanel, type BalanceForecastPanel } from './balance-forecast/balance-forecast-panel';
 
 // ─── Slider glow constants ───────────────────────────────────────
 
@@ -27,6 +28,8 @@ const MIN_GLOW_THRESHOLD = 0.25;
 export interface SettingsPanel {
   element: HTMLElement;
   getSettings(): SettingsState;
+  /** The embedded Balance Forecast dev panel (dev mode only). */
+  balanceForecastPanel: BalanceForecastPanel;
 }
 
 export function createSettingsPanel(
@@ -171,11 +174,16 @@ export function createSettingsPanel(
   const devSection = createDevTweaksSection();
   devSection.style.display = settings.isDevMode ? '' : 'none';
 
+  // Balance Forecast panel — also dev-mode only
+  const balanceForecastPanel = createBalanceForecastPanel();
+  balanceForecastPanel.setDevMode(settings.isDevMode);
+
   const devModeRow = createToggleRow('Developer Mode', settings.isDevMode, (v) => {
     settings.isDevMode = v;
     saveSettings(settings);
     audioSystem?.onSettingsChanged();
     devSection.style.display = v ? '' : 'none';
+    balanceForecastPanel.setDevMode(v);
   });
   panel.appendChild(devModeRow);
 
@@ -223,12 +231,16 @@ export function createSettingsPanel(
   // Dev-mode particle tweaks — appended after credits so it sits at the bottom
   panel.appendChild(devSection);
 
+  // Balance Forecast panel — appended after particle tweaks
+  panel.appendChild(balanceForecastPanel.element);
+
   // Small page break at the end of the settings panel
   panel.appendChild(makePageBreak('small'));
 
   return {
     element: panel,
     getSettings: () => settings,
+    balanceForecastPanel,
   };
 }
 
