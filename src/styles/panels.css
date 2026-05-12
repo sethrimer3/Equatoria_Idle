@@ -520,3 +520,215 @@
 .weapon-store__btn:not(:disabled):active {
   background: rgba(255, 241, 114, 0.22);
 }
+
+/* ─── Balance Forecast Panel (dev mode only) ─────────────────────── */
+
+.bf-panel {
+  background: rgba(10, 10, 20, 0.97);
+  border: 1px solid rgba(255, 241, 114, 0.3);
+  border-radius: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  font-family: var(--font-primary, monospace);
+  font-size: 12px;
+  color: var(--text-primary, #ddd);
+  overflow-x: auto;
+}
+
+.bf-header {
+  margin-bottom: 10px;
+}
+
+.bf-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent, #ffd764);
+  margin: 0 0 2px 0;
+}
+
+.bf-subtitle {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.5px;
+}
+
+.bf-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bf-ctrl-label {
+  font-size: 11px;
+  color: var(--text-secondary, #aaa);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bf-ctrl-select {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  color: #ddd;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+.bf-refresh-btn,
+.bf-copy-btn {
+  background: rgba(255, 241, 114, 0.12);
+  border: 1px solid rgba(255, 241, 114, 0.35);
+  border-radius: 6px;
+  color: var(--accent, #ffd764);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 32px;
+}
+
+.bf-refresh-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bf-refresh-btn:not(:disabled):active,
+.bf-copy-btn:active {
+  background: rgba(255, 241, 114, 0.22);
+}
+
+.bf-status-line {
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  flex: 1;
+}
+
+.bf-section {
+  margin-bottom: 16px;
+}
+
+.bf-section-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent, #ffd764);
+  background: rgba(255,241,114,0.06);
+  border-left: 3px solid rgba(255,241,114,0.5);
+  padding: 4px 8px;
+  margin-bottom: 6px;
+  border-radius: 0 4px 4px 0;
+}
+
+.bf-section-body {
+  padding: 0 4px;
+}
+
+.bf-empty {
+  color: rgba(255,255,255,0.35);
+  font-size: 11px;
+  padding: 4px 0;
+}
+
+.bf-ok {
+  color: #6dbf7a;
+}
+
+.bf-group {
+  margin-bottom: 10px;
+}
+
+.bf-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.bf-table th {
+  text-align: left;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.bf-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: nowrap;
+}
+
+.bf-table tr:hover td {
+  background: rgba(255,255,255,0.04);
+}
+
+/* Status row colors */
+.bf-status-available td:first-child { color: #6dbf7a; }
+.bf-status-reachable td:first-child  { color: #ffd764; }
+.bf-status-blocked td:first-child    { color: #e84a3a; }
+.bf-status-unavailable td:first-child{ color: rgba(255,255,255,0.35); }
+.bf-status-maxed td                  { opacity: 0.4; }
+
+.bf-eta-cell { color: #74b9ff; }
+.bf-notes-cell { color: rgba(255,255,255,0.4); font-size: 10px; }
+.bf-milestone-name { max-width: 180px; }
+.bf-not-reached { color: rgba(255,255,255,0.2); }
+.bf-best { color: #6dbf7a; font-weight: 700; }
+
+.bf-strategy-table { min-width: 500px; }
+
+.bf-event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bf-event-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 11px;
+}
+
+.bf-event-name { flex: 1; }
+
+.bf-event-eta {
+  color: #74b9ff;
+  font-weight: 600;
+  min-width: 60px;
+  text-align: right;
+}
+
+.bf-event-item.bf-status-available .bf-event-name { color: #6dbf7a; }
+.bf-event-item.bf-status-reachable .bf-event-name  { color: #ffd764; }
+.bf-event-item.bf-status-blocked .bf-event-name    { color: #e84a3a; }
+
+.bf-warning-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bf-warning {
+  color: #f39c12;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-left: 2px solid #f39c12;
+  margin-bottom: 4px;
+  border-radius: 0 4px 4px 0;
+}
