@@ -75,6 +75,7 @@ import { drawParticles, updateParticleRendererTime, getParticleRendererAnimTimeM
 import type { ParticleLifeDebugState } from './particle-life-debug';
 import { drawParticleLifeDebug, createDefaultDebugState } from './particle-life-debug';
 import { drawGrabVisual } from './particle-grab-visual';
+import { resetGlowField } from './particle-glow-field';
 import type { ParticleDragState } from '../../input/particle-drag';
 
 // Re-export types for backward compatibility
@@ -415,6 +416,8 @@ export class ParticleSystem {
     this._accumMs = 0;
     this._wasSpinningUp = false;
     this._wasCrunchActive = false;
+    // Clear glow field so the previous session's glow does not persist
+    resetGlowField();
   }
 
   get particleCount(): number {
