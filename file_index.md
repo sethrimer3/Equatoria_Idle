@@ -786,7 +786,7 @@
 - `update(nowMs)` advances rope physics for all active and slurping wires; must be called once per frame.
 - State is ephemeral — connections reset on page load.
 
-- Independent RPG canvas rendering system for the RPG tab (~1,382 lines).
+- Independent RPG canvas rendering system for the RPG tab (~1,151 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
@@ -805,6 +805,9 @@
 - Chain whip and vortex draw functions extracted to `rpg-weapon-draw.ts`; sword combo and sand blade draw functions extracted to `rpg-weapon-draw-sword.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
 - Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
+- Per-frame canvas draw function extracted to `rpg-render-draw.ts` via `drawRpgFrame(ctx, state, nowMs)`; `setAllDrawLowGraphics` forwards low-graphics flag to all draw modules.
+- Death/restart lifecycle (triggerDeath, doRestart, updateDying, updateRestarting) extracted to `rpg-death-restart.ts`; rpg-render.ts builds `deathRestartCtx: RpgDeathRestartCtx` and delegates all four functions.
+- Weapon orbit particle helpers (buildWeaponOrbitParticle, buildOrbitProjectile, updateWeaponOrbitParticles) extracted to `rpg-weapon-orbit.ts`; called via `weaponOrbitCtx: WeaponOrbitCtx`.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
 - Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
@@ -814,11 +817,11 @@
 - **Movement glow smoothing** — `playerMovementState.glowMovementIntensity` (0–1) LERP-ramps up when moving and down when stopped; gates trail and halo brightness. Owned by `playerMovementState: PlayerMovementState`.
 - **Laser enemy** — 2×2 red mote with five-phase AI: `idle`, `decelerate`, `dash`, `overshoot`, `cooldown`.  Bezier lineDash attack-trail with draw/erase phases.
 - **Wave system** — data-driven wave spawning via `getWaveDefinition()` from `src/data/rpg/wave-definitions.ts`.  Waves complete when spawn queue is empty and all enemies are dead; `INTER_WAVE_DELAY_MS` pause before next wave starts.  Updates `rpgSimState.highestWaveReached` in persistent sim state.
-- **Death/restart loop** — `rpgPhase: RpgPhase` state machine (`alive` | `dying` | `restarting`).  Death triggers a `DEATH_BURST_COUNT`-particle radial burst, player fade-out, screen darken (over `DEATH_ANIM_DURATION_MS`), then a full `doRestart()`.  Restart performs a black-screen fade-in over `RESTART_FADE_IN_MS`.
+- **Death/restart loop** — delegated to `rpg-death-restart.ts`; builds `deathRestartCtx` once to avoid closures in the hot path.
 - **Multiple equipped weapons** — `equippedWeaponIds: Set<string>` from RpgSimState; `weaponAttackTimers: Map<weaponId, number>` for independent per-weapon attack cadence; one `WeaponOrbitParticle` per weapon (evenly-spaced orbits); one `ChainWhipState` per chainWhip weapon.
 - **Companion ship weapons** — Sapphire/Amethyst weapon effects create persistent ships while equipped. Sapphire ships orbit nearest enemies and fire fast curving lasers; Amethyst ships distribute across furthest enemies and fire slow spiraling pierce lasers.
 - **DPS widget** — Rolling 10-second damage samples are attributed by weapon id and rendered into the right-side stats panel as per-equipped-weapon bars.
-- **Low graphics mode** — Public `setLowGraphicsMode()` forwards the graphics setting into RPG entity, weapon, and boss draw modules, disabling glow/trail-heavy passes without changing combat logic.
+- **Low graphics mode** — Public `setLowGraphicsMode()` forwards the graphics setting into RPG entity, weapon, and boss draw modules via `setAllDrawLowGraphics`, disabling glow/trail-heavy passes without changing combat logic.
 - **Weapon tier damage** — `getScaledWeaponDamage(baseDamage, tier, playerAtk)` and `getScaledWeaponCooldown(baseCooldownMs, tier)` imported from `rpg-state.ts` and applied per attack.
 - **Damage number deviation** — each damage number direction has a ±15° triangular-distribution random angle jitter in `spawnHitVisualsAt`.
 - **Auto-move** — `_autoMoveEnabled` flag; when on and no manual input, steers toward the nearest enemy (via `rpg-player-movement.ts`) and stops when within weapon effective range. Manual joystick/keyboard input always overrides.
@@ -826,6 +829,28 @@
 - **Luck stat** — `LUCK` widget in stats panel shows `formatLuckPercent(xp)`. On each enemy kill, `trySpawnLuckyMote()` rolls against `getCachedLuckPercent()` (cached to avoid repeated log calls). On success, a `LuckyMote` of the enemy's tier spawns at the death position with random drift. Lucky motes magnetize to the player within `LUCKY_MOTE_MAGNET_DIST` px and are collected within `LUCKY_MOTE_COLLECT_DIST` px, triggering `onLuckyMoteCollected` callback and spawning a `LuckyMotePopup` floating text. Enemy-to-tier mapping: laser→sand, amber→sunstone, void→nullstone; all others map to matching tier.
 - Accepts `rpgSimState: RpgSimState` and optional `options: RpgRenderOptions` (`onLuckyMoteCollected` callback) as factory arguments.
 - Exports `createRpgRender(container, rpgSimState, options?)` factory and `RpgRender` / `RpgRenderOptions` interfaces.
+
+### src/render/rpg/rpg-render-draw.ts
+- Per-frame canvas draw function extracted from `rpg-render.ts` (~378 lines).
+- Exports `RpgDrawCtx` interface, `RpgDrawFrameState` interface, `createRpgDrawFrameState()`, `drawRpgFrame(ctx, state, nowMs)`, and `setAllDrawLowGraphics(enabled)`.
+- `drawRpgFrame` renders one complete frame: background, all enemy types, boss, particles, player mote, weapon effects, UI overlays (joystick, wave banner, wave number, darken).
+- `setAllDrawLowGraphics` forwards the low-graphics flag to all 11 draw-side modules in a single call.
+- `RpgDrawFrameState` holds `waveOverlapAlpha` — the smoothly-interpolated alpha for the top-left wave number that dims when entities overlap it.
+
+### src/render/rpg/rpg-death-restart.ts
+- Player death and level-restart lifecycle extracted from `rpg-render.ts` (~227 lines).
+- Exports `RpgDeathRestartCtx` interface, `triggerDeath(ctx)`, `doRestart(ctx)`, `updateDying(ctx, deltaMs)`, `updateRestarting(ctx, deltaMs)`.
+- `triggerDeath` transitions to 'dying' phase and spawns `DEATH_BURST_COUNT` radial burst particles.
+- `doRestart` clears all entity arrays, resets all physics/wave state, and calls `applyEquipmentStats()`.
+- `updateDying` advances the death animation and calls `doRestart` + transitions to 'restarting' when the hold time elapses.
+- `updateRestarting` fades the restart overlay in and transitions to 'alive'.
+
+### src/render/rpg/rpg-weapon-orbit.ts
+- Weapon orbit particle helpers extracted from `rpg-render.ts` (~109 lines).
+- Exports `WeaponOrbitCtx` interface, `buildWeaponOrbitParticle(ctx, weaponId, startAngle)`, `buildOrbitProjectile(ctx)`, `updateWeaponOrbitParticles(ctx, deltaMs)`.
+- `buildWeaponOrbitParticle` uses `TIER_BY_ID` for color and `weaponTiersByWeaponId` for size scaling.
+- `buildOrbitProjectile` checks the `orbit_projectile` RPG upgrade level and returns null if not unlocked.
+- `updateWeaponOrbitParticles` advances all orbit particle angles, maintains even spacing, and records distance-based trail points.
 
 ### src/data/rpg/wave-definitions.ts
 - `WaveSpawn` and `WaveDefinition` types.
