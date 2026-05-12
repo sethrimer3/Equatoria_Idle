@@ -271,10 +271,20 @@
 - Shockwave expansion, fade, and spatial-grid force application.
 - `updateShockwaves()`, `getShockwaveScaleForSize()`.
 
+### src/render/particles/particle-glow-field.ts
+- Smooth nebula-style glow field drawn behind particles in high-graphics mode.
+- Divides the canvas into a low-resolution grid (CELL_SIZE internal pixels per cell).
+- Per-frame: applies temporal persistence decay, then Gaussian-splats each particle's intensity into its tier's channel in nearby cells.
+- Finds the dominant and secondary tier per cell; blends their glow colours with the dominant hue kept recognisable.
+- Writes pixel data to an offscreen canvas, scales it up with image smoothing, and composites onto the main canvas with `globalCompositeOperation = 'screen'`.
+- `drawParticleGlowField(ctx, particles, canvasW, canvasH)` — draw the field; call before trails and particle bodies.
+- `resetGlowField()` — clear all intensities on game reset.
+
 ### src/render/particles/particle-renderer.ts
 - Batched canvas rendering for trails, particles, and shockwaves.
 - Numeric batch keys `(tierIndex << 8 | sizeIndex)`, Float64Array position buffers.
-- `drawParticles()` — unified render function.
+- `drawParticles()` — draws glow field (high graphics), merge trails, particle trails, batched particle bodies, shockwaves, and prismatic sheen effects.
+- Per-particle shadowBlur reduced to 1.5× size (from 3×) when glow field is active; the field provides the broad ambient glow.
 - `getParticleRendererAnimTimeMs()` — returns accumulated animation time for external sync.
 
 ### src/render/particles/particle-grab-visual.ts

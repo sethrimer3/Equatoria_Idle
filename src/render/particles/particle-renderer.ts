@@ -16,6 +16,7 @@ import type { EquatoriaParticle, ActiveMerge, Shockwave, ParticleRenderOptions }
 import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-tiers';
 import { getTrailPosition } from './particle-physics';
 import { parseHexToRgb } from '../assets/color-utils';
+import { drawParticleGlowField } from './particle-glow-field';
 
 // ─── Tier index constants ───────────────────────────────────────
 const DIAMOND_TIER_INDEX = 9;
@@ -194,6 +195,14 @@ export function drawParticles(
 ): void {
   const ctx = cc.ctx;
 
+  // ── Draw glow field (high graphics only) ──
+  // Must be drawn first so it sits behind trails and particle bodies.
+  // The field replaces per-particle additive glow as the primary broad-glow
+  // source, preventing muddy colour mixing from overlapping particles.
+  if (options.enableGlow) {
+    drawParticleGlowField(ctx, particles, cc.widthPx, cc.heightPx);
+  }
+
   // ── Draw animated merge trails ──
   drawActiveMergeTrails(ctx, activeMerges, nowMs);
 
@@ -219,7 +228,9 @@ export function drawParticles(
 
           if (options.enableGlow && p.glowColorString) {
             ctx.globalAlpha = alpha * 0.4;
-            ctx.shadowBlur = tailSize * 4;
+            // With the glow field active, reduce trail shadowBlur to keep
+            // particle bodies crisp without double-glow muddiness.
+            ctx.shadowBlur = tailSize * 2;
             ctx.shadowColor = p.glowColorString;
             ctx.fillStyle = p.glowColorString;
             const glowHalf = tailSize * 1.5;
@@ -275,7 +286,10 @@ export function drawParticles(
   for (const batch of _batchMap.values()) {
     if (batch.count === 0) continue;
     if (options.enableGlow && batch.glow) {
-      ctx.shadowBlur = batch.size * 3;
+      // With the glow field providing broad ambient glow, reduce per-particle
+      // shadowBlur to a crisp highlight rather than a heavy bloom.  This keeps
+      // particle bodies readable and avoids double-glow muddiness.
+      ctx.shadowBlur = batch.size * 1.5;
       ctx.shadowColor = batch.glow;
     } else {
       ctx.shadowBlur = 0;
