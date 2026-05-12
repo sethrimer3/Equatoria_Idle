@@ -37,6 +37,9 @@ const MAX_SIM_OPTIONS: Array<{ label: string; seconds: number }> = [
   { label: '1 week',  seconds: 604800 },
 ];
 
+/** Default simulation time in seconds (8 hours). */
+const DEFAULT_MAX_SIM_SECONDS = 28800;
+
 // ─── CSS class helpers ────────────────────────────────────────────
 
 function statusClass(status: ForecastTarget['overallStatus']): string {
@@ -333,7 +336,7 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
     const option = document.createElement('option');
     option.value = String(opt.seconds);
     option.textContent = opt.label;
-    if (opt.seconds === 28800) option.selected = true;
+    if (opt.seconds === DEFAULT_MAX_SIM_SECONDS) option.selected = true;
     maxSimSelect.appendChild(option);
   }
   maxSimLabel.appendChild(maxSimSelect);
@@ -369,10 +372,10 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
   let isRunning = false;
 
   function getMaxSimSeconds(): number {
-    return parseInt(maxSimSelect.value, 10) || 28800;
+    return parseInt(maxSimSelect.value, 10) || DEFAULT_MAX_SIM_SECONDS;
   }
 
-  function renderResult(result: ForecastResult): void {
+  function renderResult(result: ForecastResult, durationMs: number): void {
     lastResult = result;
 
     renderNextMeaningfulTargets(result.nextMeaningfulTargets, nextBody);
@@ -381,8 +384,7 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
     renderStrategyComparison(result.strategyResults, stratBody);
     renderPacingWarnings(result, warnBody);
 
-    const elapsed = Date.now() - result.generatedAtMs;
-    statusLine.textContent = `Last run: just now (${elapsed}ms). Warnings: ${result.pacingWarnings.length}`;
+    statusLine.textContent = `Analysis complete in ${durationMs}ms. Warnings: ${result.pacingWarnings.length}`;
   }
 
   function runAnalysis(game: GameState): void {
@@ -398,8 +400,7 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
         const startMs = Date.now();
         const result = runBalanceForecast(game, opts);
         const durationMs = Date.now() - startMs;
-        renderResult(result);
-        statusLine.textContent = `Analysis complete in ${durationMs}ms. Warnings: ${result.pacingWarnings.length}`;
+        renderResult(result, durationMs);
       } catch (err) {
         statusLine.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
         console.error('[BalanceForecast]', err);

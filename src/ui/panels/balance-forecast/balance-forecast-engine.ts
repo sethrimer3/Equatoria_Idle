@@ -50,6 +50,12 @@ import {
 
 // ─── Lightweight simulation state (isolated from real game) ───────
 
+/** Approximate production gain used for equation upgrades (tap value increase is hard to quantify exactly). */
+const ESTIMATED_TAP_PRODUCTION_GAIN = 0.01;
+
+/** Number of consecutive no-progress iterations before declaring the simulation stuck. */
+const MAX_NO_PROGRESS_ITERATIONS = 100;
+
 interface SimLoomState {
   tierId: TierId;
   level: number;
@@ -344,7 +350,8 @@ function getAllForecastTargets(sim: SimState): ForecastTarget[] {
     const cost = tierUnlockCost(i);
 
     // Check whether the pay tier is itself unlocked yet
-    const payUnlocked = i > 0 && (sim.unlockedTierCount > i - 1 || (TIERS[i - 1] && sim.looms.get(TIERS[i - 1].id)?.isUnlocked));
+    const prevTier = TIERS[i - 1];
+    const payUnlocked = i > 0 && prevTier !== undefined && sim.looms.get(prevTier.id)?.isUnlocked === true;
 
     const req = computeRequirementEta(sim, payTierId, cost);
     if (!payUnlocked) {
@@ -421,15 +428,16 @@ function getAllForecastTargets(sim: SimState): ForecastTarget[] {
     const { tierId, amount } = achDef.condition;
     const current = sim.lifetimeMotes.get(tierId) ?? 0;
     if (current >= amount) continue;
-    const req = computeRequirementEta(sim, tierId, amount - (sim.motes.get(tierId) ?? 0));
-    // Adjust for lifetime: remaining = amount - lifetimeMotes
+    // Compute ETA based on lifetime motes remaining
     const lifetimeRemaining = Math.max(0, amount - current);
     const rate = getTotalProductionRateSim(sim, tierId);
     const etaSec = rate > 0 ? lifetimeRemaining / rate : Infinity;
     const reqAdj: RequirementEta = {
-      ...req,
+      resourceName: TIER_BY_ID.get(tierId)?.displayName ?? tierId,
+      tierId,
       required: amount,
       current,
+      productionPerSec: rate,
       etaSeconds: isFinite(etaSec) ? etaSec : Infinity,
       status: etaSec === 0 ? 'available' : rate <= 0 ? 'blocked' : 'reachable',
     };
@@ -700,7 +708,7 @@ function getAllAffordablePurchases(sim: SimState): PurchaseCandidate[] {
         displayName: `${upgDef.displayName} Lv ${level + 1}`,
         tierId: upgDef.tierId,
         cost,
-        productionGainPerSec: 0.01, // tap value is hard to quantify simply
+        productionGainPerSec: ESTIMATED_TAP_PRODUCTION_GAIN, // tap value is hard to quantify simply
       });
     }
   }
@@ -946,7 +954,7 @@ function runStrategySimulation(
     if (nextEta <= 0) {
       // No production at all — stuck
       noProgressIter++;
-      if (noProgressIter > 100) {
+      if (noProgressIter > MAX_NO_PROGRESS_ITERATIONS) {
         wasStuck = true;
         break;
       }

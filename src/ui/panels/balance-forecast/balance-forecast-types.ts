@@ -24,7 +24,7 @@ import type { TierId } from '../../../data/tiers';
  *   1.1y → "1.1y"
  */
 export function formatDuration(seconds: number): string {
-  if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return '??';
+  if (!isFinite(seconds) || seconds < 0) return '??';
   if (seconds === 0) return '0s';
   const MINUTE = 60;
   const HOUR   = 3600;
