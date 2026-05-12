@@ -27,81 +27,29 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
-  getRpgUpgradeLevel,
   getScaledWeaponCooldown,
   getLuckPercent,
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpLuckBonus, getEffectiveXpHpBonus,
 } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
-import { TIER_BY_ID } from '../../data/tiers';
-import type { TierId } from '../../data/tiers';
 import type { NumberFormat } from '../../util/format';
+import type { TierId } from '../../data/tiers';
 import { createRpgFluid } from './rpg-fluid';
 import { createDamageFns } from './rpg-damage';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
 import {
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
-  MIN_TRAIL_DISTANCE,
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT, PLAYER_REGEN_INIT,
-  JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS,
-  INTER_WAVE_DELAY_MS, DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
-  DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
+  INTER_WAVE_DELAY_MS,
   PLAYER_BASE_COOLDOWN_MS,
   BASE_ATTACK_TIMER_KEY,
-  WEAPON_PARTICLE_ORBIT_SPEED, WEAPON_PARTICLE_ORBIT_RADIUS, WEAPON_PARTICLE_MIN_SPEED,
-  ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
-  WEAPON_ORBIT_TRAIL_CAP,
 } from './rpg-constants';
-import {
-  drawSapphireEnemies, drawSapphireMissiles,
-  drawEmeraldEnemies,
-  drawAmberEnemies, drawAmberShards,
-  drawVoidEnemies,
-  drawLaserEnemies, drawEnemyIndicators,
-  setLowGraphicsMode as setEnemyLowGraphics,
-} from './rpg-enemy-draw';
-import {
-  drawQuartzEnemies, drawQuartzSpikes,
-  drawRubyEnemies, drawRubyBolts,
-  drawSunstoneEnemies,
-  drawCitrineEnemies, drawCitrineBolts,
-  drawIoliteEnemies,
-  drawAmethystEnemies, drawAmethystShards,
-  drawDiamondEnemies, drawDiamondShards,
-  drawNullstoneEnemies, drawVoidTendrils,
-  drawFracterylEnemies,
-  drawEigensteinEnemies, drawEigensteinBeams,
-  drawTeleportParticles,
-} from './rpg-enemy-draw-adv';
 import {
   updateBossAttacks, setBossAttacksLowGraphics, type BossAttackUpdateCtx,
 } from './rpg-boss-attack-update';
-import { drawBossAttacks, setDrawBossAttacksLowGraphics } from './rpg-boss-attacks-draw';
 import { createBossAttackState, type BossAttackState } from './rpg-boss-attack-types';
-import {
-  drawBossProjectiles,
-  drawSandProjectiles,
-  drawPoisonBolts,
-  drawLaserBeamEffect,
-  drawEmeraldPlayerMissiles, drawEmeraldSubMissiles, drawEmeraldSwirlParticles, drawSunstoneMines,
-  setLowGraphicsMode as setEntityLowGraphics,
-} from './rpg-entity-draw';
-import {
-  drawWeaponOrbitParticle, drawOrbitProjectile,
-  drawTargetReticle,
-  drawPlayerMote,
-  setLowGraphicsMode as setPlayerDrawLowGraphics,
-} from './rpg-player-draw';
-import {
-  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
-  setLowGraphicsMode as setCombatEffectsLowGraphics,
-} from './rpg-combat-effects-draw';
-import {
-  drawSapphireShips, drawSapphireLasers,
-  drawAmethystShips, drawAmethystLasers,
-  setLowGraphicsMode as setCompanionLowGraphics,
-} from './rpg-companion-draw';
+import { spawnSandSwingPixels, updateSandDriftPixels } from './rpg-weapon-draw-sword';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
   LaserEnemy,
@@ -132,18 +80,13 @@ import type {
 } from './rpg-enemy-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { getSwordLength } from './rpg-helpers';
-import { drawChainWhip, drawVortexes, setLowGraphicsMode as setWeaponChainLowGraphics } from './rpg-weapon-draw';
-import { drawSwordCombos, drawSandBladeCombo, spawnSandSwingPixels, updateSandDriftPixels, drawSandDriftPixels, setLowGraphicsMode as setWeaponSwordLowGraphics } from './rpg-weapon-draw-sword';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
 import {
   updateLuckyMotes, updateLuckyMotePopups,
-  drawLuckyMotes, drawLuckyMotePopups,
 } from './rpg-lucky-motes';
-import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import {
   updateAlivenGroups, type AlivenUpdateCtx,
 } from './rpg-aliven-updates';
-import { drawAlivenGroups, setAlivenLowGraphics } from './rpg-aliven-draw';
 import { damageAlivenParticle } from './rpg-damage';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import {
@@ -172,10 +115,6 @@ import {
   updateTeleportParticles,
 } from './rpg-enemy-updates-adv';
 import {
-  drawEliteEnemies,
-  setLowGraphicsMode as setEliteDrawLowGraphics,
-} from './rpg-elite-enemy-draw';
-import {
   updateEliteEnemies, type EliteEnemyCtx,
 } from './rpg-elite-enemy-updates';
 import {
@@ -191,6 +130,21 @@ import {
 } from './rpg-player-movement';
 import { createRpgInput } from './rpg-input';
 import { createPlayerDamageFns, type PlayerDamageCtx } from './rpg-player-damage';
+import {
+  drawRpgFrame, setAllDrawLowGraphics,
+  type RpgDrawCtx, createRpgDrawFrameState,
+} from './rpg-render-draw';
+import {
+  triggerDeath as _triggerDeath, doRestart as _doRestart,
+  updateDying as _updateDying, updateRestarting as _updateRestarting,
+  type RpgDeathRestartCtx,
+} from './rpg-death-restart';
+import {
+  buildWeaponOrbitParticle as _buildWeaponOrbitParticle,
+  buildOrbitProjectile as _buildOrbitProjectile,
+  updateWeaponOrbitParticles as _updateWeaponOrbitParticles,
+  type WeaponOrbitCtx,
+} from './rpg-weapon-orbit';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -359,10 +313,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const luckyMotes: LuckyMote[] = [];
   const luckyMotePopups: LuckyMotePopup[] = [];
 
-  // ── Wave canvas overlay (top-left wave number display) ────────
-  /** Alpha for the top-left wave text; dims toward 0.30 when entities overlap it. */
-  let waveOverlapAlpha = 1.0;
-
   /**
    * Cached luck percentage — updated whenever XP changes.
    * Avoids calling Math.log10 on every enemy death in hot combat.
@@ -456,43 +406,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Per-weapon attack timers ───────────────────────────────────
   const weaponAttackTimers: Map<string, number> = new Map();
 
-  function buildWeaponOrbitParticle(weaponId: string, startAngle: number): WeaponOrbitParticle | null {
-    const weaponDef = WEAPON_BY_ID.get(weaponId);
-    if (!weaponDef) return null;
-    const tierDef = TIER_BY_ID.get(weaponDef.costTierId);
-    const color     = tierDef?.color     ?? '#ffd764';
-    const glowColor = tierDef?.glowColor ?? '#ffe599';
-    const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-    // Level-based size increase is halved to reduce visual clutter at high tiers.
-    // Base size stays 1 at tier 1; growth is 0.5 per tier instead of 1.
-    const size = 1 + (tier - 1) * 0.5;
-    return {
-      angle: startAngle,
-      x: mote.x + Math.cos(startAngle) * WEAPON_PARTICLE_ORBIT_RADIUS,
-      y: mote.y + Math.sin(startAngle) * WEAPON_PARTICLE_ORBIT_RADIUS,
-      trailX: new Float64Array(WEAPON_ORBIT_TRAIL_CAP),
-      trailY: new Float64Array(WEAPON_ORBIT_TRAIL_CAP),
-      trailHead: 0, trailCount: 0,
-      color, glowColor, size,
-    };
-  }
-
   // ── Orbiting projectile upgrade ───────────────────────────────
   let orbitProjectile: OrbitProjectile | null = null;
 
-  function buildOrbitProjectile(): OrbitProjectile | null {
-    const hasUpgrade = getRpgUpgradeLevel(rpgSimState, 'orbit_projectile') >= 1;
-    if (!hasUpgrade) return null;
-    return {
-      angle: Math.PI,   // start on the opposite side from weapon particle
-      x: mote.x - ORBIT_PROJ_RADIUS,
-      y: mote.y,
-      trailX: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
-      trailY: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
-      trailHead: 0, trailCount: 0,
-      hitCooldowns: new Map(),
-    };
-  }
+  // Shared context for weapon orbit particle helpers.
+  const weaponOrbitCtx: WeaponOrbitCtx = { mote, weaponOrbitParticles, rpgSimState };
 
   function applyEquipmentStats(): void {
     const effectiveIds = getEffectiveEquippedIds();
@@ -523,7 +441,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const equippedIds = Array.from(effectiveIds);
     const angleStep = equippedIds.length > 0 ? (2 * Math.PI) / equippedIds.length : 0;
     for (let i = 0; i < equippedIds.length; i++) {
-      const p = buildWeaponOrbitParticle(equippedIds[i], i * angleStep);
+      const p = _buildWeaponOrbitParticle(weaponOrbitCtx, equippedIds[i], i * angleStep);
       if (p) weaponOrbitParticles.push(p);
     }
 
@@ -544,7 +462,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (!effectiveIds.has(weaponId)) weaponAttackTimers.delete(weaponId);
     }
 
-    orbitProjectile = buildOrbitProjectile();
+    orbitProjectile = _buildOrbitProjectile(weaponOrbitCtx);
     weaponSystems.syncSapphireShips();
     weaponSystems.syncAmethystShips();
   }
@@ -865,41 +783,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
 
-  /** Updates all equipped-weapon visual orbit particles. */
-  function updateWeaponOrbitParticles(deltaMs: number): void {
-    if (weaponOrbitParticles.length === 0) return;
-    const dt = deltaMs / 1000;
-    const angleStep = weaponOrbitParticles.length > 0 ? (2 * Math.PI) / weaponOrbitParticles.length : 0;
-    for (let idx = 0; idx < weaponOrbitParticles.length; idx++) {
-      const p = weaponOrbitParticles[idx];
-      p.angle += WEAPON_PARTICLE_ORBIT_SPEED * dt;
-      // Keep evenly spaced when multiple weapons are equipped
-      const targetAngle = idx * angleStep + (Date.now() / 1000) * WEAPON_PARTICLE_ORBIT_SPEED;
-      const angleDelta = ((targetAngle - p.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-      p.angle += angleDelta * 0.05;
-      const newX = mote.x + Math.cos(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
-      const newY = mote.y + Math.sin(p.angle) * WEAPON_PARTICLE_ORBIT_RADIUS;
-      const dx = newX - p.x, dy = newY - p.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < WEAPON_PARTICLE_MIN_SPEED * dt) p.angle += 0.05;
-      p.x = newX; p.y = newY;
-
-      // Distance-based trail update for weapon particles to prevent jittering at high refresh rates.
-      const MIN_TRAIL_DISTANCE_SQ = MIN_TRAIL_DISTANCE * MIN_TRAIL_DISTANCE;
-      const lastTrailIdx = (p.trailHead - 1 + WEAPON_ORBIT_TRAIL_CAP) % WEAPON_ORBIT_TRAIL_CAP;
-      const trailDx = p.x - p.trailX[lastTrailIdx];
-      const trailDy = p.y - p.trailY[lastTrailIdx];
-      const trailDistSq = trailDx * trailDx + trailDy * trailDy;
-
-      if (p.trailCount === 0 || trailDistSq >= MIN_TRAIL_DISTANCE_SQ) {
-        p.trailX[p.trailHead] = p.x;
-        p.trailY[p.trailHead] = p.y;
-        p.trailHead = (p.trailHead + 1) % WEAPON_ORBIT_TRAIL_CAP;
-        if (p.trailCount < WEAPON_ORBIT_TRAIL_CAP) p.trailCount++;
-      }
-    }
-  }
-
   // ── Enemy update context (shared reference object for rpg-enemy-updates) ──
   const enemyCtx: RpgEnemyCtx = {
     mote,
@@ -962,261 +845,82 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setPlayerHp: (hp) => { playerStats.hp = hp; },
   };
 
-  function triggerDeath(): void {
-    rpgPhase = 'dying'; phaseTimerMs = 0; deathAlpha = 1;
-    deathParticles.length = 0;
-    for (let i = 0; i < DEATH_BURST_COUNT; i++) {
-      const angle = (i / DEATH_BURST_COUNT) * Math.PI * 2 + Math.random() * 0.35;
-      const speed = 0.8 + Math.random() * 1.8;
-      deathParticles.push({
-        x: mote.x, y: mote.y,
-        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-        alpha: 1, size: 1.5 + Math.random() * 2,
-        color: DEATH_PARTICLE_COLORS[Math.floor(Math.random() * DEATH_PARTICLE_COLORS.length)],
-      });
-    }
-  }
+  // ── Death / restart context ────────────────────────────────────
+  const deathRestartCtx: RpgDeathRestartCtx = {
+    getRpgPhase:       () => rpgPhase,
+    setRpgPhase:       (p) => { rpgPhase = p; },
+    getPhaseTimerMs:   () => phaseTimerMs,
+    setPhaseTimerMs:   (ms) => { phaseTimerMs = ms; },
+    getDeathAlpha:     () => deathAlpha,
+    setDeathAlpha:     (v) => { deathAlpha = v; },
+    getScreenDarken:   () => screenDarken,
+    setScreenDarken:   (v) => { screenDarken = v; },
+    getRestartFadeAlpha:   () => restartFadeAlpha,
+    setRestartFadeAlpha:   (v) => { restartFadeAlpha = v; },
+    setPlayerIFramesMs:    (ms) => { playerIFramesMs = ms; },
+    deathParticles,
+    mote, playerStats, playerMovementState,
+    enemies, spawnQueue, sapphireEnemies, sapphireMissiles,
+    emeraldEnemies, amberEnemies, amberShards, voidEnemies,
+    quartzEnemies, quartzSpikes, rubyEnemies, rubyBolts,
+    sunstoneEnemies, citrineEnemies, citrineBolts, ioliteEnemies,
+    amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
+    bossProjectiles, luckyMotes, luckyMotePopups, hitEffects, shotLines, damageNumbers,
+    bossAttackState, weaponSystems, weaponAttackTimers,
+    fluid: { reset: () => fluid.reset() },
+    bossWave: { exitBossWave: () => bossWave.exitBossWave() },
+    setBossEnemy:            (b) => { bossEnemy = b; },
+    setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },
+    setIsBossFightFromMenu:  (b) => { isBossFightFromMenu = b; },
+    setBossHitsInRound:      (v) => { bossHitsInRound = v; },
+    setCurrentWave:          (w) => { currentWave = w; },
+    setIsInterWave:          (b) => { isInterWave = b; },
+    setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
+    getWidthPx:              () => widthPx,
+    getHeightPx:             () => heightPx,
+    rpgSimState,
+    applyEquipmentStats:     () => applyEquipmentStats(),
+  };
 
-  function doRestart(): void {
-    playerStats.hp = playerStats.maxHp;
-    enemies.length = 0; spawnQueue.length = 0;
-    sapphireEnemies.length = 0; sapphireMissiles.length = 0;
-    emeraldEnemies.length = 0;
-    amberEnemies.length = 0; amberShards.length = 0;
-    voidEnemies.length = 0;
-    quartzEnemies.length = 0; quartzSpikes.length = 0;
-    rubyEnemies.length = 0; rubyBolts.length = 0;
-    sunstoneEnemies.length = 0;
-    citrineEnemies.length = 0; citrineBolts.length = 0;
-    ioliteEnemies.length = 0;
-    amethystEnemies.length = 0; amethystShards.length = 0;
-    diamondEnemies.length = 0; diamondShards.length = 0;
-    nullstoneEnemies.length = 0; voidTendrils.length = 0;
-    fracterylEnemies.length = 0; fracterylShards.length = 0;
-    eigensteinEnemies.length = 0; eigensteinBeams.length = 0;
-    eliteEnemies.length = 0;
-    alivenGroups.length = 0;
-    danmakuSafeZone = null;
-    bossWave.exitBossWave();
-    isBossFightFromMenu = false;
-    bossEnemy = null;
-    bossProjectiles.length = 0;
-    bossAttackState.attacks.length = 0;
-    bossAttackState.schedulerCooldowns.clear();
-    bossAttackState.activePressure = 0;
-    weaponSystems.reset();
-    mote.x = widthPx / 2; mote.y = heightPx / 2;
-    mote.vx = mote.vy = 0; mote.trailHead = 0; mote.trailCount = 0;
-    deathParticles.length = 0; playerMovementState.glowMovementIntensity = 0;
-    bossHitsInRound = 0;
-    currentWave = rpgSimState.respawnWave; isInterWave = true;
-    interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
-    screenDarken = 0;
-    weaponAttackTimers.clear();
-    hitEffects.length = 0; shotLines.length = 0;
-    damageNumbers.length = 0; playerIFramesMs = 0;
-    luckyMotes.length = 0; luckyMotePopups.length = 0;
-    fluid.reset();
-    applyEquipmentStats();
-  }
-
-  // ── Enemy update systems ──────────────────────────────────────
-  // All per-frame enemy update functions are implemented in
-  // rpg-enemy-updates.ts (and rpg-enemy-updates-adv.ts) and called via enemyCtx.
-  // updateLaserEnemies, updateSapphireEnemies, updateSapphireMissiles,
-  // updateEmeraldEnemies, updateAmberEnemies, updateAmberShards,
-  // updateVoidEnemies, updateQuartzEnemies, updateQuartzSpikes,
-  // updateRubyEnemies, updateRubyBolts, updateSunstoneEnemies,
-  // updateCitrineEnemies, updateCitrineBolts, updateIoliteEnemies,
-  // updateAmethystEnemies, updateAmethystShards,
-  // updateDiamondEnemies, updateDiamondShards,
-  // updateNullstoneEnemies, updateVoidTendrils,
-  // updateFracterylEnemies, updateEigensteinEnemies, updateEigensteinBeams,
-  // updateTeleportParticles
-
-
-
-
-  /** Draws thin tracer lines from the player toward each recently struck enemy. */
-
-  /** Draws a small expanding square flash at each recently hit enemy position. */
-
-  /** Draws floating damage numbers and "BLOCKED" labels. */
-
-  /** Draws one equipped-weapon visual orbit particle with comet trail. */
-
-  /** Draws the orbiting projectile with comet trail. */
-
-
-  function draw(nowMs: number): void {
-    ctx.clearRect(0, 0, widthPx, heightPx);
-    ctx.fillStyle = '#0a0a12';
-    ctx.fillRect(0, 0, widthPx, heightPx);
-
-    // Fluid background — rendered first so all gameplay elements appear above it.
-    fluid.render(ctx);
-
-    drawLaserEnemies(ctx, enemies, nowMs);
-    drawSapphireEnemies(ctx, sapphireEnemies);
-    drawSapphireMissiles(ctx, sapphireMissiles);
-    drawEmeraldEnemies(ctx, emeraldEnemies);
-    drawAmberEnemies(ctx, amberEnemies);
-    drawAmberShards(ctx, amberShards);
-    drawVoidEnemies(ctx, voidEnemies);
-    drawQuartzEnemies(ctx, quartzEnemies);
-    drawQuartzSpikes(ctx, quartzSpikes);
-    drawRubyEnemies(ctx, rubyEnemies);
-    drawRubyBolts(ctx, rubyBolts);
-    drawSunstoneEnemies(ctx, sunstoneEnemies);
-    drawCitrineEnemies(ctx, citrineEnemies);
-    drawCitrineBolts(ctx, citrineBolts);
-    drawIoliteEnemies(ctx, ioliteEnemies);
-    drawAmethystEnemies(ctx, amethystEnemies);
-    drawAmethystShards(ctx, amethystShards);
-    drawDiamondEnemies(ctx, diamondEnemies);
-    drawDiamondShards(ctx, diamondShards);
-    drawNullstoneEnemies(ctx, nullstoneEnemies);
-    drawVoidTendrils(ctx, voidTendrils);
-    drawFracterylEnemies(ctx, fracterylEnemies, fracterylShards);
-    drawEigensteinEnemies(ctx, eigensteinEnemies);
-    drawEigensteinBeams(ctx, eigensteinBeams, widthPx, heightPx);
-    drawEliteEnemies(ctx, eliteEnemies);
-    drawAlivenGroups(ctx, alivenGroups);
-    drawBottomSafeZone(ctx, isBossWaveActive, widthPx, heightPx, glowTimeS);
-    drawDanmakuSafeZone(ctx, bossEnemy, danmakuSafeZone);
-    drawBossProjectiles(ctx, bossProjectiles);
-    drawBossAttacks(ctx, bossAttackState);
-    drawBossEnemy(ctx, bossEnemy, glowTimeS);
-    drawTeleportParticles(ctx, teleportParticles);
-    drawShotLines(ctx, shotLines);
-    drawVortexes(ctx, weaponSystems.activeVortexes);
-    drawSandProjectiles(ctx, weaponSystems.sandProjectiles);
-    drawPoisonBolts(ctx, weaponSystems.poisonBolts);
-    drawEmeraldPlayerMissiles(ctx, weaponSystems.emeraldPlayerMissiles);
-    drawEmeraldSubMissiles(ctx, weaponSystems.emeraldSubMissiles);
-    drawEmeraldSwirlParticles(ctx, weaponSystems.emeraldSwirlParticles);
-    drawSunstoneMines(ctx, weaponSystems.sunstoneMines);
-    drawLaserBeamEffect(ctx, weaponSystems.laserBeamEffect);
-    drawEnemyIndicators(ctx, enemyIndicatorStyle,
-      enemies, sapphireEnemies, emeraldEnemies, amberEnemies, voidEnemies,
-      quartzEnemies, rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies,
-      amethystEnemies, diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
-      bossEnemy);
-
-    drawPlayerMote(ctx, mote, playerMovementState.glowMovementIntensity, rpgPhase, deathAlpha, glowTimeS, playerIFramesMs);
-
-    drawHitEffects(ctx, hitEffects);
-    drawLuckyMotes(ctx, luckyMotes, isLowGraphicsMode);
-    drawDamageNumbers(ctx, damageNumbers);
-    drawLuckyMotePopups(ctx, luckyMotePopups, isLowGraphicsMode);
-    if (deathParticles.length > 0) drawDeathParticles(ctx, deathParticles);
-
-    // Draw weapon orbit particles, orbit projectile, and special weapon visuals above the player.
-    if (rpgPhase === 'alive') {
-      for (const p of weaponOrbitParticles) drawWeaponOrbitParticle(ctx, p);
-      drawOrbitProjectile(ctx, orbitProjectile);
-      for (const ws of weaponSystems.chainWhipStates.values()) drawChainWhip(ctx, ws);
-      const effectiveEquippedIds = getEffectiveEquippedIds();
-      // Only draw equipped weapon combos with prismatic colors when weapons are present.
-      if (effectiveEquippedIds.size > 0) {
-        drawSwordCombos(ctx, weaponSystems.swordComboStates, mote, rpgSimState.weaponTiersByWeaponId);
-      }
-      // Draw the sand blade when no weapon is equipped.
-      if (effectiveEquippedIds.size === 0) {
-        drawSandBladeCombo(ctx, weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY), mote);
-        drawSandDriftPixels(ctx);
-      }
-      // ── Companion ships and lasers ────────────────────────────────
-      drawSapphireShips(ctx, weaponSystems.sapphireShips);
-      drawSapphireLasers(ctx, weaponSystems.sapphireLasers);
-      drawAmethystShips(ctx, weaponSystems.amethystShips);
-      drawAmethystLasers(ctx, weaponSystems.amethystLasers);
-      // ── Target reticle ────────────────────────────────────────────
-      const te = targeting.getTargetedEnemy();
-      if (te) {
-        drawTargetReticle(ctx, te.x, te.y, 10, performance.now());
-      }
-    }
-
-    if (joystick.isActive && rpgPhase === 'alive') {
-      ctx.save();
-      ctx.globalAlpha = 0.35; ctx.strokeStyle = '#fff172'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, JOYSTICK_OUTER_RADIUS, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 0.55; ctx.fillStyle = '#fff172';
-      ctx.shadowBlur = JOYSTICK_THUMB_RADIUS * 2; ctx.shadowColor = 'rgba(255, 241, 114, 0.6)';
-      ctx.beginPath(); ctx.arc(joystick.thumbX, joystick.thumbY, JOYSTICK_THUMB_RADIUS, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.restore();
-    }
-
-    if (rpgPhase === 'alive') drawWaveClearBanner(ctx, isInterWave, currentWave, interWaveTimerMs, widthPx, heightPx);
-
-    // ── Top-left wave number overlay ──────────────────────────────
-    if (currentWave > 0) {
-      // Check if any enemy or player is near the top-left corner region
-      const TL_X = 190, TL_Y = 55;
-      let anyOverlap = false;
-      const moteNear = mote.x < TL_X && mote.y < TL_Y;
-      if (moteNear) {
-        anyOverlap = true;
-      } else {
-        for (const e of enemies) {
-          if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
-        }
-        if (!anyOverlap) {
-          for (const e of sapphireEnemies) {
-            if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
-          }
-        }
-        if (!anyOverlap) {
-          for (const e of emeraldEnemies) {
-            if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
-          }
-        }
-      }
-      const targetAlpha = anyOverlap ? 0.30 : 1.0;
-      waveOverlapAlpha += (targetAlpha - waveOverlapAlpha) * 0.1;
-
-      ctx.save();
-      ctx.globalAlpha = waveOverlapAlpha;
-      ctx.font = 'bold 22px monospace';
-      ctx.fillStyle = '#fff172';
-      ctx.fillText('Wave: x' + currentWave, 8, 30);
-      ctx.restore();
-    }
-
-    if (screenDarken > 0) {
-      ctx.globalAlpha = screenDarken; ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, widthPx, heightPx); ctx.globalAlpha = 1;
-    }
-    if (rpgPhase === 'restarting') {
-      ctx.globalAlpha = 1 - restartFadeAlpha; ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, widthPx, heightPx); ctx.globalAlpha = 1;
-    }
-  }
-
-  function updateDying(deltaMs: number): void {
-    phaseTimerMs += deltaMs;
-    const t = Math.min(phaseTimerMs / DEATH_ANIM_DURATION_MS, 1);
-    deathAlpha   = Math.max(0, 1 - t * 1.25);
-    screenDarken = Math.min(t * 0.85, 0.85);
-    for (const p of deathParticles) {
-      p.x += p.vx * deltaMs * 0.06; p.y += p.vy * deltaMs * 0.06;
-      p.alpha = Math.max(0, 1 - t * 1.5);
-      p.vx *= 0.97; p.vy *= 0.97;
-    }
-    if (phaseTimerMs >= DEATH_ANIM_DURATION_MS + DEATH_HOLD_DURATION_MS) {
-      screenDarken = 1;
-      doRestart();
-      rpgPhase = 'restarting'; phaseTimerMs = 0; restartFadeAlpha = 0;
-    }
-  }
-
-  function updateRestarting(deltaMs: number): void {
-    phaseTimerMs    += deltaMs;
-    restartFadeAlpha = Math.min(1, phaseTimerMs / RESTART_FADE_IN_MS);
-    screenDarken     = 0;
-    if (phaseTimerMs >= RESTART_FADE_IN_MS) rpgPhase = 'alive';
-  }
+  // ── Draw context (built once; getters always return current closure values) ─
+  const drawFrameState = createRpgDrawFrameState();
+  const drawCtx: RpgDrawCtx = {
+    canvas2d: ctx,
+    fluid: { render: (c) => fluid.render(c) },
+    getWidthPx:   () => widthPx,
+    getHeightPx:  () => heightPx,
+    enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
+    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
+    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
+    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
+    getBossEnemy:         () => bossEnemy,
+    getDanmakuSafeZone:   () => danmakuSafeZone,
+    bossProjectiles, bossAttackState, teleportParticles,
+    weaponSystems, mote, joystick,
+    hitEffects, shotLines, damageNumbers, luckyMotes, luckyMotePopups,
+    deathParticles, weaponOrbitParticles,
+    getOrbitProjectile:           () => orbitProjectile,
+    getGlowMovementIntensity:     () => playerMovementState.glowMovementIntensity,
+    getRpgPhase:                  () => rpgPhase,
+    getDeathAlpha:                () => deathAlpha,
+    getGlowTimeS:                 () => glowTimeS,
+    getPlayerIFramesMs:           () => playerIFramesMs,
+    getIsInterWave:               () => isInterWave,
+    getCurrentWave:               () => currentWave,
+    getInterWaveTimerMs:          () => interWaveTimerMs,
+    getIsBossWaveActive:          () => isBossWaveActive,
+    getScreenDarken:              () => screenDarken,
+    getRestartFadeAlpha:          () => restartFadeAlpha,
+    getIsLowGraphicsMode:         () => isLowGraphicsMode,
+    getEnemyIndicatorStyle:       () => enemyIndicatorStyle,
+    getEffectiveEquippedIds,
+    getTargetedEnemy:             () => targeting.getTargetedEnemy(),
+    rpgSimState,
+  };
 
   return {
     canvas,
@@ -1229,16 +933,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       _autoMoveEnabled = autoMoveEnabled;
 
       if (rpgPhase === 'dying') {
-        updateDying(deltaMs);
+        _updateDying(deathRestartCtx, deltaMs);
         fluid.step(deltaMs);
-        draw(nowMs);
+        drawRpgFrame(drawCtx, drawFrameState, nowMs);
         statsPanel.update();
         return;
       }
       if (rpgPhase === 'restarting') {
-        updateRestarting(deltaMs);
+        _updateRestarting(deathRestartCtx, deltaMs);
         fluid.step(deltaMs);
-        draw(nowMs);
+        drawRpgFrame(drawCtx, drawFrameState, nowMs);
         statsPanel.update();
         return;
       }
@@ -1288,7 +992,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
       updateBossAttacks(bossAttackState, bossAttackCtx, bossEnemy, deltaMs);
       updateTeleportParticles(teleportParticles, deltaMs);
-      updateWeaponOrbitParticles(deltaMs);
+      _updateWeaponOrbitParticles(weaponOrbitCtx, deltaMs);
       updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs);
       statsPanel.withDamageSource(findEquippedWeaponIdByEffect('gatling'), () => weaponSystems.updateSandProjectiles(deltaMs));
       // Update chain whip for all equipped chainWhip weapons
@@ -1372,10 +1076,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         );
       }
 
-      if (playerStats.hp <= 0) triggerDeath();
+      if (playerStats.hp <= 0) _triggerDeath(deathRestartCtx);
       statsPanel.update();
       fluid.step(deltaMs);
-      draw(nowMs);
+      drawRpgFrame(drawCtx, drawFrameState, nowMs);
     },
 
     resize(cont: HTMLElement): void {
@@ -1405,35 +1109,23 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     devJumpToWave(wave: number): void {
-      // Treat as a full restart but jump directly to the requested wave.
       const savedRespawnWave = rpgSimState.respawnWave;
       rpgSimState.respawnWave = Math.max(0, wave - 1);
-      doRestart();
+      _doRestart(deathRestartCtx);
       rpgSimState.respawnWave = savedRespawnWave;
-      // Immediately advance past the inter-wave delay so the wave starts quickly.
       interWaveTimerMs = 0;
     },
 
     respawnNow(): void {
-      doRestart();
+      _doRestart(deathRestartCtx);
       rpgPhase = 'restarting'; phaseTimerMs = 0; restartFadeAlpha = 0;
     },
 
     setLowGraphicsMode(enabled: boolean): void {
       isLowGraphicsMode = enabled;
       fluid.setLowGraphicsMode(enabled);
-      setEntityLowGraphics(enabled);
-      setPlayerDrawLowGraphics(enabled);
-      setEnemyLowGraphics(enabled);
-      setWeaponChainLowGraphics(enabled);
-      setWeaponSwordLowGraphics(enabled);
-      setBossLowGraphics(enabled);
-      setCombatEffectsLowGraphics(enabled);
-      setCompanionLowGraphics(enabled);
       setBossAttacksLowGraphics(enabled);
-      setDrawBossAttacksLowGraphics(enabled);
-      setEliteDrawLowGraphics(enabled);
-      setAlivenLowGraphics(enabled);
+      setAllDrawLowGraphics(enabled);
     },
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {
