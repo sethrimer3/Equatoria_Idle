@@ -1085,7 +1085,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (fromElite) rpgSimState.secretAchievementFlags.add('lucky_mote_from_elite');
         // lucky_mote_triple_10s: 3 motes collected within 10 seconds
         rpgSimState.luckyMoteCollectedTimestampsMs.push(nowTs);
-        if (rpgSimState.luckyMoteCollectedTimestampsMs.length > 20) {
+        const MAX_LUCKY_MOTE_TIMESTAMPS = 20;
+        if (rpgSimState.luckyMoteCollectedTimestampsMs.length > MAX_LUCKY_MOTE_TIMESTAMPS) {
           rpgSimState.luckyMoteCollectedTimestampsMs.shift();
         }
         const tenSecondsAgo = nowTs - 10_000;

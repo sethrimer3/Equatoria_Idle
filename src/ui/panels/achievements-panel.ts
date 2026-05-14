@@ -5,6 +5,7 @@ import {
   ACHIEVEMENT_SUBCATEGORIES,
 } from '../../data/achievements';
 import type { AchievementCondition } from '../../data/achievements/achievement-definitions';
+import { getClaimableCount } from '../../sim/achievements';
 import { TIER_BY_ID, TIERS } from '../../data/tiers';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getLifetimeMotes, getMotes, getEquivalence } from '../../sim/resources';
@@ -239,8 +240,6 @@ export function hasUnclaimedAchievements(state: GameState): boolean {
   }
   return false;
 }
-
-// ─── Per-character glyph animation state ────────────────────────
 
 // ─── Per-character glyph animation state ────────────────────────
 
@@ -781,13 +780,13 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   /** RAF handle for the glyph animation loop. */
-  let glyphRafId = -1;
+  let glyphRafId: number | null = null;
   let glyphAnimating = false;
 
   function glyphFrame(): void {
     if (glyphEntries.length === 0) {
       glyphAnimating = false;
-      glyphRafId = -1;
+      glyphRafId = null;
       return;
     }
     // Under reduced-motion, update very slowly (one change every ~3 seconds)
@@ -814,8 +813,8 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   function stopGlyphAnimation(): void {
-    if (glyphRafId !== -1) cancelAnimationFrame(glyphRafId);
-    glyphRafId = -1;
+    if (glyphRafId !== null) cancelAnimationFrame(glyphRafId);
+    glyphRafId = null;
     glyphAnimating = false;
   }
 
@@ -886,13 +885,8 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   function update(state: GameState, numberFormat: NumberFormat): void {
-    // Update Claim All button
-    let totalClaimable = 0;
-    for (const def of ACHIEVEMENT_DEFINITIONS) {
-      if (state.achievements.unlockedIds.has(def.id) && !state.achievements.claimedIds.has(def.id)) {
-        totalClaimable++;
-      }
-    }
+    // Update Claim All button using shared helper
+    const totalClaimable = getClaimableCount(state.achievements);
     claimAllBtn.disabled = totalClaimable === 0;
     claimAllBtn.classList.toggle('ach-claim-all-btn--active', totalClaimable > 0);
     claimAllCount.textContent = totalClaimable > 0 ? `${totalClaimable} ready` : '';

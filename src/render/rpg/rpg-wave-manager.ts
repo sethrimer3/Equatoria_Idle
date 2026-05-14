@@ -142,6 +142,12 @@ export interface WaveManagerHandle {
   onPlayerHit(): void;
 }
 
+/** All elite type IDs used for the "killed all elite types" secret achievement. */
+const ALL_ELITE_TYPE_IDS = [
+  'elite_quartz', 'elite_ruby', 'elite_sunstone', 'elite_citrine',
+  'elite_iolite', 'elite_amethyst', 'elite_diamond', 'elite_nullstone',
+] as const;
+
 // ── Factory ───────────────────────────────────────────────────────────────
 
 export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
@@ -442,8 +448,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
           rpgSimState.secretAchievementFlags.add('elite_kill_within_10s');
         }
         // Check if all 8 elite types have now been killed
-        const ALL_ELITE_TYPES = ['elite_quartz','elite_ruby','elite_sunstone','elite_citrine','elite_iolite','elite_amethyst','elite_diamond','elite_nullstone'];
-        if (ALL_ELITE_TYPES.every(t => (rpgSimState.lifetimeKillsByType.get(t) ?? 0) >= 1)) {
+        if (ALL_ELITE_TYPE_IDS.every(t => (rpgSimState.lifetimeKillsByType.get(t) ?? 0) >= 1)) {
           rpgSimState.secretAchievementFlags.add('killed_all_elite_types');
         }
         eliteEnemies.splice(i, 1);
