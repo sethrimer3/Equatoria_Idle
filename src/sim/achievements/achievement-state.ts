@@ -6,10 +6,15 @@
 import { ACHIEVEMENT_DEFINITIONS } from '../../data/achievements';
 import type { AchievementCondition } from '../../data/achievements/achievement-definitions';
 import type { ResourceState } from '../resources';
-import { getLifetimeMotes } from '../resources';
+import { getLifetimeMotes, getMotes, getEquivalence } from '../resources';
 import type { EquationState } from '../equation';
 import type { RpgSimState } from '../rpg';
 import { MAX_WEAPON_TIER } from '../rpg/rpg-state';
+import type { AlivenState } from '../aliven';
+import { isTierAliveneable } from '../aliven';
+import { TIERS } from '../../data/tiers';
+import { BASE_TAP_VALUE, UPGRADE_TAP_MULTIPLIER } from '../../data/balance';
+import { EQUATION_ROLE_BY_TIER } from '../../data/equation';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -42,16 +47,129 @@ export function createAchievementState(): AchievementState {
 
 /**
  * Returns true if the given condition is satisfied by the current game state.
+ *
+ * @param globalTapMultiplier - Combined tap multiplier (progression × achievement bonuses).
+ *   Used for equation_tap_gain_total conditions. Defaults to 1 if omitted.
  */
 function isConditionMet(
   condition: AchievementCondition,
   resources: ResourceState,
   equation: EquationState,
   rpg: RpgSimState,
+  aliven: AlivenState,
+  globalTapMultiplier: number,
 ): boolean {
   switch (condition.kind) {
     case 'lifetime_motes':
       return getLifetimeMotes(resources, condition.tierId) >= condition.amount;
+
+    // ── New mote conditions ──────────────────────────────────────
+
+    case 'any_tier_lifetime_motes': {
+      for (const v of resources.lifetimeMotes.values()) {
+        if (v >= condition.amount) return true;
+      }
+      return false;
+    }
+
+    case 'tiers_with_lifetime_motes': {
+      let qualifiedCount = 0;
+      for (const v of resources.lifetimeMotes.values()) {
+        if (v >= condition.amount) qualifiedCount++;
+      }
+      return qualifiedCount >= condition.count;
+    }
+
+    case 'all_unlocked_tiers_lifetime_motes': {
+      const unlocked = equation.segments.filter(s => s.isUnlocked);
+      if (unlocked.length === 0) return false;
+      for (const seg of unlocked) {
+        if (getLifetimeMotes(resources, seg.tierId) < condition.amount) return false;
+      }
+      return true;
+    }
+
+    case 'specific_tiers_lifetime_motes': {
+      for (const tierId of condition.tierIds) {
+        if (getLifetimeMotes(resources, tierId) < 1) return false;
+      }
+      return true;
+    }
+
+    case 'current_motes_all_unlocked_tiers': {
+      const unlocked = equation.segments.filter(s => s.isUnlocked);
+      if (unlocked.length === 0) return false;
+      for (const seg of unlocked) {
+        if (getMotes(resources, seg.tierId) < condition.amount) return false;
+      }
+      return true;
+    }
+
+    case 'lifetime_motes_total': {
+      let total = 0;
+      for (const v of resources.lifetimeMotes.values()) total += v;
+      return total >= condition.amount;
+    }
+
+    case 'aliven_count':
+      return aliven.alivenedTierIds.size >= condition.count;
+
+    case 'aliven_all_possible': {
+      const alivenableCount = TIERS.filter(t => isTierAliveneable(t.id)).length;
+      return aliven.alivenedTierIds.size >= alivenableCount;
+    }
+
+    // ── New equation conditions ──────────────────────────────────
+
+    case 'equation_segment_unlocked': {
+      const seg = equation.segments.find(s => s.tierId === condition.tierId);
+      return seg?.isUnlocked ?? false;
+    }
+
+    case 'equation_segment_level': {
+      const seg = equation.segments.find(s => s.tierId === condition.tierId);
+      return (seg?.isUnlocked && seg.level >= condition.level) ?? false;
+    }
+
+    case 'any_equation_segment_level': {
+      for (const seg of equation.segments) {
+        if (seg.isUnlocked && seg.level >= condition.level) return true;
+      }
+      return false;
+    }
+
+    case 'total_equation_upgrade_levels': {
+      let total = 0;
+      for (const seg of equation.segments) total += seg.level;
+      return total >= condition.count;
+    }
+
+    case 'all_unlocked_equation_segments_level': {
+      const unlocked = equation.segments.filter(s => s.isUnlocked);
+      if (unlocked.length === 0) return false;
+      for (const seg of unlocked) {
+        if (seg.level < condition.level) return false;
+      }
+      return true;
+    }
+
+    case 'equation_tap_gain_total': {
+      // Compute total tap gain across all unlocked non-foundation segments.
+      let total = 0;
+      for (const seg of equation.segments) {
+        if (!seg.isUnlocked) continue;
+        const role = EQUATION_ROLE_BY_TIER.get(seg.tierId);
+        if (role?.role === 'foundation') continue;
+        total += (BASE_TAP_VALUE + seg.level * UPGRADE_TAP_MULTIPLIER);
+      }
+      total *= globalTapMultiplier;
+      return total >= condition.amount;
+    }
+
+    case 'equivalence_reached':
+      return equation.isForgeUnlocked && getEquivalence(resources) >= condition.amount;
+
+    // ── Existing conditions ──────────────────────────────────────
 
     case 'forge_unlocked':
       return equation.isForgeUnlocked;
@@ -202,19 +320,24 @@ function isConditionMet(
  * Check all achievement unlock conditions against current game state.
  * Unlocks any newly-met achievements and updates the bonus cache.
  * Returns an array of newly unlocked achievement IDs (empty if none).
+ *
+ * @param globalTapMultiplier - Combined tap multiplier (progression.globalMultiplier ×
+ *   achievements.tapMultiplierBonus). Used for equation_tap_gain_total conditions.
  */
 export function checkAndUnlockAchievements(
   state: AchievementState,
   resources: ResourceState,
   equation: EquationState,
   rpg: RpgSimState,
+  aliven: AlivenState,
+  globalTapMultiplier = 1,
 ): string[] {
   const newlyUnlocked: string[] = [];
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     if (state.unlockedIds.has(def.id)) continue;
 
-    if (isConditionMet(def.condition, resources, equation, rpg)) {
+    if (isConditionMet(def.condition, resources, equation, rpg, aliven, globalTapMultiplier)) {
       state.unlockedIds.add(def.id);
       newlyUnlocked.push(def.id);
     }
@@ -264,3 +387,4 @@ export function claimAchievement(state: AchievementState, id: string): boolean {
   recomputeBonuses(state);
   return true;
 }
+

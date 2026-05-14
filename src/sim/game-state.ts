@@ -271,11 +271,14 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
   }
 
   // Check for newly-unlocked achievements
+  const globalTapMultiplier = state.progression.globalMultiplier * state.achievements.tapMultiplierBonus;
   result.newlyUnlockedAchievementIds = checkAndUnlockAchievements(
     state.achievements,
     state.resources,
     state.equation,
     state.rpg,
+    state.aliven,
+    globalTapMultiplier,
   );
 
   return result;
