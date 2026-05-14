@@ -274,11 +274,11 @@ export function drawParticleGlowField(
     for (let dy = -SPLAT_RADIUS; dy <= SPLAT_RADIUS; dy++) {
       const cy = gcyi + dy;
       if (cy < 0 || cy >= gridH) continue;
-      const ddy = (gcyi + dy) - pcy;
+      const ddy = cy - pcy;
       for (let dx = -SPLAT_RADIUS; dx <= SPLAT_RADIUS; dx++) {
         const cx = gcxi + dx;
         if (cx < 0 || cx >= gridW) continue;
-        const ddx = (gcxi + dx) - pcx;
+        const ddx = cx - pcx;
         const w = Math.exp(-(ddx * ddx + ddy * ddy) * _twoSigmaSqInv);
         intensities[(cy * gridW + cx) * tierCount + ti] += contrib * w;
       }
@@ -334,10 +334,10 @@ export function drawParticleGlowField(
       // smoothly but are capped so brightness never blows out.
       const alpha = Math.min(MAX_ALPHA, 1.0 - Math.exp(-GLOW_K * totalI));
 
-      data[pixBase]     = (r + 0.5) | 0;
-      data[pixBase + 1] = (g + 0.5) | 0;
-      data[pixBase + 2] = (b + 0.5) | 0;
-      data[pixBase + 3] = (alpha * 255 + 0.5) | 0;
+      data[pixBase]     = Math.round(r);
+      data[pixBase + 1] = Math.round(g);
+      data[pixBase + 2] = Math.round(b);
+      data[pixBase + 3] = Math.round(alpha * 255);
     }
   }
 
