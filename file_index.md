@@ -273,10 +273,12 @@
 
 ### src/render/particles/particle-glow-field.ts
 - Smooth nebula-style glow field drawn behind particles in high-graphics mode.
-- Divides the canvas into a low-resolution grid (CELL_SIZE internal pixels per cell).
-- Per-frame: applies temporal persistence decay, then Gaussian-splats each particle's intensity into its tier's channel in nearby cells.
-- Finds the dominant and secondary tier per cell; blends their glow colours with the dominant hue kept recognisable.
-- Writes pixel data to an offscreen canvas, scales it up with image smoothing, and composites onto the main canvas with `globalCompositeOperation = 'screen'`.
+- Divides the canvas into a low-resolution grid (CELL_SIZE=4 internal pixels per cell → 80 cells wide on the 320 px canvas).
+- Per-frame: applies temporal persistence decay, then Gaussian-splats each particle's energy into nearby cells using the exact sub-cell fractional position (continuous Gaussian, no cell-snap stepping).
+- Colour mixing uses weighted-average RGB (each tier contributes proportionally) for smooth gradients between differently-coloured motes.
+- Alpha curve: `1 − exp(−GLOW_K · totalIntensity)`, capped at MAX_ALPHA, keeps glows soft and proportional.
+- Writes pixel data to an offscreen canvas, upscales 4× with bilinear smoothing, and composites onto the main canvas with `globalCompositeOperation = BLEND_MODE ('screen')`.
+- All tuning constants (GLOW_ENABLED, CELL_SIZE, SPLAT_RADIUS, SPLAT_SIGMA, INTENSITY_MULT, PERSISTENCE, MAX_ALPHA, GLOW_K, BLEND_MODE) are grouped at the top of the file.
 - `drawParticleGlowField(ctx, particles, canvasW, canvasH)` — draw the field; call before trails and particle bodies.
 - `resetGlowField()` — clear all intensities on game reset.
 
