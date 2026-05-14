@@ -55,6 +55,7 @@ export function trySpawnLuckyMote(
   x: number,
   y: number,
   luckPct: number,
+  fromElite = false,
 ): void {
   if (luckPct <= 0) return;
   // Determine how many motes to spawn.
@@ -81,6 +82,8 @@ export function trySpawnLuckyMote(
       glowColor: tierDef.glowColor,
       bonusPct: LUCKY_MOTE_BONUS_PCT,
       pulseTimeS: 0,
+      ageMs: 0,
+      fromElite,
     });
   }
 }
@@ -92,19 +95,20 @@ export function updateLuckyMotes(
   moteX: number,
   moteY: number,
   deltaMs: number,
-  onCollected: (tierId: TierId, bonusPct: number) => void,
+  onCollected: (tierId: TierId, bonusPct: number, ageMs: number, fromElite: boolean) => void,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   for (let i = luckyMotes.length - 1; i >= 0; i--) {
     const lm = luckyMotes[i];
     lm.pulseTimeS += deltaMs / 1000;
+    lm.ageMs += deltaMs;
     const dx = moteX - lm.x;
     const dy = moteY - lm.y;
     const distSq = dx * dx + dy * dy;
     const collectDistSq = LUCKY_MOTE_COLLECT_DIST * LUCKY_MOTE_COLLECT_DIST;
     if (distSq <= collectDistSq) {
       // Collected — apply bonus via callback and spawn popup
-      onCollected(lm.tierId as TierId, lm.bonusPct);
+      onCollected(lm.tierId as TierId, lm.bonusPct, lm.ageMs, lm.fromElite);
       // Direction vector: from player toward where the mote was
       const dist = Math.sqrt(distSq) || 1;
       const nx = -dx / dist;

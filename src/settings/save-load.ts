@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 21;
+const SAVE_VERSION = 22;
 
 interface SaveData {
   version: number;
@@ -107,6 +107,8 @@ interface SaveData {
     bestDamageFreeWaveStreak?: number;
     /** v21+: boss defeated with 1 weapon. Absent in older saves. */
     bossDefeated1Weapon?: boolean;
+    /** v22+: secret achievement flag IDs. Absent in older saves. */
+    secretAchievementFlags?: string[];
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
@@ -193,6 +195,7 @@ export function serializeGameState(state: GameState): SaveData {
       totalWavesCompleted: state.rpg.totalWavesCompleted,
       bestDamageFreeWaveStreak: state.rpg.bestDamageFreeWaveStreak,
       bossDefeated1Weapon: state.rpg.bossDefeated1Weapon,
+      secretAchievementFlags: Array.from(state.rpg.secretAchievementFlags),
     },
     elapsedMs: state.elapsedMs,
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
@@ -390,6 +393,12 @@ export function deserializeGameState(data: SaveData): GameState {
     state.rpg.totalWavesCompleted = data.rpg.totalWavesCompleted ?? 0;
     state.rpg.bestDamageFreeWaveStreak = data.rpg.bestDamageFreeWaveStreak ?? 0;
     state.rpg.bossDefeated1Weapon = data.rpg.bossDefeated1Weapon ?? false;
+    // v22+: secret achievement flags
+    if (data.rpg.secretAchievementFlags) {
+      for (const flag of data.rpg.secretAchievementFlags) {
+        state.rpg.secretAchievementFlags.add(flag);
+      }
+    }
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

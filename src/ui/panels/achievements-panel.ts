@@ -242,13 +242,7 @@ export function hasUnclaimedAchievements(state: GameState): boolean {
 
 // ─── Per-character glyph animation state ────────────────────────
 
-/** Number of characters that can change each tick (globally). */
-const GLYPH_TICK_MS = 70;
-/**
- * Probability any single character changes during a tick.
- * ~0.12 at 70ms ≈ ~1.7 flips/second per character.
- */
-const CHAR_FLIP_PROB = 0.12;
+// ─── Per-character glyph animation state ────────────────────────
 
 interface GlyphEntry {
   /** Element whose textContent is updated with scrambled text. */
@@ -257,6 +251,8 @@ interface GlyphEntry {
   len: number;
   /** Current scrambled characters, one per position. */
   chars: string[];
+  /** Frames until next character mutation. Randomised per-entry for variety. */
+  frameCountdown: number;
 }
 
 // ─── Panel factory ─────────────────────────────────────────────
@@ -304,6 +300,29 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   filterBar.appendChild(makeFilterCheckbox('Show unearned', filterShowUnearned, v => { filterShowUnearned  = v; }));
   filterBar.appendChild(makeFilterCheckbox('Show hidden',   filterShowHidden,   v => { filterShowHidden    = v; rebuildGlyphEntries(); }));
   panel.appendChild(filterBar);
+
+  // ── Claim All button ──────────────────────────────────────────
+  const claimAllRow = document.createElement('div');
+  claimAllRow.className = 'ach-claim-all-row';
+
+  const claimAllBtn = document.createElement('button');
+  claimAllBtn.type = 'button';
+  claimAllBtn.className = 'ach-claim-all-btn';
+  claimAllBtn.textContent = '✨ Claim All';
+  claimAllBtn.disabled = true;
+  claimAllBtn.addEventListener('click', () => {
+    dispatch({ kind: 'claim_all_achievements' });
+    audioSystem?.onAchievementClaimed();
+    enqueueReward('All bonuses claimed!');
+  });
+
+  const claimAllCount = document.createElement('span');
+  claimAllCount.className = 'ach-claim-all-count';
+  claimAllCount.textContent = '';
+
+  claimAllRow.appendChild(claimAllBtn);
+  claimAllRow.appendChild(claimAllCount);
+  panel.appendChild(claimAllRow);
 
   const groupsRoot = document.createElement('div');
   groupsRoot.className = 'achievement-groups';
@@ -728,10 +747,14 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
    */
   const glyphEntries: GlyphEntry[] = [];
 
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   function buildGlyphEntry(el: HTMLElement, length: number): GlyphEntry {
     const chars = Array.from({ length }, () => randomGlyphChar());
     el.textContent = chars.join('');
-    return { el, len: length, chars };
+    // Stagger initial countdown so entries don't all fire on the same frame
+    const frameCountdown = 1 + Math.floor(Math.random() * 5);
+    return { el, len: length, chars, frameCountdown };
   }
 
   function rebuildGlyphEntries(): void {
@@ -754,21 +777,47 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
         glyphEntries.push(buildGlyphEntry(refs.progressEl, 12));
       }
     }
+    startGlyphAnimation();
   }
 
-  /** Single shared interval for per-character glyph animation. */
-  const glyphIntervalId = window.setInterval(() => {
-    for (const entry of glyphEntries) {
-      let changed = false;
-      for (let i = 0; i < entry.len; i++) {
-        if (Math.random() < CHAR_FLIP_PROB) {
-          entry.chars[i] = randomGlyphChar();
-          changed = true;
-        }
-      }
-      if (changed) entry.el.textContent = entry.chars.join('');
+  /** RAF handle for the glyph animation loop. */
+  let glyphRafId = -1;
+  let glyphAnimating = false;
+
+  function glyphFrame(): void {
+    if (glyphEntries.length === 0) {
+      glyphAnimating = false;
+      glyphRafId = -1;
+      return;
     }
-  }, GLYPH_TICK_MS);
+    // Under reduced-motion, update very slowly (one change every ~3 seconds)
+    const skipProbability = prefersReducedMotion ? 0.98 : 0;
+    for (const entry of glyphEntries) {
+      if (prefersReducedMotion && Math.random() < skipProbability) continue;
+      entry.frameCountdown--;
+      if (entry.frameCountdown <= 0) {
+        // Mutate exactly one random character
+        const idx = Math.floor(Math.random() * entry.len);
+        entry.chars[idx] = randomGlyphChar();
+        entry.el.textContent = entry.chars.join('');
+        // Reset countdown to 1–5 frames for this entry
+        entry.frameCountdown = 1 + Math.floor(Math.random() * 5);
+      }
+    }
+    glyphRafId = requestAnimationFrame(glyphFrame);
+  }
+
+  function startGlyphAnimation(): void {
+    if (glyphAnimating || glyphEntries.length === 0) return;
+    glyphAnimating = true;
+    glyphRafId = requestAnimationFrame(glyphFrame);
+  }
+
+  function stopGlyphAnimation(): void {
+    if (glyphRafId !== -1) cancelAnimationFrame(glyphRafId);
+    glyphRafId = -1;
+    glyphAnimating = false;
+  }
 
   // ── Filter application ────────────────────────────────────────
   /**
@@ -831,12 +880,23 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   function destroy(): void {
-    window.clearInterval(glyphIntervalId);
+    stopGlyphAnimation();
     stopAllSparkles();
     if (createdContainer) goldenTextContainer.remove();
   }
 
   function update(state: GameState, numberFormat: NumberFormat): void {
+    // Update Claim All button
+    let totalClaimable = 0;
+    for (const def of ACHIEVEMENT_DEFINITIONS) {
+      if (state.achievements.unlockedIds.has(def.id) && !state.achievements.claimedIds.has(def.id)) {
+        totalClaimable++;
+      }
+    }
+    claimAllBtn.disabled = totalClaimable === 0;
+    claimAllBtn.classList.toggle('ach-claim-all-btn--active', totalClaimable > 0);
+    claimAllCount.textContent = totalClaimable > 0 ? `${totalClaimable} ready` : '';
+
     const unclaimedByGroup = new Map<string, number>();
     const claimedByGroup = new Map<string, number>();
     const totalByGroup = new Map<string, number>();
@@ -969,6 +1029,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
   // Initial glyph setup
   rebuildGlyphEntries();
+  startGlyphAnimation();
 
   return { element: panel, update, setVisible, destroy };
 }

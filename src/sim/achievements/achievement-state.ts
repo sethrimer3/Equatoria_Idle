@@ -311,6 +311,9 @@ function isConditionMet(
 
     case 'boss_defeated_any_speed_1weapon':
       return rpg.bossDefeated1Weapon;
+
+    case 'secret_flag':
+      return rpg.secretAchievementFlags.has(condition.flagId);
   }
 }
 
@@ -386,5 +389,33 @@ export function claimAchievement(state: AchievementState, id: string): boolean {
   state.claimedIds.add(id);
   recomputeBonuses(state);
   return true;
+}
+
+/**
+ * Claim every unlocked but unclaimed achievement in one batch.
+ * Recomputes bonuses exactly once at the end if anything changed.
+ * Returns the list of newly-claimed achievement IDs.
+ */
+export function claimAllUnlockedAchievements(state: AchievementState): string[] {
+  const claimed: string[] = [];
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    if (state.unlockedIds.has(def.id) && !state.claimedIds.has(def.id)) {
+      state.claimedIds.add(def.id);
+      claimed.push(def.id);
+    }
+  }
+  if (claimed.length > 0) recomputeBonuses(state);
+  return claimed;
+}
+
+/**
+ * Returns the number of achievements that are unlocked but not yet claimed.
+ */
+export function getClaimableCount(state: AchievementState): number {
+  let count = 0;
+  for (const id of state.unlockedIds) {
+    if (!state.claimedIds.has(id)) count++;
+  }
+  return count;
 }
 

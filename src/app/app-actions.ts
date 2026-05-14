@@ -13,6 +13,7 @@ import {
   tryPurchaseSpecialLoom,
   tryAlivenMote,
   claimAchievement,
+  claimAllUnlockedAchievements,
 } from '../sim';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import { getMotes, spendMotes } from '../sim/resources';
@@ -138,6 +139,9 @@ export function handleAction(
     case 'claim_achievement':
       claimAchievement(state.game.achievements, action.achievementId);
       break;
+    case 'claim_all_achievements':
+      claimAllUnlockedAchievements(state.game.achievements);
+      break;
     case 'purchase_weapon': {
       const weaponDef = WEAPON_BY_ID.get(action.weaponId);
       if (!weaponDef) { audioSystem?.onError(); break; }
@@ -165,6 +169,7 @@ export function handleAction(
       if (firstEmpty === -1) { audioSystem?.onError(); break; }
       state.game.rpg.equippedWeaponIds.add(action.weaponId);
       state.game.rpg.equippedWeaponSlots.set(firstEmpty, action.weaponId);
+      state.game.rpg.equipChangedDuringInterwave = true;
       uiPanels.rpgRender.notifyEquip();
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
@@ -188,6 +193,7 @@ export function handleAction(
       }
       state.game.rpg.equippedWeaponIds.add(action.weaponId);
       state.game.rpg.equippedWeaponSlots.set(action.slotIndex, action.weaponId);
+      state.game.rpg.equipChangedDuringInterwave = true;
       uiPanels.rpgRender.notifyEquip();
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
@@ -200,6 +206,7 @@ export function handleAction(
           break;
         }
       }
+      state.game.rpg.equipChangedDuringInterwave = true;
       uiPanels.rpgRender.notifyEquip();
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
