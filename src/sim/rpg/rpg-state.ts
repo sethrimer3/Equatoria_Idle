@@ -98,6 +98,31 @@ export interface RpgSimState {
    * but the per-stat allocation display in the stats panel has been removed.
    */
   xpAllocatedToHp: number;
+  // ── Achievement tracking counters ─────────────────────────────
+  /** Lifetime kill count per enemy type-id string (e.g. 'laser', 'quartz', 'elite_quartz'). */
+  lifetimeKillsByType: Map<string, number>;
+  /** Total lifetime elite enemy kills (all tiers combined). */
+  lifetimeEliteKills: number;
+  /** Total lifetime aliven groups defeated. */
+  lifetimeAlivenKills: number;
+  /** Lifetime lucky mote drops collected. */
+  lifetimeLuckyMotesCollected: number;
+  /** Lifetime kills of late-tier enemies (diamond, nullstone, fracteryl, eigenstein). */
+  lifetimeLateEnemyKills: number;
+  /** Total cumulative RPG survival time in milliseconds. */
+  totalRpgSurvivalMs: number;
+  /** Current consecutive wave-clear streak (resets on death). */
+  consecutiveWaveStreak: number;
+  /** Best consecutive damage-free waves cleared (resets on taking damage; peak is stored separately). */
+  damageFreeWaveStreak: number;
+  /** Best damage-free wave streak ever achieved across all runs. */
+  bestDamageFreeWaveStreak: number;
+  /** Total lifetime waves completed. */
+  totalWavesCompleted: number;
+  /** Whether the player took damage in the current wave (reset each wave). */
+  tookDamageThisWave: boolean;
+  /** Boss defeated while only 1 weapon was equipped. */
+  bossDefeated1Weapon: boolean;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -119,6 +144,18 @@ export function createRpgSimState(): RpgSimState {
     xpAllocatedToDef: 0,
     xpAllocatedToLuck: 0,
     xpAllocatedToHp: 0,
+    lifetimeKillsByType: new Map(),
+    lifetimeEliteKills: 0,
+    lifetimeAlivenKills: 0,
+    lifetimeLuckyMotesCollected: 0,
+    lifetimeLateEnemyKills: 0,
+    totalRpgSurvivalMs: 0,
+    consecutiveWaveStreak: 0,
+    damageFreeWaveStreak: 0,
+    bestDamageFreeWaveStreak: 0,
+    totalWavesCompleted: 0,
+    tookDamageThisWave: false,
+    bossDefeated1Weapon: false,
   };
 }
 

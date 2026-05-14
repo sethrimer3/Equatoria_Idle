@@ -32,6 +32,8 @@ export interface PlayerDamageCtx {
   damageNumbers: DamageNumber[];
   /** Returns true when invincibility mode is enabled (dev mode feature). */
   isInvincibilityMode(): boolean;
+  /** Optional callback fired each time the player actually takes damage (not blocked, not iframes). */
+  onPlayerHit?: () => void;
 }
 
 // ── Return handle ────────────────────────────────────────────────────
@@ -146,6 +148,7 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       const ratio = Math.min(1, dmg / playerStats.maxHp);
       pCtx.setPlayerIFramesMs(PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS);
       spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
+      pCtx.onPlayerHit?.();
     }
   }
 
@@ -163,6 +166,7 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       const ratio = Math.min(1, dmg / playerStats.maxHp);
       mote.vx += normDirX * PLAYER_KNOCKBACK_MAX * ratio;
       mote.vy += normDirY * PLAYER_KNOCKBACK_MAX * ratio;
+      pCtx.onPlayerHit?.();
       pCtx.setPlayerIFramesMs(PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS);
       spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, String(Math.round(dmg)), ratio, '#ff6666');
     }

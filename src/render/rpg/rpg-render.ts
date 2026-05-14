@@ -189,6 +189,11 @@ export interface RpgRenderOptions {
    */
   onLuckyMoteCollected?: (tierId: TierId, bonusPct: number) => void;
   /**
+   * Returns the flat base ATK bonus from claimed achievements.
+   * Called inside applyEquipmentStats each time stats are refreshed.
+   */
+  getAchievementAtkBonus?: () => number;
+  /**
    * Called when the player triggers an error interaction (e.g. attempting
    * to add a 4th XP wire).  Callers should play the error SFX.
    */
@@ -424,7 +429,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // Regen is a fixed base value (weapon/XP bonuses can be added here in future).
     playerStats.regen = PLAYER_REGEN_INIT;
     // Player ATK is the base multiplier (not including per-weapon tier damage).
-    playerStats.atk = PLAYER_ATK_INIT + getEffectiveXpAtkBonus(rpgSimState);
+    playerStats.atk = PLAYER_ATK_INIT + getEffectiveXpAtkBonus(rpgSimState) + (options.getAchievementAtkBonus?.() ?? 0);
     // Bonus max-HP from XP wired to HP stat.
     const hpBonus = getEffectiveXpHpBonus(rpgSimState);
     const newMaxHp = PLAYER_HP_INIT + hpBonus;
@@ -477,6 +482,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     shotLines,
     damageNumbers,
     isInvincibilityMode: () => isInvincibilityMode,
+    onPlayerHit: () => { waveManager?.onPlayerHit(); },
   };
   const {
     spawnDamageNumber,
@@ -1065,8 +1071,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);
-      updateLuckyMotes(luckyMotes, luckyMotePopups, mote.x, mote.y, deltaMs, options.onLuckyMoteCollected ?? (() => {}));
+      // Track lucky motes collected for achievements
+      const luckyMoteCallback = (tierId: TierId, bonusPct: number) => {
+        rpgSimState.lifetimeLuckyMotesCollected++;
+        if (options.onLuckyMoteCollected) options.onLuckyMoteCollected(tierId, bonusPct);
+      };
+      updateLuckyMotes(luckyMotes, luckyMotePopups, mote.x, mote.y, deltaMs, luckyMoteCallback);
       updateLuckyMotePopups(luckyMotePopups, deltaMs);
+
+      // Accumulate survival time
+      rpgSimState.totalRpgSurvivalMs += deltaMs;
+
+      // Track if player took damage this wave (compare HP before/after physics updates)
+      // (hp tracking is done in the wave manager via onPlayerHit)
 
       // Apply HP regen: regenerate regen% of maxHp per second when alive.
       if (rpgPhase === 'alive' && playerStats.hp > 0 && playerStats.hp < playerStats.maxHp) {
