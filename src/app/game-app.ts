@@ -300,6 +300,7 @@ export async function startApp(): Promise<void> {
       const bonus = Math.max(1, current * bonusPct / 100);
       addMotes(appState.game.resources, tierId, bonus);
     },
+    getAchievementAtkBonus: () => appState.game.achievements.baseAtkBonus,
     onError: () => { audioSystem.onError(); },
   });
   rpgRender.setNumberFormat(settings.numberFormat);

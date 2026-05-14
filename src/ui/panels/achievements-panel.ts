@@ -58,6 +58,7 @@ function makeScrambledText(length: number): string {
 
 /** Returns a display string like "+50% Tap" for an achievement's bonus. */
 function bonusText(bonusKind: string, bonusMultiplier: number): string {
+  if (bonusKind === 'base_atk') return `+${bonusMultiplier} ATK`;
   const label = bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
   const pct = Math.round((bonusMultiplier - 1) * 100);
   return `+${pct}% ${label}`;
@@ -123,6 +124,8 @@ function getProgressText(
       const defeated = Math.floor(state.rpg.highestWaveReached / 100);
       return `Bosses defeated: ${defeated} / ${condition.count}`;
     }
+    default:
+      return '???';
   }
 }
 
@@ -467,16 +470,22 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
         progressEl.textContent = isClaimed ? '✓ Claimed' : '✨ Earned — tap to claim your bonus!';
       } else {
         iconEl.textContent = '🔒';
-        if (!def.isSecret) {
+        if (def.isSecret) {
+          bonusEl.textContent = '???';
+          bonusEl.style.color = '';
+          progressEl.textContent = '???';
+        } else if (def.isHiddenCriteria) {
+          nameEl.textContent = def.displayName;
+          descEl.textContent = def.description;
+          bonusEl.textContent = defBonusText;
+          bonusEl.style.color = '';
+          progressEl.textContent = '??? (criteria hidden)';
+        } else {
           nameEl.textContent = def.displayName;
           descEl.textContent = def.description;
           bonusEl.textContent = defBonusText;
           bonusEl.style.color = '';
           progressEl.textContent = getProgressText(def.condition, state, numberFormat);
-        } else {
-          bonusEl.textContent = '???';
-          bonusEl.style.color = '';
-          progressEl.textContent = '???';
         }
       }
 

@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 20;
+const SAVE_VERSION = 21;
 
 interface SaveData {
   version: number;
@@ -89,6 +89,24 @@ interface SaveData {
     xpAllocatedToLuck?: number;
     /** v18+: XP accumulated while wired to HP. Absent in older saves (defaults to 0). */
     xpAllocatedToHp?: number;
+    /** v21+: per-type kill counters. Absent in older saves. */
+    lifetimeKillsByType?: Record<string, number>;
+    /** v21+: elite kill count. Absent in older saves. */
+    lifetimeEliteKills?: number;
+    /** v21+: aliven group kill count. Absent in older saves. */
+    lifetimeAlivenKills?: number;
+    /** v21+: lucky motes collected lifetime. Absent in older saves. */
+    lifetimeLuckyMotesCollected?: number;
+    /** v21+: late-tier enemy kills. Absent in older saves. */
+    lifetimeLateEnemyKills?: number;
+    /** v21+: total survival time in ms. Absent in older saves. */
+    totalRpgSurvivalMs?: number;
+    /** v21+: total waves completed lifetime. Absent in older saves. */
+    totalWavesCompleted?: number;
+    /** v21+: best damage-free wave streak ever. Absent in older saves. */
+    bestDamageFreeWaveStreak?: number;
+    /** v21+: boss defeated with 1 weapon. Absent in older saves. */
+    bossDefeated1Weapon?: boolean;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
@@ -166,6 +184,15 @@ export function serializeGameState(state: GameState): SaveData {
       xpAllocatedToDef: state.rpg.xpAllocatedToDef,
       xpAllocatedToLuck: state.rpg.xpAllocatedToLuck,
       xpAllocatedToHp: state.rpg.xpAllocatedToHp,
+      lifetimeKillsByType: Object.fromEntries(state.rpg.lifetimeKillsByType),
+      lifetimeEliteKills: state.rpg.lifetimeEliteKills,
+      lifetimeAlivenKills: state.rpg.lifetimeAlivenKills,
+      lifetimeLuckyMotesCollected: state.rpg.lifetimeLuckyMotesCollected,
+      lifetimeLateEnemyKills: state.rpg.lifetimeLateEnemyKills,
+      totalRpgSurvivalMs: state.rpg.totalRpgSurvivalMs,
+      totalWavesCompleted: state.rpg.totalWavesCompleted,
+      bestDamageFreeWaveStreak: state.rpg.bestDamageFreeWaveStreak,
+      bossDefeated1Weapon: state.rpg.bossDefeated1Weapon,
     },
     elapsedMs: state.elapsedMs,
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
@@ -349,6 +376,20 @@ export function deserializeGameState(data: SaveData): GameState {
     // v18+: luck and HP XP allocation pools
     state.rpg.xpAllocatedToLuck = data.rpg.xpAllocatedToLuck ?? 0;
     state.rpg.xpAllocatedToHp = data.rpg.xpAllocatedToHp ?? 0;
+    // v21+: achievement tracking counters
+    if (data.rpg.lifetimeKillsByType) {
+      for (const [k, v] of Object.entries(data.rpg.lifetimeKillsByType)) {
+        state.rpg.lifetimeKillsByType.set(k, v);
+      }
+    }
+    state.rpg.lifetimeEliteKills = data.rpg.lifetimeEliteKills ?? 0;
+    state.rpg.lifetimeAlivenKills = data.rpg.lifetimeAlivenKills ?? 0;
+    state.rpg.lifetimeLuckyMotesCollected = data.rpg.lifetimeLuckyMotesCollected ?? 0;
+    state.rpg.lifetimeLateEnemyKills = data.rpg.lifetimeLateEnemyKills ?? 0;
+    state.rpg.totalRpgSurvivalMs = data.rpg.totalRpgSurvivalMs ?? 0;
+    state.rpg.totalWavesCompleted = data.rpg.totalWavesCompleted ?? 0;
+    state.rpg.bestDamageFreeWaveStreak = data.rpg.bestDamageFreeWaveStreak ?? 0;
+    state.rpg.bossDefeated1Weapon = data.rpg.bossDefeated1Weapon ?? false;
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

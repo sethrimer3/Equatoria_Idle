@@ -22,6 +22,8 @@ export interface AchievementState {
   tapMultiplierBonus: number;
   /** Cumulative loom production multiplier bonus from achievements (≥ 1). */
   loomMultiplierBonus: number;
+  /** Cumulative flat base ATK bonus from claimed base_atk achievements (≥ 0). */
+  baseAtkBonus: number;
 }
 
 // ─── Factory ────────────────────────────────────────────────────
@@ -32,6 +34,7 @@ export function createAchievementState(): AchievementState {
     claimedIds: new Set(),
     tapMultiplierBonus: 1,
     loomMultiplierBonus: 1,
+    baseAtkBonus: 0,
   };
 }
 
@@ -80,6 +83,116 @@ function isConditionMet(
     case 'boss_defeated':
       // Bosses occur at every multiple of 100 waves; reaching wave N×100 means N bosses beaten.
       return Math.floor(rpg.highestWaveReached / 100) >= condition.count;
+
+    case 'specific_boss_defeated':
+      return (rpg.bossCompletions.get(condition.bossId) ?? 0) > 0;
+
+    case 'specific_boss_at_speed': {
+      const best = rpg.bossCompletions.get(condition.bossId) ?? 0;
+      return best >= condition.minSpeedPct;
+    }
+
+    case 'any_boss_at_speed': {
+      for (const speedPct of rpg.bossCompletions.values()) {
+        if (speedPct >= condition.minSpeedPct) return true;
+      }
+      return false;
+    }
+
+    case 'all_bosses_at_speed': {
+      if (rpg.bossCompletions.size === 0) return false;
+      for (const speedPct of rpg.bossCompletions.values()) {
+        if (speedPct < condition.minSpeedPct) return false;
+      }
+      return true;
+    }
+
+    case 'specific_weapon_max_tier':
+      return (rpg.weaponTiersByWeaponId.get(condition.weaponId) ?? 0) >= MAX_WEAPON_TIER;
+
+    case 'weapons_at_max_tier': {
+      let n = 0;
+      for (const tier of rpg.weaponTiersByWeaponId.values()) {
+        if (tier >= MAX_WEAPON_TIER) n++;
+      }
+      return n >= condition.count;
+    }
+
+    case 'all_purchased_max_tier': {
+      if (rpg.purchasedWeaponIds.size === 0) return false;
+      for (const weaponId of rpg.purchasedWeaponIds) {
+        if ((rpg.weaponTiersByWeaponId.get(weaponId) ?? 0) < MAX_WEAPON_TIER) return false;
+      }
+      return true;
+    }
+
+    case 'weapons_purchased_count':
+      return rpg.purchasedWeaponIds.size >= condition.count;
+
+    case 'equip_weapons_count':
+      return rpg.equippedWeaponIds.size >= condition.count;
+
+    case 'rpg_upgrade_level':
+      return (rpg.rpgUpgradeLevels.get(condition.upgradeId) ?? 0) >= condition.level;
+
+    case 'rpg_upgrade_any_max': {
+      for (const level of rpg.rpgUpgradeLevels.values()) {
+        if (level >= condition.maxLevel) return true;
+      }
+      return false;
+    }
+
+    case 'xp_allocated_stat':
+      return rpg.xpAllocatedStats.includes(condition.stat);
+
+    case 'xp_allocated_stats_count':
+      return rpg.xpAllocatedStats.length >= condition.count;
+
+    case 'xp_to_stat': {
+      const map: Record<'atk' | 'def' | 'luck' | 'hp', number> = {
+        atk:  rpg.xpAllocatedToAtk,
+        def:  rpg.xpAllocatedToDef,
+        luck: rpg.xpAllocatedToLuck,
+        hp:   rpg.xpAllocatedToHp,
+      };
+      return map[condition.stat] >= condition.amount;
+    }
+
+    case 'total_kills': {
+      let total = 0;
+      for (const count of rpg.lifetimeKillsByType.values()) total += count;
+      return total >= condition.count;
+    }
+
+    case 'kills_of_type':
+      return (rpg.lifetimeKillsByType.get(condition.typeId) ?? 0) >= condition.count;
+
+    case 'elite_kills_total':
+      return rpg.lifetimeEliteKills >= condition.count;
+
+    case 'aliven_kills_total':
+      return rpg.lifetimeAlivenKills >= condition.count;
+
+    case 'late_enemy_kills_total':
+      return rpg.lifetimeLateEnemyKills >= condition.count;
+
+    case 'lucky_motes_total':
+      return rpg.lifetimeLuckyMotesCollected >= condition.count;
+
+    case 'survival_minutes':
+      return rpg.totalRpgSurvivalMs >= condition.minutes * 60 * 1000;
+
+    case 'wave_streak':
+      return rpg.consecutiveWaveStreak >= condition.count;
+
+    case 'damage_free_streak':
+      return rpg.bestDamageFreeWaveStreak >= condition.count;
+
+    case 'waves_completed':
+      return rpg.totalWavesCompleted >= condition.count;
+
+    case 'boss_defeated_any_speed_1weapon':
+      return rpg.bossDefeated1Weapon;
   }
 }
 
@@ -121,18 +234,22 @@ export function checkAndUnlockAchievements(
 export function recomputeBonuses(state: AchievementState): void {
   let tapBonus = 1;
   let loomBonus = 1;
+  let atkBonus = 0;
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     if (!state.claimedIds.has(def.id)) continue;
     if (def.bonusKind === 'tap_multiplier') {
       tapBonus *= def.bonusMultiplier;
-    } else {
+    } else if (def.bonusKind === 'loom_multiplier') {
       loomBonus *= def.bonusMultiplier;
+    } else if (def.bonusKind === 'base_atk') {
+      atkBonus += def.bonusMultiplier;
     }
   }
 
   state.tapMultiplierBonus = tapBonus;
   state.loomMultiplierBonus = loomBonus;
+  state.baseAtkBonus = atkBonus;
 }
 
 /**

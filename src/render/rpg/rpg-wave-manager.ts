@@ -136,6 +136,8 @@ export interface WaveManagerHandle {
   startNextWave(): void;
   checkWaveCompletion(): void;
   tickSpawnQueue(deltaMs: number): void;
+  /** Called each frame when the player's HP decreases (not from regen loss). */
+  onPlayerHit(): void;
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────
@@ -153,6 +155,11 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     getCachedLuckPercent, applyEquipmentStats, spawnDamageNumber,
   } = ctx;
 
+  /** Increments the per-type kill counter in lifetimeKillsByType. */
+  function addKill(typeId: string): void {
+    rpgSimState.lifetimeKillsByType.set(typeId, (rpgSimState.lifetimeKillsByType.get(typeId) ?? 0) + 1);
+  }
+
   function removeDeadEnemies(): void {
     let totalXpFromKills = 0;
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -164,6 +171,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * LASER_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'laser', enemies[i].x, enemies[i].y, getCachedLuckPercent());
+        addKill('laser');
         enemies.splice(i, 1);
       }
     }
@@ -176,6 +184,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SAPPHIRE_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'sapphire', sapphireEnemies[i].x, sapphireEnemies[i].y, getCachedLuckPercent());
+        addKill('sapphire');
         sapphireEnemies.splice(i, 1);
       }
     }
@@ -198,6 +207,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EMERALD_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'emerald', emeraldEnemies[i].x, emeraldEnemies[i].y, getCachedLuckPercent());
+        addKill('emerald');
         emeraldEnemies.splice(i, 1);
       }
     }
@@ -210,6 +220,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * AMBER_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'amber', amberEnemies[i].x, amberEnemies[i].y, getCachedLuckPercent());
+        addKill('amber');
         amberEnemies.splice(i, 1);
       }
     }
@@ -232,6 +243,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * VOID_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'void', voidEnemies[i].x, voidEnemies[i].y, getCachedLuckPercent());
+        addKill('void');
         voidEnemies.splice(i, 1);
       }
     }
@@ -244,6 +256,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * QUARTZ_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'quartz', quartzEnemies[i].x, quartzEnemies[i].y, getCachedLuckPercent());
+        addKill('quartz');
         quartzEnemies.splice(i, 1);
       }
     }
@@ -259,6 +272,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * RUBY_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'ruby', rubyEnemies[i].x, rubyEnemies[i].y, getCachedLuckPercent());
+        addKill('ruby');
         rubyEnemies.splice(i, 1);
       }
     }
@@ -274,6 +288,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SUNSTONE_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'sunstone', sunstoneEnemies[i].x, sunstoneEnemies[i].y, getCachedLuckPercent());
+        addKill('sunstone');
         sunstoneEnemies.splice(i, 1);
       }
     }
@@ -286,6 +301,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * CITRINE_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'citrine', citrineEnemies[i].x, citrineEnemies[i].y, getCachedLuckPercent());
+        addKill('citrine');
         citrineEnemies.splice(i, 1);
       }
     }
@@ -301,6 +317,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * IOLITE_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'iolite', ioliteEnemies[i].x, ioliteEnemies[i].y, getCachedLuckPercent());
+        addKill('iolite');
         ioliteEnemies.splice(i, 1);
       }
     }
@@ -313,6 +330,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * AMETHYST_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'amethyst', amethystEnemies[i].x, amethystEnemies[i].y, getCachedLuckPercent());
+        addKill('amethyst');
         amethystEnemies.splice(i, 1);
       }
     }
@@ -328,6 +346,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * DIAMOND_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'diamond', diamondEnemies[i].x, diamondEnemies[i].y, getCachedLuckPercent());
+        addKill('diamond');
+        rpgSimState.lifetimeLateEnemyKills++;
         diamondEnemies.splice(i, 1);
       }
     }
@@ -343,6 +363,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * NULLSTONE_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'nullstone', nullstoneEnemies[i].x, nullstoneEnemies[i].y, getCachedLuckPercent());
+        addKill('nullstone');
+        rpgSimState.lifetimeLateEnemyKills++;
         nullstoneEnemies.splice(i, 1);
       }
     }
@@ -358,6 +380,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * FRACTERYL_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'fracteryl', fracterylEnemies[i].x, fracterylEnemies[i].y, getCachedLuckPercent());
+        addKill('fracteryl');
+        rpgSimState.lifetimeLateEnemyKills++;
         fracterylEnemies.splice(i, 1);
       }
     }
@@ -373,6 +397,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         );
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EIGENSTEIN_XP_MULT;
         trySpawnLuckyMote(luckyMotes, 'eigenstein', eigensteinEnemies[i].x, eigensteinEnemies[i].y, getCachedLuckPercent());
+        addKill('eigenstein');
+        rpgSimState.lifetimeLateEnemyKills++;
         eigensteinEnemies.splice(i, 1);
       }
     }
@@ -403,6 +429,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * xpMult;
         trySpawnLuckyMote(luckyMotes, elite.tier, elite.x, elite.y, getCachedLuckPercent() * 2.5);
         spawnDamageNumber(elite.x, elite.y, 0, -1.2, `ELITE! +${formatXp(getXpPerKill(ctx.getCurrentWave()) * xpMult)} XP`, 1.0, '#ffe060');
+        rpgSimState.lifetimeEliteKills++;
+        addKill(`elite_${elite.tier}`);
         eliteEnemies.splice(i, 1);
       }
     }
@@ -417,6 +445,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
       totalXpFromKills += groupXp;
       trySpawnLuckyMote(luckyMotes, group.tierId, group.x, group.y, getCachedLuckPercent());
       spawnDamageNumber(group.x, group.y, 0, -0.8, `+${formatXp(groupXp)} XP`, 0.8, '#aaeeff');
+      rpgSimState.lifetimeAlivenKills++;
       alivenGroups.splice(i, 1);
     }
     // Boss defeat
@@ -430,6 +459,10 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         const prevBest = rpgSimState.bossCompletions.get(bossEnemy.bossId) ?? 0;
         if (speedPct > prevBest) {
           rpgSimState.bossCompletions.set(bossEnemy.bossId, speedPct);
+        }
+        // Track boss defeated with only 1 weapon equipped
+        if (rpgSimState.equippedWeaponIds.size === 1) {
+          rpgSimState.bossDefeated1Weapon = true;
         }
       }
       ctx.setIsBossFightFromMenu(false);
@@ -482,6 +515,18 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     }
     ctx.setIsInterWave(true);
     ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS);
+    // Wave completed — update tracking counters
+    rpgSimState.totalWavesCompleted++;
+    rpgSimState.consecutiveWaveStreak++;
+    if (!rpgSimState.tookDamageThisWave) {
+      rpgSimState.damageFreeWaveStreak++;
+      if (rpgSimState.damageFreeWaveStreak > rpgSimState.bestDamageFreeWaveStreak) {
+        rpgSimState.bestDamageFreeWaveStreak = rpgSimState.damageFreeWaveStreak;
+      }
+    } else {
+      rpgSimState.damageFreeWaveStreak = 0;
+    }
+    rpgSimState.tookDamageThisWave = false;
   }
 
   function tickSpawnQueue(deltaMs: number): void {
@@ -495,5 +540,9 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     }
   }
 
-  return { removeDeadEnemies, startNextWave, checkWaveCompletion, tickSpawnQueue };
+  function onPlayerHit(): void {
+    rpgSimState.tookDamageThisWave = true;
+  }
+
+  return { removeDeadEnemies, startNextWave, checkWaveCompletion, tickSpawnQueue, onPlayerHit };
 }

@@ -127,7 +127,12 @@ export interface RpgDeathRestartCtx {
   getHeightPx(): number;
 
   // ── RPG sim state (respawnWave for restart target) ───────────────
-  rpgSimState: { respawnWave: number };
+  rpgSimState: {
+    respawnWave: number;
+    consecutiveWaveStreak: number;
+    damageFreeWaveStreak: number;
+    tookDamageThisWave: boolean;
+  };
 
   // ── Post-restart callback ────────────────────────────────────────
   applyEquipmentStats(): void;
@@ -196,6 +201,10 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.luckyMotes.length = 0; ctx.luckyMotePopups.length = 0;
   ctx.fluid.reset();
   ctx.applyEquipmentStats();
+  // Reset per-run tracking counters
+  ctx.rpgSimState.consecutiveWaveStreak = 0;
+  ctx.rpgSimState.damageFreeWaveStreak = 0;
+  ctx.rpgSimState.tookDamageThisWave = false;
 }
 
 export function updateDying(ctx: RpgDeathRestartCtx, deltaMs: number): void {
