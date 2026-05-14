@@ -12,9 +12,24 @@ export type AchievementBonusKind = 'tap_multiplier' | 'loom_multiplier' | 'base_
  * Discriminated union describing how an achievement is unlocked.
  *
  * lifetime_motes          — earn at least `amount` lifetime motes of `tierId`
+ * any_tier_lifetime_motes  — any single tier has at least `amount` lifetime motes
+ * tiers_with_lifetime_motes — at least `count` tiers each have at least `amount` lifetime motes
+ * all_unlocked_tiers_lifetime_motes — all currently unlocked tiers each have at least `amount` lifetime motes
+ * specific_tiers_lifetime_motes — every tier in `tierIds` has at least 1 lifetime mote
+ * current_motes_all_unlocked_tiers — all unlocked tiers currently hold at least `amount` motes
+ * lifetime_motes_total     — total of all lifetime motes (all tiers summed) ≥ `amount`
+ * aliven_count             — at least `count` mote tiers have been alivened
+ * aliven_all_possible      — every aliveneable tier (Sand through Nullstone) has been alivened
  * forge_unlocked           — unlock the Equation Forge
  * tap_count                — reach `count` total taps on the equation
  * equation_tiers           — unlock at least `count` equation tiers (including the starting one)
+ * equation_segment_unlocked — the equation segment for `tierId` is unlocked
+ * equation_segment_level   — the equation segment for `tierId` is at level ≥ `level`
+ * any_equation_segment_level — any single equation segment is at level ≥ `level`
+ * total_equation_upgrade_levels — sum of all segment levels ≥ `count`
+ * all_unlocked_equation_segments_level — every unlocked segment is at level ≥ `level`
+ * equation_tap_gain_total  — total motes earned from one tap (all tiers) ≥ `amount`
+ * equivalence_reached      — Equivalence score ≥ `amount` while the Equation Forge is unlocked
  * wave_reached             — reach wave `wave` or higher in RPG mode
  * weapon_purchased         — purchase the weapon with id `weaponId`
  * any_weapon_max_tier      — upgrade any single weapon to the maximum tier (7)
@@ -47,10 +62,25 @@ export type AchievementBonusKind = 'tap_multiplier' | 'loom_multiplier' | 'base_
  * boss_defeated_any_speed_1weapon — defeat a boss while equipped with only 1 weapon
  */
 export type AchievementCondition =
-  | { readonly kind: 'lifetime_motes';             readonly tierId: TierId; readonly amount: number }
+  | { readonly kind: 'lifetime_motes';                      readonly tierId: TierId; readonly amount: number }
+  | { readonly kind: 'any_tier_lifetime_motes';             readonly amount: number }
+  | { readonly kind: 'tiers_with_lifetime_motes';           readonly count: number; readonly amount: number }
+  | { readonly kind: 'all_unlocked_tiers_lifetime_motes';   readonly amount: number }
+  | { readonly kind: 'specific_tiers_lifetime_motes';       readonly tierIds: readonly TierId[] }
+  | { readonly kind: 'current_motes_all_unlocked_tiers';    readonly amount: number }
+  | { readonly kind: 'lifetime_motes_total';                readonly amount: number }
+  | { readonly kind: 'aliven_count';                        readonly count: number }
+  | { readonly kind: 'aliven_all_possible' }
   | { readonly kind: 'forge_unlocked' }
-  | { readonly kind: 'tap_count';                  readonly count: number }
-  | { readonly kind: 'equation_tiers';             readonly count: number }
+  | { readonly kind: 'tap_count';                           readonly count: number }
+  | { readonly kind: 'equation_tiers';                      readonly count: number }
+  | { readonly kind: 'equation_segment_unlocked';           readonly tierId: TierId }
+  | { readonly kind: 'equation_segment_level';              readonly tierId: TierId; readonly level: number }
+  | { readonly kind: 'any_equation_segment_level';          readonly level: number }
+  | { readonly kind: 'total_equation_upgrade_levels';       readonly count: number }
+  | { readonly kind: 'all_unlocked_equation_segments_level'; readonly level: number }
+  | { readonly kind: 'equation_tap_gain_total';             readonly amount: number }
+  | { readonly kind: 'equivalence_reached';                 readonly amount: number }
   | { readonly kind: 'wave_reached';               readonly wave: number }
   | { readonly kind: 'weapon_purchased';           readonly weaponId: string }
   | { readonly kind: 'any_weapon_max_tier' }
@@ -113,152 +143,239 @@ export interface AchievementDefinition {
 // ─── Motes group ────────────────────────────────────────────────
 
 const MOTES_ACHIEVEMENTS: readonly AchievementDefinition[] = [
-  {
-    id: 'first_grain',
-    groupId: 'motes',
-    displayName: 'First Grain',
-    description: 'Earn your first Sand mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 1 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.05,
-  },
-  {
-    id: 'crystal_clear',
-    groupId: 'motes',
-    displayName: 'Crystal Clear',
-    description: 'Earn your first Quartz mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'quartz', amount: 1 },
-    bonusKind: 'loom_multiplier',
-    bonusMultiplier: 1.05,
-  },
-  {
-    id: 'fire_starter',
-    groupId: 'motes',
-    displayName: 'Fire Starter',
-    description: 'Earn your first Ruby mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'ruby', amount: 1 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.10,
-  },
-  {
-    id: 'solar_flare',
-    groupId: 'motes',
-    displayName: 'Solar Flare',
-    description: 'Earn your first Sunstone mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'sunstone', amount: 1 },
-    bonusKind: 'loom_multiplier',
-    bonusMultiplier: 1.10,
-  },
-  {
-    id: 'golden_ratio',
-    groupId: 'motes',
-    displayName: 'Golden Ratio',
-    description: 'Earn your first Citrine mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'citrine', amount: 1 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.15,
-  },
-  {
-    id: 'verdant_growth',
-    groupId: 'motes',
-    displayName: 'Verdant Growth',
-    description: 'Earn your first Emerald mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'emerald', amount: 1 },
-    bonusKind: 'loom_multiplier',
-    bonusMultiplier: 1.15,
-  },
-  {
-    id: 'ocean_depths',
-    groupId: 'motes',
-    displayName: 'Ocean Depths',
-    description: 'Earn your first Sapphire mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'sapphire', amount: 1 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.25,
-  },
-  {
-    id: 'violet_veil',
-    groupId: 'motes',
-    displayName: 'Violet Veil',
-    description: 'Earn your first Iolite mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'iolite', amount: 1 },
-    bonusKind: 'loom_multiplier',
-    bonusMultiplier: 1.25,
-  },
-  {
-    id: 'twilight_crown',
-    groupId: 'motes',
-    displayName: 'Twilight Crown',
-    description: 'Earn your first Amethyst mote.',
-    condition: { kind: 'lifetime_motes', tierId: 'amethyst', amount: 1 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.50,
-  },
+  // ── First Motes ──────────────────────────────────────────────
+  { id: 'first_grain',    groupId: 'motes', subcategoryId: 'motes_first', displayName: 'First Grain',    description: 'Earn your first Sand mote.',      condition: { kind: 'lifetime_motes', tierId: 'sand',      amount: 1 }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05 },
+  { id: 'crystal_clear',  groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Crystal Clear',  description: 'Earn your first Quartz mote.',    condition: { kind: 'lifetime_motes', tierId: 'quartz',    amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05 },
+  { id: 'fire_starter',   groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Fire Starter',   description: 'Earn your first Ruby mote.',      condition: { kind: 'lifetime_motes', tierId: 'ruby',      amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.10 },
+  { id: 'solar_flare',    groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Solar Flare',    description: 'Earn your first Sunstone mote.',  condition: { kind: 'lifetime_motes', tierId: 'sunstone',  amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10 },
+  { id: 'golden_ratio',   groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Golden Ratio',   description: 'Earn your first Citrine mote.',   condition: { kind: 'lifetime_motes', tierId: 'citrine',   amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.15 },
+  { id: 'verdant_growth', groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Verdant Growth', description: 'Earn your first Emerald mote.',   condition: { kind: 'lifetime_motes', tierId: 'emerald',   amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.15 },
+  { id: 'ocean_depths',   groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Ocean Depths',   description: 'Earn your first Sapphire mote.',  condition: { kind: 'lifetime_motes', tierId: 'sapphire',  amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.25 },
+  { id: 'violet_veil',    groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Violet Veil',    description: 'Earn your first Iolite mote.',    condition: { kind: 'lifetime_motes', tierId: 'iolite',    amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.25 },
+  { id: 'twilight_crown', groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Twilight Crown', description: 'Earn your first Amethyst mote.',  condition: { kind: 'lifetime_motes', tierId: 'amethyst',  amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.50 },
+  { id: 'mote_diamond_first',    groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Diamond Clarity',  description: 'Earn your first Diamond mote.',    condition: { kind: 'lifetime_motes', tierId: 'diamond',   amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#f0f5fa' },
+  { id: 'mote_nullstone_first',  groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Void Touch',       description: 'Earn your first Nullstone mote.',  condition: { kind: 'lifetime_motes', tierId: 'nullstone', amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#9664c8' },
+  { id: 'mote_fracteryl_first',  groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Fracture Point',   description: 'Earn your first Fracteryl mote.',  condition: { kind: 'lifetime_motes', tierId: 'fracteryl', amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#7A2CFF' },
+  { id: 'mote_eigenstein_first', groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Eigen State',      description: 'Earn your first Eigenstein mote.', condition: { kind: 'lifetime_motes', tierId: 'eigenstein',amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#A34728' },
+  // ── Sand Milestones ───────────────────────────────────────────
+  { id: 'mote_sand_100',   groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 100',       description: 'Earn 100 lifetime Sand motes.',         condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 100        }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
+  { id: 'mote_sand_1k',    groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 1,000',     description: 'Earn 1,000 lifetime Sand motes.',       condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 1000       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
+  { id: 'mote_sand_10k',   groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 10,000',    description: 'Earn 10,000 lifetime Sand motes.',      condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 10000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
+  { id: 'mote_sand_100k',  groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 100,000',   description: 'Earn 100,000 lifetime Sand motes.',     condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 100000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffc840' },
+  { id: 'mote_sand_1m',    groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 1 Million', description: 'Earn 1,000,000 lifetime Sand motes.',   condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 1000000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffc840' },
+  { id: 'mote_sand_100m',  groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 100 Million',description:'Earn 100,000,000 lifetime Sand motes.',  condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 100000000  }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffb820' },
+  { id: 'mote_sand_1b',    groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 1 Billion', description: 'Earn 1,000,000,000 lifetime Sand motes.',condition:{ kind: 'lifetime_motes', tierId: 'sand', amount: 1000000000 }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffb820' },
+  // ── Quartz Milestones ─────────────────────────────────────────
+  { id: 'mote_quartz_100',  groupId: 'motes', subcategoryId: 'motes_quartz', displayName: 'Quartz — 100',      description: 'Earn 100 lifetime Quartz motes.',         condition: { kind: 'lifetime_motes', tierId: 'quartz', amount: 100       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f5f0eb' },
+  { id: 'mote_quartz_1k',   groupId: 'motes', subcategoryId: 'motes_quartz', displayName: 'Quartz — 1,000',    description: 'Earn 1,000 lifetime Quartz motes.',       condition: { kind: 'lifetime_motes', tierId: 'quartz', amount: 1000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f5f0eb' },
+  { id: 'mote_quartz_10k',  groupId: 'motes', subcategoryId: 'motes_quartz', displayName: 'Quartz — 10,000',   description: 'Earn 10,000 lifetime Quartz motes.',      condition: { kind: 'lifetime_motes', tierId: 'quartz', amount: 10000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f5f0eb' },
+  { id: 'mote_quartz_100k', groupId: 'motes', subcategoryId: 'motes_quartz', displayName: 'Quartz — 100,000',  description: 'Earn 100,000 lifetime Quartz motes.',     condition: { kind: 'lifetime_motes', tierId: 'quartz', amount: 100000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#e8e4e0' },
+  { id: 'mote_quartz_1m',   groupId: 'motes', subcategoryId: 'motes_quartz', displayName: 'Quartz — 1 Million',description: 'Earn 1,000,000 lifetime Quartz motes.',   condition: { kind: 'lifetime_motes', tierId: 'quartz', amount: 1000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#e8e4e0' },
+  { id: 'mote_quartz_100m', groupId: 'motes', subcategoryId: 'motes_quartz', displayName: 'Quartz — 100 Million',description:'Earn 100,000,000 lifetime Quartz motes.', condition: { kind: 'lifetime_motes', tierId: 'quartz', amount: 100000000 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#dcdad8' },
+  // ── Ruby Milestones ───────────────────────────────────────────
+  { id: 'mote_ruby_100',  groupId: 'motes', subcategoryId: 'motes_ruby', displayName: 'Ruby — 100',      description: 'Earn 100 lifetime Ruby motes.',       condition: { kind: 'lifetime_motes', tierId: 'ruby', amount: 100       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#dc3232' },
+  { id: 'mote_ruby_1k',   groupId: 'motes', subcategoryId: 'motes_ruby', displayName: 'Ruby — 1,000',    description: 'Earn 1,000 lifetime Ruby motes.',     condition: { kind: 'lifetime_motes', tierId: 'ruby', amount: 1000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#dc3232' },
+  { id: 'mote_ruby_10k',  groupId: 'motes', subcategoryId: 'motes_ruby', displayName: 'Ruby — 10,000',   description: 'Earn 10,000 lifetime Ruby motes.',    condition: { kind: 'lifetime_motes', tierId: 'ruby', amount: 10000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#c82020' },
+  { id: 'mote_ruby_100k', groupId: 'motes', subcategoryId: 'motes_ruby', displayName: 'Ruby — 100,000',  description: 'Earn 100,000 lifetime Ruby motes.',   condition: { kind: 'lifetime_motes', tierId: 'ruby', amount: 100000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#c82020' },
+  { id: 'mote_ruby_1m',   groupId: 'motes', subcategoryId: 'motes_ruby', displayName: 'Ruby — 1 Million',description: 'Earn 1,000,000 lifetime Ruby motes.', condition: { kind: 'lifetime_motes', tierId: 'ruby', amount: 1000000   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#b41010' },
+  // ── Sunstone Milestones ───────────────────────────────────────
+  { id: 'mote_sunstone_100',  groupId: 'motes', subcategoryId: 'motes_sunstone', displayName: 'Sunstone — 100',      description: 'Earn 100 lifetime Sunstone motes.',       condition: { kind: 'lifetime_motes', tierId: 'sunstone', amount: 100       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ff8c3c' },
+  { id: 'mote_sunstone_1k',   groupId: 'motes', subcategoryId: 'motes_sunstone', displayName: 'Sunstone — 1,000',    description: 'Earn 1,000 lifetime Sunstone motes.',     condition: { kind: 'lifetime_motes', tierId: 'sunstone', amount: 1000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ff8c3c' },
+  { id: 'mote_sunstone_10k',  groupId: 'motes', subcategoryId: 'motes_sunstone', displayName: 'Sunstone — 10,000',   description: 'Earn 10,000 lifetime Sunstone motes.',    condition: { kind: 'lifetime_motes', tierId: 'sunstone', amount: 10000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f07830' },
+  { id: 'mote_sunstone_100k', groupId: 'motes', subcategoryId: 'motes_sunstone', displayName: 'Sunstone — 100,000',  description: 'Earn 100,000 lifetime Sunstone motes.',   condition: { kind: 'lifetime_motes', tierId: 'sunstone', amount: 100000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f07830' },
+  { id: 'mote_sunstone_1m',   groupId: 'motes', subcategoryId: 'motes_sunstone', displayName: 'Sunstone — 1 Million',description: 'Earn 1,000,000 lifetime Sunstone motes.', condition: { kind: 'lifetime_motes', tierId: 'sunstone', amount: 1000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#e06824' },
+  // ── Citrine Milestones ────────────────────────────────────────
+  { id: 'mote_citrine_100',  groupId: 'motes', subcategoryId: 'motes_citrine', displayName: 'Citrine — 100',      description: 'Earn 100 lifetime Citrine motes.',       condition: { kind: 'lifetime_motes', tierId: 'citrine', amount: 100       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#e6c850' },
+  { id: 'mote_citrine_1k',   groupId: 'motes', subcategoryId: 'motes_citrine', displayName: 'Citrine — 1,000',    description: 'Earn 1,000 lifetime Citrine motes.',     condition: { kind: 'lifetime_motes', tierId: 'citrine', amount: 1000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#e6c850' },
+  { id: 'mote_citrine_10k',  groupId: 'motes', subcategoryId: 'motes_citrine', displayName: 'Citrine — 10,000',   description: 'Earn 10,000 lifetime Citrine motes.',    condition: { kind: 'lifetime_motes', tierId: 'citrine', amount: 10000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#d8ba40' },
+  { id: 'mote_citrine_100k', groupId: 'motes', subcategoryId: 'motes_citrine', displayName: 'Citrine — 100,000',  description: 'Earn 100,000 lifetime Citrine motes.',   condition: { kind: 'lifetime_motes', tierId: 'citrine', amount: 100000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#d8ba40' },
+  { id: 'mote_citrine_1m',   groupId: 'motes', subcategoryId: 'motes_citrine', displayName: 'Citrine — 1 Million',description: 'Earn 1,000,000 lifetime Citrine motes.', condition: { kind: 'lifetime_motes', tierId: 'citrine', amount: 1000000   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#caac30' },
+  // ── Emerald Milestones ────────────────────────────────────────
+  { id: 'mote_emerald_100',  groupId: 'motes', subcategoryId: 'motes_emerald', displayName: 'Emerald — 100',      description: 'Earn 100 lifetime Emerald motes.',       condition: { kind: 'lifetime_motes', tierId: 'emerald', amount: 100       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#50b464' },
+  { id: 'mote_emerald_1k',   groupId: 'motes', subcategoryId: 'motes_emerald', displayName: 'Emerald — 1,000',    description: 'Earn 1,000 lifetime Emerald motes.',     condition: { kind: 'lifetime_motes', tierId: 'emerald', amount: 1000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#50b464' },
+  { id: 'mote_emerald_10k',  groupId: 'motes', subcategoryId: 'motes_emerald', displayName: 'Emerald — 10,000',   description: 'Earn 10,000 lifetime Emerald motes.',    condition: { kind: 'lifetime_motes', tierId: 'emerald', amount: 10000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#44a058' },
+  { id: 'mote_emerald_100k', groupId: 'motes', subcategoryId: 'motes_emerald', displayName: 'Emerald — 100,000',  description: 'Earn 100,000 lifetime Emerald motes.',   condition: { kind: 'lifetime_motes', tierId: 'emerald', amount: 100000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#44a058' },
+  { id: 'mote_emerald_1m',   groupId: 'motes', subcategoryId: 'motes_emerald', displayName: 'Emerald — 1 Million',description: 'Earn 1,000,000 lifetime Emerald motes.', condition: { kind: 'lifetime_motes', tierId: 'emerald', amount: 1000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#388c4c' },
+  // ── Sapphire Milestones ───────────────────────────────────────
+  { id: 'mote_sapphire_100',  groupId: 'motes', subcategoryId: 'motes_sapphire', displayName: 'Sapphire — 100',      description: 'Earn 100 lifetime Sapphire motes.',       condition: { kind: 'lifetime_motes', tierId: 'sapphire', amount: 100       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#3c78c8' },
+  { id: 'mote_sapphire_1k',   groupId: 'motes', subcategoryId: 'motes_sapphire', displayName: 'Sapphire — 1,000',    description: 'Earn 1,000 lifetime Sapphire motes.',     condition: { kind: 'lifetime_motes', tierId: 'sapphire', amount: 1000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#3c78c8' },
+  { id: 'mote_sapphire_10k',  groupId: 'motes', subcategoryId: 'motes_sapphire', displayName: 'Sapphire — 10,000',   description: 'Earn 10,000 lifetime Sapphire motes.',    condition: { kind: 'lifetime_motes', tierId: 'sapphire', amount: 10000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#3068b8' },
+  { id: 'mote_sapphire_100k', groupId: 'motes', subcategoryId: 'motes_sapphire', displayName: 'Sapphire — 100,000',  description: 'Earn 100,000 lifetime Sapphire motes.',   condition: { kind: 'lifetime_motes', tierId: 'sapphire', amount: 100000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#3068b8' },
+  { id: 'mote_sapphire_1m',   groupId: 'motes', subcategoryId: 'motes_sapphire', displayName: 'Sapphire — 1 Million',description: 'Earn 1,000,000 lifetime Sapphire motes.', condition: { kind: 'lifetime_motes', tierId: 'sapphire', amount: 1000000   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#2458a8' },
+  // ── Iolite Milestones ─────────────────────────────────────────
+  { id: 'mote_iolite_100',  groupId: 'motes', subcategoryId: 'motes_iolite', displayName: 'Iolite — 100',      description: 'Earn 100 lifetime Iolite motes.',       condition: { kind: 'lifetime_motes', tierId: 'iolite', amount: 100       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#6464b4' },
+  { id: 'mote_iolite_1k',   groupId: 'motes', subcategoryId: 'motes_iolite', displayName: 'Iolite — 1,000',    description: 'Earn 1,000 lifetime Iolite motes.',     condition: { kind: 'lifetime_motes', tierId: 'iolite', amount: 1000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#6464b4' },
+  { id: 'mote_iolite_10k',  groupId: 'motes', subcategoryId: 'motes_iolite', displayName: 'Iolite — 10,000',   description: 'Earn 10,000 lifetime Iolite motes.',    condition: { kind: 'lifetime_motes', tierId: 'iolite', amount: 10000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#5858a4' },
+  { id: 'mote_iolite_100k', groupId: 'motes', subcategoryId: 'motes_iolite', displayName: 'Iolite — 100,000',  description: 'Earn 100,000 lifetime Iolite motes.',   condition: { kind: 'lifetime_motes', tierId: 'iolite', amount: 100000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#5858a4' },
+  { id: 'mote_iolite_1m',   groupId: 'motes', subcategoryId: 'motes_iolite', displayName: 'Iolite — 1 Million',description: 'Earn 1,000,000 lifetime Iolite motes.', condition: { kind: 'lifetime_motes', tierId: 'iolite', amount: 1000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#4c4c94' },
+  // ── Amethyst Milestones ───────────────────────────────────────
+  { id: 'mote_amethyst_100',  groupId: 'motes', subcategoryId: 'motes_amethyst', displayName: 'Amethyst — 100',      description: 'Earn 100 lifetime Amethyst motes.',       condition: { kind: 'lifetime_motes', tierId: 'amethyst', amount: 100       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#b464c8' },
+  { id: 'mote_amethyst_1k',   groupId: 'motes', subcategoryId: 'motes_amethyst', displayName: 'Amethyst — 1,000',    description: 'Earn 1,000 lifetime Amethyst motes.',     condition: { kind: 'lifetime_motes', tierId: 'amethyst', amount: 1000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#b464c8' },
+  { id: 'mote_amethyst_10k',  groupId: 'motes', subcategoryId: 'motes_amethyst', displayName: 'Amethyst — 10,000',   description: 'Earn 10,000 lifetime Amethyst motes.',    condition: { kind: 'lifetime_motes', tierId: 'amethyst', amount: 10000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a058b8' },
+  { id: 'mote_amethyst_100k', groupId: 'motes', subcategoryId: 'motes_amethyst', displayName: 'Amethyst — 100,000',  description: 'Earn 100,000 lifetime Amethyst motes.',   condition: { kind: 'lifetime_motes', tierId: 'amethyst', amount: 100000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a058b8' },
+  { id: 'mote_amethyst_1m',   groupId: 'motes', subcategoryId: 'motes_amethyst', displayName: 'Amethyst — 1 Million',description: 'Earn 1,000,000 lifetime Amethyst motes.', condition: { kind: 'lifetime_motes', tierId: 'amethyst', amount: 1000000   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#8c4ca4' },
+  // ── Diamond Milestones ────────────────────────────────────────
+  { id: 'mote_diamond_100',  groupId: 'motes', subcategoryId: 'motes_diamond', displayName: 'Diamond — 100',      description: 'Earn 100 lifetime Diamond motes.',       condition: { kind: 'lifetime_motes', tierId: 'diamond', amount: 100       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f0f5fa' },
+  { id: 'mote_diamond_1k',   groupId: 'motes', subcategoryId: 'motes_diamond', displayName: 'Diamond — 1,000',    description: 'Earn 1,000 lifetime Diamond motes.',     condition: { kind: 'lifetime_motes', tierId: 'diamond', amount: 1000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#e8eef4' },
+  { id: 'mote_diamond_10k',  groupId: 'motes', subcategoryId: 'motes_diamond', displayName: 'Diamond — 10,000',   description: 'Earn 10,000 lifetime Diamond motes.',    condition: { kind: 'lifetime_motes', tierId: 'diamond', amount: 10000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#e8eef4' },
+  { id: 'mote_diamond_100k', groupId: 'motes', subcategoryId: 'motes_diamond', displayName: 'Diamond — 100,000',  description: 'Earn 100,000 lifetime Diamond motes.',   condition: { kind: 'lifetime_motes', tierId: 'diamond', amount: 100000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#d8e4ec' },
+  { id: 'mote_diamond_1m',   groupId: 'motes', subcategoryId: 'motes_diamond', displayName: 'Diamond — 1 Million',description: 'Earn 1,000,000 lifetime Diamond motes.', condition: { kind: 'lifetime_motes', tierId: 'diamond', amount: 1000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#d8e4ec' },
+  // ── Nullstone Milestones ──────────────────────────────────────
+  { id: 'mote_nullstone_100',  groupId: 'motes', subcategoryId: 'motes_nullstone', displayName: 'Nullstone — 100',      description: 'Earn 100 lifetime Nullstone motes.',       condition: { kind: 'lifetime_motes', tierId: 'nullstone', amount: 100       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#9664c8' },
+  { id: 'mote_nullstone_1k',   groupId: 'motes', subcategoryId: 'motes_nullstone', displayName: 'Nullstone — 1,000',    description: 'Earn 1,000 lifetime Nullstone motes.',     condition: { kind: 'lifetime_motes', tierId: 'nullstone', amount: 1000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#9664c8' },
+  { id: 'mote_nullstone_10k',  groupId: 'motes', subcategoryId: 'motes_nullstone', displayName: 'Nullstone — 10,000',   description: 'Earn 10,000 lifetime Nullstone motes.',    condition: { kind: 'lifetime_motes', tierId: 'nullstone', amount: 10000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#8858b8' },
+  { id: 'mote_nullstone_100k', groupId: 'motes', subcategoryId: 'motes_nullstone', displayName: 'Nullstone — 100,000',  description: 'Earn 100,000 lifetime Nullstone motes.',   condition: { kind: 'lifetime_motes', tierId: 'nullstone', amount: 100000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#8858b8' },
+  { id: 'mote_nullstone_1m',   groupId: 'motes', subcategoryId: 'motes_nullstone', displayName: 'Nullstone — 1 Million',description: 'Earn 1,000,000 lifetime Nullstone motes.', condition: { kind: 'lifetime_motes', tierId: 'nullstone', amount: 1000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#744ca4' },
+  // ── Fracteryl Milestones ──────────────────────────────────────
+  { id: 'mote_fracteryl_100',  groupId: 'motes', subcategoryId: 'motes_fracteryl', displayName: 'Fracteryl — 100',      description: 'Earn 100 lifetime Fracteryl motes.',       condition: { kind: 'lifetime_motes', tierId: 'fracteryl', amount: 100       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#7A2CFF' },
+  { id: 'mote_fracteryl_1k',   groupId: 'motes', subcategoryId: 'motes_fracteryl', displayName: 'Fracteryl — 1,000',    description: 'Earn 1,000 lifetime Fracteryl motes.',     condition: { kind: 'lifetime_motes', tierId: 'fracteryl', amount: 1000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#7A2CFF' },
+  { id: 'mote_fracteryl_10k',  groupId: 'motes', subcategoryId: 'motes_fracteryl', displayName: 'Fracteryl — 10,000',   description: 'Earn 10,000 lifetime Fracteryl motes.',    condition: { kind: 'lifetime_motes', tierId: 'fracteryl', amount: 10000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#6820e0' },
+  { id: 'mote_fracteryl_100k', groupId: 'motes', subcategoryId: 'motes_fracteryl', displayName: 'Fracteryl — 100,000',  description: 'Earn 100,000 lifetime Fracteryl motes.',   condition: { kind: 'lifetime_motes', tierId: 'fracteryl', amount: 100000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#6820e0' },
+  { id: 'mote_fracteryl_1m',   groupId: 'motes', subcategoryId: 'motes_fracteryl', displayName: 'Fracteryl — 1 Million',description: 'Earn 1,000,000 lifetime Fracteryl motes.', condition: { kind: 'lifetime_motes', tierId: 'fracteryl', amount: 1000000   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#5610c8' },
+  // ── Eigenstein Milestones ─────────────────────────────────────
+  { id: 'mote_eigenstein_100',  groupId: 'motes', subcategoryId: 'motes_eigenstein', displayName: 'Eigenstein — 100',      description: 'Earn 100 lifetime Eigenstein motes.',       condition: { kind: 'lifetime_motes', tierId: 'eigenstein', amount: 100       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#A34728' },
+  { id: 'mote_eigenstein_1k',   groupId: 'motes', subcategoryId: 'motes_eigenstein', displayName: 'Eigenstein — 1,000',    description: 'Earn 1,000 lifetime Eigenstein motes.',     condition: { kind: 'lifetime_motes', tierId: 'eigenstein', amount: 1000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#A34728' },
+  { id: 'mote_eigenstein_10k',  groupId: 'motes', subcategoryId: 'motes_eigenstein', displayName: 'Eigenstein — 10,000',   description: 'Earn 10,000 lifetime Eigenstein motes.',    condition: { kind: 'lifetime_motes', tierId: 'eigenstein', amount: 10000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#8c3c20' },
+  { id: 'mote_eigenstein_100k', groupId: 'motes', subcategoryId: 'motes_eigenstein', displayName: 'Eigenstein — 100,000',  description: 'Earn 100,000 lifetime Eigenstein motes.',   condition: { kind: 'lifetime_motes', tierId: 'eigenstein', amount: 100000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#8c3c20' },
+  { id: 'mote_eigenstein_1m',   groupId: 'motes', subcategoryId: 'motes_eigenstein', displayName: 'Eigenstein — 1 Million',description: 'Earn 1,000,000 lifetime Eigenstein motes.', condition: { kind: 'lifetime_motes', tierId: 'eigenstein', amount: 1000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#783018' },
+  // ── Cross-Tier Milestones ─────────────────────────────────────
+  { id: 'mote_cross_all_1',    groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'All Tiers — 1 Each',      description: 'Earn at least 1 mote from every unlocked tier.',           condition: { kind: 'all_unlocked_tiers_lifetime_motes', amount: 1        }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0d8ff' },
+  { id: 'mote_cross_all_100',  groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'All Tiers — 100 Each',    description: 'Earn at least 100 lifetime motes from every unlocked tier.',condition: { kind: 'all_unlocked_tiers_lifetime_motes', amount: 100      }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0d8ff' },
+  { id: 'mote_cross_all_1k',   groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'All Tiers — 1,000 Each', description: 'Earn at least 1,000 lifetime motes from every unlocked tier.',condition: { kind: 'all_unlocked_tiers_lifetime_motes', amount: 1000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80c8f0' },
+  { id: 'mote_cross_all_10k',  groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'All Tiers — 10,000 Each',description: 'Earn at least 10,000 lifetime motes from every unlocked tier.',condition: { kind: 'all_unlocked_tiers_lifetime_motes', amount: 10000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80c8f0' },
+  { id: 'mote_cross_all_100k', groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'All Tiers — 100,000 Each', description: 'Earn at least 100,000 lifetime motes from every unlocked tier.', condition: { kind: 'all_unlocked_tiers_lifetime_motes', amount: 100000  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#60b8e0' },
+  { id: 'mote_cross_all_1m',   groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'All Tiers — 1 Million Each', description: 'Earn at least 1,000,000 lifetime motes from every unlocked tier.', condition: { kind: 'all_unlocked_tiers_lifetime_motes', amount: 1000000 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#60b8e0' },
+  { id: 'mote_cross_thru_amethyst', groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Spectrum Through Amethyst', description: 'Earn at least 1 mote from every tier from Sand through Amethyst.', condition: { kind: 'specific_tiers_lifetime_motes', tierIds: ['sand','quartz','ruby','sunstone','citrine','emerald','sapphire','iolite','amethyst'] }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#b464c8' },
+  { id: 'mote_cross_thru_nullstone', groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Spectrum Through Nullstone', description: 'Earn at least 1 mote from every tier from Sand through Nullstone.', condition: { kind: 'specific_tiers_lifetime_motes', tierIds: ['sand','quartz','ruby','sunstone','citrine','emerald','sapphire','iolite','amethyst','diamond','nullstone'] }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#9664c8' },
+  { id: 'mote_cross_thru_eigenstein', groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Full Spectrum', description: 'Earn at least 1 mote from every tier from Sand through Eigenstein.', condition: { kind: 'specific_tiers_lifetime_motes', tierIds: ['sand','quartz','ruby','sunstone','citrine','emerald','sapphire','iolite','amethyst','diamond','nullstone','fracteryl','eigenstein'] }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.10, displayColor: '#A34728' },
+  { id: 'mote_current_100',   groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Stockpile — 100',   description: 'Have at least 100 current motes in every unlocked tier at the same time.',    condition: { kind: 'current_motes_all_unlocked_tiers', amount: 100    }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#80e0d0' },
+  { id: 'mote_current_1k',    groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Stockpile — 1,000', description: 'Have at least 1,000 current motes in every unlocked tier at the same time.',  condition: { kind: 'current_motes_all_unlocked_tiers', amount: 1000   }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#80e0d0' },
+  { id: 'mote_current_10k',   groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Stockpile — 10,000',description: 'Have at least 10,000 current motes in every unlocked tier at the same time.', condition: { kind: 'current_motes_all_unlocked_tiers', amount: 10000  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#60d0c0' },
+  { id: 'mote_current_100k',  groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Stockpile — 100,000',description:'Have at least 100,000 current motes in every unlocked tier at the same time.',condition: { kind: 'current_motes_all_unlocked_tiers', amount: 100000 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#60d0c0' },
+  { id: 'mote_total_1k',   groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Grand Total — 1,000',        description: 'Earn 1,000 total lifetime motes across all tiers.',            condition: { kind: 'lifetime_motes_total', amount: 1000            }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#c0ffc0' },
+  { id: 'mote_total_100k', groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Grand Total — 100,000',      description: 'Earn 100,000 total lifetime motes across all tiers.',          condition: { kind: 'lifetime_motes_total', amount: 100000          }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#c0ffc0' },
+  { id: 'mote_total_10m',  groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Grand Total — 10 Million',   description: 'Earn 10,000,000 total lifetime motes across all tiers.',       condition: { kind: 'lifetime_motes_total', amount: 10000000        }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#a0f0a0' },
+  { id: 'mote_total_1b',   groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Grand Total — 1 Billion',    description: 'Earn 1,000,000,000 total lifetime motes across all tiers.',    condition: { kind: 'lifetime_motes_total', amount: 1000000000      }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#a0f0a0' },
+  { id: 'mote_total_1t',   groupId: 'motes', subcategoryId: 'motes_cross_tier', displayName: 'Grand Total — 1 Trillion',   description: 'Earn 1,000,000,000,000 total lifetime motes across all tiers.',condition: { kind: 'lifetime_motes_total', amount: 1000000000000   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10, displayColor: '#80e080' },
+  // ── Mote Size Milestones ──────────────────────────────────────
+  { id: 'mote_size_1',         groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-1 Mote',           description: 'Form your first size-1 mote through merging (any tier with 100+ lifetime motes).',        condition: { kind: 'any_tier_lifetime_motes', amount: 100           }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#ffe0a0' },
+  { id: 'mote_size_2',         groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-2 Mote',           description: 'Form your first size-2 mote through merging (any tier with 10,000+ lifetime motes).',    condition: { kind: 'any_tier_lifetime_motes', amount: 10000         }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#ffd060' },
+  { id: 'mote_size_3',         groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-3 Mote',           description: 'Form your first size-3 mote through merging (any tier with 1,000,000+ lifetime motes).', condition: { kind: 'any_tier_lifetime_motes', amount: 1000000       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ffc040' },
+  { id: 'mote_size_4',         groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-4 Mote',           description: 'Form your first size-4 mote through merging (any tier with 100,000,000+ lifetime motes).', condition: { kind: 'any_tier_lifetime_motes', amount: 100000000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ffb020' },
+  { id: 'mote_size_3_5tiers',  groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-3 in 5 Tiers',    description: 'Form a size-3 mote in any 5 different tiers (5 tiers with 1,000,000+ lifetime motes).', condition: { kind: 'tiers_with_lifetime_motes', count: 5, amount: 1000000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ffa000' },
+  { id: 'mote_size_4_3tiers',  groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-4 in 3 Tiers',    description: 'Form a size-4 mote in any 3 different tiers (3 tiers with 100,000,000+ lifetime motes).', condition: { kind: 'tiers_with_lifetime_motes', count: 3, amount: 100000000  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.10, displayColor: '#ff9000' },
+  // ── Aliven Mote Milestones ────────────────────────────────────
+  { id: 'mote_aliven_1',   groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'First Aliven',      description: 'Aliven your first mote tier.',                                  condition: { kind: 'aliven_count', count: 1  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0f0ff' },
+  { id: 'mote_aliven_3',   groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'Aliven 3',          description: 'Aliven 3 mote tiers.',                                          condition: { kind: 'aliven_count', count: 3  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80e0f0' },
+  { id: 'mote_aliven_5',   groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'Aliven 5',          description: 'Aliven 5 mote tiers.',                                          condition: { kind: 'aliven_count', count: 5  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#60d0e0' },
+  { id: 'mote_aliven_8',   groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'Aliven 8',          description: 'Aliven 8 mote tiers.',                                          condition: { kind: 'aliven_count', count: 8  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#40c0d0' },
+  { id: 'mote_aliven_all', groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'Fully Alivened',    description: 'Aliven every mote tier that can currently be alivened (Sand through Nullstone).', condition: { kind: 'aliven_all_possible' },  bonusKind: 'loom_multiplier', bonusMultiplier: 1.10, displayColor: '#20b0c0' },
 ];
 
 // ─── Equation group ──────────────────────────────────────────────
 
 const EQUATION_ACHIEVEMENTS: readonly AchievementDefinition[] = [
-  {
-    id: 'equation_awakened',
-    groupId: 'equation',
-    displayName: 'Equation Awakened',
-    description: 'Unlock the Equation Forge and begin refining motes.',
-    condition: { kind: 'forge_unlocked' },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.05,
-    displayColor: '#a0c8ff',
-  },
-  {
-    id: 'first_principle',
-    groupId: 'equation',
-    displayName: 'First Principle',
-    description: 'Tap the equation 100 times.',
-    condition: { kind: 'tap_count', count: 100 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.05,
-    displayColor: '#a0c8ff',
-  },
-  {
-    id: 'expanding_terms',
-    groupId: 'equation',
-    displayName: 'Expanding Terms',
-    description: 'Unlock 5 equation tiers.',
-    condition: { kind: 'equation_tiers', count: 5 },
-    bonusKind: 'loom_multiplier',
-    bonusMultiplier: 1.05,
-    displayColor: '#a0c8ff',
-  },
-  {
-    id: 'tenfold_recursion',
-    groupId: 'equation',
-    displayName: 'Tenfold Recursion',
-    description: 'Tap the equation 1,000 times.',
-    condition: { kind: 'tap_count', count: 1000 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.10,
-    displayColor: '#80b0ff',
-  },
-  {
-    id: 'full_spectrum',
-    groupId: 'equation',
-    displayName: 'Full Spectrum',
-    description: 'Unlock all 9 equation tiers.',
-    condition: { kind: 'equation_tiers', count: 9 },
-    bonusKind: 'loom_multiplier',
-    bonusMultiplier: 1.10,
-    displayColor: '#80b0ff',
-  },
-  {
-    id: 'convergence',
-    groupId: 'equation',
-    displayName: 'Convergence',
-    description: 'Tap the equation 10,000 times.',
-    condition: { kind: 'tap_count', count: 10000 },
-    bonusKind: 'tap_multiplier',
-    bonusMultiplier: 1.15,
-    displayColor: '#60a0ff',
-  },
+  // ── Forge Unlocks ────────────────────────────────────────────
+  { id: 'equation_awakened', groupId: 'equation', subcategoryId: 'eq_forge_unlock', displayName: 'Equation Awakened', description: 'Unlock the Equation Forge and begin refining motes.', condition: { kind: 'forge_unlocked' }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  // ── Equation Taps ─────────────────────────────────────────────
+  { id: 'eq_tap_1',       groupId: 'equation', subcategoryId: 'eq_taps', displayName: 'First Tap',        description: 'Perform your first equation tap.',          condition: { kind: 'tap_count', count: 1        }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_tap_10',      groupId: 'equation', subcategoryId: 'eq_taps', displayName: 'Ten Taps',         description: 'Tap the equation 10 times.',                condition: { kind: 'tap_count', count: 10       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'first_principle',groupId: 'equation', subcategoryId: 'eq_taps', displayName: 'First Principle',  description: 'Tap the equation 100 times.',               condition: { kind: 'tap_count', count: 100      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'tenfold_recursion',groupId:'equation', subcategoryId: 'eq_taps', displayName: 'Tenfold Recursion',description: 'Tap the equation 1,000 times.',             condition: { kind: 'tap_count', count: 1000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.10, displayColor: '#80b0ff' },
+  { id: 'convergence',    groupId: 'equation', subcategoryId: 'eq_taps', displayName: 'Convergence',      description: 'Tap the equation 10,000 times.',            condition: { kind: 'tap_count', count: 10000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.15, displayColor: '#60a0ff' },
+  { id: 'eq_tap_100k',    groupId: 'equation', subcategoryId: 'eq_taps', displayName: '100,000 Taps',     description: 'Tap the equation 100,000 times.',           condition: { kind: 'tap_count', count: 100000   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#5090f0' },
+  { id: 'eq_tap_1m',      groupId: 'equation', subcategoryId: 'eq_taps', displayName: 'One Million Taps', description: 'Tap the equation 1,000,000 times.',         condition: { kind: 'tap_count', count: 1000000  }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.10, displayColor: '#4080e0' },
+  // ── Equation Tier Unlocks ─────────────────────────────────────
+  { id: 'eq_tier_2',       groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 2 Tiers',   description: 'Unlock 2 equation tiers.',  condition: { kind: 'equation_tiers', count: 2  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_tier_3',       groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 3 Tiers',   description: 'Unlock 3 equation tiers.',  condition: { kind: 'equation_tiers', count: 3  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_tier_4',       groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 4 Tiers',   description: 'Unlock 4 equation tiers.',  condition: { kind: 'equation_tiers', count: 4  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#90bcf0' },
+  { id: 'expanding_terms', groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Expanding Terms',  description: 'Unlock 5 equation tiers.',  condition: { kind: 'equation_tiers', count: 5  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_tier_6',       groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 6 Tiers',   description: 'Unlock 6 equation tiers.',  condition: { kind: 'equation_tiers', count: 6  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80b0e8' },
+  { id: 'eq_tier_7',       groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 7 Tiers',   description: 'Unlock 7 equation tiers.',  condition: { kind: 'equation_tiers', count: 7  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80b0e8' },
+  { id: 'eq_tier_8',       groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 8 Tiers',   description: 'Unlock 8 equation tiers.',  condition: { kind: 'equation_tiers', count: 8  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#70a0d8' },
+  { id: 'full_spectrum',   groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Full Spectrum',    description: 'Unlock all 9 equation tiers.', condition: { kind: 'equation_tiers', count: 9 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10, displayColor: '#80b0ff' },
+  { id: 'eq_tier_10',      groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 10 Tiers',  description: 'Unlock 10 equation tiers.', condition: { kind: 'equation_tiers', count: 10 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#6090c8' },
+  { id: 'eq_tier_11',      groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 11 Tiers',  description: 'Unlock 11 equation tiers.', condition: { kind: 'equation_tiers', count: 11 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#6090c8' },
+  { id: 'eq_tier_12',      groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 12 Tiers',  description: 'Unlock 12 equation tiers.', condition: { kind: 'equation_tiers', count: 12 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#5080b8' },
+  { id: 'eq_tier_13',      groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Unlock 13 Tiers',  description: 'Unlock 13 equation tiers.', condition: { kind: 'equation_tiers', count: 13 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10, displayColor: '#5080b8' },
+  { id: 'eq_seg_quartz',   groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Quartz Segment',   description: 'Unlock the Quartz equation segment.',   condition: { kind: 'equation_segment_unlocked', tierId: 'quartz'    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#f5f0eb' },
+  { id: 'eq_seg_ruby',     groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Ruby Segment',     description: 'Unlock the Ruby equation segment.',     condition: { kind: 'equation_segment_unlocked', tierId: 'ruby'      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#dc3232' },
+  { id: 'eq_seg_sunstone', groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Sunstone Segment', description: 'Unlock the Sunstone equation segment.', condition: { kind: 'equation_segment_unlocked', tierId: 'sunstone'  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ff8c3c' },
+  { id: 'eq_seg_citrine',  groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Citrine Segment',  description: 'Unlock the Citrine equation segment.',  condition: { kind: 'equation_segment_unlocked', tierId: 'citrine'   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#e6c850' },
+  { id: 'eq_seg_emerald',  groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Emerald Segment',  description: 'Unlock the Emerald equation segment.',  condition: { kind: 'equation_segment_unlocked', tierId: 'emerald'   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#50b464' },
+  { id: 'eq_seg_sapphire', groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Sapphire Segment', description: 'Unlock the Sapphire equation segment.', condition: { kind: 'equation_segment_unlocked', tierId: 'sapphire'  }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#3c78c8' },
+  { id: 'eq_seg_iolite',   groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Iolite Segment',   description: 'Unlock the Iolite equation segment.',   condition: { kind: 'equation_segment_unlocked', tierId: 'iolite'    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#6464b4' },
+  { id: 'eq_seg_amethyst', groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Amethyst Segment', description: 'Unlock the Amethyst equation segment.', condition: { kind: 'equation_segment_unlocked', tierId: 'amethyst'  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#b464c8' },
+  { id: 'eq_seg_diamond',  groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Diamond Segment',  description: 'Unlock the Diamond equation segment.',  condition: { kind: 'equation_segment_unlocked', tierId: 'diamond'   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#f0f5fa' },
+  { id: 'eq_seg_nullstone',groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Nullstone Segment',description: 'Unlock the Nullstone equation segment.',condition: { kind: 'equation_segment_unlocked', tierId: 'nullstone' }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#9664c8' },
+  { id: 'eq_seg_fracteryl',groupId: 'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Fracteryl Segment',description: 'Unlock the Fracteryl equation segment.',condition: { kind: 'equation_segment_unlocked', tierId: 'fracteryl' }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#7A2CFF' },
+  { id: 'eq_seg_eigenstein',groupId:'equation', subcategoryId: 'eq_tier_unlocks', displayName: 'Eigenstein Segment',description:'Unlock the Eigenstein equation segment.',condition: { kind: 'equation_segment_unlocked', tierId: 'eigenstein'}, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#A34728' },
+  // ── Equation Upgrade Levels ───────────────────────────────────
+  { id: 'eq_upg_first',  groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: 'First Upgrade',    description: 'Buy your first equation upgrade.',        condition: { kind: 'total_equation_upgrade_levels', count: 1    }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_upg_10',     groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: '10 Upgrades',      description: 'Buy 10 total equation upgrades.',         condition: { kind: 'total_equation_upgrade_levels', count: 10   }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_upg_25',     groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: '25 Upgrades',      description: 'Buy 25 total equation upgrades.',         condition: { kind: 'total_equation_upgrade_levels', count: 25   }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#90bcf0' },
+  { id: 'eq_upg_50',     groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: '50 Upgrades',      description: 'Buy 50 total equation upgrades.',         condition: { kind: 'total_equation_upgrade_levels', count: 50   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#90bcf0' },
+  { id: 'eq_upg_100',    groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: '100 Upgrades',     description: 'Buy 100 total equation upgrades.',        condition: { kind: 'total_equation_upgrade_levels', count: 100  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80b0e8' },
+  { id: 'eq_upg_250',    groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: '250 Upgrades',     description: 'Buy 250 total equation upgrades.',        condition: { kind: 'total_equation_upgrade_levels', count: 250  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#80b0e8' },
+  { id: 'eq_upg_500',    groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: '500 Upgrades',     description: 'Buy 500 total equation upgrades.',        condition: { kind: 'total_equation_upgrade_levels', count: 500  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#70a0d8' },
+  { id: 'eq_upg_1000',   groupId: 'equation', subcategoryId: 'eq_upgrade_levels', displayName: '1,000 Upgrades',   description: 'Buy 1,000 total equation upgrades.',      condition: { kind: 'total_equation_upgrade_levels', count: 1000 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.10, displayColor: '#6090c8' },
+  // ── Per-Tier Equation Mastery ─────────────────────────────────
+  { id: 'eq_any_lv2',   groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Level 2',    description: 'Upgrade any equation segment to level 2.',   condition: { kind: 'any_equation_segment_level', level: 2   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_any_lv5',   groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Level 5',    description: 'Upgrade any equation segment to level 5.',   condition: { kind: 'any_equation_segment_level', level: 5   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_any_lv10',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Level 10',   description: 'Upgrade any equation segment to level 10.',  condition: { kind: 'any_equation_segment_level', level: 10  }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#90bcf0' },
+  { id: 'eq_any_lv25',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Level 25',   description: 'Upgrade any equation segment to level 25.',  condition: { kind: 'any_equation_segment_level', level: 25  }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#80b0e8' },
+  { id: 'eq_any_lv50',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Level 50',   description: 'Upgrade any equation segment to level 50.',  condition: { kind: 'any_equation_segment_level', level: 50  }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#70a0d8' },
+  { id: 'eq_any_lv100', groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Level 100',  description: 'Upgrade any equation segment to level 100.', condition: { kind: 'any_equation_segment_level', level: 100 }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.10, displayColor: '#6090c8' },
+  { id: 'eq_quartz_lv10',   groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Quartz Lv. 10',   description: 'Upgrade the Quartz equation segment to level 10.',   condition: { kind: 'equation_segment_level', tierId: 'quartz',    level: 10 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f5f0eb' },
+  { id: 'eq_ruby_lv10',     groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Ruby Lv. 10',     description: 'Upgrade the Ruby equation segment to level 10.',     condition: { kind: 'equation_segment_level', tierId: 'ruby',      level: 10 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#dc3232' },
+  { id: 'eq_sunstone_lv10', groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Sunstone Lv. 10', description: 'Upgrade the Sunstone equation segment to level 10.', condition: { kind: 'equation_segment_level', tierId: 'sunstone',  level: 10 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ff8c3c' },
+  { id: 'eq_citrine_lv10',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Citrine Lv. 10',  description: 'Upgrade the Citrine equation segment to level 10.',  condition: { kind: 'equation_segment_level', tierId: 'citrine',   level: 10 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#e6c850' },
+  { id: 'eq_emerald_lv10',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Emerald Lv. 10',  description: 'Upgrade the Emerald equation segment to level 10.',  condition: { kind: 'equation_segment_level', tierId: 'emerald',   level: 10 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#50b464' },
+  { id: 'eq_sapphire_lv10', groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Sapphire Lv. 10', description: 'Upgrade the Sapphire equation segment to level 10.', condition: { kind: 'equation_segment_level', tierId: 'sapphire',  level: 10 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#3c78c8' },
+  { id: 'eq_iolite_lv10',   groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Iolite Lv. 10',   description: 'Upgrade the Iolite equation segment to level 10.',   condition: { kind: 'equation_segment_level', tierId: 'iolite',    level: 10 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#6464b4' },
+  { id: 'eq_amethyst_lv10', groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Amethyst Lv. 10', description: 'Upgrade the Amethyst equation segment to level 10.', condition: { kind: 'equation_segment_level', tierId: 'amethyst',  level: 10 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#b464c8' },
+  { id: 'eq_diamond_lv10',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Diamond Lv. 10',  description: 'Upgrade the Diamond equation segment to level 10.',  condition: { kind: 'equation_segment_level', tierId: 'diamond',   level: 10 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f0f5fa' },
+  { id: 'eq_nullstone_lv10',groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Nullstone Lv. 10',description: 'Upgrade the Nullstone equation segment to level 10.',condition: { kind: 'equation_segment_level', tierId: 'nullstone', level: 10 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#9664c8' },
+  { id: 'eq_quartz_lv50',   groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Quartz Lv. 50',   description: 'Upgrade the Quartz equation segment to level 50.',   condition: { kind: 'equation_segment_level', tierId: 'quartz',    level: 50 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f5f0eb' },
+  { id: 'eq_ruby_lv50',     groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Ruby Lv. 50',     description: 'Upgrade the Ruby equation segment to level 50.',     condition: { kind: 'equation_segment_level', tierId: 'ruby',      level: 50 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#dc3232' },
+  { id: 'eq_sunstone_lv50', groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Sunstone Lv. 50', description: 'Upgrade the Sunstone equation segment to level 50.', condition: { kind: 'equation_segment_level', tierId: 'sunstone',  level: 50 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ff8c3c' },
+  { id: 'eq_citrine_lv50',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Citrine Lv. 50',  description: 'Upgrade the Citrine equation segment to level 50.',  condition: { kind: 'equation_segment_level', tierId: 'citrine',   level: 50 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#e6c850' },
+  { id: 'eq_emerald_lv50',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Emerald Lv. 50',  description: 'Upgrade the Emerald equation segment to level 50.',  condition: { kind: 'equation_segment_level', tierId: 'emerald',   level: 50 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#50b464' },
+  { id: 'eq_sapphire_lv50', groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Sapphire Lv. 50', description: 'Upgrade the Sapphire equation segment to level 50.', condition: { kind: 'equation_segment_level', tierId: 'sapphire',  level: 50 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#3c78c8' },
+  { id: 'eq_iolite_lv50',   groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Iolite Lv. 50',   description: 'Upgrade the Iolite equation segment to level 50.',   condition: { kind: 'equation_segment_level', tierId: 'iolite',    level: 50 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#6464b4' },
+  { id: 'eq_amethyst_lv50', groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Amethyst Lv. 50', description: 'Upgrade the Amethyst equation segment to level 50.', condition: { kind: 'equation_segment_level', tierId: 'amethyst',  level: 50 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#b464c8' },
+  { id: 'eq_diamond_lv50',  groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Diamond Lv. 50',  description: 'Upgrade the Diamond equation segment to level 50.',  condition: { kind: 'equation_segment_level', tierId: 'diamond',   level: 50 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#f0f5fa' },
+  { id: 'eq_nullstone_lv50',groupId: 'equation', subcategoryId: 'eq_per_tier', displayName: 'Nullstone Lv. 50',description: 'Upgrade the Nullstone equation segment to level 50.',condition: { kind: 'equation_segment_level', tierId: 'nullstone', level: 50 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#9664c8' },
+  // ── Structured Equation Milestones ────────────────────────────
+  { id: 'eq_all_lv2',   groupId: 'equation', subcategoryId: 'eq_structured', displayName: 'All Segments — Lv. 2',   description: 'Have every unlocked equation segment at level 2 or higher.',   condition: { kind: 'all_unlocked_equation_segments_level', level: 2   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#a0c8ff' },
+  { id: 'eq_all_lv5',   groupId: 'equation', subcategoryId: 'eq_structured', displayName: 'All Segments — Lv. 5',   description: 'Have every unlocked equation segment at level 5 or higher.',   condition: { kind: 'all_unlocked_equation_segments_level', level: 5   }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#90bcf0' },
+  { id: 'eq_all_lv10',  groupId: 'equation', subcategoryId: 'eq_structured', displayName: 'All Segments — Lv. 10',  description: 'Have every unlocked equation segment at level 10 or higher.',  condition: { kind: 'all_unlocked_equation_segments_level', level: 10  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80b0e8' },
+  { id: 'eq_all_lv25',  groupId: 'equation', subcategoryId: 'eq_structured', displayName: 'All Segments — Lv. 25',  description: 'Have every unlocked equation segment at level 25 or higher.',  condition: { kind: 'all_unlocked_equation_segments_level', level: 25  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#70a0d8' },
+  { id: 'eq_all_lv50',  groupId: 'equation', subcategoryId: 'eq_structured', displayName: 'All Segments — Lv. 50',  description: 'Have every unlocked equation segment at level 50 or higher.',  condition: { kind: 'all_unlocked_equation_segments_level', level: 50  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#6090c8' },
+  { id: 'eq_all_lv100', groupId: 'equation', subcategoryId: 'eq_structured', displayName: 'All Segments — Lv. 100', description: 'Have every unlocked equation segment at level 100 or higher.', condition: { kind: 'all_unlocked_equation_segments_level', level: 100 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10, displayColor: '#5080b8' },
+  // ── Output Milestones ─────────────────────────────────────────
+  { id: 'eq_out_10',   groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 10',          description: 'Reach an equation output of at least 10.',             condition: { kind: 'equivalence_reached', amount: 10          }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0e8c0' },
+  { id: 'eq_out_100',  groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 100',         description: 'Reach an equation output of at least 100.',            condition: { kind: 'equivalence_reached', amount: 100         }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#90d8b0' },
+  { id: 'eq_out_1k',   groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 1,000',       description: 'Reach an equation output of at least 1,000.',          condition: { kind: 'equivalence_reached', amount: 1000        }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80c8a0' },
+  { id: 'eq_out_10k',  groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 10,000',      description: 'Reach an equation output of at least 10,000.',         condition: { kind: 'equivalence_reached', amount: 10000       }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#70b890' },
+  { id: 'eq_out_100k', groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 100,000',     description: 'Reach an equation output of at least 100,000.',        condition: { kind: 'equivalence_reached', amount: 100000      }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#60a880' },
+  { id: 'eq_out_1m',   groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 1 Million',   description: 'Reach an equation output of at least 1,000,000.',      condition: { kind: 'equivalence_reached', amount: 1000000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#509870' },
+  { id: 'eq_out_1b',   groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 1 Billion',   description: 'Reach an equation output of at least 1,000,000,000.', condition: { kind: 'equivalence_reached', amount: 1000000000  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#408860' },
+  { id: 'eq_out_1t',   groupId: 'equation', subcategoryId: 'eq_output', displayName: 'Output — 1 Trillion',  description: 'Reach an equation output of at least 1,000,000,000,000.', condition: { kind: 'equivalence_reached', amount: 1000000000000 }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.10, displayColor: '#307850' },
+  // ── Tap Gain Milestones ───────────────────────────────────────
+  { id: 'eq_tap_gain_10',  groupId: 'equation', subcategoryId: 'eq_tap_gain', displayName: 'Tap Gain — 10',      description: 'Reach a total tap gain of at least 10 motes from one tap.',       condition: { kind: 'equation_tap_gain_total', amount: 10      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd090' },
+  { id: 'eq_tap_gain_100', groupId: 'equation', subcategoryId: 'eq_tap_gain', displayName: 'Tap Gain — 100',     description: 'Reach a total tap gain of at least 100 motes from one tap.',      condition: { kind: 'equation_tap_gain_total', amount: 100     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffc070' },
+  { id: 'eq_tap_gain_1k',  groupId: 'equation', subcategoryId: 'eq_tap_gain', displayName: 'Tap Gain — 1,000',   description: 'Reach a total tap gain of at least 1,000 motes from one tap.',    condition: { kind: 'equation_tap_gain_total', amount: 1000    }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffb050' },
+  { id: 'eq_tap_gain_10k', groupId: 'equation', subcategoryId: 'eq_tap_gain', displayName: 'Tap Gain — 10,000',  description: 'Reach a total tap gain of at least 10,000 motes from one tap.',   condition: { kind: 'equation_tap_gain_total', amount: 10000   }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffa030' },
+  { id: 'eq_tap_gain_100k',groupId: 'equation', subcategoryId: 'eq_tap_gain', displayName: 'Tap Gain — 100,000', description: 'Reach a total tap gain of at least 100,000 motes from one tap.',  condition: { kind: 'equation_tap_gain_total', amount: 100000  }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ff9010' },
+  { id: 'eq_tap_gain_1m',  groupId: 'equation', subcategoryId: 'eq_tap_gain', displayName: 'Tap Gain — 1 Million',description:'Reach a total tap gain of at least 1,000,000 motes from one tap.', condition: { kind: 'equation_tap_gain_total', amount: 1000000 }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.10, displayColor: '#ff8000' },
+  // ── Long-Term Equation Progression ───────────────────────────
+  { id: 'eq_thru_nullstone',  groupId: 'equation', subcategoryId: 'eq_long_term', displayName: 'Through Nullstone',  description: 'Unlock the full structured equation through Nullstone.',  condition: { kind: 'equation_tiers', count: 11 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10, displayColor: '#9664c8' },
+  { id: 'eq_thru_fracteryl',  groupId: 'equation', subcategoryId: 'eq_long_term', displayName: 'Through Fracteryl',  description: 'Unlock the full structured equation through Fracteryl.',  condition: { kind: 'equation_tiers', count: 12 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.10, displayColor: '#7A2CFF' },
+  { id: 'eq_thru_eigenstein', groupId: 'equation', subcategoryId: 'eq_long_term', displayName: 'Through Eigenstein', description: 'Unlock the full structured equation through Eigenstein.', condition: { kind: 'equation_tiers', count: 13 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10, displayColor: '#A34728' },
+  { id: 'eq_equiv_1k',   groupId: 'equation', subcategoryId: 'eq_long_term', displayName: 'Equivalence — 1,000',       description: 'Reach an Equivalence score of at least 1,000 while the Equation Forge is unlocked.',           condition: { kind: 'equivalence_reached', amount: 1000        }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0ffa0' },
+  { id: 'eq_equiv_1m',   groupId: 'equation', subcategoryId: 'eq_long_term', displayName: 'Equivalence — 1 Million',   description: 'Reach an Equivalence score of at least 1,000,000 while the Equation Forge is unlocked.',        condition: { kind: 'equivalence_reached', amount: 1000000     }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80ff80' },
+  { id: 'eq_equiv_1b',   groupId: 'equation', subcategoryId: 'eq_long_term', displayName: 'Equivalence — 1 Billion',   description: 'Reach an Equivalence score of at least 1,000,000,000 while the Equation Forge is unlocked.',    condition: { kind: 'equivalence_reached', amount: 1000000000  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.10, displayColor: '#60ff60' },
 ];
 
 // ─── RPG group ───────────────────────────────────────────────────
