@@ -106,3 +106,31 @@
 - [ ] The right-side RPG stats widget shows one DPS row per equipped weapon with three-letter color abbreviations and colored bars
 - [ ] The DPS widget shows low/high axis labels that move with the sampled 10 second DPS range
 - [ ] DPS bars update smoothly over a rolling 10 second damage window
+
+## Achievements Tab UX
+- [ ] Three filter checkboxes appear at the top: "Show earned", "Show unearned", "Show hidden"
+- [ ] Default state: earned=checked, unearned=checked, hidden=unchecked
+- [ ] Unchecking "Show earned" hides all claimed/unlocked achievement cards
+- [ ] Unchecking "Show unearned" hides visible unearned achievements
+- [ ] Checking "Show hidden" reveals isSecret and isHiddenCriteria achievements
+- [ ] When both earned and unearned are unchecked, a "No achievements match..." message shows
+- [ ] Filter changes do not reset the open category accordion state
+- [ ] Clicking a filter checkbox does not accidentally toggle a category accordion
+- [ ] All achievement groups show correct claimed/total counts (e.g. "3/12")
+- [ ] Only one main category accordion can be open at a time
+- [ ] Opening a different main category closes the previously open one
+- [ ] Within RPG group, subcategory accordions are shown (Wave Progression, Bosses, XP & Stats, etc.)
+- [ ] Only one subcategory can be open at a time within RPG
+- [ ] Opening a different subcategory closes the previously open one
+- [ ] Opening a different main category resets the open subcategory state
+- [ ] RPG subcategories with 100+ achievements can be scrolled to the bottom
+- [ ] No content is clipped or cut off when RPG category is open with many achievements
+- [ ] Scroll works on desktop and mobile
+- [ ] isSecret achievements (not earned) show scrambled glyph text for name, desc, bonus, progress
+- [ ] isHiddenCriteria achievements (not earned) show scrambled glyph text only for the progress field
+- [ ] Glyph text changes one character at a time (not all at once)
+- [ ] Individual characters flicker independently at different rates
+- [ ] Earned achievements always show real name/description regardless of hidden filter
+- [ ] Claiming an achievement still works (tap earned-unclaimed card → reward shown)
+- [ ] Existing save data loads correctly and previously claimed achievements still appear as claimed
+- [ ] Build number shows 14 in Settings tab

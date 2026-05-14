@@ -945,14 +945,18 @@
 - Two small golden circles trace the perimeter of the outlined rect using `perimeterPoint()`.
 
 ### src/data/achievements/achievement-definitions.ts
-- 11 achievement definitions for tiers sand through nullstone.
-- Each achievement includes: id, `groupId`, displayName, description, requiresTierId, requiresLifetimeMotes, bonusKind, bonusMultiplier.
-- Bonus kinds: `tap_multiplier` (×tap gains) or `loom_multiplier` (×loom production).
+- AchievementDefinition type with `subcategoryId?: string` field for RPG sub-grouping.
+- All RPG achievements (both named and numbered) have `subcategoryId` assigned.
 - Exports `ACHIEVEMENT_DEFINITIONS`, `ACHIEVEMENT_BY_ID`.
+
+### src/data/achievements/achievement-subcategories.ts
+- `AchievementSubcategory` interface and `ACHIEVEMENT_SUBCATEGORIES` ordered list.
+- 11 RPG subcategories: Wave Progression, Bosses, XP & Stats, Weapons Purchased, Weapon Upgrades, RPG Upgrades, Regular Enemies, Elite Enemies, Aliven Enemies, Lucky Motes, Challenge.
+- `ACHIEVEMENT_SUBCATEGORY_BY_ID` map for quick lookup.
 
 ### src/data/achievements/achievement-groups.ts
 - Canonical achievement category metadata used by the UI accordion.
-- `ACHIEVEMENT_GROUPS` defines the 5 groups: Earthen, Blazing, Golden, Celestial, Secret.
+- `ACHIEVEMENT_GROUPS` defines the 4 groups: Motes, Equation, RPG, Secret.
 - `ACHIEVEMENT_GROUP_BY_ID` provides quick lookup by group id.
 
 ### src/sim/achievements/achievement-state.ts
@@ -1040,12 +1044,16 @@ Audio system — eight focused modules:
 - Equation upgrades and forge unlock have moved to the Equation panel.
 
 ### src/ui/panels/achievements-panel.ts
-- Achievements tab content.
-- Renders grouped accordion categories with toggle rows (`icon + name + claimed/total`).
-- Group and card sparkle emitters are managed with timer-backed emitter maps and cleaned up on hide/destroy.
-- Unclaimed cards and group toggles use Thero-style golden shimmer + sparkle visuals.
+- Achievements tab content — filter bar, nested category accordions, per-character glyph animation.
+- Filter bar: three checkboxes (show earned, show unearned, show hidden) with defaults earned+unearned=on, hidden=off.
+- Main category accordions: only one open at a time; opening another closes the previous.
+- RPG group: nested subcategory accordions (11 subcategories); only one subcategory open at a time.
+- Scroll fix: CSS grid-template-rows accordion (no max-height cap) supports unlimited achievements.
+- Glyph animation: single shared setInterval (GLYPH_TICK_MS=70ms) updates one char at a time per string with independent per-character probability (CHAR_FLIP_PROB=0.12).
+- isSecret achievements: glyph name, desc, bonus, progress when not earned.
+- isHiddenCriteria achievements: glyph only the progress field when not earned.
+- Sparkle emitters managed per card and group toggle, cleaned up on hide/destroy.
 - Exports `hasUnclaimedAchievements(state)` for tab-bar indicator logic.
-- Includes a top-center queued golden reward text animation when claims are tapped.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
