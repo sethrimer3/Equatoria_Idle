@@ -633,9 +633,8 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       if (!def.isSecret && !def.isHiddenCriteria) continue;
       const refs = cardRefs.get(def.id);
       if (!refs) continue;
-      // Only animate cards that are currently showing glyph content
-      // (i.e., not yet earned and the card is visible)
-      if (refs.card.style.display === 'none') continue;
+      // Only animate cards that are currently visible and showing glyph content
+      if (!cardIsVisible(refs)) continue;
       const isUnlocked = refs.card.classList.contains('achievement-unlocked') ||
                          refs.card.classList.contains('achievement-earned-unclaimed');
       if (isUnlocked) continue;
@@ -779,7 +778,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
         bonusEl.style.color = isClaimed ? '#a0e080' : '#ffd700';
         progressEl.textContent = isClaimed ? '✓ Claimed' : '✨ Earned — tap to claim your bonus!';
       } else {
-        iconEl.textContent = def.isSecret ? '🔒' : '🔒';
+        iconEl.textContent = '🔒';
 
         if (def.isSecret) {
           if (filterShowHidden) {
