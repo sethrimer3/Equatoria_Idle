@@ -419,7 +419,7 @@ const RPG_NUMBERED_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   { id: 'rpg_ach_030', groupId: 'rpg', displayName: 'RPG #30',  description: 'Hidden criteria.', condition: { kind: 'any_boss_at_speed', minSpeedPct: 100 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ff9060' },
   { id: 'rpg_ach_031', groupId: 'rpg', displayName: 'RPG #31',  description: 'Hidden criteria.', condition: { kind: 'specific_boss_at_speed', bossId: 1, minSpeedPct: 100 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ffa060' },
   { id: 'rpg_ach_032', groupId: 'rpg', displayName: 'RPG #32',  description: 'Hidden criteria.', condition: { kind: 'all_bosses_at_speed', minSpeedPct: 100 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ffa060' },
-  { id: 'rpg_ach_033', groupId: 'rpg', displayName: 'RPG #33',  description: 'Hidden criteria.', condition: { kind: 'specific_boss_at_speed', bossId: 1, minSpeedPct: 100 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ffa060' },
+  { id: 'rpg_ach_033', groupId: 'rpg', displayName: 'RPG #33',  description: 'Hidden criteria.', condition: { kind: 'specific_boss_at_speed', bossId: 2, minSpeedPct: 100 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ffa060' },
   { id: 'rpg_ach_034', groupId: 'rpg', displayName: 'RPG #34',  description: 'Hidden criteria.', condition: { kind: 'boss_defeated_any_speed_1weapon' }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ff7040' },
   { id: 'rpg_ach_035', groupId: 'rpg', displayName: 'RPG #35',  description: 'Hidden criteria.', condition: { kind: 'equip_weapons_count', count: 5 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#e08060' },
   // ── XP progression (036–058) ──────────────────────────────────
@@ -509,7 +509,7 @@ const RPG_NUMBERED_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   // ── Kill all regular enemy types (116) ────────────────────────
   { id: 'rpg_ach_116', groupId: 'rpg', displayName: 'RPG #116', description: 'Hidden criteria.', condition: { kind: 'kills_of_type', typeId: 'eigenstein', count: 1 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#e0e080' },
   // ── 1000 total regular kills (117) + 1000 late-tier kills (118) ──
-  { id: 'rpg_ach_117', groupId: 'rpg', displayName: 'RPG #117', description: 'Hidden criteria.', condition: { kind: 'total_kills', count: 1000  }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#d05040' },
+  { id: 'rpg_ach_117', groupId: 'rpg', displayName: 'RPG #117', description: 'Hidden criteria.', condition: { kind: 'total_kills', count: 2000  }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#d05040' },
   { id: 'rpg_ach_118', groupId: 'rpg', displayName: 'RPG #118', description: 'Hidden criteria.', condition: { kind: 'late_enemy_kills_total', count: 1000 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#b040a0' },
   // ── Elite enemy kills (119–128) ───────────────────────────────
   { id: 'rpg_ach_119', groupId: 'rpg', displayName: 'RPG #119', description: 'Hidden criteria.', condition: { kind: 'elite_kills_total', count: 1   }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ffe060' },
@@ -557,8 +557,8 @@ const RPG_NUMBERED_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   { id: 'rpg_ach_171', groupId: 'rpg', displayName: 'RPG #171', description: 'Hidden criteria.', condition: { kind: 'waves_completed', count: 1000 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#b05030' },
   { id: 'rpg_ach_172', groupId: 'rpg', displayName: 'RPG #172', description: 'Hidden criteria.', condition: { kind: 'waves_completed', count: 2500 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#b05030' },
   // ── XP allocated stats combos (173–174) ───────────────────────
-  { id: 'rpg_ach_173', groupId: 'rpg', displayName: 'RPG #173', description: 'Hidden criteria.', condition: { kind: 'xp_allocated_stats_count', count: 2 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#c0a060' },
-  { id: 'rpg_ach_174', groupId: 'rpg', displayName: 'RPG #174', description: 'Hidden criteria.', condition: { kind: 'xp_allocated_stats_count', count: 3 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#c0a060' },
+  { id: 'rpg_ach_173', groupId: 'rpg', displayName: 'RPG #173', description: 'Hidden criteria.', condition: { kind: 'xp_to_stat', stat: 'atk',  amount: 5000000 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#ff9060' },
+  { id: 'rpg_ach_174', groupId: 'rpg', displayName: 'RPG #174', description: 'Hidden criteria.', condition: { kind: 'xp_to_stat', stat: 'def',  amount: 5000000 }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#60c0ff' },
   // ── More total kills milestones (175–179) ─────────────────────
   { id: 'rpg_ach_175', groupId: 'rpg', displayName: 'RPG #175', description: 'Hidden criteria.', condition: { kind: 'total_kills', count: 25  }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#e06050' },
   { id: 'rpg_ach_176', groupId: 'rpg', displayName: 'RPG #176', description: 'Hidden criteria.', condition: { kind: 'total_kills', count: 50  }, bonusKind: 'base_atk', bonusMultiplier: 1, isHiddenCriteria: true, displayColor: '#e06050' },
