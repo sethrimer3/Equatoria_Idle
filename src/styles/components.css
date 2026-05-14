@@ -707,16 +707,147 @@
   transform: rotate(180deg);
 }
 
+/*
+ * CSS-grid accordion — no max-height limit, supports any number of cards.
+ * The outer element transitions grid-template-rows; the inner element has
+ * overflow:hidden so content is clipped during animation.
+ */
 .achievement-group-content {
-  padding: 0 8px;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .achievement-group-content--expanded {
-  max-height: 3000px;
-  padding: 8px 8px 0;
+  grid-template-rows: 1fr;
+}
+
+.achievement-group-inner {
+  overflow: hidden;
+  padding: 0 8px;
+}
+
+.achievement-group-content--expanded .achievement-group-inner {
+  padding-top: 8px;
+}
+
+/* ── Achievement filter bar ──────────────────────────────────── */
+.ach-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(16, 16, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--border-radius);
+}
+
+.ach-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ach-filter-label:hover {
+  color: var(--text-primary);
+}
+
+.ach-filter-checkbox {
+  accent-color: #ffd700;
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Subcategory accordions (RPG sub-groups) ─────────────────── */
+.ach-sub-group {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--border-radius);
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+
+.ach-sub-toggle {
+  width: 100%;
+  border: 0;
+  border-left: 3px solid rgba(160, 160, 200, 0.25);
+  background: rgba(20, 20, 35, 0.85);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  font-family: var(--font-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ach-sub-toggle:active {
+  opacity: 0.8;
+}
+
+.ach-sub-toggle-left,
+.ach-sub-toggle-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ach-sub-icon {
+  font-size: 13px;
+}
+
+.ach-sub-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ach-sub-count {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.ach-sub-chevron {
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.ach-sub-toggle--expanded .ach-sub-chevron {
+  transform: rotate(180deg);
+}
+
+/* CSS-grid accordion for subcategory content — no max-height limit */
+.ach-sub-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ach-sub-content--expanded {
+  grid-template-rows: 1fr;
+}
+
+.ach-sub-inner {
+  overflow: hidden;
+  padding: 0 6px;
+}
+
+/* ── Empty-filter message ────────────────────────────────────── */
+.ach-empty-msg {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 12px 8px;
+  font-style: italic;
 }
 
 .achievement-card {

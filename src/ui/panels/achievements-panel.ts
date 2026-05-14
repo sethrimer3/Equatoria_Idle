@@ -1,5 +1,9 @@
 import type { GameState } from '../../sim';
-import { ACHIEVEMENT_DEFINITIONS, ACHIEVEMENT_GROUPS } from '../../data/achievements';
+import {
+  ACHIEVEMENT_DEFINITIONS,
+  ACHIEVEMENT_GROUPS,
+  ACHIEVEMENT_SUBCATEGORIES,
+} from '../../data/achievements';
 import type { AchievementCondition } from '../../data/achievements/achievement-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import { formatNumberAs, type NumberFormat } from '../../util';
@@ -26,8 +30,9 @@ import {
 } from '../achievements/sparkle-shared';
 
 /**
- * Achievements panel — grouped accordion cards with claim interactions.
- * Locked secret achievements show scrambled BJ Cree characters that animate.
+ * Achievements panel — grouped accordion cards with filter bar, nested
+ * subcategories (RPG group), per-character glyph animation, and claim
+ * interactions.
  */
 export interface AchievementsPanel {
   element: HTMLElement;
@@ -39,20 +44,18 @@ export interface AchievementsPanel {
 
 // ─── Scrambled text helpers ─────────────────────────────────────
 
-const UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS = Array.from(
+const GLYPH_CHARS = Array.from(
   { length: 0x1676 - 0x1401 + 1 },
   (_, i) => String.fromCodePoint(0x1401 + i),
 ).join('');
 
-function randomChar(): string {
-  return UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS[
-    Math.floor(Math.random() * UNIFIED_CANADIAN_ABORIGINAL_SYLLABICS_CHARS.length)
-  ];
+function randomGlyphChar(): string {
+  return GLYPH_CHARS[Math.floor(Math.random() * GLYPH_CHARS.length)];
 }
 
 function makeScrambledText(length: number): string {
   let s = '';
-  for (let i = 0; i < length; i++) s += randomChar();
+  for (let i = 0; i < length; i++) s += randomGlyphChar();
   return s;
 }
 
@@ -64,11 +67,6 @@ function bonusText(bonusKind: string, bonusMultiplier: number): string {
   return `+${pct}% ${label}`;
 }
 
-/**
- * Returns the accent colour for an achievement card — uses `displayColor` when
- * provided, otherwise falls back to the mote-tier colour for `lifetime_motes`
- * conditions, or a neutral grey.
- */
 function getAccentColor(condition: AchievementCondition, displayColor?: string): string {
   if (displayColor) return displayColor;
   if (condition.kind === 'lifetime_motes') {
@@ -77,10 +75,6 @@ function getAccentColor(condition: AchievementCondition, displayColor?: string):
   return '#888';
 }
 
-/**
- * Returns a human-readable progress string for a locked (not yet unlocked)
- * achievement given the current game state.
- */
 function getProgressText(
   condition: AchievementCondition,
   state: GameState,
@@ -138,33 +132,82 @@ export function hasUnclaimedAchievements(state: GameState): boolean {
   return false;
 }
 
+// ─── Per-character glyph animation state ────────────────────────
+
+/** Number of characters that can change each tick (globally). */
+const GLYPH_TICK_MS = 70;
+/**
+ * Probability any single character changes during a tick.
+ * ~0.12 at 70ms ≈ ~1.7 flips/second per character.
+ */
+const CHAR_FLIP_PROB = 0.12;
+
+interface GlyphEntry {
+  /** Element whose textContent is updated with scrambled text. */
+  el: HTMLElement;
+  /** Length of the original text (number of characters to scramble). */
+  len: number;
+  /** Current scrambled characters, one per position. */
+  chars: string[];
+}
+
 // ─── Panel factory ─────────────────────────────────────────────
 
 export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: AudioSystem): AchievementsPanel {
   const panel = document.createElement('div');
   panel.className = 'panel achievements-panel';
 
-  const title = document.createElement('h3');
-  title.className = 'panel-title';
-  title.textContent = 'Achievements';
-  panel.appendChild(title);
+  const titleEl = document.createElement('h3');
+  titleEl.className = 'panel-title';
+  titleEl.textContent = 'Achievements';
+  panel.appendChild(titleEl);
 
-  const subtitle = document.createElement('p');
-  subtitle.className = 'panel-subtitle';
-  subtitle.textContent = 'Tap glowing achievements to claim bonuses';
-  panel.appendChild(subtitle);
+  const subtitleEl = document.createElement('p');
+  subtitleEl.className = 'panel-subtitle';
+  subtitleEl.textContent = 'Tap glowing achievements to claim bonuses';
+  panel.appendChild(subtitleEl);
+
+  // ── Filter bar ────────────────────────────────────────────────
+  let filterShowEarned = true;
+  let filterShowUnearned = true;
+  let filterShowHidden = false;
+
+  const filterBar = document.createElement('div');
+  filterBar.className = 'ach-filter-bar';
+
+  function makeFilterCheckbox(label: string, checked: boolean, onChange: (v: boolean) => void): HTMLLabelElement {
+    const lbl = document.createElement('label');
+    lbl.className = 'ach-filter-label';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'ach-filter-checkbox';
+    cb.checked = checked;
+    cb.addEventListener('change', (e) => {
+      e.stopPropagation();
+      onChange(cb.checked);
+      applyFilters();
+    });
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(' ' + label));
+    return lbl;
+  }
+
+  filterBar.appendChild(makeFilterCheckbox('Show earned',   filterShowEarned,   v => { filterShowEarned   = v; }));
+  filterBar.appendChild(makeFilterCheckbox('Show unearned', filterShowUnearned, v => { filterShowUnearned  = v; }));
+  filterBar.appendChild(makeFilterCheckbox('Show hidden',   filterShowHidden,   v => { filterShowHidden    = v; rebuildGlyphEntries(); }));
+  panel.appendChild(filterBar);
 
   const groupsRoot = document.createElement('div');
   groupsRoot.className = 'achievement-groups';
   panel.appendChild(groupsRoot);
 
-  // Small page break at the end of the achievements section
   panel.appendChild(makePageBreak('small'));
 
-  const existingGoldenTextContainer = document.querySelector<HTMLElement>('.golden-text-container');
-  const createdGoldenTextContainer = !existingGoldenTextContainer;
-  const goldenTextContainer = existingGoldenTextContainer ?? document.createElement('div');
-  if (createdGoldenTextContainer) {
+  // ── Golden reward queue ───────────────────────────────────────
+  const existingContainer = document.querySelector<HTMLElement>('.golden-text-container');
+  const createdContainer = !existingContainer;
+  const goldenTextContainer = existingContainer ?? document.createElement('div');
+  if (createdContainer) {
     goldenTextContainer.className = 'golden-text-container';
     document.body.appendChild(goldenTextContainer);
   }
@@ -193,28 +236,8 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     showNextReward();
   }
 
-  interface CardRefs {
-    card: HTMLElement;
-    iconEl: HTMLElement;
-    nameEl: HTMLElement;
-    bonusEl: HTMLElement;
-    descEl: HTMLElement;
-    progressEl: HTMLElement;
-    groupId: string;
-  }
-  interface GroupRefs {
-    toggle: HTMLButtonElement;
-    countEl: HTMLElement;
-    content: HTMLElement;
-    achievementIds: string[];
-  }
-
-  const cardRefs: Map<string, CardRefs> = new Map();
-  const groupRefs: Map<string, GroupRefs> = new Map();
+  // ── Sparkle system ─────────────────────────────────────────────
   const sparkleEmitters: Map<HTMLElement, SparkleEmitter> = new Map();
-
-  let expandedGroupId: string | null = ACHIEVEMENT_GROUPS[0]?.id ?? null;
-  let isPanelVisible = false;
 
   function createSparkle(host: HTMLElement): void {
     const sparkle = document.createElement('span');
@@ -223,17 +246,14 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     sparkle.style.height = `${SPARKLE_SIZE}px`;
     sparkle.style.left = `${Math.random() * 100}%`;
     sparkle.style.top = `${Math.random() * 100}%`;
-
     const driftX = randomInRange(-SPARKLE_DRIFT_X_RANGE / 2, SPARKLE_DRIFT_X_RANGE / 2);
     const driftY = randomInRange(-SPARKLE_DRIFT_Y_RANGE / 2, SPARKLE_DRIFT_Y_RANGE / 2) + SPARKLE_VERTICAL_BIAS_Y;
     const scale = randomInRange(SPARKLE_SCALE_MIN, SPARKLE_SCALE_MAX);
     const durationMs = randomInRange(SPARKLE_MIN_DURATION_MS, SPARKLE_MAX_DURATION_MS);
-
     sparkle.style.setProperty('--sparkle-dx', `${driftX.toFixed(2)}px`);
     sparkle.style.setProperty('--sparkle-dy', `${driftY.toFixed(2)}px`);
     sparkle.style.setProperty('--sparkle-scale', scale.toFixed(3));
     sparkle.style.setProperty('--sparkle-duration', `${durationMs.toFixed(0)}ms`);
-
     sparkle.addEventListener('animationend', () => sparkle.remove(), { once: true });
     host.appendChild(sparkle);
   }
@@ -255,39 +275,102 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       sparkleEmitters.set(host, { timeoutId });
       return;
     }
-
     if (!existing) return;
-    if (existing.timeoutId !== null) {
-      window.clearTimeout(existing.timeoutId);
-    }
+    if (existing.timeoutId !== null) window.clearTimeout(existing.timeoutId);
     sparkleEmitters.delete(host);
     host.classList.remove('achievement-sparkle-host');
-    for (const sparkle of host.querySelectorAll('.achievement-sparkle')) {
-      sparkle.remove();
-    }
+    for (const sparkle of host.querySelectorAll('.achievement-sparkle')) sparkle.remove();
   }
 
   function stopAllSparkles(): void {
-    for (const host of sparkleEmitters.keys()) {
-      setSparkleEmitter(host, false);
-    }
+    for (const host of sparkleEmitters.keys()) setSparkleEmitter(host, false);
   }
 
-  function setExpandedGroup(nextGroupId: string | null): void {
-    expandedGroupId = nextGroupId;
+  // ── DOM refs ──────────────────────────────────────────────────
+  interface CardRefs {
+    card: HTMLElement;
+    iconEl: HTMLElement;
+    nameEl: HTMLElement;
+    bonusEl: HTMLElement;
+    descEl: HTMLElement;
+    progressEl: HTMLElement;
+    groupId: string;
+    subcategoryId?: string;
+    /** True if this achievement is isSecret or isHiddenCriteria */
+    isHiddenType: boolean;
+  }
+
+  interface SubcategoryRefs {
+    section: HTMLElement;
+    toggle: HTMLButtonElement;
+    countEl: HTMLElement;
+    inner: HTMLElement;
+    achievementIds: string[];
+  }
+
+  interface GroupRefs {
+    toggle: HTMLButtonElement;
+    countEl: HTMLElement;
+    inner: HTMLElement;
+    achievementIds: string[];
+    subcategoryRefs: Map<string, SubcategoryRefs>;
+    /** Element shown when all cards are filtered out */
+    emptyMsg: HTMLElement;
+  }
+
+  const cardRefs: Map<string, CardRefs> = new Map();
+  const groupRefs: Map<string, GroupRefs> = new Map();
+
+  // ── UI accordion state ────────────────────────────────────────
+  let openMainCategoryId: string | null = ACHIEVEMENT_GROUPS[0]?.id ?? null;
+  let openSubcategoryId: string | null = null;
+  let isPanelVisible = false;
+
+  function setOpenGroup(nextId: string | null): void {
+    openMainCategoryId = nextId;
+    // When main category changes, collapse subcategory
+    openSubcategoryId = null;
+
     for (const [groupId, refs] of groupRefs) {
-      const isExpanded = groupId === expandedGroupId;
+      const isExpanded = groupId === openMainCategoryId;
+      refs.toggle.setAttribute('aria-expanded', String(isExpanded));
       refs.toggle.classList.toggle('achievement-group-toggle--expanded', isExpanded);
-      refs.content.classList.toggle('achievement-group-content--expanded', isExpanded);
+      refs.inner.parentElement!.classList.toggle('achievement-group-content--expanded', isExpanded);
+
       if (!isExpanded) {
-        for (const achievementId of refs.achievementIds) {
-          const refsForCard = cardRefs.get(achievementId);
-          if (refsForCard) setSparkleEmitter(refsForCard.card, false);
+        // Collapse all subcategories in this group
+        for (const sub of refs.subcategoryRefs.values()) {
+          sub.toggle.setAttribute('aria-expanded', 'false');
+          sub.toggle.classList.remove('ach-sub-toggle--expanded');
+          sub.inner.parentElement!.classList.remove('ach-sub-content--expanded');
+          for (const achId of sub.achievementIds) {
+            const r = cardRefs.get(achId);
+            if (r) setSparkleEmitter(r.card, false);
+          }
         }
       }
     }
   }
 
+  function setOpenSubcategory(groupId: string, nextSubId: string | null): void {
+    openSubcategoryId = nextSubId;
+    const groupRef = groupRefs.get(groupId);
+    if (!groupRef) return;
+    for (const [subId, sub] of groupRef.subcategoryRefs) {
+      const isExpanded = subId === openSubcategoryId;
+      sub.toggle.setAttribute('aria-expanded', String(isExpanded));
+      sub.toggle.classList.toggle('ach-sub-toggle--expanded', isExpanded);
+      sub.inner.parentElement!.classList.toggle('ach-sub-content--expanded', isExpanded);
+      if (!isExpanded) {
+        for (const achId of sub.achievementIds) {
+          const r = cardRefs.get(achId);
+          if (r) setSparkleEmitter(r.card, false);
+        }
+      }
+    }
+  }
+
+  // ── Build DOM ─────────────────────────────────────────────────
   for (const group of ACHIEVEMENT_GROUPS) {
     const groupEl = document.createElement('section');
     groupEl.className = 'achievement-group';
@@ -295,17 +378,18 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     const toggle = document.createElement('button');
     toggle.className = 'achievement-group-toggle';
     toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', 'false');
 
     const left = document.createElement('span');
     left.className = 'achievement-group-toggle-left';
-    const icon = document.createElement('span');
-    icon.className = 'achievement-group-icon';
-    icon.textContent = group.icon;
-    const label = document.createElement('span');
-    label.className = 'achievement-group-label';
-    label.textContent = group.name;
-    left.appendChild(icon);
-    left.appendChild(label);
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'achievement-group-icon';
+    iconSpan.textContent = group.icon;
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'achievement-group-label';
+    labelSpan.textContent = group.name;
+    left.appendChild(iconSpan);
+    left.appendChild(labelSpan);
 
     const right = document.createElement('span');
     right.className = 'achievement-group-toggle-right';
@@ -320,32 +404,140 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
     toggle.appendChild(left);
     toggle.appendChild(right);
-
-    const content = document.createElement('div');
-    content.className = 'achievement-group-content';
-
-    const achievementIds = ACHIEVEMENT_DEFINITIONS
-      .filter(def => def.groupId === group.id)
-      .map(def => def.id);
-
     toggle.addEventListener('click', () => {
-      const next = expandedGroupId === group.id ? null : group.id;
-      setExpandedGroup(next);
+      const next = openMainCategoryId === group.id ? null : group.id;
+      setOpenGroup(next);
     });
 
+    // Content wrapper — CSS grid accordion (no max-height limit)
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'achievement-group-content';
+
+    const inner = document.createElement('div');
+    inner.className = 'achievement-group-inner';
+    contentWrapper.appendChild(inner);
+
+    // Empty message (shown when all cards are filtered out)
+    const emptyMsg = document.createElement('div');
+    emptyMsg.className = 'ach-empty-msg';
+    emptyMsg.textContent = 'No achievements match the current filters.';
+    emptyMsg.style.display = 'none';
+    inner.appendChild(emptyMsg);
+
     groupEl.appendChild(toggle);
-    groupEl.appendChild(content);
+    groupEl.appendChild(contentWrapper);
     groupsRoot.appendChild(groupEl);
-    groupRefs.set(group.id, { toggle, countEl, content, achievementIds });
+
+    const subcategoryRefs: Map<string, SubcategoryRefs> = new Map();
+    const allGroupAchievementIds: string[] = [];
+
+    // Subcategories within this group
+    const groupSubcategories = ACHIEVEMENT_SUBCATEGORIES.filter(sub => sub.groupId === group.id);
+
+    if (groupSubcategories.length > 0) {
+      // Build subcategory accordions
+      for (const sub of groupSubcategories) {
+        const subAchievements = ACHIEVEMENT_DEFINITIONS.filter(
+          d => d.groupId === group.id && d.subcategoryId === sub.id,
+        );
+        if (subAchievements.length === 0) continue;
+
+        const subEl = document.createElement('section');
+        subEl.className = 'ach-sub-group';
+
+        const subToggle = document.createElement('button');
+        subToggle.className = 'ach-sub-toggle';
+        subToggle.type = 'button';
+        subToggle.setAttribute('aria-expanded', 'false');
+
+        const subLeft = document.createElement('span');
+        subLeft.className = 'ach-sub-toggle-left';
+        const subIcon = document.createElement('span');
+        subIcon.textContent = sub.icon;
+        subIcon.className = 'ach-sub-icon';
+        const subLabel = document.createElement('span');
+        subLabel.className = 'ach-sub-label';
+        subLabel.textContent = sub.name;
+        subLeft.appendChild(subIcon);
+        subLeft.appendChild(subLabel);
+
+        const subRight = document.createElement('span');
+        subRight.className = 'ach-sub-toggle-right';
+        const subCount = document.createElement('span');
+        subCount.className = 'ach-sub-count';
+        subCount.textContent = '0/0';
+        const subChevron = document.createElement('span');
+        subChevron.className = 'ach-sub-chevron';
+        subChevron.textContent = '▾';
+        subRight.appendChild(subCount);
+        subRight.appendChild(subChevron);
+
+        subToggle.appendChild(subLeft);
+        subToggle.appendChild(subRight);
+        subToggle.addEventListener('click', () => {
+          const next = openSubcategoryId === sub.id ? null : sub.id;
+          setOpenSubcategory(group.id, next);
+        });
+
+        const subContent = document.createElement('div');
+        subContent.className = 'ach-sub-content';
+        const subInner = document.createElement('div');
+        subInner.className = 'ach-sub-inner';
+        subContent.appendChild(subInner);
+
+        subEl.appendChild(subToggle);
+        subEl.appendChild(subContent);
+        inner.appendChild(subEl);
+
+        const subAchIds: string[] = [];
+        for (const def of subAchievements) {
+          subAchIds.push(def.id);
+          allGroupAchievementIds.push(def.id);
+          appendCard(def, subInner);
+        }
+
+        subcategoryRefs.set(sub.id, {
+          section: subEl,
+          toggle: subToggle,
+          countEl: subCount,
+          inner: subInner,
+          achievementIds: subAchIds,
+        });
+      }
+
+      // Achievements in this group without a subcategoryId (fallback)
+      const unsortedAchievements = ACHIEVEMENT_DEFINITIONS.filter(
+        d => d.groupId === group.id && !d.subcategoryId,
+      );
+      for (const def of unsortedAchievements) {
+        allGroupAchievementIds.push(def.id);
+        appendCard(def, inner);
+      }
+    } else {
+      // No subcategories — add cards directly to inner
+      for (const def of ACHIEVEMENT_DEFINITIONS) {
+        if (def.groupId !== group.id) continue;
+        allGroupAchievementIds.push(def.id);
+        appendCard(def, inner);
+      }
+    }
+
+    groupRefs.set(group.id, {
+      toggle,
+      countEl,
+      inner,
+      achievementIds: allGroupAchievementIds,
+      subcategoryRefs,
+      emptyMsg,
+    });
   }
 
-  for (const def of ACHIEVEMENT_DEFINITIONS) {
+  function appendCard(
+    def: (typeof ACHIEVEMENT_DEFINITIONS)[number],
+    container: HTMLElement,
+  ): void {
     const accentColor = getAccentColor(def.condition, def.displayColor);
-    const group = groupRefs.get(def.groupId);
-    if (!group) {
-      console.warn(`Unknown achievement groupId "${def.groupId}" for achievement "${def.id}"`);
-      continue;
-    }
+    const isHiddenType = !!(def.isSecret || def.isHiddenCriteria);
 
     const card = document.createElement('div');
     card.className = 'achievement-card';
@@ -362,7 +554,14 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     const nameEl = document.createElement('span');
     nameEl.className = 'achievement-name';
     nameEl.style.color = accentColor;
-    nameEl.textContent = def.isSecret ? makeScrambledText(def.displayName.length) : def.displayName;
+    // Secret achievements start with scrambled name; hidden-criteria show real name
+    if (def.isSecret) {
+      nameEl.textContent = makeScrambledText(def.displayName.length);
+      nameEl.style.fontFamily = "'BJ Cree', monospace";
+      nameEl.style.letterSpacing = '0.05em';
+    } else {
+      nameEl.textContent = def.displayName;
+    }
     header.appendChild(nameEl);
 
     const bonusEl = document.createElement('span');
@@ -374,69 +573,169 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
     const descEl = document.createElement('p');
     descEl.className = 'achievement-desc';
-    descEl.textContent = def.isSecret ? makeScrambledText(def.description.length) : def.description;
     if (def.isSecret) {
+      descEl.textContent = makeScrambledText(def.description.length);
       descEl.style.fontFamily = "'BJ Cree', monospace";
       descEl.style.letterSpacing = '0.05em';
-      nameEl.style.fontFamily = "'BJ Cree', monospace";
+    } else {
+      descEl.textContent = def.description;
     }
     card.appendChild(descEl);
 
     const progressEl = document.createElement('div');
     progressEl.className = 'achievement-progress';
+    if (def.isHiddenCriteria) {
+      progressEl.textContent = makeScrambledText(12);
+      progressEl.style.fontFamily = "'BJ Cree', monospace";
+    }
     card.appendChild(progressEl);
 
     card.addEventListener('click', () => {
-      const isEarned = card.classList.contains('achievement-earned-unclaimed');
-      if (!isEarned) return;
+      if (!card.classList.contains('achievement-earned-unclaimed')) return;
       dispatch({ kind: 'claim_achievement', achievementId: def.id });
       audioSystem?.onAchievementClaimed();
       enqueueReward(`${bonusText(def.bonusKind, def.bonusMultiplier)}!`);
     });
 
-    group.content.appendChild(card);
-    cardRefs.set(def.id, { card, iconEl, nameEl, bonusEl, descEl, progressEl, groupId: def.groupId });
+    container.appendChild(card);
+    cardRefs.set(def.id, {
+      card,
+      iconEl,
+      nameEl,
+      bonusEl,
+      descEl,
+      progressEl,
+      groupId: def.groupId,
+      subcategoryId: def.subcategoryId,
+      isHiddenType,
+    });
   }
 
-  setExpandedGroup(expandedGroupId);
+  setOpenGroup(openMainCategoryId);
 
-  // Periodically scramble text on locked secret achievements
-  const scrambleIntervalId = window.setInterval(() => {
+  // ── Per-character glyph animation ─────────────────────────────
+  /**
+   * Active glyph entries: only achievements that are visible (show-hidden=on,
+   * not yet earned) and have hidden content.
+   */
+  const glyphEntries: GlyphEntry[] = [];
+
+  function buildGlyphEntry(el: HTMLElement, length: number): GlyphEntry {
+    const chars = Array.from({ length }, () => randomGlyphChar());
+    el.textContent = chars.join('');
+    return { el, len: length, chars };
+  }
+
+  function rebuildGlyphEntries(): void {
+    glyphEntries.length = 0;
+    if (!filterShowHidden) return;
     for (const def of ACHIEVEMENT_DEFINITIONS) {
-      if (!def.isSecret) continue;
+      if (!def.isSecret && !def.isHiddenCriteria) continue;
       const refs = cardRefs.get(def.id);
       if (!refs) continue;
-      const { card, nameEl, descEl } = refs;
-      if (card.classList.contains('achievement-locked')) {
-        nameEl.textContent = makeScrambledText(def.displayName.length);
-        descEl.textContent = makeScrambledText(def.description.length);
+      // Only animate cards that are currently visible and showing glyph content
+      if (!cardIsVisible(refs)) continue;
+      const isUnlocked = refs.card.classList.contains('achievement-unlocked') ||
+                         refs.card.classList.contains('achievement-earned-unclaimed');
+      if (isUnlocked) continue;
+      if (def.isSecret) {
+        glyphEntries.push(buildGlyphEntry(refs.nameEl, def.displayName.length));
+        glyphEntries.push(buildGlyphEntry(refs.descEl, def.description.length));
+      }
+      if (def.isHiddenCriteria) {
+        glyphEntries.push(buildGlyphEntry(refs.progressEl, 12));
       }
     }
-  }, 600);
+  }
 
+  /** Single shared interval for per-character glyph animation. */
+  const glyphIntervalId = window.setInterval(() => {
+    for (const entry of glyphEntries) {
+      let changed = false;
+      for (let i = 0; i < entry.len; i++) {
+        if (Math.random() < CHAR_FLIP_PROB) {
+          entry.chars[i] = randomGlyphChar();
+          changed = true;
+        }
+      }
+      if (changed) entry.el.textContent = entry.chars.join('');
+    }
+  }, GLYPH_TICK_MS);
+
+  // ── Filter application ────────────────────────────────────────
+  /**
+   * Determines whether a card should be shown based on filter state.
+   * Uses the latest unlocked/claimed state stored on the card element.
+   */
+  function cardIsVisible(refs: CardRefs): boolean {
+    const isUnlocked = refs.card.classList.contains('achievement-unlocked') ||
+                       refs.card.classList.contains('achievement-earned-unclaimed');
+    const isHidden = refs.isHiddenType;
+
+    if (isUnlocked) return filterShowEarned;
+    if (isHidden)   return filterShowHidden;
+    return filterShowUnearned;
+  }
+
+  function applyFilters(): void {
+    for (const [, refs] of cardRefs) {
+      refs.card.style.display = cardIsVisible(refs) ? '' : 'none';
+    }
+
+    // Update subcategory visibility (hide section if no visible cards)
+    for (const [, groupRef] of groupRefs) {
+      let anyVisibleInGroup = false;
+
+      for (const [, sub] of groupRef.subcategoryRefs) {
+        let anyVisibleInSub = false;
+        for (const achId of sub.achievementIds) {
+          const r = cardRefs.get(achId);
+          if (r && r.card.style.display !== 'none') {
+            anyVisibleInSub = true;
+            break;
+          }
+        }
+        sub.section.style.display = anyVisibleInSub ? '' : 'none';
+        if (anyVisibleInSub) anyVisibleInGroup = true;
+      }
+
+      // Also check achievements directly in the group (no subcategory)
+      for (const achId of groupRef.achievementIds) {
+        const r = cardRefs.get(achId);
+        if (r && !r.subcategoryId && r.card.style.display !== 'none') {
+          anyVisibleInGroup = true;
+          break;
+        }
+      }
+
+      groupRef.emptyMsg.style.display = anyVisibleInGroup ? 'none' : '';
+    }
+
+    // Rebuild glyph entries since visibility may have changed
+    rebuildGlyphEntries();
+  }
+
+  // ── Main update ───────────────────────────────────────────────
   function setVisible(visible: boolean): void {
     isPanelVisible = visible;
     if (visible) return;
-    for (const refs of groupRefs.values()) {
-      setSparkleEmitter(refs.toggle, false);
-    }
-    for (const refs of cardRefs.values()) {
-      setSparkleEmitter(refs.card, false);
-    }
+    stopAllSparkles();
   }
 
   function destroy(): void {
-    window.clearInterval(scrambleIntervalId);
+    window.clearInterval(glyphIntervalId);
     stopAllSparkles();
-    if (createdGoldenTextContainer) {
-      goldenTextContainer.remove();
-    }
+    if (createdContainer) goldenTextContainer.remove();
   }
 
   function update(state: GameState, numberFormat: NumberFormat): void {
     const unclaimedByGroup = new Map<string, number>();
     const claimedByGroup = new Map<string, number>();
     const totalByGroup = new Map<string, number>();
+    const claimedBySub = new Map<string, number>();
+    const totalBySub = new Map<string, number>();
+
+    let needGlyphRebuild = false;
 
     for (const def of ACHIEVEMENT_DEFINITIONS) {
       const refs = cardRefs.get(def.id);
@@ -447,30 +746,48 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       const isClaimed = state.achievements.claimedIds.has(def.id);
       const isEarnedUnclaimed = isUnlocked && !isClaimed;
 
+      // Track previous state to detect transitions (for glyph rebuild)
+      const wasLocked = card.classList.contains('achievement-locked');
+
       card.classList.toggle('achievement-unlocked', isUnlocked && isClaimed);
       card.classList.toggle('achievement-locked', !isUnlocked);
       card.classList.toggle('achievement-earned-unclaimed', isEarnedUnclaimed);
+
+      if (wasLocked && isUnlocked) needGlyphRebuild = true;
 
       const defBonusText = bonusText(def.bonusKind, def.bonusMultiplier);
 
       if (isUnlocked) {
         iconEl.textContent = isClaimed ? '🏆' : '✨';
 
+        // Restore normal font if it was previously scrambled
         if (def.isSecret) {
           nameEl.style.fontFamily = "'Poiret One', sans-serif";
+          nameEl.style.letterSpacing = '';
           descEl.style.fontFamily = "'Poiret One', sans-serif";
           descEl.style.letterSpacing = '';
           nameEl.style.color = getAccentColor(def.condition, def.displayColor);
         }
+        if (def.isHiddenCriteria) {
+          progressEl.style.fontFamily = '';
+        }
+
         nameEl.textContent = def.displayName;
         descEl.textContent = def.description;
         bonusEl.textContent = isClaimed ? defBonusText : '✨ Tap to claim!';
         bonusEl.style.color = isClaimed ? '#a0e080' : '#ffd700';
-
         progressEl.textContent = isClaimed ? '✓ Claimed' : '✨ Earned — tap to claim your bonus!';
       } else {
         iconEl.textContent = '🔒';
+
         if (def.isSecret) {
+          if (filterShowHidden) {
+            // Glyph is managed by the glyph interval — just ensure font is set
+            nameEl.style.fontFamily = "'BJ Cree', monospace";
+            nameEl.style.letterSpacing = '0.05em';
+            descEl.style.fontFamily = "'BJ Cree', monospace";
+            descEl.style.letterSpacing = '0.05em';
+          }
           bonusEl.textContent = '???';
           bonusEl.style.color = '';
           progressEl.textContent = '???';
@@ -479,28 +796,45 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
           descEl.textContent = def.description;
           bonusEl.textContent = defBonusText;
           bonusEl.style.color = '';
-          progressEl.textContent = '??? (criteria hidden)';
+          if (filterShowHidden) {
+            progressEl.style.fontFamily = "'BJ Cree', monospace";
+            // Glyph text managed by interval
+          } else {
+            progressEl.style.fontFamily = '';
+            progressEl.textContent = '??? (criteria hidden)';
+          }
         } else {
           nameEl.textContent = def.displayName;
           descEl.textContent = def.description;
           bonusEl.textContent = defBonusText;
           bonusEl.style.color = '';
+          progressEl.style.fontFamily = '';
           progressEl.textContent = getProgressText(def.condition, state, numberFormat);
         }
       }
 
-      const total = totalByGroup.get(def.groupId) ?? 0;
-      totalByGroup.set(def.groupId, total + 1);
+      // Accumulate counts
+      totalByGroup.set(def.groupId, (totalByGroup.get(def.groupId) ?? 0) + 1);
+      if (def.subcategoryId) {
+        totalBySub.set(def.subcategoryId, (totalBySub.get(def.subcategoryId) ?? 0) + 1);
+      }
       if (isClaimed) {
         claimedByGroup.set(def.groupId, (claimedByGroup.get(def.groupId) ?? 0) + 1);
+        if (def.subcategoryId) {
+          claimedBySub.set(def.subcategoryId, (claimedBySub.get(def.subcategoryId) ?? 0) + 1);
+        }
       } else if (isEarnedUnclaimed) {
         unclaimedByGroup.set(def.groupId, (unclaimedByGroup.get(def.groupId) ?? 0) + 1);
       }
 
-      const cardShouldSparkle = isPanelVisible && isEarnedUnclaimed && expandedGroupId === def.groupId;
+      // Sparkle: only if visible, panel open, earned-unclaimed, in open group
+      const inOpenGroup = openMainCategoryId === def.groupId;
+      const inOpenSub = !def.subcategoryId || openSubcategoryId === def.subcategoryId;
+      const cardShouldSparkle = isPanelVisible && isEarnedUnclaimed && inOpenGroup && inOpenSub;
       setSparkleEmitter(card, cardShouldSparkle);
     }
 
+    // Update group header counts and sparkle
     for (const [groupId, refs] of groupRefs) {
       const total = totalByGroup.get(groupId) ?? 0;
       const claimed = claimedByGroup.get(groupId) ?? 0;
@@ -509,10 +843,24 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       refs.countEl.textContent = `${claimed}/${total}`;
       refs.toggle.classList.toggle('achievement-group-toggle--has-unclaimed', hasUnclaimed);
 
-      const groupShouldSparkle = isPanelVisible && hasUnclaimed;
-      setSparkleEmitter(refs.toggle, groupShouldSparkle);
+      setSparkleEmitter(refs.toggle, isPanelVisible && hasUnclaimed);
+
+      // Update subcategory header counts
+      for (const [subId, subRef] of refs.subcategoryRefs) {
+        const subTotal = totalBySub.get(subId) ?? 0;
+        const subClaimed = claimedBySub.get(subId) ?? 0;
+        subRef.countEl.textContent = `${subClaimed}/${subTotal}`;
+      }
     }
+
+    // Apply visibility filters (updates card display, subcategory sections, empty msg)
+    applyFilters();
+
+    if (needGlyphRebuild) rebuildGlyphEntries();
   }
+
+  // Initial glyph setup
+  rebuildGlyphEntries();
 
   return { element: panel, update, setVisible, destroy };
 }
