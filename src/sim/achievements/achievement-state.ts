@@ -128,7 +128,7 @@ function isConditionMet(
 
     case 'equation_segment_level': {
       const seg = equation.segments.find(s => s.tierId === condition.tierId);
-      return (seg?.isUnlocked && seg.level >= condition.level) ?? false;
+      return seg?.isUnlocked === true && seg.level >= condition.level;
     }
 
     case 'any_equation_segment_level': {
