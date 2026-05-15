@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#28**
+Current build: **#29**
 
 ---
 
@@ -57,12 +57,24 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 - **Global Aliven group cap**: added `MAX_ACTIVE_ALIVEN_GROUPS = 8` to `rpg-aliven-constants.ts`; `spawnEnemyById` skips the spawn if the cap is reached, protecting mobile performance.
 - **`applyForgeFieldForces` optimization**: pre-computed per-field squared radii and forge-check flags outside the particle loop; switched inner-loop distance comparison to squared-distance to avoid `Math.sqrt` for most particles.
 
+### Build #29 — Dev playtesting panel, auto-tap upgrades, SVG forecast timeline
+- **Dev playtesting panel** (`src/ui/panels/dev-panel.ts`): added a new "🔬 Playtesting Tools" section in Settings (visible only when Developer Mode is on):
+  - RPG wave-jump buttons for waves 2, 5, 8, 12, 15, 18, 22, 25, 26.
+  - Aliven spawn controls: per-variant spawn buttons, spawn-cap-count (8 groups) bulk button, clear-all button, live active group count display.
+  - Forge state snapshot: heat tap count, crunch active flag, sacrifice progress per tier.
+  - Loom state table: level, efficiency level, conversion progress, and special-purchased status for each unlocked loom.
+  - Aliven balance validation table: hpBase, atkBase, xpMult, particleCount, specialKind, cooldown range for every variant; warns on bad constants (negative HP/ATK/XP, specialCdMin > specialCdMax).
+- **Dev hooks wiring**: `RpgRender` gained `devSpawnAliven(variantId)`, `devClearAliven()`, `getAlivenGroupCount()`; `SettingsPanel` gained `registerDevHooks(hooks)`; game-app.ts wires hooks immediately after rpgRender is created.
+- **Auto-tap upgrade** (`upgrade-catalog.ts`): added `AUTO_TAP_UPGRADE` (`id: 'auto_tap_speed'`, `tierId: 'sand'`, `baseCost: 50`, `costScaleFactor: 3`, `maxLevel: 13`). Level 1 unlocks auto-tap at 5 000 ms; each subsequent level reduces the interval by 400 ms down to the 200 ms hard floor. Compatible with existing saves (no prior catalog entry, so autoTapLevel was always 0). Balance Forecast picks it up automatically via `ALL_UPGRADES`.
+- **Balance Forecast — SVG strategy timeline**: added `renderStrategyTimeline` function and a "📈 Strategy Timeline (Approximate)" section below the Strategy Comparison table. Renders each milestone as a dot on a shared time axis, one color per strategy. Tooltips show exact time. No extra dependencies.
+
 ---
 
 ## Current Remaining Work
 
 ### Needs manual playtesting before claiming done
-- Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. These are initial estimates; tune after real playtesting.
+- Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. Needs real playtesting.
+- **Auto-tap upgrade feel**: first level at 50 sand motes, scaling by 3× per level — does the pacing feel right? Is 13 levels the right depth?
 - **Forge 3-tap heat sequence**: does the heat UI row feel responsive? Is 3 taps the right number?
 - **Forge capture and sacrifice flash timing**: does the 600ms shockwave feel satisfying?
 - **Loom capture audio cooldown**: does 400ms cooldown feel right at various particle densities?
@@ -71,22 +83,32 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 - **Non-sand 10% passive production feel**: does non-sand progression feel too slow without active captures?
 - **Aliven group readability with new visuals**: healer beam, pulser ring, splitter burst — are they legible and not cluttered?
 - **Aliven early wave pacing**: play waves 2–25 and verify each variant introduction feels readable and not overwhelming.
-- **Aliven performance**: verify frame rate stays stable when 8 groups (the new cap) are alive simultaneously on a mid-tier device.
+- **Aliven performance**: verify frame rate stays stable when 8 groups (the cap) are alive simultaneously on a mid-tier device. Use the dev panel "Spawn 8" button to test.
 - **Aliven indicator markers**: verify tier-colored markers appear for Aliven group centroids (requires playing to wave 2+).
+- **Aliven balance values**: `hpBase`, `atkBase`, `xpMult`, `specialCdMin/Max` values are starting points — needs real playtesting. Use the dev panel's Aliven Balance Table for reference.
 
 ### Balance Forecast — still deferred
-- **RPG milestone simulation**: the engine cannot simulate RPG combat loop (wave/XP progression). A stub DPS model is deferred until wave/XP numbers stabilise.
-- **Auto-tap upgrades in forecast**: `auto_tap_speed` effectKind is defined in `upgrade-types.ts` and handled in `balance-forecast-purchases.ts`, but no catalog entries in `upgrade-catalog.ts` use it. The forecast will pick them up automatically once upgrade definitions are added. Design the upgrade levels first.
-- **Timeline visualization**: a canvas/SVG chart of the strategy curves would help; deferred until the panel stabilises.
+- **RPG milestone simulation**: the engine cannot simulate RPG combat loop (wave/XP progression). A stub DPS model needs: player base DPS from playerStats, enemy HP formula per wave tier, XP per kill constant, and how wave-boost multiplier grows. Once those numbers stabilise, add a labeled "RPG estimate" section to balance-forecast-engine.ts.
+- **Timeline chart enhancements**: the SVG timeline renders dots but has no click-through or zoom. If axis labelling is hard to read at high milestone counts, consider collapsing rows to category headers.
 
-### Aliven — remaining polish
-- **Aliven balance pass**: `hpBase`, `atkBase`, `xpMult`, `specialCdMin/Max` values are starting points — needs real playtesting.
+### Telemetry (not yet implemented)
+Session-counters for forge crunches, mass sacrificed by tier, loom captures by tier, Aliven spawns/kills by variant were noted as useful for balancing (Priority 2 in the original spec) but are not yet tracked. The dev panel currently shows current state, not session totals. Tracking these requires incrementing counters at call sites (`startEquationForgeCrunch`, `applyLoomCapture`, `removeDeadEnemiesImpl`). Consider adding them when balance questions become concrete enough to need data.
 
 ---
 
 ## Manual Playtesting Checklist
 
 Use this when doing a manual playtesting session. Check off what you tested.
+
+### Dev Panel
+- [ ] "🔬 Playtesting Tools" section appears in Settings only when Developer Mode is on
+- [ ] Wave-jump buttons (W2 … W26) teleport the RPG to the correct wave
+- [ ] Aliven spawn buttons add the correct variant; count display updates
+- [ ] Spawn-8 button adds up to 8 groups (capped); cap does not overflow
+- [ ] Clear Aliven button removes all active groups
+- [ ] Forge state shows correct heat tap count and crunch active flag
+- [ ] Loom table shows correct level and conversion progress per tier
+- [ ] Aliven balance table shows all 7 variants with no unexpected warnings
 
 ### Forge
 - [ ] Forge 3-tap heat sequence: tapping three times triggers crunch (particles captured, sacrifice flash shown)
@@ -101,6 +123,12 @@ Use this when doing a manual playtesting session. Check off what you tested.
 - [ ] Loom conversion threshold drops with efficiency upgrades
 - [ ] Non-sand passive production: Quartz+ looms trickle motes slowly even without captures
 
+### Auto-Tap Upgrade
+- [ ] "Auto-Tap Speed" upgrade appears in the upgrades panel when sand motes ≥ 50
+- [ ] Buying level 1 enables auto-tap at 5 000 ms interval (visible from equation timer)
+- [ ] Each subsequent level reduces interval by 400 ms
+- [ ] At level 13, auto-tap interval is at the 200 ms hard floor and the upgrade is maxed
+
 ### Aliven Enemies
 - [ ] Wave 2 introduction: a `spark_cluster` group appears after the laser/quartz enemies — player can learn the swarm pattern
 - [ ] Wave 5 introduction: a `quartz_ghost` group appears — ghost invulnerability is readable
@@ -113,10 +141,6 @@ Use this when doing a manual playtesting session. Check off what you tested.
 - [ ] Pulser ring visual: a ring expands outward when a pulser fires its shockwave
 - [ ] Splitter burst: a brief flash ring appears at the particle position when a splitter dies and splits
 - [ ] Healer beam: a faint dashed line connects healer to the particle it just healed
-- [ ] Centroid glow: a subtle ambient glow is visible around the group center
-- [ ] Spitter bullets: bullets have a bright white center highlight; clearly distinct from the spitter body
-- [ ] Group health bar: thin bar above centroid shows alive/total ratio; disappears when group dies
-- [ ] Aliven indicator markers: tier-colored triangles/outlines appear at group centroid when indicator style is not 'off'
 - [ ] Group cap: when 8 groups are alive, no new groups spawn (wave 26+ procedural)
 - [ ] Performance: frame rate stable with 8 Aliven groups alive simultaneously on a mid-tier device
 
@@ -137,7 +161,7 @@ Accessible only in dev mode (Settings → Developer Mode ON).
 |---|---|
 | `balance-forecast-types.ts` | Shared types, `formatDuration`, warning thresholds |
 | `balance-forecast-engine.ts` | Core analysis/simulation engine |
-| `balance-forecast-panel.ts` | DOM panel rendering |
+| `balance-forecast-panel.ts` | DOM panel rendering (includes SVG timeline) |
 | `balance-forecast-sim.ts` | Strategy simulation runner |
 | `balance-forecast-state.ts` | SimState, `createFreshSimState`, `simStateFromGame` |
 | `balance-forecast-purchases.ts` | Available-purchase enumeration |
@@ -146,3 +170,5 @@ Accessible only in dev mode (Settings → Developer Mode ON).
 **"Simulate from current state" toggle**: when checked, the Strategy Comparison table starts from your current resources/unlocks rather than a fresh game. Useful for planning which strategy would be most efficient from your current position.
 
 **Cost-growth warnings**: the pacing warnings section now includes flags when adjacent loom upgrade costs jump by more than 25× (configurable via `BALANCE_WARNING_THRESHOLDS.suspiciousCostGrowthMultiplier`).
+
+**SVG strategy timeline**: a simple dot-chart below the Strategy Comparison table showing when each milestone is reached per strategy. Hover a dot to see the exact time. No zoom or interactivity beyond tooltips.
