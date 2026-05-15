@@ -235,6 +235,12 @@
 - Decorative background crystalline crack effect (Substrate style, ported from Thero Shin Spire / Chapter 6).
 - Exports `SubstrateEffect` interface and `createSubstrateEffect({ quality })` factory.
 - Quality parameter ('low' | 'medium' | 'high') scales seed count, max fronts, and grain density.
+- Constants, types, and helpers extracted to `substrate-effect-internals.ts`.
+
+### src/render/background/substrate-effect-internals.ts
+- Internal constants, types, and pure helpers for `substrate-effect.ts`.
+- Exports all configurable parameters (SEED_COUNT, MAX_FRONTS, GROWTH_SPEED, etc.), undraw/collision-glow constants, colour palette (PaletteColor, PALETTE), internal types (FrontMode, TrailPoint, CollisionGlow, GrowthFront), and helpers (randomPaletteColor, quantisedAngle, createFront).
+- Should not be imported by any module other than `substrate-effect.ts`.
 
 ### src/render/particles/particle-types.ts
 - All shared particle system interfaces and type aliases.
@@ -439,12 +445,16 @@
 - Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
 - Grid-based velocity and dye field (60 × 80 cells).  Solver: inject forces → decay → diffuse velocity → advect tracer particles.
 - **No ambient injection** — velocity enters only via `addForce()` and `addExplosion()` calls from gameplay systems.
-- **Lifecycle/activation particle model**: particles are dormant until local speed exceeds `PARTICLE_WAKE_SPEED`.  On wake, each particle receives an `activation` (0–1, nonlinear in disturbance speed) and a finite `lifetimeSec`.  Trail opacity fades from `activation × smoothstep(lifeFrac) × maxAlphaScale` → 0, so slow movement is faint and short-lived while fast movement is vivid and long-lived.
-- Expired or out-of-bounds particles are recycled into underpopulated coarse cells (10 × 14 occupancy grid) to prevent density clustering.  `trailCount` is cleared on recycle to eliminate teleport streaks.
-- Particles sample the dye colour field to inherit entity colours; colour blends smoothly via weighted lerp toward the dominant dye source.
+- **Lifecycle/activation particle model**: particles are dormant until local speed exceeds `PARTICLE_WAKE_SPEED`.  On wake, each particle receives an `activation` (0–1, nonlinear in disturbance speed) and a finite `lifetimeSec`.  Trail opacity fades from `activation × smoothstep(lifeFrac) × maxAlphaScale` → 0.
+- Expired or out-of-bounds particles are recycled into underpopulated coarse cells (10 × 14 occupancy grid) to prevent density clustering.
 - Trail segments are batched by (hue-bucket × alpha-bucket) → at most 60 canvas state changes per frame.
-- Key tuning constants: `PARTICLE_WAKE_SPEED`, `PARTICLE_MIN/MAX_LIFETIME_SEC`, `PARTICLE_ACTIVATION_POWER`, `PARTICLE_REWAKE_BOOST`, `SPARSE_RESPAWN_COLS/ROWS`.
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
+- Constants, types, and helpers extracted to `rpg-fluid-constants.ts`.
+
+### src/render/rpg/rpg-fluid-constants.ts
+- Internal constants, types, and helpers for `rpg-fluid.ts`.
+- Exports all grid/particle/field/colour/batching constants, `_batches` pre-allocated draw buffer, math helpers (_clamp, _smoothstep, _hueBucket, _bilerp), `FluidParticle` interface, and `_makeParticle()`.
+- Should not be imported by any module other than `rpg-fluid.ts`.
 
 ### src/render/rpg/rpg-entity-draw.ts
 - Exported pure draw functions for weapon projectiles (~346 lines after player-draw extraction).
@@ -943,13 +953,17 @@
 - Each boss entry shows lock status, best completion speed, XP multiplier, and Fight button.
 
 ### src/ui/panels/rpg-enemies-tab.ts
-- Enemies sub-tab (bestiary) for the RPG overlay panel (~384 lines).
+- Enemies sub-tab (bestiary) for the RPG overlay panel (~286 lines).
 - `RpgEnemiesTabPane` interface; `createRpgEnemiesTabPane(dispatch)` factory.
 - `update(rpgState, isDevMode)` rebuilds the enemy and boss catalog from imported data.
-- Each entry contains a 40×40 canvas icon (drawn with color/glow/shape from constants), base HP/ATK/DEF stats, and a one-sentence description.
 - **Regular enemies** are visible once `highestWaveReached >= firstWave`; all are visible in dev mode.
 - **Bosses** are visible once beaten (`bossCompletions` has non-zero entry); all are visible in dev mode.
-- Catalog data (enemy entries, boss descriptions) imported from `rpg-enemies-catalog.ts`.
+- Icon drawing functions extracted to `rpg-enemies-tab-icons.ts`.
+
+### src/ui/panels/rpg-enemies-tab-icons.ts
+- Icon rendering helpers for the RPG enemies bestiary tab.
+- Exports `ICON_SIZE`, `createAlivenIconCanvas(entry)` (animated RAF mini-sim for swarm enemies), `drawEnemyIcon(canvas, entry)` (static icon for regular enemies), `drawBossIcon(canvas, bossId)`, and `drawPolygonPath(ctx, cx, cy, radius, sides)`.
+- Used by `rpg-enemies-tab.ts` for enemy entry card icons.
 
 ### src/ui/panels/rpg-enemies-catalog.ts
 - Static bestiary data for the RPG enemies tab (~265 lines).
