@@ -556,11 +556,16 @@
 - Includes `isInBottomSafeZone(px, py, dim)` local helper.
 
 ### src/render/rpg/rpg-boss-behaviors.ts
-- Per-boss-ID movement and attack patterns (~581 lines), extracted from `rpg-boss-update.ts`.
-- Exports `BossBehaviorCtx` (minimal subset of `BossUpdateCtx`) and `updateBossBehavior(boss, ctx, dt, dx, dy, dirX, dirY, dist, atk1Cd, atk2Cd, deltaMs): boolean`.
-- Returns `true` (boss-wave danmaku mode — position already clamped) or `false` (velocities only changed — caller applies position clamp).
-- Boss-wave block: three danmaku patterns (flower ring, spiral burst, star formation) that scale with `danmakuLevel`.
+- Per-boss-ID (non-wave) movement and attack patterns (~429 lines), extracted from `rpg-boss-update.ts`.
+- Exports `BossBehaviorCtx` (re-exported from `rpg-boss-behaviors-wave.ts`) and `updateBossBehavior(boss, ctx, dt, dx, dy, dirX, dirY, dist, atk1Cd, atk2Cd, deltaMs): boolean`.
+- Returns `true` (boss-wave danmaku mode — delegates to `rpg-boss-behaviors-wave.ts`) or `false` (velocities only changed — caller applies position clamp).
 - Per-boss blocks: bossId 1–12 movement + attack logic, gravity wells (bossId 8/9/10), invulnerability cycling (bossId 7), danmaku ring attacks (bossId 11/12).
+
+### src/render/rpg/rpg-boss-behaviors-wave.ts
+- Boss-wave danmaku patterns extracted from `rpg-boss-behaviors.ts` (~207 lines).
+- Exports `BossBehaviorCtx` (shared context interface for both boss behavior files) and `updateBossWaveBehavior(boss, ctx, dt, dx, dy, atk1Cd, atk2Cd)`.
+- Three danmaku pattern types that scale with `danmakuLevel`: flower ring, spiral burst, star formation.
+- Secondary attack: aimed fan of fast bullets toward the player.
 
 ### src/render/rpg/rpg-boss-draw.ts
 - 4 exported pure draw functions for boss wave HUD elements (~265 lines).
@@ -802,7 +807,7 @@
 - `update(nowMs)` advances rope physics for all active and slurping wires; must be called once per frame.
 - State is ephemeral — connections reset on page load.
 
-- Independent RPG canvas rendering system for the RPG tab (~1,151 lines after this refactor).
+- Independent RPG canvas rendering system for the RPG tab (~1,143 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
@@ -816,7 +821,7 @@
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (early wave: emerald/amber/void), `rpg-enemy-updates-mid.ts` (mid-wave: quartz/ruby/sunstone/citrine), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
-- Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; per-boss-ID behavior dispatch extracted further to `rpg-boss-behaviors.ts`; called via `bossCtx: BossUpdateCtx` object.
+- Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; per-boss-ID behavior dispatch extracted further to `rpg-boss-behaviors.ts` (non-wave) and `rpg-boss-behaviors-wave.ts` (danmaku); called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip and vortex draw functions extracted to `rpg-weapon-draw.ts`; sword combo and sand blade draw functions extracted to `rpg-weapon-draw-sword.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
@@ -824,6 +829,7 @@
 - Per-frame canvas draw function extracted to `rpg-render-draw.ts` via `drawRpgFrame(ctx, state, nowMs)`; `setAllDrawLowGraphics` forwards low-graphics flag to all draw modules.
 - Death/restart lifecycle (triggerDeath, doRestart, updateDying, updateRestarting) extracted to `rpg-death-restart.ts`; rpg-render.ts builds `deathRestartCtx: RpgDeathRestartCtx` and delegates all four functions.
 - Weapon orbit particle helpers (buildWeaponOrbitParticle, buildOrbitProjectile, updateWeaponOrbitParticles) extracted to `rpg-weapon-orbit.ts`; called via `weaponOrbitCtx: WeaponOrbitCtx`.
+- Per-frame weapon system tick (weapon system updates, auto-attack timers, sand blade fallback) extracted to `rpg-weapon-tick.ts`; rpg-render.ts builds `weaponTickCtx: WeaponTickCtx` and calls `tickWeaponSystems(weaponTickCtx, deltaMs)`.
 - Contains `createRpgRender()` closure with all update/draw logic for player, enemies, weapons, AI, input, and the stats panel DOM.
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
 - Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
@@ -867,6 +873,12 @@
 - `buildWeaponOrbitParticle` uses `TIER_BY_ID` for color and `weaponTiersByWeaponId` for size scaling.
 - `buildOrbitProjectile` checks the `orbit_projectile` RPG upgrade level and returns null if not unlocked.
 - `updateWeaponOrbitParticles` advances all orbit particle angles, maintains even spacing, and records distance-based trail points.
+
+### src/render/rpg/rpg-weapon-tick.ts
+- Per-frame weapon system update dispatch extracted from `rpg-render.ts` (~151 lines).
+- Exports `WeaponTickCtx` interface and `tickWeaponSystems(ctx, deltaMs)`.
+- Handles three responsibilities: weapon effect system updates (sand, chainWhip, vortex, etc.), per-weapon auto-attack timer countdown and `performWeaponAttack` dispatch, and sand blade fallback when no weapons are equipped.
+- `rpg-render.ts` constructs `weaponTickCtx: WeaponTickCtx` once (after context objects) and calls `tickWeaponSystems(weaponTickCtx, deltaMs)` each frame.
 
 ### src/data/rpg/wave-definitions.ts
 - `WaveSpawn` and `WaveDefinition` types.
@@ -1053,7 +1065,8 @@ Audio system — eight focused modules:
 - Equation upgrades and forge unlock have moved to the Equation panel.
 
 ### src/ui/panels/achievements-panel.ts
-- Achievements tab content — filter bar, nested category accordions, per-character glyph animation.
+- Achievements tab content — filter bar, nested category accordions, per-character glyph animation (~591 lines).
+- DOM building (group accordions, subcategory accordions, achievement cards) extracted to `achievements-panel-dom.ts`.
 - Filter bar: three checkboxes (show earned, show unearned, show hidden) with defaults earned+unearned=on, hidden=off.
 - Main category accordions: only one open at a time; opening another closes the previous.
 - RPG group: nested subcategory accordions (11 subcategories); only one subcategory open at a time.
@@ -1064,6 +1077,13 @@ Audio system — eight focused modules:
 - Sparkle emitters managed per card and group toggle, cleaned up on hide/destroy.
 - Exports `hasUnclaimedAchievements(state)` for tab-bar indicator logic.
 - Progress text formatting extracted to `src/ui/achievements/achievement-progress-text.ts`.
+
+### src/ui/panels/achievements-panel-dom.ts
+- Achievement DOM building helpers extracted from `achievements-panel.ts` (~355 lines).
+- Exports text helpers: `bonusText`, `getAccentColor`, `makeScrambledText`, `randomGlyphChar`.
+- Exports DOM ref types: `CardRefs`, `SubcategoryRefs`, `GroupRefs`, `AchievementsDomCallbacks`.
+- Exports `buildAchievementsDom(groupsRoot, callbacks)` — builds all group/subcategory/card elements and returns `{ cardRefs, groupRefs }`.
+- Cards are built by the private `appendCard` function; click handlers fire `callbacks.onCardClaim(id, formattedBonus)`.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.

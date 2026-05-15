@@ -27,7 +27,6 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
-  getScaledWeaponCooldown,
   getLuckPercent,
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpLuckBonus, getEffectiveXpHpBonus,
@@ -42,14 +41,11 @@ import {
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT, PLAYER_REGEN_INIT,
   INTER_WAVE_DELAY_MS,
-  PLAYER_BASE_COOLDOWN_MS,
-  BASE_ATTACK_TIMER_KEY,
 } from './rpg-constants';
 import {
   updateBossAttacks, setBossAttacksLowGraphics, type BossAttackUpdateCtx,
 } from './rpg-boss-attack-update';
 import { createBossAttackState, type BossAttackState } from './rpg-boss-attack-types';
-import { spawnSandSwingPixels, updateSandDriftPixels } from './rpg-weapon-draw-sword';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
   LaserEnemy,
@@ -79,7 +75,6 @@ import type {
   EliteEnemy,
 } from './rpg-enemy-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
-import { getSwordLength } from './rpg-helpers';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
 import {
   updateLuckyMotes, updateLuckyMotePopups,
@@ -145,6 +140,7 @@ import {
   updateWeaponOrbitParticles as _updateWeaponOrbitParticles,
   type WeaponOrbitCtx,
 } from './rpg-weapon-orbit';
+import { tickWeaponSystems, type WeaponTickCtx } from './rpg-weapon-tick';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -891,6 +887,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     applyEquipmentStats:     () => applyEquipmentStats(),
   };
 
+  // ── Weapon tick context (wired to rpg-weapon-tick.ts) ──────────────
+  const weaponTickCtx: WeaponTickCtx = {
+    weaponSystems,
+    statsPanel,
+    rpgSimState,
+    weaponAttackTimers,
+    mote,
+    getEffectiveEquippedIds,
+    findEquippedWeaponIdByEffect,
+    performWeaponAttack: (weaponId) => performWeaponAttack(weaponId),
+    removeDeadEnemies:   () => removeDeadEnemies(),
+    checkWaveCompletion: () => checkWaveCompletion(),
+    getPrevSandBladePhase: () => prevSandBladePhase,
+    setPrevSandBladePhase: (phase) => { prevSandBladePhase = phase; },
+  };
+
   // ── Draw context (built once; getters always return current closure values) ─
   const drawFrameState = createRpgDrawFrameState();
   const drawCtx: RpgDrawCtx = {
@@ -1001,75 +1013,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateTeleportParticles(teleportParticles, deltaMs);
       _updateWeaponOrbitParticles(weaponOrbitCtx, deltaMs);
       updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs);
-      statsPanel.withDamageSource(findEquippedWeaponIdByEffect('gatling'), () => weaponSystems.updateSandProjectiles(deltaMs));
-      // Update chain whip for all equipped chainWhip weapons
-      for (const weaponId of getEffectiveEquippedIds()) {
-        const wd = WEAPON_BY_ID.get(weaponId);
-        if (wd?.stats.effect?.kind === 'chainWhip') statsPanel.withDamageSource(weaponId, () => weaponSystems.updateChainWhip(weaponId, deltaMs));
-      }
-      // Update vortex and sword combo systems
-      for (const weaponId of getEffectiveEquippedIds()) {
-        const wd = WEAPON_BY_ID.get(weaponId);
-        if (wd?.stats.effect?.kind === 'vortex')    statsPanel.withDamageSource(weaponId, () => weaponSystems.updateVortexWeapon(weaponId, deltaMs));
-        if (wd?.stats.effect?.kind === 'swordCombo') statsPanel.withDamageSource(weaponId, () => weaponSystems.updateSwordCombo(weaponId, deltaMs));
-      }
-      statsPanel.withDamageSource(findEquippedWeaponIdByEffect('vortex'), () => weaponSystems.updateVortexes(deltaMs));
-      statsPanel.withDamageSource(findEquippedWeaponIdByEffect('poisonBolt'), () => {
-        weaponSystems.updatePoisonBolts(deltaMs);
-        weaponSystems.updatePoisonDebuffs(deltaMs);
-      });
-      statsPanel.withDamageSource(findEquippedWeaponIdByEffect('emeraldMissile'), () => {
-        weaponSystems.updateEmeraldPlayerMissiles(deltaMs);
-        weaponSystems.updateEmeraldSubMissiles(deltaMs);
-      });
-      weaponSystems.updateEmeraldSwirlParticles(deltaMs);
-      statsPanel.withDamageSource(findEquippedWeaponIdByEffect('sunstoneMine'), () => weaponSystems.updateSunstoneMines(deltaMs));
-      weaponSystems.updateLaserBeamEffect(deltaMs);
-      // ── Companion ship systems ────────────────────────────────────
-      weaponSystems.updateSapphireShips(deltaMs);
-      weaponSystems.updateSapphireLasers(deltaMs);
-      weaponSystems.updateAmethystShips(deltaMs);
-      weaponSystems.updateAmethystLasers(deltaMs);
-      removeDeadEnemies();
-      checkWaveCompletion();
-
-      // ── Per-weapon auto-attack timers ─────────────────────────────
-      for (const weaponId of getEffectiveEquippedIds()) {
-        const weaponDef = WEAPON_BY_ID.get(weaponId);
-        // These weapon kinds manage their own timing.
-        if (weaponDef?.stats.effect?.kind === 'chainWhip'  ||
-            weaponDef?.stats.effect?.kind === 'vortex'     ||
-            weaponDef?.stats.effect?.kind === 'swordCombo' ||
-            weaponDef?.stats.effect?.kind === 'sapphireShip' ||
-            weaponDef?.stats.effect?.kind === 'amethystShip') continue;
-        const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-        const cooldownMs = weaponDef
-          ? getScaledWeaponCooldown(weaponDef.stats.cooldownMs, tier)
-          : PLAYER_BASE_COOLDOWN_MS;
-        const current = weaponAttackTimers.get(weaponId) ?? 0;
-        const next = current - deltaMs;
-        if (next <= 0) {
-          weaponAttackTimers.set(weaponId, cooldownMs);
-          statsPanel.withDamageSource(weaponId, () => performWeaponAttack(weaponId));
-          removeDeadEnemies();
-          checkWaveCompletion();
-        } else {
-          weaponAttackTimers.set(weaponId, next);
-        }
-      }
-      // If no weapons equipped, the sand blade handles its own swing timing.
-      if (getEffectiveEquippedIds().size === 0) {
-        weaponSystems.updateSandBlade(deltaMs);
-        // Detect new sand blade swing start and spawn drift pixels.
-        const sandState = weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY);
-        if (sandState) {
-          if (sandState.phase === 'swing' && prevSandBladePhase !== 'swing') {
-            spawnSandSwingPixels(mote.x, mote.y, sandState.swipeArcStart, sandState.swipeArcEnd, getSwordLength(1));
-          }
-          prevSandBladePhase = sandState.phase;
-        }
-        updateSandDriftPixels(deltaMs);
-      }
+      tickWeaponSystems(weaponTickCtx, deltaMs);
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);
       // Track lucky motes collected for achievements
