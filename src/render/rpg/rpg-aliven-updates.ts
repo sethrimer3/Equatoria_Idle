@@ -56,7 +56,10 @@ export interface AlivenUpdateCtx {
   playerX: number;
   playerY: number;
   playerRadius: number;
+  /** Current remaining i-frame duration (read-only from updates; use setPlayerIFramesMs to write). */
   playerIFramesMs: number;
+  /** Grant the player i-frames directly (e.g. from spitter bullet hits). */
+  setPlayerIFramesMs(ms: number): void;
   canvasW: number;
   canvasH: number;
   dealContactDamageToPlayer(atk: number): void;

@@ -55,6 +55,9 @@ const LOOM_ATTRACTION_STRENGTH = 1.2;
  * - Particles within `outerRadius` but outside `captureRadius` receive a gentle pull.
  *
  * Eligible particles: sizeIndex >= MEDIUM_SIZE_INDEX, not isMerging, not already isCaptured.
+ *
+ * Performance: squared-distance comparisons are used to avoid Math.sqrt for the
+ * majority of particles that are outside capture/outer range.
  */
 export function applyForgeFieldForces(
   particles: EquatoriaParticle[],
@@ -65,6 +68,18 @@ export function applyForgeFieldForces(
 ): void {
   const fieldCount = fields.length;
   if (fieldCount === 0) return;
+
+  // Pre-compute per-field squared radii and forge-check outside the particle loop
+  // so these values are not recomputed for every particle.
+  const captureRadSq = new Float64Array(fieldCount);
+  const outerRadSq   = new Float64Array(fieldCount);
+  const isForgeField = new Uint8Array(fieldCount);
+  for (let fi = 0; fi < fieldCount; fi++) {
+    const field = fields[fi];
+    captureRadSq[fi] = field.captureRadius * field.captureRadius;
+    outerRadSq[fi]   = field.outerRadius   * field.outerRadius;
+    isForgeField[fi] = field.id === 'forge' ? 1 : 0;
+  }
 
   for (let i = 0, len = particles.length; i < len; i++) {
     const p = particles[i];
@@ -77,12 +92,10 @@ export function applyForgeFieldForces(
 
       const dx = field.x - p.x;
       const dy = field.y - p.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const distSq = dx * dx + dy * dy;
 
-      if (dist <= field.captureRadius) {
-        const isForgeField = field.id === 'forge';
-
-        if (isForgeField) {
+      if (distSq <= captureRadSq[fi]) {
+        if (isForgeField[fi]) {
           // Forge capture only during active crunch
           if (crunchState.isActive) {
             p.isCaptured = true;
@@ -106,8 +119,9 @@ export function applyForgeFieldForces(
         break;
       }
 
-      // Gentle pull toward field when within outerRadius
-      if (!field.id.startsWith('forge') && dist <= field.outerRadius && dist > 1) {
+      // Gentle pull toward loom field when within outerRadius (forge fields have no outer pull).
+      if (!isForgeField[fi] && distSq <= outerRadSq[fi] && distSq > 1) {
+        const dist = Math.sqrt(distSq);
         const force = LOOM_ATTRACTION_STRENGTH / (dist + 1);
         p.vx += (dx / dist) * force * clampedDelta;
         p.vy += (dy / dist) * force * clampedDelta;
