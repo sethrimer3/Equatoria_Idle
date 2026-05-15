@@ -32,7 +32,7 @@ import { saveSettings } from '../settings';
 import type { AppState, UIPanels } from './app-types';
 import type { NumberFormat } from '../util';
 import type { AudioSystem } from '../audio';
-import { GENERATOR_HIT_RADIUS_PX, MAX_FORGE_ATTRACTION_DISTANCE } from '../data/particles/particle-config';
+import { GENERATOR_HIT_RADIUS_PX, MAX_FORGE_ATTRACTION_DISTANCE, FORGE_TOUCH_TAP_MULTIPLIER } from '../data/particles/particle-config';
 
 // ─── Action handler ─────────────────────────────────────────────
 
@@ -83,12 +83,13 @@ export function handleAction(
       state.lastTapTimeMs = nowMs;
 
       // Equation tap only registers within the forge's radius of influence.
-      // Touch/mobile gets a 1.5× larger tap area to compensate for imprecise finger input.
+      // Touch/mobile gets a larger tap area (FORGE_TOUCH_TAP_MULTIPLIER) to
+      // compensate for imprecise finger input.
       const forgeCenterX = cc.widthPx / 2;
       const forgeCenterY = cc.heightPx / 2;
       const tapDx = canvasX - forgeCenterX;
       const tapDy = canvasY - forgeCenterY;
-      const tapRadiusMultiplier = action.isTouchInput ? 1.5 : 1.0;
+      const tapRadiusMultiplier = action.isTouchInput ? FORGE_TOUCH_TAP_MULTIPLIER : 1.0;
       const forgeInfluenceRadius = MAX_FORGE_ATTRACTION_DISTANCE * tapRadiusMultiplier;
       if (tapDx * tapDx + tapDy * tapDy > forgeInfluenceRadius * forgeInfluenceRadius) break;
 
@@ -298,9 +299,6 @@ export function handleAction(
       uiPanels.rpgRender.setInvincibilityMode(action.enabled);
       break;
     }
-    case 'tap_equation_forge':
-      // Handled via the 'tap' case (tapEquationForge is called there).
-      break;
     case 'upgrade_loom_efficiency': {
       const ok = tryUpgradeLoomEfficiencyAction(state.game, action.tierId as TierId, devMode);
       if (!ok) audioSystem?.onError();

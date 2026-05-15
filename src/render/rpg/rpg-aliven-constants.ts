@@ -97,6 +97,26 @@ export const ALIVEN_ORBIT_STRENGTH = 0.00005;
 /** How long each ghost phase (invulnerability) lasts on a ghost particle (ms). */
 export const ALIVEN_GHOST_DURATION_MS = 900;
 
+// ── Visual effects ─────────────────────────────────────────────────────────
+
+/** Duration of the pulser shockwave ring visual after the pulse fires (ms). */
+export const ALIVEN_PULSER_RING_DURATION_MS = 350;
+
+/** Duration of the healer beam visual from healer to healed target (ms). */
+export const ALIVEN_HEALER_BEAM_MS = 280;
+
+/** Duration of the splitter-death burst ring visual (ms). */
+export const ALIVEN_SPLIT_FLASH_MS = 300;
+
+/**
+ * Maximum group alive-count for which the O(n²) overlap-separation pass runs.
+ * Skipped above this threshold to keep mobile frame cost bounded.
+ */
+export const ALIVEN_SEPARATION_MAX_COUNT = 16;
+
+/** Repulsion strength applied per-ms during the overlap separation pass. */
+export const ALIVEN_SEPARATION_STRENGTH = 0.00018;
+
 // ── Movement physics ───────────────────────────────────────────────────────
 
 /** Velocity friction applied every frame (multiplied into vx/vy). */

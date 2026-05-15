@@ -1,324 +1,129 @@
-# Next Steps — AlivenParticle Enemy System
+# Next Steps — Equatoria Idle
 
-The AlivenParticle enemy system (Build #4) is complete and builds without errors. These notes capture suggested follow-up work.
-
-## Immediate follow-up
-- **Hand-author waves 2–28 appearances** — currently the procedural generator adds every aliven variant starting from its `firstWave`. Consider adjusting hand-authored waves 2–25 to introduce variants one at a time with tighter framing (e.g. wave 2 has only spark_cluster, wave 5 adds shard_bloom, etc.).
-- **Balance pass** — `hpBase`, `atkBase`, `xpMult`, and `specialCdMin/Max` values in `rpg-aliven-constants.ts` were chosen as starting points. A real balance pass after playtesting is needed.
-- **Particle collision separation** — currently particles can overlap each other. A cheap separation repulsion loop would improve visual readability.
-
-## Visual improvements
-- **Pulser shockwave ring** — the pulser special fires invisibly today. Adding a brief ring animation at the pulse radius would communicate intent to the player.
-- **Splitter particle spawn burst** — add a small flash or particle spray at the death/split position.
-- **Healer beam visual** — a faint line from healer to healed target when healing activates would make the heal special more legible.
-- **Group centroid glow** — drawing a faint ambient glow at the group centroid would help communicate group cohesion.
-
-## Gameplay depth
-- **Aliven bullet color variation** — spitter bullets currently use the particle color. Distinguishing them from the particle itself (e.g. slightly brighter) would make them easier to dodge.
-- **Group-level health bar** — a thin group HP bar above the centroid (counting alive / total particles) would help players gauge kill progress.
-- **Wave indicator integration** — add aliven variant icons to the enemy-indicators system so the player knows what's off-screen.
-- **Lucky mote tier mapping** — currently uses the group's `tierId` directly. If new tier IDs are added that don't map to lucky mote drop tables, add a fallback.
-
-## Code quality
-- **Particle overlap separation** — add a lightweight O(n²) separation pass among alive particles within a group (capped at small group sizes).
-- **AlivenUpdateCtx `playerIFramesMs`** — currently just reads the value; a setter would enable i-frames from spitter bullet hits and not just contact damage.
-- **Test with >28 aliven groups alive simultaneously** — stress-test frame rate on mobile hardware; if needed, add a global cap on simultaneous aliven groups.
+Current build: **#27**
 
 ---
 
-# Balance Forecast / Progression Analysis Panel (Build #11)
+## Build History Summary
 
-The Balance Forecast dev panel is implemented and accessible from the Settings tab when Developer Mode is enabled.
+### Build #4 — AlivenParticle enemy system
+Implemented the full AlivenParticle swarm-enemy system: 7 variants (spark_cluster, shard_bloom, ember_drift, dasher, ghost, pulser, healer, splitter, spitter, orbiter), per-group lifecycle, specials, ghost phase, trails, and initial draw.
 
-## Where it lives
+### Build #11 — Balance Forecast dev panel
+Implemented the dev-only ⚖ Balance Forecast panel (Settings tab, dev mode). Static ETA analysis, fresh-run milestone simulation, four strategy comparisons (wait_only / cheapest_first / best_efficiency / rush_next_tier), and pacing warnings.
 
-| File | Purpose |
-|---|---|
-| `src/ui/panels/balance-forecast/balance-forecast-types.ts` | Shared types, `formatDuration`, warning thresholds |
-| `src/ui/panels/balance-forecast/balance-forecast-engine.ts` | Core analysis/simulation engine |
-| `src/ui/panels/balance-forecast/balance-forecast-panel.ts` | DOM panel rendering |
-| `src/styles/panels.css` | `.bf-*` CSS classes appended at bottom |
+### Build #24 — Forge/Loom capture economy
+3-tap heat system for the equation forge (`ForgeCrunchState`, `tapForgeHeat`), sacrifice pathway (`applyForgeSacrifice` at 10,000 mass/upgrade), loom capture conversion (`applyLoomCapture`, `getLoomInputTierId`, `tryUpgradeLoomEfficiency`), `ForgeFieldInfo`/`applyForgeFieldForces`, particle `isCaptured` field, save-version 23.
 
-## How to open
+### Build #25 — Economy balance pass + polish
+Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), efficiency scaling (5ˣ→3ˣ); non-sand looms now produce 10% passive motes. Added forge heat UI row, loom field aura visuals.
 
-1. Open the game → Settings tab.
-2. Toggle **Developer Mode** ON.
-3. The **⚖ Balance Forecast** panel appears below the Particle Tweaks section.
-4. Click **↺ Run Analysis** (runs automatically on first open).
-5. Select different max simulation times with the dropdown; analysis re-runs automatically.
+### Build #26 — Forge/Loom economy polish
+- Verified and documented the forge sacrifice pathway vs legacy crunch pathway (no conflict).
+- Fixed loom efficiency button showing wrong tier's mote balance.
+- Added forge sacrifice flash (`drawForgeSacrificeFlash`, 600ms shockwave ring).
+- Expanded forge tap radius for touch input (1.5× via `isTouchInput` flag).
+- Added loom capture audio feedback (400ms cooldown gate on `onMotesMerged`).
+- Cleaned loom button inline styles → CSS classes.
+- Added Vitest; 18 unit tests for forge/loom economy logic.
 
-## What each section means
-
-- **Next Meaningful Events** — top 8 reachable targets sorted by ETA from the current state.
-- **Static ETA Analysis** — full table of every known target, grouped by status (available / reachable / blocked).
-- **Fresh-Run Milestone Timeline** — starting from a new game, using Cheapest First strategy, when each major milestone is reached.
-- **Strategy Comparison** — four strategies simulated in parallel, showing milestone times side-by-side.
-- **Pacing Warnings** — automated balance issue flags (long gaps, clusters, extreme ETAs, etc.).
-
-## Strategy approximations
-
-All four strategies are approximations that work well for rough balance comparison but are not optimal solvers:
-
-- **Wait Only** — pure baseline; no purchases ever.
-- **Cheapest First** — always buys the cheapest currently affordable item. Good for casual play simulation.
-- **Best Efficiency** — rates candidates by `productionGain / cost` with a bonus weight for tier unlocks and the forge. Production gain for equation upgrades is an approximation (0.01 abstract units).
-- **Rush Next Tier** — prioritises the forge, then tier unlocks, then loom upgrades for the pay tier, then falls back to cheapest.
-
-## Systems not yet fully covered by the forecast
-
-- RPG-related achievements (wave_reached, weapon_purchased, boss_defeated, xp_reached) — these are not simulatable by the balance engine, since it doesn't run the RPG combat loop.
-- Auto-tap unlock (progression `autoTapLevel`) — the engine upgrades loom/equation items but does not simulate auto-tap purchase upgrades yet (no such upgrade definition in the catalog currently).
-- Achievement bonuses for claimed achievements — the simulation grants bonuses immediately on unlock (not on claim), which slightly overestimates bonuses compared to real play.
-
-## Possible future improvements
-
-- Add RPG milestone simulation (stub wave progression based on a simple DPS model).
-- Add auto-tap upgrade purchases to the strategy candidates when those upgrade definitions exist.
-- Add per-upgrade cost growth warnings (comparing adjacent loom upgrade costs).
-- Add a "simulate from current state" mode for strategy comparison (rather than fresh-run only).
-- Add a timeline chart (canvas or SVG) to visualise progression curves.
+### Build #27 — Aliven polish, architecture cleanup, forecast improvements
+- **Removed** dead `tap_equation_forge` action type and no-op dispatch case.
+- **Extracted** `FORGE_TOUCH_TAP_MULTIPLIER = 1.5` constant to `particle-config.ts`.
+- **Aliven — overlap separation**: lightweight O(n²) repulsion pass (capped at `ALIVEN_SEPARATION_MAX_COUNT = 16`).
+- **Aliven — pulser shockwave ring**: expanding ring visual for 350ms when pulser fires (`pulserFlashMs` on particle).
+- **Aliven — splitter burst**: flash ring at split position for 300ms (`splitFlashMs/X/Y` on group).
+- **Aliven — healer beam**: dashed faint line from healer to healed target for 280ms (`healBeamMs/TargetX/Y` on particle).
+- **Aliven — centroid glow**: subtle glow behind the group centroid (proportional to health ratio).
+- **Aliven — spitter bullet highlight**: white center dot on bullets for dodge readability.
+- **Aliven — group health bar**: thin 22px bar above centroid showing aliveCount/targetCount.
+- **Lucky mote fallback**: `trySpawnLuckyMote` now falls back to direct `TIER_BY_ID` lookup if `enemyTypeId` is not in `ENEMY_TYPE_TO_TIER` (handles Aliven groups using tier IDs directly). 6 new unit tests added.
+- **Balance Forecast — cost-growth warnings**: `generatePacingWarnings` now flags loom upgrade cost jumps > `suspiciousCostGrowthMultiplier` (25×) between adjacent levels.
+- **Balance Forecast — simulate from current state**: toggle checkbox in the panel; when checked, strategy runs start from the player's current resources/unlocks instead of a fresh run.
 
 ---
 
-# Particle Crunch Economy Refactor (Build #24)
+## Current Remaining Work
 
-## What was implemented
-
-### Equation Forge — 3-tap heat system
-- **`src/sim/forge/forge-state.ts`**: `ForgeCrunchState` extended with `heatTapCount`, `lastHeatTapMs`, `sacrificeProgressByTierId`. New functions: `tapForgeHeat`, `startEquationForgeCrunch`, `tickForgeHeatTimeout`.
-- **`src/sim/game-state.ts`**: `tapEquationForge(state, nowMs)` wired to the heat-tap system. `applyForgeSacrifice(state, sacrifices)` applies per-tier sacrifice mass → equation upgrade conversion at 10,000 mass per upgrade. `processLoomCapture(state, inputTierId, mass)` routes to loom conversion logic.
-- **`src/render/forge/forge-renderer.ts`**: `drawForge` now accepts `heatTapCount` (0–3) and renders amber/orange/red heat rings around the forge visual.
-- **`src/app/app-game-loop.ts`**: Callback `onEquationForgeCrunchCompleted` fires `applyForgeSacrifice`; `onParticleCapturedByLoom` fires `processLoomCapture`.
-- **`src/app/app-actions.ts`**: `tap_equation_forge` action dispatches `tapEquationForge` and triggers visual feedback.
-- **`src/input/input-handler.ts`**: Tapping on the forge area dispatches `tap_equation_forge`.
-
-### Loom conversion economy
-- **`src/sim/looms/loom-state.ts`**: `LoomTierState` extended with `conversionProgress` and `conversionEfficiencyLevel`. New functions: `getLoomInputTierId` (returns previous tier or null for sand), `getLoomConversionCost` (base 100, reduces 6% per efficiency level, min 25%), `applyLoomCapture` (conversion formula with fractional progress), `tryUpgradeLoomEfficiency` (spend own-tier motes for efficiency levels).
-- **`src/ui/panels/loom-upgrades-pane.ts`**: Shows input tier ("Attracts: 2x2+ Sand particles"), conversion rate ("100 Sand → 1 Quartz"), progress bar toward next output mote, efficiency level + upgrade button.
-
-### Particle capture fields
-- **`src/render/particles/forge-field-forces.ts`** (new): `ForgeFieldInfo` type + `applyForgeFieldForces` function. Particles ≥ sizeIndex 1 inside the outer radius receive gentle attraction; inside the capture radius they are marked `isCaptured`. Loom captures are queued for immediate conversion. Forge captures only happen while `crunchState.isActive`.
-- **`src/render/particles/particle-types.ts`**: `EquatoriaParticle` extended with `isCaptured`, `capturedById`, `particleId`.
-- **`src/render/particles/particle-pool.ts`**: Particle pool initializes the new fields including a monotonically increasing `particleId` counter.
-- **`src/render/particles/particle-system.ts`**: `setForgeFields(fields)` stores fields; update loop calls `applyForgeFieldForces` after Particle Life forces; captured particles are excluded from subsequent PL force passes; callbacks `onParticleCapturedByLoom` and `onEquationForgeCrunchCompleted` wired; `completeForgeCrunchCallback` applies sacrifices and removes forge-captured particles.
-- **`src/render/particles/particle-physics.ts`**: Captured particles skip forge-attraction forces (they are frozen until crunch completes).
-- **`src/render/particles/particle-life.ts`**: Captured particles skip Particle Life pairwise force computation.
-- **`src/app/app-game-loop.ts`**: Builds `ForgeFieldInfo[]` each frame — equation forge field + per-unlocked-loom fields positioned at loom output tier generator position.
-
-### Save/load
-- **`src/settings/save-load.ts`**: SAVE_VERSION bumped to 23. Saves `forge.heatTapCount`, `forge.sacrificeProgressByTierId`; per-loom `conversionProgress` and `conversionEfficiencyLevel`. Backward-compatible defaults (0 / empty map) for older saves.
-
----
-
-# Forge/Loom Economy Polish (Build #26)
-
-## What was implemented (verified by code inspection; not manually playtested)
-
-### Task 1 — Forge crunch pathway verified and documented ✅ Done (Build #26)
-- Inspected `particle-forge.ts`, `particle-system.ts`, and `forge-logic.ts`.
-- Confirmed `checkForgeCrunch` always returns `null` (explicitly disabled), so the legacy `isForgeCrunchParticle` path never fires and cannot conflict with the new sacrifice path.
-- The new sacrifice pathway correctly marks particles with `isCaptured + capturedById === 'forge'` (different flags from the legacy path).
-- Added a top-of-file comment block in `particle-forge.ts` and inline comments in `particle-system.ts` making the split between the two pathways unambiguous.
-
-### Task 2 — Loom efficiency upgrade UI bug fixed ✅ Done (Build #26)
-- **Bug**: The efficiency button in `loom-upgrades-pane.ts` was displaying and checking the *input tier* (e.g. Sand) mote balance, but `tryUpgradeLoomEfficiency` charges the *own/output tier* motes.
-- **Fix**: Changed the button text, cost display, and `disabled` check to use `def.tierId` (own-tier) motes instead of `inputTierId` motes. The button now correctly reads: `"⚗ Efficiency +1 — N Quartz"` (for the Quartz loom) and is disabled only when the player lacks enough Quartz motes.
-
-### Task 3 — Forge sacrifice visual feedback ✅ Done (Build #26)
-- Added `forgeSacrificeFlashMs: number` to `AppState`.
-- Set it to `performance.now()` inside `onEquationForgeCrunchCompleted`.
-- Added `drawForgeSacrificeFlash(cc, forgeX, forgeY, nowMs, forgeSacrificeFlashMs)` to `forge-renderer.ts`: a 600ms expanding shockwave ring + secondary softer ring + a brief center flash glow (visible only in first 20% of the animation). No per-frame allocations; radial gradient is created only when the flash is active.
-- Called from `app-game-loop.ts` after `drawForgeCrunch`.
-
-### Task 4 — Forge tap radius expanded for touch/mobile ✅ Done (Build #26)
-- Added `isTouchInput: boolean` to the `tap` GameAction type; `setupInputListeners` sets it from `e.pointerType === 'touch'`.
-- The forge tap radius check in `app-actions.ts` now uses `MAX_FORGE_ATTRACTION_DISTANCE × 1.5` for touch input and `× 1.0` for mouse/desktop input, making it significantly easier to hit on small phones without changing precision for mouse users.
-
-### Task 5 — Loom capture audio feedback ✅ Done (Build #26)
-- Added a 400ms cooldown timer in `createGameLoop` (inside `app-game-loop.ts`).
-- When `onParticleCapturedByLoom` fires, the cooldown-gated path calls `audioSystem.onMotesMerged(1)` — reusing the existing merge SFX pool with built-in polyphony limiting. This gives a soft, familiar audio cue without overwhelming the player during rapid captures.
-
-### Task 6 — Loom pane inline style cleanup ✅ Done (Build #26)
-- Removed `effBtn.style.marginTop = '4px'` inline style; added `.loom-efficiency-btn { margin-top: 4px; }` to `src/styles/components.css`.
-- Replaced `effBtn.style.display = 'none'` / `''` with `classList.toggle('loom-efficiency-btn--hidden', ...)` backed by a `.loom-efficiency-btn--hidden { display: none; }` CSS rule.
-
-### Task 7 — Unit tests with Vitest ✅ Done (Build #26)
-- Added `vitest@3` to devDependencies; created `vitest.config.ts`; added `"test": "vitest run"` to `package.json`.
-- Created `src/sim/__tests__/forge-loom-economy.test.ts` with **18 unit tests** covering:
-  - `tapForgeHeat`: first tap, third tap trigger, N-tap requirement, blocked while active
-  - `tickForgeHeatTimeout`: resets after 30s, does not reset too early
-  - `applyForgeSacrifice`: accumulates mass, converts at threshold, stores fractional remainder, handles multiple tiers
-  - `applyLoomCapture`: converts at default threshold, preserves fractional progress, efficiency lowers threshold, sand is passive
-  - `getLoomInputTierId`: sand→null, quartz→sand, ruby→quartz, unknown→null (no throw)
-- All 18 tests pass.
-
-## Still Remaining
-
-### Needs playtesting before claiming done
-- **Balance values**: sacrifice threshold (2000), loom conversion base cost (50), efficiency scaling (3ˣ), and 10% passive non-sand production rate are initial estimates. They need real playtesting to evaluate feel.
-- **Loom efficiency upgrade UX**: The button fix is verified by code inspection; it was not tested end-to-end in a running build (no browser test harness).
-- **Forge sacrifice flash visual**: Implemented and verified to draw the correct geometric shapes; exact timing (600ms) and scale feel need visual playtesting.
-- **Loom audio cooldown**: Plays `onMotesMerged` at most once per 400ms. Whether this cooldown value feels right needs playtesting — it may be too frequent or too sparse depending on particle density.
-
-### AlivenParticle polish (tasks 8–9 from problem statement — deferred)
-These were deprioritised in favour of completing the forge/loom economy tasks first:
-- Particle overlap separation within Aliven groups (lightweight O(n²) repulsion pass).
-- Pulser shockwave ring visual.
-- Splitter death/split burst visual.
-- Healer beam visual.
-- Group centroid glow.
-- Spitter bullet colour variation.
-- Group-level health bar above centroid.
-- Enemy indicator integration for Aliven variants.
-- Lucky mote tier fallback for unknown tier IDs.
-
-### Balance Forecast improvements (task 9 from problem statement — deferred)
-- Simulate-from-current-state mode for strategy comparison.
-- Simple timeline visualisation.
-- Auto-tap upgrade candidates when upgrade definitions exist.
-- Cost-growth warnings comparing adjacent loom upgrade costs.
-
-### Architecture (nice-to-have, not blocking)
-- The `tap_equation_forge` GameAction case in `app-actions.ts` is still a no-op (forge heat taps are handled inside the `tap` case). The dead case could be removed or documented.
-- Consider adding a `FORGE_TOUCH_TAP_MULTIPLIER` constant in `particle-config.ts` instead of the hardcoded `1.5` in `app-actions.ts`.
-
-
-The AlivenParticle enemy system (Build #4) is complete and builds without errors. These notes capture suggested follow-up work.
-
-## Immediate follow-up
-- **Hand-author waves 2–28 appearances** — currently the procedural generator adds every aliven variant starting from its `firstWave`. Consider adjusting hand-authored waves 2–25 to introduce variants one at a time with tighter framing (e.g. wave 2 has only spark_cluster, wave 5 adds shard_bloom, etc.).
-- **Balance pass** — `hpBase`, `atkBase`, `xpMult`, and `specialCdMin/Max` values in `rpg-aliven-constants.ts` were chosen as starting points. A real balance pass after playtesting is needed.
-- **Particle collision separation** — currently particles can overlap each other. A cheap separation repulsion loop would improve visual readability.
-
-## Visual improvements
-- **Pulser shockwave ring** — the pulser special fires invisibly today. Adding a brief ring animation at the pulse radius would communicate intent to the player.
-- **Splitter particle spawn burst** — add a small flash or particle spray at the death/split position.
-- **Healer beam visual** — a faint line from healer to healed target when healing activates would make the heal special more legible.
-- **Group centroid glow** — drawing a faint ambient glow at the group centroid would help communicate group cohesion.
-
-## Gameplay depth
-- **Aliven bullet color variation** — spitter bullets currently use the particle color. Distinguishing them from the particle itself (e.g. slightly brighter) would make them easier to dodge.
-- **Group-level health bar** — a thin group HP bar above the centroid (counting alive / total particles) would help players gauge kill progress.
-- **Wave indicator integration** — add aliven variant icons to the enemy-indicators system so the player knows what's off-screen.
-- **Lucky mote tier mapping** — currently uses the group's `tierId` directly. If new tier IDs are added that don't map to lucky mote drop tables, add a fallback.
-
-## Code quality
-- **Particle overlap separation** — add a lightweight O(n²) separation pass among alive particles within a group (capped at small group sizes).
-- **AlivenUpdateCtx `playerIFramesMs`** — currently just reads the value; a setter would enable i-frames from spitter bullet hits and not just contact damage.
-- **Test with >28 aliven groups alive simultaneously** — stress-test frame rate on mobile hardware; if needed, add a global cap on simultaneous aliven groups.
-
----
-
-# Balance Forecast / Progression Analysis Panel (Build #11)
-
-The Balance Forecast dev panel is implemented and accessible from the Settings tab when Developer Mode is enabled.
-
-## Where it lives
-
-| File | Purpose |
-|---|---|
-| `src/ui/panels/balance-forecast/balance-forecast-types.ts` | Shared types, `formatDuration`, warning thresholds |
-| `src/ui/panels/balance-forecast/balance-forecast-engine.ts` | Core analysis/simulation engine |
-| `src/ui/panels/balance-forecast/balance-forecast-panel.ts` | DOM panel rendering |
-| `src/styles/panels.css` | `.bf-*` CSS classes appended at bottom |
-
-## How to open
-
-1. Open the game → Settings tab.
-2. Toggle **Developer Mode** ON.
-3. The **⚖ Balance Forecast** panel appears below the Particle Tweaks section.
-4. Click **↺ Run Analysis** (runs automatically on first open).
-5. Select different max simulation times with the dropdown; analysis re-runs automatically.
-
-## What each section means
-
-- **Next Meaningful Events** — top 8 reachable targets sorted by ETA from the current state.
-- **Static ETA Analysis** — full table of every known target, grouped by status (available / reachable / blocked).
-- **Fresh-Run Milestone Timeline** — starting from a new game, using Cheapest First strategy, when each major milestone is reached.
-- **Strategy Comparison** — four strategies simulated in parallel, showing milestone times side-by-side.
-- **Pacing Warnings** — automated balance issue flags (long gaps, clusters, extreme ETAs, etc.).
-
-## Strategy approximations
-
-All four strategies are approximations that work well for rough balance comparison but are not optimal solvers:
-
-- **Wait Only** — pure baseline; no purchases ever.
-- **Cheapest First** — always buys the cheapest currently affordable item. Good for casual play simulation.
-- **Best Efficiency** — rates candidates by `productionGain / cost` with a bonus weight for tier unlocks and the forge. Production gain for equation upgrades is an approximation (0.01 abstract units).
-- **Rush Next Tier** — prioritises the forge, then tier unlocks, then loom upgrades for the pay tier, then falls back to cheapest.
-
-## Systems not yet fully covered by the forecast
-
-- RPG-related achievements (wave_reached, weapon_purchased, boss_defeated, xp_reached) — these are not simulatable by the balance engine, since it doesn't run the RPG combat loop.
-- Auto-tap unlock (progression `autoTapLevel`) — the engine upgrades loom/equation items but does not simulate auto-tap purchase upgrades yet (no such upgrade definition in the catalog currently).
-- Achievement bonuses for claimed achievements — the simulation grants bonuses immediately on unlock (not on claim), which slightly overestimates bonuses compared to real play.
-
-## Possible future improvements
-
-- Add RPG milestone simulation (stub wave progression based on a simple DPS model).
-- Add auto-tap upgrade purchases to the strategy candidates when those upgrade definitions exist.
-- Add per-upgrade cost growth warnings (comparing adjacent loom upgrade costs).
-- Add a "simulate from current state" mode for strategy comparison (rather than fresh-run only).
-- Add a timeline chart (canvas or SVG) to visualise progression curves.
-
----
-
-# Particle Crunch Economy Refactor (Build #24)
-
-## What was implemented
-
-### Equation Forge — 3-tap heat system
-- **`src/sim/forge/forge-state.ts`**: `ForgeCrunchState` extended with `heatTapCount`, `lastHeatTapMs`, `sacrificeProgressByTierId`. New functions: `tapForgeHeat`, `startEquationForgeCrunch`, `tickForgeHeatTimeout`.
-- **`src/sim/game-state.ts`**: `tapEquationForge(state, nowMs)` wired to the heat-tap system. `applyForgeSacrifice(state, sacrifices)` applies per-tier sacrifice mass → equation upgrade conversion at 10,000 mass per upgrade. `processLoomCapture(state, inputTierId, mass)` routes to loom conversion logic.
-- **`src/render/forge/forge-renderer.ts`**: `drawForge` now accepts `heatTapCount` (0–3) and renders amber/orange/red heat rings around the forge visual.
-- **`src/app/app-game-loop.ts`**: Callback `onEquationForgeCrunchCompleted` fires `applyForgeSacrifice`; `onParticleCapturedByLoom` fires `processLoomCapture`.
-- **`src/app/app-actions.ts`**: `tap_equation_forge` action dispatches `tapEquationForge` and triggers visual feedback.
-- **`src/input/input-handler.ts`**: Tapping on the forge area dispatches `tap_equation_forge`.
-
-### Loom conversion economy
-- **`src/sim/looms/loom-state.ts`**: `LoomTierState` extended with `conversionProgress` and `conversionEfficiencyLevel`. New functions: `getLoomInputTierId` (returns previous tier or null for sand), `getLoomConversionCost` (base 100, reduces 6% per efficiency level, min 25%), `applyLoomCapture` (conversion formula with fractional progress), `tryUpgradeLoomEfficiency` (spend own-tier motes for efficiency levels).
-- **`src/ui/panels/loom-upgrades-pane.ts`**: Shows input tier ("Attracts: 2x2+ Sand particles"), conversion rate ("100 Sand → 1 Quartz"), progress bar toward next output mote, efficiency level + upgrade button.
-
-### Particle capture fields
-- **`src/render/particles/forge-field-forces.ts`** (new): `ForgeFieldInfo` type + `applyForgeFieldForces` function. Particles ≥ sizeIndex 1 inside the outer radius receive gentle attraction; inside the capture radius they are marked `isCaptured`. Loom captures are queued for immediate conversion. Forge captures only happen while `crunchState.isActive`.
-- **`src/render/particles/particle-types.ts`**: `EquatoriaParticle` extended with `isCaptured`, `capturedById`, `particleId`.
-- **`src/render/particles/particle-pool.ts`**: Particle pool initializes the new fields including a monotonically increasing `particleId` counter.
-- **`src/render/particles/particle-system.ts`**: `setForgeFields(fields)` stores fields; update loop calls `applyForgeFieldForces` after Particle Life forces; captured particles are excluded from subsequent PL force passes; callbacks `onParticleCapturedByLoom` and `onEquationForgeCrunchCompleted` wired; `completeForgeCrunchCallback` applies sacrifices and removes forge-captured particles.
-- **`src/render/particles/particle-physics.ts`**: Captured particles skip forge-attraction forces (they are frozen until crunch completes).
-- **`src/render/particles/particle-life.ts`**: Captured particles skip Particle Life pairwise force computation.
-- **`src/app/app-game-loop.ts`**: Builds `ForgeFieldInfo[]` each frame — equation forge field + per-unlocked-loom fields positioned at loom output tier generator position.
-
-### Save/load
-- **`src/settings/save-load.ts`**: SAVE_VERSION bumped to 23. Saves `forge.heatTapCount`, `forge.sacrificeProgressByTierId`; per-loom `conversionProgress` and `conversionEfficiencyLevel`. Backward-compatible defaults (0 / empty map) for older saves.
-
-## Known incomplete / next steps
-
-### Equation forge crunch pathway
-- **No dedicated in-game visual for sacrifice feedback**: When a crunch fires, the particles are removed but there is no separate particle burst or flash effect at the forge. A brief shockwave/flash at the forge on crunch would improve feedback.
-- ~~**Heat indicator in UI panel**~~ ✅ **Done (Build #25)**: `equation-panel.ts` now shows a `forge-heat-row` with colored ● dots and a `(n/3)` count below the equation display whenever `heatTapCount > 0`.
-- **Forge tap input boundary**: The tap-on-forge detection in `input-handler.ts` uses a radius check; on small phones this may be hard to hit. Consider expanding the tap area.
-
-### Loom conversion economy
-- ~~**Old passive production coexists with new capture economy**~~ ✅ **Done (Build #25)**: Non-sand looms now produce passive motes at 10% of their normal rate. Sand loom retains 100% passive rate (no input tier). This makes particle capture the dominant economy path for higher tiers while keeping a small passive floor for idle sessions.
-- **Sand Loom**: Has no input tier and produces sand passively. Particle capture does not apply. Correct by design.
-- ~~**Loom field visual**~~ ✅ **Done (Build #25)**: `drawLoomFieldAuras()` in `forge-renderer.ts` draws a faint pulsing colored inner ring (capture zone) and outer dashed ring (attraction zone) around each unlocked loom field, called in `app-game-loop.ts` between generators and forge draw.
-- **Loom efficiency upgrades not tested end-to-end**: The efficiency upgrade logic is wired but the UI dispatch (`upgrade_loom_efficiency` action) was not confirmed working in a live build. Verify the button in the Loom pane properly deducts motes and increments efficiency level.
-- ~~**Balance values need playtesting (initial estimates)**~~ ✅ **Adjusted (Build #25)**: Conversion threshold lowered 100→50 (more achievable early); efficiency cost scaling changed from 5ˣ→3ˣ; sacrifice threshold lowered 10,000→2,000 (≈20 medium-particle captures). These remain estimates — further tuning after playtesting is expected.
+### Needs manual playtesting before claiming done
+- Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. These are initial estimates; tune after real playtesting.
+- **Forge 3-tap heat sequence**: does the heat UI row feel responsive? Is 3 taps the right number?
+- **Forge capture and sacrifice flash timing**: does the 600ms shockwave feel satisfying?
+- **Loom capture audio cooldown**: does 400ms cooldown feel right at various particle densities?
+- **Loom efficiency upgrade UX**: verify the button deducts the correct tier's motes and the UI reflects it correctly.
+- **Early game conversion pacing**: with a fresh save, does the sand→quartz loom feel achievable?
+- **Non-sand 10% passive production feel**: does non-sand progression feel too slow without active captures?
+- **Aliven group readability with new visuals**: healer beam, pulser ring, splitter burst — are they legible and not cluttered?
+- **Aliven performance with many groups**: check mobile frame rate when 5+ groups are alive simultaneously.
 
 ### Architecture / code quality
-- **`completeForgeCrunchCallback` inside particle-system.ts**: The forge crunch completion currently uses the legacy `completeForgeCrunch` function that was designed for the old spawn-a-replacement particle pathway. The new path should skip spawning output particles and instead fire `onEquationForgeCrunchCompleted`. Verify this was handled cleanly (check `particle-forge.ts`).
-- **`particle-forge.ts` legacy path**: `completeForgeCrunch` still spawns replacement particles using `getCrunchOutput`. This may conflict with the new sacrifice-based pathway if not guarded. Ensure forge-crunch particles marked `isForgeCrunchParticle` are sacrificed rather than converted.
-- **`ForgeFieldInfo[]` rebuild cost**: The array is rebuilt each frame but does not allocate new objects for loom fields (pushed into a fixed buffer). Verify this is efficient with many unlocked looms.
-- **Per-frame spatial pass**: `applyForgeFieldForces` iterates all particles × all fields. With 13 tiers unlocked and 2000 particles, this is ~26000 comparisons per substep. Use early exits and dist² checks to keep this fast.
-- **Tests**: No automated tests exist for the new forge/loom logic. Unit tests for `tapForgeHeat`, `applyForgeSacrifice`, `applyLoomCapture`, and `getLoomInputTierId` should be added.
+- **`AlivenUpdateCtx.playerIFramesMs`** — currently read-only; a setter would enable i-frames from spitter bullet hits (not just contact damage). Low priority.
+- **Hand-authored wave appearances**: consider introducing Aliven variants one-at-a-time across early waves rather than procedurally from `firstWave`.
+- **Global Aliven group cap**: stress-test with >15 concurrent groups on mobile; add a cap if needed.
+- **`applyForgeFieldForces` spatial pass**: with 13 tiers unlocked and 2000 particles this is ~26k comparisons/substep — verify performance on low-end devices.
 
-### UI Polish
-- ~~**Equation forge heat state not shown in DOM UI**~~ ✅ **Done (Build #25)**: See heat indicator note above.
-- **Loom conversion progress bar styling**: The progress bar HTML in `loom-upgrades-pane.ts` uses inline styles. Extract to CSS classes for consistency.
-- **No audio events for loom conversion**: When a particle is consumed by a loom, there is no sound cue. Consider reusing the merge sound at low volume.
+### Balance Forecast — still deferred
+- **RPG milestone simulation**: the engine cannot simulate RPG combat loop (wave/XP progression). Add a stub DPS model if needed.
+- **Auto-tap upgrades in forecast**: no auto-tap upgrade definitions exist in the catalog yet; the forecast cannot include them until definitions are added.
+- **Timeline visualization**: a canvas/SVG chart of the strategy curves would help; deferred until the panel stabilises.
 
-### Balance
-- ~~Sacrifice threshold of 10,000~~: Lowered to 2,000 (Build #25). Further tuning needed.
-- ~~Loom conversion base cost of 100~~: Lowered to 50 (Build #25). Further tuning needed.
-- ~~Efficiency upgrade cost scaling (50 × 5^level)~~: Changed to 50 × 3^level (Build #25). Further tuning needed.
-- ~~Passive loom production and particle capture felt disjointed~~: Non-sand passive production reduced to 10% (Build #25). Unified economy pass still recommended after more playtesting.
+### Aliven — remaining polish
+- **Enemy indicator integration** (Priority 3H): The `rpg-enemies-tab-icons.ts` system draws icons for off-screen enemies. Extending it for Aliven variants requires adding `createAlivenIconCanvas` calls per variant and wiring them into the indicator sweep. Non-trivial; left for a dedicated pass.
+  - Files to change: `src/ui/panels/rpg-enemies-tab-icons.ts`, `src/render/rpg/rpg-aliven-draw.ts`, indicator spawning in `rpg-wave-manager.ts`.
+- **Aliven balance pass**: `hpBase`, `atkBase`, `xpMult`, `specialCdMin/Max` values are starting points — needs real playtesting.
+
+---
+
+## Manual Playtesting Checklist
+
+Use this when doing a manual playtesting session. Check off what you tested.
+
+### Forge
+- [ ] Forge 3-tap heat sequence: tapping three times triggers crunch (particles captured, sacrifice flash shown)
+- [ ] Forge tap on mobile: is the touch hit area large enough?
+- [ ] Forge sacrifice flash: 600ms shockwave ring visible and feels satisfying
+- [ ] Forge heat UI row (equation panel): shows ● dots and count, disappears after crunch
+
+### Looms
+- [ ] Loom capture: particles sucked into loom, progress bar increments toward output mote
+- [ ] Loom audio cooldown: a sound plays when particles are captured; not overwhelming
+- [ ] Loom efficiency upgrade: button shows correct tier mote cost; pressing deducts and increments level
+- [ ] Loom conversion threshold drops with efficiency upgrades
+- [ ] Non-sand passive production: Quartz+ looms trickle motes slowly even without captures
+
+### Aliven Enemies
+- [ ] Overlap separation: alive particles within a group stay visually separated (not piled up)
+- [ ] Pulser ring visual: a ring expands outward when a pulser fires its shockwave
+- [ ] Splitter burst: a brief flash ring appears at the particle position when a splitter dies and splits
+- [ ] Healer beam: a faint dashed line connects healer to the particle it just healed
+- [ ] Centroid glow: a subtle ambient glow is visible around the group center
+- [ ] Spitter bullets: bullets have a bright white center highlight; clearly distinct from the spitter body
+- [ ] Group health bar: thin bar above centroid shows alive/total ratio; disappears when group dies
+- [ ] Performance: frame rate stable with 3+ Aliven groups alive simultaneously on a mid-tier device
+
+### General
+- [ ] Save/load: existing save (v23+) loads without errors or lost progress
+- [ ] Desktop mouse: forge tap, loom interaction, equation tap all work with mouse
+- [ ] Mobile touch: same flows work on a real phone (portrait and landscape)
+- [ ] Tab switching: switching between Equation / Resources / Settings preserves all UI state
+- [ ] Settings persistence: dev mode, visual options, sound volume all persist across reload
+
+---
+
+## Balance Forecast Panel Reference
+
+Accessible only in dev mode (Settings → Developer Mode ON).
+
+| File | Purpose |
+|---|---|
+| `balance-forecast-types.ts` | Shared types, `formatDuration`, warning thresholds |
+| `balance-forecast-engine.ts` | Core analysis/simulation engine |
+| `balance-forecast-panel.ts` | DOM panel rendering |
+| `balance-forecast-sim.ts` | Strategy simulation runner |
+| `balance-forecast-state.ts` | SimState, `createFreshSimState`, `simStateFromGame` |
+| `balance-forecast-purchases.ts` | Available-purchase enumeration |
+| `balance-forecast-strategies.ts` | Strategy function definitions |
+
+**"Simulate from current state" toggle**: when checked, the Strategy Comparison table starts from your current resources/unlocks rather than a fresh game. Useful for planning which strategy would be most efficient from your current position.
+
+**Cost-growth warnings**: the pacing warnings section now includes flags when adjacent loom upgrade costs jump by more than 25× (configurable via `BALANCE_WARNING_THRESHOLDS.suspiciousCostGrowthMultiplier`).

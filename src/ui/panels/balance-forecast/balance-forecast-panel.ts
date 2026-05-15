@@ -342,6 +342,14 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
   maxSimLabel.appendChild(maxSimSelect);
   controls.appendChild(maxSimLabel);
 
+  const fromCurrentLabel = el('label', 'bf-ctrl-label bf-ctrl-toggle');
+  const fromCurrentChk   = el('input');
+  fromCurrentChk.type    = 'checkbox';
+  fromCurrentChk.title   = 'Start strategy simulations from your current resources/unlocks instead of a fresh run';
+  fromCurrentLabel.appendChild(fromCurrentChk);
+  fromCurrentLabel.appendChild(document.createTextNode(' Simulate from current state'));
+  controls.appendChild(fromCurrentLabel);
+
   const refreshBtn = el('button', 'bf-refresh-btn', '↺ Run Analysis');
   controls.appendChild(refreshBtn);
 
@@ -357,7 +365,11 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
   const { section: nextSection, body: nextBody } = makeSection('⚡ Next Meaningful Events');
   const { section: etaSection, body: etaBody }   = makeSection('📊 Static ETA Analysis');
   const { section: timelineSection, body: timelineBody } = makeSection('🕐 Fresh-Run Milestone Timeline (Cheapest First)');
-  const { section: stratSection, body: stratBody }   = makeSection('🔀 Strategy Comparison');
+  const stratHeader = el('div', 'bf-section-header', '🔀 Strategy Comparison (Fresh Run)');
+  const stratSection = el('div', 'bf-section');
+  const stratBody = el('div', 'bf-section-body');
+  stratSection.appendChild(stratHeader);
+  stratSection.appendChild(stratBody);
   const { section: warnSection, body: warnBody }     = makeSection('⚠ Pacing Warnings');
 
   wrapper.appendChild(nextSection);
@@ -392,11 +404,18 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
     isRunning = true;
     statusLine.textContent = '⏳ Running simulation…';
     refreshBtn.disabled = true;
+    const fromCurrent = fromCurrentChk.checked;
+    stratHeader.textContent = fromCurrent
+      ? '🔀 Strategy Comparison (From Current State)'
+      : '🔀 Strategy Comparison (Fresh Run)';
 
     // Use a minimal setTimeout so the UI updates before the blocking computation
     setTimeout(() => {
       try {
-        const opts: ForecastOptions = { maxSimSeconds: getMaxSimSeconds() };
+        const opts: ForecastOptions = {
+          maxSimSeconds: getMaxSimSeconds(),
+          simulateFromCurrentState: fromCurrent,
+        };
         const startMs = Date.now();
         const result = runBalanceForecast(game, opts);
         const durationMs = Date.now() - startMs;
@@ -427,6 +446,11 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
       statusLine.textContent = 'Clipboard unavailable — see console.';
       console.log('[BalanceForecast results]\n', text);
     });
+  });
+
+  fromCurrentChk.addEventListener('pointerdown', e => e.stopPropagation());
+  fromCurrentChk.addEventListener('change', () => {
+    if (lastGame) runAnalysis(lastGame);
   });
 
   maxSimSelect.addEventListener('pointerdown', e => e.stopPropagation());

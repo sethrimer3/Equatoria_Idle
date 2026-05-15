@@ -26,7 +26,6 @@ export type GameAction =
   | { kind: 'start_boss_fight'; bossId: number }
   | { kind: 'set_boss_speed'; pct: number }
   | { kind: 'set_invincibility_mode'; enabled: boolean }
-  | { kind: 'tap_equation_forge' }
   | { kind: 'upgrade_loom_efficiency'; tierId: string };
 
 export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
