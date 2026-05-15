@@ -1,12 +1,6 @@
 import type { GameState } from '../../sim';
-import {
-  ACHIEVEMENT_DEFINITIONS,
-  ACHIEVEMENT_GROUPS,
-  ACHIEVEMENT_SUBCATEGORIES,
-} from '../../data/achievements';
-import type { AchievementCondition } from '../../data/achievements/achievement-definitions';
+import { ACHIEVEMENT_DEFINITIONS, ACHIEVEMENT_GROUPS } from '../../data/achievements';
 import { getClaimableCount } from '../../sim/achievements';
-import { TIER_BY_ID } from '../../data/tiers';
 import { type NumberFormat } from '../../util';
 import type { ActionHandler } from '../../input';
 import type { AudioSystem } from '../../audio';
@@ -27,6 +21,14 @@ import {
   SPARKLE_VERTICAL_BIAS_Y,
   randomInRange,
 } from '../achievements/sparkle-shared';
+import {
+  buildAchievementsDom,
+  bonusText,
+  getAccentColor,
+  randomGlyphChar,
+  type CardRefs,
+  type GroupRefs,
+} from './achievements-panel-dom';
 
 /**
  * Achievements panel — grouped accordion cards with filter bar, nested
@@ -40,40 +42,6 @@ export interface AchievementsPanel {
   /** Cancel all timers. Call when the panel is removed from the DOM. */
   destroy(): void;
 }
-
-// ─── Scrambled text helpers ─────────────────────────────────────
-
-const GLYPH_CHARS = Array.from(
-  { length: 0x1676 - 0x1401 + 1 },
-  (_, i) => String.fromCodePoint(0x1401 + i),
-).join('');
-
-function randomGlyphChar(): string {
-  return GLYPH_CHARS[Math.floor(Math.random() * GLYPH_CHARS.length)];
-}
-
-function makeScrambledText(length: number): string {
-  let s = '';
-  for (let i = 0; i < length; i++) s += randomGlyphChar();
-  return s;
-}
-
-/** Returns a display string like "+50% Tap" for an achievement's bonus. */
-function bonusText(bonusKind: string, bonusMultiplier: number): string {
-  if (bonusKind === 'base_atk') return `+${bonusMultiplier} ATK`;
-  const label = bonusKind === 'tap_multiplier' ? 'Tap' : 'Loom';
-  const pct = Math.round((bonusMultiplier - 1) * 100);
-  return `+${pct}% ${label}`;
-}
-
-function getAccentColor(condition: AchievementCondition, displayColor?: string): string {
-  if (displayColor) return displayColor;
-  if (condition.kind === 'lifetime_motes') {
-    return TIER_BY_ID.get(condition.tierId)?.color ?? '#888';
-  }
-  return '#888';
-}
-
 
 export function hasUnclaimedAchievements(state: GameState): boolean {
   for (const def of ACHIEVEMENT_DEFINITIONS) {
@@ -255,49 +223,18 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     for (const host of sparkleEmitters.keys()) setSparkleEmitter(host, false);
   }
 
-  // ── DOM refs ──────────────────────────────────────────────────
-  interface CardRefs {
-    card: HTMLElement;
-    iconEl: HTMLElement;
-    nameEl: HTMLElement;
-    bonusEl: HTMLElement;
-    descEl: HTMLElement;
-    progressEl: HTMLElement;
-    groupId: string;
-    subcategoryId?: string;
-    /** True if this achievement is isSecret or isHiddenCriteria */
-    isHiddenType: boolean;
-  }
-
-  interface SubcategoryRefs {
-    section: HTMLElement;
-    toggle: HTMLButtonElement;
-    countEl: HTMLElement;
-    inner: HTMLElement;
-    achievementIds: string[];
-  }
-
-  interface GroupRefs {
-    toggle: HTMLButtonElement;
-    countEl: HTMLElement;
-    inner: HTMLElement;
-    achievementIds: string[];
-    subcategoryRefs: Map<string, SubcategoryRefs>;
-    /** Element shown when all cards are filtered out */
-    emptyMsg: HTMLElement;
-  }
-
-  const cardRefs: Map<string, CardRefs> = new Map();
-  const groupRefs: Map<string, GroupRefs> = new Map();
-
   // ── UI accordion state ────────────────────────────────────────
   let openMainCategoryId: string | null = ACHIEVEMENT_GROUPS[0]?.id ?? null;
   let openSubcategoryId: string | null = null;
   let isPanelVisible = false;
 
+  // Forward-declare so setOpenGroup/setOpenSubcategory can close over them
+  // before buildAchievementsDom populates the values.
+  let cardRefs!: Map<string, CardRefs>;
+  let groupRefs!: Map<string, GroupRefs>;
+
   function setOpenGroup(nextId: string | null): void {
     openMainCategoryId = nextId;
-    // When main category changes, collapse subcategory
     openSubcategoryId = null;
 
     for (const [groupId, refs] of groupRefs) {
@@ -307,7 +244,6 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       refs.inner.parentElement!.classList.toggle('achievement-group-content--expanded', isExpanded);
 
       if (!isExpanded) {
-        // Collapse all subcategories in this group
         for (const sub of refs.subcategoryRefs.values()) {
           sub.toggle.setAttribute('aria-expanded', 'false');
           sub.toggle.classList.remove('ach-sub-toggle--expanded');
@@ -340,245 +276,21 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   // ── Build DOM ─────────────────────────────────────────────────
-  for (const group of ACHIEVEMENT_GROUPS) {
-    const groupEl = document.createElement('section');
-    groupEl.className = 'achievement-group';
-
-    const toggle = document.createElement('button');
-    toggle.className = 'achievement-group-toggle';
-    toggle.type = 'button';
-    toggle.setAttribute('aria-expanded', 'false');
-
-    const left = document.createElement('span');
-    left.className = 'achievement-group-toggle-left';
-    const iconSpan = document.createElement('span');
-    iconSpan.className = 'achievement-group-icon';
-    iconSpan.textContent = group.icon;
-    const labelSpan = document.createElement('span');
-    labelSpan.className = 'achievement-group-label';
-    labelSpan.textContent = group.name;
-    left.appendChild(iconSpan);
-    left.appendChild(labelSpan);
-
-    const right = document.createElement('span');
-    right.className = 'achievement-group-toggle-right';
-    const countEl = document.createElement('span');
-    countEl.className = 'achievement-group-count';
-    countEl.textContent = '0/0';
-    const chevron = document.createElement('span');
-    chevron.className = 'achievement-group-chevron';
-    chevron.textContent = '▾';
-    right.appendChild(countEl);
-    right.appendChild(chevron);
-
-    toggle.appendChild(left);
-    toggle.appendChild(right);
-    toggle.addEventListener('click', () => {
-      const next = openMainCategoryId === group.id ? null : group.id;
-      setOpenGroup(next);
-    });
-
-    // Content wrapper — CSS grid accordion (no max-height limit)
-    const contentWrapper = document.createElement('div');
-    contentWrapper.className = 'achievement-group-content';
-
-    const inner = document.createElement('div');
-    inner.className = 'achievement-group-inner';
-    contentWrapper.appendChild(inner);
-
-    // Empty message (shown when all cards are filtered out)
-    const emptyMsg = document.createElement('div');
-    emptyMsg.className = 'ach-empty-msg';
-    emptyMsg.textContent = 'No achievements match the current filters.';
-    emptyMsg.style.display = 'none';
-    inner.appendChild(emptyMsg);
-
-    groupEl.appendChild(toggle);
-    groupEl.appendChild(contentWrapper);
-    groupsRoot.appendChild(groupEl);
-
-    const subcategoryRefs: Map<string, SubcategoryRefs> = new Map();
-    const allGroupAchievementIds: string[] = [];
-
-    // Subcategories within this group
-    const groupSubcategories = ACHIEVEMENT_SUBCATEGORIES.filter(sub => sub.groupId === group.id);
-
-    if (groupSubcategories.length > 0) {
-      // Build subcategory accordions
-      for (const sub of groupSubcategories) {
-        const subAchievements = ACHIEVEMENT_DEFINITIONS.filter(
-          d => d.groupId === group.id && d.subcategoryId === sub.id,
-        );
-        if (subAchievements.length === 0) continue;
-
-        const subEl = document.createElement('section');
-        subEl.className = 'ach-sub-group';
-
-        const subToggle = document.createElement('button');
-        subToggle.className = 'ach-sub-toggle';
-        subToggle.type = 'button';
-        subToggle.setAttribute('aria-expanded', 'false');
-
-        const subLeft = document.createElement('span');
-        subLeft.className = 'ach-sub-toggle-left';
-        const subIcon = document.createElement('span');
-        subIcon.textContent = sub.icon;
-        subIcon.className = 'ach-sub-icon';
-        const subLabel = document.createElement('span');
-        subLabel.className = 'ach-sub-label';
-        subLabel.textContent = sub.name;
-        subLeft.appendChild(subIcon);
-        subLeft.appendChild(subLabel);
-
-        const subRight = document.createElement('span');
-        subRight.className = 'ach-sub-toggle-right';
-        const subCount = document.createElement('span');
-        subCount.className = 'ach-sub-count';
-        subCount.textContent = '0/0';
-        const subChevron = document.createElement('span');
-        subChevron.className = 'ach-sub-chevron';
-        subChevron.textContent = '▾';
-        subRight.appendChild(subCount);
-        subRight.appendChild(subChevron);
-
-        subToggle.appendChild(subLeft);
-        subToggle.appendChild(subRight);
-        subToggle.addEventListener('click', () => {
-          const next = openSubcategoryId === sub.id ? null : sub.id;
-          setOpenSubcategory(group.id, next);
-        });
-
-        const subContent = document.createElement('div');
-        subContent.className = 'ach-sub-content';
-        const subInner = document.createElement('div');
-        subInner.className = 'ach-sub-inner';
-        subContent.appendChild(subInner);
-
-        subEl.appendChild(subToggle);
-        subEl.appendChild(subContent);
-        inner.appendChild(subEl);
-
-        const subAchIds: string[] = [];
-        for (const def of subAchievements) {
-          subAchIds.push(def.id);
-          allGroupAchievementIds.push(def.id);
-          appendCard(def, subInner);
-        }
-
-        subcategoryRefs.set(sub.id, {
-          section: subEl,
-          toggle: subToggle,
-          countEl: subCount,
-          inner: subInner,
-          achievementIds: subAchIds,
-        });
-      }
-
-      // Achievements in this group without a subcategoryId (fallback)
-      const unsortedAchievements = ACHIEVEMENT_DEFINITIONS.filter(
-        d => d.groupId === group.id && !d.subcategoryId,
-      );
-      for (const def of unsortedAchievements) {
-        allGroupAchievementIds.push(def.id);
-        appendCard(def, inner);
-      }
-    } else {
-      // No subcategories — add cards directly to inner
-      for (const def of ACHIEVEMENT_DEFINITIONS) {
-        if (def.groupId !== group.id) continue;
-        allGroupAchievementIds.push(def.id);
-        appendCard(def, inner);
-      }
-    }
-
-    groupRefs.set(group.id, {
-      toggle,
-      countEl,
-      inner,
-      achievementIds: allGroupAchievementIds,
-      subcategoryRefs,
-      emptyMsg,
-    });
-  }
-
-  function appendCard(
-    def: (typeof ACHIEVEMENT_DEFINITIONS)[number],
-    container: HTMLElement,
-  ): void {
-    const accentColor = getAccentColor(def.condition, def.displayColor);
-    const isHiddenType = !!(def.isSecret || def.isHiddenCriteria);
-
-    const card = document.createElement('div');
-    card.className = 'achievement-card';
-    card.style.borderLeftColor = accentColor;
-
-    const header = document.createElement('div');
-    header.className = 'achievement-header';
-
-    const iconEl = document.createElement('span');
-    iconEl.className = 'achievement-icon';
-    iconEl.textContent = '🏆';
-    header.appendChild(iconEl);
-
-    const nameEl = document.createElement('span');
-    nameEl.className = 'achievement-name';
-    nameEl.style.color = accentColor;
-    // Secret achievements start with scrambled name; hidden-criteria show real name
-    if (def.isSecret) {
-      nameEl.textContent = makeScrambledText(def.displayName.length);
-      nameEl.style.fontFamily = "'BJ Cree', monospace";
-      nameEl.style.letterSpacing = '0.05em';
-    } else {
-      nameEl.textContent = def.displayName;
-    }
-    header.appendChild(nameEl);
-
-    const bonusEl = document.createElement('span');
-    bonusEl.className = 'achievement-bonus';
-    bonusEl.textContent = def.isSecret ? '???' : bonusText(def.bonusKind, def.bonusMultiplier);
-    header.appendChild(bonusEl);
-
-    card.appendChild(header);
-
-    const descEl = document.createElement('p');
-    descEl.className = 'achievement-desc';
-    if (def.isSecret) {
-      descEl.textContent = makeScrambledText(def.description.length);
-      descEl.style.fontFamily = "'BJ Cree', monospace";
-      descEl.style.letterSpacing = '0.05em';
-    } else {
-      descEl.textContent = def.description;
-    }
-    card.appendChild(descEl);
-
-    const progressEl = document.createElement('div');
-    progressEl.className = 'achievement-progress';
-    if (def.isHiddenCriteria) {
-      progressEl.textContent = makeScrambledText(12);
-      progressEl.style.fontFamily = "'BJ Cree', monospace";
-    }
-    card.appendChild(progressEl);
-
-    card.addEventListener('click', () => {
-      if (!card.classList.contains('achievement-earned-unclaimed')) return;
-      dispatch({ kind: 'claim_achievement', achievementId: def.id });
+  const domRefs = buildAchievementsDom(groupsRoot, {
+    onGroupToggle(groupId) {
+      setOpenGroup(openMainCategoryId === groupId ? null : groupId);
+    },
+    onSubcategoryToggle(groupId, subId) {
+      setOpenSubcategory(groupId, openSubcategoryId === subId ? null : subId);
+    },
+    onCardClaim(achievementId, formattedBonus) {
+      dispatch({ kind: 'claim_achievement', achievementId });
       audioSystem?.onAchievementClaimed();
-      enqueueReward(`${bonusText(def.bonusKind, def.bonusMultiplier)}!`);
-    });
-
-    container.appendChild(card);
-    cardRefs.set(def.id, {
-      card,
-      iconEl,
-      nameEl,
-      bonusEl,
-      descEl,
-      progressEl,
-      groupId: def.groupId,
-      subcategoryId: def.subcategoryId,
-      isHiddenType,
-    });
-  }
+      enqueueReward(`${formattedBonus}!`);
+    },
+  });
+  cardRefs = domRefs.cardRefs;
+  groupRefs = domRefs.groupRefs;
 
   setOpenGroup(openMainCategoryId);
 

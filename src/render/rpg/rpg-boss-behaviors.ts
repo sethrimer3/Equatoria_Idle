@@ -1,19 +1,16 @@
 /**
- * rpg-boss-behaviors.ts — Per-boss-ID movement and attack patterns.
+ * rpg-boss-behaviors.ts — Per-boss-ID (non-wave) movement and attack patterns.
  *
  * Extracted from rpg-boss-update.ts to keep that file under ~200 lines.
- * Contains:
- *   - Boss-wave danmaku patterns (flower ring, spiral burst, star formation)
- *   - Per-boss-ID non-wave movement and attack patterns (bossId 1–12)
+ * Boss-wave danmaku patterns live in rpg-boss-behaviors-wave.ts.
  *
  * The single exported function `updateBossBehavior` returns `true` when the
- * boss is in boss-wave mode (position already updated here) and `false`
- * otherwise (caller applies the generic position clamp + fluid step).
+ * boss is in boss-wave mode (position already updated in rpg-boss-behaviors-wave)
+ * and `false` otherwise (caller applies the generic position clamp + fluid step).
  */
 
-import type { BossEnemy, BossProjectile, DanmakuSafeZone } from './rpg-enemy-types';
+import type { BossEnemy } from './rpg-enemy-types';
 import {
-  BOSS_SIZE_BASE,
   BOSS_PROJ_SPEED, BOSS_PROJ_SPEED_FAST,
   BOSS_PROJ_LIFE_MS, BOSS_PROJ_SIZE,
   BOSS_COLORS, BOSS_GLOW_COLORS,
@@ -25,27 +22,13 @@ import {
   DANMAKU_RING_COUNT, DANMAKU_BULLET_SPEED,
 } from './rpg-constants';
 import { makeDanmakuSafeZone } from './rpg-factories';
+import {
+  type BossBehaviorCtx,
+  updateBossWaveBehavior,
+} from './rpg-boss-behaviors-wave';
 
-// ── Minimal context interface ─────────────────────────────────────────────────
-
-/**
- * Subset of BossUpdateCtx that updateBossBehavior actually uses.
- * Avoids a circular import with rpg-boss-update.ts.
- */
-export interface BossBehaviorCtx {
-  /** Player mote position and velocity (mutable). */
-  readonly mote: { x: number; y: number; vx: number; vy: number };
-  /** Current canvas dimensions. */
-  readonly dim: { w: number; h: number };
-  /** Boss projectile array — pushed to by attack patterns. */
-  readonly bossProjectiles: BossProjectile[];
-  /** Whether a boss-wave fight is currently active. */
-  getIsBossWaveActive(): boolean;
-  /** Current danmaku safe zone (null when none). */
-  getDanmakuSafeZone(): DanmakuSafeZone | null;
-  /** Overwrite the current danmaku safe zone. */
-  setDanmakuSafeZone(dz: DanmakuSafeZone | null): void;
-}
+// Re-export the shared context type so existing importers stay compatible.
+export type { BossBehaviorCtx };
 
 // ── Boss behavior dispatch ────────────────────────────────────────────────────
 
@@ -54,8 +37,8 @@ export interface BossBehaviorCtx {
  * updates for one frame.
  *
  * Returns `true` when the boss is in boss-wave mode — the boss position has
- * already been clamped here and the caller must skip the generic contact-damage
- * and movement-clamp steps.
+ * already been clamped in rpg-boss-behaviors-wave and the caller must skip the
+ * generic contact-damage and movement-clamp steps.
  *
  * Returns `false` for normal (non-wave) encounters — only velocities have been
  * mutated; the caller applies contact damage and the movement clamp.
@@ -82,147 +65,12 @@ export function updateBossBehavior(
   atk1Cd: number, atk2Cd: number,
   deltaMs: number,
 ): boolean {
-  const bossId  = boss.bossId;
-  const half    = (BOSS_SIZE_BASE + bossId * 1.5) / 2;
+  const bossId = boss.bossId;
 
-  // ── Boss-wave mode: danmaku patterns ─────────────────────────────────────────
+  // ── Boss-wave mode: danmaku patterns (delegated to rpg-boss-behaviors-wave) ──
   if (ctx.getIsBossWaveActive()) {
-    const targetX = ctx.dim.w / 2 + Math.sin(boss.orbitAngle) * ctx.dim.w * 0.18;
-    const targetY = ctx.dim.h * 0.12;
-    boss.orbitAngle += 0.006 * dt;
-    boss.vx += (targetX - boss.x) * 0.06;
-    boss.vy += (targetY - boss.y) * 0.10;
-    boss.vx *= 0.82; boss.vy *= 0.82;
-    boss.x = Math.max(half, Math.min(ctx.dim.w - half, boss.x + boss.vx * dt));
-    boss.y = Math.max(half, Math.min(ctx.dim.h * 0.30, boss.y + boss.vy * dt));
-
-    const dl = boss.danmakuLevel;
-    const bulletSpeed     = BOSS_PROJ_SPEED      * (1.0 + dl * 0.12);
-    const bulletSpeedFast = BOSS_PROJ_SPEED_FAST * (1.0 + dl * 0.08);
-    const bossColor = BOSS_COLORS[Math.min(bossId, BOSS_COLORS.length - 1)];
-    const bossGlow  = BOSS_GLOW_COLORS[Math.min(bossId, BOSS_GLOW_COLORS.length - 1)];
-    const seekStr = Math.min(0.025, 0.002 + dl * 0.003);
-
-    if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
-      boss.isFiringPaused = false;
-      const rotOffset   = boss.orbitAngle;
-      const patternType = (Math.floor(boss.pulseMs / 3000) + boss.phaseIndex) % 3;
-
-      if (patternType === 0) {
-        // ── Flower ring: petal-shaped speed variation ──────────────────────────
-        const petalCount = 6 + dl * 2 + boss.phaseIndex * 4;
-        for (let i = 0; i < petalCount; i++) {
-          const a           = rotOffset + (i / petalCount) * Math.PI * 2;
-          const petalFactor = 0.8 + 0.4 * Math.abs(Math.sin(i * Math.PI * 2 / 6));
-          ctx.bossProjectiles.push({
-            x: boss.x, y: boss.y,
-            vx: Math.cos(a) * bulletSpeed * petalFactor,
-            vy: Math.sin(a) * bulletSpeed * petalFactor,
-            atk: boss.atk, hasHitPlayer: false,
-            lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-            color: bossColor, glowColor: bossGlow, size: BOSS_PROJ_SIZE, seekStr: 0,
-          });
-        }
-        if (dl >= 1) {
-          const innerOffset = Math.PI / petalCount;
-          for (let i = 0; i < petalCount; i++) {
-            const a = rotOffset + innerOffset + (i / petalCount) * Math.PI * 2;
-            ctx.bossProjectiles.push({
-              x: boss.x, y: boss.y,
-              vx: Math.cos(a) * bulletSpeed * 0.65,
-              vy: Math.sin(a) * bulletSpeed * 0.65,
-              atk: boss.atk, hasHitPlayer: false,
-              lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-              color: bossGlow, glowColor: bossColor, size: BOSS_PROJ_SIZE - 1, seekStr: 0,
-            });
-          }
-        }
-      } else if (patternType === 1) {
-        // ── Spiral burst: counter-rotating double spiral ───────────────────────
-        const spiralCount = Math.max(8, 10 + dl * 3 + boss.phaseIndex * 4);
-        const turns       = 1 + boss.phaseIndex * 0.5;
-        for (let i = 0; i < spiralCount; i++) {
-          const t = i / spiralCount;
-          const a = rotOffset + t * Math.PI * 2 * turns;
-          ctx.bossProjectiles.push({
-            x: boss.x, y: boss.y,
-            vx: Math.cos(a) * bulletSpeed * (0.6 + t * 0.8),
-            vy: Math.sin(a) * bulletSpeed * (0.6 + t * 0.8),
-            atk: boss.atk, hasHitPlayer: false,
-            lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-            color: bossColor, glowColor: bossGlow, size: BOSS_PROJ_SIZE, seekStr: 0,
-          });
-        }
-        if (dl >= 1) {
-          const cCount = Math.max(6, 8 + dl * 2);
-          for (let i = 0; i < cCount; i++) {
-            const t = i / cCount;
-            const a = -rotOffset + t * Math.PI * 2 * turns;
-            ctx.bossProjectiles.push({
-              x: boss.x, y: boss.y,
-              vx: Math.cos(a) * bulletSpeed * (0.5 + t * 0.7),
-              vy: Math.sin(a) * bulletSpeed * (0.5 + t * 0.7),
-              atk: boss.atk, hasHitPlayer: false,
-              lifeMs: BOSS_PROJ_LIFE_MS * 0.8, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.8,
-              color: bossGlow, glowColor: bossColor, size: BOSS_PROJ_SIZE - 1, seekStr: 0,
-            });
-          }
-        }
-      } else {
-        // ── Star formation: multi-point star ───────────────────────────────────
-        const starPoints    = 4 + dl + boss.phaseIndex * 2;
-        const spikesPerPoint = 2 + dl;
-        for (let p = 0; p < starPoints; p++) {
-          const baseAngle = rotOffset + (p / starPoints) * Math.PI * 2;
-          for (let s = 0; s < spikesPerPoint; s++) {
-            const spread = 0.15 * (spikesPerPoint - 1);
-            const a = baseAngle + (s - (spikesPerPoint - 1) / 2) * spread / spikesPerPoint;
-            ctx.bossProjectiles.push({
-              x: boss.x, y: boss.y,
-              vx: Math.cos(a) * bulletSpeed * (0.9 + s * 0.15),
-              vy: Math.sin(a) * bulletSpeed * (0.9 + s * 0.15),
-              atk: boss.atk, hasHitPlayer: false,
-              lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-              color: bossColor, glowColor: bossGlow, size: BOSS_PROJ_SIZE, seekStr: 0,
-            });
-          }
-        }
-      }
-    }
-
-    if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
-      const aimAngle = Math.atan2(dy, dx);
-      const spread   = 3 + Math.floor(dl * 0.7);
-      const fanWidth = 0.40 + dl * 0.04;
-      for (let i = 0; i < spread; i++) {
-        const t = spread > 1 ? i / (spread - 1) : 0.5;
-        const a = aimAngle + (t - 0.5) * fanWidth;
-        ctx.bossProjectiles.push({
-          x: boss.x, y: boss.y,
-          vx: Math.cos(a) * bulletSpeedFast * (0.85 + t * 0.3),
-          vy: Math.sin(a) * bulletSpeedFast * (0.85 + t * 0.3),
-          atk: boss.atk, hasHitPlayer: false,
-          lifeMs: BOSS_PROJ_LIFE_MS * 0.75, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.75,
-          color: bossGlow, glowColor: bossColor, size: BOSS_PROJ_SIZE - 1, seekStr,
-        });
-      }
-      if (boss.phaseIndex >= 2) {
-        const perpAngle = aimAngle + Math.PI / 2;
-        for (let side = -1; side <= 1; side += 2) {
-          ctx.bossProjectiles.push({
-            x: boss.x, y: boss.y,
-            vx: Math.cos(perpAngle + side * 0.3) * bulletSpeedFast * 0.9,
-            vy: Math.sin(perpAngle + side * 0.3) * bulletSpeedFast * 0.9,
-            atk: boss.atk, hasHitPlayer: false,
-            lifeMs: BOSS_PROJ_LIFE_MS * 0.6, maxLifeMs: BOSS_PROJ_LIFE_MS * 0.6,
-            color: bossColor, glowColor: bossGlow, size: BOSS_PROJ_SIZE, seekStr: seekStr * 0.3,
-          });
-        }
-      }
-    }
-    return true; // position already updated above — skip contact damage and movement clamp
+    updateBossWaveBehavior(boss, ctx, dt, dx, dy, atk1Cd, atk2Cd);
+    return true; // position already updated — skip contact damage and movement clamp
   }
 
   // ── Non-wave: per-boss-ID movement and attack patterns ───────────────────────
