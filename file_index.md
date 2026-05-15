@@ -1138,18 +1138,34 @@ Audio system — eight focused modules:
 - Equation upgrades and forge unlock have moved to the Equation panel.
 
 ### src/ui/panels/achievements-panel.ts
-- Achievements tab content — filter bar, nested category accordions, per-character glyph animation (~591 lines).
+- Achievements tab content — filter bar, nested category accordions, per-character glyph animation (~445 lines).
 - DOM building (group accordions, subcategory accordions, achievement cards) extracted to `achievements-panel-dom.ts`.
+- Sparkle system extracted to `achievements-panel-sparkle.ts`.
+- Glyph animation extracted to `achievements-panel-glyph.ts`.
 - Filter bar: three checkboxes (show earned, show unearned, show hidden) with defaults earned+unearned=on, hidden=off.
 - Main category accordions: only one open at a time; opening another closes the previous.
 - RPG group: nested subcategory accordions (11 subcategories); only one subcategory open at a time.
-- Scroll fix: CSS grid-template-rows accordion (no max-height cap) supports unlimited achievements.
-- Glyph animation: single shared setInterval (GLYPH_TICK_MS=70ms) updates one char at a time per string with independent per-character probability (CHAR_FLIP_PROB=0.12).
 - isSecret achievements: glyph name, desc, bonus, progress when not earned.
 - isHiddenCriteria achievements: glyph only the progress field when not earned.
 - Sparkle emitters managed per card and group toggle, cleaned up on hide/destroy.
 - Exports `hasUnclaimedAchievements(state)` for tab-bar indicator logic.
 - Progress text formatting extracted to `src/ui/achievements/achievement-progress-text.ts`.
+
+### src/ui/panels/achievements-panel-sparkle.ts
+- Sparkle particle animation system for earned-unclaimed achievement cards (~92 lines).
+- Exports `createSparkleSystem()` → `SparkleSystemHandle` with `setSparkleEmitter(host, enabled)` and `stopAllSparkles()`.
+- Manages per-host timeout chains; creates CSS-animated `.achievement-sparkle` spans.
+- Extracted from `achievements-panel.ts` to keep sparkle state self-contained.
+
+### src/ui/panels/achievements-panel-glyph.ts
+- Per-character scrambled glyph animation for secret/hidden-criteria achievement cards (~127 lines).
+- Exports `createGlyphSystem(deps)` → `GlyphSystemHandle` with `rebuildGlyphEntries`, `startGlyphAnimation`, `stopGlyphAnimation`.
+- Dependencies: `getCardRefs()` and `getFilterShowHidden()` getters (injected from `achievements-panel.ts`).
+- Uses `requestAnimationFrame` loop; mutates one random character per entry every 1–5 frames.
+- Respects `prefers-reduced-motion` by skipping most updates at 98% probability.
+- Extracted from `achievements-panel.ts`.
+
+### src/ui/panels/achievements-panel-dom.ts
 
 ### src/ui/panels/achievements-panel-dom.ts
 - Achievement DOM building helpers extracted from `achievements-panel.ts` (~355 lines).
@@ -1243,12 +1259,20 @@ Audio system — eight focused modules:
 - Simulation infrastructure (SimState, strategies, runner) has been extracted to `balance-forecast-sim.ts`.
 
 ### src/ui/panels/balance-forecast/balance-forecast-panel.ts
-- Dev-only DOM panel for the Balance Forecast system.
+- Dev-only DOM panel for the Balance Forecast system (~215 lines).
 - `createBalanceForecastPanel()` — returns `BalanceForecastPanel` interface.
 - Renders: Next Meaningful Events, Static ETA table, Fresh-Run Timeline, Strategy Comparison, Pacing Warnings.
 - Controls: max-sim-time selector, ↺ Run Analysis button, 📋 Copy Results button.
 - Runs simulation lazily (on open or refresh click) — never runs on every frame.
 - Hidden unless `setDevMode(true)` is called.
+- Pure rendering helpers extracted to `balance-forecast-render.ts`.
+
+### src/ui/panels/balance-forecast/balance-forecast-render.ts
+- Pure DOM rendering helpers extracted from `balance-forecast-panel.ts` (~494 lines).
+- Exports: `el`, `makeSection`, `statusClass`, `categoryLabel`, `safeNum`, `collectMilestoneIds`.
+- Render functions: `renderStaticEtaTable`, `renderNextMeaningfulTargets`, `renderFreshRunTimeline`, `renderStrategyComparison`, `renderStrategyTimeline`, `renderPacingWarnings`.
+- Also exports `buildTextReport(result)` for the copy-to-clipboard text report.
+- All functions are stateless (take only data + HTMLElement); no closure dependencies.
 
 ### src/dev/session-telemetry.ts
 - Lightweight dev-only session telemetry counters. No browser dependencies; pure TypeScript.

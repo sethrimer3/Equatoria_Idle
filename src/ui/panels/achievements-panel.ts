@@ -7,28 +7,14 @@ import type { AudioSystem } from '../../audio';
 import { makePageBreak } from '../ui-helpers';
 import { getProgressText } from '../achievements/achievement-progress-text';
 import {
-  INITIAL_SPARKLE_DELAY_MS,
-  type SparkleEmitter,
-  SPARKLE_DRIFT_X_RANGE,
-  SPARKLE_DRIFT_Y_RANGE,
-  SPARKLE_MAX_DELAY_MS,
-  SPARKLE_MAX_DURATION_MS,
-  SPARKLE_MIN_DELAY_MS,
-  SPARKLE_MIN_DURATION_MS,
-  SPARKLE_SCALE_MAX,
-  SPARKLE_SCALE_MIN,
-  SPARKLE_SIZE,
-  SPARKLE_VERTICAL_BIAS_Y,
-  randomInRange,
-} from '../achievements/sparkle-shared';
-import {
   buildAchievementsDom,
   bonusText,
   getAccentColor,
-  randomGlyphChar,
   type CardRefs,
   type GroupRefs,
 } from './achievements-panel-dom';
+import { createSparkleSystem } from './achievements-panel-sparkle';
+import { createGlyphSystem } from './achievements-panel-glyph';
 
 /**
  * Achievements panel — grouped accordion cards with filter bar, nested
@@ -50,19 +36,6 @@ export function hasUnclaimedAchievements(state: GameState): boolean {
     }
   }
   return false;
-}
-
-// ─── Per-character glyph animation state ────────────────────────
-
-interface GlyphEntry {
-  /** Element whose textContent is updated with scrambled text. */
-  el: HTMLElement;
-  /** Length of the original text (number of characters to scramble). */
-  len: number;
-  /** Current scrambled characters, one per position. */
-  chars: string[];
-  /** Frames until next character mutation. Randomised per-entry for variety. */
-  frameCountdown: number;
 }
 
 // ─── Panel factory ─────────────────────────────────────────────
@@ -174,54 +147,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   // ── Sparkle system ─────────────────────────────────────────────
-  const sparkleEmitters: Map<HTMLElement, SparkleEmitter> = new Map();
-
-  function createSparkle(host: HTMLElement): void {
-    const sparkle = document.createElement('span');
-    sparkle.className = 'achievement-sparkle';
-    sparkle.style.width = `${SPARKLE_SIZE}px`;
-    sparkle.style.height = `${SPARKLE_SIZE}px`;
-    sparkle.style.left = `${Math.random() * 100}%`;
-    sparkle.style.top = `${Math.random() * 100}%`;
-    const driftX = randomInRange(-SPARKLE_DRIFT_X_RANGE / 2, SPARKLE_DRIFT_X_RANGE / 2);
-    const driftY = randomInRange(-SPARKLE_DRIFT_Y_RANGE / 2, SPARKLE_DRIFT_Y_RANGE / 2) + SPARKLE_VERTICAL_BIAS_Y;
-    const scale = randomInRange(SPARKLE_SCALE_MIN, SPARKLE_SCALE_MAX);
-    const durationMs = randomInRange(SPARKLE_MIN_DURATION_MS, SPARKLE_MAX_DURATION_MS);
-    sparkle.style.setProperty('--sparkle-dx', `${driftX.toFixed(2)}px`);
-    sparkle.style.setProperty('--sparkle-dy', `${driftY.toFixed(2)}px`);
-    sparkle.style.setProperty('--sparkle-scale', scale.toFixed(3));
-    sparkle.style.setProperty('--sparkle-duration', `${durationMs.toFixed(0)}ms`);
-    sparkle.addEventListener('animationend', () => sparkle.remove(), { once: true });
-    host.appendChild(sparkle);
-  }
-
-  function scheduleSparkles(host: HTMLElement): void {
-    const emitter = sparkleEmitters.get(host);
-    if (!emitter) return;
-    createSparkle(host);
-    const delayMs = randomInRange(SPARKLE_MIN_DELAY_MS, SPARKLE_MAX_DELAY_MS);
-    emitter.timeoutId = window.setTimeout(() => scheduleSparkles(host), delayMs);
-  }
-
-  function setSparkleEmitter(host: HTMLElement, enabled: boolean): void {
-    const existing = sparkleEmitters.get(host);
-    if (enabled) {
-      if (existing) return;
-      host.classList.add('achievement-sparkle-host');
-      const timeoutId = window.setTimeout(() => scheduleSparkles(host), INITIAL_SPARKLE_DELAY_MS);
-      sparkleEmitters.set(host, { timeoutId });
-      return;
-    }
-    if (!existing) return;
-    if (existing.timeoutId !== null) window.clearTimeout(existing.timeoutId);
-    sparkleEmitters.delete(host);
-    host.classList.remove('achievement-sparkle-host');
-    for (const sparkle of host.querySelectorAll('.achievement-sparkle')) sparkle.remove();
-  }
-
-  function stopAllSparkles(): void {
-    for (const host of sparkleEmitters.keys()) setSparkleEmitter(host, false);
-  }
+  const { setSparkleEmitter, stopAllSparkles } = createSparkleSystem();
 
   // ── UI accordion state ────────────────────────────────────────
   let openMainCategoryId: string | null = ACHIEVEMENT_GROUPS[0]?.id ?? null;
@@ -294,84 +220,12 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
   setOpenGroup(openMainCategoryId);
 
-  // ── Per-character glyph animation ─────────────────────────────
-  /**
-   * Active glyph entries: only achievements that are visible (show-hidden=on,
-   * not yet earned) and have hidden content.
-   */
-  const glyphEntries: GlyphEntry[] = [];
-
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  function buildGlyphEntry(el: HTMLElement, length: number): GlyphEntry {
-    const chars = Array.from({ length }, () => randomGlyphChar());
-    el.textContent = chars.join('');
-    // Stagger initial countdown so entries don't all fire on the same frame
-    const frameCountdown = 1 + Math.floor(Math.random() * 5);
-    return { el, len: length, chars, frameCountdown };
-  }
-
-  function rebuildGlyphEntries(): void {
-    glyphEntries.length = 0;
-    if (!filterShowHidden) return;
-    for (const def of ACHIEVEMENT_DEFINITIONS) {
-      if (!def.isSecret && !def.isHiddenCriteria) continue;
-      const refs = cardRefs.get(def.id);
-      if (!refs) continue;
-      // Only animate cards that are currently visible and showing glyph content
-      if (!cardIsVisible(refs)) continue;
-      const isUnlocked = refs.card.classList.contains('achievement-unlocked') ||
-                         refs.card.classList.contains('achievement-earned-unclaimed');
-      if (isUnlocked) continue;
-      if (def.isSecret) {
-        glyphEntries.push(buildGlyphEntry(refs.nameEl, def.displayName.length));
-        glyphEntries.push(buildGlyphEntry(refs.descEl, def.description.length));
-      }
-      if (def.isHiddenCriteria) {
-        glyphEntries.push(buildGlyphEntry(refs.progressEl, 12));
-      }
-    }
-    startGlyphAnimation();
-  }
-
-  /** RAF handle for the glyph animation loop. */
-  let glyphRafId: number | null = null;
-  let glyphAnimating = false;
-
-  function glyphFrame(): void {
-    if (glyphEntries.length === 0) {
-      glyphAnimating = false;
-      glyphRafId = null;
-      return;
-    }
-    // Under reduced-motion, update very slowly (one change every ~3 seconds)
-    const skipProbability = prefersReducedMotion ? 0.98 : 0;
-    for (const entry of glyphEntries) {
-      if (prefersReducedMotion && Math.random() < skipProbability) continue;
-      entry.frameCountdown--;
-      if (entry.frameCountdown <= 0) {
-        // Mutate exactly one random character
-        const idx = Math.floor(Math.random() * entry.len);
-        entry.chars[idx] = randomGlyphChar();
-        entry.el.textContent = entry.chars.join('');
-        // Reset countdown to 1–5 frames for this entry
-        entry.frameCountdown = 1 + Math.floor(Math.random() * 5);
-      }
-    }
-    glyphRafId = requestAnimationFrame(glyphFrame);
-  }
-
-  function startGlyphAnimation(): void {
-    if (glyphAnimating || glyphEntries.length === 0) return;
-    glyphAnimating = true;
-    glyphRafId = requestAnimationFrame(glyphFrame);
-  }
-
-  function stopGlyphAnimation(): void {
-    if (glyphRafId !== null) cancelAnimationFrame(glyphRafId);
-    glyphRafId = null;
-    glyphAnimating = false;
-  }
+  // ── Glyph animation system ────────────────────────────────────
+  const glyph = createGlyphSystem({
+    getCardRefs: () => cardRefs,
+    getFilterShowHidden: () => filterShowHidden,
+  });
+  const { rebuildGlyphEntries, startGlyphAnimation, stopGlyphAnimation } = glyph;
 
   // ── Filter application ────────────────────────────────────────
   /**
