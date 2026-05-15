@@ -84,6 +84,8 @@ import {
 } from './rpg-aliven-updates';
 import { damageAlivenParticle } from './rpg-damage';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
+import { makeAlivenGroup } from './rpg-aliven-factories';
+import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS, type AlivenVariantId } from './rpg-aliven-constants';
 import {
   type RpgEnemyCtx,
   updateEmeraldEnemies,
@@ -174,6 +176,12 @@ export interface RpgRender {
   setDevMode(enabled: boolean): void;
   /** Enable/disable invincibility mode — player takes no damage (dev mode only). */
   setInvincibilityMode(enabled: boolean): void;
+  /** Dev-mode only: spawn one Aliven group of the given variantId at the canvas edge. */
+  devSpawnAliven(variantId: string): void;
+  /** Dev-mode only: remove all active Aliven groups instantly. */
+  devClearAliven(): void;
+  /** Returns the current number of active AlivenParticleGroups (dev use). */
+  getAlivenGroupCount(): number;
 }
 
 /** Options passed to createRpgRender. */
@@ -1139,6 +1147,29 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setInvincibilityMode(enabled: boolean): void {
       isInvincibilityMode = enabled;
+    },
+
+    devSpawnAliven(variantId: string): void {
+      if (alivenGroups.length >= MAX_ACTIVE_ALIVEN_GROUPS) return;
+      const vid = (ALIVEN_VARIANTS as readonly string[]).includes(variantId)
+        ? variantId as AlivenVariantId
+        : 'aliven_spark_cluster';
+      const margin = 30;
+      const edge = Math.floor(Math.random() * 4);
+      let spawnX = 0, spawnY = 0;
+      if      (edge === 0) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = margin; }
+      else if (edge === 1) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = heightPx - margin; }
+      else if (edge === 2) { spawnX = margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
+      else                 { spawnX = widthPx - margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
+      alivenGroups.push(makeAlivenGroup(vid, spawnX, spawnY, currentWave));
+    },
+
+    devClearAliven(): void {
+      alivenGroups.length = 0;
+    },
+
+    getAlivenGroupCount(): number {
+      return alivenGroups.length;
     },
   };
 }

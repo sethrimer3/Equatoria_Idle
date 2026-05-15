@@ -308,6 +308,12 @@ export async function startApp(): Promise<void> {
   // is toggled by setActiveTab alongside rpgContainer.
   root.appendChild(rpgRender.statsPanel);
 
+  // ── Wire dev panel hooks (dev playtesting tools) ──
+  settingsPanel.registerDevHooks({
+    rpgRender,
+    getGame: () => appState.game,
+  });
+
   // ── Helper: apply the RPG bar position setting to DOM elements ──
   function applyRpgBarPosition(atTop: boolean): void {
     rpgRender.statsPanel.classList.toggle('rpg-bar-at-top', atTop);

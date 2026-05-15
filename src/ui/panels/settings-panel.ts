@@ -6,6 +6,7 @@ import { makePageBreak } from '../ui-helpers';
 import { particleTweaks, PARTICLE_TWEAKS_DEFAULTS, resetParticleTweaks } from '../../data/particles/particle-tweaks';
 import { BUILD_NUMBER } from '../../buildInfo';
 import { createBalanceForecastPanel, type BalanceForecastPanel } from './balance-forecast/balance-forecast-panel';
+import { createDevPanel, type DevPanel, type DevPanelHooks } from './dev-panel';
 
 // ─── Slider glow constants ───────────────────────────────────────
 
@@ -30,6 +31,10 @@ export interface SettingsPanel {
   getSettings(): SettingsState;
   /** The embedded Balance Forecast dev panel (dev mode only). */
   balanceForecastPanel: BalanceForecastPanel;
+  /** The embedded developer playtesting panel (dev mode only). */
+  devPanel: DevPanel;
+  /** Wire up the dev panel after rpgRender and game are available. */
+  registerDevHooks(hooks: DevPanelHooks): void;
 }
 
 export function createSettingsPanel(
@@ -178,12 +183,17 @@ export function createSettingsPanel(
   const balanceForecastPanel = createBalanceForecastPanel();
   balanceForecastPanel.setDevMode(settings.isDevMode);
 
+  // Developer playtesting panel — also dev-mode only
+  const devPanel = createDevPanel();
+  devPanel.element.style.display = settings.isDevMode ? '' : 'none';
+
   const devModeRow = createToggleRow('Developer Mode', settings.isDevMode, (v) => {
     settings.isDevMode = v;
     saveSettings(settings);
     audioSystem?.onSettingsChanged();
     devSection.style.display = v ? '' : 'none';
     balanceForecastPanel.setDevMode(v);
+    devPanel.element.style.display = v ? '' : 'none';
   });
   panel.appendChild(devModeRow);
 
@@ -231,7 +241,10 @@ export function createSettingsPanel(
   // Dev-mode particle tweaks — appended after credits so it sits at the bottom
   panel.appendChild(devSection);
 
-  // Balance Forecast panel — appended after particle tweaks
+  // Developer playtesting panel — appended after particle tweaks
+  panel.appendChild(devPanel.element);
+
+  // Balance Forecast panel — appended after dev panel
   panel.appendChild(balanceForecastPanel.element);
 
   // Small page break at the end of the settings panel
@@ -241,6 +254,10 @@ export function createSettingsPanel(
     element: panel,
     getSettings: () => settings,
     balanceForecastPanel,
+    devPanel,
+    registerDevHooks(hooks: DevPanelHooks): void {
+      devPanel.setHooks(hooks);
+    },
   };
 }
 
