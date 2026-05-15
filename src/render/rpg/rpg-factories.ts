@@ -431,6 +431,7 @@ export function makeEliteEnemy(tier: EliteTier, x: number, y: number, waveNumber
     maxShieldHp: shield,
     hasTriggeredLowHp: false,
     pendingSalvoMs: -1,
+    spawnTimeMs: performance.now(),
   };
 }
 

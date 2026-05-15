@@ -123,6 +123,27 @@ export interface RpgSimState {
   tookDamageThisWave: boolean;
   /** Boss defeated while only 1 weapon was equipped. */
   bossDefeated1Weapon: boolean;
+  /**
+   * Persistent set of secret achievement condition flags.
+   * Gameplay systems set string IDs here; achievement definitions reference
+   * them via { kind: 'secret_flag', flagId: '...' } conditions.
+   */
+  secretAchievementFlags: Set<string>;
+  /**
+   * Timestamps (nowMs) of recent lucky mote collections, capped at 20.
+   * Used to check timing-based lucky mote achievements.
+   */
+  luckyMoteCollectedTimestampsMs: number[];
+  /**
+   * Accumulated milliseconds the player has spent at ≤10% max HP this run.
+   * Resets on death. Used for the "survived_60s_low_hp" secret flag.
+   */
+  lowHpAccumulatedMs: number;
+  /**
+   * Whether the player changed equipped weapons during the current inter-wave
+   * delay. Reset to false at the start of each new wave.
+   */
+  equipChangedDuringInterwave: boolean;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -156,6 +177,10 @@ export function createRpgSimState(): RpgSimState {
     totalWavesCompleted: 0,
     tookDamageThisWave: false,
     bossDefeated1Weapon: false,
+    secretAchievementFlags: new Set(),
+    luckyMoteCollectedTimestampsMs: [],
+    lowHpAccumulatedMs: 0,
+    equipChangedDuringInterwave: false,
   };
 }
 

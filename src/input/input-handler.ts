@@ -8,6 +8,7 @@ export type GameAction =
   | { kind: 'upgrade_special_loom'; tierId: string }
   | { kind: 'aliven_mote'; tierId: string }
   | { kind: 'claim_achievement'; achievementId: string }
+  | { kind: 'claim_all_achievements' }
   | { kind: 'set_active_tab'; tabId: TabId }
   | { kind: 'save_game' }
   | { kind: 'reset_game' }

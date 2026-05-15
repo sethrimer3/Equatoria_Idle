@@ -390,6 +390,8 @@ export interface EliteEnemy {
    * Amethyst elite:  fires a second ring of 8 shards when this reaches 0.
    */
   pendingSalvoMs: number;
+  /** Time at which this elite was spawned (performance.now() ms). Used for timing achievements. */
+  spawnTimeMs: number;
 }
 
 // ── Teleport particle ─────────────────────────────────────────────
@@ -549,6 +551,10 @@ export interface LuckyMote {
   bonusPct: number;
   /** Accumulated time for pulse animation (seconds). */
   pulseTimeS: number;
+  /** Elapsed time since this mote spawned (ms). Used for timing achievements. */
+  ageMs: number;
+  /** True if this mote was dropped by an elite enemy. */
+  fromElite: boolean;
 }
 
 /**

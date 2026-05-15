@@ -592,6 +592,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
     enterBossWave:           () => bossWave.enterBossWave(),
     exitBossWave:            () => bossWave.exitBossWave(),
+    getPlayerHpRatio:        () => playerStats.maxHp > 0 ? playerStats.hp / playerStats.maxHp : 0,
   });
 
   // ── Create weapon systems ──────────────────────────────────────
@@ -1072,8 +1073,28 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       updateShotVisuals(deltaMs);
       updateDamageNumbers(deltaMs);
       // Track lucky motes collected for achievements
-      const luckyMoteCallback = (tierId: TierId, bonusPct: number) => {
+      const luckyMoteCallback = (tierId: TierId, bonusPct: number, ageMs: number, fromElite: boolean) => {
         rpgSimState.lifetimeLuckyMotesCollected++;
+        // Timing-based secret flags
+        const nowTs = performance.now();
+        // lucky_mote_within_1s: collected within 1 second of spawning
+        if (ageMs <= 1000) rpgSimState.secretAchievementFlags.add('lucky_mote_within_1s');
+        // lucky_mote_during_boss_fight: boss was active when collected
+        if (bossEnemy !== null) rpgSimState.secretAchievementFlags.add('lucky_mote_during_boss_fight');
+        // lucky_mote_from_elite
+        if (fromElite) rpgSimState.secretAchievementFlags.add('lucky_mote_from_elite');
+        // lucky_mote_triple_10s: 3 motes collected within 10 seconds
+        rpgSimState.luckyMoteCollectedTimestampsMs.push(nowTs);
+        const MAX_LUCKY_MOTE_TIMESTAMPS = 20;
+        if (rpgSimState.luckyMoteCollectedTimestampsMs.length > MAX_LUCKY_MOTE_TIMESTAMPS) {
+          rpgSimState.luckyMoteCollectedTimestampsMs.shift();
+        }
+        const tenSecondsAgo = nowTs - 10_000;
+        let recentCount = 0;
+        for (const ts of rpgSimState.luckyMoteCollectedTimestampsMs) {
+          if (ts >= tenSecondsAgo) recentCount++;
+        }
+        if (recentCount >= 3) rpgSimState.secretAchievementFlags.add('lucky_mote_triple_10s');
         if (options.onLuckyMoteCollected) options.onLuckyMoteCollected(tierId, bonusPct);
       };
       updateLuckyMotes(luckyMotes, luckyMotePopups, mote.x, mote.y, deltaMs, luckyMoteCallback);
@@ -1081,6 +1102,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
       // Accumulate survival time
       rpgSimState.totalRpgSurvivalMs += deltaMs;
+
+      // Track low-HP survival time for secret achievement
+      if (playerStats.maxHp > 0 && playerStats.hp > 0 && playerStats.hp / playerStats.maxHp <= 0.10) {
+        rpgSimState.lowHpAccumulatedMs += deltaMs;
+        if (rpgSimState.lowHpAccumulatedMs >= 60_000) {
+          rpgSimState.secretAchievementFlags.add('survived_60s_low_hp');
+        }
+      } else {
+        rpgSimState.lowHpAccumulatedMs = 0;
+      }
 
       // Track if player took damage this wave (compare HP before/after physics updates)
       // (hp tracking is done in the wave manager via onPlayerHit)

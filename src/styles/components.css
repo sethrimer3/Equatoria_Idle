@@ -765,6 +765,58 @@
   flex-shrink: 0;
 }
 
+/* ── Claim All row ────────────────────────────────────────────── */
+.ach-claim-all-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 10px;
+}
+
+.ach-claim-all-btn {
+  padding: 7px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--border-radius);
+  background: rgba(20, 20, 30, 0.9);
+  color: var(--text-secondary);
+  font-family: var(--font-primary);
+  font-size: 12px;
+  cursor: default;
+  opacity: 0.45;
+  transition: background 0.18s, border-color 0.18s, opacity 0.18s, box-shadow 0.18s, color 0.18s;
+}
+
+.ach-claim-all-btn--active {
+  cursor: pointer;
+  opacity: 1;
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.5);
+  background: rgba(60, 50, 10, 0.9);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.25);
+  animation: claim-all-pulse 2s ease-in-out infinite;
+}
+
+.ach-claim-all-btn--active:hover {
+  background: rgba(80, 65, 10, 0.95);
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
+}
+
+.ach-claim-all-btn--active:active {
+  transform: scale(0.97);
+}
+
+@keyframes claim-all-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 215, 0, 0.25); }
+  50%       { box-shadow: 0 0 16px rgba(255, 215, 0, 0.55); }
+}
+
+.ach-claim-all-count {
+  font-size: 11px;
+  color: #ffd700;
+  opacity: 0.8;
+  min-width: 60px;
+}
+
 /* ── Subcategory accordions (RPG sub-groups) ─────────────────── */
 .ach-sub-group {
   border: 1px solid rgba(255, 255, 255, 0.07);

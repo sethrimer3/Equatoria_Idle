@@ -114,6 +114,8 @@ export interface WaveManagerCtx {
   getCachedLuckPercent(): number;
   applyEquipmentStats(): void;
   spawnDamageNumber(x: number, y: number, vx: number, vy: number, text: string, ratio: number, color: string): void;
+  /** Returns the current player HP ratio (0–1). Used for HP-based secret achievement flags. */
+  getPlayerHpRatio(): number;
 
   // Scalar state — accessed via getter/setter lambdas to allow write-back
   getBossEnemy(): BossEnemy | null;
@@ -140,6 +142,12 @@ export interface WaveManagerHandle {
   onPlayerHit(): void;
 }
 
+/** All elite type IDs used for the "killed all elite types" secret achievement. */
+const ALL_ELITE_TYPE_IDS = [
+  'elite_quartz', 'elite_ruby', 'elite_sunstone', 'elite_citrine',
+  'elite_iolite', 'elite_amethyst', 'elite_diamond', 'elite_nullstone',
+] as const;
+
 // ── Factory ───────────────────────────────────────────────────────────────
 
 export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
@@ -152,7 +160,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     eliteEnemies, alivenGroups,
     bossProjectiles, spawnQueue, luckyMotes, fluid,
-    getCachedLuckPercent, applyEquipmentStats, spawnDamageNumber,
+    getCachedLuckPercent, applyEquipmentStats, spawnDamageNumber, getPlayerHpRatio,
   } = ctx;
 
   /** Increments the per-type kill counter in lifetimeKillsByType. */
@@ -427,10 +435,22 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         fluid.addExplosion(elite.x, elite.y, FLUID_EXPLOSION_STRENGTH * 2.5, fb, fr, fg);
         const xpMult = ELITE_XP_MAP[elite.tier] ?? 10;
         totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * xpMult;
-        trySpawnLuckyMote(luckyMotes, elite.tier, elite.x, elite.y, getCachedLuckPercent() * 2.5);
+        trySpawnLuckyMote(luckyMotes, elite.tier, elite.x, elite.y, getCachedLuckPercent() * 2.5, true);
         spawnDamageNumber(elite.x, elite.y, 0, -1.2, `ELITE! +${formatXp(getXpPerKill(ctx.getCurrentWave()) * xpMult)} XP`, 1.0, '#ffe060');
         rpgSimState.lifetimeEliteKills++;
         addKill(`elite_${elite.tier}`);
+        // Secret flags: elite_kill_no_wave_damage, elite_kill_within_10s, killed_all_elite_types
+        if (!rpgSimState.tookDamageThisWave) {
+          rpgSimState.secretAchievementFlags.add('elite_kill_no_wave_damage');
+        }
+        const eliteAgeMs = performance.now() - elite.spawnTimeMs;
+        if (eliteAgeMs <= 10_000) {
+          rpgSimState.secretAchievementFlags.add('elite_kill_within_10s');
+        }
+        // Check if all 8 elite types have now been killed
+        if (ALL_ELITE_TYPE_IDS.every(t => (rpgSimState.lifetimeKillsByType.get(t) ?? 0) >= 1)) {
+          rpgSimState.secretAchievementFlags.add('killed_all_elite_types');
+        }
         eliteEnemies.splice(i, 1);
       }
     }
@@ -446,6 +466,10 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
       trySpawnLuckyMote(luckyMotes, group.tierId, group.x, group.y, getCachedLuckPercent());
       spawnDamageNumber(group.x, group.y, 0, -0.8, `+${formatXp(groupXp)} XP`, 0.8, '#aaeeff');
       rpgSimState.lifetimeAlivenKills++;
+      // Secret flag: aliven_below_25pct_hp
+      if (getPlayerHpRatio() < 0.25) {
+        rpgSimState.secretAchievementFlags.add('aliven_below_25pct_hp');
+      }
       alivenGroups.splice(i, 1);
     }
     // Boss defeat
@@ -463,6 +487,33 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         // Track boss defeated with only 1 weapon equipped
         if (rpgSimState.equippedWeaponIds.size === 1) {
           rpgSimState.bossDefeated1Weapon = true;
+        }
+        // Secret flags for boss defeats
+        const hpRatio = getPlayerHpRatio();
+        if (hpRatio < 0.1) {
+          rpgSimState.secretAchievementFlags.add('boss_below_10pct_hp');
+        }
+        if (speedPct >= 100 && !rpgSimState.tookDamageThisWave) {
+          rpgSimState.secretAchievementFlags.add('boss_100_no_damage');
+        }
+        if (bossEnemy.bossId === 1 && speedPct >= 100 && rpgSimState.highestWaveReached < 150) {
+          rpgSimState.secretAchievementFlags.add('boss1_before_wave150');
+        }
+        // boss_no_rpg_upgrades: no RPG upgrade levels at all
+        if (rpgSimState.rpgUpgradeLevels.size === 0 ||
+            Array.from(rpgSimState.rpgUpgradeLevels.values()).every(v => v <= 0)) {
+          rpgSimState.secretAchievementFlags.add('boss_no_rpg_upgrades');
+        }
+        // xp_3stats_boss: XP wired to 3 stats when boss is defeated
+        if (rpgSimState.xpAllocatedStats.length >= 3) {
+          rpgSimState.secretAchievementFlags.add('xp_3stats_boss');
+        }
+        // boss_all_weapons_tier1: all equipped weapons are tier 1
+        const allTier1 = Array.from(rpgSimState.equippedWeaponIds).every(
+          wid => (rpgSimState.weaponTiersByWeaponId.get(wid) ?? 1) <= 1,
+        );
+        if (allTier1 && rpgSimState.equippedWeaponIds.size > 0) {
+          rpgSimState.secretAchievementFlags.add('boss_all_weapons_tier1');
         }
       }
       ctx.setIsBossFightFromMenu(false);
@@ -489,6 +540,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     if (wave > rpgSimState.highestWaveReached) {
       rpgSimState.highestWaveReached = wave;
     }
+    // Reset per-wave state
+    rpgSimState.equipChangedDuringInterwave = false;
     const waveDef = getWaveDefinition(wave);
     spawnQueue.length = 0;
     for (const spawn of waveDef.spawns) {
@@ -525,6 +578,27 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
       }
     } else {
       rpgSimState.damageFreeWaveStreak = 0;
+    }
+    // Secret flags for wave completion
+    const hpRatio = getPlayerHpRatio();
+    if (hpRatio > 0 && hpRatio < 0.05) {
+      rpgSimState.secretAchievementFlags.add('wave_clear_1hp');
+    }
+    if (rpgSimState.equippedWeaponIds.size === 1) {
+      rpgSimState.secretAchievementFlags.add('wave_clear_1_weapon');
+    }
+    if (rpgSimState.equipChangedDuringInterwave) {
+      rpgSimState.secretAchievementFlags.add('wave_clear_after_equip_swap');
+    }
+    // wave_clear_all_diff_weapon_tiers: all equipped weapons at different tiers
+    if (rpgSimState.equippedWeaponIds.size >= 2) {
+      const tiers = Array.from(rpgSimState.equippedWeaponIds).map(
+        wid => rpgSimState.weaponTiersByWeaponId.get(wid) ?? 1,
+      );
+      const tierSet = new Set(tiers);
+      if (tierSet.size === tiers.length) {
+        rpgSimState.secretAchievementFlags.add('wave_clear_all_diff_weapon_tiers');
+      }
     }
     rpgSimState.tookDamageThisWave = false;
   }
