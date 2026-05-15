@@ -750,12 +750,16 @@
 - `rpg-render.ts` calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
 
 ### src/render/rpg/rpg-wave-manager.ts
-- Wave lifecycle management extracted from `rpg-render.ts` (~444 lines after spawn extraction).
+- Wave lifecycle management extracted from `rpg-render.ts` (~220 lines after dead-enemy sweep extraction).
 - Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
 - Scalar state (`currentWave`, `isInterWave`, `bossEnemy`, `isBossFightFromMenu`, `interWaveTimerMs`) is accessed through getter/setter lambdas on `WaveManagerCtx` so `rpg-render.ts` retains authoritative ownership.
-- Covers four functions: `removeDeadEnemies` (sweep dead enemies, award XP, handle boss defeat), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue, delegates spawning to `rpg-enemy-spawn.ts`).
-- Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; `tickSpawnQueue` calls `spawnEnemyById(ctx, enemyTypeId)` from that module.
-- `rpg-render.ts` keeps 4 one-liner forwarding stubs for backward-compatible call sites.
+- Covers four functions: `removeDeadEnemies` (delegates to `rpg-wave-dead-enemies.ts`), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue, delegates spawning to `rpg-enemy-spawn.ts`).
+- Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
+
+### src/render/rpg/rpg-wave-dead-enemies.ts
+- Dead-enemy sweep logic extracted from `rpg-wave-manager.ts` (~360 lines).
+- Exports `removeDeadEnemiesImpl(ctx, addKill)` — iterates all enemy arrays backward, triggers fluid explosions, accumulates XP from kills, attempts lucky-mote spawns, handles elite death with secret flags, handles aliven group defeat, and handles boss defeat (XP, completion tracking, secret flags).
+- Called by `rpg-wave-manager.ts`'s `removeDeadEnemies()` closure.
 
 ### src/render/rpg/rpg-enemy-spawn.ts
 - Enemy placement logic extracted from `rpg-wave-manager.ts` (~210 lines).
@@ -1115,12 +1119,27 @@ Audio system — eight focused modules:
 - Exports `BALANCE_WARNING_THRESHOLDS` — tunable thresholds for pacing warnings.
 
 ### src/ui/panels/balance-forecast/balance-forecast-sim.ts
-- Private simulation infrastructure for the balance forecast system.
-- Exports `SimState` interface and `createFreshSimState`, `cloneSimState`, `simStateFromGame` — lifecycle helpers.
-- Exports `getLoomRateSim`, `getTotalProductionRateSim` — production rate helpers used by the engine's ETA calculations.
-- Exports `simTick`, `simCheckAchievements` — per-step simulation primitives.
+- Strategy simulation runner for the balance forecast system (~145 lines after splitting).
 - Exports `runStrategySimulation(initialState, strategyId, maxSimSeconds)` — runs a full strategy simulation and returns `StrategyResult`.
-- Contains purchase helpers (`getAllAffordablePurchases`, `applyPurchase`), milestone specs, and four strategy implementations entirely as private implementation details.
+- Re-exports `SimState, createFreshSimState, simStateFromGame, getLoomRateSim, getTotalProductionRateSim, simTick, simCheckAchievements` from `balance-forecast-state.ts` for backward compatibility.
+- Internal: `getTimeToNextPurchase` — adaptive time-step helper that computes time to next affordable purchase.
+- Imports strategy functions and milestone specs from `balance-forecast-strategies.ts`.
+
+### src/ui/panels/balance-forecast/balance-forecast-state.ts
+- Lightweight simulation state model for the balance forecast (~240 lines).
+- Exports `SimState` interface and `SimState`-related lifecycle helpers: `createFreshSimState`, `cloneSimState`, `simStateFromGame`.
+- Exports production rate helpers: `getLoomRateSim`, `getTotalProductionRateSim`.
+- Exports simulation step primitives: `simTick` (advance time), `simCheckAchievements` (apply achievement bonus side-effects).
+
+### src/ui/panels/balance-forecast/balance-forecast-purchases.ts
+- Purchase decision helpers for the balance forecast simulation (~165 lines).
+- Exports `PurchaseCandidate` interface, `getAllAffordablePurchases(sim)`, and `applyPurchase(sim, candidate)`.
+- Enumerates: Equation Forge, tier unlocks, loom upgrades, special loom upgrades, equation upgrades.
+
+### src/ui/panels/balance-forecast/balance-forecast-strategies.ts
+- Milestone definitions and strategy implementations for the balance forecast (~130 lines).
+- Exports `MILESTONE_SPECS` — ordered list of progression checkpoints.
+- Exports `STRATEGY_FNS` and `STRATEGY_NAMES` — lookup maps for the four strategies: `wait_only`, `cheapest_first`, `best_efficiency`, `rush_next_tier`.
 
 ### src/ui/panels/balance-forecast/balance-forecast-engine.ts
 - Core balance analysis engine (ETA calculations, target gathering, pacing warnings, public API).
