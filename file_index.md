@@ -994,6 +994,11 @@
 - Shared sparkle constants matching Thero timings and drift/scale ranges.
 - Exports `randomInRange()` utility used by both achievements panel and tab bar sparkle emitters.
 
+### src/ui/achievements/achievement-progress-text.ts
+- Pure formatting utility — no side effects, no DOM dependencies.
+- Exports `getProgressText(condition, state, numberFormat)` — returns a human-readable progress string for any `AchievementCondition` kind.
+- Used by `achievements-panel.ts` to show live progress toward each locked achievement.
+
 ### src/ui/panels/equation-panel.ts
 - Equation tab content — the central Equation Forge panel.
 - Before forge unlock: shows dormant locked forge state with description and unlock button (50 Sand).
@@ -1054,6 +1059,7 @@ Audio system — eight focused modules:
 - isHiddenCriteria achievements: glyph only the progress field when not earned.
 - Sparkle emitters managed per card and group toggle, cleaned up on hide/destroy.
 - Exports `hasUnclaimedAchievements(state)` for tab-bar indicator logic.
+- Progress text formatting extracted to `src/ui/achievements/achievement-progress-text.ts`.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
@@ -1108,16 +1114,21 @@ Audio system — eight focused modules:
 - Exports `Milestone`, `StrategyResult`, `StrategyId`, `PacingWarning`, `WarningKind`.
 - Exports `BALANCE_WARNING_THRESHOLDS` — tunable thresholds for pacing warnings.
 
+### src/ui/panels/balance-forecast/balance-forecast-sim.ts
+- Private simulation infrastructure for the balance forecast system.
+- Exports `SimState` interface and `createFreshSimState`, `cloneSimState`, `simStateFromGame` — lifecycle helpers.
+- Exports `getLoomRateSim`, `getTotalProductionRateSim` — production rate helpers used by the engine's ETA calculations.
+- Exports `simTick`, `simCheckAchievements` — per-step simulation primitives.
+- Exports `runStrategySimulation(initialState, strategyId, maxSimSeconds)` — runs a full strategy simulation and returns `StrategyResult`.
+- Contains purchase helpers (`getAllAffordablePurchases`, `applyPurchase`), milestone specs, and four strategy implementations entirely as private implementation details.
+
 ### src/ui/panels/balance-forecast/balance-forecast-engine.ts
-- Core analysis and simulation engine. Never mutates real game state.
-- `runBalanceForecast(game, options)` — runs all three analyses and returns `ForecastResult`.
+- Core balance analysis engine (ETA calculations, target gathering, pacing warnings, public API).
+- `runBalanceForecast(game, options)` — runs all analyses and returns `ForecastResult`. Does not mutate game state.
 - Section 1: Static ETA analysis — computes `ForecastTarget` list from current player state.
-- Section 2: Fresh-run milestone timeline — Cheapest First strategy on fresh state.
-- Section 3: Strategy-based simulation — runs Wait Only / Cheapest First / Best Efficiency / Rush Next Tier.
-- `SimState` — lightweight isolated simulation model (cloned from GameState or fresh).
-- Four strategy functions: `strategyWaitOnly`, `strategyCheapestFirst`, `strategyBestEfficiency`, `strategyRushNextTier`.
-- Adaptive time stepping: jumps to next affordable purchase rather than stepping every frame.
-- Safeguards: MAX_ITERATIONS cap, stuck-detection, Infinity/NaN guards.
+- Section 2: Pacing warning generation — long gaps, unlock clusters, extreme ETAs, no-production warnings.
+- Section 3: Public API that orchestrates fresh-run and strategy simulations (via `balance-forecast-sim.ts`).
+- Simulation infrastructure (SimState, strategies, runner) has been extracted to `balance-forecast-sim.ts`.
 
 ### src/ui/panels/balance-forecast/balance-forecast-panel.ts
 - Dev-only DOM panel for the Balance Forecast system.
