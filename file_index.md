@@ -132,10 +132,16 @@
 - `EQUATION_FORGE_COST` — Sand cost to unlock the Equation Forge (50).
 
 ### src/sim/looms/loom-state.ts
-- Per-tier Loom state: level, isUnlocked, accumulatorMs.
+- Per-tier Loom state: level, isUnlocked, accumulatorMs, conversionProgress, conversionEfficiencyLevel.
 - `createLoomState()` — Sand Loom starts unlocked at level 1.
 - `tickLooms(state, deltaMs, productionBonus?)` — passive production tick; bonus multiplier applied to all rates.
 - `upgradeLoom()`, `unlockLoom()`, `getLoom()`, `getLoomRate()`, `getLoomCost()`.
+- `getLoomInputTierId(tierId)` — returns the tier whose particles the loom captures (one tier below output); Sand returns null.
+- `getLoomConversionThreshold(effLevel)` — small-equivalent mass required per output mote.
+- `getLoomEfficiencyUpgradeCost(tierId, currentLevel)` — mote cost for next efficiency upgrade.
+- `applyLoomCapture(state, tierId, mass)` — add captured mass to conversionProgress; awards motes on threshold.
+- `tryUpgradeLoomEfficiency(state, tierId)` — spends motes to increase efficiency level (max 5).
+- `MAX_LOOM_EFFICIENCY_LEVEL = 5`.
 
 ### src/sim/idle/idle-reward.ts
 - Pure (no-side-effect) idle reward calculation.
@@ -186,16 +192,26 @@
 - `PendingMoteEntry` interface — `{tierId, sizeIndex, count}` for drip-adding idle motes one per frame.
 - `pendingMoteValue(sizeIndex)` — value of one mote at a given size (`MERGE_THRESHOLD^sizeIndex`).
 - `tapEquation()` — multiplies gains by `achievements.tapMultiplierBonus`.
-- `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)` — optional dev mode cost bypass.
+- `tapEquationForge(state, nowMs)` — calls `tapForgeHeat`; starts crunch on 3rd tap.
+- `processLoomCapture(state, tierId, massSmallEquiv)` — handles captured particle mass → loom conversion.
+- `applyForgeSacrifice(state, massByTier)` — converts forge-sacrificed mass into equation upgrades.
+- `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)`, `tryUpgradeLoomEfficiencyAction(state, tierId)` — optional dev mode cost bypass.
 - `tryAlivenMote(state, tierId, bypassCost?)` — spend 10,000 motes to aliven a mote type.
-- `simTick()` — passes loom bonus from achievements; drains one pending idle mote each frame; checks achievement unlock conditions each tick.
+- `simTick()` — passes loom bonus from achievements; drains one pending idle mote each frame; calls `tickForgeHeatTimeout`; checks achievement unlock conditions each tick.
 
 ### src/sim/forge/forge-state.ts
 - `ForgeCrunchState` interface and factory.
+- `heatTapCount`, `lastHeatTapMs`, `sacrificeProgressByTierId` — 3-tap heat system fields.
+- `HEAT_TAP_COUNT_FOR_CRUNCH = 3` — taps required to trigger a forge crunch.
+- `tapForgeHeat(state, nowMs)` — increments heat tap; calls `startEquationForgeCrunch` on 3rd tap.
+- `startEquationForgeCrunch(state)` — activates forge crunch.
+- `tickForgeHeatTimeout(state, nowMs)` — resets heat if player is idle too long.
 - `getForgeRotationMultiplier()` — spin speed multiplier based on crunch phase.
 
 ### src/sim/forge/forge-logic.ts
 - Forge crunch lifecycle management.
+- `checkForgeCrunch()` — disabled (always returns null); crunch now triggered by 3-tap heat system.
+- `startForgeCrunch()`, `updateForgeCrunch()`, `getCrunchOutput()` — still used by the render/particle layer.
 
 ### src/sim/particles/sim-particle-state.ts
 - `SimParticleState` — inventory and unlocked tiers.
@@ -244,7 +260,7 @@
 
 ### src/render/particles/particle-types.ts
 - All shared particle system interfaces and type aliases.
-- `EquatoriaParticle` — core particle interface with ring-buffer trail fields.
+- `EquatoriaParticle` — core particle interface with ring-buffer trail fields and capture state (`isCaptured`, `capturedById`, `particleId`).
 - `ActiveMerge`, `ProceduralMerge` — merge tracking types.
 - `Shockwave` — visual shockwave effect type.
 - `ParticleRenderOptions` — glow/trail toggle flags.
@@ -252,8 +268,15 @@
 ### src/render/particles/particle-pool.ts
 - Particle object pool and lifecycle management.
 - `ParticlePool` class — acquire/release with internal free list.
-- `initParticle()` — initialises all particle fields on spawn.
+- `initParticle()` — initialises all particle fields on spawn; assigns unique `particleId` from module-level `_nextParticleId` counter.
+- `release()` — resets `isCaptured`/`capturedById` on return to pool.
 - Pre-computed `TIER_INDEX_MAP` for O(1) tier index lookup.
+
+### src/render/particles/forge-field-forces.ts *(NEW)*
+- Particle capture field logic for the forge and looms.
+- `ForgeFieldInfo` interface — id, position, radii, `compatibleTierId`, `isUnlocked`.
+- `LoomCapture` interface — `particleId`, `tierId`, `massSmallEquiv`.
+- `applyForgeFieldForces(particles, crunchState, fields, outLoomCaptures)` — runs each substep; captures forge-compatible particles during active crunch and loom-compatible particles immediately.
 
 ### src/render/particles/particle-physics.ts
 - Per-particle physics: gravity, veer, velocity clamping, bounce.
@@ -271,7 +294,8 @@
 
 ### src/render/particles/particle-forge.ts
 - Forge crunch integration between sim-layer forge-logic and visual particles.
-- `checkAndStartForgeCrunch()`, `completeForgeCrunch()`.
+- `checkAndStartForgeCrunch()`, `completeForgeCrunch()` — original auto-timer path (still present).
+- `completeEquationForgeCrunch(particles, pool)` — new 3-tap path; removes all forge-captured particles, accumulates mass by tier using `Math.pow(100, sizeIndex)`, returns `Map<string, number>`.
 
 ### src/render/particles/particle-shockwave.ts
 - Shockwave expansion, fade, and spatial-grid force application.
@@ -307,7 +331,10 @@
 ### src/render/particles/particle-system.ts
 - Slim orchestrator class.
 - Owns particle array, merge/shockwave lists, pool, interaction matrix, aliven set, and debug state.
-- Runs per-frame update pipeline: physics → trails → **Particle Life forces** → damping → wrap → merges → forge → shockwaves.
+- Runs per-frame update pipeline: physics → trails → **Particle Life forces** → **forge field forces** → damping → wrap → merges → forge → shockwaves.
+- `forgeFields: ForgeFieldInfo[]` — updated each frame via `setForgeFields()` from the game loop.
+- `onParticleCapturedByLoom` callback — fires after each substep with `LoomCapture` data; wired to `processLoomCapture`.
+- `onEquationForgeCrunchCompleted` callback — fires when crunch animation ends with `Map<string, number>`; wired to `applyForgeSacrifice`.
 - `alivenedTierIndices` — `Set<number>` of tier indices that are alivened; synced from game state each frame by the game loop.
 - `interactionMatrix` — 13×13 matrix owned here, defaults from `createDefaultInteractionMatrix()`.
 - `enableSizeForceBias` — boolean toggle for size-based force scaling.
@@ -344,6 +371,8 @@
 
 ### src/render/forge/forge-renderer.ts
 - Forge sprite rendering with crunch animation overlay.
+- `drawForge(ctx, ..., heatTapCount)` — accepts current heat tap count; draws 1–2 pulsing amber/orange rings to show forge heat state.
+- `drawForgeHeatRings(ctx, x, y, heatTapCount, nowMs)` — draws 1 ring for 1 tap, 2 rings for 2 taps; rings pulse and fade in 2s period.
 - Influence circle is now a bidirectional fire-color swirl at 75% of `MAX_FORGE_ATTRACTION_DISTANCE`.
 - `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
 - Two arc sets rotate clockwise and counter-clockwise simultaneously.
