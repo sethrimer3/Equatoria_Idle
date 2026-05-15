@@ -279,11 +279,14 @@ export function drawParticleGlowField(
     // larger kernel (scaling is handled in _splatRBySi / _invNormBySi).
     // sizeWeight provides an additional brightness boost for bigger motes
     // so their halos remain visually distinct even after kernel normalisation.
-    const sizeWeight = 0.5 + p.sizeIndex * 0.25; // 0.5 / 0.75 / 1.0 / 1.25 …
-
+    // We use the clamped `si` (computed below) so sizeWeight stays consistent
+    // with the kernel parameters; beyond _MAX_PRECOMPUTED_SI both the kernel
+    // and the weight are capped at the same level.
+    //
     // Per-sizeIndex precomputed kernel parameters (avoid float recomputation
     // in the inner loop).
     const si       = Math.min(p.sizeIndex, _MAX_PRECOMPUTED_SI);
+    const sizeWeight = 0.5 + si * 0.25; // 0.50 / 0.75 / 1.00 / 1.25 … capped at si=_MAX
     const splatR   = _splatRBySi[si];
     const inv2s2   = _inv2s2BySi[si];
     const invNorm  = _invNormBySi[si];
@@ -306,6 +309,10 @@ export function drawParticleGlowField(
     // cell).  The drawImage destination (Step 5) maps cell cx back to canvas
     // pixel cx × CELL_SIZE — the same scale that was used here — so there is no
     // round-trip coordinate error.
+    //
+    // Note: p.size is constant for a particle's lifetime (changes only on
+    // merge events), so half and ceilS could be cached on the particle object
+    // for a micro-optimisation; they are cheap to compute here at ~4 ops/frame.
     const half      = p.size * 0.5;
     const ceilS     = Math.ceil(p.size);
     const bodyX     = Math.floor(p.x - half) + ceilS * 0.5;  // rendered centre X
