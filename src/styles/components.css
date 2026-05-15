@@ -507,6 +507,39 @@
   flex-direction: column;
 }
 
+/* ── Equation panel — forge heat indicator ───────────────────── */
+.forge-heat-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.forge-heat-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-right: 2px;
+}
+
+.forge-heat-dot {
+  font-size: 13px;
+  color: #4a2a10;
+  line-height: 1;
+}
+
+.forge-heat-dot--filled {
+  color: #ff8c3c;
+  text-shadow: 0 0 6px #ff8c3c;
+}
+
+.forge-heat-hint {
+  color: var(--text-secondary);
+  font-size: 10px;
+  margin-left: 2px;
+}
+
 /* ── Equation panel — locked forge presentation ──────────────── */
 .forge-locked {
   text-align: center;

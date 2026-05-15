@@ -16,6 +16,8 @@ import {
 } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 import { colorWithAlpha } from '../assets/color-utils';
+import { TIER_BY_ID } from '../../data/tiers';
+import type { ForgeFieldInfo } from '../particles/forge-field-forces';
 
 /** Visual influence circle is drawn at 75 % of the physics range. */
 const FORGE_INFLUENCE_VISUAL_SCALE = 0.75;
@@ -274,6 +276,68 @@ function drawForgeFallback(
   ctx.beginPath();
   ctx.arc(0, 0, forgeSize, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Draw faint colored aura rings around each active loom capture field.
+ * Call this after drawGenerators and before drawForge so auras sit beneath particles.
+ */
+export function drawLoomFieldAuras(
+  cc: CanvasContext,
+  fields: readonly ForgeFieldInfo[],
+  nowMs: number,
+): void {
+  for (const field of fields) {
+    if (field.id === 'forge' || !field.compatibleTierId) continue;
+    if (!field.isUnlocked) continue;
+    const tier = TIER_BY_ID.get(field.compatibleTierId);
+    if (!tier) continue;
+    _drawLoomAura(cc.ctx, field.x, field.y, field.captureRadius, field.outerRadius, tier.color, nowMs);
+  }
+}
+
+function _drawLoomAura(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  captureRadius: number,
+  outerRadius: number,
+  color: string,
+  nowMs: number,
+): void {
+  const t = nowMs / 1000;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 1.8);
+
+  ctx.save();
+
+  // Soft fill inside capture radius
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, captureRadius);
+  grad.addColorStop(0, colorWithAlpha(color, 0.06 * pulse));
+  grad.addColorStop(1, colorWithAlpha(color, 0));
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, captureRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner capture ring
+  ctx.strokeStyle = colorWithAlpha(color, 0.25 + 0.15 * pulse);
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([2, 3]);
+  ctx.beginPath();
+  ctx.arc(x, y, captureRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Outer attraction ring (dashed, more faint)
+  ctx.strokeStyle = colorWithAlpha(color, 0.1 + 0.06 * pulse);
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([3, 6]);
+  ctx.beginPath();
+  ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
   ctx.restore();
 }

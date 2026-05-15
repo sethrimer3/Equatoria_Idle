@@ -20,6 +20,7 @@ import {
   drawGenerators,
   drawForge,
   drawForgeCrunch,
+  drawLoomFieldAuras,
   type ParticleSystem,
 } from '../render';
 import type { ForgeFieldInfo } from '../render/particles/forge-field-forces';
@@ -258,6 +259,9 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.generatorState.fadeIns,
       _buildGeneratorRates(ctx, generatorRatesPerSec),
     );
+
+    // Draw loom-field auras beneath particles (after generators, before forge)
+    drawLoomFieldAuras(ctx.cc, forgeFieldsBuffer, nowMs);
 
     // Only draw forge on canvas if forge is unlocked (equation is now in HUD)
     if (ctx.appState.game.equation.isForgeUnlocked) {

@@ -9,6 +9,7 @@ import { getMotes } from '../../sim/resources';
 import { formatNumberAs, type NumberFormat } from '../../util';
 import { getGemIconPath } from '../../render/assets/asset-paths';
 import type { TraceEffect } from '../../render/ui/trace-effect';
+import { HEAT_TAP_COUNT_FOR_CRUNCH } from '../../sim/forge';
 
 /**
  * Equation panel — shows the Equation Forge.
@@ -72,6 +73,12 @@ export function createEquationPanel(
   const eqDisplay = document.createElement('div');
   eqDisplay.className = 'equation-display';
   stickyHeader.appendChild(eqDisplay);
+
+  // Forge heat indicator — shows tap progress toward the next crunch (0/3 → 2/3)
+  const forgeHeatRow = document.createElement('div');
+  forgeHeatRow.className = 'forge-heat-row';
+  forgeHeatRow.style.display = 'none';
+  stickyHeader.appendChild(forgeHeatRow);
 
   unlockedSection.appendChild(stickyHeader);
 
@@ -144,6 +151,20 @@ export function createEquationPanel(
     if (state.equation.isForgeUnlocked) {
       lockedSection.style.display = 'none';
       unlockedSection.style.display = '';
+
+      // Update forge heat indicator
+      const heatCount = state.forge.heatTapCount;
+      if (heatCount > 0) {
+        forgeHeatRow.style.display = '';
+        let dotsHtml = '';
+        for (let i = 0; i < HEAT_TAP_COUNT_FOR_CRUNCH; i++) {
+          const filled = i < heatCount;
+          dotsHtml += `<span class="forge-heat-dot${filled ? ' forge-heat-dot--filled' : ''}">●</span>`;
+        }
+        forgeHeatRow.innerHTML = `<span class="forge-heat-label">Forge heat:</span>${dotsHtml}<span class="forge-heat-hint">(${heatCount}/${HEAT_TAP_COUNT_FOR_CRUNCH})</span>`;
+      } else {
+        forgeHeatRow.style.display = 'none';
+      }
 
       // Update equation display, then re-apply any active hover highlight
       const terms = buildEquationView(state.equation);
