@@ -221,7 +221,7 @@
 
 .settings-slider {
   width: 120px;
-  accent-color: #64602d;
+  accent-color: #ffd700;
 }
 
 .settings-slider-wrapper {
@@ -244,7 +244,7 @@
 .settings-checkbox {
   width: 20px;
   height: 20px;
-  accent-color: #64602d;
+  accent-color: #ffd700;
 }
 
 .settings-select {
