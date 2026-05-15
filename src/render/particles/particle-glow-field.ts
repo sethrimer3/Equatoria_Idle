@@ -6,138 +6,161 @@
  * A low-resolution intensity grid (CELL_SIZE internal pixels per cell)
  * accumulates per-tier energy from nearby particles each frame.
  *
- * The splat kernel uses the particle's exact sub-cell position (fractional
- * cell coordinate) to compute a continuous Gaussian weight for each nearby
- * cell.  This means the glow shifts smoothly as a particle moves — there is
- * no per-cell snap.  At CELL_SIZE=4 the offscreen canvas is upscaled only 4×
- * to the main canvas, so bilinear interpolation produces genuinely smooth
- * circular halos instead of blocky tiles.
+ * Each particle splats energy into a Gaussian kernel sized proportionally
+ * to its sizeIndex so that larger motes have a proportionally larger glow
+ * (sizeIndex=0 uses BASE_SPLAT_RADIUS cells; sizeIndex=N uses
+ * BASE_SPLAT_RADIUS × (N+1) cells, capped at MAX_SPLAT_RADIUS).
  *
- * Pixel colours are built by weighted-average RGB mixing: each tier's glow
- * colour is blended proportionally to its intensity contribution, producing
- * smooth gradients where different-coloured motes overlap.
+ * Coordinate alignment (offset bug prevention)
+ * ─────────────────────────────────────────────
+ * The mote body is drawn via:
+ *   fillRect(Math.floor(p.x - half), Math.floor(p.y - half), ceil(size), ceil(size))
+ * so its visual centre is Math.floor(p.x - half) + ceil(size)/2, which can
+ * differ from p.x by up to ~1 canvas pixel.  Using the raw p.x for the
+ * Gaussian centre would offset the glow from the rendered body.
  *
- * A soft alpha curve (1 − exp(−GLOW_K · I)) keeps lone motes as faint halos
- * while allowing clusters to gently brighten, capped at MAX_ALPHA so
- * brightness never blows out.
+ * Fix: compute the rendered body centre and use that as the Gaussian origin:
+ *   bodyCenterX = Math.floor(p.x - half) + Math.ceil(p.size) / 2
+ * The glow Gaussian is centred at (bodyCenterX, bodyCenterY) in canvas-pixel
+ * space, and pcx = bodyCenterX / CELL_SIZE in cell space.
  *
- * The final composite uses `globalCompositeOperation = 'screen'`, which
- * lightens without clipping to white.
+ * The offscreen canvas is drawn back at exactly gridW × CELL_SIZE by
+ * gridH × CELL_SIZE pixels (not canvasW × canvasH) so each cell maps to
+ * exactly CELL_SIZE canvas pixels — eliminating any fractional-scale error
+ * when canvasH is not perfectly divisible by CELL_SIZE.
+ *
+ * A BLUR_RADIUS ctx.filter is applied before compositing to diffuse the
+ * cell-block edges into smooth circular halos without bilinear-interpolation
+ * peak-offset artefacts.
  *
  * ─── Debug / Tuning constants ─────────────────────────────────────────
  *
- *  GLOW_ENABLED      master switch (set false to disable entirely for debug)
- *  CELL_SIZE         internal pixels per grid cell — lower = finer + costlier
- *  SPLAT_RADIUS      kernel half-size in cells — physical radius ≈ SPLAT_RADIUS × CELL_SIZE px
- *  SPLAT_SIGMA       Gaussian σ in cells — physical σ = SPLAT_SIGMA × CELL_SIZE px
- *  INTENSITY_MULT    base energy contribution per particle per frame
- *  PERSISTENCE       per-frame intensity decay (0.90 ≈ 110 ms half-life @ 60 fps)
- *  MAX_ALPHA         maximum opacity of the glow layer (0–1)
- *  GLOW_K            alpha saturation steepness: alpha = 1 − exp(−GLOW_K · I)
- *  BLEND_MODE        canvas composite operation for the glow layer
+ *  GLOW_ENABLED         master switch (false = disable entirely for debug)
+ *  CELL_SIZE            internal pixels per grid cell (lower = finer + costlier)
+ *  BASE_SPLAT_RADIUS    kernel half-radius in cells for sizeIndex=0 motes
+ *  MAX_SPLAT_RADIUS     hard cap on per-particle kernel radius (cells)
+ *  BASE_SPLAT_SIGMA     Gaussian σ (cells) for sizeIndex=0 motes
+ *  MAX_SPLAT_SIGMA      hard cap on per-particle σ (cells)
+ *  BLUR_RADIUS          additional blur applied at composite time (internal px)
+ *  INTENSITY_MULT       base energy contribution per particle per frame
+ *  PERSISTENCE          per-frame intensity decay (lower = faster fade)
+ *  MAX_ALPHA            maximum opacity of the glow layer (0–1)
+ *  GLOW_K               saturation steepness: alpha = 1 − exp(−GLOW_K · I)
+ *  BLEND_MODE           canvas composite operation for the glow layer
  */
 
 import type { EquatoriaParticle } from './particle-types';
 import { TIERS } from '../../data/tiers/tier-definitions';
 import { parseHexToRgb } from '../assets/color-utils';
-import { MEDIUM_SIZE_INDEX } from '../../data/particles/size-tiers';
 
 // ─── Debug / Tuning constants ─────────────────────────────────────────
-//
-// All values intentionally conservative.  Increase gradually to taste.
 
-/**
- * Master on/off for the glow field.
- * Note: the caller in particle-renderer.ts also guards with options.enableGlow.
- * This constant is a secondary override for quick dev testing.
- */
+/** Master on/off.  The caller in particle-renderer.ts also guards on options.enableGlow. */
 const GLOW_ENABLED = true;
 
 /**
  * Internal canvas pixels per grid cell.
- * At the game's 320 px internal width, CELL_SIZE=4 → 80-cell grid.
- * The offscreen canvas is upscaled 4× with bilinear filtering, producing
- * smooth circular halos.  Raising this to 8 halves the work but coarsens
- * the glow and increases cell-snapping of slow-moving particles.
+ * 320 px internal width → 80-cell grid.  Offscreen canvas drawn back at
+ * exactly (gridW × CELL_SIZE) × (gridH × CELL_SIZE) to ensure exact scale.
  */
 const CELL_SIZE = 4;
 
 /**
- * Gaussian kernel half-size in cells.
- * Physical glow radius ≈ SPLAT_RADIUS × CELL_SIZE internal pixels.
- * With CELL_SIZE=4 and SPLAT_RADIUS=3, the kernel covers a 12 px radius,
- * which is ~4-8× the size of a small/medium mote (0.75–1.5 px).
+ * Kernel half-radius in cells for sizeIndex=0 (1×1 mote).
+ * Physical radius for sizeIndex=N ≈ BASE_SPLAT_RADIUS × (N+1) × CELL_SIZE px.
+ * Increase for a larger base halo; decrease for a tighter core.
  */
-const SPLAT_RADIUS = 3;
+const BASE_SPLAT_RADIUS = 2;
+
+/** Hard cap on per-particle kernel half-radius (cells). */
+const MAX_SPLAT_RADIUS = 6;
 
 /**
- * Gaussian σ in cells.  Physical σ = SPLAT_SIGMA × CELL_SIZE px.
- * With CELL_SIZE=4 and SPLAT_SIGMA=1.5, σ ≈ 6 px — a gentle, wide falloff.
- * Increase for a fluffier/softer glow; decrease for a tighter core.
+ * Gaussian σ (cells) for sizeIndex=0 motes.  σ for sizeIndex=N ≈
+ * BASE_SPLAT_SIGMA × (N+1).  Larger σ → softer, fluffier falloff.
  */
-const SPLAT_SIGMA = 1.5;
+const BASE_SPLAT_SIGMA = 0.9;
+
+/** Hard cap on per-particle σ (cells). */
+const MAX_SPLAT_SIGMA = 2.5;
+
+/**
+ * Blur radius applied to the low-res canvas before compositing onto the main
+ * canvas, measured in internal canvas pixels (i.e. before any CSS upscale).
+ * This converts hard cell-boundary edges into smooth circular halos.
+ * Increase for a softer/larger glow; decrease for a tighter one.
+ */
+const BLUR_RADIUS = 3;
 
 /**
  * Base energy contribution per particle per frame (after kernel normalisation).
- * Tuned so a single medium mote produces ~25-30% alpha at the cell centre in
- * steady state.  Scale down for subtler glows; never exceed ~0.6.
+ * Tuned so a single medium mote produces a gentle halo in steady state.
  */
 const INTENSITY_MULT = 0.22;
 
 /**
- * Per-frame intensity persistence.  Applied once per render frame regardless
- * of deltaMs, so a background-tab wakeup cannot produce a glow burst.
- * 0.90 ≈ ~110 ms half-life at 60 fps.
- * 0.95 ≈ ~220 ms half-life (longer, more atmospheric trail).
- * 0.85 ≈ ~60 ms half-life  (snappy, minimal trail).
+ * Per-frame intensity persistence (0–1).  Applied once per render frame so
+ * a background-tab wakeup cannot produce a glow burst.
+ * 0.85 ≈ ~60 ms half-life at 60 fps — snappy, minimal trail.
+ * 0.92 ≈ ~165 ms half-life — more atmospheric.
  */
-const PERSISTENCE = 0.90;
+const PERSISTENCE = 0.86;
 
 /**
- * Maximum alpha of the composited glow field layer (0–1).
- * 0.35 keeps the glow atmospheric; even a large cluster stays under 35% opacity.
- * Raise cautiously — values above 0.5 can wash out particle cores.
+ * Maximum opacity of the composited glow field (0–1).
+ * Raise for more dramatic glows; values above 0.5 can wash out particle cores.
  */
-const MAX_ALPHA = 0.35;
+const MAX_ALPHA = 0.30;
 
 /**
- * Steepness of the alpha saturation curve: alpha = 1 − exp(−GLOW_K · I).
- * Larger = faster saturation (the glow reaches MAX_ALPHA sooner).
- * Smaller = gentler curve (requires more intensity to reach full brightness).
+ * Steepness of the alpha saturation (diminishing-returns) curve:
+ *   alpha = MAX_ALPHA × (1 − exp(−GLOW_K × totalIntensity))
+ * Larger GLOW_K → glow brightens faster as motes accumulate.
+ * This prevents additive blowout when many same-colour motes overlap.
  */
-const GLOW_K = 2.5;
+const GLOW_K = 3.0;
 
 /**
- * Canvas composite operation used when drawing the glow layer.
- * 'screen' lightens without clipping to white and avoids muddy grey.
- * Try 'lighter' for a more intense additive look (watch for white-out).
+ * Canvas composite operation for the glow layer.
+ * 'screen': lightens without clipping to white, avoids grey/brown mud.
+ * 'lighter': more intense additive look (watch for white-out on dense clusters).
  */
 const BLEND_MODE: GlobalCompositeOperation = 'screen';
 
-// ─── Precomputed kernel normalisation ─────────────────────────────────
+// ─── Per-size-index precomputed kernel tables ──────────────────────────
 //
-// The splat loop uses the particle's exact sub-cell fractional position to
-// compute exp(−d²/2σ²) for each nearby cell — a continuous Gaussian that
-// shifts smoothly as the particle moves.  We normalise contributions so
-// each particle adds exactly INTENSITY_MULT × sizeWeight energy per frame
-// regardless of sub-cell offset.
+// For each sizeIndex we precompute:
+//   splatR   — half-radius of the Gaussian kernel in cells
+//   inv2s2   — 1 / (2σ²) for the Gaussian exponent
+//   invNorm  — 1 / Σ exp(−d²·inv2s2), ensuring each particle adds exactly
+//              INTENSITY_MULT × sizeWeight total energy regardless of size
 //
-// _kernelNorm is the sum of the discrete Gaussian over the integer-offset
-// kernel (a good approximation of the continuous integral for σ ≥ 1).
-// _kernelInvNorm = 1 / _kernelNorm, multiplied into each contribution.
+// This avoids any per-particle norm recomputation in the hot loop.
 
-const TIER_COUNT = TIERS.length;
-const _twoSigmaSqInv = 1.0 / (2 * SPLAT_SIGMA * SPLAT_SIGMA);
+const _MAX_PRECOMPUTED_SI = 7; // support sizeIndex 0–7
 
-let _kernelNorm = 0;
-(function computeKernelNorm() {
-  for (let dy = -SPLAT_RADIUS; dy <= SPLAT_RADIUS; dy++) {
-    for (let dx = -SPLAT_RADIUS; dx <= SPLAT_RADIUS; dx++) {
-      _kernelNorm += Math.exp(-(dx * dx + dy * dy) * _twoSigmaSqInv);
+const _splatRBySi    = new Uint8Array(_MAX_PRECOMPUTED_SI + 1);
+const _inv2s2BySi    = new Float64Array(_MAX_PRECOMPUTED_SI + 1);
+const _invNormBySi   = new Float64Array(_MAX_PRECOMPUTED_SI + 1);
+
+(function precomputeSizeKernels(): void {
+  for (let si = 0; si <= _MAX_PRECOMPUTED_SI; si++) {
+    const r     = Math.min(BASE_SPLAT_RADIUS * (si + 1), MAX_SPLAT_RADIUS);
+    const sigma = Math.min(BASE_SPLAT_SIGMA  * (si + 1), MAX_SPLAT_SIGMA);
+    const inv2s2 = 1.0 / (2.0 * sigma * sigma);
+    let norm = 0;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        norm += Math.exp(-(dx * dx + dy * dy) * inv2s2);
+      }
     }
+    _splatRBySi[si]  = r;
+    _inv2s2BySi[si]  = inv2s2;
+    _invNormBySi[si] = norm > 0 ? 1.0 / norm : 1.0;
   }
 })();
-const _kernelInvNorm = 1.0 / _kernelNorm;
+
+const TIER_COUNT = TIERS.length;
 
 // ─── Cached tier glow colours ─────────────────────────────────────
 
@@ -252,34 +275,57 @@ export function drawParticleGlowField(
     const ti = Math.min(p.tierIndex, tierCount - 1);
 
     // Larger particles contribute more glow — small motes remain subtle.
-    const sizeWeight =
-      p.sizeIndex < MEDIUM_SIZE_INDEX
-        ? 0.3
-        : p.sizeIndex === MEDIUM_SIZE_INDEX
-          ? 0.8
-          : Math.min(p.sizeIndex * 0.8, 3.0); // large=1.6, xl=2.4 (capped)
+    // Larger particles contribute more energy AND have a proportionally
+    // larger kernel (scaling is handled in _splatRBySi / _invNormBySi).
+    // sizeWeight provides an additional brightness boost for bigger motes
+    // so their halos remain visually distinct even after kernel normalisation.
+    const sizeWeight = 0.5 + p.sizeIndex * 0.25; // 0.5 / 0.75 / 1.0 / 1.25 …
 
-    // _kernelInvNorm normalises so total energy added per particle ≈
-    // INTENSITY_MULT × sizeWeight regardless of sub-cell position.
-    const contrib = INTENSITY_MULT * sizeWeight * _kernelInvNorm;
+    // Per-sizeIndex precomputed kernel parameters (avoid float recomputation
+    // in the inner loop).
+    const si       = Math.min(p.sizeIndex, _MAX_PRECOMPUTED_SI);
+    const splatR   = _splatRBySi[si];
+    const inv2s2   = _inv2s2BySi[si];
+    const invNorm  = _invNormBySi[si];
 
-    // Sub-cell fractional position in cell-space.
-    const pcx = p.x / CELL_SIZE;
-    const pcy = p.y / CELL_SIZE;
-    const gcxi = Math.floor(pcx);
-    const gcyi = Math.floor(pcy);
+    // _invNormBySi ensures total energy per particle ≈ INTENSITY_MULT × sizeWeight.
+    const contrib = INTENSITY_MULT * sizeWeight * invNorm;
 
-    // Gaussian splat — weight uses real fractional distance so contribution
-    // shifts continuously rather than snapping cell-to-cell.
-    for (let dy = -SPLAT_RADIUS; dy <= SPLAT_RADIUS; dy++) {
+    // ── Coordinate alignment ──────────────────────────────────────────
+    //
+    // The mote body is drawn via:
+    //   fillRect(Math.floor(p.x − half), Math.floor(p.y − half), ceil(size), ceil(size))
+    // so its visual centre (in canvas pixels) is:
+    //   bodyCenterX = Math.floor(p.x − half) + Math.ceil(p.size) / 2
+    //
+    // If we used raw p.x the glow centre would be offset to the right/down by
+    // up to ~1 px (sub-pixel position never perfectly matches the floor-aligned
+    // fillRect centre).  Using the rendered body centre removes this offset.
+    //
+    // pcx / pcy are in cell-space (divide by CELL_SIZE so each unit = one grid
+    // cell).  The drawImage destination (Step 5) maps cell cx back to canvas
+    // pixel cx × CELL_SIZE — the same scale that was used here — so there is no
+    // round-trip coordinate error.
+    const half      = p.size * 0.5;
+    const ceilS     = Math.ceil(p.size);
+    const bodyX     = Math.floor(p.x - half) + ceilS * 0.5;  // rendered centre X
+    const bodyY     = Math.floor(p.y - half) + ceilS * 0.5;  // rendered centre Y
+    const pcx       = bodyX / CELL_SIZE;   // cell-space X of rendered centre
+    const pcy       = bodyY / CELL_SIZE;   // cell-space Y of rendered centre
+    const gcxi      = Math.floor(pcx);
+    const gcyi      = Math.floor(pcy);
+
+    // Gaussian splat — weight uses real fractional distance so the contribution
+    // shifts smoothly as the particle moves (no cell-snap stepping artefact).
+    for (let dy = -splatR; dy <= splatR; dy++) {
       const cy = gcyi + dy;
       if (cy < 0 || cy >= gridH) continue;
       const ddy = cy - pcy;
-      for (let dx = -SPLAT_RADIUS; dx <= SPLAT_RADIUS; dx++) {
+      for (let dx = -splatR; dx <= splatR; dx++) {
         const cx = gcxi + dx;
         if (cx < 0 || cx >= gridW) continue;
         const ddx = cx - pcx;
-        const w = Math.exp(-(ddx * ddx + ddy * ddy) * _twoSigmaSqInv);
+        const w = Math.exp(-(ddx * ddx + ddy * ddy) * inv2s2);
         intensities[(cy * gridW + cx) * tierCount + ti] += contrib * w;
       }
     }
@@ -345,18 +391,37 @@ export function drawParticleGlowField(
   _offCtx.putImageData(_imageData, 0, 0);
 
   // ── Step 5: Scale offscreen canvas onto main canvas ──────────
-  // The offscreen canvas is CELL_SIZE× smaller than the main canvas.
-  // imageSmoothingEnabled=true (bilinear) upscales the low-res glow field
-  // into smooth circular halos.  At CELL_SIZE=4 the 4× upscale interpolates
-  // cleanly without visible tile edges.
   //
-  // BLEND_MODE='screen': result = 1 − (1−src)(1−dst) per channel.
-  // Lightens without clipping to white and avoids grey/brown mud.
+  // Coordinate notes (see also Step 2 header):
+  //
+  //   Destination: gridW × CELL_SIZE × gridH × CELL_SIZE canvas pixels.
+  //   NOT canvasW × canvasH — that would introduce a fractional y-scale when
+  //   canvasH is not perfectly divisible by CELL_SIZE (e.g. 643 px / 161 cells
+  //   gives scale 3.994 instead of 4.0, shifting the glow ~1 px downward).
+  //   Drawing at the exact integral multiple ensures every cell cx maps to
+  //   the canvas range [cx × CELL_SIZE, (cx+1) × CELL_SIZE), matching the
+  //   pcx = bodyX / CELL_SIZE calculation in Step 2.
+  //
+  //   The destination rect may extend 0–3 px below/right of the canvas
+  //   (when canvasH/W is not a CELL_SIZE multiple); the canvas clips it.
+  //
+  //   imageSmoothingEnabled = false: nearest-neighbour scaling — the CSS-level
+  //   filter blur (below) provides all the smoothing we need; bilinear here
+  //   would cause a double-blur and can shift the peak slightly off-centre.
+  //
+  //   ctx.filter blur: applied in internal canvas pixel units before CSS
+  //   upscale.  BLUR_RADIUS internal px × CSS scale ≈ the on-screen halo
+  //   radius.  This converts hard 4×4-cell blocks into smooth circular halos
+  //   without any offset artefact.
+  //
+  //   BLEND_MODE = 'screen': result = 1 − (1−src)(1−dst).
+  //   Lightens without clipping to white; avoids grey/brown mud.
   ctx.save();
   ctx.globalCompositeOperation = BLEND_MODE;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'low'; // bilinear — sufficient for smooth blobs
-  ctx.drawImage(_offCanvas, 0, 0, canvasW, canvasH);
+  ctx.imageSmoothingEnabled = false; // nearest-neighbour; blur filter provides smoothing
+  ctx.filter = `blur(${BLUR_RADIUS}px)`;
+  ctx.drawImage(_offCanvas, 0, 0, _gridW * CELL_SIZE, _gridH * CELL_SIZE);
+  ctx.filter = 'none';
   ctx.restore();
 }
 

@@ -896,6 +896,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     const totalByGroup = new Map<string, number>();
     const claimedBySub = new Map<string, number>();
     const totalBySub = new Map<string, number>();
+    const unclaimedBySub = new Map<string, number>();
 
     let needGlyphRebuild = false;
 
@@ -987,6 +988,9 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
         }
       } else if (isEarnedUnclaimed) {
         unclaimedByGroup.set(def.groupId, (unclaimedByGroup.get(def.groupId) ?? 0) + 1);
+        if (def.subcategoryId) {
+          unclaimedBySub.set(def.subcategoryId, (unclaimedBySub.get(def.subcategoryId) ?? 0) + 1);
+        }
       }
 
       // Sparkle: only if visible, panel open, earned-unclaimed, in open group
@@ -1007,11 +1011,14 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
       setSparkleEmitter(refs.toggle, isPanelVisible && hasUnclaimed);
 
-      // Update subcategory header counts
+      // Update subcategory header counts and unclaimed highlight
       for (const [subId, subRef] of refs.subcategoryRefs) {
         const subTotal = totalBySub.get(subId) ?? 0;
         const subClaimed = claimedBySub.get(subId) ?? 0;
+        const subHasUnclaimed = (unclaimedBySub.get(subId) ?? 0) > 0;
         subRef.countEl.textContent = `${subClaimed}/${subTotal}`;
+        subRef.toggle.classList.toggle('ach-sub-toggle--has-unclaimed', subHasUnclaimed);
+        setSparkleEmitter(subRef.toggle, isPanelVisible && subHasUnclaimed);
       }
     }
 

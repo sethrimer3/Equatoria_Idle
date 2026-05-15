@@ -1021,6 +1021,16 @@
   outline-offset: -1px;
 }
 
+/* Subcategory toggle glows when it contains at least one unclaimed achievement */
+.ach-sub-toggle--has-unclaimed {
+  position: relative;
+  overflow: hidden;
+  border-left-color: #ffd700 !important;
+  outline: 1px solid rgba(255, 215, 0, 0.40);
+  outline-offset: -1px;
+  background: rgba(255, 215, 0, 0.06) !important;
+}
+
 .tab-btn--unclaimed-achievements {
   position: relative;
   overflow: hidden;
