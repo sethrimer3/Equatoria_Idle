@@ -115,6 +115,7 @@ export async function startApp(): Promise<void> {
     lastTapCanvasX: 0,
     lastTapCanvasY: 0,
     lastTapTimeMs: 0,
+    forgeSacrificeFlashMs: 0,
   };
 
   // ── Background effects ──

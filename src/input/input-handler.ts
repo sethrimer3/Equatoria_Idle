@@ -1,6 +1,6 @@
 /** Actions that can be dispatched from input. */
 export type GameAction =
-  | { kind: 'tap'; xScreen: number; yScreen: number }
+  | { kind: 'tap'; xScreen: number; yScreen: number; isTouchInput: boolean }
   | { kind: 'purchase_upgrade'; upgradeId: string }
   | { kind: 'unlock_next_tier' }
   | { kind: 'unlock_equation_forge' }
@@ -48,7 +48,7 @@ export function setupInputListeners(
 ): () => void {
   const onPointerDown = (e: PointerEvent) => {
     e.preventDefault();
-    dispatch({ kind: 'tap', xScreen: e.clientX, yScreen: e.clientY });
+    dispatch({ kind: 'tap', xScreen: e.clientX, yScreen: e.clientY, isTouchInput: e.pointerType === 'touch' });
   };
 
   tapTarget.addEventListener('pointerdown', onPointerDown, { passive: false });

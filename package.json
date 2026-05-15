@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "lint": "eslint src",
     "preview": "vite preview",
     "postbuild": "mkdir -p dist/ASSETS && cp -R ASSETS/SPRITES ASSETS/ANIMATIONS ASSETS/font ASSETS/music ASSETS/sfx dist/ASSETS/"
@@ -31,6 +32,7 @@
     "eslint": "^10.2.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.3"
+    "vite": "^8.0.3",
+    "vitest": "^3.2.4"
   }
 }

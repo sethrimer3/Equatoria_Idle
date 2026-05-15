@@ -403,15 +403,23 @@ export class ParticleSystem {
     const wasSpinningUp   = this._wasSpinningUp;
 
     // Forge crunch (only when forge is unlocked)
+    // NOTE: checkAndStartForgeCrunch calls checkForgeCrunch which always returns
+    // null (legacy auto-crunch disabled). It is kept here for legacy compat only
+    // and is effectively a no-op. Crunches are now started via the 3-tap heat
+    // system in tapEquationForge (sim layer). See particle-forge.ts for details.
     if (isForgeUnlocked) {
       checkAndStartForgeCrunch(this.particles, crunchState, forgeX, forgeY, nowMs);
     }
     if (updateForgeCrunch(crunchState, nowMs)) {
+      // NEW SACRIFICE PATH: remove captured forge particles and fire sim callback.
       const sacrifices = completeEquationForgeCrunch(this.particles, this._pool);
       if (sacrifices.size > 0 && this.onEquationForgeCrunchCompleted) {
         this.onEquationForgeCrunchCompleted(sacrifices);
       }
-      // Fallback: also run visual completeForgeCrunch if no sacrifices (legacy compat)
+      // LEGACY FALLBACK: if no captured-forge particles exist (sacrifice path was
+      // not active), attempt the old isForgeCrunchParticle conversion. In practice
+      // this branch is unreachable today because checkForgeCrunch always returns
+      // null, but it is kept to avoid silently breaking any future re-enablement.
       if (sacrifices.size === 0) {
         this.particles = completeForgeCrunch(
           this.particles, this._pool, this.spawnerRotations, forgeX, forgeY, nowMs,
