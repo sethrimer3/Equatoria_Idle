@@ -43,6 +43,10 @@ import {
 } from './rpg-factories';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
+import {
+  recordAlivenSpawn,
+  recordAlivenCapSkip,
+} from '../../dev/session-telemetry';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -261,7 +265,10 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     ctx.eliteEnemies.push(makeEliteEnemy(tier, spawnX, spawnY, wn));
   } else if (ALIVEN_VARIANTS.includes(enemyTypeId as typeof ALIVEN_VARIANTS[number])) {
     // Guard: skip spawning if the active group count is at the cap.
-    if (ctx.alivenGroups.length >= MAX_ACTIVE_ALIVEN_GROUPS) return;
+    if (ctx.alivenGroups.length >= MAX_ACTIVE_ALIVEN_GROUPS) {
+      recordAlivenCapSkip();
+      return;
+    }
     // Aliven particle groups spawn near the edge, away from the player.
     const margin = 30;
     const edge = Math.floor(Math.random() * 4);
@@ -273,5 +280,6 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       enemyTypeId as typeof ALIVEN_VARIANTS[number],
       spawnX, spawnY, wn,
     ));
+    recordAlivenSpawn(enemyTypeId, ctx.alivenGroups.length);
   }
 }

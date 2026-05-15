@@ -176,24 +176,28 @@ export function getLoomEfficiencyUpgradeCost(tierId: TierId, currentLevel: numbe
 /**
  * Processes a particle capture event for a loom.
  * Adds the captured mass to conversionProgress and produces motes when threshold is reached.
+ * Returns the number of output motes produced by this capture (may be 0).
  */
 export function applyLoomCapture(
   state: LoomState,
   resources: ResourceState,
   inputTierId: TierId,
   mass: number,
-): void {
+): number {
   const loomTierId = getLoomForInputTier(inputTierId);
-  if (!loomTierId) return;
+  if (!loomTierId) return 0;
   const loom = getLoom(state, loomTierId);
-  if (!loom || !loom.isUnlocked) return;
+  if (!loom || !loom.isUnlocked) return 0;
 
   const threshold = getLoomConversionThreshold(loom.conversionEfficiencyLevel);
   loom.conversionProgress += mass;
+  let motesProduced = 0;
   while (loom.conversionProgress >= threshold) {
     loom.conversionProgress -= threshold;
     addMotes(resources, loomTierId, 1);
+    motesProduced++;
   }
+  return motesProduced;
 }
 
 /**

@@ -7,6 +7,7 @@
  *   3. Forge state snapshot (heat tap count, crunch active, sacrifice progress)
  *   4. Loom state snapshot (conversionProgress, efficiencyLevel per tier)
  *   5. Aliven balance validation table (hpBase, atkBase, xpMult, specialCd, warnings)
+ *   6. Session telemetry tables (forge, loom, aliven counters + Reset button)
  *
  * All state is read on demand from game/rpgRender via the DevPanelHooks callback
  * object provided at registration time.  Nothing here is persisted.
@@ -19,6 +20,11 @@ import {
   ALIVEN_VARIANT_PARAMS,
   MAX_ACTIVE_ALIVEN_GROUPS,
 } from '../../render/rpg/rpg-aliven-constants';
+import {
+  getSessionTelemetrySnapshot,
+  getAvgSacrificePerCrunch,
+  resetSessionTelemetry,
+} from '../../dev/session-telemetry';
 
 // ─── Public interface ────────────────────────────────────────────
 
@@ -162,6 +168,27 @@ export function createDevPanel(): DevPanel {
   section.appendChild(makeSubTitle('Aliven Balance Table'));
   section.appendChild(buildAlivenBalanceTable());
 
+  // ── 6. Session Telemetry ───────────────────────────────────────
+  section.appendChild(makeSubTitle('Session Telemetry'));
+
+  // Reset button
+  const resetTelemetryBtn = el('button', 'settings-dev-reset-btn');
+  resetTelemetryBtn.textContent = '↺ Reset Session Telemetry';
+  resetTelemetryBtn.title = 'Clear all session telemetry counters';
+  resetTelemetryBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  resetTelemetryBtn.addEventListener('click', () => {
+    resetSessionTelemetry();
+    refreshTelemetry();
+  });
+  section.appendChild(resetTelemetryBtn);
+
+  const telemetryForgeWrap  = el('div', 'dev-panel-table-wrap');
+  const telemetryLoomWrap   = el('div', 'dev-panel-table-wrap');
+  const telemetryAlivenWrap = el('div', 'dev-panel-table-wrap');
+  section.appendChild(telemetryForgeWrap);
+  section.appendChild(telemetryLoomWrap);
+  section.appendChild(telemetryAlivenWrap);
+
   // ─── Helpers ─────────────────────────────────────────────────
 
   function refreshAlivenCount(): void {
@@ -219,12 +246,137 @@ export function createDevPanel(): DevPanel {
     loomTableWrap.appendChild(table);
   }
 
+  function refreshTelemetry(): void {
+    const snap = getSessionTelemetrySnapshot();
+    const avg  = getAvgSacrificePerCrunch();
+
+    // ── Forge telemetry table ──────────────────────────────
+    telemetryForgeWrap.innerHTML = '';
+    const forgeTitle = el('div', 'dev-panel-info-line');
+    forgeTitle.textContent = `⚗ Forge — crunches: ${snap.forge.crunchesCompleted} (${snap.forge.crunchesWithZeroParticles} zero-particle) · avg mass/crunch: ${avg.toFixed(1)}`;
+    telemetryForgeWrap.appendChild(forgeTitle);
+
+    const allForgeTiers = new Set([
+      ...Object.keys(snap.forge.sacrificedMassByTier),
+      ...Object.keys(snap.forge.equationUpgradesFromSacrificeByTier),
+    ]);
+    if (allForgeTiers.size > 0) {
+      const ft = el('table', 'dev-panel-table dev-panel-table-dense');
+      const fth = el('thead');
+      const fhr = el('tr');
+      for (const col of ['Tier', 'Mass Sacrificed', 'Upgrades Gained']) {
+        fhr.appendChild(el('th', undefined, col));
+      }
+      fth.appendChild(fhr);
+      ft.appendChild(fth);
+      const ftb = el('tbody');
+      for (const tier of Array.from(allForgeTiers).sort()) {
+        const row = el('tr');
+        row.appendChild(el('td', undefined, tier));
+        row.appendChild(el('td', undefined, Math.round(snap.forge.sacrificedMassByTier[tier] ?? 0).toString()));
+        row.appendChild(el('td', undefined, String(snap.forge.equationUpgradesFromSacrificeByTier[tier] ?? 0)));
+        ftb.appendChild(row);
+      }
+      ft.appendChild(ftb);
+      telemetryForgeWrap.appendChild(ft);
+    } else {
+      telemetryForgeWrap.appendChild(el('div', 'dev-panel-info-line', '(no forge sacrifices this session)'));
+    }
+
+    // ── Loom telemetry table ───────────────────────────────
+    telemetryLoomWrap.innerHTML = '';
+    const loomTitle = el('div', 'dev-panel-info-line');
+    loomTitle.textContent = `🔗 Loom — eff. upgrades: ${snap.loom.efficiencyUpgradesPurchased}`;
+    telemetryLoomWrap.appendChild(loomTitle);
+
+    const allLoomInputTiers = Object.keys(snap.loom.capturesByInputTier).sort();
+    if (allLoomInputTiers.length > 0) {
+      const lt = el('table', 'dev-panel-table dev-panel-table-dense');
+      const lth = el('thead');
+      const lhr = el('tr');
+      for (const col of ['Input Tier', 'Captures', 'Mass In', 'Output Tier', 'Motes Out']) {
+        lhr.appendChild(el('th', undefined, col));
+      }
+      lth.appendChild(lhr);
+      lt.appendChild(lth);
+      const ltb = el('tbody');
+      for (const tier of allLoomInputTiers) {
+        const row = el('tr');
+        row.appendChild(el('td', undefined, tier));
+        row.appendChild(el('td', undefined, String(snap.loom.capturesByInputTier[tier] ?? 0)));
+        row.appendChild(el('td', undefined, Math.round(snap.loom.capturedMassByInputTier[tier] ?? 0).toString()));
+        // Find the output tier that produced motes for this input (next tier)
+        const outTiers = Object.keys(snap.loom.outputMotesProducedByTier);
+        row.appendChild(el('td', undefined, outTiers.length > 0 ? outTiers.join(',') : '—'));
+        const totalOut = Object.values(snap.loom.outputMotesProducedByTier).reduce((a, b) => a + b, 0);
+        row.appendChild(el('td', undefined, String(totalOut)));
+        ltb.appendChild(row);
+        break; // one row with aggregate — per-tier breakdown in second loop
+      }
+      // Per output-tier passive motes
+      const passiveTiers = Object.keys(snap.loom.passiveMotesProduced).sort();
+      if (passiveTiers.length > 0) {
+        const passRow = el('tr');
+        passRow.appendChild(el('td', undefined, 'passive'));
+        passRow.appendChild(el('td', undefined, '—'));
+        passRow.appendChild(el('td', undefined, '—'));
+        passRow.appendChild(el('td', undefined, passiveTiers.join(',')));
+        const passTotal = passiveTiers.reduce((a, t) => a + (snap.loom.passiveMotesProduced[t] ?? 0), 0);
+        passRow.appendChild(el('td', undefined, passTotal.toFixed(2)));
+        ltb.appendChild(passRow);
+      }
+      lt.appendChild(ltb);
+      telemetryLoomWrap.appendChild(lt);
+    } else {
+      telemetryLoomWrap.appendChild(el('div', 'dev-panel-info-line', '(no loom captures this session)'));
+    }
+
+    // ── Aliven telemetry table ─────────────────────────────
+    telemetryAlivenWrap.innerHTML = '';
+    const alivenTitle = el('div', 'dev-panel-info-line');
+    alivenTitle.textContent = `👾 Aliven — cap skips: ${snap.aliven.capSkips} · peak groups: ${snap.aliven.peakActiveGroups} · contact dmg: ${Math.round(snap.aliven.playerDamageFromContact)} · bullet dmg: ${Math.round(snap.aliven.playerDamageFromBullets)}`;
+    telemetryAlivenWrap.appendChild(alivenTitle);
+
+    const allVariants = new Set([
+      ...Object.keys(snap.aliven.spawnedByVariant),
+      ...Object.keys(snap.aliven.killedByVariant),
+      ...Object.keys(snap.aliven.bulletsFiredByVariant),
+    ]);
+    if (allVariants.size > 0) {
+      const at = el('table', 'dev-panel-table dev-panel-table-dense');
+      const ath = el('thead');
+      const ahr = el('tr');
+      for (const col of ['Variant', 'Spawned', 'Killed', 'Bullets Fired']) {
+        ahr.appendChild(el('th', undefined, col));
+      }
+      ath.appendChild(ahr);
+      at.appendChild(ath);
+      const atb = el('tbody');
+      for (const variant of Array.from(allVariants).sort()) {
+        const params = ALIVEN_VARIANT_PARAMS[variant as keyof typeof ALIVEN_VARIANT_PARAMS];
+        const row = el('tr');
+        const nameCell = el('td', undefined, variant.replace('aliven_', ''));
+        if (params) nameCell.style.color = params.color;
+        row.appendChild(nameCell);
+        row.appendChild(el('td', undefined, String(snap.aliven.spawnedByVariant[variant] ?? 0)));
+        row.appendChild(el('td', undefined, String(snap.aliven.killedByVariant[variant] ?? 0)));
+        row.appendChild(el('td', undefined, String(snap.aliven.bulletsFiredByVariant[variant] ?? 0)));
+        atb.appendChild(row);
+      }
+      at.appendChild(atb);
+      telemetryAlivenWrap.appendChild(at);
+    } else {
+      telemetryAlivenWrap.appendChild(el('div', 'dev-panel-info-line', '(no Aliven events this session)'));
+    }
+  }
+
   function refresh(): void {
     if (!hooks) return;
     refreshAlivenCount();
     const game = hooks.getGame();
     refreshForgeState(game);
     refreshLoomState(game);
+    refreshTelemetry();
   }
 
   return {
