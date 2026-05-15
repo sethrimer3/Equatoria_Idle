@@ -9,5 +9,12 @@ export {
   tickLooms,
   isSpecialLoomPurchased,
   purchaseSpecialLoom,
+  getLoomInputTierId,
+  getLoomForInputTier,
+  getLoomConversionThreshold,
+  getLoomEfficiencyUpgradeCost,
+  applyLoomCapture,
+  tryUpgradeLoomEfficiency,
+  MAX_LOOM_EFFICIENCY_LEVEL,
 } from './loom-state';
 export type { LoomState, LoomTierState } from './loom-state';

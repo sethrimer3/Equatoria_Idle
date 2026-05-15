@@ -31,12 +31,13 @@ const TIER_INDEX_MAP: ReadonlyMap<TierId, number> = (() => {
   return m;
 })();
 
-// ─── Maximum trail capacity for the ring-buffer ──────────────────
+// ─── Module-level particle ID counter ───────────────────────────
+let _nextParticleId = 1;
 
+// ─── Maximum trail capacity for the ring-buffer ──────────────────
 const MAX_TRAIL_CAPACITY = 16;
 
 // ─── Blank particle factory ──────────────────────────────────────
-
 function createBlankParticle(): EquatoriaParticle {
   return {
     isActive: false,
@@ -66,6 +67,9 @@ function createBlankParticle(): EquatoriaParticle {
     trailCount: 0,
     trailFrameCounter: 0,
     dragReleaseTimeMs: 0,
+    isCaptured: false,
+    capturedById: '',
+    particleId: 0,
   };
 }
 
@@ -109,6 +113,9 @@ export function initParticle(
   p.trailCount = 0;
   p.trailFrameCounter = 0;
   p.dragReleaseTimeMs = 0;
+  p.isCaptured = false;
+  p.capturedById = '';
+  p.particleId = _nextParticleId++;
 }
 
 // ─── Pool ────────────────────────────────────────────────────────
@@ -122,6 +129,8 @@ export class ParticlePool {
 
   release(p: EquatoriaParticle): void {
     p.isActive = false;
+    p.isCaptured = false;
+    p.capturedById = '';
     p.trailHead = 0;
     p.trailCount = 0;
     p.suctionStartX = 0;

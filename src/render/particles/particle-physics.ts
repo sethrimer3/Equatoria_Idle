@@ -64,6 +64,10 @@ export function updateParticlePhysics(
       p.vx = 0;
       p.vy = 0;
     }
+  } else if (p.isCaptured) {
+    // Captured particles hold position — skip regular forces
+    p.vx = 0;
+    p.vy = 0;
   } else if (p.isLockedToPointer) {
     const dx = p.pointerTargetX - p.x;
     const dy = p.pointerTargetY - p.y;
@@ -137,7 +141,7 @@ export function updateParticlePhysics(
   }
 
   // Veer
-  if (!p.isMerging && !p.isLockedToPointer && nowMs >= p.nextVeerTimeMs) {
+  if (!p.isMerging && !p.isCaptured && !p.isLockedToPointer && nowMs >= p.nextVeerTimeMs) {
     const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
     if (speed > 0) {
       const veerDeg = VEER_ANGLE_MIN_DEG + Math.random() * (VEER_ANGLE_MAX_DEG - VEER_ANGLE_MIN_DEG);
@@ -192,9 +196,11 @@ export function updateParticlePhysics(
     p.vy = Math.sin(angle) * minVel;
   }
 
-  // Position update
-  p.x += p.vx * clampedDelta;
-  p.y += p.vy * clampedDelta;
+  // Position update — skip for captured particles (they hold position)
+  if (!p.isCaptured) {
+    p.x += p.vx * clampedDelta;
+    p.y += p.vy * clampedDelta;
+  }
 
   // Bounce / clamp
   if (!p.isLockedToPointer) {

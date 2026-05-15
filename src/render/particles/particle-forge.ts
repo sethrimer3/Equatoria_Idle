@@ -68,6 +68,36 @@ export function checkAndStartForgeCrunch(
   }
 }
 
+/**
+ * Complete an equation forge sacrifice crunch.
+ * Finds all isCaptured particles with capturedById === 'forge',
+ * accumulates their mass by tier, removes them from the particles array,
+ * and returns the sacrifice totals for the sim layer to apply.
+ */
+export function completeEquationForgeCrunch(
+  particles: EquatoriaParticle[],
+  pool: ParticlePool,
+): Map<string, number> {
+  const sacrifices = new Map<string, number>();
+  let wp = 0;
+
+  for (let i = 0, len = particles.length; i < len; i++) {
+    const p = particles[i];
+    if (p.isCaptured && p.capturedById === 'forge') {
+      // Accumulate mass contribution by tier
+      const equiv = Math.pow(100, p.sizeIndex); // getSizeSmallEquivalent equivalent
+      const prev = sacrifices.get(p.tierId) ?? 0;
+      sacrifices.set(p.tierId, prev + equiv);
+      pool.release(p);
+    } else {
+      particles[wp++] = p;
+    }
+  }
+  particles.length = wp;
+
+  return sacrifices;
+}
+
 export function completeForgeCrunch(
   particles: EquatoriaParticle[],
   pool: ParticlePool,

@@ -14,6 +14,12 @@ import type { NumberFormat } from '../../util';
 import { LOOM_DEFINITIONS, SPECIAL_LOOM_DEFINITIONS } from '../../data/looms';
 import { TIER_BY_ID } from '../../data/tiers';
 import { getLoom, getLoomRate, getLoomCost, isSpecialLoomPurchased } from '../../sim/looms';
+import {
+  getLoomInputTierId,
+  getLoomConversionThreshold,
+  getLoomEfficiencyUpgradeCost,
+  MAX_LOOM_EFFICIENCY_LEVEL,
+} from '../../sim/looms';
 import { getMotes } from '../../sim/resources';
 import { formatNumberAs, computeOutputCompression } from '../../util';
 import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
@@ -109,6 +115,17 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
     });
     card.appendChild(btn);
 
+    // Efficiency upgrade button (shown for looms that have an input tier)
+    const effBtn = document.createElement('button');
+    effBtn.className = 'upgrade-btn loom-upgrade-btn loom-efficiency-btn';
+    effBtn.style.borderColor = tier.color;
+    effBtn.style.marginTop = '4px';
+    effBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      dispatch({ kind: 'upgrade_loom_efficiency', tierId: def.tierId });
+    });
+    card.appendChild(effBtn);
+
     pane.appendChild(card);
     cards.set(def.tierId, card);
     upgradeButtons.set(def.tierId, btn);
@@ -198,27 +215,62 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
       const cost = getLoomCost(def.tierId, level);
       const currentMotes = getMotes(state.resources, def.tierId);
       const canAfford = cost !== null && currentMotes >= cost;
+      const tier = TIER_BY_ID.get(def.tierId);
 
       const statsEl = card.querySelector('.loom-stats');
       if (statsEl) {
         const effectiveRate = rate * state.achievements.loomMultiplierBonus;
         const { sizeLabel, emitRatePerSec } = computeOutputCompression(effectiveRate);
+        const inputTierId = getLoomInputTierId(def.tierId);
+        const inputTier = inputTierId ? TIER_BY_ID.get(inputTierId) : null;
+        const convProg = loom!.conversionProgress ?? 0;
+        const convThreshold = getLoomConversionThreshold(loom!.conversionEfficiencyLevel ?? 0);
+        const effLevel = loom!.conversionEfficiencyLevel ?? 0;
+        let conversionHtml = '';
+        if (inputTier) {
+          conversionHtml = `
+            <span class="loom-stat loom-conv">⚗ Converts <span style="color:${inputTier.color}">${inputTier.displayName}</span> → ${tier?.displayName ?? ''}: ${convProg.toFixed(0)}/${convThreshold.toFixed(0)}</span>
+            <span class="loom-stat loom-conv">Efficiency Lv ${effLevel}/${MAX_LOOM_EFFICIENCY_LEVEL}</span>
+          `;
+        }
         statsEl.innerHTML = `
           <span class="loom-stat">Lv ${level}</span>
           <span class="loom-stat">${formatNumberAs(effectiveRate, numberFormat)}/s raw</span>
           <span class="loom-stat loom-emit-size">Particle size: ${sizeLabel}</span>
           <span class="loom-stat">Rate: ${formatNumberAs(emitRatePerSec, numberFormat)}/s</span>
           <span class="loom-stat">${formatNumberAs(currentMotes, numberFormat)} motes</span>
+          ${conversionHtml}
         `;
       }
 
-      const tier = TIER_BY_ID.get(def.tierId);
       if (cost !== null) {
         btn.textContent = `⬆ Upgrade — ${formatNumberAs(cost, numberFormat)} ${tier?.displayName ?? ''}`;
         btn.disabled = !canAfford;
       } else {
         btn.textContent = '⬆ MAX';
         btn.disabled = true;
+      }
+
+      // Update efficiency upgrade button
+      const effBtn = card.querySelector('.loom-efficiency-btn') as HTMLButtonElement | null;
+      if (effBtn) {
+        const inputTierId = getLoomInputTierId(def.tierId);
+        if (!inputTierId) {
+          effBtn.style.display = 'none';
+        } else {
+          effBtn.style.display = '';
+          const effLevel = loom!.conversionEfficiencyLevel ?? 0;
+          if (effLevel >= MAX_LOOM_EFFICIENCY_LEVEL) {
+            effBtn.textContent = '✦ Efficiency MAX';
+            effBtn.disabled = true;
+          } else {
+            const effCost = getLoomEfficiencyUpgradeCost(def.tierId, effLevel);
+            const inputTier = TIER_BY_ID.get(inputTierId);
+            const inputBalance = getMotes(state.resources, inputTierId);
+            effBtn.textContent = `⚗ Efficiency +1 — ${formatNumberAs(effCost, numberFormat)} ${inputTier?.displayName ?? ''}`;
+            effBtn.disabled = inputBalance < effCost;
+          }
+        }
       }
     }
 

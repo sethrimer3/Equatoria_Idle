@@ -69,7 +69,9 @@ import {
   processActiveMerges,
   enforceParticleLimit,
 } from './particle-merge';
-import { checkAndStartForgeCrunch, completeForgeCrunch } from './particle-forge';
+import { checkAndStartForgeCrunch, completeForgeCrunch, completeEquationForgeCrunch } from './particle-forge';
+import { applyForgeFieldForces } from './forge-field-forces';
+import type { ForgeFieldInfo, LoomCapture } from './forge-field-forces';
 import { updateShockwaves } from './particle-shockwave';
 import { drawParticles, updateParticleRendererTime, getParticleRendererAnimTimeMs } from './particle-renderer';
 import type { ParticleLifeDebugState } from './particle-life-debug';
@@ -80,6 +82,7 @@ import type { ParticleDragState } from '../../input/particle-drag';
 
 // Re-export types for backward compatibility
 export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions };
+export type { ForgeFieldInfo } from './forge-field-forces';
 
 // ─── Audio events returned from update() ────────────────────────
 
@@ -159,6 +162,29 @@ export class ParticleSystem {
   private _wasSpinningUp = false;
   /** Whether the forge crunch was active at the end of the last frame. */
   private _wasCrunchActive = false;
+
+  // ── Capture fields (forge + looms) ───────────────────────────────
+  /** Forge and loom capture fields, updated each frame from app-game-loop. */
+  forgeFields: ForgeFieldInfo[] = [];
+  /** Scratch buffer for loom captures accumulated during substeps. */
+  private readonly _newLoomCaptures: LoomCapture[] = [];
+
+  // ── Callbacks ────────────────────────────────────────────────────
+  /**
+   * Fired once per loom-captured particle.
+   * The app layer routes this to `processLoomCapture` in the sim.
+   */
+  onParticleCapturedByLoom?: (fieldId: string, inputTierId: string, mass: number) => void;
+  /**
+   * Fired when an equation forge sacrifice crunch completes.
+   * The app layer routes this to `applyForgeSacrifice` in the sim.
+   */
+  onEquationForgeCrunchCompleted?: (sacrifices: Map<string, number>) => void;
+
+  /** Update the set of capture/attraction fields for this frame. */
+  setForgeFields(fields: ForgeFieldInfo[]): void {
+    this.forgeFields = fields;
+  }
 
   /** Returns the total small-mote equivalents currently on screen. */
   getOnScreenMoteCount(): number {
@@ -304,6 +330,15 @@ export class ParticleSystem {
         );
       }
 
+      // Capture-field forces — after PL so PL can't override capture
+      applyForgeFieldForces(
+        this.particles,
+        this.forgeFields,
+        crunchState,
+        this._newLoomCaptures,
+        FIXED_STEP_DELTA,
+      );
+
       // Velocity damping + max speed clamp
       applyParticleLifeDamping(this.particles, FIXED_STEP_DELTA, nowMs);
 
@@ -338,6 +373,31 @@ export class ParticleSystem {
     this.mergeCooldownFrames = Math.max(this.mergeCooldownFrames, mergeResult.mergeCooldownFrames);
     const mergesCompleted = mergeResult.completedCount;
 
+    // ── Loom captures — remove captured loom particles and fire callbacks ──
+    if (this._newLoomCaptures.length > 0) {
+      // Remove loom-captured particles from the array (released in-place)
+      let wp = 0;
+      const capturedSet = new Set<EquatoriaParticle>(this._newLoomCaptures.map(c => c.particle));
+      for (let i = 0, len = this.particles.length; i < len; i++) {
+        const p = this.particles[i];
+        if (capturedSet.has(p)) {
+          this._pool.release(p);
+        } else {
+          this.particles[wp++] = p;
+        }
+      }
+      this.particles.length = wp;
+
+      // Fire callbacks for each captured particle
+      if (this.onParticleCapturedByLoom) {
+        for (let ci = 0; ci < this._newLoomCaptures.length; ci++) {
+          const c = this._newLoomCaptures[ci];
+          this.onParticleCapturedByLoom(c.fieldId, c.inputTierId as string, c.mass);
+        }
+      }
+      this._newLoomCaptures.length = 0;
+    }
+
     // Capture previous-frame forge state before updating
     const wasCrunchActive = this._wasCrunchActive;
     const wasSpinningUp   = this._wasSpinningUp;
@@ -347,9 +407,16 @@ export class ParticleSystem {
       checkAndStartForgeCrunch(this.particles, crunchState, forgeX, forgeY, nowMs);
     }
     if (updateForgeCrunch(crunchState, nowMs)) {
-      this.particles = completeForgeCrunch(
-        this.particles, this._pool, this.spawnerRotations, forgeX, forgeY, nowMs,
-      );
+      const sacrifices = completeEquationForgeCrunch(this.particles, this._pool);
+      if (sacrifices.size > 0 && this.onEquationForgeCrunchCompleted) {
+        this.onEquationForgeCrunchCompleted(sacrifices);
+      }
+      // Fallback: also run visual completeForgeCrunch if no sacrifices (legacy compat)
+      if (sacrifices.size === 0) {
+        this.particles = completeForgeCrunch(
+          this.particles, this._pool, this.spawnerRotations, forgeX, forgeY, nowMs,
+        );
+      }
     }
 
     // Detect forge audio transitions
@@ -416,6 +483,8 @@ export class ParticleSystem {
     this._accumMs = 0;
     this._wasSpinningUp = false;
     this._wasCrunchActive = false;
+    this._newLoomCaptures.length = 0;
+    this.forgeFields = [];
     // Clear glow field so the previous session's glow does not persist
     resetGlowField();
   }

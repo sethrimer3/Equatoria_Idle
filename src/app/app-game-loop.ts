@@ -10,7 +10,10 @@ import {
   buildEquationView,
   getLoomRate,
   getWaveBoostMultiplier,
+  processLoomCapture,
+  applyForgeSacrifice,
 } from '../sim';
+import { getLoomInputTierId } from '../sim/looms';
 import {
   clearCanvas,
   drawBackground,
@@ -19,6 +22,8 @@ import {
   drawForgeCrunch,
   type ParticleSystem,
 } from '../render';
+import type { ForgeFieldInfo } from '../render/particles/forge-field-forces';
+import { FORGE_RADIUS, MAX_FORGE_ATTRACTION_DISTANCE } from '../data/particles/particle-config';
 import { getGeneratorPointerPos, updateGeneratorRendererTime } from '../render/generators/generator-renderer';
 import type { CanvasContext } from '../render/canvas';
 import type { BackgroundAnimation, VermiculateEffect, SubstrateEffect } from '../render/background';
@@ -60,6 +65,16 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   const particleEmitAccumulators = new Map<TierId, number>();
   // Reused map for generator equation label rates (avoids per-frame allocation).
   const generatorRatesPerSec = new Map<TierId, number>();
+  // Reused array for forge/loom capture fields (rebuilt each frame, not reallocated).
+  const forgeFieldsBuffer: ForgeFieldInfo[] = [];
+
+  // ── One-time particle system callback wiring ─────────────────
+  ctx.particles.onParticleCapturedByLoom = (_, inputTierId, mass) => {
+    processLoomCapture(ctx.appState.game, inputTierId as TierId, mass);
+  };
+  ctx.particles.onEquationForgeCrunchCompleted = (sacrifices) => {
+    applyForgeSacrifice(ctx.appState.game, sacrifices);
+  };
 
   function gameLoop(nowMs: number): void {
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
@@ -160,6 +175,40 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // Sync editable interaction matrix to particle system
     ctx.particles.interactionMatrix = ctx.appState.game.aliven.interactionMatrix;
 
+    // ── Build capture fields for forge and looms ────────────────
+    forgeFieldsBuffer.length = 0;
+    if (ctx.appState.game.equation.isForgeUnlocked) {
+      forgeFieldsBuffer.push({
+        id: 'forge',
+        x: equationCenterX,
+        y: equationCenterY,
+        captureRadius: FORGE_RADIUS,
+        outerRadius: MAX_FORGE_ATTRACTION_DISTANCE,
+        compatibleTierId: null,
+        isUnlocked: true,
+      });
+    }
+    for (const loom of ctx.appState.game.looms.looms) {
+      if (!loom.isUnlocked) continue;
+      const inputTierId = getLoomInputTierId(loom.tierId);
+      if (!inputTierId) continue; // sand loom has no input tier
+      // Position loom field at the generator for the loom's OUTPUT tier
+      let loomX = equationCenterX, loomY = equationCenterY;
+      for (const gen of ctx.appState.generatorState.generators) {
+        if (gen.tierId === loom.tierId) { loomX = gen.x; loomY = gen.y; break; }
+      }
+      forgeFieldsBuffer.push({
+        id: `loom_${loom.tierId}`,
+        x: loomX,
+        y: loomY,
+        captureRadius: FORGE_RADIUS * 1.2,
+        outerRadius: FORGE_RADIUS * 3,
+        compatibleTierId: inputTierId,
+        isUnlocked: true,
+      });
+    }
+    ctx.particles.setForgeFields(forgeFieldsBuffer);
+
     const particleAudioEvents = ctx.particles.update(
       deltaMs,
       nowMs,
@@ -212,7 +261,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
 
     // Only draw forge on canvas if forge is unlocked (equation is now in HUD)
     if (ctx.appState.game.equation.isForgeUnlocked) {
-      drawForge(ctx.cc, equationCenterX, equationCenterY, ctx.particles.forgeRotation, ctx.appState.forge, nowMs);
+      drawForge(ctx.cc, equationCenterX, equationCenterY, ctx.particles.forgeRotation, ctx.appState.forge, nowMs, ctx.appState.forge.heatTapCount);
       drawForgeCrunch(ctx.cc, equationCenterX, equationCenterY, ctx.appState.forge);
     }
 
