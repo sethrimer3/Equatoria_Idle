@@ -369,3 +369,63 @@ export function drawForgeCrunch(
   ctx.stroke();
   ctx.restore();
 }
+
+/** Duration in ms for the post-sacrifice shockwave ring animation. */
+const SACRIFICE_FLASH_DURATION_MS = 600;
+
+/**
+ * Draw a brief expanding shockwave ring at the forge when a sacrifice crunch completes.
+ * Call this every frame; the effect is derived from the elapsed time since the flash.
+ *
+ * @param forgeSacrificeFlashMs - timestamp when the crunch completed (from AppState),
+ *   or 0 if no flash has occurred yet.
+ */
+export function drawForgeSacrificeFlash(
+  cc: CanvasContext,
+  forgeX: number,
+  forgeY: number,
+  nowMs: number,
+  forgeSacrificeFlashMs: number,
+): void {
+  if (forgeSacrificeFlashMs === 0) return;
+  const elapsed = nowMs - forgeSacrificeFlashMs;
+  if (elapsed < 0 || elapsed > SACRIFICE_FLASH_DURATION_MS) return;
+
+  const t = elapsed / SACRIFICE_FLASH_DURATION_MS; // 0 → 1
+  const ctx = cc.ctx;
+
+  ctx.save();
+
+  // Primary expanding ring: starts tight, fades as it expands
+  const ringRadius = FORGE_RADIUS * (1 + t * 5);
+  const ringAlpha = (1 - t) * 0.9;
+  ctx.strokeStyle = `rgba(255, 220, 100, ${ringAlpha})`;
+  ctx.lineWidth = 2.5 * (1 - t * 0.6);
+  ctx.beginPath();
+  ctx.arc(forgeX, forgeY, ringRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Soft secondary ring, slightly larger and more transparent
+  const ring2Radius = FORGE_RADIUS * (1 + t * 3.5);
+  const ring2Alpha = (1 - t) * 0.4;
+  ctx.strokeStyle = `rgba(200, 180, 255, ${ring2Alpha})`;
+  ctx.lineWidth = 4 * (1 - t);
+  ctx.beginPath();
+  ctx.arc(forgeX, forgeY, ring2Radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Brief center flash glow (only visible in the first 20% of the animation)
+  if (t < 0.2) {
+    const flashT = 1 - t / 0.2;
+    const flashRadius = FORGE_RADIUS * 1.5;
+    const grad = ctx.createRadialGradient(forgeX, forgeY, 0, forgeX, forgeY, flashRadius);
+    grad.addColorStop(0, `rgba(255, 230, 120, ${0.45 * flashT})`);
+    grad.addColorStop(1, 'rgba(255, 230, 120, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(forgeX, forgeY, flashRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}

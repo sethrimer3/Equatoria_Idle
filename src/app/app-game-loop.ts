@@ -20,6 +20,7 @@ import {
   drawGenerators,
   drawForge,
   drawForgeCrunch,
+  drawForgeSacrificeFlash,
   drawLoomFieldAuras,
   type ParticleSystem,
 } from '../render';
@@ -69,12 +70,26 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   // Reused array for forge/loom capture fields (rebuilt each frame, not reallocated).
   const forgeFieldsBuffer: ForgeFieldInfo[] = [];
 
+  // Cooldown for loom-capture audio: play at most once per 400 ms to avoid spam.
+  let _loomAudioLastMs = 0;
+  const LOOM_AUDIO_COOLDOWN_MS = 400;
+
   // ── One-time particle system callback wiring ─────────────────
   ctx.particles.onParticleCapturedByLoom = (_, inputTierId, mass) => {
     processLoomCapture(ctx.appState.game, inputTierId as TierId, mass);
+    // Play a soft merge-style sound for loom captures, rate-limited to avoid spam.
+    if (ctx.audioSystem) {
+      const nowAudio = performance.now();
+      if (nowAudio - _loomAudioLastMs > LOOM_AUDIO_COOLDOWN_MS) {
+        _loomAudioLastMs = nowAudio;
+        ctx.audioSystem.onMotesMerged(1);
+      }
+    }
   };
   ctx.particles.onEquationForgeCrunchCompleted = (sacrifices) => {
     applyForgeSacrifice(ctx.appState.game, sacrifices);
+    // Record the timestamp so the sacrifice flash visual plays this frame.
+    ctx.appState.forgeSacrificeFlashMs = performance.now();
   };
 
   function gameLoop(nowMs: number): void {
@@ -267,6 +282,8 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     if (ctx.appState.game.equation.isForgeUnlocked) {
       drawForge(ctx.cc, equationCenterX, equationCenterY, ctx.particles.forgeRotation, ctx.appState.forge, nowMs, ctx.appState.forge.heatTapCount);
       drawForgeCrunch(ctx.cc, equationCenterX, equationCenterY, ctx.appState.forge);
+      // Post-crunch sacrifice shockwave flash
+      drawForgeSacrificeFlash(ctx.cc, equationCenterX, equationCenterY, nowMs, ctx.appState.forgeSacrificeFlashMs);
     }
 
     const terms = buildEquationView(ctx.appState.game.equation);

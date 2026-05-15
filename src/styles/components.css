@@ -478,6 +478,15 @@
   font-size: 12px;
 }
 
+/* Efficiency upgrade button: top spacing and hidden state */
+.loom-efficiency-btn {
+  margin-top: 4px;
+}
+
+.loom-efficiency-btn--hidden {
+  display: none;
+}
+
 /* ── Equation panel — sticky header + two-column body ─────────── */
 .equation-sticky-header {
   position: sticky;

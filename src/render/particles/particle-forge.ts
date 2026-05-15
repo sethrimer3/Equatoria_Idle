@@ -3,6 +3,31 @@
  *
  * Bridges between the authoritative forge-logic (sim layer) and the
  * visual particle layer without allocating temporary arrays each frame.
+ *
+ * ─── Two separate crunch pathways ──────────────────────────────────
+ *
+ * LEGACY PATHWAY (particle-conversion, currently disabled):
+ *   - `checkAndStartForgeCrunch` (called from particle-system.ts) uses
+ *     `checkForgeCrunch` to auto-detect valid particles near the forge.
+ *   - Particles that qualify are marked `isForgeCrunchParticle = true`.
+ *   - On completion, `completeForgeCrunch` converts them into higher-tier
+ *     output particles via `getCrunchOutput` (upgrade-in-place spawn).
+ *   - checkForgeCrunch now always returns null (disabled), so this path
+ *     is fully inert and can never conflict with the new sacrifice system.
+ *
+ * NEW SACRIFICE PATHWAY (equation upgrade):
+ *   - Triggered by 3 player heat-taps on the forge via `tapEquationForge`.
+ *   - During an active crunch (`crunchState.isActive`), `applyForgeFieldForces`
+ *     marks nearby eligible particles `isCaptured = true, capturedById = 'forge'`.
+ *   - On completion, `completeEquationForgeCrunch` (this file) removes those
+ *     captured particles and returns their mass totals by tier.
+ *   - The app layer fires `onEquationForgeCrunchCompleted(sacrifices)` which
+ *     routes to `applyForgeSacrifice` in the sim layer.
+ *
+ * The two pathways use DIFFERENT particle flags and DIFFERENT completion
+ * functions, so they cannot interfere:
+ *   isForgeCrunchParticle  ← legacy only (never set; checkForgeCrunch = null)
+ *   isCaptured + capturedById === 'forge'  ← sacrifice only
  */
 
 import type { TierId } from '../../data/tiers';

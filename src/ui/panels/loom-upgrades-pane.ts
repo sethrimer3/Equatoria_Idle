@@ -119,7 +119,6 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
     const effBtn = document.createElement('button');
     effBtn.className = 'upgrade-btn loom-upgrade-btn loom-efficiency-btn';
     effBtn.style.borderColor = tier.color;
-    effBtn.style.marginTop = '4px';
     effBtn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       dispatch({ kind: 'upgrade_loom_efficiency', tierId: def.tierId });
@@ -255,20 +254,18 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
       const effBtn = card.querySelector('.loom-efficiency-btn') as HTMLButtonElement | null;
       if (effBtn) {
         const inputTierId = getLoomInputTierId(def.tierId);
-        if (!inputTierId) {
-          effBtn.style.display = 'none';
-        } else {
-          effBtn.style.display = '';
+        effBtn.classList.toggle('loom-efficiency-btn--hidden', !inputTierId);
+        if (inputTierId) {
           const effLevel = loom!.conversionEfficiencyLevel ?? 0;
           if (effLevel >= MAX_LOOM_EFFICIENCY_LEVEL) {
             effBtn.textContent = '✦ Efficiency MAX';
             effBtn.disabled = true;
           } else {
             const effCost = getLoomEfficiencyUpgradeCost(def.tierId, effLevel);
-            const inputTier = TIER_BY_ID.get(inputTierId);
-            const inputBalance = getMotes(state.resources, inputTierId);
-            effBtn.textContent = `⚗ Efficiency +1 — ${formatNumberAs(effCost, numberFormat)} ${inputTier?.displayName ?? ''}`;
-            effBtn.disabled = inputBalance < effCost;
+            // Cost is paid in the loom's own output-tier motes (same tier as this loom).
+            const ownBalance = getMotes(state.resources, def.tierId);
+            effBtn.textContent = `⚗ Efficiency +1 — ${formatNumberAs(effCost, numberFormat)} ${tier?.displayName ?? ''}`;
+            effBtn.disabled = ownBalance < effCost;
           }
         }
       }

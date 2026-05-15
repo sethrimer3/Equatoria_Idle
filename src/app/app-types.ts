@@ -29,6 +29,12 @@ export interface AppState {
   lastTapCanvasX: number;
   lastTapCanvasY: number;
   lastTapTimeMs: number;
+  /**
+   * Timestamp (ms) when the most recent forge sacrifice crunch completed.
+   * Used to drive the brief post-crunch shockwave flash visual.
+   * 0 means no flash has occurred yet.
+   */
+  forgeSacrificeFlashMs: number;
 }
 
 /** Configuration object grouping all UI panels for tab switching. */
