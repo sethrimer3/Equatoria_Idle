@@ -370,12 +370,15 @@
 - No runtime dependencies (types only).
 
 ### src/render/rpg/rpg-enemy-types.ts
-- All non-starter enemy interfaces and related projectile/particle/ship entity types.
-- Extracted from `rpg-types.ts` to keep that file under ~300 lines.
-- Covers: `EmeraldPhase`, `EmeraldEnemy`, `AmberEnemy`, `AmberShard`, `VoidEnemy`, `QuartzEnemy`, `QuartzSpike`, `RubyEnemy`, `RubyBolt`, `SunstoneEnemy`, `CitrineEnemy`, `CitrineBolt`, `IoliteEnemy`, `AmethystEnemy`, `AmethystShard`, `DiamondEnemy`, `DiamondShard`, `NullstoneEnemy`, `VoidTendril`, `BossEnemy`, `BossProjectile`, `FracterylEnemy`, `FracterylShard`, `EigensteinEnemy`, `EigensteinBeam`, `DanmakuSafeZone`, `TeleportParticle`, `EmeraldPlayerMissile`, `EmeraldSubMissile`, `EmeraldSwirlParticle`, `SunstoneMine`, `SapphireShip`, `SapphireLaser`, `AmethystShip`, `AmethystLaser`, `LuckyMote`, `LuckyMotePopup`.
-- Also exports `EliteTier` (union of 8 tier names) and `EliteEnemy` (the rare polygon mini-boss entity with full state machine fields).
-- No runtime dependencies (types only; all fields are primitive or built-in TS types).
-- Consumed by: `rpg-render.ts`, `rpg-factories.ts`, `rpg-entity-draw.ts`, `rpg-enemy-draw.ts`, `rpg-enemy-updates.ts`, `rpg-enemy-updates-adv.ts`, `rpg-damage.ts`, `rpg-boss-draw.ts`, `rpg-boss-update.ts`, `rpg-lucky-motes.ts`, `rpg-elite-enemy-updates.ts`, `rpg-elite-enemy-draw.ts`.
+- All enemy interfaces: `EmeraldPhase`, `EmeraldEnemy`, `AmberEnemy`, `AmberShard`, `VoidEnemy`, `QuartzEnemy`, `QuartzSpike`, `RubyEnemy`, `RubyBolt`, `SunstoneEnemy`, `CitrineEnemy`, `CitrineBolt`, `IoliteEnemy`, `AmethystEnemy`, `AmethystShard`, `DiamondEnemy`, `DiamondShard`, `NullstoneEnemy`, `VoidTendril`, `BossEnemy`, `BossProjectile`, `FracterylEnemy`, `FracterylShard`, `EigensteinEnemy`, `EigensteinBeam`, `DanmakuSafeZone`.
+- Also exports `EliteTier` (union of 8 tier names) and `EliteEnemy`.
+- Player weapon and pickup entity types (`TeleportParticle`, `EmeraldPlayerMissile`, `EmeraldSubMissile`, `EmeraldSwirlParticle`, `SunstoneMine`, `SapphireShip`, `SapphireLaser`, `AmethystShip`, `AmethystLaser`, `LuckyMote`, `LuckyMotePopup`) are defined in `rpg-entity-types.ts` and re-exported here for backward compatibility.
+- No runtime dependencies (types only).
+
+### src/render/rpg/rpg-entity-types.ts
+- Player weapon and pickup entity type interfaces extracted from `rpg-enemy-types.ts`.
+- Covers: `TeleportParticle`, `EmeraldPlayerMissile`, `EmeraldSubMissile`, `EmeraldSwirlParticle`, `SunstoneMine`, `SapphireShip`, `SapphireLaser`, `AmethystShip`, `AmethystLaser`, `LuckyMote`, `LuckyMotePopup`.
+- No runtime dependencies (types only).
 
 ### src/render/rpg/rpg-elite-enemy-helpers.ts
 - Shared context type and projectile-spawning helpers for elite polygon enemies (~274 lines).
@@ -960,10 +963,26 @@
 - Used by equation-panel (upgrade hover) and loom-panel (matrix cell drag).
 - Two small golden circles trace the perimeter of the outlined rect using `perimeterPoint()`.
 
+### src/data/achievements/achievement-definition-types.ts
+- `AchievementBonusKind`, `AchievementCondition` (discriminated union, 60+ kinds), `AchievementDefinition` interface.
+- No runtime dependencies (types only). Imported by all achievement data files below.
+
+### src/data/achievements/achievement-definitions-motes.ts
+- `MOTES_ACHIEVEMENTS` — all mote-group achievement definitions (~130 entries).
+
+### src/data/achievements/achievement-definitions-equation.ts
+- `EQUATION_ACHIEVEMENTS` — all equation-group achievement definitions (~100 entries).
+
+### src/data/achievements/achievement-definitions-rpg.ts
+- `RPG_ACHIEVEMENTS` — named RPG achievements (wave/boss/XP/weapon milestones).
+- `RPG_NUMBERED_ACHIEVEMENTS` — hidden-criteria numbered RPG achievements (#001–#200).
+
+### src/data/achievements/achievement-definitions-secret.ts
+- `SECRET_ACHIEVEMENTS` — secret-group achievements (hidden until earned, large bonuses).
+
 ### src/data/achievements/achievement-definitions.ts
-- AchievementDefinition type with `subcategoryId?: string` field for RPG sub-grouping.
-- All RPG achievements (both named and numbered) have `subcategoryId` assigned.
-- Exports `ACHIEVEMENT_DEFINITIONS`, `ACHIEVEMENT_BY_ID`.
+- Aggregator: imports from the five files above, assembles and exports `ACHIEVEMENT_DEFINITIONS` and `ACHIEVEMENT_BY_ID`.
+- Re-exports `AchievementBonusKind`, `AchievementCondition`, `AchievementDefinition` for backward compatibility.
 
 ### src/data/achievements/achievement-subcategories.ts
 - `AchievementSubcategory` interface and `ACHIEVEMENT_SUBCATEGORIES` ordered list.
