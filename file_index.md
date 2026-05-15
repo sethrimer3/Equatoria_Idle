@@ -689,10 +689,16 @@
 - Covers: `updateSwordCombo` (hinge physics, shard chain, fluid drag, swing/spin combo, hit detection, beam effects).
 
 ### src/render/rpg/rpg-weapon-emerald.ts
-- Emerald heat-seeking missile system extracted from `rpg-weapon-systems.ts` (~584 lines).
+- Emerald heat-seeking player missile system (~310 lines). Sub-missiles/swirl now live in `rpg-weapon-emerald-subs.ts`.
 - Exports `EmeraldWeaponCtx` interface, `EmeraldWeaponHandle` interface, and `createEmeraldWeaponSystem(ctx)` factory.
-- Owns `emeraldPlayerMissiles`, `emeraldSubMissiles`, `emeraldSwirlParticles`; all exposed via getters on handle.
-- Covers: `spawnEmeraldMissile`, `updateEmeraldPlayerMissiles`, `updateEmeraldSubMissiles`, `updateEmeraldSwirlParticles`.
+- Delegates sub-missile and swirl state to a `createEmeraldSubSystem(ctx)` instance from the companion module.
+- Covers: `spawnEmeraldMissile`, `updateEmeraldPlayerMissiles` (seek, proximity burst, fizzle burst, collision).
+- Re-exports `EmeraldSubsCtx` and `EmeraldSubsHandle` from `rpg-weapon-emerald-subs.ts`.
+
+### src/render/rpg/rpg-weapon-emerald-subs.ts
+- Emerald sub-missile and swirl particle system (~285 lines). Extracted from `rpg-weapon-emerald.ts`.
+- Exports `EmeraldSubsCtx` (structural subset of `EmeraldWeaponCtx` minus `mote`), `EmeraldSubsHandle`, and `createEmeraldSubSystem(ctx)` factory.
+- Covers: `spawnEmeraldSubMissiles` (cone or 360° burst), `spawnEmeraldSwirlExplosion`, `updateEmeraldSubMissiles` (seek, decel, AOE), `updateEmeraldSwirlParticles`.
 
 ### src/render/rpg/rpg-weapon-laser-beam.ts
 - Ruby laser beam weapon system extracted from `rpg-weapon-systems.ts` (~421 lines).
@@ -701,11 +707,16 @@
 - Covers: `fireLaserBeam` (instantaneous ray cast + fluid beam injection), `updateLaserBeamEffect` (aging/deactivation).
 
 ### src/render/rpg/rpg-weapon-ships.ts
-- Companion ship weapon systems extracted from `rpg-weapon-systems.ts` (~465 lines).
+- Sapphire companion ship system and combined factory (~270 lines). Amethyst ships now live in `rpg-weapon-amethyst-ships.ts`.
 - Exports `ShipWeaponCtx` interface (structural subset of `RpgWeaponCtx`), `ShipWeaponHandle` interface, and `createShipWeaponSystems(ctx)` factory.
-- Covers: sapphire ships (orbit targeted enemy, fire fast curving lasers) and amethyst ships (distribute across furthest enemies, fire slow spiraling pierce lasers).
-- Private helpers: `updateShipTrail` (circular trail buffer) and `getTargetMaxHp` (extracts max HP from a `ClosestTarget`).
-- `reset()` clears all four arrays (sapphireShips, sapphireLasers, amethystShips, amethystLasers); called by the parent reset on restart.
+- Delegates amethyst state to a `createAmethystShipSystem(ctx)` instance from the companion module.
+- Module-level helpers: `updateShipTrail` (circular trail buffer) and `getTargetMaxHp` (extracts max HP from `ClosestTarget`).
+- Covers sapphire ships only: orbit targeted enemy, fire fast curving lasers (`syncSapphireShips`, `updateSapphireShips`, `updateSapphireLasers`).
+
+### src/render/rpg/rpg-weapon-amethyst-ships.ts
+- Amethyst companion ship system (~240 lines). Extracted from `rpg-weapon-ships.ts`.
+- Exports `AmethystShipCtx` (structural subset of `ShipWeaponCtx`), `AmethystShipHandle`, and `createAmethystShipSystem(ctx)` factory.
+- Covers: `syncAmethystShips`, `updateAmethystShips`, `spawnAmethystLaser`, `updateAmethystLasers` (spiral pierce projectiles).
 
 ### src/render/rpg/rpg-targeting.ts
 - Targeting system for the RPG tab extracted from `rpg-render.ts` (~290 lines).
