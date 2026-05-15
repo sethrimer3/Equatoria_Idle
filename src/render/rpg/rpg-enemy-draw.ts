@@ -57,6 +57,7 @@ import {
   FRACTERYL_ENEMY_SIZE,
   EIGENSTEIN_ENEMY_SIZE,
 } from './rpg-enemy-constants';
+import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { setLowGraphicsMode as setAdvLowGraphics } from './rpg-enemy-draw-adv';
 
 // ── Low-graphics mode flag ────────────────────────────────────
@@ -362,7 +363,8 @@ export function drawLaserEnemies(ctx: CanvasRenderingContext2D, enemies: LaserEn
 
 // ── Enemy indicator markers (triangle arrows or outline boxes above each enemy) ─
 
-/** Draws red triangle or outline indicators above all living enemies. */
+/** Draws red triangle or outline indicators above all living enemies.
+ *  Aliven groups receive a tier-colored marker at their group centroid. */
 export function drawEnemyIndicators(
   ctx: CanvasRenderingContext2D,
   style: 'triangle' | 'outline' | 'off',
@@ -382,16 +384,17 @@ export function drawEnemyIndicators(
   fracterylEnemies: FracterylEnemy[],
   eigensteinEnemies: EigensteinEnemy[],
   bossEnemy: BossEnemy | null,
+  alivenGroups: AlivenParticleGroup[],
 ): void {
   if (style === 'off') return;
-  const drawMarker = (x: number, y: number, size: number): void => {
+  const drawMarker = (x: number, y: number, size: number, color = '#ff3b30'): void => {
     if (style === 'outline') {
       ctx.save();
-      ctx.strokeStyle = '#ff3b30';
+      ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
       if (!isLowGraphicsMode) {
         ctx.shadowBlur = 6;
-        ctx.shadowColor = '#ff3b30';
+        ctx.shadowColor = color;
       }
       ctx.strokeRect(x - size / 2 - 2, y - size / 2 - 2, size + 4, size + 4);
       ctx.restore();
@@ -399,10 +402,10 @@ export function drawEnemyIndicators(
     }
     ctx.save();
     const markerY = y - size * 0.9 - 5;
-    ctx.fillStyle = '#ff3b30';
+    ctx.fillStyle = color;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = 5;
-      ctx.shadowColor = '#ff3b30';
+      ctx.shadowColor = color;
     }
     ctx.beginPath();
     ctx.moveTo(x, markerY);
@@ -428,4 +431,10 @@ export function drawEnemyIndicators(
   for (const enemy of fracterylEnemies) drawMarker(enemy.x, enemy.y, FRACTERYL_ENEMY_SIZE);
   for (const enemy of eigensteinEnemies) drawMarker(enemy.x, enemy.y, EIGENSTEIN_ENEMY_SIZE);
   if (bossEnemy) drawMarker(bossEnemy.x, bossEnemy.y, BOSS_SIZE_BASE * 2);
+  // Aliven groups: use each group's tier color for the indicator so they stand out.
+  for (const group of alivenGroups) {
+    if (group.aliveCount <= 0) continue;
+    const groupColor = group.particles.find(p => p.isAlive)?.glowColor ?? '#aaaaff';
+    drawMarker(group.cx, group.cy, 8, groupColor);
+  }
 }

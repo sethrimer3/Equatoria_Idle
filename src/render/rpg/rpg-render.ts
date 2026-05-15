@@ -811,12 +811,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // AlivenUpdateCtx: used each frame to update all aliven particle groups.
   const alivenUpdateCtx: AlivenUpdateCtx = {
-    get playerX()       { return mote.x; },
-    get playerY()       { return mote.y; },
-    get playerRadius()  { return RPG_MOTE_SIZE / 2 + 1; },
+    get playerX()         { return mote.x; },
+    get playerY()         { return mote.y; },
+    get playerRadius()    { return RPG_MOTE_SIZE / 2 + 1; },
     get playerIFramesMs() { return playerIFramesMs; },
-    get canvasW()       { return dim.w; },
-    get canvasH()       { return dim.h; },
+    setPlayerIFramesMs(ms: number) { playerIFramesMs = ms; },
+    get canvasW()         { return dim.w; },
+    get canvasH()         { return dim.h; },
     dealContactDamageToPlayer(atk: number) {
       dealDamageToPlayerKnockback(atk, 0, 0);
     },

@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#27**
+Current build: **#28**
 
 ---
 
@@ -41,6 +41,22 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 - **Balance Forecast — cost-growth warnings**: `generatePacingWarnings` now flags loom upgrade cost jumps > `suspiciousCostGrowthMultiplier` (25×) between adjacent levels.
 - **Balance Forecast — simulate from current state**: toggle checkbox in the panel; when checked, strategy runs start from the player's current resources/unlocks instead of a fresh run.
 
+### Build #28 — Aliven indicator, wave pacing, group cap, performance
+- **Aliven i-frame interface**: added `setPlayerIFramesMs(ms)` to `AlivenUpdateCtx` interface and wired the setter in `rpg-render.ts`. Spitter bullet hits already granted i-frames via `dealContactDamageToPlayer`; the setter makes the contract explicit and enables future callers to grant i-frames without triggering damage.
+- **Aliven indicator integration**: `drawEnemyIndicators` now accepts an `alivenGroups` parameter and draws a tier-colored marker at each living group's centroid. Updated call site in `rpg-render-draw.ts`.
+- **Hand-authored early Aliven wave appearances**: added Aliven spawns to `WAVE_DEFINITIONS` waves 2–25, introducing variants one at a time:
+  - Wave 2–4: `aliven_spark_cluster` (spitter swarm, first encounter)
+  - Wave 5–6: `aliven_quartz_ghost` (ghost/invulnerability mechanic)
+  - Wave 7–10: `aliven_shard_bloom` (dasher aggression)
+  - Wave 12–13: `aliven_pulse_swarm` (AoE shockwave mechanic)
+  - Wave 15–16: `aliven_ember_ring` (trail-emitting movement reading)
+  - Wave 18–19: `aliven_void_splinters` (splitter death cascade)
+  - Wave 22–23: `aliven_healer_nodes` (teach prioritising healers)
+  - Waves 24–25: mixed spark_cluster / void_splinters (combined challenge)
+  - Procedural generator (wave 26+) continues to mix all unlocked variants.
+- **Global Aliven group cap**: added `MAX_ACTIVE_ALIVEN_GROUPS = 8` to `rpg-aliven-constants.ts`; `spawnEnemyById` skips the spawn if the cap is reached, protecting mobile performance.
+- **`applyForgeFieldForces` optimization**: pre-computed per-field squared radii and forge-check flags outside the particle loop; switched inner-loop distance comparison to squared-distance to avoid `Math.sqrt` for most particles.
+
 ---
 
 ## Current Remaining Work
@@ -54,22 +70,16 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 - **Early game conversion pacing**: with a fresh save, does the sand→quartz loom feel achievable?
 - **Non-sand 10% passive production feel**: does non-sand progression feel too slow without active captures?
 - **Aliven group readability with new visuals**: healer beam, pulser ring, splitter burst — are they legible and not cluttered?
-- **Aliven performance with many groups**: check mobile frame rate when 5+ groups are alive simultaneously.
-
-### Architecture / code quality
-- **`AlivenUpdateCtx.playerIFramesMs`** — currently read-only; a setter would enable i-frames from spitter bullet hits (not just contact damage). Low priority.
-- **Hand-authored wave appearances**: consider introducing Aliven variants one-at-a-time across early waves rather than procedurally from `firstWave`.
-- **Global Aliven group cap**: stress-test with >15 concurrent groups on mobile; add a cap if needed.
-- **`applyForgeFieldForces` spatial pass**: with 13 tiers unlocked and 2000 particles this is ~26k comparisons/substep — verify performance on low-end devices.
+- **Aliven early wave pacing**: play waves 2–25 and verify each variant introduction feels readable and not overwhelming.
+- **Aliven performance**: verify frame rate stays stable when 8 groups (the new cap) are alive simultaneously on a mid-tier device.
+- **Aliven indicator markers**: verify tier-colored markers appear for Aliven group centroids (requires playing to wave 2+).
 
 ### Balance Forecast — still deferred
-- **RPG milestone simulation**: the engine cannot simulate RPG combat loop (wave/XP progression). Add a stub DPS model if needed.
-- **Auto-tap upgrades in forecast**: no auto-tap upgrade definitions exist in the catalog yet; the forecast cannot include them until definitions are added.
+- **RPG milestone simulation**: the engine cannot simulate RPG combat loop (wave/XP progression). A stub DPS model is deferred until wave/XP numbers stabilise.
+- **Auto-tap upgrades in forecast**: `auto_tap_speed` effectKind is defined in `upgrade-types.ts` and handled in `balance-forecast-purchases.ts`, but no catalog entries in `upgrade-catalog.ts` use it. The forecast will pick them up automatically once upgrade definitions are added. Design the upgrade levels first.
 - **Timeline visualization**: a canvas/SVG chart of the strategy curves would help; deferred until the panel stabilises.
 
 ### Aliven — remaining polish
-- **Enemy indicator integration** (Priority 3H): The `rpg-enemies-tab-icons.ts` system draws icons for off-screen enemies. Extending it for Aliven variants requires adding `createAlivenIconCanvas` calls per variant and wiring them into the indicator sweep. Non-trivial; left for a dedicated pass.
-  - Files to change: `src/ui/panels/rpg-enemies-tab-icons.ts`, `src/render/rpg/rpg-aliven-draw.ts`, indicator spawning in `rpg-wave-manager.ts`.
 - **Aliven balance pass**: `hpBase`, `atkBase`, `xpMult`, `specialCdMin/Max` values are starting points — needs real playtesting.
 
 ---
@@ -92,6 +102,13 @@ Use this when doing a manual playtesting session. Check off what you tested.
 - [ ] Non-sand passive production: Quartz+ looms trickle motes slowly even without captures
 
 ### Aliven Enemies
+- [ ] Wave 2 introduction: a `spark_cluster` group appears after the laser/quartz enemies — player can learn the swarm pattern
+- [ ] Wave 5 introduction: a `quartz_ghost` group appears — ghost invulnerability is readable
+- [ ] Wave 8 introduction: a `shard_bloom` group appears — dasher aggression is distinct from earlier variants
+- [ ] Wave 12 introduction: a `pulse_swarm` group appears — AoE shockwave ring is visible and communicates range
+- [ ] Wave 15 introduction: an `ember_ring` group appears — trail patterns are visible
+- [ ] Wave 18 introduction: a `void_splinters` group appears — splitter burst visual fires on death
+- [ ] Wave 22 introduction: a `healer_nodes` group appears — healer beam draws attention to the healer particle
 - [ ] Overlap separation: alive particles within a group stay visually separated (not piled up)
 - [ ] Pulser ring visual: a ring expands outward when a pulser fires its shockwave
 - [ ] Splitter burst: a brief flash ring appears at the particle position when a splitter dies and splits
@@ -99,7 +116,9 @@ Use this when doing a manual playtesting session. Check off what you tested.
 - [ ] Centroid glow: a subtle ambient glow is visible around the group center
 - [ ] Spitter bullets: bullets have a bright white center highlight; clearly distinct from the spitter body
 - [ ] Group health bar: thin bar above centroid shows alive/total ratio; disappears when group dies
-- [ ] Performance: frame rate stable with 3+ Aliven groups alive simultaneously on a mid-tier device
+- [ ] Aliven indicator markers: tier-colored triangles/outlines appear at group centroid when indicator style is not 'off'
+- [ ] Group cap: when 8 groups are alive, no new groups spawn (wave 26+ procedural)
+- [ ] Performance: frame rate stable with 8 Aliven groups alive simultaneously on a mid-tier device
 
 ### General
 - [ ] Save/load: existing save (v23+) loads without errors or lost progress

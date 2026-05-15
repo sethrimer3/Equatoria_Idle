@@ -29,6 +29,13 @@ export type AlivenVariantId = typeof ALIVEN_VARIANTS[number];
 /** Maximum total particles a group can hold (guards splitter runaway). */
 export const ALIVEN_MAX_PARTICLES = 24;
 
+/**
+ * Maximum number of active AlivenParticleGroups at any time.
+ * Prevents unbounded group accumulation on late-game waves with many spawns.
+ * Conservative default to protect mobile performance. Easy to tune.
+ */
+export const MAX_ACTIVE_ALIVEN_GROUPS = 8;
+
 // ── Contact damage ─────────────────────────────────────────────────────────
 
 /** Collision radius for player contact check (added to particle radiusPx). */
