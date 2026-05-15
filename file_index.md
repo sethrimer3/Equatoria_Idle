@@ -1249,3 +1249,12 @@ Audio system — eight focused modules:
 - Controls: max-sim-time selector, ↺ Run Analysis button, 📋 Copy Results button.
 - Runs simulation lazily (on open or refresh click) — never runs on every frame.
 - Hidden unless `setDevMode(true)` is called.
+
+### src/dev/session-telemetry.ts
+- Lightweight dev-only session telemetry counters. No browser dependencies; pure TypeScript.
+- Tracks forge crunches, sacrifice mass/upgrades by tier, loom captures/motes by tier, passive motes, Aliven spawn/kill by variant, cap skips, peak group count, player damage from contact and bullets, bullets fired.
+- Exports: `recordForgeCrunch`, `recordForgeSacrifice`, `recordLoomCapture`, `recordLoomEfficiencyUpgrade`, `recordLoomPassiveMotes`, `recordAlivenSpawn`, `recordAlivenKill`, `recordAlivenCapSkip`, `recordPlayerDamageFromContact`, `recordPlayerDamageFromBullet`, `recordAlivenBulletFired`, `resetSessionTelemetry`, `getSessionTelemetrySnapshot`, `getAvgSacrificePerCrunch`.
+- State is module-level; `resetSessionTelemetry()` clears all counters. Snapshot is a deep-copy (JSON round-trip) safe for display use.
+
+### src/dev/session-telemetry.test.ts
+- 35 Vitest unit tests for session-telemetry.ts (reset, increments, unknown-key robustness, snapshot isolation, derived average).

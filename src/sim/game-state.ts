@@ -44,6 +44,7 @@ import {
   purchaseSpecialLoom,
   applyLoomCapture,
   tryUpgradeLoomEfficiency,
+  getLoomForInputTier,
   type LoomState,
 } from './looms';
 import {
@@ -61,6 +62,13 @@ import {
   getWaveBoostMultiplier,
   type RpgSimState,
 } from './rpg';
+import {
+  recordForgeCrunch,
+  recordForgeSacrifice,
+  recordLoomCapture,
+  recordLoomEfficiencyUpgrade,
+  recordLoomPassiveMotes,
+} from '../dev/session-telemetry';
 
 // ─── Pending idle mote queue ────────────────────────────────────
 
@@ -224,7 +232,9 @@ export function tryAlivenMote(state: GameState, tierId: TierId, bypassCost = fal
 
 /** Try to upgrade a loom's conversion efficiency. Returns true if successful. */
 export function tryUpgradeLoomEfficiencyAction(state: GameState, tierId: TierId, bypassCost = false): boolean {
-  return tryUpgradeLoomEfficiency(state.looms, state.resources, tierId, bypassCost);
+  const result = tryUpgradeLoomEfficiency(state.looms, state.resources, tierId, bypassCost);
+  if (result) recordLoomEfficiencyUpgrade();
+  return result;
 }
 
 // ─── Heat-tap forge system ───────────────────────────────────────
@@ -249,7 +259,9 @@ export function tapEquationForge(state: GameState, nowMs: number): boolean {
  * and produces output motes when threshold is reached.
  */
 export function processLoomCapture(state: GameState, inputTierId: TierId, mass: number): void {
-  applyLoomCapture(state.looms, state.resources, inputTierId, mass);
+  const motesProduced = applyLoomCapture(state.looms, state.resources, inputTierId, mass);
+  const outputTierId = getLoomForInputTier(inputTierId) ?? inputTierId;
+  recordLoomCapture(inputTierId, mass, outputTierId, motesProduced);
 }
 
 /**
@@ -258,8 +270,17 @@ export function processLoomCapture(state: GameState, inputTierId: TierId, mass: 
  */
 export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, number>): void {
   const THRESHOLD = 2_000; // 2000 ≈ 20 medium-particle captures — playtestable baseline
+
+  // Telemetry: total mass to detect zero-particle crunches
+  let totalMass = 0;
+  for (const mass of sacrifices.values()) totalMass += mass;
+  recordForgeCrunch(totalMass);
+
   for (const [tierId, mass] of sacrifices) {
     const prev = state.forge.sacrificeProgressByTierId.get(tierId) ?? 0;
+    const upgradesGained = Math.floor((prev + mass) / THRESHOLD);
+    recordForgeSacrifice(tierId, mass, upgradesGained);
+
     let total = prev + mass;
     while (total >= THRESHOLD) {
       total -= THRESHOLD;
@@ -293,6 +314,8 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
   const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus * waveBoost);
   for (const [tierId, amount] of loomProduction) {
     addMotes(state.resources, tierId, amount);
+    // Telemetry: record non-sand passive motes (sand is high-frequency, less interesting)
+    if (tierId !== 'sand') recordLoomPassiveMotes(tierId, amount);
   }
   result.loomGains = loomProduction;
 

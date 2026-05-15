@@ -54,6 +54,7 @@ import {
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
 import { ALIVEN_FLUID_COLORS } from './rpg-aliven-constants';
 import type { WaveManagerCtx } from './rpg-wave-manager';
+import { recordAlivenKill } from '../../dev/session-telemetry';
 
 /** All elite type IDs used for the "killed all elite types" secret achievement. */
 const ALL_ELITE_TYPE_IDS = [
@@ -382,6 +383,7 @@ export function removeDeadEnemiesImpl(
     trySpawnLuckyMote(luckyMotes, group.tierId, group.x, group.y, getCachedLuckPercent());
     spawnDamageNumber(group.x, group.y, 0, -0.8, `+${formatXp(groupXp)} XP`, 0.8, '#aaeeff');
     rpgSimState.lifetimeAlivenKills++;
+    recordAlivenKill(group.variantId);
     // Secret flag: aliven_below_25pct_hp
     if (getPlayerHpRatio() < 0.25) {
       rpgSimState.secretAchievementFlags.add('aliven_below_25pct_hp');

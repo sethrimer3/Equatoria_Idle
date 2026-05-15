@@ -37,6 +37,11 @@ import {
   ALIVEN_SEPARATION_STRENGTH,
 } from './rpg-aliven-constants';
 import { makeAlivenParticle } from './rpg-aliven-factories';
+import {
+  recordPlayerDamageFromContact,
+  recordPlayerDamageFromBullet,
+  recordAlivenBulletFired,
+} from '../../dev/session-telemetry';
 
 // ── Per-frame spawn interval per variant ──────────────────────────────────
 function getSpawnIntervalMs(variantId: string): number {
@@ -286,7 +291,9 @@ function tickContact(
   if (dx * dx + dy * dy > hitRadius * hitRadius) return;
 
   // Deal damage and start cooldown
-  ctx.dealContactDamageToPlayer(getAtk(p));
+  const atk = getAtk(p);
+  ctx.dealContactDamageToPlayer(atk);
+  recordPlayerDamageFromContact(atk);
   p.contactCdMs = ALIVEN_CONTACT_CD_MS;
   p.hitFlashMs  = ALIVEN_HIT_FLASH_MS;
 }
@@ -337,6 +344,7 @@ function tickSpitter(
           atk: getAtk(p),
           color: p.color,
         });
+        recordAlivenBulletFired(group.variantId);
       }
       p.windupMs = 0;
       // Reset to normal cooldown
@@ -377,7 +385,9 @@ function tickPulser(p: AlivenParticle, ctx: AlivenUpdateCtx, deltaMs: number): v
   const dx = p.x - ctx.playerX, dy = p.y - ctx.playerY;
   const distSq = dx * dx + dy * dy;
   if (distSq < ALIVEN_PULSE_RADIUS_PX * ALIVEN_PULSE_RADIUS_PX) {
-    ctx.dealContactDamageToPlayer(Math.ceil(getAtk(p) * ALIVEN_PULSE_ATK_MULT));
+    const atk = Math.ceil(getAtk(p) * ALIVEN_PULSE_ATK_MULT);
+    ctx.dealContactDamageToPlayer(atk);
+    recordPlayerDamageFromContact(atk);
     p.hitFlashMs = ALIVEN_HIT_FLASH_MS;
   }
 }
@@ -437,6 +447,7 @@ function tickBullets(
       const hitR = ALIVEN_SPITTER_BULLET_RADIUS + ctx.playerRadius;
       if (dx * dx + dy * dy < hitR * hitR) {
         ctx.dealContactDamageToPlayer(b.atk);
+        recordPlayerDamageFromBullet(b.atk);
         group.bullets.splice(i, 1);
       }
     }
