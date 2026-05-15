@@ -257,7 +257,7 @@ export function processLoomCapture(state: GameState, inputTierId: TierId, mass: 
  * Each 10,000 small-mote equivalents of a given tier produces one equation upgrade for that tier.
  */
 export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, number>): void {
-  const THRESHOLD = 10_000; // 10000 = MERGE_THRESHOLD^2 = one large-equivalent
+  const THRESHOLD = 2_000; // 2000 ≈ 20 medium-particle captures — playtestable baseline
   for (const [tierId, mass] of sacrifices) {
     const prev = state.forge.sacrificeProgressByTierId.get(tierId) ?? 0;
     let total = prev + mass;

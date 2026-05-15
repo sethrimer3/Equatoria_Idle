@@ -112,15 +112,15 @@ All four strategies are approximations that work well for rough balance comparis
 
 ### Equation forge crunch pathway
 - **No dedicated in-game visual for sacrifice feedback**: When a crunch fires, the particles are removed but there is no separate particle burst or flash effect at the forge. A brief shockwave/flash at the forge on crunch would improve feedback.
-- **Heat indicator in UI panel**: `drawForge` renders heat rings on the canvas, but there is no DOM text label showing "0/3", "1/3", "2/3" in the equation sub-panel. This should be added to `src/ui/panels/equation-panel.ts` (or equivalent).
+- ~~**Heat indicator in UI panel**~~ ✅ **Done (Build #25)**: `equation-panel.ts` now shows a `forge-heat-row` with colored ● dots and a `(n/3)` count below the equation display whenever `heatTapCount > 0`.
 - **Forge tap input boundary**: The tap-on-forge detection in `input-handler.ts` uses a radius check; on small phones this may be hard to hit. Consider expanding the tap area.
 
 ### Loom conversion economy
-- **Old passive production coexists with new capture economy**: `tickLooms` still runs and generates passive motes in addition to particle conversion motes. This was intentional for backward compatibility but may need rebalancing — either remove passive production from higher-tier looms or adjust rates significantly.
+- ~~**Old passive production coexists with new capture economy**~~ ✅ **Done (Build #25)**: Non-sand looms now produce passive motes at 10% of their normal rate. Sand loom retains 100% passive rate (no input tier). This makes particle capture the dominant economy path for higher tiers while keeping a small passive floor for idle sessions.
 - **Sand Loom**: Has no input tier and produces sand passively. Particle capture does not apply. Correct by design.
-- **Loom field visual**: There is no visual indicator on the canvas showing which generator circle is a loom field. A faint colored aura ring around unlocked non-sand loom positions (drawn in forge-renderer or a new loom-field-renderer.ts) would help players see the attraction zones.
+- ~~**Loom field visual**~~ ✅ **Done (Build #25)**: `drawLoomFieldAuras()` in `forge-renderer.ts` draws a faint pulsing colored inner ring (capture zone) and outer dashed ring (attraction zone) around each unlocked loom field, called in `app-game-loop.ts` between generators and forge draw.
 - **Loom efficiency upgrades not tested end-to-end**: The efficiency upgrade logic is wired but the UI dispatch (`upgrade_loom_efficiency` action) was not confirmed working in a live build. Verify the button in the Loom pane properly deducts motes and increments efficiency level.
-- **Balance values need playtesting**: `baseInputCostPerOutput = 100`, `minCostRatio = 0.25`, `0.94 per efficiency level`, efficiency upgrade cost `50 * 3^level` — all are initial estimates.
+- ~~**Balance values need playtesting (initial estimates)**~~ ✅ **Adjusted (Build #25)**: Conversion threshold lowered 100→50 (more achievable early); efficiency cost scaling changed from 5ˣ→3ˣ; sacrifice threshold lowered 10,000→2,000 (≈20 medium-particle captures). These remain estimates — further tuning after playtesting is expected.
 
 ### Architecture / code quality
 - **`completeForgeCrunchCallback` inside particle-system.ts**: The forge crunch completion currently uses the legacy `completeForgeCrunch` function that was designed for the old spawn-a-replacement particle pathway. The new path should skip spawning output particles and instead fire `onEquationForgeCrunchCompleted`. Verify this was handled cleanly (check `particle-forge.ts`).
@@ -130,12 +130,12 @@ All four strategies are approximations that work well for rough balance comparis
 - **Tests**: No automated tests exist for the new forge/loom logic. Unit tests for `tapForgeHeat`, `applyForgeSacrifice`, `applyLoomCapture`, and `getLoomInputTierId` should be added.
 
 ### UI Polish
-- **Equation forge heat state not shown in DOM UI**: Only the canvas shows heat rings. Add a DOM element in the Equation sub-panel showing "Forge: tap 0/3 / 1/3 / 2/3 / CRUNCH!" 
+- ~~**Equation forge heat state not shown in DOM UI**~~ ✅ **Done (Build #25)**: See heat indicator note above.
 - **Loom conversion progress bar styling**: The progress bar HTML in `loom-upgrades-pane.ts` uses inline styles. Extract to CSS classes for consistency.
 - **No audio events for loom conversion**: When a particle is consumed by a loom, there is no sound cue. Consider reusing the merge sound at low volume.
 
 ### Balance
-- Sacrifice threshold of 10,000 mass per equation upgrade tier may be too high or too low — needs playtesting.
-- Loom conversion base cost of 100 small-equivalents per output mote needs playtesting.
-- Efficiency upgrade cost scaling (50 × 3^level) needs playtesting.
-- The interaction between passive loom production and particle capture may make looms feel disjointed — a unified design pass is needed.
+- ~~Sacrifice threshold of 10,000~~: Lowered to 2,000 (Build #25). Further tuning needed.
+- ~~Loom conversion base cost of 100~~: Lowered to 50 (Build #25). Further tuning needed.
+- ~~Efficiency upgrade cost scaling (50 × 5^level)~~: Changed to 50 × 3^level (Build #25). Further tuning needed.
+- ~~Passive loom production and particle capture felt disjointed~~: Non-sand passive production reduced to 10% (Build #25). Unified economy pass still recommended after more playtesting.

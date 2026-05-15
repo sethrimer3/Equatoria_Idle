@@ -105,7 +105,10 @@ export function tickLooms(
     if (!loom.isUnlocked || loom.level <= 0) continue;
 
     const specialBonus = state.specialPurchased.has(loom.tierId) ? 2 : 1;
-    const rate = getLoomRate(loom.tierId, loom.level) * productionBonus * specialBonus;
+    // Non-sand looms reduce passive production to 10% so particle capture is
+    // the primary economy path for higher tiers; sand keeps full passive rate.
+    const passiveScale = loom.tierId === 'sand' ? 1.0 : 0.1;
+    const rate = getLoomRate(loom.tierId, loom.level) * productionBonus * specialBonus * passiveScale;
     if (rate <= 0) continue;
 
     // Accumulate fractional motes
@@ -128,7 +131,7 @@ export function isSpecialLoomPurchased(state: LoomState, tierId: TierId): boolea
 // ─── Loom conversion system ──────────────────────────────────────
 
 /** Base small-mote equivalents required per loom conversion output mote. */
-const BASE_LOOM_CONVERSION_THRESHOLD = 100;
+const BASE_LOOM_CONVERSION_THRESHOLD = 50;
 /** Maximum number of efficiency upgrade levels per loom. */
 export const MAX_LOOM_EFFICIENCY_LEVEL = 5;
 
@@ -167,7 +170,7 @@ export function getLoomConversionThreshold(efficiencyLevel: number): number {
  */
 export function getLoomEfficiencyUpgradeCost(tierId: TierId, currentLevel: number): number {
   const tierIndex = TIERS.findIndex(t => t.id === tierId);
-  return Math.floor(50 * Math.pow(5, currentLevel) * (tierIndex + 1));
+  return Math.floor(50 * Math.pow(3, currentLevel) * (tierIndex + 1));
 }
 
 /**
