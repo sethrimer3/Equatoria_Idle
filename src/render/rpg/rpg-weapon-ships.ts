@@ -1,9 +1,10 @@
 /**
- * rpg-weapon-ships.ts — Companion ship weapon systems for the RPG tab.
+ * rpg-weapon-ships.ts — Sapphire companion ship weapon system for the RPG tab.
  *
  * Extracted from rpg-weapon-systems.ts to keep that module focused on
- * single-projectile and melee weapons. This module owns the full lifecycle
- * of both companion ship types:
+ * single-projectile and melee weapons. This module owns the sapphire ship
+ * lifecycle and orchestrates the amethyst ship system via
+ * `createAmethystShipSystem` (rpg-weapon-amethyst-ships.ts):
  *
  *   • Sapphire ships — orbit the targeted enemy; fire fast curving lasers.
  *   • Amethyst ships — distribute across the furthest enemies; fire slow
@@ -26,22 +27,53 @@ import {
   SAPPHIRE_LASER_TRAIL_CAP, SAPPHIRE_LASER_TRAIL_MIN_DIST,
   SAPPHIRE_LASER_COLOR, SAPPHIRE_LASER_GLOW, SAPPHIRE_LASER_SPREAD_RAD,
   SAPPHIRE_LASER_CURVE_RATE, SAPPHIRE_LASER_LATERAL_VEL, SAPPHIRE_LASER_LATERAL_DECAY,
-  AMETHYST_SHIP_FIRE_MS, AMETHYST_SHIP_ORBIT_RADIUS, AMETHYST_SHIP_MAX_SPEED, AMETHYST_SHIP_TRAIL_CAP,
-  AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
-  AMETHYST_LASER_ANGULAR_SPEED, AMETHYST_LASER_DURATION_MS, AMETHYST_LASER_HIT_RADIUS, AMETHYST_LASER_TRAIL_CAP,
-  AMETHYST_LASER_COLOR, AMETHYST_LASER_GLOW, AMETHYST_SHIP_ATTACK_RANGE,
 } from './rpg-weapon-constants';
 import {
   HIT_EFFECT_DURATION_MS, TARGET_FRAME_MS,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PROJECTILE_STRENGTH,
   FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B,
-  FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B,
 } from './rpg-constants';
+import { createAmethystShipSystem } from './rpg-weapon-amethyst-ships';
 import type { FluidImpulse } from './rpg-fluid';
 import type { RpgPlayerStats, HitEffect, ClosestTarget } from './rpg-types';
 import type { SapphireShip, SapphireLaser, AmethystShip, AmethystLaser } from './rpg-enemy-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
+
+// ── Module-level helpers ──────────────────────────────────────────────────
+
+/** Appends the current position to a circular trail buffer.
+ *  @param minDist  Minimum distance (px) the entity must have moved since the
+ *                  last recorded point before a new point is added.  0 means
+ *                  always add (no minimum-distance guard).
+ */
+function updateShipTrail(
+  x: number,
+  y: number,
+  trailX: Float64Array,
+  trailY: Float64Array,
+  state: { trailHead: number; trailCount: number },
+  minDist: number = 0,
+): void {
+  if (minDist > 0 && state.trailCount > 0) {
+    const prevIdx = (state.trailHead - 1 + trailX.length) % trailX.length;
+    const dx = x - trailX[prevIdx];
+    const dy = y - trailY[prevIdx];
+    if (dx * dx + dy * dy < minDist * minDist) return;
+  }
+  trailX[state.trailHead] = x;
+  trailY[state.trailHead] = y;
+  state.trailHead = (state.trailHead + 1) % trailX.length;
+  if (state.trailCount < trailX.length) state.trailCount++;
+}
+
+/** Returns the max HP of the primary entity inside a ClosestTarget. */
+function getTargetMaxHp(target: ClosestTarget): number {
+  return target.laser?.maxHp ?? target.sapphire?.maxHp ?? target.emerald?.maxHp ?? target.amber?.maxHp
+    ?? target.void?.maxHp ?? target.quartz?.maxHp ?? target.ruby?.maxHp ?? target.sunstone?.maxHp
+    ?? target.citrine?.maxHp ?? target.iolite?.maxHp ?? target.amethyst?.maxHp ?? target.diamond?.maxHp
+    ?? target.nullstone?.maxHp ?? target.fracteryl?.maxHp ?? target.eigenstein?.maxHp ?? target.boss?.maxHp ?? 1;
+}
 
 /** Structural subset of RpgWeaponCtx containing only what ship systems need. */
 export interface ShipWeaponCtx {
@@ -90,49 +122,15 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
   const {
     mote, dim, rpgSimState, playerStats, hitEffects, fluid,
     getEffectiveEquippedIds, findEquippedWeaponIdByEffect,
-    findClosestEnemyFrom, getTargetedEnemy, collectEnemyBodyTargets,
+    findClosestEnemyFrom, getTargetedEnemy,
     damageBodyTarget, spawnDamageNumber,
   } = ctx;
 
+  // Amethyst ship system (owned by the companion module).
+  const amethystSystem = createAmethystShipSystem(ctx);
+
   const sapphireShips: SapphireShip[] = [];
   const sapphireLasers: SapphireLaser[] = [];
-  const amethystShips: AmethystShip[] = [];
-  const amethystLasers: AmethystLaser[] = [];
-
-  // ── Helpers ──────────────────────────────────────────────────────
-
-  /** Appends the current position to a circular trail buffer.
-   *  @param minDist  Minimum distance (px) the entity must have moved since the
-   *                  last recorded point before a new point is added.  0 means
-   *                  always add (no minimum-distance guard).
-   */
-  function updateShipTrail(
-    x: number,
-    y: number,
-    trailX: Float64Array,
-    trailY: Float64Array,
-    state: { trailHead: number; trailCount: number },
-    minDist: number = 0,
-  ): void {
-    if (minDist > 0 && state.trailCount > 0) {
-      const prevIdx = (state.trailHead - 1 + trailX.length) % trailX.length;
-      const dx = x - trailX[prevIdx];
-      const dy = y - trailY[prevIdx];
-      if (dx * dx + dy * dy < minDist * minDist) return;
-    }
-    trailX[state.trailHead] = x;
-    trailY[state.trailHead] = y;
-    state.trailHead = (state.trailHead + 1) % trailX.length;
-    if (state.trailCount < trailX.length) state.trailCount++;
-  }
-
-  /** Returns the max HP of the primary entity inside a ClosestTarget. */
-  function getTargetMaxHp(target: ClosestTarget): number {
-    return target.laser?.maxHp ?? target.sapphire?.maxHp ?? target.emerald?.maxHp ?? target.amber?.maxHp
-      ?? target.void?.maxHp ?? target.quartz?.maxHp ?? target.ruby?.maxHp ?? target.sunstone?.maxHp
-      ?? target.citrine?.maxHp ?? target.iolite?.maxHp ?? target.amethyst?.maxHp ?? target.diamond?.maxHp
-      ?? target.nullstone?.maxHp ?? target.fracteryl?.maxHp ?? target.eigenstein?.maxHp ?? target.boss?.maxHp ?? 1;
-  }
 
   // ── Sapphire ship system ──────────────────────────────────────────
 
@@ -294,224 +292,26 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
     });
   }
 
-  // ── Amethyst ship system ──────────────────────────────────────────
-
-  /**
-   * Syncs amethyst ships to match equipped weapon tier.
-   * Call when weapon equip state changes.
-   */
-  function syncAmethystShips(): void {
-    let equippedTier = 0;
-    let baseDamage = 0;
-    for (const weaponId of getEffectiveEquippedIds()) {
-      const wd = WEAPON_BY_ID.get(weaponId);
-      if (wd?.stats.effect?.kind === 'amethystShip') {
-        equippedTier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-        baseDamage = wd.stats.damage;
-        break;
-      }
-    }
-
-    while (amethystShips.length > equippedTier) amethystShips.pop();
-    while (amethystShips.length < equippedTier) {
-      const angle = (amethystShips.length / equippedTier) * Math.PI * 2;
-      amethystShips.push({
-        x: mote.x + Math.cos(angle) * AMETHYST_SHIP_ORBIT_RADIUS,
-        y: mote.y + Math.sin(angle) * AMETHYST_SHIP_ORBIT_RADIUS,
-        vx: 0,
-        vy: 0,
-        orbitAngle: angle,
-        fireCooldownMs: Math.random() * AMETHYST_SHIP_FIRE_MS,
-        baseDamage,
-        trailX: new Float64Array(AMETHYST_SHIP_TRAIL_CAP),
-        trailY: new Float64Array(AMETHYST_SHIP_TRAIL_CAP),
-        trailHead: 0,
-        trailCount: 0,
-      });
-    }
-    for (const ship of amethystShips) ship.baseDamage = baseDamage;
-  }
-
-  /**
-   * Updates amethyst ships: orbit around furthest enemy (or player),
-   * fire spiraling pierce lasers every 3 seconds.
-   */
-  function updateAmethystShips(deltaMs: number): void {
-    if (amethystShips.length === 0) return;
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    const targets = collectEnemyBodyTargets().sort((a, b) => b.distSq - a.distSq);
-
-    for (let i = 0; i < amethystShips.length; i++) {
-      const ship = amethystShips[i];
-      const target = targets.length > 0 ? targets[i % targets.length] : null;
-      const targetX = target ? target.x : mote.x;
-      const targetY = target ? target.y : mote.y;
-      ship.orbitAngle += 1.7 * (deltaMs / 1000);
-      const angleOffset = (i / amethystShips.length) * Math.PI * 2;
-      const desiredX = targetX + Math.cos(ship.orbitAngle + angleOffset) * AMETHYST_SHIP_ORBIT_RADIUS;
-      const desiredY = targetY + Math.sin(ship.orbitAngle + angleOffset) * AMETHYST_SHIP_ORBIT_RADIUS;
-
-      const dx = desiredX - ship.x;
-      const dy = desiredY - ship.y;
-      const moveSpeed = AMETHYST_SHIP_MAX_SPEED * dt;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > moveSpeed) {
-        ship.vx = (dx / dist) * moveSpeed;
-        ship.vy = (dy / dist) * moveSpeed;
-        ship.x += ship.vx;
-        ship.y += ship.vy;
-      } else {
-        ship.vx = desiredX - ship.x;
-        ship.vy = desiredY - ship.y;
-        ship.x = desiredX;
-        ship.y = desiredY;
-      }
-      updateShipTrail(ship.x, ship.y, ship.trailX, ship.trailY, ship);
-
-      ship.fireCooldownMs -= deltaMs;
-      if (ship.fireCooldownMs <= 0 && target) {
-        const dxFire = target.x - ship.x, dyFire = target.y - ship.y;
-        const inRange = dxFire * dxFire + dyFire * dyFire <= AMETHYST_SHIP_ATTACK_RANGE * AMETHYST_SHIP_ATTACK_RANGE;
-        if (inRange) {
-          ship.fireCooldownMs += AMETHYST_SHIP_FIRE_MS;
-          spawnAmethystLaser(ship, target);
-        }
-        // When out of range the cooldown stays ≤0 so the ship fires as soon as it closes in.
-      }
-    }
-  }
-
-  /**
-   * Spawns an amethyst laser from a ship toward a target enemy.
-   */
-  function spawnAmethystLaser(ship: AmethystShip, target: ClosestTarget): void {
-    const angle = Math.atan2(ship.y - target.y, ship.x - target.x);
-
-    // Calculate damage based on weapon tier (30× base damage)
-    const weaponId = findEquippedWeaponIdByEffect('amethystShip');
-    const tier = weaponId ? (rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1) : 1;
-    const scaledDamage = getScaledWeaponDamage(ship.baseDamage, tier, playerStats.atk) * AMETHYST_LASER_DAMAGE_MULT;
-
-    amethystLasers.push({
-      x: target.x + Math.cos(angle) * AMETHYST_LASER_INITIAL_RADIUS,
-      y: target.y + Math.sin(angle) * AMETHYST_LASER_INITIAL_RADIUS,
-      centerX: target.x,
-      centerY: target.y,
-      radius: AMETHYST_LASER_INITIAL_RADIUS,
-      angle,
-      lifeMs: AMETHYST_LASER_DURATION_MS,
-      scaledDamage,
-      piercedEnemies: new Set(),
-      targetEnemy: target.boss ?? target.eigenstein ?? target.fracteryl ?? target.nullstone ?? target.diamond
-        ?? target.amethyst ?? target.iolite ?? target.citrine ?? target.sunstone ?? target.ruby
-        ?? target.quartz ?? target.void ?? target.amber ?? target.emerald ?? target.sapphire ?? target.laser ?? null,
-      trailX: new Float64Array(AMETHYST_LASER_TRAIL_CAP),
-      trailY: new Float64Array(AMETHYST_LASER_TRAIL_CAP),
-      trailHead: 0,
-      trailCount: 0,
-    });
-  }
-
-  /**
-   * Updates amethyst lasers: move with spiral, pierce through enemies.
-   */
-  function updateAmethystLasers(deltaMs: number): void {
-    const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-    const weaponId = findEquippedWeaponIdByEffect('amethystShip');
-    ctx.withDamageSource(weaponId, () => {
-      const liveTargets = collectEnemyBodyTargets();
-      for (let i = amethystLasers.length - 1; i >= 0; i--) {
-        const laser = amethystLasers[i];
-        laser.lifeMs -= deltaMs;
-        const targetStillAlive = laser.targetEnemy === null || liveTargets.some(t =>
-          t.laser === laser.targetEnemy || t.sapphire === laser.targetEnemy || t.emerald === laser.targetEnemy ||
-          t.amber === laser.targetEnemy || t.void === laser.targetEnemy || t.quartz === laser.targetEnemy ||
-          t.ruby === laser.targetEnemy || t.sunstone === laser.targetEnemy || t.citrine === laser.targetEnemy ||
-          t.iolite === laser.targetEnemy || t.amethyst === laser.targetEnemy || t.diamond === laser.targetEnemy ||
-          t.nullstone === laser.targetEnemy || t.fracteryl === laser.targetEnemy || t.eigenstein === laser.targetEnemy ||
-          t.boss === laser.targetEnemy
-        );
-        if (!targetStillAlive) {
-          amethystLasers.splice(i, 1);
-          continue;
-        }
-
-        if (laser.targetEnemy && 'x' in laser.targetEnemy && 'y' in laser.targetEnemy) {
-          const targetPos = laser.targetEnemy as { x: number; y: number };
-          laser.centerX = targetPos.x;
-          laser.centerY = targetPos.y;
-        }
-        laser.angle += AMETHYST_LASER_ANGULAR_SPEED * dt;
-        laser.radius = Math.max(0, laser.radius - (AMETHYST_LASER_INITIAL_RADIUS / (AMETHYST_LASER_DURATION_MS / TARGET_FRAME_MS)) * dt);
-        laser.x = laser.centerX + Math.cos(laser.angle) * laser.radius;
-        laser.y = laser.centerY + Math.sin(laser.angle) * laser.radius;
-        updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser);
-
-        // Inject swirling + inward fluid force in the direction the laser is traveling.
-        // Tangential direction (CCW rotation at current angle) plus inward pull toward center.
-        if (laser.radius > 1) {
-          const tangentX = -Math.sin(laser.angle);
-          const tangentY =  Math.cos(laser.angle);
-          const dxC = laser.centerX - laser.x;
-          const dyC = laser.centerY - laser.y;
-          const rr  = Math.sqrt(dxC * dxC + dyC * dyC) || 1;
-          const inwardX = dxC / rr;
-          const inwardY = dyC / rr;
-          const spiralSpeed = laser.radius * AMETHYST_LASER_ANGULAR_SPEED * FLUID_VEL_FRAME_TO_PX_S;
-          fluid.addForce({
-            x: laser.x, y: laser.y,
-            vx: (tangentX * 0.6 + inwardX * 0.4) * spiralSpeed,
-            vy: (tangentY * 0.6 + inwardY * 0.4) * spiralSpeed,
-            r: FLUID_AMETHYST_R, g: FLUID_AMETHYST_G, b: FLUID_AMETHYST_B,
-            strength: FLUID_PROJECTILE_STRENGTH,
-          });
-        }
-
-        let hitIntendedTarget = false;
-        for (const target of liveTargets) {
-          const targetObj = target.boss ?? target.eigenstein ?? target.fracteryl ?? target.nullstone ?? target.diamond
-            ?? target.amethyst ?? target.iolite ?? target.citrine ?? target.sunstone ?? target.ruby
-            ?? target.quartz ?? target.void ?? target.amber ?? target.emerald ?? target.sapphire ?? target.laser ?? null;
-          if (targetObj !== laser.targetEnemy && targetObj !== null && laser.piercedEnemies.has(targetObj)) continue;
-          const dx = target.x - laser.x, dy = target.y - laser.y;
-          if (dx * dx + dy * dy > AMETHYST_LASER_HIT_RADIUS * AMETHYST_LASER_HIT_RADIUS) continue;
-          if (targetObj !== null) laser.piercedEnemies.add(targetObj);
-          const dmg = damageBodyTarget(target, laser.scaledDamage, 0.5, true);
-          if (dmg > 0) {
-            spawnDamageNumber(target.x, target.y, 0, -1, String(Math.round(dmg)), dmg / Math.max(1, getTargetMaxHp(target)), AMETHYST_LASER_COLOR);
-            hitEffects.push({ x: target.x, y: target.y, timerMs: HIT_EFFECT_DURATION_MS, color: AMETHYST_LASER_GLOW });
-          }
-          if (targetObj === laser.targetEnemy) hitIntendedTarget = true;
-        }
-
-        if (hitIntendedTarget || laser.lifeMs <= 0 || laser.radius <= 0) {
-          amethystLasers.splice(i, 1);
-        }
-      }
-    });
-  }
-
   // ── Handle ────────────────────────────────────────────────────────
 
   return {
     get sapphireShips() { return sapphireShips; },
     get sapphireLasers() { return sapphireLasers; },
-    get amethystShips() { return amethystShips; },
-    get amethystLasers() { return amethystLasers; },
+    get amethystShips() { return amethystSystem.amethystShips; },
+    get amethystLasers() { return amethystSystem.amethystLasers; },
 
     syncSapphireShips,
-    syncAmethystShips,
+    syncAmethystShips: () => amethystSystem.syncAmethystShips(),
 
     updateSapphireShips,
     updateSapphireLasers,
-    updateAmethystShips,
-    updateAmethystLasers,
+    updateAmethystShips: (deltaMs: number) => amethystSystem.updateAmethystShips(deltaMs),
+    updateAmethystLasers: (deltaMs: number) => amethystSystem.updateAmethystLasers(deltaMs),
 
     reset(): void {
       sapphireShips.length = 0;
       sapphireLasers.length = 0;
-      amethystShips.length = 0;
-      amethystLasers.length = 0;
+      amethystSystem.reset();
     },
   };
 }
