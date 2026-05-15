@@ -7,7 +7,7 @@ import type { TierId } from '../../data/tiers';
 import { TIERS } from '../../data/tiers';
 import { LOOM_BY_TIER, loomProductionRate, loomUpgradeCost, SPECIAL_LOOM_BY_TIER } from '../../data/looms';
 import type { ResourceState } from '../resources';
-import { getMotes, spendMotes } from '../resources';
+import { getMotes, spendMotes, addMotes } from '../resources';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -17,6 +17,10 @@ export interface LoomTierState {
   level: number;          // 0 = not yet purchased, 1+ = active
   isUnlocked: boolean;    // whether the player can see/use this Loom
   accumulatorMs: number;  // fractional mote accumulator (sub-second)
+  /** Accumulated small-mote equivalents toward the next conversion output. */
+  conversionProgress: number;
+  /** Number of efficiency upgrades purchased (reduces conversion threshold). */
+  conversionEfficiencyLevel: number;
 }
 
 /** Full Loom state across all tiers. */
@@ -35,6 +39,8 @@ export function createLoomState(): LoomState {
       level: t.id === 'sand' ? 1 : 0,       // Sand Loom starts at level 1
       isUnlocked: t.id === 'sand',           // Only Sand Loom unlocked at start
       accumulatorMs: 0,
+      conversionProgress: 0,
+      conversionEfficiencyLevel: 0,
     })),
     specialPurchased: new Set<TierId>(),
   };
@@ -119,6 +125,96 @@ export function isSpecialLoomPurchased(state: LoomState, tierId: TierId): boolea
   return state.specialPurchased.has(tierId);
 }
 
+// ─── Loom conversion system ──────────────────────────────────────
+
+/** Base small-mote equivalents required per loom conversion output mote. */
+const BASE_LOOM_CONVERSION_THRESHOLD = 100;
+/** Maximum number of efficiency upgrade levels per loom. */
+export const MAX_LOOM_EFFICIENCY_LEVEL = 5;
+
+/**
+ * Returns the input tier for a given loom tier (the tier one step below).
+ * Returns null for 'sand' (no input tier).
+ */
+export function getLoomInputTierId(loomTierId: TierId): TierId | null {
+  const index = TIERS.findIndex(t => t.id === loomTierId);
+  if (index <= 0) return null;
+  return TIERS[index - 1].id;
+}
+
+/**
+ * Returns the loom tier that accepts particles of the given input tier as input.
+ * Returns null if no such loom exists (inputTierId is the last tier).
+ */
+export function getLoomForInputTier(inputTierId: TierId): TierId | null {
+  const index = TIERS.findIndex(t => t.id === inputTierId);
+  if (index < 0 || index >= TIERS.length - 1) return null;
+  return TIERS[index + 1].id;
+}
+
+/**
+ * Returns the conversion threshold (small-mote equivalents per output mote)
+ * for a given efficiency level.
+ * Each level reduces the threshold by ~25%, stacking multiplicatively.
+ */
+export function getLoomConversionThreshold(efficiencyLevel: number): number {
+  return BASE_LOOM_CONVERSION_THRESHOLD / Math.pow(1.25, efficiencyLevel);
+}
+
+/**
+ * Returns the mote cost to upgrade a loom's conversion efficiency by one level.
+ * Cost is in the loom's own output tier motes.
+ */
+export function getLoomEfficiencyUpgradeCost(tierId: TierId, currentLevel: number): number {
+  const tierIndex = TIERS.findIndex(t => t.id === tierId);
+  return Math.floor(50 * Math.pow(5, currentLevel) * (tierIndex + 1));
+}
+
+/**
+ * Processes a particle capture event for a loom.
+ * Adds the captured mass to conversionProgress and produces motes when threshold is reached.
+ */
+export function applyLoomCapture(
+  state: LoomState,
+  resources: ResourceState,
+  inputTierId: TierId,
+  mass: number,
+): void {
+  const loomTierId = getLoomForInputTier(inputTierId);
+  if (!loomTierId) return;
+  const loom = getLoom(state, loomTierId);
+  if (!loom || !loom.isUnlocked) return;
+
+  const threshold = getLoomConversionThreshold(loom.conversionEfficiencyLevel);
+  loom.conversionProgress += mass;
+  while (loom.conversionProgress >= threshold) {
+    loom.conversionProgress -= threshold;
+    addMotes(resources, loomTierId, 1);
+  }
+}
+
+/**
+ * Attempt to purchase one loom efficiency upgrade level.
+ * Returns true if successful.
+ */
+export function tryUpgradeLoomEfficiency(
+  state: LoomState,
+  resources: ResourceState,
+  tierId: TierId,
+  bypassCost = false,
+): boolean {
+  const loom = getLoom(state, tierId);
+  if (!loom || !loom.isUnlocked) return false;
+  if (loom.conversionEfficiencyLevel >= MAX_LOOM_EFFICIENCY_LEVEL) return false;
+  const inputTierId = getLoomInputTierId(tierId);
+  if (!inputTierId) return false; // sand loom has no input
+
+  const cost = getLoomEfficiencyUpgradeCost(tierId, loom.conversionEfficiencyLevel);
+  if (!bypassCost && getMotes(resources, tierId) < cost) return false;
+  if (!bypassCost) spendMotes(resources, tierId, cost);
+  loom.conversionEfficiencyLevel++;
+  return true;
+}
 /** Purchase the special Resonance upgrade for a tier. Returns true if successful. */
 export function purchaseSpecialLoom(
   state: LoomState,

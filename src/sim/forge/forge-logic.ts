@@ -8,7 +8,6 @@ import {
   EXTRA_LARGE_SIZE_INDEX,
 } from '../../data/particles/size-tiers';
 import {
-  FORGE_VALID_WAIT_TIME_MS,
   FORGE_CRUNCH_DURATION_MS,
 } from '../../data/particles/particle-config';
 
@@ -49,37 +48,14 @@ export function getCrunchOutput(tierId: TierId, sizeIndex: SizeIndex): CrunchOut
 }
 
 export function checkForgeCrunch(
-  state: ForgeCrunchState,
-  particles: readonly ForgeParticleInfo[],
-  forgeX: number,
-  forgeY: number,
-  forgeRadius: number,
-  nowMs: number,
+  _state: ForgeCrunchState,
+  _particles: readonly ForgeParticleInfo[],
+  _forgeX: number,
+  _forgeY: number,
+  _forgeRadius: number,
+  _nowMs: number,
 ): ForgeParticleInfo[] | null {
-  if (state.isActive) return null;
-
-  const validParticles = particles.filter(p => {
-    if (p.isMerging) return false;
-    if (p.sizeIndex < MEDIUM_SIZE_INDEX) return false;
-    const output = getCrunchOutput(p.tierId, p.sizeIndex);
-    if (!output) return false;
-    const dx = p.x - forgeX;
-    const dy = p.y - forgeY;
-    return Math.sqrt(dx * dx + dy * dy) <= forgeRadius;
-  });
-
-  if (validParticles.length > 0) {
-    if (state.validParticlesTimerMs === null) {
-      state.validParticlesTimerMs = nowMs;
-    } else {
-      const elapsed = nowMs - state.validParticlesTimerMs;
-      if (elapsed >= FORGE_VALID_WAIT_TIME_MS) {
-        return validParticles;
-      }
-    }
-  } else {
-    state.validParticlesTimerMs = null;
-  }
+  // Disabled: the new 3-tap heat system drives forge crunches instead.
   return null;
 }
 

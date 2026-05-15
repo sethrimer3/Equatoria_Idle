@@ -13,7 +13,7 @@ import {
 // ─── Save format ────────────────────────────────────────────────
 
 const SAVE_KEY = 'equatoria_save';
-const SAVE_VERSION = 22;
+const SAVE_VERSION = 23;
 
 interface SaveData {
   version: number;
@@ -43,8 +43,21 @@ interface SaveData {
     globalMultiplier: number;
   };
   looms: {
-    looms: Array<{ tierId: string; level: number; isUnlocked: boolean }>;
+    looms: Array<{
+      tierId: string;
+      level: number;
+      isUnlocked: boolean;
+      /** v23+: loom conversion progress (small-mote equivalents accumulated). */
+      conversionProgress?: number;
+      /** v23+: loom conversion efficiency upgrade level. */
+      conversionEfficiencyLevel?: number;
+    }>;
     specialLoomPurchased?: string[];
+  };
+  /** v23+: forge heat-tap state. Absent in older saves. */
+  forge?: {
+    heatTapCount: number;
+    sacrificeProgressByTierId: Record<string, number>;
   };
   achievements: {
     unlockedIds: string[];
@@ -159,6 +172,8 @@ export function serializeGameState(state: GameState): SaveData {
         tierId: l.tierId,
         level: l.level,
         isUnlocked: l.isUnlocked,
+        conversionProgress: l.conversionProgress,
+        conversionEfficiencyLevel: l.conversionEfficiencyLevel,
       })),
       specialLoomPurchased: Array.from(state.looms.specialPurchased),
     },
@@ -198,6 +213,10 @@ export function serializeGameState(state: GameState): SaveData {
       secretAchievementFlags: Array.from(state.rpg.secretAchievementFlags),
     },
     elapsedMs: state.elapsedMs,
+    forge: {
+      heatTapCount: state.forge.heatTapCount,
+      sacrificeProgressByTierId: Object.fromEntries(state.forge.sacrificeProgressByTierId),
+    },
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
       tierId: e.tierId,
       sizeIndex: e.sizeIndex,
@@ -255,6 +274,9 @@ export function deserializeGameState(data: SaveData): GameState {
       if (loom) {
         loom.level = saved.level;
         loom.isUnlocked = saved.isUnlocked;
+        // v23+: conversion state
+        if (saved.conversionProgress !== undefined) loom.conversionProgress = saved.conversionProgress;
+        if (saved.conversionEfficiencyLevel !== undefined) loom.conversionEfficiencyLevel = saved.conversionEfficiencyLevel;
       }
     }
     if (data.looms.specialLoomPurchased) {
@@ -304,6 +326,16 @@ export function deserializeGameState(data: SaveData): GameState {
     for (let i = 0; i < restored.length; i++) {
       for (let j = 0; j < restored[i].length; j++) {
         state.aliven.interactionMatrix[i][j] = restored[i][j];
+      }
+    }
+  }
+
+  // Forge heat-tap state (v23+; older saves default to initial state)
+  if (data.forge) {
+    state.forge.heatTapCount = data.forge.heatTapCount ?? 0;
+    if (data.forge.sacrificeProgressByTierId) {
+      for (const [tierId, progress] of Object.entries(data.forge.sacrificeProgressByTierId)) {
+        state.forge.sacrificeProgressByTierId.set(tierId as TierId, progress);
       }
     }
   }

@@ -53,6 +53,12 @@ export interface EquatoriaParticle {
    * fade and Particle Life inertness fade over DRAG_RELEASE_FADE_MS.
    */
   dragReleaseTimeMs: number;
+  /** Whether this particle has been captured by a forge or loom field. */
+  isCaptured: boolean;
+  /** The field id that captured this particle (e.g. 'forge' or 'loom_quartz'). */
+  capturedById: string;
+  /** Unique monotonically increasing ID assigned at spawn time. */
+  particleId: number;
 }
 
 /** Backward-compatible alias. */

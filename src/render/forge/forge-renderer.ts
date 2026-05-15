@@ -44,6 +44,7 @@ export function drawForge(
   forgeRotation: number,
   crunchState: ForgeCrunchState,
   nowMs: number,
+  heatTapCount = 0,
 ): void {
   const ctx = cc.ctx;
   const forgeSize = FORGE_RADIUS;
@@ -56,6 +57,11 @@ export function drawForge(
   // ── Large soft glow — drawn first so it sits just above the background ──
   drawForgeBackgroundGlow(ctx, forgeX, forgeY, forgeSize, nowMs);
 
+  // ── Heat rings — drawn before the sprite, one ring per tap ──────────────
+  if (heatTapCount > 0 && !crunchState.isActive) {
+    drawForgeHeatRings(ctx, forgeX, forgeY, forgeSize, heatTapCount, nowMs);
+  }
+
   const sprite = getCachedImage(FORGE_SPRITE_PATH) ?? getCachedImage(FORGE_SPRITE_LEGACY_PATH);
   const spriteAlt = getCachedImage(FORGE_SPRITE_ALT_PATH) ?? getCachedImage(FORGE_SPRITE_ALT_LEGACY_PATH);
 
@@ -67,6 +73,36 @@ export function drawForge(
 
   // Attraction radius — bidirectional fire swirl, 25 % smaller than physics range
   drawForgeInfluenceSwirl(ctx, forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE * FORGE_INFLUENCE_VISUAL_SCALE, nowMs);
+}
+
+/**
+ * Draw 1 or 2 heat rings that show how many taps have been accumulated
+ * before the forge crunch fires.
+ */
+function drawForgeHeatRings(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  forgeSize: number,
+  heatTapCount: number,
+  nowMs: number,
+): void {
+  const t = nowMs / 1000;
+  const ringColors = ['rgba(200, 100, 0,', 'rgba(255, 160, 0,'];
+  const maxRings = Math.min(heatTapCount, 2);
+
+  for (let i = 0; i < maxRings; i++) {
+    const pulse = 0.6 + 0.4 * Math.sin(t * 2.5 + i * 1.2);
+    const r = forgeSize * (1.6 + i * 0.5) * pulse;
+    const color = ringColors[i];
+    ctx.save();
+    ctx.strokeStyle = `${color} ${0.5 + i * 0.2})`;
+    ctx.lineWidth = 1.5 + i * 0.5;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 /**

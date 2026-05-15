@@ -31,7 +31,7 @@ import { createHudOverlay } from '../ui/hud/hud-overlay';
 import { createLoadingScreen } from '../ui/loading';
 import { loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp, saveSettings } from '../settings';
 import { TIERS } from '../data/tiers';
-import { createForgeCrunchState } from '../sim/forge';
+// createForgeCrunchState no longer needed here; appState.forge === game.forge directly
 import {
   createGeneratorState,
   computeGeneratorPositions,
@@ -99,7 +99,6 @@ export async function startApp(): Promise<void> {
     // non-critical
   }
 
-  const forge = createForgeCrunchState();
   const generatorState = createGeneratorState();
 
   // ── Audio system ──
@@ -110,7 +109,7 @@ export async function startApp(): Promise<void> {
     activeTab: 'equation',
     tapFlashAlpha: 0,
     animPulse: 0,
-    forge,
+    forge: game.forge,
     generatorState,
     particleDrag: createParticleDragState(),
     lastTapCanvasX: 0,

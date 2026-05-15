@@ -12,6 +12,8 @@ import {
   tryUpgradeLoom,
   tryPurchaseSpecialLoom,
   tryAlivenMote,
+  tryUpgradeLoomEfficiencyAction,
+  tapEquationForge,
   claimAchievement,
   claimAllUnlockedAchievements,
 } from '../sim';
@@ -89,6 +91,7 @@ export function handleAction(
       if (tapDx * tapDx + tapDy * tapDy > forgeInfluenceRadiusSq) break;
 
       tapEquation(state.game);
+      tapEquationForge(state.game, nowMs);
       state.tapFlashAlpha = 1;
       break;
     }
@@ -291,6 +294,14 @@ export function handleAction(
       saveSettings(settings);
       uiPanels.rpgMenuPanel.setInvincibilityMode(action.enabled);
       uiPanels.rpgRender.setInvincibilityMode(action.enabled);
+      break;
+    }
+    case 'tap_equation_forge':
+      // Handled via the 'tap' case (tapEquationForge is called there).
+      break;
+    case 'upgrade_loom_efficiency': {
+      const ok = tryUpgradeLoomEfficiencyAction(state.game, action.tierId as TierId, devMode);
+      if (!ok) audioSystem?.onError();
       break;
     }
     case 'set_active_tab':

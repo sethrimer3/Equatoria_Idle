@@ -33,7 +33,7 @@ import {
   getAutoTapIntervalMs,
   type ProgressionState,
 } from './progression';
-import { createForgeCrunchState, type ForgeCrunchState } from './forge';
+import { createForgeCrunchState, tapForgeHeat, startEquationForgeCrunch, tickForgeHeatTimeout, type ForgeCrunchState } from './forge';
 import {
   createLoomState,
   tickLooms,
@@ -42,6 +42,8 @@ import {
   getLoom,
   getLoomCost,
   purchaseSpecialLoom,
+  applyLoomCapture,
+  tryUpgradeLoomEfficiency,
   type LoomState,
 } from './looms';
 import {
@@ -220,6 +222,53 @@ export function tryAlivenMote(state: GameState, tierId: TierId, bypassCost = fal
   return tryAliven(state.aliven, state.resources, tierId, bypassCost);
 }
 
+/** Try to upgrade a loom's conversion efficiency. Returns true if successful. */
+export function tryUpgradeLoomEfficiencyAction(state: GameState, tierId: TierId, bypassCost = false): boolean {
+  return tryUpgradeLoomEfficiency(state.looms, state.resources, tierId, bypassCost);
+}
+
+// ─── Heat-tap forge system ───────────────────────────────────────
+
+/**
+ * Register one player tap on the equation forge (heat tap).
+ * When 3 taps are received, starts a forge sacrifice crunch.
+ * Returns true if a crunch was started.
+ */
+export function tapEquationForge(state: GameState, nowMs: number): boolean {
+  if (!state.equation.isForgeUnlocked) return false;
+  const crunchTriggered = tapForgeHeat(state.forge, nowMs);
+  if (crunchTriggered) {
+    startEquationForgeCrunch(state.forge, nowMs);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Process a loom particle capture: adds mass to the loom's conversion progress
+ * and produces output motes when threshold is reached.
+ */
+export function processLoomCapture(state: GameState, inputTierId: TierId, mass: number): void {
+  applyLoomCapture(state.looms, state.resources, inputTierId, mass);
+}
+
+/**
+ * Apply sacrifice totals from a completed forge crunch.
+ * Each 10,000 small-mote equivalents of a given tier produces one equation upgrade for that tier.
+ */
+export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, number>): void {
+  const THRESHOLD = 10_000; // 10000 = MERGE_THRESHOLD^2 = one large-equivalent
+  for (const [tierId, mass] of sacrifices) {
+    const prev = state.forge.sacrificeProgressByTierId.get(tierId) ?? 0;
+    let total = prev + mass;
+    while (total >= THRESHOLD) {
+      total -= THRESHOLD;
+      applyEquationUpgrade(state.equation, tierId as TierId);
+    }
+    state.forge.sacrificeProgressByTierId.set(tierId, total);
+  }
+}
+
 // ─── Simulation tick ────────────────────────────────────────────
 
 export interface SimTickResult {
@@ -233,6 +282,9 @@ export interface SimTickResult {
 /** Advance simulation by deltaMs. */
 export function simTick(state: GameState, deltaMs: number): SimTickResult {
   state.elapsedMs += deltaMs;
+
+  // Reset forge heat tap sequence if the player has been idle too long
+  tickForgeHeatTimeout(state.forge, state.elapsedMs);
 
   const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map(), newlyUnlockedAchievementIds: [] };
 
