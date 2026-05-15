@@ -53,6 +53,15 @@ export interface AlivenParticle {
   ghostMs: number;
   /** Short trail of recent positions for the comet effect. */
   trail: AlivenTrailPoint[];
+  // ── Visual-only fields (not game-logic state) ──────────────────
+  /** Pulser only: remaining ms for the expanding shockwave ring visual. */
+  pulserFlashMs: number;
+  /** Healer only: remaining ms to draw a beam to the last healed target. */
+  healBeamMs: number;
+  /** Healer only: x position of the last healed target (for beam visual). */
+  healBeamTargetX: number;
+  /** Healer only: y position of the last healed target (for beam visual). */
+  healBeamTargetY: number;
 }
 
 /** A slow bullet fired by a spitter particle. */
@@ -90,6 +99,12 @@ export interface AlivenParticleGroup {
   targetCount: number;
   /** Countdown until the next particle activates. */
   spawnCdMs: number;
+  // ── Visual-only fields ──────────────────────────────────────────
+  /** Remaining ms for the splitter-death burst ring visual. */
+  splitFlashMs: number;
+  /** Position of the last splitter death (for burst ring visual). */
+  splitFlashX: number;
+  splitFlashY: number;
 }
 
 /** Per-variant static tuning parameters, consumed by the factory. */

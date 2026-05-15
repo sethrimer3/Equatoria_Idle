@@ -108,6 +108,14 @@ export const GENERATOR_ROTATION_TIME_SCALE = 0.00018;
 /** Canvas-space hit radius for detecting a tap on a generator (px). */
 export const GENERATOR_HIT_RADIUS_PX = 24;
 
+// ─── Forge tap radius ────────────────────────────────────────────
+/**
+ * Multiplier applied to MAX_FORGE_ATTRACTION_DISTANCE for touch/mobile input.
+ * Makes the forge significantly easier to hit with a finger without changing
+ * precision for mouse users (who use × 1.0).
+ */
+export const FORGE_TOUCH_TAP_MULTIPLIER = 1.5;
+
 // ─── Pointer-locked particle physics ────────────────────────────
 /** Force strength applied toward the pointer target while a particle is locked to the pointer. */
 export const POINTER_LOCKED_FORCE = 3.0;

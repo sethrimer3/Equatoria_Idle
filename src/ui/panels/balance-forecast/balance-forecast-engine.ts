@@ -369,6 +369,25 @@ function generatePacingWarnings(
     }
   }
 
+  // Cost growth warnings for adjacent loom upgrade levels
+  const loomUpgradeCostWarnings: PacingWarning[] = [];
+  for (const t of TIERS) {
+    const loomDef = LOOM_BY_TIER.get(t.id);
+    if (!loomDef) continue;
+    // Inspect up to 8 consecutive upgrade levels for steep cost jumps.
+    for (let lvl = 0; lvl < 7; lvl++) {
+      const costA = loomUpgradeCost(loomDef, lvl);
+      const costB = loomUpgradeCost(loomDef, lvl + 1);
+      if (costA > 0 && costB / costA > T.suspiciousCostGrowthMultiplier) {
+        loomUpgradeCostWarnings.push({
+          kind: 'cost_growth_steep',
+          message: `${loomDef.displayName} cost jumps ×${(costB / costA).toFixed(0)} from Lv ${lvl + 1} (${costA}) to Lv ${lvl + 2} (${costB})`,
+        });
+      }
+    }
+  }
+  warnings.push(...loomUpgradeCostWarnings);
+
   return warnings;
 }
 
@@ -377,6 +396,12 @@ function generatePacingWarnings(
 export interface ForecastOptions {
   /** Maximum simulated time for strategy runs, in seconds. Default: 8 hours. */
   maxSimSeconds?: number;
+  /**
+   * When true, strategy simulations start from the player's current
+   * resource/unlock state rather than a fresh run.  The static ETA analysis
+   * always uses current state regardless of this flag.
+   */
+  simulateFromCurrentState?: boolean;
 }
 
 /**
@@ -388,6 +413,7 @@ export function runBalanceForecast(
   options: ForecastOptions = {},
 ): ForecastResult {
   const maxSimSeconds = options.maxSimSeconds ?? 8 * 3600;
+  const fromCurrentState = options.simulateFromCurrentState ?? false;
 
   // Static ETA from current game state
   const currentSim = simStateFromGame(game);
@@ -412,10 +438,10 @@ export function runBalanceForecast(
   const freshRunResult = runStrategySimulation(freshSim, 'cheapest_first', maxSimSeconds);
   const freshRunMilestones = freshRunResult.milestones;
 
-  // Strategy simulations
+  // Strategy simulations — start from current state if requested, else fresh.
   const strategyIds: StrategyId[] = ['wait_only', 'cheapest_first', 'best_efficiency', 'rush_next_tier'];
   const strategyResults: StrategyResult[] = strategyIds.map(id =>
-    runStrategySimulation(createFreshSimState(), id, maxSimSeconds),
+    runStrategySimulation(fromCurrentState ? simStateFromGame(game) : createFreshSimState(), id, maxSimSeconds),
   );
 
   // Pacing warnings

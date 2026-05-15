@@ -22,14 +22,19 @@ import {
   ALIVEN_DASH_SPEED,
   ALIVEN_PULSE_RADIUS_PX,
   ALIVEN_PULSE_ATK_MULT,
+  ALIVEN_PULSER_RING_DURATION_MS,
   ALIVEN_HEAL_FRACTION,
   ALIVEN_HEALER_RANGE_SQ,
+  ALIVEN_HEALER_BEAM_MS,
+  ALIVEN_SPLIT_FLASH_MS,
   ALIVEN_ORBIT_STRENGTH,
   ALIVEN_GHOST_DURATION_MS,
   ALIVEN_FRICTION,
   ALIVEN_WANDER_STRENGTH,
   ALIVEN_SEEK_STRENGTH,
   ALIVEN_VARIANT_PARAMS,
+  ALIVEN_SEPARATION_MAX_COUNT,
+  ALIVEN_SEPARATION_STRENGTH,
 } from './rpg-aliven-constants';
 import { makeAlivenParticle } from './rpg-aliven-factories';
 
@@ -67,6 +72,14 @@ export function updateAlivenGroups(
   for (const group of groups) {
     tickSpawnOneParticle(group, deltaMs, ctx.canvasW, ctx.canvasH);
     updateCentroid(group);
+    // Lightweight O(n²) overlap separation — only for small groups.
+    if (group.aliveCount > 1 && group.aliveCount <= ALIVEN_SEPARATION_MAX_COUNT) {
+      separateOverlappingParticles(group, deltaMs);
+    }
+    // Tick group-level visual timers.
+    if (group.splitFlashMs > 0) {
+      group.splitFlashMs = Math.max(0, group.splitFlashMs - deltaMs);
+    }
     for (const p of group.particles) {
       if (!p.isAlive) continue;
       tickMovement(p, group, ctx, deltaMs);
@@ -145,6 +158,40 @@ function updateCentroid(group: AlivenParticleGroup): void {
   }
 }
 
+// ── Particle overlap separation ────────────────────────────────────────────
+
+/**
+ * O(n²) lightweight repulsion pass that pushes overlapping alive particles apart.
+ * Only called when aliveCount ≤ ALIVEN_SEPARATION_MAX_COUNT to keep cost bounded.
+ * Uses impulse-based velocity nudges — no position teleporting — so it feels smooth.
+ */
+function separateOverlappingParticles(group: AlivenParticleGroup, deltaMs: number): void {
+  const ps = group.particles;
+  for (let i = 0; i < ps.length - 1; i++) {
+    const a = ps[i];
+    if (!a.isAlive) continue;
+    for (let j = i + 1; j < ps.length; j++) {
+      const b = ps[j];
+      if (!b.isAlive) continue;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const minDist = a.radiusPx + b.radiusPx;
+      const distSq  = dx * dx + dy * dy;
+      if (distSq >= minDist * minDist || distSq < 0.0001) continue;
+      const dist = Math.sqrt(distSq);
+      const nx = dx / dist;
+      const ny = dy / dist;
+      // Impulse proportional to overlap depth, capped to avoid explosions.
+      const overlap  = minDist - dist;
+      const strength = Math.min(overlap * ALIVEN_SEPARATION_STRENGTH * deltaMs, 0.04);
+      a.vx -= nx * strength;
+      a.vy -= ny * strength;
+      b.vx += nx * strength;
+      b.vy += ny * strength;
+    }
+  }
+}
+
 // ── Particle-life movement ────────────────────────────────────────────────
 
 function tickMovement(
@@ -217,6 +264,8 @@ function tickVisuals(p: AlivenParticle, deltaMs: number): void {
   p.pulseMs   += deltaMs;
   p.hitFlashMs = Math.max(0, p.hitFlashMs - deltaMs);
   p.contactCdMs = Math.max(0, p.contactCdMs - deltaMs);
+  if (p.pulserFlashMs > 0) p.pulserFlashMs = Math.max(0, p.pulserFlashMs - deltaMs);
+  if (p.healBeamMs > 0)    p.healBeamMs    = Math.max(0, p.healBeamMs    - deltaMs);
 }
 
 // ── Contact damage ────────────────────────────────────────────────────────
@@ -319,6 +368,8 @@ function tickPulser(p: AlivenParticle, ctx: AlivenUpdateCtx, deltaMs: number): v
   p.specialCdMs -= deltaMs;
   if (p.specialCdMs > 0) return;
   p.specialCdMs = p.specialCdMin + Math.random() * (p.specialCdMax - p.specialCdMin);
+  // Trigger the shockwave ring visual regardless of whether the player is in range.
+  p.pulserFlashMs = ALIVEN_PULSER_RING_DURATION_MS;
   if (ctx.playerIFramesMs > 0) return;
   const dx = p.x - ctx.playerX, dy = p.y - ctx.playerY;
   const distSq = dx * dx + dy * dy;
@@ -339,6 +390,10 @@ function tickHealer(p: AlivenParticle, group: AlivenParticleGroup, deltaMs: numb
     const dx = other.x - p.x, dy = other.y - p.y;
     if (dx * dx + dy * dy > ALIVEN_HEALER_RANGE_SQ) continue;
     other.hp = Math.min(other.maxHp, other.hp + Math.ceil(other.maxHp * ALIVEN_HEAL_FRACTION));
+    // Record beam target on the first healed particle for the visual.
+    p.healBeamTargetX = other.x;
+    p.healBeamTargetY = other.y;
+    p.healBeamMs      = ALIVEN_HEALER_BEAM_MS;
   }
 }
 
@@ -423,4 +478,8 @@ export function handleAlivenParticleDeath(
     }
     void liveCount;
   }
+  // Trigger the split burst visual at the death position.
+  group.splitFlashMs = ALIVEN_SPLIT_FLASH_MS;
+  group.splitFlashX  = dead.x;
+  group.splitFlashY  = dead.y;
 }

@@ -66,7 +66,7 @@ export function trySpawnLuckyMote(
   // If luck < 100% the roll fails when fractional roll misses.
   if (totalDrops === 0) return;
 
-  const tierId = ENEMY_TYPE_TO_TIER[enemyTypeId];
+  const tierId = ENEMY_TYPE_TO_TIER[enemyTypeId] ?? (TIER_BY_ID.has(enemyTypeId as TierId) ? enemyTypeId as TierId : undefined);
   if (!tierId) return;
   const tierDef = TIER_BY_ID.get(tierId);
   if (!tierDef) return;

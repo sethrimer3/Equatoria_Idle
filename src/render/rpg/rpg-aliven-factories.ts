@@ -34,6 +34,10 @@ export function makeAlivenParticle(
     windupMs:     0,
     ghostMs:      0,
     trail:        [],
+    pulserFlashMs:    0,
+    healBeamMs:       0,
+    healBeamTargetX:  0,
+    healBeamTargetY:  0,
   };
 }
 
@@ -65,5 +69,8 @@ export function makeAlivenGroup(
     targetCount:  params.particleCount,
     spawnCdMs:    0,
     aliveCount:   0,
+    splitFlashMs: 0,
+    splitFlashX:  spawnX,
+    splitFlashY:  spawnY,
   };
 }
