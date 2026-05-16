@@ -885,10 +885,16 @@
 - Exports `RpgRender` and `RpgRenderOptions` interfaces.
 - `rpg-render.ts` re-exports these interfaces so existing imports from `rpg-render.ts` remain valid.
 
+### src/render/rpg/rpg-render-helpers.ts
+- Small pure/helper logic extracted from `rpg-render.ts` to keep the main module focused.
+- Exports `createCachedLuckPercentGetter(rpgSimState)` (XP-change-based luck cache), `findEquippedWeaponIdByEffect(effectKind, equippedWeaponIds)`, and `clampEnemyToBounds(enemy, widthPx, heightPx)`.
+- Contains no render-loop ownership state; `rpg-render.ts` remains the orchestrator and passes current values through.
+
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~1,008 lines after this refactor).
+- Independent RPG canvas rendering system for the RPG tab (~990 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Public interfaces `RpgRender` and `RpgRenderOptions` moved to `rpg-render-types.ts` and re-exported from this module.
+- Misc reusable helpers moved to `rpg-render-helpers.ts` and consumed via thin forwarding wrappers.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
 - Player damage helpers (spawnDamageNumber, spawnHitVisualsAt, dealDamageToPlayer, etc.) extracted to `rpg-player-damage.ts` via `createPlayerDamageFns` factory; rpg-render.ts constructs `playerDamageCtx` and destructures all seven returned functions.

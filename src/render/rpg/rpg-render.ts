@@ -27,9 +27,8 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
-  getLuckPercent,
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
-  getEffectiveXpLuckBonus, getEffectiveXpHpBonus,
+  getEffectiveXpHpBonus,
 } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import type { NumberFormat } from '../../util/format';
@@ -108,6 +107,11 @@ import {
   runRpgUpdate, type RpgEnemyUpdateArrays, type RpgUpdateCtx,
 } from './rpg-render-update';
 import type { RpgRender, RpgRenderOptions } from './rpg-render-types';
+import {
+  clampEnemyToBounds as clampEnemyToBoundsHelper,
+  createCachedLuckPercentGetter,
+  findEquippedWeaponIdByEffect as findEquippedWeaponIdByEffectHelper,
+} from './rpg-render-helpers';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -235,20 +239,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const luckyMotes: LuckyMote[] = [];
   const luckyMotePopups: LuckyMotePopup[] = [];
 
-  /**
-   * Cached luck percentage — updated whenever XP changes.
-   * Avoids calling Math.log10 on every enemy death in hot combat.
-   */
-  let _cachedLuckXp = -1;
-  let _cachedLuckPct = 0;
-
-  function getCachedLuckPercent(): number {
-    if (rpgSimState.xp !== _cachedLuckXp) {
-      _cachedLuckXp = rpgSimState.xp;
-      _cachedLuckPct = getLuckPercent(rpgSimState.xp) + getEffectiveXpLuckBonus(rpgSimState);
-    }
-    return _cachedLuckPct;
-  }
+  /** Cached luck percentage getter; updated only when XP changes. */
+  const getCachedLuckPercent = createCachedLuckPercentGetter(rpgSimState);
 
   /** The currently targeted enemy object, or null for automatic targeting.
    *  State is now private to `createRpgTargeting` (rpg-targeting.ts).
@@ -267,11 +259,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function findEquippedWeaponIdByEffect(effectKind: string): string | null {
-    for (const weaponId of getEffectiveEquippedIds()) {
-      const wd = WEAPON_BY_ID.get(weaponId);
-      if (wd?.stats.effect?.kind === effectKind) return weaponId;
-    }
-    return null;
+    return findEquippedWeaponIdByEffectHelper(effectKind, getEffectiveEquippedIds());
   }
 
   const {
@@ -689,13 +677,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     tryTargetEnemyAt,
   });
 
-  /** Keeps an enemy within the arena, bouncing velocity. Uses a fixed margin of 2.5px. */
   function clampEnemyToBounds(enemy: { x: number; y: number; vx: number; vy: number }): void {
-    const half = 2.5; // Conservative margin that works for all enemy sizes
-    if (enemy.x < half)            { enemy.x = half;            enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > widthPx  - half) { enemy.x = widthPx  - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < half)            { enemy.y = half;            enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    clampEnemyToBoundsHelper(enemy, widthPx, heightPx);
   }
 
   /** Flag set at the start of each update() call; drives auto-move logic. */
