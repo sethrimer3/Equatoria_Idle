@@ -14,186 +14,21 @@
  *   • Only contact zones fade in, topping out at 15% opacity where segments cross.
  *
  * Ported from Thero_Idle_TD / assets/playfield/render/VermiculateEffect.js
+ *
+ * Constants, types, and pure helpers are in vermiculate-effect-internals.ts.
  */
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TRACER_COUNT = 14;
-const MAX_SEGMENTS = 30;
-const SPEED = 28;
-const STEP_DISTANCE = 3.5;
-const RIGHT_ANGLE = Math.PI / 2;
-const CIRCULAR_TURN_RATE = 1.05;
-const ORTHO_TURN_INTERVAL_MIN = 0.9;
-const ORTHO_TURN_INTERVAL_MAX = 1.8;
-const BOUNCE_COOLDOWN = 0.09;
-const LINE_OPACITY = 0;
-const HEAD_DOT_OPACITY = 0.10;
-const CONTACT_MAX_OPACITY = 0.15;
-const CONTACT_LIFETIME = 1.1;
-const LINE_WIDTH = 1.2;
-const CONTACT_WIDTH = 2.2;
-const HEAD_DOT_SIZE = 10;
-const MIN_SEGMENT_LENGTH_SQ = 0.04;
-/** Skip own newest segments when testing self-intersection. */
-const SELF_SKIP_SEGMENTS = 2;
-const TWO_PI = Math.PI * 2;
-/** Number of prewarm steps so the effect starts with existing geometry. */
-const PREWARM_STEPS = 90;
-const PREWARM_DT = 0.025;
-
-// ─── Palette ──────────────────────────────────────────────────────────────────
-
-interface PaletteColor {
-  r: number;
-  g: number;
-  b: number;
-}
-
-const PALETTE: readonly PaletteColor[] = [
-  { r: 255, g: 255, b: 255 },   // white
-  { r: 214, g: 224, b: 255 },   // cool blue-white
-  { r: 255, g: 239, b: 214 },   // warm amber-white
-];
-
-// ─── Internal types ───────────────────────────────────────────────────────────
-
-interface TracerSegment {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  dx: number;
-  dy: number;
-  tracerId: number;
-  lengthSq: number;
-}
-
-interface TracerStyles {
-  line: string;
-  contact: string;
-}
-
-type TracerMode = 'orthogonal' | 'circular';
-
-interface Tracer {
-  id: number;
-  mode: TracerMode;
-  color: PaletteColor;
-  styles: TracerStyles;
-  x: number;
-  y: number;
-  angle: number;
-  segments: TracerSegment[];
-  turnTimer: number;
-  curveDirection: 1 | -1;
-  bounceCooldown: number;
-}
-
-interface ContactHighlight {
-  x: number;
-  y: number;
-  life: number;
-  color: PaletteColor;
-}
-
-interface SegmentHit {
-  x: number;
-  y: number;
-  normalX: number;
-  normalY: number;
-  t: number;
-  u: number;
-  otherTracer: Tracer;
-  otherSegment: TracerSegment;
-}
-
-// ─── Pure helpers ─────────────────────────────────────────────────────────────
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-function pickColor(): PaletteColor {
-  return PALETTE[Math.floor(Math.random() * PALETTE.length)];
-}
-
-function randomOrthogonalAngle(): number {
-  return Math.floor(Math.random() * 4) * RIGHT_ANGLE;
-}
-
-function randomOrthogonalTurnInterval(): number {
-  return ORTHO_TURN_INTERVAL_MIN + Math.random() * (ORTHO_TURN_INTERVAL_MAX - ORTHO_TURN_INTERVAL_MIN);
-}
-
-function normalizeAngle(angle: number): number {
-  let normalized = angle;
-  while (normalized <= -Math.PI) normalized += TWO_PI;
-  while (normalized > Math.PI) normalized -= TWO_PI;
-  return normalized;
-}
-
-function reflectAngle(angle: number, normalX: number, normalY: number): number {
-  const dx = Math.cos(angle);
-  const dy = Math.sin(angle);
-  const dot = dx * normalX + dy * normalY;
-  const rx = dx - 2 * dot * normalX;
-  const ry = dy - 2 * dot * normalY;
-  return Math.atan2(ry, rx);
-}
-
-function createDotSprite(r: number, g: number, b: number, size: number): HTMLCanvasElement {
-  const offscreen = document.createElement('canvas');
-  offscreen.width = size;
-  offscreen.height = size;
-  const ctx = offscreen.getContext('2d')!;
-  const radius = size / 2;
-  const center = radius;
-
-  const gradient = ctx.createRadialGradient(center, center, 0, center, center, radius);
-  gradient.addColorStop(0, 'rgba(255,255,255,0.95)');
-  gradient.addColorStop(0.35, `rgba(${r},${g},${b},0.45)`);
-  gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
-
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(center, center, radius, 0, TWO_PI);
-  ctx.fill();
-  return offscreen;
-}
-
-function buildStyles(color: PaletteColor): TracerStyles {
-  return {
-    line: `rgba(${color.r},${color.g},${color.b},${LINE_OPACITY.toFixed(3)})`,
-    contact: `rgba(${color.r},${color.g},${color.b},${CONTACT_MAX_OPACITY.toFixed(3)})`,
-  };
-}
-
-function createTracerSegment(
-  x1: number, y1: number, x2: number, y2: number, tracerId: number,
-): TracerSegment {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return { x1, y1, x2, y2, dx, dy, tracerId, lengthSq: dx * dx + dy * dy };
-}
-
-function getSegmentIntersection(a: TracerSegment, b: TracerSegment): Omit<SegmentHit, 'otherTracer' | 'otherSegment'> | null {
-  const denominator = a.dx * b.dy - a.dy * b.dx;
-  if (Math.abs(denominator) < 0.000001) return null;
-
-  const qpx = b.x1 - a.x1;
-  const qpy = b.y1 - a.y1;
-  const t = (qpx * b.dy - qpy * b.dx) / denominator;
-  const u = (qpx * a.dy - qpy * a.dx) / denominator;
-  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-
-  const ix = a.x1 + a.dx * t;
-  const iy = a.y1 + a.dy * t;
-  const segLength = Math.hypot(b.dx, b.dy) || 1;
-  const normalX = -b.dy / segLength;
-  const normalY = b.dx / segLength;
-  return { x: ix, y: iy, normalX, normalY, t, u };
-}
+import {
+  TRACER_COUNT, MAX_SEGMENTS, SPEED, STEP_DISTANCE, RIGHT_ANGLE, CIRCULAR_TURN_RATE,
+  BOUNCE_COOLDOWN, HEAD_DOT_OPACITY, CONTACT_MAX_OPACITY, CONTACT_LIFETIME,
+  LINE_WIDTH, CONTACT_WIDTH, HEAD_DOT_SIZE, MIN_SEGMENT_LENGTH_SQ, SELF_SKIP_SEGMENTS,
+  TWO_PI, PREWARM_STEPS, PREWARM_DT,
+  PALETTE,
+  clamp, pickColor, randomOrthogonalAngle, randomOrthogonalTurnInterval,
+  normalizeAngle, reflectAngle, createDotSprite, buildStyles,
+  createTracerSegment, getSegmentIntersection,
+  type PaletteColor, type TracerSegment, type TracerMode, type Tracer, type ContactHighlight, type SegmentHit,
+} from './vermiculate-effect-internals';
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 

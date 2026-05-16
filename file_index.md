@@ -246,6 +246,12 @@
 
 ### src/render/background/vermiculate-effect.ts
 - Decorative background tracer effect (worm-line style, ported from Thero Chapter 1).
+- Factory and public `VermiculateEffect` interface only (~315 lines); constants, types, and pure helpers extracted to `vermiculate-effect-internals.ts`.
+
+### src/render/background/vermiculate-effect-internals.ts
+- Internal constants, types, and pure helpers for `vermiculate-effect.ts` (~185 lines).
+- Exports all tuning constants, `PaletteColor`/`PALETTE`, internal interfaces (`TracerSegment`, `TracerStyles`, `TracerMode`, `Tracer`, `ContactHighlight`, `SegmentHit`), and pure functions (`clamp`, `pickColor`, `randomOrthogonalAngle`, `randomOrthogonalTurnInterval`, `normalizeAngle`, `reflectAngle`, `createDotSprite`, `buildStyles`, `createTracerSegment`, `getSegmentIntersection`).
+- Should not be imported by any module other than `vermiculate-effect.ts`.
 
 ### src/render/background/substrate-effect.ts
 - Decorative background crystalline crack effect (Substrate style, ported from Thero Shin Spire / Chapter 6).
@@ -622,10 +628,17 @@
 - Split from `rpg-enemy-updates.ts` to keep that file under ~650 lines.
 
 ### src/render/rpg/rpg-enemy-updates-adv.ts
-- 10 exported enemy update functions covering wave 40–70+ enemy types (~459 lines).
-- Covers: iolite, amethyst+shards, diamond+shards, nullstone+tendrils, fracteryl+shards, eigenstein+beams, teleport particles.
+- Re-export barrel (~20 lines); re-exports all functions from `rpg-enemy-updates-adv-early.ts` and `rpg-enemy-updates-adv-late.ts` for backward compatibility.
+
+### src/render/rpg/rpg-enemy-updates-adv-early.ts
+- Per-frame update logic for wave 40–70 enemy types: iolite, amethyst+shards, diamond+shards, nullstone+tendrils (~287 lines).
 - Imports `RpgEnemyCtx` from `rpg-enemy-updates.ts`; follows identical contract.
-- Split from `rpg-enemy-updates.ts` to keep both files under ~650 lines.
+- Exports: `updateIoliteEnemies`, `updateAmethystEnemies`, `updateAmethystShards`, `updateDiamondEnemies`, `updateDiamondShards`, `updateNullstoneEnemies`, `updateVoidTendrils`.
+
+### src/render/rpg/rpg-enemy-updates-adv-late.ts
+- Per-frame update logic for late-tier enemy types: fracteryl+shards, eigenstein+beams, teleport particles (~190 lines).
+- Imports `RpgEnemyCtx` from `rpg-enemy-updates.ts`; follows identical contract.
+- Exports: `updateFracterylEnemies`, `updateEigensteinEnemies`, `updateEigensteinBeams`, `updateTeleportParticles`.
 
 ### src/render/rpg/rpg-boss-update.ts
 - Per-frame update orchestration for the boss enemy and boss projectiles (~234 lines).
