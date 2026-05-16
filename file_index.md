@@ -385,11 +385,17 @@
 - Weapon-specific constants (chain whip, laser beam, vortex, sword, poison, emerald missiles, sunstone mines, companion ships) have been moved to `rpg-weapon-constants.ts`.
 
 ### src/render/rpg/rpg-weapon-constants.ts
-- All player-weapon and weapon-projectile constants.
-- Covers: sand projectiles, chain whip physics/visual, ruby laser beam, nullstone vortex, diamond sword (shard shapes, combo system, `SAND_BLADE_COLORS`), poison bolt, emerald player + sub-missiles + swirl particles, sunstone mines, sapphire/amethyst companion ships + spiral lasers.
+- All player-weapon and weapon-projectile constants (~330 lines after extraction).
+- Covers: sand projectiles, ruby laser beam, nullstone vortex, diamond sword (shard shapes, combo system, `SAND_BLADE_COLORS`), poison bolt, emerald player + sub-missiles + swirl particles, sunstone mines, sapphire/amethyst companion ships + spiral lasers.
+- Chain whip physics/visual constants are re-exported from `rpg-weapon-chain-params.ts`.
+- Consumed by all weapon system modules plus `rpg-weapons-tab.ts` (dev tuning panel).
+
+### src/render/rpg/rpg-weapon-chain-params.ts
+- Quartz chain whip physics constants and dev-tuning API (~155 lines). Extracted from `rpg-weapon-constants.ts`.
 - **Chain whip physics parameters are mutable `let` exports** to support runtime dev-mode tuning.
 - Exports `ChainWhipParamKey`, `ChainWhipParams`, `CHAIN_WHIP_PARAM_DEFAULTS`, `getChainWhipParams()`, `setChainWhipParam(key, value)`, `resetChainWhipParams()`.
-- Consumed by all weapon system modules plus `rpg-weapons-tab.ts` (dev tuning panel).
+- Also exports visual constants `CHAIN_NODES`, `CHAIN_NODE_COLOR`, `CHAIN_NODE_GLOW`, `CHAIN_LINE_COLOR`.
+- All exports are re-exported from `rpg-weapon-constants.ts` for backward compat.
 
 ### src/render/rpg/rpg-enemy-constants.ts
 - Per-enemy-type constants for all non-starter enemy types (~230 lines).
@@ -540,11 +546,16 @@
 - Has its own `setLowGraphicsMode()` export for chain-whip glow; called from `rpg-render.ts`.
 
 ### src/render/rpg/rpg-weapon-draw-sword.ts
-- Canvas draw functions for diamond sword and sand blade weapon visuals (~340 lines).
+- Canvas draw functions for diamond sword and sand blade weapon visuals (~390 lines).
 - Extracted from `rpg-weapon-draw.ts` to keep that file focused on chain/vortex drawing.
 - Exports `drawSwordCombos(ctx, comboStates, mote, weaponTiers)` and `drawSandBladeCombo(ctx, state, mote)`.
-- Exports sand drift pixel system: `spawnSandSwingPixels`, `updateSandDriftPixels`, `drawSandDriftPixels`.
+- Re-exports sand drift pixel functions from `rpg-weapon-sand-drift.ts`: `spawnSandSwingPixels`, `updateSandDriftPixels`, `drawSandDriftPixels`.
 - Has its own `setLowGraphicsMode()` export for sword glow; both weapon draw setters are called from `rpg-render.ts`.
+
+### src/render/rpg/rpg-weapon-sand-drift.ts
+- Sand drift pixel effect for the sand blade (~85 lines). Extracted from `rpg-weapon-draw-sword.ts`.
+- Manages module-level `_sandDriftPixels` array with full lifecycle: spawn, update, draw.
+- Exports `spawnSandSwingPixels`, `updateSandDriftPixels`, `drawSandDriftPixels`.
 
 ### src/render/rpg/rpg-boss-wave.ts
 - Boss wave lifecycle management extracted from `rpg-render.ts` (~218 lines).
@@ -735,10 +746,15 @@
 - Re-exports `SwordWeaponCtx` (defined in `rpg-weapon-sword-combo.ts`) for backwards compatibility with importers.
 
 ### src/render/rpg/rpg-weapon-sword-combo.ts
-- Diamond sword / sand blade per-frame combo state machine (~460 lines), extracted from `rpg-weapon-sword.ts`.
-- Exports `SwordWeaponCtx` interface and `updateSwordComboForWeapon(swordComboStates, ctx, weaponId, deltaMs)`.
-- Contains: `buildSwordCombo` (initial state), `angleInArc` (arc geometry), `spawnSwordBeam` (beam visual), `swordHitInArc` (arc hit detection across all enemy types).
+- Diamond sword / sand blade per-frame combo state machine (~320 lines after extraction), extracted from `rpg-weapon-sword.ts`.
+- Exports `SwordWeaponCtx` type (re-exported from `rpg-weapon-sword-combo-helpers.ts`) and `updateSwordComboForWeapon(swordComboStates, ctx, weaponId, deltaMs)`.
+- Internal helpers (buildSwordCombo, angleInArc, spawnSwordBeam, swordHitInArc) are in `rpg-weapon-sword-combo-helpers.ts`.
 - Covers phase state machine: idle → swing → combo_window → spin_combo, hinge physics, shard chain, fluid drag.
+
+### src/render/rpg/rpg-weapon-sword-combo-helpers.ts
+- Internal helpers for the sword combo state machine (~195 lines). Extracted from `rpg-weapon-sword-combo.ts`.
+- Exports `SwordWeaponCtx` interface (DI context), `SPIN_TICK_THRESHOLDS`, `buildSwordCombo`, `angleInArc`, `spawnSwordBeam`, `swordHitInArc`.
+- `SwordWeaponCtx` is re-exported from `rpg-weapon-sword-combo.ts` for backward compat.
 
 ### src/render/rpg/rpg-weapon-emerald.ts
 - Emerald heat-seeking player missile system (~310 lines). Sub-missiles/swirl now live in `rpg-weapon-emerald-subs.ts`.
@@ -1255,13 +1271,23 @@ Audio system — eight focused modules:
 - `numberFormat: 'letters' | 'scientific' | 'engineering'` — controls number display format across all UI panels and canvas score.
 
 ### src/settings/save-load.ts
-- Game state serialization/deserialization.
-- Versioned save format (version 16): adds `bossCompletions` (Record<string,number>) and `bossSpeedPct` (number) to rpg block. Backward-compatible with versions 1–15.
-- v15 adds `respawnWave` for respawn checkpoint.
-- v14 replaces `equippedWeaponId` with `equippedWeaponIds` (array). Backward-compatible with versions 1–13.
-- v13 adds `pendingIdleMotes` array for the idle-mote drip queue.
-- Motes persisted as `moteSizeCounts` (base-100 per-size counts per tier) since version 7. Backward-compatible with versions 1–6 (flat `moteTotals`).
-- On load, size counts are decoded back to float totals; pending idle motes resume dripping where they left off.
+- Thin localStorage I/O layer (~45 lines after extraction).
+- Exports `saveGame(state)`, `loadGame()`, `deleteSave()`.
+- Also re-exports `serializeGameState` and `deserializeGameState` from sub-modules.
+- All heavy lifting delegated to `save-types.ts`, `save-serialize.ts`, `save-deserialize.ts`.
+
+### src/settings/save-types.ts
+- `SaveData` interface and save format constants (`SAVE_KEY`, `SAVE_VERSION = 23`).
+- Full versioned wire format: equation, resources, progression, looms, forge, achievements, aliven, rpg, pendingIdleMotes.
+- Extensively commented with version notes for each optional field.
+
+### src/settings/save-serialize.ts
+- `serializeGameState(state: GameState): SaveData` — converts live state to wire format.
+- Pure function, no side effects.
+
+### src/settings/save-deserialize.ts
+- `deserializeGameState(data: SaveData): GameState` — hydrates a SaveData into a live GameState.
+- Handles all version migrations (v1–v23) via optional-field defaults.
 
 ### src/settings/offline-time.ts
 - Lightweight last-active timestamp helpers using a separate localStorage key (`equatoria_last_active`).
