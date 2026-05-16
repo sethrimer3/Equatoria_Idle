@@ -937,16 +937,18 @@
 - Side-effect: starts a `requestAnimationFrame` loop for the player-icon idle animation (pulsing glow); skips draw while the panel is hidden to avoid unnecessary GPU work.
 - Returns `StatsPanelDomRefs` containing all ~20 live element references needed by `rpg-stats-panel.ts` for updates and wiring registrations.
 
+### src/render/rpg/rpg-equip-wiring-types.ts
+- Types and pure helpers for the RPG plug wiring system.
+- Exports `PlugType` union; `isCompatible`, `isOutputPlug`, `maxOutgoing`, `maxIncoming`, `wireColor`, `wireDstColor` compatibility/colour helpers.
+- Exports `EquipWireConnection`, `EquipWiringState`, `createEquipWiringState()` data model.
+- Exports `EquipWiringCtx` and `EquipWiringHandle` public interfaces.
+- Exports internal `PlugRecord` and `WireEntry` types used by `rpg-equip-wiring.ts`.
+- All pure functions — no DOM access.
+
 ### src/render/rpg/rpg-equip-wiring.ts
-- Plug wiring system for weapon-source/modifier/stat connections in the RPG stats panel.
-- Exports `PlugType`, `EquipWireConnection`, `EquipWiringState`, `EquipWiringCtx`, `EquipWiringHandle`, `createEquipWiringState()`, and `createEquipWiringSystem(ctx)`.
-- Allowed connections: `weaponSourceOut→weaponSlotIn`, `xpOut→modifierXpIn`, `modifierOut→statIn`.
-- Drag behaviour: `pointerdown` on output plug starts drag; `pointerup` over valid input plug commits connection; mismatched/locked/full plugs are rejected.
-- All visual rendering (rope physics, gradient colour bleed, slurp animation) is delegated to `createSoftWireRenderer` from `rpg-soft-wire.ts`.
-- Wire source colours: warm orange (weaponSourceOut), purple (xpOut), green (modifierOut). Destination colours blend toward orange/purple/blue-grey.
-- `setPlugLocked(plugId, locked)` toggles `rpg-plug--locked` class and prevents drag from/to locked plugs.
-- `update(nowMs)` advances rope physics for all active and slurping wires; must be called once per frame.
-- State is ephemeral — connections reset on page load.
+- Plug wiring system factory for the RPG stats panel (~375 lines).
+- Re-exports all types from `rpg-equip-wiring-types.ts` for backward compatibility.
+- Exports `createEquipWiringSystem(ctx)` factory; returns `EquipWiringHandle`.
 
 ### src/render/rpg/rpg-render-types.ts
 - Type-only home for the RPG render API extracted from `rpg-render.ts`.
@@ -1060,15 +1062,16 @@
 - `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100).
 - Exports `PLAYER_BASE_ATK = 10`, `MAX_WEAPON_TIER = 7`, `MIN_BOSS_SPEED_PCT = 10`, `MAX_BOSS_SPEED_PCT = 100`, `BOSS_SPEED_STEP = 10`, `TOTAL_BOSS_COUNT = 10`.
 - `createRpgSimState()` — zero-state factory.
-- `getWaveBoostMultiplier(state)` — returns loom production multiplier = 1 + (highestWave^1.2)/100.
-- `formatWaveBoostPercent(state)` — returns display string like "+6.9%".
-- `getMaxEquippedWeapons(state)` — returns 1 + extra_weapon_slot upgrade level.
-- `getScaledWeaponDamage(baseDamage, tier, playerAtk)` — effective damage = baseDamage × tier × (playerAtk / PLAYER_BASE_ATK).
-- `getScaledWeaponCooldown(baseCooldownMs, tier)` — cooldown = baseCooldownMs × 0.85^(tier-1) (15% faster per tier).
-- `getBossXpMultiplier(speedPct)` — XP multiplier = speedPct / 10 (100%→10x, 10%→1x).
-- `isBossUnlocked(bossId, highestWaveReached)` — true when highestWaveReached >= bossId * 100.
-- `getLuckPercent(xp)` — returns 0–100 luck % using logarithmic formula (100% at ~1B XP; every 10× more XP gains ~11%).
-- `formatLuckPercent(xp)` — returns display string like "34.5%".
+- Weapon scaling helpers: `getWeaponTierUpgradeCost`, `getScaledWeaponDamage`, `getScaledWeaponCooldown` (kept here to avoid circular dep on PLAYER_BASE_ATK).
+- Re-exports all functions from `rpg-state-xp.ts` and `rpg-state-upgrades.ts` for backward compatibility (~248 lines after refactor).
+
+### src/sim/rpg/rpg-state-xp.ts
+- XP and luck computation functions extracted from `rpg-state.ts` (~180 lines).
+- Exports: `getXpPerKill`, `getWaveStatScale`, `getXpAtkBonus`, `getXpDefBonus`, `getLuckPercent`, `formatLuckPercent`, `formatXp`, `addXpWithAllocation`, `getEffectiveXpAtkBonus`, `getEffectiveXpDefBonus`, `getEffectiveXpLuckBonus`, `getEffectiveXpHpBonus`.
+
+### src/sim/rpg/rpg-state-upgrades.ts
+- Wave boost, RPG upgrade, and boss helper functions extracted from `rpg-state.ts` (~78 lines).
+- Exports: `getWaveBoostMultiplier`, `formatWaveBoostPercent`, `getRpgUpgradeLevel`, `getRpgSpeedMultiplier`, `getMaxEquippedWeapons`, `getBossXpMultiplier`, `isBossUnlocked`.
 
 ### src/ui/panels/weapon-store-panel.ts
 - `WeaponStorePanel` interface and `createWeaponStorePanel(dispatch)` factory.
@@ -1405,12 +1408,19 @@ Audio system — eight focused modules:
 - Exports `STRATEGY_FNS` and `STRATEGY_NAMES` — lookup maps for the four strategies: `wait_only`, `cheapest_first`, `best_efficiency`, `rush_next_tier`.
 
 ### src/ui/panels/balance-forecast/balance-forecast-engine.ts
-- Core balance analysis engine (ETA calculations, target gathering, pacing warnings, public API).
-- `runBalanceForecast(game, options)` — runs all analyses and returns `ForecastResult`. Does not mutate game state.
-- Section 1: Static ETA analysis — computes `ForecastTarget` list from current player state.
-- Section 2: Pacing warning generation — long gaps, unlock clusters, extreme ETAs, no-production warnings.
-- Section 3: Public API that orchestrates fresh-run and strategy simulations (via `balance-forecast-sim.ts`).
-- Simulation infrastructure (SimState, strategies, runner) has been extracted to `balance-forecast-sim.ts`.
+- Public API orchestrator for the balance analysis engine (~100 lines after refactor).
+- `runBalanceForecast(game, options)` — orchestrates ETA analysis, strategy simulations, and pacing warnings into `ForecastResult`. Does not mutate game state.
+- Target computation delegated to `balance-forecast-targets.ts`; pacing warnings delegated to `balance-forecast-warnings.ts`.
+
+### src/ui/panels/balance-forecast/balance-forecast-targets.ts
+- Per-target ETA analysis extracted from `balance-forecast-engine.ts` (~264 lines).
+- Exports: `computeRequirementEta(sim, tierId, required)`, `buildForecastTarget(id, displayName, category, requirements)`, `getAllForecastTargets(sim)`.
+- Covers: equation forge, tier unlocks, loom upgrades, special looms, equation upgrades, lifetime-motes achievements.
+
+### src/ui/panels/balance-forecast/balance-forecast-warnings.ts
+- Pacing warning generation extracted from `balance-forecast-engine.ts` (~145 lines).
+- Exports: `generatePacingWarnings(targets, strategyResults)`.
+- Detects: long gaps, unlock clusters, extreme ETAs, no-production tiers, inverted tier order, stuck simulations, steep cost growth.
 
 ### src/ui/panels/balance-forecast/balance-forecast-panel.ts
 - Dev-only DOM panel for the Balance Forecast system (~215 lines).
