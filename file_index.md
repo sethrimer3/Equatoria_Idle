@@ -938,12 +938,16 @@
 - `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
 
 ### src/render/rpg/rpg-stats-panel-dom.ts
-- DOM element construction for the RPG stats panel (~290 lines).
+- Orchestrator for RPG stats panel DOM assembly.
 - Extracted from `rpg-stats-panel.ts` to isolate HTML element creation from update logic.
 - Exports `StatsPanelDomRefs` interface and `buildStatsPanelDom()` factory.
-- Builds: box 1 (player icon canvas + weapon-source plug slots), boxes 2–5 (XP node + I/II/III modifier rows), boxes 6–11 (weapon stat rows with header), right column (DPS chart widget + HP box + menu area), and dev-mode number badges.
-- Side-effect: starts a `requestAnimationFrame` loop for the player-icon idle animation (pulsing glow); skips draw while the panel is hidden to avoid unnecessary GPU work.
+- Delegates section construction and badge wiring to `rpg-stats-panel-dom-sections.ts`.
 - Returns `StatsPanelDomRefs` containing all ~20 live element references needed by `rpg-stats-panel.ts` for updates and wiring registrations.
+
+### src/render/rpg/rpg-stats-panel-dom-sections.ts
+- Section builders/helpers for the RPG stats panel DOM.
+- Exports `createStatsPanelPrimaryColumn()` (player icon + weapon source plugs, XP/modifier boxes, weapon stat rows), `createStatsPanelRightColumn()` (DPS widget, HP box, menu area), and `addStatsPanelDevBadges()`.
+- Owns the player-icon RAF idle animation loop and skips drawing while the stats panel is hidden via a visibility callback.
 
 ### src/render/rpg/rpg-equip-wiring-types.ts
 - Types and pure helpers for the RPG plug wiring system.
