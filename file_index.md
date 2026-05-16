@@ -446,7 +446,8 @@
 
 ### src/render/rpg/rpg-aliven-types.ts
 - Type definitions for the AlivenParticle enemy system.
-- Exports: `AlivenParticle`, `AlivenParticleGroup`, `AlivenBullet`, `AlivenTrailPoint`, `AlivenSpecialKind`, `AlivenVariantParams`.
+- Exports: `AlivenParticle`, `AlivenParticleGroup`, `AlivenBullet`, `AlivenTrailPoint`, `AlivenSpecialKind`, `AlivenVariantParams`, `AlivenUpdateCtx`.
+- `AlivenUpdateCtx` was moved here from `rpg-aliven-updates.ts` to break a potential circular dependency between the updates and specials modules.
 
 ### src/render/rpg/rpg-aliven-constants.ts
 - Tuning constants and per-variant parameter table for the AlivenParticle enemy system.
@@ -457,9 +458,16 @@
 - Exports: `makeAlivenParticle(params, waveStatScale)`, `makeAlivenGroup(variantId, x, y, waveNumber)`.
 
 ### src/render/rpg/rpg-aliven-updates.ts
-- Per-frame physics, special-ability, and bullet updates for the AlivenParticle system.
-- Exports: `updateAlivenGroups(groups, ctx, deltaMs)`, `handleAlivenParticleDeath(group, dead)`, `AlivenUpdateCtx`.
-- Special kinds: spitter, dasher, pulser, healer, ember, splitter, orbiter.
+- **Core loop orchestrator** (~263 lines, trimmed from 499 by extracting specials to rpg-aliven-specials.ts).
+- Owns: spawn-over-time, centroid tracking, overlap separation, movement, trails, timers, and the `tickSpecial` dispatcher.
+- Exports: `updateAlivenGroups(groups, ctx, deltaMs)`.
+- Re-exports for backward compat: `AlivenUpdateCtx` (from rpg-aliven-types), `handleAlivenParticleDeath` (from rpg-aliven-specials).
+
+### src/render/rpg/rpg-aliven-specials.ts
+- **Special-ability tick functions** (~245 lines, extracted from rpg-aliven-updates.ts).
+- Owns: `tickContact`, `tickSpitter`, `tickDasher`, `tickPulser`, `tickHealer`, `tickGhost`, `tickBullets`, `handleAlivenParticleDeath`.
+- All exported; called by the `tickSpecial` dispatcher in rpg-aliven-updates.ts.
+- Private helper `getAtk(p)` computes proportional damage from maxHp.
 
 ### src/render/rpg/rpg-aliven-draw.ts
 - Canvas rendering for AlivenParticle groups: pulsing glow circles, comet trails, windup rings, bullets.
