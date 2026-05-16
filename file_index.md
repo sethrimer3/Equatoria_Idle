@@ -1306,8 +1306,18 @@ Audio system — eight focused modules:
 - `createIdleOverlay()` — factory function; tap/click anywhere to dismiss.
 
 ### src/ui/panels/settings-panel.ts
-- Settings controls: volume, particles, shake, developer mode toggle, save, reset, credits.
-- When `isDevMode` is enabled, shows a particle-tweaks section at the bottom with live editable fields and a reset-to-defaults button.
+- Settings panel orchestrator for controls, toggles, save/reset actions, credits, and dev-only embedded panels.
+- Wires `settings-panel-controls.ts` row builders and `settings-panel-dev-tweaks.ts` particle tweak section.
+
+### src/ui/panels/settings-panel-controls.ts
+- Shared DOM row builders for settings controls.
+- Exports `createSliderRow`, `createToggleRow`, and `createSelectRow`.
+- Slider row includes gold glow interpolation and thresholded border/text shadow effects.
+
+### src/ui/panels/settings-panel-dev-tweaks.ts
+- Dev-only particle tweak section extracted from `settings-panel.ts`.
+- Exports `createDevTweaksSection()` which renders numeric tweak inputs and a reset-to-defaults action.
+- Owns the `DEV_TWEAK_FIELDS` list and writes directly to `particleTweaks` on input change.
 
 ### src/settings/settings-state.ts
 - User settings model and localStorage persistence.
