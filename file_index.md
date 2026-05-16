@@ -1269,10 +1269,11 @@ Audio system — eight focused modules:
 - Equation upgrades and forge unlock have moved to the Equation panel.
 
 ### src/ui/panels/achievements-panel.ts
-- Achievements tab content — filter bar, nested category accordions, per-character glyph animation (~445 lines).
+- Achievements tab orchestrator — filter bar, nested category accordions, glyph/sparkle wiring (~250 lines after update/filter split).
 - DOM building (group accordions, subcategory accordions, achievement cards) extracted to `achievements-panel-dom.ts`.
 - Sparkle system extracted to `achievements-panel-sparkle.ts`.
 - Glyph animation extracted to `achievements-panel-glyph.ts`.
+- Main card/group update pass and filter application extracted to `achievements-panel-update.ts`.
 - Filter bar: three checkboxes (show earned, show unearned, show hidden) with defaults earned+unearned=on, hidden=off.
 - Main category accordions: only one open at a time; opening another closes the previous.
 - RPG group: nested subcategory accordions (11 subcategories); only one subcategory open at a time.
@@ -1304,6 +1305,11 @@ Audio system — eight focused modules:
 - Exports DOM ref types: `CardRefs`, `SubcategoryRefs`, `GroupRefs`, `AchievementsDomCallbacks`.
 - Exports `buildAchievementsDom(groupsRoot, callbacks)` — builds all group/subcategory/card elements and returns `{ cardRefs, groupRefs }`.
 - Cards are built by the private `appendCard` function; click handlers fire `callbacks.onCardClaim(id, formattedBonus)`.
+
+### src/ui/panels/achievements-panel-update.ts
+- Achievement panel state-update and filtering helpers extracted from `achievements-panel.ts`.
+- Exports `cardIsVisible`, `applyAchievementFilters`, and `updateAchievementCardsAndGroupHeaders`.
+- Owns card state class/label updates, group/subcategory progress counts, and sparkle eligibility checks.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.

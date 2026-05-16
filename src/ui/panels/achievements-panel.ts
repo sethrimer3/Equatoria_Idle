@@ -5,16 +5,15 @@ import { type NumberFormat } from '../../util';
 import type { ActionHandler } from '../../input';
 import type { AudioSystem } from '../../audio';
 import { makePageBreak } from '../ui-helpers';
-import { getProgressText } from '../achievements/achievement-progress-text';
 import {
   buildAchievementsDom,
-  bonusText,
-  getAccentColor,
-  type CardRefs,
-  type GroupRefs,
 } from './achievements-panel-dom';
 import { createSparkleSystem } from './achievements-panel-sparkle';
 import { createGlyphSystem } from './achievements-panel-glyph';
+import {
+  applyAchievementFilters,
+  updateAchievementCardsAndGroupHeaders,
+} from './achievements-panel-update';
 
 /**
  * Achievements panel — grouped accordion cards with filter bar, nested
@@ -154,11 +153,6 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   let openSubcategoryId: string | null = null;
   let isPanelVisible = false;
 
-  // Forward-declare so setOpenGroup/setOpenSubcategory can close over them
-  // before buildAchievementsDom populates the values.
-  let cardRefs!: Map<string, CardRefs>;
-  let groupRefs!: Map<string, GroupRefs>;
-
   function setOpenGroup(nextId: string | null): void {
     openMainCategoryId = nextId;
     openSubcategoryId = null;
@@ -215,8 +209,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       enqueueReward(`${formattedBonus}!`);
     },
   });
-  cardRefs = domRefs.cardRefs;
-  groupRefs = domRefs.groupRefs;
+  const { cardRefs, groupRefs } = domRefs;
 
   setOpenGroup(openMainCategoryId);
 
@@ -228,55 +221,12 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   const { rebuildGlyphEntries, startGlyphAnimation, stopGlyphAnimation } = glyph;
 
   // ── Filter application ────────────────────────────────────────
-  /**
-   * Determines whether a card should be shown based on filter state.
-   * Uses the latest unlocked/claimed state stored on the card element.
-   */
-  function cardIsVisible(refs: CardRefs): boolean {
-    const isUnlocked = refs.card.classList.contains('achievement-unlocked') ||
-                       refs.card.classList.contains('achievement-earned-unclaimed');
-    const isHidden = refs.isHiddenType;
-
-    if (isUnlocked) return filterShowEarned;
-    if (isHidden)   return filterShowHidden;
-    return filterShowUnearned;
-  }
-
   function applyFilters(): void {
-    for (const [, refs] of cardRefs) {
-      refs.card.style.display = cardIsVisible(refs) ? '' : 'none';
-    }
-
-    // Update subcategory visibility (hide section if no visible cards)
-    for (const [, groupRef] of groupRefs) {
-      let anyVisibleInGroup = false;
-
-      for (const [, sub] of groupRef.subcategoryRefs) {
-        let anyVisibleInSub = false;
-        for (const achId of sub.achievementIds) {
-          const r = cardRefs.get(achId);
-          if (r && r.card.style.display !== 'none') {
-            anyVisibleInSub = true;
-            break;
-          }
-        }
-        sub.section.style.display = anyVisibleInSub ? '' : 'none';
-        if (anyVisibleInSub) anyVisibleInGroup = true;
-      }
-
-      // Also check achievements directly in the group (no subcategory)
-      for (const achId of groupRef.achievementIds) {
-        const r = cardRefs.get(achId);
-        if (r && !r.subcategoryId && r.card.style.display !== 'none') {
-          anyVisibleInGroup = true;
-          break;
-        }
-      }
-
-      groupRef.emptyMsg.style.display = anyVisibleInGroup ? 'none' : '';
-    }
-
-    // Rebuild glyph entries since visibility may have changed
+    applyAchievementFilters(cardRefs, groupRefs, {
+      showEarned: filterShowEarned,
+      showUnearned: filterShowUnearned,
+      showHidden: filterShowHidden,
+    });
     rebuildGlyphEntries();
   }
 
@@ -300,136 +250,17 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
     claimAllBtn.classList.toggle('ach-claim-all-btn--active', totalClaimable > 0);
     claimAllCount.textContent = totalClaimable > 0 ? `${totalClaimable} ready` : '';
 
-    const unclaimedByGroup = new Map<string, number>();
-    const claimedByGroup = new Map<string, number>();
-    const totalByGroup = new Map<string, number>();
-    const claimedBySub = new Map<string, number>();
-    const totalBySub = new Map<string, number>();
-    const unclaimedBySub = new Map<string, number>();
-
-    let needGlyphRebuild = false;
-
-    for (const def of ACHIEVEMENT_DEFINITIONS) {
-      const refs = cardRefs.get(def.id);
-      if (!refs) continue;
-      const { card, iconEl, nameEl, bonusEl, descEl, progressEl } = refs;
-
-      const isUnlocked = state.achievements.unlockedIds.has(def.id);
-      const isClaimed = state.achievements.claimedIds.has(def.id);
-      const isEarnedUnclaimed = isUnlocked && !isClaimed;
-
-      // Track previous state to detect transitions (for glyph rebuild)
-      const wasLocked = card.classList.contains('achievement-locked');
-
-      card.classList.toggle('achievement-unlocked', isUnlocked && isClaimed);
-      card.classList.toggle('achievement-locked', !isUnlocked);
-      card.classList.toggle('achievement-earned-unclaimed', isEarnedUnclaimed);
-
-      if (wasLocked && isUnlocked) needGlyphRebuild = true;
-
-      const defBonusText = bonusText(def.bonusKind, def.bonusMultiplier);
-
-      if (isUnlocked) {
-        iconEl.textContent = isClaimed ? '🏆' : '✨';
-
-        // Restore normal font if it was previously scrambled
-        if (def.isSecret) {
-          nameEl.style.fontFamily = "'Poiret One', sans-serif";
-          nameEl.style.letterSpacing = '';
-          descEl.style.fontFamily = "'Poiret One', sans-serif";
-          descEl.style.letterSpacing = '';
-          nameEl.style.color = getAccentColor(def.condition, def.displayColor);
-        }
-        if (def.isHiddenCriteria) {
-          progressEl.style.fontFamily = '';
-        }
-
-        nameEl.textContent = def.displayName;
-        descEl.textContent = def.description;
-        bonusEl.textContent = isClaimed ? defBonusText : '✨ Tap to claim!';
-        bonusEl.style.color = isClaimed ? '#a0e080' : '#ffd700';
-        progressEl.textContent = isClaimed ? '✓ Claimed' : '✨ Earned — tap to claim your bonus!';
-      } else {
-        iconEl.textContent = '🔒';
-
-        if (def.isSecret) {
-          if (filterShowHidden) {
-            // Glyph is managed by the glyph interval — just ensure font is set
-            nameEl.style.fontFamily = "'BJ Cree', monospace";
-            nameEl.style.letterSpacing = '0.05em';
-            descEl.style.fontFamily = "'BJ Cree', monospace";
-            descEl.style.letterSpacing = '0.05em';
-          }
-          bonusEl.textContent = '???';
-          bonusEl.style.color = '';
-          progressEl.textContent = '???';
-        } else if (def.isHiddenCriteria) {
-          nameEl.textContent = def.displayName;
-          descEl.textContent = def.description;
-          bonusEl.textContent = defBonusText;
-          bonusEl.style.color = '';
-          if (filterShowHidden) {
-            progressEl.style.fontFamily = "'BJ Cree', monospace";
-            // Glyph text managed by interval
-          } else {
-            progressEl.style.fontFamily = '';
-            progressEl.textContent = '??? (criteria hidden)';
-          }
-        } else {
-          nameEl.textContent = def.displayName;
-          descEl.textContent = def.description;
-          bonusEl.textContent = defBonusText;
-          bonusEl.style.color = '';
-          progressEl.style.fontFamily = '';
-          progressEl.textContent = getProgressText(def.condition, state, numberFormat);
-        }
-      }
-
-      // Accumulate counts
-      totalByGroup.set(def.groupId, (totalByGroup.get(def.groupId) ?? 0) + 1);
-      if (def.subcategoryId) {
-        totalBySub.set(def.subcategoryId, (totalBySub.get(def.subcategoryId) ?? 0) + 1);
-      }
-      if (isClaimed) {
-        claimedByGroup.set(def.groupId, (claimedByGroup.get(def.groupId) ?? 0) + 1);
-        if (def.subcategoryId) {
-          claimedBySub.set(def.subcategoryId, (claimedBySub.get(def.subcategoryId) ?? 0) + 1);
-        }
-      } else if (isEarnedUnclaimed) {
-        unclaimedByGroup.set(def.groupId, (unclaimedByGroup.get(def.groupId) ?? 0) + 1);
-        if (def.subcategoryId) {
-          unclaimedBySub.set(def.subcategoryId, (unclaimedBySub.get(def.subcategoryId) ?? 0) + 1);
-        }
-      }
-
-      // Sparkle: only if visible, panel open, earned-unclaimed, in open group
-      const inOpenGroup = openMainCategoryId === def.groupId;
-      const inOpenSub = !def.subcategoryId || openSubcategoryId === def.subcategoryId;
-      const cardShouldSparkle = isPanelVisible && isEarnedUnclaimed && inOpenGroup && inOpenSub;
-      setSparkleEmitter(card, cardShouldSparkle);
-    }
-
-    // Update group header counts and sparkle
-    for (const [groupId, refs] of groupRefs) {
-      const total = totalByGroup.get(groupId) ?? 0;
-      const claimed = claimedByGroup.get(groupId) ?? 0;
-      const hasUnclaimed = (unclaimedByGroup.get(groupId) ?? 0) > 0;
-
-      refs.countEl.textContent = `${claimed}/${total}`;
-      refs.toggle.classList.toggle('achievement-group-toggle--has-unclaimed', hasUnclaimed);
-
-      setSparkleEmitter(refs.toggle, isPanelVisible && hasUnclaimed);
-
-      // Update subcategory header counts and unclaimed highlight
-      for (const [subId, subRef] of refs.subcategoryRefs) {
-        const subTotal = totalBySub.get(subId) ?? 0;
-        const subClaimed = claimedBySub.get(subId) ?? 0;
-        const subHasUnclaimed = (unclaimedBySub.get(subId) ?? 0) > 0;
-        subRef.countEl.textContent = `${subClaimed}/${subTotal}`;
-        subRef.toggle.classList.toggle('ach-sub-toggle--has-unclaimed', subHasUnclaimed);
-        setSparkleEmitter(subRef.toggle, isPanelVisible && subHasUnclaimed);
-      }
-    }
+    const { needGlyphRebuild } = updateAchievementCardsAndGroupHeaders({
+      state,
+      numberFormat,
+      cardRefs,
+      groupRefs,
+      isPanelVisible,
+      openMainCategoryId,
+      openSubcategoryId,
+      filterShowHidden,
+      setSparkleEmitter,
+    });
 
     // Apply visibility filters (updates card display, subcategory sections, empty msg)
     applyFilters();
