@@ -1240,12 +1240,16 @@
 - `createLoomUpgradesPane(dispatch)` → `{ element, update(state, fmt) }`.
 
 ### src/ui/panels/aliven-pane.ts
-- "Aliven" sub-tab content: per-tier aliven rows + interactive NxN interaction-matrix grid.
+- "Aliven" sub-tab orchestrator: title/subtitle, matrix section wiring, and per-tier aliven rows.
 - Aliven rows show unlock button (cost 10,000 own motes) or ✦ Alive badge.
-- Interaction matrix cells support tap (apply selected ±0.05 step) and drag (continuous adjustment).
-- Matrix is rebuilt only when the alivened tier set changes (keyed by join string).
-- During a cell drag, `TraceEffect` golden outline + tracer circles appear around the cell.
+- Matrix functionality is delegated to `aliven-pane-matrix.ts`.
 - `createAlivenPane(dispatch, traceEffect?)` → `{ element, update(state, fmt) }`.
+
+### src/ui/panels/aliven-pane-matrix.ts
+- Extracted interaction-matrix module for the Aliven pane.
+- Owns matrix controls (+0.05/−0.05/reset), matrix grid DOM build, and cell drag/tap editing dispatch.
+- Rebuilds matrix only when alivened-tier membership changes; refreshes visible cell values each update.
+- Integrates with `TraceEffect` to show matrix-cell targeting visuals during pointer interaction.
 
 ### src/audio/
 
