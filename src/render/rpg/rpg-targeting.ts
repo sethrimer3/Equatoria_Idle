@@ -7,16 +7,16 @@
  * Use createRpgTargeting(ctx) to create the targeting handle.
  */
 
-import type { ClosestTarget, TargetKind, LaserEnemy, SapphireMissile, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, TargetKind, LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
-  EmeraldEnemy, AmberEnemy, AmberShard,
-  VoidEnemy, QuartzEnemy, QuartzSpike,
-  RubyEnemy, RubyBolt,
-  SunstoneEnemy, CitrineEnemy, CitrineBolt,
-  IoliteEnemy, AmethystEnemy, AmethystShard,
-  DiamondEnemy, DiamondShard,
-  NullstoneEnemy, VoidTendril,
-  FracterylEnemy, FracterylShard,
+  EmeraldEnemy, AmberEnemy,
+  VoidEnemy, QuartzEnemy,
+  RubyEnemy,
+  SunstoneEnemy, CitrineEnemy,
+  IoliteEnemy, AmethystEnemy,
+  DiamondEnemy,
+  NullstoneEnemy,
+  FracterylEnemy,
   EigensteinEnemy,
   BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';

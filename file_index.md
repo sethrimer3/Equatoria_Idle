@@ -763,7 +763,7 @@
 - Covers: `syncAmethystShips`, `updateAmethystShips`, `spawnAmethystLaser`, `updateAmethystLasers` (spiral pierce projectiles).
 
 ### src/render/rpg/rpg-targeting.ts
-- Targeting system for the RPG tab extracted from `rpg-render.ts` (~290 lines).
+- Targeting system for the RPG tab extracted from `rpg-render.ts` (~453 lines).
 - Re-exports `RpgTargetingCtx` and `RpgTargetingHandle` from `rpg-targeting-types.ts`.
 - Owns `targetedEnemy: object | null` state (moved from `rpg-render.ts`).
 - Covers: `findClosestTarget` (closest entity including projectiles), `findClosestEnemy` (closest enemy body only), `collectEnemyBodyTargets` (all enemy bodies as `ClosestTarget[]`), `findClosestEnemyFrom` (closest enemy from arbitrary position), `getTargetedEnemy` (validates stored target or falls back to closest), `tryTargetEnemyAt` (stub that clears target), `damageBodyTarget` (dispatches damage to correct type-specific damage fn).
@@ -886,7 +886,7 @@
 - `rpg-render.ts` re-exports these interfaces so existing imports from `rpg-render.ts` remain valid.
 
 ### src/render/rpg/rpg-render.ts
-- Independent RPG canvas rendering system for the RPG tab (~1,143 lines after this refactor).
+- Independent RPG canvas rendering system for the RPG tab (~1,008 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Public interfaces `RpgRender` and `RpgRenderOptions` moved to `rpg-render-types.ts` and re-exported from this module.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
