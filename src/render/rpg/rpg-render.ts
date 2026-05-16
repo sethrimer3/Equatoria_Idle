@@ -33,7 +33,6 @@ import {
 } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import type { NumberFormat } from '../../util/format';
-import type { TierId } from '../../data/tiers';
 import { createRpgFluid } from './rpg-fluid';
 import { createDamageFns } from './rpg-damage';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
@@ -108,66 +107,15 @@ import { type WeaponTickCtx } from './rpg-weapon-tick';
 import {
   runRpgUpdate, type RpgEnemyUpdateArrays, type RpgUpdateCtx,
 } from './rpg-render-update';
+import type { RpgRender, RpgRenderOptions } from './rpg-render-types';
+
+export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
 // The default values kick in before the first resize() call.
 let INTERNAL_WIDTH  = 320;
 let INTERNAL_HEIGHT = 568;
-
-export interface RpgRender {
-  canvas: HTMLCanvasElement;
-  statsPanel: HTMLElement;
-  /** Container inside the right column of the stats panel where the RPG menu button should be appended. */
-  menuButtonContainer: HTMLElement;
-  update(deltaMs: number, autoMoveEnabled?: boolean): void;
-  resize(container: HTMLElement): void;
-  setActive(active: boolean): void;
-  /** Re-reads rpgSimState.equippedWeaponIds and immediately updates playerStats ATK/DEF + weapon particles. */
-  notifyEquip(): void;
-  /** Dev-mode only: immediately jump to the given wave number (must be multiple of 10). */
-  devJumpToWave(wave: number): void;
-  /** Immediately restart at the current respawnWave with the visual restart transition. */
-  respawnNow(): void;
-  /** Enable/disable low graphics mode (skips glows and expensive effects). */
-  setLowGraphicsMode(enabled: boolean): void;
-  /** Sets enemy indicator style for RPG enemies. */
-  setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void;
-  /** Launch a boss fight for the given 1-based bossId from the RPG menu. */
-  startBossFight(bossId: number): void;
-  /** Update the number-format setting used to render stat values in the stats panel. */
-  setNumberFormat(format: NumberFormat): void;
-  /** Show or hide dev-mode numerical designators on each RPG stats panel box. */
-  setDevMode(enabled: boolean): void;
-  /** Enable/disable invincibility mode — player takes no damage (dev mode only). */
-  setInvincibilityMode(enabled: boolean): void;
-  /** Dev-mode only: spawn one Aliven group of the given variantId at the canvas edge. */
-  devSpawnAliven(variantId: string): void;
-  /** Dev-mode only: remove all active Aliven groups instantly. */
-  devClearAliven(): void;
-  /** Returns the current number of active AlivenParticleGroups (dev use). */
-  getAlivenGroupCount(): number;
-}
-
-/** Options passed to createRpgRender. */
-export interface RpgRenderOptions {
-  /**
-   * Called when the player collects a lucky mote drop.
-   * @param tierId  The mote tier that was collected.
-   * @param bonusPct  The percentage bonus to apply to that tier's mote total (e.g. 0.5 = +0.5%).
-   */
-  onLuckyMoteCollected?: (tierId: TierId, bonusPct: number) => void;
-  /**
-   * Returns the flat base ATK bonus from claimed achievements.
-   * Called inside applyEquipmentStats each time stats are refreshed.
-   */
-  getAchievementAtkBonus?: () => number;
-  /**
-   * Called when the player triggers an error interaction (e.g. attempting
-   * to add a 4th XP wire).  Callers should play the error SFX.
-   */
-  onError?: () => void;
-}
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState, options: RpgRenderOptions = {}): RpgRender {
 

@@ -764,9 +764,14 @@
 
 ### src/render/rpg/rpg-targeting.ts
 - Targeting system for the RPG tab extracted from `rpg-render.ts` (~290 lines).
-- Exports `RpgTargetingCtx` interface, `RpgTargetingHandle` interface, and `createRpgTargeting(ctx)` factory.
+- Re-exports `RpgTargetingCtx` and `RpgTargetingHandle` from `rpg-targeting-types.ts`.
 - Owns `targetedEnemy: object | null` state (moved from `rpg-render.ts`).
 - Covers: `findClosestTarget` (closest entity including projectiles), `findClosestEnemy` (closest enemy body only), `collectEnemyBodyTargets` (all enemy bodies as `ClosestTarget[]`), `findClosestEnemyFrom` (closest enemy from arbitrary position), `getTargetedEnemy` (validates stored target or falls back to closest), `tryTargetEnemyAt` (stub that clears target), `damageBodyTarget` (dispatches damage to correct type-specific damage fn).
+
+### src/render/rpg/rpg-targeting-types.ts
+- Type-only home for targeting contracts extracted from `rpg-targeting.ts`.
+- Exports `RpgTargetingCtx` (all enemy arrays + damage dispatch callbacks) and `RpgTargetingHandle` (public targeting API).
+- Keeps runtime logic in `rpg-targeting.ts` while preserving existing import compatibility through type re-exports.
 
 ### src/render/rpg/rpg-player-attack.ts
 - Player auto-attack context and dispatcher (~222 lines).
@@ -875,8 +880,15 @@
 - `update(nowMs)` advances rope physics for all active and slurping wires; must be called once per frame.
 - State is ephemeral — connections reset on page load.
 
+### src/render/rpg/rpg-render-types.ts
+- Type-only home for the RPG render API extracted from `rpg-render.ts`.
+- Exports `RpgRender` and `RpgRenderOptions` interfaces.
+- `rpg-render.ts` re-exports these interfaces so existing imports from `rpg-render.ts` remain valid.
+
+### src/render/rpg/rpg-render.ts
 - Independent RPG canvas rendering system for the RPG tab (~1,143 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
+- Public interfaces `RpgRender` and `RpgRenderOptions` moved to `rpg-render-types.ts` and re-exported from this module.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
 - Player damage helpers (spawnDamageNumber, spawnHitVisualsAt, dealDamageToPlayer, etc.) extracted to `rpg-player-damage.ts` via `createPlayerDamageFns` factory; rpg-render.ts constructs `playerDamageCtx` and destructures all seven returned functions.
