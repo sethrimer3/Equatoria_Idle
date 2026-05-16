@@ -1440,11 +1440,16 @@ Audio system — eight focused modules:
 - Pure rendering helpers extracted to `balance-forecast-render.ts`.
 
 ### src/ui/panels/balance-forecast/balance-forecast-render.ts
-- Pure DOM rendering helpers extracted from `balance-forecast-panel.ts` (~494 lines).
-- Exports: `el`, `makeSection`, `statusClass`, `categoryLabel`, `safeNum`, `collectMilestoneIds`.
-- Render functions: `renderStaticEtaTable`, `renderNextMeaningfulTargets`, `renderFreshRunTimeline`, `renderStrategyComparison`, `renderStrategyTimeline`, `renderPacingWarnings`.
+- Pure DOM rendering helpers extracted from `balance-forecast-panel.ts` (~250 lines after strategy split).
+- Exports: `el`, `makeSection`, `statusClass`, `categoryLabel`, `safeNum`, plus strategy render re-exports for compatibility.
+- Render functions: `renderStaticEtaTable`, `renderNextMeaningfulTargets`, `renderFreshRunTimeline`, `renderPacingWarnings`.
 - Also exports `buildTextReport(result)` for the copy-to-clipboard text report.
 - All functions are stateless (take only data + HTMLElement); no closure dependencies.
+
+### src/ui/panels/balance-forecast/balance-forecast-render-strategies.ts
+- Strategy-oriented render helpers extracted from `balance-forecast-render.ts`.
+- Exports: `collectMilestoneIds`, `renderStrategyComparison`, `renderStrategyTimeline`.
+- Contains table/SVG timeline rendering logic for multi-strategy milestone comparisons.
 
 ### src/dev/session-telemetry.ts
 - Lightweight dev-only session telemetry counters. No browser dependencies; pure TypeScript.
