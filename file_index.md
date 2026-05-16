@@ -430,14 +430,25 @@
 - Extracted from `rpg-elite-enemy-updates.ts` to keep behavioral logic and boilerplate helpers in separate files.
 
 ### src/render/rpg/rpg-elite-enemy-updates.ts
-- Per-frame update logic for all 8 elite polygon enemies (quartz → nullstone) (~488 lines).
+- Dispatcher barrel for all 8 elite polygon enemies (~52 lines).
 - Exports `updateEliteEnemies(elites, ctx, deltaMs)` and re-exports `EliteEnemyCtx` from helpers.
-- Each tier is implemented as a private named function (`updateEliteQuartz`, `updateEliteRuby`, …) called from a compact dispatcher switch; this keeps each tier's logic self-contained and easy to navigate.
-- Each tier has 2 distinct attacks reusing existing projectile arrays (`quartzSpikes`, `rubyBolts`, etc.):
+- Per-tier update logic delegated to two sub-modules:
+  - `rpg-elite-enemy-updates-early.ts` — Quartz, Ruby, Sunstone, Citrine
+  - `rpg-elite-enemy-updates-late.ts` — Iolite, Amethyst, Diamond, Nullstone
+
+### src/render/rpg/rpg-elite-enemy-updates-early.ts
+- Per-frame update functions for early elite tiers (~195 lines): Quartz, Ruby, Sunstone, Citrine.
+- Exports: `updateEliteQuartz`, `updateEliteRuby`, `updateEliteSunstone`, `updateEliteCitrine`.
+- Each tier has 2 distinct attacks reusing existing projectile arrays:
   - **Quartz (3)**: Crystal Salvo (two staggered 3-spike bursts) + Crystal Nova (9-spike ring).
   - **Ruby (4)**: Cardinal Burst (4 bolts N/E/S/W) + Triple Shot (tight 3-bolt spread).
   - **Sunstone (5)**: Star Flare (5 homing citrine bolts) + Corona Pulse (10-spike ring).
   - **Citrine (6)**: Hex Swarm (6 homing citrine bolts) + Laser Hex (6 instant beams via fluid).
+
+### src/render/rpg/rpg-elite-enemy-updates-late.ts
+- Per-frame update functions for late elite tiers (~235 lines): Iolite, Amethyst, Diamond, Nullstone.
+- Exports: `updateEliteIolite`, `updateEliteAmethyst`, `updateEliteDiamond`, `updateEliteNullstone`.
+- Each tier has 2 distinct attacks reusing existing projectile arrays:
   - **Iolite (7)**: Prism Fan (7 bolts in wide arc) + Gravity Well (pulls player 2.5 s).
   - **Amethyst (8)**: Crystal Storm (two staggered 8-shard rings) + reactive shield burst.
   - **Diamond (9)**: Nine-Star burst + phase cycle (invuln orbit ↔ vulnerable patrol).
@@ -735,10 +746,18 @@
 - Covers: `layMine`, `detonateMine` (AOE damage + fluid explosion), `updateSunstoneMines` (fuse countdown, enemy contact damage, proximity trigger).
 
 ### src/render/rpg/rpg-weapon-sand.ts
-- Sand gatling projectile weapon system extracted from `rpg-weapon-systems.ts` (~474 lines).
+- Sand gatling projectile weapon system (~120 lines).
 - Exports `SandWeaponCtx` interface, `SandWeaponHandle` interface, and `createSandWeaponSystem(ctx)` factory.
 - Owns `sandProjectiles: SandProjectile[]`; exposes via getter on handle.
-- Covers: `spawnSandProjectile`, `updateSandProjectiles` (movement, fluid injection, collision with all entity types including projectiles/shards).
+- Covers: `spawnSandProjectile`, `updateSandProjectiles` (movement, fluid injection, bounds check).
+- Hit-testing against all enemy types is in `rpg-weapon-sand-collision.ts` via `checkSandProjectileHit`.
+
+### src/render/rpg/rpg-weapon-sand-collision.ts
+- Per-projectile collision detection for sand gatling projectiles (~290 lines).
+- Exports `checkSandProjectileHit(p, ctx): boolean` — tests one `SandProjectile` against all enemy
+  arrays in the provided `SandWeaponCtx` and returns `true` if the projectile should be removed.
+- Hit priority sequence: laser → sapphire → emerald → amber → void → quartz → ruby → sunstone →
+  citrine → iolite → amethyst → diamond → nullstone → fracteryl → eigenstein → elite → boss.
 
 ### src/render/rpg/rpg-weapon-sword.ts
 - Diamond sword combo weapon factory (~42 lines). Defines `SwordWeaponHandle` interface and `createSwordWeaponSystem(ctx)` factory.
