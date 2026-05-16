@@ -50,7 +50,7 @@
 ### src/app/game-app.ts
 - Slim application bootstrap (DOM setup, panel wiring, pointer listeners, resize handler).
 - `startApp()` — creates systems and wires them via `app-actions` and `app-game-loop`.
-- Delegates action handling to `app-actions.ts` and game loop to `app-game-loop.ts`.
+- Delegates action handling to `app-actions.ts`, game loop to `app-game-loop.ts`, canvas pointer wiring to `game-app-canvas-input.ts`, and idle-reward eligibility checks to `game-app-idle.ts`.
 
 ### src/app/app-types.ts
 - `AppState` and `UIPanels` interfaces shared by app modules.
@@ -64,6 +64,14 @@
 - `createGameLoop()` factory — creates the frame-by-frame game loop.
 - `GameLoopContext` interface — all dependencies injected.
 - Loop: sim tick → particle update → background → render → UI update → auto-save.
+
+### src/app/game-app-canvas-input.ts
+- Canvas pointer-input wiring extracted from `game-app.ts`.
+- Exports `wireCanvasPointerInput()` to connect pointer down/move/up/cancel handlers for drag interactions and generator hover tracking.
+
+### src/app/game-app-idle.ts
+- Shared idle-reward eligibility helper used by `game-app.ts`.
+- Exports `applyIdleRewardsIfEligible()` which applies queued idle rewards and opens the idle overlay only when elapsed time and rewards are meaningful.
 
 ### src/data/tiers/tier-definitions.ts
 - Single source of truth for all 11 gemstone tiers (Sand through Nullstone).
