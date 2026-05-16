@@ -1305,6 +1305,20 @@ Audio system — eight focused modules:
 - `IdleOverlay` interface — `{ element, show(summary), hide() }`.
 - `createIdleOverlay()` — factory function; tap/click anywhere to dismiss.
 
+### src/ui/panels/dev-panel.ts
+- Developer-mode playtesting panel orchestrator.
+- Preserves public `DevPanel`/`DevPanelHooks` contract and wires wave-jump controls, spawn controls, snapshots, and telemetry refresh actions.
+- Delegates DOM primitives/wave constants to `dev-panel-dom.ts` and table/snapshot rendering to `dev-panel-render.ts`.
+
+### src/ui/panels/dev-panel-dom.ts
+- Shared dev-panel DOM helpers.
+- Exports `WAVE_JUMP_TARGETS`, `el()`, and `makeSubTitle()` used by `dev-panel.ts` and `dev-panel-render.ts`.
+
+### src/ui/panels/dev-panel-render.ts
+- Extracted render/snapshot helpers for dev-panel sections.
+- Exports `buildAlivenBalanceTable`, `refreshForgeStateLines`, `refreshLoomStateTable`, and `refreshTelemetryTables`.
+- Owns static aliven balance table creation plus session telemetry table rendering.
+
 ### src/ui/panels/settings-panel.ts
 - Settings panel orchestrator for controls, toggles, save/reset actions, credits, and dev-only embedded panels.
 - Wires `settings-panel-controls.ts` row builders and `settings-panel-dev-tweaks.ts` particle tweak section.
