@@ -598,10 +598,14 @@
 - Includes `isInBottomSafeZone(px, py, dim)` local helper.
 
 ### src/render/rpg/rpg-boss-behaviors.ts
-- Per-boss-ID (non-wave) movement and attack patterns (~429 lines), extracted from `rpg-boss-update.ts`.
+- Per-boss-ID (non-wave) movement and attack patterns for bosses 1–6 (~242 lines), extracted from `rpg-boss-update.ts`; bosses 7–12 delegated to `rpg-boss-behaviors-late.ts`.
 - Exports `BossBehaviorCtx` (re-exported from `rpg-boss-behaviors-wave.ts`) and `updateBossBehavior(boss, ctx, dt, dx, dy, dirX, dirY, dist, atk1Cd, atk2Cd, deltaMs): boolean`.
 - Returns `true` (boss-wave danmaku mode — delegates to `rpg-boss-behaviors-wave.ts`) or `false` (velocities only changed — caller applies position clamp).
-- Per-boss blocks: bossId 1–12 movement + attack logic, gravity wells (bossId 8/9/10), invulnerability cycling (bossId 7), danmaku ring attacks (bossId 11/12).
+
+### src/render/rpg/rpg-boss-behaviors-late.ts
+- Per-boss-ID (non-wave) movement and attack patterns for bosses 7–12 (~170 lines).
+- Exports `updateLateBossBehavior(boss, ctx, dt, dx, dy, dirX, dirY, dist, atk1Cd, atk2Cd, deltaMs): void`.
+- Covers: invulnerability cycling (boss 7), gravity well / absorb toggle (boss 8), chaos orbit + homing (boss 9), multi-ring spiral (boss 10), danmaku ring patterns (bosses 11–12).
 
 ### src/render/rpg/rpg-boss-behaviors-wave.ts
 - Boss-wave danmaku patterns extracted from `rpg-boss-behaviors.ts` (~207 lines).
@@ -711,11 +715,15 @@
 - Covers: `spawnSandProjectile`, `updateSandProjectiles` (movement, fluid injection, collision with all entity types including projectiles/shards).
 
 ### src/render/rpg/rpg-weapon-sword.ts
-- Diamond sword combo system extracted from `rpg-weapon-systems.ts` (~599 lines).
-- Exports `SwordWeaponCtx` interface, `SwordWeaponHandle` interface, and `createSwordWeaponSystem(ctx)` factory.
-- Contains `SPIN_TICK_THRESHOLDS` constant (moved from rpg-weapon-systems.ts).
-- Owns `swordComboStates: Map<string, SwordComboState>`; exposes via getter on handle.
-- Covers: `updateSwordCombo` (hinge physics, shard chain, fluid drag, swing/spin combo, hit detection, beam effects).
+- Diamond sword combo weapon factory (~42 lines). Defines `SwordWeaponHandle` interface and `createSwordWeaponSystem(ctx)` factory.
+- Combo state machine and all helpers live in `rpg-weapon-sword-combo.ts`; factory simply delegates `updateSwordCombo` calls there.
+- Re-exports `SwordWeaponCtx` (defined in `rpg-weapon-sword-combo.ts`) for backwards compatibility with importers.
+
+### src/render/rpg/rpg-weapon-sword-combo.ts
+- Diamond sword / sand blade per-frame combo state machine (~460 lines), extracted from `rpg-weapon-sword.ts`.
+- Exports `SwordWeaponCtx` interface and `updateSwordComboForWeapon(swordComboStates, ctx, weaponId, deltaMs)`.
+- Contains: `buildSwordCombo` (initial state), `angleInArc` (arc geometry), `spawnSwordBeam` (beam visual), `swordHitInArc` (arc hit detection across all enemy types).
+- Covers phase state machine: idle → swing → combo_window → spin_combo, hinge physics, shard chain, fluid drag.
 
 ### src/render/rpg/rpg-weapon-emerald.ts
 - Emerald heat-seeking player missile system (~310 lines). Sub-missiles/swirl now live in `rpg-weapon-emerald-subs.ts`.
