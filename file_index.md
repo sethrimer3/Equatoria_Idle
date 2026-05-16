@@ -466,9 +466,16 @@
 - Exports: `drawAlivenGroups(ctx, groups)`, `setAlivenLowGraphics(enabled)`.
 
 ### src/render/rpg/rpg-factories.ts
-- `make*` factory functions for every RPG entity type.
-- Imports constants from `rpg-constants.ts`, types from `rpg-types.ts`, and `getWaveStatScale` from `rpg-state.ts`.
-- Now also exports `makeEliteEnemy(tier, x, y, waveNumber)` which reads the HP/ATK/DEF/cooldown maps from `rpg-enemy-constants.ts` and scales with wave number.
+- **Re-export barrel** — 12-line aggregator that re-exports everything from the three tier-grouped factory files below. Backward-compatible: all existing `import ... from './rpg-factories'` still work unchanged.
+
+### src/render/rpg/rpg-factories-early.ts
+- Factory functions for wave-1 to wave-5 enemy types: `makeAttackTrail`, `makeLaserEnemy`, `makeSapphireEnemy`, `makeSapphireMissile`, `makeEmeraldEnemy`, `makeAmberEnemy`, `makeAmberShard`, `makeVoidEnemy`, `makeQuartzEnemy`, `makeQuartzSpike`, `makeRubyEnemy`, `makeRubyBolt`.
+
+### src/render/rpg/rpg-factories-mid.ts
+- Factory functions for wave-6 to wave-10 enemy types: `makeSunstoneEnemy`, `makeCitrineEnemy`, `makeCitrineBolt`, `makeIoliteEnemy`, `makeAmethystEnemy`, `makeAmethystShard`, `makeDiamondEnemy`, `makeDiamondShard`, `makeNullstoneEnemy`, `makeVoidTendril`.
+
+### src/render/rpg/rpg-factories-late.ts
+- Factory functions for late-game enemies and boss: `makeFracterylEnemy`, `makeFracterylShard`, `makeEigensteinEnemy`, `makeDanmakuSafeZone`, `makeEliteEnemy(tier, x, y, waveNumber)`, `makeBossEnemy(rawBossId, waveNumber, w, h)`.
 
 ### src/render/rpg/rpg-fluid.ts
 - Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
@@ -912,6 +919,14 @@
 - **Luck stat** — `LUCK` widget in stats panel shows `formatLuckPercent(xp)`. On each enemy kill, `trySpawnLuckyMote()` rolls against `getCachedLuckPercent()` (cached to avoid repeated log calls). On success, a `LuckyMote` of the enemy's tier spawns at the death position with random drift. Lucky motes magnetize to the player within `LUCKY_MOTE_MAGNET_DIST` px and are collected within `LUCKY_MOTE_COLLECT_DIST` px, triggering `onLuckyMoteCollected` callback and spawning a `LuckyMotePopup` floating text. Enemy-to-tier mapping: laser→sand, amber→sunstone, void→nullstone; all others map to matching tier.
 - Accepts `rpgSimState: RpgSimState` and optional `options: RpgRenderOptions` (`onLuckyMoteCollected` callback) as factory arguments.
 - Exports `createRpgRender(container, rpgSimState, options?)` factory and `RpgRender` / `RpgRenderOptions` interfaces.
+- **Game loop** — `update()` delegates to `runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled)` in `rpg-render-update.ts`; `updateCtx: RpgUpdateCtx` is built once at factory creation time and captures all mutable state through getters/setters.
+
+### src/render/rpg/rpg-render-update.ts
+- Per-frame simulation step extracted from `rpg-render.ts` (`~325 lines`).
+- Exports `runRpgUpdate(ctx, deltaMs, autoMoveEnabled)`, `RpgUpdateCtx` interface, and `RpgEnemyUpdateArrays` interface.
+- `RpgEnemyUpdateArrays` bundles all 31 enemy/projectile arrays into one typed object to avoid bloating `RpgUpdateCtx`.
+- `RpgUpdateCtx` exposes mutable closure variables through getters/setters so rpg-render.ts closures remain the single source of truth.
+- Runs all enemy type update functions, boss physics, weapon tick, lucky motes, achievement flag tracking, HP regen, and death check; then calls `drawRpgFrame`.
 
 ### src/render/rpg/rpg-render-draw.ts
 - Per-frame canvas draw function extracted from `rpg-render.ts` (~378 lines).

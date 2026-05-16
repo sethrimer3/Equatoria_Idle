@@ -43,7 +43,7 @@ import {
   INTER_WAVE_DELAY_MS,
 } from './rpg-constants';
 import {
-  updateBossAttacks, setBossAttacksLowGraphics, type BossAttackUpdateCtx,
+  setBossAttacksLowGraphics, type BossAttackUpdateCtx,
 } from './rpg-boss-attack-update';
 import { createBossAttackState, type BossAttackState } from './rpg-boss-attack-types';
 import type {
@@ -76,73 +76,38 @@ import type {
 } from './rpg-enemy-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
-import {
-  updateLuckyMotes, updateLuckyMotePopups,
-} from './rpg-lucky-motes';
-import {
-  updateAlivenGroups, type AlivenUpdateCtx,
-} from './rpg-aliven-updates';
+import { type AlivenUpdateCtx } from './rpg-aliven-updates';
 import { damageAlivenParticle } from './rpg-damage';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS, type AlivenVariantId } from './rpg-aliven-constants';
+import { type RpgEnemyCtx } from './rpg-enemy-updates';
+import { type EliteEnemyCtx } from './rpg-elite-enemy-updates';
+import { type BossUpdateCtx } from './rpg-boss-update';
+import { type OrbitProjectileCtx } from './rpg-orbit-projectile';
 import {
-  type RpgEnemyCtx,
-  updateEmeraldEnemies,
-  updateAmberEnemies, updateAmberShards,
-  updateVoidEnemies,
-} from './rpg-enemy-updates';
-import {
-  updateQuartzEnemies, updateQuartzSpikes,
-  updateRubyEnemies, updateRubyBolts,
-  updateSunstoneEnemies,
-  updateCitrineEnemies, updateCitrineBolts,
-} from './rpg-enemy-updates-mid';
-import {
-  updateLaserEnemies,
-  updateSapphireEnemies, updateSapphireMissiles,
-} from './rpg-enemy-updates-basic';
-import {
-  updateIoliteEnemies,
-  updateAmethystEnemies, updateAmethystShards,
-  updateDiamondEnemies, updateDiamondShards,
-  updateNullstoneEnemies, updateVoidTendrils,
-  updateFracterylEnemies,
-  updateEigensteinEnemies, updateEigensteinBeams,
-  updateTeleportParticles,
-} from './rpg-enemy-updates-adv';
-import {
-  updateEliteEnemies, type EliteEnemyCtx,
-} from './rpg-elite-enemy-updates';
-import {
-  type BossUpdateCtx,
-  updateBossEnemy,
-  updateBossProjectiles,
-} from './rpg-boss-update';
-import { updateOrbitProjectile, type OrbitProjectileCtx } from './rpg-orbit-projectile';
-import {
-  updatePlayerMovement,
   type PlayerMovementCtx,
   type PlayerMovementState,
 } from './rpg-player-movement';
 import { createRpgInput } from './rpg-input';
 import { createPlayerDamageFns, type PlayerDamageCtx } from './rpg-player-damage';
 import {
-  drawRpgFrame, setAllDrawLowGraphics,
+  setAllDrawLowGraphics,
   type RpgDrawCtx, createRpgDrawFrameState,
 } from './rpg-render-draw';
 import {
   triggerDeath as _triggerDeath, doRestart as _doRestart,
-  updateDying as _updateDying, updateRestarting as _updateRestarting,
   type RpgDeathRestartCtx,
 } from './rpg-death-restart';
 import {
   buildWeaponOrbitParticle as _buildWeaponOrbitParticle,
   buildOrbitProjectile as _buildOrbitProjectile,
-  updateWeaponOrbitParticles as _updateWeaponOrbitParticles,
   type WeaponOrbitCtx,
 } from './rpg-weapon-orbit';
-import { tickWeaponSystems, type WeaponTickCtx } from './rpg-weapon-tick';
+import { type WeaponTickCtx } from './rpg-weapon-tick';
+import {
+  runRpgUpdate, type RpgEnemyUpdateArrays, type RpgUpdateCtx,
+} from './rpg-render-update';
 
 // ── Dynamic internal resolution ───────────────────────────────────
 // These are updated by resize() to match the container's client dimensions.
@@ -541,9 +506,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     _performWeaponAttack(playerAttackCtx, weaponId);
   }
 
-  /** Removes any enemies whose HP has reached zero or below, awarding XP for each. */
-  function removeDeadEnemies(): void { waveManager.removeDeadEnemies(); }
-
   // ── Create targeting system ───────────────────────────────────
   targeting = createRpgTargeting({
     mote,
@@ -633,8 +595,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnDamageNumber:       (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
     spawnHitVisuals:         (enemy, dmg, color) => spawnHitVisuals(enemy, dmg, color),
     spawnHitVisualsAt:       (tx, ty, maxHp, dmg, color) => spawnHitVisualsAt(tx, ty, maxHp, dmg, color),
-    removeDeadEnemies:       () => removeDeadEnemies(),
-    checkWaveCompletion:     () => checkWaveCompletion(),
+    removeDeadEnemies:       () => waveManager.removeDeadEnemies(),
+    checkWaveCompletion:     () => waveManager.checkWaveCompletion(),
     withDamageSource:        (id, fn) => statsPanel.withDamageSource(id, fn),
     enemies,
     sapphireEnemies,
@@ -788,9 +750,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (enemy.y > heightPx - half) { enemy.y = heightPx - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
   }
 
-  function startNextWave(): void { waveManager.startNextWave(); }
-  function checkWaveCompletion(): void { waveManager.checkWaveCompletion(); }
-  function tickSpawnQueue(deltaMs: number): void { waveManager.tickSpawnQueue(deltaMs); }
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
 
@@ -906,8 +865,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getEffectiveEquippedIds,
     findEquippedWeaponIdByEffect,
     performWeaponAttack: (weaponId) => performWeaponAttack(weaponId),
-    removeDeadEnemies:   () => removeDeadEnemies(),
-    checkWaveCompletion: () => checkWaveCompletion(),
+    removeDeadEnemies:   () => waveManager.removeDeadEnemies(),
+    checkWaveCompletion: () => waveManager.checkWaveCompletion(),
     getPrevSandBladePhase: () => prevSandBladePhase,
     setPrevSandBladePhase: (phase) => { prevSandBladePhase = phase; },
   };
@@ -950,137 +909,63 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgSimState,
   };
 
+  // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────
+  const enemyArrays: RpgEnemyUpdateArrays = {
+    enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
+    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
+    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
+    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
+    teleportParticles, bossProjectiles, luckyMotes, luckyMotePopups,
+  };
+  const updateCtx: RpgUpdateCtx = {
+    arrays: enemyArrays,
+    getRpgPhase:            () => rpgPhase,
+    getGlowTimeS:           () => glowTimeS,
+    addGlowTimeS:           (v) => { glowTimeS += v; },
+    setAutoMoveEnabled:     (v) => { _autoMoveEnabled = v; },
+    deathRestartCtx,
+    getIsInterWave:         () => isInterWave,
+    getInterWaveTimerMs:    () => interWaveTimerMs,
+    setInterWaveTimerMs:    (v) => { interWaveTimerMs = v; },
+    startNextWave:          () => waveManager.startNextWave(),
+    tickSpawnQueue:         (ms) => waveManager.tickSpawnQueue(ms),
+    checkWaveCompletion:    () => waveManager.checkWaveCompletion(),
+    movementCtx,
+    playerMovementState,
+    enemyCtx,
+    eliteEnemyCtx,
+    alivenUpdateCtx,
+    getBossEnemy:           () => bossEnemy,
+    getIsBossWaveActive:    () => isBossWaveActive,
+    bossCtx,
+    bossAttackState,
+    bossAttackCtx,
+    weaponOrbitCtx,
+    getOrbitProjectile:     () => orbitProjectile,
+    orbitProjectileCtx,
+    weaponTickCtx,
+    updateShotVisuals,
+    updateDamageNumbers,
+    mote,
+    rpgSimState,
+    onLuckyMoteCollected:   options.onLuckyMoteCollected,
+    playerStats,
+    triggerDeath:           () => _triggerDeath(deathRestartCtx),
+    statsPanel,
+    fluid,
+    drawCtx,
+    drawFrameState,
+  };
+
   return {
     canvas,
     statsPanel: statsPanel.element,
     menuButtonContainer: statsPanel.menuButtonContainer,
 
     update(deltaMs: number, autoMoveEnabled = false): void {
-      const nowMs = performance.now();
-      glowTimeS += deltaMs / 1000;
-      _autoMoveEnabled = autoMoveEnabled;
-
-      if (rpgPhase === 'dying') {
-        _updateDying(deathRestartCtx, deltaMs);
-        fluid.step(deltaMs);
-        drawRpgFrame(drawCtx, drawFrameState, nowMs);
-        statsPanel.update();
-        return;
-      }
-      if (rpgPhase === 'restarting') {
-        _updateRestarting(deathRestartCtx, deltaMs);
-        fluid.step(deltaMs);
-        drawRpgFrame(drawCtx, drawFrameState, nowMs);
-        statsPanel.update();
-        return;
-      }
-
-      if (isInterWave) {
-        interWaveTimerMs -= deltaMs;
-        if (interWaveTimerMs <= 0) startNextWave();
-      } else {
-        tickSpawnQueue(deltaMs);
-        checkWaveCompletion();
-      }
-
-      updatePlayerMovement(movementCtx, playerMovementState, deltaMs);
-      updateLaserEnemies(enemies, enemyCtx, deltaMs, nowMs);
-      updateSapphireEnemies(sapphireEnemies, sapphireMissiles, enemyCtx, deltaMs);
-      updateSapphireMissiles(sapphireMissiles, enemyCtx, deltaMs);
-      updateEmeraldEnemies(emeraldEnemies, enemyCtx, deltaMs);
-      updateAmberEnemies(amberEnemies, amberShards, enemyCtx, deltaMs);
-      updateAmberShards(amberShards, enemyCtx, deltaMs);
-      updateVoidEnemies(voidEnemies, enemyCtx, deltaMs);
-      updateQuartzEnemies(quartzEnemies, quartzSpikes, enemyCtx, deltaMs);
-      updateQuartzSpikes(quartzSpikes, enemyCtx, deltaMs);
-      updateRubyEnemies(rubyEnemies, rubyBolts, enemyCtx, deltaMs);
-      updateRubyBolts(rubyBolts, enemyCtx, deltaMs);
-      updateSunstoneEnemies(sunstoneEnemies, enemyCtx, deltaMs);
-      updateCitrineEnemies(citrineEnemies, citrineBolts, enemyCtx, deltaMs);
-      updateCitrineBolts(citrineBolts, enemyCtx, deltaMs);
-      updateIoliteEnemies(ioliteEnemies, enemyCtx, deltaMs);
-      updateAmethystEnemies(amethystEnemies, amethystShards, enemyCtx, deltaMs);
-      updateAmethystShards(amethystShards, enemyCtx, deltaMs);
-      updateDiamondEnemies(diamondEnemies, diamondShards, enemyCtx, deltaMs);
-      updateDiamondShards(diamondShards, enemyCtx, deltaMs);
-      updateNullstoneEnemies(nullstoneEnemies, voidTendrils, enemyCtx, deltaMs);
-      updateVoidTendrils(voidTendrils, enemyCtx, deltaMs);
-      updateFracterylEnemies(fracterylEnemies, fracterylShards, enemyCtx, deltaMs);
-      updateEigensteinEnemies(eigensteinEnemies, eigensteinBeams, enemyCtx, deltaMs);
-      updateEigensteinBeams(eigensteinBeams, enemyCtx, deltaMs);
-      updateEliteEnemies(eliteEnemies, eliteEnemyCtx, deltaMs);
-      // AlivenParticle group updates (contact damage, particle-life physics, special abilities)
-      updateAlivenGroups(alivenGroups, alivenUpdateCtx, deltaMs);
-      if (bossEnemy) {
-        const bossSpeedMult = isBossWaveActive ? (rpgSimState.bossSpeedPct / 100) : 1;
-        updateBossEnemy(bossEnemy, bossCtx, deltaMs * bossSpeedMult);
-        updateBossProjectiles(bossProjectiles, bossCtx, deltaMs * bossSpeedMult);
-      } else {
-        updateBossProjectiles(bossProjectiles, bossCtx, deltaMs);
-      }
-      updateBossAttacks(bossAttackState, bossAttackCtx, bossEnemy, deltaMs);
-      updateTeleportParticles(teleportParticles, deltaMs);
-      _updateWeaponOrbitParticles(weaponOrbitCtx, deltaMs);
-      updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs);
-      tickWeaponSystems(weaponTickCtx, deltaMs);
-      updateShotVisuals(deltaMs);
-      updateDamageNumbers(deltaMs);
-      // Track lucky motes collected for achievements
-      const luckyMoteCallback = (tierId: TierId, bonusPct: number, ageMs: number, fromElite: boolean) => {
-        rpgSimState.lifetimeLuckyMotesCollected++;
-        // Timing-based secret flags
-        const nowTs = performance.now();
-        // lucky_mote_within_1s: collected within 1 second of spawning
-        if (ageMs <= 1000) rpgSimState.secretAchievementFlags.add('lucky_mote_within_1s');
-        // lucky_mote_during_boss_fight: boss was active when collected
-        if (bossEnemy !== null) rpgSimState.secretAchievementFlags.add('lucky_mote_during_boss_fight');
-        // lucky_mote_from_elite
-        if (fromElite) rpgSimState.secretAchievementFlags.add('lucky_mote_from_elite');
-        // lucky_mote_triple_10s: 3 motes collected within 10 seconds
-        rpgSimState.luckyMoteCollectedTimestampsMs.push(nowTs);
-        const MAX_LUCKY_MOTE_TIMESTAMPS = 20;
-        if (rpgSimState.luckyMoteCollectedTimestampsMs.length > MAX_LUCKY_MOTE_TIMESTAMPS) {
-          rpgSimState.luckyMoteCollectedTimestampsMs.shift();
-        }
-        const tenSecondsAgo = nowTs - 10_000;
-        let recentCount = 0;
-        for (const ts of rpgSimState.luckyMoteCollectedTimestampsMs) {
-          if (ts >= tenSecondsAgo) recentCount++;
-        }
-        if (recentCount >= 3) rpgSimState.secretAchievementFlags.add('lucky_mote_triple_10s');
-        if (options.onLuckyMoteCollected) options.onLuckyMoteCollected(tierId, bonusPct);
-      };
-      updateLuckyMotes(luckyMotes, luckyMotePopups, mote.x, mote.y, deltaMs, luckyMoteCallback);
-      updateLuckyMotePopups(luckyMotePopups, deltaMs);
-
-      // Accumulate survival time
-      rpgSimState.totalRpgSurvivalMs += deltaMs;
-
-      // Track low-HP survival time for secret achievement
-      if (playerStats.maxHp > 0 && playerStats.hp > 0 && playerStats.hp / playerStats.maxHp <= 0.10) {
-        rpgSimState.lowHpAccumulatedMs += deltaMs;
-        if (rpgSimState.lowHpAccumulatedMs >= 60_000) {
-          rpgSimState.secretAchievementFlags.add('survived_60s_low_hp');
-        }
-      } else {
-        rpgSimState.lowHpAccumulatedMs = 0;
-      }
-
-      // Track if player took damage this wave (compare HP before/after physics updates)
-      // (hp tracking is done in the wave manager via onPlayerHit)
-
-      // Apply HP regen: regenerate regen% of maxHp per second when alive.
-      if (rpgPhase === 'alive' && playerStats.hp > 0 && playerStats.hp < playerStats.maxHp) {
-        playerStats.hp = Math.min(
-          playerStats.maxHp,
-          playerStats.hp + (playerStats.regen / 100) * playerStats.maxHp * (deltaMs / 1000),
-        );
-      }
-
-      if (playerStats.hp <= 0) _triggerDeath(deathRestartCtx);
-      statsPanel.update();
-      fluid.step(deltaMs);
-      drawRpgFrame(drawCtx, drawFrameState, nowMs);
+      runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
     },
 
     resize(cont: HTMLElement): void {
