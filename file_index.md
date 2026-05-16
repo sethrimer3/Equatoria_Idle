@@ -1305,9 +1305,33 @@ Audio system — eight focused modules:
 - `IdleOverlay` interface — `{ element, show(summary), hide() }`.
 - `createIdleOverlay()` — factory function; tap/click anywhere to dismiss.
 
+### src/ui/panels/dev-panel.ts
+- Developer-mode playtesting panel orchestrator.
+- Preserves public `DevPanel`/`DevPanelHooks` contract and wires wave-jump controls, spawn controls, snapshots, and telemetry refresh actions.
+- Delegates DOM primitives/wave constants to `dev-panel-dom.ts` and table/snapshot rendering to `dev-panel-render.ts`.
+
+### src/ui/panels/dev-panel-dom.ts
+- Shared dev-panel DOM helpers.
+- Exports `WAVE_JUMP_TARGETS`, `el()`, and `makeSubTitle()` used by `dev-panel.ts` and `dev-panel-render.ts`.
+
+### src/ui/panels/dev-panel-render.ts
+- Extracted render/snapshot helpers for dev-panel sections.
+- Exports `buildAlivenBalanceTable`, `refreshForgeStateLines`, `refreshLoomStateTable`, and `refreshTelemetryTables`.
+- Owns static aliven balance table creation plus session telemetry table rendering.
+
 ### src/ui/panels/settings-panel.ts
-- Settings controls: volume, particles, shake, developer mode toggle, save, reset, credits.
-- When `isDevMode` is enabled, shows a particle-tweaks section at the bottom with live editable fields and a reset-to-defaults button.
+- Settings panel orchestrator for controls, toggles, save/reset actions, credits, and dev-only embedded panels.
+- Wires `settings-panel-controls.ts` row builders and `settings-panel-dev-tweaks.ts` particle tweak section.
+
+### src/ui/panels/settings-panel-controls.ts
+- Shared DOM row builders for settings controls.
+- Exports `createSliderRow`, `createToggleRow`, and `createSelectRow`.
+- Slider row includes gold glow interpolation and thresholded border/text shadow effects.
+
+### src/ui/panels/settings-panel-dev-tweaks.ts
+- Dev-only particle tweak section extracted from `settings-panel.ts`.
+- Exports `createDevTweaksSection()` which renders numeric tweak inputs and a reset-to-defaults action.
+- Owns the `DEV_TWEAK_FIELDS` list and writes directly to `particleTweaks` on input change.
 
 ### src/settings/settings-state.ts
 - User settings model and localStorage persistence.
