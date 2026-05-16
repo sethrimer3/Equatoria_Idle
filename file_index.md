@@ -819,10 +819,22 @@
 - Covers: `syncAmethystShips`, `updateAmethystShips`, `spawnAmethystLaser`, `updateAmethystLasers` (spiral pierce projectiles).
 
 ### src/render/rpg/rpg-targeting.ts
-- Targeting system for the RPG tab extracted from `rpg-render.ts` (~453 lines).
+- Targeting orchestrator for the RPG tab extracted from `rpg-render.ts` (~80 lines after helper extraction).
 - Re-exports `RpgTargetingCtx` and `RpgTargetingHandle` from `rpg-targeting-types.ts`.
 - Owns `targetedEnemy: object | null` state (moved from `rpg-render.ts`).
-- Covers: `findClosestTarget` (closest entity including projectiles), `findClosestEnemy` (closest enemy body only), `collectEnemyBodyTargets` (all enemy bodies as `ClosestTarget[]`), `findClosestEnemyFrom` (closest enemy from arbitrary position), `getTargetedEnemy` (validates stored target or falls back to closest), `tryTargetEnemyAt` (stub that clears target), `damageBodyTarget` (dispatches damage to correct type-specific damage fn).
+- Wires helper modules and exposes handle methods:
+  - nearest queries from `rpg-targeting-nearest.ts`
+  - target collection/state queries from `rpg-targeting-targets.ts`
+  - local `damageBodyTarget` damage dispatch and `tryTargetEnemyAt` target-clear stub.
+
+### src/render/rpg/rpg-targeting-nearest.ts
+- Nearest-target query helpers extracted from `rpg-targeting.ts`.
+- Exports `findClosestTarget(ctx, rangeSq)` (closest entity incl. projectiles + Aliven particles) and `findClosestEnemy(ctx, rangeSq)` (closest enemy body only).
+
+### src/render/rpg/rpg-targeting-targets.ts
+- Target collection and targeted-enemy resolution helpers extracted from `rpg-targeting.ts`.
+- Exports `collectEnemyBodyTargets(ctx)`, `findClosestEnemyFrom(ctx, x, y, rangeSq)`, and `getTargetedEnemy(ctx, targetedEnemy)`.
+- Keeps `ClosestTarget` assembly logic centralized for RPG targeting and multi-target weapon paths.
 
 ### src/render/rpg/rpg-targeting-types.ts
 - Type-only home for targeting contracts extracted from `rpg-targeting.ts`.
