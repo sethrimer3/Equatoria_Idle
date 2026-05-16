@@ -107,6 +107,24 @@ export interface AlivenParticleGroup {
   splitFlashY: number;
 }
 
+/**
+ * Context injected from rpg-render.ts into the per-frame aliven update functions.
+ * Defined here (in the type module) so that both rpg-aliven-updates.ts and
+ * rpg-aliven-specials.ts can import it without creating a circular dependency.
+ */
+export interface AlivenUpdateCtx {
+  playerX: number;
+  playerY: number;
+  playerRadius: number;
+  /** Current remaining i-frame duration (read-only from updates; use setPlayerIFramesMs to write). */
+  playerIFramesMs: number;
+  /** Grant the player i-frames directly (e.g. from spitter bullet hits). */
+  setPlayerIFramesMs(ms: number): void;
+  canvasW: number;
+  canvasH: number;
+  dealContactDamageToPlayer(atk: number): void;
+}
+
 /** Per-variant static tuning parameters, consumed by the factory. */
 export interface AlivenVariantParams {
   tierId: string;

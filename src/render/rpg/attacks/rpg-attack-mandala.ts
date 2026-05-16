@@ -119,7 +119,7 @@ function _fireWave(
     let inGap = false;
     for (let g = 0; g < atk.safeGapCount; g++) {
       const gapAngle = angleToPlayer + (g - (atk.safeGapCount - 1) / 2) * (atk.safeGapWidth * 1.8);
-      let diff = Math.abs(((angle - gapAngle) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+      const diff = Math.abs(((angle - gapAngle) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
       if (diff < atk.safeGapWidth) { inGap = true; break; }
     }
     if (inGap) continue;

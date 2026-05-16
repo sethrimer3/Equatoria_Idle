@@ -446,7 +446,8 @@
 
 ### src/render/rpg/rpg-aliven-types.ts
 - Type definitions for the AlivenParticle enemy system.
-- Exports: `AlivenParticle`, `AlivenParticleGroup`, `AlivenBullet`, `AlivenTrailPoint`, `AlivenSpecialKind`, `AlivenVariantParams`.
+- Exports: `AlivenParticle`, `AlivenParticleGroup`, `AlivenBullet`, `AlivenTrailPoint`, `AlivenSpecialKind`, `AlivenVariantParams`, `AlivenUpdateCtx`.
+- `AlivenUpdateCtx` was moved here from `rpg-aliven-updates.ts` to break a potential circular dependency between the updates and specials modules.
 
 ### src/render/rpg/rpg-aliven-constants.ts
 - Tuning constants and per-variant parameter table for the AlivenParticle enemy system.
@@ -457,9 +458,16 @@
 - Exports: `makeAlivenParticle(params, waveStatScale)`, `makeAlivenGroup(variantId, x, y, waveNumber)`.
 
 ### src/render/rpg/rpg-aliven-updates.ts
-- Per-frame physics, special-ability, and bullet updates for the AlivenParticle system.
-- Exports: `updateAlivenGroups(groups, ctx, deltaMs)`, `handleAlivenParticleDeath(group, dead)`, `AlivenUpdateCtx`.
-- Special kinds: spitter, dasher, pulser, healer, ember, splitter, orbiter.
+- **Core loop orchestrator** (~263 lines, trimmed from 499 by extracting specials to rpg-aliven-specials.ts).
+- Owns: spawn-over-time, centroid tracking, overlap separation, movement, trails, timers, and the `tickSpecial` dispatcher.
+- Exports: `updateAlivenGroups(groups, ctx, deltaMs)`.
+- Re-exports for backward compat: `AlivenUpdateCtx` (from rpg-aliven-types), `handleAlivenParticleDeath` (from rpg-aliven-specials).
+
+### src/render/rpg/rpg-aliven-specials.ts
+- **Special-ability tick functions** (~245 lines, extracted from rpg-aliven-updates.ts).
+- Owns: `tickContact`, `tickSpitter`, `tickDasher`, `tickPulser`, `tickHealer`, `tickGhost`, `tickBullets`, `handleAlivenParticleDeath`.
+- All exported; called by the `tickSpecial` dispatcher in rpg-aliven-updates.ts.
+- Private helper `getAtk(p)` computes proportional damage from maxHp.
 
 ### src/render/rpg/rpg-aliven-draw.ts
 - Canvas rendering for AlivenParticle groups: pulsing glow circles, comet trails, windup rings, bullets.
@@ -763,10 +771,15 @@
 - Covers: `syncAmethystShips`, `updateAmethystShips`, `spawnAmethystLaser`, `updateAmethystLasers` (spiral pierce projectiles).
 
 ### src/render/rpg/rpg-targeting.ts
-- Targeting system for the RPG tab extracted from `rpg-render.ts` (~290 lines).
-- Exports `RpgTargetingCtx` interface, `RpgTargetingHandle` interface, and `createRpgTargeting(ctx)` factory.
+- Targeting system for the RPG tab extracted from `rpg-render.ts` (~453 lines).
+- Re-exports `RpgTargetingCtx` and `RpgTargetingHandle` from `rpg-targeting-types.ts`.
 - Owns `targetedEnemy: object | null` state (moved from `rpg-render.ts`).
 - Covers: `findClosestTarget` (closest entity including projectiles), `findClosestEnemy` (closest enemy body only), `collectEnemyBodyTargets` (all enemy bodies as `ClosestTarget[]`), `findClosestEnemyFrom` (closest enemy from arbitrary position), `getTargetedEnemy` (validates stored target or falls back to closest), `tryTargetEnemyAt` (stub that clears target), `damageBodyTarget` (dispatches damage to correct type-specific damage fn).
+
+### src/render/rpg/rpg-targeting-types.ts
+- Type-only home for targeting contracts extracted from `rpg-targeting.ts`.
+- Exports `RpgTargetingCtx` (all enemy arrays + damage dispatch callbacks) and `RpgTargetingHandle` (public targeting API).
+- Keeps runtime logic in `rpg-targeting.ts` while preserving existing import compatibility through type re-exports.
 
 ### src/render/rpg/rpg-player-attack.ts
 - Player auto-attack context and dispatcher (~222 lines).
@@ -875,8 +888,21 @@
 - `update(nowMs)` advances rope physics for all active and slurping wires; must be called once per frame.
 - State is ephemeral — connections reset on page load.
 
-- Independent RPG canvas rendering system for the RPG tab (~1,143 lines after this refactor).
+### src/render/rpg/rpg-render-types.ts
+- Type-only home for the RPG render API extracted from `rpg-render.ts`.
+- Exports `RpgRender` and `RpgRenderOptions` interfaces.
+- `rpg-render.ts` re-exports these interfaces so existing imports from `rpg-render.ts` remain valid.
+
+### src/render/rpg/rpg-render-helpers.ts
+- Small pure/helper logic extracted from `rpg-render.ts` to keep the main module focused.
+- Exports `createCachedLuckPercentGetter(rpgSimState)` (XP-change-based luck cache), `findEquippedWeaponIdByEffect(effectKind, equippedWeaponIds)`, and `clampEnemyToBounds(enemy, widthPx, heightPx)`.
+- Contains no render-loop ownership state; `rpg-render.ts` remains the orchestrator and passes current values through.
+
+### src/render/rpg/rpg-render.ts
+- Independent RPG canvas rendering system for the RPG tab (~990 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
+- Public interfaces `RpgRender` and `RpgRenderOptions` moved to `rpg-render-types.ts` and re-exported from this module.
+- Misc reusable helpers moved to `rpg-render-helpers.ts` and consumed via thin forwarding wrappers.
 - Targeting helpers (findClosestTarget, findClosestEnemy, getTargetedEnemy, etc.) extracted to `rpg-targeting.ts`; rpg-render.ts keeps 7 one-liner forwarding stubs and delegates to `targeting: RpgTargetingHandle`.
 - Player weapon attack dispatch (`performWeaponAttack`) extracted to `rpg-player-attack.ts`; rpg-render.ts initialises `playerAttackCtx: RpgPlayerAttackCtx` and delegates via a one-liner stub.
 - Player damage helpers (spawnDamageNumber, spawnHitVisualsAt, dealDamageToPlayer, etc.) extracted to `rpg-player-damage.ts` via `createPlayerDamageFns` factory; rpg-render.ts constructs `playerDamageCtx` and destructures all seven returned functions.
