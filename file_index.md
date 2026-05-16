@@ -1029,10 +1029,21 @@
 - Used by `rpg-enemies-tab.ts` for enemy entry card icons.
 
 ### src/ui/panels/rpg-enemies-catalog.ts
-- Static bestiary data for the RPG enemies tab (~265 lines).
-- Exports `EnemyShape` type, `EnemyCatalogEntry` interface, `ENEMY_CATALOG` (15-entry array of regular enemies), and `BOSS_DESCRIPTIONS` (12-entry boss description strings).
-- Extracted from `rpg-enemies-tab.ts` to keep UI rendering logic separate from data definitions.
-- Imports size/color/stat constants directly from `rpg-constants.ts` and `rpg-enemy-constants.ts`.
+- Backward-compatible barrel for RPG enemies catalog exports.
+- Re-exports `EnemyShape`, `EnemyCatalogEntry`, `ENEMY_CATALOG`, and `BOSS_DESCRIPTIONS`.
+
+### src/ui/panels/rpg-enemies-catalog-types.ts
+- Type-only module for the bestiary schema.
+- Exports `EnemyShape` and `EnemyCatalogEntry`.
+
+### src/ui/panels/rpg-enemies-catalog-entries.ts
+- Static enemy catalog data for the RPG enemies tab.
+- Exports `ENEMY_CATALOG` with regular, elite, and aliven entries.
+- Imports size/color/stat constants from `rpg-constants.ts` and `rpg-enemy-constants.ts`.
+
+### src/ui/panels/rpg-enemies-catalog-bosses.ts
+- Static boss lore/description strings for the RPG enemies tab.
+- Exports `BOSS_DESCRIPTIONS`.
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
