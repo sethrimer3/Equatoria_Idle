@@ -919,9 +919,20 @@
 - Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
-- Dead-enemy sweep logic extracted from `rpg-wave-manager.ts` (~360 lines).
-- Exports `removeDeadEnemiesImpl(ctx, addKill)` — iterates all enemy arrays backward, triggers fluid explosions, accumulates XP from kills, attempts lucky-mote spawns, handles elite death with secret flags, handles aliven group defeat, and handles boss defeat (XP, completion tracking, secret flags).
+- Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.
+- Exports `removeDeadEnemiesImpl(ctx, addKill)` and keeps API stable for `rpg-wave-manager.ts`.
+- Delegates regular enemy-array sweeps to `rpg-wave-dead-enemies-standard.ts` and elite/aliven/boss logic to `rpg-wave-dead-enemies-special.ts`.
 - Called by `rpg-wave-manager.ts`'s `removeDeadEnemies()` closure.
+
+### src/render/rpg/rpg-wave-dead-enemies-standard.ts
+- Standard dead-enemy sweep pass for normal enemy arrays and shard/projectile cleanup.
+- Handles fluid explosion effects, lucky mote attempts, kill-counter increments, and XP accumulation for non-elite/non-boss kills.
+- Returns accumulated XP for application by the orchestrator.
+
+### src/render/rpg/rpg-wave-dead-enemies-special.ts
+- Special dead-entity sweep pass for elite enemies, aliven groups, and boss defeat handling.
+- Elite/aliven helpers return XP contributions; boss handling applies boss XP immediately and performs completion/secret-flag updates.
+- Keeps secret-achievement and telemetry side effects centralized away from standard enemy loops.
 
 ### src/render/rpg/rpg-enemy-spawn.ts
 - Enemy placement logic extracted from `rpg-wave-manager.ts` (~210 lines).
