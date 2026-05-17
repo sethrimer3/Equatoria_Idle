@@ -39,3 +39,17 @@
 
 ## Additional opportunities noticed but not implemented
 - The standard dead-enemy sweep still repeats similar loop structures per enemy type; a data-driven sweep table could reduce code size further, but was deferred to avoid introducing generic indirection risk in a combat hot path.
+
+## This pass (Build #52) — Ruby laser beam hit-sweep modularization
+
+### 1) Preserved hit semantics while extracting repeated beam collision loops
+- **Change made:** Moved the per-enemy/boss beam collision + damage sweep from `src/render/rpg/rpg-weapon-laser-beam.ts` to `src/render/rpg/rpg-weapon-laser-beam-hits.ts`.
+- **Why safe:** Beam geometry (projection/perpendicular distance), damage callbacks, and hit-effect/spawn-number side effects are unchanged; only module ownership changed.
+- **System affected:** RPG ruby laser-beam weapon hit resolution.
+- **Performance impact type:** Preserves existing runtime characteristics while improving maintainability.
+
+### 2) Centralized beam inclusion math into a single helper
+- **Change made:** Introduced `isWithinBeam` helper in the extracted module to keep repeated projection checks consistent across enemy families.
+- **Why safe:** Uses identical formulas previously copied inline, reducing drift risk without changing thresholds or constants.
+- **System affected:** Laser-beam target inclusion checks.
+- **Performance impact type:** Neutral to slightly positive by avoiding duplicate inline math blocks and reducing accidental future divergence.

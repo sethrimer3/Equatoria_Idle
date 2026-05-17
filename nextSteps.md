@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#51**
+Current build: **#52**
 
 ---
 
@@ -94,6 +94,10 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 
 ### Build #51 follow-up (wave dead-enemy modularization pass)
 - **Manual verification recommended:** Play a run with standard enemies, elite enemies, Aliven groups, and a boss defeat to confirm XP, lucky-mote drops, secret flags, and cleanup timing remain identical.
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts`, `src/render/particles/particle-system.ts`, and `src/render/background/substrate-effect.ts` remain high-size files for future safe extraction passes.
+
+### Build #52 follow-up (laser beam modularization pass)
+- **Manual verification recommended:** Test ruby laser beam against early, advanced, elite, and boss targets to confirm beam-hit thresholds, damage numbers, and hit effects remain unchanged.
 - **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts`, `src/render/particles/particle-system.ts`, and `src/render/background/substrate-effect.ts` remain high-size files for future safe extraction passes.
 
 ### Needs manual playtesting before claiming done

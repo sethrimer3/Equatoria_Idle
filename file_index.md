@@ -817,10 +817,16 @@
 - Covers: `spawnEmeraldSubMissiles` (cone or 360° burst), `spawnEmeraldSwirlExplosion`, `updateEmeraldSubMissiles` (seek, decel, AOE), `updateEmeraldSwirlParticles`.
 
 ### src/render/rpg/rpg-weapon-laser-beam.ts
-- Ruby laser beam weapon system extracted from `rpg-weapon-systems.ts` (~421 lines).
+- Ruby laser beam weapon orchestrator extracted from `rpg-weapon-systems.ts` (~230 lines after hit-sweep extraction).
 - Exports `LaserBeamWeaponCtx` interface, `LaserBeamWeaponHandle` interface, and `createLaserBeamWeaponSystem(ctx)` factory.
 - Owns `let laserBeamEffect: LaserBeamEffect | null`; exposed via getter on handle.
-- Covers: `fireLaserBeam` (instantaneous ray cast + fluid beam injection), `updateLaserBeamEffect` (aging/deactivation).
+- Delegates beam collision/damage sweep to `rpg-weapon-laser-beam-hits.ts`.
+- Covers: `fireLaserBeam` (instantaneous ray cast + helper-driven hit sweep + fluid beam injection), `updateLaserBeamEffect` (aging/deactivation).
+
+### src/render/rpg/rpg-weapon-laser-beam-hits.ts
+- Ruby laser beam hit-sweep helper extracted from `rpg-weapon-laser-beam.ts`.
+- Exports `LaserBeamHitSweepCtx` and `applyLaserBeamHitSweep(ctx)`.
+- Owns beam-path collision checks and per-enemy/boss damage + hit-effect + damage-number side effects for all enemy families.
 
 ### src/render/rpg/rpg-weapon-ships.ts
 - Sapphire companion ship system and combined factory (~270 lines). Amethyst ships now live in `rpg-weapon-amethyst-ships.ts`.
