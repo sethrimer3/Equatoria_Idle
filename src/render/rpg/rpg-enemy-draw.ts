@@ -20,17 +20,6 @@ import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
   VoidEnemy,
-  QuartzEnemy,
-  RubyEnemy,
-  SunstoneEnemy,
-  CitrineEnemy,
-  IoliteEnemy,
-  AmethystEnemy,
-  DiamondEnemy,
-  NullstoneEnemy,
-  FracterylEnemy,
-  EigensteinEnemy,
-  BossEnemy,
 } from './rpg-enemy-types';
 
 import {
@@ -39,26 +28,19 @@ import {
   LASER_ENEMY_SIZE, LASER_ENEMY_COLOR, LASER_ENEMY_GLOW,
   LASER_DASH_DISTANCE, LASER_TRAIL_ERASE_MS, ATTACK_TRAIL_LENGTH_SCALE,
   ATTACK_TRAIL_ALPHA, ATTACK_TRAIL_ERASE_FADE,
-  BOSS_SIZE_BASE,
 } from './rpg-constants';
 import {
   EMERALD_ENEMY_SIZE, EMERALD_ENEMY_GLOW, EMERALD_ENEMY_COLOR, EMERALD_CHARGE_MS,
   AMBER_ENEMY_SIZE, AMBER_ENEMY_COLOR, AMBER_ENEMY_GLOW,
   AMBER_SHARD_TRAIL_CAP, AMBER_SHARD_GLOW, AMBER_SHARD_COLOR, AMBER_SHARD_SIZE,
   VOID_AURA_PULSE_MS, VOID_ENEMY_GLOW, VOID_AURA_RADIUS, VOID_ENEMY_COLOR, VOID_ENEMY_SIZE,
-  QUARTZ_ENEMY_SIZE,
-  RUBY_ENEMY_SIZE,
-  SUNSTONE_ENEMY_SIZE,
-  CITRINE_ENEMY_SIZE,
-  IOLITE_ENEMY_SIZE,
-  AMETHYST_ENEMY_SIZE,
-  DIAMOND_ENEMY_SIZE,
-  NULLSTONE_ENEMY_SIZE,
-  FRACTERYL_ENEMY_SIZE,
-  EIGENSTEIN_ENEMY_SIZE,
 } from './rpg-enemy-constants';
-import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { setLowGraphicsMode as setAdvLowGraphics } from './rpg-enemy-draw-adv';
+import {
+  setEnemyIndicatorLowGraphicsMode,
+} from './rpg-enemy-indicators';
+
+export { drawEnemyIndicators } from './rpg-enemy-indicators';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -70,6 +52,7 @@ let isLowGraphicsMode = false;
 export function setLowGraphicsMode(enabled: boolean): void {
   isLowGraphicsMode = enabled;
   setAdvLowGraphics(enabled);
+  setEnemyIndicatorLowGraphicsMode(enabled);
 }
 
 /**
@@ -358,83 +341,5 @@ export function drawLaserEnemies(ctx: CanvasRenderingContext2D, enemies: LaserEn
     ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
     ctx.fillStyle = LASER_ENEMY_COLOR;
     ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
-  }
-}
-
-// ── Enemy indicator markers (triangle arrows or outline boxes above each enemy) ─
-
-/** Draws red triangle or outline indicators above all living enemies.
- *  Aliven groups receive a tier-colored marker at their group centroid. */
-export function drawEnemyIndicators(
-  ctx: CanvasRenderingContext2D,
-  style: 'triangle' | 'outline' | 'off',
-  enemies: LaserEnemy[],
-  sapphireEnemies: SapphireEnemy[],
-  emeraldEnemies: EmeraldEnemy[],
-  amberEnemies: AmberEnemy[],
-  voidEnemies: VoidEnemy[],
-  quartzEnemies: QuartzEnemy[],
-  rubyEnemies: RubyEnemy[],
-  sunstoneEnemies: SunstoneEnemy[],
-  citrineEnemies: CitrineEnemy[],
-  ioliteEnemies: IoliteEnemy[],
-  amethystEnemies: AmethystEnemy[],
-  diamondEnemies: DiamondEnemy[],
-  nullstoneEnemies: NullstoneEnemy[],
-  fracterylEnemies: FracterylEnemy[],
-  eigensteinEnemies: EigensteinEnemy[],
-  bossEnemy: BossEnemy | null,
-  alivenGroups: AlivenParticleGroup[],
-): void {
-  if (style === 'off') return;
-  const drawMarker = (x: number, y: number, size: number, color = '#ff3b30'): void => {
-    if (style === 'outline') {
-      ctx.save();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
-      if (!isLowGraphicsMode) {
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = color;
-      }
-      ctx.strokeRect(x - size / 2 - 2, y - size / 2 - 2, size + 4, size + 4);
-      ctx.restore();
-      return;
-    }
-    ctx.save();
-    const markerY = y - size * 0.9 - 5;
-    ctx.fillStyle = color;
-    if (!isLowGraphicsMode) {
-      ctx.shadowBlur = 5;
-      ctx.shadowColor = color;
-    }
-    ctx.beginPath();
-    ctx.moveTo(x, markerY);
-    ctx.lineTo(x - 3, markerY - 5);
-    ctx.lineTo(x + 3, markerY - 5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  };
-  for (const enemy of enemies)         drawMarker(enemy.x, enemy.y, LASER_ENEMY_SIZE);
-  for (const enemy of sapphireEnemies) drawMarker(enemy.x, enemy.y, SAPPHIRE_ENEMY_SIZE);
-  for (const enemy of emeraldEnemies)  drawMarker(enemy.x, enemy.y, EMERALD_ENEMY_SIZE);
-  for (const enemy of amberEnemies)    drawMarker(enemy.x, enemy.y, AMBER_ENEMY_SIZE);
-  for (const enemy of voidEnemies)     drawMarker(enemy.x, enemy.y, VOID_ENEMY_SIZE);
-  for (const enemy of quartzEnemies)   drawMarker(enemy.x, enemy.y, QUARTZ_ENEMY_SIZE);
-  for (const enemy of rubyEnemies)     drawMarker(enemy.x, enemy.y, RUBY_ENEMY_SIZE);
-  for (const enemy of sunstoneEnemies) drawMarker(enemy.x, enemy.y, SUNSTONE_ENEMY_SIZE);
-  for (const enemy of citrineEnemies)  drawMarker(enemy.x, enemy.y, CITRINE_ENEMY_SIZE);
-  for (const enemy of ioliteEnemies)   drawMarker(enemy.x, enemy.y, IOLITE_ENEMY_SIZE);
-  for (const enemy of amethystEnemies) drawMarker(enemy.x, enemy.y, AMETHYST_ENEMY_SIZE);
-  for (const enemy of diamondEnemies)  drawMarker(enemy.x, enemy.y, DIAMOND_ENEMY_SIZE);
-  for (const enemy of nullstoneEnemies) drawMarker(enemy.x, enemy.y, NULLSTONE_ENEMY_SIZE);
-  for (const enemy of fracterylEnemies) drawMarker(enemy.x, enemy.y, FRACTERYL_ENEMY_SIZE);
-  for (const enemy of eigensteinEnemies) drawMarker(enemy.x, enemy.y, EIGENSTEIN_ENEMY_SIZE);
-  if (bossEnemy) drawMarker(bossEnemy.x, bossEnemy.y, BOSS_SIZE_BASE * 2);
-  // Aliven groups: use each group's tier color for the indicator so they stand out.
-  for (const group of alivenGroups) {
-    if (group.aliveCount <= 0) continue;
-    const groupColor = group.particles.find(p => p.isAlive)?.glowColor ?? '#aaaaff';
-    drawMarker(group.cx, group.cy, 8, groupColor);
   }
 }

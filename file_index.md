@@ -384,12 +384,22 @@
 - `INFLUENCE_VISUAL_SCALE = 0.75` — visual range is 25% smaller than physics range.
 
 ### src/render/forge/forge-renderer.ts
-- Forge sprite rendering with crunch animation overlay.
-- `drawForge(ctx, ..., heatTapCount)` — accepts current heat tap count; draws 1–2 pulsing amber/orange rings to show forge heat state.
-- `drawForgeHeatRings(ctx, x, y, heatTapCount, nowMs)` — draws 1 ring for 1 tap, 2 rings for 2 taps; rings pulse and fade in 2s period.
-- Influence circle is now a bidirectional fire-color swirl at 75% of `MAX_FORGE_ATTRACTION_DISTANCE`.
-- `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
-- Two arc sets rotate clockwise and counter-clockwise simultaneously.
+- Forge rendering orchestrator (~200 lines after private helper extraction).
+- Public exports: `preloadForgeSprites`, `drawForge`, `drawLoomFieldAuras`, `drawForgeCrunch`, `drawForgeSacrificeFlash`.
+- `drawForge(ctx, ..., heatTapCount)` — orchestrates background glow, heat rings, sprite/fallback, and influence swirl by calling helpers from `forge-renderer-draw.ts`.
+- `drawLoomFieldAuras` — draws faint tier-colored aura rings for each active loom capture field.
+- `drawForgeSacrificeFlash` — 600ms expanding shockwave ring at the forge on sacrifice crunch completion.
+- Sub-draw helpers live in `forge-renderer-draw.ts` (not for direct import).
+
+### src/render/forge/forge-renderer-draw.ts
+- Private draw helpers for `forge-renderer.ts` (~230 lines).
+- Contains `FORGE_FIRE_COLORS` (7-color fire gradient), and the following helpers:
+  - `drawForgeBackgroundGlow` — slow-pulsing warm radial glow behind the forge.
+  - `drawForgeHeatRings` — 1–2 pulsing amber/orange rings for forge heat state.
+  - `drawForgeInfluenceSwirl` — bidirectional fire-color swirl arcs at the influence radius.
+  - `drawForgeSprite` / `drawForgeFallback` — sprite or geometric fallback.
+  - `drawLoomAura` — faint tier-colored capture ring for a single loom field.
+- Not intended for import outside `forge-renderer.ts`.
 
 ### src/render/rpg/rpg-constants.ts
 - Core numeric and string constants for the RPG rendering system (~311 lines after weapon extraction).
@@ -517,12 +527,10 @@
 - Factory functions for late-game enemies and boss: `makeFracterylEnemy`, `makeFracterylShard`, `makeEigensteinEnemy`, `makeDanmakuSafeZone`, `makeEliteEnemy(tier, x, y, waveNumber)`, `makeBossEnemy(rawBossId, waveNumber, w, h)`.
 
 ### src/render/rpg/rpg-fluid.ts
-- Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
-- Grid-based velocity and dye field (60 × 80 cells).  Solver: inject forces → decay → diffuse velocity → advect tracer particles.
+- Euler fluid background simulation orchestrator for RPG mode. Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
+- Owns grid/particle state, force injection (`addForce`, `addExplosion`), resize/reset, and graphics-density switching.
+- Delegates per-frame simulation to `rpg-fluid-step.ts` and trail draw batching to `rpg-fluid-render.ts`.
 - **No ambient injection** — velocity enters only via `addForce()` and `addExplosion()` calls from gameplay systems.
-- **Lifecycle/activation particle model**: particles are dormant until local speed exceeds `PARTICLE_WAKE_SPEED`.  On wake, each particle receives an `activation` (0–1, nonlinear in disturbance speed) and a finite `lifetimeSec`.  Trail opacity fades from `activation × smoothstep(lifeFrac) × maxAlphaScale` → 0.
-- Expired or out-of-bounds particles are recycled into underpopulated coarse cells (10 × 14 occupancy grid) to prevent density clustering.
-- Trail segments are batched by (hue-bucket × alpha-bucket) → at most 60 canvas state changes per frame.
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 - Constants, types, and helpers extracted to `rpg-fluid-constants.ts`.
 
@@ -530,6 +538,16 @@
 - Internal constants, types, and helpers for `rpg-fluid.ts`.
 - Exports all grid/particle/field/colour/batching constants, `_batches` pre-allocated draw buffer, math helpers (_clamp, _smoothstep, _hueBucket, _bilerp), `FluidParticle` interface, and `_makeParticle()`.
 - Should not be imported by any module other than `rpg-fluid.ts`.
+
+### src/render/rpg/rpg-fluid-step.ts
+- Per-frame fluid simulation update loop extracted from `rpg-fluid.ts`.
+- Handles field decay and clamp, velocity diffusion, sparse occupancy rebuild, particle advection/lifecycle, colour blending, and sparse respawn recycling.
+- Keeps hot-path behavior allocation-free by mutating pre-allocated arrays passed by `rpg-fluid.ts`.
+
+### src/render/rpg/rpg-fluid-render.ts
+- Per-frame trail rendering extraction for fluid particles.
+- Clears and repopulates shared hue/alpha `_batches`, then issues batched canvas strokes.
+- Preserves prior draw strategy of at most `HUE_STEPS × ALPHA_BUCKETS` state buckets per frame.
 
 ### src/render/rpg/rpg-entity-draw.ts
 - Exported pure draw functions for weapon projectiles (~346 lines after player-draw extraction).
@@ -602,11 +620,17 @@
 - Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
-- Exported pure draw functions for starter-through-Void tier enemies (~431 lines).
-- Covers: Sapphire+missiles, Emerald, Amber+shards, Void, Laser, plus `drawAttackTrail` and `drawEnemyIndicators` (shared infrastructure used by all tiers).
+- Exported pure draw functions for starter-through-Void tier enemies (~370 lines).
+- Covers: Sapphire+missiles, Emerald, Amber+shards, Void, Laser, plus `drawAttackTrail`.
 - Advanced enemy draw functions (Quartz and above) have been split out to `rpg-enemy-draw-adv.ts`.
-- `setLowGraphicsMode()` propagates to `rpg-enemy-draw-adv.ts` so callers only need one call.
+- `setLowGraphicsMode()` propagates to both `rpg-enemy-draw-adv.ts` and `rpg-enemy-indicators.ts` so callers only need one call.
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
+- Re-exports `drawEnemyIndicators` from `rpg-enemy-indicators.ts` for call-site compatibility.
+
+### src/render/rpg/rpg-enemy-indicators.ts
+- Extracted enemy marker renderer (~130 lines) from `rpg-enemy-draw.ts`.
+- Exports `drawEnemyIndicators()` for triangle/outline/off enemy markers across all enemy tiers + boss + Aliven group centroids.
+- Owns `setEnemyIndicatorLowGraphicsMode()` and local low-graphics flag, set via `rpg-enemy-draw.ts`’s `setLowGraphicsMode()` fan-out.
 
 ### src/render/rpg/rpg-enemy-draw-adv.ts
 - Exported pure draw functions for advanced (Quartz-tier and above) enemies (~376 lines).
@@ -809,10 +833,16 @@
 - Covers: `spawnEmeraldSubMissiles` (cone or 360° burst), `spawnEmeraldSwirlExplosion`, `updateEmeraldSubMissiles` (seek, decel, AOE), `updateEmeraldSwirlParticles`.
 
 ### src/render/rpg/rpg-weapon-laser-beam.ts
-- Ruby laser beam weapon system extracted from `rpg-weapon-systems.ts` (~421 lines).
+- Ruby laser beam weapon orchestrator extracted from `rpg-weapon-systems.ts` (~230 lines after hit-sweep extraction).
 - Exports `LaserBeamWeaponCtx` interface, `LaserBeamWeaponHandle` interface, and `createLaserBeamWeaponSystem(ctx)` factory.
 - Owns `let laserBeamEffect: LaserBeamEffect | null`; exposed via getter on handle.
-- Covers: `fireLaserBeam` (instantaneous ray cast + fluid beam injection), `updateLaserBeamEffect` (aging/deactivation).
+- Delegates beam collision/damage sweep to `rpg-weapon-laser-beam-hits.ts`.
+- Covers: `fireLaserBeam` (instantaneous ray cast + helper-driven hit sweep + fluid beam injection), `updateLaserBeamEffect` (aging/deactivation).
+
+### src/render/rpg/rpg-weapon-laser-beam-hits.ts
+- Ruby laser beam hit-sweep helper extracted from `rpg-weapon-laser-beam.ts`.
+- Exports `LaserBeamHitSweepCtx` and `applyLaserBeamHitSweep(ctx)`.
+- Owns beam-path collision checks and per-enemy/boss damage + hit-effect + damage-number side effects for all enemy families.
 
 ### src/render/rpg/rpg-weapon-ships.ts
 - Sapphire companion ship system and combined factory (~270 lines). Amethyst ships now live in `rpg-weapon-amethyst-ships.ts`.
@@ -911,9 +941,20 @@
 - Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
-- Dead-enemy sweep logic extracted from `rpg-wave-manager.ts` (~360 lines).
-- Exports `removeDeadEnemiesImpl(ctx, addKill)` — iterates all enemy arrays backward, triggers fluid explosions, accumulates XP from kills, attempts lucky-mote spawns, handles elite death with secret flags, handles aliven group defeat, and handles boss defeat (XP, completion tracking, secret flags).
+- Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.
+- Exports `removeDeadEnemiesImpl(ctx, addKill)` and keeps API stable for `rpg-wave-manager.ts`.
+- Delegates regular enemy-array sweeps to `rpg-wave-dead-enemies-standard.ts` and elite/aliven/boss logic to `rpg-wave-dead-enemies-special.ts`.
 - Called by `rpg-wave-manager.ts`'s `removeDeadEnemies()` closure.
+
+### src/render/rpg/rpg-wave-dead-enemies-standard.ts
+- Standard dead-enemy sweep pass for normal enemy arrays and shard/projectile cleanup.
+- Handles fluid explosion effects, lucky mote attempts, kill-counter increments, and XP accumulation for non-elite/non-boss kills.
+- Returns accumulated XP for application by the orchestrator.
+
+### src/render/rpg/rpg-wave-dead-enemies-special.ts
+- Special dead-entity sweep pass for elite enemies, aliven groups, and boss defeat handling.
+- Elite/aliven helpers return XP contributions; boss handling applies boss XP immediately and performs completion/secret-flag updates.
+- Keeps secret-achievement and telemetry side effects centralized away from standard enemy loops.
 
 ### src/render/rpg/rpg-enemy-spawn.ts
 - Enemy placement logic extracted from `rpg-wave-manager.ts` (~210 lines).
@@ -984,7 +1025,7 @@
 - Orbit projectile update (`updateOrbitProjectile`) extracted to `rpg-orbit-projectile.ts`; rpg-render.ts owns `orbitProjectileCtx: OrbitProjectileCtx` and calls `updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs)`.
 - Pointer + keyboard input handling extracted to `rpg-input.ts`; rpg-render.ts calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
-- Laser enemy draw (`drawLaserEnemies`) and all-enemy indicator markers (`drawEnemyIndicators`) extracted to `rpg-enemy-draw.ts`; called with explicit arrays and `enemyIndicatorStyle`.
+- Laser enemy draw (`drawLaserEnemies`) lives in `rpg-enemy-draw.ts`; all-enemy indicator markers (`drawEnemyIndicators`) now live in `rpg-enemy-indicators.ts` and are re-exported by `rpg-enemy-draw.ts` for call-site stability.
 - Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-player-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
@@ -1184,9 +1225,15 @@
 - `ACHIEVEMENT_GROUP_BY_ID` provides quick lookup by group id.
 
 ### src/sim/achievements/achievement-state.ts
-- `AchievementState` — set of unlocked achievement IDs plus cached bonus multipliers.
-- `checkAndUnlockAchievements()` — checks lifetime motes for each tier and unlocks achievements.
-- `recomputeBonuses()` — recalculates `tapMultiplierBonus` and `loomMultiplierBonus` from unlocked set.
+- `AchievementState` — set of unlocked/claimed achievement IDs plus cached bonus multipliers.
+- `createAchievementState()`, `checkAndUnlockAchievements()`, `recomputeBonuses()`.
+- `claimAchievement()`, `claimAllUnlockedAchievements()`, `getClaimableCount()`.
+- Condition evaluation delegated to `achievement-conditions.ts` via `isConditionMet`.
+
+### src/sim/achievements/achievement-conditions.ts
+- `isConditionMet(condition, resources, equation, rpg, aliven, globalTapMultiplier)` — switch dispatch over all `AchievementCondition` kinds (~35 cases).
+- Extracted from `achievement-state.ts` to keep state management separate from condition logic.
+- Not intended for direct import outside the `achievements/` directory.
 
 ### src/sim/aliven/aliven-state.ts
 - Aliven system — tracks which mote types have been "alivened" (awakened for Particle Life).

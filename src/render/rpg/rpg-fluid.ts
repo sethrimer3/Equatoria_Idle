@@ -2,39 +2,27 @@
  * rpg-fluid.ts — Euler fluid background for RPG mode.
  *
  * Ported and adapted from Chapter 3 EulerFluidEffect.js in
- * sethrimer3/Thero_Idle_TD.  The core particle advection and batched trail
+ * sethrimer3/Thero_Idle_TD. The core particle advection and batched trail
  * rendering approach are preserved; the analytical velocity field has been
  * replaced with a grid-based accumulation model driven entirely by gameplay.
  *
- * Solver structure: inject forces → decay → diffuse → advect particles → draw.
- * No ambient / passive injection: velocity enters the field only through
- * explicit addForce() / addExplosion() calls made by gameplay systems.
- *
- * Opacity model: each trail segment's alpha is gated by the particle's
- * exponentially-smoothed local speed, so the background fades to near-
- * invisible when nothing is moving and brightens during active combat.
- *
- * Constants, types, and math helpers are in rpg-fluid-constants.ts.
+ * Constants, shared types, and math helpers are in rpg-fluid-constants.ts.
+ * Per-frame simulation and rendering loops are in:
+ * - rpg-fluid-step.ts
+ * - rpg-fluid-render.ts
  */
 
 import {
   FLUID_COLS, FLUID_ROWS, FLUID_SIZE,
-  PARTICLE_COUNT_LOW, PARTICLE_COUNT_HIGH, TRAIL_LENGTH, TRAIL_LINE_WIDTH,
-  SPEED_FULL_OPACITY, TRAIL_PEAK_ALPHA, SPEED_SMOOTH_ALPHA,
-  PARTICLE_WAKE_SPEED, PARTICLE_FULL_ACT_SPEED,
-  PARTICLE_MIN_LIFETIME_SEC, PARTICLE_MAX_LIFETIME_SEC,
-  PARTICLE_ACTIVATION_POWER, PARTICLE_REWAKE_BOOST,
-  SPARSE_RESPAWN_COLS, SPARSE_RESPAWN_ROWS,
-  VEL_RETAIN_PER_SEC, DYE_RETAIN_PER_SEC, MAX_GRID_VEL,
-  MIN_DYE_MAG_FOR_BLEND,
+  PARTICLE_COUNT_LOW, PARTICLE_COUNT_HIGH,
   FORCE_SIGMA_CELLS, FORCE_TWO_SIGMA_SQ, MAX_INJECT_VEL,
-  OOB_MARGIN_CELLS, RESIZE_THRESHOLD_FR,
-  ALPHA_BUCKETS, HUE_STEPS, _batches,
-  _clamp, _smoothstep, _hueBucket, _bilerp,
-  type FluidParticle, _makeParticle,
+  SPARSE_RESPAWN_COLS, SPARSE_RESPAWN_ROWS,
+  RESIZE_THRESHOLD_FR,
+  _clamp, _makeParticle,
+  type FluidParticle,
 } from './rpg-fluid-constants';
-
-// ── Public API types ───────────────────────────────────────────────────────────
+import { stepFluidState } from './rpg-fluid-step';
+import { renderFluidTrails } from './rpg-fluid-render';
 
 /**
  * A single directional force and colour impulse to inject this frame.
@@ -94,50 +82,35 @@ export interface RpgFluid {
   setLowGraphicsMode(enabled: boolean): void;
 }
 
-// ── Factory ───────────────────────────────────────────────────────────────────
-
 export function createRpgFluid(): RpgFluid {
-  let widthPx  = 320;
+  let widthPx = 320;
   let heightPx = 568;
-  let cellW    = widthPx  / FLUID_COLS;
-  let cellH    = heightPx / FLUID_ROWS;
+  let cellW = widthPx / FLUID_COLS;
+  let cellH = heightPx / FLUID_ROWS;
 
-  // ── Grid arrays (all Float32, flat row-major) ───────────────────────────────
   const vxGrid = new Float32Array(FLUID_SIZE);
   const vyGrid = new Float32Array(FLUID_SIZE);
-  // Dye: accumulated, not normalised — decays alongside velocity.
-  const dyeR   = new Float32Array(FLUID_SIZE);
-  const dyeG   = new Float32Array(FLUID_SIZE);
-  const dyeB   = new Float32Array(FLUID_SIZE);
-  // Scratch buffers for the diffusion pass (avoids separate allocation per frame).
-  const tmpVx  = new Float32Array(FLUID_SIZE);
-  const tmpVy  = new Float32Array(FLUID_SIZE);
+  const dyeR = new Float32Array(FLUID_SIZE);
+  const dyeG = new Float32Array(FLUID_SIZE);
+  const dyeB = new Float32Array(FLUID_SIZE);
+  const tmpVx = new Float32Array(FLUID_SIZE);
+  const tmpVy = new Float32Array(FLUID_SIZE);
 
-  // ── Particle pool ───────────────────────────────────────────────────────────
-  let currentParticleCount = PARTICLE_COUNT_HIGH; // default: high graphics
+  let currentParticleCount = PARTICLE_COUNT_HIGH;
   let particles: FluidParticle[] = [];
   for (let i = 0; i < currentParticleCount; i++) particles.push(_makeParticle());
 
-  // ── Sparse occupancy grid (pre-allocated, rebuilt each step) ─────────────────
-  // Maps coarse cells → particle count.  Used to steer lifecycle-expired
-  // particles toward underpopulated regions without O(n²) nearest-neighbour checks.
-  const _occupancy  = new Int16Array(SPARSE_RESPAWN_COLS * SPARSE_RESPAWN_ROWS);
-  const _sparseCellW = FLUID_COLS / SPARSE_RESPAWN_COLS;
-  const _sparseCellH = FLUID_ROWS / SPARSE_RESPAWN_ROWS;
+  const occupancy = new Int16Array(SPARSE_RESPAWN_COLS * SPARSE_RESPAWN_ROWS);
+  const sparseCellW = FLUID_COLS / SPARSE_RESPAWN_COLS;
+  const sparseCellH = FLUID_ROWS / SPARSE_RESPAWN_ROWS;
 
-  // ── Coordinate helpers ──────────────────────────────────────────────────────
-  function _toGX(wx: number): number { return wx / cellW; }
-  function _toGY(wy: number): number { return wy / cellH; }
+  function toGX(wx: number): number { return wx / cellW; }
+  function toGY(wy: number): number { return wy / cellH; }
 
-  // ── Force splat ─────────────────────────────────────────────────────────────
-  /**
-   * Add a Gaussian-weighted velocity and colour impulse centred on grid
-   * position (gx, gy).  All neighbouring cells within ≈ 1.5σ are affected.
-   */
-  function _splat(
+  function splat(
     gx: number, gy: number,
     gvx: number, gvy: number,
-    gr: number,  gg: number, gb: number,
+    gr: number, gg: number, gb: number,
     strength: number,
   ): void {
     const span = Math.ceil(FORCE_SIGMA_CELLS * 1.6);
@@ -148,67 +121,23 @@ export function createRpgFluid(): RpgFluid {
 
     for (let row = row0; row <= row1; row++) {
       for (let col = col0; col <= col1; col++) {
-        const dx  = col - gx;
-        const dy  = row - gy;
-        const w   = Math.exp(-(dx * dx + dy * dy) / FORCE_TWO_SIGMA_SQ) * strength;
+        const dx = col - gx;
+        const dy = row - gy;
+        const w = Math.exp(-(dx * dx + dy * dy) / FORCE_TWO_SIGMA_SQ) * strength;
         const idx = row * FLUID_COLS + col;
         vxGrid[idx] += gvx * w;
         vyGrid[idx] += gvy * w;
-        dyeR[idx]   += gr  * w;
-        dyeG[idx]   += gg  * w;
-        dyeB[idx]   += gb  * w;
+        dyeR[idx] += gr * w;
+        dyeG[idx] += gg * w;
+        dyeB[idx] += gb * w;
       }
     }
   }
-
-  // ── Velocity diffusion ──────────────────────────────────────────────────────
-  /**
-   * One pass of a 5-point Laplacian diffusion with blend factor `mix`.
-   * Smooths the velocity field so particle trails look fluid rather than
-   * blocky.  The dye field is left undiffused to preserve colour sharpness.
-   */
-  function _diffuseVelocity(mix: number): void {
-    for (let row = 0; row < FLUID_ROWS; row++) {
-      for (let col = 0; col < FLUID_COLS; col++) {
-        const i  = row * FLUID_COLS + col;
-        const il = col > 0            ? i - 1          : i;
-        const ir = col < FLUID_COLS-1 ? i + 1          : i;
-        const iu = row > 0            ? i - FLUID_COLS : i;
-        const id = row < FLUID_ROWS-1 ? i + FLUID_COLS : i;
-        tmpVx[i] = vxGrid[i] * (1 - mix) + (vxGrid[il] + vxGrid[ir] + vxGrid[iu] + vxGrid[id]) * (mix * 0.25);
-        tmpVy[i] = vyGrid[i] * (1 - mix) + (vyGrid[il] + vyGrid[ir] + vyGrid[iu] + vyGrid[id]) * (mix * 0.25);
-      }
-    }
-    vxGrid.set(tmpVx);
-    vyGrid.set(tmpVy);
-  }
-
-  // ── Sparse respawn helper ───────────────────────────────────────────────────
-  /**
-   * Return the index in _occupancy with the lowest particle count.
-   * A random start offset breaks ties so consecutive respawns scatter
-   * rather than always targeting the same cell.  O(140) — negligible cost.
-   */
-  function _findSparseCell(): number {
-    const n      = _occupancy.length;
-    const offset = Math.floor(Math.random() * n);
-    let minVal   = 32767;
-    let minIdx   = 0;
-    for (let k = 0; k < n; k++) {
-      const i = (offset + k) % n;
-      if (_occupancy[i] < minVal) {
-        minVal = _occupancy[i];
-        minIdx = i;
-      }
-    }
-    return minIdx;
-  }
-
-  // ── Public methods ──────────────────────────────────────────────────────────
 
   function resize(w: number, h: number): void {
-    const prevW = widthPx, prevH = heightPx;
-    widthPx  = w;
+    const prevW = widthPx;
+    const prevH = heightPx;
+    widthPx = w;
     heightPx = h;
     cellW = w / FLUID_COLS;
     cellH = h / FLUID_ROWS;
@@ -220,256 +149,59 @@ export function createRpgFluid(): RpgFluid {
   }
 
   function addForce(impulse: FluidImpulse): void {
-    const gx     = _toGX(impulse.x);
-    const gy     = _toGY(impulse.y);
-    const str    = impulse.strength ?? 1.0;
-    // Convert world px/s → grid cells/s, then cap magnitude.
+    const gx = toGX(impulse.x);
+    const gy = toGY(impulse.y);
+    const str = impulse.strength ?? 1.0;
     const gvxRaw = impulse.vx / cellW;
     const gvyRaw = impulse.vy / cellH;
-    const gspd   = Math.sqrt(gvxRaw * gvxRaw + gvyRaw * gvyRaw);
-    const scale  = gspd > MAX_INJECT_VEL ? MAX_INJECT_VEL / gspd : 1.0;
-    // Exponential (quadratic) dropoff: slow movements barely disturb the
-    // fluid, fast movements disturb it proportionally more.  This prevents
-    // even tiny entity displacements from sending fluid particles flying.
-    const normSpd     = _clamp(gspd / MAX_INJECT_VEL, 0, 1);
+    const gspd = Math.sqrt(gvxRaw * gvxRaw + gvyRaw * gvyRaw);
+    const scale = gspd > MAX_INJECT_VEL ? MAX_INJECT_VEL / gspd : 1.0;
+    const normSpd = _clamp(gspd / MAX_INJECT_VEL, 0, 1);
     const speedFactor = normSpd * normSpd;
-    _splat(gx, gy, gvxRaw * scale, gvyRaw * scale, impulse.r, impulse.g, impulse.b, str * speedFactor);
+    splat(gx, gy, gvxRaw * scale, gvyRaw * scale, impulse.r, impulse.g, impulse.b, str * speedFactor);
   }
 
   function addExplosion(
-    x: number, y: number,
+    x: number,
+    y: number,
     strength: number,
-    r: number, g: number, b: number,
+    r: number,
+    g: number,
+    b: number,
   ): void {
-    const gx     = _toGX(x);
-    const gy     = _toGY(y);
+    const gx = toGX(x);
+    const gy = toGY(y);
     const blastR = FORCE_SIGMA_CELLS * 1.8;
-    // Eight evenly-spaced radial jets plus a central colour injection.
     for (let k = 0; k < 8; k++) {
       const angle = (k / 8) * Math.PI * 2;
-      const cos   = Math.cos(angle);
-      const sin   = Math.sin(angle);
-      const ox    = gx + cos * blastR * 0.35;
-      const oy    = gy + sin * blastR * 0.35;
-      _splat(ox, oy, cos * MAX_INJECT_VEL * 0.75, sin * MAX_INJECT_VEL * 0.75, r, g, b, strength * 0.45);
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const ox = gx + cos * blastR * 0.35;
+      const oy = gy + sin * blastR * 0.35;
+      splat(ox, oy, cos * MAX_INJECT_VEL * 0.75, sin * MAX_INJECT_VEL * 0.75, r, g, b, strength * 0.45);
     }
-    // Centre injection carries the colour but minimal velocity.
-    _splat(gx, gy, 0, 0, r, g, b, strength);
+    splat(gx, gy, 0, 0, r, g, b, strength);
   }
 
   function step(deltaMs: number): void {
-    const dt = Math.min(deltaMs / 1000.0, 0.1); // seconds, safety-capped
-
-    // 1. Decay velocity and dye.
-    const velFactor = Math.pow(VEL_RETAIN_PER_SEC, dt);
-    const dyeFactor = Math.pow(DYE_RETAIN_PER_SEC, dt);
-    for (let i = 0; i < FLUID_SIZE; i++) {
-      vxGrid[i] *= velFactor;
-      vyGrid[i] *= velFactor;
-      dyeR[i]   *= dyeFactor;
-      dyeG[i]   *= dyeFactor;
-      dyeB[i]   *= dyeFactor;
-    }
-
-    // 2. Clamp to prevent runaway accumulation from overlapping sources.
-    for (let i = 0; i < FLUID_SIZE; i++) {
-      const spd = Math.sqrt(vxGrid[i] * vxGrid[i] + vyGrid[i] * vyGrid[i]);
-      if (spd > MAX_GRID_VEL) {
-        const inv = MAX_GRID_VEL / spd;
-        vxGrid[i] *= inv;
-        vyGrid[i] *= inv;
-      }
-    }
-
-    // 3. Light diffusion — smooths velocity for fluid-looking trails.
-    _diffuseVelocity(0.09);
-
-    // 4. Advect tracer particles through the velocity field using a
-    //    lifecycle/activation model.
-    //
-    //    Each particle is dormant until meaningfully disturbed (speed > PARTICLE_WAKE_SPEED).
-    //    On wake, it receives an activation strength (0–1, nonlinear in disturbance speed)
-    //    and a finite lifetime proportional to that activation.  Trail opacity fades from
-    //    activation → 0 over the lifetime.  When the lifetime expires or the particle
-    //    leaves the grid, it is recycled into a sparse region of the coarse occupancy
-    //    grid so the pool redistributes naturally rather than clustering in old
-    //    high-activity areas.  No teleport streaks: trailCount is cleared on recycle.
-
-    // Rebuild coarse occupancy from current particle positions.
-    // Recycled particles increment the target cell so consecutive respawns scatter.
-    _occupancy.fill(0);
-    for (let i = 0; i < particles.length; i++) {
-      const oc   = _clamp(Math.floor(particles[i].x / _sparseCellW), 0, SPARSE_RESPAWN_COLS - 1);
-      const oRow = _clamp(Math.floor(particles[i].y / _sparseCellH), 0, SPARSE_RESPAWN_ROWS - 1);
-      _occupancy[oRow * SPARSE_RESPAWN_COLS + oc]++;
-    }
-
-    for (let i = 0; i < particles.length; i++) {
-      const p  = particles[i];
-      const vx = _bilerp(vxGrid, p.x, p.y);
-      const vy = _bilerp(vyGrid, p.x, p.y);
-
-      // Euler-integrate position in grid space.
-      p.x += vx * dt;
-      p.y += vy * dt;
-
-      const spd = Math.sqrt(vx * vx + vy * vy);
-
-      // ── Lifecycle: wake or re-boost on meaningful disturbance ─────────────
-      // activation = clamp((speed − wakeSpeed) / usefulRange, 0, 1)^power
-      // so tiny movement produces dim, short-lived trails while fast
-      // movement produces bright, long-lived trails.
-      if (spd > PARTICLE_WAKE_SPEED) {
-        const t      = _clamp(
-          (spd - PARTICLE_WAKE_SPEED) / (PARTICLE_FULL_ACT_SPEED - PARTICLE_WAKE_SPEED),
-          0, 1,
-        );
-        const rawAct = Math.pow(t, PARTICLE_ACTIVATION_POWER);
-
-        if (!p.isActive) {
-          // Fresh wake from dormancy.
-          p.isActive   = true;
-          p.ageSec     = 0.0;
-          p.activation = rawAct;
-          // Lifetime scales with activation; per-particle jitter prevents
-          // all nearby particles from fading out simultaneously.
-          const baseLife = PARTICLE_MIN_LIFETIME_SEC +
-            rawAct * (PARTICLE_MAX_LIFETIME_SEC - PARTICLE_MIN_LIFETIME_SEC);
-          p.lifetimeSec  = baseLife * (0.8 + Math.random() * 0.4);
-        } else {
-          // Re-disturbance while already active: boost activation and extend life.
-          const boosted = _clamp(p.activation + rawAct * PARTICLE_REWAKE_BOOST, 0, 1);
-          if (boosted > p.activation) {
-            p.activation  = boosted;
-            const remaining = Math.max(0, p.lifetimeSec - p.ageSec);
-            p.lifetimeSec = p.ageSec + Math.min(
-              PARTICLE_MAX_LIFETIME_SEC * boosted,
-              remaining + PARTICLE_MIN_LIFETIME_SEC,
-            );
-          }
-        }
-      }
-
-      // Advance visible-life timer for active particles.
-      if (p.isActive) p.ageSec += dt;
-
-      // ── Colour blending (retained from original model) ───────────────────
-      p.smoothedSpeed += (spd - p.smoothedSpeed) * SPEED_SMOOTH_ALPHA;
-      if (spd > PARTICLE_WAKE_SPEED) {
-        const sr  = _bilerp(dyeR, p.x, p.y);
-        const sg  = _bilerp(dyeG, p.x, p.y);
-        const sb  = _bilerp(dyeB, p.x, p.y);
-        const mag = Math.sqrt(sr * sr + sg * sg + sb * sb);
-        if (mag > MIN_DYE_MAG_FOR_BLEND) {
-          const inv   = 255.0 / mag;
-          // Stronger speed → faster colour adoption; preserves vividness.
-          const blend = _clamp(spd / (SPEED_FULL_OPACITY * 2.0), 0, 1) * 0.3;
-          p.r += (sr * inv - p.r) * blend;
-          p.g += (sg * inv - p.g) * blend;
-          p.b += (sb * inv - p.b) * blend;
-          p.hueIdx = _hueBucket(p.r, p.g, p.b);
-        }
-      }
-
-      // Record trail in ring buffer.
-      p.trailX[p.trailHead] = p.x;
-      p.trailY[p.trailHead] = p.y;
-      p.trailHead = (p.trailHead + 1) % TRAIL_LENGTH;
-      if (p.trailCount < TRAIL_LENGTH) p.trailCount++;
-
-      // ── Recycle if out of bounds or lifetime expired ──────────────────────
-      const oob     = p.x < -OOB_MARGIN_CELLS || p.x > FLUID_COLS + OOB_MARGIN_CELLS ||
-                      p.y < -OOB_MARGIN_CELLS || p.y > FLUID_ROWS + OOB_MARGIN_CELLS;
-      const expired = p.isActive && p.ageSec >= p.lifetimeSec;
-
-      if (oob || expired) {
-        // Move to an underpopulated coarse cell — prevents density clustering.
-        const cellIdx = _findSparseCell();
-        const sx = cellIdx % SPARSE_RESPAWN_COLS;
-        const sy = Math.floor(cellIdx / SPARSE_RESPAWN_COLS);
-        p.x           = (sx + 0.1 + Math.random() * 0.8) * _sparseCellW;
-        p.y           = (sy + 0.1 + Math.random() * 0.8) * _sparseCellH;
-        p.trailCount  = 0; // clear trail — no teleport streak
-        p.trailHead   = 0;
-        p.isActive    = false;
-        p.ageSec      = 0.0;
-        p.activation  = 0.0;
-        p.smoothedSpeed = 0.0;
-        p.maxAlphaScale = 0.7 + Math.random() * 0.3;
-        _occupancy[cellIdx]++;
-        // Preserve colour so the palette does not abruptly reset.
-        continue;
-      }
-    }
+    stepFluidState(
+      deltaMs,
+      vxGrid,
+      vyGrid,
+      dyeR,
+      dyeG,
+      dyeB,
+      tmpVx,
+      tmpVy,
+      particles,
+      occupancy,
+      sparseCellW,
+      sparseCellH,
+    );
   }
 
   function render(ctx: CanvasRenderingContext2D): void {
-    // Clear all batch arrays (pre-allocated, so no GC pressure).
-    for (let h = 0; h < HUE_STEPS; h++) {
-      for (let a = 0; a < ALPHA_BUCKETS; a++) {
-        _batches[h][a].length = 0;
-      }
-    }
-
-    // Bin every trail segment into its (hueIdx, alphaBucket) slot.
-    // opacityScale fuses activation strength, lifetime fade, and per-particle
-    // alpha variation so the bucket captures the full visible range.
-    for (let pi = 0; pi < particles.length; pi++) {
-      const p = particles[pi];
-      // Skip dormant or invisibly new particles.
-      if (!p.isActive || p.trailCount < 2) continue;
-
-      // Opacity = activation × smoothstepped lifetime fade × per-particle scale.
-      // Slow disturbances produce faint, short trails; fast ones are vivid and longer.
-      const lifeFrac     = _clamp(1.0 - p.ageSec / p.lifetimeSec, 0, 1);
-      const opacityScale = p.activation * _smoothstep(lifeFrac) * p.maxAlphaScale;
-      if (opacityScale < 0.02) continue;
-
-      const hue = p.hueIdx;
-      const n   = p.trailCount;
-
-      for (let j = 1; j < n; j++) {
-        // Combined alpha = (trail-age fraction) × (activation/lifetime) × peak
-        const ageFrac  = j / n;
-        const bkt = _clamp(Math.floor(ageFrac * opacityScale * ALPHA_BUCKETS), 0, ALPHA_BUCKETS - 1);
-        const prev = (p.trailHead - n + j - 1 + TRAIL_LENGTH) % TRAIL_LENGTH;
-        const curr = (p.trailHead - n + j     + TRAIL_LENGTH) % TRAIL_LENGTH;
-        const arr  = _batches[hue][bkt];
-        // Store world-space coordinates directly.
-        arr.push(
-          p.trailX[prev] * cellW, p.trailY[prev] * cellH,
-          p.trailX[curr] * cellW, p.trailY[curr] * cellH,
-        );
-      }
-    }
-
-    // Issue one compound stroke per non-empty (hue, bucket) pair —
-    // at most HUE_STEPS × ALPHA_BUCKETS = 60 state changes per frame.
-    ctx.save();
-    ctx.lineCap   = 'round';
-    ctx.lineJoin  = 'round';
-    ctx.lineWidth = TRAIL_LINE_WIDTH;
-
-    for (let h = 0; h < HUE_STEPS; h++) {
-      const hueDeg = h * 30;
-      for (let b = 0; b < ALPHA_BUCKETS; b++) {
-        const arr = _batches[h][b];
-        if (arr.length === 0) continue;
-
-        // Alpha for this bucket: linearly spaced from (1/ALPHA_BUCKETS) up to 1,
-        // then scaled by TRAIL_PEAK_ALPHA.
-        const alpha = ((b + 1) / ALPHA_BUCKETS) * TRAIL_PEAK_ALPHA;
-        ctx.strokeStyle = `hsla(${hueDeg},82%,66%,${alpha.toFixed(3)})`;
-        ctx.beginPath();
-        for (let k = 0; k < arr.length; k += 4) {
-          ctx.moveTo(arr[k],     arr[k + 1]);
-          ctx.lineTo(arr[k + 2], arr[k + 3]);
-        }
-        ctx.stroke();
-      }
-    }
-
-    ctx.restore();
+    renderFluidTrails(ctx, particles, cellW, cellH);
   }
 
   function reset(): void {
@@ -487,16 +219,18 @@ export function createRpgFluid(): RpgFluid {
     if (newCount === currentParticleCount) return;
     currentParticleCount = newCount;
     if (newCount > particles.length) {
-      // Add particles, inheriting the colour of a random existing particle so
-      // the palette doesn't abruptly reset on the newly-added entries.
       const source = particles[0];
       for (let i = particles.length; i < newCount; i++) {
         const np = _makeParticle();
-        if (source) { np.r = source.r; np.g = source.g; np.b = source.b; np.hueIdx = source.hueIdx; }
+        if (source) {
+          np.r = source.r;
+          np.g = source.g;
+          np.b = source.b;
+          np.hueIdx = source.hueIdx;
+        }
         particles.push(np);
       }
     } else {
-      // Shed excess particles; no need to reset the grid.
       particles.length = newCount;
     }
   }

@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#30**
+Current build: **#55**
 
 ---
 
@@ -85,6 +85,41 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 ---
 
 ## Current Remaining Work
+
+### Build #50 follow-up (fluid modularization pass)
+- **Manual verification recommended:** Run a gameplay session that includes normal movement, heavy combat, and explosion-rich waves to confirm fluid wake/fade behavior is visually identical before/after the extraction.
+- **Deferred low-risk optimization:** Consider squared-distance comparisons in some fluid speed checks only if profiling indicates `Math.sqrt` cost is meaningful on target mobile devices.
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (~991 LOC) and `src/render/particles/particle-system.ts` (~503 LOC) remain large and should be split further in focused passes.
+- **Validation caveat:** Repository lint still reports pre-existing `prefer-const` errors in `src/render/rpg/rpg-render.ts` (lines 252, 253, 254, 255, 277, 278) unrelated to this fluid extraction.
+
+### Build #51 follow-up (wave dead-enemy modularization pass)
+- **Manual verification recommended:** Play a run with standard enemies, elite enemies, Aliven groups, and a boss defeat to confirm XP, lucky-mote drops, secret flags, and cleanup timing remain identical.
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts`, `src/render/particles/particle-system.ts`, and `src/render/background/substrate-effect.ts` remain high-size files for future safe extraction passes.
+
+### Build #52 follow-up (laser beam modularization pass)
+- **Manual verification recommended:** Test ruby laser beam against early, advanced, elite, and boss targets to confirm beam-hit thresholds, damage numbers, and hit effects remain unchanged.
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts`, `src/render/particles/particle-system.ts`, and `src/render/background/substrate-effect.ts` remain high-size files for future safe extraction passes.
+
+### Build #53 — Forge renderer extraction + rpg-render lint fixes
+- Fixed 6 pre-existing `prefer-const` lint errors in `rpg-render.ts` (added `eslint-disable-next-line` for the `let x!: T` definite-assignment idiom where TypeScript does not allow `const`).
+- Extracted private draw helpers from `forge-renderer.ts` (431 lines) to `forge-renderer-draw.ts` (~230 lines), reducing main file to ~200 lines. Helpers moved: `drawForgeBackgroundGlow`, `drawForgeHeatRings`, `drawForgeInfluenceSwirl`, `drawForgeSprite`, `drawForgeFallback`, `drawLoomAura` (renamed from `_drawLoomAura`), plus `FORGE_FIRE_COLORS`.
+- Updated `file_index.md` with new `forge-renderer-draw.ts` entry.
+
+### Build #54 — Achievement condition extraction
+- Extracted `isConditionMet` (~260 lines, 35 condition cases) from `achievement-state.ts` to `achievement-conditions.ts`.
+- `achievement-state.ts` reduced from 421 → ~160 lines; focuses on state types, factory, and claim/bonus API.
+- `achievement-conditions.ts` is ~270 lines: pure condition evaluation, no state mutation.
+- Updated `file_index.md`.
+
+### Build #55 — Enemy indicator extraction
+- Extracted `drawEnemyIndicators` from `rpg-enemy-draw.ts` to new `rpg-enemy-indicators.ts` (~130 lines).
+- Kept `rpg-render.ts` call sites unchanged by re-exporting `drawEnemyIndicators` from `rpg-enemy-draw.ts`.
+- Added indicator-specific low-graphics mode setter (`setEnemyIndicatorLowGraphicsMode`) and wired it into `setLowGraphicsMode` fan-out.
+- `rpg-enemy-draw.ts` reduced from ~440 → ~370 lines.
+- Updated `file_index.md`.
+
+### Build #55 follow-up
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (999 lines, mostly DI wiring), `src/render/particles/particle-glow-field.ts` (444 lines), `src/render/rpg/rpg-enemy-draw-adv.ts` (376 lines).
 
 ### Needs manual playtesting before claiming done
 - Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. Needs real playtesting.
