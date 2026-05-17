@@ -346,6 +346,8 @@
 - Slim orchestrator class.
 - Owns particle array, merge/shockwave lists, pool, interaction matrix, aliven set, and debug state.
 - Runs per-frame update pipeline: physics → trails → **Particle Life forces** → **forge field forces** → damping → wrap → merges → forge → shockwaves.
+- Delegates loom-capture particle removal + callback emission to `particle-system-loom-capture.ts`.
+- Delegates forge spin-up/crunch transition event detection to `particle-system-audio.ts`.
 - `forgeFields: ForgeFieldInfo[]` — updated each frame via `setForgeFields()` from the game loop.
 - `onParticleCapturedByLoom` callback — fires after each substep with `LoomCapture` data; wired to `processLoomCapture`.
 - `onEquationForgeCrunchCompleted` callback — fires when crunch animation ends with `Map<string, number>`; wired to `applyForgeSacrifice`.
@@ -353,6 +355,16 @@
 - `interactionMatrix` — 13×13 matrix owned here, defaults from `createDefaultInteractionMatrix()`.
 - `enableSizeForceBias` — boolean toggle for size-based force scaling.
 - `debugState` — `ParticleLifeDebugState` for debug visualization toggles.
+
+### src/render/particles/particle-system-loom-capture.ts
+- Loom-capture post-processing helper extracted from `particle-system.ts`.
+- `processLoomCaptures(...)` removes loom-captured particles in place, returns them to `ParticlePool`, and forwards per-capture callbacks.
+- Uses a caller-provided reusable `Set<EquatoriaParticle>` scratch buffer to avoid per-frame `Set` allocation.
+
+### src/render/particles/particle-system-audio.ts
+- Forge-audio transition helper extracted from `particle-system.ts`.
+- `computeForgeAudioTransitions(...)` derives `forgeCrunchStarted`, `forgeSpinUpBegan`, and `forgeSpinUpCancelled` plus next spin/crunch state flags.
+- Pure computation module; no side effects or state ownership.
 
 ### src/render/particles/particle-life.ts
 - Particle Life pairwise force computation (replaces euler-fluid.ts).

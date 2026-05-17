@@ -79,6 +79,8 @@ import { drawParticleLifeDebug, createDefaultDebugState } from './particle-life-
 import { drawGrabVisual } from './particle-grab-visual';
 import { resetGlowField } from './particle-glow-field';
 import type { ParticleDragState } from '../../input/particle-drag';
+import { processLoomCaptures } from './particle-system-loom-capture';
+import { computeForgeAudioTransitions } from './particle-system-audio';
 
 // Re-export types for backward compatibility
 export type { EquatoriaParticle, Particle, ActiveMerge, Shockwave, ParticleRenderOptions };
@@ -168,6 +170,8 @@ export class ParticleSystem {
   forgeFields: ForgeFieldInfo[] = [];
   /** Scratch buffer for loom captures accumulated during substeps. */
   private readonly _newLoomCaptures: LoomCapture[] = [];
+  /** Reusable captured-particle lookup set used during loom-capture removal. */
+  private readonly _capturedParticleScratch: Set<EquatoriaParticle> = new Set();
 
   // ── Callbacks ────────────────────────────────────────────────────
   /**
@@ -374,29 +378,13 @@ export class ParticleSystem {
     const mergesCompleted = mergeResult.completedCount;
 
     // ── Loom captures — remove captured loom particles and fire callbacks ──
-    if (this._newLoomCaptures.length > 0) {
-      // Remove loom-captured particles from the array (released in-place)
-      let wp = 0;
-      const capturedSet = new Set<EquatoriaParticle>(this._newLoomCaptures.map(c => c.particle));
-      for (let i = 0, len = this.particles.length; i < len; i++) {
-        const p = this.particles[i];
-        if (capturedSet.has(p)) {
-          this._pool.release(p);
-        } else {
-          this.particles[wp++] = p;
-        }
-      }
-      this.particles.length = wp;
-
-      // Fire callbacks for each captured particle
-      if (this.onParticleCapturedByLoom) {
-        for (let ci = 0; ci < this._newLoomCaptures.length; ci++) {
-          const c = this._newLoomCaptures[ci];
-          this.onParticleCapturedByLoom(c.fieldId, c.inputTierId as string, c.mass);
-        }
-      }
-      this._newLoomCaptures.length = 0;
-    }
+    this.particles = processLoomCaptures(
+      this.particles,
+      this._newLoomCaptures,
+      this._pool,
+      this.onParticleCapturedByLoom,
+      this._capturedParticleScratch,
+    );
 
     // Capture previous-frame forge state before updating
     const wasCrunchActive = this._wasCrunchActive;
@@ -428,18 +416,21 @@ export class ParticleSystem {
     }
 
     // Detect forge audio transitions
-    const isNowSpinningUp = (
-      crunchState.validParticlesTimerMs !== null &&
-      !crunchState.isActive &&
-      (nowMs - crunchState.validParticlesTimerMs >= FORGE_SPIN_UP_THRESHOLD_MS)
+    const {
+      forgeCrunchStarted,
+      forgeSpinUpBegan,
+      forgeSpinUpCancelled,
+      isNowSpinningUp,
+      isCrunchNowActive,
+    } = computeForgeAudioTransitions(
+      crunchState,
+      nowMs,
+      wasSpinningUp,
+      wasCrunchActive,
+      FORGE_SPIN_UP_THRESHOLD_MS,
     );
-    const isCrunchNowActive = crunchState.isActive;
 
-    const forgeCrunchStarted    = !wasCrunchActive && isCrunchNowActive;
-    const forgeSpinUpBegan      = !wasSpinningUp && isNowSpinningUp;
-    const forgeSpinUpCancelled  = wasSpinningUp && !isNowSpinningUp && !forgeCrunchStarted;
-
-    this._wasSpinningUp   = isNowSpinningUp;
+    this._wasSpinningUp = isNowSpinningUp;
     this._wasCrunchActive = isCrunchNowActive;
 
     // Shockwaves
@@ -492,6 +483,7 @@ export class ParticleSystem {
     this._wasSpinningUp = false;
     this._wasCrunchActive = false;
     this._newLoomCaptures.length = 0;
+    this._capturedParticleScratch.clear();
     this.forgeFields = [];
     // Clear glow field so the previous session's glow does not persist
     resetGlowField();

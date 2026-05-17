@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#55**
+Current build: **#56**
 
 ---
 
@@ -118,8 +118,19 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 - `rpg-enemy-draw.ts` reduced from ~440 → ~370 lines.
 - Updated `file_index.md`.
 
+### Build #56 — Particle system helper extraction
+- Extracted loom-capture cleanup from `particle-system.ts` to `src/render/particles/particle-system-loom-capture.ts` (`processLoomCaptures`).
+- Extracted forge audio-transition edge detection from `particle-system.ts` to `src/render/particles/particle-system-audio.ts` (`computeForgeAudioTransitions`).
+- Preserved runtime behavior; update pipeline ordering, callback behavior, and forge event semantics remain unchanged.
+- Added a reusable capture scratch `Set` in `ParticleSystem` to avoid per-frame `new Set(...)` allocation on loom-capture frames.
+- Updated `file_index.md` and `performanceOptimizationDecisions.md`.
+
 ### Build #55 follow-up
 - **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (999 lines, mostly DI wiring), `src/render/particles/particle-glow-field.ts` (444 lines), `src/render/rpg/rpg-enemy-draw-adv.ts` (376 lines).
+
+### Build #56 follow-up
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (999 lines, mostly DI wiring), `src/render/background/substrate-effect.ts` (465 lines), `src/render/particles/particle-glow-field.ts` (444 lines), `src/render/rpg/rpg-enemy-draw-adv.ts` (376 lines).
+- **Manual verification recommended:** During a play session with active loom fields and forge activity, confirm capture callbacks and forge audio transitions feel identical before/after extraction.
 
 ### Needs manual playtesting before claiming done
 - Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. Needs real playtesting.
