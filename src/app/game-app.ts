@@ -15,16 +15,11 @@ import {
   resizeCanvas,
   ParticleSystem,
 } from '../render';
-import { preloadGeneratorSprites, updateGeneratorPointerPos, clearGeneratorPointerPos } from '../render/generators/generator-renderer';
+import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
 import { preloadForgeSprites } from '../render/forge/forge-renderer';
 import { createBackgroundAnimation, createVermiculateEffect, createSubstrateEffect } from '../render/background';
 import { setupInputListeners, type GameAction } from '../input';
-import {
-  createParticleDragState,
-  handleParticleDragDown,
-  handleParticleDragMove,
-  handleParticleDragUp,
-} from '../input/particle-drag';
+import { createParticleDragState } from '../input/particle-drag';
 import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
 import { createHudOverlay } from '../ui/hud/hud-overlay';
@@ -47,9 +42,9 @@ import { addMotes } from '../sim/resources/resource-state';
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
 import { createGameLoop } from './app-game-loop';
+import { applyIdleRewardsIfEligible } from './game-app-idle';
+import { wireCanvasPointerInput } from './game-app-canvas-input';
 import { createIdleOverlay } from '../ui/idle/idle-overlay';
-import { calculateIdleRewards } from '../sim/idle/idle-reward';
-import { queueIdleRewards } from '../sim/idle/apply-idle-rewards';
 import { makePageBreak } from '../ui/ui-helpers';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
@@ -225,13 +220,7 @@ export async function startApp(): Promise<void> {
       const hiddenTs = readLastActiveTimestamp();
       if (hiddenTs !== null) {
         const elapsedMs = Math.min(Date.now() - hiddenTs, MAX_OFFLINE_HOURS * 3_600_000);
-        if (elapsedMs > 60_000) {
-          const summary = calculateIdleRewards(game, elapsedMs);
-          if (summary.tierRewards.some(r => r.totalMotes > 0)) {
-            queueIdleRewards(game, summary);
-            idleOverlay.show(summary);
-          }
-        }
+        applyIdleRewardsIfEligible(game, elapsedMs, idleOverlay);
       }
     }
   });
@@ -371,49 +360,7 @@ export async function startApp(): Promise<void> {
 
   // ── Input listeners ──
   setupInputListeners(canvasContainer, dispatch);
-
-  const getCanvasCoords = (e: PointerEvent): { x: number; y: number } => {
-    const rect = cc.canvas.getBoundingClientRect();
-    const scaleX = cc.widthPx / rect.width;
-    const scaleY = cc.heightPx / rect.height;
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    };
-  };
-
-  cc.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
-    cc.canvas.setPointerCapture(e.pointerId);
-    audioSystem.resumeContext().catch(() => { /* silently ignore */ });
-    const pos = getCanvasCoords(e);
-    if (appState.activeTab !== 'rpg') {
-      updateGeneratorPointerPos(pos.x, pos.y);
-    }
-    handleParticleDragDown(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles, cc.widthPx, cc.heightPx);
-  });
-  cc.canvas.addEventListener('pointermove', (e: PointerEvent) => {
-    const pos = getCanvasCoords(e);
-    // Track pointer for generator label proximity opacity (idle canvas only).
-    if (appState.activeTab !== 'rpg') {
-      updateGeneratorPointerPos(pos.x, pos.y);
-    }
-    if (!appState.particleDrag.isDown) return;
-    e.preventDefault();
-    handleParticleDragMove(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
-  }, { passive: false });
-  cc.canvas.addEventListener('pointerleave', () => {
-    clearGeneratorPointerPos();
-  });
-  cc.canvas.addEventListener('pointerup', (e: PointerEvent) => {
-    const pos = getCanvasCoords(e);
-    handleParticleDragUp(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
-    clearGeneratorPointerPos();
-  });
-  cc.canvas.addEventListener('pointercancel', (e: PointerEvent) => {
-    const pos = getCanvasCoords(e);
-    handleParticleDragUp(appState.particleDrag, pos.x, pos.y, e.timeStamp, particles.particles);
-    clearGeneratorPointerPos();
-  });
+  wireCanvasPointerInput(cc, appState, particles, audioSystem);
 
   // ── Resize handler ──
   const onResize = (): void => {
@@ -455,13 +402,7 @@ export async function startApp(): Promise<void> {
   // ── Idle reward check ──
   if (lastActiveTs !== null) {
     const elapsedMs = Math.min(Date.now() - lastActiveTs, MAX_OFFLINE_HOURS * 3_600_000);
-    if (elapsedMs > 60_000) {
-      const summary = calculateIdleRewards(game, elapsedMs);
-      if (summary.tierRewards.some(r => r.totalMotes > 0)) {
-        queueIdleRewards(game, summary);
-        idleOverlay.show(summary);
-      }
-    }
+    applyIdleRewardsIfEligible(game, elapsedMs, idleOverlay);
   }
 
   requestAnimationFrame(gameLoop);

@@ -50,7 +50,7 @@
 ### src/app/game-app.ts
 - Slim application bootstrap (DOM setup, panel wiring, pointer listeners, resize handler).
 - `startApp()` — creates systems and wires them via `app-actions` and `app-game-loop`.
-- Delegates action handling to `app-actions.ts` and game loop to `app-game-loop.ts`.
+- Delegates action handling to `app-actions.ts`, game loop to `app-game-loop.ts`, canvas pointer wiring to `game-app-canvas-input.ts`, and idle-reward eligibility checks to `game-app-idle.ts`.
 
 ### src/app/app-types.ts
 - `AppState` and `UIPanels` interfaces shared by app modules.
@@ -64,6 +64,14 @@
 - `createGameLoop()` factory — creates the frame-by-frame game loop.
 - `GameLoopContext` interface — all dependencies injected.
 - Loop: sim tick → particle update → background → render → UI update → auto-save.
+
+### src/app/game-app-canvas-input.ts
+- Canvas pointer-input wiring extracted from `game-app.ts`.
+- Exports `wireCanvasPointerInput()` to connect pointer down/move/up/cancel handlers for drag interactions and generator hover tracking.
+
+### src/app/game-app-idle.ts
+- Shared idle-reward eligibility helper used by `game-app.ts`.
+- Exports `applyIdleRewardsIfEligible()` which applies queued idle rewards and opens the idle overlay only when elapsed time and rewards are meaningful.
 
 ### src/data/tiers/tier-definitions.ts
 - Single source of truth for all 11 gemstone tiers (Sand through Nullstone).
@@ -930,12 +938,16 @@
 - `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
 
 ### src/render/rpg/rpg-stats-panel-dom.ts
-- DOM element construction for the RPG stats panel (~290 lines).
+- Orchestrator for RPG stats panel DOM assembly.
 - Extracted from `rpg-stats-panel.ts` to isolate HTML element creation from update logic.
 - Exports `StatsPanelDomRefs` interface and `buildStatsPanelDom()` factory.
-- Builds: box 1 (player icon canvas + weapon-source plug slots), boxes 2–5 (XP node + I/II/III modifier rows), boxes 6–11 (weapon stat rows with header), right column (DPS chart widget + HP box + menu area), and dev-mode number badges.
-- Side-effect: starts a `requestAnimationFrame` loop for the player-icon idle animation (pulsing glow); skips draw while the panel is hidden to avoid unnecessary GPU work.
+- Delegates section construction and badge wiring to `rpg-stats-panel-dom-sections.ts`.
 - Returns `StatsPanelDomRefs` containing all ~20 live element references needed by `rpg-stats-panel.ts` for updates and wiring registrations.
+
+### src/render/rpg/rpg-stats-panel-dom-sections.ts
+- Section builders/helpers for the RPG stats panel DOM.
+- Exports `createStatsPanelPrimaryColumn()` (player icon + weapon source plugs, XP/modifier boxes, weapon stat rows), `createStatsPanelRightColumn()` (DPS widget, HP box, menu area), and `addStatsPanelDevBadges()`.
+- Owns the player-icon RAF idle animation loop and skips drawing while the stats panel is hidden via a visibility callback.
 
 ### src/render/rpg/rpg-equip-wiring-types.ts
 - Types and pure helpers for the RPG plug wiring system.
@@ -1232,12 +1244,16 @@
 - `createLoomUpgradesPane(dispatch)` → `{ element, update(state, fmt) }`.
 
 ### src/ui/panels/aliven-pane.ts
-- "Aliven" sub-tab content: per-tier aliven rows + interactive NxN interaction-matrix grid.
+- "Aliven" sub-tab orchestrator: title/subtitle, matrix section wiring, and per-tier aliven rows.
 - Aliven rows show unlock button (cost 10,000 own motes) or ✦ Alive badge.
-- Interaction matrix cells support tap (apply selected ±0.05 step) and drag (continuous adjustment).
-- Matrix is rebuilt only when the alivened tier set changes (keyed by join string).
-- During a cell drag, `TraceEffect` golden outline + tracer circles appear around the cell.
+- Matrix functionality is delegated to `aliven-pane-matrix.ts`.
 - `createAlivenPane(dispatch, traceEffect?)` → `{ element, update(state, fmt) }`.
+
+### src/ui/panels/aliven-pane-matrix.ts
+- Extracted interaction-matrix module for the Aliven pane.
+- Owns matrix controls (+0.05/−0.05/reset), matrix grid DOM build, and cell drag/tap editing dispatch.
+- Rebuilds matrix only when alivened-tier membership changes; refreshes visible cell values each update.
+- Integrates with `TraceEffect` to show matrix-cell targeting visuals during pointer interaction.
 
 ### src/audio/
 
@@ -1261,10 +1277,11 @@ Audio system — eight focused modules:
 - Equation upgrades and forge unlock have moved to the Equation panel.
 
 ### src/ui/panels/achievements-panel.ts
-- Achievements tab content — filter bar, nested category accordions, per-character glyph animation (~445 lines).
+- Achievements tab orchestrator — filter bar, nested category accordions, glyph/sparkle wiring (~250 lines after update/filter split).
 - DOM building (group accordions, subcategory accordions, achievement cards) extracted to `achievements-panel-dom.ts`.
 - Sparkle system extracted to `achievements-panel-sparkle.ts`.
 - Glyph animation extracted to `achievements-panel-glyph.ts`.
+- Main card/group update pass and filter application extracted to `achievements-panel-update.ts`.
 - Filter bar: three checkboxes (show earned, show unearned, show hidden) with defaults earned+unearned=on, hidden=off.
 - Main category accordions: only one open at a time; opening another closes the previous.
 - RPG group: nested subcategory accordions (11 subcategories); only one subcategory open at a time.
@@ -1296,6 +1313,11 @@ Audio system — eight focused modules:
 - Exports DOM ref types: `CardRefs`, `SubcategoryRefs`, `GroupRefs`, `AchievementsDomCallbacks`.
 - Exports `buildAchievementsDom(groupsRoot, callbacks)` — builds all group/subcategory/card elements and returns `{ cardRefs, groupRefs }`.
 - Cards are built by the private `appendCard` function; click handlers fire `callbacks.onCardClaim(id, formattedBonus)`.
+
+### src/ui/panels/achievements-panel-update.ts
+- Achievement panel state-update and filtering helpers extracted from `achievements-panel.ts`.
+- Exports `cardIsVisible`, `applyAchievementFilters`, and `updateAchievementCardsAndGroupHeaders`.
+- Owns card state class/label updates, group/subcategory progress counts, and sparkle eligibility checks.
 
 ### src/ui/panels/resource-panel.ts
 - Per-tier mote display with refined gem icons.
@@ -1432,11 +1454,16 @@ Audio system — eight focused modules:
 - Pure rendering helpers extracted to `balance-forecast-render.ts`.
 
 ### src/ui/panels/balance-forecast/balance-forecast-render.ts
-- Pure DOM rendering helpers extracted from `balance-forecast-panel.ts` (~494 lines).
-- Exports: `el`, `makeSection`, `statusClass`, `categoryLabel`, `safeNum`, `collectMilestoneIds`.
-- Render functions: `renderStaticEtaTable`, `renderNextMeaningfulTargets`, `renderFreshRunTimeline`, `renderStrategyComparison`, `renderStrategyTimeline`, `renderPacingWarnings`.
+- Pure DOM rendering helpers extracted from `balance-forecast-panel.ts` (~250 lines after strategy split).
+- Exports: `el`, `makeSection`, `statusClass`, `categoryLabel`, `safeNum`, plus strategy render re-exports for compatibility.
+- Render functions: `renderStaticEtaTable`, `renderNextMeaningfulTargets`, `renderFreshRunTimeline`, `renderPacingWarnings`.
 - Also exports `buildTextReport(result)` for the copy-to-clipboard text report.
 - All functions are stateless (take only data + HTMLElement); no closure dependencies.
+
+### src/ui/panels/balance-forecast/balance-forecast-render-strategies.ts
+- Strategy-oriented render helpers extracted from `balance-forecast-render.ts`.
+- Exports: `collectMilestoneIds`, `renderStrategyComparison`, `renderStrategyTimeline`.
+- Contains table/SVG timeline rendering logic for multi-strategy milestone comparisons.
 
 ### src/dev/session-telemetry.ts
 - Lightweight dev-only session telemetry counters. No browser dependencies; pure TypeScript.
