@@ -517,12 +517,10 @@
 - Factory functions for late-game enemies and boss: `makeFracterylEnemy`, `makeFracterylShard`, `makeEigensteinEnemy`, `makeDanmakuSafeZone`, `makeEliteEnemy(tier, x, y, waveNumber)`, `makeBossEnemy(rawBossId, waveNumber, w, h)`.
 
 ### src/render/rpg/rpg-fluid.ts
-- Euler fluid background simulation for RPG mode.  Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
-- Grid-based velocity and dye field (60 × 80 cells).  Solver: inject forces → decay → diffuse velocity → advect tracer particles.
+- Euler fluid background simulation orchestrator for RPG mode. Ported from Chapter 3 EulerFluidEffect.js in sethrimer3/Thero_Idle_TD.
+- Owns grid/particle state, force injection (`addForce`, `addExplosion`), resize/reset, and graphics-density switching.
+- Delegates per-frame simulation to `rpg-fluid-step.ts` and trail draw batching to `rpg-fluid-render.ts`.
 - **No ambient injection** — velocity enters only via `addForce()` and `addExplosion()` calls from gameplay systems.
-- **Lifecycle/activation particle model**: particles are dormant until local speed exceeds `PARTICLE_WAKE_SPEED`.  On wake, each particle receives an `activation` (0–1, nonlinear in disturbance speed) and a finite `lifetimeSec`.  Trail opacity fades from `activation × smoothstep(lifeFrac) × maxAlphaScale` → 0.
-- Expired or out-of-bounds particles are recycled into underpopulated coarse cells (10 × 14 occupancy grid) to prevent density clustering.
-- Trail segments are batched by (hue-bucket × alpha-bucket) → at most 60 canvas state changes per frame.
 - Exports: `createRpgFluid()`, `RpgFluid` interface, `FluidImpulse` type.
 - Constants, types, and helpers extracted to `rpg-fluid-constants.ts`.
 
@@ -530,6 +528,16 @@
 - Internal constants, types, and helpers for `rpg-fluid.ts`.
 - Exports all grid/particle/field/colour/batching constants, `_batches` pre-allocated draw buffer, math helpers (_clamp, _smoothstep, _hueBucket, _bilerp), `FluidParticle` interface, and `_makeParticle()`.
 - Should not be imported by any module other than `rpg-fluid.ts`.
+
+### src/render/rpg/rpg-fluid-step.ts
+- Per-frame fluid simulation update loop extracted from `rpg-fluid.ts`.
+- Handles field decay and clamp, velocity diffusion, sparse occupancy rebuild, particle advection/lifecycle, colour blending, and sparse respawn recycling.
+- Keeps hot-path behavior allocation-free by mutating pre-allocated arrays passed by `rpg-fluid.ts`.
+
+### src/render/rpg/rpg-fluid-render.ts
+- Per-frame trail rendering extraction for fluid particles.
+- Clears and repopulates shared hue/alpha `_batches`, then issues batched canvas strokes.
+- Preserves prior draw strategy of at most `HUE_STEPS × ALPHA_BUCKETS` state buckets per frame.
 
 ### src/render/rpg/rpg-entity-draw.ts
 - Exported pure draw functions for weapon projectiles (~346 lines after player-draw extraction).

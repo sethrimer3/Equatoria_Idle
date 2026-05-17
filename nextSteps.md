@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#30**
+Current build: **#50**
 
 ---
 
@@ -85,6 +85,12 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 ---
 
 ## Current Remaining Work
+
+### Build #50 follow-up (fluid modularization pass)
+- **Manual verification recommended:** Run a gameplay session that includes normal movement, heavy combat, and explosion-rich waves to confirm fluid wake/fade behavior is visually identical before/after the extraction.
+- **Deferred low-risk optimization:** Consider squared-distance comparisons in some fluid speed checks only if profiling indicates `Math.sqrt` cost is meaningful on target mobile devices.
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (~991 LOC) and `src/render/particles/particle-system.ts` (~503 LOC) remain large and should be split further in focused passes.
+- **Validation caveat:** Repository lint still reports pre-existing `prefer-const` errors in `src/render/rpg/rpg-render.ts` (lines 252, 253, 254, 255, 277, 278) unrelated to this fluid extraction.
 
 ### Needs manual playtesting before claiming done
 - Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. Needs real playtesting.
