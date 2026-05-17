@@ -248,10 +248,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // targetedEnemy state has moved into createRpgTargeting (rpg-targeting.ts).
 
   // ── DPS tracking ── forwarded to statsPanel after it is created below
-  // statsPanel is declared with ! assertion; initialized during setup before any call-site runs.
+  // These use `let x!: T` (TypeScript definite-assignment assertion) because each
+  // is initialized during factory setup but depends on other systems being created
+  // first.  ESLint's prefer-const rule cannot model this deferred-init pattern.
+  // eslint-disable-next-line prefer-const
   let statsPanel!: RpgStatsPanelHandle;
+  // eslint-disable-next-line prefer-const
   let weaponSystems!: RpgWeaponHandle;
+  // eslint-disable-next-line prefer-const
   let waveManager!: WaveManagerHandle;
+  // eslint-disable-next-line prefer-const
   let bossWave!: BossWaveHandle;
   let _forwardRecordDps: (dmg: number, _legacyColor?: string) => void = () => {};
   function recordDps(dmg: number, _legacyColor?: string): void {
@@ -274,7 +280,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageEliteEnemy,
   } = createDamageFns({ recordDps });
 
+  // eslint-disable-next-line prefer-const
   let targeting!: RpgTargetingHandle;
+  // eslint-disable-next-line prefer-const
   let playerAttackCtx!: RpgPlayerAttackCtx;
 
   let bossEnemy: BossEnemy | null = null;

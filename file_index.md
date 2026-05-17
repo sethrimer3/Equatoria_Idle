@@ -384,12 +384,22 @@
 - `INFLUENCE_VISUAL_SCALE = 0.75` — visual range is 25% smaller than physics range.
 
 ### src/render/forge/forge-renderer.ts
-- Forge sprite rendering with crunch animation overlay.
-- `drawForge(ctx, ..., heatTapCount)` — accepts current heat tap count; draws 1–2 pulsing amber/orange rings to show forge heat state.
-- `drawForgeHeatRings(ctx, x, y, heatTapCount, nowMs)` — draws 1 ring for 1 tap, 2 rings for 2 taps; rings pulse and fade in 2s period.
-- Influence circle is now a bidirectional fire-color swirl at 75% of `MAX_FORGE_ATTRACTION_DISTANCE`.
-- `FORGE_FIRE_COLORS` — seven fire gradient colors (`#FFB21A` → `#B7370A`).
-- Two arc sets rotate clockwise and counter-clockwise simultaneously.
+- Forge rendering orchestrator (~200 lines after private helper extraction).
+- Public exports: `preloadForgeSprites`, `drawForge`, `drawLoomFieldAuras`, `drawForgeCrunch`, `drawForgeSacrificeFlash`.
+- `drawForge(ctx, ..., heatTapCount)` — orchestrates background glow, heat rings, sprite/fallback, and influence swirl by calling helpers from `forge-renderer-draw.ts`.
+- `drawLoomFieldAuras` — draws faint tier-colored aura rings for each active loom capture field.
+- `drawForgeSacrificeFlash` — 600ms expanding shockwave ring at the forge on sacrifice crunch completion.
+- Sub-draw helpers live in `forge-renderer-draw.ts` (not for direct import).
+
+### src/render/forge/forge-renderer-draw.ts
+- Private draw helpers for `forge-renderer.ts` (~230 lines).
+- Contains `FORGE_FIRE_COLORS` (7-color fire gradient), and the following helpers:
+  - `drawForgeBackgroundGlow` — slow-pulsing warm radial glow behind the forge.
+  - `drawForgeHeatRings` — 1–2 pulsing amber/orange rings for forge heat state.
+  - `drawForgeInfluenceSwirl` — bidirectional fire-color swirl arcs at the influence radius.
+  - `drawForgeSprite` / `drawForgeFallback` — sprite or geometric fallback.
+  - `drawLoomAura` — faint tier-colored capture ring for a single loom field.
+- Not intended for import outside `forge-renderer.ts`.
 
 ### src/render/rpg/rpg-constants.ts
 - Core numeric and string constants for the RPG rendering system (~311 lines after weapon extraction).

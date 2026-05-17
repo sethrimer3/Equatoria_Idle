@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#52**
+Current build: **#53**
 
 ---
 
@@ -99,6 +99,14 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 ### Build #52 follow-up (laser beam modularization pass)
 - **Manual verification recommended:** Test ruby laser beam against early, advanced, elite, and boss targets to confirm beam-hit thresholds, damage numbers, and hit effects remain unchanged.
 - **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts`, `src/render/particles/particle-system.ts`, and `src/render/background/substrate-effect.ts` remain high-size files for future safe extraction passes.
+
+### Build #53 — Forge renderer extraction + rpg-render lint fixes
+- Fixed 6 pre-existing `prefer-const` lint errors in `rpg-render.ts` (added `eslint-disable-next-line` for the `let x!: T` definite-assignment idiom where TypeScript does not allow `const`).
+- Extracted private draw helpers from `forge-renderer.ts` (431 lines) to `forge-renderer-draw.ts` (~230 lines), reducing main file to ~200 lines. Helpers moved: `drawForgeBackgroundGlow`, `drawForgeHeatRings`, `drawForgeInfluenceSwirl`, `drawForgeSprite`, `drawForgeFallback`, `drawLoomAura` (renamed from `_drawLoomAura`), plus `FORGE_FIRE_COLORS`.
+- Updated `file_index.md` with new `forge-renderer-draw.ts` entry.
+
+### Build #53 follow-up
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (991 lines, mostly DI wiring — hard to split without major restructuring), `src/render/particles/particle-system.ts` (503 lines, already a slim orchestrator), `src/render/background/substrate-effect.ts` (465 lines, internals already extracted).
 
 ### Needs manual playtesting before claiming done
 - Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. Needs real playtesting.
