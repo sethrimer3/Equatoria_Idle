@@ -1219,9 +1219,15 @@
 - `ACHIEVEMENT_GROUP_BY_ID` provides quick lookup by group id.
 
 ### src/sim/achievements/achievement-state.ts
-- `AchievementState` — set of unlocked achievement IDs plus cached bonus multipliers.
-- `checkAndUnlockAchievements()` — checks lifetime motes for each tier and unlocks achievements.
-- `recomputeBonuses()` — recalculates `tapMultiplierBonus` and `loomMultiplierBonus` from unlocked set.
+- `AchievementState` — set of unlocked/claimed achievement IDs plus cached bonus multipliers.
+- `createAchievementState()`, `checkAndUnlockAchievements()`, `recomputeBonuses()`.
+- `claimAchievement()`, `claimAllUnlockedAchievements()`, `getClaimableCount()`.
+- Condition evaluation delegated to `achievement-conditions.ts` via `isConditionMet`.
+
+### src/sim/achievements/achievement-conditions.ts
+- `isConditionMet(condition, resources, equation, rpg, aliven, globalTapMultiplier)` — switch dispatch over all `AchievementCondition` kinds (~35 cases).
+- Extracted from `achievement-state.ts` to keep state management separate from condition logic.
+- Not intended for direct import outside the `achievements/` directory.
 
 ### src/sim/aliven/aliven-state.ts
 - Aliven system — tracks which mote types have been "alivened" (awakened for Particle Life).

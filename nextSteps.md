@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#53**
+Current build: **#54**
 
 ---
 
@@ -105,8 +105,14 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 - Extracted private draw helpers from `forge-renderer.ts` (431 lines) to `forge-renderer-draw.ts` (~230 lines), reducing main file to ~200 lines. Helpers moved: `drawForgeBackgroundGlow`, `drawForgeHeatRings`, `drawForgeInfluenceSwirl`, `drawForgeSprite`, `drawForgeFallback`, `drawLoomAura` (renamed from `_drawLoomAura`), plus `FORGE_FIRE_COLORS`.
 - Updated `file_index.md` with new `forge-renderer-draw.ts` entry.
 
-### Build #53 follow-up
-- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (991 lines, mostly DI wiring — hard to split without major restructuring), `src/render/particles/particle-system.ts` (503 lines, already a slim orchestrator), `src/render/background/substrate-effect.ts` (465 lines, internals already extracted).
+### Build #54 — Achievement condition extraction
+- Extracted `isConditionMet` (~260 lines, 35 condition cases) from `achievement-state.ts` to `achievement-conditions.ts`.
+- `achievement-state.ts` reduced from 421 → ~160 lines; focuses on state types, factory, and claim/bonus API.
+- `achievement-conditions.ts` is ~270 lines: pure condition evaluation, no state mutation.
+- Updated `file_index.md`.
+
+### Build #54 follow-up
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (999 lines, mostly DI wiring), `src/render/particles/particle-glow-field.ts` (444 lines), `src/render/rpg/rpg-enemy-draw.ts` (440 lines).
 
 ### Needs manual playtesting before claiming done
 - Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. Needs real playtesting.
