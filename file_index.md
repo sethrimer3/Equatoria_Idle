@@ -620,11 +620,17 @@
 - Smooth paths use the midpoint quadratic bezier technique (no gradient objects per frame).
 
 ### src/render/rpg/rpg-enemy-draw.ts
-- Exported pure draw functions for starter-through-Void tier enemies (~431 lines).
-- Covers: Sapphire+missiles, Emerald, Amber+shards, Void, Laser, plus `drawAttackTrail` and `drawEnemyIndicators` (shared infrastructure used by all tiers).
+- Exported pure draw functions for starter-through-Void tier enemies (~370 lines).
+- Covers: Sapphire+missiles, Emerald, Amber+shards, Void, Laser, plus `drawAttackTrail`.
 - Advanced enemy draw functions (Quartz and above) have been split out to `rpg-enemy-draw-adv.ts`.
-- `setLowGraphicsMode()` propagates to `rpg-enemy-draw-adv.ts` so callers only need one call.
+- `setLowGraphicsMode()` propagates to both `rpg-enemy-draw-adv.ts` and `rpg-enemy-indicators.ts` so callers only need one call.
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
+- Re-exports `drawEnemyIndicators` from `rpg-enemy-indicators.ts` for call-site compatibility.
+
+### src/render/rpg/rpg-enemy-indicators.ts
+- Extracted enemy marker renderer (~130 lines) from `rpg-enemy-draw.ts`.
+- Exports `drawEnemyIndicators()` for triangle/outline/off enemy markers across all enemy tiers + boss + Aliven group centroids.
+- Owns `setEnemyIndicatorLowGraphicsMode()` and local low-graphics flag, set via `rpg-enemy-draw.ts`’s `setLowGraphicsMode()` fan-out.
 
 ### src/render/rpg/rpg-enemy-draw-adv.ts
 - Exported pure draw functions for advanced (Quartz-tier and above) enemies (~376 lines).
@@ -1019,7 +1025,7 @@
 - Orbit projectile update (`updateOrbitProjectile`) extracted to `rpg-orbit-projectile.ts`; rpg-render.ts owns `orbitProjectileCtx: OrbitProjectileCtx` and calls `updateOrbitProjectile(orbitProjectileCtx, orbitProjectile, deltaMs)`.
 - Pointer + keyboard input handling extracted to `rpg-input.ts`; rpg-render.ts calls `createRpgInput({ canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt })` at init time.
 - Entity draw functions split: weapon/effects in `rpg-entity-draw.ts`, enemy bodies in `rpg-enemy-draw.ts`; all call sites pass `ctx` and entity arrays explicitly.
-- Laser enemy draw (`drawLaserEnemies`) and all-enemy indicator markers (`drawEnemyIndicators`) extracted to `rpg-enemy-draw.ts`; called with explicit arrays and `enemyIndicatorStyle`.
+- Laser enemy draw (`drawLaserEnemies`) lives in `rpg-enemy-draw.ts`; all-enemy indicator markers (`drawEnemyIndicators`) now live in `rpg-enemy-indicators.ts` and are re-exported by `rpg-enemy-draw.ts` for call-site stability.
 - Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-player-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
 - 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.

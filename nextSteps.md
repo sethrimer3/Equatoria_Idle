@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#54**
+Current build: **#55**
 
 ---
 
@@ -111,8 +111,15 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 - `achievement-conditions.ts` is ~270 lines: pure condition evaluation, no state mutation.
 - Updated `file_index.md`.
 
-### Build #54 follow-up
-- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (999 lines, mostly DI wiring), `src/render/particles/particle-glow-field.ts` (444 lines), `src/render/rpg/rpg-enemy-draw.ts` (440 lines).
+### Build #55 — Enemy indicator extraction
+- Extracted `drawEnemyIndicators` from `rpg-enemy-draw.ts` to new `rpg-enemy-indicators.ts` (~130 lines).
+- Kept `rpg-render.ts` call sites unchanged by re-exporting `drawEnemyIndicators` from `rpg-enemy-draw.ts`.
+- Added indicator-specific low-graphics mode setter (`setEnemyIndicatorLowGraphicsMode`) and wired it into `setLowGraphicsMode` fan-out.
+- `rpg-enemy-draw.ts` reduced from ~440 → ~370 lines.
+- Updated `file_index.md`.
+
+### Build #55 follow-up
+- **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (999 lines, mostly DI wiring), `src/render/particles/particle-glow-field.ts` (444 lines), `src/render/rpg/rpg-enemy-draw-adv.ts` (376 lines).
 
 ### Needs manual playtesting before claiming done
 - Balance values: sacrifice threshold (2,000), loom conversion base cost (50), efficiency scaling (3ˣ), 10% passive non-sand production rate. Needs real playtesting.
