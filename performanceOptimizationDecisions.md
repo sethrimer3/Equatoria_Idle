@@ -53,3 +53,26 @@
 - **Why safe:** Uses identical formulas previously copied inline, reducing drift risk without changing thresholds or constants.
 - **System affected:** Laser-beam target inclusion checks.
 - **Performance impact type:** Neutral to slightly positive by avoiding duplicate inline math blocks and reducing accidental future divergence.
+
+## This pass (Build #56) — Particle-system helper extraction
+
+### 1) Removed per-frame loom-capture `Set` allocation
+- **Change made:** Extracted loom-capture cleanup to `src/render/particles/particle-system-loom-capture.ts` and switched from `new Set(...)` creation each capture frame to a reusable `Set<EquatoriaParticle>` scratch buffer owned by `ParticleSystem`.
+- **Why safe:** Removal order, pool-release behavior, callback emission order, and particle-array compaction semantics are unchanged; only the temporary lookup allocation strategy changed.
+- **System affected:** Particle update post-processing for loom capture fields.
+- **Performance impact type:** Reduces allocations / lowers GC churn in capture-heavy frames.
+
+### 2) Isolated forge-audio transition computation into pure helper
+- **Change made:** Moved spin-up/crunch transition checks to `src/render/particles/particle-system-audio.ts` via `computeForgeAudioTransitions(...)`.
+- **Why safe:** Uses identical conditions and event edge detection as the previous inline logic, returning the same three booleans plus next-frame state flags.
+- **System affected:** Particle-system audio event signaling (`forgeCrunchStarted`, `forgeSpinUpBegan`, `forgeSpinUpCancelled`).
+- **Performance impact type:** Neutral; maintains existing behavior while improving maintainability.
+
+## Additional opportunities noticed but not implemented
+- `src/render/particles/particle-system.ts` update wiring is still large; a larger extraction of fixed-step orchestration was deferred to avoid introducing closure/ownership regressions.
+- `src/render/background/substrate-effect.ts` remains a large candidate for future low-risk helper extraction.
+
+## Risky optimizations intentionally avoided (this pass)
+- Did **not** alter fixed-step timing (`FIXED_STEP_MS`, accumulator cap, substep count) or frame-skip policy for physics/Particle Life.
+- Did **not** change forge crunch start/completion paths, legacy fallback behavior, or callback contracts.
+- Did **not** change merge cadence, particle limits, or any force constants.
