@@ -33,6 +33,7 @@ import type {
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy,
   DiamondEnemy, NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 // Defined here (where it is used by helpers) and re-exported from
@@ -80,6 +81,8 @@ export interface SwordWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
+  alivenGroups: AlivenParticleGroup[];
+  damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
@@ -216,6 +219,24 @@ export function swordHitInArc(
         hitEffects.push({ x: ctx.bossEnemy.x, y: ctx.bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
         spawnDamageNumber(ctx.bossEnemy.x, ctx.bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / ctx.bossEnemy.maxHp, hitColor);
         spawnSwordBeam(state, ctx.bossEnemy.x, ctx.bossEnemy.y, arcStart, arcEnd, swordLength);
+      }
+    }
+  }
+
+  // Aliven particle groups
+  for (const group of ctx.alivenGroups) {
+    for (const p of group.particles) {
+      if (!p.isAlive) continue;
+      if (state.hitThisSwing.has(p)) continue;
+      const dx = p.x - mote.x, dy = p.y - mote.y;
+      if (dx * dx + dy * dy > swordLength * swordLength) continue;
+      if (!angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) continue;
+      const dmg = ctx.damageAlivenParticle(p, group, rawDamage);
+      state.hitThisSwing.add(p);
+      if (dmg > 0) {
+        hitEffects.push({ x: p.x, y: p.y, timerMs: HIT_EFFECT_DURATION_MS, color: p.glowColor });
+        spawnDamageNumber(p.x, p.y, 0, -1, String(Math.round(dmg)), dmg / p.maxHp, p.glowColor);
+        spawnSwordBeam(state, p.x, p.y, arcStart, arcEnd, swordLength);
       }
     }
   }

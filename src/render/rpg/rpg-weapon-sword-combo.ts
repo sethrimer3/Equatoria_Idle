@@ -70,6 +70,7 @@ export function updateSwordComboForWeapon(
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
+    alivenGroups,
     removeDeadEnemies, checkWaveCompletion,
   } = ctx;
 
@@ -177,6 +178,7 @@ export function updateSwordComboForWeapon(
       for (const e of eigensteinEnemies) checkEnemy(e);
       for (const e of eliteEnemies) { if (!e.isInvuln) checkEnemy(e); }
       if (ctx.bossEnemy) checkEnemy(ctx.bossEnemy);
+      for (const g of alivenGroups) { for (const p of g.particles) { if (p.isAlive) checkEnemy(p); } }
 
       if (anyInRange) {
         // Find the nearest enemy angle to center the 180° arc on.
@@ -204,6 +206,7 @@ export function updateSwordComboForWeapon(
         for (const e of eigensteinEnemies) findNearest(e);
         for (const e of eliteEnemies) { if (!e.isInvuln) findNearest(e); }
         if (ctx.bossEnemy) findNearest(ctx.bossEnemy);
+        for (const g of alivenGroups) { for (const p of g.particles) { if (p.isAlive) findNearest(p); } }
 
         state.swipeArcStart = bestAngle - Math.PI / 2;
         state.swipeArcEnd   = bestAngle + Math.PI / 2;
@@ -348,6 +351,7 @@ export function updateSwordComboForWeapon(
     for (const e of eigensteinEnemies) checkCombo(e);
     for (const e of eliteEnemies) checkCombo(e);
     if (ctx.bossEnemy) checkCombo(ctx.bossEnemy);
+    for (const g of alivenGroups) { for (const p of g.particles) { if (p.isAlive) checkCombo(p); } }
 
     if (anyInRange && state.phaseMs >= SWORD_COMBO_MIN_SWIPE_DELAY_MS) {
       // Enemy in range and minimum inter-swipe delay elapsed — start the next slash.
@@ -375,6 +379,7 @@ export function updateSwordComboForWeapon(
       for (const e of eigensteinEnemies) findNearest(e);
       for (const e of eliteEnemies) { if (!e.isInvuln) findNearest(e); }
       if (ctx.bossEnemy) findNearest(ctx.bossEnemy);
+      for (const g of alivenGroups) { for (const p of g.particles) { if (p.isAlive) findNearest(p); } }
 
       state.swipeArcStart = bestAngle - Math.PI / 2;
       state.swipeArcEnd   = bestAngle + Math.PI / 2;

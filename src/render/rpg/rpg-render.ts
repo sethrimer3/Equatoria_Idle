@@ -567,6 +567,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fracterylShards,
     eigensteinEnemies,
     eliteEnemies,
+    alivenGroups,
+    damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
   };
   weaponSystems = createRpgWeaponSystems(weaponCtx);
 
