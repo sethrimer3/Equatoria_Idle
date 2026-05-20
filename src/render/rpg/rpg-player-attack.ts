@@ -30,6 +30,7 @@ import type {
   NullstoneEnemy, VoidTendril, FracterylEnemy, FracterylShard,
   EigensteinEnemy, BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { ClosestTarget } from './rpg-types';
 import { performAoeAttack } from './rpg-player-attack-aoe';
 import { performMultiAttack } from './rpg-player-attack-multi';
@@ -74,6 +75,7 @@ export interface RpgPlayerAttackCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  alivenGroups: AlivenParticleGroup[];
 
   // Per-enemy damage functions
   damageEnemy: (enemy: LaserEnemy, dmg: number, armorMult: number) => number;
@@ -102,6 +104,7 @@ export interface RpgPlayerAttackCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
+  damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, dmg: number) => number;
 
   // Visual spawners
   spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string) => void;
@@ -153,8 +156,12 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     ioliteEnemies, amethystEnemies, amethystShards,
     diamondEnemies, diamondShards, nullstoneEnemies, voidTendrils,
     fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies,
+    eliteEnemies, alivenGroups,
   } = ctx;
+  let alivenParticleCount = 0;
+  for (const g of alivenGroups) {
+    for (const p of g.particles) { if (p.isAlive) alivenParticleCount++; }
+  }
   const totalTargets = enemies.length + sapphireEnemies.length + sapphireMissiles.length
     + emeraldEnemies.length + amberEnemies.length + amberShards.length + voidEnemies.length
     + quartzEnemies.length + quartzSpikes.length + rubyEnemies.length + rubyBolts.length
@@ -162,7 +169,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     + ioliteEnemies.length + amethystEnemies.length + amethystShards.length
     + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length
     + fracterylEnemies.length + fracterylShards.length + eigensteinEnemies.length
-    + eliteEnemies.length
+    + eliteEnemies.length + alivenParticleCount
     + (bossEnemy ? 1 : 0);
   if (totalTargets === 0) return;
 

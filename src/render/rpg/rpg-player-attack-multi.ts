@@ -20,6 +20,7 @@ import type {
   NullstoneEnemy, VoidTendril, FracterylEnemy, FracterylShard,
   EigensteinEnemy, BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
 
 // ── Sort-entry type (local to this module) ────────────────────────────────────
@@ -52,6 +53,8 @@ type MultiSortEntry = {
   eigenstein?: EigensteinEnemy;
   elite?: EliteEnemy;
   boss?: BossEnemy;
+  alivenParticle?: AlivenParticle;
+  alivenGroup?: AlivenParticleGroup;
 };
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -70,7 +73,7 @@ export function performMultiAttack(
     sunstoneEnemies, citrineEnemies, citrineBolts, ioliteEnemies,
     amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eliteEnemies,
+    eigensteinEnemies, eliteEnemies, alivenGroups,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard, damageVoidEnemy,
     damageQuartzEnemy, damageQuartzSpike, damageRubyEnemy, damageRubyBolt,
@@ -217,6 +220,14 @@ export function performMultiAttack(
     const d = dx * dx + dy * dy;
     if (d <= rangeSq) inRange.push({ distSq: d, boss: bossEnemy });
   }
+  for (const group of alivenGroups) {
+    for (const p of group.particles) {
+      if (!p.isAlive) continue;
+      const dx = p.x - mote.x, dy = p.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= rangeSq) inRange.push({ distSq: d, alivenParticle: p, alivenGroup: group });
+    }
+  }
 
   // ── Sort and damage the N closest ────────────────────────────────────────
 
@@ -293,6 +304,9 @@ export function performMultiAttack(
     } else if (t.boss) {
       const dmg = damageBossEnemy(rawDamage, 0);
       if (dmg > 0) spawnHitVisualsAt(t.boss.x, t.boss.y, t.boss.maxHp, dmg, '#50b464');
+    } else if (t.alivenParticle && t.alivenGroup) {
+      const dmg = ctx.damageAlivenParticle(t.alivenParticle, t.alivenGroup, rawDamage);
+      if (dmg > 0) spawnHitVisualsAt(t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, dmg, t.alivenParticle.glowColor);
     }
   }
 }
