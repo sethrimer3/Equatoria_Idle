@@ -23,7 +23,7 @@ export function performAoeAttack(
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies, voidEnemies,
     quartzEnemies, rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies,
     amethystEnemies, diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
-    eliteEnemies,
+    eliteEnemies, alivenGroups,
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy, damageVoidEnemy,
     damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy, damageCitrineEnemy,
     damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy, damageNullstoneEnemy,
@@ -151,6 +151,16 @@ export function performAoeAttack(
     if (dx * dx + dy * dy <= aoeSq) {
       const dmg = damageBossEnemy(rawDamage, 0);
       if (dmg > 0) spawnHitVisualsAt(bossEnemy.x, bossEnemy.y, bossEnemy.maxHp, dmg, '#e6c850');
+    }
+  }
+  for (const group of alivenGroups) {
+    for (const p of group.particles) {
+      if (!p.isAlive) continue;
+      const dx = p.x - mote.x, dy = p.y - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) {
+        const dmg = ctx.damageAlivenParticle(p, group, rawDamage);
+        if (dmg > 0) spawnHitVisualsAt(p.x, p.y, p.maxHp, dmg, p.glowColor);
+      }
     }
   }
   fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,

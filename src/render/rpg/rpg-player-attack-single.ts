@@ -127,5 +127,9 @@ export function performSingleAttack(
     const dmg = damageBossEnemy(rawDamage, defPierceRatio);
     if (dmg > 0) spawnHitVisualsAt(closestT.boss.x, closestT.boss.y, closestT.boss.maxHp, dmg,
       isPiercing ? piercingColor : BOSS_GLOW_COLORS[Math.min(closestT.boss.bossId, BOSS_GLOW_COLORS.length - 1)]);
+  } else if (closestT.alivenParticle && closestT.alivenGroup) {
+    const dmg = ctx.damageAlivenParticle(closestT.alivenParticle, closestT.alivenGroup, rawDamage);
+    if (dmg > 0) spawnHitVisualsAt(closestT.alivenParticle.x, closestT.alivenParticle.y, closestT.alivenParticle.maxHp, dmg,
+      isPiercing ? piercingColor : closestT.alivenParticle.glowColor);
   }
 }

@@ -7,6 +7,7 @@ import type { AudioSystem } from '../../audio';
 import { makePageBreak } from '../ui-helpers';
 import {
   buildAchievementsDom,
+  bonusText,
 } from './achievements-panel-dom';
 import { createSparkleSystem } from './achievements-panel-sparkle';
 import { createGlyphSystem } from './achievements-panel-glyph';
@@ -92,10 +93,15 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   claimAllBtn.className = 'ach-claim-all-btn';
   claimAllBtn.textContent = '✨ Claim All';
   claimAllBtn.disabled = true;
+
+  // Track the most recent game state so the click handler can read claimable bonuses.
+  let latestState: GameState | null = null;
+
   claimAllBtn.addEventListener('click', () => {
+    const bonusLines = computeGroupedClaimAllBonuses(latestState);
     dispatch({ kind: 'claim_all_achievements' });
     audioSystem?.onAchievementClaimed();
-    enqueueReward('All bonuses claimed!');
+    showClaimAllBonusPopup('All bonuses claimed!', bonusLines);
   });
 
   const claimAllCount = document.createElement('span');
@@ -143,6 +149,75 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   function enqueueReward(text: string): void {
     rewardQueue.push(text);
     showNextReward();
+  }
+
+  /**
+   * Show "All bonuses claimed!" header followed by grouped bonus lines that
+   * appear one by one in a stacked list, then disappear one by one.
+   */
+  function showClaimAllBonusPopup(headerText: string, bonusLines: string[]): void {
+    if (isRewardShowing) {
+      // Flush the queue item and fall through so the bonus list takes priority.
+      // (Rare edge case — just append the header to the normal queue instead.)
+      enqueueReward(headerText);
+      return;
+    }
+
+    isRewardShowing = true;
+
+    // Show header with normal float animation.
+    const headerEl = document.createElement('div');
+    headerEl.className = 'golden-text-reward';
+    headerEl.textContent = headerText;
+    goldenTextContainer.appendChild(headerEl);
+
+    const bonusEls: HTMLElement[] = [];
+
+    const STAGGER_IN_MS  = 120; // gap between each bonus appearing
+    const VISIBLE_HOLD_MS = 900; // extra hold after last bonus appears
+
+    // Stagger-append each bonus line.
+    bonusLines.forEach((text, i) => {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = 'golden-text-bonus';
+        el.textContent = text;
+        goldenTextContainer.appendChild(el);
+        bonusEls.push(el);
+      }, STAGGER_IN_MS * (i + 1));
+    });
+
+    // Start removing bonuses after they've all appeared + hold time.
+    const totalAppearMs = STAGGER_IN_MS * (bonusLines.length + 1) + VISIBLE_HOLD_MS;
+
+    const STAGGER_OUT_MS = 100;
+    bonusLines.forEach((_, i) => {
+      setTimeout(() => {
+        const el = bonusEls[i];
+        if (!el) return;
+        el.classList.add('golden-text-bonus--out');
+        el.addEventListener('animationend', () => el.remove(), { once: true });
+      }, totalAppearMs + STAGGER_OUT_MS * i);
+    });
+
+    // Remove header after the full visible window (the float animation handles its own fade).
+    // When bonusLines is empty, treat it like a normal reward (unblock immediately on animationend).
+    headerEl.addEventListener('animationend', () => {
+      headerEl.remove();
+      if (bonusLines.length === 0) {
+        isRewardShowing = false;
+        showNextReward();
+        return;
+      }
+      // Resume normal queue only after all bonus lines are also gone.
+      const lastBonusRemoveMs = totalAppearMs + STAGGER_OUT_MS * bonusLines.length + 250;
+      const headerAnimMs = 2800; // matches golden-text-float duration
+      const waitAfterHeader = Math.max(0, lastBonusRemoveMs - headerAnimMs);
+      setTimeout(() => {
+        isRewardShowing = false;
+        showNextReward();
+      }, waitAfterHeader);
+    }, { once: true });
   }
 
   // ── Sparkle system ─────────────────────────────────────────────
@@ -244,6 +319,9 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   function update(state: GameState, numberFormat: NumberFormat): void {
+    // Track latest state for the claim-all bonus computation.
+    latestState = state;
+
     // Update Claim All button using shared helper
     const totalClaimable = getClaimableCount(state.achievements);
     claimAllBtn.disabled = totalClaimable === 0;
@@ -273,4 +351,38 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   startGlyphAnimation();
 
   return { element: panel, update, setVisible, destroy };
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Computes grouped bonus summary strings for all unclaimed achievements.
+ * Like bonuses are merged: two +1 ATK → "+2 ATK"; two +25% Tap → "+50% Tap".
+ * Returns an array of display strings (empty if nothing claimable).
+ */
+function computeGroupedClaimAllBonuses(state: GameState | null): string[] {
+  if (!state) return [];
+
+  let atkTotal = 0;
+  let tapTotalPct = 0;
+  let loomTotalPct = 0;
+
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    if (!state.achievements.unlockedIds.has(def.id)) continue;
+    if (state.achievements.claimedIds.has(def.id)) continue;
+
+    if (def.bonusKind === 'base_atk') {
+      atkTotal += def.bonusMultiplier;
+    } else if (def.bonusKind === 'tap_multiplier') {
+      tapTotalPct += Math.round((def.bonusMultiplier - 1) * 100);
+    } else if (def.bonusKind === 'loom_multiplier') {
+      loomTotalPct += Math.round((def.bonusMultiplier - 1) * 100);
+    }
+  }
+
+  const lines: string[] = [];
+  if (atkTotal > 0) lines.push(bonusText('base_atk', atkTotal));
+  if (tapTotalPct > 0) lines.push(`+${tapTotalPct}% Tap`);
+  if (loomTotalPct > 0) lines.push(`+${loomTotalPct}% Loom`);
+  return lines;
 }
