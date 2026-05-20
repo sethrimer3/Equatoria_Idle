@@ -45,6 +45,7 @@ import type {
   EliteEnemy,
 } from './rpg-enemy-types';
 import type { ClosestTarget } from './rpg-types';
+import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import { createShipWeaponSystems } from './rpg-weapon-ships';
 import { createSandWeaponSystem } from './rpg-weapon-sand';
 import { createChainWeaponSystem } from './rpg-weapon-chain';
@@ -98,6 +99,7 @@ export interface RpgWeaponCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  alivenGroups: AlivenParticleGroup[];
 
   // Hit effects array (weapon functions push directly into this array)
   hitEffects: HitEffect[];
@@ -129,6 +131,7 @@ export interface RpgWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
+  damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
 
   // Generic multi-type targeting and damage
   damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;

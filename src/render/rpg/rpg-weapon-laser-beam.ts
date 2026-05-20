@@ -36,6 +36,7 @@ import type {
   DiamondEnemy, NullstoneEnemy,
   FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import { applyLaserBeamHitSweep } from './rpg-weapon-laser-beam-hits';
 
 // ── Dependency-injection context ──────────────────────────────────────────
@@ -86,6 +87,8 @@ export interface LaserBeamWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
+  alivenGroups: AlivenParticleGroup[];
+  damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
 }
 
@@ -109,11 +112,13 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
+    alivenGroups,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
     damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
+    damageAlivenParticle,
     spawnDamageNumber,
   } = ctx;
 
@@ -189,6 +194,8 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
       damageEigensteinEnemy,
       damageEliteEnemy,
       damageBossEnemy,
+      alivenGroups,
+      damageAlivenParticle,
       spawnDamageNumber,
     });
 

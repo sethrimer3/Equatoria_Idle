@@ -21,6 +21,7 @@ import type {
   DiamondEnemy, NullstoneEnemy,
   FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
+import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 
 export interface LaserBeamHitSweepCtx {
   originX: number;
@@ -70,6 +71,8 @@ export interface LaserBeamHitSweepCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
+  alivenGroups: AlivenParticleGroup[];
+  damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
 }
 
@@ -99,12 +102,13 @@ export function applyLaserBeamHitSweep(ctx: LaserBeamHitSweepCtx): void {
     amberEnemies, amberShards, voidEnemies, quartzEnemies, rubyEnemies,
     sunstoneEnemies, citrineEnemies, ioliteEnemies, amethystEnemies,
     diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
-    eliteEnemies,
+    eliteEnemies, alivenGroups,
     damageEnemy, damageSapphireEnemy, damageMissile, damageEmeraldEnemy,
     damageAmberEnemy, damageAmberShard, damageVoidEnemy, damageQuartzEnemy,
     damageRubyEnemy, damageSunstoneEnemy, damageCitrineEnemy, damageIoliteEnemy,
     damageAmethystEnemy, damageDiamondEnemy, damageNullstoneEnemy,
     damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
+    damageAlivenParticle,
     spawnDamageNumber,
   } = ctx;
 
@@ -212,6 +216,19 @@ export function applyLaserBeamHitSweep(ctx: LaserBeamHitSweepCtx): void {
     const dmg = damageEliteEnemy(e, baseDamage, 1.0);
     hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: beamGlow });
     spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, beamColor);
+  }
+
+  for (const group of alivenGroups) {
+    for (const p of group.particles) {
+      if (!p.isAlive) continue;
+      const r = Math.max(3, p.radiusPx);
+      if (!isWithinBeam(originX, originY, dirX, dirY, tMax, p.x, p.y, r * 2)) continue;
+      const dmg = damageAlivenParticle(p, group, baseDamage);
+      if (dmg > 0) {
+        hitEffects.push({ x: p.x, y: p.y, timerMs: HIT_EFFECT_DURATION_MS, color: p.glowColor });
+        spawnDamageNumber(p.x, p.y, 0, -1, String(Math.round(dmg)), dmg / p.maxHp, p.glowColor);
+      }
+    }
   }
 
   if (!bossEnemy) return;
