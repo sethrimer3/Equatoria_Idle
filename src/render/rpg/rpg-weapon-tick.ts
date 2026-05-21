@@ -50,6 +50,8 @@ export interface WeaponTickCtx {
   getEffectiveEquippedIds(): Set<string>;
   /** Returns the ID of the first equipped weapon with the given effect kind, or null. */
   findEquippedWeaponIdByEffect(kind: string): string | null;
+  /** Returns the SPD multiplier for the given weapon (>= 1). Used to divide cooldown. */
+  getWeaponSpdMultiplier(weaponId: string): number;
   /** Fire one auto-attack with the given weapon. */
   performWeaponAttack(weaponId: string): void;
   /** Remove enemies whose HP dropped to zero since the last removal pass. */
@@ -129,9 +131,11 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
         weaponDef?.stats.effect?.kind === 'amethystShip') continue;
 
     const tier = ctx.rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-    const cooldownMs = weaponDef
+    const spdMult = ctx.getWeaponSpdMultiplier(weaponId);
+    const baseCooldownMs = weaponDef
       ? getScaledWeaponCooldown(weaponDef.stats.cooldownMs, tier)
       : PLAYER_BASE_COOLDOWN_MS;
+    const cooldownMs = baseCooldownMs / Math.max(1, spdMult);
 
     const current = ctx.weaponAttackTimers.get(weaponId) ?? 0;
     const next = current - deltaMs;

@@ -150,6 +150,13 @@ export interface RpgPlayerAttackCtx {
   spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number) => void;
   fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => void;
   layMine: (damage: number, tier: number) => void;
+
+  /** Returns the ATK multiplier for the given weapon (>= 1). Multiply base damage by this. */
+  getWeaponAtkMultiplier(weaponId: string): number;
+  /** Returns the RNG multiplier for the given weapon (>= 1). Multiply base range by this. */
+  getWeaponRngMultiplier(weaponId: string): number;
+  /** Returns the PRC multiplier for the given weapon (>= 1). Multiply pierce ratio by this. */
+  getWeaponPrcMultiplier(weaponId: string): number;
 }
 
 // ── Attack dispatch ───────────────────────────────────────────────────────────
@@ -167,9 +174,9 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   // Sunstone mines can always be placed (no target needed).
   if (weaponDef?.stats.effect?.kind === 'sunstoneMine') {
     const tier      = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-    const rawDamage = weaponDef
+    const rawDamage = (weaponDef
       ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
-      : playerStats.atk;
+      : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
     ctx.layMine(rawDamage, tier);
     return;
   }
@@ -206,11 +213,11 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     + (bossEnemy ? 1 : 0);
   if (totalTargets === 0) return;
 
-  const range     = weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX;
+  const range     = (weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX) * Math.max(1, ctx.getWeaponRngMultiplier(weaponId));
   const tier      = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-  const rawDamage = weaponDef
+  const rawDamage = (weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
-    : playerStats.atk;
+    : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
   const effect    = weaponDef?.stats.effect ?? { kind: 'single' as const };
   const rangeSq   = range * range;
 
@@ -257,6 +264,9 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
 
   // single / piercing
   const isPiercing     = effect.kind === 'piercing';
-  const defPierceRatio = isPiercing ? effect.defPierceRatio : 0;
+  const basePierce     = isPiercing ? effect.defPierceRatio : 0;
+  const defPierceRatio = isPiercing
+    ? Math.min(1, basePierce * Math.max(1, ctx.getWeaponPrcMultiplier(weaponId)))
+    : 0;
   performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, '#ffd764');
 }

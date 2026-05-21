@@ -995,25 +995,27 @@
 - `updateLockedWire` / `updateSlurpingWire` / `setDragPreview` / `updateDragPreviewPhysics` / `hideDragPreview` are called per-frame by `rpg-equip-wiring.ts`.
 
 ### src/render/rpg/rpg-stats-panel.ts
-- RPG stats panel logic layer: DPS tracking, equip-wiring registration, and per-frame update (~360 lines after DOM extraction).
+- RPG stats panel logic layer: DPS tracking, equip-wiring registration, and per-frame update (~490 lines after DOM extraction).
 - Exports `RpgStatsPanelCtx` interface, `RpgStatsPanelHandle` interface, and `createRpgStatsPanel(ctx)` factory.
 - DOM construction delegated to `rpg-stats-panel-dom.ts` via `buildStatsPanelDom()`.
-- Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display updates, weapon stat rows, XP amount display, and equip-wiring plug registrations.
+- Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display updates, weapon stat rows, **XP reservoir display**, multiplier box UI (progress bars + level text), and equip-wiring plug registrations.
 - All visible wires use the unified soft-body system via `createEquipWiringSystem` (see `rpg-equip-wiring.ts`).
-- Box 1: 5 weapon-source output plugs (slot 1 unlocked; 2–5 unlock via `getMaxEquippedWeapons`).
-- `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, and `menuButtonContainer`.
+- Box 1: 5 weapon-source output plugs; Box 2: XP reservoir drain to connected modifier box; Boxes 3–5: multiplier boxes with progress/level.
+- Wire state tracking: `equippedByWire` set, `xpTargetModifier` index, `statModifiers` map (slotIdx:statKey → modifierIdx).
+- **Per-frame XP drain**: drains `xpReservoir` into connected modifier box at `max(50, reservoir × 1.5)` XP/sec.
+- `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, `menuButtonContainer`, **`isSlotEquippedByWire`**, **`hasAnyEquipWire`**, **`getWeaponStatMultiplier`**.
 
 ### src/render/rpg/rpg-stats-panel-dom.ts
 - Orchestrator for RPG stats panel DOM assembly.
 - Extracted from `rpg-stats-panel.ts` to isolate HTML element creation from update logic.
 - Exports `StatsPanelDomRefs` interface and `buildStatsPanelDom()` factory.
 - Delegates section construction and badge wiring to `rpg-stats-panel-dom-sections.ts`.
-- Returns `StatsPanelDomRefs` containing all ~20 live element references needed by `rpg-stats-panel.ts` for updates and wiring registrations.
+- Returns `StatsPanelDomRefs` containing all live element references, including `modProgressFills` and `modLevelTexts` arrays for modifier boxes.
 
 ### src/render/rpg/rpg-stats-panel-dom-sections.ts
 - Section builders/helpers for the RPG stats panel DOM.
-- Exports `createStatsPanelPrimaryColumn()` (player icon + weapon source plugs, XP/modifier boxes, weapon stat rows), `createStatsPanelRightColumn()` (DPS widget, HP box, menu area), and `addStatsPanelDevBadges()`.
-- Owns the player-icon RAF idle animation loop and skips drawing while the stats panel is hidden via a visibility callback.
+- Exports `createStatsPanelPrimaryColumn()` (player icon + weapon source plugs, XP/modifier boxes with **progress bars + level text + Roman numerals**, weapon stat rows), `createStatsPanelRightColumn()`, and `addStatsPanelDevBadges()`.
+- Modifier boxes now include: absolute-positioned Roman numeral (top-left), flex content column (progress bar + level text), and plug stack.
 
 ### src/render/rpg/rpg-equip-wiring-types.ts
 - Types and pure helpers for the RPG plug wiring system.
@@ -1117,9 +1119,10 @@
 - `updateWeaponOrbitParticles` advances all orbit particle angles, maintains even spacing, and records distance-based trail points.
 
 ### src/render/rpg/rpg-weapon-tick.ts
-- Per-frame weapon system update dispatch extracted from `rpg-render.ts` (~151 lines).
+- Per-frame weapon system update dispatch extracted from `rpg-render.ts` (~165 lines).
 - Exports `WeaponTickCtx` interface and `tickWeaponSystems(ctx, deltaMs)`.
 - Handles three responsibilities: weapon effect system updates (sand, chainWhip, vortex, etc.), per-weapon auto-attack timer countdown and `performWeaponAttack` dispatch, and sand blade fallback when no weapons are equipped.
+- `WeaponTickCtx` includes `getWeaponSpdMultiplier(weaponId): number`; the cooldown for each weapon is divided by this multiplier before counting down.
 - `rpg-render.ts` constructs `weaponTickCtx: WeaponTickCtx` once (after context objects) and calls `tickWeaponSystems(weaponTickCtx, deltaMs)` each frame.
 
 ### src/data/rpg/wave-definitions.ts
@@ -1144,8 +1147,9 @@
 - Re-exports all functions from `rpg-state-xp.ts` and `rpg-state-upgrades.ts` for backward compatibility (~248 lines after refactor).
 
 ### src/sim/rpg/rpg-state-xp.ts
-- XP and luck computation functions extracted from `rpg-state.ts` (~180 lines).
+- XP and luck computation functions extracted from `rpg-state.ts` (~215 lines).
 - Exports: `getXpPerKill`, `getWaveStatScale`, `getXpAtkBonus`, `getXpDefBonus`, `getLuckPercent`, `formatLuckPercent`, `formatXp`, `addXpWithAllocation`, `getEffectiveXpAtkBonus`, `getEffectiveXpDefBonus`, `getEffectiveXpLuckBonus`, `getEffectiveXpHpBonus`.
+- New: `getMultiplierXpCost(level): number` — returns `50 × 5^(level-1)`; `tickMultiplierXpProgress(state, modIdx, amount)` — advances multiplier box XP, levelling up as needed.
 
 ### src/sim/rpg/rpg-state-upgrades.ts
 - Wave boost, RPG upgrade, and boss helper functions extracted from `rpg-state.ts` (~78 lines).

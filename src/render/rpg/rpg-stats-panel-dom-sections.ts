@@ -20,6 +20,10 @@ export interface StatsPanelPrimaryColumnRefs {
   mod2Out: HTMLDivElement;
   mod3XpIn: HTMLDivElement;
   mod3Out: HTMLDivElement;
+  /** Progress bar fill elements for modifier boxes [0]=Box3, [1]=Box4, [2]=Box5. */
+  modProgressFills: HTMLDivElement[];
+  /** Level text elements for modifier boxes [0]=Box3, [1]=Box4, [2]=Box5. */
+  modLevelTexts: HTMLSpanElement[];
 }
 
 export interface StatsPanelRightColumnRefs {
@@ -118,18 +122,43 @@ function makeBox5Row(label: string | HTMLElement): { box: HTMLDivElement; xpOutP
   return { box, xpOutPlug };
 }
 
-function makeModifierBox5Row(label: string): {
+function makeModifierBox5Row(romanNumeral: string): {
   box: HTMLDivElement;
   xpInPlug: HTMLDivElement;
   outPlug: HTMLDivElement;
+  progressBarFill: HTMLDivElement;
+  levelText: HTMLSpanElement;
 } {
   const box = document.createElement('div');
   box.className = 'rpg-xp-box rpg-box5-cell';
-  const span = document.createElement('span');
-  span.className = 'rpg-box5-label';
-  span.textContent = label;
-  box.appendChild(span);
 
+  // Roman numeral — absolute top-left corner
+  const romanSpan = document.createElement('span');
+  romanSpan.className = 'rpg-modifier-roman';
+  romanSpan.textContent = romanNumeral;
+  box.appendChild(romanSpan);
+
+  // Content column: progress bar + level text
+  const contentEl = document.createElement('div');
+  contentEl.className = 'rpg-modifier-content';
+
+  const progressTrack = document.createElement('div');
+  progressTrack.className = 'rpg-modifier-progress-track';
+
+  const progressBarFill = document.createElement('div');
+  progressBarFill.className = 'rpg-modifier-progress-fill';
+  progressBarFill.style.width = '0%';
+  progressTrack.appendChild(progressBarFill);
+  contentEl.appendChild(progressTrack);
+
+  const levelText = document.createElement('span');
+  levelText.className = 'rpg-modifier-level-text';
+  levelText.textContent = 'x1';
+  contentEl.appendChild(levelText);
+
+  box.appendChild(contentEl);
+
+  // Plug stack (xpIn on top, out on bottom)
   const plugStack = document.createElement('div');
   plugStack.style.cssText = 'display:flex;flex-direction:column;gap:2px;flex-shrink:0;';
 
@@ -142,7 +171,8 @@ function makeModifierBox5Row(label: string): {
   plugStack.appendChild(xpInPlug);
   plugStack.appendChild(outPlug);
   box.appendChild(plugStack);
-  return { box, xpInPlug, outPlug };
+
+  return { box, xpInPlug, outPlug, progressBarFill, levelText };
 }
 
 function makeWeaponCell(cell: HTMLDivElement): { plugElement: HTMLSpanElement; valueSpan: HTMLSpanElement } {
@@ -197,9 +227,9 @@ export function createStatsPanelPrimaryColumn(
   xpNodeEl.appendChild(xpAmountEl);
 
   const { box: box5Cell2, xpOutPlug: xpOutPlugEl } = makeBox5Row(xpNodeEl);
-  const { box: box5Cell3, xpInPlug: mod1XpIn, outPlug: mod1Out } = makeModifierBox5Row('I');
-  const { box: box5Cell4, xpInPlug: mod2XpIn, outPlug: mod2Out } = makeModifierBox5Row('II');
-  const { box: box5Cell5, xpInPlug: mod3XpIn, outPlug: mod3Out } = makeModifierBox5Row('III');
+  const { box: box5Cell3, xpInPlug: mod1XpIn, outPlug: mod1Out, progressBarFill: mod1Fill, levelText: mod1Level } = makeModifierBox5Row('I');
+  const { box: box5Cell4, xpInPlug: mod2XpIn, outPlug: mod2Out, progressBarFill: mod2Fill, levelText: mod2Level } = makeModifierBox5Row('II');
+  const { box: box5Cell5, xpInPlug: mod3XpIn, outPlug: mod3Out, progressBarFill: mod3Fill, levelText: mod3Level } = makeModifierBox5Row('III');
   xpBox2.appendChild(box5Cell2);
   xpBox2.appendChild(box5Cell3);
   xpBox2.appendChild(box5Cell4);
@@ -275,6 +305,8 @@ export function createStatsPanelPrimaryColumn(
     mod2Out,
     mod3XpIn,
     mod3Out,
+    modProgressFills: [mod1Fill, mod2Fill, mod3Fill],
+    modLevelTexts: [mod1Level, mod2Level, mod3Level],
   };
 }
 
