@@ -25,6 +25,11 @@ import type {
   EigensteinEnemy,
 } from './rpg-enemy-types';
 import type { ClosestTarget, LaserEnemy, SapphireEnemy, SapphireMissile } from './rpg-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+} from './rpg-procedural-types';
 
 export interface RpgTargetingCtx {
   mote: { x: number; y: number };
@@ -55,6 +60,19 @@ export interface RpgTargetingCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
   alivenGroups: AlivenParticleGroup[];
+  // ── Procedural creature arrays ──────────────────────────────────────────────
+  dustWispEnemies: DustWispEnemy[];
+  ribbonWormEnemies: RibbonWormEnemy[];
+  lanternMothEnemies: LanternMothEnemy[];
+  eyeStalkEnemies: EyeStalkEnemy[];
+  jellyfishEnemies: JellyfishEnemy[];
+  clothGhostEnemies: ClothGhostEnemy[];
+  plantTurretEnemies: PlantTurretEnemy[];
+  gearInsectEnemies: GearInsectEnemy[];
+  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
+  moteSwarmEnemies: MoteSwarmEnemy[];
+  shadowHandEnemies: ShadowHandEnemy[];
+  plantProjectiles: PlantProjectile[];
   damageEnemy: (e: LaserEnemy, raw: number, pierce: number) => number;
   damageSapphireEnemy: (e: SapphireEnemy, raw: number, pierce: number, bypass: boolean) => number;
   damageMissile: (m: SapphireMissile, raw: number, pierce: number) => number;
@@ -82,13 +100,29 @@ export interface RpgTargetingCtx {
   damageEliteEnemy: (e: EliteEnemy, raw: number, pierce: number) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, raw: number) => number;
   damageBossEnemy: (raw: number, pierce: number, fromDiamond?: boolean) => number;
+  // ── Procedural creature damage callbacks ──────────────────────────────────
+  damageDustWispEnemy: (e: DustWispEnemy, raw: number, pierce: number) => number;
+  damageRibbonWormEnemy: (e: RibbonWormEnemy, raw: number, pierce: number) => number;
+  damageLanternMothEnemy: (e: LanternMothEnemy, raw: number, pierce: number) => number;
+  damageEyeStalkEnemy: (e: EyeStalkEnemy, raw: number, pierce: number) => number;
+  damageJellyfishEnemy: (e: JellyfishEnemy, raw: number, pierce: number) => number;
+  damageClothGhostEnemy: (e: ClothGhostEnemy, raw: number, pierce: number) => number;
+  damagePlantTurretEnemy: (e: PlantTurretEnemy, raw: number, pierce: number) => number;
+  damageGearInsectEnemy: (e: GearInsectEnemy, raw: number, pierce: number) => number;
+  damageSpiderCrawlerEnemy: (e: SpiderCrawlerEnemy, raw: number, pierce: number) => number;
+  damageMoteSwarmEnemy: (e: MoteSwarmEnemy, raw: number, pierce: number) => number;
+  damageShadowHandEnemy: (e: ShadowHandEnemy, raw: number, pierce: number) => number;
+  damagePlantProjectile: (p: PlantProjectile, raw: number) => number;
 }
 
 export interface RpgTargetingHandle {
   findClosestTarget(rangeSq: number): ClosestTarget | null;
   findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy
-    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy | null;
+    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
+    | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
+    | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
+    | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy | null;
   collectEnemyBodyTargets(): ClosestTarget[];
   findClosestEnemyFrom(x: number, y: number, rangeSq: number): ClosestTarget | null;
   getTargetedEnemy(): ClosestTarget | null;

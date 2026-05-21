@@ -63,6 +63,7 @@ import { drawSwordCombos, drawSandBladeCombo, drawSandDriftPixels, setLowGraphic
 import { drawLuckyMotes, drawLuckyMotePopups } from './rpg-lucky-motes';
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import { drawAlivenGroups, setAlivenLowGraphics } from './rpg-aliven-draw';
+import { drawProceduralEnemies } from './rpg-procedural-draw';
 import {
   drawEliteEnemies,
   setLowGraphicsMode as setEliteDrawLowGraphics,
@@ -89,6 +90,11 @@ import type {
   DanmakuSafeZone, TeleportParticle,
   LuckyMote, LuckyMotePopup, EliteEnemy,
 } from './rpg-enemy-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+} from './rpg-procedural-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
@@ -134,6 +140,19 @@ export interface RpgDrawCtx {
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
   alivenGroups: AlivenParticleGroup[];
+  // ── Procedural creature arrays ──────────────────────────────────────────────
+  dustWispEnemies: DustWispEnemy[];
+  ribbonWormEnemies: RibbonWormEnemy[];
+  lanternMothEnemies: LanternMothEnemy[];
+  eyeStalkEnemies: EyeStalkEnemy[];
+  jellyfishEnemies: JellyfishEnemy[];
+  clothGhostEnemies: ClothGhostEnemy[];
+  plantTurretEnemies: PlantTurretEnemy[];
+  gearInsectEnemies: GearInsectEnemy[];
+  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
+  moteSwarmEnemies: MoteSwarmEnemy[];
+  shadowHandEnemies: ShadowHandEnemy[];
+  plantProjectiles: PlantProjectile[];
 
   // ── Boss & projectile state ───────────────────────────────
   getBossEnemy(): BossEnemy | null;
@@ -243,6 +262,7 @@ export function drawRpgFrame(
   drawEigensteinBeams(canvas2d, ctx.eigensteinBeams, widthPx, heightPx);
   drawEliteEnemies(canvas2d, ctx.eliteEnemies);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
+  drawProceduralEnemies(canvas2d, ctx, nowMs);
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), widthPx, heightPx, glowTimeS);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
   drawBossProjectiles(canvas2d, ctx.bossProjectiles);

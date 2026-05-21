@@ -308,6 +308,11 @@ import type {
   BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
 import type { AlivenParticle } from './rpg-aliven-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+} from './rpg-procedural-types';
 
 export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
   | 'quartz' | 'quartzspike' | 'ruby' | 'rubybolt' | 'sunstone' | 'citrine' | 'citrinebolt'
@@ -315,7 +320,10 @@ export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' 
   | 'fracteryl' | 'fracterylshard' | 'eigenstein'
   | 'elite'
   | 'aliven_particle'
-  | 'boss';
+  | 'boss'
+  | 'proc_dustwisp' | 'proc_ribbonworm' | 'proc_lanternmoth' | 'proc_eyestalk'
+  | 'proc_jellyfish' | 'proc_clothghost' | 'proc_plantturret' | 'proc_gearinsect'
+  | 'proc_spidercrawler' | 'proc_moteswarm' | 'proc_shadowhand' | 'proc_plantproj';
 
 export interface ClosestTarget {
   kind: TargetKind;
@@ -351,6 +359,19 @@ export interface ClosestTarget {
   /** Parent group of the targeted AlivenParticle. */
   alivenGroup?: import('./rpg-aliven-types').AlivenParticleGroup;
   boss?: BossEnemy;
+  // ── Procedural creature targets ──────────────────────────────────────────
+  dustWisp?: DustWispEnemy;
+  ribbonWorm?: RibbonWormEnemy;
+  lanternMoth?: LanternMothEnemy;
+  eyeStalk?: EyeStalkEnemy;
+  jellyfish?: JellyfishEnemy;
+  clothGhost?: ClothGhostEnemy;
+  plantTurret?: PlantTurretEnemy;
+  gearInsect?: GearInsectEnemy;
+  spiderCrawler?: SpiderCrawlerEnemy;
+  moteSwarm?: MoteSwarmEnemy;
+  shadowHand?: ShadowHandEnemy;
+  plantProj?: PlantProjectile;
 }
 
 // ── Enemy entity types ─────────────────────────────────────────────

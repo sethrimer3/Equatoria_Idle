@@ -17,6 +17,7 @@ import {
   FLUID_NULLSTONE_R, FLUID_NULLSTONE_G, FLUID_NULLSTONE_B,
   FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B,
   FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B,
+  FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B,
 } from './rpg-constants';
 import {
   LASER_XP_MULT, SAPPHIRE_XP_MULT, EMERALD_XP_MULT, AMBER_XP_MULT, VOID_XP_MULT,
@@ -24,6 +25,11 @@ import {
   IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
   FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
 } from './rpg-enemy-constants';
+import {
+  DUSTWISP_XP_MULT, RIBBONWORM_XP_MULT, LANTERNMOTH_XP_MULT, EYESTALK_XP_MULT,
+  JELLYFISH_XP_MULT, CLOTHGHOST_XP_MULT, PLANTTURRET_XP_MULT, GEARINSECT_XP_MULT,
+  SPIDERCRAWLER_XP_MULT, MOTESWARM_XP_MULT, SHADOWHAND_XP_MULT,
+} from './rpg-procedural-constants';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
 import type { WaveManagerCtx } from './rpg-wave-manager';
 
@@ -38,6 +44,9 @@ export function sweepStandardDeadEnemies(
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
+    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
     luckyMotes, fluid, getCachedLuckPercent,
   } = ctx;
 
@@ -213,6 +222,88 @@ export function sweepStandardDeadEnemies(
       addKill('eigenstein');
       rpgSimState.lifetimeLateEnemyKills++;
       eigensteinEnemies.splice(i, 1);
+    }
+  }
+
+  // ── Procedural creature dead-enemy sweeps ────────────────────────────────────
+  for (let i = dustWispEnemies.length - 1; i >= 0; i--) {
+    if (dustWispEnemies[i].hp <= 0) {
+      fluid.addExplosion(dustWispEnemies[i].x, dustWispEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.0, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * DUSTWISP_XP_MULT;
+      addKill('proc_dustwisp'); dustWispEnemies.splice(i, 1);
+    }
+  }
+  for (let i = ribbonWormEnemies.length - 1; i >= 0; i--) {
+    if (ribbonWormEnemies[i].hp <= 0) {
+      fluid.addExplosion(ribbonWormEnemies[i].x, ribbonWormEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.2, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * RIBBONWORM_XP_MULT;
+      addKill('proc_ribbonworm'); ribbonWormEnemies.splice(i, 1);
+    }
+  }
+  for (let i = lanternMothEnemies.length - 1; i >= 0; i--) {
+    if (lanternMothEnemies[i].hp <= 0) {
+      fluid.addExplosion(lanternMothEnemies[i].x, lanternMothEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.1, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * LANTERNMOTH_XP_MULT;
+      addKill('proc_lanternmoth'); lanternMothEnemies.splice(i, 1);
+    }
+  }
+  for (let i = eyeStalkEnemies.length - 1; i >= 0; i--) {
+    if (eyeStalkEnemies[i].hp <= 0) {
+      fluid.addExplosion(eyeStalkEnemies[i].x, eyeStalkEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.3, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EYESTALK_XP_MULT;
+      addKill('proc_eyestalk'); eyeStalkEnemies.splice(i, 1);
+    }
+  }
+  for (let i = jellyfishEnemies.length - 1; i >= 0; i--) {
+    if (jellyfishEnemies[i].hp <= 0) {
+      fluid.addExplosion(jellyfishEnemies[i].x, jellyfishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * JELLYFISH_XP_MULT;
+      addKill('proc_jellyfish'); jellyfishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = clothGhostEnemies.length - 1; i >= 0; i--) {
+    if (clothGhostEnemies[i].hp <= 0) {
+      fluid.addExplosion(clothGhostEnemies[i].x, clothGhostEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.2, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * CLOTHGHOST_XP_MULT;
+      addKill('proc_clothghost'); clothGhostEnemies.splice(i, 1);
+    }
+  }
+  for (let i = plantTurretEnemies.length - 1; i >= 0; i--) {
+    if (plantTurretEnemies[i].hp <= 0) {
+      fluid.addExplosion(plantTurretEnemies[i].x, plantTurretEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.6, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * PLANTTURRET_XP_MULT;
+      addKill('proc_plantturret'); plantTurretEnemies.splice(i, 1);
+    }
+  }
+  for (let i = plantProjectiles.length - 1; i >= 0; i--) {
+    if (plantProjectiles[i].hp <= 0 || plantProjectiles[i].lifeMs <= 0) plantProjectiles.splice(i, 1);
+  }
+  for (let i = gearInsectEnemies.length - 1; i >= 0; i--) {
+    if (gearInsectEnemies[i].hp <= 0) {
+      fluid.addExplosion(gearInsectEnemies[i].x, gearInsectEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.8, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * GEARINSECT_XP_MULT;
+      addKill('proc_gearinsect'); gearInsectEnemies.splice(i, 1);
+    }
+  }
+  for (let i = spiderCrawlerEnemies.length - 1; i >= 0; i--) {
+    if (spiderCrawlerEnemies[i].hp <= 0) {
+      fluid.addExplosion(spiderCrawlerEnemies[i].x, spiderCrawlerEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.6, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SPIDERCRAWLER_XP_MULT;
+      addKill('proc_spidercrawler'); spiderCrawlerEnemies.splice(i, 1);
+    }
+  }
+  for (let i = moteSwarmEnemies.length - 1; i >= 0; i--) {
+    if (moteSwarmEnemies[i].hp <= 0) {
+      fluid.addExplosion(moteSwarmEnemies[i].x, moteSwarmEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * MOTESWARM_XP_MULT;
+      addKill('proc_moteswarm'); moteSwarmEnemies.splice(i, 1);
+    }
+  }
+  for (let i = shadowHandEnemies.length - 1; i >= 0; i--) {
+    if (shadowHandEnemies[i].hp <= 0) {
+      fluid.addExplosion(shadowHandEnemies[i].x, shadowHandEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 2.2, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SHADOWHAND_XP_MULT;
+      addKill('proc_shadowhand'); shadowHandEnemies.splice(i, 1);
     }
   }
 

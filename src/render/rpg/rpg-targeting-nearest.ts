@@ -17,6 +17,11 @@ import type {
   EigensteinEnemy,
 } from './rpg-enemy-types';
 import type { RpgTargetingCtx } from './rpg-targeting-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy,
+} from './rpg-procedural-types';
 
 export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): ClosestTarget | null {
   let best: ClosestTarget | null = null;
@@ -161,6 +166,68 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const d = dx * dx + dy * dy;
     if (d <= bestSq) { bestSq = d; best = { kind: 'boss', x: ctx.bossEnemy.x, y: ctx.bossEnemy.y, distSq: d, boss: ctx.bossEnemy }; }
   }
+  // ── Procedural creature enemies (targetable by weapons) ──────────────────────
+  for (const e of ctx.dustWispEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_dustwisp', x: e.x, y: e.y, distSq: d, dustWisp: e }; }
+  }
+  for (const e of ctx.ribbonWormEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_ribbonworm', x: e.x, y: e.y, distSq: d, ribbonWorm: e }; }
+  }
+  for (const e of ctx.lanternMothEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_lanternmoth', x: e.x, y: e.y, distSq: d, lanternMoth: e }; }
+  }
+  for (const e of ctx.eyeStalkEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_eyestalk', x: e.x, y: e.y, distSq: d, eyeStalk: e }; }
+  }
+  for (const e of ctx.jellyfishEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_jellyfish', x: e.x, y: e.y, distSq: d, jellyfish: e }; }
+  }
+  for (const e of ctx.clothGhostEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_clothghost', x: e.x, y: e.y, distSq: d, clothGhost: e }; }
+  }
+  for (const e of ctx.plantTurretEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_plantturret', x: e.x, y: e.y, distSq: d, plantTurret: e }; }
+  }
+  for (const e of ctx.gearInsectEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_gearinsect', x: e.x, y: e.y, distSq: d, gearInsect: e }; }
+  }
+  for (const e of ctx.spiderCrawlerEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_spidercrawler', x: e.x, y: e.y, distSq: d, spiderCrawler: e }; }
+  }
+  for (const e of ctx.moteSwarmEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_moteswarm', x: e.x, y: e.y, distSq: d, moteSwarm: e }; }
+  }
+  for (const e of ctx.shadowHandEnemies) {
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_shadowhand', x: e.x, y: e.y, distSq: d, shadowHand: e }; }
+  }
+  for (const p of ctx.plantProjectiles) {
+    if (p.hp <= 0) continue;
+    const dx = p.x - ctx.mote.x, dy = p.y - ctx.mote.y;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq) { bestSq = d; best = { kind: 'proc_plantproj', x: p.x, y: p.y, distSq: d, plantProj: p }; }
+  }
   return best;
 }
 
@@ -169,11 +236,17 @@ export function findClosestEnemy(
   rangeSq: number,
 ): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
   | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-  | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy | null {
+  | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
+  | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
+  | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
+  | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy | null {
   let bestSq = rangeSq;
   let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-    | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy | null = null;
+    | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
+    | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
+    | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
+    | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy | null = null;
   for (const e of ctx.enemies) {
     const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
     const d = dx * dx + dy * dy;
@@ -259,5 +332,17 @@ export function findClosestEnemy(
     const d = dx * dx + dy * dy;
     if (d <= bestSq) { bestSq = d; best = ctx.bossEnemy; }
   }
+  // Proc enemies
+  for (const e of ctx.dustWispEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.ribbonWormEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.lanternMothEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.eyeStalkEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.jellyfishEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.clothGhostEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.plantTurretEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.gearInsectEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.spiderCrawlerEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.moteSwarmEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
+  for (const e of ctx.shadowHandEnemies) { const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y; const d = dx*dx+dy*dy; if (d <= bestSq) { bestSq = d; best = e; } }
   return best;
 }

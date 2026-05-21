@@ -20,6 +20,11 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy,
   BossEnemy, EliteEnemy, EliteTier,
 } from './rpg-enemy-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy,
+} from './rpg-procedural-types';
 import {
   LASER_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE,
 } from './rpg-constants';
@@ -31,6 +36,11 @@ import {
   FRACTERYL_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE,
 } from './rpg-enemy-constants';
 import {
+  DUSTWISP_SIZE, RIBBONWORM_SIZE, LANTERNMOTH_SIZE, EYESTALK_SIZE,
+  JELLYFISH_SIZE, CLOTHGHOST_SIZE, PLANTTURRET_SIZE, GEARINSECT_SIZE,
+  SPIDERCRAWLER_SIZE, MOTESWARM_SIZE, SHADOWHAND_SIZE,
+} from './rpg-procedural-constants';
+import {
   makeLaserEnemy, makeSapphireEnemy,
   makeEmeraldEnemy, makeAmberEnemy, makeVoidEnemy,
   makeQuartzEnemy, makeRubyEnemy,
@@ -41,6 +51,11 @@ import {
   makeEigensteinEnemy, makeBossEnemy,
   makeEliteEnemy,
 } from './rpg-factories';
+import {
+  makeDustWispEnemy, makeRibbonWormEnemy, makeLanternMothEnemy, makeEyeStalkEnemy,
+  makeJellyfishEnemy, makeClothGhostEnemy, makePlantTurretEnemy, makeGearInsectEnemy,
+  makeSpiderCrawlerEnemy, makeMoteSwarmEnemy, makeShadowHandEnemy,
+} from './rpg-procedural-factories';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
 import {
@@ -80,6 +95,18 @@ export interface EnemySpawnCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
   alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
+  // ── Procedural creature arrays ──────────────────────────────────────────────
+  dustWispEnemies: DustWispEnemy[];
+  ribbonWormEnemies: RibbonWormEnemy[];
+  lanternMothEnemies: LanternMothEnemy[];
+  eyeStalkEnemies: EyeStalkEnemy[];
+  jellyfishEnemies: JellyfishEnemy[];
+  clothGhostEnemies: ClothGhostEnemy[];
+  plantTurretEnemies: PlantTurretEnemy[];
+  gearInsectEnemies: GearInsectEnemy[];
+  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
+  moteSwarmEnemies: MoteSwarmEnemy[];
+  shadowHandEnemies: ShadowHandEnemy[];
 }
 
 // ── Spawn helper ──────────────────────────────────────────────────────────────
@@ -281,5 +308,37 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX, spawnY, wn,
     ));
     recordAlivenSpawn(enemyTypeId, ctx.alivenGroups.length);
+  } else {
+    // ── Procedural creature spawns ────────────────────────────────
+    const procSizeMap: Record<string, number> = {
+      'proc_dustwisp': DUSTWISP_SIZE, 'proc_ribbonworm': RIBBONWORM_SIZE,
+      'proc_lanternmoth': LANTERNMOTH_SIZE, 'proc_eyestalk': EYESTALK_SIZE,
+      'proc_jellyfish': JELLYFISH_SIZE, 'proc_clothghost': CLOTHGHOST_SIZE,
+      'proc_plantturret': PLANTTURRET_SIZE, 'proc_gearinsect': GEARINSECT_SIZE,
+      'proc_spidercrawler': SPIDERCRAWLER_SIZE, 'proc_moteswarm': MOTESWARM_SIZE,
+      'proc_shadowhand': SHADOWHAND_SIZE,
+    };
+    const procSize = procSizeMap[enemyTypeId];
+    if (procSize !== undefined) {
+      const half = procSize;
+      do {
+        spawnX = half + Math.random() * (widthPx  - procSize * 2);
+        spawnY = half + Math.random() * (heightPx - procSize * 2);
+        const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+        if (dx * dx + dy * dy >= minDist * minDist) break;
+        attempts++;
+      } while (attempts < 20);
+      if (enemyTypeId === 'proc_dustwisp')      ctx.dustWispEnemies.push(makeDustWispEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_ribbonworm')  ctx.ribbonWormEnemies.push(makeRibbonWormEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_lanternmoth') ctx.lanternMothEnemies.push(makeLanternMothEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_eyestalk')    ctx.eyeStalkEnemies.push(makeEyeStalkEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_jellyfish')   ctx.jellyfishEnemies.push(makeJellyfishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_clothghost')  ctx.clothGhostEnemies.push(makeClothGhostEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_plantturret') ctx.plantTurretEnemies.push(makePlantTurretEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_gearinsect')  ctx.gearInsectEnemies.push(makeGearInsectEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_spidercrawler') ctx.spiderCrawlerEnemies.push(makeSpiderCrawlerEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_moteswarm')   ctx.moteSwarmEnemies.push(makeMoteSwarmEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_shadowhand')  ctx.shadowHandEnemies.push(makeShadowHandEnemy(spawnX, spawnY, wn));
+    }
   }
 }

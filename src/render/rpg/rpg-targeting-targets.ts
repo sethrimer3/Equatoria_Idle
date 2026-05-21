@@ -52,6 +52,23 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx): ClosestTarget[] {
     }
   }
   if (ctx.bossEnemy) addTarget('boss', ctx.bossEnemy, 'boss');
+  // ── Procedural creature enemies ──────────────────────────────────────────────
+  for (const e of ctx.dustWispEnemies) addTarget('proc_dustwisp', e, 'dustWisp');
+  for (const e of ctx.ribbonWormEnemies) addTarget('proc_ribbonworm', e, 'ribbonWorm');
+  for (const e of ctx.lanternMothEnemies) addTarget('proc_lanternmoth', e, 'lanternMoth');
+  for (const e of ctx.eyeStalkEnemies) addTarget('proc_eyestalk', e, 'eyeStalk');
+  for (const e of ctx.jellyfishEnemies) addTarget('proc_jellyfish', e, 'jellyfish');
+  for (const e of ctx.clothGhostEnemies) addTarget('proc_clothghost', e, 'clothGhost');
+  for (const e of ctx.plantTurretEnemies) addTarget('proc_plantturret', e, 'plantTurret');
+  for (const e of ctx.gearInsectEnemies) addTarget('proc_gearinsect', e, 'gearInsect');
+  for (const e of ctx.spiderCrawlerEnemies) addTarget('proc_spidercrawler', e, 'spiderCrawler');
+  for (const e of ctx.moteSwarmEnemies) addTarget('proc_moteswarm', e, 'moteSwarm');
+  for (const e of ctx.shadowHandEnemies) addTarget('proc_shadowhand', e, 'shadowHand');
+  for (const p of ctx.plantProjectiles) {
+    if (p.hp <= 0) continue;
+    const dx = p.x - ctx.mote.x, dy = p.y - ctx.mote.y;
+    targets.push({ kind: 'proc_plantproj', x: p.x, y: p.y, distSq: dx*dx+dy*dy, plantProj: p });
+  }
   return targets;
 }
 
