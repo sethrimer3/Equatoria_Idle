@@ -167,6 +167,32 @@
   opacity: 0.5;
 }
 
+/* ── Forge warm-up preview ──────────────────────────────────── */
+.hud-forge-arrow {
+  font-size: 14px;
+  color: rgba(255, 200, 80, 0.8);
+  text-align: center;
+  line-height: 1.2;
+  margin: 2px 0;
+  animation: hud-forge-arrow-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes hud-forge-arrow-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.hud-equation-preview {
+  opacity: 0.65;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 80, 0.5));
+  animation: hud-preview-glow 2s ease-in-out infinite;
+}
+
+@keyframes hud-preview-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 200, 80, 0.4)); }
+  50% { filter: drop-shadow(0 0 10px rgba(255, 200, 80, 0.75)); }
+}
+
 .hud-tap-hint {
   margin-top: 12px;
   font-size: 13px;

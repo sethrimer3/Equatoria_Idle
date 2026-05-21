@@ -33,7 +33,7 @@ import {
   getAutoTapIntervalMs,
   type ProgressionState,
 } from './progression';
-import { createForgeCrunchState, tapForgeHeat, startEquationForgeCrunch, tickForgeHeatTimeout, type ForgeCrunchState } from './forge';
+import { createForgeCrunchState, tapForgeHeat, startForgeWarmup, tickForgeHeatTimeout, type ForgeCrunchState } from './forge';
 import {
   createLoomState,
   tickLooms,
@@ -241,14 +241,14 @@ export function tryUpgradeLoomEfficiencyAction(state: GameState, tierId: TierId,
 
 /**
  * Register one player tap on the equation forge (heat tap).
- * When 3 taps are received, starts a forge sacrifice crunch.
- * Returns true if a crunch was started.
+ * After three taps, starts the 9-second warm-up sequence.
+ * Returns true if a warm-up was started.
  */
 export function tapEquationForge(state: GameState, nowMs: number): boolean {
   if (!state.equation.isForgeUnlocked) return false;
-  const crunchTriggered = tapForgeHeat(state.forge, nowMs);
-  if (crunchTriggered) {
-    startEquationForgeCrunch(state.forge, nowMs);
+  const warmupTriggered = tapForgeHeat(state.forge, nowMs);
+  if (warmupTriggered) {
+    startForgeWarmup(state.forge, nowMs);
     return true;
   }
   return false;

@@ -1,5 +1,6 @@
 import { FORGE_RING_SPRITE_PATHS } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
+import { FORGE_RING_ACTIVE_SPIN_MULTIPLIER } from '../../sim/forge/forge-state';
 
 interface ForgeRingConfig {
   readonly spritePath: string;
@@ -31,6 +32,15 @@ export function preloadForgeRingSprites(): void {
   }
 }
 
+/**
+ * Draw all five forge rings.
+ *
+ * @param activeRingCount  How many rings are currently lit (0–5).
+ *   Active rings (index < activeRingCount) spin at FORGE_RING_ACTIVE_SPIN_MULTIPLIER
+ *   times their base speed and render at full alpha.  Unlit rings continue their
+ *   subtle idle animation at reduced opacity.
+ * @param intensity  Legacy fire-intensity scalar (0–1) still used for unlit ring alpha.
+ */
 export function drawForgeRings(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -38,6 +48,7 @@ export function drawForgeRings(
   forgeSize: number,
   nowMs: number,
   intensity: number,
+  activeRingCount = 0,
 ): void {
   const clampedIntensity = Math.max(0, Math.min(1, intensity));
   const timeSec = nowMs / 1000;
@@ -46,9 +57,12 @@ export function drawForgeRings(
   ctx.translate(x, y);
   ctx.globalCompositeOperation = 'lighter';
 
-  for (const config of FORGE_RING_CONFIGS) {
+  for (let ringIndex = 0; ringIndex < FORGE_RING_CONFIGS.length; ringIndex++) {
+    const config = FORGE_RING_CONFIGS[ringIndex];
     const sprite = getCachedImage(config.spritePath);
     if (!sprite || !sprite.complete || sprite.naturalWidth <= 0) continue;
+
+    const isLit = ringIndex < activeRingCount;
 
     const pulse = config.pulseAmount === 0
       ? 0
@@ -57,10 +71,19 @@ export function drawForgeRings(
     const scale = (radius * 2) / sprite.naturalWidth;
     const drawWidth = sprite.naturalWidth * scale;
     const drawHeight = sprite.naturalHeight * scale;
-    const activeBoost = 1 + clampedIntensity * 0.22;
-    const rotation = config.phaseRad + config.rotationSpeedRadPerSec * activeBoost * timeSec;
 
-    ctx.globalAlpha = config.alpha * (0.55 + clampedIntensity * 0.45);
+    // Lit rings spin at the active multiplier; unlit rings use the fire-intensity boost
+    const speedBoost = isLit
+      ? FORGE_RING_ACTIVE_SPIN_MULTIPLIER
+      : 1 + clampedIntensity * 0.22;
+    const rotation = config.phaseRad + config.rotationSpeedRadPerSec * speedBoost * timeSec;
+
+    // Lit rings are at full opacity; unlit rings blend with fire intensity
+    const alpha = isLit
+      ? config.alpha * 1.8  // brighter when lit
+      : config.alpha * (0.55 + clampedIntensity * 0.45);
+    ctx.globalAlpha = Math.min(1, alpha);
+
     ctx.rotate(rotation);
     ctx.drawImage(sprite, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     ctx.rotate(-rotation);

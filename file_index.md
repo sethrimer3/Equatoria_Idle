@@ -69,7 +69,13 @@
 ### src/app/app-game-loop.ts
 - `createGameLoop()` factory — creates the frame-by-frame game loop.
 - `GameLoopContext` interface — all dependencies injected.
-- Loop: sim tick → particle update → background → render → UI update → auto-save.
+- Loop: sim tick → `tickForgeWarmup` → particle update → background → render → forge preview computation → UI update → auto-save.
+- Calls `computeForgePreviewTerms` each frame and passes `forgePreviewTerms` to `hudOverlay.update`.
+
+### src/app/app-forge-preview.ts *(NEW)*
+- Pure preview logic for the forge warm-up equation display.
+- `computeForgePreviewTerms(particles, equationState, forgeState, forgeX, forgeY)` — collects sacrifice candidates inside `MAX_FORGE_ATTRACTION_DISTANCE`, shallow-copies equation segments, simulates sacrifice at the same `SACRIFICE_THRESHOLD = 2000` as the real apply, returns `EquationTermView[] | null` (null when no upgrade would occur or forge is idle).
+- Never mutates authoritative state. Lives in the app layer so it can bridge render-layer particles and sim-layer equation state without violating sim/render separation.
 
 ### src/app/game-app-canvas-input.ts
 - Canvas pointer-input wiring extracted from `game-app.ts`.
@@ -215,12 +221,17 @@
 
 ### src/sim/forge/forge-state.ts
 - `ForgeCrunchState` interface and factory.
+- `isWarmingUp`, `warmupStartMs` — warm-up phase tracking fields added to interface.
 - `heatTapCount`, `lastHeatTapMs`, `sacrificeProgressByTierId` — 3-tap heat system fields.
-- `HEAT_TAP_COUNT_FOR_CRUNCH = 3` — taps required to trigger a forge crunch.
-- `tapForgeHeat(state, nowMs)` — increments heat tap; calls `startEquationForgeCrunch` on 3rd tap.
-- `startEquationForgeCrunch(state)` — activates forge crunch.
-- `tickForgeHeatTimeout(state, nowMs)` — resets heat if player is idle too long.
-- `getForgeRotationMultiplier()` — spin speed multiplier based on crunch phase.
+- Warm-up constants: `FORGE_TAPS_TO_WAKE = 3`, `FORGE_TAP_RESET_MS = 5000`, `FORGE_WARMUP_RING_INTERVAL_MS = 2000`, `FORGE_WARMUP_TOTAL_RINGS = 5`, `FORGE_TOTAL_WARMUP_MS = 9000`, `FORGE_GRAVITY_BASE`, `FORGE_GRAVITY_MAX`, `FORGE_RING_ACTIVE_SPIN_MULTIPLIER = 4`.
+- `tapForgeHeat(state, nowMs)` — increments heat tap; ignores taps during warmup/crunch; returns true on 3rd tap.
+- `startForgeWarmup(state, nowMs)` — begins the 9-second warm-up sequence.
+- `tickForgeWarmup(state, nowMs)` — advances warm-up timer; calls `startEquationForgeCrunch` when elapsed ≥ 9s.
+- `getActiveRingCount(state, nowMs)` — returns 0–5 ring lit count for the renderer.
+- `getForgeWarmupProgress(state, nowMs)` — returns [0,1] progress scalar.
+- `startEquationForgeCrunch(state)` — activates forge crunch; resets warmup fields.
+- `tickForgeHeatTimeout(state, nowMs)` — resets heat if player is idle > `FORGE_TAP_RESET_MS`.
+- `getForgeRotationMultiplier()` — spin speed multiplier based on crunch/warmup phase.
 
 ### src/sim/forge/forge-logic.ts
 - Forge crunch lifecycle management.
@@ -252,9 +263,9 @@
 
 ### src/render/forge/forge-ring-renderer.ts
 - Visual-only Equation Forge ring renderer.
-- Exports `preloadForgeRingSprites()` and `drawForgeRings()`.
+- Exports `preloadForgeRingSprites()` and `drawForgeRings(ctx, x, y, forgeSize, nowMs, intensity, activeRingCount?)`.
+- `activeRingCount` (0–5): lit rings spin at `FORGE_RING_ACTIVE_SPIN_MULTIPLIER` (4×) and render at 1.8× alpha; unlit rings keep their subtle idle animation.
 - Contains the data-driven five-ring config for sprite path, radius scale, rotation speed/direction, opacity, phase, and optional pulsing.
-- Rings are centered by translating to the forge canvas coordinate passed from `drawForge()`.
 
 ### src/render/assets/color-utils.ts
 - Shared color parsing utilities for the render layer.
@@ -299,11 +310,12 @@
 - `release()` — resets `isCaptured`/`capturedById` on return to pool.
 - Pre-computed `TIER_INDEX_MAP` for O(1) tier index lookup.
 
-### src/render/particles/forge-field-forces.ts *(NEW)*
+### src/render/particles/forge-field-forces.ts
 - Particle capture field logic for the forge and looms.
 - `ForgeFieldInfo` interface — id, position, radii, `compatibleTierId`, `isUnlocked`.
-- `LoomCapture` interface — `particleId`, `tierId`, `massSmallEquiv`.
-- `applyForgeFieldForces(particles, crunchState, fields, outLoomCaptures)` — runs each substep; captures forge-compatible particles during active crunch and loom-compatible particles immediately.
+- `LoomCapture` interface — `particle`, `fieldId`, `inputTierId`, `mass`.
+- `applyForgeFieldForces(particles, fields, crunchState, outLoomCaptures, delta, nowMs)` — runs each substep; captures forge-compatible particles during active crunch; applies gravitational warmup pull (scaled `FORGE_GRAVITY_BASE`→`FORGE_GRAVITY_MAX`) during warmup; captures loom-compatible particles immediately.
+- `nowMs` parameter added to enable warmup gravity computation.
 
 ### src/render/particles/particle-physics.ts
 - Per-particle physics: gravity, veer, velocity clamping, bounce.
