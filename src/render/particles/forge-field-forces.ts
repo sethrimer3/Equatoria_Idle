@@ -3,12 +3,19 @@
  *
  * Each "field" has an inner capture radius and an outer attraction radius.
  * The equation forge field captures eligible particles when isActive (crunch in progress).
+ * During the warm-up phase (isWarmingUp), eligible particles within the outer radius
+ * receive a gravitational pull that intensifies as the warm-up progresses.
  * Loom fields immediately remove captured particles and fire the loom callback.
  */
 
 import type { TierId } from '../../data/tiers';
 import type { EquatoriaParticle } from './particle-types';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
+import {
+  FORGE_TOTAL_WARMUP_MS,
+  FORGE_GRAVITY_BASE,
+  FORGE_GRAVITY_MAX,
+} from '../../sim/forge/forge-state';
 import { getSizeSmallEquivalent } from '../../data/particles/size-tiers';
 import { MEDIUM_SIZE_INDEX } from '../../data/particles/size-tiers';
 
@@ -52,7 +59,10 @@ const LOOM_ATTRACTION_STRENGTH = 1.2;
  * - Particles within `captureRadius` of a field are captured (isCaptured=true).
  *   - Forge captures only happen during an active crunch (crunchState.isActive).
  *   - Loom captures are added to `newLoomCaptures` for post-loop processing.
- * - Particles within `outerRadius` but outside `captureRadius` receive a gentle pull.
+ * - During forge warm-up, particles within `outerRadius` receive a gravitational
+ *   pull that scales with warmup progress (FORGE_GRAVITY_BASE → FORGE_GRAVITY_MAX).
+ * - Particles within `outerRadius` but outside `captureRadius` of loom fields
+ *   receive a gentle pull.
  *
  * Eligible particles: sizeIndex >= MEDIUM_SIZE_INDEX, not isMerging, not already isCaptured.
  *
@@ -65,6 +75,7 @@ export function applyForgeFieldForces(
   crunchState: ForgeCrunchState,
   newLoomCaptures: LoomCapture[],
   clampedDelta: number,
+  nowMs: number,
 ): void {
   const fieldCount = fields.length;
   if (fieldCount === 0) return;
@@ -79,6 +90,13 @@ export function applyForgeFieldForces(
     captureRadSq[fi] = field.captureRadius * field.captureRadius;
     outerRadSq[fi]   = field.outerRadius   * field.outerRadius;
     isForgeField[fi] = field.id === 'forge' ? 1 : 0;
+  }
+
+  // Pre-compute forge warmup gravity strength (same for all particles this step)
+  let forgeWarmupGravity = 0;
+  if (crunchState.isWarmingUp && crunchState.warmupStartMs !== null) {
+    const warmupProgress = Math.min(1, (nowMs - crunchState.warmupStartMs) / FORGE_TOTAL_WARMUP_MS);
+    forgeWarmupGravity = FORGE_GRAVITY_BASE + (FORGE_GRAVITY_MAX - FORGE_GRAVITY_BASE) * warmupProgress;
   }
 
   for (let i = 0, len = particles.length; i < len; i++) {
@@ -119,12 +137,22 @@ export function applyForgeFieldForces(
         break;
       }
 
-      // Gentle pull toward loom field when within outerRadius (forge fields have no outer pull).
-      if (!isForgeField[fi] && distSq <= outerRadSq[fi] && distSq > 1) {
-        const dist = Math.sqrt(distSq);
-        const force = LOOM_ATTRACTION_STRENGTH / (dist + 1);
-        p.vx += (dx / dist) * force * clampedDelta;
-        p.vy += (dy / dist) * force * clampedDelta;
+      if (distSq <= outerRadSq[fi] && distSq > 1) {
+        if (isForgeField[fi]) {
+          // Forge warm-up: pull eligible particles toward the forge
+          if (forgeWarmupGravity > 0) {
+            const dist = Math.sqrt(distSq);
+            const force = forgeWarmupGravity / (dist + 1);
+            p.vx += (dx / dist) * force * clampedDelta;
+            p.vy += (dy / dist) * force * clampedDelta;
+          }
+        } else {
+          // Loom: gentle pull
+          const dist = Math.sqrt(distSq);
+          const force = LOOM_ATTRACTION_STRENGTH / (dist + 1);
+          p.vx += (dx / dist) * force * clampedDelta;
+          p.vy += (dy / dist) * force * clampedDelta;
+        }
       }
     }
   }

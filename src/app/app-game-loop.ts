@@ -13,6 +13,7 @@ import {
   processLoomCapture,
   applyForgeSacrifice,
 } from '../sim';
+import { tickForgeWarmup } from '../sim/forge/forge-state';
 import { getLoomInputTierId } from '../sim/looms';
 import {
   clearCanvas,
@@ -38,6 +39,7 @@ import type { TierId } from '../data/tiers';
 import { computeOutputCompression } from '../util/particle-compression';
 import type { AppState, UIPanels } from './app-types';
 import { updateVisiblePanels } from './app-actions';
+import { computeForgePreviewTerms } from './app-forge-preview';
 import type { HudOverlay } from '../ui/hud/hud-overlay';
 import type { AudioSystem } from '../audio';
 
@@ -99,6 +101,11 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // ── Always tick the main sim so looms, auto-tap, and pending idle motes
     // ── continue to run regardless of which tab is active. ──────────────
     const simResult = simTick(ctx.appState.game, deltaMs);
+
+    // ── Advance the forge warm-up timer using wall-clock time ────────────
+    // (tickForgeWarmup internally calls startEquationForgeCrunch when the
+    //  9-second warm-up completes, so no additional action is needed here.)
+    tickForgeWarmup(ctx.appState.forge, nowMs);
 
     // ── Auto-save (runs on every tab) ────────────────────────────
     if (nowMs - ctx.appState.game.lastSaveMs > AUTO_SAVE_INTERVAL_MS) {
@@ -295,6 +302,15 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
 
     const terms = buildEquationView(ctx.appState.game.equation);
 
+    // Compute live forge preview terms during warm-up (pure read, no side effects)
+    const forgePreviewTerms = computeForgePreviewTerms(
+      ctx.particles.particles,
+      ctx.appState.game.equation,
+      ctx.appState.forge,
+      equationCenterX,
+      equationCenterY,
+    );
+
     // Update DOM HUD overlay (equation, score, motes — non-pixelated)
     const pointerPos = getGeneratorPointerPos();
     ctx.hudOverlay.update({
@@ -312,6 +328,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       pointerX: pointerPos.x,
       pointerY: pointerPos.y,
       generatorEquationVisibility: ctx.settings.generatorEquationVisibility,
+      forgePreviewTerms,
     });
 
     ctx.particles.draw(

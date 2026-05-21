@@ -32,6 +32,13 @@ export interface HudUpdateParams {
   pointerX: number | null;
   pointerY: number | null;
   generatorEquationVisibility: 'always' | 'proximity' | 'off';
+  /**
+   * Projected equation terms to show as a live preview during forge warm-up.
+   * When non-null an arrow + preview row appears below the current equation.
+   * The preview must never be the same as `terms`; pass null when no upgrade
+   * would result or when the forge is idle.
+   */
+  forgePreviewTerms: EquationTermView[] | null;
 }
 
 export interface HudOverlay {
@@ -87,7 +94,19 @@ export function createHudOverlay(): HudOverlay {
   const equationEl = document.createElement('div');
   equationEl.className = 'hud-equation';
 
+  // Forge preview: arrow + preview equation shown during warm-up
+  const forgeArrowEl = document.createElement('div');
+  forgeArrowEl.className = 'hud-forge-arrow';
+  forgeArrowEl.textContent = '▼';
+  forgeArrowEl.style.display = 'none';
+
+  const forgePreviewEl = document.createElement('div');
+  forgePreviewEl.className = 'hud-equation hud-equation-preview';
+  forgePreviewEl.style.display = 'none';
+
   equationContainer.appendChild(equationEl);
+  equationContainer.appendChild(forgeArrowEl);
+  equationContainer.appendChild(forgePreviewEl);
   const generatorEqContainer = document.createElement('div');
   generatorEqContainer.className = 'hud-generator-equations';
 
@@ -99,6 +118,7 @@ export function createHudOverlay(): HudOverlay {
   // ── State for change detection ────────────────────────────────
   let lastTermsKey = '';
   let lastIsForgeUnlocked = false;
+  let lastPreviewKey = '';
 
   // ── Update function ───────────────────────────────────────────
   function update(params: HudUpdateParams): void {
@@ -117,6 +137,7 @@ export function createHudOverlay(): HudOverlay {
       pointerX,
       pointerY,
       generatorEquationVisibility,
+      forgePreviewTerms,
     } = params;
 
     // Score
@@ -144,6 +165,23 @@ export function createHudOverlay(): HudOverlay {
       } else {
         equationContainer.style.visibility = 'visible';
         equationEl.innerHTML = buildStructuredEquationHtml(terms);
+      }
+    }
+
+    // Forge preview equation
+    const previewKey = forgePreviewTerms
+      ? forgePreviewTerms.map(t => `${t.tierId}:${t.paramValue}`).join(',')
+      : '';
+    if (previewKey !== lastPreviewKey) {
+      lastPreviewKey = previewKey;
+      if (forgePreviewTerms && forgePreviewTerms.length > 0) {
+        forgeArrowEl.style.display = '';
+        forgePreviewEl.style.display = '';
+        forgePreviewEl.innerHTML = buildStructuredEquationHtml(forgePreviewTerms);
+      } else {
+        forgeArrowEl.style.display = 'none';
+        forgePreviewEl.style.display = 'none';
+        forgePreviewEl.innerHTML = '';
       }
     }
 

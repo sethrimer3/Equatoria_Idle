@@ -1,6 +1,10 @@
 import type { CanvasContext } from '../canvas';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
-import { getForgeRotationMultiplier } from '../../sim/forge/forge-state';
+import {
+  getForgeRotationMultiplier,
+  getActiveRingCount,
+  getForgeWarmupProgress,
+} from '../../sim/forge/forge-state';
 import {
   FORGE_RADIUS,
   MAX_FORGE_ATTRACTION_DISTANCE,
@@ -62,19 +66,24 @@ export function drawForge(
   const idleSpinMult = FORGE_COLD_ROTATION_MULTIPLIER + (spinMult - FORGE_COLD_ROTATION_MULTIPLIER) * fireAlpha;
   const effectiveRotation = forgeRotation * idleSpinMult;
 
+  // Warmup progress drives a brightening/pulsing core glow
+  const warmupProgress = getForgeWarmupProgress(crunchState, nowMs);
+  const activeRingCount = getActiveRingCount(crunchState, nowMs);
+
   // ── Large soft glow — drawn first so it sits just above the background ──
-  if (fireAlpha > 0.05) {
-    // Large soft glow sits above the background and fades in with the fiery forge state.
+  // During warmup the glow intensifies with warmup progress
+  const glowAlpha = Math.max(fireAlpha, warmupProgress * 0.85);
+  if (glowAlpha > 0.05) {
     ctx.save();
-    ctx.globalAlpha = fireAlpha;
+    ctx.globalAlpha = glowAlpha;
     drawForgeBackgroundGlow(ctx, forgeX, forgeY, forgeSize, nowMs);
     ctx.restore();
   }
 
-  drawForgeRings(ctx, forgeX, forgeY, forgeSize, nowMs, fireAlpha);
+  drawForgeRings(ctx, forgeX, forgeY, forgeSize, nowMs, fireAlpha, activeRingCount);
 
   // ── Heat rings — drawn before the sprite, one ring per tap ──────────────
-  if (heatTapCount > 0 && !crunchState.isActive) {
+  if (heatTapCount > 0 && !crunchState.isActive && !crunchState.isWarmingUp) {
     drawForgeHeatRings(ctx, forgeX, forgeY, forgeSize, heatTapCount, nowMs);
   }
 
@@ -83,16 +92,19 @@ export function drawForge(
   const coldSprite = getCachedImage(FORGE_COLD_SPRITE_PATH);
   const coldSpriteAlt = getCachedImage(FORGE_COLD_SPRITE_ALT_PATH);
 
+  // Blend warmup progress into sprite fire alpha so the forge visually activates
+  const spriteFireAlpha = Math.max(fireAlpha, warmupProgress);
   if (sprite && spriteAlt) {
-    drawForgeSprite(ctx, forgeX, forgeY, forgeSize, effectiveRotation, sprite, spriteAlt, coldSprite, coldSpriteAlt, fireAlpha);
+    drawForgeSprite(ctx, forgeX, forgeY, forgeSize, effectiveRotation, sprite, spriteAlt, coldSprite, coldSpriteAlt, spriteFireAlpha);
   } else {
     drawForgeFallback(ctx, forgeX, forgeY, forgeSize, effectiveRotation);
   }
 
   // Attraction radius — bidirectional fire swirl, 25 % smaller than physics range
-  if (fireAlpha > 0.05) {
+  const swirlAlpha = Math.max(fireAlpha, warmupProgress * 0.7);
+  if (swirlAlpha > 0.05) {
     ctx.save();
-    ctx.globalAlpha = fireAlpha;
+    ctx.globalAlpha = swirlAlpha;
     drawForgeInfluenceSwirl(ctx, forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE * FORGE_INFLUENCE_VISUAL_SCALE, nowMs);
     ctx.restore();
   }
@@ -100,6 +112,11 @@ export function drawForge(
 
 function getForgeFireAlpha(crunchState: ForgeCrunchState, nowMs: number): number {
   if (crunchState.isActive) return 1;
+  // During warm-up, fire alpha rises with warmup progress
+  if (crunchState.isWarmingUp && crunchState.warmupStartMs !== null) {
+    const progress = Math.min(1, (nowMs - crunchState.warmupStartMs) / (9_000));
+    return Math.min(1, progress * 1.2);
+  }
   if (crunchState.heatTapCount <= 0 || crunchState.lastHeatTapMs <= 0) return 0;
   const elapsedMs = Math.max(0, nowMs - crunchState.lastHeatTapMs);
   return Math.max(0, 1 - elapsedMs / FORGE_FIRE_FADE_DURATION_MS);

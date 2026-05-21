@@ -341,6 +341,7 @@ export class ParticleSystem {
         crunchState,
         this._newLoomCaptures,
         FIXED_STEP_DELTA,
+        nowMs,
       );
 
       // Velocity damping + max speed clamp
