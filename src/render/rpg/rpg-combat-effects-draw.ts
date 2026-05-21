@@ -87,8 +87,13 @@ export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: Damage
     ctx.font = `bold ${fontPx}px ${DAMAGE_NUM_FONT_FAMILY}`;
     ctx.shadowBlur  = isLowGraphicsMode ? 0 : fontPx * 2;
     ctx.shadowColor = dn.color;
+    ctx.lineWidth = Math.max(2, Math.round(fontPx * 0.16));
+    ctx.strokeStyle = '#000000';
     ctx.fillStyle   = dn.color;
-    ctx.fillText(dn.text, Math.round(dn.x), Math.round(dn.y));
+    const x = Math.round(dn.x);
+    const y = Math.round(dn.y);
+    ctx.strokeText(dn.text, x, y);
+    ctx.fillText(dn.text, x, y);
   }
   ctx.shadowBlur = 0; ctx.globalAlpha = 1;
   ctx.restore();

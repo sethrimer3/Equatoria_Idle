@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite';
 
-function resolveBasePath(): string {
+function resolveBasePath(mode: string): string {
+  if (mode === 'desktop' || process.env.EQUATORIA_DESKTOP === '1') {
+    return './';
+  }
+
   if (!process.env.GITHUB_ACTIONS) {
     return '/';
   }
@@ -11,9 +15,9 @@ function resolveBasePath(): string {
   return repositoryName ? `/${repositoryName}/` : '/';
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: '.',
-  base: resolveBasePath(),
+  base: resolveBasePath(mode),
   build: {
     outDir: 'dist',
     sourcemap: true,
@@ -21,4 +25,4 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-});
+}));

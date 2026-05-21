@@ -3,14 +3,19 @@
   "version": "0.1.0",
   "description": "Equatoria Idle — a mobile-first idle game with equation progression and gem particles",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:desktop": "tsc --noEmit && vite build --mode desktop",
+    "postbuild:desktop": "node scripts/copy-assets.mjs",
+    "electron": "electron .",
+    "desktop": "npm run build:desktop && electron .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint src",
     "preview": "vite preview",
-    "postbuild": "mkdir -p dist/ASSETS && cp -R ASSETS/SPRITES ASSETS/ANIMATIONS ASSETS/font ASSETS/music ASSETS/sfx dist/ASSETS/"
+    "postbuild": "node scripts/copy-assets.mjs"
   },
   "repository": {
     "type": "git",
@@ -29,6 +34,7 @@
   },
   "homepage": "https://github.com/sethrimer3/Equatoria_Idle#readme",
   "devDependencies": {
+    "electron": "^38.5.0",
     "eslint": "^10.2.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.2",

@@ -8,8 +8,13 @@ A mobile-first idle game where you upgrade a mathematical equation, generate col
 npm install
 npm run dev      # Development server on http://localhost:3000
 npm run build    # Production build to dist/
+npm run desktop  # Build and launch the Electron desktop version
 npm run typecheck # TypeScript type checking
 ```
+
+On Windows, double-click `run-desktop.bat` from the repository root to install missing dependencies, build the desktop-safe output, and launch the game in Electron. `run-browser-dev.bat` starts the normal Vite browser dev server, and `build-game.bat` runs the standard static production build.
+
+See [ELECTRON.md](./ELECTRON.md) for desktop launch details, troubleshooting, and notes about Electron using a separate localStorage save profile from the browser version.
 
 
 ## GitHub Pages Deployment

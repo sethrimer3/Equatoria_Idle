@@ -20,6 +20,11 @@ import {
   PLAYER_KNOCKBACK_MAX,
 } from './rpg-constants';
 
+const DAMAGE_NUM_VECTOR_VARIATION_RAD = Math.PI / 12;
+const DAMAGE_NUM_SPEED_VARIATION_MIN = 0.85;
+const DAMAGE_NUM_SPEED_VARIATION_RANGE = 0.3;
+const XP_NUM_FONT_SCALE = 0.72;
+
 // ── Context ─────────────────────────────────────────────────────────
 
 export interface PlayerDamageCtx {
@@ -87,6 +92,29 @@ export interface PlayerDamageHandle {
 export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle {
   const { mote, playerStats, hitEffects, shotLines, damageNumbers } = pCtx;
 
+  function isXpPopup(text: string): boolean {
+    return text.includes('XP');
+  }
+
+  function isEnemyDamagePopup(text: string, x: number, y: number): boolean {
+    if (text === 'BLOCKED' || isXpPopup(text)) return false;
+    if (!Number.isFinite(Number(text))) return false;
+    const dx = x - mote.x;
+    const dy = y - mote.y;
+    return dx * dx + dy * dy > 0.01;
+  }
+
+  function randomizePopupVector(dirX: number, dirY: number): { dirX: number; dirY: number; speedScale: number } {
+    const deviation = (Math.random() * 2 - 1) * DAMAGE_NUM_VECTOR_VARIATION_RAD;
+    const cosD = Math.cos(deviation);
+    const sinD = Math.sin(deviation);
+    return {
+      dirX: dirX * cosD - dirY * sinD,
+      dirY: dirX * sinD + dirY * cosD,
+      speedScale: DAMAGE_NUM_SPEED_VARIATION_MIN + Math.random() * DAMAGE_NUM_SPEED_VARIATION_RANGE,
+    };
+  }
+
   function spawnDamageNumber(
     x: number, y: number,
     dirX: number, dirY: number,
@@ -95,12 +123,27 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
     color: string,
   ): void {
     const clampedRatio = Math.min(1, Math.max(0, ratio));
-    const fontPx = DAMAGE_NUM_MIN_FONT_PX + clampedRatio * (DAMAGE_NUM_MAX_FONT_PX - DAMAGE_NUM_MIN_FONT_PX);
-    const initialSpeed = DAMAGE_NUM_INITIAL_SPEED * (0.5 + clampedRatio * 0.5);
+    const isXp = isXpPopup(text);
+    const fontScale = isXp ? XP_NUM_FONT_SCALE : 1;
+    const fontPx = (DAMAGE_NUM_MIN_FONT_PX + clampedRatio * (DAMAGE_NUM_MAX_FONT_PX - DAMAGE_NUM_MIN_FONT_PX)) * fontScale;
+    let vector = {
+      dirX,
+      dirY,
+      speedScale: 1,
+    };
+    if (isEnemyDamagePopup(text, x, y)) {
+      const awayX = mote.x - x;
+      const awayY = mote.y - y;
+      const dist = Math.max(0.001, Math.hypot(awayX, awayY));
+      vector = randomizePopupVector(awayX / dist, awayY / dist);
+    } else if (!isXp) {
+      vector = randomizePopupVector(dirX, dirY);
+    }
+    const initialSpeed = DAMAGE_NUM_INITIAL_SPEED * (0.5 + clampedRatio * 0.5) * vector.speedScale;
     damageNumbers.push({
       x, y,
-      vx: dirX * initialSpeed,
-      vy: dirY * initialSpeed,
+      vx: vector.dirX * initialSpeed,
+      vy: vector.dirY * initialSpeed,
       text,
       fontPx: Math.max(DAMAGE_NUM_MIN_FONT_PX, fontPx),
       color,

@@ -3,9 +3,15 @@
 ## Root
 
 - `index.html` — Entry point HTML, loads styles and main.ts
-- `vite.config.ts` — Vite build configuration
+- `vite.config.ts` — Vite build configuration; desktop mode uses a relative base path for Electron/local file loading while GitHub Actions keeps the repository Pages base path.
 - `tsconfig.json` — TypeScript compiler configuration
-- `package.json` — Dependencies and scripts
+- `package.json` — Dependencies and scripts, including Vite browser commands and Electron desktop launch commands.
+- `electron/main.cjs` — Minimal Electron main process that loads `dist/index.html` with context isolation enabled and Node integration disabled.
+- `run-desktop.bat` — Windows double-click launcher: installs missing dependencies, builds the desktop output, and starts Electron.
+- `run-browser-dev.bat` — Windows double-click launcher for the Vite browser development server.
+- `build-game.bat` — Windows double-click launcher for the normal production/static build.
+- `ELECTRON.md` — Desktop launch, batch-file, save-profile, and missing-asset troubleshooting notes.
+- `scripts/copy-assets.mjs` — Cross-platform postbuild helper that copies required runtime asset directories into `dist/ASSETS`.
 - `idle_progression_spreadsheet_guide.md` — Consolidated formulas/constants for modeling idle pacing in spreadsheets.
 
 ## src/
