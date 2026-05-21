@@ -49,5 +49,5 @@ export const TIER_BY_ID: ReadonlyMap<TierId, TierDefinition> = new Map(
 /** Visible (non-secret) tiers. */
 export const VISIBLE_TIERS: readonly TierDefinition[] = TIERS.filter(t => !t.isSecret);
 
-/** Number of visible tiers (11). */
+/** Number of visible (non-secret) tiers — derived at runtime, currently 13. */
 export const VISIBLE_TIER_COUNT = VISIBLE_TIERS.length;

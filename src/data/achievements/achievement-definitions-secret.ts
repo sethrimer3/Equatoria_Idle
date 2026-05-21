@@ -25,6 +25,7 @@ const SECRET_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   {
     id: 'sec_lone_wolf',
     groupId: 'secret',
+    // Intentional: shares boss_defeated_any_speed_1weapon with RPG #34. Secret bonus is larger.
     displayName: 'Lone Wolf',
     description: 'You needed only one. The rest watched.',
     condition: { kind: 'boss_defeated_any_speed_1weapon' },
@@ -36,6 +37,8 @@ const SECRET_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   {
     id: 'sec_full_throttle',
     groupId: 'secret',
+    // Intentional: shares any_boss_at_speed 100 with RPG #30. The secret gives a larger
+    // hidden bonus (base_atk ×5) as a reward for discovering it without a hint.
     displayName: 'Full Throttle',
     description: 'No hesitation. Maximum velocity. The result was inevitable.',
     condition: { kind: 'any_boss_at_speed', minSpeedPct: 100 },
@@ -58,6 +61,7 @@ const SECRET_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   {
     id: 'sec_spread_thin',
     groupId: 'secret',
+    // Intentional: shares xp_allocated_stats_count 3 with RPG #49. Secret bonus is larger.
     displayName: 'Spread Thin',
     description: 'Three channels. Three flows. One exhausted mathematician.',
     condition: { kind: 'xp_allocated_stats_count', count: 3 },
@@ -80,7 +84,9 @@ const SECRET_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   {
     id: 'sec_first_blood_max',
     groupId: 'secret',
-    displayName: 'First Blood',
+    // Intentional: shares the boss-1 theme with RPG achievement 'first_blood' (reach wave 5)
+    // and RPG #31 (specific_boss_at_speed bossId:1 100%). The secret title is distinct.
+    displayName: 'First Blood: Overclocked',
     description: 'Boss One. Maximum speed. No excuses.',
     condition: { kind: 'specific_boss_at_speed', bossId: 1, minSpeedPct: 100 },
     bonusKind: 'base_atk',
@@ -91,6 +97,7 @@ const SECRET_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   {
     id: 'sec_untouched',
     groupId: 'secret',
+    // Intentional: shares damage_free_streak 10 with RPG #161. Secret bonus is larger.
     displayName: 'Untouched',
     description: 'Ten waves. Ten victories. Zero scratches.',
     condition: { kind: 'damage_free_streak', count: 10 },
@@ -113,6 +120,7 @@ const SECRET_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   {
     id: 'sec_relentless',
     groupId: 'secret',
+    // Intentional: shares wave_streak 50 with RPG #156. Secret bonus is larger.
     displayName: 'Relentless',
     description: 'Fifty waves. The equation never rested. Neither did you.',
     condition: { kind: 'wave_streak', count: 50 },

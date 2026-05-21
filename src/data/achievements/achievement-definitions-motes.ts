@@ -16,6 +16,13 @@ const MOTES_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   { id: 'mote_fracteryl_first',  groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Fracture Point',   description: 'Earn your first Fracteryl mote.',  condition: { kind: 'lifetime_motes', tierId: 'fracteryl', amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#7A2CFF' },
   { id: 'mote_eigenstein_first', groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Eigen State',      description: 'Earn your first Eigenstein mote.', condition: { kind: 'lifetime_motes', tierId: 'eigenstein',amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#A34728' },
   // ── Sand Milestones ───────────────────────────────────────────
+  // Milestone ladder policy:
+  //   Early tiers (Sand, Quartz) produce vastly more motes over time, so their ladders
+  //   extend to 1B and 100M respectively. Mid tiers (Ruby–Amethyst) stop at 1M.
+  //   Late tiers (Diamond–Eigenstein) also stop at 1M because production is intentionally
+  //   limited; their motes are harder to earn. This asymmetry is deliberate — adding
+  //   100M/1B milestones for late tiers would inflate rewards without meaningful gameplay.
+
   { id: 'mote_sand_100',   groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 100',       description: 'Earn 100 lifetime Sand motes.',         condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 100        }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
   { id: 'mote_sand_1k',    groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 1,000',     description: 'Earn 1,000 lifetime Sand motes.',       condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 1000       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
   { id: 'mote_sand_10k',   groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 10,000',    description: 'Earn 10,000 lifetime Sand motes.',      condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 10000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
@@ -123,6 +130,10 @@ const MOTES_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   { id: 'mote_size_3_5tiers',  groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-3 in 5 Tiers',    description: 'Form a size-3 mote in any 5 different tiers (5 tiers with 1,000,000+ lifetime motes).', condition: { kind: 'tiers_with_lifetime_motes', count: 5, amount: 1000000    }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#ffa000' },
   { id: 'mote_size_4_3tiers',  groupId: 'motes', subcategoryId: 'motes_size', displayName: 'Size-4 in 3 Tiers',    description: 'Form a size-4 mote in any 3 different tiers (3 tiers with 100,000,000+ lifetime motes).', condition: { kind: 'tiers_with_lifetime_motes', count: 3, amount: 100000000  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.10, displayColor: '#ff9000' },
   // ── Aliven Mote Milestones ────────────────────────────────────
+  // Note: Fracteryl (unlockOrder 11) and Eigenstein (unlockOrder 12) cannot be alivened by design.
+  // The Aliven system only supports Sand through Nullstone (unlockOrder 0–10).
+  // Do NOT add Fracteryl/Eigenstein aliven achievements unless the Aliven system itself changes.
+
   { id: 'mote_aliven_1',   groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'First Aliven',      description: 'Aliven your first mote tier.',                                  condition: { kind: 'aliven_count', count: 1  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#a0f0ff' },
   { id: 'mote_aliven_3',   groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'Aliven 3',          description: 'Aliven 3 mote tiers.',                                          condition: { kind: 'aliven_count', count: 3  }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05, displayColor: '#80e0f0' },
   { id: 'mote_aliven_5',   groupId: 'motes', subcategoryId: 'motes_aliven', displayName: 'Aliven 5',          description: 'Aliven 5 mote tiers.',                                          condition: { kind: 'aliven_count', count: 5  }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.05, displayColor: '#60d0e0' },
