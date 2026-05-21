@@ -42,7 +42,8 @@ export type AchievementBonusKind = 'tap_multiplier' | 'loom_multiplier' | 'base_
  * specific_boss_defeated   — defeat the boss with id `bossId` at least once
  * specific_boss_at_speed   — defeat boss `bossId` at `minSpeedPct`% speed or higher
  * any_boss_at_speed        — defeat any boss at `minSpeedPct`% speed or higher
- * all_bosses_at_speed      — defeat all defeated bosses at `minSpeedPct`% speed or higher
+ * kills_all_regular_types  — all 15 regular enemy types (laser through eigenstein) have been killed at least once
+ * all_bosses_at_speed      — ALL bosses (1–TOTAL_BOSS_COUNT) have been defeated, each at ≥`minSpeedPct`% speed
  * equip_weapons_count      — equip exactly `count` weapons at once (highest seen)
  * rpg_upgrade_level        — buy at least `level` levels of upgrade `upgradeId`
  * rpg_upgrade_any_max      — max out any single RPG upgrade
@@ -111,6 +112,7 @@ export type AchievementCondition =
   | { readonly kind: 'wave_streak';               readonly count: number }
   | { readonly kind: 'damage_free_streak';        readonly count: number }
   | { readonly kind: 'waves_completed';           readonly count: number }
+  | { readonly kind: 'kills_all_regular_types' }
   | { readonly kind: 'boss_defeated_any_speed_1weapon' }
   | { readonly kind: 'secret_flag'; readonly flagId: string };
 

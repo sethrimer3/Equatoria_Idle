@@ -1,10 +1,13 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#56**
+Current build: **#59**
 
 ---
 
 ## Build History Summary
+
+### Build #59 — Achievement system audit & repair
+Added 4 new equation mastery achievements; fixed all_bosses_at_speed to require all 10 bosses; added kills_all_regular_types condition; renamed sec_first_blood_max displayName; fixed RPG comment ranges; added 5 consistency audit tests; corrected VISIBLE_TIER_COUNT comment; renamed full_spectrum and eq_tier_13 displayNames; added policy and intentional-duplicate comments throughout.
 
 ### Build #4 — AlivenParticle enemy system
 Implemented the full AlivenParticle swarm-enemy system: 7 variants (spark_cluster, shard_bloom, ember_drift, dasher, ghost, pulser, healer, splitter, spitter, orbiter), per-group lifecycle, specials, ghost phase, trails, and initial draw.

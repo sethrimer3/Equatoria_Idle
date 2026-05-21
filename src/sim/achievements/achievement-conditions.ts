@@ -12,7 +12,7 @@ import type { ResourceState } from '../resources';
 import { getLifetimeMotes, getMotes, getEquivalence } from '../resources';
 import type { EquationState } from '../equation';
 import type { RpgSimState } from '../rpg';
-import { MAX_WEAPON_TIER } from '../rpg/rpg-state';
+import { MAX_WEAPON_TIER, TOTAL_BOSS_COUNT } from '../rpg/rpg-state';
 import type { AlivenState } from '../aliven';
 import { isTierAliveneable } from '../aliven';
 import { TIERS } from '../../data/tiers';
@@ -192,8 +192,10 @@ export function isConditionMet(
     }
 
     case 'all_bosses_at_speed': {
-      if (rpg.bossCompletions.size === 0) return false;
-      for (const speedPct of rpg.bossCompletions.values()) {
+      // Every boss from 1 through TOTAL_BOSS_COUNT must have a recorded completion
+      // at or above the speed threshold. A missing entry (boss never beaten) counts as false.
+      for (let bossId = 1; bossId <= TOTAL_BOSS_COUNT; bossId++) {
+        const speedPct = rpg.bossCompletions.get(bossId) ?? 0;
         if (speedPct < condition.minSpeedPct) return false;
       }
       return true;
@@ -285,6 +287,19 @@ export function isConditionMet(
 
     case 'boss_defeated_any_speed_1weapon':
       return rpg.bossDefeated1Weapon;
+
+    case 'kills_all_regular_types': {
+      // All 15 regular enemy types that have 100-kill achievements must be killed at least once.
+      const ALL_REGULAR_TYPES = [
+        'laser', 'quartz', 'sapphire', 'emerald', 'ruby', 'amber', 'void',
+        'sunstone', 'citrine', 'iolite', 'amethyst', 'diamond', 'nullstone',
+        'fracteryl', 'eigenstein',
+      ] as const;
+      for (const typeId of ALL_REGULAR_TYPES) {
+        if ((rpg.lifetimeKillsByType.get(typeId) ?? 0) < 1) return false;
+      }
+      return true;
+    }
 
     case 'secret_flag':
       return rpg.secretAchievementFlags.has(condition.flagId);
