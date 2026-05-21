@@ -50,6 +50,19 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.elite) return ctx.damageEliteEnemy(target.elite, rawDamage, defPierceRatio);
     if (target.alivenParticle && target.alivenGroup) return ctx.damageAlivenParticle(target.alivenParticle, target.alivenGroup, rawDamage);
     if (target.boss) return ctx.damageBossEnemy(rawDamage, defPierceRatio);
+    // Procedural creatures
+    if (target.dustWisp) return ctx.damageDustWispEnemy(target.dustWisp, rawDamage, defPierceRatio);
+    if (target.ribbonWorm) return ctx.damageRibbonWormEnemy(target.ribbonWorm, rawDamage, defPierceRatio);
+    if (target.lanternMoth) return ctx.damageLanternMothEnemy(target.lanternMoth, rawDamage, defPierceRatio);
+    if (target.eyeStalk) return ctx.damageEyeStalkEnemy(target.eyeStalk, rawDamage, defPierceRatio);
+    if (target.jellyfish) return ctx.damageJellyfishEnemy(target.jellyfish, rawDamage, defPierceRatio);
+    if (target.clothGhost) return ctx.damageClothGhostEnemy(target.clothGhost, rawDamage, defPierceRatio);
+    if (target.plantTurret) return ctx.damagePlantTurretEnemy(target.plantTurret, rawDamage, defPierceRatio);
+    if (target.gearInsect) return ctx.damageGearInsectEnemy(target.gearInsect, rawDamage, defPierceRatio);
+    if (target.spiderCrawler) return ctx.damageSpiderCrawlerEnemy(target.spiderCrawler, rawDamage, defPierceRatio);
+    if (target.moteSwarm) return ctx.damageMoteSwarmEnemy(target.moteSwarm, rawDamage, defPierceRatio);
+    if (target.shadowHand) return ctx.damageShadowHandEnemy(target.shadowHand, rawDamage, defPierceRatio);
+    if (target.plantProj) return ctx.damagePlantProjectile(target.plantProj, rawDamage);
     return 0;
   }
 

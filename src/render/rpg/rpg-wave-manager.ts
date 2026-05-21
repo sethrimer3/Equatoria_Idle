@@ -35,6 +35,11 @@ import type {
   BossEnemy, BossProjectile,
   LuckyMote, EliteEnemy,
 } from './rpg-enemy-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+} from './rpg-procedural-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -70,6 +75,19 @@ export interface WaveManagerCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
   alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
+  // ── Procedural creature arrays ──────────────────────────────────────────────
+  dustWispEnemies: DustWispEnemy[];
+  ribbonWormEnemies: RibbonWormEnemy[];
+  lanternMothEnemies: LanternMothEnemy[];
+  eyeStalkEnemies: EyeStalkEnemy[];
+  jellyfishEnemies: JellyfishEnemy[];
+  clothGhostEnemies: ClothGhostEnemy[];
+  plantTurretEnemies: PlantTurretEnemy[];
+  gearInsectEnemies: GearInsectEnemy[];
+  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
+  moteSwarmEnemies: MoteSwarmEnemy[];
+  shadowHandEnemies: ShadowHandEnemy[];
+  plantProjectiles: PlantProjectile[];
   bossProjectiles: BossProjectile[];
   spawnQueue: SpawnEntry[];
   luckyMotes: LuckyMote[];
@@ -120,6 +138,9 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
     eliteEnemies, alivenGroups,
+    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
+    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
     spawnQueue,
     getPlayerHpRatio,
   } = ctx;
@@ -164,6 +185,12 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
         || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
         || eliteEnemies.length > 0
+        || dustWispEnemies.length > 0 || ribbonWormEnemies.length > 0
+        || lanternMothEnemies.length > 0 || eyeStalkEnemies.length > 0
+        || jellyfishEnemies.length > 0 || clothGhostEnemies.length > 0
+        || plantTurretEnemies.length > 0 || gearInsectEnemies.length > 0
+        || spiderCrawlerEnemies.length > 0 || moteSwarmEnemies.length > 0
+        || shadowHandEnemies.length > 0 || plantProjectiles.length > 0
         || ctx.getBossEnemy() !== null) return;
     // Aliven groups alive: either still partially spawned or still have live particles
     for (const group of alivenGroups) {

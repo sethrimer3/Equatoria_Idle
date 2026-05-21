@@ -100,6 +100,19 @@ export interface RpgWeaponCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
   alivenGroups: AlivenParticleGroup[];
+  // ── Procedural creature arrays ──────────────────────────────────────────────
+  dustWispEnemies: import('./rpg-procedural-types').DustWispEnemy[];
+  ribbonWormEnemies: import('./rpg-procedural-types').RibbonWormEnemy[];
+  lanternMothEnemies: import('./rpg-procedural-types').LanternMothEnemy[];
+  eyeStalkEnemies: import('./rpg-procedural-types').EyeStalkEnemy[];
+  jellyfishEnemies: import('./rpg-procedural-types').JellyfishEnemy[];
+  clothGhostEnemies: import('./rpg-procedural-types').ClothGhostEnemy[];
+  plantTurretEnemies: import('./rpg-procedural-types').PlantTurretEnemy[];
+  gearInsectEnemies: import('./rpg-procedural-types').GearInsectEnemy[];
+  spiderCrawlerEnemies: import('./rpg-procedural-types').SpiderCrawlerEnemy[];
+  moteSwarmEnemies: import('./rpg-procedural-types').MoteSwarmEnemy[];
+  shadowHandEnemies: import('./rpg-procedural-types').ShadowHandEnemy[];
+  plantProjectiles: import('./rpg-procedural-types').PlantProjectile[];
 
   // Hit effects array (weapon functions push directly into this array)
   hitEffects: HitEffect[];
@@ -132,6 +145,19 @@ export interface RpgWeaponCtx {
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
+  // ── Proc creature damage fns ────────────────────────────────────────────────
+  damageDustWispEnemy: (e: import('./rpg-procedural-types').DustWispEnemy, raw: number, pierce: number) => number;
+  damageRibbonWormEnemy: (e: import('./rpg-procedural-types').RibbonWormEnemy, raw: number, pierce: number) => number;
+  damageLanternMothEnemy: (e: import('./rpg-procedural-types').LanternMothEnemy, raw: number, pierce: number) => number;
+  damageEyeStalkEnemy: (e: import('./rpg-procedural-types').EyeStalkEnemy, raw: number, pierce: number) => number;
+  damageJellyfishEnemy: (e: import('./rpg-procedural-types').JellyfishEnemy, raw: number, pierce: number) => number;
+  damageClothGhostEnemy: (e: import('./rpg-procedural-types').ClothGhostEnemy, raw: number, pierce: number) => number;
+  damagePlantTurretEnemy: (e: import('./rpg-procedural-types').PlantTurretEnemy, raw: number, pierce: number) => number;
+  damageGearInsectEnemy: (e: import('./rpg-procedural-types').GearInsectEnemy, raw: number, pierce: number) => number;
+  damageSpiderCrawlerEnemy: (e: import('./rpg-procedural-types').SpiderCrawlerEnemy, raw: number, pierce: number) => number;
+  damageMoteSwarmEnemy: (e: import('./rpg-procedural-types').MoteSwarmEnemy, raw: number, pierce: number) => number;
+  damageShadowHandEnemy: (e: import('./rpg-procedural-types').ShadowHandEnemy, raw: number, pierce: number) => number;
+  damagePlantProjectile: (p: import('./rpg-procedural-types').PlantProjectile, raw: number) => number;
 
   // Generic multi-type targeting and damage
   damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;

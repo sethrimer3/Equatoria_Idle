@@ -34,6 +34,11 @@ import type {
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+} from './rpg-procedural-types';
 import {
   DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
   DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
@@ -97,6 +102,19 @@ export interface RpgDeathRestartCtx {
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
   alivenGroups: AlivenParticleGroup[];
+  // ── Procedural creature arrays (cleared on restart) ──────────────────────────
+  dustWispEnemies: DustWispEnemy[];
+  ribbonWormEnemies: RibbonWormEnemy[];
+  lanternMothEnemies: LanternMothEnemy[];
+  eyeStalkEnemies: EyeStalkEnemy[];
+  jellyfishEnemies: JellyfishEnemy[];
+  clothGhostEnemies: ClothGhostEnemy[];
+  plantTurretEnemies: PlantTurretEnemy[];
+  gearInsectEnemies: GearInsectEnemy[];
+  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
+  moteSwarmEnemies: MoteSwarmEnemy[];
+  shadowHandEnemies: ShadowHandEnemy[];
+  plantProjectiles: PlantProjectile[];
   bossProjectiles: BossProjectile[];
   luckyMotes: LuckyMote[];
   luckyMotePopups: LuckyMotePopup[];
@@ -176,6 +194,12 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.eigensteinEnemies.length = 0; ctx.eigensteinBeams.length = 0;
   ctx.eliteEnemies.length = 0;
   ctx.alivenGroups.length = 0;
+  ctx.dustWispEnemies.length = 0; ctx.ribbonWormEnemies.length = 0;
+  ctx.lanternMothEnemies.length = 0; ctx.eyeStalkEnemies.length = 0;
+  ctx.jellyfishEnemies.length = 0; ctx.clothGhostEnemies.length = 0;
+  ctx.plantTurretEnemies.length = 0; ctx.gearInsectEnemies.length = 0;
+  ctx.spiderCrawlerEnemies.length = 0; ctx.moteSwarmEnemies.length = 0;
+  ctx.shadowHandEnemies.length = 0; ctx.plantProjectiles.length = 0;
   ctx.setDanmakuSafeZone(null);
   ctx.bossWave.exitBossWave();
   ctx.setIsBossFightFromMenu(false);

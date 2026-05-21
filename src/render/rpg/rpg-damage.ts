@@ -27,6 +27,11 @@ import type {
   EliteEnemy,
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+} from './rpg-procedural-types';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
 import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
@@ -35,6 +40,7 @@ import {
   ELITE_IOLITE_GLOW, ELITE_NULLSTONE_GLOW, ELITE_QUARTZ_GLOW,
   ELITE_RUBY_GLOW, ELITE_SUNSTONE_GLOW,
 } from './rpg-enemy-constants';
+import { PROC_HIT_FLASH_MS } from './rpg-procedural-constants';
 
 export interface DamageCtx {
   recordDps(dmg: number, color?: string): void;
@@ -322,6 +328,45 @@ export function createDamageFns(ctx: DamageCtx) {
     return dmg;
   }
 
+  // ── Procedural creature damage functions ────────────────────────────────────
+
+  /** Generic proc damage: DEF pierce, hit-flash, no special shield. */
+  function _damageProcEnemy(
+    enemy: { hp: number; def: number; hitFlashMs: number },
+    rawDamage: number,
+    defPierceRatio: number,
+    color: string,
+  ): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      enemy.hitFlashMs = PROC_HIT_FLASH_MS;
+      recordDps(dmg, color);
+    }
+    return dmg;
+  }
+
+  function damageDustWispEnemy(e: DustWispEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#b4d4e8'); }
+  function damageRibbonWormEnemy(e: RibbonWormEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#78c878'); }
+  function damageLanternMothEnemy(e: LanternMothEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#f0d088'); }
+  function damageEyeStalkEnemy(e: EyeStalkEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#d0b870'); }
+  function damageJellyfishEnemy(e: JellyfishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#96d8f0'); }
+  function damageClothGhostEnemy(e: ClothGhostEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#c8c8e8'); }
+  function damagePlantTurretEnemy(e: PlantTurretEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#50b850'); }
+  function damageGearInsectEnemy(e: GearInsectEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#a0a0b0'); }
+  function damageSpiderCrawlerEnemy(e: SpiderCrawlerEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#a06850'); }
+  function damageMoteSwarmEnemy(e: MoteSwarmEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#f0d860'); }
+  function damageShadowHandEnemy(e: ShadowHandEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#484868'); }
+
+  /** Damage a plant projectile (no DEF). Returns actual damage dealt. */
+  function damagePlantProjectile(p: PlantProjectile, rawDamage: number): number {
+    const dmg = Math.max(1, Math.floor(rawDamage));
+    p.hp = Math.max(0, p.hp - dmg);
+    recordDps(dmg, '#78d848');
+    return dmg;
+  }
+
   return {
     damageEnemy,
     damageSapphireEnemy,
@@ -349,6 +394,18 @@ export function createDamageFns(ctx: DamageCtx) {
     damageEigensteinEnemy,
     damageEliteEnemy,
     damageAlivenParticle,
+    damageDustWispEnemy,
+    damageRibbonWormEnemy,
+    damageLanternMothEnemy,
+    damageEyeStalkEnemy,
+    damageJellyfishEnemy,
+    damageClothGhostEnemy,
+    damagePlantTurretEnemy,
+    damageGearInsectEnemy,
+    damageSpiderCrawlerEnemy,
+    damageMoteSwarmEnemy,
+    damageShadowHandEnemy,
+    damagePlantProjectile,
   };
 }
 

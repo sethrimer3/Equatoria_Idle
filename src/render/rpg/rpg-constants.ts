@@ -289,6 +289,8 @@ export const FLUID_NULLSTONE_R =  30, FLUID_NULLSTONE_G =  30, FLUID_NULLSTONE_B
 export const FLUID_FRACTERYL_R = 204, FLUID_FRACTERYL_G =  68, FLUID_FRACTERYL_B = 255;
 // Eigenstein enemy colour.
 export const FLUID_EIGENSTEIN_R =  68, FLUID_EIGENSTEIN_G = 204, FLUID_EIGENSTEIN_B = 255;
+// Procedural creature kill explosions share a common warm-white fluid colour.
+export const FLUID_PROC_R = 220, FLUID_PROC_G = 210, FLUID_PROC_B = 190;
 
 // ── Lucky mote drop constants ──────────────────────────────────
 /** Visual radius (px) of a lucky mote. */

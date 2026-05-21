@@ -26,6 +26,11 @@ import type {
   BossEnemy, BossProjectile,
   TeleportParticle, LuckyMote, LuckyMotePopup, EliteEnemy,
 } from './rpg-enemy-types';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+} from './rpg-procedural-types';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
 import type { EliteEnemyCtx } from './rpg-elite-enemy-updates';
@@ -79,6 +84,7 @@ import {
 import { updateWeaponOrbitParticles as _updateWeaponOrbitParticles } from './rpg-weapon-orbit';
 import { tickWeaponSystems } from './rpg-weapon-tick';
 import { drawRpgFrame } from './rpg-render-draw';
+import { updateProceduralEnemies } from './rpg-procedural-update';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -114,6 +120,19 @@ export interface RpgEnemyUpdateArrays {
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
   alivenGroups: AlivenParticleGroup[];
+  // ── Procedural creature arrays ──────────────────────────────────────────────
+  dustWispEnemies: DustWispEnemy[];
+  ribbonWormEnemies: RibbonWormEnemy[];
+  lanternMothEnemies: LanternMothEnemy[];
+  eyeStalkEnemies: EyeStalkEnemy[];
+  jellyfishEnemies: JellyfishEnemy[];
+  clothGhostEnemies: ClothGhostEnemy[];
+  plantTurretEnemies: PlantTurretEnemy[];
+  gearInsectEnemies: GearInsectEnemy[];
+  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
+  moteSwarmEnemies: MoteSwarmEnemy[];
+  shadowHandEnemies: ShadowHandEnemy[];
+  plantProjectiles: PlantProjectile[];
   teleportParticles: TeleportParticle[];
   bossProjectiles: BossProjectile[];
   luckyMotes: LuckyMote[];
@@ -253,6 +272,8 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   updateEliteEnemies(a.eliteEnemies, ctx.eliteEnemyCtx, deltaMs);
   // AlivenParticle group updates (contact damage, particle-life physics, special abilities)
   updateAlivenGroups(a.alivenGroups, ctx.alivenUpdateCtx, deltaMs);
+  // Procedural creatures
+  updateProceduralEnemies(a, ctx.enemyCtx, deltaMs);
 
   const bossEnemy = ctx.getBossEnemy();
   if (bossEnemy) {
