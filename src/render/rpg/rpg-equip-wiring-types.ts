@@ -108,6 +108,13 @@ export interface EquipWiringHandle {
    * Pass `null` to remove the extended hit area.
    */
   setPlugHitElement(plugId: string, hitEl: HTMLElement | null): void;
+  /**
+   * Set an extended drop zone for an input plug so that releasing a cable
+   * anywhere inside `dropHitEl` connects to this plug, not just on the small
+   * plug circle itself.  Used for mobile-friendly drop targets.
+   * Pass `null` to remove the drop zone.
+   */
+  setPlugDropHitElement(plugId: string, dropHitEl: HTMLElement | null): void;
   /** Call once per frame; advances rope physics and re-renders all wires. */
   update(nowMs: number): void;
 }
@@ -120,6 +127,8 @@ export interface PlugRecord {
   el: HTMLElement;
   /** Optional extended hit area for drag-start detection (output plugs only). */
   hitEl: HTMLElement | null;
+  /** Optional extended drop zone for drag-end detection (input plugs). */
+  dropHitEl: HTMLElement | null;
   locked: boolean;
 }
 

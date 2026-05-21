@@ -15,8 +15,10 @@ export type AchievementBonusKind = 'tap_multiplier' | 'loom_multiplier' | 'base_
  * any_tier_lifetime_motes  — any single tier has at least `amount` lifetime motes
  * tiers_with_lifetime_motes — at least `count` tiers each have at least `amount` lifetime motes
  * all_unlocked_tiers_lifetime_motes — all currently unlocked tiers each have at least `amount` lifetime motes
+ * all_base_tiers_lifetime_motes    — all base tiers (sand through nullstone, inclusive) each have at least `amount` lifetime motes; locked or missing tiers count as failing
  * specific_tiers_lifetime_motes — every tier in `tierIds` has at least 1 lifetime mote
  * current_motes_all_unlocked_tiers — all unlocked tiers currently hold at least `amount` motes
+ * all_base_tiers_current_motes     — all base tiers (sand through nullstone, inclusive) currently hold at least `amount` motes; locked or missing tiers count as failing
  * lifetime_motes_total     — total of all lifetime motes (all tiers summed) ≥ `amount`
  * aliven_count             — at least `count` mote tiers have been alivened
  * aliven_all_possible      — every aliveneable tier (Sand through Nullstone) has been alivened
@@ -68,8 +70,10 @@ export type AchievementCondition =
   | { readonly kind: 'any_tier_lifetime_motes';             readonly amount: number }
   | { readonly kind: 'tiers_with_lifetime_motes';           readonly count: number; readonly amount: number }
   | { readonly kind: 'all_unlocked_tiers_lifetime_motes';   readonly amount: number }
+  | { readonly kind: 'all_base_tiers_lifetime_motes';        readonly amount: number }
   | { readonly kind: 'specific_tiers_lifetime_motes';       readonly tierIds: readonly TierId[] }
   | { readonly kind: 'current_motes_all_unlocked_tiers';    readonly amount: number }
+  | { readonly kind: 'all_base_tiers_current_motes';         readonly amount: number }
   | { readonly kind: 'lifetime_motes_total';                readonly amount: number }
   | { readonly kind: 'aliven_count';                        readonly count: number }
   | { readonly kind: 'aliven_all_possible' }

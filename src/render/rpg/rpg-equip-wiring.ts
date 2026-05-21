@@ -203,12 +203,44 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
-  function findPlugUnderPointer(clientX: number, clientY: number): PlugRecord | null {
+  /**
+   * Finds the best compatible input-plug drop target at (clientX, clientY)
+   * for a cable being dragged from `fromType`.
+   *
+   * Three-pass strategy (priority order):
+   *   1. Exact input-plug element bounds
+   *   2. Extended drop-hit zones (dropHitEl) — for mobile-friendly large targets
+   */
+  function findCompatibleDropTarget(
+    clientX: number,
+    clientY: number,
+    fromType: PlugType,
+  ): PlugRecord | null {
+    // Pass 1: exact plug element bounds (any compatible input plug)
     for (const record of plugs.values()) {
+      if (!isCompatible(fromType, record.type)) continue;
+      if (record.locked) continue;
+      const hasRoom = record.type === 'statIn' || incomingCount(record.plugId) < maxIncoming(record.type);
+      if (!hasRoom) continue;
       const rect = record.el.getBoundingClientRect();
       if (
         clientX >= rect.left && clientX <= rect.right &&
         clientY >= rect.top  && clientY <= rect.bottom
+      ) {
+        return record;
+      }
+    }
+    // Pass 2: extended drop-hit zones (compatible input plugs with a dropHitEl)
+    for (const record of plugs.values()) {
+      if (!record.dropHitEl) continue;
+      if (!isCompatible(fromType, record.type)) continue;
+      if (record.locked) continue;
+      const hasRoom = record.type === 'statIn' || incomingCount(record.plugId) < maxIncoming(record.type);
+      if (!hasRoom) continue;
+      const hitRect = record.dropHitEl.getBoundingClientRect();
+      if (
+        clientX >= hitRect.left && clientX <= hitRect.right &&
+        clientY >= hitRect.top  && clientY <= hitRect.bottom
       ) {
         return record;
       }
@@ -297,14 +329,11 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
   panelEl.addEventListener('pointerup', (e: PointerEvent) => {
     if (!drag) return;
 
-    const dropTarget = findPlugUnderPointer(e.clientX, e.clientY);
+    // Use findCompatibleDropTarget which checks exact plug bounds first, then
+    // expanded drop-hit zones, for mobile-friendly connections.
+    const dropTarget = findCompatibleDropTarget(e.clientX, e.clientY, drag.fromType);
 
-    if (
-      dropTarget &&
-      isCompatible(drag.fromType, dropTarget.type) &&
-      !dropTarget.locked &&
-      (dropTarget.type === 'statIn' || incomingCount(dropTarget.plugId) < maxIncoming(dropTarget.type))
-    ) {
+    if (dropTarget) {
       const key = wireKey(drag.fromPlugId, dropTarget.plugId);
       const srcColor = wireColor(drag.fromType);
       const dstColor = wireDstColor(dropTarget.type);
@@ -337,7 +366,7 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
   // ── Handle implementation ─────────────────────────────────────────
 
   function registerPlug(plugId: string, type: PlugType, el: HTMLElement): void {
-    plugs.set(plugId, { plugId, type, el, hitEl: null, locked: false });
+    plugs.set(plugId, { plugId, type, el, hitEl: null, dropHitEl: null, locked: false });
   }
 
   function unregisterPlug(plugId: string): void {
@@ -360,6 +389,12 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     const record = plugs.get(plugId);
     if (!record) return;
     record.hitEl = hitEl;
+  }
+
+  function setPlugDropHitElement(plugId: string, dropHitEl: HTMLElement | null): void {
+    const record = plugs.get(plugId);
+    if (!record) return;
+    record.dropHitEl = dropHitEl;
   }
 
   function update(nowMs: number): void {
@@ -411,5 +446,5 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     }
   }
 
-  return { registerPlug, unregisterPlug, setPlugLocked, setPlugHitElement, update };
+  return { registerPlug, unregisterPlug, setPlugLocked, setPlugHitElement, setPlugDropHitElement, update };
 }
