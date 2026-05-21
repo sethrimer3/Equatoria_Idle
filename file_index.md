@@ -6,7 +6,7 @@
 - `vite.config.ts` — Vite build configuration; desktop mode uses a relative base path for Electron/local file loading while GitHub Actions keeps the repository Pages base path.
 - `tsconfig.json` — TypeScript compiler configuration
 - `package.json` — Dependencies and scripts, including Vite browser commands and Electron desktop launch commands.
-- `electron/main.cjs` — Minimal Electron main process that loads `dist/index.html` with context isolation enabled and Node integration disabled.
+- `electron/main.cjs` — Minimal Electron main process that disables Chromium GPU startup paths, stores profile/cache data in `.electron-user-data`, then loads `dist/index.html` with context isolation enabled and Node integration disabled.
 - `run-desktop.bat` — Windows double-click launcher: installs missing dependencies, builds the desktop output, and starts Electron.
 - `run-browser-dev.bat` — Windows double-click launcher for the Vite browser development server.
 - `build-game.bat` — Windows double-click launcher for the normal production/static build.

@@ -2,6 +2,11 @@ const { app, BrowserWindow } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.setPath('userData', path.join(app.getAppPath(), '.electron-user-data'));
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,

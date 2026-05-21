@@ -16,9 +16,9 @@ If `package-lock.json` is present, the batch launchers use `npm ci` when they ne
 npm run desktop
 ```
 
-This runs `npm run build:desktop` first, then opens the built `dist/index.html` in Electron. The Electron shell lives in `electron/main.cjs`, uses `contextIsolation: true`, and leaves `nodeIntegration` disabled. No preload API is exposed.
+This runs `npm run build:desktop` first, then opens the built `dist/index.html` in Electron. The Electron shell lives in `electron/main.cjs`, disables Chromium GPU acceleration/sandbox startup paths for broader Windows compatibility, stores Electron profile/cache data in `.electron-user-data`, uses `contextIsolation: true`, and leaves `nodeIntegration` disabled. No preload API is exposed.
 
-Electron uses Chromium localStorage for saves. Desktop saves are separate from browser saves because Electron runs under its own app profile. No save migration is performed.
+Electron uses Chromium localStorage for saves. Desktop saves are separate from browser saves because Electron runs under its own app profile in `.electron-user-data`. No save migration is performed.
 
 ## Run Browser Development
 
