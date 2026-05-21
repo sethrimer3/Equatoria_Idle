@@ -24,6 +24,8 @@ export interface TabBar {
   element: HTMLElement;
   setActiveTab(tabId: TabId): void;
   updateAchievementIndicator(state: GameState): void;
+  /** Show a golden "Achieved!" floater rising above the achievements tab button. */
+  showAchievedPopup(delayMs?: number): void;
 }
 
 // ─── Sprite configuration ────────────────────────────────────────
@@ -354,6 +356,27 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
       const shouldShowIndicator = hasUnclaimedAchievements(state);
       achievementButton.classList.toggle('tab-btn--unclaimed-achievements', shouldShowIndicator);
       setSparkleEmitter(achievementButton, shouldShowIndicator);
+    },
+    showAchievedPopup(delayMs = 0): void {
+      if (!achievementButton) return;
+      const show = () => {
+        const rect = achievementButton!.getBoundingClientRect();
+        const popup = document.createElement('span');
+        popup.className = 'achieved-popup';
+        popup.textContent = 'Achieved!';
+        popup.setAttribute('aria-hidden', 'true');
+        // Position centred above the achievements button using fixed coordinates
+        // so the popup is never clipped by the button's overflow:hidden.
+        popup.style.left = `${rect.left + rect.width / 2}px`;
+        popup.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+        document.body.appendChild(popup);
+        popup.addEventListener('animationend', () => popup.remove(), { once: true });
+      };
+      if (delayMs > 0) {
+        window.setTimeout(show, delayMs);
+      } else {
+        show();
+      }
     },
   };
 }

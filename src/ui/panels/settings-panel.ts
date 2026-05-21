@@ -92,7 +92,7 @@ export function createSettingsPanel(
     settings.backgroundStyle,
     [
       { value: 'vermiculate', label: 'Vermiculate' },
-      { value: 'substrate',   label: 'Substrate (Crystal)' },
+      { value: 'substrate',   label: 'Substrate' },
       { value: 'none',        label: 'None' },
     ],
     (v) => {

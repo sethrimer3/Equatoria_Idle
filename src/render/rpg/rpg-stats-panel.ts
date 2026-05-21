@@ -233,6 +233,11 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   // Register box 2 xpOut plug
   equipWiring.registerPlug('xp:out', 'xpOut', xpOutPlugEl);
+  // Expand the drag-start hit area: clicking anywhere in the XP node row cell
+  // starts the XP cable drag, not just the small plug circle.
+  if (xpOutPlugEl.parentElement) {
+    equipWiring.setPlugHitElement('xp:out', xpOutPlugEl.parentElement as HTMLElement);
+  }
 
   // Register boxes 3–5 modifier plugs
   equipWiring.registerPlug('modifier:1:xpIn', 'modifierXpIn', mod1XpIn);
@@ -241,6 +246,15 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   equipWiring.registerPlug('modifier:2:out',  'modifierOut',  mod2Out);
   equipWiring.registerPlug('modifier:3:xpIn', 'modifierXpIn', mod3XpIn);
   equipWiring.registerPlug('modifier:3:out',  'modifierOut',  mod3Out);
+  // Expand the drag-start hit area for each modifier output: clicking anywhere
+  // in the modifier box cell starts the cable drag toward a stat.
+  // DOM structure: outPlug → plugStack → modifierBoxCell
+  const mod1Cell = mod1Out.parentElement?.parentElement as HTMLElement | null;
+  const mod2Cell = mod2Out.parentElement?.parentElement as HTMLElement | null;
+  const mod3Cell = mod3Out.parentElement?.parentElement as HTMLElement | null;
+  if (mod1Cell) equipWiring.setPlugHitElement('modifier:1:out', mod1Cell);
+  if (mod2Cell) equipWiring.setPlugHitElement('modifier:2:out', mod2Cell);
+  if (mod3Cell) equipWiring.setPlugHitElement('modifier:3:out', mod3Cell);
 
   // Register boxes 7–11 weapon row plugs
   const weaponSlotColIds = ['weapIn', 'atkIn', 'spdIn', 'rngIn', 'prcIn'] as const;

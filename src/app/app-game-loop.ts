@@ -120,10 +120,17 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     }
 
     // Fire achievement audio events for anything newly unlocked this tick
-    if (ctx.audioSystem && simResult.newlyUnlockedAchievementIds.length > 0) {
-      for (const id of simResult.newlyUnlockedAchievementIds) {
-        const def = ACHIEVEMENT_BY_ID.get(id);
-        ctx.audioSystem.onAchievementUnlocked(def?.isSecret === true);
+    if (simResult.newlyUnlockedAchievementIds.length > 0) {
+      if (ctx.audioSystem) {
+        for (const id of simResult.newlyUnlockedAchievementIds) {
+          const def = ACHIEVEMENT_BY_ID.get(id);
+          ctx.audioSystem.onAchievementUnlocked(def?.isSecret === true);
+        }
+      }
+      // Show "Achieved!" popup above the achievements tab button for each new unlock,
+      // staggered slightly so multiple achievements don't all appear at once.
+      for (let i = 0; i < simResult.newlyUnlockedAchievementIds.length; i++) {
+        ctx.uiPanels.tabBar.showAchievedPopup(i * 200);
       }
     }
 

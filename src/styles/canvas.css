@@ -367,6 +367,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
 }
 
 /* Slot border colour tinted to match each stat */
