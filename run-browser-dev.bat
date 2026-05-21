@@ -7,15 +7,15 @@ echo Starting Equatoria Idle browser development server...
 if not exist node_modules (
   echo Installing dependencies...
   if exist package-lock.json (
-    npm ci
+    call npm ci
   ) else (
-    npm install
+    call npm install
   )
   if errorlevel 1 goto error
 )
 
 echo Launching Vite dev server at http://localhost:3000 ...
-npm run dev
+call npm run dev
 if errorlevel 1 goto error
 
 exit /b 0
