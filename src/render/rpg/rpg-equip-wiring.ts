@@ -216,10 +216,45 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     return null;
   }
 
+  /**
+   * Like findPlugUnderPointer, but only returns output plugs and also checks
+   * extended hit elements (hitEl).  Used during pointerdown so that clicking
+   * anywhere inside a larger box (e.g. the full XP node row or a multiplier
+   * box) starts a cable drag from the output plug visually anchored to that box.
+   *
+   * Two-pass strategy:
+   *   1. Exact element bounds — output plugs only (fast path, no false positives)
+   *   2. Extended hit elements — output plugs only (expanded touch targets)
+   */
+  function findOutputPlugUnderPointer(clientX: number, clientY: number): PlugRecord | null {
+    // Pass 1: exact plug element bounds
+    for (const record of plugs.values()) {
+      if (!isOutputPlug(record.type)) continue;
+      const rect = record.el.getBoundingClientRect();
+      if (
+        clientX >= rect.left && clientX <= rect.right &&
+        clientY >= rect.top  && clientY <= rect.bottom
+      ) {
+        return record;
+      }
+    }
+    // Pass 2: extended hit areas (output plugs only)
+    for (const record of plugs.values()) {
+      if (!record.hitEl || !isOutputPlug(record.type)) continue;
+      const hitRect = record.hitEl.getBoundingClientRect();
+      if (
+        clientX >= hitRect.left && clientX <= hitRect.right &&
+        clientY >= hitRect.top  && clientY <= hitRect.bottom
+      ) {
+        return record;
+      }
+    }
+    return null;
+  }
+
   panelEl.addEventListener('pointerdown', (e: PointerEvent) => {
-    const target = findPlugUnderPointer(e.clientX, e.clientY);
+    const target = findOutputPlugUnderPointer(e.clientX, e.clientY);
     if (!target) return;
-    if (!isOutputPlug(target.type)) return;
     if (target.locked) return;
 
     e.preventDefault();
@@ -302,7 +337,7 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
   // ── Handle implementation ─────────────────────────────────────────
 
   function registerPlug(plugId: string, type: PlugType, el: HTMLElement): void {
-    plugs.set(plugId, { plugId, type, el, locked: false });
+    plugs.set(plugId, { plugId, type, el, hitEl: null, locked: false });
   }
 
   function unregisterPlug(plugId: string): void {
@@ -319,6 +354,12 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     } else {
       record.el.classList.remove('rpg-plug--locked');
     }
+  }
+
+  function setPlugHitElement(plugId: string, hitEl: HTMLElement | null): void {
+    const record = plugs.get(plugId);
+    if (!record) return;
+    record.hitEl = hitEl;
   }
 
   function update(nowMs: number): void {
@@ -370,5 +411,5 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
     }
   }
 
-  return { registerPlug, unregisterPlug, setPlugLocked, update };
+  return { registerPlug, unregisterPlug, setPlugLocked, setPlugHitElement, update };
 }

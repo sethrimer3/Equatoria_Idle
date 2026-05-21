@@ -42,10 +42,10 @@ export const EDGE_OPACITY = 0.70;
 export const INTERIOR_OPACITY = 0.025;
 
 /** Width (px) of edge line pixels. Chalk-like – slightly thicker for texture. */
-export const LINE_WIDTH = 1.2;
+export const LINE_WIDTH = 0.6;
 
 /** Overall compositing alpha applied when blitting to the main canvas. */
-export const COMPOSITE_ALPHA = 0.20;
+export const COMPOSITE_ALPHA = 0.18;
 
 /** Duration (ms) of the gentle fade-in at each cycle's start. */
 export const FADE_IN_MS = 3000;

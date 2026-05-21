@@ -102,6 +102,12 @@ export interface EquipWiringHandle {
   registerPlug(plugId: string, type: PlugType, el: HTMLElement): void;
   unregisterPlug(plugId: string): void;
   setPlugLocked(plugId: string, locked: boolean): void;
+  /**
+   * Set an extended hit element for an output plug so the player can start
+   * dragging from anywhere inside `hitEl`, not just the small plug circle.
+   * Pass `null` to remove the extended hit area.
+   */
+  setPlugHitElement(plugId: string, hitEl: HTMLElement | null): void;
   /** Call once per frame; advances rope physics and re-renders all wires. */
   update(nowMs: number): void;
 }
@@ -112,6 +118,8 @@ export interface PlugRecord {
   plugId: string;
   type: PlugType;
   el: HTMLElement;
+  /** Optional extended hit area for drag-start detection (output plugs only). */
+  hitEl: HTMLElement | null;
   locked: boolean;
 }
 

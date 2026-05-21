@@ -211,7 +211,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       }
       // Resume normal queue only after all bonus lines are also gone.
       const lastBonusRemoveMs = totalAppearMs + STAGGER_OUT_MS * bonusLines.length + 250;
-      const headerAnimMs = 2800; // matches golden-text-float duration
+      const headerAnimMs = 7000; // matches golden-text-float duration
       const waitAfterHeader = Math.max(0, lastBonusRemoveMs - headerAnimMs);
       setTimeout(() => {
         isRewardShowing = false;

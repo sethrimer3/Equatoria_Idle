@@ -1088,7 +1088,7 @@
 /* ── Golden text reward queue ──────────────────────────────────── */
 .golden-text-container {
   position: fixed;
-  top: max(8px, env(safe-area-inset-top));
+  top: max(16px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 120;
@@ -1125,11 +1125,11 @@
   border-radius: 999px;
   color: #ffd700;
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.7), 0 0 14px rgba(255, 215, 0, 0.35);
-  font-size: 14px;
+  font-size: 21px;
   font-weight: 700;
   padding: 6px 14px;
   white-space: nowrap;
-  animation: golden-text-float 2.8s ease forwards;
+  animation: golden-text-float 7s ease forwards;
 }
 
 @keyframes golden-bonus-in {
@@ -1169,4 +1169,27 @@
 
 .golden-text-bonus.golden-text-bonus--out {
   animation: golden-bonus-out 0.22s ease forwards;
+}
+
+/* ── "Achieved!" tab-bar popup ─────────────────────────────────── */
+@keyframes achieved-popup-rise {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(0);    }
+  18%  { opacity: 1; transform: translateX(-50%) translateY(-8px);  }
+  82%  { opacity: 1; transform: translateX(-50%) translateY(-32px); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-48px); }
+}
+
+.achieved-popup {
+  position: fixed;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+  color: #ffd700;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow:
+    0 0 6px rgba(255, 215, 0, 0.9),
+    0 0 14px rgba(255, 215, 0, 0.5);
+  animation: achieved-popup-rise 2s ease-out forwards;
+  z-index: 200;
 }
