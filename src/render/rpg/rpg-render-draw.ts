@@ -92,7 +92,7 @@ import type {
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
-import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY } from './rpg-constants';
+import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID } from './rpg-constants';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -278,12 +278,14 @@ export function drawRpgFrame(
     drawOrbitProjectile(canvas2d, ctx.getOrbitProjectile());
     for (const ws of ctx.weaponSystems.chainWhipStates.values()) drawChainWhip(canvas2d, ws);
     const effectiveEquippedIds = ctx.getEffectiveEquippedIds();
-    // Only draw equipped weapon combos with prismatic colors when weapons are present.
-    if (effectiveEquippedIds.size > 0) {
+    // Draw prismatic diamond sword combos only when Diamond Blade is equipped.
+    if (effectiveEquippedIds.has(DIAMOND_BLADE_ID)) {
       drawSwordCombos(canvas2d, ctx.weaponSystems.swordComboStates, ctx.mote, ctx.rpgSimState.weaponTiersByWeaponId);
     }
-    // Draw the sand blade when no weapon is equipped.
-    if (effectiveEquippedIds.size === 0) {
+    // Draw the Sand Blade when Diamond Blade is not equipped.
+    // Sand Blade is the permanent default melee weapon; it is only suppressed
+    // by Diamond Blade, not by any other equipped weapon.
+    if (!effectiveEquippedIds.has(DIAMOND_BLADE_ID)) {
       drawSandBladeCombo(canvas2d, ctx.weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY), ctx.mote);
       drawSandDriftPixels(canvas2d);
     }

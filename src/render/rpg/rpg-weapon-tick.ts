@@ -5,13 +5,22 @@
  * Handles:
  *   - Calling each active weapon system's per-frame update function
  *   - Per-weapon auto-attack timer countdown and attack dispatch
- *   - Sand blade fallback (used when no weapon is equipped)
+ *   - Sand blade default melee (active unless Diamond Blade is equipped)
+ *
+ * Sand Blade behaviour:
+ *   The Sand Blade is the player's permanent default melee weapon.  It runs
+ *   whenever Diamond Blade (diamond_bastion) is NOT in the effective equipped
+ *   set.  Equipping Ruby Laser, Chain Whip, or any other non-diamond weapon
+ *   does NOT suppress the Sand Blade — those weapons coexist with it.
+ *   When Diamond Blade IS equipped it takes over the melee slot entirely and
+ *   the Sand Blade is suppressed.
  */
 
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import {
   PLAYER_BASE_COOLDOWN_MS,
   BASE_ATTACK_TIMER_KEY,
+  DIAMOND_BLADE_ID,
 } from './rpg-constants';
 import { getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
@@ -61,7 +70,7 @@ export interface WeaponTickCtx {
  * Call order mirrors the original inline sequence in rpg-render.ts:
  *   1. Weapon effect system updates (sand, chainWhip, vortex, etc.)
  *   2. Per-weapon auto-attack timer countdown → performWeaponAttack when ready
- *   3. Sand blade fallback when no weapons are equipped
+ *   3. Sand blade default melee when Diamond Blade is not equipped
  */
 export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
   const { weaponSystems, statsPanel } = ctx;
@@ -136,8 +145,11 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
     }
   }
 
-  // ── Sand blade fallback (no weapons equipped) ─────────────────────────────────
-  if (equippedIds.size === 0) {
+  // ── Sand blade default melee (active unless Diamond Blade is equipped) ───────
+  // Sand Blade is always the default melee weapon.  It is suppressed only when
+  // diamond_bastion is equipped — in that case the Diamond Sword takes over the
+  // melee slot.  All other equipped weapons coexist with the Sand Blade.
+  if (!equippedIds.has(DIAMOND_BLADE_ID)) {
     weaponSystems.updateSandBlade(deltaMs);
     const sandState = weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY);
     if (sandState) {

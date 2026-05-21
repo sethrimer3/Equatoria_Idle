@@ -24,7 +24,7 @@ import {
 import { WEAPON_BY_ID, INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
-import { BASE_ATTACK_TIMER_KEY } from './rpg-constants';
+import { BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID } from './rpg-constants';
 import type { NumberFormat } from '../../util/format';
 import { createEquipWiringSystem } from './rpg-equip-wiring';
 import { buildStatsPanelDom } from './rpg-stats-panel-dom';
@@ -189,10 +189,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
    * weapon IDs.  Sand weapons (sand_blade, __base__) are collapsed into a
    * single SAND_SLOT_KEY entry that always appears first.
    *
-   * The sand slot is shown only when no non-sand weapon is equipped, or when
-   * the sand gatling (sand_blade) is explicitly one of the equipped weapons.
-   * If other weapons are equipped without sand_blade, the sand slot is hidden
-   * because the base sand attack is superseded.
+   * The sand slot is shown whenever the Sand Blade is active, which is always
+   * EXCEPT when Diamond Blade (diamond_bastion) is equipped.  Diamond Blade
+   * replaces Sand Blade in the melee slot, so when it is equipped the sand
+   * slot is hidden and Diamond Blade's own slot takes over.
    */
   function buildDisplaySlots(equippedIds: string[]): string[] {
     const slots: string[] = [];
@@ -208,12 +208,12 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
         slots.push(slot);
       }
     }
-    // Show the sand slot only when there are no non-sand weapons equipped
-    // (i.e. the base sand attack is the only source of damage), or when the
-    // sand gatling is itself the equipped weapon (sand_blade in equippedIds).
+    // Show the sand slot unless Diamond Blade is equipped (Diamond Blade
+    // replaces Sand Blade in the melee slot).  For all other equipment
+    // combinations the Sand Blade is always active alongside other weapons.
     if (!hasSandSlot) {
-      const allWeaponsAreSand = equippedIds.every(id => SAND_SLOT_MEMBERS.has(id));
-      if (allWeaponsAreSand) {
+      const hasDiamondBlade = equippedIds.includes(DIAMOND_BLADE_ID);
+      if (!hasDiamondBlade) {
         slots.unshift(SAND_SLOT_KEY);
       }
     }
