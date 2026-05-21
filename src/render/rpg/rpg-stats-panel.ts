@@ -255,6 +255,15 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   if (mod1Cell) equipWiring.setPlugHitElement('modifier:1:out', mod1Cell);
   if (mod2Cell) equipWiring.setPlugHitElement('modifier:2:out', mod2Cell);
   if (mod3Cell) equipWiring.setPlugHitElement('modifier:3:out', mod3Cell);
+  // Expand the drop zone for each modifier xpIn: dropping an XP cable anywhere
+  // inside the modifier box connects to the xpIn plug of that box (mobile-friendly).
+  // DOM structure: xpInPlug → plugStack → modifierBoxCell (same as mod*Cell above)
+  const mod1XpInCell = mod1XpIn.parentElement?.parentElement as HTMLElement | null;
+  const mod2XpInCell = mod2XpIn.parentElement?.parentElement as HTMLElement | null;
+  const mod3XpInCell = mod3XpIn.parentElement?.parentElement as HTMLElement | null;
+  if (mod1XpInCell) equipWiring.setPlugDropHitElement('modifier:1:xpIn', mod1XpInCell);
+  if (mod2XpInCell) equipWiring.setPlugDropHitElement('modifier:2:xpIn', mod2XpInCell);
+  if (mod3XpInCell) equipWiring.setPlugDropHitElement('modifier:3:xpIn', mod3XpInCell);
 
   // Register boxes 7–11 weapon row plugs
   const weaponSlotColIds = ['weapIn', 'atkIn', 'spdIn', 'rngIn', 'prcIn'] as const;
@@ -263,6 +272,12 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     for (let c = 0; c < 5; c++) {
       const plugId = `weaponSlot:${r + 1}:${weaponSlotColIds[c]}`;
       equipWiring.registerPlug(plugId, weaponSlotColTypes[c], weaponRowPlugEls[r][c]);
+      // Expand the drop zone for stat input plugs (atkIn, spdIn, rngIn, prcIn):
+      // dropping a modifier cable anywhere inside the stat cell connects to this plug.
+      if (c > 0) {
+        const statCell = weaponRowPlugEls[r][c].parentElement as HTMLElement | null;
+        if (statCell) equipWiring.setPlugDropHitElement(plugId, statCell);
+      }
     }
   }
 

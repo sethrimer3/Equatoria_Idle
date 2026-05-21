@@ -20,6 +20,28 @@ import { BASE_TAP_VALUE, UPGRADE_TAP_MULTIPLIER } from '../../data/balance';
 import { EQUATION_ROLE_BY_TIER } from '../../data/equation';
 
 /**
+ * The canonical ordered list of "base" tiers used for cross-tier mote
+ * achievements (sand through nullstone, inclusive).
+ *
+ * Fracteryl and Eigenstein are intentionally excluded — they have their
+ * own separate achievement categories.  Adding a tier here will tighten
+ * the "all tiers" achievement requirements for every affected condition.
+ */
+export const ALL_BASE_TIER_IDS = [
+  'sand',
+  'quartz',
+  'ruby',
+  'sunstone',
+  'citrine',
+  'emerald',
+  'sapphire',
+  'iolite',
+  'amethyst',
+  'diamond',
+  'nullstone',
+] as const;
+
+/**
  * Returns true if the given condition is satisfied by the current game state.
  *
  * @param globalTapMultiplier - Combined tap multiplier (progression × achievement bonuses).
@@ -63,6 +85,17 @@ export function isConditionMet(
       return true;
     }
 
+    case 'all_base_tiers_lifetime_motes': {
+      // Requires ALL base tiers (sand through nullstone) to have at least
+      // `amount` lifetime motes. Locked or not-yet-created tiers count as failing.
+      for (const tierId of ALL_BASE_TIER_IDS) {
+        const seg = equation.segments.find(s => s.tierId === tierId);
+        if (!seg || !seg.isUnlocked) return false;
+        if (getLifetimeMotes(resources, tierId) < condition.amount) return false;
+      }
+      return true;
+    }
+
     case 'specific_tiers_lifetime_motes': {
       for (const tierId of condition.tierIds) {
         if (getLifetimeMotes(resources, tierId) < 1) return false;
@@ -75,6 +108,17 @@ export function isConditionMet(
       if (unlocked.length === 0) return false;
       for (const seg of unlocked) {
         if (getMotes(resources, seg.tierId) < condition.amount) return false;
+      }
+      return true;
+    }
+
+    case 'all_base_tiers_current_motes': {
+      // Requires ALL base tiers (sand through nullstone) to currently hold at
+      // least `amount` motes. Locked or not-yet-created tiers count as failing.
+      for (const tierId of ALL_BASE_TIER_IDS) {
+        const seg = equation.segments.find(s => s.tierId === tierId);
+        if (!seg || !seg.isUnlocked) return false;
+        if (getMotes(resources, tierId) < condition.amount) return false;
       }
       return true;
     }

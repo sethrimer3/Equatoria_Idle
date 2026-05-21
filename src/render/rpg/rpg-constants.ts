@@ -97,12 +97,12 @@ export const IFRAME_FLICKER_INTERVAL_MS = 62.5;
 // ── Damage numbers ─────────────────────────────────────────────
 /** How long a damage number stays visible (ms). */
 export const DAMAGE_NUM_DURATION_MS   = 900;
-/** Minimum font size for a nearly-zero-damage hit (internal canvas px). 3× original. */
-export const DAMAGE_NUM_MIN_FONT_PX   = 12;
-/** Maximum font size for a 100 %-health hit (internal canvas px). 3× original. */
-export const DAMAGE_NUM_MAX_FONT_PX   = 42;
-/** Initial travel speed of a damage number (px per dt unit). */
-export const DAMAGE_NUM_INITIAL_SPEED = 1.8;
+/** Minimum font size for a nearly-zero-damage hit (internal canvas px). */
+export const DAMAGE_NUM_MIN_FONT_PX   = 9;
+/** Maximum font size for a 100 %-health hit (internal canvas px). */
+export const DAMAGE_NUM_MAX_FONT_PX   = 32;
+/** Initial travel speed of a damage number (px per dt unit). Tripled from original. */
+export const DAMAGE_NUM_INITIAL_SPEED = 5.4;
 /** Per-frame velocity damping factor (at 60 fps scale). */
 export const DAMAGE_NUM_DECEL         = 0.88;
 

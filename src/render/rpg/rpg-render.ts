@@ -431,6 +431,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     hitEffects,
     shotLines,
     damageNumbers,
+    getDim:              () => dim,
     isInvincibilityMode: () => isInvincibilityMode,
     onPlayerHit: () => { waveManager?.onPlayerHit(); },
   };
