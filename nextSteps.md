@@ -1,10 +1,48 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#59**
+Current build: **#65**
 
 ---
 
 ## Build History Summary
+
+### Build #65 — RPG wiring, XP reservoir, multiplier boxes, stat multipliers
+
+**Box 1 — Equipment by wire:**
+- Weapons placed in weapon slots are now only **active in combat if a Box 1 wire connects to that slot**.
+- Legacy fallback: if no Box 1 wires exist, all equipped weapons remain active (backward-compatible with existing saves).
+- `RpgStatsPanelHandle` exposes `isSlotEquippedByWire(slotIdx)` and `hasAnyEquipWire()`.
+- `getEffectiveEquippedIds()` in `rpg-render.ts` filters by wire state.
+
+**Box 2 — XP reservoir:**
+- Newly-earned XP now accumulates in `rpgSimState.xpReservoir` (Box 2 display).
+- Box 2 shows reservoir XP (unallocated), not total lifetime XP.
+- When Box 2 is connected to a modifier box, XP drains each frame at `max(50, reservoir × 1.5)` XP/sec.
+
+**Boxes 3/4/5 — Multiplier boxes:**
+- Each has Roman numeral (I/II/III) in the top-left corner, a progress bar, and level text (x1, x2, etc.).
+- XP cost: `50 × 5^(level − 1)` — level 1→2: 50 XP, level 2→3: 250 XP, etc.
+- `tickMultiplierXpProgress` in `rpg-state-xp.ts` handles overflow levelling.
+- Progress bars and level text update in the stats panel each second.
+
+**Stat multipliers in combat:**
+- Modifier out → weapon stat socket wires tracked in stats panel `statModifiers` map.
+- `getWeaponStatMultiplier(slotIdx, statKey)` returns the box level (1 = no effect).
+- `rpg-render.ts` exposes `getWeaponAtkMultiplier/SpdMultiplier/RngMultiplier/PrcMultiplier(weaponId)`.
+- `WeaponTickCtx.getWeaponSpdMultiplier` divides scaled cooldown by SPD multiplier.
+- `RpgPlayerAttackCtx` applies ATK × damage, RNG × range, PRC × pierce ratio (clamped to 1).
+- Stat cells in Boxes 7–11 display effective (multiplied) values in purple when boosted.
+
+**Save/load:**
+- `SAVE_VERSION` bumped to 24.
+- New optional fields `xpReservoir` and `multiplierBoxes` in `SaveData.rpg`.
+- Defaults on old saves: `xpReservoir = 0`, `multiplierBoxes = [{level:1, progressXp:0} × 3]`.
+
+**Wire state note:**
+Wire connections are **ephemeral** (reset on page load). They are not currently persisted.
+The player must reconnect wires after a page reload. Future work could persist wire state.
+
+---
 
 ### Build #59 — Achievement system audit & repair
 Added 4 new equation mastery achievements; fixed all_bosses_at_speed to require all 10 bosses; added kills_all_regular_types condition; renamed sec_first_blood_max displayName; fixed RPG comment ranges; added 5 consistency audit tests; corrected VISIBLE_TIER_COUNT comment; renamed full_spectrum and eq_tier_13 displayNames; added policy and intentional-duplicate comments throughout.
