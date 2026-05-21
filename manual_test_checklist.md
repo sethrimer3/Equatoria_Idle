@@ -53,6 +53,8 @@
 - [ ] Debug toggles work when activated (interaction radius, grid, inert highlights)
 
 ## Upgrade Purchasing
+- [ ] Cold Equation Forge sprites are visible when the forge is idle, spin very slowly, and fade into fiery sprites after tapping the forge
+- [ ] Five rotating ring sprites remain centered on the Equation Forge and do not block taps, equation text, upgrades, or tab controls
 - [ ] Upgrade buttons show correct cost and level
 - [ ] Clicking an affordable upgrade purchases it (cost deducted, level incremented)
 - [ ] Clicking an unaffordable upgrade does nothing (button appears disabled)

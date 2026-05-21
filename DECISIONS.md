@@ -48,6 +48,8 @@
 
 **Forge crunch flow**: Eligible particles (medium+, with valid output tier) near the forge center start a `FORGE_VALID_WAIT_TIME_MS` countdown. When it expires, a `FORGE_CRUNCH_DURATION_MS` animation plays, consuming the particles and producing next-tier outputs. The forge spins up progressively as the timer counts down and spins down after completion.
 
+**Forge cold/hot visuals and rings**: The forge renderer uses the uploaded `forge_cold.webp`/`forge2_cold.webp` pair as the dormant visual and crossfades to the fiery `forge.webp`/`forge2.webp` pair after forge heat taps or while crunching. The five decorative ring sprites are the blurred Thero Idle TD tower-ring assets copied into `ASSETS/SPRITES/equationForge/forgeRings/`; their radius, speed, direction, opacity, and pulse settings live in `src/render/forge/forge-ring-renderer.ts`. They are render-only, time-based, and centered on the same canvas forge coordinates as the main forge sprite.
+
 ## Particle Size Tier System
 
 **Decision**: Four particle size tiers (small=0, medium=1, large=2, extra-large=3), with per-size modifiers for velocity, force, and visual scale.

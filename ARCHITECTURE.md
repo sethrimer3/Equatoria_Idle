@@ -129,7 +129,9 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 ## Forge System
 
 - Single forge at the equation center
-- Animates with spin speed that accelerates as crunch timer counts down
+- Animates with cold and fiery sprite pairs in the same orientation; idle/cold state spins very slowly, and a forge tap fades into the fiery pair before cooling back down
+- Five decorative ring sprites from Thero Idle TD rotate around the forge via `render/forge/forge-ring-renderer.ts`; these are visual-only and centered on the same canvas forge coordinates used by particles and input
+- Spin speed accelerates as crunch timer counts down
 - Medium/large/extra-large particles within `FORGE_RADIUS` trigger the crunch timer
 - After `FORGE_VALID_WAIT_TIME_MS`, a crunch animation plays, consuming particles and outputting next-tier equivalents
 - Forge crunch state lives in `GameState.forge` so it persists with the game state object
@@ -191,7 +193,7 @@ All sprites are served from `public/assets/`:
 - **Gem icons** (`sprites/gemIcons/`): per-tier raw gem icons used in upgrade buttons
 - **Refined gems** (`sprites/refinedGems/`): per-tier refined gem icons used in resource rows
 - **Generators** (`sprites/generators/`): per-tier generator sprites rendered on canvas
-- **Forge** (`sprites/equationForge/`): dual forge sprites with counter-rotation
+- **Forge** (`sprites/equationForge/`): hot/cold dual forge sprites with counter-rotation, plus five Thero-derived blurred ring sprites in `forgeRings/`
 - **Logo** (`sprites/logo/`): company logo for loading screen
 - **Background animation** (`animations/menuBackground_animation/`): frame sequence
 

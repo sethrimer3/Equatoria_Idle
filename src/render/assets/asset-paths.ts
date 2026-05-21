@@ -72,8 +72,19 @@ export function getGeneratorSpritePath(unlockOrder: number): string {
 
 export const FORGE_SPRITE_PATH = `${BASE}/SPRITES/equationForge/forge.webp`;
 export const FORGE_SPRITE_ALT_PATH = `${BASE}/SPRITES/equationForge/forge2.webp`;
+export const FORGE_COLD_SPRITE_PATH = `${BASE}/SPRITES/equationForge/forge_cold.webp`;
+export const FORGE_COLD_SPRITE_ALT_PATH = `${BASE}/SPRITES/equationForge/forge2_cold.webp`;
 export const FORGE_SPRITE_LEGACY_PATH = `${BASE}/SPRITES/equationForge/ORIGINAL-forge.png`;
 export const FORGE_SPRITE_ALT_LEGACY_PATH = FORGE_SPRITE_ALT_PATH;
+
+/** Five blurred tower-ring sprites ported from Thero Idle TD tower visuals. */
+export const FORGE_RING_SPRITE_PATHS = [
+  `${BASE}/SPRITES/equationForge/forgeRings/ring_blur (1).png`,
+  `${BASE}/SPRITES/equationForge/forgeRings/ring_blur (2).png`,
+  `${BASE}/SPRITES/equationForge/forgeRings/ring_blur (3).png`,
+  `${BASE}/SPRITES/equationForge/forgeRings/ring_blur (4).png`,
+  `${BASE}/SPRITES/equationForge/forgeRings/ring_blur (5).png`,
+] as const;
 
 // ── Logo ───────────────────────────────────────────────────────
 

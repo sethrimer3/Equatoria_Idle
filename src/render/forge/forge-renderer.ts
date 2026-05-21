@@ -9,6 +9,8 @@ import {
   FORGE_SPIN_DOWN_DURATION_MS,
 } from '../../data/particles/particle-config';
 import {
+  FORGE_COLD_SPRITE_ALT_PATH,
+  FORGE_COLD_SPRITE_PATH,
   FORGE_SPRITE_ALT_LEGACY_PATH,
   FORGE_SPRITE_ALT_PATH,
   FORGE_SPRITE_LEGACY_PATH,
@@ -16,6 +18,7 @@ import {
 } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 import { TIER_BY_ID } from '../../data/tiers';
+import { drawForgeRings, preloadForgeRingSprites } from './forge-ring-renderer';
 import {
   drawForgeBackgroundGlow,
   drawForgeHeatRings,
@@ -28,11 +31,16 @@ import type { ForgeFieldInfo } from '../particles/forge-field-forces';
 
 /** Visual influence circle is drawn at 75 % of the physics range. */
 const FORGE_INFLUENCE_VISUAL_SCALE = 0.75;
+const FORGE_COLD_ROTATION_MULTIPLIER = 0.18;
+const FORGE_FIRE_FADE_DURATION_MS = 900;
 
 /** Preload forge sprites. Call once at startup. */
 export function preloadForgeSprites(): void {
   loadImage(FORGE_SPRITE_PATH).catch(() => loadImage(FORGE_SPRITE_LEGACY_PATH).catch(() => undefined));
   loadImage(FORGE_SPRITE_ALT_PATH).catch(() => loadImage(FORGE_SPRITE_ALT_LEGACY_PATH).catch(() => undefined));
+  loadImage(FORGE_COLD_SPRITE_PATH).catch(() => undefined);
+  loadImage(FORGE_COLD_SPRITE_ALT_PATH).catch(() => undefined);
+  preloadForgeRingSprites();
 }
 
 export function drawForge(
@@ -50,10 +58,20 @@ export function drawForge(
     crunchState, nowMs,
     FORGE_VALID_WAIT_TIME_MS, FORGE_SPIN_UP_DURATION_MS, FORGE_SPIN_DOWN_DURATION_MS,
   );
-  const effectiveRotation = forgeRotation * spinMult;
+  const fireAlpha = getForgeFireAlpha(crunchState, nowMs);
+  const idleSpinMult = FORGE_COLD_ROTATION_MULTIPLIER + (spinMult - FORGE_COLD_ROTATION_MULTIPLIER) * fireAlpha;
+  const effectiveRotation = forgeRotation * idleSpinMult;
 
   // ── Large soft glow — drawn first so it sits just above the background ──
-  drawForgeBackgroundGlow(ctx, forgeX, forgeY, forgeSize, nowMs);
+  if (fireAlpha > 0.05) {
+    // Large soft glow sits above the background and fades in with the fiery forge state.
+    ctx.save();
+    ctx.globalAlpha = fireAlpha;
+    drawForgeBackgroundGlow(ctx, forgeX, forgeY, forgeSize, nowMs);
+    ctx.restore();
+  }
+
+  drawForgeRings(ctx, forgeX, forgeY, forgeSize, nowMs, fireAlpha);
 
   // ── Heat rings — drawn before the sprite, one ring per tap ──────────────
   if (heatTapCount > 0 && !crunchState.isActive) {
@@ -62,15 +80,29 @@ export function drawForge(
 
   const sprite = getCachedImage(FORGE_SPRITE_PATH) ?? getCachedImage(FORGE_SPRITE_LEGACY_PATH);
   const spriteAlt = getCachedImage(FORGE_SPRITE_ALT_PATH) ?? getCachedImage(FORGE_SPRITE_ALT_LEGACY_PATH);
+  const coldSprite = getCachedImage(FORGE_COLD_SPRITE_PATH);
+  const coldSpriteAlt = getCachedImage(FORGE_COLD_SPRITE_ALT_PATH);
 
   if (sprite && spriteAlt) {
-    drawForgeSprite(ctx, forgeX, forgeY, forgeSize, effectiveRotation, sprite, spriteAlt);
+    drawForgeSprite(ctx, forgeX, forgeY, forgeSize, effectiveRotation, sprite, spriteAlt, coldSprite, coldSpriteAlt, fireAlpha);
   } else {
     drawForgeFallback(ctx, forgeX, forgeY, forgeSize, effectiveRotation);
   }
 
   // Attraction radius — bidirectional fire swirl, 25 % smaller than physics range
-  drawForgeInfluenceSwirl(ctx, forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE * FORGE_INFLUENCE_VISUAL_SCALE, nowMs);
+  if (fireAlpha > 0.05) {
+    ctx.save();
+    ctx.globalAlpha = fireAlpha;
+    drawForgeInfluenceSwirl(ctx, forgeX, forgeY, MAX_FORGE_ATTRACTION_DISTANCE * FORGE_INFLUENCE_VISUAL_SCALE, nowMs);
+    ctx.restore();
+  }
+}
+
+function getForgeFireAlpha(crunchState: ForgeCrunchState, nowMs: number): number {
+  if (crunchState.isActive) return 1;
+  if (crunchState.heatTapCount <= 0 || crunchState.lastHeatTapMs <= 0) return 0;
+  const elapsedMs = Math.max(0, nowMs - crunchState.lastHeatTapMs);
+  return Math.max(0, 1 - elapsedMs / FORGE_FIRE_FADE_DURATION_MS);
 }
 
 /**

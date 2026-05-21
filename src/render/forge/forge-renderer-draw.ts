@@ -150,28 +150,49 @@ export function drawForgeSprite(
   rotation: number,
   sprite: HTMLImageElement,
   spriteAlt: HTMLImageElement,
+  coldSprite?: HTMLImageElement,
+  coldSpriteAlt?: HTMLImageElement,
+  fireAlpha = 1,
 ): void {
   const drawSize = forgeSize * 3;
+  const clampedFireAlpha = Math.max(0, Math.min(1, fireAlpha));
+  const coldAlpha = coldSprite && coldSpriteAlt ? 1 - clampedFireAlpha : 0;
 
   ctx.save();
   ctx.translate(x, y);
 
-  // Draw primary forge sprite rotating one direction
-  ctx.save();
-  ctx.rotate(-rotation);
-  ctx.drawImage(sprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
-  ctx.restore();
+  // Cold and fiery sprites share these orientations so tap fade transitions stay smooth.
+  if (coldSprite && coldSpriteAlt && coldAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = coldAlpha;
+    ctx.rotate(-rotation);
+    ctx.drawImage(coldSprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+    ctx.restore();
 
-  // Draw alt forge sprite rotating the other direction
-  ctx.save();
-  ctx.rotate(rotation);
-  ctx.globalAlpha = 0.7;
-  ctx.drawImage(spriteAlt, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
-  ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = coldAlpha * 0.7;
+    ctx.rotate(rotation);
+    ctx.drawImage(coldSpriteAlt, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+    ctx.restore();
+  }
+
+  if (clampedFireAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = clampedFireAlpha;
+    ctx.rotate(-rotation);
+    ctx.drawImage(sprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = clampedFireAlpha * 0.7;
+    ctx.rotate(rotation);
+    ctx.drawImage(spriteAlt, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+    ctx.restore();
+  }
 
   // Glow
   const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, forgeSize);
-  gradient.addColorStop(0, 'rgba(255,255,255,0.15)');
+  gradient.addColorStop(0, `rgba(255,255,255,${0.07 + clampedFireAlpha * 0.08})`);
   gradient.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = gradient;
   ctx.beginPath();

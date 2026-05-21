@@ -245,9 +245,16 @@
 
 ### src/render/assets/asset-paths.ts
 - Centralized asset path definitions (single source of truth).
+- Exports hot/cold Equation Forge sprite paths and `FORGE_RING_SPRITE_PATHS` for the five Thero-derived blurred forge ring sprites.
 
 ### src/render/assets/asset-loader.ts
 - Image loading utility with caching.
+
+### src/render/forge/forge-ring-renderer.ts
+- Visual-only Equation Forge ring renderer.
+- Exports `preloadForgeRingSprites()` and `drawForgeRings()`.
+- Contains the data-driven five-ring config for sprite path, radius scale, rotation speed/direction, opacity, phase, and optional pulsing.
+- Rings are centered by translating to the forge canvas coordinate passed from `drawForge()`.
 
 ### src/render/assets/color-utils.ts
 - Shared color parsing utilities for the render layer.
