@@ -98,7 +98,45 @@ export function formatXp(xp: number): string {
   return (xp / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
 }
 
-// ─── XP allocation ────────────────────────────────────────────────
+/**
+ * XP cost to advance a multiplier box from `currentLevel` to `currentLevel + 1`.
+ *
+ * Formula: 50 × 5^(currentLevel − 1)
+ *   level 1 → 2:     50 XP
+ *   level 2 → 3:    250 XP
+ *   level 3 → 4:  1 250 XP
+ *   level 4 → 5:  6 250 XP
+ *   …
+ */
+export function getMultiplierXpCost(currentLevel: number): number {
+  return 50 * Math.pow(5, Math.max(0, currentLevel - 1));
+}
+
+/**
+ * Advances `multiplierBoxes[modIdx]` by `amount` XP, levelling up as needed.
+ * Overflow XP is applied to subsequent levels while wire is active.
+ * The level is capped at 100 to prevent infinite loops with very large amounts.
+ */
+export function tickMultiplierXpProgress(state: RpgSimState, modIdx: number, amount: number): void {
+  if (modIdx < 0 || modIdx >= state.multiplierBoxes.length) return;
+  let remaining = amount;
+  const box = state.multiplierBoxes[modIdx];
+  // Cap at level 100 to prevent infinite loops.
+  while (remaining > 0 && box.level < 100) {
+    const cost = getMultiplierXpCost(box.level);
+    const space = cost - box.progressXp;
+    if (remaining >= space) {
+      box.level++;
+      box.progressXp = 0;
+      remaining -= space;
+    } else {
+      box.progressXp += remaining;
+      remaining = 0;
+    }
+  }
+}
+
+
 
 /**
  * Adds `amount` XP to the total and — if a stat is wired — also increments
@@ -107,6 +145,8 @@ export function formatXp(xp: number): string {
  */
 export function addXpWithAllocation(state: RpgSimState, amount: number): void {
   state.xp += amount;
+  // XP also enters the reservoir (Box 2) so it can be drained into multiplier boxes.
+  state.xpReservoir += amount;
   const n = state.xpAllocatedStats.length;
   if (n === 0) return;
   const share = amount / n;

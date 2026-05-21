@@ -221,6 +221,14 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.secretAchievementFlags.add(flag);
       }
     }
+    // v24+: XP reservoir and multiplier boxes
+    state.rpg.xpReservoir = data.rpg.xpReservoir ?? 0;
+    if (data.rpg.multiplierBoxes && data.rpg.multiplierBoxes.length >= 3) {
+      for (let i = 0; i < 3; i++) {
+        state.rpg.multiplierBoxes[i].level = data.rpg.multiplierBoxes[i].level ?? 1;
+        state.rpg.multiplierBoxes[i].progressXp = data.rpg.multiplierBoxes[i].progressXp ?? 0;
+      }
+    }
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

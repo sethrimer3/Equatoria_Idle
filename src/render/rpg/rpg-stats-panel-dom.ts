@@ -52,6 +52,10 @@ export interface StatsPanelDomRefs {
   mod2Out: HTMLDivElement;
   mod3XpIn: HTMLDivElement;
   mod3Out: HTMLDivElement;
+  /** Progress bar fill elements for modifier boxes [0]=Box3, [1]=Box4, [2]=Box5. */
+  modProgressFills: HTMLDivElement[];
+  /** Level text elements for modifier boxes [0]=Box3, [1]=Box4, [2]=Box5. */
+  modLevelTexts: HTMLSpanElement[];
 
   // DPS chart elements
   dpsLabelEl: HTMLSpanElement;
@@ -111,6 +115,8 @@ export function buildStatsPanelDom(): StatsPanelDomRefs {
     mod2Out: primary.mod2Out,
     mod3XpIn: primary.mod3XpIn,
     mod3Out: primary.mod3Out,
+    modProgressFills: primary.modProgressFills,
+    modLevelTexts: primary.modLevelTexts,
     dpsLabelEl: right.dpsLabelEl,
     dpsValueEl: right.dpsValueEl,
     dpsChartEl: right.dpsChartEl,

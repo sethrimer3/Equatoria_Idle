@@ -21,6 +21,9 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
   formatXp, getMaxEquippedWeapons,
 } from '../../sim/rpg/rpg-state';
+import {
+  getMultiplierXpCost, tickMultiplierXpProgress,
+} from '../../sim/rpg/rpg-state-xp';
 import { WEAPON_BY_ID, INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
@@ -65,6 +68,20 @@ export interface RpgStatsPanelHandle {
   update(): void;
   /** Show or hide the dev-mode numerical designators on each panel box. */
   setDevMode(enabled: boolean): void;
+  /**
+   * Returns true if the given weapon-slot index (0-based) has a Box 1 wire
+   * connected to it.  When no Box 1 wires exist at all, returns true for all
+   * slots (legacy fallback — preserves existing saves).
+   */
+  isSlotEquippedByWire(slotIdx: number): boolean;
+  /** Returns true if at least one Box 1 → weapon-slot wire exists. */
+  hasAnyEquipWire(): boolean;
+  /**
+   * Returns the current multiplier level (1-based) for a given weapon slot and
+   * stat column key ('atkIn' | 'spdIn' | 'rngIn' | 'prcIn').
+   * Returns 1 (no multiplier) if no modifier box is connected to that slot/stat.
+   */
+  getWeaponStatMultiplier(slotIdx: number, statKey: 'atkIn' | 'spdIn' | 'rngIn' | 'prcIn'): number;
 }
 
 export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle {
@@ -109,8 +126,94 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     weaponSourcePlugEls,
     xpOutPlugEl,
     mod1XpIn, mod1Out, mod2XpIn, mod2Out, mod3XpIn, mod3Out,
+    modProgressFills, modLevelTexts,
     dpsLabelEl, dpsValueEl, dpsChartEl, dpsAxisEl, dpsAxisLowEl, dpsAxisHighEl,
   } = buildStatsPanelDom();
+
+  // ── Wire connection state (ephemeral — resets on page load) ──────────────────
+  //
+  // equippedByWire: set of slot indices (0-4) wired to Box 1.
+  // xpTargetModifier: index (0/1/2) of the modifier box Box 2 is connected to,
+  //   or null if no connection.
+  // statModifiers: maps "slotIdx:statKey" → modifierIdx (0/1/2) when a modifier
+  //   output is wired to a weapon stat socket.
+  const equippedByWire = new Set<number>();
+  let xpTargetModifier: number | null = null;
+  const statModifiers = new Map<string, number>();
+
+  /** Parse 'weaponSource:N' → N-1 (0-based slot index), or null. */
+  function parseWeaponSourceId(plugId: string): number | null {
+    const m = plugId.match(/^weaponSource:(\d+)$/);
+    return m ? parseInt(m[1], 10) - 1 : null;
+  }
+  /** Parse 'weaponSlot:R:weapIn' → R-1 (0-based slot index), or null. */
+  function parseWeaponSlotWeapIn(plugId: string): number | null {
+    const m = plugId.match(/^weaponSlot:(\d+):weapIn$/);
+    return m ? parseInt(m[1], 10) - 1 : null;
+  }
+  /** Parse 'modifier:N:out' → N-1 (0-based modifier index), or null. */
+  function parseModifierOutId(plugId: string): number | null {
+    const m = plugId.match(/^modifier:(\d+):out$/);
+    return m ? parseInt(m[1], 10) - 1 : null;
+  }
+  /** Parse 'modifier:N:xpIn' → N-1 (0-based modifier index), or null. */
+  function parseModifierXpInId(plugId: string): number | null {
+    const m = plugId.match(/^modifier:(\d+):xpIn$/);
+    return m ? parseInt(m[1], 10) - 1 : null;
+  }
+  /** Parse 'weaponSlot:R:statKey' → { slotIdx, statKey }, or null. */
+  function parseStatInId(plugId: string): { slotIdx: number; statKey: string } | null {
+    const m = plugId.match(/^weaponSlot:(\d+):(atkIn|spdIn|rngIn|prcIn)$/);
+    if (!m) return null;
+    return { slotIdx: parseInt(m[1], 10) - 1, statKey: m[2] };
+  }
+
+  function handleWireConnect(fromPlugId: string, toPlugId: string): void {
+    // Box 1 weapon source → weapon slot equip
+    const srcSlot = parseWeaponSourceId(fromPlugId);
+    if (srcSlot !== null) {
+      const destSlot = parseWeaponSlotWeapIn(toPlugId);
+      if (destSlot !== null) equippedByWire.add(destSlot);
+      return;
+    }
+    // Box 2 XP out → modifier xpIn
+    if (fromPlugId === 'xp:out') {
+      const modIdx = parseModifierXpInId(toPlugId);
+      if (modIdx !== null) xpTargetModifier = modIdx;
+      return;
+    }
+    // Modifier out → stat socket
+    const modOutIdx = parseModifierOutId(fromPlugId);
+    if (modOutIdx !== null) {
+      const statIn = parseStatInId(toPlugId);
+      if (statIn !== null) {
+        statModifiers.set(`${statIn.slotIdx}:${statIn.statKey}`, modOutIdx);
+      }
+    }
+  }
+
+  function handleWireDisconnect(fromPlugId: string, toPlugId: string): void {
+    // Box 1 disconnect
+    const srcSlot = parseWeaponSourceId(fromPlugId);
+    if (srcSlot !== null) {
+      const destSlot = parseWeaponSlotWeapIn(toPlugId);
+      if (destSlot !== null) equippedByWire.delete(destSlot);
+      return;
+    }
+    // Box 2 disconnect
+    if (fromPlugId === 'xp:out') {
+      xpTargetModifier = null;
+      return;
+    }
+    // Modifier out disconnect
+    const modOutIdx = parseModifierOutId(fromPlugId);
+    if (modOutIdx !== null) {
+      const statIn = parseStatInId(toPlugId);
+      if (statIn !== null) {
+        statModifiers.delete(`${statIn.slotIdx}:${statIn.statKey}`);
+      }
+    }
+  }
 
   // ── Equip wiring system ───────────────────────────────────────────
   // Manages drag-to-connect soft-body wires for all visible plugs.
@@ -118,8 +221,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   const equipWiring = createEquipWiringSystem({
     panelEl:           statsPanel,
     getMaxWeaponSlots: () => getMaxEquippedWeapons(rpgSimState),
-    onWireConnect:     (_from, _to) => { /* ephemeral */ },
-    onWireDisconnect:  (_from, _to) => { /* ephemeral */ },
+    onWireConnect:     (from, to) => handleWireConnect(from, to),
+    onWireDisconnect:  (from, to) => handleWireDisconnect(from, to),
   });
 
   // Register box 1 weapon source plugs
@@ -246,16 +349,22 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
   }
 
+  let lastStatsPanelUpdateCallMs = 0;
+
   function updateStatsPanelDom(): void {
     const nowMs = performance.now();
+    const drainDeltaMs = lastStatsPanelUpdateCallMs > 0
+      ? Math.min(nowMs - lastStatsPanelUpdateCallMs, 100)
+      : 0;
+    lastStatsPanelUpdateCallMs = nowMs;
 
     // ── Box 13: HP / Reg / Def ────────────────────────────────────
     hpFractionValue.textContent = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
     regValue.textContent = (Number.isInteger(playerStats.regen) ? playerStats.regen.toString() : playerStats.regen.toFixed(1)) + '%';
     defValue.textContent = Math.round(Math.min(100, playerStats.def)) + '%';
 
-    // XP amount — update the value span inside the XP node
-    xpAmountEl.textContent = formatXp(rpgSimState.xp);
+    // Box 2 XP node: show the reservoir (unallocated XP), not total XP.
+    xpAmountEl.textContent = formatXp(rpgSimState.xpReservoir);
 
     // Update weapon source plug lock states based on current max slots
     const maxWeaponSlots = getMaxEquippedWeapons(rpgSimState);
@@ -265,6 +374,16 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
     // Equip wiring: advance rope physics and redraw all wires
     equipWiring.update(nowMs);
+
+    // ── XP reservoir drain (every frame, before DPS throttle) ────
+    if (xpTargetModifier !== null && rpgSimState.xpReservoir > 0 && drainDeltaMs > 0) {
+      const drainRate = Math.max(50, rpgSimState.xpReservoir * 1.5);
+      let drainAmount = drainRate * (drainDeltaMs / 1000);
+      drainAmount = Math.min(drainAmount, rpgSimState.xpReservoir);
+      rpgSimState.xpReservoir -= drainAmount;
+      if (rpgSimState.xpReservoir < 0) rpgSimState.xpReservoir = 0;
+      tickMultiplierXpProgress(rpgSimState, xpTargetModifier, drainAmount);
+    }
 
     // ── DPS chart update ──────────────────────────────────────────
     const now = Date.now();
@@ -280,6 +399,15 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
     if (now - lastDpsDomUpdateMs < DPS_DOM_UPDATE_MS && slotsKey !== '') return;
     lastDpsDomUpdateMs = now;
+
+    // ── Boxes 3–5: multiplier box UI (progress bar + level text) ─
+    for (let i = 0; i < 3; i++) {
+      const box = rpgSimState.multiplierBoxes[i];
+      const cost = getMultiplierXpCost(box.level);
+      const pct = cost > 0 ? Math.min(100, (box.progressXp / cost) * 100) : 0;
+      modProgressFills[i].style.width = pct.toFixed(1) + '%';
+      modLevelTexts[i].textContent = 'x' + box.level;
+    }
 
     // ── Boxes 7–11: weapon stat rows ─────────────────────────────
     // Show the weapon assigned to each slot (0–4); empty slots show dashes.
@@ -301,14 +429,22 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       spans[0].textContent = weaponAbbrev(weaponId);
       if (def) {
         const dim = 'rgba(255,255,255,0.7)';
-        spans[1].style.color = dim;
-        spans[1].textContent = String(def.stats.damage);
-        spans[2].style.color = dim;
-        spans[2].textContent = formatWeaponSpd(def.stats.cooldownMs);
-        spans[3].style.color = dim;
-        spans[3].textContent = formatWeaponRng(def.stats.range);
-        spans[4].style.color = dim;
-        spans[4].textContent = weaponPiercePercent(weaponId) + '%';
+        // Show effective stats including multipliers where a modifier is wired.
+        const atkMult = getWeaponStatMultiplier(r, 'atkIn');
+        const spdMult = getWeaponStatMultiplier(r, 'spdIn');
+        const rngMult = getWeaponStatMultiplier(r, 'rngIn');
+        const prcMult = getWeaponStatMultiplier(r, 'prcIn');
+        spans[1].style.color = atkMult > 1 ? '#c4b5fd' : dim;
+        spans[1].textContent = atkMult > 1 ? String(Math.round(def.stats.damage * atkMult)) : String(def.stats.damage);
+        const effectiveCooldownMs = Math.round(def.stats.cooldownMs / spdMult);
+        spans[2].style.color = spdMult > 1 ? '#c4b5fd' : dim;
+        spans[2].textContent = formatWeaponSpd(effectiveCooldownMs);
+        spans[3].style.color = rngMult > 1 ? '#c4b5fd' : dim;
+        spans[3].textContent = formatWeaponRng(def.stats.range * rngMult);
+        const basePrc = weaponPiercePercent(weaponId);
+        const effectivePrc = Math.min(100, Math.round(basePrc * prcMult));
+        spans[4].style.color = prcMult > 1 ? '#c4b5fd' : dim;
+        spans[4].textContent = effectivePrc + '%';
       } else {
         for (let c = 1; c < 5; c++) {
           spans[c].style.color = 'rgba(255,255,255,0.18)';
@@ -343,6 +479,24 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
   }
 
+  // ── Wire state public helpers ─────────────────────────────────────
+
+  function isSlotEquippedByWire(slotIdx: number): boolean {
+    return equippedByWire.has(slotIdx);
+  }
+
+  function hasAnyEquipWire(): boolean {
+    return equippedByWire.size > 0;
+  }
+
+  function getWeaponStatMultiplier(slotIdx: number, statKey: 'atkIn' | 'spdIn' | 'rngIn' | 'prcIn'): number {
+    const mapKey = `${slotIdx}:${statKey}`;
+    const modIdx = statModifiers.get(mapKey);
+    if (modIdx === undefined) return 1;
+    const box = rpgSimState.multiplierBoxes[modIdx];
+    return box ? box.level : 1;
+  }
+
   return {
     element: statsPanel,
     menuButtonContainer: menuArea,
@@ -355,5 +509,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       if (enabled) statsPanel.classList.add('rpg-dev-mode');
       else statsPanel.classList.remove('rpg-dev-mode');
     },
+    isSlotEquippedByWire,
+    hasAnyEquipWire,
+    getWeaponStatMultiplier,
   };
 }

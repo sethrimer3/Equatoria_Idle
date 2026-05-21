@@ -73,6 +73,30 @@ export interface RpgSimState {
    */
   bossSpeedPct: number;
   /**
+   * XP stored in Box 2 (the reservoir).  Newly-earned XP accumulates here
+   * first; it drains into the connected multiplier box each frame while a
+   * Box 2 → modifier wire is active.  Starts at 0 for new / migrated saves.
+   */
+  xpReservoir: number;
+  /**
+   * Multiplier boxes (index 0 = Box 3 / Roman numeral I,
+   *                   index 1 = Box 4 / Roman numeral II,
+   *                   index 2 = Box 5 / Roman numeral III).
+   * Each box tracks its current level (1-based) and XP progress toward the
+   * next level.  Boxed weapons wired to these boxes have their stats
+   * multiplied by the box's level.
+   *
+   * XP cost: costToNextLevel = 50 × 5^(currentLevel − 1)
+   *   level 1 → 2:    50 XP
+   *   level 2 → 3:   250 XP
+   *   level 3 → 4: 1 250 XP
+   */
+  multiplierBoxes: [
+    { level: number; progressXp: number },
+    { level: number; progressXp: number },
+    { level: number; progressXp: number },
+  ];
+  /**
    * The set of stats the player has wired their XP source to (up to 3).
    * Empty array = not yet wired. When multiple stats are wired, XP is
    * split evenly among them (each receives amount/n per earn event).
@@ -169,6 +193,12 @@ export function createRpgSimState(): RpgSimState {
     xpAllocatedToDef: 0,
     xpAllocatedToLuck: 0,
     xpAllocatedToHp: 0,
+    xpReservoir: 0,
+    multiplierBoxes: [
+      { level: 1, progressXp: 0 },
+      { level: 1, progressXp: 0 },
+      { level: 1, progressXp: 0 },
+    ],
     lifetimeKillsByType: new Map(),
     lifetimeEliteKills: 0,
     lifetimeAlivenKills: 0,

@@ -332,12 +332,27 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /**
    * Returns the weapon IDs that are "active" for combat/rendering purposes.
    * During a boss wave this is the boss override set (always {diamond_bastion});
-   * otherwise it is the player's actual equipped set.
+   * otherwise it is filtered by Box 1 wire connections.
+   *
+   * Legacy fallback: if no Box 1 wires exist, all equipped weapons are active.
+   * This preserves existing saves where the wire system has not been used yet.
    */
   function getEffectiveEquippedIds(): Set<string> {
-    return (isBossWaveActive && bossActiveEquipIds !== null)
-      ? bossActiveEquipIds
-      : rpgSimState.equippedWeaponIds;
+    if (isBossWaveActive && bossActiveEquipIds !== null) {
+      return bossActiveEquipIds;
+    }
+    // Legacy fallback: if no Box 1 wires exist, return all equipped weapons.
+    if (!statsPanel.hasAnyEquipWire()) {
+      return rpgSimState.equippedWeaponIds;
+    }
+    // Filter equipped weapons to those whose slot has a Box 1 wire.
+    const result = new Set<string>();
+    for (const [slotIdx, weaponId] of rpgSimState.equippedWeaponSlots) {
+      if (statsPanel.isSlotEquippedByWire(slotIdx)) {
+        result.add(weaponId);
+      }
+    }
+    return result;
   }
 
   // ── Equipped weapon visual particles (one per equipped weapon) ────
@@ -537,6 +552,45 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Create weapon systems ──────────────────────────────────────
   // All helper functions referenced in weaponCtx are function declarations
   // and are hoisted, so this is safe even though they appear later in the file.
+
+  // ── Stat multiplier helpers (depend on statsPanel, which is created below) ──
+  // These are declared before weaponCtx/playerAttackCtx so they can be passed
+  // in, even though statsPanel itself is initialised after those contexts.
+  // By the time any of these functions is actually called (during update loops),
+  // statsPanel will have been initialised.
+
+  /** Returns the 0-based slot index for the given weapon ID, or null. */
+  function getSlotIdxForWeapon(weaponId: string): number | null {
+    for (const [slotIdx, wid] of rpgSimState.equippedWeaponSlots) {
+      if (wid === weaponId) return slotIdx;
+    }
+    return null;
+  }
+
+  function getWeaponAtkMultiplier(weaponId: string): number {
+    const slotIdx = getSlotIdxForWeapon(weaponId);
+    if (slotIdx === null) return 1;
+    return statsPanel.getWeaponStatMultiplier(slotIdx, 'atkIn');
+  }
+
+  function getWeaponSpdMultiplier(weaponId: string): number {
+    const slotIdx = getSlotIdxForWeapon(weaponId);
+    if (slotIdx === null) return 1;
+    return statsPanel.getWeaponStatMultiplier(slotIdx, 'spdIn');
+  }
+
+  function getWeaponRngMultiplier(weaponId: string): number {
+    const slotIdx = getSlotIdxForWeapon(weaponId);
+    if (slotIdx === null) return 1;
+    return statsPanel.getWeaponStatMultiplier(slotIdx, 'rngIn');
+  }
+
+  function getWeaponPrcMultiplier(weaponId: string): number {
+    const slotIdx = getSlotIdxForWeapon(weaponId);
+    if (slotIdx === null) return 1;
+    return statsPanel.getWeaponStatMultiplier(slotIdx, 'prcIn');
+  }
+
   const weaponCtx: RpgWeaponCtx = {
     dim,
     mote,
@@ -644,6 +698,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnEmeraldMissile:  (tx, ty, dmg, tier) => weaponSystems.spawnEmeraldMissile(tx, ty, dmg, tier),
     fireLaserBeam:        (tx, ty, wid) => weaponSystems.fireLaserBeam(tx, ty, wid),
     layMine:              (dmg, tier) => weaponSystems.layMine(dmg, tier),
+    getWeaponAtkMultiplier,
+    getWeaponRngMultiplier,
+    getWeaponPrcMultiplier,
   };
 
   statsPanel = createRpgStatsPanel({
@@ -850,6 +907,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     mote,
     getEffectiveEquippedIds,
     findEquippedWeaponIdByEffect,
+    getWeaponSpdMultiplier,
     performWeaponAttack: (weaponId) => performWeaponAttack(weaponId),
     removeDeadEnemies:   () => waveManager.removeDeadEnemies(),
     checkWaveCompletion: () => waveManager.checkWaveCompletion(),

@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 23;
+export const SAVE_VERSION = 24;
 
 export interface SaveData {
   version: number;
@@ -117,6 +117,10 @@ export interface SaveData {
     bossDefeated1Weapon?: boolean;
     /** v22+: secret achievement flag IDs. Absent in older saves. */
     secretAchievementFlags?: string[];
+    /** v24+: XP stored in Box 2 reservoir. Absent in older saves (defaults to 0). */
+    xpReservoir?: number;
+    /** v24+: multiplier box states [Box3, Box4, Box5]. Absent in older saves (defaults to level 1, 0 progress). */
+    multiplierBoxes?: Array<{ level: number; progressXp: number }>;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */

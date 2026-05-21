@@ -92,6 +92,8 @@ export function serializeGameState(state: GameState): SaveData {
       bestDamageFreeWaveStreak: state.rpg.bestDamageFreeWaveStreak,
       bossDefeated1Weapon: state.rpg.bossDefeated1Weapon,
       secretAchievementFlags: Array.from(state.rpg.secretAchievementFlags),
+      xpReservoir: state.rpg.xpReservoir,
+      multiplierBoxes: state.rpg.multiplierBoxes.map(b => ({ level: b.level, progressXp: b.progressXp })),
     },
     elapsedMs: state.elapsedMs,
     forge: {
