@@ -980,9 +980,35 @@
 
 ### src/render/rpg/terrain/topographic-terrain.ts
 - Self-contained seeded topographic terrain module for RPG waves.
-- Exports deterministic terrain generation/render helpers plus geometry helpers: `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`, `beginTopographicTerrainShrink`, `renderTopographicTerrain`, `isPointInsideTopographicTerrain`, `segmentIntersectsTopographicTerrain`, `getTopographicTerrainSolidPolygons`, `setTopographicTerrainDevMode`, and `RING_POINTS`.
-- `RING_POINTS = 64` — number of polygon points per ring and solid outer polygon; exported for test assertions.
-- Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling, staggered ring growth/shrink animation, and simple polygon collision helpers based on each island's solid outer ring.
+- Exports deterministic terrain generation/render helpers plus geometry helpers:
+  `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`,
+  `beginTopographicTerrainShrink`, `renderTopographicTerrain`,
+  `isPointInsideTopographicTerrain`, `segmentIntersectsTopographicTerrain`,
+  `circleIntersectsTopographicTerrain`, `terrainFirstIntersectionT`,
+  `hasTopographicTerrainLineOfSight`, `getTopographicTerrainSolidPolygons`,
+  `pushPointOutsideTopographicTerrain`, `signedDistanceToTerrainBoundary`,
+  `computeTerrainRepulsionForce`, `setTopographicTerrainDevMode`, `RING_POINTS`.
+- `RING_POINTS = 64` — number of polygon points per ring and solid outer polygon.
+- Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling,
+  staggered ring growth/shrink animation.
+- **Build 84+:** calls `buildMergedContours` from `topographic-terrain-field.ts` at
+  generation time; `renderTopographicTerrain` draws merged scalar-field contours.
+  `pushPointOutsideTopographicTerrain` uses nearest-point-on-boundary logic.
+  `computeTerrainRepulsionForce` provides soft quadratic repulsion for smooth collision.
+- Center dots are dev-only (`terrainDevMode` flag, not set during gameplay).
+
+### src/render/rpg/terrain/topographic-terrain-field.ts
+- Scalar field + Marching Squares contour extraction for smooth terrain merging.
+- **Scalar field:** each island contributes a smooth height blob (island radius / distance,
+  clamped); overlapping islands combine additively so their fields merge naturally.
+- **Marching Squares:** extracts contour polylines at 9 threshold levels from the combined
+  field; saddle-point disambiguation uses cell-centre average value.
+- **Polyline stitching:** builds a segment-adjacency graph, walks chains to form closed or
+  near-closed polylines; polylines with < 3 points are discarded.
+- `buildMergedContours(islands, canvasW, canvasH, palette, colorOffset, seed)` returns
+  `MergedTopographicContours` with `levels` (ordered outermost-first) and `solidBoundaries`
+  (the outermost level's polylines, used for collision).
+- Computed once per wave at generation time; zero per-frame cost.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
 - Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.

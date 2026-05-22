@@ -26,6 +26,9 @@ import {
   terrainFirstIntersectionT,
   hasTopographicTerrainLineOfSight,
   generateTopographicTerrain,
+  pushPointOutsideTopographicTerrain,
+  computeTerrainRepulsionForce,
+  signedDistanceToTerrainBoundary,
   RING_POINTS,
 } from '../terrain/topographic-terrain';
 import { applyLaserBeamHitSweep } from '../rpg-weapon-laser-beam-hits';
@@ -52,11 +55,13 @@ function buildSquareTerrain(
     paletteId: 'default',
     phase,
     growth01,
+    mergedContours: null,
     islands: [{
       centerX: cx,
       centerY: cy,
       outerRadius: Math.sqrt(2) * halfSize,
       solidOuterPolygon: pts,
+      profile: { harmonics: [], elongationAngle: 0, elongationAmount: 0 },
       rings: [],
     }],
   } as unknown as TopographicTerrainState;
@@ -413,4 +418,306 @@ describe('applyLaserBeamHitSweep — terrain truncation regression', () => {
   });
 });
 
+// ── Merged contour generation ─────────────────────────────────────────────
 
+describe('generateTopographicTerrain — merged contours', () => {
+  it('state.mergedContours is non-null after generation', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    expect(state.mergedContours).not.toBeNull();
+  });
+
+  it('mergedContours has at least one level', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    expect(state.mergedContours!.levels.length).toBeGreaterThan(0);
+  });
+
+  it('mergedContours.solidBoundaries is non-empty', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    expect(state.mergedContours!.solidBoundaries.length).toBeGreaterThan(0);
+  });
+
+  it('every solidBoundary polyline has at least 3 points', () => {
+    for (const seed of [1, 42, 999]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      for (const boundary of state.mergedContours!.solidBoundaries) {
+        expect(boundary.length).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it('solid boundary points are within canvas bounds (with one-cell margin)', () => {
+    const W = 800, H = 600;
+    const CELL = 8; // one marching-squares cell beyond canvas edge is acceptable
+    for (const seed of [1, 42, 999]) {
+      const state = generateTopographicTerrain(1, seed, W, H);
+      for (const boundary of state.mergedContours!.solidBoundaries) {
+        for (const pt of boundary) {
+          expect(pt.x).toBeGreaterThanOrEqual(-CELL);
+          expect(pt.x).toBeLessThanOrEqual(W + CELL);
+          expect(pt.y).toBeGreaterThanOrEqual(-CELL);
+          expect(pt.y).toBeLessThanOrEqual(H + CELL);
+        }
+      }
+    }
+  });
+
+  it('centroid is within canvas bounds', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    const mc = state.mergedContours!;
+    expect(mc.centroidX).toBeGreaterThan(0);
+    expect(mc.centroidX).toBeLessThan(800);
+    expect(mc.centroidY).toBeGreaterThan(0);
+    expect(mc.centroidY).toBeLessThan(600);
+  });
+
+  it('all levels have the same number of levels across multiple seeds', () => {
+    // All generated terrains should produce the same fixed number of contour levels.
+    const levelCounts = [1, 42, 137, 999].map(seed =>
+      generateTopographicTerrain(1, seed, 800, 600).mergedContours!.levels.length,
+    );
+    expect(new Set(levelCounts).size).toBe(1); // all the same
+  });
+
+  it('outermost level (index 0) solidBoundaries match levels[0].polylines', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    const mc = state.mergedContours!;
+    expect(mc.solidBoundaries).toBe(mc.levels[0].polylines);
+  });
+
+  it('level thresholds decrease from innermost to outermost (index 0 has smallest threshold)', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    const levels = state.mergedContours!.levels;
+    for (let i = 1; i < levels.length; i++) {
+      // Outermost (index 0) has threshold ≈ 1.0; innermost has highest threshold.
+      expect(levels[i].threshold).toBeGreaterThan(levels[i - 1].threshold);
+    }
+  });
+});
+
+// ── isPointInsideTopographicTerrain with merged contours ──────────────────
+
+describe('isPointInsideTopographicTerrain — with merged contours', () => {
+  it('island centre is inside terrain', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1; // fully grown
+    const island = state.islands[0];
+    // The island centre is well inside the outer ring.
+    expect(isPointInsideTopographicTerrain(state, island.centerX, island.centerY)).toBe(true);
+  });
+
+  it('a point far from all islands is outside terrain', () => {
+    // Choose a point at the canvas edge, which is always outside any island
+    // (TERRAIN_EDGE_MARGIN and PLAYER_EXCLUSION_RADIUS prevent placement there).
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    // Corner points are always outside island bounds.
+    expect(isPointInsideTopographicTerrain(state, 5, 5)).toBe(false);
+    expect(isPointInsideTopographicTerrain(state, 795, 595)).toBe(false);
+  });
+
+  it('returns false when growth01 is 0', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    // growth01 defaults to 0 from generateTopographicTerrain
+    const island = state.islands[0];
+    expect(isPointInsideTopographicTerrain(state, island.centerX, island.centerY)).toBe(false);
+  });
+});
+
+// ── pushPointOutsideTopographicTerrain — nearest-boundary logic ───────────
+
+describe('pushPointOutsideTopographicTerrain — nearest-boundary logic', () => {
+  it('pushes a point at the island centre to outside the boundary', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const island = state.islands[0];
+    const pushed = { x: 0, y: 0 };
+    const moved = pushPointOutsideTopographicTerrain(state, island.centerX, island.centerY, pushed, 2);
+    expect(moved).toBe(true);
+    // After push the entity must be outside all solid boundaries.
+    expect(isPointInsideTopographicTerrain(state, pushed.x, pushed.y)).toBe(false);
+  });
+
+  it('does not push a point that is already outside', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const pushed = { x: 0, y: 0 };
+    // Corner of canvas — always outside.
+    const moved = pushPointOutsideTopographicTerrain(state, 5, 5, pushed, 2);
+    expect(moved).toBe(false);
+    expect(pushed.x).toBe(5);
+    expect(pushed.y).toBe(5);
+  });
+
+  it('pushed result is outside terrain for multiple seeds', () => {
+    for (const seed of [1, 42, 137]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      state.growth01 = 1;
+      const island = state.islands[0];
+      const pushed = { x: 0, y: 0 };
+      pushPointOutsideTopographicTerrain(state, island.centerX, island.centerY, pushed, 2);
+      expect(isPointInsideTopographicTerrain(state, pushed.x, pushed.y)).toBe(false);
+    }
+  });
+
+  it('pushed result is close to the boundary (< outerRadius + generous margin)', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const island = state.islands[0];
+    const pushed = { x: 0, y: 0 };
+    pushPointOutsideTopographicTerrain(state, island.centerX, island.centerY, pushed, 4);
+    const mc = state.mergedContours!;
+    const dx = pushed.x - mc.centroidX, dy = pushed.y - mc.centroidY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // Should be within outerRadius * 1.5 + margin of the centroid (loose bound).
+    expect(dist).toBeLessThan(island.outerRadius * 1.6 + 10);
+  });
+
+  it('works with square-terrain fallback (mergedContours=null)', () => {
+    const state = buildSquareTerrain(100, 100, 50);
+    const pushed = { x: 0, y: 0 };
+    const moved = pushPointOutsideTopographicTerrain(state, 100, 100, pushed, 2);
+    expect(moved).toBe(true);
+    expect(isPointInsideTopographicTerrain(state, pushed.x, pushed.y)).toBe(false);
+  });
+});
+
+// ── computeTerrainRepulsionForce ──────────────────────────────────────────
+
+describe('computeTerrainRepulsionForce', () => {
+  it('returns zero depth and zero force when point is outside', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const force = { x: 0, y: 0 };
+    const depth = computeTerrainRepulsionForce(state, 5, 5, 1.0, force);
+    expect(depth).toBe(0);
+    expect(force.x).toBe(0);
+    expect(force.y).toBe(0);
+  });
+
+  it('returns positive depth and non-zero force when point is inside terrain', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const island = state.islands[0];
+    const force = { x: 0, y: 0 };
+    const depth = computeTerrainRepulsionForce(state, island.centerX, island.centerY, 1.0, force);
+    expect(depth).toBeGreaterThan(0);
+    const mag = Math.sqrt(force.x ** 2 + force.y ** 2);
+    expect(mag).toBeGreaterThan(0);
+  });
+
+  it('force is directed outward (away from terrain interior)', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const island = state.islands[0];
+    const force = { x: 0, y: 0 };
+    const depth = computeTerrainRepulsionForce(state, island.centerX, island.centerY, 1.0, force);
+    expect(depth).toBeGreaterThan(0);
+
+    // After applying force to a velocity of zero, the resulting position
+    // should move away from the island interior, i.e. the entity should be
+    // further from the centroid.
+    const mc = state.mergedContours!;
+    const preDist = Math.hypot(island.centerX - mc.centroidX, island.centerY - mc.centroidY);
+    const postX = island.centerX + force.x, postY = island.centerY + force.y;
+    const postDist = Math.hypot(postX - mc.centroidX, postY - mc.centroidY);
+    expect(postDist).toBeGreaterThan(preDist);
+  });
+
+  it('returns 0 when growth01 = 0', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    (state as any).growth01 = 0;
+    const force = { x: 0, y: 0 };
+    const depth = computeTerrainRepulsionForce(state, 400, 300, 1.0, force);
+    expect(depth).toBe(0);
+  });
+});
+
+// ── signedDistanceToTerrainBoundary ───────────────────────────────────────
+
+describe('signedDistanceToTerrainBoundary', () => {
+  it('returns negative distance for a point inside terrain', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const island = state.islands[0];
+    const nearest = { x: 0, y: 0 };
+    const dist = signedDistanceToTerrainBoundary(state, island.centerX, island.centerY, nearest);
+    expect(dist).toBeLessThan(0);
+  });
+
+  it('nearest boundary point is close to the outer contour (within island radius)', () => {
+    // The nearest point returned by signedDistanceToTerrainBoundary lies on the
+    // merged outer contour edge.  Verify it is within the island's bounding box.
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const island = state.islands[0];
+    const nearest = { x: 0, y: 0 };
+    signedDistanceToTerrainBoundary(state, island.centerX, island.centerY, nearest);
+    const dx = nearest.x - island.centerX, dy = nearest.y - island.centerY;
+    const nearestDist = Math.sqrt(dx * dx + dy * dy);
+    // Nearest boundary point must be within outerRadius + generous margin.
+    expect(nearestDist).toBeLessThan(island.outerRadius * 1.6 + 10);
+  });
+
+  it('returns positive distance for a point outside terrain', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const nearest = { x: 0, y: 0 };
+    const dist = signedDistanceToTerrainBoundary(state, 5, 5, nearest);
+    expect(dist).toBeGreaterThan(0);
+  });
+
+  it('returns Infinity for hidden phase', () => {
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    (state as any).phase = 'hidden';
+    const dist = signedDistanceToTerrainBoundary(state, 400, 300, null);
+    expect(dist).toBe(Infinity);
+  });
+});
+
+// ── Center dots are dev-only ──────────────────────────────────────────────
+
+describe('terrain rendering — center dots are dev-only', () => {
+  it('renderTopographicTerrain exists as an export', async () => {
+    // Import to check it is exported (rendering itself can't be called without a
+    // real Canvas, but we can verify the export surface is correct).
+    const module = await import('../terrain/topographic-terrain');
+    expect(typeof module.renderTopographicTerrain).toBe('function');
+    // setTopographicTerrainDevMode controls the dot-only dev overlay.
+    expect(typeof module.setTopographicTerrainDevMode).toBe('function');
+  });
+});
+
+// ── No tunnelling: a pushed point cannot be inside terrain ────────────────
+
+describe('collision guarantee — no tunnelling into terrain interior', () => {
+  it('a point pushed from island centre is outside all solid boundaries', () => {
+    // Covers the "player cannot remain inside terrain" acceptance criterion.
+    for (const seed of [1, 42, 137, 999]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      state.growth01 = 1;
+      for (const island of state.islands) {
+        const pushed = { x: 0, y: 0 };
+        pushPointOutsideTopographicTerrain(state, island.centerX, island.centerY, pushed, 2);
+        expect(isPointInsideTopographicTerrain(state, pushed.x, pushed.y)).toBe(false);
+      }
+    }
+  });
+
+  it('points on a fine grid inside any island are pushed outside by pushPointOutsideTopographicTerrain', () => {
+    // Verifies that every interior point can be pushed to a safe location.
+    const state = generateTopographicTerrain(1, 42, 800, 600);
+    state.growth01 = 1;
+    const pushed = { x: 0, y: 0 };
+    // Sample a grid inside the bounding box of the first island.
+    const island = state.islands[0];
+    const r = island.outerRadius * 0.85;
+    for (let dx = -r; dx <= r; dx += r / 4) {
+      for (let dy = -r; dy <= r; dy += r / 4) {
+        const px = island.centerX + dx, py = island.centerY + dy;
+        if (!isPointInsideTopographicTerrain(state, px, py)) continue;
+        pushPointOutsideTopographicTerrain(state, px, py, pushed, 2);
+        expect(isPointInsideTopographicTerrain(state, pushed.x, pushed.y)).toBe(false);
+      }
+    }
+  });
+});

@@ -1,3 +1,12 @@
+import {
+  buildMergedContours,
+  type MergedTopographicContours,
+  type ContourPalette,
+} from './topographic-terrain-field';
+
+// Re-export merged-contour types for external consumers.
+export type { MergedTopographicContours };
+
 export type TopographicTerrainPaletteId = 'mono' | 'copper' | 'cyanTactical';
 
 export interface TopographicTerrainPoint { x: number; y: number; }
@@ -10,12 +19,33 @@ export interface TopographicTerrainRing {
   ringIndex: number;
 }
 
+/**
+ * Shape profile for one terrain island.  All rings of the island are derived
+ * from this profile — scaled versions of the same underlying landform — so
+ * they look like nested topographic contours rather than independent loops.
+ * Also used by the scalar-field computation for smooth multi-island merging.
+ */
+export interface IslandShapeProfile {
+  harmonics: Array<{
+    frequency: number;
+    amplitude: number;
+    phase: number;
+  }>;
+  /** Rotation angle (radians) of the elongation axis. */
+  elongationAngle: number;
+  /** 0 = round, up to ~0.28 = noticeably elongated ridge. */
+  elongationAmount: number;
+}
+
 export interface TopographicTerrainIsland {
   id: string;
   centerX: number;
   centerY: number;
   outerRadius: number;
+  /** Shape profile shared by all rings of this island. */
+  profile: IslandShapeProfile;
   rings: TopographicTerrainRing[];
+  /** Outer-ring polygon in UNSCALED space (for legacy collision fallback). */
   solidOuterPolygon: TopographicTerrainPoint[];
 }
 
@@ -29,6 +59,13 @@ export interface TopographicTerrainState {
   growDurationMs: number;
   shrinkDurationMs: number;
   growth01: number;
+  /**
+   * Merged scalar-field contour data computed once at generation time.
+   * When non-null, rendering uses these smoothly merged contour polylines
+   * instead of per-island ring polygons, and collision uses the merged
+   * solid outer boundaries.
+   */
+  mergedContours: MergedTopographicContours | null;
 }
 
 const TERRAIN_GROW_DURATION_MS = 1300;
@@ -43,6 +80,13 @@ const TERRAIN_EDGE_MARGIN = 40;
 const PLAYER_EXCLUSION_RADIUS = 60;
 const MAX_ISLAND_PLACEMENT_ATTEMPTS = 15;
 const DEV_TEXT_LINE_HEIGHT_PX = 12;
+
+/**
+ * Minimum centre-to-centre separation for island placement, expressed as a
+ * multiple of the *larger* island's outerRadius.  Reduced from 1.2 to 0.55
+ * so islands can overlap and their scalar fields will merge smoothly.
+ */
+const MIN_ISLAND_SEPARATION_FACTOR = 0.55;
 
 const PALETTE_SEQUENCE: TopographicTerrainPaletteId[] = ['mono', 'copper', 'cyanTactical'];
 
@@ -82,18 +126,11 @@ let terrainDevMode = false;
  * A single reusable shape profile for one island.  All rings of the island are
  * derived from this profile — scaled versions of the same underlying landform —
  * so they look like nested topographic contours rather than independent loops.
+ *
+ * NOTE: The identical interface is exported above as `IslandShapeProfile`.
+ * This alias exists for intra-module readability.
  */
-interface IslandShapeProfile {
-  harmonics: Array<{
-    frequency: number;
-    amplitude: number;
-    phase: number;
-  }>;
-  /** Rotation angle (radians) of the elongation axis. */
-  elongationAngle: number;
-  /** 0 = round, up to ~0.28 = noticeably elongated ridge. */
-  elongationAmount: number;
-}
+// (Uses the exported IslandShapeProfile type directly; no duplicate definition.)
 
 /**
  * Generates a shared shape profile for one island using low-frequency harmonics
@@ -129,8 +166,10 @@ function buildIslandShapeProfile(rng: () => number): IslandShapeProfile {
 /**
  * Evaluates the shared shape multiplier at angle `theta`.
  * Returns a value ≥ 0.2 (always positive, never collapses to a point).
+ *
+ * Exported so the scalar-field code and tests can use the same function.
  */
-function computeShapeMultiplier(profile: IslandShapeProfile, theta: number): number {
+export function computeShapeMultiplier(profile: IslandShapeProfile, theta: number): number {
   let mod = 1.0;
   for (const h of profile.harmonics) {
     mod += h.amplitude * Math.sin(h.frequency * theta + h.phase);
@@ -186,7 +225,7 @@ export function generateTopographicTerrain(
 
       let overlapsExisting = false;
       for (const existing of islands) {
-        const minSeparation = Math.max(existing.outerRadius, outerRadius) * 1.2;
+        const minSeparation = Math.max(existing.outerRadius, outerRadius) * MIN_ISLAND_SEPARATION_FACTOR;
         if (distanceSq(candidateX, candidateY, existing.centerX, existing.centerY) < minSeparation * minSeparation) {
           overlapsExisting = true;
           break;
@@ -255,10 +294,21 @@ export function generateTopographicTerrain(
       centerX: islandCenterX,
       centerY: islandCenterY,
       outerRadius,
+      profile,
       rings,
       solidOuterPolygon,
     });
   }
+
+  // Build merged scalar-field contours once for the whole wave.
+  const mergedContours = buildMergedContours(
+    islands,
+    canvasW,
+    canvasH,
+    palette as ContourPalette,
+    randomIntInclusive(rng, 0, palette.lines.length - 1),
+    seed,
+  );
 
   return {
     waveNumber,
@@ -270,6 +320,7 @@ export function generateTopographicTerrain(
     growDurationMs: TERRAIN_GROW_DURATION_MS,
     shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
     growth01: 0,
+    mergedContours,
   };
 }
 
@@ -337,49 +388,13 @@ export function renderTopographicTerrain(
   void nowMs;
   ctx.save();
   try {
-    const palette = PALETTES[state.paletteId];
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    for (const island of state.islands) {
-      const totalRings = island.rings.length;
-      if (totalRings <= 0) continue;
-
-      const outerRing = island.rings[totalRings - 1];
-      const outerRingGrowth01 = getRingGrowth01(state.growth01, totalRings, outerRing.ringIndex);
-      if (outerRingGrowth01 > 0) {
-        const animatedOuterPolygon = animatePoints(
-          outerRing.points,
-          island.centerX,
-          island.centerY,
-          outerRingGrowth01,
-        );
-        drawClosedPolygon(ctx, animatedOuterPolygon);
-        ctx.globalAlpha = outerRingGrowth01;
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.fill();
-      }
-
-      for (const ring of island.rings) {
-        const ringGrowth01 = getRingGrowth01(state.growth01, totalRings, ring.ringIndex);
-        if (ringGrowth01 <= 0) continue;
-
-        const animatedPoints = animatePoints(ring.points, island.centerX, island.centerY, ringGrowth01);
-        drawClosedPolygon(ctx, animatedPoints);
-
-        if (palette.glow !== null && palette.glowAlpha > 0) {
-          ctx.globalAlpha = palette.glowAlpha * ringGrowth01;
-          ctx.lineWidth = ring.lineWidth * 2.5;
-          ctx.strokeStyle = palette.glow;
-          ctx.stroke();
-        }
-
-        drawClosedPolygon(ctx, animatedPoints);
-        ctx.globalAlpha = ring.alpha * ringGrowth01;
-        ctx.lineWidth = ring.lineWidth;
-        ctx.strokeStyle = ring.color;
-        ctx.stroke();
-      }
+    if (state.mergedContours && state.mergedContours.levels.length > 0) {
+      _renderMergedContours(ctx, state);
+    } else {
+      _renderPerIslandRings(ctx, state);
     }
 
     if (terrainDevMode) {
@@ -390,14 +405,135 @@ export function renderTopographicTerrain(
   }
 }
 
+/**
+ * Renders the merged scalar-field contour lines.  Each level is scaled around
+ * the merged centroid to produce the grow/shrink animation.
+ */
+function _renderMergedContours(
+  ctx: CanvasRenderingContext2D,
+  state: TopographicTerrainState,
+): void {
+  const mc = state.mergedContours!;
+  const g = state.growth01;
+  const { centroidX: cx, centroidY: cy } = mc;
+  const numLevels = mc.levels.length;
+
+  // Draw solid fill of outermost contour first.
+  const outerLevel = mc.levels[0];
+  const outerGrowth = getRingGrowth01(g, numLevels, numLevels - 1);
+  if (outerGrowth > 0 && outerLevel.polylines.length > 0) {
+    for (const polyline of outerLevel.polylines) {
+      const pts = _scalePolylineAroundCentroid(polyline, cx, cy, outerGrowth);
+      if (pts.length < 2) continue;
+      drawClosedPolygon(ctx, pts);
+      ctx.globalAlpha = outerGrowth;
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fill();
+    }
+  }
+
+  // Draw contour lines from innermost to outermost (so outer lines overlay inner).
+  for (let li = numLevels - 1; li >= 0; li--) {
+    const level = mc.levels[li];
+    // Animation: inner levels (high li) appear early; outer levels (low li) appear late.
+    // Map li → invertedIdx: li=numLevels-1 (innermost) → idx=0; li=0 (outermost) → idx=numLevels-1
+    const invertedIdx = (numLevels - 1) - li;
+    const levelGrowth = getRingGrowth01(g, numLevels, invertedIdx);
+    if (levelGrowth <= 0) continue;
+
+    for (const polyline of level.polylines) {
+      const pts = _scalePolylineAroundCentroid(polyline, cx, cy, levelGrowth);
+      if (pts.length < 2) continue;
+
+      drawClosedPolygon(ctx, pts);
+      ctx.globalAlpha = level.alpha * levelGrowth;
+      ctx.lineWidth = level.lineWidth;
+      ctx.strokeStyle = level.color;
+      ctx.stroke();
+    }
+  }
+}
+
+/** Scales a polyline's points around (cx, cy) by `scale`. */
+function _scalePolylineAroundCentroid(
+  pts: TopographicTerrainPoint[],
+  cx: number,
+  cy: number,
+  scale: number,
+): TopographicTerrainPoint[] {
+  const out = new Array<TopographicTerrainPoint>(pts.length);
+  for (let i = 0; i < pts.length; i++) {
+    out[i] = {
+      x: cx + (pts[i].x - cx) * scale,
+      y: cy + (pts[i].y - cy) * scale,
+    };
+  }
+  return out;
+}
+
+/**
+ * Legacy fallback: renders per-island ring polygons.
+ * Used when mergedContours is unavailable (e.g. tests that construct
+ * TerrainState manually without calling generateTopographicTerrain).
+ */
+function _renderPerIslandRings(
+  ctx: CanvasRenderingContext2D,
+  state: TopographicTerrainState,
+): void {
+  const palette = PALETTES[state.paletteId];
+  for (const island of state.islands) {
+    const totalRings = island.rings.length;
+    if (totalRings <= 0) continue;
+
+    const outerRing = island.rings[totalRings - 1];
+    const outerRingGrowth01 = getRingGrowth01(state.growth01, totalRings, outerRing.ringIndex);
+    if (outerRingGrowth01 > 0) {
+      const animatedOuterPolygon = animatePoints(
+        outerRing.points,
+        island.centerX,
+        island.centerY,
+        outerRingGrowth01,
+      );
+      drawClosedPolygon(ctx, animatedOuterPolygon);
+      ctx.globalAlpha = outerRingGrowth01;
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fill();
+    }
+
+    for (const ring of island.rings) {
+      const ringGrowth01 = getRingGrowth01(state.growth01, totalRings, ring.ringIndex);
+      if (ringGrowth01 <= 0) continue;
+
+      const animatedPoints = animatePoints(ring.points, island.centerX, island.centerY, ringGrowth01);
+      drawClosedPolygon(ctx, animatedPoints);
+
+      if (palette.glow !== null && palette.glowAlpha > 0) {
+        ctx.globalAlpha = palette.glowAlpha * ringGrowth01;
+        ctx.lineWidth = ring.lineWidth * 2.5;
+        ctx.strokeStyle = palette.glow;
+        ctx.stroke();
+      }
+
+      drawClosedPolygon(ctx, animatedPoints);
+      ctx.globalAlpha = ring.alpha * ringGrowth01;
+      ctx.lineWidth = ring.lineWidth;
+      ctx.strokeStyle = ring.color;
+      ctx.stroke();
+    }
+  }
+}
+
 export function setTopographicTerrainDevMode(enabled: boolean): void {
   terrainDevMode = enabled;
 }
 
 /**
  * Returns true when `(x, y)` is inside any terrain island at its current
- * effective scale (phase-aware: uses `growth01` scaling around each island
- * centre, matching the visible terrain boundary).
+ * effective scale (phase-aware: uses `growth01` scaling).
+ *
+ * When mergedContours are available the test uses the merged outer boundaries
+ * (scaled around the merged centroid); otherwise falls back to per-island
+ * solid outer polygons.
  */
 export function isPointInsideTopographicTerrain(
   state: TopographicTerrainState,
@@ -407,8 +543,19 @@ export function isPointInsideTopographicTerrain(
   if (state.phase === 'hidden') return false;
   const g = state.growth01;
   if (g <= 0) return false;
+
+  if (state.mergedContours && state.mergedContours.solidBoundaries.length > 0) {
+    const { centroidX: mcx, centroidY: mcy, solidBoundaries } = state.mergedContours;
+    const xs = mcx + (x - mcx) / g;
+    const ys = mcy + (y - mcy) / g;
+    for (const boundary of solidBoundaries) {
+      if (boundary.length >= 3 && isPointInPolygon(boundary, xs, ys)) return true;
+    }
+    return false;
+  }
+
+  // Legacy fallback: per-island polygons.
   for (const island of state.islands) {
-    // Inverse-scale the query point into unscaled polygon space.
     const xs = island.centerX + (x - island.centerX) / g;
     const ys = island.centerY + (y - island.centerY) / g;
     if (isPointInPolygon(island.solidOuterPolygon, xs, ys)) return true;
@@ -419,10 +566,6 @@ export function isPointInsideTopographicTerrain(
 /**
  * Returns true when the segment `(x1,y1)→(x2,y2)` intersects or is contained
  * within any terrain island, accounting for the current growth scale.
- *
- * Phase-aware: both segment endpoints are inverse-scaled into each island's
- * unscaled polygon space before the polygon test, so the collision boundary
- * matches the visible animated terrain.
  */
 export function segmentIntersectsTopographicTerrain(
   state: TopographicTerrainState,
@@ -434,12 +577,14 @@ export function segmentIntersectsTopographicTerrain(
   if (state.phase === 'hidden') return false;
   const g = state.growth01;
   if (g <= 0) return false;
-  for (const island of state.islands) {
-    const { centerX: cx, centerY: cy } = island;
-    // Inverse-scale both endpoints into island-local (unscaled) space.
-    const lx1 = cx + (x1 - cx) / g, ly1 = cy + (y1 - cy) / g;
-    const lx2 = cx + (x2 - cx) / g, ly2 = cy + (y2 - cy) / g;
-    const polygon = island.solidOuterPolygon;
+
+  const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
+
+  // Inverse-scale both endpoints into unscaled polygon space.
+  const lx1 = invCx + (x1 - invCx) / g, ly1 = invCy + (y1 - invCy) / g;
+  const lx2 = invCx + (x2 - invCx) / g, ly2 = invCy + (y2 - invCy) / g;
+
+  for (const polygon of polygons) {
     if (polygon.length < 3) continue;
     if (isPointInPolygon(polygon, lx1, ly1) || isPointInPolygon(polygon, lx2, ly2)) return true;
     for (let i = 0; i < polygon.length; i++) {
@@ -460,16 +605,7 @@ function pointToSegmentDistSq(
   ax: number, ay: number,
   bx: number, by: number,
 ): number {
-  const abx = bx - ax, aby = by - ay;
-  const abLenSq = abx * abx + aby * aby;
-  if (abLenSq < 1e-12) {
-    const dx = px - ax, dy = py - ay;
-    return dx * dx + dy * dy;
-  }
-  const t = Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / abLenSq));
-  const cx = ax + t * abx, cy = ay + t * aby;
-  const dx = px - cx, dy = py - cy;
-  return dx * dx + dy * dy;
+  return nearestPointOnSegment(px, py, ax, ay, bx, by).distSq;
 }
 
 /**
@@ -558,15 +694,15 @@ export function terrainFirstIntersectionT(
   if (state.phase === 'hidden' || maxT <= 0) return 1;
   const g = state.growth01;
   if (g <= 0) return 1;
+
+  const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
   const ex = ox + dx * maxT, ey = oy + dy * maxT;
+  const lox = invCx + (ox - invCx) / g, loy = invCy + (oy - invCy) / g;
+  const lex = invCx + (ex - invCx) / g, ley = invCy + (ey - invCy) / g;
+
   let bestFraction = 1;
-  for (const island of state.islands) {
-    const { centerX: cx, centerY: cy } = island;
-    const lox = cx + (ox - cx) / g, loy = cy + (oy - cy) / g;
-    const lex = cx + (ex - cx) / g, ley = cy + (ey - cy) / g;
-    const polygon = island.solidOuterPolygon;
+  for (const polygon of polygons) {
     if (polygon.length < 3) continue;
-    // If origin is already inside, clamp immediately.
     if (isPointInPolygon(polygon, lox, loy)) return 0;
     for (let i = 0; i < polygon.length; i++) {
       const a = polygon[i];
@@ -580,21 +716,83 @@ export function terrainFirstIntersectionT(
 
 export function getTopographicTerrainSolidPolygons(state: TopographicTerrainState): TopographicTerrainPoint[][] {
   if (state.phase === 'hidden') return [];
+  if (state.mergedContours && state.mergedContours.solidBoundaries.length > 0) {
+    return state.mergedContours.solidBoundaries;
+  }
   return state.islands.map(island => island.solidOuterPolygon);
 }
 
 /**
- * If `(x, y)` is inside any terrain island at its current growth scale, computes
- * the nearest exit point (radially away from the island centre) and writes it into
- * `outPos`.  Returns true and writes to `outPos` when a push occurred; returns
- * false and copies `(x, y)` to `outPos` when no push is needed.
+ * Returns the nearest point on any solid terrain boundary polygon to the given
+ * point (in world coordinates, accounting for growth01 scaling).
  *
- * The check is phase-aware: during the `growing` animation the polygon is scaled
- * by `state.growth01` so the collision boundary matches the visible terrain.
- * This is done by inverse-transforming the query point into the unscaled polygon
- * space, which avoids allocating a temporary scaled polygon array.
+ * @param state     Terrain state
+ * @param x         Query x (world)
+ * @param y         Query y (world)
+ * @param outNearest  Written with the nearest boundary point (world coords)
+ * @returns         Signed distance: negative = point is INSIDE terrain,
+ *                  positive = outside.  Returns +Infinity if no terrain.
+ */
+export function signedDistanceToTerrainBoundary(
+  state: TopographicTerrainState,
+  x: number,
+  y: number,
+  outNearest: { x: number; y: number } | null,
+): number {
+  if (state.phase === 'hidden') return Infinity;
+  const g = state.growth01;
+  if (g <= 0) return Infinity;
+
+  const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
+  if (polygons.length === 0) return Infinity;
+
+  // Work in unscaled space.
+  const xs = invCx + (x - invCx) / g;
+  const ys = invCy + (y - invCy) / g;
+
+  let bestDistSq = Infinity;
+  let bestNx = xs, bestNy = ys;
+  let bestInsideAny = false;
+
+  for (const polygon of polygons) {
+    if (polygon.length < 3) continue;
+    const inside = isPointInPolygon(polygon, xs, ys);
+
+    // Find nearest edge point.
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+      const { x: nx, y: ny, distSq } = nearestPointOnSegment(xs, ys, a.x, a.y, b.x, b.y);
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        bestNx = nx;
+        bestNy = ny;
+        bestInsideAny = inside;
+      }
+    }
+  }
+
+  if (bestDistSq === Infinity) return Infinity;
+
+  // Convert nearest-boundary point back to world space.
+  if (outNearest) {
+    outNearest.x = invCx + (bestNx - invCx) * g;
+    outNearest.y = invCy + (bestNy - invCy) * g;
+  }
+
+  const distWorld = Math.sqrt(bestDistSq) * g;
+  return bestInsideAny ? -distWorld : distWorld;
+}
+
+/**
+ * If `(x, y)` is inside terrain, finds the nearest boundary point and pushes
+ * the point just outside it (by `marginPx`).
  *
- * @param marginPx extra clearance beyond the island's effective outer radius (px)
+ * Uses nearest-point-on-polygon logic so the push destination lies on the
+ * actual solid boundary, even for concave or elongated island shapes.
+ *
+ * @param marginPx  Extra clearance beyond the boundary (px)
+ * @returns true if a push occurred, false if already outside.
  */
 export function pushPointOutsideTopographicTerrain(
   state: TopographicTerrainState,
@@ -606,23 +804,151 @@ export function pushPointOutsideTopographicTerrain(
   if (state.phase === 'hidden') { outPos.x = x; outPos.y = y; return false; }
   const g = state.growth01;
   if (g <= 0) { outPos.x = x; outPos.y = y; return false; }
-  for (const island of state.islands) {
-    // Inverse-scale the query point: check whether it lies inside the
-    // scaled polygon by mapping it back into the unscaled polygon space.
-    const xs = island.centerX + (x - island.centerX) / g;
-    const ys = island.centerY + (y - island.centerY) / g;
-    if (!isPointInPolygon(island.solidOuterPolygon, xs, ys)) continue;
-    // Push radially away from the island centre to the effective outer radius.
-    const dx = x - island.centerX;
-    const dy = y - island.centerY;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    const targetDist = island.outerRadius * g + marginPx;
-    outPos.x = island.centerX + (dx / dist) * targetDist;
-    outPos.y = island.centerY + (dy / dist) * targetDist;
+
+  const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
+
+  // Work in unscaled (precomputed polygon) space.
+  const xs = invCx + (x - invCx) / g;
+  const ys = invCy + (y - invCy) / g;
+
+  for (const polygon of polygons) {
+    if (polygon.length < 3) continue;
+    if (!isPointInPolygon(polygon, xs, ys)) continue;
+
+    // Find nearest point on the polygon boundary.
+    let bestDistSq = Infinity;
+    let bestNx = xs, bestNy = ys;
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+      const { x: nx, y: ny, distSq } = nearestPointOnSegment(xs, ys, a.x, a.y, b.x, b.y);
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        bestNx = nx;
+        bestNy = ny;
+      }
+    }
+
+    // Push direction: from query point toward the boundary (outward).
+    // The boundary point (bestNx, bestNy) is on the polygon; moving toward it
+    // (and slightly past) puts the point just outside.
+    const marginUnscaled = marginPx / g;
+    const bdx = bestNx - xs;
+    const bdy = bestNy - ys;
+    const bdLen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
+    const destXU = bestNx + (bdx / bdLen) * marginUnscaled;
+    const destYU = bestNy + (bdy / bdLen) * marginUnscaled;
+
+    // Convert back to world space.
+    outPos.x = invCx + (destXU - invCx) * g;
+    outPos.y = invCy + (destYU - invCy) * g;
     return true;
   }
+
   outPos.x = x; outPos.y = y;
   return false;
+}
+
+/**
+ * Computes a soft repulsion force for an entity at (x, y) near terrain.
+ *
+ * If the entity is OUTSIDE terrain, returns zero force.
+ * If the entity is INSIDE terrain (penetrating), returns a force directed
+ * outward from the boundary whose magnitude scales quadratically with
+ * penetration depth (`depthPx`²).
+ *
+ * This is designed to be applied to velocity *before* the hard push-out
+ * fail-safe, giving collision a smooth "invisible barrier" feel.
+ *
+ * @param state       Terrain state.
+ * @param x, y        Entity world position.
+ * @param strength    Scaling factor for the repulsion force (px/frame).
+ * @param outForce    Written with (fx, fy) repulsion force.
+ * @returns           Penetration depth in px (0 if outside).
+ */
+export function computeTerrainRepulsionForce(
+  state: TopographicTerrainState,
+  x: number,
+  y: number,
+  strength: number,
+  outForce: { x: number; y: number },
+): number {
+  outForce.x = 0; outForce.y = 0;
+  if (state.phase === 'hidden') return 0;
+  const g = state.growth01;
+  if (g <= 0) return 0;
+
+  const nearest = _repulsionScratch;
+  const signedDist = signedDistanceToTerrainBoundary(state, x, y, nearest);
+
+  if (signedDist >= 0) return 0; // outside — no force
+
+  const depth = -signedDist; // positive
+  const force = strength * depth * depth; // quadratic rise
+
+  // Direction from entity to nearest boundary point = outward.
+  const dx = nearest.x - x;
+  const dy = nearest.y - y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  outForce.x = (dx / len) * force;
+  outForce.y = (dy / len) * force;
+
+  return depth;
+}
+
+// Scratch objects to avoid allocations in hot paths.
+const _repulsionScratch = { x: 0, y: 0 };
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Returns the solid boundary polygons for the current terrain plus the
+ * "inverse-scaling centre" to use when going from world space to unscaled space.
+ */
+function _getSolidPolygonsAndCenter(state: TopographicTerrainState): {
+  polygons: TopographicTerrainPoint[][];
+  invCx: number;
+  invCy: number;
+} {
+  if (state.mergedContours && state.mergedContours.solidBoundaries.length > 0) {
+    const mc = state.mergedContours;
+    return {
+      polygons: mc.solidBoundaries,
+      invCx: mc.centroidX,
+      invCy: mc.centroidY,
+    };
+  }
+  // Per-island fallback: can only handle one polygon at a time.
+  // We'll return all island polygons and use an approximate shared centroid.
+  let cx = 0, cy = 0, n = 0;
+  for (const island of state.islands) { cx += island.centerX; cy += island.centerY; n++; }
+  if (n > 0) { cx /= n; cy /= n; }
+  return {
+    polygons: state.islands.map(i => i.solidOuterPolygon),
+    invCx: cx,
+    invCy: cy,
+  };
+}
+
+/**
+ * Returns the nearest point on segment (ax,ay)→(bx,by) to point (px,py),
+ * together with the squared distance.
+ */
+function nearestPointOnSegment(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+): { x: number; y: number; distSq: number } {
+  const abx = bx - ax, aby = by - ay;
+  const lenSq = abx * abx + aby * aby;
+  if (lenSq < 1e-12) {
+    const dx = px - ax, dy = py - ay;
+    return { x: ax, y: ay, distSq: dx * dx + dy * dy };
+  }
+  const t = Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / lenSq));
+  const nx = ax + t * abx, ny = ay + t * aby;
+  const dx = px - nx, dy = py - ny;
+  return { x: nx, y: ny, distSq: dx * dx + dy * dy };
 }
 
 function drawTerrainDevOverlay(ctx: CanvasRenderingContext2D, state: TopographicTerrainState): void {

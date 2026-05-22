@@ -55,6 +55,7 @@ import {
 import {
   segmentIntersectsTopographicTerrain,
   pushPointOutsideTopographicTerrain,
+  computeTerrainRepulsionForce,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 
@@ -96,13 +97,18 @@ export interface RpgEnemyCtx {
 
 // ── Shared terrain push-out helper ────────────────────────────────────────────
 
-/** Reusable scratch object to avoid allocations in push-out calls. */
+/** Reusable scratch objects to avoid allocations in push-out calls. */
 const _pushOutScratch = { x: 0, y: 0 };
+const _repForce = { x: 0, y: 0 };
 
 /**
- * If the entity body (circular, given by `halfSize` as body half-extent) is
- * overlapping terrain, push it out radially.  Zeros the velocity component
- * directed into the island to prevent tunnelling on the next frame.
+ * Applies soft terrain repulsion followed by a hard push-out fail-safe to an
+ * enemy entity.  Enemies cannot remain inside terrain after this call.
+ *
+ * - Soft repulsion: applies a quadratic outward force proportional to
+ *   penetration depth so collision feels like an invisible barrier.
+ * - Hard fail-safe: projects the entity to just outside the boundary if it
+ *   is still inside after repulsion, guaranteeing robustness.
  *
  * @param entity  - mutable {x, y, vx, vy}
  * @param terrain - current terrain state (may be null)
@@ -114,12 +120,23 @@ export function applyEnemyTerrainPushOut(
   halfSize: number,
 ): void {
   if (!terrain) return;
+
+  // 1. Soft repulsion.
+  const depth = computeTerrainRepulsionForce(terrain, entity.x, entity.y, 0.18, _repForce);
+  if (depth > 0) {
+    entity.vx += _repForce.x;
+    entity.vy += _repForce.y;
+    const fLen = Math.sqrt(_repForce.x ** 2 + _repForce.y ** 2) || 1;
+    const nx = _repForce.x / fLen, ny = _repForce.y / fLen;
+    const dot = entity.vx * nx + entity.vy * ny;
+    if (dot < 0) { entity.vx -= dot * nx; entity.vy -= dot * ny; }
+  }
+
+  // 2. Hard fail-safe.
   if (pushPointOutsideTopographicTerrain(terrain, entity.x, entity.y, _pushOutScratch, halfSize + 2)) {
     const oldX = entity.x, oldY = entity.y;
     entity.x = _pushOutScratch.x;
     entity.y = _pushOutScratch.y;
-    // Zero velocity component pointing back into the island.
-    // Push direction = from old position to new (pushed-out) position = outward normal.
     const pdx = _pushOutScratch.x - oldX, pdy = _pushOutScratch.y - oldY;
     const plen = Math.sqrt(pdx * pdx + pdy * pdy);
     if (plen > 0) {
