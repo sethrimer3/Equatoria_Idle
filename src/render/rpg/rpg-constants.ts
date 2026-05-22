@@ -119,6 +119,23 @@ export const PLAYER_KNOCKBACK_MAX     = 7.0;
 // ── Auto-move ──────────────────────────────────────────────────
 /** Minimum joystick displacement (canvas px) to count as active manual control. */
 export const AUTO_MOVE_JOYSTICK_DEAD_ZONE = 1.0;
+/**
+ * Safety margin applied to melee weapon reach when computing the auto-move stop distance.
+ * Auto-move stops at (swordLength × margin) px, which is slightly inside the actual weapon
+ * range. This ensures the player is always close enough to attack even when the enemy is
+ * pressed against a wall or corner (where a mathematically ideal distance can be blocked).
+ *
+ * For sand blade tier 1 (reach=30px): stop at 30 × 0.82 ≈ 24.6 px
+ * For diamond blade tier 1 (reach=30px): same formula applies
+ */
+export const AUTO_MOVE_MELEE_STOP_MARGIN = 0.82;
+/**
+ * Auto-move stop distance (px) for the chain whip.
+ * The chain whip's nominal range is 75px, but visually and mechanically it lashes out
+ * and can hit enemies at very close range. Auto-move aims to position the player
+ * almost on top of enemies so the whip reliably contacts them.
+ */
+export const AUTO_MOVE_CHAIN_WHIP_STOP_PX = 10;
 
 // ── Equipped-weapon visual particle ───────────────────────────
 /** Angular speed of the equipped-weapon orbit particle (radians per second). */

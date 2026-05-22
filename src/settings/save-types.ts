@@ -121,6 +121,8 @@ export interface SaveData {
     xpReservoir?: number;
     /** v24+: multiplier box states [Box3, Box4, Box5]. Absent in older saves (defaults to level 1, 0 progress). */
     multiplierBoxes?: Array<{ level: number; progressXp: number }>;
+    /** v25+: whether the sand blade default melee is enabled. Absent in older saves (defaults to true). */
+    sandBladeEnabled?: boolean;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */

@@ -28,6 +28,8 @@ import {
   PLAYER_BASE_RANGE_PX, TARGET_FRAME_MS,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PLAYER_STRENGTH,
   FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B,
+  AUTO_MOVE_MELEE_STOP_MARGIN, AUTO_MOVE_CHAIN_WHIP_STOP_PX,
+  DIAMOND_BLADE_ID,
 } from './rpg-constants';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
@@ -135,22 +137,54 @@ export function updatePlayerMovement(
       mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
     } else if (ctx.autoMoveEnabled && !ctx.isBossWaveActive && _anyEnemiesPresent(ctx)) {
       // Auto-move: steer toward the nearest enemy, stopping within weapon range.
-      let autoMoveStopRange = PLAYER_BASE_RANGE_PX;
+      //
+      // Stop distance policy:
+      //   - Sand blade (default melee, enabled): stop at swordLength × AUTO_MOVE_MELEE_STOP_MARGIN.
+      //     This is *slightly inside* actual swing reach (30–78px) to guarantee the player is
+      //     always within attacking distance, including when the enemy is pressed against a wall.
+      //     Using a margin < 1.0 provides a safety buffer against corner/wall occlusion.
+      //   - Chain whip: stop very close (AUTO_MOVE_CHAIN_WHIP_STOP_PX ≈ 10px). The whip
+      //     strikes at close range and its nominal 75px range is misleading for positioning.
+      //   - Diamond blade (swordCombo): same melee margin formula as sand blade.
+      //   - Other weapons: use their nominal range from weapon definition.
+      //   - No weapons equipped, sand blade disabled: use PLAYER_BASE_RANGE_PX as a neutral
+      //     keep-away distance (player has no attack, so just keep some space).
+      let autoMoveStopRange: number | null = null;
       let hasWeapon = false;
-      for (const weaponId of ctx.getEffectiveEquippedIds()) {
+      const equippedIds = ctx.getEffectiveEquippedIds();
+      const hasDiamondBlade = equippedIds.has(DIAMOND_BLADE_ID);
+
+      for (const weaponId of equippedIds) {
         const wd = WEAPON_BY_ID.get(weaponId);
-        if (wd) {
-          let effectiveRange: number;
-          if (wd.stats.effect?.kind === 'swordCombo') {
-            const t = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-            effectiveRange = getSwordLength(t);
-          } else {
-            effectiveRange = wd.stats.range;
-          }
-          autoMoveStopRange = hasWeapon ? Math.min(autoMoveStopRange, effectiveRange) : effectiveRange;
-          hasWeapon = true;
+        if (!wd) continue;
+        let effectiveRange: number;
+        if (wd.stats.effect?.kind === 'swordCombo') {
+          // Diamond blade uses the same melee-range margin as the sand blade.
+          const t = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+          effectiveRange = getSwordLength(t) * AUTO_MOVE_MELEE_STOP_MARGIN;
+        } else if (wd.stats.effect?.kind === 'chainWhip') {
+          // Chain whip: player should get very close regardless of nominal range.
+          effectiveRange = AUTO_MOVE_CHAIN_WHIP_STOP_PX;
+        } else {
+          effectiveRange = wd.stats.range;
         }
+        // Prefer the closest stop range so melee weapons dominate over long-range ones
+        // when multiple weapons are equipped (player needs to be in melee range to use them).
+        autoMoveStopRange = autoMoveStopRange === null ? effectiveRange : Math.min(autoMoveStopRange, effectiveRange);
+        hasWeapon = true;
       }
+
+      // Include the sand blade if enabled and not suppressed by the diamond blade.
+      // The sand blade is tier-1 by default; its stop range is well inside actual reach (30px).
+      if (rpgSimState.sandBladeEnabled && !hasDiamondBlade) {
+        const sandBladeStopRange = getSwordLength(1) * AUTO_MOVE_MELEE_STOP_MARGIN;
+        autoMoveStopRange = autoMoveStopRange === null ? sandBladeStopRange : Math.min(autoMoveStopRange, sandBladeStopRange);
+        hasWeapon = true;
+      }
+
+      // Fallback: no usable weapon → keep a neutral distance (don't charge into danger).
+      if (autoMoveStopRange === null) autoMoveStopRange = PLAYER_BASE_RANGE_PX;
+      void hasWeapon; // used above, suppress lint if needed
 
       const { distSq: nearestDistSq, x: nearestX, y: nearestY } = _findNearestEnemy(ctx);
       if (nearestDistSq < Infinity) {

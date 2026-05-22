@@ -25,6 +25,9 @@ import {
 } from '../../render/rpg/rpg-weapon-constants';
 import type { ChainWhipParamKey } from '../../render/rpg/rpg-weapon-constants';
 
+// Sand blade accent color — matches the player mote's gold-sand glow.
+const SAND_BLADE_ACCENT_COLOR = '#ffd764';
+
 // ─── Types ─────────────────────────────────────────────────────────
 
 export interface RpgWeaponsTabPane {
@@ -103,6 +106,63 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     }
 
     slotPopupOverlay.style.display = 'flex';
+  }
+
+  /**
+   * Builds the sand blade Enable/Disable card.
+   * The sand blade is always the default melee weapon (not purchasable).
+   * Unlike other weapons, it uses an Enable/Disable toggle rather than Equip/Unequip.
+   */
+  function buildSandBladeCard(rpgState: RpgSimState): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'weapon-store__card';
+    if (rpgState.sandBladeEnabled) card.classList.add('weapon-store__card--equipped');
+    card.style.borderColor = SAND_BLADE_ACCENT_COLOR + '66';
+
+    // Name row with "Default" badge
+    const nameRow = document.createElement('div');
+    nameRow.className = 'weapon-store__card-name';
+    nameRow.style.color = SAND_BLADE_ACCENT_COLOR;
+    nameRow.textContent = 'Sand Blade';
+    const defaultBadge = document.createElement('span');
+    defaultBadge.className = 'weapon-tier-badge';
+    defaultBadge.style.color = SAND_BLADE_ACCENT_COLOR;
+    defaultBadge.style.borderColor = SAND_BLADE_ACCENT_COLOR + '88';
+    defaultBadge.textContent = 'Default Melee';
+    nameRow.appendChild(defaultBadge);
+    card.appendChild(nameRow);
+
+    // Description
+    const descEl = document.createElement('div');
+    descEl.className = 'weapon-store__card-desc';
+    descEl.textContent =
+      'The player\'s built-in melee swipe. Always active unless disabled or replaced by the Diamond Blade. ' +
+      'Disable to use ranged-only builds with auto-move keeping distance from enemies.';
+    card.appendChild(descEl);
+
+    // Enable/Disable button
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '8px';
+    btnRow.style.flexWrap = 'wrap';
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'weapon-store__btn';
+    if (rpgState.sandBladeEnabled) {
+      toggleBtn.className += ' weapon-store__btn--equipped';
+      toggleBtn.textContent = 'Disable';
+      toggleBtn.style.borderColor = '#ff8888';
+      toggleBtn.style.color = '#ff8888';
+    } else {
+      toggleBtn.textContent = 'Enable';
+      toggleBtn.style.borderColor = SAND_BLADE_ACCENT_COLOR + 'aa';
+      toggleBtn.style.color = SAND_BLADE_ACCENT_COLOR;
+    }
+    toggleBtn.addEventListener('click', () => dispatch({ kind: 'toggle_sand_blade' }));
+    btnRow.appendChild(toggleBtn);
+    card.appendChild(btnRow);
+
+    return card;
   }
 
   function buildWeaponCard(
@@ -254,6 +314,8 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
 
     const list = document.createElement('div');
     list.className = 'weapon-store__list';
+    // Sand blade card appears at the very top — it is the default melee with an Enable/Disable toggle.
+    list.appendChild(buildSandBladeCard(rpgState));
     for (const weapon of WEAPON_DEFINITIONS) {
       list.appendChild(buildWeaponCard(weapon, rpgState, resources, numberFormat, isDevMode));
     }
