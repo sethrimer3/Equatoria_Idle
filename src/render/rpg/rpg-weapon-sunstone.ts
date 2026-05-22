@@ -31,7 +31,10 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy, SunstoneMine,
   EliteEnemy,
 } from './rpg-enemy-types';
-import { pushPointOutsideTopographicTerrain } from './terrain/topographic-terrain';
+import {
+  pushPointOutsideTopographicTerrain,
+  hasTopographicTerrainLineOfSight,
+} from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
 
@@ -135,7 +138,8 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
 
   /**
    * Detonates a mine at the given index (removes it and applies AOE damage
-   * to all enemies in aoeRadius).
+   * to all enemies in aoeRadius).  Terrain blocks blast pressure: enemies
+   * behind an island from the mine's perspective receive no damage.
    */
   function detonateMine(index: number): void {
     const mine = sunstoneMines[index];
@@ -145,13 +149,15 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
 
     const r2 = mine.aoeRadius * mine.aoeRadius;
     const col = '#ffaa22';
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
     const applyAoe = <T extends { x: number; y: number; hp: number; maxHp: number }>(
       arr: T[],
       damageFn: (e: T, dmg: number, pierce: number) => number,
     ) => {
       for (const e of arr) {
         const dx = e.x - mine.x, dy = e.y - mine.y;
-        if (dx * dx + dy * dy <= r2) {
+        if (dx * dx + dy * dy <= r2
+            && hasTopographicTerrainLineOfSight(terrain, mine.x, mine.y, e.x, e.y)) {
           const dmg = damageFn(e, mine.scaledDamage, 0);
           if (dmg > 0) spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, col);
         }
@@ -175,7 +181,8 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
     applyAoe(ctx.eliteEnemies.filter(e => !e.isInvuln), (e, d, p) => damageEliteEnemy(e, d, p));
     if (ctx.bossEnemy) {
       const dx = ctx.bossEnemy.x - mine.x, dy = ctx.bossEnemy.y - mine.y;
-      if (dx * dx + dy * dy <= r2) {
+      if (dx * dx + dy * dy <= r2
+          && hasTopographicTerrainLineOfSight(terrain, mine.x, mine.y, ctx.bossEnemy.x, ctx.bossEnemy.y)) {
         const dmg = damageBossEnemy(mine.scaledDamage, 0);
         if (dmg > 0) spawnHitVisualsAt(ctx.bossEnemy.x, ctx.bossEnemy.y, ctx.bossEnemy.maxHp, dmg, col);
       }
@@ -190,12 +197,17 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
       // Fuse countdown.
       mine.fuseMs -= deltaMs;
 
+      // Terrain blocks contact: enemies behind a terrain island from the mine's
+      // perspective cannot deal contact damage nor trigger the mine.
+      const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
+
       // Apply incoming damage from enemies that overlap the mine.
       const mineHitR = SUNSTONE_MINE_SIZE + 2;
       const mineHitR2 = mineHitR * mineHitR;
       const checkEnemyContact = (ex: number, ey: number, atk: number) => {
         const dx = ex - mine.x, dy = ey - mine.y;
-        if (dx * dx + dy * dy <= mineHitR2) {
+        if (dx * dx + dy * dy <= mineHitR2
+            && hasTopographicTerrainLineOfSight(terrain, mine.x, mine.y, ex, ey)) {
           mine.hp -= atk;
         }
       };
@@ -217,11 +229,13 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
       for (const e of ctx.eliteEnemies) if (!e.isInvuln) checkEnemyContact(e.x, e.y, e.atk);
 
       // Proximity check — detonate if any enemy enters trigger radius.
+      // Terrain blocks proximity: enemies with no LOS cannot trigger the mine.
       let triggered = false;
       const prox2 = mine.proximityRadius * mine.proximityRadius;
       const inProximity = (ex: number, ey: number) => {
         const dx = ex - mine.x, dy = ey - mine.y;
-        return dx * dx + dy * dy <= prox2;
+        return dx * dx + dy * dy <= prox2
+          && hasTopographicTerrainLineOfSight(terrain, mine.x, mine.y, ex, ey);
       };
       if (!triggered) for (const e of ctx.enemies)           { if (inProximity(e.x, e.y)) { triggered = true; break; } }
       if (!triggered) for (const e of ctx.sapphireEnemies)   { if (inProximity(e.x, e.y)) { triggered = true; break; } }

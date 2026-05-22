@@ -1,10 +1,84 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#80**
+Current build: **#81**
 
 ---
 
 ## Build History Summary
+
+### Build #81 — Terrain gameplay consistency pass: LOS for vortex/sunstone, improved steering, stronger tests
+
+**Problem addressed:**
+Completed the remaining terrain gameplay consistency gaps identified in Build #80:
+vortex pull and damage acting through terrain, sunstone mines triggering/damaging through
+terrain, enemy oscillation at concave corners, and weak ring-ordering test coverage.
+
+**Vortex terrain LOS (`rpg-weapon-vortex.ts`):**
+
+- Imported `hasTopographicTerrainLineOfSight`.
+- In `applyPull`: before nudging an enemy toward the vortex, check LOS from vortex centre to
+  enemy. Enemies behind a terrain island are neither pulled nor receive the post-pull push-out.
+  The post-pull `pushPointOutsideTopographicTerrain` safety fallback remains for edge cases.
+- In `applyVortexTickToEnemy`: requires LOS before dealing periodic damage. Added `terrain`
+  parameter to the function signature; all call-sites updated.
+- Boss damage: requires LOS before dealing damage.
+
+**Sunstone mine terrain LOS (`rpg-weapon-sunstone.ts`):**
+
+- Imported `hasTopographicTerrainLineOfSight`.
+- Mine placement push-out was already in place; the new changes cover LOS for all interactive
+  paths:
+  - `detonateMine` → `applyAoe`: requires mine-to-target LOS before dealing blast damage.
+  - `detonateMine` → boss check: requires mine-to-boss LOS.
+  - `checkEnemyContact`: requires mine-to-enemy LOS before subtracting mine HP.
+  - `inProximity`: requires mine-to-enemy LOS before setting `triggered = true`.
+- Terrain is obtained once per mine update tick to avoid redundant calls.
+
+**Improved `terrainAwareDirection` (`rpg-enemy-updates.ts`):**
+
+- Replaced the simple left/right ±90° probe with a multi-angle steering probe.
+- Candidate angles (relative to direct vector): ±30°, ±60°, ±90°, ±120°, 180°.
+- Each candidate probes `PROBE_DIST=40 px` and is scored by:
+  1. Clear probe path (unblocked beats blocked).
+  2. Positive dot product with direct direction (progress toward target).
+  3. Lower angular deviation (less detour).
+- Returns the best candidate; if all are blocked returns least-bad so enemies do not freeze.
+- Stops early once a clear path with positive progress is found (typical case: one iteration).
+- This is still local steering, NOT pathfinding — stateless, cheap, no graph construction.
+
+**Stricter ring ordering tests (`__tests__/topographic-terrain.test.ts`):**
+
+- Added 'ring radii are monotonically increasing point-by-point across adjacent rings':
+  for every seed, every island, every adjacent ring pair, every point index, `outer[j].radius ≥ inner[j].radius - 0.5 px`.
+- Added 'finds an island with at least 7 rings and validates point-by-point ordering':
+  searches up to 200 seeds for a 7+ ring island and validates it. Skips gracefully if none found.
+- Both new tests pass for all seeds in [1, 42, 137, 999, 0xdeadbeef].
+
+**Ruby laser terrain truncation regression (`__tests__/topographic-terrain.test.ts`):**
+
+- New describe block: 'applyLaserBeamHitSweep — terrain truncation regression'.
+- Creates a horizontal beam from (0, 100) with an island at (150, 100) half-size=30.
+- Uses `terrainFirstIntersectionT` to compute truncated `tMax` (≈120 px).
+- Verifies: enemy at (80, 100) receives damage; enemy at (400, 100) does NOT.
+- Confirms the existing `tMax` / `isWithinBeam(tProj > tMax)` path correctly gates damage.
+
+**All tests pass. Build passes.**
+
+---
+
+### Remaining terrain limitations
+
+1. **`terrainAwareDirection`** — Still local steering only. Concave island bays can still
+   occasionally slow an enemy, though oscillation is reduced. Full path-following (graph or
+   flow-field) would be more robust but significantly more complex and stateful.
+
+2. **Topographic polish ideas (cosmetic):**
+   - Add occasional "ridge" islands: elongated with a high elongationAmount value forced.
+   - Try a two-island "mountain range" cluster where islands share a nearby center.
+   - Experiment with a very subtle background fill gradient (dark center) for depth.
+   - Experiment with different alpha/transparency for the terrain area fill.
+
+---
 
 ### Build #80 — Topographic terrain visual generation pass: shared island profiles
 

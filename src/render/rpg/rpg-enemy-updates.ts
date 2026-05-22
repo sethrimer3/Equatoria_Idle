@@ -132,9 +132,21 @@ export function applyEnemyTerrainPushOut(
 
 /**
  * Computes a terrain-aware direction from `(ex, ey)` toward `(tx, ty)`.
- * If the direct path is blocked by terrain, tries two tangential offsets
- * (±90° from direct) to steer around the obstacle.  Falls back to the
- * direct direction when terrain is null or unblocked.
+ *
+ * This is local steering, NOT pathfinding.  It works statelessly by probing
+ * a handful of candidate angles around the direct vector and picking the best
+ * one that is unblocked.  It avoids the left/right oscillation that a simple
+ * ±90° probe causes at concave terrain corners.
+ *
+ * Candidate angles (relative to direct vector, in radians):
+ *   0, ±30°, ±60°, ±90°, ±120°, 180°
+ * Each candidate is tested by probing `PROBE_DIST` px from the entity.
+ * Candidates are scored by:
+ *   1. Clear probe path (unblocked beats blocked).
+ *   2. Positive dot product with direct direction (moving toward target).
+ *   3. Lower absolute angle deviation (less detour).
+ * If all candidates are blocked, the best (least-bad) is returned so the
+ * entity does not freeze.
  *
  * Returns a normalised direction vector `{dx, dy}`.
  */
@@ -149,16 +161,45 @@ export function terrainAwareDirection(
   if (!terrain || !segmentIntersectsTopographicTerrain(terrain, ex, ey, tx, ty)) {
     return { dx: ndx, dy: ndy };
   }
-  // Try perpendicular offsets at a short probe distance to pick a side.
-  const probeD = 30;
-  const left  = { dx: -ndy, dy:  ndx };
-  const right = { dx:  ndy, dy: -ndx };
-  const leftBlocked  = segmentIntersectsTopographicTerrain(terrain, ex, ey, ex + left.dx * probeD,  ey + left.dy * probeD);
-  const rightBlocked = segmentIntersectsTopographicTerrain(terrain, ex, ey, ex + right.dx * probeD, ey + right.dy * probeD);
-  if (!leftBlocked)  return left;
-  if (!rightBlocked) return right;
-  // Both blocked — use direct direction (will be pushed out post-move)
-  return { dx: ndx, dy: ndy };
+
+  // Direct path is blocked — probe candidate angles around the direct vector.
+  const PROBE_DIST = 40;
+  // Offsets in radians, ordered from least to most deviation.
+  const offsets = [
+    Math.PI / 6,  // +30°
+    -Math.PI / 6, // -30°
+    Math.PI / 3,  // +60°
+    -Math.PI / 3, // -60°
+    Math.PI / 2,  // +90°
+    -Math.PI / 2, // -90°
+    2 * Math.PI / 3, // +120°
+    -2 * Math.PI / 3, // -120°
+    Math.PI,      // 180° (last resort)
+  ];
+
+  const directAngle = Math.atan2(ndy, ndx);
+  let bestDx = ndx, bestDy = ndy;
+  let bestClear = false;
+  let bestDot = -Infinity;
+
+  for (const offset of offsets) {
+    const angle = directAngle + offset;
+    const cx = Math.cos(angle), cy = Math.sin(angle);
+    const blocked = segmentIntersectsTopographicTerrain(terrain, ex, ey, ex + cx * PROBE_DIST, ey + cy * PROBE_DIST);
+    const dot = cx * ndx + cy * ndy;
+    // Accept this candidate if it's strictly better than the current best:
+    // clear > blocked, then higher dot product (progress toward target).
+    const improves = (!blocked && !bestClear) || (blocked === bestClear && dot > bestDot);
+    if (improves) {
+      bestDx = cx; bestDy = cy;
+      bestClear = !blocked;
+      bestDot = dot;
+    }
+    // Stop searching once we have a clear path with positive progress.
+    if (bestClear && bestDot > 0) break;
+  }
+
+  return { dx: bestDx, dy: bestDy };
 }
 
 // ── Emerald enemy system (blink-striker) ──────────────────────────────────────

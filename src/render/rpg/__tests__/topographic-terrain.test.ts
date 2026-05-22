@@ -12,6 +12,9 @@
  *     average radii (no ring crossings in the mean).
  *  7. No ring contains NaN or negative radius values.
  *  8. Each island polygon has at least RING_POINTS vertices.
+ *  9. Ring radii are monotonically increasing POINT-BY-POINT (stricter than mean).
+ * 10. Ruby laser applyLaserBeamHitSweep does not damage enemies behind a
+ *     terrain-truncated beam endpoint.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -24,6 +27,8 @@ import {
   hasTopographicTerrainLineOfSight,
   generateTopographicTerrain,
 } from '../terrain/topographic-terrain';
+import { applyLaserBeamHitSweep } from '../rpg-weapon-laser-beam-hits';
+import type { LaserBeamHitSweepCtx } from '../rpg-weapon-laser-beam-hits';
 
 // ── Helper: build a minimal terrain state with one square island ──────────
 
@@ -214,6 +219,61 @@ describe('generateTopographicTerrain — shared island profile', () => {
     }
   });
 
+  it('ring radii are monotonically increasing point-by-point across adjacent rings', () => {
+    // This is stricter than the average-radius test: for every point index,
+    // ring[i] radius must be less than ring[i+1] radius (tiny tolerance of 0.5 px).
+    // Because all rings share the same shape profile and point angles, this
+    // should hold for well-formed terrain.
+    const TOL = 0.5; // px — allow negligible floating-point error
+    for (const seed of [1, 42, 137, 999, 0xdeadbeef]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      for (const island of state.islands) {
+        for (let i = 1; i < island.rings.length; i++) {
+          const inner = island.rings[i - 1];
+          const outer = island.rings[i];
+          expect(inner.points.length).toBe(outer.points.length);
+          for (let j = 0; j < inner.points.length; j++) {
+            const pi = inner.points[j];
+            const po = outer.points[j];
+            const ri = Math.sqrt((pi.x - island.centerX) ** 2 + (pi.y - island.centerY) ** 2);
+            const ro = Math.sqrt((po.x - island.centerX) ** 2 + (po.y - island.centerY) ** 2);
+            expect(ro + TOL).toBeGreaterThan(ri);
+          }
+        }
+      }
+    }
+  });
+
+  it('finds an island with at least 7 rings and validates point-by-point ordering', () => {
+    // Try several seeds until we get an island with ≥7 rings, then validate it.
+    let found = false;
+    for (let s = 0; s < 200 && !found; s++) {
+      const state = generateTopographicTerrain(1, s * 31 + 7, 800, 600);
+      for (const island of state.islands) {
+        if (island.rings.length >= 7) {
+          found = true;
+          for (let i = 1; i < island.rings.length; i++) {
+            const inner = island.rings[i - 1];
+            const outer = island.rings[i];
+            for (let j = 0; j < inner.points.length; j++) {
+              const pi = inner.points[j];
+              const po = outer.points[j];
+              const ri = Math.sqrt((pi.x - island.centerX) ** 2 + (pi.y - island.centerY) ** 2);
+              const ro = Math.sqrt((po.x - island.centerX) ** 2 + (po.y - island.centerY) ** 2);
+              expect(ro + 0.5).toBeGreaterThan(ri);
+            }
+          }
+          break;
+        }
+      }
+    }
+    // If no island with 7+ rings was found in 200 seeds, skip with a note.
+    // (Acceptable: island ring count is random 2–9 so 7 rings is uncommon.)
+    if (!found) {
+      console.warn('No island with ≥7 rings found in 200 seeds; skipping high-ring-count validation.');
+    }
+  });
+
   it('produces no NaN or negative radii in any ring point', () => {
     for (const seed of [1, 42, 137, 999, 0xdeadbeef]) {
       const state = generateTopographicTerrain(1, seed, 800, 600);
@@ -246,3 +306,110 @@ describe('generateTopographicTerrain — shared island profile', () => {
     expect(state.islands.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+// ── Ruby laser terrain-truncation regression ──────────────────────────────
+
+describe('applyLaserBeamHitSweep — terrain truncation regression', () => {
+  /**
+   * Regression: enemies behind a terrain-truncated beam endpoint must not
+   * receive damage.  The beam uses `isWithinBeam(tProj > tMax)` to gate
+   * damage, so a correctly truncated `tMax` already protects enemies
+   * behind the terrain.  This test proves that invariant end-to-end.
+   *
+   * Layout (horizontal beam going right, island in the middle):
+   *
+   *   origin(0,100) ──beam──► [island at (150,100) halfSize=30] ──► far(500,100)
+   *
+   * Expected:
+   *   • Enemy at (80, 100)  — before island — receives damage.
+   *   • Enemy at (400, 100) — after island  — does NOT receive damage.
+   */
+  it('does not damage an enemy behind the truncated beam endpoint', () => {
+    const terrain = buildSquareTerrain(150, 100, 30); // island spanning x=120..180
+
+    const beamOriginX = 0, beamOriginY = 100;
+    const dirX = 1, dirY = 0;
+    const tFull = 500;
+
+    // Compute the fraction where the beam first hits the island.
+    const fraction = terrainFirstIntersectionT(terrain as unknown as TopographicTerrainState, beamOriginX, beamOriginY, dirX, dirY, tFull);
+    const tMax = tFull * fraction; // should be ≈120 (left edge of island)
+
+    // Sanity: tMax must be less than the full beam length.
+    expect(tMax).toBeLessThan(tFull);
+
+    // Enemies relative to origin.
+    const earlyEnemy = { x: 80,  y: 100, hp: 100, maxHp: 100, atk: 10 };
+    const lateEnemy  = { x: 400, y: 100, hp: 100, maxHp: 100, atk: 10 };
+
+    let earlyHit = false;
+    let lateHit  = false;
+
+    const noop0 = () => 0;
+    const noop1 = () => 0;
+
+    const sweepCtx: LaserBeamHitSweepCtx = {
+      originX: beamOriginX,
+      originY: beamOriginY,
+      dirX,
+      dirY,
+      tMax,
+      baseDamage: 50,
+      beamColor: '#f00',
+      beamGlow: '#f00',
+      hitEffects: [],
+      bossEnemy: null,
+      enemies: [earlyEnemy as any, lateEnemy as any],
+      sapphireEnemies: [],
+      sapphireMissiles: [],
+      emeraldEnemies: [],
+      amberEnemies: [],
+      amberShards: [],
+      voidEnemies: [],
+      quartzEnemies: [],
+      rubyEnemies: [],
+      sunstoneEnemies: [],
+      citrineEnemies: [],
+      ioliteEnemies: [],
+      amethystEnemies: [],
+      diamondEnemies: [],
+      nullstoneEnemies: [],
+      fracterylEnemies: [],
+      eigensteinEnemies: [],
+      eliteEnemies: [],
+      alivenGroups: [],
+      damageEnemy: (e: any, dmg: number) => {
+        if (e === earlyEnemy) earlyHit = true;
+        if (e === lateEnemy)  lateHit  = true;
+        return dmg;
+      },
+      damageSapphireEnemy: noop0,
+      damageMissile: noop0,
+      damageEmeraldEnemy: noop0,
+      damageAmberEnemy: noop0,
+      damageAmberShard: noop0,
+      damageVoidEnemy: noop0,
+      damageQuartzEnemy: noop0,
+      damageRubyEnemy: noop0,
+      damageSunstoneEnemy: noop0,
+      damageCitrineEnemy: noop0,
+      damageIoliteEnemy: noop0,
+      damageAmethystEnemy: noop0,
+      damageDiamondEnemy: noop0,
+      damageNullstoneEnemy: noop0,
+      damageFracterylEnemy: noop0,
+      damageEigensteinEnemy: noop0,
+      damageEliteEnemy: noop0,
+      damageBossEnemy: noop1,
+      damageAlivenParticle: noop0,
+      spawnDamageNumber: () => {},
+    };
+
+    applyLaserBeamHitSweep(sweepCtx);
+
+    expect(earlyHit).toBe(true);
+    expect(lateHit).toBe(false);
+  });
+});
+
+
