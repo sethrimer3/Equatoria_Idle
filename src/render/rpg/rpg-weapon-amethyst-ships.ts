@@ -30,6 +30,7 @@ import {
 import type { FluidImpulse } from './rpg-fluid';
 import type { RpgPlayerStats, HitEffect, ClosestTarget } from './rpg-types';
 import type { AmethystShip, AmethystLaser } from './rpg-enemy-types';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Module-level helpers ──────────────────────────────────────────────────
 
@@ -70,6 +71,8 @@ export interface AmethystShipCtx {
   damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   withDamageSource: (weaponId: string | null, fn: () => void) => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Handle returned to the caller ─────────────────────────────────────────
@@ -218,6 +221,7 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
    */
   function updateAmethystLasers(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
     const weaponId = findEquippedWeaponIdByEffect('amethystShip');
     ctx.withDamageSource(weaponId, () => {
       const liveTargets = collectEnemyBodyTargets();
@@ -244,8 +248,15 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
         }
         laser.angle += AMETHYST_LASER_ANGULAR_SPEED * dt;
         laser.radius = Math.max(0, laser.radius - (AMETHYST_LASER_INITIAL_RADIUS / (AMETHYST_LASER_DURATION_MS / TARGET_FRAME_MS)) * dt);
+        const prevX = laser.x, prevY = laser.y;
         laser.x = laser.centerX + Math.cos(laser.angle) * laser.radius;
         laser.y = laser.centerY + Math.sin(laser.angle) * laser.radius;
+
+        // Terrain blocking: destroy the laser if it crossed a solid island.
+        if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, laser.x, laser.y)) {
+          amethystLasers.splice(i, 1); continue;
+        }
+
         updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser);
 
         // Inject swirling + inward fluid force in the direction the laser is traveling.

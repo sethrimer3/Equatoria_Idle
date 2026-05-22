@@ -43,6 +43,7 @@ import type {
   DiamondEnemy, NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
   EmeraldSubMissile, EmeraldSwirlParticle,
 } from './rpg-enemy-types';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -94,6 +95,8 @@ export interface EmeraldSubsCtx {
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Handle returned to the caller ─────────────────────────────────────────
@@ -183,6 +186,7 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
     const hitR2       = EMERALD_SUB_MISSILE_HIT_RADIUS * EMERALD_SUB_MISSILE_HIT_RADIUS;
     const detectR2    = EMERALD_SUB_MISSILE_DETECT_PX * EMERALD_SUB_MISSILE_DETECT_PX;
     const decelDrag   = Math.pow(EMERALD_SUB_MISSILE_FIZZLE_DRAG, dt);
+    const terrain     = ctx.getTerrainState ? ctx.getTerrainState() : null;
 
     for (let i = emeraldSubMissiles.length - 1; i >= 0; i--) {
       const s = emeraldSubMissiles[i];
@@ -258,7 +262,13 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
         }
       }
 
+      const prevSx = s.x, prevSy = s.y;
       s.x += s.vx * dt; s.y += s.vy * dt;
+
+      // Terrain blocking: destroy sub-missile if it crossed solid terrain.
+      if (terrain && segmentIntersectsTopographicTerrain(terrain, prevSx, prevSy, s.x, s.y)) {
+        emeraldSubMissiles.splice(i, 1); continue;
+      }
 
       // Wall bounce.
       if (s.x < 0)            { s.x = 0;      s.vx =  Math.abs(s.vx); }
@@ -285,6 +295,7 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
         s.stoppedMs += deltaMs;
         if (s.stoppedMs >= EMERALD_SUB_MISSILE_POST_STOP_DELAY_MS) {
           // AOE explosion with swirling green particles.
+          // Terrain blocks AOE line-of-sight: enemies behind terrain are not damaged.
           const aoeR2 = EMERALD_SUB_MISSILE_AOE_PX * EMERALD_SUB_MISSILE_AOE_PX;
           fluid.addExplosion(s.x, s.y, FLUID_EXPLOSION_STRENGTH * 0.4,
             FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
@@ -295,6 +306,8 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
             for (const e of arr) {
               const ddx = e.x - s.x, ddy = e.y - s.y;
               if (ddx * ddx + ddy * ddy <= aoeR2) {
+                // Skip enemies that terrain blocks line-of-sight to.
+                if (terrain && segmentIntersectsTopographicTerrain(terrain, s.x, s.y, e.x, e.y)) continue;
                 const dmg = damageFn(e, s.scaledDamage, 0);
                 if (dmg > 0) spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, EMERALD_MISSILE_COLOR);
               }
@@ -319,8 +332,12 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
           if (ctx.bossEnemy) {
             const bdx = ctx.bossEnemy.x - s.x, bdy = ctx.bossEnemy.y - s.y;
             if (bdx * bdx + bdy * bdy <= aoeR2) {
-              const dmg = damageBossEnemy(s.scaledDamage, 0);
-              if (dmg > 0) spawnHitVisualsAt(ctx.bossEnemy.x, ctx.bossEnemy.y, ctx.bossEnemy.maxHp, dmg, EMERALD_MISSILE_COLOR);
+              // Terrain blocks boss AOE LOS.
+              const bossBlocked = terrain && segmentIntersectsTopographicTerrain(terrain, s.x, s.y, ctx.bossEnemy.x, ctx.bossEnemy.y);
+              if (!bossBlocked) {
+                const dmg = damageBossEnemy(s.scaledDamage, 0);
+                if (dmg > 0) spawnHitVisualsAt(ctx.bossEnemy.x, ctx.bossEnemy.y, ctx.bossEnemy.maxHp, dmg, EMERALD_MISSILE_COLOR);
+              }
             }
           }
           emeraldSubMissiles.splice(i, 1);

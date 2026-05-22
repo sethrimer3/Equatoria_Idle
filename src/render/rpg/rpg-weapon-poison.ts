@@ -32,6 +32,7 @@ import type {
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
 
@@ -82,6 +83,8 @@ export interface PoisonWeaponCtx {
   // Game-flow callbacks
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Public handle ─────────────────────────────────────────────────────────────
@@ -153,13 +156,20 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
   function updatePoisonBolts(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     const hitR = POISON_BOLT_SIZE * 3;
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
 
     for (let i = poisonBolts.length - 1; i >= 0; i--) {
       const p = poisonBolts[i];
       p.lifeMs -= deltaMs;
       if (p.lifeMs <= 0) { poisonBolts.splice(i, 1); continue; }
 
+      const prevX = p.x, prevY = p.y;
       p.x += p.vx * dt; p.y += p.vy * dt;
+
+      // Terrain blocking: destroy bolt if it crossed a solid island this step.
+      if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, p.x, p.y)) {
+        poisonBolts.splice(i, 1); continue;
+      }
 
       // Trail ring buffer
       p.trailX[p.trailHead] = p.x; p.trailY[p.trailHead] = p.y;

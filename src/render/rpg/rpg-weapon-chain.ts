@@ -38,6 +38,7 @@ import type {
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
 
@@ -88,6 +89,8 @@ export interface ChainWeaponCtx {
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   // Targeting — only the closest-body-enemy finder is needed
   findClosestEnemy: (rangeSq: number) => { x: number; y: number } | null;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Public handle ─────────────────────────────────────────────────────────────
@@ -216,13 +219,17 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
       ws.phaseMs += deltaMs;
       stepChainPhysics(ws, dt, CHAIN_ANCHOR_K);
 
-      // Contact damage: check all nodes against all enemies
-      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy): void => {
+      // Contact damage: check all nodes against all enemies.
+      // Terrain LOS: if the player-to-node segment crosses terrain, that node cannot deal damage.
+      const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
+      const applyContactDamage = (tx: number, ty: number, target: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy, nodeIdx: number): void => {
         const nodeR = chainNodeRadius(CHAIN_NODES - 1); // use tip radius for hit detection
         const r = nodeR + LASER_ENEMY_SIZE;
         const dx = tx - target.x, dy = ty - target.y;
         if (dx * dx + dy * dy < r * r) {
           if (!ws.hitCooldowns.has(target)) {
+            // Terrain LOS: skip if the line from player to this node crosses terrain.
+            if (terrain && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, ws.nodesX[nodeIdx], ws.nodesY[nodeIdx])) return;
             let dmg = 0;
             // Sapphire is the only enemy type with `shieldHp` but without a `kind` discriminator.
             if ('shieldHp' in target && !('kind' in target)) {
@@ -256,22 +263,22 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
       };
       for (let ni = 0; ni < CHAIN_NODES; ni++) {
         const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
-        for (const e of ctx.enemies)           applyContactDamage(nx, ny, e);
-        for (const e of ctx.sapphireEnemies)   applyContactDamage(nx, ny, e);
-        for (const e of ctx.emeraldEnemies)    applyContactDamage(nx, ny, e);
-        for (const e of ctx.amberEnemies)      applyContactDamage(nx, ny, e);
-        for (const e of ctx.voidEnemies)       applyContactDamage(nx, ny, e);
-        for (const e of ctx.quartzEnemies)     applyContactDamage(nx, ny, e);
-        for (const e of ctx.rubyEnemies)       applyContactDamage(nx, ny, e);
-        for (const e of ctx.sunstoneEnemies)   applyContactDamage(nx, ny, e);
-        for (const e of ctx.citrineEnemies)    applyContactDamage(nx, ny, e);
-        for (const e of ctx.ioliteEnemies)     applyContactDamage(nx, ny, e);
-        for (const e of ctx.amethystEnemies)   applyContactDamage(nx, ny, e);
-        for (const e of ctx.diamondEnemies)    applyContactDamage(nx, ny, e);
-        for (const e of ctx.nullstoneEnemies)  applyContactDamage(nx, ny, e);
-        for (const e of ctx.fracterylEnemies)  applyContactDamage(nx, ny, e);
-        for (const e of ctx.eigensteinEnemies) applyContactDamage(nx, ny, e);
-        for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyContactDamage(nx, ny, e); }
+        for (const e of ctx.enemies)           applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.sapphireEnemies)   applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.emeraldEnemies)    applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.amberEnemies)      applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.voidEnemies)       applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.quartzEnemies)     applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.rubyEnemies)       applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.sunstoneEnemies)   applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.citrineEnemies)    applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.ioliteEnemies)     applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.amethystEnemies)   applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.diamondEnemies)    applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.nullstoneEnemies)  applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.fracterylEnemies)  applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.eigensteinEnemies) applyContactDamage(nx, ny, e, ni);
+        for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyContactDamage(nx, ny, e, ni); }
       }
       // Apply chain whip damage to boss
       if (ctx.bossEnemy) {
@@ -279,6 +286,8 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
         for (let ni = 0; ni < CHAIN_NODES; ni++) {
           const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
           if (ws.hitCooldowns.has(ctx.bossEnemy)) break;
+          // Terrain LOS: skip if the line from player to this node crosses terrain.
+          if (terrain && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, nx, ny)) continue;
           const dx = nx - ctx.bossEnemy.x, dy = ny - ctx.bossEnemy.y;
           if (dx * dx + dy * dy < bossHitR * bossHitR) {
             const dmg = damageBossEnemy(contactDamage, 0);

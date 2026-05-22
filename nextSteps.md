@@ -1,10 +1,70 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#76**
+Current build: **#78**
 
 ---
 
 ## Build History Summary
+
+### Build #78 — Terrain repair and consistency pass
+
+**Problem addressed:**
+A focused repair pass on the topographic terrain integration to make collision, LOS, and weapon terrain interactions behave correctly and consistently.
+
+**Critical bug fixed:**
+
+- **`applyEnemyTerrainPushOut` velocity correction** (`rpg-enemy-updates.ts`) — The function was overwriting `entity.x/entity.y` with the pushed-out position before computing the push vector used to zero velocity. This made the push vector zero, so the velocity correction never ran. Fixed by capturing `oldX/oldY` before the position update and using `(newX - oldX, newY - oldY)` as the outward normal direction.
+
+**Terrain helper improvements:**
+
+- **`circleIntersectsTopographicTerrain`** (`terrain/topographic-terrain.ts`) — Replaced the incorrect edge-proximity check (which used `pushPointOutsideTopographicTerrain` and only caught center-inside cases) with a proper per-edge distance check using a new `pointToSegmentDistSq` helper. The test in inverse-scaled space uses `radiusPx / g` as the equivalent radius. Now correctly detects a circle that overlaps an island even when the circle centre is outside the polygon.
+
+- **`hasTopographicTerrainLineOfSight`** (`terrain/topographic-terrain.ts`) — New exported helper: returns `true` when the straight line from `(fromX, fromY)` to `(toX, toY)` is unobstructed by terrain, and `true` when terrain is null. Used instead of repeating raw `segmentIntersectsTopographicTerrain` negation everywhere.
+
+**Weapon terrain integration:**
+
+- **Poison bolts** (`rpg-weapon-poison.ts`) — Added `getTerrainState?` to `PoisonWeaponCtx`. Bolt is destroyed when its movement segment intersects terrain (before enemy collision check). Track `prevX/prevY` before each step.
+
+- **Emerald primary missiles** (`rpg-weapon-emerald.ts`) — Added `getTerrainState?` to `EmeraldWeaponCtx`. Missile fizzles (spawns equidistant sub-missiles) when movement segment crosses terrain. Homing now skips enemies with terrain between the missile and the target (LOS-aware target selection in `checkTarget`).
+
+- **Emerald sub-missiles** (`rpg-weapon-emerald-subs.ts`) — Added `getTerrainState?` to `EmeraldSubsCtx`. Sub-missile is destroyed when movement segment crosses terrain. **AOE explosions now respect terrain LOS**: enemies with terrain between the explosion point and themselves are not damaged. Boss AOE also respects terrain LOS.
+
+- **Chain whip** (`rpg-weapon-chain.ts`) — Added `getTerrainState?` to `ChainWeaponCtx`. Before applying contact damage from a chain node, checks that the player-to-node segment does not cross terrain. If the chain has passed through terrain, it cannot deal damage. Applies to both enemy array iteration and boss hit check.
+
+- **Sword / sand blade** (`rpg-weapon-sword-combo-helpers.ts`) — Added `getTerrainState?` to `SwordWeaponCtx`. In `swordHitInArc`, all enemies (including boss and aliven particles) are skipped if terrain blocks the player-to-target segment. Exceptions: targets within `MELEE_TOUCH_SQ` (16px) are never blocked by terrain.
+
+- **Sapphire companion lasers** (`rpg-weapon-ships.ts`) — Added `getTerrainState?` to `ShipWeaponCtx`. Track `prevX/prevY` before each step; destroy laser if movement segment crosses terrain.
+
+- **Amethyst companion lasers** (`rpg-weapon-amethyst-ships.ts`) — Added `getTerrainState?` to `AmethystShipCtx`. Track `prevX/prevY` before each step; destroy laser if movement segment crosses terrain.
+
+**Unit tests:**
+
+- **`src/render/rpg/__tests__/topographic-terrain.test.ts`** — New test file covering:
+  - `isPointInsideTopographicTerrain` with full and half growth01
+  - `segmentIntersectsTopographicTerrain` crossing, missing, and growth01 cases
+  - `circleIntersectsTopographicTerrain` edge-proximity detection (the previously broken case)
+  - `terrainFirstIntersectionT` < 1 for a blocking ray
+  - `hasTopographicTerrainLineOfSight` for blocked and clear paths
+
+---
+
+### Remaining terrain gaps (documented)
+
+1. **Elite enemies** — Body push-out after movement is not yet wired for elite enemy bodies in `rpg-elite-enemy-updates.ts`. Elite enemies with linear movement can still walk into terrain.
+
+2. **Procedural enemies** — Push-out after movement is not wired for procedural bodies (only projectiles are checked). Dust wisp, shadow hand, etc. can walk into terrain.
+
+3. **Teleport/blink enemies** — Blink destinations are not checked against terrain. Enemies that teleport can materialise inside terrain and be pushed out with jitter on the next frame rather than being placed at a clean exit point.
+
+4. **`terrainAwareDirection`** — The left/right tangent probe steer avoids direct collision but can cause oscillation at concave corners. A path-following probe would be more stable.
+
+5. **Vortex weapon** — Nullstone vortex projectile positions are not terrain-checked.
+
+6. **Sunstone mines** — Mine placement and persistence are not terrain-checked (mines can be placed on terrain).
+
+7. **Ruby laser hit sweep** — `applyLaserBeamHitSweep` uses `terrainFirstIntersectionT` for beam truncation but damage eligibility still uses a simple distance check rather than verifying the target is before the truncated endpoint.
+
+---
 
 ### Build #76 — Terrain integration: enemy spawn exclusion, player push-out, projectile blocking, LOS
 

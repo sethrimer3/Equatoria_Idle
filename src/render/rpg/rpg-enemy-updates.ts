@@ -115,10 +115,12 @@ export function applyEnemyTerrainPushOut(
 ): void {
   if (!terrain) return;
   if (pushPointOutsideTopographicTerrain(terrain, entity.x, entity.y, _pushOutScratch, halfSize + 2)) {
+    const oldX = entity.x, oldY = entity.y;
     entity.x = _pushOutScratch.x;
     entity.y = _pushOutScratch.y;
     // Zero velocity component pointing back into the island.
-    const pdx = entity.x - _pushOutScratch.x, pdy = entity.y - _pushOutScratch.y;
+    // Push direction = from old position to new (pushed-out) position = outward normal.
+    const pdx = _pushOutScratch.x - oldX, pdy = _pushOutScratch.y - oldY;
     const plen = Math.sqrt(pdx * pdx + pdy * pdy);
     if (plen > 0) {
       const nx = pdx / plen, ny = pdy / plen;
