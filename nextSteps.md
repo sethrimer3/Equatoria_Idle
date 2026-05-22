@@ -1,10 +1,80 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#82**
+Current build: **#84**
 
 ---
 
 ## Build History Summary
+
+### Build #84 — Terrain rendering: merged contours, smooth collision, removed center dots
+
+**Problem addressed:**
+Three terrain rendering and collision quality issues were fixed:
+1. Center dots removed from normal gameplay terrain rendering (dev-only toggle preserved).
+2. Overlapping terrain islands now merge smoothly using a shared scalar field and
+   Marching Squares contour extraction instead of separate per-island ring polygons.
+3. Player and enemy terrain collision is now robust: nearest-boundary push-out
+   replaces radial push, plus a new soft repulsion barrier (quadratic with depth)
+   applied before the hard fail-safe prevents tunnelling and inner-ring artifacts.
+
+**Changes made:**
+
+**1. `src/render/rpg/terrain/topographic-terrain-field.ts` (new file)**
+- Scalar field computation over the arena grid.
+- Each island contributes a smooth height blob; overlapping islands combine additively.
+- Marching Squares contour extraction at 9 threshold levels.
+- Polyline stitching (segment graph walk) to form closed contour polylines.
+- `buildMergedContours()` public API: called once per wave at generation time.
+- Returns `MergedTopographicContours` with outermost `solidBoundaries` used for collision.
+
+**2. `src/render/rpg/terrain/topographic-terrain.ts`**
+- Added `IslandShapeProfile` as an exported type; `profile` field added to `TopographicTerrainIsland`.
+- `computeShapeMultiplier` exported (shared between per-island ring building and field code).
+- Added `MergedTopographicContours` re-export and `mergedContours` field to `TopographicTerrainState`.
+- `renderTopographicTerrain` now uses merged scalar-field contours when available; falls back
+  to per-island rings for legacy test states that set `mergedContours: null`.
+- Center dots are only drawn inside `drawTerrainDevOverlay`, behind `terrainDevMode` flag.
+- Reduced island minimum separation factor from 1.2 to 0.55 so islands can overlap and merge.
+- All collision helpers updated to use merged outer boundaries:
+  - `isPointInsideTopographicTerrain`
+  - `segmentIntersectsTopographicTerrain`
+  - `circleIntersectsTopographicTerrain`
+  - `terrainFirstIntersectionT`
+- New exports: `signedDistanceToTerrainBoundary`, `computeTerrainRepulsionForce`.
+- `pushPointOutsideTopographicTerrain` now uses nearest-point-on-boundary logic instead of
+  radial push from island centre (works correctly for concave and elongated shapes).
+
+**3. `src/render/rpg/rpg-player-movement.ts`**
+- Added soft repulsion via `computeTerrainRepulsionForce` before the existing hard push-out.
+- Inward velocity component is damped when repulsion force is applied.
+- Hard push-out fail-safe retained to guarantee robustness.
+
+**4. `src/render/rpg/rpg-enemy-updates.ts`**
+- `applyEnemyTerrainPushOut` now applies soft repulsion + hard fail-safe (same pattern as player).
+
+**5. `src/render/rpg/__tests__/topographic-terrain.test.ts`**
+- 28 new tests added (total 123, up from 95):
+  - `generateTopographicTerrain — merged contours` (8 tests)
+  - `isPointInsideTopographicTerrain — with merged contours` (3 tests)
+  - `pushPointOutsideTopographicTerrain — nearest-boundary logic` (5 tests)
+  - `computeTerrainRepulsionForce` (4 tests)
+  - `signedDistanceToTerrainBoundary` (4 tests)
+  - `terrain rendering — center dots are dev-only` (1 test)
+  - `collision guarantee — no tunnelling into terrain interior` (2 tests)
+- Existing tests updated: `buildSquareTerrain` now includes `mergedContours: null` and `profile`.
+
+**Known limitations / future polish:**
+- Marching Squares produces straight-line segments between grid cells; polylines are smoothed
+  only by the field's continuous nature, not by explicit Bezier smoothing. Future: apply
+  Catmull-Rom or cubic Bezier smoothing to contour polylines for a rounder look.
+- `circleIntersectsTopographicTerrain` still uses per-island radial pre-reject before
+  the polygon edge test. With merged boundaries this is a slight overestimate, but
+  always conservative (no false negatives).
+- Soft repulsion strength constants (0.22 for player, 0.18 for enemies) were chosen
+  empirically; adjust in `rpg-player-movement.ts` / `rpg-enemy-updates.ts` for gameplay feel.
+- `FIELD_CELL_SIZE = 4` produces good quality at low cost; reduce for smoother contours on
+  faster hardware.
+
 
 ### Build #82 — Cleanup and stability pass: save v25, terrain test fix, catalog coverage, encounter tracking
 

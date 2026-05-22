@@ -33,6 +33,7 @@ import {
 } from './rpg-constants';
 import {
   pushPointOutsideTopographicTerrain,
+  computeTerrainRepulsionForce,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 
@@ -219,9 +220,24 @@ export function updatePlayerMovement(
   if (mote.y < half)            { mote.y = half;            mote.vy = 0; }
   if (mote.y > heightPx - half) { mote.y = heightPx - half; mote.vy = 0; }
 
-  // ── Terrain push-out (works during growing, stable, and shrinking phases) ─
+  // ── Terrain collision: soft repulsion + hard fail-safe ────────────────────
   const terrainState = ctx.getTerrainState();
   if (terrainState) {
+    // 1. Soft repulsion — apply before position is committed.
+    //    Strength: enough to noticeably push back without jitter.
+    const repForce = { x: 0, y: 0 };
+    const depth = computeTerrainRepulsionForce(terrainState, mote.x, mote.y, 0.22, repForce);
+    if (depth > 0) {
+      mote.vx += repForce.x;
+      mote.vy += repForce.y;
+      // Damp inward velocity component to prevent tunnelling.
+      const forceLen = Math.sqrt(repForce.x ** 2 + repForce.y ** 2) || 1;
+      const nx = repForce.x / forceLen, ny = repForce.y / forceLen;
+      const velDot = mote.vx * nx + mote.vy * ny;
+      if (velDot < 0) { mote.vx -= velDot * nx; mote.vy -= velDot * ny; }
+    }
+
+    // 2. Hard fail-safe — snap out if still inside boundary.
     const pushed = { x: 0, y: 0 };
     if (pushPointOutsideTopographicTerrain(terrainState, mote.x, mote.y, pushed, half + 2)) {
       // Zero out velocity components pointing into the terrain island.
