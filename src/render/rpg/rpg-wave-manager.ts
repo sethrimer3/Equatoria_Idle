@@ -114,6 +114,9 @@ export interface WaveManagerCtx {
   setInterWaveTimerMs(ms: number): void;
   enterBossWave(): void;
   exitBossWave(): void;
+  beginWaveTerrain(waveNumber: number): void;
+  beginTopographicTerrainShrink(): void;
+  isTopographicTerrainReadyForEnemySpawns(): boolean;
 }
 
 // ── Handle returned to rpg-render.ts ─────────────────────────────────────
@@ -143,6 +146,9 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
     spawnQueue,
     getPlayerHpRatio,
+    beginWaveTerrain,
+    beginTopographicTerrainShrink,
+    isTopographicTerrainReadyForEnemySpawns,
   } = ctx;
 
   /** Increments the per-type kill counter in lifetimeKillsByType. */
@@ -174,6 +180,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
       }
     }
     ctx.setIsInterWave(false);
+    beginWaveTerrain(wave);
   }
 
   function checkWaveCompletion(): void {
@@ -196,6 +203,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     for (const group of alivenGroups) {
       if (group.spawnedCount < group.targetCount || group.aliveCount > 0) return;
     }
+    beginTopographicTerrainShrink();
     ctx.setIsInterWave(true);
     ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS);
     // Wave completed — update tracking counters
@@ -235,6 +243,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
 
   function tickSpawnQueue(deltaMs: number): void {
     if (ctx.getIsInterWave()) return;
+    if (!isTopographicTerrainReadyForEnemySpawns()) return;
     for (let i = spawnQueue.length - 1; i >= 0; i--) {
       spawnQueue[i].timerMs -= deltaMs;
       if (spawnQueue[i].timerMs <= 0) {

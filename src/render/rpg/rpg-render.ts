@@ -117,6 +117,14 @@ import {
   createCachedLuckPercentGetter,
   findEquippedWeaponIdByEffect as findEquippedWeaponIdByEffectHelper,
 } from './rpg-render-helpers';
+import {
+  beginWaveTerrain,
+  beginTopographicTerrainShrink,
+  isTopographicTerrainReadyForEnemySpawns,
+  isTopographicTerrainGone,
+  setTopographicTerrainDevMode,
+  type TopographicTerrainState,
+} from './terrain/topographic-terrain';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -188,6 +196,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let currentWave      = 0;
   let interWaveTimerMs = 0;
   let isInterWave      = true;
+  let topographicTerrainState: TopographicTerrainState | null = null;
   const enemies: LaserEnemy[]    = [];
   const spawnQueue: SpawnEntry[] = [];
   let glowTimeS = 0;
@@ -547,6 +556,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
     enterBossWave:           () => bossWave.enterBossWave(),
     exitBossWave:            () => bossWave.exitBossWave(),
+    beginWaveTerrain:        (wave) => {
+      topographicTerrainState = beginWaveTerrain(wave, widthPx, heightPx, performance.now());
+    },
+    beginTopographicTerrainShrink: () => {
+      if (topographicTerrainState) beginTopographicTerrainShrink(topographicTerrainState, performance.now());
+    },
+    isTopographicTerrainReadyForEnemySpawns: () => {
+      if (!topographicTerrainState) return true;
+      if (isTopographicTerrainGone(topographicTerrainState)) return true;
+      return isTopographicTerrainReadyForEnemySpawns(topographicTerrainState);
+    },
     getPlayerHpRatio:        () => playerStats.maxHp > 0 ? playerStats.hp / playerStats.maxHp : 0,
   });
 
@@ -952,6 +972,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getRestartFadeAlpha:          () => restartFadeAlpha,
     getIsLowGraphicsMode:         () => isLowGraphicsMode,
     getEnemyIndicatorStyle:       () => enemyIndicatorStyle,
+    getTopographicTerrainState:   () => topographicTerrainState,
     getEffectiveEquippedIds,
     getTargetedEnemy:             () => targeting.getTargetedEnemy(),
     rpgSimState,
@@ -976,6 +997,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getGlowTimeS:           () => glowTimeS,
     addGlowTimeS:           (v) => { glowTimeS += v; },
     setAutoMoveEnabled:     (v) => { _autoMoveEnabled = v; },
+    getTopographicTerrainState: () => topographicTerrainState,
     deathRestartCtx,
     getIsInterWave:         () => isInterWave,
     getInterWaveTimerMs:    () => interWaveTimerMs,
@@ -1079,6 +1101,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setDevMode(enabled: boolean): void {
       statsPanel.setDevMode(enabled);
+      setTopographicTerrainDevMode(enabled);
     },
 
     setInvincibilityMode(enabled: boolean): void {

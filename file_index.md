@@ -975,7 +975,13 @@
 - Exports `WaveManagerCtx` interface, `WaveManagerHandle` interface, and `createWaveManager(ctx)` factory.
 - Scalar state (`currentWave`, `isInterWave`, `bossEnemy`, `isBossFightFromMenu`, `interWaveTimerMs`) is accessed through getter/setter lambdas on `WaveManagerCtx` so `rpg-render.ts` retains authoritative ownership.
 - Covers four functions: `removeDeadEnemies` (delegates to `rpg-wave-dead-enemies.ts`), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue, delegates spawning to `rpg-enemy-spawn.ts`).
+- Terrain hooks now gate enemy spawning until topographic terrain finishes its grow-in animation, then trigger terrain shrink on wave clear.
 - Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
+
+### src/render/rpg/terrain/topographic-terrain.ts
+- Self-contained seeded topographic terrain module for RPG waves.
+- Exports deterministic terrain generation/render helpers plus geometry helpers: `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`, `beginTopographicTerrainShrink`, `renderTopographicTerrain`, `isPointInsideTopographicTerrain`, `segmentIntersectsTopographicTerrain`, `getTopographicTerrainSolidPolygons`, and `setTopographicTerrainDevMode`.
+- Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling, staggered ring growth/shrink animation, and simple polygon collision helpers based on each island's solid outer ring.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
 - Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.
