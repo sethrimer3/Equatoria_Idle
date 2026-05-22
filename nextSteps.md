@@ -1,12 +1,91 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#73**
+Current build: **#74**
 
 ---
 
 ## Build History Summary
 
-### Build #73 — Auto-move fix, quartz whip close-range, sand blade toggle, ruby damage coloring, gradient damage numbers
+### Build #74 — Enemy catalog audit: add all 11 procedural enemies, animated preview icons
+
+**Problem addressed:**
+The enemy bestiary (Enemies tab in the RPG overlay) was missing all 11 procedurally-animated enemy types. This build adds them to the catalog and renders them with animated previews.
+
+**Changes made:**
+
+1. **`rpg-enemies-catalog-types.ts`** — Added optional `category: EnemyCategory` field (`'standard' | 'elite' | 'aliven' | 'procedural' | 'boss'`) to `EnemyCatalogEntry`.
+
+2. **`rpg-enemies-catalog-entries.ts`** — Added all 11 proc enemy entries to `ENEMY_CATALOG`:
+   - `proc_dustwisp`, `proc_ribbonworm`, `proc_lanternmoth`, `proc_eyestalk`, `proc_jellyfish`
+   - `proc_clothghost`, `proc_plantturret`, `proc_gearinsect`, `proc_spidercrawler`
+   - `proc_moteswarm`, `proc_shadowhand`
+   - All have `firstWave: 26` except `proc_shadowhand` (firstWave: 32), reflecting actual first encounter in procedural waves.
+
+3. **`rpg-enemies-tab-icons.ts`** — Added `createProcIconCanvas(entry)` function that reuses the real gameplay draw functions (`drawDustWispEnemies`, etc.) to render animated previews in the 40×40 icon box. Each proc type gets a lightweight preview state object with advancing animation phases via RAF.
+
+4. **`rpg-enemies-tab.ts`** — Updated `buildEnemyEntry` to detect `proc_*` entries and use `createProcIconCanvas` instead of the static icon renderer.
+
+5. **`wave-definitions.ts`** — Replaced the stale 13-enemy comment block with a comprehensive listing of all enemy categories (standard, elite, aliven, procedural, boss) with accurate wave thresholds.
+
+6. **`rpg-procedural-types.ts`** — Fixed stale wave comments: the per-type "wave N+" figures now note the generator threshold vs actual first-encounter wave (26 for all except shadowhand at 32).
+
+**Encounter tracking decision:**
+The existing passive system (`highestWaveReached >= entry.firstWave`) is retained. It works correctly now that all proc enemies have accurate `firstWave` values:
+- Proc enemies with firstWave=26 become visible once the player reaches wave 26.
+- Proc enemies only spawn in procedural waves (26+), so highestWaveReached=26 correctly coincides with first encounter.
+- No risk of showing enemies the player hasn't actually seen.
+
+**Projectiles not added:**
+`PlantProjectile` (the only projectile emitted by proc creatures) is intentionally excluded from the encounter list. It is a transient combat hazard, not a named enemy the player would track in a bestiary. This matches the design intent of all other projectile types (sapphire missiles, amber shards, nullstone tendrils, etc.), none of which appear in the catalog.
+
+---
+
+## Open / Remaining Work
+
+### Encounter tracking — explicit markEnemyEncountered
+The current passive system unlocks enemy catalog entries once `highestWaveReached >= firstWave`. This works correctly for the current set of enemies.
+
+A more explicit `markEnemyEncountered(enemyTypeId: string)` approach (stored in rpgState, called from `spawnEnemyById`) would allow:
+- Showing only enemies the player has literally seen in this playthrough.
+- Richer per-type unlock data (first-seen wave, kill count, etc.).
+
+To implement:
+1. Add `encounteredEnemyTypes: Set<string>` to `RpgSimState` (default: empty set).
+2. Serialize it in save-types.ts (bump save version).
+3. In `rpg-enemy-spawn.ts / spawnEnemyById`, call `ctx.markEncountered(enemyTypeId)`.
+4. In `rpg-enemies-tab.ts`, replace the `highestWaveReached >= firstWave` check with `encounteredEnemyTypes.has(entry.id)`.
+5. Dev mode: show all entries regardless.
+
+### Pre-defined waves vs proc creature thresholds
+The procedural generator introduces proc_dustwisp at waveNumber >= 5, but pre-defined waves 1–25 don't include any proc creatures. This means proc creatures effectively start at wave 26.
+
+Options:
+- **Status quo (current)**: Accept that proc creatures start at wave 26. Bestiary correctly reflects this.
+- **Add proc creatures to pre-defined waves**: Could add 1× proc_dustwisp to wave 5, 1× proc_ribbonworm to wave 7, etc. This would expose players to proc creatures earlier and match the generator intent. Would require gameplay testing to ensure difficulty curve is acceptable.
+
+If taking the second option: update the `firstWave` values in ENEMY_CATALOG accordingly and add entries to WAVE_DEFINITIONS.
+
+### Validation / test assertion
+A lightweight dev-time assertion could check that every `enemyTypeId` used in `WAVE_DEFINITIONS` and in the procedural generator has a corresponding `ENEMY_CATALOG` entry. Example:
+
+```ts
+// In a dev build or test file:
+import { WAVE_DEFINITIONS, getWaveDefinition } from './wave-definitions';
+import { ENEMY_CATALOG } from '../../ui/panels/rpg-enemies-catalog';
+
+const catalogIds = new Set(ENEMY_CATALOG.map(e => e.id));
+for (const wave of WAVE_DEFINITIONS) {
+  for (const spawn of wave.spawns) {
+    if (!catalogIds.has(spawn.enemyTypeId) && spawn.enemyTypeId !== 'boss') {
+      console.warn(`Missing catalog entry for: ${spawn.enemyTypeId}`);
+    }
+  }
+}
+```
+
+This could be added as a dev-mode startup check in `rpg-enemies-tab.ts` or as a unit test.
+
+---
 
 **Auto-move melee range bug fix:**
 - `PLAYER_BASE_RANGE_PX=50` was used as the default stop distance even though the sand blade only reaches 30px (getSwordLength(1)).

@@ -3,6 +3,7 @@
  *
  * Provides:
  *   - createAlivenIconCanvas: animated mini-sim canvas for swarm-type enemies.
+ *   - createProcIconCanvas: animated canvas reusing procedural draw functions.
  *   - drawEnemyIcon: static icon for regular enemies.
  *   - drawBossIcon: static icon for boss entries.
  *   - drawPolygonPath: utility for polygon rendering.
@@ -14,6 +15,20 @@ import {
   BOSS_COLORS, BOSS_GLOW_COLORS, BOSS_SIZE_BASE,
 } from '../../render/rpg/rpg-constants';
 import type { EnemyCatalogEntry } from './rpg-enemies-catalog';
+import type {
+  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
+  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
+  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy,
+} from '../../render/rpg/rpg-procedural-types';
+import {
+  drawDustWispEnemies, drawRibbonWormEnemies, drawLanternMothEnemies,
+  drawEyeStalkEnemies, drawJellyfishEnemies, drawClothGhostEnemies,
+  drawPlantTurretEnemies, drawGearInsectEnemies, drawSpiderCrawlerEnemies,
+  drawMoteSwarmEnemies, drawShadowHandEnemies,
+} from '../../render/rpg/rpg-procedural-draw';
+import {
+  RIBBONWORM_SEG_COUNT, MOTESWARM_MOTE_COUNT,
+} from '../../render/rpg/rpg-procedural-constants';
 
 // ─── Icon canvas size ─────────────────────────────────────────────
 
@@ -126,7 +141,177 @@ export function createAlivenIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElem
   return canvas;
 }
 
-// ─── Icon drawing ─────────────────────────────────────────────────
+// ─── Procedural enemy mini-sim ────────────────────────────────────
+
+/**
+ * Creates an animated canvas that renders a small preview of a procedural enemy
+ * using the same draw functions used in gameplay. The preview object is kept
+ * in-place (not moving) with only animation phases advancing each frame.
+ * The RAF loop stops automatically once the canvas is removed from the DOM.
+ */
+export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width  = ICON_SIZE;
+  canvas.height = ICON_SIZE;
+  canvas.style.cssText = 'flex-shrink:0;border-radius:4px;background:rgba(0,0,0,0.5);';
+
+  const ctx2 = canvas.getContext('2d');
+  if (!ctx2) return canvas;
+  // ctx2 is guaranteed non-null here; capture as drawCtx so the closure is non-nullable.
+  const drawCtx = ctx2;
+
+  const cx = ICON_SIZE / 2;
+  const cy = ICON_SIZE / 2;
+
+  // Base fields shared by all proc preview objects.
+  const base = { x: cx, y: cy, vx: 0, vy: 0, hp: 100, maxHp: 100, atk: 10, def: 2, hitFlashMs: 0, contactCdMs: 0 };
+
+  // Build a preview state object specific to this enemy type.
+  // These are plain objects typed via a tagged union so TypeScript knows the shape.
+  type ProcState =
+    | { kind: 'dustwisp';      e: DustWispEnemy }
+    | { kind: 'ribbonworm';    e: RibbonWormEnemy }
+    | { kind: 'lanternmoth';   e: LanternMothEnemy }
+    | { kind: 'eyestalk';      e: EyeStalkEnemy }
+    | { kind: 'jellyfish';     e: JellyfishEnemy }
+    | { kind: 'clothghost';    e: ClothGhostEnemy }
+    | { kind: 'plantturret';   e: PlantTurretEnemy }
+    | { kind: 'gearinsect';    e: GearInsectEnemy }
+    | { kind: 'spidercrawler'; e: SpiderCrawlerEnemy }
+    | { kind: 'moteswarm';     e: MoteSwarmEnemy }
+    | { kind: 'shadowhand';    e: ShadowHandEnemy };
+
+  let state: ProcState | null = null;
+  const ap = Math.random() * Math.PI * 2;
+
+  // Build segX/segY for RibbonWorm preview — pre-positioned in a gentle arc.
+  function makeRibbonSegs(startX: number, startY: number): { segX: Float64Array; segY: Float64Array } {
+    const segX = new Float64Array(RIBBONWORM_SEG_COUNT);
+    const segY = new Float64Array(RIBBONWORM_SEG_COUNT);
+    for (let i = 0; i < RIBBONWORM_SEG_COUNT; i++) {
+      // Spread segments in a gentle rightward diagonal for a visible worm shape.
+      segX[i] = startX - i * 2.5;
+      segY[i] = startY + i * 1.5;
+    }
+    return { segX, segY };
+  }
+
+  // Build moteAngles for MoteSwarm preview.
+  function makeMoteAngles(): Float64Array {
+    const angles = new Float64Array(MOTESWARM_MOTE_COUNT);
+    for (let i = 0; i < MOTESWARM_MOTE_COUNT; i++) {
+      angles[i] = (i / MOTESWARM_MOTE_COUNT) * Math.PI * 2;
+    }
+    return angles;
+  }
+
+  switch (entry.id) {
+    case 'proc_dustwisp':
+      state = { kind: 'dustwisp',   e: { ...base, kind: 'proc_dustwisp', animPhase: ap, patrolTimerMs: 0 } };
+      break;
+    case 'proc_ribbonworm': {
+      const { segX, segY } = makeRibbonSegs(cx, cy);
+      state = { kind: 'ribbonworm', e: { ...base, kind: 'proc_ribbonworm', animPhase: ap, segX, segY } };
+      break;
+    }
+    case 'proc_lanternmoth':
+      state = { kind: 'lanternmoth', e: { ...base, kind: 'proc_lanternmoth', animPhase: ap, flapPhase: ap } };
+      break;
+    case 'proc_eyestalk':
+      state = { kind: 'eyestalk',   e: { ...base, kind: 'proc_eyestalk', animPhase: ap, stalkPhase: ap, eyeAngle: ap } };
+      break;
+    case 'proc_jellyfish':
+      state = { kind: 'jellyfish',  e: { ...base, kind: 'proc_jellyfish', animPhase: ap, bellPhase: ap } };
+      break;
+    case 'proc_clothghost':
+      state = { kind: 'clothghost', e: { ...base, kind: 'proc_clothghost', animPhase: ap, flutterPhase: ap } };
+      break;
+    case 'proc_plantturret':
+      // Position the plant turret slightly lower so the stem and flower both fit.
+      state = { kind: 'plantturret', e: { ...base, x: cx, y: cy + 4, kind: 'proc_plantturret', animPhase: ap, stemPhase: ap, fireTimerMs: 9999, rootX: cx, rootY: cy + 4 } };
+      break;
+    case 'proc_gearinsect':
+      state = { kind: 'gearinsect', e: { ...base, kind: 'proc_gearinsect', animPhase: ap, gearAngle: ap, legPhase: ap } };
+      break;
+    case 'proc_spidercrawler':
+      state = { kind: 'spidercrawler', e: { ...base, kind: 'proc_spidercrawler', animPhase: ap, legPhase: ap } };
+      break;
+    case 'proc_moteswarm':
+      state = { kind: 'moteswarm', e: { ...base, kind: 'proc_moteswarm', animPhase: ap, swarmAngle: ap, moteAngles: makeMoteAngles() } };
+      break;
+    case 'proc_shadowhand':
+      // Show fingers partially extended for a recognisable preview.
+      state = { kind: 'shadowhand', e: { ...base, kind: 'proc_shadowhand', animPhase: ap, graspPhase: 0, reachFraction: 0.55 } };
+      break;
+    default:
+      return canvas;
+  }
+
+  let lastTime = performance.now();
+  let rafId = 0;
+
+  function frame(t: number): void {
+    if (!canvas.isConnected) {
+      cancelAnimationFrame(rafId);
+      return;
+    }
+    if (state === null) return;
+
+    const dt = Math.min(t - lastTime, 50);
+    lastTime = t;
+
+    // Advance animation phases (all proc types use animPhase; some have extra phases).
+    const phaseStep = dt * 0.003;
+    const e = state.e;
+    e.animPhase += phaseStep;
+
+    // Advance type-specific phases.
+    switch (state.kind) {
+      case 'lanternmoth':   state.e.flapPhase    += phaseStep * 1.2; break;
+      case 'eyestalk':      state.e.stalkPhase   += phaseStep * 0.8; break;
+      case 'jellyfish':     state.e.bellPhase    += phaseStep * 0.9; break;
+      case 'clothghost':    state.e.flutterPhase += phaseStep * 1.1; break;
+      case 'plantturret':   state.e.stemPhase    += phaseStep * 0.5; break;
+      case 'gearinsect':    state.e.gearAngle    += phaseStep * 1.5; state.e.legPhase += phaseStep * 0.8; break;
+      case 'spidercrawler': state.e.legPhase     += phaseStep * 0.9; break;
+      case 'moteswarm':
+        state.e.swarmAngle += phaseStep * 0.6;
+        for (let i = 0; i < state.e.moteAngles.length; i++) {
+          state.e.moteAngles[i] += phaseStep * 0.8;
+        }
+        break;
+      case 'shadowhand':
+        // Oscillate the reach fraction so fingers appear to flex.
+        state.e.reachFraction = 0.4 + 0.35 * Math.sin(e.animPhase * 0.7);
+        break;
+      default: break;
+    }
+
+    drawCtx.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
+    drawCtx.fillStyle = 'rgba(0,0,0,0.55)';
+    drawCtx.fillRect(0, 0, ICON_SIZE, ICON_SIZE);
+
+    // Render using the real gameplay draw functions.
+    switch (state.kind) {
+      case 'dustwisp':      drawDustWispEnemies(drawCtx, [state.e]); break;
+      case 'ribbonworm':    drawRibbonWormEnemies(drawCtx, [state.e]); break;
+      case 'lanternmoth':   drawLanternMothEnemies(drawCtx, [state.e]); break;
+      case 'eyestalk':      drawEyeStalkEnemies(drawCtx, [state.e]); break;
+      case 'jellyfish':     drawJellyfishEnemies(drawCtx, [state.e]); break;
+      case 'clothghost':    drawClothGhostEnemies(drawCtx, [state.e]); break;
+      case 'plantturret':   drawPlantTurretEnemies(drawCtx, [state.e]); break;
+      case 'gearinsect':    drawGearInsectEnemies(drawCtx, [state.e]); break;
+      case 'spidercrawler': drawSpiderCrawlerEnemies(drawCtx, [state.e]); break;
+      case 'moteswarm':     drawMoteSwarmEnemies(drawCtx, [state.e]); break;
+      case 'shadowhand':    drawShadowHandEnemies(drawCtx, [state.e]); break;
+    }
+
+    rafId = requestAnimationFrame(frame);
+  }
+
+  rafId = requestAnimationFrame(frame);
+  return canvas;
+}
 
 export function drawPolygonPath(
   ctx: CanvasRenderingContext2D,
