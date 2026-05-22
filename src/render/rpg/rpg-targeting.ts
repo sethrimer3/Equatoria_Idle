@@ -19,13 +19,9 @@ import {
 export type { RpgTargetingCtx, RpgTargetingHandle, TargetCollectionOptions } from './rpg-targeting-types';
 
 export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
-
   let targetedEnemy: object | null = null;
 
   function tryTargetEnemyAt(tapX: number, tapY: number): void {
-    // Manual tap-to-target is currently disabled by design — the function clears
-    // the stored target so the next getTargetedEnemy() call falls back to the
-    // closest automatic target.  The tap position is received but not yet used.
     void tapX;
     void tapY;
     targetedEnemy = null;
@@ -50,7 +46,6 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.elite) return ctx.damageEliteEnemy(target.elite, rawDamage, defPierceRatio);
     if (target.alivenParticle && target.alivenGroup) return ctx.damageAlivenParticle(target.alivenParticle, target.alivenGroup, rawDamage);
     if (target.boss) return ctx.damageBossEnemy(rawDamage, defPierceRatio);
-    // Procedural creatures
     if (target.dustWisp) return ctx.damageDustWispEnemy(target.dustWisp, rawDamage, defPierceRatio);
     if (target.ribbonWorm) return ctx.damageRibbonWormEnemy(target.ribbonWorm, rawDamage, defPierceRatio);
     if (target.lanternMoth) return ctx.damageLanternMothEnemy(target.lanternMoth, rawDamage, defPierceRatio);
@@ -62,6 +57,14 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.spiderCrawler) return ctx.damageSpiderCrawlerEnemy(target.spiderCrawler, rawDamage, defPierceRatio);
     if (target.moteSwarm) return ctx.damageMoteSwarmEnemy(target.moteSwarm, rawDamage, defPierceRatio);
     if (target.shadowHand) return ctx.damageShadowHandEnemy(target.shadowHand, rawDamage, defPierceRatio);
+    if (target.sandFish) return ctx.damageSandFishEnemy(target.sandFish, rawDamage, defPierceRatio);
+    if (target.quartzFish) return ctx.damageQuartzFishEnemy(target.quartzFish, rawDamage, defPierceRatio, bypassShield);
+    if (target.rubyFish) return ctx.damageRubyFishEnemy(target.rubyFish, rawDamage, defPierceRatio);
+    if (target.sunstoneFish) return ctx.damageSunstoneFishEnemy(target.sunstoneFish, rawDamage, defPierceRatio);
+    if (target.emeraldFish) return ctx.damageEmeraldFishEnemy(target.emeraldFish, rawDamage, defPierceRatio);
+    if (target.sapphireFish) return ctx.damageSapphireFishEnemy(target.sapphireFish, rawDamage, defPierceRatio);
+    if (target.amethystFish) return ctx.damageAmethystFishEnemy(target.amethystFish, rawDamage, defPierceRatio);
+    if (target.diamondFish) return ctx.damageDiamondFishEnemy(target.diamondFish, rawDamage, defPierceRatio);
     if (target.plantProj) return ctx.damagePlantProjectile(target.plantProj, rawDamage);
     return 0;
   }

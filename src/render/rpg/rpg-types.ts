@@ -319,6 +319,8 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
 
 export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
@@ -330,7 +332,10 @@ export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' 
   | 'boss'
   | 'proc_dustwisp' | 'proc_ribbonworm' | 'proc_lanternmoth' | 'proc_eyestalk'
   | 'proc_jellyfish' | 'proc_clothghost' | 'proc_plantturret' | 'proc_gearinsect'
-  | 'proc_spidercrawler' | 'proc_moteswarm' | 'proc_shadowhand' | 'proc_plantproj';
+  | 'proc_spidercrawler' | 'proc_moteswarm' | 'proc_shadowhand'
+  | 'proc_sandfish' | 'proc_quartzfish' | 'proc_rubyfish' | 'proc_sunstonefish'
+  | 'proc_emeraldfish' | 'proc_sapphirefish' | 'proc_amethystfish' | 'proc_diamondfish'
+  | 'proc_plantproj';
 
 export interface ClosestTarget {
   kind: TargetKind;
@@ -378,6 +383,14 @@ export interface ClosestTarget {
   spiderCrawler?: SpiderCrawlerEnemy;
   moteSwarm?: MoteSwarmEnemy;
   shadowHand?: ShadowHandEnemy;
+  sandFish?: SandFishEnemy;
+  quartzFish?: QuartzFishEnemy;
+  rubyFish?: RubyFishEnemy;
+  sunstoneFish?: SunstoneFishEnemy;
+  emeraldFish?: EmeraldFishEnemy;
+  sapphireFish?: SapphireFishEnemy;
+  amethystFish?: AmethystFishEnemy;
+  diamondFish?: DiamondFishEnemy;
   plantProj?: PlantProjectile;
 }
 

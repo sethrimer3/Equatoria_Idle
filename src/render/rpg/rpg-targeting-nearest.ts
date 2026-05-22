@@ -21,6 +21,8 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
 import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
@@ -222,6 +224,14 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_shadowhand', x: e.x, y: e.y, distSq: d, shadowHand: e }; }
   }
+  for (const e of ctx.sandFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_sandfish', x: e.x, y: e.y, distSq: d, sandFish: e }; } }
+  for (const e of ctx.quartzFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_quartzfish', x: e.x, y: e.y, distSq: d, quartzFish: e }; } }
+  for (const e of ctx.rubyFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_rubyfish', x: e.x, y: e.y, distSq: d, rubyFish: e }; } }
+  for (const e of ctx.sunstoneFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_sunstonefish', x: e.x, y: e.y, distSq: d, sunstoneFish: e }; } }
+  for (const e of ctx.emeraldFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_emeraldfish', x: e.x, y: e.y, distSq: d, emeraldFish: e }; } }
+  for (const e of ctx.sapphireFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_sapphirefish', x: e.x, y: e.y, distSq: d, sapphireFish: e }; } }
+  for (const e of ctx.amethystFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_amethystfish', x: e.x, y: e.y, distSq: d, amethystFish: e }; } }
+  for (const e of ctx.diamondFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_diamondfish', x: e.x, y: e.y, distSq: d, diamondFish: e }; } }
   for (const p of ctx.plantProjectiles) {
     if (p.hp <= 0) continue;
     const dx = p.x - mx, dy = p.y - my;
@@ -239,14 +249,18 @@ export function findClosestEnemy(
   | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
   | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
   | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
-  | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy | null {
+  | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
+  | SandFishEnemy | QuartzFishEnemy | RubyFishEnemy | SunstoneFishEnemy
+  | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy | null {
   let bestSq = rangeSq;
   let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
     | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
     | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
-    | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy | null = null;
+    | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
+    | SandFishEnemy | QuartzFishEnemy | RubyFishEnemy | SunstoneFishEnemy
+    | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy | null = null;
   const terrain = ctx.getTerrainState();
   const mx = ctx.mote.x, my = ctx.mote.y;
   for (const e of ctx.enemies) {
@@ -346,5 +360,13 @@ export function findClosestEnemy(
   for (const e of ctx.spiderCrawlerEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
   for (const e of ctx.moteSwarmEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
   for (const e of ctx.shadowHandEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.sandFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.quartzFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.rubyFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.sunstoneFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.emeraldFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.sapphireFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.amethystFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const e of ctx.diamondFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
   return best;
 }

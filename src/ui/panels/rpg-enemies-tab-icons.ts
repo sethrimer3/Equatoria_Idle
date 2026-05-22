@@ -19,15 +19,25 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from '../../render/rpg/rpg-procedural-types';
 import {
   drawDustWispEnemies, drawRibbonWormEnemies, drawLanternMothEnemies,
   drawEyeStalkEnemies, drawJellyfishEnemies, drawClothGhostEnemies,
   drawPlantTurretEnemies, drawGearInsectEnemies, drawSpiderCrawlerEnemies,
   drawMoteSwarmEnemies, drawShadowHandEnemies,
+  drawSandFishEnemies, drawQuartzFishEnemies, drawRubyFishEnemies, drawSunstoneFishEnemies,
+  drawEmeraldFishEnemies, drawSapphireFishEnemies, drawAmethystFishEnemies, drawDiamondFishEnemies,
 } from '../../render/rpg/rpg-procedural-draw';
 import {
   RIBBONWORM_SEG_COUNT, MOTESWARM_MOTE_COUNT,
+  QUARTZFISH_SHIELD_HP,
+  RUBYFISH_DASH_WINDUP_MS,
+  SUNSTONEFISH_MINE_CD_MS,
+  SAPPHIREFISH_BOLT_CD_MS,
+  AMETHYSTFISH_TELEPORT_CD_MS,
+  DIAMONDFISH_ARMOR_OFF_MS,
 } from '../../render/rpg/rpg-procedural-constants';
 
 // ─── Icon canvas size ─────────────────────────────────────────────
@@ -179,7 +189,15 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
     | { kind: 'gearinsect';    e: GearInsectEnemy }
     | { kind: 'spidercrawler'; e: SpiderCrawlerEnemy }
     | { kind: 'moteswarm';     e: MoteSwarmEnemy }
-    | { kind: 'shadowhand';    e: ShadowHandEnemy };
+    | { kind: 'shadowhand';    e: ShadowHandEnemy }
+    | { kind: 'sandfish';      e: SandFishEnemy }
+    | { kind: 'quartzfish';    e: QuartzFishEnemy }
+    | { kind: 'rubyfish';      e: RubyFishEnemy }
+    | { kind: 'sunstonefish';  e: SunstoneFishEnemy }
+    | { kind: 'emeraldfish';   e: EmeraldFishEnemy }
+    | { kind: 'sapphirefish';  e: SapphireFishEnemy }
+    | { kind: 'amethystfish';  e: AmethystFishEnemy }
+    | { kind: 'diamondfish';   e: DiamondFishEnemy };
 
   let state: ProcState | null = null;
   const ap = Math.random() * Math.PI * 2;
@@ -243,6 +261,30 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
       // Show fingers partially extended for a recognisable preview.
       state = { kind: 'shadowhand', e: { ...base, kind: 'proc_shadowhand', animPhase: ap, graspPhase: 0, reachFraction: 0.55 } };
       break;
+    case 'proc_sandfish':
+      state = { kind: 'sandfish', e: { ...base, kind: 'proc_sandfish', animPhase: ap, swimAngle: 0, turnPhase: ap, lungeTimerMs: 1200 } };
+      break;
+    case 'proc_quartzfish':
+      state = { kind: 'quartzfish', e: { ...base, kind: 'proc_quartzfish', animPhase: ap, swimAngle: 0, turnPhase: ap, shieldHp: QUARTZFISH_SHIELD_HP, shieldBroken: false } };
+      break;
+    case 'proc_rubyfish':
+      state = { kind: 'rubyfish', e: { ...base, kind: 'proc_rubyfish', animPhase: ap, swimAngle: 0, turnPhase: ap, dashState: 'idle', dashTimerMs: RUBYFISH_DASH_WINDUP_MS, dashVx: 0, dashVy: 0 } };
+      break;
+    case 'proc_sunstonefish':
+      state = { kind: 'sunstonefish', e: { ...base, kind: 'proc_sunstonefish', animPhase: ap, swimAngle: 0, turnPhase: ap, mineTimerMs: SUNSTONEFISH_MINE_CD_MS } };
+      break;
+    case 'proc_emeraldfish':
+      state = { kind: 'emeraldfish', e: { ...base, kind: 'proc_emeraldfish', animPhase: ap, swimAngle: 0, turnPhase: ap, isMini: false, splitDone: false } };
+      break;
+    case 'proc_sapphirefish':
+      state = { kind: 'sapphirefish', e: { ...base, kind: 'proc_sapphirefish', animPhase: ap, swimAngle: 0, turnPhase: ap, boltTimerMs: SAPPHIREFISH_BOLT_CD_MS } };
+      break;
+    case 'proc_amethystfish':
+      state = { kind: 'amethystfish', e: { ...base, kind: 'proc_amethystfish', animPhase: ap, swimAngle: 0, turnPhase: ap, teleportCdMs: AMETHYSTFISH_TELEPORT_CD_MS } };
+      break;
+    case 'proc_diamondfish':
+      state = { kind: 'diamondfish', e: { ...base, kind: 'proc_diamondfish', animPhase: ap, swimAngle: 0, turnPhase: ap, armorActive: true, armorTimerMs: DIAMONDFISH_ARMOR_OFF_MS } };
+      break;
     default:
       return canvas;
   }
@@ -281,8 +323,17 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
         }
         break;
       case 'shadowhand':
-        // Oscillate the reach fraction so fingers appear to flex.
         state.e.reachFraction = 0.4 + 0.35 * Math.sin(e.animPhase * 0.7);
+        break;
+      case 'sandfish':
+      case 'quartzfish':
+      case 'rubyfish':
+      case 'sunstonefish':
+      case 'emeraldfish':
+      case 'sapphirefish':
+      case 'amethystfish':
+      case 'diamondfish':
+        state.e.swimAngle = Math.sin(e.animPhase * 0.9) * 0.35;
         break;
       default: break;
     }
@@ -304,6 +355,14 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
       case 'spidercrawler': drawSpiderCrawlerEnemies(drawCtx, [state.e]); break;
       case 'moteswarm':     drawMoteSwarmEnemies(drawCtx, [state.e]); break;
       case 'shadowhand':    drawShadowHandEnemies(drawCtx, [state.e]); break;
+      case 'sandfish':      drawSandFishEnemies(drawCtx, [state.e]); break;
+      case 'quartzfish':    drawQuartzFishEnemies(drawCtx, [state.e]); break;
+      case 'rubyfish':      drawRubyFishEnemies(drawCtx, [state.e]); break;
+      case 'sunstonefish':  drawSunstoneFishEnemies(drawCtx, [state.e]); break;
+      case 'emeraldfish':   drawEmeraldFishEnemies(drawCtx, [state.e]); break;
+      case 'sapphirefish':  drawSapphireFishEnemies(drawCtx, [state.e]); break;
+      case 'amethystfish':  drawAmethystFishEnemies(drawCtx, [state.e]); break;
+      case 'diamondfish':   drawDiamondFishEnemies(drawCtx, [state.e]); break;
     }
 
     rafId = requestAnimationFrame(frame);

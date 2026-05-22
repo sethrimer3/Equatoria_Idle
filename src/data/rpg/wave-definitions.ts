@@ -59,6 +59,14 @@
  *  'proc_spidercrawler' — 8-legged crawler, wave 26+
  *  'proc_moteswarm'     — orbiting mote cluster, wave 26+
  *  'proc_shadowhand'    — grasping dark hand, wave 32+
+ *  'proc_sandfish'      — lunging dune fish, wave 34+
+ *  'proc_quartzfish'    — shielded crystal fish, wave 38+
+ *  'proc_rubyfish'      — windup dash fish, wave 42+
+ *  'proc_sunstonefish'  — mine-laying ember fish, wave 46+
+ *  'proc_emeraldfish'   — splitting emerald fish, wave 50+
+ *  'proc_sapphirefish'  — bolt-firing blue fish, wave 54+
+ *  'proc_amethystfish'  — teleporting decoy fish, wave 58+
+ *  'proc_diamondfish'   — armored prismatic fish, wave 62+
  *
  * ── Boss ─────────────────────────────────────────────────────────
  *  'boss' — appears every 100 waves; escalating difficulty
@@ -419,6 +427,14 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   const spiderCrawlerCount = waveNumber >= 22  ? Math.min(1 + Math.floor((waveNumber - 21) * 0.08), 2) : 0;
   const moteSwarmCount     = waveNumber >= 26  ? Math.min(1 + Math.floor((waveNumber - 25) * 0.07), 2) : 0;
   const shadowHandCount    = waveNumber >= 32  ? Math.min(1 + Math.floor((waveNumber - 31) * 0.05), 2) : 0;
+  const sandFishCount      = waveNumber >= 34  ? Math.min(1 + Math.floor((waveNumber - 33) * 0.06), 2) : 0;
+  const quartzFishCount    = waveNumber >= 38  ? Math.min(1 + Math.floor((waveNumber - 37) * 0.05), 2) : 0;
+  const rubyFishCount      = waveNumber >= 42  ? Math.min(1 + Math.floor((waveNumber - 41) * 0.05), 2) : 0;
+  const sunstoneFishCount  = waveNumber >= 46  ? Math.min(1 + Math.floor((waveNumber - 45) * 0.05), 2) : 0;
+  const emeraldFishCount   = waveNumber >= 50  ? Math.min(1 + Math.floor((waveNumber - 49) * 0.05), 2) : 0;
+  const sapphireFishCount  = waveNumber >= 54  ? Math.min(1 + Math.floor((waveNumber - 53) * 0.05), 2) : 0;
+  const amethystFishCount  = waveNumber >= 58  ? Math.min(1 + Math.floor((waveNumber - 57) * 0.05), 2) : 0;
+  const diamondFishCount   = waveNumber >= 62  ? Math.min(1 + Math.floor((waveNumber - 61) * 0.04), 2) : 0;
   const delay = Math.max(130, 600 - waveNumber * 18);
   const spawns: WaveSpawn[] = [
     { enemyTypeId: 'laser',  count: laserCount,  spawnDelay: delay },
@@ -449,6 +465,14 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (waveNumber >= 22)  spawns.push({ enemyTypeId: 'proc_spidercrawler', count: spiderCrawlerCount, spawnDelay: delay + 850 });
   if (waveNumber >= 26)  spawns.push({ enemyTypeId: 'proc_moteswarm',     count: moteSwarmCount,     spawnDelay: delay + 900 });
   if (waveNumber >= 32)  spawns.push({ enemyTypeId: 'proc_shadowhand',    count: shadowHandCount,    spawnDelay: delay + 1050 });
+  if (waveNumber >= 34)  spawns.push({ enemyTypeId: 'proc_sandfish',      count: sandFishCount,      spawnDelay: delay + 1120 });
+  if (waveNumber >= 38)  spawns.push({ enemyTypeId: 'proc_quartzfish',    count: quartzFishCount,    spawnDelay: delay + 1180 });
+  if (waveNumber >= 42)  spawns.push({ enemyTypeId: 'proc_rubyfish',      count: rubyFishCount,      spawnDelay: delay + 1240 });
+  if (waveNumber >= 46)  spawns.push({ enemyTypeId: 'proc_sunstonefish',  count: sunstoneFishCount,  spawnDelay: delay + 1300 });
+  if (waveNumber >= 50)  spawns.push({ enemyTypeId: 'proc_emeraldfish',   count: emeraldFishCount,   spawnDelay: delay + 1360 });
+  if (waveNumber >= 54)  spawns.push({ enemyTypeId: 'proc_sapphirefish',  count: sapphireFishCount,  spawnDelay: delay + 1420 });
+  if (waveNumber >= 58)  spawns.push({ enemyTypeId: 'proc_amethystfish',  count: amethystFishCount,  spawnDelay: delay + 1480 });
+  if (waveNumber >= 62)  spawns.push({ enemyTypeId: 'proc_diamondfish',   count: diamondFishCount,   spawnDelay: delay + 1540 });
 
   // Aliven particle group spawns — each entry spawns one group (count always 1).
   // Capped at 1 group per wave to avoid overlapping too many swarms.
@@ -505,6 +529,14 @@ export const PROCEDURAL_WAVE_ENEMY_IDS: readonly string[] = [
   'proc_spidercrawler',
   'proc_moteswarm',
   'proc_shadowhand',
+  'proc_sandfish',
+  'proc_quartzfish',
+  'proc_rubyfish',
+  'proc_sunstonefish',
+  'proc_emeraldfish',
+  'proc_sapphirefish',
+  'proc_amethystfish',
+  'proc_diamondfish',
 ];
 
 /**

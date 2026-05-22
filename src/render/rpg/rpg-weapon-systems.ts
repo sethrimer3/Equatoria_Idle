@@ -113,6 +113,14 @@ export interface RpgWeaponCtx {
   spiderCrawlerEnemies: import('./rpg-procedural-types').SpiderCrawlerEnemy[];
   moteSwarmEnemies: import('./rpg-procedural-types').MoteSwarmEnemy[];
   shadowHandEnemies: import('./rpg-procedural-types').ShadowHandEnemy[];
+  sandFishEnemies: import('./rpg-procedural-types').SandFishEnemy[];
+  quartzFishEnemies: import('./rpg-procedural-types').QuartzFishEnemy[];
+  rubyFishEnemies: import('./rpg-procedural-types').RubyFishEnemy[];
+  sunstoneFishEnemies: import('./rpg-procedural-types').SunstoneFishEnemy[];
+  emeraldFishEnemies: import('./rpg-procedural-types').EmeraldFishEnemy[];
+  sapphireFishEnemies: import('./rpg-procedural-types').SapphireFishEnemy[];
+  amethystFishEnemies: import('./rpg-procedural-types').AmethystFishEnemy[];
+  diamondFishEnemies: import('./rpg-procedural-types').DiamondFishEnemy[];
   plantProjectiles: import('./rpg-procedural-types').PlantProjectile[];
 
   // Hit effects array (weapon functions push directly into this array)
@@ -158,6 +166,14 @@ export interface RpgWeaponCtx {
   damageSpiderCrawlerEnemy: (e: import('./rpg-procedural-types').SpiderCrawlerEnemy, raw: number, pierce: number) => number;
   damageMoteSwarmEnemy: (e: import('./rpg-procedural-types').MoteSwarmEnemy, raw: number, pierce: number) => number;
   damageShadowHandEnemy: (e: import('./rpg-procedural-types').ShadowHandEnemy, raw: number, pierce: number) => number;
+  damageSandFishEnemy: (e: import('./rpg-procedural-types').SandFishEnemy, raw: number, pierce: number) => number;
+  damageQuartzFishEnemy: (e: import('./rpg-procedural-types').QuartzFishEnemy, raw: number, pierce: number, bypassShield: boolean) => number;
+  damageRubyFishEnemy: (e: import('./rpg-procedural-types').RubyFishEnemy, raw: number, pierce: number) => number;
+  damageSunstoneFishEnemy: (e: import('./rpg-procedural-types').SunstoneFishEnemy, raw: number, pierce: number) => number;
+  damageEmeraldFishEnemy: (e: import('./rpg-procedural-types').EmeraldFishEnemy, raw: number, pierce: number) => number;
+  damageSapphireFishEnemy: (e: import('./rpg-procedural-types').SapphireFishEnemy, raw: number, pierce: number) => number;
+  damageAmethystFishEnemy: (e: import('./rpg-procedural-types').AmethystFishEnemy, raw: number, pierce: number) => number;
+  damageDiamondFishEnemy: (e: import('./rpg-procedural-types').DiamondFishEnemy, raw: number, pierce: number) => number;
   damagePlantProjectile: (p: import('./rpg-procedural-types').PlantProjectile, raw: number) => number;
 
   // Generic multi-type targeting and damage

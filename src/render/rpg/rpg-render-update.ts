@@ -30,6 +30,9 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
+  FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
@@ -134,7 +137,19 @@ export interface RpgEnemyUpdateArrays {
   spiderCrawlerEnemies: SpiderCrawlerEnemy[];
   moteSwarmEnemies: MoteSwarmEnemy[];
   shadowHandEnemies: ShadowHandEnemy[];
+  sandFishEnemies: SandFishEnemy[];
+  quartzFishEnemies: QuartzFishEnemy[];
+  rubyFishEnemies: RubyFishEnemy[];
+  sunstoneFishEnemies: SunstoneFishEnemy[];
+  emeraldFishEnemies: EmeraldFishEnemy[];
+  sapphireFishEnemies: SapphireFishEnemy[];
+  amethystFishEnemies: AmethystFishEnemy[];
+  diamondFishEnemies: DiamondFishEnemy[];
   plantProjectiles: PlantProjectile[];
+  fishMines: FishMine[];
+  fishSpikes: FishSpike[];
+  fishBolts: FishBolt[];
+  fishDecoys: FishDecoy[];
   teleportParticles: TeleportParticle[];
   bossProjectiles: BossProjectile[];
   luckyMotes: LuckyMote[];

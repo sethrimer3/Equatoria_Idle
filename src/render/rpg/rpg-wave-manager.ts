@@ -40,6 +40,9 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
+  FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
@@ -88,7 +91,19 @@ export interface WaveManagerCtx {
   spiderCrawlerEnemies: SpiderCrawlerEnemy[];
   moteSwarmEnemies: MoteSwarmEnemy[];
   shadowHandEnemies: ShadowHandEnemy[];
+  sandFishEnemies: SandFishEnemy[];
+  quartzFishEnemies: QuartzFishEnemy[];
+  rubyFishEnemies: RubyFishEnemy[];
+  sunstoneFishEnemies: SunstoneFishEnemy[];
+  emeraldFishEnemies: EmeraldFishEnemy[];
+  sapphireFishEnemies: SapphireFishEnemy[];
+  amethystFishEnemies: AmethystFishEnemy[];
+  diamondFishEnemies: DiamondFishEnemy[];
   plantProjectiles: PlantProjectile[];
+  fishMines: FishMine[];
+  fishSpikes: FishSpike[];
+  fishBolts: FishBolt[];
+  fishDecoys: FishDecoy[];
   bossProjectiles: BossProjectile[];
   spawnQueue: SpawnEntry[];
   luckyMotes: LuckyMote[];
@@ -145,7 +160,10 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     eliteEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
     spawnQueue,
     getPlayerHpRatio,
     beginWaveTerrain,
@@ -199,7 +217,13 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || jellyfishEnemies.length > 0 || clothGhostEnemies.length > 0
         || plantTurretEnemies.length > 0 || gearInsectEnemies.length > 0
         || spiderCrawlerEnemies.length > 0 || moteSwarmEnemies.length > 0
-        || shadowHandEnemies.length > 0 || plantProjectiles.length > 0
+        || shadowHandEnemies.length > 0
+        || sandFishEnemies.length > 0 || quartzFishEnemies.length > 0
+        || rubyFishEnemies.length > 0 || sunstoneFishEnemies.length > 0
+        || emeraldFishEnemies.length > 0 || sapphireFishEnemies.length > 0
+        || amethystFishEnemies.length > 0 || diamondFishEnemies.length > 0
+        || plantProjectiles.length > 0 || fishMines.length > 0 || fishSpikes.length > 0
+        || fishBolts.length > 0 || fishDecoys.length > 0
         || ctx.getBossEnemy() !== null) return;
     // Aliven groups alive: either still partially spawned or still have live particles
     for (const group of alivenGroups) {

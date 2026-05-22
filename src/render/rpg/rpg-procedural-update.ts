@@ -16,6 +16,9 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
+  FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 import {
   PROC_PATROL_SPEED, PROC_PATROL_TURN_MS, PROC_PATROL_DAMPING,
@@ -26,8 +29,13 @@ import {
   MOTESWARM_ORBIT_DIST,
   DUSTWISP_SIZE, RIBBONWORM_SIZE, LANTERNMOTH_SIZE, EYESTALK_SIZE, JELLYFISH_SIZE,
   CLOTHGHOST_SIZE, GEARINSECT_SIZE, SPIDERCRAWLER_SIZE, MOTESWARM_SIZE, SHADOWHAND_SIZE,
+  SANDFISH_SIZE, QUARTZFISH_SIZE, RUBYFISH_SIZE, SUNSTONEFISH_SIZE,
+  EMERALDFISH_SIZE, EMERALDFISH_MINI_SIZE, SAPPHIREFISH_SIZE, AMETHYSTFISH_SIZE, DIAMONDFISH_SIZE,
+  SANDFISH_LUNGE_CD_MS, RUBYFISH_DASH_WINDUP_MS, RUBYFISH_DASH_MS, RUBYFISH_RECOVERY_MS,
+  SUNSTONEFISH_MINE_CD_MS, SUNSTONEFISH_MINE_COUNT, SAPPHIREFISH_BOLT_CD_MS,
+  AMETHYSTFISH_TELEPORT_CD_MS, DIAMONDFISH_ARMOR_ON_MS, DIAMONDFISH_ARMOR_OFF_MS,
 } from './rpg-procedural-constants';
-import { makePlantProjectile } from './rpg-procedural-factories';
+import { makePlantProjectile, makeFishMine, makeFishSpike, makeFishBolt, makeFishDecoy } from './rpg-procedural-factories';
 import { TARGET_FRAME_MS, PLAYER_HIT_RADIUS } from './rpg-constants';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
@@ -375,6 +383,259 @@ export function updateShadowHandEnemies(
   }
 }
 
+
+// ── Fish helpers ────────────────────────────────────────────────────────────────
+
+type SwimEntity = {
+  x: number; y: number; vx: number; vy: number;
+  swimAngle: number; turnPhase: number;
+};
+
+function swimStep(e: SwimEntity, dt: number, ctx: RpgEnemyCtx, speedMul = 1): void {
+  e.turnPhase += dt * 0.04;
+  const dx = ctx.mote.x - e.x;
+  const dy = ctx.mote.y - e.y;
+  const targetAngle = Math.atan2(dy, dx) + Math.sin(e.turnPhase) * 0.45;
+  let delta = targetAngle - e.swimAngle;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  e.swimAngle += delta * 0.09;
+  const speed = PROC_PATROL_SPEED * 0.85 * speedMul;
+  e.vx = e.vx * 0.92 + Math.cos(e.swimAngle) * speed * 0.08;
+  e.vy = e.vy * 0.92 + Math.sin(e.swimAngle) * speed * 0.08;
+  e.x += e.vx * dt;
+  e.y += e.vy * dt;
+  ctx.clampEnemyToBounds(e);
+}
+
+function hitPlayerProjectile(
+  p: { x: number; y: number; atk: number; hasHit?: boolean },
+  ctx: RpgEnemyCtx,
+  radius: number,
+): boolean {
+  const dx = ctx.mote.x - p.x;
+  const dy = ctx.mote.y - p.y;
+  if (dx * dx + dy * dy <= (PLAYER_HIT_RADIUS + radius) ** 2) {
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    ctx.dealDamageToPlayerKnockback(p.atk, -dx / len, -dy / len);
+    if ('hasHit' in p) p.hasHit = true;
+    return true;
+  }
+  return false;
+}
+
+export function updateSandFishEnemies(enemies: SandFishEnemy[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    e.lungeTimerMs -= deltaMs;
+    swimStep(e, dt, ctx, 1.15);
+    if (e.lungeTimerMs <= 0) {
+      const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      e.vx += (dx / len) * 1.8;
+      e.vy += (dy / len) * 1.8;
+      e.lungeTimerMs = SANDFISH_LUNGE_CD_MS;
+    }
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), SANDFISH_SIZE / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateQuartzFishEnemies(enemies: QuartzFishEnemy[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    e.shieldBroken = e.shieldHp <= 0;
+    swimStep(e, dt, ctx, e.shieldBroken ? 1.05 : 0.85);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), QUARTZFISH_SIZE / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateRubyFishEnemies(enemies: RubyFishEnemy[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    e.dashTimerMs -= deltaMs;
+    if (e.dashState === 'idle') {
+      swimStep(e, dt, ctx, 1.1);
+      if (e.dashTimerMs <= 0) {
+        e.dashState = 'windup';
+        e.dashTimerMs = RUBYFISH_DASH_WINDUP_MS;
+      }
+    } else if (e.dashState === 'windup') {
+      const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      e.dashVx = (dx / len) * 3.4;
+      e.dashVy = (dy / len) * 3.4;
+      if (e.dashTimerMs <= 0) {
+        e.dashState = 'dash';
+        e.dashTimerMs = RUBYFISH_DASH_MS;
+      }
+    } else if (e.dashState === 'dash') {
+      e.vx = e.dashVx; e.vy = e.dashVy;
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.dashTimerMs <= 0) {
+        e.dashState = 'recovery';
+        e.dashTimerMs = RUBYFISH_RECOVERY_MS;
+      }
+    } else {
+      swimStep(e, dt, ctx, 0.75);
+      if (e.dashTimerMs <= 0) {
+        e.dashState = 'idle';
+        e.dashTimerMs = RUBYFISH_DASH_WINDUP_MS + RUBYFISH_RECOVERY_MS;
+      }
+    }
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), RUBYFISH_SIZE / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateSunstoneFishEnemies(enemies: SunstoneFishEnemy[], mines: FishMine[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    e.mineTimerMs -= deltaMs;
+    swimStep(e, dt, ctx, 0.95);
+    if (e.mineTimerMs <= 0) {
+      for (let i = 0; i < SUNSTONEFISH_MINE_COUNT; i++) {
+        const a = e.animPhase + (i / SUNSTONEFISH_MINE_COUNT) * Math.PI * 2;
+        mines.push(makeFishMine(e.x, e.y, Math.cos(a) * 0.35, Math.sin(a) * 0.35, e.atk));
+      }
+      e.mineTimerMs = SUNSTONEFISH_MINE_CD_MS;
+    }
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), SUNSTONEFISH_SIZE / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateEmeraldFishEnemies(enemies: EmeraldFishEnemy[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    swimStep(e, dt, ctx, e.isMini ? 1.25 : 1.0);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), (e.isMini ? EMERALDFISH_MINI_SIZE : EMERALDFISH_SIZE) / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateSapphireFishEnemies(enemies: SapphireFishEnemy[], bolts: FishBolt[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    e.boltTimerMs -= deltaMs;
+    swimStep(e, dt, ctx, 0.9);
+    if (e.boltTimerMs <= 0) {
+      const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      bolts.push(makeFishBolt(e.x, e.y, (dx / len) * 1.9, (dy / len) * 1.9, e.atk));
+      e.boltTimerMs = SAPPHIREFISH_BOLT_CD_MS;
+    }
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), SAPPHIREFISH_SIZE / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateAmethystFishEnemies(enemies: AmethystFishEnemy[], decoys: FishDecoy[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    e.teleportCdMs -= deltaMs;
+    swimStep(e, dt, ctx, 1.0);
+    if (e.teleportCdMs <= 0) {
+      decoys.push(makeFishDecoy(e.x, e.y, e.swimAngle, e.animPhase));
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 48 + Math.random() * 28;
+      e.x = Math.max(10, Math.min(ctx.dim.w - 10, ctx.mote.x + Math.cos(angle) * dist));
+      e.y = Math.max(10, Math.min(ctx.dim.h - 10, ctx.mote.y + Math.sin(angle) * dist));
+      e.teleportCdMs = AMETHYSTFISH_TELEPORT_CD_MS;
+    }
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), AMETHYSTFISH_SIZE / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateDiamondFishEnemies(enemies: DiamondFishEnemy[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (const e of enemies) {
+    e.animPhase += deltaMs / 1000;
+    if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
+    e.armorTimerMs -= deltaMs;
+    if (e.armorTimerMs <= 0) {
+      e.armorActive = !e.armorActive;
+      e.armorTimerMs = e.armorActive ? DIAMONDFISH_ARMOR_ON_MS : DIAMONDFISH_ARMOR_OFF_MS;
+    }
+    swimStep(e, dt, ctx, e.armorActive ? 0.8 : 1.05);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), DIAMONDFISH_SIZE / 2);
+    contactDamage(e, dt, ctx);
+  }
+}
+
+export function updateFishMines(mines: FishMine[], spikes: FishSpike[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (let i = mines.length - 1; i >= 0; i--) {
+    const m = mines[i];
+    m.lifeMs -= deltaMs;
+    m.armedMs -= deltaMs;
+    m.x += m.vx * dt;
+    m.y += m.vy * dt;
+    if (m.lifeMs <= 0) { mines.splice(i, 1); continue; }
+    if (m.armedMs <= 0 && hitPlayerProjectile({ x: m.x, y: m.y, atk: m.atk }, ctx, 6)) {
+      for (let s = 0; s < 8; s++) {
+        const a = (s / 8) * Math.PI * 2;
+        spikes.push(makeFishSpike(m.x, m.y, Math.cos(a) * 2.4, Math.sin(a) * 2.4, Math.max(1, m.atk * 0.8)));
+      }
+      mines.splice(i, 1);
+    }
+  }
+}
+
+export function updateFishSpikes(spikes: FishSpike[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (let i = spikes.length - 1; i >= 0; i--) {
+    const s = spikes[i];
+    s.lifeMs -= deltaMs;
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    if (s.lifeMs <= 0 || s.hasHit) { spikes.splice(i, 1); continue; }
+    if (hitPlayerProjectile(s, ctx, 4)) spikes.splice(i, 1);
+  }
+}
+
+export function updateFishBolts(bolts: FishBolt[], ctx: RpgEnemyCtx, deltaMs: number): void {
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    const b = bolts[i];
+    b.lifeMs -= deltaMs;
+    const dx = ctx.mote.x - b.x, dy = ctx.mote.y - b.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    b.vx = b.vx * 0.97 + (dx / len) * 0.08;
+    b.vy = b.vy * 0.97 + (dy / len) * 0.08;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    if (b.lifeMs <= 0 || b.hasHit) { bolts.splice(i, 1); continue; }
+    if (hitPlayerProjectile(b, ctx, 4)) bolts.splice(i, 1);
+  }
+}
+
+export function updateFishDecoys(decoys: FishDecoy[], deltaMs: number): void {
+  for (let i = decoys.length - 1; i >= 0; i--) {
+    const d = decoys[i];
+    d.lifeMs -= deltaMs;
+    d.animPhase += deltaMs / 1000;
+    if (d.lifeMs <= 0) decoys.splice(i, 1);
+  }
+}
+
 /**
  * Convenience umbrella: updates all proc creature arrays in one call.
  * Called from rpg-render-update.ts runRpgUpdate.
@@ -392,7 +653,19 @@ export function updateProceduralEnemies(
     spiderCrawlerEnemies: SpiderCrawlerEnemy[];
     moteSwarmEnemies: MoteSwarmEnemy[];
     shadowHandEnemies: ShadowHandEnemy[];
+    sandFishEnemies: SandFishEnemy[];
+    quartzFishEnemies: QuartzFishEnemy[];
+    rubyFishEnemies: RubyFishEnemy[];
+    sunstoneFishEnemies: SunstoneFishEnemy[];
+    emeraldFishEnemies: EmeraldFishEnemy[];
+    sapphireFishEnemies: SapphireFishEnemy[];
+    amethystFishEnemies: AmethystFishEnemy[];
+    diamondFishEnemies: DiamondFishEnemy[];
     plantProjectiles: PlantProjectile[];
+    fishMines: FishMine[];
+    fishSpikes: FishSpike[];
+    fishBolts: FishBolt[];
+    fishDecoys: FishDecoy[];
   },
   ctx: RpgEnemyCtx,
   deltaMs: number,
@@ -409,4 +682,16 @@ export function updateProceduralEnemies(
   updateSpiderCrawlerEnemies(arrays.spiderCrawlerEnemies, ctx, deltaMs);
   updateMoteSwarmEnemies(arrays.moteSwarmEnemies, ctx, deltaMs);
   updateShadowHandEnemies(arrays.shadowHandEnemies, ctx, deltaMs);
+  updateSandFishEnemies(arrays.sandFishEnemies, ctx, deltaMs);
+  updateQuartzFishEnemies(arrays.quartzFishEnemies, ctx, deltaMs);
+  updateRubyFishEnemies(arrays.rubyFishEnemies, ctx, deltaMs);
+  updateSunstoneFishEnemies(arrays.sunstoneFishEnemies, arrays.fishMines, ctx, deltaMs);
+  updateEmeraldFishEnemies(arrays.emeraldFishEnemies, ctx, deltaMs);
+  updateSapphireFishEnemies(arrays.sapphireFishEnemies, arrays.fishBolts, ctx, deltaMs);
+  updateAmethystFishEnemies(arrays.amethystFishEnemies, arrays.fishDecoys, ctx, deltaMs);
+  updateDiamondFishEnemies(arrays.diamondFishEnemies, ctx, deltaMs);
+  updateFishMines(arrays.fishMines, arrays.fishSpikes, ctx, deltaMs);
+  updateFishSpikes(arrays.fishSpikes, ctx, deltaMs);
+  updateFishBolts(arrays.fishBolts, ctx, deltaMs);
+  updateFishDecoys(arrays.fishDecoys, deltaMs);
 }
