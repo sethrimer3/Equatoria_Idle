@@ -26,7 +26,8 @@ export type GameAction =
   | { kind: 'start_boss_fight'; bossId: number }
   | { kind: 'set_boss_speed'; pct: number }
   | { kind: 'set_invincibility_mode'; enabled: boolean }
-  | { kind: 'upgrade_loom_efficiency'; tierId: string };
+  | { kind: 'upgrade_loom_efficiency'; tierId: string }
+  | { kind: 'toggle_sand_blade' };
 
 export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 

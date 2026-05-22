@@ -89,9 +89,23 @@ export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: Damage
     ctx.shadowColor = dn.color;
     ctx.lineWidth = Math.max(2, Math.round(fontPx * 0.16));
     ctx.strokeStyle = '#000000';
-    ctx.fillStyle   = dn.color;
+
     const x = Math.round(dn.x);
     const y = Math.round(dn.y);
+
+    // Build gradient fill when both a source (weapon) and target (enemy) color are available.
+    // The gradient flows top-to-bottom: sourceColor at top → enemy color at bottom.
+    // This creates a "slashing" feel where the weapon color bleeds into the enemy color.
+    if (dn.sourceColor && dn.sourceColor !== dn.color) {
+      const halfH = Math.max(fontPx * 0.6, 4);
+      const grad = ctx.createLinearGradient(x, y - halfH, x, y + halfH);
+      grad.addColorStop(0, dn.sourceColor);
+      grad.addColorStop(1, dn.color);
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = dn.color;
+    }
+
     ctx.strokeText(dn.text, x, y);
     ctx.fillText(dn.text, x, y);
   }

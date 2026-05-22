@@ -172,6 +172,14 @@ export interface RpgSimState {
    * delay. Reset to false at the start of each new wave.
    */
   equipChangedDuringInterwave: boolean;
+  /**
+   * Whether the sand blade (default melee) is enabled.
+   * When disabled, the sand blade will not auto-attack and auto-move will not
+   * treat it as an available weapon. Useful when the player wants to stay
+   * at range using only ranged weapons.
+   * Defaults to true.
+   */
+  sandBladeEnabled: boolean;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -215,6 +223,7 @@ export function createRpgSimState(): RpgSimState {
     luckyMoteCollectedTimestampsMs: [],
     lowHpAccumulatedMs: 0,
     equipChangedDuringInterwave: false,
+    sandBladeEnabled: true,
   };
 }
 

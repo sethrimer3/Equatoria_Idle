@@ -229,6 +229,8 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.multiplierBoxes[i].progressXp = data.rpg.multiplierBoxes[i].progressXp ?? 0;
       }
     }
+    // v25+: sand blade enable/disable (default true for older saves)
+    state.rpg.sandBladeEnabled = data.rpg.sandBladeEnabled ?? true;
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

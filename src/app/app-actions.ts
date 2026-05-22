@@ -304,6 +304,11 @@ export function handleAction(
       if (!ok) audioSystem?.onError();
       break;
     }
+    case 'toggle_sand_blade': {
+      state.game.rpg.sandBladeEnabled = !state.game.rpg.sandBladeEnabled;
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
     case 'set_active_tab':
       state.activeTab = action.tabId;
       audioSystem?.onTabChange(action.tabId);

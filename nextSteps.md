@@ -1,10 +1,45 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#65**
+Current build: **#73**
 
 ---
 
 ## Build History Summary
+
+### Build #73 — Auto-move fix, quartz whip close-range, sand blade toggle, ruby damage coloring, gradient damage numbers
+
+**Auto-move melee range bug fix:**
+- `PLAYER_BASE_RANGE_PX=50` was used as the default stop distance even though the sand blade only reaches 30px (getSwordLength(1)).
+- New policy: when `sandBladeEnabled` and no diamond blade equipped, auto-move stops at `getSwordLength(1) × AUTO_MOVE_MELEE_STOP_MARGIN (0.82) ≈ 24.6px`, well inside actual swing reach.
+- Added `AUTO_MOVE_MELEE_STOP_MARGIN` and `AUTO_MOVE_CHAIN_WHIP_STOP_PX` constants to `rpg-constants.ts`.
+- Added detailed comments in `rpg-player-movement.ts` explaining the stop-distance policy.
+
+**Quartz whip auto-move:**
+- Quartz whip now uses `AUTO_MOVE_CHAIN_WHIP_STOP_PX = 10px` as its stop range, making the player advance very close to the enemy for reliable whip contact.
+
+**Sand blade Enable/Disable toggle:**
+- Added `sandBladeEnabled: boolean` to `RpgSimState` (defaults to `true`).
+- Added `toggle_sand_blade` action, handled in `app-actions.ts`.
+- Sand blade card now appears at the top of the RPG weapons tab with Enable/Disable toggle.
+- When disabled: sand blade does not auto-attack and auto-move does not use melee stop distance.
+- Save/load: persisted as `sandBladeEnabled` (v25+ optional field, defaults to `true` on old saves).
+
+**Ruby enemy damage-number coloring fix:**
+- `spawnHitVisualsAt` previously hardcoded `'#ffffff'` for all damage numbers.
+- Now passes the `color` parameter (enemy glow color, e.g., `RUBY_ENEMY_GLOW`) through to the damage number.
+- Ruby enemy hits now correctly show pale ruby-colored damage numbers.
+
+**Gradient damage numbers:**
+- Added optional `sourceColor?: string` to `DamageNumber` interface.
+- `spawnDamageNumber`, `spawnHitVisualsAt`, `spawnHitVisuals` all accept optional `sourceColor`.
+- `drawDamageNumbers` creates a `CanvasGradient` from `sourceColor` (weapon/top) to `color` (enemy/bottom) when `sourceColor` is present.
+- `performSingleAttack` uses `effectiveSourceColor` = weapon tier color (from `TIER_BY_ID`) to enable gradient.
+- Gradient reads: sand/gold → ruby for sand blade hits on ruby enemies; ruby red → quartz blue for ruby laser on quartz enemies; etc.
+
+**Save version note:**
+- `sandBladeEnabled` added as optional v25+ field. Save version constant not bumped (backward-compatible via `?? true`).
+
+---
 
 ### Build #65 — RPG wiring, XP reservoir, multiplier boxes, stat multipliers
 
@@ -127,7 +162,32 @@ Lowered sacrifice threshold (10,000→2,000), loom conversion cost (100→50), e
 
 ## Current Remaining Work
 
-### Build #50 follow-up (fluid modularization pass)
+### Build #73 follow-up — Remaining RPG polish items
+
+**Auto-move edge cases still to verify:**
+- Wall/corner enemy scenarios: manual verification recommended on enemies pinned to the arena boundary or a corner. The margin should absorb most cases but extreme corner pinning may need additional path-seeking if issues persist.
+- The `_findNearestEnemy` implementation returns the closest enemy regardless of whether the player can reach it. If a wall prevents approach to that enemy, no pathfinding correction currently exists. A potential future improvement: fall back to the second-nearest enemy if movement doesn't reduce distance to the nearest for several frames.
+
+**Gradient damage numbers — partial coverage:**
+- The `spawnHitVisualsAt` / `performSingleAttack` path supports gradients fully.
+- The following weapon paths use solid color only (no gradient) because enemy type is not readily accessible at the call site:
+  - `performMultiAttack` — uses hardcoded `'#50b464'` as both fill and hit color.
+  - `performAoeAttack` — uses fixed aoe color.
+  - Sand gatling collisions (`rpg-weapon-sand-collision.ts`) — uses `SAND_PROJ_COLOR`.
+  - Emerald missile, poison bolt, sunstone mine — use weapon-specific colors.
+  - Sword combo direct hits (`swordHitInArc`) — use `SWORD_COLOR` or `SAND_BLADE_COLORS`.
+- Future improvement: thread per-enemy glow colors through weapon-specific collision handlers or use a centralized `getEnemyGlowColor(enemy)` helper.
+
+**Sand blade — diamond blade interaction:**
+- When `diamond_bastion` is equipped, the sand blade is automatically suppressed. The sand blade card in the weapons tab does not explicitly call this out. Future UX: show a small label "Suppressed by Diamond Blade" when diamond_bastion is equipped.
+
+**Sand blade tier:**
+- The sand blade is always tier 1 in the auto-move stop calculation. If a future mechanic upgrades the sand blade's reach, `getSwordLength(1)` should be updated to reflect the current sand blade tier.
+
+**Multi-attack sourceColor:**
+- `performMultiAttack` was not updated with per-enemy `sourceColor`. All multi-attack numbers show solid `'#50b464'`. To fix: add an `shotColor` parameter to `performMultiAttack` and look up per-enemy glow colors (or accept it per call from `performWeaponAttack`).
+
+
 - **Manual verification recommended:** Run a gameplay session that includes normal movement, heavy combat, and explosion-rich waves to confirm fluid wake/fade behavior is visually identical before/after the extraction.
 - **Deferred low-risk optimization:** Consider squared-distance comparisons in some fluid speed checks only if profiling indicates `Math.sqrt` cost is meaningful on target mobile devices.
 - **Deferred structural refactor candidates:** `src/render/rpg/rpg-render.ts` (~991 LOC) and `src/render/particles/particle-system.ts` (~503 LOC) remain large and should be split further in focused passes.

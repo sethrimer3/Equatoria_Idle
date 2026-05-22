@@ -41,7 +41,7 @@ export interface WeaponTickCtx {
   /** Stats-panel DPS tracker — wraps callbacks to attribute damage. */
   readonly statsPanel: { withDamageSource: (id: string | null, fn: () => void) => void };
   /** Simulation state providing weapon tier look-up. */
-  readonly rpgSimState: Pick<RpgSimState, 'weaponTiersByWeaponId'>;
+  readonly rpgSimState: Pick<RpgSimState, 'weaponTiersByWeaponId' | 'sandBladeEnabled'>;
   /** Per-weapon countdown timers (ms until next auto-attack). Mutated in-place. */
   readonly weaponAttackTimers: Map<string, number>;
   /** Player mote position — used to anchor sand-drift pixel spawns. */
@@ -149,11 +149,12 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
     }
   }
 
-  // ── Sand blade default melee (active unless Diamond Blade is equipped) ───────
-  // Sand Blade is always the default melee weapon.  It is suppressed only when
-  // diamond_bastion is equipped — in that case the Diamond Sword takes over the
-  // melee slot.  All other equipped weapons coexist with the Sand Blade.
-  if (!equippedIds.has(DIAMOND_BLADE_ID)) {
+  // ── Sand blade default melee (active unless Diamond Blade is equipped or disabled) ──
+  // Sand Blade is always the default melee weapon.  It is suppressed when either:
+  //   (a) diamond_bastion is equipped — Diamond Sword takes over the melee slot entirely, OR
+  //   (b) rpgSimState.sandBladeEnabled is false — player explicitly disabled it (e.g., to
+  //       stay at ranged distance using only ranged weapons).
+  if (!equippedIds.has(DIAMOND_BLADE_ID) && ctx.rpgSimState.sandBladeEnabled) {
     weaponSystems.updateSandBlade(deltaMs);
     const sandState = weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY);
     if (sandState) {

@@ -57,13 +57,14 @@ export interface PlayerDamageHandle {
     text: string,
     ratio: number,
     color: string,
+    sourceColor?: string,
   ): void;
 
   /** Registers a hit-flash and shot-line visual at (tx, ty) and spawns a damage number. */
-  spawnHitVisualsAt(tx: number, ty: number, maxHp: number, dmg: number, color: string): void;
+  spawnHitVisualsAt(tx: number, ty: number, maxHp: number, dmg: number, color: string, sourceColor?: string): void;
 
   /** Registers a hit-flash and shot-line visual for a laser enemy and spawns a damage number. */
-  spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string): void;
+  spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string, sourceColor?: string): void;
 
   /**
    * Applies raw enemy ATK damage to the player after blocking a percentage
@@ -123,6 +124,7 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
     text: string,
     ratio: number,
     color: string,
+    sourceColor?: string,
   ): void {
     const clampedRatio = Math.min(1, Math.max(0, ratio));
     const isXp = isXpPopup(text);
@@ -151,10 +153,11 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       fontPx: Math.max(DAMAGE_NUM_MIN_FONT_PX, fontPx),
       color,
       timerMs: DAMAGE_NUM_DURATION_MS,
+      sourceColor,
     });
   }
 
-  function spawnHitVisualsAt(tx: number, ty: number, maxHp: number, dmg: number, color: string): void {
+  function spawnHitVisualsAt(tx: number, ty: number, maxHp: number, dmg: number, color: string, sourceColor?: string): void {
     hitEffects.push({ x: tx, y: ty, timerMs: HIT_EFFECT_DURATION_MS, color });
     shotLines.push({ x1: mote.x, y1: mote.y, x2: tx, y2: ty, timerMs: SHOT_LINE_DURATION_MS, color });
     const dx = tx - mote.x, dy = ty - mote.y;
@@ -172,12 +175,15 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
     if (dmg <= 0) {
       spawnDamageNumber(tx, ty, dirX, dirY, 'BLOCKED', 0.25, '#74c0fc');
     } else {
-      spawnDamageNumber(tx, ty, dirX, dirY, String(Math.round(dmg)), dmg / maxHp, '#ffffff');
+      // Use the enemy/target color (not a hardcoded white) so each enemy type shows
+      // distinct damage-number coloring. sourceColor (when provided) is the weapon/attacker
+      // color and enables a gradient fill from source → target in drawDamageNumbers.
+      spawnDamageNumber(tx, ty, dirX, dirY, String(Math.round(dmg)), dmg / maxHp, color, sourceColor);
     }
   }
 
-  function spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string): void {
-    spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, color);
+  function spawnHitVisuals(enemy: LaserEnemy, dmg: number, color: string, sourceColor?: string): void {
+    spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, color, sourceColor);
   }
 
   function dealDamageToPlayer(atkValue: number): void {

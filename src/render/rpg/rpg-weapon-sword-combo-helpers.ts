@@ -83,7 +83,7 @@ export interface SwordWeaponCtx {
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   alivenGroups: AlivenParticleGroup[];
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
-  spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
+  spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string, sourceColor?: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
 }

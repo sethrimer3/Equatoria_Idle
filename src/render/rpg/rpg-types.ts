@@ -87,8 +87,15 @@ export interface DamageNumber {
   vx: number; vy: number;
   text: string;
   fontPx: number;
+  /** Primary fill color. When sourceColor is also set, this is the gradient end (target/enemy) color. */
   color: string;
   timerMs: number;
+  /**
+   * Optional source (weapon/attacker) color for gradient fills.
+   * When present, the damage number renders a gradient from sourceColor (top/start)
+   * to color (bottom/end), making each hit visually reflect both who hit and what was hit.
+   */
+  sourceColor?: string;
 }
 
 /** Visual-only orbit particle for the equipped weapon. */

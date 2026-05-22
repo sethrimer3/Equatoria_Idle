@@ -19,6 +19,7 @@
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { TIER_BY_ID } from '../../data/tiers';
 import { PLAYER_BASE_RANGE_PX } from './rpg-constants';
 import type { LaserEnemy, SapphireMissile, RpgPlayerStats, SapphireEnemy } from './rpg-types';
 import type {
@@ -133,8 +134,8 @@ export interface RpgPlayerAttackCtx {
   damagePlantProjectile: (p: import('./rpg-procedural-types').PlantProjectile, raw: number) => number;
 
   // Visual spawners
-  spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string) => void;
-  spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
+  spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string, sourceColor?: string) => void;
+  spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string, sourceColor?: string) => void;
 
   // Fluid explosion
   fluid: {
@@ -268,5 +269,10 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const defPierceRatio = isPiercing
     ? Math.min(1, basePierce * Math.max(1, ctx.getWeaponPrcMultiplier(weaponId)))
     : 0;
-  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, '#ffd764');
+  // Resolve the weapon's source/shot color from its tier for gradient damage numbers.
+  // Default '#ffd764' is the player mote's sand/gold glow (used when no weapon or unknown tier).
+  const weaponShotColor = weaponDef
+    ? (TIER_BY_ID.get(weaponDef.costTierId as import('../../data/tiers').TierId)?.color ?? '#ffd764')
+    : '#ffd764';
+  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, weaponShotColor);
 }

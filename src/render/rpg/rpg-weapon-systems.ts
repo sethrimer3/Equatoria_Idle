@@ -168,9 +168,9 @@ export interface RpgWeaponCtx {
   getTargetedEnemy: () => ClosestTarget | null;
 
   // Visual spawners
-  spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
-  spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string) => void;
-  spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
+  spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string, sourceColor?: string) => void;
+  spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string, sourceColor?: string) => void;
+  spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string, sourceColor?: string) => void;
 
   // Fluid simulation
   fluid: {

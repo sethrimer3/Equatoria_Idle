@@ -94,6 +94,7 @@ export function serializeGameState(state: GameState): SaveData {
       secretAchievementFlags: Array.from(state.rpg.secretAchievementFlags),
       xpReservoir: state.rpg.xpReservoir,
       multiplierBoxes: state.rpg.multiplierBoxes.map(b => ({ level: b.level, progressXp: b.progressXp })),
+      sandBladeEnabled: state.rpg.sandBladeEnabled,
     },
     elapsedMs: state.elapsedMs,
     forge: {
