@@ -22,6 +22,7 @@ import { getWaveDefinition } from '../../data/rpg/wave-definitions';
 import { INTER_WAVE_DELAY_MS } from './rpg-constants';
 import { spawnEnemyById } from './rpg-enemy-spawn';
 import { removeDeadEnemiesImpl } from './rpg-wave-dead-enemies';
+import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import type {
   LaserEnemy, SapphireEnemy, SapphireMissile, SpawnEntry,
 } from './rpg-types';
@@ -117,6 +118,7 @@ export interface WaveManagerCtx {
   beginWaveTerrain(waveNumber: number): void;
   beginTopographicTerrainShrink(): void;
   isTopographicTerrainReadyForEnemySpawns(): boolean;
+  getTopographicTerrainState(): TopographicTerrainState | null;
 }
 
 // ── Handle returned to rpg-render.ts ─────────────────────────────────────

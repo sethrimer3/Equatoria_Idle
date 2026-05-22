@@ -62,6 +62,10 @@ import {
   recordAlivenSpawn,
   recordAlivenCapSkip,
 } from '../../dev/session-telemetry';
+import {
+  isPointInsideTopographicTerrain,
+  type TopographicTerrainState,
+} from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -76,6 +80,8 @@ export interface EnemySpawnCtx {
   getCurrentWave(): number;
   setBossEnemy(boss: BossEnemy | null): void;
   enterBossWave(): void;
+  /** Returns the current topographic terrain state, or null if none is active. */
+  getTopographicTerrainState(): TopographicTerrainState | null;
 
   // Enemy body arrays that receive newly spawned entities
   enemies: LaserEnemy[];
@@ -126,6 +132,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   const minDist  = 80;
   let spawnX = 0, spawnY = 0, attempts = 0;
   const wn = ctx.getCurrentWave();
+  const terrain = ctx.getTopographicTerrainState();
 
   if (enemyTypeId === 'laser') {
     const half = LASER_ENEMY_SIZE / 2;
@@ -133,7 +140,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - LASER_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - LASER_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.enemies.push(makeLaserEnemy(spawnX, spawnY, wn));
@@ -143,7 +151,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - SAPPHIRE_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - SAPPHIRE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY, wn));
@@ -153,7 +162,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - EMERALD_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - EMERALD_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.emeraldEnemies.push(makeEmeraldEnemy(spawnX, spawnY, wn));
@@ -163,7 +173,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - AMBER_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - AMBER_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.amberEnemies.push(makeAmberEnemy(spawnX, spawnY, wn));
@@ -181,7 +192,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - QUARTZ_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - QUARTZ_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.quartzEnemies.push(makeQuartzEnemy(spawnX, spawnY, wn));
@@ -191,7 +203,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - RUBY_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - RUBY_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.rubyEnemies.push(makeRubyEnemy(spawnX, spawnY, wn));
@@ -201,7 +214,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - SUNSTONE_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - SUNSTONE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.sunstoneEnemies.push(makeSunstoneEnemy(spawnX, spawnY, wn));
@@ -211,7 +225,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - CITRINE_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - CITRINE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.citrineEnemies.push(makeCitrineEnemy(spawnX, spawnY, wn));
@@ -221,7 +236,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - IOLITE_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - IOLITE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.ioliteEnemies.push(makeIoliteEnemy(spawnX, spawnY, wn));
@@ -231,7 +247,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - AMETHYST_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - AMETHYST_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.amethystEnemies.push(makeAmethystEnemy(spawnX, spawnY, wn));
@@ -241,7 +258,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - DIAMOND_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - DIAMOND_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.diamondEnemies.push(makeDiamondEnemy(spawnX, spawnY, wn));
@@ -259,7 +277,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - FRACTERYL_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - FRACTERYL_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.fracterylEnemies.push(makeFracterylEnemy(spawnX, spawnY, wn));
@@ -269,7 +288,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       spawnX = half + Math.random() * (widthPx  - EIGENSTEIN_ENEMY_SIZE);
       spawnY = half + Math.random() * (heightPx - EIGENSTEIN_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-      if (dx * dx + dy * dy >= minDist * minDist) break;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
     ctx.eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
@@ -325,7 +345,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
         spawnX = half + Math.random() * (widthPx  - procSize * 2);
         spawnY = half + Math.random() * (heightPx - procSize * 2);
         const dx = spawnX - mote.x; const dy = spawnY - mote.y;
-        if (dx * dx + dy * dy >= minDist * minDist) break;
+        if (dx * dx + dy * dy >= minDist * minDist
+            && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
         attempts++;
       } while (attempts < 20);
       if (enemyTypeId === 'proc_dustwisp')      ctx.dustWispEnemies.push(makeDustWispEnemy(spawnX, spawnY, wn));

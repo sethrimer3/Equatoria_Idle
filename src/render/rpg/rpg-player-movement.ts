@@ -31,6 +31,10 @@ import {
   AUTO_MOVE_MELEE_STOP_MARGIN, AUTO_MOVE_CHAIN_WHIP_STOP_PX,
   DIAMOND_BLADE_ID,
 } from './rpg-constants';
+import {
+  pushPointOutsideTopographicTerrain,
+  type TopographicTerrainState,
+} from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -76,6 +80,9 @@ export interface PlayerMovementCtx {
 
   /** Euler-fluid background (player movement injects force). */
   fluid: RpgFluid;
+
+  /** Returns the current topographic terrain state, or null if none is active. */
+  getTerrainState(): TopographicTerrainState | null;
 }
 
 /**
@@ -211,6 +218,24 @@ export function updatePlayerMovement(
   if (mote.x > widthPx  - half) { mote.x = widthPx  - half; mote.vx = 0; }
   if (mote.y < half)            { mote.y = half;            mote.vy = 0; }
   if (mote.y > heightPx - half) { mote.y = heightPx - half; mote.vy = 0; }
+
+  // ── Terrain push-out (works during growing, stable, and shrinking phases) ─
+  const terrainState = ctx.getTerrainState();
+  if (terrainState) {
+    const pushed = { x: 0, y: 0 };
+    if (pushPointOutsideTopographicTerrain(terrainState, mote.x, mote.y, pushed, half + 2)) {
+      // Zero out velocity components pointing into the terrain island.
+      const pushDx = pushed.x - mote.x;
+      const pushDy = pushed.y - mote.y;
+      const pushLen = Math.sqrt(pushDx * pushDx + pushDy * pushDy) || 1;
+      const nx = pushDx / pushLen;
+      const ny = pushDy / pushLen;
+      const velDot = mote.vx * nx + mote.vy * ny;
+      if (velDot < 0) { mote.vx -= velDot * nx; mote.vy -= velDot * ny; }
+      mote.x = pushed.x;
+      mote.y = pushed.y;
+    }
+  }
 
   // ── Trail update (distance-gated to prevent bunching at high Hz) ──
   const lastTrailIdx = (mote.trailHead - 1 + RPG_TRAIL_CAPACITY) % RPG_TRAIL_CAPACITY;

@@ -1,12 +1,38 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#74**
+Current build: **#76**
 
 ---
 
 ## Build History Summary
 
-### Build #74 — Enemy catalog audit: add all 11 procedural enemies, animated preview icons
+### Build #76 — Terrain integration: enemy spawn exclusion, player push-out, projectile blocking, LOS
+
+**Problem addressed:**
+The topographic terrain geometry helpers (`isPointInsideTopographicTerrain`, `segmentIntersectsTopographicTerrain`, `pushPointOutsideTopographicTerrain`) existed but were not yet wired into the live game systems.
+
+**Changes made:**
+
+1. **Enemy spawn exclusion** (`rpg-enemy-spawn.ts`) — already connected in a prior build via `getTopographicTerrainState()`. Verified that all spawn rejection loops call `isPointInsideTopographicTerrain`.
+
+2. **Player push-out** (`rpg-player-movement.ts`) — After position integration and arena clamping, call `pushPointOutsideTopographicTerrain` with a margin of `half + 2` px. Growth-aware (uses `growth01` scale). Velocity component toward the island is zeroed on collision to prevent sticking. Wired via new `getTerrainState()` on `PlayerMovementCtx`.
+
+3. **Projectile blocking** (9 files) — `segmentIntersectsTopographicTerrain` is now called after each projectile movement step. Any projectile whose segment from `(prevX, prevY)` to `(newX, newY)` crosses or enters terrain is immediately destroyed. Covered types:
+   - `SapphireMissile` (`rpg-enemy-updates-basic.ts`)
+   - `AmberShard` (`rpg-enemy-updates.ts`)
+   - `QuartzSpike`, `RubyBolt`, `CitrineBolt` (`rpg-enemy-updates-mid.ts`)
+   - `AmethystShard`, `DiamondShard`, `VoidTendril` (`rpg-enemy-updates-adv-early.ts`)
+   - `FracterylShard` (`rpg-enemy-updates-adv-late.ts`)
+   - `PlantProjectile` (`rpg-procedural-update.ts`) — loop converted from for-of to indexed for proper splice support
+
+4. **Line-of-sight blocking** (`rpg-targeting-nearest.ts`) — All enemy-body targets in `findClosestTarget` and `findClosestEnemy` are now filtered through a `isLosBlocked(terrain, mx, my, ex, ey)` helper. Projectile/shard/bolt targets remain always targetable (they're flying at the player and need to be destroyable regardless of terrain position). Wired via `getTerrainState()` on `RpgTargetingCtx`.
+
+5. **Context wiring** (`rpg-render.ts`, `rpg-targeting-types.ts`, `rpg-player-movement.ts`, `rpg-enemy-updates.ts`, `rpg-wave-manager.ts`) — Added `getTerrainState(): TopographicTerrainState | null` method to the relevant context interfaces; rpg-render.ts provides `() => topographicTerrainState` for each.
+
+---
+
+### Build #75 — Topographic terrain geometry helpers and refactor
+
 
 **Problem addressed:**
 The enemy bestiary (Enemies tab in the RPG overlay) was missing all 11 procedurally-animated enemy types. This build adds them to the catalog and renders them with animated previews.

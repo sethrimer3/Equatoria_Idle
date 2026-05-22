@@ -523,6 +523,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy, damagePlantProjectile,
     damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
+    getTerrainState: () => topographicTerrainState,
   });
 
   // ── Create wave manager ────────────────────────────────────────
@@ -567,6 +568,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (isTopographicTerrainGone(topographicTerrainState)) return true;
       return isTopographicTerrainReadyForEnemySpawns(topographicTerrainState);
     },
+    getTopographicTerrainState: () => topographicTerrainState,
     getPlayerHpRatio:        () => playerStats.maxHp > 0 ? playerStats.hp / playerStats.maxHp : 0,
   });
 
@@ -774,6 +776,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgSimState,
     getEffectiveEquippedIds,
     fluid,
+    getTerrainState: () => topographicTerrainState,
   };
 
   // ── Orbit projectile context (wired to rpg-orbit-projectile.ts) ─
@@ -824,6 +827,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     dealDamageToPlayer,
     dealDamageToPlayerKnockback,
     clampEnemyToBounds,
+    getTerrainState: () => topographicTerrainState,
   };
 
   // EliteEnemyCtx extends RpgEnemyCtx with the projectile arrays elites fire into.

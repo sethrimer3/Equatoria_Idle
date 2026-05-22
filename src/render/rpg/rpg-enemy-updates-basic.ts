@@ -28,6 +28,7 @@ import {
   SPEED_EPSILON, PLAYER_HIT_RADIUS,
 } from './rpg-constants';
 import { makeSapphireMissile } from './rpg-factories';
+import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Sapphire enemy system ──────────────────────────────────────────────────────
 
@@ -110,6 +111,7 @@ export function updateSapphireMissiles(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, fluid, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
     const m = sapphireMissiles[i];
     if (m.hp <= 0) { sapphireMissiles.splice(i, 1); continue; }
@@ -137,7 +139,13 @@ export function updateSapphireMissiles(
       m.vy = (m.vy / speed) * MISSILE_MAX_SPEED;
     }
 
+    const prevX = m.x, prevY = m.y;
     m.x += m.vx * dt; m.y += m.vy * dt;
+
+    // Destroy if the missile crossed terrain this step
+    if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, m.x, m.y)) {
+      sapphireMissiles.splice(i, 1); continue;
+    }
 
     // Inject missile motion into fluid every frame — produces the curved
     // heat-seeker trail required by the acceptance criteria.

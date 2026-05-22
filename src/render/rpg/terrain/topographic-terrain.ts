@@ -337,6 +337,48 @@ export function getTopographicTerrainSolidPolygons(state: TopographicTerrainStat
   return state.islands.map(island => island.solidOuterPolygon);
 }
 
+/**
+ * If `(x, y)` is inside any terrain island at its current growth scale, computes
+ * the nearest exit point (radially away from the island centre) and writes it into
+ * `outPos`.  Returns true and writes to `outPos` when a push occurred; returns
+ * false and copies `(x, y)` to `outPos` when no push is needed.
+ *
+ * The check is phase-aware: during the `growing` animation the polygon is scaled
+ * by `state.growth01` so the collision boundary matches the visible terrain.
+ * This is done by inverse-transforming the query point into the unscaled polygon
+ * space, which avoids allocating a temporary scaled polygon array.
+ *
+ * @param marginPx extra clearance beyond the island's effective outer radius (px)
+ */
+export function pushPointOutsideTopographicTerrain(
+  state: TopographicTerrainState,
+  x: number,
+  y: number,
+  outPos: { x: number; y: number },
+  marginPx: number,
+): boolean {
+  if (state.phase === 'hidden') { outPos.x = x; outPos.y = y; return false; }
+  const g = state.growth01;
+  if (g <= 0) { outPos.x = x; outPos.y = y; return false; }
+  for (const island of state.islands) {
+    // Inverse-scale the query point: check whether it lies inside the
+    // scaled polygon by mapping it back into the unscaled polygon space.
+    const xs = island.centerX + (x - island.centerX) / g;
+    const ys = island.centerY + (y - island.centerY) / g;
+    if (!isPointInPolygon(island.solidOuterPolygon, xs, ys)) continue;
+    // Push radially away from the island centre to the effective outer radius.
+    const dx = x - island.centerX;
+    const dy = y - island.centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const targetDist = island.outerRadius * g + marginPx;
+    outPos.x = island.centerX + (dx / dist) * targetDist;
+    outPos.y = island.centerY + (dy / dist) * targetDist;
+    return true;
+  }
+  outPos.x = x; outPos.y = y;
+  return false;
+}
+
 function drawTerrainDevOverlay(ctx: CanvasRenderingContext2D, state: TopographicTerrainState): void {
   ctx.save();
   ctx.font = '10px monospace';

@@ -27,6 +27,7 @@ import {
 } from './rpg-procedural-constants';
 import { makePlantProjectile } from './rpg-procedural-factories';
 import { TARGET_FRAME_MS, PLAYER_HIT_RADIUS } from './rpg-constants';
+import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Shared patrol helpers ──────────────────────────────────────────────────────
 
@@ -255,16 +256,24 @@ export function updatePlantProjectiles(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  for (const p of projectiles) {
+  const terrain = ctx.getTerrainState();
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
     p.lifeMs -= deltaMs;
+    if (p.lifeMs <= 0 || p.hp <= 0) { projectiles.splice(i, 1); continue; }
+    const prevX = p.x, prevY = p.y;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
+    if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, p.x, p.y)) {
+      projectiles.splice(i, 1); continue;
+    }
     if (p.hasHitPlayer) continue;
     const dx = ctx.mote.x - p.x, dy = ctx.mote.y - p.y;
     if (dx * dx + dy * dy <= (PLAYER_HIT_RADIUS + 3) ** 2) {
       ctx.dealDamageToPlayerKnockback(p.atk, p.vx, p.vy);
       p.hasHitPlayer = true;
       p.hp = 0;
+      projectiles.splice(i, 1);
     }
   }
 }
