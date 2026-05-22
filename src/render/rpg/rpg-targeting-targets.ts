@@ -15,15 +15,22 @@ import type {
   EigensteinEnemy,
   EliteEnemy,
 } from './rpg-enemy-types';
-import type { RpgTargetingCtx } from './rpg-targeting-types';
+import type { RpgTargetingCtx, TargetCollectionOptions } from './rpg-targeting-types';
+import { hasTopographicTerrainLineOfSight } from './terrain/topographic-terrain';
 
-export function collectEnemyBodyTargets(ctx: RpgTargetingCtx): ClosestTarget[] {
+export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetCollectionOptions): ClosestTarget[] {
+  const requireLos = opts?.requireLineOfSight ?? false;
+  const terrain = requireLos ? ctx.getTerrainState() : null;
+  const ox = opts?.originX ?? ctx.mote.x;
+  const oy = opts?.originY ?? ctx.mote.y;
+
   const targets: ClosestTarget[] = [];
   const addTarget = <T extends { x: number; y: number }>(
     kind: TargetKind,
     enemy: T,
     key: keyof ClosestTarget,
   ) => {
+    if (requireLos && !hasTopographicTerrainLineOfSight(terrain, ox, oy, enemy.x, enemy.y)) return;
     const dx = enemy.x - ctx.mote.x, dy = enemy.y - ctx.mote.y;
     targets.push({ kind, x: enemy.x, y: enemy.y, distSq: dx * dx + dy * dy, [key]: enemy } as ClosestTarget);
   };
@@ -47,6 +54,7 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx): ClosestTarget[] {
   for (const group of ctx.alivenGroups) {
     for (const p of group.particles) {
       if (!p.isAlive) continue;
+      if (requireLos && !hasTopographicTerrainLineOfSight(terrain, ox, oy, p.x, p.y)) continue;
       const dx = p.x - ctx.mote.x, dy = p.y - ctx.mote.y;
       targets.push({ kind: 'aliven_particle', x: p.x, y: p.y, distSq: dx * dx + dy * dy, alivenParticle: p, alivenGroup: group });
     }
@@ -66,8 +74,48 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx): ClosestTarget[] {
   for (const e of ctx.shadowHandEnemies) addTarget('proc_shadowhand', e, 'shadowHand');
   for (const p of ctx.plantProjectiles) {
     if (p.hp <= 0) continue;
+    // Plant projectiles are not LOS-filtered (they are already airborne toward the player)
     const dx = p.x - ctx.mote.x, dy = p.y - ctx.mote.y;
     targets.push({ kind: 'proc_plantproj', x: p.x, y: p.y, distSq: dx*dx+dy*dy, plantProj: p });
+  }
+  // ── Optional: flying projectile bodies ──────────────────────────────────────
+  if (opts?.includeProjectiles) {
+    for (const m of ctx.sapphireMissiles) {
+      const dx = m.x - ctx.mote.x, dy = m.y - ctx.mote.y;
+      targets.push({ kind: 'missile', x: m.x, y: m.y, distSq: dx*dx+dy*dy, missile: m });
+    }
+    for (const s of ctx.amberShards) {
+      const dx = s.x - ctx.mote.x, dy = s.y - ctx.mote.y;
+      targets.push({ kind: 'ambershard', x: s.x, y: s.y, distSq: dx*dx+dy*dy, ambershard: s });
+    }
+    for (const s of ctx.quartzSpikes) {
+      const dx = s.x - ctx.mote.x, dy = s.y - ctx.mote.y;
+      targets.push({ kind: 'quartzspike', x: s.x, y: s.y, distSq: dx*dx+dy*dy, quartzspike: s });
+    }
+    for (const b of ctx.rubyBolts) {
+      const dx = b.x - ctx.mote.x, dy = b.y - ctx.mote.y;
+      targets.push({ kind: 'rubybolt', x: b.x, y: b.y, distSq: dx*dx+dy*dy, rubybolt: b });
+    }
+    for (const b of ctx.citrineBolts) {
+      const dx = b.x - ctx.mote.x, dy = b.y - ctx.mote.y;
+      targets.push({ kind: 'citrinebolt', x: b.x, y: b.y, distSq: dx*dx+dy*dy, citrinebolt: b });
+    }
+    for (const s of ctx.amethystShards) {
+      const dx = s.x - ctx.mote.x, dy = s.y - ctx.mote.y;
+      targets.push({ kind: 'amethystshard', x: s.x, y: s.y, distSq: dx*dx+dy*dy, amethystshard: s });
+    }
+    for (const s of ctx.diamondShards) {
+      const dx = s.x - ctx.mote.x, dy = s.y - ctx.mote.y;
+      targets.push({ kind: 'diamondshard', x: s.x, y: s.y, distSq: dx*dx+dy*dy, diamondshard: s });
+    }
+    for (const t of ctx.voidTendrils) {
+      const dx = t.x - ctx.mote.x, dy = t.y - ctx.mote.y;
+      targets.push({ kind: 'voidtendril', x: t.x, y: t.y, distSq: dx*dx+dy*dy, voidtendril: t });
+    }
+    for (const s of ctx.fracterylShards) {
+      const dx = s.x - ctx.mote.x, dy = s.y - ctx.mote.y;
+      targets.push({ kind: 'fracterylshard', x: s.x, y: s.y, distSq: dx*dx+dy*dy, fracterylshard: s });
+    }
   }
   return targets;
 }
@@ -77,10 +125,16 @@ export function findClosestEnemyFrom(
   x: number,
   y: number,
   rangeSq: number,
+  opts?: TargetCollectionOptions,
 ): ClosestTarget | null {
+  // When LOS checking, default the origin to the query position (x, y) rather than the player mote.
+  const losOpts: TargetCollectionOptions | undefined = opts?.requireLineOfSight
+    ? { ...opts, originX: opts.originX ?? x, originY: opts.originY ?? y }
+    : opts;
+
   let best: ClosestTarget | null = null;
   let bestSq = rangeSq;
-  for (const target of collectEnemyBodyTargets(ctx)) {
+  for (const target of collectEnemyBodyTargets(ctx, losOpts)) {
     const dx = target.x - x, dy = target.y - y;
     const d = dx * dx + dy * dy;
     if (d <= bestSq) {

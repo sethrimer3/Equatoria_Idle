@@ -16,7 +16,7 @@ import {
   getTargetedEnemy,
 } from './rpg-targeting-targets';
 
-export type { RpgTargetingCtx, RpgTargetingHandle } from './rpg-targeting-types';
+export type { RpgTargetingCtx, RpgTargetingHandle, TargetCollectionOptions } from './rpg-targeting-types';
 
 export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
 
@@ -69,8 +69,8 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
   return {
     findClosestTarget: (rangeSq) => findClosestTarget(ctx, rangeSq),
     findClosestEnemy: (rangeSq) => findClosestEnemy(ctx, rangeSq),
-    collectEnemyBodyTargets: () => collectEnemyBodyTargets(ctx),
-    findClosestEnemyFrom: (x, y, rangeSq) => findClosestEnemyFrom(ctx, x, y, rangeSq),
+    collectEnemyBodyTargets: (opts) => collectEnemyBodyTargets(ctx, opts),
+    findClosestEnemyFrom: (x, y, rangeSq, opts) => findClosestEnemyFrom(ctx, x, y, rangeSq, opts),
     getTargetedEnemy: () => getTargetedEnemy(ctx, targetedEnemy),
     tryTargetEnemyAt,
     damageBodyTarget,

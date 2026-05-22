@@ -118,6 +118,23 @@ export interface RpgTargetingCtx {
   getTerrainState(): TopographicTerrainState | null;
 }
 
+/**
+ * Options for `collectEnemyBodyTargets` and `findClosestEnemyFrom`.
+ *
+ * All fields are optional — omitting an option keeps the existing behaviour
+ * (no LOS check, projectile bodies excluded).
+ */
+export interface TargetCollectionOptions {
+  /** Origin for LOS check (defaults to player mote position for collectEnemyBodyTargets,
+   *  or to the query (x, y) position for findClosestEnemyFrom). */
+  originX?: number;
+  originY?: number;
+  /** When true, excludes targets whose origin-to-target line is blocked by terrain. */
+  requireLineOfSight?: boolean;
+  /** When true, also includes flying projectiles (bolts, spikes, shards, missiles, tendrils). */
+  includeProjectiles?: boolean;
+}
+
 export interface RpgTargetingHandle {
   findClosestTarget(rangeSq: number): ClosestTarget | null;
   findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
@@ -126,8 +143,8 @@ export interface RpgTargetingHandle {
     | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy | null;
-  collectEnemyBodyTargets(): ClosestTarget[];
-  findClosestEnemyFrom(x: number, y: number, rangeSq: number): ClosestTarget | null;
+  collectEnemyBodyTargets(opts?: TargetCollectionOptions): ClosestTarget[];
+  findClosestEnemyFrom(x: number, y: number, rangeSq: number, opts?: TargetCollectionOptions): ClosestTarget | null;
   getTargetedEnemy(): ClosestTarget | null;
   tryTargetEnemyAt(tapX: number, tapY: number): void;
   damageBodyTarget(target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number;

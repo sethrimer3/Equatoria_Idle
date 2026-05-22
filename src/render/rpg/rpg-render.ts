@@ -480,9 +480,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    */
   function getTargetedEnemy(): ClosestTarget | null { return targeting.getTargetedEnemy(); }
 
-  function collectEnemyBodyTargets(): ClosestTarget[] { return targeting.collectEnemyBodyTargets(); }
+  function collectEnemyBodyTargets(opts?: import('./rpg-targeting-types').TargetCollectionOptions): ClosestTarget[] { return targeting.collectEnemyBodyTargets(opts); }
 
-  function findClosestEnemyFrom(x: number, y: number, rangeSq: number): ClosestTarget | null { return targeting.findClosestEnemyFrom(x, y, rangeSq); }
+  function findClosestEnemyFrom(x: number, y: number, rangeSq: number, opts?: import('./rpg-targeting-types').TargetCollectionOptions): ClosestTarget | null { return targeting.findClosestEnemyFrom(x, y, rangeSq, opts); }
 
   function damageBodyTarget(target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number { return targeting.damageBodyTarget(target, rawDamage, defPierceRatio, bypassShield); }
 
@@ -642,8 +642,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy, damagePlantProjectile,
     findClosestTarget:       (rangeSq) => findClosestTarget(rangeSq),
     findClosestEnemy:        (rangeSq) => findClosestEnemy(rangeSq),
-    collectEnemyBodyTargets: () => collectEnemyBodyTargets(),
-    findClosestEnemyFrom:    (px, py, rangeSq) => findClosestEnemyFrom(px, py, rangeSq),
+    collectEnemyBodyTargets: (opts?: import('./rpg-targeting-types').TargetCollectionOptions) => collectEnemyBodyTargets(opts),
+    findClosestEnemyFrom:    (px: number, py: number, rangeSq: number, opts?: import('./rpg-targeting-types').TargetCollectionOptions) => findClosestEnemyFrom(px, py, rangeSq, opts),
     getTargetedEnemy:        () => getTargetedEnemy(),
     damageBodyTarget:        (t, raw, pierce, bypass) => damageBodyTarget(t, raw, pierce, bypass),
     spawnDamageNumber:       (x, y, vx, vy, text, ratio, color, sourceColor) => spawnDamageNumber(x, y, vx, vy, text, ratio, color, sourceColor),
