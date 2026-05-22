@@ -1,10 +1,73 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#79**
+Current build: **#80**
 
 ---
 
 ## Build History Summary
+
+### Build #80 — Topographic terrain visual generation pass: shared island profiles
+
+**Problem addressed:**
+The terrain looked like glowing flower/atom doodles instead of topographic map contours.
+Each ring was independently generated with its own random frequencies, phases, and center
+offsets, causing rings to cross and look unrelated. Palettes were too neon, the outermost
+ring was given a special thick green-style border, and islands were small with high-frequency
+deformation.
+
+**Key generation change — shared `IslandShapeProfile` per island:**
+
+- Each island now generates one `IslandShapeProfile` (2–3 harmonics, frequencies 1–4,
+  low amplitudes 0.08–0.18 / 0.03–0.08 / 0.01–0.04) plus optional elongation (0–0.28).
+- All rings for the island are derived from the **same** profile: `radius(θ) = outerRadius × ringScale × shapeMultiplier(θ) × tinyPerturb`.
+- Per-ring perturbation is capped at 1–2.5%, well below the radial gap between adjacent
+  rings, guaranteeing **no ring crossings**.
+- Removed per-ring independent `freq1/freq2/freq3` and `centerOffsetX/Y` jitter that caused
+  rings to wander and cross.
+
+**Line hierarchy (index contours):**
+- Every 3rd ring (from innermost) is an **index contour**: lineWidth 1.2–1.5 px, alpha 0.70–0.88.
+- Normal rings: lineWidth 0.65–1.0 px, alpha 0.42–0.70.
+- Outermost ring no longer gets a special thick treatment — it's just another contour.
+
+**Palette update (less neon, more topographic):**
+- `mono`: neutral grays #c8c8c8→#585858, no glow.
+- `copper`: muted warm tones #a06030→#955028, very subtle glow (4% alpha).
+- `cyanTactical`: dark teal #186880→#127888, subtle glow (5% alpha) — no more bright cyan/green borders.
+- Glow width reduced from 3× to 2.5× line width.
+
+**Island sizing:**
+- `outerRadius` range increased from [25, 55] to [35, 80] px for more map-like scale.
+- Ring count range increased from [3, 7] to [2, 9].
+
+**Center dots:**
+- Center dots already existed only in dev mode (`terrainDevMode === true`) — confirmed dev-only.
+
+**New tests added (all pass):**
+- Rings have monotonically increasing average radii across multiple seeds.
+- No NaN or negative radius values in any ring.
+- Solid outer polygon has ≥ 32 points.
+- At least one island is generated per call.
+
+**All 86 tests pass. Build passes. CodeQL clean.**
+
+---
+
+### Remaining terrain gaps
+
+1. **`terrainAwareDirection`** — The left/right tangent probe steer avoids direct collision but can cause oscillation at concave corners. A path-following probe would be more stable.
+
+2. **Sunstone mines** — Mine placement and persistence are not terrain-checked (mines can be placed on terrain).
+
+3. **Ruby laser hit sweep** — `applyLaserBeamHitSweep` uses `terrainFirstIntersectionT` for beam truncation but damage eligibility still uses a simple distance check rather than verifying the target is before the truncated endpoint.
+
+4. **Further topographic polish ideas:**
+   - Add occasional "ridge" islands: elongated with a high elongationAmount value forced.
+   - Try a two-island "mountain range" cluster where islands share a nearby center.
+   - Experiment with a very subtle background fill gradient (dark center) for depth.
+   - Experiment with different alpha/transparency for the terrain area fill.
+
+---
 
 ### Build #79 — Terrain consistency pass: LOS API, elite/proc push-out, blink, vortex pull
 

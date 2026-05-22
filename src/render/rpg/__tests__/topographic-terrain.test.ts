@@ -8,6 +8,10 @@
  *     (circle centre outside polygon but edge within radius).
  *  4. terrainFirstIntersectionT returns less than 1 for a ray crossing terrain.
  *  5. hasTopographicTerrainLineOfSight returns false for a blocked ray.
+ *  6. generateTopographicTerrain produces rings with monotonically increasing
+ *     average radii (no ring crossings in the mean).
+ *  7. No ring contains NaN or negative radius values.
+ *  8. Each island polygon has at least RING_POINTS vertices.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -18,6 +22,7 @@ import {
   circleIntersectsTopographicTerrain,
   terrainFirstIntersectionT,
   hasTopographicTerrainLineOfSight,
+  generateTopographicTerrain,
 } from '../terrain/topographic-terrain';
 
 // ── Helper: build a minimal terrain state with one square island ──────────
@@ -170,5 +175,74 @@ describe('hasTopographicTerrainLineOfSight', () => {
 
   it('returns true when terrain is null', () => {
     expect(hasTopographicTerrainLineOfSight(null, 0, 0, 100, 100)).toBe(true);
+  });
+});
+
+// ── Shape-profile generation validation ───────────────────────────────────
+
+describe('generateTopographicTerrain — shared island profile', () => {
+  /**
+   * Computes the average radius of a ring by measuring each point's distance
+   * from the island centre.
+   */
+  function averageRingRadius(
+    ring: { points: Array<{ x: number; y: number }> },
+    cx: number,
+    cy: number,
+  ): number {
+    if (ring.points.length === 0) return 0;
+    let sum = 0;
+    for (const p of ring.points) {
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      sum += Math.sqrt(dx * dx + dy * dy);
+    }
+    return sum / ring.points.length;
+  }
+
+  it('produces rings with monotonically increasing average radii', () => {
+    // Run multiple seeds to check the invariant is stable.
+    for (const seed of [1, 42, 137, 999, 0xdeadbeef]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      for (const island of state.islands) {
+        for (let i = 1; i < island.rings.length; i++) {
+          const prevAvg = averageRingRadius(island.rings[i - 1], island.centerX, island.centerY);
+          const currAvg = averageRingRadius(island.rings[i], island.centerX, island.centerY);
+          expect(currAvg).toBeGreaterThan(prevAvg);
+        }
+      }
+    }
+  });
+
+  it('produces no NaN or negative radii in any ring point', () => {
+    for (const seed of [1, 42, 137, 999, 0xdeadbeef]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      for (const island of state.islands) {
+        for (const ring of island.rings) {
+          for (const p of ring.points) {
+            expect(Number.isFinite(p.x)).toBe(true);
+            expect(Number.isFinite(p.y)).toBe(true);
+            // Radius must be positive
+            const dx = p.x - island.centerX;
+            const dy = p.y - island.centerY;
+            expect(dx * dx + dy * dy).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
+  });
+
+  it('solid outer polygon has at least 32 points', () => {
+    for (const seed of [1, 42, 137]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      for (const island of state.islands) {
+        expect(island.solidOuterPolygon.length).toBeGreaterThanOrEqual(32);
+      }
+    }
+  });
+
+  it('produces at least one island per call', () => {
+    const state = generateTopographicTerrain(1, 12345, 800, 600);
+    expect(state.islands.length).toBeGreaterThanOrEqual(1);
   });
 });
