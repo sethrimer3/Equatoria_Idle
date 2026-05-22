@@ -38,6 +38,7 @@ import type {
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import { applyLaserBeamHitSweep } from './rpg-weapon-laser-beam-hits';
+import { terrainFirstIntersectionT, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -90,6 +91,8 @@ export interface LaserBeamWeaponCtx {
   alivenGroups: AlivenParticleGroup[];
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Handle returned to the caller ─────────────────────────────────────────
@@ -133,12 +136,20 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
     const dirX = dx / dist, dirY = dy / dist;
     laserBeamEffect = { active: true, startX: mote.x, startY: mote.y, dirX, dirY, timerMs: LASER_BEAM_VISIBLE_MS, endX: 0, endY: 0 };
 
-    // Compute the endpoint (extend to canvas edge)
+    // Compute the endpoint (extend to canvas edge, then truncate at terrain)
     let tMax = Infinity;
     if (dirX > 0)  tMax = Math.min(tMax, (dim.w  - mote.x) / dirX);
     if (dirX < 0)  tMax = Math.min(tMax, -mote.x / dirX);
     if (dirY > 0)  tMax = Math.min(tMax, (dim.h - mote.y) / dirY);
     if (dirY < 0)  tMax = Math.min(tMax, -mote.y / dirY);
+
+    // Terrain truncation: shorten beam to first terrain intersection.
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
+    if (terrain) {
+      const fraction = terrainFirstIntersectionT(terrain, mote.x, mote.y, dirX, dirY, tMax);
+      tMax = tMax * fraction;
+    }
+
     const endX = mote.x + dirX * tMax;
     const endY = mote.y + dirY * tMax;
 

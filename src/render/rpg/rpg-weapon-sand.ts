@@ -40,6 +40,7 @@ import type {
   BossEnemy,
 } from './rpg-enemy-types';
 import { checkSandProjectileHit } from './rpg-weapon-sand-collision';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -101,6 +102,8 @@ export interface SandWeaponCtx {
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Handle returned to the caller ─────────────────────────────────────────
@@ -136,12 +139,19 @@ export function createSandWeaponSystem(ctx: SandWeaponCtx): SandWeaponHandle {
 
   function updateSandProjectiles(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
 
     for (let i = sandProjectiles.length - 1; i >= 0; i--) {
       const p = sandProjectiles[i];
       p.lifeMs -= deltaMs;
       if (p.lifeMs <= 0) { sandProjectiles.splice(i, 1); continue; }
+      const prevX = p.x, prevY = p.y;
       p.x += p.vx * dt; p.y += p.vy * dt;
+
+      // Terrain blocking: destroy projectile if it crossed a solid island.
+      if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, p.x, p.y)) {
+        sandProjectiles.splice(i, 1); continue;
+      }
 
       // Inject sand-projectile motion into fluid.
       fluid.addForce({

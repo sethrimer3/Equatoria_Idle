@@ -46,6 +46,7 @@ import type {
 } from './rpg-enemy-types';
 import type { ClosestTarget } from './rpg-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
+import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import { createShipWeaponSystems } from './rpg-weapon-ships';
 import { createSandWeaponSystem } from './rpg-weapon-sand';
 import { createChainWeaponSystem } from './rpg-weapon-chain';
@@ -189,6 +190,8 @@ export interface RpgWeaponCtx {
   findEquippedWeaponIdByEffect: (effectKind: string) => string | null;
   getCachedLuckPercent: () => number;
   getEffectiveEquippedIds: () => Set<string>;
+  /** Returns the current topographic terrain state, or null if none is active. */
+  getTerrainState: () => TopographicTerrainState | null;
 }
 
 // ── Weapon system handle returned to rpg-render.ts ────────────────────────

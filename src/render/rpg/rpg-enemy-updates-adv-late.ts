@@ -30,6 +30,7 @@ import {
   makeFracterylShard,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
+import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Fracteryl enemy system ─────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ export function updateFracterylEnemies(
     if (enemy.x > dim.w - half) { enemy.x = dim.w - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
     if (enemy.y < half)         { enemy.y = half;           enemy.vy = Math.abs(enemy.vy) * 0.5; }
     if (enemy.y > dim.h - half) { enemy.y = dim.h - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    applyEnemyTerrainPushOut(enemy, terrain, half);
 
     enemy.burstTimerMs -= deltaMs;
     if (enemy.burstTimerMs <= 0) {
@@ -110,6 +112,7 @@ export function updateEigensteinEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim, fluid } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
     if (enemy.patrolTimerMs > 0) {
@@ -127,6 +130,7 @@ export function updateEigensteinEnemies(
     if (enemy.x > dim.w - half) { enemy.x = dim.w - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
     if (enemy.y < half)         { enemy.y = half;           enemy.vy = Math.abs(enemy.vy) * 0.5; }
     if (enemy.y > dim.h - half) { enemy.y = dim.h - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    applyEnemyTerrainPushOut(enemy, terrain, half);
 
     enemy.beamTimerMs -= deltaMs;
     if (enemy.beamTimerMs <= 0) {

@@ -16,6 +16,7 @@ import {
   LASER_PATROL_SPEED_MAX, LASER_PATROL_DAMPING, LASER_PATROL_TURN_MS,
   LASER_DECEL_FACTOR, ATTACK_TRAIL_CURVE_VARIATION,
   PATROL_TURN_DELAY_MIN_FACTOR, PATROL_TURN_DELAY_RANGE_FACTOR,
+  LASER_ENEMY_SIZE,
   SAPPHIRE_ENEMY_SIZE, SAPPHIRE_PATROL_SPEED, SAPPHIRE_PATROL_TURN_MS,
   SAPPHIRE_MISSILE_CD_MS, SAPPHIRE_MISSILE_JITTER,
   MISSILE_SPEED, MISSILE_SEEK_STR, MISSILE_MAX_SPEED, MISSILE_TRAIL_CAP,
@@ -29,6 +30,7 @@ import {
 } from './rpg-constants';
 import { makeSapphireMissile } from './rpg-factories';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
+import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 
 // ── Sapphire enemy system ──────────────────────────────────────────────────────
 
@@ -64,6 +66,7 @@ export function updateSapphireEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { fluid, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     // Patrol
     enemy.patrolTimerMs -= deltaMs;
@@ -82,8 +85,7 @@ export function updateSapphireEnemies(
     if (enemy.x > dim.w  - half)    { enemy.x = dim.w  - half;    enemy.vx = -Math.abs(enemy.vx) * 0.5; }
     if (enemy.y < half)             { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
     if (enemy.y > dim.h - half)     { enemy.y = dim.h - half;     enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-
-    // Inject sapphire-enemy movement into fluid.
+    applyEnemyTerrainPushOut(enemy, terrain, half);
     const sespd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
     if (sespd > 0.04) {
       fluid.addForce({
@@ -273,6 +275,7 @@ export function updateLaserEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { fluid } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     switch (enemy.phase) {
       case 'idle':       updateEnemyIdle(enemy, ctx, dt, deltaMs);       break;
@@ -281,6 +284,7 @@ export function updateLaserEnemies(
       case 'overshoot':  updateEnemyOvershoot(enemy, ctx, dt);           break;
       case 'cooldown':   updateEnemyCooldown(enemy, deltaMs);            break;
     }
+    applyEnemyTerrainPushOut(enemy, terrain, LASER_ENEMY_SIZE / 2);
     // Inject laser-enemy movement into fluid.
     const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
     if (espd > 0.05) {

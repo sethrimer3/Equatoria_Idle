@@ -31,6 +31,7 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, BossEnemy, SunstoneMine,
   EliteEnemy,
 } from './rpg-enemy-types';
+import { pushPointOutsideTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
 
@@ -81,6 +82,8 @@ export interface SunstoneWeaponCtx {
   // Game-flow callbacks
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => import('./terrain/topographic-terrain').TopographicTerrainState | null;
 }
 
 // ── Public handle ─────────────────────────────────────────────────────────────
@@ -109,8 +112,17 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
 
   function layMine(scaledDamage: number, tier: number): void {
     const aoeRadius = SUNSTONE_MINE_AOE_BASE_PX + (tier - 1) * SUNSTONE_MINE_AOE_PER_TIER_PX;
+    // Prevent mine from being placed inside terrain — push spawn point out.
+    let mx = mote.x, my = mote.y;
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
+    if (terrain) {
+      const out = { x: mx, y: my };
+      if (pushPointOutsideTopographicTerrain(terrain, mx, my, out, SUNSTONE_MINE_SIZE)) {
+        mx = out.x; my = out.y;
+      }
+    }
     sunstoneMines.push({
-      x: mote.x, y: mote.y,
+      x: mx, y: my,
       fuseMs: SUNSTONE_MINE_FUSE_MS,
       maxFuseMs: SUNSTONE_MINE_FUSE_MS,
       hp: SUNSTONE_MINE_HP,
