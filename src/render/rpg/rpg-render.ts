@@ -76,6 +76,9 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
+  FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
@@ -261,7 +264,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const spiderCrawlerEnemies: SpiderCrawlerEnemy[]   = [];
   const moteSwarmEnemies: MoteSwarmEnemy[]           = [];
   const shadowHandEnemies: ShadowHandEnemy[]         = [];
+  const sandFishEnemies: SandFishEnemy[]             = [];
+  const quartzFishEnemies: QuartzFishEnemy[]         = [];
+  const rubyFishEnemies: RubyFishEnemy[]             = [];
+  const sunstoneFishEnemies: SunstoneFishEnemy[]     = [];
+  const emeraldFishEnemies: EmeraldFishEnemy[]       = [];
+  const sapphireFishEnemies: SapphireFishEnemy[]     = [];
+  const amethystFishEnemies: AmethystFishEnemy[]     = [];
+  const diamondFishEnemies: DiamondFishEnemy[]       = [];
   const plantProjectiles: PlantProjectile[]          = [];
+  const fishMines: FishMine[]                        = [];
+  const fishSpikes: FishSpike[]                      = [];
+  const fishBolts: FishBolt[]                        = [];
+  const fishDecoys: FishDecoy[]                      = [];
 
   // ── Lucky mote drops (luck mechanic) ─────────────────────────
   const luckyMotes: LuckyMote[] = [];
@@ -308,7 +323,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
-    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy, damagePlantProjectile,
+    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
+    damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
+    damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
+    damagePlantProjectile,
   } = createDamageFns({ recordDps });
 
   // eslint-disable-next-line prefer-const
@@ -508,7 +526,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -520,7 +541,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
-    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy, damagePlantProjectile,
+    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
+    damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
+    damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
+    damagePlantProjectile,
     damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     getTerrainState: () => topographicTerrainState,
@@ -541,7 +565,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eliteEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
     bossProjectiles, spawnQueue, luckyMotes, fluid,
     getCachedLuckPercent,
     applyEquipmentStats: () => applyEquipmentStats(),
@@ -639,7 +666,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageBossEnemy:         (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
-    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy, damagePlantProjectile,
+    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
+    damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
+    damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
+    damagePlantProjectile,
     findClosestTarget:       (rangeSq) => findClosestTarget(rangeSq),
     findClosestEnemy:        (rangeSq) => findClosestEnemy(rangeSq),
     collectEnemyBodyTargets: (opts?: import('./rpg-targeting-types').TargetCollectionOptions) => collectEnemyBodyTargets(opts),
@@ -680,7 +710,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles,
     damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
   };
   weaponSystems = createRpgWeaponSystems(weaponCtx);
@@ -698,7 +731,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eliteEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -712,7 +748,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAlivenParticle:   (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
-    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy, damagePlantProjectile,
+    damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
+    damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
+    damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
+    damagePlantProjectile,
     spawnHitVisuals:      (enemy, dmg, color, sourceColor) => spawnHitVisuals(enemy, dmg, color, sourceColor),
     spawnHitVisualsAt:    (x, y, maxHp, dmg, color, sourceColor) => spawnHitVisualsAt(x, y, maxHp, dmg, color, sourceColor),
     fluid,
@@ -906,7 +945,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
     bossProjectiles, luckyMotes, luckyMotePopups, hitEffects, shotLines, damageNumbers,
     bossAttackState, weaponSystems, weaponAttackTimers,
     fluid: { reset: () => fluid.reset() },
@@ -956,7 +998,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
     getBossEnemy:         () => bossEnemy,
     getDanmakuSafeZone:   () => danmakuSafeZone,
     bossProjectiles, bossAttackState, teleportParticles,
@@ -993,7 +1038,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
     teleportParticles, bossProjectiles, luckyMotes, luckyMotePopups,
   };
   const updateCtx: RpgUpdateCtx = {

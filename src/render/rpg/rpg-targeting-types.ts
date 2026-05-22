@@ -29,6 +29,8 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 
@@ -73,6 +75,14 @@ export interface RpgTargetingCtx {
   spiderCrawlerEnemies: SpiderCrawlerEnemy[];
   moteSwarmEnemies: MoteSwarmEnemy[];
   shadowHandEnemies: ShadowHandEnemy[];
+  sandFishEnemies: SandFishEnemy[];
+  quartzFishEnemies: QuartzFishEnemy[];
+  rubyFishEnemies: RubyFishEnemy[];
+  sunstoneFishEnemies: SunstoneFishEnemy[];
+  emeraldFishEnemies: EmeraldFishEnemy[];
+  sapphireFishEnemies: SapphireFishEnemy[];
+  amethystFishEnemies: AmethystFishEnemy[];
+  diamondFishEnemies: DiamondFishEnemy[];
   plantProjectiles: PlantProjectile[];
   damageEnemy: (e: LaserEnemy, raw: number, pierce: number) => number;
   damageSapphireEnemy: (e: SapphireEnemy, raw: number, pierce: number, bypass: boolean) => number;
@@ -113,6 +123,14 @@ export interface RpgTargetingCtx {
   damageSpiderCrawlerEnemy: (e: SpiderCrawlerEnemy, raw: number, pierce: number) => number;
   damageMoteSwarmEnemy: (e: MoteSwarmEnemy, raw: number, pierce: number) => number;
   damageShadowHandEnemy: (e: ShadowHandEnemy, raw: number, pierce: number) => number;
+  damageSandFishEnemy: (e: SandFishEnemy, raw: number, pierce: number) => number;
+  damageQuartzFishEnemy: (e: QuartzFishEnemy, raw: number, pierce: number, bypassShield: boolean) => number;
+  damageRubyFishEnemy: (e: RubyFishEnemy, raw: number, pierce: number) => number;
+  damageSunstoneFishEnemy: (e: SunstoneFishEnemy, raw: number, pierce: number) => number;
+  damageEmeraldFishEnemy: (e: EmeraldFishEnemy, raw: number, pierce: number) => number;
+  damageSapphireFishEnemy: (e: SapphireFishEnemy, raw: number, pierce: number) => number;
+  damageAmethystFishEnemy: (e: AmethystFishEnemy, raw: number, pierce: number) => number;
+  damageDiamondFishEnemy: (e: DiamondFishEnemy, raw: number, pierce: number) => number;
   damagePlantProjectile: (p: PlantProjectile, raw: number) => number;
   /** Returns the current topographic terrain state, or null if none is active. */
   getTerrainState(): TopographicTerrainState | null;
@@ -142,7 +160,9 @@ export interface RpgTargetingHandle {
     | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
     | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
-    | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy | null;
+    | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
+    | SandFishEnemy | QuartzFishEnemy | RubyFishEnemy | SunstoneFishEnemy
+    | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy | null;
   collectEnemyBodyTargets(opts?: TargetCollectionOptions): ClosestTarget[];
   findClosestEnemyFrom(x: number, y: number, rangeSq: number, opts?: TargetCollectionOptions): ClosestTarget | null;
   getTargetedEnemy(): ClosestTarget | null;

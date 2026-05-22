@@ -1,5 +1,5 @@
 /**
- * rpg-procedural-types.ts — Type interfaces for the 11 procedurally-animated
+ * rpg-procedural-types.ts — Type interfaces for the procedurally-animated
  * creature types introduced in the Equatoria Idle RPG tab.
  *
  * Each interface follows the canonical pattern:
@@ -9,24 +9,6 @@
  *   animPhase — accumulated time accumulator for animation (seconds)
  *   hitFlashMs — remaining hit-flash overlay duration (ms)
  *   contactCdMs — countdown until contact damage can fire again (ms)
- *
- * PlantProjectile is the only projectile emitted by these creatures (by the
- * PlantTurret type).  All other creatures deal only contact damage.
- *
- * Enemy type IDs (used in wave-definitions.ts spawn lists).
- * All proc creatures first appear in procedural waves (26+); the wave-N+ figure
- * below reflects the procedural-generator threshold, not any pre-defined wave.
- *   'proc_dustwisp'     — Dust Wisp,             wave 26+ (generator threshold: 5)
- *   'proc_ribbonworm'   — Ribbon Worm,            wave 26+ (generator threshold: 7)
- *   'proc_lanternmoth'  — Lantern Moth,           wave 26+ (generator threshold: 8)
- *   'proc_eyestalk'     — Eye Stalk,              wave 26+ (generator threshold: 10)
- *   'proc_jellyfish'    — Floating Jellyfish,     wave 26+ (generator threshold: 12)
- *   'proc_clothghost'   — Cloth Ghost,            wave 26+ (generator threshold: 14)
- *   'proc_plantturret'  — Plant Turret,           wave 26+ (generator threshold: 16)
- *   'proc_gearinsect'   — Gear Insect,            wave 26+ (generator threshold: 19)
- *   'proc_spidercrawler'— Spider Crawler,         wave 26+ (generator threshold: 22)
- *   'proc_moteswarm'    — Magnetic Mote Swarm,    wave 26+ (generator threshold: 26)
- *   'proc_shadowhand'   — Shadow Hand,            wave 32+
  */
 
 // ── Dust Wisp ──────────────────────────────────────────────────────────────────
@@ -209,6 +191,65 @@ export interface ShadowHandEnemy {
   reachFraction: number;
 }
 
+// ── Fish enemies ───────────────────────────────────────────────────────────────
+interface BaseFishEnemy {
+  x: number; y: number;
+  vx: number; vy: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  animPhase: number;
+  hitFlashMs: number;
+  contactCdMs: number;
+  swimAngle: number;
+  turnPhase: number;
+}
+
+export interface SandFishEnemy extends BaseFishEnemy {
+  kind: 'proc_sandfish';
+  lungeTimerMs: number;
+}
+
+export interface QuartzFishEnemy extends BaseFishEnemy {
+  kind: 'proc_quartzfish';
+  shieldHp: number;
+  shieldBroken: boolean;
+}
+
+export interface RubyFishEnemy extends BaseFishEnemy {
+  kind: 'proc_rubyfish';
+  dashState: 'idle' | 'windup' | 'dash' | 'recovery';
+  dashTimerMs: number;
+  dashVx: number;
+  dashVy: number;
+}
+
+export interface SunstoneFishEnemy extends BaseFishEnemy {
+  kind: 'proc_sunstonefish';
+  mineTimerMs: number;
+}
+
+export interface EmeraldFishEnemy extends BaseFishEnemy {
+  kind: 'proc_emeraldfish';
+  isMini: boolean;
+  splitDone: boolean;
+}
+
+export interface SapphireFishEnemy extends BaseFishEnemy {
+  kind: 'proc_sapphirefish';
+  boltTimerMs: number;
+}
+
+export interface AmethystFishEnemy extends BaseFishEnemy {
+  kind: 'proc_amethystfish';
+  teleportCdMs: number;
+}
+
+export interface DiamondFishEnemy extends BaseFishEnemy {
+  kind: 'proc_diamondfish';
+  armorActive: boolean;
+  armorTimerMs: number;
+}
+
 // ── Plant Projectile ───────────────────────────────────────────────────────────
 /** Spore pod fired by the PlantTurret; dealt once on first hit then expires. */
 export interface PlantProjectile {
@@ -218,4 +259,36 @@ export interface PlantProjectile {
   atk: number;
   lifeMs: number;
   hasHitPlayer: boolean;
+}
+
+// ── Fish projectiles / visuals ─────────────────────────────────────────────────
+export interface FishMine {
+  x: number; y: number;
+  vx: number; vy: number;
+  armedMs: number;
+  lifeMs: number;
+  atk: number;
+}
+
+export interface FishSpike {
+  x: number; y: number;
+  vx: number; vy: number;
+  lifeMs: number;
+  atk: number;
+  hasHit: boolean;
+}
+
+export interface FishBolt {
+  x: number; y: number;
+  vx: number; vy: number;
+  lifeMs: number;
+  atk: number;
+  hasHit: boolean;
+}
+
+export interface FishDecoy {
+  x: number; y: number;
+  lifeMs: number;
+  swimAngle: number;
+  animPhase: number;
 }

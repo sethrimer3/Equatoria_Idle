@@ -23,6 +23,9 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
+  FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 import {
   DUSTWISP_SIZE, DUSTWISP_COLOR, DUSTWISP_GLOW,
@@ -36,6 +39,14 @@ import {
   SPIDERCRAWLER_SIZE, SPIDERCRAWLER_COLOR, SPIDERCRAWLER_GLOW,
   MOTESWARM_SIZE, MOTESWARM_COLOR, MOTESWARM_GLOW, MOTESWARM_ORBIT_DIST, MOTESWARM_MOTE_COUNT,
   SHADOWHAND_SIZE, SHADOWHAND_COLOR, SHADOWHAND_GLOW,
+  SANDFISH_SIZE, SANDFISH_COLOR, SANDFISH_GLOW,
+  QUARTZFISH_SIZE, QUARTZFISH_COLOR, QUARTZFISH_GLOW,
+  RUBYFISH_SIZE, RUBYFISH_COLOR, RUBYFISH_GLOW,
+  SUNSTONEFISH_SIZE, SUNSTONEFISH_COLOR, SUNSTONEFISH_GLOW,
+  EMERALDFISH_SIZE, EMERALDFISH_MINI_SIZE, EMERALDFISH_COLOR, EMERALDFISH_GLOW,
+  SAPPHIREFISH_SIZE, SAPPHIREFISH_COLOR, SAPPHIREFISH_GLOW,
+  AMETHYSTFISH_SIZE, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW,
+  DIAMONDFISH_SIZE, DIAMONDFISH_COLOR, DIAMONDFISH_GLOW,
   PLANT_PROJ_SIZE, PLANT_PROJ_COLOR, PLANT_PROJ_GLOW,
 } from './rpg-procedural-constants';
 
@@ -491,6 +502,193 @@ export function drawShadowHandEnemies(
   }
 }
 
+
+// ── Fish enemies and projectiles ───────────────────────────────────────────────
+
+function drawFishShape(
+  canvas: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  angle: number,
+  bodyColor: string,
+  glowColor: string,
+  opts?: { alpha?: number; diamond?: boolean },
+): void {
+  canvas.save();
+  canvas.translate(x, y);
+  canvas.rotate(angle);
+  if (opts?.alpha !== undefined) canvas.globalAlpha = opts.alpha;
+  applyGlow(canvas, glowColor, size + 4);
+  canvas.fillStyle = bodyColor;
+  canvas.beginPath();
+  canvas.ellipse(0, 0, size * 1.1, size * 0.68, 0, 0, Math.PI * 2);
+  canvas.fill();
+  canvas.beginPath();
+  canvas.moveTo(-size * 0.9, 0);
+  canvas.lineTo(-size * 1.8, -size * 0.65);
+  canvas.lineTo(-size * 1.7, size * 0.65);
+  canvas.closePath();
+  canvas.fill();
+  if (opts?.diamond) {
+    canvas.strokeStyle = '#ffffff';
+    canvas.lineWidth = 1.5;
+    canvas.beginPath();
+    canvas.moveTo(size * 0.2, -size * 0.7);
+    canvas.lineTo(size * 0.95, 0);
+    canvas.lineTo(size * 0.2, size * 0.7);
+    canvas.lineTo(-size * 0.4, 0);
+    canvas.closePath();
+    canvas.stroke();
+  }
+  canvas.fillStyle = '#ffffff';
+  canvas.beginPath();
+  canvas.arc(size * 0.7, -size * 0.15, Math.max(1.2, size * 0.18), 0, Math.PI * 2);
+  canvas.fill();
+  canvas.fillStyle = '#102030';
+  canvas.beginPath();
+  canvas.arc(size * 0.78, -size * 0.12, Math.max(0.7, size * 0.09), 0, Math.PI * 2);
+  canvas.fill();
+  clearGlow(canvas);
+  canvas.restore();
+}
+
+export function drawSandFishEnemies(canvas: CanvasRenderingContext2D, enemies: SandFishEnemy[]): void {
+  for (const e of enemies) {
+    drawFishShape(canvas, e.x, e.y, SANDFISH_SIZE, e.swimAngle, SANDFISH_COLOR, SANDFISH_GLOW);
+    drawHitFlash(canvas, e.x, e.y, SANDFISH_SIZE, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, SANDFISH_SIZE, hpFrac(e));
+  }
+}
+
+export function drawQuartzFishEnemies(canvas: CanvasRenderingContext2D, enemies: QuartzFishEnemy[]): void {
+  for (const e of enemies) {
+    drawFishShape(canvas, e.x, e.y, QUARTZFISH_SIZE, e.swimAngle, QUARTZFISH_COLOR, QUARTZFISH_GLOW);
+    if (!e.shieldBroken && e.shieldHp > 0) {
+      canvas.save();
+      canvas.strokeStyle = QUARTZFISH_GLOW;
+      canvas.globalAlpha = 0.6;
+      canvas.lineWidth = 1.5;
+      canvas.beginPath();
+      canvas.arc(e.x, e.y, QUARTZFISH_SIZE + 4, 0, Math.PI * 2);
+      canvas.stroke();
+      canvas.restore();
+    }
+    drawHitFlash(canvas, e.x, e.y, QUARTZFISH_SIZE, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, QUARTZFISH_SIZE, hpFrac(e));
+  }
+}
+
+export function drawRubyFishEnemies(canvas: CanvasRenderingContext2D, enemies: RubyFishEnemy[]): void {
+  for (const e of enemies) {
+    const alpha = e.dashState === 'windup' ? 0.65 : 1;
+    drawFishShape(canvas, e.x, e.y, RUBYFISH_SIZE, e.swimAngle, RUBYFISH_COLOR, RUBYFISH_GLOW, { alpha });
+    drawHitFlash(canvas, e.x, e.y, RUBYFISH_SIZE, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, RUBYFISH_SIZE, hpFrac(e));
+  }
+}
+
+export function drawSunstoneFishEnemies(canvas: CanvasRenderingContext2D, enemies: SunstoneFishEnemy[]): void {
+  for (const e of enemies) {
+    drawFishShape(canvas, e.x, e.y, SUNSTONEFISH_SIZE, e.swimAngle, SUNSTONEFISH_COLOR, SUNSTONEFISH_GLOW);
+    drawHitFlash(canvas, e.x, e.y, SUNSTONEFISH_SIZE, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, SUNSTONEFISH_SIZE, hpFrac(e));
+  }
+}
+
+export function drawEmeraldFishEnemies(canvas: CanvasRenderingContext2D, enemies: EmeraldFishEnemy[]): void {
+  for (const e of enemies) {
+    const size = e.isMini ? EMERALDFISH_MINI_SIZE : EMERALDFISH_SIZE;
+    drawFishShape(canvas, e.x, e.y, size, e.swimAngle, EMERALDFISH_COLOR, EMERALDFISH_GLOW, { alpha: e.isMini ? 0.9 : 1 });
+    drawHitFlash(canvas, e.x, e.y, size, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, size, hpFrac(e));
+  }
+}
+
+export function drawSapphireFishEnemies(canvas: CanvasRenderingContext2D, enemies: SapphireFishEnemy[]): void {
+  for (const e of enemies) {
+    drawFishShape(canvas, e.x, e.y, SAPPHIREFISH_SIZE, e.swimAngle, SAPPHIREFISH_COLOR, SAPPHIREFISH_GLOW);
+    drawHitFlash(canvas, e.x, e.y, SAPPHIREFISH_SIZE, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, SAPPHIREFISH_SIZE, hpFrac(e));
+  }
+}
+
+export function drawAmethystFishEnemies(canvas: CanvasRenderingContext2D, enemies: AmethystFishEnemy[]): void {
+  for (const e of enemies) {
+    drawFishShape(canvas, e.x, e.y, AMETHYSTFISH_SIZE, e.swimAngle, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW);
+    drawHitFlash(canvas, e.x, e.y, AMETHYSTFISH_SIZE, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, AMETHYSTFISH_SIZE, hpFrac(e));
+  }
+}
+
+export function drawDiamondFishEnemies(canvas: CanvasRenderingContext2D, enemies: DiamondFishEnemy[]): void {
+  for (const e of enemies) {
+    drawFishShape(canvas, e.x, e.y, DIAMONDFISH_SIZE, e.swimAngle, DIAMONDFISH_COLOR, DIAMONDFISH_GLOW, { diamond: e.armorActive });
+    if (e.armorActive) {
+      canvas.save();
+      canvas.strokeStyle = DIAMONDFISH_GLOW;
+      canvas.globalAlpha = 0.75;
+      canvas.lineWidth = 2;
+      canvas.beginPath();
+      canvas.arc(e.x, e.y, DIAMONDFISH_SIZE + 3, 0, Math.PI * 2);
+      canvas.stroke();
+      canvas.restore();
+    }
+    drawHitFlash(canvas, e.x, e.y, DIAMONDFISH_SIZE, e.hitFlashMs);
+    drawHpBar(canvas, e.x, e.y, DIAMONDFISH_SIZE, hpFrac(e));
+  }
+}
+
+export function drawFishMines(canvas: CanvasRenderingContext2D, mines: FishMine[]): void {
+  for (const m of mines) {
+    canvas.save();
+    applyGlow(canvas, SUNSTONEFISH_GLOW, 6);
+    canvas.globalAlpha = m.armedMs > 0 ? 0.75 : 1;
+    canvas.fillStyle = SUNSTONEFISH_COLOR;
+    canvas.beginPath();
+    canvas.arc(m.x, m.y, 4, 0, Math.PI * 2);
+    canvas.fill();
+    clearGlow(canvas);
+    canvas.restore();
+  }
+}
+
+export function drawFishSpikes(canvas: CanvasRenderingContext2D, spikes: FishSpike[]): void {
+  for (const s of spikes) {
+    canvas.save();
+    canvas.translate(s.x, s.y);
+    canvas.rotate(Math.atan2(s.vy, s.vx));
+    canvas.fillStyle = SUNSTONEFISH_GLOW;
+    canvas.beginPath();
+    canvas.moveTo(5, 0);
+    canvas.lineTo(-4, -2);
+    canvas.lineTo(-4, 2);
+    canvas.closePath();
+    canvas.fill();
+    canvas.restore();
+  }
+}
+
+export function drawFishBolts(canvas: CanvasRenderingContext2D, bolts: FishBolt[]): void {
+  for (const b of bolts) {
+    canvas.save();
+    applyGlow(canvas, SAPPHIREFISH_GLOW, 6);
+    canvas.fillStyle = SAPPHIREFISH_COLOR;
+    canvas.beginPath();
+    canvas.arc(b.x, b.y, 3, 0, Math.PI * 2);
+    canvas.fill();
+    clearGlow(canvas);
+    canvas.restore();
+  }
+}
+
+export function drawFishDecoys(canvas: CanvasRenderingContext2D, decoys: FishDecoy[]): void {
+  for (const d of decoys) {
+    const alpha = Math.max(0, d.lifeMs / 1500) * 0.5;
+    drawFishShape(canvas, d.x, d.y, AMETHYSTFISH_SIZE, d.swimAngle, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW, { alpha });
+  }
+}
+
 /**
  * Convenience umbrella: draws all proc creature arrays in one call.
  * Called from rpg-render-draw.ts drawRpgFrame.
@@ -511,7 +709,19 @@ export function drawProceduralEnemies(
     spiderCrawlerEnemies: SpiderCrawlerEnemy[];
     moteSwarmEnemies: MoteSwarmEnemy[];
     shadowHandEnemies: ShadowHandEnemy[];
+    sandFishEnemies: SandFishEnemy[];
+    quartzFishEnemies: QuartzFishEnemy[];
+    rubyFishEnemies: RubyFishEnemy[];
+    sunstoneFishEnemies: SunstoneFishEnemy[];
+    emeraldFishEnemies: EmeraldFishEnemy[];
+    sapphireFishEnemies: SapphireFishEnemy[];
+    amethystFishEnemies: AmethystFishEnemy[];
+    diamondFishEnemies: DiamondFishEnemy[];
     plantProjectiles: PlantProjectile[];
+    fishMines: FishMine[];
+    fishSpikes: FishSpike[];
+    fishBolts: FishBolt[];
+    fishDecoys: FishDecoy[];
   },
   _nowMs: number,
 ): void {
@@ -527,4 +737,16 @@ export function drawProceduralEnemies(
   drawSpiderCrawlerEnemies(canvas, ctx.spiderCrawlerEnemies);
   drawMoteSwarmEnemies(canvas, ctx.moteSwarmEnemies);
   drawShadowHandEnemies(canvas, ctx.shadowHandEnemies);
+  drawSandFishEnemies(canvas, ctx.sandFishEnemies);
+  drawQuartzFishEnemies(canvas, ctx.quartzFishEnemies);
+  drawRubyFishEnemies(canvas, ctx.rubyFishEnemies);
+  drawSunstoneFishEnemies(canvas, ctx.sunstoneFishEnemies);
+  drawEmeraldFishEnemies(canvas, ctx.emeraldFishEnemies);
+  drawSapphireFishEnemies(canvas, ctx.sapphireFishEnemies);
+  drawAmethystFishEnemies(canvas, ctx.amethystFishEnemies);
+  drawDiamondFishEnemies(canvas, ctx.diamondFishEnemies);
+  drawFishMines(canvas, ctx.fishMines);
+  drawFishSpikes(canvas, ctx.fishSpikes);
+  drawFishBolts(canvas, ctx.fishBolts);
+  drawFishDecoys(canvas, ctx.fishDecoys);
 }

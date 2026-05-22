@@ -31,6 +31,8 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
 import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
@@ -40,7 +42,11 @@ import {
   ELITE_IOLITE_GLOW, ELITE_NULLSTONE_GLOW, ELITE_QUARTZ_GLOW,
   ELITE_RUBY_GLOW, ELITE_SUNSTONE_GLOW,
 } from './rpg-enemy-constants';
-import { PROC_HIT_FLASH_MS } from './rpg-procedural-constants';
+import {
+  PROC_HIT_FLASH_MS,
+  SANDFISH_COLOR, QUARTZFISH_COLOR, RUBYFISH_COLOR, SUNSTONEFISH_COLOR,
+  EMERALDFISH_COLOR, SAPPHIREFISH_COLOR, AMETHYSTFISH_COLOR, DIAMONDFISH_COLOR,
+} from './rpg-procedural-constants';
 
 export interface DamageCtx {
   recordDps(dmg: number, color?: string): void;
@@ -358,6 +364,26 @@ export function createDamageFns(ctx: DamageCtx) {
   function damageSpiderCrawlerEnemy(e: SpiderCrawlerEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#a06850'); }
   function damageMoteSwarmEnemy(e: MoteSwarmEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#f0d860'); }
   function damageShadowHandEnemy(e: ShadowHandEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#484868'); }
+  function damageSandFishEnemy(e: SandFishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, SANDFISH_COLOR); }
+  function damageQuartzFishEnemy(e: QuartzFishEnemy, raw: number, pierce: number, bypassShield: boolean): number {
+    if (!bypassShield && !e.shieldBroken && e.shieldHp > 0) {
+      const shieldDmg = Math.max(MINIMUM_SHIELD_DAMAGE, raw);
+      e.shieldHp = Math.max(0, e.shieldHp - shieldDmg);
+      if (e.shieldHp <= 0) e.shieldBroken = true;
+      recordDps(shieldDmg, QUARTZFISH_COLOR);
+      return shieldDmg;
+    }
+    return _damageProcEnemy(e, raw, pierce, QUARTZFISH_COLOR);
+  }
+  function damageRubyFishEnemy(e: RubyFishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, RUBYFISH_COLOR); }
+  function damageSunstoneFishEnemy(e: SunstoneFishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, SUNSTONEFISH_COLOR); }
+  function damageEmeraldFishEnemy(e: EmeraldFishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, EMERALDFISH_COLOR); }
+  function damageSapphireFishEnemy(e: SapphireFishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, SAPPHIREFISH_COLOR); }
+  function damageAmethystFishEnemy(e: AmethystFishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, AMETHYSTFISH_COLOR); }
+  function damageDiamondFishEnemy(e: DiamondFishEnemy, raw: number, pierce: number): number {
+    const scaledRaw = e.armorActive ? raw * 0.4 : raw;
+    return _damageProcEnemy(e, scaledRaw, pierce, DIAMONDFISH_COLOR);
+  }
 
   /** Damage a plant projectile (no DEF). Returns actual damage dealt. */
   function damagePlantProjectile(p: PlantProjectile, rawDamage: number): number {
@@ -405,6 +431,14 @@ export function createDamageFns(ctx: DamageCtx) {
     damageSpiderCrawlerEnemy,
     damageMoteSwarmEnemy,
     damageShadowHandEnemy,
+    damageSandFishEnemy,
+    damageQuartzFishEnemy,
+    damageRubyFishEnemy,
+    damageSunstoneFishEnemy,
+    damageEmeraldFishEnemy,
+    damageSapphireFishEnemy,
+    damageAmethystFishEnemy,
+    damageDiamondFishEnemy,
     damagePlantProjectile,
   };
 }

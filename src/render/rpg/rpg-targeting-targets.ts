@@ -72,6 +72,14 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
   for (const e of ctx.spiderCrawlerEnemies) addTarget('proc_spidercrawler', e, 'spiderCrawler');
   for (const e of ctx.moteSwarmEnemies) addTarget('proc_moteswarm', e, 'moteSwarm');
   for (const e of ctx.shadowHandEnemies) addTarget('proc_shadowhand', e, 'shadowHand');
+  for (const e of ctx.sandFishEnemies) addTarget('proc_sandfish', e, 'sandFish');
+  for (const e of ctx.quartzFishEnemies) addTarget('proc_quartzfish', e, 'quartzFish');
+  for (const e of ctx.rubyFishEnemies) addTarget('proc_rubyfish', e, 'rubyFish');
+  for (const e of ctx.sunstoneFishEnemies) addTarget('proc_sunstonefish', e, 'sunstoneFish');
+  for (const e of ctx.emeraldFishEnemies) addTarget('proc_emeraldfish', e, 'emeraldFish');
+  for (const e of ctx.sapphireFishEnemies) addTarget('proc_sapphirefish', e, 'sapphireFish');
+  for (const e of ctx.amethystFishEnemies) addTarget('proc_amethystfish', e, 'amethystFish');
+  for (const e of ctx.diamondFishEnemies) addTarget('proc_diamondfish', e, 'diamondFish');
   for (const p of ctx.plantProjectiles) {
     if (p.hp <= 0) continue;
     // Plant projectiles are not LOS-filtered (they are already airborne toward the player)
@@ -166,6 +174,14 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       ctx.fracterylEnemies.includes(targetedEnemy as FracterylEnemy) ||
       ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy) ||
       ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy) ||
+      ctx.sandFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SandFishEnemy) ||
+      ctx.quartzFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').QuartzFishEnemy) ||
+      ctx.rubyFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').RubyFishEnemy) ||
+      ctx.sunstoneFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SunstoneFishEnemy) ||
+      ctx.emeraldFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').EmeraldFishEnemy) ||
+      ctx.sapphireFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SapphireFishEnemy) ||
+      ctx.amethystFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').AmethystFishEnemy) ||
+      ctx.diamondFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').DiamondFishEnemy) ||
       (ctx.bossEnemy === targetedEnemy);
 
     if (isAlive) {
@@ -221,6 +237,30 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       }
       if (ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy)) {
         return { kind: 'elite', x: e.x, y: e.y, distSq, elite: targetedEnemy as EliteEnemy };
+      }
+      if (ctx.sandFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SandFishEnemy)) {
+        return { kind: 'proc_sandfish', x: e.x, y: e.y, distSq, sandFish: targetedEnemy as import('./rpg-procedural-types').SandFishEnemy };
+      }
+      if (ctx.quartzFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').QuartzFishEnemy)) {
+        return { kind: 'proc_quartzfish', x: e.x, y: e.y, distSq, quartzFish: targetedEnemy as import('./rpg-procedural-types').QuartzFishEnemy };
+      }
+      if (ctx.rubyFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').RubyFishEnemy)) {
+        return { kind: 'proc_rubyfish', x: e.x, y: e.y, distSq, rubyFish: targetedEnemy as import('./rpg-procedural-types').RubyFishEnemy };
+      }
+      if (ctx.sunstoneFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SunstoneFishEnemy)) {
+        return { kind: 'proc_sunstonefish', x: e.x, y: e.y, distSq, sunstoneFish: targetedEnemy as import('./rpg-procedural-types').SunstoneFishEnemy };
+      }
+      if (ctx.emeraldFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').EmeraldFishEnemy)) {
+        return { kind: 'proc_emeraldfish', x: e.x, y: e.y, distSq, emeraldFish: targetedEnemy as import('./rpg-procedural-types').EmeraldFishEnemy };
+      }
+      if (ctx.sapphireFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SapphireFishEnemy)) {
+        return { kind: 'proc_sapphirefish', x: e.x, y: e.y, distSq, sapphireFish: targetedEnemy as import('./rpg-procedural-types').SapphireFishEnemy };
+      }
+      if (ctx.amethystFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').AmethystFishEnemy)) {
+        return { kind: 'proc_amethystfish', x: e.x, y: e.y, distSq, amethystFish: targetedEnemy as import('./rpg-procedural-types').AmethystFishEnemy };
+      }
+      if (ctx.diamondFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').DiamondFishEnemy)) {
+        return { kind: 'proc_diamondfish', x: e.x, y: e.y, distSq, diamondFish: targetedEnemy as import('./rpg-procedural-types').DiamondFishEnemy };
       }
       if (ctx.bossEnemy === targetedEnemy) {
         return { kind: 'boss', x: e.x, y: e.y, distSq, boss: ctx.bossEnemy };

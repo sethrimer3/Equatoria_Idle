@@ -24,6 +24,8 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
 import {
   LASER_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE,
@@ -39,6 +41,8 @@ import {
   DUSTWISP_SIZE, RIBBONWORM_SIZE, LANTERNMOTH_SIZE, EYESTALK_SIZE,
   JELLYFISH_SIZE, CLOTHGHOST_SIZE, PLANTTURRET_SIZE, GEARINSECT_SIZE,
   SPIDERCRAWLER_SIZE, MOTESWARM_SIZE, SHADOWHAND_SIZE,
+  SANDFISH_SIZE, QUARTZFISH_SIZE, RUBYFISH_SIZE, SUNSTONEFISH_SIZE,
+  EMERALDFISH_SIZE, SAPPHIREFISH_SIZE, AMETHYSTFISH_SIZE, DIAMONDFISH_SIZE,
 } from './rpg-procedural-constants';
 import {
   makeLaserEnemy, makeSapphireEnemy,
@@ -55,6 +59,8 @@ import {
   makeDustWispEnemy, makeRibbonWormEnemy, makeLanternMothEnemy, makeEyeStalkEnemy,
   makeJellyfishEnemy, makeClothGhostEnemy, makePlantTurretEnemy, makeGearInsectEnemy,
   makeSpiderCrawlerEnemy, makeMoteSwarmEnemy, makeShadowHandEnemy,
+  makeSandFishEnemy, makeQuartzFishEnemy, makeRubyFishEnemy, makeSunstoneFishEnemy,
+  makeEmeraldFishEnemy, makeSapphireFishEnemy, makeAmethystFishEnemy, makeDiamondFishEnemy,
 } from './rpg-procedural-factories';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
@@ -113,6 +119,14 @@ export interface EnemySpawnCtx {
   spiderCrawlerEnemies: SpiderCrawlerEnemy[];
   moteSwarmEnemies: MoteSwarmEnemy[];
   shadowHandEnemies: ShadowHandEnemy[];
+  sandFishEnemies: SandFishEnemy[];
+  quartzFishEnemies: QuartzFishEnemy[];
+  rubyFishEnemies: RubyFishEnemy[];
+  sunstoneFishEnemies: SunstoneFishEnemy[];
+  emeraldFishEnemies: EmeraldFishEnemy[];
+  sapphireFishEnemies: SapphireFishEnemy[];
+  amethystFishEnemies: AmethystFishEnemy[];
+  diamondFishEnemies: DiamondFishEnemy[];
 }
 
 // ── Spawn helper ──────────────────────────────────────────────────────────────
@@ -337,6 +351,10 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       'proc_plantturret': PLANTTURRET_SIZE, 'proc_gearinsect': GEARINSECT_SIZE,
       'proc_spidercrawler': SPIDERCRAWLER_SIZE, 'proc_moteswarm': MOTESWARM_SIZE,
       'proc_shadowhand': SHADOWHAND_SIZE,
+      'proc_sandfish': SANDFISH_SIZE, 'proc_quartzfish': QUARTZFISH_SIZE,
+      'proc_rubyfish': RUBYFISH_SIZE, 'proc_sunstonefish': SUNSTONEFISH_SIZE,
+      'proc_emeraldfish': EMERALDFISH_SIZE, 'proc_sapphirefish': SAPPHIREFISH_SIZE,
+      'proc_amethystfish': AMETHYSTFISH_SIZE, 'proc_diamondfish': DIAMONDFISH_SIZE,
     };
     const procSize = procSizeMap[enemyTypeId];
     if (procSize !== undefined) {
@@ -360,6 +378,14 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       else if (enemyTypeId === 'proc_spidercrawler') ctx.spiderCrawlerEnemies.push(makeSpiderCrawlerEnemy(spawnX, spawnY, wn));
       else if (enemyTypeId === 'proc_moteswarm')   ctx.moteSwarmEnemies.push(makeMoteSwarmEnemy(spawnX, spawnY, wn));
       else if (enemyTypeId === 'proc_shadowhand')  ctx.shadowHandEnemies.push(makeShadowHandEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_sandfish') ctx.sandFishEnemies.push(makeSandFishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_quartzfish') ctx.quartzFishEnemies.push(makeQuartzFishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_rubyfish') ctx.rubyFishEnemies.push(makeRubyFishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_sunstonefish') ctx.sunstoneFishEnemies.push(makeSunstoneFishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_emeraldfish') ctx.emeraldFishEnemies.push(makeEmeraldFishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_sapphirefish') ctx.sapphireFishEnemies.push(makeSapphireFishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_amethystfish') ctx.amethystFishEnemies.push(makeAmethystFishEnemy(spawnX, spawnY, wn));
+      else if (enemyTypeId === 'proc_diamondfish') ctx.diamondFishEnemies.push(makeDiamondFishEnemy(spawnX, spawnY, wn));
     }
   }
 }

@@ -29,8 +29,11 @@ import {
   DUSTWISP_XP_MULT, RIBBONWORM_XP_MULT, LANTERNMOTH_XP_MULT, EYESTALK_XP_MULT,
   JELLYFISH_XP_MULT, CLOTHGHOST_XP_MULT, PLANTTURRET_XP_MULT, GEARINSECT_XP_MULT,
   SPIDERCRAWLER_XP_MULT, MOTESWARM_XP_MULT, SHADOWHAND_XP_MULT,
+  SANDFISH_XP_MULT, QUARTZFISH_XP_MULT, RUBYFISH_XP_MULT, SUNSTONEFISH_XP_MULT,
+  EMERALDFISH_XP_MULT, SAPPHIREFISH_XP_MULT, AMETHYSTFISH_XP_MULT, DIAMONDFISH_XP_MULT,
 } from './rpg-procedural-constants';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
+import { makeEmeraldFishMini } from './rpg-procedural-factories';
 import type { WaveManagerCtx } from './rpg-wave-manager';
 
 export function sweepStandardDeadEnemies(
@@ -46,7 +49,10 @@ export function sweepStandardDeadEnemies(
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies, plantProjectiles,
+    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
     luckyMotes, fluid, getCachedLuckPercent,
   } = ctx;
 
@@ -305,6 +311,82 @@ export function sweepStandardDeadEnemies(
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SHADOWHAND_XP_MULT;
       addKill('proc_shadowhand'); shadowHandEnemies.splice(i, 1);
     }
+  }
+  for (let i = sandFishEnemies.length - 1; i >= 0; i--) {
+    if (sandFishEnemies[i].hp <= 0) {
+      fluid.addExplosion(sandFishEnemies[i].x, sandFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.1, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SANDFISH_XP_MULT;
+      addKill('proc_sandfish'); sandFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = quartzFishEnemies.length - 1; i >= 0; i--) {
+    if (quartzFishEnemies[i].hp <= 0) {
+      fluid.addExplosion(quartzFishEnemies[i].x, quartzFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.3, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * QUARTZFISH_XP_MULT;
+      addKill('proc_quartzfish'); quartzFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = rubyFishEnemies.length - 1; i >= 0; i--) {
+    if (rubyFishEnemies[i].hp <= 0) {
+      fluid.addExplosion(rubyFishEnemies[i].x, rubyFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * RUBYFISH_XP_MULT;
+      addKill('proc_rubyfish'); rubyFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = sunstoneFishEnemies.length - 1; i >= 0; i--) {
+    if (sunstoneFishEnemies[i].hp <= 0) {
+      fluid.addExplosion(sunstoneFishEnemies[i].x, sunstoneFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.5, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SUNSTONEFISH_XP_MULT;
+      addKill('proc_sunstonefish'); sunstoneFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = emeraldFishEnemies.length - 1; i >= 0; i--) {
+    if (emeraldFishEnemies[i].hp <= 0) {
+      const fish = emeraldFishEnemies[i];
+      fluid.addExplosion(fish.x, fish.y, FLUID_EXPLOSION_STRENGTH * 1.25, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EMERALDFISH_XP_MULT;
+      addKill('proc_emeraldfish');
+      if (!fish.isMini && !fish.splitDone) {
+        for (let s = 0; s < 2; s++) {
+          const angle = (s / 2) * Math.PI + Math.random() * 0.35;
+          emeraldFishEnemies.push(makeEmeraldFishMini(fish.x + Math.cos(angle) * 8, fish.y + Math.sin(angle) * 8, ctx.getCurrentWave(), angle));
+        }
+      }
+      emeraldFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = sapphireFishEnemies.length - 1; i >= 0; i--) {
+    if (sapphireFishEnemies[i].hp <= 0) {
+      fluid.addExplosion(sapphireFishEnemies[i].x, sapphireFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.35, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SAPPHIREFISH_XP_MULT;
+      addKill('proc_sapphirefish'); sapphireFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = amethystFishEnemies.length - 1; i >= 0; i--) {
+    if (amethystFishEnemies[i].hp <= 0) {
+      fluid.addExplosion(amethystFishEnemies[i].x, amethystFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.35, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * AMETHYSTFISH_XP_MULT;
+      addKill('proc_amethystfish'); amethystFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = diamondFishEnemies.length - 1; i >= 0; i--) {
+    if (diamondFishEnemies[i].hp <= 0) {
+      fluid.addExplosion(diamondFishEnemies[i].x, diamondFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.8, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * DIAMONDFISH_XP_MULT;
+      addKill('proc_diamondfish'); diamondFishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = fishMines.length - 1; i >= 0; i--) {
+    if (fishMines[i].lifeMs <= 0) fishMines.splice(i, 1);
+  }
+  for (let i = fishSpikes.length - 1; i >= 0; i--) {
+    if (fishSpikes[i].lifeMs <= 0 || fishSpikes[i].hasHit) fishSpikes.splice(i, 1);
+  }
+  for (let i = fishBolts.length - 1; i >= 0; i--) {
+    if (fishBolts[i].lifeMs <= 0 || fishBolts[i].hasHit) fishBolts.splice(i, 1);
+  }
+  for (let i = fishDecoys.length - 1; i >= 0; i--) {
+    if (fishDecoys[i].lifeMs <= 0) fishDecoys.splice(i, 1);
   }
 
   return totalXpFromKills;

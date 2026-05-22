@@ -1,6 +1,6 @@
 /**
  * rpg-procedural-constants.ts — Combat stats, visual constants, and movement
- * parameters for the 11 procedural creature types.
+ * parameters for the procedural creature types.
  *
  * All HP/ATK/DEF values are base values (wave 1). The `getWaveStatScale(wave)`
  * helper in rpg-state.ts scales them at spawn time.
@@ -36,7 +36,7 @@ export const RIBBONWORM_DEF_INIT  =   3;
 export const RIBBONWORM_SIZE      =   6;
 export const RIBBONWORM_XP_MULT   = 1.8;
 export const RIBBONWORM_SEG_COUNT =   7;
-export const RIBBONWORM_SEG_DIST  =   5;  // px between segment centres
+export const RIBBONWORM_SEG_DIST  =   5;
 export const RIBBONWORM_COLOR     = '#78c878';
 export const RIBBONWORM_GLOW      = '#a0e8a0';
 
@@ -86,7 +86,6 @@ export const PLANTTURRET_FIRE_CD_MS     = 2200;
 export const PLANTTURRET_FIRE_JITTER    =  400;
 export const PLANTTURRET_COLOR          = '#50b850';
 export const PLANTTURRET_GLOW           = '#78d878';
-// Plant Turret projectile
 export const PLANT_PROJ_HP_INIT         =  30;
 export const PLANT_PROJ_ATK_INIT        =  14;
 export const PLANT_PROJ_SPEED           =   1.6;
@@ -120,7 +119,7 @@ export const MOTESWARM_DEF_INIT    =   5;
 export const MOTESWARM_SIZE        =   6;
 export const MOTESWARM_XP_MULT     = 2.8;
 export const MOTESWARM_MOTE_COUNT  =   5;
-export const MOTESWARM_ORBIT_DIST  =  14;  // px radius of mote orbit
+export const MOTESWARM_ORBIT_DIST  =  14;
 export const MOTESWARM_COLOR       = '#f0d860';
 export const MOTESWARM_GLOW        = '#ffe880';
 
@@ -132,6 +131,89 @@ export const SHADOWHAND_SIZE       =   8;
 export const SHADOWHAND_XP_MULT    = 4.5;
 export const SHADOWHAND_COLOR      = '#484868';
 export const SHADOWHAND_GLOW       = '#7070a0';
+
+// ── Fish enemies ───────────────────────────────────────────────────────────────
+export const SANDFISH_HP_INIT = 70;
+export const SANDFISH_ATK_INIT = 9;
+export const SANDFISH_DEF_INIT = 2;
+export const SANDFISH_SIZE = 6;
+export const SANDFISH_XP_MULT = 1.4;
+export const SANDFISH_COLOR = '#d4aa60';
+export const SANDFISH_GLOW = '#e8cc88';
+
+export const QUARTZFISH_HP_INIT = 140;
+export const QUARTZFISH_ATK_INIT = 13;
+export const QUARTZFISH_DEF_INIT = 5;
+export const QUARTZFISH_SIZE = 7;
+export const QUARTZFISH_XP_MULT = 2.8;
+export const QUARTZFISH_SHIELD_HP = 50;
+export const QUARTZFISH_COLOR = '#dde8f0';
+export const QUARTZFISH_GLOW = '#ffffff';
+
+export const RUBYFISH_HP_INIT = 120;
+export const RUBYFISH_ATK_INIT = 18;
+export const RUBYFISH_DEF_INIT = 4;
+export const RUBYFISH_SIZE = 7;
+export const RUBYFISH_XP_MULT = 2.5;
+export const RUBYFISH_COLOR = '#e83030';
+export const RUBYFISH_GLOW = '#ff7060';
+
+export const SUNSTONEFISH_HP_INIT = 130;
+export const SUNSTONEFISH_ATK_INIT = 15;
+export const SUNSTONEFISH_DEF_INIT = 4;
+export const SUNSTONEFISH_SIZE = 7;
+export const SUNSTONEFISH_XP_MULT = 2.6;
+export const SUNSTONEFISH_COLOR = '#e87820';
+export const SUNSTONEFISH_GLOW = '#ffaa40';
+
+export const EMERALDFISH_HP_INIT = 100;
+export const EMERALDFISH_ATK_INIT = 12;
+export const EMERALDFISH_DEF_INIT = 3;
+export const EMERALDFISH_SIZE = 6;
+export const EMERALDFISH_XP_MULT = 2.0;
+export const EMERALDFISH_MINI_HP_INIT = 40;
+export const EMERALDFISH_MINI_ATK_INIT = 8;
+export const EMERALDFISH_MINI_SIZE = 4;
+export const EMERALDFISH_COLOR = '#30c050';
+export const EMERALDFISH_GLOW = '#60ff80';
+
+export const SAPPHIREFISH_HP_INIT = 120;
+export const SAPPHIREFISH_ATK_INIT = 14;
+export const SAPPHIREFISH_DEF_INIT = 4;
+export const SAPPHIREFISH_SIZE = 7;
+export const SAPPHIREFISH_XP_MULT = 2.4;
+export const SAPPHIREFISH_COLOR = '#4060e8';
+export const SAPPHIREFISH_GLOW = '#80a0ff';
+
+export const AMETHYSTFISH_HP_INIT = 115;
+export const AMETHYSTFISH_ATK_INIT = 13;
+export const AMETHYSTFISH_DEF_INIT = 4;
+export const AMETHYSTFISH_SIZE = 7;
+export const AMETHYSTFISH_XP_MULT = 2.3;
+export const AMETHYSTFISH_COLOR = '#9040c8';
+export const AMETHYSTFISH_GLOW = '#c080ff';
+
+export const DIAMONDFISH_HP_INIT = 220;
+export const DIAMONDFISH_ATK_INIT = 16;
+export const DIAMONDFISH_DEF_INIT = 8;
+export const DIAMONDFISH_SIZE = 8;
+export const DIAMONDFISH_XP_MULT = 4.0;
+export const DIAMONDFISH_COLOR = '#80eeff';
+export const DIAMONDFISH_GLOW = '#c0ffff';
+
+export const SANDFISH_LUNGE_CD_MS = 3500;
+export const RUBYFISH_DASH_WINDUP_MS = 700;
+export const RUBYFISH_DASH_MS = 350;
+export const RUBYFISH_RECOVERY_MS = 800;
+export const SUNSTONEFISH_MINE_CD_MS = 3000;
+export const SUNSTONEFISH_MINE_COUNT = 4;
+export const SUNSTONEFISH_MINE_ARM_MS = 1200;
+export const SUNSTONEFISH_MINE_LIFE_MS = 5000;
+export const SUNSTONEFISH_SPIKE_COUNT = 8;
+export const SAPPHIREFISH_BOLT_CD_MS = 2000;
+export const AMETHYSTFISH_TELEPORT_CD_MS = 3500;
+export const DIAMONDFISH_ARMOR_ON_MS = 3000;
+export const DIAMONDFISH_ARMOR_OFF_MS = 4000;
 
 // ── Fluid explosion RGB colours per type ──────────────────────────────────────
 export const FLUID_DUSTWISP_R      = 180, FLUID_DUSTWISP_G      = 210, FLUID_DUSTWISP_B      = 230;
@@ -145,3 +227,11 @@ export const FLUID_GEARINSECT_R    = 150, FLUID_GEARINSECT_G    = 150, FLUID_GEA
 export const FLUID_SPIDERCRAWLER_R = 160, FLUID_SPIDERCRAWLER_G =  90, FLUID_SPIDERCRAWLER_B =  50;
 export const FLUID_MOTESWARM_R     = 240, FLUID_MOTESWARM_G     = 210, FLUID_MOTESWARM_B     =  80;
 export const FLUID_SHADOWHAND_R    =  48, FLUID_SHADOWHAND_G    =  48, FLUID_SHADOWHAND_B    =  80;
+export const FLUID_SANDFISH_R = 210, FLUID_SANDFISH_G = 170, FLUID_SANDFISH_B = 90;
+export const FLUID_QUARTZFISH_R = 210, FLUID_QUARTZFISH_G = 230, FLUID_QUARTZFISH_B = 240;
+export const FLUID_RUBYFISH_R = 230, FLUID_RUBYFISH_G = 50, FLUID_RUBYFISH_B = 50;
+export const FLUID_SUNSTONEFISH_R = 230, FLUID_SUNSTONEFISH_G = 120, FLUID_SUNSTONEFISH_B = 30;
+export const FLUID_EMERALDFISH_R = 50, FLUID_EMERALDFISH_G = 190, FLUID_EMERALDFISH_B = 80;
+export const FLUID_SAPPHIREFISH_R = 60, FLUID_SAPPHIREFISH_G = 90, FLUID_SAPPHIREFISH_B = 230;
+export const FLUID_AMETHYSTFISH_R = 140, FLUID_AMETHYSTFISH_G = 60, FLUID_AMETHYSTFISH_B = 200;
+export const FLUID_DIAMONDFISH_R = 120, FLUID_DIAMONDFISH_G = 230, FLUID_DIAMONDFISH_B = 255;

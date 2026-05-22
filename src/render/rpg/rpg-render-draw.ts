@@ -94,6 +94,9 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
+  FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
@@ -154,7 +157,19 @@ export interface RpgDrawCtx {
   spiderCrawlerEnemies: SpiderCrawlerEnemy[];
   moteSwarmEnemies: MoteSwarmEnemy[];
   shadowHandEnemies: ShadowHandEnemy[];
+  sandFishEnemies: SandFishEnemy[];
+  quartzFishEnemies: QuartzFishEnemy[];
+  rubyFishEnemies: RubyFishEnemy[];
+  sunstoneFishEnemies: SunstoneFishEnemy[];
+  emeraldFishEnemies: EmeraldFishEnemy[];
+  sapphireFishEnemies: SapphireFishEnemy[];
+  amethystFishEnemies: AmethystFishEnemy[];
+  diamondFishEnemies: DiamondFishEnemy[];
   plantProjectiles: PlantProjectile[];
+  fishMines: FishMine[];
+  fishSpikes: FishSpike[];
+  fishBolts: FishBolt[];
+  fishDecoys: FishDecoy[];
 
   // ── Boss & projectile state ───────────────────────────────
   getBossEnemy(): BossEnemy | null;

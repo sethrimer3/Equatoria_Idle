@@ -38,6 +38,9 @@ import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
+  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
+  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
+  FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 import {
   DEATH_BURST_COUNT, DEATH_PARTICLE_COLORS,
@@ -114,7 +117,19 @@ export interface RpgDeathRestartCtx {
   spiderCrawlerEnemies: SpiderCrawlerEnemy[];
   moteSwarmEnemies: MoteSwarmEnemy[];
   shadowHandEnemies: ShadowHandEnemy[];
+  sandFishEnemies: SandFishEnemy[];
+  quartzFishEnemies: QuartzFishEnemy[];
+  rubyFishEnemies: RubyFishEnemy[];
+  sunstoneFishEnemies: SunstoneFishEnemy[];
+  emeraldFishEnemies: EmeraldFishEnemy[];
+  sapphireFishEnemies: SapphireFishEnemy[];
+  amethystFishEnemies: AmethystFishEnemy[];
+  diamondFishEnemies: DiamondFishEnemy[];
   plantProjectiles: PlantProjectile[];
+  fishMines: FishMine[];
+  fishSpikes: FishSpike[];
+  fishBolts: FishBolt[];
+  fishDecoys: FishDecoy[];
   bossProjectiles: BossProjectile[];
   luckyMotes: LuckyMote[];
   luckyMotePopups: LuckyMotePopup[];
@@ -199,7 +214,13 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.jellyfishEnemies.length = 0; ctx.clothGhostEnemies.length = 0;
   ctx.plantTurretEnemies.length = 0; ctx.gearInsectEnemies.length = 0;
   ctx.spiderCrawlerEnemies.length = 0; ctx.moteSwarmEnemies.length = 0;
-  ctx.shadowHandEnemies.length = 0; ctx.plantProjectiles.length = 0;
+  ctx.shadowHandEnemies.length = 0;
+  ctx.sandFishEnemies.length = 0; ctx.quartzFishEnemies.length = 0;
+  ctx.rubyFishEnemies.length = 0; ctx.sunstoneFishEnemies.length = 0;
+  ctx.emeraldFishEnemies.length = 0; ctx.sapphireFishEnemies.length = 0;
+  ctx.amethystFishEnemies.length = 0; ctx.diamondFishEnemies.length = 0;
+  ctx.plantProjectiles.length = 0; ctx.fishMines.length = 0;
+  ctx.fishSpikes.length = 0; ctx.fishBolts.length = 0; ctx.fishDecoys.length = 0;
   ctx.setDanmakuSafeZone(null);
   ctx.bossWave.exitBossWave();
   ctx.setIsBossFightFromMenu(false);
