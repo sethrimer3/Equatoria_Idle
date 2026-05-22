@@ -1,12 +1,68 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#81**
+Current build: **#82**
 
 ---
 
 ## Build History Summary
 
-### Build #81 — Terrain gameplay consistency pass: LOS for vortex/sunstone, improved steering, stronger tests
+### Build #82 — Cleanup and stability pass: save v25, terrain test fix, catalog coverage, encounter tracking
+
+**Problem addressed:**
+Four small, high-confidence improvements to save consistency, test accuracy, catalog coverage, and bestiary quality.
+
+**1. Save version bumped to v25 (`save-types.ts`)**
+
+`SAVE_VERSION` was 24 but `sandBladeEnabled` was already documented as a v25+ field.
+Bumped to 25 to make the version and comments internally consistent.
+Old saves still load correctly via `?? true` default.
+
+**2. Terrain test assertion fixed (`topographic-terrain.ts`, `topographic-terrain.test.ts`)**
+
+- Exported `RING_POINTS = 64` from `topographic-terrain.ts`.
+- Updated the test: `solidOuterPolygon.length >= RING_POINTS` instead of the weaker `>= 32`.
+- The file header comment ("at least RING_POINTS vertices") now matches the assertion.
+
+**3. Enemy catalog coverage test added (`enemy-catalog-coverage.test.ts`)**
+
+- Exported `STANDARD_WAVE_ENEMY_IDS`, `PROCEDURAL_WAVE_ENEMY_IDS`, and `ELITE_WAVE_ENEMY_IDS`
+  from `wave-definitions.ts`.
+- New test file covers: hand-authored WAVE_DEFINITIONS, all standard/procedural/elite/aliven IDs.
+- `boss` is the only intentional exclusion (lives in BOSS_DESCRIPTIONS).
+- Fails loudly with the wave number and ID if a real enemy type is missing from the catalog.
+
+**4. Explicit encounter tracking added (`rpg-state.ts`, save pipeline, `rpg-wave-manager.ts`, `rpg-enemies-tab.ts`)**
+
+- Added `encounteredEnemyTypes: Set<string>` to `RpgSimState`.
+- Persisted as `rpg.encounteredEnemyTypes?: string[]` (v25+ optional field).
+- Recorded in `tickSpawnQueue` (wave manager) each time an enemy spawns.
+- Bestiary uses the explicit set when non-empty; falls back to `highestWaveReached`-based
+  visibility for old saves (empty set, wave > 0). New games start fresh as expected.
+- Developer mode still shows all entries.
+
+**5. DECISIONS.md updated** — save version corrected to 25; v25 RPG save fields documented.
+
+**All tests pass. Typecheck clean. Build passes.**
+
+---
+
+### Remaining terrain limitations
+
+1. **`terrainAwareDirection`** — Still local steering only. Concave island bays can still
+   occasionally slow an enemy, though oscillation is reduced. Full path-following is deferred:
+   - Options: waypoint graph, coarse flow field, or short-lived path cache.
+   - Any solution should be stateless per-frame or use a bounded precomputed structure.
+   - Do not implement in the same PR as visual or balance changes.
+
+2. **Topographic polish ideas (cosmetic):**
+   - Add occasional "ridge" islands: elongated with a high elongationAmount value forced.
+   - Try a two-island "mountain range" cluster where islands share a nearby center.
+   - Experiment with a very subtle background fill gradient (dark center) for depth.
+   - Experiment with different alpha/transparency for the terrain area fill.
+
+---
+
+
 
 **Problem addressed:**
 Completed the remaining terrain gameplay consistency gaps identified in Build #80:
@@ -63,20 +119,6 @@ terrain, enemy oscillation at concave corners, and weak ring-ordering test cover
 - Confirms the existing `tMax` / `isWithinBeam(tProj > tMax)` path correctly gates damage.
 
 **All tests pass. Build passes.**
-
----
-
-### Remaining terrain limitations
-
-1. **`terrainAwareDirection`** — Still local steering only. Concave island bays can still
-   occasionally slow an enemy, though oscillation is reduced. Full path-following (graph or
-   flow-field) would be more robust but significantly more complex and stateful.
-
-2. **Topographic polish ideas (cosmetic):**
-   - Add occasional "ridge" islands: elongated with a high elongationAmount value forced.
-   - Try a two-island "mountain range" cluster where islands share a nearby center.
-   - Experiment with a very subtle background fill gradient (dark center) for depth.
-   - Experiment with different alpha/transparency for the terrain area fill.
 
 ---
 

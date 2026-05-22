@@ -231,6 +231,12 @@ export function deserializeGameState(data: SaveData): GameState {
     }
     // v25+: sand blade enable/disable (default true for older saves)
     state.rpg.sandBladeEnabled = data.rpg.sandBladeEnabled ?? true;
+    // v25+: explicit encounter tracking (empty set for older saves — bestiary falls back)
+    if (data.rpg.encounteredEnemyTypes) {
+      for (const id of data.rpg.encounteredEnemyTypes) {
+        state.rpg.encounteredEnemyTypes.add(id);
+      }
+    }
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

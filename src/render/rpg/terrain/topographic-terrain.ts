@@ -37,7 +37,8 @@ const MIN_ISLANDS = 2;
 const MAX_ISLANDS = 5;
 const MIN_RINGS = 2;
 const MAX_RINGS = 9;
-const RING_POINTS = 64;
+/** Number of polygon points in each terrain ring and the solid outer polygon. */
+export const RING_POINTS = 64;
 const TERRAIN_EDGE_MARGIN = 40;
 const PLAYER_EXCLUSION_RADIUS = 60;
 const MAX_ISLAND_PLACEMENT_ATTEMPTS = 15;

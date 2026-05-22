@@ -26,6 +26,7 @@ import {
   terrainFirstIntersectionT,
   hasTopographicTerrainLineOfSight,
   generateTopographicTerrain,
+  RING_POINTS,
 } from '../terrain/topographic-terrain';
 import { applyLaserBeamHitSweep } from '../rpg-weapon-laser-beam-hits';
 import type { LaserBeamHitSweepCtx } from '../rpg-weapon-laser-beam-hits';
@@ -292,11 +293,11 @@ describe('generateTopographicTerrain — shared island profile', () => {
     }
   });
 
-  it('solid outer polygon has at least 32 points', () => {
+  it('solid outer polygon has at least RING_POINTS vertices', () => {
     for (const seed of [1, 42, 137]) {
       const state = generateTopographicTerrain(1, seed, 800, 600);
       for (const island of state.islands) {
-        expect(island.solidOuterPolygon.length).toBeGreaterThanOrEqual(32);
+        expect(island.solidOuterPolygon.length).toBeGreaterThanOrEqual(RING_POINTS);
       }
     }
   });

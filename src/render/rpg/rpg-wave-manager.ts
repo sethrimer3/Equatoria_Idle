@@ -249,7 +249,9 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     for (let i = spawnQueue.length - 1; i >= 0; i--) {
       spawnQueue[i].timerMs -= deltaMs;
       if (spawnQueue[i].timerMs <= 0) {
-        spawnEnemyById(ctx, spawnQueue[i].enemyTypeId);
+        const typeId = spawnQueue[i].enemyTypeId;
+        spawnEnemyById(ctx, typeId);
+        rpgSimState.encounteredEnemyTypes.add(typeId);
         spawnQueue.splice(i, 1);
       }
     }

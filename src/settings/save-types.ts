@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 24;
+export const SAVE_VERSION = 25;
 
 export interface SaveData {
   version: number;
@@ -123,6 +123,9 @@ export interface SaveData {
     multiplierBoxes?: Array<{ level: number; progressXp: number }>;
     /** v25+: whether the sand blade default melee is enabled. Absent in older saves (defaults to true). */
     sandBladeEnabled?: boolean;
+    /** v25+: set of enemy type IDs the player has explicitly encountered (spawned). Absent in older
+    *  saves; bestiary falls back to highestWaveReached-based visibility for empty sets. */
+    encounteredEnemyTypes?: string[];
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
