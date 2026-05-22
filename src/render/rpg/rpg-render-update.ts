@@ -85,6 +85,8 @@ import { updateWeaponOrbitParticles as _updateWeaponOrbitParticles } from './rpg
 import { tickWeaponSystems } from './rpg-weapon-tick';
 import { drawRpgFrame } from './rpg-render-draw';
 import { updateProceduralEnemies } from './rpg-procedural-update';
+import { updateTopographicTerrain } from './terrain/topographic-terrain';
+import type { TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -154,6 +156,7 @@ export interface RpgUpdateCtx {
   getGlowTimeS(): number;
   addGlowTimeS(v: number): void;
   setAutoMoveEnabled(v: boolean): void;
+  getTopographicTerrainState(): TopographicTerrainState | null;
 
   // Death / restart subsystem
   deathRestartCtx: RpgDeathRestartCtx;
@@ -217,6 +220,8 @@ export interface RpgUpdateCtx {
 export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled: boolean): void {
   const nowMs = performance.now();
   ctx.addGlowTimeS(deltaMs / 1000);
+  const terrainState = ctx.getTopographicTerrainState();
+  if (terrainState) updateTopographicTerrain(terrainState, nowMs);
   ctx.setAutoMoveEnabled(autoMoveEnabled);
 
   const phase = ctx.getRpgPhase();

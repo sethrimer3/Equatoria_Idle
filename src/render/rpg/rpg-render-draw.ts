@@ -99,6 +99,8 @@ import type { BossAttackState } from './rpg-boss-attack-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID } from './rpg-constants';
+import { renderTopographicTerrain } from './terrain/topographic-terrain';
+import type { TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -192,6 +194,7 @@ export interface RpgDrawCtx {
   getRestartFadeAlpha(): number;
   getIsLowGraphicsMode(): boolean;
   getEnemyIndicatorStyle(): 'triangle' | 'outline' | 'off';
+  getTopographicTerrainState(): TopographicTerrainState | null;
 
   // ── Callbacks & shared context ────────────────────────────
   getEffectiveEquippedIds(): Set<string>;
@@ -235,6 +238,9 @@ export function drawRpgFrame(
 
   // Fluid background — rendered first so all gameplay elements appear above it.
   ctx.fluid.render(canvas2d);
+
+  const terrainState = ctx.getTopographicTerrainState();
+  if (terrainState) renderTopographicTerrain(canvas2d, terrainState, nowMs);
 
   drawLaserEnemies(canvas2d, ctx.enemies, nowMs);
   drawSapphireEnemies(canvas2d, ctx.sapphireEnemies);
@@ -397,4 +403,5 @@ export function setAllDrawLowGraphics(enabled: boolean): void {
   setEliteDrawLowGraphics(enabled);
   setAlivenLowGraphics(enabled);
   setDrawBossAttacksLowGraphics(enabled);
+  // No per-module low-graphics for terrain (it already skips when hidden)
 }
