@@ -11,7 +11,7 @@
  * player; this file also owns updatePlantProjectiles.
  */
 
-import type { RpgEnemyCtx } from './rpg-enemy-updates';
+import { type RpgEnemyCtx, applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
@@ -24,6 +24,8 @@ import {
   PLANTTURRET_FIRE_CD_MS, PLANTTURRET_FIRE_JITTER,
   PLANT_PROJ_SPEED,
   MOTESWARM_ORBIT_DIST,
+  DUSTWISP_SIZE, RIBBONWORM_SIZE, LANTERNMOTH_SIZE, EYESTALK_SIZE, JELLYFISH_SIZE,
+  CLOTHGHOST_SIZE, GEARINSECT_SIZE, SPIDERCRAWLER_SIZE, MOTESWARM_SIZE, SHADOWHAND_SIZE,
 } from './rpg-procedural-constants';
 import { makePlantProjectile } from './rpg-procedural-factories';
 import { TARGET_FRAME_MS, PLAYER_HIT_RADIUS } from './rpg-constants';
@@ -97,6 +99,7 @@ export function updateDustWispEnemies(
     e.animPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     patrolStep(e as unknown as { x: number; y: number; vx: number; vy: number; patrolTimerMs: number }, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), DUSTWISP_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }
@@ -113,6 +116,7 @@ export function updateRibbonWormEnemies(
     e.animPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     pursueStep(e, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), RIBBONWORM_SIZE / 2);
     // Pull segments toward the one in front; index 0 is the head.
     e.segX[0] = e.x;
     e.segY[0] = e.y;
@@ -151,6 +155,7 @@ export function updateLanternMothEnemies(
     e.x += e.vx * dt;
     e.y += e.vy * dt;
     ctx.clampEnemyToBounds(e);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), LANTERNMOTH_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }
@@ -168,6 +173,7 @@ export function updateEyeStalkEnemies(
     e.stalkPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     pursueStep(e, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), EYESTALK_SIZE / 2);
     // Pupil tracks player
     const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
     e.eyeAngle = Math.atan2(dy, dx);
@@ -196,6 +202,7 @@ export function updateJellyfishEnemies(
     e.x += e.vx * dt;
     e.y += e.vy * dt;
     ctx.clampEnemyToBounds(e);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), JELLYFISH_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }
@@ -213,6 +220,7 @@ export function updateClothGhostEnemies(
     e.flutterPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     pursueStep(e, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), CLOTHGHOST_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }
@@ -292,6 +300,7 @@ export function updateGearInsectEnemies(
     e.legPhase  += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     pursueStep(e, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), GEARINSECT_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }
@@ -309,6 +318,7 @@ export function updateSpiderCrawlerEnemies(
     e.legPhase  += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     pursueStep(e, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), SPIDERCRAWLER_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }
@@ -329,6 +339,7 @@ export function updateMoteSwarmEnemies(
     }
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     pursueStep(e, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), MOTESWARM_SIZE / 2);
     // Contact damage from the swarm core
     contactDamage(e, dt, ctx);
     // Also contact damage from each orbiting mote
@@ -359,6 +370,7 @@ export function updateShadowHandEnemies(
     e.reachFraction = (Math.sin(e.graspPhase) * 0.5 + 0.5);
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
     pursueStep(e, dt, ctx);
+    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), SHADOWHAND_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }

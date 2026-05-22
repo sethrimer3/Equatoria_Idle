@@ -34,6 +34,9 @@ import type {
 } from './rpg-enemy-types';
 import { pushPointOutsideTopographicTerrain } from './terrain/topographic-terrain';
 
+// Module-level scratch object to avoid per-pull allocation during the vortex pull sweep.
+const _vortexPullScratch = { x: 0, y: 0 };
+
 // ── Dependency-injection context ─────────────────────────────────────────────
 
 /** Structural subset of RpgWeaponCtx containing only what the vortex system needs. */
@@ -174,6 +177,7 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
   function updateVortexes(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     const pull = VORTEX_PULL_STRENGTH * dt;
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
 
     for (let i = activeVortexes.length - 1; i >= 0; i--) {
       const v = activeVortexes[i];
@@ -189,6 +193,15 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
         if (dist > 0.01 && dist <= v.radiusPx) {
           e.x += (dx / dist) * pull;
           e.y += (dy / dist) * pull;
+          // Push back out of terrain if the pull moved the enemy into an island.
+          if (terrain) {
+            _vortexPullScratch.x = e.x;
+            _vortexPullScratch.y = e.y;
+            if (pushPointOutsideTopographicTerrain(terrain, e.x, e.y, _vortexPullScratch, 0)) {
+              e.x = _vortexPullScratch.x;
+              e.y = _vortexPullScratch.y;
+            }
+          }
         }
       };
       for (const e of ctx.enemies)           applyPull(e);

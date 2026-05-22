@@ -19,6 +19,7 @@ import {
   ELITE_RUBY_A1_CD_MS, ELITE_RUBY_A2_CD_MS,
   ELITE_SUNSTONE_A1_CD_MS, ELITE_SUNSTONE_A2_CD_MS,
   ELITE_CITRINE_A1_CD_MS, ELITE_CITRINE_A2_CD_MS, ELITE_CITRINE_GLOW,
+  ELITE_QUARTZ_RADIUS, ELITE_RUBY_RADIUS, ELITE_SUNSTONE_RADIUS, ELITE_CITRINE_RADIUS,
 } from './rpg-enemy-constants';
 import {
   type EliteEnemyCtx,
@@ -32,6 +33,7 @@ import {
   fireHomingBolts,
   FLUID_EXPLOSION_STRENGTH,
 } from './rpg-elite-enemy-helpers';
+import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 
 // ── Quartz elite — triangle ───────────────────────────────────────────────────
 // A1: Crystal Salvo — two staggered 3-spike bursts.
@@ -45,8 +47,7 @@ export function updateEliteQuartz(
 ): void {
   patrolStep(enemy, dt);
   ctx.clampEnemyToBounds(enemy);
-
-  // Pending second salvo
+  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_QUARTZ_RADIUS);
   if (enemy.pendingSalvoMs >= 0) {
     enemy.pendingSalvoMs -= deltaMs;
     if (enemy.pendingSalvoMs <= 0) {
@@ -85,6 +86,7 @@ export function updateEliteRuby(
 ): void {
   patrolStep(enemy, dt);
   ctx.clampEnemyToBounds(enemy);
+  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_RUBY_RADIUS);
 
   enemy.attack1TimerMs -= deltaMs;
   if (enemy.attack1TimerMs <= 0) {
@@ -135,6 +137,7 @@ export function updateEliteSunstone(
   enemy.x += enemy.vx * dt;
   enemy.y += enemy.vy * dt;
   ctx.clampEnemyToBounds(enemy);
+  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_SUNSTONE_RADIUS);
 
   enemy.attack1TimerMs -= deltaMs;
   if (enemy.attack1TimerMs <= 0) {
@@ -166,6 +169,7 @@ export function updateEliteCitrine(
   const { mote } = ctx;
   patrolStep(enemy, dt);
   ctx.clampEnemyToBounds(enemy);
+  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_CITRINE_RADIUS);
 
   enemy.attack1TimerMs -= deltaMs;
   if (enemy.attack1TimerMs <= 0) {

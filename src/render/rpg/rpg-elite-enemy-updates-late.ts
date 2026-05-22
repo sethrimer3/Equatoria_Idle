@@ -20,6 +20,7 @@ import {
   ELITE_AMETHYST_A1_CD_MS, ELITE_AMETHYST_SALVO_MS, ELITE_AMETHYST_SHIELD_REGEN_RATE,
   ELITE_DIAMOND_A1_CD_MS, ELITE_DIAMOND_INVULN_MS, ELITE_DIAMOND_VULN_MS,
   ELITE_NULLSTONE_A1_CD_MS,
+  ELITE_IOLITE_RADIUS, ELITE_AMETHYST_RADIUS, ELITE_DIAMOND_RADIUS, ELITE_NULLSTONE_RADIUS,
 } from './rpg-enemy-constants';
 import {
   type EliteEnemyCtx,
@@ -31,6 +32,7 @@ import {
   fireTendrilRing,
   FLUID_EXPLOSION_STRENGTH,
 } from './rpg-elite-enemy-helpers';
+import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 
 // ── Iolite elite — heptagon ───────────────────────────────────────────────────
 // A1: Prism Fan    — 7 instant beams in a 150° arc aimed at player.
@@ -45,6 +47,7 @@ export function updateEliteIolite(
   const { mote } = ctx;
   patrolStep(enemy, dt);
   ctx.clampEnemyToBounds(enemy);
+  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_IOLITE_RADIUS);
 
   // Active gravity well
   if (enemy.gravityTimerMs > 0) {
@@ -109,6 +112,7 @@ export function updateEliteAmethyst(
 ): void {
   patrolStep(enemy, dt);
   ctx.clampEnemyToBounds(enemy);
+  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_AMETHYST_RADIUS);
 
   // Shield regeneration
   if (enemy.shieldHp < enemy.maxShieldHp) {
@@ -185,9 +189,11 @@ export function updateEliteDiamond(
     enemy.x += enemy.vx * dt;
     enemy.y += enemy.vy * dt;
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_DIAMOND_RADIUS);
   } else {
     patrolStep(enemy, dt);
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_DIAMOND_RADIUS);
 
     enemy.attack1TimerMs -= deltaMs;
     if (enemy.attack1TimerMs <= 0) {
@@ -213,6 +219,7 @@ export function updateEliteNullstone(
   const { mote } = ctx;
   patrolStep(enemy, dt);
   ctx.clampEnemyToBounds(enemy);
+  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_NULLSTONE_RADIUS);
 
   // Invuln countdown (singularity phase)
   if (enemy.isInvuln) {

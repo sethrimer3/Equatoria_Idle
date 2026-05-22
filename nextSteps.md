@@ -1,10 +1,60 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#78**
+Current build: **#79**
 
 ---
 
 ## Build History Summary
+
+### Build #79 — Terrain consistency pass: LOS API, elite/proc push-out, blink, vortex pull
+
+**Problem addressed:**
+Completed the remaining terrain gameplay consistency gaps identified in Build #78:
+centralized LOS-aware targeting, wired push-out for all elite and procedural enemy bodies,
+corrected the emerald blink destination, and fixed vortex-pulled enemies entering terrain.
+
+**LOS-aware targeting API (`rpg-targeting-types.ts`, `rpg-targeting-targets.ts`, `rpg-targeting.ts`, `rpg-render.ts`):**
+
+- Added `TargetCollectionOptions` interface (exported from `rpg-targeting-types.ts`) with fields:
+  - `originX?/originY?` — LOS check origin (defaults to mote for `collectEnemyBodyTargets`, to `(x,y)` for `findClosestEnemyFrom`)
+  - `requireLineOfSight?: boolean` — when true, targets blocked by terrain are excluded
+  - `includeProjectiles?: boolean` — when true, also includes flying projectiles in the target list
+- Updated `collectEnemyBodyTargets(opts?)` — applies `hasTopographicTerrainLineOfSight` filter per-target when `requireLineOfSight: true`. Also handles aliven-particle LOS. When `includeProjectiles: true`, appends all projectile bodies (missiles, bolts, spikes, shards, tendrils) to the list.
+- Updated `findClosestEnemyFrom(x, y, rangeSq, opts?)` — passes opts to `collectEnemyBodyTargets` with origin defaulting to `(x,y)` for LOS checks.
+- Wrappers in `rpg-targeting.ts` and `rpg-render.ts` updated to pass opts through.
+
+**Elite enemy body terrain push-out (`rpg-elite-enemy-updates-early.ts`, `rpg-elite-enemy-updates-late.ts`):**
+
+- Added `ELITE_*_RADIUS` constants to imports.
+- Added `applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_*_RADIUS)` after every `clampEnemyToBounds` call for: Quartz, Ruby, Sunstone, Citrine (early file), and Iolite, Amethyst, Diamond (both orbit and patrol branches), Nullstone (late file).
+
+**Procedural enemy body terrain push-out (`rpg-procedural-update.ts`):**
+
+- Added `applyEnemyTerrainPushOut` after each movement step for:
+  DustWisp, RibbonWorm (head), LanternMoth, EyeStalk, Jellyfish, ClothGhost, GearInsect, SpiderCrawler, MoteSwarm, ShadowHand.
+- PlantTurret is anchored to its root position and requires no push-out.
+- Imported `applyEnemyTerrainPushOut` and per-type `SIZE` constants.
+
+**Emerald blink terrain check (`rpg-enemy-updates.ts`):**
+
+- After the blink destination is computed and arena-clamped, `applyEnemyTerrainPushOut` is called so the enemy materialises outside any island rather than inside it.
+
+**Vortex pull terrain fix (`rpg-weapon-vortex.ts`):**
+
+- In `updateVortexes`, terrain is obtained once per frame.
+- `applyPull` now calls `pushPointOutsideTopographicTerrain` (using a module-level scratch object to avoid per-frame allocation) to push any enemy that the gravity pull has moved into terrain back to the surface.
+
+---
+
+### Remaining terrain gaps
+
+1. **`terrainAwareDirection`** — The left/right tangent probe steer avoids direct collision but can cause oscillation at concave corners. A path-following probe would be more stable.
+
+2. **Sunstone mines** — Mine placement and persistence are not terrain-checked (mines can be placed on terrain).
+
+3. **Ruby laser hit sweep** — `applyLaserBeamHitSweep` uses `terrainFirstIntersectionT` for beam truncation but damage eligibility still uses a simple distance check rather than verifying the target is before the truncated endpoint.
+
+---
 
 ### Build #78 — Terrain repair and consistency pass
 
@@ -46,25 +96,7 @@ A focused repair pass on the topographic terrain integration to make collision, 
   - `terrainFirstIntersectionT` < 1 for a blocking ray
   - `hasTopographicTerrainLineOfSight` for blocked and clear paths
 
----
 
-### Remaining terrain gaps (documented)
-
-1. **Elite enemies** — Body push-out after movement is not yet wired for elite enemy bodies in `rpg-elite-enemy-updates.ts`. Elite enemies with linear movement can still walk into terrain.
-
-2. **Procedural enemies** — Push-out after movement is not wired for procedural bodies (only projectiles are checked). Dust wisp, shadow hand, etc. can walk into terrain.
-
-3. **Teleport/blink enemies** — Blink destinations are not checked against terrain. Enemies that teleport can materialise inside terrain and be pushed out with jitter on the next frame rather than being placed at a clean exit point.
-
-4. **`terrainAwareDirection`** — The left/right tangent probe steer avoids direct collision but can cause oscillation at concave corners. A path-following probe would be more stable.
-
-5. **Vortex weapon** — Nullstone vortex projectile positions are not terrain-checked.
-
-6. **Sunstone mines** — Mine placement and persistence are not terrain-checked (mines can be placed on terrain).
-
-7. **Ruby laser hit sweep** — `applyLaserBeamHitSweep` uses `terrainFirstIntersectionT` for beam truncation but damage eligibility still uses a simple distance check rather than verifying the target is before the truncated endpoint.
-
----
 
 ### Build #76 — Terrain integration: enemy spawn exclusion, player push-out, projectile blocking, LOS
 

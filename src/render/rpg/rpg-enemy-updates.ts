@@ -229,6 +229,8 @@ export function updateEmeraldEnemies(
         const half = EMERALD_ENEMY_SIZE / 2;
         enemy.x = Math.max(half, Math.min(dim.w - half, enemy.x));
         enemy.y = Math.max(half, Math.min(dim.h - half, enemy.y));
+        // Push destination out of terrain if needed
+        applyEnemyTerrainPushOut(enemy, terrain, half);
         enemy.phase = 'blinking'; enemy.phaseMs = 0;
         // Flash of fluid at both origin and destination
         fluid.addForce({
