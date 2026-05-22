@@ -24,7 +24,7 @@ import {
 import { type EnemyCatalogEntry, ENEMY_CATALOG, BOSS_DESCRIPTIONS } from './rpg-enemies-catalog';
 import {
   ICON_SIZE,
-  createAlivenIconCanvas, drawEnemyIcon, drawBossIcon,
+  createAlivenIconCanvas, createProcIconCanvas, drawEnemyIcon, drawBossIcon,
 } from './rpg-enemies-tab-icons';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -48,13 +48,15 @@ function buildEnemyEntry(
     `border:1px solid ${isLocked && !isDevMode ? 'rgba(255,255,255,0.07)' : entry.glowColor + '44'};` +
     `border-radius:6px;padding:10px 12px;opacity:${isLocked && !isDevMode ? '0.45' : '1'};`;
 
-  // Icon canvas — aliven entries get an animated mini-sim; others get a static icon.
+  // Icon canvas — aliven entries get an animated mini-sim; proc entries get an
+  // animated procedural preview; others get a static icon.
   const isAliven = entry.id.startsWith('aliven_');
+  const isProc   = entry.id.startsWith('proc_');
   const showLocked = isLocked && !isDevMode;
   let canvas: HTMLCanvasElement;
 
-  if (isAliven && !showLocked) {
-    canvas = createAlivenIconCanvas(entry);
+  if ((isAliven || isProc) && !showLocked) {
+    canvas = isAliven ? createAlivenIconCanvas(entry) : createProcIconCanvas(entry);
   } else {
     canvas = document.createElement('canvas');
     canvas.width  = ICON_SIZE;

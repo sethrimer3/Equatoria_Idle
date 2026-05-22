@@ -13,18 +13,20 @@
  * PlantProjectile is the only projectile emitted by these creatures (by the
  * PlantTurret type).  All other creatures deal only contact damage.
  *
- * Enemy type IDs (used in wave-definitions.ts spawn lists):
- *   'proc_dustwisp'     — Dust Wisp, wave 5+
- *   'proc_ribbonworm'   — Ribbon Worm, wave 7+
- *   'proc_lanternmoth'  — Lantern Moth, wave 8+
- *   'proc_eyestalk'     — Eye Stalk, wave 10+
- *   'proc_jellyfish'    — Floating Jellyfish, wave 13+
- *   'proc_clothghost'   — Cloth Ghost, wave 16+
- *   'proc_plantturret'  — Plant Turret, wave 18+
- *   'proc_gearinsect'   — Gear Insect, wave 22+
- *   'proc_spidercrawler'— Spider Crawler, wave 25+
- *   'proc_moteswarm'    — Magnetic Mote Swarm, wave 28+
- *   'proc_shadowhand'   — Shadow Hand, wave 32+
+ * Enemy type IDs (used in wave-definitions.ts spawn lists).
+ * All proc creatures first appear in procedural waves (26+); the wave-N+ figure
+ * below reflects the procedural-generator threshold, not any pre-defined wave.
+ *   'proc_dustwisp'     — Dust Wisp,             wave 26+ (generator threshold: 5)
+ *   'proc_ribbonworm'   — Ribbon Worm,            wave 26+ (generator threshold: 7)
+ *   'proc_lanternmoth'  — Lantern Moth,           wave 26+ (generator threshold: 8)
+ *   'proc_eyestalk'     — Eye Stalk,              wave 26+ (generator threshold: 10)
+ *   'proc_jellyfish'    — Floating Jellyfish,     wave 26+ (generator threshold: 12)
+ *   'proc_clothghost'   — Cloth Ghost,            wave 26+ (generator threshold: 14)
+ *   'proc_plantturret'  — Plant Turret,           wave 26+ (generator threshold: 16)
+ *   'proc_gearinsect'   — Gear Insect,            wave 26+ (generator threshold: 19)
+ *   'proc_spidercrawler'— Spider Crawler,         wave 26+ (generator threshold: 22)
+ *   'proc_moteswarm'    — Magnetic Mote Swarm,    wave 26+ (generator threshold: 26)
+ *   'proc_shadowhand'   — Shadow Hand,            wave 32+
  */
 
 // ── Dust Wisp ──────────────────────────────────────────────────────────────────
