@@ -30,6 +30,7 @@ import {
   makeFracterylShard,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
+import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Fracteryl enemy system ─────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ export function updateFracterylEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim, fluid } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
     if (enemy.patrolTimerMs > 0) {
@@ -82,7 +84,11 @@ export function updateFracterylEnemies(
     const shard = shards[i];
     shard.lifeMs -= deltaMs;
     if (shard.lifeMs <= 0) { shards.splice(i, 1); continue; }
+    const prevX = shard.x, prevY = shard.y;
     shard.x += shard.vx * dt; shard.y += shard.vy * dt;
+    if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, shard.x, shard.y)) {
+      shards.splice(i, 1); continue;
+    }
     if (!shard.hasHitPlayer) {
       const sdx = mote.x - shard.x, sdy = mote.y - shard.y;
       if (sdx * sdx + sdy * sdy < (FRACTERYL_ENEMY_SIZE / 2 + PLAYER_HIT_RADIUS) ** 2) {

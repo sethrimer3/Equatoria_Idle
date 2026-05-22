@@ -39,6 +39,7 @@ import {
   makeCitrineBolt,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
+import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Quartz enemy system ────────────────────────────────────────────────────────
 
@@ -91,11 +92,14 @@ export function updateQuartzSpikes(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = spikes.length - 1; i >= 0; i--) {
     const s = spikes[i];
+    const prevX = s.x, prevY = s.y;
     s.x += s.vx * dt; s.y += s.vy * dt;
     s.lifeMs -= deltaMs;
-    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h) {
+    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h
+        || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, s.x, s.y))) {
       spikes.splice(i, 1); continue;
     }
     if (!s.hasHitPlayer) {
@@ -160,11 +164,14 @@ export function updateRubyBolts(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = bolts.length - 1; i >= 0; i--) {
     const b = bolts[i];
+    const prevX = b.x, prevY = b.y;
     b.x += b.vx * dt; b.y += b.vy * dt;
     b.lifeMs -= deltaMs;
-    if (b.lifeMs <= 0 || b.x < 0 || b.x > dim.w || b.y < 0 || b.y > dim.h) {
+    if (b.lifeMs <= 0 || b.x < 0 || b.x > dim.w || b.y < 0 || b.y > dim.h
+        || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, b.x, b.y))) {
       bolts.splice(i, 1); continue;
     }
     if (!b.hasHitPlayer) {
@@ -242,6 +249,7 @@ export function updateCitrineBolts(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = bolts.length - 1; i >= 0; i--) {
     const b = bolts[i];
     // Homing seek toward player
@@ -255,8 +263,10 @@ export function updateCitrineBolts(
     b.trailX[b.trailHead] = b.x; b.trailY[b.trailHead] = b.y;
     b.trailHead = (b.trailHead + 1) % CITRINE_BOLT_TRAIL_CAP;
     if (b.trailCount < CITRINE_BOLT_TRAIL_CAP) b.trailCount++;
+    const prevX = b.x, prevY = b.y;
     b.x += b.vx * dt; b.y += b.vy * dt;
-    if (b.x < 0 || b.x > dim.w || b.y < 0 || b.y > dim.h) {
+    if (b.x < 0 || b.x > dim.w || b.y < 0 || b.y > dim.h
+        || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, b.x, b.y))) {
       bolts.splice(i, 1); continue;
     }
     if (!b.hasHitPlayer) {

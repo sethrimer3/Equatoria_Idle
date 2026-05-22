@@ -52,6 +52,10 @@ import {
 import {
   makeAmberShard,
 } from './rpg-factories';
+import {
+  segmentIntersectsTopographicTerrain,
+  type TopographicTerrainState,
+} from './terrain/topographic-terrain';
 
 // ── Shared context interface ───────────────────────────────────────────────────
 
@@ -85,6 +89,8 @@ export interface RpgEnemyCtx {
   dealDamageToPlayerKnockback(atk: number, normDirX: number, normDirY: number): void;
   /** Clamp an entity within canvas bounds, reversing velocity on each axis. */
   clampEnemyToBounds(e: { x: number; y: number; vx: number; vy: number }): void;
+  /** Returns the current topographic terrain state, or null if none is active. */
+  getTerrainState(): TopographicTerrainState | null;
 }
 
 // ── Emerald enemy system (blink-striker) ──────────────────────────────────────
@@ -261,6 +267,7 @@ export function updateAmberShards(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim, fluid } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
     if (s.hp <= 0) { shards.splice(i, 1); continue; }
@@ -277,7 +284,13 @@ export function updateAmberShards(
       s.vx = (s.vx / speed) * AMBER_SHARD_MAX_SPEED;
       s.vy = (s.vy / speed) * AMBER_SHARD_MAX_SPEED;
     }
+    const prevX = s.x, prevY = s.y;
     s.x += s.vx * dt; s.y += s.vy * dt;
+
+    // Destroy if the projectile crossed terrain this step
+    if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, s.x, s.y)) {
+      shards.splice(i, 1); continue;
+    }
 
     // Fluid trail
     fluid.addForce({

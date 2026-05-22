@@ -41,6 +41,7 @@ import {
   makeVoidTendril,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
+import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Iolite enemy system (wave 40) ─────────────────────────────────────────────
 
@@ -120,11 +121,14 @@ export function updateAmethystShards(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
+    const prevX = s.x, prevY = s.y;
     s.x += s.vx * dt; s.y += s.vy * dt;
     s.lifeMs -= deltaMs;
-    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h) {
+    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h
+        || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, s.x, s.y))) {
       shards.splice(i, 1); continue;
     }
     if (!s.hasHitPlayer) {
@@ -191,11 +195,14 @@ export function updateDiamondShards(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
+    const prevX = s.x, prevY = s.y;
     s.x += s.vx * dt; s.y += s.vy * dt;
     s.lifeMs -= deltaMs;
-    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h) {
+    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h
+        || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, s.x, s.y))) {
       shards.splice(i, 1); continue;
     }
     if (!s.hasHitPlayer) {
@@ -269,11 +276,14 @@ export function updateVoidTendrils(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (let i = tendrils.length - 1; i >= 0; i--) {
     const t = tendrils[i];
+    const prevX = t.x, prevY = t.y;
     t.x += t.vx * dt; t.y += t.vy * dt;
     t.lifeMs -= deltaMs;
-    if (t.lifeMs <= 0 || t.x < 0 || t.x > dim.w || t.y < 0 || t.y > dim.h) {
+    if (t.lifeMs <= 0 || t.x < 0 || t.x > dim.w || t.y < 0 || t.y > dim.h
+        || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, t.x, t.y))) {
       tendrils.splice(i, 1); continue;
     }
     if (!t.hasHitPlayer) {

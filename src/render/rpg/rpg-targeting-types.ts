@@ -30,6 +30,7 @@ import type {
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
   SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
 } from './rpg-procedural-types';
+import type { TopographicTerrainState } from './terrain/topographic-terrain';
 
 export interface RpgTargetingCtx {
   mote: { x: number; y: number };
@@ -113,6 +114,8 @@ export interface RpgTargetingCtx {
   damageMoteSwarmEnemy: (e: MoteSwarmEnemy, raw: number, pierce: number) => number;
   damageShadowHandEnemy: (e: ShadowHandEnemy, raw: number, pierce: number) => number;
   damagePlantProjectile: (p: PlantProjectile, raw: number) => number;
+  /** Returns the current topographic terrain state, or null if none is active. */
+  getTerrainState(): TopographicTerrainState | null;
 }
 
 export interface RpgTargetingHandle {
