@@ -485,3 +485,42 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
 
   return { waveNumber, spawns };
 }
+
+// ─── Enemy type ID sets (for catalog coverage validation) ─────────
+
+/**
+ * All procedural creature IDs used by the wave generator.
+ * Exported so test code can validate catalog coverage without
+ * re-parsing the generator body.
+ */
+export const PROCEDURAL_WAVE_ENEMY_IDS: readonly string[] = [
+  'proc_dustwisp',
+  'proc_ribbonworm',
+  'proc_lanternmoth',
+  'proc_eyestalk',
+  'proc_jellyfish',
+  'proc_clothghost',
+  'proc_plantturret',
+  'proc_gearinsect',
+  'proc_spidercrawler',
+  'proc_moteswarm',
+  'proc_shadowhand',
+];
+
+/**
+ * All standard enemy IDs used by hand-authored and procedural wave definitions
+ * (excludes bosses and elite variants, which have separate handling).
+ */
+export const STANDARD_WAVE_ENEMY_IDS: readonly string[] = [
+  'laser', 'quartz', 'sapphire', 'emerald', 'ruby', 'amber', 'void',
+  'sunstone', 'citrine', 'iolite', 'amethyst', 'diamond', 'nullstone',
+  'fracteryl', 'eigenstein',
+];
+
+/**
+ * All elite enemy IDs used by the wave generator.
+ */
+export const ELITE_WAVE_ENEMY_IDS: readonly string[] = [
+  'elite_quartz', 'elite_ruby', 'elite_sunstone', 'elite_citrine',
+  'elite_iolite', 'elite_amethyst', 'elite_diamond', 'elite_nullstone',
+];

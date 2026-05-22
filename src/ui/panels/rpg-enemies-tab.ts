@@ -233,6 +233,9 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     if (!rpgState) return;
 
     const highestWave = rpgState.highestWaveReached;
+    // Use explicit encounter tracking when the set is populated; fall back to
+    // highestWaveReached-based visibility for old saves (empty set, wave > 0).
+    const useEncounterSet = rpgState.encounteredEnemyTypes.size > 0 || highestWave === 0;
 
     // ── Section heading ───────────────────────────────────────
     const heading = document.createElement('div');
@@ -251,7 +254,9 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     element.appendChild(enemiesHeading);
 
     for (const entry of ENEMY_CATALOG) {
-      const isLocked = highestWave < entry.firstWave;
+      const isLocked = useEncounterSet
+        ? !rpgState.encounteredEnemyTypes.has(entry.id)
+        : highestWave < entry.firstWave;
       // Skip locked entries unless in dev mode
       if (isLocked && !isDevMode) continue;
       element.appendChild(buildEnemyEntry(entry, isLocked, isDevMode));

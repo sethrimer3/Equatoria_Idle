@@ -980,7 +980,8 @@
 
 ### src/render/rpg/terrain/topographic-terrain.ts
 - Self-contained seeded topographic terrain module for RPG waves.
-- Exports deterministic terrain generation/render helpers plus geometry helpers: `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`, `beginTopographicTerrainShrink`, `renderTopographicTerrain`, `isPointInsideTopographicTerrain`, `segmentIntersectsTopographicTerrain`, `getTopographicTerrainSolidPolygons`, and `setTopographicTerrainDevMode`.
+- Exports deterministic terrain generation/render helpers plus geometry helpers: `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`, `beginTopographicTerrainShrink`, `renderTopographicTerrain`, `isPointInsideTopographicTerrain`, `segmentIntersectsTopographicTerrain`, `getTopographicTerrainSolidPolygons`, `setTopographicTerrainDevMode`, and `RING_POINTS`.
+- `RING_POINTS = 64` — number of polygon points per ring and solid outer polygon; exported for test assertions.
 - Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling, staggered ring growth/shrink animation, and simple polygon collision helpers based on each island's solid outer ring.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
@@ -1145,8 +1146,11 @@
 
 ### src/data/rpg/wave-definitions.ts
 - `WaveSpawn` and `WaveDefinition` types.
-- `WAVE_DEFINITIONS` — hand-authored waves 1–10 (laser enemy, increasing count and tighter delays).
-- `getWaveDefinition(waveNumber)` — returns predefined definition or generates one procedurally for waves beyond 10.
+- `WAVE_DEFINITIONS` — hand-authored waves 1–25 (laser enemy, increasing count and tighter delays).
+- `getWaveDefinition(waveNumber)` — returns predefined definition or generates one procedurally for waves beyond 25.
+- `STANDARD_WAVE_ENEMY_IDS` — all 15 standard enemy IDs used by wave definitions.
+- `PROCEDURAL_WAVE_ENEMY_IDS` — all 11 procedural creature IDs (proc_*) used by the generator.
+- `ELITE_WAVE_ENEMY_IDS` — all 8 elite enemy IDs used by the generator.
 
 ### src/data/rpg/weapon-definitions.ts
 - `WeaponEffect` — discriminated union: `single | multi | aoe | piercing | sapphireShip | amethystShip`.
@@ -1158,7 +1162,7 @@
 - `WEAPON_BY_ID` — O(1) lookup map.
 
 ### src/sim/rpg/rpg-state.ts
-- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100).
+- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100), `encounteredEnemyTypes` (Set<string> of all enemy type IDs that have spawned).
 - Exports `PLAYER_BASE_ATK = 10`, `MAX_WEAPON_TIER = 7`, `MIN_BOSS_SPEED_PCT = 10`, `MAX_BOSS_SPEED_PCT = 100`, `BOSS_SPEED_STEP = 10`, `TOTAL_BOSS_COUNT = 10`.
 - `createRpgSimState()` — zero-state factory.
 - Weapon scaling helpers: `getWeaponTierUpgradeCost`, `getScaledWeaponDamage`, `getScaledWeaponCooldown` (kept here to avoid circular dep on PLAYER_BASE_ATK).
@@ -1205,10 +1209,10 @@
 - Each boss entry shows lock status, best completion speed, XP multiplier, and Fight button.
 
 ### src/ui/panels/rpg-enemies-tab.ts
-- Enemies sub-tab (bestiary) for the RPG overlay panel (~286 lines).
+- Enemies sub-tab (bestiary) for the RPG overlay panel (~290 lines).
 - `RpgEnemiesTabPane` interface; `createRpgEnemiesTabPane(dispatch)` factory.
 - `update(rpgState, isDevMode)` rebuilds the enemy and boss catalog from imported data.
-- **Regular enemies** are visible once `highestWaveReached >= firstWave`; all are visible in dev mode.
+- **Regular enemies** use explicit `encounteredEnemyTypes` set when populated; falls back to `highestWaveReached >= firstWave` for old saves (empty set). All are visible in dev mode.
 - **Bosses** are visible once beaten (`bossCompletions` has non-zero entry); all are visible in dev mode.
 - Icon drawing functions extracted to `rpg-enemies-tab-icons.ts`.
 
@@ -1567,3 +1571,9 @@ Audio system — eight focused modules:
 
 ### src/dev/session-telemetry.test.ts
 - 35 Vitest unit tests for session-telemetry.ts (reset, increments, unknown-key robustness, snapshot isolation, derived average).
+
+### src/render/rpg/__tests__/enemy-catalog-coverage.test.ts
+- Coverage validation: every enemy type ID that can appear via WAVE_DEFINITIONS, the procedural generator, elite spawns, or aliven groups must have an entry in ENEMY_CATALOG.
+- Imports `STANDARD_WAVE_ENEMY_IDS`, `PROCEDURAL_WAVE_ENEMY_IDS`, `ELITE_WAVE_ENEMY_IDS` from `wave-definitions.ts`.
+- Intentional exclusion: `'boss'` (boss entries live in `BOSS_DESCRIPTIONS`).
+- Fails loudly with wave number and ID when a real type is missing.

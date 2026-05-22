@@ -180,6 +180,12 @@ export interface RpgSimState {
    * Defaults to true.
    */
   sandBladeEnabled: boolean;
+  /**
+   * Set of enemy type IDs the player has explicitly encountered (spawned during
+   * a wave). Used by the bestiary to show only truly seen enemies.
+   * Empty for old saves — bestiary falls back to highestWaveReached in that case.
+   */
+  encounteredEnemyTypes: Set<string>;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -224,6 +230,7 @@ export function createRpgSimState(): RpgSimState {
     lowHpAccumulatedMs: 0,
     equipChangedDuringInterwave: false,
     sandBladeEnabled: true,
+    encounteredEnemyTypes: new Set(),
   };
 }
 

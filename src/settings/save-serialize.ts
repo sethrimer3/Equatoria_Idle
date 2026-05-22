@@ -95,6 +95,7 @@ export function serializeGameState(state: GameState): SaveData {
       xpReservoir: state.rpg.xpReservoir,
       multiplierBoxes: state.rpg.multiplierBoxes.map(b => ({ level: b.level, progressXp: b.progressXp })),
       sandBladeEnabled: state.rpg.sandBladeEnabled,
+      encounteredEnemyTypes: Array.from(state.rpg.encounteredEnemyTypes),
     },
     elapsedMs: state.elapsedMs,
     forge: {
