@@ -32,6 +32,7 @@ import type {
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
+import { pushPointOutsideTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
 
@@ -83,6 +84,8 @@ export interface VortexWeaponCtx {
   // Game-flow callbacks
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => import('./terrain/topographic-terrain').TopographicTerrainState | null;
 }
 
 // ── Public handle ─────────────────────────────────────────────────────────────
@@ -122,11 +125,21 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
     const count       = getVortexCount(tier);
     // Set the per-weapon cooldown to 2× duration before spawning vortexes.
     vortexWeaponStates.set(weaponId, { cooldownMs: durationMs * 2 });
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
     for (let i = 0; i < count; i++) {
       const angle = ctx.playerAimAngle + (i / count) * Math.PI * 2;
+      let vx = mote.x + Math.cos(angle) * VORTEX_SPAWN_DIST;
+      let vy = mote.y + Math.sin(angle) * VORTEX_SPAWN_DIST;
+      // Push vortex spawn point out of terrain so it does not overlap islands.
+      if (terrain) {
+        const out = { x: vx, y: vy };
+        if (pushPointOutsideTopographicTerrain(terrain, vx, vy, out, radiusPx)) {
+          vx = out.x; vy = out.y;
+        }
+      }
       activeVortexes.push({
-        x: mote.x + Math.cos(angle) * VORTEX_SPAWN_DIST,
-        y: mote.y + Math.sin(angle) * VORTEX_SPAWN_DIST,
+        x: vx,
+        y: vy,
         radiusPx,
         durationMs,
         maxDurationMs: durationMs,

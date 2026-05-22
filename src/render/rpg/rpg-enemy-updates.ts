@@ -54,6 +54,7 @@ import {
 } from './rpg-factories';
 import {
   segmentIntersectsTopographicTerrain,
+  pushPointOutsideTopographicTerrain,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 
@@ -93,6 +94,71 @@ export interface RpgEnemyCtx {
   getTerrainState(): TopographicTerrainState | null;
 }
 
+// ── Shared terrain push-out helper ────────────────────────────────────────────
+
+/** Reusable scratch object to avoid allocations in push-out calls. */
+const _pushOutScratch = { x: 0, y: 0 };
+
+/**
+ * If the entity body (circular, given by `halfSize` as body half-extent) is
+ * overlapping terrain, push it out radially.  Zeros the velocity component
+ * directed into the island to prevent tunnelling on the next frame.
+ *
+ * @param entity  - mutable {x, y, vx, vy}
+ * @param terrain - current terrain state (may be null)
+ * @param halfSize - half the enemy's collision width/height (px)
+ */
+export function applyEnemyTerrainPushOut(
+  entity: { x: number; y: number; vx: number; vy: number },
+  terrain: TopographicTerrainState | null,
+  halfSize: number,
+): void {
+  if (!terrain) return;
+  if (pushPointOutsideTopographicTerrain(terrain, entity.x, entity.y, _pushOutScratch, halfSize + 2)) {
+    entity.x = _pushOutScratch.x;
+    entity.y = _pushOutScratch.y;
+    // Zero velocity component pointing back into the island.
+    const pdx = entity.x - _pushOutScratch.x, pdy = entity.y - _pushOutScratch.y;
+    const plen = Math.sqrt(pdx * pdx + pdy * pdy);
+    if (plen > 0) {
+      const nx = pdx / plen, ny = pdy / plen;
+      const dot = entity.vx * nx + entity.vy * ny;
+      if (dot < 0) { entity.vx -= dot * nx; entity.vy -= dot * ny; }
+    }
+  }
+}
+
+/**
+ * Computes a terrain-aware direction from `(ex, ey)` toward `(tx, ty)`.
+ * If the direct path is blocked by terrain, tries two tangential offsets
+ * (±90° from direct) to steer around the obstacle.  Falls back to the
+ * direct direction when terrain is null or unblocked.
+ *
+ * Returns a normalised direction vector `{dx, dy}`.
+ */
+export function terrainAwareDirection(
+  terrain: TopographicTerrainState | null,
+  ex: number, ey: number,
+  tx: number, ty: number,
+): { dx: number; dy: number } {
+  const rawDx = tx - ex, rawDy = ty - ey;
+  const rawLen = Math.sqrt(rawDx * rawDx + rawDy * rawDy) || 1;
+  const ndx = rawDx / rawLen, ndy = rawDy / rawLen;
+  if (!terrain || !segmentIntersectsTopographicTerrain(terrain, ex, ey, tx, ty)) {
+    return { dx: ndx, dy: ndy };
+  }
+  // Try perpendicular offsets at a short probe distance to pick a side.
+  const probeD = 30;
+  const left  = { dx: -ndy, dy:  ndx };
+  const right = { dx:  ndy, dy: -ndx };
+  const leftBlocked  = segmentIntersectsTopographicTerrain(terrain, ex, ey, ex + left.dx * probeD,  ey + left.dy * probeD);
+  const rightBlocked = segmentIntersectsTopographicTerrain(terrain, ex, ey, ex + right.dx * probeD, ey + right.dy * probeD);
+  if (!leftBlocked)  return left;
+  if (!rightBlocked) return right;
+  // Both blocked — use direct direction (will be pushed out post-move)
+  return { dx: ndx, dy: ndy };
+}
+
 // ── Emerald enemy system (blink-striker) ──────────────────────────────────────
 
 export function updateEmeraldEnemies(
@@ -102,6 +168,7 @@ export function updateEmeraldEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim, fluid } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     // Fade ghost afterimage
     if (enemy.ghostAlpha > 0) {
@@ -126,6 +193,7 @@ export function updateEmeraldEnemies(
       if (enemy.x > dim.w - half)    { enemy.x = dim.w - half;    enemy.vx = -Math.abs(enemy.vx) * 0.5; }
       if (enemy.y < half)            { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
       if (enemy.y > dim.h - half)    { enemy.y = dim.h - half;     enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+      applyEnemyTerrainPushOut(enemy, terrain, half);
 
       // Fluid from patrol movement
       const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
@@ -221,6 +289,7 @@ export function updateAmberEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { dim, fluid } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     // Patrol
     enemy.patrolTimerMs -= deltaMs;
@@ -238,6 +307,7 @@ export function updateAmberEnemies(
     if (enemy.x > dim.w - half) { enemy.x = dim.w - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
     if (enemy.y < half)         { enemy.y = half;          enemy.vy =  Math.abs(enemy.vy) * 0.5; }
     if (enemy.y > dim.h - half) { enemy.y = dim.h - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    applyEnemyTerrainPushOut(enemy, terrain, half);
 
     // Fluid from movement
     const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
@@ -334,18 +404,14 @@ export function updateVoidEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim, fluid } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % VOID_AURA_PULSE_MS;
 
-    // Constant pursuit of player
-    const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 0.01) {
-      enemy.vx = (dx / dist) * VOID_PURSUE_SPEED;
-      enemy.vy = (dy / dist) * VOID_PURSUE_SPEED;
-    } else {
-      enemy.vx = 0; enemy.vy = 0;
-    }
+    // Terrain-aware pursuit: steer around obstacles when direct path is blocked.
+    const dir = terrainAwareDirection(terrain, enemy.x, enemy.y, mote.x, mote.y);
+    enemy.vx = dir.dx * VOID_PURSUE_SPEED;
+    enemy.vy = dir.dy * VOID_PURSUE_SPEED;
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
 
     // Clamp to bounds
@@ -354,6 +420,7 @@ export function updateVoidEnemies(
     if (enemy.x > dim.w - half) { enemy.x = dim.w - half; }
     if (enemy.y < half)         { enemy.y = half; }
     if (enemy.y > dim.h - half) { enemy.y = dim.h - half; }
+    applyEnemyTerrainPushOut(enemy, terrain, half);
 
     // Fluid from movement
     const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);

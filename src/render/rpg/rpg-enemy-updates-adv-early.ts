@@ -22,9 +22,11 @@ import {
 } from './rpg-constants';
 import {
   IOLITE_PATROL_SPEED, IOLITE_PATROL_TURN_MS,
+  IOLITE_ENEMY_SIZE,
   IOLITE_BEAM_CD_MS, IOLITE_BEAM_JITTER, IOLITE_BEAM_RANGE,
   IOLITE_BEAM_COUNT, IOLITE_BEAM_SPREAD_RAD, IOLITE_ENEMY_GLOW,
   AMETHYST_PATROL_SPEED, AMETHYST_PATROL_TURN_MS,
+  AMETHYST_ENEMY_SIZE,
   AMETHYST_BURST_CD_MS, AMETHYST_BURST_JITTER, AMETHYST_BURST_COUNT,
   AMETHYST_SHARD_SPEED,
   DIAMOND_PATROL_SPEED, DIAMOND_ORBIT_SPEED,
@@ -33,6 +35,7 @@ import {
   NULLSTONE_GRAVITY_STRENGTH, NULLSTONE_GRAVITY_RADIUS,
   NULLSTONE_ABSORB_MS, NULLSTONE_ABSORB_CD_MS,
   NULLSTONE_PATROL_SPEED, NULLSTONE_PATROL_TURN_MS,
+  NULLSTONE_ENEMY_SIZE,
   NULLSTONE_TENDRIL_CD_MS, NULLSTONE_TENDRIL_COUNT, VOID_TENDRIL_SPEED,
 } from './rpg-enemy-constants';
 import {
@@ -41,6 +44,7 @@ import {
   makeVoidTendril,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
+import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Iolite enemy system (wave 40) ─────────────────────────────────────────────
@@ -52,6 +56,7 @@ export function updateIoliteEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -62,6 +67,7 @@ export function updateIoliteEnemies(
     }
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, terrain, IOLITE_ENEMY_SIZE / 2);
     enemy.beamTimerMs -= deltaMs;
     if (enemy.beamTimerMs <= 0) {
       enemy.beamTimerMs = IOLITE_BEAM_CD_MS + Math.random() * IOLITE_BEAM_JITTER;
@@ -93,6 +99,7 @@ export function updateAmethystEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -103,6 +110,7 @@ export function updateAmethystEnemies(
     }
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, terrain, AMETHYST_ENEMY_SIZE / 2);
     enemy.burstTimerMs -= deltaMs;
     if (enemy.burstTimerMs <= 0) {
       enemy.burstTimerMs = AMETHYST_BURST_CD_MS + Math.random() * AMETHYST_BURST_JITTER;
@@ -151,6 +159,7 @@ export function updateDiamondEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, dim } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.phaseTimerMs -= deltaMs;
     if (enemy.phaseTimerMs <= 0) {
@@ -176,6 +185,7 @@ export function updateDiamondEnemies(
       enemy.vy = (dy / dist) * DIAMOND_PATROL_SPEED;
       enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
       ctx.clampEnemyToBounds(enemy);
+      applyEnemyTerrainPushOut(enemy, terrain, DIAMOND_ENEMY_SIZE / 2);
       enemy.shardTimerMs -= deltaMs;
       if (enemy.shardTimerMs <= 0) {
         enemy.shardTimerMs = DIAMOND_SHARD_CD_MS + Math.random() * 500;
@@ -225,6 +235,7 @@ export function updateNullstoneEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.pulseMs += deltaMs;
     // Gravity pull on player
@@ -252,6 +263,7 @@ export function updateNullstoneEnemies(
     }
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, terrain, NULLSTONE_ENEMY_SIZE / 2);
     // Tendril attack
     enemy.tendrilTimerMs -= deltaMs;
     if (enemy.tendrilTimerMs <= 0) {

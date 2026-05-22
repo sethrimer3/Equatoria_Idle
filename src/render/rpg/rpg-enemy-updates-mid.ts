@@ -26,10 +26,13 @@ import {
 import {
   QUARTZ_PREFERRED_DIST, QUARTZ_APPROACH_SPEED, QUARTZ_STRAFE_SPEED,
   QUARTZ_SPIKE_CD_MS, QUARTZ_SPIKE_JITTER, QUARTZ_SPIKE_SPEED,
+  QUARTZ_ENEMY_SIZE,
   RUBY_PATROL_SPEED, RUBY_BOLT_CD_MS, RUBY_BOLT_JITTER, RUBY_PREFERRED_DIST, RUBY_BOLT_SPEED,
+  RUBY_ENEMY_SIZE,
   SUNSTONE_ORBIT_SPEED, SUNSTONE_PREFERRED_DIST, SUNSTONE_PULSE_CD_MS, SUNSTONE_PULSE_JITTER,
   SUNSTONE_ENEMY_SIZE, SUNSTONE_ENEMY_GLOW,
   CITRINE_PATROL_SPEED, CITRINE_PATROL_TURN_MS,
+  CITRINE_ENEMY_SIZE,
   CITRINE_BOLT_CD_MS, CITRINE_BOLT_JITTER, CITRINE_BOLT_SPEED,
   CITRINE_BOLT_MAX_SPEED, CITRINE_BOLT_SEEK, CITRINE_BOLT_TRAIL_CAP,
 } from './rpg-enemy-constants';
@@ -39,6 +42,7 @@ import {
   makeCitrineBolt,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
+import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
 
 // ── Quartz enemy system ────────────────────────────────────────────────────────
@@ -51,6 +55,7 @@ export function updateQuartzEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -70,6 +75,7 @@ export function updateQuartzEnemies(
     enemy.vx *= 0.85; enemy.vy *= 0.85;
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, terrain, QUARTZ_ENEMY_SIZE / 2);
     enemy.strafeDirFlipMs -= deltaMs;
     if (enemy.strafeDirFlipMs <= 0) {
       enemy.strafeDir = (enemy.strafeDir === 1 ? -1 : 1) as 1 | -1;
@@ -122,6 +128,7 @@ export function updateRubyEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -138,6 +145,7 @@ export function updateRubyEnemies(
     }
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, terrain, RUBY_ENEMY_SIZE / 2);
     enemy.boltTimerMs -= deltaMs;
     if (enemy.boltTimerMs <= 0) {
       enemy.boltTimerMs = RUBY_BOLT_CD_MS + Math.random() * RUBY_BOLT_JITTER;
@@ -222,6 +230,7 @@ export function updateCitrineEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
+  const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -232,6 +241,7 @@ export function updateCitrineEnemies(
     }
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     ctx.clampEnemyToBounds(enemy);
+    applyEnemyTerrainPushOut(enemy, terrain, CITRINE_ENEMY_SIZE / 2);
     enemy.boltTimerMs -= deltaMs;
     if (enemy.boltTimerMs <= 0) {
       enemy.boltTimerMs = CITRINE_BOLT_CD_MS + Math.random() * CITRINE_BOLT_JITTER;

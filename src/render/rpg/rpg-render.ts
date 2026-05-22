@@ -626,6 +626,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getEffectiveEquippedIds,
     findEquippedWeaponIdByEffect,
     getCachedLuckPercent,
+    getTerrainState: () => topographicTerrainState,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,

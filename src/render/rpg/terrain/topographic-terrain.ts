@@ -299,18 +299,36 @@ export function setTopographicTerrainDevMode(enabled: boolean): void {
   terrainDevMode = enabled;
 }
 
+/**
+ * Returns true when `(x, y)` is inside any terrain island at its current
+ * effective scale (phase-aware: uses `growth01` scaling around each island
+ * centre, matching the visible terrain boundary).
+ */
 export function isPointInsideTopographicTerrain(
   state: TopographicTerrainState,
   x: number,
   y: number,
 ): boolean {
   if (state.phase === 'hidden') return false;
+  const g = state.growth01;
+  if (g <= 0) return false;
   for (const island of state.islands) {
-    if (isPointInPolygon(island.solidOuterPolygon, x, y)) return true;
+    // Inverse-scale the query point into unscaled polygon space.
+    const xs = island.centerX + (x - island.centerX) / g;
+    const ys = island.centerY + (y - island.centerY) / g;
+    if (isPointInPolygon(island.solidOuterPolygon, xs, ys)) return true;
   }
   return false;
 }
 
+/**
+ * Returns true when the segment `(x1,y1)→(x2,y2)` intersects or is contained
+ * within any terrain island, accounting for the current growth scale.
+ *
+ * Phase-aware: both segment endpoints are inverse-scaled into each island's
+ * unscaled polygon space before the polygon test, so the collision boundary
+ * matches the visible animated terrain.
+ */
 export function segmentIntersectsTopographicTerrain(
   state: TopographicTerrainState,
   x1: number,
@@ -319,17 +337,95 @@ export function segmentIntersectsTopographicTerrain(
   y2: number,
 ): boolean {
   if (state.phase === 'hidden') return false;
+  const g = state.growth01;
+  if (g <= 0) return false;
   for (const island of state.islands) {
+    const { centerX: cx, centerY: cy } = island;
+    // Inverse-scale both endpoints into island-local (unscaled) space.
+    const lx1 = cx + (x1 - cx) / g, ly1 = cy + (y1 - cy) / g;
+    const lx2 = cx + (x2 - cx) / g, ly2 = cy + (y2 - cy) / g;
     const polygon = island.solidOuterPolygon;
     if (polygon.length < 3) continue;
-    if (isPointInPolygon(polygon, x1, y1) || isPointInPolygon(polygon, x2, y2)) return true;
+    if (isPointInPolygon(polygon, lx1, ly1) || isPointInPolygon(polygon, lx2, ly2)) return true;
     for (let i = 0; i < polygon.length; i++) {
       const a = polygon[i];
       const b = polygon[(i + 1) % polygon.length];
-      if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return true;
+      if (segmentsIntersect(lx1, ly1, lx2, ly2, a.x, a.y, b.x, b.y)) return true;
     }
   }
   return false;
+}
+
+/**
+ * Returns true when a circle of `radiusPx` centred at `(x, y)` overlaps any
+ * terrain island at its current growth scale.  Uses a fast AABB pre-reject
+ * then falls back to the push-out check (phase-aware).
+ */
+export function circleIntersectsTopographicTerrain(
+  state: TopographicTerrainState,
+  x: number,
+  y: number,
+  radiusPx: number,
+): boolean {
+  if (state.phase === 'hidden') return false;
+  const g = state.growth01;
+  if (g <= 0) return false;
+  for (const island of state.islands) {
+    const dx = x - island.centerX, dy = y - island.centerY;
+    const distSq = dx * dx + dy * dy;
+    const outerR = island.outerRadius * g + radiusPx;
+    if (distSq > outerR * outerR) continue; // fast AABB reject
+    // Accurate check: is the circle centre inside the scaled polygon?
+    const xs = island.centerX + (x - island.centerX) / g;
+    const ys = island.centerY + (y - island.centerY) / g;
+    if (isPointInPolygon(island.solidOuterPolygon, xs, ys)) return true;
+    // Edge proximity check: is the circle close enough to the polygon boundary?
+    if (Math.sqrt(distSq) <= island.outerRadius * g + radiusPx) {
+      // Use push-out helper as a precise overlap detector.
+      const out = { x: 0, y: 0 };
+      if (pushPointOutsideTopographicTerrain(state, x, y, out, 0)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Finds the earliest parametric distance `t ∈ [0, 1]` at which the ray from
+ * `(ox, oy)` in direction `(dx, dy)` with length `maxT` first intersects any
+ * terrain island boundary.  Returns a value in `[0, 1]` (fraction of `maxT`)
+ * when an intersection is found, or `1` if the ray is unobstructed.
+ *
+ * Useful for truncating projectile paths and laser beams at terrain surfaces.
+ */
+export function terrainFirstIntersectionT(
+  state: TopographicTerrainState,
+  ox: number,
+  oy: number,
+  dx: number,
+  dy: number,
+  maxT: number,
+): number {
+  if (state.phase === 'hidden' || maxT <= 0) return 1;
+  const g = state.growth01;
+  if (g <= 0) return 1;
+  const ex = ox + dx * maxT, ey = oy + dy * maxT;
+  let bestFraction = 1;
+  for (const island of state.islands) {
+    const { centerX: cx, centerY: cy } = island;
+    const lox = cx + (ox - cx) / g, loy = cy + (oy - cy) / g;
+    const lex = cx + (ex - cx) / g, ley = cy + (ey - cy) / g;
+    const polygon = island.solidOuterPolygon;
+    if (polygon.length < 3) continue;
+    // If origin is already inside, clamp immediately.
+    if (isPointInPolygon(polygon, lox, loy)) return 0;
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+      const t = segmentIntersectT(lox, loy, lex, ley, a.x, a.y, b.x, b.y);
+      if (t !== null && t < bestFraction) bestFraction = t;
+    }
+  }
+  return bestFraction;
 }
 
 export function getTopographicTerrainSolidPolygons(state: TopographicTerrainState): TopographicTerrainPoint[][] {
@@ -395,13 +491,39 @@ function drawTerrainDevOverlay(ctx: CanvasRenderingContext2D, state: Topographic
     ctx.fillText(lines[i], 8, 40 + i * DEV_TEXT_LINE_HEIGHT_PX);
   }
 
-  ctx.globalAlpha = 0.8;
+  // Unscaled (raw geometry) polygon — red dashed
+  ctx.globalAlpha = 0.4;
   ctx.strokeStyle = '#ff4040';
   ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
   for (const island of state.islands) {
     drawClosedPolygon(ctx, island.solidOuterPolygon);
     ctx.stroke();
   }
+
+  // Scaled (effective collision) polygon — bright green solid
+  const g = state.growth01;
+  if (g > 0) {
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    for (const island of state.islands) {
+      const scaledPts = island.solidOuterPolygon.map(p => ({
+        x: island.centerX + (p.x - island.centerX) * g,
+        y: island.centerY + (p.y - island.centerY) * g,
+      }));
+      drawClosedPolygon(ctx, scaledPts);
+      ctx.stroke();
+      // Draw island centre dot
+      ctx.fillStyle = '#00ff88';
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(island.centerX, island.centerY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.setLineDash([]);
   ctx.restore();
 }
 
@@ -491,6 +613,24 @@ function isPointOnSegment(
 
 function cross(ax: number, ay: number, bx: number, by: number, px: number, py: number): number {
   return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+}
+
+/**
+ * Returns the parametric `t ∈ [0, 1]` at which segment `(p1→p2)` crosses
+ * segment `(p3→p4)`, or `null` if they do not cross within both extents.
+ */
+function segmentIntersectT(
+  x1: number, y1: number,
+  x2: number, y2: number,
+  x3: number, y3: number,
+  x4: number, y4: number,
+): number | null {
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+  if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return t;
+  return null;
 }
 
 function randomRange(rng: () => number, min: number, max: number): number {
