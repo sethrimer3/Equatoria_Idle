@@ -35,24 +35,110 @@ const TERRAIN_GROW_DURATION_MS = 1300;
 const TERRAIN_SHRINK_DURATION_MS = 500;
 const MIN_ISLANDS = 2;
 const MAX_ISLANDS = 5;
-const MIN_RINGS = 3;
-const MAX_RINGS = 7;
+const MIN_RINGS = 2;
+const MAX_RINGS = 9;
 const RING_POINTS = 64;
 const TERRAIN_EDGE_MARGIN = 40;
 const PLAYER_EXCLUSION_RADIUS = 60;
-const INNER_RING_CENTER_JITTER_PX = 5;
 const MAX_ISLAND_PLACEMENT_ATTEMPTS = 15;
 const DEV_TEXT_LINE_HEIGHT_PX = 12;
 
 const PALETTE_SEQUENCE: TopographicTerrainPaletteId[] = ['mono', 'copper', 'cyanTactical'];
 
-const PALETTES: Record<TopographicTerrainPaletteId, { lines: string[]; glow: string | null }> = {
-  mono: { lines: ['#dddddd', '#aaaaaa', '#888888', '#555555'], glow: null },
-  copper: { lines: ['#c87941', '#d4935e', '#e8b87a', '#f5d098', '#aa6030'], glow: '#c87941' },
-  cyanTactical: { lines: ['#22ddff', '#44aacc', '#1199bb', '#00ccee', '#88eeff'], glow: '#22ddff' },
+/**
+ * Palette entries now include an `indexLine` color (used for every 3rd contour)
+ * and a `glowAlpha` (very low — 0 to 0.06) to keep glow subtle and topographic.
+ */
+const PALETTES: Record<TopographicTerrainPaletteId, {
+  lines: string[];
+  indexLine: string;
+  glow: string | null;
+  glowAlpha: number;
+}> = {
+  mono: {
+    lines: ['#c8c8c8', '#a0a0a0', '#787878', '#585858'],
+    indexLine: '#e2e2e2',
+    glow: null,
+    glowAlpha: 0,
+  },
+  copper: {
+    lines: ['#a06030', '#b07040', '#c28050', '#955028'],
+    indexLine: '#d09060',
+    glow: '#c07840',
+    glowAlpha: 0.04,
+  },
+  cyanTactical: {
+    lines: ['#186880', '#1a7090', '#1060a0', '#127888'],
+    indexLine: '#1890aa',
+    glow: '#1a8898',
+    glowAlpha: 0.05,
+  },
 };
 
 let terrainDevMode = false;
+
+/**
+ * A single reusable shape profile for one island.  All rings of the island are
+ * derived from this profile — scaled versions of the same underlying landform —
+ * so they look like nested topographic contours rather than independent loops.
+ */
+interface IslandShapeProfile {
+  harmonics: Array<{
+    frequency: number;
+    amplitude: number;
+    phase: number;
+  }>;
+  /** Rotation angle (radians) of the elongation axis. */
+  elongationAngle: number;
+  /** 0 = round, up to ~0.28 = noticeably elongated ridge. */
+  elongationAmount: number;
+}
+
+/**
+ * Generates a shared shape profile for one island using low-frequency harmonics
+ * to produce organic, map-like blobs rather than flower/petal shapes.
+ */
+function buildIslandShapeProfile(rng: () => number): IslandShapeProfile {
+  const harmonicCount = randomIntInclusive(rng, 2, 3);
+  const maxAmplitudes = [
+    randomRange(rng, 0.08, 0.18),  // primary deformation
+    randomRange(rng, 0.03, 0.08),  // secondary deformation
+    randomRange(rng, 0.01, 0.04),  // tertiary deformation
+  ];
+  const harmonics: IslandShapeProfile['harmonics'] = [];
+  for (let i = 0; i < harmonicCount; i++) {
+    // Prefer low frequencies (1–4) to avoid symmetrical flower lobes.
+    // Frequency 5 is allowed but rare.
+    const freq = rng() < 0.85
+      ? randomIntInclusive(rng, 1, 4)
+      : 5;
+    harmonics.push({
+      frequency: freq,
+      amplitude: maxAmplitudes[i] ?? 0.01,
+      phase: randomRange(rng, 0, Math.PI * 2),
+    });
+  }
+  return {
+    harmonics,
+    elongationAngle: randomRange(rng, 0, Math.PI * 2),
+    elongationAmount: randomRange(rng, 0, 0.28),
+  };
+}
+
+/**
+ * Evaluates the shared shape multiplier at angle `theta`.
+ * Returns a value ≥ 0.2 (always positive, never collapses to a point).
+ */
+function computeShapeMultiplier(profile: IslandShapeProfile, theta: number): number {
+  let mod = 1.0;
+  for (const h of profile.harmonics) {
+    mod += h.amplitude * Math.sin(h.frequency * theta + h.phase);
+  }
+  // Elongation: stretches/compresses along one axis for a ridge-like look.
+  const cosElong = Math.cos(theta - profile.elongationAngle);
+  mod *= 1 + profile.elongationAmount * (cosElong * cosElong - 0.5);
+  return Math.max(0.2, mod);
+}
 
 export function createSeededRng(seed: number): () => number {
   let state = seed >>> 0;
@@ -79,7 +165,7 @@ export function generateTopographicTerrain(
   const centerY = canvasH * 0.5;
 
   for (let islandIndex = 0; islandIndex < targetIslandCount; islandIndex++) {
-    const outerRadius = randomRange(rng, 25, 55);
+    const outerRadius = randomRange(rng, 35, 80);
     let islandCenterX = 0;
     let islandCenterY = 0;
     let placed = false;
@@ -120,39 +206,47 @@ export function generateTopographicTerrain(
     let solidOuterPolygon: TopographicTerrainPoint[] = [];
     const colorOffset = randomIntInclusive(rng, 0, palette.lines.length - 1);
 
-    for (let ringIndex = 0; ringIndex < ringCount; ringIndex++) {
-      const ringScale = ringCount <= 1 ? 1 : lerp(0.32, 1, ringIndex / (ringCount - 1));
-      const baseRadius = outerRadius * ringScale;
-      const centerOffsetX = ringIndex < ringCount - 1 ? randomRange(rng, -INNER_RING_CENTER_JITTER_PX, INNER_RING_CENTER_JITTER_PX) : 0;
-      const centerOffsetY = ringIndex < ringCount - 1 ? randomRange(rng, -INNER_RING_CENTER_JITTER_PX, INNER_RING_CENTER_JITTER_PX) : 0;
-      const freq1 = randomIntInclusive(rng, 2, 6);
-      const freq2 = randomIntInclusive(rng, 2, 6);
-      const freq3 = randomIntInclusive(rng, 2, 6);
-      const phase1 = randomRange(rng, 0, Math.PI * 2);
-      const phase2 = randomRange(rng, 0, Math.PI * 2);
-      const phase3 = randomRange(rng, 0, Math.PI * 2);
-      const points: TopographicTerrainPoint[] = [];
+    // One shared shape profile drives ALL rings — this is the key change that makes
+    // rings look like nested topographic contours of the same landform.
+    const profile = buildIslandShapeProfile(rng);
 
+    for (let ringIndex = 0; ringIndex < ringCount; ringIndex++) {
+      const ringScale = ringCount <= 1 ? 1 : lerp(0.28, 1.0, ringIndex / (ringCount - 1));
+
+      // Tiny per-ring perturbation (1–2.5%).  Must stay well below the radial gap
+      // between adjacent rings to guarantee no ring crossing.
+      const perturbPhase = randomRange(rng, 0, Math.PI * 2);
+      const perturbAmp = randomRange(rng, 0.01, 0.025);
+
+      const points: TopographicTerrainPoint[] = [];
       for (let pointIndex = 0; pointIndex < RING_POINTS; pointIndex++) {
         const theta = (pointIndex / RING_POINTS) * Math.PI * 2;
-        const modulation = 1
-          + 0.2 * Math.sin(freq1 * theta + phase1)
-          + 0.12 * Math.cos(freq2 * theta + phase2)
-          + 0.08 * Math.sin(freq3 * theta + phase3);
-        const radius = baseRadius * Math.max(0.18, modulation);
+        const shapeBase = computeShapeMultiplier(profile, theta);
+        // Perturbation is so small it cannot cause adjacent rings to cross.
+        const perturb = 1 + perturbAmp * Math.sin(2 * theta + perturbPhase);
+        const radius = outerRadius * ringScale * shapeBase * perturb;
         points.push({
-          x: islandCenterX + centerOffsetX + Math.cos(theta) * radius,
-          y: islandCenterY + centerOffsetY + Math.sin(theta) * radius,
+          x: islandCenterX + Math.cos(theta) * radius,
+          y: islandCenterY + Math.sin(theta) * radius,
         });
       }
 
-      const isOutermostRing = ringIndex === ringCount - 1;
-      const lineWidth = isOutermostRing ? 1.5 : randomRange(rng, 0.8, 1.2);
-      const alpha = randomRange(rng, 0.5, 0.9);
-      const color = palette.lines[(ringIndex + colorOffset) % palette.lines.length];
+      // Line hierarchy: every 3rd ring (from innermost) is an index contour —
+      // slightly thicker and brighter, like traditional cartographic index lines.
+      const isIndexContour = ringIndex % 3 === 2;
+      const lineWidth = isIndexContour
+        ? randomRange(rng, 1.2, 1.5)
+        : randomRange(rng, 0.65, 1.0);
+      const alpha = isIndexContour
+        ? randomRange(rng, 0.70, 0.88)
+        : randomRange(rng, 0.42, 0.70);
+      const color = isIndexContour
+        ? palette.indexLine
+        : palette.lines[(ringIndex + colorOffset) % palette.lines.length];
+
       const ring: TopographicTerrainRing = { points, lineWidth, alpha, color, ringIndex };
       rings.push(ring);
-      if (isOutermostRing) solidOuterPolygon = points;
+      if (ringIndex === ringCount - 1) solidOuterPolygon = points;
     }
 
     islands.push({
@@ -272,9 +366,9 @@ export function renderTopographicTerrain(
         const animatedPoints = animatePoints(ring.points, island.centerX, island.centerY, ringGrowth01);
         drawClosedPolygon(ctx, animatedPoints);
 
-        if (palette.glow !== null) {
-          ctx.globalAlpha = 0.12 * ringGrowth01;
-          ctx.lineWidth = ring.lineWidth * 3;
+        if (palette.glow !== null && palette.glowAlpha > 0) {
+          ctx.globalAlpha = palette.glowAlpha * ringGrowth01;
+          ctx.lineWidth = ring.lineWidth * 2.5;
           ctx.strokeStyle = palette.glow;
           ctx.stroke();
         }
