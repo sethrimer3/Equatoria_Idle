@@ -32,7 +32,10 @@ import type {
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
-import { pushPointOutsideTopographicTerrain } from './terrain/topographic-terrain';
+import {
+  pushPointOutsideTopographicTerrain,
+  hasTopographicTerrainLineOfSight,
+} from './terrain/topographic-terrain';
 
 // Module-level scratch object to avoid per-pull allocation during the vortex pull sweep.
 const _vortexPullScratch = { x: 0, y: 0 };
@@ -162,14 +165,20 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
     if (state.cooldownMs <= 0) fireVortex(weaponId, tier);
   }
 
-  /** Applies vortex damage to one enemy; shows a damage number if any dealt. */
+  /** Applies vortex damage to one enemy; shows a damage number if any dealt.
+   *  Terrain blocks the vortex: enemies with no line of sight from the vortex
+   *  centre are neither pulled nor damaged through an island. */
   function applyVortexTickToEnemy<T extends { x: number; y: number; maxHp: number }>(
     vortex: NullstoneVortex,
     e: T,
     damageFn: (enemy: T, dmg: number, pierce: number) => number,
+    terrain: import('./terrain/topographic-terrain').TopographicTerrainState | null,
   ): void {
     const dx = e.x - vortex.x, dy = e.y - vortex.y;
     if (dx * dx + dy * dy > vortex.radiusPx * vortex.radiusPx) return;
+    // Skip enemies whose centre is behind a terrain island — the vortex
+    // gravitational field does not penetrate solid obstacles.
+    if (!hasTopographicTerrainLineOfSight(terrain, vortex.x, vortex.y, e.x, e.y)) return;
     const dmg = damageFn(e, vortex.scaledDamage, 0);
     if (dmg > 0) spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, VORTEX_COLOR);
   }
@@ -187,10 +196,13 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
       v.spinAngle += VORTEX_SPIN_RATE * deltaMs / 1000;
 
       // Gravity pull — nudge each enemy toward the vortex center.
+      // Terrain blocks the pull: enemies with no LOS from the vortex are not pulled.
       const applyPull = (e: { x: number; y: number }) => {
         const dx = v.x - e.x, dy = v.y - e.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 0.01 && dist <= v.radiusPx) {
+          // Do not pull enemies that are behind a terrain island.
+          if (!hasTopographicTerrainLineOfSight(terrain, v.x, v.y, e.x, e.y)) return;
           e.x += (dx / dist) * pull;
           e.y += (dy / dist) * pull;
           // Push back out of terrain if the pull moved the enemy into an island.
@@ -233,25 +245,26 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
       v.damageTimerMs -= deltaMs;
       if (v.damageTimerMs <= 0) {
         v.damageTimerMs += VORTEX_DAMAGE_INTERVAL_MS;
-        for (const e of ctx.enemies)           applyVortexTickToEnemy(v, e, damageEnemy);
-        for (const e of ctx.sapphireEnemies)   applyVortexTickToEnemy(v, e, (en, dmg, p) => damageSapphireEnemy(en, dmg, p, false));
-        for (const e of ctx.emeraldEnemies)    applyVortexTickToEnemy(v, e, damageEmeraldEnemy);
-        for (const e of ctx.amberEnemies)      applyVortexTickToEnemy(v, e, damageAmberEnemy);
-        for (const e of ctx.voidEnemies)       applyVortexTickToEnemy(v, e, damageVoidEnemy);
-        for (const e of ctx.quartzEnemies)     applyVortexTickToEnemy(v, e, damageQuartzEnemy);
-        for (const e of ctx.rubyEnemies)       applyVortexTickToEnemy(v, e, damageRubyEnemy);
-        for (const e of ctx.sunstoneEnemies)   applyVortexTickToEnemy(v, e, damageSunstoneEnemy);
-        for (const e of ctx.citrineEnemies)    applyVortexTickToEnemy(v, e, damageCitrineEnemy);
-        for (const e of ctx.ioliteEnemies)     applyVortexTickToEnemy(v, e, damageIoliteEnemy);
-        for (const e of ctx.amethystEnemies)   applyVortexTickToEnemy(v, e, (en, dmg, p) => damageAmethystEnemy(en, dmg, p, false));
-        for (const e of ctx.diamondEnemies)    applyVortexTickToEnemy(v, e, damageDiamondEnemy);
-        for (const e of ctx.nullstoneEnemies)  applyVortexTickToEnemy(v, e, damageNullstoneEnemy);
-        for (const e of ctx.fracterylEnemies)  applyVortexTickToEnemy(v, e, (en, dmg, p) => damageFracterylEnemy(en, dmg, p));
-        for (const e of ctx.eigensteinEnemies) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEigensteinEnemy(en, dmg, p));
-        for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEliteEnemy(en, dmg, p)); }
+        for (const e of ctx.enemies)           applyVortexTickToEnemy(v, e, damageEnemy, terrain);
+        for (const e of ctx.sapphireEnemies)   applyVortexTickToEnemy(v, e, (en, dmg, p) => damageSapphireEnemy(en, dmg, p, false), terrain);
+        for (const e of ctx.emeraldEnemies)    applyVortexTickToEnemy(v, e, damageEmeraldEnemy, terrain);
+        for (const e of ctx.amberEnemies)      applyVortexTickToEnemy(v, e, damageAmberEnemy, terrain);
+        for (const e of ctx.voidEnemies)       applyVortexTickToEnemy(v, e, damageVoidEnemy, terrain);
+        for (const e of ctx.quartzEnemies)     applyVortexTickToEnemy(v, e, damageQuartzEnemy, terrain);
+        for (const e of ctx.rubyEnemies)       applyVortexTickToEnemy(v, e, damageRubyEnemy, terrain);
+        for (const e of ctx.sunstoneEnemies)   applyVortexTickToEnemy(v, e, damageSunstoneEnemy, terrain);
+        for (const e of ctx.citrineEnemies)    applyVortexTickToEnemy(v, e, damageCitrineEnemy, terrain);
+        for (const e of ctx.ioliteEnemies)     applyVortexTickToEnemy(v, e, damageIoliteEnemy, terrain);
+        for (const e of ctx.amethystEnemies)   applyVortexTickToEnemy(v, e, (en, dmg, p) => damageAmethystEnemy(en, dmg, p, false), terrain);
+        for (const e of ctx.diamondEnemies)    applyVortexTickToEnemy(v, e, damageDiamondEnemy, terrain);
+        for (const e of ctx.nullstoneEnemies)  applyVortexTickToEnemy(v, e, damageNullstoneEnemy, terrain);
+        for (const e of ctx.fracterylEnemies)  applyVortexTickToEnemy(v, e, (en, dmg, p) => damageFracterylEnemy(en, dmg, p), terrain);
+        for (const e of ctx.eigensteinEnemies) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEigensteinEnemy(en, dmg, p), terrain);
+        for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEliteEnemy(en, dmg, p), terrain); }
         if (ctx.bossEnemy) {
           const bx = ctx.bossEnemy.x - v.x, by = ctx.bossEnemy.y - v.y;
-          if (bx * bx + by * by <= v.radiusPx * v.radiusPx) {
+          if (bx * bx + by * by <= v.radiusPx * v.radiusPx
+              && hasTopographicTerrainLineOfSight(terrain, v.x, v.y, ctx.bossEnemy.x, ctx.bossEnemy.y)) {
             const dmg = damageBossEnemy(v.scaledDamage, 0);
             if (dmg > 0) spawnDamageNumber(ctx.bossEnemy.x, ctx.bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / ctx.bossEnemy.maxHp, VORTEX_COLOR);
           }
