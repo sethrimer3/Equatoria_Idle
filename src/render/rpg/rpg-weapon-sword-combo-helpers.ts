@@ -34,6 +34,7 @@ import type {
   DiamondEnemy, NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 // Defined here (where it is used by helpers) and re-exported from
@@ -86,6 +87,8 @@ export interface SwordWeaponCtx {
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string, sourceColor?: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Progress thresholds (0–1) at which the spin combo deals a damage tick. ──
@@ -169,14 +172,22 @@ export function swordHitInArc(
   const { mote, hitEffects, spawnDamageNumber } = ctx;
   const hitColor = SWORD_COLOR;
   const isDiamondBlade = weaponId === 'diamond_bastion';
+  const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
+  // Minimum distance (px) at which a target is considered "touching" the player
+  // and should not be blocked by terrain (prevents edge-case situations where
+  // an enemy pushed right next to the player cannot be hit).
+  const MELEE_TOUCH_SQ = 16 * 16;
   const check = <T extends { x: number; y: number; maxHp: number }>(
     e: T,
     damageFn: (enemy: T, dmg: number, pierce: number) => number,
   ) => {
     if (state.hitThisSwing.has(e)) return;
     const dx = e.x - mote.x, dy = e.y - mote.y;
-    if (dx * dx + dy * dy > swordLength * swordLength) return;
+    const distSq = dx * dx + dy * dy;
+    if (distSq > swordLength * swordLength) return;
     if (!angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) return;
+    // LOS check: skip enemies behind terrain unless they are within touch range.
+    if (terrain && distSq > MELEE_TOUCH_SQ && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, e.x, e.y)) return;
     const dmg = damageFn(e, rawDamage, 1.0);
     state.hitThisSwing.add(e);
     hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
@@ -211,8 +222,10 @@ export function swordHitInArc(
   for (const e of eliteEnemies) { if (e.isInvuln) continue; check(e, (en, d, p) => damageEliteEnemy(en, d, p)); }
   if (ctx.bossEnemy && !state.hitThisSwing.has(ctx.bossEnemy)) {
     const dx = ctx.bossEnemy.x - mote.x, dy = ctx.bossEnemy.y - mote.y;
-    if (dx * dx + dy * dy <= swordLength * swordLength &&
-        angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) {
+    const bossDist2 = dx * dx + dy * dy;
+    if (bossDist2 <= swordLength * swordLength &&
+        angleInArc(Math.atan2(dy, dx), arcStart, arcEnd) &&
+        !(terrain && bossDist2 > MELEE_TOUCH_SQ && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, ctx.bossEnemy.x, ctx.bossEnemy.y))) {
       const dmg = damageBossEnemy(rawDamage, 1.0, isDiamondBlade);
       state.hitThisSwing.add(ctx.bossEnemy);
       if (dmg > 0) {
@@ -229,8 +242,11 @@ export function swordHitInArc(
       if (!p.isAlive) continue;
       if (state.hitThisSwing.has(p)) continue;
       const dx = p.x - mote.x, dy = p.y - mote.y;
-      if (dx * dx + dy * dy > swordLength * swordLength) continue;
+      const pDistSq = dx * dx + dy * dy;
+      if (pDistSq > swordLength * swordLength) continue;
       if (!angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) continue;
+      // LOS check for aliven particles.
+      if (terrain && pDistSq > MELEE_TOUCH_SQ && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, p.x, p.y)) continue;
       const dmg = ctx.damageAlivenParticle(p, group, rawDamage);
       state.hitThisSwing.add(p);
       if (dmg > 0) {

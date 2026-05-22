@@ -357,9 +357,36 @@ export function segmentIntersectsTopographicTerrain(
 }
 
 /**
+ * Returns the squared distance from point `(px, py)` to the nearest point on
+ * segment `(ax, ay)→(bx, by)`.  Used by circleIntersectsTopographicTerrain.
+ */
+function pointToSegmentDistSq(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+): number {
+  const abx = bx - ax, aby = by - ay;
+  const abLenSq = abx * abx + aby * aby;
+  if (abLenSq < 1e-12) {
+    const dx = px - ax, dy = py - ay;
+    return dx * dx + dy * dy;
+  }
+  const t = Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / abLenSq));
+  const cx = ax + t * abx, cy = ay + t * aby;
+  const dx = px - cx, dy = py - cy;
+  return dx * dx + dy * dy;
+}
+
+/**
  * Returns true when a circle of `radiusPx` centred at `(x, y)` overlaps any
- * terrain island at its current growth scale.  Uses a fast AABB pre-reject
- * then falls back to the push-out check (phase-aware).
+ * terrain island at its current growth scale.  Uses a fast outer-radius
+ * pre-reject, then checks:
+ *   1. Circle centre inside the scaled polygon.
+ *   2. Any polygon edge within `radiusPx` of the centre (handles the case
+ *      where the centre is outside but the edge grazes the circle).
+ *
+ * Phase-aware: the polygon is inverse-scaled so the test is performed in
+ * unscaled space, with the radius correspondingly scaled by `1/g`.
  */
 export function circleIntersectsTopographicTerrain(
   state: TopographicTerrainState,
@@ -374,19 +401,47 @@ export function circleIntersectsTopographicTerrain(
     const dx = x - island.centerX, dy = y - island.centerY;
     const distSq = dx * dx + dy * dy;
     const outerR = island.outerRadius * g + radiusPx;
-    if (distSq > outerR * outerR) continue; // fast AABB reject
-    // Accurate check: is the circle centre inside the scaled polygon?
+    if (distSq > outerR * outerR) continue; // fast outer-radius reject
+
+    const polygon = island.solidOuterPolygon;
+    if (polygon.length < 3) continue;
+
+    // Inverse-scale the query point into unscaled polygon space.
     const xs = island.centerX + (x - island.centerX) / g;
     const ys = island.centerY + (y - island.centerY) / g;
-    if (isPointInPolygon(island.solidOuterPolygon, xs, ys)) return true;
-    // Edge proximity check: is the circle close enough to the polygon boundary?
-    if (Math.sqrt(distSq) <= island.outerRadius * g + radiusPx) {
-      // Use push-out helper as a precise overlap detector.
-      const out = { x: 0, y: 0 };
-      if (pushPointOutsideTopographicTerrain(state, x, y, out, 0)) return true;
+
+    // Case 1: circle centre is inside the scaled polygon.
+    if (isPointInPolygon(polygon, xs, ys)) return true;
+
+    // Case 2: any polygon edge is within radiusPx of the circle centre.
+    // In inverse-scaled space the equivalent radius is radiusPx / g.
+    const invR2 = (radiusPx / g) * (radiusPx / g);
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+      if (pointToSegmentDistSq(xs, ys, a.x, a.y, b.x, b.y) <= invR2) return true;
     }
   }
   return false;
+}
+
+/**
+ * Returns `true` when the straight line from `(fromX, fromY)` to `(toX, toY)`
+ * is not blocked by any terrain island.  Returns `true` when terrain is null
+ * or inactive.
+ *
+ * Convenience wrapper around segmentIntersectsTopographicTerrain for use in
+ * weapon systems and targeting code.
+ */
+export function hasTopographicTerrainLineOfSight(
+  terrain: TopographicTerrainState | null,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+): boolean {
+  if (!terrain) return true;
+  return !segmentIntersectsTopographicTerrain(terrain, fromX, fromY, toX, toY);
 }
 
 /**

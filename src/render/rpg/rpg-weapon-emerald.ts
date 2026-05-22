@@ -35,6 +35,7 @@ import type {
   EmeraldPlayerMissile, EmeraldSubMissile, EmeraldSwirlParticle,
 } from './rpg-enemy-types';
 export type { EmeraldSubsCtx, EmeraldSubsHandle } from './rpg-weapon-emerald-subs';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -83,6 +84,8 @@ export interface EmeraldWeaponCtx {
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Handle returned to the caller ─────────────────────────────────────────
@@ -147,17 +150,21 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
     const proxR2      = EMERALD_MISSILE_PROXIMITY_PX * EMERALD_MISSILE_PROXIMITY_PX;
     const detectR2    = EMERALD_MISSILE_DETECT_PX * EMERALD_MISSILE_DETECT_PX;
     const fizzleDrag  = Math.pow(EMERALD_MISSILE_FIZZLE_DRAG, dt);
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
 
     for (let i = emeraldPlayerMissiles.length - 1; i >= 0; i--) {
       const m = emeraldPlayerMissiles[i];
 
-      // Find nearest enemy and its distance.
+      // Find nearest enemy that has line-of-sight from the missile.
       let nearestEnemyX: number | null = null;
       let nearestEnemyY: number | null = null;
       let nearestDistSq = Infinity;
       const checkTarget = (ex: number, ey: number) => {
         const d = (ex - m.x) * (ex - m.x) + (ey - m.y) * (ey - m.y);
-        if (d < nearestDistSq) { nearestDistSq = d; nearestEnemyX = ex; nearestEnemyY = ey; }
+        if (d >= nearestDistSq) return;
+        // Skip targets with terrain between the missile and the target.
+        if (terrain && segmentIntersectsTopographicTerrain(terrain, m.x, m.y, ex, ey)) return;
+        nearestDistSq = d; nearestEnemyX = ex; nearestEnemyY = ey;
       };
       for (const e of enemies)          checkTarget(e.x, e.y);
       for (const e of sapphireEnemies)  checkTarget(e.x, e.y);
@@ -219,7 +226,17 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
         }
       }
 
+      const prevX = m.x, prevY = m.y;
       m.x += m.vx * dt; m.y += m.vy * dt;
+
+      // Terrain blocking: fizzle immediately if the movement segment crossed terrain.
+      if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, m.x, m.y)) {
+        subSystem.spawnEmeraldSubMissiles(prevX, prevY, m.scaledDamage, m.tier, null);
+        fluid.addExplosion(prevX, prevY, FLUID_EXPLOSION_STRENGTH * 0.5,
+          FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
+        emeraldPlayerMissiles.splice(i, 1);
+        continue;
+      }
 
       // Wall bounce — reflect off all four edges.
       if (m.x < 0)         { m.x = 0;         m.vx =  Math.abs(m.vx); }

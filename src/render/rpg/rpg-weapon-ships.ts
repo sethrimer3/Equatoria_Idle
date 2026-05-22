@@ -37,6 +37,7 @@ import { createAmethystShipSystem } from './rpg-weapon-amethyst-ships';
 import type { FluidImpulse } from './rpg-fluid';
 import type { RpgPlayerStats, HitEffect, ClosestTarget } from './rpg-types';
 import type { SapphireShip, SapphireLaser, AmethystShip, AmethystLaser } from './rpg-enemy-types';
+import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -91,6 +92,8 @@ export interface ShipWeaponCtx {
   damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   withDamageSource: (weaponId: string | null, fn: () => void) => void;
+  /** Returns current terrain state, or null if terrain is not active. */
+  getTerrainState?: () => TopographicTerrainState | null;
 }
 
 // ── Handle returned to the caller ─────────────────────────────────────────
@@ -248,6 +251,7 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
    */
   function updateSapphireLasers(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+    const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
     const weaponId = findEquippedWeaponIdByEffect('sapphireShip');
     ctx.withDamageSource(weaponId, () => {
       for (let i = sapphireLasers.length - 1; i >= 0; i--) {
@@ -259,10 +263,17 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
           laser.vx = Math.cos(angle) * speed;
           laser.vy = Math.sin(angle) * speed;
         }
+        const prevX = laser.x, prevY = laser.y;
         laser.x += (laser.vx + laser.lateralVx) * dt;
         laser.y += (laser.vy + laser.lateralVy) * dt;
         laser.lateralVx *= Math.pow(SAPPHIRE_LASER_LATERAL_DECAY, dt);
         laser.lateralVy *= Math.pow(SAPPHIRE_LASER_LATERAL_DECAY, dt);
+
+        // Terrain blocking: destroy the laser if it crossed a solid island.
+        if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, laser.x, laser.y)) {
+          sapphireLasers.splice(i, 1); continue;
+        }
+
         updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser, SAPPHIRE_LASER_TRAIL_MIN_DIST);
 
         // Inject forward-motion force into the fluid field (adds sapphire color swirls).
