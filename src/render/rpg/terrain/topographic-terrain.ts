@@ -415,8 +415,11 @@ export function renderTopographicTerrain(
 }
 
 /**
- * Renders the merged scalar-field contour lines.  Each level is scaled around
- * the merged centroid to produce the grow/shrink animation.
+ * Renders the merged scalar-field contour lines.
+ *
+ * Growing phase: rings reveal from innermost to outermost via opacity fade only.
+ *   Each ring pops up at its full final position — no radial expansion.
+ * Shrinking/stable phase: existing scale-based animation is preserved.
  */
 function _renderMergedContours(
   ctx: CanvasRenderingContext2D,
@@ -426,18 +429,28 @@ function _renderMergedContours(
   const g = state.growth01;
   const { centroidX: cx, centroidY: cy } = mc;
   const numLevels = mc.levels.length;
+  const isGrowing = state.phase === 'growing';
 
   // Draw solid fill of outermost contour first.
   const outerLevel = mc.levels[0];
   const outerGrowth = getRingGrowth01(g, numLevels, numLevels - 1);
   if (outerGrowth > 0 && outerLevel.polylines.length > 0) {
     for (const polyline of outerLevel.polylines) {
-      const pts = _scalePolylineAroundCentroid(polyline, cx, cy, outerGrowth);
-      if (pts.length < 2) continue;
-      drawClosedPolygon(ctx, pts);
-      ctx.globalAlpha = outerGrowth;
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.fill();
+      if (isGrowing) {
+        // Reveal at full size — opacity only, no radial scale.
+        if (polyline.length < 2) continue;
+        drawClosedPolygon(ctx, polyline);
+        ctx.globalAlpha = outerGrowth;
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fill();
+      } else {
+        const pts = _scalePolylineAroundCentroid(polyline, cx, cy, outerGrowth);
+        if (pts.length < 2) continue;
+        drawClosedPolygon(ctx, pts);
+        ctx.globalAlpha = outerGrowth;
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fill();
+      }
     }
   }
 
@@ -451,14 +464,25 @@ function _renderMergedContours(
     if (levelGrowth <= 0) continue;
 
     for (const polyline of level.polylines) {
-      const pts = _scalePolylineAroundCentroid(polyline, cx, cy, levelGrowth);
-      if (pts.length < 2) continue;
-
-      drawClosedPolygon(ctx, pts);
-      ctx.globalAlpha = level.alpha * levelGrowth;
-      ctx.lineWidth = level.lineWidth;
-      ctx.strokeStyle = level.color;
-      ctx.stroke();
+      if (isGrowing) {
+        // Growing: render ring at its full generated size, fade in via opacity only.
+        // This creates a "popping up from the ground" effect ring-by-ring, rather
+        // than the previous radial expansion from the centroid.
+        if (polyline.length < 2) continue;
+        drawClosedPolygon(ctx, polyline);
+        ctx.globalAlpha = level.alpha * levelGrowth;
+        ctx.lineWidth = level.lineWidth;
+        ctx.strokeStyle = level.color;
+        ctx.stroke();
+      } else {
+        const pts = _scalePolylineAroundCentroid(polyline, cx, cy, levelGrowth);
+        if (pts.length < 2) continue;
+        drawClosedPolygon(ctx, pts);
+        ctx.globalAlpha = level.alpha * levelGrowth;
+        ctx.lineWidth = level.lineWidth;
+        ctx.strokeStyle = level.color;
+        ctx.stroke();
+      }
     }
   }
 }
@@ -484,12 +508,17 @@ function _scalePolylineAroundCentroid(
  * Legacy fallback: renders per-island ring polygons.
  * Used when mergedContours is unavailable (e.g. tests that construct
  * TerrainState manually without calling generateTopographicTerrain).
+ *
+ * Growing phase: rings reveal from innermost to outermost via opacity only (no scale).
+ * Shrinking/stable phase: existing scale-based animation is preserved.
  */
 function _renderPerIslandRings(
   ctx: CanvasRenderingContext2D,
   state: TopographicTerrainState,
 ): void {
   const palette = PALETTES[state.paletteId];
+  const isGrowing = state.phase === 'growing';
+
   for (const island of state.islands) {
     const totalRings = island.rings.length;
     if (totalRings <= 0) continue;
@@ -497,37 +526,62 @@ function _renderPerIslandRings(
     const outerRing = island.rings[totalRings - 1];
     const outerRingGrowth01 = getRingGrowth01(state.growth01, totalRings, outerRing.ringIndex);
     if (outerRingGrowth01 > 0) {
-      const animatedOuterPolygon = animatePoints(
-        outerRing.points,
-        island.centerX,
-        island.centerY,
-        outerRingGrowth01,
-      );
-      drawClosedPolygon(ctx, animatedOuterPolygon);
-      ctx.globalAlpha = outerRingGrowth01;
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.fill();
+      if (isGrowing) {
+        drawClosedPolygon(ctx, outerRing.points);
+        ctx.globalAlpha = outerRingGrowth01;
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fill();
+      } else {
+        const animatedOuterPolygon = animatePoints(
+          outerRing.points,
+          island.centerX,
+          island.centerY,
+          outerRingGrowth01,
+        );
+        drawClosedPolygon(ctx, animatedOuterPolygon);
+        ctx.globalAlpha = outerRingGrowth01;
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fill();
+      }
     }
 
     for (const ring of island.rings) {
       const ringGrowth01 = getRingGrowth01(state.growth01, totalRings, ring.ringIndex);
       if (ringGrowth01 <= 0) continue;
 
-      const animatedPoints = animatePoints(ring.points, island.centerX, island.centerY, ringGrowth01);
-      drawClosedPolygon(ctx, animatedPoints);
+      if (isGrowing) {
+        // Growing: render ring at its full generated position, fade in via opacity only.
+        drawClosedPolygon(ctx, ring.points);
 
-      if (palette.glow !== null && palette.glowAlpha > 0) {
-        ctx.globalAlpha = palette.glowAlpha * ringGrowth01;
-        ctx.lineWidth = ring.lineWidth * 2.5;
-        ctx.strokeStyle = palette.glow;
+        if (palette.glow !== null && palette.glowAlpha > 0) {
+          ctx.globalAlpha = palette.glowAlpha * ringGrowth01;
+          ctx.lineWidth = ring.lineWidth * 2.5;
+          ctx.strokeStyle = palette.glow;
+          ctx.stroke();
+        }
+
+        drawClosedPolygon(ctx, ring.points);
+        ctx.globalAlpha = ring.alpha * ringGrowth01;
+        ctx.lineWidth = ring.lineWidth;
+        ctx.strokeStyle = ring.color;
+        ctx.stroke();
+      } else {
+        const animatedPoints = animatePoints(ring.points, island.centerX, island.centerY, ringGrowth01);
+        drawClosedPolygon(ctx, animatedPoints);
+
+        if (palette.glow !== null && palette.glowAlpha > 0) {
+          ctx.globalAlpha = palette.glowAlpha * ringGrowth01;
+          ctx.lineWidth = ring.lineWidth * 2.5;
+          ctx.strokeStyle = palette.glow;
+          ctx.stroke();
+        }
+
+        drawClosedPolygon(ctx, animatedPoints);
+        ctx.globalAlpha = ring.alpha * ringGrowth01;
+        ctx.lineWidth = ring.lineWidth;
+        ctx.strokeStyle = ring.color;
         ctx.stroke();
       }
-
-      drawClosedPolygon(ctx, animatedPoints);
-      ctx.globalAlpha = ring.alpha * ringGrowth01;
-      ctx.lineWidth = ring.lineWidth;
-      ctx.strokeStyle = ring.color;
-      ctx.stroke();
     }
   }
 }

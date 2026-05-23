@@ -18,7 +18,7 @@ import {
 import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
 import { preloadForgeSprites } from '../render/forge/forge-renderer';
 import { createBackgroundAnimation, createVermiculateEffect, createSubstrateEffect } from '../render/background';
-import { setupInputListeners, type GameAction } from '../input';
+import { type GameAction } from '../input';
 import { createParticleDragState } from '../input/particle-drag';
 import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
@@ -362,8 +362,9 @@ export async function startApp(): Promise<void> {
   setActiveTab(appState, uiPanels, appState.game, settings.isDevMode, settings.numberFormat);
 
   // ── Input listeners ──
-  setupInputListeners(canvasContainer, dispatch);
-  wireCanvasPointerInput(cc, appState, particles, audioSystem);
+  // Tap dispatch is handled inside wireCanvasPointerInput directly on cc.canvas,
+  // which is more reliable on mobile (canvas has touch-action: none and pointer capture).
+  wireCanvasPointerInput(cc, appState, particles, audioSystem, dispatch);
 
   // ── Resize handler ──
   const onResize = (): void => {
@@ -405,7 +406,7 @@ export async function startApp(): Promise<void> {
   // ── Idle reward check ──
   if (lastActiveTs !== null) {
     const elapsedMs = Math.min(Date.now() - lastActiveTs, MAX_OFFLINE_HOURS * 3_600_000);
-    applyIdleRewardsIfEligible(game, elapsedMs, idleOverlay);
+    applyIdleRewardsIfEligible(game, elapsedMs, idleOverlay, settings.skipIdlePopupAtStart);
   }
 
   requestAnimationFrame(gameLoop);

@@ -79,11 +79,13 @@
 
 ### src/app/game-app-canvas-input.ts
 - Canvas pointer-input wiring extracted from `game-app.ts`.
-- Exports `wireCanvasPointerInput()` to connect pointer down/move/up/cancel handlers for drag interactions and generator hover tracking.
+- Exports `wireCanvasPointerInput()` to connect pointer down/move/up/cancel handlers for drag interactions, generator hover tracking, and forge/equation tap dispatch.
+- **Build 108+:** accepts a `dispatch: ActionHandler` parameter and dispatches the `tap` action directly from the canvas `pointerdown` event (with `{ passive: false }` and `preventDefault()` to suppress synthetic mobile mouse events). This is more reliable on mobile than listening on the container, because the canvas has `touch-action: none` and pointer capture is set immediately.
 
 ### src/app/game-app-idle.ts
 - Shared idle-reward eligibility helper used by `game-app.ts`.
 - Exports `applyIdleRewardsIfEligible()` which applies queued idle rewards and opens the idle overlay only when elapsed time and rewards are meaningful.
+- **Build 108+:** accepts an optional `skipPopup: boolean` parameter (default `false`). When true, rewards are still applied but the count-up overlay is suppressed, matching the "Skip idle pop up at start" setting.
 
 ### src/data/tiers/tier-definitions.ts
 - Single source of truth for all 11 gemstone tiers (Sand through Nullstone).
@@ -991,6 +993,12 @@
 - `RING_POINTS = 64` — number of polygon points per ring and solid outer polygon.
 - Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling,
   staggered ring growth/shrink animation.
+- **Build 108+:** growing-phase animation uses opacity-only ring reveal (no radial scale).
+  `_renderMergedContours` and `_renderPerIslandRings` check `state.phase === 'growing'`;
+  during growing, rings render at their full final geometry with per-ring opacity stagger
+  (innermost ring fades in first, outermost last) — no `_scalePolylineAroundCentroid` call.
+  Shrinking phase retains the existing scale-down behavior.
+  Collision geometry is unchanged by this visual-only modification.
 - Terrain centers are placed so the full island radius stays inside the edge
   margin; edge-wall/canyon and partially offscreen placement are intentionally
   disabled because they caused collision and lighting ambiguity.
@@ -1534,6 +1542,7 @@ Audio system — eight focused modules:
 - User settings model and localStorage persistence.
 - `isDevMode: boolean` — when true, all game actions bypass cost checks.
 - `numberFormat: 'letters' | 'scientific' | 'engineering'` — controls number display format across all UI panels and canvas score.
+- **Build 108+:** `skipIdlePopupAtStart: boolean` — when true, the startup idle earnings overlay is skipped; rewards are still applied silently.
 
 ### src/settings/save-load.ts
 - Thin localStorage I/O layer (~45 lines after extraction).

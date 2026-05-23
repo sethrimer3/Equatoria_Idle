@@ -350,3 +350,22 @@ Hit detection (`swordHitInArc`) always checks the same `arcStart→arcEnd` windo
 **UI**: The stats bar now has a `rpg-player-stats-box` container grouping HP/ATK/DEF with a draggable `rpg-xp-node` label at its top. The player drags from the XP node to ATK or DEF to connect. An SVG overlay with a Verlet-integrated rope (12 nodes, gravity=0.35, damping=0.97) visualises the cable with soft-body physics each frame. Once locked the wire renders in the target stat's colour and the stat value pulses with a CSS glow animation. Under each stat two sub-text lines show the base value (without any XP contribution) and the cumulative XP that has flowed to that stat.
 
 **Save format**: Bumped to v17. All three new fields are optional in the schema and default to `null`/`0` on older saves.
+
+
+## Mobile Forge Tap Routing (Build 108)
+
+**Problem**: Equation Forge tapping worked on desktop but not reliably on mobile. Desktop used `pointerdown` on `canvasContainer` (the wrapper div) via `setupInputListeners()`. On mobile, browser touch handling at the container level can intercept or delay events before the JS listener runs, especially when the container lacks `touch-action: none`.
+
+**Decision**: Moved the `tap` action dispatch from `setupInputListeners`/container into `wireCanvasPointerInput`/canvas. The canvas element already has `touch-action: none` (set inline by `resizeCanvas`) and calls `setPointerCapture` immediately, making it the most reliable place to catch pointer events on all platforms. Added `event.preventDefault()` (with `{ passive: false }`) to the canvas `pointerdown` listener to suppress synthetic mouse events that mobile browsers emit after a touch, which would otherwise double-fire the tap action. Also added `touch-action: none` to `#canvas-container` in CSS as a belt-and-suspenders guard for browsers that check the parent element's touch-action before dispatching to the child. The `setupInputListeners` function remains exported from `src/input/input-handler.ts` but is no longer called from `game-app.ts`.
+
+## Topography Mountain Spawn Animation (Build 108)
+
+**Previous behavior**: Mountains grew outward from their centroid — `_scalePolylineAroundCentroid` was called during the growing phase with `levelGrowth` as the scale factor, so rings started as points at the centroid and expanded to full size.
+
+**New behavior**: Mountains reveal ring-by-ring from innermost to outermost via opacity fade only. During `state.phase === 'growing'`, rings are drawn at their full final geometry (no scale call). Each ring uses the same `getRingGrowth01` stagger timing as before, but only for `globalAlpha`. The shrinking animation retains the original scale-down behavior (scale goes from 1→0 as `g` decreases). Collision geometry is unchanged: it remains scale-based during all phases, which is correct since the player exclusion radius (`PLAYER_EXCLUSION_RADIUS = 60`) keeps the player outside the terrain at spawn time, so visible/invisible terrain mismatch is not a gameplay issue.
+
+## Skip Idle Popup at Start Setting (Build 108)
+
+**Context**: On app startup the game calculates offline/idle earnings and shows a count-up overlay. Some players find this disruptive and want to jump straight to gameplay.
+
+**Decision**: Added `skipIdlePopupAtStart: boolean` (default `false`) to `SettingsState`. Persisted via the existing `localStorage` settings key (forward-compatible: older saves default to `false`). At startup, `applyIdleRewardsIfEligible()` receives this flag as `skipPopup`; when true, `queueIdleRewards()` still runs (no earned resources are lost) but `idleOverlay.show()` is skipped. The overlay is still shown for mid-session visibility-change events regardless of this setting.

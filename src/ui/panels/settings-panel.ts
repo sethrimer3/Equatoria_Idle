@@ -160,6 +160,13 @@ export function createSettingsPanel(
   });
   panel.appendChild(shakeRow);
 
+  // Skip idle pop up at start toggle
+  const skipIdlePopupRow = createToggleRow('Skip idle pop up at start', settings.skipIdlePopupAtStart, (v) => {
+    settings.skipIdlePopupAtStart = v;
+    saveSettings(settings);
+  });
+  panel.appendChild(skipIdlePopupRow);
+
   // Developer mode toggle — devSection is created here so the toggle callback can
   // reference it immediately; it is appended to the panel later (after credits).
   const devSection = createDevTweaksSection();

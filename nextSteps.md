@@ -1140,3 +1140,44 @@ Convert a world position `(wx, wy)` to grid coords with `gx = wx / cellSizePx`, 
 - The Gaussian kernel sigma is fixed at `radius * 0.5` (minimum 0.3).  Expose `shadowBlurSigma` and `heightBlurSigma` in `TopographyLightConfig` if finer control is needed.
 - Entity-shadow projection itself is not yet implemented.  The architecture is ready; see `TopographyLightSamplingData` above.
 - The cache signature does not track individual island IDs — if islands were ever mutated in-place within a wave (which does not happen today) the cache could go stale.  If in-wave island mutation ever becomes possible, add a `terrainRevision` counter to `TopographicTerrainState` and include it in the cache's invalidation check.
+
+
+---
+
+## Build 108 — Files Changed and Follow-up Notes
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/buildInfo.ts` | BUILD_NUMBER 107 → 108 |
+| `src/styles/canvas.css` | Added `touch-action: none` to `#canvas-container` |
+| `src/app/game-app-canvas-input.ts` | Added `dispatch: ActionHandler` param; moved tap dispatch here from `setupInputListeners`; added `preventDefault` + `{ passive: false }` on `pointerdown` |
+| `src/app/game-app.ts` | Removed `setupInputListeners(canvasContainer, dispatch)` call; passes `dispatch` to `wireCanvasPointerInput`; passes `settings.skipIdlePopupAtStart` to `applyIdleRewardsIfEligible` |
+| `src/app/game-app-idle.ts` | Added optional `skipPopup` parameter to `applyIdleRewardsIfEligible` |
+| `src/settings/settings-state.ts` | Added `skipIdlePopupAtStart: boolean` field (default `false`) |
+| `src/ui/panels/settings-panel.ts` | Added "Skip idle pop up at start" toggle row |
+| `src/render/rpg/terrain/topographic-terrain.ts` | `_renderMergedContours` and `_renderPerIslandRings` use opacity-only reveal (no scale) during `growing` phase |
+| `DECISIONS.md` | Documented all three decisions |
+| `file_index.md` | Updated affected file entries |
+
+### Why mobile forge tapping failed
+
+The `tap` action was dispatched from `setupInputListeners`, which listened for `pointerdown` on `canvasContainer` (a plain `<div>`). The canvas element inside it had `touch-action: none` set inline by JS and `setPointerCapture` called on `pointerdown`. On some mobile browsers, the browser's touch routing logic inspects the target element's (and its ancestors') `touch-action` before handing the touch to JS. The container div did not have `touch-action: none`, so on certain devices/browsers the touch gesture could be claimed by the browser for scroll/pan before bubbling to the container's listener, silently dropping the forge tap.
+
+The fix: moved the dispatch inside `wireCanvasPointerInput` which already listens on `cc.canvas` itself. The canvas has `touch-action: none` and immediately calls `setPointerCapture`, making it the most reliable surface for pointer events on all platforms. Added `event.preventDefault()` to suppress synthetic mouse events that mobile browsers emit after touch (which would otherwise trigger a second tap dispatch). Also added `touch-action: none` to `#canvas-container` in CSS as a belt-and-suspenders guard.
+
+### How topography rings now reveal
+
+The stagger timing (`getRingGrowth01`) is unchanged — innermost ring (index 0) begins fading in as soon as `g > 0`, outermost ring (index `n-1`) completes at `g = 1`. The change: rings are now rendered at their full final geometry throughout the growing phase; `levelGrowth` is used for `globalAlpha` only, not for scaling. The result: rings pop up from the ground, innermost first, with a quick opacity transition rather than expanding outward from the centroid.
+
+### How the skip idle popup setting is stored
+
+Stored in `localStorage` under `equatoria_settings` (same key as all other settings). The field is `skipIdlePopupAtStart: boolean`. Default is `false`, so existing players see no behavior change. Serialised by `saveSettings(settings)` on every toggle. Loaded via `loadSettings()` → spread onto `createDefaultSettings()`, so older saves that don't include the field automatically get `false`.
+
+### Optional polish / known open items
+
+- **`setupInputListeners` dead code**: The function is still exported from `src/input/input-handler.ts` and `src/input/index.ts` but is no longer called anywhere. It could be removed in a future cleanup PR to avoid confusion.
+- **Shrinking animation**: The mountain shrink still uses the old scale-down-from-centroid approach. The problem statement only flagged the grow direction, so this was left as-is. If the shrink should also use opacity-only, `_renderMergedContours` and `_renderPerIslandRings` would need `state.phase === 'shrinking'` branches mirroring the growing fix.
+- **Mid-session idle popup**: The `skipIdlePopupAtStart` setting only suppresses the overlay at app startup. Mid-session visibility-change events (tab hidden → shown) still show the popup regardless of the setting. If the user wants to suppress ALL idle popups (not just the startup one), the setting name and logic should be revisited.
+- **Pre-existing vitest typecheck failures**: `npm run typecheck` and `npm run build` both exit with code 2 due to 6 pre-existing `Cannot find module 'vitest'` errors in test files. These are not caused by build 108 changes. `vite build` itself succeeds with 293 modules transformed.
