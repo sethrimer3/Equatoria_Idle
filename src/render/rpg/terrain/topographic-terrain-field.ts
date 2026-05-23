@@ -420,9 +420,10 @@ export function buildMergedContours(
     const lineWidth = isIndexContour
       ? 1.2 + rng() * 0.3
       : 0.65 + rng() * 0.35;
+    const height01 = li / Math.max(1, CONTOUR_THRESHOLDS.length - 1);
     const alpha = isIndexContour
-      ? 0.70 + rng() * 0.18
-      : 0.42 + rng() * 0.28;
+      ? 0.66 + height01 * 0.26
+      : 0.34 + height01 * 0.40;
     const color = isIndexContour
       ? palette.indexLine
       : palette.lines[(li + colorOffset) % palette.lines.length];

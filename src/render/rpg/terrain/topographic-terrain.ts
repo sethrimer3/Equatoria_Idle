@@ -75,8 +75,8 @@ export interface TopographicTerrainState {
   lightCache: TopographyLightCache | null;
 }
 
-const TERRAIN_GROW_DURATION_MS = 1300;
-const TERRAIN_SHRINK_DURATION_MS = 500;
+const TERRAIN_GROW_DURATION_MS = 1800;
+const TERRAIN_SHRINK_DURATION_MS = 1800;
 const MIN_ISLANDS = 2;
 const MAX_ISLANDS = 5;
 const MIN_RINGS = 2;
@@ -284,9 +284,10 @@ export function generateTopographicTerrain(
       const lineWidth = isIndexContour
         ? randomRange(rng, 1.2, 1.5)
         : randomRange(rng, 0.65, 1.0);
+      const height01 = ringCount <= 1 ? 1 : 1 - ringIndex / (ringCount - 1);
       const alpha = isIndexContour
-        ? randomRange(rng, 0.70, 0.88)
-        : randomRange(rng, 0.42, 0.70);
+        ? lerp(0.66, 0.92, height01)
+        : lerp(0.34, 0.74, height01);
       const color = isIndexContour
         ? palette.indexLine
         : palette.lines[(ringIndex + colorOffset) % palette.lines.length];
@@ -352,7 +353,7 @@ export function updateTopographicTerrain(state: TopographicTerrainState, nowMs: 
   if (state.phase === 'growing') {
     const elapsedMs = nowMs - state.phaseStartedAtMs;
     const t = clamp(elapsedMs / Math.max(1, state.growDurationMs), 0, 1);
-    state.growth01 = easeOutCubic(t);
+    state.growth01 = easeInOutSine(t);
     if (t >= 1) {
       state.phase = 'stable';
       state.growth01 = 1;
@@ -1133,12 +1134,12 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-
 function easeInCubic(t: number): number {
   return t * t * t;
+}
+
+function easeInOutSine(t: number): number {
+  return -(Math.cos(Math.PI * t) - 1) / 2;
 }
 
 function distanceSq(ax: number, ay: number, bx: number, by: number): number {
