@@ -29,6 +29,11 @@ export interface SettingsState {
   isSharpTopographyShadows: boolean;
   /** When true, the RPG stats bar is anchored to the top of the screen instead of the bottom. */
   rpgBarAtTop: boolean;
+  /**
+   * When true, the idle earnings count-up overlay is skipped at startup.
+   * Offline/idle rewards are still applied silently; only the popup is suppressed.
+   */
+  skipIdlePopupAtStart: boolean;
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -49,6 +54,7 @@ export function createDefaultSettings(): SettingsState {
     isTopographicTerrainDebugEnabled: false,
     isSharpTopographyShadows: true,
     rpgBarAtTop: false,
+    skipIdlePopupAtStart: false,
   };
 }
 

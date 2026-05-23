@@ -4,6 +4,7 @@ import {
   handleParticleDragMove,
   handleParticleDragUp,
 } from '../input/particle-drag';
+import type { ActionHandler } from '../input';
 import type { AudioSystem } from '../audio';
 import type { CanvasContext } from '../render/canvas/game-canvas';
 import type { ParticleSystem } from '../render/particles/particle-system';
@@ -27,10 +28,25 @@ export function wireCanvasPointerInput(
   appState: AppState,
   particles: ParticleSystem,
   audioSystem: AudioSystem,
+  dispatch: ActionHandler,
 ): void {
   cc.canvas.addEventListener('pointerdown', (event: PointerEvent) => {
+    // Prevent synthetic mouse events that mobile browsers fire after touch,
+    // which would otherwise trigger a second tap dispatch on the same gesture.
+    event.preventDefault();
     cc.canvas.setPointerCapture(event.pointerId);
     audioSystem.resumeContext().catch(() => { /* silently ignore */ });
+
+    // Dispatch the forge/equation tap from the canvas element directly.
+    // This is more reliable on mobile than listening on the container, because
+    // the canvas has touch-action: none and pointer capture is set immediately.
+    dispatch({
+      kind: 'tap',
+      xScreen: event.clientX,
+      yScreen: event.clientY,
+      isTouchInput: event.pointerType === 'touch',
+    });
+
     const pos = canvasCoordsFromPointerEvent(cc, event);
     if (appState.activeTab !== 'rpg') {
       updateGeneratorPointerPos(pos.x, pos.y);
@@ -44,7 +60,8 @@ export function wireCanvasPointerInput(
       cc.widthPx,
       cc.heightPx,
     );
-  });
+  }, { passive: false });
+
 
   cc.canvas.addEventListener('pointermove', (event: PointerEvent) => {
     const pos = canvasCoordsFromPointerEvent(cc, event);

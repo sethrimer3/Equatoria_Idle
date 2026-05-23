@@ -38,6 +38,13 @@
   overflow: hidden;
   cursor: pointer;
   background: var(--bg-primary);
+  /*
+   * touch-action: none — prevents the browser from claiming touch gestures
+   * (scroll, pan) at the container level.  The game canvas child also sets
+   * this via JS (game-canvas.ts), but some mobile browsers require the
+   * container to declare it too for reliable pointer-event dispatch.
+   */
+  touch-action: none;
 }
 
 /* ── RPG canvas container ─────────────────────────────────────── */
