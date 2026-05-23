@@ -394,6 +394,41 @@ export interface EliteEnemy {
   spawnTimeMs: number;
 }
 
+// ── Stardust enemy (prismatic particle cloud + laser bounce) ─────────────────
+
+export type StardustPhase = 'drifting' | 'warning' | 'frozen' | 'laser' | 'resuming';
+
+export interface StardustParticle {
+  x: number; y: number;
+  vx: number; vy: number;
+  hueOffset: number;  // 0-360, for rainbow cycling
+  size: number;       // 2-5 px
+  brightness: number; // 0-1, animated
+}
+
+export interface StardustEnemy {
+  readonly kind: 'stardust';
+  /** Logical center position (average of particles). Updated each frame. */
+  x: number; y: number;
+  hp: number; maxHp: number;
+  atk: number; def: number;
+  particles: StardustParticle[];
+  particleCount: number;
+  phase: StardustPhase;
+  phaseMs: number;       // time elapsed in current phase
+  cycleTimerMs: number;  // countdown to next laser cycle
+  pulseMs: number;       // general animation accumulator
+  /** Laser chain for current laser phase: array of {x1,y1,x2,y2} segments */
+  laserChain: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+  /** Currently lit bounce node indices (particle indices) for the active laser */
+  laserNodes: number[];
+  /** Player hit cooldown during laser phase */
+  laserHitCdMs: number;
+  /** Arena bounds for particle bounce */
+  arenaW: number; arenaH: number;
+  /** XP multiplier (wave-scaled) */
+  xpMult: number;
+}
 
 // ── Player weapon and pickup entity types ────────────────────────────────────
 // Re-exported here for backward compatibility — defined in rpg-entity-types.ts.

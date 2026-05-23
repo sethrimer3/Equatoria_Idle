@@ -78,6 +78,7 @@ export interface WaveManagerCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
@@ -157,7 +158,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     rubyEnemies, sunstoneEnemies, citrineEnemies,
     ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
-    eliteEnemies, alivenGroups,
+    eliteEnemies, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -211,7 +212,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
         || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
         || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
-        || eliteEnemies.length > 0
+        || eliteEnemies.length > 0 || stardustEnemies.length > 0
         || dustWispEnemies.length > 0 || ribbonWormEnemies.length > 0
         || lanternMothEnemies.length > 0 || eyeStalkEnemies.length > 0
         || jellyfishEnemies.length > 0 || clothGhostEnemies.length > 0

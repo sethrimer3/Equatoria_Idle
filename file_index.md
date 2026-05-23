@@ -1660,3 +1660,8 @@ Audio system — eight focused modules:
 - Imports `STANDARD_WAVE_ENEMY_IDS`, `PROCEDURAL_WAVE_ENEMY_IDS`, `ELITE_WAVE_ENEMY_IDS` from `wave-definitions.ts`.
 - Intentional exclusion: `'boss'` (boss entries live in `BOSS_DESCRIPTIONS`).
 - Fails loudly with wave number and ID when a real type is missing.
+
+#### Stardust (Particle Cloud Elite — Build 109+)
+- **rpg-stardust-factories.ts** — Factory functions for creating Stardust enemies. Exports getStardustParticleCount (scales 6→40 particles over 120 waves) and makeStardustEnemy (initializes particle cloud with random drift velocities and rainbow hue offsets).
+- **rpg-stardust-update.ts** — State machine update logic with 5-phase cycle (drifting → warning → frozen → laser → resuming). Exports updateStardustEnemies, builds laser chains using terrain LOS checks (buildLaserChain), detects player damage via segment-circle intersection (checkPlayerLaserIntersection).
+- **rpg-stardust-draw.ts** — Canvas rendering for prismatic particle cloud and laser chains. Exports drawStardustEnemies, draws particles with hue-cycling rainbow edges and radial gradient glow, laser chains with rainbow glow + white/gold core, spark bursts at bounce nodes, HP bar.

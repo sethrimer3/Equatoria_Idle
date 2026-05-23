@@ -29,7 +29,7 @@ import type {
   CitrineEnemy, CitrineBolt, IoliteEnemy,
   AmethystEnemy, AmethystShard, DiamondEnemy, DiamondShard,
   NullstoneEnemy, VoidTendril, FracterylEnemy, FracterylShard,
-  EigensteinEnemy, BossEnemy, EliteEnemy,
+  EigensteinEnemy, BossEnemy, EliteEnemy, StardustEnemy,
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { ClosestTarget } from './rpg-types';
@@ -76,6 +76,7 @@ export interface RpgPlayerAttackCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  stardustEnemies: StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: import('./rpg-procedural-types').DustWispEnemy[];

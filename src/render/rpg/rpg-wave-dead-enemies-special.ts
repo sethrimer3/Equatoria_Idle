@@ -19,6 +19,7 @@ import {
   ELITE_QUARTZ_XP_MULT, ELITE_RUBY_XP_MULT, ELITE_SUNSTONE_XP_MULT,
   ELITE_CITRINE_XP_MULT, ELITE_IOLITE_XP_MULT, ELITE_AMETHYST_XP_MULT,
   ELITE_DIAMOND_XP_MULT, ELITE_NULLSTONE_XP_MULT,
+  STARDUST_XP_MULT,
 } from './rpg-enemy-constants';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
 import { ALIVEN_FLUID_COLORS } from './rpg-aliven-constants';
@@ -60,6 +61,7 @@ export function sweepEliteAndAlivenDefeats(
     rpgSimState,
     eliteEnemies,
     alivenGroups,
+    stardustEnemies,
     luckyMotes,
     fluid,
     getCachedLuckPercent,
@@ -111,6 +113,25 @@ export function sweepEliteAndAlivenDefeats(
       rpgSimState.secretAchievementFlags.add('aliven_below_25pct_hp');
     }
     alivenGroups.splice(i, 1);
+  }
+
+  // Sweep Stardust enemies
+  for (let i = stardustEnemies.length - 1; i >= 0; i--) {
+    const e = stardustEnemies[i];
+    if (e.hp <= 0) {
+      stardustEnemies.splice(i, 1);
+      addKill('stardust');
+      const BASE_XP = getXpPerKill(ctx.getCurrentWave());
+      const waveXpMult = ctx.getCurrentWave() > 25 ? getWaveStatScale(ctx.getCurrentWave()) : 1;
+      totalXpFromKills += BASE_XP * STARDUST_XP_MULT * waveXpMult;
+      // Prismatic gold/white explosion
+      fluid.addExplosion(e.x, e.y, FLUID_EXPLOSION_STRENGTH * 3.0, 245, 232, 160);
+      fluid.addExplosion(e.x, e.y, FLUID_EXPLOSION_STRENGTH * 1.5, 255, 252, 240);
+      spawnDamageNumber(e.x, e.y, 0, -1.2, `STARDUST! +${formatXp(BASE_XP * STARDUST_XP_MULT * waveXpMult)} XP`, 1.0, '#f5e8a0');
+      // Try spawn lucky mote with boosted luck (2x)
+      // Use 'diamond' tier for color identity (closest to pale gold/white)
+      trySpawnLuckyMote(luckyMotes, 'diamond', e.x, e.y, getCachedLuckPercent() * 2.0, false);
+    }
   }
 
   return totalXpFromKills;

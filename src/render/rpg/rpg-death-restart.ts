@@ -104,6 +104,7 @@ export interface RpgDeathRestartCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays (cleared on restart) ──────────────────────────
   dustWispEnemies: DustWispEnemy[];

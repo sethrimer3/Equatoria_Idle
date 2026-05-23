@@ -71,6 +71,7 @@ import type {
   TeleportParticle,
   LuckyMote, LuckyMotePopup,
   EliteEnemy,
+  StardustEnemy,
 } from './rpg-enemy-types';
 import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
@@ -251,6 +252,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const eigensteinEnemies: EigensteinEnemy[] = [];
   const eigensteinBeams: EigensteinBeam[]  = [];
   const eliteEnemies: EliteEnemy[]         = [];
+  const stardustEnemies: StardustEnemy[]   = [];
   const alivenGroups: AlivenParticleGroup[] = [];
 
   // ── Procedural creature arrays ─────────────────────────────────
@@ -524,6 +526,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     eliteEnemies,
+    stardustEnemies,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
@@ -563,7 +566,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies, alivenGroups,
+    eliteEnemies, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -708,6 +711,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fracterylShards,
     eigensteinEnemies,
     eliteEnemies,
+    stardustEnemies,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
@@ -729,7 +733,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies, alivenGroups,
+    eliteEnemies, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -943,7 +947,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     sunstoneEnemies, citrineEnemies, citrineBolts, ioliteEnemies,
     amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -996,7 +1000,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1036,7 +1040,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1075,6 +1079,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     weaponTickCtx,
     updateShotVisuals,
     updateDamageNumbers,
+    spawnDamageNumber:      (x, y, vx, vy, text, ratio, color, sourceColor) => {
+      spawnDamageNumber(x, y, vx, vy, text, ratio, color, sourceColor);
+    },
     mote,
     rpgSimState,
     onLuckyMoteCollected:   options.onLuckyMoteCollected,

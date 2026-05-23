@@ -415,6 +415,8 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   const nullstoneCount = waveNumber >= 63  ? Math.min(1 + Math.floor((waveNumber - 62) * 0.05), 2) : 0;
   const fracterylCount = waveNumber >= 74  ? Math.min(1 + Math.floor((waveNumber - 73) * 0.04), 2) : 0;
   const eigensteinCount= waveNumber >= 85  ? Math.min(1 + Math.floor((waveNumber - 84) * 0.03), 2) : 0;
+  // Stardust enemy: rare prismatic particle cloud + laser bouncer
+  const stardustCount  = waveNumber >= 35  ? Math.floor((waveNumber - 34) * 0.008 + Math.random() * 0.5) : 0;
   // ── Procedural creature counts ──────────────────────────────────────────────
   const dustWispCount      = waveNumber >= 5   ? Math.min(1 + Math.floor((waveNumber -  4) * 0.18), 4) : 0;
   const ribbonWormCount    = waveNumber >= 7   ? Math.min(1 + Math.floor((waveNumber -  6) * 0.14), 3) : 0;
@@ -453,6 +455,7 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (waveNumber >= 63)  spawns.push({ enemyTypeId: 'nullstone',  count: nullstoneCount,  spawnDelay: delay + 1500 });
   if (waveNumber >= 74)  spawns.push({ enemyTypeId: 'fracteryl',  count: fracterylCount,  spawnDelay: delay + 1700 });
   if (waveNumber >= 85)  spawns.push({ enemyTypeId: 'eigenstein', count: eigensteinCount, spawnDelay: delay + 2000 });
+  if (waveNumber >= 35 && stardustCount > 0) spawns.push({ enemyTypeId: 'stardust', count: stardustCount, spawnDelay: delay + 2200 });
   // ── Procedural creature spawns ──────────────────────────────────────────────
   if (waveNumber >= 5)   spawns.push({ enemyTypeId: 'proc_dustwisp',      count: dustWispCount,      spawnDelay: delay + 450 });
   if (waveNumber >= 7)   spawns.push({ enemyTypeId: 'proc_ribbonworm',    count: ribbonWormCount,    spawnDelay: delay + 500 });
