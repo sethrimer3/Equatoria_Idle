@@ -14,6 +14,8 @@ export interface StatsPanelPrimaryColumnRefs {
   weaponRowPlugEls: HTMLSpanElement[][];
   weaponSourcePlugEls: HTMLDivElement[];
   xpOutPlugEl: HTMLDivElement;
+  /** Square purple XP input socket at the bottom of Box 1. */
+  playerXpInEl: HTMLDivElement;
   mod1XpIn: HTMLDivElement;
   mod1Out: HTMLDivElement;
   mod2XpIn: HTMLDivElement;
@@ -209,6 +211,12 @@ export function createStatsPanelPrimaryColumn(
     weaponSourcePlugEls.push(plug);
   }
 
+  // Square purple XP input socket at the bottom of Box 1.
+  // Accepts an XP wire to give the player direct XP.
+  const playerXpInEl = document.createElement('div');
+  playerXpInEl.className = 'rpg-player-xp-in';
+  xpBox1.appendChild(playerXpInEl);
+
   const xpBox2 = document.createElement('div');
   xpBox2.className = 'rpg-box5-wrapper';
 
@@ -299,6 +307,7 @@ export function createStatsPanelPrimaryColumn(
     weaponRowPlugEls,
     weaponSourcePlugEls,
     xpOutPlugEl,
+    playerXpInEl,
     mod1XpIn,
     mod1Out,
     mod2XpIn,

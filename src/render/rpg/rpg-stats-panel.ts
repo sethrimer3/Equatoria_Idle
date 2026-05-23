@@ -125,6 +125,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     weaponRowSpans, weaponRowPlugEls,
     weaponSourcePlugEls,
     xpOutPlugEl,
+    playerXpInEl,
     mod1XpIn, mod1Out, mod2XpIn, mod2Out, mod3XpIn, mod3Out,
     modProgressFills, modLevelTexts,
     dpsLabelEl, dpsValueEl, dpsChartEl, dpsAxisEl, dpsAxisLowEl, dpsAxisHighEl,
@@ -135,11 +136,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   // equippedByWire: set of slot indices (0-4) wired to Box 1.
   // xpTargetModifier: index (0/1/2) of the modifier box Box 2 is connected to,
   //   or null if no connection.
-  // statModifiers: maps "slotIdx:statKey" → modifierIdx (0/1/2) when a modifier
-  //   output is wired to a weapon stat socket.
+  // xpTargetPlayer: true when the XP wire is connected to Box 1's XP input socket.
+  // statModifiers: maps "slotIdx:statKey" → array of modifierIdx values (0/1/2).
+  //   Multiple modifier boxes can connect to the same stat; their levels are
+  //   summed additively (e.g. x3 + x4 = x7) rather than multiplied.
   const equippedByWire = new Set<number>();
   let xpTargetModifier: number | null = null;
-  const statModifiers = new Map<string, number>();
+  let xpTargetPlayer = false;
+  const statModifiers = new Map<string, number[]>();
 
   /** Parse 'weaponSource:N' → N-1 (0-based slot index), or null. */
   function parseWeaponSourceId(plugId: string): number | null {
@@ -179,15 +183,31 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     // Box 2 XP out → modifier xpIn
     if (fromPlugId === 'xp:out') {
       const modIdx = parseModifierXpInId(toPlugId);
-      if (modIdx !== null) xpTargetModifier = modIdx;
+      if (modIdx !== null) {
+        xpTargetModifier = modIdx;
+        return;
+      }
+      // Box 2 XP out → Box 1 player XP input socket
+      if (toPlugId === 'player:xpIn') {
+        xpTargetPlayer = true;
+        return;
+      }
       return;
     }
     // Modifier out → stat socket
+    // Multiplier boxes stack additively: connecting x3 and x4 to the same stat
+    // gives an effective multiplier of x7 (sum of levels, not product).
     const modOutIdx = parseModifierOutId(fromPlugId);
     if (modOutIdx !== null) {
       const statIn = parseStatInId(toPlugId);
       if (statIn !== null) {
-        statModifiers.set(`${statIn.slotIdx}:${statIn.statKey}`, modOutIdx);
+        const mapKey = `${statIn.slotIdx}:${statIn.statKey}`;
+        const existing = statModifiers.get(mapKey);
+        if (existing) {
+          existing.push(modOutIdx);
+        } else {
+          statModifiers.set(mapKey, [modOutIdx]);
+        }
       }
     }
   }
@@ -202,15 +222,30 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
     // Box 2 disconnect
     if (fromPlugId === 'xp:out') {
-      xpTargetModifier = null;
+      const modIdx = parseModifierXpInId(toPlugId);
+      if (modIdx !== null) {
+        xpTargetModifier = null;
+        return;
+      }
+      if (toPlugId === 'player:xpIn') {
+        xpTargetPlayer = false;
+        return;
+      }
       return;
     }
-    // Modifier out disconnect
+    // Modifier out disconnect — remove just this modifier index from the stat's list.
+    // Remaining connected modifiers continue to apply their levels additively.
     const modOutIdx = parseModifierOutId(fromPlugId);
     if (modOutIdx !== null) {
       const statIn = parseStatInId(toPlugId);
       if (statIn !== null) {
-        statModifiers.delete(`${statIn.slotIdx}:${statIn.statKey}`);
+        const mapKey = `${statIn.slotIdx}:${statIn.statKey}`;
+        const arr = statModifiers.get(mapKey);
+        if (arr) {
+          const i = arr.indexOf(modOutIdx);
+          if (i !== -1) arr.splice(i, 1);
+          if (arr.length === 0) statModifiers.delete(mapKey);
+        }
       }
     }
   }
@@ -264,6 +299,12 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
   if (mod1XpInCell) equipWiring.setPlugDropHitElement('modifier:1:xpIn', mod1XpInCell);
   if (mod2XpInCell) equipWiring.setPlugDropHitElement('modifier:2:xpIn', mod2XpInCell);
   if (mod3XpInCell) equipWiring.setPlugDropHitElement('modifier:3:xpIn', mod3XpInCell);
+
+  // Register Box 1 player XP input socket (square purple plug at the bottom).
+  // Accepts the XP wire so that XP reservoir can be routed to direct player progression.
+  // The entire Box 1 container acts as the drop zone (generous mobile target).
+  equipWiring.registerPlug('player:xpIn', 'playerXpIn', playerXpInEl);
+  equipWiring.setPlugDropHitElement('player:xpIn', statsPanel.querySelector('.rpg-xp-box-1') as HTMLElement ?? playerXpInEl);
 
   // Register boxes 7–11 weapon row plugs
   const weaponSlotColIds = ['weapIn', 'atkIn', 'spdIn', 'rngIn', 'prcIn'] as const;
@@ -405,13 +446,26 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     equipWiring.update(nowMs);
 
     // ── XP reservoir drain (every frame, before DPS throttle) ────
-    if (xpTargetModifier !== null && rpgSimState.xpReservoir > 0 && drainDeltaMs > 0) {
-      const drainRate = Math.max(50, rpgSimState.xpReservoir * 1.5);
-      let drainAmount = drainRate * (drainDeltaMs / 1000);
-      drainAmount = Math.min(drainAmount, rpgSimState.xpReservoir);
-      rpgSimState.xpReservoir -= drainAmount;
-      if (rpgSimState.xpReservoir < 0) rpgSimState.xpReservoir = 0;
-      tickMultiplierXpProgress(rpgSimState, xpTargetModifier, drainAmount);
+    if (rpgSimState.xpReservoir > 0 && drainDeltaMs > 0) {
+      if (xpTargetModifier !== null) {
+        const drainRate = Math.max(50, rpgSimState.xpReservoir * 1.5);
+        let drainAmount = drainRate * (drainDeltaMs / 1000);
+        drainAmount = Math.min(drainAmount, rpgSimState.xpReservoir);
+        rpgSimState.xpReservoir -= drainAmount;
+        if (rpgSimState.xpReservoir < 0) rpgSimState.xpReservoir = 0;
+        tickMultiplierXpProgress(rpgSimState, xpTargetModifier, drainAmount);
+      } else if (xpTargetPlayer) {
+        // XP wire connected to Box 1 player XP input socket.
+        // Drain the reservoir and apply it as direct player XP progression.
+        // TODO: wire drainAmount into a player-level / stat-boost system
+        //       once that mechanic is designed. For now the reservoir drains
+        //       at the same rate as modifier boxes, acting as a valid sink.
+        const drainRate = Math.max(50, rpgSimState.xpReservoir * 1.5);
+        let drainAmount = drainRate * (drainDeltaMs / 1000);
+        drainAmount = Math.min(drainAmount, rpgSimState.xpReservoir);
+        rpgSimState.xpReservoir -= drainAmount;
+        if (rpgSimState.xpReservoir < 0) rpgSimState.xpReservoir = 0;
+      }
     }
 
     // ── DPS chart update ──────────────────────────────────────────
@@ -518,12 +572,29 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     return equippedByWire.size > 0;
   }
 
+  /**
+   * Returns the effective multiplier for a weapon stat by summing all connected
+   * modifier box levels additively.
+   *
+   * Additive stacking rule:
+   *   - No modifier connected         → 1  (baseline, unmodified)
+   *   - One modifier at level 3       → 3  (x3)
+   *   - Two modifiers at level 3 + 4  → 7  (x3 + x4 = x7)
+   *   - Three at 3 + 4 + 2            → 9  (x9)
+   *
+   * This function is the single source of truth for all stat multiplier
+   * calculations — do not duplicate the connection-lookup logic elsewhere.
+   */
   function getWeaponStatMultiplier(slotIdx: number, statKey: 'atkIn' | 'spdIn' | 'rngIn' | 'prcIn'): number {
     const mapKey = `${slotIdx}:${statKey}`;
-    const modIdx = statModifiers.get(mapKey);
-    if (modIdx === undefined) return 1;
-    const box = rpgSimState.multiplierBoxes[modIdx];
-    return box ? box.level : 1;
+    const modIndices = statModifiers.get(mapKey);
+    if (!modIndices || modIndices.length === 0) return 1;
+    // Sum the levels of all connected modifier boxes (additive stacking).
+    let total = 0;
+    for (const idx of modIndices) {
+      total += rpgSimState.multiplierBoxes[idx]?.level ?? 1;
+    }
+    return total;
   }
 
   return {

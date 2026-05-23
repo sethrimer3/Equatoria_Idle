@@ -136,6 +136,9 @@
  * The single playerStatsBox is replaced by three side-by-side XP boxes.
  * Box 1 is thin, box 2 is 3× that width, box 3 fills the rest of the
  * left area up to the right column.
+ *
+ * touch-action: none — prevents browser scroll/pan gesture from stealing
+ * pointer events during wire-drag operations (mobile fix).
  */
 .rpg-xp-box {
   position: relative;
@@ -152,13 +155,17 @@
   overflow: hidden;
   flex: 0 0 auto;
   pointer-events: auto;
+  touch-action: none;
 }
 
 .rpg-xp-box-1 {
-  width: 30px;
-  /* tighter padding so the 20px plug slots fit in the 26px inner width */
+  width: 28px;
+  /* tighter padding so plug slots fit in the 24px inner width */
   padding: 4px 2px;
-  gap: 4px;
+  gap: 3px;
+  /* Prevent the browser from claiming touch gestures as scroll/pan — ensures
+     pointerdown → pointermove stays intact for wire-drag on mobile. */
+  touch-action: none;
 }
 
 .rpg-xp-box-2 {
@@ -357,10 +364,16 @@
 }
 
 /* ── Plug slot — square container with rounded edges ────────────── */
+/*
+ * Visual size reduced from 20×20 to 14×14 px.
+ * The smaller size keeps box 1 uncluttered while remaining easy to see.
+ * Drop zones are handled by parent elements (setPlugDropHitElement), so
+ * the small visual does not reduce usability.
+ */
 .rpg-plug-slot {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
   border: 1px solid rgba(167, 139, 250, 0.28);
   background: rgba(0, 0, 0, 0.3);
   display: flex;
@@ -406,6 +419,8 @@
   /* Override .rpg-xp-box's margin: 2px 0 so gap between cells matches
      the 2px gap used in the right column (boxes 12–14). */
   margin: 0;
+  /* Prevent browser scroll gesture from cancelling wire drags on mobile. */
+  touch-action: none;
 }
 
 /* Label or XP node inside a box-5 cell */
@@ -456,6 +471,8 @@
   border-right: 1px solid rgba(167, 139, 250, 0.1);
   padding: 1px 2px;
   overflow: hidden;
+  /* Prevent browser scroll gesture from cancelling wire drags on mobile. */
+  touch-action: none;
 }
 
 .rpg-box4-cell--last,
@@ -484,15 +501,28 @@
 }
 
 /* Circle plug — small filled circle on the left of each weapon cell.
-   Visual size is 12px; touch/click area is expanded via padding to ~18px. */
+ *
+ * Visual sizing constants (named for future reference):
+ *   PLUG_VISUAL_RADIUS  = 3px   (radius of the drawn circle = half of 6px)
+ *   PLUG_HIT_RADIUS     = 7px   (half of the 14px box-sizing hit zone)
+ *
+ * The rendered circle is kept small (6px) so stat labels have room to
+ * breathe in the narrow 5-column layout.  The overall element is 14px
+ * (6px circle + 4px padding each side, box-sizing: content-box) which
+ * gives a comfortable touch/click target without overflowing the cell.
+ *
+ * Drop targets are expanded further via setPlugDropHitElement (the whole
+ * stat cell acts as the drop zone), so the small circle does not reduce
+ * usability.
+ */
 .rpg-box4-circle-plug {
-  width: 12px;
-  height: 12px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: rgba(167, 139, 250, 0.45);
   border: 1px solid rgba(167, 139, 250, 0.65);
   flex-shrink: 0;
-  padding: 3px;
+  padding: 4px;
   box-sizing: content-box;
   pointer-events: auto;
   cursor: crosshair;
@@ -587,9 +617,14 @@
 }
 
 /* ── Weapon source plugs (box 1) ────────────────────────────────── */
+/*
+ * PLAYER_PLUG_VISUAL_RADIUS = 6px  (half of 12px visual)
+ * Visual radius reduced from 20px to 12px so they fit cleanly in the
+ * 30px-wide box 1 column without dominating it.
+ */
 .rpg-weapon-source-plug {
-  width: 20px;
-  height: 20px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: 1.5px solid rgba(255, 215, 100, 0.5);
   background: rgba(255, 215, 100, 0.12);
@@ -605,6 +640,35 @@
   pointer-events: none;
 }
 
+/* ── Player XP input socket (Box 1 bottom) ──────────────────────── */
+/*
+ * XP_SOCKET_VISUAL_SIZE = 10px  (square side length rendered on screen)
+ * XP_SOCKET_HIT_RADIUS  = 15px  (half of hit zone; the full box-1 cell
+ *                                acts as the drop zone via setPlugDropHitElement)
+ *
+ * Distinguished from circular plugs by its square shape, so it reads as
+ * a special XP-only input. Purple to match the XP wire colour.
+ * Shown at the bottom of box 1, below the weapon-source plug stack.
+ */
+.rpg-player-xp-in {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1.5px solid rgba(167, 139, 250, 0.65);
+  background: rgba(167, 139, 250, 0.18);
+  flex-shrink: 0;
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+  transition: border-color 0.1s, box-shadow 0.1s, background 0.1s;
+}
+
+.rpg-player-xp-in.rpg-plug--valid-target {
+  border-color: rgba(167, 139, 250, 0.95);
+  background: rgba(167, 139, 250, 0.35);
+  box-shadow: 0 0 8px 2px rgba(167, 139, 250, 0.6);
+}
+
 /* ── Valid target highlight (any plug type) ─────────────────────── */
 .rpg-plug--valid-target {
   box-shadow: 0 0 8px 2px currentColor;
@@ -612,9 +676,14 @@
 }
 
 /* ── Modifier plugs (boxes 3–5) ─────────────────────────────────── */
+/*
+ * PLUG_VISUAL_RADIUS = 4px  (half of 8px visual size)
+ * Reduced from 14px to 8px so they don't dominate the narrow modifier
+ * box column. The parent cell acts as the expanded drop zone.
+ */
 .rpg-modifier-plug {
-  width: 14px;
-  height: 14px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   pointer-events: auto;
   cursor: crosshair;
