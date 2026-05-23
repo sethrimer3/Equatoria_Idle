@@ -128,7 +128,7 @@ import {
   setTopographicTerrainDevMode,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
-import { setTopographyLightingDevMode } from './terrain/topographic-lighting';
+import { setTopographyLightingDevMode, setTopographyShadowMode } from './terrain/topographic-lighting';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -1164,6 +1164,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setTopographicTerrainDebugEnabled(enabled: boolean): void {
       setTopographicTerrainDevMode(enabled);
+    },
+
+    setSharpTopographyShadows(enabled: boolean): void {
+      // Switching mode invalidates the terrain lighting cache on next render.
+      setTopographyShadowMode(enabled ? 'sharpCylinder' : 'smoothGradient');
     },
 
     devSpawnAliven(variantId: string): void {

@@ -30,6 +30,7 @@ export interface RpgMenuTabPane {
     isDevMode?: boolean,
     rpgBarAtTop?: boolean,
     isTopographicTerrainDebugEnabled?: boolean,
+    isSharpTopographyShadows?: boolean,
   ): void;
   /** Sync the stored rpgBarAtTop value without a full re-render. */
   setRpgBarAtTop(atTop: boolean): void;
@@ -37,6 +38,8 @@ export interface RpgMenuTabPane {
   setInvincibilityMode(enabled: boolean): void;
   /** Sync the stored topographic terrain debug value without a full re-render. */
   setTopographicTerrainDebugEnabled(enabled: boolean): void;
+  /** Sync the sharp topography shadows setting without a full re-render. */
+  setSharpTopographyShadows(enabled: boolean): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────
@@ -53,15 +56,19 @@ export function createRpgMenuTabPane(
   let rpgBarAtTop = false;
   let isInvincibilityMode = false;
   let isTopographicTerrainDebugEnabled = false;
+  /** Default true so sharp shadows are on by default when dev mode is first enabled. */
+  let isSharpTopographyShadows = true;
 
   function update(
     rpgState: RpgSimState | null,
     isDevMode = false,
     barAtTop = false,
     topographicTerrainDebugEnabled = false,
+    sharpTopographyShadows = true,
   ): void {
     rpgBarAtTop = barAtTop;
     isTopographicTerrainDebugEnabled = topographicTerrainDebugEnabled;
+    isSharpTopographyShadows = sharpTopographyShadows;
     element.innerHTML = '';
 
     // ── Auto Move row ──
@@ -334,6 +341,36 @@ export function createRpgMenuTabPane(
       terrainDebugRow.appendChild(terrainDebugCheckbox);
       devSection.appendChild(terrainDebugRow);
 
+      // ── Sharp Topography Shadows ──
+      const sharpShadowRow = document.createElement('div');
+      sharpShadowRow.className = 'rpg-menu__setting-row';
+      sharpShadowRow.style.marginTop = '6px';
+
+      const sharpShadowLabelGroup = document.createElement('div');
+      sharpShadowLabelGroup.className = 'rpg-menu__setting-label-group';
+      const sharpShadowLabel = document.createElement('span');
+      sharpShadowLabel.className = 'rpg-menu__setting-label';
+      sharpShadowLabel.style.color = '#ffcc44';
+      sharpShadowLabel.textContent = '⚙ Sharp topography shadows';
+      const sharpShadowDesc = document.createElement('span');
+      sharpShadowDesc.className = 'rpg-menu__setting-desc';
+      sharpShadowDesc.textContent = 'Cylinder-style terrain shadows: hard-edged, directional, no gradient blur (dev mode only).';
+      sharpShadowLabelGroup.appendChild(sharpShadowLabel);
+      sharpShadowLabelGroup.appendChild(sharpShadowDesc);
+
+      const sharpShadowCheckbox = document.createElement('input');
+      sharpShadowCheckbox.type = 'checkbox';
+      sharpShadowCheckbox.className = 'settings-checkbox';
+      sharpShadowCheckbox.checked = isSharpTopographyShadows;
+      sharpShadowCheckbox.addEventListener('change', () => {
+        isSharpTopographyShadows = sharpShadowCheckbox.checked;
+        dispatch({ kind: 'set_sharp_topography_shadows', enabled: isSharpTopographyShadows });
+      });
+
+      sharpShadowRow.appendChild(sharpShadowLabelGroup);
+      sharpShadowRow.appendChild(sharpShadowCheckbox);
+      devSection.appendChild(sharpShadowRow);
+
       element.appendChild(devSection);
     }
   }
@@ -350,6 +387,9 @@ export function createRpgMenuTabPane(
     },
     setTopographicTerrainDebugEnabled(enabled: boolean): void {
       isTopographicTerrainDebugEnabled = enabled;
+    },
+    setSharpTopographyShadows(enabled: boolean): void {
+      isSharpTopographyShadows = enabled;
     },
   };
 

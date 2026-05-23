@@ -306,6 +306,13 @@ export function handleAction(
       uiPanels.rpgRender.setTopographicTerrainDebugEnabled(devMode && action.enabled);
       break;
     }
+    case 'set_sharp_topography_shadows': {
+      settings.isSharpTopographyShadows = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setSharpTopographyShadows(action.enabled);
+      uiPanels.rpgRender.setSharpTopographyShadows(action.enabled);
+      break;
+    }
     case 'upgrade_loom_efficiency': {
       const ok = tryUpgradeLoomEfficiencyAction(state.game, action.tierId as TierId, devMode);
       if (!ok) audioSystem?.onError();

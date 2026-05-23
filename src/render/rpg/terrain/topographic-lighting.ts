@@ -13,6 +13,18 @@ import type {
 // without knowing about the types-only file.
 export type { TopographyLightConfig, TopographyLightCache, TopographyLightSamplingData };
 
+/**
+ * Controls whether topography shadows use the original smooth gradient approach
+ * or the new sharp cylinder / terrace approach.
+ *
+ * - `'smoothGradient'`  — Default.  Treats terrain as smoothly sloped; shadows
+ *   are Gaussian-blurred and transition gradually between contour levels.
+ * - `'sharpCylinder'`   — Dev mode option.  Treats each contour level as a
+ *   flat-topped cylinder / terrace.  Shadows are hard-edged, linear, and
+ *   directional with no blur.
+ */
+export type TopographyShadowMode = 'smoothGradient' | 'sharpCylinder';
+
 interface LightingRgb {
   r: number;
   g: number;
@@ -41,6 +53,8 @@ interface BakedTopographyLightCache extends TopographyLightCache {
   lightGrid: Float32Array;
   centroidX: number;
   centroidY: number;
+  /** Shadow mode active when this cache was baked. Used for cache invalidation. */
+  shadowMode: TopographyShadowMode;
 }
 
 interface SunlightFillCache {
@@ -104,6 +118,13 @@ export const DEFAULT_TOPOGRAPHY_LIGHT_CONFIG: TopographyLightConfig = {
 
 let activeLightConfig: TopographyLightConfig = { ...DEFAULT_TOPOGRAPHY_LIGHT_CONFIG };
 let lightingDevMode = false;
+/** Active topography shadow mode.  Changing this invalidates any cached light overlay. */
+let activeTopographyShadowMode: TopographyShadowMode = 'smoothGradient';
+/**
+ * Threshold above which a grid cell's shadow value is treated as "in shadow"
+ * in the sharp cylinder rendering path.
+ */
+const SHARP_SHADOW_THRESHOLD = 0.22;
 let sunlightFillCache: SunlightFillCache | null = null;
 
 export function setTopographyLightConfig(partial: Partial<TopographyLightConfig>): TopographyLightConfig {
@@ -113,6 +134,19 @@ export function setTopographyLightConfig(partial: Partial<TopographyLightConfig>
 
 export function setTopographyLightingDevMode(enabled: boolean): void {
   lightingDevMode = enabled;
+}
+
+/**
+ * Sets the active topography shadow rendering mode.
+ *
+ * - `'smoothGradient'`  — Original smooth-slope shadows with Gaussian blur.
+ * - `'sharpCylinder'`   — Hard-edged directional shadows that treat each
+ *   contour level as a flat cylinder / terrace.
+ *
+ * Changing the mode invalidates the terrain lighting cache on the next render.
+ */
+export function setTopographyShadowMode(mode: TopographyShadowMode): void {
+  activeTopographyShadowMode = mode;
 }
 
 /**
@@ -169,7 +203,12 @@ export function buildTopographyLightCache(
 
   const towardLightX = Math.cos(config.lightAngle);
   const towardLightY = Math.sin(config.lightAngle);
-  const shadowGrid = buildShadowGrid(heightGrid, gridW, gridH, towardLightX, towardLightY, config);
+  // Select shadow builder based on active mode.
+  // Sharp cylinder mode: no Gaussian blur, integer layer snapping, hard occlusion stops.
+  // Smooth gradient mode: bilinear stamps + Gaussian blur (original behaviour).
+  const shadowGrid = activeTopographyShadowMode === 'sharpCylinder'
+    ? buildSharpCylinderShadowGrid(heightGrid, gridW, gridH, towardLightX, towardLightY, config)
+    : buildShadowGrid(heightGrid, gridW, gridH, towardLightX, towardLightY, config);
   const smoothedHeightGrid = blurScalarGridGaussian(heightGrid, gridW, gridH, 1);
   const lightGrid = buildLightGrid(smoothedHeightGrid, shadowGrid, gridW, gridH, towardLightX, towardLightY, config);
 
@@ -177,45 +216,91 @@ export function buildTopographyLightCache(
   const pixels = image.data;
   const palette = LIGHTING_PALETTES[state.paletteId];
 
+  const isSharpMode = activeTopographyShadowMode === 'sharpCylinder';
+
   for (let py = 0; py < canvas.height; py++) {
     const gy = py / LIGHT_GRID_CELL_SIZE_PX;
     for (let px = 0; px < canvas.width; px++) {
       const gx = px / LIGHT_GRID_CELL_SIZE_PX;
       const h = sampleGridBilinear(smoothedHeightGrid, gridW, gridH, gx, gy);
-      const lightAmount = sampleGridBilinear(lightGrid, gridW, gridH, gx, gy);
-      const shadowAmount = sampleGridBilinear(shadowGrid, gridW, gridH, gx, gy);
       const idx = (py * canvas.width + px) * 4;
 
-      if (h <= 0.005) {
-        const shadowAlpha = clamp01(config.terrainOpacity * shadowAmount * 0.42);
-        if (shadowAlpha <= 0.01) continue;
-        pixels[idx] = palette.shadow.r;
-        pixels[idx + 1] = palette.shadow.g;
-        pixels[idx + 2] = palette.shadow.b;
-        pixels[idx + 3] = Math.round(shadowAlpha * 255);
-        continue;
-      }
+      if (isSharpMode) {
+        // ── Sharp cylinder mode pixel rendering ─────────────────────────────
+        // Shadow is sampled with nearest-neighbour for crisp, un-blurred edges.
+        const shadowAmount = sampleGridNearest(shadowGrid, gridW, gridH, gx, gy);
 
-      const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
-      const presence = smoothstep(0.005, 0.92, h);
-      const terrace = 1 - Math.abs((((h % 1) + 1) % 1) * 2 - 1);
-      const terrainShadow = shadowAmount * smoothstep(0.05, 0.7, h) * clamp01((0.62 - lightAmount) * 3.2);
-      const bias = (lightAmount - 0.49) * (1.05 + height01 * 0.62) - terrainShadow * (0.38 + height01 * 0.16);
+        if (h <= 0.005) {
+          // Ground / below-terrain area: sharp-edged cast shadow from terraces above.
+          if (shadowAmount <= SHARP_SHADOW_THRESHOLD) continue;
+          const shadowAlpha = clamp01(config.terrainOpacity * 0.46);
+          if (shadowAlpha <= 0.01) continue;
+          pixels[idx]     = palette.shadow.r;
+          pixels[idx + 1] = palette.shadow.g;
+          pixels[idx + 2] = palette.shadow.b;
+          pixels[idx + 3] = Math.round(shadowAlpha * 255);
+          continue;
+        }
 
-      if (bias >= -0.02 && terrainShadow < 0.26) {
-        const alpha = clamp01(config.terrainOpacity * presence * (bias * 0.95 + terrace * 0.06 * (1 - shadowAmount)));
-        if (alpha <= 0.01) continue;
-        pixels[idx] = palette.highlight.r;
-        pixels[idx + 1] = palette.highlight.g;
-        pixels[idx + 2] = palette.highlight.b;
-        pixels[idx + 3] = Math.round(alpha * 255);
+        // Terrain pixel — hard lit vs. shadowed decision.
+        const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
+        const presence = smoothstep(0.005, 0.92, h);
+        const inShadow = shadowAmount > SHARP_SHADOW_THRESHOLD;
+
+        if (!inShadow) {
+          // Lit terrace face — bright highlight.
+          const alpha = clamp01(config.terrainOpacity * presence * (0.28 + height01 * 0.62));
+          if (alpha <= 0.01) continue;
+          pixels[idx]     = palette.highlight.r;
+          pixels[idx + 1] = palette.highlight.g;
+          pixels[idx + 2] = palette.highlight.b;
+          pixels[idx + 3] = Math.round(alpha * 255);
+        } else {
+          // Shadow face — dark, strength proportional to shadow depth and layer.
+          const shadowDepth = clamp01((shadowAmount - SHARP_SHADOW_THRESHOLD) / (1 - SHARP_SHADOW_THRESHOLD));
+          const alpha = clamp01(config.terrainOpacity * presence * (0.16 + height01 * 0.30 + shadowDepth * 0.22));
+          if (alpha <= 0.01) continue;
+          pixels[idx]     = palette.shadow.r;
+          pixels[idx + 1] = palette.shadow.g;
+          pixels[idx + 2] = palette.shadow.b;
+          pixels[idx + 3] = Math.round(alpha * 255);
+        }
       } else {
-        const alpha = clamp01(config.terrainOpacity * presence * ((Math.max(0, -bias)) * 1.08 + terrainShadow * 0.48 + height01 * 0.06));
-        if (alpha <= 0.01) continue;
-        pixels[idx] = palette.shadow.r;
-        pixels[idx + 1] = palette.shadow.g;
-        pixels[idx + 2] = palette.shadow.b;
-        pixels[idx + 3] = Math.round(alpha * 255);
+        // ── Smooth gradient mode pixel rendering (original) ─────────────────
+        const lightAmount = sampleGridBilinear(lightGrid, gridW, gridH, gx, gy);
+        const shadowAmount = sampleGridBilinear(shadowGrid, gridW, gridH, gx, gy);
+
+        if (h <= 0.005) {
+          const shadowAlpha = clamp01(config.terrainOpacity * shadowAmount * 0.42);
+          if (shadowAlpha <= 0.01) continue;
+          pixels[idx]     = palette.shadow.r;
+          pixels[idx + 1] = palette.shadow.g;
+          pixels[idx + 2] = palette.shadow.b;
+          pixels[idx + 3] = Math.round(shadowAlpha * 255);
+          continue;
+        }
+
+        const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
+        const presence = smoothstep(0.005, 0.92, h);
+        const terrace = 1 - Math.abs((((h % 1) + 1) % 1) * 2 - 1);
+        const terrainShadow = shadowAmount * smoothstep(0.05, 0.7, h) * clamp01((0.62 - lightAmount) * 3.2);
+        const bias = (lightAmount - 0.49) * (1.05 + height01 * 0.62) - terrainShadow * (0.38 + height01 * 0.16);
+
+        if (bias >= -0.02 && terrainShadow < 0.26) {
+          const alpha = clamp01(config.terrainOpacity * presence * (bias * 0.95 + terrace * 0.06 * (1 - shadowAmount)));
+          if (alpha <= 0.01) continue;
+          pixels[idx]     = palette.highlight.r;
+          pixels[idx + 1] = palette.highlight.g;
+          pixels[idx + 2] = palette.highlight.b;
+          pixels[idx + 3] = Math.round(alpha * 255);
+        } else {
+          const alpha = clamp01(config.terrainOpacity * presence * ((Math.max(0, -bias)) * 1.08 + terrainShadow * 0.48 + height01 * 0.06));
+          if (alpha <= 0.01) continue;
+          pixels[idx]     = palette.shadow.r;
+          pixels[idx + 1] = palette.shadow.g;
+          pixels[idx + 2] = palette.shadow.b;
+          pixels[idx + 3] = Math.round(alpha * 255);
+        }
       }
     }
   }
@@ -243,6 +328,7 @@ export function buildTopographyLightCache(
     lightGrid,
     centroidX,
     centroidY,
+    shadowMode: activeTopographyShadowMode,
   };
   return bakedCache;
 }
@@ -263,7 +349,11 @@ export function renderTopographyLighting(
     ctx.globalCompositeOperation = 'source-over';
     ctx.imageSmoothingEnabled = true;
     if (state.growth01 <= 0) return;
-    ctx.filter = `blur(${TERRAIN_LIGHTING_EDGE_BLUR_PX}px)`;
+    // Sharp cylinder mode bakes hard-edged shadows; skip the render-time blur
+    // so the crisp shadow boundaries are preserved.
+    if (cache.shadowMode !== 'sharpCylinder') {
+      ctx.filter = `blur(${TERRAIN_LIGHTING_EDGE_BLUR_PX}px)`;
+    }
     ctx.drawImage(cache.canvas, 0, 0, cache.width, cache.height);
     ctx.filter = 'none';
   } finally {
@@ -332,6 +422,7 @@ function ensureSunlightFillCache(
  * - canvas width or height changed
  * - active light config changed (any field)
  * - palette changed (defensive; palette is normally fixed per wave)
+ * - shadow mode changed (smoothGradient ↔ sharpCylinder)
  *
  * Wave/seed/island-geometry changes are handled naturally because a new wave
  * creates a fresh TopographicTerrainState with `lightCache: null`.
@@ -352,6 +443,7 @@ function ensureTopographyLightCache(
     || existing.paletteId !== state.paletteId
     || existing.growth01 !== targetGrowth01
     || !configsMatch(existing.config, activeLightConfig)
+    || existing.shadowMode !== activeTopographyShadowMode
   ) {
     const built = buildTopographyLightCache(
       state, activeLightConfig, targetWidth, targetHeight, targetGrowth01,
@@ -457,6 +549,98 @@ function buildShadowGrid(
   return blurRadius > 0
     ? blurScalarGridGaussian(shadowGrid, gridW, gridH, blurRadius)
     : new Float32Array(shadowGrid);
+}
+
+/**
+ * Sharp cylinder shadow grid.
+ *
+ * Treats each terrain contour level as a flat-topped cylinder / terrace rather
+ * than a smoothly sloped surface.  Each caster cell's height is snapped to its
+ * integer contour level so that whole terraces cast shadows as a unit.
+ *
+ * Key differences from `buildShadowGrid`:
+ * - Height is snapped to `Math.ceil(casterHeight)` (integer layer) before
+ *   computing shadow length, giving a step-function instead of a ramp.
+ * - Shadow casting stops immediately when it hits terrain at the same or higher
+ *   layer (hard occlusion — no bleed-through).
+ * - Shadow intensity tapers only slightly with distance so the edge stays
+ *   visually crisp all the way to its tip.
+ * - The result is returned WITHOUT any Gaussian blur, preserving sharp edges.
+ */
+function buildSharpCylinderShadowGrid(
+  heightGrid: Float32Array,
+  gridW: number,
+  gridH: number,
+  towardLightX: number,
+  towardLightY: number,
+  config: TopographyLightConfig,
+): Float32Array {
+  const shadowGrid = new Float32Array(heightGrid.length);
+  const maxShadowPx = config.heightPerLayer * config.shadowLengthMult * CONTOUR_LEVEL_COUNT;
+  const maxSteps = Math.max(4, Math.ceil(maxShadowPx / LIGHT_GRID_CELL_SIZE_PX));
+  const awayLightX = -towardLightX;
+  const awayLightY = -towardLightY;
+
+  for (let iy = 0; iy < gridH; iy++) {
+    const row = iy * gridW;
+    for (let ix = 0; ix < gridW; ix++) {
+      const casterHeight = heightGrid[row + ix];
+      if (casterHeight <= MIN_CAST_SHADOW_HEIGHT) continue;
+
+      // Snap the caster to the top of its integer contour level.
+      // A cell at height 3.7 behaves as though it is fully at terrace 4,
+      // producing the same-length shadow as any other cell on that terrace.
+      const casterLayer = Math.ceil(casterHeight);
+      const casterHeight01 = clamp01(casterLayer / CONTOUR_LEVEL_COUNT);
+
+      // Shadow length is proportional to terrace height (taller = longer shadow).
+      const casterSteps = Math.min(maxSteps, Math.ceil(
+        (config.heightPerLayer * config.shadowLengthMult * casterLayer) / LIGHT_GRID_CELL_SIZE_PX,
+      ));
+
+      // Constant shadow strength per terrace; higher terraces are slightly stronger.
+      const shadowStrength = clamp01((0.44 + casterHeight01 * 0.72) * config.lightIntensity);
+
+      // Stamp edge shadow right at the base of this cell's vertical wall.
+      const edgeRx = ix + awayLightX * 0.6;
+      const edgeRy = iy + awayLightY * 0.6;
+      if (edgeRx >= 0 && edgeRy >= 0 && edgeRx < gridW - 1 && edgeRy < gridH - 1) {
+        const edgeReceiverH = heightGrid[
+          clampInt(Math.round(edgeRy), 0, gridH - 1) * gridW + clampInt(Math.round(edgeRx), 0, gridW - 1)
+        ];
+        if (edgeReceiverH < casterHeight * 0.80) {
+          stampShadow(shadowGrid, gridW, gridH, edgeRx, edgeRy, shadowStrength * 0.55);
+        }
+      }
+
+      for (let step = 1; step <= casterSteps; step++) {
+        const targetX = ix + awayLightX * step;
+        const targetY = iy + awayLightY * step;
+        if (targetX < 0 || targetY < 0 || targetX >= gridW - 1 || targetY >= gridH - 1) break;
+
+        // Nearest-neighbour height lookup for occlusion test — preserves hard edges.
+        const receiverIx = clampInt(Math.round(targetX), 0, gridW - 1);
+        const receiverIy = clampInt(Math.round(targetY), 0, gridH - 1);
+        const receiverHeight = heightGrid[receiverIy * gridW + receiverIx];
+
+        // If the receiver is at or above the caster's integer layer level the
+        // shadow ray is blocked — stop immediately (hard cylinder wall).
+        if (receiverHeight >= casterLayer * 0.88) break;
+
+        // Slight distance taper (much gentler than smooth mode) keeps the
+        // shadow mostly constant so the edge reads as "hard wall shadow".
+        const travel01 = step / casterSteps;
+        const occlusion = clamp01(shadowStrength * (1 - travel01 * 0.28));
+
+        // Use bilinear stamp to avoid ray-march gaps along diagonal directions.
+        // The sharp appearance comes from no blur at the end, not the stamp shape.
+        stampShadow(shadowGrid, gridW, gridH, targetX, targetY, occlusion);
+      }
+    }
+  }
+
+  // *** No Gaussian blur — sharp edges are the defining property of this mode ***
+  return shadowGrid;
 }
 
 function stampShadow(
@@ -804,6 +988,22 @@ function sampleGridBilinear(
   const a = lerp(grid[y0 * gridW + x0], grid[y0 * gridW + x1], tx);
   const b = lerp(grid[y1 * gridW + x0], grid[y1 * gridW + x1], tx);
   return lerp(a, b, ty);
+}
+
+/**
+ * Nearest-neighbour grid sampler.  Used by the sharp cylinder rendering path
+ * to avoid interpolation smoothing at shadow boundaries.
+ */
+function sampleGridNearest(
+  grid: Float32Array,
+  gridW: number,
+  gridH: number,
+  x: number,
+  y: number,
+): number {
+  const ix = clampInt(Math.round(x), 0, gridW - 1);
+  const iy = clampInt(Math.round(y), 0, gridH - 1);
+  return grid[iy * gridW + ix];
 }
 
 function rgbToCss(rgb: LightingRgb, alpha: number): string {

@@ -29,6 +29,12 @@ export interface RpgRender {
   setInvincibilityMode(enabled: boolean): void;
   /** Enable/disable topographic terrain debug outlines/dots (dev mode only). */
   setTopographicTerrainDebugEnabled(enabled: boolean): void;
+  /**
+   * Switch between smooth gradient and sharp cylinder topography shadow modes
+   * (dev mode only).  When enabled, shadows are hard-edged and directional;
+   * when disabled, the original smooth gradient mode is used.
+   */
+  setSharpTopographyShadows(enabled: boolean): void;
   /** Dev-mode only: spawn one Aliven group of the given variantId at the canvas edge. */
   devSpawnAliven(variantId: string): void;
   /** Dev-mode only: remove all active Aliven groups instantly. */
