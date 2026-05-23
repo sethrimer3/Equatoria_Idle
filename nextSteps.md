@@ -1,6 +1,42 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#106**
+Current build: **#107**
+
+---
+
+## Build #107 — RPG wiring/plug/multiplier fixes
+
+### Issues addressed:
+
+**1. Additive multiplier stacking**
+- `statModifiers` changed from `Map<string, number>` to `Map<string, number[]>` — multiple modifier boxes can now connect to the same weapon stat.
+- `getWeaponStatMultiplier` sums all connected box levels additively: x3 + x4 = x7.
+- `handleWireConnect` pushes each new modifier index into the per-stat array; `handleWireDisconnect` removes only the disconnected modifier, leaving others intact.
+- Single canonical function — no duplicate connection-lookup logic elsewhere.
+
+**2. Smaller plug circles**
+- `rpg-box4-circle-plug` reduced from 12 px + 3 px padding to 6 px + 4 px padding (14 px hit area, 6 px visual).
+- `rpg-weapon-source-plug` reduced from 20 px to 12 px.
+- `rpg-modifier-plug` reduced from 14 px to 8 px.
+- `rpg-plug-slot` reduced from 20 px to 14 px.
+- Drop zones are the full stat cell (already registered via `setPlugDropHitElement`), so the smaller visual does not reduce usability.
+
+**3. Mobile wire drag fix**
+- Added `touch-action: none` to `.rpg-xp-box`, `.rpg-box5-cell`, `.rpg-box4-cell`, and `.rpg-xp-box-1`. This prevents the browser from stealing pointer events as scroll/pan gestures before `setPointerCapture` is established, which was the root cause of the "wire appears and immediately retracts" bug on touch devices.
+
+**4. Box 1 XP input socket**
+- New `playerXpIn` PlugType added to `rpg-equip-wiring-types.ts`. Accepts `xpOut` connections (max 1).
+- Square purple `rpg-player-xp-in` element added at the bottom of Box 1. CSS uses 10 px visual with 2 px border-radius (square) and purple colouring to distinguish it from round plugs.
+- Registered as `player:xpIn` in `rpg-stats-panel.ts`. Drop zone: the whole Box 1 element.
+- When connected: `xpTargetPlayer = true` — XP reservoir drains at the same rate as modifier boxes.
+- **TODO**: wire `drainAmount` into a concrete player-level or stat-boost mechanic once that system is designed. Currently acts as a valid XP sink.
+
+### Known remaining items / optional polish:
+
+- `xpTargetPlayer` drain currently just empties the reservoir without a player-side effect. Once a player-levelling system is designed, connect `drainAmount` to it in the `else if (xpTargetPlayer)` branch of `updateStatsPanelDom`.
+- `maxOutgoing('xpOut') === 1` means the XP wire can only go to ONE target at a time. If the design intent changes to allow wiring XP to both a modifier box AND Box 1 simultaneously, `maxOutgoing` and the `xpTargetModifier`/`xpTargetPlayer` state would need updating.
+- The `rpg-stats-panel.ts` `statsPanel.querySelector('.rpg-xp-box-1')` used to set the Box 1 drop zone is slightly fragile. If box 1's class name changes, update the selector or pass `xpBox1` directly through `StatsPanelDomRefs`.
+- Pre-existing TypeScript errors (`Cannot find module 'vitest'`) in test files are unrelated to this build and block `tsc --noEmit`. They do not block `vite build`. No fix attempted here.
 
 ---
 

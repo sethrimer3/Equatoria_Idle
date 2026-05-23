@@ -1086,14 +1086,15 @@
 - `updateLockedWire` / `updateSlurpingWire` / `setDragPreview` / `updateDragPreviewPhysics` / `hideDragPreview` are called per-frame by `rpg-equip-wiring.ts`.
 
 ### src/render/rpg/rpg-stats-panel.ts
-- RPG stats panel logic layer: DPS tracking, equip-wiring registration, and per-frame update (~490 lines after DOM extraction).
+- RPG stats panel logic layer: DPS tracking, equip-wiring registration, and per-frame update (~500 lines after DOM extraction).
 - Exports `RpgStatsPanelCtx` interface, `RpgStatsPanelHandle` interface, and `createRpgStatsPanel(ctx)` factory.
 - DOM construction delegated to `rpg-stats-panel-dom.ts` via `buildStatsPanelDom()`.
 - Owns: DPS rolling-window tracker (10-second window, per-weapon attribution), HP/Reg/Def display updates, weapon stat rows, **XP reservoir display**, multiplier box UI (progress bars + level text), and equip-wiring plug registrations.
 - All visible wires use the unified soft-body system via `createEquipWiringSystem` (see `rpg-equip-wiring.ts`).
-- Box 1: 5 weapon-source output plugs; Box 2: XP reservoir drain to connected modifier box; Boxes 3–5: multiplier boxes with progress/level.
-- Wire state tracking: `equippedByWire` set, `xpTargetModifier` index, `statModifiers` map (slotIdx:statKey → modifierIdx).
-- **Per-frame XP drain**: drains `xpReservoir` into connected modifier box at `max(50, reservoir × 1.5)` XP/sec.
+- Box 1: 5 weapon-source output plugs + square purple `playerXpIn` socket at the bottom; Box 2: XP reservoir drain to connected modifier box or player XP socket; Boxes 3–5: multiplier boxes with progress/level.
+- Wire state tracking: `equippedByWire` set, `xpTargetModifier` index, `xpTargetPlayer` bool, `statModifiers` map (slotIdx:statKey → **number[]** — supports additive stacking of multiple modifier boxes on the same stat).
+- **Additive multiplier stacking**: `getWeaponStatMultiplier` sums all connected modifier box levels (e.g. x3+x4 = x7). Single canonical function — no duplicate lookup logic elsewhere.
+- **Per-frame XP drain**: drains `xpReservoir` into connected modifier box at `max(50, reservoir × 1.5)` XP/sec; same drain rate applies when `xpTargetPlayer` is active.
 - `RpgStatsPanelHandle` exposes `recordDps`, `withDamageSource`, `update`, `setDevMode`, `element`, `menuButtonContainer`, **`isSlotEquippedByWire`**, **`hasAnyEquipWire`**, **`getWeaponStatMultiplier`**.
 
 ### src/render/rpg/rpg-stats-panel-dom.ts
@@ -1101,16 +1102,17 @@
 - Extracted from `rpg-stats-panel.ts` to isolate HTML element creation from update logic.
 - Exports `StatsPanelDomRefs` interface and `buildStatsPanelDom()` factory.
 - Delegates section construction and badge wiring to `rpg-stats-panel-dom-sections.ts`.
-- Returns `StatsPanelDomRefs` containing all live element references, including `modProgressFills` and `modLevelTexts` arrays for modifier boxes.
+- Returns `StatsPanelDomRefs` containing all live element references, including `modProgressFills`, `modLevelTexts`, and **`playerXpInEl`** (Box 1 XP input socket).
 
 ### src/render/rpg/rpg-stats-panel-dom-sections.ts
 - Section builders/helpers for the RPG stats panel DOM.
-- Exports `createStatsPanelPrimaryColumn()` (player icon + weapon source plugs, XP/modifier boxes with **progress bars + level text + Roman numerals**, weapon stat rows), `createStatsPanelRightColumn()`, and `addStatsPanelDevBadges()`.
+- Exports `createStatsPanelPrimaryColumn()` (player icon + weapon source plugs + **square purple XP socket**, XP/modifier boxes with **progress bars + level text + Roman numerals**, weapon stat rows), `createStatsPanelRightColumn()`, and `addStatsPanelDevBadges()`.
 - Modifier boxes now include: absolute-positioned Roman numeral (top-left), flex content column (progress bar + level text), and plug stack.
 
 ### src/render/rpg/rpg-equip-wiring-types.ts
 - Types and pure helpers for the RPG plug wiring system.
-- Exports `PlugType` union; `isCompatible`, `isOutputPlug`, `maxOutgoing`, `maxIncoming`, `wireColor`, `wireDstColor` compatibility/colour helpers.
+- Exports `PlugType` union (includes **`playerXpIn`** for Box 1 XP socket); `isCompatible`, `isOutputPlug`, `maxOutgoing`, `maxIncoming`, `wireColor`, `wireDstColor` compatibility/colour helpers.
+- Compatibility: `xpOut → playerXpIn` is valid (one incoming connection max).
 - Exports `EquipWireConnection`, `EquipWiringState`, `createEquipWiringState()` data model.
 - Exports `EquipWiringCtx` and `EquipWiringHandle` public interfaces.
 - Exports internal `PlugRecord` and `WireEntry` types used by `rpg-equip-wiring.ts`.

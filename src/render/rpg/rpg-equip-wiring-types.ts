@@ -23,15 +23,18 @@ export type PlugType =
   | 'xpOut'
   | 'modifierXpIn'
   | 'modifierOut'
-  | 'statIn';
+  | 'statIn'
+  /** Square socket on Box 1 that accepts an XP wire to give the player direct XP. */
+  | 'playerXpIn';
 
 // ── Connection compatibility ──────────────────────────────────────────────────
 
 /** Returns true when fromType → toType is a valid directed connection. */
 export function isCompatible(fromType: PlugType, toType: PlugType): boolean {
-  if (fromType === 'weaponSourceOut' && toType === 'weaponSlotIn') return true;
-  if (fromType === 'xpOut'           && toType === 'modifierXpIn') return true;
-  if (fromType === 'modifierOut'     && toType === 'statIn')       return true;
+  if (fromType === 'weaponSourceOut' && toType === 'weaponSlotIn')  return true;
+  if (fromType === 'xpOut'           && toType === 'modifierXpIn')  return true;
+  if (fromType === 'xpOut'           && toType === 'playerXpIn')    return true;
+  if (fromType === 'modifierOut'     && toType === 'statIn')        return true;
   return false;
 }
 
@@ -52,6 +55,7 @@ export function maxOutgoing(type: PlugType): number {
 export function maxIncoming(type: PlugType): number {
   if (type === 'weaponSlotIn')  return 1;
   if (type === 'modifierXpIn')  return 1;
+  if (type === 'playerXpIn')    return 1;
   if (type === 'statIn')        return Infinity;
   return 1;
 }
@@ -70,6 +74,7 @@ export function wireColor(fromType: PlugType): string {
 export function wireDstColor(toType: PlugType): string {
   if (toType === 'weaponSlotIn')  return '#ffc896'; // warm orange
   if (toType === 'modifierXpIn')  return '#a78bfa'; // purple
+  if (toType === 'playerXpIn')    return '#a78bfa'; // purple (same as XP wire)
   if (toType === 'statIn')        return '#93c5fd'; // light blue-grey
   return '#ffffff';
 }

@@ -45,6 +45,9 @@ export interface StatsPanelDomRefs {
   // Box 2 — XP node output plug
   xpOutPlugEl: HTMLDivElement;
 
+  // Box 1 — square purple XP input socket (playerXpIn)
+  playerXpInEl: HTMLDivElement;
+
   // Boxes 3–5 — modifier XP-in and output plugs
   mod1XpIn: HTMLDivElement;
   mod1Out: HTMLDivElement;
@@ -109,6 +112,7 @@ export function buildStatsPanelDom(): StatsPanelDomRefs {
     weaponRowPlugEls: primary.weaponRowPlugEls,
     weaponSourcePlugEls: primary.weaponSourcePlugEls,
     xpOutPlugEl: primary.xpOutPlugEl,
+    playerXpInEl: primary.playerXpInEl,
     mod1XpIn: primary.mod1XpIn,
     mod1Out: primary.mod1Out,
     mod2XpIn: primary.mod2XpIn,
