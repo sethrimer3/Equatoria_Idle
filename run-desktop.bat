@@ -22,9 +22,6 @@ echo Launching Electron...
 call npm run electron
 if errorlevel 1 goto error
 
-echo.
-echo Equatoria Idle desktop closed.
-pause
 exit /b 0
 
 :error

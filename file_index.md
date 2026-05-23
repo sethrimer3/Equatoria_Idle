@@ -7,7 +7,7 @@
 - `tsconfig.json` — TypeScript compiler configuration
 - `package.json` — Dependencies and scripts, including Vite browser commands and Electron desktop launch commands.
 - `electron/main.cjs` — Minimal Electron main process that disables Chromium GPU/sandbox startup paths, stores profile/cache data in `.electron-user-data`, logs desktop startup/crash diagnostics to `electron-runtime.log`, then loads `dist/index.html` with context isolation enabled and Node integration disabled.
-- `run-desktop.bat` — Windows double-click launcher: installs missing dependencies, builds the desktop output, and starts Electron.
+- `RUN-DESKTOP.bat` — Windows double-click launcher: installs missing dependencies, builds the desktop output, starts Electron, and closes its console automatically after the app exits unless an error occurs.
 - `run-browser-dev.bat` — Windows double-click launcher for the Vite browser development server.
 - `build-game.bat` — Windows double-click launcher for the normal production/static build.
 - `ELECTRON.md` — Desktop launch, batch-file, save-profile, and missing-asset troubleshooting notes.
@@ -991,6 +991,11 @@
 - `RING_POINTS = 64` — number of polygon points per ring and solid outer polygon.
 - Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling,
   staggered ring growth/shrink animation.
+- Some normal terrain seeds place islands partially offscreen, and occasional
+  canyon-layout seeds place larger overlapping islands along one or two
+  adjacent render edges to imply chasm/gulch walls without enclosing the
+  playable arena. Canyon generation falls back to normal terrain if merged
+  contours would mark the arena center as solid.
 - **Build 84+:** calls `buildMergedContours` from `topographic-terrain-field.ts` at
   generation time; `renderTopographicTerrain` draws merged scalar-field contours.
   `pushPointOutsideTopographicTerrain` uses nearest-point-on-boundary logic.

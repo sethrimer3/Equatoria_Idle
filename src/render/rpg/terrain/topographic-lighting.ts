@@ -199,9 +199,10 @@ export function buildTopographyLightCache(
       const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
       const presence = smoothstep(0.005, 0.92, h);
       const terrace = 1 - Math.abs((((h % 1) + 1) % 1) * 2 - 1);
-      const bias = (lightAmount - 0.50) * (1.0 + height01 * 0.58) - shadowAmount * (0.28 + height01 * 0.14);
+      const terrainShadow = shadowAmount * smoothstep(0.05, 0.7, h) * clamp01((0.62 - lightAmount) * 3.2);
+      const bias = (lightAmount - 0.49) * (1.05 + height01 * 0.62) - terrainShadow * (0.38 + height01 * 0.16);
 
-      if (bias >= 0) {
+      if (bias >= -0.02 && terrainShadow < 0.26) {
         const alpha = clamp01(config.terrainOpacity * presence * (bias * 0.95 + terrace * 0.06 * (1 - shadowAmount)));
         if (alpha <= 0.01) continue;
         pixels[idx] = palette.highlight.r;
@@ -209,7 +210,7 @@ export function buildTopographyLightCache(
         pixels[idx + 2] = palette.highlight.b;
         pixels[idx + 3] = Math.round(alpha * 255);
       } else {
-        const alpha = clamp01(config.terrainOpacity * presence * ((-bias) * 1.08 + shadowAmount * 0.18 + height01 * 0.05));
+        const alpha = clamp01(config.terrainOpacity * presence * ((Math.max(0, -bias)) * 1.08 + terrainShadow * 0.48 + height01 * 0.06));
         if (alpha <= 0.01) continue;
         pixels[idx] = palette.shadow.r;
         pixels[idx + 1] = palette.shadow.g;
@@ -430,6 +431,10 @@ function buildShadowGrid(
         / LIGHT_GRID_CELL_SIZE_PX,
       ));
       const baseStrength = (0.35 + casterHeight01 * 0.9) * config.lightIntensity;
+      const edgeReceiverHeight = sampleGridBilinear(heightGrid, gridW, gridH, ix + awayLightX * 0.72, iy + awayLightY * 0.72);
+      if (edgeReceiverHeight < casterHeight * 0.64) {
+        stampShadow(shadowGrid, gridW, gridH, ix + awayLightX * 0.58, iy + awayLightY * 0.58, baseStrength * casterHeight01 * 0.55);
+      }
 
       for (let step = 1; step <= casterSteps; step++) {
         const targetX = ix + awayLightX * step;
@@ -489,8 +494,8 @@ function buildLightGrid(
   config: TopographyLightConfig,
 ): Float32Array {
   const lightGrid = new Float32Array(heightGrid.length);
-  let lx = -towardLightX;
-  let ly = -towardLightY;
+  let lx = towardLightX;
+  let ly = towardLightY;
   let lz = LIGHT_DIRECTION_Z;
   const lightLen = Math.hypot(lx, ly, lz) || 1;
   lx /= lightLen;

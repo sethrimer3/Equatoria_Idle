@@ -519,24 +519,29 @@ describe('isPointInsideTopographicTerrain — with merged contours', () => {
   });
 
   it('a point far from all islands is outside terrain', () => {
-    // Choose a point at the canvas edge, which is always outside any island
-    // (TERRAIN_EDGE_MARGIN and PLAYER_EXCLUSION_RADIUS prevent placement there).
+    // The player exclusion zone should remain open even when terrain can grow
+    // in from the canvas edges.
     const state = generateTopographicTerrain(1, 42, 800, 600);
     state.growth01 = 1;
-    // Corner points are always outside island bounds.
-    expect(isPointInsideTopographicTerrain(state, 5, 5)).toBe(false);
-    expect(isPointInsideTopographicTerrain(state, 795, 595)).toBe(false);
+    expect(isPointInsideTopographicTerrain(state, 400, 300)).toBe(false);
   });
 
-  it('canvas corners stay outside across many merged-contour seeds', () => {
+  it('some merged-contour seeds can occupy canvas edges while keeping centre clear', () => {
+    let edgeOccupiedCount = 0;
     for (let seed = 1; seed <= 80; seed++) {
       const state = generateTopographicTerrain(1, seed * 7919, 800, 600);
       state.growth01 = 1;
-      expect(isPointInsideTopographicTerrain(state, 5, 5)).toBe(false);
-      expect(isPointInsideTopographicTerrain(state, 795, 5)).toBe(false);
-      expect(isPointInsideTopographicTerrain(state, 5, 595)).toBe(false);
-      expect(isPointInsideTopographicTerrain(state, 795, 595)).toBe(false);
+      expect(isPointInsideTopographicTerrain(state, 400, 300)).toBe(false);
+      if (
+        isPointInsideTopographicTerrain(state, 5, 5)
+        || isPointInsideTopographicTerrain(state, 795, 5)
+        || isPointInsideTopographicTerrain(state, 5, 595)
+        || isPointInsideTopographicTerrain(state, 795, 595)
+      ) {
+        edgeOccupiedCount++;
+      }
     }
+    expect(edgeOccupiedCount).toBeGreaterThan(0);
   });
 
   it('returns false when growth01 is 0', () => {
