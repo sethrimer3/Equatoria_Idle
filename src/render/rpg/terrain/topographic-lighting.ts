@@ -20,10 +20,34 @@ export type { TopographyLightConfig, TopographyLightCache, TopographyLightSampli
  * - `'smoothGradient'`  — Default.  Treats terrain as smoothly sloped; shadows
  *   are Gaussian-blurred and transition gradually between contour levels.
  * - `'sharpCylinder'`   — Dev mode option.  Treats each contour level as a
- *   flat-topped cylinder / terrace.  Shadows are hard-edged, linear, and
- *   directional with no blur.
+ *   flat-topped cylinder / terrace.  Shadows are cast ONLY from the step edges
+ *   between height levels (cliff faces), not from the whole mountain body.
+ *   Results are hard-edged directional shadow bands that reveal the stacked
+ *   terrace structure.
  */
 export type TopographyShadowMode = 'smoothGradient' | 'sharpCylinder';
+
+// ── Sharp terrace shadow tuning ──────────────────────────────────────────────
+/**
+ * Base shadow opacity for each terrace-edge cast shadow.  Scales with
+ * `config.lightIntensity`.  Higher values produce denser, more visible shadow
+ * bands at the cost of contrast on lower terraces.
+ */
+const TERRACE_SHADOW_OPACITY_BASE = 0.84;
+/**
+ * Opacity at the far tip of each cast shadow ray expressed as a fraction of the
+ * source (edge) opacity.  1.0 = no fade at the tip; 0.0 = fully fades out.
+ * Keeping this above ~0.5 preserves the hard-edged look across the full shadow
+ * length while still reading as "far from the wall".
+ */
+const TERRACE_SHADOW_TIP_OPACITY_FRAC = 0.62;
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Debug statistics populated during the last sharp terrace shadow build. */
+const sharpTerraceDebug = {
+  edgeCellsFound: 0,
+  rebuilds: 0,
+};
 
 interface LightingRgb {
   r: number;
@@ -552,20 +576,25 @@ function buildShadowGrid(
 }
 
 /**
- * Sharp cylinder shadow grid.
+ * Sharp terrace / cylinder shadow grid — layer-edge cast shadow algorithm.
  *
- * Treats each terrain contour level as a flat-topped cylinder / terrace rather
- * than a smoothly sloped surface.  Each caster cell's height is snapped to its
- * integer contour level so that whole terraces cast shadows as a unit.
+ * Each contour level is treated as a flat-topped stacked cylinder.  Shadows
+ * are cast ONLY from the cliff edges between adjacent height levels (not from
+ * the entire mountain body).  The result is a set of crisp directional shadow
+ * bands that reveal the stacked-terrace structure rather than a single blob.
  *
- * Key differences from `buildShadowGrid`:
- * - Height is snapped to `Math.ceil(casterHeight)` (integer layer) before
- *   computing shadow length, giving a step-function instead of a ramp.
- * - Shadow casting stops immediately when it hits terrain at the same or higher
- *   layer (hard occlusion — no bleed-through).
- * - Shadow intensity tapers only slightly with distance so the edge stays
- *   visually crisp all the way to its tip.
- * - The result is returned WITHOUT any Gaussian blur, preserving sharp edges.
+ * Algorithm:
+ *   For each integer height level L (highest → lowest):
+ *   1. Find cells where Math.ceil(height) == L  (this cell is at layer L).
+ *   2. Check if the adjacent cell in the shadow direction has Math.ceil < L
+ *      (this is the shadow-side cliff edge of that terrace).
+ *   3. Cast a shadow ray from the cliff edge in the shadow (away-from-light)
+ *      direction for a length proportional to L.
+ *   4. Apply shadow only to cells where height < L (lower terrain / ground).
+ *   5. Stop the ray when it hits terrain at height >= L (hard occlusion).
+ *   No Gaussian blur — crisp edges are the defining property of this mode.
+ *
+ * Tuning: TERRACE_SHADOW_OPACITY_BASE, TERRACE_SHADOW_TIP_OPACITY_FRAC.
  */
 function buildSharpCylinderShadowGrid(
   heightGrid: Float32Array,
@@ -576,70 +605,81 @@ function buildSharpCylinderShadowGrid(
   config: TopographyLightConfig,
 ): Float32Array {
   const shadowGrid = new Float32Array(heightGrid.length);
-  const maxShadowPx = config.heightPerLayer * config.shadowLengthMult * CONTOUR_LEVEL_COUNT;
-  const maxSteps = Math.max(4, Math.ceil(maxShadowPx / LIGHT_GRID_CELL_SIZE_PX));
   const awayLightX = -towardLightX;
   const awayLightY = -towardLightY;
 
-  for (let iy = 0; iy < gridH; iy++) {
-    const row = iy * gridW;
-    for (let ix = 0; ix < gridW; ix++) {
-      const casterHeight = heightGrid[row + ix];
-      if (casterHeight <= MIN_CAST_SHADOW_HEIGHT) continue;
+  let edgeCells = 0;
 
-      // Snap the caster to the top of its integer contour level.
-      // A cell at height 3.7 behaves as though it is fully at terrace 4,
-      // producing the same-length shadow as any other cell on that terrace.
-      const casterLayer = Math.ceil(casterHeight);
-      const casterHeight01 = clamp01(casterLayer / CONTOUR_LEVEL_COUNT);
+  // Process levels from highest to lowest so upper-terrace shadows accumulate first.
+  for (let L = CONTOUR_LEVEL_COUNT; L >= 1; L--) {
+    // Shadow length proportional to layer height (same formula as smooth mode
+    // per-cell, but using the integer layer number L).
+    const shadowSteps = Math.max(2, Math.ceil(
+      (config.heightPerLayer * config.shadowLengthMult * L) / LIGHT_GRID_CELL_SIZE_PX,
+    ));
 
-      // Shadow length is proportional to terrace height (taller = longer shadow).
-      const casterSteps = Math.min(maxSteps, Math.ceil(
-        (config.heightPerLayer * config.shadowLengthMult * casterLayer) / LIGHT_GRID_CELL_SIZE_PX,
-      ));
+    // Higher terraces cast slightly stronger shadows.
+    const layerFrac01 = L / CONTOUR_LEVEL_COUNT;
+    const edgeOpacity = clamp01(
+      TERRACE_SHADOW_OPACITY_BASE * config.lightIntensity * (0.5 + layerFrac01 * 0.5),
+    );
 
-      // Constant shadow strength per terrace; higher terraces are slightly stronger.
-      const shadowStrength = clamp01((0.44 + casterHeight01 * 0.72) * config.lightIntensity);
+    for (let iy = 0; iy < gridH; iy++) {
+      const row = iy * gridW;
+      for (let ix = 0; ix < gridW; ix++) {
+        const cellH = heightGrid[row + ix];
 
-      // Stamp edge shadow right at the base of this cell's vertical wall.
-      const edgeRx = ix + awayLightX * 0.6;
-      const edgeRy = iy + awayLightY * 0.6;
-      if (edgeRx >= 0 && edgeRy >= 0 && edgeRx < gridW - 1 && edgeRy < gridH - 1) {
-        const edgeReceiverH = heightGrid[
-          clampInt(Math.round(edgeRy), 0, gridH - 1) * gridW + clampInt(Math.round(edgeRx), 0, gridW - 1)
-        ];
-        if (edgeReceiverH < casterHeight * 0.80) {
-          stampShadow(shadowGrid, gridW, gridH, edgeRx, edgeRy, shadowStrength * 0.55);
+        // Only consider cells at this integer layer.
+        if (Math.ceil(cellH) !== L) continue;
+        // Ignore near-zero ground cells.
+        if (cellH <= MIN_CAST_SHADOW_HEIGHT) continue;
+
+        // ── Cliff-edge detection ───────────────────────────────────────────
+        // A cell is a shadow-casting cliff edge if the immediately adjacent
+        // cell in the shadow (away-from-light) direction belongs to a LOWER
+        // integer layer.  Interior cells of the same terrace are skipped.
+        const adjIx = clampInt(Math.round(ix + awayLightX), 0, gridW - 1);
+        const adjIy = clampInt(Math.round(iy + awayLightY), 0, gridH - 1);
+        const adjH = heightGrid[adjIy * gridW + adjIx];
+        if (Math.ceil(adjH) >= L) continue; // Same or higher layer → not an edge.
+
+        edgeCells++;
+
+        // ── Shadow ray ───────────────────────────────────────────────────────
+        // Project from this cliff edge in the shadow direction.  The shadow
+        // falls only on terrain strictly below layer L; terrain at L or above
+        // blocks the ray.
+        for (let step = 1; step <= shadowSteps; step++) {
+          const targetX = ix + awayLightX * step;
+          const targetY = iy + awayLightY * step;
+          if (targetX < 0 || targetY < 0 || targetX >= gridW - 1 || targetY >= gridH - 1) break;
+
+          // Nearest-neighbour height lookup — preserves hard shadow edges.
+          const receiverIx = clampInt(Math.round(targetX), 0, gridW - 1);
+          const receiverIy = clampInt(Math.round(targetY), 0, gridH - 1);
+          const receiverH = heightGrid[receiverIy * gridW + receiverIx];
+
+          // Hard occlusion: stop the ray when it hits terrain at this layer or above.
+          if (receiverH >= L) break;
+
+          // Slight taper toward the tip keeps the far end visible while the
+          // source edge reads clearly as a "hard wall shadow".
+          const travel01 = (step - 1) / Math.max(1, shadowSteps - 1);
+          const occlusion = edgeOpacity * lerp(1.0, TERRACE_SHADOW_TIP_OPACITY_FRAC, travel01);
+
+          // Bilinear stamp avoids ray-march gaps on diagonal directions; the
+          // crispness comes from no blur at the end, not the stamp footprint.
+          stampShadow(shadowGrid, gridW, gridH, targetX, targetY, occlusion);
         }
-      }
-
-      for (let step = 1; step <= casterSteps; step++) {
-        const targetX = ix + awayLightX * step;
-        const targetY = iy + awayLightY * step;
-        if (targetX < 0 || targetY < 0 || targetX >= gridW - 1 || targetY >= gridH - 1) break;
-
-        // Nearest-neighbour height lookup for occlusion test — preserves hard edges.
-        const receiverIx = clampInt(Math.round(targetX), 0, gridW - 1);
-        const receiverIy = clampInt(Math.round(targetY), 0, gridH - 1);
-        const receiverHeight = heightGrid[receiverIy * gridW + receiverIx];
-
-        // If the receiver is at or above the caster's integer layer level the
-        // shadow ray is blocked — stop immediately (hard cylinder wall).
-        if (receiverHeight >= casterLayer * 0.88) break;
-
-        // Slight distance taper (much gentler than smooth mode) keeps the
-        // shadow mostly constant so the edge reads as "hard wall shadow".
-        const travel01 = step / casterSteps;
-        const occlusion = clamp01(shadowStrength * (1 - travel01 * 0.28));
-
-        // Use bilinear stamp to avoid ray-march gaps along diagonal directions.
-        // The sharp appearance comes from no blur at the end, not the stamp shape.
-        stampShadow(shadowGrid, gridW, gridH, targetX, targetY, occlusion);
       }
     }
   }
 
-  // *** No Gaussian blur — sharp edges are the defining property of this mode ***
+  // Store debug stats for the dev overlay.
+  sharpTerraceDebug.edgeCellsFound = edgeCells;
+  sharpTerraceDebug.rebuilds++;
+
+  // No Gaussian blur — sharp edges are the defining property of this mode.
   return shadowGrid;
 }
 
@@ -904,6 +944,29 @@ function drawLightingDevOverlay(ctx: CanvasRenderingContext2D, cache: BakedTopog
     ctx.closePath();
     ctx.fillStyle = '#fff0b0';
     ctx.fill();
+
+    // ── Shadow mode + stats panel ──────────────────────────────────────────
+    const statsX = arrowX + 72 + gap;
+    const statsH = panelH;
+    const statsW = 148;
+    ctx.fillStyle = 'rgba(8, 10, 18, 0.8)';
+    ctx.fillRect(statsX, panelY, statsW, statsH);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.strokeRect(statsX + 0.5, panelY + 0.5, statsW - 1, statsH - 1);
+
+    const isSharp = cache.shadowMode === 'sharpCylinder';
+    ctx.fillStyle = isSharp ? '#ffd966' : '#88ccff';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(isSharp ? 'SHARP TERRACE' : 'SMOOTH GRADIENT', statsX + 6, panelY + 13);
+
+    ctx.fillStyle = '#b8d0e8';
+    ctx.font = '9px monospace';
+    ctx.fillText(`levels: ${CONTOUR_LEVEL_COUNT}`, statsX + 6, panelY + 28);
+    if (isSharp) {
+      ctx.fillText(`edges: ${sharpTerraceDebug.edgeCellsFound}`, statsX + 6, panelY + 40);
+      ctx.fillText(`rebuilds: ${sharpTerraceDebug.rebuilds}`, statsX + 6, panelY + 52);
+    }
+    ctx.fillText(`grid: ${cache.gridW}×${cache.gridH}`, statsX + 6, panelY + 64);
   } finally {
     ctx.restore();
   }
