@@ -995,18 +995,39 @@
   generation time; `renderTopographicTerrain` draws merged scalar-field contours.
   `pushPointOutsideTopographicTerrain` uses nearest-point-on-boundary logic.
   `computeTerrainRepulsionForce` provides soft quadratic repulsion for smooth collision.
-- **Build 85+:** terrain state exposes an optional external `lightCache` slot; the
-  RPG draw pass now layers cached topographic lighting immediately after contour rendering.
+- **Build 85+:** `lightCache: TopographyLightCache | null` on terrain state stores
+  the baked lighting overlay; the RPG draw pass layers it after contour rendering.
 - Center dots are dev-only (`terrainDevMode` flag, not set during gameplay).
 
+### src/render/rpg/terrain/topographic-lighting-types.ts
+- Shared type definitions for the topography lighting system.
+- Exports `TopographyLightConfig`, `TopographyLightCache`, and
+  `TopographyLightSamplingData`.
+- Imported by `topographic-terrain.ts` (to type `lightCache`) and by
+  `topographic-lighting.ts` (implementation).  Kept separate to prevent a
+  circular dependency.
+- `TopographyLightSamplingData` is the safe read-only interface for future
+  entity-shadow code; obtain it via `getActiveTopographyLightSamplingData()`.
+
 ### src/render/rpg/terrain/topographic-lighting.ts
-- Cached topography lighting overlay for RPG terrain.
+- Cached topography directional-lighting overlay for RPG terrain.
 - Exports `buildTopographyLightCache`, `renderTopographyLighting`,
-  `setTopographyLightConfig`, and `setTopographyLightingDevMode`.
-- Reconstructs a coarse scalar-height grid from terrain islands, bakes slope shading,
-  directional shadows, and faint beam shafts into an offscreen canvas, then reuses that
-  canvas until the wave/seed/config/canvas size changes.
-- Dev mode can visualize the baked height map, shadow map, and light-direction arrow.
+  `setTopographyLightConfig`, `setTopographyLightingDevMode`,
+  `getActiveTopographyLightSamplingData`, and `DEFAULT_TOPOGRAPHY_LIGHT_CONFIG`.
+  Also re-exports `TopographyLightConfig`, `TopographyLightCache`, and
+  `TopographyLightSamplingData` from `topographic-lighting-types.ts`.
+- Bakes a coarse scalar-height grid from terrain islands, computes directional
+  shadows via ray-marching, smooths grids with a separable **Gaussian** blur,
+  combines slope shading and shadow into a light grid, then composites highlight,
+  shadow, and faint beam shafts into an offscreen canvas.
+- Cache is stored on `TopographicTerrainState.lightCache`; a new wave
+  creates a fresh state (cache starts `null`).  Within a wave the cache
+  rebuilds only when canvas size, palette, or light config changes — no
+  per-frame rebuild during stable gameplay.
+- `getActiveTopographyLightSamplingData(state)` returns a `TopographyLightSamplingData`
+  snapshot for future entity-shadow code (read-only access to heightGrid, shadowGrid,
+  lightGrid, cellSizePx, gridW/H, and lightAngle).
+- Dev mode visualizes the baked height map, shadow map, and light-direction arrow.
 
 ### src/render/rpg/terrain/topographic-terrain-field.ts
 - Scalar field + Marching Squares contour extraction for smooth terrain merging.

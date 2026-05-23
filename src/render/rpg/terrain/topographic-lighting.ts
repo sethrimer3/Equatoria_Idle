@@ -3,27 +3,15 @@ import {
   type TopographicTerrainPaletteId,
   type TopographicTerrainState,
 } from './topographic-terrain';
+import type {
+  TopographyLightConfig,
+  TopographyLightCache,
+  TopographyLightSamplingData,
+} from './topographic-lighting-types';
 
-export interface TopographyLightConfig {
-  lightAngle: number;
-  lightIntensity: number;
-  ambientFloor: number;
-  shadowLengthMult: number;
-  shadowSoftness: number;
-  heightPerLayer: number;
-  terrainOpacity: number;
-  slopeSmoothing: number;
-  beamStrength: number;
-}
-
-export interface TopographyLightCache {
-  canvas: HTMLCanvasElement;
-  width: number;
-  height: number;
-  config: TopographyLightConfig;
-  terrainSeed: number;
-  terrainWaveNumber: number;
-}
+// Re-export public types so callers can import them from this module
+// without knowing about the types-only file.
+export type { TopographyLightConfig, TopographyLightCache, TopographyLightSamplingData };
 
 interface LightingRgb {
   r: number;
@@ -37,6 +25,11 @@ interface LightingPalette {
   beam: LightingRgb;
 }
 
+/**
+ * Internal extension of the public cache interface with the full baked data
+ * needed for rendering and dev overlays.  Stored on `state.lightCache` and
+ * cast to this type within this module.
+ */
 interface BakedTopographyLightCache extends TopographyLightCache {
   cellSizePx: number;
   gridW: number;
@@ -94,16 +87,37 @@ export const DEFAULT_TOPOGRAPHY_LIGHT_CONFIG: TopographyLightConfig = {
 
 let activeLightConfig: TopographyLightConfig = { ...DEFAULT_TOPOGRAPHY_LIGHT_CONFIG };
 let lightingDevMode = false;
-let topographyLightCache: BakedTopographyLightCache | null = null;
 
 export function setTopographyLightConfig(partial: Partial<TopographyLightConfig>): TopographyLightConfig {
   activeLightConfig = { ...activeLightConfig, ...partial };
-  topographyLightCache = null;
   return { ...activeLightConfig };
 }
 
 export function setTopographyLightingDevMode(enabled: boolean): void {
   lightingDevMode = enabled;
+}
+
+/**
+ * Returns read-only sampling data from the given terrain state's lighting
+ * cache.  Intended for future entity-shadow code.
+ *
+ * Returns `null` when the cache has not been built yet for this state
+ * (i.e. the terrain has not been rendered at least once).
+ */
+export function getActiveTopographyLightSamplingData(
+  state: TopographicTerrainState,
+): TopographyLightSamplingData | null {
+  const cache = state.lightCache as BakedTopographyLightCache | null;
+  if (!cache) return null;
+  return {
+    lightAngle: cache.config.lightAngle,
+    heightGrid: cache.heightGrid,
+    shadowGrid: cache.shadowGrid,
+    lightGrid: cache.lightGrid,
+    cellSizePx: cache.cellSizePx,
+    gridW: cache.gridW,
+    gridH: cache.gridH,
+  };
 }
 
 export function buildTopographyLightCache(
@@ -136,7 +150,7 @@ export function buildTopographyLightCache(
   const towardLightX = Math.cos(config.lightAngle);
   const towardLightY = Math.sin(config.lightAngle);
   const shadowGrid = buildShadowGrid(heightGrid, gridW, gridH, towardLightX, towardLightY, config);
-  const smoothedHeightGrid = blurScalarGrid(heightGrid, gridW, gridH, 1);
+  const smoothedHeightGrid = blurScalarGridGaussian(heightGrid, gridW, gridH, 1);
   const lightGrid = buildLightGrid(smoothedHeightGrid, shadowGrid, gridW, gridH, towardLightX, towardLightY, config);
 
   const image = ctx.createImageData(canvas.width, canvas.height);
@@ -189,6 +203,7 @@ export function buildTopographyLightCache(
     config: { ...config },
     terrainSeed: state.seed,
     terrainWaveNumber: state.waveNumber,
+    paletteId: state.paletteId,
     cellSizePx: LIGHT_GRID_CELL_SIZE_PX,
     gridW,
     gridH,
@@ -233,6 +248,18 @@ export function renderTopographyLighting(
   }
 }
 
+/**
+ * Ensures `state.lightCache` is valid for the current canvas size and active
+ * light config, rebuilding it when any input changes.
+ *
+ * Invalidation triggers:
+ * - canvas width or height changed
+ * - active light config changed (any field)
+ * - palette changed (defensive; palette is normally fixed per wave)
+ *
+ * Wave/seed/island-geometry changes are handled naturally because a new wave
+ * creates a fresh TopographicTerrainState with `lightCache: null`.
+ */
 function ensureTopographyLightCache(
   state: TopographicTerrainState,
   canvasW: number,
@@ -240,17 +267,21 @@ function ensureTopographyLightCache(
 ): BakedTopographyLightCache | null {
   const targetWidth = Math.max(1, Math.floor(canvasW));
   const targetHeight = Math.max(1, Math.floor(canvasH));
+  const existing = state.lightCache as BakedTopographyLightCache | null;
   if (
-    topographyLightCache === null
-    || topographyLightCache.terrainWaveNumber !== state.waveNumber
-    || topographyLightCache.terrainSeed !== state.seed
-    || topographyLightCache.width !== targetWidth
-    || topographyLightCache.height !== targetHeight
-    || !configsMatch(topographyLightCache.config, activeLightConfig)
+    existing === null
+    || existing.width !== targetWidth
+    || existing.height !== targetHeight
+    || existing.paletteId !== state.paletteId
+    || !configsMatch(existing.config, activeLightConfig)
   ) {
-    topographyLightCache = buildTopographyLightCache(state, activeLightConfig, targetWidth, targetHeight) as BakedTopographyLightCache;
+    const built = buildTopographyLightCache(
+      state, activeLightConfig, targetWidth, targetHeight,
+    ) as BakedTopographyLightCache;
+    state.lightCache = built;
+    return built;
   }
-  return topographyLightCache;
+  return existing;
 }
 
 function configsMatch(a: TopographyLightConfig, b: TopographyLightConfig): boolean {
@@ -330,7 +361,9 @@ function buildShadowGrid(
   }
 
   const blurRadius = Math.max(0, Math.round(config.shadowSoftness * 3));
-  return blurRadius > 0 ? blurScalarGrid(shadowGrid, gridW, gridH, blurRadius) : shadowGrid;
+  return blurRadius > 0
+    ? blurScalarGridGaussian(shadowGrid, gridW, gridH, blurRadius)
+    : new Float32Array(shadowGrid);
 }
 
 function buildLightGrid(
@@ -382,38 +415,71 @@ function buildLightGrid(
     }
   }
 
-  return blurScalarGrid(lightGrid, gridW, gridH, 1);
+  return blurScalarGridGaussian(lightGrid, gridW, gridH, 1);
 }
 
-function blurScalarGrid(src: Float32Array, gridW: number, gridH: number, radius: number): Float32Array {
-  if (radius <= 0) return src;
+// ---------------------------------------------------------------------------
+// Separable Gaussian blur
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a normalized 1-D Gaussian kernel of half-width `radius`.
+ *
+ * The kernel has `2 * radius + 1` taps.  Sigma defaults to `radius / 2`
+ * so roughly 95 % of the distribution fits within the kernel window.
+ */
+function buildGaussianKernel(radius: number, sigma?: number): Float32Array {
+  const size = radius * 2 + 1;
+  const s = sigma ?? Math.max(0.3, radius * 0.5);
+  const s2 = 2 * s * s;
+  const kernel = new Float32Array(size);
+  let sum = 0;
+  for (let i = 0; i < size; i++) {
+    const x = i - radius;
+    kernel[i] = Math.exp(-(x * x) / s2);
+    sum += kernel[i];
+  }
+  for (let i = 0; i < size; i++) {
+    kernel[i] /= sum;
+  }
+  return kernel;
+}
+
+/**
+ * Separable Gaussian blur applied in two passes (horizontal then vertical).
+ *
+ * Edge pixels are clamped (border replication).  Always returns a new
+ * Float32Array, even when `radius` is 0, so callers can always treat the
+ * result as a distinct buffer.
+ */
+function blurScalarGridGaussian(src: Float32Array, gridW: number, gridH: number, radius: number): Float32Array {
+  if (radius <= 0) return new Float32Array(src);
+  const kernel = buildGaussianKernel(radius);
   const temp = new Float32Array(src.length);
   const out = new Float32Array(src.length);
 
+  // Horizontal pass
   for (let iy = 0; iy < gridH; iy++) {
     const row = iy * gridW;
     for (let ix = 0; ix < gridW; ix++) {
       let sum = 0;
-      let count = 0;
-      for (let rx = -radius; rx <= radius; rx++) {
-        const sx = clampInt(ix + rx, 0, gridW - 1);
-        sum += src[row + sx];
-        count++;
+      for (let k = 0; k < kernel.length; k++) {
+        const sx = clampInt(ix + k - radius, 0, gridW - 1);
+        sum += src[row + sx] * kernel[k];
       }
-      temp[row + ix] = count > 0 ? sum / count : 0;
+      temp[row + ix] = sum;
     }
   }
 
+  // Vertical pass
   for (let iy = 0; iy < gridH; iy++) {
     for (let ix = 0; ix < gridW; ix++) {
       let sum = 0;
-      let count = 0;
-      for (let ry = -radius; ry <= radius; ry++) {
-        const sy = clampInt(iy + ry, 0, gridH - 1);
-        sum += temp[sy * gridW + ix];
-        count++;
+      for (let k = 0; k < kernel.length; k++) {
+        const sy = clampInt(iy + k - radius, 0, gridH - 1);
+        sum += temp[sy * gridW + ix] * kernel[k];
       }
-      out[iy * gridW + ix] = count > 0 ? sum / count : 0;
+      out[iy * gridW + ix] = sum;
     }
   }
 
