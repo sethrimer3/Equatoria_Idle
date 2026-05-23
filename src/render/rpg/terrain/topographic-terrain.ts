@@ -3,6 +3,7 @@ import {
   type MergedTopographicContours,
   type ContourPalette,
 } from './topographic-terrain-field';
+import type { TopographyLightCache } from './topographic-lighting-types';
 
 // Re-export merged-contour types for external consumers.
 export type { MergedTopographicContours };
@@ -66,8 +67,12 @@ export interface TopographicTerrainState {
    * solid outer boundaries.
    */
   mergedContours: MergedTopographicContours | null;
-  /** External lighting modules may stash a cache object here. */
-  lightCache?: object | null;
+  /**
+   * Cached lighting overlay for this terrain state.  Built on first render
+   * and reused until canvas size or light config changes.  Managed exclusively
+   * by `topographic-lighting.ts`; treat as opaque outside that module.
+   */
+  lightCache: TopographyLightCache | null;
 }
 
 const TERRAIN_GROW_DURATION_MS = 1300;

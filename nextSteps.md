@@ -954,3 +954,60 @@ Accessible only in dev mode (Settings → Developer Mode ON).
 **Cost-growth warnings**: the pacing warnings section now includes flags when adjacent loom upgrade costs jump by more than 25× (configurable via `BALANCE_WARNING_THRESHOLDS.suspiciousCostGrowthMultiplier`).
 
 **SVG strategy timeline**: a simple dot-chart below the Strategy Comparison table showing when each milestone is reached per strategy. Hover a dot to see the exact time. No zoom or interactivity beyond tooltips.
+
+---
+
+## Build #86 — Topographic lighting cleanup (PR #205 follow-up)
+
+### What was wrong
+
+1. **`TopographicTerrainState.lightCache` typed as `object | null`** — the field was introduced but never used because the cache was stored in a module-level variable instead.  The vague `object` type gave no IDE guidance and the field was always `null`.
+
+2. **`TopographyLightCache` did not expose grid data** — the internal `BakedTopographyLightCache` held `heightGrid`, `shadowGrid`, `lightGrid`, `cellSizePx`, `gridW`, `gridH` needed for future entity shadows, but these were private and inaccessible.
+
+3. **`blurScalarGrid` was a box blur, not a Gaussian blur** — the PR description and comments claimed Gaussian filtering, but the implementation used uniform averaging (equal weight per tap), which is a box blur.
+
+4. **Cache invalidation missed `paletteId`** — the palette controls the highlight/shadow/beam colours; if it ever changed without a wave reset the stale cache would render with wrong colours.
+
+### What changed
+
+- **New file `src/render/rpg/terrain/topographic-lighting-types.ts`**: holds `TopographyLightConfig`, `TopographyLightCache` (public surface), and `TopographyLightSamplingData` (future entity-shadow interface).  Kept separate to break the potential circular-import between `topographic-terrain.ts` and `topographic-lighting.ts`.
+
+- **`topographic-terrain.ts`**: `lightCache?: object | null` → `lightCache: TopographyLightCache | null` (concrete type, required, initialised to `null` at construction).
+
+- **`topographic-lighting.ts`**:
+  - Removed module-level `topographyLightCache` variable; cache is now stored on `state.lightCache`.
+  - `ensureTopographyLightCache` reads and writes `state.lightCache`; rebuilds on canvas-size, palette, or config change.
+  - Added `paletteId` field to cache and invalidation check.
+  - Added exported `getActiveTopographyLightSamplingData(state)` returning `TopographyLightSamplingData | null`.
+  - Replaced `blurScalarGrid` (box blur) with `blurScalarGridGaussian` (separable Gaussian, two-pass).  Added `buildGaussianKernel(radius, sigma?)` helper.  Returns a new `Float32Array` copy even when `radius ≤ 0`.
+  - Re-exports `TopographyLightConfig`, `TopographyLightCache`, `TopographyLightSamplingData` from the types file so existing callers need no import changes.
+
+- **`file_index.md`**: updated topographic-terrain and topographic-lighting entries; added entry for new types file.
+
+### How cache invalidation works now
+
+| Trigger | Mechanism |
+|---|---|
+| New wave | New `TopographicTerrainState` object, `lightCache` starts `null` |
+| Canvas resize | `existing.width/height !== targetWidth/Height` |
+| Light config change | `configsMatch(existing.config, activeLightConfig)` fails |
+| Palette change | `existing.paletteId !== state.paletteId` |
+| Island geometry change | Handled by wave boundary (new state object) |
+
+The cache is never rebuilt mid-frame during stable gameplay.
+
+### What future entity shadows can safely use
+
+Call `getActiveTopographyLightSamplingData(terrainState)` after at least one render frame to obtain a `TopographyLightSamplingData` object with:
+- `lightAngle` — world-space angle the light arrives from
+- `heightGrid`, `shadowGrid`, `lightGrid` — Float32Arrays (row-major, `gridW × gridH`)
+- `cellSizePx`, `gridW`, `gridH` — grid geometry
+
+Convert a world position `(wx, wy)` to grid coords with `gx = wx / cellSizePx`, `gy = wy / cellSizePx`, then bilinear-sample the relevant grid.  The arrays are the same instances held by the cache; do not mutate them.
+
+### Remaining limitations
+
+- The Gaussian kernel sigma is fixed at `radius * 0.5` (minimum 0.3).  Expose `shadowBlurSigma` and `heightBlurSigma` in `TopographyLightConfig` if finer control is needed.
+- Entity-shadow projection itself is not yet implemented.  The architecture is ready; see `TopographyLightSamplingData` above.
+- The cache signature does not track individual island IDs — if islands were ever mutated in-place within a wave (which does not happen today) the cache could go stale.  If in-wave island mutation ever becomes possible, add a `terrainRevision` counter to `TopographicTerrainState` and include it in the cache's invalidation check.
