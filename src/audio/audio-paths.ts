@@ -70,3 +70,5 @@ export const FORGE_CRUNCH_PATHS: readonly string[] = [
   encodePath('ASSETS/sfx/equationForge/crunch/tower_shot_kalimba_F5.mp3'),
   encodePath('ASSETS/sfx/equationForge/crunch/tower_shot_kalimba_G4.m4a'),
 ];
+
+export const FORGE_CRUNCH_BOOM_PATH = encodePath('ASSETS/sfx/equationForge/forgeCrunchBoom.ogg');

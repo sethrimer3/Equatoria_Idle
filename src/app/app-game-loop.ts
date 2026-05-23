@@ -90,6 +90,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   };
   ctx.particles.onEquationForgeCrunchCompleted = (sacrifices) => {
     applyForgeSacrifice(ctx.appState.game, sacrifices);
+    ctx.audioSystem?.onForgeCrunchCompleted();
     // Record the timestamp so the sacrifice flash visual plays this frame.
     ctx.appState.forgeSacrificeFlashMs = performance.now();
   };

@@ -138,6 +138,11 @@ export class SfxPlayer {
     this.playRandom(crunchPaths);
   }
 
+  /** Crunch completed: layer the heavy impact over any other forge SFX. */
+  onForgeCrunchCompleted(boomPath: string): void {
+    void this.play(boomPath);
+  }
+
   /** Spin-up aborted: fade out charging over 500 ms. */
   onForgeChargingCancelled(): void {
     this._stopCharging(FORGE_CANCEL_FADE_S * 1000);

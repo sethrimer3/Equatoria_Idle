@@ -27,6 +27,7 @@ import {
   SETTINGS_CHANGE_PATHS,
   FORGE_CHARGING_PATHS,
   FORGE_CRUNCH_PATHS,
+  FORGE_CRUNCH_BOOM_PATH,
 } from './audio-paths';
 
 // ─── Public interface ────────────────────────────────────────────
@@ -58,6 +59,7 @@ export interface AudioSystem {
   onMotesMerged(count: number): void;
   onForgeSpinUpBegan(): void;
   onForgeCrunchStarted(): void;
+  onForgeCrunchCompleted(): void;
   onForgeSpinUpCancelled(): void;
 
   // Settings events
@@ -84,6 +86,7 @@ function createNoOpAudioSystem(): AudioSystem {
     onMotesMerged:          () => {},
     onForgeSpinUpBegan:     () => {},
     onForgeCrunchStarted:   () => {},
+    onForgeCrunchCompleted: () => {},
     onForgeSpinUpCancelled: () => {},
     onSettingsChanged:      () => {},
     updateAmbianceForTab:   () => {},
@@ -133,6 +136,7 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
             ...SETTINGS_CHANGE_PATHS,
             ...FORGE_CHARGING_PATHS,
             ...FORGE_CRUNCH_PATHS,
+            FORGE_CRUNCH_BOOM_PATH,
           ]);
         }
       }
@@ -196,6 +200,10 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
 
     onForgeCrunchStarted(): void {
       sfx.onForgeCrunch(FORGE_CRUNCH_PATHS);
+    },
+
+    onForgeCrunchCompleted(): void {
+      sfx.onForgeCrunchCompleted(FORGE_CRUNCH_BOOM_PATH);
     },
 
     onForgeSpinUpCancelled(): void {
