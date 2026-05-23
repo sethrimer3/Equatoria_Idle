@@ -1,8 +1,101 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#84**
+Current build: **#106**
 
 ---
+
+## Build #106 — Sharp terrace shadow fix: true layer-edge cast shadows
+
+**Problem addressed:**
+The existing `sharpCylinder` topography shadow mode was producing a quantized
+blob shadow because it cast rays from every elevated cell, not just the terrace
+edges.  The result was the old smooth hill shading with integer-snapped heights,
+not the crisp per-layer directional shadows that reveal the stacked cylinder
+structure.
+
+**Root cause:**
+`buildSharpCylinderShadowGrid` iterated all grid cells above a height threshold
+and cast shadow rays from each one.  This means the entire mountain body was
+participating in shadow casting, not just the cliff walls between height levels.
+
+**Fix applied — `src/render/rpg/terrain/topographic-lighting.ts`:**
+
+*Algorithm changed to true terrace-edge casting:*
+1. Process each integer height level L from highest (`CONTOUR_LEVEL_COUNT`) to lowest (1).
+2. For each cell where `Math.ceil(height) === L` (cell belongs to layer L):
+   - Check the adjacent cell in the **shadow direction** (away from light).
+   - If `Math.ceil(adjH) < L` → this cell is on the **shadow-side cliff edge** of terrace L.
+   - If the adjacent cell is at the same or higher layer, this is interior terrain — skip it.
+3. Cast a shadow ray from the cliff edge cell in the shadow direction for `ceil(heightPerLayer × shadowLengthMult × L / cellSizePx)` steps.
+4. Apply shadow only to cells where `receiverH < L` (lower terrain or ground).
+5. Stop the ray when it hits terrain at height ≥ L (hard occlusion by higher terrain).
+6. No Gaussian blur — crisp edges are preserved.
+
+*Tuning constants added near the function (easy to adjust):*
+- `TERRACE_SHADOW_OPACITY_BASE = 0.84` — base shadow opacity, scales with `lightIntensity`.
+- `TERRACE_SHADOW_TIP_OPACITY_FRAC = 0.62` — opacity fraction at the shadow tip (1.0 = no taper).
+
+*Debug stats tracking added:*
+- `sharpTerraceDebug.edgeCellsFound` — number of cliff-edge cells detected in the last build.
+- `sharpTerraceDebug.rebuilds` — total number of shadow grid rebuilds.
+- These are displayed in the dev overlay panel (top-left, when dev mode + lighting dev mode are active).
+
+*Dev overlay updated:*
+- New stats panel next to the light-arrow panel.
+- Shows active shadow mode label (amber = sharp terrace, blue = smooth gradient).
+- Shows height level count, edge cell count, rebuild count, and grid dimensions.
+
+**Preserved behaviors:**
+- `smoothGradient` mode is completely unchanged.
+- UI checkbox, dispatch pipeline, settings persistence all unchanged.
+- Cache invalidation triggers unchanged (mode switch, light config, canvas size, wave/seed).
+- The `buildShadowGrid` smooth-mode function is untouched.
+
+**Visual acceptance (what to expect):**
+- Individual contour rings cast their own directional shadow bands.
+- Shadows begin at the terrace boundary on the shadow side of the mountain.
+- Shadows extend across lower terraces and the flat ground.
+- Multiple overlapping bands visible (level 9 shadow is longest, level 1 is shortest).
+- The mountain's lit tops are bright; only the lower terrain in each shadow cone is dark.
+- No mere blocky version of the old smooth mode.
+
+---
+
+## Limitations and follow-up work
+
+### 1. Edge thickness
+The cliff-edge detection uses a single-pixel (1-cell) probe in the shadow direction.
+On coarse grids (`LIGHT_GRID_CELL_SIZE_PX = 8`) some edges may be thin.  If individual
+shadow bands are too narrow to read visually, consider also checking ±1 perpendicular cells
+to widen the edge detection footprint (`edgeThickness` option requested in spec).
+
+### 2. Sub-cell height precision
+Heights are continuous floats; the edge detection uses `Math.ceil(h)` to assign integer
+layers.  Cells very close to a layer boundary (e.g. `2.999` vs `3.001`) may flip between
+levels frame to frame if the heightGrid is ever recalculated with minor float variation.
+Currently the grid is baked once per wave so this is not a problem, but if live terrain
+editing is added, consider snapping the height grid to integer layers once on build.
+
+### 3. Light beam compatibility in sharp mode
+The `drawLightBeams` function reads from the same `heightGrid` and runs for both modes.
+In sharp mode the beams look reasonable but they were tuned for smooth terrain.  Once the
+sharp mode is accepted as production-ready, consider a beam configuration pass for sharp mode.
+
+### 4. Performance at very high resolution
+With a `LIGHT_GRID_CELL_SIZE_PX` of 4 or smaller, the inner loop (`CONTOUR_LEVEL_COUNT ×
+gridW × gridH`) grows quickly.  The current value of 8 px/cell keeps rebuild times fast.
+If the grid is made finer, consider adding a coarser edge-only pre-pass or spatial hashing
+to skip non-edge cells faster.
+
+### 5. Shadow opacity at low layer numbers
+Layer 1 shadows use `TERRACE_SHADOW_OPACITY_BASE × (0.5 + 1/9 × 0.5) ≈ 0.46`.  This is
+intentionally softer for the lowest terrace but may be hard to read.  Increasing
+`TERRACE_SHADOW_TIP_OPACITY_FRAC` or the base opacity formula can make all bands equally
+vivid at the cost of contrast.
+
+---
+
+
 
 ## Build History Summary
 
