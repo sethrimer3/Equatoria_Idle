@@ -991,11 +991,9 @@
 - `RING_POINTS = 64` — number of polygon points per ring and solid outer polygon.
 - Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling,
   staggered ring growth/shrink animation.
-- Some normal terrain seeds place islands partially offscreen, and occasional
-  canyon-layout seeds place larger overlapping islands along one or two
-  adjacent render edges to imply chasm/gulch walls without enclosing the
-  playable arena. Canyon generation falls back to normal terrain if merged
-  contours would mark the arena center as solid.
+- Terrain centers are placed so the full island radius stays inside the edge
+  margin; edge-wall/canyon and partially offscreen placement are intentionally
+  disabled because they caused collision and lighting ambiguity.
 - **Build 84+:** calls `buildMergedContours` from `topographic-terrain-field.ts` at
   generation time; `renderTopographicTerrain` draws merged scalar-field contours.
   `pushPointOutsideTopographicTerrain` uses nearest-point-on-boundary logic.

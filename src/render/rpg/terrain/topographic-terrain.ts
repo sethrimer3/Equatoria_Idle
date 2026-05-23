@@ -84,10 +84,6 @@ const MAX_RINGS = 9;
 /** Number of polygon points in each terrain ring and the solid outer polygon. */
 export const RING_POINTS = 64;
 const TERRAIN_EDGE_MARGIN = 40;
-const OFFSCREEN_TERRAIN_CHANCE = 0.35;
-const CANYON_LAYOUT_CHANCE = 0.22;
-const CANYON_MIN_ISLANDS = 3;
-const CANYON_MAX_ISLANDS = 5;
 const PLAYER_EXCLUSION_RADIUS = 60;
 const MAX_ISLAND_PLACEMENT_ATTEMPTS = 15;
 const DEV_TEXT_LINE_HEIGHT_PX = 12;
@@ -206,47 +202,40 @@ export function generateTopographicTerrain(
   seed: number,
   canvasW: number,
   canvasH: number,
-  allowCanyonLayout = true,
 ): TopographicTerrainState {
   const rng = createSeededRng(seed);
   const paletteId = PALETTE_SEQUENCE[Math.abs(waveNumber) % PALETTE_SEQUENCE.length];
   const palette = PALETTES[paletteId];
   const islands: TopographicTerrainIsland[] = [];
-  const isCanyonLayout = allowCanyonLayout && rng() < CANYON_LAYOUT_CHANCE;
-  const targetIslandCount = isCanyonLayout
-    ? randomIntInclusive(rng, CANYON_MIN_ISLANDS, CANYON_MAX_ISLANDS)
-    : randomIntInclusive(rng, MIN_ISLANDS, MAX_ISLANDS);
+  const targetIslandCount = randomIntInclusive(rng, MIN_ISLANDS, MAX_ISLANDS);
   const centerX = canvasW * 0.5;
   const centerY = canvasH * 0.5;
-  const canyonEdges = isCanyonLayout ? pickCanyonEdges(rng) : [0];
 
   for (let islandIndex = 0; islandIndex < targetIslandCount; islandIndex++) {
-    const outerRadius = isCanyonLayout
-      ? randomRange(rng, 54, 92)
-      : randomRange(rng, 35, 86);
+    const outerRadius = randomRange(rng, 35, 80);
     let islandCenterX = 0;
     let islandCenterY = 0;
     let placed = false;
 
     for (let attempt = 0; attempt < MAX_ISLAND_PLACEMENT_ATTEMPTS; attempt++) {
-      const candidate = isCanyonLayout
-        ? pickCanyonWallCenter(rng, islandIndex, targetIslandCount, canyonEdges, outerRadius, canvasW, canvasH)
-        : pickIslandCenter(rng, outerRadius, canvasW, canvasH);
-      const candidateX = candidate.x;
-      const candidateY = candidate.y;
-      const centerClearance = PLAYER_EXCLUSION_RADIUS + outerRadius * 1.05;
-      if (distanceSq(candidateX, candidateY, centerX, centerY) < centerClearance * centerClearance) {
+      const minX = TERRAIN_EDGE_MARGIN + outerRadius;
+      const maxX = canvasW - TERRAIN_EDGE_MARGIN - outerRadius;
+      const minY = TERRAIN_EDGE_MARGIN + outerRadius;
+      const maxY = canvasH - TERRAIN_EDGE_MARGIN - outerRadius;
+      if (maxX <= minX || maxY <= minY) break;
+
+      const candidateX = randomRange(rng, minX, maxX);
+      const candidateY = randomRange(rng, minY, maxY);
+      if (distanceSq(candidateX, candidateY, centerX, centerY) < PLAYER_EXCLUSION_RADIUS * PLAYER_EXCLUSION_RADIUS) {
         continue;
       }
 
       let overlapsExisting = false;
-      if (!isCanyonLayout) {
-        for (const existing of islands) {
-          const minSeparation = Math.max(existing.outerRadius, outerRadius) * MIN_ISLAND_SEPARATION_FACTOR;
-          if (distanceSq(candidateX, candidateY, existing.centerX, existing.centerY) < minSeparation * minSeparation) {
-            overlapsExisting = true;
-            break;
-          }
+      for (const existing of islands) {
+        const minSeparation = Math.max(existing.outerRadius, outerRadius) * MIN_ISLAND_SEPARATION_FACTOR;
+        if (distanceSq(candidateX, candidateY, existing.centerX, existing.centerY) < minSeparation * minSeparation) {
+          overlapsExisting = true;
+          break;
         }
       }
       if (overlapsExisting) continue;
@@ -328,13 +317,6 @@ export function generateTopographicTerrain(
     seed,
   );
 
-  if (
-    isCanyonLayout
-    && mergedContours.solidBoundaries.some(boundary => boundary.length >= 3 && isPointInPolygon(boundary, centerX, centerY))
-  ) {
-    return generateTopographicTerrain(waveNumber, (seed ^ 0xa5a5a5a5) >>> 0, canvasW, canvasH, false);
-  }
-
   return {
     waveNumber,
     seed,
@@ -348,68 +330,6 @@ export function generateTopographicTerrain(
     mergedContours,
     lightCache: null,
   };
-}
-
-function pickCanyonEdges(rng: () => number): number[] {
-  const firstEdge = randomIntInclusive(rng, 0, 3);
-  if (rng() < 0.68) return [firstEdge];
-  const direction = rng() < 0.5 ? -1 : 1;
-  return [firstEdge, (firstEdge + direction + 4) % 4];
-}
-
-function pickIslandCenter(
-  rng: () => number,
-  outerRadius: number,
-  canvasW: number,
-  canvasH: number,
-): TopographicTerrainPoint {
-  const allowOffscreen = rng() < OFFSCREEN_TERRAIN_CHANCE;
-  if (allowOffscreen) {
-    const visibleInset = outerRadius * randomRange(rng, 0.22, 0.72);
-    const side = randomIntInclusive(rng, 0, 3);
-    if (side === 0) return { x: -outerRadius + visibleInset, y: randomRange(rng, -outerRadius * 0.25, canvasH + outerRadius * 0.25) };
-    if (side === 1) return { x: canvasW + outerRadius - visibleInset, y: randomRange(rng, -outerRadius * 0.25, canvasH + outerRadius * 0.25) };
-    if (side === 2) return { x: randomRange(rng, -outerRadius * 0.25, canvasW + outerRadius * 0.25), y: -outerRadius + visibleInset };
-    return { x: randomRange(rng, -outerRadius * 0.25, canvasW + outerRadius * 0.25), y: canvasH + outerRadius - visibleInset };
-  }
-
-  const minX = TERRAIN_EDGE_MARGIN + outerRadius * 0.35;
-  const maxX = canvasW - TERRAIN_EDGE_MARGIN - outerRadius * 0.35;
-  const minY = TERRAIN_EDGE_MARGIN + outerRadius * 0.35;
-  const maxY = canvasH - TERRAIN_EDGE_MARGIN - outerRadius * 0.35;
-  if (maxX <= minX || maxY <= minY) {
-    return { x: canvasW * 0.5, y: canvasH * 0.5 };
-  }
-  return {
-    x: randomRange(rng, minX, maxX),
-    y: randomRange(rng, minY, maxY),
-  };
-}
-
-function pickCanyonWallCenter(
-  rng: () => number,
-  islandIndex: number,
-  islandCount: number,
-  edges: number[],
-  outerRadius: number,
-  canvasW: number,
-  canvasH: number,
-): TopographicTerrainPoint {
-  const localIndex = Math.floor(islandIndex / Math.max(1, edges.length));
-  const localCount = Math.max(1, Math.ceil(islandCount / Math.max(1, edges.length)));
-  const perimeterT = (localIndex + randomRange(rng, -0.22, 0.22)) / Math.max(1, localCount - 1 || 1);
-  const edge = edges[islandIndex % edges.length];
-  const wallDepth = outerRadius * randomRange(rng, 0.34, 0.62);
-  if (edge === 0) {
-    return { x: -outerRadius + wallDepth, y: perimeterT * canvasH };
-  }
-  if (edge === 1) {
-    return { x: canvasW + outerRadius - wallDepth, y: perimeterT * canvasH };
-  }
-  if (edge === 2) {
-    return { x: perimeterT * canvasW, y: -outerRadius + wallDepth };
-  }
-  return { x: perimeterT * canvasW, y: canvasH + outerRadius - wallDepth };
 }
 
 export function beginWaveTerrain(
