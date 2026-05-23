@@ -1155,12 +1155,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setDevMode(enabled: boolean): void {
       statsPanel.setDevMode(enabled);
-      setTopographicTerrainDevMode(enabled);
       setTopographyLightingDevMode(enabled);
     },
 
     setInvincibilityMode(enabled: boolean): void {
       isInvincibilityMode = enabled;
+    },
+
+    setTopographicTerrainDebugEnabled(enabled: boolean): void {
+      setTopographicTerrainDevMode(enabled);
     },
 
     devSpawnAliven(variantId: string): void {

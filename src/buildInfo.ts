@@ -6,4 +6,4 @@
  */
 
 /** Current build number, shown in the Settings tab footer. */
-export const BUILD_NUMBER = 90;
+export const BUILD_NUMBER = 93;

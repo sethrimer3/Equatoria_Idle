@@ -23,6 +23,7 @@ interface LightingPalette {
   highlight: LightingRgb;
   shadow: LightingRgb;
   beam: LightingRgb;
+  sunlight: LightingRgb;
 }
 
 /**
@@ -47,21 +48,26 @@ const INNER_RING_SCALE = 0.28;
 const LIGHT_DIRECTION_Z = 0.92;
 const NORMAL_Z = 1.18;
 const MAX_PER_ISLAND_FIELD_CONTRIBUTION = 8.0;
+const SUNLIGHT_FILL_ALPHA = 0.075;
+const MIN_CAST_SHADOW_HEIGHT = 0.18;
 const LIGHTING_PALETTES: Record<TopographicTerrainPaletteId, LightingPalette> = {
   mono: {
-    highlight: { r: 248, g: 242, b: 228 },
-    shadow: { r: 44, g: 58, b: 88 },
-    beam: { r: 225, g: 235, b: 255 },
+    highlight: { r: 255, g: 244, b: 218 },
+    shadow: { r: 42, g: 44, b: 58 },
+    beam: { r: 255, g: 224, b: 164 },
+    sunlight: { r: 255, g: 217, b: 148 },
   },
   copper: {
-    highlight: { r: 255, g: 219, b: 166 },
+    highlight: { r: 255, g: 228, b: 178 },
     shadow: { r: 60, g: 34, b: 30 },
     beam: { r: 255, g: 214, b: 150 },
+    sunlight: { r: 255, g: 204, b: 128 },
   },
   cyanTactical: {
-    highlight: { r: 182, g: 246, b: 255 },
-    shadow: { r: 16, g: 32, b: 52 },
-    beam: { r: 148, g: 232, b: 255 },
+    highlight: { r: 255, g: 236, b: 192 },
+    shadow: { r: 20, g: 30, b: 48 },
+    beam: { r: 255, g: 218, b: 148 },
+    sunlight: { r: 255, g: 211, b: 134 },
   },
 };
 const CONTOUR_THRESHOLDS: number[] = (() => {
@@ -75,14 +81,14 @@ const CONTOUR_THRESHOLDS: number[] = (() => {
 
 export const DEFAULT_TOPOGRAPHY_LIGHT_CONFIG: TopographyLightConfig = {
   lightAngle: Math.PI * 1.1,
-  lightIntensity: 0.85,
-  ambientFloor: 0.25,
-  shadowLengthMult: 2.5,
+  lightIntensity: 0.95,
+  ambientFloor: 0.34,
+  shadowLengthMult: 3.8,
   shadowSoftness: 0.6,
   heightPerLayer: 18,
-  terrainOpacity: 0.82,
+  terrainOpacity: 0.88,
   slopeSmoothing: 0.7,
-  beamStrength: 0.25,
+  beamStrength: 0.34,
 };
 
 let activeLightConfig: TopographyLightConfig = { ...DEFAULT_TOPOGRAPHY_LIGHT_CONFIG };
@@ -162,15 +168,24 @@ export function buildTopographyLightCache(
     for (let px = 0; px < canvas.width; px++) {
       const gx = px / LIGHT_GRID_CELL_SIZE_PX;
       const h = sampleGridBilinear(smoothedHeightGrid, gridW, gridH, gx, gy);
-      if (h <= 0.025) continue;
+      const lightAmount = sampleGridBilinear(lightGrid, gridW, gridH, gx, gy);
+      const shadowAmount = sampleGridBilinear(shadowGrid, gridW, gridH, gx, gy);
+      const idx = (py * canvas.width + px) * 4;
+
+      if (h <= 0.025) {
+        const shadowAlpha = clamp01(config.terrainOpacity * shadowAmount * 0.42);
+        if (shadowAlpha <= 0.01) continue;
+        pixels[idx] = palette.shadow.r;
+        pixels[idx + 1] = palette.shadow.g;
+        pixels[idx + 2] = palette.shadow.b;
+        pixels[idx + 3] = Math.round(shadowAlpha * 255);
+        continue;
+      }
 
       const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
       const presence = smoothstep(0.02, 0.55, h);
-      const lightAmount = sampleGridBilinear(lightGrid, gridW, gridH, gx, gy);
-      const shadowAmount = sampleGridBilinear(shadowGrid, gridW, gridH, gx, gy);
       const terrace = 1 - Math.abs((((h % 1) + 1) % 1) * 2 - 1);
-      const bias = (lightAmount - 0.54) * (0.95 + height01 * 0.55) - shadowAmount * (0.34 + height01 * 0.16);
-      const idx = (py * canvas.width + px) * 4;
+      const bias = (lightAmount - 0.50) * (1.0 + height01 * 0.58) - shadowAmount * (0.28 + height01 * 0.14);
 
       if (bias >= 0) {
         const alpha = clamp01(config.terrainOpacity * presence * (bias * 0.95 + terrace * 0.06 * (1 - shadowAmount)));
@@ -191,6 +206,7 @@ export function buildTopographyLightCache(
   }
 
   ctx.putImageData(image, 0, 0);
+  drawSunlightFill(ctx, canvas.width, canvas.height, towardLightX, towardLightY, palette, config);
   if (config.beamStrength > 0.001) {
     drawLightBeams(ctx, heightGrid, gridW, gridH, LIGHT_GRID_CELL_SIZE_PX, towardLightX, towardLightY, palette, config, state.seed);
   }
@@ -335,29 +351,35 @@ function buildShadowGrid(
   const shadowGrid = new Float32Array(heightGrid.length);
   const maxShadowPx = config.heightPerLayer * config.shadowLengthMult * CONTOUR_LEVEL_COUNT;
   const maxSteps = Math.max(4, Math.ceil(maxShadowPx / LIGHT_GRID_CELL_SIZE_PX));
-  const heightDropPerPixel = 1 / Math.max(1, config.heightPerLayer * config.shadowLengthMult);
-
+  const awayLightX = -towardLightX;
+  const awayLightY = -towardLightY;
   for (let iy = 0; iy < gridH; iy++) {
     const row = iy * gridW;
     for (let ix = 0; ix < gridW; ix++) {
-      const currentHeight = heightGrid[row + ix];
-      if (currentHeight <= 0.05) continue;
+      const casterHeight = heightGrid[row + ix];
+      if (casterHeight <= MIN_CAST_SHADOW_HEIGHT) continue;
 
-      let maxOcclusion = 0;
-      for (let step = 1; step <= maxSteps; step++) {
-        const sampleX = ix + towardLightX * step;
-        const sampleY = iy + towardLightY * step;
-        if (sampleX < 0 || sampleY < 0 || sampleX >= gridW - 1 || sampleY >= gridH - 1) break;
+      const casterHeight01 = clamp01(casterHeight / CONTOUR_LEVEL_COUNT);
+      const casterSteps = Math.min(maxSteps, Math.ceil(
+        (config.heightPerLayer * config.shadowLengthMult * casterHeight)
+        / LIGHT_GRID_CELL_SIZE_PX,
+      ));
+      const baseStrength = (0.35 + casterHeight01 * 0.9) * config.lightIntensity;
 
-        const distPx = step * LIGHT_GRID_CELL_SIZE_PX;
-        const requiredHeight = currentHeight + distPx * heightDropPerPixel;
-        const occluderHeight = sampleGridBilinear(heightGrid, gridW, gridH, sampleX, sampleY);
-        const occlusion = occluderHeight - requiredHeight;
-        if (occlusion > maxOcclusion) maxOcclusion = occlusion;
-        if (maxOcclusion >= 1.1) break;
+      for (let step = 1; step <= casterSteps; step++) {
+        const targetX = ix + awayLightX * step;
+        const targetY = iy + awayLightY * step;
+        if (targetX < 0 || targetY < 0 || targetX >= gridW - 1 || targetY >= gridH - 1) break;
+
+        const receiverHeight = sampleGridBilinear(heightGrid, gridW, gridH, targetX, targetY);
+        const remainingHeight = casterHeight - (step / Math.max(1, casterSteps)) * casterHeight;
+        const clearance = remainingHeight - receiverHeight * 0.72;
+        if (clearance <= 0) continue;
+
+        const travel01 = step / Math.max(1, casterSteps);
+        const occlusion = baseStrength * clamp01(clearance / CONTOUR_LEVEL_COUNT) * (1 - travel01 * 0.74);
+        stampShadow(shadowGrid, gridW, gridH, targetX, targetY, occlusion);
       }
-
-      shadowGrid[row + ix] = clamp01(maxOcclusion / 1.1);
     }
   }
 
@@ -365,6 +387,31 @@ function buildShadowGrid(
   return blurRadius > 0
     ? blurScalarGridGaussian(shadowGrid, gridW, gridH, blurRadius)
     : new Float32Array(shadowGrid);
+}
+
+function stampShadow(
+  shadowGrid: Float32Array,
+  gridW: number,
+  gridH: number,
+  x: number,
+  y: number,
+  amount: number,
+): void {
+  const x0 = clampInt(Math.floor(x), 0, gridW - 1);
+  const y0 = clampInt(Math.floor(y), 0, gridH - 1);
+  const x1 = clampInt(x0 + 1, 0, gridW - 1);
+  const y1 = clampInt(y0 + 1, 0, gridH - 1);
+  const tx = clamp01(x - x0);
+  const ty = clamp01(y - y0);
+  addShadowSample(shadowGrid, gridW, x0, y0, amount * (1 - tx) * (1 - ty));
+  addShadowSample(shadowGrid, gridW, x1, y0, amount * tx * (1 - ty));
+  addShadowSample(shadowGrid, gridW, x0, y1, amount * (1 - tx) * ty);
+  addShadowSample(shadowGrid, gridW, x1, y1, amount * tx * ty);
+}
+
+function addShadowSample(shadowGrid: Float32Array, gridW: number, x: number, y: number, amount: number): void {
+  const idx = y * gridW + x;
+  shadowGrid[idx] = Math.max(shadowGrid[idx], clamp01(amount));
 }
 
 function buildLightGrid(
@@ -537,6 +584,31 @@ function drawLightBeams(
   } finally {
     ctx.restore();
   }
+}
+
+function drawSunlightFill(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  towardLightX: number,
+  towardLightY: number,
+  palette: LightingPalette,
+  config: TopographyLightConfig,
+): void {
+  const cx = width * 0.5;
+  const cy = height * 0.5;
+  const span = Math.hypot(width, height);
+  const startX = cx + towardLightX * span * 0.55;
+  const startY = cy + towardLightY * span * 0.55;
+  const endX = cx - towardLightX * span * 0.55;
+  const endY = cy - towardLightY * span * 0.55;
+  const fill = ctx.createLinearGradient(startX, startY, endX, endY);
+  const alpha = SUNLIGHT_FILL_ALPHA * config.lightIntensity;
+  fill.addColorStop(0, rgbToCss(palette.sunlight, alpha * 1.35));
+  fill.addColorStop(0.58, rgbToCss(palette.sunlight, alpha * 0.78));
+  fill.addColorStop(1, rgbToCss(palette.sunlight, alpha * 0.34));
+  ctx.fillStyle = fill;
+  ctx.fillRect(0, 0, width, height);
 }
 
 function drawLightingDevOverlay(ctx: CanvasRenderingContext2D, cache: BakedTopographyLightCache): void {

@@ -1016,10 +1016,12 @@
   `getActiveTopographyLightSamplingData`, and `DEFAULT_TOPOGRAPHY_LIGHT_CONFIG`.
   Also re-exports `TopographyLightConfig`, `TopographyLightCache`, and
   `TopographyLightSamplingData` from `topographic-lighting-types.ts`.
-- Bakes a coarse scalar-height grid from terrain islands, computes directional
-  shadows via ray-marching, smooths grids with a separable **Gaussian** blur,
-  combines slope shading and shadow into a light grid, then composites highlight,
-  shadow, and faint beam shafts into an offscreen canvas.
+- Bakes a coarse scalar-height grid from terrain islands, casts warm sunlight
+  over the whole terrain render, projects directional shadows away from the
+  light source with length scaled by local contour height, smooths grids with a
+  separable **Gaussian** blur, combines slope shading and shadow into a light
+  grid, then composites highlight, shadow, and faint beam shafts into an
+  offscreen canvas.
 - Cache is stored on `TopographicTerrainState.lightCache`; a new wave
   creates a fresh state (cache starts `null`).  Within a wave the cache
   rebuilds only when canvas size, palette, or light config changes — no

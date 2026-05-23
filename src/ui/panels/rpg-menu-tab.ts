@@ -25,11 +25,18 @@ export interface RpgMenuTabPane {
   /** Whether auto-move is currently enabled. Updated immediately on checkbox change. */
   isAutoMoveEnabled: boolean;
   /** Re-render the menu tab with fresh RPG state. */
-  update(rpgState: RpgSimState | null, isDevMode?: boolean, rpgBarAtTop?: boolean): void;
+  update(
+    rpgState: RpgSimState | null,
+    isDevMode?: boolean,
+    rpgBarAtTop?: boolean,
+    isTopographicTerrainDebugEnabled?: boolean,
+  ): void;
   /** Sync the stored rpgBarAtTop value without a full re-render. */
   setRpgBarAtTop(atTop: boolean): void;
   /** Sync the stored isInvincibilityMode value without a full re-render. */
   setInvincibilityMode(enabled: boolean): void;
+  /** Sync the stored topographic terrain debug value without a full re-render. */
+  setTopographicTerrainDebugEnabled(enabled: boolean): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────
@@ -45,9 +52,16 @@ export function createRpgMenuTabPane(
   let isConfirmingRespawn = false;
   let rpgBarAtTop = false;
   let isInvincibilityMode = false;
+  let isTopographicTerrainDebugEnabled = false;
 
-  function update(rpgState: RpgSimState | null, isDevMode = false, barAtTop = false): void {
+  function update(
+    rpgState: RpgSimState | null,
+    isDevMode = false,
+    barAtTop = false,
+    topographicTerrainDebugEnabled = false,
+  ): void {
     rpgBarAtTop = barAtTop;
+    isTopographicTerrainDebugEnabled = topographicTerrainDebugEnabled;
     element.innerHTML = '';
 
     // ── Auto Move row ──
@@ -291,6 +305,35 @@ export function createRpgMenuTabPane(
       invincRow.appendChild(invincCheckbox);
       devSection.appendChild(invincRow);
 
+      const terrainDebugRow = document.createElement('div');
+      terrainDebugRow.className = 'rpg-menu__setting-row';
+      terrainDebugRow.style.marginTop = '6px';
+
+      const terrainDebugLabelGroup = document.createElement('div');
+      terrainDebugLabelGroup.className = 'rpg-menu__setting-label-group';
+      const terrainDebugLabel = document.createElement('span');
+      terrainDebugLabel.className = 'rpg-menu__setting-label';
+      terrainDebugLabel.style.color = '#ffcc44';
+      terrainDebugLabel.textContent = 'Topography Debug';
+      const terrainDebugDesc = document.createElement('span');
+      terrainDebugDesc.className = 'rpg-menu__setting-desc';
+      terrainDebugDesc.textContent = 'Show raw terrain island outlines and center dots.';
+      terrainDebugLabelGroup.appendChild(terrainDebugLabel);
+      terrainDebugLabelGroup.appendChild(terrainDebugDesc);
+
+      const terrainDebugCheckbox = document.createElement('input');
+      terrainDebugCheckbox.type = 'checkbox';
+      terrainDebugCheckbox.className = 'settings-checkbox';
+      terrainDebugCheckbox.checked = isTopographicTerrainDebugEnabled;
+      terrainDebugCheckbox.addEventListener('change', () => {
+        isTopographicTerrainDebugEnabled = terrainDebugCheckbox.checked;
+        dispatch({ kind: 'set_topographic_terrain_debug', enabled: isTopographicTerrainDebugEnabled });
+      });
+
+      terrainDebugRow.appendChild(terrainDebugLabelGroup);
+      terrainDebugRow.appendChild(terrainDebugCheckbox);
+      devSection.appendChild(terrainDebugRow);
+
       element.appendChild(devSection);
     }
   }
@@ -304,6 +347,9 @@ export function createRpgMenuTabPane(
     },
     setInvincibilityMode(enabled: boolean): void {
       isInvincibilityMode = enabled;
+    },
+    setTopographicTerrainDebugEnabled(enabled: boolean): void {
+      isTopographicTerrainDebugEnabled = enabled;
     },
   };
 

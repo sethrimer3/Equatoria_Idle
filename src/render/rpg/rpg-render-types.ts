@@ -27,6 +27,8 @@ export interface RpgRender {
   setDevMode(enabled: boolean): void;
   /** Enable/disable invincibility mode — player takes no damage (dev mode only). */
   setInvincibilityMode(enabled: boolean): void;
+  /** Enable/disable topographic terrain debug outlines/dots (dev mode only). */
+  setTopographicTerrainDebugEnabled(enabled: boolean): void;
   /** Dev-mode only: spawn one Aliven group of the given variantId at the canvas edge. */
   devSpawnAliven(variantId: string): void;
   /** Dev-mode only: remove all active Aliven groups instantly. */

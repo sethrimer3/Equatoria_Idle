@@ -50,6 +50,8 @@ export interface RpgMenuPanel {
   setRpgBarAtTop(atTop: boolean): void;
   /** Sync the invincibility mode setting into the menu tab so the checkbox reflects current state. */
   setInvincibilityMode(enabled: boolean): void;
+  /** Sync the topography debug setting into the menu tab so the checkbox reflects current state. */
+  setTopographicTerrainDebugEnabled(enabled: boolean): void;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -141,6 +143,7 @@ export function createRpgMenuPanel(
   let lastFormat: NumberFormat = 'letters';
   let lastIsDevMode = false;
   let lastRpgBarAtTop = false;
+  let lastTopographicTerrainDebugEnabled = false;
 
   function updateTabHighlight(): void {
     for (const [id, btn] of tabBtns) {
@@ -163,7 +166,12 @@ export function createRpgMenuPanel(
     showActivePane();
     switch (activeTab) {
       case 'menu':
-        menuTabPane.update(lastRpgState, lastIsDevMode, lastRpgBarAtTop);
+        menuTabPane.update(
+          lastRpgState,
+          lastIsDevMode,
+          lastRpgBarAtTop,
+          lastTopographicTerrainDebugEnabled,
+        );
         break;
       case 'weapons':
         weaponsTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
@@ -210,6 +218,11 @@ export function createRpgMenuPanel(
 
     setInvincibilityMode(enabled: boolean): void {
       menuTabPane.setInvincibilityMode(enabled);
+    },
+
+    setTopographicTerrainDebugEnabled(enabled: boolean): void {
+      lastTopographicTerrainDebugEnabled = enabled;
+      menuTabPane.setTopographicTerrainDebugEnabled(enabled);
     },
 
     isVisible: false,

@@ -323,6 +323,7 @@ export async function startApp(): Promise<void> {
   // Apply saved bar position immediately after panel is in the DOM
   applyRpgBarPosition(settings.rpgBarAtTop);
   rpgMenuPanel.setRpgBarAtTop(settings.rpgBarAtTop);
+  rpgMenuPanel.setTopographicTerrainDebugEnabled(settings.isTopographicTerrainDebugEnabled);
 
   // ── Menu toggle button (appended to the stats panel by the renderer) ──
   const menuToggleBtn = document.createElement('button');

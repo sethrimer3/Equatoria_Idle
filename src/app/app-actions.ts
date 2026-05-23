@@ -299,6 +299,13 @@ export function handleAction(
       uiPanels.rpgRender.setInvincibilityMode(action.enabled);
       break;
     }
+    case 'set_topographic_terrain_debug': {
+      settings.isTopographicTerrainDebugEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setTopographicTerrainDebugEnabled(action.enabled);
+      uiPanels.rpgRender.setTopographicTerrainDebugEnabled(devMode && action.enabled);
+      break;
+    }
     case 'upgrade_loom_efficiency': {
       const ok = tryUpgradeLoomEfficiencyAction(state.game, action.tierId as TierId, devMode);
       if (!ok) audioSystem?.onError();

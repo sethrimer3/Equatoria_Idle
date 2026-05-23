@@ -19,6 +19,8 @@ export interface SettingsState {
   isDevMode: boolean;
   /** When true, the player takes no damage in RPG gameplay (dev mode only). */
   isInvincibilityMode: boolean;
+  /** When true, draw raw topographic terrain debug outlines/dots in RPG (dev mode only). */
+  isTopographicTerrainDebugEnabled: boolean;
   /** When true, the RPG stats bar is anchored to the top of the screen instead of the bottom. */
   rpgBarAtTop: boolean;
 }
@@ -38,6 +40,7 @@ export function createDefaultSettings(): SettingsState {
     generatorEquationVisibility: 'proximity',
     isDevMode: false,
     isInvincibilityMode: false,
+    isTopographicTerrainDebugEnabled: false,
     rpgBarAtTop: false,
   };
 }

@@ -122,6 +122,9 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.uiPanels.rpgRender.setNumberFormat(ctx.settings.numberFormat);
       ctx.uiPanels.rpgRender.setDevMode(ctx.settings.isDevMode);
       ctx.uiPanels.rpgRender.setInvincibilityMode(ctx.settings.isInvincibilityMode);
+      ctx.uiPanels.rpgRender.setTopographicTerrainDebugEnabled(
+        ctx.settings.isDevMode && ctx.settings.isTopographicTerrainDebugEnabled,
+      );
       ctx.uiPanels.rpgRender.update(deltaMs, autoMove);
       requestAnimationFrame(gameLoop);
       return;

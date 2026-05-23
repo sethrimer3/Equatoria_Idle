@@ -26,6 +26,7 @@ export type GameAction =
   | { kind: 'start_boss_fight'; bossId: number }
   | { kind: 'set_boss_speed'; pct: number }
   | { kind: 'set_invincibility_mode'; enabled: boolean }
+  | { kind: 'set_topographic_terrain_debug'; enabled: boolean }
   | { kind: 'upgrade_loom_efficiency'; tierId: string }
   | { kind: 'toggle_sand_blade' };
 
