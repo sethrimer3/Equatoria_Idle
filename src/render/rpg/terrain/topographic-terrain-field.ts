@@ -142,7 +142,8 @@ function buildField(
         const theta = Math.atan2(dy, dx);
         const effectiveR = island.outerRadius * shapeMultiplier(island.profile, theta);
         const minDist = effectiveR * 0.05; // cap near-zero division
-        const contrib = effectiveR / Math.max(dist, minDist);
+        const ratio = effectiveR / Math.max(dist, minDist);
+        const contrib = ratio * ratio;
         total += Math.min(contrib, 8.0); // cap per-island contribution
       }
       field[row + ix] = total;
@@ -295,21 +296,40 @@ function stitchSegments(segments: MsSegment[]): ContourPoint[][] {
 
     const s0 = segments[start];
     const pts: ContourPoint[] = [{ x: s0.ax, y: s0.ay }, { x: s0.bx, y: s0.by }];
-    let curX = s0.bx, curY = s0.by;
 
-    // Walk forward.
+    // Walk both directions from the seed segment. Marching-squares output is
+    // an undirected graph; following only one endpoint can leave the other
+    // half of a valid loop unstiched and make it look like an open fragment.
     for (;;) {
-      const neighbors = adjMap.get(ptKey(curX, curY));
+      const head = pts[pts.length - 1];
+      const neighbors = adjMap.get(ptKey(head.x, head.y));
       if (!neighbors) break;
       let advanced = false;
       for (const ni of neighbors) {
         if (used[ni]) continue;
         used[ni] = 1;
         const ns = segments[ni];
-        const fromA = Math.abs(ns.ax - curX) < 0.3 && Math.abs(ns.ay - curY) < 0.3;
-        curX = fromA ? ns.bx : ns.ax;
-        curY = fromA ? ns.by : ns.ay;
-        pts.push({ x: curX, y: curY });
+        const headKey = ptKey(head.x, head.y);
+        const fromA = ptKey(ns.ax, ns.ay) === headKey;
+        pts.push({ x: fromA ? ns.bx : ns.ax, y: fromA ? ns.by : ns.ay });
+        advanced = true;
+        break;
+      }
+      if (!advanced) break;
+    }
+
+    for (;;) {
+      const tail = pts[0];
+      const neighbors = adjMap.get(ptKey(tail.x, tail.y));
+      if (!neighbors) break;
+      let advanced = false;
+      for (const ni of neighbors) {
+        if (used[ni]) continue;
+        used[ni] = 1;
+        const ns = segments[ni];
+        const tailKey = ptKey(tail.x, tail.y);
+        const fromA = ptKey(ns.ax, ns.ay) === tailKey;
+        pts.unshift({ x: fromA ? ns.bx : ns.ax, y: fromA ? ns.by : ns.ay });
         advanced = true;
         break;
       }
@@ -324,6 +344,8 @@ function stitchSegments(segments: MsSegment[]): ContourPoint[][] {
     const closeDistSq = (last.x - first.x) ** 2 + (last.y - first.y) ** 2;
     if (closeDistSq < 1.0) {
       pts[pts.length - 1] = { x: first.x, y: first.y };
+    } else {
+      continue;
     }
 
     polylines.push(pts);

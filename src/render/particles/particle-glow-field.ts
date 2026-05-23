@@ -317,8 +317,8 @@ export function drawParticleGlowField(
     const ceilS     = Math.ceil(p.size);
     const bodyX     = Math.floor(p.x - half) + ceilS * 0.5;  // rendered centre X
     const bodyY     = Math.floor(p.y - half) + ceilS * 0.5;  // rendered centre Y
-    const pcx       = bodyX / CELL_SIZE;   // cell-space X of rendered centre
-    const pcy       = bodyY / CELL_SIZE;   // cell-space Y of rendered centre
+    const pcx       = bodyX / CELL_SIZE - 0.5;   // cell-centre-space X
+    const pcy       = bodyY / CELL_SIZE - 0.5;   // cell-centre-space Y
     const gcxi      = Math.floor(pcx);
     const gcyi      = Math.floor(pcy);
 

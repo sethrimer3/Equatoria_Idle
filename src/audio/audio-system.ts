@@ -24,6 +24,7 @@ import {
   ERROR_PATH,
   SWITCHING_TABS_PATH,
   MOTES_MERGING_PATHS,
+  MOTES_MERGING_DROPLET_PATH,
   SETTINGS_CHANGE_PATHS,
   FORGE_CHARGING_PATHS,
   FORGE_CRUNCH_PATHS,
@@ -133,6 +134,7 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
             ERROR_PATH,
             SWITCHING_TABS_PATH,
             ...MOTES_MERGING_PATHS,
+            MOTES_MERGING_DROPLET_PATH,
             ...SETTINGS_CHANGE_PATHS,
             ...FORGE_CHARGING_PATHS,
             ...FORGE_CRUNCH_PATHS,
@@ -190,7 +192,7 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
 
     onMotesMerged(count: number): void {
       for (let i = 0; i < count; i++) {
-        sfx.playMotesMerge(MOTES_MERGING_PATHS);
+        sfx.playMotesMerge(MOTES_MERGING_PATHS, MOTES_MERGING_DROPLET_PATH);
       }
     },
 

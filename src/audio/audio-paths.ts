@@ -40,6 +40,8 @@ export const MOTES_MERGING_PATHS: readonly string[] = [
   encodePath('ASSETS/sfx/motesMerging/note_G.mp3'),
 ];
 
+export const MOTES_MERGING_DROPLET_PATH = encodePath('ASSETS/sfx/motesMerging/dropletC4.mp3');
+
 export const SETTINGS_CHANGE_PATHS: readonly string[] = [
   encodePath('ASSETS/sfx/settingsChange/pluck A1.m4a'),
   encodePath('ASSETS/sfx/settingsChange/pluck A2.m4a'),

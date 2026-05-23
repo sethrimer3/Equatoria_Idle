@@ -305,7 +305,8 @@ function computeScalarFieldValue(state: TopographicTerrainState, wx: number, wy:
     const theta = Math.atan2(dy, dx);
     const effectiveRadius = island.outerRadius * computeShapeMultiplier(island.profile, theta);
     const minDist = effectiveRadius * 0.05;
-    total += Math.min(effectiveRadius / Math.max(dist, minDist), MAX_PER_ISLAND_FIELD_CONTRIBUTION);
+    const ratio = effectiveRadius / Math.max(dist, minDist);
+    total += Math.min(ratio * ratio, MAX_PER_ISLAND_FIELD_CONTRIBUTION);
   }
   return total;
 }

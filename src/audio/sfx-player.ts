@@ -15,6 +15,16 @@ const FORGE_CRUNCH_FADE_S  = 0.2;
 const FORGE_CANCEL_FADE_S  = 0.5;
 const FORGE_SPIN_UP_FADE_S = 4.0;
 const MOTES_MAX_POLYPHONY  = 2;
+const D_MAJOR_FROM_C4_PLAYBACK_RATES: readonly number[] = [
+  2 ** (2 / 12),  // D4
+  2 ** (4 / 12),  // E4
+  2 ** (6 / 12),  // F#4
+  2 ** (7 / 12),  // G4
+  2 ** (9 / 12),  // A4
+  2 ** (11 / 12), // B4
+  2 ** (13 / 12), // C#5
+  2 ** (14 / 12), // D5
+];
 
 export class SfxPlayer {
   private _masterGain: GainNode | null = null;
@@ -46,6 +56,24 @@ export class SfxPlayer {
       if (!buffer) return;
       const source = ctx.createBufferSource();
       source.buffer = buffer;
+      source.connect(master);
+      source.start();
+    } catch {
+      // Silently ignore
+    }
+  }
+
+  /** Play a single SFX by path with a playback-rate pitch shift. */
+  async playPitched(path: string, playbackRate: number): Promise<void> {
+    const master = this._getMasterGain();
+    const ctx = getAudioContext();
+    if (!ctx || !master) return;
+    try {
+      const buffer = await loadAudioBuffer(ctx, path);
+      if (!buffer) return;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.playbackRate.setValueAtTime(playbackRate, ctx.currentTime);
       source.connect(master);
       source.start();
     } catch {
@@ -91,12 +119,16 @@ export class SfxPlayer {
   }
 
   /** Play a motes-merge SFX, capped at MOTES_MAX_POLYPHONY simultaneous voices. */
-  playMotesMerge(paths: readonly string[]): void {
+  playMotesMerge(paths: readonly string[], dropletPath: string): void {
     if (this._motesActiveCount >= MOTES_MAX_POLYPHONY) return;
     this._motesActiveCount++;
     this.playPolyphonyLimited(paths, () => {
       this._motesActiveCount = Math.max(0, this._motesActiveCount - 1);
     });
+    const rate = D_MAJOR_FROM_C4_PLAYBACK_RATES[
+      Math.floor(Math.random() * D_MAJOR_FROM_C4_PLAYBACK_RATES.length)
+    ]!;
+    void this.playPitched(dropletPath, rate);
   }
 
   /** Begin the forge charging loop, fading in over FORGE_SPIN_UP_FADE_S seconds. */

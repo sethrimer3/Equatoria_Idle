@@ -445,6 +445,19 @@ describe('generateTopographicTerrain — merged contours', () => {
     }
   });
 
+  it('every merged contour polyline is actually closed', () => {
+    for (const seed of [1, 42, 137, 999, 0xdeadbeef]) {
+      const state = generateTopographicTerrain(1, seed, 800, 600);
+      for (const level of state.mergedContours!.levels) {
+        for (const polyline of level.polylines) {
+          const first = polyline[0];
+          const last = polyline[polyline.length - 1];
+          expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeLessThan(1);
+        }
+      }
+    }
+  });
+
   it('solid boundary points are within canvas bounds (with one-cell margin)', () => {
     const W = 800, H = 600;
     const CELL = 8; // one marching-squares cell beyond canvas edge is acceptable
@@ -515,6 +528,17 @@ describe('isPointInsideTopographicTerrain — with merged contours', () => {
     expect(isPointInsideTopographicTerrain(state, 795, 595)).toBe(false);
   });
 
+  it('canvas corners stay outside across many merged-contour seeds', () => {
+    for (let seed = 1; seed <= 80; seed++) {
+      const state = generateTopographicTerrain(1, seed * 7919, 800, 600);
+      state.growth01 = 1;
+      expect(isPointInsideTopographicTerrain(state, 5, 5)).toBe(false);
+      expect(isPointInsideTopographicTerrain(state, 795, 5)).toBe(false);
+      expect(isPointInsideTopographicTerrain(state, 5, 595)).toBe(false);
+      expect(isPointInsideTopographicTerrain(state, 795, 595)).toBe(false);
+    }
+  });
+
   it('returns false when growth01 is 0', () => {
     const state = generateTopographicTerrain(1, 42, 800, 600);
     // growth01 defaults to 0 from generateTopographicTerrain
@@ -565,11 +589,10 @@ describe('pushPointOutsideTopographicTerrain — nearest-boundary logic', () => 
     const island = state.islands[0];
     const pushed = { x: 0, y: 0 };
     pushPointOutsideTopographicTerrain(state, island.centerX, island.centerY, pushed, 4);
-    const mc = state.mergedContours!;
-    const dx = pushed.x - mc.centroidX, dy = pushed.y - mc.centroidY;
+    const dx = pushed.x - island.centerX, dy = pushed.y - island.centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    // Should be within outerRadius * 1.5 + margin of the centroid (loose bound).
-    expect(dist).toBeLessThan(island.outerRadius * 1.6 + 10);
+    // Should be near the boundary of the island that contained the point.
+    expect(dist).toBeLessThan(island.outerRadius * 1.8 + 10);
   });
 
   it('works with square-terrain fallback (mergedContours=null)', () => {
