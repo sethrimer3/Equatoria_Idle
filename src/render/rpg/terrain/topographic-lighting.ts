@@ -32,6 +32,7 @@ interface LightingPalette {
  * cast to this type within this module.
  */
 interface BakedTopographyLightCache extends TopographyLightCache {
+  growth01: number;
   cellSizePx: number;
   gridW: number;
   gridH: number;
@@ -42,6 +43,14 @@ interface BakedTopographyLightCache extends TopographyLightCache {
   centroidY: number;
 }
 
+interface SunlightFillCache {
+  canvas: HTMLCanvasElement;
+  width: number;
+  height: number;
+  paletteId: TopographicTerrainPaletteId;
+  config: TopographyLightConfig;
+}
+
 const LIGHT_GRID_CELL_SIZE_PX = 8;
 const CONTOUR_LEVEL_COUNT = 9;
 const INNER_RING_SCALE = 0.28;
@@ -50,6 +59,8 @@ const NORMAL_Z = 1.18;
 const MAX_PER_ISLAND_FIELD_CONTRIBUTION = 8.0;
 const SUNLIGHT_FILL_ALPHA = 0.075;
 const MIN_CAST_SHADOW_HEIGHT = 0.18;
+const LIGHT_GROWTH_CACHE_STEPS = 10;
+const TERRAIN_LIGHTING_EDGE_BLUR_PX = 1.1;
 const LIGHTING_PALETTES: Record<TopographicTerrainPaletteId, LightingPalette> = {
   mono: {
     highlight: { r: 255, g: 244, b: 218 },
@@ -93,6 +104,7 @@ export const DEFAULT_TOPOGRAPHY_LIGHT_CONFIG: TopographyLightConfig = {
 
 let activeLightConfig: TopographyLightConfig = { ...DEFAULT_TOPOGRAPHY_LIGHT_CONFIG };
 let lightingDevMode = false;
+let sunlightFillCache: SunlightFillCache | null = null;
 
 export function setTopographyLightConfig(partial: Partial<TopographyLightConfig>): TopographyLightConfig {
   activeLightConfig = { ...activeLightConfig, ...partial };
@@ -131,6 +143,7 @@ export function buildTopographyLightCache(
   config: TopographyLightConfig,
   canvasW: number,
   canvasH: number,
+  growth01 = 1,
 ): TopographyLightCache {
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.floor(canvasW));
@@ -143,13 +156,14 @@ export function buildTopographyLightCache(
   const gridW = Math.ceil(canvas.width / LIGHT_GRID_CELL_SIZE_PX) + 2;
   const gridH = Math.ceil(canvas.height / LIGHT_GRID_CELL_SIZE_PX) + 2;
   const heightGrid = new Float32Array(gridW * gridH);
+  const bakedGrowth01 = clamp01(growth01);
 
   for (let iy = 0; iy < gridH; iy++) {
     const wy = iy * LIGHT_GRID_CELL_SIZE_PX;
     const row = iy * gridW;
     for (let ix = 0; ix < gridW; ix++) {
       const wx = ix * LIGHT_GRID_CELL_SIZE_PX;
-      heightGrid[row + ix] = mapFieldValueToHeight(computeScalarFieldValue(state, wx, wy));
+      heightGrid[row + ix] = mapFieldValueToHeight(computeScalarFieldValue(state, wx, wy)) * bakedGrowth01;
     }
   }
 
@@ -172,7 +186,7 @@ export function buildTopographyLightCache(
       const shadowAmount = sampleGridBilinear(shadowGrid, gridW, gridH, gx, gy);
       const idx = (py * canvas.width + px) * 4;
 
-      if (h <= 0.025) {
+      if (h <= 0.005) {
         const shadowAlpha = clamp01(config.terrainOpacity * shadowAmount * 0.42);
         if (shadowAlpha <= 0.01) continue;
         pixels[idx] = palette.shadow.r;
@@ -183,7 +197,7 @@ export function buildTopographyLightCache(
       }
 
       const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
-      const presence = smoothstep(0.02, 0.55, h);
+      const presence = smoothstep(0.005, 0.92, h);
       const terrace = 1 - Math.abs((((h % 1) + 1) % 1) * 2 - 1);
       const bias = (lightAmount - 0.50) * (1.0 + height01 * 0.58) - shadowAmount * (0.28 + height01 * 0.14);
 
@@ -206,7 +220,6 @@ export function buildTopographyLightCache(
   }
 
   ctx.putImageData(image, 0, 0);
-  drawSunlightFill(ctx, canvas.width, canvas.height, towardLightX, towardLightY, palette, config);
   if (config.beamStrength > 0.001) {
     drawLightBeams(ctx, heightGrid, gridW, gridH, LIGHT_GRID_CELL_SIZE_PX, towardLightX, towardLightY, palette, config, state.seed);
   }
@@ -216,6 +229,7 @@ export function buildTopographyLightCache(
     canvas,
     width: canvas.width,
     height: canvas.height,
+    growth01: bakedGrowth01,
     config: { ...config },
     terrainSeed: state.seed,
     terrainWaveNumber: state.waveNumber,
@@ -238,23 +252,19 @@ export function renderTopographyLighting(
   canvasW: number,
   canvasH: number,
 ): void {
-  if (state.phase === 'hidden' || state.growth01 <= 0) return;
+  if (state.phase === 'hidden') return;
 
   const cache = ensureTopographyLightCache(state, canvasW, canvasH);
   if (!cache) return;
-
-  const { x: centroidX, y: centroidY } = getTerrainCentroid(state);
 
   ctx.save();
   try {
     ctx.globalCompositeOperation = 'source-over';
     ctx.imageSmoothingEnabled = true;
-    if (state.growth01 !== 1) {
-      ctx.translate(centroidX, centroidY);
-      ctx.scale(state.growth01, state.growth01);
-      ctx.translate(-centroidX, -centroidY);
-    }
+    if (state.growth01 <= 0) return;
+    ctx.filter = `blur(${TERRAIN_LIGHTING_EDGE_BLUR_PX}px)`;
     ctx.drawImage(cache.canvas, 0, 0, cache.width, cache.height);
+    ctx.filter = 'none';
   } finally {
     ctx.restore();
   }
@@ -262,6 +272,55 @@ export function renderTopographyLighting(
   if (lightingDevMode) {
     drawLightingDevOverlay(ctx, cache);
   }
+}
+
+export function renderPersistentTopographySunlight(
+  ctx: CanvasRenderingContext2D,
+  canvasW: number,
+  canvasH: number,
+  paletteId: TopographicTerrainPaletteId = 'mono',
+): void {
+  const width = Math.max(1, Math.floor(canvasW));
+  const height = Math.max(1, Math.floor(canvasH));
+  const cache = ensureSunlightFillCache(width, height, paletteId);
+  ctx.drawImage(cache.canvas, 0, 0, cache.width, cache.height);
+}
+
+function ensureSunlightFillCache(
+  width: number,
+  height: number,
+  paletteId: TopographicTerrainPaletteId,
+): SunlightFillCache {
+  if (
+    sunlightFillCache
+    && sunlightFillCache.width === width
+    && sunlightFillCache.height === height
+    && sunlightFillCache.paletteId === paletteId
+    && configsMatch(sunlightFillCache.config, activeLightConfig)
+  ) {
+    return sunlightFillCache;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Failed to create topography sunlight canvas context.');
+  }
+
+  const palette = LIGHTING_PALETTES[paletteId];
+  const towardLightX = Math.cos(activeLightConfig.lightAngle);
+  const towardLightY = Math.sin(activeLightConfig.lightAngle);
+  drawSunlightFill(ctx, width, height, towardLightX, towardLightY, palette, activeLightConfig);
+  sunlightFillCache = {
+    canvas,
+    width,
+    height,
+    paletteId,
+    config: { ...activeLightConfig },
+  };
+  return sunlightFillCache;
 }
 
 /**
@@ -283,21 +342,27 @@ function ensureTopographyLightCache(
 ): BakedTopographyLightCache | null {
   const targetWidth = Math.max(1, Math.floor(canvasW));
   const targetHeight = Math.max(1, Math.floor(canvasH));
+  const targetGrowth01 = quantizeGrowth01(state.growth01);
   const existing = state.lightCache as BakedTopographyLightCache | null;
   if (
     existing === null
     || existing.width !== targetWidth
     || existing.height !== targetHeight
     || existing.paletteId !== state.paletteId
+    || existing.growth01 !== targetGrowth01
     || !configsMatch(existing.config, activeLightConfig)
   ) {
     const built = buildTopographyLightCache(
-      state, activeLightConfig, targetWidth, targetHeight,
+      state, activeLightConfig, targetWidth, targetHeight, targetGrowth01,
     ) as BakedTopographyLightCache;
     state.lightCache = built;
     return built;
   }
   return existing;
+}
+
+function quantizeGrowth01(growth01: number): number {
+  return Math.round(clamp01(growth01) * LIGHT_GROWTH_CACHE_STEPS) / LIGHT_GROWTH_CACHE_STEPS;
 }
 
 function configsMatch(a: TopographyLightConfig, b: TopographyLightConfig): boolean {

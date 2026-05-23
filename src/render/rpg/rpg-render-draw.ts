@@ -103,7 +103,7 @@ import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID } from './rpg-constants';
 import { renderTopographicTerrain } from './terrain/topographic-terrain';
-import { renderTopographyLighting } from './terrain/topographic-lighting';
+import { renderPersistentTopographySunlight, renderTopographyLighting } from './terrain/topographic-lighting';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
@@ -256,6 +256,7 @@ export function drawRpgFrame(
   ctx.fluid.render(canvas2d);
 
   const terrainState = ctx.getTopographicTerrainState();
+  renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState?.paletteId ?? 'mono');
   if (terrainState) {
     renderTopographicTerrain(canvas2d, terrainState, nowMs);
     renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx);

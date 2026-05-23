@@ -1012,16 +1012,25 @@
 ### src/render/rpg/terrain/topographic-lighting.ts
 - Cached topography directional-lighting overlay for RPG terrain.
 - Exports `buildTopographyLightCache`, `renderTopographyLighting`,
-  `setTopographyLightConfig`, `setTopographyLightingDevMode`,
-  `getActiveTopographyLightSamplingData`, and `DEFAULT_TOPOGRAPHY_LIGHT_CONFIG`.
+  `renderPersistentTopographySunlight`, `setTopographyLightConfig`,
+  `setTopographyLightingDevMode`, `getActiveTopographyLightSamplingData`, and
+  `DEFAULT_TOPOGRAPHY_LIGHT_CONFIG`.
   Also re-exports `TopographyLightConfig`, `TopographyLightCache`, and
   `TopographyLightSamplingData` from `topographic-lighting-types.ts`.
-- Bakes a coarse scalar-height grid from terrain islands, casts warm sunlight
-  over the whole terrain render, projects directional shadows away from the
-  light source with length scaled by local contour height, smooths grids with a
-  separable **Gaussian** blur, combines slope shading and shadow into a light
-  grid, then composites highlight, shadow, and faint beam shafts into an
-  offscreen canvas.
+- Bakes a coarse scalar-height grid from terrain islands, projects directional
+  shadows away from the light source with length scaled by local contour height,
+  smooths grids with a separable **Gaussian** blur, combines slope shading and
+  shadow into a light grid, then composites highlight, shadow, and faint beam
+  shafts into an offscreen canvas.
+- `renderPersistentTopographySunlight` draws the warm sunlight fill every RPG
+  frame from a cached offscreen canvas, independent of active terrain, so
+  sunlight persists between waves without rebuilding the gradient each frame.
+- The lighting grid uses 8 px cells, quantizes growth to 10 cache levels, and
+  applies a small draw-time blur to the mountain lighting overlay.  This keeps
+  shaded edges soft while avoiding the costly 4 px grid/ray-cast rebuilds.
+- During terrain growth, cache invalidation quantizes `growth01` and rebakes the
+  height grid at that height.  This makes cast shadows lengthen laterally away
+  from the light source instead of scaling outward from the terrain centroid.
 - Cache is stored on `TopographicTerrainState.lightCache`; a new wave
   creates a fresh state (cache starts `null`).  Within a wave the cache
   rebuilds only when canvas size, palette, or light config changes — no
