@@ -66,6 +66,8 @@ export interface TopographicTerrainState {
    * solid outer boundaries.
    */
   mergedContours: MergedTopographicContours | null;
+  /** External lighting modules may stash a cache object here. */
+  lightCache?: object | null;
 }
 
 const TERRAIN_GROW_DURATION_MS = 1300;
@@ -321,6 +323,7 @@ export function generateTopographicTerrain(
     shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
     growth01: 0,
     mergedContours,
+    lightCache: null,
   };
 }
 

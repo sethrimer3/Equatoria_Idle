@@ -995,7 +995,18 @@
   generation time; `renderTopographicTerrain` draws merged scalar-field contours.
   `pushPointOutsideTopographicTerrain` uses nearest-point-on-boundary logic.
   `computeTerrainRepulsionForce` provides soft quadratic repulsion for smooth collision.
+- **Build 85+:** terrain state exposes an optional external `lightCache` slot; the
+  RPG draw pass now layers cached topographic lighting immediately after contour rendering.
 - Center dots are dev-only (`terrainDevMode` flag, not set during gameplay).
+
+### src/render/rpg/terrain/topographic-lighting.ts
+- Cached topography lighting overlay for RPG terrain.
+- Exports `buildTopographyLightCache`, `renderTopographyLighting`,
+  `setTopographyLightConfig`, and `setTopographyLightingDevMode`.
+- Reconstructs a coarse scalar-height grid from terrain islands, bakes slope shading,
+  directional shadows, and faint beam shafts into an offscreen canvas, then reuses that
+  canvas until the wave/seed/config/canvas size changes.
+- Dev mode can visualize the baked height map, shadow map, and light-direction arrow.
 
 ### src/render/rpg/terrain/topographic-terrain-field.ts
 - Scalar field + Marching Squares contour extraction for smooth terrain merging.

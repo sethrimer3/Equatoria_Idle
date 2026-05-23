@@ -128,6 +128,7 @@ import {
   setTopographicTerrainDevMode,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
+import { setTopographyLightingDevMode } from './terrain/topographic-lighting';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -1155,6 +1156,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setDevMode(enabled: boolean): void {
       statsPanel.setDevMode(enabled);
       setTopographicTerrainDevMode(enabled);
+      setTopographyLightingDevMode(enabled);
     },
 
     setInvincibilityMode(enabled: boolean): void {
