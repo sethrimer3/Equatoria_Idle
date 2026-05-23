@@ -324,6 +324,8 @@ export async function startApp(): Promise<void> {
   applyRpgBarPosition(settings.rpgBarAtTop);
   rpgMenuPanel.setRpgBarAtTop(settings.rpgBarAtTop);
   rpgMenuPanel.setTopographicTerrainDebugEnabled(settings.isTopographicTerrainDebugEnabled);
+  rpgMenuPanel.setSharpTopographyShadows(settings.isSharpTopographyShadows);
+  rpgRender.setSharpTopographyShadows(settings.isSharpTopographyShadows);
 
   // ── Menu toggle button (appended to the stats panel by the renderer) ──
   const menuToggleBtn = document.createElement('button');

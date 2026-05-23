@@ -52,6 +52,8 @@ export interface RpgMenuPanel {
   setInvincibilityMode(enabled: boolean): void;
   /** Sync the topography debug setting into the menu tab so the checkbox reflects current state. */
   setTopographicTerrainDebugEnabled(enabled: boolean): void;
+  /** Sync the sharp topography shadows setting into the menu tab so the checkbox reflects current state. */
+  setSharpTopographyShadows(enabled: boolean): void;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -144,6 +146,7 @@ export function createRpgMenuPanel(
   let lastIsDevMode = false;
   let lastRpgBarAtTop = false;
   let lastTopographicTerrainDebugEnabled = false;
+  let lastSharpTopographyShadows = true;
 
   function updateTabHighlight(): void {
     for (const [id, btn] of tabBtns) {
@@ -171,6 +174,7 @@ export function createRpgMenuPanel(
           lastIsDevMode,
           lastRpgBarAtTop,
           lastTopographicTerrainDebugEnabled,
+          lastSharpTopographyShadows,
         );
         break;
       case 'weapons':
@@ -223,6 +227,11 @@ export function createRpgMenuPanel(
     setTopographicTerrainDebugEnabled(enabled: boolean): void {
       lastTopographicTerrainDebugEnabled = enabled;
       menuTabPane.setTopographicTerrainDebugEnabled(enabled);
+    },
+
+    setSharpTopographyShadows(enabled: boolean): void {
+      lastSharpTopographyShadows = enabled;
+      menuTabPane.setSharpTopographyShadows(enabled);
     },
 
     isVisible: false,
