@@ -1,6 +1,47 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#107**
+Current build: **#110**
+
+---
+
+## Build #110 — Boss-wave stage director (bullet-hell traversal loop)
+
+### What was implemented
+
+**Boss stage director system** (`rpg-boss-stage-director.ts`, `rpg-boss-stage-draw.ts`):
+
+- New `BossStageDirectorState` tracks: stage index (0–2), stage timer, corridor half-width, hazard list, wisp particles, boss-contact flash, dev-mode flag, stages-completed counter.
+- `resetBossStageDirector()` called on `enterBossWave`; `advanceBossStage()` called on `teleportPlayerToSafeZone`; `deactivateBossStageDirector()` called on `exitBossWave`.
+- Corridor route functions: `centerVertical` (stage 0), `sCurveRight` (stage 1), `sCurveLeft` (stage 2). Corridor narrows each stage.
+- Two hazard types: `VerticalRainHazard` (streams that avoid the corridor) and `SweepBarHazard` (downward-sweeping bar with a gap that tracks the corridor).
+- Hazards progress through **telegraph → active → fading** phases; telegraph flickers before becoming dangerous.
+- Collision with hazards applies damage only when: player is not in the bottom safe zone, not near the boss, and not i-framing.
+- `isPlayerInStageDirectorSafeZone()` is also applied to `rpg-boss-attack-update.ts` to guard special-attack collision during boss waves.
+- Boss-contact flash (`BOSS_CONNECT_FLASH_MS = 500 ms`) fires on first entry into `BOSS_DAMAGE_WINDOW_RADIUS`.
+- Wisp particles float along the corridor as a readable magical path guide.
+
+**Speed scaling fix** (`rpg-render-update.ts`):
+- `updateBossAttacks` now receives `deltaMs * bossSpeedMult` during boss waves, so all special-attack timers scale with the boss-speed setting.
+- During boss waves the random special-attack scheduler is suppressed (boss passed as `null`); existing attacks still expire normally.
+
+**Draw integration** (`rpg-render-draw.ts`):
+- `drawBossStageDirector()` called between `drawBossProjectiles` and `drawBossAttacks`.
+- Draws corridor glow fill + pulsing edge lines, wisps, rain streams, sweep bars, and boss-contact flash.
+- `setStageDirLowGraphics()` registered in `setAllDrawLowGraphics()`.
+
+**Developer debug overlay**:
+- Activate with the existing dev-mode toggle in the RPG menu.
+- Shows: corridor left/right bounds (green dashes), boss damage window (yellow circle), safe-zone circle (cyan), active hazard hitboxes (red), stage info text.
+
+### What remains to tune / implement next
+
+1. **More hazard pattern types**: rotating mandala walls, slow sine-wave bullet streams, hex-grid bolt patterns, warning lasers/gates. Framework is in place; add new `StageHazard` union members.
+2. **More corridor route types**: diagonal weave, pulsing width oscillation, figure-8 patterns.
+3. **Per-boss-ID stage sequences**: currently all boss IDs use the same 3-stage loop. Add a `getBossStageSequence(bossId)` lookup to vary patterns by boss.
+4. **Stage-clear visual effect**: a brief screen flash / particle burst when `advanceBossStage` fires.
+5. **Visible boss-HP stage chunks**: show HP bar segments aligned to stage-clear thresholds so the player can see how many traversals remain.
+6. **Balanced tuning pass**: corridor widths, hazard speed per stage, rain stream count, hazard interval — these are first-pass values and may need gameplay feedback.
+7. **Old boss-wave danmaku behaviour (`rpg-boss-behaviors-wave.ts`)**: the old projectile system still fires during boss waves as it is controlled by `rpg-boss-update.ts` separately. Consider whether it should be suppressed or integrated with the stage director's telegraph timing.
 
 ---
 

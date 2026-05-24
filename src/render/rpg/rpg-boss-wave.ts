@@ -73,6 +73,14 @@ export interface BossWaveCtx {
   ): void;
   /** Records damage dealt for the DPS tracker. */
   recordDps(dmg: number, color?: string): void;
+
+  // ── Stage director lifecycle hooks (optional) ─────────────────────────────
+  /** Called just after isBossWaveActive is set to true (enterBossWave). */
+  onEnterBossWave?: () => void;
+  /** Called just after isBossWaveActive is set to false (exitBossWave). */
+  onExitBossWave?: () => void;
+  /** Called each time the player is teleported back to the safe zone. */
+  onTeleportToSafeZone?: () => void;
 }
 
 // ── Handle returned by factory ────────────────────────────────────────────────
@@ -125,6 +133,7 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
       boss.attackTimerMs = Math.max(boss.attackTimerMs, 450);
       boss.secondaryTimerMs = Math.max(boss.secondaryTimerMs, 650);
     }
+    ctx.onTeleportToSafeZone?.();
   }
 
   function enterBossWave(): void {
@@ -144,6 +153,7 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
     mote.trailHead = 0; mote.trailCount = 0;
     ctx.setPlayerIFramesMs(1000);
     ctx.applyEquipmentStats();
+    ctx.onEnterBossWave?.();
   }
 
   function exitBossWave(): void {
@@ -165,6 +175,7 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
     ctx.setBossPreWaveWeaponTiers(new Map());
     ctx.teleportParticles.length = 0;
     ctx.applyEquipmentStats();
+    ctx.onExitBossWave?.();
   }
 
   function startBossFight(bossId: number): void {

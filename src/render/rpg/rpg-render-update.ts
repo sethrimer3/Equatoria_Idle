@@ -91,6 +91,11 @@ import { drawRpgFrame } from './rpg-render-draw';
 import { updateProceduralEnemies } from './rpg-procedural-update';
 import { updateTopographicTerrain } from './terrain/topographic-terrain';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
+import {
+  updateBossStageDirector,
+  type BossStageDirectorState,
+  type BossStageDirectorCtx,
+} from './rpg-boss-stage-director';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -201,6 +206,10 @@ export interface RpgUpdateCtx {
   bossCtx: BossUpdateCtx;
   bossAttackState: BossAttackState;
   bossAttackCtx: BossAttackUpdateCtx;
+
+  // Boss stage director
+  bossStageDirectorState: BossStageDirectorState;
+  bossStageDirectorCtx: BossStageDirectorCtx;
 
   // Weapon systems
   weaponOrbitCtx: WeaponOrbitCtx;
@@ -316,10 +325,27 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     const bossSpeedMult = ctx.getIsBossWaveActive() ? (ctx.rpgSimState.bossSpeedPct / 100) : 1;
     updateBossEnemy(bossEnemy, ctx.bossCtx, deltaMs * bossSpeedMult);
     updateBossProjectiles(a.bossProjectiles, ctx.bossCtx, deltaMs * bossSpeedMult);
+    if (ctx.getIsBossWaveActive()) {
+      // Stage director owns the hazard schedule during boss-wave fights.
+      // Tick existing special attacks (so they expire) but pass null boss to
+      // prevent spawning new ones; stage director generates corridor-safe hazards.
+      updateBossAttacks(ctx.bossAttackState, ctx.bossAttackCtx, null, deltaMs * bossSpeedMult);
+      updateBossStageDirector(
+        ctx.bossStageDirectorState,
+        ctx.bossStageDirectorCtx,
+        ctx.mote.x,
+        ctx.mote.y,
+        bossEnemy.x,
+        bossEnemy.y,
+        deltaMs * bossSpeedMult,
+      );
+    } else {
+      updateBossAttacks(ctx.bossAttackState, ctx.bossAttackCtx, bossEnemy, deltaMs * bossSpeedMult);
+    }
   } else {
     updateBossProjectiles(a.bossProjectiles, ctx.bossCtx, deltaMs);
+    updateBossAttacks(ctx.bossAttackState, ctx.bossAttackCtx, null, deltaMs);
   }
-  updateBossAttacks(ctx.bossAttackState, ctx.bossAttackCtx, bossEnemy, deltaMs);
   updateTeleportParticles(a.teleportParticles, deltaMs);
   _updateWeaponOrbitParticles(ctx.weaponOrbitCtx, deltaMs);
   updateOrbitProjectile(ctx.orbitProjectileCtx, ctx.getOrbitProjectile(), deltaMs);
