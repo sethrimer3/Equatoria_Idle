@@ -57,6 +57,29 @@ const LOOM_MAX_STEER_SPEED = 1.6;
 
 // ─── Implementation ──────────────────────────────────────────────
 
+function didCrossCaptureRadius(
+  p: EquatoriaParticle,
+  field: ForgeFieldInfo,
+  captureRadiusSq: number,
+  clampedDelta: number,
+): boolean {
+  const previousX = p.x - p.vx * clampedDelta;
+  const previousY = p.y - p.vy * clampedDelta;
+  const stepX = p.x - previousX;
+  const stepY = p.y - previousY;
+  const stepLenSq = stepX * stepX + stepY * stepY;
+  if (stepLenSq <= 0.0001) return false;
+
+  const toFieldX = field.x - previousX;
+  const toFieldY = field.y - previousY;
+  const closestT = Math.max(0, Math.min(1, (toFieldX * stepX + toFieldY * stepY) / stepLenSq));
+  const closestX = previousX + stepX * closestT;
+  const closestY = previousY + stepY * closestT;
+  const closestDx = field.x - closestX;
+  const closestDy = field.y - closestY;
+  return closestDx * closestDx + closestDy * closestDy <= captureRadiusSq;
+}
+
 /**
  * Apply capture-field forces to all eligible particles.
  *
@@ -116,7 +139,7 @@ export function applyForgeFieldForces(
       const dy = field.y - p.y;
       const distSq = dx * dx + dy * dy;
 
-      if (distSq <= captureRadSq[fi]) {
+      if (distSq <= captureRadSq[fi] || didCrossCaptureRadius(p, field, captureRadSq[fi], clampedDelta)) {
         if (isForgeField[fi]) {
           // Forge capture only during active crunch
           if (crunchState.isActive) {
