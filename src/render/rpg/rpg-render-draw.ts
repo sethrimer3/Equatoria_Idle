@@ -36,6 +36,11 @@ import {
 } from './rpg-enemy-draw-adv';
 import { drawBossAttacks, setDrawBossAttacksLowGraphics } from './rpg-boss-attacks-draw';
 import {
+  drawBossStageDirector,
+  setStageDirLowGraphics,
+} from './rpg-boss-stage-draw';
+import type { BossStageDirectorState } from './rpg-boss-stage-director';
+import {
   drawBossProjectiles,
   drawSandProjectiles,
   drawPoisonBolts,
@@ -180,6 +185,7 @@ export interface RpgDrawCtx {
   bossProjectiles: BossProjectile[];
   bossAttackState: BossAttackState;
   teleportParticles: TeleportParticle[];
+  bossStageDirectorState: BossStageDirectorState;
 
   // ── Weapon systems handle (exposes all weapon arrays) ─────
   weaponSystems: RpgWeaponHandle;
@@ -295,6 +301,16 @@ export function drawRpgFrame(
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), widthPx, heightPx, glowTimeS);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
   drawBossProjectiles(canvas2d, ctx.bossProjectiles);
+  if (ctx.getIsBossWaveActive() && bossEnemy) {
+    drawBossStageDirector(
+      canvas2d,
+      ctx.bossStageDirectorState,
+      bossEnemy,
+      { w: widthPx, h: heightPx },
+      glowTimeS,
+      ctx.getIsLowGraphicsMode(),
+    );
+  }
   drawBossAttacks(canvas2d, ctx.bossAttackState);
   drawBossEnemy(canvas2d, bossEnemy, glowTimeS);
   drawTeleportParticles(canvas2d, ctx.teleportParticles);
@@ -427,5 +443,6 @@ export function setAllDrawLowGraphics(enabled: boolean): void {
   setStardustDrawLowGraphics(enabled);
   setAlivenLowGraphics(enabled);
   setDrawBossAttacksLowGraphics(enabled);
+  setStageDirLowGraphics(enabled);
   // No per-module low-graphics for terrain (it already skips when hidden)
 }

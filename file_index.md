@@ -640,12 +640,30 @@
 - Exports `spawnSandSwingPixels`, `updateSandDriftPixels`, `drawSandDriftPixels`.
 
 ### src/render/rpg/rpg-boss-wave.ts
-- Boss wave lifecycle management extracted from `rpg-render.ts` (~218 lines).
+- Boss wave lifecycle management extracted from `rpg-render.ts` (~230 lines).
 - Exports `BossWaveCtx` interface, `BossWaveHandle` interface, and `createBossWaveManager(ctx)` factory.
 - Owns: `teleportPlayerToSafeZone`, `enterBossWave`, `exitBossWave`, `startBossFight`, `damageBossEnemy`.
 - `BossWaveCtx` exposes all mutable closure state via getter/setter callbacks (same pattern as `BossUpdateCtx`, `WaveManagerCtx`).
+- `BossWaveCtx` now has optional lifecycle hooks: `onEnterBossWave`, `onExitBossWave`, `onTeleportToSafeZone` — called to notify the stage director.
 - `rpg-render.ts` retains `isBossWaveActive`, `bossActiveEquipIds`, and `bossPreWaveWeaponTiers` as let-variables; `getEffectiveEquippedIds()` stays in `rpg-render.ts` and reads them directly.
 - Initialized after `statsPanel` is created (which sets up `recordDps`), since `damageBossEnemy` and `spawnDamageNumber` callbacks are required.
+
+### src/render/rpg/rpg-boss-stage-director.ts (NEW, build 110)
+- Stage director for boss-wave fights. Choreographs a bottom-to-boss traversal loop.
+- State type: `BossStageDirectorState` — tracks stage index, timer, corridor, hazards, wisps, flash, dev mode.
+- Lifecycle: `createBossStageDirectorState()`, `resetBossStageDirector()` (on enterBossWave), `advanceBossStage()` (on teleport), `deactivateBossStageDirector()` (on exitBossWave).
+- Route: `getCorridorCenterX(worldY, ...)` — shared by stage director + draw module; supports centerVertical, sCurveRight, sCurveLeft per stage.
+- Hazards: `VerticalRainHazard` (column rain streams avoiding the corridor) and `SweepBarHazard` (bar with gap tracking the corridor).
+- Hazards have telegraph → active → fading phases; telegraph flickers before becoming dangerous.
+- Collision: `updateBossStageDirector()` checks player vs. active hazards; safe zone and boss-proximity suppress damage.
+- `isPlayerInStageDirectorSafeZone()` shared by stage director and `rpg-boss-attack-update.ts`.
+- Context type: `BossStageDirectorCtx` — dim, playerStats, iframes, hp, spawnDamageNumber.
+
+### src/render/rpg/rpg-boss-stage-draw.ts (NEW, build 110)
+- Draws: luminous corridor glow + edge lines, wisp particles, vertical rain streams, sweep bars, boss-contact flash, dev debug overlay.
+- Entry point: `drawBossStageDirector(c, state, bossEnemy, dim, glowTimeS, isLowGraphics)`.
+- `setStageDirLowGraphics(enabled)` — called from `setAllDrawLowGraphics()` in `rpg-render-draw.ts`.
+- Dev overlay shows: corridor bounds, boss damage window, safe zone circle, hazard hitboxes, stage info text.
 
 ### src/render/rpg/neon-trail-draw.ts
 - Reusable neon particle trail rendering system for Float64Array ring-buffer trails.

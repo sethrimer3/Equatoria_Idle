@@ -28,6 +28,7 @@ import { spawnVermiculateAttack, updateVermiculateAttack, getVermiculateHazardCi
 import { spawnMissileAttack,     updateMissileAttack,     getMissileHazardCircles     } from './attacks/rpg-attack-missile';
 import { spawnSwarmAttack,       updateSwarmAttack,       getSwarmHazardCircles       } from './attacks/rpg-attack-swarm';
 import { PLAYER_HIT_RADIUS, PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS } from './rpg-constants';
+import { isPlayerInStageDirectorSafeZone } from './rpg-boss-stage-director';
 
 // ── Caps ──────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ export interface BossAttackUpdateCtx {
   readonly playerStats: { hp: number; maxHp: number; def: number };
   getPlayerIFramesMs(): number;
   setPlayerIFramesMs(ms: number): void;
+  getIsBossWaveActive(): boolean;
   spawnDamageNumber(x: number, y: number, dirX: number, dirY: number, text: string, ratio: number, color: string): void;
   setPlayerHp(hp: number): void;
 }
@@ -188,6 +190,9 @@ export function applyBossAttackCollision(
   const px = ctx.playerX;
   const py = ctx.playerY;
   const pr = PLAYER_HIT_RADIUS;
+
+  // During boss waves, the bottom safe zone protects the player from all special attacks.
+  if (ctx.getIsBossWaveActive() && isPlayerInStageDirectorSafeZone(px, py, ctx.dim)) return;
 
   for (const atk of state.attacks) {
     if (_checkAttackHitsPlayer(atk, px, py, pr)) {

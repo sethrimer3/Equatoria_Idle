@@ -83,6 +83,14 @@ import type {
 } from './rpg-procedural-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
+import {
+  createBossStageDirectorState,
+  resetBossStageDirector,
+  advanceBossStage,
+  deactivateBossStageDirector,
+  type BossStageDirectorState,
+  type BossStageDirectorCtx,
+} from './rpg-boss-stage-director';
 import { type AlivenUpdateCtx } from './rpg-aliven-updates';
 import { damageAlivenParticle } from './rpg-damage';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
@@ -346,6 +354,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let bossHitsInRound = 0;
   /** True when the current boss fight was launched from the RPG menu. */
   let isBossFightFromMenu = false;
+
+  // ── Boss stage director state ──────────────────────────────────
+  const bossStageDirectorState: BossStageDirectorState = createBossStageDirectorState();
 
   // ── Boss wave management ───────────────────────────────────────
   /** True while a boss wave is active (from spawn until defeat or death). */
@@ -803,7 +814,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     applyEquipmentStats:        () => applyEquipmentStats(),
     spawnDamageNumber:          (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
     recordDps:                  (dmg, color) => recordDps(dmg, color),
+    onEnterBossWave:            () => { resetBossStageDirector(bossStageDirectorState); },
+    onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); },
+    onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
   });
+
+  // ── Boss stage director context ────────────────────────────────
+  const bossStageDirectorCtx: BossStageDirectorCtx = {
+    dim,
+    playerStats,
+    getPlayerIFramesMs: () => playerIFramesMs,
+    setPlayerIFramesMs: (ms) => { playerIFramesMs = ms; },
+    setPlayerHp: (hp) => { playerStats.hp = hp; },
+    spawnDamageNumber: (x, y, vx, vy, text, ratio, color) =>
+      spawnDamageNumber(x, y, vx, vy, text, ratio, color),
+  };
 
   // ── Player movement context (wired to rpg-player-movement.ts) ───
   const movementCtx: PlayerMovementCtx = {
@@ -921,6 +946,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerStats,
     getPlayerIFramesMs:  () => playerIFramesMs,
     setPlayerIFramesMs:  (n) => { playerIFramesMs = n; },
+    getIsBossWaveActive: () => isBossWaveActive,
     spawnDamageNumber: (x, y, dirX, dirY, text, ratio, color) =>
       spawnDamageNumber(x, y, dirX, dirY, text, ratio, color),
     setPlayerHp: (hp) => { playerStats.hp = hp; },
@@ -1010,6 +1036,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getBossEnemy:         () => bossEnemy,
     getDanmakuSafeZone:   () => danmakuSafeZone,
     bossProjectiles, bossAttackState, teleportParticles,
+    bossStageDirectorState,
     weaponSystems, mote, joystick,
     hitEffects, shotLines, damageNumbers, luckyMotes, luckyMotePopups,
     deathParticles, weaponOrbitParticles,
@@ -1073,6 +1100,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossCtx,
     bossAttackState,
     bossAttackCtx,
+    bossStageDirectorState,
+    bossStageDirectorCtx,
     weaponOrbitCtx,
     getOrbitProjectile:     () => orbitProjectile,
     orbitProjectileCtx,
@@ -1163,6 +1192,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setDevMode(enabled: boolean): void {
       statsPanel.setDevMode(enabled);
       setTopographyLightingDevMode(enabled);
+      bossStageDirectorState.isDevMode = enabled;
     },
 
     setInvincibilityMode(enabled: boolean): void {
