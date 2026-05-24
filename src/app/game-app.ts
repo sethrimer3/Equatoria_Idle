@@ -130,8 +130,11 @@ export async function startApp(): Promise<void> {
   const cc = createGameCanvas(canvasContainer);
 
   // ── HUD overlay (DOM layer above canvas, non-pixelated) ──
+  // Appended to cc.gameArea (not canvasContainer) so that percentage-based
+  // generator-label positions remain correctly mapped to logical canvas
+  // coordinates when the game area is letterboxed or pillarboxed.
   const hudOverlay = createHudOverlay();
-  canvasContainer.appendChild(hudOverlay.element);
+  cc.gameArea.appendChild(hudOverlay.element);
 
   // ── Idle reward overlay ──
   const idleOverlay = createIdleOverlay();

@@ -120,11 +120,24 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
 
 ## Generator System
 
-- Generators are positioned in a ring around the equation center
+- Generators are positioned in a ring around the equation center (logical coordinate 160, 320)
 - Each unlocked tier gets one generator
-- Ring radius scales with `min(canvasWidth, canvasHeight) * 0.35`
-- Recomputed on resize and tier unlock events
+- Ring radius: `GENERATOR_RADIUS_PX = 160 * SCENE_ZOOM_SCALE = 128` logical px
+- Positions are expressed in the fixed 320 × 640 logical coordinate space and **never change on resize**
+- Recomputed only when the unlocked tier count changes
 - Drawn as counter-rotating Star-of-David triangles with glow and dashed influence radius
+
+## Scaling / Viewport Model (build 128+)
+
+The Equation / Idle render uses a **fixed logical coordinate space** of 320 × 640 px.
+
+- All game state (particles, generators, loom fields, forge center) lives in this space at all times.
+- `#canvas-container` is a full-screen flex container that letterboxes / pillarboxes `#game-area`.
+- `#game-area` is a `position: relative` div whose CSS dimensions are updated by `resizeCanvas()` to be the largest 320:640 rectangle that fits the container.
+- Both `#game-canvas` and `#hud-overlay` are children of `#game-area`, so percentage-based HUD positions (generator equation labels) map correctly to logical coordinates.
+- `canvasCoordsFromPointerEvent()` converts pointer events from CSS/screen → logical using `getBoundingClientRect()` on the canvas.
+- Resize events update only the CSS display size; no game-world state is mutated.
+- Dev mode draws an `[Idle Viewport Debug]` overlay (top-right) showing logical size, CSS size, backing size, devicePixelRatio, and render scale.
 
 ## Forge System
 

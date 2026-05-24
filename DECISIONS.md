@@ -2,9 +2,18 @@
 
 ## Internal Render Resolution
 
-**Decision**: Render the game canvas at 320px internal width, with height calculated from container aspect ratio.
+**Decision** (updated build 128): Render the Equation / Idle canvas at a **fixed** logical resolution of **320 × 640** px — a stable, invariant game-world coordinate space.
 
-**Rationale**: 320px provides a good balance between the retro-pixel aesthetic and readability of mathematical expressions. CSS `image-rendering: pixelated` handles the upscaling cleanly. This keeps particle counts and drawing operations low on mobile.
+**Previous approach**: height was calculated dynamically from the container aspect ratio, causing `equationCenterY` to drift on resize and browser zoom, which visually offset motes from their looms.
+
+**New approach**: The canvas backing store is always `320 × 640`. The `#game-area` wrapper div is sized in CSS pixels by `resizeCanvas()` to be the largest rectangle that fits the available container while maintaining the 320:640 aspect ratio (letterbox / pillarbox). No game-world coordinates change during resize.
+
+**Rationale**: 320px width provides retro-pixel aesthetic. 640px height (~1:2 aspect ratio) fills a typical phone portrait screen with minimal letterboxing while giving the generator ring and forge comfortable spacing. CSS `image-rendering: pixelated` handles upscaling cleanly.
+
+**Coordinate systems**:
+- *Logical / world*: 320 × 640 px. All game state lives here. Never mutated by resize.
+- *Canvas backing*: same as logical (`canvas.width = 320`, `canvas.height = 640`). Never changed at runtime.
+- *CSS / screen*: `#game-area` CSS width × height, computed by `resizeCanvas()`. Input events are converted CSS → logical in `canvasCoordsFromPointerEvent()`.
 
 ## Math Notation Rendering
 
