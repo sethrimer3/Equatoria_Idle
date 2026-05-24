@@ -272,7 +272,11 @@ export function drawRpgFrame(
   renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState?.paletteId ?? 'mono');
   if (terrainState) {
     renderTopographicTerrain(canvas2d, terrainState, nowMs);
-    renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx);
+    // Topographic lighting overlay is only applicable to the organic contour variant;
+    // skip it for recursive-square terrain which has its own visual style.
+    if (terrainState.terrainKind === 'topographic') {
+      renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx);
+    }
   }
 
   // Pathfinding debug overlay (dev mode only — no-op otherwise).

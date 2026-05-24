@@ -1016,7 +1016,12 @@
 - Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
 
 ### src/render/rpg/terrain/topographic-terrain.ts
-- Self-contained seeded topographic terrain module for RPG waves.
+- Self-contained seeded topographic terrain module for RPG waves.  Now supports two
+  terrain variants selected randomly per-wave from the wave seed.
+- **Build 124+:** added `RpgTerrainKind = 'topographic' | 'recursiveSquares'` discriminant.
+  `TopographicTerrainState` gained `terrainKind`, `squareNodes`, `squareMaxDepth` fields.
+  `beginWaveTerrain()` picks variant 50/50 from seeded RNG.  All collision and LOS functions
+  dispatch on `terrainKind`.  Imports `recursive-square-terrain.ts`.
 - Exports deterministic terrain generation/render helpers plus geometry helpers:
   `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`,
   `beginTopographicTerrainShrink`, `renderTopographicTerrain`,
@@ -1029,21 +1034,27 @@
 - Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling,
   staggered ring growth/shrink animation.
 - **Build 108+:** growing-phase animation uses opacity-only ring reveal (no radial scale).
-  `_renderMergedContours` and `_renderPerIslandRings` check `state.phase === 'growing'`;
-  during growing, rings render at their full final geometry with per-ring opacity stagger
-  (innermost ring fades in first, outermost last) — no `_scalePolylineAroundCentroid` call.
   Shrinking phase retains the existing scale-down behavior.
   Collision geometry is unchanged by this visual-only modification.
-- Terrain centers are placed so the full island radius stays inside the edge
-  margin; edge-wall/canyon and partially offscreen placement are intentionally
-  disabled because they caused collision and lighting ambiguity.
 - **Build 84+:** calls `buildMergedContours` from `topographic-terrain-field.ts` at
   generation time; `renderTopographicTerrain` draws merged scalar-field contours.
-  `pushPointOutsideTopographicTerrain` uses nearest-point-on-boundary logic.
-  `computeTerrainRepulsionForce` provides soft quadratic repulsion for smooth collision.
 - **Build 85+:** `lightCache: TopographyLightCache | null` on terrain state stores
-  the baked lighting overlay; the RPG draw pass layers it after contour rendering.
-- Center dots are dev-only (`terrainDevMode` flag, not set during gameplay).
+  the baked lighting overlay.
+
+### src/render/rpg/terrain/recursive-square-terrain.ts  *(new — build 124)*
+- Generates and renders the `recursiveSquares` terrain variant.
+- `RecursiveSquareNode` — one rotated square: centre, half-size, angle, depth, colors,
+  bounding radius, and precomputed world-space corners.
+- `generateRecursiveSquareTerrain(seed, waveNumber, canvasW, canvasH)` — deterministic
+  tree of up to `MAX_DEPTH=4` nested squares.  Children attach to random sides of parents
+  with configurable overlap (35–85 %).  Player safe-zone (70 px around canvas centre)
+  excluded.  Returns a flat parent-before-children list for collision iteration.
+- `getSquareNodeGrowthAlpha01(depth, squareMaxDepth, growth01)` — staggered animation
+  helper: root squares appear first, deeper children follow.
+- `renderRecursiveSquareTerrain(ctx, squareNodes, squareMaxDepth, growth01)` — dark fill,
+  crisp depth-scaled outline, faint glow on root/d1 squares, corner accent dots on roots.
+- Imported by `topographic-terrain.ts`; not used directly outside the terrain module.
+
 
 ### src/render/rpg/terrain/topographic-lighting-types.ts
 - Shared type definitions for the topography lighting system.

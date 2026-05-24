@@ -1,6 +1,48 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#123**
+Current build: **#124**
+
+---
+
+## Build #124 — Boss terrain clearing + Recursive-square terrain variant
+
+### What was implemented
+
+**Part 1: Boss terrain clearing (rpg-render.ts)**
+- Added `clearWaveTerrainForBossFight()` — sets `topographicTerrainState = null` and rebuilds the nav grid to all-walkable. This ensures player movement, enemy pathfinding, LOS checks, weapons, and all collision code treat the arena as fully open during boss fights.
+- Wired `clearWaveTerrainForBossFight()` to the `onEnterBossWave` callback in the `createBossWaveManager` call, so it fires for both normal boss-wave progression and menu-triggered boss fights.
+- Normal-wave progression already skips waves divisible by 100 (boss waves) via `while (wave % 100 === 0) wave++` in `startNextWave()`. The new guard is an additional explicit layer for robustness.
+
+**Part 2: Recursive-square terrain variant (src/render/rpg/terrain/recursive-square-terrain.ts)**
+- New module: `generateRecursiveSquareTerrain(seed, waveNumber, canvasW, canvasH)` — produces a flat list of `RecursiveSquareNode[]` (parent-before-children) from seeded deterministic RNG.
+- Each `RecursiveSquareNode` stores: centre, half-size, rotation angle, depth, HSL stroke color, fill alpha, line width, bounding radius, and precomputed world-space corners.
+- Up to `MAX_DEPTH=4` levels of recursion.  Child squares attach to random sides of parents with configurable overlap (35–85%).  Attachment position along each side is randomised.
+- Player safe-zone exclusion (70 px radius around canvas centre) and canvas-edge margin respected.
+- `getSquareNodeGrowthAlpha01(depth, squareMaxDepth, growth01)` — staggered animation: root squares appear first, children follow depth-by-depth.
+- `renderRecursiveSquareTerrain()` — dark fill, crisp outline with depth-scaled line width, faint glow on root/depth-1 squares, corner accent dots on root squares.
+
+**Terrain-kind dispatch (topographic-terrain.ts)**
+- Added `RpgTerrainKind = 'topographic' | 'recursiveSquares'` discriminant type.
+- Added `terrainKind`, `squareNodes`, `squareMaxDepth` fields to `TopographicTerrainState`.
+- `beginWaveTerrain()` picks variant 50/50 from seeded RNG — deterministic per wave/canvas size.
+- All collision, LOS, and pathfinding functions dispatch on `terrainKind`:
+  - `isPointInsideTopographicTerrain`
+  - `segmentIntersectsTopographicTerrain`
+  - `circleIntersectsTopographicTerrain` (uses bounding-circle pre-reject)
+  - `terrainFirstIntersectionT`
+  - `getTopographicTerrainSolidPolygons`
+  - `signedDistanceToTerrainBoundary`
+  - `pushPointOutsideTopographicTerrain`
+  - `computeTerrainRepulsionForce` (delegates to `signedDistanceToTerrainBoundary`, no change needed)
+- Recursive-square polygons use world-space corners directly (no centroid inverse-scaling).
+- Topographic lighting overlay (`renderTopographyLighting`) is now skipped for `recursiveSquares` terrain.
+
+### Known limitations / follow-up
+
+- **Canvas coverage guard**: A `CANVAS_COVERAGE_MAX` constant is defined but not enforced. Very rarely, many large root squares + children could cover a large portion of the screen. Future improvement: count total covered area and prune trees if coverage exceeds ~35%.
+- **Terrain dev overlay**: the existing `drawTerrainDevOverlay` only shows topographic data; a recursive-squares equivalent showing node bounding circles and depth labels would be useful for debugging.
+- **topographic-lighting for recursiveSquares**: currently completely skipped. A future pass could add a custom lighting or ambient-shadow effect for square terrain.
+- **Pathfinding grid quality**: The nav grid is built using `circleIntersectsTopographicTerrain` which now correctly handles recursive squares, but the cell size (20 px default) may be too coarse for very small child squares (halfSize < 15 px). Those squares may be passable for A* purposes even though they block collision. Not a safety issue but worth tuning.
 
 ---
 
