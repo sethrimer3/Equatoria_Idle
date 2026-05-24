@@ -1051,6 +1051,9 @@
   smooths grids with a separable **Gaussian** blur, combines slope shading and
   shadow into a light grid, then composites highlight, shadow, and faint beam
   shafts into an offscreen canvas.
+- **Build 112+:** masks baked lighting to terrain pixels only and applies a
+  tiny height-based alpha fade at the silhouette, preventing cast-shadow pixels
+  from creating a black fringe around the mountain edge.
 - `renderPersistentTopographySunlight` draws the warm sunlight fill every RPG
   frame from a cached offscreen canvas, independent of active terrain, so
   sunlight persists between waves without rebuilding the gradient each frame.

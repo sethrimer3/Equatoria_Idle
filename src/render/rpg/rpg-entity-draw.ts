@@ -153,6 +153,7 @@ export function drawEmeraldPlayerMissiles(
     const baseAlpha = m.isFizzling
       ? 0.5 + 0.5 * Math.abs(Math.sin(now * 0.015))
       : 1;
+    const proximityAlpha = m.proximityAlpha;
 
     // Comet trail — layered glow fading from bright tip to dark tail.
     // Glow is 25% smaller: shadowBlur and outer glow rect reduced by factor 0.75.
@@ -164,21 +165,21 @@ export function drawEmeraldPlayerMissiles(
         if (trailSize < 0.2) continue;
         const half = trailSize / 2;
         // Outer glow layer (glow radius reduced 25%).
-        ctx.globalAlpha = t * 0.5 * baseAlpha;
+        ctx.globalAlpha = t * 0.5 * baseAlpha * proximityAlpha;
         ctx.shadowBlur  = trailSize * 5.25; ctx.shadowColor = EMERALD_MISSILE_GLOW;
         ctx.fillStyle   = EMERALD_MISSILE_GLOW;
         const gh = half * 1.875;
         ctx.fillRect(Math.floor(m.trailX[bufIdx] - gh), Math.floor(m.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
         ctx.shadowBlur = 0;
         // Inner core layer.
-        ctx.globalAlpha = t * 0.75 * baseAlpha;
+        ctx.globalAlpha = t * 0.75 * baseAlpha * proximityAlpha;
         ctx.fillStyle   = EMERALD_MISSILE_COLOR;
         ctx.fillRect(Math.floor(m.trailX[bufIdx] - half), Math.floor(m.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
       }
     }
     // Missile body — bright emerald core (glow 25% smaller).
     const half = EMERALD_MISSILE_SIZE / 2;
-    ctx.globalAlpha = baseAlpha;
+    ctx.globalAlpha = baseAlpha * proximityAlpha;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur  = EMERALD_MISSILE_SIZE * 4.5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
       ctx.fillStyle   = EMERALD_MISSILE_GLOW;
@@ -207,6 +208,7 @@ export function drawEmeraldSubMissiles(
     const baseAlpha = isDecelerating
       ? 0.4 + 0.6 * Math.abs(Math.sin(now * 0.018))
       : 1;
+    const proximityAlpha = s.proximityAlpha;
 
     // Short comet trail.
     if (!isLowGraphicsMode && s.trailCount >= 2) {
@@ -216,20 +218,20 @@ export function drawEmeraldSubMissiles(
         const trailSize = EMERALD_SUB_MISSILE_SIZE * t * 1.6;
         if (trailSize < 0.15) continue;
         const half = trailSize / 2;
-        ctx.globalAlpha = t * 0.45 * baseAlpha;
+        ctx.globalAlpha = t * 0.45 * baseAlpha * proximityAlpha;
         ctx.shadowBlur  = trailSize * 5; ctx.shadowColor = EMERALD_MISSILE_GLOW;
         ctx.fillStyle   = EMERALD_MISSILE_GLOW;
         const gh = half * 1.8;
         ctx.fillRect(Math.floor(s.trailX[bufIdx] - gh), Math.floor(s.trailY[bufIdx] - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
         ctx.shadowBlur = 0;
-        ctx.globalAlpha = t * 0.65 * baseAlpha;
+        ctx.globalAlpha = t * 0.65 * baseAlpha * proximityAlpha;
         ctx.fillStyle   = EMERALD_MISSILE_COLOR;
         ctx.fillRect(Math.floor(s.trailX[bufIdx] - half), Math.floor(s.trailY[bufIdx] - half), Math.ceil(trailSize), Math.ceil(trailSize));
       }
     }
     // Sub-missile body.
     const half = EMERALD_SUB_MISSILE_SIZE / 2;
-    ctx.globalAlpha = baseAlpha;
+    ctx.globalAlpha = baseAlpha * proximityAlpha;
     if (!isLowGraphicsMode) {
       ctx.shadowBlur  = EMERALD_SUB_MISSILE_SIZE * 4; ctx.shadowColor = EMERALD_MISSILE_GLOW;
       ctx.fillStyle   = EMERALD_MISSILE_GLOW;

@@ -98,7 +98,7 @@ const MAX_PER_ISLAND_FIELD_CONTRIBUTION = 8.0;
 const SUNLIGHT_FILL_ALPHA = 0.075;
 const MIN_CAST_SHADOW_HEIGHT = 0.18;
 const LIGHT_GROWTH_CACHE_STEPS = 10;
-const TERRAIN_LIGHTING_EDGE_BLUR_PX = 1.1;
+const TERRAIN_LIGHTING_EDGE_FADE_HEIGHT = 0.72;
 const LIGHTING_PALETTES: Record<TopographicTerrainPaletteId, LightingPalette> = {
   mono: {
     highlight: { r: 255, g: 244, b: 218 },
@@ -255,20 +255,12 @@ export function buildTopographyLightCache(
         const shadowAmount = sampleGridNearest(shadowGrid, gridW, gridH, gx, gy);
 
         if (h <= 0.005) {
-          // Ground / below-terrain area: sharp-edged cast shadow from terraces above.
-          if (shadowAmount <= SHARP_SHADOW_THRESHOLD) continue;
-          const shadowAlpha = clamp01(config.terrainOpacity * 0.46);
-          if (shadowAlpha <= 0.01) continue;
-          pixels[idx]     = palette.shadow.r;
-          pixels[idx + 1] = palette.shadow.g;
-          pixels[idx + 2] = palette.shadow.b;
-          pixels[idx + 3] = Math.round(shadowAlpha * 255);
           continue;
         }
 
         // Terrain pixel — hard lit vs. shadowed decision.
         const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
-        const presence = smoothstep(0.005, 0.92, h);
+        const presence = terrainLightingEdgeFade(h);
         const inShadow = shadowAmount > SHARP_SHADOW_THRESHOLD;
 
         if (!inShadow) {
@@ -295,17 +287,11 @@ export function buildTopographyLightCache(
         const shadowAmount = sampleGridBilinear(shadowGrid, gridW, gridH, gx, gy);
 
         if (h <= 0.005) {
-          const shadowAlpha = clamp01(config.terrainOpacity * shadowAmount * 0.42);
-          if (shadowAlpha <= 0.01) continue;
-          pixels[idx]     = palette.shadow.r;
-          pixels[idx + 1] = palette.shadow.g;
-          pixels[idx + 2] = palette.shadow.b;
-          pixels[idx + 3] = Math.round(shadowAlpha * 255);
           continue;
         }
 
         const height01 = clamp01(h / CONTOUR_LEVEL_COUNT);
-        const presence = smoothstep(0.005, 0.92, h);
+        const presence = terrainLightingEdgeFade(h);
         const terrace = 1 - Math.abs((((h % 1) + 1) % 1) * 2 - 1);
         const terrainShadow = shadowAmount * smoothstep(0.05, 0.7, h) * clamp01((0.62 - lightAmount) * 3.2);
         const bias = (lightAmount - 0.49) * (1.05 + height01 * 0.62) - terrainShadow * (0.38 + height01 * 0.16);
@@ -373,13 +359,7 @@ export function renderTopographyLighting(
     ctx.globalCompositeOperation = 'source-over';
     ctx.imageSmoothingEnabled = true;
     if (state.growth01 <= 0) return;
-    // Sharp cylinder mode bakes hard-edged shadows; skip the render-time blur
-    // so the crisp shadow boundaries are preserved.
-    if (cache.shadowMode !== 'sharpCylinder') {
-      ctx.filter = `blur(${TERRAIN_LIGHTING_EDGE_BLUR_PX}px)`;
-    }
     ctx.drawImage(cache.canvas, 0, 0, cache.width, cache.height);
-    ctx.filter = 'none';
   } finally {
     ctx.restore();
   }
@@ -1089,4 +1069,8 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
   if (edge0 === edge1) return x < edge0 ? 0 : 1;
   const t = clamp01((x - edge0) / (edge1 - edge0));
   return t * t * (3 - 2 * t);
+}
+
+function terrainLightingEdgeFade(height: number): number {
+  return smoothstep(0.005, TERRAIN_LIGHTING_EDGE_FADE_HEIGHT, height);
 }

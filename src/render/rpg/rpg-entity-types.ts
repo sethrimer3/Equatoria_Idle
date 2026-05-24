@@ -17,6 +17,8 @@ export interface EmeraldPlayerMissile {
   noTargetMs: number;
   /** True while decelerating to a stop (no enemy could be reached). */
   isFizzling: boolean;
+  /** Visual opacity from enemy proximity: 0.3 far away, 1 near a target. */
+  proximityAlpha: number;
   trailX: Float64Array; trailY: Float64Array;
   trailHead: number; trailCount: number;
 }
@@ -34,6 +36,8 @@ export interface EmeraldSubMissile {
   lifetimeMs: number;
   /** Accumulated ms spent at near-zero speed after fuel runs out (triggers post-stop explosion). */
   stoppedMs: number;
+  /** Visual opacity from enemy proximity: 0.3 far away, 1 near a target. */
+  proximityAlpha: number;
   trailX: Float32Array; trailY: Float32Array;
   trailHead: number; trailCount: number;
 }

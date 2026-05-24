@@ -23,6 +23,7 @@ import {
   EMERALD_SUB_MISSILE_TRAIL_CAP, EMERALD_SUB_MISSILE_HIT_RADIUS,
   EMERALD_SUB_MISSILE_SQUIGGLE, EMERALD_SUB_MISSILE_SQUIGGLE_HZ,
   EMERALD_SUB_MISSILE_DETECT_PX,
+  EMERALD_SUB_MISSILE_OPACITY_FADE_START_PX, EMERALD_SUB_MISSILE_MIN_ALPHA,
   EMERALD_SUB_MISSILE_FUEL_MS, EMERALD_SUB_MISSILE_DECEL_START_MS,
   EMERALD_SUB_MISSILE_FIZZLE_DRAG, EMERALD_SUB_MISSILE_STOP_SPEED,
   EMERALD_SUB_MISSILE_POST_STOP_DELAY_MS,
@@ -156,6 +157,7 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
         squigglePhase: Math.random() * Math.PI * 2,
         lifetimeMs: 0,
         stoppedMs: 0,
+        proximityAlpha: EMERALD_SUB_MISSILE_MIN_ALPHA,
         trailX: new Float32Array(EMERALD_SUB_MISSILE_TRAIL_CAP),
         trailY: new Float32Array(EMERALD_SUB_MISSILE_TRAIL_CAP),
         trailHead: 0, trailCount: 0,
@@ -201,11 +203,11 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
         s.vx = 0; s.vy = 0;
       }
 
+      let nearestDist2 = Infinity;
       if (!isDecelerating) {
         // Still has fuel — seek nearest enemy within detection range.
         let nearestX: number | null = null;
         let nearestY: number | null = null;
-        let nearestDist2 = Infinity;
         const checkTarget = (ex: number, ey: number) => {
           const d = (ex - s.x) * (ex - s.x) + (ey - s.y) * (ey - s.y);
           if (d < nearestDist2) { nearestDist2 = d; nearestX = ex; nearestY = ey; }
@@ -248,6 +250,13 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
         s.vx *= decelDrag;
         s.vy *= decelDrag;
       }
+
+      s.proximityAlpha = getProximityAlpha(
+        nearestDist2,
+        EMERALD_SUB_MISSILE_HIT_RADIUS,
+        EMERALD_SUB_MISSILE_OPACITY_FADE_START_PX,
+        EMERALD_SUB_MISSILE_MIN_ALPHA,
+      );
 
       // Squiggle wobble while still powered.
       if (!isDecelerating) {
@@ -396,6 +405,15 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
         removeDeadEnemies(); checkWaveCompletion();
       }
     }
+  }
+
+  function getProximityAlpha(distSq: number, fullAlphaRadiusPx: number, fadeStartPx: number, minAlpha: number): number {
+    if (!Number.isFinite(distSq)) return minAlpha;
+    const dist = Math.sqrt(distSq);
+    if (dist <= fullAlphaRadiusPx) return 1;
+    if (dist >= fadeStartPx) return minAlpha;
+    const t = 1 - (dist - fullAlphaRadiusPx) / (fadeStartPx - fullAlphaRadiusPx);
+    return minAlpha + (1 - minAlpha) * t;
   }
 
   function updateEmeraldSwirlParticles(deltaMs: number): void {

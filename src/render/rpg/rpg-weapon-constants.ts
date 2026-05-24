@@ -182,6 +182,10 @@ export const EMERALD_MISSILE_PROXIMITY_PX = 30;
 export const EMERALD_MISSILE_DETECT_PX    = 90;
 /** ms with no enemy in detect range before the missile starts fizzling. */
 export const EMERALD_MISSILE_NO_TARGET_MS = 1400;
+/** px from enemy where the primary missile starts fading from 30% to 100% opacity. */
+export const EMERALD_MISSILE_OPACITY_FADE_START_PX = 60;
+/** Minimum opacity for primary missiles away from enemies. */
+export const EMERALD_MISSILE_MIN_ALPHA    = 0.3;
 /** Per-frame speed multiplier while fizzling (drag). */
 export const EMERALD_MISSILE_FIZZLE_DRAG  = 0.93;
 /** px/frame threshold below which a fizzling missile is considered stopped. */
@@ -206,6 +210,10 @@ export const EMERALD_SUB_MISSILE_SQUIGGLE     =  0.10;
 export const EMERALD_SUB_MISSILE_SQUIGGLE_HZ  =  0.22;
 /** px range within which a sub-missile "sees" enemies. */
 export const EMERALD_SUB_MISSILE_DETECT_PX    = 80;
+/** px from enemy where sub-missiles start fading from 30% to 100% opacity. */
+export const EMERALD_SUB_MISSILE_OPACITY_FADE_START_PX = 45;
+/** Minimum opacity for sub-missiles away from enemies. */
+export const EMERALD_SUB_MISSILE_MIN_ALPHA = 0.3;
 /** Total fuel lifetime: sub-missile stops seeking after this many ms. */
 export const EMERALD_SUB_MISSILE_FUEL_MS          = 4000;
 /** ms into lifetime at which deceleration drag begins (gradual stop between 2 s and 4 s). */

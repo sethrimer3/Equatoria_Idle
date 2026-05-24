@@ -18,6 +18,7 @@ import {
   EMERALD_MISSILE_SPEED, EMERALD_MISSILE_MAX_SPEED, EMERALD_MISSILE_SEEK_STR,
   EMERALD_MISSILE_TRAIL_CAP, EMERALD_MISSILE_COLOR, EMERALD_MISSILE_HIT_RADIUS,
   EMERALD_MISSILE_PROXIMITY_PX, EMERALD_MISSILE_DETECT_PX, EMERALD_MISSILE_NO_TARGET_MS,
+  EMERALD_MISSILE_OPACITY_FADE_START_PX, EMERALD_MISSILE_MIN_ALPHA,
   EMERALD_MISSILE_FIZZLE_DRAG, EMERALD_MISSILE_STOP_SPEED,
 } from './rpg-weapon-constants';
 import { createEmeraldSubSystem } from './rpg-weapon-emerald-subs';
@@ -137,6 +138,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       tier,
       noTargetMs: 0,
       isFizzling: false,
+      proximityAlpha: EMERALD_MISSILE_MIN_ALPHA,
       trailX: new Float64Array(EMERALD_MISSILE_TRAIL_CAP),
       trailY: new Float64Array(EMERALD_MISSILE_TRAIL_CAP),
       trailHead: 0, trailCount: 0,
@@ -183,6 +185,13 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
       for (const e of eliteEnemies) { if (!e.isInvuln) checkTarget(e.x, e.y); }
       if (ctx.bossEnemy) checkTarget(ctx.bossEnemy.x, ctx.bossEnemy.y);
+
+      m.proximityAlpha = getProximityAlpha(
+        nearestDistSq,
+        EMERALD_MISSILE_HIT_RADIUS,
+        EMERALD_MISSILE_OPACITY_FADE_START_PX,
+        EMERALD_MISSILE_MIN_ALPHA,
+      );
 
       // If an enemy is close enough to detect, reset fizzle timer and home toward it.
       if (nearestDistSq <= detectR2 && nearestEnemyX !== null && nearestEnemyY !== null) {
@@ -317,6 +326,15 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
         removeDeadEnemies(); checkWaveCompletion();
       }
     }
+  }
+
+  function getProximityAlpha(distSq: number, fullAlphaRadiusPx: number, fadeStartPx: number, minAlpha: number): number {
+    if (!Number.isFinite(distSq)) return minAlpha;
+    const dist = Math.sqrt(distSq);
+    if (dist <= fullAlphaRadiusPx) return 1;
+    if (dist >= fadeStartPx) return minAlpha;
+    const t = 1 - (dist - fullAlphaRadiusPx) / (fadeStartPx - fullAlphaRadiusPx);
+    return minAlpha + (1 - minAlpha) * t;
   }
 
   return {
