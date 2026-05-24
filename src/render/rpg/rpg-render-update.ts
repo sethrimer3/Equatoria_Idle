@@ -76,6 +76,7 @@ import {
   updateTeleportParticles,
 } from './rpg-enemy-updates-adv';
 import { updateEliteEnemies } from './rpg-elite-enemy-updates';
+import { updateStardustEnemies } from './rpg-stardust-update';
 import { updateBossEnemy, updateBossProjectiles } from './rpg-boss-update';
 import { updateBossAttacks } from './rpg-boss-attack-update';
 import { updateOrbitProjectile } from './rpg-orbit-projectile';
@@ -124,6 +125,7 @@ export interface RpgEnemyUpdateArrays {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
@@ -209,6 +211,7 @@ export interface RpgUpdateCtx {
   // Player damage visuals
   updateShotVisuals(deltaMs: number): void;
   updateDamageNumbers(deltaMs: number): void;
+  spawnDamageNumber(x: number, y: number, vx: number, vy: number, text: string, ratio: number, color: string, sourceColor?: string): void;
 
   // Lucky motes and achievement state
   mote: RpgMote;
@@ -290,6 +293,19 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   updateEigensteinEnemies(a.eigensteinEnemies, a.eigensteinBeams, ctx.enemyCtx, deltaMs);
   updateEigensteinBeams(a.eigensteinBeams, ctx.enemyCtx, deltaMs);
   updateEliteEnemies(a.eliteEnemies, ctx.eliteEnemyCtx, deltaMs);
+  // Stardust enemy update (prismatic particle cloud + laser bounce)
+  if (a.stardustEnemies.length > 0) {
+    const stardustCtx = {
+      mote: ctx.mote,
+      dim: { w: ctx.enemyCtx.dim.w, h: ctx.enemyCtx.dim.h },
+      playerStats: ctx.playerStats,
+      getTopographicTerrainState: ctx.getTopographicTerrainState.bind(ctx),
+      dealDamageToPlayer: ctx.enemyCtx.dealDamageToPlayer.bind(ctx.enemyCtx),
+      spawnDamageNumber: ctx.spawnDamageNumber.bind(ctx),
+      fluid: ctx.fluid as any,
+    };
+    updateStardustEnemies(a.stardustEnemies, stardustCtx, deltaMs);
+  }
   // AlivenParticle group updates (contact damage, particle-life physics, special abilities)
   updateAlivenGroups(a.alivenGroups, ctx.alivenUpdateCtx, deltaMs);
   // Procedural creatures

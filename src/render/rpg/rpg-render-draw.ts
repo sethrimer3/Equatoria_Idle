@@ -68,6 +68,7 @@ import {
   drawEliteEnemies,
   setLowGraphicsMode as setEliteDrawLowGraphics,
 } from './rpg-elite-enemy-draw';
+import { drawStardustEnemies, setLowGraphicsMode as setStardustDrawLowGraphics } from './rpg-stardust-draw';
 import type {
   RpgMote, RpgJoystick, RpgPhase,
   HitEffect, ShotLine, DamageNumber, DeathParticle,
@@ -145,6 +146,7 @@ export interface RpgDrawCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
@@ -287,6 +289,7 @@ export function drawRpgFrame(
   drawEigensteinEnemies(canvas2d, ctx.eigensteinEnemies);
   drawEigensteinBeams(canvas2d, ctx.eigensteinBeams, widthPx, heightPx);
   drawEliteEnemies(canvas2d, ctx.eliteEnemies);
+  drawStardustEnemies(canvas2d, ctx.stardustEnemies);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), widthPx, heightPx, glowTimeS);
@@ -421,6 +424,7 @@ export function setAllDrawLowGraphics(enabled: boolean): void {
   setWeaponSwordLowGraphics(enabled);
   setBossLowGraphics(enabled);
   setEliteDrawLowGraphics(enabled);
+  setStardustDrawLowGraphics(enabled);
   setAlivenLowGraphics(enabled);
   setDrawBossAttacksLowGraphics(enabled);
   // No per-module low-graphics for terrain (it already skips when hidden)

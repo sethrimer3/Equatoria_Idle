@@ -36,6 +36,7 @@ import {
   CITRINE_ENEMY_SIZE, IOLITE_ENEMY_SIZE, AMETHYST_ENEMY_SIZE,
   DIAMOND_ENEMY_SIZE,
   FRACTERYL_ENEMY_SIZE, EIGENSTEIN_ENEMY_SIZE,
+  STARDUST_SIZE,
 } from './rpg-enemy-constants';
 import {
   DUSTWISP_SIZE, RIBBONWORM_SIZE, LANTERNMOTH_SIZE, EYESTALK_SIZE,
@@ -55,6 +56,7 @@ import {
   makeEigensteinEnemy, makeBossEnemy,
   makeEliteEnemy,
 } from './rpg-factories';
+import { makeStardustEnemy } from './rpg-stardust-factories';
 import {
   makeDustWispEnemy, makeRibbonWormEnemy, makeLanternMothEnemy, makeEyeStalkEnemy,
   makeJellyfishEnemy, makeClothGhostEnemy, makePlantTurretEnemy, makeGearInsectEnemy,
@@ -127,6 +129,7 @@ export interface EnemySpawnCtx {
   sapphireFishEnemies: SapphireFishEnemy[];
   amethystFishEnemies: AmethystFishEnemy[];
   diamondFishEnemies: DiamondFishEnemy[];
+  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
 }
 
 // ── Spawn helper ──────────────────────────────────────────────────────────────
@@ -307,6 +310,17 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       attempts++;
     } while (attempts < 20);
     ctx.eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
+  } else if (enemyTypeId === 'stardust') {
+    const half = STARDUST_SIZE;
+    do {
+      spawnX = half + Math.random() * (widthPx - STARDUST_SIZE * 2);
+      spawnY = half + Math.random() * (heightPx - STARDUST_SIZE * 2);
+      const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))) break;
+      attempts++;
+    } while (attempts < 20);
+    ctx.stardustEnemies.push(makeStardustEnemy(spawnX, spawnY, wn, widthPx, heightPx));
   } else if (enemyTypeId === 'boss') {
     ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx));
     ctx.enterBossWave();
