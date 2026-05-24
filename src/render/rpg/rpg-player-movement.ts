@@ -34,8 +34,13 @@ import {
 import {
   pushPointOutsideTopographicTerrain,
   computeTerrainRepulsionForce,
+  hasTopographicTerrainLineOfSight,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
+import {
+  createRpgPathState, computePathSteeredDirection, PLAYER_REPATH_MS,
+  type RpgPathState,
+} from './terrain/rpg-pathfinding';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -84,6 +89,8 @@ export interface PlayerMovementCtx {
 
   /** Returns the current topographic terrain state, or null if none is active. */
   getTerrainState(): TopographicTerrainState | null;
+  /** Returns the current navigation grid for pathfinding, or null if not built. */
+  getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
 }
 
 /**
@@ -96,6 +103,11 @@ export interface PlayerMovementState {
   /** Current player aim angle (radians). Updated in place. */
   playerAimAngle: number;
 }
+
+// ── Module-level path state for player auto-move ─────────────────────────────
+// A single persistent instance shared across frames.  Avoided putting it in
+// PlayerMovementState to keep that interface simple and serialisable.
+const _playerPathState: RpgPathState = createRpgPathState();
 
 // ── Core update function ──────────────────────────────────────────────────────
 
@@ -123,6 +135,8 @@ export function updatePlayerMovement(
   const effectiveMaxSpeed = MAX_RPG_SPEED * speedMul;
 
   if (joystick.isActive) {
+    // Manual input: clear cached path so A* re-runs when auto-move resumes.
+    _playerPathState.path.length = 0;
     const dx = joystick.thumbX - joystick.baseX;
     const dy = joystick.thumbY - joystick.baseY;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -141,6 +155,8 @@ export function updatePlayerMovement(
     const hasKeyInput = dirLen > 0;
 
     if (hasKeyInput) {
+      // Manual keyboard input: clear cached path so A* re-runs when auto-move resumes.
+      _playerPathState.path.length = 0;
       mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
       mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
     } else if (ctx.autoMoveEnabled && !ctx.isBossWaveActive && _anyEnemiesPresent(ctx)) {
@@ -199,8 +215,41 @@ export function updatePlayerMovement(
         const ex = nearestX - mote.x, ey = nearestY - mote.y;
         const d = Math.sqrt(ex * ex + ey * ey);
         if (d > autoMoveStopRange) {
-          mote.vx = (ex / d) * effectiveMaxSpeed;
-          mote.vy = (ey / d) * effectiveMaxSpeed;
+          // Choose a goal point near the enemy but respecting stop range.
+          // Pull the goal back along the enemy→player direction by autoMoveStopRange.
+          const goalX = d > autoMoveStopRange
+            ? mote.x + (ex / d) * (d - autoMoveStopRange * 0.8)
+            : nearestX;
+          const goalY = d > autoMoveStopRange
+            ? mote.y + (ey / d) * (d - autoMoveStopRange * 0.8)
+            : nearestY;
+
+          const terrain = ctx.getTerrainState();
+          const hasLos = hasTopographicTerrainLineOfSight(terrain, mote.x, mote.y, nearestX, nearestY);
+
+          let steerDx: number, steerDy: number;
+          if (hasLos) {
+            // Direct line of sight: steer straight toward the goal.
+            steerDx = ex / d; steerDy = ey / d;
+          } else {
+            // Terrain blocks direct path: use A* pathfinding.
+            const navGrid = ctx.getNavGrid();
+            const speed = Math.sqrt(mote.vx * mote.vx + mote.vy * mote.vy);
+            const dir = computePathSteeredDirection(
+              _playerPathState,
+              mote.x, mote.y,
+              goalX, goalY,
+              performance.now(),
+              navGrid,
+              terrain,
+              PLAYER_REPATH_MS,
+              speed,
+            );
+            steerDx = dir.dx; steerDy = dir.dy;
+          }
+
+          mote.vx = steerDx * effectiveMaxSpeed;
+          mote.vy = steerDy * effectiveMaxSpeed;
         } else {
           mote.vx *= RPG_VELOCITY_DAMPING;
           mote.vy *= RPG_VELOCITY_DAMPING;

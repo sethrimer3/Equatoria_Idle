@@ -138,6 +138,10 @@ import {
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 import { setTopographyLightingDevMode, setTopographyShadowMode } from './terrain/topographic-lighting';
+import {
+  buildRpgNavigationGrid,
+  type RpgNavGrid,
+} from './terrain/rpg-pathfinding';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -182,6 +186,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       heightPx = h;
       dim.w = w;
       dim.h = h;
+      // Rebuild nav grid for the new canvas dimensions.
+      rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
     }
     canvas.width  = widthPx;
     canvas.height = heightPx;
@@ -210,6 +216,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let interWaveTimerMs = 0;
   let isInterWave      = true;
   let topographicTerrainState: TopographicTerrainState | null = null;
+  /** Nav grid for pathfinding — rebuilt when terrain or canvas dimensions change. */
+  let rpgNavGrid: RpgNavGrid | null = null;
   const enemies: LaserEnemy[]    = [];
   const spawnQueue: SpawnEntry[] = [];
   let glowTimeS = 0;
@@ -357,6 +365,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Boss stage director state ──────────────────────────────────
   const bossStageDirectorState: BossStageDirectorState = createBossStageDirectorState();
+
+  // ── Pathfinding debug flag ─────────────────────────────────────
+  let _pathfindingDebugEnabled = false;
 
   // ── Boss wave management ───────────────────────────────────────
   /** True while a boss wave is active (from spawn until defeat or death). */
@@ -601,6 +612,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     exitBossWave:            () => bossWave.exitBossWave(),
     beginWaveTerrain:        (wave) => {
       topographicTerrainState = beginWaveTerrain(wave, widthPx, heightPx, performance.now());
+      rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
     },
     beginTopographicTerrainShrink: () => {
       if (topographicTerrainState) beginTopographicTerrainShrink(topographicTerrainState, performance.now());
@@ -847,6 +859,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getEffectiveEquippedIds,
     fluid,
     getTerrainState: () => topographicTerrainState,
+    getNavGrid: () => rpgNavGrid,
   };
 
   // ── Orbit projectile context (wired to rpg-orbit-projectile.ts) ─
@@ -898,6 +911,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     dealDamageToPlayerKnockback,
     clampEnemyToBounds,
     getTerrainState: () => topographicTerrainState,
+    getNavGrid: () => rpgNavGrid,
   };
 
   // EliteEnemyCtx extends RpgEnemyCtx with the projectile arrays elites fire into.
@@ -1058,6 +1072,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getEffectiveEquippedIds,
     getTargetedEnemy:             () => targeting.getTargetedEnemy(),
     rpgSimState,
+    getNavGrid:                   () => rpgNavGrid,
+    getPathfindingDebugEnabled:   () => _pathfindingDebugEnabled,
   };
 
   // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────
@@ -1193,6 +1209,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       statsPanel.setDevMode(enabled);
       setTopographyLightingDevMode(enabled);
       bossStageDirectorState.isDevMode = enabled;
+      _pathfindingDebugEnabled = enabled;
     },
 
     setInvincibilityMode(enabled: boolean): void {

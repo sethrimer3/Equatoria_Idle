@@ -111,6 +111,7 @@ import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DI
 import { renderTopographicTerrain } from './terrain/topographic-terrain';
 import { renderPersistentTopographySunlight, renderTopographyLighting } from './terrain/topographic-lighting';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
+import { drawRpgPathfindingDebug } from './terrain/rpg-pathfinding';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -224,6 +225,10 @@ export interface RpgDrawCtx {
   getEffectiveEquippedIds(): Set<string>;
   getTargetedEnemy(): ClosestTarget | null;
   rpgSimState: RpgSimState;
+  /** Returns the current navigation grid for pathfinding debug draw. */
+  getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
+  /** Returns true when pathfinding debug visualization should be drawn. */
+  getPathfindingDebugEnabled(): boolean;
 }
 
 // ── Small mutable state that persists across frames ───────────────────────────
@@ -269,6 +274,15 @@ export function drawRpgFrame(
     renderTopographicTerrain(canvas2d, terrainState, nowMs);
     renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx);
   }
+
+  // Pathfinding debug overlay (dev mode only — no-op otherwise).
+  drawRpgPathfindingDebug(
+    canvas2d,
+    ctx.getPathfindingDebugEnabled(),
+    ctx.getNavGrid(),
+    null,  // player path state not exposed here; could be wired later if desired
+    [],    // enemy path states — not collected here; kept lightweight
+  );
 
   drawLaserEnemies(canvas2d, ctx.enemies, nowMs);
   drawSapphireEnemies(canvas2d, ctx.sapphireEnemies);
