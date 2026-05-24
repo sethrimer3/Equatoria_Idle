@@ -43,6 +43,7 @@ import { updateVisiblePanels } from './app-actions';
 import { computeForgePreviewTerms } from './app-forge-preview';
 import type { HudOverlay } from '../ui/hud/hud-overlay';
 import type { AudioSystem } from '../audio';
+import { drawIdleViewportDebug } from '../render/canvas/idle-viewport-debug';
 
 // ─── Game loop context ──────────────────────────────────────────
 
@@ -345,6 +346,11 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.cc.heightPx,
       nowMs,
     );
+
+    // Dev-mode viewport diagnostic overlay (drawn last so it is always visible)
+    if (ctx.settings.isDevMode) {
+      drawIdleViewportDebug(ctx.cc);
+    }
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
       updateVisiblePanels(ctx.appState, ctx.uiPanels, ctx.appState.game, ctx.settings.isDevMode, ctx.settings.numberFormat);

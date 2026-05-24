@@ -31,7 +31,9 @@
 - CSS reset, `:root` variables, `@font-face`, `#app` layout.
 
 ### src/styles/canvas.css
-- Background animation canvas, vermiculate canvas, `#canvas-container`, `#game-canvas`.
+- Background animation canvas, vermiculate canvas, `#canvas-container`, `#game-area`, `#game-canvas`.
+- `#canvas-container` — full-screen flex container that letterboxes / pillarboxes `#game-area`.
+- `#game-area` — `position: relative` wrapper whose CSS size is set by `resizeCanvas()` to maintain the 320:640 logical aspect ratio; children are `#game-canvas` and `#hud-overlay`.
 - `#rpg-container` — flex-centred container for the RPG canvas (height excludes stats panel + tab bar).
 - `#rpg-canvas` — fixed `aspect-ratio: 320/568` with `max-width/max-height: 100%` for uniform letterbox/pillarbox scaling on desktop; no independent X/Y stretch.
 - `#rpg-stats-panel` — DOM stats panel (3×tab-height) above the navigation bar, with `.rpg-stat`, `.rpg-stat-label`, `.rpg-stat-value` child classes.
@@ -76,8 +78,9 @@
 ### src/app/app-game-loop.ts
 - `createGameLoop()` factory — creates the frame-by-frame game loop.
 - `GameLoopContext` interface — all dependencies injected.
-- Loop: sim tick → `tickForgeWarmup` → particle update → background → render → forge preview computation → UI update → auto-save.
+- Loop: sim tick → `tickForgeWarmup` → particle update → background → render → forge preview computation → dev viewport debug (dev mode only) → UI update → auto-save.
 - Calls `computeForgePreviewTerms` each frame and passes `forgePreviewTerms` to `hudOverlay.update`.
+- Calls `drawIdleViewportDebug(cc)` when `settings.isDevMode` is true (drawn last so it is always visible).
 
 - Resets the main canvas 2D context state before each full-frame render so leaked alpha, transforms, filters, or blend modes cannot blank later layers.
 
@@ -263,9 +266,16 @@
 - `ActiveMergeInfo` — descriptor for in-progress particle merge.
 
 ### src/render/canvas/game-canvas.ts
-- Canvas creation and lifecycle at 320px internal width.
-- `resizeCanvas()` ignores zero-size container measurements, which can occur while the canvas container is hidden behind the RPG tab.
+- Exports `IDLE_LOGICAL_WIDTH = 320` and `IDLE_LOGICAL_HEIGHT = 640` — the fixed game-world coordinate space.
+- `CanvasContext` — canvas element, 2D context, stable `widthPx`/`heightPx` (always 320 × 640), and `gameArea` wrapper div.
+- `createGameCanvas()` — creates `#game-area` wrapper + `#game-canvas` child with fixed backing size; applies initial letterboxing.
+- `resizeCanvas()` — computes aspect-ratio-preserving CSS dimensions for `#game-area` only; canvas backing store and game-world coordinates never change.
 - `resetCanvasRenderState()` restores baseline 2D context state before full-frame renders.
+
+### src/render/canvas/idle-viewport-debug.ts *(build 128)*
+- Dev-mode viewport diagnostic overlay for the Equation / Idle canvas.
+- `drawIdleViewportDebug(cc)` — draws a small info panel (top-right corner) showing logical size, canvas backing size, game-area CSS size, devicePixelRatio, and render scale.
+- Drawn last in the game loop when `settings.isDevMode` is true; useful for verifying that logical coordinates stay stable across resize and zoom events.
 
 ### src/render/assets/asset-paths.ts
 - Centralized asset path definitions (single source of truth).

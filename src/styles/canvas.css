@@ -39,12 +39,36 @@
   cursor: pointer;
   background: var(--bg-primary);
   /*
+   * Flex-centering: positions #game-area in the centre of the container
+   * so that letterbox / pillarbox bars appear symmetrically on all sides.
+   */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /*
    * touch-action: none — prevents the browser from claiming touch gestures
    * (scroll, pan) at the container level.  The game canvas child also sets
    * this via JS (game-canvas.ts), but some mobile browsers require the
    * container to declare it too for reliable pointer-event dispatch.
    */
   touch-action: none;
+}
+
+/*
+ * #game-area — the letterboxed / pillarboxed game viewport.
+ *
+ * Its CSS width and height are computed by resizeCanvas() in game-canvas.ts
+ * to maintain the fixed 320×640 logical aspect ratio while filling as much
+ * of #canvas-container as possible.
+ *
+ * Both the game canvas AND the HUD overlay (#hud-overlay) are children of
+ * this element so that percentage-based HUD positions (generator equation
+ * labels) map correctly to logical canvas coordinates at all window sizes.
+ */
+#game-area {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* ── RPG canvas container ─────────────────────────────────────── */
