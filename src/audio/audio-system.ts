@@ -113,6 +113,7 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
   const sfx     = new SfxPlayer(sfxVolume);
 
   let _contextStarted = false;
+  let _isFocused = true;
 
   return {
     async resumeContext(): Promise<void> {
@@ -154,6 +155,8 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
     },
 
     setFocused(focused: boolean): void {
+      _isFocused = focused;
+      sfx.setEnabled(focused);
       // No-op until the context has been started by a user gesture.
       if (!_contextStarted) return;
       const ctx = getAudioContext();
@@ -166,53 +169,65 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
     },
 
     onAchievementUnlocked(isSecret: boolean): void {
+      if (!_isFocused) return;
       const path = isSecret ? SECRET_ACHIEVEMENT_EARNED_PATH : ACHIEVEMENT_EARNED_PATH;
       void sfx.play(path);
     },
 
     onAchievementClaimed(): void {
+      if (!_isFocused) return;
       void sfx.play(ACHIEVEMENT_CLAIM_PATH);
     },
 
     onBuyEquationUpgrade(): void {
+      if (!_isFocused) return;
       void sfx.play(BUY_EQUATION_UPGRADE_PATH);
     },
 
     onBuyLoomUpgrade(): void {
+      if (!_isFocused) return;
       void sfx.play(BUY_LOOM_UPGRADE_PATH);
     },
 
     onError(): void {
+      if (!_isFocused) return;
       void sfx.play(ERROR_PATH);
     },
 
     onTabChange(_tabId: string): void {
+      if (!_isFocused) return;
       void sfx.play(SWITCHING_TABS_PATH);
     },
 
     onMotesMerged(count: number): void {
+      if (!_isFocused) return;
       for (let i = 0; i < count; i++) {
         sfx.playMotesMerge(MOTES_MERGING_PATHS, MOTES_MERGING_DROPLET_PATH);
       }
     },
 
     onForgeSpinUpBegan(): void {
+      if (!_isFocused) return;
       sfx.startForgeCharging(FORGE_CHARGING_PATHS);
     },
 
     onForgeCrunchStarted(): void {
+      if (!_isFocused) return;
       sfx.onForgeCrunch(FORGE_CRUNCH_PATHS);
     },
 
     onForgeCrunchCompleted(): void {
+      if (!_isFocused) return;
       sfx.onForgeCrunchCompleted(FORGE_CRUNCH_BOOM_PATH);
     },
 
     onForgeSpinUpCancelled(): void {
+      if (!_isFocused) return;
       sfx.onForgeChargingCancelled();
     },
 
     onSettingsChanged(): void {
+      if (!_isFocused) return;
       sfx.playRandom(SETTINGS_CHANGE_PATHS);
     },
 

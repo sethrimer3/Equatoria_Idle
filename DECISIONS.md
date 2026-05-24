@@ -205,6 +205,8 @@
 
 **AudioContext resume**: `AudioContext` starts suspended due to browser autoplay policy. `resumeContext()` is called from the `dispatch` wrapper in `game-app.ts` on every user action, and separately from the canvas `pointerdown` handler (which handles drag interactions that don't go through `dispatch`).
 
+**Focus-loss SFX handling**: When "Music/SFX Only When Focused" pauses the shared `AudioContext`, SFX are explicitly disabled and hidden-tab SFX events are dropped instead of scheduled. This prevents Web Audio sources from accumulating while the context clock is suspended and then all firing loudly when focus returns.
+
 **Path encoding**: Audio file names that contain spaces (e.g. `pluck A1.m4a`) or hash characters (e.g. `tower_shot_kalimba_C#5.mp3`) are encoded with `encodeURIComponent` per path segment in `audio-paths.ts` so `fetch()` requests succeed.
 
 
@@ -357,6 +359,8 @@ Hit detection (`swordHitInArc`) always checks the same `arcStart→arcEnd` windo
 **Problem**: Equation Forge tapping worked on desktop but not reliably on mobile. Desktop used `pointerdown` on `canvasContainer` (the wrapper div) via `setupInputListeners()`. On mobile, browser touch handling at the container level can intercept or delay events before the JS listener runs, especially when the container lacks `touch-action: none`.
 
 **Decision**: Moved the `tap` action dispatch from `setupInputListeners`/container into `wireCanvasPointerInput`/canvas. The canvas element already has `touch-action: none` (set inline by `resizeCanvas`) and calls `setPointerCapture` immediately, making it the most reliable place to catch pointer events on all platforms. Added `event.preventDefault()` (with `{ passive: false }`) to the canvas `pointerdown` listener to suppress synthetic mouse events that mobile browsers emit after a touch, which would otherwise double-fire the tap action. Also added `touch-action: none` to `#canvas-container` in CSS as a belt-and-suspenders guard for browsers that check the parent element's touch-action before dispatching to the child. The `setupInputListeners` function remains exported from `src/input/input-handler.ts` but is no longer called from `game-app.ts`.
+
+**Forge heat-tap clock split (Build 116)**: Heat-tap timeout bookkeeping uses `GameState.elapsedMs`, while the 9-second forge warm-up animation uses `performance.now()`. This keeps the 3-tap sequence stable after loading a saved game whose elapsed time is much larger than the browser's fresh `performance.now()` clock.
 
 ## Topography Mountain Spawn Animation (Build 108)
 

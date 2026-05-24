@@ -50,6 +50,10 @@ export interface LoomCapture {
 
 /** Weak attraction strength toward a loom field (canvas px/s per unit). */
 const LOOM_ATTRACTION_STRENGTH = 1.2;
+/** Velocity steering strength that keeps compatible motes from slingshotting past loom fields. */
+const LOOM_STEERING_BLEND = 0.18;
+/** Maximum inward target speed used by loom steering. */
+const LOOM_MAX_STEER_SPEED = 1.6;
 
 // ─── Implementation ──────────────────────────────────────────────
 
@@ -147,11 +151,20 @@ export function applyForgeFieldForces(
             p.vy += (dy / dist) * force * clampedDelta;
           }
         } else {
-          // Loom: gentle pull
+          // Loom: gentle pull plus inward steering. Higher-tier motes can carry
+          // enough generator/Particle-Life velocity to slingshot past the field,
+          // so steer their velocity toward the center while they are inside it.
           const dist = Math.sqrt(distSq);
           const force = LOOM_ATTRACTION_STRENGTH / (dist + 1);
-          p.vx += (dx / dist) * force * clampedDelta;
-          p.vy += (dy / dist) * force * clampedDelta;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          p.vx += nx * force * clampedDelta;
+          p.vy += ny * force * clampedDelta;
+
+          const desiredSpeed = Math.min(LOOM_MAX_STEER_SPEED, 0.25 + dist * 0.035);
+          const blend = Math.min(1, LOOM_STEERING_BLEND * clampedDelta);
+          p.vx += (nx * desiredSpeed - p.vx) * blend;
+          p.vy += (ny * desiredSpeed - p.vy) * blend;
         }
       }
     }

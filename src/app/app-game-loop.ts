@@ -18,6 +18,7 @@ import { getLoomInputTierId } from '../sim/looms';
 import {
   clearCanvas,
   drawBackground,
+  resetCanvasRenderState,
   drawGenerators,
   drawForge,
   drawForgeCrunch,
@@ -274,6 +275,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     updateGeneratorRendererTime(deltaMs);
 
     // ── Render ──
+    resetCanvasRenderState(ctx.cc);
     clearCanvas(ctx.cc);
     drawBackground(ctx.cc, '#000000');
     if (ctx.settings.backgroundStyle === 'vermiculate') {

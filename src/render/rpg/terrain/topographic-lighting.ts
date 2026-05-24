@@ -255,6 +255,16 @@ export function buildTopographyLightCache(
         const shadowAmount = sampleGridNearest(shadowGrid, gridW, gridH, gx, gy);
 
         if (h <= 0.005) {
+          // Ground receives long cast shadows, but the overlay itself is not
+          // render-blurred anymore, so these pixels no longer smear into a
+          // dark fringe around the terrain silhouette.
+          if (shadowAmount <= SHARP_SHADOW_THRESHOLD) continue;
+          const shadowAlpha = clamp01(config.terrainOpacity * 0.40 * groundShadowFade(shadowAmount));
+          if (shadowAlpha <= 0.01) continue;
+          pixels[idx]     = palette.shadow.r;
+          pixels[idx + 1] = palette.shadow.g;
+          pixels[idx + 2] = palette.shadow.b;
+          pixels[idx + 3] = Math.round(shadowAlpha * 255);
           continue;
         }
 
@@ -287,6 +297,12 @@ export function buildTopographyLightCache(
         const shadowAmount = sampleGridBilinear(shadowGrid, gridW, gridH, gx, gy);
 
         if (h <= 0.005) {
+          const shadowAlpha = clamp01(config.terrainOpacity * 0.34 * groundShadowFade(shadowAmount));
+          if (shadowAlpha <= 0.01) continue;
+          pixels[idx]     = palette.shadow.r;
+          pixels[idx + 1] = palette.shadow.g;
+          pixels[idx + 2] = palette.shadow.b;
+          pixels[idx + 3] = Math.round(shadowAlpha * 255);
           continue;
         }
 
@@ -1073,4 +1089,8 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 
 function terrainLightingEdgeFade(height: number): number {
   return smoothstep(0.005, TERRAIN_LIGHTING_EDGE_FADE_HEIGHT, height);
+}
+
+function groundShadowFade(shadowAmount: number): number {
+  return smoothstep(0.02, 0.72, shadowAmount);
 }

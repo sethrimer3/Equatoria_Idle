@@ -26,6 +26,7 @@ import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
 import type { CanvasContext } from '../render/canvas';
+import { resizeCanvas } from '../render/canvas';
 import type { ParticleSystem } from '../render';
 import type { SettingsState } from '../settings';
 import { saveSettings } from '../settings';
@@ -94,7 +95,7 @@ export function handleAction(
       if (tapDx * tapDx + tapDy * tapDy > forgeInfluenceRadius * forgeInfluenceRadius) break;
 
       tapEquation(state.game);
-      tapEquationForge(state.game, nowMs);
+      tapEquationForge(state.game, state.game.elapsedMs, nowMs);
       state.tapFlashAlpha = 1;
       break;
     }
@@ -327,6 +328,10 @@ export function handleAction(
       state.activeTab = action.tabId;
       audioSystem?.onTabChange(action.tabId);
       setActiveTab(state, uiPanels, state.game, settings.isDevMode, settings.numberFormat);
+      if (action.tabId !== 'rpg') {
+        resizeCanvas(cc, uiPanels.mainCanvasContainer);
+        recomputeGenerators();
+      }
       break;
     case 'save_game':
       // Handled directly in game-app.ts before this function is reached.

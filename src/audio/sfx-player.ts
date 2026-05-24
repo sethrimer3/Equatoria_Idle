@@ -34,6 +34,7 @@ export class SfxPlayer {
   private _chargingGain: GainNode | null = null;
 
   private _motesActiveCount = 0;
+  private _isEnabled = true;
 
   constructor(volume: number) {
     this._volume = volume;
@@ -46,14 +47,24 @@ export class SfxPlayer {
     this._masterGain.gain.setTargetAtTime(v, ctx.currentTime, 0.05);
   }
 
+  setEnabled(enabled: boolean): void {
+    if (this._isEnabled === enabled) return;
+    this._isEnabled = enabled;
+    if (!enabled) {
+      this._motesActiveCount = 0;
+      this._stopCharging(0);
+    }
+  }
+
   /** Play a single SFX by path. Errors are silently swallowed. */
   async play(path: string): Promise<void> {
+    if (!this._isEnabled) return;
     const master = this._getMasterGain();
     const ctx = getAudioContext();
     if (!ctx || !master) return;
     try {
       const buffer = await loadAudioBuffer(ctx, path);
-      if (!buffer) return;
+      if (!buffer || !this._isEnabled) return;
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(master);
@@ -65,12 +76,13 @@ export class SfxPlayer {
 
   /** Play a single SFX by path with a playback-rate pitch shift. */
   async playPitched(path: string, playbackRate: number): Promise<void> {
+    if (!this._isEnabled) return;
     const master = this._getMasterGain();
     const ctx = getAudioContext();
     if (!ctx || !master) return;
     try {
       const buffer = await loadAudioBuffer(ctx, path);
-      if (!buffer) return;
+      if (!buffer || !this._isEnabled) return;
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.playbackRate.setValueAtTime(playbackRate, ctx.currentTime);
@@ -83,6 +95,7 @@ export class SfxPlayer {
 
   /** Play a random entry from paths. */
   playRandom(paths: readonly string[]): void {
+    if (!this._isEnabled) return;
     if (paths.length === 0) return;
     void this.play(paths[Math.floor(Math.random() * paths.length)]!);
   }
@@ -95,6 +108,10 @@ export class SfxPlayer {
     paths: readonly string[],
     onEnd: () => void,
   ): void {
+    if (!this._isEnabled) {
+      onEnd();
+      return;
+    }
     const ctx = getAudioContext();
     const master = this._getMasterGain();
     if (!ctx || !master || paths.length === 0) {
@@ -104,7 +121,7 @@ export class SfxPlayer {
     const path = paths[Math.floor(Math.random() * paths.length)]!;
     loadAudioBuffer(ctx, path)
       .then(buffer => {
-        if (!buffer) { onEnd(); return; }
+        if (!buffer || !this._isEnabled) { onEnd(); return; }
         try {
           const source = ctx.createBufferSource();
           source.buffer = buffer;
@@ -120,6 +137,7 @@ export class SfxPlayer {
 
   /** Play a motes-merge SFX, capped at MOTES_MAX_POLYPHONY simultaneous voices. */
   playMotesMerge(paths: readonly string[], dropletPath: string): void {
+    if (!this._isEnabled) return;
     if (this._motesActiveCount >= MOTES_MAX_POLYPHONY) return;
     this._motesActiveCount++;
     this.playPolyphonyLimited(paths, () => {
@@ -133,6 +151,7 @@ export class SfxPlayer {
 
   /** Begin the forge charging loop, fading in over FORGE_SPIN_UP_FADE_S seconds. */
   startForgeCharging(paths: readonly string[]): void {
+    if (!this._isEnabled) return;
     this._stopCharging(0);  // clear any previous
     const ctx = getAudioContext();
     const master = this._getMasterGain();
@@ -141,7 +160,7 @@ export class SfxPlayer {
     const path = paths[Math.floor(Math.random() * paths.length)]!;
     loadAudioBuffer(ctx, path)
       .then(buffer => {
-        if (!buffer) return;
+        if (!buffer || !this._isEnabled) return;
         try {
           const now = ctx.currentTime;
           const chargingGain = ctx.createGain();
@@ -166,17 +185,20 @@ export class SfxPlayer {
 
   /** Crunch started: quickly fade out charging, immediately play a crunch SFX. */
   onForgeCrunch(crunchPaths: readonly string[]): void {
+    if (!this._isEnabled) return;
     this._stopCharging(FORGE_CRUNCH_FADE_S * 1000);
     this.playRandom(crunchPaths);
   }
 
   /** Crunch completed: layer the heavy impact over any other forge SFX. */
   onForgeCrunchCompleted(boomPath: string): void {
+    if (!this._isEnabled) return;
     void this.play(boomPath);
   }
 
   /** Spin-up aborted: fade out charging over 500 ms. */
   onForgeChargingCancelled(): void {
+    if (!this._isEnabled) return;
     this._stopCharging(FORGE_CANCEL_FADE_S * 1000);
   }
 

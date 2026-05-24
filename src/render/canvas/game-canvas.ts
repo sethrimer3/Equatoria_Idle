@@ -39,6 +39,7 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
 export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   const containerW = container.clientWidth;
   const containerH = container.clientHeight;
+  if (containerW <= 0 || containerH <= 0) return;
 
   // Determine internal height based on container aspect ratio
   const aspect = containerH / containerW;
@@ -57,6 +58,18 @@ export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   // Prevent browser from claiming touch events for scrolling/panning,
   // which would fire pointercancel and break mote dragging on mobile.
   cc.canvas.style.touchAction = 'none';
+}
+
+/** Restore baseline 2D state before a full-frame render pass. */
+export function resetCanvasRenderState(cc: CanvasContext): void {
+  const ctx = cc.ctx;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+  ctx.filter = 'none';
+  ctx.setLineDash([]);
 }
 
 /** Clear the canvas. */

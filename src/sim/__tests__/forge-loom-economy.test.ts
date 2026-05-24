@@ -15,7 +15,7 @@ import {
   tickForgeHeatTimeout,
   HEAT_TAP_COUNT_FOR_CRUNCH,
 } from '../forge/forge-state';
-import { applyForgeSacrifice } from '../game-state';
+import { applyForgeSacrifice, tapEquationForge } from '../game-state';
 import {
   createLoomState as _createLoomState,  // imported for test clarity but not directly called
   getLoomInputTierId,
@@ -81,6 +81,20 @@ describe('tickForgeHeatTimeout', () => {
     tapForgeHeat(state, 1_000);
     tickForgeHeatTimeout(state, 6_000);
     expect(state.heatTapCount).toBe(1);
+  });
+});
+
+describe('tapEquationForge', () => {
+  it('keeps reopened-save heat taps on the game elapsed-time clock', () => {
+    const game = createGameState();
+    game.equation.isForgeUnlocked = true;
+    game.elapsedMs = 250_000;
+
+    expect(tapEquationForge(game, game.elapsedMs, 1_000)).toBe(false);
+    tickForgeHeatTimeout(game.forge, game.elapsedMs + 16);
+
+    expect(game.forge.heatTapCount).toBe(1);
+    expect(game.forge.lastHeatTapMs).toBe(250_000);
   });
 });
 

@@ -368,13 +368,17 @@ export async function startApp(): Promise<void> {
 
   // ── Resize handler ──
   const onResize = (): void => {
-    resizeCanvas(cc, canvasContainer);
+    if (appState.activeTab !== 'rpg') {
+      resizeCanvas(cc, canvasContainer);
+      recomputeGenerators();
+    }
     const w = canvasContainer.clientWidth;
     const h = canvasContainer.clientHeight;
-    bgAnimation.resize(w, h);
-    vermiculateEffect.reset();
-    substrateEffect.reset();
-    recomputeGenerators();
+    if (w > 0 && h > 0) {
+      bgAnimation.resize(w, h);
+      vermiculateEffect.reset();
+      substrateEffect.reset();
+    }
     rpgRender.resize(rpgContainer);
   };
   window.addEventListener('resize', onResize);

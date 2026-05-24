@@ -32,6 +32,7 @@ export interface TabBar {
 
 /** Base path for tab icon sprites. */
 const ICON_BASE = 'ASSETS/SPRITES/menuElements/icons';
+const MENU_BAR_DECOR_PATH = 'ASSETS/SPRITES/menuElements/menuBarDecor.png';
 
 /** Number of animation frames for the upgrades tab. */
 const UPGRADES_ANIM_FRAME_COUNT = 36;
@@ -282,6 +283,13 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
     bar.appendChild(btn);
     buttons.set(tab.id, btn);
   }
+
+  const decorImg = document.createElement('img');
+  decorImg.className = 'tab-bar-decor';
+  decorImg.src = MENU_BAR_DECOR_PATH;
+  decorImg.alt = '';
+  decorImg.setAttribute('aria-hidden', 'true');
+  bar.appendChild(decorImg);
 
   const achievementButton = buttons.get('achievements') ?? null;
   let sparkleEmitter: SparkleEmitter | null = null;

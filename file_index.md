@@ -42,6 +42,7 @@
 
 ### src/styles/tabs.css
 - `.tab-bar`, `.tab-btn`, active/inactive states.
+- `.tab-bar-decor` — top-layer menu outline sprite overlay; fades to 50% opacity on menu hover without blocking tab clicks.
 
 ### src/styles/components.css
 - Loading screen, loom cards, equation display (locked/unlocked), achievement cards.
@@ -58,19 +59,26 @@
 - `startApp()` — creates systems and wires them via `app-actions` and `app-game-loop`.
 - Delegates action handling to `app-actions.ts`, game loop to `app-game-loop.ts`, canvas pointer wiring to `game-app-canvas-input.ts`, and idle-reward eligibility checks to `game-app-idle.ts`.
 
+- Resize handler skips hidden zero-size main-canvas measurements while the RPG tab is active, preventing the Equation canvas from being resized to 0 after focus or viewport changes.
+
 ### src/app/app-types.ts
 - `AppState` and `UIPanels` interfaces shared by app modules.
 
 ### src/app/app-actions.ts
 - `handleAction()` — central action dispatcher.
+- Forge taps pass both clocks to `tapEquationForge`: game elapsed time for heat-tap timeout state, wall-clock time for warm-up animation.
 - `setActiveTab()` — panel visibility switching; also calls `rpgRender.setActive()` and `rpgRender.resize()` when the RPG tab is activated so the letterbox layout is correct immediately.
 - `updateVisiblePanels()` — refreshes the currently active panel.
+
+- Switching from RPG back to a non-RPG tab refreshes the main canvas size and generator positions before the next Equation render.
 
 ### src/app/app-game-loop.ts
 - `createGameLoop()` factory — creates the frame-by-frame game loop.
 - `GameLoopContext` interface — all dependencies injected.
 - Loop: sim tick → `tickForgeWarmup` → particle update → background → render → forge preview computation → UI update → auto-save.
 - Calls `computeForgePreviewTerms` each frame and passes `forgePreviewTerms` to `hudOverlay.update`.
+
+- Resets the main canvas 2D context state before each full-frame render so leaked alpha, transforms, filters, or blend modes cannot blank later layers.
 
 ### src/app/app-forge-preview.ts *(NEW)*
 - Pure preview logic for the forge warm-up equation display.
@@ -214,7 +222,7 @@
 - `PendingMoteEntry` interface — `{tierId, sizeIndex, count}` for drip-adding idle motes one per frame.
 - `pendingMoteValue(sizeIndex)` — value of one mote at a given size (`MERGE_THRESHOLD^sizeIndex`).
 - `tapEquation()` — multiplies gains by `achievements.tapMultiplierBonus`.
-- `tapEquationForge(state, nowMs)` — calls `tapForgeHeat`; starts crunch on 3rd tap.
+- `tapEquationForge(state, heatTapNowMs, warmupNowMs?)` — calls `tapForgeHeat` using game elapsed time; starts warm-up on 3rd tap using wall-clock time.
 - `processLoomCapture(state, tierId, massSmallEquiv)` — handles captured particle mass → loom conversion.
 - `applyForgeSacrifice(state, massByTier)` — converts forge-sacrificed mass into equation upgrades.
 - `tryPurchaseUpgrade(state, id, bypassCost?)`, `tryUnlockNextTier(state, bypassCost?)`, `tryUnlockEquationForge(state, bypassCost?)`, `tryUpgradeLoom(state, tierId, bypassCost?)`, `tryUpgradeLoomEfficiencyAction(state, tierId)` — optional dev mode cost bypass.
@@ -255,6 +263,8 @@
 
 ### src/render/canvas/game-canvas.ts
 - Canvas creation and lifecycle at 320px internal width.
+- `resizeCanvas()` ignores zero-size container measurements, which can occur while the canvas container is hidden behind the RPG tab.
+- `resetCanvasRenderState()` restores baseline 2D context state before full-frame renders.
 
 ### src/render/assets/asset-paths.ts
 - Centralized asset path definitions (single source of truth).
@@ -1051,9 +1061,9 @@
   smooths grids with a separable **Gaussian** blur, combines slope shading and
   shadow into a light grid, then composites highlight, shadow, and faint beam
   shafts into an offscreen canvas.
-- **Build 112+:** masks baked lighting to terrain pixels only and applies a
-  tiny height-based alpha fade at the silhouette, preventing cast-shadow pixels
-  from creating a black fringe around the mountain edge.
+- **Build 118+:** keeps long cast shadows visible on the ground, removes the
+  render-time blur that smeared them into a black silhouette fringe, and applies
+  a tiny height-based alpha fade to terrain lighting edges.
 - `renderPersistentTopographySunlight` draws the warm sunlight fill every RPG
   frame from a cached offscreen canvas, independent of active terrain, so
   sunlight persists between waves without rebuilding the gradient each frame.
@@ -1411,6 +1421,7 @@
 
 ### src/ui/tabs/tab-bar.ts
 - Bottom tab bar: Equation / Looms / Tiers / Achievements / Settings.
+- Adds `menuBarDecor.png` as a decorative outline overlay above the tab bar.
 - Adds the achievements-tab unclaimed indicator (golden sheen + sparkle orbs).
 - `createTabBar()` — returns element plus `setActiveTab()` and `updateAchievementIndicator(state)`.
 - Reuses `hasUnclaimedAchievements(state)` to keep tab indicator active whenever any earned achievement is unclaimed.
@@ -1465,8 +1476,8 @@ Audio system — eight focused modules:
 - **`audio-loader.ts`** — `loadAudioBuffer(ctx, path)` — async fetch + `decodeAudioData` with in-flight deduplication and per-path caching. `preloadAudioBuffers()` for bulk warm-up.
 - **`music-player.ts`** — `MusicPlayer` — shuffled 3-track playlist with 8-second Web Audio crossfades. Two alternating `GainNode` slots. Play order is fixed at startup (random once).
 - **`ambiance-player.ts`** — `AmbiancePlayer` — looping `lowRumble.mp3` at −10 dB relative to SFX volume. Fades in/out (1 s) when the `equation` tab is entered/left.
-- **`sfx-player.ts`** — `SfxPlayer` — single SFX, random-from-list, polyphony-limited (motes merging, max 2), forge charging fade-in/out.
-- **`audio-system.ts`** — `AudioSystem` interface + `createAudioSystem(musicVolume, sfxVolume)` factory. No-op fallback when Web Audio API is unavailable.
+- **`sfx-player.ts`** — `SfxPlayer` — single SFX, random-from-list, polyphony-limited (motes merging, max 2), forge charging fade-in/out; disables and drops SFX while focus audio is paused so suspended-context events do not burst on resume.
+- **`audio-system.ts`** — `AudioSystem` interface + `createAudioSystem(musicVolume, sfxVolume)` factory. No-op fallback when Web Audio API is unavailable; tracks focus state and gates SFX event handlers while unfocused.
 - **`index.ts`** — Barrel: exports `AudioSystem`, `createAudioSystem`.
 
 ### src/data/particles/particle-config.ts

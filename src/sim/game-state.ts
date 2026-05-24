@@ -244,11 +244,11 @@ export function tryUpgradeLoomEfficiencyAction(state: GameState, tierId: TierId,
  * After three taps, starts the 9-second warm-up sequence.
  * Returns true if a warm-up was started.
  */
-export function tapEquationForge(state: GameState, nowMs: number): boolean {
+export function tapEquationForge(state: GameState, heatTapNowMs: number, warmupNowMs = heatTapNowMs): boolean {
   if (!state.equation.isForgeUnlocked) return false;
-  const warmupTriggered = tapForgeHeat(state.forge, nowMs);
+  const warmupTriggered = tapForgeHeat(state.forge, heatTapNowMs);
   if (warmupTriggered) {
-    startForgeWarmup(state.forge, nowMs);
+    startForgeWarmup(state.forge, warmupNowMs);
     return true;
   }
   return false;

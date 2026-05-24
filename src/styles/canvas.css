@@ -510,27 +510,22 @@
 /* Circle plug — small filled circle on the left of each weapon cell.
  *
  * Visual sizing constants (named for future reference):
- *   PLUG_VISUAL_RADIUS  = 3px   (radius of the drawn circle = half of 6px)
- *   PLUG_HIT_RADIUS     = 7px   (half of the 14px box-sizing hit zone)
+ *   PLUG_VISUAL_RADIUS  = 4px   (radius of the drawn circle = half of 8px)
  *
- * The rendered circle is kept small (6px) so stat labels have room to
- * breathe in the narrow 5-column layout.  The overall element is 14px
- * (6px circle + 4px padding each side, box-sizing: content-box) which
- * gives a comfortable touch/click target without overflowing the cell.
+ * The rendered circle matches the 8px modifier plugs in boxes 3-5 so the
+ * wiring UI keeps one consistent plug scale across boxes 3-11.
  *
  * Drop targets are expanded further via setPlugDropHitElement (the whole
  * stat cell acts as the drop zone), so the small circle does not reduce
  * usability.
  */
 .rpg-box4-circle-plug {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: rgba(167, 139, 250, 0.45);
   border: 1px solid rgba(167, 139, 250, 0.65);
   flex-shrink: 0;
-  padding: 4px;
-  box-sizing: content-box;
   pointer-events: auto;
   cursor: crosshair;
   touch-action: none;
