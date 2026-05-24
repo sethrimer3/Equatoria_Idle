@@ -26,6 +26,8 @@
   image-rendering: pixelated;
   opacity: 1;
   pointer-events: none;
+  transform: scale(1.04);
+  transform-origin: center;
   transition: opacity 0.16s ease;
 }
 
