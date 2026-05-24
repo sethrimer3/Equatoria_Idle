@@ -58,6 +58,10 @@ import {
   computeTerrainRepulsionForce,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
+import {
+  createRpgPathState, computePathSteeredDirection, DEFAULT_REPATH_MS,
+  type RpgPathState,
+} from './terrain/rpg-pathfinding';
 
 // ── Shared context interface ───────────────────────────────────────────────────
 
@@ -93,6 +97,8 @@ export interface RpgEnemyCtx {
   clampEnemyToBounds(e: { x: number; y: number; vx: number; vy: number }): void;
   /** Returns the current topographic terrain state, or null if none is active. */
   getTerrainState(): TopographicTerrainState | null;
+  /** Returns the current navigation grid for pathfinding, or null if not built. */
+  getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
 }
 
 // ── Shared terrain push-out helper ────────────────────────────────────────────
@@ -459,6 +465,15 @@ export function updateAmberShards(
 
 // ── Void enemy system (slow bruiser) ──────────────────────────────────────────
 
+/** Per-Void-enemy path state — keyed on the enemy object so it is GC'd on despawn. */
+const _voidPathStates = new WeakMap<VoidEnemy, RpgPathState>();
+
+function _getVoidPathState(enemy: VoidEnemy): RpgPathState {
+  let ps = _voidPathStates.get(enemy);
+  if (!ps) { ps = createRpgPathState(); _voidPathStates.set(enemy, ps); }
+  return ps;
+}
+
 export function updateVoidEnemies(
   enemies: VoidEnemy[],
   ctx: RpgEnemyCtx,
@@ -470,8 +485,19 @@ export function updateVoidEnemies(
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % VOID_AURA_PULSE_MS;
 
-    // Terrain-aware pursuit: steer around obstacles when direct path is blocked.
-    const dir = terrainAwareDirection(terrain, enemy.x, enemy.y, mote.x, mote.y);
+    // Terrain-aware pursuit: use A* pathfinding when terrain blocks the direct path.
+    const navGrid = ctx.getNavGrid();
+    const curSpeed = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
+    const dir = computePathSteeredDirection(
+      _getVoidPathState(enemy),
+      enemy.x, enemy.y,
+      mote.x, mote.y,
+      performance.now(),
+      navGrid,
+      terrain,
+      DEFAULT_REPATH_MS,
+      curSpeed,
+    );
     enemy.vx = dir.dx * VOID_PURSUE_SPEED;
     enemy.vy = dir.dy * VOID_PURSUE_SPEED;
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;

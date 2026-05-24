@@ -707,9 +707,16 @@
 - Imported directly by `rpg-render.ts` alongside `rpg-enemy-draw.ts`.
 
 ### src/render/rpg/rpg-enemy-updates.ts
-- 9 exported enemy update functions covering early-wave enemy types (~390 lines).
+- 9 exported enemy update functions covering early-wave enemy types (~530 lines after build 123).
 - Covers: emerald, amber+shards, void.
-- Exports the `RpgEnemyCtx` interface: a minimal shared-reference object (`mote`, `dim`, `fluid`, `hitEffects`, `shotLines`, `dealDamageToPlayer`, `dealDamageToPlayerKnockback`, `clampEnemyToBounds`).
+- Exports the `RpgEnemyCtx` interface: a minimal shared-reference object (`mote`, `dim`, `fluid`,
+  `hitEffects`, `shotLines`, `dealDamageToPlayer`, `dealDamageToPlayerKnockback`, `clampEnemyToBounds`,
+  `getTerrainState`, `getNavGrid`).
+- **Build 123:** `updateVoidEnemies` uses A* pathfinding (via `computePathSteeredDirection` from
+  `rpg-pathfinding.ts`) instead of the local `terrainAwareDirection` angular probe.  Per-enemy path
+  states stored in a `WeakMap<VoidEnemy, RpgPathState>` for automatic GC on despawn.
+- `applyEnemyTerrainPushOut` and `terrainAwareDirection` remain as exported helpers used by
+  mid/adv update files (push-out) and as a documented fallback steering option.
 - `dim: { w, h }` is a live object kept in sync with `widthPx`/`heightPx` on each resize; no getter indirection needed.
 - Each function takes its own entity arrays as explicit parameters, making data flow visible at call sites.
 - No closure dependencies; pure transformation over given arrays + ctx reference.
@@ -1094,6 +1101,25 @@
   `MergedTopographicContours` with `levels` (ordered outermost-first) and `solidBoundaries`
   (the outermost level's polylines, used for collision).
 - Computed once per wave at generation time; zero per-frame cost.
+
+### src/render/rpg/terrain/rpg-pathfinding.ts (NEW, build 123)
+- Grid-based A* pathfinder for RPG entity navigation around topographic terrain obstacles.
+- **Grid:** `buildRpgNavigationGrid(terrain, widthPx, heightPx, cellSizePx?)` — builds a
+  flat `Uint8Array` blocked/walkable grid.  Cell is blocked if its centre is inside terrain
+  or a 12 px clearance circle overlaps terrain.  20 px default cell size.
+- **A\*:** `findRpgPath(navGrid, startX, startY, goalX, goalY, terrain)` — 8-directional,
+  no diagonal corner-cutting.  Blocked start/goal cells are snapped to nearest walkable.
+  Result is post-processed with a line-of-sight funnel to collapse straight segments.
+- **Steering:** `getPathSteeringDirection(path, idxRef, x, y, lookaheadPx?)` — looks ahead
+  along the path for a smooth direction.  `computePathSteeredDirection(...)` is a one-call
+  helper that calls `updateEntityPathState` + `getPathSteeringDirection`.
+- **Path state:** `RpgPathState` — per-entity mutable state (path, waypointIdx, targets,
+  nextRepathMs, stuckMs).  Created with `createRpgPathState()`.  Player uses a module-level
+  singleton; enemies use a `WeakMap` (auto-GC'd on despawn).
+- **Repath throttling:** player every ~300 ms (`PLAYER_REPATH_MS`); enemies every ~600 ms
+  (`DEFAULT_REPATH_MS`) ±20 % jitter.  Stuck detection forces an earlier repath.
+- **Debug:** `drawRpgPathfindingDebug(ctx, enabled, navGrid, playerPath, enemyPaths)` —
+  draws blocked cells in translucent red + paths in cyan/orange.  No-op when disabled.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
 - Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.

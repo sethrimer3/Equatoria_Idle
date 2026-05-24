@@ -1,12 +1,97 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#110**
+Current build: **#123**
+
+---
+
+## Build #123 — Obstacle-aware A* pathfinding (player auto-move + Void enemies)
+
+### What was implemented
+
+**New pathfinding module** (`src/render/rpg/terrain/rpg-pathfinding.ts`):
+- `buildRpgNavigationGrid(terrain, widthPx, heightPx, cellSizePx?)` — builds a flat Uint8Array blocked/walkable grid once per terrain/canvas change.  Cell is blocked if its centre is inside terrain or a 12 px clearance circle overlaps it.  Default cell size 20 px.
+- `findRpgPath(navGrid, startX, startY, goalX, goalY, terrain)` — 8-directional A* with binary min-heap.  No diagonal corner-cutting through blocked cells.  Blocked start/goal cells snap to nearest walkable.  Path is post-processed with a line-of-sight string-pull funnel to reduce grid zigzag.
+- `getPathSteeringDirection(path, idxRef, x, y, lookaheadPx?)` — steers toward a look-ahead point along the path for smooth cornering.
+- `computePathSteeredDirection(pathState, ...)` — one-call helper that manages path state + steering.
+- `RpgPathState` / `createRpgPathState()` — per-entity mutable path state with throttled repathing (jitter ±20 %), stuck detection, and target-moved early repath.
+- `drawRpgPathfindingDebug(ctx, enabled, navGrid, playerPath, enemyPaths)` — dev-mode overlay: blocked cells in translucent red, paths in cyan/orange, waypoint dots.
+
+**Nav grid lifecycle** (`rpg-render.ts`):
+- Grid is created on `beginWaveTerrain` (after terrain is generated) and on canvas resize.
+- Stored as `rpgNavGrid` in the closure; passed to player movement and enemy update contexts via `getNavGrid()` callbacks on `PlayerMovementCtx` and `RpgEnemyCtx`.
+
+**Player auto-move** (`rpg-player-movement.ts`):
+- If there is direct line-of-sight to the nearest enemy, the player steers directly toward a goal point that respects the weapon stop range.
+- If terrain blocks the direct path, `computePathSteeredDirection` is used to follow an A* path to the goal.
+- Manual joystick or keyboard input clears the cached path state so A* re-runs cleanly when auto-move resumes.
+- Player repathing interval: ~300 ms (`PLAYER_REPATH_MS`).
+
+**Void enemy pathfinding** (`rpg-enemy-updates.ts`):
+- `updateVoidEnemies` now uses `computePathSteeredDirection` from the pathfinding module.
+- Per-enemy path states stored in `WeakMap<VoidEnemy, RpgPathState>` for automatic GC on despawn.
+- Repath interval: ~600 ms default ±20 % jitter.
+- Falls back to direct direction if no path is found.
+
+**Debug visualization** (`rpg-render-draw.ts`, `rpg-render.ts`):
+- Pathfinding debug is toggled with the same dev-mode toggle that controls the existing terrain debug.
+- `_pathfindingDebugEnabled` flag set in `setDevMode()`.
+- `drawRpgPathfindingDebug` called in `drawRpgFrame` after terrain rendering — no-op when disabled.
+
+### What remains / follow-up
+
+1. **More enemy types with pathfinding**: Quartz (orbiter), Ruby (fast patrol), Sunstone (orbiter), Citrine (homing), Nullstone (gravity well), Fracteryl, and all procedural enemies that directly chase the player still use `terrainAwareDirection` local steering or raw direct movement.  Each is relatively straightforward to upgrade: add a `WeakMap` path state + call `computePathSteeredDirection`.
+
+2. **Quartz / Sunstone orbit pathfinding**: These orbit-at-range enemies would benefit from pathfinding to reach their preferred orbit radius when terrain is in the way, then revert to normal orbit behaviour once clear.
+
+3. **Path debug improvements**: The debug view currently shows only the nav grid blocked cells — player and enemy path lines would require exposing path states through the draw context (a minor wiring change).
+
+4. **NavGrid rebuild on terrain phase changes**: Currently the grid rebuilds on `beginWaveTerrain` and canvas resize.  If a mid-wave terrain phase change (e.g. partially grown terrain) causes noticeable AI misbehaviour, consider also rebuilding when `growth01` crosses a threshold (e.g. 0.5, 1.0).  This is not necessary today because terrain grows before enemies spawn.
+
+5. **Cell clearance tuning**: The 12 px clearance radius is a first-pass value; adjust if enemies are routed too far from terrain edges or clip through them.
 
 ---
 
 ## Build #110 — Boss-wave stage director (bullet-hell traversal loop)
 
 ### What was implemented
+
+**Boss stage director system** (`rpg-boss-stage-director.ts`, `rpg-boss-stage-draw.ts`):
+
+- New `BossStageDirectorState` tracks: stage index (0–2), stage timer, corridor half-width, hazard list, wisp particles, boss-contact flash, dev-mode flag, stages-completed counter.
+- `resetBossStageDirector()` called on `enterBossWave`; `advanceBossStage()` called on `teleportPlayerToSafeZone`; `deactivateBossStageDirector()` called on `exitBossWave`.
+- Corridor route functions: `centerVertical` (stage 0), `sCurveRight` (stage 1), `sCurveLeft` (stage 2). Corridor narrows each stage.
+- Two hazard types: `VerticalRainHazard` (streams that avoid the corridor) and `SweepBarHazard` (downward-sweeping bar with a gap that tracks the corridor).
+- Hazards progress through **telegraph → active → fading** phases; telegraph flickers before becoming dangerous.
+- Collision with hazards applies damage only when: player is not in the bottom safe zone, not near the boss, and not i-framing.
+- `isPlayerInStageDirectorSafeZone()` is also applied to `rpg-boss-attack-update.ts` to guard special-attack collision during boss waves.
+- Boss-contact flash (`BOSS_CONNECT_FLASH_MS = 500 ms`) fires on first entry into `BOSS_DAMAGE_WINDOW_RADIUS`.
+- Wisp particles float along the corridor as a readable magical path guide.
+
+**Speed scaling fix** (`rpg-render-update.ts`):
+- `updateBossAttacks` now receives `deltaMs * bossSpeedMult` during boss waves, so all special-attack timers scale with the boss-speed setting.
+- During boss waves the random special-attack scheduler is suppressed (boss passed as `null`); existing attacks still expire normally.
+
+**Draw integration** (`rpg-render-draw.ts`):
+- `drawBossStageDirector()` called between `drawBossProjectiles` and `drawBossAttacks`.
+- Draws corridor glow fill + pulsing edge lines, wisps, rain streams, sweep bars, and boss-contact flash.
+- `setStageDirLowGraphics()` registered in `setAllDrawLowGraphics()`.
+
+**Developer debug overlay**:
+- Activate with the existing dev-mode toggle in the RPG menu.
+- Shows: corridor left/right bounds (green dashes), boss damage window (yellow circle), safe-zone circle (cyan), active hazard hitboxes (red), stage info text.
+
+### What remains to tune / implement next
+
+1. **More hazard pattern types**: rotating mandala walls, slow sine-wave bullet streams, hex-grid bolt patterns, warning lasers/gates. Framework is in place; add new `StageHazard` union members.
+2. **More corridor route types**: diagonal weave, pulsing width oscillation, figure-8 patterns.
+3. **Per-boss-ID stage sequences**: currently all boss IDs use the same 3-stage loop. Add a `getBossStageSequence(bossId)` lookup to vary patterns by boss.
+4. **Stage-clear visual effect**: a brief screen flash / particle burst when `advanceBossStage` fires.
+5. **Visible boss-HP stage chunks**: show HP bar segments aligned to stage-clear thresholds so the player can see how many traversals remain.
+6. **Balanced tuning pass**: corridor widths, hazard speed per stage, rain stream count, hazard interval — these are first-pass values and may need gameplay feedback.
+7. **Old boss-wave danmaku behaviour (`rpg-boss-behaviors-wave.ts`)**: the old projectile system still fires during boss waves as it is controlled by `rpg-boss-update.ts` separately. Consider whether it should be suppressed or integrated with the stage director's telegraph timing.
+
+---
+
 
 **Boss stage director system** (`rpg-boss-stage-director.ts`, `rpg-boss-stage-draw.ts`):
 
