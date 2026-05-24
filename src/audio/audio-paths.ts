@@ -26,19 +26,7 @@ export const BUY_LOOM_UPGRADE_PATH     = encodePath('ASSETS/sfx/menuNavigation/b
 export const ERROR_PATH                = encodePath('ASSETS/sfx/menuNavigation/error.mp3');
 export const SWITCHING_TABS_PATH       = encodePath('ASSETS/sfx/menuNavigation/switchingTabs.mp3');
 
-export const MOTES_MERGING_PATHS: readonly string[] = [
-  encodePath('ASSETS/sfx/motesMerging/EchoLead_A3.m4a'),
-  encodePath('ASSETS/sfx/motesMerging/EchoLead_A4.m4a'),
-  encodePath('ASSETS/sfx/motesMerging/EchoLead_C4.m4a'),
-  encodePath('ASSETS/sfx/motesMerging/EchoLead_D4.m4a'),
-  encodePath('ASSETS/sfx/motesMerging/EchoLead_E4.m4a'),
-  encodePath('ASSETS/sfx/motesMerging/EchoLead_F4.m4a'),
-  encodePath('ASSETS/sfx/motesMerging/note_A.mp3'),
-  encodePath('ASSETS/sfx/motesMerging/note_B.mp3'),
-  encodePath('ASSETS/sfx/motesMerging/note_D#.mp3'),
-  encodePath('ASSETS/sfx/motesMerging/note_F#.mp3'),
-  encodePath('ASSETS/sfx/motesMerging/note_G.mp3'),
-];
+export const MOTES_MERGING_PATHS: readonly string[] = [];
 
 export const MOTES_MERGING_DROPLET_PATH = encodePath('ASSETS/sfx/motesMerging/dropletC4.mp3');
 

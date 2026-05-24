@@ -42,7 +42,8 @@
 
 ### src/styles/tabs.css
 - `.tab-bar`, `.tab-btn`, active/inactive states.
-- `.tab-bar-decor` — top-layer menu outline sprite overlay; fades to 50% opacity on menu hover without blocking tab clicks.
+- `.tab-bar-decor` — top-layer menu outline sprite overlay; currently hidden while the tab buttons use direct gold strokes.
+- Tab buttons use 2px gold separators, with a 4px gold active-tab stroke.
 
 ### src/styles/components.css
 - Loading screen, loom cards, equation display (locked/unlocked), achievement cards.

@@ -12,11 +12,12 @@
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: rgba(12, 12, 20, 0.95);
-  border-top: 1px solid rgba(255, 241, 114, 0.15);
+  border-top: 2px solid var(--accent);
   z-index: 10;
 }
 
 .tab-bar-decor {
+  display: none;
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -47,18 +48,28 @@
   justify-content: center;
   gap: 2px;
   background: none;
-  border: none;
+  border: 2px solid var(--accent);
+  border-left-width: 1px;
+  border-right-width: 1px;
   color: var(--text-secondary);
   font-family: var(--font-primary);
   font-size: 12.5px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: var(--border-radius);
-  transition: color 0.15s, background 0.15s;
+  border-radius: 0;
+  transition: color 0.15s, background 0.15s, border-width 0.15s;
   min-height: 44px;
   position: relative;
   z-index: 1;
   overflow: hidden;
+}
+
+.tab-btn:first-of-type {
+  border-left-width: 2px;
+}
+
+.tab-btn:last-of-type {
+  border-right-width: 2px;
 }
 
 /* ── Sprite icon container ───────────────────────────────────── */
@@ -106,6 +117,8 @@
 .tab-btn.active {
   color: var(--accent);
   background: rgba(255, 241, 114, 0.08);
+  border-width: 4px;
+  z-index: 3;
 }
 
 .tab-btn:active {
