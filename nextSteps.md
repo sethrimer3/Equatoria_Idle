@@ -1,6 +1,44 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#124**
+Current build: **#125**
+
+---
+
+## Build #125 — Deterministic 5-biome scheduler + basalt hex terrain
+
+### What was implemented
+
+**Part 1: Deterministic terrain scheduler**
+- `RpgTerrainKind` now includes `'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'reserved4' | 'reserved5'`.
+- Added `getTerrainKindForWave(waveNumber, isBossWave)` with fixed 20-wave biome slots across each 100-wave block:
+  1–20 topographic, 21–40 recursiveSquares, 41–60 basalt, 61–80 reserved4, 81–99 reserved5, 100 boss/none.
+- `beginWaveTerrain()` now returns `TopographicTerrainState | null` and dispatches deterministically by wave number instead of 50/50 RNG.
+- Boss waves (and any explicit `isBossWave` call sites) resolve to `'none'`, so the arena stays open and the nav grid rebuild path uses `null` terrain.
+- `reserved4` and `reserved5` currently fall back to topographic terrain with an inline TODO.
+
+**Part 2: Basalt terrain module** (`src/render/rpg/terrain/basalt-terrain.ts`)
+- New deterministic basalt biome using pointy-top hex columns with seeded organic cluster boundaries.
+- Each `BasaltHexCell` stores center, radius, 6 world-space corners, height, colors, appear delay, and cluster id.
+- `generateBasaltTerrain(seed, waveNumber, canvasW, canvasH)` builds 1–2 offset clusters away from the player safe zone, caps total cells at 200, assigns basalt HSL fills/outlines, and precomputes shadow direction.
+- `renderBasaltTerrain(ctx, basalt, growth01)` draws per-cell shadows, fills, and outlines with staggered growth alpha so taller columns appear first.
+
+**Part 3: Terrain collision / LOS dispatch** (`topographic-terrain.ts`)
+- Added optional `basalt?: BasaltTerrainState` to `TopographicTerrainState`.
+- All terrain geometry helpers now dispatch basalt correctly, treating each active hex's `corners` as a solid polygon:
+  - `isPointInsideTopographicTerrain`
+  - `segmentIntersectsTopographicTerrain`
+  - `circleIntersectsTopographicTerrain`
+  - `terrainFirstIntersectionT`
+  - `getTopographicTerrainSolidPolygons`
+  - `signedDistanceToTerrainBoundary`
+  - `pushPointOutsideTopographicTerrain`
+- Basalt circle tests use a cell-center bounding-circle pre-reject before polygon-edge checks.
+
+### Known limitations / follow-up
+
+- **reserved4 / reserved5**: still placeholders. Waves 61–80 and 81–99 currently reuse topographic terrain. Next step: implement dedicated terrain generators/renderers for those biome slots.
+- **Basalt lighting**: basalt intentionally skips the existing topographic lighting overlay. If desired later, add a dedicated basalt ambient/shadow treatment rather than reusing contour lighting.
+- **Basalt debug overlay**: terrain dev mode still reports the shared topographic summary only. A basalt-specific overlay (cluster bounds, active-cell count, per-cell alpha) would help future tuning.
 
 ---
 

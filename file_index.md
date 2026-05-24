@@ -1016,12 +1016,16 @@
 - Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
 
 ### src/render/rpg/terrain/topographic-terrain.ts
-- Self-contained seeded topographic terrain module for RPG waves.  Now supports two
-  terrain variants selected randomly per-wave from the wave seed.
-- **Build 124+:** added `RpgTerrainKind = 'topographic' | 'recursiveSquares'` discriminant.
-  `TopographicTerrainState` gained `terrainKind`, `squareNodes`, `squareMaxDepth` fields.
-  `beginWaveTerrain()` picks variant 50/50 from seeded RNG.  All collision and LOS functions
-  dispatch on `terrainKind`.  Imports `recursive-square-terrain.ts`.
+- Self-contained seeded terrain orchestrator for RPG waves. Now supports deterministic
+  biome scheduling plus multiple terrain variants behind one collision/render API.
+- **Build 125+:** `RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'reserved4' | 'reserved5'`.
+  `getTerrainKindForWave(waveNumber, isBossWave)` assigns 20-wave biome slots inside each
+  100-wave block and returns `'none'` for boss waves. `TopographicTerrainState` now includes
+  `terrainKind`, `squareNodes`, `squareMaxDepth`, and optional `basalt` data.
+- `beginWaveTerrain()` now returns `TopographicTerrainState | null`, dispatches deterministic
+  terrain generation by wave number, and falls back to topographic for the reserved biome slots.
+  All collision and LOS helpers dispatch on `terrainKind`. Imports `recursive-square-terrain.ts`
+  and `basalt-terrain.ts`.
 - Exports deterministic terrain generation/render helpers plus geometry helpers:
   `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`,
   `beginTopographicTerrainShrink`, `renderTopographicTerrain`,
@@ -1055,6 +1059,19 @@
   crisp depth-scaled outline, faint glow on root/d1 squares, corner accent dots on roots.
 - Imported by `topographic-terrain.ts`; not used directly outside the terrain module.
 
+### src/render/rpg/terrain/basalt-terrain.ts  *(new — build 125)*
+- Generates and renders the `basalt` terrain variant.
+- `BasaltHexCell` — one pointy-top hex column: center, circumradius, 6 world-space corners,
+  height scalar, fill/line colors, appear delay, and cluster id.
+- `BasaltTerrainState` — `cells`, `solidPolygons`, and normalized sun direction for shadows.
+- `generateBasaltTerrain(seed, waveNumber, canvasW, canvasH)` — deterministic 1–2 cluster
+  hex-field generator with player-safe-zone exclusion, edge margins, organic noise boundary,
+  per-cell height shading, and a 200-cell cap for performance.
+- `getBasaltCellAlpha(cell, growth01)` — staggered grow-in helper used by both renderer and
+  collision dispatch.
+- `renderBasaltTerrain(ctx, basalt, growth01)` — draws offset column shadows first, then fills,
+  then outlines.
+- Imported by `topographic-terrain.ts`; not used directly outside the terrain module.
 
 ### src/render/rpg/terrain/topographic-lighting-types.ts
 - Shared type definitions for the topography lighting system.
