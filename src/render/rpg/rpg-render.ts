@@ -474,6 +474,24 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     weaponSystems.syncAmethystShips();
   }
 
+  /**
+   * Clears any active wave terrain and rebuilds the nav grid with no terrain.
+   *
+   * Must be called when a boss fight begins (via onEnterBossWave) and whenever
+   * a boss wave starts, so that:
+   * - Player movement, enemy pathfinding, LOS, and weapon systems all treat the
+   *   arena as fully open (no terrain obstacles) during boss fights.
+   * - Any terrain that was generating or visible from the previous normal wave
+   *   is immediately removed rather than lingering into the boss fight.
+   *
+   * Boss waves must never call beginWaveTerrain(); this function is the explicit
+   * guard that enforces that contract even if timing races occur.
+   */
+  function clearWaveTerrainForBossFight(): void {
+    topographicTerrainState = null;
+    rpgNavGrid = buildRpgNavigationGrid(null, widthPx, heightPx);
+  }
+
   // ── Player damage helpers (extracted to rpg-player-damage.ts) ──────
   const playerDamageCtx: PlayerDamageCtx = {
     mote,
@@ -826,7 +844,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     applyEquipmentStats:        () => applyEquipmentStats(),
     spawnDamageNumber:          (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
     recordDps:                  (dmg, color) => recordDps(dmg, color),
-    onEnterBossWave:            () => { resetBossStageDirector(bossStageDirectorState); },
+    onEnterBossWave:            () => {
+      // Boss fights must not have random wave terrain.  Clear any existing terrain
+      // and rebuild the nav grid with null so pathfinding treats the arena as open.
+      clearWaveTerrainForBossFight();
+      resetBossStageDirector(bossStageDirectorState);
+    },
     onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); },
     onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
   });

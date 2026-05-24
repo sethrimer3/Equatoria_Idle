@@ -4,11 +4,28 @@ import {
   type ContourPalette,
 } from './topographic-terrain-field';
 import type { TopographyLightCache } from './topographic-lighting-types';
+import {
+  type RecursiveSquareNode,
+  generateRecursiveSquareTerrain,
+  getSquareNodeGrowthAlpha01,
+  renderRecursiveSquareTerrain,
+} from './recursive-square-terrain';
 
-// Re-export merged-contour types for external consumers.
+// Re-export merged-contour types and recursive-square types for external consumers.
 export type { MergedTopographicContours };
+export type { RecursiveSquareNode };
 
 export type TopographicTerrainPaletteId = 'mono' | 'copper' | 'cyanTactical';
+
+/**
+ * Discriminant for terrain variants.
+ * - 'topographic': organic island/contour terrain (the original system).
+ * - 'recursiveSquares': procedural branching rotated-square terrain.
+ *
+ * Boss waves must never generate terrain of either kind; see rpg-render.ts and
+ * the clearWaveTerrainForBossFight() helper there.
+ */
+export type RpgTerrainKind = 'topographic' | 'recursiveSquares';
 
 export interface TopographicTerrainPoint { x: number; y: number; }
 
@@ -54,6 +71,12 @@ export interface TopographicTerrainState {
   waveNumber: number;
   seed: number;
   paletteId: TopographicTerrainPaletteId;
+  /**
+   * Which terrain variant this state represents.
+   * - 'topographic': uses `islands` and `mergedContours`.
+   * - 'recursiveSquares': uses `squareNodes` and `squareMaxDepth`.
+   */
+  terrainKind: RpgTerrainKind;
   islands: TopographicTerrainIsland[];
   phase: 'hidden' | 'growing' | 'stable' | 'shrinking';
   phaseStartedAtMs: number;
@@ -65,14 +88,27 @@ export interface TopographicTerrainState {
    * When non-null, rendering uses these smoothly merged contour polylines
    * instead of per-island ring polygons, and collision uses the merged
    * solid outer boundaries.
+   * Only populated when terrainKind === 'topographic'.
    */
   mergedContours: MergedTopographicContours | null;
   /**
    * Cached lighting overlay for this terrain state.  Built on first render
    * and reused until canvas size or light config changes.  Managed exclusively
    * by `topographic-lighting.ts`; treat as opaque outside that module.
+   * Only used when terrainKind === 'topographic'.
    */
   lightCache: TopographyLightCache | null;
+  /**
+   * Flat list of ALL recursive-square nodes (root + all descendants), ordered
+   * parent-before-children.  Only populated when terrainKind === 'recursiveSquares'.
+   */
+  squareNodes: RecursiveSquareNode[];
+  /**
+   * Maximum depth found in squareNodes.  Used by the growth-animation formula
+   * to stagger node appearance by depth level.
+   * Only meaningful when terrainKind === 'recursiveSquares'.
+   */
+  squareMaxDepth: number;
 }
 
 const TERRAIN_GROW_DURATION_MS = 1800;
@@ -322,6 +358,7 @@ export function generateTopographicTerrain(
     waveNumber,
     seed,
     paletteId,
+    terrainKind: 'topographic',
     islands,
     phase: 'growing',
     phaseStartedAtMs: 0,
@@ -330,6 +367,8 @@ export function generateTopographicTerrain(
     growth01: 0,
     mergedContours,
     lightCache: null,
+    squareNodes: [],
+    squareMaxDepth: 0,
   };
 }
 
@@ -340,6 +379,35 @@ export function beginWaveTerrain(
   nowMs: number,
 ): TopographicTerrainState {
   const seed = (((waveNumber + 1) * 0x9e3779b1) ^ ((canvasW & 0xffff) << 8) ^ (canvasH & 0xffff)) >>> 0;
+
+  // Choose terrain variant deterministically from the wave seed.
+  // 50% topographic, 50% recursive squares.  Boss waves must never call this
+  // function — see clearWaveTerrainForBossFight() in rpg-render.ts.
+  const variantRng = createSeededRng((seed ^ 0xbeefcafe) >>> 0);
+  const useRecursiveSquares = variantRng() < 0.5;
+
+  if (useRecursiveSquares) {
+    const squareNodes = generateRecursiveSquareTerrain(seed, waveNumber, canvasW, canvasH);
+    const squareMaxDepth = squareNodes.reduce((m, n) => Math.max(m, n.depth), 0);
+    const state: TopographicTerrainState = {
+      waveNumber,
+      seed,
+      paletteId: 'mono', // not used for rendering but keeps type compatible
+      terrainKind: 'recursiveSquares',
+      islands: [],
+      phase: 'growing',
+      phaseStartedAtMs: nowMs,
+      growDurationMs: TERRAIN_GROW_DURATION_MS,
+      shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
+      growth01: 0,
+      mergedContours: null,
+      lightCache: null,
+      squareNodes,
+      squareMaxDepth,
+    };
+    return state;
+  }
+
   const state = generateTopographicTerrain(waveNumber, seed, canvasW, canvasH);
   state.phaseStartedAtMs = nowMs;
   state.phase = 'growing';
@@ -395,6 +463,13 @@ export function renderTopographicTerrain(
   if (state.phase === 'hidden') return;
 
   void nowMs;
+
+  // Dispatch to the appropriate renderer based on terrain variant.
+  if (state.terrainKind === 'recursiveSquares') {
+    renderRecursiveSquareTerrain(ctx, state.squareNodes, state.squareMaxDepth, state.growth01);
+    return;
+  }
+
   ctx.save();
   try {
     ctx.lineJoin = 'round';
@@ -590,6 +665,28 @@ export function setTopographicTerrainDevMode(enabled: boolean): void {
   terrainDevMode = enabled;
 }
 
+// ── Recursive-square collision helpers ────────────────────────────────────────
+
+/**
+ * Returns the corner polygons for all square nodes that are currently active
+ * (visible and solid) based on growth01.  Squares pop in depth-by-depth, so
+ * only nodes whose depth-activation threshold has been crossed are included.
+ *
+ * Uses a threshold of 0.1 (alpha > 0.1) to match the point where squares
+ * are already well past their fade-in.
+ */
+function _getActiveSquarePolygons(state: TopographicTerrainState): TopographicTerrainPoint[][] {
+  const result: TopographicTerrainPoint[][] = [];
+  for (const node of state.squareNodes) {
+    const alpha = getSquareNodeGrowthAlpha01(node.depth, state.squareMaxDepth, state.growth01);
+    if (alpha > 0.1) {
+      result.push(node.corners);
+    }
+  }
+  return result;
+}
+
+
 /**
  * Returns true when `(x, y)` is inside any terrain island at its current
  * effective scale (phase-aware: uses `growth01` scaling).
@@ -606,6 +703,14 @@ export function isPointInsideTopographicTerrain(
   if (state.phase === 'hidden') return false;
   const g = state.growth01;
   if (g <= 0) return false;
+
+  // Recursive-square branch: corners are in world space, no centroid scaling.
+  if (state.terrainKind === 'recursiveSquares') {
+    for (const polygon of _getActiveSquarePolygons(state)) {
+      if (isPointInPolygon(polygon, x, y)) return true;
+    }
+    return false;
+  }
 
   if (state.mergedContours && state.mergedContours.solidBoundaries.length > 0) {
     const { centroidX: mcx, centroidY: mcy, solidBoundaries } = state.mergedContours;
@@ -640,6 +745,20 @@ export function segmentIntersectsTopographicTerrain(
   if (state.phase === 'hidden') return false;
   const g = state.growth01;
   if (g <= 0) return false;
+
+  // Recursive-square branch: corners are in world space, no inverse-scaling needed.
+  if (state.terrainKind === 'recursiveSquares') {
+    for (const polygon of _getActiveSquarePolygons(state)) {
+      if (polygon.length < 3) continue;
+      if (isPointInPolygon(polygon, x1, y1) || isPointInPolygon(polygon, x2, y2)) return true;
+      for (let i = 0; i < polygon.length; i++) {
+        const a = polygon[i];
+        const b = polygon[(i + 1) % polygon.length];
+        if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return true;
+      }
+    }
+    return false;
+  }
 
   const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
 
@@ -691,6 +810,28 @@ export function circleIntersectsTopographicTerrain(
   if (state.phase === 'hidden') return false;
   const g = state.growth01;
   if (g <= 0) return false;
+
+  // Recursive-square branch: corners are in world space, bounding-circle pre-reject.
+  if (state.terrainKind === 'recursiveSquares') {
+    for (const node of state.squareNodes) {
+      const alpha = getSquareNodeGrowthAlpha01(node.depth, state.squareMaxDepth, g);
+      if (alpha <= 0.1) continue;
+      // Fast bounding-circle pre-reject.
+      const bdx = x - node.cx, bdy = y - node.cy;
+      const outerR = node.boundingRadius + radiusPx;
+      if (bdx * bdx + bdy * bdy > outerR * outerR) continue;
+      const polygon = node.corners;
+      if (isPointInPolygon(polygon, x, y)) return true;
+      const r2 = radiusPx * radiusPx;
+      for (let i = 0; i < polygon.length; i++) {
+        const a = polygon[i];
+        const b = polygon[(i + 1) % polygon.length];
+        if (pointToSegmentDistSq(x, y, a.x, a.y, b.x, b.y) <= r2) return true;
+      }
+    }
+    return false;
+  }
+
   for (const island of state.islands) {
     const dx = x - island.centerX, dy = y - island.centerY;
     const distSq = dx * dx + dy * dy;
@@ -758,6 +899,23 @@ export function terrainFirstIntersectionT(
   const g = state.growth01;
   if (g <= 0) return 1;
 
+  // Recursive-square branch: corners are already in world space.
+  if (state.terrainKind === 'recursiveSquares') {
+    const ex = ox + dx * maxT, ey = oy + dy * maxT;
+    let bestFraction = 1;
+    for (const polygon of _getActiveSquarePolygons(state)) {
+      if (polygon.length < 3) continue;
+      if (isPointInPolygon(polygon, ox, oy)) return 0;
+      for (let i = 0; i < polygon.length; i++) {
+        const a = polygon[i];
+        const b = polygon[(i + 1) % polygon.length];
+        const t = segmentIntersectT(ox, oy, ex, ey, a.x, a.y, b.x, b.y);
+        if (t !== null && t < bestFraction) bestFraction = t;
+      }
+    }
+    return bestFraction;
+  }
+
   const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
   const ex = ox + dx * maxT, ey = oy + dy * maxT;
   const lox = invCx + (ox - invCx) / g, loy = invCy + (oy - invCy) / g;
@@ -779,6 +937,10 @@ export function terrainFirstIntersectionT(
 
 export function getTopographicTerrainSolidPolygons(state: TopographicTerrainState): TopographicTerrainPoint[][] {
   if (state.phase === 'hidden') return [];
+  // Recursive-square variant: return active square corner polygons.
+  if (state.terrainKind === 'recursiveSquares') {
+    return _getActiveSquarePolygons(state);
+  }
   if (state.mergedContours && state.mergedContours.solidBoundaries.length > 0) {
     return state.mergedContours.solidBoundaries;
   }
@@ -805,6 +967,33 @@ export function signedDistanceToTerrainBoundary(
   if (state.phase === 'hidden') return Infinity;
   const g = state.growth01;
   if (g <= 0) return Infinity;
+
+  // Recursive-square branch: corners are in world space, no inverse-scaling.
+  if (state.terrainKind === 'recursiveSquares') {
+    const polygons = _getActiveSquarePolygons(state);
+    if (polygons.length === 0) return Infinity;
+    let bestDistSq = Infinity;
+    let bestNx = x, bestNy = y;
+    let bestInsideAny = false;
+    for (const polygon of polygons) {
+      if (polygon.length < 3) continue;
+      const inside = isPointInPolygon(polygon, x, y);
+      for (let i = 0; i < polygon.length; i++) {
+        const a = polygon[i];
+        const b = polygon[(i + 1) % polygon.length];
+        const { x: nx, y: ny, distSq } = nearestPointOnSegment(x, y, a.x, a.y, b.x, b.y);
+        if (distSq < bestDistSq) {
+          bestDistSq = distSq;
+          bestNx = nx; bestNy = ny;
+          bestInsideAny = inside;
+        }
+      }
+    }
+    if (bestDistSq === Infinity) return Infinity;
+    if (outNearest) { outNearest.x = bestNx; outNearest.y = bestNy; }
+    const distWorld = Math.sqrt(bestDistSq);
+    return bestInsideAny ? -distWorld : distWorld;
+  }
 
   const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
   if (polygons.length === 0) return Infinity;
@@ -867,6 +1056,29 @@ export function pushPointOutsideTopographicTerrain(
   if (state.phase === 'hidden') { outPos.x = x; outPos.y = y; return false; }
   const g = state.growth01;
   if (g <= 0) { outPos.x = x; outPos.y = y; return false; }
+
+  // Recursive-square branch: corners are in world space.
+  if (state.terrainKind === 'recursiveSquares') {
+    for (const polygon of _getActiveSquarePolygons(state)) {
+      if (polygon.length < 3) continue;
+      if (!isPointInPolygon(polygon, x, y)) continue;
+      let bestDistSq = Infinity;
+      let bestNx = x, bestNy = y;
+      for (let i = 0; i < polygon.length; i++) {
+        const a = polygon[i];
+        const b = polygon[(i + 1) % polygon.length];
+        const { x: nx, y: ny, distSq } = nearestPointOnSegment(x, y, a.x, a.y, b.x, b.y);
+        if (distSq < bestDistSq) { bestDistSq = distSq; bestNx = nx; bestNy = ny; }
+      }
+      const bdx = bestNx - x, bdy = bestNy - y;
+      const bdLen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
+      outPos.x = bestNx + (bdx / bdLen) * marginPx;
+      outPos.y = bestNy + (bdy / bdLen) * marginPx;
+      return true;
+    }
+    outPos.x = x; outPos.y = y;
+    return false;
+  }
 
   const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
 
