@@ -388,21 +388,36 @@ export function updateShadowHandEnemies(
 
 type SwimEntity = {
   x: number; y: number; vx: number; vy: number;
-  swimAngle: number; turnPhase: number;
+  swimAngle: number; turnPhase: number; animPhase: number;
 };
 
 function swimStep(e: SwimEntity, dt: number, ctx: RpgEnemyCtx, speedMul = 1): void {
+  // Advance wander phase
   e.turnPhase += dt * 0.04;
+
+  // Target angle toward player plus a small sinusoidal wander offset
   const dx = ctx.mote.x - e.x;
   const dy = ctx.mote.y - e.y;
-  const targetAngle = Math.atan2(dy, dx) + Math.sin(e.turnPhase) * 0.45;
+  const targetAngle = Math.atan2(dy, dx) + Math.sin(e.turnPhase) * 0.35;
+
+  // Smooth turn toward target — clamp max turn per frame for fish-like steering
   let delta = targetAngle - e.swimAngle;
-  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta > Math.PI)  delta -= Math.PI * 2;
   while (delta < -Math.PI) delta += Math.PI * 2;
-  e.swimAngle += delta * 0.09;
+  const maxTurn = 0.10 * dt;
+  e.swimAngle += Math.max(-maxTurn, Math.min(maxTurn, delta * 0.14));
+
+  // Tail-kick thrust pulse: fish accelerate more strongly on the power-stroke
+  const kick  = 0.65 + 0.35 * Math.max(0, Math.sin(e.animPhase * 2.8));
   const speed = PROC_PATROL_SPEED * 0.85 * speedMul;
-  e.vx = e.vx * 0.92 + Math.cos(e.swimAngle) * speed * 0.08;
-  e.vy = e.vy * 0.92 + Math.sin(e.swimAngle) * speed * 0.08;
+
+  e.vx += Math.cos(e.swimAngle) * speed * kick * 0.09;
+  e.vy += Math.sin(e.swimAngle) * speed * kick * 0.09;
+
+  // Smooth velocity damping
+  e.vx *= 0.91;
+  e.vy *= 0.91;
+
   e.x += e.vx * dt;
   e.y += e.vy * dt;
   ctx.clampEnemyToBounds(e);
@@ -477,6 +492,7 @@ export function updateRubyFishEnemies(enemies: RubyFishEnemy[], ctx: RpgEnemyCtx
         e.dashTimerMs = RUBYFISH_DASH_MS;
       }
     } else if (e.dashState === 'dash') {
+      e.swimAngle = Math.atan2(e.dashVy, e.dashVx); // face the dash direction
       e.vx = e.dashVx; e.vy = e.dashVy;
       e.x += e.vx * dt; e.y += e.vy * dt;
       ctx.clampEnemyToBounds(e);
