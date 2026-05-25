@@ -250,6 +250,23 @@ export interface DiamondFishEnemy extends BaseFishEnemy {
   armorTimerMs: number;
 }
 
+// ── Schooling type alias ───────────────────────────────────────────────────────
+
+/**
+ * Minimal interface a fish entity must satisfy to participate in boids
+ * schooling.  All eight BaseFishEnemy subtypes satisfy this shape.
+ * Used as the read-only shared school list passed into schoolSwimStep.
+ */
+export interface SchoolableFish {
+  x: number; y: number;
+  vx: number; vy: number;
+  swimAngle: number;
+  turnPhase: number;
+  animPhase: number;
+  /** Only set on EmeraldFishEnemy; true for the smaller split sub-fish. */
+  isMini?: boolean;
+}
+
 // ── Plant Projectile ───────────────────────────────────────────────────────────
 /** Spore pod fired by the PlantTurret; dealt once on first hit then expires. */
 export interface PlantProjectile {
