@@ -1339,8 +1339,22 @@
 - Sapphire and Amethyst definitions use persistent companion ship effects rather than the generic piercing effect.
 - `WEAPON_BY_ID` — O(1) lookup map.
 
+### src/data/rpg/rpg-zone-definitions.ts
+- Defines `RpgZoneId` ('euhedral' | 'impetus' | 'caustics' | 'verdure' | 'horizon') and `RpgZoneDefinition`.
+- `RPG_ZONE_DEFINITIONS` — ordered array of all 5 zone definitions with display names, descriptions, enemy id lists, and optional subzone arrays (Horizon only).
+- `RPG_ZONE_BY_ID` — O(1) lookup map.
+- `RPG_ZONE_IDS` — ordered zone id array.
+- `getRpgZoneDisplayName(zoneId)` — returns display name (e.g. "Euhedral").
+
+### src/render/rpg/rpg-zone-select.ts
+- DOM overlay panel for zone selection, appended to `#rpg-area`.
+- `createRpgZoneSelectPanel(rpgSimState, onZoneSelect)` — factory.
+- Lists all 5 zones with display names and per-zone highest wave reached.
+- Highlights the currently active zone; calls `onZoneSelect(zoneId)` when a different zone is selected.
+- `open()` / `close()` / `isOpen` public API.
+
 ### src/sim/rpg/rpg-state.ts
-- `RpgSimState` interface — `highestWaveReached`, `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100), `encounteredEnemyTypes` (Set<string> of all enemy type IDs that have spawned).
+- `RpgSimState` interface — `highestWaveReached`, `activeZoneId` (default 'euhedral'), `highestWaveReachedByZone` (Record<RpgZoneId, number>), `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100), `encounteredEnemyTypes` (Set<string> of all enemy type IDs that have spawned).
 - Exports `PLAYER_BASE_ATK = 10`, `MAX_WEAPON_TIER = 7`, `MIN_BOSS_SPEED_PCT = 10`, `MAX_BOSS_SPEED_PCT = 100`, `BOSS_SPEED_STEP = 10`, `TOTAL_BOSS_COUNT = 10`.
 - `createRpgSimState()` — zero-state factory.
 - Weapon scaling helpers: `getWeaponTierUpgradeCost`, `getScaledWeaponDamage`, `getScaledWeaponCooldown` (kept here to avoid circular dep on PLAYER_BASE_ATK).

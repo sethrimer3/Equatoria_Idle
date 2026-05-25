@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 25;
+export const SAVE_VERSION = 26;
 
 export interface SaveData {
   version: number;
@@ -126,6 +126,10 @@ export interface SaveData {
     /** v25+: set of enemy type IDs the player has explicitly encountered (spawned). Absent in older
     *  saves; bestiary falls back to highestWaveReached-based visibility for empty sets. */
     encounteredEnemyTypes?: string[];
+    /** v26+: active zone id (defaults to 'euhedral'). Absent in older saves. */
+    activeZoneId?: string;
+    /** v26+: highest zone-local wave reached per zone. Absent in older saves (defaults to 0). */
+    highestWaveReachedByZone?: Record<string, number>;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */

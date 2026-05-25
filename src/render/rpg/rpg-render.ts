@@ -143,6 +143,8 @@ import {
   buildRpgNavigationGrid,
   type RpgNavGrid,
 } from './terrain/rpg-pathfinding';
+import { createRpgZoneSelectPanel } from './rpg-zone-select';
+import { getRpgZoneDisplayName, type RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -164,6 +166,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   canvas.style.imageRendering = 'pixelated';
   canvas.style.touchAction = 'none';
   rpgArea.appendChild(canvas);
+
+  // ── Zone select overlay (DOM, inside rpgArea) ──────────────────
+  const zoneSelectPanel = createRpgZoneSelectPanel(rpgSimState, (newZoneId: RpgZoneId) => {
+    rpgSimState.activeZoneId = newZoneId;
+    // Reset wave progression so the zone starts fresh
+    currentWave = 0;
+    isInterWave = true;
+    interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
+  });
+  rpgArea.appendChild(zoneSelectPanel.element);
 
   const ctx = canvas.getContext('2d')!;
   // World coordinate bounds — ALWAYS RPG_LOGICAL_WIDTH × RPG_LOGICAL_HEIGHT.
@@ -936,6 +948,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     keys,
     getIsActive: () => _isActive,
     tryTargetEnemyAt,
+    onZoneLabelTap: () => { zoneSelectPanel.open(); },
   });
 
   function clampEnemyToBounds(enemy: { x: number; y: number; vx: number; vy: number }): void {
@@ -1121,6 +1134,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getPathfindingDebugEnabled:   () => _pathfindingDebugEnabled,
     getIsDevMode:                 () => _isDevMode,
     getCssDisplaySize:            () => ({ w: rpgCssW, h: rpgCssH }),
+    getActiveZoneDisplayName:     () => getRpgZoneDisplayName(rpgSimState.activeZoneId),
   };
 
   // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────

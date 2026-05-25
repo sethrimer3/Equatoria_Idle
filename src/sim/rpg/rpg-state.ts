@@ -9,6 +9,9 @@
  *   - rpg-state-upgrades.ts — Wave boost, RPG upgrade, and boss helpers
  */
 
+import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
+export type { RpgZoneId };
+
 // ─── Constants ────────────────────────────────────────────────────
 
 /** Base player ATK used as the multiplier baseline. */
@@ -31,6 +34,17 @@ export const TOTAL_BOSS_COUNT = 10;
 export interface RpgSimState {
   /** Highest wave number the player has cleared during this run. */
   highestWaveReached: number;
+  /**
+   * The zone the player is currently fighting in.
+   * Defaults to 'euhedral'.
+   */
+  activeZoneId: RpgZoneId;
+  /**
+   * Highest zone-local wave reached per zone.
+   * The zone-local wave equals the current wave counter (currentWave) within
+   * the active zone — it resets to 0 when the player switches zones.
+   */
+  highestWaveReachedByZone: Record<RpgZoneId, number>;
   /** Wave to restart at on death (a multiple of 10 that has been unlocked). 0 = start from wave 1. */
   respawnWave: number;
   /** Weapon IDs the player has purchased. */
@@ -193,6 +207,14 @@ export interface RpgSimState {
 export function createRpgSimState(): RpgSimState {
   return {
     highestWaveReached: 0,
+    activeZoneId: 'euhedral',
+    highestWaveReachedByZone: {
+      euhedral: 0,
+      impetus:  0,
+      caustics: 0,
+      verdure:  0,
+      horizon:  0,
+    },
     respawnWave: 0,
     purchasedWeaponIds: new Set(),
     equippedWeaponIds: new Set(),

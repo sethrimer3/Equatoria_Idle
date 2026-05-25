@@ -29,6 +29,12 @@ export interface RpgInputCtx {
   getIsActive: () => boolean;
   /** Called on a confirmed tap to lock player targeting onto a nearby enemy. */
   tryTargetEnemyAt: (x: number, y: number) => void;
+  /**
+   * Optional callback invoked when the player taps the zone-name / wave label
+   * at the top-left of the canvas.  The label hit region is approximately
+   * x < 210, y < 45 (canvas coordinate space).
+   */
+  onZoneLabelTap?: () => void;
 }
 
 // ── Public handle ─────────────────────────────────────────────────────────────
@@ -46,7 +52,7 @@ const TAP_MAX_MOVE_PX = 10;   // max pointer movement in px for a press to count
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
-  const { canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt } = ctx;
+  const { canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt, onZoneLabelTap } = ctx;
 
   // ── Coordinate conversion ──────────────────────────────────────────────────
 
@@ -95,15 +101,20 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
 
   function endJoystick(pointerId: number, pos?: { x: number; y: number }): void {
     if (pointerId !== joystick.pointerId) return;
-    // Check for tap-to-target
+    // Check for tap-to-target / zone label tap
     if (pos) {
       const elapsed = Date.now() - pointerDownTime;
       const dx = pos.x - pointerDownX;
       const dy = pos.y - pointerDownY;
       const moveDist = Math.sqrt(dx * dx + dy * dy);
       if (elapsed <= TAP_MAX_MS && moveDist <= TAP_MAX_MOVE_PX) {
-        // This is a tap — find enemy at tap location
-        tryTargetEnemyAt(pos.x, pos.y);
+        // Zone label region: top-left corner (generous tap target)
+        if (onZoneLabelTap && pos.x < 210 && pos.y < 45) {
+          onZoneLabelTap();
+        } else {
+          // Regular tap — find enemy at tap location
+          tryTargetEnemyAt(pos.x, pos.y);
+        }
       }
     }
     joystick.isActive = false; joystick.pointerId = -1;

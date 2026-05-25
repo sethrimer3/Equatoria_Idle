@@ -233,6 +233,8 @@ export interface RpgDrawCtx {
   getIsLowGraphicsMode(): boolean;
   getEnemyIndicatorStyle(): 'triangle' | 'outline' | 'off';
   getTopographicTerrainState(): TopographicTerrainState | null;
+  /** Returns the display name for the currently active zone (e.g. "Euhedral"). */
+  getActiveZoneDisplayName(): string;
 
   // ── Callbacks & shared context ────────────────────────────
   getEffectiveEquippedIds(): Set<string>;
@@ -497,11 +499,11 @@ export function drawRpgFrame(
 
   if (rpgPhase === 'alive') drawWaveClearBanner(canvas2d, ctx.getIsInterWave(), ctx.getCurrentWave(), ctx.getInterWaveTimerMs(), widthPx, heightPx);
 
-  // ── Top-left wave number overlay ──────────────────────────────
+  // ── Top-left zone + wave number overlay ──────────────────────────
   const currentWave = ctx.getCurrentWave();
   if (currentWave > 0) {
     // Check if any enemy or player is near the top-left corner region
-    const TL_X = 190, TL_Y = 55;
+    const TL_X = 210, TL_Y = 55;
     let anyOverlap = false;
     const moteNear = ctx.mote.x < TL_X && ctx.mote.y < TL_Y;
     if (moteNear) {
@@ -524,11 +526,23 @@ export function drawRpgFrame(
     const targetAlpha = anyOverlap ? 0.30 : 1.0;
     state.waveOverlapAlpha += (targetAlpha - state.waveOverlapAlpha) * 0.1;
 
+    const zoneName = ctx.getActiveZoneDisplayName();
+    const label = `${zoneName}  x${currentWave}`;
+
     canvas2d.save();
     canvas2d.globalAlpha = state.waveOverlapAlpha;
-    canvas2d.font = 'bold 22px monospace';
+    canvas2d.font = 'bold 14px monospace';
     canvas2d.fillStyle = '#fff172';
-    canvas2d.fillText('Wave: x' + currentWave, 8, 30);
+    canvas2d.fillText(label, 8, 22);
+    // Subtle underline hint to indicate tappability
+    const textW = canvas2d.measureText(label).width;
+    canvas2d.globalAlpha = state.waveOverlapAlpha * 0.45;
+    canvas2d.strokeStyle = '#fff172';
+    canvas2d.lineWidth = 0.5;
+    canvas2d.beginPath();
+    canvas2d.moveTo(8, 24);
+    canvas2d.lineTo(8 + textW, 24);
+    canvas2d.stroke();
     canvas2d.restore();
   }
 
