@@ -1,9 +1,68 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#140**
+Current build: **#141**
 
 ---
 
+## Build #141 — Verdure zone first visual/environment pass
+
+### What was implemented
+
+- **Verdure atmosphere tint**: When `activeZoneId === 'verdure'`, a dark forest-green gradient
+  overlay (`#040e04` → `#091208` → `#0b1a08`) is rendered immediately after the background fill
+  (before fluid and terrain). A faint bioluminescent radial accent glows near the arena floor
+  in high-graphics mode.
+- **Procedural floor plant decoration**: 16 (8 in low-graphics) deterministic plant sprites are
+  scattered across the lower half of the arena — four types: grass tufts (curved blades), sprouts
+  (stem + leaf ellipse), moss patches (flat filled ellipses), and tiny bioluminescent flowers.
+  All positions are seed-driven (no per-frame RNG). Each plant has a gentle time-driven bob.
+- **Procedural vines with sway and player disturbance**: 12 (6 in low-graphics) vines grow inward
+  from the bottom, left, and right arena edges. Each vine is a tapered segment chain (4–6 segments)
+  with:
+  - Natural curvature from pre-baked per-segment angle deviations stored in `Float32Array`.
+  - Gentle sinusoidal sway driven by time + per-vine phase offset.
+  - Spring-damped bend physics: player proximity within 52 px applies an outward velocity
+    impulse; bend springs back to rest with `VINE_SPRING_K = 4.5` and `VINE_DAMPING_BASE = 0.91`.
+  - Tapering line width (thick root → thin tip) and bioluminescent green shadow blur (high-gfx).
+  - All bend state lives in module-level `Float32Array`s — no per-frame object allocation.
+- **Drifting pollen particles** (high-graphics only): 16 tiny bioluminescent motes drift in slow
+  2-D oscillation. All parameters are pre-baked as compile-time constants — no per-frame alloc.
+- **Zone isolation**: All Verdure effects are strictly gated by `activeZoneId === 'verdure'`
+  in `rpg-render-draw.ts`. No other zone is affected.
+- New module: `src/render/rpg/terrain/verdure-overlay.ts`.
+
+### Remaining Verdure work (future tasks)
+
+- **Vine destruction / health**: Vine segments have no health yet. Future pass: expose a
+  `damageVerdureVineAt(x, y, radius)` function in `verdure-overlay.ts`; projectile/AoE hit
+  callbacks in `rpg-damage.ts` can call it. Destroyed segments should fade out and spawn tiny
+  leaf/spore particles. Segment health could live in a `Float32Array`.
+- **Enemy vine disturbance**: Currently only the player disturbs vines. Future pass: pass
+  nearby enemy positions (or a lightweight snapshot) to `drawVerdureFloorEffects()` and apply
+  smaller disturbance impulses per enemy type. Spider Crawler and Ribbon Worm should have
+  stronger disturbance; Cloth Ghost minimal.
+- **Zone-specific terrain routing**: Terrain scheduler still uses the shared 20-wave cycle for
+  all zones. Verdure could be routed to a denser topographic variant or a custom overgrowth
+  terrain generator. Hook: check `activeZoneId` in `beginWaveTerrain()` and dispatch when
+  `terrainProfile === 'overgrowth'`.
+- **Vine regrowth between waves**: Vines could slowly regenerate at wave-clear, providing
+  visual feedback for the inter-wave break.
+- **Plant Turret root integration**: The Plant Turret enemy could visually root into a nearby
+  vine — draw a short curved line from its base to the nearest vine root when Verdure is active.
+- **Spider Crawler vine pathing**: Spider Crawlers could prefer to stay near vine edges (use
+  vine root positions as soft waypoints).
+- **Ribbon Worm flattened trail**: Temporary vine/plant bend trail behind the Ribbon Worm as
+  it moves through the arena.
+- **Destructible root wall hazards**: Blocking vine clumps that can be destroyed by player
+  attacks but slow enemy movement until cleared.
+- **Hazard plants**: Stationary thorns or pollen burst plants that deal damage to the player
+  on contact — separate from decorative floor plants.
+- **Vine collision (player/enemy push-out)**: Not implemented in first pass — decorative
+  vines pass through entities. Future: add vine segment AABBs to the nav grid obstacle list.
+- **Stronger bioluminescent effects**: Per-vine animated glow pulses keyed to sway phase;
+  blinking spore capsule bulbs on vine tips.
+
+---
 ## Build #140 — Caustics zone first visual/environment pass
 
 ### What was implemented

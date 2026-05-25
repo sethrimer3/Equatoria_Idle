@@ -118,6 +118,10 @@ import {
   drawCausticsFloorEffects,
 } from './terrain/caustics-overlay';
 import {
+  drawVerdureBackground,
+  drawVerdureFloorEffects,
+} from './terrain/verdure-overlay';
+import {
   LASER_ENEMY_COLOR, SAPPHIRE_ENEMY_COLOR,
 } from './rpg-constants';
 import {
@@ -366,11 +370,16 @@ export function drawRpgFrame(
   canvas2d.fillStyle = '#0a0a12';
   canvas2d.fillRect(0, 0, widthPx, heightPx);
 
-  // Caustics zone: underwater atmosphere tint — rendered immediately after the
-  // background fill so it sits behind fluid, terrain, and all gameplay elements.
+  // Zone atmosphere tints — rendered immediately after the background fill so
+  // they sit behind fluid, terrain, and all gameplay elements.
   const isCausticsZone = ctx.rpgSimState.activeZoneId === 'caustics';
+  const isVerdureZone  = ctx.rpgSimState.activeZoneId === 'verdure';
   if (isCausticsZone) {
     drawCausticsBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+  }
+  // Verdure zone: dark forest-green / bioluminescent atmosphere tint.
+  if (isVerdureZone) {
+    drawVerdureBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
   }
 
   // Fluid background — rendered first so all gameplay elements appear above it.
@@ -393,10 +402,17 @@ export function drawRpgFrame(
     }
   }
 
-  // Caustics zone: animated floor light (caustic patches, shimmer, bubbles) —
-  // rendered after terrain so it sits on top of the seafloor, below enemies.
+  // Zone floor effects — rendered after terrain so they sit above the floor, below enemies.
   if (isCausticsZone) {
     drawCausticsFloorEffects(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
+  }
+  // Verdure zone: floor plant decoration, procedural vines, pollen particles.
+  if (isVerdureZone) {
+    drawVerdureFloorEffects(
+      canvas2d, widthPx, heightPx, nowMs,
+      ctx.mote.x, ctx.mote.y,
+      ctx.getIsLowGraphicsMode(),
+    );
   }
 
   // Pathfinding debug overlay (dev mode only — no-op otherwise).
