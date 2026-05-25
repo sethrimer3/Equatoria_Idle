@@ -1,12 +1,57 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#148**
+Current build: **#149**
 
 ---
 
-## Build #148 — Caustics light network visual upgrade
+## Build #149 — Caustics cached Voronoi texture system
 
 ### What was implemented
+
+- **Caustics texture generator** (`caustics-texture.ts` — new file):
+  - Generates one tileable caustic texture per quality tier using Voronoi cell-boundary
+    (Worley F2−F1) noise, baked once into `ImageData` via `putImageData`.
+  - High-quality tile: 256×256 px, 5×5 jittered-grid seeds (25 total) — cell size ≈ 51 px.
+  - Low-quality tile: 128×128 px, 4×4 jittered-grid seeds (16 total) — cell size ≈ 32 px.
+  - Seamlessly tileable via toroidal (periodic) boundary conditions on seed distances.
+  - Two-component brightness formula:
+    - Sharp core: `exp(−edge² × 0.50)` — thin ~2–3 px bright filament line.
+    - Soft glow: `exp(−edge² × 0.025)` — 10–15 px aqua halo around each filament.
+  - Color: aqua (#8CD8FF range) in glow halo, cool white-blue (#D8F5FF range) on filament.
+  - Max pixel alpha 190 — filaments translucent individually; bright knots emerge from
+    screen-blended layer overlap only.
+  - Module-level cache (`_tileHigh`, `_tileLow`); exports `getCausticsTextureTile(lowGraphics)`
+    and `invalidateCausticsTextureCache()`.
+
+- **Caustics overlay rebuilt** (`caustics-overlay.ts`):
+  - Removed the old 22-cell Bézier loop system (`_drawCausticsLightNet`,  `_CELL_DATA`,
+    `_CELL_COLORS`, `_CVX`/`_CVY`, `_HIGH_CELL_COUNT`/`_LOW_CELL_COUNT`).
+  - New `_drawCausticsTileLayers()`: draws 2–3 drifting `CanvasPattern` layers with
+    `globalCompositeOperation = 'screen'`.
+    - Layer A (always): scale 1.00×, drift (+8.5, +6.0) px/s — main caustic weave.
+    - Layer B (high only): scale 1.28×, drift (−6.2, +4.5) px/s — larger cells, opposing X.
+    - Layer C (high only): scale 0.78×, drift (+4.2, −5.8) px/s — finer detail, upward bias.
+  - CanvasPattern objects cached module-level (`_patternA/B/C`) and reused each frame —
+    no per-frame allocations in the hot draw loop.
+  - Low-graphics: one layer at alpha 0.33.  High-graphics: three layers at 0.40 / 0.28 / 0.18.
+  - Shimmer bands reduced to 3 (was 5) with lower alpha — kept as subtle accent only.
+  - Bubbles unchanged.
+  - `drawCausticsBackground` unchanged (atmosphere gradient + floor glow pool).
+
+- **Dev overlay updated** (`rpg-render-draw.ts`):
+  - Caustics route label changed from `'causticsFilaments'` to
+    `'causticsCachedTileLayers(High|Low)'`.
+
+---
+
+## Build #148 — Caustics light network visual upgrade (superseded)
+
+### What was implemented (now replaced by build #149)
+
+The build #148 Bézier-loop approach has been replaced.  See build #149 above for the
+current caustics implementation.
+
+---
 
 - **Caustics light network rebuilt** (`caustics-overlay.ts`):
   - Replaced the old sine-wave filament approach (`_drawCausticsFilaments`) with a new
