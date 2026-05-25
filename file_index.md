@@ -1179,7 +1179,16 @@
 
 ### src/render/rpg/terrain/caustics-overlay.ts
 - Stateless underwater zone overlay for Caustics.
-- `drawCausticsBackground()` adds the deep navy/teal wash; `drawCausticsFloorEffects()` layers animated caustic filaments, shimmer bands, and rising bubbles above terrain.
+- `drawCausticsBackground()` — deep-water atmosphere gradient (near-black navy → murky seafloor teal) plus a soft radial floor glow pool at the seabed (high-graphics only).
+- `drawCausticsFloorEffects()` — caustic light network, shimmer bands, rising bubbles.
+- **Build 148+:** `_drawCausticsLightNet()` replaces the old filament approach.
+  22 closed organic 5-vertex Bézier loop cells drawn with `globalCompositeOperation = 'lighter'`.
+  Each cell has pre-baked base position, drift frequencies/amplitudes, morph frequency, phase offset, colour (4-colour palette), and Y-stretch.  Vertex radii oscillate independently so each cell
+  morphs continuously.  A slow global sinusoidal drift simulates the water surface undulating above.
+  Overlapping loop edges accumulate brightness automatically — authentic caustic hot-spots arise at
+  intersections where ray bundles converge.  Low-graphics: 11 cells (every other index), no shimmer.
+  All 22 cell params pre-baked in `_CELL_DATA`; `_CVX`/`_CVY` are module-level reuse buffers (no
+  per-frame allocation).
 
 ### src/render/rpg/terrain/seafloor-terrain.ts  *(new — build 146, updated build 147)*
 - Dedicated seafloor ridge/channel terrain generator for the Caustics zone.

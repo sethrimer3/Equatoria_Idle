@@ -1,6 +1,39 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#147**
+Current build: **#148**
+
+---
+
+## Build #148 — Caustics light network visual upgrade
+
+### What was implemented
+
+- **Caustics light network rebuilt** (`caustics-overlay.ts`):
+  - Replaced the old sine-wave filament approach (`_drawCausticsFilaments`) with a new
+    `_drawCausticsLightNet` that renders 22 closed organic loop cells covering the full arena.
+  - Each cell is a smooth 5-vertex closed Bézier polygon (midpoint quadratic technique) with
+    independently oscillating vertex radii — continuously morphing organic shapes.
+  - Drawn with `globalCompositeOperation = 'lighter'` (additive blending) so overlapping loop
+    edges naturally produce bright hot-spots, matching real caustic physics where multiple
+    refracted ray bundles converge on the seafloor.
+  - 4-colour pale-cool palette (aquamarine, sky-blue, pale mint, cerulean) at conservative
+    per-cell alpha (0.055–0.082 × brightness pulse), so gameplay remains readable.
+  - Each cell has a pre-baked Y-stretch (0.75–1.25) for shape variety — some loops are flat
+    like sandbars, others are taller.
+  - A slow global sinusoidal drift (±15 px X, ±10 px Y, ~12 s period) simulates the water
+    surface rolling above the arena.  Each cell also drifts individually at its own frequency.
+  - Low-graphics mode: 11 cells (every other index); shimmer bands skipped.
+  - No per-frame allocations — all 22 cell params in `_CELL_DATA` constant; `_CVX`/`_CVY`
+    are module-level `Float32Array` buffers reused each frame.
+
+- **Background upgraded** (`caustics-overlay.ts`):
+  - Richer three-stop atmosphere gradient: near-black navy → dark teal → murky seafloor green.
+  - Floor glow pool: soft warm-teal radial gradient pooled at the seabed (high-graphics only).
+    Simulates diffuse ambient light accumulating on the sandy/rocky substrate.
+
+- **Shimmer bands tuned** (`caustics-overlay.ts`):
+  - 5 bands (was 4), slightly higher base alpha (0.018, was 0.013) for better visibility
+    against the brighter caustic background.
 
 ---
 
