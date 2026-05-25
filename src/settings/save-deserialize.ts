@@ -237,6 +237,18 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.encounteredEnemyTypes.add(id);
       }
     }
+    // v26+: zone progression state
+    const validZoneIds = new Set(['euhedral', 'impetus', 'caustics', 'verdure', 'horizon']);
+    if (data.rpg.activeZoneId && validZoneIds.has(data.rpg.activeZoneId)) {
+      state.rpg.activeZoneId = data.rpg.activeZoneId as import('../data/rpg/rpg-zone-definitions').RpgZoneId;
+    }
+    if (data.rpg.highestWaveReachedByZone) {
+      for (const [zoneId, wave] of Object.entries(data.rpg.highestWaveReachedByZone)) {
+        if (validZoneIds.has(zoneId)) {
+          (state.rpg.highestWaveReachedByZone as Record<string, number>)[zoneId] = wave;
+        }
+      }
+    }
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

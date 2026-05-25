@@ -191,6 +191,12 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     if (wave > rpgSimState.highestWaveReached) {
       rpgSimState.highestWaveReached = wave;
     }
+    // Update zone-local highest wave reached
+    const zoneId = rpgSimState.activeZoneId;
+    const prevBest = rpgSimState.highestWaveReachedByZone[zoneId] ?? 0;
+    if (wave > prevBest) {
+      rpgSimState.highestWaveReachedByZone[zoneId] = wave;
+    }
     // Reset per-wave state
     rpgSimState.equipChangedDuringInterwave = false;
     const waveDef = getWaveDefinition(wave);
