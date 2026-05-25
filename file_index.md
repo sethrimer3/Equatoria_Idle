@@ -1037,14 +1037,16 @@
 ### src/render/rpg/terrain/topographic-terrain.ts
 - Self-contained seeded terrain orchestrator for RPG waves. Now supports deterministic
   biome scheduling plus multiple terrain variants behind one collision/render API.
-- **Build 125+:** `RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'reserved4' | 'reserved5'`.
-  `getTerrainKindForWave(waveNumber, isBossWave)` assigns 20-wave biome slots inside each
+- **Build 146+:** `RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'seafloorRidges' | 'reserved4' | 'reserved5'`.
+  `'seafloorRidges'` is the new dedicated Caustics terrain kind, dispatching to `seafloor-terrain.ts`.
+  `TopographicTerrainState` now includes an optional `seafloor?: SeafloorTerrainData` field.
+  `renderTopographicTerrain()` accepts an optional `lowGraphics?` 5th parameter.
+- **Build 125+:** `getTerrainKindForWave(waveNumber, isBossWave)` assigns 20-wave biome slots inside each
   100-wave block and returns `'none'` for boss waves. `TopographicTerrainState` now includes
   `terrainKind`, `squareNodes`, `squareMaxDepth`, and optional `basalt` data.
 - `beginWaveTerrain()` now returns `TopographicTerrainState | null`, dispatches deterministic
   terrain generation by active zone, and falls back to the classic wave-cycle only for unknown
-  profiles. Euhedral now uses recursive squares or basalt only; Impetus and Verdure return null;
-  Caustics keeps cyan topographic terrain.
+  profiles. Euhedral: recursive squares or basalt. Impetus and Verdure: null. Caustics: seafloorRidges.
 - Exports `getTerrainKindForZone(zoneId, seed)` for dev-overlay routing diagnostics.
 - Exports deterministic terrain generation/render helpers plus geometry helpers:
   `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`,
@@ -1172,6 +1174,15 @@
 ### src/render/rpg/terrain/caustics-overlay.ts
 - Stateless underwater zone overlay for Caustics.
 - `drawCausticsBackground()` adds the deep navy/teal wash; `drawCausticsFloorEffects()` layers animated caustic filaments, shimmer bands, and rising bubbles above terrain.
+
+### src/render/rpg/terrain/seafloor-terrain.ts  *(new — build 146)*
+- Dedicated seafloor ridge/channel terrain generator for the Caustics zone.
+- Replaces the generic topographic contour generator for `terrainProfile === 'seafloor'`.
+- `SeafloorTerrainData` / `SeafloorRidge` — data types for generated ridges.
+- `generateSeafloorTerrain(seed, canvasW, canvasH)` — creates 4–7 elongated sinuous ridges spanning the arena width with gentle diagonal bias and sine-wave undulation. Deterministic from wave-derived seed; coordinate-stable across resizes.
+- `renderSeafloorTerrain(ctx, data, growth01, lowGraphics)` — wide soft body stroke + narrow teal crest highlight per ridge. Low-graphics mode halves ridge count and skips crest strokes.
+- Imported and dispatched by `topographic-terrain.ts` via `terrainKind === 'seafloorRidges'`.
+- **Collision/pathfinding not yet wired** (visual-only ridges; future task in `nextSteps.md`).
 
 ### src/render/rpg/terrain/impetus-overlay.ts
 - Stateless Impetus-space overlay with deterministic starfield, nebula haze, gravity wells, and decorative asteroid drift.
@@ -1379,12 +1390,14 @@
 - `createRpgZoneSelectPanel(rpgSimState, onZoneSelect, onSubzoneSelect?)` — factory.
 - Lists all 5 zones with display names and per-zone highest wave reached.
 - Highlights the currently active zone; calls `onZoneSelect(zoneId)` when a different zone is selected.
+- **Build 146+:** Selecting a non-Horizon zone closes the panel; selecting Horizon keeps it open for subzone selection. Zone rows are rebuilt after each switch so highlights and best-wave display stay current.
 - When Horizon is active or selected, shows a subzone panel (Zenith / Nadir / True cards) below the zone list; calls `onSubzoneSelect(subzoneId)` when a subzone is tapped.
-- Exports `HorizonSubzoneId = 'zenith' | 'nadir' | 'true'`.
+- Re-exports `HorizonSubzoneId` (defined in `rpg-state.ts`) for backward compat.
 - `open()` / `close()` / `isOpen` public API.
 
 ### src/sim/rpg/rpg-state.ts
-- `RpgSimState` interface — `highestWaveReached`, `activeZoneId` (default 'euhedral'), `activeSubzoneId` (default 'zenith', used for Horizon subzone selection), `highestWaveReachedByZone` (Record<RpgZoneId, number>), `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100), `encounteredEnemyTypes` (Set<string> of all enemy type IDs that have spawned).
+- `HorizonSubzoneId = 'zenith' | 'nadir' | 'true'` — exported union type for Horizon subzone ids.
+- `RpgSimState` interface — `highestWaveReached`, `activeZoneId` (default 'euhedral'), `activeSubzoneId: HorizonSubzoneId` (default 'zenith', used for Horizon subzone selection), `highestWaveReachedByZone` (Record<RpgZoneId, number>), `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100), `encounteredEnemyTypes` (Set<string> of all enemy type IDs that have spawned).
 - Exports `PLAYER_BASE_ATK = 10`, `MAX_WEAPON_TIER = 7`, `MIN_BOSS_SPEED_PCT = 10`, `MAX_BOSS_SPEED_PCT = 100`, `BOSS_SPEED_STEP = 10`, `TOTAL_BOSS_COUNT = 10`.
 - `createRpgSimState()` — zero-state factory.
 - Weapon scaling helpers: `getWeaponTierUpgradeCost`, `getScaledWeaponDamage`, `getScaledWeaponCooldown` (kept here to avoid circular dep on PLAYER_BASE_ATK).

@@ -4,29 +4,31 @@ This document summarizes the current design direction for zones/worlds in the Eq
 
 ## Implementation Status
 
-As of build #144:
+As of build #146:
 
 - **Zone data structure**: ✅ Implemented — `RpgZoneDefinition` with `id`, `displayName`, `shortDescription`, `enemyIds`, `terrainProfile`, `visualProfile`, and optional `subzones`.
 - **Zone-aware enemy spawning**: ✅ Implemented — `getZoneWaveDefinition(waveNumber, zoneId)` in `wave-definitions.ts`. Euhedral uses the full hand-authored roster. Other zones generate waves from their zone-specific `enemyIds` pool with progressive type introduction.
 - **Per-zone current wave persistence**: ✅ Implemented — `currentWaveByZone` is saved in `RpgSimState` and persisted to save data (v27+). Switching zones saves/restores each zone's wave. Reloading resumes from the last active wave.
 - **Per-zone highest wave tracking**: ✅ Implemented — `highestWaveReachedByZone` in `RpgSimState`, persisted since v26.
-- **Zone selection UI**: ✅ Implemented — `rpg-zone-select.ts` overlay; shows highest wave per zone.
+- **Zone selection UI**: ✅ Implemented — `rpg-zone-select.ts` overlay; shows highest wave per zone. Build #146: selecting a non-Horizon zone now closes the panel and rebuilds rows; Horizon keeps the panel open for subzone selection.
 - **Terrain/visual profile hooks**: ✅ Implemented — `terrainProfile` and `visualProfile` fields on each `RpgZoneDefinition`; `getRpgZoneTerrainProfile(zoneId)` helper for future zone-rendering dispatch.
 - **Eye Stalk**: ✅ Assigned to Verdure (`proc_eyestalk`).
 - **Stardust**: ✅ Assigned to Euhedral.
 - **Horizon safe fallback**: ✅ Implemented — empty-pool zones return no spawns and log a one-time warning.
 - **Caustics first visual pass**: ✅ Implemented — underwater background tint, animated caustic filament floor light (thin crossing sine ribbons; build #144 replaced oval patches), shimmer bands (high-graphics), and rising bubble particles. Active only when `activeZoneId === 'caustics'`. Implemented in `src/render/rpg/terrain/caustics-overlay.ts`.
+- **Caustics dedicated seafloor terrain**: ✅ Implemented (build #146) — `'seafloorRidges'` terrain kind replaces the generic topographic contour generator for Caustics. 4–7 elongated sinuous ridge structures span the arena width with soft channels between them. Deterministic from wave number seed. Visually compatible with `caustics-overlay.ts` filaments. Collision/pathfinding not yet wired (visual-only ridges).
 - **Verdure first visual pass**: ✅ Implemented — dark forest-green/bioluminescent atmosphere tint, procedural floor plants (grass tufts, sprouts, moss patches, tiny flowers), procedural vines (tapered segment chains from arena edges with sway animation and spring-damped player disturbance), and drifting pollen particles (high-graphics). Active only when `activeZoneId === 'verdure'`. Implemented in `src/render/rpg/terrain/verdure-overlay.ts`.
 - **Verdure connected cave walls**: ✅ Implemented (build #144) — solid wall base bands with organic contour profiles along all four edges, plus enlarged rock protrusion polygons with crevice details. Replaces isolated small rock approach.
-- **Zone-based terrain dispatch**: ✅ Implemented (build #144) — `beginWaveTerrain()` now routes by zone, not by 20-wave cycle. Euhedral: recursiveSquares/basalt. Impetus: null (visual overlay). Verdure: null (visual overlay). Caustics: topographic seafloor. Horizon: null.
+- **Zone-based terrain dispatch**: ✅ Implemented (build #144, updated #146) — `beginWaveTerrain()` routes by zone. Euhedral: recursiveSquares/basalt. Impetus: null (visual overlay). Verdure: null (visual overlay). Caustics: `seafloorRidges`. Horizon: null.
 - **Impetus starfield + gravity wells + asteroid field**: ✅ Implemented (build #144) — `src/render/rpg/terrain/impetus-overlay.ts` with 44 pre-baked stars, 3 gravity wells (rings + swirl arcs + dark void), 7 drifting asteroid silhouettes. All visual-only.
-- **Horizon Zenith substrate background**: ✅ Implemented (build #144) — wired via `drawZoneBgOverlay` callback. Zenith uses `createSubstrateEffect`, Nadir uses `createNadirSubstrateEffect` (forked copy). Currently defaults to Zenith; Nadir branch awaits `activeSubzoneId` state field.
+- **Horizon Zenith/Nadir substrate background**: ✅ Implemented (build #144) — wired via `drawZoneBgOverlay` callback. Zenith uses `createSubstrateEffect`, Nadir uses `createNadirSubstrateEffect`. Subzone selection now works via the zone select panel (build #146).
+- **Horizon subzone selection UI and type safety**: ✅ Implemented (build #145–146) — `HorizonSubzoneId` type in `rpg-state.ts`; `activeSubzoneId: HorizonSubzoneId` narrowed from `string`. Zone select panel correctly routes Horizon subzone switching.
 
 **Not yet implemented** (future work):
-- Horizon subzone selection UI and `activeSubzoneId` state — needed to switch between Zenith and Nadir.
-- Caustics dedicated seafloor terrain generator (elongated underwater ridges instead of generic contours).
+- Caustics seafloor collision/pathfinding — ridges are visual-only; nav grid integration is a future task.
 - Stronger caustic pattern quality (offscreen additive blending for brighter filaments).
 - Optional water-distortion postprocess for Caustics.
+- Horizon True subzone — currently uses Zenith substrate with a placeholder dev-overlay label.
 - Horizon enemies and special mechanics.
 - Impetus gravity well gameplay force fields (enemy/player deflection).
 - Impetus asteroid collision/pathfinding integration.

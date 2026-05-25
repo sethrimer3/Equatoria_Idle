@@ -451,7 +451,7 @@ export function drawRpgFrame(
       terrainState.terrainKind === 'recursiveSquares'
         ? collectEnemyInfluencePoints(ctx)
         : undefined;
-    renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies);
+    renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies, ctx.getIsLowGraphicsMode());
     // Topographic lighting overlay is only applicable to the organic contour variant;
     // skip it for recursive-square terrain which has its own visual style.
     if (terrainState.terrainKind === 'topographic') {
@@ -698,7 +698,9 @@ function drawRpgViewportDiagnostics(
   } else if (activeZone === 'verdure') {
     bgRoute = 'verdureWallsPlants';
   } else if (activeZone === 'horizon') {
-    bgRoute = activeSubzone === 'nadir' ? 'horizonNadirSubstrate' : 'horizonZenithSubstrate';
+    if (activeSubzone === 'nadir') bgRoute = 'horizonNadirSubstrate';
+    else if (activeSubzone === 'true') bgRoute = 'horizonTruePlaceholder(zenithSubstrate)';
+    else bgRoute = 'horizonZenithSubstrate';
   } else {
     bgRoute = 'none';
   }

@@ -17,12 +17,19 @@ import {
   getBasaltCellAlpha,
   renderBasaltTerrain,
 } from './basalt-terrain';
+import {
+  type SeafloorTerrainData,
+  generateSeafloorTerrain,
+  renderSeafloorTerrain,
+} from './seafloor-terrain';
 import { getRpgZoneTerrainProfile, type RpgZoneId } from '../../../data/rpg/rpg-zone-definitions';
 
 // Re-export merged-contour types and recursive-square types for external consumers.
 export type { MergedTopographicContours };
 export type { RecursiveSquareNode };
 export type { EnemyInfluencePoint };
+// Re-export seafloor type for consumers that need to inspect terrain state.
+export type { SeafloorTerrainData };
 
 export type TopographicTerrainPaletteId = 'mono' | 'copper' | 'cyanTactical';
 
@@ -32,9 +39,10 @@ export type TopographicTerrainPaletteId = 'mono' | 'copper' | 'cyanTactical';
  * - 'topographic': organic island/contour terrain (the original system).
  * - 'recursiveSquares': procedural branching rotated-square terrain.
  * - 'basalt': clustered hex-column terrain.
+ * - 'seafloorRidges': elongated ridge/channel terrain for the Caustics zone.
  * - 'reserved4'/'reserved5': deterministic scheduler placeholders.
  */
-export type RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'reserved4' | 'reserved5';
+export type RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'seafloorRidges' | 'reserved4' | 'reserved5';
 
 export interface TopographicTerrainPoint { x: number; y: number; }
 
@@ -121,6 +129,8 @@ export interface TopographicTerrainState {
   squareMaxDepth: number;
   /** Basalt hex terrain data. Only populated when terrainKind === 'basalt'. */
   basalt?: BasaltTerrainState;
+  /** Seafloor ridge/channel data. Only populated when terrainKind === 'seafloorRidges'. */
+  seafloor?: SeafloorTerrainData;
 }
 
 const TERRAIN_GROW_DURATION_MS = 1800;
@@ -412,7 +422,7 @@ export function getTerrainKindForZone(
   if (terrainProfile === 'horizon') return 'none';
   if (terrainProfile === 'asteroids') return 'none';
   if (terrainProfile === 'overgrowth') return 'none';
-  if (terrainProfile === 'seafloor') return 'topographic';
+  if (terrainProfile === 'seafloor') return 'seafloorRidges';
   // crystalline (Euhedral): recursiveSquares 75% of the time, basalt 25%
   if (seed % 4 === 0) return 'basalt';
   return 'recursiveSquares';
@@ -443,7 +453,25 @@ export function beginWaveTerrain(
   }
 
   if (terrainProfile === 'seafloor') {
-    return createTopographicTerrainState(waveNumber, seed ^ 0x51af100d, canvasW, canvasH, nowMs, 'cyanTactical');
+    const sfSeed = (seed ^ 0x51af100d) >>> 0;
+    return {
+      waveNumber,
+      seed,
+      paletteId: 'cyanTactical',
+      terrainKind: 'seafloorRidges',
+      islands: [],
+      phase: 'growing',
+      phaseStartedAtMs: nowMs,
+      growDurationMs: TERRAIN_GROW_DURATION_MS,
+      shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
+      growth01: 0,
+      mergedContours: null,
+      lightCache: null,
+      squareNodes: [],
+      squareMaxDepth: 0,
+      basalt: undefined,
+      seafloor: generateSeafloorTerrain(sfSeed, canvasW, canvasH),
+    };
   }
 
   // Verdure: no terrain obstacles — cave-wall/vine visuals are handled by verdure-overlay.ts
@@ -599,6 +627,7 @@ export function renderTopographicTerrain(
   state: TopographicTerrainState,
   nowMs: number,
   enemies?: EnemyInfluencePoint[],
+  lowGraphics?: boolean,
 ): void {
   if (state.phase === 'hidden') return;
 
@@ -611,6 +640,10 @@ export function renderTopographicTerrain(
   }
   if (state.terrainKind === 'basalt') {
     if (state.basalt) renderBasaltTerrain(ctx, state.basalt, state.growth01);
+    return;
+  }
+  if (state.terrainKind === 'seafloorRidges') {
+    if (state.seafloor) renderSeafloorTerrain(ctx, state.seafloor, state.growth01, lowGraphics ?? false);
     return;
   }
 

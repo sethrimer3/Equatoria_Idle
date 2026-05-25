@@ -14,12 +14,13 @@
 
 import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import { RPG_ZONE_DEFINITIONS } from '../../data/rpg/rpg-zone-definitions';
-import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import type { RpgSimState, HorizonSubzoneId } from '../../sim/rpg/rpg-state';
 
 // ─── Horizon subzone definitions ──────────────────────────────────
 
-/** Valid subzone ids for the Horizon zone. */
-export type HorizonSubzoneId = 'zenith' | 'nadir' | 'true';
+// Re-export so callers that previously imported HorizonSubzoneId from this
+// module do not need to change their import paths.
+export type { HorizonSubzoneId };
 
 interface HorizonSubzoneDef {
   id: HorizonSubzoneId;
@@ -212,18 +213,21 @@ export function createRpgZoneSelectPanel(
       row.appendChild(infoSpan);
 
       row.addEventListener('click', () => {
-        if (!isActive) {
+        const wasActive = isActive;
+        if (!wasActive) {
           onZoneSelect(zoneDef.id);
+          // Rebuild zone rows immediately so the active highlight is correct.
+          buildRows();
         }
-        // Show subzone panel when Horizon is selected (active or switching to it).
-        const targetZone = isActive ? rpgSimState.activeZoneId : zoneDef.id;
-        if (targetZone === 'horizon') {
+        // After the switch, check which zone is now active.
+        const nowActive = rpgSimState.activeZoneId;
+        if (nowActive === 'horizon') {
           buildSubzoneRows();
           subzonePanel.style.display = 'flex';
         } else {
           subzonePanel.style.display = 'none';
+          handle.close();
         }
-        if (isActive) handle.close();
       });
 
       // Hover effect
