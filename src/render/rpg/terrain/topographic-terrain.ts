@@ -6,6 +6,7 @@ import {
 import type { TopographyLightCache } from './topographic-lighting-types';
 import {
   type RecursiveSquareNode,
+  type EnemyInfluencePoint,
   generateRecursiveSquareTerrain,
   getSquareNodeGrowthAlpha01,
   renderRecursiveSquareTerrain,
@@ -20,6 +21,7 @@ import {
 // Re-export merged-contour types and recursive-square types for external consumers.
 export type { MergedTopographicContours };
 export type { RecursiveSquareNode };
+export type { EnemyInfluencePoint };
 
 export type TopographicTerrainPaletteId = 'mono' | 'copper' | 'cyanTactical';
 
@@ -507,6 +509,7 @@ export function renderTopographicTerrain(
   ctx: CanvasRenderingContext2D,
   state: TopographicTerrainState,
   nowMs: number,
+  enemies?: EnemyInfluencePoint[],
 ): void {
   if (state.phase === 'hidden') return;
 
@@ -514,7 +517,7 @@ export function renderTopographicTerrain(
 
   // Dispatch to the appropriate renderer based on terrain variant.
   if (state.terrainKind === 'recursiveSquares') {
-    renderRecursiveSquareTerrain(ctx, state.squareNodes, state.squareMaxDepth, state.growth01);
+    renderRecursiveSquareTerrain(ctx, state.squareNodes, state.squareMaxDepth, state.growth01, enemies);
     return;
   }
   if (state.terrainKind === 'basalt') {

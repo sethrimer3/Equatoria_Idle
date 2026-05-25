@@ -40,6 +40,12 @@ export interface RecursiveSquareNode {
   depth: number;
   /** Pre-computed HSL stroke color string. */
   strokeColor: string;
+  /** HSL hue (0–360), stored for enemy-proximity gradient blending. */
+  strokeHue: number;
+  /** HSL saturation (0–100), stored for enemy-proximity gradient blending. */
+  strokeSat: number;
+  /** HSL lightness (0–100), stored for enemy-proximity gradient blending. */
+  strokeLit: number;
   /** Fill alpha (0–1).  Decreases with depth for readability. */
   fillAlpha: number;
   /** Stroke line width in pixels. */
@@ -51,6 +57,23 @@ export interface RecursiveSquareNode {
   boundingRadius: number;
   /** Four corners in world space (clockwise), precomputed at generation. */
   corners: TopographicTerrainPoint[];
+}
+
+// ── Enemy-proximity gradient types ───────────────────────────────────────────
+
+/**
+ * A single enemy position and its RGB colour, used by the proximity-gradient
+ * edge rendering system to tint square edges when enemies are nearby.
+ */
+export interface EnemyInfluencePoint {
+  x: number;
+  y: number;
+  /** Red channel 0–255. */
+  r: number;
+  /** Green channel 0–255. */
+  g: number;
+  /** Blue channel 0–255. */
+  b: number;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -168,6 +191,113 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
+// ── Enemy-proximity gradient helpers ─────────────────────────────────────────
+
+/**
+ * Distance within which an enemy influences square edge colours.
+ * Covers a root square's full extent (halfSize up to 55, bounding radius ~78)
+ * plus enough margin so enemies approaching from off-screen tint edges early.
+ */
+const ENEMY_INFLUENCE_RADIUS_PX = 120;
+
+/**
+ * Multiplier applied to total enemy weight before clamping to [0, 1].
+ * >1 makes the colour shift respond faster as enemies approach.
+ */
+const ENEMY_INFLUENCE_AMPLIFY = 1.8;
+
+/** Number of colour stops per edge when rendering proximity gradients (odd → symmetric). */
+const GRADIENT_STOPS = 5;
+
+/** Pre-computed t-positions for gradient stops. */
+const GRADIENT_T: readonly number[] = [0, 0.25, 0.5, 0.75, 1.0];
+
+/**
+ * Converts HSL (h 0-360, s 0-100, l 0-100) to integer RGB [0-255].
+ * Standard algorithm, no external dependencies.
+ */
+function hslToRgb255(h: number, s: number, l: number): [number, number, number] {
+  const sn = s / 100;
+  const ln = l / 100;
+  const C = (1 - Math.abs(2 * ln - 1)) * sn;
+  const X = C * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = ln - C / 2;
+  let r = 0, g = 0, b = 0;
+  if      (h < 60)  { r = C; g = X; }
+  else if (h < 120) { r = X; g = C; }
+  else if (h < 180) { g = C; b = X; }
+  else if (h < 240) { g = X; b = C; }
+  else if (h < 300) { r = X; b = C; }
+  else              { r = C; b = X; }
+  return [((r + m) * 255 + 0.5) | 0, ((g + m) * 255 + 0.5) | 0, ((b + m) * 255 + 0.5) | 0];
+}
+
+/**
+ * Computes the enemy-influenced RGBA colour string at world position (px, py).
+ *
+ * @param origR/G/B  Original square-edge RGB (from its HSL stroke colour).
+ * @param nodeAlpha  The per-node global alpha (growth animation + depth fade).
+ * @param enemies    Nearby enemy influence points.
+ */
+function influencedColorAt(
+  px: number, py: number,
+  origR: number, origG: number, origB: number,
+  nodeAlpha: number,
+  enemies: EnemyInfluencePoint[],
+): string {
+  const radiusPx = ENEMY_INFLUENCE_RADIUS_PX;
+  let totalW = 0;
+  let sumR = 0, sumG = 0, sumB = 0;
+  for (let ei = 0; ei < enemies.length; ei++) {
+    const e = enemies[ei];
+    const dx = px - e.x, dy = py - e.y;
+    const distSq = dx * dx + dy * dy;
+    if (distSq >= radiusPx * radiusPx) continue;
+    const w = (1 - Math.sqrt(distSq) / radiusPx) ** 2;
+    totalW += w;
+    sumR += w * e.r;
+    sumG += w * e.g;
+    sumB += w * e.b;
+  }
+  let r = origR, g = origG, b = origB;
+  if (totalW > 0) {
+    const blend = clamp01(totalW * ENEMY_INFLUENCE_AMPLIFY);
+    const invW = 1 / totalW;
+    r = (origR + blend * (sumR * invW - origR) + 0.5) | 0;
+    g = (origG + blend * (sumG * invW - origG) + 0.5) | 0;
+    b = (origB + blend * (sumB * invW - origB) + 0.5) | 0;
+  }
+  // Use 2-decimal alpha to avoid creating too many unique strings.
+  return `rgba(${r},${g},${b},${nodeAlpha.toFixed(2)})`;
+}
+
+/**
+ * Draws a single edge (ax,ay)→(bx,by) with a multi-stop linear gradient
+ * that blends the square's original HSL colour with nearby enemy colours.
+ */
+function renderEdgeGradient(
+  ctx: CanvasRenderingContext2D,
+  ax: number, ay: number, bx: number, by: number,
+  origR: number, origG: number, origB: number,
+  nodeAlpha: number,
+  lineWidth: number,
+  enemies: EnemyInfluencePoint[],
+): void {
+  const grad = ctx.createLinearGradient(ax, ay, bx, by);
+  for (let si = 0; si < GRADIENT_STOPS; si++) {
+    const t = GRADIENT_T[si];
+    const px = ax + t * (bx - ax);
+    const py = ay + t * (by - ay);
+    grad.addColorStop(t, influencedColorAt(px, py, origR, origG, origB, nodeAlpha, enemies));
+  }
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.lineWidth = lineWidth;
+  ctx.strokeStyle = grad;
+  ctx.stroke();
+}
+
 // ── Generation ────────────────────────────────────────────────────────────────
 
 /**
@@ -195,11 +325,11 @@ export function generateRecursiveSquareTerrain(
   const allNodes: RecursiveSquareNode[] = [];
   let nodeIdCounter = 0;
 
-  function makeStrokeColor(depth: number, hueJitter: number): string {
+  function makeStrokeColor(depth: number, hueJitter: number): { color: string; hue: number; sat: number; lit: number } {
     const hue = (((baseHue + hueJitter) % 360) + 360) % 360;
     const sat = baseSat;
     const lit = DEPTH_LIGHTNESS_PERCENT[Math.min(depth, DEPTH_LIGHTNESS_PERCENT.length - 1)];
-    return `hsl(${hue | 0}, ${sat}%, ${lit}%)`;
+    return { color: `hsl(${hue | 0}, ${sat}%, ${lit}%)`, hue, sat, lit };
   }
 
   function buildNode(
@@ -213,9 +343,13 @@ export function generateRecursiveSquareTerrain(
     const id = `sq-${nodeIdCounter++}`;
     const hueJitter = (rng() - 0.5) * 20; // ±10 degrees
     const corners = computeCorners(cx, cy, halfSize, angleRad);
+    const sc = makeStrokeColor(depth, hueJitter);
     const node: RecursiveSquareNode = {
       id, cx, cy, halfSize, angleRad, depth,
-      strokeColor: makeStrokeColor(depth, hueJitter),
+      strokeColor: sc.color,
+      strokeHue: sc.hue,
+      strokeSat: sc.sat,
+      strokeLit: sc.lit,
       fillAlpha: DEPTH_FILL_ALPHA[Math.min(depth, DEPTH_FILL_ALPHA.length - 1)],
       lineWidth: DEPTH_LINE_WIDTH[Math.min(depth, DEPTH_LINE_WIDTH.length - 1)],
       boundingRadius: halfSize * Math.SQRT2,
@@ -312,6 +446,12 @@ export function getSquareNodeGrowthAlpha01(
 /**
  * Renders all nodes in the terrain's squareNodes array.
  *
+ * When `enemies` is provided and non-empty, each square edge is drawn with a
+ * multi-stop linear gradient that blends the edge's original colour toward the
+ * colours of nearby enemies, creating smooth proximity-based glow effects.
+ * When no enemies are supplied (or the array is empty) the original solid-
+ * colour rendering path is used unchanged.
+ *
  * Assumes the terrain is NOT in 'hidden' phase (caller's responsibility).
  */
 export function renderRecursiveSquareTerrain(
@@ -319,10 +459,13 @@ export function renderRecursiveSquareTerrain(
   squareNodes: RecursiveSquareNode[],
   squareMaxDepth: number,
   growth01: number,
+  enemies?: EnemyInfluencePoint[],
 ): void {
   ctx.save();
   ctx.lineJoin = 'miter';
   ctx.lineCap = 'square';
+
+  const useGradients = enemies !== undefined && enemies.length > 0;
 
   for (const node of squareNodes) {
     const alpha01 = getSquareNodeGrowthAlpha01(node.depth, squareMaxDepth, growth01);
@@ -330,7 +473,7 @@ export function renderRecursiveSquareTerrain(
 
     const corners = node.corners;
 
-    // Draw interior fill (dark tint).
+    // ── Interior fill (dark tint) — same regardless of gradient mode. ─────────
     ctx.beginPath();
     ctx.moveTo(corners[0].x, corners[0].y);
     ctx.lineTo(corners[1].x, corners[1].y);
@@ -341,28 +484,68 @@ export function renderRecursiveSquareTerrain(
     ctx.fillStyle = 'rgba(0,0,0,1)';
     ctx.fill();
 
-    // Optional: very subtle glow pass (wider, low alpha).
-    if (node.depth <= 1) {
-      ctx.globalAlpha = 0.06 * alpha01;
-      ctx.lineWidth = node.lineWidth * 3;
+    if (!useGradients) {
+      // ── Original solid-colour rendering path ─────────────────────────────────
+
+      // Glow pass (wider, low alpha) for shallow nodes.
+      if (node.depth <= 1) {
+        ctx.globalAlpha = 0.06 * alpha01;
+        ctx.lineWidth = node.lineWidth * 3;
+        ctx.strokeStyle = node.strokeColor;
+        ctx.stroke();
+      }
+
+      // Crisp outline.
+      ctx.globalAlpha = (0.75 + 0.25 * (1 - node.depth / (squareMaxDepth || 1))) * alpha01;
+      ctx.lineWidth = node.lineWidth;
       ctx.strokeStyle = node.strokeColor;
       ctx.stroke();
-    }
 
-    // Draw crisp outline.
-    ctx.globalAlpha = (0.75 + 0.25 * (1 - node.depth / (squareMaxDepth || 1))) * alpha01;
-    ctx.lineWidth = node.lineWidth;
-    ctx.strokeStyle = node.strokeColor;
-    ctx.stroke();
+      // Corner accent dots on root squares.
+      if (node.depth === 0) {
+        ctx.globalAlpha = 0.5 * alpha01;
+        ctx.fillStyle = node.strokeColor;
+        for (const corner of corners) {
+          ctx.beginPath();
+          ctx.arc(corner.x, corner.y, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } else {
+      // ── Gradient-edge rendering path ─────────────────────────────────────────
+      const [origR, origG, origB] = hslToRgb255(node.strokeHue, node.strokeSat, node.strokeLit);
+      const outlineAlpha = (0.75 + 0.25 * (1 - node.depth / (squareMaxDepth || 1))) * alpha01;
 
-    // Tiny corner accent dots on root and depth-1 squares.
-    if (node.depth === 0) {
-      ctx.globalAlpha = 0.5 * alpha01;
-      ctx.fillStyle = node.strokeColor;
-      for (const corner of corners) {
-        ctx.beginPath();
-        ctx.arc(corner.x, corner.y, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+      // Glow pass (wider, low alpha) for shallow nodes — also gradient.
+      if (node.depth <= 1) {
+        ctx.globalAlpha = 1; // alpha baked into gradient stop colours
+        const glowAlpha = 0.06 * alpha01;
+        const glowLw = node.lineWidth * 3;
+        for (let ci = 0; ci < 4; ci++) {
+          const a = corners[ci];
+          const b = corners[(ci + 1) % 4];
+          renderEdgeGradient(ctx, a.x, a.y, b.x, b.y, origR, origG, origB, glowAlpha, glowLw, enemies!);
+        }
+      }
+
+      // Crisp gradient outline — one gradient per edge.
+      ctx.globalAlpha = 1; // alpha baked into gradient stop colours
+      for (let ci = 0; ci < 4; ci++) {
+        const a = corners[ci];
+        const b = corners[(ci + 1) % 4];
+        renderEdgeGradient(ctx, a.x, a.y, b.x, b.y, origR, origG, origB, outlineAlpha, node.lineWidth, enemies!);
+      }
+
+      // Corner accent dots on root squares — influenced colour at each corner.
+      if (node.depth === 0) {
+        ctx.globalAlpha = 1;
+        for (const corner of corners) {
+          const dotColor = influencedColorAt(corner.x, corner.y, origR, origG, origB, 0.5 * alpha01, enemies!);
+          ctx.fillStyle = dotColor;
+          ctx.beginPath();
+          ctx.arc(corner.x, corner.y, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
   }
