@@ -1,6 +1,45 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#138**
+Current build: **#139**
+
+---
+
+## Build #139 — Zone persistence, terrain profile hooks, and zone system cleanup
+
+### What was implemented
+
+- **Per-zone current wave persisted**: `currentWaveByZone: Record<RpgZoneId, number>` added to
+  `RpgSimState` and saved to save data (v27+). `currentWaveByZone` is now owned by
+  `rpgSimState` (not a local variable in `rpg-render.ts`). `setCurrentWave` syncs back to
+  `rpgSimState` on every wave transition. Switching zones saves/restores each zone's wave.
+  Reloading the page resumes from the last active wave per zone. Backward-compatible: old
+  saves default all zones to wave 0.
+- **Zone terrain/visual profile hooks**: `getRpgZoneTerrainProfile(zoneId)` helper added to
+  `rpg-zone-definitions.ts`. Returns `{ terrainProfile, visualProfile }` from the zone
+  definition. Future zone-rendering code should call this to dispatch terrain and background
+  generation by zone without hard-coding zone ids.
+- **SAVE_VERSION**: bumped from 26 → 27.
+- **Docs updated**: `docs/rpg-zone-plan.md` now includes an Implementation Status section
+  reflecting the current implemented state of the zone system.
+
+### Remaining zone work (future tasks)
+
+- **Zone-specific terrain generation**: Terrain does not yet vary by zone. The profile hooks
+  exist (`terrainProfile` field on `RpgZoneDefinition`, `getRpgZoneTerrainProfile()` helper),
+  but rendering still uses the shared Euhedral terrain scheduler for all zones.
+  Next step: check `rpgSimState.activeZoneId` in `beginWaveTerrain()` and dispatch different
+  terrain generators based on `getRpgZoneTerrainProfile(activeZoneId).terrainProfile`.
+- **Zone-specific backgrounds/visual effects**: `visualProfile` field exists on each zone
+  definition. Not yet used for rendering.
+- **Horizon enemies**: Horizon has no enemies — waves complete instantly. Future task: design
+  and assign Horizon-specific enemies to `rpg-zone-definitions.ts`.
+- **Non-Euhedral hand-authored waves**: Impetus, Caustics, and Verdure use the procedural
+  zone generator only. They do not share Euhedral's hand-authored waves 1–25.
+  This is intentional — but future zones may want their own authored tutorial progressions.
+- **Impetus gravity fields, Caustics water distortion, Verdure destructible plants**: All
+  planned zone mechanics from `docs/rpg-zone-plan.md`; none are implemented yet.
+- **Horizon special mechanics**: Zenith, Nadir, and True subzone mechanics from the design
+  doc are not yet implemented.
 
 ---
 
@@ -19,30 +58,12 @@ Current build: **#138**
 - **stardust added to Euhedral**: The `stardust` enemy (prismatic cloud) was not in any
   zone definition. It has been added to Euhedral's `enemyIds` since it fits the
   mineral/crystalline theme.
-- **Per-zone current wave**: Each zone now tracks its own current wave in a local
-  `currentWaveByZone` Record (in-memory, not persisted). Switching away from a zone
-  saves its wave; switching back restores it. `highestWaveReachedByZone` tracking is
+- **Per-zone current wave**: Each zone now tracks its own current wave. Switching away from
+  a zone saves its wave; switching back restores it. `highestWaveReachedByZone` tracking is
   unchanged.
 - **Zone label format**: Fixed from `ZoneName  xWave` to `ZoneName - xWave`.
 
-### Known limitations / future work
 
-- **Per-zone wave not persisted to save data**: `currentWaveByZone` is in-memory only
-  inside `rpg-render.ts`. Reloading the page resets all zone waves to 0 (except the
-  active zone, whose wave is in `rpgSimState` indirectly via `highestWaveReached`, but
-  the local wave counter still resets). To persist this, add
-  `currentWaveByZone: Record<RpgZoneId, number>` to `RpgSimState`, serialise it in
-  `save-serialize.ts`, and deserialise in `save-deserialize.ts` (bump `SAVE_VERSION`).
-
-- **Horizon zone has no enemies**: Horizon waves complete instantly. A future task should
-  assign Horizon-specific enemies to `rpg-zone-definitions.ts` once they are designed.
-
-- **Non-Euhedral zones ignore pre-defined waves 1–25**: Impetus, Caustics, and Verdure
-  always use the procedural zone generator, so they do not share Euhedral's
-  hand-authored tutorial progression. This is intentional — their enemy pools are
-  zone-specific and do not overlap with the hand-authored roster.
-
----
 
 ## Build #125 — Deterministic 5-biome scheduler + basalt hex terrain
 

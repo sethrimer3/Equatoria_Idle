@@ -249,6 +249,14 @@ export function deserializeGameState(data: SaveData): GameState {
         }
       }
     }
+    // v27+: per-zone current wave (resume after reload)
+    if (data.rpg.currentWaveByZone) {
+      for (const [zoneId, wave] of Object.entries(data.rpg.currentWaveByZone)) {
+        if (validZoneIds.has(zoneId) && typeof wave === 'number' && wave >= 0) {
+          (state.rpg.currentWaveByZone as Record<string, number>)[zoneId] = wave;
+        }
+      }
+    }
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

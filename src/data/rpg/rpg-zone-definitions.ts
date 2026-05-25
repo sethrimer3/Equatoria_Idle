@@ -180,3 +180,32 @@ export function getRpgZoneDisplayName(zoneId: RpgZoneId): string {
 
 /** All zone ids in progression order. */
 export const RPG_ZONE_IDS: readonly RpgZoneId[] = RPG_ZONE_DEFINITIONS.map(z => z.id);
+
+// ─── Terrain / visual profile helpers ────────────────────────────
+
+/**
+ * Returns the terrain and visual profile for the given zone.
+ *
+ * Future zone-rendering work should call this helper (rather than
+ * hard-coding zone ids) to route terrain and background generation:
+ *
+ *   const { terrainProfile, visualProfile } = getRpgZoneTerrainProfile(activeZoneId);
+ *   // dispatch terrain generator by terrainProfile ('crystalline', 'asteroids', etc.)
+ *
+ * Current values:
+ *   euhedral  → terrainProfile: 'crystalline',   visualProfile: 'mineral'
+ *   impetus   → terrainProfile: 'asteroids',     visualProfile: 'space'
+ *   caustics  → terrainProfile: 'seafloor',      visualProfile: 'underwater'
+ *   verdure   → terrainProfile: 'overgrowth',    visualProfile: 'bioluminescent'
+ *   horizon   → terrainProfile: 'horizon',       visualProfile: 'transcendent'
+ */
+export function getRpgZoneTerrainProfile(zoneId: RpgZoneId): {
+  terrainProfile: string | undefined;
+  visualProfile: string | undefined;
+} {
+  const def = RPG_ZONE_BY_ID.get(zoneId);
+  return {
+    terrainProfile: def?.terrainProfile,
+    visualProfile:  def?.visualProfile,
+  };
+}
