@@ -1334,6 +1334,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
   };
 
+  // ── Deferred caustics prewarm ─────────────────────────────────────────────
+  // If the active zone at startup is already 'caustics', pre-generate all
+  // caustic tiles before the first rendered frame.  A zero-delay timeout
+  // defers the ~10–60 ms generation work until after the current synchronous
+  // init path completes, keeping startup fast.
+  if (rpgSimState.activeZoneId === 'caustics') {
+    setTimeout(() => prewarmCausticsTextures(), 0);
+  }
+
   return {
     canvas,
     statsPanel: statsPanel.element,
@@ -1445,13 +1454,4 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       return alivenGroups.length;
     },
   };
-
-  // ── Deferred caustics prewarm ─────────────────────────────────────────────
-  // If the active zone at startup is already 'caustics', pre-generate all
-  // caustic tiles before the first rendered frame.  A zero-delay timeout
-  // defers the ~10–60 ms generation work until after the current synchronous
-  // init path completes, keeping startup fast.
-  if (rpgSimState.activeZoneId === 'caustics') {
-    setTimeout(() => prewarmCausticsTextures(), 0);
-  }
 }
