@@ -13,8 +13,12 @@
  *   - Semi-transparent so enemies and player remain clearly readable.
  *
  * Collision/pathfinding:
- *   - Not yet wired into the nav grid.  Ridges are visual-only obstacles.
- *   - Follow-up task documented in nextSteps.md.
+ *   - Collision capsules are generated for 25–45% of each ridge's width;
+ *     deliberate gaps ensure the arena is always traversable.
+ *   - Capsule geometry stored in SeafloorTerrainData.allCollisionSegments and
+ *     per-ridge SeafloorRidge.collisionSegments.
+ *   - Wired into nav-grid via isPointInsideTopographicTerrain /
+ *     circleIntersectsTopographicTerrain in topographic-terrain.ts.
  *
  * Used by topographic-terrain.ts via the 'seafloorRidges' terrain kind.
  */
@@ -22,6 +26,22 @@
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface SeafloorPoint { x: number; y: number; }
+
+/**
+ * A capsule-shaped collision/nav-grid obstacle along a seafloor ridge crest.
+ * Represents a "hard" stretch of raised seabed that blocks movement.
+ *
+ * Collision rule: a point is blocked if its distance to the segment
+ * [x1,y1]→[x2,y2] is ≤ radius.
+ */
+export interface SeafloorCollisionSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** Half-width of the capsule in logical pixels. */
+  radius: number;
+}
 
 /**
  * One sinuous ridge/channel structure spanning the arena width.
@@ -42,11 +62,22 @@ export interface SeafloorRidge {
   bodyAlpha: number;
   /** Opacity for the crest stroke (0–1). */
   crestAlpha: number;
+  /**
+   * Capsule obstacles along this ridge's hard-crest sections.
+   * 25–45% of the ridge width is blocked; deliberate gaps ensure the arena
+   * remains traversable.  Indices refer to the span of `points` that are
+   * blocked; the actual capsule geometry is stored here for collision queries.
+   *
+   * Empty when the ridge has no hard-collision sections (rarer ridge variant).
+   */
+  collisionSegments: SeafloorCollisionSegment[];
 }
 
 /** All ridge data generated for one wave.  Stored in TopographicTerrainState.seafloor. */
 export interface SeafloorTerrainData {
   ridges: SeafloorRidge[];
+  /** Flat list of all collision capsules across every ridge for fast iteration. */
+  allCollisionSegments: SeafloorCollisionSegment[];
 }
 
 // ── Pre-baked colour palettes ─────────────────────────────────────────────────
@@ -94,6 +125,7 @@ export function generateSeafloorTerrain(
   // 4–7 ridges distributed across the vertical arena space.
   const ridgeCount = 4 + Math.floor(rng() * 4);
   const ridges: SeafloorRidge[] = [];
+  const allCollisionSegments: SeafloorCollisionSegment[] = [];
 
   for (let i = 0; i < ridgeCount; i++) {
     // Spread ridges evenly with minor per-ridge jitter, concentrating towards
@@ -136,6 +168,16 @@ export function generateSeafloorTerrain(
     const bodyColorIdx  = Math.floor(rng() * _BODY_COLORS.length);
     const crestColorIdx = Math.floor(rng() * _CREST_COLORS.length);
 
+    // ── Generate collision capsules for hard-crest sections ───────────────
+    // 25–45% of each ridge's length is blocked, in non-contiguous spans.
+    // Deliberate gaps ensure no full-width barrier.
+    const collisionSegments = _generateRidgeCollisionSegments(
+      rng, points, width, canvasW,
+    );
+    for (const seg of collisionSegments) {
+      allCollisionSegments.push(seg);
+    }
+
     ridges.push({
       points,
       width,
@@ -144,10 +186,129 @@ export function generateSeafloorTerrain(
       crestColor: _CREST_COLORS[crestColorIdx],
       bodyAlpha,
       crestAlpha,
+      collisionSegments,
     });
   }
 
-  return { ridges };
+  return { ridges, allCollisionSegments };
+}
+
+// ── Collision segment generation ──────────────────────────────────────────────
+
+/**
+ * Minimum horizontal gap (px) that must remain open between blocked spans.
+ * Ensures at least one clear channel exists across the full arena width.
+ */
+const _MIN_GAP_PX = 55;
+
+/**
+ * Generates blocked capsule segments for a single ridge.
+ *
+ * Design constraints:
+ *  - Only 25–45% of the ridge's horizontal extent is blocked.
+ *  - At least one gap of ≥ MIN_GAP_PX is left open — never a wall-to-wall barrier.
+ *  - Collision radius is smaller than the visual body width, so the visible
+ *    ridge looks wider than the actual hard obstacle.
+ *  - Edge regions (leftmost 10% and rightmost 10% of arena) are never blocked
+ *    so entities can always escape along the walls.
+ */
+function _generateRidgeCollisionSegments(
+  rng: () => number,
+  points: SeafloorPoint[],
+  bodyWidth: number,
+  canvasW: number,
+): SeafloorCollisionSegment[] {
+  if (points.length < 2) return [];
+
+  // Capsule radius: tighter than the visual body so the ridge visually looks
+  // wider than the hard obstacle, giving a "sandbar" rather than "brick wall" feel.
+  const radius = Math.max(4, bodyWidth * 0.38);
+
+  // Blocked fraction of the ridge: 25–45%.
+  const blockedFrac = 0.25 + rng() * 0.20;
+
+  // Number of blocked spans: 1–3.  More spans = more varied obstacle layout.
+  const spanCount = 1 + Math.floor(rng() * 3);
+
+  // Edge exclusion: never block within the leftmost/rightmost 10% of the arena.
+  const edgeExclusion = canvasW * 0.10;
+  // Arena's usable x range for blockage.
+  const usableMin = edgeExclusion;
+  const usableMax = canvasW - edgeExclusion;
+  const usableWidth = usableMax - usableMin;
+  if (usableWidth <= _MIN_GAP_PX * 2) return [];
+
+  // Total blocked width budget.
+  const totalBlockedPx = usableWidth * blockedFrac;
+  // Per-span budget.
+  const perSpanPx = totalBlockedPx / spanCount;
+
+  const segments: SeafloorCollisionSegment[] = [];
+
+  // Divide the usable range into `spanCount` slots; pick a random blocked sub-range
+  // within each slot so spans don't overlap and gaps are forced.
+  const slotWidth = usableWidth / spanCount;
+  for (let s = 0; s < spanCount; s++) {
+    const slotStart = usableMin + s * slotWidth;
+    const slotEnd   = slotStart + slotWidth;
+
+    // Blocked sub-range is at most perSpanPx wide; offset randomly within the slot
+    // so there's always a gap before and after the blocked region.
+    const maxStart = slotEnd - perSpanPx - _MIN_GAP_PX * 0.5;
+    if (maxStart <= slotStart) continue;  // slot too narrow — skip this span
+
+    const spanStart = slotStart + rng() * (maxStart - slotStart);
+    const spanEnd   = spanStart + perSpanPx;
+
+    // Walk the ridge points to extract the capsule from spanStart to spanEnd.
+    const capsule = _ridgeCapsuleForXRange(points, spanStart, spanEnd);
+    if (capsule) {
+      segments.push({ ...capsule, radius });
+    }
+  }
+
+  return segments;
+}
+
+/**
+ * Extracts a single capsule (start point, end point) for the portion of a ridge
+ * polyline between x-coordinates `xFrom` and `xTo`.
+ *
+ * Since ridge points are ordered left-to-right, we interpolate on the polyline
+ * to find the world-space (x, y) at each x boundary.
+ */
+function _ridgeCapsuleForXRange(
+  points: SeafloorPoint[],
+  xFrom: number,
+  xTo: number,
+): { x1: number; y1: number; x2: number; y2: number } | null {
+  const start = _sampleRidgeAtX(points, xFrom);
+  const end   = _sampleRidgeAtX(points, xTo);
+  if (!start || !end) return null;
+  return { x1: start.x, y1: start.y, x2: end.x, y2: end.y };
+}
+
+/**
+ * Samples the ridge polyline at a given x by linear interpolation between the
+ * two nearest points bracketing that x.  Returns null if x is out of range.
+ */
+function _sampleRidgeAtX(points: SeafloorPoint[], x: number): SeafloorPoint | null {
+  if (points.length < 2) return null;
+  const first = points[0];
+  const last  = points[points.length - 1];
+  if (x < first.x || x > last.x) return null;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    if (x >= p0.x && x <= p1.x) {
+      const denom = p1.x - p0.x;
+      if (denom < 1e-8) return { x: p0.x, y: p0.y };
+      const t = (x - p0.x) / denom;
+      return { x, y: p0.y + t * (p1.y - p0.y) };
+    }
+  }
+  return null;
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -157,6 +318,8 @@ export function generateSeafloorTerrain(
  *
  * Draw order (called from renderTopographicTerrain):
  *   - Each ridge: wide body stroke first, then narrow crest highlight.
+ *   - Blocked-crest sections receive a slightly brighter edge marker so the
+ *     player can tell which parts of the ridge are hard obstacles.
  *   - Low-graphics mode halves ridge count and skips crest strokes.
  *
  * @param ctx       Canvas 2D rendering context.
@@ -208,6 +371,28 @@ export function renderSeafloorTerrain(
       ctx.strokeStyle = ridge.crestColor;
       ctx.lineWidth   = ridge.crestWidth;
       ctx.stroke();
+    }
+
+    // ── Hard-crest collision markers ──────────────────────────────────────
+    // Blocked capsule sections are drawn with a slightly brighter, harder edge
+    // so players can read which parts of the ridge are solid obstacles.
+    // The marker is a short thick stroke slightly wider than the visual body.
+    if (ridge.collisionSegments.length > 0) {
+      const markerAlpha = (lowGraphics ? 0.18 : 0.28) * growth01;
+      ctx.globalAlpha = markerAlpha;
+      // Use a lighter, more saturated version of the crest colour for markers.
+      ctx.strokeStyle = ridge.crestColor;
+      ctx.lineWidth   = ridge.width * 0.55;
+      ctx.lineCap = 'butt';
+
+      for (const seg of ridge.collisionSegments) {
+        ctx.beginPath();
+        ctx.moveTo(seg.x1, seg.y1);
+        ctx.lineTo(seg.x2, seg.y2);
+        ctx.stroke();
+      }
+
+      ctx.lineCap = 'round';
     }
   }
 

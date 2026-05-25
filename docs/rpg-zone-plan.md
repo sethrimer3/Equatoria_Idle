@@ -4,7 +4,7 @@ This document summarizes the current design direction for zones/worlds in the Eq
 
 ## Implementation Status
 
-As of build #146:
+As of build #147:
 
 - **Zone data structure**: ✅ Implemented — `RpgZoneDefinition` with `id`, `displayName`, `shortDescription`, `enemyIds`, `terrainProfile`, `visualProfile`, and optional `subzones`.
 - **Zone-aware enemy spawning**: ✅ Implemented — `getZoneWaveDefinition(waveNumber, zoneId)` in `wave-definitions.ts`. Euhedral uses the full hand-authored roster. Other zones generate waves from their zone-specific `enemyIds` pool with progressive type introduction.
@@ -16,7 +16,8 @@ As of build #146:
 - **Stardust**: ✅ Assigned to Euhedral.
 - **Horizon safe fallback**: ✅ Implemented — empty-pool zones return no spawns and log a one-time warning.
 - **Caustics first visual pass**: ✅ Implemented — underwater background tint, animated caustic filament floor light (thin crossing sine ribbons; build #144 replaced oval patches), shimmer bands (high-graphics), and rising bubble particles. Active only when `activeZoneId === 'caustics'`. Implemented in `src/render/rpg/terrain/caustics-overlay.ts`.
-- **Caustics dedicated seafloor terrain**: ✅ Implemented (build #146) — `'seafloorRidges'` terrain kind replaces the generic topographic contour generator for Caustics. 4–7 elongated sinuous ridge structures span the arena width with soft channels between them. Deterministic from wave number seed. Visually compatible with `caustics-overlay.ts` filaments. Collision/pathfinding not yet wired (visual-only ridges).
+- **Caustics dedicated seafloor terrain**: ✅ Implemented (build #146) — `'seafloorRidges'` terrain kind replaces the generic topographic contour generator for Caustics. 4–7 elongated sinuous ridge structures span the arena width with soft channels between them. Deterministic from wave number seed. Visually compatible with `caustics-overlay.ts` filaments.
+- **Caustics seafloor collision/pathfinding**: ✅ Implemented (build #147) — Each ridge generates 25–45% blocked capsule segments with deliberate gaps; capsule geometry stored in `SeafloorTerrainData.allCollisionSegments`. All four terrain collision helpers (`isPointInsideTopographicTerrain`, `circleIntersectsTopographicTerrain`, `segmentIntersectsTopographicTerrain`, `terrainFirstIntersectionT`) handle `seafloorRidges`. Nav grid (`buildRpgNavigationGrid`) marks hard crest cells blocked. Path funnel routes around blocked segments. Blocked-crest sections receive a subtly brighter teal visual marker. LOS and projectile truncation work; ray test uses 5 px steps (accuracy to ±5 px, suitable for gameplay). Dev overlay shows `seafloorSegments` and `seafloorCollision`.
 - **Verdure first visual pass**: ✅ Implemented — dark forest-green/bioluminescent atmosphere tint, procedural floor plants (grass tufts, sprouts, moss patches, tiny flowers), procedural vines (tapered segment chains from arena edges with sway animation and spring-damped player disturbance), and drifting pollen particles (high-graphics). Active only when `activeZoneId === 'verdure'`. Implemented in `src/render/rpg/terrain/verdure-overlay.ts`.
 - **Verdure connected cave walls**: ✅ Implemented (build #144) — solid wall base bands with organic contour profiles along all four edges, plus enlarged rock protrusion polygons with crevice details. Replaces isolated small rock approach.
 - **Zone-based terrain dispatch**: ✅ Implemented (build #144, updated #146) — `beginWaveTerrain()` routes by zone. Euhedral: recursiveSquares/basalt. Impetus: null (visual overlay). Verdure: null (visual overlay). Caustics: `seafloorRidges`. Horizon: null.
@@ -25,7 +26,6 @@ As of build #146:
 - **Horizon subzone selection UI and type safety**: ✅ Implemented (build #145–146) — `HorizonSubzoneId` type in `rpg-state.ts`; `activeSubzoneId: HorizonSubzoneId` narrowed from `string`. Zone select panel correctly routes Horizon subzone switching.
 
 **Not yet implemented** (future work):
-- Caustics seafloor collision/pathfinding — ridges are visual-only; nav grid integration is a future task.
 - Stronger caustic pattern quality (offscreen additive blending for brighter filaments).
 - Optional water-distortion postprocess for Caustics.
 - Horizon True subzone — currently uses Zenith substrate with a placeholder dev-overlay label.

@@ -726,6 +726,14 @@ function drawRpgViewportDiagnostics(
     lines.push(getImpetusDevLine(lowG));
   }
 
+  // Append Caustics seafloor diagnostics.
+  if (activeZone === 'caustics' && terrainState?.terrainKind === 'seafloorRidges') {
+    const sfData = terrainState.seafloor;
+    const segCount = sfData?.allCollisionSegments.length ?? 0;
+    lines.push(`seafloorSegments: ${segCount}`);
+    lines.push(`seafloorCollision: ${segCount > 0 ? 'on' : 'off'}`);
+  }
+
   canvas2d.save();
   canvas2d.font = '8px monospace';
   const lineH = 10;

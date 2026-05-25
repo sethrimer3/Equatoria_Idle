@@ -1,59 +1,100 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#146**
+Current build: **#148**
 
 ---
 
-## Build #146 — Horizon subzone type safety, zone select UX fix, Caustics seafloor terrain, Horizon True dev overlay
+## Build #148 — Caustics light network visual upgrade
 
 ### What was implemented
 
-- **Horizon subzone typing hardened** (`rpg-state.ts`, `rpg-zone-select.ts`, `save-deserialize.ts`):
-  - `HorizonSubzoneId = 'zenith' | 'nadir' | 'true'` is now defined in `rpg-state.ts`.
-  - `RpgSimState.activeSubzoneId` changed from `string` to `HorizonSubzoneId`.
-  - `rpg-zone-select.ts` imports and re-exports `HorizonSubzoneId` from `rpg-state.ts` — no
-    duplicate type definition.
-  - `save-deserialize.ts` casts the saved value to `HorizonSubzoneId` after whitelist validation.
-  - Older saves with missing or invalid subzone default to `'zenith'` as before.
+- **Caustics light network rebuilt** (`caustics-overlay.ts`):
+  - Replaced the old sine-wave filament approach (`_drawCausticsFilaments`) with a new
+    `_drawCausticsLightNet` that renders 22 closed organic loop cells covering the full arena.
+  - Each cell is a smooth 5-vertex closed Bézier polygon (midpoint quadratic technique) with
+    independently oscillating vertex radii — continuously morphing organic shapes.
+  - Drawn with `globalCompositeOperation = 'lighter'` (additive blending) so overlapping loop
+    edges naturally produce bright hot-spots, matching real caustic physics where multiple
+    refracted ray bundles converge on the seafloor.
+  - 4-colour pale-cool palette (aquamarine, sky-blue, pale mint, cerulean) at conservative
+    per-cell alpha (0.055–0.082 × brightness pulse), so gameplay remains readable.
+  - Each cell has a pre-baked Y-stretch (0.75–1.25) for shape variety — some loops are flat
+    like sandbars, others are taller.
+  - A slow global sinusoidal drift (±15 px X, ±10 px Y, ~12 s period) simulates the water
+    surface rolling above the arena.  Each cell also drifts individually at its own frequency.
+  - Low-graphics mode: 11 cells (every other index); shimmer bands skipped.
+  - No per-frame allocations — all 22 cell params in `_CELL_DATA` constant; `_CVX`/`_CVY`
+    are module-level `Float32Array` buffers reused each frame.
 
-- **Zone select panel UX fixed** (`rpg-zone-select.ts`):
-  - Tapping any non-Horizon zone now calls `onZoneSelect`, rebuilds zone rows to show the correct
-    active highlight, and closes the panel.
-  - Tapping Horizon switches to Horizon, rebuilds zone rows, and keeps the panel open so the player
-    can choose a subzone.
-  - Zone rows are always rebuilt after a zone switch so the best-wave display is not stale.
+- **Background upgraded** (`caustics-overlay.ts`):
+  - Richer three-stop atmosphere gradient: near-black navy → dark teal → murky seafloor green.
+  - Floor glow pool: soft warm-teal radial gradient pooled at the seabed (high-graphics only).
+    Simulates diffuse ambient light accumulating on the sandy/rocky substrate.
 
-- **Horizon True dev overlay label** (`rpg-render-draw.ts`):
-  - `bg` route now reports `horizonTruePlaceholder(zenithSubstrate)` when `activeSubzone === 'true'`,
-    making it clear the True effect is not yet implemented.
-  - Nadir and Zenith labels unchanged.
+- **Shimmer bands tuned** (`caustics-overlay.ts`):
+  - 5 bands (was 4), slightly higher base alpha (0.018, was 0.013) for better visibility
+    against the brighter caustic background.
 
-- **Caustics dedicated seafloor terrain** (`seafloor-terrain.ts`, `topographic-terrain.ts`):
-  - New `'seafloorRidges'` added to `RpgTerrainKind`.
-  - New file `src/render/rpg/terrain/seafloor-terrain.ts` with:
-    - `SeafloorTerrainData` / `SeafloorRidge` types.
-    - `generateSeafloorTerrain(seed, canvasW, canvasH)` — 4–7 sinuous elongated ridges per wave.
-      Each ridge is a polyline spanning the arena width with sine-wave undulation and a subtle
-      diagonal bias. Deterministic from wave-derived seed; coordinate-stable across resizes.
-    - `renderSeafloorTerrain(ctx, data, growth01, lowGraphics)` — wide soft body stroke plus
-      narrow teal crest highlight per ridge. Low-graphics mode halves ridge count and skips crests.
-  - `beginWaveTerrain()` in `topographic-terrain.ts` now routes `terrainProfile === 'seafloor'`
-    to `'seafloorRidges'` instead of the generic topographic contour generator.
-  - `getTerrainKindForZone()` returns `'seafloorRidges'` for Caustics.
-  - `renderTopographicTerrain()` dispatches `terrainKind === 'seafloorRidges'` to the new renderer.
-  - **Collision/pathfinding not yet wired**: `islands: []`, `mergedContours: null`.
-    Ridges are visual-only. See remaining work below.
+---
 
-- **Caustics dev overlay updated** (`rpg-render-draw.ts`):
-  - `terrainKind: seafloorRidges` now appears in the overlay automatically from the terrain state.
-  - `bg: causticsFilaments` and `sunlightWash: off` remain correct.
+## Build #147 — Caustics seafloor collision and pathfinding
+
+### What was implemented
+
+- **Caustics seafloor collision geometry** (`seafloor-terrain.ts`):
+  - Added `SeafloorCollisionSegment` type: capsule (start point, end point, radius) representing
+    a hard-blocking section of a ridge crest.
+  - Added `collisionSegments: SeafloorCollisionSegment[]` to `SeafloorRidge` and
+    `allCollisionSegments: SeafloorCollisionSegment[]` to `SeafloorTerrainData` for fast iteration.
+  - `generateSeafloorTerrain()` now calls `_generateRidgeCollisionSegments()` for each ridge:
+    - 25–45% of each ridge's usable x-range becomes hard-blocking.
+    - Blocked sections are split into 1–3 non-contiguous spans per ridge.
+    - Edge exclusion zones (left/right 10% of arena) are never blocked.
+    - Minimum gap constant (`_MIN_GAP_PX = 55 px`) enforced between blocked spans.
+    - Capsule radius = 38% of body width — tighter than the visual stroke, so ridges look wider
+      than their hard obstacle, giving a "sandbar" not "brick wall" feel.
+    - Fully deterministic from the same seed as ridge generation.
+
+- **Terrain collision helpers updated** (`topographic-terrain.ts`):
+  - `isPointInsideTopographicTerrain`: new `seafloorRidges` branch — tests each capsule via
+    `pointToSegmentDistSq(px, py, ...) <= radius²`.
+  - `circleIntersectsTopographicTerrain`: new `seafloorRidges` branch — tests each capsule with
+    combined radius `(seg.radius + queryRadius)`.
+  - `segmentIntersectsTopographicTerrain`: new `seafloorRidges` branch — uses
+    `_segmentIntersectsCapsule()` helper (4 endpoint distance checks + `segmentsIntersect` guard).
+  - `terrainFirstIntersectionT`: new `seafloorRidges` branch — steps along the ray at 5 px intervals
+    to find the first capsule entry (used for projectile/laser truncation).
+  - `signedDistanceToTerrainBoundary`: new `seafloorRidges` branch — returns signed distance from
+    query point to nearest capsule surface (negative inside, positive outside).
+  - Added private capsule helpers `_pointInCapsule()` and `_segmentIntersectsCapsule()`.
+
+- **Nav grid picks up seafloor collision** (`rpg-pathfinding.ts`):
+  - No changes needed: `buildRpgNavigationGrid()` already calls
+    `isPointInsideTopographicTerrain` + `circleIntersectsTopographicTerrain`, which now handle
+    `seafloorRidges`. Hard crest segments are marked blocked; gaps remain walkable.
+  - Path funnel `_funnelPath()` uses `segmentIntersectsTopographicTerrain` which now handles
+    `seafloorRidges`, so waypoints route around blocked crest segments.
+
+- **Visual clarity: hard-crest markers** (`seafloor-terrain.ts`):
+  - `renderSeafloorTerrain()` draws a brighter teal stroke over each blocked capsule section,
+    at 55% of the body width, using `lineCap = 'butt'` for crisp segment ends.
+  - Low-graphics mode uses a slightly lower alpha marker; high-graphics uses a stronger marker.
+  - Gives players a readable signal that certain parts of each ridge are solid obstacles.
+
+- **Dev overlay enhanced** (`rpg-render-draw.ts`):
+  - Caustics zone overlay now appends:
+    - `seafloorSegments: N` — total collision capsules across all ridges.
+    - `seafloorCollision: on/off` — quick diagnostic for whether any capsules were generated.
+
+- **LOS/projectile blocking** (`topographic-terrain.ts`):
+  - `terrainFirstIntersectionT` and `segmentIntersectsTopographicTerrain` now work for
+    `seafloorRidges`, so lasers and projectiles are blocked by hard crest segments.
+  - Targets behind hard segments lose LOS — `hasTopographicTerrainLineOfSight` returns false
+    for obstructed paths.
+  - Conservative step-based ray test (5 px) is accurate to within half a step; suitable for
+    the visual-effect use case (laser truncation). Documented in `DECISIONS.md` if needed.
 
 ### Remaining work (future tasks)
-
-- **Caustics seafloor collision/pathfinding**: Seafloor ridges are visual-only. Future pass:
-  compute AABB or polygon footprints for each ridge and register them in the nav grid.
-  This requires deciding on a suitable obstacle representation (thick rectangle per ridge segment,
-  or a merged navgrid band).
 
 - **Horizon True subzone**: Currently shows the Zenith substrate with a placeholder label in the
   dev overlay. A distinct visual effect needs to be designed and implemented.
