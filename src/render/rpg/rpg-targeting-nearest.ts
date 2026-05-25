@@ -238,6 +238,19 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const d = dx * dx + dy * dy;
     if (d <= bestSq) { bestSq = d; best = { kind: 'proc_plantproj', x: p.x, y: p.y, distSq: d, plantProj: p }; }
   }
+  // ── Verdure zone environmental plants ──────────────────────────────────────
+  // Only checked when plants are present (non-Verdure zones have empty array).
+  // Plants use pre-computed nearestSegDistPx for efficiency; we only do the
+  // squared-distance comparison here (rootX/rootY as proxy for target position).
+  for (const plant of ctx.verdurePlants) {
+    if (!plant.isTargetable) continue;
+    const dSq = plant.nearestSegDistPx * plant.nearestSegDistPx;
+    if (dSq <= bestSq) {
+      bestSq = dSq;
+      // Use the root as the representative position (close enough for targeting)
+      best = { kind: 'verdure_plant', x: plant.rootX, y: plant.rootY, distSq: dSq, verdurePlant: plant };
+    }
+  }
   return best;
 }
 

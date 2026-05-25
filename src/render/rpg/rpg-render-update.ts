@@ -236,6 +236,8 @@ export interface RpgUpdateCtx {
   fluid: { step(deltaMs: number): void };
   drawCtx: RpgDrawCtx;
   drawFrameState: RpgDrawFrameState;
+  /** Optional hook called once per frame to update Verdure zone plants. */
+  updateVerdurePlants?(deltaMs: number): void;
 }
 
 // ── Per-frame simulation step ─────────────────────────────────────────────────
@@ -403,6 +405,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
   if (ctx.playerStats.hp <= 0) ctx.triggerDeath();
   ctx.statsPanel.update();
+  ctx.updateVerdurePlants?.(deltaMs);
   ctx.fluid.step(deltaMs);
   drawRpgFrame(ctx.drawCtx, ctx.drawFrameState, nowMs);
 }

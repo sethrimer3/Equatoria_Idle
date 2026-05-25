@@ -66,6 +66,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.amethystFish) return ctx.damageAmethystFishEnemy(target.amethystFish, rawDamage, defPierceRatio);
     if (target.diamondFish) return ctx.damageDiamondFishEnemy(target.diamondFish, rawDamage, defPierceRatio);
     if (target.plantProj) return ctx.damagePlantProjectile(target.plantProj, rawDamage);
+    if (target.verdurePlant) return ctx.damageVerdurePlant(target.verdurePlant, rawDamage);
     return 0;
   }
 

@@ -122,6 +122,13 @@ import {
   drawVerdureFloorEffects,
 } from './terrain/verdure-overlay';
 import {
+  drawVerdureEdgeRocks,
+  drawVerdurePlants,
+  drawVerdureFragments,
+} from './terrain/rpg-verdure-render';
+import { verdureFragments } from './terrain/rpg-verdure-growth';
+import type { VerdurePlant } from './terrain/rpg-verdure-growth';
+import {
   LASER_ENEMY_COLOR, SAPPHIRE_ENEMY_COLOR,
 } from './rpg-constants';
 import {
@@ -200,6 +207,8 @@ export interface RpgDrawCtx {
   fishSpikes: FishSpike[];
   fishBolts: FishBolt[];
   fishDecoys: FishDecoy[];
+  /** Verdure zone environmental plants — empty when not in Verdure zone. */
+  verdurePlants: VerdurePlant[];
 
   // ── Boss & projectile state ───────────────────────────────
   getBossEnemy(): BossEnemy | null;
@@ -380,6 +389,8 @@ export function drawRpgFrame(
   // Verdure zone: dark forest-green / bioluminescent atmosphere tint.
   if (isVerdureZone) {
     drawVerdureBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+    // Edge rock formations frame the perimeter (rendered above the tint, below fluid).
+    drawVerdureEdgeRocks(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
   }
 
   // Fluid background — rendered first so all gameplay elements appear above it.
@@ -413,6 +424,9 @@ export function drawRpgFrame(
       ctx.mote.x, ctx.mote.y,
       ctx.getIsLowGraphicsMode(),
     );
+    // Procedural hazard plants (grow inward from rocks during combat).
+    drawVerdurePlants(canvas2d, ctx.verdurePlants, ctx.getIsLowGraphicsMode());
+    drawVerdureFragments(canvas2d, verdureFragments);
   }
 
   // Pathfinding debug overlay (dev mode only — no-op otherwise).

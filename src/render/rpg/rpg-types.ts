@@ -335,7 +335,8 @@ export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' 
   | 'proc_spidercrawler' | 'proc_moteswarm' | 'proc_shadowhand'
   | 'proc_sandfish' | 'proc_quartzfish' | 'proc_rubyfish' | 'proc_sunstonefish'
   | 'proc_emeraldfish' | 'proc_sapphirefish' | 'proc_amethystfish' | 'proc_diamondfish'
-  | 'proc_plantproj';
+  | 'proc_plantproj'
+  | 'verdure_plant';
 
 export interface ClosestTarget {
   kind: TargetKind;
@@ -392,6 +393,8 @@ export interface ClosestTarget {
   amethystFish?: AmethystFishEnemy;
   diamondFish?: DiamondFishEnemy;
   plantProj?: PlantProjectile;
+  /** Verdure zone environmental plant (targetable hazard). */
+  verdurePlant?: import('./terrain/rpg-verdure-growth').VerdurePlant;
 }
 
 // ── Enemy entity types ─────────────────────────────────────────────
