@@ -340,6 +340,7 @@ Enemies assigned to Verdure:
 - Gear Insect
 - Spider Crawler
 - Cloth Ghost
+- Eye Stalk
 
 Design notes:
 
@@ -349,6 +350,7 @@ Design notes:
 - Gear Insect can provide a hard chitin/biomechanical contrast.
 - Spider Crawler can use terrain, vines, or web-like routes.
 - Cloth Ghost gives the zone an eerie magical note and prevents it from feeling only like normal plants/insects.
+- Eye Stalk fits Verdure as an organic watcher that tracks the player from living growth.
 
 ### Plant System
 
@@ -440,19 +442,6 @@ Use three layers:
 1. Visual-only plants: many, cheap, reactive
 2. Gameplay plants: fewer, with health and collision/effects
 3. Enemy-attached plants: special plants created or used by enemies
-
-## Removed / Deprecated Enemy
-
-### Eye Stalk
-
-Eye Stalk should be removed/deprecated rather than assigned to a zone.
-
-Recommended implementation approach:
-
-1. Remove Eye Stalk from spawn pools.
-2. Remove or hide it from normal debug/enemy selection lists.
-3. Keep code temporarily if deleting it would break references.
-4. Remove implementation once all references are cleaned up.
 
 ## Zone 5: Horizon
 

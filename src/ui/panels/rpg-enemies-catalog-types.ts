@@ -3,6 +3,9 @@ export type EnemyShape = 'square' | 'diamond' | 'circle' | 'polygon';
 /** Broad grouping used for display and validation. */
 export type EnemyCategory = 'standard' | 'elite' | 'aliven' | 'procedural' | 'boss';
 
+/** RPG zone used by the encyclopedia's local filter tabs. */
+export type EnemyZoneId = 'euhedral' | 'impetus' | 'caustics' | 'verdure' | 'horizon';
+
 export interface EnemyCatalogEntry {
   id: string;
   name: string;
@@ -18,6 +21,8 @@ export interface EnemyCatalogEntry {
   shape: EnemyShape;
   /** Broad category for display/filtering. */
   category?: EnemyCategory;
+  /** Zone assignment for encyclopedia filtering. Unassigned entries remain visible in ALL. */
+  zone?: EnemyZoneId;
   /** Number of polygon sides — required when shape === 'polygon'. Range: 3 (triangle) to 10 (decagon). */
   sides?: number;
   /** Optional second ring/aura radius for special visual effects. */

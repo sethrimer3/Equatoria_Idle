@@ -21,7 +21,7 @@ import type { ActionHandler } from '../../input';
 import {
   BOSS_NAMES, BOSS_HP_INIT, BOSS_ATK_INIT, BOSS_DEF_INIT, BOSS_GLOW_COLORS,
 } from '../../render/rpg/rpg-constants';
-import { type EnemyCatalogEntry, ENEMY_CATALOG, BOSS_DESCRIPTIONS } from './rpg-enemies-catalog';
+import { type EnemyCatalogEntry, type EnemyZoneId, ENEMY_CATALOG, BOSS_DESCRIPTIONS } from './rpg-enemies-catalog';
 import {
   ICON_SIZE,
   createAlivenIconCanvas, createProcIconCanvas, drawEnemyIcon, drawBossIcon,
@@ -32,6 +32,23 @@ import {
 export interface RpgEnemiesTabPane {
   element: HTMLElement;
   update(rpgState: RpgSimState | null, isDevMode: boolean): void;
+}
+
+type EnemyZoneTabId = 'all' | EnemyZoneId;
+
+const ENEMY_ZONE_TABS: ReadonlyArray<{ id: EnemyZoneTabId; label: string }> = [
+  { id: 'all', label: 'ALL' },
+  { id: 'euhedral', label: 'Euhedral' },
+  { id: 'impetus', label: 'Impetus' },
+  { id: 'caustics', label: 'Caustics' },
+  { id: 'verdure', label: 'Verdure' },
+  { id: 'horizon', label: 'Horizon' },
+];
+
+function emptyZoneMessage(zoneId: EnemyZoneTabId): string {
+  if (zoneId === 'horizon') return 'No Horizon enemies documented yet.';
+  const zone = ENEMY_ZONE_TABS.find(tab => tab.id === zoneId);
+  return zone ? `No ${zone.label} enemies documented yet.` : 'No enemies documented yet.';
 }
 
 // ─── Entry builders ───────────────────────────────────────────────
@@ -227,8 +244,42 @@ function buildBossEntry(
 export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTabPane {
   const element = document.createElement('div');
   element.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:4px 0;';
+  let selectedZoneTab: EnemyZoneTabId = 'all';
+  let latestRpgState: RpgSimState | null = null;
+  let latestIsDevMode = false;
+
+  function buildZoneTabs(): HTMLElement {
+    const tabBar = document.createElement('div');
+    tabBar.style.cssText =
+      'display:flex;gap:6px;overflow-x:auto;flex-wrap:wrap;padding:2px 0 6px;' +
+      '-webkit-overflow-scrolling:touch;';
+
+    for (const tab of ENEMY_ZONE_TABS) {
+      const isSelected = selectedZoneTab === tab.id;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = tab.label;
+      button.setAttribute('aria-pressed', String(isSelected));
+      button.style.cssText =
+        'flex:0 0 auto;border-radius:6px;padding:6px 9px;min-height:32px;' +
+        'font-size:0.72em;font-weight:700;letter-spacing:0.02em;' +
+        'font-family:var(--font-primary);touch-action:manipulation;cursor:pointer;' +
+        `color:${isSelected ? 'var(--accent)' : '#9aa'};` +
+        `background:${isSelected ? 'rgba(255, 241, 114, 0.12)' : 'rgba(255,255,255,0.04)'};` +
+        `border:1px solid ${isSelected ? 'rgba(255, 241, 114, 0.5)' : 'rgba(255,255,255,0.10)'};`;
+      button.addEventListener('click', () => {
+        selectedZoneTab = tab.id;
+        update(latestRpgState, latestIsDevMode);
+      });
+      tabBar.appendChild(button);
+    }
+
+    return tabBar;
+  }
 
   function update(rpgState: RpgSimState | null, isDevMode: boolean): void {
+    latestRpgState = rpgState;
+    latestIsDevMode = isDevMode;
     element.innerHTML = '';
     if (!rpgState) return;
 
@@ -244,6 +295,7 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
       ? '🔧 Dev Mode — all entries visible'
       : `Encountered through wave ${highestWave}`;
     element.appendChild(heading);
+    element.appendChild(buildZoneTabs());
 
     // ── Regular enemies ───────────────────────────────────────
     const enemiesHeading = document.createElement('div');
@@ -253,13 +305,26 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     enemiesHeading.textContent = '⚔ Enemies';
     element.appendChild(enemiesHeading);
 
-    for (const entry of ENEMY_CATALOG) {
+    const visibleEnemyCatalog = selectedZoneTab === 'all'
+      ? ENEMY_CATALOG
+      : ENEMY_CATALOG.filter(entry => entry.zone === selectedZoneTab);
+    let anyEnemyVisible = false;
+
+    for (const entry of visibleEnemyCatalog) {
       const isLocked = useEncounterSet
         ? !rpgState.encounteredEnemyTypes.has(entry.id)
         : highestWave < entry.firstWave;
       // Skip locked entries unless in dev mode
       if (isLocked && !isDevMode) continue;
+      anyEnemyVisible = true;
       element.appendChild(buildEnemyEntry(entry, isLocked, isDevMode));
+    }
+
+    if (!anyEnemyVisible) {
+      const noEnemies = document.createElement('div');
+      noEnemies.style.cssText = 'font-size:0.78em;color:#666;text-align:center;padding:8px 0 10px;';
+      noEnemies.textContent = emptyZoneMessage(selectedZoneTab);
+      element.appendChild(noEnemies);
     }
 
     // ── Bosses ────────────────────────────────────────────────

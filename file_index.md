@@ -1390,6 +1390,7 @@
 - Enemies sub-tab (bestiary) for the RPG overlay panel (~290 lines).
 - `RpgEnemiesTabPane` interface; `createRpgEnemiesTabPane(dispatch)` factory.
 - `update(rpgState, isDevMode)` rebuilds the enemy and boss catalog from imported data.
+- Enemies include local zone-filter tabs: ALL, Euhedral, Impetus, Caustics, Verdure, and Horizon; Horizon shows an empty state until entries are assigned.
 - **Regular enemies** use explicit `encounteredEnemyTypes` set when populated; falls back to `highestWaveReached >= firstWave` for old saves (empty set). All are visible in dev mode.
 - **Bosses** are visible once beaten (`bossCompletions` has non-zero entry); all are visible in dev mode.
 - Icon drawing functions extracted to `rpg-enemies-tab-icons.ts`.
@@ -1405,11 +1406,12 @@
 
 ### src/ui/panels/rpg-enemies-catalog-types.ts
 - Type-only module for the bestiary schema.
-- Exports `EnemyShape` and `EnemyCatalogEntry`.
+- Exports `EnemyShape`, `EnemyZoneId`, and `EnemyCatalogEntry`.
 
 ### src/ui/panels/rpg-enemies-catalog-entries.ts
 - Static enemy catalog data for the RPG enemies tab.
 - Exports `ENEMY_CATALOG` with regular, elite, and aliven entries.
+- Each entry can carry `zone` metadata for encyclopedia filtering without duplicating definitions.
 - Imports size/color/stat constants from `rpg-constants.ts` and `rpg-enemy-constants.ts`.
 
 ### src/ui/panels/rpg-enemies-catalog-bosses.ts

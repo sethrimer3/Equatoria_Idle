@@ -82,6 +82,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 1,
     description: 'A nimble red assailant that dashes straight through the player, leaving a glowing curved trail.',
     shape: 'square',
+    zone: 'euhedral',
   },
   {
     id: 'quartz',
@@ -93,6 +94,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 1,
     description: 'A pale crystal that strafe-orbits the player and periodically fires sharp spikes.',
     shape: 'diamond',
+    zone: 'euhedral',
   },
   {
     id: 'sapphire',
@@ -104,6 +106,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 6,
     description: 'A shielded blue sentry that fires homing missiles while staying behind its protective barrier.',
     shape: 'square',
+    zone: 'euhedral',
     hasShield: true,
     shieldRadius: SAPPHIRE_SHIELD_RADIUS,
     shieldColor: SAPPHIRE_ENEMY_GLOW,
@@ -118,6 +121,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 9,
     description: 'A teleporting green sprite that charges briefly then blinks directly onto the player.',
     shape: 'square',
+    zone: 'euhedral',
   },
   {
     id: 'ruby',
@@ -129,6 +133,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 10,
     description: 'A fast crimson marauder that closes range quickly and unleashes rapid bursts of bolts.',
     shape: 'square',
+    zone: 'euhedral',
   },
   {
     id: 'amber',
@@ -140,6 +145,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 12,
     description: 'A stocky orange artillery unit that fires a spread of three homing shards in a fan.',
     shape: 'square',
+    zone: 'euhedral',
   },
   {
     id: 'void',
@@ -151,6 +157,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 15,
     description: 'A massive purple predator that relentlessly pursues the player and deals heavy contact damage.',
     shape: 'square',
+    zone: 'euhedral',
     auraRadius: VOID_AURA_RADIUS,
   },
   {
@@ -163,6 +170,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 20,
     description: 'A blazing orange planet-like enemy that circles at range and emits damaging area pulses.',
     shape: 'circle',
+    zone: 'euhedral',
   },
   {
     id: 'citrine',
@@ -174,6 +182,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 30,
     description: 'A swift golden tracker that patrols at high speed and launches homing bolts that curve toward the player.',
     shape: 'square',
+    zone: 'euhedral',
   },
   {
     id: 'iolite',
@@ -185,6 +194,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 40,
     description: 'A heavily armored indigo titan that fires a spread of five beams in a wide arc.',
     shape: 'circle',
+    zone: 'euhedral',
   },
   {
     id: 'amethyst',
@@ -196,6 +206,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 50,
     description: 'A crystal-shielded violet tank that periodically shatters its own barrier into a burst of shards.',
     shape: 'circle',
+    zone: 'euhedral',
     hasShield: true,
     shieldRadius: AMETHYST_ENEMY_SIZE * 2.4,
     shieldColor: AMETHYST_ENEMY_GLOW,
@@ -210,6 +221,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 60,
     description: 'A prismatic phase-shifter that cycles between invulnerable and vulnerable states while firing orbiting shards.',
     shape: 'diamond',
+    zone: 'euhedral',
   },
   {
     id: 'nullstone',
@@ -221,6 +233,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 70,
     description: 'A dark gravitational horror that pulls the player into its core and launches void tendrils.',
     shape: 'circle',
+    zone: 'euhedral',
     auraRadius: NULLSTONE_GRAVITY_RADIUS * 0.22,
   },
   {
@@ -233,6 +246,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 74,
     description: 'A fractal purple entity that explodes into recursive shard storms that themselves split on impact.',
     shape: 'diamond',
+    zone: 'euhedral',
   },
   {
     id: 'eigenstein',
@@ -244,6 +258,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 85,
     description: 'A transcendent cyan construct that charges a sweeping beam of pure mathematics before firing.',
     shape: 'circle',
+    zone: 'euhedral',
   },
   {
     id: 'elite_quartz',
@@ -255,6 +270,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 2,
     description: 'A crowned quartz crystal wreathed in a violet halo that fires double spike bursts with relentless precision.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 3,
   },
   {
@@ -267,6 +283,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 5,
     description: 'A blazing crimson hunter crowned in fire that charges at terrifying speed and unleashes devastating bolt salvos.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 4,
   },
   {
@@ -279,6 +296,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 10,
     description: 'A searing elite sun that orbits at close range and floods the arena with overlapping area pulses.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 5,
   },
   {
@@ -291,6 +309,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 15,
     description: 'A golden elite tracker that barrages the player with double volleys of tightly curved homing bolts.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 6,
   },
   {
@@ -303,6 +322,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 33,
     description: 'A titanic indigo colossus that periodically deploys a crushing gravity well alongside its wide-arc beam barrage.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 7,
   },
   {
@@ -315,6 +335,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 42,
     description: 'A violet siege fortress that regenerates its massive shield and unleashes double ring-burst explosions on each break.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 8,
     hasShield: true,
     shieldRadius: ELITE_AMETHYST_RADIUS * 2.6,
@@ -330,6 +351,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 52,
     description: 'A prismatic elite that orbits at blinding speed during invulnerability and fires a nine-star shard burst when vulnerable.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 9,
   },
   {
@@ -342,6 +364,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 63,
     description: 'An apex void entity that triggers Event Horizon singularity bursts and launches void tendrils from all directions.',
     shape: 'polygon',
+    zone: 'euhedral',
     sides: 10,
   },
   {
@@ -354,6 +377,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 2,
     description: 'A swarm of 8 alivened motes that drift and seek the player. Each spitter fires a slow, dodgeable bullet every 3–5 s. Defeat all particles to clear the group.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_shard_bloom',
@@ -365,6 +389,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 5,
     description: 'A crystalline swarm of 10 particles that periodically dash toward the player with staggered, randomised timing.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_pulse_swarm',
@@ -376,6 +401,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 8,
     description: 'A citrine-hued swarm of 10 pulsers that emit area shockwaves on randomised cooldowns. The pulses deal bonus damage and stack dangerously at close range.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_ember_ring',
@@ -387,6 +413,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 12,
     description: 'A sunstone-tinted cluster of 10 ember particles that leave comet trails as they swirl. High contact damage — stay mobile.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_void_splinters',
@@ -398,6 +425,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 18,
     description: 'A void-tinted swarm of 12 splitter particles. Each particle that falls in battle erupts into 2 weaker child fragments — prioritise area weapons.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_healer_nodes',
@@ -409,6 +437,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 22,
     description: 'An amethyst swarm of 9 particles including healer nodes that restore HP to nearby allies every few seconds. Eliminate healers first — they are marked with a faint outer ring.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_orbit_bloom',
@@ -420,6 +449,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 28,
     description: 'A ruby-red swarm of 12 orbiter particles that circle a drifting centroid while relentlessly seeking the player. Beautiful and deadly.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_quartz_ghost',
@@ -431,6 +461,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 4,
     description: 'A pale quartz swarm of 10 particles that periodically phase into an invulnerable ghost state — time your attacks between their flickers.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_iolite_prism',
@@ -442,6 +473,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 38,
     description: 'A dense iolite cluster of 14 pulser particles that simultaneously detonate area shockwaves — stay mobile or be overwhelmed.',
     shape: 'circle',
+    zone: 'impetus',
   },
   {
     id: 'aliven_fracteryl_storm',
@@ -453,6 +485,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 65,
     description: 'A fractal cascade of 18 splitter particles that erupts into smaller fragments on death — dealing with one triggers two more.',
     shape: 'circle',
+    zone: 'impetus',
     category: 'aliven',
   },
   // ── Procedural animated enemies ──────────────────────────────────────────────
@@ -468,6 +501,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A gentle drifting mote with a pulsing glow and three slow-orbit sparkle dots. Harmless-looking but dangerous at close range.',
     shape: 'circle',
+    zone: 'impetus',
     category: 'procedural',
   },
   {
@@ -480,6 +514,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A segmented worm with a glowing head that wiggles as it pursues the player through the arena.',
     shape: 'circle',
+    zone: 'verdure',
     category: 'procedural',
   },
   {
@@ -492,6 +527,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A floaty enemy with animated wing flaps and a warm teardrop body. Moves in a weaving sine-wave path.',
     shape: 'circle',
+    zone: 'verdure',
     category: 'procedural',
   },
   {
@@ -504,6 +540,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A round blob body with a spring-swaying eye stalk that eerily tracks the player across the arena.',
     shape: 'circle',
+    zone: 'verdure',
     category: 'procedural',
   },
   {
@@ -516,6 +553,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A transparent bell that pulses open and closed with trailing tentacles. Drifts deceptively slowly.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -528,6 +566,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A translucent cloth sheet that flutters and ripples as it glides silently toward the player.',
     shape: 'circle',
+    zone: 'verdure',
     category: 'procedural',
   },
   {
@@ -540,6 +579,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A stationary root-anchored plant that sways gently and periodically fires spore projectiles at the player.',
     shape: 'circle',
+    zone: 'verdure',
     category: 'procedural',
   },
   {
@@ -552,6 +592,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A mechanical bug with a spinning central gear and six oscillating insect legs that skitter across the arena.',
     shape: 'circle',
+    zone: 'verdure',
     category: 'procedural',
   },
   {
@@ -564,11 +605,12 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'An eight-legged spider with an alternating walking cycle that relentlessly closes the gap to the player.',
     shape: 'circle',
+    zone: 'verdure',
     category: 'procedural',
   },
   {
     id: 'proc_moteswarm',
-    name: 'Magnetic Mote Swarm',
+    name: 'Magnetic Swarm',
     color: MOTESWARM_COLOR,
     glowColor: MOTESWARM_GLOW,
     size: MOTESWARM_SIZE,
@@ -576,6 +618,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 26,
     description: 'A cluster of orbiting charged motes around a glowing core that slowly spirals toward the player.',
     shape: 'circle',
+    zone: 'impetus',
     category: 'procedural',
   },
   {
@@ -588,6 +631,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 32,
     description: 'A disembodied dark hand that slowly reaches toward the player before grasping with outstretched fingers.',
     shape: 'circle',
+    zone: 'impetus',
     category: 'procedural',
   },
   {
@@ -600,6 +644,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 34,
     description: 'A quick dune-colored fish that darts in curved paths, then suddenly lunges through the arena.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -612,6 +657,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 38,
     description: 'A pale crystal fish protected by a shimmering shell that must be cracked before it falls quickly.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -624,6 +670,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 42,
     description: 'An aggressive crimson fish that winds up before bursting into a straight-line dash.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -636,6 +683,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 46,
     description: 'A blazing orange swimmer that seeds the arena with armed mines that erupt into spikes.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -648,6 +696,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 50,
     description: 'A green hunter that splinters into smaller fry when destroyed, preserving pressure after the kill.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -660,6 +709,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 54,
     description: 'A deep-blue fish that releases slow homing bolts while circling just outside the player’s path.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -672,6 +722,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 58,
     description: 'A violet mirage fish that leaves a fading decoy behind whenever it teleports around the player.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
   {
@@ -684,6 +735,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     firstWave: 62,
     description: 'A prismatic leviathan whose crystalline armor cycles on and off, heavily reducing incoming damage while active.',
     shape: 'circle',
+    zone: 'caustics',
     category: 'procedural',
   },
 ] as const;
