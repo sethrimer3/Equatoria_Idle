@@ -31,6 +31,9 @@ export const TOTAL_BOSS_COUNT = 10;
 
 // ─── Types ────────────────────────────────────────────────────────
 
+/** Valid subzone IDs for the Horizon zone. */
+export type HorizonSubzoneId = 'zenith' | 'nadir' | 'true';
+
 export interface RpgSimState {
   /** Highest wave number the player has cleared during this run. */
   highestWaveReached: number;
@@ -42,10 +45,9 @@ export interface RpgSimState {
   /**
    * Active subzone within the current zone.
    * Only meaningful for zones that have subzones (currently 'horizon').
-   * Horizon subzones: 'zenith' | 'nadir' | 'true'.
    * Defaults to 'zenith'.
    */
-  activeSubzoneId: string;
+  activeSubzoneId: HorizonSubzoneId;
   /**
    * Highest zone-local wave reached per zone.
    * The zone-local wave equals the current wave counter (currentWave) within

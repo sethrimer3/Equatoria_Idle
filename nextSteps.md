@@ -1,6 +1,73 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#145**
+Current build: **#146**
+
+---
+
+## Build #146 — Horizon subzone type safety, zone select UX fix, Caustics seafloor terrain, Horizon True dev overlay
+
+### What was implemented
+
+- **Horizon subzone typing hardened** (`rpg-state.ts`, `rpg-zone-select.ts`, `save-deserialize.ts`):
+  - `HorizonSubzoneId = 'zenith' | 'nadir' | 'true'` is now defined in `rpg-state.ts`.
+  - `RpgSimState.activeSubzoneId` changed from `string` to `HorizonSubzoneId`.
+  - `rpg-zone-select.ts` imports and re-exports `HorizonSubzoneId` from `rpg-state.ts` — no
+    duplicate type definition.
+  - `save-deserialize.ts` casts the saved value to `HorizonSubzoneId` after whitelist validation.
+  - Older saves with missing or invalid subzone default to `'zenith'` as before.
+
+- **Zone select panel UX fixed** (`rpg-zone-select.ts`):
+  - Tapping any non-Horizon zone now calls `onZoneSelect`, rebuilds zone rows to show the correct
+    active highlight, and closes the panel.
+  - Tapping Horizon switches to Horizon, rebuilds zone rows, and keeps the panel open so the player
+    can choose a subzone.
+  - Zone rows are always rebuilt after a zone switch so the best-wave display is not stale.
+
+- **Horizon True dev overlay label** (`rpg-render-draw.ts`):
+  - `bg` route now reports `horizonTruePlaceholder(zenithSubstrate)` when `activeSubzone === 'true'`,
+    making it clear the True effect is not yet implemented.
+  - Nadir and Zenith labels unchanged.
+
+- **Caustics dedicated seafloor terrain** (`seafloor-terrain.ts`, `topographic-terrain.ts`):
+  - New `'seafloorRidges'` added to `RpgTerrainKind`.
+  - New file `src/render/rpg/terrain/seafloor-terrain.ts` with:
+    - `SeafloorTerrainData` / `SeafloorRidge` types.
+    - `generateSeafloorTerrain(seed, canvasW, canvasH)` — 4–7 sinuous elongated ridges per wave.
+      Each ridge is a polyline spanning the arena width with sine-wave undulation and a subtle
+      diagonal bias. Deterministic from wave-derived seed; coordinate-stable across resizes.
+    - `renderSeafloorTerrain(ctx, data, growth01, lowGraphics)` — wide soft body stroke plus
+      narrow teal crest highlight per ridge. Low-graphics mode halves ridge count and skips crests.
+  - `beginWaveTerrain()` in `topographic-terrain.ts` now routes `terrainProfile === 'seafloor'`
+    to `'seafloorRidges'` instead of the generic topographic contour generator.
+  - `getTerrainKindForZone()` returns `'seafloorRidges'` for Caustics.
+  - `renderTopographicTerrain()` dispatches `terrainKind === 'seafloorRidges'` to the new renderer.
+  - **Collision/pathfinding not yet wired**: `islands: []`, `mergedContours: null`.
+    Ridges are visual-only. See remaining work below.
+
+- **Caustics dev overlay updated** (`rpg-render-draw.ts`):
+  - `terrainKind: seafloorRidges` now appears in the overlay automatically from the terrain state.
+  - `bg: causticsFilaments` and `sunlightWash: off` remain correct.
+
+### Remaining work (future tasks)
+
+- **Caustics seafloor collision/pathfinding**: Seafloor ridges are visual-only. Future pass:
+  compute AABB or polygon footprints for each ridge and register them in the nav grid.
+  This requires deciding on a suitable obstacle representation (thick rectangle per ridge segment,
+  or a merged navgrid band).
+
+- **Horizon True subzone**: Currently shows the Zenith substrate with a placeholder label in the
+  dev overlay. A distinct visual effect needs to be designed and implemented.
+
+- **Impetus gravity wells — gameplay force fields**: Gravity wells are visual-only. Future pass:
+  apply radial force to enemy positions and player position when within well radius.
+
+- **Impetus asteroid field — collision/pathfinding**: Asteroid visuals are decorative.
+  Future pass: register asteroid positions in the nav grid as soft obstacles.
+
+- **Verdure rock collision**: Edge cave walls are visual-only. Future pass: integrate wall
+  boundary polygons into the nav grid.
+
+---
 
 ---
 
