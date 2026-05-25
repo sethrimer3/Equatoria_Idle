@@ -1,6 +1,46 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#125**
+Current build: **#138**
+
+---
+
+## Build #138 — Zone-aware RPG enemy spawning
+
+### What was implemented
+
+- **Zone-aware wave generation**: `getZoneWaveDefinition(waveNumber, zoneId)` added to
+  `wave-definitions.ts`. Euhedral delegates to the existing `getWaveDefinition` (full
+  roster unchanged). Other zones build waves from their zone's `enemyIds` list with
+  progressive type introduction (ceil(W/3) types unlocked by wave W) and
+  wave-number-scaled counts.
+- **Horizon safe fallback**: Horizon has no enemies assigned yet. `getZoneWaveDefinition`
+  returns empty spawns for Horizon and logs a one-time dev-mode warning to the console.
+  Waves complete immediately; no crash.
+- **stardust added to Euhedral**: The `stardust` enemy (prismatic cloud) was not in any
+  zone definition. It has been added to Euhedral's `enemyIds` since it fits the
+  mineral/crystalline theme.
+- **Per-zone current wave**: Each zone now tracks its own current wave in a local
+  `currentWaveByZone` Record (in-memory, not persisted). Switching away from a zone
+  saves its wave; switching back restores it. `highestWaveReachedByZone` tracking is
+  unchanged.
+- **Zone label format**: Fixed from `ZoneName  xWave` to `ZoneName - xWave`.
+
+### Known limitations / future work
+
+- **Per-zone wave not persisted to save data**: `currentWaveByZone` is in-memory only
+  inside `rpg-render.ts`. Reloading the page resets all zone waves to 0 (except the
+  active zone, whose wave is in `rpgSimState` indirectly via `highestWaveReached`, but
+  the local wave counter still resets). To persist this, add
+  `currentWaveByZone: Record<RpgZoneId, number>` to `RpgSimState`, serialise it in
+  `save-serialize.ts`, and deserialise in `save-deserialize.ts` (bump `SAVE_VERSION`).
+
+- **Horizon zone has no enemies**: Horizon waves complete instantly. A future task should
+  assign Horizon-specific enemies to `rpg-zone-definitions.ts` once they are designed.
+
+- **Non-Euhedral zones ignore pre-defined waves 1–25**: Impetus, Caustics, and Verdure
+  always use the procedural zone generator, so they do not share Euhedral's
+  hand-authored tutorial progression. This is intentional — their enemy pools are
+  zone-specific and do not overlap with the hand-authored roster.
 
 ---
 

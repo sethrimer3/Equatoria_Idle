@@ -18,7 +18,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getWaveDefinition } from '../../data/rpg/wave-definitions';
+import { getZoneWaveDefinition } from '../../data/rpg/wave-definitions';
 import { INTER_WAVE_DELAY_MS } from './rpg-constants';
 import { spawnEnemyById } from './rpg-enemy-spawn';
 import { removeDeadEnemiesImpl } from './rpg-wave-dead-enemies';
@@ -199,7 +199,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     }
     // Reset per-wave state
     rpgSimState.equipChangedDuringInterwave = false;
-    const waveDef = getWaveDefinition(wave);
+    const waveDef = getZoneWaveDefinition(wave, rpgSimState.activeZoneId);
     spawnQueue.length = 0;
     for (const spawn of waveDef.spawns) {
       for (let i = 0; i < spawn.count; i++) {

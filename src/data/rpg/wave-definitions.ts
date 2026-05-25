@@ -1,3 +1,5 @@
+import { RPG_ZONE_BY_ID, type RpgZoneId } from './rpg-zone-definitions';
+
 /**
  * wave-definitions.ts — Data definitions for RPG wave-based enemy spawning.
  *
@@ -559,3 +561,59 @@ export const ELITE_WAVE_ENEMY_IDS: readonly string[] = [
   'elite_quartz', 'elite_ruby', 'elite_sunstone', 'elite_citrine',
   'elite_iolite', 'elite_amethyst', 'elite_diamond', 'elite_nullstone',
 ];
+
+// ─── Zone-aware wave generation ────────────────────────────────────
+
+/**
+ * Tracks which empty-pool zones have already emitted a dev warning this session,
+ * to avoid spamming the console.
+ */
+const _warnedEmptyZones = new Set<string>();
+
+/**
+ * Returns a WaveDefinition for the given wave number, filtered to the given
+ * zone's enemy pool.
+ *
+ *  - 'euhedral':       returns the standard wave definition unchanged.
+ *  - Other zones:      generates a zone-specific wave using only the enemies in
+ *                      that zone's pool, with wave-number-based scaling.
+ *  - 'horizon' (empty pool): emits a dev-mode warning (once per session) and
+ *                      returns no spawns.  The wave will complete immediately;
+ *                      this is the intended safe fallback until Horizon enemies
+ *                      are assigned.
+ */
+export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): WaveDefinition {
+  if (zoneId === 'euhedral') {
+    return getWaveDefinition(waveNumber);
+  }
+
+  const zoneDef = RPG_ZONE_BY_ID.get(zoneId);
+  if (!zoneDef || zoneDef.enemyIds.length === 0) {
+    if (!_warnedEmptyZones.has(zoneId)) {
+      console.warn(
+        `[RPG] Zone '${zoneId}' has no enemies assigned — ` +
+        `waves will be empty until enemies are added to its enemyIds list.`,
+      );
+      _warnedEmptyZones.add(zoneId);
+    }
+    return { waveNumber, spawns: [] };
+  }
+
+  // Progressively introduce enemy types as wave number increases.
+  // Wave W unlocks the first ceil(W / 3) types from the zone's ordered list.
+  const totalTypes = zoneDef.enemyIds.length;
+  const unlockedCount = Math.min(Math.ceil(waveNumber / 3), totalTypes);
+  const unlockedIds = zoneDef.enemyIds.slice(0, unlockedCount);
+
+  // Scale count per type and spawn delay with wave number.
+  const count = Math.min(1 + Math.floor(waveNumber * 0.3), 6);
+  const delay = Math.max(130, 600 - waveNumber * 18);
+
+  const spawns: WaveSpawn[] = unlockedIds.map((enemyTypeId, index) => ({
+    enemyTypeId,
+    count,
+    spawnDelay: delay + index * 200,
+  }));
+
+  return { waveNumber, spawns };
+}

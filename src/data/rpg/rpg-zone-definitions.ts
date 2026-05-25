@@ -79,6 +79,8 @@ export const RPG_ZONE_DEFINITIONS: RpgZoneDefinition[] = [
       'elite_amethyst',
       'elite_diamond',
       'elite_nullstone',
+      // Stardust: rare prismatic cloud enemy — crystalline theme fits Euhedral.
+      'stardust',
     ],
   },
   {
