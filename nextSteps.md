@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#150**
+Current build: **#151**
 
 ---
 
@@ -26,6 +26,27 @@ The following items are genuinely unresolved and ready for a future agent pass:
 
 ---
 
+## Build #151 — Caustics correctness pass
+
+### What was fixed
+
+- **Unreachable startup prewarm block** (`rpg-render.ts`):
+  - The `setTimeout(() => prewarmCausticsTextures(), 0)` startup check was placed *after* the
+    `return { ... }` object in `createRpgRender()`, making it unreachable dead code.
+  - Moved it to immediately *before* the `return` statement so players who load directly into
+    the Caustics zone from saved state now correctly prewarm tiles before the first render frame.
+  - The zone-switch prewarm call (in the zone-select callback) is unchanged.
+
+- **Low-graphics tile B generation eliminated** (`caustics-overlay.ts`):
+  - `_drawCausticsTileLayers()` previously called `getCausticsTextureTile2()` unconditionally,
+    generating the alternate B tile even in low-graphics mode where Layer B is never drawn.
+  - `tileB` is now set to `null` when `lowGraphics` is true; `getCausticsTextureTile2()` is
+    only called in high-graphics mode.
+  - `_patternB` and `_patternC` are set to `null` in low-graphics mode; pattern cache tracks
+    `_patternTileB` as `null` so a switch from low→high graphics correctly rebuilds all patterns.
+
+---
+
 ## Build #150 — Caustics texture polish
 
 ### What was implemented
@@ -42,8 +63,10 @@ The following items are genuinely unresolved and ready for a future agent pass:
 - **Prewarm calls wired** (`rpg-render.ts`):
   - Zone-switch callback now calls `prewarmCausticsTextures()` immediately when switching to
     `'caustics'`, before the first Caustics frame is rendered.
-  - A `setTimeout(..., 0)` deferred call at the end of `createRpgRender()` also prewarms tiles
-    if the player starts in the Caustics zone (restored from save data).
+  - A `setTimeout(..., 0)` deferred call was intended at the end of `createRpgRender()` to also
+    prewarm tiles if the player starts in the Caustics zone (restored from save data).
+    **Note:** this call was placed after the `return` statement and was unreachable; fixed in
+    Build #151.
 
 - **Per-frame allocations reduced** (`caustics-overlay.ts`):
   - Three module-level `DOMMatrix` instances (`_matA`, `_matB`, `_matC`) replace new object

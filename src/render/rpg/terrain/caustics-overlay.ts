@@ -222,13 +222,15 @@ function _drawCausticsTileLayers(
   lowGraphics: boolean,
 ): void {
   const tileA = getCausticsTextureTile(lowGraphics);
-  const tileB = getCausticsTextureTile2(lowGraphics);
+  // Layer B is high-graphics only — avoid generating the alternate tile in low mode.
+  const tileB = lowGraphics ? null : getCausticsTextureTile2(lowGraphics);
 
   // Refresh cached CanvasPattern objects if the context or source tiles changed.
+  // In low-graphics mode tileB is null, so only _patternA is needed.
   if (_patternCtx !== canvas2d || _patternTileA !== tileA || _patternTileB !== tileB) {
     _patternA = canvas2d.createPattern(tileA, 'repeat');
-    _patternB = canvas2d.createPattern(tileB, 'repeat');
-    _patternC = canvas2d.createPattern(tileA, 'repeat');
+    _patternB = tileB ? canvas2d.createPattern(tileB, 'repeat') : null;
+    _patternC = lowGraphics ? null : canvas2d.createPattern(tileA, 'repeat');
     _patternCtx  = canvas2d;
     _patternTileA = tileA;
     _patternTileB = tileB;
@@ -257,8 +259,8 @@ function _drawCausticsTileLayers(
       const rotB   = tS * 0.015;          // ~1° per 1.16 s; imperceptible frame-to-frame
       const cosRB  = Math.cos(rotB) * scaleB;
       const sinRB  = Math.sin(rotB) * scaleB;
-      const tileBW = tileB.width  * scaleB;
-      const tileBH = tileB.height * scaleB;
+      const tileBW = tileB!.width  * scaleB;
+      const tileBH = tileB!.height * scaleB;
       const txB = (((-(tS * 6.2)) % tileBW) + tileBW) % tileBW;
       const tyB = (tS * 4.5) % tileBH;
       _matB.a = cosRB;  _matB.b = sinRB;
