@@ -1,6 +1,72 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#144**
+Current build: **#145**
+
+---
+
+## Build #145 — Zone effects visibility cleanup, Horizon subzone wiring, dev overlay improvements
+
+### What was implemented
+
+- **Impetus gravity wells visible in low-graphics mode** (`impetus-overlay.ts`):
+  - `drawImpetusFloorEffects()` now calls `_drawGravityWellsSimple()` in low-graphics mode
+    instead of skipping gravity wells entirely.
+  - `_drawGravityWellsSimple()`: cheap two-ring + solid dark center approach — no gradients,
+    no arcs. Rings are more opaque (`1.5× rAlpha`) for contrast on mobile screens.
+  - Star brightness boosted in low-graphics mode (`alphaBoost = 1.4`).
+  - Background base alpha raised from `0.38` to `0.50` in low-graphics mode.
+  - Added `getImpetusDevLine(lowGraphics)` export for the dev overlay.
+
+- **Topography sunlight wash gating** (`rpg-render-draw.ts`):
+  - Added `shouldDrawPersistentTopographySunlight(activeZoneId, terrainState)` helper.
+  - `renderPersistentTopographySunlight()` is now only called when the helper returns true.
+  - Excluded zones: `impetus`, `caustics`, `verdure`, `horizon`.
+  - Also excluded: `basalt` terrain kind (manages its own shading).
+  - Impetus, Verdure, Caustics, and Horizon no longer receive the topography light wash.
+
+- **Fluid skipped for Impetus** (`rpg-render-draw.ts`):
+  - `ctx.fluid.render(canvas2d)` is now gated by `!isImpetusZone` so the fluid overlay does
+    not sit between the space starfield and floor effects.
+
+- **Horizon subzone state wired** (`rpg-state.ts`, `save-types.ts`, `save-serialize.ts`,
+  `save-deserialize.ts`, `rpg-render.ts`):
+  - `RpgSimState.activeSubzoneId: string` added, defaults to `'zenith'`.
+  - Persisted in save data at version 28; migrates to `'zenith'` for older saves.
+  - `isNadir = false` hard-code removed from `rpg-render.ts`; now reads
+    `rpgSimState.activeSubzoneId === 'nadir'`.
+  - Subzone select callback added to `createRpgZoneSelectPanel`.
+
+- **Horizon subzone UI** (`rpg-zone-select.ts`):
+  - `createRpgZoneSelectPanel` now accepts an optional `onSubzoneSelect` callback.
+  - When Horizon is active or selected, a subzone panel appears below the zone list showing
+    Zenith / Nadir / True cards.
+  - Tapping a subzone card calls `onSubzoneSelect` and rebuilds the subzone UI to reflect the
+    new selection.  Zone substrate instances are reset so the new effect builds correctly.
+
+- **Improved dev overlay** (`rpg-render-draw.ts` `drawRpgViewportDiagnostics`):
+  - Now reports: `zone`, `subzone`, `terrainKind`, `lowGraphics`, `bg` route, `sunlightWash`.
+  - `bg` shows the actual runtime route (e.g. `horizonNadirSubstrate`, `impetusStars+gravityWellsLow`).
+  - Impetus-specific line appended when in Impetus zone (`getImpetusDevLine`).
+  - Box width widened to 220 px to fit longer route strings.
+
+### Remaining work (future tasks)
+
+- **Impetus gravity wells — gameplay force fields**: Gravity wells are visual-only. Future pass:
+  apply radial force to enemy positions and player position when within well radius.
+
+- **Impetus asteroid field — collision/pathfinding**: Asteroid visuals are decorative.
+  Future pass: register asteroid positions in the nav grid as soft obstacles.
+
+- **Caustics seafloor terrain**: Current topographic terrain for Caustics uses the standard
+  contour generator. A dedicated seafloor ridge generator would improve zone identity.
+
+- **Verdure rock collision**: Edge cave walls are visual-only. Future pass: integrate wall
+  boundary polygons into the nav grid.
+
+- **Horizon True subzone**: Currently uses Zenith substrate as placeholder. A distinct effect
+  needs to be designed.
+
+---
 
 ---
 
@@ -57,12 +123,9 @@ Current build: **#144**
   - Dev overlay now shows: `zone`, `terrainKind`, `zoneProfile`, `bgEffects` routing for the
     currently active zone, so routing can be verified visually in-game.
 
-### Remaining work (future tasks)
+### Remaining work (future tasks) — carried forward to build #145
 
-- **Horizon subzone selection**: `RpgSimState` does not yet have `activeSubzoneId`. The Nadir
-  substrate is wired but the routing condition `isNadir` is hard-coded to `false` in
-  `rpg-render.ts`. Add `activeSubzoneId?: string` to `RpgSimState` and wire it to the subzone
-  selector in `rpg-zone-select.ts` to make Zenith/Nadir selectable.
+- **Horizon subzone selection**: ✅ Completed in build #145.
 
 - **Impetus gravity wells — gameplay force fields**: Gravity wells are visual-only. Future pass:
   apply radial force to enemy positions and player position when within well radius. Integrate

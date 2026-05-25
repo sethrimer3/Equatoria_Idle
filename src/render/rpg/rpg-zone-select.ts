@@ -8,12 +8,30 @@
  *   - List all 5 zones with their display name and highest wave reached.
  *   - Highlight the currently active zone.
  *   - Call `onZoneSelect(zoneId)` when the player confirms a switch.
+ *   - For the Horizon zone, show subzone cards (Zenith / Nadir / True).
  *   - Provide a close button (or auto-close on same-zone tap).
  */
 
 import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import { RPG_ZONE_DEFINITIONS } from '../../data/rpg/rpg-zone-definitions';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
+
+// ─── Horizon subzone definitions ──────────────────────────────────
+
+/** Valid subzone ids for the Horizon zone. */
+export type HorizonSubzoneId = 'zenith' | 'nadir' | 'true';
+
+interface HorizonSubzoneDef {
+  id: HorizonSubzoneId;
+  displayName: string;
+  description: string;
+}
+
+const HORIZON_SUBZONES: readonly HorizonSubzoneDef[] = [
+  { id: 'zenith', displayName: 'Zenith',  description: 'Above the threshold — prismatic substrate.' },
+  { id: 'nadir',  displayName: 'Nadir',   description: 'Below the threshold — void substrate.' },
+  { id: 'true',   displayName: 'True',    description: 'The horizon itself — coming soon.' },
+];
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -33,6 +51,7 @@ export interface RpgZoneSelectPanel {
 export function createRpgZoneSelectPanel(
   rpgSimState: RpgSimState,
   onZoneSelect: (zoneId: RpgZoneId) => void,
+  onSubzoneSelect?: (subzoneId: HorizonSubzoneId) => void,
 ): RpgZoneSelectPanel {
   let _isOpen = false;
 
@@ -90,6 +109,73 @@ export function createRpgZoneSelectPanel(
   list.style.cssText = 'width:88%;display:flex;flex-direction:column;gap:7px';
   overlay.appendChild(list);
 
+  // ── Horizon subzone panel (shown below the zone list when Horizon is active) ──
+  const subzonePanel = document.createElement('div');
+  subzonePanel.style.cssText = [
+    'width:88%',
+    'margin-top:10px',
+    'display:none',
+    'flex-direction:column',
+    'gap:5px',
+  ].join(';');
+  overlay.appendChild(subzonePanel);
+
+  function buildSubzoneRows(): void {
+    subzonePanel.innerHTML = '';
+
+    const subLabel = document.createElement('div');
+    subLabel.textContent = 'Horizon subzone:';
+    subLabel.style.cssText = 'font-size:10px;color:#8899bb;margin-bottom:2px;letter-spacing:0.5px';
+    subzonePanel.appendChild(subLabel);
+
+    for (const sub of HORIZON_SUBZONES) {
+      const isActiveSub = rpgSimState.activeSubzoneId === sub.id;
+      const row = document.createElement('button');
+      row.style.cssText = [
+        'display:flex',
+        'align-items:center',
+        'justify-content:space-between',
+        'padding:6px 10px',
+        'border-radius:4px',
+        'cursor:pointer',
+        'font-family:monospace',
+        'font-size:10px',
+        'text-align:left',
+        isActiveSub
+          ? 'background:#0c1030;border:1.5px solid #8899ff;color:#99aaff'
+          : 'background:#0a0a1a;border:1px solid #222;color:#778899',
+      ].join(';');
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = (isActiveSub ? '▶ ' : '  ') + sub.displayName;
+      nameSpan.style.fontWeight = 'bold';
+
+      const descSpan = document.createElement('span');
+      descSpan.textContent = sub.description;
+      descSpan.style.cssText = 'font-size:9px;opacity:0.65;text-align:right;max-width:120px';
+
+      row.appendChild(nameSpan);
+      row.appendChild(descSpan);
+
+      row.addEventListener('click', () => {
+        if (!isActiveSub && onSubzoneSelect) {
+          onSubzoneSelect(sub.id);
+        }
+        // Rebuild subzone rows to reflect the new selection.
+        buildSubzoneRows();
+      });
+
+      row.addEventListener('mouseenter', () => {
+        if (!isActiveSub) row.style.background = '#0e0e22';
+      });
+      row.addEventListener('mouseleave', () => {
+        if (!isActiveSub) row.style.background = '#0a0a1a';
+      });
+
+      subzonePanel.appendChild(row);
+    }
+  }
+
   // ── Build zone rows ──
   function buildRows(): void {
     list.innerHTML = '';
@@ -129,7 +215,15 @@ export function createRpgZoneSelectPanel(
         if (!isActive) {
           onZoneSelect(zoneDef.id);
         }
-        handle.close();
+        // Show subzone panel when Horizon is selected (active or switching to it).
+        const targetZone = isActive ? rpgSimState.activeZoneId : zoneDef.id;
+        if (targetZone === 'horizon') {
+          buildSubzoneRows();
+          subzonePanel.style.display = 'flex';
+        } else {
+          subzonePanel.style.display = 'none';
+        }
+        if (isActive) handle.close();
       });
 
       // Hover effect
@@ -150,6 +244,13 @@ export function createRpgZoneSelectPanel(
 
     open(): void {
       buildRows();
+      // Show subzone panel immediately if Horizon is already the active zone.
+      if (rpgSimState.activeZoneId === 'horizon') {
+        buildSubzoneRows();
+        subzonePanel.style.display = 'flex';
+      } else {
+        subzonePanel.style.display = 'none';
+      }
       overlay.style.display = 'flex';
       _isOpen = true;
     },

@@ -40,6 +40,13 @@ export interface RpgSimState {
    */
   activeZoneId: RpgZoneId;
   /**
+   * Active subzone within the current zone.
+   * Only meaningful for zones that have subzones (currently 'horizon').
+   * Horizon subzones: 'zenith' | 'nadir' | 'true'.
+   * Defaults to 'zenith'.
+   */
+  activeSubzoneId: string;
+  /**
    * Highest zone-local wave reached per zone.
    * The zone-local wave equals the current wave counter (currentWave) within
    * the active zone — it resets to 0 when the player switches zones.
@@ -215,6 +222,7 @@ export function createRpgSimState(): RpgSimState {
   return {
     highestWaveReached: 0,
     activeZoneId: 'euhedral',
+    activeSubzoneId: 'zenith',
     highestWaveReachedByZone: {
       euhedral: 0,
       impetus:  0,

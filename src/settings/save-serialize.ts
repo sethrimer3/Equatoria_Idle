@@ -97,6 +97,7 @@ export function serializeGameState(state: GameState): SaveData {
       sandBladeEnabled: state.rpg.sandBladeEnabled,
       encounteredEnemyTypes: Array.from(state.rpg.encounteredEnemyTypes),
       activeZoneId: state.rpg.activeZoneId,
+      activeSubzoneId: state.rpg.activeSubzoneId,
       highestWaveReachedByZone: { ...state.rpg.highestWaveReachedByZone },
       currentWaveByZone: { ...state.rpg.currentWaveByZone },
     },
