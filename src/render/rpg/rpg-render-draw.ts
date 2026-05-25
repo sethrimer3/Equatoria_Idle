@@ -124,6 +124,7 @@ import {
 import {
   drawImpetusBackground,
   drawImpetusFloorEffects,
+  getImpetusDevLine,
 } from './terrain/impetus-overlay';
 import {
   drawVerdureEdgeRocks,
@@ -367,6 +368,32 @@ function collectEnemyInfluencePoints(ctx: RpgDrawCtx): EnemyInfluencePoint[] {
   return pts;
 }
 
+// ── Topography sunlight gate ───────────────────────────────────────────────────
+
+/**
+ * Returns true only when the persistent topography sunlight fill should be
+ * drawn.  This prevents the light wash from contaminating zones that do not
+ * use topographic terrain (Impetus, Verdure, Caustics, Horizon).
+ *
+ * Rules:
+ *  - Must have an active terrain state (non-null).
+ *  - Only 'topographic' and 'recursiveSquares' terrain kinds benefit from the
+ *    sunlight fill; 'basalt' manages its own shading.
+ *  - Zones with their own dedicated background (impetus, caustics, verdure,
+ *    horizon) are excluded entirely.
+ */
+function shouldDrawPersistentTopographySunlight(
+  activeZoneId: string,
+  terrainState: import('./terrain/topographic-terrain').TopographicTerrainState | null,
+): boolean {
+  if (!terrainState) return false;
+  const excluded = new Set(['impetus', 'caustics', 'verdure', 'horizon']);
+  if (excluded.has(activeZoneId)) return false;
+  // Basalt handles its own lighting; sunlight fill doesn't help there.
+  if (terrainState.terrainKind === 'basalt') return false;
+  return true;
+}
+
 // ── Main draw function ─────────────────────────────────────────────────────────
 
 export function drawRpgFrame(
@@ -408,10 +435,15 @@ export function drawRpgFrame(
   }
 
   // Fluid background — rendered first so all gameplay elements appear above it.
-  ctx.fluid.render(canvas2d);
+  // Skipped for Impetus (space has no fluid; it would obscure the starfield).
+  if (!isImpetusZone) {
+    ctx.fluid.render(canvas2d);
+  }
 
   const terrainState = ctx.getTopographicTerrainState();
-  renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState?.paletteId ?? 'mono');
+  if (shouldDrawPersistentTopographySunlight(ctx.rpgSimState.activeZoneId, terrainState)) {
+    renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState!.paletteId);
+  }
   if (terrainState) {
     // For recursive-square terrain, collect enemy positions for proximity-gradient
     // edge colouring.  This is skipped for other terrain variants.
@@ -653,6 +685,25 @@ function drawRpgViewportDiagnostics(
   const mx = ctx.mote.x.toFixed(1);
   const my = ctx.mote.y.toFixed(1);
   const terrainState = ctx.getTopographicTerrainState();
+  const lowG = ctx.getIsLowGraphicsMode();
+  const activeZone = ctx.rpgSimState.activeZoneId;
+  const activeSubzone = ctx.rpgSimState.activeSubzoneId;
+
+  // ── Background/effect route label ────────────────────────────────
+  let bgRoute: string;
+  if (activeZone === 'impetus') {
+    bgRoute = `impetusStars+gravityWells${lowG ? 'Low' : 'High'}`;
+  } else if (activeZone === 'caustics') {
+    bgRoute = 'causticsFilaments';
+  } else if (activeZone === 'verdure') {
+    bgRoute = 'verdureWallsPlants';
+  } else if (activeZone === 'horizon') {
+    bgRoute = activeSubzone === 'nadir' ? 'horizonNadirSubstrate' : 'horizonZenithSubstrate';
+  } else {
+    bgRoute = 'none';
+  }
+
+  const sunlightOn = shouldDrawPersistentTopographySunlight(activeZone, terrainState);
 
   const lines = [
     `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}`,
@@ -661,17 +712,23 @@ function drawRpgViewportDiagnostics(
     `devicePixelRatio: ${dpr.toFixed(2)}`,
     `render scale X/Y: ${scaleX} / ${scaleY}`,
     `player world: (${mx}, ${my})`,
-    `zone: ${ctx.rpgSimState.activeZoneId}`,
+    `zone: ${activeZone}  subzone: ${activeSubzone}`,
     `terrainKind: ${terrainState?.terrainKind ?? 'none'}`,
-    `zoneProfile: ${ctx.rpgSimState.activeZoneId === 'impetus' ? 'asteroids' : ctx.rpgSimState.activeZoneId === 'caustics' ? 'seafloor' : ctx.rpgSimState.activeZoneId === 'verdure' ? 'overgrowth' : ctx.rpgSimState.activeZoneId === 'horizon' ? 'horizon' : 'crystalline'}`,
-    `bgEffects: ${ctx.rpgSimState.activeZoneId === 'impetus' ? 'starfield+gravityWells' : ctx.rpgSimState.activeZoneId === 'caustics' ? 'causticFilaments' : ctx.rpgSimState.activeZoneId === 'verdure' ? 'caveWalls+vines' : ctx.rpgSimState.activeZoneId === 'horizon' ? 'substrate' : 'none'}`,
+    `lowGraphics: ${lowG}`,
+    `bg: ${bgRoute}`,
+    `sunlightWash: ${sunlightOn ? 'on' : 'off'}`,
   ];
+
+  // Append Impetus-specific diagnostic if in Impetus zone.
+  if (activeZone === 'impetus') {
+    lines.push(getImpetusDevLine(lowG));
+  }
 
   canvas2d.save();
   canvas2d.font = '8px monospace';
   const lineH = 10;
   const pad = 4;
-  const boxW = 180;
+  const boxW = 220;  // widened for subzone + bg route lines
   const boxH = lines.length * lineH + pad * 2;
   const boxY = heightPx - boxH - 2;
 

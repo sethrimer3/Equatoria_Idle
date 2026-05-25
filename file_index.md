@@ -1175,7 +1175,9 @@
 
 ### src/render/rpg/terrain/impetus-overlay.ts
 - Stateless Impetus-space overlay with deterministic starfield, nebula haze, gravity wells, and decorative asteroid drift.
-- Exports `drawImpetusBackground()` for the atmosphere pass and `drawImpetusFloorEffects()` for post-terrain space visuals.
+- Exports `drawImpetusBackground()` for the atmosphere pass, `drawImpetusFloorEffects()` for post-terrain space visuals, and `getImpetusDevLine(lowGraphics)` for the dev overlay.
+- Low-graphics mode now renders a simplified two-ring gravity well (`_drawGravityWellsSimple()`) instead of skipping them entirely.
+- Star alpha boosted by 1.4× in low-graphics mode; background base alpha raised to 0.50.
 
 ### src/render/rpg/terrain/rpg-verdure-render.ts
 - Visual renderer for Verdure environmental hazards and decorative growth.
@@ -1317,12 +1319,14 @@
 - Runs all enemy type update functions, boss physics, weapon tick, lucky motes, achievement flag tracking, HP regen, and death check; then calls `drawRpgFrame`.
 
 ### src/render/rpg/rpg-render-draw.ts
-- Per-frame canvas draw function extracted from `rpg-render.ts` (~378 lines).
+- Per-frame canvas draw function extracted from `rpg-render.ts`.
 - Exports `RpgDrawCtx` interface, `RpgDrawFrameState` interface, `createRpgDrawFrameState()`, `drawRpgFrame(ctx, state, nowMs)`, and `setAllDrawLowGraphics(enabled)`.
 - `drawRpgFrame` renders one complete frame: background, zone overlays (Caustics, Verdure, Impetus, Horizon substrate hook), terrain, floor effects, enemies, boss, particles, player mote, weapon effects, and UI overlays.
-- `RpgDrawCtx` now includes optional `drawZoneBgOverlay()` so `rpg-render.ts` can lazily draw Horizon substrate backgrounds without pushing stateful effect ownership into the pure draw module.
+- `shouldDrawPersistentTopographySunlight(activeZoneId, terrainState)` helper gates the topography sunlight fill — skips for Impetus, Caustics, Verdure, Horizon, and basalt terrain.
+- Fluid render is skipped for Impetus zone to avoid obscuring the starfield.
+- `RpgDrawCtx` includes optional `drawZoneBgOverlay()` so `rpg-render.ts` can lazily draw Horizon substrate backgrounds.
 - `setAllDrawLowGraphics` forwards the low-graphics flag to all 11 draw-side modules in a single call.
-- `RpgDrawFrameState` holds `waveOverlapAlpha` — the smoothly-interpolated alpha for the top-left wave number that dims when entities overlap it.
+- Dev overlay (`drawRpgViewportDiagnostics`) reports: zone, subzone, terrainKind, lowGraphics, bg route, sunlightWash, and Impetus-specific line.
 
 ### src/render/rpg/rpg-death-restart.ts
 - Player death and level-restart lifecycle extracted from `rpg-render.ts` (~227 lines).
@@ -1372,17 +1376,19 @@
 
 ### src/render/rpg/rpg-zone-select.ts
 - DOM overlay panel for zone selection, appended to `#rpg-area`.
-- `createRpgZoneSelectPanel(rpgSimState, onZoneSelect)` — factory.
+- `createRpgZoneSelectPanel(rpgSimState, onZoneSelect, onSubzoneSelect?)` — factory.
 - Lists all 5 zones with display names and per-zone highest wave reached.
 - Highlights the currently active zone; calls `onZoneSelect(zoneId)` when a different zone is selected.
+- When Horizon is active or selected, shows a subzone panel (Zenith / Nadir / True cards) below the zone list; calls `onSubzoneSelect(subzoneId)` when a subzone is tapped.
+- Exports `HorizonSubzoneId = 'zenith' | 'nadir' | 'true'`.
 - `open()` / `close()` / `isOpen` public API.
 
 ### src/sim/rpg/rpg-state.ts
-- `RpgSimState` interface — `highestWaveReached`, `activeZoneId` (default 'euhedral'), `highestWaveReachedByZone` (Record<RpgZoneId, number>), `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100), `encounteredEnemyTypes` (Set<string> of all enemy type IDs that have spawned).
+- `RpgSimState` interface — `highestWaveReached`, `activeZoneId` (default 'euhedral'), `activeSubzoneId` (default 'zenith', used for Horizon subzone selection), `highestWaveReachedByZone` (Record<RpgZoneId, number>), `purchasedWeaponIds` (Set), `equippedWeaponIds` (Set of all equipped weapon ids), `bossCompletions` (Map<bossId, bestSpeedPct>), `bossSpeedPct` (10–100), `encounteredEnemyTypes` (Set<string> of all enemy type IDs that have spawned).
 - Exports `PLAYER_BASE_ATK = 10`, `MAX_WEAPON_TIER = 7`, `MIN_BOSS_SPEED_PCT = 10`, `MAX_BOSS_SPEED_PCT = 100`, `BOSS_SPEED_STEP = 10`, `TOTAL_BOSS_COUNT = 10`.
 - `createRpgSimState()` — zero-state factory.
 - Weapon scaling helpers: `getWeaponTierUpgradeCost`, `getScaledWeaponDamage`, `getScaledWeaponCooldown` (kept here to avoid circular dep on PLAYER_BASE_ATK).
-- Re-exports all functions from `rpg-state-xp.ts` and `rpg-state-upgrades.ts` for backward compatibility (~248 lines after refactor).
+- Re-exports all functions from `rpg-state-xp.ts` and `rpg-state-upgrades.ts` for backward compatibility.
 
 ### src/sim/rpg/rpg-state-xp.ts
 - XP and luck computation functions extracted from `rpg-state.ts` (~215 lines).

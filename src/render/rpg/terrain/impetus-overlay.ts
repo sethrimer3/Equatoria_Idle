@@ -87,13 +87,27 @@ const _ASTER_RADII  = [1.00, 0.75, 0.90, 0.68, 0.85, 0.78, 0.92];
 const _STAR_COLORS: readonly string[] = ['#ffffff', '#e8f0ff', '#fffde8', '#f8f0ff'];
 const _WELL_RING_COLOR = '#8855ff';
 const _WELL_SWIRL_COLOR = '#aa77ff';
+const _WELL_RING_COLOR_LOW = '#aa66ff';  // slightly brighter for low-graphics contrast
 const _ASTEROID_FILL = '#4a4050';
 const _ASTEROID_EDGE = '#7a6880';
 
 const _BG_ALPHA_HIGH = 0.55;
-const _BG_ALPHA_LOW  = 0.38;
+const _BG_ALPHA_LOW  = 0.50;  // raised from 0.38 — more visible on mobile
 
 // ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns a short diagnostic string describing the current Impetus rendering
+ * mode.  Used by the dev overlay in rpg-render-draw.ts.
+ */
+export function getImpetusDevLine(lowGraphics: boolean): string {
+  return [
+    `impetusBg: true`,
+    `stars: ${lowGraphics ? 'low' : 'high'}`,
+    `gravityWells: ${lowGraphics ? 'low' : 'high'}`,
+    `asteroids: ${lowGraphics ? 'low' : 'high'}`,
+  ].join(' | ');
+}
 
 /**
  * Draw the space background tint, starfield, and nebula haze.
@@ -137,7 +151,10 @@ export function drawImpetusFloorEffects(
 ): void {
   const tS = nowMs * 0.001;
   _drawAsteroidField(canvas2d, widthPx, heightPx, tS, lowGraphics);
-  if (!lowGraphics) {
+  // Gravity wells render in both modes; low graphics uses a simplified version.
+  if (lowGraphics) {
+    _drawGravityWellsSimple(canvas2d, widthPx, heightPx, tS);
+  } else {
     _drawGravityWells(canvas2d, widthPx, heightPx, tS);
   }
 }
@@ -181,6 +198,8 @@ function _drawStarfield(
 ): void {
   // In low-graphics mode, only draw layers 0 and 1 (skip bright layer 2 count-heavy)
   const maxLayer = lowGraphics ? 1 : 2;
+  // Boost alpha in low graphics so stars are visible on mobile screens
+  const alphaBoost = lowGraphics ? 1.4 : 1.0;
   canvas2d.save();
   for (const row of _STAR_DATA) {
     const layer = row[6];
@@ -192,7 +211,7 @@ function _drawStarfield(
     const period  = row[4];
     const phase   = row[5];
     const twinkle = 0.5 + 0.5 * Math.sin(tS / period * Math.PI * 2 + phase * Math.PI * 2);
-    const alpha   = aPeak * (0.5 + 0.5 * twinkle);
+    const alpha   = Math.min(1, aPeak * (0.5 + 0.5 * twinkle) * alphaBoost);
 
     canvas2d.globalAlpha = alpha;
     canvas2d.fillStyle = _STAR_COLORS[Math.floor(row[0] * _STAR_COLORS.length) % _STAR_COLORS.length];
@@ -270,6 +289,52 @@ function _drawGravityWells(
     voidGrad.addColorStop(0, 'rgba(20,0,40,0.8)');
     voidGrad.addColorStop(1, 'rgba(20,0,40,0)');
     canvas2d.fillStyle = voidGrad;
+    canvas2d.beginPath();
+    canvas2d.arc(cx, cy, innerR, 0, Math.PI * 2);
+    canvas2d.fill();
+  }
+  canvas2d.restore();
+}
+
+/**
+ * Cheap low-graphics gravity well renderer.
+ * Draws one bright ring and a dark center per well — no gradients or arcs.
+ */
+function _drawGravityWellsSimple(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+  tS: number,
+): void {
+  canvas2d.save();
+  for (const row of _WELL_DATA) {
+    const cx    = row[0] * widthPx;
+    const cy    = row[1] * heightPx;
+    const outerR = row[2];
+    const innerR = row[3];
+    const rAlpha = row[4];
+    const s1Ph   = row[5];
+
+    const pulse = 0.75 + 0.25 * Math.sin(tS * 0.8 + s1Ph);
+
+    // Outer ring — single, more opaque than high-graphics for visibility
+    canvas2d.globalAlpha = Math.min(1, rAlpha * 1.5 * pulse);
+    canvas2d.strokeStyle = _WELL_RING_COLOR_LOW;
+    canvas2d.lineWidth = 1.5;
+    canvas2d.beginPath();
+    canvas2d.arc(cx, cy, outerR * pulse, 0, Math.PI * 2);
+    canvas2d.stroke();
+
+    // Inner ring for depth
+    canvas2d.globalAlpha = Math.min(1, rAlpha * pulse);
+    canvas2d.lineWidth = 1.0;
+    canvas2d.beginPath();
+    canvas2d.arc(cx, cy, outerR * 0.6 * pulse, 0, Math.PI * 2);
+    canvas2d.stroke();
+
+    // Solid dark center dot — cheap, no gradient
+    canvas2d.globalAlpha = 0.65;
+    canvas2d.fillStyle = '#100020';
     canvas2d.beginPath();
     canvas2d.arc(cx, cy, innerR, 0, Math.PI * 2);
     canvas2d.fill();

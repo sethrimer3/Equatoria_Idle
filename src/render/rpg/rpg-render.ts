@@ -188,6 +188,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
     rpgPhase = 'alive';
+  }, (newSubzoneId) => {
+    // Subzone selection — only meaningful for Horizon; safe to set for other zones too.
+    rpgSimState.activeSubzoneId = newSubzoneId;
+    // Reset substrate instances so they rebuild with the correct effect.
+    zenithSubstrate = null;
+    nadirSubstrate = null;
   });
   rpgArea.appendChild(zoneSelectPanel.element);
 
@@ -220,8 +226,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   function drawZoneBgOverlay(c2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number): void {
     if (rpgSimState.activeZoneId !== 'horizon') return;
-    // Default to 'zenith' subzone until subzone selection is implemented.
-    const isNadir = false; // TODO: wire to rpgSimState.activeSubzoneId === 'nadir' when available
+    const isNadir = rpgSimState.activeSubzoneId === 'nadir';
+    // 'true' subzone: use zenith substrate as placeholder until it has its own effect.
+    // TODO: implement distinct 'true' substrate when the effect is designed.
     if (isNadir) {
       if (!nadirSubstrate) nadirSubstrate = createNadirSubstrateEffect({ quality: isLowGraphicsMode ? 'low' : 'medium' });
       nadirSubstrate.update(nowMs, w, h);

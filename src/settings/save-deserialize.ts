@@ -242,6 +242,11 @@ export function deserializeGameState(data: SaveData): GameState {
     if (data.rpg.activeZoneId && validZoneIds.has(data.rpg.activeZoneId)) {
       state.rpg.activeZoneId = data.rpg.activeZoneId as import('../data/rpg/rpg-zone-definitions').RpgZoneId;
     }
+    // v28+: active subzone id (defaults to 'zenith' for older saves)
+    const validSubzoneIds = new Set(['zenith', 'nadir', 'true']);
+    if (data.rpg.activeSubzoneId && validSubzoneIds.has(data.rpg.activeSubzoneId)) {
+      state.rpg.activeSubzoneId = data.rpg.activeSubzoneId;
+    }
     if (data.rpg.highestWaveReachedByZone) {
       for (const [zoneId, wave] of Object.entries(data.rpg.highestWaveReachedByZone)) {
         if (validZoneIds.has(zoneId)) {
