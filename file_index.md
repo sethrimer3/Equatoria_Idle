@@ -1037,6 +1037,12 @@
 ### src/render/rpg/terrain/topographic-terrain.ts
 - Self-contained seeded terrain orchestrator for RPG waves. Now supports deterministic
   biome scheduling plus multiple terrain variants behind one collision/render API.
+- **Build 147+:** All four terrain collision helpers (`isPointInsideTopographicTerrain`,
+  `circleIntersectsTopographicTerrain`, `segmentIntersectsTopographicTerrain`,
+  `terrainFirstIntersectionT`) and `signedDistanceToTerrainBoundary` now handle
+  `seafloorRidges` via capsule math. Added private `_pointInCapsule()` and
+  `_segmentIntersectsCapsule()` helpers. `terrainFirstIntersectionT` uses a 5 px step-scan
+  for ray-vs-capsule (accuracy ±5 px; documented decision).
 - **Build 146+:** `RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'seafloorRidges' | 'reserved4' | 'reserved5'`.
   `'seafloorRidges'` is the new dedicated Caustics terrain kind, dispatching to `seafloor-terrain.ts`.
   `TopographicTerrainState` now includes an optional `seafloor?: SeafloorTerrainData` field.
@@ -1175,14 +1181,17 @@
 - Stateless underwater zone overlay for Caustics.
 - `drawCausticsBackground()` adds the deep navy/teal wash; `drawCausticsFloorEffects()` layers animated caustic filaments, shimmer bands, and rising bubbles above terrain.
 
-### src/render/rpg/terrain/seafloor-terrain.ts  *(new — build 146)*
+### src/render/rpg/terrain/seafloor-terrain.ts  *(new — build 146, updated build 147)*
 - Dedicated seafloor ridge/channel terrain generator for the Caustics zone.
 - Replaces the generic topographic contour generator for `terrainProfile === 'seafloor'`.
-- `SeafloorTerrainData` / `SeafloorRidge` — data types for generated ridges.
+- **Build 147+:** `SeafloorCollisionSegment` type — capsule (x1,y1,x2,y2,radius) for a hard ridge section.
+  `SeafloorRidge.collisionSegments` and `SeafloorTerrainData.allCollisionSegments` hold all capsules.
+  `generateSeafloorTerrain()` now calls `_generateRidgeCollisionSegments()` for each ridge: 25–45% blocked,
+  1–3 non-contiguous spans, edge exclusion zones, min gap 55 px, radius = 38% body width.
+  `renderSeafloorTerrain()` draws a brighter teal marker over each blocked capsule (Task D visual clarity).
 - `generateSeafloorTerrain(seed, canvasW, canvasH)` — creates 4–7 elongated sinuous ridges spanning the arena width with gentle diagonal bias and sine-wave undulation. Deterministic from wave-derived seed; coordinate-stable across resizes.
 - `renderSeafloorTerrain(ctx, data, growth01, lowGraphics)` — wide soft body stroke + narrow teal crest highlight per ridge. Low-graphics mode halves ridge count and skips crest strokes.
 - Imported and dispatched by `topographic-terrain.ts` via `terrainKind === 'seafloorRidges'`.
-- **Collision/pathfinding not yet wired** (visual-only ridges; future task in `nextSteps.md`).
 
 ### src/render/rpg/terrain/impetus-overlay.ts
 - Stateless Impetus-space overlay with deterministic starfield, nebula haze, gravity wells, and decorative asteroid drift.

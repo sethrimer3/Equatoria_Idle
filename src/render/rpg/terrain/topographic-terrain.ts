@@ -906,6 +906,14 @@ export function isPointInsideTopographicTerrain(
     return false;
   }
 
+  if (state.terrainKind === 'seafloorRidges') {
+    if (!state.seafloor || state.seafloor.allCollisionSegments.length === 0) return false;
+    for (const seg of state.seafloor.allCollisionSegments) {
+      if (_pointInCapsule(x, y, seg.x1, seg.y1, seg.x2, seg.y2, seg.radius)) return true;
+    }
+    return false;
+  }
+
   if (state.mergedContours && state.mergedContours.solidBoundaries.length > 0) {
     const { centroidX: mcx, centroidY: mcy, solidBoundaries } = state.mergedContours;
     const xs = mcx + (x - mcx) / g;
@@ -963,6 +971,14 @@ export function segmentIntersectsTopographicTerrain(
         const b = polygon[(i + 1) % polygon.length];
         if (segmentsIntersect(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return true;
       }
+    }
+    return false;
+  }
+
+  if (state.terrainKind === 'seafloorRidges') {
+    if (!state.seafloor || state.seafloor.allCollisionSegments.length === 0) return false;
+    for (const seg of state.seafloor.allCollisionSegments) {
+      if (_segmentIntersectsCapsule(x1, y1, x2, y2, seg.x1, seg.y1, seg.x2, seg.y2, seg.radius)) return true;
     }
     return false;
   }
@@ -1049,12 +1065,21 @@ export function circleIntersectsTopographicTerrain(
       if (bdx * bdx + bdy * bdy > outerR * outerR) continue;
       const polygon = cell.corners;
       if (isPointInPolygon(polygon, x, y)) return true;
-      const r2 = radiusPx * radiusPx;
+      const r2b = radiusPx * radiusPx;
       for (let i = 0; i < polygon.length; i++) {
         const a = polygon[i];
         const b = polygon[(i + 1) % polygon.length];
-        if (pointToSegmentDistSq(x, y, a.x, a.y, b.x, b.y) <= r2) return true;
+        if (pointToSegmentDistSq(x, y, a.x, a.y, b.x, b.y) <= r2b) return true;
       }
+    }
+    return false;
+  }
+
+  if (state.terrainKind === 'seafloorRidges') {
+    if (!state.seafloor || state.seafloor.allCollisionSegments.length === 0) return false;
+    for (const seg of state.seafloor.allCollisionSegments) {
+      const combinedR = seg.radius + radiusPx;
+      if (pointToSegmentDistSq(x, y, seg.x1, seg.y1, seg.x2, seg.y2) <= combinedR * combinedR) return true;
     }
     return false;
   }
@@ -1154,6 +1179,30 @@ export function terrainFirstIntersectionT(
         const b = polygon[(i + 1) % polygon.length];
         const t = segmentIntersectT(ox, oy, ex, ey, a.x, a.y, b.x, b.y);
         if (t !== null && t < bestFraction) bestFraction = t;
+      }
+    }
+    return bestFraction;
+  }
+
+  if (state.terrainKind === 'seafloorRidges') {
+    if (!state.seafloor || state.seafloor.allCollisionSegments.length === 0) return 1;
+    // Check if origin is already inside a capsule.
+    for (const seg of state.seafloor.allCollisionSegments) {
+      if (_pointInCapsule(ox, oy, seg.x1, seg.y1, seg.x2, seg.y2, seg.radius)) return 0;
+    }
+    // Step along the ray to find the first capsule entry.
+    const STEP_PX = 5;
+    const steps = Math.ceil(maxT / STEP_PX);
+    let bestFraction = 1;
+    for (let si = 1; si <= steps; si++) {
+      const t = Math.min(si / steps, 1);
+      const px = ox + dx * maxT * t;
+      const py = oy + dy * maxT * t;
+      for (const seg of state.seafloor.allCollisionSegments) {
+        if (_pointInCapsule(px, py, seg.x1, seg.y1, seg.x2, seg.y2, seg.radius)) {
+          if (t < bestFraction) bestFraction = t;
+          break;
+        }
       }
     }
     return bestFraction;
@@ -1267,6 +1316,33 @@ export function signedDistanceToTerrainBoundary(
     if (outNearest) { outNearest.x = bestNx; outNearest.y = bestNy; }
     const distWorld = Math.sqrt(bestDistSq);
     return bestInsideAny ? -distWorld : distWorld;
+  }
+
+  if (state.terrainKind === 'seafloorRidges') {
+    if (!state.seafloor || state.seafloor.allCollisionSegments.length === 0) return Infinity;
+    // For capsule terrain: signed distance = dist_to_capsule_axis - radius.
+    // Negative means inside (blocked).
+    let bestSigned = Infinity;
+    let bestNx = x, bestNy = y;
+    for (const seg of state.seafloor.allCollisionSegments) {
+      const { x: nx, y: ny, distSq } = nearestPointOnSegment(x, y, seg.x1, seg.y1, seg.x2, seg.y2);
+      const distToAxis = Math.sqrt(distSq);
+      const signed = distToAxis - seg.radius;
+      if (signed < bestSigned) {
+        bestSigned = signed;
+        // Nearest point on capsule surface: push from axis toward (x,y) by radius.
+        if (distToAxis > 1e-6) {
+          const frac = seg.radius / distToAxis;
+          bestNx = nx + (x - nx) * frac;
+          bestNy = ny + (y - ny) * frac;
+        } else {
+          bestNx = nx; bestNy = ny;
+        }
+      }
+    }
+    if (bestSigned === Infinity) return Infinity;
+    if (outNearest) { outNearest.x = bestNx; outNearest.y = bestNy; }
+    return bestSigned;
   }
 
   const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);
@@ -1711,4 +1787,46 @@ function distanceSq(ax: number, ay: number, bx: number, by: number): number {
   const dx = ax - bx;
   const dy = ay - by;
   return dx * dx + dy * dy;
+}
+
+// ── Seafloor capsule collision helpers ────────────────────────────────────────
+
+/**
+ * Returns true if point (px, py) is inside the capsule defined by segment
+ * (ax,ay)→(bx,by) with the given radius.
+ */
+function _pointInCapsule(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+  radius: number,
+): boolean {
+  const r2 = radius * radius;
+  return pointToSegmentDistSq(px, py, ax, ay, bx, by) <= r2;
+}
+
+/**
+ * Returns true if segment (p1x,p1y)→(p2x,p2y) intersects capsule
+ * (ax,ay)→(bx,by) with given radius.
+ *
+ * A segment intersects a capsule when any of these is true:
+ *  1. Either segment endpoint is inside the capsule.
+ *  2. Either capsule endpoint is within radius of the query segment.
+ *  3. The two line segments cross (handled implicitly by case 1/2 via the
+ *     zero-distance crossing case, plus the explicit segmentsIntersect guard).
+ */
+function _segmentIntersectsCapsule(
+  p1x: number, p1y: number,
+  p2x: number, p2y: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+  radius: number,
+): boolean {
+  const r2 = radius * radius;
+  if (pointToSegmentDistSq(p1x, p1y, ax, ay, bx, by) <= r2) return true;
+  if (pointToSegmentDistSq(p2x, p2y, ax, ay, bx, by) <= r2) return true;
+  if (pointToSegmentDistSq(ax, ay, p1x, p1y, p2x, p2y) <= r2) return true;
+  if (pointToSegmentDistSq(bx, by, p1x, p1y, p2x, p2y) <= r2) return true;
+  if (segmentsIntersect(p1x, p1y, p2x, p2y, ax, ay, bx, by)) return true;
+  return false;
 }
