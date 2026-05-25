@@ -215,6 +215,35 @@ export const AMETHYSTFISH_TELEPORT_CD_MS = 3500;
 export const DIAMONDFISH_ARMOR_ON_MS = 3000;
 export const DIAMONDFISH_ARMOR_OFF_MS = 4000;
 
+// ── Fish schooling / boids constants ──────────────────────────────────────────
+
+/** Radius within which a fish steers away from close neighbours (px). */
+export const FISH_SCHOOL_SEPARATION_RADIUS = 16;
+/** Radius within which a fish averages neighbour headings for alignment (px). */
+export const FISH_SCHOOL_ALIGNMENT_RADIUS  = 62;
+/** Radius within which a fish steers toward the group centre of mass (px). */
+export const FISH_SCHOOL_COHESION_RADIUS   = 80;
+/** Weight of the separation steering force — strong enough to prevent stacking. */
+export const FISH_SCHOOL_SEPARATION_WEIGHT = 1.6;
+/** Weight of the alignment steering force — medium. */
+export const FISH_SCHOOL_ALIGNMENT_WEIGHT  = 0.75;
+/** Weight of the cohesion steering force — soft pull toward group centre. */
+export const FISH_SCHOOL_COHESION_WEIGHT   = 0.30;
+/** Weight of the player-seek steering force — moderate; shares priority with schooling. */
+export const FISH_SCHOOL_PLAYER_SEEK_WEIGHT = 1.10;
+/** Weight of the terrain-anticipation avoidance force — strong. */
+export const FISH_SCHOOL_TERRAIN_AVOID_WEIGHT = 2.0;
+/** Weight of the soft edge-avoidance force. */
+export const FISH_SCHOOL_EDGE_AVOID_WEIGHT  = 1.0;
+/** Maximum turn rate per frame (radians, at dt=1); compatible with clamped turn behaviour. */
+export const FISH_SCHOOL_MAX_TURN_RATE = 0.12;
+/** Maximum total swim speed to prevent runaway acceleration (px/frame). */
+export const FISH_SCHOOL_MAX_SPEED = 1.8;
+/** Look-ahead distance for terrain-anticipation probe (px). */
+export const FISH_SCHOOL_PROBE_DIST = 20;
+/** Pixel margin from canvas edge at which soft edge-avoidance begins. */
+export const FISH_SCHOOL_EDGE_MARGIN = 28;
+
 // ── Fluid explosion RGB colours per type ──────────────────────────────────────
 export const FLUID_DUSTWISP_R      = 180, FLUID_DUSTWISP_G      = 210, FLUID_DUSTWISP_B      = 230;
 export const FLUID_RIBBONWORM_R    = 120, FLUID_RIBBONWORM_G    = 200, FLUID_RIBBONWORM_B    = 100;
