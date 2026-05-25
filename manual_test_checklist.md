@@ -135,4 +135,4 @@
 - [ ] Earned achievements always show real name/description regardless of hidden filter
 - [ ] Claiming an achievement still works (tap earned-unclaimed card → reward shown)
 - [ ] Existing save data loads correctly and previously claimed achievements still appear as claimed
-- [ ] Build number shows 127 in Settings tab
+- [ ] Build number shows 132 in Settings tab

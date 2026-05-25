@@ -12,7 +12,7 @@
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: rgba(12, 12, 20, 0.95);
-  border-top: 2px solid var(--accent);
+  border-top: 1px solid #b9942e;
   z-index: 10;
 }
 
@@ -48,9 +48,9 @@
   justify-content: center;
   gap: 2px;
   background: none;
-  border: 2px solid var(--accent);
-  border-left-width: 1px;
-  border-right-width: 1px;
+  border: 1px solid #b9942e;
+  border-left-width: 0.5px;
+  border-right-width: 0.5px;
   color: var(--text-secondary);
   font-family: var(--font-primary);
   font-size: 12.5px;
@@ -65,11 +65,11 @@
 }
 
 .tab-btn:first-of-type {
-  border-left-width: 2px;
+  border-left-width: 1px;
 }
 
 .tab-btn:last-of-type {
-  border-right-width: 2px;
+  border-right-width: 1px;
 }
 
 /* ── Sprite icon container ───────────────────────────────────── */
@@ -117,7 +117,7 @@
 .tab-btn.active {
   color: var(--accent);
   background: rgba(255, 241, 114, 0.08);
-  border-width: 4px;
+  border-width: 2px;
   z-index: 3;
 }
 
