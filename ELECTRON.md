@@ -16,7 +16,9 @@ If `package-lock.json` is present, the batch launchers use `npm ci` when they ne
 npm run desktop
 ```
 
-This runs `npm run build:desktop` first, then opens the built `dist/index.html` in Electron. The Electron shell lives in `electron/main.cjs`, disables Chromium GPU and sandbox startup paths for broader Windows compatibility, stores Electron profile/cache data in `.electron-user-data`, writes startup/crash diagnostics to `electron-runtime.log`, uses `contextIsolation: true`, and leaves `nodeIntegration` disabled. No preload API is exposed.
+This runs `npm run build:desktop` first, then opens the built app in Electron. The Electron shell lives in `electron/main.cjs`, disables Chromium GPU and sandbox startup paths for broader Windows compatibility, stores Electron profile/cache data in `.electron-user-data`, writes startup/crash diagnostics to `electron-runtime.log`, uses `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, and `webSecurity: true`. No preload API is exposed.
+
+Production Electron loads the built `dist/index.html` through the Electron-only `equatoria://app/` protocol so the desktop shell can attach a Content Security Policy header without modifying the shared web `index.html`. The production policy does not include `'unsafe-eval'`. If `EQUATORIA_ELECTRON_DEV_SERVER` is set, Electron loads that Vite dev-server URL instead and uses a development CSP that permits localhost, websocket connections, and `'unsafe-eval'` for development tooling.
 
 Electron uses Chromium localStorage for saves. Desktop saves are separate from browser saves because Electron runs under its own app profile in `.electron-user-data`. No save migration is performed.
 
