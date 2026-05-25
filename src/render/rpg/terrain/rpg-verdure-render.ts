@@ -73,6 +73,14 @@ const _ROCK_DATA: readonly (readonly number[])[] = [
   [ 0.92, 0.65,  17, 26, 0.60, 0.82, 3 ],
 ];
 
+/** Pre-baked seed values used for organic cave wall contour generation. */
+const _SEEDS: readonly number[] = [
+  0.137, 0.462, 0.718, 0.293, 0.851,
+  0.574, 0.039, 0.926, 0.381, 0.665,
+  0.208, 0.743, 0.517, 0.084, 0.953,
+  0.671, 0.342, 0.119, 0.889, 0.456,
+];
+
 // Pre-baked 8-gon offsets (2 sets of slightly different irregular polygons)
 const _POLY_ANGLES_A = [0, 0.85, 1.72, 2.48, 3.30, 4.20, 5.10, 5.90];
 const _POLY_RADII_A  = [1.00, 0.82, 0.95, 0.78, 1.05, 0.88, 0.92, 0.85];
@@ -137,11 +145,12 @@ const _TARGETABLE_GLOW   = '#80ff80';
 // ── Edge rock rendering ────────────────────────────────────────────────────────
 
 /**
- * Draw deterministic rock formations around all four arena edges.
+ * Draw connected cave wall masses around all four arena edges.
+ *
+ * Replaces the isolated small rock approach with overlapping filled bands
+ * that look like natural cave/rock walls.
  *
  * Call once per frame before enemies and player are drawn.
- * The geometry is fully determined by the pre-baked _ROCK_DATA constants,
- * so the visual output is identical every frame (no per-frame RNG).
  */
 export function drawVerdureEdgeRocks(
   canvas2d: CanvasRenderingContext2D,
@@ -151,29 +160,100 @@ export function drawVerdureEdgeRocks(
 ): void {
   canvas2d.save();
 
+  // ── Step 1: Solid base wall bands (connected silhouettes) ────────────────
+  // Each edge gets a solid dark band that is the foundation of the cave wall.
+  // Band depth varies with a pre-baked profile to create an organic silhouette.
+
+  const BASE_DEPTH = 22;
+
+  // Top wall
+  canvas2d.fillStyle = _ROCK_FILL_COLORS[1];
+  canvas2d.globalAlpha = 0.92;
+  canvas2d.beginPath();
+  canvas2d.moveTo(0, 0);
+  // Irregular inward contour using pre-baked seeds
+  for (let xi = 0; xi <= widthPx; xi += 8) {
+    const frac = xi / widthPx;
+    const idx  = Math.floor(frac * (_SEEDS.length - 1));
+    const s    = _SEEDS[idx % _SEEDS.length];
+    const depth = BASE_DEPTH + s * 14;
+    canvas2d.lineTo(xi, depth);
+  }
+  canvas2d.lineTo(widthPx, 0);
+  canvas2d.closePath();
+  canvas2d.fill();
+
+  // Bottom wall
+  canvas2d.fillStyle = _ROCK_FILL_COLORS[2];
+  canvas2d.globalAlpha = 0.92;
+  canvas2d.beginPath();
+  canvas2d.moveTo(0, heightPx);
+  for (let xi = 0; xi <= widthPx; xi += 8) {
+    const frac = xi / widthPx;
+    const idx  = Math.floor(frac * (_SEEDS.length - 1));
+    const s    = _SEEDS[(idx + 5) % _SEEDS.length];
+    const depth = BASE_DEPTH + s * 14;
+    canvas2d.lineTo(xi, heightPx - depth);
+  }
+  canvas2d.lineTo(widthPx, heightPx);
+  canvas2d.closePath();
+  canvas2d.fill();
+
+  // Left wall
+  canvas2d.fillStyle = _ROCK_FILL_COLORS[0];
+  canvas2d.globalAlpha = 0.92;
+  canvas2d.beginPath();
+  canvas2d.moveTo(0, 0);
+  for (let yi = 0; yi <= heightPx; yi += 8) {
+    const frac = yi / heightPx;
+    const idx  = Math.floor(frac * (_SEEDS.length - 1));
+    const s    = _SEEDS[(idx + 10) % _SEEDS.length];
+    const depth = BASE_DEPTH + s * 12;
+    canvas2d.lineTo(depth, yi);
+  }
+  canvas2d.lineTo(0, heightPx);
+  canvas2d.closePath();
+  canvas2d.fill();
+
+  // Right wall
+  canvas2d.fillStyle = _ROCK_FILL_COLORS[3];
+  canvas2d.globalAlpha = 0.92;
+  canvas2d.beginPath();
+  canvas2d.moveTo(widthPx, 0);
+  for (let yi = 0; yi <= heightPx; yi += 8) {
+    const frac = yi / heightPx;
+    const idx  = Math.floor(frac * (_SEEDS.length - 1));
+    const s    = _SEEDS[(idx + 15) % _SEEDS.length];
+    const depth = BASE_DEPTH + s * 12;
+    canvas2d.lineTo(widthPx - depth, yi);
+  }
+  canvas2d.lineTo(widthPx, heightPx);
+  canvas2d.closePath();
+  canvas2d.fill();
+
+  // ── Step 2: Individual rock protrusions on top of the base bands ─────────
+  // Use the original rock data but with increased depth and larger sizes.
+  const PROTRUSION_DEPTH = 36;
   const rockCount = lowGraphics ? Math.floor(_ROCK_DATA.length * 0.6) : _ROCK_DATA.length;
 
   for (let r = 0; r < rockCount; r++) {
     const row    = _ROCK_DATA[r];
     const frac   = row[0];
-    const perp   = row[1];   // 0..1, how far along perpendicular inward
-    const sizeW  = row[2];
-    const sizeH  = row[3];
+    const perp   = row[1];
+    const sizeW  = row[2] * 1.6;  // 60% larger than original
+    const sizeH  = row[3] * 1.6;
     const rot    = row[4];
     const alpha  = row[5];
     const edgeId = row[6];
 
-    // Compute rock centre based on edge
     let cx = 0, cy = 0;
-    const rockDepth = 18; // how far rocks protrude inward
     switch (edgeId) {
-      case 0: cx = frac * widthPx;  cy = perp * rockDepth;                   break;
-      case 1: cx = frac * widthPx;  cy = heightPx - perp * rockDepth;         break;
-      case 2: cx = perp * rockDepth; cy = frac * heightPx;                    break;
-      default: cx = widthPx - perp * rockDepth; cy = frac * heightPx;         break;
+      case 0: cx = frac * widthPx;           cy = perp * PROTRUSION_DEPTH;              break;
+      case 1: cx = frac * widthPx;           cy = heightPx - perp * PROTRUSION_DEPTH;   break;
+      case 2: cx = perp * PROTRUSION_DEPTH;  cy = frac * heightPx;                       break;
+      default: cx = widthPx - perp * PROTRUSION_DEPTH; cy = frac * heightPx;            break;
     }
 
-    // Alternate between two polygon shapes
     const angles = r % 2 === 0 ? _POLY_ANGLES_A : _POLY_ANGLES_B;
     const radii  = r % 2 === 0 ? _POLY_RADII_A  : _POLY_RADII_B;
 
@@ -197,15 +277,15 @@ export function drawVerdureEdgeRocks(
     canvas2d.closePath();
     canvas2d.fill();
 
-    // Moss accent (high-graphics only)
     if (!lowGraphics) {
-      canvas2d.globalAlpha = alpha * 0.45;
+      // Moss accent
+      canvas2d.globalAlpha = alpha * 0.50;
       canvas2d.fillStyle   = _ROCK_MOSS_COLORS[r % _ROCK_MOSS_COLORS.length];
       canvas2d.beginPath();
       for (let v = 0; v < angles.length; v++) {
         const a  = angles[v];
-        const wr = sizeW * 0.38 * radii[v];
-        const hr = sizeH * 0.38 * radii[v];
+        const wr = sizeW * 0.40 * radii[v];
+        const hr = sizeH * 0.40 * radii[v];
         const vx = Math.cos(a) * wr;
         const vy = Math.sin(a) * hr;
         if (v === 0) canvas2d.moveTo(vx - 1, vy - 2);
@@ -214,8 +294,18 @@ export function drawVerdureEdgeRocks(
       canvas2d.closePath();
       canvas2d.fill();
 
-      // Subtle top-light highlight
-      canvas2d.globalAlpha = alpha * 0.25;
+      // Crevice line (dark crack detail)
+      canvas2d.globalAlpha = alpha * 0.30;
+      canvas2d.strokeStyle = '#111008';
+      canvas2d.lineWidth   = 0.7;
+      canvas2d.beginPath();
+      const cr1 = sizeW * 0.18, cr2 = sizeH * 0.25;
+      canvas2d.moveTo(-cr1, -cr2);
+      canvas2d.lineTo( cr1 * 0.6,  cr2 * 0.8);
+      canvas2d.stroke();
+
+      // Highlight
+      canvas2d.globalAlpha = alpha * 0.22;
       canvas2d.fillStyle   = _ROCK_HIGHLIGHT_COLOR;
       canvas2d.beginPath();
       canvas2d.ellipse(-sizeW * 0.12, -sizeH * 0.22, sizeW * 0.28, sizeH * 0.18, 0, 0, Math.PI * 2);

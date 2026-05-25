@@ -1,6 +1,88 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#143**
+Current build: **#144**
+
+---
+
+## Build #144 — Zone terrain routing overhaul, Impetus starfield/gravity wells, caustic filaments, Verdure cave walls, Horizon substrate
+
+### What was implemented
+
+- **Zone-based terrain dispatch** (`topographic-terrain.ts`):
+  - `getTerrainKindForZone(zoneId, seed)` — new exported helper that returns the correct
+    terrain kind for a zone without consulting the old 20-wave rotation. Used by dev overlay.
+  - **Euhedral** (`crystalline`): Now uses `recursiveSquares` (75%) or `basalt` (25%) based on
+    seed parity. Never uses topographic terrain by default.
+  - **Impetus** (`asteroids`): Returns `null` — no terrain obstacles. Visual space effects are
+    handled by `impetus-overlay.ts`.
+  - **Verdure** (`overgrowth`): Returns `null` — no topographic mountains. Cave wall and vine
+    visuals are handled by `verdure-overlay.ts` and `rpg-verdure-render.ts`.
+  - **Caustics** (`seafloor`): Unchanged — topographic terrain with `cyanTactical` palette.
+  - **Horizon**: Unchanged — returns `null`.
+  - The old 20-wave rotation remains as a fallback for unknown terrain profiles only.
+
+- **Impetus starfield + gravity well + asteroid effects** (`impetus-overlay.ts` — new file):
+  - `drawImpetusBackground()`: Deep space gradient, multi-layer parallax starfield (44 pre-baked
+    stars across 3 distance layers) with per-star twinkle animation. Faint nebula haze radial
+    gradient in high-graphics mode.
+  - `drawImpetusFloorEffects()`: Visual asteroid drift field (7 pre-baked asteroids on looping
+    drift paths, irregular polygon shape) and gravity well visualizations (3 pre-baked wells with
+    pulsing outer rings, swirl arcs, and dark central voids). Gravity wells are visual-only.
+  - Wired in `rpg-render-draw.ts` gated on `activeZoneId === 'impetus'`.
+
+- **Caustics filament lighting** (`caustics-overlay.ts`):
+  - Replaced oval-patch `_drawCausticsPatches` with `_drawCausticsFilaments`.
+  - Filaments use two interfering sine waves to generate thin branching light lines resembling
+    real underwater caustic patterns. 10 primary filaments (5 in low-graphics), each with a
+    slow-moving cross-filament in high-graphics mode. Concentrated in the lower 55% of the arena.
+
+- **Verdure connected cave walls** (`rpg-verdure-render.ts`):
+  - Replaced isolated small rocks with connected cave wall masses.
+  - New approach: solid base wall bands with organic irregular contour profiles drawn along all
+    four arena edges (depth 22+14 px), then enlarged rock protrusion polygons (1.6× larger than
+    before, depth up to 36 px) layered on top. Added crevice line details and moss accents.
+  - Added `_SEEDS` constant for organic contour generation.
+
+- **Horizon Zenith/Nadir substrate backgrounds**:
+  - `nadir-substrate-effect-internals.ts` — forked copy of substrate internals for Nadir zone.
+  - `nadir-substrate-effect.ts` — structurally independent substrate factory (`createNadirSubstrateEffect`,
+    `NadirSubstrateEffect` interface). Initialized separately from Zenith so future drastic visual
+    changes to Nadir will not affect Zenith or the idle-game substrate effect.
+  - Lazy-init substrate instances in `rpg-render.ts` (`zenithSubstrate`, `nadirSubstrate`).
+  - `drawZoneBgOverlay` callback wired into `RpgDrawCtx`; called for Horizon zone.
+  - Currently defaults to Zenith substrate. Nadir branch is wired but defers to `activeSubzoneId`
+    which is not yet exposed in state (see remaining work below).
+
+- **Dev overlay zone/terrain routing info** (`rpg-render-draw.ts` `drawRpgViewportDiagnostics`):
+  - Dev overlay now shows: `zone`, `terrainKind`, `zoneProfile`, `bgEffects` routing for the
+    currently active zone, so routing can be verified visually in-game.
+
+### Remaining work (future tasks)
+
+- **Horizon subzone selection**: `RpgSimState` does not yet have `activeSubzoneId`. The Nadir
+  substrate is wired but the routing condition `isNadir` is hard-coded to `false` in
+  `rpg-render.ts`. Add `activeSubzoneId?: string` to `RpgSimState` and wire it to the subzone
+  selector in `rpg-zone-select.ts` to make Zenith/Nadir selectable.
+
+- **Impetus gravity wells — gameplay force fields**: Gravity wells are visual-only. Future pass:
+  apply radial force to enemy positions and player position when within well radius. Integrate
+  with `rpg-player-movement.ts` (player deflection) and `rpg-enemy-updates.ts` (enemy drift).
+
+- **Impetus asteroid field — collision/pathfinding**: Asteroid visuals are decorative.
+  Future pass: register asteroid positions in the nav grid as soft obstacles so enemies and
+  the player avoid them. Requires choosing a lifecycle model (per-wave static vs. drifting).
+
+- **Caustics seafloor terrain**: The current topographic terrain for Caustics uses the standard
+  contour generator with cyan palette. A dedicated seafloor ridge generator (elongated ridges,
+  channels, underwater silhouettes) would improve zone identity.
+
+- **Verdure rock collision**: Edge cave walls are visual-only. Future pass: integrate wall
+  boundary polygons into the nav grid as impassable cells.
+
+- **Impetus asteroid field at low-graphics**: Currently uses 50% of asteroids. Could use a
+  simpler point/dot representation in low-graphics mode for better performance.
+
+---
 
 ---
 

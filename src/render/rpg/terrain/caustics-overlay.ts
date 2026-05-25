@@ -55,8 +55,6 @@ const _BUBBLE_DATA: readonly (readonly number[])[] = [
 const _CAUSTIC_COLORS: readonly string[] = ['#4af0cc', '#5ac8f0', '#78e8b8'];
 const _SHIMMER_COLOR = '#6ad8e0';
 
-const _HIGH_PATCH_COUNT  = 8;
-const _LOW_PATCH_COUNT   = 4;
 const _HIGH_BUBBLE_COUNT = 14;
 const _LOW_BUBBLE_COUNT  = 6;
 
@@ -103,7 +101,7 @@ export function drawCausticsFloorEffects(
   lowGraphics: boolean,
 ): void {
   const tS = nowMs * 0.001;  // seconds
-  _drawCausticsPatches(canvas2d, widthPx, heightPx, tS, lowGraphics);
+  _drawCausticsFilaments(canvas2d, widthPx, heightPx, tS, lowGraphics);
   if (!lowGraphics) {
     _drawCausticsShimmer(canvas2d, widthPx, heightPx, tS);
   }
@@ -113,47 +111,82 @@ export function drawCausticsFloorEffects(
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 /**
- * Draw organic, slowly-drifting light ellipses concentrated on the lower arena.
- * Each patch pulses gently and moves on a Lissajous-like trajectory to mimic
- * light refracted through moving water onto a seafloor.
+ * Draw thin animated caustic light filaments concentrated near the arena floor.
+ * Uses crossing sine/noise ribbons that form thin branching light lines,
+ * resembling real underwater light-through-water patterns.
+ *
+ * Replaces the old oval-patch approach.
  */
-function _drawCausticsPatches(
+function _drawCausticsFilaments(
   canvas2d: CanvasRenderingContext2D,
   widthPx: number,
   heightPx: number,
   tS: number,
   lowGraphics: boolean,
 ): void {
-  const patchCount = lowGraphics ? _LOW_PATCH_COUNT : _HIGH_PATCH_COUNT;
+  const filamentCount = lowGraphics ? 5 : 10;
   canvas2d.save();
+  canvas2d.lineWidth = 0.8;
 
-  for (let i = 0; i < patchCount; i++) {
+  for (let i = 0; i < filamentCount; i++) {
     const s0 = _SEEDS[i % 12];
-    const s1 = _SEEDS[(i + 4) % 12];
-    const s2 = _SEEDS[(i + 8) % 12];
+    const s1 = _SEEDS[(i + 3) % 12];
+    const s2 = _SEEDS[(i + 7) % 12];
 
-    // Slow sinusoidal drift — each patch moves independently
-    const driftX = Math.sin(tS * (0.07 + s0 * 0.04) + s0 * 6.283) * widthPx  * 0.07;
-    const driftY = Math.cos(tS * (0.05 + s1 * 0.03) + s1 * 4.712) * heightPx * 0.04;
+    // Filaments concentrated in lower 55% of arena (seafloor feel)
+    const yBase = heightPx * (0.45 + s1 * 0.45);
 
-    // Concentrated in the lower 45% of the arena (seafloor feel)
-    const cx = widthPx  * (0.10 + s0 * 0.80) + driftX;
-    const cy = heightPx * (0.55 + s1 * 0.36) + driftY;
+    // Slow horizontal drift
+    const xShift = Math.sin(tS * (0.06 + s0 * 0.04) + s2 * 6.283) * widthPx * 0.08;
 
-    // Elongated ellipses at varied angles to look like caustic ribbons
-    const rx = 18 + s2 * 36;
-    const ry =  9 + s0 * 17;
-    const angle = s1 * Math.PI;
-
-    // Pulsing brightness — slow and organic
-    const pulse = 0.5 + 0.5 * Math.sin(tS * (0.35 + s0 * 0.25) + s2 * 3.14159);
-    const alpha = (0.042 + s2 * 0.028) * pulse;
+    // Pulsing brightness — thin and sharp
+    const pulse = 0.4 + 0.6 * Math.sin(tS * (0.4 + s0 * 0.3) + s1 * 3.14159);
+    const alpha = (0.055 + s2 * 0.035) * pulse;
 
     canvas2d.globalAlpha = alpha;
-    canvas2d.fillStyle = _CAUSTIC_COLORS[i % 3];
+    canvas2d.strokeStyle = _CAUSTIC_COLORS[i % 3];
+
+    // Draw a branching filament path using sine ribbons
+    const segments = lowGraphics ? 22 : 36;
+    const yAmp = 6 + s0 * 10;
+    const freq1 = 0.04 + s1 * 0.03;
+    const freq2 = 0.09 + s2 * 0.05;
+    const tPhase1 = tS * (0.30 + s0 * 0.20) + s0 * 6.283;
+    const tPhase2 = tS * (0.55 + s1 * 0.25) + s1 * 6.283;
+
     canvas2d.beginPath();
-    canvas2d.ellipse(cx, cy, rx, ry, angle, 0, Math.PI * 2);
-    canvas2d.fill();
+    const xStep = widthPx / segments;
+    for (let seg = 0; seg <= segments; seg++) {
+      const x  = xShift + seg * xStep;
+      // Two interfering sine waves create the branching filament texture
+      const y  = yBase
+        + yAmp * Math.sin(x * freq1 + tPhase1)
+        + yAmp * 0.5 * Math.sin(x * freq2 + tPhase2);
+      if (seg === 0) canvas2d.moveTo(x, y);
+      else canvas2d.lineTo(x, y);
+    }
+    canvas2d.stroke();
+
+    // Secondary cross-filament (high-graphics only, perpendicular direction)
+    if (!lowGraphics && i < 6) {
+      const xBase2  = widthPx * (0.05 + s0 * 0.90) + xShift * 0.5;
+      const xAmp2   = 5 + s1 * 8;
+      const yFreq1  = 0.025 + s0 * 0.020;
+      const alpha2  = alpha * 0.6;
+
+      canvas2d.globalAlpha = alpha2;
+      canvas2d.beginPath();
+      const yStep = heightPx * 0.55 / segments;
+      for (let seg = 0; seg <= segments; seg++) {
+        const y  = heightPx * 0.45 + seg * yStep;
+        const x  = xBase2
+          + xAmp2 * Math.sin(y * yFreq1 + tPhase2)
+          + xAmp2 * 0.4 * Math.sin(y * yFreq1 * 2.1 + tPhase1);
+        if (seg === 0) canvas2d.moveTo(x, y);
+        else canvas2d.lineTo(x, y);
+      }
+      canvas2d.stroke();
+    }
   }
 
   canvas2d.restore();
