@@ -527,7 +527,7 @@ export function drawRpgFrame(
     state.waveOverlapAlpha += (targetAlpha - state.waveOverlapAlpha) * 0.1;
 
     const zoneName = ctx.getActiveZoneDisplayName();
-    const label = `${zoneName}  x${currentWave}`;
+    const label = `${zoneName} - x${currentWave}`;
 
     canvas2d.save();
     canvas2d.globalAlpha = state.waveOverlapAlpha;

@@ -169,9 +169,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Zone select overlay (DOM, inside rpgArea) ──────────────────
   const zoneSelectPanel = createRpgZoneSelectPanel(rpgSimState, (newZoneId: RpgZoneId) => {
+    // Save the current zone's wave before switching so we can resume it later.
+    currentWaveByZone[rpgSimState.activeZoneId] = currentWave;
     rpgSimState.activeZoneId = newZoneId;
-    // Reset wave progression so the zone starts fresh
-    currentWave = 0;
+    // Restore the new zone's previously-saved wave (0 if never visited).
+    currentWave = currentWaveByZone[newZoneId];
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
   });
@@ -249,6 +251,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let currentWave      = 0;
   let interWaveTimerMs = 0;
   let isInterWave      = true;
+  /**
+   * Per-zone current wave counter.  When the player switches zones, the active
+   * zone's wave is saved here and the new zone's previously-saved wave is
+   * restored, so each zone resumes from where it was left.
+   *
+   * NOTE: This is in-memory only (not persisted to save data).  Reloading the
+   * game resets all zone waves to 0.  Persistence is tracked in nextSteps.md.
+   */
+  const currentWaveByZone: Record<RpgZoneId, number> = {
+    euhedral: 0,
+    impetus:  0,
+    caustics: 0,
+    verdure:  0,
+    horizon:  0,
+  };
   let topographicTerrainState: TopographicTerrainState | null = null;
   /** Nav grid for pathfinding — rebuilt when terrain or canvas dimensions change. */
   let rpgNavGrid: RpgNavGrid | null = null;
