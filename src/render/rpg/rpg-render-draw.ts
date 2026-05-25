@@ -122,6 +122,10 @@ import {
   drawVerdureFloorEffects,
 } from './terrain/verdure-overlay';
 import {
+  drawImpetusBackground,
+  drawImpetusFloorEffects,
+} from './terrain/impetus-overlay';
+import {
   drawVerdureEdgeRocks,
   drawVerdurePlants,
   drawVerdureFragments,
@@ -265,6 +269,8 @@ export interface RpgDrawCtx {
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns true when pathfinding debug visualization should be drawn. */
   getPathfindingDebugEnabled(): boolean;
+  /** Optional zone-specific stateful background draw (e.g. substrate for Horizon). */
+  drawZoneBgOverlay?: (canvas2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number) => void;
 }
 
 // ── Small mutable state that persists across frames ───────────────────────────
@@ -383,6 +389,8 @@ export function drawRpgFrame(
   // they sit behind fluid, terrain, and all gameplay elements.
   const isCausticsZone = ctx.rpgSimState.activeZoneId === 'caustics';
   const isVerdureZone  = ctx.rpgSimState.activeZoneId === 'verdure';
+  const isImpetusZone  = ctx.rpgSimState.activeZoneId === 'impetus';
+  const isHorizonZone  = ctx.rpgSimState.activeZoneId === 'horizon';
   if (isCausticsZone) {
     drawCausticsBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
   }
@@ -391,6 +399,12 @@ export function drawRpgFrame(
     drawVerdureBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
     // Edge rock formations frame the perimeter (rendered above the tint, below fluid).
     drawVerdureEdgeRocks(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+  }
+  if (isImpetusZone) {
+    drawImpetusBackground(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
+  }
+  if (isHorizonZone) {
+    ctx.drawZoneBgOverlay?.(canvas2d, widthPx, heightPx, nowMs);
   }
 
   // Fluid background — rendered first so all gameplay elements appear above it.
@@ -416,6 +430,9 @@ export function drawRpgFrame(
   // Zone floor effects — rendered after terrain so they sit above the floor, below enemies.
   if (isCausticsZone) {
     drawCausticsFloorEffects(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
+  }
+  if (isImpetusZone) {
+    drawImpetusFloorEffects(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
   }
   // Verdure zone: floor plant decoration, procedural vines, pollen particles.
   if (isVerdureZone) {
@@ -635,6 +652,7 @@ function drawRpgViewportDiagnostics(
   const scaleY = css.h > 0 ? (css.h / heightPx).toFixed(3) : '—';
   const mx = ctx.mote.x.toFixed(1);
   const my = ctx.mote.y.toFixed(1);
+  const terrainState = ctx.getTopographicTerrainState();
 
   const lines = [
     `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}`,
@@ -643,6 +661,10 @@ function drawRpgViewportDiagnostics(
     `devicePixelRatio: ${dpr.toFixed(2)}`,
     `render scale X/Y: ${scaleX} / ${scaleY}`,
     `player world: (${mx}, ${my})`,
+    `zone: ${ctx.rpgSimState.activeZoneId}`,
+    `terrainKind: ${terrainState?.terrainKind ?? 'none'}`,
+    `zoneProfile: ${ctx.rpgSimState.activeZoneId === 'impetus' ? 'asteroids' : ctx.rpgSimState.activeZoneId === 'caustics' ? 'seafloor' : ctx.rpgSimState.activeZoneId === 'verdure' ? 'overgrowth' : ctx.rpgSimState.activeZoneId === 'horizon' ? 'horizon' : 'crystalline'}`,
+    `bgEffects: ${ctx.rpgSimState.activeZoneId === 'impetus' ? 'starfield+gravityWells' : ctx.rpgSimState.activeZoneId === 'caustics' ? 'causticFilaments' : ctx.rpgSimState.activeZoneId === 'verdure' ? 'caveWalls+vines' : ctx.rpgSimState.activeZoneId === 'horizon' ? 'substrate' : 'none'}`,
   ];
 
   canvas2d.save();

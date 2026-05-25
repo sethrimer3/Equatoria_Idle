@@ -399,6 +399,25 @@ export function getTerrainKindForWave(waveNumber: number, isBossWave: boolean): 
   }
 }
 
+/**
+ * Returns the terrain kind for a given zone and wave, used for the dev overlay.
+ * This is the authoritative routing function - zone terrain is determined by zone,
+ * not by 20-wave cycle.
+ */
+export function getTerrainKindForZone(
+  zoneId: RpgZoneId,
+  seed: number,
+): RpgTerrainKind {
+  const { terrainProfile } = getRpgZoneTerrainProfile(zoneId);
+  if (terrainProfile === 'horizon') return 'none';
+  if (terrainProfile === 'asteroids') return 'none';
+  if (terrainProfile === 'overgrowth') return 'none';
+  if (terrainProfile === 'seafloor') return 'topographic';
+  // crystalline (Euhedral): recursiveSquares 75% of the time, basalt 25%
+  if (seed % 4 === 0) return 'basalt';
+  return 'recursiveSquares';
+}
+
 export function beginWaveTerrain(
   waveNumber: number,
   canvasW: number,
@@ -418,20 +437,47 @@ export function beginWaveTerrain(
     return null;
   }
 
+  // Impetus: no terrain obstacles — visual space effects are handled by impetus-overlay.ts.
   if (terrainProfile === 'asteroids') {
-    // TODO: Replace this temporary stand-in with a dedicated asteroid-field generator.
-    return createRecursiveSquareTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
+    return null;
   }
 
   if (terrainProfile === 'seafloor') {
     return createTopographicTerrainState(waveNumber, seed ^ 0x51af100d, canvasW, canvasH, nowMs, 'cyanTactical');
   }
 
+  // Verdure: no terrain obstacles — cave-wall/vine visuals are handled by verdure-overlay.ts
+  // and rpg-verdure-render.ts.
   if (terrainProfile === 'overgrowth') {
-    // TODO: Replace this branch with denser vine/root terrain for Verdure.
-    return createTopographicTerrainState(waveNumber, seed ^ 0x0b670000, canvasW, canvasH, nowMs);
+    return null;
   }
 
+  // Euhedral (crystalline): fractured square plates primarily, basalt/hex occasionally.
+  // Never use topographic terrain for Euhedral.
+  if (terrainProfile === 'crystalline') {
+    if (seed % 4 === 0) {
+      return {
+        waveNumber,
+        seed,
+        paletteId: 'mono',
+        terrainKind: 'basalt',
+        islands: [],
+        phase: 'growing',
+        phaseStartedAtMs: nowMs,
+        growDurationMs: TERRAIN_GROW_DURATION_MS,
+        shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
+        growth01: 0,
+        mergedContours: null,
+        lightCache: null,
+        squareNodes: [],
+        squareMaxDepth: 0,
+        basalt: generateBasaltTerrain(seed, waveNumber, canvasW, canvasH),
+      };
+    }
+    return createRecursiveSquareTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
+  }
+
+  // Fallback for unknown profiles: use the classic 20-wave cycle.
   const terrainKind = getTerrainKindForWave(waveNumber, false);
 
   if (terrainKind === 'none') {
@@ -462,7 +508,6 @@ export function beginWaveTerrain(
     };
   }
 
-  // TODO: Implement dedicated terrain generation/rendering for reserved4/reserved5.
   return createTopographicTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
 }
 

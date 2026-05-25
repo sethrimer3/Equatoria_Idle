@@ -319,6 +319,14 @@
 - Exports all configurable parameters (SEED_COUNT, MAX_FRONTS, GROWTH_SPEED, etc.), undraw/collision-glow constants, colour palette (PaletteColor, PALETTE), internal types (FrontMode, TrailPoint, CollisionGlow, GrowthFront), and helpers (randomPaletteColor, quantisedAngle, createFront).
 - Should not be imported by any module other than `substrate-effect.ts`.
 
+### src/render/background/nadir-substrate-effect.ts
+- Horizon-zone Nadir variant of the substrate crystalline background effect.
+- Exports `NadirSubstrateEffect` interface and `createNadirSubstrateEffect({ quality })` factory; implementation currently mirrors `substrate-effect.ts`.
+
+### src/render/background/nadir-substrate-effect-internals.ts
+- Nadir-specific internal constants, types, and helpers for `nadir-substrate-effect.ts`.
+- Currently matches `substrate-effect-internals.ts` exactly aside from the file header comment, so future tuning can diverge without affecting Zenith.
+
 ### src/render/particles/particle-types.ts
 - All shared particle system interfaces and type aliases.
 - `EquatoriaParticle` — core particle interface with ring-buffer trail fields and capture state (`isCaptured`, `capturedById`, `particleId`).
@@ -1034,9 +1042,10 @@
   100-wave block and returns `'none'` for boss waves. `TopographicTerrainState` now includes
   `terrainKind`, `squareNodes`, `squareMaxDepth`, and optional `basalt` data.
 - `beginWaveTerrain()` now returns `TopographicTerrainState | null`, dispatches deterministic
-  terrain generation by wave number, and falls back to topographic for the reserved biome slots.
-  All collision and LOS helpers dispatch on `terrainKind`. Imports `recursive-square-terrain.ts`
-  and `basalt-terrain.ts`.
+  terrain generation by active zone, and falls back to the classic wave-cycle only for unknown
+  profiles. Euhedral now uses recursive squares or basalt only; Impetus and Verdure return null;
+  Caustics keeps cyan topographic terrain.
+- Exports `getTerrainKindForZone(zoneId, seed)` for dev-overlay routing diagnostics.
 - Exports deterministic terrain generation/render helpers plus geometry helpers:
   `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`,
   `beginTopographicTerrainShrink`, `renderTopographicTerrain`,
@@ -1160,6 +1169,19 @@
 - **Debug:** `drawRpgPathfindingDebug(ctx, enabled, navGrid, playerPath, enemyPaths)` —
   draws blocked cells in translucent red + paths in cyan/orange.  No-op when disabled.
 
+### src/render/rpg/terrain/caustics-overlay.ts
+- Stateless underwater zone overlay for Caustics.
+- `drawCausticsBackground()` adds the deep navy/teal wash; `drawCausticsFloorEffects()` layers animated caustic filaments, shimmer bands, and rising bubbles above terrain.
+
+### src/render/rpg/terrain/impetus-overlay.ts
+- Stateless Impetus-space overlay with deterministic starfield, nebula haze, gravity wells, and decorative asteroid drift.
+- Exports `drawImpetusBackground()` for the atmosphere pass and `drawImpetusFloorEffects()` for post-terrain space visuals.
+
+### src/render/rpg/terrain/rpg-verdure-render.ts
+- Visual renderer for Verdure environmental hazards and decorative growth.
+- `drawVerdureEdgeRocks()` now builds connected cave-wall masses with shared base bands, protrusions, crevice lines, and highlights instead of isolated perimeter rocks.
+- Also draws Verdure plants and death fragments using the growth-state data from `rpg-verdure-growth.ts`.
+
 ### src/render/rpg/rpg-wave-dead-enemies.ts
 - Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.
 - Exports `removeDeadEnemiesImpl(ctx, addKill)` and keeps API stable for `rpg-wave-manager.ts`.
@@ -1260,6 +1282,7 @@
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
 - Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
 - Per-frame canvas draw function extracted to `rpg-render-draw.ts` via `drawRpgFrame(ctx, state, nowMs)`; `setAllDrawLowGraphics` forwards low-graphics flag to all draw modules.
+- Lazily owns Horizon substrate background effects (`createSubstrateEffect` for Zenith and `createNadirSubstrateEffect` for Nadir placeholder routing) and exposes them to the draw module through `drawZoneBgOverlay`.
 - Death/restart lifecycle (triggerDeath, doRestart, updateDying, updateRestarting) extracted to `rpg-death-restart.ts`; rpg-render.ts builds `deathRestartCtx: RpgDeathRestartCtx` and delegates all four functions.
 - Weapon orbit particle helpers (buildWeaponOrbitParticle, buildOrbitProjectile, updateWeaponOrbitParticles) extracted to `rpg-weapon-orbit.ts`; called via `weaponOrbitCtx: WeaponOrbitCtx`.
 - Per-frame weapon system tick (weapon system updates, auto-attack timers, sand blade fallback) extracted to `rpg-weapon-tick.ts`; rpg-render.ts builds `weaponTickCtx: WeaponTickCtx` and calls `tickWeaponSystems(weaponTickCtx, deltaMs)`.
@@ -1296,7 +1319,8 @@
 ### src/render/rpg/rpg-render-draw.ts
 - Per-frame canvas draw function extracted from `rpg-render.ts` (~378 lines).
 - Exports `RpgDrawCtx` interface, `RpgDrawFrameState` interface, `createRpgDrawFrameState()`, `drawRpgFrame(ctx, state, nowMs)`, and `setAllDrawLowGraphics(enabled)`.
-- `drawRpgFrame` renders one complete frame: background, all enemy types, boss, particles, player mote, weapon effects, UI overlays (joystick, wave banner, wave number, darken).
+- `drawRpgFrame` renders one complete frame: background, zone overlays (Caustics, Verdure, Impetus, Horizon substrate hook), terrain, floor effects, enemies, boss, particles, player mote, weapon effects, and UI overlays.
+- `RpgDrawCtx` now includes optional `drawZoneBgOverlay()` so `rpg-render.ts` can lazily draw Horizon substrate backgrounds without pushing stateful effect ownership into the pure draw module.
 - `setAllDrawLowGraphics` forwards the low-graphics flag to all 11 draw-side modules in a single call.
 - `RpgDrawFrameState` holds `waveOverlapAlpha` — the smoothly-interpolated alpha for the top-left wave number that dims when entities overlap it.
 

@@ -4,7 +4,7 @@ This document summarizes the current design direction for zones/worlds in the Eq
 
 ## Implementation Status
 
-As of build #141:
+As of build #144:
 
 - **Zone data structure**: ✅ Implemented — `RpgZoneDefinition` with `id`, `displayName`, `shortDescription`, `enemyIds`, `terrainProfile`, `visualProfile`, and optional `subzones`.
 - **Zone-aware enemy spawning**: ✅ Implemented — `getZoneWaveDefinition(waveNumber, zoneId)` in `wave-definitions.ts`. Euhedral uses the full hand-authored roster. Other zones generate waves from their zone-specific `enemyIds` pool with progressive type introduction.
@@ -15,17 +15,23 @@ As of build #141:
 - **Eye Stalk**: ✅ Assigned to Verdure (`proc_eyestalk`).
 - **Stardust**: ✅ Assigned to Euhedral.
 - **Horizon safe fallback**: ✅ Implemented — empty-pool zones return no spawns and log a one-time warning.
-- **Caustics first visual pass**: ✅ Implemented — underwater background tint, animated caustic floor light, shimmer bands (high-graphics), and rising bubble particles. Active only when `activeZoneId === 'caustics'`. Implemented in `src/render/rpg/terrain/caustics-overlay.ts`.
+- **Caustics first visual pass**: ✅ Implemented — underwater background tint, animated caustic filament floor light (thin crossing sine ribbons; build #144 replaced oval patches), shimmer bands (high-graphics), and rising bubble particles. Active only when `activeZoneId === 'caustics'`. Implemented in `src/render/rpg/terrain/caustics-overlay.ts`.
 - **Verdure first visual pass**: ✅ Implemented — dark forest-green/bioluminescent atmosphere tint, procedural floor plants (grass tufts, sprouts, moss patches, tiny flowers), procedural vines (tapered segment chains from arena edges with sway animation and spring-damped player disturbance), and drifting pollen particles (high-graphics). Active only when `activeZoneId === 'verdure'`. Implemented in `src/render/rpg/terrain/verdure-overlay.ts`.
+- **Verdure connected cave walls**: ✅ Implemented (build #144) — solid wall base bands with organic contour profiles along all four edges, plus enlarged rock protrusion polygons with crevice details. Replaces isolated small rock approach.
+- **Zone-based terrain dispatch**: ✅ Implemented (build #144) — `beginWaveTerrain()` now routes by zone, not by 20-wave cycle. Euhedral: recursiveSquares/basalt. Impetus: null (visual overlay). Verdure: null (visual overlay). Caustics: topographic seafloor. Horizon: null.
+- **Impetus starfield + gravity wells + asteroid field**: ✅ Implemented (build #144) — `src/render/rpg/terrain/impetus-overlay.ts` with 44 pre-baked stars, 3 gravity wells (rings + swirl arcs + dark void), 7 drifting asteroid silhouettes. All visual-only.
+- **Horizon Zenith substrate background**: ✅ Implemented (build #144) — wired via `drawZoneBgOverlay` callback. Zenith uses `createSubstrateEffect`, Nadir uses `createNadirSubstrateEffect` (forked copy). Currently defaults to Zenith; Nadir branch awaits `activeSubzoneId` state field.
 
 **Not yet implemented** (future work):
-- Zone-specific terrain generation (terrain currently does not vary by zone).
-- Caustics seafloor terrain routing (elongated ridges, `cyanTactical` palette override).
-- Stronger caustic pattern quality (offscreen additive blending).
+- Horizon subzone selection UI and `activeSubzoneId` state — needed to switch between Zenith and Nadir.
+- Caustics dedicated seafloor terrain generator (elongated underwater ridges instead of generic contours).
+- Stronger caustic pattern quality (offscreen additive blending for brighter filaments).
 - Optional water-distortion postprocess for Caustics.
 - Horizon enemies and special mechanics.
-- Impetus gravity fields.
-- Verdure vine destruction, enemy disturbance, hazard plants, vine collision — see `nextSteps.md`.
+- Impetus gravity well gameplay force fields (enemy/player deflection).
+- Impetus asteroid collision/pathfinding integration.
+- Verdure rock collision navgrid integration.
+- Verdure vine destruction, enemy disturbance, thorn plant damage — see `nextSteps.md`.
 
 ## Core Concept
 

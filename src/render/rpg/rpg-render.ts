@@ -144,6 +144,8 @@ import {
   type RpgNavGrid,
 } from './terrain/rpg-pathfinding';
 import { createRpgZoneSelectPanel } from './rpg-zone-select';
+import { createSubstrateEffect, type SubstrateEffect } from '../background/substrate-effect';
+import { createNadirSubstrateEffect, type NadirSubstrateEffect } from '../background/nadir-substrate-effect';
 import { getRpgZoneDisplayName, type RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import {
   clearVerdurePlants,
@@ -213,6 +215,23 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Euler fluid background ─────────────────────────────────────
   const fluid = createRpgFluid();
+  let zenithSubstrate: SubstrateEffect | null = null;
+  let nadirSubstrate: NadirSubstrateEffect | null = null;
+
+  function drawZoneBgOverlay(c2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number): void {
+    if (rpgSimState.activeZoneId !== 'horizon') return;
+    // Default to 'zenith' subzone until subzone selection is implemented.
+    const isNadir = false; // TODO: wire to rpgSimState.activeSubzoneId === 'nadir' when available
+    if (isNadir) {
+      if (!nadirSubstrate) nadirSubstrate = createNadirSubstrateEffect({ quality: isLowGraphicsMode ? 'low' : 'medium' });
+      nadirSubstrate.update(nowMs, w, h);
+      nadirSubstrate.draw(c2d);
+    } else {
+      if (!zenithSubstrate) zenithSubstrate = createSubstrateEffect({ quality: isLowGraphicsMode ? 'low' : 'medium' });
+      zenithSubstrate.update(nowMs, w, h);
+      zenithSubstrate.draw(c2d);
+    }
+  }
 
   /**
    * Resize the #rpg-area wrapper to the largest aspect-ratio-preserving rectangle
@@ -1226,6 +1245,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgSimState,
     getNavGrid:                   () => rpgNavGrid,
     getPathfindingDebugEnabled:   () => _pathfindingDebugEnabled,
+    drawZoneBgOverlay:            (c2d, w, h, nowMs) => drawZoneBgOverlay(c2d, w, h, nowMs),
     getIsDevMode:                 () => _isDevMode,
     getCssDisplaySize:            () => ({ w: rpgCssW, h: rpgCssH }),
     getActiveZoneDisplayName:     () => getRpgZoneDisplayName(rpgSimState.activeZoneId),
