@@ -114,6 +114,10 @@ import { renderPersistentTopographySunlight, renderTopographyLighting } from './
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import { drawRpgPathfindingDebug } from './terrain/rpg-pathfinding';
 import {
+  drawCausticsBackground,
+  drawCausticsFloorEffects,
+} from './terrain/caustics-overlay';
+import {
   LASER_ENEMY_COLOR, SAPPHIRE_ENEMY_COLOR,
 } from './rpg-constants';
 import {
@@ -362,6 +366,13 @@ export function drawRpgFrame(
   canvas2d.fillStyle = '#0a0a12';
   canvas2d.fillRect(0, 0, widthPx, heightPx);
 
+  // Caustics zone: underwater atmosphere tint — rendered immediately after the
+  // background fill so it sits behind fluid, terrain, and all gameplay elements.
+  const isCausticsZone = ctx.rpgSimState.activeZoneId === 'caustics';
+  if (isCausticsZone) {
+    drawCausticsBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+  }
+
   // Fluid background — rendered first so all gameplay elements appear above it.
   ctx.fluid.render(canvas2d);
 
@@ -380,6 +391,12 @@ export function drawRpgFrame(
     if (terrainState.terrainKind === 'topographic') {
       renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx);
     }
+  }
+
+  // Caustics zone: animated floor light (caustic patches, shimmer, bubbles) —
+  // rendered after terrain so it sits on top of the seafloor, below enemies.
+  if (isCausticsZone) {
+    drawCausticsFloorEffects(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
   }
 
   // Pathfinding debug overlay (dev mode only — no-op otherwise).
