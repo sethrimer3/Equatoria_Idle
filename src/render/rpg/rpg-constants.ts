@@ -15,6 +15,25 @@
  */
 import { PLAYER_BASE_ATK } from '../../sim/rpg/rpg-state';
 
+/**
+ * Fixed logical width of the RPG game world in canvas pixels.
+ *
+ * All RPG gameplay objects (player, enemies, terrain, projectiles, particles)
+ * live in [0, RPG_LOGICAL_WIDTH] × [0, RPG_LOGICAL_HEIGHT] world coordinates.
+ * This value NEVER changes at runtime — it is the single authoritative arena size.
+ *
+ * The canvas backing store is always this width.  The `#rpg-area` wrapper div
+ * is CSS-scaled by `resizeRpgArea()` to fit the available container while
+ * preserving this aspect ratio (letterbox / pillarbox).
+ */
+export const RPG_LOGICAL_WIDTH  = 360;
+/**
+ * Fixed logical height of the RPG game world in canvas pixels.
+ * Together with RPG_LOGICAL_WIDTH this gives a 9:16 portrait aspect ratio —
+ * the natural orientation for the RPG tab on phones.
+ */
+export const RPG_LOGICAL_HEIGHT = 640;
+
 export const RPG_TRAIL_CAPACITY   = 60;
 export const MAX_RPG_SPEED        = 3.0;
 export const RPG_VELOCITY_DAMPING = 0.88;

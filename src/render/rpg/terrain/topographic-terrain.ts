@@ -401,7 +401,12 @@ export function beginWaveTerrain(
   canvasH: number,
   nowMs: number,
 ): TopographicTerrainState | null {
-  const seed = (((waveNumber + 1) * 0x9e3779b1) ^ ((canvasW & 0xffff) << 8) ^ (canvasH & 0xffff)) >>> 0;
+  // Seed is derived from waveNumber only — canvas dimensions must NOT be included
+  // here.  The terrain coordinate space is the fixed RPG logical world size, so
+  // terrain layout must be identical regardless of window size, browser zoom, or
+  // devicePixelRatio.  Including canvasW/canvasH in the seed would cause different
+  // terrain to be generated after a resize, violating coordinate stability.
+  const seed = ((waveNumber + 1) * 0x9e3779b1) >>> 0;
   const terrainKind = getTerrainKindForWave(waveNumber, false);
 
   if (terrainKind === 'none') {
