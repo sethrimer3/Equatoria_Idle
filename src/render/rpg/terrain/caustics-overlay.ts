@@ -5,104 +5,42 @@
  *   1. drawCausticsBackground()   — deep-water atmosphere + floor glow pool; before fluid/terrain
  *   2. drawCausticsFloorEffects() — caustic light network, shimmer bands, rising bubbles
  *
- * ── Caustic light network (build 148) ─────────────────────────────────────────
- *   22 closed organic loop cells drawn with globalCompositeOperation = 'lighter'.
- *   Each cell is a smooth 5-vertex closed Bézier polygon whose vertex radii oscillate
- *   independently, creating the morphing web of bright curves seen on the floor of an
- *   aquarium or a sunlit shallow seabed.
+ * ── Caustic light network (build 149) ─────────────────────────────────────────
+ *   Three drifting layers of a Voronoi cell-boundary (Worley F2−F1) caustic
+ *   texture tile, composited with globalCompositeOperation = 'screen'.
  *
- *   Physics: real caustics arise where a curved water surface refracts and focuses
- *   sunlight into a web of bright curves on the seafloor.  The bright regions are the
- *   caustic BOUNDARIES — where ray bundles converge.  Thin-stroked closed loops drawn
- *   with 'lighter' compositing reproduce this naturally: wherever loop edges overlap,
- *   light accumulates, creating authentic-looking bright hot-spots at intersection zones.
+ *   Each layer uses the same tiled caustic canvas (generated once in
+ *   caustics-texture.ts) but with a different CanvasPattern transform:
+ *     Layer A: scale 1.00×, slow rightward+downward drift  (~8.5 / 6.0 px/s)
+ *     Layer B: scale 1.28×, leftward+downward drift        (~6.2 / 4.5 px/s)  [high only]
+ *     Layer C: scale 0.78×, rightward+upward drift         (~4.2 / 5.8 px/s)  [high only]
  *
- *   The entire light network drifts with a slow global sinusoidal oscillation that
- *   simulates the gentle rolling of the water surface above.  Each cell additionally
- *   has its own drift frequency and direction, so the pattern never repeats.
+ *   Because each layer drifts at a different speed and scale, the crossing
+ *   intersection zones change continuously — naturally producing bright,
+ *   slow-shifting caustic knots wherever two layers overlap.
  *
- * No per-frame allocations: all parameters are baked into constant arrays.
- * _CVX / _CVY are module-level Float32Array vertex buffers reused each frame.
+ *   Physics: real caustics are bright at Voronoi cell boundaries because that
+ *   is where refracted ray bundles converge.  The Worley F2−F1 field reproduces
+ *   this directly.  'screen' compositing makes overlapping bright regions
+ *   accumulate toward white, mimicking multiple convergent ray bundles.
  *
- * Low-graphics mode: renders 11 cells (every other index) and skips shimmer bands.
+ * No per-frame pixel operations:
+ *   The tile is generated once (putImageData at init) and cached in caustics-texture.ts.
+ *   Per-frame work is: three CanvasPattern.setTransform calls + three fillRect calls.
+ *   CanvasPattern objects are cached and reused across frames.
+ *
+ * Low-graphics mode:
+ *   One cached layer at reduced alpha.  No expensive glow pass.
+ *   Still reads as aquarium-floor caustics, not fading ovals.
  *
  * Draw order:
  *   drawCausticsBackground()   — after '#0a0a12' base fill, before fluid/terrain
  *   drawCausticsFloorEffects() — after terrain render, before enemies/player
  */
 
-const _TWO_PI = Math.PI * 2;
+import { getCausticsTextureTile } from './caustics-texture';
 
-// ── Caustic cell parameters ────────────────────────────────────────────────────
-
-/**
- * Pre-baked data for the 22 caustic light cells.
- *
- * Row layout:
- *   [0] baseFracX  — base centre X as fraction of canvas width  (0–1)
- *   [1] baseFracY  — base centre Y as fraction of canvas height (0–1)
- *   [2] baseRadius — typical vertex radius in logical px
- *   [3] driftAmpX  — peak horizontal individual drift (px)
- *   [4] driftAmpY  — peak vertical individual drift (px)
- *   [5] driftFreqX — X-drift oscillation frequency (rad/s)
- *   [6] driftFreqY — Y-drift oscillation frequency (rad/s)
- *   [7] morphFreq  — vertex-radius morphing frequency (rad/s)
- *   [8] phaseOff   — initial phase scalar (0–1, mapped to 0–2π internally)
- *   [9] colorIdx   — index into _CELL_COLORS palette (0–3)
- *  [10] stretchY   — Y-axis shape scale (< 1 = wide/flat, > 1 = tall/narrow)
- */
-const _CELL_DATA: readonly (readonly number[])[] = [
-  // ── Surface zone  y 0.18–0.44 ── (lighter, sparser; caustics near water surface)
-  [0.10, 0.22, 22, 20, 12, 0.110, 0.082, 0.170, 0.000, 2, 0.80],
-  [0.33, 0.30, 26, 16, 16, 0.093, 0.110, 0.210, 0.190, 0, 1.20],
-  [0.55, 0.26, 20, 22, 10, 0.120, 0.093, 0.195, 0.380, 3, 0.90],
-  [0.76, 0.34, 24, 18, 14, 0.100, 0.105, 0.230, 0.570, 1, 1.10],
-  [0.92, 0.42, 19, 14, 18, 0.082, 0.120, 0.162, 0.760, 2, 0.75],
-  // ── Mid zone  y 0.44–0.68 ─────────────────────────────────────────────
-  [0.05, 0.52, 30, 24, 14, 0.130, 0.072, 0.220, 0.050, 0, 1.00],
-  [0.23, 0.59, 28, 18, 20, 0.092, 0.130, 0.182, 0.240, 3, 0.85],
-  [0.42, 0.51, 24, 22, 12, 0.112, 0.100, 0.240, 0.430, 1, 1.25],
-  [0.60, 0.63, 32, 16, 18, 0.100, 0.082, 0.200, 0.620, 2, 0.95],
-  [0.78, 0.56, 22, 20, 16, 0.118, 0.112, 0.172, 0.810, 0, 1.15],
-  [0.95, 0.60, 26, 14, 14, 0.082, 0.092, 0.210, 0.000, 3, 0.80],
-  // ── Lower-mid zone  y 0.65–0.82 ───────────────────────────────────────
-  [0.12, 0.72, 30, 20, 12, 0.102, 0.118, 0.230, 0.180, 1, 1.05],
-  [0.30, 0.76, 26, 24, 16, 0.112, 0.092, 0.200, 0.360, 0, 0.90],
-  [0.50, 0.70, 35, 18, 20, 0.092, 0.102, 0.250, 0.550, 2, 1.20],
-  [0.68, 0.78, 22, 22, 14, 0.130, 0.082, 0.190, 0.730, 3, 0.85],
-  [0.86, 0.73, 28, 16, 18, 0.082, 0.122, 0.172, 0.910, 1, 1.10],
-  // ── Floor zone  y 0.82–0.97 ── (densest; most light pools on the seabed)
-  [0.08, 0.89, 26, 18, 10, 0.110, 0.112, 0.240, 0.100, 2, 0.80],
-  [0.27, 0.93, 32, 22, 14, 0.092, 0.082, 0.210, 0.290, 0, 1.00],
-  [0.46, 0.87, 28, 16, 18, 0.120, 0.130, 0.182, 0.480, 3, 1.20],
-  [0.65, 0.94, 20, 20, 12, 0.102, 0.102, 0.222, 0.670, 1, 0.90],
-  [0.80, 0.89, 30, 14, 16, 0.082, 0.092, 0.200, 0.860, 0, 1.10],
-  [0.95, 0.93, 24, 24, 10, 0.130, 0.120, 0.172, 0.040, 2, 0.85],
-];
-
-/**
- * Caustic light colour palette.
- * Pale and cool — filtered sunlight through water, not a coloured spotlight.
- */
-const _CELL_COLORS: readonly string[] = [
-  '#78dcd4',  // 0: aquamarine
-  '#58c8f0',  // 1: sky-blue
-  '#a0f0e0',  // 2: pale mint
-  '#48d0f8',  // 3: cerulean
-];
-
-/** Number of cells drawn in each graphics tier. */
-const _HIGH_CELL_COUNT = 22;
-const _LOW_CELL_COUNT  = 11;   // odd-indexed cells are skipped in low-graphics mode
-
-/**
- * Per-frame vertex position buffers for one cell (5 vertices × x and y).
- * Module-level reuse avoids any allocation in the hot draw loop.
- */
-const _CVX = new Float32Array(5);
-const _CVY = new Float32Array(5);
-
-// ── Pre-baked bubble data (unchanged) ─────────────────────────────────────────
+// ── Pre-baked bubble data ──────────────────────────────────────────────────────
 
 /**
  * Bubble parameter table.
@@ -130,6 +68,16 @@ const _HIGH_BUBBLE_COUNT = 14;
 const _LOW_BUBBLE_COUNT  = 6;
 
 const _SHIMMER_COLOR = '#6ad8e0';
+
+// ── CanvasPattern cache ────────────────────────────────────────────────────────
+// Patterns are cached and reused across frames to avoid per-frame allocations.
+// Invalidated when the rendering context changes or the tile is regenerated.
+
+let _patternA: CanvasPattern | null = null;  // layer A (always drawn)
+let _patternB: CanvasPattern | null = null;  // layer B (high-graphics)
+let _patternC: CanvasPattern | null = null;  // layer C (high-graphics)
+let _patternCtx:  CanvasRenderingContext2D | null = null;
+let _patternTile: HTMLCanvasElement | null = null;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -166,9 +114,9 @@ export function drawCausticsBackground(
       widthPx * 0.5, heightPx,        0,
       widthPx * 0.5, heightPx * 0.88, widthPx * 0.70,
     );
-    poolGrad.addColorStop(0,   'rgba(42, 170, 148, 0.13)');
+    poolGrad.addColorStop(0,    'rgba(42, 170, 148, 0.13)');
     poolGrad.addColorStop(0.55, 'rgba(18, 105, 105, 0.05)');
-    poolGrad.addColorStop(1,   'rgba(0,   0,   0,  0)');
+    poolGrad.addColorStop(1,    'rgba(0,   0,   0,  0)');
     canvas2d.fillStyle = poolGrad;
     canvas2d.globalAlpha = 1;
     canvas2d.fillRect(0, heightPx * 0.68, widthPx, heightPx * 0.32);
@@ -178,8 +126,12 @@ export function drawCausticsBackground(
 }
 
 /**
- * Draw animated caustic light network, shimmer bands, and rising bubble particles
+ * Draw the animated caustic light network, shimmer bands, and rising bubbles
  * on top of the terrain but below enemies and the player.
+ *
+ * The main visual identity comes from three drifting layers of a cached Voronoi
+ * caustic texture composited with 'screen' blending — not from alpha-pulsing
+ * ovals or simple sine-wave bands.
  *
  * Call after terrain rendering and before the first enemy draw call.
  */
@@ -191,7 +143,7 @@ export function drawCausticsFloorEffects(
   lowGraphics: boolean,
 ): void {
   const tS = nowMs * 0.001;
-  _drawCausticsLightNet(canvas2d, widthPx, heightPx, tS, lowGraphics);
+  _drawCausticsTileLayers(canvas2d, widthPx, heightPx, tS, lowGraphics);
   if (!lowGraphics) {
     _drawCausticsShimmer(canvas2d, widthPx, heightPx, tS);
   }
@@ -201,109 +153,80 @@ export function drawCausticsFloorEffects(
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 /**
- * Draw the caustic light network.
+ * Draw the caustic light network using drifting CanvasPattern layers.
  *
- * Each of the 22 pre-baked cells is rendered as a smooth closed 5-vertex
- * Bézier polygon (midpoint quadratic technique) with independently oscillating
- * vertex radii.  All cells are drawn with globalCompositeOperation = 'lighter'
- * so overlapping loop edges accumulate brightness — naturally producing the
- * bright hot-spots that appear wherever multiple refracted ray bundles converge
- * (the hallmark of real caustic light patterns).
+ * The source tile (from caustics-texture.ts) contains a Voronoi cell-boundary
+ * pattern with thin bright filaments and soft aqua halos.  Drawing multiple
+ * copies at different scales and drift vectors creates convincing intersection
+ * hot-spots and a slow, evolving watery shimmer.
  *
- * The whole pattern drifts with a very slow global sinusoidal motion that
- * simulates the water surface gently rolling above the arena.
+ * All three CanvasPattern objects are cached module-level and reused each frame.
+ * Per-frame work is limited to three setTransform calls and three fillRect calls.
  *
- * Draw details:
- *   lineWidth   1.4 px  — thin but visible; thicker would look like brush strokes
- *   alpha       0.055–0.090 per cell (+ gentle pulse) — conservative so
- *               overlapping regions brighten without washing out gameplay
- *   stretchY    pre-baked per cell — gives variety (flat sandbars, tall ridges)
+ * Layer parameters (drift speeds in canvas pixels per second):
+ *   A: scale 1.00×, (+8.5, +6.0) px/s — main caustic weave
+ *   B: scale 1.28×, (−6.2, +4.5) px/s — larger cells, opposing X drift  [high only]
+ *   C: scale 0.78×, (+4.2, −5.8) px/s — finer detail, upward bias        [high only]
  */
-function _drawCausticsLightNet(
+function _drawCausticsTileLayers(
   canvas2d: CanvasRenderingContext2D,
   widthPx: number,
   heightPx: number,
   tS: number,
   lowGraphics: boolean,
 ): void {
-  const cellCount = lowGraphics ? _LOW_CELL_COUNT : _HIGH_CELL_COUNT;
-  const ANGLE_STEP = _TWO_PI / 5;
+  const tile = getCausticsTextureTile(lowGraphics);
 
-  // Very slow global drift — simulates the water surface undulating overhead.
-  const globalDriftX = Math.sin(tS * 0.053) * 15;
-  const globalDriftY = Math.cos(tS * 0.040) * 10;
+  // Refresh cached CanvasPattern objects if the context or source tile changed.
+  if (_patternCtx !== canvas2d || _patternTile !== tile) {
+    _patternA = canvas2d.createPattern(tile, 'repeat');
+    _patternB = canvas2d.createPattern(tile, 'repeat');
+    _patternC = canvas2d.createPattern(tile, 'repeat');
+    _patternCtx  = canvas2d;
+    _patternTile = tile;
+  }
+  if (!_patternA) return;
+
+  const tileW = tile.width;
+  const tileH = tile.height;
 
   canvas2d.save();
-  canvas2d.globalCompositeOperation = 'lighter';
-  canvas2d.lineWidth = 1.4;
-  canvas2d.lineCap   = 'round';
-  canvas2d.lineJoin  = 'round';
+  canvas2d.globalCompositeOperation = 'screen';
 
-  for (let ci = 0; ci < cellCount; ci++) {
-    // In low-graphics mode render every other cell (even indices).
-    const di = lowGraphics ? ci * 2 : ci;
-    if (di >= _CELL_DATA.length) break;
-    const row = _CELL_DATA[di];
+  // ── Layer A: main caustic weave, slow rightward + downward drift ──────────
+  const txA = (tS * 8.5) % tileW;
+  const tyA = (tS * 6.0) % tileH;
+  _patternA.setTransform({ a: 1, b: 0, c: 0, d: 1, e: txA, f: tyA });
+  canvas2d.globalAlpha = lowGraphics ? 0.33 : 0.40;
+  canvas2d.fillStyle = _patternA;
+  canvas2d.fillRect(0, 0, widthPx, heightPx);
 
-    const baseFracX  = row[0];
-    const baseFracY  = row[1];
-    const baseRadius = row[2];
-    const driftAmpX  = row[3];
-    const driftAmpY  = row[4];
-    const driftFreqX = row[5];
-    const driftFreqY = row[6];
-    const morphFreq  = row[7];
-    const phaseOff   = row[8] * _TWO_PI;  // 0–1 → 0–2π
-    const colorIdx   = row[9] | 0;
-    const stretchY   = row[10];
-
-    // Cell centre: base position + individual drift + global drift.
-    const cx = baseFracX * widthPx
-      + driftAmpX * Math.sin(tS * driftFreqX + phaseOff * 0.41)
-      + globalDriftX;
-    const cy = baseFracY * heightPx
-      + driftAmpY * Math.cos(tS * driftFreqY + phaseOff * 0.37)
-      + globalDriftY;
-
-    // Gentle per-cell brightness pulse — makes each cell breathe independently.
-    const brightPulse = 0.62 + 0.38 * Math.sin(tS * morphFreq * 0.44 + phaseOff);
-    // Base alpha varies slightly per cell so no two cells look identical.
-    const baseAlpha = 0.055 + (di % 4) * 0.008;
-    canvas2d.globalAlpha = baseAlpha * brightPulse;
-    canvas2d.strokeStyle = _CELL_COLORS[colorIdx];
-
-    // Compute 5 vertex positions.
-    // Each vertex oscillates at morphFreq with a per-vertex phase stagger so
-    // the shape morphs organically rather than uniformly expanding/contracting.
-    for (let vi = 0; vi < 5; vi++) {
-      const r = baseRadius * (0.50 + 0.50 * Math.sin(
-        tS * morphFreq + phaseOff + vi * ANGLE_STEP * 0.85,
-      ));
-      // Tiny angle bias from phaseOff adds per-cell rotational asymmetry.
-      const angle = vi * ANGLE_STEP + phaseOff * 0.06;
-      _CVX[vi] = cx + r * Math.cos(angle);
-      _CVY[vi] = cy + r * Math.sin(angle) * stretchY;
+  if (!lowGraphics) {
+    if (_patternB) {
+      // ── Layer B: scale 1.28×, leftward + slow downward drift ─────────────
+      const scaleB   = 1.28;
+      const periodBx = tileW * scaleB;
+      const periodBy = tileH * scaleB;
+      const txB = (((-(tS * 6.2)) % periodBx) + periodBx) % periodBx;
+      const tyB = (tS * 4.5) % periodBy;
+      _patternB.setTransform({ a: scaleB, b: 0, c: 0, d: scaleB, e: txB, f: tyB });
+      canvas2d.globalAlpha = 0.28;
+      canvas2d.fillStyle = _patternB;
+      canvas2d.fillRect(0, 0, widthPx, heightPx);
     }
 
-    // Draw smooth closed polygon using the midpoint quadratic Bézier technique.
-    // Each original vertex is used as a control point; the on-curve points are
-    // the midpoints between adjacent vertices.  This always produces a smooth
-    // closed shape regardless of vertex positions.
-    canvas2d.beginPath();
-    canvas2d.moveTo(
-      (_CVX[4] + _CVX[0]) * 0.5,
-      (_CVY[4] + _CVY[0]) * 0.5,
-    );
-    for (let vi = 0; vi < 5; vi++) {
-      const ni = (vi + 1) % 5;
-      canvas2d.quadraticCurveTo(
-        _CVX[vi], _CVY[vi],
-        (_CVX[vi] + _CVX[ni]) * 0.5,
-        (_CVY[vi] + _CVY[ni]) * 0.5,
-      );
+    if (_patternC) {
+      // ── Layer C: scale 0.78×, rightward + upward drift (fine shimmer) ────
+      const scaleC   = 0.78;
+      const periodCx = tileW * scaleC;
+      const periodCy = tileH * scaleC;
+      const txC = (tS * 4.2) % periodCx;
+      const tyC = (((-(tS * 5.8)) % periodCy) + periodCy) % periodCy;
+      _patternC.setTransform({ a: scaleC, b: 0, c: 0, d: scaleC, e: txC, f: tyC });
+      canvas2d.globalAlpha = 0.18;
+      canvas2d.fillStyle = _patternC;
+      canvas2d.fillRect(0, 0, widthPx, heightPx);
     }
-    canvas2d.closePath();
-    canvas2d.stroke();
   }
 
   canvas2d.restore();
@@ -313,8 +236,8 @@ function _drawCausticsLightNet(
  * Draw faint horizontal shimmer bands simulating light ripples on the water
  * surface seen from below.  High-graphics only.
  *
- * Slightly more pronounced than earlier builds so the shimmer is visible
- * against the brighter caustic backdrop.
+ * Kept deliberately subtle (3 bands, very low alpha) so the caustic tile
+ * network remains the dominant visual identity.
  */
 function _drawCausticsShimmer(
   canvas2d: CanvasRenderingContext2D,
@@ -322,20 +245,20 @@ function _drawCausticsShimmer(
   heightPx: number,
   tS: number,
 ): void {
-  const bandCount = 5;
+  const bandCount = 3;
   canvas2d.save();
   canvas2d.strokeStyle = _SHIMMER_COLOR;
-  canvas2d.lineWidth = 1.1;
+  canvas2d.lineWidth = 1.0;
 
   for (let b = 0; b < bandCount; b++) {
-    const yBase = heightPx * (0.06 + b * 0.065);
-    const alpha = 0.018 + 0.010 * Math.sin(tS * 0.55 + b * 1.5708);
+    const yBase = heightPx * (0.05 + b * 0.060);
+    const alpha = 0.012 + 0.007 * Math.sin(tS * 0.55 + b * 1.5708);
     canvas2d.globalAlpha = alpha;
 
     canvas2d.beginPath();
     canvas2d.moveTo(0, yBase);
     for (let x = 8; x <= widthPx; x += 8) {
-      const y = yBase + 2.8 * Math.sin(x * 0.068 + tS * (0.68 + b * 0.17));
+      const y = yBase + 2.5 * Math.sin(x * 0.068 + tS * (0.65 + b * 0.15));
       canvas2d.lineTo(x, y);
     }
     canvas2d.stroke();
@@ -377,7 +300,7 @@ function _drawCausticsBubbles(
     const y = heightPx * (1.0 - phase);
     const x = widthPx * baseXFrac + wobAmp * Math.sin(tS * wobFreq + phaseOff * 6.283);
 
-    // Fade in from bottom and fade out near the top
+    // Fade in from bottom and fade out near the top.
     const fadeEdge = Math.min(phase * 8.0, (1.0 - phase) * 6.0, 1.0);
     const alpha = alphaBase * fadeEdge;
 

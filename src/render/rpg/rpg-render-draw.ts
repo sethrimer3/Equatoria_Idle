@@ -694,7 +694,7 @@ function drawRpgViewportDiagnostics(
   if (activeZone === 'impetus') {
     bgRoute = `impetusStars+gravityWells${lowG ? 'Low' : 'High'}`;
   } else if (activeZone === 'caustics') {
-    bgRoute = 'causticsFilaments';
+    bgRoute = `causticsCachedTileLayers${lowG ? 'Low' : 'High'}`;
   } else if (activeZone === 'verdure') {
     bgRoute = 'verdureWallsPlants';
   } else if (activeZone === 'horizon') {
