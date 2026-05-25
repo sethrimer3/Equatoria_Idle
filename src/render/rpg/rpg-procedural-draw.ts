@@ -505,57 +505,271 @@ export function drawShadowHandEnemies(
 
 // ── Fish enemies and projectiles ───────────────────────────────────────────────
 
-function drawFishShape(
-  canvas: CanvasRenderingContext2D,
+/** Options forwarded to the fish silhouette renderer. */
+interface FishDrawOpts {
+  /** Overall opacity [0–1]; undefined = fully opaque. */
+  alpha?: number;
+  /** When true, draw white diamond-armor facets inside the body. */
+  diamond?: boolean;
+  /** When true, reduce swim-bend amplitude (ruby dash: body straightens). */
+  rubyDash?: boolean;
+  /** When true, increase tail-beat frequency (mini emerald fish). */
+  fastTwitch?: boolean;
+}
+
+/**
+ * Build a function that maps a local x coordinate to a Y swim-bend offset.
+ * Bend is zero near the head and grows toward the tail, modelled as a power
+ * curve so the body looks natural.  Amplitude is tuned per fish state.
+ */
+function getFishBendFn(
+  animPhase: number,
+  size: number,
+  opts?: FishDrawOpts,
+): (px: number) => number {
+  const beatFreq = opts?.fastTwitch ? 3.4 : 2.8;
+  let amplitude = size * 0.38;
+  if (opts?.rubyDash) amplitude *= 0.25;  // straighten during high-speed dash
+  if (opts?.diamond)  amplitude *= 0.70;  // gentler sway when armour is up
+
+  const rawBend   = Math.sin(animPhase * beatFreq) * amplitude;
+  const xHead     =  size * 1.20;
+  const xTailBase = -size * 1.05;
+  const range     = xHead - xTailBase;
+
+  return (px: number): number => {
+    const t = (xHead - px) / range;
+    return rawBend * Math.pow(Math.max(0, t), 1.5);
+  };
+}
+
+/**
+ * Draw two small pectoral fins near the front of the fish body.
+ * Each fin is a short ellipse rotated slightly outward and rendered at
+ * reduced opacity so the body silhouette remains the dominant shape.
+ */
+function drawFishFins(
+  ctx: CanvasRenderingContext2D,
+  s: number,
+  bendFn: (px: number) => number,
+  bodyColor: string,
+): void {
+  const attachX  = s * 0.35;
+  const bFin     = bendFn(attachX);
+  const finHalfL = s * 0.58;   // half-length along body axis
+  const finHalfW = s * 0.22;   // half-width perpendicular
+  const fanAngle = 0.50;        // rotation outward (rad)
+
+  ctx.save();
+  ctx.fillStyle = bodyColor;
+  ctx.globalAlpha *= 0.68;
+
+  // Upper fin (top-down left)
+  ctx.save();
+  ctx.translate(attachX, bFin - s * 0.48);
+  ctx.rotate(-fanAngle);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, finHalfL, finHalfW, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Lower fin (top-down right)
+  ctx.save();
+  ctx.translate(attachX, bFin + s * 0.48);
+  ctx.rotate(fanAngle);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, finHalfL, finHalfW, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/**
+ * Draw two subtle internal crystal-facet lines.
+ * Uses a very low alpha so they read as gemstone highlights without looking
+ * like cartoon eye markings.  Skipped entirely in low-graphics mode.
+ */
+function drawFishFacets(
+  ctx: CanvasRenderingContext2D,
+  s: number,
+  bendFn: (px: number) => number,
+): void {
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = Math.max(0.5, s * 0.08);
+  ctx.globalAlpha = 0.18;
+  ctx.lineCap     = 'round';
+
+  // Facet line A: diagonal across the front half of the body
+  ctx.beginPath();
+  ctx.moveTo(s * 0.80, bendFn(s * 0.80) - s * 0.22);
+  ctx.lineTo(s * 0.10, bendFn(s * 0.10) + s * 0.30);
+  ctx.stroke();
+
+  // Facet line B: shorter cut across the mid-body
+  ctx.beginPath();
+  ctx.moveTo(s * 0.15, bendFn(s * 0.15) - s * 0.40);
+  ctx.lineTo(-s * 0.30, bendFn(-s * 0.30) + s * 0.12);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Draw a single gem-fish using a top-down silhouette approach.
+ *
+ * The fish is rendered in local space (faces +X), then rotated by `swimAngle`.
+ * A bezier-curve outline produces a rounded head, tapered body, pectoral fins,
+ * and a forked caudal tail.  A swim-bend function displaces body and tail points
+ * along Y so the fish visibly undulates with `animPhase`.  No eye or pupil is
+ * drawn at any point.
+ */
+function drawProceduralFishSilhouette(
+  ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   size: number,
-  angle: number,
+  swimAngle: number,
+  animPhase: number,
   bodyColor: string,
   glowColor: string,
-  opts?: { alpha?: number; diamond?: boolean },
+  opts?: FishDrawOpts,
 ): void {
-  canvas.save();
-  canvas.translate(x, y);
-  canvas.rotate(angle);
-  if (opts?.alpha !== undefined) canvas.globalAlpha = opts.alpha;
-  applyGlow(canvas, glowColor, size + 4);
-  canvas.fillStyle = bodyColor;
-  canvas.beginPath();
-  canvas.ellipse(0, 0, size * 1.1, size * 0.68, 0, 0, Math.PI * 2);
-  canvas.fill();
-  canvas.beginPath();
-  canvas.moveTo(-size * 0.9, 0);
-  canvas.lineTo(-size * 1.8, -size * 0.65);
-  canvas.lineTo(-size * 1.7, size * 0.65);
-  canvas.closePath();
-  canvas.fill();
-  if (opts?.diamond) {
-    canvas.strokeStyle = '#ffffff';
-    canvas.lineWidth = 1.5;
-    canvas.beginPath();
-    canvas.moveTo(size * 0.2, -size * 0.7);
-    canvas.lineTo(size * 0.95, 0);
-    canvas.lineTo(size * 0.2, size * 0.7);
-    canvas.lineTo(-size * 0.4, 0);
-    canvas.closePath();
-    canvas.stroke();
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(swimAngle);
+  if (opts?.alpha !== undefined && opts.alpha < 1) ctx.globalAlpha = opts.alpha;
+
+  const s      = size;
+  const bendFn = getFishBendFn(animPhase, s, opts);
+
+  // Key x positions (local coords; fish faces +X)
+  const xH   =  s * 1.20;   // head tip
+  const xM   =  s * 0.05;   // mid-body (widest)
+  const xTB  = -s * 1.05;   // tail base
+  const xTT  = -s * 1.80;   // tail lobe tips
+
+  // Half-widths at key sections
+  const hwH  = s * 0.30;    // head
+  const hwM  = s * 0.60;    // mid (widest)
+  const hwTB = s * 0.18;    // tail base
+
+  // Y bend offsets at each key x
+  const bH   = bendFn(xH);
+  const bM   = bendFn(xM);
+  const bTB  = bendFn(xTB);
+  const bTT  = bendFn(xTT);
+
+  // Forked tail lobe tips (slight asymmetry for organic feel)
+  const lobeSpread = s * 0.30;
+  const upperTipY  = bTT - lobeSpread;
+  const lowerTipY  = bTT + lobeSpread;
+
+  // Notch between tail lobes (slightly inward from tips in X)
+  const xNotch = xTT + s * 0.20;
+  const bNotch = bendFn(xNotch);
+
+  // ── Body silhouette ──────────────────────────────────────────────
+  applyGlow(ctx, glowColor, s + 4);
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath();
+
+  // Head tip (rounded nose: both top and bottom beziers meet here smoothly)
+  ctx.moveTo(xH, bH);
+
+  // Top outline: head → widest body → tail base
+  ctx.bezierCurveTo(
+    xH - s * 0.05, bH - hwH,
+    xM + s * 0.55, bM - hwM,
+    xM, bM - hwM,
+  );
+  ctx.bezierCurveTo(
+    xM - s * 0.50, bM - hwM,
+    xTB + s * 0.28, bTB - hwTB,
+    xTB, bTB - hwTB,
+  );
+
+  // Upper tail lobe
+  ctx.bezierCurveTo(
+    xTB - s * 0.22, bTB - hwTB * 1.6,
+    xTT + s * 0.18, upperTipY - s * 0.04,
+    xTT, upperTipY,
+  );
+
+  // Tail notch (concave between lobes)
+  ctx.bezierCurveTo(
+    xTT + s * 0.10, upperTipY + s * 0.10,
+    xNotch + s * 0.05, bNotch - s * 0.04,
+    xNotch, bNotch,
+  );
+
+  // Lower tail lobe
+  ctx.bezierCurveTo(
+    xNotch + s * 0.05, bNotch + s * 0.04,
+    xTT + s * 0.10, lowerTipY - s * 0.10,
+    xTT, lowerTipY,
+  );
+
+  // Bottom outline: tail base → widest body → head tip
+  ctx.bezierCurveTo(
+    xTT + s * 0.18, lowerTipY + s * 0.04,
+    xTB - s * 0.22, bTB + hwTB * 1.6,
+    xTB, bTB + hwTB,
+  );
+  ctx.bezierCurveTo(
+    xTB + s * 0.28, bTB + hwTB,
+    xM - s * 0.50, bM + hwM,
+    xM, bM + hwM,
+  );
+  ctx.bezierCurveTo(
+    xM + s * 0.55, bM + hwM,
+    xH - s * 0.05, bH + hwH,
+    xH, bH,
+  );
+
+  ctx.closePath();
+  ctx.fill();
+  clearGlow(ctx);
+
+  // ── Pectoral fins ────────────────────────────────────────────────
+  drawFishFins(ctx, s, bendFn, bodyColor);
+
+  // ── Internal crystal facets (detail pass, skipped in low-graphics) ──
+  if (!isLowGraphicsMode) {
+    drawFishFacets(ctx, s, bendFn);
   }
-  canvas.fillStyle = '#ffffff';
-  canvas.beginPath();
-  canvas.arc(size * 0.7, -size * 0.15, Math.max(1.2, size * 0.18), 0, Math.PI * 2);
-  canvas.fill();
-  canvas.fillStyle = '#102030';
-  canvas.beginPath();
-  canvas.arc(size * 0.78, -size * 0.12, Math.max(0.7, size * 0.09), 0, Math.PI * 2);
-  canvas.fill();
-  clearGlow(canvas);
-  canvas.restore();
+
+  // ── Diamond armor overlay (white facet lines when armor is active) ──
+  if (opts?.diamond) {
+    ctx.save();
+    ctx.strokeStyle = '#ddfbff';
+    ctx.lineWidth   = Math.max(0.7, s * 0.10);
+    ctx.globalAlpha = 0.55;
+    ctx.lineCap     = 'round';
+
+    const fA = bendFn(s * 0.50);
+    const fB = bendFn(-s * 0.30);
+    // Diagonal armour shard crossing the body
+    ctx.beginPath();
+    ctx.moveTo(s * 0.50, fA - hwM * 0.60);
+    ctx.lineTo(-s * 0.30, fB + hwM * 0.55);
+    ctx.stroke();
+    // Transverse shard at mid-body
+    ctx.beginPath();
+    ctx.moveTo(s * 0.05, bM - hwM * 0.48);
+    ctx.lineTo(s * 0.05, bM + hwM * 0.48);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  ctx.restore();
 }
 
 export function drawSandFishEnemies(canvas: CanvasRenderingContext2D, enemies: SandFishEnemy[]): void {
   for (const e of enemies) {
-    drawFishShape(canvas, e.x, e.y, SANDFISH_SIZE, e.swimAngle, SANDFISH_COLOR, SANDFISH_GLOW);
+    drawProceduralFishSilhouette(canvas, e.x, e.y, SANDFISH_SIZE, e.swimAngle, e.animPhase, SANDFISH_COLOR, SANDFISH_GLOW);
     drawHitFlash(canvas, e.x, e.y, SANDFISH_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, SANDFISH_SIZE, hpFrac(e));
   }
@@ -563,7 +777,7 @@ export function drawSandFishEnemies(canvas: CanvasRenderingContext2D, enemies: S
 
 export function drawQuartzFishEnemies(canvas: CanvasRenderingContext2D, enemies: QuartzFishEnemy[]): void {
   for (const e of enemies) {
-    drawFishShape(canvas, e.x, e.y, QUARTZFISH_SIZE, e.swimAngle, QUARTZFISH_COLOR, QUARTZFISH_GLOW);
+    drawProceduralFishSilhouette(canvas, e.x, e.y, QUARTZFISH_SIZE, e.swimAngle, e.animPhase, QUARTZFISH_COLOR, QUARTZFISH_GLOW);
     if (!e.shieldBroken && e.shieldHp > 0) {
       canvas.save();
       canvas.strokeStyle = QUARTZFISH_GLOW;
@@ -581,8 +795,9 @@ export function drawQuartzFishEnemies(canvas: CanvasRenderingContext2D, enemies:
 
 export function drawRubyFishEnemies(canvas: CanvasRenderingContext2D, enemies: RubyFishEnemy[]): void {
   for (const e of enemies) {
-    const alpha = e.dashState === 'windup' ? 0.65 : 1;
-    drawFishShape(canvas, e.x, e.y, RUBYFISH_SIZE, e.swimAngle, RUBYFISH_COLOR, RUBYFISH_GLOW, { alpha });
+    const alpha    = e.dashState === 'windup' ? 0.65 : 1;
+    const rubyDash = e.dashState === 'dash';
+    drawProceduralFishSilhouette(canvas, e.x, e.y, RUBYFISH_SIZE, e.swimAngle, e.animPhase, RUBYFISH_COLOR, RUBYFISH_GLOW, { alpha, rubyDash });
     drawHitFlash(canvas, e.x, e.y, RUBYFISH_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, RUBYFISH_SIZE, hpFrac(e));
   }
@@ -590,7 +805,7 @@ export function drawRubyFishEnemies(canvas: CanvasRenderingContext2D, enemies: R
 
 export function drawSunstoneFishEnemies(canvas: CanvasRenderingContext2D, enemies: SunstoneFishEnemy[]): void {
   for (const e of enemies) {
-    drawFishShape(canvas, e.x, e.y, SUNSTONEFISH_SIZE, e.swimAngle, SUNSTONEFISH_COLOR, SUNSTONEFISH_GLOW);
+    drawProceduralFishSilhouette(canvas, e.x, e.y, SUNSTONEFISH_SIZE, e.swimAngle, e.animPhase, SUNSTONEFISH_COLOR, SUNSTONEFISH_GLOW);
     drawHitFlash(canvas, e.x, e.y, SUNSTONEFISH_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, SUNSTONEFISH_SIZE, hpFrac(e));
   }
@@ -599,7 +814,7 @@ export function drawSunstoneFishEnemies(canvas: CanvasRenderingContext2D, enemie
 export function drawEmeraldFishEnemies(canvas: CanvasRenderingContext2D, enemies: EmeraldFishEnemy[]): void {
   for (const e of enemies) {
     const size = e.isMini ? EMERALDFISH_MINI_SIZE : EMERALDFISH_SIZE;
-    drawFishShape(canvas, e.x, e.y, size, e.swimAngle, EMERALDFISH_COLOR, EMERALDFISH_GLOW, { alpha: e.isMini ? 0.9 : 1 });
+    drawProceduralFishSilhouette(canvas, e.x, e.y, size, e.swimAngle, e.animPhase, EMERALDFISH_COLOR, EMERALDFISH_GLOW, { alpha: e.isMini ? 0.9 : 1, fastTwitch: e.isMini });
     drawHitFlash(canvas, e.x, e.y, size, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, size, hpFrac(e));
   }
@@ -607,7 +822,7 @@ export function drawEmeraldFishEnemies(canvas: CanvasRenderingContext2D, enemies
 
 export function drawSapphireFishEnemies(canvas: CanvasRenderingContext2D, enemies: SapphireFishEnemy[]): void {
   for (const e of enemies) {
-    drawFishShape(canvas, e.x, e.y, SAPPHIREFISH_SIZE, e.swimAngle, SAPPHIREFISH_COLOR, SAPPHIREFISH_GLOW);
+    drawProceduralFishSilhouette(canvas, e.x, e.y, SAPPHIREFISH_SIZE, e.swimAngle, e.animPhase, SAPPHIREFISH_COLOR, SAPPHIREFISH_GLOW);
     drawHitFlash(canvas, e.x, e.y, SAPPHIREFISH_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, SAPPHIREFISH_SIZE, hpFrac(e));
   }
@@ -615,7 +830,7 @@ export function drawSapphireFishEnemies(canvas: CanvasRenderingContext2D, enemie
 
 export function drawAmethystFishEnemies(canvas: CanvasRenderingContext2D, enemies: AmethystFishEnemy[]): void {
   for (const e of enemies) {
-    drawFishShape(canvas, e.x, e.y, AMETHYSTFISH_SIZE, e.swimAngle, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW);
+    drawProceduralFishSilhouette(canvas, e.x, e.y, AMETHYSTFISH_SIZE, e.swimAngle, e.animPhase, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW);
     drawHitFlash(canvas, e.x, e.y, AMETHYSTFISH_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, AMETHYSTFISH_SIZE, hpFrac(e));
   }
@@ -623,7 +838,7 @@ export function drawAmethystFishEnemies(canvas: CanvasRenderingContext2D, enemie
 
 export function drawDiamondFishEnemies(canvas: CanvasRenderingContext2D, enemies: DiamondFishEnemy[]): void {
   for (const e of enemies) {
-    drawFishShape(canvas, e.x, e.y, DIAMONDFISH_SIZE, e.swimAngle, DIAMONDFISH_COLOR, DIAMONDFISH_GLOW, { diamond: e.armorActive });
+    drawProceduralFishSilhouette(canvas, e.x, e.y, DIAMONDFISH_SIZE, e.swimAngle, e.animPhase, DIAMONDFISH_COLOR, DIAMONDFISH_GLOW, { diamond: e.armorActive });
     if (e.armorActive) {
       canvas.save();
       canvas.strokeStyle = DIAMONDFISH_GLOW;
@@ -685,7 +900,7 @@ export function drawFishBolts(canvas: CanvasRenderingContext2D, bolts: FishBolt[
 export function drawFishDecoys(canvas: CanvasRenderingContext2D, decoys: FishDecoy[]): void {
   for (const d of decoys) {
     const alpha = Math.max(0, d.lifeMs / 1500) * 0.5;
-    drawFishShape(canvas, d.x, d.y, AMETHYSTFISH_SIZE, d.swimAngle, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW, { alpha });
+    drawProceduralFishSilhouette(canvas, d.x, d.y, AMETHYSTFISH_SIZE, d.swimAngle, d.animPhase, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW, { alpha });
   }
 }
 
