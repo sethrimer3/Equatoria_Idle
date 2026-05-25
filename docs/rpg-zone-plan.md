@@ -4,7 +4,7 @@ This document summarizes the current design direction for zones/worlds in the Eq
 
 ## Implementation Status
 
-As of build #139:
+As of build #140:
 
 - **Zone data structure**: ✅ Implemented — `RpgZoneDefinition` with `id`, `displayName`, `shortDescription`, `enemyIds`, `terrainProfile`, `visualProfile`, and optional `subzones`.
 - **Zone-aware enemy spawning**: ✅ Implemented — `getZoneWaveDefinition(waveNumber, zoneId)` in `wave-definitions.ts`. Euhedral uses the full hand-authored roster. Other zones generate waves from their zone-specific `enemyIds` pool with progressive type introduction.
@@ -15,12 +15,15 @@ As of build #139:
 - **Eye Stalk**: ✅ Assigned to Verdure (`proc_eyestalk`).
 - **Stardust**: ✅ Assigned to Euhedral.
 - **Horizon safe fallback**: ✅ Implemented — empty-pool zones return no spawns and log a one-time warning.
+- **Caustics first visual pass**: ✅ Implemented — underwater background tint, animated caustic floor light, shimmer bands (high-graphics), and rising bubble particles. Active only when `activeZoneId === 'caustics'`. Implemented in `src/render/rpg/terrain/caustics-overlay.ts`.
 
 **Not yet implemented** (future work):
 - Zone-specific terrain generation (terrain currently does not vary by zone).
-- Zone-specific background/visual effects.
+- Caustics seafloor terrain routing (elongated ridges, `cyanTactical` palette override).
+- Stronger caustic pattern quality (offscreen additive blending).
+- Optional water-distortion postprocess for Caustics.
 - Horizon enemies and special mechanics.
-- Impetus gravity fields, Caustics water distortion, Verdure destructible plants.
+- Impetus gravity fields, Verdure destructible plants.
 
 ## Core Concept
 

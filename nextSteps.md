@@ -1,10 +1,55 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#139**
+Current build: **#140**
 
 ---
 
-## Build #139 — Zone persistence, terrain profile hooks, and zone system cleanup
+## Build #140 — Caustics zone first visual/environment pass
+
+### What was implemented
+
+- **Caustics underwater atmosphere tint**: When `activeZoneId === 'caustics'`, a dark teal/navy
+  gradient overlay is rendered immediately after the background fill (before fluid and terrain),
+  adding a submerged underwater feel without obscuring any gameplay elements.
+- **Animated caustic floor light**: Eight (four in low-graphics mode) slowly-drifting, pulsing
+  translucent ellipses are rendered on top of terrain but below enemies/player, simulating
+  light refracted through water onto a seafloor. Each patch moves on an independent
+  Lissajous-like trajectory; all parameters are pre-baked constants (no per-frame allocation).
+- **Water shimmer bands** (high-graphics only): Four faint sine-wave bands across the upper
+  arena simulate light shimmer visible from underwater.
+- **Rising bubble particles**: 14 (6 in low-graphics mode) small translucent circles drift
+  upward in a continuous cycle with gentle horizontal wobble. All parameters are baked into
+  `caustics-overlay.ts` as a module-level constant table.
+- **Zone isolation**: All Caustics effects are strictly gated by `activeZoneId === 'caustics'`
+  in `rpg-render-draw.ts`. No other zone is affected.
+- New module: `src/render/rpg/terrain/caustics-overlay.ts`.
+
+### Remaining Caustics work (future tasks)
+
+- **Zone-specific terrain routing**: The terrain scheduler still uses the shared 20-wave cycle
+  for all zones. Caustics could be routed to a seafloor-profile variant of the topographic
+  terrain with more elongated ridges and shallower slopes. To implement: pass `activeZoneId`
+  into `beginWaveTerrain()` and dispatch a seafloor-specific generator when the profile is
+  `'seafloor'`.
+- **Seafloor terrain palette override**: The `cyanTactical` palette in `topographic-terrain.ts`
+  is a close match for a Caustics seafloor look. Route Caustics waves to always use
+  `cyanTactical` regardless of wave cycle.
+- **Stronger caustic pattern quality**: The current caustic patches are simple ellipses.
+  A future pass could use an offscreen canvas with additive blending and intersecting sine
+  strips to produce a more accurate water-caustic interference pattern.
+- **Optional water-distortion postprocess**: A subtle per-row pixel shift (readback) could
+  produce a convincing water distortion effect, but requires `getImageData`/`putImageData`
+  and must be carefully profiled on mobile before enabling.
+- **Fish movement refinements**: Fish schools in `rpg-procedural-update.ts` could have
+  Caustics-specific boid parameters (slower drift, more separation near seafloor terrain).
+- **Jellyfish-specific behavior**: Floating Jellyfish currently use the generic procedural
+  update. A Caustics-specific bell-pulse and tentacle draw pass could improve visual identity.
+- **Underwater current lanes**: Environmental flow mechanics that push fish/bullets in a slow
+  horizontal current when Caustics is active.
+
+---
+
+
 
 ### What was implemented
 
