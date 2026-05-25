@@ -1,6 +1,84 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#142**
+Current build: **#143**
+
+---
+
+## Build #143 — Verdure zone environmental hazard system (edge rocks + growing plants)
+
+### What was implemented
+
+- **Edge rock formations** (`rpg-verdure-render.ts`): 31 pre-baked rock clusters frame all
+  four arena edges with earthy-brown / dark-moss polygon shapes and subtle highlights (high-gfx).
+  Geometry is fully deterministic — no per-frame RNG. Rendered immediately after the Verdure
+  background tint, below fluid and enemies.
+
+- **Procedural growing plants** (`rpg-verdure-growth.ts` + `rpg-verdure-render.ts`):
+  Five plant types — `vine`, `spiral`, `flower`, `leafy`, `thorn` — each with:
+  - Pre-computed cubic Bézier path cached at spawn (no per-frame geometry rebuild).
+  - `growthProgress` 0→1 that advances at a per-plant speed (≈1–4 s to fully grow).
+  - Branches, leaves, and flowers built once at spawn from deterministic seeded RNG.
+  - Spawn interval ≈ 2–5 s during active combat, scaling down with wave number.
+  - Active plant cap: 16 (high) / 8 (low-graphics).
+  - Growth only ticks during active combat (not inter-wave, not boss fights).
+  - Scale with wave: early waves lean vine/flower; mid+ add spirals/leafy; later add thorns.
+
+- **Player targeting** (integration into existing targeting pipeline):
+  - `VerdurePlant` added to `ClosestTarget` + `TargetKind` (`'verdure_plant'`) in `rpg-types.ts`.
+  - `verdurePlants` array and `damageVerdurePlant` callback added to `RpgTargetingCtx`.
+  - `findClosestTarget` (nearest.ts) checks `verdurePlants` using pre-cached
+    `nearestSegDistPx` for broadphase, no new per-frame path sampling.
+  - `damageBodyTarget` (rpg-targeting.ts) dispatches to `damageVerdurePlant`.
+  - Close-range targeting only: plants are only `isTargetable` when the player is within
+    `PLANT_TARGET_RANGE_SQ` (45 px) of a grown segment.
+  - Targeting highlight: subtle green glow rendered around the main stem when targetable
+    (high-graphics only).
+
+- **Plant destruction**:
+  - Plants have HP (base 35 + wave scaling). A few melee hits destroy them.
+  - On death: growth and targeting stop, plant fades out, leaf/petal fragment particles burst.
+  - Fragments handled in `verdureFragments` (module-level, max 60, no per-destroy alloc spike).
+
+- **Zone isolation**:
+  - All rock/plant rendering is gated on `activeZoneId === 'verdure'` in `rpg-render-draw.ts`.
+  - Plants are cleared via `clearVerdurePlants()` in `resetActiveEncounterForZoneSwitch()`,
+    which fires on zone switch, wave reset, and RPG restart.
+  - `updateVerdurePlants` hook is an optional field on `RpgUpdateCtx` so other zones get no overhead.
+
+- **New files**:
+  - `src/render/rpg/terrain/rpg-verdure-growth.ts` (~450 lines): types, spawn, update, damage.
+  - `src/render/rpg/terrain/rpg-verdure-render.ts` (~420 lines): rock + plant rendering.
+
+- **Modified files**:
+  - `src/render/rpg/rpg-types.ts` — `TargetKind` + `ClosestTarget`
+  - `src/render/rpg/rpg-targeting-types.ts` — `RpgTargetingCtx`
+  - `src/render/rpg/rpg-targeting-nearest.ts` — verdure plant check
+  - `src/render/rpg/rpg-targeting.ts` — damage dispatch
+  - `src/render/rpg/rpg-render-draw.ts` — `RpgDrawCtx`, rock/plant render calls
+  - `src/render/rpg/rpg-render-update.ts` — optional `updateVerdurePlants` hook
+  - `src/render/rpg/rpg-render.ts` — array creation, wiring, clear on reset
+
+### Remaining Verdure hazard work (future tasks)
+
+- **Obstacle avoidance for plant growth**: Plants currently grow through terrain obstacles.
+  Future pass: query `rpgNavGrid` during path generation and deflect segments around walls.
+
+- **Rock collision**: Rocks are visual only. Future pass: integrate the rock-boundary polygons
+  into the nav grid as impassable cells so players and enemies are deflected by them.
+
+- **Player damage from thorn vines**: Thorn plants don't yet deal damage to the player.
+  Future pass: query `nearestSegDistPx` each frame; if player overlaps a thorn plant segment,
+  deal small periodic damage (requires wiring into `dealDamageToPlayer`).
+
+- **Debug UI controls**: No dev-mode toggles were added for rocks/plants/plant-hitboxes.
+  Future pass: add toggles to the RPG dev overlay (`getIsDevMode()` path in `rpg-render-draw.ts`).
+
+- **Wave-scaling density refinement**: Current scaling is linear per wave.
+  Future pass: step-function at wave thresholds for a more noticeable mid/late density jump.
+
+- **Seeded determinism across waves**: Currently plants use `Math.random()` at spawn time.
+  Future pass: seed spawn from `rpgSimState.activeZoneId + currentWave + spawnIndex` for
+  reproducible layouts in the same wave session.
 
 ---
 

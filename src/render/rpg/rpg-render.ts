@@ -145,6 +145,12 @@ import {
 } from './terrain/rpg-pathfinding';
 import { createRpgZoneSelectPanel } from './rpg-zone-select';
 import { getRpgZoneDisplayName, type RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
+import {
+  clearVerdurePlants,
+  tickVerdurePlantSpawn,
+  updateVerdurePlants as _updateVerdurePlants,
+  damageVerdurePlant as _damageVerdurePlant,
+} from './terrain/rpg-verdure-growth';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -343,6 +349,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const fishSpikes: FishSpike[]                      = [];
   const fishBolts: FishBolt[]                        = [];
   const fishDecoys: FishDecoy[]                      = [];
+
+  // ── Verdure zone environmental plants ──────────────────────────
+  const verdurePlants: import('./terrain/rpg-verdure-growth').VerdurePlant[] = [];
 
   // ── Lucky mote drops (luck mechanic) ─────────────────────────
   const luckyMotes: LuckyMote[] = [];
@@ -580,6 +589,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     topographicTerrainState = null;
     rpgNavGrid = buildRpgNavigationGrid(null, widthPx, heightPx);
 
+    // Clear Verdure zone plants whenever the encounter resets.
+    clearVerdurePlants(verdurePlants);
+
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
     rpgPhase = 'alive';
@@ -687,6 +699,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
     plantProjectiles,
+    verdurePlants,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -702,6 +715,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
     damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
     damagePlantProjectile,
+    damageVerdurePlant: (plant, raw) => _damageVerdurePlant(plant, raw),
     damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     getTerrainState: () => topographicTerrainState,
@@ -1184,6 +1198,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
     plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
+    verdurePlants,
     getBossEnemy:         () => bossEnemy,
     getDanmakuSafeZone:   () => danmakuSafeZone,
     bossProjectiles, bossAttackState, teleportParticles,
@@ -1276,6 +1291,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid,
     drawCtx,
     drawFrameState,
+    updateVerdurePlants(deltaMs: number): void {
+      if (rpgSimState.activeZoneId !== 'verdure') return;
+      // Tick spawn (only during active combat, not during inter-wave or boss phases)
+      if (!isInterWave && rpgPhase === 'alive') {
+        tickVerdurePlantSpawn(
+          verdurePlants, deltaMs, currentWave,
+          widthPx, heightPx, isLowGraphicsMode,
+        );
+      }
+      _updateVerdurePlants(verdurePlants, mote.x, mote.y, deltaMs);
+    },
   };
 
   return {

@@ -133,6 +133,10 @@ export interface RpgTargetingCtx {
   damageAmethystFishEnemy: (e: AmethystFishEnemy, raw: number, pierce: number) => number;
   damageDiamondFishEnemy: (e: DiamondFishEnemy, raw: number, pierce: number) => number;
   damagePlantProjectile: (p: PlantProjectile, raw: number) => number;
+  /** Verdure zone plant array — empty when not in Verdure zone. */
+  verdurePlants: import('./terrain/rpg-verdure-growth').VerdurePlant[];
+  /** Applies damage to a Verdure plant environmental hazard. */
+  damageVerdurePlant: (plant: import('./terrain/rpg-verdure-growth').VerdurePlant, raw: number) => number;
   /** Returns the current topographic terrain state, or null if none is active. */
   getTerrainState(): TopographicTerrainState | null;
 }
