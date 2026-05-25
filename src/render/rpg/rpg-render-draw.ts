@@ -109,9 +109,22 @@ import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
 import { renderTopographicTerrain } from './terrain/topographic-terrain';
+import type { EnemyInfluencePoint } from './terrain/topographic-terrain';
 import { renderPersistentTopographySunlight, renderTopographyLighting } from './terrain/topographic-lighting';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import { drawRpgPathfindingDebug } from './terrain/rpg-pathfinding';
+import {
+  LASER_ENEMY_COLOR, SAPPHIRE_ENEMY_COLOR,
+} from './rpg-constants';
+import {
+  EMERALD_ENEMY_COLOR, AMBER_ENEMY_COLOR, VOID_ENEMY_COLOR,
+  QUARTZ_ENEMY_COLOR, RUBY_ENEMY_COLOR, SUNSTONE_ENEMY_COLOR,
+  CITRINE_ENEMY_COLOR, IOLITE_ENEMY_COLOR, AMETHYST_ENEMY_COLOR,
+  DIAMOND_ENEMY_COLOR, FRACTERYL_ENEMY_COLOR, EIGENSTEIN_ENEMY_COLOR,
+  ELITE_QUARTZ_COLOR, ELITE_RUBY_COLOR, ELITE_SUNSTONE_COLOR,
+  ELITE_CITRINE_COLOR, ELITE_IOLITE_COLOR, ELITE_AMETHYST_COLOR,
+  ELITE_DIAMOND_COLOR,
+} from './rpg-enemy-constants';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -251,6 +264,84 @@ export function createRpgDrawFrameState(): RpgDrawFrameState {
   return { waveOverlapAlpha: 1.0 };
 }
 
+// ── Enemy-influence point collection ──────────────────────────────────────────
+
+/**
+ * Pre-parsed RGB values for the standard enemy colour palette.
+ * Hex strings are pre-computed as integer tuples to avoid per-frame parsing.
+ */
+function hexRgb(hex: string): [number, number, number] {
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+}
+
+const _LASER_RGB    = hexRgb(LASER_ENEMY_COLOR);
+const _SAPPHIRE_RGB = hexRgb(SAPPHIRE_ENEMY_COLOR);
+const _EMERALD_RGB  = hexRgb(EMERALD_ENEMY_COLOR);
+const _AMBER_RGB    = hexRgb(AMBER_ENEMY_COLOR);
+const _VOID_RGB     = hexRgb(VOID_ENEMY_COLOR);
+const _QUARTZ_RGB   = hexRgb(QUARTZ_ENEMY_COLOR);
+const _RUBY_RGB     = hexRgb(RUBY_ENEMY_COLOR);
+const _SUNSTONE_RGB = hexRgb(SUNSTONE_ENEMY_COLOR);
+const _CITRINE_RGB  = hexRgb(CITRINE_ENEMY_COLOR);
+const _IOLITE_RGB   = hexRgb(IOLITE_ENEMY_COLOR);
+const _AMETHYST_RGB = hexRgb(AMETHYST_ENEMY_COLOR);
+const _DIAMOND_RGB  = hexRgb(DIAMOND_ENEMY_COLOR);
+const _FRACTERYL_RGB  = hexRgb(FRACTERYL_ENEMY_COLOR);
+const _EIGENSTEIN_RGB = hexRgb(EIGENSTEIN_ENEMY_COLOR);
+
+/** Map from EliteEnemy tier to pre-parsed RGB. */
+const _ELITE_RGB: Record<string, [number, number, number]> = {
+  quartz:    hexRgb(ELITE_QUARTZ_COLOR),
+  ruby:      hexRgb(ELITE_RUBY_COLOR),
+  sunstone:  hexRgb(ELITE_SUNSTONE_COLOR),
+  citrine:   hexRgb(ELITE_CITRINE_COLOR),
+  iolite:    hexRgb(ELITE_IOLITE_COLOR),
+  amethyst:  hexRgb(ELITE_AMETHYST_COLOR),
+  diamond:   hexRgb(ELITE_DIAMOND_COLOR),
+  nullstone: hexRgb('#4444aa'), // nullstone colour is nearly black — use a visible stand-in
+};
+
+/**
+ * Collects all currently-alive enemy positions together with their RGB colours
+ * into a flat `EnemyInfluencePoint[]`.  Only called when the terrain is the
+ * recursiveSquares variant so it is never executed on non-square wave rounds.
+ */
+function collectEnemyInfluencePoints(ctx: RpgDrawCtx): EnemyInfluencePoint[] {
+  const pts: EnemyInfluencePoint[] = [];
+
+  function push(x: number, y: number, rgb: [number, number, number]): void {
+    pts.push({ x, y, r: rgb[0], g: rgb[1], b: rgb[2] });
+  }
+
+  for (const e of ctx.enemies)          push(e.x, e.y, _LASER_RGB);
+  for (const e of ctx.sapphireEnemies)  push(e.x, e.y, _SAPPHIRE_RGB);
+  for (const e of ctx.emeraldEnemies)   push(e.x, e.y, _EMERALD_RGB);
+  for (const e of ctx.amberEnemies)     push(e.x, e.y, _AMBER_RGB);
+  for (const e of ctx.voidEnemies)      push(e.x, e.y, _VOID_RGB);
+  for (const e of ctx.quartzEnemies)    push(e.x, e.y, _QUARTZ_RGB);
+  for (const e of ctx.rubyEnemies)      push(e.x, e.y, _RUBY_RGB);
+  for (const e of ctx.sunstoneEnemies)  push(e.x, e.y, _SUNSTONE_RGB);
+  for (const e of ctx.citrineEnemies)   push(e.x, e.y, _CITRINE_RGB);
+  for (const e of ctx.ioliteEnemies)    push(e.x, e.y, _IOLITE_RGB);
+  for (const e of ctx.amethystEnemies)  push(e.x, e.y, _AMETHYST_RGB);
+  for (const e of ctx.diamondEnemies)   push(e.x, e.y, _DIAMOND_RGB);
+  for (const e of ctx.nullstoneEnemies) push(e.x, e.y, _VOID_RGB);    // dark void stand-in
+  for (const e of ctx.fracterylEnemies) push(e.x, e.y, _FRACTERYL_RGB);
+  for (const e of ctx.eigensteinEnemies) push(e.x, e.y, _EIGENSTEIN_RGB);
+  for (const e of ctx.eliteEnemies) {
+    const rgb = _ELITE_RGB[e.tier] ?? _QUARTZ_RGB;
+    push(e.x, e.y, rgb);
+  }
+  const boss = ctx.getBossEnemy();
+  if (boss) push(boss.x, boss.y, _FRACTERYL_RGB); // boss uses a bright purple as stand-in
+
+  return pts;
+}
+
 // ── Main draw function ─────────────────────────────────────────────────────────
 
 export function drawRpgFrame(
@@ -275,7 +366,13 @@ export function drawRpgFrame(
   const terrainState = ctx.getTopographicTerrainState();
   renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState?.paletteId ?? 'mono');
   if (terrainState) {
-    renderTopographicTerrain(canvas2d, terrainState, nowMs);
+    // For recursive-square terrain, collect enemy positions for proximity-gradient
+    // edge colouring.  This is skipped for other terrain variants.
+    const squareEnemies =
+      terrainState.terrainKind === 'recursiveSquares'
+        ? collectEnemyInfluencePoints(ctx)
+        : undefined;
+    renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies);
     // Topographic lighting overlay is only applicable to the organic contour variant;
     // skip it for recursive-square terrain which has its own visual style.
     if (terrainState.terrainKind === 'topographic') {
