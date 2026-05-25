@@ -107,7 +107,7 @@ import type {
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
-import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID } from './rpg-constants';
+import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
 import { renderTopographicTerrain } from './terrain/topographic-terrain';
 import { renderPersistentTopographySunlight, renderTopographyLighting } from './terrain/topographic-lighting';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
@@ -225,6 +225,10 @@ export interface RpgDrawCtx {
   getEffectiveEquippedIds(): Set<string>;
   getTargetedEnemy(): ClosestTarget | null;
   rpgSimState: RpgSimState;
+  /** Returns true when developer-mode diagnostics should be rendered. */
+  getIsDevMode(): boolean;
+  /** Returns the current CSS display size of the #rpg-area wrapper (for dev overlay). */
+  getCssDisplaySize(): { w: number; h: number };
   /** Returns the current navigation grid for pathfinding debug draw. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns true when pathfinding debug visualization should be drawn. */
@@ -440,6 +444,67 @@ export function drawRpgFrame(
     canvas2d.globalAlpha = 1 - ctx.getRestartFadeAlpha(); canvas2d.fillStyle = '#000000';
     canvas2d.fillRect(0, 0, widthPx, heightPx); canvas2d.globalAlpha = 1;
   }
+
+  // ── Developer-mode viewport diagnostics ──────────────────────
+  if (ctx.getIsDevMode()) {
+    drawRpgViewportDiagnostics(canvas2d, widthPx, heightPx, ctx);
+  }
+}
+
+// ── Developer-mode viewport diagnostics ───────────────────────────────────────
+
+/**
+ * Draws a small diagnostic overlay in the bottom-left corner of the RPG canvas
+ * showing the current viewport state.  Visible only when dev mode is enabled.
+ *
+ * Information displayed:
+ *   - RPG world (logical) size — the fixed coordinate space all entities live in
+ *   - Canvas backing store size — always equal to the world size
+ *   - CSS display size — the rendered size in CSS pixels (may differ due to scaling)
+ *   - devicePixelRatio — current browser DPR (may change with zoom)
+ *   - Render scale — CSS-to-world scale factor (cssWidth / worldWidth)
+ *   - Player world position — verifiable via resize stability check
+ */
+function drawRpgViewportDiagnostics(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+  ctx: RpgDrawCtx,
+): void {
+  const css = ctx.getCssDisplaySize();
+  const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+  const scaleX = css.w > 0 ? (css.w / widthPx).toFixed(3) : '—';
+  const scaleY = css.h > 0 ? (css.h / heightPx).toFixed(3) : '—';
+  const mx = ctx.mote.x.toFixed(1);
+  const my = ctx.mote.y.toFixed(1);
+
+  const lines = [
+    `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}`,
+    `Canvas backing: ${widthPx} × ${heightPx}`,
+    `CSS display: ${css.w} × ${css.h}`,
+    `devicePixelRatio: ${dpr.toFixed(2)}`,
+    `render scale X/Y: ${scaleX} / ${scaleY}`,
+    `player world: (${mx}, ${my})`,
+  ];
+
+  canvas2d.save();
+  canvas2d.font = '8px monospace';
+  const lineH = 10;
+  const pad = 4;
+  const boxW = 180;
+  const boxH = lines.length * lineH + pad * 2;
+  const boxY = heightPx - boxH - 2;
+
+  canvas2d.globalAlpha = 0.72;
+  canvas2d.fillStyle = '#000000';
+  canvas2d.fillRect(1, boxY, boxW, boxH);
+  canvas2d.globalAlpha = 1;
+
+  canvas2d.fillStyle = '#00ff88';
+  for (let i = 0; i < lines.length; i++) {
+    canvas2d.fillText(lines[i], 1 + pad, boxY + pad + (i + 1) * lineH - 2);
+  }
+  canvas2d.restore();
 }
 
 // ── Low-graphics mode forwarding ──────────────────────────────────────────────

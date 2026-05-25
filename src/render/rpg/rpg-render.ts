@@ -37,6 +37,7 @@ import { createDamageFns } from './rpg-damage';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
 import {
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
+  RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT,
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT, PLAYER_REGEN_INIT,
   INTER_WAVE_DELAY_MS,
 } from './rpg-constants';
@@ -145,52 +146,73 @@ import {
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
-// ── Dynamic internal resolution ───────────────────────────────────
-// These are updated by resize() to match the container's client dimensions.
-// The default values kick in before the first resize() call.
-let INTERNAL_WIDTH  = 320;
-let INTERNAL_HEIGHT = 568;
-
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState, options: RpgRenderOptions = {}): RpgRender {
+
+  // ── RPG area wrapper (aspect-ratio-preserving letterbox / pillarbox) ───────
+  // `#rpg-area` is sized in CSS pixels by resizeRpgArea() to be the largest
+  // rectangle that fits `container` while preserving the RPG_LOGICAL aspect ratio.
+  // The canvas lives inside this wrapper and fills it 100%×100%.
+  const rpgArea = document.createElement('div');
+  rpgArea.id = 'rpg-area';
+  container.appendChild(rpgArea);
 
   const canvas = document.createElement('canvas');
   canvas.id = 'rpg-canvas';
+  // Backing store is fixed at the logical world size — never changes at runtime.
+  canvas.width  = RPG_LOGICAL_WIDTH;
+  canvas.height = RPG_LOGICAL_HEIGHT;
   canvas.style.imageRendering = 'pixelated';
   canvas.style.touchAction = 'none';
-  container.appendChild(canvas);
+  rpgArea.appendChild(canvas);
 
   const ctx = canvas.getContext('2d')!;
-  let widthPx  = INTERNAL_WIDTH;
-  let heightPx = INTERNAL_HEIGHT;
+  // World coordinate bounds — ALWAYS RPG_LOGICAL_WIDTH × RPG_LOGICAL_HEIGHT.
+  // These are intentionally `const` (or equivalent): they MUST NOT be mutated
+  // by resize events, browser zoom changes, or devicePixelRatio changes.
+  const widthPx  = RPG_LOGICAL_WIDTH;
+  const heightPx = RPG_LOGICAL_HEIGHT;
   let isLowGraphicsMode = false;
   let enemyIndicatorStyle: 'triangle' | 'outline' | 'off' = 'triangle';
   let currentNumberFormat: NumberFormat = 'letters';
   let isInvincibilityMode = false;
+  /** Tracks the last-computed CSS display size of #rpg-area (for dev overlay). */
+  let rpgCssW = widthPx;
+  let rpgCssH = heightPx;
+  /** Set to true when dev mode is active (controls diagnostic overlay). */
+  let _isDevMode = false;
 
-  // ── Shared dimensions box (kept in sync with widthPx/heightPx on resize) ──
+  // ── Shared dimensions box — always the fixed logical size ──────
   // Passed to rpg-enemy-updates functions via RpgEnemyCtx so they always see
-  // current canvas bounds without requiring a closure rebuild.
+  // world bounds without requiring a closure rebuild.
+  // dim.w and dim.h are NEVER updated: they represent the fixed world size.
   const dim = { w: widthPx, h: heightPx };
 
   // ── Euler fluid background ─────────────────────────────────────
   const fluid = createRpgFluid();
 
+  /**
+   * Resize the #rpg-area wrapper to the largest aspect-ratio-preserving rectangle
+   * that fits inside `cont`.  Only CSS dimensions change — world coordinates,
+   * canvas backing store, and all game-entity positions are unaffected.
+   */
   function doResize(cont: HTMLElement): void {
-    const w = cont.clientWidth  || INTERNAL_WIDTH;
-    const h = cont.clientHeight || INTERNAL_HEIGHT;
-    if (w !== widthPx || h !== heightPx) {
-      // Update module-level defaults so newly spawned entities use correct bounds.
-      INTERNAL_WIDTH  = w;
-      INTERNAL_HEIGHT = h;
-      widthPx  = w;
-      heightPx = h;
-      dim.w = w;
-      dim.h = h;
-      // Rebuild nav grid for the new canvas dimensions.
-      rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
-    }
-    canvas.width  = widthPx;
-    canvas.height = heightPx;
+    const containerW = cont.clientWidth  || widthPx;
+    const containerH = cont.clientHeight || heightPx;
+
+    // Aspect-ratio preserving scale: largest uniform scale that fits both axes.
+    const scaleX = containerW / RPG_LOGICAL_WIDTH;
+    const scaleY = containerH / RPG_LOGICAL_HEIGHT;
+    const scale  = Math.min(scaleX, scaleY);
+
+    rpgCssW = Math.floor(RPG_LOGICAL_WIDTH  * scale);
+    rpgCssH = Math.floor(RPG_LOGICAL_HEIGHT * scale);
+
+    rpgArea.style.width  = `${rpgCssW}px`;
+    rpgArea.style.height = `${rpgCssH}px`;
+
+    // Fluid maps world positions to a fixed grid; its cell size is derived from
+    // the logical (not CSS) dimensions.  Call resize() once to initialise if the
+    // internal state has not yet synced to the logical world size.
     fluid.resize(widthPx, heightPx);
   }
   doResize(container);
@@ -1097,6 +1119,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgSimState,
     getNavGrid:                   () => rpgNavGrid,
     getPathfindingDebugEnabled:   () => _pathfindingDebugEnabled,
+    getIsDevMode:                 () => _isDevMode,
+    getCssDisplaySize:            () => ({ w: rpgCssW, h: rpgCssH }),
   };
 
   // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────
@@ -1229,6 +1253,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     setDevMode(enabled: boolean): void {
+      _isDevMode = enabled;
       statsPanel.setDevMode(enabled);
       setTopographyLightingDevMode(enabled);
       bossStageDirectorState.isDevMode = enabled;

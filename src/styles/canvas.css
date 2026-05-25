@@ -95,10 +95,24 @@
 }
 
 /*
- * The RPG canvas fills the full container so the gameplay area exactly
- * matches the visible width of the stats bar and tab bar — no pillarboxing.
- * The internal resolution is updated dynamically in resize() to match the
- * container's client dimensions.
+ * #rpg-area is the aspect-ratio-preserving wrapper for the RPG canvas.
+ * Its CSS width × height are set by resizeRpgArea() (inside doResize()) to be
+ * the largest rectangle that fits #rpg-container while maintaining the fixed
+ * RPG_LOGICAL_WIDTH : RPG_LOGICAL_HEIGHT aspect ratio (9:16).
+ * #rpg-container is a flex container centred in both axes, so #rpg-area is
+ * automatically letterboxed or pillarboxed within it.
+ */
+#rpg-area {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/*
+ * The RPG canvas fills its #rpg-area wrapper 100%×100%.
+ * Its backing store is always RPG_LOGICAL_WIDTH × RPG_LOGICAL_HEIGHT pixels
+ * (currently 360×640), set once in createRpgRender() and never changed at
+ * runtime.  CSS scaling by the browser handles display at any window size.
  */
 #rpg-canvas {
   display: block;

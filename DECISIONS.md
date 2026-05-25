@@ -1,5 +1,26 @@
 # Equatoria Idle — Technical Decisions
 
+## RPG Render Coordinate System
+
+**Decision** (build 129): The RPG gameplay arena uses a **fixed** logical coordinate space of **360 × 640** px (9:16 aspect ratio).
+
+**Previous approach**: `widthPx` and `heightPx` were set to `container.clientWidth` × `container.clientHeight` on every `resize()` call. The canvas backing store matched these values. All gameplay entities lived in this dynamic space. Resizing the browser window changed `dim.w` / `dim.h`, causing enemy spawn bounds, terrain positions, collision shapes, and player movement to silently shift.
+
+**New approach**: The canvas backing store is always `360 × 640` (set once in `createRpgRender()`, never changed). A new `#rpg-area` wrapper div is CSS-sized by `doResize()` to the largest rectangle that fits the container while preserving the 9:16 aspect ratio (letterbox / pillarbox). `dim.w` and `dim.h` are now `const` closures equal to `RPG_LOGICAL_WIDTH` / `RPG_LOGICAL_HEIGHT` and are never mutated by resize events.
+
+**Coordinate systems**:
+- *Logical / world*: 360 × 640 px. All game state lives here. `widthPx = RPG_LOGICAL_WIDTH`, `heightPx = RPG_LOGICAL_HEIGHT`. Never mutated by resize.
+- *Canvas backing*: same as logical (`canvas.width = 360`, `canvas.height = 640`). Set once, never changed.
+- *CSS / screen*: `#rpg-area` CSS width × height, computed by `doResize()`. Input events are converted CSS → logical via `toCanvasCoords()` in `rpg-input.ts` using `dim.w / rect.width`.
+
+**Resize events only affect**: `#rpg-area` CSS dimensions, nothing else.
+
+**Terrain seed fix**: `beginWaveTerrain()` previously mixed `canvasW` / `canvasH` into the RNG seed, producing different terrain layouts at different window sizes. The seed now depends only on `waveNumber`, making terrain deterministic regardless of display size.
+
+**Dev diagnostics**: When dev mode is enabled, a small overlay shows world size, canvas backing size, CSS display size, devicePixelRatio, render scale, and player world position — useful for verifying that positions do not change on resize.
+
+**Rationale**: 360 × 640 gives a 9:16 portrait aspect ratio — optimal for phone gameplay. CSS `image-rendering: pixelated` handles upscaling cleanly. This mirrors the approach used by the Idle render (320 × 640).
+
 ## Internal Render Resolution
 
 **Decision** (updated build 128): Render the Equation / Idle canvas at a **fixed** logical resolution of **320 × 640** px — a stable, invariant game-world coordinate space.
