@@ -1,9 +1,33 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#141**
+Current build: **#142**
 
 ---
 
+## Build #142 - RPG zone switch encounter cleanup and terrain routing
+
+### What was implemented
+
+- **Zone-switch encounter cleanup**: Switching to a different RPG zone now clears active enemies,
+  aliven groups, procedural enemies, boss state, boss projectiles, enemy hazards, transient hit
+  effects, and player weapon projectiles/mines before the new zone resumes.
+- **Spawn queue cancellation**: Pending wave spawns are cleared on zone switch so old-zone enemies
+  cannot spawn after the selector changes zones.
+- **Terrain clearing on switch**: Active terrain is removed immediately and the RPG nav grid is
+  rebuilt as an open arena when the active zone changes.
+- **First pass active-zone terrain routing**: `beginWaveTerrain()` now receives the active zone.
+  Euhedral/crystalline keeps the old 20-wave terrain scheduler. Impetus/asteroids uses recursive
+  squares as a temporary asteroid-like stand-in. Caustics/seafloor uses cyan topographic terrain.
+  Verdure/overgrowth uses a named topographic branch. Horizon currently returns no terrain.
+
+### Remaining terrain work (future tasks)
+
+- Replace Impetus recursive-square stand-in with a real asteroid-field generator.
+- Add Caustics-specific seafloor ridges and water-shaped obstacle silhouettes.
+- Add Verdure-specific dense vine/root terrain and optional destructible root walls.
+- Add Horizon terrain/mechanics once Horizon enemies and subzone behavior exist.
+
+---
 ## Build #141 — Verdure zone first visual/environment pass
 
 ### What was implemented
@@ -41,10 +65,9 @@ Current build: **#141**
   nearby enemy positions (or a lightweight snapshot) to `drawVerdureFloorEffects()` and apply
   smaller disturbance impulses per enemy type. Spider Crawler and Ribbon Worm should have
   stronger disturbance; Cloth Ghost minimal.
-- **Zone-specific terrain routing**: Terrain scheduler still uses the shared 20-wave cycle for
-  all zones. Verdure could be routed to a denser topographic variant or a custom overgrowth
-  terrain generator. Hook: check `activeZoneId` in `beginWaveTerrain()` and dispatch when
-  `terrainProfile === 'overgrowth'`.
+- **Custom overgrowth terrain generator**: Verdure now routes through an overgrowth branch in
+  `beginWaveTerrain()`, but it still uses the topographic generator as a first pass. Future work
+  should replace it with denser vine/root terrain.
 - **Vine regrowth between waves**: Vines could slowly regenerate at wave-clear, providing
   visual feedback for the inter-wave break.
 - **Plant Turret root integration**: The Plant Turret enemy could visually root into a nearby
@@ -85,14 +108,9 @@ Current build: **#141**
 
 ### Remaining Caustics work (future tasks)
 
-- **Zone-specific terrain routing**: The terrain scheduler still uses the shared 20-wave cycle
-  for all zones. Caustics could be routed to a seafloor-profile variant of the topographic
-  terrain with more elongated ridges and shallower slopes. To implement: pass `activeZoneId`
-  into `beginWaveTerrain()` and dispatch a seafloor-specific generator when the profile is
-  `'seafloor'`.
-- **Seafloor terrain palette override**: The `cyanTactical` palette in `topographic-terrain.ts`
-  is a close match for a Caustics seafloor look. Route Caustics waves to always use
-  `cyanTactical` regardless of wave cycle.
+- **Custom seafloor terrain generator**: Caustics now routes through a seafloor branch and forces
+  the `cyanTactical` palette, but still uses the topographic generator shape model. Future work
+  should add elongated ridges and shallower underwater obstacle silhouettes.
 - **Stronger caustic pattern quality**: The current caustic patches are simple ellipses.
   A future pass could use an offscreen canvas with additive blending and intersecting sine
   strips to produce a more accurate water-caustic interference pattern.
@@ -128,11 +146,8 @@ Current build: **#141**
 
 ### Remaining zone work (future tasks)
 
-- **Zone-specific terrain generation**: Terrain does not yet vary by zone. The profile hooks
-  exist (`terrainProfile` field on `RpgZoneDefinition`, `getRpgZoneTerrainProfile()` helper),
-  but rendering still uses the shared Euhedral terrain scheduler for all zones.
-  Next step: check `rpgSimState.activeZoneId` in `beginWaveTerrain()` and dispatch different
-  terrain generators based on `getRpgZoneTerrainProfile(activeZoneId).terrainProfile`.
+- **Custom zone terrain generators**: Terrain now routes by `terrainProfile`, but Impetus,
+  Caustics, and Verdure still use first-pass stand-ins rather than fully custom generators.
 - **Zone-specific backgrounds/visual effects**: `visualProfile` field exists on each zone
   definition. Not yet used for rendering.
 - **Horizon enemies**: Horizon has no enemies — waves complete instantly. Future task: design

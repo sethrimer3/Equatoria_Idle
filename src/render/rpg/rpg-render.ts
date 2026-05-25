@@ -171,11 +171,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const zoneSelectPanel = createRpgZoneSelectPanel(rpgSimState, (newZoneId: RpgZoneId) => {
     // Save the current zone's wave before switching so we can resume it later.
     rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = currentWave;
+    if (newZoneId === rpgSimState.activeZoneId) return;
+    resetActiveEncounterForZoneSwitch();
     rpgSimState.activeZoneId = newZoneId;
     // Restore the new zone's previously-saved wave (0 if never visited).
-    currentWave = rpgSimState.currentWaveByZone[newZoneId];
+    currentWave = rpgSimState.currentWaveByZone[newZoneId] ?? 0;
+    rpgSimState.currentWaveByZone[newZoneId] = currentWave;
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
+    rpgPhase = 'alive';
   });
   rpgArea.appendChild(zoneSelectPanel.element);
 
@@ -535,6 +539,72 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgNavGrid = buildRpgNavigationGrid(null, widthPx, heightPx);
   }
 
+  function clearArrays(...arrays: Array<{ length: number }>): void {
+    for (const array of arrays) array.length = 0;
+  }
+
+  function resetActiveEncounterForZoneSwitch(): void {
+    if (isBossWaveActive) bossWave.exitBossWave();
+
+    clearArrays(
+      spawnQueue,
+      enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
+      amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
+      rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
+      ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+      nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies, eigensteinBeams,
+      eliteEnemies, stardustEnemies, alivenGroups,
+      dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
+      jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+      spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+      sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+      emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+      plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
+      bossProjectiles, teleportParticles,
+      hitEffects, shotLines, damageNumbers, deathParticles,
+      luckyMotes, luckyMotePopups,
+    );
+
+    bossEnemy = null;
+    danmakuSafeZone = null;
+    bossAttackState.attacks.length = 0;
+    bossAttackState.schedulerCooldowns.clear();
+    bossAttackState.activePressure = 0;
+    bossHitsInRound = 0;
+    isBossFightFromMenu = false;
+    isBossWaveActive = false;
+    bossActiveEquipIds = null;
+    bossPreWaveWeaponTiers.clear();
+    deactivateBossStageDirector(bossStageDirectorState);
+
+    topographicTerrainState = null;
+    rpgNavGrid = buildRpgNavigationGrid(null, widthPx, heightPx);
+
+    isInterWave = true;
+    interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
+    rpgPhase = 'alive';
+    phaseTimerMs = 0;
+    deathAlpha = 1;
+    screenDarken = 0;
+    restartFadeAlpha = 0;
+    playerIFramesMs = 0;
+    prevSandBladePhase = 'idle';
+
+    mote.x = widthPx / 2;
+    mote.y = heightPx / 2;
+    mote.vx = 0;
+    mote.vy = 0;
+    mote.trailHead = 0;
+    mote.trailCount = 0;
+    playerMovementState.glowMovementIntensity = 0;
+    if (playerStats.hp <= 0) playerStats.hp = playerStats.maxHp;
+
+    targeting.tryTargetEnemyAt(0, 0);
+    weaponSystems.reset();
+    applyEquipmentStats();
+    orbitProjectile = _buildOrbitProjectile(weaponOrbitCtx);
+  }
+
   // ── Player damage helpers (extracted to rpg-player-damage.ts) ──────
   const playerDamageCtx: PlayerDamageCtx = {
     mote,
@@ -672,7 +742,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     enterBossWave:           () => bossWave.enterBossWave(),
     exitBossWave:            () => bossWave.exitBossWave(),
     beginWaveTerrain:        (wave) => {
-      topographicTerrainState = beginWaveTerrain(wave, widthPx, heightPx, performance.now());
+      topographicTerrainState = beginWaveTerrain(wave, widthPx, heightPx, performance.now(), rpgSimState.activeZoneId);
       rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
     },
     beginTopographicTerrainShrink: () => {

@@ -17,6 +17,7 @@ import {
   getBasaltCellAlpha,
   renderBasaltTerrain,
 } from './basalt-terrain';
+import { getRpgZoneTerrainProfile, type RpgZoneId } from '../../../data/rpg/rpg-zone-definitions';
 
 // Re-export merged-contour types and recursive-square types for external consumers.
 export type { MergedTopographicContours };
@@ -249,9 +250,10 @@ export function generateTopographicTerrain(
   seed: number,
   canvasW: number,
   canvasH: number,
+  paletteOverride?: TopographicTerrainPaletteId,
 ): TopographicTerrainState {
   const rng = createSeededRng(seed);
-  const paletteId = PALETTE_SEQUENCE[Math.abs(waveNumber) % PALETTE_SEQUENCE.length];
+  const paletteId = paletteOverride ?? PALETTE_SEQUENCE[Math.abs(waveNumber) % PALETTE_SEQUENCE.length];
   const palette = PALETTES[paletteId];
   const islands: TopographicTerrainIsland[] = [];
   const targetIslandCount = randomIntInclusive(rng, MIN_ISLANDS, MAX_ISLANDS);
@@ -402,6 +404,7 @@ export function beginWaveTerrain(
   canvasW: number,
   canvasH: number,
   nowMs: number,
+  activeZoneId: RpgZoneId = 'euhedral',
 ): TopographicTerrainState | null {
   // Seed is derived from waveNumber only — canvas dimensions must NOT be included
   // here.  The terrain coordinate space is the fixed RPG logical world size, so
@@ -409,6 +412,26 @@ export function beginWaveTerrain(
   // devicePixelRatio.  Including canvasW/canvasH in the seed would cause different
   // terrain to be generated after a resize, violating coordinate stability.
   const seed = ((waveNumber + 1) * 0x9e3779b1) >>> 0;
+  const { terrainProfile } = getRpgZoneTerrainProfile(activeZoneId);
+
+  if (terrainProfile === 'horizon') {
+    return null;
+  }
+
+  if (terrainProfile === 'asteroids') {
+    // TODO: Replace this temporary stand-in with a dedicated asteroid-field generator.
+    return createRecursiveSquareTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
+  }
+
+  if (terrainProfile === 'seafloor') {
+    return createTopographicTerrainState(waveNumber, seed ^ 0x51af100d, canvasW, canvasH, nowMs, 'cyanTactical');
+  }
+
+  if (terrainProfile === 'overgrowth') {
+    // TODO: Replace this branch with denser vine/root terrain for Verdure.
+    return createTopographicTerrainState(waveNumber, seed ^ 0x0b670000, canvasW, canvasH, nowMs);
+  }
+
   const terrainKind = getTerrainKindForWave(waveNumber, false);
 
   if (terrainKind === 'none') {
@@ -416,25 +439,7 @@ export function beginWaveTerrain(
   }
 
   if (terrainKind === 'recursiveSquares') {
-    const squareNodes = generateRecursiveSquareTerrain(seed, waveNumber, canvasW, canvasH);
-    const squareMaxDepth = squareNodes.reduce((m, n) => Math.max(m, n.depth), 0);
-    return {
-      waveNumber,
-      seed,
-      paletteId: 'mono',
-      terrainKind: 'recursiveSquares',
-      islands: [],
-      phase: 'growing',
-      phaseStartedAtMs: nowMs,
-      growDurationMs: TERRAIN_GROW_DURATION_MS,
-      shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
-      growth01: 0,
-      mergedContours: null,
-      lightCache: null,
-      squareNodes,
-      squareMaxDepth,
-      basalt: undefined,
-    };
+    return createRecursiveSquareTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
   }
 
   if (terrainKind === 'basalt') {
@@ -458,11 +463,50 @@ export function beginWaveTerrain(
   }
 
   // TODO: Implement dedicated terrain generation/rendering for reserved4/reserved5.
-  const state = generateTopographicTerrain(waveNumber, seed, canvasW, canvasH);
+  return createTopographicTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
+}
+
+function createTopographicTerrainState(
+  waveNumber: number,
+  seed: number,
+  canvasW: number,
+  canvasH: number,
+  nowMs: number,
+  paletteOverride?: TopographicTerrainPaletteId,
+): TopographicTerrainState {
+  const state = generateTopographicTerrain(waveNumber, seed, canvasW, canvasH, paletteOverride);
   state.phaseStartedAtMs = nowMs;
   state.phase = 'growing';
   state.growth01 = 0;
   return state;
+}
+
+function createRecursiveSquareTerrainState(
+  waveNumber: number,
+  seed: number,
+  canvasW: number,
+  canvasH: number,
+  nowMs: number,
+): TopographicTerrainState {
+  const squareNodes = generateRecursiveSquareTerrain(seed, waveNumber, canvasW, canvasH);
+  const squareMaxDepth = squareNodes.reduce((m, n) => Math.max(m, n.depth), 0);
+  return {
+    waveNumber,
+    seed,
+    paletteId: 'mono',
+    terrainKind: 'recursiveSquares',
+    islands: [],
+    phase: 'growing',
+    phaseStartedAtMs: nowMs,
+    growDurationMs: TERRAIN_GROW_DURATION_MS,
+    shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
+    growth01: 0,
+    mergedContours: null,
+    lightCache: null,
+    squareNodes,
+    squareMaxDepth,
+    basalt: undefined,
+  };
 }
 
 export function updateTopographicTerrain(state: TopographicTerrainState, nowMs: number): void {
