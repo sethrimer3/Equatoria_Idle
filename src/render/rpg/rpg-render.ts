@@ -170,10 +170,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Zone select overlay (DOM, inside rpgArea) ──────────────────
   const zoneSelectPanel = createRpgZoneSelectPanel(rpgSimState, (newZoneId: RpgZoneId) => {
     // Save the current zone's wave before switching so we can resume it later.
-    currentWaveByZone[rpgSimState.activeZoneId] = currentWave;
+    rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = currentWave;
     rpgSimState.activeZoneId = newZoneId;
     // Restore the new zone's previously-saved wave (0 if never visited).
-    currentWave = currentWaveByZone[newZoneId];
+    currentWave = rpgSimState.currentWaveByZone[newZoneId];
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
   });
@@ -248,24 +248,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerAimAngle: -Math.PI / 2,  // default: upward
   };
 
-  let currentWave      = 0;
+  // Restore the active zone's last current wave from saved state (0 if new save).
+  let currentWave      = rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] ?? 0;
   let interWaveTimerMs = 0;
   let isInterWave      = true;
   /**
-   * Per-zone current wave counter.  When the player switches zones, the active
-   * zone's wave is saved here and the new zone's previously-saved wave is
-   * restored, so each zone resumes from where it was left.
-   *
-   * NOTE: This is in-memory only (not persisted to save data).  Reloading the
-   * game resets all zone waves to 0.  Persistence is tracked in nextSteps.md.
+   * Per-zone current wave is now stored in rpgSimState.currentWaveByZone so it
+   * persists across page reloads.  The local `currentWave` variable is the
+   * in-flight copy; it is synced back to rpgSimState.currentWaveByZone whenever
+   * setCurrentWave is called or when zones are switched.
    */
-  const currentWaveByZone: Record<RpgZoneId, number> = {
-    euhedral: 0,
-    impetus:  0,
-    caustics: 0,
-    verdure:  0,
-    horizon:  0,
-  };
   let topographicTerrainState: TopographicTerrainState | null = null;
   /** Nav grid for pathfinding — rebuilt when terrain or canvas dimensions change. */
   let rpgNavGrid: RpgNavGrid | null = null;
@@ -673,7 +665,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsBossFightFromMenu:  () => isBossFightFromMenu,
     setIsBossFightFromMenu:  (b) => { isBossFightFromMenu = b; },
     getCurrentWave:          () => currentWave,
-    setCurrentWave:          (w) => { currentWave = w; },
+    setCurrentWave:          (w) => { currentWave = w; rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = w; },
     getIsInterWave:          () => isInterWave,
     setIsInterWave:          (b) => { isInterWave = b; },
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
@@ -1077,7 +1069,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },
     setIsBossFightFromMenu:  (b) => { isBossFightFromMenu = b; },
     setBossHitsInRound:      (v) => { bossHitsInRound = v; },
-    setCurrentWave:          (w) => { currentWave = w; },
+    setCurrentWave:          (w) => { currentWave = w; rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = w; },
     setIsInterWave:          (b) => { isInterWave = b; },
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
     getWidthPx:              () => widthPx,

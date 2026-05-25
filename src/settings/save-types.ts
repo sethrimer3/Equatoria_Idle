@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 26;
+export const SAVE_VERSION = 27;
 
 export interface SaveData {
   version: number;
@@ -130,6 +130,8 @@ export interface SaveData {
     activeZoneId?: string;
     /** v26+: highest zone-local wave reached per zone. Absent in older saves (defaults to 0). */
     highestWaveReachedByZone?: Record<string, number>;
+    /** v27+: current wave per zone (resumes after reload). Absent in older saves (defaults to 0). */
+    currentWaveByZone?: Record<string, number>;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */

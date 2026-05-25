@@ -2,6 +2,26 @@
 
 This document summarizes the current design direction for zones/worlds in the Equatoria Idle RPG tab. It is intended as a planning document for future implementation prompts and code changes.
 
+## Implementation Status
+
+As of build #139:
+
+- **Zone data structure**: ✅ Implemented — `RpgZoneDefinition` with `id`, `displayName`, `shortDescription`, `enemyIds`, `terrainProfile`, `visualProfile`, and optional `subzones`.
+- **Zone-aware enemy spawning**: ✅ Implemented — `getZoneWaveDefinition(waveNumber, zoneId)` in `wave-definitions.ts`. Euhedral uses the full hand-authored roster. Other zones generate waves from their zone-specific `enemyIds` pool with progressive type introduction.
+- **Per-zone current wave persistence**: ✅ Implemented — `currentWaveByZone` is saved in `RpgSimState` and persisted to save data (v27+). Switching zones saves/restores each zone's wave. Reloading resumes from the last active wave.
+- **Per-zone highest wave tracking**: ✅ Implemented — `highestWaveReachedByZone` in `RpgSimState`, persisted since v26.
+- **Zone selection UI**: ✅ Implemented — `rpg-zone-select.ts` overlay; shows highest wave per zone.
+- **Terrain/visual profile hooks**: ✅ Implemented — `terrainProfile` and `visualProfile` fields on each `RpgZoneDefinition`; `getRpgZoneTerrainProfile(zoneId)` helper for future zone-rendering dispatch.
+- **Eye Stalk**: ✅ Assigned to Verdure (`proc_eyestalk`).
+- **Stardust**: ✅ Assigned to Euhedral.
+- **Horizon safe fallback**: ✅ Implemented — empty-pool zones return no spawns and log a one-time warning.
+
+**Not yet implemented** (future work):
+- Zone-specific terrain generation (terrain currently does not vary by zone).
+- Zone-specific background/visual effects.
+- Horizon enemies and special mechanics.
+- Impetus gravity fields, Caustics water distortion, Verdure destructible plants.
+
 ## Core Concept
 
 The RPG tab should have named zones/worlds that define the tactical, visual, and enemy identity of waves. Each zone should feel meaningfully different rather than simply changing the background.

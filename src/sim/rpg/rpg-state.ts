@@ -45,6 +45,13 @@ export interface RpgSimState {
    * the active zone — it resets to 0 when the player switches zones.
    */
   highestWaveReachedByZone: Record<RpgZoneId, number>;
+  /**
+   * Current wave counter per zone.
+   * Saved so the player resumes from the same wave after a reload.
+   * Distinct from highestWaveReachedByZone — this is the in-progress wave,
+   * not the personal best.
+   */
+  currentWaveByZone: Record<RpgZoneId, number>;
   /** Wave to restart at on death (a multiple of 10 that has been unlocked). 0 = start from wave 1. */
   respawnWave: number;
   /** Weapon IDs the player has purchased. */
@@ -209,6 +216,13 @@ export function createRpgSimState(): RpgSimState {
     highestWaveReached: 0,
     activeZoneId: 'euhedral',
     highestWaveReachedByZone: {
+      euhedral: 0,
+      impetus:  0,
+      caustics: 0,
+      verdure:  0,
+      horizon:  0,
+    },
+    currentWaveByZone: {
       euhedral: 0,
       impetus:  0,
       caustics: 0,
