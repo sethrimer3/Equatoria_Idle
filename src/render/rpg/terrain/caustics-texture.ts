@@ -1,9 +1,9 @@
 /**
  * caustics-texture.ts — Procedural caustic-light texture generator and cache.
  *
- * Generates one tileable caustic texture per quality tier using Voronoi
- * cell-boundary (Worley F2−F1) noise, baked once into ImageData.
- * Per-frame work is limited to drawing the cached canvas with
+ * Generates two distinct tileable caustic textures per quality tier using
+ * Voronoi cell-boundary (Worley F2−F1) noise, baked once into ImageData.
+ * Per-frame work is limited to drawing the cached canvases with
  * CanvasPattern transforms — no putImageData or pixel loops at runtime.
  *
  * Visual model:
@@ -25,9 +25,15 @@
  *   Low:  128 × 128 px, 16 seeds — cell size ≈ 32 px
  *   Seamlessly tileable via periodic (toroidal) boundary conditions.
  *
+ *   Two variants (A and B) are generated with different RNG seeds, giving
+ *   distinct Voronoi topologies.  caustics-overlay.ts assigns each layer to
+ *   a different variant, reducing the visible tiling / wallpaper effect.
+ *
  * Performance:
  *   putImageData is called once per tile at generation time, never per frame.
- *   Tile generation: ~5–30 ms (amortised one-time cost at zone entry).
+ *   Tile generation: ~5–30 ms per tile (amortised one-time cost at zone entry).
+ *   prewarmCausticsTextures() pre-generates all four tiles before the first
+ *   Caustics frame to eliminate first-entry stutter.
  *   Module-level cache; regenerates only when invalidated explicitly.
  */
 
@@ -52,6 +58,21 @@ const _SEEDS_HIGH = 25;
  * `ceil(sqrt(16)) = 4`, so a 4 × 4 jittered grid is used (16 seeds total).
  */
 const _SEEDS_LOW  = 16;
+
+// ── RNG seeds for the two tile variants ───────────────────────────────────────
+
+/**
+ * Seed for the first (A) tile variant.
+ * Original deterministic seed — produces the primary caustic network topology.
+ */
+const _SEED_A = 0x9E3779B9 >>> 0;
+
+/**
+ * Seed for the second (B) tile variant.
+ * Different Voronoi topology so Layer B looks visually distinct from A/C.
+ * Chosen to avoid any correlation with _SEED_A (different bit pattern).
+ */
+const _SEED_B = 0xB5AD4ECE >>> 0;
 
 // ── Brightness formula constants (pixel-space) ────────────────────────────────
 
@@ -80,38 +101,71 @@ const _GLOW_WEIGHT = 0.32;
 const _ALPHA_MAX = 190;
 
 // ── Module-level cache ────────────────────────────────────────────────────────
+// Variant A: primary tile — used for Layers A and C.
+// Variant B: alternate Voronoi topology — used for Layer B to break tiling.
 
-let _tileHigh: HTMLCanvasElement | null = null;
-let _tileLow:  HTMLCanvasElement | null = null;
+let _tileHighA: HTMLCanvasElement | null = null;
+let _tileLowA:  HTMLCanvasElement | null = null;
+let _tileHighB: HTMLCanvasElement | null = null;
+let _tileLowB:  HTMLCanvasElement | null = null;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Returns a cached caustic tile canvas, generating it on first access.
- * The tile is seamlessly tileable (periodic boundary conditions).
+ * Returns the primary (variant A) cached caustic tile, generating it on first
+ * access.  The tile is seamlessly tileable (periodic boundary conditions).
  *
  * @param lowGraphics  When true, returns the smaller, cheaper 128×128 tile.
  */
 export function getCausticsTextureTile(lowGraphics: boolean): HTMLCanvasElement {
   if (lowGraphics) {
-    if (!_tileLow) {
-      _tileLow = _generateTile(_TILE_LOW, _SEEDS_LOW);
-    }
-    return _tileLow;
+    if (!_tileLowA) _tileLowA = _generateTile(_TILE_LOW, _SEEDS_LOW, _SEED_A);
+    return _tileLowA;
   }
-  if (!_tileHigh) {
-    _tileHigh = _generateTile(_TILE_HIGH, _SEEDS_HIGH);
-  }
-  return _tileHigh;
+  if (!_tileHighA) _tileHighA = _generateTile(_TILE_HIGH, _SEEDS_HIGH, _SEED_A);
+  return _tileHighA;
 }
 
 /**
- * Discards the cached tiles so they will be regenerated on next access.
+ * Returns the alternate (variant B) cached caustic tile.
+ * Variant B uses a different Voronoi seed, giving a distinct cellular topology
+ * so Layer B looks different from Layer A/C when pattern-blended.
+ *
+ * @param lowGraphics  When true, returns the smaller, cheaper 128×128 tile.
+ */
+export function getCausticsTextureTile2(lowGraphics: boolean): HTMLCanvasElement {
+  if (lowGraphics) {
+    if (!_tileLowB) _tileLowB = _generateTile(_TILE_LOW, _SEEDS_LOW, _SEED_B);
+    return _tileLowB;
+  }
+  if (!_tileHighB) _tileHighB = _generateTile(_TILE_HIGH, _SEEDS_HIGH, _SEED_B);
+  return _tileHighB;
+}
+
+/**
+ * Pre-generates all four caustic tile canvases (high + low, variant A + B)
+ * so that the first Caustics render frame does not stutter.
+ *
+ * Call before the first Caustics zone render — either on zone switch into
+ * Caustics, or early in the RPG renderer init path via a deferred callback.
+ * Safe to call multiple times; already-cached tiles are not regenerated.
+ */
+export function prewarmCausticsTextures(): void {
+  if (!_tileHighA) _tileHighA = _generateTile(_TILE_HIGH, _SEEDS_HIGH, _SEED_A);
+  if (!_tileLowA)  _tileLowA  = _generateTile(_TILE_LOW,  _SEEDS_LOW,  _SEED_A);
+  if (!_tileHighB) _tileHighB = _generateTile(_TILE_HIGH, _SEEDS_HIGH, _SEED_B);
+  if (!_tileLowB)  _tileLowB  = _generateTile(_TILE_LOW,  _SEEDS_LOW,  _SEED_B);
+}
+
+/**
+ * Discards all cached tiles so they will be regenerated on next access.
  * Call if quality settings change at runtime.
  */
 export function invalidateCausticsTextureCache(): void {
-  _tileHigh = null;
-  _tileLow  = null;
+  _tileHighA = null;
+  _tileLowA  = null;
+  _tileHighB = null;
+  _tileLowB  = null;
 }
 
 // ── Tile generation ───────────────────────────────────────────────────────────
@@ -126,8 +180,11 @@ export function invalidateCausticsTextureCache(): void {
  *   3. edge = F2 − F1 (zero at Voronoi boundaries, positive in interiors).
  *   4. Composite sharp core + soft glow → total brightness.
  *   5. Color shifts from aqua (glow) to cool white-blue (filament core).
+ *
+ * @param seed  Initial xorshift32 state; different seeds produce distinct
+ *              Voronoi topologies.  Must be a non-zero 32-bit unsigned integer.
  */
-function _generateTile(size: number, nSeeds: number): HTMLCanvasElement {
+function _generateTile(size: number, nSeeds: number, seed: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width  = size;
   canvas.height = size;
@@ -145,7 +202,7 @@ function _generateTile(size: number, nSeeds: number): HTMLCanvasElement {
   const sx       = new Float32Array(total);
   const sy       = new Float32Array(total);
 
-  let rngState = 0x9E3779B9 >>> 0;
+  let rngState = seed >>> 0;
   const _rng = (): number => {
     rngState ^= rngState << 13;
     rngState ^= rngState >>> 17;

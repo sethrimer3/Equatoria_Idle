@@ -5,29 +5,30 @@
  *   1. drawCausticsBackground()   — deep-water atmosphere + floor glow pool; before fluid/terrain
  *   2. drawCausticsFloorEffects() — caustic light network, shimmer bands, rising bubbles
  *
- * ── Caustic light network (build 149) ─────────────────────────────────────────
- *   Three drifting layers of a Voronoi cell-boundary (Worley F2−F1) caustic
- *   texture tile, composited with globalCompositeOperation = 'screen'.
+ * ── Caustic light network (build 149, polished build 150) ─────────────────────
+ *   Three drifting layers of Voronoi cell-boundary (Worley F2−F1) caustic
+ *   texture tiles, composited with globalCompositeOperation = 'screen'.
  *
- *   Each layer uses the same tiled caustic canvas (generated once in
- *   caustics-texture.ts) but with a different CanvasPattern transform:
+ *   Layers A and C share tile variant A; Layer B uses tile variant B (different
+ *   Voronoi seed from caustics-texture.ts).  Distinct source tiles eliminate
+ *   the wallpaper-repeat artefact when layers align.
+ *
  *     Layer A: scale 1.00×, slow rightward+downward drift  (~8.5 / 6.0 px/s)
- *     Layer B: scale 1.28×, leftward+downward drift        (~6.2 / 4.5 px/s)  [high only]
- *     Layer C: scale 0.78×, rightward+upward drift         (~4.2 / 5.8 px/s)  [high only]
+ *     Layer B: scale 1.28×, leftward+downward drift + slow rotation (~0.015 rad/s)
+ *     Layer C: scale 0.78×, rightward+upward drift         (~4.2 / 5.8 px/s)
  *
- *   Because each layer drifts at a different speed and scale, the crossing
- *   intersection zones change continuously — naturally producing bright,
- *   slow-shifting caustic knots wherever two layers overlap.
+ * Per-frame allocations:
+ *   CanvasPattern.setTransform() is called with reusable module-level DOMMatrix
+ *   objects (_matA, _matB, _matC) instead of new object literals each frame.
+ *   Only e/f (translation) and, for Layer B, the rotation-derived a/b/c/d
+ *   fields are mutated per frame — no new objects allocated.
  *
- *   Physics: real caustics are bright at Voronoi cell boundaries because that
- *   is where refracted ray bundles converge.  The Worley F2−F1 field reproduces
- *   this directly.  'screen' compositing makes overlapping bright regions
- *   accumulate toward white, mimicking multiple convergent ray bundles.
+ *   drawCausticsBackground() gradients are cached by context + dimensions;
+ *   recreated only when those change (never during normal gameplay on the fixed
+ *   360×640 RPG canvas).
  *
- * No per-frame pixel operations:
- *   The tile is generated once (putImageData at init) and cached in caustics-texture.ts.
- *   Per-frame work is: three CanvasPattern.setTransform calls + three fillRect calls.
- *   CanvasPattern objects are cached and reused across frames.
+ *   _drawCausticsShimmer() still calls canvas path operations (3 beginPath/stroke
+ *   pairs) and creates no object literals.  Bubbles use pre-baked constants.
  *
  * Low-graphics mode:
  *   One cached layer at reduced alpha.  No expensive glow pass.
@@ -38,7 +39,7 @@
  *   drawCausticsFloorEffects() — after terrain render, before enemies/player
  */
 
-import { getCausticsTextureTile } from './caustics-texture';
+import { getCausticsTextureTile, getCausticsTextureTile2 } from './caustics-texture';
 
 // ── Pre-baked bubble data ──────────────────────────────────────────────────────
 
@@ -71,13 +72,42 @@ const _SHIMMER_COLOR = '#6ad8e0';
 
 // ── CanvasPattern cache ────────────────────────────────────────────────────────
 // Patterns are cached and reused across frames to avoid per-frame allocations.
-// Invalidated when the rendering context changes or the tile is regenerated.
+// Invalidated when the rendering context or source tiles change.
+// _patternTileA — tile used for Layers A and C (variant A).
+// _patternTileB — tile used for Layer B (variant B, distinct Voronoi topology).
 
 let _patternA: CanvasPattern | null = null;  // layer A (always drawn)
 let _patternB: CanvasPattern | null = null;  // layer B (high-graphics)
 let _patternC: CanvasPattern | null = null;  // layer C (high-graphics)
-let _patternCtx:  CanvasRenderingContext2D | null = null;
-let _patternTile: HTMLCanvasElement | null = null;
+let _patternCtx:   CanvasRenderingContext2D | null = null;
+let _patternTileA: HTMLCanvasElement | null = null;
+let _patternTileB: HTMLCanvasElement | null = null;
+
+// ── Reusable DOMMatrix objects for CanvasPattern transforms ───────────────────
+// Initialised once with the constant scale components; only translation (e, f)
+// and Layer B's rotation-derived a/b/c/d are updated each frame.
+// Avoids new object literal allocation inside the hot draw path.
+const _matA = new DOMMatrix([1, 0, 0, 1, 0, 0]);     // scale 1.00×, identity rotation
+const _matB = new DOMMatrix([1.28, 0, 0, 1.28, 0, 0]); // scale 1.28×; a/b/c/d updated with rotation
+const _matC = new DOMMatrix([0.78, 0, 0, 0.78, 0, 0]); // scale 0.78×, no rotation
+
+// ── Background gradient cache ─────────────────────────────────────────────────
+// Gradients are bound to their creating context; recreated only when the
+// context or canvas dimensions change (never in normal play on the 360×640 canvas).
+let _bgGradCtx: CanvasRenderingContext2D | null = null;
+let _bgGradW  = 0;
+let _bgGradH  = 0;
+let _bgGradLow = false;
+let _atmoGrad:  CanvasGradient | null = null;
+let _poolGrad:  CanvasGradient | null = null;
+
+// ── Intensity mask gradient cache ─────────────────────────────────────────────
+// A subtle top-darkening gradient that makes the caustic network feel like it
+// is concentrated on the seafloor rather than uniformly lit.
+// Cached by context + canvas height; recreated only when those change.
+let _maskGradCtx: CanvasRenderingContext2D | null = null;
+let _maskGradH  = 0;
+let _maskGrad:   CanvasGradient | null = null;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -95,29 +125,43 @@ export function drawCausticsBackground(
 ): void {
   canvas2d.save();
 
+  // Rebuild cached gradients if context, dimensions, or quality tier changed.
+  if (_bgGradCtx !== canvas2d || _bgGradW !== widthPx || _bgGradH !== heightPx || _bgGradLow !== lowGraphics) {
+    _bgGradCtx = canvas2d;
+    _bgGradW   = widthPx;
+    _bgGradH   = heightPx;
+    _bgGradLow = lowGraphics;
+
+    // ── Main atmosphere gradient ────────────────────────────────────────────
+    // Near-black navy at the top (deep open water) transitioning to murky
+    // seafloor teal at the bottom — the ground receives more scattered light.
+    _atmoGrad = canvas2d.createLinearGradient(0, 0, 0, heightPx);
+    _atmoGrad.addColorStop(0,   '#010d1a');  // near-black navy (deep water column)
+    _atmoGrad.addColorStop(0.5, '#011e1e');  // dark teal (mid-water)
+    _atmoGrad.addColorStop(1,   '#023028');  // murky seafloor teal
+
+    // ── Floor glow pool (high-graphics only) ───────────────────────────────
+    if (!lowGraphics) {
+      _poolGrad = canvas2d.createRadialGradient(
+        widthPx * 0.5, heightPx,        0,
+        widthPx * 0.5, heightPx * 0.88, widthPx * 0.70,
+      );
+      _poolGrad.addColorStop(0,    'rgba(42, 170, 148, 0.13)');
+      _poolGrad.addColorStop(0.55, 'rgba(18, 105, 105, 0.05)');
+      _poolGrad.addColorStop(1,    'rgba(0,   0,   0,  0)');
+    } else {
+      _poolGrad = null;
+    }
+  }
+
   // ── Main atmosphere gradient ──────────────────────────────────────────────
-  // Near-black navy at the top (deep open water) transitioning to murky
-  // seafloor teal at the bottom — the ground receives more scattered light.
-  const atmoGrad = canvas2d.createLinearGradient(0, 0, 0, heightPx);
-  atmoGrad.addColorStop(0,   '#010d1a');  // near-black navy (deep water column)
-  atmoGrad.addColorStop(0.5, '#011e1e');  // dark teal (mid-water)
-  atmoGrad.addColorStop(1,   '#023028');  // murky seafloor teal
-  canvas2d.fillStyle = atmoGrad;
+  canvas2d.fillStyle = _atmoGrad!;
   canvas2d.globalAlpha = lowGraphics ? 0.30 : 0.40;
   canvas2d.fillRect(0, 0, widthPx, heightPx);
 
   // ── Floor glow pool (high-graphics only) ─────────────────────────────────
-  // A soft warm-teal radial gradient pooled at the seabed, representing
-  // diffuse ambient light that accumulates on a sandy/rocky substrate.
-  if (!lowGraphics) {
-    const poolGrad = canvas2d.createRadialGradient(
-      widthPx * 0.5, heightPx,        0,
-      widthPx * 0.5, heightPx * 0.88, widthPx * 0.70,
-    );
-    poolGrad.addColorStop(0,    'rgba(42, 170, 148, 0.13)');
-    poolGrad.addColorStop(0.55, 'rgba(18, 105, 105, 0.05)');
-    poolGrad.addColorStop(1,    'rgba(0,   0,   0,  0)');
-    canvas2d.fillStyle = poolGrad;
+  if (!lowGraphics && _poolGrad) {
+    canvas2d.fillStyle = _poolGrad;
     canvas2d.globalAlpha = 1;
     canvas2d.fillRect(0, heightPx * 0.68, widthPx, heightPx * 0.32);
   }
@@ -144,6 +188,7 @@ export function drawCausticsFloorEffects(
 ): void {
   const tS = nowMs * 0.001;
   _drawCausticsTileLayers(canvas2d, widthPx, heightPx, tS, lowGraphics);
+  _drawCausticsIntensityMask(canvas2d, widthPx, heightPx);
   if (!lowGraphics) {
     _drawCausticsShimmer(canvas2d, widthPx, heightPx, tS);
   }
@@ -155,18 +200,19 @@ export function drawCausticsFloorEffects(
 /**
  * Draw the caustic light network using drifting CanvasPattern layers.
  *
- * The source tile (from caustics-texture.ts) contains a Voronoi cell-boundary
- * pattern with thin bright filaments and soft aqua halos.  Drawing multiple
- * copies at different scales and drift vectors creates convincing intersection
- * hot-spots and a slow, evolving watery shimmer.
+ * Layer A and C use tile variant A; Layer B uses tile variant B (distinct
+ * Voronoi topology) to reduce the wallpaper-like repeating appearance.
+ * Layer B also has a very slow rotation (~0.015 rad/s ≈ 1 full turn / 420 s)
+ * which introduces skew variation so the cell network feels more alive.
  *
  * All three CanvasPattern objects are cached module-level and reused each frame.
- * Per-frame work is limited to three setTransform calls and three fillRect calls.
+ * setTransform() is called with reusable DOMMatrix instances (_matA/_matB/_matC),
+ * mutating only the fields that change per frame — no new object literals.
  *
  * Layer parameters (drift speeds in canvas pixels per second):
- *   A: scale 1.00×, (+8.5, +6.0) px/s — main caustic weave
- *   B: scale 1.28×, (−6.2, +4.5) px/s — larger cells, opposing X drift  [high only]
- *   C: scale 0.78×, (+4.2, −5.8) px/s — finer detail, upward bias        [high only]
+ *   A: scale 1.00×, (+8.5, +6.0) px/s — main caustic weave  [tile variant A]
+ *   B: scale 1.28×, (−6.2, +4.5) px/s + slow rotation       [tile variant B, high only]
+ *   C: scale 0.78×, (+4.2, −5.8) px/s — finer detail        [tile variant A, high only]
  */
 function _drawCausticsTileLayers(
   canvas2d: CanvasRenderingContext2D,
@@ -175,41 +221,50 @@ function _drawCausticsTileLayers(
   tS: number,
   lowGraphics: boolean,
 ): void {
-  const tile = getCausticsTextureTile(lowGraphics);
+  const tileA = getCausticsTextureTile(lowGraphics);
+  const tileB = getCausticsTextureTile2(lowGraphics);
 
-  // Refresh cached CanvasPattern objects if the context or source tile changed.
-  if (_patternCtx !== canvas2d || _patternTile !== tile) {
-    _patternA = canvas2d.createPattern(tile, 'repeat');
-    _patternB = canvas2d.createPattern(tile, 'repeat');
-    _patternC = canvas2d.createPattern(tile, 'repeat');
+  // Refresh cached CanvasPattern objects if the context or source tiles changed.
+  if (_patternCtx !== canvas2d || _patternTileA !== tileA || _patternTileB !== tileB) {
+    _patternA = canvas2d.createPattern(tileA, 'repeat');
+    _patternB = canvas2d.createPattern(tileB, 'repeat');
+    _patternC = canvas2d.createPattern(tileA, 'repeat');
     _patternCtx  = canvas2d;
-    _patternTile = tile;
+    _patternTileA = tileA;
+    _patternTileB = tileB;
   }
   if (!_patternA) return;
 
-  const tileW = tile.width;
-  const tileH = tile.height;
+  const tileW = tileA.width;
+  const tileH = tileA.height;
 
   canvas2d.save();
   canvas2d.globalCompositeOperation = 'screen';
 
   // ── Layer A: main caustic weave, slow rightward + downward drift ──────────
-  const txA = (tS * 8.5) % tileW;
-  const tyA = (tS * 6.0) % tileH;
-  _patternA.setTransform({ a: 1, b: 0, c: 0, d: 1, e: txA, f: tyA });
+  _matA.e = (tS * 8.5) % tileW;
+  _matA.f = (tS * 6.0) % tileH;
+  _patternA.setTransform(_matA);
   canvas2d.globalAlpha = lowGraphics ? 0.33 : 0.40;
   canvas2d.fillStyle = _patternA;
   canvas2d.fillRect(0, 0, widthPx, heightPx);
 
   if (!lowGraphics) {
     if (_patternB) {
-      // ── Layer B: scale 1.28×, leftward + slow downward drift ─────────────
-      const scaleB   = 1.28;
-      const periodBx = tileW * scaleB;
-      const periodBy = tileH * scaleB;
-      const txB = (((-(tS * 6.2)) % periodBx) + periodBx) % periodBx;
-      const tyB = (tS * 4.5) % periodBy;
-      _patternB.setTransform({ a: scaleB, b: 0, c: 0, d: scaleB, e: txB, f: tyB });
+      // ── Layer B: tile variant B, scale 1.28×, leftward + slow downward drift
+      //    + very slow rotation (~0.015 rad/s) for domain variation.
+      const scaleB = 1.28;
+      const rotB   = tS * 0.015;          // ~1° per 1.16 s; imperceptible frame-to-frame
+      const cosRB  = Math.cos(rotB) * scaleB;
+      const sinRB  = Math.sin(rotB) * scaleB;
+      const tileBW = tileB.width  * scaleB;
+      const tileBH = tileB.height * scaleB;
+      const txB = (((-(tS * 6.2)) % tileBW) + tileBW) % tileBW;
+      const tyB = (tS * 4.5) % tileBH;
+      _matB.a = cosRB;  _matB.b = sinRB;
+      _matB.c = -sinRB; _matB.d = cosRB;
+      _matB.e = txB;    _matB.f = tyB;
+      _patternB.setTransform(_matB);
       canvas2d.globalAlpha = 0.28;
       canvas2d.fillStyle = _patternB;
       canvas2d.fillRect(0, 0, widthPx, heightPx);
@@ -217,18 +272,55 @@ function _drawCausticsTileLayers(
 
     if (_patternC) {
       // ── Layer C: scale 0.78×, rightward + upward drift (fine shimmer) ────
-      const scaleC   = 0.78;
+      const scaleC = 0.78;
       const periodCx = tileW * scaleC;
       const periodCy = tileH * scaleC;
       const txC = (tS * 4.2) % periodCx;
       const tyC = (((-(tS * 5.8)) % periodCy) + periodCy) % periodCy;
-      _patternC.setTransform({ a: scaleC, b: 0, c: 0, d: scaleC, e: txC, f: tyC });
+      _matC.e = txC;
+      _matC.f = tyC;
+      _patternC.setTransform(_matC);
       canvas2d.globalAlpha = 0.18;
       canvas2d.fillStyle = _patternC;
       canvas2d.fillRect(0, 0, widthPx, heightPx);
     }
   }
 
+  canvas2d.restore();
+}
+
+/**
+ * Draw a subtle intensity/projection mask so the caustic light network
+ * feels concentrated on the seafloor rather than uniformly lit.
+ *
+ * A cached linear gradient darkens the top ~30% of the canvas (toward the
+ * water surface above, where direct scattered light would wash out caustics).
+ * The middle and lower thirds receive no additional darkening.
+ *
+ * The gradient is recreated only if the context or canvas height changes —
+ * never during normal play on the fixed 360×640 RPG canvas.
+ *
+ * Drawn with normal composite (source-over) at globalAlpha=1 so it applies
+ * a neutral darkening pass that does not affect non-caustic elements drawn
+ * later in the same frame.
+ */
+function _drawCausticsIntensityMask(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+): void {
+  if (_maskGradCtx !== canvas2d || _maskGradH !== heightPx) {
+    _maskGradCtx = canvas2d;
+    _maskGradH   = heightPx;
+    _maskGrad = canvas2d.createLinearGradient(0, 0, 0, heightPx * 0.30);
+    _maskGrad.addColorStop(0,   'rgba(0, 0, 0, 0.16)');
+    _maskGrad.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  }
+  canvas2d.save();
+  canvas2d.globalCompositeOperation = 'source-over';
+  canvas2d.globalAlpha = 1;
+  canvas2d.fillStyle = _maskGrad!;
+  canvas2d.fillRect(0, 0, widthPx, heightPx * 0.30);
   canvas2d.restore();
 }
 

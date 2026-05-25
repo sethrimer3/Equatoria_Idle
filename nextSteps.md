@@ -1,6 +1,79 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#149**
+Current build: **#150**
+
+---
+
+## Current Remaining Work
+
+The following items are genuinely unresolved and ready for a future agent pass:
+
+- **Horizon True subzone** (`rpg-render.ts`, `rpg-zone-select.ts`): Currently shows the Zenith
+  substrate with a placeholder label. A distinct visual effect (and any mechanical changes) needs
+  to be designed and implemented.
+
+- **Impetus gravity wells — gameplay force fields** (`impetus-overlay.ts`, enemy update code):
+  Gravity wells are visual-only. Future pass: apply radial force to enemy and player positions
+  when within well radius.
+
+- **Impetus asteroid field — collision/pathfinding** (`rpg-pathfinding.ts`, `impetus-overlay.ts`):
+  Asteroid visuals are decorative. Future pass: register asteroid positions in the nav grid as
+  soft obstacles.
+
+- **Verdure rock collision** (`rpg-verdure-render.ts`, `rpg-pathfinding.ts`):
+  Edge cave walls are visual-only. Future pass: integrate wall boundary polygons into the nav
+  grid.
+
+---
+
+## Build #150 — Caustics texture polish
+
+### What was implemented
+
+- **Second Voronoi tile variant** (`caustics-texture.ts`):
+  - Added `_SEED_A` / `_SEED_B` constants (different xorshift seeds → distinct Voronoi topologies).
+  - `_generateTile(size, nSeeds, seed)` now accepts an explicit seed parameter.
+  - Module-level cache extended: `_tileHighA/B`, `_tileLowA/B` — four cached canvases total.
+  - New exports: `getCausticsTextureTile2(lowGraphics)` — returns the alternate (B) tile.
+  - New export: `prewarmCausticsTextures()` — eagerly pre-generates all four tiles before the
+    first Caustics render, eliminating first-frame stutter.
+  - `invalidateCausticsTextureCache()` updated to discard all four tiles.
+
+- **Prewarm calls wired** (`rpg-render.ts`):
+  - Zone-switch callback now calls `prewarmCausticsTextures()` immediately when switching to
+    `'caustics'`, before the first Caustics frame is rendered.
+  - A `setTimeout(..., 0)` deferred call at the end of `createRpgRender()` also prewarms tiles
+    if the player starts in the Caustics zone (restored from save data).
+
+- **Per-frame allocations reduced** (`caustics-overlay.ts`):
+  - Three module-level `DOMMatrix` instances (`_matA`, `_matB`, `_matC`) replace new object
+    literal creation on every `setTransform()` call.
+  - Layer A and C: only `e`/`f` (translation) mutated per frame; scale components initialized
+    once (`a=1/0.78`, `d=1/0.78`).
+  - Layer B: `a/b/c/d` updated with rotation components each frame; no new DOMMatrix allocated.
+  - `drawCausticsBackground()` gradients (`_atmoGrad`, `_poolGrad`) are now cached by context +
+    dimensions + quality tier.  Recreated only when those change — never during normal play on
+    the fixed 360×640 RPG canvas.
+
+- **Reduced visual tiling / wallpaper effect** (`caustics-overlay.ts`):
+  - Layer B now sources from tile variant B (`getCausticsTextureTile2`) instead of reusing
+    tile A.  Different Voronoi seed means a completely different cell network.
+  - `_patternTileA` / `_patternTileB` track the two source tiles separately; pattern cache
+    is invalidated when either changes.
+  - Layer B has a very slow rotation (≈0.015 rad/s ≈ 1 full turn per 420 s) applied via the
+    DOMMatrix, introducing domain skew so the tile never reads as a static wallpaper.
+
+- **Intensity/projection mask** (`caustics-overlay.ts`):
+  - `_drawCausticsIntensityMask()` draws a cached linear gradient that darkens the top 30% of
+    the canvas by up to 16% alpha.  Makes the caustic network feel concentrated on the seafloor
+    rather than uniformly lit.
+  - Gradient cached by context + height; recreated only when those change.
+  - Uses `source-over` composite at `globalAlpha = 1` — drawn after tile layers, before
+    shimmer and bubbles.  Does not obscure enemies or player (those are drawn later).
+
+- **Comments corrected** (`caustics-overlay.ts`):
+  - Module header now accurately describes which allocations occur per frame (DOMMatrix field
+    mutations only for patterns; shimmer still uses canvas path calls).
 
 ---
 
@@ -153,7 +226,8 @@ current caustics implementation.
 - **Verdure rock collision**: Edge cave walls are visual-only. Future pass: integrate wall
   boundary polygons into the nav grid.
 
----
+*(These items were still unresolved as of build #147; see "Current Remaining Work" at the top
+of this document for the live tracking list.)*
 
 ---
 
@@ -210,14 +284,14 @@ current caustics implementation.
 - **Impetus asteroid field — collision/pathfinding**: Asteroid visuals are decorative.
   Future pass: register asteroid positions in the nav grid as soft obstacles.
 
-- **Caustics seafloor terrain**: Current topographic terrain for Caustics uses the standard
-  contour generator. A dedicated seafloor ridge generator would improve zone identity.
-
 - **Verdure rock collision**: Edge cave walls are visual-only. Future pass: integrate wall
   boundary polygons into the nav grid.
 
 - **Horizon True subzone**: Currently uses Zenith substrate as placeholder. A distinct effect
   needs to be designed.
+
+*(Note: "Caustics seafloor terrain" was listed here in build #145 as remaining work — this was
+completed in build #147 with the `seafloorRidges` terrain variant and capsule collision system.)*
 
 ---
 
@@ -399,7 +473,7 @@ current caustics implementation.
 ### Remaining terrain work (future tasks)
 
 - Replace Impetus recursive-square stand-in with a real asteroid-field generator.
-- Add Caustics-specific seafloor ridges and water-shaped obstacle silhouettes.
+- ~~Add Caustics-specific seafloor ridges and water-shaped obstacle silhouettes.~~ *(Completed in build #147 — `seafloorRidges` terrain variant with capsule collision.)*
 - Add Verdure-specific dense vine/root terrain and optional destructible root walls.
 - Add Horizon terrain/mechanics once Horizon enemies and subzone behavior exist.
 
@@ -482,21 +556,25 @@ current caustics implementation.
   in `rpg-render-draw.ts`. No other zone is affected.
 - New module: `src/render/rpg/terrain/caustics-overlay.ts`.
 
-### Remaining Caustics work (future tasks)
+### Remaining Caustics work as of build #140 (superseded notes)
 
-- **Custom seafloor terrain generator**: Caustics now routes through a seafloor branch and forces
-  the `cyanTactical` palette, but still uses the topographic generator shape model. Future work
-  should add elongated ridges and shallower underwater obstacle silhouettes.
-- **Stronger caustic pattern quality**: The current caustic patches are simple ellipses.
-  A future pass could use an offscreen canvas with additive blending and intersecting sine
-  strips to produce a more accurate water-caustic interference pattern.
+The following items from the original build #140 Caustics pass have since been addressed:
+
+- ~~**Custom seafloor terrain generator**~~ — Completed in build #147: `seafloorRidges` terrain
+  with sinuous ridge shapes, capsule collision, nav grid integration, and hard-crest markers.
+- ~~**Stronger caustic pattern quality**~~ — Completed in builds #148 and #149: replaced ellipses
+  with Bézier loops (#148), then replaced those with the cached Voronoi/Worley F2−F1 tile system
+  (#149). Two distinct tile variants and intensity mask added in build #150.
+
+The following remain as optional future enhancements (not blocking):
+
 - **Optional water-distortion postprocess**: A subtle per-row pixel shift (readback) could
   produce a convincing water distortion effect, but requires `getImageData`/`putImageData`
   and must be carefully profiled on mobile before enabling.
 - **Fish movement refinements**: Fish schools in `rpg-procedural-update.ts` could have
   Caustics-specific boid parameters (slower drift, more separation near seafloor terrain).
-- **Jellyfish-specific behavior**: Floating Jellyfish currently use the generic procedural
-  update. A Caustics-specific bell-pulse and tentacle draw pass could improve visual identity.
+- **Jellyfish-specific behavior**: A Caustics-specific bell-pulse and tentacle draw pass could
+  improve Jellyfish visual identity in the zone.
 - **Underwater current lanes**: Environmental flow mechanics that push fish/bullets in a slow
   horizontal current when Caustics is active.
 
@@ -520,10 +598,10 @@ current caustics implementation.
 - **Docs updated**: `docs/rpg-zone-plan.md` now includes an Implementation Status section
   reflecting the current implemented state of the zone system.
 
-### Remaining zone work (future tasks)
+### Remaining zone work as of build #143 (superseded notes)
 
-- **Custom zone terrain generators**: Terrain now routes by `terrainProfile`, but Impetus,
-  Caustics, and Verdure still use first-pass stand-ins rather than fully custom generators.
+- **Custom zone terrain generators**: Terrain now routes by `terrainProfile`, but Impetus
+  and Verdure still use first-pass stand-ins. *(Caustics was completed in build #147.)*
 - **Zone-specific backgrounds/visual effects**: `visualProfile` field exists on each zone
   definition. Not yet used for rendering.
 - **Horizon enemies**: Horizon has no enemies — waves complete instantly. Future task: design
@@ -531,8 +609,8 @@ current caustics implementation.
 - **Non-Euhedral hand-authored waves**: Impetus, Caustics, and Verdure use the procedural
   zone generator only. They do not share Euhedral's hand-authored waves 1–25.
   This is intentional — but future zones may want their own authored tutorial progressions.
-- **Impetus gravity fields, Caustics water distortion, Verdure destructible plants**: All
-  planned zone mechanics from `docs/rpg-zone-plan.md`; none are implemented yet.
+- ~~**Impetus gravity fields, Caustics water distortion**~~: Caustics visuals upgraded in
+  builds #148–150. Impetus gravity fields remain visual-only (force-field gameplay pending).
 - **Horizon special mechanics**: Zenith, Nadir, and True subzone mechanics from the design
   doc are not yet implemented.
 

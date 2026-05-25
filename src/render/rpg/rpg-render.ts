@@ -153,6 +153,7 @@ import {
   updateVerdurePlants as _updateVerdurePlants,
   damageVerdurePlant as _damageVerdurePlant,
 } from './terrain/rpg-verdure-growth';
+import { prewarmCausticsTextures } from './terrain/caustics-texture';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -180,6 +181,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // Save the current zone's wave before switching so we can resume it later.
     rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = currentWave;
     if (newZoneId === rpgSimState.activeZoneId) return;
+    // Pre-generate caustics tiles before the first Caustics frame to avoid stutter.
+    if (newZoneId === 'caustics') prewarmCausticsTextures();
     resetActiveEncounterForZoneSwitch();
     rpgSimState.activeZoneId = newZoneId;
     // Restore the new zone's previously-saved wave (0 if never visited).
@@ -1442,4 +1445,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       return alivenGroups.length;
     },
   };
+
+  // ── Deferred caustics prewarm ─────────────────────────────────────────────
+  // If the active zone at startup is already 'caustics', pre-generate all
+  // caustic tiles before the first rendered frame.  A zero-delay timeout
+  // defers the ~10–60 ms generation work until after the current synchronous
+  // init path completes, keeping startup fast.
+  if (rpgSimState.activeZoneId === 'caustics') {
+    setTimeout(() => prewarmCausticsTextures(), 0);
+  }
 }

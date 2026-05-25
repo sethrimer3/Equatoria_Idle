@@ -1177,18 +1177,31 @@
 - **Debug:** `drawRpgPathfindingDebug(ctx, enabled, navGrid, playerPath, enemyPaths)` —
   draws blocked cells in translucent red + paths in cyan/orange.  No-op when disabled.
 
-### src/render/rpg/terrain/caustics-overlay.ts
+### src/render/rpg/terrain/caustics-texture.ts  *(new — build 149, updated build 150)*
+- Procedural Voronoi/Worley F2−F1 caustic texture generator and cache.
+- Generates two distinct tile variants per quality tier (variant A — seed `_SEED_A`; variant B — seed `_SEED_B`).  Four cached canvases total: `_tileHighA/B`, `_tileLowA/B`.
+- High-quality tiles: 256×256 px, 25 seeds.  Low-quality tiles: 128×128 px, 16 seeds.
+- Seamlessly tileable via toroidal (periodic) boundary conditions on seed distances.
+- `getCausticsTextureTile(lowGraphics)` — returns variant A tile (for Layers A and C).
+- `getCausticsTextureTile2(lowGraphics)` — returns variant B tile (for Layer B).
+- `prewarmCausticsTextures()` — eagerly generates all four tiles; call before first Caustics frame.
+- `invalidateCausticsTextureCache()` — clears all four cached canvases.
+- `_generateTile(size, nSeeds, seed)` — internal generator; `putImageData` called once, never per frame.
+
+### src/render/rpg/terrain/caustics-overlay.ts  *(build 140, updated builds 148–150)*
 - Stateless underwater zone overlay for Caustics.
-- `drawCausticsBackground()` — deep-water atmosphere gradient (near-black navy → murky seafloor teal) plus a soft radial floor glow pool at the seabed (high-graphics only).
-- `drawCausticsFloorEffects()` — caustic light network, shimmer bands, rising bubbles.
-- **Build 148+:** `_drawCausticsLightNet()` replaces the old filament approach.
-  22 closed organic 5-vertex Bézier loop cells drawn with `globalCompositeOperation = 'lighter'`.
-  Each cell has pre-baked base position, drift frequencies/amplitudes, morph frequency, phase offset, colour (4-colour palette), and Y-stretch.  Vertex radii oscillate independently so each cell
-  morphs continuously.  A slow global sinusoidal drift simulates the water surface undulating above.
-  Overlapping loop edges accumulate brightness automatically — authentic caustic hot-spots arise at
-  intersections where ray bundles converge.  Low-graphics: 11 cells (every other index), no shimmer.
-  All 22 cell params pre-baked in `_CELL_DATA`; `_CVX`/`_CVY` are module-level reuse buffers (no
-  per-frame allocation).
+- `drawCausticsBackground()` — deep-water atmosphere gradient (near-black navy → murky seafloor teal)
+  plus a soft radial floor glow pool at the seabed (high-graphics only).
+  Gradients cached by context + dimensions — no per-frame allocation on the fixed 360×640 canvas.
+- `drawCausticsFloorEffects()` — caustic light network, intensity mask, shimmer bands, rising bubbles.
+- **Build 149+:** `_drawCausticsTileLayers()` draws 2–3 drifting `CanvasPattern` layers with
+  `globalCompositeOperation = 'screen'`.  Layers A and C use variant-A tile; Layer B uses
+  variant-B tile (different Voronoi topology) to break the wallpaper-repeat effect.
+  Layer B also has a very slow rotation (~0.015 rad/s) via the DOMMatrix transform.
+  Module-level `DOMMatrix` objects (`_matA`, `_matB`, `_matC`) replace new object literals — only
+  `e`/`f` (translation) and Layer B's rotation components are mutated per frame.
+- **Build 150+:** `_drawCausticsIntensityMask()` — cached gradient that darkens the top 30% of the
+  canvas by up to 16% alpha, making caustics feel concentrated on the seafloor.
 
 ### src/render/rpg/terrain/seafloor-terrain.ts  *(new — build 146, updated build 147)*
 - Dedicated seafloor ridge/channel terrain generator for the Caustics zone.
