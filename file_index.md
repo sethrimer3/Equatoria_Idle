@@ -931,30 +931,35 @@
 - `reset()` calls reset on all nine sub-modules.
 
 ### src/render/rpg/rpg-weapon-chain.ts
+- Build 166: contact damage also routes procedural/Verdure bodies through `collectEnemyBodyTargets` + `damageBodyTarget`.
 - Quartz chain whip weapon system extracted from `rpg-weapon-systems.ts` (~250 lines).
 - Exports `ChainWeaponCtx` interface, `ChainWeaponHandle` interface, and `createChainWeaponSystem(ctx)` factory.
 - Owns `chainWhipStates: Map<string, ChainWhipState>`; exposes via getter on handle.
 - Covers: `buildChainWhip` (rope node init), `stepChainPhysics` (asymmetric spring + damping), `updateChainWhip` (idle/lashing/retracting state machine, contact damage, fluid injection).
 
 ### src/render/rpg/rpg-weapon-vortex.ts
+- Build 166: vortex pull and damage ticks include procedural/Verdure body targets through the generic body-target path.
 - Nullstone vortex weapon system extracted from `rpg-weapon-systems.ts` (~210 lines).
 - Exports `VortexWeaponCtx` interface, `VortexWeaponHandle` interface, and `createVortexWeaponSystem(ctx)` factory.
 - Owns `activeVortexes: NullstoneVortex[]` and `vortexWeaponStates: Map<string, VortexWeaponState>`; both exposed via getters.
 - Covers: `fireVortex` (spawn spread), `updateVortexWeapon` (cooldown), `updateVortexes` (pull, spin, damage ticks, fluid swirl).
 
 ### src/render/rpg/rpg-weapon-poison.ts
+- Build 166: bolt collisions can hit procedural bodies through `damageBodyTarget`; eligible procedural enemies also receive poison debuffs.
 - Iolite poison bolt weapon system extracted from `rpg-weapon-systems.ts` (~230 lines).
 - Exports `PoisonWeaponCtx` interface, `PoisonWeaponHandle` interface, and `createPoisonWeaponSystem(ctx)` factory.
 - Owns `poisonBolts: IolitePoisonBolt[]`; exposed via getter on handle.
 - Covers: `spawnPoisonBolt`, `attachPoisonDebuff` (closure-based per-enemy debuff), `updatePoisonBolts` (movement, trail, fluid, collision), `updatePoisonDebuffs` (tick damage).
 
 ### src/render/rpg/rpg-weapon-sunstone.ts
+- Build 166: mine proximity/AOE checks include procedural/Verdure body targets through the generic body-target path.
 - Sunstone mine weapon system extracted from `rpg-weapon-systems.ts` (~230 lines).
 - Exports `SunstoneWeaponCtx` interface, `SunstoneWeaponHandle` interface, and `createSunstoneWeaponSystem(ctx)` factory.
 - Owns `sunstoneMines: SunstoneMine[]`; exposed via getter on handle.
 - Covers: `layMine`, `detonateMine` (AOE damage + fluid explosion), `updateSunstoneMines` (fuse countdown, enemy contact damage, proximity trigger).
 
 ### src/render/rpg/rpg-weapon-sand.ts
+- Build 166: `SandWeaponCtx` exposes generic body targeting/damage for procedural enemy collisions.
 - Sand gatling projectile weapon system (~120 lines).
 - Exports `SandWeaponCtx` interface, `SandWeaponHandle` interface, and `createSandWeaponSystem(ctx)` factory.
 - Owns `sandProjectiles: SandProjectile[]`; exposes via getter on handle.
@@ -962,6 +967,7 @@
 - Hit-testing against all enemy types is in `rpg-weapon-sand-collision.ts` via `checkSandProjectileHit`.
 
 ### src/render/rpg/rpg-weapon-sand-collision.ts
+- Build 166: sand projectile collision checks include procedural/Verdure bodies through the generic body-target path.
 - Per-projectile collision detection for sand gatling projectiles (~290 lines).
 - Exports `checkSandProjectileHit(p, ctx): boolean` — tests one `SandProjectile` against all enemy
   arrays in the provided `SandWeaponCtx` and returns `true` if the projectile should be removed.
@@ -974,17 +980,20 @@
 - Re-exports `SwordWeaponCtx` (defined in `rpg-weapon-sword-combo.ts`) for backwards compatibility with importers.
 
 ### src/render/rpg/rpg-weapon-sword-combo.ts
+- Build 166: idle trigger, combo continuation, and arc centering include generic body targets, including procedural enemies.
 - Diamond sword / sand blade per-frame combo state machine (~320 lines after extraction), extracted from `rpg-weapon-sword.ts`.
 - Exports `SwordWeaponCtx` type (re-exported from `rpg-weapon-sword-combo-helpers.ts`) and `updateSwordComboForWeapon(swordComboStates, ctx, weaponId, deltaMs)`.
 - Internal helpers (buildSwordCombo, angleInArc, spawnSwordBeam, swordHitInArc) are in `rpg-weapon-sword-combo-helpers.ts`.
 - Covers phase state machine: idle → swing → combo_window → spin_combo, hinge physics, shard chain, fluid drag.
 
 ### src/render/rpg/rpg-weapon-sword-combo-helpers.ts
+- Build 166: `swordHitInArc` applies damage through `damageBodyTarget` for shared classic/procedural hit handling while preserving the close-range terrain touch exception.
 - Internal helpers for the sword combo state machine (~195 lines). Extracted from `rpg-weapon-sword-combo.ts`.
 - Exports `SwordWeaponCtx` interface (DI context), `SPIN_TICK_THRESHOLDS`, `buildSwordCombo`, `angleInArc`, `spawnSwordBeam`, `swordHitInArc`.
 - `SwordWeaponCtx` is re-exported from `rpg-weapon-sword-combo.ts` for backward compat.
 
 ### src/render/rpg/rpg-weapon-emerald.ts
+- Build 166: primary missile seek and collision checks include procedural/Verdure body targets.
 - Emerald heat-seeking player missile system (~310 lines). Sub-missiles/swirl now live in `rpg-weapon-emerald-subs.ts`.
 - Exports `EmeraldWeaponCtx` interface, `EmeraldWeaponHandle` interface, and `createEmeraldWeaponSystem(ctx)` factory.
 - Delegates sub-missile and swirl state to a `createEmeraldSubSystem(ctx)` instance from the companion module.
@@ -1034,6 +1043,7 @@
 - Exports `findClosestTarget(ctx, rangeSq)` (closest entity incl. projectiles + Aliven particles) and `findClosestEnemy(ctx, rangeSq)` (closest enemy body only).
 
 ### src/render/rpg/rpg-targeting-targets.ts
+- Build 166: `getTargetedEnemy` first reconstructs stale/manual targets from the centralized body target list, covering all procedural enemy families.
 - Target collection and targeted-enemy resolution helpers extracted from `rpg-targeting.ts`.
 - Exports `collectEnemyBodyTargets(ctx)`, `findClosestEnemyFrom(ctx, x, y, rangeSq)`, and `getTargetedEnemy(ctx, targetedEnemy)`.
 - Keeps `ClosestTarget` assembly logic centralized for RPG targeting and multi-target weapon paths.
@@ -1113,6 +1123,7 @@
 - Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
 
 ### src/render/rpg/terrain/topographic-terrain.ts
+- Build 166: Caustics/seafloor terrain profile routes to classic `topographic` contour islands with the `cyanTactical` palette; `seafloorRidges` remains available but unused by Caustics.
 - Self-contained seeded terrain orchestrator for RPG waves. Now supports deterministic
   biome scheduling plus multiple terrain variants behind one collision/render API.
 - **Build 161:** Collision helpers extracted to `topographic-terrain-collision.ts`.
@@ -1473,6 +1484,7 @@
 - `updateRestarting` fades the restart overlay in and transitions to 'alive'.
 
 ### src/render/rpg/rpg-weapon-orbit.ts
+- Build 166: orbit projectile collision context now routes procedural/Verdure bodies through `collectEnemyBodyTargets` + `damageBodyTarget`.
 - Weapon orbit particle helpers extracted from `rpg-render.ts` (~109 lines).
 - Exports `WeaponOrbitCtx` interface, `buildWeaponOrbitParticle(ctx, weaponId, startAngle)`, `buildOrbitProjectile(ctx)`, `updateWeaponOrbitParticles(ctx, deltaMs)`.
 - `buildWeaponOrbitParticle` uses `TIER_BY_ID` for color and `weaponTiersByWeaponId` for size scaling.

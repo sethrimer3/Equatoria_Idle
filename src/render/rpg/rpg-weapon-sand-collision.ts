@@ -39,6 +39,8 @@ import {
 import type { SandProjectile } from './rpg-types';
 import type { SandWeaponCtx } from './rpg-weapon-sand';
 
+const PROCEDURAL_SAND_HIT_RADIUS_PX = 16;
+
 /**
  * Test `p` against every enemy type available in `ctx`.
  * Returns `true` if the projectile hit something and should be removed.
@@ -335,5 +337,31 @@ export function checkSandProjectileHit(p: SandProjectile, ctx: SandWeaponCtx): b
     }
   }
 
+  for (const target of ctx.collectEnemyBodyTargets()) {
+    if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+    const hitR = PROCEDURAL_SAND_HIT_RADIUS_PX + SAND_PROJ_SIZE;
+    const dx = p.x - target.x, dy = p.y - target.y;
+    if (dx * dx + dy * dy >= hitR * hitR) continue;
+    const dmg = ctx.damageBodyTarget(target, damage, 0, false);
+    if (dmg > 0) {
+      const maxHp = getTargetMaxHp(target);
+      ctx.spawnHitVisualsAt(target.x, target.y, maxHp, dmg, SAND_PROJ_COLOR);
+    }
+    return true;
+  }
+
   return false;
+}
+
+function getTargetMaxHp(target: ReturnType<SandWeaponCtx['collectEnemyBodyTargets']>[number]): number {
+  const body =
+    target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
+    target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
+    target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
+    target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
+    target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
+    target.verdurePlant;
+  return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
+    ? body.maxHp
+    : 1;
 }

@@ -27,7 +27,7 @@ import {
 import { HIT_EFFECT_DURATION_MS } from './rpg-constants';
 import { wrapAngleDiff } from './rpg-helpers';
 import type { FluidImpulse } from './rpg-fluid';
-import type { RpgPlayerStats, SwordComboState, HitEffect, LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, RpgPlayerStats, SwordComboState, HitEffect, LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy,
@@ -35,6 +35,7 @@ import type {
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
+import type { TargetCollectionOptions } from './rpg-targeting-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 // Defined here (where it is used by helpers) and re-exported from
@@ -84,6 +85,8 @@ export interface SwordWeaponCtx {
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   alivenGroups: AlivenParticleGroup[];
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
+  collectEnemyBodyTargets: (opts?: TargetCollectionOptions) => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string, sourceColor?: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
@@ -177,9 +180,9 @@ export function swordHitInArc(
   // and should not be blocked by terrain (prevents edge-case situations where
   // an enemy pushed right next to the player cannot be hit).
   const MELEE_TOUCH_SQ = 16 * 16;
-  const check = <T extends { x: number; y: number; maxHp: number }>(
-    e: T,
-    damageFn: (enemy: T, dmg: number, pierce: number) => number,
+  const check = (
+    target: ClosestTarget,
+    e: { x: number; y: number; maxHp: number },
   ) => {
     if (state.hitThisSwing.has(e)) return;
     const dx = e.x - mote.x, dy = e.y - mote.y;
@@ -188,38 +191,22 @@ export function swordHitInArc(
     if (!angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) return;
     // LOS check: skip enemies behind terrain unless they are within touch range.
     if (terrain && distSq > MELEE_TOUCH_SQ && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, e.x, e.y)) return;
-    const dmg = damageFn(e, rawDamage, 1.0);
+    const dmg = ctx.damageBodyTarget(target, rawDamage, 1.0, false);
     state.hitThisSwing.add(e);
-    hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
-    spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, hitColor);
-    spawnSwordBeam(state, e.x, e.y, arcStart, arcEnd, swordLength);
+    if (dmg > 0) {
+      hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
+      spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, hitColor);
+      spawnSwordBeam(state, e.x, e.y, arcStart, arcEnd, swordLength);
+    }
   };
-  const {
-    enemies, sapphireEnemies, emeraldEnemies, amberEnemies,
-    voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
-    citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
-    nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
-    damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy,
-    damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
-    damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
-    damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
-  } = ctx;
-  for (const e of enemies)           check(e, damageEnemy);
-  for (const e of sapphireEnemies)   check(e, (en, d, p) => damageSapphireEnemy(en, d, p, false));
-  for (const e of emeraldEnemies)    check(e, damageEmeraldEnemy);
-  for (const e of amberEnemies)      check(e, damageAmberEnemy);
-  for (const e of voidEnemies)       check(e, damageVoidEnemy);
-  for (const e of quartzEnemies)     check(e, damageQuartzEnemy);
-  for (const e of rubyEnemies)       check(e, damageRubyEnemy);
-  for (const e of sunstoneEnemies)   check(e, damageSunstoneEnemy);
-  for (const e of citrineEnemies)    check(e, damageCitrineEnemy);
-  for (const e of ioliteEnemies)     check(e, damageIoliteEnemy);
-  for (const e of amethystEnemies)   check(e, (en, d, p) => damageAmethystEnemy(en, d, p, false));
-  for (const e of diamondEnemies)    check(e, damageDiamondEnemy);
-  for (const e of nullstoneEnemies)  check(e, damageNullstoneEnemy);
-  for (const e of fracterylEnemies)  check(e, (en, d, p) => damageFracterylEnemy(en, d, p));
-  for (const e of eigensteinEnemies) check(e, (en, d, p) => damageEigensteinEnemy(en, d, p));
-  for (const e of eliteEnemies) { if (e.isInvuln) continue; check(e, (en, d, p) => damageEliteEnemy(en, d, p)); }
+  const damageBossEnemy = ctx.damageBossEnemy;
+  for (const target of ctx.collectEnemyBodyTargets()) {
+    if (target.alivenParticle || target.boss) continue;
+    const body = getClosestTargetBody(target);
+    if (!body) continue;
+    if (target.elite?.isInvuln) continue;
+    check(target, body);
+  }
   if (ctx.bossEnemy && !state.hitThisSwing.has(ctx.bossEnemy)) {
     const dx = ctx.bossEnemy.x - mote.x, dy = ctx.bossEnemy.y - mote.y;
     const bossDist2 = dx * dx + dy * dy;
@@ -259,3 +246,18 @@ export function swordHitInArc(
 }
 
 // Nothing further — all exports from this module are listed above.
+function getClosestTargetBody(target: ClosestTarget): { x: number; y: number; maxHp: number } | null {
+  const body =
+    target.laser ?? target.sapphire ?? target.emerald ?? target.amber ?? target.void ??
+    target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite ??
+    target.amethyst ?? target.diamond ?? target.nullstone ?? target.fracteryl ??
+    target.eigenstein ?? target.elite ?? target.binaryRing ?? target.dustWisp ??
+    target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ?? target.jellyfish ??
+    target.clothGhost ?? target.plantTurret ?? target.gearInsect ?? target.spiderCrawler ??
+    target.moteSwarm ?? target.shadowHand ?? target.sandFish ?? target.quartzFish ??
+    target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ?? target.sapphireFish ??
+    target.amethystFish ?? target.diamondFish ?? target.plantProj ?? target.verdurePlant;
+  return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
+    ? { x: target.x, y: target.y, maxHp: body.maxHp }
+    : null;
+}

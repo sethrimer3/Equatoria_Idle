@@ -28,7 +28,7 @@ import {
   FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
 } from './rpg-constants';
 import type { FluidImpulse } from './rpg-fluid';
-import type { LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy,
@@ -82,6 +82,8 @@ export interface EmeraldWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
+  collectEnemyBodyTargets: () => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
@@ -185,6 +187,10 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
       for (const e of eliteEnemies) { if (!e.isInvuln) checkTarget(e.x, e.y); }
       if (ctx.bossEnemy) checkTarget(ctx.bossEnemy.x, ctx.bossEnemy.y);
+      const bodyTargets = ctx.collectEnemyBodyTargets();
+      for (const target of bodyTargets) {
+        if (target.kind.startsWith('proc_') || target.kind === 'verdure_plant') checkTarget(target.x, target.y);
+      }
 
       m.proximityAlpha = getProximityAlpha(
         nearestDistSq,
@@ -307,6 +313,21 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       if (!hit) for (const e of fracterylEnemies) { if (tryHit(e, (en, d, p) => damageFracterylEnemy(en, d, p))) { hit = true; break; } }
       if (!hit) for (const e of eigensteinEnemies) { if (tryHit(e, (en, d, p) => damageEigensteinEnemy(en, d, p))) { hit = true; break; } }
       if (!hit) for (const e of eliteEnemies) { if (e.isInvuln) continue; if (tryHit(e, (en, d, p) => damageEliteEnemy(en, d, p))) { hit = true; break; } }
+      if (!hit) {
+        for (const target of bodyTargets) {
+          if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+          const body = getEmeraldTargetBody(target);
+          if (!body) continue;
+          const dx = m.x - target.x, dy = m.y - target.y;
+          if (dx * dx + dy * dy >= hitR * hitR) continue;
+          const dmg = ctx.damageBodyTarget(target, m.scaledDamage, 0, false);
+          spawnHitVisualsAt(target.x, target.y, body.maxHp, dmg, EMERALD_MISSILE_COLOR);
+          fluid.addExplosion(target.x, target.y, FLUID_EXPLOSION_STRENGTH * 0.35,
+            FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
+          hit = true;
+          break;
+        }
+      }
       if (!hit && ctx.bossEnemy) {
         const boss = ctx.bossEnemy;
         const dx = m.x - boss.x, dy = m.y - boss.y;
@@ -350,4 +371,17 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       subSystem.reset();
     },
   };
+}
+
+function getEmeraldTargetBody(target: ClosestTarget): { maxHp: number } | null {
+  const body =
+    target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
+    target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
+    target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
+    target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
+    target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
+    target.verdurePlant;
+  return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
+    ? { maxHp: body.maxHp }
+    : null;
 }

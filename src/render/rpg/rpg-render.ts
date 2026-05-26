@@ -1152,6 +1152,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageFracterylEnemy, damageEigensteinEnemy,
     damageEliteEnemy,
     damageBossEnemy: (raw, pierce) => bossWave.damageBossEnemy(raw, pierce),
+    collectEnemyBodyTargets: () => collectEnemyBodyTargets(),
+    damageBodyTarget: (target, raw, pierce, bypass) => damageBodyTarget(target, raw, pierce, bypass),
     spawnDamageNumber: (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
   };
 

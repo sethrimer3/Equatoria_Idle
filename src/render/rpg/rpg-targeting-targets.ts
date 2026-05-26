@@ -158,6 +158,10 @@ export function findClosestEnemyFrom(
 export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | null): ClosestTarget | null {
   // Validate existing target is still alive
   if (targetedEnemy) {
+    const matchingTarget = collectEnemyBodyTargets(ctx, { includeProjectiles: true })
+      .find((target) => Object.values(target).some((value) => value === targetedEnemy));
+    if (matchingTarget) return matchingTarget;
+
     // Check all enemy arrays to see if target still exists
     const isAlive =
       ctx.enemies.includes(targetedEnemy as LaserEnemy) ||

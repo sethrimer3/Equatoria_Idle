@@ -156,11 +156,12 @@ export function updateSwordComboForWeapon(
       // Trigger a swing if any enemy is within sword range.
       const rangeSq = swordLength * swordLength;
       let anyInRange = false;
-      const checkEnemy = (e: { x: number; y: number }) => {
-        if (anyInRange) return;
-        const dx = e.x - mote.x, dy = e.y - mote.y;
-        if (dx * dx + dy * dy <= rangeSq) anyInRange = true;
-      };
+      const nearbyTargets = ctx.collectEnemyBodyTargets().filter((target) => {
+        if (target.elite?.isInvuln) return false;
+        return target.distSq <= rangeSq;
+      });
+      if (nearbyTargets.length > 0) anyInRange = true;
+      const checkEnemy = (_e: { x: number; y: number }) => {};
       for (const e of enemies)           checkEnemy(e);
       for (const e of sapphireEnemies)   checkEnemy(e);
       for (const e of emeraldEnemies)    checkEnemy(e);
@@ -187,8 +188,10 @@ export function updateSwordComboForWeapon(
         const findNearest = (e: { x: number; y: number }) => {
           const dx = e.x - mote.x, dy = e.y - mote.y;
           const d = dx * dx + dy * dy;
+          if (d > rangeSq) return;
           if (d < bestDistSq) { bestDistSq = d; bestAngle = Math.atan2(dy, dx); }
         };
+        for (const target of nearbyTargets) findNearest(target);
         for (const e of enemies)           findNearest(e);
         for (const e of sapphireEnemies)   findNearest(e);
         for (const e of emeraldEnemies)    findNearest(e);
@@ -329,11 +332,12 @@ export function updateSwordComboForWeapon(
     // ── Combo window: immediately start next slash if enemy in range; break combo on timeout ──
     const rangeSq = swordLength * swordLength;
     let anyInRange = false;
-    const checkCombo = (e: { x: number; y: number }) => {
-      if (anyInRange) return;
-      const dx = e.x - mote.x, dy = e.y - mote.y;
-      if (dx * dx + dy * dy <= rangeSq) anyInRange = true;
-    };
+    const nearbyTargets = ctx.collectEnemyBodyTargets().filter((target) => {
+      if (target.elite?.isInvuln) return false;
+      return target.distSq <= rangeSq;
+    });
+    if (nearbyTargets.length > 0) anyInRange = true;
+    const checkCombo = (_e: { x: number; y: number }) => {};
     for (const e of enemies)           checkCombo(e);
     for (const e of sapphireEnemies)   checkCombo(e);
     for (const e of emeraldEnemies)    checkCombo(e);
@@ -360,8 +364,10 @@ export function updateSwordComboForWeapon(
       const findNearest = (e: { x: number; y: number }) => {
         const dx = e.x - mote.x, dy = e.y - mote.y;
         const d = dx * dx + dy * dy;
+        if (d > rangeSq) return;
         if (d < bestDistSq) { bestDistSq = d; bestAngle = Math.atan2(dy, dx); }
       };
+      for (const target of nearbyTargets) findNearest(target);
       for (const e of enemies)           findNearest(e);
       for (const e of sapphireEnemies)   findNearest(e);
       for (const e of emeraldEnemies)    findNearest(e);

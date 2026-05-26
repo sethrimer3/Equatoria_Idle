@@ -17,7 +17,6 @@ import {
 } from './basalt-terrain';
 import {
   type SeafloorTerrainData,
-  generateSeafloorTerrain,
   renderSeafloorTerrain,
 } from './seafloor-terrain';
 import { getRpgZoneTerrainProfile, type RpgZoneId } from '../../../data/rpg/rpg-zone-definitions';
@@ -42,7 +41,7 @@ export type TopographicTerrainPaletteId = 'mono' | 'copper' | 'cyanTactical';
  * - 'topographic': organic island/contour terrain (the original system).
  * - 'recursiveSquares': procedural branching rotated-square terrain.
  * - 'basalt': clustered hex-column terrain.
- * - 'seafloorRidges': elongated ridge/channel terrain for the Caustics zone.
+ * - 'seafloorRidges': elongated ridge/channel terrain, currently reserved.
  * - 'reserved4'/'reserved5': deterministic scheduler placeholders.
  */
 export type RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'seafloorRidges' | 'reserved4' | 'reserved5';
@@ -425,7 +424,7 @@ export function getTerrainKindForZone(
   if (terrainProfile === 'horizon') return 'none';
   if (terrainProfile === 'asteroids') return 'none';
   if (terrainProfile === 'overgrowth') return 'none';
-  if (terrainProfile === 'seafloor') return 'seafloorRidges';
+  if (terrainProfile === 'seafloor') return 'topographic';
   // crystalline (Euhedral): recursiveSquares 75% of the time, basalt 25%
   if (seed % 4 === 0) return 'basalt';
   return 'recursiveSquares';
@@ -456,25 +455,7 @@ export function beginWaveTerrain(
   }
 
   if (terrainProfile === 'seafloor') {
-    const sfSeed = (seed ^ 0x51af100d) >>> 0;
-    return {
-      waveNumber,
-      seed,
-      paletteId: 'cyanTactical',
-      terrainKind: 'seafloorRidges',
-      islands: [],
-      phase: 'growing',
-      phaseStartedAtMs: nowMs,
-      growDurationMs: TERRAIN_GROW_DURATION_MS,
-      shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
-      growth01: 0,
-      mergedContours: null,
-      lightCache: null,
-      squareNodes: [],
-      squareMaxDepth: 0,
-      basalt: undefined,
-      seafloor: generateSeafloorTerrain(sfSeed, canvasW, canvasH),
-    };
+    return createTopographicTerrainState(waveNumber, seed, canvasW, canvasH, nowMs, 'cyanTactical');
   }
 
   // Verdure: no terrain obstacles — cave-wall/vine visuals are handled by verdure-overlay.ts

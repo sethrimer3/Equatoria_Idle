@@ -1,6 +1,21 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#165**
+Current build: **#166**
+
+---
+
+## Build #166 - Caustics terrain routing and procedural enemy damage
+
+### What was fixed
+
+- **Caustics terrain routing** (`topographic-terrain.ts`): `terrainProfile === 'seafloor'` now returns `terrainKind: 'topographic'` and begins classic contour/island terrain with the `cyanTactical` palette. The reserved `seafloorRidges` generator remains in the codebase but is not used for Caustics right now.
+- **Procedural enemy direct hits** (`rpg-weapon-sand-collision.ts`, `rpg-weapon-sword-combo.ts`, `rpg-weapon-sword-combo-helpers.ts`, `rpg-weapon-chain.ts`, `rpg-weapon-vortex.ts`, `rpg-weapon-poison.ts`, `rpg-weapon-emerald.ts`, `rpg-weapon-sunstone.ts`, `rpg-orbit-projectile.ts`): sand gatling, sand blade/diamond sword, chain whip, nullstone vortex, poison bolts, emerald primary missiles, sunstone mines, and orbit projectiles now route procedural/Verdure bodies through `collectEnemyBodyTargets` + `damageBodyTarget`.
+- **Manual/stale target reconstruction** (`rpg-targeting-targets.ts`): `getTargetedEnemy` now validates targets against the centralized body target list before the older explicit fallback, covering all procedural enemy families.
+- **Build metadata/docs**: `BUILD_NUMBER` is now 166 and `file_index.md` was updated for the changed terrain and weapon modules.
+
+### Deferred follow-up
+
+- No known TypeScript/build-blocking follow-up from this pass. Manual in-game verification should still spot-check Caustics contour terrain and the listed Verdure/Caustics procedural enemies against the fixed direct weapon paths.
 
 ---
 

@@ -26,7 +26,7 @@ import {
   TARGET_FRAME_MS, FLUID_VEL_FRAME_TO_PX_S,
 } from './rpg-constants';
 import type { FluidImpulse } from './rpg-fluid';
-import type { IolitePoisonBolt, PoisonDebuff, LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, IolitePoisonBolt, PoisonDebuff, LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
@@ -77,6 +77,8 @@ export interface PoisonWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
+  collectEnemyBodyTargets: () => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   // Visual feedback
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   spawnHitVisualsAt: (tx: number, ty: number, maxHp: number, dmg: number, color: string) => void;
@@ -219,6 +221,22 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
       if (!hit) for (const e of ctx.fracterylEnemies)  { if (tryHit(e, (en, d, r) => damageFracterylEnemy(en, d, r)))    { hit = true; break; } }
       if (!hit) for (const e of ctx.eigensteinEnemies) { if (tryHit(e, (en, d, r) => damageEigensteinEnemy(en, d, r)))   { hit = true; break; } }
       if (!hit) for (const e of ctx.eliteEnemies) { if (e.isInvuln) continue; if (tryHit(e, (en, d, r) => damageEliteEnemy(en, d, r))) { hit = true; break; } }
+      if (!hit) {
+        for (const target of ctx.collectEnemyBodyTargets()) {
+          if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+          const body = getPoisonTargetBody(target);
+          if (!body) continue;
+          const dx = p.x - target.x, dy = p.y - target.y;
+          if (dx * dx + dy * dy >= hitR * hitR) continue;
+          const dmg = ctx.damageBodyTarget(target, p.scaledDamage, 0, false);
+          spawnHitVisualsAt(target.x, target.y, body.maxHp, dmg, POISON_BOLT_COLOR);
+          if (body.hp > 0) {
+            attachPoisonDebuff(body, p.scaledDamage, p.tier, (_body, tick, pierce) => ctx.damageBodyTarget(target, tick, pierce, false));
+          }
+          hit = true;
+          break;
+        }
+      }
       if (!hit && ctx.bossEnemy) {
         const boss = ctx.bossEnemy;
         const dx = p.x - boss.x, dy = p.y - boss.y;
@@ -270,4 +288,18 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
       poisonDebuffs.clear();
     },
   };
+}
+
+function getPoisonTargetBody(target: ClosestTarget): { x: number; y: number; hp: number; maxHp: number } | null {
+  const body =
+    target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
+    target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
+    target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
+    target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
+    target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj;
+  return typeof body === 'object' && body !== null &&
+    'hp' in body && typeof body.hp === 'number' &&
+    'maxHp' in body && typeof body.maxHp === 'number'
+      ? { x: target.x, y: target.y, hp: body.hp, maxHp: body.maxHp }
+      : null;
 }

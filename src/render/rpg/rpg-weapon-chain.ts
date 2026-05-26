@@ -32,7 +32,7 @@ import {
 } from './rpg-constants';
 import { chainNodeRadius, chainNodeInvMass } from './rpg-helpers';
 import type { FluidImpulse } from './rpg-fluid';
-import type { ChainWhipState, ChainPhase, HitEffect, LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ChainWhipState, ChainPhase, ClosestTarget, HitEffect, LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
@@ -89,6 +89,8 @@ export interface ChainWeaponCtx {
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   // Targeting — only the closest-body-enemy finder is needed
   findClosestEnemy: (rangeSq: number) => { x: number; y: number } | null;
+  collectEnemyBodyTargets: () => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   /** Returns current terrain state, or null if terrain is not active. */
   getTerrainState?: () => TopographicTerrainState | null;
 }
@@ -261,6 +263,23 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
           }
         }
       };
+      const applyBodyTargetDamage = (tx: number, ty: number, target: ClosestTarget, nodeIdx: number): void => {
+        if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') return;
+        const body = getChainTargetBody(target);
+        if (!body || ws.hitCooldowns.has(body)) return;
+        const nodeR = chainNodeRadius(CHAIN_NODES - 1);
+        const r = nodeR + LASER_ENEMY_SIZE;
+        const dx = tx - target.x, dy = ty - target.y;
+        if (dx * dx + dy * dy >= r * r) return;
+        if (terrain && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, ws.nodesX[nodeIdx], ws.nodesY[nodeIdx])) return;
+        const dmg = ctx.damageBodyTarget(target, contactDamage, 0, false);
+        ws.hitCooldowns.set(body, CHAIN_HIT_CD_MS);
+        if (dmg > 0) {
+          hitEffects.push({ x: target.x, y: target.y, timerMs: HIT_EFFECT_DURATION_MS, color: CHAIN_NODE_COLOR });
+          spawnDamageNumber(target.x, target.y, 0, -1, String(Math.round(dmg)), dmg / body.maxHp, CHAIN_NODE_COLOR);
+        }
+      };
+      const bodyTargets = ctx.collectEnemyBodyTargets();
       for (let ni = 0; ni < CHAIN_NODES; ni++) {
         const nx = ws.nodesX[ni], ny = ws.nodesY[ni];
         for (const e of ctx.enemies)           applyContactDamage(nx, ny, e, ni);
@@ -279,6 +298,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
         for (const e of ctx.fracterylEnemies)  applyContactDamage(nx, ny, e, ni);
         for (const e of ctx.eigensteinEnemies) applyContactDamage(nx, ny, e, ni);
         for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyContactDamage(nx, ny, e, ni); }
+        for (const target of bodyTargets) applyBodyTargetDamage(nx, ny, target, ni);
       }
       // Apply chain whip damage to boss
       if (ctx.bossEnemy) {
@@ -328,4 +348,17 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
     updateChainWhip,
     reset() { chainWhipStates.clear(); },
   };
+}
+
+function getChainTargetBody(target: ClosestTarget): { maxHp: number } | null {
+  const body =
+    target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
+    target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
+    target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
+    target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
+    target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
+    target.verdurePlant;
+  return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
+    ? { maxHp: body.maxHp }
+    : null;
 }

@@ -29,6 +29,7 @@ import {
 } from './rpg-constants';
 import type { FluidImpulse } from './rpg-fluid';
 import type { SandProjectile, LaserEnemy, SapphireEnemy, SapphireMissile } from './rpg-types';
+import type { ClosestTarget } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, AmberShard,
   VoidEnemy, QuartzEnemy, QuartzSpike,
@@ -41,6 +42,7 @@ import type {
 } from './rpg-enemy-types';
 import { checkSandProjectileHit } from './rpg-weapon-sand-collision';
 import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
+import type { TargetCollectionOptions } from './rpg-targeting-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -101,6 +103,8 @@ export interface SandWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number) => number;
+  collectEnemyBodyTargets: (opts?: TargetCollectionOptions) => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
   /** Returns current terrain state, or null if terrain is not active. */
   getTerrainState?: () => TopographicTerrainState | null;

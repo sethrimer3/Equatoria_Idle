@@ -9,7 +9,7 @@
  * `OrbitProjectileCtx`.
  */
 
-import type { OrbitProjectile, HitEffect, LaserEnemy, SapphireEnemy, SapphireMissile } from './rpg-types';
+import type { ClosestTarget, OrbitProjectile, HitEffect, LaserEnemy, SapphireEnemy, SapphireMissile } from './rpg-types';
 import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
@@ -77,6 +77,8 @@ export interface OrbitProjectileCtx {
   damageEigensteinEnemy(enemy: EigensteinEnemy, dmg: number, armorMult: number): number;
   damageEliteEnemy(enemy: EliteEnemy, dmg: number, armorMult: number): number;
   damageBossEnemy(rawDamage: number, defPierceRatio: number): number;
+  collectEnemyBodyTargets(): ClosestTarget[];
+  damageBodyTarget(target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number;
 
   /** Spawns a floating damage number at (x, y) travelling in (vx, vy). */
   spawnDamageNumber(
@@ -84,6 +86,19 @@ export interface OrbitProjectileCtx {
     vx: number, vy: number,
     text: string, ratio: number, color: string,
   ): void;
+}
+
+function getOrbitTargetBody(target: ClosestTarget): { x: number; y: number; maxHp: number } | null {
+  const body =
+    target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
+    target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
+    target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
+    target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
+    target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
+    target.verdurePlant;
+  return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
+    ? { x: target.x, y: target.y, maxHp: body.maxHp }
+    : null;
 }
 
 // ── Core update function ──────────────────────────────────────────────────────
@@ -297,6 +312,15 @@ export function updateOrbitProjectile(
   }
 
   // ── Boss ────────────────────────────────────────────────────────
+  for (const target of ctx.collectEnemyBodyTargets()) {
+    if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+    const body = getOrbitTargetBody(target);
+    if (!body) continue;
+    tryHit(op, body, target.x, target.y,
+      () => ctx.damageBodyTarget(target, ORBIT_PROJ_DAMAGE, 0, false),
+      body.maxHp);
+  }
+
   const boss = ctx.bossEnemy;
   if (boss && !op.hitCooldowns.has(boss)) {
     const dx = op.x - boss.x, dy = op.y - boss.y;

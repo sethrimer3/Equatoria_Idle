@@ -24,7 +24,7 @@ import {
 import {
   FLUID_EXPLOSION_STRENGTH,
 } from './rpg-constants';
-import type { LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
@@ -80,6 +80,8 @@ export interface SunstoneWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
+  collectEnemyBodyTargets: () => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   // Visual feedback
   spawnHitVisualsAt: (tx: number, ty: number, maxHp: number, dmg: number, color: string) => void;
   // Game-flow callbacks
@@ -179,6 +181,17 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
     applyAoe(ctx.fracterylEnemies, (e, d, p) => damageFracterylEnemy(e, d, p));
     applyAoe(ctx.eigensteinEnemies,(e, d, p) => damageEigensteinEnemy(e, d, p));
     applyAoe(ctx.eliteEnemies.filter(e => !e.isInvuln), (e, d, p) => damageEliteEnemy(e, d, p));
+    for (const target of ctx.collectEnemyBodyTargets()) {
+      if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+      const body = getSunstoneTargetBody(target);
+      if (!body) continue;
+      const dx = target.x - mine.x, dy = target.y - mine.y;
+      if (dx * dx + dy * dy <= r2
+          && hasTopographicTerrainLineOfSight(terrain, mine.x, mine.y, target.x, target.y)) {
+        const dmg = ctx.damageBodyTarget(target, mine.scaledDamage, 0, false);
+        if (dmg > 0) spawnHitVisualsAt(target.x, target.y, body.maxHp, dmg, col);
+      }
+    }
     if (ctx.bossEnemy) {
       const dx = ctx.bossEnemy.x - mine.x, dy = ctx.bossEnemy.y - mine.y;
       if (dx * dx + dy * dy <= r2
@@ -227,6 +240,10 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
       for (const e of ctx.fracterylEnemies)  checkEnemyContact(e.x, e.y, e.atk);
       for (const e of ctx.eigensteinEnemies) checkEnemyContact(e.x, e.y, e.atk);
       for (const e of ctx.eliteEnemies) if (!e.isInvuln) checkEnemyContact(e.x, e.y, e.atk);
+      const bodyTargets = ctx.collectEnemyBodyTargets();
+      for (const target of bodyTargets) {
+        if (target.kind.startsWith('proc_')) checkEnemyContact(target.x, target.y, 1);
+      }
 
       // Proximity check — detonate if any enemy enters trigger radius.
       // Terrain blocks proximity: enemies with no LOS cannot trigger the mine.
@@ -253,6 +270,12 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
       if (!triggered) for (const e of ctx.fracterylEnemies)  { if (inProximity(e.x, e.y)) { triggered = true; break; } }
       if (!triggered) for (const e of ctx.eigensteinEnemies) { if (inProximity(e.x, e.y)) { triggered = true; break; } }
       if (!triggered) for (const e of ctx.eliteEnemies)      { if (!e.isInvuln && inProximity(e.x, e.y)) { triggered = true; break; } }
+      if (!triggered) for (const target of bodyTargets) {
+        if ((target.kind.startsWith('proc_') || target.kind === 'verdure_plant') && inProximity(target.x, target.y)) {
+          triggered = true;
+          break;
+        }
+      }
 
       // Detonate if fuse expired, proximity triggered, or HP depleted by incoming damage.
       if (mine.fuseMs <= 0 || triggered || mine.hp <= 0) {
@@ -267,4 +290,17 @@ export function createSunstoneWeaponSystem(ctx: SunstoneWeaponCtx): SunstoneWeap
     updateSunstoneMines,
     reset() { sunstoneMines.length = 0; },
   };
+}
+
+function getSunstoneTargetBody(target: ClosestTarget): { maxHp: number } | null {
+  const body =
+    target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
+    target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
+    target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
+    target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
+    target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
+    target.verdurePlant;
+  return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
+    ? { maxHp: body.maxHp }
+    : null;
 }

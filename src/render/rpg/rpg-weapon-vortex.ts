@@ -26,7 +26,7 @@ import {
 } from './rpg-constants';
 import { getVortexTierRadius, getVortexTierDurationMs, getVortexCount } from './rpg-helpers';
 import type { FluidImpulse } from './rpg-fluid';
-import type { NullstoneVortex, VortexWeaponState, LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, NullstoneVortex, VortexWeaponState, LaserEnemy, SapphireEnemy } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
@@ -85,6 +85,8 @@ export interface VortexWeaponCtx {
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
+  collectEnemyBodyTargets: () => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   // Visual feedback
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
   // Game-flow callbacks
@@ -233,6 +235,10 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
       for (const e of ctx.eigensteinEnemies) applyPull(e);
       for (const e of ctx.eliteEnemies) applyPull(e);
       if (ctx.bossEnemy) applyPull(ctx.bossEnemy);
+      const bodyTargets = ctx.collectEnemyBodyTargets();
+      for (const target of bodyTargets) {
+        if (target.kind.startsWith('proc_') || target.kind === 'verdure_plant') applyPull(target);
+      }
 
       // Fluid inward swirl
       fluid.addForce({
@@ -261,6 +267,16 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
         for (const e of ctx.fracterylEnemies)  applyVortexTickToEnemy(v, e, (en, dmg, p) => damageFracterylEnemy(en, dmg, p), terrain);
         for (const e of ctx.eigensteinEnemies) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEigensteinEnemy(en, dmg, p), terrain);
         for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEliteEnemy(en, dmg, p), terrain); }
+        for (const target of bodyTargets) {
+          if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+          const body = getVortexTargetBody(target);
+          if (!body) continue;
+          const dx = target.x - v.x, dy = target.y - v.y;
+          if (dx * dx + dy * dy > v.radiusPx * v.radiusPx) continue;
+          if (!hasTopographicTerrainLineOfSight(terrain, v.x, v.y, target.x, target.y)) continue;
+          const dmg = ctx.damageBodyTarget(target, v.scaledDamage, 0, false);
+          if (dmg > 0) spawnDamageNumber(target.x, target.y, 0, -1, String(Math.round(dmg)), dmg / body.maxHp, VORTEX_COLOR);
+        }
         if (ctx.bossEnemy) {
           const bx = ctx.bossEnemy.x - v.x, by = ctx.bossEnemy.y - v.y;
           if (bx * bx + by * by <= v.radiusPx * v.radiusPx
@@ -285,4 +301,17 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
       vortexWeaponStates.clear();
     },
   };
+}
+
+function getVortexTargetBody(target: ClosestTarget): { maxHp: number } | null {
+  const body =
+    target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
+    target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
+    target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
+    target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
+    target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
+    target.verdurePlant;
+  return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
+    ? { maxHp: body.maxHp }
+    : null;
 }

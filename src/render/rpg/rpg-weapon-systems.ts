@@ -47,6 +47,7 @@ import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { ClosestTarget } from './rpg-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
+import type { TargetCollectionOptions } from './rpg-targeting-types';
 import { createShipWeaponSystems } from './rpg-weapon-ships';
 import { createSandWeaponSystem } from './rpg-weapon-sand';
 import { createChainWeaponSystem } from './rpg-weapon-chain';
@@ -182,8 +183,8 @@ export interface RpgWeaponCtx {
   damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   findClosestTarget: (rangeSq: number) => ClosestTarget | null;
   findClosestEnemy: (rangeSq: number) => { x: number; y: number } | null;
-  collectEnemyBodyTargets: () => ClosestTarget[];
-  findClosestEnemyFrom: (x: number, y: number, rangeSq: number) => ClosestTarget | null;
+  collectEnemyBodyTargets: (opts?: TargetCollectionOptions) => ClosestTarget[];
+  findClosestEnemyFrom: (x: number, y: number, rangeSq: number, opts?: TargetCollectionOptions) => ClosestTarget | null;
   getTargetedEnemy: () => ClosestTarget | null;
 
   // Visual spawners
