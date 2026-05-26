@@ -639,7 +639,7 @@ export function renderTopographicTerrain(
     return;
   }
   if (state.terrainKind === 'basalt') {
-    if (state.basalt) renderBasaltTerrain(ctx, state.basalt, state.growth01);
+    if (state.basalt) renderBasaltTerrain(ctx, state.basalt, state.growth01, enemies);
     return;
   }
   if (state.terrainKind === 'seafloorRidges') {

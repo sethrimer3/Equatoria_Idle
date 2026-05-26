@@ -1,5 +1,6 @@
 import type { TopographicTerrainPoint } from './topographic-terrain';
 import { createSeededRng } from './topographic-terrain';
+import type { EnemyInfluencePoint } from './recursive-square-terrain';
 
 export interface BasaltHexCell {
   id: string;
@@ -15,6 +16,14 @@ export interface BasaltHexCell {
   color: string;
   /** CSS outline color string. */
   lineColor: string;
+  /** Pre-computed RGB of the fill color, for enemy-proximity blending. */
+  colorR: number;
+  colorG: number;
+  colorB: number;
+  /** Pre-computed RGB of the line color, for enemy-proximity blending. */
+  lineR: number;
+  lineG: number;
+  lineB: number;
   /** Normalized appear delay 0–1 for grow animation. */
   appearDelay01: number;
   /** Cluster index this cell belongs to. */
@@ -55,6 +64,77 @@ function basaltFillColor(height01: number): string {
 function basaltLineColor(height01: number): string {
   const lightness = 25 + height01 * 30;
   return `hsl(210, 15%, ${lightness.toFixed(1)}%)`;
+}
+
+// ── Enemy-proximity colour blending ─────────────────────────────────────────
+
+/** Converts HSL (h 0-360, s 0-100, l 0-100) to integer RGB [0-255]. */
+function hslToRgb255(h: number, s: number, l: number): [number, number, number] {
+  const sn = s / 100;
+  const ln = l / 100;
+  const C = (1 - Math.abs(2 * ln - 1)) * sn;
+  const X = C * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = ln - C / 2;
+  let r = 0, g = 0, b = 0;
+  if      (h < 60)  { r = C; g = X; }
+  else if (h < 120) { r = X; g = C; }
+  else if (h < 180) { g = C; b = X; }
+  else if (h < 240) { g = X; b = C; }
+  else if (h < 300) { r = X; b = C; }
+  else              { r = C; b = X; }
+  return [((r + m) * 255 + 0.5) | 0, ((g + m) * 255 + 0.5) | 0, ((b + m) * 255 + 0.5) | 0];
+}
+
+/**
+ * Distance within which an enemy influences hex fill and stroke colours.
+ * Sized to cover a hex cell's full diameter plus comfortable margin.
+ */
+const HEX_ENEMY_INFLUENCE_RADIUS_PX = 110;
+
+/**
+ * Amplifier for the total enemy weight before clamping to [0, 1].
+ * Higher values make colour shifts respond more quickly as enemies approach.
+ */
+const HEX_ENEMY_INFLUENCE_AMPLIFY = 1.8;
+
+/**
+ * Returns an rgba() colour string for a hex cell, blending its original RGB
+ * toward the weighted average of nearby enemy colours.
+ *
+ * @param cx/cy      Cell centre in world space.
+ * @param origR/G/B  Original cell RGB.
+ * @param alpha      Per-cell global alpha (grow animation).
+ * @param enemies    All active enemy influence points this frame.
+ */
+function influencedHexColor(
+  cx: number, cy: number,
+  origR: number, origG: number, origB: number,
+  alpha: number,
+  enemies: EnemyInfluencePoint[],
+): string {
+  const radiusPx = HEX_ENEMY_INFLUENCE_RADIUS_PX;
+  let totalW = 0;
+  let sumR = 0, sumG = 0, sumB = 0;
+  for (let ei = 0; ei < enemies.length; ei++) {
+    const e = enemies[ei];
+    const dx = cx - e.x, dy = cy - e.y;
+    const distSq = dx * dx + dy * dy;
+    if (distSq >= radiusPx * radiusPx) continue;
+    const w = (1 - Math.sqrt(distSq) / radiusPx) ** 2;
+    totalW += w;
+    sumR += w * e.r;
+    sumG += w * e.g;
+    sumB += w * e.b;
+  }
+  let r = origR, g = origG, b = origB;
+  if (totalW > 0) {
+    const blend = clamp01(totalW * HEX_ENEMY_INFLUENCE_AMPLIFY);
+    const invW = 1 / totalW;
+    r = (origR + blend * (sumR * invW - origR) + 0.5) | 0;
+    g = (origG + blend * (sumG * invW - origG) + 0.5) | 0;
+    b = (origB + blend * (sumB * invW - origB) + 0.5) | 0;
+  }
+  return `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
 }
 
 function computeHexCorners(cx: number, cy: number, radius: number): TopographicTerrainPoint[] {
@@ -138,6 +218,11 @@ export function generateBasaltTerrain(
         const heightNoise = basaltNoise(q * 3 + 11, r * 5 - 7, seed ^ 0x5f3759df);
         const height01 = clamp01(1 - dist / Math.max(1, maxRadius) + 0.15 * heightNoise);
         const appearJitter = (rng() * 2 - 1) * 0.08;
+        const fillLightness = 12 + height01 * 28;
+        const fillSat = 8 + height01 * 12;
+        const lineLightness = 25 + height01 * 30;
+        const [colorR, colorG, colorB] = hslToRgb255(210, fillSat, fillLightness);
+        const [lineR, lineG, lineB] = hslToRgb255(210, 15, lineLightness);
         cells.push({
           id: `basalt-${waveNumber}-${idCounter++}`,
           cx,
@@ -147,6 +232,8 @@ export function generateBasaltTerrain(
           height01,
           color: basaltFillColor(height01),
           lineColor: basaltLineColor(height01),
+          colorR, colorG, colorB,
+          lineR, lineG, lineB,
           appearDelay01: 1 - height01 + appearJitter,
           clusterId,
         });
@@ -180,10 +267,13 @@ export function renderBasaltTerrain(
   ctx: CanvasRenderingContext2D,
   basalt: BasaltTerrainState,
   growth01: number,
+  enemies?: EnemyInfluencePoint[],
 ): void {
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+
+  const hasEnemies = enemies !== undefined && enemies.length > 0;
 
   for (const cell of basalt.cells) {
     const alpha = getBasaltCellAlpha(cell, growth01);
@@ -201,8 +291,10 @@ export function renderBasaltTerrain(
     const alpha = getBasaltCellAlpha(cell, growth01);
     if (alpha <= 0) continue;
     drawPolygon(ctx, cell.corners);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = cell.color;
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = hasEnemies
+      ? influencedHexColor(cell.cx, cell.cy, cell.colorR, cell.colorG, cell.colorB, alpha, enemies!)
+      : cell.color;
     ctx.fill();
   }
 
@@ -210,9 +302,11 @@ export function renderBasaltTerrain(
     const alpha = getBasaltCellAlpha(cell, growth01);
     if (alpha <= 0) continue;
     drawPolygon(ctx, cell.corners);
-    ctx.globalAlpha = alpha * 0.9;
+    ctx.globalAlpha = 1;
     ctx.lineWidth = 0.8;
-    ctx.strokeStyle = cell.lineColor;
+    ctx.strokeStyle = hasEnemies
+      ? influencedHexColor(cell.cx, cell.cy, cell.lineR, cell.lineG, cell.lineB, alpha * 0.9, enemies!)
+      : cell.lineColor;
     ctx.stroke();
   }
 

@@ -445,10 +445,10 @@ export function drawRpgFrame(
     renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState!.paletteId);
   }
   if (terrainState) {
-    // For recursive-square terrain, collect enemy positions for proximity-gradient
-    // edge colouring.  This is skipped for other terrain variants.
+    // For recursive-square and basalt terrain, collect enemy positions for
+    // proximity-gradient colouring.  This is skipped for other terrain variants.
     const squareEnemies =
-      terrainState.terrainKind === 'recursiveSquares'
+      (terrainState.terrainKind === 'recursiveSquares' || terrainState.terrainKind === 'basalt')
         ? collectEnemyInfluencePoints(ctx)
         : undefined;
     renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies, ctx.getIsLowGraphicsMode());
