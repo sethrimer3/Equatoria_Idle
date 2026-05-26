@@ -137,6 +137,11 @@ import {
   drawVerdureFloor,
   drawVerdureWallDebug,
 } from './terrain/verdure-cave-walls';
+import {
+  drawVerdureFloorSegmented,
+  drawVerdureWallsSegmented,
+  type VerdureInfluenceObj,
+} from './terrain/verdure-segmented-surface';
 import { verdureFragments } from './terrain/rpg-verdure-growth';
 import type { VerdurePlant } from './terrain/rpg-verdure-growth';
 import {
@@ -379,6 +384,46 @@ function collectEnemyInfluencePoints(ctx: RpgDrawCtx): EnemyInfluencePoint[] {
   return pts;
 }
 
+// ── Verdure influence collector ────────────────────────────────────────────────
+
+/**
+ * Collects nearby combat objects as VerdureInfluenceObj entries for the segmented
+ * surface dynamic-tint system.  Includes the player and all active enemies.
+ */
+function _collectVerdureInfluences(ctx: RpgDrawCtx): VerdureInfluenceObj[] {
+  const pts: VerdureInfluenceObj[] = [];
+
+  // Player (green presence)
+  pts.push({ x: ctx.mote.x, y: ctx.mote.y, r: 80, g: 220, b: 100, radiusPx: 75, intensity: 0.5 });
+
+  function pushEnemy(x: number, y: number, rgb: [number, number, number]): void {
+    pts.push({ x, y, r: rgb[0], g: rgb[1], b: rgb[2], radiusPx: 100, intensity: 0.62 });
+  }
+
+  for (const e of ctx.enemies)           pushEnemy(e.x, e.y, _LASER_RGB);
+  for (const e of ctx.sapphireEnemies)   pushEnemy(e.x, e.y, _SAPPHIRE_RGB);
+  for (const e of ctx.emeraldEnemies)    pushEnemy(e.x, e.y, _EMERALD_RGB);
+  for (const e of ctx.amberEnemies)      pushEnemy(e.x, e.y, _AMBER_RGB);
+  for (const e of ctx.voidEnemies)       pushEnemy(e.x, e.y, _VOID_RGB);
+  for (const e of ctx.quartzEnemies)     pushEnemy(e.x, e.y, _QUARTZ_RGB);
+  for (const e of ctx.rubyEnemies)       pushEnemy(e.x, e.y, _RUBY_RGB);
+  for (const e of ctx.sunstoneEnemies)   pushEnemy(e.x, e.y, _SUNSTONE_RGB);
+  for (const e of ctx.citrineEnemies)    pushEnemy(e.x, e.y, _CITRINE_RGB);
+  for (const e of ctx.ioliteEnemies)     pushEnemy(e.x, e.y, _IOLITE_RGB);
+  for (const e of ctx.amethystEnemies)   pushEnemy(e.x, e.y, _AMETHYST_RGB);
+  for (const e of ctx.diamondEnemies)    pushEnemy(e.x, e.y, _DIAMOND_RGB);
+  for (const e of ctx.fracterylEnemies)  pushEnemy(e.x, e.y, _FRACTERYL_RGB);
+  for (const e of ctx.eigensteinEnemies) pushEnemy(e.x, e.y, _EIGENSTEIN_RGB);
+  for (const e of ctx.eliteEnemies) {
+    const rgb = _ELITE_RGB[e.tier] ?? _QUARTZ_RGB;
+    pushEnemy(e.x, e.y, rgb);
+  }
+  const boss = ctx.getBossEnemy();
+  if (boss) pushEnemy(boss.x, boss.y, _FRACTERYL_RGB);
+
+  return pts;
+}
+
 // ── Topography sunlight gate ───────────────────────────────────────────────────
 
 /**
@@ -445,8 +490,22 @@ export function drawRpgFrame(
     drawVerdureBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
     const wState = ctx.getVerdureCaveWallState?.();
     if (wState) {
-      drawVerdureFloor(canvas2d, wState, ctx.getIsLowGraphicsMode());
-      drawVerdureCaveWalls(canvas2d, wState, ctx.getIsLowGraphicsMode());
+      // Elite waves are every multiple of 10 (wave 10, 20, 30, …).
+      // They use the existing pixelated/blocky Voronoi look.
+      // Non-elite waves use the crisp segmented surface system.
+      const verdureWave = ctx.getCurrentWave();
+      const isEliteVerdureWave = verdureWave > 0 && verdureWave % 10 === 0;
+      if (isEliteVerdureWave) {
+        drawVerdureFloor(canvas2d, wState, ctx.getIsLowGraphicsMode());
+        drawVerdureCaveWalls(canvas2d, wState, ctx.getIsLowGraphicsMode());
+      } else {
+        // Segmented surface: static base + dynamic tint from nearby combat objects.
+        const influences = ctx.getIsLowGraphicsMode()
+          ? ([] as VerdureInfluenceObj[])
+          : _collectVerdureInfluences(ctx);
+        drawVerdureFloorSegmented(canvas2d, wState, ctx.getIsLowGraphicsMode());
+        drawVerdureWallsSegmented(canvas2d, wState, ctx.getIsLowGraphicsMode(), influences);
+      }
     } else {
       drawVerdureEdgeRocks(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
     }
