@@ -34,6 +34,7 @@ import type {
   SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
+import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
 import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
@@ -308,6 +309,16 @@ export function createDamageFns(ctx: DamageCtx) {
    * - Nullstone elite is immune while isInvuln (singularity burst).
    * - Amethyst elite shield blocks damage first (min MINIMUM_SHIELD_DAMAGE).
    */
+  function damageBinaryRingEnemy(enemy: BinaryRingEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      recordDps(dmg, '#f5f0d0');
+    }
+    return dmg;
+  }
+
   function damageEliteEnemy(enemy: EliteEnemy, rawDamage: number, defPierceRatio: number): number {
     // Invuln check for diamond and nullstone elites
     if (enemy.isInvuln && (enemy.tier === 'diamond' || enemy.tier === 'nullstone')) return 0;
@@ -418,6 +429,7 @@ export function createDamageFns(ctx: DamageCtx) {
     damageFracterylEnemy,
     damageFracterylShard,
     damageEigensteinEnemy,
+    damageBinaryRingEnemy,
     damageEliteEnemy,
     damageAlivenParticle,
     damageDustWispEnemy,

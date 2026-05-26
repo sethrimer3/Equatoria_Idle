@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#153**
+Current build: **#154**
 
 ---
 
@@ -23,6 +23,39 @@ The following items are genuinely unresolved and ready for a future agent pass:
 - **Verdure rock collision** (`rpg-verdure-render.ts`, `rpg-pathfinding.ts`):
   Edge cave walls are visual-only. Future pass: integrate wall boundary polygons into the nav
   grid.
+
+---
+
+## Build #154 — Zenith Binary Ring elite encounter
+
+### What was implemented
+
+- **`src/render/background/zenith-binary-ring-background.ts`** (new file):
+  - Added a persistent offscreen-canvas Binary Ring encounter background for Horizon → Zenith.
+  - Uses preallocated `Float32Array`/`Uint8Array` particle state, translucent-black trail fading, deterministic radial+tangential ring flow, breathing ring radius, and 8 bucket-batched colour passes.
+  - Supports Age of Light / Age of Darkness palettes with smooth ~1.5s palette lerp on age changes.
+
+- **`src/render/rpg/rpg-binary-ring-encounter.ts`** (new file):
+  - Added the Binary Ring elite encounter state, factories, per-frame phase machine, homing missiles, spinning laser sweep, and self-contained draw routine.
+  - Encounter phases cycle through evolve → laser telegraph/attack → recover → missile telegraph/attack → age transition.
+  - Missiles use preallocated `Float32Array` trail buffers; laser and missile attacks apply player damage during the Zenith fight.
+
+- **Targeting + damage wiring** (`rpg-types.ts`, `rpg-damage.ts`, `rpg-targeting-types.ts`, `rpg-targeting-targets.ts`, `rpg-targeting-nearest.ts`, `rpg-targeting.ts`):
+  - Added `binary_ring` target support, `ClosestTarget.binaryRing`, Binary Ring damage dispatch, and Binary Ring inclusion in nearest-target/body-target queries.
+
+- **`src/render/rpg/rpg-render.ts` / `src/render/rpg/rpg-render-update.ts`**:
+  - Added Binary Ring encounter state ownership (`binaryRingEnemies`, missiles, laser sweep, Binary Ring background instance).
+  - Horizon Zenith now swaps from Binary Horizon to the Binary Ring background while the encounter is active.
+  - Encounter state is updated in the extracted RPG update loop and fully cleared on zone switch / restart.
+
+- **Docs + metadata**:
+  - `src/buildInfo.ts`: BUILD_NUMBER → 154.
+  - `file_index.md`: added entries for the Binary Ring background + encounter modules.
+  - `nextSteps.md`: documented this build.
+
+### Remaining follow-up
+
+- **Binary Ring weapon-specific collision integration**: the generic targeting path can hit the Binary Ring, but some older weapon modules still use direct per-enemy array sweeps. A future pass should teach those direct-collision weapon modules to include `binaryRingEnemies` so every weapon family can damage the encounter uniformly.
 
 ---
 

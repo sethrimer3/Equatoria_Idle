@@ -33,6 +33,7 @@ import type {
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { ClosestTarget } from './rpg-types';
+import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import { performAoeAttack } from './rpg-player-attack-aoe';
 import { performMultiAttack } from './rpg-player-attack-multi';
 import { performSingleAttack } from './rpg-player-attack-single';
@@ -76,6 +77,7 @@ export interface RpgPlayerAttackCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
@@ -207,7 +209,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     ioliteEnemies, amethystEnemies, amethystShards,
     diamondEnemies, diamondShards, nullstoneEnemies, voidTendrils,
     fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies, alivenGroups,
+    eliteEnemies, binaryRingEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -226,7 +228,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     + ioliteEnemies.length + amethystEnemies.length + amethystShards.length
     + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length
     + fracterylEnemies.length + fracterylShards.length + eigensteinEnemies.length
-    + eliteEnemies.length + alivenParticleCount
+    + eliteEnemies.length + binaryRingEnemies.length + alivenParticleCount
     + dustWispEnemies.length + ribbonWormEnemies.length + lanternMothEnemies.length
     + eyeStalkEnemies.length + jellyfishEnemies.length + clothGhostEnemies.length
     + plantTurretEnemies.length + gearInsectEnemies.length + spiderCrawlerEnemies.length

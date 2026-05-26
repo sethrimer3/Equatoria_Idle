@@ -33,6 +33,7 @@ import type {
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
+import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 
 export interface RpgTargetingCtx {
   mote: { x: number; y: number };
@@ -62,6 +63,7 @@ export interface RpgTargetingCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
@@ -109,6 +111,7 @@ export interface RpgTargetingCtx {
   damageFracterylEnemy: (e: FracterylEnemy, raw: number, pierce: number) => number;
   damageFracterylShard: (s: FracterylShard, raw: number, pierce: number) => number;
   damageEigensteinEnemy: (e: EigensteinEnemy, raw: number, pierce: number) => number;
+  damageBinaryRingEnemy: (e: BinaryRingEnemy, raw: number, pierce: number) => number;
   damageEliteEnemy: (e: EliteEnemy, raw: number, pierce: number) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, raw: number) => number;
   damageBossEnemy: (raw: number, pierce: number, fromDiamond?: boolean) => number;
@@ -162,7 +165,7 @@ export interface RpgTargetingHandle {
   findClosestTarget(rangeSq: number): ClosestTarget | null;
   findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy
-    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
+    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | BinaryRingEnemy | EliteEnemy | BossEnemy
     | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy

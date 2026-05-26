@@ -43,6 +43,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.nullstone) return ctx.damageNullstoneEnemy(target.nullstone, rawDamage, defPierceRatio);
     if (target.fracteryl) return ctx.damageFracterylEnemy(target.fracteryl, rawDamage, defPierceRatio);
     if (target.eigenstein) return ctx.damageEigensteinEnemy(target.eigenstein, rawDamage, defPierceRatio);
+    if (target.binaryRing) return ctx.damageBinaryRingEnemy(target.binaryRing, rawDamage, defPierceRatio);
     if (target.elite) return ctx.damageEliteEnemy(target.elite, rawDamage, defPierceRatio);
     if (target.alivenParticle && target.alivenGroup) return ctx.damageAlivenParticle(target.alivenParticle, target.alivenGroup, rawDamage);
     if (target.boss) return ctx.damageBossEnemy(rawDamage, defPierceRatio);

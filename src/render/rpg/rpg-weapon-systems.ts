@@ -43,6 +43,7 @@ import type {
   SapphireShip, SapphireLaser,
   AmethystShip, AmethystLaser,
 } from './rpg-enemy-types';
+import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { ClosestTarget } from './rpg-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
@@ -99,6 +100,7 @@ export interface RpgWeaponCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
