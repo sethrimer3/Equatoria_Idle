@@ -1,6 +1,8 @@
 import type { TopographicTerrainPoint } from './topographic-terrain';
 import { createSeededRng } from './topographic-terrain';
 import type { EnemyInfluencePoint } from './recursive-square-terrain';
+import type { TerrainLightEmitter } from './terrain-lighting';
+import { distToSegmentSq } from './terrain-lighting';
 
 export interface BasaltHexCell {
   id: string;
@@ -99,33 +101,62 @@ const HEX_ENEMY_INFLUENCE_AMPLIFY = 1.8;
 
 /**
  * Returns an rgba() colour string for a hex cell, blending its original RGB
- * toward the weighted average of nearby enemy colours.
+ * toward the weighted average of nearby enemy colours and terrain light emitters.
  *
- * @param cx/cy      Cell centre in world space.
- * @param origR/G/B  Original cell RGB.
- * @param alpha      Per-cell global alpha (grow animation).
- * @param enemies    All active enemy influence points this frame.
+ * @param cx/cy           Cell centre in world space.
+ * @param origR/G/B       Original cell RGB.
+ * @param alpha           Per-cell global alpha (grow animation).
+ * @param enemies         All active enemy influence points this frame.
+ * @param lights          Terrain light emitters (point + beam) this frame.
  */
 function influencedHexColor(
   cx: number, cy: number,
   origR: number, origG: number, origB: number,
   alpha: number,
-  enemies: EnemyInfluencePoint[],
+  enemies: EnemyInfluencePoint[] | undefined,
+  lights: TerrainLightEmitter[] | undefined,
 ): string {
   const radiusPx = HEX_ENEMY_INFLUENCE_RADIUS_PX;
   let totalW = 0;
   let sumR = 0, sumG = 0, sumB = 0;
-  for (let ei = 0; ei < enemies.length; ei++) {
-    const e = enemies[ei];
-    const dx = cx - e.x, dy = cy - e.y;
-    const distSq = dx * dx + dy * dy;
-    if (distSq >= radiusPx * radiusPx) continue;
-    const w = (1 - Math.sqrt(distSq) / radiusPx) ** 2;
-    totalW += w;
-    sumR += w * e.r;
-    sumG += w * e.g;
-    sumB += w * e.b;
+
+  // ── Enemy point lights (legacy / existing system) ──────────────
+  if (enemies !== undefined && enemies.length > 0) {
+    for (let ei = 0; ei < enemies.length; ei++) {
+      const e = enemies[ei];
+      const dx = cx - e.x, dy = cy - e.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq >= radiusPx * radiusPx) continue;
+      const w = (1 - Math.sqrt(distSq) / radiusPx) ** 2;
+      totalW += w;
+      sumR += w * e.r;
+      sumG += w * e.g;
+      sumB += w * e.b;
+    }
   }
+
+  // ── Terrain light emitters (point + beam) ─────────────────────
+  if (lights !== undefined && lights.length > 0) {
+    for (let li = 0; li < lights.length; li++) {
+      const light = lights[li];
+      const r2 = light.radiusPx * light.radiusPx;
+      let distSq: number;
+      if (light.type === 'beam') {
+        distSq = distToSegmentSq(cx, cy, light.x, light.y, light.x2, light.y2);
+      } else {
+        const dx = cx - light.x, dy = cy - light.y;
+        distSq = dx * dx + dy * dy;
+      }
+      if (distSq >= r2) continue;
+      const dist = Math.sqrt(distSq);
+      const w = ((1 - dist / light.radiusPx) ** 2) * light.intensity;
+      totalW += w;
+      sumR += w * light.r;
+      sumG += w * light.g;
+      sumB += w * light.b;
+    }
+  }
+
   let r = origR, g = origG, b = origB;
   if (totalW > 0) {
     const blend = clamp01(totalW * HEX_ENEMY_INFLUENCE_AMPLIFY);
@@ -268,12 +299,14 @@ export function renderBasaltTerrain(
   basalt: BasaltTerrainState,
   growth01: number,
   enemies?: EnemyInfluencePoint[],
+  lights?: TerrainLightEmitter[],
 ): void {
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
-  const hasEnemies = enemies !== undefined && enemies.length > 0;
+  const hasInfluence = (enemies !== undefined && enemies.length > 0) ||
+                       (lights !== undefined && lights.length > 0);
 
   for (const cell of basalt.cells) {
     const alpha = getBasaltCellAlpha(cell, growth01);
@@ -292,8 +325,8 @@ export function renderBasaltTerrain(
     if (alpha <= 0) continue;
     drawPolygon(ctx, cell.corners);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = hasEnemies
-      ? influencedHexColor(cell.cx, cell.cy, cell.colorR, cell.colorG, cell.colorB, alpha, enemies!)
+    ctx.fillStyle = hasInfluence
+      ? influencedHexColor(cell.cx, cell.cy, cell.colorR, cell.colorG, cell.colorB, alpha, enemies, lights)
       : cell.color;
     ctx.fill();
   }
@@ -303,9 +336,11 @@ export function renderBasaltTerrain(
     if (alpha <= 0) continue;
     drawPolygon(ctx, cell.corners);
     ctx.globalAlpha = 1;
-    ctx.lineWidth = 0.8;
-    ctx.strokeStyle = hasEnemies
-      ? influencedHexColor(cell.cx, cell.cy, cell.lineR, cell.lineG, cell.lineB, alpha * 0.9, enemies!)
+    // Thicker outline (2.5 px) for solid formations — clearly differentiates them
+    // from the thin floor hex grid (0.55 px).
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = hasInfluence
+      ? influencedHexColor(cell.cx, cell.cy, cell.lineR, cell.lineG, cell.lineB, alpha * 0.9, enemies, lights)
       : cell.lineColor;
     ctx.stroke();
   }

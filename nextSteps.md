@@ -1,33 +1,66 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#167**
+Current build: **#168**
 
 ---
 
-## Build #167 — Caustics procedural fish: segmented-spine animation and species profiles
+## Build #168 — Euhedral terrain lighting + Verdure stone lighting
 
 ### What was implemented
 
-- **`src/render/rpg/rpg-procedural-fish-draw.ts`** fully rewritten (510 → 953 lines):
-  - **Segmented spine** (`buildFishSpine`): N pre-allocated `SpineSegment` objects run from head (t=0) to tail (t=1). Body half-widths are interpolated via smoothstep (`getBodyHalfWidth`). No heap allocation per frame.
-  - **Traveling-wave animation**: `cy = sin(animPhase × freq − t × waveTravel) × amplitude × pow(t, ampPower) × tailBoost`. Amplitude is near-zero at the head and peaks at the tail; a separate `tailAmplMult` boosts the final 25 % of the spine.
-  - **Normals and edge arrays**: centred-difference normals are computed once per frame; `_topX/Y` and `_botX/Y` Float32Arrays hold the left/right body edges used by the bezier path.
-  - **Smooth silhouette** (`appendSmoothEdge`): midpoint-bezier technique over the edge arrays; no per-frame allocation.
-  - **Four tail shapes** (`appendTailSection`): `forked` (two lobes with concave notch), `roundedFan` (wide bulging fan), `pointed` (single narrow tip), `crescent` (swept swept lobes beyond a shallow center dip).
-  - **Pectoral fins** (`drawFishPectoralFins`): three variants — `shortTriangle`, `rounded`, `longSwept`. Tip formula: `finBase + outwardNormal × pectoralLength + spineForward × pectoralSweep`. Because `spineForward` always points head→tail (−X for a fish facing +X), fins sweep toward the tail regardless of `swimAngle`.
-  - **`FishVisualProfile` interface** with 8 per-species profile constants:
-    - `SANDFISH_PROFILE` — minnow/dart: narrow body (bodyWidth 0.43×), fast (4.0 rad/s), forked tail, shortTriangle fins.
-    - `QUARTZFISH_PROFILE` — deep-body: widest after Sunstone (0.65×), slow (2.0 rad/s), roundedFan tail, rounded fins.
-    - `RUBYFISH_PROFILE` — sharp predatory: longer body (1.08×), pointed tail, longSwept fins; body straightens during dash (ampScale 0.18).
-    - `SUNSTONEFISH_PROFILE` — deep-body reef: widest body (0.70×), slowest (1.8 rad/s), roundedFan tail, rounded fins.
-    - `EMERALDFISH_PROFILE` — teardrop compact: medium speed, forked tail; mini clones use ×1.45 frequency.
-    - `SAPPHIREFISH_PROFILE` — eel-like: long body (1.30×), 10 segments, high waveTravel (8.0), pointed tail, small shortTriangle fins.
-    - `AMETHYSTFISH_PROFILE` — round small: compact (0.88×), gentle (2.2 rad/s), roundedFan tail, rounded fins.
-    - `DIAMONDFISH_PROFILE` — large predatory: crescent tail, longSwept fins; armor overlay uses segment positions for shard lines.
+- **`src/render/rpg/terrain/terrain-lighting.ts`** (NEW, ~110 lines):
+  - `TerrainLightEmitter` interface: `type` ('point'|'beam'), `x/y`, `x2/y2` (beam end), `r/g/b`, `radiusPx`, `intensity`.
+  - `distToSegmentSq(px, py, ax, ay, bx, by)` — correct segment distance for beam emitters.
+  - `sampleTerrainLightAt(cx, cy, emitters[])` — accumulates RGBA tint from all emitters with smooth distance falloff; returns `{r, g, b, a}`.
+  - `MAX_TERRAIN_LIGHT_EMITTERS = 40` — hard cap to keep performance bounded.
+
+- **`src/render/rpg/terrain/euhedral-hex-floor.ts`** (NEW, ~230 lines):
+  - Full-screen pointy-top hex grid for Euhedral zone (FLOOR_HEX_RADIUS = 19 px, ~210 cells on 360×640).
+  - Geometry cached in a module-level object; invalidated only on canvas size change — no per-frame rebuild.
+  - Base pass: very dim fill + thin stroke (base alpha 0.13 / 0.20) with per-hex noise variation (±15 %).
+  - Lit tint overlay pass: samples `sampleTerrainLightAt()` per cell; max overlay alpha 0.22.
+  - `drawEuhedralHexFloor(ctx, w, h, emitters, lowGraphics)` and `invalidateEuhedralHexFloorCache()` exports.
+  - Skipped entirely in low-graphics mode.
+
+- **`src/render/rpg/terrain/basalt-terrain.ts`** (modified):
+  - `renderBasaltTerrain()` accepts optional `lights?: TerrainLightEmitter[]`.
+  - `influencedHexColor()` now accepts both `EnemyInfluencePoint[] | undefined` and `TerrainLightEmitter[] | undefined` — accumulates contributions from both.
+  - Formation outline `lineWidth` changed **0.8 → 2.5 px** — formations are now clearly distinct from the thin floor hex grid.
+
+- **`src/render/rpg/terrain/topographic-terrain.ts`** (modified):
+  - `renderTopographicTerrain()` accepts optional `lightEmitters?: TerrainLightEmitter[]` parameter.
+  - Threads it to `renderBasaltTerrain()` only; recursiveSquares ignores it (not applicable).
+
+- **`src/render/rpg/rpg-render-draw.ts`** (modified):
+  - Added `isEuhedralZone` flag alongside other zone flags.
+  - New `_collectTerrainLightEmitters(ctx, w, h)` function: collects priority-ordered emitters (ruby laser beam → boss → elites → player → enemies → projectiles); capped at `MAX_TERRAIN_LIGHT_EMITTERS`; spatially culled to viewport + 120 px margin.
+  - Euhedral hex floor drawn after fluid and before persistent sunlight/terrain.
+  - `euhedralLights` collected once per frame and reused for both the floor and formations.
+  - `_collectVerdureInfluences()` extended to include ruby laser beam (3 decomposed point emitters), sapphire/amethyst laser projectiles, and emerald missiles — Verdure stones now react to attacks.
 
 ### Deferred / follow-up
 
-- **Dorsal fins**: `dorsalFinLength` is present in `FishVisualProfile` (all currently 0). A future pass can draw a top-edge dorsal fin for predatory or reef species if desired.
+- **Euhedral hex floor in low-graphics mode**: currently disabled entirely. A very reduced (no tint, 30 % fewer cells) path could be added if needed.
+- **Visual tuning constants** that may need adjustment:
+  - `FLOOR_HEX_RADIUS = 19` — change to adjust hex cell size on screen.
+  - `BASE_FILL_ALPHA = 0.13`, `BASE_STROKE_ALPHA = 0.20` — floor brightness.
+  - `MAX_TINT_ALPHA = 0.22` — ceiling for per-hex colored light.
+  - `NOISE_SCALE = 0.15` — per-hex brightness variation.
+  - Basalt formation `lineWidth = 2.5` — formation outline thickness.
+  - Enemy emitter `intensity = 0.45`, player `intensity = 0.35`, laser beam `intensity = 0.85`.
+  - `MAX_TERRAIN_LIGHT_EMITTERS = 40` — raise/lower to trade fidelity vs. cost.
+- **Other attack types not yet connected**:
+  - Sand Blade / Sword Combo sweeps: melee only, no persistent position to emit light from.
+  - Poison Bolts: no color constant pre-parsed; could be added (green tint) in a future pass.
+  - Sunstone mines: stationary emitters would be easy to add (amber color at placed positions).
+  - Vortexes: position available; could be wired as swirling point emitters.
+  - Chain Whip: has a tip position; could be wired as a small bright point.
+- **Verdure plants/vines**: not relit (stones only). Architecture supports it — `VerdureInfluenceObj` already flows to the segmented surface; extending to a separate vine overlay would require adding an influence parameter to `drawVerdureFloorEffects`.
+- **Performance caveat**: `_collectTerrainLightEmitters` allocates a new array each frame. For very large enemy counts the push loop still iterates all enemies even after the cap is hit. A future optimization could early-exit the enemy loops once the cap is reached.
+
+---
+
+
 - **Visual tuning**: profile amplitude, waveTravel, bodyWidth, and tailSpread values are first-pass; in-game play may reveal fish that look too similar or oscillate too fast/slow for their archetype. Tunable via the constants at the top of the file.
 - **File**: `src/render/rpg/rpg-procedural-fish-draw.ts`, functions `buildFishSpine`, `appendTailSection`, `drawFishPectoralFins`.
 

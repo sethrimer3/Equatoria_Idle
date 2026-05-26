@@ -156,6 +156,10 @@ import {
   ELITE_CITRINE_COLOR, ELITE_IOLITE_COLOR, ELITE_AMETHYST_COLOR,
   ELITE_DIAMOND_COLOR,
 } from './rpg-enemy-constants';
+import { LASER_BEAM_COLOR } from './rpg-weapon-constants';
+import type { TerrainLightEmitter } from './terrain/terrain-lighting';
+import { MAX_TERRAIN_LIGHT_EMITTERS } from './terrain/terrain-lighting';
+import { drawEuhedralHexFloor } from './terrain/euhedral-hex-floor';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -334,6 +338,8 @@ const _AMETHYST_RGB = hexRgb(AMETHYST_ENEMY_COLOR);
 const _DIAMOND_RGB  = hexRgb(DIAMOND_ENEMY_COLOR);
 const _FRACTERYL_RGB  = hexRgb(FRACTERYL_ENEMY_COLOR);
 const _EIGENSTEIN_RGB = hexRgb(EIGENSTEIN_ENEMY_COLOR);
+/** Ruby laser beam (ruby red). Used for the beam terrain emitter. */
+const _LASER_BEAM_RGB = hexRgb(LASER_BEAM_COLOR);
 
 /** Map from EliteEnemy tier to pre-parsed RGB. */
 const _ELITE_RGB: Record<string, [number, number, number]> = {
@@ -421,7 +427,122 @@ function _collectVerdureInfluences(ctx: RpgDrawCtx): VerdureInfluenceObj[] {
   const boss = ctx.getBossEnemy();
   if (boss) pushEnemy(boss.x, boss.y, _FRACTERYL_RGB);
 
+  // Attacks — ruby laser beam (decomposed into 3 point emitters for Verdure)
+  const lb = ctx.weaponSystems.laserBeamEffect;
+  if (lb?.active) {
+    for (let t = 0.2; t <= 0.8; t += 0.3) {
+      const ax = lb.startX + (lb.endX - lb.startX) * t;
+      const ay = lb.startY + (lb.endY - lb.startY) * t;
+      pts.push({ x: ax, y: ay, r: _LASER_BEAM_RGB[0], g: _LASER_BEAM_RGB[1], b: _LASER_BEAM_RGB[2], radiusPx: 70, intensity: 0.85 });
+    }
+  }
+  // Sapphire / amethyst lasers are moving point projectiles
+  for (const p of ctx.weaponSystems.sapphireLasers ?? []) {
+    pts.push({ x: p.x, y: p.y, r: _SAPPHIRE_RGB[0], g: _SAPPHIRE_RGB[1], b: _SAPPHIRE_RGB[2], radiusPx: 55, intensity: 0.55 });
+  }
+  for (const p of ctx.weaponSystems.amethystLasers ?? []) {
+    pts.push({ x: p.x, y: p.y, r: _AMETHYST_RGB[0], g: _AMETHYST_RGB[1], b: _AMETHYST_RGB[2], radiusPx: 55, intensity: 0.55 });
+  }
+  // Emerald missiles
+  for (const p of ctx.weaponSystems.emeraldPlayerMissiles) {
+    pts.push({ x: p.x, y: p.y, r: _EMERALD_RGB[0], g: _EMERALD_RGB[1], b: _EMERALD_RGB[2], radiusPx: 48, intensity: 0.45 });
+  }
+
   return pts;
+}
+
+// ── Terrain light emitter collector ───────────────────────────────────────────
+
+/**
+ * Collects TerrainLightEmitter entries for Euhedral zone terrain (both the
+ * full-screen hex floor and basalt formations).  Also reused for Verdure
+ * terrain lighting when the caller needs the richer emitter format.
+ *
+ * Priority order (high → low): laser beam, boss, elite enemies, regular
+ * enemies, projectiles.  Total capped at MAX_TERRAIN_LIGHT_EMITTERS.
+ */
+function _collectTerrainLightEmitters(
+  ctx: RpgDrawCtx,
+  canvasW: number,
+  canvasH: number,
+): TerrainLightEmitter[] {
+  const margin = 120;
+  const inView = (x: number, y: number) =>
+    x >= -margin && x <= canvasW + margin &&
+    y >= -margin && y <= canvasH + margin;
+
+  const emitters: TerrainLightEmitter[] = [];
+
+  // Helper — push a point emitter
+  const pushPoint = (
+    x: number, y: number,
+    r: number, g: number, b: number,
+    radiusPx: number, intensity: number,
+  ) => {
+    if (!inView(x, y)) return;
+    if (emitters.length >= MAX_TERRAIN_LIGHT_EMITTERS) return;
+    emitters.push({ type: 'point', x, y, x2: 0, y2: 0, r, g, b, radiusPx, intensity });
+  };
+
+  // 1. Ruby laser beam — highest priority, single beam emitter
+  const lb = ctx.weaponSystems.laserBeamEffect;
+  if (lb?.active) {
+    if (emitters.length < MAX_TERRAIN_LIGHT_EMITTERS) {
+      emitters.push({
+        type: 'beam',
+        x: lb.startX, y: lb.startY,
+        x2: lb.endX,  y2: lb.endY,
+        r: _LASER_BEAM_RGB[0], g: _LASER_BEAM_RGB[1], b: _LASER_BEAM_RGB[2],
+        radiusPx: 65, intensity: 0.85,
+      });
+    }
+  }
+
+  // 2. Boss
+  const boss = ctx.getBossEnemy();
+  if (boss) pushPoint(boss.x, boss.y, _FRACTERYL_RGB[0], _FRACTERYL_RGB[1], _FRACTERYL_RGB[2], 130, 0.55);
+
+  // 3. Elite enemies
+  for (const e of ctx.eliteEnemies) {
+    const rgb = _ELITE_RGB[e.tier] ?? _QUARTZ_RGB;
+    pushPoint(e.x, e.y, rgb[0], rgb[1], rgb[2], 115, 0.50);
+  }
+
+  // 4. Player
+  pushPoint(ctx.mote.x, ctx.mote.y, 80, 220, 100, 80, 0.35);
+
+  // 5. Regular enemies (all types)
+  function pushEnemy(x: number, y: number, rgb: [number, number, number]): void {
+    pushPoint(x, y, rgb[0], rgb[1], rgb[2], 100, 0.45);
+  }
+  for (const e of ctx.enemies)           pushEnemy(e.x, e.y, _LASER_RGB);
+  for (const e of ctx.sapphireEnemies)   pushEnemy(e.x, e.y, _SAPPHIRE_RGB);
+  for (const e of ctx.emeraldEnemies)    pushEnemy(e.x, e.y, _EMERALD_RGB);
+  for (const e of ctx.amberEnemies)      pushEnemy(e.x, e.y, _AMBER_RGB);
+  for (const e of ctx.voidEnemies)       pushEnemy(e.x, e.y, _VOID_RGB);
+  for (const e of ctx.quartzEnemies)     pushEnemy(e.x, e.y, _QUARTZ_RGB);
+  for (const e of ctx.rubyEnemies)       pushEnemy(e.x, e.y, _RUBY_RGB);
+  for (const e of ctx.sunstoneEnemies)   pushEnemy(e.x, e.y, _SUNSTONE_RGB);
+  for (const e of ctx.citrineEnemies)    pushEnemy(e.x, e.y, _CITRINE_RGB);
+  for (const e of ctx.ioliteEnemies)     pushEnemy(e.x, e.y, _IOLITE_RGB);
+  for (const e of ctx.amethystEnemies)   pushEnemy(e.x, e.y, _AMETHYST_RGB);
+  for (const e of ctx.diamondEnemies)    pushEnemy(e.x, e.y, _DIAMOND_RGB);
+  for (const e of ctx.nullstoneEnemies)  pushEnemy(e.x, e.y, _VOID_RGB);
+  for (const e of ctx.fracterylEnemies)  pushEnemy(e.x, e.y, _FRACTERYL_RGB);
+  for (const e of ctx.eigensteinEnemies) pushEnemy(e.x, e.y, _EIGENSTEIN_RGB);
+
+  // 6. Projectiles
+  for (const p of ctx.weaponSystems.sapphireLasers ?? []) {
+    pushPoint(p.x, p.y, _SAPPHIRE_RGB[0], _SAPPHIRE_RGB[1], _SAPPHIRE_RGB[2], 50, 0.50);
+  }
+  for (const p of ctx.weaponSystems.amethystLasers ?? []) {
+    pushPoint(p.x, p.y, _AMETHYST_RGB[0], _AMETHYST_RGB[1], _AMETHYST_RGB[2], 50, 0.50);
+  }
+  for (const p of ctx.weaponSystems.emeraldPlayerMissiles) {
+    pushPoint(p.x, p.y, _EMERALD_RGB[0], _EMERALD_RGB[1], _EMERALD_RGB[2], 45, 0.40);
+  }
+
+  return emitters;
 }
 
 // ── Topography sunlight gate ───────────────────────────────────────────────────
@@ -478,10 +599,11 @@ export function drawRpgFrame(
 
   // Zone atmosphere tints — rendered immediately after the background fill so
   // they sit behind fluid, terrain, and all gameplay elements.
-  const isCausticsZone = ctx.rpgSimState.activeZoneId === 'caustics';
-  const isVerdureZone  = ctx.rpgSimState.activeZoneId === 'verdure';
-  const isImpetusZone  = ctx.rpgSimState.activeZoneId === 'impetus';
-  const isHorizonZone  = ctx.rpgSimState.activeZoneId === 'horizon';
+  const isCausticsZone  = ctx.rpgSimState.activeZoneId === 'caustics';
+  const isVerdureZone   = ctx.rpgSimState.activeZoneId === 'verdure';
+  const isImpetusZone   = ctx.rpgSimState.activeZoneId === 'impetus';
+  const isHorizonZone   = ctx.rpgSimState.activeZoneId === 'horizon';
+  const isEuhedralZone  = ctx.rpgSimState.activeZoneId === 'euhedral';
   if (isCausticsZone) {
     drawCausticsBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
   }
@@ -524,6 +646,18 @@ export function drawRpgFrame(
   }
 
   const terrainState = ctx.getTopographicTerrainState();
+  // For Euhedral: collect terrain light emitters once per frame and reuse for
+  // both the hex floor and the basalt formation renderer.
+  const euhedralLights: TerrainLightEmitter[] | undefined = (isEuhedralZone && !ctx.getIsLowGraphicsMode())
+    ? _collectTerrainLightEmitters(ctx, widthPx, heightPx)
+    : undefined;
+
+  // Euhedral full-screen hex floor — drawn after the background fill and before
+  // the fluid/terrain so it sits as ground-level atmosphere.
+  if (isEuhedralZone && !ctx.getIsLowGraphicsMode()) {
+    drawEuhedralHexFloor(canvas2d, widthPx, heightPx, euhedralLights ?? [], false);
+  }
+
   if (shouldDrawPersistentTopographySunlight(ctx.rpgSimState.activeZoneId, terrainState)) {
     renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState!.paletteId);
   }
@@ -534,7 +668,7 @@ export function drawRpgFrame(
       (terrainState.terrainKind === 'recursiveSquares' || terrainState.terrainKind === 'basalt')
         ? collectEnemyInfluencePoints(ctx)
         : undefined;
-    renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies, ctx.getIsLowGraphicsMode());
+    renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies, ctx.getIsLowGraphicsMode(), euhedralLights);
     // Topographic lighting overlay is only applicable to the organic contour variant;
     // skip it for recursive-square terrain which has its own visual style.
     if (terrainState.terrainKind === 'topographic') {
