@@ -57,7 +57,9 @@ import {
 } from './rpg-aliven-updates';
 import {
   updateEmeraldEnemies, updateAmberEnemies, updateAmberShards, updateVoidEnemies,
+  applyEnemyVerdureWallPushOut,
 } from './rpg-enemy-updates';
+import type { VerdureCaveWallState } from './terrain/verdure-cave-walls';
 import {
   updateQuartzEnemies, updateQuartzSpikes,
   updateRubyEnemies, updateRubyBolts,
@@ -254,6 +256,21 @@ export interface RpgUpdateCtx {
 }
 
 // ── Per-frame simulation step ─────────────────────────────────────────────────
+
+/**
+ * Applies Verdure cave-wall repulsion and push-out to all mobile enemies.
+ * Called once per tick when `activeZoneId === 'verdure'`.
+ * This is a fail-safe; the primary protection is the nav-grid wall integration.
+ */
+function _applyVerdureWallPassToArray<T extends { x: number; y: number; vx: number; vy: number }>(
+  arr: T[],
+  wallState: VerdureCaveWallState,
+  halfSize: number,
+): void {
+  for (let i = 0; i < arr.length; i++) {
+    applyEnemyVerdureWallPushOut(arr[i]!, wallState, halfSize);
+  }
+}
 
 /**
  * Runs one simulation tick: advances all game systems, then renders the frame.
@@ -459,6 +476,41 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
   if (ctx.playerStats.hp <= 0) ctx.triggerDeath();
   ctx.statsPanel.update();
+
+  // Verdure cave-wall enemy push-out pass: ensure all mobile enemies remain
+  // outside the organic wall band.  The nav-grid integration is the primary
+  // protection; this is a per-frame fail-safe for any that slip through.
+  const _verdureWallState = ctx.enemyCtx.getVerdureCaveWallState?.();
+  if (_verdureWallState) {
+    const _HW = 6; // conservative half-size default for all enemy types (px)
+    _applyVerdureWallPassToArray(a.enemies,          _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.sapphireEnemies,  _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.emeraldEnemies,   _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.amberEnemies,     _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.voidEnemies,      _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.quartzEnemies,    _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.rubyEnemies,      _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.sunstoneEnemies,  _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.citrineEnemies,   _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.ioliteEnemies,    _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.amethystEnemies,  _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.diamondEnemies,   _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.nullstoneEnemies, _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.fracterylEnemies, _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.eigensteinEnemies,_verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.eliteEnemies,     _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.dustWispEnemies,  _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.ribbonWormEnemies,_verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.lanternMothEnemies,_verdureWallState,_HW);
+    _applyVerdureWallPassToArray(a.eyeStalkEnemies,  _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.jellyfishEnemies, _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.clothGhostEnemies,_verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.gearInsectEnemies,_verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.spiderCrawlerEnemies,_verdureWallState,_HW);
+    _applyVerdureWallPassToArray(a.moteSwarmEnemies, _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.shadowHandEnemies,_verdureWallState, _HW);
+  }
+
   ctx.updateVerdurePlants?.(deltaMs);
   ctx.fluid.step(deltaMs);
   drawRpgFrame(ctx.drawCtx, ctx.drawFrameState, nowMs);

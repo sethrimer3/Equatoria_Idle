@@ -6,6 +6,7 @@
  *
  * Public API:
  *   buildRpgNavigationGrid(terrain, widthPx, heightPx, cellSizePx?)
+ *   applyCircleSoftObstacles(navGrid, circles, costMultiplier)
  *   findRpgPath(navGrid, startX, startY, goalX, goalY)
  *   getPathSteeringDirection(path, x, y, lookaheadPx?)
  *   updateEntityPathState(pathState, x, y, targetX, targetY, nowMs, navGrid, maxRepathMs?)
@@ -16,6 +17,8 @@
  *   - 8-directional movement.  Diagonal moves are blocked when either neighbour
  *     cardinal cell is also blocked (no corner-cutting through walls).
  *   - Blocked cells: centre inside terrain OR circle of CLEARANCE_RADIUS overlaps terrain.
+ *   - Soft obstacles: high-cost (but traversable) cells registered via applyCircleSoftObstacles.
+ *     Enemies path around them when possible but are never permanently blocked by them.
  *   - If start/goal falls inside a blocked cell it is snapped to the nearest
  *     walkable cell within SNAP_SEARCH_RADIUS cells.
  *   - A* uses a simple binary-heap priority queue — no external dependencies.
@@ -63,6 +66,13 @@ const DEFAULT_LOOKAHEAD_PX = 40;
 const COST_CARDINAL  = 10;
 const COST_DIAGONAL  = 14;
 
+/**
+ * Cost multiplier applied to cells that overlap a registered soft obstacle
+ * (e.g. an Impetus asteroid).  Enemies strongly prefer to route around them,
+ * but will cross if there is no other path.
+ */
+export const SOFT_OBSTACLE_COST = 8;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** A single A* waypoint in world-space pixel coordinates. */
@@ -74,6 +84,8 @@ export interface RpgWaypoint {
 /**
  * Pre-computed navigation grid for one terrain/canvas configuration.
  * `blocked` is a flat Uint8Array: 1 = blocked, 0 = walkable.
+ * `moveCost` is an optional per-cell cost multiplier (Uint8Array, 1 = normal).
+ * Values > 1 are soft obstacles — traversable but expensive so A* avoids them.
  * Index = row * cols + col, where row increases downward.
  */
 export interface RpgNavGrid {
@@ -81,6 +93,8 @@ export interface RpgNavGrid {
   rows: number;
   cellSizePx: number;
   blocked: Uint8Array;
+  /** Per-cell movement cost multiplier. 1 = normal, >1 = costly soft obstacle. */
+  moveCost: Uint8Array;
   /** Width of the arena in px (used for snapping world coords to cells). */
   widthPx: number;
   /** Height of the arena in px. */
@@ -134,6 +148,7 @@ export function buildRpgNavigationGrid(
   const cols = Math.ceil(widthPx  / cellSizePx);
   const rows = Math.ceil(heightPx / cellSizePx);
   const blocked = new Uint8Array(cols * rows);
+  const moveCost = new Uint8Array(cols * rows).fill(1);
 
   if (terrain && terrain.phase !== 'hidden' && terrain.growth01 > 0) {
     const half = cellSizePx * 0.5;
@@ -154,7 +169,58 @@ export function buildRpgNavigationGrid(
     }
   }
 
-  return { cols, rows, cellSizePx, blocked, widthPx, heightPx };
+  return { cols, rows, cellSizePx, blocked, moveCost, widthPx, heightPx };
+}
+
+// ── Soft obstacle registration ────────────────────────────────────────────────
+
+/**
+ * Marks cells that overlap any circle in `circles` as soft obstacles by
+ * setting their `moveCost` to `costMultiplier`.
+ *
+ * Call this once after `buildRpgNavigationGrid` when zone-specific obstacles
+ * (e.g. Impetus asteroids) are known.  Do NOT call per-frame — only call when
+ * the obstacle layout changes (typically once per wave).
+ *
+ * Soft-obstacle cells are NOT blocked; A* can still traverse them, but their
+ * high cost strongly encourages routing around them.
+ *
+ * @param navGrid        Grid to mutate in place.
+ * @param circles        Array of `{x, y, radiusPx}` obstacle circles in world px.
+ * @param costMultiplier Per-cell cost multiplier written to cells in each circle.
+ *                       Defaults to SOFT_OBSTACLE_COST (8).
+ */
+export function applyCircleSoftObstacles(
+  navGrid: RpgNavGrid,
+  circles: ReadonlyArray<{ x: number; y: number; radiusPx: number }>,
+  costMultiplier: number = SOFT_OBSTACLE_COST,
+): void {
+  const { cols, rows, cellSizePx, blocked, moveCost } = navGrid;
+  const half = cellSizePx * 0.5;
+  const clampedMult = Math.max(1, Math.min(255, Math.round(costMultiplier)));
+
+  for (const { x: cx, y: cy, radiusPx } of circles) {
+    const radSq = radiusPx * radiusPx;
+    // Compute bounding cell range to avoid checking every cell.
+    const minC = Math.max(0, Math.floor((cx - radiusPx) / cellSizePx));
+    const maxC = Math.min(cols - 1, Math.ceil((cx + radiusPx) / cellSizePx));
+    const minR = Math.max(0, Math.floor((cy - radiusPx) / cellSizePx));
+    const maxR = Math.min(rows - 1, Math.ceil((cy + radiusPx) / cellSizePx));
+
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        const wx = c * cellSizePx + half;
+        const wy = r * cellSizePx + half;
+        const dx = wx - cx, dy = wy - cy;
+        if (dx * dx + dy * dy > radSq) continue;
+        const idx = r * cols + c;
+        // Only raise cost on walkable cells; blocked cells are already unusable.
+        if (!blocked[idx] && moveCost[idx] < clampedMult) {
+          moveCost[idx] = clampedMult;
+        }
+      }
+    }
+  }
 }
 
 // ── Coordinate helpers ───────────────────────────────────────────────────────
@@ -280,7 +346,7 @@ export function findRpgPath(
   goalX: number,  goalY: number,
   terrain: TopographicTerrainState | null,
 ): RpgWaypoint[] {
-  const { cols, rows, cellSizePx, blocked } = navGrid;
+  const { cols, rows, cellSizePx, blocked, moveCost } = navGrid;
 
   // Convert to cell coordinates, snap blocked cells to nearest walkable.
   let { col: sc, row: sr } = worldToCell(startX, startY, cellSizePx, cols, rows);
@@ -342,7 +408,7 @@ export function findRpgPath(
         if (blocked[cellIndex(cc + dc, cr, cols)] || blocked[cellIndex(cc, cr + dr, cols)]) continue;
       }
 
-      const tentG = gCost[cidx] + cost;
+      const tentG = gCost[cidx] + cost * moveCost[nidx];
       if (tentG < gCost[nidx]) {
         gCost[nidx] = tentG;
         parent[nidx] = cidx;
@@ -597,9 +663,20 @@ export function drawRpgPathfindingDebug(
 ): void {
   if (!enabled || !navGrid) return;
 
-  const { cols, rows, cellSizePx, blocked } = navGrid;
+  const { cols, rows, cellSizePx, blocked, moveCost } = navGrid;
 
   ctx.save();
+
+  // Draw soft-obstacle cells (high cost but walkable).
+  ctx.fillStyle = 'rgba(255, 200, 0, 0.18)';
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const idx = cellIndex(c, r, cols);
+      if (!blocked[idx] && moveCost[idx] > 1) {
+        ctx.fillRect(c * cellSizePx, r * cellSizePx, cellSizePx, cellSizePx);
+      }
+    }
+  }
 
   // Draw blocked cells.
   ctx.fillStyle = 'rgba(255, 60, 60, 0.18)';

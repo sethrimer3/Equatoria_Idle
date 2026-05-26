@@ -141,6 +141,7 @@ import {
 import { setTopographyLightingDevMode, setTopographyShadowMode } from './terrain/topographic-lighting';
 import {
   buildRpgNavigationGrid,
+  applyCircleSoftObstacles,
   type RpgNavGrid,
 } from './terrain/rpg-pathfinding';
 import { createRpgZoneSelectPanel } from './rpg-zone-select';
@@ -169,7 +170,8 @@ import {
   damageVerdurePlant as _damageVerdurePlant,
 } from './terrain/rpg-verdure-growth';
 import { prewarmCausticsTextures } from './terrain/caustics-texture';
-import { generateVerdureCaveWalls } from './terrain/verdure-cave-walls';
+import { generateVerdureCaveWalls, applyVerdureWallsToNavGrid } from './terrain/verdure-cave-walls';
+import { getImpetusAsteroidObstacles } from './terrain/impetus-overlay';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -872,6 +874,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         verdureCaveWallState = null;
       }
       rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
+      // Apply zone-specific soft/hard obstacles to the nav grid immediately
+      // after building it so enemies path around them from wave start.
+      if (rpgSimState.activeZoneId === 'impetus') {
+        applyCircleSoftObstacles(rpgNavGrid, getImpetusAsteroidObstacles(widthPx, heightPx));
+      }
+      if (rpgSimState.activeZoneId === 'verdure' && verdureCaveWallState) {
+        applyVerdureWallsToNavGrid(verdureCaveWallState, rpgNavGrid);
+      }
       // Zenith Binary Horizon lifecycle: trigger cut sequence for new wave.
       if (rpgSimState.activeZoneId === 'horizon' &&
           rpgSimState.activeSubzoneId === 'zenith' &&
@@ -1131,9 +1141,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid,
     getTerrainState: () => topographicTerrainState,
     getNavGrid: () => rpgNavGrid,
+    getVerdureCaveWallState: () => verdureCaveWallState,
   };
-
-  // ── Orbit projectile context (wired to rpg-orbit-projectile.ts) ─
   const orbitProjectileCtx: OrbitProjectileCtx = {
     mote,
     get bossEnemy() { return bossEnemy; },
@@ -1186,6 +1195,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     clampEnemyToBounds,
     getTerrainState: () => topographicTerrainState,
     getNavGrid: () => rpgNavGrid,
+    getVerdureCaveWallState: () => verdureCaveWallState,
   };
 
   // EliteEnemyCtx extends RpgEnemyCtx with the projectile arrays elites fire into.

@@ -7,6 +7,8 @@
  * cached Voronoi-style rock texture.
  */
 
+import type { RpgNavGrid } from './rpg-pathfinding';
+
 const H_STEP = 8;
 const V_STEP = 8;
 const EDGE_POINT_STEP = 24;
@@ -433,8 +435,17 @@ function _buildVoronoiTexture(
 
 function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
   const edgePoints: VerdureWallEdgePoint[] = [];
+
+  // Corner exclusion: skip plant anchor points within this distance from a
+  // canvas corner along each edge.  This prevents two edges' worth of plant
+  // anchors from stacking in corner regions, which caused the visible
+  // wall/plant double-band overlap at corners.
+  const cornerExclusionPx = 80;
+
   for (let x = 0; x <= state.widthPx; x += EDGE_POINT_STEP) {
     const xn = Math.min(state.widthPx, x);
+    // Skip corner regions for horizontal edges — left/right edges will own those.
+    if (xn < cornerExclusionPx || xn > state.widthPx - cornerExclusionPx) continue;
     const topNormal = _getBoundaryNormal(state, TOP_EDGE, xn);
     edgePoints.push({
       x: xn,
@@ -852,4 +863,36 @@ export function drawVerdureRimStrips(
   _drawRimStrip(canvas2d, state, BOTTOM_EDGE);
   _drawRimStrip(canvas2d, state, LEFT_EDGE);
   _drawRimStrip(canvas2d, state, RIGHT_EDGE);
+}
+
+// ── Nav-grid integration ────────────────────────────────────────────────────
+
+/**
+ * Marks nav-grid cells that fall inside the Verdure wall band as blocked.
+ * Call this once after `buildRpgNavigationGrid` for Verdure waves.
+ *
+ * Uses the same `isPointInVerdureWall` test that collision and rendering use,
+ * so the nav grid sees exactly the same boundary.  Results are stable per
+ * wave seed/canvas size — no rebuild needed per frame.
+ *
+ * A small extra margin is added so enemies clear the visual wall edge cleanly.
+ */
+export function applyVerdureWallsToNavGrid(
+  state: VerdureCaveWallState,
+  navGrid: RpgNavGrid,
+): void {
+  const { cols, rows, cellSizePx, blocked } = navGrid;
+  const half = cellSizePx * 0.5;
+  // Extra inward margin: enemies should not hug the raw boundary.
+  const margin = half + 2;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const wx = c * cellSizePx + half;
+      const wy = r * cellSizePx + half;
+      if (_isPointInVerdureWallWithMargin(state, wx, wy, margin)) {
+        blocked[r * cols + c] = 1;
+      }
+    }
+  }
 }

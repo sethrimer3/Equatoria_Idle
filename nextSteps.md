@@ -1,10 +1,88 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#168**
+Current build: **#169**
 
 ---
 
-## Build #168 — Euhedral terrain lighting + Verdure stone lighting
+## Build #169 — Impetus asteroid pathfinding, Verdure wall collision fix, corner overlap cleanup
+
+### What was implemented
+
+**`src/render/rpg/terrain/rpg-pathfinding.ts`** (modified):
+- Added `SOFT_OBSTACLE_COST = 8` constant and `moveCost: Uint8Array` field to `RpgNavGrid`.
+- `moveCost` is initialized to all-1s by `buildRpgNavigationGrid`; a value of 8 means strong
+  avoidance but not a hard block — enemies can still cross in tight corridors.
+- New `applyCircleSoftObstacles(navGrid, circles)` export: marks all cells within each circle's
+  radius as high-cost. Safe to call once per wave; no per-frame rebuild needed.
+- A* loop updated: edge cost now multiplied by `moveCost[nidx]`, so soft-obstacle cells are
+  8× more expensive to traverse.
+- Debug overlay extended to show soft-obstacle cells in yellow when debug mode is active.
+
+**`src/render/rpg/terrain/impetus-overlay.ts`** (modified):
+- New `getImpetusAsteroidObstacles(widthPx, heightPx)` export: maps `_ASTEROID_DATA` base
+  positions to `{x, y, radiusPx}` obstacle circles (radius = `size * 2.5`). Called once when
+  building the Impetus nav grid.
+
+**`src/render/rpg/terrain/verdure-cave-walls.ts`** (modified):
+- **Corner overlap fix** in `_buildEdgePoints()`: top and bottom edge anchor points are now
+  suppressed within 80 px of the left/right canvas edges. Left and right edges own the corners,
+  preventing dual-strip stacking in corner regions.
+- New `applyVerdureWallsToNavGrid(state, navGrid)` export: iterates every nav-grid cell and
+  marks cells whose centre falls inside the wall band (with `margin = halfCell + 2` inward) as
+  `blocked = 1`. Uses the same `_isPointInVerdureWallWithMargin` spatial query as collision,
+  so the nav grid and collision geometry are identical.
+- Added `import type { RpgNavGrid }` at file top (type-only, no runtime circular dep).
+
+**`src/render/rpg/rpg-enemy-updates.ts`** (modified):
+- Added `getVerdureCaveWallState?(): VerdureCaveWallState | null` to `RpgEnemyCtx` interface.
+- Imported `computeVerdureWallRepulsion` and `pushPointOutsideVerdureWall` from
+  `verdure-cave-walls`.
+- Added module-level scratch objects `_wallRepForce` and `_wallPushScratch` (no per-frame alloc).
+- New `applyEnemyVerdureWallPushOut(entity, wallState, halfSize)` export: applies soft wall
+  repulsion (velocity nudge away from boundary) followed by a hard snap-out fail-safe, mirroring
+  the player-movement wall-handling in `rpg-player-movement.ts`.
+
+**`src/render/rpg/rpg-render-update.ts`** (modified):
+- Imported `applyEnemyVerdureWallPushOut` from `rpg-enemy-updates` and `VerdureCaveWallState`
+  type from `verdure-cave-walls`.
+- Added `_applyVerdureWallPassToArray` helper (generic over any `{x,y,vx,vy}` array).
+- Added centralized Verdure wall push-out pass at the end of `runRpgUpdate`, after all enemy
+  update functions: when `getVerdureCaveWallState?.()` returns a state, iterates all 26 mobile
+  enemy arrays and calls `applyEnemyVerdureWallPushOut` on each. Only runs in Verdure zone.
+  Nav-grid integration is the primary protection; this is a per-frame fail-safe.
+
+**`src/render/rpg/rpg-render.ts`** (modified):
+- Fixed the **primary Verdure wall collision bug**: added `getVerdureCaveWallState: () =>
+  verdureCaveWallState` to `movementCtx` (`PlayerMovementCtx`). Previously this method was
+  absent so `ctx.getVerdureCaveWallState?.()` silently returned `undefined` in
+  `rpg-player-movement.ts`, making all wall collision code dead. Player can no longer walk
+  through Verdure walls.
+- Added `getVerdureCaveWallState: () => verdureCaveWallState` to `enemyCtx` (`RpgEnemyCtx`)
+  so the per-frame wall push-out pass has access to wall state.
+- In `beginWaveTerrain` callback, after `buildRpgNavigationGrid`: applies Impetus asteroid soft
+  obstacles (`applyCircleSoftObstacles + getImpetusAsteroidObstacles`) and Verdure wall hard
+  blocks (`applyVerdureWallsToNavGrid`). Both are zone-gated and run once per wave.
+- Added imports: `applyCircleSoftObstacles` from `rpg-pathfinding`, `applyVerdureWallsToNavGrid`
+  from `verdure-cave-walls`, `getImpetusAsteroidObstacles` from `impetus-overlay`.
+
+### Bugs fixed
+
+- **Verdure player wall pass-through** (regression from build #162): `movementCtx` in
+  `rpg-render.ts` was missing `getVerdureCaveWallState`, making the wall collision code in
+  `rpg-player-movement.ts` completely inert. Fixed.
+
+### Deferred / Out-of-Scope
+
+- **Horizon True subzone — additional mechanics**: Visual effect is intentional as-is. Future
+  mechanics to be designed by the developer.
+- **Impetus gravity wells — gameplay force fields**: Visual-only by design. No global force fields.
+- **Asteroid drift vs. nav grid**: Asteroid visuals drift slowly over time but the nav grid uses
+  base positions (deterministic, no per-frame rebuild). This is an acceptable approximation.
+- **Per-enemy halfSize in Verdure wall pass**: Centralized pass uses a fixed 6 px half-size for
+  all enemy types. For best accuracy, individual update functions could pass their own half-size.
+  The nav-grid integration is the primary protection, so this is a low-priority refinement.
+
+
 
 ### What was implemented
 
@@ -85,21 +163,23 @@ Current build: **#168**
 
 The following items are genuinely unresolved and ready for a future agent pass:
 
-- **Horizon True subzone** (`rpg-render.ts`, `rpg-zone-select.ts`): Currently shows the Zenith
-  Binary Horizon effect as a placeholder. A distinct visual effect (and any mechanical changes)
-  needs to be designed and implemented.
+*(No unresolved items remain as of build #169. See the deferred section below for items that are
+intentionally out of scope for now.)*
 
-- **Impetus gravity wells — gameplay force fields** (`impetus-overlay.ts`, enemy update code):
-  Gravity wells are visual-only. Future pass: apply radial force to enemy and player positions
-  when within well radius.
+---
 
-- **Impetus asteroid field — collision/pathfinding** (`rpg-pathfinding.ts`, `impetus-overlay.ts`):
-  Asteroid visuals are decorative. Future pass: register asteroid positions in the nav grid as
-  soft obstacles.
+## Deferred / Out-of-Scope Items
 
-- **Verdure wall pathfinding/nav-grid integration** (`verdure-cave-walls.ts`, `rpg-pathfinding.ts`):
-  Cave walls now block player/enemy placement and movement, but the nav grid still does not route
-  around the organic boundary. Future pass: project the wall band into pathfinding cells.
+These items are intentionally not implemented and should not be treated as bugs or agent tasks
+unless the designer explicitly revisits them:
+
+- **Horizon True subzone — additional mechanics**: The current True Binary Horizon visual effect
+  is the intended final look. Additional True-specific gameplay mechanics may be added later by
+  the designer. No agent work needed.
+
+- **Impetus gravity wells — gameplay force fields**: Gravity wells remain visual-only by design.
+  Individual enemies may have gravity-like mechanics in the future, but global well force fields
+  are not planned. No agent work needed.
 
 ---
 
