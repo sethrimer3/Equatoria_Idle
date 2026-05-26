@@ -5,9 +5,12 @@
  *   1. drawCausticsBackground()   — deep-water atmosphere + floor glow pool; before fluid/terrain
  *   2. drawCausticsFloorEffects() — caustic light network, shimmer bands, rising bubbles
  *
- * ── Caustic light network (build 149, polished build 150) ─────────────────────
+ * ── Caustic light network (build 165) ─────────────────────────────────────────
  *   Three drifting layers of Voronoi cell-boundary (Worley F2−F1) caustic
- *   texture tiles, composited with globalCompositeOperation = 'screen'.
+ *   texture tiles are composited into a dedicated half-resolution offscreen
+ *   light buffer.  The buffer is then drawn back to the main canvas using
+ *   globalCompositeOperation = 'screen' with a soft CSS blur, producing the
+ *   characteristic soft-edged underwater caustic shimmer.
  *
  *   Layers A and C share tile variant A; Layer B uses tile variant B (different
  *   Voronoi seed from caustics-texture.ts).  Distinct source tiles eliminate
@@ -16,6 +19,14 @@
  *     Layer A: scale 1.00×, slow rightward+downward drift  (~8.5 / 6.0 px/s)
  *     Layer B: scale 1.28×, leftward+downward drift + slow rotation (~0.015 rad/s)
  *     Layer C: scale 0.78×, rightward+upward drift         (~4.2 / 5.8 px/s)
+ *
+ * Offscreen light buffer:
+ *   Caustic layers are drawn to a half-resolution (lightScale = 0.5) offscreen
+ *   canvas first.  When composited back to the main canvas it is drawn at full
+ *   size, producing a natural bilinear-upscale softness.  An additional CSS
+ *   blur (CAUSTICS_BLUR_PX) is applied at composite time for the soft glow.
+ *   The offscreen canvas is created/resized only when the main canvas size
+ *   changes — never allocated per frame.
  *
  * Per-frame allocations:
  *   CanvasPattern.setTransform() is called with reusable module-level DOMMatrix
@@ -31,15 +42,45 @@
  *   pairs) and creates no object literals.  Bubbles use pre-baked constants.
  *
  * Low-graphics mode:
- *   One cached layer at reduced alpha.  No expensive glow pass.
+ *   One cached layer at reduced alpha.  No expensive glow pass or CSS blur.
  *   Still reads as aquarium-floor caustics, not fading ovals.
  *
  * Draw order:
  *   drawCausticsBackground()   — after '#0a0a12' base fill, before fluid/terrain
  *   drawCausticsFloorEffects() — after terrain render, before enemies/player
+ *
+ * Tunables (top of this file):
+ *   CAUSTICS_LIGHT_SCALE    — offscreen buffer resolution relative to main canvas
+ *   CAUSTICS_BLUR_PX        — CSS blur applied when compositing light buffer
+ *   CAUSTICS_COMPOSITE_ALPHA — opacity of the full light buffer on main canvas
  */
 
 import { getCausticsTextureTile, getCausticsTextureTile2 } from './caustics-texture';
+
+// ── Tunables ───────────────────────────────────────────────────────────────────
+
+/** Resolution of the offscreen caustic light buffer relative to the main canvas.
+ *  0.5 = half-res → natural bilinear upscale provides inherent softness + perf. */
+const CAUSTICS_LIGHT_SCALE    = 0.5;
+
+/** CSS blur applied when compositing the light buffer back to the main canvas (px).
+ *  Adds soft glow around caustic filaments.  Set to 0 to rely on upscale alone. */
+const CAUSTICS_BLUR_PX        = 6;
+
+/** Opacity of the composited light buffer over the scene.  0.6–0.8 is typical. */
+const CAUSTICS_COMPOSITE_ALPHA = 0.72;
+
+// ── Offscreen light buffer ────────────────────────────────────────────────────
+// Allocated once; re-created only when the main canvas size changes.
+// All caustic tile layers are drawn into this buffer first.  The buffer is then
+// composited onto the main canvas with screen blending + optional CSS blur.
+
+let _lightCanvas: HTMLCanvasElement | null = null;
+let _lightCtx:    CanvasRenderingContext2D | null = null;
+let _lightW       = 0;   // current light-buffer width  (in light-buffer pixels)
+let _lightH       = 0;   // current light-buffer height (in light-buffer pixels)
+let _lightMainW   = 0;   // main-canvas width that generated the current buffer
+let _lightMainH   = 0;   // main-canvas height that generated the current buffer
 
 // ── Pre-baked bubble data ──────────────────────────────────────────────────────
 
@@ -72,7 +113,7 @@ const _SHIMMER_COLOR = '#6ad8e0';
 
 // ── CanvasPattern cache ────────────────────────────────────────────────────────
 // Patterns are cached and reused across frames to avoid per-frame allocations.
-// Invalidated when the rendering context or source tiles change.
+// Invalidated when the light-buffer context or source tiles change.
 // _patternTileA — tile used for Layers A and C (variant A).
 // _patternTileB — tile used for Layer B (variant B, distinct Voronoi topology).
 
@@ -173,9 +214,13 @@ export function drawCausticsBackground(
  * Draw the animated caustic light network, shimmer bands, and rising bubbles
  * on top of the terrain but below enemies and the player.
  *
+ * Caustic layers are rendered into a half-resolution offscreen light buffer
+ * first, then composited onto the main canvas with 'screen' blending and a
+ * soft CSS blur.  This produces smooth, light-like caustic shimmer rather
+ * than crisp, hard-edged patterns.
+ *
  * The main visual identity comes from three drifting layers of a cached Voronoi
- * caustic texture composited with 'screen' blending — not from alpha-pulsing
- * ovals or simple sine-wave bands.
+ * caustic texture — not from alpha-pulsing ovals or simple sine-wave bands.
  *
  * Call after terrain rendering and before the first enemy draw call.
  */
@@ -187,7 +232,46 @@ export function drawCausticsFloorEffects(
   lowGraphics: boolean,
 ): void {
   const tS = nowMs * 0.001;
-  _drawCausticsTileLayers(canvas2d, widthPx, heightPx, tS, lowGraphics);
+
+  // ── Acquire / resize the offscreen light buffer ──────────────────────────
+  const scale   = lowGraphics ? 1.0 : CAUSTICS_LIGHT_SCALE;  // low mode: no downscale
+  const lw = Math.max(1, Math.round(widthPx  * scale));
+  const lh = Math.max(1, Math.round(heightPx * scale));
+
+  if (!_lightCanvas || _lightMainW !== widthPx || _lightMainH !== heightPx) {
+    if (!_lightCanvas) {
+      _lightCanvas = document.createElement('canvas');
+    }
+    _lightCanvas.width  = lw;
+    _lightCanvas.height = lh;
+    _lightCtx = _lightCanvas.getContext('2d');
+    _lightW   = lw;
+    _lightH   = lh;
+    _lightMainW = widthPx;
+    _lightMainH = heightPx;
+    // Invalidate cached patterns — they are bound to the old context.
+    _patternCtx = null;
+  }
+
+  if (!_lightCtx) return;
+
+  // Clear the light buffer each frame (it is not accumulated).
+  _lightCtx.clearRect(0, 0, _lightW, _lightH);
+
+  // ── Render caustic tile layers into the light buffer ─────────────────────
+  _drawCausticsTileLayers(_lightCtx, _lightW, _lightH, tS, lowGraphics);
+
+  // ── Composite light buffer onto the main canvas ──────────────────────────
+  canvas2d.save();
+  canvas2d.globalCompositeOperation = 'screen';
+  canvas2d.globalAlpha = lowGraphics ? 0.45 : CAUSTICS_COMPOSITE_ALPHA;
+  if (!lowGraphics && CAUSTICS_BLUR_PX > 0) {
+    canvas2d.filter = `blur(${CAUSTICS_BLUR_PX}px)`;
+  }
+  canvas2d.drawImage(_lightCanvas, 0, 0, widthPx, heightPx);
+  canvas2d.restore();
+
+  // ── Intensity mask + shimmer + bubbles drawn directly on main canvas ─────
   _drawCausticsIntensityMask(canvas2d, widthPx, heightPx);
   if (!lowGraphics) {
     _drawCausticsShimmer(canvas2d, widthPx, heightPx, tS);
@@ -198,7 +282,8 @@ export function drawCausticsFloorEffects(
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 /**
- * Draw the caustic light network using drifting CanvasPattern layers.
+ * Render caustic tile layers into the provided context (the offscreen light
+ * buffer in normal operation; the main canvas in low-graphics mode).
  *
  * Layer A and C use tile variant A; Layer B uses tile variant B (distinct
  * Voronoi topology) to reduce the wallpaper-like repeating appearance.
@@ -209,15 +294,15 @@ export function drawCausticsFloorEffects(
  * setTransform() is called with reusable DOMMatrix instances (_matA/_matB/_matC),
  * mutating only the fields that change per frame — no new object literals.
  *
- * Layer parameters (drift speeds in canvas pixels per second):
+ * Layer parameters (drift speeds in source-tile pixels per second):
  *   A: scale 1.00×, (+8.5, +6.0) px/s — main caustic weave  [tile variant A]
  *   B: scale 1.28×, (−6.2, +4.5) px/s + slow rotation       [tile variant B, high only]
  *   C: scale 0.78×, (+4.2, −5.8) px/s — finer detail        [tile variant A, high only]
  */
 function _drawCausticsTileLayers(
-  canvas2d: CanvasRenderingContext2D,
-  widthPx: number,
-  heightPx: number,
+  ctx: CanvasRenderingContext2D,
+  bufW: number,
+  bufH: number,
   tS: number,
   lowGraphics: boolean,
 ): void {
@@ -227,11 +312,11 @@ function _drawCausticsTileLayers(
 
   // Refresh cached CanvasPattern objects if the context or source tiles changed.
   // In low-graphics mode tileB is null, so only _patternA is needed.
-  if (_patternCtx !== canvas2d || _patternTileA !== tileA || _patternTileB !== tileB) {
-    _patternA = canvas2d.createPattern(tileA, 'repeat');
-    _patternB = tileB ? canvas2d.createPattern(tileB, 'repeat') : null;
-    _patternC = lowGraphics ? null : canvas2d.createPattern(tileA, 'repeat');
-    _patternCtx  = canvas2d;
+  if (_patternCtx !== ctx || _patternTileA !== tileA || _patternTileB !== tileB) {
+    _patternA = ctx.createPattern(tileA, 'repeat');
+    _patternB = tileB ? ctx.createPattern(tileB, 'repeat') : null;
+    _patternC = lowGraphics ? null : ctx.createPattern(tileA, 'repeat');
+    _patternCtx  = ctx;
     _patternTileA = tileA;
     _patternTileB = tileB;
   }
@@ -240,16 +325,16 @@ function _drawCausticsTileLayers(
   const tileW = tileA.width;
   const tileH = tileA.height;
 
-  canvas2d.save();
-  canvas2d.globalCompositeOperation = 'screen';
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
 
   // ── Layer A: main caustic weave, slow rightward + downward drift ──────────
   _matA.e = (tS * 8.5) % tileW;
   _matA.f = (tS * 6.0) % tileH;
   _patternA.setTransform(_matA);
-  canvas2d.globalAlpha = lowGraphics ? 0.33 : 0.40;
-  canvas2d.fillStyle = _patternA;
-  canvas2d.fillRect(0, 0, widthPx, heightPx);
+  ctx.globalAlpha = lowGraphics ? 0.55 : 0.70;
+  ctx.fillStyle = _patternA;
+  ctx.fillRect(0, 0, bufW, bufH);
 
   if (!lowGraphics) {
     if (_patternB) {
@@ -267,9 +352,9 @@ function _drawCausticsTileLayers(
       _matB.c = -sinRB; _matB.d = cosRB;
       _matB.e = txB;    _matB.f = tyB;
       _patternB.setTransform(_matB);
-      canvas2d.globalAlpha = 0.28;
-      canvas2d.fillStyle = _patternB;
-      canvas2d.fillRect(0, 0, widthPx, heightPx);
+      ctx.globalAlpha = 0.50;
+      ctx.fillStyle = _patternB;
+      ctx.fillRect(0, 0, bufW, bufH);
     }
 
     if (_patternC) {
@@ -282,13 +367,13 @@ function _drawCausticsTileLayers(
       _matC.e = txC;
       _matC.f = tyC;
       _patternC.setTransform(_matC);
-      canvas2d.globalAlpha = 0.18;
-      canvas2d.fillStyle = _patternC;
-      canvas2d.fillRect(0, 0, widthPx, heightPx);
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = _patternC;
+      ctx.fillRect(0, 0, bufW, bufH);
     }
   }
 
-  canvas2d.restore();
+  ctx.restore();
 }
 
 /**
