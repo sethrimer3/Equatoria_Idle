@@ -402,9 +402,9 @@ function drawRingBody(
 
   ctx.save();
 
-  // Void core — a dark area so the accumulated field strands appear to orbit
-  // something rather than dissolving into the background.
-  ctx.globalAlpha = 0.5;
+  // Void core — very faint dark area so accumulated strands appear to orbit something.
+  // Keep alpha minimal so the BinaryRing field is not obscured.
+  ctx.globalAlpha = 0.28;
   ctx.fillStyle   = '#000';
   ctx.beginPath();
   ctx.arc(enemy.x, enemy.y, ringR * 1.2, 0, TWO_PI);
