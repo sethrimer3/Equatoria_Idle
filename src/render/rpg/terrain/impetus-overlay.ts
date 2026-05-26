@@ -97,6 +97,30 @@ const _BG_ALPHA_LOW  = 0.50;  // raised from 0.38 — more visible on mobile
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
+ * Returns obstacle circles for the static base positions of all asteroids.
+ * Call this once when building the Impetus nav grid; pass the result to
+ * `applyCircleSoftObstacles`.
+ *
+ * The asteroid visuals drift slowly over time, but their base positions are
+ * deterministic and represent their approximate on-screen locations for most
+ * of the wave, making them a good nav-grid reference.
+ *
+ * @param widthPx  Arena width in pixels.
+ * @param heightPx Arena height in pixels.
+ */
+export function getImpetusAsteroidObstacles(
+  widthPx: number,
+  heightPx: number,
+): ReadonlyArray<{ x: number; y: number; radiusPx: number }> {
+  return _ASTEROID_DATA.map((row) => ({
+    x: row[0] * widthPx,
+    y: row[1] * heightPx,
+    // size field (index 5) is the polygon radius; double it for nav-grid clearance.
+    radiusPx: row[5] * 2.5,
+  }));
+}
+
+/**
  * Returns a short diagnostic string describing the current Impetus rendering
  * mode.  Used by the dev overlay in rpg-render-draw.ts.
  */

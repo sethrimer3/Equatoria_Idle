@@ -62,6 +62,10 @@ import {
   createRpgPathState, computePathSteeredDirection, DEFAULT_REPATH_MS,
   type RpgPathState,
 } from './terrain/rpg-pathfinding';
+import {
+  computeVerdureWallRepulsion,
+  pushPointOutsideVerdureWall,
+} from './terrain/verdure-cave-walls';
 
 // ── Shared context interface ───────────────────────────────────────────────────
 
@@ -99,6 +103,8 @@ export interface RpgEnemyCtx {
   getTerrainState(): TopographicTerrainState | null;
   /** Returns the current navigation grid for pathfinding, or null if not built. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
+  /** Returns the Verdure cave wall state if in the Verdure zone, otherwise null. */
+  getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
 }
 
 // ── Shared terrain push-out helper ────────────────────────────────────────────
@@ -106,6 +112,8 @@ export interface RpgEnemyCtx {
 /** Reusable scratch objects to avoid allocations in push-out calls. */
 const _pushOutScratch = { x: 0, y: 0 };
 const _repForce = { x: 0, y: 0 };
+const _wallRepForce = { x: 0, y: 0 };
+const _wallPushScratch = { x: 0, y: 0 };
 
 /**
  * Applies soft terrain repulsion followed by a hard push-out fail-safe to an
@@ -150,6 +158,48 @@ export function applyEnemyTerrainPushOut(
       const dot = entity.vx * nx + entity.vy * ny;
       if (dot < 0) { entity.vx -= dot * nx; entity.vy -= dot * ny; }
     }
+  }
+}
+
+/**
+ * Applies soft Verdure cave-wall repulsion followed by a hard push-out
+ * fail-safe to an enemy entity.  Mirrors the player-movement wall handling
+ * in rpg-player-movement.ts.
+ *
+ * Call this every frame for every enemy when the Verdure zone is active.
+ *
+ * @param entity    Mutable enemy {x, y, vx, vy}.
+ * @param wallState Current Verdure cave wall state.
+ * @param halfSize  Half the enemy's collision radius (px).
+ */
+export function applyEnemyVerdureWallPushOut(
+  entity: { x: number; y: number; vx: number; vy: number },
+  wallState: import('./terrain/verdure-cave-walls').VerdureCaveWallState,
+  halfSize: number,
+): void {
+  // 1. Soft repulsion keeps enemies from hugging the wall boundary.
+  const wallDepth = computeVerdureWallRepulsion(wallState, entity.x, entity.y, 0.22, _wallRepForce);
+  if (wallDepth > 0) {
+    entity.vx += _wallRepForce.x;
+    entity.vy += _wallRepForce.y;
+    const wfl = Math.sqrt(_wallRepForce.x ** 2 + _wallRepForce.y ** 2) || 1;
+    const wnx = _wallRepForce.x / wfl;
+    const wny = _wallRepForce.y / wfl;
+    const wvd = entity.vx * wnx + entity.vy * wny;
+    if (wvd < 0) { entity.vx -= wvd * wnx; entity.vy -= wvd * wny; }
+  }
+
+  // 2. Hard fail-safe — snap out if still inside boundary.
+  if (pushPointOutsideVerdureWall(wallState, entity.x, entity.y, _wallPushScratch, halfSize + 2)) {
+    const wpdx = _wallPushScratch.x - entity.x;
+    const wpdy = _wallPushScratch.y - entity.y;
+    entity.x = _wallPushScratch.x;
+    entity.y = _wallPushScratch.y;
+    const wplen = Math.sqrt(wpdx * wpdx + wpdy * wpdy) || 1;
+    const wpnx = wpdx / wplen;
+    const wpny = wpdy / wplen;
+    const wvd2 = entity.vx * wpnx + entity.vy * wpny;
+    if (wvd2 < 0) { entity.vx -= wvd2 * wpnx; entity.vy -= wvd2 * wpny; }
   }
 }
 

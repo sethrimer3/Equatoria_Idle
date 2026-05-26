@@ -796,15 +796,18 @@
 - Species-specific: lunge (SandFish), dash+recovery (RubyFish), mine-drop (SunstoneFish), bolt-fire (SapphireFish), teleport (AmethystFish), armor cycling (DiamondFish).
 - Exports: `updateSandFishEnemies` through `updateDiamondFishEnemies`, `updateFishMines`, `updateFishSpikes`, `updateFishBolts`, `updateFishDecoys`.
 
-### src/render/rpg/rpg-enemy-updates.ts
+### src/render/rpg/rpg-enemy-updates.ts *(updated — build 169)*
 - 9 exported enemy update functions covering early-wave enemy types (~530 lines after build 123).
 - Covers: emerald, amber+shards, void.
 - Exports the `RpgEnemyCtx` interface: a minimal shared-reference object (`mote`, `dim`, `fluid`,
   `hitEffects`, `shotLines`, `dealDamageToPlayer`, `dealDamageToPlayerKnockback`, `clampEnemyToBounds`,
-  `getTerrainState`, `getNavGrid`).
+  `getTerrainState`, `getNavGrid`, and (build 169) optional `getVerdureCaveWallState`).
 - **Build 123:** `updateVoidEnemies` uses A* pathfinding (via `computePathSteeredDirection` from
   `rpg-pathfinding.ts`) instead of the local `terrainAwareDirection` angular probe.  Per-enemy path
   states stored in a `WeakMap<VoidEnemy, RpgPathState>` for automatic GC on despawn.
+- **Build 169:** `applyEnemyVerdureWallPushOut(entity, wallState, halfSize)` — new export; applies
+  soft Verdure wall repulsion (velocity nudge) + hard snap-out fail-safe.  Called centrally from
+  `rpg-render-update.ts` for all enemy arrays when Verdure zone is active.
 - `applyEnemyTerrainPushOut` and `terrainAwareDirection` remain as exported helpers used by
   mid/adv update files (push-out) and as a documented fallback steering option.
 - `dim: { w, h }` is a live object kept in sync with `widthPx`/`heightPx` on each resize; no getter indirection needed.
@@ -1246,11 +1249,15 @@
   (the outermost level's polylines, used for collision).
 - Computed once per wave at generation time; zero per-frame cost.
 
-### src/render/rpg/terrain/rpg-pathfinding.ts (NEW, build 123)
+### src/render/rpg/terrain/rpg-pathfinding.ts *(updated — build 169)*
 - Grid-based A* pathfinder for RPG entity navigation around topographic terrain obstacles.
 - **Grid:** `buildRpgNavigationGrid(terrain, widthPx, heightPx, cellSizePx?)` — builds a
   flat `Uint8Array` blocked/walkable grid.  Cell is blocked if its centre is inside terrain
   or a 12 px clearance circle overlaps terrain.  20 px default cell size.
+- **Soft obstacles (build 169):** `RpgNavGrid` now includes `moveCost: Uint8Array` (all-1s by
+  default).  `applyCircleSoftObstacles(navGrid, circles)` marks cells within each circle as
+  cost=`SOFT_OBSTACLE_COST` (8).  A* multiplies edge cost by `moveCost[nidx]`, so soft cells
+  are 8× more expensive but never fully blocked.  Used for Impetus asteroids.
 - **A\*:** `findRpgPath(navGrid, startX, startY, goalX, goalY, terrain)` — 8-directional,
   no diagonal corner-cutting.  Blocked start/goal cells are snapped to nearest walkable.
   Result is post-processed with a line-of-sight funnel to collapse straight segments.
@@ -1263,7 +1270,8 @@
 - **Repath throttling:** player every ~300 ms (`PLAYER_REPATH_MS`); enemies every ~600 ms
   (`DEFAULT_REPATH_MS`) ±20 % jitter.  Stuck detection forces an earlier repath.
 - **Debug:** `drawRpgPathfindingDebug(ctx, enabled, navGrid, playerPath, enemyPaths)` —
-  draws blocked cells in translucent red + paths in cyan/orange.  No-op when disabled.
+  draws blocked cells in translucent red, soft-obstacle cells in yellow, paths in cyan/orange.
+  No-op when disabled.
 
 ### src/render/rpg/terrain/caustics-texture.ts  *(new — build 149, updated build 150)*
 - Procedural Voronoi/Worley F2−F1 caustic texture generator and cache.
@@ -1303,9 +1311,9 @@
 - `renderSeafloorTerrain(ctx, data, growth01, lowGraphics)` — wide soft body stroke + narrow teal crest highlight per ridge. Low-graphics mode halves ridge count and skips crest strokes.
 - Imported and dispatched by `topographic-terrain.ts` via `terrainKind === 'seafloorRidges'`.
 
-### src/render/rpg/terrain/impetus-overlay.ts
+### src/render/rpg/terrain/impetus-overlay.ts *(updated — build 169)*
 - Stateless Impetus-space overlay with deterministic starfield, nebula haze, gravity wells, and decorative asteroid drift.
-- Exports `drawImpetusBackground()` for the atmosphere pass, `drawImpetusFloorEffects()` for post-terrain space visuals, and `getImpetusDevLine(lowGraphics)` for the dev overlay.
+- Exports `drawImpetusBackground()` for the atmosphere pass, `drawImpetusFloorEffects()` for post-terrain space visuals, `getImpetusDevLine(lowGraphics)` for the dev overlay, and (build 169) `getImpetusAsteroidObstacles(widthPx, heightPx)` which returns obstacle circles for the 7 static asteroid base positions (used by `applyCircleSoftObstacles` in `rpg-render.ts`).
 - Low-graphics mode now renders a simplified two-ring gravity well (`_drawGravityWellsSimple()`) instead of skipping them entirely.
 - Star alpha boosted by 1.4× in low-graphics mode; background base alpha raised to 0.50.
 
@@ -1315,9 +1323,10 @@
 - Renders 7 plant types: vine, spiral, flower, leafy, thorn, fern, mushroom. Ferns have paired alternating leaflets with midrib lines; mushrooms have dome caps with bioluminescent glow and spots.
 - Targetable plants show a glow outline in high-graphics or a ring at the tip in low-graphics.
 
-### src/render/rpg/terrain/verdure-cave-walls.ts *(updated — build 164)*
-- Verdure-only cave wall system: deterministic inner-boundary depth generation, edge anchor-point precomputation, wall collision queries, soft repulsion, hard push-out, cached Voronoi wall textures, and dev debug draw.
-- Exports `generateVerdureCaveWalls`, `isPointInVerdureWall`, `pushPointOutsideVerdureWall`, `computeVerdureWallRepulsion`, `drawVerdureFloor`, `drawVerdureCaveWalls`, `drawVerdureWallDebug`, depth-sampling helpers (`sampleVerdureTopDepth`, `sampleVerdureBottomDepth`, `sampleVerdureLeftDepth`, `sampleVerdureRightDepth`), and `drawVerdureRimStrips`.
+### src/render/rpg/terrain/verdure-cave-walls.ts *(updated — build 169)*
+- Verdure-only cave wall system: deterministic inner-boundary depth generation, edge anchor-point precomputation, wall collision queries, soft repulsion, hard push-out, cached Voronoi wall textures, dev debug draw, and nav-grid integration.
+- Exports `generateVerdureCaveWalls`, `isPointInVerdureWall`, `pushPointOutsideVerdureWall`, `computeVerdureWallRepulsion`, `drawVerdureFloor`, `drawVerdureCaveWalls`, `drawVerdureWallDebug`, depth-sampling helpers (`sampleVerdureTopDepth`, `sampleVerdureBottomDepth`, `sampleVerdureLeftDepth`, `sampleVerdureRightDepth`), `drawVerdureRimStrips`, and (build 169) `applyVerdureWallsToNavGrid(state, navGrid)`.
+- **Build 169 changes**: `_buildEdgePoints()` suppresses top/bottom edge anchors within 80 px of canvas corners, preventing dual-strip overlap in all four corners. `applyVerdureWallsToNavGrid` marks nav-grid cells inside the wall band as `blocked=1`, using the same spatial query as player/enemy collision.
 - `drawVerdureFloor` and `drawVerdureCaveWalls` are used on elite waves (multiples of 10) only; other waves use `verdure-segmented-surface.ts`.
 - Both `textureCanvas` and `floorTextureCanvas` are built lazily and cached by seed + canvas size.
 
@@ -1407,7 +1416,7 @@
 - Exports `createCachedLuckPercentGetter(rpgSimState)` (XP-change-based luck cache), `findEquippedWeaponIdByEffect(effectKind, equippedWeaponIds)`, and `clampEnemyToBounds(enemy, widthPx, heightPx)`.
 - Contains no render-loop ownership state; `rpg-render.ts` remains the orchestrator and passes current values through.
 
-### src/render/rpg/rpg-render.ts
+### src/render/rpg/rpg-render.ts *(updated — build 169)*
 - Independent RPG canvas rendering system for the RPG tab (~990 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
 - Public interfaces `RpgRender` and `RpgRenderOptions` moved to `rpg-render-types.ts` and re-exported from this module.
@@ -1457,13 +1466,15 @@
 - Accepts `rpgSimState: RpgSimState` and optional `options: RpgRenderOptions` (`onLuckyMoteCollected` callback) as factory arguments.
 - Exports `createRpgRender(container, rpgSimState, options?)` factory and `RpgRender` / `RpgRenderOptions` interfaces.
 - **Game loop** — `update()` delegates to `runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled)` in `rpg-render-update.ts`; `updateCtx: RpgUpdateCtx` is built once at factory creation time and captures all mutable state through getters/setters.
+- **Build 169:** Fixed missing `getVerdureCaveWallState` in `movementCtx` (player wall collision was dead). Added `getVerdureCaveWallState` to both `movementCtx` and `enemyCtx`. `beginWaveTerrain` now applies Impetus asteroid soft obstacles and Verdure wall hard-blocks to the nav grid immediately after `buildRpgNavigationGrid`.
 
-### src/render/rpg/rpg-render-update.ts
+### src/render/rpg/rpg-render-update.ts *(updated — build 169)*
 - Per-frame simulation step extracted from `rpg-render.ts` (`~325 lines`).
 - Exports `runRpgUpdate(ctx, deltaMs, autoMoveEnabled)`, `RpgUpdateCtx` interface, and `RpgEnemyUpdateArrays` interface.
 - `RpgEnemyUpdateArrays` bundles all 31 enemy/projectile arrays into one typed object to avoid bloating `RpgUpdateCtx`.
 - `RpgUpdateCtx` exposes mutable closure variables through getters/setters so rpg-render.ts closures remain the single source of truth.
 - Runs all enemy type update functions, boss physics, weapon tick, lucky motes, achievement flag tracking, HP regen, and death check; then calls `drawRpgFrame`.
+- **Build 169:** Centralized Verdure wall push-out pass runs after all enemy updates when `getVerdureCaveWallState?.()` is non-null. Iterates all 26 mobile enemy arrays via `_applyVerdureWallPassToArray` helper and calls `applyEnemyVerdureWallPushOut` on each entity.
 
 ### src/render/rpg/rpg-render-draw.ts
 - Per-frame canvas draw function extracted from `rpg-render.ts`.
