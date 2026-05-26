@@ -29,9 +29,9 @@ const CFG = {
   medPrewarmSteps:         20,
   lowPrewarmSteps:          8,
 
-  fadeAlpha:               0.045,  // black overlay per frame (slow fade = accumulation)
-  lightTrailAlpha:         0.032,  // strand stroke alpha, Age of Light
-  darkTrailAlpha:          0.025,  // strand stroke alpha, Age of Darkness
+  fadeAlpha:               0.038,  // black overlay per frame (slow fade = accumulation)
+  lightTrailAlpha:         0.045,  // strand stroke alpha, Age of Light
+  darkTrailAlpha:          0.040,  // strand stroke alpha, Age of Darkness
 
   ringRadiusRatio:         0.078,  // ring spawn radius / min(IW, IH)
   ringSpawnJitter:         4.0,    // ± internal pixels at spawn
@@ -63,15 +63,15 @@ const CFG = {
 
 const N_BUCKETS = 6;
 
-// Age of Light: pale ivory, warm white, soft yellow, green-yellow, faint pink, cyan-white
-const LIGHT_H = new Float32Array([50,  45,  58,  68,  40, 192]);
-const LIGHT_S = new Float32Array([38,  22,  52,  48,  58,  22]);
-const LIGHT_L = new Float32Array([93,  97,  83,  72,  89,  60]);
+// Age of Light: vibrant rainbow — red, orange, yellow-green, cyan, blue, magenta
+const LIGHT_H = new Float32Array([  0,  30,  90, 180, 240, 300]);
+const LIGHT_S = new Float32Array([ 88,  92,  86,  82,  88,  92]);
+const LIGHT_L = new Float32Array([ 62,  64,  58,  56,  60,  62]);
 
-// Age of Darkness: dim violet, charcoal-magenta, brown-purple, muted ember, dark rose, deep blue-purple
-const DARK_H  = new Float32Array([272, 292, 312, 282, 258, 300]);
-const DARK_S  = new Float32Array([38,  46,  36,  26,  22,  42]);
-const DARK_L  = new Float32Array([20,  24,  21,  18,  15,  26]);
+// Age of Darkness: deep vibrant spectrum — violet, fuchsia, teal, emerald, sapphire, rose
+const DARK_H  = new Float32Array([260, 310, 180, 150, 220, 340]);
+const DARK_S  = new Float32Array([ 82,  78,  72,  76,  80,  74]);
+const DARK_L  = new Float32Array([ 44,  40,  42,  44,  40,  42]);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
