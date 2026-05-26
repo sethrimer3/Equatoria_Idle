@@ -336,16 +336,22 @@
 - Wired in `rpg-render.ts → drawZoneBgOverlay` for the `'true'` subzone.
 
 ### src/render/background/zenith-binary-horizon.ts
-- Reworked Binary Horizon background for the Zenith sublevel (build 158).
+- Reworked Binary Horizon background for the Zenith sublevel (build 160).
 - Exports `ZenithBinaryHorizon` interface and `createZenithBinaryHorizon({ quality })` factory.
-- **Randomised edge-to-edge divider line**: regenerated each wave from two perimeter points; line is validated with a Shoelace-based polygon area test so both sides have ≥ 10% of the canvas area.
-- Path-accumulation particle system: particles evolve from the line using normal-push, sinusoidal tangential drift, and curl perturbation; trails accumulate on a persistent offscreen canvas.
-- Seeded PRNG (mulberry32) and geometry helpers (`samplePerimeter`, `splitAreaRatio`, `generateValidLine`) for deterministic per-wave line selection.
-- Two alternating colour ages (light: cyan/teal/blue; dark: magenta/violet); cycle timer switches between them every 5–11 s.
-- Bounded prewarm pass (120 / 35 steps) on wave reseed to avoid empty first frame.
-- Low-graphics mode: 1600 particles (vs 5200), 0.35× internal scale (vs 0.5×), 35 prewarm steps.
-- `update(now, w, h, waveNumber?)`: auto-reseeds when `waveNumber` changes.
-- Wired in `rpg-render.ts → drawZoneBgOverlay` for non-Nadir, non-True, non-BinaryRing Horizon backgrounds.
+- **Wave presentation with cut sequence**: each wave generates 1–5 sequential cut effects; each cut animates from one edge-perimeter point to another, leaves a persistent source line, and triggers screen shake.
+- **Phase state machine**: `'cutting'` → `'active'` → `'collapsing'` → `'cleared'`.
+  - `cutting`: cut animations play sequentially; particles begin emerging from completed source lines.
+  - `active`: normal path-accumulation from all completed source lines.
+  - `collapsing`: particles converge toward source lines with stronger buffer fade; lines fade at the end.
+  - `cleared`: offscreen canvas is blank; waiting for the next `beginZenithBinaryHorizonWave` call.
+- **Multiple source lines** (up to 5): all stored in flat `Float32Array`s; each particle carries a `psrcLine` index. Multi-line similarity rejection ensures distinct cut angles/positions.
+- **Geometry rule**: each cut line leaves ≥ 10% of the canvas on both sides (Shoelace area test; same rule as before but applied to all 1–5 lines).
+- **Screen shake**: `triggerShake(amplitude)` → decaying cosine oscillator on `shakeX/shakeY`; exposed via `getShakeOffset()`. Applied in `rpg-render-draw.ts` as a canvas translate.
+- **Lifecycle API**: `beginZenithBinaryHorizonWave(waveNumber)`, `endZenithBinaryHorizonWave()`, `setScreenShakeEnabled(enabled)`.
+- `update(now, w, h, waveNumber?)`: initialises on first call; does NOT auto-reseed on wave change (explicit lifecycle calls are required).
+- Seeded PRNG: mulberry32; deterministic cut count and line placement per wave number.
+- Low-graphics: 1600 particles, 0.35× scale, 35 prewarm, shorter collapse, no cut-head glow.
+- Wired in `rpg-render.ts → drawZoneBgOverlay` + `beginWaveTerrain` / `setIsInterWave` callbacks.
 
 ### src/render/background/zenith-binary-ring-background.ts
 - Path-traced Binary Ring encounter background for Zenith elite fights.
@@ -1411,11 +1417,11 @@
 - Per-frame canvas draw function extracted from `rpg-render.ts`.
 - Exports `RpgDrawCtx` interface, `RpgDrawFrameState` interface, `createRpgDrawFrameState()`, `drawRpgFrame(ctx, state, nowMs)`, and `setAllDrawLowGraphics(enabled)`.
 - `drawRpgFrame` renders one complete frame: background, zone overlays (Caustics, Verdure, Impetus, Horizon substrate hook), terrain, floor effects, enemies, boss, particles, player mote, weapon effects, and UI overlays.
-- `shouldDrawPersistentTopographySunlight(activeZoneId, terrainState)` helper gates the topography sunlight fill — skips for Impetus, Caustics, Verdure, Horizon, and basalt terrain.
-- Fluid render is skipped for Impetus zone to avoid obscuring the starfield.
-- `RpgDrawCtx` includes optional `drawZoneBgOverlay()` so `rpg-render.ts` can lazily draw Horizon substrate backgrounds.
-- `setAllDrawLowGraphics` forwards the low-graphics flag to all 11 draw-side modules in a single call.
-- Dev overlay (`drawRpgViewportDiagnostics`) reports: zone, subzone, terrainKind, lowGraphics, bg route, sunlightWash, and Impetus-specific line.
+- **Screen shake**: reads `ctx.getZenithShakeOffset?.()` at the top of each frame; if non-zero, wraps all scene drawing in `canvas2d.save() / translate(shakeX, shakeY) / restore()`.
+- `shouldDrawPersistentTopographySunlight(activeZoneId, terrainState)` helper gates the topography sunlight fill.
+- `RpgDrawCtx` includes optional `drawZoneBgOverlay()` and `getZenithShakeOffset?()` for Horizon substrate + shake.
+- `setAllDrawLowGraphics` forwards the low-graphics flag to all draw-side modules.
+- Dev overlay (`drawRpgViewportDiagnostics`) reports: zone, subzone, terrainKind, lowGraphics, bg route, sunlightWash.
 
 ### src/render/rpg/rpg-death-restart.ts
 - Player death and level-restart lifecycle extracted from `rpg-render.ts` (~227 lines).

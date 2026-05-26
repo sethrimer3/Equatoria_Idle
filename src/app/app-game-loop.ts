@@ -120,6 +120,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     if (ctx.appState.activeTab === 'rpg') {
       const autoMove = ctx.uiPanels.rpgMenuPanel.isAutoMoveEnabled;
       ctx.uiPanels.rpgRender.setLowGraphicsMode(ctx.settings.graphicsQuality === 'low');
+      ctx.uiPanels.rpgRender.setScreenShakeEnabled(ctx.settings.isScreenShakeEnabled);
       ctx.uiPanels.rpgRender.setEnemyIndicatorStyle(ctx.settings.rpgEnemyIndicatorStyle);
       ctx.uiPanels.rpgRender.setNumberFormat(ctx.settings.numberFormat);
       ctx.uiPanels.rpgRender.setDevMode(ctx.settings.isDevMode);
