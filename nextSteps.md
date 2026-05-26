@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#157**
+Current build: **#160**
 
 ---
 
@@ -25,6 +25,61 @@ The following items are genuinely unresolved and ready for a future agent pass:
   grid.
 
 ---
+
+## Build #160 — Zenith Binary Horizon wave presentation overhaul
+
+### What was implemented
+
+1. **Files changed**
+   - `src/render/background/zenith-binary-horizon.ts` — full rewrite; ~1160 lines
+   - `src/render/rpg/rpg-render.ts` — lifecycle wiring + shake getter + `setScreenShakeEnabled`
+   - `src/render/rpg/rpg-render-types.ts` — added `setScreenShakeEnabled` to `RpgRender` interface
+   - `src/render/rpg/rpg-render-draw.ts` — added `getZenithShakeOffset?` to `RpgDrawCtx`; shake translate in `drawRpgFrame`
+   - `src/app/app-game-loop.ts` — forwards `isScreenShakeEnabled` setting to `rpgRender`
+   - `src/buildInfo.ts` — build number incremented to 160
+   - `file_index.md` — updated zenith-binary-horizon and rpg-render-draw entries
+
+2. **How cut lines are generated**
+   - `generateMultipleValidLines(IW, IH, waveSeed, count)` uses a single mulberry32 PRNG.
+   - Each candidate line is validated: both perimeter points, length ≥ 20% of min(IW,IH), Shoelace area ≥ 10% on both sides.
+   - Lines are similarity-rejected: if nearly parallel (|dot| > threshold) AND positionally close (centre-to-line distance < threshold), the candidate is discarded and another is tried.
+   - Up to `lineReseedMaxAttempts` (64) attempts per line; accepts fewer lines if budget runs out rather than stalling.
+
+3. **How the 1–5 cut sequence works**
+   - At `beginZenithBinaryHorizonWave(waveNumber)`: seeded PRNG determines `cutCount ∈ [1,5]`; `generateMultipleValidLines` generates the lines; they go into `pendingCuts`.
+   - `tickCutSequence(deltaMs)` advances one cut at a time: animates the head from A→B over `cutDurationMs`, then pauses for `gapDurationMs` before starting the next.
+   - When a cut completes: `storeLine` writes to flat typed arrays, `bakeCompletedLine` draws a faint accent on the offscreen canvas, and `triggerShake` fires.
+   - After the last cut, a short prewarm pass runs then the phase transitions to `'active'`.
+
+4. **How screen shake is triggered**
+   - Each completed cut calls `triggerShake(amplitude)` where amplitude is random in `[cutShakeMinAmplitude, cutShakeMaxAmplitude]`.
+   - `tickShake(deltaMs)` produces a decaying cosine oscillator: `amp * t * cos(freq * t * 2π)` for X, similar for Y with a different frequency.
+   - `getShakeOffset()` returns `{x, y}` in logical canvas pixels; applied in `drawRpgFrame` as a `canvas2d.translate(shakeX, shakeY)` wrapped in save/restore.
+   - Disabled when `setScreenShakeEnabled(false)` (forwarded from `settings.isScreenShakeEnabled`).
+
+5. **How particles emit from multiple source lines**
+   - Each particle carries a `psrcLine: Int8Array` index referencing its source line in flat arrays `lineAx/Ay/Bx/By/Dx/Dy/Nx/Ny`.
+   - `spawnParticle(i, scatter)` picks `li = random(0, completedLineCount-1)`, samples a point on that line, and stores `li` in `psrcLine[i]`.
+   - `tickParticlesActive` uses `signedDistToLine(x, y, li)` for per-particle line-local physics.
+
+6. **How the reverse collapse works**
+   - `endZenithBinaryHorizonWave()` sets phase to `'collapsing'` and respawns all particles near their source lines.
+   - `tickParticlesCollapse(dt, collapseRatio)` applies a strong attraction force toward the nearest point on each particle's source line.
+   - The offscreen fade alpha increases to `collapseFadeAlpha` (0.035 vs normal 0.007) so the accumulated field drains faster.
+   - Stroke alpha decreases linearly as `collapseRatio` rises (particles fade as they converge).
+   - Source-line accents fade when `collapseRatio > collapseLineFadeStartRatio` (0.72).
+   - When `collapseRatio ≥ 1`: `clearOffscreen()` wipes the buffer; phase → `'cleared'`.
+
+7. **How low graphics mode changes the effect**
+   - 1600 particles (vs 5200), 0.35× internal scale (vs 0.50×), 24 prewarm steps (vs 80).
+   - Collapse duration is 60% of normal.
+   - Cut-head glow is skipped entirely.
+   - Trail alpha is slightly higher to compensate for lower particle density.
+
+8. **`npm run build` status**: ✅ passes (see dist output above).
+
+---
+
 
 ## Build #154 — Zenith Binary Ring elite encounter
 

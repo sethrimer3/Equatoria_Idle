@@ -17,6 +17,8 @@ export interface RpgRender {
   respawnNow(): void;
   /** Enable/disable low graphics mode (skips glows and expensive effects). */
   setLowGraphicsMode(enabled: boolean): void;
+  /** Enable/disable screen shake (forwarded to Zenith Binary Horizon). */
+  setScreenShakeEnabled(enabled: boolean): void;
   /** Sets enemy indicator style for RPG enemies. */
   setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void;
   /** Launch a boss fight for the given 1-based bossId from the RPG menu. */

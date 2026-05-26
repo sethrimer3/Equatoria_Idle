@@ -844,13 +844,29 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getCurrentWave:          () => currentWave,
     setCurrentWave:          (w) => { currentWave = w; rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = w; syncNadirEliteWave(w); },
     getIsInterWave:          () => isInterWave,
-    setIsInterWave:          (b) => { isInterWave = b; },
+    setIsInterWave:          (b) => {
+      const prevIsInterWave = isInterWave;
+      isInterWave = b;
+      // Zenith Binary Horizon lifecycle: active→inter-wave means wave ended.
+      if (!prevIsInterWave && b &&
+          rpgSimState.activeZoneId === 'horizon' &&
+          rpgSimState.activeSubzoneId === 'zenith' &&
+          binaryRingEnemies.length === 0) {
+        zenithBinaryHorizon?.endZenithBinaryHorizonWave();
+      }
+    },
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
     enterBossWave:           () => bossWave.enterBossWave(),
     exitBossWave:            () => bossWave.exitBossWave(),
     beginWaveTerrain:        (wave) => {
       topographicTerrainState = beginWaveTerrain(wave, widthPx, heightPx, performance.now(), rpgSimState.activeZoneId);
       rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
+      // Zenith Binary Horizon lifecycle: trigger cut sequence for new wave.
+      if (rpgSimState.activeZoneId === 'horizon' &&
+          rpgSimState.activeSubzoneId === 'zenith' &&
+          binaryRingEnemies.length === 0) {
+        zenithBinaryHorizon?.beginZenithBinaryHorizonWave(wave);
+      }
     },
     beginTopographicTerrainShrink: () => {
       if (topographicTerrainState) beginTopographicTerrainShrink(topographicTerrainState, performance.now());
@@ -1322,6 +1338,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getNavGrid:                   () => rpgNavGrid,
     getPathfindingDebugEnabled:   () => _pathfindingDebugEnabled,
     drawZoneBgOverlay:            (c2d, w, h, nowMs) => drawZoneBgOverlay(c2d, w, h, nowMs),
+    getZenithShakeOffset:         () => {
+      if (rpgSimState.activeZoneId !== 'horizon' || rpgSimState.activeSubzoneId !== 'zenith') {
+        return { x: 0, y: 0 };
+      }
+      return zenithBinaryHorizon?.getShakeOffset() ?? { x: 0, y: 0 };
+    },
     getIsDevMode:                 () => _isDevMode,
     getCssDisplaySize:            () => ({ w: rpgCssW, h: rpgCssH }),
     getActiveZoneDisplayName:     () => getRpgZoneDisplayName(rpgSimState.activeZoneId),
@@ -1466,6 +1488,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       fluid.setLowGraphicsMode(enabled);
       setBossAttacksLowGraphics(enabled);
       setAllDrawLowGraphics(enabled);
+    },
+
+    setScreenShakeEnabled(enabled: boolean): void {
+      zenithBinaryHorizon?.setScreenShakeEnabled(enabled);
     },
 
     setEnemyIndicatorStyle(style: 'triangle' | 'outline' | 'off'): void {

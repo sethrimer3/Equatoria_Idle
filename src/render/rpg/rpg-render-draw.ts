@@ -275,6 +275,8 @@ export interface RpgDrawCtx {
   getPathfindingDebugEnabled(): boolean;
   /** Optional zone-specific stateful background draw (e.g. substrate for Horizon). */
   drawZoneBgOverlay?: (canvas2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number) => void;
+  /** Returns the current Zenith Binary Horizon screen-shake offset in logical px (0,0 when inactive). */
+  getZenithShakeOffset?(): { x: number; y: number };
 }
 
 // ── Small mutable state that persists across frames ───────────────────────────
@@ -414,6 +416,14 @@ export function drawRpgFrame(
   canvas2d.clearRect(0, 0, widthPx, heightPx);
   canvas2d.fillStyle = '#0a0a12';
   canvas2d.fillRect(0, 0, widthPx, heightPx);
+
+  // Apply Zenith Binary Horizon screen-shake offset (0,0 when inactive).
+  const shakeOff = ctx.getZenithShakeOffset?.() ?? { x: 0, y: 0 };
+  const hasShake = shakeOff.x !== 0 || shakeOff.y !== 0;
+  if (hasShake) {
+    canvas2d.save();
+    canvas2d.translate(shakeOff.x, shakeOff.y);
+  }
 
   // Zone atmosphere tints — rendered immediately after the background fill so
   // they sit behind fluid, terrain, and all gameplay elements.
@@ -659,6 +669,9 @@ export function drawRpgFrame(
   if (ctx.getIsDevMode()) {
     drawRpgViewportDiagnostics(canvas2d, widthPx, heightPx, ctx);
   }
+
+  // Close the screen-shake translate if one was opened.
+  if (hasShake) canvas2d.restore();
 }
 
 // ── Developer-mode viewport diagnostics ───────────────────────────────────────
