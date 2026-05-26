@@ -770,6 +770,32 @@
 - Has its own `isLowGraphicsMode` flag set via `setLowGraphicsMode()` (called through `rpg-enemy-draw.ts`'s `setLowGraphicsMode` which delegates here).
 - Imported directly by `rpg-render.ts` alongside `rpg-enemy-draw.ts`.
 
+### src/render/rpg/rpg-procedural-draw.ts  *(~567 lines after build 161)*
+- Canvas rendering for the 11 original procedural creature types (DustWisp through ShadowHand) plus PlantProjectile.
+- **Build 161:** Fish drawing (~400 lines) extracted to `rpg-procedural-fish-draw.ts`. All fish functions re-exported here for backward compat. `setProcLowGraphicsMode` now also delegates to `setFishDrawLowGraphics`.
+- Shared helpers: `applyGlow`, `clearGlow`, `hpFrac`, `drawHitFlash`, `drawHpBar` (private).
+- Orchestrator: `drawProceduralEnemies(canvas, ctx, nowMs)` — draws all 19 creature types + fish projectiles.
+- Exports: `drawDustWispEnemies` through `drawShadowHandEnemies`, `drawPlantProjectiles`, `setProcLowGraphicsMode`, plus all fish functions via re-export.
+
+### src/render/rpg/rpg-procedural-fish-draw.ts  *(new — build 161, ~467 lines)*
+- Canvas rendering for the 8 fish creature types (SandFish through DiamondFish) and fish projectiles/hazards (FishMine, FishSpike, FishBolt, FishDecoy).
+- Shared helpers duplicated from `rpg-procedural-draw.ts`: `applyGlow`, `clearGlow`, `hpFrac`, `drawHitFlash`, `drawHpBar`.
+- Core silhouette renderer: `drawProceduralFishSilhouette` — swim-bend via power-curve, pectoral fins, tail fan, optional diamond armor facets, glow.
+- Exports: `drawSandFishEnemies` through `drawDiamondFishEnemies`, `drawFishMines`, `drawFishSpikes`, `drawFishBolts`, `drawFishDecoys`, `setFishDrawLowGraphics`.
+
+### src/render/rpg/rpg-procedural-update.ts  *(~462 lines after build 161)*
+- Per-frame update logic for the 11 original procedural creature types + PlantProjectiles.
+- **Build 161:** Fish update logic (~471 lines) extracted to `rpg-procedural-fish-update.ts`. All fish functions re-exported here for backward compat.
+- Shared helpers: `patrolStep`, `pursueStep`, `contactDamage` (private).
+- Orchestrator: `updateProceduralEnemies(arrays, ctx, deltaMs)` — builds shared school list and delegates to all creature update functions.
+- Exports: `updateDustWispEnemies` through `updateShadowHandEnemies`, `updatePlantProjectiles`, plus all fish update functions via re-export.
+
+### src/render/rpg/rpg-procedural-fish-update.ts  *(new — build 161, ~522 lines)*
+- Per-frame update logic for the 8 fish creature types and fish-related projectiles/hazards.
+- Core movement: `swimSchoolStep` — Boids-style schooling with separation, alignment, cohesion, player-seek, edge-avoidance, and terrain-anticipation probes.
+- Species-specific: lunge (SandFish), dash+recovery (RubyFish), mine-drop (SunstoneFish), bolt-fire (SapphireFish), teleport (AmethystFish), armor cycling (DiamondFish).
+- Exports: `updateSandFishEnemies` through `updateDiamondFishEnemies`, `updateFishMines`, `updateFishSpikes`, `updateFishBolts`, `updateFishDecoys`.
+
 ### src/render/rpg/rpg-enemy-updates.ts
 - 9 exported enemy update functions covering early-wave enemy types (~530 lines after build 123).
 - Covers: emerald, amber+shards, void.
@@ -1089,23 +1115,13 @@
 ### src/render/rpg/terrain/topographic-terrain.ts
 - Self-contained seeded terrain orchestrator for RPG waves. Now supports deterministic
   biome scheduling plus multiple terrain variants behind one collision/render API.
-- **Build 147+:** All four terrain collision helpers (`isPointInsideTopographicTerrain`,
-  `circleIntersectsTopographicTerrain`, `segmentIntersectsTopographicTerrain`,
-  `terrainFirstIntersectionT`) and `signedDistanceToTerrainBoundary` now handle
-  `seafloorRidges` via capsule math. Added private `_pointInCapsule()` and
-  `_segmentIntersectsCapsule()` helpers. `terrainFirstIntersectionT` uses a 5 px step-scan
-  for ray-vs-capsule (accuracy ±5 px; documented decision).
+- **Build 161:** Collision helpers extracted to `topographic-terrain-collision.ts`.
+  All public collision API is re-exported from this file via `export * from './topographic-terrain-collision'`
+  so existing consumers are unaffected. File reduced from ~1832 to ~963 lines.
+- **Build 147+:** All four terrain collision helpers and `signedDistanceToTerrainBoundary` now handle
+  `seafloorRidges` via capsule math.
 - **Build 146+:** `RpgTerrainKind = 'none' | 'topographic' | 'recursiveSquares' | 'basalt' | 'seafloorRidges' | 'reserved4' | 'reserved5'`.
-  `'seafloorRidges'` is the new dedicated Caustics terrain kind, dispatching to `seafloor-terrain.ts`.
-  `TopographicTerrainState` now includes an optional `seafloor?: SeafloorTerrainData` field.
-  `renderTopographicTerrain()` accepts an optional `lowGraphics?` 5th parameter.
-- **Build 125+:** `getTerrainKindForWave(waveNumber, isBossWave)` assigns 20-wave biome slots inside each
-  100-wave block and returns `'none'` for boss waves. `TopographicTerrainState` now includes
-  `terrainKind`, `squareNodes`, `squareMaxDepth`, and optional `basalt` data.
-- `beginWaveTerrain()` now returns `TopographicTerrainState | null`, dispatches deterministic
-  terrain generation by active zone, and falls back to the classic wave-cycle only for unknown
-  profiles. Euhedral: recursive squares or basalt. Impetus and Verdure: null. Caustics: seafloorRidges.
-- Exports `getTerrainKindForZone(zoneId, seed)` for dev-overlay routing diagnostics.
+- **Build 125+:** `getTerrainKindForWave(waveNumber, isBossWave)` assigns 20-wave biome slots.
 - Exports deterministic terrain generation/render helpers plus geometry helpers:
   `generateTopographicTerrain`, `beginWaveTerrain`, `updateTopographicTerrain`,
   `beginTopographicTerrainShrink`, `renderTopographicTerrain`,
@@ -1117,13 +1133,22 @@
 - `RING_POINTS = 64` — number of polygon points per ring and solid outer polygon.
 - Builds 2–5 irregular contour islands per wave using a seeded PRNG, palette cycling,
   staggered ring growth/shrink animation.
-- **Build 108+:** growing-phase animation uses opacity-only ring reveal (no radial scale).
-  Shrinking phase retains the existing scale-down behavior.
-  Collision geometry is unchanged by this visual-only modification.
 - **Build 84+:** calls `buildMergedContours` from `topographic-terrain-field.ts` at
   generation time; `renderTopographicTerrain` draws merged scalar-field contours.
 - **Build 85+:** `lightCache: TopographyLightCache | null` on terrain state stores
   the baked lighting overlay.
+
+### src/render/rpg/terrain/topographic-terrain-collision.ts  *(new — build 161)*
+- Extracted from `topographic-terrain.ts`. Owns all spatial query functions for terrain:
+  point-inside, segment-intersection, circle-intersection, line-of-sight, ray-march,
+  solid-polygon export, signed-distance, push-out, and repulsion force.
+- Handles all terrain variants: `topographic`, `recursiveSquares`, `basalt`, `seafloorRidges`.
+- Exports: `isPointInsideTopographicTerrain`, `segmentIntersectsTopographicTerrain`,
+  `circleIntersectsTopographicTerrain`, `hasTopographicTerrainLineOfSight`,
+  `terrainFirstIntersectionT`, `getTopographicTerrainSolidPolygons`,
+  `signedDistanceToTerrainBoundary`, `pushPointOutsideTopographicTerrain`,
+  `computeTerrainRepulsionForce`.
+- All exported from `topographic-terrain.ts` via re-export; import from either path.
 
 ### src/render/rpg/terrain/recursive-square-terrain.ts  *(new — build 124)*
 - Generates and renders the `recursiveSquares` terrain variant.
