@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#151**
+Current build: **#153**
 
 ---
 
@@ -9,8 +9,8 @@ Current build: **#151**
 The following items are genuinely unresolved and ready for a future agent pass:
 
 - **Horizon True subzone** (`rpg-render.ts`, `rpg-zone-select.ts`): Currently shows the Zenith
-  substrate with a placeholder label. A distinct visual effect (and any mechanical changes) needs
-  to be designed and implemented.
+  Binary Horizon effect as a placeholder. A distinct visual effect (and any mechanical changes)
+  needs to be designed and implemented.
 
 - **Impetus gravity wells — gameplay force fields** (`impetus-overlay.ts`, enemy update code):
   Gravity wells are visual-only. Future pass: apply radial force to enemy and player positions
@@ -23,6 +23,43 @@ The following items are genuinely unresolved and ready for a future agent pass:
 - **Verdure rock collision** (`rpg-verdure-render.ts`, `rpg-pathfinding.ts`):
   Edge cave walls are visual-only. Future pass: integrate wall boundary polygons into the nav
   grid.
+
+---
+
+## Build #153 — Zenith Binary Horizon background effect
+
+### What was implemented
+
+- **`src/render/background/zenith-binary-horizon.ts`** (new file):
+  - "Binary Horizon" ambient background for the Zenith sublevel.
+  - Black void with a thin luminous horizontal horizon near the vertical centre.
+  - Dense faint particle trails originating from the horizon, growing upward/downward.
+  - Centre zone bright white/silver; outer regions graduate through cyan → teal → blue → violet → magenta.
+  - Animated with a deterministic curl-like flow field (superposed sine/cosine terms, no external libraries).
+  - Subtle bilateral symmetry with asymmetric perturbation to avoid perfect mirroring.
+  - Breathing intensity pulse on horizon line and central glow.
+  - Performance: offscreen canvas, preallocated `Float32Array`/`Uint8Array`, particle batching by colour bucket (8 state-changes per frame), quality-scaled internal resolution and particle count.
+
+- **`src/render/rpg/rpg-render.ts`** (updated):
+  - Replaced `zenithSubstrate: SubstrateEffect` with `zenithBinaryHorizon: ZenithBinaryHorizon`.
+  - `drawZoneBgOverlay` now uses Binary Horizon for `activeSubzoneId === 'zenith'` and `'true'`.
+  - Subzone-switch reset correctly nulls `zenithBinaryHorizon`.
+  - `createSubstrateEffect` import removed (only used for Zenith; Nadir substrate unchanged).
+
+- **`src/render/background/index.ts`** (updated): exports `ZenithBinaryHorizon` and `createZenithBinaryHorizon`.
+
+- **`src/buildInfo.ts`**: BUILD_NUMBER → 153.
+
+### How Zenith is detected
+
+`rpg-render.ts → drawZoneBgOverlay` checks `rpgSimState.activeZoneId === 'horizon'` and then `rpgSimState.activeSubzoneId !== 'nadir'` to select the Binary Horizon effect.
+
+### Performance controls
+
+Quality is set at instance creation time (inherits `isLowGraphicsMode` from `rpg-render.ts`):
+- **Low**: 110 particles, 0.032 fade, 0.5× resolution → very light.
+- **Medium**: 280 particles, 0.018 fade, 0.75× resolution.
+- **High**: 600 particles, 0.010 fade, full resolution.
 
 ---
 
