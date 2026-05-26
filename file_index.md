@@ -327,6 +327,17 @@
 - Nadir-specific internal constants, types, and helpers for `nadir-substrate-effect.ts`.
 - Currently matches `substrate-effect-internals.ts` exactly aside from the file header comment, so future tuning can diverge without affecting Zenith.
 
+### src/render/background/zenith-binary-horizon.ts
+- "Binary Horizon" ambient background for the Zenith sublevel.
+- Exports `ZenithBinaryHorizon` interface and `createZenithBinaryHorizon({ quality })` factory.
+- Persistent offscreen canvas; never cleared — faded each frame with a translucent black rect to create persistent trails.
+- Particle state in preallocated `Float32Array` / `Uint8Array`; zero per-frame heap allocation.
+- Particles batched by 8 colour buckets (white/silver → cyan → teal → blue → violet → magenta) for efficient drawing.
+- Flow field: curl-like sine/cosine superposition; more tangled near centre, calmer at edges.
+- Horizon line with luminous gradient; central radial glow with breathing pulse.
+- Internal resolution scaled per quality level; composited into RPG canvas via `drawImage`.
+- Wired in `rpg-render.ts → drawZoneBgOverlay` for `activeSubzoneId === 'zenith'` (and 'true' as placeholder).
+
 ### src/render/particles/particle-types.ts
 - All shared particle system interfaces and type aliases.
 - `EquatoriaParticle` — core particle interface with ring-buffer trail fields and capture state (`isCaptured`, `capturedById`, `particleId`).

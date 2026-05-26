@@ -144,7 +144,7 @@ import {
   type RpgNavGrid,
 } from './terrain/rpg-pathfinding';
 import { createRpgZoneSelectPanel } from './rpg-zone-select';
-import { createSubstrateEffect, type SubstrateEffect } from '../background/substrate-effect';
+import { createZenithBinaryHorizon, type ZenithBinaryHorizon } from '../background/zenith-binary-horizon';
 import { createNadirSubstrateEffect, type NadirSubstrateEffect } from '../background/nadir-substrate-effect';
 import { getRpgZoneDisplayName, type RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import {
@@ -194,8 +194,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }, (newSubzoneId) => {
     // Subzone selection — only meaningful for Horizon; safe to set for other zones too.
     rpgSimState.activeSubzoneId = newSubzoneId;
-    // Reset substrate instances so they rebuild with the correct effect.
-    zenithSubstrate = null;
+    // Reset background instances so they rebuild with the correct effect.
+    zenithBinaryHorizon = null;
     nadirSubstrate = null;
   });
   rpgArea.appendChild(zoneSelectPanel.element);
@@ -224,22 +224,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   // ── Euler fluid background ─────────────────────────────────────
   const fluid = createRpgFluid();
-  let zenithSubstrate: SubstrateEffect | null = null;
+  let zenithBinaryHorizon: ZenithBinaryHorizon | null = null;
   let nadirSubstrate: NadirSubstrateEffect | null = null;
 
   function drawZoneBgOverlay(c2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number): void {
     if (rpgSimState.activeZoneId !== 'horizon') return;
     const isNadir = rpgSimState.activeSubzoneId === 'nadir';
-    // 'true' subzone: use zenith substrate as placeholder until it has its own effect.
-    // TODO: implement distinct 'true' substrate when the effect is designed.
     if (isNadir) {
       if (!nadirSubstrate) nadirSubstrate = createNadirSubstrateEffect({ quality: isLowGraphicsMode ? 'low' : 'medium' });
       nadirSubstrate.update(nowMs, w, h);
       nadirSubstrate.draw(c2d);
     } else {
-      if (!zenithSubstrate) zenithSubstrate = createSubstrateEffect({ quality: isLowGraphicsMode ? 'low' : 'medium' });
-      zenithSubstrate.update(nowMs, w, h);
-      zenithSubstrate.draw(c2d);
+      // Zenith subzone uses the Binary Horizon effect.
+      // 'true' subzone also uses it as a placeholder until it has its own distinct effect.
+      if (!zenithBinaryHorizon) zenithBinaryHorizon = createZenithBinaryHorizon({ quality: isLowGraphicsMode ? 'low' : 'medium' });
+      zenithBinaryHorizon.update(nowMs, w, h);
+      zenithBinaryHorizon.draw(c2d);
     }
   }
 
