@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#160**
+Current build: **#161**
 
 ---
 
@@ -23,6 +23,41 @@ The following items are genuinely unresolved and ready for a future agent pass:
 - **Verdure rock collision** (`rpg-verdure-render.ts`, `rpg-pathfinding.ts`):
   Edge cave walls are visual-only. Future pass: integrate wall boundary polygons into the nav
   grid.
+
+---
+
+## Build #161 — Modular refactor: terrain collision and fish systems extracted
+
+### What was implemented
+
+**Terrain collision extraction** (`topographic-terrain.ts` → `topographic-terrain-collision.ts`):
+- All spatial query helpers (point-inside, segment/circle intersection, line-of-sight, ray-march, solid-polygon export, signed-distance, push-out, repulsion force) extracted to a dedicated module.
+- `topographic-terrain.ts` reduced from ~1832 lines to ~963 lines.
+- All public APIs re-exported from `topographic-terrain.ts` via `export *` — zero import changes needed at call sites.
+
+**Fish draw extraction** (`rpg-procedural-draw.ts` → `rpg-procedural-fish-draw.ts`):
+- All fish drawing code (8 species + FishMine/FishSpike/FishBolt/FishDecoy) extracted (~400 lines).
+- `rpg-procedural-draw.ts` reduced from ~967 lines to ~570 lines.
+- Fish draw functions re-exported from main file for backward compat.
+- `setProcLowGraphicsMode` now also delegates to `setFishDrawLowGraphics`.
+
+**Fish update extraction** (`rpg-procedural-update.ts` → `rpg-procedural-fish-update.ts`):
+- All fish update code (Boids schooling + 8 species + fish projectiles/hazards) extracted (~471 lines).
+- `rpg-procedural-update.ts` reduced from ~935 lines to ~462 lines.
+- Fish update functions re-exported from main file for backward compat.
+
+### Behavior-preserving assumptions
+- All collision functions are mathematically identical (identical bodies copied verbatim from original).
+- The `contactDamage` helper is duplicated in `rpg-procedural-fish-update.ts` — both copies are identical.
+- `isLowGraphicsMode` in fish draw/update files defaults to `false` (same as before); now correctly forwarded via `setProcLowGraphicsMode`.
+
+### Remaining refactor opportunities (deferred)
+
+- **`rpg-render.ts`** (~1500 lines): Still a large orchestration file. The zone-switch logic, wave-manager wiring, and inter-wave state transitions could be split into a `rpg-render-lifecycle.ts`. Risky without a larger test harness — defer.
+- **`rpg-render-draw.ts`** (~800 lines): `drawRpgFrame` iterates through all entity arrays. Individual zone-layer draw calls could be delegated to zone-specific render modules, but the tight inter-layer ordering makes this refactor non-trivial.
+- **`rpg-wave-manager.ts`**: Contains spawn tables, timing, and state transitions. Spawn definitions could be separated into data files. Low priority since behavior is stable.
+- **`topographic-terrain-field.ts`**: Still ~700 lines; mergedContour building is complex and likely correct — no safe split candidate without extensive testing.
+- **Fish shared helpers** (`contactDamage`, `applyGlow`, etc.) are duplicated across proc draw/update files. A future `rpg-procedural-shared.ts` could deduplicate these if both files need to evolve.
 
 ---
 
