@@ -106,9 +106,18 @@ function getFishBendFn(
 }
 
 /**
- * Draw two small pectoral fins near the front of the fish body.
- * Each fin is a short ellipse rotated slightly outward and rendered at
- * reduced opacity so the body silhouette remains the dominant shape.
+ * Draw two pectoral fins near the front third of the fish body.
+ *
+ * Each fin is a teardrop-shaped bezier path that:
+ *   - attaches at the body side (attachX, ±sideOffset)
+ *   - sweeps outward (away from body centre) AND backward (toward tail, −X)
+ *   - tapers to a rounded tip behind the attachment
+ *
+ * Geometry rule (local coords, fish faces +X):
+ *   finTip = finBase + sideDir * outwardReach − forwardDir * backLen
+ *
+ * This is symmetrical on both sides and works correctly for any swimAngle
+ * because the whole fish is drawn in local space before being rotated.
  */
 function drawFishFins(
   ctx: CanvasRenderingContext2D,
@@ -116,33 +125,66 @@ function drawFishFins(
   bendFn: (px: number) => number,
   bodyColor: string,
 ): void {
-  const attachX  = s * 0.35;
-  const bFin     = bendFn(attachX);
-  const finHalfL = s * 0.58;   // half-length along body axis
-  const finHalfW = s * 0.22;   // half-width perpendicular
-  const fanAngle = 0.50;        // rotation outward (rad)
+  const attachX    = s * 0.35;   // X of fin root — front third of body
+  const bFin       = bendFn(attachX);
+
+  const sideOffset = s * 0.40;   // perpendicular distance from body axis to fin root
+  const backLen    = s * 0.52;   // how far the tip sweeps backward (−X direction)
+  const outLen     = s * 0.42;   // how far the tip reaches outward (±Y direction)
+  const rootHalfW  = s * 0.13;   // half-width of fin base along X (for a natural attachment)
 
   ctx.save();
   ctx.fillStyle = bodyColor;
-  ctx.globalAlpha *= 0.68;
+  ctx.globalAlpha *= 0.65;
 
-  // Upper fin (top-down left)
-  ctx.save();
-  ctx.translate(attachX, bFin - s * 0.48);
-  ctx.rotate(-fanAngle);
-  ctx.beginPath();
-  ctx.ellipse(0, 0, finHalfL, finHalfW, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  // ── Upper fin (−Y side in local / top-down left) ────────────────────────
+  // Root: centred on (attachX, bFin − sideOffset) ± rootHalfW along X.
+  // Tip:  (attachX − backLen, bFin − (sideOffset + outLen))
+  {
+    const rootY = bFin - sideOffset;
+    const tipX  = attachX - backLen;
+    const tipY  = bFin - sideOffset - outLen;
 
-  // Lower fin (top-down right)
-  ctx.save();
-  ctx.translate(attachX, bFin + s * 0.48);
-  ctx.rotate(fanAngle);
-  ctx.beginPath();
-  ctx.ellipse(0, 0, finHalfL, finHalfW, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+    ctx.beginPath();
+    // Forward root edge
+    ctx.moveTo(attachX + rootHalfW, rootY);
+    // Outer (forward-to-tip) curve — swings outward then converges to tip
+    ctx.bezierCurveTo(
+      attachX + rootHalfW * 0.4, rootY - outLen * 0.40,
+      tipX + backLen * 0.50,     tipY + outLen * 0.22,
+      tipX, tipY,
+    );
+    // Return (tip-to-aft root) curve — hugs the aft edge back to body
+    ctx.bezierCurveTo(
+      tipX + backLen * 0.35,     tipY + outLen * 0.30,
+      attachX - rootHalfW * 0.8, rootY - outLen * 0.08,
+      attachX - rootHalfW, rootY,
+    );
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ── Lower fin (+Y side in local / top-down right) ───────────────────────
+  {
+    const rootY = bFin + sideOffset;
+    const tipX  = attachX - backLen;
+    const tipY  = bFin + sideOffset + outLen;
+
+    ctx.beginPath();
+    ctx.moveTo(attachX + rootHalfW, rootY);
+    ctx.bezierCurveTo(
+      attachX + rootHalfW * 0.4, rootY + outLen * 0.40,
+      tipX + backLen * 0.50,     tipY - outLen * 0.22,
+      tipX, tipY,
+    );
+    ctx.bezierCurveTo(
+      tipX + backLen * 0.35,     tipY - outLen * 0.30,
+      attachX - rootHalfW * 0.8, rootY + outLen * 0.08,
+      attachX - rootHalfW, rootY,
+    );
+    ctx.closePath();
+    ctx.fill();
+  }
 
   ctx.restore();
 }
