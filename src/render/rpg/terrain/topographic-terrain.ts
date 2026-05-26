@@ -20,6 +20,7 @@ import {
   renderSeafloorTerrain,
 } from './seafloor-terrain';
 import { getRpgZoneTerrainProfile, type RpgZoneId } from '../../../data/rpg/rpg-zone-definitions';
+import type { TerrainLightEmitter } from './terrain-lighting';
 
 // Re-export all collision / pathfinding helpers so existing imports continue to
 // resolve from this canonical entry point.
@@ -612,6 +613,7 @@ export function renderTopographicTerrain(
   nowMs: number,
   enemies?: EnemyInfluencePoint[],
   lowGraphics?: boolean,
+  lightEmitters?: TerrainLightEmitter[],
 ): void {
   if (state.phase === 'hidden') return;
 
@@ -623,7 +625,7 @@ export function renderTopographicTerrain(
     return;
   }
   if (state.terrainKind === 'basalt') {
-    if (state.basalt) renderBasaltTerrain(ctx, state.basalt, state.growth01, enemies);
+    if (state.basalt) renderBasaltTerrain(ctx, state.basalt, state.growth01, enemies, lightEmitters);
     return;
   }
   if (state.terrainKind === 'seafloorRidges') {
