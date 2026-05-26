@@ -1,5 +1,10 @@
 /**
  * zenith-binary-ring-background.ts — path-traced Zenith Binary Ring backdrop.
+ *
+ * Build 155: full-screen accumulated strand-field system.
+ * Thousands of particles driven by a radial-outward + swirl + noise field
+ * accumulate on a half-resolution offscreen canvas.  A bounded prewarm pass
+ * fills the field before first display so the encounter never opens empty.
  */
 
 export interface ZenithBinaryRingBackground {
@@ -9,307 +14,352 @@ export interface ZenithBinaryRingBackground {
   destroy(): void;
 }
 
-const PARTICLE_COUNT = {
-  high: 500,
-  medium: 220,
-  low: 90,
+// ── Configuration ────────────────────────────────────────────────────────────
+
+const CFG = {
+  internalScale:           0.50,   // offscreen canvas is this fraction of screen
+  lowInternalScale:        0.35,
+
+  particleCount:           6500,
+  medParticleCount:        3600,
+  lowParticleCount:        1800,
+
+  /** Synchronous prewarm frames – keep low enough to avoid freeze. */
+  prewarmSteps:            40,
+  medPrewarmSteps:         20,
+  lowPrewarmSteps:          8,
+
+  fadeAlpha:               0.045,  // black overlay per frame (slow fade = accumulation)
+  lightTrailAlpha:         0.032,  // strand stroke alpha, Age of Light
+  darkTrailAlpha:          0.025,  // strand stroke alpha, Age of Darkness
+
+  ringRadiusRatio:         0.078,  // ring spawn radius / min(IW, IH)
+  ringSpawnJitter:         4.0,    // ± internal pixels at spawn
+  ringFalloff:             38.0,   // exponential half-width around ring boundary
+
+  /** Radial outward force (internal px / sec). */
+  outwardBase:             14.0,
+  /** Extra outward force applied near the ring boundary. */
+  outwardRingBoost:        30.0,
+  /** Tangential swirl force (internal px / sec). */
+  swirlStrength:           22.0,
+  swirlTimeFreq:            0.50,  // time modulation of swirl phase
+  swirlRadialFreq:          0.038, // radius modulation of swirl phase
+  /** Random noise force (internal px / sec). */
+  wobbleStrength:          10.0,
+
+  /** Per-frame velocity damping at 60 fps. */
+  damping:                  0.985,
+
+  /** Respawn when particle is beyond this fraction of min(IW, IH) from centre. */
+  maxFieldRadiusRatio:      0.72,
+  /** Respawn when particle is within this fraction of min(IW, IH) from centre. */
+  centerVoidRadiusRatio:    0.044,
+
+  ageLerpMs:             1500,
 } as const;
 
-const TRAIL_FADE = {
-  high: 0.008,
-  medium: 0.016,
-  low: 0.03,
-} as const;
+// ── Colour palettes ───────────────────────────────────────────────────────────
 
-const RENDER_SCALE = {
-  high: 1,
-  medium: 0.75,
-  low: 0.5,
-} as const;
+const N_BUCKETS = 6;
 
-const N_BUCKETS = 8;
-const AGE_LERP_MS = 1500;
-const BASE_RING_RADIUS_HIGH = 55;
-const BREATHE_SPEED = 0.00115;
-const BASE_DT = 1 / 60;
+// Age of Light: pale ivory, warm white, soft yellow, green-yellow, faint pink, cyan-white
+const LIGHT_H = new Float32Array([50,  45,  58,  68,  40, 192]);
+const LIGHT_S = new Float32Array([38,  22,  52,  48,  58,  22]);
+const LIGHT_L = new Float32Array([93,  97,  83,  72,  89,  60]);
 
-const LIGHT_H = new Float32Array([45, 48, 50, 55, 60, 65, 195, 210]);
-const LIGHT_S = new Float32Array([20, 35, 45, 55, 50, 45, 15, 20]);
-const LIGHT_L = new Float32Array([95, 90, 84, 78, 70, 62, 55, 45]);
+// Age of Darkness: dim violet, charcoal-magenta, brown-purple, muted ember, dark rose, deep blue-purple
+const DARK_H  = new Float32Array([272, 292, 312, 282, 258, 300]);
+const DARK_S  = new Float32Array([38,  46,  36,  26,  22,  42]);
+const DARK_L  = new Float32Array([20,  24,  21,  18,  15,  26]);
 
-const DARK_H = new Float32Array([280, 290, 300, 310, 270, 260, 250, 240]);
-const DARK_S = new Float32Array([30, 40, 35, 30, 25, 20, 15, 10]);
-const DARK_L = new Float32Array([15, 20, 22, 18, 15, 12, 10, 8]);
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function clamp01(v: number): number {
-  return v <= 0 ? 0 : v >= 1 ? 1 : v;
-}
+function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
 function hueLerp(a: number, b: number, t: number): number {
-  let diff = b - a;
-  if (diff > 180) diff -= 360;
-  else if (diff < -180) diff += 360;
-  let result = a + diff * t;
-  if (result < 0) result += 360;
-  else if (result >= 360) result -= 360;
-  return result;
+  let d = b - a;
+  if (d > 180) d -= 360; else if (d < -180) d += 360;
+  let r = a + d * t;
+  if (r < 0) r += 360; else if (r >= 360) r -= 360;
+  return r;
 }
 
-function hslToCss(h: number, s: number, l: number): string {
-  return `hsl(${Math.round(h)},${Math.round(s)}%,${Math.round(l)}%)`;
+/**
+ * Deterministic pseudo-noise in [-1, 1].  No heap allocation.
+ * Varies smoothly over (seed, t) at different frequencies.
+ */
+function hashNoise(s: number, t: number): number {
+  const h = Math.sin(s * 127.1 + t * 311.7) * 43758.5453;
+  return 2.0 * (h - Math.floor(h)) - 1.0;
 }
+
+// ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createZenithBinaryRingBackground(
   opts: { quality?: 'low' | 'medium' | 'high' } = {},
 ): ZenithBinaryRingBackground {
-  const quality = opts.quality ?? 'high';
-  const particleCount = PARTICLE_COUNT[quality];
-  const trailFade = TRAIL_FADE[quality];
-  const renderScale = RENDER_SCALE[quality];
+  const q       = opts.quality ?? 'high';
+  const isLow   = q === 'low';
+  const isMed   = q === 'medium';
 
-  const px = new Float32Array(particleCount);
-  const py = new Float32Array(particleCount);
-  const ppx = new Float32Array(particleCount);
-  const ppy = new Float32Array(particleCount);
-  const pvx = new Float32Array(particleCount);
-  const pvy = new Float32Array(particleCount);
-  const pphase = new Float32Array(particleCount);
-  const pradiusJitter = new Float32Array(particleCount);
-  const pbucket = new Uint8Array(particleCount);
+  const internalScale = isLow ? CFG.lowInternalScale : CFG.internalScale;
+  const particleCount = isLow ? CFG.lowParticleCount
+                      : isMed ? CFG.medParticleCount
+                      :         CFG.particleCount;
+  const prewarmSteps  = isLow ? CFG.lowPrewarmSteps
+                      : isMed ? CFG.medPrewarmSteps
+                      :         CFG.prewarmSteps;
 
-  const currentH = new Float32Array(N_BUCKETS);
-  const currentS = new Float32Array(N_BUCKETS);
-  const currentL = new Float32Array(N_BUCKETS);
-  const startH = new Float32Array(N_BUCKETS);
-  const startS = new Float32Array(N_BUCKETS);
-  const startL = new Float32Array(N_BUCKETS);
-  const targetH = new Float32Array(N_BUCKETS);
-  const targetS = new Float32Array(N_BUCKETS);
-  const targetL = new Float32Array(N_BUCKETS);
-  const bucketStyles: string[] = new Array(N_BUCKETS);
+  // ── Particle typed arrays ────────────────────────────────────────────────
+
+  const px    = new Float32Array(particleCount);
+  const py    = new Float32Array(particleCount);
+  const ppx   = new Float32Array(particleCount);
+  const ppy   = new Float32Array(particleCount);
+  const pvx   = new Float32Array(particleCount);
+  const pvy   = new Float32Array(particleCount);
+  const pseed = new Float32Array(particleCount);
+  for (let i = 0; i < particleCount; i++) pseed[i] = i * 1.6180339887 + 0.3;
+
+  // ── Palette state ────────────────────────────────────────────────────────
+
+  const curH  = new Float32Array(N_BUCKETS);
+  const curS  = new Float32Array(N_BUCKETS);
+  const curL  = new Float32Array(N_BUCKETS);
+  const fromH = new Float32Array(N_BUCKETS);
+  const fromS = new Float32Array(N_BUCKETS);
+  const fromL = new Float32Array(N_BUCKETS);
+  const toH   = new Float32Array(N_BUCKETS);
+  const toS   = new Float32Array(N_BUCKETS);
+  const toL   = new Float32Array(N_BUCKETS);
+  const bucketHsl: string[] = new Array(N_BUCKETS).fill('#fff');
+
+  // ── Canvas / world state ─────────────────────────────────────────────────
 
   let offCanvas: HTMLCanvasElement | null = null;
-  let offCtx: CanvasRenderingContext2D | null = null;
-  let W = 0;
-  let H = 0;
-  let IW = 0;
-  let IH = 0;
-  let cx = 0;
-  let cy = 0;
-  let ringRadius = BASE_RING_RADIUS_HIGH;
+  let offCtx:    CanvasRenderingContext2D | null = null;
+  let W = 0, H = 0, IW = 0, IH = 0;
+  let cx = 0, cy = 0, ringRadius = 0, maxR = 0, voidR = 0;
+  let timeS       = 0;
   let lastNow: number | null = null;
-  let timeS = 0;
   let currentAge: 'light' | 'dark' = 'light';
   let lerpStartMs = 0;
-  let lerpAgeActive = false;
+  let lerpActive  = false;
   let paletteDirty = true;
 
-  function applyTargetPalette(age: 'light' | 'dark', destH: Float32Array, destS: Float32Array, destL: Float32Array): void {
-    const srcH = age === 'light' ? LIGHT_H : DARK_H;
-    const srcS = age === 'light' ? LIGHT_S : DARK_S;
-    const srcL = age === 'light' ? LIGHT_L : DARK_L;
-    for (let i = 0; i < N_BUCKETS; i++) {
-      destH[i] = srcH[i]!;
-      destS[i] = srcS[i]!;
-      destL[i] = srcL[i]!;
-    }
+  // ── Palette helpers ──────────────────────────────────────────────────────
+
+  function loadPalette(age: 'light' | 'dark', h: Float32Array, s: Float32Array, l: Float32Array): void {
+    const sh = age === 'light' ? LIGHT_H : DARK_H;
+    const ss = age === 'light' ? LIGHT_S : DARK_S;
+    const sl = age === 'light' ? LIGHT_L : DARK_L;
+    for (let i = 0; i < N_BUCKETS; i++) { h[i] = sh[i]!; s[i] = ss[i]!; l[i] = sl[i]!; }
   }
 
-  function refreshBucketStyles(): void {
+  function rebuildBucketHsl(): void {
     for (let i = 0; i < N_BUCKETS; i++) {
-      bucketStyles[i] = hslToCss(currentH[i]!, currentS[i]!, currentL[i]!);
+      bucketHsl[i] = `hsl(${curH[i]! | 0},${curS[i]! | 0}%,${curL[i]! | 0}%)`;
     }
     paletteDirty = false;
   }
 
-  function syncPalette(now: number): void {
-    if (lerpAgeActive) {
-      const t = clamp01((now - lerpStartMs) / AGE_LERP_MS);
+  function tickPalette(now: number): void {
+    if (lerpActive) {
+      const t = clamp01((now - lerpStartMs) / CFG.ageLerpMs);
       for (let i = 0; i < N_BUCKETS; i++) {
-        currentH[i] = hueLerp(startH[i]!, targetH[i]!, t);
-        currentS[i] = startS[i]! + (targetS[i]! - startS[i]!) * t;
-        currentL[i] = startL[i]! + (targetL[i]! - startL[i]!) * t;
+        curH[i] = hueLerp(fromH[i]!, toH[i]!, t);
+        curS[i] = fromS[i]! + (toS[i]! - fromS[i]!) * t;
+        curL[i] = fromL[i]! + (toL[i]! - fromL[i]!) * t;
       }
       paletteDirty = true;
-      if (t >= 1) lerpAgeActive = false;
+      if (t >= 1) lerpActive = false;
     }
-    if (paletteDirty) refreshBucketStyles();
+    if (paletteDirty) rebuildBucketHsl();
   }
 
-  function bucketForParticle(i: number): number {
-    const dist = Math.sqrt((px[i]! - cx) * (px[i]! - cx) + (py[i]! - cy) * (py[i]! - cy));
-    const delta = Math.abs(dist - ringRadius);
-    const range = ringRadius * 0.72 + 1;
-    const t = clamp01(delta / range);
-    return Math.min(N_BUCKETS - 1, Math.floor(t * N_BUCKETS));
+  // ── Particle helpers ─────────────────────────────────────────────────────
+
+  function spawnParticle(i: number): void {
+    const a = (i / particleCount) * Math.PI * 2 + pseed[i]! * 1.618;
+    const jitter = hashNoise(pseed[i]!, i * 0.011) * CFG.ringSpawnJitter;
+    const r = ringRadius + jitter;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    px[i] = x;  py[i] = y;
+    ppx[i] = x; ppy[i] = y;
+    pvx[i] = 0; pvy[i] = 0;
   }
 
-  function seedParticle(i: number, scatterPhase: boolean): void {
-    const a = Math.random() * Math.PI * 2;
-    const radialJitter = (Math.random() * 2 - 1) * ringRadius * 0.18;
-    const spawnR = ringRadius + radialJitter;
-    const x = cx + Math.cos(a) * spawnR;
-    const y = cy + Math.sin(a) * spawnR;
-    px[i] = x;
-    py[i] = y;
-    ppx[i] = x;
-    ppy[i] = y;
-    pvx[i] = 0;
-    pvy[i] = 0;
-    pphase[i] = scatterPhase ? Math.random() * Math.PI * 2 : (i / Math.max(1, particleCount)) * Math.PI * 2;
-    pradiusJitter[i] = (Math.random() * 2 - 1) * 0.26;
-    pbucket[i] = bucketForParticle(i);
+  function stepParticles(dt: number): void {
+    const falloff  = CFG.ringFalloff;
+    const oBase    = CFG.outwardBase;
+    const oBoost   = CFG.outwardRingBoost;
+    const swirlStr = CFG.swirlStrength;
+    const sTF      = CFG.swirlTimeFreq;
+    const sRF      = CFG.swirlRadialFreq;
+    const wob      = CFG.wobbleStrength;
+    const damp     = CFG.damping;
+    const maxR2    = maxR * maxR;
+    const voidR2   = voidR * voidR;
+    // Quantised time for noise – avoids per-particle float-floor each call
+    const tq = Math.floor(timeS * 5) * 0.2;
+
+    for (let i = 0; i < particleCount; i++) {
+      const dx = px[i]! - cx;
+      const dy = py[i]! - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
+      const invD = 1.0 / dist;
+      const nx   = dx * invD;
+      const ny   = dy * invD;
+      const tx   = -ny;
+      const ty   =  nx;
+
+      // Ring-boundary influence: boost outward force near the ring
+      const ringDelta = Math.abs(dist - ringRadius);
+      const ringInf   = ringDelta < falloff * 3
+        ? Math.exp(-ringDelta / falloff)
+        : 0.0;
+      const outward = oBase + ringInf * oBoost;
+
+      // Tangential swirl varies with time, per-particle seed, and radius
+      const swirlV = swirlStr * Math.sin(timeS * sTF + pseed[i]! * 17.0 + dist * sRF);
+
+      // Independent radial and tangential noise
+      const noiseR = hashNoise(pseed[i]!,       tq + i * 0.00031) * wob;
+      const noiseT = hashNoise(pseed[i]! + 200, tq + i * 0.00027) * (wob * 0.5);
+
+      pvx[i] = pvx[i]! * damp + (nx * (outward + noiseR) + tx * (swirlV + noiseT)) * dt;
+      pvy[i] = pvy[i]! * damp + (ny * (outward + noiseR) + ty * (swirlV + noiseT)) * dt;
+
+      ppx[i] = px[i]!;
+      ppy[i] = py[i]!;
+      px[i]  = px[i]!  + pvx[i]! * dt;
+      py[i]  = py[i]!  + pvy[i]! * dt;
+
+      // Respawn out-of-bounds particles (compare squared distances to avoid sqrt)
+      const ndx = px[i]! - cx;
+      const ndy = py[i]! - cy;
+      const nd2 = ndx * ndx + ndy * ndy;
+      if (nd2 > maxR2 || nd2 < voidR2) spawnParticle(i);
+    }
   }
+
+  /**
+   * Draw all particle trails in a single path call with a cycled colour.
+   * Rotating through N_BUCKETS colours over time produces palette variety
+   * in the accumulated canvas without needing multiple stroke() calls per frame.
+   */
+  function drawStrands(oc: CanvasRenderingContext2D, trailAlpha: number): void {
+    const bucketIdx = Math.floor(timeS * 2.3) % N_BUCKETS;
+    oc.strokeStyle  = bucketHsl[bucketIdx]!;
+    oc.globalAlpha  = trailAlpha;
+    oc.lineWidth    = 0.75;
+    oc.beginPath();
+    for (let i = 0; i < particleCount; i++) {
+      oc.moveTo(ppx[i]!, ppy[i]!);
+      oc.lineTo(px[i]!,  py[i]!);
+    }
+    oc.stroke();
+    oc.globalAlpha = 1;
+  }
+
+  function runStep(dt: number, trailAlpha: number): void {
+    if (!offCtx) return;
+    timeS += dt;
+    // Fade accumulated strands toward black slowly
+    offCtx.globalAlpha  = CFG.fadeAlpha;
+    offCtx.fillStyle    = '#000';
+    offCtx.fillRect(0, 0, IW, IH);
+    // Advance particle field
+    stepParticles(dt);
+    // Draw strand segments
+    drawStrands(offCtx, trailAlpha);
+  }
+
+  /**
+   * Synchronous prewarm: runs the full update pipeline for a bounded number of
+   * steps so the field is partially developed on first display.  Steps are
+   * intentionally limited to avoid a noticeable freeze.
+   */
+  function prewarm(steps: number, trailAlpha: number): void {
+    const dt = 1 / 60;
+    for (let s = 0; s < steps; s++) runStep(dt, trailAlpha);
+    if (offCtx) offCtx.globalAlpha = 1;
+  }
+
+  // ── Init / resize ────────────────────────────────────────────────────────
 
   function init(w: number, h: number): void {
-    W = w;
-    H = h;
-    IW = Math.max(1, Math.round(w * renderScale));
-    IH = Math.max(1, Math.round(h * renderScale));
+    W = w; H = h;
+    IW = Math.max(1, Math.round(w * internalScale));
+    IH = Math.max(1, Math.round(h * internalScale));
     cx = IW * 0.5;
     cy = IH * 0.5;
-    ringRadius = Math.min(IW, IH) * (BASE_RING_RADIUS_HIGH / 360);
+    const minDim = Math.min(IW, IH);
+    ringRadius   = minDim * CFG.ringRadiusRatio;
+    maxR         = minDim * CFG.maxFieldRadiusRatio;
+    voidR        = minDim * CFG.centerVoidRadiusRatio;
 
-    offCanvas = document.createElement('canvas');
-    offCanvas.width = IW;
-    offCanvas.height = IH;
-    offCtx = offCanvas.getContext('2d');
-    if (!offCtx) throw new Error('Failed to create Zenith Binary Ring offscreen context');
+    offCanvas         = document.createElement('canvas');
+    offCanvas.width   = IW;
+    offCanvas.height  = IH;
+    offCtx            = offCanvas.getContext('2d');
+    if (!offCtx) throw new Error('ZenithBinaryRingBackground: failed to create offscreen context');
+
     offCtx.fillStyle = '#000';
     offCtx.fillRect(0, 0, IW, IH);
-    offCtx.lineCap = 'round';
-    offCtx.lineJoin = 'round';
-    offCtx.imageSmoothingEnabled = false;
+    offCtx.lineCap    = 'round';
+    offCtx.lineJoin   = 'round';
+    offCtx.globalCompositeOperation = 'source-over';
 
-    applyTargetPalette(currentAge, currentH, currentS, currentL);
-    applyTargetPalette(currentAge, startH, startS, startL);
-    applyTargetPalette(currentAge, targetH, targetS, targetL);
+    loadPalette(currentAge, curH,  curS,  curL);
+    loadPalette(currentAge, fromH, fromS, fromL);
+    loadPalette(currentAge, toH,   toS,   toL);
     paletteDirty = true;
-    refreshBucketStyles();
+    rebuildBucketHsl();
 
-    for (let i = 0; i < particleCount; i++) seedParticle(i, true);
+    timeS   = 0;
     lastNow = null;
-    timeS = 0;
+    for (let i = 0; i < particleCount; i++) spawnParticle(i);
+
+    const trailAlpha = currentAge === 'light' ? CFG.lightTrailAlpha : CFG.darkTrailAlpha;
+    prewarm(prewarmSteps, trailAlpha);
   }
 
   function ensureInit(w: number, h: number): void {
     if (!offCanvas || !offCtx || w !== W || h !== H) init(w, h);
   }
 
-  function maybeStartAgeTransition(now: number, age: 'light' | 'dark'): void {
-    if (age === currentAge) return;
-    currentAge = age;
-    for (let i = 0; i < N_BUCKETS; i++) {
-      startH[i] = currentH[i]!;
-      startS[i] = currentS[i]!;
-      startL[i] = currentL[i]!;
-    }
-    applyTargetPalette(age, targetH, targetS, targetL);
-    lerpStartMs = now;
-    lerpAgeActive = true;
-    paletteDirty = true;
-  }
-
-  function drawRingGlow(oc: CanvasRenderingContext2D, breathe: number): void {
-    oc.save();
-    oc.globalCompositeOperation = 'lighter';
-    oc.strokeStyle = currentAge === 'light' ? '#f6f1dc' : '#482358';
-    oc.lineWidth = 1.35 + breathe * 0.9;
-    oc.globalAlpha = currentAge === 'light' ? 0.12 + breathe * 0.07 : 0.08 + breathe * 0.05;
-    oc.beginPath();
-    oc.arc(cx, cy, ringRadius, 0, Math.PI * 2);
-    oc.stroke();
-
-    oc.globalAlpha = currentAge === 'light' ? 0.025 + breathe * 0.025 : 0.02 + breathe * 0.02;
-    oc.fillStyle = currentAge === 'light' ? '#f8f2dd' : '#331931';
-    oc.beginPath();
-    oc.arc(cx, cy, ringRadius * (0.88 + breathe * 0.02), 0, Math.PI * 2);
-    oc.fill();
-    oc.restore();
-  }
-
-  function respawnIfNeeded(i: number, breatheRadius: number): boolean {
-    const dx = px[i]! - cx;
-    const dy = py[i]! - cy;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < breatheRadius * 0.42 || dist > breatheRadius * 1.9) {
-      seedParticle(i, false);
-      return true;
-    }
-    return false;
-  }
+  // ── Public API ────────────────────────────────────────────────────────────
 
   return {
     update(now: number, width: number, height: number, age: 'light' | 'dark'): void {
       ensureInit(width, height);
-      maybeStartAgeTransition(now, age);
-      syncPalette(now);
       if (!offCtx) return;
+
+      // Age of Light ↔ Dark transition
+      if (age !== currentAge) {
+        for (let i = 0; i < N_BUCKETS; i++) {
+          fromH[i] = curH[i]!; fromS[i] = curS[i]!; fromL[i] = curL[i]!;
+        }
+        loadPalette(age, toH, toS, toL);
+        lerpStartMs  = now;
+        lerpActive   = true;
+        paletteDirty = true;
+        currentAge   = age;
+      }
+
+      tickPalette(now);
 
       const prevNow = lastNow ?? now;
       let dt = (now - prevNow) / 1000;
-      if (dt < 0.001) dt = BASE_DT;
-      if (dt > 0.05) dt = 0.05;
+      if (dt < 0.001) dt = 1 / 60;
+      if (dt > 0.05)  dt = 0.05;
       lastNow = now;
-      timeS += dt;
 
-      const breathe = 0.5 + 0.5 * Math.sin(now * BREATHE_SPEED);
-      const breatheRadius = ringRadius * (0.97 + breathe * 0.06);
-
-      offCtx.globalCompositeOperation = 'source-over';
-      offCtx.globalAlpha = trailFade;
-      offCtx.fillStyle = '#000';
-      offCtx.fillRect(0, 0, IW, IH);
-      offCtx.globalAlpha = 1;
-
-      drawRingGlow(offCtx, breathe);
-
-      for (let bucket = 0; bucket < N_BUCKETS; bucket++) {
-        offCtx.strokeStyle = bucketStyles[bucket]!;
-        offCtx.lineWidth = bucket === 0 ? 1.3 : bucket < 3 ? 1.05 : 0.85;
-        offCtx.globalAlpha = currentAge === 'light'
-          ? (bucket < 3 ? 0.085 : 0.055)
-          : (bucket < 3 ? 0.065 : 0.045);
-        offCtx.beginPath();
-        for (let i = 0; i < particleCount; i++) {
-          if (pbucket[i] !== bucket) continue;
-          ppx[i] = px[i]!;
-          ppy[i] = py[i]!;
-
-          const dx = px[i]! - cx;
-          const dy = py[i]! - cy;
-          const dist = Math.max(0.0001, Math.sqrt(dx * dx + dy * dy));
-          const dirX = dx / dist;
-          const dirY = dy / dist;
-          const tanX = -dirY;
-          const tanY = dirX;
-          const angle = Math.atan2(dy, dx);
-          const ringDelta = breatheRadius - dist;
-          const spring = ringDelta * 1.75;
-          const flowPhase = angle + timeS * 1.35 + pphase[i]!;
-          const tangentialSpeed = 22 + Math.sin(flowPhase * 1.7 + pphase[i]! * 0.7) * 6;
-          const radialDrift = spring * 11 + Math.sin(timeS * 2.6 + angle * 3 + pphase[i]!) * 5.5;
-          const wobble = Math.sin(timeS * 3.8 + angle * 2.5 + pphase[i]! * 1.3) * 4.8;
-          const wobble2 = Math.cos(timeS * 2.1 + angle * 3.2 + pphase[i]! * 0.9) * 3.2;
-
-          pvx[i] = pvx[i]! * 0.84 + (tanX * tangentialSpeed + dirX * radialDrift + tanX * wobble * pradiusJitter[i]!) * dt * 16;
-          pvy[i] = pvy[i]! * 0.84 + (tanY * tangentialSpeed + dirY * radialDrift + dirY * wobble2 * pradiusJitter[i]!) * dt * 16;
-
-          px[i] += pvx[i]! * dt;
-          py[i] += pvy[i]! * dt;
-
-          if (!respawnIfNeeded(i, breatheRadius)) {
-            pbucket[i] = bucketForParticle(i);
-          }
-
-          offCtx.moveTo(ppx[i]!, ppy[i]!);
-          offCtx.lineTo(px[i]!, py[i]!);
-        }
-        offCtx.stroke();
-      }
-
-      offCtx.globalAlpha = 1;
-      offCtx.globalCompositeOperation = 'source-over';
+      const trailAlpha = currentAge === 'light' ? CFG.lightTrailAlpha : CFG.darkTrailAlpha;
+      runStep(dt, trailAlpha);
     },
 
     draw(ctx: CanvasRenderingContext2D): void {
@@ -321,18 +371,11 @@ export function createZenithBinaryRingBackground(
     },
 
     reset(): void {
-      offCanvas = null;
-      offCtx = null;
-      W = 0;
-      H = 0;
-      IW = 0;
-      IH = 0;
-      lastNow = null;
-      timeS = 0;
+      offCanvas = null; offCtx = null;
+      W = 0; H = 0; IW = 0; IH = 0;
+      lastNow = null; timeS = 0;
     },
 
-    destroy(): void {
-      this.reset();
-    },
+    destroy(): void { this.reset(); },
   };
 }

@@ -79,7 +79,7 @@ export const BINARY_RING_CONFIG = {
   MISSILE_TURN_RATE: 1.4,
   MISSILE_ATK: 14,
   MISSILE_HP: 60,
-  MISSILE_TRAIL_LEN: 20,
+  MISSILE_TRAIL_LEN: 36,
   MISSILE_RADIUS: 10,
   MISSILE_LIFETIME_MS: 9000,
   MISSILE_HIT_CD_MS: 600,
@@ -402,70 +402,48 @@ function drawRingBody(
   nowMs: number,
 ): void {
   const colors = getRingColors(enemy.age);
-  const pulse = 0.5 + 0.5 * Math.sin(enemy.pulseMs * 0.0045);
-  const coreR = 7 + pulse * 2.5;
-  const glowR = 24 + pulse * 6;
-  const ringR = BINARY_RING_CONFIG.RADIUS + Math.sin(nowMs * 0.0014 + enemy.cycleCount) * 1.25;
+  const pulse  = 0.5 + 0.5 * Math.sin(enemy.pulseMs * 0.0045);
+  const ringR  = BINARY_RING_CONFIG.RADIUS + Math.sin(nowMs * 0.0014 + enemy.cycleCount) * 1.25;
 
   ctx.save();
-  ctx.fillStyle = '#000';
+
+  // Void core — a dark area so the accumulated field strands appear to orbit
+  // something rather than dissolving into the background.
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle   = '#000';
   ctx.beginPath();
-  ctx.arc(enemy.x, enemy.y, glowR + 10, 0, TWO_PI);
+  ctx.arc(enemy.x, enemy.y, ringR * 1.2, 0, TWO_PI);
   ctx.fill();
 
+  // Soft ambient glow layers — very low alpha, no hard circle edge.
+  // These are drawn 'lighter' so they add a subtle luminous haze.
   ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < 4; i++) {
-    ctx.globalAlpha = 0.06 + i * 0.03;
-    ctx.fillStyle = colors[Math.min(colors.length - 1, i >> 1)] ?? colors[2];
+  for (let i = 0; i < 3; i++) {
+    const r = ringR * (0.85 + i * 0.38);
+    ctx.globalAlpha = (0.038 + pulse * 0.018) * (1 - i * 0.25);
+    ctx.fillStyle   = colors[Math.min(colors.length - 1, i)] ?? colors[0]!;
     ctx.beginPath();
-    ctx.arc(enemy.x, enemy.y, glowR + i * 5, 0, TWO_PI);
+    ctx.arc(enemy.x, enemy.y, r, 0, TWO_PI);
     ctx.fill();
   }
 
-  ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = colors[1];
-  ctx.lineWidth = 3.5;
+  // Minimal void-boundary ring — very thin, very faint; exists only for
+  // targeting readability.  Not meant to look like a clean UI stroke.
+  ctx.globalAlpha  = 0.07 + pulse * 0.05;
+  ctx.strokeStyle  = colors[0]!;
+  ctx.lineWidth    = 0.9;
   ctx.beginPath();
   ctx.arc(enemy.x, enemy.y, ringR, 0, TWO_PI);
   ctx.stroke();
 
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 48; i++) {
-    const a = (i / 48) * TWO_PI + nowMs * 0.0004 * (enemy.age === 'light' ? 1 : -1);
-    const inner = ringR - 4 + Math.sin(nowMs * 0.002 + i * 0.61) * 2.5;
-    const outer = ringR + 8 + Math.cos(nowMs * 0.0015 + i * 0.93) * 5;
-    ctx.globalAlpha = 0.08 + ((i % 5) / 5) * 0.06;
-    ctx.strokeStyle = colors[i % colors.length];
-    ctx.beginPath();
-    ctx.moveTo(enemy.x + Math.cos(a) * inner, enemy.y + Math.sin(a) * inner);
-    ctx.lineTo(enemy.x + Math.cos(a + Math.sin(nowMs * 0.001 + i) * 0.06) * outer, enemy.y + Math.sin(a + Math.sin(nowMs * 0.001 + i) * 0.06) * outer);
-    ctx.stroke();
-  }
-
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * TWO_PI - nowMs * 0.0006 + pulse * 0.12;
-    const r0 = 4 + (i % 3);
-    const r1 = ringR - 8 + Math.sin(nowMs * 0.0018 + i * 1.1) * 3;
-    ctx.globalAlpha = 0.09;
-    ctx.strokeStyle = colors[(i + 1) % colors.length];
-    ctx.beginPath();
-    ctx.moveTo(enemy.x + Math.cos(a) * r0, enemy.y + Math.sin(a) * r0);
-    ctx.lineTo(enemy.x + Math.cos(a) * r1, enemy.y + Math.sin(a) * r1);
-    ctx.stroke();
-  }
-
-  ctx.globalAlpha = 0.9;
-  ctx.fillStyle = colors[0];
-  ctx.beginPath();
-  ctx.arc(enemy.x, enemy.y, coreR, 0, TWO_PI);
-  ctx.fill();
   ctx.restore();
 
+  // HP bar — gameplay-critical readability element.
   const hpRatio = Math.max(0, Math.min(1, enemy.hp / Math.max(1, enemy.maxHp)));
   ctx.save();
   ctx.globalAlpha = 0.7;
   ctx.strokeStyle = '#20181f';
-  ctx.lineWidth = 3;
+  ctx.lineWidth   = 3;
   ctx.beginPath();
   ctx.arc(enemy.x, enemy.y - ringR - 10, 16, Math.PI, TWO_PI);
   ctx.stroke();
@@ -530,57 +508,54 @@ function drawLaserSweep(
 function drawMissiles(
   ctx: CanvasRenderingContext2D,
   missiles: BinaryRingMissile[],
-  nowMs: number,
+  _nowMs: number,
   isLowGraphics: boolean,
 ): void {
   for (let i = 0; i < missiles.length; i++) {
     const missile = missiles[i]!;
-    const colors = missile.age === 'light' ? LIGHT_OPPOSITE_COLORS : DARK_OPPOSITE_COLORS;
+    const colors  = missile.age === 'light' ? LIGHT_OPPOSITE_COLORS : DARK_OPPOSITE_COLORS;
     ctx.save();
-    for (let t = 0; t < missile.trailLen - 1; t++) {
-      const i0 = (missile.trailHead - 1 - t + missile.trailX.length) % missile.trailX.length;
-      const i1 = (missile.trailHead - 2 - t + missile.trailX.length) % missile.trailX.length;
-      const alpha = 0.22 * (1 - t / Math.max(1, missile.trailLen));
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = colors[t % colors.length];
-      ctx.lineWidth = isLowGraphics ? 1 : 1.2;
+
+    // Strand trail — drawn back-to-front so the head is brightest.
+    const trailLen = Math.min(missile.trailLen - 1, isLowGraphics ? 14 : missile.trailX.length - 1);
+    for (let t = 0; t < trailLen; t++) {
+      const i0 = (missile.trailHead - 1 - t + missile.trailX.length)  % missile.trailX.length;
+      const i1 = (missile.trailHead - 2 - t + missile.trailX.length)  % missile.trailX.length;
+      const alpha = 0.28 * (1 - t / Math.max(1, trailLen));
+      ctx.globalAlpha  = alpha;
+      ctx.strokeStyle  = colors[t % colors.length];
+      ctx.lineWidth    = isLowGraphics ? 0.9 : 1.1;
       ctx.beginPath();
       ctx.moveTo(missile.trailX[i0]!, missile.trailY[i0]!);
       ctx.lineTo(missile.trailX[i1]!, missile.trailY[i1]!);
       ctx.stroke();
     }
 
+    // Soft ambient halo — no hard ring stroke.
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = colors[2];
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle   = colors[1];
     ctx.beginPath();
-    ctx.arc(missile.x, missile.y, 12, 0, TWO_PI);
+    ctx.arc(missile.x, missile.y, 10, 0, TWO_PI);
     ctx.fill();
 
-    ctx.globalAlpha = 0.5;
-    ctx.strokeStyle = colors[1];
-    ctx.lineWidth = 1.8;
+    // Tiny bright core — much smaller than before, not a ring.
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle   = colors[0];
     ctx.beginPath();
-    ctx.arc(missile.x, missile.y, 6.2, 0, TWO_PI);
+    ctx.arc(missile.x, missile.y, 2, 0, TWO_PI);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Void-boundary hint ring for targeting readability — very thin and faint.
+    ctx.save();
+    ctx.globalAlpha  = 0.22;
+    ctx.strokeStyle  = colors[1];
+    ctx.lineWidth    = 0.8;
+    ctx.beginPath();
+    ctx.arc(missile.x, missile.y, 5, 0, TWO_PI);
     ctx.stroke();
-
-    const baseAngle = nowMs * 0.004 + i;
-    ctx.lineWidth = 1;
-    for (let k = 0; k < 10; k++) {
-      const a = baseAngle + (k / 10) * TWO_PI;
-      ctx.globalAlpha = 0.11;
-      ctx.strokeStyle = colors[k % colors.length];
-      ctx.beginPath();
-      ctx.moveTo(missile.x + Math.cos(a) * 3, missile.y + Math.sin(a) * 3);
-      ctx.lineTo(missile.x + Math.cos(a) * 8, missile.y + Math.sin(a) * 8);
-      ctx.stroke();
-    }
-
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = colors[0];
-    ctx.beginPath();
-    ctx.arc(missile.x, missile.y, 2.5, 0, TWO_PI);
-    ctx.fill();
     ctx.restore();
   }
 }
