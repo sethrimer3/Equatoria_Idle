@@ -140,6 +140,26 @@ const _FRAGMENT_COLORS: readonly string[] = [
   '#55aa38',
 ];
 
+/** Fern frond colours — darker, blue-tinted greens for variety. */
+const _FERN_COLORS: readonly string[] = [
+  '#1c4a1a',   // dark fern green
+  '#163c14',   // deep fern
+  '#245c20',   // medium fern
+  '#1a402a',   // teal-green fern
+];
+
+/** Mushroom cap colours — earthy warm browns with a hint of bioluminescence. */
+const _MUSHROOM_CAP_COLORS: readonly string[] = [
+  '#6b3a18',   // warm brown
+  '#5a2e10',   // dark brown
+  '#7a4820',   // light brown
+  '#4a2a0e',   // deepest brown
+];
+/** Mushroom stem colours — lighter parchment brown. */
+const _MUSHROOM_STEM_COLOR  = '#3a2810';
+/** Mushroom cap edge/glow. */
+const _MUSHROOM_GLOW_COLOR  = '#88ffaa';
+
 const _THORN_COLOR       = '#4a3820';
 const _SPIRAL_TIP_COLOR  = '#44dd60';
 const _TARGETABLE_GLOW   = '#80ff80';
@@ -385,24 +405,42 @@ function _drawPlant(
   canvas2d.save();
   canvas2d.globalAlpha = alpha;
 
-  // Targetable glow (high-graphics only, wraps the main stem)
-  if (plant.isTargetable && !lowGraphics) {
-    canvas2d.save();
-    canvas2d.shadowBlur  = 6;
-    canvas2d.shadowColor = _TARGETABLE_GLOW;
-    _drawMainStem(canvas2d, plant, lowGraphics);
-    canvas2d.shadowBlur  = 0;
-    canvas2d.shadowColor = 'transparent';
-    canvas2d.restore();
+  // Targetable glow — high-graphics uses shadow blur; low-graphics uses a simple
+  // arc outline at the plant tip so targetable plants remain visible.
+  if (plant.isTargetable) {
+    if (!lowGraphics) {
+      canvas2d.save();
+      canvas2d.shadowBlur  = 6;
+      canvas2d.shadowColor = _TARGETABLE_GLOW;
+      _drawMainStem(canvas2d, plant, lowGraphics);
+      canvas2d.shadowBlur  = 0;
+      canvas2d.shadowColor = 'transparent';
+      canvas2d.restore();
+    } else {
+      // Simple ring at the grown tip for low-graphics
+      const { x: tipX, y: tipY } = _evalPathAt(
+        plant.ctrlX, plant.ctrlY, plant.segCount, plant.growthProgress,
+      );
+      canvas2d.save();
+      canvas2d.strokeStyle = _TARGETABLE_GLOW;
+      canvas2d.globalAlpha = alpha * 0.65;
+      canvas2d.lineWidth   = 1.2;
+      canvas2d.beginPath();
+      canvas2d.arc(tipX, tipY, 5, 0, Math.PI * 2);
+      canvas2d.stroke();
+      canvas2d.restore();
+    }
   }
 
   // Draw based on type
   switch (plant.type) {
-    case 'vine':   _drawVinePlant(canvas2d, plant, lowGraphics);   break;
-    case 'spiral': _drawSpiralPlant(canvas2d, plant, lowGraphics); break;
-    case 'flower': _drawFlowerPlant(canvas2d, plant, lowGraphics); break;
-    case 'leafy':  _drawLeafyPlant(canvas2d, plant, lowGraphics);  break;
-    case 'thorn':  _drawThornPlant(canvas2d, plant, lowGraphics);  break;
+    case 'vine':     _drawVinePlant(canvas2d, plant, lowGraphics);     break;
+    case 'spiral':   _drawSpiralPlant(canvas2d, plant, lowGraphics);   break;
+    case 'flower':   _drawFlowerPlant(canvas2d, plant, lowGraphics);   break;
+    case 'leafy':    _drawLeafyPlant(canvas2d, plant, lowGraphics);    break;
+    case 'thorn':    _drawThornPlant(canvas2d, plant, lowGraphics);    break;
+    case 'fern':     _drawFernPlant(canvas2d, plant, lowGraphics);     break;
+    case 'mushroom': _drawMushroomPlant(canvas2d, plant, lowGraphics); break;
   }
 
   canvas2d.restore();
@@ -703,4 +741,172 @@ function _drawBranch(
     const tEnd   = Math.min(s + 1, grownSegs) / branch.segCount;
     _drawPartialCubic(canvas2d, branch.ctrlX, branch.ctrlY, branch.segCount, tStart, tEnd, lowGraphics);
   }
+}
+
+// ── Fern plant ─────────────────────────────────────────────────────────────────
+
+/**
+ * Fern: a dark blue-green central stem with paired, alternating elongated
+ * leaflets emerging at regular intervals — resembling a real pinnate fern frond.
+ * Leaflets are drawn as thin ellipses on both sides of the main stem.
+ */
+function _drawFernPlant(
+  canvas2d: CanvasRenderingContext2D,
+  plant: VerdurePlant,
+  lowGraphics: boolean,
+): void {
+  const { ctrlX, ctrlY, segCount, growthProgress, seed, leaves } = plant;
+
+  // Draw the central stem in a distinct fern colour
+  const stemColor = _FERN_COLORS[seed % _FERN_COLORS.length];
+  canvas2d.strokeStyle = stemColor;
+  canvas2d.lineWidth   = 1.6;
+  canvas2d.lineCap     = 'round';
+  canvas2d.lineJoin    = 'round';
+
+  const totalSegs = segCount;
+  const grownSegs = growthProgress * totalSegs;
+  for (let s = 0; s < totalSegs; s++) {
+    if (s >= grownSegs) break;
+    const tStart = s / totalSegs;
+    const tEnd   = Math.min(s + 1, grownSegs) / totalSegs;
+    const tMid   = (tStart + tEnd) * 0.5;
+    canvas2d.lineWidth = Math.max(0.5, 1.6 * (1 - tMid * 0.6));
+    _drawPartialCubic(canvas2d, ctrlX, ctrlY, segCount, tStart, tEnd, lowGraphics);
+  }
+
+  // Draw alternating leaflets along the grown path
+  const leafMax = lowGraphics ? Math.ceil(leaves.length * 0.6) : leaves.length;
+  for (let li = 0; li < leafMax; li++) {
+    const leaf = leaves[li];
+    if (growthProgress < leaf.tParam - 0.04) continue;
+
+    const tClamped = Math.min(leaf.tParam, growthProgress);
+    const { x, y } = _evalPathAt(ctrlX, ctrlY, segCount, tClamped);
+    const { tx, ty } = _evalTangentAt(ctrlX, ctrlY, segCount, tClamped);
+
+    const leafAngle = Math.atan2(ty, tx) + leaf.angleDelta;
+    const leafColor = _FERN_COLORS[(seed + li + 1) % _FERN_COLORS.length];
+
+    canvas2d.save();
+    canvas2d.translate(x, y);
+    canvas2d.rotate(leafAngle);
+    canvas2d.fillStyle   = leafColor;
+    canvas2d.globalAlpha = 0.80;
+    canvas2d.beginPath();
+    canvas2d.ellipse(leaf.radiusA * 0.5, 0, leaf.radiusA, leaf.radiusB, 0, 0, Math.PI * 2);
+    canvas2d.fill();
+
+    // Midrib line for organic detail (high-graphics only)
+    if (!lowGraphics) {
+      canvas2d.strokeStyle = _FERN_COLORS[0];
+      canvas2d.lineWidth   = 0.5;
+      canvas2d.globalAlpha = 0.50;
+      canvas2d.beginPath();
+      canvas2d.moveTo(0, 0);
+      canvas2d.lineTo(leaf.radiusA * 1.8, 0);
+      canvas2d.stroke();
+    }
+
+    canvas2d.restore();
+  }
+}
+
+// ── Mushroom plant ─────────────────────────────────────────────────────────────
+
+/**
+ * Mushroom: a short thick stalk topped with a wide dome cap.
+ * The cap is rendered as a filled arc with a darker rim.
+ * In high-graphics mode the cap has a bioluminescent rim glow and spots.
+ */
+function _drawMushroomPlant(
+  canvas2d: CanvasRenderingContext2D,
+  plant: VerdurePlant,
+  lowGraphics: boolean,
+): void {
+  const { ctrlX, ctrlY, segCount, growthProgress, seed, flowers } = plant;
+
+  if (growthProgress <= 0) return;
+
+  // ── Stem ──────────────────────────────────────────────────────────────────
+  canvas2d.strokeStyle = _MUSHROOM_STEM_COLOR;
+  canvas2d.lineCap     = 'round';
+  canvas2d.lineJoin    = 'round';
+  canvas2d.lineWidth   = 2.8 + (seed % 3) * 0.4;
+
+  const grownSegs = growthProgress * segCount;
+  for (let s = 0; s < segCount; s++) {
+    if (s >= grownSegs) break;
+    const tStart = s / segCount;
+    const tEnd   = Math.min(s + 1, grownSegs) / segCount;
+    _drawPartialCubic(canvas2d, ctrlX, ctrlY, segCount, tStart, tEnd, lowGraphics);
+  }
+
+  // ── Cap ───────────────────────────────────────────────────────────────────
+  // Only draw cap once growth is at least 70%
+  if (growthProgress < 0.70) return;
+  const capAlpha = Math.min(1, (growthProgress - 0.70) / 0.30);
+
+  if (flowers.length === 0) return;
+  const fl = flowers[0];
+
+  const { x: tipX, y: tipY } = _evalPathAt(ctrlX, ctrlY, segCount, growthProgress);
+  const { tx, ty } = _evalTangentAt(ctrlX, ctrlY, segCount, Math.min(0.99, growthProgress));
+  const capAngle = Math.atan2(ty, tx) - Math.PI * 0.5;  // perpendicular to tip
+
+  const capR    = fl.radius;
+  const capW    = capR * (1.6 + (seed % 4) * 0.12);
+  const capH    = capR * (0.55 + (seed % 3) * 0.08);
+  const capFill = _MUSHROOM_CAP_COLORS[seed % _MUSHROOM_CAP_COLORS.length];
+
+  canvas2d.save();
+  canvas2d.translate(tipX, tipY);
+  canvas2d.rotate(capAngle);
+  canvas2d.globalAlpha = capAlpha;
+
+  // Main cap shape (half-ellipse)
+  canvas2d.fillStyle = capFill;
+  canvas2d.beginPath();
+  canvas2d.ellipse(0, 0, capW, capH, 0, Math.PI, Math.PI * 2);
+  canvas2d.closePath();
+  canvas2d.fill();
+
+  // Darker cap rim
+  canvas2d.strokeStyle = '#2a1808';
+  canvas2d.lineWidth   = 0.8;
+  canvas2d.globalAlpha = capAlpha * 0.75;
+  canvas2d.beginPath();
+  canvas2d.ellipse(0, 0, capW, capH, 0, Math.PI, Math.PI * 2);
+  canvas2d.stroke();
+
+  if (!lowGraphics) {
+    // Bioluminescent under-rim glow
+    canvas2d.save();
+    canvas2d.shadowBlur  = 5;
+    canvas2d.shadowColor = _MUSHROOM_GLOW_COLOR;
+    canvas2d.strokeStyle = _MUSHROOM_GLOW_COLOR;
+    canvas2d.lineWidth   = 0.7;
+    canvas2d.globalAlpha = capAlpha * 0.50;
+    canvas2d.beginPath();
+    canvas2d.ellipse(0, capH * 0.1, capW * 0.9, capH * 0.5, 0, Math.PI * 0.1, Math.PI * 0.9);
+    canvas2d.stroke();
+    canvas2d.shadowBlur  = 0;
+    canvas2d.shadowColor = 'transparent';
+    canvas2d.restore();
+
+    // Spots
+    const spotCount = 2 + (seed % 3);
+    for (let i = 0; i < spotCount; i++) {
+      const sx = (i / spotCount - 0.5) * capW * 1.2;
+      const sy = -capH * (0.35 + (seed * 0.017 + i) % 0.3);
+      const sr = capR * (0.06 + (seed * 0.013 + i) % 0.08);
+      canvas2d.fillStyle   = 'rgba(255,220,160,0.35)';
+      canvas2d.globalAlpha = capAlpha * 0.50;
+      canvas2d.beginPath();
+      canvas2d.arc(sx, sy, sr, 0, Math.PI * 2);
+      canvas2d.fill();
+    }
+  }
+
+  canvas2d.restore();
 }

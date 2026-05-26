@@ -134,6 +134,7 @@ import {
 } from './terrain/rpg-verdure-render';
 import {
   drawVerdureCaveWalls,
+  drawVerdureFloor,
   drawVerdureWallDebug,
 } from './terrain/verdure-cave-walls';
 import { verdureFragments } from './terrain/rpg-verdure-growth';
@@ -444,6 +445,7 @@ export function drawRpgFrame(
     drawVerdureBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
     const wState = ctx.getVerdureCaveWallState?.();
     if (wState) {
+      drawVerdureFloor(canvas2d, wState, ctx.getIsLowGraphicsMode());
       drawVerdureCaveWalls(canvas2d, wState, ctx.getIsLowGraphicsMode());
     } else {
       drawVerdureEdgeRocks(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());

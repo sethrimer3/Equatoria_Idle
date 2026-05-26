@@ -15,6 +15,12 @@ const TEXTURE_SCALE = 4;
 const ROCK_HEX_COLORS = ['#2c2417', '#1e1a10', '#31280e', '#1a2210', '#252015'] as const;
 const RIM_WIDTH_PX = 4;
 
+// ── Floor Voronoi constants ────────────────────────────────────────────────────
+/** Darker brown tones for the arena floor — visually distinct from the lighter walls. */
+const FLOOR_HEX_COLORS = ['#18100a', '#110c06', '#1b1309', '#0e1008', '#141108'] as const;
+/** Lower-resolution scale for floor texture — larger Voronoi cells for a coarser rock look. */
+const FLOOR_TEXTURE_SCALE = 7;
+
 const TOP_EDGE = 0 as const;
 const BOTTOM_EDGE = 1 as const;
 const LEFT_EDGE = 2 as const;
@@ -52,6 +58,11 @@ export interface VerdureCaveWallState {
   textureSeed: number;
   textureW: number;
   textureH: number;
+  /** Cached Voronoi floor texture (playable interior area). */
+  floorTextureCanvas: HTMLCanvasElement | null;
+  floorTextureSeed: number;
+  floorTextureW: number;
+  floorTextureH: number;
 }
 
 function _rng(seed: number, i: number): number {
@@ -504,6 +515,10 @@ export function generateVerdureCaveWalls(seed: number, widthPx: number, heightPx
     textureSeed: Number.NaN,
     textureW: widthPx,
     textureH: heightPx,
+    floorTextureCanvas: null,
+    floorTextureSeed: Number.NaN,
+    floorTextureW: widthPx,
+    floorTextureH: heightPx,
   };
   state.edgePoints = _buildEdgePoints(state);
   return state;
@@ -594,6 +609,146 @@ export function computeVerdureWallRepulsion(
   apply((state.widthPx - _sampleRightDepth(state, py)) - px, rightNormal.x, rightNormal.y);
 
   return maxInfluence;
+}
+
+// ── Floor Voronoi texture ─────────────────────────────────────────────────────
+
+/**
+ * Build a Voronoi-coloured floor texture covering the entire arena.
+ * Seeds are distributed in a grid with jitter over the playable interior.
+ * Colors are dark brown (darker than the wall palette).
+ * The walls are drawn on top of this, so wall-region floor pixels are
+ * automatically concealed.
+ */
+function _buildFloorVoronoiTexture(
+  state: VerdureCaveWallState,
+  lowGraphics: boolean,
+): HTMLCanvasElement {
+  const textureCanvas = _createCanvas(state.widthPx, state.heightPx);
+  const texture2d = textureCanvas.getContext('2d');
+  if (!texture2d) return textureCanvas;
+
+  const lowW = Math.max(1, Math.ceil(state.widthPx / FLOOR_TEXTURE_SCALE));
+  const lowH = Math.max(1, Math.ceil(state.heightPx / FLOOR_TEXTURE_SCALE));
+  const tempCanvas = _createCanvas(lowW, lowH);
+  const temp2d = tempCanvas.getContext('2d');
+  if (!temp2d) return textureCanvas;
+
+  const floorSeed = state.seed + 700;
+
+  // Distribute seeds in a loose grid across the whole arena with per-cell jitter
+  const cellCols = Math.max(3, Math.ceil(state.widthPx / 48));
+  const cellRows = Math.max(3, Math.ceil(state.heightPx / 48));
+  const cellW = state.widthPx / cellCols;
+  const cellH = state.heightPx / cellRows;
+
+  const floorSeeds: { x: number; y: number; colorIdx: number }[] = [];
+  for (let row = 0; row < cellRows; row++) {
+    for (let col = 0; col < cellCols; col++) {
+      const jx = _rng(floorSeed, row * 100 + col * 3)     * cellW * 0.7;
+      const jy = _rng(floorSeed, row * 100 + col * 3 + 1) * cellH * 0.7;
+      floorSeeds.push({
+        x: (col + 0.15) * cellW + jx,
+        y: (row + 0.15) * cellH + jy,
+        colorIdx: Math.floor(_rng(floorSeed, row * 100 + col * 3 + 2) * FLOOR_HEX_COLORS.length),
+      });
+    }
+  }
+
+  const image = temp2d.createImageData(lowW, lowH);
+  const owner = new Int16Array(lowW * lowH);
+
+  const colorRgb = FLOOR_HEX_COLORS.map((hex) => ({
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  }));
+
+  for (let iy = 0; iy < lowH; iy++) {
+    for (let ix = 0; ix < lowW; ix++) {
+      const worldX = Math.min(state.widthPx - 1, ix * FLOOR_TEXTURE_SCALE + FLOOR_TEXTURE_SCALE * 0.5);
+      const worldY = Math.min(state.heightPx - 1, iy * FLOOR_TEXTURE_SCALE + FLOOR_TEXTURE_SCALE * 0.5);
+      let bestIdx = 0;
+      let bestDistSq = Infinity;
+      for (let s = 0; s < floorSeeds.length; s++) {
+        const dx = worldX - floorSeeds[s].x;
+        const dy = worldY - floorSeeds[s].y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) { bestDistSq = distSq; bestIdx = s; }
+      }
+      owner[iy * lowW + ix] = bestIdx;
+    }
+  }
+
+  for (let iy = 0; iy < lowH; iy++) {
+    for (let ix = 0; ix < lowW; ix++) {
+      const ownerIdx = owner[iy * lowW + ix];
+      const dataIdx = (iy * lowW + ix) * 4;
+      const rgb = colorRgb[floorSeeds[ownerIdx].colorIdx];
+      let r = rgb.r, g = rgb.g, b = rgb.b;
+      // Edge darkening — darker crevice lines between cells
+      const left  = ix > 0       ? owner[iy * lowW + ix - 1]       : ownerIdx;
+      const right  = ix + 1 < lowW ? owner[iy * lowW + ix + 1]       : ownerIdx;
+      const up    = iy > 0       ? owner[(iy - 1) * lowW + ix]       : ownerIdx;
+      const down  = iy + 1 < lowH ? owner[(iy + 1) * lowW + ix]       : ownerIdx;
+      if (left !== ownerIdx || right !== ownerIdx || up !== ownerIdx || down !== ownerIdx) {
+        r = Math.max(0, r - 28);
+        g = Math.max(0, g - 28);
+        b = Math.max(0, b - 28);
+      }
+      image.data[dataIdx]     = r;
+      image.data[dataIdx + 1] = g;
+      image.data[dataIdx + 2] = b;
+      image.data[dataIdx + 3] = 255;
+    }
+  }
+
+  temp2d.putImageData(image, 0, 0);
+  texture2d.save();
+  texture2d.clearRect(0, 0, state.widthPx, state.heightPx);
+  texture2d.imageSmoothingEnabled = false;
+  texture2d.drawImage(tempCanvas, 0, 0, lowW, lowH, 0, 0, state.widthPx, state.heightPx);
+
+  // Slight moss/damp tint over the floor (high-graphics only)
+  if (!lowGraphics) {
+    texture2d.fillStyle = 'rgba(12, 22, 8, 0.22)';
+    texture2d.fillRect(0, 0, state.widthPx, state.heightPx);
+  }
+
+  texture2d.restore();
+  return textureCanvas;
+}
+
+/**
+ * Draw the Voronoi brown rock floor texture underneath the arena before walls.
+ * Lazily builds and caches the texture; invalidates when seed or canvas size changes.
+ *
+ * Call BEFORE drawVerdureCaveWalls so the walls paint over the floor edges.
+ */
+export function drawVerdureFloor(
+  canvas2d: CanvasRenderingContext2D,
+  state: VerdureCaveWallState,
+  lowGraphics: boolean,
+): void {
+  if (typeof document === 'undefined') return;
+  const desiredSeed = state.seed + (lowGraphics ? 500 : 501);
+  if (
+    state.floorTextureCanvas === null
+    || state.floorTextureW !== state.widthPx
+    || state.floorTextureH !== state.heightPx
+    || state.floorTextureSeed !== desiredSeed
+  ) {
+    state.floorTextureCanvas = _buildFloorVoronoiTexture(state, lowGraphics);
+    state.floorTextureSeed = desiredSeed;
+    state.floorTextureW = state.widthPx;
+    state.floorTextureH = state.heightPx;
+  }
+  if (!state.floorTextureCanvas) return;
+
+  canvas2d.save();
+  canvas2d.globalAlpha = 1;
+  canvas2d.drawImage(state.floorTextureCanvas, 0, 0);
+  canvas2d.restore();
 }
 
 export function drawVerdureCaveWalls(
