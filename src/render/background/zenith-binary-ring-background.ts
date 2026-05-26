@@ -1,10 +1,23 @@
 /**
- * zenith-binary-ring-background.ts — path-traced Zenith Binary Ring backdrop.
+ * zenith-binary-ring-background.ts — XScreenSaver BinaryRing faithful adaptation.
  *
- * Build 155: full-screen accumulated strand-field system.
- * Thousands of particles driven by a radial-outward + swirl + noise field
- * accumulate on a half-resolution offscreen canvas.  A bounded prewarm pass
- * fills the field before first display so the encounter never opens empty.
+ * Build 159: Algorithmically faithful TypeScript/Canvas port of the XScreenSaver
+ * BinaryRing hack by Emilio Del Tessandoro and J. Tarbell (binaryring.c, 2006-2014).
+ *
+ * Core algorithm from the C source (binaryring.c):
+ *   - N particles evenly seeded around a circular ring at startup
+ *   - Each frame: position += velocity; velocity += rand(±1) * curliness * maxDv
+ *     (unbounded Brownian walk — no force field, no damping)
+ *   - Draw a very faint antialiased line from previous to current position
+ *   - Draw the same line mirrored across the vertical center axis (bilateral symmetry):
+ *       draw_line(w+xx, h+yy, w+x, h+y)   — forward
+ *       draw_line(w-xx, h+yy, w-x, h+y)   — mirrored X only
+ *   - Buffer is never hard-cleared — strands accumulate (very slow fade only)
+ *   - Epoch alternates between Age of Light (pale strands) and Age of Darkness (dark strands)
+ *   - Particles respawn at a random ring point with zero velocity after maxAge frames
+ *
+ * Previous implementation used a radial-outward + swirl field and visible ring geometry.
+ * This version replaces the force field with the pure curliness Brownian walk of the original.
  */
 
 export interface ZenithBinaryRingBackground {
@@ -14,317 +27,230 @@ export interface ZenithBinaryRingBackground {
   destroy(): void;
 }
 
-// ── Configuration ────────────────────────────────────────────────────────────
+const TAU = Math.PI * 2;
+
+// ── Configuration ─────────────────────────────────────────────────────────────
 
 const CFG = {
-  internalScale:           0.50,   // offscreen canvas is this fraction of screen
-  lowInternalScale:        0.35,
+  internalScale:    0.50,   // offscreen canvas fraction of screen size
+  lowInternalScale: 0.35,
 
-  particleCount:           6500,
-  medParticleCount:        3600,
-  lowParticleCount:        1800,
+  particleCount:    5000,   // binaryring.c default: 5000
+  lowParticleCount: 1500,
 
-  /** Synchronous prewarm frames – keep low enough to avoid freeze. */
-  prewarmSteps:            40,
-  medPrewarmSteps:         20,
-  lowPrewarmSteps:          8,
+  /** Ring spawn radius as fraction of min(IW, IH). binaryring.c default: 40px on a ~800px screen ≈ 5%. */
+  ringRadiusRatio:  0.045,
 
-  fadeAlpha:               0.038,  // black overlay per frame (slow fade = accumulation)
-  lightTrailAlpha:         0.045,  // strand stroke alpha, Age of Light
-  darkTrailAlpha:          0.040,  // strand stroke alpha, Age of Darkness
+  /** Initial particle speed px/frame at internal resolution (binaryring.c: max_initial_velocity = 2.0). */
+  initialVelocity:  2.0,
 
-  ringRadiusRatio:         0.078,  // ring spawn radius / min(IW, IH)
-  ringSpawnJitter:         4.0,    // ± internal pixels at spawn
-  ringFalloff:             38.0,   // exponential half-width around ring boundary
+  /** Curliness: random velocity perturbation per frame (binaryring.c: curliness = 0.5). */
+  curliness:        0.5,
 
-  /** Radial outward force (internal px / sec). */
-  outwardBase:             14.0,
-  /** Extra outward force applied near the ring boundary. */
-  outwardRingBoost:        30.0,
-  /** Tangential swirl force (internal px / sec). */
-  swirlStrength:           22.0,
-  swirlTimeFreq:            0.50,  // time modulation of swirl phase
-  swirlRadialFreq:          0.038, // radius modulation of swirl phase
-  /** Random noise force (internal px / sec). */
-  wobbleStrength:          10.0,
+  /** Max per-frame delta-v magnitude (binaryring.c: max_dv = 1.0). */
+  maxDv:            1.0,
 
-  /** Per-frame velocity damping at 60 fps. */
-  damping:                  0.985,
+  /** Frames before particle respawns (binaryring.c default: max_age = 400). */
+  maxAge:           400,
 
-  /** Respawn when particle is beyond this fraction of min(IW, IH) from centre. */
-  maxFieldRadiusRatio:      0.72,
-  /** Respawn when particle is within this fraction of min(IW, IH) from centre. */
-  centerVoidRadiusRatio:    0.044,
+  /** Stroke alpha for Age of Light strands — many faint lines accumulate to visible brightness. */
+  lightAlpha:       0.12,
 
-  ageLerpMs:             1500,
+  /** Stroke alpha for Age of Darkness strands. */
+  darkAlpha:        0.09,
+
+  /** Per-frame fade: very slow decay so paths persist for many seconds (binaryring.c: no fade — we use minimal). */
+  fadeAlpha:        0.008,
+
+  /** Synchronous prewarm — run before first display so the field is populated. */
+  prewarmSteps:     120,
+  lowPrewarmSteps:   35,
 } as const;
 
 // ── Colour palettes ───────────────────────────────────────────────────────────
 
-const N_BUCKETS = 6;
+// Age of Light: ivory and warm-white tones drawn on the dark accumulation buffer.
+// Cycles through buckets over time to add palette variety to the accumulated field.
+const LIGHT_COLORS = [
+  '#fffef0', '#fff8e0', '#fffae8',
+  '#f8f2e0', '#fffff4', '#fdf0e4',
+] as const;
 
-// Age of Light: vibrant rainbow — red, orange, yellow-green, cyan, blue, magenta
-const LIGHT_H = new Float32Array([  0,  30,  90, 180, 240, 300]);
-const LIGHT_S = new Float32Array([ 88,  92,  86,  82,  88,  92]);
-const LIGHT_L = new Float32Array([ 62,  64,  58,  56,  60,  62]);
-
-// Age of Darkness: deep vibrant spectrum — violet, fuchsia, teal, emerald, sapphire, rose
-const DARK_H  = new Float32Array([260, 310, 180, 150, 220, 340]);
-const DARK_S  = new Float32Array([ 82,  78,  72,  76,  80,  74]);
-const DARK_L  = new Float32Array([ 44,  40,  42,  44,  40,  42]);
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function clamp01(v: number): number { return v < 0 ? 0 : v > 1 ? 1 : v; }
-
-function hueLerp(a: number, b: number, t: number): number {
-  let d = b - a;
-  if (d > 180) d -= 360; else if (d < -180) d += 360;
-  let r = a + d * t;
-  if (r < 0) r += 360; else if (r >= 360) r -= 360;
-  return r;
-}
-
-/**
- * Deterministic pseudo-noise in [-1, 1].  No heap allocation.
- * Varies smoothly over (seed, t) at different frequencies.
- */
-function hashNoise(s: number, t: number): number {
-  const h = Math.sin(s * 127.1 + t * 311.7) * 43758.5453;
-  return 2.0 * (h - Math.floor(h)) - 1.0;
-}
+// Age of Darkness: deep void colors — dark violet, charcoal-indigo, near-black.
+// Drawn on the bright field accumulated during Age of Light.
+const DARK_COLORS = [
+  '#190d2e', '#1a0828', '#1e1030',
+  '#160825', '#200a30', '#181028',
+] as const;
 
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createZenithBinaryRingBackground(
   opts: { quality?: 'low' | 'medium' | 'high' } = {},
 ): ZenithBinaryRingBackground {
-  const q       = opts.quality ?? 'high';
-  const isLow   = q === 'low';
-  const isMed   = q === 'medium';
+  const q        = opts.quality ?? 'high';
+  const isLow    = q === 'low';
+  const intScale = isLow ? CFG.lowInternalScale : CFG.internalScale;
+  const N        = isLow ? CFG.lowParticleCount  : CFG.particleCount;
+  const nPrewarm = isLow ? CFG.lowPrewarmSteps    : CFG.prewarmSteps;
 
-  const internalScale = isLow ? CFG.lowInternalScale : CFG.internalScale;
-  const particleCount = isLow ? CFG.lowParticleCount
-                      : isMed ? CFG.medParticleCount
-                      :         CFG.particleCount;
-  const prewarmSteps  = isLow ? CFG.lowPrewarmSteps
-                      : isMed ? CFG.medPrewarmSteps
-                      :         CFG.prewarmSteps;
+  // ── Typed arrays — zero per-frame heap allocation ────────────────────────
 
-  // ── Particle typed arrays ────────────────────────────────────────────────
-
-  const px    = new Float32Array(particleCount);
-  const py    = new Float32Array(particleCount);
-  const ppx   = new Float32Array(particleCount);
-  const ppy   = new Float32Array(particleCount);
-  const pvx   = new Float32Array(particleCount);
-  const pvy   = new Float32Array(particleCount);
-  const pseed = new Float32Array(particleCount);
-  for (let i = 0; i < particleCount; i++) pseed[i] = i * 1.6180339887 + 0.3;
-
-  // ── Palette state ────────────────────────────────────────────────────────
-
-  const curH  = new Float32Array(N_BUCKETS);
-  const curS  = new Float32Array(N_BUCKETS);
-  const curL  = new Float32Array(N_BUCKETS);
-  const fromH = new Float32Array(N_BUCKETS);
-  const fromS = new Float32Array(N_BUCKETS);
-  const fromL = new Float32Array(N_BUCKETS);
-  const toH   = new Float32Array(N_BUCKETS);
-  const toS   = new Float32Array(N_BUCKETS);
-  const toL   = new Float32Array(N_BUCKETS);
-  const bucketHsl: string[] = new Array(N_BUCKETS).fill('#fff');
+  /** Current X position, relative to internal-canvas center. */
+  const px  = new Float32Array(N);
+  /** Current Y position, relative to internal-canvas center. */
+  const py  = new Float32Array(N);
+  /** Velocity X (px/frame, unbounded — accumulates via curliness). */
+  const pvx = new Float32Array(N);
+  /** Velocity Y (px/frame). */
+  const pvy = new Float32Array(N);
+  /** Age in frames since last spawn. */
+  const pag = new Uint16Array(N);
 
   // ── Canvas / world state ─────────────────────────────────────────────────
 
   let offCanvas: HTMLCanvasElement | null = null;
   let offCtx:    CanvasRenderingContext2D | null = null;
   let W = 0, H = 0, IW = 0, IH = 0;
-  let cx = 0, cy = 0, ringRadius = 0, maxR = 0, voidR = 0;
-  let timeS       = 0;
-  let lastNow: number | null = null;
+  let cx = 0, cy = 0, ringRadius = 0;
+  let frameIdx  = 0;
+  let lastNow:  number | null = null;
   let currentAge: 'light' | 'dark' = 'light';
-  let lerpStartMs = 0;
-  let lerpActive  = false;
-  let paletteDirty = true;
 
-  // ── Palette helpers ──────────────────────────────────────────────────────
+  // ── Particle management ──────────────────────────────────────────────────
 
-  function loadPalette(age: 'light' | 'dark', h: Float32Array, s: Float32Array, l: Float32Array): void {
-    const sh = age === 'light' ? LIGHT_H : DARK_H;
-    const ss = age === 'light' ? LIGHT_S : DARK_S;
-    const sl = age === 'light' ? LIGHT_L : DARK_L;
-    for (let i = 0; i < N_BUCKETS; i++) { h[i] = sh[i]!; s[i] = ss[i]!; l[i] = sl[i]!; }
-  }
-
-  function rebuildBucketHsl(): void {
-    for (let i = 0; i < N_BUCKETS; i++) {
-      bucketHsl[i] = `hsl(${curH[i]! | 0},${curS[i]! | 0}%,${curL[i]! | 0}%)`;
-    }
-    paletteDirty = false;
-  }
-
-  function tickPalette(now: number): void {
-    if (lerpActive) {
-      const t = clamp01((now - lerpStartMs) / CFG.ageLerpMs);
-      for (let i = 0; i < N_BUCKETS; i++) {
-        curH[i] = hueLerp(fromH[i]!, toH[i]!, t);
-        curS[i] = fromS[i]! + (toS[i]! - fromS[i]!) * t;
-        curL[i] = fromL[i]! + (toL[i]! - fromL[i]!) * t;
-      }
-      paletteDirty = true;
-      if (t >= 1) lerpActive = false;
-    }
-    if (paletteDirty) rebuildBucketHsl();
-  }
-
-  // ── Particle helpers ─────────────────────────────────────────────────────
-
-  function spawnParticle(i: number): void {
-    const a = (i / particleCount) * Math.PI * 2 + pseed[i]! * 1.618;
-    const jitter = hashNoise(pseed[i]!, i * 0.011) * CFG.ringSpawnJitter;
-    const r = ringRadius + jitter;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    px[i] = x;  py[i] = y;
-    ppx[i] = x; ppy[i] = y;
-    pvx[i] = 0; pvy[i] = 0;
-  }
-
-  function stepParticles(dt: number): void {
-    const falloff  = CFG.ringFalloff;
-    const oBase    = CFG.outwardBase;
-    const oBoost   = CFG.outwardRingBoost;
-    const swirlStr = CFG.swirlStrength;
-    const sTF      = CFG.swirlTimeFreq;
-    const sRF      = CFG.swirlRadialFreq;
-    const wob      = CFG.wobbleStrength;
-    const damp     = CFG.damping;
-    const maxR2    = maxR * maxR;
-    const voidR2   = voidR * voidR;
-    // Quantised time for noise – avoids per-particle float-floor each call
-    const tq = Math.floor(timeS * 5) * 0.2;
-
-    for (let i = 0; i < particleCount; i++) {
-      const dx = px[i]! - cx;
-      const dy = py[i]! - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
-      const invD = 1.0 / dist;
-      const nx   = dx * invD;
-      const ny   = dy * invD;
-      const tx   = -ny;
-      const ty   =  nx;
-
-      // Ring-boundary influence: boost outward force near the ring
-      const ringDelta = Math.abs(dist - ringRadius);
-      const ringInf   = ringDelta < falloff * 3
-        ? Math.exp(-ringDelta / falloff)
-        : 0.0;
-      const outward = oBase + ringInf * oBoost;
-
-      // Tangential swirl varies with time, per-particle seed, and radius
-      const swirlV = swirlStr * Math.sin(timeS * sTF + pseed[i]! * 17.0 + dist * sRF);
-
-      // Independent radial and tangential noise
-      const noiseR = hashNoise(pseed[i]!,       tq + i * 0.00031) * wob;
-      const noiseT = hashNoise(pseed[i]! + 200, tq + i * 0.00027) * (wob * 0.5);
-
-      pvx[i] = pvx[i]! * damp + (nx * (outward + noiseR) + tx * (swirlV + noiseT)) * dt;
-      pvy[i] = pvy[i]! * damp + (ny * (outward + noiseR) + ty * (swirlV + noiseT)) * dt;
-
-      ppx[i] = px[i]!;
-      ppy[i] = py[i]!;
-      px[i]  = px[i]!  + pvx[i]! * dt;
-      py[i]  = py[i]!  + pvy[i]! * dt;
-
-      // Respawn out-of-bounds particles (compare squared distances to avoid sqrt)
-      const ndx = px[i]! - cx;
-      const ndy = py[i]! - cy;
-      const nd2 = ndx * ndx + ndy * ndy;
-      if (nd2 > maxR2 || nd2 < voidR2) spawnParticle(i);
-    }
+  /**
+   * Respawn particle i at a random point on the ring with zero velocity.
+   * Matches binaryring.c respawn logic: sin/cos on random angle, vx=vy=0, age=0.
+   */
+  function spawnOnRing(i: number): void {
+    const dir = Math.random() * TAU;
+    px[i]  = ringRadius * Math.sin(dir);
+    py[i]  = ringRadius * Math.cos(dir);
+    pvx[i] = 0;
+    pvy[i] = 0;
+    pag[i] = 0;
   }
 
   /**
-   * Draw all particle trails in a single path call with a cycled colour.
-   * Rotating through N_BUCKETS colours over time produces palette variety
-   * in the accumulated canvas without needing multiple stroke() calls per frame.
+   * Seed all N particles evenly around the ring with directional velocities.
+   * Matches binaryring.c create_particles + init_particle:
+   *   emitx = ring_radius * sin(TAU * i/N)
+   *   direction = PI * i / N
+   *   vx = max_initial_velocity * cos(direction)
    */
-  function drawStrands(oc: CanvasRenderingContext2D, trailAlpha: number): void {
-    const bucketIdx = Math.floor(timeS * 2.3) % N_BUCKETS;
-    oc.strokeStyle  = bucketHsl[bucketIdx]!;
-    oc.globalAlpha  = trailAlpha;
-    oc.lineWidth    = 0.75;
-    oc.beginPath();
-    for (let i = 0; i < particleCount; i++) {
-      oc.moveTo(ppx[i]!, ppy[i]!);
-      oc.lineTo(px[i]!,  py[i]!);
+  function initParticles(): void {
+    for (let i = 0; i < N; i++) {
+      const a   = TAU * i / N;
+      px[i]     = ringRadius * Math.sin(a);
+      py[i]     = ringRadius * Math.cos(a);
+      const dir = Math.PI * i / N;
+      pvx[i]    = CFG.initialVelocity * Math.cos(dir);
+      pvy[i]    = CFG.initialVelocity * Math.sin(dir);
+      // Stagger ages so particles don't all die simultaneously
+      pag[i]    = Math.floor(Math.random() * CFG.maxAge);
     }
+  }
+
+  // ── Core simulation step ─────────────────────────────────────────────────
+
+  /**
+   * One simulation frame — faithfully mirrors binaryring.c move():
+   *
+   *   p->xx = p->x;  p->yy = p->y;
+   *   p->x += p->vx; p->y += p->vy;
+   *   p->vx += frand1() * curliness * max_dv;
+   *   p->vy += frand1() * curliness * max_dv;
+   *   draw_line(w+xx, h+yy, w+x, h+y, color, 0.15);   // forward
+   *   draw_line(w-xx, h+yy, w-x, h+y, color, 0.15);   // mirrored
+   *   age++; if age > maxAge: respawn on ring
+   *
+   * All N particles are batched into a single beginPath/stroke call.
+   */
+  function runStep(trailAlpha: number, colors: readonly string[]): void {
+    if (!offCtx) return;
+    const oc        = offCtx;
+    const curliness = CFG.curliness;
+    const maxDv     = CFG.maxDv;
+    const maxAge    = CFG.maxAge;
+
+    // Very slow fade — preserves accumulated paths for many seconds
+    oc.globalAlpha = CFG.fadeAlpha;
+    oc.fillStyle   = '#000000';
+    oc.fillRect(0, 0, IW, IH);
+
+    // Single stroke pass: all particles share one color per frame (cycles over time
+    // so the accumulated buffer builds up palette variety across the field)
+    oc.strokeStyle = colors[frameIdx % colors.length]!;
+    oc.globalAlpha = trailAlpha;
+    oc.lineWidth   = 0.75;
+    oc.beginPath();
+
+    for (let i = 0; i < N; i++) {
+      // Save previous position (equivalent to p->xx = p->x)
+      const ox = px[i]!;
+      const oy = py[i]!;
+
+      // Advance by velocity (p->x += p->vx)
+      px[i] = ox + pvx[i]!;
+      py[i] = oy + pvy[i]!;
+
+      // Perturb velocity by curliness (p->vx += frand1() * curliness * max_dv)
+      pvx[i] = pvx[i]! + (Math.random() * 2 - 1) * curliness * maxDv;
+      pvy[i] = pvy[i]! + (Math.random() * 2 - 1) * curliness * maxDv;
+
+      const nx = px[i]!;
+      const ny = py[i]!;
+
+      // Forward line: draw_line(w + xx, h + yy, w + x, h + y)
+      oc.moveTo(cx + ox, cy + oy);
+      oc.lineTo(cx + nx, cy + ny);
+
+      // Mirrored line across vertical axis: draw_line(w - xx, h + yy, w - x, h + y)
+      oc.moveTo(cx - ox, cy + oy);
+      oc.lineTo(cx - nx, cy + ny);
+
+      // Age the particle; respawn on ring when too old
+      pag[i] = (pag[i]! + 1);
+      if (pag[i]! > maxAge) spawnOnRing(i);
+    }
+
     oc.stroke();
     oc.globalAlpha = 1;
-  }
-
-  function runStep(dt: number, trailAlpha: number): void {
-    if (!offCtx) return;
-    timeS += dt;
-    // Fade accumulated strands toward black slowly
-    offCtx.globalAlpha  = CFG.fadeAlpha;
-    offCtx.fillStyle    = '#000';
-    offCtx.fillRect(0, 0, IW, IH);
-    // Advance particle field
-    stepParticles(dt);
-    // Draw strand segments
-    drawStrands(offCtx, trailAlpha);
-  }
-
-  /**
-   * Synchronous prewarm: runs the full update pipeline for a bounded number of
-   * steps so the field is partially developed on first display.  Steps are
-   * intentionally limited to avoid a noticeable freeze.
-   */
-  function prewarm(steps: number, trailAlpha: number): void {
-    const dt = 1 / 60;
-    for (let s = 0; s < steps; s++) runStep(dt, trailAlpha);
-    if (offCtx) offCtx.globalAlpha = 1;
+    frameIdx++;
   }
 
   // ── Init / resize ────────────────────────────────────────────────────────
 
   function init(w: number, h: number): void {
     W = w; H = h;
-    IW = Math.max(1, Math.round(w * internalScale));
-    IH = Math.max(1, Math.round(h * internalScale));
+    IW = Math.max(1, Math.round(w * intScale));
+    IH = Math.max(1, Math.round(h * intScale));
     cx = IW * 0.5;
     cy = IH * 0.5;
-    const minDim = Math.min(IW, IH);
-    ringRadius   = minDim * CFG.ringRadiusRatio;
-    maxR         = minDim * CFG.maxFieldRadiusRatio;
-    voidR        = minDim * CFG.centerVoidRadiusRatio;
+    ringRadius = Math.min(IW, IH) * CFG.ringRadiusRatio;
 
     offCanvas         = document.createElement('canvas');
     offCanvas.width   = IW;
     offCanvas.height  = IH;
     offCtx            = offCanvas.getContext('2d');
-    if (!offCtx) throw new Error('ZenithBinaryRingBackground: failed to create offscreen context');
+    if (!offCtx) throw new Error('ZenithBinaryRingBackground: offscreen context unavailable');
 
-    offCtx.fillStyle = '#000';
+    // Black starting field — Age of Light strands will accumulate on this
+    offCtx.fillStyle = '#000000';
     offCtx.fillRect(0, 0, IW, IH);
-    offCtx.lineCap    = 'round';
-    offCtx.lineJoin   = 'round';
-    offCtx.globalCompositeOperation = 'source-over';
+    offCtx.lineCap  = 'round';
+    offCtx.lineJoin = 'round';
 
-    loadPalette(currentAge, curH,  curS,  curL);
-    loadPalette(currentAge, fromH, fromS, fromL);
-    loadPalette(currentAge, toH,   toS,   toL);
-    paletteDirty = true;
-    rebuildBucketHsl();
+    frameIdx = 0;
+    lastNow  = null;
+    initParticles();
 
-    timeS   = 0;
-    lastNow = null;
-    for (let i = 0; i < particleCount; i++) spawnParticle(i);
-
-    const trailAlpha = currentAge === 'light' ? CFG.lightTrailAlpha : CFG.darkTrailAlpha;
-    prewarm(prewarmSteps, trailAlpha);
+    // Prewarm: run N steps so the field is partially developed on first display
+    const colors     = currentAge === 'light' ? LIGHT_COLORS : DARK_COLORS;
+    const trailAlpha = currentAge === 'light' ? CFG.lightAlpha : CFG.darkAlpha;
+    for (let s = 0; s < nPrewarm; s++) runStep(trailAlpha, colors);
+    offCtx.globalAlpha = 1;
   }
 
   function ensureInit(w: number, h: number): void {
@@ -338,28 +264,18 @@ export function createZenithBinaryRingBackground(
       ensureInit(width, height);
       if (!offCtx) return;
 
-      // Age of Light ↔ Dark transition
-      if (age !== currentAge) {
-        for (let i = 0; i < N_BUCKETS; i++) {
-          fromH[i] = curH[i]!; fromS[i] = curS[i]!; fromL[i] = curL[i]!;
-        }
-        loadPalette(age, toH, toS, toL);
-        lerpStartMs  = now;
-        lerpActive   = true;
-        paletteDirty = true;
-        currentAge   = age;
-      }
-
-      tickPalette(now);
+      currentAge = age;
 
       const prevNow = lastNow ?? now;
-      let dt = (now - prevNow) / 1000;
-      if (dt < 0.001) dt = 1 / 60;
-      if (dt > 0.05)  dt = 0.05;
+      const rawDtMs = now - prevNow;
+      // Run the appropriate number of simulation steps for elapsed time.
+      // Clamp to 1–3 steps to stay smooth across frame-rate variation.
+      const steps = rawDtMs < 2 ? 1 : Math.min(3, Math.round(rawDtMs / (1000 / 60)));
       lastNow = now;
 
-      const trailAlpha = currentAge === 'light' ? CFG.lightTrailAlpha : CFG.darkTrailAlpha;
-      runStep(dt, trailAlpha);
+      const colors     = age === 'light' ? LIGHT_COLORS : DARK_COLORS;
+      const trailAlpha = age === 'light' ? CFG.lightAlpha : CFG.darkAlpha;
+      for (let s = 0; s < steps; s++) runStep(trailAlpha, colors);
     },
 
     draw(ctx: CanvasRenderingContext2D): void {
@@ -373,7 +289,7 @@ export function createZenithBinaryRingBackground(
     reset(): void {
       offCanvas = null; offCtx = null;
       W = 0; H = 0; IW = 0; IH = 0;
-      lastNow = null; timeS = 0;
+      lastNow = null; frameIdx = 0;
     },
 
     destroy(): void { this.reset(); },
