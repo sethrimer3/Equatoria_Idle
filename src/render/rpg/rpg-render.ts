@@ -169,6 +169,7 @@ import {
   damageVerdurePlant as _damageVerdurePlant,
 } from './terrain/rpg-verdure-growth';
 import { prewarmCausticsTextures } from './terrain/caustics-texture';
+import { generateVerdureCaveWalls } from './terrain/verdure-cave-walls';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -429,6 +430,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Verdure zone environmental plants ──────────────────────────
   const verdurePlants: import('./terrain/rpg-verdure-growth').VerdurePlant[] = [];
 
+  // ── Verdure cave wall state (regenerated on zone/wave start) ─────
+  let verdureCaveWallState: import('./terrain/verdure-cave-walls').VerdureCaveWallState | null = null;
+
   // ── Lucky mote drops (luck mechanic) ─────────────────────────
   const luckyMotes: LuckyMote[] = [];
   const luckyMotePopups: LuckyMotePopup[] = [];
@@ -671,6 +675,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     // Clear Verdure zone plants whenever the encounter resets.
     clearVerdurePlants(verdurePlants);
+    verdureCaveWallState?.edgePoints.forEach((p) => { p.isOccupied = false; });
+    verdureCaveWallState = null;
 
     isInterWave = true;
     interWaveTimerMs = INTER_WAVE_DELAY_MS * 0.4;
@@ -860,6 +866,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     exitBossWave:            () => bossWave.exitBossWave(),
     beginWaveTerrain:        (wave) => {
       topographicTerrainState = beginWaveTerrain(wave, widthPx, heightPx, performance.now(), rpgSimState.activeZoneId);
+      if (rpgSimState.activeZoneId === 'verdure') {
+        verdureCaveWallState = generateVerdureCaveWalls(wave, widthPx, heightPx);
+      } else {
+        verdureCaveWallState = null;
+      }
       rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
       // Zenith Binary Horizon lifecycle: trigger cut sequence for new wave.
       if (rpgSimState.activeZoneId === 'horizon' &&
@@ -1332,6 +1343,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsLowGraphicsMode:         () => isLowGraphicsMode,
     getEnemyIndicatorStyle:       () => enemyIndicatorStyle,
     getTopographicTerrainState:   () => topographicTerrainState,
+    getVerdureCaveWallState:      () => verdureCaveWallState,
     getEffectiveEquippedIds,
     getTargetedEnemy:             () => targeting.getTargetedEnemy(),
     rpgSimState,
@@ -1419,7 +1431,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (!isInterWave && rpgPhase === 'alive') {
         tickVerdurePlantSpawn(
           verdurePlants, deltaMs, currentWave,
-          widthPx, heightPx, isLowGraphicsMode,
+          widthPx, heightPx, isLowGraphicsMode, verdureCaveWallState,
         );
       }
       _updateVerdurePlants(verdurePlants, mote.x, mote.y, deltaMs);

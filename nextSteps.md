@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#161**
+Current build: **#162**
 
 ---
 
@@ -20,9 +20,9 @@ The following items are genuinely unresolved and ready for a future agent pass:
   Asteroid visuals are decorative. Future pass: register asteroid positions in the nav grid as
   soft obstacles.
 
-- **Verdure rock collision** (`rpg-verdure-render.ts`, `rpg-pathfinding.ts`):
-  Edge cave walls are visual-only. Future pass: integrate wall boundary polygons into the nav
-  grid.
+- **Verdure wall pathfinding/nav-grid integration** (`verdure-cave-walls.ts`, `rpg-pathfinding.ts`):
+  Cave walls now block player/enemy placement and movement, but the nav grid still does not route
+  around the organic boundary. Future pass: project the wall band into pathfinding cells.
 
 ---
 
@@ -2262,3 +2262,22 @@ Stored in `localStorage` under `equatoria_settings` (same key as all other setti
 - **Shrinking animation**: The mountain shrink still uses the old scale-down-from-centroid approach. The problem statement only flagged the grow direction, so this was left as-is. If the shrink should also use opacity-only, `_renderMergedContours` and `_renderPerIslandRings` would need `state.phase === 'shrinking'` branches mirroring the growing fix.
 - **Mid-session idle popup**: The `skipIdlePopupAtStart` setting only suppresses the overlay at app startup. Mid-session visibility-change events (tab hidden → shown) still show the popup regardless of the setting. If the user wants to suppress ALL idle popups (not just the startup one), the setting name and logic should be revisited.
 - **Pre-existing vitest typecheck failures**: `npm run typecheck` and `npm run build` both exit with code 2 due to 6 pre-existing `Cannot find module 'vitest'` errors in test files. These are not caused by build 108 changes. `vite build` itself succeeds with 293 modules transformed.
+
+
+---
+
+## Build #162 — Verdure cave walls, collision, and wall-anchored growth
+
+### What was implemented
+
+- Added `src/render/rpg/terrain/verdure-cave-walls.ts` with deterministic organic wall-depth generation, cached Voronoi-style rock texturing, debug drawing, wall collision queries, hard push-out, and soft repulsion.
+- Wired Verdure cave wall state into `rpg-render.ts` so walls regenerate on Verdure wave start, feed the draw pipeline, and are exposed to movement/spawn systems.
+- Updated `rpg-render-draw.ts` to render the new cave wall pass in Verdure and show wall debug overlays in dev mode.
+- Updated `rpg-player-movement.ts` and `rpg-enemy-spawn.ts` so the player and newly spawned enemies respect Verdure wall collision.
+- Updated `rpg-verdure-growth.ts` so plant roots can anchor to precomputed wall boundary points instead of only the old rectangular frame.
+- Incremented `BUILD_NUMBER` to 162 and updated file index metadata.
+
+### Deferred / follow-up notes
+
+- **Plant anchor occupancy recycling**: anchor points are marked occupied when a plant claims them, but the occupancy is only fully reset on encounter/wave reset. A future pass can store anchor references per plant and release them immediately when plants fade out.
+- **Resize/state invalidation**: Verdure wall textures are regenerated on zone/wave start and when the cached size key changes, but there is no dedicated mid-encounter resize invalidation path because the RPG arena is normally fixed-size.

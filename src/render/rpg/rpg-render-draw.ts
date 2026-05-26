@@ -132,6 +132,10 @@ import {
   drawVerdurePlants,
   drawVerdureFragments,
 } from './terrain/rpg-verdure-render';
+import {
+  drawVerdureCaveWalls,
+  drawVerdureWallDebug,
+} from './terrain/verdure-cave-walls';
 import { verdureFragments } from './terrain/rpg-verdure-growth';
 import type { VerdurePlant } from './terrain/rpg-verdure-growth';
 import {
@@ -258,6 +262,7 @@ export interface RpgDrawCtx {
   getIsLowGraphicsMode(): boolean;
   getEnemyIndicatorStyle(): 'triangle' | 'outline' | 'off';
   getTopographicTerrainState(): TopographicTerrainState | null;
+  getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
   /** Returns the display name for the currently active zone (e.g. "Euhedral"). */
   getActiveZoneDisplayName(): string;
 
@@ -437,8 +442,12 @@ export function drawRpgFrame(
   // Verdure zone: dark forest-green / bioluminescent atmosphere tint.
   if (isVerdureZone) {
     drawVerdureBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
-    // Edge rock formations frame the perimeter (rendered above the tint, below fluid).
-    drawVerdureEdgeRocks(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+    const wState = ctx.getVerdureCaveWallState?.();
+    if (wState) {
+      drawVerdureCaveWalls(canvas2d, wState, ctx.getIsLowGraphicsMode());
+    } else {
+      drawVerdureEdgeRocks(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+    }
   }
   if (isImpetusZone) {
     drawImpetusBackground(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
@@ -499,6 +508,10 @@ export function drawRpgFrame(
     null,  // player path state not exposed here; could be wired later if desired
     [],    // enemy path states — not collected here; kept lightweight
   );
+  if (ctx.getIsDevMode() && isVerdureZone) {
+    const wState = ctx.getVerdureCaveWallState?.();
+    if (wState) drawVerdureWallDebug(canvas2d, wState);
+  }
 
   drawLaserEnemies(canvas2d, ctx.enemies, nowMs);
   drawSapphireEnemies(canvas2d, ctx.sapphireEnemies);
