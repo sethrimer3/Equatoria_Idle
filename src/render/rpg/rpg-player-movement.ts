@@ -38,6 +38,10 @@ import {
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 import {
+  computeVerdureWallRepulsion,
+  pushPointOutsideVerdureWall,
+} from './terrain/verdure-cave-walls';
+import {
   createRpgPathState, computePathSteeredDirection, PLAYER_REPATH_MS,
   type RpgPathState,
 } from './terrain/rpg-pathfinding';
@@ -91,6 +95,8 @@ export interface PlayerMovementCtx {
   getTerrainState(): TopographicTerrainState | null;
   /** Returns the current navigation grid for pathfinding, or null if not built. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
+  /** Returns the current Verdure cave wall state, or null if not in Verdure zone. */
+  getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
 }
 
 /**
@@ -299,6 +305,34 @@ export function updatePlayerMovement(
       if (velDot < 0) { mote.vx -= velDot * nx; mote.vy -= velDot * ny; }
       mote.x = pushed.x;
       mote.y = pushed.y;
+    }
+  }
+
+  // Verdure cave wall collision
+  const wallState = ctx.getVerdureCaveWallState?.();
+  if (wallState) {
+    const wallRepForce = { x: 0, y: 0 };
+    const wallDepth = computeVerdureWallRepulsion(wallState, mote.x, mote.y, 0.22, wallRepForce);
+    if (wallDepth > 0) {
+      mote.vx += wallRepForce.x;
+      mote.vy += wallRepForce.y;
+      const wfl = Math.sqrt(wallRepForce.x ** 2 + wallRepForce.y ** 2) || 1;
+      const wnx = wallRepForce.x / wfl;
+      const wny = wallRepForce.y / wfl;
+      const wvDot = mote.vx * wnx + mote.vy * wny;
+      if (wvDot < 0) { mote.vx -= wvDot * wnx; mote.vy -= wvDot * wny; }
+    }
+    const wallPushed = { x: 0, y: 0 };
+    if (pushPointOutsideVerdureWall(wallState, mote.x, mote.y, wallPushed, half + 2)) {
+      const wpdx = wallPushed.x - mote.x;
+      const wpdy = wallPushed.y - mote.y;
+      const wplen = Math.sqrt(wpdx * wpdx + wpdy * wpdy) || 1;
+      const wpnx = wpdx / wplen;
+      const wpny = wpdy / wplen;
+      const wvd = mote.vx * wpnx + mote.vy * wpny;
+      if (wvd < 0) { mote.vx -= wvd * wpnx; mote.vy -= wvd * wpny; }
+      mote.x = wallPushed.x;
+      mote.y = wallPushed.y;
     }
   }
 

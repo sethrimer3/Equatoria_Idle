@@ -28,6 +28,8 @@
 import type { VerdurePlant, VerdureBranch, VerdureFragment } from './rpg-verdure-growth';
 import { _evalPathAt, _evalTangentAt } from './rpg-verdure-growth';
 
+export { drawVerdureCaveWalls, drawVerdureWallDebug } from './verdure-cave-walls';
+
 // ── Rock formation seed data ───────────────────────────────────────────────────
 
 /**
@@ -152,6 +154,7 @@ const _TARGETABLE_GLOW   = '#80ff80';
  *
  * Call once per frame before enemies and player are drawn.
  */
+/** @deprecated Use drawVerdureCaveWalls instead. */
 export function drawVerdureEdgeRocks(
   canvas2d: CanvasRenderingContext2D,
   widthPx: number,

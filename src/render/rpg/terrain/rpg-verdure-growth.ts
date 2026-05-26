@@ -21,6 +21,8 @@
  *     AND (b) the nearest grown segment is also within that range.
  */
 
+import type { VerdureCaveWallState } from './verdure-cave-walls';
+
 // ── Plant type definitions ──────────────────────────────────────────────────────
 
 export type VerdurePlantType = 'vine' | 'spiral' | 'flower' | 'leafy' | 'thorn';
@@ -487,6 +489,34 @@ function _pickType(wave: number, seed: number): VerdurePlantType {
 
 // ── Public API ─────────────────────────────────────────────────────────────────
 
+
+/**
+ * Pick an edge anchor point using wall state if available.
+ * Falls back to the original rectangular-edge approach.
+ */
+export function pickVerdurePlantAnchor(
+  widthPx: number,
+  heightPx: number,
+  wallState: VerdureCaveWallState | null,
+  rng0: number,
+  rng1: number,
+): { rootX: number; rootY: number; edgeDir: number } {
+  if (wallState && wallState.edgePoints.length > 0) {
+    const startIdx = Math.floor(rng0 * wallState.edgePoints.length) % wallState.edgePoints.length;
+    for (let i = 0; i < wallState.edgePoints.length; i++) {
+      const point = wallState.edgePoints[(startIdx + i) % wallState.edgePoints.length];
+      if (point.isOccupied) continue;
+      point.isOccupied = true;
+      return {
+        rootX: point.x,
+        rootY: point.y,
+        edgeDir: Math.atan2(point.ny, point.nx),
+      };
+    }
+  }
+  return _pickEdgeAnchor(widthPx, heightPx, rng0, rng1);
+}
+
 /**
  * Attempt to spawn one new plant if the spawn timer has elapsed and the cap
  * has not been reached.
@@ -505,6 +535,7 @@ export function tickVerdurePlantSpawn(
   widthPx: number,
   heightPx: number,
   lowGraphics: boolean,
+  wallState: VerdureCaveWallState | null = null,
 ): void {
   _spawnTimerMs -= deltaMs;
   if (_spawnTimerMs > 0) return;
@@ -530,8 +561,8 @@ export function tickVerdurePlantSpawn(
   // Generate a unique seed
   const seed = Math.floor(Math.random() * 100000);
 
-  const { rootX, rootY, edgeDir } = _pickEdgeAnchor(
-    widthPx, heightPx,
+  const { rootX, rootY, edgeDir } = pickVerdurePlantAnchor(
+    widthPx, heightPx, wallState,
     _rng(seed, 60),
     _rng(seed, 61),
   );

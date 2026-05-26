@@ -1300,8 +1300,13 @@
 
 ### src/render/rpg/terrain/rpg-verdure-render.ts
 - Visual renderer for Verdure environmental hazards and decorative growth.
-- `drawVerdureEdgeRocks()` now builds connected cave-wall masses with shared base bands, protrusions, crevice lines, and highlights instead of isolated perimeter rocks.
+- `drawVerdureEdgeRocks()` is now a deprecated fallback; active Verdure cave wall rendering lives in `verdure-cave-walls.ts`, while this module still owns Verdure plants and death fragments.
 - Also draws Verdure plants and death fragments using the growth-state data from `rpg-verdure-growth.ts`.
+
+### src/render/rpg/terrain/verdure-cave-walls.ts *(new — build 162)*
+- Verdure-only cave wall system: deterministic inner-boundary depth generation, edge anchor-point precomputation, wall collision queries, soft repulsion, hard push-out, cached Voronoi wall textures, and dev debug draw.
+- Exports `generateVerdureCaveWalls`, `isPointInVerdureWall`, `pushPointOutsideVerdureWall`, `computeVerdureWallRepulsion`, `drawVerdureCaveWalls`, and `drawVerdureWallDebug`.
+- `textureCanvas` is rebuilt lazily only when the cached size/graphics key changes; plant growth and enemy spawning read the same wall state for gameplay consistency.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
 - Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.

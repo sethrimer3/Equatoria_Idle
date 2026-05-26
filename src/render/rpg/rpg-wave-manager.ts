@@ -135,6 +135,8 @@ export interface WaveManagerCtx {
   beginTopographicTerrainShrink(): void;
   isTopographicTerrainReadyForEnemySpawns(): boolean;
   getTopographicTerrainState(): TopographicTerrainState | null;
+  /** Returns the current Verdure cave wall state, or null if not in Verdure zone. */
+  getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
 }
 
 // ── Handle returned to rpg-render.ts ─────────────────────────────────────
