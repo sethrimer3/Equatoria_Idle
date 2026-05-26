@@ -1,158 +1,291 @@
 /**
- * zenith-binary-horizon.ts — "Binary Horizon" background for the Zenith sublevel.
+ * zenith-binary-horizon.ts — Reworked Binary Horizon background for the Zenith sublevel.
+ *
+ * Inspired by the XScreenSaver "Binary Horizon" concept (Patrick Leiser, J. Tarbell,
+ * Emilio Del Tessandoro, 2021): a system of path-tracing particles evolves continuously
+ * from an initial horizon, alternating between colour ages.
  *
  * Visual design
  * ─────────────
- * A black void with a thin luminous horizontal horizon across the centre of the
- * gameplay area.  From the horizon, thousands of faint particle strands grow
- * upward and downward like tangled luminous filaments.  The centre zone has a
- * bright white/silver convergence glow while the outer regions graduate through
- * cyan → teal → blue → violet → faint magenta.  The field produces more tangled
- * crossings near the centre and longer, calmer strands at the edges.  A subtle
- * bilateral symmetry exists but is not perfect.  A slow "breathing" intensity
- * pulse adds organic life to the effect.
+ * • A black void with an edge-to-edge horizon line whose orientation is randomised
+ *   each wave (always touching two edges of the render area).
+ * • Thousands of faint path-tracing strands evolve from that line, diverging into
+ *   tangled filamentary patterns on each side.
+ * • Trails accumulate persistently on an offscreen canvas — the field builds up over
+ *   time rather than appearing as a static glow.
+ * • Two alternating colour ages (light: cyan/teal/blue; dark: magenta/violet/rose)
+ *   cycle slowly, giving the field a living, breathing polarity.
+ * • On each wave transition the horizon line is re-randomised and the effect rebuilds.
+ *
+ * Geometry rule
+ * ─────────────
+ * The divider line must leave at least 10 % of the rectangle area on both sides.
+ * A precise Shoelace-based polygon area test is used — no weak heuristics.
  *
  * Performance model
  * ─────────────────
- * • One persistent offscreen canvas; never fully cleared — faded each frame by
- *   a semi-transparent black rectangle to create persistent trails.
- * • All particle state lives in preallocated Float32Array / Uint8Array; zero
- *   per-frame heap allocation in the hot path.
- * • Particles are batched into N_BUCKETS colour buckets → only N_BUCKETS canvas
- *   state-changes (strokeStyle) per frame regardless of particle count.
- * • Internal resolution is scaled down per quality level, then upscaled when
- *   composited into the main RPG canvas.
- * • No external libraries or shader framework required.
- *
- * Integration
- * ───────────
- * Call `createZenithBinaryHorizon({ quality })` once.
- * Each frame: call `effect.update(nowMs, canvasW, canvasH)`, then
- *             call `effect.draw(mainCtx)`.
- * On resize or subzone switch: call `effect.reset()` (or simply discard and
- * re-create).
+ * • One persistent offscreen canvas; faded each frame with a low-alpha black rect.
+ * • All particle state lives in typed arrays; zero per-frame heap allocation.
+ * • Colour-bucket batching: only N_BUCKETS strokeStyle changes per frame.
+ * • Bounded prewarm pass on wave reseed so the field is populated on first display.
+ * • Low-graphics mode reduces particle count, prewarm, and internal resolution.
  */
 
-// ── Tuning constants ──────────────────────────────────────────────────────────
+// ── Configuration ─────────────────────────────────────────────────────────────
 
-/** Number of path-tracing particles per quality tier. */
-const PARTICLE_COUNT_HIGH   = 600;
-const PARTICLE_COUNT_MEDIUM = 280;
-const PARTICLE_COUNT_LOW    = 110;
+const ZENITH_CFG = {
+  internalScale:           0.50,
+  lowInternalScale:        0.35,
+
+  particleCount:           5200,
+  lowParticleCount:        1600,
+
+  /** Synchronous prewarm frames on wave reseed. Keep small to avoid freeze. */
+  prewarmSteps:            120,
+  lowPrewarmSteps:         35,
+
+  /** Per-frame black-overlay alpha — lower = longer persistent trails. */
+  fadeAlpha:               0.007,
+
+  /** Stroke alpha per particle line segment. Low => colour emerges via accumulation. */
+  trailAlpha:              0.060,
+  lowTrailAlpha:           0.075,
+
+  // ── Particle motion ──────────────────────────────────────────────────────────
+  /** Base speed: internal px per second = IH * baseSpeed. */
+  baseSpeed:               0.038,
+  /** How strongly the normal-push force drives particles away from the line. */
+  normalPush:              0.55,
+  /** Amplitude of sinusoidal tangential drift (creates wavy paths). */
+  tangentDrift:            0.28,
+  /** Amplitude of velocity-curl perturbation (creates strand crossings). */
+  curliness:               0.45,
+  /** Weak attraction toward line — keeps strands lingering near the horizon. */
+  linePull:                0.06,
+  /** Per-frame velocity damping (at ~60 fps). */
+  damping:                 0.990,
+
+  // ── Particle lifetime ─────────────────────────────────────────────────────────
+  /** Min lifetime in ticks (at ~60 fps). */
+  minAge:                  180,
+  /** Max lifetime in ticks. */
+  maxAge:                  380,
+
+  // ── Colour cycle ──────────────────────────────────────────────────────────────
+  colorCycleMinMs:         5000,
+  colorCycleMaxMs:         11000,
+
+  // ── Valid line geometry ───────────────────────────────────────────────────────
+  /** Both polygon regions must have at least this fraction of the total area. */
+  waveLineMinAreaRatio:    0.10,
+  lineReseedMaxAttempts:   48,
+
+  // ── Horizon accent line ───────────────────────────────────────────────────────
+  horizonLineAlpha:        0.55,
+  horizonLineWidth:        1.2,
+
+  /** Fade-in duration (ms) on first render after init. */
+  fadeInMs:                1400,
+} as const;
+
+// ── Colour tables ────────────────────────────────────────────────────────────
+
+/** Number of shade buckets per colour age (total buckets = 2 x N_SHADE_BUCKETS). */
+const N_SHADE_BUCKETS = 8;
+/** Total number of colour buckets. */
+const N_BUCKETS = N_SHADE_BUCKETS * 2;
 
 /**
- * Alpha of the black fade-rectangle applied each frame.
- * Lower value → longer persistent trails.
- *   high:   ~4 s half-life at 60 fps
- *   medium: ~2 s half-life
- *   low:    ~1 s half-life
+ * Builds N_BUCKETS colour strings:
+ *  Buckets 0-7: "light age" -- white-silver -> cyan -> teal -> blue (near -> far from line)
+ *  Buckets 8-15: "dark age" -- white-rose -> magenta -> violet -> deep-violet
  */
-const TRAIL_FADE_HIGH   = 0.010;
-const TRAIL_FADE_MEDIUM = 0.018;
-const TRAIL_FADE_LOW    = 0.032;
-
-/** Horizon vertical position as a fraction of canvas height (0 = top, 1 = bottom). */
-const HORIZON_Y_FRACTION = 0.48;
-
-/** Strength of the central radial glow (0–1). */
-const CENTER_GLOW_STRENGTH = 0.55;
-
-/** Global velocity multiplier applied to the flow-field output. */
-const FIELD_STRENGTH = 1.25;
-
-/**
- * Maximum distance a particle travels from the horizon before respawning,
- * expressed as a fraction of half the internal canvas height.
- */
-const VERTICAL_SPREAD = 0.90;
-
-/**
- * Velocity scale: base pixels/second = IH × VELOCITY_SCALE.
- * At IH = 640 this gives ~41 px/s base speed.
- */
-const VELOCITY_SCALE = 0.065;
-
-/** Width of the horizon gradient, as a fraction of internal canvas width. */
-const HORIZON_GLOW_HALF_WIDTH = 0.5;
-
-/** Radius of the central glow fill, as a fraction of internal canvas width. */
-const CENTER_GLOW_RADIUS_FRACTION = 0.40;
-
-/** Minimum particle lifetime in seconds (short-lived central filaments). */
-const LIFE_MIN = 7;
-
-/** Maximum particle lifetime in seconds (long outer strands). */
-const LIFE_MAX = 22;
-
-/** Horizon line stroke width in internal pixels. */
-const HORIZON_LINE_WIDTH = 1.5;
-
-/** Breathing oscillation speed in radians per second (period ≈ 8.4 s). */
-const BREATHE_SPEED = 0.75;
-
-/** Duration of the fade-in on first render, in milliseconds. */
-const FADE_IN_MS = 1400;
-
-/** Internal render resolution scale per quality tier. */
-const RENDER_SCALE_HIGH   = 1.0;
-const RENDER_SCALE_MEDIUM = 0.75;
-const RENDER_SCALE_LOW    = 0.5;
-
-/**
- * globalAlpha used when stroking particle lines.
- * Low values → faint individual strands that only become bright via accumulation.
- */
-const STROKE_ALPHA_HIGH   = 0.065;
-const STROKE_ALPHA_MEDIUM = 0.055;
-const STROKE_ALPHA_LOW    = 0.045;
-
-/** Number of colour buckets for batched drawing (≤ 256; must fit in Uint8Array). */
-const N_BUCKETS = 8;
-
-// ── Colour lookup table ───────────────────────────────────────────────────────
-
-/**
- * Builds the pre-computed stroke colour string for each of the `nBuckets`
- * colour buckets.  Bucket 0 is the centre (white/silver); bucket N−1 is the
- * outermost (violet/magenta).  The normalised distance used for each bucket is
- * the midpoint of its range so colour blending is visually even.
- */
-function buildBucketColors(nBuckets: number): string[] {
+function buildBucketColors(): string[] {
   const colors: string[] = [];
-  for (let b = 0; b < nBuckets; b++) {
-    const t = (b + 0.5) / nBuckets;   // 0 = centre, 1 = far edge
-    let h: number, s: number, l: number;
 
-    if (t < 0.12) {
-      // Near-centre: white / silver
-      h = 195;  s = Math.round(t * 30);  l = 92;
-    } else if (t < 0.28) {
-      const u = (t - 0.12) / 0.16;
-      h = 192;  s = Math.round(5 + u * 75);  l = Math.round(92 - u * 22);
-    } else if (t < 0.50) {
-      const u = (t - 0.28) / 0.22;
-      h = Math.round(188 + u * 12);  s = 80;  l = Math.round(70 - u * 12);
-    } else if (t < 0.68) {
-      const u = (t - 0.50) / 0.18;
-      h = Math.round(200 + u * 30);  s = 78;  l = Math.round(58 - u * 8);
-    } else if (t < 0.82) {
-      const u = (t - 0.68) / 0.14;
-      h = Math.round(230 + u * 50);  s = 72;  l = Math.round(50 - u * 6);
-    } else {
-      const u = (t - 0.82) / 0.18;
-      h = Math.round(280 + u * 45);  s = 62;  l = Math.round(44 - u * 8);
-    }
-
-    colors.push(`hsl(${h},${s}%,${l}%)`);
+  // Light age (buckets 0-7)
+  const lightHue   = [195, 190, 185, 182, 188, 200, 210, 220];
+  const lightSat   = [15,  55,  75,  80,  80,  78,  72,  65];
+  const lightLight = [90,  82,  72,  63,  55,  52,  47,  42];
+  for (let b = 0; b < N_SHADE_BUCKETS; b++) {
+    colors.push(`hsl(${lightHue[b]},${lightSat[b]}%,${lightLight[b]}%)`);
   }
+
+  // Dark age (buckets 8-15)
+  const darkHue   = [330, 315, 300, 305, 285, 270, 255, 240];
+  const darkSat   = [20,  55,  72,  75,  72,  68,  64,  60];
+  const darkLight = [90,  80,  68,  60,  56,  50,  46,  40];
+  for (let b = 0; b < N_SHADE_BUCKETS; b++) {
+    colors.push(`hsl(${darkHue[b]},${darkSat[b]}%,${darkLight[b]}%)`);
+  }
+
   return colors;
+}
+
+// ── Perimeter geometry ────────────────────────────────────────────────────────
+//
+// The canvas perimeter is parameterised clockwise from (0, 0):
+//   t in [0,    0.25): top edge,    left -> right,  y = 0
+//   t in [0.25, 0.50): right edge,  top  -> bottom, x = W
+//   t in [0.50, 0.75): bottom edge, right -> left,  y = H
+//   t in [0.75, 1.00): left edge,   bottom -> top,  x = 0
+
+/**
+ * Returns the (x, y) position of perimeter parameter t in [0, 1).
+ */
+function samplePerimeter(t: number, W: number, H: number): [number, number] {
+  t = ((t % 1) + 1) % 1;
+  if (t < 0.25) return [t * 4 * W, 0];
+  if (t < 0.50) return [W, (t - 0.25) * 4 * H];
+  if (t < 0.75) return [W - (t - 0.50) * 4 * W, H];
+  return [0, H - (t - 0.75) * 4 * H];
+}
+
+/**
+ * Computes the area ratio of the "clockwise polygon" formed by walking from P1
+ * to P2 along the perimeter (clockwise) and then straight back to P1.
+ *
+ * Returns the fraction [0, 1] of the total rectangle area on that side.
+ * The other side has area (1 - returned value).
+ * Uses the Shoelace / surveyor's formula -- exact, not an approximation.
+ */
+function splitAreaRatio(
+  t1: number, t2: number,
+  p1x: number, p1y: number,
+  p2x: number, p2y: number,
+  W: number, H: number,
+): number {
+  // Corner positions and their t-values (clockwise from top-left).
+  const CORNER_T: readonly number[] = [0.25, 0.50, 0.75, 1.00];
+  const CORNER_X: readonly number[] = [W,    W,    0,    0];
+  const CORNER_Y: readonly number[] = [0,    H,    H,    0];
+
+  // Clockwise arc length from t1 to t2.
+  const span = ((t2 - t1) + 1) % 1 || 1;
+
+  // Build the polygon: [P1, (corners strictly inside the arc), P2].
+  const vx: number[] = [p1x];
+  const vy: number[] = [p1y];
+
+  for (let i = 0; i < 4; i++) {
+    // Clockwise distance from t1 to this corner.
+    const dt = ((CORNER_T[i] - t1) + 1) % 1;
+    if (dt > 0 && dt < span) {
+      vx.push(CORNER_X[i]);
+      vy.push(CORNER_Y[i]);
+    }
+  }
+
+  vx.push(p2x);
+  vy.push(p2y);
+
+  // Shoelace formula.
+  const n = vx.length;
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += vx[i] * vy[j] - vx[j] * vy[i];
+  }
+
+  return Math.abs(area) * 0.5 / (W * H);
+}
+
+// ── Seeded PRNG (mulberry32) ─────────────────────────────────────────────────
+
+function mulberry32(seed: number): () => number {
+  let s = (seed | 0) >>> 0;
+  return function rand(): number {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let z = s;
+    z = Math.imul(z ^ (z >>> 15), z | 1) >>> 0;
+    z ^= z + Math.imul(z ^ (z >>> 7), z | 61) >>> 0;
+    return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ── Valid line generation ────────────────────────────────────────────────────
+
+interface HorizonLine {
+  /** Endpoint A in internal canvas coordinates. */
+  ax: number; ay: number;
+  /** Endpoint B in internal canvas coordinates. */
+  bx: number; by: number;
+  /** Perimeter t-value for endpoint A. */
+  t1: number;
+  /** Perimeter t-value for endpoint B. */
+  t2: number;
+  /** Normalised direction vector (B - A). */
+  dx: number; dy: number;
+  /** Normalised normal vector, rotated 90 degrees counterclockwise from direction. */
+  nx: number; ny: number;
+}
+
+/**
+ * Generates a valid horizon line for the given internal canvas dimensions using
+ * rejection sampling seeded by waveSeed.  A line is valid when:
+ *   - Both endpoints lie on the perimeter.
+ *   - Both split polygons have area >= waveLineMinAreaRatio x total area.
+ *   - The line is at least 20 % of min(IW, IH) long (avoids degenerate lines).
+ *
+ * Falls back to a safe diagonal if the attempt budget is exhausted.
+ */
+function generateValidLine(IW: number, IH: number, waveSeed: number): HorizonLine {
+  const rand    = mulberry32(waveSeed);
+  const minLen  = Math.min(IW, IH) * 0.20;
+  const minArea = ZENITH_CFG.waveLineMinAreaRatio;
+
+  for (let k = 0; k < ZENITH_CFG.lineReseedMaxAttempts; k++) {
+    const t1 = rand();
+    const t2 = rand();
+
+    // Avoid t1 approximately equal to t2 (degenerate).
+    const arc = ((t2 - t1) + 1) % 1;
+    if (arc < 0.05 || arc > 0.95) continue;
+
+    const [ax, ay] = samplePerimeter(t1, IW, IH);
+    const [bx, by] = samplePerimeter(t2, IW, IH);
+
+    const len = Math.hypot(bx - ax, by - ay);
+    if (len < minLen) continue;
+
+    const ratio = splitAreaRatio(t1, t2, ax, ay, bx, by, IW, IH);
+    if (ratio < minArea || ratio > 1 - minArea) continue;
+
+    const invLen = 1 / len;
+    const dx = (bx - ax) * invLen;
+    const dy = (by - ay) * invLen;
+    // Normal: rotate direction 90 degrees counterclockwise.
+    const nx = -dy;
+    const ny =  dx;
+
+    return { ax, ay, bx, by, t1, t2, dx, dy, nx, ny };
+  }
+
+  // Fallback: safe diagonal from (0, IH * 0.3) to (IW, IH * 0.7).
+  const ax = 0;
+  const ay = IH * 0.3;
+  const bx = IW;
+  const by = IH * 0.7;
+  const len = Math.hypot(bx - ax, by - ay);
+  const invLen = 1 / len;
+  const dx = (bx - ax) * invLen;
+  const dy = (by - ay) * invLen;
+  return {
+    ax, ay, bx, by,
+    t1: 0.75 + (1 - ay / IH) * 0.25,
+    t2: 0.25 + by / IH * 0.25,
+    dx, dy, nx: -dy, ny: dx,
+  };
 }
 
 // ── Public interface ──────────────────────────────────────────────────────────
 
 export interface ZenithBinaryHorizon {
-  /** Advance the simulation and render trails to the offscreen canvas. */
-  update(now: number, width: number, height: number): void;
+  /**
+   * Advance the simulation and render to the offscreen canvas.
+   * Pass waveNumber so the effect can reseed the horizon line on wave change.
+   */
+  update(now: number, width: number, height: number, waveNumber?: number): void;
   /** Composite the offscreen canvas into the provided 2-D context. */
   draw(ctx: CanvasRenderingContext2D): void;
   /** Discard all state so the effect re-initialises on the next update call. */
@@ -168,218 +301,231 @@ export function createZenithBinaryHorizon(
 ): ZenithBinaryHorizon {
 
   const isLow    = quality === 'low';
-  const isMedium = quality === 'medium';
 
-  const N           = isLow ? PARTICLE_COUNT_LOW  : isMedium ? PARTICLE_COUNT_MEDIUM  : PARTICLE_COUNT_HIGH;
-  const trailFade   = isLow ? TRAIL_FADE_LOW       : isMedium ? TRAIL_FADE_MEDIUM       : TRAIL_FADE_HIGH;
-  const renderScale = isLow ? RENDER_SCALE_LOW     : isMedium ? RENDER_SCALE_MEDIUM     : RENDER_SCALE_HIGH;
-  const strokeAlpha = isLow ? STROKE_ALPHA_LOW     : isMedium ? STROKE_ALPHA_MEDIUM     : STROKE_ALPHA_HIGH;
+  const N           = isLow ? ZENITH_CFG.lowParticleCount  : ZENITH_CFG.particleCount;
+  const renderScale = isLow ? ZENITH_CFG.lowInternalScale  : ZENITH_CFG.internalScale;
+  const trailFade   = ZENITH_CFG.fadeAlpha;
+  const strokeAlpha = isLow ? ZENITH_CFG.lowTrailAlpha     : ZENITH_CFG.trailAlpha;
+  const prewarmSteps = isLow ? ZENITH_CFG.lowPrewarmSteps  : ZENITH_CFG.prewarmSteps;
 
-  // ── Pre-allocated particle state (zero heap allocation in the hot path) ─────
-  /** Current x position, in internal canvas pixels. */
-  const px      = new Float32Array(N);
-  /** Current y position, in internal canvas pixels. */
-  const py      = new Float32Array(N);
-  /** Previous x (for drawing the line segment each frame). */
-  const ppx     = new Float32Array(N);
-  /** Previous y. */
-  const ppy     = new Float32Array(N);
-  /** Elapsed life in seconds. */
-  const plife    = new Float32Array(N);
-  /** Maximum lifetime in seconds. */
-  const pmaxlife = new Float32Array(N);
-  /** Vertical direction: +1 drifts downward from horizon, −1 drifts upward. */
-  const pside    = new Float32Array(N);
-  /** Colour bucket index (0 = centre/white, N_BUCKETS−1 = edge/magenta). */
-  const pbucket  = new Uint8Array(N);
+  // ── Pre-allocated particle state ─────────────────────────────────────────────
+  const pposx       = new Float32Array(N);   // current x
+  const pposy       = new Float32Array(N);   // current y
+  const pprevx      = new Float32Array(N);   // previous x
+  const pprevy      = new Float32Array(N);   // previous y
+  const pvelx       = new Float32Array(N);   // velocity x
+  const pvely       = new Float32Array(N);   // velocity y
+  const page        = new Uint16Array(N);    // age in steps
+  const plife       = new Uint16Array(N);    // max life in steps
+  const pseed       = new Float32Array(N);   // per-particle random seed [0, 1)
+  const psideBias   = new Int8Array(N);      // +1 or -1 (normal-side assignment)
+  const pcolorBucket = new Uint8Array(N);    // colour bucket index
 
-  const bucketColors = buildBucketColors(N_BUCKETS);
+  // Initialise per-particle seeds once (never reallocated).
+  for (let i = 0; i < N; i++) pseed[i] = Math.random();
 
-  // ── Offscreen canvas ────────────────────────────────────────────────────────
+  const bucketColors = buildBucketColors();
+
+  // ── Offscreen canvas ─────────────────────────────────────────────────────────
   let offCanvas: HTMLCanvasElement | null = null;
   let offCtx:    CanvasRenderingContext2D | null = null;
 
-  // Logical dimensions (= main RPG canvas size).
+  // Logical canvas dimensions.
   let W = 0;
   let H = 0;
-  // Internal (scaled) dimensions.
+  // Internal (down-scaled) dimensions.
   let IW = 0;
   let IH = 0;
-  // Derived layout values (recomputed in init()).
-  let horizonY = 0;   // horizon y in internal pixels
-  let cx       = 0;   // horizontal centre in internal pixels
-  let halfW    = 0;   // half of internal width
 
-  let lastTs:         number | null = null;
+  // ── Horizon line state ───────────────────────────────────────────────────────
+  let lAx = 0; let lAy = 0;
+  let lBx = 0; let lBy = 0;
+  let lDx = 1; let lDy = 0;   // normalised direction (A -> B)
+  let lNx = 0; let lNy = 1;   // normalised normal (perpendicular, CCW)
+
+  // ── Timing / wave state ──────────────────────────────────────────────────────
+  let lastTsMs:       number | null = null;
   let timeS:          number        = 0;
   let compositeAlpha: number        = 0;
   let initStartMs:    number | null = null;
+  let lastWaveNumber: number        = -1;
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
+  // ── Colour cycle ─────────────────────────────────────────────────────────────
+  let colorPhase:   0 | 1 = 0;
+  let colorNextMs:  number = 0;
 
-  /** Maps an internal x position to a colour bucket index. */
-  function bucketForX(x: number): number {
-    const normDist = Math.min(1, Math.abs(x - cx) / (halfW || 1));
-    return Math.min(N_BUCKETS - 1, Math.floor(normDist * N_BUCKETS));
-  }
+  // ── Helpers ──────────────────────────────────────────────────────────────────
 
   /**
-   * Resets particle i to a fresh spawn near the horizon.
-   * When `scatterLife` is true the initial elapsed life is randomised so that
-   * particles do not all expire simultaneously.
+   * Signed distance of point (x, y) from the horizon line.
+   * Positive => "normal side" (lN direction); negative => opposite side.
    */
-  function spawnParticle(i: number, scatterLife: boolean): void {
-    // Horizontal position: mix of uniform and slight centre-density bias.
-    const useUniform = Math.random() < 0.55;
-    const normX = useUniform
-      ? (Math.random() * 2 - 1) * 0.98
-      : (Math.random() - 0.5) * 0.98;
-
-    px[i]  = cx + normX * halfW;
-    py[i]  = horizonY + (Math.random() - 0.5) * 3.5;
-    ppx[i] = px[i];
-    ppy[i] = py[i];
-
-    pside[i] = Math.random() < 0.5 ? -1 : 1;
-
-    // Outer particles live longer (calmer, longer strands at the edges).
-    const outerFactor = Math.abs(normX);
-    pmaxlife[i] = LIFE_MIN + (LIFE_MAX - LIFE_MIN) * (outerFactor * 0.6 + Math.random() * 0.4);
-
-    plife[i] = scatterLife ? Math.random() * pmaxlife[i] : 0;
-
-    // Colour bucket is assigned at spawn and kept fixed so each strand has
-    // a characteristic colour throughout its lifetime.
-    pbucket[i] = bucketForX(px[i]);
+  function signedDist(x: number, y: number): number {
+    return (x - lAx) * lNx + (y - lAy) * lNy;
   }
 
-  /** Allocates the offscreen canvas and seeds all particles. */
-  function init(w: number, h: number): void {
+  function spawnParticle(i: number, scatter: boolean): void {
+    // Random position along the line.
+    const tPos = Math.random();
+    const wx = lAx + tPos * (lBx - lAx);
+    const wy = lAy + tPos * (lBy - lAy);
+
+    // Small jitter perpendicular to the line.
+    const jitter = (Math.random() - 0.5) * 5.0;
+
+    pposx[i]  = wx + lNx * jitter;
+    pposy[i]  = wy + lNy * jitter;
+    pprevx[i] = pposx[i];
+    pprevy[i] = pposy[i];
+
+    // Assign to one side of the line.
+    psideBias[i] = Math.random() < 0.5 ? 1 : -1;
+
+    // Initial speed -- scaled by canvas height.
+    const spd = IH * ZENITH_CFG.baseSpeed * (0.6 + Math.random() * 0.8);
+    const side = psideBias[i];
+    pvelx[i] = side * lNx * spd + (Math.random() - 0.5) * spd * 0.4;
+    pvely[i] = side * lNy * spd + (Math.random() - 0.5) * spd * 0.4;
+
+    // Lifetime randomised per particle.
+    plife[i] = ZENITH_CFG.minAge + Math.floor(pseed[i] * (ZENITH_CFG.maxAge - ZENITH_CFG.minAge));
+    page[i]  = scatter ? Math.floor(Math.random() * plife[i]) : 0;
+
+    // Colour bucket: colorPhase selects light vs dark palette.
+    pcolorBucket[i] = colorPhase * N_SHADE_BUCKETS + Math.floor(pseed[i] * N_SHADE_BUCKETS);
+  }
+
+  /** Set the horizon line from a HorizonLine descriptor. */
+  function applyLine(line: HorizonLine): void {
+    lAx = line.ax; lAy = line.ay;
+    lBx = line.bx; lBy = line.by;
+    lDx = line.dx; lDy = line.dy;
+    lNx = line.nx; lNy = line.ny;
+  }
+
+  /** Allocate offscreen canvas and seed all particles. */
+  function init(w: number, h: number, waveSeed: number): void {
     W  = w;
     H  = h;
     IW = Math.max(1, Math.round(w * renderScale));
     IH = Math.max(1, Math.round(h * renderScale));
-
-    horizonY = IH * HORIZON_Y_FRACTION;
-    cx       = IW / 2;
-    halfW    = IW / 2;
 
     offCanvas        = document.createElement('canvas');
     offCanvas.width  = IW;
     offCanvas.height = IH;
     offCtx           = offCanvas.getContext('2d')!;
 
-    // Fill solid black so there are no transparent holes behind the effect.
     offCtx.fillStyle = '#000000';
     offCtx.fillRect(0, 0, IW, IH);
+
+    applyLine(generateValidLine(IW, IH, waveSeed));
 
     for (let i = 0; i < N; i++) spawnParticle(i, true);
   }
 
-  // ── Flow field ───────────────────────────────────────────────────────────────
-  //
-  // Returns (vx, vy) in internal pixels/second for a particle at (x, y).
-  // The field is constructed from superposed sine/cosine terms to produce
-  // curl-like behaviour without external noise libraries.
-  //
-  // Design goals:
-  //  • Vertical component always drifts away from the horizon (sign = pside).
-  //  • Horizontal component oscillates; amplitude peaks near x = cx (centre)
-  //    to create tangled, crossing paths there.
-  //  • A small return-to-centre term drives particles from the edges back
-  //    inward, producing repeated crossings and brightening the centre zone.
-  //  • A tiny asymmetric perturbation breaks perfect bilateral symmetry.
-  function flowField(
-    x: number, y: number,
-    side: number,
-    ts: number,
-  ): [number, number] {
-    const nx    = (x - cx) / (halfW || 1);             // −1 … 1
-    const ny    = (y - horizonY) / (IH * 0.5 || 1);   // −1 … 1  (0 at horizon)
-    const distH = Math.abs(ny);                         // 0 at horizon, 1 at edge
-
-    const vScale = IH * VELOCITY_SCALE;
-
-    // Vertical: accelerates as particle moves further from the horizon.
-    const vy = side * FIELD_STRENGTH * (0.35 + distH * 1.0) * vScale;
-
-    // Centre-convergence factor: 1 at x = cx, decays toward edges.
-    const centralFactor = Math.exp(-nx * nx * 2.8);
-
-    // Horizontal oscillation terms.
-    const hOsc = (
-      Math.sin(ny * 3.8 + nx * 2.3 + ts * 0.52) * 0.70 * centralFactor +
-      Math.cos(nx * 4.1 +             ts * 0.38) * 0.38 +
-      Math.sin(ny * 6.5 +             ts * 0.67) * 0.24 * (1 - distH * 0.45)
-    ) * FIELD_STRENGTH;
-
-    // Gentle return-to-centre to produce crossings (stronger near centre).
-    const returnToCenter = -nx * 0.14 * (1 + centralFactor);
-
-    // Small asymmetric perturbation to avoid a perfectly mirrored look.
-    const asymm = Math.sin(ts * 0.11 + y * 0.035) * 0.08;
-
-    const vx = (hOsc + returnToCenter + asymm) * vScale;
-
-    return [vx, vy];
-  }
-
-  // ── Update ────────────────────────────────────────────────────────────────────
-
-  function update(now: number, w: number, h: number): void {
-    const needsInit = !offCanvas || W !== w || H !== h;
-    if (needsInit) {
-      init(w, h);
-      compositeAlpha = 0;
-      initStartMs    = now;
-      lastTs         = null;
-    }
-
-    if (initStartMs === null) initStartMs = now;
-    compositeAlpha = Math.min(1, (now - initStartMs) / FADE_IN_MS);
-
-    const dt = lastTs === null ? 0.016 : Math.min((now - lastTs) / 1000, 0.05);
-    lastTs = now;
-    timeS += dt;
-
+  /** Regenerate horizon line, reseed particles, and prewarm the field. */
+  function reseedWave(waveNumber: number, doPrewarm: boolean): void {
     if (!offCtx) return;
 
-    // ── Fade accumulated trails with a translucent black rect ─────────────────
-    // This is the key to the "persistent trail" look: instead of clearing the
-    // canvas we darken it slightly each frame so old strokes linger and fade.
+    offCtx.fillStyle = '#000000';
+    offCtx.fillRect(0, 0, IW, IH);
+
+    applyLine(generateValidLine(IW, IH, waveNumber * 7919 + 31337));
+
+    for (let i = 0; i < N; i++) spawnParticle(i, true);
+
+    if (doPrewarm) {
+      const dt = 0.016;
+      for (let s = 0; s < prewarmSteps; s++) {
+        tickParticles(dt);
+      }
+    }
+  }
+
+  // ── Particle tick ─────────────────────────────────────────────────────────────
+  //
+  // One step of the particle simulation (dt in seconds).
+  // Motion model (local line coordinates):
+  //   - normal-push: drives particles away from the line on their assigned side
+  //   - tangential drift (sinusoidal): creates wavy, strand-like paths
+  //   - curl perturbation: rotates velocity, causing strand crossings
+  //   - line-pull: weak attraction prevents too-fast dispersal
+
+  function tickParticles(dt: number): void {
+    if (!offCtx) return;
+
+    // Fade accumulated trails.
     offCtx.globalCompositeOperation = 'source-over';
     offCtx.globalAlpha              = trailFade;
     offCtx.fillStyle                = '#000000';
     offCtx.fillRect(0, 0, IW, IH);
     offCtx.globalAlpha = 1;
 
-    // Maximum absolute vertical distance from the horizon before respawning.
-    const maxVert = IH * VERTICAL_SPREAD * 0.5;
+    const speedScale = IH * ZENITH_CFG.baseSpeed;
+    const maxDist    = Math.min(IW, IH) * 0.68;
 
-    // ── Advance all particles ────────────────────────────────────────────────
     for (let i = 0; i < N; i++) {
-      plife[i] += dt;
-
+      page[i]++;
       if (
-        plife[i] >= pmaxlife[i] ||
-        px[i] < -2 || px[i] > IW + 2 ||
-        Math.abs(py[i] - horizonY) > maxVert
+        page[i] >= plife[i] ||
+        pposx[i] < -4 || pposx[i] > IW + 4 ||
+        pposy[i] < -4 || pposy[i] > IH + 4
       ) {
         spawnParticle(i, false);
         continue;
       }
 
-      ppx[i] = px[i];
-      ppy[i] = py[i];
+      pprevx[i] = pposx[i];
+      pprevy[i] = pposy[i];
 
-      const [vx, vy] = flowField(px[i], py[i], pside[i], timeS);
-      px[i] += vx * dt;
-      py[i] += vy * dt;
+      const sd   = signedDist(pposx[i], pposy[i]);
+      const absd = Math.abs(sd);
+      const side = psideBias[i];
+      const s    = pseed[i];
+      const t    = timeS;
+
+      // Normal-push force (drives particle away from line on its side).
+      const normFactor = Math.max(0, 1 - absd / maxDist);
+      const fNormal    = side * ZENITH_CFG.normalPush * normFactor;
+
+      // Tangential sinusoidal drift (wavy paths).
+      const fTangent =
+        ZENITH_CFG.tangentDrift *
+        Math.sin(s * 6.28 + t * 0.72 + absd * 0.018);
+
+      // Weak line-pull (only when far from line).
+      const pullFactor = Math.max(0, absd / maxDist - 0.45);
+      const fPull      = -ZENITH_CFG.linePull * (sd / (absd || 1)) * pullFactor;
+
+      // Transform forces from line-local to world space.
+      const totalNormal = fNormal + fPull;
+      const ax = (totalNormal * lNx + fTangent * lDx) * speedScale;
+      const ay = (totalNormal * lNy + fTangent * lDy) * speedScale;
+
+      pvelx[i] += ax * dt;
+      pvely[i] += ay * dt;
+
+      // Curl perturbation: rotate velocity.
+      const curlAmt =
+        ZENITH_CFG.curliness *
+        Math.sin(t * 0.55 + s * 5.13 + pposx[i] * 0.009 + pposy[i] * 0.007);
+      const ca  = Math.cos(curlAmt * dt);
+      const sa  = Math.sin(curlAmt * dt);
+      const cvx = pvelx[i] * ca - pvely[i] * sa;
+      const cvy = pvelx[i] * sa + pvely[i] * ca;
+      pvelx[i] = cvx;
+      pvely[i] = cvy;
+
+      // Velocity damping.
+      pvelx[i] *= ZENITH_CFG.damping;
+      pvely[i] *= ZENITH_CFG.damping;
+
+      // Advance position.
+      pposx[i] += pvelx[i] * dt;
+      pposy[i] += pvely[i] * dt;
     }
 
-    // ── Draw particle strands — batched by colour bucket ──────────────────────
-    // Each bucket issues only one beginPath() / stroke() pair, reducing canvas
-    // state changes from N to N_BUCKETS per frame.
+    // ── Draw strands, batched by colour bucket ────────────────────────────────
     offCtx.globalCompositeOperation = 'source-over';
     offCtx.globalAlpha              = strokeAlpha;
     offCtx.lineWidth                = 1.0;
@@ -388,55 +534,81 @@ export function createZenithBinaryHorizon(
     for (let b = 0; b < N_BUCKETS; b++) {
       offCtx.strokeStyle = bucketColors[b];
       offCtx.beginPath();
-
       for (let i = 0; i < N; i++) {
-        if (pbucket[i] !== b) continue;
-        // Skip particles that have not moved (just spawned).
-        if (ppx[i] === px[i] && ppy[i] === py[i]) continue;
-        offCtx.moveTo(ppx[i], ppy[i]);
-        offCtx.lineTo(px[i],  py[i]);
+        if (pcolorBucket[i] !== b) continue;
+        if (pprevx[i] === pposx[i] && pprevy[i] === pposy[i]) continue;
+        offCtx.moveTo(pprevx[i], pprevy[i]);
+        offCtx.lineTo(pposx[i],  pposy[i]);
       }
-
       offCtx.stroke();
     }
+  }
 
-    // ── Horizon line ──────────────────────────────────────────────────────────
-    const breathe = 0.65 + 0.35 * Math.sin(timeS * BREATHE_SPEED);
-    const hgw     = IW * HORIZON_GLOW_HALF_WIDTH;
+  // ── Horizon accent line ───────────────────────────────────────────────────────
 
-    const hGrad = offCtx.createLinearGradient(cx - hgw, horizonY, cx + hgw, horizonY);
-    hGrad.addColorStop(0.00, 'rgba(0,160,220,0.02)');
-    hGrad.addColorStop(0.25, 'rgba(80,200,255,0.30)');
-    hGrad.addColorStop(0.45, 'rgba(200,235,255,0.85)');
-    hGrad.addColorStop(0.50, `rgba(255,255,255,${(0.95 * breathe).toFixed(2)})`);
-    hGrad.addColorStop(0.55, 'rgba(200,235,255,0.85)');
-    hGrad.addColorStop(0.75, 'rgba(80,200,255,0.30)');
-    hGrad.addColorStop(1.00, 'rgba(0,160,220,0.02)');
+  function drawHorizonAccent(ts: number): void {
+    if (!offCtx) return;
+
+    const breathe = 0.50 + 0.50 * Math.sin(ts * 0.62);
+    const alpha   = ZENITH_CFG.horizonLineAlpha * breathe;
+
+    const accentColor = colorPhase === 0
+      ? `rgba(80,220,255,${alpha.toFixed(3)})`
+      : `rgba(220,80,255,${alpha.toFixed(3)})`;
 
     offCtx.globalCompositeOperation = 'lighter';
-    offCtx.globalAlpha              = breathe;
-    offCtx.strokeStyle              = hGrad;
-    offCtx.lineWidth                = HORIZON_LINE_WIDTH;
+    offCtx.globalAlpha  = 1;
+    offCtx.strokeStyle  = accentColor;
+    offCtx.lineWidth    = ZENITH_CFG.horizonLineWidth;
+    offCtx.lineCap      = 'round';
     offCtx.beginPath();
-    offCtx.moveTo(0,  horizonY);
-    offCtx.lineTo(IW, horizonY);
+    offCtx.moveTo(lAx, lAy);
+    offCtx.lineTo(lBx, lBy);
     offCtx.stroke();
 
-    // ── Central glow ──────────────────────────────────────────────────────────
-    const glowR = IW * CENTER_GLOW_RADIUS_FRACTION;
-    const ga    = CENTER_GLOW_STRENGTH * breathe;
+    offCtx.globalCompositeOperation = 'source-over';
+  }
 
-    const cGrad = offCtx.createRadialGradient(cx, horizonY, 0, cx, horizonY, glowR);
-    cGrad.addColorStop(0.00, `rgba(255,255,255,${(ga * 0.55).toFixed(3)})`);
-    cGrad.addColorStop(0.18, `rgba(210,245,255,${(ga * 0.28).toFixed(3)})`);
-    cGrad.addColorStop(0.50, `rgba(120,210,255,${(ga * 0.07).toFixed(3)})`);
-    cGrad.addColorStop(1.00, 'rgba(0,80,180,0)');
+  // ── Update ────────────────────────────────────────────────────────────────────
 
-    offCtx.globalAlpha = 1;
-    offCtx.fillStyle   = cGrad;
-    offCtx.fillRect(cx - glowR, horizonY - glowR, glowR * 2, glowR * 2);
+  function update(now: number, w: number, h: number, waveNumber = 0): void {
+    const needsInit = !offCanvas || W !== w || H !== h;
 
-    // Restore context state.
+    if (needsInit) {
+      init(w, h, waveNumber * 7919 + 31337);
+      compositeAlpha = 0;
+      initStartMs    = now;
+      lastTsMs       = null;
+      lastWaveNumber = waveNumber;
+      colorPhase     = 0;
+      colorNextMs    = now + ZENITH_CFG.colorCycleMinMs +
+        Math.random() * (ZENITH_CFG.colorCycleMaxMs - ZENITH_CFG.colorCycleMinMs);
+      const dt = 0.016;
+      for (let s = 0; s < prewarmSteps; s++) tickParticles(dt);
+    } else if (waveNumber !== lastWaveNumber) {
+      lastWaveNumber = waveNumber;
+      reseedWave(waveNumber, true);
+    }
+
+    if (initStartMs === null) initStartMs = now;
+    compositeAlpha = Math.min(1, (now - initStartMs) / ZENITH_CFG.fadeInMs);
+
+    // Colour cycle.
+    if (now >= colorNextMs) {
+      colorPhase = colorPhase === 0 ? 1 : 0;
+      colorNextMs = now + ZENITH_CFG.colorCycleMinMs +
+        Math.random() * (ZENITH_CFG.colorCycleMaxMs - ZENITH_CFG.colorCycleMinMs);
+    }
+
+    const dt = lastTsMs === null ? 0.016 : Math.min((now - lastTsMs) / 1000, 0.05);
+    lastTsMs = now;
+    timeS   += dt;
+
+    if (!offCtx) return;
+
+    tickParticles(dt);
+    drawHorizonAccent(timeS);
+
     offCtx.globalAlpha              = 1;
     offCtx.globalCompositeOperation = 'source-over';
   }
@@ -447,7 +619,6 @@ export function createZenithBinaryHorizon(
     if (!offCanvas || compositeAlpha <= 0) return;
     mainCtx.save();
     mainCtx.globalAlpha = compositeAlpha;
-    // Scale the offscreen canvas up to the logical RPG canvas size.
     mainCtx.drawImage(offCanvas, 0, 0, IW, IH, 0, 0, W, H);
     mainCtx.restore();
   }
@@ -458,10 +629,13 @@ export function createZenithBinaryHorizon(
     offCanvas      = null;
     offCtx         = null;
     W = H = IW = IH = 0;
-    lastTs         = null;
+    lastTsMs       = null;
     initStartMs    = null;
     compositeAlpha = 0;
     timeS          = 0;
+    lastWaveNumber = -1;
+    colorPhase     = 0;
+    colorNextMs    = 0;
   }
 
   function destroy(): void { reset(); }

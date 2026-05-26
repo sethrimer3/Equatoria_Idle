@@ -145,6 +145,7 @@ import {
 } from './terrain/rpg-pathfinding';
 import { createRpgZoneSelectPanel } from './rpg-zone-select';
 import { createZenithBinaryHorizon, type ZenithBinaryHorizon } from '../background/zenith-binary-horizon';
+import { createTrueBinaryHorizon, type TrueBinaryHorizon } from '../background/true-binary-horizon';
 import { createNadirSubstrateEffect, type NadirSubstrateEffect } from '../background/nadir-substrate-effect';
 import {
   createNadirCubicGridBackground,
@@ -210,6 +211,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgSimState.activeSubzoneId = newSubzoneId;
     // Reset background instances so they rebuild with the correct effect.
     zenithBinaryHorizon = null;
+    trueBinaryHorizon = null;
     zenithBinaryRingBg = null;
     nadirSubstrate = null;
     nadirCubicGrid = null;
@@ -242,6 +244,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Euler fluid background ─────────────────────────────────────
   const fluid = createRpgFluid();
   let zenithBinaryHorizon: ZenithBinaryHorizon | null = null;
+  let trueBinaryHorizon: TrueBinaryHorizon | null = null;
   const binaryRingEnemies: BinaryRingEnemy[] = [];
   const binaryRingMissiles: BinaryRingMissile[] = [];
   let binaryLaserSweep: BinaryLaserSweep | null = null;
@@ -266,17 +269,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       nadirCubicGrid.update(nowMs, w, h, isEliteWaveActive, isLowGraphicsMode);
       nadirCubicGrid.draw(c2d);
     } else {
+      const isTrue = rpgSimState.activeSubzoneId === 'true';
       if (binaryRingEnemies.length > 0) {
         if (!zenithBinaryRingBg) zenithBinaryRingBg = createZenithBinaryRingBackground({ quality: isLowGraphicsMode ? 'low' : 'medium' });
         const ringAge = binaryRingEnemies[0]?.age ?? 'light';
         zenithBinaryRingBg.update(nowMs, w, h, ringAge);
         zenithBinaryRingBg.draw(c2d);
         drawBinaryRingEncounter(c2d, binaryRingEnemies[0]!, binaryRingMissiles, binaryLaserSweep, nowMs, isLowGraphicsMode);
+      } else if (isTrue) {
+        // True subzone: uses the preserved legacy Binary Horizon effect.
+        if (!trueBinaryHorizon) trueBinaryHorizon = createTrueBinaryHorizon({ quality: isLowGraphicsMode ? 'low' : 'medium' });
+        trueBinaryHorizon.update(nowMs, w, h);
+        trueBinaryHorizon.draw(c2d);
       } else {
-        // Zenith subzone uses the Binary Horizon effect.
-        // 'true' subzone also uses it as a placeholder until it has its own distinct effect.
+        // Zenith subzone: path-accumulation Binary Horizon with randomised divider line.
         if (!zenithBinaryHorizon) zenithBinaryHorizon = createZenithBinaryHorizon({ quality: isLowGraphicsMode ? 'low' : 'medium' });
-        zenithBinaryHorizon.update(nowMs, w, h);
+        zenithBinaryHorizon.update(nowMs, w, h, currentWave);
         zenithBinaryHorizon.draw(c2d);
       }
     }

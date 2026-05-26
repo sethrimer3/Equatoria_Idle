@@ -327,16 +327,25 @@
 - Nadir-specific internal constants, types, and helpers for `nadir-substrate-effect.ts`.
 - Currently matches `substrate-effect-internals.ts` exactly aside from the file header comment, so future tuning can diverge without affecting Zenith.
 
+### src/render/background/true-binary-horizon.ts
+- Preserved copy of the original (pre-build-158) Binary Horizon effect, used for the True sublevel.
+- Exports `TrueBinaryHorizon` interface and `createTrueBinaryHorizon({ quality })` factory.
+- Horizontal horizon at ~48% canvas height; particles flow upward/downward via a sine/cosine curl field.
+- 8 colour buckets (white/silver → cyan → teal → blue → violet), central radial glow, breathing pulse.
+- Isolated from Zenith changes: True and Zenith now use separate instances and separate files.
+- Wired in `rpg-render.ts → drawZoneBgOverlay` for the `'true'` subzone.
+
 ### src/render/background/zenith-binary-horizon.ts
-- "Binary Horizon" ambient background for the Zenith sublevel.
+- Reworked Binary Horizon background for the Zenith sublevel (build 158).
 - Exports `ZenithBinaryHorizon` interface and `createZenithBinaryHorizon({ quality })` factory.
-- Persistent offscreen canvas; never cleared — faded each frame with a translucent black rect to create persistent trails.
-- Particle state in preallocated `Float32Array` / `Uint8Array`; zero per-frame heap allocation.
-- Particles batched by 8 colour buckets (white/silver → cyan → teal → blue → violet → magenta) for efficient drawing.
-- Flow field: curl-like sine/cosine superposition; more tangled near centre, calmer at edges.
-- Horizon line with luminous gradient; central radial glow with breathing pulse.
-- Internal resolution scaled per quality level; composited into RPG canvas via `drawImage`.
-- Wired in `rpg-render.ts → drawZoneBgOverlay` for non-Nadir Horizon backgrounds when the Binary Ring encounter is not active.
+- **Randomised edge-to-edge divider line**: regenerated each wave from two perimeter points; line is validated with a Shoelace-based polygon area test so both sides have ≥ 10% of the canvas area.
+- Path-accumulation particle system: particles evolve from the line using normal-push, sinusoidal tangential drift, and curl perturbation; trails accumulate on a persistent offscreen canvas.
+- Seeded PRNG (mulberry32) and geometry helpers (`samplePerimeter`, `splitAreaRatio`, `generateValidLine`) for deterministic per-wave line selection.
+- Two alternating colour ages (light: cyan/teal/blue; dark: magenta/violet); cycle timer switches between them every 5–11 s.
+- Bounded prewarm pass (120 / 35 steps) on wave reseed to avoid empty first frame.
+- Low-graphics mode: 1600 particles (vs 5200), 0.35× internal scale (vs 0.5×), 35 prewarm steps.
+- `update(now, w, h, waveNumber?)`: auto-reseeds when `waveNumber` changes.
+- Wired in `rpg-render.ts → drawZoneBgOverlay` for non-Nadir, non-True, non-BinaryRing Horizon backgrounds.
 
 ### src/render/background/zenith-binary-ring-background.ts
 - Path-traced Binary Ring encounter background for Zenith elite fights.
