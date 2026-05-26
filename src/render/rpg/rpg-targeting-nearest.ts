@@ -17,6 +17,7 @@ import type {
   EigensteinEnemy,
 } from './rpg-enemy-types';
 import type { RpgTargetingCtx } from './rpg-targeting-types';
+import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
@@ -165,6 +166,11 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'elite', x: e.x, y: e.y, distSq: d, elite: e }; }
   }
+  for (const e of ctx.binaryRingEnemies) {
+    const dx = e.x - mx, dy = e.y - my;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'binary_ring', x: e.x, y: e.y, distSq: d, binaryRing: e }; }
+  }
   // Aliven particle groups — target individual particles
   for (const group of ctx.alivenGroups) {
     for (const p of group.particles) {
@@ -259,7 +265,7 @@ export function findClosestEnemy(
   rangeSq: number,
 ): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
   | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-  | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
+  | FracterylEnemy | EigensteinEnemy | BinaryRingEnemy | EliteEnemy | BossEnemy
   | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
   | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
   | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
@@ -268,7 +274,7 @@ export function findClosestEnemy(
   let bestSq = rangeSq;
   let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-    | FracterylEnemy | EigensteinEnemy | EliteEnemy | BossEnemy
+    | FracterylEnemy | EigensteinEnemy | BinaryRingEnemy | EliteEnemy | BossEnemy
     | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
@@ -352,6 +358,11 @@ export function findClosestEnemy(
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; }
   }
   for (const e of ctx.eliteEnemies) {
+    const dx = e.x - mx, dy = e.y - my;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; }
+  }
+  for (const e of ctx.binaryRingEnemies) {
     const dx = e.x - mx, dy = e.y - my;
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; }

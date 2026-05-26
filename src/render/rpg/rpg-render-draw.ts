@@ -105,6 +105,7 @@ import type {
   FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
+import type { BinaryRingEnemy, BinaryRingMissile } from './rpg-binary-ring-encounter';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
@@ -185,6 +186,8 @@ export interface RpgDrawCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  binaryRingEnemies: BinaryRingEnemy[];
+  binaryRingMissiles: BinaryRingMissile[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────

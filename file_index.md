@@ -336,7 +336,14 @@
 - Flow field: curl-like sine/cosine superposition; more tangled near centre, calmer at edges.
 - Horizon line with luminous gradient; central radial glow with breathing pulse.
 - Internal resolution scaled per quality level; composited into RPG canvas via `drawImage`.
-- Wired in `rpg-render.ts → drawZoneBgOverlay` for `activeSubzoneId === 'zenith'` (and 'true' as placeholder).
+- Wired in `rpg-render.ts → drawZoneBgOverlay` for non-Nadir Horizon backgrounds when the Binary Ring encounter is not active.
+
+### src/render/background/zenith-binary-ring-background.ts
+- Path-traced Binary Ring encounter background for Zenith elite fights.
+- Exports `ZenithBinaryRingBackground` and `createZenithBinaryRingBackground({ quality })`.
+- Uses one persistent offscreen canvas with translucent-black trail fade, deterministic radial/tangential ring flow, and age-based palette lerp over 1.5s.
+- Particle state is fully preallocated in `Float32Array` / `Uint8Array`, batched into 8 colour buckets, with no hot-path object allocation.
+- Drawn by `rpg-render.ts → drawZoneBgOverlay` only while a Binary Ring enemy is active.
 
 ### src/render/particles/particle-types.ts
 - All shared particle system interfaces and type aliases.
@@ -850,11 +857,11 @@
 - Exports: `spawnSwarmAttack`, `updateSwarmAttack`, `getSwarmHazardCircles`.
 
 ### src/render/rpg/rpg-damage.ts
-- 24 per-entity damage functions extracted from `rpg-render.ts` via factory pattern (~307 lines).
+- Per-entity damage functions extracted from `rpg-render.ts` via factory pattern.
 - Exports `DamageCtx` interface (`recordDps` callback) and `createDamageFns(ctx)` factory.
-- `createDamageFns` returns all damage helpers (`damageEnemy`, `damageSapphireEnemy`, `damageMissile`, etc.) with identical signatures and behaviour, so call sites in `rpg-render.ts` are unchanged.
+- `createDamageFns` now includes `damageBinaryRingEnemy` for the Zenith elite encounter alongside the existing enemy damage helpers.
 - `damageBossEnemy` is NOT included; it lives in `rpg-boss-wave.ts` (part of boss wave lifecycle management).
-- Imports entity types from `./rpg-types` and `MINIMUM_SHIELD_DAMAGE` from `./rpg-constants`.
+- Imports entity types from `./rpg-types` / `./rpg-binary-ring-encounter` and `MINIMUM_SHIELD_DAMAGE` from `./rpg-constants`.
 
 ### src/render/rpg/rpg-lucky-motes.ts
 - Pure-function module for the lucky mote drop system (~222 lines).
@@ -981,7 +988,14 @@
 ### src/render/rpg/rpg-targeting-types.ts
 - Type-only home for targeting contracts extracted from `rpg-targeting.ts`.
 - Exports `RpgTargetingCtx` (all enemy arrays + damage dispatch callbacks) and `RpgTargetingHandle` (public targeting API).
+- Includes Binary Ring elite arrays and `damageBinaryRingEnemy`, so generic targeting can lock onto the Zenith encounter body.
 - Keeps runtime logic in `rpg-targeting.ts` while preserving existing import compatibility through type re-exports.
+
+### src/render/rpg/rpg-binary-ring-encounter.ts
+- Self-contained Zenith elite encounter module for the Binary Ring boss-like enemy.
+- Exports encounter types (`BinaryRingEnemy`, `BinaryRingMissile`, `BinaryLaserSweep`, age/phase unions), `BINARY_RING_CONFIG`, factory helpers, update functions, and `drawBinaryRingEncounter()`.
+- Owns the phase cycle (evolve → laser telegraph/attack → missile telegraph/attack → optional age transition), homing missile logic, sweeping laser logic, and ring/missile/laser draw passes.
+- Integrated by `rpg-render-update.ts` for per-frame simulation and by `rpg-render.ts → drawZoneBgOverlay` for presentation.
 
 ### src/render/rpg/rpg-player-attack.ts
 - Player auto-attack context and dispatcher (~222 lines).
@@ -1329,15 +1343,16 @@
 - Laser enemy draw (`drawLaserEnemies`) lives in `rpg-enemy-draw.ts`; all-enemy indicator markers (`drawEnemyIndicators`) now live in `rpg-enemy-indicators.ts` and are re-exported by `rpg-enemy-draw.ts` for call-site stability.
 - Player mote comet trail + body draw (`drawPlayerMote`) extracted to `rpg-player-draw.ts`; called with `playerMovementState.glowMovementIntensity` and `playerIFramesMs`.
 - Lucky mote system (spawn, update, draw) extracted to `rpg-lucky-motes.ts` as pure functions with explicit parameters.
-- 24 per-entity damage functions extracted to `rpg-damage.ts` via `createDamageFns` factory; call sites unchanged.
+- Per-entity damage functions are created through `rpg-damage.ts`; Zenith now adds `damageBinaryRingEnemy` into the same factory pipeline.
 - Per-frame enemy update functions extracted to `rpg-enemy-updates.ts` (early wave: emerald/amber/void), `rpg-enemy-updates-mid.ts` (mid-wave: quartz/ruby/sunstone/citrine), `rpg-enemy-updates-basic.ts` (laser, sapphire), and `rpg-enemy-updates-adv.ts` (wave 40+); called via `enemyCtx: RpgEnemyCtx` object.
+- Horizon Zenith now owns Binary Ring encounter state (`binaryRingEnemies`, missiles, laser sweep, special background instance) in addition to the Binary Horizon / Nadir background effects.
 - Boss update functions (`updateBossEnemy`, `updateBossProjectiles`) extracted to `rpg-boss-update.ts`; per-boss-ID behavior dispatch extracted further to `rpg-boss-behaviors.ts` (non-wave) and `rpg-boss-behaviors-wave.ts` (danmaku); called via `bossCtx: BossUpdateCtx` object.
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip and vortex draw functions extracted to `rpg-weapon-draw.ts`; sword combo and sand blade draw functions extracted to `rpg-weapon-draw-sword.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
 - Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
 - Per-frame canvas draw function extracted to `rpg-render-draw.ts` via `drawRpgFrame(ctx, state, nowMs)`; `setAllDrawLowGraphics` forwards low-graphics flag to all draw modules.
-- Lazily owns Horizon substrate background effects (`createSubstrateEffect` for Zenith and `createNadirSubstrateEffect` for Nadir placeholder routing) and exposes them to the draw module through `drawZoneBgOverlay`.
+- `drawZoneBgOverlay` now swaps between Binary Horizon, the Binary Ring offscreen background, and Nadir substrate depending on active Horizon subzone + encounter state.
 - Death/restart lifecycle (triggerDeath, doRestart, updateDying, updateRestarting) extracted to `rpg-death-restart.ts`; rpg-render.ts builds `deathRestartCtx: RpgDeathRestartCtx` and delegates all four functions.
 - Weapon orbit particle helpers (buildWeaponOrbitParticle, buildOrbitProjectile, updateWeaponOrbitParticles) extracted to `rpg-weapon-orbit.ts`; called via `weaponOrbitCtx: WeaponOrbitCtx`.
 - Per-frame weapon system tick (weapon system updates, auto-attack timers, sand blade fallback) extracted to `rpg-weapon-tick.ts`; rpg-render.ts builds `weaponTickCtx: WeaponTickCtx` and calls `tickWeaponSystems(weaponTickCtx, deltaMs)`.

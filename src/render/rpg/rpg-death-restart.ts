@@ -16,6 +16,7 @@ import type {
   RpgPlayerStats, SpawnEntry, LaserEnemy, SapphireEnemy, SapphireMissile,
 } from './rpg-types';
 import type { PlayerMovementState } from './rpg-player-movement';
+import type { BinaryRingEnemy, BinaryRingMissile } from './rpg-binary-ring-encounter';
 import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
@@ -104,6 +105,8 @@ export interface RpgDeathRestartCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  binaryRingEnemies: BinaryRingEnemy[];
+  binaryRingMissiles: BinaryRingMissile[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays (cleared on restart) ──────────────────────────
@@ -147,6 +150,7 @@ export interface RpgDeathRestartCtx {
 
   // ── Scalar setters (bossEnemy/zone need setters since they're nullables) ─
   setBossEnemy(b: BossEnemy | null): void;
+  setBinaryLaserSweep(sweep: null): void;
   setDanmakuSafeZone(dz: null): void;
   setIsBossFightFromMenu(b: boolean): void;
   setBossHitsInRound(v: number): void;
@@ -209,6 +213,8 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.fracterylEnemies.length = 0; ctx.fracterylShards.length = 0;
   ctx.eigensteinEnemies.length = 0; ctx.eigensteinBeams.length = 0;
   ctx.eliteEnemies.length = 0;
+  ctx.binaryRingEnemies.length = 0;
+  ctx.binaryRingMissiles.length = 0;
   ctx.alivenGroups.length = 0;
   ctx.dustWispEnemies.length = 0; ctx.ribbonWormEnemies.length = 0;
   ctx.lanternMothEnemies.length = 0; ctx.eyeStalkEnemies.length = 0;
@@ -226,6 +232,7 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.bossWave.exitBossWave();
   ctx.setIsBossFightFromMenu(false);
   ctx.setBossEnemy(null);
+  ctx.setBinaryLaserSweep(null);
   ctx.bossProjectiles.length = 0;
   ctx.bossAttackState.attacks.length = 0;
   ctx.bossAttackState.schedulerCooldowns.clear();

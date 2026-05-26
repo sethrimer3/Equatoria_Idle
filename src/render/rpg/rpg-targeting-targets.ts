@@ -16,6 +16,7 @@ import type {
   EliteEnemy,
 } from './rpg-enemy-types';
 import type { RpgTargetingCtx, TargetCollectionOptions } from './rpg-targeting-types';
+import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import { hasTopographicTerrainLineOfSight } from './terrain/topographic-terrain';
 
 export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetCollectionOptions): ClosestTarget[] {
@@ -50,6 +51,7 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
   for (const e of ctx.fracterylEnemies) addTarget('fracteryl', e, 'fracteryl');
   for (const e of ctx.eigensteinEnemies) addTarget('eigenstein', e, 'eigenstein');
   for (const e of ctx.eliteEnemies) addTarget('elite', e, 'elite');
+  for (const e of ctx.binaryRingEnemies) addTarget('binary_ring', e, 'binaryRing');
   // Aliven: add each alive particle as an individual target
   for (const group of ctx.alivenGroups) {
     for (const p of group.particles) {
@@ -173,6 +175,7 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       ctx.nullstoneEnemies.includes(targetedEnemy as NullstoneEnemy) ||
       ctx.fracterylEnemies.includes(targetedEnemy as FracterylEnemy) ||
       ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy) ||
+      ctx.binaryRingEnemies.includes(targetedEnemy as BinaryRingEnemy) ||
       ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy) ||
       ctx.sandFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SandFishEnemy) ||
       ctx.quartzFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').QuartzFishEnemy) ||
@@ -234,6 +237,9 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       }
       if (ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy)) {
         return { kind: 'eigenstein', x: e.x, y: e.y, distSq, eigenstein: targetedEnemy as EigensteinEnemy };
+      }
+      if (ctx.binaryRingEnemies.includes(targetedEnemy as BinaryRingEnemy)) {
+        return { kind: 'binary_ring', x: e.x, y: e.y, distSq, binaryRing: targetedEnemy as BinaryRingEnemy };
       }
       if (ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy)) {
         return { kind: 'elite', x: e.x, y: e.y, distSq, elite: targetedEnemy as EliteEnemy };

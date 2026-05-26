@@ -44,6 +44,7 @@ import type { BossAttackState } from './rpg-boss-attack-types';
 import type { WeaponOrbitCtx } from './rpg-weapon-orbit';
 import type { OrbitProjectileCtx } from './rpg-orbit-projectile';
 import type { OrbitProjectile } from './rpg-types';
+import type { BinaryRingEnemy, BinaryRingMissile, BinaryLaserSweep } from './rpg-binary-ring-encounter';
 import type { WeaponTickCtx } from './rpg-weapon-tick';
 import type { PlayerMovementCtx, PlayerMovementState } from './rpg-player-movement';
 import type { RpgDeathRestartCtx } from './rpg-death-restart';
@@ -76,6 +77,12 @@ import {
   updateTeleportParticles,
 } from './rpg-enemy-updates-adv';
 import { updateEliteEnemies } from './rpg-elite-enemy-updates';
+import {
+  createBinaryRingEnemy,
+  updateBinaryRingEnemy,
+  updateBinaryRingMissiles,
+  updateBinaryLaserSweep,
+} from './rpg-binary-ring-encounter';
 import { updateStardustEnemies } from './rpg-stardust-update';
 import { updateBossEnemy, updateBossProjectiles } from './rpg-boss-update';
 import { updateBossAttacks } from './rpg-boss-attack-update';
@@ -130,6 +137,8 @@ export interface RpgEnemyUpdateArrays {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  binaryRingEnemies: BinaryRingEnemy[];
+  binaryRingMissiles: BinaryRingMissile[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
@@ -185,6 +194,7 @@ export interface RpgUpdateCtx {
 
   // Wave management
   getIsInterWave(): boolean;
+  getCurrentWave(): number;
   getInterWaveTimerMs(): number;
   setInterWaveTimerMs(v: number): void;
   startNextWave(): void;
@@ -229,6 +239,7 @@ export interface RpgUpdateCtx {
 
   // Player life
   playerStats: RpgPlayerStats;
+  dealDamageToPlayer(damage: number): void;
   triggerDeath(): void;
 
   // Rendering
@@ -236,6 +247,8 @@ export interface RpgUpdateCtx {
   fluid: { step(deltaMs: number): void };
   drawCtx: RpgDrawCtx;
   drawFrameState: RpgDrawFrameState;
+  getBinaryLaserSweep(): BinaryLaserSweep | null;
+  setBinaryLaserSweep(sweep: BinaryLaserSweep | null): void;
   /** Optional hook called once per frame to update Verdure zone plants. */
   updateVerdurePlants?(deltaMs: number): void;
 }
@@ -304,6 +317,47 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   updateEigensteinEnemies(a.eigensteinEnemies, a.eigensteinBeams, ctx.enemyCtx, deltaMs);
   updateEigensteinBeams(a.eigensteinBeams, ctx.enemyCtx, deltaMs);
   updateEliteEnemies(a.eliteEnemies, ctx.eliteEnemyCtx, deltaMs);
+
+  if (ctx.rpgSimState.activeZoneId === 'horizon' && ctx.rpgSimState.activeSubzoneId === 'zenith' && !ctx.getIsBossWaveActive()) {
+    if (a.binaryRingEnemies.length === 0 && ctx.getCurrentWave() >= 3 && !ctx.getIsInterWave()) {
+      a.binaryRingEnemies.push(createBinaryRingEnemy(ctx.enemyCtx.dim.w * 0.5, ctx.enemyCtx.dim.h * 0.5, ctx.getCurrentWave()));
+    }
+    if (a.binaryRingEnemies.length > 0) {
+      const ring = a.binaryRingEnemies[0]!;
+      const result = updateBinaryRingEnemy(
+        ring,
+        a.binaryRingMissiles,
+        ctx.getBinaryLaserSweep(),
+        deltaMs,
+        ctx.mote.x,
+        ctx.mote.y,
+        ctx.enemyCtx.dim.w,
+        ctx.enemyCtx.dim.h,
+      );
+      ctx.setBinaryLaserSweep(result.setLaserSweep);
+      for (let i = 0; i < result.newMissiles.length; i++) a.binaryRingMissiles.push(result.newMissiles[i]!);
+
+      const missileDamage = updateBinaryRingMissiles(a.binaryRingMissiles, deltaMs, ctx.mote.x, ctx.mote.y);
+      if (missileDamage > 0) ctx.dealDamageToPlayer(missileDamage);
+
+      const sweep = ctx.getBinaryLaserSweep();
+      if (sweep) {
+        const laserDamage = updateBinaryLaserSweep(sweep, deltaMs, ctx.mote.x, ctx.mote.y, ring.x, ring.y);
+        if (laserDamage > 0) ctx.dealDamageToPlayer(laserDamage);
+        if (sweep.lifeMs <= 0) ctx.setBinaryLaserSweep(null);
+      }
+
+      if (ring.hp <= 0) {
+        a.binaryRingEnemies.length = 0;
+        a.binaryRingMissiles.length = 0;
+        ctx.setBinaryLaserSweep(null);
+      }
+    }
+  } else if (a.binaryRingEnemies.length > 0 || a.binaryRingMissiles.length > 0 || ctx.getBinaryLaserSweep()) {
+    a.binaryRingEnemies.length = 0;
+    a.binaryRingMissiles.length = 0;
+    ctx.setBinaryLaserSweep(null);
+  }
   // Stardust enemy update (prismatic particle cloud + laser bounce)
   if (a.stardustEnemies.length > 0) {
     const stardustCtx = {

@@ -146,6 +146,16 @@ import {
 import { createRpgZoneSelectPanel } from './rpg-zone-select';
 import { createZenithBinaryHorizon, type ZenithBinaryHorizon } from '../background/zenith-binary-horizon';
 import { createNadirSubstrateEffect, type NadirSubstrateEffect } from '../background/nadir-substrate-effect';
+import {
+  type BinaryRingEnemy,
+  type BinaryRingMissile,
+  type BinaryLaserSweep,
+  drawBinaryRingEncounter,
+} from './rpg-binary-ring-encounter';
+import {
+  createZenithBinaryRingBackground,
+  type ZenithBinaryRingBackground,
+} from '../background/zenith-binary-ring-background';
 import { getRpgZoneDisplayName, type RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import {
   clearVerdurePlants,
@@ -196,6 +206,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgSimState.activeSubzoneId = newSubzoneId;
     // Reset background instances so they rebuild with the correct effect.
     zenithBinaryHorizon = null;
+    zenithBinaryRingBg = null;
     nadirSubstrate = null;
   });
   rpgArea.appendChild(zoneSelectPanel.element);
@@ -225,6 +236,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Euler fluid background ─────────────────────────────────────
   const fluid = createRpgFluid();
   let zenithBinaryHorizon: ZenithBinaryHorizon | null = null;
+  const binaryRingEnemies: BinaryRingEnemy[] = [];
+  const binaryRingMissiles: BinaryRingMissile[] = [];
+  let binaryLaserSweep: BinaryLaserSweep | null = null;
+  let zenithBinaryRingBg: ZenithBinaryRingBackground | null = null;
   let nadirSubstrate: NadirSubstrateEffect | null = null;
 
   function drawZoneBgOverlay(c2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number): void {
@@ -235,11 +250,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       nadirSubstrate.update(nowMs, w, h);
       nadirSubstrate.draw(c2d);
     } else {
-      // Zenith subzone uses the Binary Horizon effect.
-      // 'true' subzone also uses it as a placeholder until it has its own distinct effect.
-      if (!zenithBinaryHorizon) zenithBinaryHorizon = createZenithBinaryHorizon({ quality: isLowGraphicsMode ? 'low' : 'medium' });
-      zenithBinaryHorizon.update(nowMs, w, h);
-      zenithBinaryHorizon.draw(c2d);
+      if (binaryRingEnemies.length > 0) {
+        if (!zenithBinaryRingBg) zenithBinaryRingBg = createZenithBinaryRingBackground({ quality: isLowGraphicsMode ? 'low' : 'medium' });
+        const ringAge = binaryRingEnemies[0]?.age ?? 'light';
+        zenithBinaryRingBg.update(nowMs, w, h, ringAge);
+        zenithBinaryRingBg.draw(c2d);
+        drawBinaryRingEncounter(c2d, binaryRingEnemies[0]!, binaryRingMissiles, binaryLaserSweep, nowMs, isLowGraphicsMode);
+      } else {
+        // Zenith subzone uses the Binary Horizon effect.
+        // 'true' subzone also uses it as a placeholder until it has its own distinct effect.
+        if (!zenithBinaryHorizon) zenithBinaryHorizon = createZenithBinaryHorizon({ quality: isLowGraphicsMode ? 'low' : 'medium' });
+        zenithBinaryHorizon.update(nowMs, w, h);
+        zenithBinaryHorizon.draw(c2d);
+      }
     }
   }
 
@@ -424,7 +447,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
-    damageEliteEnemy,
+    damageBinaryRingEnemy, damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
@@ -591,7 +614,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
       ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
       nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies, eigensteinBeams,
-      eliteEnemies, stardustEnemies, alivenGroups,
+      eliteEnemies, binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
       dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
       jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
       spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -602,6 +625,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       hitEffects, shotLines, damageNumbers, deathParticles,
       luckyMotes, luckyMotePopups,
     );
+    binaryLaserSweep = null;
+    zenithBinaryRingBg = null;
 
     bossEnemy = null;
     danmakuSafeZone = null;
@@ -720,6 +745,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     eliteEnemies,
+    binaryRingEnemies,
     stardustEnemies,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
@@ -737,7 +763,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
-    damageEliteEnemy,
+    damageBinaryRingEnemy, damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
@@ -908,6 +934,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fracterylShards,
     eigensteinEnemies,
     eliteEnemies,
+    binaryRingEnemies,
     stardustEnemies,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
@@ -930,7 +957,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies, stardustEnemies, alivenGroups,
+    eliteEnemies, binaryRingEnemies, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1167,7 +1194,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     sunstoneEnemies, citrineEnemies, citrineBolts, ioliteEnemies,
     amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, stardustEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1179,6 +1206,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid: { reset: () => fluid.reset() },
     bossWave: { exitBossWave: () => bossWave.exitBossWave() },
     setBossEnemy:            (b) => { bossEnemy = b; },
+    setBinaryLaserSweep:     (_sweep) => { binaryLaserSweep = null; },
     setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },
     setIsBossFightFromMenu:  (b) => { isBossFightFromMenu = b; },
     setBossHitsInRound:      (v) => { bossHitsInRound = v; },
@@ -1220,7 +1248,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, stardustEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1268,7 +1296,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, stardustEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1286,6 +1314,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getTopographicTerrainState: () => topographicTerrainState,
     deathRestartCtx,
     getIsInterWave:         () => isInterWave,
+    getCurrentWave:         () => currentWave,
     getInterWaveTimerMs:    () => interWaveTimerMs,
     setInterWaveTimerMs:    (v) => { interWaveTimerMs = v; },
     startNextWave:          () => waveManager.startNextWave(),
@@ -1316,11 +1345,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgSimState,
     onLuckyMoteCollected:   options.onLuckyMoteCollected,
     playerStats,
+    dealDamageToPlayer:     (damage) => { dealDamageToPlayer(damage); },
     triggerDeath:           () => _triggerDeath(deathRestartCtx),
     statsPanel,
     fluid,
     drawCtx,
     drawFrameState,
+    getBinaryLaserSweep:    () => binaryLaserSweep,
+    setBinaryLaserSweep:    (sweep) => { binaryLaserSweep = sweep; },
     updateVerdurePlants(deltaMs: number): void {
       if (rpgSimState.activeZoneId !== 'verdure') return;
       // Tick spawn (only during active combat, not during inter-wave or boss phases)
