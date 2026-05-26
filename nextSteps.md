@@ -1,6 +1,35 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#166**
+Current build: **#167**
+
+---
+
+## Build #167 — Caustics procedural fish: segmented-spine animation and species profiles
+
+### What was implemented
+
+- **`src/render/rpg/rpg-procedural-fish-draw.ts`** fully rewritten (510 → 953 lines):
+  - **Segmented spine** (`buildFishSpine`): N pre-allocated `SpineSegment` objects run from head (t=0) to tail (t=1). Body half-widths are interpolated via smoothstep (`getBodyHalfWidth`). No heap allocation per frame.
+  - **Traveling-wave animation**: `cy = sin(animPhase × freq − t × waveTravel) × amplitude × pow(t, ampPower) × tailBoost`. Amplitude is near-zero at the head and peaks at the tail; a separate `tailAmplMult` boosts the final 25 % of the spine.
+  - **Normals and edge arrays**: centred-difference normals are computed once per frame; `_topX/Y` and `_botX/Y` Float32Arrays hold the left/right body edges used by the bezier path.
+  - **Smooth silhouette** (`appendSmoothEdge`): midpoint-bezier technique over the edge arrays; no per-frame allocation.
+  - **Four tail shapes** (`appendTailSection`): `forked` (two lobes with concave notch), `roundedFan` (wide bulging fan), `pointed` (single narrow tip), `crescent` (swept swept lobes beyond a shallow center dip).
+  - **Pectoral fins** (`drawFishPectoralFins`): three variants — `shortTriangle`, `rounded`, `longSwept`. Tip formula: `finBase + outwardNormal × pectoralLength + spineForward × pectoralSweep`. Because `spineForward` always points head→tail (−X for a fish facing +X), fins sweep toward the tail regardless of `swimAngle`.
+  - **`FishVisualProfile` interface** with 8 per-species profile constants:
+    - `SANDFISH_PROFILE` — minnow/dart: narrow body (bodyWidth 0.43×), fast (4.0 rad/s), forked tail, shortTriangle fins.
+    - `QUARTZFISH_PROFILE` — deep-body: widest after Sunstone (0.65×), slow (2.0 rad/s), roundedFan tail, rounded fins.
+    - `RUBYFISH_PROFILE` — sharp predatory: longer body (1.08×), pointed tail, longSwept fins; body straightens during dash (ampScale 0.18).
+    - `SUNSTONEFISH_PROFILE` — deep-body reef: widest body (0.70×), slowest (1.8 rad/s), roundedFan tail, rounded fins.
+    - `EMERALDFISH_PROFILE` — teardrop compact: medium speed, forked tail; mini clones use ×1.45 frequency.
+    - `SAPPHIREFISH_PROFILE` — eel-like: long body (1.30×), 10 segments, high waveTravel (8.0), pointed tail, small shortTriangle fins.
+    - `AMETHYSTFISH_PROFILE` — round small: compact (0.88×), gentle (2.2 rad/s), roundedFan tail, rounded fins.
+    - `DIAMONDFISH_PROFILE` — large predatory: crescent tail, longSwept fins; armor overlay uses segment positions for shard lines.
+
+### Deferred / follow-up
+
+- **Dorsal fins**: `dorsalFinLength` is present in `FishVisualProfile` (all currently 0). A future pass can draw a top-edge dorsal fin for predatory or reef species if desired.
+- **Visual tuning**: profile amplitude, waveTravel, bodyWidth, and tailSpread values are first-pass; in-game play may reveal fish that look too similar or oscillate too fast/slow for their archetype. Tunable via the constants at the top of the file.
+- **File**: `src/render/rpg/rpg-procedural-fish-draw.ts`, functions `buildFishSpine`, `appendTailSection`, `drawFishPectoralFins`.
 
 ---
 
