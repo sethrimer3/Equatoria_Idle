@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#154**
+Current build: **#157**
 
 ---
 
@@ -56,6 +56,64 @@ The following items are genuinely unresolved and ready for a future agent pass:
 ### Remaining follow-up
 
 - **Binary Ring weapon-specific collision integration**: the generic targeting path can hit the Binary Ring, but some older weapon modules still use direct per-enemy array sweeps. A future pass should teach those direct-collision weapon modules to include `binaryRingEnemies` so every weapon family can damage the encounter uniformly.
+
+---
+
+## Build #157 — Nadir elite-wave CubicGrid background effect
+
+### What was implemented
+
+- **`src/render/background/nadir-cubic-grid-background.ts`** (new file):
+  - "CubicGrid" rotating 3D dotted lattice background effect for Horizon → Nadir elite waves.
+  - Precomputes world-space lattice point coordinates once (`buildLatticePoints`) into preallocated
+    `Float32Array` / `Uint8Array` buffers — zero per-frame heap allocation.
+  - Per-frame: combined Rx·Ry·Rz rotation, perspective projection (depth-faded dots), written
+    directly into a persistent `ImageData` buffer and flushed with a single `putImageData`.
+  - Renders to an offscreen canvas at `RENDER_SCALE = 0.5` then `drawImage`-upscaled into the
+    main RPG canvas (`imageSmoothingEnabled = false` for pixel-crisp look).
+  - Three axis colour families: X-lines = blue-white, Y-lines = red-magenta, Z-lines = cyan-green.
+  - Smooth fade-in (1.2 s) when `isEliteWaveActive` becomes true; smooth fade-out (0.8 s) when
+    the wave ends or the player leaves Nadir. No-ops once `masterAlpha` reaches 0.
+  - Low-graphics mode: halved lattice half-cells (5 vs 7), fewer samples (28 vs 42), smaller
+    offscreen resolution (0.35× vs 0.5×).
+  - Effect is fully self-contained; no changes to the main renderer outside wiring points.
+
+- **`src/render/rpg/rpg-wave-manager.ts`** (updated):
+  - Added `getNadirEliteTierForWave(wave)` — selects the highest available elite tier scaling with
+    the Nadir wave number (same unlocks as standard elite progression).
+  - In `startNextWave()`: when `activeZoneId === 'horizon'`, `activeSubzoneId === 'nadir'`, and
+    `wave % 10 === 0`, an elite spawn entry is injected into the spawn queue with a 1200 ms delay.
+
+- **`src/render/rpg/rpg-render.ts`** (updated):
+  - Imports `createNadirCubicGridBackground`.
+  - Added `nadirCubicGrid: NadirCubicGridBackground | null` instance (lazy-created on first Nadir
+    elite frame).
+  - Added `isNadirEliteWave: boolean` closure flag (updated via `syncNadirEliteWave(wave)`).
+  - `syncNadirEliteWave(wave)` is called from both `setCurrentWave` callbacks (wave manager and
+    death-restart context) to keep the elite-wave flag in sync.
+  - `drawZoneBgOverlay` now also creates / updates / draws `nadirCubicGrid` when in Nadir.
+    `isEliteWaveActive = isNadirEliteWave && !isInterWave` drives the fade-in/out.
+  - The substrate is always drawn first in Nadir; the CubicGrid overlays it (with its own alpha).
+  - `nadirCubicGrid` and `isNadirEliteWave` are cleared in both `resetActiveEncounterForZoneSwitch`
+    (zone switches and death resets) and the subzone-select callback (subzone switches).
+
+### State management notes
+
+- `isNadirEliteWave` is recomputed every time the wave counter changes (start of a new wave or
+  death-restart). It is `true` iff `activeZoneId === 'horizon'`, `activeSubzoneId === 'nadir'`,
+  and the wave number is a positive multiple of 10.
+- During the inter-wave period after an elite wave, `isEliteWaveActive = false` so the CubicGrid
+  fades out before the next wave begins.
+- Non-Nadir zones never see the effect because `drawZoneBgOverlay` early-exits for non-Nadir paths.
+
+### Intentionally deferred
+
+- **Nadir elite drop / reward**: no special XP or mote bonus for killing the Nadir elite yet.
+  A future pass can check `eliteEnemies.length === 0` with `isNadirEliteWave` to award bonuses.
+- **Elite tier difficulty tuning**: `getNadirEliteTierForWave` uses standard elite unlock thresholds.
+  Nadir-specific scaling (HP multipliers, faster projectiles) can be added later.
+- **CubicGrid on/off debug flag**: the existing `_isDevMode` flag in `rpg-render.ts` could be used
+  to force `isNadirEliteWave = true` for testing without advancing to wave 10. Not wired yet.
 
 ---
 

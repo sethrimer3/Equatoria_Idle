@@ -206,8 +206,32 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         spawnQueue.push({ enemyTypeId: spawn.enemyTypeId, timerMs: spawn.spawnDelay * i });
       }
     }
+    // Nadir elite wave: every 10th wave in Horizon → Nadir spawns a scaled elite enemy.
+    // This is the trigger for the CubicGrid background effect.
+    if (
+      rpgSimState.activeZoneId === 'horizon' &&
+      rpgSimState.activeSubzoneId === 'nadir' &&
+      wave % 10 === 0
+    ) {
+      spawnQueue.push({ enemyTypeId: getNadirEliteTierForWave(wave), timerMs: 1200 });
+    }
     ctx.setIsInterWave(false);
     beginWaveTerrain(wave);
+  }
+
+  /**
+   * Returns the highest-tier elite enemy type appropriate for the given Nadir wave number.
+   * Mirrors the tier unlock order used by the standard elite progression.
+   */
+  function getNadirEliteTierForWave(wave: number): string {
+    if (wave >= 63) return 'elite_nullstone';
+    if (wave >= 52) return 'elite_diamond';
+    if (wave >= 42) return 'elite_amethyst';
+    if (wave >= 33) return 'elite_iolite';
+    if (wave >= 15) return 'elite_citrine';
+    if (wave >= 10) return 'elite_sunstone';
+    if (wave >= 5)  return 'elite_ruby';
+    return 'elite_quartz';
   }
 
   function checkWaveCompletion(): void {

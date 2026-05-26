@@ -147,6 +147,10 @@ import { createRpgZoneSelectPanel } from './rpg-zone-select';
 import { createZenithBinaryHorizon, type ZenithBinaryHorizon } from '../background/zenith-binary-horizon';
 import { createNadirSubstrateEffect, type NadirSubstrateEffect } from '../background/nadir-substrate-effect';
 import {
+  createNadirCubicGridBackground,
+  type NadirCubicGridBackground,
+} from '../background/nadir-cubic-grid-background';
+import {
   type BinaryRingEnemy,
   type BinaryRingMissile,
   type BinaryLaserSweep,
@@ -208,6 +212,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     zenithBinaryHorizon = null;
     zenithBinaryRingBg = null;
     nadirSubstrate = null;
+    nadirCubicGrid = null;
+    isNadirEliteWave = false;
   });
   rpgArea.appendChild(zoneSelectPanel.element);
 
@@ -241,6 +247,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let binaryLaserSweep: BinaryLaserSweep | null = null;
   let zenithBinaryRingBg: ZenithBinaryRingBackground | null = null;
   let nadirSubstrate: NadirSubstrateEffect | null = null;
+  let nadirCubicGrid: NadirCubicGridBackground | null = null;
+  /** True while the current wave is an elite wave in the Nadir subzone (every 10th wave). */
+  let isNadirEliteWave = false;
 
   function drawZoneBgOverlay(c2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number): void {
     if (rpgSimState.activeZoneId !== 'horizon') return;
@@ -249,6 +258,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (!nadirSubstrate) nadirSubstrate = createNadirSubstrateEffect({ quality: isLowGraphicsMode ? 'low' : 'medium' });
       nadirSubstrate.update(nowMs, w, h);
       nadirSubstrate.draw(c2d);
+      // CubicGrid elite-wave overlay — active only on every 10th Nadir wave while
+      // the wave is in progress (isInterWave=false).  Fades in at wave start and
+      // fades out at wave end or when leaving Nadir.
+      const isEliteWaveActive = isNadirEliteWave && !isInterWave;
+      if (!nadirCubicGrid) nadirCubicGrid = createNadirCubicGridBackground();
+      nadirCubicGrid.update(nowMs, w, h, isEliteWaveActive, isLowGraphicsMode);
+      nadirCubicGrid.draw(c2d);
     } else {
       if (binaryRingEnemies.length > 0) {
         if (!zenithBinaryRingBg) zenithBinaryRingBg = createZenithBinaryRingBackground({ quality: isLowGraphicsMode ? 'low' : 'medium' });
@@ -627,6 +643,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     );
     binaryLaserSweep = null;
     zenithBinaryRingBg = null;
+    nadirCubicGrid = null;
+    isNadirEliteWave = false;
 
     bossEnemy = null;
     danmakuSafeZone = null;
@@ -669,6 +687,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     weaponSystems.reset();
     applyEquipmentStats();
     orbitProjectile = _buildOrbitProjectile(weaponOrbitCtx);
+  }
+
+  /**
+   * Recomputes `isNadirEliteWave` from the given wave number and current zone/subzone.
+   * Called whenever the wave counter changes (wave start or death/restart).
+   */
+  function syncNadirEliteWave(wave: number): void {
+    isNadirEliteWave =
+      rpgSimState.activeZoneId === 'horizon' &&
+      rpgSimState.activeSubzoneId === 'nadir' &&
+      wave % 10 === 0 &&
+      wave > 0;
   }
 
   // ── Player damage helpers (extracted to rpg-player-damage.ts) ──────
@@ -804,7 +834,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsBossFightFromMenu:  () => isBossFightFromMenu,
     setIsBossFightFromMenu:  (b) => { isBossFightFromMenu = b; },
     getCurrentWave:          () => currentWave,
-    setCurrentWave:          (w) => { currentWave = w; rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = w; },
+    setCurrentWave:          (w) => { currentWave = w; rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = w; syncNadirEliteWave(w); },
     getIsInterWave:          () => isInterWave,
     setIsInterWave:          (b) => { isInterWave = b; },
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
@@ -1210,7 +1240,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },
     setIsBossFightFromMenu:  (b) => { isBossFightFromMenu = b; },
     setBossHitsInRound:      (v) => { bossHitsInRound = v; },
-    setCurrentWave:          (w) => { currentWave = w; rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = w; },
+    setCurrentWave:          (w) => { currentWave = w; rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = w; syncNadirEliteWave(w); },
     setIsInterWave:          (b) => { isInterWave = b; },
     setInterWaveTimerMs:     (ms) => { interWaveTimerMs = ms; },
     getWidthPx:              () => widthPx,
