@@ -1301,12 +1301,14 @@
 ### src/render/rpg/terrain/rpg-verdure-render.ts
 - Visual renderer for Verdure environmental hazards and decorative growth.
 - `drawVerdureEdgeRocks()` is now a deprecated fallback; active Verdure cave wall rendering lives in `verdure-cave-walls.ts`, while this module still owns Verdure plants and death fragments.
-- Also draws Verdure plants and death fragments using the growth-state data from `rpg-verdure-growth.ts`.
+- Renders 7 plant types: vine, spiral, flower, leafy, thorn, fern, mushroom. Ferns have paired alternating leaflets with midrib lines; mushrooms have dome caps with bioluminescent glow and spots.
+- Targetable plants show a glow outline in high-graphics or a ring at the tip in low-graphics.
 
-### src/render/rpg/terrain/verdure-cave-walls.ts *(new — build 162)*
+### src/render/rpg/terrain/verdure-cave-walls.ts *(updated — build 163)*
 - Verdure-only cave wall system: deterministic inner-boundary depth generation, edge anchor-point precomputation, wall collision queries, soft repulsion, hard push-out, cached Voronoi wall textures, and dev debug draw.
-- Exports `generateVerdureCaveWalls`, `isPointInVerdureWall`, `pushPointOutsideVerdureWall`, `computeVerdureWallRepulsion`, `drawVerdureCaveWalls`, and `drawVerdureWallDebug`.
-- `textureCanvas` is rebuilt lazily only when the cached size/graphics key changes; plant growth and enemy spawning read the same wall state for gameplay consistency.
+- Exports `generateVerdureCaveWalls`, `isPointInVerdureWall`, `pushPointOutsideVerdureWall`, `computeVerdureWallRepulsion`, `drawVerdureFloor`, `drawVerdureCaveWalls`, and `drawVerdureWallDebug`.
+- `drawVerdureFloor` renders a Voronoi brown rock floor texture with dark earth tones (FLOOR_HEX_COLORS — darker than wall ROCK_HEX_COLORS) across the entire arena; walls paint over it.
+- Both `textureCanvas` and `floorTextureCanvas` are built lazily and cached by seed + canvas size.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
 - Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.

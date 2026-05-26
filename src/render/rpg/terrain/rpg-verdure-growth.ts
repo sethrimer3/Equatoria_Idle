@@ -25,7 +25,7 @@ import type { VerdureCaveWallState } from './verdure-cave-walls';
 
 // ── Plant type definitions ──────────────────────────────────────────────────────
 
-export type VerdurePlantType = 'vine' | 'spiral' | 'flower' | 'leafy' | 'thorn';
+export type VerdurePlantType = 'vine' | 'spiral' | 'flower' | 'leafy' | 'thorn' | 'fern' | 'mushroom';
 
 /**
  * One branch that splits from the main vine path.
@@ -141,7 +141,7 @@ export interface VerdurePlant {
 // ── Tuning constants ───────────────────────────────────────────────────────────
 
 /** Squared distance (px²) within which a plant becomes targetable. */
-export const PLANT_TARGET_RANGE_SQ = 45 * 45;
+export const PLANT_TARGET_RANGE_SQ = 60 * 60;
 
 /** High-graphics active plant cap. */
 const MAX_PLANTS_HIGH = 16;
@@ -168,11 +168,13 @@ const PLANT_FADE_SPEED = 1.4;
 
 /** Number of cubic segments along the main path (depends on plant type). */
 const SEGS_BY_TYPE: Record<VerdurePlantType, number> = {
-  vine:   5,
-  spiral: 4,
-  flower: 5,
-  leafy:  4,
-  thorn:  5,
+  vine:     5,
+  spiral:   4,
+  flower:   5,
+  leafy:    4,
+  thorn:    5,
+  fern:     3,
+  mushroom: 2,
 };
 
 /** Edge margin — plants spawn from within this many px of an arena edge. */
@@ -384,39 +386,48 @@ function _buildBranches(
 }
 
 /**
- * Build leaf decoration list (for 'leafy' and 'flower' types).
+ * Build leaf decoration list (for 'leafy', 'flower', and 'fern' types).
  */
 function _buildLeaves(
   type: VerdurePlantType,
   _segCount: number,
   seed: number,
 ): VerdureLeaf[] {
-  if (type !== 'leafy' && type !== 'flower') return [];
+  if (type !== 'leafy' && type !== 'flower' && type !== 'fern') return [];
 
   const leafCount = type === 'leafy'
     ? 4 + Math.floor(_rng(seed, 30) * 4)
-    : 2 + Math.floor(_rng(seed, 30) * 2);
+    : type === 'fern'
+      ? 6 + Math.floor(_rng(seed, 30) * 5)
+      : 2 + Math.floor(_rng(seed, 30) * 2);
 
   const leaves: VerdureLeaf[] = [];
   for (let i = 0; i < leafCount; i++) {
+    // Ferns: leaves are longer and more regularly spaced, alternating sides
+    const tParam = type === 'fern'
+      ? 0.10 + (i / leafCount) * 0.85
+      : 0.15 + _rng(seed, 31 + i * 3) * 0.80;
+    const angleDelta = type === 'fern'
+      ? (i % 2 === 0 ? 1 : -1) * (0.55 + _rng(seed, 32 + i * 3) * 0.3)
+      : (_rng(seed, 32 + i * 3) - 0.5) * Math.PI * 0.6;
     leaves.push({
-      tParam:     0.15 + _rng(seed, 31 + i * 3) * 0.80,
-      angleDelta: (_rng(seed, 32 + i * 3) - 0.5) * Math.PI * 0.6,
-      radiusA:    4 + _rng(seed, 33 + i * 3) * 5,
-      radiusB:    1.5 + _rng(seed, 34 + i * 3) * 2,
+      tParam,
+      angleDelta,
+      radiusA: type === 'fern' ? 6 + _rng(seed, 33 + i * 3) * 6 : 4 + _rng(seed, 33 + i * 3) * 5,
+      radiusB: type === 'fern' ? 1.2 + _rng(seed, 34 + i * 3) * 1.5 : 1.5 + _rng(seed, 34 + i * 3) * 2,
     });
   }
   return leaves;
 }
 
 /**
- * Build flower decoration list (for 'flower' type).
+ * Build flower decoration list (for 'flower', 'spiral', and 'mushroom' types).
  */
 function _buildFlowers(
   type: VerdurePlantType,
   seed: number,
 ): VerdureFlower[] {
-  if (type !== 'flower' && type !== 'spiral') return [];
+  if (type !== 'flower' && type !== 'spiral' && type !== 'mushroom') return [];
 
   const flowerCount = type === 'flower'
     ? 1 + Math.floor(_rng(seed, 40) * 3)
@@ -428,7 +439,10 @@ function _buildFlowers(
       tParam:   type === 'flower'
         ? 0.4 + _rng(seed, 41 + i * 3) * 0.55
         : 1.0,
-      radius:   2.0 + _rng(seed, 42 + i * 3) * 2.5,
+      // Mushroom cap is larger than normal flowers
+      radius:   type === 'mushroom'
+        ? 7 + _rng(seed, 42 + i * 3) * 5
+        : 2.0 + _rng(seed, 42 + i * 3) * 2.5,
       colorIdx: Math.floor(_rng(seed, 43 + i * 3) * 5),
     });
   }
@@ -468,21 +482,29 @@ function _pickEdgeAnchor(
 function _pickType(wave: number, seed: number): VerdurePlantType {
   const r = _rng(seed, 50);
   if (wave < 3) {
-    // Early waves: mostly vines
-    return r < 0.65 ? 'vine' : r < 0.90 ? 'flower' : 'leafy';
+    // Early waves: vines, ferns, flowers
+    if (r < 0.45) return 'vine';
+    if (r < 0.65) return 'fern';
+    if (r < 0.82) return 'flower';
+    if (r < 0.93) return 'leafy';
+    return 'mushroom';
   } else if (wave < 8) {
-    // Mid waves: add spirals and leafy
-    if (r < 0.35) return 'vine';
-    if (r < 0.60) return 'spiral';
-    if (r < 0.80) return 'flower';
-    if (r < 0.95) return 'leafy';
+    // Mid waves: all types, spirals and mushrooms join
+    if (r < 0.25) return 'vine';
+    if (r < 0.42) return 'fern';
+    if (r < 0.54) return 'spiral';
+    if (r < 0.68) return 'flower';
+    if (r < 0.80) return 'leafy';
+    if (r < 0.90) return 'mushroom';
     return 'thorn';
   } else {
-    // Later waves: thorns more common
-    if (r < 0.25) return 'vine';
-    if (r < 0.45) return 'spiral';
-    if (r < 0.60) return 'flower';
-    if (r < 0.75) return 'leafy';
+    // Later waves: thorns more common, full diversity
+    if (r < 0.18) return 'vine';
+    if (r < 0.32) return 'fern';
+    if (r < 0.44) return 'spiral';
+    if (r < 0.56) return 'flower';
+    if (r < 0.66) return 'leafy';
+    if (r < 0.76) return 'mushroom';
     return 'thorn';
   }
 }
