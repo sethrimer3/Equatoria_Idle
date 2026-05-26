@@ -110,11 +110,6 @@ function angleWrap(angle: number): number {
   return angle;
 }
 
-function clampToArena(enemy: BinaryRingEnemy, canvasW: number, canvasH: number): void {
-  const pad = BINARY_RING_CONFIG.RADIUS + 8;
-  enemy.x = Math.max(pad, Math.min(canvasW - pad, enemy.x));
-  enemy.y = Math.max(pad, Math.min(canvasH - pad, enemy.y));
-}
 
 function evolveDurationMs(enemy: BinaryRingEnemy): number {
   const span = BINARY_RING_CONFIG.EVOLVE_MAX_MS - BINARY_RING_CONFIG.EVOLVE_MIN_MS;
@@ -233,11 +228,11 @@ export function updateBinaryRingEnemy(
   enemy.phaseMs += deltaMs;
   enemy.pulseMs += deltaMs;
 
-  const driftTurn = 0.12 * dt * (enemy.age === 'light' ? 1 : -1);
-  enemy.driftAngle += driftTurn;
-  enemy.x += Math.cos(enemy.driftAngle) * enemy.driftSpeed * dt;
-  enemy.y += Math.sin(enemy.driftAngle * 0.73) * enemy.driftSpeed * 0.65 * dt;
-  clampToArena(enemy, canvasW, canvasH);
+  // Ring stays locked at arena centre — no drift.
+  const canvasCx = canvasW * 0.5;
+  const canvasCy = canvasH * 0.5;
+  enemy.x = canvasCx;
+  enemy.y = canvasCy;
 
   const playerAngle = Math.atan2(playerY - enemy.y, playerX - enemy.x);
   enemy.laserAngle = angleWrap(enemy.laserAngle + angleWrap(playerAngle - enemy.laserAngle) * Math.min(1, dt * 1.2));

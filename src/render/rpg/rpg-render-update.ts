@@ -319,7 +319,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   updateEliteEnemies(a.eliteEnemies, ctx.eliteEnemyCtx, deltaMs);
 
   if (ctx.rpgSimState.activeZoneId === 'horizon' && ctx.rpgSimState.activeSubzoneId === 'zenith' && !ctx.getIsBossWaveActive()) {
-    if (a.binaryRingEnemies.length === 0 && ctx.getCurrentWave() >= 3 && !ctx.getIsInterWave()) {
+    if (a.binaryRingEnemies.length === 0 && ctx.getCurrentWave() % 10 === 0 && !ctx.getIsInterWave()) {
       a.binaryRingEnemies.push(createBinaryRingEnemy(ctx.enemyCtx.dim.w * 0.5, ctx.enemyCtx.dim.h * 0.5, ctx.getCurrentWave()));
     }
     if (a.binaryRingEnemies.length > 0) {
