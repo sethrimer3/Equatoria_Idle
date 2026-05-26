@@ -345,6 +345,18 @@
 - Particle state is fully preallocated in `Float32Array` / `Uint8Array`, batched into 8 colour buckets, with no hot-path object allocation.
 - Drawn by `rpg-render.ts → drawZoneBgOverlay` only while a Binary Ring enemy is active.
 
+### src/render/background/nadir-cubic-grid-background.ts
+- CubicGrid-style 3D rotating dotted lattice background for Horizon → Nadir elite waves.
+- Exports `NadirCubicGridBackground` and `createNadirCubicGridBackground()`.
+- Precomputes all lattice world coordinates once in `buildLatticePoints()` (X/Y/Z-parallel lines,
+  `HALF_CELLS=7`, `SAMPLES=42`). Zero per-frame allocation; rotation + projection run in typed array loops.
+- Renders to a `RENDER_SCALE=0.5` offscreen canvas via `ImageData` pixel writes (one `putImageData`
+  per frame). Upscaled to game canvas with `imageSmoothingEnabled=false`.
+- Axis colours: X=blue-white, Y=red-magenta, Z=cyan-green. Depth fading by squared distance.
+- Smooth `masterAlpha` fade-in (1.2 s) / fade-out (0.8 s) driven by `isEliteWaveActive` parameter.
+- Low-graphics: `HALF_CELLS_LOW=5`, `SAMPLES_LOW=28`, `RENDER_SCALE_LOW=0.35`.
+- Activated by `rpg-render.ts → drawZoneBgOverlay` when `isNadirEliteWave && !isInterWave`.
+
 ### src/render/particles/particle-types.ts
 - All shared particle system interfaces and type aliases.
 - `EquatoriaParticle` — core particle interface with ring-buffer trail fields and capture state (`isCaptured`, `capturedById`, `particleId`).
