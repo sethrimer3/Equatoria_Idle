@@ -817,3 +817,39 @@ export function drawVerdureWallDebug(
 
   canvas2d.restore();
 }
+
+// ── Depth-sampling exports (for verdure-segmented-surface.ts) ────────────────
+
+/** Sample the top-wall depth at canvas X coordinate `x`. */
+export function sampleVerdureTopDepth(state: VerdureCaveWallState, x: number): number {
+  return _sampleTopDepth(state, x);
+}
+
+/** Sample the bottom-wall depth (from canvas bottom) at canvas X coordinate `x`. */
+export function sampleVerdureBottomDepth(state: VerdureCaveWallState, x: number): number {
+  return _sampleBottomDepth(state, x);
+}
+
+/** Sample the left-wall depth at canvas Y coordinate `y`. */
+export function sampleVerdureLeftDepth(state: VerdureCaveWallState, y: number): number {
+  return _sampleLeftDepth(state, y);
+}
+
+/** Sample the right-wall depth (from canvas right) at canvas Y coordinate `y`. */
+export function sampleVerdureRightDepth(state: VerdureCaveWallState, y: number): number {
+  return _sampleRightDepth(state, y);
+}
+
+/**
+ * Draw the four inner-edge rim-strip gradients on top of a Verdure wall surface.
+ * Used by both the legacy blocky system and the new segmented system.
+ */
+export function drawVerdureRimStrips(
+  canvas2d: CanvasRenderingContext2D,
+  state: VerdureCaveWallState,
+): void {
+  _drawRimStrip(canvas2d, state, TOP_EDGE);
+  _drawRimStrip(canvas2d, state, BOTTOM_EDGE);
+  _drawRimStrip(canvas2d, state, LEFT_EDGE);
+  _drawRimStrip(canvas2d, state, RIGHT_EDGE);
+}

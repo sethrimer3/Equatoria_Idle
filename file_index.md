@@ -1304,11 +1304,20 @@
 - Renders 7 plant types: vine, spiral, flower, leafy, thorn, fern, mushroom. Ferns have paired alternating leaflets with midrib lines; mushrooms have dome caps with bioluminescent glow and spots.
 - Targetable plants show a glow outline in high-graphics or a ring at the tip in low-graphics.
 
-### src/render/rpg/terrain/verdure-cave-walls.ts *(updated — build 163)*
+### src/render/rpg/terrain/verdure-cave-walls.ts *(updated — build 164)*
 - Verdure-only cave wall system: deterministic inner-boundary depth generation, edge anchor-point precomputation, wall collision queries, soft repulsion, hard push-out, cached Voronoi wall textures, and dev debug draw.
-- Exports `generateVerdureCaveWalls`, `isPointInVerdureWall`, `pushPointOutsideVerdureWall`, `computeVerdureWallRepulsion`, `drawVerdureFloor`, `drawVerdureCaveWalls`, and `drawVerdureWallDebug`.
-- `drawVerdureFloor` renders a Voronoi brown rock floor texture with dark earth tones (FLOOR_HEX_COLORS — darker than wall ROCK_HEX_COLORS) across the entire arena; walls paint over it.
+- Exports `generateVerdureCaveWalls`, `isPointInVerdureWall`, `pushPointOutsideVerdureWall`, `computeVerdureWallRepulsion`, `drawVerdureFloor`, `drawVerdureCaveWalls`, `drawVerdureWallDebug`, depth-sampling helpers (`sampleVerdureTopDepth`, `sampleVerdureBottomDepth`, `sampleVerdureLeftDepth`, `sampleVerdureRightDepth`), and `drawVerdureRimStrips`.
+- `drawVerdureFloor` and `drawVerdureCaveWalls` are used on elite waves (multiples of 10) only; other waves use `verdure-segmented-surface.ts`.
 - Both `textureCanvas` and `floorTextureCanvas` are built lazily and cached by seed + canvas size.
+
+### src/render/rpg/terrain/verdure-segmented-surface.ts *(added — build 164)*
+- Crisp segmented floor/wall surface for non-elite Verdure waves (wave % 10 !== 0).
+- Floor: jittered-grid triangulation (~18 px cells → 2 triangles each) with seeded random facing directions and directional lighting baked in.
+- Walls: Voronoi cells computed via Sutherland-Hodgman half-plane clipping; masked to wall region using ImageData alpha compositing.
+- Exports `VerdureInfluenceObj`, `drawVerdureFloorSegmented(canvas2d, wState, lowGraphics)`, `drawVerdureWallsSegmented(canvas2d, wState, lowGraphics, influences)`.
+- Static base (floor + walls) is baked once to an offscreen canvas and cached by seed/size/lowGraphics.
+- Dynamic tint: per-frame, nearby combat objects (enemies, player) tint facing segments via dot-product front-facing test and distance falloff. Pre-allocated Float32Array accumulators avoid GC pressure.
+- Rim-strip highlights (from `drawVerdureRimStrips`) are baked into the static canvas for crisp inner-edge lines.
 
 ### src/render/rpg/rpg-wave-dead-enemies.ts
 - Dead-enemy sweep orchestrator extracted from `rpg-wave-manager.ts`.
