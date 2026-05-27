@@ -370,6 +370,7 @@
 - Axis colours: X=blue-white, Y=red-magenta, Z=cyan-green. Depth fading by squared distance.
 - Smooth `masterAlpha` fade-in (1.2 s) / fade-out (0.8 s) driven by `isEliteWaveActive` parameter.
 - Low-graphics: `HALF_CELLS_LOW=5`, `SAMPLES_LOW=28`, `RENDER_SCALE_LOW=0.35`.
+- `getProjectionState()` exposes the live cube rotation angles plus logical game size so gameplay systems can project anchored world-space lattice points with the same math as the background.
 - Activated by `rpg-render.ts → drawZoneBgOverlay` when `isNadirEliteWave && !isInterWave`.
 
 ### src/render/particles/particle-types.ts
@@ -1129,6 +1130,21 @@
 - Covers four functions: `removeDeadEnemies` (delegates to `rpg-wave-dead-enemies.ts`), `startNextWave` (increment counter, skip boss waves, build spawn queue), `checkWaveCompletion` (detect all-clear, start inter-wave delay), `tickSpawnQueue` (drain timed spawn queue, delegates spawning to `rpg-enemy-spawn.ts`).
 - Terrain hooks now gate enemy spawning until topographic terrain finishes its grow-in animation, then trigger terrain shrink on wave clear.
 - Enemy placement logic (`spawnEnemyById`) extracted to `rpg-enemy-spawn.ts`; dead-enemy sweep extracted to `rpg-wave-dead-enemies.ts`.
+- Build 174: Horizon → Nadir 10th-wave cube encounters are now auto-managed outside the spawn queue; wave completion waits for cube-point enemies plus their mines/trails/bolts/link-lasers to clear.
+
+### src/render/rpg/nadir-cube-point-types.ts
+- Shared type home for the Nadir cube-point encounter.
+- Exports cube projection constants, `NadirCubeProjectionState`, `projectNadirAnchor()`, and the enemy/hazard interfaces used across update, draw, targeting, and damage modules.
+
+### src/render/rpg/nadir-cube-point-update.ts
+- Spawn + simulation logic for awakened cube lattice points in Horizon → Nadir.
+- Exports `spawnNadirCubeEncounter()`, `updateNadirCubePointEnemies()`, `clearNadirCubeEncounter()`, and `NADIR_CUBE_POINT_RADIUS`.
+- Handles deterministic anchor selection from the lattice shell/core set, per-frame re-projection, and hazard behaviors (mines, trail segments, turret bolts, link lasers).
+
+### src/render/rpg/nadir-cube-point-draw.ts
+- Canvas draw pass for Nadir cube-point enemies and their hazards.
+- Exports `drawNadirCubeEncounter()` plus per-hazard helpers and `setNadirCubeLowGraphics(enabled)`.
+- Draws the encounter above the zone background/terrain layers but below regular enemy bodies.
 
 ### src/render/rpg/terrain/topographic-terrain.ts
 - Build 166: Caustics/seafloor terrain profile routes to classic `topographic` contour islands with the `cyanTactical` palette; `seafloorRidges` remains available but unused by Caustics.

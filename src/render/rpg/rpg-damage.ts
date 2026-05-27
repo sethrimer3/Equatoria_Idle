@@ -35,6 +35,7 @@ import type {
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
+import type { NadirCubePointEnemy } from './nadir-cube-point-types';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
 import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
@@ -319,6 +320,14 @@ export function createDamageFns(ctx: DamageCtx) {
     return dmg;
   }
 
+  function damageNadirCubePointEnemy(e: NadirCubePointEnemy, raw: number, pierce: number): number {
+    const actual = Math.max(1, raw - e.def * (1 - pierce));
+    e.hp -= actual;
+    e.hitFlashMs = 120;
+    recordDps(actual, '#80ffff');
+    return actual;
+  }
+
   function damageEliteEnemy(enemy: EliteEnemy, rawDamage: number, defPierceRatio: number): number {
     // Invuln check for diamond and nullstone elites
     if (enemy.isInvuln && (enemy.tier === 'diamond' || enemy.tier === 'nullstone')) return 0;
@@ -430,6 +439,7 @@ export function createDamageFns(ctx: DamageCtx) {
     damageFracterylShard,
     damageEigensteinEnemy,
     damageBinaryRingEnemy,
+    damageNadirCubePointEnemy,
     damageEliteEnemy,
     damageAlivenParticle,
     damageDustWispEnemy,

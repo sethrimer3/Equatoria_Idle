@@ -34,6 +34,7 @@ import type {
 } from './rpg-procedural-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
+import type { NadirCubePointEnemy } from './nadir-cube-point-types';
 
 export interface RpgTargetingCtx {
   mote: { x: number; y: number };
@@ -140,6 +141,8 @@ export interface RpgTargetingCtx {
   verdurePlants: import('./terrain/rpg-verdure-growth').VerdurePlant[];
   /** Applies damage to a Verdure plant environmental hazard. */
   damageVerdurePlant: (plant: import('./terrain/rpg-verdure-growth').VerdurePlant, raw: number) => number;
+  nadirCubePointEnemies: NadirCubePointEnemy[];
+  damageNadirCubePointEnemy: (e: NadirCubePointEnemy, raw: number, pierce: number) => number;
   /** Returns the current topographic terrain state, or null if none is active. */
   getTerrainState(): TopographicTerrainState | null;
 }
@@ -170,7 +173,8 @@ export interface RpgTargetingHandle {
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
     | SandFishEnemy | QuartzFishEnemy | RubyFishEnemy | SunstoneFishEnemy
-    | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy | null;
+    | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy
+    | NadirCubePointEnemy | null;
   collectEnemyBodyTargets(opts?: TargetCollectionOptions): ClosestTarget[];
   findClosestEnemyFrom(x: number, y: number, rangeSq: number, opts?: TargetCollectionOptions): ClosestTarget | null;
   getTargetedEnemy(): ClosestTarget | null;

@@ -106,6 +106,8 @@ import type {
 } from './rpg-procedural-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { BinaryRingEnemy, BinaryRingMissile } from './rpg-binary-ring-encounter';
+import { drawNadirCubeEncounter, setNadirCubeLowGraphics } from './nadir-cube-point-draw';
+import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
@@ -204,6 +206,11 @@ export interface RpgDrawCtx {
   eliteEnemies: EliteEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   binaryRingMissiles: BinaryRingMissile[];
+  nadirCubePointEnemies: NadirCubePointEnemy[];
+  nadirCubeMines: NadirCubeMine[];
+  nadirCubeTrailSegments: NadirCubeTrailSegment[];
+  nadirCubeTurretBolts: NadirCubeTurretBolt[];
+  nadirCubeLinkLasers: NadirCubeLinkLaser[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
@@ -710,6 +717,19 @@ export function drawRpgFrame(
     if (wState) drawVerdureWallDebug(canvas2d, wState);
   }
 
+  if (ctx.nadirCubePointEnemies.length > 0 || ctx.nadirCubeMines.length > 0 ||
+      ctx.nadirCubeTrailSegments.length > 0 || ctx.nadirCubeTurretBolts.length > 0 ||
+      ctx.nadirCubeLinkLasers.length > 0) {
+    drawNadirCubeEncounter(
+      canvas2d,
+      ctx.nadirCubePointEnemies,
+      ctx.nadirCubeMines,
+      ctx.nadirCubeTrailSegments,
+      ctx.nadirCubeTurretBolts,
+      ctx.nadirCubeLinkLasers,
+    );
+  }
+
   drawLaserEnemies(canvas2d, ctx.enemies, nowMs);
   drawSapphireEnemies(canvas2d, ctx.sapphireEnemies);
   drawSapphireMissiles(canvas2d, ctx.sapphireMissiles);
@@ -998,6 +1018,7 @@ export function setAllDrawLowGraphics(enabled: boolean): void {
   setBossLowGraphics(enabled);
   setEliteDrawLowGraphics(enabled);
   setStardustDrawLowGraphics(enabled);
+  setNadirCubeLowGraphics(enabled);
   setAlivenLowGraphics(enabled);
   setDrawBossAttacksLowGraphics(enabled);
   setStageDirLowGraphics(enabled);
