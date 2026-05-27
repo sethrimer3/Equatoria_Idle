@@ -153,6 +153,7 @@ import {
   createNadirCubicGridBackground,
   type NadirCubicGridBackground,
 } from '../background/nadir-cubic-grid-background';
+import type { NadirCubeProjectionState } from '../background/nadir-cube-projection';
 import {
   type BinaryRingEnemy,
   type BinaryRingMissile,
@@ -270,13 +271,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (!nadirSubstrate) nadirSubstrate = createNadirSubstrateEffect({ quality: isLowGraphicsMode ? 'low' : 'medium' });
       nadirSubstrate.update(nowMs, w, h);
       nadirSubstrate.draw(c2d);
-      // CubicGrid elite-wave overlay — active only on every 10th Nadir wave while
-      // the wave is in progress (isInterWave=false).  Fades in at wave start and
-      // fades out at wave end or when leaving Nadir.
-      const isEliteWaveActive = isNadirEliteWave && !isInterWave;
-      if (!nadirCubicGrid) nadirCubicGrid = createNadirCubicGridBackground();
-      nadirCubicGrid.update(nowMs, w, h, isEliteWaveActive, isLowGraphicsMode);
-      nadirCubicGrid.draw(c2d);
+      nadirCubicGrid?.draw(c2d);
     } else {
       const isTrue = rpgSimState.activeSubzoneId === 'true';
       if (binaryRingEnemies.length > 0) {
@@ -297,6 +292,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         zenithBinaryHorizon.draw(c2d);
       }
     }
+  }
+
+  function updateAndGetNadirCubeProjectionState(nowMs: number): NadirCubeProjectionState | null {
+    if (rpgSimState.activeZoneId !== 'horizon' || rpgSimState.activeSubzoneId !== 'nadir') return null;
+    if (!nadirCubicGrid) nadirCubicGrid = createNadirCubicGridBackground();
+    const isEliteWaveActive = isNadirEliteWave && !isInterWave;
+    nadirCubicGrid.update(nowMs, widthPx, heightPx, isEliteWaveActive, isLowGraphicsMode);
+    return nadirCubicGrid.getProjectionState();
   }
 
   /**
@@ -1376,6 +1379,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getNavGrid:                   () => rpgNavGrid,
     getPathfindingDebugEnabled:   () => _pathfindingDebugEnabled,
     drawZoneBgOverlay:            (c2d, w, h, nowMs) => drawZoneBgOverlay(c2d, w, h, nowMs),
+    getNadirCubeProjectionState:  () => nadirCubicGrid?.getProjectionState() ?? null,
     getZenithShakeOffset:         () => {
       if (rpgSimState.activeZoneId !== 'horizon' || rpgSimState.activeSubzoneId !== 'zenith') {
         return { x: 0, y: 0 };
@@ -1455,6 +1459,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     drawFrameState,
     getBinaryLaserSweep:    () => binaryLaserSweep,
     setBinaryLaserSweep:    (sweep) => { binaryLaserSweep = sweep; },
+    updateAndGetNadirCubeProjectionState: (nowMs) => updateAndGetNadirCubeProjectionState(nowMs),
     getNadirCubeProjectionState: () => {
       const state = nadirCubicGrid?.getProjectionState();
       return state ?? null;

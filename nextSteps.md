@@ -1,6 +1,31 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#174**
+Current build: **#175**
+
+---
+
+## Build #175 — Nadir cube-point/cubic-grid projection lockstep fix
+
+### What was implemented
+
+- Added `src/render/background/nadir-cube-projection.ts` as the shared Nadir cube projection source of truth (constants, rotation, projection state, world→game projection, game→offscreen conversion helper).
+- Refactored `src/render/background/nadir-cubic-grid-background.ts` to use the shared projection helpers and to project points in game-space first, then convert to offscreen pixels (`sx/sy` → `px/py`) so background and gameplay now use matching coordinates in both normal and low graphics modes.
+- Refactored `src/render/rpg/nadir-cube-point-types.ts` to forward `projectNadirAnchor()` through the same shared world→game projection function used by the background.
+- Changed frame order wiring so Nadir cubic-grid projection is now advanced in `runRpgUpdate()` via `updateAndGetNadirCubeProjectionState(nowMs)` before cube-point enemy spawn/update logic runs; draw now consumes already-updated background state instead of advancing it.
+- Removed active-enemy zero-angle fallback projection usage in `rpg-render-update.ts`; encounter spawn/update now waits for real shared projection state.
+- Added a dev-only anchor verification overlay in `nadir-cube-point-draw.ts` that draws tiny projected anchor crosses and a short offset line if an enemy center diverges by more than 1 px.
+- Bumped `src/buildInfo.ts` from 174 → 175.
+
+### Root cause and fix summary
+
+- The mismatch came from two independent projection paths: gameplay projected directly to game-space, but the cubic-grid background used a separate offscreen projection formula with non-uniform scaling behavior on Y, then upscaled.
+- A second mismatch came from frame timing: gameplay read projection state before draw advanced the cubic-grid state, creating one-frame phase offset.
+- The fix unifies projection math in one module and advances the shared projection state during update before gameplay and rendering consume it.
+
+### Remaining limitations / notes
+
+- Dev anchor verification markers are only drawn when dev mode is enabled.
+- If Nadir projection state is unavailable for a tick, cube-point spawn/update is skipped for that tick instead of using a fabricated zero-angle fallback.
 
 ---
 
