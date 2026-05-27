@@ -1,6 +1,22 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#173**
+Current build: **#174**
+
+---
+
+## Build #174 — Nadir cube-point encounter
+
+### What was implemented
+
+- Added `src/render/rpg/nadir-cube-point-types.ts`, `nadir-cube-point-update.ts`, and `nadir-cube-point-draw.ts` for the new Horizon → Nadir awakened lattice-node encounter.
+- Extended `src/render/background/nadir-cubic-grid-background.ts` with `getProjectionState()` so the encounter uses the same live cube rotation/projection math as the background effect.
+- Integrated the encounter into targeting, damage routing, wave completion, draw/update contexts, and death/restart cleanup so every 10th Nadir wave now uses cube-point enemies and hazards instead of the old single-elite spawn.
+- Bumped `src/buildInfo.ts` from 173 → 174.
+
+### Validation
+
+- Run `npm run typecheck && npm run build` after dependencies are installed.
+- Baseline validation initially failed in this environment because `vitest` type declarations were unavailable before installing project dependencies.
 
 ---
 

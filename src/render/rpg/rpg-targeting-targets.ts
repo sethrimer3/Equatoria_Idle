@@ -52,6 +52,11 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
   for (const e of ctx.eigensteinEnemies) addTarget('eigenstein', e, 'eigenstein');
   for (const e of ctx.eliteEnemies) addTarget('elite', e, 'elite');
   for (const e of ctx.binaryRingEnemies) addTarget('binary_ring', e, 'binaryRing');
+  for (const e of ctx.nadirCubePointEnemies) {
+    if (e.hp <= 0 || !e.projectedVisible) continue;
+    const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
+    targets.push({ kind: 'nadir_cube_point', x: e.x, y: e.y, distSq: dx * dx + dy * dy, nadirCubePoint: e });
+  }
   // Aliven: add each alive particle as an individual target
   for (const group of ctx.alivenGroups) {
     for (const p of group.particles) {
@@ -180,6 +185,7 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       ctx.fracterylEnemies.includes(targetedEnemy as FracterylEnemy) ||
       ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy) ||
       ctx.binaryRingEnemies.includes(targetedEnemy as BinaryRingEnemy) ||
+      ctx.nadirCubePointEnemies.includes(targetedEnemy as import('./nadir-cube-point-types').NadirCubePointEnemy) ||
       ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy) ||
       ctx.sandFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SandFishEnemy) ||
       ctx.quartzFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').QuartzFishEnemy) ||
@@ -244,6 +250,9 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       }
       if (ctx.binaryRingEnemies.includes(targetedEnemy as BinaryRingEnemy)) {
         return { kind: 'binary_ring', x: e.x, y: e.y, distSq, binaryRing: targetedEnemy as BinaryRingEnemy };
+      }
+      if (ctx.nadirCubePointEnemies.includes(targetedEnemy as import('./nadir-cube-point-types').NadirCubePointEnemy)) {
+        return { kind: 'nadir_cube_point', x: e.x, y: e.y, distSq, nadirCubePoint: targetedEnemy as import('./nadir-cube-point-types').NadirCubePointEnemy };
       }
       if (ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy)) {
         return { kind: 'elite', x: e.x, y: e.y, distSq, elite: targetedEnemy as EliteEnemy };

@@ -106,6 +106,8 @@ import {
   type BossStageDirectorCtx,
 } from './rpg-boss-stage-director';
 import { updateEmpowerParticles } from './rpg-elite-empower-particles';
+import { spawnNadirCubeEncounter, updateNadirCubePointEnemies, clearNadirCubeEncounter } from './nadir-cube-point-update';
+import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -142,6 +144,11 @@ export interface RpgEnemyUpdateArrays {
   eliteEnemies: EliteEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   binaryRingMissiles: BinaryRingMissile[];
+  nadirCubePointEnemies: NadirCubePointEnemy[];
+  nadirCubeMines: NadirCubeMine[];
+  nadirCubeTrailSegments: NadirCubeTrailSegment[];
+  nadirCubeTurretBolts: NadirCubeTurretBolt[];
+  nadirCubeLinkLasers: NadirCubeLinkLaser[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
@@ -244,6 +251,8 @@ export interface RpgUpdateCtx {
   playerStats: RpgPlayerStats;
   dealDamageToPlayer(damage: number): void;
   triggerDeath(): void;
+  getPlayerIFramesMs(): number;
+  setPlayerIFramesMs(ms: number): void;
 
   // Rendering
   statsPanel: { update(): void };
@@ -252,6 +261,8 @@ export interface RpgUpdateCtx {
   drawFrameState: RpgDrawFrameState;
   getBinaryLaserSweep(): BinaryLaserSweep | null;
   setBinaryLaserSweep(sweep: BinaryLaserSweep | null): void;
+  /** Returns the Nadir cube projection state, or null if the background isn't active. */
+  getNadirCubeProjectionState?(): import('./nadir-cube-point-types').NadirCubeProjectionState | null;
   /** Optional hook called once per frame to update Verdure zone plants. */
   updateVerdurePlants?(deltaMs: number): void;
 }
@@ -375,6 +386,63 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     a.binaryRingEnemies.length = 0;
     a.binaryRingMissiles.length = 0;
     ctx.setBinaryLaserSweep(null);
+  }
+
+  {
+    const isNadirTenthWave =
+      ctx.rpgSimState.activeZoneId === 'horizon' &&
+      ctx.rpgSimState.activeSubzoneId === 'nadir' &&
+      ctx.getCurrentWave() % 10 === 0 &&
+      !ctx.getIsBossWaveActive();
+
+    if (isNadirTenthWave) {
+      if (a.nadirCubePointEnemies.length === 0 && !ctx.getIsInterWave()) {
+        const projState = ctx.getNadirCubeProjectionState?.();
+        if (projState && projState.gameW > 0) {
+          const newEnemies = spawnNadirCubeEncounter(ctx.getCurrentWave(), projState, ctx.mote.x, ctx.mote.y);
+          for (const e of newEnemies) a.nadirCubePointEnemies.push(e);
+        }
+      }
+
+      if (a.nadirCubePointEnemies.length > 0) {
+        const projState = ctx.getNadirCubeProjectionState?.() ?? {
+          angX: 0,
+          angY: 0,
+          angZ: 0,
+          gameW: ctx.enemyCtx.dim.w,
+          gameH: ctx.enemyCtx.dim.h,
+        };
+        updateNadirCubePointEnemies({
+          enemies: a.nadirCubePointEnemies,
+          mines: a.nadirCubeMines,
+          trailSegments: a.nadirCubeTrailSegments,
+          turretBolts: a.nadirCubeTurretBolts,
+          linkLasers: a.nadirCubeLinkLasers,
+          projState,
+          playerX: ctx.mote.x,
+          playerY: ctx.mote.y,
+          playerRadius: 7,
+          getPlayerIFramesMs: ctx.getPlayerIFramesMs,
+          setPlayerIFramesMs: ctx.setPlayerIFramesMs,
+          dealDamageToPlayer: ctx.dealDamageToPlayer,
+          spawnDamageNumber: ctx.spawnDamageNumber,
+          deltaMs,
+        });
+        for (let i = a.nadirCubePointEnemies.length - 1; i >= 0; i--) {
+          if (a.nadirCubePointEnemies[i]!.hp <= 0) a.nadirCubePointEnemies.splice(i, 1);
+        }
+      }
+    } else if (a.nadirCubePointEnemies.length > 0 || a.nadirCubeMines.length > 0 ||
+               a.nadirCubeTrailSegments.length > 0 || a.nadirCubeTurretBolts.length > 0 ||
+               a.nadirCubeLinkLasers.length > 0) {
+      clearNadirCubeEncounter(
+        a.nadirCubePointEnemies,
+        a.nadirCubeMines,
+        a.nadirCubeTrailSegments,
+        a.nadirCubeTurretBolts,
+        a.nadirCubeLinkLasers,
+      );
+    }
   }
   // Stardust enemy update (prismatic particle cloud + laser bounce)
   if (a.stardustEnemies.length > 0) {

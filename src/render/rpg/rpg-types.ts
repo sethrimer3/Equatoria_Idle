@@ -337,7 +337,8 @@ export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' 
   | 'proc_emeraldfish' | 'proc_sapphirefish' | 'proc_amethystfish' | 'proc_diamondfish'
   | 'proc_plantproj'
   | 'verdure_plant'
-  | 'binary_ring';
+  | 'binary_ring'
+  | 'nadir_cube_point';
 
 export interface ClosestTarget {
   kind: TargetKind;
@@ -397,6 +398,7 @@ export interface ClosestTarget {
   /** Verdure zone environmental plant (targetable hazard). */
   verdurePlant?: import('./terrain/rpg-verdure-growth').VerdurePlant;
   binaryRing?: import('./rpg-binary-ring-encounter').BinaryRingEnemy;
+  nadirCubePoint?: import('./nadir-cube-point-types').NadirCubePointEnemy;
 }
 
 // ── Enemy entity types ─────────────────────────────────────────────

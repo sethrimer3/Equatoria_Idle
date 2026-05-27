@@ -34,6 +34,7 @@ import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import { createDamageFns } from './rpg-damage';
+import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
 import {
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
@@ -250,6 +251,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let trueBinaryHorizon: TrueBinaryHorizon | null = null;
   const binaryRingEnemies: BinaryRingEnemy[] = [];
   const binaryRingMissiles: BinaryRingMissile[] = [];
+  const nadirCubePointEnemies: NadirCubePointEnemy[] = [];
+  const nadirCubeMines: NadirCubeMine[] = [];
+  const nadirCubeTrailSegments: NadirCubeTrailSegment[] = [];
+  const nadirCubeTurretBolts: NadirCubeTurretBolt[] = [];
+  const nadirCubeLinkLasers: NadirCubeLinkLaser[] = [];
   let binaryLaserSweep: BinaryLaserSweep | null = null;
   let zenithBinaryRingBg: ZenithBinaryRingBackground | null = null;
   let nadirSubstrate: NadirSubstrateEffect | null = null;
@@ -477,7 +483,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
-    damageBinaryRingEnemy, damageEliteEnemy,
+    damageBinaryRingEnemy, damageNadirCubePointEnemy, damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
@@ -792,6 +798,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     eliteEnemies,
     binaryRingEnemies,
+    nadirCubePointEnemies,
     stardustEnemies,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
@@ -809,7 +816,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy,
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
-    damageBinaryRingEnemy, damageEliteEnemy,
+    damageBinaryRingEnemy, damageNadirCubePointEnemy, damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
@@ -841,7 +848,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
     plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
-    bossProjectiles, spawnQueue, luckyMotes, fluid,
+    bossProjectiles, spawnQueue, luckyMotes,
+    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments,
+    nadirCubeTurretBolts, nadirCubeLinkLasers,
+    fluid,
     getCachedLuckPercent,
     applyEquipmentStats: () => applyEquipmentStats(),
     spawnDamageNumber:   (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
@@ -1271,7 +1281,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     sunstoneEnemies, citrineEnemies, citrineBolts, ioliteEnemies,
     amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles,
+    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
+    stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1325,7 +1337,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles,
+    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
+    stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1380,7 +1394,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies, binaryRingEnemies, binaryRingMissiles,
+    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
+    stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1431,12 +1447,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerStats,
     dealDamageToPlayer:     (damage) => { dealDamageToPlayer(damage); },
     triggerDeath:           () => _triggerDeath(deathRestartCtx),
+    getPlayerIFramesMs:     () => playerIFramesMs,
+    setPlayerIFramesMs:     (ms) => { playerIFramesMs = ms; },
     statsPanel,
     fluid,
     drawCtx,
     drawFrameState,
     getBinaryLaserSweep:    () => binaryLaserSweep,
     setBinaryLaserSweep:    (sweep) => { binaryLaserSweep = sweep; },
+    getNadirCubeProjectionState: () => {
+      const state = nadirCubicGrid?.getProjectionState();
+      return state ?? null;
+    },
     updateVerdurePlants(deltaMs: number): void {
       if (rpgSimState.activeZoneId !== 'verdure') return;
       // Tick spawn (only during active combat, not during inter-wave or boss phases)

@@ -110,6 +110,11 @@ export interface WaveManagerCtx {
   bossProjectiles: BossProjectile[];
   spawnQueue: SpawnEntry[];
   luckyMotes: LuckyMote[];
+  nadirCubePointEnemies: import('./nadir-cube-point-types').NadirCubePointEnemy[];
+  nadirCubeMines: import('./nadir-cube-point-types').NadirCubeMine[];
+  nadirCubeTrailSegments: import('./nadir-cube-point-types').NadirCubeTrailSegment[];
+  nadirCubeTurretBolts: import('./nadir-cube-point-types').NadirCubeTurretBolt[];
+  nadirCubeLinkLasers: import('./nadir-cube-point-types').NadirCubeLinkLaser[];
 
   fluid: {
     addExplosion(x: number, y: number, strength: number, r: number, g: number, b: number): void;
@@ -170,6 +175,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
     plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
     spawnQueue,
+    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments,
+    nadirCubeTurretBolts, nadirCubeLinkLasers,
     getPlayerHpRatio,
     beginWaveTerrain,
     beginTopographicTerrainShrink,
@@ -210,32 +217,12 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         spawnQueue.push({ enemyTypeId: spawn.enemyTypeId, timerMs: spawn.spawnDelay * i });
       }
     }
-    // Nadir elite wave: every 10th wave in Horizon → Nadir spawns a scaled elite enemy.
-    // This is the trigger for the CubicGrid background effect.
-    if (
-      rpgSimState.activeZoneId === 'horizon' &&
-      rpgSimState.activeSubzoneId === 'nadir' &&
-      wave % 10 === 0
-    ) {
-      spawnQueue.push({ enemyTypeId: getNadirEliteTierForWave(wave), timerMs: 1200 });
-    }
+    // Nadir 10th waves: the CubicGrid itself becomes the encounter.
+    // The cube-point encounter is auto-spawned by rpg-render-update.ts when the
+    // conditions are met — no spawn-queue entry needed here.
+    // (The old single-elite spawn has been replaced by the dedicated cube system.)
     ctx.setIsInterWave(false);
     beginWaveTerrain(wave);
-  }
-
-  /**
-   * Returns the highest-tier elite enemy type appropriate for the given Nadir wave number.
-   * Mirrors the tier unlock order used by the standard elite progression.
-   */
-  function getNadirEliteTierForWave(wave: number): string {
-    if (wave >= 63) return 'elite_nullstone';
-    if (wave >= 52) return 'elite_diamond';
-    if (wave >= 42) return 'elite_amethyst';
-    if (wave >= 33) return 'elite_iolite';
-    if (wave >= 15) return 'elite_citrine';
-    if (wave >= 10) return 'elite_sunstone';
-    if (wave >= 5)  return 'elite_ruby';
-    return 'elite_quartz';
   }
 
   function checkWaveCompletion(): void {
@@ -259,6 +246,11 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || amethystFishEnemies.length > 0 || diamondFishEnemies.length > 0
         || plantProjectiles.length > 0 || fishMines.length > 0 || fishSpikes.length > 0
         || fishBolts.length > 0 || fishDecoys.length > 0
+        || nadirCubePointEnemies.length > 0
+        || nadirCubeMines.length > 0
+        || nadirCubeTrailSegments.length > 0
+        || nadirCubeTurretBolts.length > 0
+        || nadirCubeLinkLasers.length > 0
         || ctx.getBossEnemy() !== null) return;
     // Aliven groups alive: either still partially spawned or still have live particles
     for (const group of alivenGroups) {

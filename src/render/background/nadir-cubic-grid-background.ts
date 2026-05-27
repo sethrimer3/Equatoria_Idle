@@ -107,6 +107,9 @@ export interface NadirCubicGridBackground {
 
   /** Release resources. */
   destroy(): void;
+
+  /** Returns the current rotation angles for use by gameplay systems. */
+  getProjectionState(): { angX: number; angY: number; angZ: number; gameW: number; gameH: number };
 }
 
 // ── Lattice precomputation ────────────────────────────────────────────────────
@@ -377,6 +380,10 @@ export function createNadirCubicGridBackground(): NadirCubicGridBackground {
     ctx.restore();
   }
 
+  function getProjectionState() {
+    return { angX, angY, angZ, gameW, gameH };
+  }
+
   // ── reset / destroy ───────────────────────────────────────────────────────
 
   function reset(): void {
@@ -403,5 +410,5 @@ export function createNadirCubicGridBackground(): NadirCubicGridBackground {
     rzBuf   = null;
   }
 
-  return { update, draw, reset, destroy };
+  return { update, draw, reset, destroy, getProjectionState };
 }

@@ -17,6 +17,7 @@ import type {
 } from './rpg-types';
 import type { PlayerMovementState } from './rpg-player-movement';
 import type { BinaryRingEnemy, BinaryRingMissile } from './rpg-binary-ring-encounter';
+import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
@@ -107,6 +108,11 @@ export interface RpgDeathRestartCtx {
   eliteEnemies: EliteEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   binaryRingMissiles: BinaryRingMissile[];
+  nadirCubePointEnemies: NadirCubePointEnemy[];
+  nadirCubeMines: NadirCubeMine[];
+  nadirCubeTrailSegments: NadirCubeTrailSegment[];
+  nadirCubeTurretBolts: NadirCubeTurretBolt[];
+  nadirCubeLinkLasers: NadirCubeLinkLaser[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays (cleared on restart) ──────────────────────────
@@ -215,6 +221,11 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.eliteEnemies.length = 0;
   ctx.binaryRingEnemies.length = 0;
   ctx.binaryRingMissiles.length = 0;
+  ctx.nadirCubePointEnemies.length = 0;
+  ctx.nadirCubeMines.length = 0;
+  ctx.nadirCubeTrailSegments.length = 0;
+  ctx.nadirCubeTurretBolts.length = 0;
+  ctx.nadirCubeLinkLasers.length = 0;
   ctx.alivenGroups.length = 0;
   ctx.dustWispEnemies.length = 0; ctx.ribbonWormEnemies.length = 0;
   ctx.lanternMothEnemies.length = 0; ctx.eyeStalkEnemies.length = 0;
