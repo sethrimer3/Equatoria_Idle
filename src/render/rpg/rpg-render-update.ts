@@ -105,6 +105,7 @@ import {
   type BossStageDirectorState,
   type BossStageDirectorCtx,
 } from './rpg-boss-stage-director';
+import { updateEmpowerParticles } from './rpg-elite-empower-particles';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -392,6 +393,8 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   updateAlivenGroups(a.alivenGroups, ctx.alivenUpdateCtx, deltaMs);
   // Procedural creatures
   updateProceduralEnemies(a, ctx.enemyCtx, deltaMs);
+  // Empower particles (elite-to-non-elite visual effect)
+  updateEmpowerParticles(deltaMs);
 
   const bossEnemy = ctx.getBossEnemy();
   if (bossEnemy) {

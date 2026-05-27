@@ -138,6 +138,14 @@ function buildEnemyEntry(
     desc.style.cssText = 'font-size:0.75em;color:#99a;line-height:1.35;';
     desc.textContent = entry.description;
     textArea.appendChild(desc);
+
+    // Elite empower blurb
+    if (entry.id.startsWith('elite_')) {
+      const blurb = document.createElement('div');
+      blurb.style.cssText = 'font-size:0.72em;color:#ff8c00;font-style:italic;margin-top:4px;';
+      blurb.textContent = 'While alive, this elite empowers all non-elite enemies by +25%.';
+      textArea.appendChild(blurb);
+    }
   }
 
   box.appendChild(textArea);
