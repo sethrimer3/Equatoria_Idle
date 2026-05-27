@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#172**
+Current build: **#173**
 
 ---
 
@@ -2535,3 +2535,23 @@ Stored in `localStorage` under `equatoria_settings` (same key as all other setti
 
 - **Plant anchor occupancy recycling**: anchor points are marked occupied when a plant claims them, but the occupancy is only fully reset on encounter/wave reset. A future pass can store anchor references per plant and release them immediately when plants fade out.
 - **Resize/state invalidation**: Verdure wall textures are regenerated on zone/wave start and when the cached size key changes, but there is no dedicated mid-encounter resize invalidation path because the RPG arena is normally fixed-size.
+
+---
+
+## Build #173 — Custom gold scrollbar (global CSS)
+
+### What was implemented
+
+- Added global gold scrollbar styles to `src/styles/base.css` using both WebKit pseudo-elements and the Firefox `scrollbar-width` / `scrollbar-color` properties.
+  - Thumb: amber/gold gradient (`rgba(255,220,120,0.9)` → `rgba(191,137,35,0.85)`), 8 px wide, fully rounded (`border-radius: 999px`), transparent 2 px padding border so the track shows through.
+  - Track: transparent.
+  - Hover state brightens the thumb slightly but stays muted.
+  - Corner: transparent.
+- Removed the "Hide scrollbars while keeping scroll functionality" block from `src/styles/panels.css` that was setting `scrollbar-width: none` / `display: none` on `#panels-container`, `#weapon-store-panel`, and `#rpg-menu-panel .rpg-menu__content`. Those containers now show the gold thumb instead of hiding scrollbars entirely.
+
+### Deferred / future improvements
+
+- **iOS Safari**: WebKit scrollbar pseudo-elements (`::webkit-scrollbar`) are not supported on iOS Safari; the browser always renders its own thin overlay scrollbars. No CSS-only workaround exists without a JS scroll-shadow library.
+- **Tailwind/utility overflow classes**: if Tailwind is added later, `overflow-auto` / `overflow-y-auto` utility classes will also inherit the global rule automatically — no extra work needed.
+- **Horizontal scrollbars** (`height: 8px`) are styled by the same rule; any element that gains `overflow-x: auto` will show a gold horizontal thumb consistently.
+- **`.gold-scrollbar` utility class**: not currently needed because the `*` universal selector covers all scrollable containers. Add a `.gold-scrollbar` local class if a third-party widget ever injects its own scrollbar reset.

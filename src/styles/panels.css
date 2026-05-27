@@ -39,19 +39,6 @@
   pointer-events: none;
 }
 
-/* Hide scrollbars while keeping scroll functionality */
-#panels-container,
-#weapon-store-panel,
-#rpg-menu-panel .rpg-menu__content {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-
-#panels-container::-webkit-scrollbar,
-#weapon-store-panel::-webkit-scrollbar,
-#rpg-menu-panel .rpg-menu__content::-webkit-scrollbar {
-  display: none;
-}
 
 /* Inner panel content padding */
 .panels-inner {
