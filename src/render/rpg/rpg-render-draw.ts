@@ -146,6 +146,7 @@ import { verdureFragments } from './terrain/rpg-verdure-growth';
 import type { VerdurePlant } from './terrain/rpg-verdure-growth';
 import {
   LASER_ENEMY_COLOR, SAPPHIRE_ENEMY_COLOR,
+  FLUID_SAND_R, FLUID_SAND_G, FLUID_SAND_B,
 } from './rpg-constants';
 import {
   EMERALD_ENEMY_COLOR, AMBER_ENEMY_COLOR, VOID_ENEMY_COLOR,
@@ -508,8 +509,8 @@ function _collectTerrainLightEmitters(
     pushPoint(e.x, e.y, rgb[0], rgb[1], rgb[2], 115, 0.50);
   }
 
-  // 4. Player
-  pushPoint(ctx.mote.x, ctx.mote.y, 80, 220, 100, 80, 0.35);
+  // 4. Player — sand-colored glow so nearby Euhedral structures are tinted warm
+  pushPoint(ctx.mote.x, ctx.mote.y, FLUID_SAND_R, FLUID_SAND_G, FLUID_SAND_B, 100, 0.45);
 
   // 5. Regular enemies (all types)
   function pushEnemy(x: number, y: number, rgb: [number, number, number]): void {
