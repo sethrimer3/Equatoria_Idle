@@ -74,7 +74,7 @@ import {
   isPointInsideTopographicTerrain,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
-import { isPointInVerdureWall } from './terrain/verdure-cave-walls';
+import { isVerdureSpawnRejected, getVerdureSafeFallbackSpawnPos } from './terrain/verdure-cave-walls';
 import {
   registerNonEliteEnemy, applyBuffToEnemy, recalcAllNonEliteBuffs,
   type BuffableEnemy,
@@ -264,9 +264,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _laser = makeLaserEnemy(spawnX, spawnY, wn);
     ctx.enemies.push(_laser);
     _onNonEliteSpawned(ctx, _laser, spawnX, spawnY);
@@ -278,9 +282,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _sapphire = makeSapphireEnemy(spawnX, spawnY, wn);
     ctx.sapphireEnemies.push(_sapphire);
     _onNonEliteSpawned(ctx, _sapphire, spawnX, spawnY);
@@ -292,9 +300,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _emerald = makeEmeraldEnemy(spawnX, spawnY, wn);
     ctx.emeraldEnemies.push(_emerald);
     _onNonEliteSpawned(ctx, _emerald, spawnX, spawnY);
@@ -306,9 +318,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _amber = makeAmberEnemy(spawnX, spawnY, wn);
     ctx.amberEnemies.push(_amber);
     _onNonEliteSpawned(ctx, _amber, spawnX, spawnY);
@@ -330,9 +346,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _quartz = makeQuartzEnemy(spawnX, spawnY, wn);
     ctx.quartzEnemies.push(_quartz);
     _onNonEliteSpawned(ctx, _quartz, spawnX, spawnY);
@@ -344,9 +364,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _ruby = makeRubyEnemy(spawnX, spawnY, wn);
     ctx.rubyEnemies.push(_ruby);
     _onNonEliteSpawned(ctx, _ruby, spawnX, spawnY);
@@ -358,9 +382,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _sunstone = makeSunstoneEnemy(spawnX, spawnY, wn);
     ctx.sunstoneEnemies.push(_sunstone);
     _onNonEliteSpawned(ctx, _sunstone, spawnX, spawnY);
@@ -372,9 +400,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _citrine = makeCitrineEnemy(spawnX, spawnY, wn);
     ctx.citrineEnemies.push(_citrine);
     _onNonEliteSpawned(ctx, _citrine, spawnX, spawnY);
@@ -386,9 +418,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _iolite = makeIoliteEnemy(spawnX, spawnY, wn);
     ctx.ioliteEnemies.push(_iolite);
     _onNonEliteSpawned(ctx, _iolite, spawnX, spawnY);
@@ -400,9 +436,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _amethyst = makeAmethystEnemy(spawnX, spawnY, wn);
     ctx.amethystEnemies.push(_amethyst);
     _onNonEliteSpawned(ctx, _amethyst, spawnX, spawnY);
@@ -414,9 +454,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _diamond = makeDiamondEnemy(spawnX, spawnY, wn);
     ctx.diamondEnemies.push(_diamond);
     _onNonEliteSpawned(ctx, _diamond, spawnX, spawnY);
@@ -438,9 +482,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _fracteryl = makeFracterylEnemy(spawnX, spawnY, wn);
     ctx.fracterylEnemies.push(_fracteryl);
     _onNonEliteSpawned(ctx, _fracteryl, spawnX, spawnY);
@@ -452,9 +500,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _eigenstein = makeEigensteinEnemy(spawnX, spawnY, wn);
     ctx.eigensteinEnemies.push(_eigenstein);
     _onNonEliteSpawned(ctx, _eigenstein, spawnX, spawnY);
@@ -466,9 +518,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
     const _stardust = makeStardustEnemy(spawnX, spawnY, wn, widthPx, heightPx);
     ctx.stardustEnemies.push(_stardust);
     _onNonEliteSpawned(ctx, _stardust, spawnX, spawnY);
@@ -531,9 +587,13 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
         const dx = spawnX - mote.x; const dy = spawnY - mote.y;
         if (dx * dx + dy * dy >= minDist * minDist
             && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
-          && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
         attempts++;
       } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
       let _proc: BuffableEnemy | null = null;
       if (enemyTypeId === 'proc_dustwisp')        { const e = makeDustWispEnemy(spawnX, spawnY, wn);       ctx.dustWispEnemies.push(e);       _proc = e; }
       else if (enemyTypeId === 'proc_ribbonworm')  { const e = makeRibbonWormEnemy(spawnX, spawnY, wn);    ctx.ribbonWormEnemies.push(e);      _proc = e; }

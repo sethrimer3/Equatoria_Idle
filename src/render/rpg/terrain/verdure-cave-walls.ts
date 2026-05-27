@@ -171,6 +171,41 @@ function _isPointInVerdureWallWithMargin(
     || px > state.widthPx - _sampleRightDepth(state, py) - margin;
 }
 
+/**
+ * Minimum inward clearance used when testing Verdure spawn positions.
+ *
+ * This must be at least RIM_WIDTH_PX (4 px) so that enemies cannot be placed
+ * in the dark visual-rim strip that extends inside the raw depth boundary.
+ * The extra 6 px gives a small additional safety buffer so spawned enemies
+ * do not immediately clip the wall on their first movement frame.
+ */
+export const VERDURE_SPAWN_MARGIN = 10;
+
+/**
+ * Returns `true` if `(px, py)` should be **rejected** as a Verdure enemy-spawn
+ * candidate — i.e. the point is either inside the wall or within
+ * `VERDURE_SPAWN_MARGIN` pixels of the wall boundary.
+ *
+ * Use this instead of bare `isPointInVerdureWall` for all spawn-position
+ * validation so that enemies are never placed inside the visual rim strip.
+ */
+export function isVerdureSpawnRejected(
+  state: VerdureCaveWallState,
+  px: number,
+  py: number,
+): boolean {
+  return _isPointInVerdureWallWithMargin(state, px, py, VERDURE_SPAWN_MARGIN);
+}
+
+/**
+ * Returns a guaranteed-safe fallback spawn position at the centre of the
+ * arena.  The centre is always walkable: wall depths are at most ~50 px from
+ * the canvas edges, so the centre of any valid play canvas is never in a wall.
+ */
+export function getVerdureSafeFallbackSpawnPos(state: VerdureCaveWallState): { x: number; y: number } {
+  return { x: state.widthPx * 0.5, y: state.heightPx * 0.5 };
+}
+
 function _appendBoundaryPath(
   canvas2d: CanvasRenderingContext2D,
   state: VerdureCaveWallState,
@@ -467,6 +502,12 @@ function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
   }
   for (let y = 0; y <= state.heightPx; y += EDGE_POINT_STEP) {
     const yn = Math.min(state.heightPx, y);
+    // Skip corner regions for vertical edges — the top/bottom edges already
+    // own the horizontal spans within the exclusion zone, but the vertical
+    // edges previously had no such suppression.  Skipping here prevents
+    // left/right anchors from stacking in the corner region where top/bottom
+    // anchors (already suppressed from their own pass) would have appeared.
+    if (yn < cornerExclusionPx || yn > state.heightPx - cornerExclusionPx) continue;
     const leftNormal = _getBoundaryNormal(state, LEFT_EDGE, yn);
     edgePoints.push({
       x: _sampleLeftDepth(state, yn),
