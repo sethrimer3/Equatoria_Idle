@@ -10,6 +10,10 @@ import type {
   NadirCubeTurretBolt,
   NadirCubeLinkLaser,
 } from './nadir-cube-point-types';
+import {
+  projectNadirWorldPointToGame,
+  type NadirCubeProjectionState,
+} from '../background/nadir-cube-projection';
 
 let isLowGraphics = false;
 export function setNadirCubeLowGraphics(enabled: boolean): void {
@@ -190,10 +194,48 @@ export function drawNadirCubeEncounter(
   trailSegments: NadirCubeTrailSegment[],
   turretBolts: NadirCubeTurretBolt[],
   linkLasers: NadirCubeLinkLaser[],
+  projectionState: NadirCubeProjectionState | null = null,
+  drawDebugAnchors = false,
 ): void {
   if (mines.length > 0) drawNadirCubeMines(c2d, mines);
   if (trailSegments.length > 0) drawNadirCubeTrailSegments(c2d, trailSegments);
   if (linkLasers.length > 0) drawNadirCubeLinkLasers(c2d, linkLasers);
   if (turretBolts.length > 0) drawNadirCubeTurretBolts(c2d, turretBolts);
   if (enemies.length > 0) drawNadirCubePointEnemies(c2d, enemies);
+  if (drawDebugAnchors && projectionState) drawNadirCubeAnchorDebug(c2d, enemies, projectionState);
+}
+
+function drawNadirCubeAnchorDebug(
+  c2d: CanvasRenderingContext2D,
+  enemies: NadirCubePointEnemy[],
+  projectionState: NadirCubeProjectionState,
+): void {
+  c2d.save();
+  c2d.lineWidth = 1;
+  for (const e of enemies) {
+    if (!e.projectedVisible || e.hp <= 0) continue;
+    const projected = projectNadirWorldPointToGame(e.anchorX, e.anchorY, e.anchorZ, projectionState);
+    if (!projected) continue;
+    const x = projected.sx;
+    const y = projected.sy;
+
+    c2d.strokeStyle = 'rgba(255,255,255,0.9)';
+    c2d.beginPath();
+    c2d.moveTo(x - 2, y);
+    c2d.lineTo(x + 2, y);
+    c2d.moveTo(x, y - 2);
+    c2d.lineTo(x, y + 2);
+    c2d.stroke();
+
+    const dx = e.x - x;
+    const dy = e.y - y;
+    if (dx * dx + dy * dy > 1) {
+      c2d.strokeStyle = 'rgba(255,80,80,0.85)';
+      c2d.beginPath();
+      c2d.moveTo(x, y);
+      c2d.lineTo(e.x, e.y);
+      c2d.stroke();
+    }
+  }
+  c2d.restore();
 }

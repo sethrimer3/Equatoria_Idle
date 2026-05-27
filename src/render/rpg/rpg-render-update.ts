@@ -261,6 +261,8 @@ export interface RpgUpdateCtx {
   drawFrameState: RpgDrawFrameState;
   getBinaryLaserSweep(): BinaryLaserSweep | null;
   setBinaryLaserSweep(sweep: BinaryLaserSweep | null): void;
+  /** Updates the Nadir cubic-grid projection for this frame and returns current state. */
+  updateAndGetNadirCubeProjectionState?(nowMs: number): import('../background/nadir-cube-projection').NadirCubeProjectionState | null;
   /** Returns the Nadir cube projection state, or null if the background isn't active. */
   getNadirCubeProjectionState?(): import('./nadir-cube-point-types').NadirCubeProjectionState | null;
   /** Optional hook called once per frame to update Verdure zone plants. */
@@ -290,6 +292,9 @@ function _applyVerdureWallPassToArray<T extends { x: number; y: number; vx: numb
  */
 export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled: boolean): void {
   const nowMs = performance.now();
+  const nadirProjectionState = ctx.updateAndGetNadirCubeProjectionState?.(nowMs)
+    ?? ctx.getNadirCubeProjectionState?.()
+    ?? null;
   ctx.addGlowTimeS(deltaMs / 1000);
   const terrainState = ctx.getTopographicTerrainState();
   if (terrainState) updateTopographicTerrain(terrainState, nowMs);
@@ -397,28 +402,20 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
     if (isNadirTenthWave) {
       if (a.nadirCubePointEnemies.length === 0 && !ctx.getIsInterWave()) {
-        const projState = ctx.getNadirCubeProjectionState?.();
-        if (projState && projState.gameW > 0) {
-          const newEnemies = spawnNadirCubeEncounter(ctx.getCurrentWave(), projState, ctx.mote.x, ctx.mote.y);
+        if (nadirProjectionState && nadirProjectionState.gameW > 0) {
+          const newEnemies = spawnNadirCubeEncounter(ctx.getCurrentWave(), nadirProjectionState, ctx.mote.x, ctx.mote.y);
           for (const e of newEnemies) a.nadirCubePointEnemies.push(e);
         }
       }
 
-      if (a.nadirCubePointEnemies.length > 0) {
-        const projState = ctx.getNadirCubeProjectionState?.() ?? {
-          angX: 0,
-          angY: 0,
-          angZ: 0,
-          gameW: ctx.enemyCtx.dim.w,
-          gameH: ctx.enemyCtx.dim.h,
-        };
+      if (a.nadirCubePointEnemies.length > 0 && nadirProjectionState) {
         updateNadirCubePointEnemies({
           enemies: a.nadirCubePointEnemies,
           mines: a.nadirCubeMines,
           trailSegments: a.nadirCubeTrailSegments,
           turretBolts: a.nadirCubeTurretBolts,
           linkLasers: a.nadirCubeLinkLasers,
-          projState,
+          projState: nadirProjectionState,
           playerX: ctx.mote.x,
           playerY: ctx.mote.y,
           playerRadius: 7,

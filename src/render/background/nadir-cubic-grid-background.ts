@@ -28,27 +28,22 @@
  * Depth fading darkens distant points toward black.
  */
 
+import {
+  NADIR_CUBE_HALF_CELLS,
+  NADIR_CUBE_HALF_CELLS_LOW,
+  NADIR_CUBE_CELL_SIZE,
+  NADIR_ROT_SPEED_X,
+  NADIR_ROT_SPEED_Y,
+  NADIR_ROT_SPEED_Z,
+  projectNadirRotatedPointToGame,
+  projectNadirGamePointToOffscreen,
+  type NadirCubeProjectionState,
+} from './nadir-cube-projection';
+
 // ── Tuning constants ──────────────────────────────────────────────────────────
-
-/** Half-width of the cubic lattice in cell-count units. */
-const HALF_CELLS = 7;
-
-/** Spacing between lattice grid lines in world units. */
-const CELL_SIZE = 50;
 
 /** Number of sample points per lattice line segment. */
 const SAMPLES = 42;
-
-/** Z-position of the virtual camera (world units in front of the origin). */
-const CAMERA_Z = 860;
-
-/** Perspective focal length in world units. */
-const FOCAL_LENGTH = 540;
-
-/** Rotation speeds in radians/second. */
-const ROT_SPEED_X = 0.155;
-const ROT_SPEED_Y = 0.215;
-const ROT_SPEED_Z = 0.063;
 
 /**
  * Offscreen render scale relative to game-canvas dimensions.
@@ -76,7 +71,6 @@ const AXIS_COLORS: [number, number, number][] = [
 
 // ── Low-graphics reduced parameters ──────────────────────────────────────────
 
-const HALF_CELLS_LOW  = 5;
 const SAMPLES_LOW     = 28;
 const RENDER_SCALE_LOW = 0.35;
 
@@ -109,7 +103,7 @@ export interface NadirCubicGridBackground {
   destroy(): void;
 
   /** Returns the current rotation angles for use by gameplay systems. */
-  getProjectionState(): { angX: number; angY: number; angZ: number; gameW: number; gameH: number };
+  getProjectionState(): NadirCubeProjectionState;
 }
 
 // ── Lattice precomputation ────────────────────────────────────────────────────
@@ -245,9 +239,9 @@ export function createNadirCubicGridBackground(): NadirCubicGridBackground {
 
   /** Allocate or reallocate the lattice buffers for the current quality setting. */
   function initLattice(isLow: boolean): void {
-    const hc      = isLow ? HALF_CELLS_LOW  : HALF_CELLS;
+    const hc      = isLow ? NADIR_CUBE_HALF_CELLS_LOW  : NADIR_CUBE_HALF_CELLS;
     const samples = isLow ? SAMPLES_LOW     : SAMPLES;
-    lattice = buildLatticePoints(hc, CELL_SIZE, samples);
+    lattice = buildLatticePoints(hc, NADIR_CUBE_CELL_SIZE, samples);
     rxBuf   = new Float32Array(lattice.n);
     ryBuf   = new Float32Array(lattice.n);
     rzBuf   = new Float32Array(lattice.n);
@@ -292,9 +286,9 @@ export function createNadirCubicGridBackground(): NadirCubicGridBackground {
     if (masterAlpha <= 0) return;
 
     // Advance rotation angles.
-    angX += ROT_SPEED_X * deltaSec;
-    angY += ROT_SPEED_Y * deltaSec;
-    angZ += ROT_SPEED_Z * deltaSec;
+    angX += NADIR_ROT_SPEED_X * deltaSec;
+    angY += NADIR_ROT_SPEED_Y * deltaSec;
+    angZ += NADIR_ROT_SPEED_Z * deltaSec;
 
     // Precompute trig.
     const cX = Math.cos(angX), sX = Math.sin(angX);
@@ -322,35 +316,25 @@ export function createNadirCubicGridBackground(): NadirCubicGridBackground {
     }
 
     // Project points and paint pixels.
-    const cx = offW / 2;
-    const cy = offH / 2;
     const scaleX = offW / gameW;
     const scaleY = offH / gameH;
-    // Adjust focal length and camera-Z for the offscreen scale.
-    const fl   = FOCAL_LENGTH * scaleX;
-    const camZ = CAMERA_Z;
-
-    // World-space extent along Z (used to normalise depth alpha).
-    const maxRange = HALF_CELLS * CELL_SIZE * 1.8;   // a generous upper bound
-
     const pix = pixels!;
     // Clear to transparent each frame.
     pix.fill(0);
 
     for (let i = 0; i < n; i++) {
-      const wz = rz[i] + camZ;
-      if (wz <= 0) continue;           // behind camera — skip
+      const projected = projectNadirRotatedPointToGame(
+        rx[i]!,
+        ry[i]!,
+        rz[i]!,
+        { gameW, gameH },
+      );
+      if (!projected) continue;
 
-      const sx = cx + rx[i] * fl / wz;
-      const sy = cy + ry[i] * fl * scaleY / wz;
-
-      const px = (sx + 0.5) | 0;
-      const py = (sy + 0.5) | 0;
+      const { px, py } = projectNadirGamePointToOffscreen(projected.sx, projected.sy, scaleX, scaleY);
       if (px < 0 || px >= offW || py < 0 || py >= offH) continue;
 
-      // Depth alpha: 1 = closest (camera side), 0 = furthest.
-      const depth = Math.max(0, Math.min(1, (camZ - rz[i]) / (camZ + maxRange)));
-      const pointAlpha = (depth * depth * MAX_POINT_ALPHA * masterAlpha) | 0;
+      const pointAlpha = (projected.depthAlpha * MAX_POINT_ALPHA * masterAlpha) | 0;
       if (pointAlpha <= 0) continue;
 
       const pidx = (py * offW + px) << 2;   // × 4

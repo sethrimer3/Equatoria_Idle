@@ -108,6 +108,7 @@ import type { BossAttackState } from './rpg-boss-attack-types';
 import type { BinaryRingEnemy, BinaryRingMissile } from './rpg-binary-ring-encounter';
 import { drawNadirCubeEncounter, setNadirCubeLowGraphics } from './nadir-cube-point-draw';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
+import type { NadirCubeProjectionState } from '../background/nadir-cube-projection';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
@@ -299,6 +300,8 @@ export interface RpgDrawCtx {
   getPathfindingDebugEnabled(): boolean;
   /** Optional zone-specific stateful background draw (e.g. substrate for Horizon). */
   drawZoneBgOverlay?: (canvas2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number) => void;
+  /** Returns the latest shared Nadir cube projection state for dev overlays. */
+  getNadirCubeProjectionState?(): NadirCubeProjectionState | null;
   /** Returns the current Zenith Binary Horizon screen-shake offset in logical px (0,0 when inactive). */
   getZenithShakeOffset?(): { x: number; y: number };
 }
@@ -727,6 +730,8 @@ export function drawRpgFrame(
       ctx.nadirCubeTrailSegments,
       ctx.nadirCubeTurretBolts,
       ctx.nadirCubeLinkLasers,
+      ctx.getIsDevMode() ? (ctx.getNadirCubeProjectionState?.() ?? null) : null,
+      ctx.getIsDevMode(),
     );
   }
 

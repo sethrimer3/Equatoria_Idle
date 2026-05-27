@@ -7,33 +7,28 @@
  * background visual.
  */
 
-// ── Shared projection math ────────────────────────────────────────────────────
+import {
+  NADIR_CUBE_CAMERA_Z,
+  NADIR_CUBE_FOCAL_LENGTH,
+  NADIR_CUBE_HALF_CELLS,
+  NADIR_CUBE_CELL_SIZE,
+  NADIR_ROT_SPEED_X,
+  NADIR_ROT_SPEED_Y,
+  NADIR_ROT_SPEED_Z,
+  projectNadirWorldPointToGame,
+  type NadirCubeProjectionState,
+} from '../background/nadir-cube-projection';
 
-/** Camera Z offset (must match nadir-cubic-grid-background.ts CAMERA_Z). */
-export const NADIR_CUBE_CAMERA_Z = 860;
-/** Perspective focal length (must match nadir-cubic-grid-background.ts FOCAL_LENGTH). */
-export const NADIR_CUBE_FOCAL_LENGTH = 540;
-/** Half-cell count for anchor selection (must match HALF_CELLS). */
-export const NADIR_CUBE_HALF_CELLS = 7;
-/** Cell size in world units (must match CELL_SIZE). */
-export const NADIR_CUBE_CELL_SIZE = 50;
-
-/** The three rotation speeds (rad/s) from the background (ROT_SPEED_X/Y/Z). */
-export const NADIR_ROT_SPEED_X = 0.155;
-export const NADIR_ROT_SPEED_Y = 0.215;
-export const NADIR_ROT_SPEED_Z = 0.063;
-
-/**
- * Projection state shared between the background visual and the gameplay system.
- * The background exposes this via getProjectionState() each frame.
- */
-export interface NadirCubeProjectionState {
-  angX: number;
-  angY: number;
-  angZ: number;
-  gameW: number;
-  gameH: number;
-}
+export {
+  NADIR_CUBE_CAMERA_Z,
+  NADIR_CUBE_FOCAL_LENGTH,
+  NADIR_CUBE_HALF_CELLS,
+  NADIR_CUBE_CELL_SIZE,
+  NADIR_ROT_SPEED_X,
+  NADIR_ROT_SPEED_Y,
+  NADIR_ROT_SPEED_Z,
+};
+export type { NadirCubeProjectionState };
 
 /**
  * Projects a 3D lattice world-space point into 2D screen coordinates using
@@ -47,36 +42,9 @@ export function projectNadirAnchor(
   wz: number,
   state: NadirCubeProjectionState,
 ): { sx: number; sy: number; depthAlpha: number } | null {
-  const { angX, angY, angZ, gameW, gameH } = state;
-
-  const cX = Math.cos(angX), sX = Math.sin(angX);
-  const cY = Math.cos(angY), sY = Math.sin(angY);
-  const cZ = Math.cos(angZ), sZ = Math.sin(angZ);
-
-  // Rotate around X
-  const wy2 = wy * cX - wz * sX;
-  const wz2 = wy * sX + wz * cX;
-  // Rotate around Y
-  const wx3 = wx * cY + wz2 * sY;
-  const wz3 = -wx * sY + wz2 * cY;
-  // Rotate around Z
-  const rx = wx3 * cZ - wy2 * sZ;
-  const ry = wx3 * sZ + wy2 * cZ;
-  const rz = wz3;
-
-  const wzCam = rz + NADIR_CUBE_CAMERA_Z;
-  if (wzCam <= 0) return null;
-
-  const cx = gameW / 2;
-  const cy = gameH / 2;
-  const sx = cx + rx * NADIR_CUBE_FOCAL_LENGTH / wzCam;
-  const sy = cy + ry * NADIR_CUBE_FOCAL_LENGTH / wzCam;
-
-  const maxRange = NADIR_CUBE_HALF_CELLS * NADIR_CUBE_CELL_SIZE * 1.8;
-  const depth = Math.max(0, Math.min(1, (NADIR_CUBE_CAMERA_Z - rz) / (NADIR_CUBE_CAMERA_Z + maxRange)));
-  const depthAlpha = depth * depth;
-
-  return { sx, sy, depthAlpha };
+  const projected = projectNadirWorldPointToGame(wx, wy, wz, state);
+  if (!projected) return null;
+  return { sx: projected.sx, sy: projected.sy, depthAlpha: projected.depthAlpha };
 }
 
 // ── Behavior types ────────────────────────────────────────────────────────────
