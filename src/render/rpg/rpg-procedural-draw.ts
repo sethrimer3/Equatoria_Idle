@@ -48,6 +48,7 @@ import {
   drawFishMines, drawFishSpikes, drawFishBolts, drawFishDecoys,
   setFishDrawLowGraphics,
 } from './rpg-procedural-fish-draw';
+import { ENEMY_HEALTH_BAR_VISIBLE_THRESHOLD, enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
 
 // Re-export fish draw functions so consumers that import from this module continue to work.
 export * from './rpg-procedural-fish-draw';
@@ -71,7 +72,7 @@ function clearGlow(ctx: CanvasRenderingContext2D): void {
 
 /** HP-bar fraction 0-1. */
 function hpFrac(e: { hp: number; maxHp: number }): number {
-  return e.maxHp > 0 ? Math.max(0, e.hp / e.maxHp) : 0;
+  return enemyHealthFraction(e);
 }
 
 /** Draw a small hit-flash overlay (white circle, fades quickly). */
@@ -86,6 +87,7 @@ function drawHitFlash(ctx: CanvasRenderingContext2D, x: number, y: number, r: nu
 
 /** Draw an HP bar 2px tall below the enemy. */
 function drawHpBar(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, frac: number): void {
+  if (frac >= ENEMY_HEALTH_BAR_VISIBLE_THRESHOLD) return;
   const w = r * 2.5, h = 2, bx = x - w / 2, by = y + r + 2;
   ctx.fillStyle = '#333';
   ctx.fillRect(bx, by, w, h);
@@ -116,7 +118,7 @@ export function drawDustWispEnemies(
     clearGlow(canvas);
     canvas.globalAlpha = 1;
     drawHitFlash(canvas, e.x, e.y, DUSTWISP_SIZE, e.hitFlashMs);
-    drawHpBar(canvas, e.x, e.y, DUSTWISP_SIZE, hpFrac(e));
+    if (shouldDrawEnemyHealthBar(e)) drawHpBar(canvas, e.x, e.y, DUSTWISP_SIZE, hpFrac(e));
     canvas.restore();
   }
 }

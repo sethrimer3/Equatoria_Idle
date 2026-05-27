@@ -2,6 +2,8 @@
  * rpg-binary-ring-encounter.ts — Binary Ring elite encounter logic + draw.
  */
 
+import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
+
 export type BinaryRingAge = 'light' | 'dark';
 export type BinaryRingPhase =
   | 'evolve'
@@ -434,19 +436,21 @@ function drawRingBody(
   ctx.restore();
 
   // HP bar — gameplay-critical readability element.
-  const hpRatio = Math.max(0, Math.min(1, enemy.hp / Math.max(1, enemy.maxHp)));
-  ctx.save();
-  ctx.globalAlpha = 0.7;
-  ctx.strokeStyle = '#20181f';
-  ctx.lineWidth   = 3;
-  ctx.beginPath();
-  ctx.arc(enemy.x, enemy.y - ringR - 10, 16, Math.PI, TWO_PI);
-  ctx.stroke();
-  ctx.strokeStyle = enemy.age === 'light' ? '#f7f2d0' : '#704890';
-  ctx.beginPath();
-  ctx.arc(enemy.x, enemy.y - ringR - 10, 16, Math.PI, Math.PI + Math.PI * hpRatio);
-  ctx.stroke();
-  ctx.restore();
+  if (shouldDrawEnemyHealthBar(enemy)) {
+    const hpRatio = enemyHealthFraction(enemy);
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = '#20181f';
+    ctx.lineWidth   = 3;
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y - ringR - 10, 16, Math.PI, TWO_PI);
+    ctx.stroke();
+    ctx.strokeStyle = enemy.age === 'light' ? '#f7f2d0' : '#704890';
+    ctx.beginPath();
+    ctx.arc(enemy.x, enemy.y - ringR - 10, 16, Math.PI, Math.PI + Math.PI * hpRatio);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawLaserSweep(

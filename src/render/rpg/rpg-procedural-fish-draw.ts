@@ -38,6 +38,7 @@ import {
   AMETHYSTFISH_SIZE, AMETHYSTFISH_COLOR, AMETHYSTFISH_GLOW,
   DIAMONDFISH_SIZE, DIAMONDFISH_COLOR, DIAMONDFISH_GLOW,
 } from './rpg-procedural-constants';
+import { ENEMY_HEALTH_BAR_VISIBLE_THRESHOLD, enemyHealthFraction } from './rpg-health-bar';
 
 // ── Low-graphics flag ──────────────────────────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -57,7 +58,7 @@ function clearGlow(ctx: CanvasRenderingContext2D): void {
 
 /** HP-bar fraction 0–1. */
 function hpFrac(e: { hp: number; maxHp: number }): number {
-  return e.maxHp > 0 ? Math.max(0, e.hp / e.maxHp) : 0;
+  return enemyHealthFraction(e);
 }
 
 /** Draw a small hit-flash overlay (white circle, fades quickly). */
@@ -78,6 +79,7 @@ function drawHpBar(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, r: number, frac: number,
 ): void {
+  if (frac >= ENEMY_HEALTH_BAR_VISIBLE_THRESHOLD) return;
   const w = r * 2.5, h = 2, bx = x - w / 2, by = y + r + 2;
   ctx.fillStyle = '#333';
   ctx.fillRect(bx, by, w, h);

@@ -21,6 +21,7 @@ import {
   ELITE_NULLSTONE_RADIUS,ELITE_NULLSTONE_COLOR,ELITE_NULLSTONE_GLOW,
   ELITE_DIAMOND_INVULN_MS,
 } from './rpg-enemy-constants';
+import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
 
 // ── Low-graphics mode flag ────────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -213,23 +214,25 @@ export function drawEliteEnemies(
     ctx.restore();
 
     // ── HP bar (always drawn, outside save/restore for clarity) ──
-    const barW = radius * 3.5;
-    const barH = 2;
-    const barX = cx - barW / 2;
-    const barY = cy + radius + 3;
-    ctx.save();
-    ctx.globalAlpha = 0.75;
-    ctx.fillStyle = '#222';
-    ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = color;
-    ctx.fillRect(barX, barY, barW * Math.max(0, enemy.hp / enemy.maxHp), barH);
-    if (tier === 'amethyst' && enemy.maxShieldHp > 0) {
-      // Thin cyan overlay for shield fraction
-      ctx.fillStyle = ELITE_AMETHYST_GLOW;
-      ctx.globalAlpha = 0.4;
-      ctx.fillRect(barX, barY, barW * Math.max(0, enemy.shieldHp / enemy.maxShieldHp), barH);
+    if (shouldDrawEnemyHealthBar(enemy)) {
+      const barW = radius * 3.5;
+      const barH = 2;
+      const barX = cx - barW / 2;
+      const barY = cy + radius + 3;
+      ctx.save();
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = '#222';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = color;
+      ctx.fillRect(barX, barY, barW * enemyHealthFraction(enemy), barH);
+      if (tier === 'amethyst' && enemy.maxShieldHp > 0) {
+        // Thin cyan overlay for shield fraction
+        ctx.fillStyle = ELITE_AMETHYST_GLOW;
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(barX, barY, barW * Math.max(0, enemy.shieldHp / enemy.maxShieldHp), barH);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
-    ctx.globalAlpha = 1;
-    ctx.restore();
   }
 }

@@ -758,6 +758,11 @@
 - Each function takes `ctx: CanvasRenderingContext2D` plus the relevant entity array(s) — no closure dependencies.
 - Re-exports `drawEnemyIndicators` from `rpg-enemy-indicators.ts` for call-site compatibility.
 
+### src/render/rpg/rpg-health-bar.ts
+- Shared RPG enemy lifebar helpers.
+- Exports `ENEMY_HEALTH_BAR_VISIBLE_THRESHOLD`, `enemyHealthFraction()`, and `shouldDrawEnemyHealthBar()`.
+- Keeps standard, advanced, elite, boss, Binary Ring, Stardust, and procedural enemy lifebar visibility aligned.
+
 ### src/render/rpg/rpg-enemy-indicators.ts
 - Extracted enemy marker renderer (~130 lines) from `rpg-enemy-draw.ts`.
 - Exports `drawEnemyIndicators()` for triangle/outline/off enemy markers across all enemy tiers + boss + Aliven group centroids.

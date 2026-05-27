@@ -39,11 +39,27 @@ import { setLowGraphicsMode as setAdvLowGraphics } from './rpg-enemy-draw-adv';
 import {
   setEnemyIndicatorLowGraphicsMode,
 } from './rpg-enemy-indicators';
+import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
 
 export { drawEnemyIndicators } from './rpg-enemy-indicators';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
+
+function drawEnemyHealthBar(
+  ctx: CanvasRenderingContext2D,
+  enemy: { hp: number; maxHp: number },
+  barX: number,
+  barY: number,
+  barW: number,
+  barH: number,
+  color: string,
+): void {
+  if (!shouldDrawEnemyHealthBar(enemy)) return;
+  ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = color;
+  ctx.fillRect(barX, barY, barW * enemyHealthFraction(enemy), barH);
+}
 
 /**
  * Sets low-graphics mode for all enemy draw functions.
@@ -121,9 +137,7 @@ export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: Sapp
     const barY = enemy.y + SAPPHIRE_SHIELD_RADIUS + 3;
     ctx.save();
     ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = SAPPHIRE_ENEMY_COLOR;
-    ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, barX, barY, barW, barH, SAPPHIRE_ENEMY_COLOR);
     // Shield HP bar (below HP bar)
     if (enemy.shieldHp > 0) {
       ctx.fillStyle = '#333'; ctx.fillRect(barX, barY + barH + 1, barW, barH);
@@ -202,9 +216,7 @@ export function drawEmeraldEnemies(ctx: CanvasRenderingContext2D, enemies: Emera
     const barY = enemy.y + EMERALD_ENEMY_SIZE / 2 + 3;
     ctx.save();
     ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = EMERALD_ENEMY_COLOR;
-    ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, barX, barY, barW, barH, EMERALD_ENEMY_COLOR);
     ctx.globalAlpha = 1;
     ctx.restore();
     // Body — pulses brighter during charging phase
@@ -225,9 +237,7 @@ export function drawAmberEnemies(ctx: CanvasRenderingContext2D, enemies: AmberEn
     const barY = enemy.y + AMBER_ENEMY_SIZE / 2 + 3;
     ctx.save();
     ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = AMBER_ENEMY_COLOR;
-    ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, barX, barY, barW, barH, AMBER_ENEMY_COLOR);
     ctx.globalAlpha = 1;
     ctx.restore();
     const half = AMBER_ENEMY_SIZE / 2;
@@ -306,9 +316,7 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
     const barY = enemy.y + VOID_AURA_RADIUS + 3;
     ctx.save();
     ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = VOID_ENEMY_COLOR;
-    ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, barX, barY, barW, barH, VOID_ENEMY_COLOR);
     ctx.globalAlpha = 1;
     ctx.restore();
     // Body
@@ -338,8 +346,6 @@ export function drawLaserEnemies(ctx: CanvasRenderingContext2D, enemies: LaserEn
     const barH = 2;
     const barX = enemy.x - barW / 2;
     const barY = enemy.y + half + 2;
-    ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = LASER_ENEMY_COLOR;
-    ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, barX, barY, barW, barH, LASER_ENEMY_COLOR);
   }
 }

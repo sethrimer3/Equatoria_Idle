@@ -41,9 +41,25 @@ import {
   FRACTERYL_ENEMY_SIZE, FRACTERYL_ENEMY_GLOW, FRACTERYL_ENEMY_COLOR,
   EIGENSTEIN_ENEMY_SIZE, EIGENSTEIN_ENEMY_GLOW, EIGENSTEIN_ENEMY_COLOR, EIGENSTEIN_BEAM_CHARGE_MS,
 } from './rpg-enemy-constants';
+import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
+
+function drawEnemyHealthBar(
+  ctx: CanvasRenderingContext2D,
+  enemy: { hp: number; maxHp: number },
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: string,
+): void {
+  if (!shouldDrawEnemyHealthBar(enemy)) return;
+  ctx.fillStyle = '#222'; ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, width * enemyHealthFraction(enemy), height);
+}
 
 /** Sets low-graphics mode for advanced enemy draw functions (skips glow & trails). */
 export function setLowGraphicsMode(enabled: boolean): void {
@@ -63,9 +79,7 @@ export function drawQuartzEnemies(ctx: CanvasRenderingContext2D, enemies: Quartz
     ctx.restore();
     const barW = QUARTZ_ENEMY_SIZE * 2.5; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = QUARTZ_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + QUARTZ_ENEMY_SIZE + 2, barW, barH, QUARTZ_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }
@@ -93,9 +107,7 @@ export function drawRubyEnemies(ctx: CanvasRenderingContext2D, enemies: RubyEnem
     ctx.shadowBlur = 0;
     const barW = RUBY_ENEMY_SIZE * 2.5; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = RUBY_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + RUBY_ENEMY_SIZE + 2, barW, barH, RUBY_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }
@@ -123,9 +135,7 @@ export function drawSunstoneEnemies(ctx: CanvasRenderingContext2D, enemies: Suns
     ctx.restore();
     const barW = SUNSTONE_ENEMY_SIZE * 3; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = SUNSTONE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + SUNSTONE_ENEMY_SIZE + 2, barW, barH, SUNSTONE_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }
@@ -139,9 +149,7 @@ export function drawCitrineEnemies(ctx: CanvasRenderingContext2D, enemies: Citri
     ctx.shadowBlur = 0;
     const barW = CITRINE_ENEMY_SIZE * 2.5; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = CITRINE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + CITRINE_ENEMY_SIZE + 2, barW, barH, CITRINE_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }
@@ -180,9 +188,7 @@ export function drawIoliteEnemies(ctx: CanvasRenderingContext2D, enemies: Iolite
     ctx.restore();
     const barW = IOLITE_ENEMY_SIZE * 3; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = IOLITE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + IOLITE_ENEMY_SIZE + 2, barW, barH, IOLITE_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }
@@ -205,9 +211,7 @@ export function drawAmethystEnemies(ctx: CanvasRenderingContext2D, enemies: Amet
     ctx.shadowBlur = 0;
     const barW = AMETHYST_ENEMY_SIZE * 3; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = AMETHYST_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + AMETHYST_ENEMY_SIZE + 2, barW, barH, AMETHYST_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }
@@ -242,9 +246,7 @@ export function drawDiamondEnemies(ctx: CanvasRenderingContext2D, enemies: Diamo
     ctx.restore();
     const barW = DIAMOND_ENEMY_SIZE * 3; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = DIAMOND_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + DIAMOND_ENEMY_SIZE + 2, barW, barH, DIAMOND_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }
@@ -289,9 +291,7 @@ export function drawNullstoneEnemies(ctx: CanvasRenderingContext2D, enemies: Nul
     ctx.shadowBlur = 0;
     const barW = NULLSTONE_ENEMY_SIZE * 3; const barH = 2;
     ctx.save(); ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#222'; ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW, barH);
-    ctx.fillStyle = NULLSTONE_ENEMY_COLOR;
-    ctx.fillRect(enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW * (enemy.hp / enemy.maxHp), barH);
+    drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + NULLSTONE_ENEMY_SIZE + 2, barW, barH, NULLSTONE_ENEMY_COLOR);
     ctx.globalAlpha = 1; ctx.restore();
   }
 }

@@ -10,6 +10,7 @@
 
 import type { StardustEnemy } from './rpg-enemy-types';
 import { STARDUST_COLOR, STARDUST_GLOW } from './rpg-enemy-constants';
+import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
 
 // ── Low-graphics mode flag ────────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -160,11 +161,12 @@ function drawSparkBurst(ctx: CanvasRenderingContext2D, x: number, y: number, pul
 }
 
 function drawHpBar(ctx: CanvasRenderingContext2D, e: StardustEnemy): void {
+  if (!shouldDrawEnemyHealthBar(e)) return;
   const barWidth = 60;
   const barHeight = 3;
   const barX = e.x - barWidth / 2;
   const barY = e.y + 25;
-  const hpRatio = Math.max(0, Math.min(1, e.hp / e.maxHp));
+  const hpRatio = enemyHealthFraction(e);
   
   // Background
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';

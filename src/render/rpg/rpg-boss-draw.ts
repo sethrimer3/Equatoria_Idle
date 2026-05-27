@@ -21,6 +21,7 @@ import {
   BOSS_BOTTOM_SAFE_ZONE_R, BOSS_GLYPH_LABEL,
   INTER_WAVE_DELAY_MS,
 } from './rpg-constants';
+import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -89,24 +90,26 @@ export function drawBossEnemy(
   }
   ctx.globalAlpha = 1;
 
-  const barW = bossSize * 5;
-  const barH = 4;
-  const barX = boss.x - barW / 2;
-  const barY = boss.y - bossSize - 12;
-  ctx.globalAlpha = 0.85;
-  ctx.fillStyle = '#111'; ctx.fillRect(barX, barY, barW, barH);
-  ctx.fillStyle = drawColor; ctx.fillRect(barX, barY, barW * (boss.hp / boss.maxHp), barH);
-  ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff';
-  ctx.fillRect(barX + barW * BOSS_PHASE2_HP_RATIO - 0.5, barY, 1.5, barH);
-  ctx.fillRect(barX + barW * BOSS_PHASE3_HP_RATIO - 0.5, barY, 1.5, barH);
-  ctx.globalAlpha = 1;
-
-  if (boss.maxShieldHp > 0) {
-    const sBarY = barY - 6;
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#111'; ctx.fillRect(barX, sBarY, barW, 3);
-    ctx.fillStyle = '#74c0fc'; ctx.fillRect(barX, sBarY, barW * (boss.shieldHp / boss.maxShieldHp), 3);
+  if (shouldDrawEnemyHealthBar(boss)) {
+    const barW = bossSize * 5;
+    const barH = 4;
+    const barX = boss.x - barW / 2;
+    const barY = boss.y - bossSize - 12;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#111'; ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = drawColor; ctx.fillRect(barX, barY, barW * enemyHealthFraction(boss), barH);
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff';
+    ctx.fillRect(barX + barW * BOSS_PHASE2_HP_RATIO - 0.5, barY, 1.5, barH);
+    ctx.fillRect(barX + barW * BOSS_PHASE3_HP_RATIO - 0.5, barY, 1.5, barH);
     ctx.globalAlpha = 1;
+
+    if (boss.maxShieldHp > 0) {
+      const sBarY = barY - 6;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#111'; ctx.fillRect(barX, sBarY, barW, 3);
+      ctx.fillStyle = '#74c0fc'; ctx.fillRect(barX, sBarY, barW * (boss.shieldHp / boss.maxShieldHp), 3);
+      ctx.globalAlpha = 1;
+    }
   }
 
   if (!isLowGraphicsMode) {
