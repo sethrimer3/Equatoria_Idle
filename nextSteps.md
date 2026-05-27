@@ -1,6 +1,43 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#171**
+Current build: **#172**
+
+---
+
+## Build #172 — Verdure wall/plant/enemy placement coherence
+
+### What was implemented
+
+**`src/render/rpg/terrain/verdure-cave-walls.ts`** (modified):
+- Added `VERDURE_SPAWN_MARGIN = 10` constant — the minimum inward clearance that must be preserved around wall boundaries when placing enemy spawns. 10 px covers the 4 px `RIM_WIDTH_PX` visual rim strip plus 6 px additional safety.
+- Added `isVerdureSpawnRejected(state, px, py): boolean` — returns `true` if the candidate point is inside the wall **or** within `VERDURE_SPAWN_MARGIN` pixels of the boundary. Wraps the existing private `_isPointInVerdureWallWithMargin`. All spawn-validation callers should use this instead of the zero-margin `isPointInVerdureWall`.
+- Added `getVerdureSafeFallbackSpawnPos(state): { x, y }` — returns the arena centre as a guaranteed walkable fallback position for use after spawn-retry exhaustion.
+- Fixed `_buildEdgePoints` left/right edge pass: added `cornerExclusionPx` guard (`if (yn < 80 || yn > state.heightPx - 80) continue`) mirroring the already-present guard on the top/bottom pass. This prevents plant anchors from piling up in corner regions where both horizontal and vertical edges previously contributed simultaneously.
+
+**`src/render/rpg/rpg-enemy-spawn.ts`** (modified):
+- Replaced `import { isPointInVerdureWall }` with `import { isVerdureSpawnRejected, getVerdureSafeFallbackSpawnPos }`.
+- Replaced every in-loop spawn-check `isPointInVerdureWall(wallState, spawnX, spawnY)` with `isVerdureSpawnRejected(wallState, spawnX, spawnY)` across all 15 enemy-type spawn retry loops, so that enemies are rejected from the visual rim zone (0–4 px from boundary) and a safety buffer (4–10 px from boundary).
+- Added a post-loop fallback guard after each of the 15 `do { } while (attempts < 20)` loops:
+  ```ts
+  if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+    const safe = getVerdureSafeFallbackSpawnPos(wallState);
+    spawnX = safe.x; spawnY = safe.y;
+  }
+  ```
+  This prevents the previous behaviour where an exhausted loop would silently use its last (possibly wall-clipping) candidate position.
+
+### Root causes addressed
+
+| Problem | Root cause | Fix |
+|---|---|---|
+| Enemies spawning inside visual walls | Spawn validation used `isPointInVerdureWall` (margin = 0), allowing placement inside the 4 px visual rim strip | `isVerdureSpawnRejected` with 10 px margin |
+| Enemies at wall after retry exhaustion | Exhausted loop used last-sampled invalid position | Fallback to arena centre after each loop |
+| Plant/vine corner pile-up | Left/right edge anchor pass had no corner exclusion unlike top/bottom pass | Added `cornerExclusionPx` guard to left/right pass in `_buildEdgePoints` |
+
+### Remaining known issues / cosmetic notes
+
+- **Rim strip cosmetic gap**: The 4 px `RIM_WIDTH_PX` gradient rim strip (`verdure-cave-walls.ts`, drawn in `_drawWallRimStrip`) is rendered just inside the visual boundary and contributes to the perception that the wall extends inward. The collision boundary itself matches the `topDepths`/`bottomDepths`/`leftDepths`/`rightDepths` raw depth values; the rim is purely cosmetic. `pushPointOutsideVerdureWall` already accounts for this via the `halfSize + 2` margin applied to player/enemy push-out. The spawn system now also accounts for it via `VERDURE_SPAWN_MARGIN`. No visual change is needed unless the design intent changes.
+- **Spawn debug overlay**: A `drawVerdureWallDebug` export exists in `verdure-cave-walls.ts` for visualising wall boundaries. A spawn-candidate overlay (showing accepted/rejected candidates) has not been added as part of this build; the structure for it is in place and can be wired alongside `drawVerdureWallDebug` when needed.
 
 ---
 
