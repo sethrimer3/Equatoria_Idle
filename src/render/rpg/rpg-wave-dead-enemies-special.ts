@@ -25,6 +25,7 @@ import { trySpawnLuckyMote } from './rpg-lucky-motes';
 import { ALIVEN_FLUID_COLORS } from './rpg-aliven-constants';
 import type { WaveManagerCtx } from './rpg-wave-manager';
 import { recordAlivenKill } from '../../dev/session-telemetry';
+import { recalcAllNonEliteBuffs, type BuffableEnemy } from './rpg-elite-buff';
 
 const ALL_ELITE_TYPE_IDS = [
   'elite_quartz', 'elite_ruby', 'elite_sunstone', 'elite_citrine',
@@ -52,6 +53,46 @@ const ELITE_XP_MAP: Record<string, number> = {
   diamond: ELITE_DIAMOND_XP_MULT,
   nullstone: ELITE_NULLSTONE_XP_MULT,
 };
+
+function _getNonEliteArrays(ctx: WaveManagerCtx): ReadonlyArray<BuffableEnemy>[] {
+  return [
+    ctx.enemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sapphireEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.emeraldEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.amberEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.voidEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.quartzEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.rubyEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sunstoneEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.citrineEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.ioliteEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.amethystEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.diamondEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.nullstoneEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.fracterylEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.eigensteinEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.stardustEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.dustWispEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.ribbonWormEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.lanternMothEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.eyeStalkEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.jellyfishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.clothGhostEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.plantTurretEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.gearInsectEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.spiderCrawlerEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.moteSwarmEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.shadowHandEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sandFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.quartzFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.rubyFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sunstoneFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.emeraldFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sapphireFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.amethystFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.diamondFishEnemies as ReadonlyArray<BuffableEnemy>,
+  ];
+}
 
 export function sweepEliteAndAlivenDefeats(
   ctx: WaveManagerCtx,
@@ -94,6 +135,7 @@ export function sweepEliteAndAlivenDefeats(
         rpgSimState.secretAchievementFlags.add('killed_all_elite_types');
       }
       eliteEnemies.splice(i, 1);
+      recalcAllNonEliteBuffs(_getNonEliteArrays(ctx), eliteEnemies.length);
     }
   }
 

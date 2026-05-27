@@ -23,6 +23,8 @@ import { INTER_WAVE_DELAY_MS } from './rpg-constants';
 import { spawnEnemyById } from './rpg-enemy-spawn';
 import { removeDeadEnemiesImpl } from './rpg-wave-dead-enemies';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
+import { clearEliteBuffRegistry } from './rpg-elite-buff';
+import { clearEmpowerParticles } from './rpg-elite-empower-particles';
 import type {
   LaserEnemy, SapphireEnemy, SapphireMissile, SpawnEntry,
 } from './rpg-types';
@@ -265,6 +267,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     beginTopographicTerrainShrink();
     ctx.setIsInterWave(true);
     ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS);
+    clearEliteBuffRegistry();
+    clearEmpowerParticles();
     // Wave completed — update tracking counters
     rpgSimState.totalWavesCompleted++;
     rpgSimState.consecutiveWaveStreak++;

@@ -75,6 +75,11 @@ import {
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 import { isPointInVerdureWall } from './terrain/verdure-cave-walls';
+import {
+  registerNonEliteEnemy, applyBuffToEnemy, recalcAllNonEliteBuffs,
+  type BuffableEnemy,
+} from './rpg-elite-buff';
+import { spawnEmpowerParticles } from './rpg-elite-empower-particles';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -138,6 +143,102 @@ export interface EnemySpawnCtx {
 // ── Spawn helper ──────────────────────────────────────────────────────────────
 
 /**
+ * Returns all non-elite, non-projectile enemy arrays from the context as a
+ * flat array of BuffableEnemy arrays, suitable for passing to
+ * `recalcAllNonEliteBuffs`.
+ */
+function _getNonEliteArrays(ctx: EnemySpawnCtx): ReadonlyArray<ReadonlyArray<BuffableEnemy>> {
+  return [
+    ctx.enemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sapphireEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.emeraldEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.amberEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.voidEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.quartzEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.rubyEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sunstoneEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.citrineEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.ioliteEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.amethystEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.diamondEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.nullstoneEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.fracterylEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.eigensteinEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.stardustEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.dustWispEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.ribbonWormEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.lanternMothEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.eyeStalkEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.jellyfishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.clothGhostEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.plantTurretEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.gearInsectEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.spiderCrawlerEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.moteSwarmEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.shadowHandEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sandFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.quartzFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.rubyFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sunstoneFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.emeraldFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.sapphireFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.amethystFishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.diamondFishEnemies as ReadonlyArray<BuffableEnemy>,
+  ];
+}
+
+/**
+ * Collects the current positions of all non-elite enemies from the context.
+ * Used to determine empower-particle targets when an elite spawns.
+ */
+function _collectNonElitePositions(ctx: EnemySpawnCtx): { x: number; y: number }[] {
+  const positions: { x: number; y: number }[] = [];
+  const arrays = _getNonEliteArrays(ctx);
+  for (let a = 0; a < arrays.length; a++) {
+    const arr = arrays[a]!;
+    for (let i = 0; i < arr.length; i++) {
+      positions.push({ x: arr[i]!.x, y: arr[i]!.y });
+    }
+  }
+  return positions;
+}
+
+/**
+ * Registers a newly-spawned non-elite enemy with the buff system and applies
+ * the current elite buff immediately.  Also emits empower particles from every
+ * alive elite toward the new enemy's spawn position.
+ */
+function _onNonEliteSpawned(
+  ctx: EnemySpawnCtx,
+  enemy: BuffableEnemy,
+  spawnX: number,
+  spawnY: number,
+): void {
+  registerNonEliteEnemy(enemy);
+  applyBuffToEnemy(enemy, ctx.eliteEnemies.length);
+  if (ctx.eliteEnemies.length > 0) {
+    const target = [{ x: spawnX, y: spawnY }];
+    for (let i = 0; i < ctx.eliteEnemies.length; i++) {
+      const e = ctx.eliteEnemies[i]!;
+      spawnEmpowerParticles(e.x, e.y, target);
+    }
+  }
+}
+
+/**
+ * Called after an elite enemy has been pushed onto ctx.eliteEnemies.
+ * Recalculates buffs for all live non-elite enemies and emits particles toward
+ * each of them from the elite's spawn position.
+ */
+function _onEliteSpawned(ctx: EnemySpawnCtx, spawnX: number, spawnY: number): void {
+  recalcAllNonEliteBuffs(_getNonEliteArrays(ctx), ctx.eliteEnemies.length);
+  const nonElitePositions = _collectNonElitePositions(ctx);
+  if (nonElitePositions.length > 0) {
+    spawnEmpowerParticles(spawnX, spawnY, nonElitePositions);
+  }
+}
+
+/**
  * Places a single enemy of the given `enemyTypeId` at a valid random position
  * on the canvas, then pushes it to the appropriate array on `ctx`.
  *
@@ -166,7 +267,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.enemies.push(makeLaserEnemy(spawnX, spawnY, wn));
+    const _laser = makeLaserEnemy(spawnX, spawnY, wn);
+    ctx.enemies.push(_laser);
+    _onNonEliteSpawned(ctx, _laser, spawnX, spawnY);
   } else if (enemyTypeId === 'sapphire') {
     const half = SAPPHIRE_ENEMY_SIZE / 2;
     do {
@@ -178,7 +281,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.sapphireEnemies.push(makeSapphireEnemy(spawnX, spawnY, wn));
+    const _sapphire = makeSapphireEnemy(spawnX, spawnY, wn);
+    ctx.sapphireEnemies.push(_sapphire);
+    _onNonEliteSpawned(ctx, _sapphire, spawnX, spawnY);
   } else if (enemyTypeId === 'emerald') {
     const half = EMERALD_ENEMY_SIZE / 2;
     do {
@@ -190,7 +295,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.emeraldEnemies.push(makeEmeraldEnemy(spawnX, spawnY, wn));
+    const _emerald = makeEmeraldEnemy(spawnX, spawnY, wn);
+    ctx.emeraldEnemies.push(_emerald);
+    _onNonEliteSpawned(ctx, _emerald, spawnX, spawnY);
   } else if (enemyTypeId === 'amber') {
     const half = AMBER_ENEMY_SIZE / 2;
     do {
@@ -202,7 +309,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.amberEnemies.push(makeAmberEnemy(spawnX, spawnY, wn));
+    const _amber = makeAmberEnemy(spawnX, spawnY, wn);
+    ctx.amberEnemies.push(_amber);
+    _onNonEliteSpawned(ctx, _amber, spawnX, spawnY);
   } else if (enemyTypeId === 'void') {
     // Void enemies spawn at edges so they approach from a distance.
     const edge = Math.floor(Math.random() * 4);
@@ -210,7 +319,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
     else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
     else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
-    ctx.voidEnemies.push(makeVoidEnemy(spawnX, spawnY, wn));
+    const _void = makeVoidEnemy(spawnX, spawnY, wn);
+    ctx.voidEnemies.push(_void);
+    _onNonEliteSpawned(ctx, _void, spawnX, spawnY);
   } else if (enemyTypeId === 'quartz') {
     const half = QUARTZ_ENEMY_SIZE / 2;
     do {
@@ -222,7 +333,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.quartzEnemies.push(makeQuartzEnemy(spawnX, spawnY, wn));
+    const _quartz = makeQuartzEnemy(spawnX, spawnY, wn);
+    ctx.quartzEnemies.push(_quartz);
+    _onNonEliteSpawned(ctx, _quartz, spawnX, spawnY);
   } else if (enemyTypeId === 'ruby') {
     const half = RUBY_ENEMY_SIZE / 2;
     do {
@@ -234,7 +347,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.rubyEnemies.push(makeRubyEnemy(spawnX, spawnY, wn));
+    const _ruby = makeRubyEnemy(spawnX, spawnY, wn);
+    ctx.rubyEnemies.push(_ruby);
+    _onNonEliteSpawned(ctx, _ruby, spawnX, spawnY);
   } else if (enemyTypeId === 'sunstone') {
     const half = SUNSTONE_ENEMY_SIZE / 2;
     do {
@@ -246,7 +361,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.sunstoneEnemies.push(makeSunstoneEnemy(spawnX, spawnY, wn));
+    const _sunstone = makeSunstoneEnemy(spawnX, spawnY, wn);
+    ctx.sunstoneEnemies.push(_sunstone);
+    _onNonEliteSpawned(ctx, _sunstone, spawnX, spawnY);
   } else if (enemyTypeId === 'citrine') {
     const half = CITRINE_ENEMY_SIZE / 2;
     do {
@@ -258,7 +375,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.citrineEnemies.push(makeCitrineEnemy(spawnX, spawnY, wn));
+    const _citrine = makeCitrineEnemy(spawnX, spawnY, wn);
+    ctx.citrineEnemies.push(_citrine);
+    _onNonEliteSpawned(ctx, _citrine, spawnX, spawnY);
   } else if (enemyTypeId === 'iolite') {
     const half = IOLITE_ENEMY_SIZE / 2;
     do {
@@ -270,7 +389,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.ioliteEnemies.push(makeIoliteEnemy(spawnX, spawnY, wn));
+    const _iolite = makeIoliteEnemy(spawnX, spawnY, wn);
+    ctx.ioliteEnemies.push(_iolite);
+    _onNonEliteSpawned(ctx, _iolite, spawnX, spawnY);
   } else if (enemyTypeId === 'amethyst') {
     const half = AMETHYST_ENEMY_SIZE / 2;
     do {
@@ -282,7 +403,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.amethystEnemies.push(makeAmethystEnemy(spawnX, spawnY, wn));
+    const _amethyst = makeAmethystEnemy(spawnX, spawnY, wn);
+    ctx.amethystEnemies.push(_amethyst);
+    _onNonEliteSpawned(ctx, _amethyst, spawnX, spawnY);
   } else if (enemyTypeId === 'diamond') {
     const half = DIAMOND_ENEMY_SIZE / 2;
     do {
@@ -294,7 +417,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.diamondEnemies.push(makeDiamondEnemy(spawnX, spawnY, wn));
+    const _diamond = makeDiamondEnemy(spawnX, spawnY, wn);
+    ctx.diamondEnemies.push(_diamond);
+    _onNonEliteSpawned(ctx, _diamond, spawnX, spawnY);
   } else if (enemyTypeId === 'nullstone') {
     // Nullstone spawns at edges to approach from a distance.
     const edge = Math.floor(Math.random() * 4);
@@ -302,7 +427,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
     else if (edge === 2) { spawnX = 0;       spawnY = Math.random() * heightPx; }
     else                 { spawnX = widthPx; spawnY = Math.random() * heightPx; }
-    ctx.nullstoneEnemies.push(makeNullstoneEnemy(spawnX, spawnY, wn));
+    const _nullstone = makeNullstoneEnemy(spawnX, spawnY, wn);
+    ctx.nullstoneEnemies.push(_nullstone);
+    _onNonEliteSpawned(ctx, _nullstone, spawnX, spawnY);
   } else if (enemyTypeId === 'fracteryl') {
     const half = FRACTERYL_ENEMY_SIZE / 2;
     do {
@@ -314,7 +441,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.fracterylEnemies.push(makeFracterylEnemy(spawnX, spawnY, wn));
+    const _fracteryl = makeFracterylEnemy(spawnX, spawnY, wn);
+    ctx.fracterylEnemies.push(_fracteryl);
+    _onNonEliteSpawned(ctx, _fracteryl, spawnX, spawnY);
   } else if (enemyTypeId === 'eigenstein') {
     const half = EIGENSTEIN_ENEMY_SIZE / 2;
     do {
@@ -326,7 +455,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.eigensteinEnemies.push(makeEigensteinEnemy(spawnX, spawnY, wn));
+    const _eigenstein = makeEigensteinEnemy(spawnX, spawnY, wn);
+    ctx.eigensteinEnemies.push(_eigenstein);
+    _onNonEliteSpawned(ctx, _eigenstein, spawnX, spawnY);
   } else if (enemyTypeId === 'stardust') {
     const half = STARDUST_SIZE;
     do {
@@ -338,7 +469,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
       attempts++;
     } while (attempts < 20);
-    ctx.stardustEnemies.push(makeStardustEnemy(spawnX, spawnY, wn, widthPx, heightPx));
+    const _stardust = makeStardustEnemy(spawnX, spawnY, wn, widthPx, heightPx);
+    ctx.stardustEnemies.push(_stardust);
+    _onNonEliteSpawned(ctx, _stardust, spawnX, spawnY);
   } else if (enemyTypeId === 'boss') {
     ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx));
     ctx.enterBossWave();
@@ -356,6 +489,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
     else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
     ctx.eliteEnemies.push(makeEliteEnemy(tier, spawnX, spawnY, wn));
+    _onEliteSpawned(ctx, spawnX, spawnY);
   } else if (ALIVEN_VARIANTS.includes(enemyTypeId as typeof ALIVEN_VARIANTS[number])) {
     // Guard: skip spawning if the active group count is at the cap.
     if (ctx.alivenGroups.length >= MAX_ACTIVE_ALIVEN_GROUPS) {
@@ -400,25 +534,27 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
           && !(wallState && isPointInVerdureWall(wallState, spawnX, spawnY))) break;
         attempts++;
       } while (attempts < 20);
-      if (enemyTypeId === 'proc_dustwisp')      ctx.dustWispEnemies.push(makeDustWispEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_ribbonworm')  ctx.ribbonWormEnemies.push(makeRibbonWormEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_lanternmoth') ctx.lanternMothEnemies.push(makeLanternMothEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_eyestalk')    ctx.eyeStalkEnemies.push(makeEyeStalkEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_jellyfish')   ctx.jellyfishEnemies.push(makeJellyfishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_clothghost')  ctx.clothGhostEnemies.push(makeClothGhostEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_plantturret') ctx.plantTurretEnemies.push(makePlantTurretEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_gearinsect')  ctx.gearInsectEnemies.push(makeGearInsectEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_spidercrawler') ctx.spiderCrawlerEnemies.push(makeSpiderCrawlerEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_moteswarm')   ctx.moteSwarmEnemies.push(makeMoteSwarmEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_shadowhand')  ctx.shadowHandEnemies.push(makeShadowHandEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_sandfish') ctx.sandFishEnemies.push(makeSandFishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_quartzfish') ctx.quartzFishEnemies.push(makeQuartzFishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_rubyfish') ctx.rubyFishEnemies.push(makeRubyFishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_sunstonefish') ctx.sunstoneFishEnemies.push(makeSunstoneFishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_emeraldfish') ctx.emeraldFishEnemies.push(makeEmeraldFishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_sapphirefish') ctx.sapphireFishEnemies.push(makeSapphireFishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_amethystfish') ctx.amethystFishEnemies.push(makeAmethystFishEnemy(spawnX, spawnY, wn));
-      else if (enemyTypeId === 'proc_diamondfish') ctx.diamondFishEnemies.push(makeDiamondFishEnemy(spawnX, spawnY, wn));
+      let _proc: BuffableEnemy | null = null;
+      if (enemyTypeId === 'proc_dustwisp')        { const e = makeDustWispEnemy(spawnX, spawnY, wn);       ctx.dustWispEnemies.push(e);       _proc = e; }
+      else if (enemyTypeId === 'proc_ribbonworm')  { const e = makeRibbonWormEnemy(spawnX, spawnY, wn);    ctx.ribbonWormEnemies.push(e);      _proc = e; }
+      else if (enemyTypeId === 'proc_lanternmoth') { const e = makeLanternMothEnemy(spawnX, spawnY, wn);   ctx.lanternMothEnemies.push(e);     _proc = e; }
+      else if (enemyTypeId === 'proc_eyestalk')    { const e = makeEyeStalkEnemy(spawnX, spawnY, wn);      ctx.eyeStalkEnemies.push(e);        _proc = e; }
+      else if (enemyTypeId === 'proc_jellyfish')   { const e = makeJellyfishEnemy(spawnX, spawnY, wn);     ctx.jellyfishEnemies.push(e);       _proc = e; }
+      else if (enemyTypeId === 'proc_clothghost')  { const e = makeClothGhostEnemy(spawnX, spawnY, wn);    ctx.clothGhostEnemies.push(e);      _proc = e; }
+      else if (enemyTypeId === 'proc_plantturret') { const e = makePlantTurretEnemy(spawnX, spawnY, wn);   ctx.plantTurretEnemies.push(e);     _proc = e; }
+      else if (enemyTypeId === 'proc_gearinsect')  { const e = makeGearInsectEnemy(spawnX, spawnY, wn);    ctx.gearInsectEnemies.push(e);      _proc = e; }
+      else if (enemyTypeId === 'proc_spidercrawler') { const e = makeSpiderCrawlerEnemy(spawnX, spawnY, wn); ctx.spiderCrawlerEnemies.push(e); _proc = e; }
+      else if (enemyTypeId === 'proc_moteswarm')   { const e = makeMoteSwarmEnemy(spawnX, spawnY, wn);     ctx.moteSwarmEnemies.push(e);       _proc = e; }
+      else if (enemyTypeId === 'proc_shadowhand')  { const e = makeShadowHandEnemy(spawnX, spawnY, wn);    ctx.shadowHandEnemies.push(e);      _proc = e; }
+      else if (enemyTypeId === 'proc_sandfish')    { const e = makeSandFishEnemy(spawnX, spawnY, wn);      ctx.sandFishEnemies.push(e);        _proc = e; }
+      else if (enemyTypeId === 'proc_quartzfish')  { const e = makeQuartzFishEnemy(spawnX, spawnY, wn);    ctx.quartzFishEnemies.push(e);      _proc = e; }
+      else if (enemyTypeId === 'proc_rubyfish')    { const e = makeRubyFishEnemy(spawnX, spawnY, wn);      ctx.rubyFishEnemies.push(e);        _proc = e; }
+      else if (enemyTypeId === 'proc_sunstonefish') { const e = makeSunstoneFishEnemy(spawnX, spawnY, wn); ctx.sunstoneFishEnemies.push(e);   _proc = e; }
+      else if (enemyTypeId === 'proc_emeraldfish') { const e = makeEmeraldFishEnemy(spawnX, spawnY, wn);   ctx.emeraldFishEnemies.push(e);     _proc = e; }
+      else if (enemyTypeId === 'proc_sapphirefish') { const e = makeSapphireFishEnemy(spawnX, spawnY, wn); ctx.sapphireFishEnemies.push(e);   _proc = e; }
+      else if (enemyTypeId === 'proc_amethystfish') { const e = makeAmethystFishEnemy(spawnX, spawnY, wn); ctx.amethystFishEnemies.push(e);   _proc = e; }
+      else if (enemyTypeId === 'proc_diamondfish') { const e = makeDiamondFishEnemy(spawnX, spawnY, wn);   ctx.diamondFishEnemies.push(e);     _proc = e; }
+      if (_proc !== null) _onNonEliteSpawned(ctx, _proc, spawnX, spawnY);
     }
   }
 }

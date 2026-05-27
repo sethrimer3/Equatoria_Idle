@@ -161,6 +161,7 @@ import { LASER_BEAM_COLOR } from './rpg-weapon-constants';
 import type { TerrainLightEmitter } from './terrain/terrain-lighting';
 import { MAX_TERRAIN_LIGHT_EMITTERS } from './terrain/terrain-lighting';
 import { drawEuhedralHexFloor } from './terrain/euhedral-hex-floor';
+import { drawEmpowerParticles } from './rpg-elite-empower-particles';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -734,6 +735,7 @@ export function drawRpgFrame(
   drawEigensteinEnemies(canvas2d, ctx.eigensteinEnemies);
   drawEigensteinBeams(canvas2d, ctx.eigensteinBeams, widthPx, heightPx);
   drawEliteEnemies(canvas2d, ctx.eliteEnemies);
+  drawEmpowerParticles(canvas2d, widthPx, heightPx);
   drawStardustEnemies(canvas2d, ctx.stardustEnemies);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);

@@ -1,6 +1,66 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#169**
+Current build: **#171**
+
+---
+
+## Build #171 — Elite enemy empowerment buff + wave-start particles
+
+### What was implemented
+
+**`src/render/rpg/rpg-elite-buff.ts`** (new):
+- `BuffableEnemy` interface: minimum stat shape (`x, y, hp, maxHp, atk, def`) satisfied structurally by every non-elite enemy type.
+- `BaseStats` stored once per enemy in a `WeakMap` at spawn time; entries auto-GC when enemies are removed from arrays.
+- `registerNonEliteEnemy(enemy)` — snapshots base stats on spawn.
+- `applyBuffToEnemy(enemy, eliteCount)` — idempotent; always re-derives from base stats so double-application is impossible.
+- `recalcAllNonEliteBuffs(arrays, eliteCount)` — batch re-apply over all non-elite arrays; preserves HP percentage across max-HP changes.
+- `clearEliteBuffRegistry()` — replaces the WeakMap reference; called at wave end.
+- Formula: `activeStat = Math.ceil(baseStat * (1 + eliteCount * 0.25))`. Movement speed not touched.
+- Shield stats (`maxShieldHp`, `shieldHp`) buffed for SapphireEnemy and AmethystEnemy.
+
+**`src/render/rpg/rpg-elite-empower-particles.ts`** (new):
+- `spawnEmpowerParticles(eliteX, eliteY, targets[])` — spawns velocity-aligned glowing capsule particles from an elite position toward a list of non-elite positions.
+- `updateEmpowerParticles(deltaMs)` — advances particle positions; despawns at 88% of travel distance.
+- `clearEmpowerParticles()` — called at wave end.
+- `drawEmpowerParticles(ctx, w, h)` — two-pass rendering: half-res offscreen glow canvas composited back, then crisp core pass. Velocity-aligned gradient trails (transparent tail → amber body → white head). Additive blending. `MAX_PARTICLES = 48` cap.
+
+**`src/render/rpg/rpg-enemy-spawn.ts`** (modified):
+- Added `_getNonEliteArrays`, `_collectNonElitePositions`, `_onNonEliteSpawned`, `_onEliteSpawned` helpers.
+- Every non-elite `push()` in `spawnEnemyById` now calls `_onNonEliteSpawned` — registers the enemy and applies the current elite count buff immediately.
+- Elite `push()` calls `_onEliteSpawned` — recalcs all alive non-elites and emits particles toward each.
+- All 18 standard types + 18 procedural types wired. Boss and alivenGroups intentionally excluded.
+
+**`src/render/rpg/rpg-wave-dead-enemies-special.ts`** (modified):
+- Added `_getNonEliteArrays(ctx)` helper.
+- `sweepEliteAndAlivenDefeats`: calls `recalcAllNonEliteBuffs` immediately after each `eliteEnemies.splice`, so surviving non-elites are downscaled the moment an elite dies.
+
+**`src/render/rpg/rpg-wave-manager.ts`** (modified):
+- Calls `clearEliteBuffRegistry()` + `clearEmpowerParticles()` when a wave completes (`setIsInterWave(true)`).
+
+**`src/render/rpg/rpg-render-update.ts`** (modified):
+- Calls `updateEmpowerParticles(deltaMs)` each frame after `updateProceduralEnemies`.
+
+**`src/render/rpg/rpg-render-draw.ts`** (modified):
+- Calls `drawEmpowerParticles(canvas2d, widthPx, heightPx)` after `drawEliteEnemies`, before `drawStardustEnemies`.
+
+**`src/ui/panels/rpg-enemies-tab.ts`** (modified):
+- In `buildEnemyEntry`: appends an orange italic blurb div after the description for all entries whose `id.startsWith('elite_')`.
+- Text: *"While alive, this elite empowers all non-elite enemies by +25%."*
+- Style: `color:#ff8c00; font-size:0.72em; font-style:italic; margin-top:4px`.
+
+**`src/ui/panels/rpg-enemies-catalog-entries.ts`** (modified):
+- Added `category: 'elite'` to all 8 elite catalog entries for consistent filtering.
+
+**`src/buildInfo.ts`** (modified):
+- `BUILD_NUMBER` incremented from 170 → 171.
+
+### Known limitations / deferred work
+
+- **AlivenParticleGroup** not buffed: aliven HP is distributed across individual `AlivenParticle` objects inside the group; the group-level object doesn't expose a single `hp`/`maxHp`. Buffing individual particles would require iterating them at spawn time and tracking per-particle base stats. Deferred to a future pass.
+- **Buff not applied to projectile stats**: enemy projectiles (e.g. `SapphireMissile`, `RubyBolt`, `CitrineBolt`) are spawned with stats baked in at fire time. If the elite buff is active at fire time the projectile will reflect buffed `atk`, but projectiles that are already in flight when an elite dies won't be retroactively downscaled. This matches most bullet-hell conventions but is worth noting.
+- **QuartzFishEnemy shield**: `QuartzFishEnemy` has `shieldHp` but the base type in `rpg-enemy-types.ts` does not expose `maxShieldHp`; only `SapphireEnemy` and `AmethystEnemy` do. The fish shield is therefore not scaled by the buff. A future pass can add `maxShieldHp` to `QuartzFishEnemy`.
+- **Particle direction**: empower particles travel toward their target in a straight line. They don't follow enemy movement after spawn, so a fast-moving non-elite may have already relocated by the time the particle fades out. This is acceptable for a purely cosmetic effect.
+- **Particle count at very high wave counts**: the 48-particle hard cap prevents lag but may cause visible particle drop when many elite→non-elite pairs need to be covered simultaneously (e.g. 3 elites × 20 non-elites at once). A future pass could prioritise nearest-enemy pairs or batch them across several frames.
 
 ---
 

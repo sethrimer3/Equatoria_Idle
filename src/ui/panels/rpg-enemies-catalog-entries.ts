@@ -272,6 +272,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'polygon',
     zone: 'euhedral',
     sides: 3,
+    category: 'elite',
   },
   {
     id: 'elite_ruby',
@@ -285,6 +286,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'polygon',
     zone: 'euhedral',
     sides: 4,
+    category: 'elite',
   },
   {
     id: 'elite_sunstone',
@@ -298,6 +300,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'polygon',
     zone: 'euhedral',
     sides: 5,
+    category: 'elite',
   },
   {
     id: 'elite_citrine',
@@ -311,6 +314,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'polygon',
     zone: 'euhedral',
     sides: 6,
+    category: 'elite',
   },
   {
     id: 'elite_iolite',
@@ -324,6 +328,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'polygon',
     zone: 'euhedral',
     sides: 7,
+    category: 'elite',
   },
   {
     id: 'elite_amethyst',
@@ -340,6 +345,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hasShield: true,
     shieldRadius: ELITE_AMETHYST_RADIUS * 2.6,
     shieldColor: ELITE_AMETHYST_GLOW,
+    category: 'elite',
   },
   {
     id: 'elite_diamond',
@@ -353,6 +359,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'polygon',
     zone: 'euhedral',
     sides: 9,
+    category: 'elite',
   },
   {
     id: 'elite_nullstone',
@@ -366,6 +373,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'polygon',
     zone: 'euhedral',
     sides: 10,
+    category: 'elite',
   },
   {
     id: 'aliven_spark_cluster',
