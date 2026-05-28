@@ -81,6 +81,7 @@
 - Loop: sim tick → `tickForgeWarmup` → particle update → background → render → forge preview computation → dev viewport debug (dev mode only) → UI update → auto-save.
 - Calls `computeForgePreviewTerms` each frame and passes `forgePreviewTerms` to `hudOverlay.update`.
 - Calls `drawIdleViewportDebug(cc)` when `settings.isDevMode` is true (drawn last so it is always visible).
+- Newly unlocked achievement notifications are queued and emitted at 700 ms intervals so popup text and achievement SFX do not stack on the same frame.
 
 - Resets the main canvas 2D context state before each full-frame render so leaked alpha, transforms, filters, or blend modes cannot blank later layers.
 

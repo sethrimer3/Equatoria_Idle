@@ -45,6 +45,12 @@ import type { HudOverlay } from '../ui/hud/hud-overlay';
 import type { AudioSystem } from '../audio';
 import { drawIdleViewportDebug } from '../render/canvas/idle-viewport-debug';
 
+interface QueuedAchievementNotification {
+  readonly isSecret: boolean;
+}
+
+const ACHIEVEMENT_NOTIFICATION_SPACING_MS = 700;
+
 // ─── Game loop context ──────────────────────────────────────────
 
 export interface GameLoopContext {
@@ -73,6 +79,8 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   const generatorRatesPerSec = new Map<TierId, number>();
   // Reused array for forge/loom capture fields (rebuilt each frame, not reallocated).
   const forgeFieldsBuffer: ForgeFieldInfo[] = [];
+  const achievementNotificationQueue: QueuedAchievementNotification[] = [];
+  let nextAchievementNotificationMs = 0;
 
   // Cooldown for loom-capture audio: play at most once per 400 ms to avoid spam.
   let _loomAudioLastMs = 0;
@@ -133,19 +141,19 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       return;
     }
 
-    // Fire achievement audio events for anything newly unlocked this tick
+    // Queue achievement notification effects instead of firing every unlock at
+    // once. Large unlock batches otherwise stack popups and layer loud SFX.
     if (simResult.newlyUnlockedAchievementIds.length > 0) {
-      if (ctx.audioSystem) {
-        for (const id of simResult.newlyUnlockedAchievementIds) {
-          const def = ACHIEVEMENT_BY_ID.get(id);
-          ctx.audioSystem.onAchievementUnlocked(def?.isSecret === true);
-        }
+      for (const id of simResult.newlyUnlockedAchievementIds) {
+        const def = ACHIEVEMENT_BY_ID.get(id);
+        achievementNotificationQueue.push({ isSecret: def?.isSecret === true });
       }
-      // Show "Achieved!" popup above the achievements tab button for each new unlock,
-      // staggered slightly so multiple achievements don't all appear at once.
-      for (let i = 0; i < simResult.newlyUnlockedAchievementIds.length; i++) {
-        ctx.uiPanels.tabBar.showAchievedPopup(i * 200);
-      }
+    }
+    if (achievementNotificationQueue.length > 0 && nowMs >= nextAchievementNotificationMs) {
+      const notification = achievementNotificationQueue.shift()!;
+      ctx.audioSystem?.onAchievementUnlocked(notification.isSecret);
+      ctx.uiPanels.tabBar.showAchievedPopup();
+      nextAchievementNotificationMs = nowMs + ACHIEVEMENT_NOTIFICATION_SPACING_MS;
     }
 
     // Recompute generators when tiers are newly unlocked
