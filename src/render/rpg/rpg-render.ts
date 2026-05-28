@@ -192,10 +192,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   const canvas = document.createElement('canvas');
   canvas.id = 'rpg-canvas';
-  // Backing store is fixed at the logical world size — never changes at runtime.
+  // Backing store is initialised to logical size and updated by doResize.
   canvas.width  = RPG_LOGICAL_WIDTH;
   canvas.height = RPG_LOGICAL_HEIGHT;
-  canvas.style.imageRendering = 'pixelated';
+  // No pixelated upscaling — the backing now matches CSS size × DPR.
   canvas.style.touchAction = 'none';
   rpgArea.appendChild(canvas);
 
@@ -240,6 +240,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Tracks the last-computed CSS display size of #rpg-area (for dev overlay). */
   let rpgCssW = widthPx;
   let rpgCssH = heightPx;
+  /** Full canvas CSS dimensions after the last doResize (may exceed safe-core). */
+  let rpgFullW = widthPx;
+  let rpgFullH = heightPx;
+  /** Safe-core transform: scale + offsets to centre 360×640 world in the full canvas. */
+  let rpgSafeScale  = 1;
+  let rpgSafeOffsetX = 0;
+  let rpgSafeOffsetY = 0;
   /** Set to true when dev mode is active (controls diagnostic overlay). */
   let _isDevMode = false;
 
@@ -306,24 +313,45 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   /**
-   * Resize the #rpg-area wrapper to the largest aspect-ratio-preserving rectangle
-   * that fits inside `cont`.  Only CSS dimensions change — world coordinates,
-   * canvas backing store, and all game-entity positions are unaffected.
+   * Expand #rpg-area to fill the full container and update the canvas backing
+   * store to containerW×DPR by containerH×DPR physical pixels.
+   *
+   * World coordinates (widthPx × heightPx = 360 × 640) are NEVER changed —
+   * all game-entity positions stay in the fixed logical space.  Instead, a
+   * safe-core transform is stored (rpgSafeScale / rpgSafeOffsetX/Y) that
+   * drawRpgFrame applies each frame to centre the 360×640 world inside the
+   * full canvas; any extra space outside the world shows the background fill.
    */
   function doResize(cont: HTMLElement): void {
     const containerW = cont.clientWidth  || widthPx;
     const containerH = cont.clientHeight || heightPx;
 
-    // Aspect-ratio preserving scale: largest uniform scale that fits both axes.
+    // Expand #rpg-area to fill the entire container.
+    rpgArea.style.width  = `${containerW}px`;
+    rpgArea.style.height = `${containerH}px`;
+
+    // CSS display size (== container size now).
+    rpgCssW = containerW;
+    rpgCssH = containerH;
+
+    // Full canvas dimensions for diagnostics and clear pass.
+    rpgFullW = containerW;
+    rpgFullH = containerH;
+
+    // Safe-core scale: largest uniform scale that fits the 360×640 world inside
+    // the full container without distortion.
     const scaleX = containerW / RPG_LOGICAL_WIDTH;
     const scaleY = containerH / RPG_LOGICAL_HEIGHT;
-    const scale  = Math.min(scaleX, scaleY);
+    rpgSafeScale   = Math.min(scaleX, scaleY);
+    rpgSafeOffsetX = (containerW - RPG_LOGICAL_WIDTH  * rpgSafeScale) / 2;
+    rpgSafeOffsetY = (containerH - RPG_LOGICAL_HEIGHT * rpgSafeScale) / 2;
 
-    rpgCssW = Math.floor(RPG_LOGICAL_WIDTH  * scale);
-    rpgCssH = Math.floor(RPG_LOGICAL_HEIGHT * scale);
-
-    rpgArea.style.width  = `${rpgCssW}px`;
-    rpgArea.style.height = `${rpgCssH}px`;
+    // Update the physical backing store (DPR-scaled full-container size).
+    const dpr = window.devicePixelRatio || 1;
+    const backingW = Math.round(containerW * dpr);
+    const backingH = Math.round(containerH * dpr);
+    if (canvas.width  !== backingW) canvas.width  = backingW;
+    if (canvas.height !== backingH) canvas.height = backingH;
 
     // Fluid maps world positions to a fixed grid; its cell size is derived from
     // the logical (not CSS) dimensions.  Call resize() once to initialise if the
@@ -1407,6 +1435,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
     getIsDevMode:                 () => _isDevMode,
     getCssDisplaySize:            () => ({ w: rpgCssW, h: rpgCssH }),
+    getFullW:                     () => rpgFullW,
+    getFullH:                     () => rpgFullH,
+    getSafeOffsetX:               () => rpgSafeOffsetX,
+    getSafeOffsetY:               () => rpgSafeOffsetY,
+    getSafeScale:                 () => rpgSafeScale,
     getActiveZoneDisplayName:     () => getRpgZoneDisplayName(rpgSimState.activeZoneId),
   };
 

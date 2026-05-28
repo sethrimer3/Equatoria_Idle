@@ -305,6 +305,16 @@ export interface RpgDrawCtx {
   getIsDevMode(): boolean;
   /** Returns the current CSS display size of the #rpg-area wrapper (for dev overlay). */
   getCssDisplaySize(): { w: number; h: number };
+  /** Returns the full canvas CSS width (may be wider than the 360×640 safe core). */
+  getFullW?(): number;
+  /** Returns the full canvas CSS height (may be taller than the 360×640 safe core). */
+  getFullH?(): number;
+  /** Returns the X offset (CSS px) that centres the safe core within the full canvas. */
+  getSafeOffsetX?(): number;
+  /** Returns the Y offset (CSS px) that centres the safe core within the full canvas. */
+  getSafeOffsetY?(): number;
+  /** Returns the uniform scale applied to map the 360×640 world into the full canvas. */
+  getSafeScale?(): number;
   /** Returns the current navigation grid for pathfinding debug draw. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns true when pathfinding debug visualization should be drawn. */
@@ -607,6 +617,26 @@ export function drawRpgFrame(
   const rpgPhase   = ctx.getRpgPhase();
   const glowTimeS  = ctx.getGlowTimeS();
   const bossEnemy  = ctx.getBossEnemy();
+
+  // ── Step 1: clear the full physical backing at identity transform ─────────
+  // The safe-core approach makes the canvas fill the full container, so areas
+  // outside the 360×640 world need to be explicitly filled with the background
+  // colour before the world-space safe-core transform is applied.
+  const fullW = ctx.getFullW?.() ?? widthPx;
+  const fullH = ctx.getFullH?.() ?? heightPx;
+  const safeOffsetX = ctx.getSafeOffsetX?.() ?? 0;
+  const safeOffsetY = ctx.getSafeOffsetY?.() ?? 0;
+  const safeScale   = ctx.getSafeScale?.()   ?? 1;
+  const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+
+  canvas2d.setTransform(1, 0, 0, 1, 0, 0);
+  canvas2d.clearRect(0, 0, fullW * dpr, fullH * dpr);
+  canvas2d.fillStyle = '#0a0a12';
+  canvas2d.fillRect(0, 0, fullW * dpr, fullH * dpr);
+
+  // ── Step 2: apply safe-core transform (world → full canvas) ───────────────
+  // All subsequent draw calls use world coordinates (0–360, 0–640).
+  canvas2d.setTransform(safeScale * dpr, 0, 0, safeScale * dpr, safeOffsetX * dpr, safeOffsetY * dpr);
 
   canvas2d.clearRect(0, 0, widthPx, heightPx);
   canvas2d.fillStyle = '#0a0a12';
@@ -935,28 +965,35 @@ export function drawRpgFrame(
  *
  * Information displayed:
  *   - RPG world (logical) size — the fixed coordinate space all entities live in
- *   - Canvas backing store size — always equal to the world size
- *   - CSS display size — the rendered size in CSS pixels (may differ due to scaling)
- *   - devicePixelRatio — current browser DPR (may change with zoom)
- *   - Render scale — CSS-to-world scale factor (cssWidth / worldWidth)
+ *   - Safe-core scale + offsets — how the 360×640 world is centred in the full canvas
+ *   - Full canvas CSS + backing size
+ *   - devicePixelRatio
  *   - Player world position — verifiable via resize stability check
  */
 function drawRpgViewportDiagnostics(
   canvas2d: CanvasRenderingContext2D,
-  widthPx: number,
+  _widthPx: number,
   heightPx: number,
   ctx: RpgDrawCtx,
 ): void {
   const css = ctx.getCssDisplaySize();
+  const fullW = ctx.getFullW?.() ?? css.w;
+  const fullH = ctx.getFullH?.() ?? css.h;
+  const safeOffX = ctx.getSafeOffsetX?.() ?? 0;
+  const safeOffY = ctx.getSafeOffsetY?.() ?? 0;
+  const safeScl  = ctx.getSafeScale?.()   ?? 1;
   const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
-  const scaleX = css.w > 0 ? (css.w / widthPx).toFixed(3) : '—';
-  const scaleY = css.h > 0 ? (css.h / heightPx).toFixed(3) : '—';
+  const backingW = Math.round(fullW * dpr);
+  const backingH = Math.round(fullH * dpr);
   const mx = ctx.mote.x.toFixed(1);
   const my = ctx.mote.y.toFixed(1);
   const terrainState = ctx.getTopographicTerrainState();
   const lowG = ctx.getIsLowGraphicsMode();
   const activeZone = ctx.rpgSimState.activeZoneId;
   const activeSubzone = ctx.rpgSimState.activeSubzoneId;
+
+  // Warn if rpg-area is narrower than expected (full container).
+  const widthMismatch = css.w > 0 && Math.abs(css.w - fullW) > 2;
 
   // ── Background/effect route label ────────────────────────────────
   let bgRoute: string;
@@ -976,40 +1013,43 @@ function drawRpgViewportDiagnostics(
 
   const sunlightOn = shouldDrawPersistentTopographySunlight(activeZone, terrainState);
 
-  const lines = [
-    `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}`,
-    `Canvas backing: ${widthPx} × ${heightPx}`,
-    `CSS display: ${css.w} × ${css.h}`,
-    `devicePixelRatio: ${dpr.toFixed(2)}`,
-    `render scale X/Y: ${scaleX} / ${scaleY}`,
-    `player world: (${mx}, ${my})`,
-    `zone: ${activeZone}  subzone: ${activeSubzone}`,
-    `terrainKind: ${terrainState?.terrainKind ?? 'none'}`,
-    `lowGraphics: ${lowG}`,
-    `bg: ${bgRoute}`,
-    `sunlightWash: ${sunlightOn ? 'on' : 'off'}`,
+  const lines: Array<{ text: string; warn?: boolean }> = [
+    { text: `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}` },
+    { text: `safe offset: (${safeOffX.toFixed(1)}, ${safeOffY.toFixed(1)})  scale: ${safeScl.toFixed(3)}` },
+    { text: `canvas CSS: ${fullW} × ${fullH}`, warn: widthMismatch },
+    { text: `backing: ${backingW} × ${backingH}` },
+    { text: `devicePixelRatio: ${dpr.toFixed(2)}` },
+    { text: `player world: (${mx}, ${my})` },
+    { text: `zone: ${activeZone}  subzone: ${activeSubzone}` },
+    { text: `terrainKind: ${terrainState?.terrainKind ?? 'none'}` },
+    { text: `lowGraphics: ${lowG}` },
+    { text: `bg: ${bgRoute}` },
+    { text: `sunlightWash: ${sunlightOn ? 'on' : 'off'}` },
   ];
+  if (widthMismatch) {
+    lines.push({ text: `⚠ area < container!`, warn: true });
+  }
 
   // Append Impetus-specific diagnostic if in Impetus zone.
   if (activeZone === 'impetus') {
-    lines.push(getImpetusDevLine(lowG));
+    lines.push({ text: getImpetusDevLine(lowG) });
   }
 
   // Append Caustics seafloor diagnostics.
   if (activeZone === 'caustics' && terrainState?.terrainKind === 'seafloorRidges') {
     const sfData = terrainState.seafloor;
     const segCount = sfData?.allCollisionSegments.length ?? 0;
-    lines.push(`seafloorSegments: ${segCount}`);
-    lines.push(`seafloorCollision: ${segCount > 0 ? 'on' : 'off'}`);
+    lines.push({ text: `seafloorSegments: ${segCount}` });
+    lines.push({ text: `seafloorCollision: ${segCount > 0 ? 'on' : 'off'}` });
     // Height-aware caustics diagnostics.
     const ridgeCount = sfData?.ridges.length ?? 0;
-    lines.push(`heightAwareCaustics: ${ridgeCount > 0 ? 'on' : 'off'}`);
-    lines.push(`causticHeightShiftPx: 2.0`);
+    lines.push({ text: `heightAwareCaustics: ${ridgeCount > 0 ? 'on' : 'off'}` });
+    lines.push({ text: `causticHeightShiftPx: 2.0` });
     if (sfData && ridgeCount > 0) {
       let maxW = 1;
       for (const r of sfData.ridges) if (r.width > maxW) maxW = r.width;
-      lines.push(`ridgeElevRange: 0.0–1.0 (${ridgeCount} ridges)`);
-      lines.push(`maxRidgeWidth: ${maxW.toFixed(1)}px`);
+      lines.push({ text: `ridgeElevRange: 0.0–1.0 (${ridgeCount} ridges)` });
+      lines.push({ text: `maxRidgeWidth: ${maxW.toFixed(1)}px` });
     }
   }
 
@@ -1026,9 +1066,9 @@ function drawRpgViewportDiagnostics(
   canvas2d.fillRect(1, boxY, boxW, boxH);
   canvas2d.globalAlpha = 1;
 
-  canvas2d.fillStyle = '#00ff88';
   for (let i = 0; i < lines.length; i++) {
-    canvas2d.fillText(lines[i], 1 + pad, boxY + pad + (i + 1) * lineH - 2);
+    canvas2d.fillStyle = lines[i].warn ? '#ff4444' : '#00ff88';
+    canvas2d.fillText(lines[i].text, 1 + pad, boxY + pad + (i + 1) * lineH - 2);
   }
   canvas2d.restore();
 }
