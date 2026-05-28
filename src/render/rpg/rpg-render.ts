@@ -243,10 +243,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Full canvas CSS dimensions after the last doResize (may exceed safe-core). */
   let rpgFullW = widthPx;
   let rpgFullH = heightPx;
-  /** Safe-core transform: scale + offsets to centre 360×640 world in the full canvas. */
+  /**
+   * Safe-core transform: scale + offsets to centre the 360×360 safe core within
+   * the full canvas.  The world (360×640) may extend beyond the canvas edges in
+   * the shorter dimension, revealing extra world space instead of letterboxing.
+   */
   let rpgSafeScale  = 1;
   let rpgSafeOffsetX = 0;
   let rpgSafeOffsetY = 0;
+  /** Expanded world-space dimensions visible through the full canvas. */
+  let rpgWorldViewW = RPG_LOGICAL_WIDTH;
+  let rpgWorldViewH = RPG_LOGICAL_HEIGHT;
   /** Set to true when dev mode is active (controls diagnostic overlay). */
   let _isDevMode = false;
 
@@ -319,8 +326,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * World coordinates (widthPx × heightPx = 360 × 640) are NEVER changed —
    * all game-entity positions stay in the fixed logical space.  Instead, a
    * safe-core transform is stored (rpgSafeScale / rpgSafeOffsetX/Y) that
-   * drawRpgFrame applies each frame to centre the 360×640 world inside the
-   * full canvas; any extra space outside the world shows the background fill.
+   * drawRpgFrame applies each frame to place the 360×360 safe core at the
+   * centre of the full canvas.  Extra space beyond the safe core reveals
+   * additional world area rather than showing empty gutters.
+   *
+   * Scale is derived from the shorter CSS dimension so the 360-unit safe square
+   * always fills wall-to-wall on the narrow axis.  Extra space on the other axis
+   * maps to expanded world visibility.
    */
   function doResize(cont: HTMLElement): void {
     const containerW = cont.clientWidth  || widthPx;
@@ -338,13 +350,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgFullW = containerW;
     rpgFullH = containerH;
 
-    // Safe-core scale: largest uniform scale that fits the 360×640 world inside
-    // the full container without distortion.
-    const scaleX = containerW / RPG_LOGICAL_WIDTH;
-    const scaleY = containerH / RPG_LOGICAL_HEIGHT;
-    rpgSafeScale   = Math.min(scaleX, scaleY);
+    // Safe-core scale: fit the 360-unit safe square into the shorter CSS dimension.
+    // This expands the world to fill the full canvas instead of letterboxing it.
+    const safePx     = Math.min(containerW, containerH);
+    rpgSafeScale   = safePx / RPG_LOGICAL_WIDTH;
     rpgSafeOffsetX = (containerW - RPG_LOGICAL_WIDTH  * rpgSafeScale) / 2;
     rpgSafeOffsetY = (containerH - RPG_LOGICAL_HEIGHT * rpgSafeScale) / 2;
+
+    // Expanded world-space dimensions visible through the full render area.
+    rpgWorldViewW = RPG_LOGICAL_WIDTH  * (containerW / safePx);
+    rpgWorldViewH = RPG_LOGICAL_HEIGHT * (containerH / safePx);
 
     // Update the physical backing store (DPR-scaled full-container size).
     const dpr = window.devicePixelRatio || 1;
@@ -1231,6 +1246,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsActive: () => _isActive,
     tryTargetEnemyAt,
     onZoneLabelTap: () => { zoneSelectPanel.open(); },
+    getSafeScale:   () => rpgSafeScale,
+    getSafeOffsetX: () => rpgSafeOffsetX,
+    getSafeOffsetY: () => rpgSafeOffsetY,
   });
 
   function clampEnemyToBounds(enemy: { x: number; y: number; vx: number; vy: number }): void {
@@ -1441,6 +1459,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getSafeOffsetY:               () => rpgSafeOffsetY,
     getSafeScale:                 () => rpgSafeScale,
     getActiveZoneDisplayName:     () => getRpgZoneDisplayName(rpgSimState.activeZoneId),
+    getWorldViewW:                () => rpgWorldViewW,
+    getWorldViewH:                () => rpgWorldViewH,
   };
 
   // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────

@@ -35,6 +35,15 @@ export interface RpgInputCtx {
    * x < 210, y < 45 (canvas coordinate space).
    */
   onZoneLabelTap?: () => void;
+  /**
+   * Optional viewport getters — when provided, pointer events are mapped using
+   * the full safe-core transform instead of the simpler dim/CSS ratio.
+   * This ensures input coords are correct when the canvas is wider than the
+   * 360×640 logical world (e.g. on landscape or wide portrait layouts).
+   */
+  getSafeScale?:   () => number;
+  getSafeOffsetX?: () => number;
+  getSafeOffsetY?: () => number;
 }
 
 // ── Public handle ─────────────────────────────────────────────────────────────
@@ -58,6 +67,20 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
 
   function toCanvasCoords(clientX: number, clientY: number): { x: number; y: number } {
     const rect = canvas.getBoundingClientRect();
+    if (ctx.getSafeScale && ctx.getSafeOffsetX && ctx.getSafeOffsetY) {
+      // Full safe-core mapping: accounts for the expanded canvas and the offset
+      // of the 360×640 logical world within the full render area.
+      const scale   = ctx.getSafeScale();
+      const offsetX = ctx.getSafeOffsetX();
+      const offsetY = ctx.getSafeOffsetY();
+      const cssPxX = clientX - rect.left;
+      const cssPxY = clientY - rect.top;
+      return {
+        x: (cssPxX - offsetX) / (scale || 1),
+        y: (cssPxY - offsetY) / (scale || 1),
+      };
+    }
+    // Fallback: simple ratio mapping (correct only when offsetX/Y are zero).
     const scaleX = rect.width  > 0 ? dim.w / rect.width  : 1;
     const scaleY = rect.height > 0 ? dim.h / rect.height : 1;
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
