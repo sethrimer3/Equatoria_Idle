@@ -56,6 +56,7 @@
  */
 
 import { getCausticsTextureTile, getCausticsTextureTile2 } from './caustics-texture';
+import type { SeafloorTerrainData } from './seafloor-terrain';
 
 // ── Tunables ───────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,37 @@ const CAUSTICS_BLUR_PX        = 6;
 
 /** Opacity of the composited light buffer over the scene.  0.6–0.8 is typical. */
 const CAUSTICS_COMPOSITE_ALPHA = 0.72;
+
+// ── Height-aware caustics tunables ────────────────────────────────────────────
+// These control the depth-parallax and brightness effects applied per ridge.
+// Tuned conservatively: subtle implied depth without visually detaching caustics.
+
+/**
+ * Light-direction parallax shift applied per unit of normalised ridge elevation
+ * (0–1), measured in main-canvas pixels.  Higher ridges sample the caustic
+ * texture from a slightly different position, creating a subtle parallax effect.
+ * Increase for a stronger effect; keep ≤ 4 to avoid detachment artefacts.
+ */
+const CAUSTIC_HEIGHT_SHIFT_PX = 2.0;
+
+/**
+ * Screen-blend alpha increment per unit of normalised ridge elevation (0–1).
+ * Higher ridges receive this much additional caustic brightness.
+ * Translates the formula `brightnessMultiplier = 1.0 + elevation × 0.08` into
+ * an additive screen-blend contribution.
+ */
+const CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER = 0.08;
+
+/**
+ * Maximum screen-blend alpha for the elevation brightness overlay.
+ * Prevents blown-out white patches on ridge crests.
+ * Corresponds to a brightnessMultiplier cap of CAUSTIC_MAX_ELEVATION_BRIGHTNESS.
+ */
+const CAUSTIC_MAX_ELEVATION_BRIGHTNESS = 1.35;
+
+/** Implied light-source direction used for parallax offset (not normalised). */
+const _CAUSTIC_LIGHT_DIR_X =  0.25;
+const _CAUSTIC_LIGHT_DIR_Y = -1.0;
 
 // ── Offscreen light buffer ────────────────────────────────────────────────────
 // Allocated once; re-created only when the main canvas size changes.
@@ -131,6 +163,14 @@ let _patternTileB: HTMLCanvasElement | null = null;
 const _matA = new DOMMatrix([1, 0, 0, 1, 0, 0]);     // scale 1.00×, identity rotation
 const _matB = new DOMMatrix([1.28, 0, 0, 1.28, 0, 0]); // scale 1.28×; a/b/c/d updated with rotation
 const _matC = new DOMMatrix([0.78, 0, 0, 0.78, 0, 0]); // scale 0.78×, no rotation
+
+/**
+ * Reusable DOMMatrix for the height-aware parallax pass.
+ * e/f (translation) are mutated per ridge in the height-aware drawing loop;
+ * a/b/c/d are fixed at the same values as _matA (scale 1.0×, no rotation).
+ * A single module-level instance avoids allocating one DOMMatrix per ridge per frame.
+ */
+const _matHeightAware = new DOMMatrix([1, 0, 0, 1, 0, 0]);
 
 // ── Background gradient cache ─────────────────────────────────────────────────
 // Gradients are bound to their creating context; recreated only when the
@@ -222,6 +262,13 @@ export function drawCausticsBackground(
  * The main visual identity comes from three drifting layers of a cached Voronoi
  * caustic texture — not from alpha-pulsing ovals or simple sine-wave bands.
  *
+ * When `seafloorData` is provided the caustic sampling is adjusted per ridge:
+ *   - Pattern coordinates are offset by `CAUSTIC_HEIGHT_SHIFT_PX` in the
+ *     implied light direction so raised ridges intercept a different portion
+ *     of the caustic field than the flat seafloor around them.
+ *   - Ridges receive a subtle additional screen-blended brightness overlay
+ *     proportional to their normalised elevation.
+ *
  * Call after terrain rendering and before the first enemy draw call.
  */
 export function drawCausticsFloorEffects(
@@ -230,6 +277,7 @@ export function drawCausticsFloorEffects(
   heightPx: number,
   nowMs: number,
   lowGraphics: boolean,
+  seafloorData?: SeafloorTerrainData,
 ): void {
   const tS = nowMs * 0.001;
 
@@ -261,6 +309,15 @@ export function drawCausticsFloorEffects(
   // ── Render caustic tile layers into the light buffer ─────────────────────
   _drawCausticsTileLayers(_lightCtx, _lightW, _lightH, tS, lowGraphics);
 
+  // ── Height-aware parallax pass (into the same light buffer) ──────────────
+  // Draws each ridge area with a slightly shifted caustic pattern offset so
+  // raised terrain intercepts the light field from a different angle.
+  if (seafloorData && seafloorData.ridges.length > 0) {
+    _drawCausticsHeightAwarePass(
+      _lightCtx, _lightW, _lightH, scale, seafloorData, lowGraphics,
+    );
+  }
+
   // ── Composite light buffer onto the main canvas ──────────────────────────
   canvas2d.save();
   canvas2d.globalCompositeOperation = 'screen';
@@ -277,6 +334,14 @@ export function drawCausticsFloorEffects(
     _drawCausticsShimmer(canvas2d, widthPx, heightPx, tS);
   }
   _drawCausticsBubbles(canvas2d, widthPx, heightPx, tS, lowGraphics);
+
+  // ── Elevation brightness overlay on main canvas ───────────────────────────
+  // Screen-blended aqua highlight along ridge crests; higher ridges are brighter.
+  // Applied after the light-buffer composite so it is affected by the same
+  // screen blending that brightens the base caustic network.
+  if (seafloorData && seafloorData.ridges.length > 0) {
+    _drawCausticsElevationBrightness(canvas2d, seafloorData, lowGraphics);
+  }
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
@@ -490,4 +555,203 @@ function _drawCausticsBubbles(
   }
 
   canvas2d.restore();
+}
+
+// ── Height-aware caustics helpers ─────────────────────────────────────────────
+
+/**
+ * Draws an additional caustic pass into the light buffer where each ridge area
+ * receives the pattern with a height-based parallax offset.
+ *
+ * The key principle: a raised seafloor intercepts light from a slightly different
+ * position in the caustic field than a flat floor at the same (x, y).  By
+ * offsetting the pattern transform in the implied light direction, ridge pixels
+ * sample a different part of the texture — creating the appearance of depth.
+ *
+ * Each ridge is drawn using a clipped filled polygon (the ridge's fat stroke
+ * region) so that the shifted pattern only appears within the ridge footprint.
+ *
+ * Performance:
+ *   - Module-level `_matHeightAware` is mutated per ridge; no allocation.
+ *   - Ridge polygon tracing uses only `ctx.moveTo` / `ctx.lineTo` — no arrays.
+ *   - 4–7 ridges × ~20 points each: trivial per frame.
+ */
+function _drawCausticsHeightAwarePass(
+  ctx: CanvasRenderingContext2D,
+  bufW: number,
+  bufH: number,
+  bufScale: number,
+  seafloor: SeafloorTerrainData,
+  lowGraphics: boolean,
+): void {
+  if (!_patternA) return;
+
+  const tileA = getCausticsTextureTile(lowGraphics);
+  const tileW = tileA.width;
+  const tileH = tileA.height;
+
+  // Normalise ridge widths so the widest ridge = elevation 1.0.
+  let maxWidth = 1;
+  for (const ridge of seafloor.ridges) {
+    if (ridge.width > maxWidth) maxWidth = ridge.width;
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+
+  for (const ridge of seafloor.ridges) {
+    if (ridge.points.length < 2) continue;
+
+    // Normalised elevation 0..1 (wider/more prominent ridge = higher elevation).
+    const normElev = ridge.width / maxWidth;
+
+    // Parallax shift in light-buffer pixels.
+    // `bufScale` converts main-canvas pixels → light-buffer pixels (0.5 in high mode).
+    const heightShift = normElev * CAUSTIC_HEIGHT_SHIFT_PX * bufScale;
+
+    // Shifted pattern origin: offset in the opposite of the light direction so
+    // raised pixels appear to sample from the "upstream" part of the caustic field.
+    const shiftedE = ((_matA.e - _CAUSTIC_LIGHT_DIR_X * heightShift) % tileW + tileW) % tileW;
+    const shiftedF = ((_matA.f - _CAUSTIC_LIGHT_DIR_Y * heightShift) % tileH + tileH) % tileH;
+
+    // Build and clip to a filled polygon matching the ridge body footprint.
+    const halfW = ridge.width * 0.5 * bufScale;
+    ctx.save();
+    ctx.beginPath();
+    _traceRidgePolygon(ctx, ridge.points, halfW, bufScale);
+    ctx.clip();
+
+    // Draw the height-shifted pattern within the clipped ridge area.
+    // Alpha is proportional to elevation so subtle ridges get a lighter touch.
+    _matHeightAware.e = shiftedE;
+    _matHeightAware.f = shiftedF;
+    _patternA.setTransform(_matHeightAware);
+    ctx.globalAlpha = (lowGraphics ? 0.22 : 0.32) * normElev;
+    ctx.fillStyle = _patternA;
+    ctx.fillRect(0, 0, bufW, bufH);
+
+    // Restore _patternA to the main layer transform so subsequent draws are correct.
+    _patternA.setTransform(_matA);
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draws a subtle screen-blended aqua brightness highlight along each ridge crest,
+ * proportional to its normalised elevation.  Applied directly to the main canvas
+ * after light-buffer compositing.
+ *
+ * Implements the formula: `brightnessMultiplier = 1 + elevation × CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER`
+ * by translating the fractional multiplier increment into a screen-blend alpha on
+ * a teal-aqua stroke.  The stroke is narrower than the visual ridge body so it
+ * concentrates on the crest rather than the full width.
+ *
+ * Brightness is clamped via `CAUSTIC_MAX_ELEVATION_BRIGHTNESS` to prevent
+ * blown-out white patches even on the tallest ridges.
+ */
+function _drawCausticsElevationBrightness(
+  ctx: CanvasRenderingContext2D,
+  seafloor: SeafloorTerrainData,
+  lowGraphics: boolean,
+): void {
+  let maxWidth = 1;
+  for (const ridge of seafloor.ridges) {
+    if (ridge.width > maxWidth) maxWidth = ridge.width;
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#58d8e4';  // soft teal-aqua matching the caustic filament colour
+
+  for (const ridge of seafloor.ridges) {
+    if (ridge.points.length < 2) continue;
+
+    const normElev = ridge.width / maxWidth;
+
+    // Brightness alpha: elevation × per-layer constant, capped at max multiplier.
+    const maxExtra    = CAUSTIC_MAX_ELEVATION_BRIGHTNESS - 1.0;
+    const brightAlpha = Math.min(
+      normElev * CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER,
+      maxExtra,
+    ) * (lowGraphics ? 0.5 : 1.0);
+
+    if (brightAlpha < 0.005) continue;
+
+    ctx.globalAlpha = brightAlpha;
+    // Stroke width slightly narrower than the body so the glow concentrates on the crest.
+    ctx.lineWidth = ridge.width * 0.45;
+
+    ctx.beginPath();
+    ctx.moveTo(ridge.points[0].x, ridge.points[0].y);
+    for (let i = 1; i < ridge.points.length; i++) {
+      ctx.lineTo(ridge.points[i].x, ridge.points[i].y);
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Traces a filled polygon representing the footprint of a ridge's body stroke.
+ *
+ * The polygon is built by walking the ridge centerline twice:
+ *   1. Forward along the left-perpendicular edge (top of ridge).
+ *   2. Backward along the right-perpendicular edge (bottom of ridge).
+ *
+ * The perpendicular at each point is derived from the average tangent of its
+ * adjacent segments, giving smooth corners without sharp jags.
+ *
+ * All coordinates are scaled by `bufScale` to convert from main-canvas space
+ * to light-buffer space.  No array allocations — uses only moveTo / lineTo.
+ *
+ * @param halfW  Half the ridge body width, already scaled to buffer space.
+ */
+function _traceRidgePolygon(
+  ctx: CanvasRenderingContext2D,
+  pts: readonly { x: number; y: number }[],
+  halfW: number,
+  scale: number,
+): void {
+  const n = pts.length;
+  if (n < 2) return;
+
+  // Forward pass: left/top perpendicular edge.
+  for (let i = 0; i < n; i++) {
+    // Tangent direction at point i (averaged from adjacent segments).
+    const i0 = i > 0     ? i - 1 : 0;
+    const i1 = i < n - 1 ? i + 1 : n - 1;
+    const dx = pts[i1].x - pts[i0].x;
+    const dy = pts[i1].y - pts[i0].y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const tx = dx / len;
+    const ty = dy / len;
+    // Left perpendicular: (-ty, tx)
+    const x = pts[i].x * scale + (-ty) * halfW;
+    const y = pts[i].y * scale + ( tx) * halfW;
+    if (i === 0) ctx.moveTo(x, y);
+    else         ctx.lineTo(x, y);
+  }
+
+  // Backward pass: right/bottom perpendicular edge.
+  for (let i = n - 1; i >= 0; i--) {
+    const i0 = i > 0     ? i - 1 : 0;
+    const i1 = i < n - 1 ? i + 1 : n - 1;
+    const dx = pts[i1].x - pts[i0].x;
+    const dy = pts[i1].y - pts[i0].y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const tx = dx / len;
+    const ty = dy / len;
+    // Right perpendicular: (ty, -tx)
+    const x = pts[i].x * scale + ( ty) * halfW;
+    const y = pts[i].y * scale + (-tx) * halfW;
+    ctx.lineTo(x, y);
+  }
+
+  ctx.closePath();
 }

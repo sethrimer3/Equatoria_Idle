@@ -701,7 +701,10 @@ export function drawRpgFrame(
 
   // Zone floor effects — rendered after terrain so they sit above the floor, below enemies.
   if (isCausticsZone) {
-    drawCausticsFloorEffects(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
+    drawCausticsFloorEffects(
+      canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode(),
+      terrainState?.seafloor,
+    );
   }
   if (isImpetusZone) {
     drawImpetusFloorEffects(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
@@ -998,6 +1001,16 @@ function drawRpgViewportDiagnostics(
     const segCount = sfData?.allCollisionSegments.length ?? 0;
     lines.push(`seafloorSegments: ${segCount}`);
     lines.push(`seafloorCollision: ${segCount > 0 ? 'on' : 'off'}`);
+    // Height-aware caustics diagnostics.
+    const ridgeCount = sfData?.ridges.length ?? 0;
+    lines.push(`heightAwareCaustics: ${ridgeCount > 0 ? 'on' : 'off'}`);
+    lines.push(`causticHeightShiftPx: 2.0`);
+    if (sfData && ridgeCount > 0) {
+      let maxW = 1;
+      for (const r of sfData.ridges) if (r.width > maxW) maxW = r.width;
+      lines.push(`ridgeElevRange: 0.0–1.0 (${ridgeCount} ridges)`);
+      lines.push(`maxRidgeWidth: ${maxW.toFixed(1)}px`);
+    }
   }
 
   canvas2d.save();

@@ -399,6 +399,70 @@ export function renderSeafloorTerrain(
   ctx.restore();
 }
 
+// ── Elevation sampling ────────────────────────────────────────────────────────
+
+/**
+ * Returns a normalised elevation value (0–1) at world position (x, y) based on
+ * proximity to seafloor ridge crests.
+ *
+ *   0 = open seafloor, far from any ridge
+ *   1 = exactly on the crest centre-line of the widest/nearest ridge
+ *
+ * Uses the ridge body width as the falloff radius so wider (more prominent)
+ * ridges produce a higher peak elevation.  Only the maximum elevation across all
+ * overlapping ridges is returned (ridges do not add).
+ *
+ * Designed to be called from caustics rendering — O(ridges × points) per sample,
+ * intentionally cheap; results are stable for a given wave.
+ */
+export function sampleSeafloorElevation(
+  x: number,
+  y: number,
+  data: SeafloorTerrainData,
+): number {
+  let maxElev = 0;
+  for (const ridge of data.ridges) {
+    const halfW = ridge.width * 0.5;
+    const dist  = _distToPolyline(x, y, ridge.points);
+    if (dist < halfW) {
+      const elev = 1.0 - dist / halfW;
+      if (elev > maxElev) maxElev = elev;
+    }
+  }
+  return maxElev;
+}
+
+/**
+ * Returns the minimum distance from point (px, py) to any segment of a
+ * ridge polyline.  No allocations; pure arithmetic.
+ */
+function _distToPolyline(
+  px: number,
+  py: number,
+  points: SeafloorPoint[],
+): number {
+  let minDist = Infinity;
+  for (let i = 0; i < points.length - 1; i++) {
+    const d = _distToSegmentPt(px, py, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    if (d < minDist) minDist = d;
+  }
+  return minDist;
+}
+
+/** Minimum distance from point (px,py) to segment (ax,ay)→(bx,by). */
+function _distToSegmentPt(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-10) return Math.hypot(px - ax, py - ay);
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Fast deterministic PRNG (mulberry32-style). */

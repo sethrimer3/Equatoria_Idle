@@ -1,10 +1,98 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#176**
+Current build: **#178**
 
 ---
 
-## Build #176 — Verdure polyomino elite enemies
+## Build #178 — Height-aware caustics (seafloor depth parallax)
+
+### What was implemented
+
+- **`seafloor-terrain.ts`**: Added `sampleSeafloorElevation(x, y, data)` — returns a normalised
+  elevation (0–1) at any world position by measuring distance from each ridge's
+  centerline polyline and normalising against the ridge's half-width.  Backed by
+  private `_distToPolyline` / `_distToSegmentPt` helpers.  No allocations; callable
+  per-pixel for diagnostics.
+
+- **`caustics-overlay.ts`**:
+  - Added tuning constants:
+    - `CAUSTIC_HEIGHT_SHIFT_PX = 2.0` — main-canvas pixels of parallax per unit
+      normalised ridge elevation.
+    - `CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER = 0.08` — screen-blend alpha
+      increment per unit elevation (maps `1 + e × 0.08` brightness formula).
+    - `CAUSTIC_MAX_ELEVATION_BRIGHTNESS = 1.35` — brightness multiplier cap.
+    - `_CAUSTIC_LIGHT_DIR_X = 0.25, _CAUSTIC_LIGHT_DIR_Y = -1.0` — implied light
+      direction for parallax offset.
+  - `drawCausticsFloorEffects` now accepts an optional `seafloorData?: SeafloorTerrainData`
+    parameter.
+  - Added `_drawCausticsHeightAwarePass`: draws each ridge's footprint area into the
+    light buffer using the caustic pattern with a parallax-shifted transform offset.
+    Each ridge receives a shift of `normElev × CAUSTIC_HEIGHT_SHIFT_PX × bufScale`
+    in the `(_CAUSTIC_LIGHT_DIR_X, _CAUSTIC_LIGHT_DIR_Y)` direction.  Clipping uses
+    `_traceRidgePolygon`.  Reuses module-level `_matHeightAware` — zero new allocations.
+  - Added `_drawCausticsElevationBrightness`: screen-blend aqua stroke (`#58d8e4`)
+    along each ridge crest, alpha = `clamp(normElev × 0.08, 0, 0.35)`.
+  - Added `_traceRidgePolygon`: builds a filled polygon matching a ridge's body stroke
+    by walking the centerline twice (forward on the left perpendicular, backward on
+    the right), using inline averaged tangent computation — no array allocations.
+  - Added module-level `_matHeightAware` DOMMatrix (reused per ridge per frame).
+
+- **`rpg-render-draw.ts`**:
+  - `drawCausticsFloorEffects` call now passes `terrainState?.seafloor` so the
+    height-aware passes activate whenever seafloor ridge terrain is present.
+  - Dev-mode diagnostics block extended with:
+    - `heightAwareCaustics: on/off`
+    - `causticHeightShiftPx: 2.0`
+    - `ridgeElevRange: 0.0–1.0 (N ridges)`
+    - `maxRidgeWidth: Xpx`
+
+- **`buildInfo.ts`**: bumped 177 → 178.
+
+### Elevation lookup location
+
+`sampleSeafloorElevation()` in `src/render/rpg/terrain/seafloor-terrain.ts`.
+The Caustics zone uses `terrainKind === 'seafloorRidges'`, and the ridge data lives
+in `TopographicTerrainState.seafloor` (type `SeafloorTerrainData`).  Ridge elevation
+is normalised by the widest ridge in the current wave's dataset.
+
+### Where the caustic sampling offset is applied
+
+`_drawCausticsHeightAwarePass()` in `src/render/rpg/terrain/caustics-overlay.ts`.
+The offset is applied per ridge by shifting `_matHeightAware.e` / `.f` (the pattern
+translation) before calling `_patternA.setTransform()` and then `fillRect`.  The ridge
+area is isolated by clipping to the polygon produced by `_traceRidgePolygon`.
+
+### Constants that control the effect
+
+| Constant | Location | Purpose |
+|---|---|---|
+| `CAUSTIC_HEIGHT_SHIFT_PX` | caustics-overlay.ts | Parallax offset magnitude (px, main-canvas) |
+| `CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER` | caustics-overlay.ts | Brightness alpha increment per elevation unit |
+| `CAUSTIC_MAX_ELEVATION_BRIGHTNESS` | caustics-overlay.ts | Maximum brightness multiplier cap |
+| `_CAUSTIC_LIGHT_DIR_X / _Y` | caustics-overlay.ts | Implied light direction for offset vector |
+
+### Slope-aware lighting
+
+Intentionally deferred.  The ridge polyline data could support a simple
+`(hL − hR, hU − hD)` slope estimate via `sampleSeafloorElevation` calls at
+neighbouring positions, but the effect would be subtle given the low ridge
+elevation contrast.  Implement if playtesting reveals the brightness pass looks
+too uniform across steep vs. flat ridge sections.
+
+### Remaining visual tuning notes
+
+- `CAUSTIC_HEIGHT_SHIFT_PX = 2.0` is conservatively small.  Raise to 3–4 for a
+  more pronounced parallax without visible detachment.
+- `CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER = 0.08` produces a very subtle highlight.
+  0.12–0.18 is safe if the current result feels too faint after playtesting.
+- The height-aware pass alpha is `(0.32 or 0.22) × normElev`; the `0.32` multiplier
+  can be raised to 0.40–0.45 if ridges need more visual weight.
+- Slope-aware caustic brightness (per-ridge surface normal dot light-direction) is
+  the natural next step if the ridge depth still feels flat after the above tuning.
+
+---
+
+## Build #177 — Verdure polyomino elite enemies
 
 ### What was implemented
 
