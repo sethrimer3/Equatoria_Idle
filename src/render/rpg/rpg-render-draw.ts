@@ -642,9 +642,21 @@ export function drawRpgFrame(
   // All subsequent draw calls use world coordinates (0–360, 0–640).
   canvas2d.setTransform(safeScale * dpr, 0, 0, safeScale * dpr, safeOffsetX * dpr, safeOffsetY * dpr);
 
-  canvas2d.clearRect(0, 0, widthPx, heightPx);
+  // Visible-world bounds in world coordinates: the canvas area seen at this scale.
+  // vwX/vwY is the world coord mapped to the canvas top-left corner.
+  // vwW/vwH is the total world-space size of the visible canvas area.
+  // On a 360×640 reference device: vwX=0, vwY=0, vwW=360, vwH=640.
+  // On a 600×640 wider canvas (scale=1.0): vwX=-120, vwY=0, vwW=600, vwH=640.
+  const safeScaleNz = safeScale || 1;
+  const vwX = -safeOffsetX / safeScaleNz;
+  const vwY = -safeOffsetY / safeScaleNz;
+  const vwW = fullW / safeScaleNz;
+  const vwH = fullH / safeScaleNz;
+
+  // Clear and fill the full visible world area (covers gutters when canvas > world).
+  canvas2d.clearRect(vwX, vwY, vwW, vwH);
   canvas2d.fillStyle = '#0a0a12';
-  canvas2d.fillRect(0, 0, widthPx, heightPx);
+  canvas2d.fillRect(vwX, vwY, vwW, vwH);
 
   // Apply Zenith Binary Horizon screen-shake offset (0,0 when inactive).
   const shakeOff = ctx.getZenithShakeOffset?.() ?? { x: 0, y: 0 };
@@ -656,17 +668,26 @@ export function drawRpgFrame(
 
   // Zone atmosphere tints — rendered immediately after the background fill so
   // they sit behind fluid, terrain, and all gameplay elements.
+  // Each zone background is drawn with translate(vwX, vwY) so that the
+  // background fills the full visible canvas area (including gutters when the
+  // canvas is wider/taller than the 360×640 world).
   const isCausticsZone  = ctx.rpgSimState.activeZoneId === 'caustics';
   const isVerdureZone   = ctx.rpgSimState.activeZoneId === 'verdure';
   const isImpetusZone   = ctx.rpgSimState.activeZoneId === 'impetus';
   const isHorizonZone   = ctx.rpgSimState.activeZoneId === 'horizon';
   const isEuhedralZone  = ctx.rpgSimState.activeZoneId === 'euhedral';
   if (isCausticsZone) {
-    drawCausticsBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
+    drawCausticsBackground(canvas2d, vwW, vwH, ctx.getIsLowGraphicsMode());
+    canvas2d.restore();
   }
   // Verdure zone: dark forest-green / bioluminescent atmosphere tint.
   if (isVerdureZone) {
-    drawVerdureBackground(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
+    drawVerdureBackground(canvas2d, vwW, vwH, ctx.getIsLowGraphicsMode());
+    canvas2d.restore();
     const wState = ctx.getVerdureCaveWallState?.();
     if (wState) {
       // Elite waves are every multiple of 10 (wave 10, 20, 30, …).
@@ -690,10 +711,16 @@ export function drawRpgFrame(
     }
   }
   if (isImpetusZone) {
-    drawImpetusBackground(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
+    drawImpetusBackground(canvas2d, vwW, vwH, nowMs, ctx.getIsLowGraphicsMode());
+    canvas2d.restore();
   }
   if (isHorizonZone) {
-    ctx.drawZoneBgOverlay?.(canvas2d, widthPx, heightPx, nowMs);
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
+    ctx.drawZoneBgOverlay?.(canvas2d, vwW, vwH, nowMs);
+    canvas2d.restore();
   }
 
   // Fluid background — rendered first so all gameplay elements appear above it.
@@ -711,8 +738,12 @@ export function drawRpgFrame(
 
   // Euhedral full-screen hex floor — drawn after the background fill and before
   // the fluid/terrain so it sits as ground-level atmosphere.
+  // Translated to vwX/vwY so hexes cover the full visible canvas.
   if (isEuhedralZone && !ctx.getIsLowGraphicsMode()) {
-    drawEuhedralHexFloor(canvas2d, widthPx, heightPx, euhedralLights ?? [], false);
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
+    drawEuhedralHexFloor(canvas2d, vwW, vwH, euhedralLights ?? [], false);
+    canvas2d.restore();
   }
 
   if (shouldDrawPersistentTopographySunlight(ctx.rpgSimState.activeZoneId, terrainState)) {
@@ -969,10 +1000,21 @@ export function drawRpgFrame(
  *
  * Information displayed:
  *   - RPG world (logical) size — the fixed coordinate space all entities live in
- *   - Safe-core scale + offsets — how the 360×640 world is centred in the full canvas
- *   - Full canvas CSS + backing size
+ *   - Render host CSS size — actual on-screen size of the render area
+ *   - Canvas CSS size — should match render host
+ *   - Backing size — canvas CSS size × DPR (physical pixels)
  *   - devicePixelRatio
+ *   - Stable RPG scale — pixels per world unit (must not increase when canvas grows)
+ *   - Visible world width/height — canvas CSS / scale (increases as canvas grows)
+ *   - Core gameplay size — the fixed 360×640 world
+ *   - Camera offset — how the world origin is shifted within the canvas
  *   - Player world position — verifiable via resize stability check
+ *
+ * Warnings:
+ *   - Scale changed significantly when only canvas width changed
+ *   - visibleWorldW did not increase when canvas grew wider
+ *   - Canvas is narrower than container (rpg-area layout bug)
+ *   - Cover-style scaling detected (scale > 1 on a reference-sized canvas)
  */
 function drawRpgViewportDiagnostics(
   canvas2d: CanvasRenderingContext2D,
@@ -991,7 +1033,8 @@ function drawRpgViewportDiagnostics(
   const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
   const backingW = Math.round(fullW * dpr);
   const backingH = Math.round(fullH * dpr);
-  const safePx = Math.round(Math.min(fullW, fullH));
+  // The stable clamped safePx that drives the RPG scale (mirrors doResize logic).
+  const safePx = Math.round(Math.min(fullW, fullH, RPG_LOGICAL_WIDTH));
   const mx = ctx.mote.x.toFixed(1);
   const my = ctx.mote.y.toFixed(1);
   const terrainState = ctx.getTopographicTerrainState();
@@ -1001,8 +1044,20 @@ function drawRpgViewportDiagnostics(
 
   // Warn if rpg-area is narrower than expected (full container).
   const widthMismatch = css.w > 0 && Math.abs(css.w - fullW) > 2;
-  // Warn if world view is still effectively the old narrow 360×640 on a wider canvas.
+  // Warn if world view is still not wider on a wider canvas (cover-style scaling bug).
   const stillNarrow = fullW > RPG_LOGICAL_WIDTH * safeScl + 4 && worldViewW < RPG_LOGICAL_WIDTH + 1;
+  // Warn if the scale is greater than 1 on a canvas at or below reference size
+  // (indicates cover-style zoom was applied).
+  const scaleTooLarge = safeScl > 1.001 && fullW <= RPG_LOGICAL_WIDTH && fullH <= RPG_LOGICAL_HEIGHT;
+
+  // World-space visible bounds for camera info display.
+  const safeNz = safeScl || 1;
+  const camLeft   = (-safeOffX / safeNz).toFixed(1);
+  const camTop    = (-safeOffY / safeNz).toFixed(1);
+  const camRight  = ((fullW - safeOffX) / safeNz).toFixed(1);
+  const camBottom = ((fullH - safeOffY) / safeNz).toFixed(1);
+  const camCenterX = ((fullW * 0.5 - safeOffX) / safeNz).toFixed(1);
+  const camCenterY = ((fullH * 0.5 - safeOffY) / safeNz).toFixed(1);
 
   // ── Background/effect route label ────────────────────────────────
   let bgRoute: string;
@@ -1023,13 +1078,15 @@ function drawRpgViewportDiagnostics(
   const sunlightOn = shouldDrawPersistentTopographySunlight(activeZone, terrainState);
 
   const lines: Array<{ text: string; warn?: boolean }> = [
-    { text: `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}` },
-    { text: `safe offset: (${safeOffX.toFixed(1)}, ${safeOffY.toFixed(1)})  scale: ${safeScl.toFixed(3)}` },
-    { text: `safePx: ${safePx}  safeWorldSize: ${RPG_LOGICAL_WIDTH}` },
-    { text: `worldView: ${worldViewW.toFixed(1)} × ${worldViewH.toFixed(1)}`, warn: stillNarrow },
-    { text: `canvas CSS: ${fullW} × ${fullH}`, warn: widthMismatch },
-    { text: `backing: ${backingW} × ${backingH}` },
-    { text: `devicePixelRatio: ${dpr.toFixed(2)}` },
+    { text: `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}  (core gameplay)` },
+    { text: `render host: ${css.w} × ${css.h}  canvas CSS: ${fullW} × ${fullH}`, warn: widthMismatch },
+    { text: `backing: ${backingW} × ${backingH}  dpr: ${dpr.toFixed(2)}` },
+    { text: `stable scale: ${safeScl.toFixed(3)}  safePx: ${safePx}`, warn: scaleTooLarge },
+    { text: `visibleWorld: ${worldViewW.toFixed(1)} × ${worldViewH.toFixed(1)}`, warn: stillNarrow },
+    { text: `cam offset: (${safeOffX.toFixed(1)}, ${safeOffY.toFixed(1)})` },
+    { text: `cam bounds L/R: ${camLeft} / ${camRight}` },
+    { text: `cam bounds T/B: ${camTop} / ${camBottom}` },
+    { text: `cam center: (${camCenterX}, ${camCenterY})` },
     { text: `player world: (${mx}, ${my})` },
     { text: `zone: ${activeZone}  subzone: ${activeSubzone}` },
     { text: `terrainKind: ${terrainState?.terrainKind ?? 'none'}` },

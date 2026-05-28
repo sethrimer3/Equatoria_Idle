@@ -327,13 +327,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
    * World coordinates (widthPx × heightPx = 360 × 640) are NEVER changed —
    * all game-entity positions stay in the fixed logical space.  Instead, a
    * safe-core transform is stored (rpgSafeScale / rpgSafeOffsetX/Y) that
-   * drawRpgFrame applies each frame to place the 360×360 safe core at the
-   * centre of the full canvas.  Extra space beyond the safe core reveals
-   * additional world area rather than showing empty gutters.
+   * drawRpgFrame applies each frame to centre the 360×640 world within the
+   * full canvas.  Extra space beyond the world reveals additional world area
+   * (extended background) rather than zooming in.
    *
-   * Scale is derived from the shorter CSS dimension so the 360-unit safe square
-   * always fills wall-to-wall on the narrow axis.  Extra space on the other axis
-   * maps to expanded world visibility.
+   * Scale invariant:
+   *   - Scale is derived from min(containerW, containerH, RPG_LOGICAL_WIDTH).
+   *   - Capping at RPG_LOGICAL_WIDTH prevents the scale from growing when the
+   *     canvas grows beyond the reference 360×640 size, which would zoom in
+   *     instead of revealing more world.
+   *   - On a reference 360×640 phone:  scale = 1.0 (1 px per world unit).
+   *   - On a wider canvas (e.g. 600×640): scale = 1.0, worldViewW = 600
+   *     (more world visible, same zoom).
+   *   - On a narrower canvas (e.g. 300×640): scale ≈ 0.83 (world shrinks to fit).
    */
   function doResize(cont: HTMLElement): void {
     const containerW = cont.clientWidth  || widthPx;
@@ -351,16 +357,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     rpgFullW = containerW;
     rpgFullH = containerH;
 
-    // Safe-core scale: fit the 360-unit safe square into the shorter CSS dimension.
-    // This expands the world to fill the full canvas instead of letterboxing it.
-    const safePx     = Math.min(containerW, containerH);
+    // Stable RPG scale: derived from the shorter CSS dimension, but capped at
+    // RPG_LOGICAL_WIDTH so the scale never increases when the canvas grows
+    // beyond the reference size.  Growing the canvas should reveal more world,
+    // not zoom in on the existing world.
+    const safePx     = Math.min(containerW, containerH, RPG_LOGICAL_WIDTH);
     rpgSafeScale   = safePx / RPG_LOGICAL_WIDTH;
     rpgSafeOffsetX = (containerW - RPG_LOGICAL_WIDTH  * rpgSafeScale) / 2;
     rpgSafeOffsetY = (containerH - RPG_LOGICAL_HEIGHT * rpgSafeScale) / 2;
 
-    // Expanded world-space dimensions visible through the full render area.
-    rpgWorldViewW = RPG_LOGICAL_WIDTH  * (containerW / safePx);
-    rpgWorldViewH = RPG_LOGICAL_HEIGHT * (containerH / safePx);
+    // Visible world-space dimensions: canvas CSS size divided by the stable scale.
+    // When the canvas grows, worldViewW/H grow; the scale stays the same.
+    rpgWorldViewW = containerW / rpgSafeScale;
+    rpgWorldViewH = containerH / rpgSafeScale;
 
     // Update the physical backing store (DPR-scaled full-container size).
     const dpr = window.devicePixelRatio || 1;
