@@ -315,6 +315,10 @@ export interface RpgDrawCtx {
   getSafeOffsetY?(): number;
   /** Returns the uniform scale applied to map the 360×640 world into the full canvas. */
   getSafeScale?(): number;
+  /** Returns the expanded world-space width visible through the full canvas. */
+  getWorldViewW?(): number;
+  /** Returns the expanded world-space height visible through the full canvas. */
+  getWorldViewH?(): number;
   /** Returns the current navigation grid for pathfinding debug draw. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns true when pathfinding debug visualization should be drawn. */
@@ -982,9 +986,12 @@ function drawRpgViewportDiagnostics(
   const safeOffX = ctx.getSafeOffsetX?.() ?? 0;
   const safeOffY = ctx.getSafeOffsetY?.() ?? 0;
   const safeScl  = ctx.getSafeScale?.()   ?? 1;
+  const worldViewW = ctx.getWorldViewW?.() ?? RPG_LOGICAL_WIDTH;
+  const worldViewH = ctx.getWorldViewH?.() ?? RPG_LOGICAL_HEIGHT;
   const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
   const backingW = Math.round(fullW * dpr);
   const backingH = Math.round(fullH * dpr);
+  const safePx = Math.round(Math.min(fullW, fullH));
   const mx = ctx.mote.x.toFixed(1);
   const my = ctx.mote.y.toFixed(1);
   const terrainState = ctx.getTopographicTerrainState();
@@ -994,6 +1001,8 @@ function drawRpgViewportDiagnostics(
 
   // Warn if rpg-area is narrower than expected (full container).
   const widthMismatch = css.w > 0 && Math.abs(css.w - fullW) > 2;
+  // Warn if world view is still effectively the old narrow 360×640 on a wider canvas.
+  const stillNarrow = fullW > RPG_LOGICAL_WIDTH * safeScl + 4 && worldViewW < RPG_LOGICAL_WIDTH + 1;
 
   // ── Background/effect route label ────────────────────────────────
   let bgRoute: string;
@@ -1016,6 +1025,8 @@ function drawRpgViewportDiagnostics(
   const lines: Array<{ text: string; warn?: boolean }> = [
     { text: `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}` },
     { text: `safe offset: (${safeOffX.toFixed(1)}, ${safeOffY.toFixed(1)})  scale: ${safeScl.toFixed(3)}` },
+    { text: `safePx: ${safePx}  safeWorldSize: ${RPG_LOGICAL_WIDTH}` },
+    { text: `worldView: ${worldViewW.toFixed(1)} × ${worldViewH.toFixed(1)}`, warn: stillNarrow },
     { text: `canvas CSS: ${fullW} × ${fullH}`, warn: widthMismatch },
     { text: `backing: ${backingW} × ${backingH}` },
     { text: `devicePixelRatio: ${dpr.toFixed(2)}` },
@@ -1028,6 +1039,9 @@ function drawRpgViewportDiagnostics(
   ];
   if (widthMismatch) {
     lines.push({ text: `⚠ area < container!`, warn: true });
+  }
+  if (stillNarrow) {
+    lines.push({ text: `⚠ worldView still narrow!`, warn: true });
   }
 
   // Append Impetus-specific diagnostic if in Impetus zone.
