@@ -369,6 +369,48 @@
   display: block;
 }
 
+/* ── Player icon widget — level label + icon canvas + XP bar ────── */
+/*
+ * Wraps the animated player icon canvas with a "Lv.N" label above and
+ * a thin XP progress bar below.  Mirrors the visual style of the
+ * modifier box progress bars for UI consistency.
+ */
+.rpg-player-icon-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+/* "Lv.N" text above the player icon */
+.rpg-player-level-label {
+  font-size: 7px;
+  font-weight: 700;
+  color: #c4b5fd;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* XP progress bar below the player icon — mirrors .rpg-modifier-progress-track */
+.rpg-player-xp-bar-track {
+  width: 22px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* XP bar fill — width driven by JS, mirrors .rpg-modifier-progress-fill */
+.rpg-player-xp-bar-fill {
+  height: 100%;
+  background: #a78bfa;
+  border-radius: 2px;
+  transition: width 0.15s linear;
+}
+
 /* ── Player icon inside box 1 — animated idle-state canvas ──────── */
 .rpg-player-icon {
   width: 22px;

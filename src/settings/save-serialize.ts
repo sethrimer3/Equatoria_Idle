@@ -100,6 +100,9 @@ export function serializeGameState(state: GameState): SaveData {
       activeSubzoneId: state.rpg.activeSubzoneId,
       highestWaveReachedByZone: { ...state.rpg.highestWaveReachedByZone },
       currentWaveByZone: { ...state.rpg.currentWaveByZone },
+      playerLevel: state.rpg.playerLevel,
+      playerXp: state.rpg.playerXp,
+      playerXpToNextLevel: state.rpg.playerXpToNextLevel,
     },
     elapsedMs: state.elapsedMs,
     forge: {

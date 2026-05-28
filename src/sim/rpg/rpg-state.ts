@@ -216,6 +216,12 @@ export interface RpgSimState {
    * Empty for old saves — bestiary falls back to highestWaveReached in that case.
    */
   encounteredEnemyTypes: Set<string>;
+  /** v29+: Player character level. Starts at 1. Increases as the XP wire drains into Box 1. */
+  playerLevel: number;
+  /** v29+: Current XP progress toward the next player level. */
+  playerXp: number;
+  /** v29+: XP required to advance to the next player level. Recomputed from playerLevel. */
+  playerXpToNextLevel: number;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -277,6 +283,9 @@ export function createRpgSimState(): RpgSimState {
     equipChangedDuringInterwave: false,
     sandBladeEnabled: true,
     encounteredEnemyTypes: new Set(),
+    playerLevel: 1,
+    playerXp: 0,
+    playerXpToNextLevel: 25, // getPlayerXpToNextLevel(1) = Math.floor(25 * 1^1.35) = 25
   };
 }
 
@@ -331,6 +340,9 @@ export {
   addXpWithAllocation,
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpLuckBonus, getEffectiveXpHpBonus,
+  PLAYER_ATK_PER_LEVEL, PLAYER_DEF_PER_LEVEL, PLAYER_HP_PER_LEVEL,
+  getPlayerXpToNextLevel, getPlayerLevelAtkBonus, getPlayerLevelDefBonus,
+  getPlayerLevelHpBonus, tickPlayerXpProgress,
 } from './rpg-state-xp';
 
 export {

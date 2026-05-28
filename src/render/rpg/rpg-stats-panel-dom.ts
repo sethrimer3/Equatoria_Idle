@@ -60,6 +60,11 @@ export interface StatsPanelDomRefs {
   /** Level text elements for modifier boxes [0]=Box3, [1]=Box4, [2]=Box5. */
   modLevelTexts: HTMLSpanElement[];
 
+  /** "Lv.N" label shown above the player icon. Updated on level-up. */
+  playerLevelEl: HTMLSpanElement;
+  /** XP progress bar fill element below the player icon. Width updated each frame. */
+  playerXpBarFill: HTMLDivElement;
+
   // DPS chart elements
   dpsLabelEl: HTMLSpanElement;
   dpsValueEl: HTMLSpanElement;
@@ -121,6 +126,8 @@ export function buildStatsPanelDom(): StatsPanelDomRefs {
     mod3Out: primary.mod3Out,
     modProgressFills: primary.modProgressFills,
     modLevelTexts: primary.modLevelTexts,
+    playerLevelEl: primary.playerLevelEl,
+    playerXpBarFill: primary.playerXpBarFill,
     dpsLabelEl: right.dpsLabelEl,
     dpsValueEl: right.dpsValueEl,
     dpsChartEl: right.dpsChartEl,

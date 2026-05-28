@@ -112,6 +112,72 @@ export function getMultiplierXpCost(currentLevel: number): number {
   return 50 * Math.pow(5, Math.max(0, currentLevel - 1));
 }
 
+// ─── Player level constants ───────────────────────────────────────
+
+/** ATK added to player base stats per level above 1. */
+export const PLAYER_ATK_PER_LEVEL = 1;
+/** DEF added to player base stats per level above 1. */
+export const PLAYER_DEF_PER_LEVEL = 0.5;
+/** Max HP added to player base stats per level above 1. */
+export const PLAYER_HP_PER_LEVEL = 8;
+
+// ─── Player level helpers ────────────────────────────────────────
+
+/**
+ * XP required to advance from `level` to `level + 1`.
+ *
+ * Formula: floor(25 × level^1.35)
+ *   Level  1 →    25 XP
+ *   Level  5 →   147 XP
+ *   Level 10 →   355 XP
+ *   Level 20 →   856 XP
+ *   Level 50 → 2 750 XP
+ */
+export function getPlayerXpToNextLevel(level: number): number {
+  return Math.floor(25 * Math.pow(level, 1.35));
+}
+
+/** Flat ATK bonus from player levels (0 at level 1). */
+export function getPlayerLevelAtkBonus(level: number): number {
+  return (level - 1) * PLAYER_ATK_PER_LEVEL;
+}
+
+/** Flat DEF bonus from player levels (0 at level 1). */
+export function getPlayerLevelDefBonus(level: number): number {
+  return (level - 1) * PLAYER_DEF_PER_LEVEL;
+}
+
+/** Flat max-HP bonus from player levels (0 at level 1). */
+export function getPlayerLevelHpBonus(level: number): number {
+  return (level - 1) * PLAYER_HP_PER_LEVEL;
+}
+
+/**
+ * Adds `amount` XP to the player's level progress, handling multiple level-ups
+ * and overflow XP.  Returns the number of levels gained this tick.
+ *
+ * Called from the stats panel each frame while Box 2 is wired to Box 1.
+ * Level is capped at 9999 to prevent infinite loops with very large amounts.
+ */
+export function tickPlayerXpProgress(state: RpgSimState, amount: number): number {
+  let levelsGained = 0;
+  let remaining = amount;
+  while (remaining > 0 && state.playerLevel < 9999) {
+    const space = state.playerXpToNextLevel - state.playerXp;
+    if (remaining >= space) {
+      state.playerLevel++;
+      state.playerXp = 0;
+      state.playerXpToNextLevel = getPlayerXpToNextLevel(state.playerLevel);
+      remaining -= space;
+      levelsGained++;
+    } else {
+      state.playerXp += remaining;
+      remaining = 0;
+    }
+  }
+  return levelsGained;
+}
+
 /**
  * Advances `multiplierBoxes[modIdx]` by `amount` XP, levelling up as needed.
  * Overflow XP is applied to subsequent levels while wire is active.

@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 28;
+export const SAVE_VERSION = 29;
 
 export interface SaveData {
   version: number;
@@ -134,6 +134,12 @@ export interface SaveData {
     highestWaveReachedByZone?: Record<string, number>;
     /** v27+: current wave per zone (resumes after reload). Absent in older saves (defaults to 0). */
     currentWaveByZone?: Record<string, number>;
+    /** v29+: player character level. Absent in older saves (defaults to 1). */
+    playerLevel?: number;
+    /** v29+: player XP toward next level. Absent in older saves (defaults to 0). */
+    playerXp?: number;
+    /** v29+: XP required to reach next level. Absent in older saves (recomputed from playerLevel). */
+    playerXpToNextLevel?: number;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
