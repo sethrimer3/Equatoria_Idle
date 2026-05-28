@@ -27,6 +27,9 @@ import type {
   SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import {
   LASER_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE,
 } from './rpg-constants';
@@ -57,6 +60,11 @@ import {
   makeEliteEnemy,
 } from './rpg-factories';
 import { makeStardustEnemy } from './rpg-stardust-factories';
+import {
+  makePolyominoEnemy,
+  makeFissilePolyominoEnemy,
+  makeRefractorPolyominoEnemy,
+} from './polyomino-enemy-factories';
 import {
   makeDustWispEnemy, makeRibbonWormEnemy, makeLanternMothEnemy, makeEyeStalkEnemy,
   makeJellyfishEnemy, makeClothGhostEnemy, makePlantTurretEnemy, makeGearInsectEnemy,
@@ -116,6 +124,9 @@ export interface EnemySpawnCtx {
   fracterylEnemies: FracterylEnemy[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
@@ -164,6 +175,9 @@ function _getNonEliteArrays(ctx: EnemySpawnCtx): ReadonlyArray<ReadonlyArray<Buf
     ctx.nullstoneEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.fracterylEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.eigensteinEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.polyominoEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.fissilePolyominoEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.refractorPolyominoEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.stardustEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.dustWispEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.ribbonWormEnemies as ReadonlyArray<BuffableEnemy>,
@@ -528,6 +542,60 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     const _stardust = makeStardustEnemy(spawnX, spawnY, wn, widthPx, heightPx);
     ctx.stardustEnemies.push(_stardust);
     _onNonEliteSpawned(ctx, _stardust, spawnX, spawnY);
+  } else if (enemyTypeId === 'verdure_polyomino') {
+    const half = 20;
+    do {
+      spawnX = half + Math.random() * (widthPx - half * 2);
+      spawnY = half + Math.random() * (heightPx - half * 2);
+      const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
+      attempts++;
+    } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
+    const e = makePolyominoEnemy(spawnX, spawnY, wn);
+    ctx.polyominoEnemies.push(e);
+    _onNonEliteSpawned(ctx, e, spawnX, spawnY);
+  } else if (enemyTypeId === 'verdure_polyomino_fissile') {
+    const half = 20;
+    do {
+      spawnX = half + Math.random() * (widthPx - half * 2);
+      spawnY = half + Math.random() * (heightPx - half * 2);
+      const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
+      attempts++;
+    } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
+    const e = makeFissilePolyominoEnemy(spawnX, spawnY, wn);
+    ctx.fissilePolyominoEnemies.push(e);
+    _onNonEliteSpawned(ctx, e, spawnX, spawnY);
+  } else if (enemyTypeId === 'verdure_polyomino_refractor') {
+    const half = 20;
+    do {
+      spawnX = half + Math.random() * (widthPx - half * 2);
+      spawnY = half + Math.random() * (heightPx - half * 2);
+      const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+      if (dx * dx + dy * dy >= minDist * minDist
+          && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
+          && !(wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY))) break;
+      attempts++;
+    } while (attempts < 20);
+    if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
+      const safe = getVerdureSafeFallbackSpawnPos(wallState);
+      spawnX = safe.x; spawnY = safe.y;
+    }
+    const e = makeRefractorPolyominoEnemy(spawnX, spawnY, wn);
+    ctx.refractorPolyominoEnemies.push(e);
+    _onNonEliteSpawned(ctx, e, spawnX, spawnY);
   } else if (enemyTypeId === 'boss') {
     ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx));
     ctx.enterBossWave();

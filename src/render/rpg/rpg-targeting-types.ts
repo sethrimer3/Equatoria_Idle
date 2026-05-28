@@ -35,6 +35,9 @@ import type {
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 
 export interface RpgTargetingCtx {
   mote: { x: number; y: number };
@@ -64,6 +67,9 @@ export interface RpgTargetingCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
@@ -112,6 +118,9 @@ export interface RpgTargetingCtx {
   damageFracterylEnemy: (e: FracterylEnemy, raw: number, pierce: number) => number;
   damageFracterylShard: (s: FracterylShard, raw: number, pierce: number) => number;
   damageEigensteinEnemy: (e: EigensteinEnemy, raw: number, pierce: number) => number;
+  damagePolyominoEnemy: (e: PolyominoEnemy, raw: number, pierce: number) => number;
+  damageFissilePolyominoEnemy: (e: FissilePolyominoEnemy, raw: number, pierce: number) => number;
+  damageRefractorPolyominoEnemy: (e: RefractorPolyominoEnemy, raw: number, pierce: number) => number;
   damageBinaryRingEnemy: (e: BinaryRingEnemy, raw: number, pierce: number) => number;
   damageEliteEnemy: (e: EliteEnemy, raw: number, pierce: number) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, raw: number) => number;
@@ -168,7 +177,8 @@ export interface RpgTargetingHandle {
   findClosestTarget(rangeSq: number): ClosestTarget | null;
   findClosestEnemy(rangeSq: number): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy
-    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | BinaryRingEnemy | EliteEnemy | BossEnemy
+    | NullstoneEnemy | FracterylEnemy | EigensteinEnemy | PolyominoEnemy | FissilePolyominoEnemy | RefractorPolyominoEnemy
+    | BinaryRingEnemy | EliteEnemy | BossEnemy
     | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy

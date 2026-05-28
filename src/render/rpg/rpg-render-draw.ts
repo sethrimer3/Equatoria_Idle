@@ -74,6 +74,11 @@ import {
   setLowGraphicsMode as setEliteDrawLowGraphics,
 } from './rpg-elite-enemy-draw';
 import { drawStardustEnemies, setLowGraphicsMode as setStardustDrawLowGraphics } from './rpg-stardust-draw';
+import {
+  drawPolyominoEnemies,
+  drawFissilePolyominoEnemies,
+  drawRefractorPolyominoEnemies,
+} from './polyomino-enemy-draw';
 import type {
   RpgMote, RpgJoystick, RpgPhase,
   HitEffect, ShotLine, DamageNumber, DeathParticle,
@@ -106,6 +111,9 @@ import type {
 } from './rpg-procedural-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { BinaryRingEnemy, BinaryRingMissile } from './rpg-binary-ring-encounter';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import { drawNadirCubeEncounter, setNadirCubeLowGraphics } from './nadir-cube-point-draw';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import type { NadirCubeProjectionState } from '../background/nadir-cube-projection';
@@ -205,6 +213,9 @@ export interface RpgDrawCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   binaryRingMissiles: BinaryRingMissile[];
   nadirCubePointEnemies: NadirCubePointEnemy[];
@@ -760,6 +771,9 @@ export function drawRpgFrame(
   drawEigensteinEnemies(canvas2d, ctx.eigensteinEnemies);
   drawEigensteinBeams(canvas2d, ctx.eigensteinBeams, widthPx, heightPx);
   drawEliteEnemies(canvas2d, ctx.eliteEnemies);
+  drawPolyominoEnemies(canvas2d, ctx.polyominoEnemies, nowMs);
+  drawFissilePolyominoEnemies(canvas2d, ctx.fissilePolyominoEnemies, nowMs);
+  drawRefractorPolyominoEnemies(canvas2d, ctx.refractorPolyominoEnemies, nowMs);
   drawEmpowerParticles(canvas2d, widthPx, heightPx);
   drawStardustEnemies(canvas2d, ctx.stardustEnemies);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);

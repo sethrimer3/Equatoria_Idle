@@ -832,6 +832,22 @@
 - Imports `RpgEnemyCtx` from `rpg-enemy-updates.ts`; follows identical contract.
 - Split from `rpg-enemy-updates.ts` to keep that file under ~650 lines.
 
+### src/render/rpg/polyomino-enemy-types.ts
+- Type definitions for Verdure polyomino elites: `PolyominoCell`, `PolyominoEnemy`, `FissilePolyominoEnemy`, `RefractorPolyominoEnemy`, and `PolyominoLaser`.
+
+### src/render/rpg/polyomino-enemy-factories.ts
+- Factories and shared helpers for Verdure polyomino variants.
+- Exports movement/fade tuning constants and helpers: `buildPolyominoSeedCells`, `stepPolyomino`, and `getPolyominoCellWorldPos`.
+- Exports factories: `makePolyominoEnemy`, `makeFissilePolyominoEnemy`, `makeRefractorPolyominoEnemy`.
+
+### src/render/rpg/polyomino-enemy-update.ts
+- Per-frame update logic for Verdure polyomino variants.
+- Handles grid-step movement, cell fade lifecycle, centroid refresh, contact damage, fissile split behavior, and refractor laser spawn/hit checks.
+
+### src/render/rpg/polyomino-enemy-draw.ts
+- Draw helpers for Verdure polyomino variants.
+- Renders per-cell fade-in/out squares, hit-flash borders, and refractor cardinal laser beams.
+
 ### src/render/rpg/rpg-enemy-updates-adv.ts
 - Re-export barrel (~20 lines); re-exports all functions from `rpg-enemy-updates-adv-early.ts` and `rpg-enemy-updates-adv-late.ts` for backward compatibility.
 
@@ -1985,6 +2001,10 @@ Audio system — eight focused modules:
 - Imports `STANDARD_WAVE_ENEMY_IDS`, `PROCEDURAL_WAVE_ENEMY_IDS`, `ELITE_WAVE_ENEMY_IDS` from `wave-definitions.ts`.
 - Intentional exclusion: `'boss'` (boss entries live in `BOSS_DESCRIPTIONS`).
 - Fails loudly with wave number and ID when a real type is missing.
+
+### src/render/rpg/__tests__/verdure-polyomino-wave.test.ts
+- Regression tests for Verdure wave generation.
+- Verifies `getZoneWaveDefinition` uses only polyomino variants on multiples of 10 and keeps the normal procedural pool on non-elite Verdure waves.
 
 #### Stardust (Particle Cloud Elite — Build 109+)
 - **rpg-stardust-factories.ts** — Factory functions for creating Stardust enemies. Exports getStardustParticleCount (scales 6→40 particles over 120 waves) and makeStardustEnemy (initializes particle cloud with random drift velocities and rainbow hue offsets).

@@ -322,11 +322,15 @@ import type {
   SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 
 export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' | 'ambershard' | 'void'
   | 'quartz' | 'quartzspike' | 'ruby' | 'rubybolt' | 'sunstone' | 'citrine' | 'citrinebolt'
   | 'iolite' | 'amethyst' | 'amethystshard' | 'diamond' | 'diamondshard' | 'nullstone' | 'voidtendril'
   | 'fracteryl' | 'fracterylshard' | 'eigenstein'
+  | 'verdure_polyomino' | 'verdure_polyomino_fissile' | 'verdure_polyomino_refractor'
   | 'elite'
   | 'aliven_particle'
   | 'boss'
@@ -368,6 +372,9 @@ export interface ClosestTarget {
   fracteryl?: FracterylEnemy;
   fracterylshard?: FracterylShard;
   eigenstein?: EigensteinEnemy;
+  polyomino?: PolyominoEnemy;
+  fissilePolyomino?: FissilePolyominoEnemy;
+  refractorPolyomino?: RefractorPolyominoEnemy;
   elite?: EliteEnemy;
   /** AlivenParticle individual particle (aliven_particle targets). */
   alivenParticle?: AlivenParticle;

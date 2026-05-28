@@ -139,6 +139,9 @@ export const RPG_ZONE_DEFINITIONS: RpgZoneDefinition[] = [
       'proc_spidercrawler',
       'proc_clothghost',
       'proc_eyestalk',
+      'verdure_polyomino',
+      'verdure_polyomino_fissile',
+      'verdure_polyomino_refractor',
     ],
   },
   {

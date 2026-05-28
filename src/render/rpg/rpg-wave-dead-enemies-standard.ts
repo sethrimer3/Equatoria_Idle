@@ -47,6 +47,7 @@ export function sweepStandardDeadEnemies(
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
+    polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -228,6 +229,33 @@ export function sweepStandardDeadEnemies(
       addKill('eigenstein');
       rpgSimState.lifetimeLateEnemyKills++;
       eigensteinEnemies.splice(i, 1);
+    }
+  }
+  for (let i = polyominoEnemies.length - 1; i >= 0; i--) {
+    if (polyominoEnemies[i].hp <= 0) {
+      fluid.addExplosion(polyominoEnemies[i].x, polyominoEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.7, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * 2.2;
+      trySpawnLuckyMote(luckyMotes, 'verdure_polyomino', polyominoEnemies[i].x, polyominoEnemies[i].y, getCachedLuckPercent());
+      addKill('verdure_polyomino');
+      polyominoEnemies.splice(i, 1);
+    }
+  }
+  for (let i = fissilePolyominoEnemies.length - 1; i >= 0; i--) {
+    if (fissilePolyominoEnemies[i].hp <= 0) {
+      fluid.addExplosion(fissilePolyominoEnemies[i].x, fissilePolyominoEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.9, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * 2.6;
+      trySpawnLuckyMote(luckyMotes, 'verdure_polyomino_fissile', fissilePolyominoEnemies[i].x, fissilePolyominoEnemies[i].y, getCachedLuckPercent());
+      addKill('verdure_polyomino_fissile');
+      fissilePolyominoEnemies.splice(i, 1);
+    }
+  }
+  for (let i = refractorPolyominoEnemies.length - 1; i >= 0; i--) {
+    if (refractorPolyominoEnemies[i].hp <= 0) {
+      fluid.addExplosion(refractorPolyominoEnemies[i].x, refractorPolyominoEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 2.0, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * 2.8;
+      trySpawnLuckyMote(luckyMotes, 'verdure_polyomino_refractor', refractorPolyominoEnemies[i].x, refractorPolyominoEnemies[i].y, getCachedLuckPercent());
+      addKill('verdure_polyomino_refractor');
+      refractorPolyominoEnemies.splice(i, 1);
     }
   }
 

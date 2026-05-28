@@ -43,6 +43,9 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.nullstone) return ctx.damageNullstoneEnemy(target.nullstone, rawDamage, defPierceRatio);
     if (target.fracteryl) return ctx.damageFracterylEnemy(target.fracteryl, rawDamage, defPierceRatio);
     if (target.eigenstein) return ctx.damageEigensteinEnemy(target.eigenstein, rawDamage, defPierceRatio);
+    if (target.polyomino) return ctx.damagePolyominoEnemy(target.polyomino, rawDamage, defPierceRatio);
+    if (target.fissilePolyomino) return ctx.damageFissilePolyominoEnemy(target.fissilePolyomino, rawDamage, defPierceRatio);
+    if (target.refractorPolyomino) return ctx.damageRefractorPolyominoEnemy(target.refractorPolyomino, rawDamage, defPierceRatio);
     if (target.binaryRing) return ctx.damageBinaryRingEnemy(target.binaryRing, rawDamage, defPierceRatio);
     if (target.nadirCubePoint) return ctx.damageNadirCubePointEnemy(target.nadirCubePoint, rawDamage, defPierceRatio);
     if (target.elite) return ctx.damageEliteEnemy(target.elite, rawDamage, defPierceRatio);

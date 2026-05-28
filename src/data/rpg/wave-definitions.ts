@@ -586,6 +586,21 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
   if (zoneId === 'euhedral') {
     return getWaveDefinition(waveNumber);
   }
+  if (zoneId === 'verdure' && waveNumber > 0 && waveNumber % 10 === 0) {
+    const tier = Math.max(1, Math.floor(waveNumber / 10));
+    const baseCount = Math.min(2 + tier, 7);
+    const fissileCount = Math.min(1 + Math.floor(tier / 2), 4);
+    const refractorCount = Math.min(1 + Math.floor((tier + 1) / 2), 4);
+    const baseDelay = Math.max(120, 520 - tier * 26);
+    return {
+      waveNumber,
+      spawns: [
+        { enemyTypeId: 'verdure_polyomino', count: baseCount, spawnDelay: baseDelay },
+        { enemyTypeId: 'verdure_polyomino_fissile', count: fissileCount, spawnDelay: baseDelay + 180 },
+        { enemyTypeId: 'verdure_polyomino_refractor', count: refractorCount, spawnDelay: baseDelay + 340 },
+      ],
+    };
+  }
 
   const zoneDef = RPG_ZONE_BY_ID.get(zoneId);
   if (!zoneDef || zoneDef.enemyIds.length === 0) {

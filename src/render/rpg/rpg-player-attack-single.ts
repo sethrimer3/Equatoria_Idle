@@ -34,7 +34,8 @@ export function performSingleAttack(
     damageSunstoneEnemy, damageCitrineEnemy, damageCitrineBolt, damageIoliteEnemy,
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy, damageDiamondShard,
     damageNullstoneEnemy, damageVoidTendril, damageFracterylEnemy, damageFracterylShard,
-    damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
+    damageEigensteinEnemy, damagePolyominoEnemy, damageFissilePolyominoEnemy, damageRefractorPolyominoEnemy,
+    damageEliteEnemy, damageBossEnemy,
     spawnHitVisuals, spawnHitVisualsAt, findClosestTarget,
   } = ctx;
 
@@ -122,6 +123,18 @@ export function performSingleAttack(
     const dmg = damageEigensteinEnemy(closestT.eigenstein, rawDamage, defPierceRatio);
     spawnHitVisualsAt(closestT.eigenstein.x, closestT.eigenstein.y, closestT.eigenstein.maxHp, dmg,
       isPiercing ? piercingColor : EIGENSTEIN_ENEMY_GLOW, effectiveSourceColor);
+  } else if (closestT.polyomino) {
+    const dmg = damagePolyominoEnemy(closestT.polyomino, rawDamage, defPierceRatio);
+    spawnHitVisualsAt(closestT.x, closestT.y, closestT.polyomino.maxHp, dmg,
+      isPiercing ? piercingColor : '#52b788', effectiveSourceColor);
+  } else if (closestT.fissilePolyomino) {
+    const dmg = damageFissilePolyominoEnemy(closestT.fissilePolyomino, rawDamage, defPierceRatio);
+    spawnHitVisualsAt(closestT.x, closestT.y, closestT.fissilePolyomino.maxHp, dmg,
+      isPiercing ? piercingColor : '#e9c46a', effectiveSourceColor);
+  } else if (closestT.refractorPolyomino) {
+    const dmg = damageRefractorPolyominoEnemy(closestT.refractorPolyomino, rawDamage, defPierceRatio);
+    spawnHitVisualsAt(closestT.x, closestT.y, closestT.refractorPolyomino.maxHp, dmg,
+      isPiercing ? piercingColor : '#00f5d4', effectiveSourceColor);
   } else if (closestT.elite) {
     const dmg = damageEliteEnemy(closestT.elite, rawDamage, defPierceRatio);
     spawnHitVisualsAt(closestT.elite.x, closestT.elite.y, closestT.elite.maxHp, dmg,

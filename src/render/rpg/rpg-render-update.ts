@@ -34,6 +34,9 @@ import type {
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
   FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
 import type { EliteEnemyCtx } from './rpg-elite-enemy-updates';
@@ -86,6 +89,11 @@ import {
   updateBinaryLaserSweep,
 } from './rpg-binary-ring-encounter';
 import { updateStardustEnemies } from './rpg-stardust-update';
+import {
+  updatePolyominoEnemies,
+  updateFissilePolyominoEnemies,
+  updateRefractorPolyominoEnemies,
+} from './polyomino-enemy-update';
 import { updateBossEnemy, updateBossProjectiles } from './rpg-boss-update';
 import { updateBossAttacks } from './rpg-boss-attack-update';
 import { updateOrbitProjectile } from './rpg-orbit-projectile';
@@ -142,6 +150,9 @@ export interface RpgEnemyUpdateArrays {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   binaryRingMissiles: BinaryRingMissile[];
   nadirCubePointEnemies: NadirCubePointEnemy[];
@@ -351,6 +362,9 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   updateEigensteinEnemies(a.eigensteinEnemies, a.eigensteinBeams, ctx.enemyCtx, deltaMs);
   updateEigensteinBeams(a.eigensteinBeams, ctx.enemyCtx, deltaMs);
   updateEliteEnemies(a.eliteEnemies, ctx.eliteEnemyCtx, deltaMs);
+  updatePolyominoEnemies(a.polyominoEnemies, ctx.enemyCtx, deltaMs, nowMs);
+  updateFissilePolyominoEnemies(a.fissilePolyominoEnemies, ctx.enemyCtx, deltaMs, nowMs);
+  updateRefractorPolyominoEnemies(a.refractorPolyominoEnemies, ctx.enemyCtx, deltaMs, nowMs);
 
   if (ctx.rpgSimState.activeZoneId === 'horizon' && ctx.rpgSimState.activeSubzoneId === 'zenith' && !ctx.getIsBossWaveActive()) {
     if (a.binaryRingEnemies.length === 0 && ctx.getCurrentWave() % 10 === 0 && !ctx.getIsInterWave()) {
