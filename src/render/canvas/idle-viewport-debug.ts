@@ -1,16 +1,16 @@
 /**
  * idle-viewport-debug.ts — Developer-mode viewport diagnostic overlay.
  *
- * Draws a small info panel in the top-right corner of the game canvas that
- * shows the key dimensions of the Equation / Idle viewport so it is easy to
- * verify that logical coordinates stay stable across resize and zoom events.
+ * Draws a small info panel in the top-right corner of the game canvas showing
+ * the full viewport chain so it is easy to verify that canvas fills the
+ * available container and the DPR backing is correct.
  *
  * Displayed information:
- *   - Logical size (always IDLE_LOGICAL_WIDTH × IDLE_LOGICAL_HEIGHT)
- *   - Canvas backing size (canvas.width × canvas.height — matches logical)
- *   - Game-area CSS size (the letterboxed display size in CSS pixels)
+ *   - Container CSS size (the #canvas-container available area)
+ *   - Game-area CSS size (should match container — warns if not)
+ *   - Canvas backing size (physical pixels = CSS × DPR)
+ *   - widthPx × heightPx (world / CSS-pixel coordinate space)
  *   - devicePixelRatio
- *   - Render scale (CSS size / logical size, both axes)
  *
  * Usage: call drawIdleViewportDebug(cc) once per frame when dev mode is on.
  */
@@ -21,11 +21,13 @@ import type { CanvasContext } from './game-canvas';
 const BG = 'rgba(0,0,0,0.65)';
 /** Text colour. */
 const FG = '#00ff99';
+/** Warning colour — used when canvas doesn't fill the container. */
+const WARN = '#ff4444';
 /** Font used for debug text. */
 const FONT = '8px monospace';
-/** Padding inside the debug box (logical px). */
+/** Padding inside the debug box (CSS px). */
 const PAD = 4;
-/** Line height for debug text rows (logical px). */
+/** Line height for debug text rows (CSS px). */
 const LINE_H = 10;
 
 export function drawIdleViewportDebug(cc: CanvasContext): void {
@@ -34,25 +36,30 @@ export function drawIdleViewportDebug(cc: CanvasContext): void {
   const backingW = canvas.width;
   const backingH = canvas.height;
 
-  const cssW = gameArea.clientWidth;
-  const cssH = gameArea.clientHeight;
+  const areaW = gameArea.clientWidth;
+  const areaH = gameArea.clientHeight;
+
+  const containerW = gameArea.parentElement?.clientWidth ?? 0;
+  const containerH = gameArea.parentElement?.clientHeight ?? 0;
 
   const dpr = window.devicePixelRatio ?? 1;
 
-  // Render scale: how many CSS pixels correspond to one logical pixel.
-  const scaleX = cssW > 0 ? (cssW / widthPx).toFixed(3) : '?';
-  const scaleY = cssH > 0 ? (cssH / heightPx).toFixed(3) : '?';
+  // Warn if the game-area is narrower than the container (canvas not filling).
+  const widthMismatch = containerW > 0 && Math.abs(areaW - containerW) > 2;
 
-  const lines = [
-    `[Idle Viewport Debug]`,
-    `logical : ${widthPx} × ${heightPx}`,
-    `backing : ${backingW} × ${backingH}`,
-    `css     : ${cssW} × ${cssH}`,
-    `dpr     : ${dpr.toFixed(2)}`,
-    `scale   : ${scaleX} × ${scaleY}`,
+  const lines: Array<{ text: string; warn?: boolean }> = [
+    { text: `[Idle Viewport Debug]` },
+    { text: `container: ${containerW} × ${containerH}` },
+    { text: `game-area: ${areaW} × ${areaH}`, warn: widthMismatch },
+    { text: `backing  : ${backingW} × ${backingH}` },
+    { text: `world px : ${widthPx} × ${heightPx}` },
+    { text: `dpr      : ${dpr.toFixed(2)}` },
   ];
+  if (widthMismatch) {
+    lines.push({ text: `⚠ area < container!`, warn: true });
+  }
 
-  const boxW = 140;
+  const boxW = 148;
   const boxH = PAD * 2 + lines.length * LINE_H;
   const boxX = widthPx - boxW - 2;
   const boxY = 2;
@@ -63,12 +70,12 @@ export function drawIdleViewportDebug(cc: CanvasContext): void {
   ctx.fillRect(boxX, boxY, boxW, boxH);
 
   ctx.font = FONT;
-  ctx.fillStyle = FG;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
 
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], boxX + PAD, boxY + PAD + i * LINE_H);
+    ctx.fillStyle = lines[i].warn ? WARN : FG;
+    ctx.fillText(lines[i].text, boxX + PAD, boxY + PAD + i * LINE_H);
   }
 
   ctx.restore();

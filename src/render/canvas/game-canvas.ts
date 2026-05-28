@@ -1,51 +1,54 @@
 /**
- * Manages the low-resolution game canvas and its upscaled presentation.
+ * Manages the game canvas and its full-width presentation.
  *
- * The Equation / Idle render uses a fixed logical coordinate space.
- * All gameplay positions (generators, looms, particles) live in this
- * stable space regardless of window size, browser zoom, or devicePixelRatio.
+ * The Equation / Idle render uses the full available container width.
+ * `#game-area` is sized to fill the container exactly, and the canvas backing
+ * store is set to the container CSS size multiplied by devicePixelRatio for
+ * crisp rendering on HiDPI screens.
  *
- * The canvas is placed inside a `#game-area` wrapper div that is sized in
- * CSS pixels by `resizeCanvas` to fit the available container while
- * preserving the logical aspect ratio (letterboxing / pillarboxing).
+ * All draw calls use CSS-pixel coordinates (widthPx × heightPx).
+ * `resetCanvasRenderState` applies a DPR scale transform so that every pixel
+ * address in draw calls maps to a physical backing pixel.
  *
  * Coordinate systems:
- *   - Logical / world: IDLE_LOGICAL_WIDTH × IDLE_LOGICAL_HEIGHT px.
- *                      All game state lives here.  Never changes.
- *   - Canvas backing: same as logical (canvas.width / canvas.height).
- *                     The canvas always renders at the fixed logical size.
- *   - CSS / screen:   the game-area wrapper is sized by resizeCanvas to
- *                     fit the container with preserved aspect ratio.
- *                     Input events are converted from CSS → logical via
- *                     canvasCoordsFromPointerEvent in game-app-canvas-input.ts.
+ *   - CSS / world: widthPx × heightPx px (= container CSS size, updates on resize).
+ *                  All game state (generators, looms, particles) lives here.
+ *   - Canvas backing: widthPx × DPR by heightPx × DPR (physical backing pixels).
+ *                     Set by resizeCanvas whenever the container changes.
+ *   - Input events:   already in CSS-pixel space; canvasCoordsFromPointerEvent
+ *                     converts them to world coords via cc.widthPx / rect.width.
+ *
+ * Fallback constants — used as default world dimensions before first resize:
  */
 
-/** Fixed logical width of the Equation/Idle game world in canvas pixels. */
+/** Fallback logical width (used before first resize). */
 export const IDLE_LOGICAL_WIDTH = 320;
-/**
- * Fixed logical height of the Equation/Idle game world in canvas pixels.
- * Chosen for a ~1:2 (portrait) aspect ratio that fills typical phone screens
- * with minimal letterboxing while keeping the generator ring well-centred.
- */
+/** Fallback logical height (used before first resize). */
 export const IDLE_LOGICAL_HEIGHT = 640;
 
 export interface CanvasContext {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   /**
-   * Logical game-world width — always IDLE_LOGICAL_WIDTH (320).
-   * Stable across all resize and zoom events.
+   * Current world / CSS-pixel width of the game area.
+   * Updated by `resizeCanvas` to match the container's CSS width.
+   * Defaults to IDLE_LOGICAL_WIDTH before the first resize.
    */
   widthPx: number;
   /**
-   * Logical game-world height — always IDLE_LOGICAL_HEIGHT (640).
-   * Stable across all resize and zoom events.
+   * Current world / CSS-pixel height of the game area.
+   * Updated by `resizeCanvas` to match the container's CSS height.
+   * Defaults to IDLE_LOGICAL_HEIGHT before the first resize.
    */
   heightPx: number;
   /**
+   * Device pixel ratio captured during the last `resizeCanvas` call.
+   * Used by `resetCanvasRenderState` to apply the DPR scale transform.
+   */
+  dpr: number;
+  /**
    * The `#game-area` wrapper element that contains the canvas and HUD overlay.
-   * Its CSS dimensions are updated by `resizeCanvas` for letterbox / pillarbox
-   * scaling, while the canvas backing store stays fixed at the logical size.
+   * Its CSS dimensions are updated by `resizeCanvas` to fill the container.
    */
   gameArea: HTMLElement;
 }
@@ -55,11 +58,12 @@ export interface CanvasContext {
  *
  * DOM structure produced:
  *   container
- *     └─ #game-area          ← sized in CSS px by resizeCanvas (letterboxing)
- *          ├─ #game-canvas   ← backing store always IDLE_LOGICAL_WIDTH × IDLE_LOGICAL_HEIGHT
+ *     └─ #game-area          ← fills container (100 % × 100 %) via resizeCanvas
+ *          ├─ #game-canvas   ← backing = widthPx×DPR × heightPx×DPR (updated on resize)
  *          └─ (HUD overlay appended by caller)
  *
- * Returns the rendering context with stable logical dimensions.
+ * Returns the rendering context.  `widthPx` and `heightPx` reflect the
+ * container CSS size after the initial `resizeCanvas` call.
  */
 export function createGameCanvas(container: HTMLElement): CanvasContext {
   const gameArea = document.createElement('div');
@@ -68,19 +72,15 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
 
   const canvas = document.createElement('canvas');
   canvas.id = 'game-canvas';
-  // Fixed logical / backing size — never changes after this point.
-  canvas.width = IDLE_LOGICAL_WIDTH;
-  canvas.height = IDLE_LOGICAL_HEIGHT;
-  gameArea.appendChild(canvas);
-
-  // Canvas fills its #game-area wrapper exactly.
+  // Backing size set by resizeCanvas — no fixed size here.
   canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  canvas.style.imageRendering = 'pixelated';
+  // No pixelated upscaling — the backing now matches the CSS size × DPR.
   // Prevent browser from claiming touch events for scrolling/panning,
   // which would fire pointercancel and break mote dragging on mobile.
   canvas.style.touchAction = 'none';
+  gameArea.appendChild(canvas);
 
   const ctx = canvas.getContext('2d')!;
 
@@ -89,6 +89,7 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
     ctx,
     widthPx: IDLE_LOGICAL_WIDTH,
     heightPx: IDLE_LOGICAL_HEIGHT,
+    dpr: window.devicePixelRatio || 1,
     gameArea,
   };
   resizeCanvas(cc, container);
@@ -96,42 +97,49 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
 }
 
 /**
- * Fit the `#game-area` wrapper inside the container while preserving the
- * logical aspect ratio (IDLE_LOGICAL_WIDTH : IDLE_LOGICAL_HEIGHT).
+ * Expand `#game-area` to fill the container and update the canvas backing
+ * store to `containerW × DPR by containerH × DPR` physical pixels.
  *
- * Only the CSS dimensions of `#game-area` change — the canvas backing store
- * and all game-world coordinates remain completely unchanged.  This means
- * no gameplay state (particles, generators, looms) drifts when the window
- * is resized or browser zoom changes.
- *
- * If the container is wider than the logical aspect the game is pillarboxed;
- * if it is taller the game is letterboxed.
+ * After this call:
+ *   - `cc.widthPx / cc.heightPx` equal the container's CSS dimensions.
+ *   - The canvas backing is the HiDPI equivalent of those CSS dimensions.
+ *   - `resetCanvasRenderState` will apply a DPR scale so all draw calls can
+ *     use CSS-pixel coordinates directly.
  */
 export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   const containerW = container.clientWidth;
   const containerH = container.clientHeight;
   if (containerW <= 0 || containerH <= 0) return;
 
-  // Aspect-ratio preserving scale: largest uniform scale that fits both axes.
-  const scaleX = containerW / IDLE_LOGICAL_WIDTH;
-  const scaleY = containerH / IDLE_LOGICAL_HEIGHT;
-  const scale = Math.min(scaleX, scaleY);
+  const dpr = window.devicePixelRatio || 1;
 
-  const displayW = Math.floor(IDLE_LOGICAL_WIDTH * scale);
-  const displayH = Math.floor(IDLE_LOGICAL_HEIGHT * scale);
+  // Size #game-area to fill the full container (no pillarboxing).
+  cc.gameArea.style.width  = `${containerW}px`;
+  cc.gameArea.style.height = `${containerH}px`;
 
-  cc.gameArea.style.width = `${displayW}px`;
-  cc.gameArea.style.height = `${displayH}px`;
+  // Update world / CSS-pixel dimensions.
+  cc.widthPx  = containerW;
+  cc.heightPx = containerH;
+  cc.dpr      = dpr;
 
-  // widthPx / heightPx are intentionally NOT updated here.
-  // All game-world positions are expressed in logical coordinates and
-  // must never change as a result of a resize event.
+  // Resize the physical backing store to match.
+  const backingW = Math.round(containerW * dpr);
+  const backingH = Math.round(containerH * dpr);
+  if (cc.canvas.width  !== backingW) cc.canvas.width  = backingW;
+  if (cc.canvas.height !== backingH) cc.canvas.height = backingH;
 }
 
-/** Restore baseline 2D state before a full-frame render pass. */
+/**
+ * Restore baseline 2D state before a full-frame render pass.
+ *
+ * Applies a DPR scale transform so that all subsequent draw calls can use
+ * CSS-pixel coordinates (widthPx × heightPx) without knowing the physical
+ * backing size.
+ */
 export function resetCanvasRenderState(cc: CanvasContext): void {
   const ctx = cc.ctx;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const dpr = cc.dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
   ctx.shadowBlur = 0;

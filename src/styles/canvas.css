@@ -55,15 +55,14 @@
 }
 
 /*
- * #game-area — the letterboxed / pillarboxed game viewport.
+ * #game-area — the full-width game viewport.
  *
- * Its CSS width and height are computed by resizeCanvas() in game-canvas.ts
- * to maintain the fixed 320×640 logical aspect ratio while filling as much
- * of #canvas-container as possible.
+ * Its CSS width and height are set by resizeCanvas() in game-canvas.ts to
+ * fill the #canvas-container exactly (no letterboxing or pillarboxing).
  *
  * Both the game canvas AND the HUD overlay (#hud-overlay) are children of
  * this element so that percentage-based HUD positions (generator equation
- * labels) map correctly to logical canvas coordinates at all window sizes.
+ * labels) map correctly to canvas coordinates at all window sizes.
  */
 #game-area {
   position: relative;
@@ -76,9 +75,9 @@
  * The RPG canvas container sits above the stats panel (3×tab-height) and the
  * tab bar (1×tab-height + safe-bottom), so its height excludes both.
  *
- * Using flexbox here centres the fixed-aspect-ratio canvas within the
- * available space, producing clean letterboxing/pillarboxing on desktop
- * instead of stretching the canvas to fill the container.
+ * #rpg-area fills the full container — no letterboxing.  The safe-core
+ * transform applied in drawRpgFrame() centres the 360×640 game world within
+ * the full canvas; any extra space shows the background fill (#0a0a12).
  */
 #rpg-container {
   position: absolute;
@@ -95,12 +94,9 @@
 }
 
 /*
- * #rpg-area is the aspect-ratio-preserving wrapper for the RPG canvas.
- * Its CSS width × height are set by resizeRpgArea() (inside doResize()) to be
- * the largest rectangle that fits #rpg-container while maintaining the fixed
- * RPG_LOGICAL_WIDTH : RPG_LOGICAL_HEIGHT aspect ratio (9:16).
- * #rpg-container is a flex container centred in both axes, so #rpg-area is
- * automatically letterboxed or pillarboxed within it.
+ * #rpg-area fills the full #rpg-container (width × height set by doResize()).
+ * The canvas backing store is widthPx×DPR by heightPx×DPR (HiDPI-aware).
+ * A safe-core transform in drawRpgFrame() centres the 360×640 game world.
  */
 #rpg-area {
   position: relative;
@@ -110,16 +106,13 @@
 
 /*
  * The RPG canvas fills its #rpg-area wrapper 100%×100%.
- * Its backing store is always RPG_LOGICAL_WIDTH × RPG_LOGICAL_HEIGHT pixels
- * (currently 360×640), set once in createRpgRender() and never changed at
- * runtime.  CSS scaling by the browser handles display at any window size.
+ * Its backing store is updated on every resize to CSS size × DPR, so
+ * no pixelated upscaling is needed.
  */
 #rpg-canvas {
   display: block;
   width: 100%;
   height: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   touch-action: none;
 }
 
