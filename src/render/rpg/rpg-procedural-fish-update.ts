@@ -152,15 +152,15 @@ function schoolSwimStep(
   // ── 5. Edge avoidance ─────────────────────────────────────────────────────
   let edgeX = 0, edgeY = 0;
   const em = FISH_SCHOOL_EDGE_MARGIN;
-  if (e.x < em) {
-    edgeX += (em - e.x) / em;
-  } else if (e.x > ctx.dim.w - em) {
-    edgeX -= (e.x - (ctx.dim.w - em)) / em;
+  if (e.x < ctx.viewport.left + em) {
+    edgeX += (ctx.viewport.left + em - e.x) / em;
+  } else if (e.x > ctx.viewport.right - em) {
+    edgeX -= (e.x - (ctx.viewport.right - em)) / em;
   }
-  if (e.y < em) {
-    edgeY += (em - e.y) / em;
-  } else if (e.y > ctx.dim.h - em) {
-    edgeY -= (e.y - (ctx.dim.h - em)) / em;
+  if (e.y < ctx.viewport.top + em) {
+    edgeY += (ctx.viewport.top + em - e.y) / em;
+  } else if (e.y > ctx.viewport.bottom - em) {
+    edgeY -= (e.y - (ctx.viewport.bottom - em)) / em;
   }
 
   // ── 6. Terrain anticipation ───────────────────────────────────────────────
@@ -434,8 +434,8 @@ export function updateAmethystFishEnemies(
       decoys.push(makeFishDecoy(e.x, e.y, e.swimAngle, e.animPhase));
       const angle = Math.random() * Math.PI * 2;
       const dist = 48 + Math.random() * 28;
-      e.x = Math.max(10, Math.min(ctx.dim.w - 10, ctx.mote.x + Math.cos(angle) * dist));
-      e.y = Math.max(10, Math.min(ctx.dim.h - 10, ctx.mote.y + Math.sin(angle) * dist));
+      e.x = Math.max(ctx.viewport.left + 10, Math.min(ctx.viewport.right - 10, ctx.mote.x + Math.cos(angle) * dist));
+      e.y = Math.max(ctx.viewport.top + 10, Math.min(ctx.viewport.bottom - 10, ctx.mote.y + Math.sin(angle) * dist));
       e.teleportCdMs = AMETHYSTFISH_TELEPORT_CD_MS;
     }
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), AMETHYSTFISH_SIZE / 2);

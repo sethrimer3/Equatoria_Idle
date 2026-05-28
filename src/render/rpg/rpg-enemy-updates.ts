@@ -82,6 +82,12 @@ export interface RpgEnemyCtx {
   readonly mote: { x: number; y: number; vx: number; vy: number };
   /** Current canvas dimensions — updated on resize via shared object. */
   readonly dim: { w: number; h: number };
+  /**
+   * Full visible world-space bounds — updated on every resize.
+   * Use these for spawn bounds, entity clamp/bounce, and cull checks.
+   * On a reference 360×640 device: left=0, top=0, right=360, bottom=640.
+   */
+  readonly viewport: { left: number; top: number; right: number; bottom: number };
   /** Euler fluid simulator — only addForce used by enemy update code. */
   readonly fluid: { addForce(impulse: FluidImpulse): void };
   /** Hit-flash effect array — pushed to by some enemy systems. */
@@ -283,7 +289,7 @@ export function updateEmeraldEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim, fluid } = ctx;
+  const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     // Fade ghost afterimage
@@ -305,10 +311,10 @@ export function updateEmeraldEnemies(
       enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
       // Clamp
       const half = EMERALD_ENEMY_SIZE / 2;
-      if (enemy.x < half)            { enemy.x = half;            enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-      if (enemy.x > dim.w - half)    { enemy.x = dim.w - half;    enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-      if (enemy.y < half)            { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-      if (enemy.y > dim.h - half)    { enemy.y = dim.h - half;     enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+      if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half;   enemy.vx =  Math.abs(enemy.vx) * 0.5; }
+      if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+      if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half;    enemy.vy =  Math.abs(enemy.vy) * 0.5; }
+      if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
       applyEnemyTerrainPushOut(enemy, terrain, half);
 
       // Fluid from patrol movement
@@ -341,8 +347,8 @@ export function updateEmeraldEnemies(
         enemy.y = mote.y + Math.sin(angle) * EMERALD_BLINK_OFFSET;
         // Clamp to bounds after blink
         const half = EMERALD_ENEMY_SIZE / 2;
-        enemy.x = Math.max(half, Math.min(dim.w - half, enemy.x));
-        enemy.y = Math.max(half, Math.min(dim.h - half, enemy.y));
+        enemy.x = Math.max(viewport.left + half, Math.min(viewport.right - half, enemy.x));
+        enemy.y = Math.max(viewport.top + half, Math.min(viewport.bottom - half, enemy.y));
         // Push destination out of terrain if needed
         applyEnemyTerrainPushOut(enemy, terrain, half);
         enemy.phase = 'blinking'; enemy.phaseMs = 0;
@@ -406,7 +412,7 @@ export function updateAmberEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { dim, fluid } = ctx;
+  const { fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     // Patrol
@@ -421,10 +427,10 @@ export function updateAmberEnemies(
     enemy.vx *= dampFactor; enemy.vy *= dampFactor;
     enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
     const half = AMBER_ENEMY_SIZE / 2;
-    if (enemy.x < half)         { enemy.x = half;         enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > dim.w - half) { enemy.x = dim.w - half; enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < half)         { enemy.y = half;          enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > dim.h - half) { enemy.y = dim.h - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half;   enemy.vx =  Math.abs(enemy.vx) * 0.5; }
+    if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+    if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half;    enemy.vy =  Math.abs(enemy.vy) * 0.5; }
+    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
     applyEnemyTerrainPushOut(enemy, terrain, half);
 
     // Fluid from movement
@@ -454,7 +460,7 @@ export function updateAmberShards(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim, fluid } = ctx;
+  const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
@@ -507,7 +513,8 @@ export function updateAmberShards(
 
     // Despawn if out of bounds
     const margin = 20;
-    if (s.x < -margin || s.x > dim.w + margin || s.y < -margin || s.y > dim.h + margin) {
+    if (s.x < viewport.left - margin || s.x > viewport.right + margin ||
+        s.y < viewport.top - margin  || s.y > viewport.bottom + margin) {
       shards.splice(i, 1);
     }
   }
@@ -530,7 +537,7 @@ export function updateVoidEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim, fluid } = ctx;
+  const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % VOID_AURA_PULSE_MS;
@@ -554,10 +561,10 @@ export function updateVoidEnemies(
 
     // Clamp to bounds
     const half = VOID_ENEMY_SIZE / 2;
-    if (enemy.x < half)         { enemy.x = half; }
-    if (enemy.x > dim.w - half) { enemy.x = dim.w - half; }
-    if (enemy.y < half)         { enemy.y = half; }
-    if (enemy.y > dim.h - half) { enemy.y = dim.h - half; }
+    if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half; }
+    if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half; }
+    if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half; }
+    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; }
     applyEnemyTerrainPushOut(enemy, terrain, half);
 
     // Fluid from movement

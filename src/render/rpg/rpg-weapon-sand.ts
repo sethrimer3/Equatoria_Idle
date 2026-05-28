@@ -50,6 +50,8 @@ import type { TargetCollectionOptions } from './rpg-targeting-types';
 export interface SandWeaponCtx {
   mote: { x: number; y: number };
   dim: { w: number; h: number };
+  /** Full visible world-space bounds — updated on every resize. */
+  viewport: { left: number; top: number; right: number; bottom: number };
   fluid: { addForce(impulse: FluidImpulse): void };
   readonly bossEnemy: BossEnemy | null;
   enemies: LaserEnemy[];
@@ -122,7 +124,7 @@ export interface SandWeaponHandle {
 // ── Factory ───────────────────────────────────────────────────────────────
 
 export function createSandWeaponSystem(ctx: SandWeaponCtx): SandWeaponHandle {
-  const { mote, dim, fluid } = ctx;
+  const { mote, viewport, fluid } = ctx;
 
   // ── Sand gatling projectile system ─────────────────────────────
 
@@ -167,7 +169,7 @@ export function createSandWeaponSystem(ctx: SandWeaponCtx): SandWeaponHandle {
       });
 
       // Bounds check
-      if (p.x < 0 || p.x > dim.w || p.y < 0 || p.y > dim.h) {
+      if (p.x < viewport.left || p.x > viewport.right || p.y < viewport.top || p.y > viewport.bottom) {
         sandProjectiles.splice(i, 1); continue;
       }
 

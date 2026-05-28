@@ -65,7 +65,7 @@ export function updateSapphireEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { fluid, dim } = ctx;
+  const { fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     // Patrol
@@ -81,10 +81,10 @@ export function updateSapphireEnemies(
     enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
     // Clamp to bounds
     const half = SAPPHIRE_ENEMY_SIZE / 2;
-    if (enemy.x < half)             { enemy.x = half;             enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > dim.w  - half)    { enemy.x = dim.w  - half;    enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < half)             { enemy.y = half;             enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > dim.h - half)     { enemy.y = dim.h - half;     enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half;   enemy.vx =  Math.abs(enemy.vx) * 0.5; }
+    if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+    if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half;    enemy.vy =  Math.abs(enemy.vy) * 0.5; }
+    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
     applyEnemyTerrainPushOut(enemy, terrain, half);
     const sespd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
     if (sespd > 0.04) {
@@ -112,7 +112,7 @@ export function updateSapphireMissiles(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, fluid, dim } = ctx;
+  const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = sapphireMissiles.length - 1; i >= 0; i--) {
     const m = sapphireMissiles[i];
@@ -179,7 +179,8 @@ export function updateSapphireMissiles(
 
     // Despawn if far out of bounds
     const margin = 20;
-    if (m.x < -margin || m.x > dim.w + margin || m.y < -margin || m.y > dim.h + margin) {
+    if (m.x < viewport.left - margin || m.x > viewport.right + margin ||
+        m.y < viewport.top - margin  || m.y > viewport.bottom + margin) {
       sapphireMissiles.splice(i, 1);
     }
   }

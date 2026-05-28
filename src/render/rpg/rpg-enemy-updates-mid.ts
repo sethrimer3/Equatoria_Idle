@@ -97,14 +97,14 @@ export function updateQuartzSpikes(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = spikes.length - 1; i >= 0; i--) {
     const s = spikes[i];
     const prevX = s.x, prevY = s.y;
     s.x += s.vx * dt; s.y += s.vy * dt;
     s.lifeMs -= deltaMs;
-    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h
+    if (s.lifeMs <= 0 || s.x < viewport.left || s.x > viewport.right || s.y < viewport.top || s.y > viewport.bottom
         || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, s.x, s.y))) {
       spikes.splice(i, 1); continue;
     }
@@ -171,14 +171,14 @@ export function updateRubyBolts(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = bolts.length - 1; i >= 0; i--) {
     const b = bolts[i];
     const prevX = b.x, prevY = b.y;
     b.x += b.vx * dt; b.y += b.vy * dt;
     b.lifeMs -= deltaMs;
-    if (b.lifeMs <= 0 || b.x < 0 || b.x > dim.w || b.y < 0 || b.y > dim.h
+    if (b.lifeMs <= 0 || b.x < viewport.left || b.x > viewport.right || b.y < viewport.top || b.y > viewport.bottom
         || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, b.x, b.y))) {
       bolts.splice(i, 1); continue;
     }
@@ -199,14 +199,14 @@ export function updateSunstoneEnemies(
   ctx: RpgEnemyCtx,
   deltaMs: number,
 ): void {
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   for (const enemy of enemies) {
     enemy.orbitAngle += SUNSTONE_ORBIT_SPEED * (deltaMs / 1000);
     enemy.x = mote.x + Math.cos(enemy.orbitAngle) * SUNSTONE_PREFERRED_DIST;
     enemy.y = mote.y + Math.sin(enemy.orbitAngle) * SUNSTONE_PREFERRED_DIST;
     const half = SUNSTONE_ENEMY_SIZE / 2;
-    enemy.x = Math.max(half, Math.min(dim.w - half, enemy.x));
-    enemy.y = Math.max(half, Math.min(dim.h - half, enemy.y));
+    enemy.x = Math.max(viewport.left + half, Math.min(viewport.right - half, enemy.x));
+    enemy.y = Math.max(viewport.top + half, Math.min(viewport.bottom - half, enemy.y));
     enemy.pulseTimerMs -= deltaMs;
     if (enemy.pulseTimerMs <= 0) {
       enemy.pulseTimerMs = SUNSTONE_PULSE_CD_MS + Math.random() * SUNSTONE_PULSE_JITTER;
@@ -258,7 +258,7 @@ export function updateCitrineBolts(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = bolts.length - 1; i >= 0; i--) {
     const b = bolts[i];
@@ -275,7 +275,7 @@ export function updateCitrineBolts(
     if (b.trailCount < CITRINE_BOLT_TRAIL_CAP) b.trailCount++;
     const prevX = b.x, prevY = b.y;
     b.x += b.vx * dt; b.y += b.vy * dt;
-    if (b.x < 0 || b.x > dim.w || b.y < 0 || b.y > dim.h
+    if (b.x < viewport.left || b.x > viewport.right || b.y < viewport.top || b.y > viewport.bottom
         || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, b.x, b.y))) {
       bolts.splice(i, 1); continue;
     }

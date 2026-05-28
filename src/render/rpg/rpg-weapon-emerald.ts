@@ -44,6 +44,7 @@ import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } fro
 export interface EmeraldWeaponCtx {
   mote: { x: number; y: number };
   dim: { w: number; h: number };
+  viewport: { left: number; top: number; right: number; bottom: number };
   fluid: {
     addForce(impulse: FluidImpulse): void;
     addExplosion(x: number, y: number, strength: number, r: number, g: number, b: number): void;
@@ -108,7 +109,7 @@ export interface EmeraldWeaponHandle {
 
 export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponHandle {
   const {
-    mote, dim, fluid,
+    mote, viewport, fluid,
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies,
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
@@ -254,10 +255,10 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       }
 
       // Wall bounce — reflect off all four edges.
-      if (m.x < 0)         { m.x = 0;         m.vx =  Math.abs(m.vx); }
-      else if (m.x > dim.w)  { m.x = dim.w;  m.vx = -Math.abs(m.vx); }
-      if (m.y < 0)         { m.y = 0;         m.vy =  Math.abs(m.vy); }
-      else if (m.y > dim.h) { m.y = dim.h; m.vy = -Math.abs(m.vy); }
+      if (m.x < viewport.left)        { m.x = viewport.left;   m.vx =  Math.abs(m.vx); }
+      else if (m.x > viewport.right)  { m.x = viewport.right;  m.vx = -Math.abs(m.vx); }
+      if (m.y < viewport.top)         { m.y = viewport.top;    m.vy =  Math.abs(m.vy); }
+      else if (m.y > viewport.bottom) { m.y = viewport.bottom; m.vy = -Math.abs(m.vy); }
 
       // Trail update.
       m.trailX[m.trailHead] = m.x; m.trailY[m.trailHead] = m.y;

@@ -54,6 +54,8 @@ import type {
 
 export interface WaveManagerCtx {
   dim: { w: number; h: number };
+  /** Full visible world-space bounds — updated on every resize. */
+  viewport: { left: number; top: number; right: number; bottom: number };
   mote: { x: number; y: number };
   rpgSimState: RpgSimState;
 
