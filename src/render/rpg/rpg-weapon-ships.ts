@@ -80,6 +80,8 @@ function getTargetMaxHp(target: ClosestTarget): number {
 export interface ShipWeaponCtx {
   mote: { x: number; y: number };
   dim: { w: number; h: number };
+  /** Full visible world-space bounds — updated on every resize. */
+  viewport: { left: number; top: number; right: number; bottom: number };
   rpgSimState: RpgSimState;
   playerStats: RpgPlayerStats;
   hitEffects: HitEffect[];
@@ -123,7 +125,7 @@ export interface ShipWeaponHandle {
 
 export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
   const {
-    mote, dim, rpgSimState, playerStats, hitEffects, fluid,
+    mote, viewport, rpgSimState, playerStats, hitEffects, fluid,
     getEffectiveEquippedIds, findEquippedWeaponIdByEffect,
     findClosestEnemyFrom, getTargetedEnemy,
     damageBodyTarget, spawnDamageNumber,
@@ -296,7 +298,7 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
           continue;
         }
 
-        if (laser.lifeMs <= 0 || laser.x < -50 || laser.x > dim.w + 50 || laser.y < -50 || laser.y > dim.h + 50) {
+        if (laser.lifeMs <= 0 || laser.x < viewport.left - 50 || laser.x > viewport.right + 50 || laser.y < viewport.top - 50 || laser.y > viewport.bottom + 50) {
           sapphireLasers.splice(i, 1);
         }
       }

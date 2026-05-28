@@ -261,8 +261,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Shared dimensions box — always the fixed logical size ──────
   // Passed to rpg-enemy-updates functions via RpgEnemyCtx so they always see
   // world bounds without requiring a closure rebuild.
-  // dim.w and dim.h are NEVER updated: they represent the fixed world size.
+  // dim.w and dim.h are NEVER updated: they represent the fixed world size (safe core).
   const dim = { w: widthPx, h: heightPx };
+
+  // ── Live viewport world-space bounds — updated on every resize ──
+  // Represents the full *visible* gameplay area in world coordinates.
+  // On a 360×640 reference device: left=0, top=0, right=360, bottom=640.
+  // On a 600×640 wider canvas (scale=1.0): left=-120, top=0, right=480, bottom=640.
+  // On a 760×400 landscape canvas (scale=1.0): left=-200, top=120, right=560, bottom=520.
+  // The safe core (dim.w × dim.h = 360×640) is always centred within this rect.
+  const viewport = {
+    left:   0,
+    top:    0,
+    right:  RPG_LOGICAL_WIDTH,
+    bottom: RPG_LOGICAL_HEIGHT,
+  };
 
   // ── Euler fluid background ─────────────────────────────────────
   const fluid = createRpgFluid();
@@ -370,6 +383,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // When the canvas grows, worldViewW/H grow; the scale stays the same.
     rpgWorldViewW = containerW / rpgSafeScale;
     rpgWorldViewH = containerH / rpgSafeScale;
+
+    // Update the live viewport bounds in world coordinates.
+    // These define the full *visible* gameplay area.  The safe core (360×640) is
+    // always centred inside them.
+    viewport.left   = -rpgSafeOffsetX / rpgSafeScale;
+    viewport.top    = -rpgSafeOffsetY / rpgSafeScale;
+    viewport.right  = (containerW - rpgSafeOffsetX) / rpgSafeScale;
+    viewport.bottom = (containerH - rpgSafeOffsetY) / rpgSafeScale;
 
     // Update the physical backing store (DPR-scaled full-container size).
     const dpr = window.devicePixelRatio || 1;
@@ -797,6 +818,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     shotLines,
     damageNumbers,
     getDim:              () => dim,
+    getViewport:         () => viewport,
     isInvincibilityMode: () => isInvincibilityMode,
     onPlayerHit: () => { waveManager?.onPlayerHit(); },
   };
@@ -899,6 +921,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // and are hoisted, so this is safe even though they appear later in the file.
   waveManager = createWaveManager({
     dim,
+    viewport,
     mote,
     rpgSimState,
     enemies, sapphireMissiles, sapphireEnemies, emeraldEnemies,
@@ -1021,6 +1044,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   const weaponCtx: RpgWeaponCtx = {
     dim,
+    viewport,
     mote,
     get bossEnemy()       { return bossEnemy; },
     get playerAimAngle()  { return playerMovementState.playerAimAngle; },
@@ -1266,7 +1290,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   });
 
   function clampEnemyToBounds(enemy: { x: number; y: number; vx: number; vy: number }): void {
-    clampEnemyToBoundsHelper(enemy, widthPx, heightPx);
+    clampEnemyToBoundsHelper(enemy, viewport.left, viewport.top, viewport.right, viewport.bottom);
   }
 
   /** Flag set at the start of each update() call; drives auto-move logic. */
@@ -1276,6 +1300,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const enemyCtx: RpgEnemyCtx = {
     mote,
     dim,
+    viewport,
     fluid,
     hitEffects,
     shotLines,

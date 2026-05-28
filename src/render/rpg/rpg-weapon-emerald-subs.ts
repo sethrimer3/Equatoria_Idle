@@ -55,6 +55,8 @@ import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } fro
  */
 export interface EmeraldSubsCtx {
   dim: { w: number; h: number };
+  /** Full visible world-space bounds — updated on every resize. */
+  viewport: { left: number; top: number; right: number; bottom: number };
   fluid: {
     addForce(impulse: FluidImpulse): void;
     addExplosion(x: number, y: number, strength: number, r: number, g: number, b: number): void;
@@ -116,7 +118,7 @@ export interface EmeraldSubsHandle {
 
 export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
   const {
-    dim, fluid,
+    viewport, fluid,
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies,
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
@@ -280,10 +282,10 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
       }
 
       // Wall bounce.
-      if (s.x < 0)            { s.x = 0;      s.vx =  Math.abs(s.vx); }
-      else if (s.x > dim.w)   { s.x = dim.w;  s.vx = -Math.abs(s.vx); }
-      if (s.y < 0)            { s.y = 0;      s.vy =  Math.abs(s.vy); }
-      else if (s.y > dim.h)   { s.y = dim.h;  s.vy = -Math.abs(s.vy); }
+      if (s.x < viewport.left)        { s.x = viewport.left;   s.vx =  Math.abs(s.vx); }
+      else if (s.x > viewport.right)  { s.x = viewport.right;  s.vx = -Math.abs(s.vx); }
+      if (s.y < viewport.top)         { s.y = viewport.top;    s.vy =  Math.abs(s.vy); }
+      else if (s.y > viewport.bottom) { s.y = viewport.bottom; s.vy = -Math.abs(s.vy); }
 
       // Trail update.
       s.trailX[s.trailHead] = s.x; s.trailY[s.trailHead] = s.y;

@@ -42,7 +42,7 @@ export function updateFracterylEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim, fluid } = ctx;
+  const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
@@ -57,10 +57,10 @@ export function updateFracterylEnemies(
     enemy.vx *= 0.92; enemy.vy *= 0.92;
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     const half = FRACTERYL_ENEMY_SIZE / 2;
-    if (enemy.x < half)         { enemy.x = half;          enemy.vx = Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > dim.w - half) { enemy.x = dim.w - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < half)         { enemy.y = half;           enemy.vy = Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > dim.h - half) { enemy.y = dim.h - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    if (enemy.x < viewport.left + half)  { enemy.x = viewport.left + half;  enemy.vx = Math.abs(enemy.vx) * 0.5; }
+    if (enemy.x > viewport.right - half) { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+    if (enemy.y < viewport.top + half)   { enemy.y = viewport.top + half;   enemy.vy = Math.abs(enemy.vy) * 0.5; }
+    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
     applyEnemyTerrainPushOut(enemy, terrain, half);
 
     enemy.burstTimerMs -= deltaMs;
@@ -111,7 +111,7 @@ export function updateEigensteinEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim, fluid } = ctx;
+  const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
@@ -126,10 +126,10 @@ export function updateEigensteinEnemies(
     enemy.vx *= 0.91; enemy.vy *= 0.91;
     enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     const half = EIGENSTEIN_ENEMY_SIZE / 2;
-    if (enemy.x < half)         { enemy.x = half;          enemy.vx = Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > dim.w - half) { enemy.x = dim.w - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < half)         { enemy.y = half;           enemy.vy = Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > dim.h - half) { enemy.y = dim.h - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+    if (enemy.x < viewport.left + half)  { enemy.x = viewport.left + half;  enemy.vx = Math.abs(enemy.vx) * 0.5; }
+    if (enemy.x > viewport.right - half) { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+    if (enemy.y < viewport.top + half)   { enemy.y = viewport.top + half;   enemy.vy = Math.abs(enemy.vy) * 0.5; }
+    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
     applyEnemyTerrainPushOut(enemy, terrain, half);
 
     enemy.beamTimerMs -= deltaMs;
@@ -158,8 +158,10 @@ export function updateEigensteinBeams(
   ctx: RpgEnemyCtx,
   deltaMs: number,
 ): void {
-  const { mote, dim } = ctx;
-  const beamLen = Math.sqrt(dim.w * dim.w + dim.h * dim.h);
+  const { mote, viewport } = ctx;
+  const vpW = viewport.right - viewport.left;
+  const vpH = viewport.bottom - viewport.top;
+  const beamLen = Math.sqrt(vpW * vpW + vpH * vpH);
   for (let i = beams.length - 1; i >= 0; i--) {
     const beam = beams[i];
     beam.timerMs -= deltaMs;

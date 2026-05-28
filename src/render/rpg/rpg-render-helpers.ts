@@ -28,14 +28,25 @@ export function findEquippedWeaponIdByEffect(
   return null;
 }
 
+/**
+ * Clamps an enemy entity within viewport world bounds, reversing and damping
+ * velocity on each axis that hit an edge.
+ *
+ * All four parameters are *world-space* coordinates (not CSS pixels):
+ *   left/top are the world coords of the viewport top-left corner (may be < 0
+ *   when the canvas is wider/taller than the 360×640 safe core).
+ *   right/bottom are the world coords of the viewport bottom-right corner.
+ */
 export function clampEnemyToBounds(
   enemy: { x: number; y: number; vx: number; vy: number },
-  widthPx: number,
-  heightPx: number,
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
 ): void {
   const half = 2.5; // Conservative margin that works for all enemy sizes
-  if (enemy.x < half)             { enemy.x = half;             enemy.vx = Math.abs(enemy.vx) * 0.5; }
-  if (enemy.x > widthPx - half)   { enemy.x = widthPx - half;   enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-  if (enemy.y < half)             { enemy.y = half;             enemy.vy = Math.abs(enemy.vy) * 0.5; }
-  if (enemy.y > heightPx - half)  { enemy.y = heightPx - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+  if (enemy.x < left + half)    { enemy.x = left + half;    enemy.vx =  Math.abs(enemy.vx) * 0.5; }
+  if (enemy.x > right - half)   { enemy.x = right - half;   enemy.vx = -Math.abs(enemy.vx) * 0.5; }
+  if (enemy.y < top + half)     { enemy.y = top + half;     enemy.vy =  Math.abs(enemy.vy) * 0.5; }
+  if (enemy.y > bottom - half)  { enemy.y = bottom - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
 }

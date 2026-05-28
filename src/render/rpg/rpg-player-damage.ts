@@ -37,6 +37,8 @@ export interface PlayerDamageCtx {
   damageNumbers: DamageNumber[];
   /** Returns the current canvas dimensions for damage-number bounce clamping. */
   getDim(): { w: number; h: number };
+  /** Returns the full visible viewport bounds for damage-number clamping. */
+  getViewport(): { left: number; top: number; right: number; bottom: number };
   /** Returns true when invincibility mode is enabled (dev mode feature). */
   isInvincibilityMode(): boolean;
   /** Optional callback fired each time the player actually takes damage (not blocked, not iframes). */
@@ -238,7 +240,7 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
   function updateDamageNumbers(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     const decelFactor = Math.pow(DAMAGE_NUM_DECEL, dt);
-    const dim = pCtx.getDim();
+    const vp = pCtx.getViewport();
     for (let i = damageNumbers.length - 1; i >= 0; i--) {
       const dn = damageNumbers[i];
       dn.timerMs -= deltaMs;
@@ -249,10 +251,10 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       dn.vy *= decelFactor;
       // Bounce off playfield edges.
       const halfFont = dn.fontPx / 2;
-      if (dn.x < halfFont) { dn.x = halfFont; dn.vx = Math.abs(dn.vx); }
-      else if (dn.x > dim.w - halfFont) { dn.x = dim.w - halfFont; dn.vx = -Math.abs(dn.vx); }
-      if (dn.y < halfFont) { dn.y = halfFont; dn.vy = Math.abs(dn.vy); }
-      else if (dn.y > dim.h - halfFont) { dn.y = dim.h - halfFont; dn.vy = -Math.abs(dn.vy); }
+      if (dn.x < vp.left + halfFont)         { dn.x = vp.left + halfFont;   dn.vx =  Math.abs(dn.vx); }
+      else if (dn.x > vp.right - halfFont)   { dn.x = vp.right - halfFont;  dn.vx = -Math.abs(dn.vx); }
+      if (dn.y < vp.top + halfFont)          { dn.y = vp.top + halfFont;    dn.vy =  Math.abs(dn.vy); }
+      else if (dn.y > vp.bottom - halfFont)  { dn.y = vp.bottom - halfFont; dn.vy = -Math.abs(dn.vy); }
     }
     if (pCtx.getPlayerIFramesMs() > 0) {
       pCtx.setPlayerIFramesMs(Math.max(0, pCtx.getPlayerIFramesMs() - deltaMs));

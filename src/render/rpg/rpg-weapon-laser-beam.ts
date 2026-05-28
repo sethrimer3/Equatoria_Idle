@@ -46,6 +46,7 @@ import { terrainFirstIntersectionT, type TopographicTerrainState } from './terra
 export interface LaserBeamWeaponCtx {
   mote: { x: number; y: number };
   dim: { w: number; h: number };
+  viewport: { left: number; top: number; right: number; bottom: number };
   fluid: { addForce(impulse: FluidImpulse): void };
   readonly bossEnemy: BossEnemy | null;
   hitEffects: HitEffect[];
@@ -108,7 +109,7 @@ export interface LaserBeamWeaponHandle {
 
 export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamWeaponHandle {
   const {
-    mote, dim, fluid, hitEffects,
+    mote, viewport, fluid, hitEffects,
     playerStats, rpgSimState,
     enemies, sapphireEnemies, sapphireMissiles,
     emeraldEnemies, amberEnemies, amberShards,
@@ -138,9 +139,9 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
 
     // Compute the endpoint (extend to canvas edge, then truncate at terrain)
     let tMax = Infinity;
-    if (dirX > 0)  tMax = Math.min(tMax, (dim.w  - mote.x) / dirX);
+    if (dirX > 0)  tMax = Math.min(tMax, (viewport.right  - mote.x) / dirX);
     if (dirX < 0)  tMax = Math.min(tMax, -mote.x / dirX);
-    if (dirY > 0)  tMax = Math.min(tMax, (dim.h - mote.y) / dirY);
+    if (dirY > 0)  tMax = Math.min(tMax, (viewport.bottom - mote.y) / dirY);
     if (dirY < 0)  tMax = Math.min(tMax, -mote.y / dirY);
 
     // Terrain truncation: shorten beam to first terrain intersection.

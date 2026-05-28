@@ -64,8 +64,10 @@ import { createLaserBeamWeaponSystem } from './rpg-weapon-laser-beam';
 // ── Dependency-injection context passed in from rpg-render.ts ─────────────
 
 export interface RpgWeaponCtx {
-  // Viewport dimensions (updated on resize)
+  // Viewport dimensions (updated on resize) — safe core (360×640)
   dim: { w: number; h: number };
+  /** Full visible world-space bounds — updated on every resize. */
+  viewport: { left: number; top: number; right: number; bottom: number };
 
   // Player mote (live object reference — x/y are mutated by physics)
   mote: { x: number; y: number };

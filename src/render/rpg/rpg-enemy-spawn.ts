@@ -98,6 +98,8 @@ import { spawnEmpowerParticles } from './rpg-elite-empower-particles';
  */
 export interface EnemySpawnCtx {
   dim: { w: number; h: number };
+  /** Full visible world-space bounds — updated on every resize. */
+  viewport: { left: number; top: number; right: number; bottom: number };
   mote: { x: number; y: number };
   getCurrentWave(): number;
   setBossEnemy(boss: BossEnemy | null): void;
@@ -261,9 +263,16 @@ function _onEliteSpawned(ctx: EnemySpawnCtx, spawnX: number, spawnY: number): vo
  * the player mote.
  */
 export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
-  const { dim, mote } = ctx;
-  const widthPx  = dim.w;
-  const heightPx = dim.h;
+  const { dim, mote, viewport } = ctx;
+  // Use the full visible viewport for spawn bounds so enemies don't appear
+  // off-screen on wide/short canvases.  dim.w/h (360×640 safe core) is only
+  // kept for legacy-compatibility callsites that reference it indirectly.
+  const spawnLeft   = viewport.left;
+  const spawnTop    = viewport.top;
+  const spawnRight  = viewport.right;
+  const spawnBottom = viewport.bottom;
+  const spawnW = spawnRight - spawnLeft;
+  const spawnH = spawnBottom - spawnTop;
   const minDist  = 80;
   let spawnX = 0, spawnY = 0, attempts = 0;
   const wn = ctx.getCurrentWave();
@@ -273,8 +282,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   if (enemyTypeId === 'laser') {
     const half = LASER_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - LASER_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - LASER_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - LASER_ENEMY_SIZE);
+      spawnY = spawnTop  + half + Math.random() * (spawnH - LASER_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -291,8 +300,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'sapphire') {
     const half = SAPPHIRE_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - SAPPHIRE_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - SAPPHIRE_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - SAPPHIRE_ENEMY_SIZE);
+      spawnY = spawnTop  + half + Math.random() * (spawnH - SAPPHIRE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -309,8 +318,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'emerald') {
     const half = EMERALD_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - EMERALD_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - EMERALD_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - EMERALD_ENEMY_SIZE);
+      spawnY = spawnTop  + half + Math.random() * (spawnH - EMERALD_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -327,8 +336,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'amber') {
     const half = AMBER_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - AMBER_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - AMBER_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - AMBER_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - AMBER_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -345,18 +354,18 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'void') {
     // Void enemies spawn at edges so they approach from a distance.
     const edge = Math.floor(Math.random() * 4);
-    if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
-    else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
-    else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
-    else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
+    if      (edge === 0) { spawnX = spawnLeft + Math.random() * spawnW; spawnY = spawnTop; }
+    else if (edge === 1) { spawnX = spawnLeft + Math.random() * spawnW; spawnY = spawnBottom; }
+    else if (edge === 2) { spawnX = spawnLeft; spawnY = spawnTop + Math.random() * spawnH; }
+    else                 { spawnX = spawnRight; spawnY = spawnTop + Math.random() * spawnH; }
     const _void = makeVoidEnemy(spawnX, spawnY, wn);
     ctx.voidEnemies.push(_void);
     _onNonEliteSpawned(ctx, _void, spawnX, spawnY);
   } else if (enemyTypeId === 'quartz') {
     const half = QUARTZ_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - QUARTZ_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - QUARTZ_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - QUARTZ_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - QUARTZ_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -373,8 +382,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'ruby') {
     const half = RUBY_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - RUBY_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - RUBY_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - RUBY_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - RUBY_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -391,8 +400,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'sunstone') {
     const half = SUNSTONE_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - SUNSTONE_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - SUNSTONE_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - SUNSTONE_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - SUNSTONE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -409,8 +418,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'citrine') {
     const half = CITRINE_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - CITRINE_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - CITRINE_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - CITRINE_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - CITRINE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -427,8 +436,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'iolite') {
     const half = IOLITE_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - IOLITE_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - IOLITE_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - IOLITE_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - IOLITE_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -445,8 +454,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'amethyst') {
     const half = AMETHYST_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - AMETHYST_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - AMETHYST_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - AMETHYST_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - AMETHYST_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -463,8 +472,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'diamond') {
     const half = DIAMOND_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - DIAMOND_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - DIAMOND_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - DIAMOND_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - DIAMOND_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -481,18 +490,18 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'nullstone') {
     // Nullstone spawns at edges to approach from a distance.
     const edge = Math.floor(Math.random() * 4);
-    if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
-    else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
-    else if (edge === 2) { spawnX = 0;       spawnY = Math.random() * heightPx; }
-    else                 { spawnX = widthPx; spawnY = Math.random() * heightPx; }
+    if      (edge === 0) { spawnX = spawnLeft + Math.random() * spawnW; spawnY = spawnTop; }
+    else if (edge === 1) { spawnX = spawnLeft + Math.random() * spawnW; spawnY = spawnBottom; }
+    else if (edge === 2) { spawnX = spawnLeft; spawnY = spawnTop + Math.random() * spawnH; }
+    else                 { spawnX = spawnRight; spawnY = spawnTop + Math.random() * spawnH; }
     const _nullstone = makeNullstoneEnemy(spawnX, spawnY, wn);
     ctx.nullstoneEnemies.push(_nullstone);
     _onNonEliteSpawned(ctx, _nullstone, spawnX, spawnY);
   } else if (enemyTypeId === 'fracteryl') {
     const half = FRACTERYL_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - FRACTERYL_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - FRACTERYL_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - FRACTERYL_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - FRACTERYL_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -509,8 +518,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'eigenstein') {
     const half = EIGENSTEIN_ENEMY_SIZE / 2;
     do {
-      spawnX = half + Math.random() * (widthPx  - EIGENSTEIN_ENEMY_SIZE);
-      spawnY = half + Math.random() * (heightPx - EIGENSTEIN_ENEMY_SIZE);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - EIGENSTEIN_ENEMY_SIZE);
+      spawnY = spawnTop + half + Math.random() * (spawnH - EIGENSTEIN_ENEMY_SIZE);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -527,8 +536,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'stardust') {
     const half = STARDUST_SIZE;
     do {
-      spawnX = half + Math.random() * (widthPx - STARDUST_SIZE * 2);
-      spawnY = half + Math.random() * (heightPx - STARDUST_SIZE * 2);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - STARDUST_SIZE * 2);
+      spawnY = spawnTop + half + Math.random() * (spawnH - STARDUST_SIZE * 2);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -539,14 +548,14 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
       spawnX = safe.x; spawnY = safe.y;
     }
-    const _stardust = makeStardustEnemy(spawnX, spawnY, wn, widthPx, heightPx);
+    const _stardust = makeStardustEnemy(spawnX, spawnY, wn, spawnW, spawnH);
     ctx.stardustEnemies.push(_stardust);
     _onNonEliteSpawned(ctx, _stardust, spawnX, spawnY);
   } else if (enemyTypeId === 'verdure_polyomino') {
     const half = 20;
     do {
-      spawnX = half + Math.random() * (widthPx - half * 2);
-      spawnY = half + Math.random() * (heightPx - half * 2);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - half * 2);
+      spawnY = spawnTop + half + Math.random() * (spawnH - half * 2);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -563,8 +572,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'verdure_polyomino_fissile') {
     const half = 20;
     do {
-      spawnX = half + Math.random() * (widthPx - half * 2);
-      spawnY = half + Math.random() * (heightPx - half * 2);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - half * 2);
+      spawnY = spawnTop + half + Math.random() * (spawnH - half * 2);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -581,8 +590,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (enemyTypeId === 'verdure_polyomino_refractor') {
     const half = 20;
     do {
-      spawnX = half + Math.random() * (widthPx - half * 2);
-      spawnY = half + Math.random() * (heightPx - half * 2);
+      spawnX = spawnLeft + half + Math.random() * (spawnW - half * 2);
+      spawnY = spawnTop + half + Math.random() * (spawnH - half * 2);
       const dx = spawnX - mote.x; const dy = spawnY - mote.y;
       if (dx * dx + dy * dy >= minDist * minDist
           && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))
@@ -597,7 +606,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     ctx.refractorPolyominoEnemies.push(e);
     _onNonEliteSpawned(ctx, e, spawnX, spawnY);
   } else if (enemyTypeId === 'boss') {
-    ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, widthPx, heightPx));
+    ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, dim.w, dim.h));
     ctx.enterBossWave();
   } else if (
     enemyTypeId === 'elite_quartz' || enemyTypeId === 'elite_ruby'   ||
@@ -608,10 +617,10 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     // Elite enemies spawn at canvas edges so the player sees them approaching.
     const tier = enemyTypeId.slice(6) as EliteTier; // strip "elite_"
     const edge = Math.floor(Math.random() * 4);
-    if      (edge === 0) { spawnX = Math.random() * widthPx;  spawnY = 0; }
-    else if (edge === 1) { spawnX = Math.random() * widthPx;  spawnY = heightPx; }
-    else if (edge === 2) { spawnX = 0;        spawnY = Math.random() * heightPx; }
-    else                 { spawnX = widthPx;  spawnY = Math.random() * heightPx; }
+    if      (edge === 0) { spawnX = spawnLeft + Math.random() * spawnW; spawnY = spawnTop; }
+    else if (edge === 1) { spawnX = spawnLeft + Math.random() * spawnW; spawnY = spawnBottom; }
+    else if (edge === 2) { spawnX = spawnLeft; spawnY = spawnTop + Math.random() * spawnH; }
+    else                 { spawnX = spawnRight; spawnY = spawnTop + Math.random() * spawnH; }
     ctx.eliteEnemies.push(makeEliteEnemy(tier, spawnX, spawnY, wn));
     _onEliteSpawned(ctx, spawnX, spawnY);
   } else if (ALIVEN_VARIANTS.includes(enemyTypeId as typeof ALIVEN_VARIANTS[number])) {
@@ -623,10 +632,10 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     // Aliven particle groups spawn near the edge, away from the player.
     const margin = 30;
     const edge = Math.floor(Math.random() * 4);
-    if      (edge === 0) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = margin; }
-    else if (edge === 1) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = heightPx - margin; }
-    else if (edge === 2) { spawnX = margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
-    else                 { spawnX = widthPx - margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
+    if      (edge === 0) { spawnX = spawnLeft + margin + Math.random() * (spawnW - margin * 2); spawnY = spawnTop + margin; }
+    else if (edge === 1) { spawnX = spawnLeft + margin + Math.random() * (spawnW - margin * 2); spawnY = spawnBottom - margin; }
+    else if (edge === 2) { spawnX = spawnLeft + margin; spawnY = spawnTop + margin + Math.random() * (spawnH - margin * 2); }
+    else                 { spawnX = spawnRight - margin; spawnY = spawnTop + margin + Math.random() * (spawnH - margin * 2); }
     ctx.alivenGroups.push(makeAlivenGroup(
       enemyTypeId as typeof ALIVEN_VARIANTS[number],
       spawnX, spawnY, wn,
@@ -650,8 +659,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     if (procSize !== undefined) {
       const half = procSize;
       do {
-        spawnX = half + Math.random() * (widthPx  - procSize * 2);
-        spawnY = half + Math.random() * (heightPx - procSize * 2);
+        spawnX = spawnLeft + half + Math.random() * (spawnW - procSize * 2);
+        spawnY = spawnTop + half + Math.random() * (spawnH - procSize * 2);
         const dx = spawnX - mote.x; const dy = spawnY - mote.y;
         if (dx * dx + dy * dy >= minDist * minDist
             && !(terrain && isPointInsideTopographicTerrain(terrain, spawnX, spawnY))

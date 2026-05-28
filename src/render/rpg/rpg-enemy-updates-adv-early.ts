@@ -128,14 +128,14 @@ export function updateAmethystShards(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
     const prevX = s.x, prevY = s.y;
     s.x += s.vx * dt; s.y += s.vy * dt;
     s.lifeMs -= deltaMs;
-    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h
+    if (s.lifeMs <= 0 || s.x < viewport.left || s.x > viewport.right || s.y < viewport.top || s.y > viewport.bottom
         || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, s.x, s.y))) {
       shards.splice(i, 1); continue;
     }
@@ -158,7 +158,7 @@ export function updateDiamondEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (const enemy of enemies) {
     enemy.phaseTimerMs -= deltaMs;
@@ -176,8 +176,8 @@ export function updateDiamondEnemies(
       enemy.x = mote.x + Math.cos(enemy.orbitAngle) * 80;
       enemy.y = mote.y + Math.sin(enemy.orbitAngle) * 80;
       const half = DIAMOND_ENEMY_SIZE / 2;
-      enemy.x = Math.max(half, Math.min(dim.w - half, enemy.x));
-      enemy.y = Math.max(half, Math.min(dim.h - half, enemy.y));
+      enemy.x = Math.max(viewport.left + half, Math.min(viewport.right - half, enemy.x));
+      enemy.y = Math.max(viewport.top + half, Math.min(viewport.bottom - half, enemy.y));
     } else {
       const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -204,14 +204,14 @@ export function updateDiamondShards(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i];
     const prevX = s.x, prevY = s.y;
     s.x += s.vx * dt; s.y += s.vy * dt;
     s.lifeMs -= deltaMs;
-    if (s.lifeMs <= 0 || s.x < 0 || s.x > dim.w || s.y < 0 || s.y > dim.h
+    if (s.lifeMs <= 0 || s.x < viewport.left || s.x > viewport.right || s.y < viewport.top || s.y > viewport.bottom
         || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, s.x, s.y))) {
       shards.splice(i, 1); continue;
     }
@@ -287,14 +287,14 @@ export function updateVoidTendrils(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, dim } = ctx;
+  const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
   for (let i = tendrils.length - 1; i >= 0; i--) {
     const t = tendrils[i];
     const prevX = t.x, prevY = t.y;
     t.x += t.vx * dt; t.y += t.vy * dt;
     t.lifeMs -= deltaMs;
-    if (t.lifeMs <= 0 || t.x < 0 || t.x > dim.w || t.y < 0 || t.y > dim.h
+    if (t.lifeMs <= 0 || t.x < viewport.left || t.x > viewport.right || t.y < viewport.top || t.y > viewport.bottom
         || (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, t.x, t.y))) {
       tendrils.splice(i, 1); continue;
     }
