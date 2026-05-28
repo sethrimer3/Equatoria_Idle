@@ -1,6 +1,21 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#175**
+Current build: **#176**
+
+---
+
+## Build #176 — Verdure polyomino elite enemies
+
+### What was implemented
+
+- Added `src/render/rpg/polyomino-enemy-types.ts` — `PolyominoCell`, `PolyominoEnemy`, `FissilePolyominoEnemy`, `RefractorPolyominoEnemy` interfaces; `PolyominoEnemyKind` union type.
+- Added `src/render/rpg/polyomino-enemy-factories.ts` — `makePolyominoEnemy`, `makeFissilePolyominoEnemy`, `makeRefractorPolyominoEnemy` factory functions; `buildPolyominoSeedCells` (random growing BFS); `advancePolyominoStep` (block-at-a-time expansion); shared `_buildBaseStats` formula.
+- Added `src/render/rpg/polyomino-enemy-draw.ts` — `drawPolyominoEnemies`, `drawFissilePolyominoEnemies`, `drawRefractorPolyominoEnemies`; per-cell fill/stroke with glow; HP bar overlay; refractor laser beam rendering.
+- Added `src/render/rpg/polyomino-enemy-update.ts` — update functions for all three variants; fissile split-on-contact logic; refractor periodic laser fire; cardinal-step drift movement.
+- Wired all three enemy types into `rpg-render.ts`, `rpg-render-draw.ts`, `rpg-render-update.ts`, and `rpg-wave-manager.ts` for full game-loop integration.
+- Modified `src/data/rpg/wave-definitions.ts`: every 10th wave in the Verdure zone (`waveNumber % 10 === 0`) spawns a polyomino elite squad instead of regular enemies.
+- Added bestiary entries for all three polyomino types to `src/ui/panels/rpg-enemies-catalog-entries.ts`.
+- Bumped `src/buildInfo.ts` from 175 → 176.
 
 ---
 
