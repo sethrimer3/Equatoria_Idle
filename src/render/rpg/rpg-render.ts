@@ -29,6 +29,7 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import {
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpHpBonus,
+  getPlayerLevelAtkBonus, getPlayerLevelDefBonus, getPlayerLevelHpBonus,
 } from '../../sim/rpg/rpg-state';
 import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
 import type { NumberFormat } from '../../util/format';
@@ -624,13 +625,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const weaponDef = WEAPON_BY_ID.get(weaponId);
       if (weaponDef) totalDefBonus += weaponDef.stats.defBonus;
     }
-    playerStats.def = PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState);
+    playerStats.def = PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState) + getPlayerLevelDefBonus(rpgSimState.playerLevel);
     // Regen is a fixed base value (weapon/XP bonuses can be added here in future).
     playerStats.regen = PLAYER_REGEN_INIT;
     // Player ATK is the base multiplier (not including per-weapon tier damage).
-    playerStats.atk = PLAYER_ATK_INIT + getEffectiveXpAtkBonus(rpgSimState) + (options.getAchievementAtkBonus?.() ?? 0);
-    // Bonus max-HP from XP wired to HP stat.
-    const hpBonus = getEffectiveXpHpBonus(rpgSimState);
+    playerStats.atk = PLAYER_ATK_INIT + getEffectiveXpAtkBonus(rpgSimState) + getPlayerLevelAtkBonus(rpgSimState.playerLevel) + (options.getAchievementAtkBonus?.() ?? 0);
+    // Bonus max-HP from XP wired to HP stat, plus level-up HP gains.
+    const hpBonus = getEffectiveXpHpBonus(rpgSimState) + getPlayerLevelHpBonus(rpgSimState.playerLevel);
     const newMaxHp = PLAYER_HP_INIT + hpBonus;
     if (newMaxHp !== playerStats.maxHp) {
       const delta = newMaxHp - playerStats.maxHp;
@@ -1149,6 +1150,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getEffectiveEquippedIds,
     getNumberFormat: () => currentNumberFormat,
     onError: () => { options.onError?.(); },
+    onPlayerLevelUp: () => {
+      applyEquipmentStats();
+      spawnDamageNumber(mote.x, mote.y - 10, 0, -1, 'Level Up!', 1, '#a78bfa');
+    },
   });
   _forwardRecordDps = (dmg, color) => statsPanel.recordDps(dmg, color);
 

@@ -262,6 +262,11 @@ export function deserializeGameState(data: SaveData): GameState {
         }
       }
     }
+    // v29+: player level progression (graceful defaults for pre-v29 saves)
+    state.rpg.playerLevel = data.rpg.playerLevel ?? 1;
+    state.rpg.playerXp = data.rpg.playerXp ?? 0;
+    state.rpg.playerXpToNextLevel = data.rpg.playerXpToNextLevel
+      ?? Math.floor(25 * Math.pow(Math.max(1, state.rpg.playerLevel), 1.35));
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

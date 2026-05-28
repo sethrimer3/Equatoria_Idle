@@ -26,6 +26,10 @@ export interface StatsPanelPrimaryColumnRefs {
   modProgressFills: HTMLDivElement[];
   /** Level text elements for modifier boxes [0]=Box3, [1]=Box4, [2]=Box5. */
   modLevelTexts: HTMLSpanElement[];
+  /** "Lv.N" label shown above the player icon. Updated on level-up. */
+  playerLevelEl: HTMLSpanElement;
+  /** XP progress bar fill element below the player icon. Width updated each frame. */
+  playerXpBarFill: HTMLDivElement;
 }
 
 export interface StatsPanelRightColumnRefs {
@@ -44,7 +48,21 @@ export interface StatsPanelRightColumnRefs {
   dpsAxisHighEl: HTMLSpanElement;
 }
 
-function createPlayerIconElement(getIsStatsPanelVisible: () => boolean): HTMLDivElement {
+function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
+  wrapperEl: HTMLDivElement;
+  levelLabelEl: HTMLSpanElement;
+  xpBarFill: HTMLDivElement;
+} {
+  const wrapperEl = document.createElement('div');
+  wrapperEl.className = 'rpg-player-icon-widget';
+
+  // "Lv.N" label above the player icon canvas.
+  const levelLabelEl = document.createElement('span');
+  levelLabelEl.className = 'rpg-player-level-label';
+  levelLabelEl.textContent = 'Lv.1';
+  wrapperEl.appendChild(levelLabelEl);
+
+  // Player icon canvas (existing logic, unchanged).
   const playerIconEl = document.createElement('div');
   playerIconEl.className = 'rpg-player-icon';
 
@@ -104,7 +122,18 @@ function createPlayerIconElement(getIsStatsPanelVisible: () => boolean): HTMLDiv
   }
   requestAnimationFrame((ms) => { iconPrevMs = ms; requestAnimationFrame(iconAnimLoop); });
 
-  return playerIconEl;
+  wrapperEl.appendChild(playerIconEl);
+
+  // XP progress bar below the player icon — mirrors the modifier box progress track style.
+  const xpBarTrack = document.createElement('div');
+  xpBarTrack.className = 'rpg-player-xp-bar-track';
+  const xpBarFill = document.createElement('div');
+  xpBarFill.className = 'rpg-player-xp-bar-fill';
+  xpBarFill.style.width = '0%';
+  xpBarTrack.appendChild(xpBarFill);
+  wrapperEl.appendChild(xpBarTrack);
+
+  return { wrapperEl, levelLabelEl, xpBarFill };
 }
 
 function makeBox5Row(label: string | HTMLElement): { box: HTMLDivElement; xpOutPlug: HTMLDivElement } {
@@ -196,7 +225,12 @@ export function createStatsPanelPrimaryColumn(
 ): StatsPanelPrimaryColumnRefs {
   const xpBox1 = document.createElement('div');
   xpBox1.className = 'rpg-xp-box rpg-xp-box-1';
-  xpBox1.appendChild(createPlayerIconElement(getIsStatsPanelVisible));
+  const {
+    wrapperEl: playerIconWidget,
+    levelLabelEl: playerLevelEl,
+    xpBarFill: playerXpBarFill,
+  } = createPlayerIconWidget(getIsStatsPanelVisible);
+  xpBox1.appendChild(playerIconWidget);
 
   const plugContainerEl = document.createElement('div');
   plugContainerEl.className = 'rpg-plug-container';
@@ -316,6 +350,8 @@ export function createStatsPanelPrimaryColumn(
     mod3Out,
     modProgressFills: [mod1Fill, mod2Fill, mod3Fill],
     modLevelTexts: [mod1Level, mod2Level, mod3Level],
+    playerLevelEl,
+    playerXpBarFill,
   };
 }
 

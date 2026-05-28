@@ -22,7 +22,7 @@ import {
   formatXp, getMaxEquippedWeapons,
 } from '../../sim/rpg/rpg-state';
 import {
-  getMultiplierXpCost, tickMultiplierXpProgress,
+  getMultiplierXpCost, tickMultiplierXpProgress, tickPlayerXpProgress,
 } from '../../sim/rpg/rpg-state-xp';
 import { WEAPON_BY_ID, INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
@@ -57,6 +57,8 @@ export interface RpgStatsPanelCtx {
   getNumberFormat(): NumberFormat;
   /** Called when the player attempts an invalid wire action. */
   onError(): void;
+  /** Called after each tick in which the player gained one or more levels. */
+  onPlayerLevelUp?(): void;
 }
 
 export interface RpgStatsPanelHandle {
@@ -128,6 +130,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     playerXpInEl,
     mod1XpIn, mod1Out, mod2XpIn, mod2Out, mod3XpIn, mod3Out,
     modProgressFills, modLevelTexts,
+    playerLevelEl, playerXpBarFill,
     dpsLabelEl, dpsValueEl, dpsChartEl, dpsAxisEl, dpsAxisLowEl, dpsAxisHighEl,
   } = buildStatsPanelDom();
 
@@ -456,15 +459,16 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
         tickMultiplierXpProgress(rpgSimState, xpTargetModifier, drainAmount);
       } else if (xpTargetPlayer) {
         // XP wire connected to Box 1 player XP input socket.
-        // Drain the reservoir and apply it as direct player XP progression.
-        // TODO: wire drainAmount into a player-level / stat-boost system
-        //       once that mechanic is designed. For now the reservoir drains
-        //       at the same rate as modifier boxes, acting as a valid sink.
+        // Drain the reservoir and advance the player's level progress.
         const drainRate = Math.max(50, rpgSimState.xpReservoir * 1.5);
         let drainAmount = drainRate * (drainDeltaMs / 1000);
         drainAmount = Math.min(drainAmount, rpgSimState.xpReservoir);
         rpgSimState.xpReservoir -= drainAmount;
         if (rpgSimState.xpReservoir < 0) rpgSimState.xpReservoir = 0;
+        const levelsGained = tickPlayerXpProgress(rpgSimState, drainAmount);
+        if (levelsGained > 0) {
+          ctx.onPlayerLevelUp?.();
+        }
       }
     }
 
@@ -473,6 +477,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     while (dpsWindow.length > 0 && now - dpsWindow[0].t > DPS_WINDOW_MS) {
       dpsWindow.shift();
     }
+
+    // ── Box 1: player level label + XP bar (every frame) ─────────
+    playerLevelEl.textContent = 'Lv.' + rpgSimState.playerLevel;
+    const xpPct = rpgSimState.playerXpToNextLevel > 0
+      ? Math.min(1, rpgSimState.playerXp / rpgSimState.playerXpToNextLevel)
+      : 0;
+    playerXpBarFill.style.width = (xpPct * 100).toFixed(1) + '%';
+
     const equippedIds = Array.from(ctx.getEffectiveEquippedIds());
     const displaySlots = buildDisplaySlots(equippedIds);
     const slotsKey = displaySlots.join('|');
