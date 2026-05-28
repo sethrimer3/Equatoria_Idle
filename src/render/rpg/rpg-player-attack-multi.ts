@@ -22,6 +22,10 @@ import type {
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
+import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 
 // ── Sort-entry type (local to this module) ────────────────────────────────────
 
@@ -51,6 +55,9 @@ type MultiSortEntry = {
   fracteryl?: FracterylEnemy;
   fracterylshard?: FracterylShard;
   eigenstein?: EigensteinEnemy;
+  polyomino?: PolyominoEnemy;
+  fissilePolyomino?: FissilePolyominoEnemy;
+  refractorPolyomino?: RefractorPolyominoEnemy;
   elite?: EliteEnemy;
   boss?: BossEnemy;
   alivenParticle?: AlivenParticle;
@@ -73,14 +80,15 @@ export function performMultiAttack(
     sunstoneEnemies, citrineEnemies, citrineBolts, ioliteEnemies,
     amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eliteEnemies, alivenGroups,
+    eigensteinEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies, eliteEnemies, alivenGroups,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard, damageVoidEnemy,
     damageQuartzEnemy, damageQuartzSpike, damageRubyEnemy, damageRubyBolt,
     damageSunstoneEnemy, damageCitrineEnemy, damageCitrineBolt, damageIoliteEnemy,
     damageAmethystEnemy, damageAmethystShard, damageDiamondEnemy, damageDiamondShard,
     damageNullstoneEnemy, damageVoidTendril, damageFracterylEnemy, damageFracterylShard,
-    damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
+    damageEigensteinEnemy, damagePolyominoEnemy, damageFissilePolyominoEnemy, damageRefractorPolyominoEnemy,
+    damageEliteEnemy, damageBossEnemy,
     spawnHitVisuals, spawnHitVisualsAt,
   } = ctx;
   const bossEnemy = ctx.bossEnemy;
@@ -209,6 +217,45 @@ export function performMultiAttack(
     const d = dx * dx + dy * dy;
     if (d <= rangeSq) inRange.push({ distSq: d, eigenstein: e });
   }
+  for (const e of polyominoEnemies) {
+    let bestCellDist = Infinity;
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const cx = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const cy = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = cx - mote.x, dy = cy - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= rangeSq && d < bestCellDist) bestCellDist = d;
+    }
+    if (bestCellDist <= rangeSq) inRange.push({ distSq: bestCellDist, polyomino: e });
+  }
+  for (const e of fissilePolyominoEnemies) {
+    let bestCellDist = Infinity;
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const cx = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const cy = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = cx - mote.x, dy = cy - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= rangeSq && d < bestCellDist) bestCellDist = d;
+    }
+    if (bestCellDist <= rangeSq) inRange.push({ distSq: bestCellDist, fissilePolyomino: e });
+  }
+  for (const e of refractorPolyominoEnemies) {
+    let bestCellDist = Infinity;
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const cx = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const cy = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = cx - mote.x, dy = cy - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= rangeSq && d < bestCellDist) bestCellDist = d;
+    }
+    if (bestCellDist <= rangeSq) inRange.push({ distSq: bestCellDist, refractorPolyomino: e });
+  }
   for (const e of eliteEnemies) {
     if (e.isInvuln) continue;
     const dx = e.x - mote.x, dy = e.y - mote.y;
@@ -298,6 +345,15 @@ export function performMultiAttack(
     } else if (t.eigenstein) {
       const dmg = damageEigensteinEnemy(t.eigenstein, rawDamage, 0);
       spawnHitVisualsAt(t.eigenstein.x, t.eigenstein.y, t.eigenstein.maxHp, dmg, '#50b464');
+    } else if (t.polyomino) {
+      const dmg = damagePolyominoEnemy(t.polyomino, rawDamage, 0);
+      spawnHitVisualsAt(t.polyomino.x, t.polyomino.y, t.polyomino.maxHp, dmg, '#52b788');
+    } else if (t.fissilePolyomino) {
+      const dmg = damageFissilePolyominoEnemy(t.fissilePolyomino, rawDamage, 0);
+      spawnHitVisualsAt(t.fissilePolyomino.x, t.fissilePolyomino.y, t.fissilePolyomino.maxHp, dmg, '#e9c46a');
+    } else if (t.refractorPolyomino) {
+      const dmg = damageRefractorPolyominoEnemy(t.refractorPolyomino, rawDamage, 0);
+      spawnHitVisualsAt(t.refractorPolyomino.x, t.refractorPolyomino.y, t.refractorPolyomino.maxHp, dmg, '#00f5d4');
     } else if (t.elite) {
       const dmg = damageEliteEnemy(t.elite, rawDamage, 0);
       spawnHitVisualsAt(t.elite.x, t.elite.y, t.elite.maxHp, dmg, '#ffe060');

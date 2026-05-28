@@ -15,9 +15,13 @@ import type {
   EigensteinEnemy,
   EliteEnemy,
 } from './rpg-enemy-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import type { RpgTargetingCtx, TargetCollectionOptions } from './rpg-targeting-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import { hasTopographicTerrainLineOfSight } from './terrain/topographic-terrain';
+import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 
 export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetCollectionOptions): ClosestTarget[] {
   const requireLos = opts?.requireLineOfSight ?? false;
@@ -50,6 +54,39 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
   for (const e of ctx.nullstoneEnemies) addTarget('nullstone', e, 'nullstone');
   for (const e of ctx.fracterylEnemies) addTarget('fracteryl', e, 'fracteryl');
   for (const e of ctx.eigensteinEnemies) addTarget('eigenstein', e, 'eigenstein');
+  for (const e of ctx.polyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      if (requireLos && !hasTopographicTerrainLineOfSight(terrain, ox, oy, ex, ey)) continue;
+      const dx = ex - ctx.mote.x, dy = ey - ctx.mote.y;
+      targets.push({ kind: 'verdure_polyomino', x: ex, y: ey, distSq: dx * dx + dy * dy, polyomino: e });
+    }
+  }
+  for (const e of ctx.fissilePolyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      if (requireLos && !hasTopographicTerrainLineOfSight(terrain, ox, oy, ex, ey)) continue;
+      const dx = ex - ctx.mote.x, dy = ey - ctx.mote.y;
+      targets.push({ kind: 'verdure_polyomino_fissile', x: ex, y: ey, distSq: dx * dx + dy * dy, fissilePolyomino: e });
+    }
+  }
+  for (const e of ctx.refractorPolyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      if (requireLos && !hasTopographicTerrainLineOfSight(terrain, ox, oy, ex, ey)) continue;
+      const dx = ex - ctx.mote.x, dy = ey - ctx.mote.y;
+      targets.push({ kind: 'verdure_polyomino_refractor', x: ex, y: ey, distSq: dx * dx + dy * dy, refractorPolyomino: e });
+    }
+  }
   for (const e of ctx.eliteEnemies) addTarget('elite', e, 'elite');
   for (const e of ctx.binaryRingEnemies) addTarget('binary_ring', e, 'binaryRing');
   for (const e of ctx.nadirCubePointEnemies) {
@@ -184,6 +221,9 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       ctx.nullstoneEnemies.includes(targetedEnemy as NullstoneEnemy) ||
       ctx.fracterylEnemies.includes(targetedEnemy as FracterylEnemy) ||
       ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy) ||
+      ctx.polyominoEnemies.includes(targetedEnemy as PolyominoEnemy) ||
+      ctx.fissilePolyominoEnemies.includes(targetedEnemy as FissilePolyominoEnemy) ||
+      ctx.refractorPolyominoEnemies.includes(targetedEnemy as RefractorPolyominoEnemy) ||
       ctx.binaryRingEnemies.includes(targetedEnemy as BinaryRingEnemy) ||
       ctx.nadirCubePointEnemies.includes(targetedEnemy as import('./nadir-cube-point-types').NadirCubePointEnemy) ||
       ctx.eliteEnemies.includes(targetedEnemy as EliteEnemy) ||
@@ -247,6 +287,15 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       }
       if (ctx.eigensteinEnemies.includes(targetedEnemy as EigensteinEnemy)) {
         return { kind: 'eigenstein', x: e.x, y: e.y, distSq, eigenstein: targetedEnemy as EigensteinEnemy };
+      }
+      if (ctx.polyominoEnemies.includes(targetedEnemy as PolyominoEnemy)) {
+        return { kind: 'verdure_polyomino', x: e.x, y: e.y, distSq, polyomino: targetedEnemy as PolyominoEnemy };
+      }
+      if (ctx.fissilePolyominoEnemies.includes(targetedEnemy as FissilePolyominoEnemy)) {
+        return { kind: 'verdure_polyomino_fissile', x: e.x, y: e.y, distSq, fissilePolyomino: targetedEnemy as FissilePolyominoEnemy };
+      }
+      if (ctx.refractorPolyominoEnemies.includes(targetedEnemy as RefractorPolyominoEnemy)) {
+        return { kind: 'verdure_polyomino_refractor', x: e.x, y: e.y, distSq, refractorPolyomino: targetedEnemy as RefractorPolyominoEnemy };
       }
       if (ctx.binaryRingEnemies.includes(targetedEnemy as BinaryRingEnemy)) {
         return { kind: 'binary_ring', x: e.x, y: e.y, distSq, binaryRing: targetedEnemy as BinaryRingEnemy };

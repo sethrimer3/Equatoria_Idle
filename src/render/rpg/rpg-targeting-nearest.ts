@@ -16,6 +16,9 @@ import type {
   FracterylEnemy,
   EigensteinEnemy,
 } from './rpg-enemy-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import type { RpgTargetingCtx } from './rpg-targeting-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
@@ -26,6 +29,7 @@ import type {
   SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
+import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
 
 /**
@@ -162,6 +166,39 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'eigenstein', x: e.x, y: e.y, distSq: d, eigenstein: e }; }
   }
+  for (const e of ctx.polyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = ex - mx, dy = ey - my;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq && !isLosBlocked(terrain, mx, my, ex, ey)) { bestSq = d; best = { kind: 'verdure_polyomino', x: ex, y: ey, distSq: d, polyomino: e }; }
+    }
+  }
+  for (const e of ctx.fissilePolyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = ex - mx, dy = ey - my;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq && !isLosBlocked(terrain, mx, my, ex, ey)) { bestSq = d; best = { kind: 'verdure_polyomino_fissile', x: ex, y: ey, distSq: d, fissilePolyomino: e }; }
+    }
+  }
+  for (const e of ctx.refractorPolyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = ex - mx, dy = ey - my;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq && !isLosBlocked(terrain, mx, my, ex, ey)) { bestSq = d; best = { kind: 'verdure_polyomino_refractor', x: ex, y: ey, distSq: d, refractorPolyomino: e }; }
+    }
+  }
   for (const e of ctx.eliteEnemies) {
     const dx = e.x - mx, dy = e.y - my;
     const d = dx * dx + dy * dy;
@@ -272,7 +309,8 @@ export function findClosestEnemy(
   rangeSq: number,
 ): LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
   | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-  | FracterylEnemy | EigensteinEnemy | BinaryRingEnemy | EliteEnemy | BossEnemy
+  | FracterylEnemy | EigensteinEnemy | PolyominoEnemy | FissilePolyominoEnemy | RefractorPolyominoEnemy
+  | BinaryRingEnemy | EliteEnemy | BossEnemy
   | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
   | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
   | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
@@ -282,7 +320,8 @@ export function findClosestEnemy(
   let bestSq = rangeSq;
   let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
-    | FracterylEnemy | EigensteinEnemy | BinaryRingEnemy | EliteEnemy | BossEnemy
+    | FracterylEnemy | EigensteinEnemy | PolyominoEnemy | FissilePolyominoEnemy | RefractorPolyominoEnemy
+    | BinaryRingEnemy | EliteEnemy | BossEnemy
     | DustWispEnemy | RibbonWormEnemy | LanternMothEnemy | EyeStalkEnemy
     | JellyfishEnemy | ClothGhostEnemy | PlantTurretEnemy | GearInsectEnemy
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
@@ -365,6 +404,39 @@ export function findClosestEnemy(
     const dx = e.x - mx, dy = e.y - my;
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; }
+  }
+  for (const e of ctx.polyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = ex - mx, dy = ey - my;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq && !isLosBlocked(terrain, mx, my, ex, ey)) { bestSq = d; best = e; }
+    }
+  }
+  for (const e of ctx.fissilePolyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = ex - mx, dy = ey - my;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq && !isLosBlocked(terrain, mx, my, ex, ey)) { bestSq = d; best = e; }
+    }
+  }
+  for (const e of ctx.refractorPolyominoEnemies) {
+    for (let i = 0; i < e.cells.length; i++) {
+      const c = e.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const ex = e.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const ey = e.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = ex - mx, dy = ey - my;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq && !isLosBlocked(terrain, mx, my, ex, ey)) { bestSq = d; best = e; }
+    }
   }
   for (const e of ctx.eliteEnemies) {
     const dx = e.x - mx, dy = e.y - my;

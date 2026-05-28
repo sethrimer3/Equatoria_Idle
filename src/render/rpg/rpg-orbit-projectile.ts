@@ -95,6 +95,7 @@ function getOrbitTargetBody(target: ClosestTarget): { x: number; y: number; maxH
     target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand ?? target.sandFish ??
     target.quartzFish ?? target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ??
     target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
+    target.polyomino ?? target.fissilePolyomino ?? target.refractorPolyomino ??
     target.verdurePlant;
   return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
     ? { x: target.x, y: target.y, maxHp: body.maxHp }
@@ -313,7 +314,11 @@ export function updateOrbitProjectile(
 
   // ── Boss ────────────────────────────────────────────────────────
   for (const target of ctx.collectEnemyBodyTargets()) {
-    if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+    if (!target.kind.startsWith('proc_') &&
+        target.kind !== 'verdure_plant' &&
+        target.kind !== 'verdure_polyomino' &&
+        target.kind !== 'verdure_polyomino_fissile' &&
+        target.kind !== 'verdure_polyomino_refractor') continue;
     const body = getOrbitTargetBody(target);
     if (!body) continue;
     tryHit(op, body, target.x, target.y,

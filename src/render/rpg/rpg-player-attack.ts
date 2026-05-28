@@ -34,6 +34,9 @@ import type {
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
 import type { ClosestTarget } from './rpg-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import { performAoeAttack } from './rpg-player-attack-aoe';
 import { performMultiAttack } from './rpg-player-attack-multi';
 import { performSingleAttack } from './rpg-player-attack-single';
@@ -76,6 +79,9 @@ export interface RpgPlayerAttackCtx {
   fracterylEnemies: FracterylEnemy[];
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   eliteEnemies: EliteEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: StardustEnemy[];
@@ -127,6 +133,9 @@ export interface RpgPlayerAttackCtx {
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageFracterylShard: (shard: FracterylShard, dmg: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damagePolyominoEnemy: (enemy: PolyominoEnemy, dmg: number, armorMult: number) => number;
+  damageFissilePolyominoEnemy: (enemy: FissilePolyominoEnemy, dmg: number, armorMult: number) => number;
+  damageRefractorPolyominoEnemy: (enemy: RefractorPolyominoEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, dmg: number) => number;
@@ -209,6 +218,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     ioliteEnemies, amethystEnemies, amethystShards,
     diamondEnemies, diamondShards, nullstoneEnemies, voidTendrils,
     fracterylEnemies, fracterylShards, eigensteinEnemies,
+    polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     eliteEnemies, binaryRingEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
@@ -228,6 +238,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     + ioliteEnemies.length + amethystEnemies.length + amethystShards.length
     + diamondEnemies.length + diamondShards.length + nullstoneEnemies.length + voidTendrils.length
     + fracterylEnemies.length + fracterylShards.length + eigensteinEnemies.length
+    + polyominoEnemies.length + fissilePolyominoEnemies.length + refractorPolyominoEnemies.length
     + eliteEnemies.length + binaryRingEnemies.length + alivenParticleCount
     + dustWispEnemies.length + ribbonWormEnemies.length + lanternMothEnemies.length
     + eyeStalkEnemies.length + jellyfishEnemies.length + clothGhostEnemies.length

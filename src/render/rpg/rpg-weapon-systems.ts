@@ -46,6 +46,9 @@ import type {
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { ClosestTarget } from './rpg-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import type { TargetCollectionOptions } from './rpg-targeting-types';
 import { createShipWeaponSystems } from './rpg-weapon-ships';
@@ -100,6 +103,9 @@ export interface RpgWeaponCtx {
   fracterylEnemies: FracterylEnemy[];
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   eliteEnemies: EliteEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: StardustEnemy[];
@@ -154,6 +160,9 @@ export interface RpgWeaponCtx {
   damageFracterylEnemy: (enemy: FracterylEnemy, dmg: number, armorMult: number) => number;
   damageFracterylShard: (shard: FracterylShard, dmg: number) => number;
   damageEigensteinEnemy: (enemy: EigensteinEnemy, dmg: number, armorMult: number) => number;
+  damagePolyominoEnemy: (enemy: PolyominoEnemy, dmg: number, armorMult: number) => number;
+  damageFissilePolyominoEnemy: (enemy: FissilePolyominoEnemy, dmg: number, armorMult: number) => number;
+  damageRefractorPolyominoEnemy: (enemy: RefractorPolyominoEnemy, dmg: number, armorMult: number) => number;
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;

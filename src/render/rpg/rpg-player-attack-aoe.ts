@@ -12,6 +12,7 @@ import type { RpgPlayerAttackCtx } from './rpg-player-attack';
 import {
   FLUID_EXPLOSION_STRENGTH, FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B,
 } from './rpg-constants';
+import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
@@ -23,11 +24,14 @@ export function performAoeAttack(
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies, voidEnemies,
     quartzEnemies, rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies,
     amethystEnemies, diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
+    polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     eliteEnemies, alivenGroups,
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy, damageVoidEnemy,
     damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy, damageCitrineEnemy,
     damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy, damageNullstoneEnemy,
-    damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
+    damageFracterylEnemy, damageEigensteinEnemy,
+    damagePolyominoEnemy, damageFissilePolyominoEnemy, damageRefractorPolyominoEnemy,
+    damageEliteEnemy, damageBossEnemy,
     spawnHitVisuals, spawnHitVisualsAt, fluid,
   } = ctx;
   const bossEnemy = ctx.bossEnemy;
@@ -136,6 +140,51 @@ export function performAoeAttack(
     if (dx * dx + dy * dy <= aoeSq) {
       const dmg = damageEigensteinEnemy(enemy, rawDamage, 0);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
+    }
+  }
+  for (const enemy of polyominoEnemies) {
+    let inRange = false;
+    for (let i = 0; i < enemy.cells.length; i++) {
+      const c = enemy.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const cx = enemy.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const cy = enemy.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = cx - mote.x, dy = cy - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) { inRange = true; break; }
+    }
+    if (inRange) {
+      const dmg = damagePolyominoEnemy(enemy, rawDamage, 0);
+      spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#52b788');
+    }
+  }
+  for (const enemy of fissilePolyominoEnemies) {
+    let inRange = false;
+    for (let i = 0; i < enemy.cells.length; i++) {
+      const c = enemy.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const cx = enemy.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const cy = enemy.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = cx - mote.x, dy = cy - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) { inRange = true; break; }
+    }
+    if (inRange) {
+      const dmg = damageFissilePolyominoEnemy(enemy, rawDamage, 0);
+      spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e9c46a');
+    }
+  }
+  for (const enemy of refractorPolyominoEnemies) {
+    let inRange = false;
+    for (let i = 0; i < enemy.cells.length; i++) {
+      const c = enemy.cells[i]!;
+      if (c.state === 'fadingOut') continue;
+      const cx = enemy.gridOriginX + c.col * POLYOMINO_CELL_SIZE;
+      const cy = enemy.gridOriginY + c.row * POLYOMINO_CELL_SIZE;
+      const dx = cx - mote.x, dy = cy - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) { inRange = true; break; }
+    }
+    if (inRange) {
+      const dmg = damageRefractorPolyominoEnemy(enemy, rawDamage, 0);
+      spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#00f5d4');
     }
   }
   for (const enemy of eliteEnemies) {

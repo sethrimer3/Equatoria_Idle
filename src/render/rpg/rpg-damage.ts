@@ -34,6 +34,9 @@ import type {
   SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
@@ -303,6 +306,40 @@ export function createDamageFns(ctx: DamageCtx) {
     return dmg;
   }
 
+  function damagePolyominoEnemy(enemy: PolyominoEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      enemy.hitFlashMs = 120;
+      recordDps(dmg, '#52b788');
+    }
+    return dmg;
+  }
+
+  function damageFissilePolyominoEnemy(enemy: FissilePolyominoEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      enemy.hitFlashMs = 120;
+      enemy.pendingSplit = true;
+      recordDps(dmg, '#e9c46a');
+    }
+    return dmg;
+  }
+
+  function damageRefractorPolyominoEnemy(enemy: RefractorPolyominoEnemy, rawDamage: number, defPierceRatio: number): number {
+    const effectiveDef = enemy.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) {
+      enemy.hp -= dmg;
+      enemy.hitFlashMs = 120;
+      recordDps(dmg, '#00f5d4');
+    }
+    return dmg;
+  }
+
   /**
    * Deals damage to an elite enemy.
    *
@@ -438,6 +475,9 @@ export function createDamageFns(ctx: DamageCtx) {
     damageFracterylEnemy,
     damageFracterylShard,
     damageEigensteinEnemy,
+    damagePolyominoEnemy,
+    damageFissilePolyominoEnemy,
+    damageRefractorPolyominoEnemy,
     damageBinaryRingEnemy,
     damageNadirCubePointEnemy,
     damageEliteEnemy,

@@ -33,6 +33,9 @@ import type {
   LuckyMote, LuckyMotePopup,
   EliteEnemy,
 } from './rpg-enemy-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
@@ -106,6 +109,9 @@ export interface RpgDeathRestartCtx {
   eigensteinEnemies: EigensteinEnemy[];
   eigensteinBeams: EigensteinBeam[];
   eliteEnemies: EliteEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   binaryRingMissiles: BinaryRingMissile[];
   nadirCubePointEnemies: NadirCubePointEnemy[];
@@ -219,6 +225,9 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.fracterylEnemies.length = 0; ctx.fracterylShards.length = 0;
   ctx.eigensteinEnemies.length = 0; ctx.eigensteinBeams.length = 0;
   ctx.eliteEnemies.length = 0;
+  ctx.polyominoEnemies.length = 0;
+  ctx.fissilePolyominoEnemies.length = 0;
+  ctx.refractorPolyominoEnemies.length = 0;
   ctx.binaryRingEnemies.length = 0;
   ctx.binaryRingMissiles.length = 0;
   ctx.nadirCubePointEnemies.length = 0;

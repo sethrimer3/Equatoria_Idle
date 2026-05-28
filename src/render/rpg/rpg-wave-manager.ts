@@ -46,6 +46,9 @@ import type {
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
   FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
+import type {
+  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
+} from './polyomino-enemy-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -80,6 +83,9 @@ export interface WaveManagerCtx {
   fracterylShards: FracterylShard[];
   eigensteinEnemies: EigensteinEnemy[];
   eliteEnemies: EliteEnemy[];
+  polyominoEnemies: PolyominoEnemy[];
+  fissilePolyominoEnemies: FissilePolyominoEnemy[];
+  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
@@ -167,7 +173,8 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     rubyEnemies, sunstoneEnemies, citrineEnemies,
     ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
-    eliteEnemies, stardustEnemies, alivenGroups,
+    eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
+    stardustEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -232,8 +239,10 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || quartzEnemies.length > 0 || rubyEnemies.length > 0 || sunstoneEnemies.length > 0
         || citrineEnemies.length > 0 || ioliteEnemies.length > 0 || amethystEnemies.length > 0
         || diamondEnemies.length > 0 || nullstoneEnemies.length > 0
-        || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
-        || eliteEnemies.length > 0 || stardustEnemies.length > 0
+         || fracterylEnemies.length > 0 || eigensteinEnemies.length > 0
+         || eliteEnemies.length > 0
+         || polyominoEnemies.length > 0 || fissilePolyominoEnemies.length > 0 || refractorPolyominoEnemies.length > 0
+         || stardustEnemies.length > 0
         || dustWispEnemies.length > 0 || ribbonWormEnemies.length > 0
         || lanternMothEnemies.length > 0 || eyeStalkEnemies.length > 0
         || jellyfishEnemies.length > 0 || clothGhostEnemies.length > 0
