@@ -173,6 +173,7 @@ import type { TerrainLightEmitter } from './terrain/terrain-lighting';
 import { MAX_TERRAIN_LIGHT_EMITTERS } from './terrain/terrain-lighting';
 import { drawEuhedralHexFloor } from './terrain/euhedral-hex-floor';
 import { drawEmpowerParticles } from './rpg-elite-empower-particles';
+import type { RpgFieldSpace } from './rpgFieldSpace';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -319,6 +320,8 @@ export interface RpgDrawCtx {
   getWorldViewW?(): number;
   /** Returns the expanded world-space height visible through the full canvas. */
   getWorldViewH?(): number;
+  /** Returns the authoritative field-space snapshot for this frame. */
+  getFieldSpace?(): RpgFieldSpace;
   /** Returns the current navigation grid for pathfinding debug draw. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns true when pathfinding debug visualization should be drawn. */
@@ -1030,6 +1033,7 @@ function drawRpgViewportDiagnostics(
   const safeScl  = ctx.getSafeScale?.()   ?? 1;
   const worldViewW = ctx.getWorldViewW?.() ?? RPG_LOGICAL_WIDTH;
   const worldViewH = ctx.getWorldViewH?.() ?? RPG_LOGICAL_HEIGHT;
+  const fs = ctx.getFieldSpace?.() ?? null;
   const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
   const backingW = Math.round(fullW * dpr);
   const backingH = Math.round(fullH * dpr);
@@ -1049,6 +1053,11 @@ function drawRpgViewportDiagnostics(
   // Warn if the scale is greater than 1 on a canvas at or below reference size
   // (indicates cover-style zoom was applied).
   const scaleTooLarge = safeScl > 1.001 && fullW <= RPG_LOGICAL_WIDTH && fullH <= RPG_LOGICAL_HEIGHT;
+  // Warn if activeBounds is smaller than visibleBounds (field-space invariant check).
+  const activeSmallerThanVisible = fs != null && (
+    fs.activeBounds.width < fs.visibleBounds.width - 1 ||
+    fs.activeBounds.height < fs.visibleBounds.height - 1
+  );
 
   // World-space visible bounds for camera info display.
   const safeNz = safeScl || 1;
@@ -1087,18 +1096,47 @@ function drawRpgViewportDiagnostics(
     { text: `cam bounds L/R: ${camLeft} / ${camRight}` },
     { text: `cam bounds T/B: ${camTop} / ${camBottom}` },
     { text: `cam center: (${camCenterX}, ${camCenterY})` },
+  ];
+
+  // ── Field-space block (shown when available) ──────────────────────
+  if (fs != null) {
+    const vb = fs.visibleBounds;
+    const ab = fs.activeBounds;
+    const sb = fs.safeCoreBounds;
+    const sp = fs.spawnBounds;
+    const pb = fs.paddedEffectBounds;
+    lines.push(
+      { text: `── RpgFieldSpace ──────────────────────` },
+      { text: `canvas CSS: ${fs.canvasCssW.toFixed(0)} × ${fs.canvasCssH.toFixed(0)}  dpr: ${fs.dpr.toFixed(2)}` },
+      { text: `backing: ${fs.backingW} × ${fs.backingH}` },
+      { text: `scale: ${fs.scale.toFixed(4)}`, warn: scaleTooLarge },
+      { text: `cameraCenter: (${fs.cameraCenterX.toFixed(1)}, ${fs.cameraCenterY.toFixed(1)})` },
+      { text: `visibleBounds: L${vb.left.toFixed(1)} T${vb.top.toFixed(1)} R${vb.right.toFixed(1)} B${vb.bottom.toFixed(1)}` },
+      { text: `  w=${vb.width.toFixed(1)} h=${vb.height.toFixed(1)}`, warn: stillNarrow },
+      { text: `activeBounds:  L${ab.left.toFixed(1)} T${ab.top.toFixed(1)} R${ab.right.toFixed(1)} B${ab.bottom.toFixed(1)}`, warn: activeSmallerThanVisible },
+      { text: `safeCoreBounds:L${sb.left.toFixed(1)} T${sb.top.toFixed(1)} R${sb.right.toFixed(1)} B${sb.bottom.toFixed(1)}` },
+      { text: `spawnBounds:   L${sp.left.toFixed(1)} T${sp.top.toFixed(1)} R${sp.right.toFixed(1)} B${sp.bottom.toFixed(1)}` },
+      { text: `paddedEffectB: L${pb.left.toFixed(1)} T${pb.top.toFixed(1)} R${pb.right.toFixed(1)} B${pb.bottom.toFixed(1)}` },
+      { text: `── end FieldSpace ─────────────────────` },
+    );
+  }
+
+  lines.push(
     { text: `player world: (${mx}, ${my})` },
     { text: `zone: ${activeZone}  subzone: ${activeSubzone}` },
     { text: `terrainKind: ${terrainState?.terrainKind ?? 'none'}` },
     { text: `lowGraphics: ${lowG}` },
     { text: `bg: ${bgRoute}` },
     { text: `sunlightWash: ${sunlightOn ? 'on' : 'off'}` },
-  ];
+  );
   if (widthMismatch) {
     lines.push({ text: `⚠ area < container!`, warn: true });
   }
   if (stillNarrow) {
     lines.push({ text: `⚠ worldView still narrow!`, warn: true });
+  }
+  if (activeSmallerThanVisible) {
+    lines.push({ text: `⚠ activeBounds < visibleBounds!`, warn: true });
   }
 
   // Append Impetus-specific diagnostic if in Impetus zone.

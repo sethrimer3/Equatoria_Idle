@@ -117,6 +117,9 @@ import {
   type RpgDrawCtx, createRpgDrawFrameState,
 } from './rpg-render-draw';
 import {
+  computeRpgFieldSpace, type RpgFieldSpace,
+} from './rpgFieldSpace';
+import {
   triggerDeath as _triggerDeath, doRestart as _doRestart,
   type RpgDeathRestartCtx,
 } from './rpg-death-restart';
@@ -257,6 +260,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let rpgWorldViewH = RPG_LOGICAL_HEIGHT;
   /** Set to true when dev mode is active (controls diagnostic overlay). */
   let _isDevMode = false;
+  /** Authoritative field-space snapshot — recomputed by doResize() on every resize. */
+  let rpgFieldSpace: RpgFieldSpace = computeRpgFieldSpace({
+    canvasCssW:     RPG_LOGICAL_WIDTH,
+    canvasCssH:     RPG_LOGICAL_HEIGHT,
+    backingW:       RPG_LOGICAL_WIDTH,
+    backingH:       RPG_LOGICAL_HEIGHT,
+    dpr:            1,
+    stableScale:    1,
+    cameraCenter:   { x: RPG_LOGICAL_WIDTH / 2, y: RPG_LOGICAL_HEIGHT / 2 },
+    safeCoreWorldW: RPG_LOGICAL_WIDTH,
+    safeCoreWorldH: RPG_LOGICAL_HEIGHT,
+  });
 
   // ── Shared dimensions box — always the fixed logical size ──────
   // Passed to rpg-enemy-updates functions via RpgEnemyCtx so they always see
@@ -398,6 +413,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const backingH = Math.round(containerH * dpr);
     if (canvas.width  !== backingW) canvas.width  = backingW;
     if (canvas.height !== backingH) canvas.height = backingH;
+
+    // Recompute the authoritative field-space snapshot so all subsystems that
+    // consume rpgFieldSpace (draw, spawn, effects) share the same bounds.
+    rpgFieldSpace = computeRpgFieldSpace({
+      canvasCssW:     containerW,
+      canvasCssH:     containerH,
+      backingW,
+      backingH,
+      dpr,
+      stableScale:    rpgSafeScale,
+      cameraCenter:   { x: RPG_LOGICAL_WIDTH / 2, y: RPG_LOGICAL_HEIGHT / 2 },
+      safeCoreWorldW: RPG_LOGICAL_WIDTH,
+      safeCoreWorldH: RPG_LOGICAL_HEIGHT,
+    });
 
     // Fluid maps world positions to a fixed grid; its cell size is derived from
     // the logical (not CSS) dimensions.  Call resize() once to initialise if the
@@ -1500,6 +1529,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getActiveZoneDisplayName:     () => getRpgZoneDisplayName(rpgSimState.activeZoneId),
     getWorldViewW:                () => rpgWorldViewW,
     getWorldViewH:                () => rpgWorldViewH,
+    getFieldSpace:                () => rpgFieldSpace,
   };
 
   // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────
