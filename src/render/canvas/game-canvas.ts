@@ -2,21 +2,30 @@
  * Manages the game canvas and its full-width presentation.
  *
  * The Equation / Idle render uses the full available container width.
- * `#game-area` is sized to fill the container exactly, and the canvas backing
- * store is set to the container CSS size multiplied by devicePixelRatio for
- * crisp rendering on HiDPI screens.
+ * `#game-area` is sized to fill the container exactly.  The canvas backing
+ * store depends on `idleCanvasRenderStyle`:
  *
- * All draw calls use CSS-pixel coordinates (widthPx × heightPx).
- * `resetCanvasRenderState` applies a DPR scale transform so that every pixel
- * address in draw calls maps to a physical backing pixel.
+ *   'crisp'     — backing = container CSS size × devicePixelRatio (HiDPI).
+ *                 `resetCanvasRenderState` applies a DPR scale transform so
+ *                 draw calls can use CSS-pixel coordinates directly.
+ *
+ *   'pixelated' — backing = low-resolution internal size (~320 px wide,
+ *                 aspect-matched to the current container).  CSS width/height
+ *                 fill `#game-area`; `image-rendering: pixelated` on the
+ *                 canvas element makes the browser scale up with
+ *                 nearest-neighbor.  All draw calls use the small internal
+ *                 coordinate space (cc.widthPx × cc.heightPx).
+ *                 `resetCanvasRenderState` uses an identity transform.
  *
  * Coordinate systems:
- *   - CSS / world: widthPx × heightPx px (= container CSS size, updates on resize).
- *                  All game state (generators, looms, particles) lives here.
- *   - Canvas backing: widthPx × DPR by heightPx × DPR (physical backing pixels).
- *                     Set by resizeCanvas whenever the container changes.
- *   - Input events:   already in CSS-pixel space; canvasCoordsFromPointerEvent
- *                     converts them to world coords via cc.widthPx / rect.width.
+ *   - World:          widthPx × heightPx.  In crisp mode this equals the CSS
+ *                     container size.  In pixelated mode this is the internal
+ *                     low-res size (~320 wide).
+ *   - Canvas backing: canvas.width × canvas.height (physical pixels).
+ *                     Crisp: widthPx×DPR × heightPx×DPR.
+ *                     Pixelated: widthPx × heightPx (1:1 no DPR factor).
+ *   - Input events:   arrive in CSS pixels; canvasCoordsFromPointerEvent
+ *                     converts them via cc.widthPx / rect.width.
  *
  * Fallback constants — used as default world dimensions before first resize:
  */
@@ -26,24 +35,30 @@ export const IDLE_LOGICAL_WIDTH = 320;
 /** Fallback logical height (used before first resize). */
 export const IDLE_LOGICAL_HEIGHT = 640;
 
+/** Target internal width used in pixelated mode. */
+const PIXELATED_INTERNAL_WIDTH = 320;
+
 export interface CanvasContext {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   /**
-   * Current world / CSS-pixel width of the game area.
-   * Updated by `resizeCanvas` to match the container's CSS width.
+   * Current world coordinate width of the game area.
+   * In crisp mode: matches the container's CSS width.
+   * In pixelated mode: low-resolution internal width (~320).
    * Defaults to IDLE_LOGICAL_WIDTH before the first resize.
    */
   widthPx: number;
   /**
-   * Current world / CSS-pixel height of the game area.
-   * Updated by `resizeCanvas` to match the container's CSS height.
+   * Current world coordinate height of the game area.
+   * In crisp mode: matches the container's CSS height.
+   * In pixelated mode: low-resolution internal height (aspect-matched).
    * Defaults to IDLE_LOGICAL_HEIGHT before the first resize.
    */
   heightPx: number;
   /**
    * Device pixel ratio captured during the last `resizeCanvas` call.
-   * Used by `resetCanvasRenderState` to apply the DPR scale transform.
+   * Used by `resetCanvasRenderState` in crisp mode to apply the DPR scale.
+   * In pixelated mode this is stored but the transform is identity.
    */
   dpr: number;
   /**
@@ -51,6 +66,12 @@ export interface CanvasContext {
    * Its CSS dimensions are updated by `resizeCanvas` to fill the container.
    */
   gameArea: HTMLElement;
+  /**
+   * Current render style for the idle/world canvas.
+   * Update this field then call `resizeCanvas` to switch modes at runtime.
+   * Defaults to 'pixelated'.
+   */
+  idleCanvasRenderStyle: 'pixelated' | 'crisp';
 }
 
 /**
@@ -59,11 +80,13 @@ export interface CanvasContext {
  * DOM structure produced:
  *   container
  *     └─ #game-area          ← fills container (100 % × 100 %) via resizeCanvas
- *          ├─ #game-canvas   ← backing = widthPx×DPR × heightPx×DPR (updated on resize)
+ *          ├─ #game-canvas   ← backing store managed by resizeCanvas per render style
  *          └─ (HUD overlay appended by caller)
  *
  * Returns the rendering context.  `widthPx` and `heightPx` reflect the
- * container CSS size after the initial `resizeCanvas` call.
+ * world coordinate space after the initial `resizeCanvas` call.
+ * `idleCanvasRenderStyle` defaults to 'pixelated'; update it and call
+ * `resizeCanvas` again to switch modes.
  */
 export function createGameCanvas(container: HTMLElement): CanvasContext {
   const gameArea = document.createElement('div');
@@ -72,11 +95,10 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
 
   const canvas = document.createElement('canvas');
   canvas.id = 'game-canvas';
-  // Backing size set by resizeCanvas — no fixed size here.
+  // Backing size and image-rendering set by resizeCanvas based on render style.
   canvas.style.display = 'block';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
-  // No pixelated upscaling — the backing now matches the CSS size × DPR.
   // Prevent browser from claiming touch events for scrolling/panning,
   // which would fire pointercancel and break mote dragging on mobile.
   canvas.style.touchAction = 'none';
@@ -91,6 +113,7 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
     heightPx: IDLE_LOGICAL_HEIGHT,
     dpr: window.devicePixelRatio || 1,
     gameArea,
+    idleCanvasRenderStyle: 'pixelated',
   };
   resizeCanvas(cc, container);
   return cc;
@@ -98,13 +121,23 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
 
 /**
  * Expand `#game-area` to fill the container and update the canvas backing
- * store to `containerW × DPR by containerH × DPR` physical pixels.
+ * store and world coordinate dimensions according to `cc.idleCanvasRenderStyle`.
  *
- * After this call:
+ * **Crisp mode** (`idleCanvasRenderStyle === 'crisp'`):
  *   - `cc.widthPx / cc.heightPx` equal the container's CSS dimensions.
- *   - The canvas backing is the HiDPI equivalent of those CSS dimensions.
- *   - `resetCanvasRenderState` will apply a DPR scale so all draw calls can
- *     use CSS-pixel coordinates directly.
+ *   - Canvas backing = containerW×DPR by containerH×DPR (HiDPI).
+ *   - `resetCanvasRenderState` applies a DPR scale so draw calls use CSS coords.
+ *   - `#game-canvas` has no special `image-rendering` class.
+ *
+ * **Pixelated mode** (`idleCanvasRenderStyle === 'pixelated'`):
+ *   - Internal width is fixed at PIXELATED_INTERNAL_WIDTH (~320); height is
+ *     computed to preserve the current container aspect ratio.
+ *   - `cc.widthPx / cc.heightPx` equal those small internal dimensions.
+ *   - Canvas backing = internalW × internalH (1:1, no DPR factor).
+ *   - CSS width/height of #game-canvas remain 100% so the browser scales up.
+ *   - `#game-canvas` gains the `idle-canvas-pixelated` class so CSS applies
+ *     `image-rendering: pixelated`.
+ *   - `resetCanvasRenderState` uses an identity transform.
  */
 export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   const containerW = container.clientWidth;
@@ -117,29 +150,58 @@ export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   cc.gameArea.style.width  = `${containerW}px`;
   cc.gameArea.style.height = `${containerH}px`;
 
-  // Update world / CSS-pixel dimensions.
-  cc.widthPx  = containerW;
-  cc.heightPx = containerH;
-  cc.dpr      = dpr;
+  cc.dpr = dpr;
 
-  // Resize the physical backing store to match.
-  const backingW = Math.round(containerW * dpr);
-  const backingH = Math.round(containerH * dpr);
-  if (cc.canvas.width  !== backingW) cc.canvas.width  = backingW;
-  if (cc.canvas.height !== backingH) cc.canvas.height = backingH;
+  if (cc.idleCanvasRenderStyle === 'pixelated') {
+    // Compute low-resolution internal dimensions that preserve the container aspect.
+    const internalW = PIXELATED_INTERNAL_WIDTH;
+    const internalH = Math.round(containerH * (internalW / containerW));
+
+    cc.widthPx  = internalW;
+    cc.heightPx = internalH;
+
+    // Canvas backing = internal size (no DPR upscale).
+    if (cc.canvas.width  !== internalW) cc.canvas.width  = internalW;
+    if (cc.canvas.height !== internalH) cc.canvas.height = internalH;
+
+    // Apply pixelated upscaling class.
+    cc.canvas.classList.add('idle-canvas-pixelated');
+  } else {
+    // Crisp HiDPI mode: world coords = CSS size, backing = CSS × DPR.
+    cc.widthPx  = containerW;
+    cc.heightPx = containerH;
+
+    const backingW = Math.round(containerW * dpr);
+    const backingH = Math.round(containerH * dpr);
+    if (cc.canvas.width  !== backingW) cc.canvas.width  = backingW;
+    if (cc.canvas.height !== backingH) cc.canvas.height = backingH;
+
+    // Remove pixelated class.
+    cc.canvas.classList.remove('idle-canvas-pixelated');
+  }
 }
 
 /**
  * Restore baseline 2D state before a full-frame render pass.
  *
- * Applies a DPR scale transform so that all subsequent draw calls can use
- * CSS-pixel coordinates (widthPx × heightPx) without knowing the physical
- * backing size.
+ * In **crisp** mode: applies a DPR scale transform so that all subsequent
+ * draw calls can use CSS-pixel coordinates (widthPx × heightPx) without
+ * knowing the physical backing size.
+ *
+ * In **pixelated** mode: uses an identity transform (backing store already
+ * matches the world coordinate space); also disables image smoothing so
+ * any scaled sub-images remain crisp.
  */
 export function resetCanvasRenderState(cc: CanvasContext): void {
   const ctx = cc.ctx;
-  const dpr = cc.dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (cc.idleCanvasRenderStyle === 'pixelated') {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+  } else {
+    const dpr = cc.dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+  }
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
   ctx.shadowBlur = 0;

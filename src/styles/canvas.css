@@ -70,6 +70,20 @@
   overflow: hidden;
 }
 
+/*
+ * #game-canvas.idle-canvas-pixelated — pixelated upscale mode.
+ *
+ * Applied by resizeCanvas() when idleCanvasRenderStyle === 'pixelated'.
+ * The canvas backing store is set to a low internal resolution (~320 px
+ * wide); the browser scales it up to fill #game-area using nearest-neighbor
+ * filtering so the world render looks visibly pixelated.
+ * DOM overlays (HUD, equation, score) are not affected.
+ */
+#game-canvas.idle-canvas-pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 /* ── RPG canvas container ─────────────────────────────────────── */
 /*
  * The RPG canvas container sits above the stats panel (3×tab-height) and the

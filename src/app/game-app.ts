@@ -129,6 +129,11 @@ export async function startApp(): Promise<void> {
 
   const cc = createGameCanvas(canvasContainer);
 
+  // Apply the persisted idle canvas render style immediately so the first
+  // frame already uses the correct backing store / image-rendering mode.
+  cc.idleCanvasRenderStyle = settings.idleCanvasRenderStyle;
+  resizeCanvas(cc, canvasContainer);
+
   // ── HUD overlay (DOM layer above canvas, non-pixelated) ──
   // Appended to cc.gameArea (not canvasContainer) so that percentage-based
   // generator-label positions remain correctly mapped to logical canvas
@@ -249,7 +254,11 @@ export async function startApp(): Promise<void> {
   const resourcePanel = createResourcePanel((tierId) => {
     equationPanelRef?.setHighlightedTier(tierId);
   });
-  const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio);
+  const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio, () => {
+    cc.idleCanvasRenderStyle = settings.idleCanvasRenderStyle;
+    resizeCanvas(cc, canvasContainer);
+    recomputeGenerators();
+  });
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
   // Right column of the Equation sub-tab: mote resources on top, tier unlock

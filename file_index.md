@@ -33,7 +33,8 @@
 ### src/styles/canvas.css
 - Background animation canvas, vermiculate canvas, `#canvas-container`, `#game-area`, `#game-canvas`.
 - `#canvas-container` — full-screen flex container that letterboxes / pillarboxes `#game-area`.
-- `#game-area` — `position: relative` wrapper whose CSS size is set by `resizeCanvas()` to maintain the 320:640 logical aspect ratio; children are `#game-canvas` and `#hud-overlay`.
+- `#game-area` — `position: relative` wrapper whose CSS size is set by `resizeCanvas()` to fill the container; children are `#game-canvas` and `#hud-overlay`.
+- `#game-canvas.idle-canvas-pixelated` — *(build 193+)* class applied by `resizeCanvas` in pixelated mode; sets `image-rendering: pixelated` / `crisp-edges` so the low-res backing is scaled up with nearest-neighbor.
 - `#rpg-container` — flex-centred container for the RPG canvas (height excludes stats panel + tab bar).
 - `#rpg-canvas` — responsive RPG canvas; the render host expands to fill `#rpg-container`. Increasing the host's width or height reveals more visible RPG world rather than zooming in. A stable safe-core transform keeps the `RPG_LOGICAL_WIDTH × RPG_LOGICAL_HEIGHT` (360×640) world centred; extra space is live world area with real enemies, terrain, and effects.
 - `#rpg-stats-panel` — DOM stats panel (3×tab-height) above the navigation bar, with `.rpg-stat`, `.rpg-stat-label`, `.rpg-stat-value` child classes.
@@ -62,7 +63,7 @@
 - Slim application bootstrap (DOM setup, panel wiring, pointer listeners, resize handler).
 - `startApp()` — creates systems and wires them via `app-actions` and `app-game-loop`.
 - Delegates action handling to `app-actions.ts`, game loop to `app-game-loop.ts`, canvas pointer wiring to `game-app-canvas-input.ts`, and idle-reward eligibility checks to `game-app-idle.ts`.
-
+- **Build 193+:** initialises `cc.idleCanvasRenderStyle` from persisted settings immediately after `createGameCanvas`; passes `onIdleCanvasRenderStyleChange` callback to `createSettingsPanel` that updates `cc.idleCanvasRenderStyle`, calls `resizeCanvas`, and recomputes generator positions.
 - Resize handler skips hidden zero-size main-canvas measurements while the RPG tab is active, preventing the Equation canvas from being resized to 0 after focus or viewport changes.
 
 ### src/app/app-types.ts
@@ -269,11 +270,11 @@
 - `ActiveMergeInfo` — descriptor for in-progress particle merge.
 
 ### src/render/canvas/game-canvas.ts
-- Exports `IDLE_LOGICAL_WIDTH = 320` and `IDLE_LOGICAL_HEIGHT = 640` — the fixed game-world coordinate space.
-- `CanvasContext` — canvas element, 2D context, stable `widthPx`/`heightPx` (always 320 × 640), and `gameArea` wrapper div.
-- `createGameCanvas()` — creates `#game-area` wrapper + `#game-canvas` child with fixed backing size; applies initial letterboxing.
-- `resizeCanvas()` — computes aspect-ratio-preserving CSS dimensions for `#game-area` only; canvas backing store and game-world coordinates never change.
-- `resetCanvasRenderState()` restores baseline 2D context state before full-frame renders.
+- Exports `IDLE_LOGICAL_WIDTH = 320` and `IDLE_LOGICAL_HEIGHT = 640` — fallback world dimensions before first resize.
+- `CanvasContext` — canvas element, 2D context, `widthPx`/`heightPx` (world coordinate size), `dpr`, `gameArea` wrapper div, and `idleCanvasRenderStyle` ('pixelated' | 'crisp').
+- `createGameCanvas()` — creates `#game-area` wrapper + `#game-canvas` child; defaults to 'pixelated' render style.
+- `resizeCanvas()` — *(build 193+)* dual-mode: crisp mode sets backing = CSS × DPR; pixelated mode sets backing = ~320 px wide internal size and applies `idle-canvas-pixelated` class.
+- `resetCanvasRenderState()` — crisp: applies DPR scale transform; pixelated: identity transform + `imageSmoothingEnabled = false`.
 
 ### src/render/canvas/idle-viewport-debug.ts *(build 128)*
 - Dev-mode viewport diagnostic overlay for the Equation / Idle canvas.
@@ -1890,6 +1891,7 @@ Audio system — eight focused modules:
 - Settings panel orchestrator for controls, toggles, save/reset actions, credits, and dev-only embedded panels.
 - Wires `settings-panel-controls.ts` row builders and `settings-panel-dev-tweaks.ts` particle tweak section.
 - **Build 192+:** "Equation Render Style" select row (Pixel Canvas / Smooth DOM) added after "Loom Equation Visibility".
+- **Build 193+:** "Idle Canvas Render" select row (Pixelated / Crisp HiDPI) added after "Background Style". Accepts optional `onIdleCanvasRenderStyleChange` callback invoked on change.
 
 ### src/ui/panels/settings-panel-controls.ts
 - Shared DOM row builders for settings controls.
@@ -1907,6 +1909,7 @@ Audio system — eight focused modules:
 - `numberFormat: 'letters' | 'scientific' | 'engineering'` — controls number display format across all UI panels and canvas score.
 - **Build 108+:** `skipIdlePopupAtStart: boolean` — when true, the startup idle earnings overlay is skipped; rewards are still applied silently.
 - **Build 192+:** `equationRenderStyle: 'pixel' | 'smooth'` — toggles between low-resolution pixel-canvas equation rendering (default) and smooth DOM HTML rendering.
+- **Build 193+:** `idleCanvasRenderStyle: 'pixelated' | 'crisp'` — controls the backing-store resolution of the main idle/world canvas. Default `'pixelated'`: low-res ~320 px wide backing, nearest-neighbor upscaled. `'crisp'`: HiDPI backing (CSS × DPR).
 
 ### src/settings/save-load.ts
 - Thin localStorage I/O layer (~45 lines after extraction).
