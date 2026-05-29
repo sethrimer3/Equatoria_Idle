@@ -41,6 +41,17 @@ export interface SettingsState {
    * 'smooth' — renders as DOM HTML (anti-aliased, the legacy behaviour).
    */
   equationRenderStyle: 'pixel' | 'smooth';
+  /**
+   * Controls the backing-store resolution of the main idle / world canvas.
+   * 'pixelated' — canvas backing store is deliberately low-resolution (~320 px
+   *               wide); the browser scales it up with nearest-neighbor so all
+   *               canvas content (motes, forge, generators, rings, background)
+   *               looks visibly pixelated.  The DOM HUD (equation, score) is
+   *               not affected and remains smooth.
+   * 'crisp'     — canvas backing store matches CSS size × DPR (HiDPI); the
+   *               world render is sharp and smooth (current crisp behaviour).
+   */
+  idleCanvasRenderStyle: 'pixelated' | 'crisp';
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -63,6 +74,7 @@ export function createDefaultSettings(): SettingsState {
     rpgBarAtTop: false,
     skipIdlePopupAtStart: false,
     equationRenderStyle: 'pixel',
+    idleCanvasRenderStyle: 'pixelated',
   };
 }
 

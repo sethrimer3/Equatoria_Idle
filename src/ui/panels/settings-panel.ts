@@ -28,6 +28,7 @@ export function createSettingsPanel(
   dispatch: ActionHandler,
   audioSystem?: AudioSystem,
   onFocusSettingChange?: () => void,
+  onIdleCanvasRenderStyleChange?: () => void,
 ): SettingsPanel {
   const panel = document.createElement('div');
   panel.className = 'panel settings-panel';
@@ -102,6 +103,23 @@ export function createSettingsPanel(
     },
   );
   panel.appendChild(bgStyleRow);
+
+  // Idle canvas render style selector
+  const idleCanvasRenderStyleRow = createSelectRow(
+    'Idle Canvas Render',
+    settings.idleCanvasRenderStyle,
+    [
+      { value: 'pixelated', label: 'Pixelated' },
+      { value: 'crisp',     label: 'Crisp / HiDPI' },
+    ],
+    (v) => {
+      settings.idleCanvasRenderStyle = v as SettingsState['idleCanvasRenderStyle'];
+      saveSettings(settings);
+      onIdleCanvasRenderStyleChange?.();
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  panel.appendChild(idleCanvasRenderStyleRow);
 
   // Number format selector
   const numberFormatRow = createSelectRow(
