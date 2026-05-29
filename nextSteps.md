@@ -4,6 +4,63 @@ Current build: **#188**
 
 ---
 
+## Build #189 — Topographic lighting expanded to visibleBounds
+
+### Status
+
+All field-space adoption tasks from builds #185–#188 are now complete, including
+the last remaining item: topographic lighting now covers the full visible world.
+
+### Changes in this build
+
+- **`renderTopographyLighting` now accepts a world-space bounds rect.**
+  Signature changed from `(ctx, state, canvasW, canvasH)` to
+  `(ctx, state, bounds: { left, top, width, height })`.  The cache is built at
+  `bounds.width × bounds.height` and placed at world origin `(bounds.left, bounds.top)`.
+  The cache is drawn with `ctx.drawImage(cache.canvas, cache.originX, cache.originY, ...)`.
+
+- **`buildTopographyLightCache` is world-origin-aware.**
+  Accepts two new optional parameters `originX = 0, originY = 0`.  Height-grid
+  sampling now uses world coordinates:
+  `wx = originX + ix * LIGHT_GRID_CELL_SIZE_PX`, `wy = originY + iy * LIGHT_GRID_CELL_SIZE_PX`.
+  The baked cache stores `originX` and `originY`.
+
+- **`ensureTopographyLightCache` invalidates on origin changes.**
+  Added `originX` and `originY` to invalidation checks alongside width, height,
+  palette, growth, config, and shadow mode.
+
+- **`TopographyLightCache` interface updated.**
+  Added `readonly originX: number` and `readonly originY: number` fields to the
+  public type in `topographic-lighting-types.ts`.
+
+- **Call site updated in `rpg-render-draw.ts`.**
+  `renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx)` replaced
+  with `renderTopographyLighting(canvas2d, terrainState, fs.visibleBounds)`.
+  The lighting overlay now covers the same world area as all other visible-bounds
+  effects (empower particles, caustics, euhedral hex floor, etc.).
+
+### Field-space adoption status (post-build #189)
+
+| Feature | Status |
+|---|---|
+| Player movement clamps to `activeBounds` | ✅ Complete |
+| Enemy context uses `RpgFieldSpace` / documented compat wrapper | ✅ Complete |
+| Empower particles cover `visibleBounds` | ✅ Complete |
+| Caustics floor effects cover `visibleBounds` | ✅ Complete |
+| Spawn-candidate debug overlay | ✅ Complete |
+| Topographic lighting covers `visibleBounds` | ✅ Complete |
+
+### Intentional safe-core uses (unchanged)
+
+- `drawBottomSafeZone` / `drawBossStageDirector` / `drawWaveClearBanner` — boss
+  composition and HUD are centred on the stable 360×640 core for readability.
+
+### Remaining work
+
+None. All RPG field-space adoption items from the build #185 audit are resolved.
+
+---
+
 ## Build #188 — RPG responsive field-space issues (player bounds, particles, caustics, spawn overlay)
 
 ### Status
@@ -79,6 +136,7 @@ All six field-space adoption tasks from the build #187 audit are now resolved.
 
 - **`renderTopographyLighting`**: Expand cached lighting overlay to cover
   `paddedEffectBounds` — requires generating terrain topology for extended area.
+  *(Resolved in build #189.)*
 
 ---
 

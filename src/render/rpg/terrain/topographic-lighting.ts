@@ -202,6 +202,8 @@ export function buildTopographyLightCache(
   canvasW: number,
   canvasH: number,
   growth01 = 1,
+  originX = 0,
+  originY = 0,
 ): TopographyLightCache {
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.floor(canvasW));
@@ -217,10 +219,10 @@ export function buildTopographyLightCache(
   const bakedGrowth01 = clamp01(growth01);
 
   for (let iy = 0; iy < gridH; iy++) {
-    const wy = iy * LIGHT_GRID_CELL_SIZE_PX;
+    const wy = originY + iy * LIGHT_GRID_CELL_SIZE_PX;
     const row = iy * gridW;
     for (let ix = 0; ix < gridW; ix++) {
-      const wx = ix * LIGHT_GRID_CELL_SIZE_PX;
+      const wx = originX + ix * LIGHT_GRID_CELL_SIZE_PX;
       heightGrid[row + ix] = mapFieldValueToHeight(computeScalarFieldValue(state, wx, wy)) * bakedGrowth01;
     }
   }
@@ -341,6 +343,8 @@ export function buildTopographyLightCache(
     canvas,
     width: canvas.width,
     height: canvas.height,
+    originX,
+    originY,
     growth01: bakedGrowth01,
     config: { ...config },
     terrainSeed: state.seed,
@@ -362,12 +366,11 @@ export function buildTopographyLightCache(
 export function renderTopographyLighting(
   ctx: CanvasRenderingContext2D,
   state: TopographicTerrainState,
-  canvasW: number,
-  canvasH: number,
+  bounds: { left: number; top: number; width: number; height: number },
 ): void {
   if (state.phase === 'hidden') return;
 
-  const cache = ensureTopographyLightCache(state, canvasW, canvasH);
+  const cache = ensureTopographyLightCache(state, bounds);
   if (!cache) return;
 
   ctx.save();
@@ -375,7 +378,7 @@ export function renderTopographyLighting(
     ctx.globalCompositeOperation = 'source-over';
     ctx.imageSmoothingEnabled = true;
     if (state.growth01 <= 0) return;
-    ctx.drawImage(cache.canvas, 0, 0, cache.width, cache.height);
+    ctx.drawImage(cache.canvas, cache.originX, cache.originY, cache.width, cache.height);
   } finally {
     ctx.restore();
   }
@@ -435,11 +438,11 @@ function ensureSunlightFillCache(
 }
 
 /**
- * Ensures `state.lightCache` is valid for the current canvas size and active
+ * Ensures `state.lightCache` is valid for the current bounds and active
  * light config, rebuilding it when any input changes.
  *
  * Invalidation triggers:
- * - canvas width or height changed
+ * - bounds width, height, originX, or originY changed
  * - active light config changed (any field)
  * - palette changed (defensive; palette is normally fixed per wave)
  * - shadow mode changed (smoothGradient ↔ sharpCylinder)
@@ -449,24 +452,27 @@ function ensureSunlightFillCache(
  */
 function ensureTopographyLightCache(
   state: TopographicTerrainState,
-  canvasW: number,
-  canvasH: number,
+  bounds: { left: number; top: number; width: number; height: number },
 ): BakedTopographyLightCache | null {
-  const targetWidth = Math.max(1, Math.floor(canvasW));
-  const targetHeight = Math.max(1, Math.floor(canvasH));
+  const targetWidth = Math.max(1, Math.floor(bounds.width));
+  const targetHeight = Math.max(1, Math.floor(bounds.height));
+  const targetOriginX = Math.floor(bounds.left);
+  const targetOriginY = Math.floor(bounds.top);
   const targetGrowth01 = quantizeGrowth01(state.growth01);
   const existing = state.lightCache as BakedTopographyLightCache | null;
   if (
     existing === null
     || existing.width !== targetWidth
     || existing.height !== targetHeight
+    || existing.originX !== targetOriginX
+    || existing.originY !== targetOriginY
     || existing.paletteId !== state.paletteId
     || existing.growth01 !== targetGrowth01
     || !configsMatch(existing.config, activeLightConfig)
     || existing.shadowMode !== activeTopographyShadowMode
   ) {
     const built = buildTopographyLightCache(
-      state, activeLightConfig, targetWidth, targetHeight, targetGrowth01,
+      state, activeLightConfig, targetWidth, targetHeight, targetGrowth01, targetOriginX, targetOriginY,
     ) as BakedTopographyLightCache;
     state.lightCache = built;
     return built;

@@ -37,6 +37,10 @@ export interface TopographyLightCache {
   readonly canvas: HTMLCanvasElement;
   readonly width: number;
   readonly height: number;
+  /** World-space X coordinate of the top-left corner of this cache. */
+  readonly originX: number;
+  /** World-space Y coordinate of the top-left corner of this cache. */
+  readonly originY: number;
   /** Snapshot of the config used to bake this cache. */
   readonly config: Readonly<TopographyLightConfig>;
   readonly terrainSeed: number;

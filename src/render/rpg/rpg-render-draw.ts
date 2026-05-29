@@ -761,12 +761,10 @@ export function drawRpgFrame(
     renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies, ctx.getIsLowGraphicsMode(), euhedralLights);
     // Topographic lighting overlay is only applicable to the organic contour variant;
     // skip it for recursive-square terrain which has its own visual style.
-    // NOTE: renderTopographyLighting is intentionally drawn at safe-core dimensions
-    // (widthPx × heightPx) because the terrain geometry itself only exists in the
-    // [0, widthPx] × [0, heightPx] area.  Extended world space beyond the safe core
-    // is handled by the background fill and other per-zone effects.
+    // Rendered over the full visible world via fs.visibleBounds so lighting extends
+    // beyond the safe core and aligns with the world-space terrain.
     if (terrainState.terrainKind === 'topographic') {
-      renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx);
+      renderTopographyLighting(canvas2d, terrainState, fs.visibleBounds);
     }
   }
 
