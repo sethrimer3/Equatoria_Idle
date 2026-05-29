@@ -173,6 +173,7 @@ import type { TerrainLightEmitter } from './terrain/terrain-lighting';
 import { MAX_TERRAIN_LIGHT_EMITTERS } from './terrain/terrain-lighting';
 import { drawEuhedralHexFloor } from './terrain/euhedral-hex-floor';
 import { drawEmpowerParticles } from './rpg-elite-empower-particles';
+import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
@@ -769,16 +770,19 @@ export function drawRpgFrame(
     }
   }
 
-  // Zone floor effects — rendered after terrain so they sit above the floor, below enemies.
-  // NOTE: drawCausticsFloorEffects is intentionally at safe-core dimensions because its
-  // seafloor ridge geometry is stored in absolute world coords within [0, widthPx × heightPx].
-  // Expanding it to visible bounds requires translating the ridge buffer — deferred to a
-  // future migration pass (see nextSteps.md).
+  // Caustics floor effects cover the full visible world.
+  // The context is translated by (vwX, vwY) so the light-buffer tiles and
+  // geometry fill the entire visible canvas.  Ridge world coordinates are
+  // offset by (-vwX, -vwY) inside the function to align with the translated frame.
   if (isCausticsZone) {
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
     drawCausticsFloorEffects(
-      canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode(),
+      canvas2d, vwW, vwH, nowMs, ctx.getIsLowGraphicsMode(),
       terrainState?.seafloor,
+      vwX, vwY,
     );
+    canvas2d.restore();
   }
   if (isImpetusZone) {
     canvas2d.save();
@@ -858,7 +862,7 @@ export function drawRpgFrame(
   drawPolyominoEnemies(canvas2d, ctx.polyominoEnemies, nowMs);
   drawFissilePolyominoEnemies(canvas2d, ctx.fissilePolyominoEnemies, nowMs);
   drawRefractorPolyominoEnemies(canvas2d, ctx.refractorPolyominoEnemies, nowMs);
-  drawEmpowerParticles(canvas2d, widthPx, heightPx);
+  drawEmpowerParticles(canvas2d, fs.visibleBounds);
   drawStardustEnemies(canvas2d, ctx.stardustEnemies);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
@@ -1203,7 +1207,8 @@ function drawRpgViewportDiagnostics(
 }
 
 /**
- * Draws labelled rectangle outlines for each RpgFieldSpace bound.
+ * Draws labelled rectangle outlines for each RpgFieldSpace bound, plus
+ * spawn-candidate dots recorded since the last wave start.
  * Called only in dev mode from within the world-coordinate transform.
  */
 function _drawFieldSpaceOverlay(
@@ -1234,6 +1239,26 @@ function _drawFieldSpaceOverlay(
     c2d.globalAlpha = 0.9;
     c2d.fillText(label, rect.left + 2 / fs.scale, rect.top + 10 / fs.scale);
     c2d.globalAlpha = 1;
+  }
+
+  // ── Spawn-candidate dots ───────────────────────────────────────────
+  // Dot colours: green = accepted spawn, orange = verdure fallback.
+  const spawnLog = getSpawnDebugLog();
+  if (spawnLog.length > 0) {
+    const dotR = 3 / fs.scale;
+    for (const entry of spawnLog) {
+      c2d.beginPath();
+      c2d.arc(entry.x, entry.y, dotR, 0, Math.PI * 2);
+      c2d.fillStyle = entry.kind === 'fallback' ? 'rgba(255,160,0,0.85)' : 'rgba(80,255,80,0.8)';
+      c2d.fill();
+    }
+    // Legend in top-left of spawnBounds
+    const sp = fs.spawnBounds;
+    c2d.font = `${Math.round(7 / fs.scale)}px monospace`;
+    c2d.fillStyle = 'rgba(80,255,80,0.9)';
+    c2d.fillText('● accepted', sp.left + 4 / fs.scale, sp.top + 18 / fs.scale);
+    c2d.fillStyle = 'rgba(255,160,0,0.9)';
+    c2d.fillText('● fallback',  sp.left + 4 / fs.scale, sp.top + 28 / fs.scale);
   }
 
   c2d.restore();

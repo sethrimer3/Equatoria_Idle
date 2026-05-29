@@ -270,6 +270,13 @@ export function drawCausticsBackground(
  *     proportional to their normalised elevation.
  *
  * Call after terrain rendering and before the first enemy draw call.
+ *
+ * @param worldOffX  World-space X origin of the local draw coordinate frame.
+ *   Set to `visibleBounds.left` when the canvas context has been translated by
+ *   `(visibleBounds.left, visibleBounds.top)` so that ridge world coordinates
+ *   are correctly offset within the light buffer.  Defaults to 0 (safe core).
+ * @param worldOffY  World-space Y origin of the local draw coordinate frame.
+ *   Defaults to 0 (safe core).
  */
 export function drawCausticsFloorEffects(
   canvas2d: CanvasRenderingContext2D,
@@ -278,6 +285,8 @@ export function drawCausticsFloorEffects(
   nowMs: number,
   lowGraphics: boolean,
   seafloorData?: SeafloorTerrainData,
+  worldOffX = 0,
+  worldOffY = 0,
 ): void {
   const tS = nowMs * 0.001;
 
@@ -312,9 +321,12 @@ export function drawCausticsFloorEffects(
   // ── Height-aware parallax pass (into the same light buffer) ──────────────
   // Draws each ridge area with a slightly shifted caustic pattern offset so
   // raised terrain intercepts the light field from a different angle.
+  // Ridge world coordinates are translated by (-worldOffX, -worldOffY) to map
+  // into the light-buffer's local coordinate space.
   if (seafloorData && seafloorData.ridges.length > 0) {
     _drawCausticsHeightAwarePass(
       _lightCtx, _lightW, _lightH, scale, seafloorData, lowGraphics,
+      worldOffX, worldOffY,
     );
   }
 
@@ -339,8 +351,10 @@ export function drawCausticsFloorEffects(
   // Screen-blended aqua highlight along ridge crests; higher ridges are brighter.
   // Applied after the light-buffer composite so it is affected by the same
   // screen blending that brightens the base caustic network.
+  // Ridge coordinates are offset by (-worldOffX, -worldOffY) to align with the
+  // translated main canvas context.
   if (seafloorData && seafloorData.ridges.length > 0) {
-    _drawCausticsElevationBrightness(canvas2d, seafloorData, lowGraphics);
+    _drawCausticsElevationBrightness(canvas2d, seafloorData, lowGraphics, worldOffX, worldOffY);
   }
 }
 
@@ -583,6 +597,8 @@ function _drawCausticsHeightAwarePass(
   bufScale: number,
   seafloor: SeafloorTerrainData,
   lowGraphics: boolean,
+  worldOffX = 0,
+  worldOffY = 0,
 ): void {
   if (!_patternA) return;
 
@@ -618,7 +634,7 @@ function _drawCausticsHeightAwarePass(
     const halfW = ridge.width * 0.5 * bufScale;
     ctx.save();
     ctx.beginPath();
-    _traceRidgePolygon(ctx, ridge.points, halfW, bufScale);
+    _traceRidgePolygon(ctx, ridge.points, halfW, bufScale, worldOffX, worldOffY);
     ctx.clip();
 
     // Draw the height-shifted pattern within the clipped ridge area.
@@ -656,6 +672,8 @@ function _drawCausticsElevationBrightness(
   ctx: CanvasRenderingContext2D,
   seafloor: SeafloorTerrainData,
   lowGraphics: boolean,
+  worldOffX = 0,
+  worldOffY = 0,
 ): void {
   let maxWidth = 1;
   for (const ridge of seafloor.ridges) {
@@ -687,9 +705,9 @@ function _drawCausticsElevationBrightness(
     ctx.lineWidth = ridge.width * 0.45;
 
     ctx.beginPath();
-    ctx.moveTo(ridge.points[0].x, ridge.points[0].y);
+    ctx.moveTo(ridge.points[0].x - worldOffX, ridge.points[0].y - worldOffY);
     for (let i = 1; i < ridge.points.length; i++) {
-      ctx.lineTo(ridge.points[i].x, ridge.points[i].y);
+      ctx.lineTo(ridge.points[i].x - worldOffX, ridge.points[i].y - worldOffY);
     }
     ctx.stroke();
   }
@@ -717,6 +735,8 @@ function _traceRidgePolygon(
   pts: readonly { x: number; y: number }[],
   halfW: number,
   scale: number,
+  worldOffX = 0,
+  worldOffY = 0,
 ): void {
   const n = pts.length;
   if (n < 2) return;
@@ -732,8 +752,8 @@ function _traceRidgePolygon(
     const tx = dx / len;
     const ty = dy / len;
     // Left perpendicular: (-ty, tx)
-    const x = pts[i].x * scale + (-ty) * halfW;
-    const y = pts[i].y * scale + ( tx) * halfW;
+    const x = (pts[i].x - worldOffX) * scale + (-ty) * halfW;
+    const y = (pts[i].y - worldOffY) * scale + ( tx) * halfW;
     if (i === 0) ctx.moveTo(x, y);
     else         ctx.lineTo(x, y);
   }
@@ -748,8 +768,8 @@ function _traceRidgePolygon(
     const tx = dx / len;
     const ty = dy / len;
     // Right perpendicular: (ty, -tx)
-    const x = pts[i].x * scale + ( ty) * halfW;
-    const y = pts[i].y * scale + (-tx) * halfW;
+    const x = (pts[i].x - worldOffX) * scale + ( ty) * halfW;
+    const y = (pts[i].y - worldOffY) * scale + (-tx) * halfW;
     ctx.lineTo(x, y);
   }
 

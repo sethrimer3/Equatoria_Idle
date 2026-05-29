@@ -1026,6 +1026,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
     getTopographicTerrainState: () => topographicTerrainState,
     getPlayerHpRatio:        () => playerStats.maxHp > 0 ? playerStats.hp / playerStats.maxHp : 0,
+    getVerdureCaveWallState: () => verdureCaveWallState,
+    getIsDevMode:            () => _isDevMode,
   });
 
   // ── Create weapon systems ──────────────────────────────────────
@@ -1267,6 +1269,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     joystick,
     keys,
     dim,
+    getFieldSpace: () => rpgFieldSpace,
     enemies, sapphireEnemies, emeraldEnemies, amberEnemies,
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
@@ -1319,7 +1322,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   });
 
   function clampEnemyToBounds(enemy: { x: number; y: number; vx: number; vy: number }): void {
-    clampEnemyToBoundsHelper(enemy, viewport.left, viewport.top, viewport.right, viewport.bottom);
+    const ab = rpgFieldSpace.activeBounds;
+    clampEnemyToBoundsHelper(enemy, ab.left, ab.top, ab.right, ab.bottom);
   }
 
   /** Flag set at the start of each update() call; drives auto-move logic. */
@@ -1336,6 +1340,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     dealDamageToPlayer,
     dealDamageToPlayerKnockback,
     clampEnemyToBounds,
+    getFieldSpace: () => rpgFieldSpace,
     getTerrainState: () => topographicTerrainState,
     getNavGrid: () => rpgNavGrid,
     getVerdureCaveWallState: () => verdureCaveWallState,
