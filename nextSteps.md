@@ -1,6 +1,45 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#191**
+Current build: **#194**
+
+---
+
+## Build #194 — Verdure cave walls expand with field-space active bounds
+
+### Problem fixed
+
+On desktop, Verdure cave/stone walls were locked to the old 360×640 safe core.
+The expanded left/right/top/bottom world area (visible on wide displays) showed
+only open background — no cave wall texture, no collision, no spawn rejection,
+and no plant anchors in the new space.
+
+### Root cause
+
+`generateVerdureCaveWalls(wave, widthPx, heightPx)` used the fixed safe-core
+dimensions, so all wall rendering, collision, floor texture, spawn rejection,
+plant anchors, and nav-grid integration were bounded to `(0,0)–(360,640)`.
+
+### Fix summary
+
+* **`VerdureCaveWallState`** gains `originX`/`originY` fields (world-space
+  top-left of the wall rectangle).
+* **`generateVerdureCaveWalls`** signature changed to accept a bounds object
+  `{ left, top, width, height }` — called from `rpg-render.ts` with
+  `rpgFieldSpace.activeBounds`.
+* **Drawing** (`drawVerdureFloor`, `drawVerdureCaveWalls`, `drawVerdureWallDebug`,
+  `drawVerdureFloorSegmented`, `drawVerdureWallsSegmented`) translates the canvas
+  context by `(originX, originY)` before rendering the local-space baked canvas.
+* **Collision & spawn** (`_isPointInVerdureWallWithMargin`, `pushPointOutsideVerdureWall`,
+  `computeVerdureWallRepulsion`, `isVerdureSpawnRejected`) convert world→local by
+  subtracting origin at entry, and convert local→world on output.
+* **Edge points** (`_buildEdgePoints`) stored in world coordinates so plant anchors
+  attach to the correct expanded positions.
+* **Nav grid** (`RpgNavGrid`) gains `originX`/`originY` fields; `buildRpgNavigationGrid`
+  accepts optional origin params; `worldToCell`/`cellToWorld`, `applyCircleSoftObstacles`,
+  and `drawRpgPathfindingDebug` all account for grid origin.  For Verdure, the nav
+  grid is built with `activeBounds` origin + dimensions; all other zones default to 0.
+* **Segmented surface tints** (`drawVerdureWallsSegmented`) convert incoming world-space
+  influence positions to local space before passing to `_computeTints`.
 
 ---
 

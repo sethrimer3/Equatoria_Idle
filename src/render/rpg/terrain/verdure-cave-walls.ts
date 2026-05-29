@@ -47,6 +47,10 @@ export interface VerdureWallEdgePoint {
 
 export interface VerdureCaveWallState {
   seed: number;
+  /** World-space X of the wall rect's left edge (== activeBounds.left). */
+  originX: number;
+  /** World-space Y of the wall rect's top edge (== activeBounds.top). */
+  originY: number;
   widthPx: number;
   heightPx: number;
   topDepths: Float32Array;
@@ -165,10 +169,13 @@ function _isPointInVerdureWallWithMargin(
   py: number,
   margin: number,
 ): boolean {
-  return py < _sampleTopDepth(state, px) + margin
-    || py > state.heightPx - _sampleBottomDepth(state, px) - margin
-    || px < _sampleLeftDepth(state, py) + margin
-    || px > state.widthPx - _sampleRightDepth(state, py) - margin;
+  // Convert world → local before sampling depth arrays.
+  const lx = px - state.originX;
+  const ly = py - state.originY;
+  return ly < _sampleTopDepth(state, lx) + margin
+    || ly > state.heightPx - _sampleBottomDepth(state, lx) - margin
+    || lx < _sampleLeftDepth(state, ly) + margin
+    || lx > state.widthPx - _sampleRightDepth(state, ly) - margin;
 }
 
 /**
@@ -199,11 +206,14 @@ export function isVerdureSpawnRejected(
 
 /**
  * Returns a guaranteed-safe fallback spawn position at the centre of the
- * arena.  The centre is always walkable: wall depths are at most ~50 px from
- * the canvas edges, so the centre of any valid play canvas is never in a wall.
+ * arena in world coordinates.  The centre is always walkable: wall depths are
+ * at most ~50 px from the local edges.
  */
 export function getVerdureSafeFallbackSpawnPos(state: VerdureCaveWallState): { x: number; y: number } {
-  return { x: state.widthPx * 0.5, y: state.heightPx * 0.5 };
+  return {
+    x: state.originX + state.widthPx * 0.5,
+    y: state.originY + state.heightPx * 0.5,
+  };
 }
 
 function _appendBoundaryPath(
@@ -470,6 +480,8 @@ function _buildVoronoiTexture(
 
 function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
   const edgePoints: VerdureWallEdgePoint[] = [];
+  const ox = state.originX;
+  const oy = state.originY;
 
   // Corner exclusion: skip plant anchor points within this distance from a
   // canvas corner along each edge.  This prevents two edges' worth of plant
@@ -483,8 +495,8 @@ function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
     if (xn < cornerExclusionPx || xn > state.widthPx - cornerExclusionPx) continue;
     const topNormal = _getBoundaryNormal(state, TOP_EDGE, xn);
     edgePoints.push({
-      x: xn,
-      y: _sampleTopDepth(state, xn),
+      x: ox + xn,
+      y: oy + _sampleTopDepth(state, xn),
       nx: topNormal.x,
       ny: topNormal.y,
       edge: TOP_EDGE,
@@ -492,8 +504,8 @@ function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
     });
     const bottomNormal = _getBoundaryNormal(state, BOTTOM_EDGE, xn);
     edgePoints.push({
-      x: xn,
-      y: state.heightPx - _sampleBottomDepth(state, xn),
+      x: ox + xn,
+      y: oy + state.heightPx - _sampleBottomDepth(state, xn),
       nx: bottomNormal.x,
       ny: bottomNormal.y,
       edge: BOTTOM_EDGE,
@@ -510,8 +522,8 @@ function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
     if (yn < cornerExclusionPx || yn > state.heightPx - cornerExclusionPx) continue;
     const leftNormal = _getBoundaryNormal(state, LEFT_EDGE, yn);
     edgePoints.push({
-      x: _sampleLeftDepth(state, yn),
-      y: yn,
+      x: ox + _sampleLeftDepth(state, yn),
+      y: oy + yn,
       nx: leftNormal.x,
       ny: leftNormal.y,
       edge: LEFT_EDGE,
@@ -519,8 +531,8 @@ function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
     });
     const rightNormal = _getBoundaryNormal(state, RIGHT_EDGE, yn);
     edgePoints.push({
-      x: state.widthPx - _sampleRightDepth(state, yn),
-      y: yn,
+      x: ox + state.widthPx - _sampleRightDepth(state, yn),
+      y: oy + yn,
       nx: rightNormal.x,
       ny: rightNormal.y,
       edge: RIGHT_EDGE,
@@ -530,7 +542,19 @@ function _buildEdgePoints(state: VerdureCaveWallState): VerdureWallEdgePoint[] {
   return edgePoints;
 }
 
-export function generateVerdureCaveWalls(seed: number, widthPx: number, heightPx: number): VerdureCaveWallState {
+/**
+ * Generate Verdure cave wall state for the given world-space bounds.
+ *
+ * `bounds.left / top` set the world-space origin of the wall rect so that
+ * rendering, collision, and spawn rejection all work in world coordinates.
+ * Use `rpgFieldSpace.activeBounds` so walls cover the full visible field.
+ */
+export function generateVerdureCaveWalls(
+  seed: number,
+  bounds: { left: number; top: number; width: number; height: number },
+): VerdureCaveWallState {
+  const widthPx  = bounds.width;
+  const heightPx = bounds.height;
   const topCount = Math.floor(widthPx / H_STEP) + 1;
   const sideCount = Math.floor(heightPx / V_STEP) + 1;
   const topDepths = new Float32Array(topCount);
@@ -554,6 +578,8 @@ export function generateVerdureCaveWalls(seed: number, widthPx: number, heightPx
 
   const state: VerdureCaveWallState = {
     seed,
+    originX: bounds.left,
+    originY: bounds.top,
     widthPx,
     heightPx,
     topDepths,
@@ -587,8 +613,9 @@ export function pushPointOutsideVerdureWall(
   out: { x: number; y: number },
   margin: number,
 ): boolean {
-  let x = px;
-  let y = py;
+  // Convert world → local, iterate, convert local → world on output.
+  let x = px - state.originX;
+  let y = py - state.originY;
   let pushed = false;
 
   for (let iter = 0; iter < 4; iter++) {
@@ -623,8 +650,8 @@ export function pushPointOutsideVerdureWall(
     pushed = true;
   }
 
-  out.x = x;
-  out.y = y;
+  out.x = state.originX + x;
+  out.y = state.originY + y;
   return pushed;
 }
 
@@ -639,6 +666,10 @@ export function computeVerdureWallRepulsion(
   out.y = 0;
   let maxInfluence = 0;
 
+  // Convert world → local for depth sampling.
+  const lx = px - state.originX;
+  const ly = py - state.originY;
+
   const apply = (dist: number, nx: number, ny: number): void => {
     if (dist >= INFLUENCE_DEPTH_PX) return;
     const influence = INFLUENCE_DEPTH_PX - dist;
@@ -648,17 +679,17 @@ export function computeVerdureWallRepulsion(
     if (influence > maxInfluence) maxInfluence = influence;
   };
 
-  const topNormal = _getBoundaryNormal(state, TOP_EDGE, px);
-  apply(py - _sampleTopDepth(state, px), topNormal.x, topNormal.y);
+  const topNormal = _getBoundaryNormal(state, TOP_EDGE, lx);
+  apply(ly - _sampleTopDepth(state, lx), topNormal.x, topNormal.y);
 
-  const bottomNormal = _getBoundaryNormal(state, BOTTOM_EDGE, px);
-  apply((state.heightPx - _sampleBottomDepth(state, px)) - py, bottomNormal.x, bottomNormal.y);
+  const bottomNormal = _getBoundaryNormal(state, BOTTOM_EDGE, lx);
+  apply((state.heightPx - _sampleBottomDepth(state, lx)) - ly, bottomNormal.x, bottomNormal.y);
 
-  const leftNormal = _getBoundaryNormal(state, LEFT_EDGE, py);
-  apply(px - _sampleLeftDepth(state, py), leftNormal.x, leftNormal.y);
+  const leftNormal = _getBoundaryNormal(state, LEFT_EDGE, ly);
+  apply(lx - _sampleLeftDepth(state, ly), leftNormal.x, leftNormal.y);
 
-  const rightNormal = _getBoundaryNormal(state, RIGHT_EDGE, py);
-  apply((state.widthPx - _sampleRightDepth(state, py)) - px, rightNormal.x, rightNormal.y);
+  const rightNormal = _getBoundaryNormal(state, RIGHT_EDGE, ly);
+  apply((state.widthPx - _sampleRightDepth(state, ly)) - lx, rightNormal.x, rightNormal.y);
 
   return maxInfluence;
 }
@@ -799,7 +830,7 @@ export function drawVerdureFloor(
 
   canvas2d.save();
   canvas2d.globalAlpha = 1;
-  canvas2d.drawImage(state.floorTextureCanvas, 0, 0);
+  canvas2d.drawImage(state.floorTextureCanvas, state.originX, state.originY);
   canvas2d.restore();
 }
 
@@ -824,6 +855,7 @@ export function drawVerdureCaveWalls(
   if (!state.textureCanvas) return;
 
   canvas2d.save();
+  canvas2d.translate(state.originX, state.originY);
   canvas2d.globalAlpha = 1;
   canvas2d.drawImage(state.textureCanvas, 0, 0);
   _drawRimStrip(canvas2d, state, TOP_EDGE);
@@ -838,6 +870,7 @@ export function drawVerdureWallDebug(
   state: VerdureCaveWallState,
 ): void {
   canvas2d.save();
+  canvas2d.translate(state.originX, state.originY);
   canvas2d.lineWidth = 1;
   canvas2d.setLineDash([4, 3]);
   canvas2d.strokeStyle = 'rgba(120, 255, 160, 0.85)';
@@ -854,7 +887,10 @@ export function drawVerdureWallDebug(
   _appendBoundaryPath(canvas2d, state, RIGHT_EDGE);
   canvas2d.stroke();
   canvas2d.setLineDash([]);
+  canvas2d.restore();
 
+  // Edge points are in world coordinates — draw them without extra translate.
+  canvas2d.save();
   for (const point of state.edgePoints) {
     canvas2d.fillStyle = point.isOccupied ? 'rgba(255, 120, 120, 0.95)' : 'rgba(255, 240, 120, 0.95)';
     canvas2d.beginPath();
@@ -866,7 +902,6 @@ export function drawVerdureWallDebug(
     canvas2d.lineTo(point.x + point.nx * 8, point.y + point.ny * 8);
     canvas2d.stroke();
   }
-
   canvas2d.restore();
 }
 
@@ -923,14 +958,18 @@ export function applyVerdureWallsToNavGrid(
   navGrid: RpgNavGrid,
 ): void {
   const { cols, rows, cellSizePx, blocked } = navGrid;
+  const gridOriginX = (navGrid as { originX?: number }).originX ?? 0;
+  const gridOriginY = (navGrid as { originY?: number }).originY ?? 0;
   const half = cellSizePx * 0.5;
   // Extra inward margin: enemies should not hug the raw boundary.
   const margin = half + 2;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const wx = c * cellSizePx + half;
-      const wy = r * cellSizePx + half;
+      // Cell centre in world coordinates.
+      const wx = gridOriginX + c * cellSizePx + half;
+      const wy = gridOriginY + r * cellSizePx + half;
+      // _isPointInVerdureWallWithMargin expects world coords (it subtracts origin internally).
       if (_isPointInVerdureWallWithMargin(state, wx, wy, margin)) {
         blocked[r * cols + c] = 1;
       }

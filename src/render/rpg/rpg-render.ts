@@ -994,11 +994,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     beginWaveTerrain:        (wave) => {
       topographicTerrainState = beginWaveTerrain(wave, widthPx, heightPx, performance.now(), rpgSimState.activeZoneId);
       if (rpgSimState.activeZoneId === 'verdure') {
-        verdureCaveWallState = generateVerdureCaveWalls(wave, widthPx, heightPx);
+        const ab = rpgFieldSpace.activeBounds;
+        verdureCaveWallState = generateVerdureCaveWalls(wave, ab);
+        rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, ab.width, ab.height, undefined, ab.left, ab.top);
       } else {
         verdureCaveWallState = null;
+        rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
       }
-      rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, widthPx, heightPx);
       // Apply zone-specific soft/hard obstacles to the nav grid immediately
       // after building it so enemies path around them from wave start.
       if (rpgSimState.activeZoneId === 'impetus') {
