@@ -2699,3 +2699,41 @@ Stored in `localStorage` under `equatoria_settings` (same key as all other setti
 - **Tailwind/utility overflow classes**: if Tailwind is added later, `overflow-auto` / `overflow-y-auto` utility classes will also inherit the global rule automatically — no extra work needed.
 - **Horizontal scrollbars** (`height: 8px`) are styled by the same rule; any element that gains `overflow-x: auto` will show a gold horizontal thumb consistently.
 - **`.gold-scrollbar` utility class**: not currently needed because the `*` universal selector covers all scrollable containers. Add a `.gold-scrollbar` local class if a third-party widget ever injects its own scrollbar reset.
+
+
+---
+
+## Build #185 — RpgFieldSpace centralized field-space abstraction
+
+### What was implemented
+
+- Added `src/render/rpg/rpgFieldSpace.ts`: the new authoritative field-space module.
+  - Exports `WorldRect`, `Vec2`, `RpgFieldSpace` types.
+  - Exports `computeRpgFieldSpace(args)` factory that derives all bounds from canvas CSS size, DPR, and a stable pre-computed scale. Scale is _passed in_; it does not zoom when the canvas grows.
+  - Exports helpers: `rectCenteredOn`, `padRect`, `makeSpawnBounds`.
+  - `worldToScreen` / `screenToWorld` closures included on the returned object.
+  - Bounds produced: `visibleBounds`, `activeBounds` (= `visibleBounds`), `safeCoreBounds`, `spawnBounds` (= `activeBounds`), `paddedEffectBounds` (= `visibleBounds` + 96 world units each edge).
+- Added `src/render/rpg/__tests__/rpgFieldSpace.test.ts`: regression tests for scale invariant, bounds, and coordinate helpers.
+- Updated `rpg-render.ts`:
+  - Imports `computeRpgFieldSpace` and `RpgFieldSpace`.
+  - Declares `let rpgFieldSpace: RpgFieldSpace` initialized from the logical safe-core dimensions.
+  - `doResize()` recomputes `rpgFieldSpace` at the end of every resize, using the live `containerW/H`, `rpgSafeScale`, and DPR.
+  - `drawCtx` exposes `getFieldSpace: () => rpgFieldSpace` so all draw subsystems can read it.
+- Updated `rpg-render-draw.ts`:
+  - Imports `RpgFieldSpace` type.
+  - `RpgDrawCtx` gains optional `getFieldSpace?(): RpgFieldSpace`.
+  - `drawRpgViewportDiagnostics` now shows all five field-space bound rects plus the new `activeSmallerThanVisible` warning.
+
+### Remaining legacy-bounds migration (deferred)
+
+The field-space abstraction is wired and visible to all draw subsystems via `ctx.getFieldSpace()`. The following systems still use legacy `widthPx`/`heightPx` fixed-dimension calls and should be migrated in a follow-up build:
+
+- **`rpg-render.ts` `beginWaveTerrain()`** (`src/render/rpg/rpg-render.ts`): passes `widthPx` / `heightPx` (360 × 640) to `buildTopographicTerrain`, `buildEuhedralTerrain`, `buildVerdureTerrain`, `buildImpetus*`, `buildNadir*`, `buildHorizonTerrain`, etc. These should receive `visibleBounds.width / height` from `rpgFieldSpace` so terrain is generated over the full visible area.
+- **`topographic-terrain.ts`** (`src/render/rpg/terrain/topographic-terrain.ts`): terrain bake sizes derived from passed-in `widthPx`/`heightPx`. Should accept a `WorldRect` from `rpgFieldSpace.visibleBounds`.
+- **`topographic-lighting.ts`** (`src/render/rpg/terrain/topographic-lighting.ts`): cached lighting overlay sized to `widthPx × heightPx`. Cache invalidation key should include visible bounds.
+- **`caustics-overlay.ts`** (`src/render/rpg/terrain/caustics-overlay.ts`): tile grid/background layers implicitly assume 360 × 640 canvas. Should use `paddedEffectBounds`.
+- **`euhedral-hex-floor.ts`** (`src/render/rpg/terrain/euhedral-hex-floor.ts`): hex floor cache sized to canvas backing store; may clip on expanded canvases. Should use `visibleBounds`.
+- **`verdure-cave-walls.ts`** (`src/render/rpg/terrain/verdure-cave-walls.ts`): `_buildEdgePoints` / wall generation keyed on `widthPx × heightPx`. Should use `activeBounds`.
+- **`rpg-render-draw.ts` terrain draw calls**: `drawCausticsBackground`, `drawEuhedralHexFloor`, `drawVerdureCaveWalls`, etc. pass legacy dimension arguments. Should pass field-space bounds.
+
+Priority order for migration: terrain generation → caustics/euhedral → verdure walls → lighting cache.
