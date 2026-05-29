@@ -345,6 +345,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       pointerY: pointerPos.y,
       generatorEquationVisibility: ctx.settings.generatorEquationVisibility,
       forgePreviewTerms,
+      equationRenderStyle: ctx.settings.equationRenderStyle,
     });
 
     ctx.particles.draw(

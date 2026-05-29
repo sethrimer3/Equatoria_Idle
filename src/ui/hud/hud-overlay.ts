@@ -5,6 +5,11 @@
  * elements so they are crisp and non-pixelated regardless of the canvas
  * upscale factor.  Tap feedback is rendered as a gold drop-shadow glow on
  * the equation that fades as tapFlashAlpha decays.
+ *
+ * When `equationRenderStyle === 'pixel'` the central equation is instead drawn
+ * into a low-resolution offscreen canvas and upscaled with nearest-neighbor so
+ * every pixel is a crisp 2×2 block.  Score and motes remain as DOM text in
+ * both modes.
  */
 
 import type { EquationTermView } from '../../sim/equation';
@@ -14,6 +19,8 @@ import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import type { TierId } from '../../data/tiers';
 import { TIER_BY_ID } from '../../data/tiers';
 import { SPAWNER_SIZE } from '../../data/particles/particle-config';
+import { buildEquationSegments } from './equation-segments';
+import { createPixelEquationRenderer, type PixelEquationRenderer } from './pixel-equation-renderer';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -39,6 +46,11 @@ export interface HudUpdateParams {
    * would result or when the forge is idle.
    */
   forgePreviewTerms: EquationTermView[] | null;
+  /**
+   * Controls whether the equation is rendered as a low-resolution pixel canvas
+   * ('pixel') or as smooth anti-aliased DOM HTML ('smooth').
+   */
+  equationRenderStyle: 'pixel' | 'smooth';
 }
 
 export interface HudOverlay {
@@ -107,6 +119,11 @@ export function createHudOverlay(): HudOverlay {
   equationContainer.appendChild(equationEl);
   equationContainer.appendChild(forgeArrowEl);
   equationContainer.appendChild(forgePreviewEl);
+
+  // Pixel canvas renderer — created once, reused every frame
+  const pixelRenderer: PixelEquationRenderer = createPixelEquationRenderer();
+  equationContainer.appendChild(pixelRenderer.canvas);
+
   const generatorEqContainer = document.createElement('div');
   generatorEqContainer.className = 'hud-generator-equations';
 
@@ -119,6 +136,7 @@ export function createHudOverlay(): HudOverlay {
   let lastTermsKey = '';
   let lastIsForgeUnlocked = false;
   let lastPreviewKey = '';
+  let lastRenderStyle: 'pixel' | 'smooth' | '' = '';
 
   // ── Update function ───────────────────────────────────────────
   function update(params: HudUpdateParams): void {
@@ -138,6 +156,7 @@ export function createHudOverlay(): HudOverlay {
       pointerY,
       generatorEquationVisibility,
       forgePreviewTerms,
+      equationRenderStyle,
     } = params;
 
     // Score
@@ -147,50 +166,83 @@ export function createHudOverlay(): HudOverlay {
     motesValue.textContent =
       `${formatNumberAs(onScreenMotes, numberFormat)} (${formatNumberAs(onScreenParticleCount, numberFormat)})`;
 
-    // Equation — only rebuild HTML when content changes
+    // ── Render-style switch ───────────────────────────────────
+    const styleChanged = equationRenderStyle !== lastRenderStyle;
+    if (styleChanged) {
+      lastRenderStyle = equationRenderStyle;
+      // Reset change-detection so the new mode fully redraws
+      lastTermsKey = '';
+      lastPreviewKey = '';
+
+      const isPixel = equationRenderStyle === 'pixel';
+      // DOM elements: visible only in smooth mode
+      equationEl.style.display   = isPixel ? 'none' : '';
+      forgeArrowEl.style.display = 'none'; // managed per-frame below in smooth mode
+      forgePreviewEl.style.display = 'none';
+      // Pixel canvas: visible only in pixel mode
+      pixelRenderer.canvas.style.display = isPixel ? '' : 'none';
+    }
+
+    // ── Equation visibility gate ──────────────────────────────
     const termsKey = isForgeUnlocked
       ? terms.map(t => `${t.tierId}:${t.paramValue}`).join(',')
       : '';
 
     if (termsKey !== lastTermsKey || isForgeUnlocked !== lastIsForgeUnlocked) {
-      lastTermsKey = termsKey;
+      lastTermsKey        = termsKey;
       lastIsForgeUnlocked = isForgeUnlocked;
 
       if (!isForgeUnlocked) {
         equationContainer.style.visibility = 'hidden';
         equationEl.innerHTML = '';
-      } else if (terms.length === 0) {
-        equationContainer.style.visibility = 'visible';
-        equationEl.innerHTML = '<span style="color:#666">E = ???</span>';
       } else {
         equationContainer.style.visibility = 'visible';
-        equationEl.innerHTML = buildStructuredEquationHtml(terms);
+        // DOM path — only rebuild HTML in smooth mode
+        if (equationRenderStyle === 'smooth') {
+          equationEl.innerHTML = terms.length === 0
+            ? '<span style="color:#666">E = ???</span>'
+            : buildStructuredEquationHtml(terms);
+        }
       }
     }
 
-    // Forge preview equation
+    // ── Forge preview ─────────────────────────────────────────
     const previewKey = forgePreviewTerms
       ? forgePreviewTerms.map(t => `${t.tierId}:${t.paramValue}`).join(',')
       : '';
+
     if (previewKey !== lastPreviewKey) {
       lastPreviewKey = previewKey;
-      if (forgePreviewTerms && forgePreviewTerms.length > 0) {
-        forgeArrowEl.style.display = '';
-        forgePreviewEl.style.display = '';
-        forgePreviewEl.innerHTML = buildStructuredEquationHtml(forgePreviewTerms);
-      } else {
-        forgeArrowEl.style.display = 'none';
-        forgePreviewEl.style.display = 'none';
-        forgePreviewEl.innerHTML = '';
+      if (equationRenderStyle === 'smooth') {
+        if (forgePreviewTerms && forgePreviewTerms.length > 0) {
+          forgeArrowEl.style.display  = '';
+          forgePreviewEl.style.display = '';
+          forgePreviewEl.innerHTML = buildStructuredEquationHtml(forgePreviewTerms);
+        } else {
+          forgeArrowEl.style.display  = 'none';
+          forgePreviewEl.style.display = 'none';
+          forgePreviewEl.innerHTML = '';
+        }
       }
     }
 
-    // Tap flash — gold drop-shadow glow that fades with tapFlashAlpha
-    if (tapFlashAlpha > 0) {
-      const spread = tapFlashAlpha * MAX_GLOW_SPREAD_PX;
-      equationEl.style.filter = `drop-shadow(0 0 ${spread}px rgba(255, 241, 114, ${tapFlashAlpha}))`;
-    } else if (equationEl.style.filter) {
-      equationEl.style.filter = '';
+    // ── Pixel canvas path ─────────────────────────────────────
+    if (equationRenderStyle === 'pixel' && isForgeUnlocked) {
+      const mainSegs    = terms.length > 0 ? buildEquationSegments(terms) : [];
+      const previewSegs = forgePreviewTerms && forgePreviewTerms.length > 0
+        ? buildEquationSegments(forgePreviewTerms)
+        : null;
+      pixelRenderer.update(mainSegs, previewSegs, styleChanged);
+    }
+
+    // ── Tap flash — smooth mode only (DOM eq) ─────────────────
+    if (equationRenderStyle === 'smooth') {
+      if (tapFlashAlpha > 0) {
+        const spread = tapFlashAlpha * MAX_GLOW_SPREAD_PX;
+        equationEl.style.filter = `drop-shadow(0 0 ${spread}px rgba(255, 241, 114, ${tapFlashAlpha}))`;
+      } else if (equationEl.style.filter) {
+        equationEl.style.filter = '';
+      }
     }
 
     generatorEqContainer.innerHTML = '';

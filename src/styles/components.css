@@ -193,6 +193,23 @@
   50% { filter: drop-shadow(0 0 10px rgba(255, 200, 80, 0.75)); }
 }
 
+/* ── Pixel-canvas equation (pixel render style) ─────────────── */
+/*
+ * Upscaled canvas element that sits inside .hud-equation-container.
+ * image-rendering: pixelated prevents the browser from applying any
+ * bilinear interpolation when CSS scales the element.  The offscreen
+ * rendering at low resolution plus nearest-neighbor blit in JS is what
+ * actually creates the crisp pixel-art effect.
+ */
+.hud-equation-pixel-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 .hud-tap-hint {
   margin-top: 12px;
   font-size: 13px;
