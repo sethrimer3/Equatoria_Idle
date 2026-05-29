@@ -17,6 +17,12 @@
  * Draw order expected by rpg-render-draw.ts:
  *   drawVerdureBackground()    — immediately after the initial background fill, before fluid/terrain
  *   drawVerdureFloorEffects()  — after terrain rendering, before enemies/player
+ *
+ * Coordinate convention:
+ *   Both exported functions are called after canvas2d.translate(vwX, vwY) in rpg-render-draw.ts.
+ *   They receive (vwW, vwH) = visible-frame dimensions and draw in LOCAL coordinates
+ *   (0..vwW, 0..vwH).  They are purely atmospheric / screen-covering procedural layers and
+ *   do NOT reference any world-space gameplay objects or positions.
  */
 
 // ── Pre-baked seed data ────────────────────────────────────────────────────────

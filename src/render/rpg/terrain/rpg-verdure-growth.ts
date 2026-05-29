@@ -18,7 +18,15 @@
  *   - Path geometry generated once at spawn and cached in Float32Array.
  *   - Growth advances growthProgress 0..1; rendering reads only that scalar.
  *   - Plants are targetable only when (a) the player is within PLANT_TARGET_RANGE_PX,
- *     AND (b) the nearest grown segment is also within that range.
+ *   AND (b) the nearest grown segment is also within that range.
+ *
+ * Coordinate convention:
+ *   All plant positions (rootX/Y, ctrlX/Y, branch control points) are in
+ *   **world coordinates**.  When `wallState` is available, edge anchor points
+ *   come from `wallState.edgePoints` which are already in world space
+ *   (originX + localX, originY + localY).  The path-clamping bounds passed to
+ *   `_buildMainPath` / `_buildBranches` are also world-space min/max values
+ *   derived from `wallState.originX/Y` + `wallState.widthPx/heightPx`.
  */
 
 import type { VerdureCaveWallState } from './verdure-cave-walls';
@@ -212,8 +220,10 @@ function _buildMainPath(
   edgeDir: number,
   segCount: number,
   seed: number,
-  widthPx: number,
-  heightPx: number,
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
 ): { ctrlX: Float32Array; ctrlY: Float32Array; fullLength: number } {
   const ptCount = segCount * 3 + 1;
   const ctrlX = new Float32Array(ptCount);
@@ -252,9 +262,9 @@ function _buildMainPath(
     cx += Math.cos(angle) * segLen;
     cy += Math.sin(angle) * segLen;
 
-    // Clamp to arena (keep within bounds)
-    cx = Math.max(4, Math.min(widthPx - 4, cx));
-    cy = Math.max(4, Math.min(heightPx - 4, cy));
+    // Clamp to arena bounds (world coords — minX/maxX/minY/maxY are already world-space)
+    cx = Math.max(minX, Math.min(maxX, cx));
+    cy = Math.max(minY, Math.min(maxY, cy));
   }
 
   // Last anchor
@@ -346,8 +356,10 @@ function _buildBranches(
   segCount: number,
   type: VerdurePlantType,
   seed: number,
-  widthPx: number,
-  heightPx: number,
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
 ): VerdureBranch[] {
   const branchCount = type === 'thorn' ? 0
     : type === 'spiral' ? 0
@@ -370,7 +382,7 @@ function _buildBranches(
     const bSegCount = 2 + Math.floor(_rng(seed, 25 + b * 5) * 2);
     const bSeed     = seed + b * 7919;
     const { ctrlX: bCtrlX, ctrlY: bCtrlY, fullLength: bLen } =
-      _buildMainPath(sx, sy, devAngle, bSegCount, bSeed, widthPx, heightPx);
+      _buildMainPath(sx, sy, devAngle, bSegCount, bSeed, minX, maxX, minY, maxY);
 
     branches.push({
       startNode: splitN,
@@ -546,9 +558,14 @@ export function pickVerdurePlantAnchor(
  * @param plants    Active plant array to push into.
  * @param deltaMs   Frame elapsed time.
  * @param wave      Current wave number (for scaling density/type).
- * @param widthPx   Arena logical width.
- * @param heightPx  Arena logical height.
+ * @param widthPx   Arena logical width (legacy safe-core value; used as fallback when wallState is null).
+ * @param heightPx  Arena logical height (legacy safe-core value; used as fallback when wallState is null).
  * @param lowGraphics Whether low-graphics mode is active.
+ * @param wallState  Cave wall state providing world-space bounds and edge anchor points.
+ *
+ * Plant paths are built in **world coordinates**.  When `wallState` is provided its
+ * `originX/Y` and `widthPx/heightPx` define the true world-space arena extent.
+ * Without it the legacy [0, widthPx] × [0, heightPx] range is used as a fallback.
  */
 export function tickVerdurePlantSpawn(
   plants: VerdurePlant[],
@@ -589,12 +606,20 @@ export function tickVerdurePlantSpawn(
     _rng(seed, 61),
   );
 
+  // Derive world-space clamp bounds from wallState when available so that plant
+  // paths are not incorrectly constrained to the legacy [0,360]×[0,640] range on
+  // expanded screens.  The 4 px inset keeps paths away from the very edge.
+  const minX = wallState ? wallState.originX + 4 : 4;
+  const maxX = wallState ? wallState.originX + wallState.widthPx  - 4 : widthPx  - 4;
+  const minY = wallState ? wallState.originY + 4 : 4;
+  const maxY = wallState ? wallState.originY + wallState.heightPx - 4 : heightPx - 4;
+
   const type     = _pickType(wave, seed);
   const segCount = SEGS_BY_TYPE[type];
   const { ctrlX, ctrlY, fullLength } = _buildMainPath(
-    rootX, rootY, edgeDir, segCount, seed, widthPx, heightPx,
+    rootX, rootY, edgeDir, segCount, seed, minX, maxX, minY, maxY,
   );
-  const branches = _buildBranches(ctrlX, ctrlY, segCount, type, seed, widthPx, heightPx);
+  const branches = _buildBranches(ctrlX, ctrlY, segCount, type, seed, minX, maxX, minY, maxY);
   const leaves   = _buildLeaves(type, segCount, seed);
   const flowers  = _buildFlowers(type, seed);
 

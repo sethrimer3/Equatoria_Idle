@@ -23,6 +23,13 @@
  *
  * All canvas state changes are wrapped in save/restore.
  * shadowBlur is always reset before returning to avoid expensive bleed.
+ *
+ * Coordinate convention:
+ *   drawVerdureEdgeRocks — drawn after translate(vwX, vwY), so uses LOCAL coords
+ *     (0..vwW, 0..vwH).  Used only as a fallback before wallState is available.
+ *   drawVerdurePlants / drawVerdureFragments — drawn WITHOUT any canvas translation,
+ *     so plant positions must be in WORLD coordinates.  Plant roots come from
+ *     wallState.edgePoints which are already world-space.
  */
 
 import type { VerdurePlant, VerdureBranch, VerdureFragment } from './rpg-verdure-growth';

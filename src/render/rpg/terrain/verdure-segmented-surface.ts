@@ -12,11 +12,19 @@
  *   - Segment geometry is computed and cached once per (seed, w, h, lowGraphics).
  *   - A static base canvas is baked once for each cache entry.
  *   - Per-frame dynamic tint redraws only influenced segments (no per-frame allocations).
+ *
+ * Coordinate convention:
+ *   All geometry built and baked here operates in **local canvas space**:
+ *   x ∈ [0, wState.widthPx], y ∈ [0, wState.heightPx].
+ *   The resulting static canvas is drawn at world position (wState.originX, wState.originY)
+ *   by the callers in verdure-cave-walls.ts and rpg-render-draw.ts.
+ *   Wall tests use `isPointInVerdureWallLocal` (not `isPointInVerdureWall`) to avoid
+ *   a double origin subtraction when coordinates are already in local space.
  */
 
 import type { VerdureCaveWallState } from './verdure-cave-walls';
 import {
-  isPointInVerdureWall,
+  isPointInVerdureWallLocal,
   sampleVerdureTopDepth,
   sampleVerdureBottomDepth,
   sampleVerdureLeftDepth,
@@ -250,7 +258,8 @@ function _buildFloorTris(wState: VerdureCaveWallState, seed: number): FloorTri[]
       const centY1 = (ay1 + by1 + cy1) / 3;
       if (
         centX1 >= 0 && centX1 <= W && centY1 >= 0 && centY1 <= H &&
-        !isPointInVerdureWall(wState, centX1, centY1)
+        // centX1/centY1 are local coords (0..W, 0..H) — use local variant to avoid double origin subtraction
+        !isPointInVerdureWallLocal(wState, centX1, centY1)
       ) {
         const angle1 = _rng(seed + 300, triIdx) * Math.PI * 2;
         const facX1 = Math.cos(angle1), facY1 = Math.sin(angle1);
@@ -267,7 +276,8 @@ function _buildFloorTris(wState: VerdureCaveWallState, seed: number): FloorTri[]
       const centY2 = (ay2 + by2 + cy2) / 3;
       if (
         centX2 >= 0 && centX2 <= W && centY2 >= 0 && centY2 <= H &&
-        !isPointInVerdureWall(wState, centX2, centY2)
+        // centX2/centY2 are local coords (0..W, 0..H) — use local variant to avoid double origin subtraction
+        !isPointInVerdureWallLocal(wState, centX2, centY2)
       ) {
         const angle2 = _rng(seed + 300, triIdx) * Math.PI * 2;
         const facX2 = Math.cos(angle2), facY2 = Math.sin(angle2);
@@ -340,8 +350,9 @@ function _buildWallCells(wState: VerdureCaveWallState, seed: number): WallCell[]
     cx /= poly.length;
     cy /= poly.length;
 
-    // Only render cells whose centre is in a wall region
-    if (!isPointInVerdureWall(wState, cx, cy)) continue;
+    // Only render cells whose centre is in a wall region.
+    // cx/cy are local coords (0..W, 0..H) — use local variant to avoid double origin subtraction.
+    if (!isPointInVerdureWallLocal(wState, cx, cy)) continue;
 
     // Facing: inward from wall toward arena centre, with slight RNG jitter
     const fxBase = (W * 0.5 - cx);
@@ -465,13 +476,14 @@ function _bakeStaticCanvas(
     }
   }
 
-  // Build wall-region mask (pixel-level; runs once)
+  // Build wall-region mask (pixel-level; runs once).
+  // px/py are local pixel coords (0..W, 0..H) — use local variant to avoid double origin subtraction.
   const maskCanvas = _makeCanvas(W, H);
   const maskCtx = maskCanvas.getContext('2d')!;
   const maskImg = maskCtx.createImageData(W, H);
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
-      if (isPointInVerdureWall(wState, px, py)) {
+      if (isPointInVerdureWallLocal(wState, px, py)) {
         const idx = (py * W + px) * 4;
         maskImg.data[idx] = maskImg.data[idx + 1] = maskImg.data[idx + 2] = maskImg.data[idx + 3] = 255;
       }
