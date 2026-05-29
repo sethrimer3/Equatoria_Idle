@@ -25,10 +25,10 @@ const SAFE_H = 640;
 
 /**
  * Computes the stable RPG scale from container dimensions.
- * Mirrors the `doResize()` formula in rpg-render.ts.
+ * Mirrors `computeRpgSafeCoreScale()` and the `doResize()` formula in rpg-render.ts.
  */
 function stableScale(containerW: number, containerH: number): number {
-  return Math.min(containerW, containerH, SAFE_W) / SAFE_W;
+  return Math.min(containerW / SAFE_W, containerH / SAFE_H, 1);
 }
 
 /** Default camera centre = centre of the safe core. */
@@ -83,8 +83,14 @@ describe('computeRpgFieldSpace — scale invariant', () => {
 
   it('scale < 1 on a narrow canvas', () => {
     const fs = makeSpace(320, 640);
-    // min(320, 640, 360) = 320 → scale ≈ 0.888
+    // min(320/360, 640/640, 1) = min(0.888, 1, 1) = 320/360
     expect(fs.scale).toBeCloseTo(320 / 360, 5);
+  });
+
+  it('scale < 1 on a short canvas (height now limits scale)', () => {
+    const fs = makeSpace(360, 480);
+    // min(360/360, 480/640, 1) = min(1, 0.75, 1) = 480/640
+    expect(fs.scale).toBeCloseTo(480 / 640, 5);
   });
 });
 
@@ -258,5 +264,40 @@ describe('computeRpgFieldSpace — problem-statement regression', () => {
     expect(wide.visibleBounds.height).toBeCloseTo(narrow.visibleBounds.height, 3);
     expect(wide.visibleBounds.left).toBeLessThan(narrow.visibleBounds.left);
     expect(wide.visibleBounds.right).toBeGreaterThan(narrow.visibleBounds.right);
+  });
+});
+
+// ── Safe-core fit regression cases (from problem statement) ───────────────────
+
+describe('computeRpgFieldSpace — safe-core fit regression cases', () => {
+  it('wide but too short (480×415): safeCoreBounds fully inside visibleBounds', () => {
+    const fs = makeSpace(480, 415);
+    // min(480/360, 415/640, 1) = 415/640 ≈ 0.648
+    expect(fs.scale).toBeCloseTo(415 / 640, 5);
+    // visibleBounds must fully contain the safe core.
+    expect(fs.visibleBounds.height).toBeCloseTo(640, 2);
+    expect(fs.visibleBounds.width).toBeGreaterThan(360);
+    expect(fs.visibleBounds.left).toBeLessThanOrEqual(fs.safeCoreBounds.left + 0.01);
+    expect(fs.visibleBounds.right).toBeGreaterThanOrEqual(fs.safeCoreBounds.right - 0.01);
+    expect(fs.visibleBounds.top).toBeLessThanOrEqual(fs.safeCoreBounds.top + 0.01);
+    expect(fs.visibleBounds.bottom).toBeGreaterThanOrEqual(fs.safeCoreBounds.bottom - 0.01);
+  });
+
+  it('narrow phone (320×640): safeCoreBounds fully inside visibleBounds', () => {
+    const fs = makeSpace(320, 640);
+    expect(fs.scale).toBeCloseTo(320 / 360, 5);
+    expect(fs.visibleBounds.width).toBeCloseTo(360, 2);
+    expect(fs.visibleBounds.height).toBeGreaterThanOrEqual(640 - 0.01);
+    expect(fs.visibleBounds.left).toBeLessThanOrEqual(fs.safeCoreBounds.left + 0.01);
+    expect(fs.visibleBounds.top).toBeLessThanOrEqual(fs.safeCoreBounds.top + 0.01);
+  });
+
+  it('very short host (360×400): safeCoreBounds fully inside visibleBounds', () => {
+    const fs = makeSpace(360, 400);
+    expect(fs.scale).toBeCloseTo(400 / 640, 5);
+    expect(fs.visibleBounds.height).toBeCloseTo(640, 2);
+    expect(fs.visibleBounds.width).toBeGreaterThanOrEqual(360 - 0.01);
+    expect(fs.visibleBounds.top).toBeLessThanOrEqual(fs.safeCoreBounds.top + 0.01);
+    expect(fs.visibleBounds.bottom).toBeGreaterThanOrEqual(fs.safeCoreBounds.bottom - 0.01);
   });
 });

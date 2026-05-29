@@ -1,6 +1,52 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#190**
+Current build: **#191**
+
+---
+
+## Build #191 — RPG desktop zoom/cropping fix
+
+### Problem fixed
+
+On desktop, the RPG view was too zoomed in vertically. The 360×640 safe core
+was cropped at the top and bottom when the render host was shorter than 640 CSS px
+(e.g. a typical 480×415 host showed `scale: 1.0`, cutting off the safe core).
+
+### Root cause
+
+`doResize()` computed scale as:
+```ts
+const safePx = Math.min(containerW, containerH, RPG_LOGICAL_WIDTH);
+rpgSafeScale = safePx / RPG_LOGICAL_WIDTH;
+```
+This only fit the 360 px **width**, not the 640 px **height**.
+
+### Fix
+
+Scale is now derived from fitting the full safe core rectangle:
+```ts
+rpgSafeScale = Math.min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT, 1);
+```
+
+A pure `computeRpgSafeCoreScale(w, h, sw, sh)` helper was added to
+`rpgFieldSpace.ts` and used in `doResize()` so the formula cannot drift.
+
+### Invariants
+
+- The full 360×640 safe core is always fully visible.
+- Scale = `min(containerW/360, containerH/640, 1)`.
+- Widening the host beyond 360 px (at the correct scale) reveals more horizontal world.
+- Shortening the host below 640 px reduces scale so the safe core remains visible.
+- `visibleBounds`, `activeBounds`, `spawnBounds`, and `paddedEffectBounds` are
+  unchanged in concept; they still fill the entire canvas in world coords.
+
+### Tests updated
+
+- `rpg-viewport.test.ts`: formula updated; two tests corrected; four new
+  regression cases added (reference, wide+tall, wide-too-short 480×415,
+  narrow phone, very short host).
+- `rpgFieldSpace.test.ts`: `stableScale` helper updated; one new scale test
+  added; three new safe-core-fit regression tests added.
 
 ---
 
