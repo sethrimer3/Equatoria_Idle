@@ -112,6 +112,8 @@ export interface EnemySpawnCtx {
   getTopographicTerrainState(): TopographicTerrainState | null;
   /** Returns the current Verdure cave wall state, or null if not in Verdure zone. */
   getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
+  /** Returns true when dev/diagnostic mode is active (spawn debug overlay recording). */
+  getIsDevMode?(): boolean;
 
   // Enemy body arrays that receive newly spawned entities
   enemies: LaserEnemy[];
@@ -155,6 +157,39 @@ export interface EnemySpawnCtx {
   amethystFishEnemies: AmethystFishEnemy[];
   diamondFishEnemies: DiamondFishEnemy[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
+}
+
+// ── Dev-mode spawn-candidate debug log ───────────────────────────────────────
+
+/** Kind of spawn outcome recorded for the debug overlay. */
+export type SpawnDebugKind = 'accepted' | 'rejected' | 'fallback';
+
+/** One recorded spawn candidate position (ring-buffer entry). */
+export interface SpawnDebugEntry { x: number; y: number; kind: SpawnDebugKind }
+
+/** How many entries to keep in the ring buffer. */
+const SPAWN_DEBUG_CAP = 64;
+
+/** Circular ring-buffer of recent spawn candidate positions. */
+const _spawnDebugLog: SpawnDebugEntry[] = [];
+
+/**
+ * Returns a read-only view of the recent spawn-candidate debug log.
+ * Only populated when dev mode is active (callers pass `devMode = true`).
+ */
+export function getSpawnDebugLog(): readonly SpawnDebugEntry[] {
+  return _spawnDebugLog;
+}
+
+/** Clears the spawn debug log (call between waves to avoid stale dots). */
+export function clearSpawnDebugLog(): void {
+  _spawnDebugLog.length = 0;
+}
+
+function _logSpawn(x: number, y: number, kind: SpawnDebugKind, devMode: boolean): void {
+  if (!devMode) return;
+  if (_spawnDebugLog.length >= SPAWN_DEBUG_CAP) _spawnDebugLog.shift();
+  _spawnDebugLog.push({ x, y, kind });
 }
 
 // ── Spawn helper ──────────────────────────────────────────────────────────────
@@ -268,6 +303,8 @@ function _onEliteSpawned(ctx: EnemySpawnCtx, spawnX: number, spawnY: number): vo
  */
 export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   const { mote } = ctx;
+  const _devMode = ctx.getIsDevMode?.() ?? false;
+  let _usedFallback = false;
   const fieldSpace = ctx.getFieldSpace();
   // Use the full visible spawn bounds so enemies don't appear off-screen on
   // wide/short canvases.  spawnBounds == activeBounds == visibleBounds under
@@ -293,7 +330,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _laser = makeLaserEnemy(spawnX, spawnY, wn);
     ctx.enemies.push(_laser);
@@ -311,7 +348,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _sapphire = makeSapphireEnemy(spawnX, spawnY, wn);
     ctx.sapphireEnemies.push(_sapphire);
@@ -329,7 +366,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _emerald = makeEmeraldEnemy(spawnX, spawnY, wn);
     ctx.emeraldEnemies.push(_emerald);
@@ -347,7 +384,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _amber = makeAmberEnemy(spawnX, spawnY, wn);
     ctx.amberEnemies.push(_amber);
@@ -375,7 +412,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _quartz = makeQuartzEnemy(spawnX, spawnY, wn);
     ctx.quartzEnemies.push(_quartz);
@@ -393,7 +430,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _ruby = makeRubyEnemy(spawnX, spawnY, wn);
     ctx.rubyEnemies.push(_ruby);
@@ -411,7 +448,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _sunstone = makeSunstoneEnemy(spawnX, spawnY, wn);
     ctx.sunstoneEnemies.push(_sunstone);
@@ -429,7 +466,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _citrine = makeCitrineEnemy(spawnX, spawnY, wn);
     ctx.citrineEnemies.push(_citrine);
@@ -447,7 +484,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _iolite = makeIoliteEnemy(spawnX, spawnY, wn);
     ctx.ioliteEnemies.push(_iolite);
@@ -465,7 +502,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _amethyst = makeAmethystEnemy(spawnX, spawnY, wn);
     ctx.amethystEnemies.push(_amethyst);
@@ -483,7 +520,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _diamond = makeDiamondEnemy(spawnX, spawnY, wn);
     ctx.diamondEnemies.push(_diamond);
@@ -511,7 +548,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _fracteryl = makeFracterylEnemy(spawnX, spawnY, wn);
     ctx.fracterylEnemies.push(_fracteryl);
@@ -529,7 +566,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _eigenstein = makeEigensteinEnemy(spawnX, spawnY, wn);
     ctx.eigensteinEnemies.push(_eigenstein);
@@ -547,7 +584,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const _stardust = makeStardustEnemy(spawnX, spawnY, wn, spawnW, spawnH);
     ctx.stardustEnemies.push(_stardust);
@@ -565,7 +602,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const e = makePolyominoEnemy(spawnX, spawnY, wn);
     ctx.polyominoEnemies.push(e);
@@ -583,7 +620,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const e = makeFissilePolyominoEnemy(spawnX, spawnY, wn);
     ctx.fissilePolyominoEnemies.push(e);
@@ -601,7 +638,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
     const e = makeRefractorPolyominoEnemy(spawnX, spawnY, wn);
     ctx.refractorPolyominoEnemies.push(e);
@@ -673,7 +710,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       } while (attempts < 20);
     if (wallState && isVerdureSpawnRejected(wallState, spawnX, spawnY)) {
       const safe = getVerdureSafeFallbackSpawnPos(wallState);
-      spawnX = safe.x; spawnY = safe.y;
+      spawnX = safe.x; spawnY = safe.y; _usedFallback = true;
     }
       let _proc: BuffableEnemy | null = null;
       if (enemyTypeId === 'proc_dustwisp')        { const e = makeDustWispEnemy(spawnX, spawnY, wn);       ctx.dustWispEnemies.push(e);       _proc = e; }
@@ -698,4 +735,6 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       if (_proc !== null) _onNonEliteSpawned(ctx, _proc, spawnX, spawnY);
     }
   }
+  // Record final spawn position for the dev overlay (no-op outside dev mode).
+  _logSpawn(spawnX, spawnY, _usedFallback ? 'fallback' : 'accepted', _devMode);
 }

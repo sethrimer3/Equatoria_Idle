@@ -1,6 +1,84 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#187**
+Current build: **#188**
+
+---
+
+## Build #188 — RPG responsive field-space issues (player bounds, particles, caustics, spawn overlay)
+
+### Status
+
+All six field-space adoption tasks from the build #187 audit are now resolved.
+
+### Changes in this build
+
+- **Player movement clamps to `fieldSpace.activeBounds`.**
+  `PlayerMovementCtx` now has a `getFieldSpace(): RpgFieldSpace` method.
+  `updatePlayerMovement()` replaces the old `dim.w / dim.h` safe-core clamp with
+  `activeBounds.left/right/top/bottom`, so the player can move into the full
+  visible world without being pushed back by each frame's movement update.
+  `getFieldSpace: () => rpgFieldSpace` is wired in `movementCtx` in `rpg-render.ts`.
+
+- **Enemy context source of truth is `RpgFieldSpace`.**
+  `RpgEnemyCtx` gains `getFieldSpace(): RpgFieldSpace`.  The misleading JSDoc on
+  `dim` (implied it tracked the current canvas) is corrected — `dim` is the fixed
+  safe-core `{ w: 360, h: 640 }` and is never updated.  `clampEnemyToBounds` in
+  `rpg-render.ts` now reads `rpgFieldSpace.activeBounds` directly instead of
+  `viewport`.  `viewport` is retained as a compatibility alias (it already equals
+  `activeBounds` since both equal `visibleBounds` under current policy).
+  `getFieldSpace: () => rpgFieldSpace` is wired in both `movementCtx` and `enemyCtx`.
+
+- **Empower particles cover the full visible world.**
+  `drawEmpowerParticles` signature changed from `(ctx, widthPx, heightPx)` to
+  `(ctx, bounds: { left, top, width, height })`.  The offscreen glow canvas is now
+  sized to `bounds.width/2 × bounds.height/2`.  The glow draw pass applies
+  `translate(-bounds.left, -bounds.top)` so world coordinates map into the glow
+  canvas.  The composite is drawn back at `(bounds.left, bounds.top, bounds.width,
+  bounds.height)` in world space.  Call site in `rpg-render-draw.ts` passes
+  `fieldSpace.visibleBounds`.
+
+- **Caustics floor effects cover the full visible world (Option A).**
+  `drawCausticsFloorEffects` now accepts `worldOffX = 0, worldOffY = 0` params.
+  These are forwarded to `_drawCausticsHeightAwarePass` and
+  `_drawCausticsElevationBrightness`.  `_traceRidgePolygon` accepts `originX = 0,
+  originY = 0` and subtracts them from ridge point coordinates before scaling.
+  `_drawCausticsElevationBrightness` subtracts the offset from ridge stroke coords.
+  The call site in `rpg-render-draw.ts` now wraps the call with
+  `canvas2d.save() / translate(vwX, vwY) / restore()` and passes `(vwW, vwH)` as
+  dimensions plus `vwX, vwY` as the world offset — ridge geometry aligns correctly
+  with the translated frame.
+
+- **Spawn-candidate debug overlay added.**
+  `rpg-enemy-spawn.ts` maintains a 64-entry ring buffer (`_spawnDebugLog`) of
+  accepted and fallback spawn positions.  Populated only when `ctx.getIsDevMode()`
+  returns true (optional field on `EnemySpawnCtx` and `WaveManagerCtx`).
+  `_drawFieldSpaceOverlay` in `rpg-render-draw.ts` reads `getSpawnDebugLog()` and
+  draws coloured dots: green for accepted, orange for verdure fallback.  A small
+  legend is rendered near the top-left of `spawnBounds`.  No per-frame work outside
+  dev mode.
+
+### Field-space adoption status (post-build #188)
+
+| Feature | Status |
+|---|---|
+| Player movement clamps to `activeBounds` | ✅ Complete |
+| Enemy context uses `RpgFieldSpace` / documented compat wrapper | ✅ Complete |
+| Empower particles cover `visibleBounds` | ✅ Complete |
+| Caustics floor effects cover `visibleBounds` (Option A) | ✅ Complete |
+| Spawn-candidate debug overlay | ✅ Complete |
+
+### Intentional safe-core uses (still unchanged)
+
+- `drawBottomSafeZone` / `drawBossStageDirector` / `drawWaveClearBanner` — boss
+  composition and HUD are centred on the stable 360×640 core for readability.
+- `renderTopographyLighting` — terrain topology only exists within
+  `[0, widthPx] × [0, heightPx]`; expanding requires regenerating the height map
+  for the full visible area.
+
+### Remaining work
+
+- **`renderTopographyLighting`**: Expand cached lighting overlay to cover
+  `paddedEffectBounds` — requires generating terrain topology for extended area.
 
 ---
 
@@ -44,32 +122,14 @@ high-priority adoption gaps from the build #185 audit have been closed.
   `nadirCubicGrid.update` now receives `(rpgWorldViewW, rpgWorldViewH)` so the
   lattice fills the full visible canvas.
 
-### Intentional safe-core uses (unchanged)
+### Intentional safe-core uses (unchanged in build #187, resolved in #188)
 
-These systems remain deliberately scoped to the safe core:
+These were still scoped to the safe core in build #187:
 
-- `drawBottomSafeZone` / `drawBossStageDirector` / `drawWaveClearBanner` — boss
-  composition and HUD are centred on the stable 360×640 core for readability.
-- `renderTopographyLighting` — terrain geometry only exists within
-  `[0, widthPx] × [0, heightPx]`; overlay is limited to that area intentionally.
-- `drawCausticsFloorEffects` — seafloor ridge geometry is stored in absolute world
-  coords within the safe-core bounds.  Expanding requires translating the ridge
-  buffer; deferred to a future pass.
-- `drawEmpowerParticles` — uses an offscreen glow canvas sized to the safe core;
-  expanding requires coordinating particle positions with the visible area.
+- `drawCausticsFloorEffects` — migrated in build #188.
+- `drawEmpowerParticles` — migrated in build #188.
 
-### Remaining work
 
-- **`drawCausticsFloorEffects`**: Migrate seafloor ridge absolute-coord geometry to
-  support visible-bounds expansion with translate(vwX, vwY).
-- **`drawEmpowerParticles`**: Resize the glow canvas to `(vwW, vwH)` and offset
-  particle draw positions by `(vwX, vwY)`.
-- **`renderTopographyLighting`**: Expand cached lighting overlay to cover
-  `paddedEffectBounds` — requires generating terrain topology for extended area.
-- Add spawn-candidate debug overlay: accepted / rejected / fallback spawn dots in
-  dev mode, showing `fieldSpace.spawnBounds` ring clearly.
-
----
 
 ## Build #178 — Height-aware caustics (seafloor depth parallax)
 

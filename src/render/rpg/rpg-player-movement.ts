@@ -10,6 +10,7 @@
  */
 
 import type { RpgMote, RpgJoystick, RpgKeyState, LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { RpgFieldSpace } from './rpgFieldSpace';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy, DiamondEnemy,
@@ -55,8 +56,10 @@ export interface PlayerMovementCtx {
   joystick: RpgJoystick;
   /** Keyboard WASD/Arrow state (read-only here). */
   keys: RpgKeyState;
-  /** Current canvas dimensions. */
+  /** Current canvas dimensions (safe-core fixed size; kept for fluid/audio uses). */
   dim: { w: number; h: number };
+  /** Returns the current authoritative field-space snapshot. */
+  getFieldSpace(): RpgFieldSpace;
 
   // Enemy arrays for nearest-enemy auto-move (read-only here)
   enemies: LaserEnemy[];
@@ -133,9 +136,7 @@ export function updatePlayerMovement(
   state: PlayerMovementState,
   deltaMs: number,
 ): void {
-  const { mote, joystick, keys, dim, rpgSimState, fluid } = ctx;
-  const widthPx  = dim.w;
-  const heightPx = dim.h;
+  const { mote, joystick, keys, rpgSimState, fluid } = ctx;
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const speedMul = getRpgSpeedMultiplier(rpgSimState);
   const effectiveMaxSpeed = MAX_RPG_SPEED * speedMul;
@@ -270,10 +271,11 @@ export function updatePlayerMovement(
   // ── Position integration and arena clamping ─────────────────────
   mote.x += mote.vx * dt; mote.y += mote.vy * dt;
   const half = RPG_MOTE_SIZE / 2;
-  if (mote.x < half)            { mote.x = half;            mote.vx = 0; }
-  if (mote.x > widthPx  - half) { mote.x = widthPx  - half; mote.vx = 0; }
-  if (mote.y < half)            { mote.y = half;            mote.vy = 0; }
-  if (mote.y > heightPx - half) { mote.y = heightPx - half; mote.vy = 0; }
+  const ab = ctx.getFieldSpace().activeBounds;
+  if (mote.x < ab.left  + half) { mote.x = ab.left  + half; mote.vx = 0; }
+  if (mote.x > ab.right - half) { mote.x = ab.right - half; mote.vx = 0; }
+  if (mote.y < ab.top    + half) { mote.y = ab.top    + half; mote.vy = 0; }
+  if (mote.y > ab.bottom - half) { mote.y = ab.bottom - half; mote.vy = 0; }
 
   // ── Terrain collision: soft repulsion + hard fail-safe ────────────────────
   const terrainState = ctx.getTerrainState();

@@ -26,6 +26,7 @@ import type {
   AmberEnemy, AmberShard,
   VoidEnemy,
 } from './rpg-enemy-types';
+import type { RpgFieldSpace } from './rpgFieldSpace';
 import type { FluidImpulse } from './rpg-fluid';
 import {
   TARGET_FRAME_MS,
@@ -74,20 +75,28 @@ import {
  *
  * All fields are object references or callbacks captured by the
  * createRpgRender closure, so they always reflect current closure state.
- * `dim` is an object kept in sync with the closure's widthPx / heightPx
- * on every resize(), so reading `ctx.dim.w` is always current.
+ * `dim` is the fixed safe-core world size (360×640); it is never updated.
+ * Use `getFieldSpace().activeBounds` for the live visible gameplay area.
  */
 export interface RpgEnemyCtx {
   /** Player mote — position and velocity (mutable reference). */
   readonly mote: { x: number; y: number; vx: number; vy: number };
-  /** Current canvas dimensions — updated on resize via shared object. */
+  /**
+   * Fixed safe-core world dimensions (360×640). Never updated after init.
+   * For the live visible gameplay area, use `getFieldSpace().activeBounds`.
+   */
   readonly dim: { w: number; h: number };
   /**
-   * Full visible world-space bounds — updated on every resize.
+   * Full visible world-space bounds — updated on every resize via shared object.
    * Use these for spawn bounds, entity clamp/bounce, and cull checks.
    * On a reference 360×640 device: left=0, top=0, right=360, bottom=640.
+   *
+   * Prefer `getFieldSpace().activeBounds` for new code; `viewport` is a
+   * compatibility alias kept in sync from `rpgFieldSpace.visibleBounds`.
    */
   readonly viewport: { left: number; top: number; right: number; bottom: number };
+  /** Returns the current authoritative field-space snapshot. */
+  getFieldSpace(): RpgFieldSpace;
   /** Euler fluid simulator — only addForce used by enemy update code. */
   readonly fluid: { addForce(impulse: FluidImpulse): void };
   /** Hit-flash effect array — pushed to by some enemy systems. */

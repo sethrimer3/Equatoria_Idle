@@ -138,28 +138,34 @@ export function clearEmpowerParticles(): void {
  * Both passes use additive blending ('lighter') for a glowing look.
  * Does nothing when there are no live particles.
  *
- * @param ctx      Main 2-D rendering context.
- * @param widthPx  Canvas logical width in pixels.
- * @param heightPx Canvas logical height in pixels.
+ * @param ctx    Main 2-D rendering context (world-coordinate transform applied).
+ * @param bounds Visible-world rectangle (world coords).  The glow offscreen
+ *               canvas is sized to bounds.width × bounds.height and composite
+ *               back at (bounds.left, bounds.top) in world space.
  */
 export function drawEmpowerParticles(
   ctx: CanvasRenderingContext2D,
-  widthPx: number,
-  heightPx: number,
+  bounds: { left: number; top: number; width: number; height: number },
 ): void {
   if (_particles.length === 0) return;
 
-  const glowW = Math.ceil(widthPx  / 2);
-  const glowH = Math.ceil(heightPx / 2);
+  const glowW = Math.ceil(bounds.width  / 2);
+  const glowH = Math.ceil(bounds.height / 2);
   const glowCtx = _ensureGlowCanvas(glowW, glowH);
   const glowCanvas = _glowCanvas!;
   const scale = 0.5;
+
+  // World offset: particles live in world coords; glow canvas origin is at (bounds.left, bounds.top).
+  const offX = bounds.left;
+  const offY = bounds.top;
 
   // ── Pass 1: draw all trails to half-res offscreen glow canvas ──────────────
 
   glowCtx.clearRect(0, 0, glowW, glowH);
   glowCtx.save();
+  // Scale to glow-canvas space and shift so world (offX, offY) maps to glow (0,0).
   glowCtx.scale(scale, scale);
+  glowCtx.translate(-offX, -offY);
   glowCtx.globalCompositeOperation = 'lighter';
   glowCtx.lineCap = 'round';
 
@@ -197,11 +203,12 @@ export function drawEmpowerParticles(
 
   // ── Composite blurred glow back onto main canvas ───────────────────────────
   // Stretching the half-res canvas to full size provides a cheap, natural blur.
+  // Draw at (offX, offY) in world coords so glow aligns with the visible bounds.
 
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.65;
-  ctx.drawImage(glowCanvas, 0, 0, widthPx, heightPx);
+  ctx.drawImage(glowCanvas, offX, offY, bounds.width, bounds.height);
   ctx.globalAlpha = 1;
   ctx.restore();
 
