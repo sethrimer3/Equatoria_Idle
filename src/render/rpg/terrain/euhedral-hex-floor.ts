@@ -7,6 +7,19 @@
  * nearby terrain light emitters (enemies, player, attacks, beams) by picking up
  * a colored tint proportional to distance.
  *
+ * Coordinate conventions:
+ *   - The caller translates the canvas by (visibleBounds.left, visibleBounds.top)
+ *     before calling drawEuhedralHexFloor.  All drawing coordinates (cell corners,
+ *     cell centers) are therefore LOCAL — relative to that translated origin.
+ *   - TerrainLightEmitter positions (x, y, x2, y2) are WORLD-SPACE coordinates,
+ *     as collected by _collectTerrainLightEmitters and used throughout the RPG
+ *     render pipeline.
+ *   - drawEuhedralHexFloor accepts worldOriginX/worldOriginY (the world-space
+ *     position of the local canvas origin, i.e. visibleBounds.left/top) and
+ *     converts each local cell center to world space before light sampling:
+ *       worldCx = cell.cx + worldOriginX
+ *       worldCy = cell.cy + worldOriginY
+ *
  * Performance approach:
  *   - Hex geometry (corner coordinates) is computed once and cached per canvas size.
  *   - Per frame only tint/color values are recomputed — no path-geometry work.
@@ -152,16 +165,47 @@ function _getOrBuildGeom(canvasW: number, canvasH: number): HexFloorGeom {
 // ── Public draw function ───────────────────────────────────────────────────────
 
 /**
+ * Converts a local draw-surface cell center to world-space for light sampling.
+ *
+ * The canvas is translated by (worldOriginX, worldOriginY) before drawing, so a
+ * cell whose local center is (localX, localY) sits at world position:
+ *   worldX = localX + worldOriginX
+ *   worldY = localY + worldOriginY
+ *
+ * Used internally by drawEuhedralHexFloor and exported for unit testing.
+ *
+ * @param localX      Local (canvas-translated) x coordinate.
+ * @param localY      Local (canvas-translated) y coordinate.
+ * @param worldOriginX  World x of the local canvas origin (visibleBounds.left).
+ * @param worldOriginY  World y of the local canvas origin (visibleBounds.top).
+ */
+export function localToWorldSamplePoint(
+  localX: number,
+  localY: number,
+  worldOriginX: number,
+  worldOriginY: number,
+): { wx: number; wy: number } {
+  return { wx: localX + worldOriginX, wy: localY + worldOriginY };
+}
+
+/**
  * Draws the full-screen Euhedral hex floor.
  *
  * Call this after the background fill, before enemies and terrain formations.
  * Should only be called when `activeZoneId === 'euhedral'`.
  *
- * @param ctx        2D rendering context.
- * @param canvasW    Canvas backing width in logical px.
- * @param canvasH    Canvas backing height in logical px.
- * @param emitters   Terrain light emitters collected this frame (may be empty).
+ * The caller must have already translated the canvas by (worldOriginX, worldOriginY)
+ * so that drawing in local coords [0..canvasW] × [0..canvasH] covers the full
+ * visible world.  Emitter positions are world-space; this function converts
+ * local cell centers to world coords before light sampling.
+ *
+ * @param ctx          2D rendering context (already translated to visibleBounds origin).
+ * @param canvasW      Canvas backing width in logical px (visibleBounds.width).
+ * @param canvasH      Canvas backing height in logical px (visibleBounds.height).
+ * @param emitters     Terrain light emitters collected this frame — WORLD-SPACE coords.
  * @param lowGraphics  When true, skip the tint overlay pass for performance.
+ * @param worldOriginX World-space x of the local canvas origin (visibleBounds.left). Defaults to 0.
+ * @param worldOriginY World-space y of the local canvas origin (visibleBounds.top).  Defaults to 0.
  */
 export function drawEuhedralHexFloor(
   ctx: CanvasRenderingContext2D,
@@ -169,6 +213,8 @@ export function drawEuhedralHexFloor(
   canvasH: number,
   emitters: TerrainLightEmitter[],
   lowGraphics: boolean,
+  worldOriginX = 0,
+  worldOriginY = 0,
 ): void {
   const geom = _getOrBuildGeom(canvasW, canvasH);
   const cells = geom.cells;
@@ -202,24 +248,27 @@ export function drawEuhedralHexFloor(
   // ── Pass 2: tint overlay for cells near emitters ───────────────────────────
   // Skip if no emitters or low-graphics mode.
   if (!lowGraphics && emitters.length > 0) {
-    // Pre-compute per-emitter bounding boxes (AABB) for quick cull.
-    // Extended by radiusPx in all directions.
-
     for (let ci = 0; ci < cells.length; ci++) {
       const cell = cells[ci];
 
-      // Quick AABB cull: check if the cell center is within any emitter's radius.
-      // We only need the expensive sampleTerrainLightAt when this passes.
+      // Convert local cell center to world space for light sampling.
+      // Emitters use world-space coords; cell.cx/cy are local to the translated canvas.
+      const worldCx = cell.cx + worldOriginX;
+      const worldCy = cell.cy + worldOriginY;
+
+      // Quick AABB cull: check if the world-space cell center is within any
+      // emitter's radius.  We only need the expensive sampleTerrainLightAt
+      // when this passes.
       let anyNear = false;
       for (let ei = 0; ei < emitters.length; ei++) {
         const em = emitters[ei];
         const maxR = em.radiusPx + FLOOR_HEX_RADIUS;
-        const ddx = cell.cx - em.x;
-        const ddy = cell.cy - em.y;
+        const ddx = worldCx - em.x;
+        const ddy = worldCy - em.y;
         // For beams, also check against the far endpoint
         if (em.type === 'beam') {
-          const dx2 = cell.cx - em.x2;
-          const dy2 = cell.cy - em.y2;
+          const dx2 = worldCx - em.x2;
+          const dy2 = worldCy - em.y2;
           if (
             ddx * ddx + ddy * ddy < maxR * maxR ||
             dx2 * dx2 + dy2 * dy2 < maxR * maxR
@@ -230,7 +279,7 @@ export function drawEuhedralHexFloor(
           // Also check midpoint of beam for fast-cull approximation
           const mx = (em.x + em.x2) * 0.5;
           const my = (em.y + em.y2) * 0.5;
-          const dmx = cell.cx - mx, dmy = cell.cy - my;
+          const dmx = worldCx - mx, dmy = worldCy - my;
           if (dmx * dmx + dmy * dmy < maxR * maxR) {
             anyNear = true;
             break;
@@ -244,7 +293,7 @@ export function drawEuhedralHexFloor(
       }
       if (!anyNear) continue;
 
-      const sample = sampleTerrainLightAt(cell.cx, cell.cy, emitters);
+      const sample = sampleTerrainLightAt(worldCx, worldCy, emitters);
       if (!sample || sample.blend <= 0.01) continue;
 
       const alpha = sample.blend * FLOOR_TINT_ALPHA_MAX;
