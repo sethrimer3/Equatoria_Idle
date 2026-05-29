@@ -628,7 +628,7 @@ export function drawVerdureFloorSegmented(
   if (geom.staticCanvas) {
     canvas2d.save();
     canvas2d.globalAlpha = 1;
-    canvas2d.drawImage(geom.staticCanvas, 0, 0);
+    canvas2d.drawImage(geom.staticCanvas, wState.originX, wState.originY);
     canvas2d.restore();
   }
 }
@@ -654,9 +654,23 @@ export function drawVerdureWallsSegmented(
   if (!lowGraphics && influences.length > 0) {
     const tris = geom.floorTris;
     const cells = geom.wallCells;
-    _computeTints(tris, cells, influences);
+
+    // Influences arrive in world coordinates; tris/cells use local (0..W/H) coords.
+    // Convert influences to local space before computing tints.
+    const ox = wState.originX;
+    const oy = wState.originY;
+    const localInfluences: VerdureInfluenceObj[] = influences.map(inf => ({
+      ...inf,
+      x: inf.x - ox,
+      y: inf.y - oy,
+    }));
+    _computeTints(tris, cells, localInfluences);
 
     const offset = tris.length;
+
+    // All tris/cells are in local space — translate to world origin before drawing.
+    canvas2d.save();
+    canvas2d.translate(wState.originX, wState.originY);
 
     // Draw tinted floor triangles
     for (let i = 0; i < tris.length; i++) {
@@ -701,5 +715,7 @@ export function drawVerdureWallsSegmented(
       }
       canvas2d.restore();
     }
+
+    canvas2d.restore();
   }
 }

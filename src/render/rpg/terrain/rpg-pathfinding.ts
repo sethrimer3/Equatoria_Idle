@@ -99,6 +99,10 @@ export interface RpgNavGrid {
   widthPx: number;
   /** Height of the arena in px. */
   heightPx: number;
+  /** World-space X of the grid's left edge. Defaults to 0 (safe-core origin). */
+  originX: number;
+  /** World-space Y of the grid's top edge. Defaults to 0 (safe-core origin). */
+  originY: number;
 }
 
 /**
@@ -138,12 +142,17 @@ export function createRpgPathState(): RpgPathState {
  * Call this once when terrain changes, canvas resizes, or terrain disappears.
  *
  * When `terrain` is null (no terrain active) every cell is walkable.
+ *
+ * `originX` / `originY` set the world-space position of the grid's top-left corner.
+ * Defaults to 0/0 (safe-core origin, the historic default).
  */
 export function buildRpgNavigationGrid(
   terrain: TopographicTerrainState | null,
   widthPx: number,
   heightPx: number,
   cellSizePx = DEFAULT_CELL_SIZE_PX,
+  originX = 0,
+  originY = 0,
 ): RpgNavGrid {
   const cols = Math.ceil(widthPx  / cellSizePx);
   const rows = Math.ceil(heightPx / cellSizePx);
@@ -154,8 +163,8 @@ export function buildRpgNavigationGrid(
     const half = cellSizePx * 0.5;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const wx = c * cellSizePx + half;
-        const wy = r * cellSizePx + half;
+        const wx = originX + c * cellSizePx + half;
+        const wy = originY + r * cellSizePx + half;
         // A cell is blocked if its centre is inside terrain OR if a circle of
         // CLEARANCE_RADIUS centred there overlaps the terrain.
         const inside = isPointInsideTopographicTerrain(terrain, wx, wy);
@@ -169,7 +178,7 @@ export function buildRpgNavigationGrid(
     }
   }
 
-  return { cols, rows, cellSizePx, blocked, moveCost, widthPx, heightPx };
+  return { cols, rows, cellSizePx, blocked, moveCost, widthPx, heightPx, originX, originY };
 }
 
 // ── Soft obstacle registration ────────────────────────────────────────────────
@@ -195,22 +204,22 @@ export function applyCircleSoftObstacles(
   circles: ReadonlyArray<{ x: number; y: number; radiusPx: number }>,
   costMultiplier: number = SOFT_OBSTACLE_COST,
 ): void {
-  const { cols, rows, cellSizePx, blocked, moveCost } = navGrid;
+  const { cols, rows, cellSizePx, blocked, moveCost, originX, originY } = navGrid;
   const half = cellSizePx * 0.5;
   const clampedMult = Math.max(1, Math.min(255, Math.round(costMultiplier)));
 
   for (const { x: cx, y: cy, radiusPx } of circles) {
     const radSq = radiusPx * radiusPx;
     // Compute bounding cell range to avoid checking every cell.
-    const minC = Math.max(0, Math.floor((cx - radiusPx) / cellSizePx));
-    const maxC = Math.min(cols - 1, Math.ceil((cx + radiusPx) / cellSizePx));
-    const minR = Math.max(0, Math.floor((cy - radiusPx) / cellSizePx));
-    const maxR = Math.min(rows - 1, Math.ceil((cy + radiusPx) / cellSizePx));
+    const minC = Math.max(0, Math.floor((cx - radiusPx - originX) / cellSizePx));
+    const maxC = Math.min(cols - 1, Math.ceil((cx + radiusPx - originX) / cellSizePx));
+    const minR = Math.max(0, Math.floor((cy - radiusPx - originY) / cellSizePx));
+    const maxR = Math.min(rows - 1, Math.ceil((cy + radiusPx - originY) / cellSizePx));
 
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) {
-        const wx = c * cellSizePx + half;
-        const wy = r * cellSizePx + half;
+        const wx = originX + c * cellSizePx + half;
+        const wy = originY + r * cellSizePx + half;
         const dx = wx - cx, dy = wy - cy;
         if (dx * dx + dy * dy > radSq) continue;
         const idx = r * cols + c;
@@ -229,18 +238,20 @@ function worldToCell(
   wx: number, wy: number,
   cellSizePx: number,
   cols: number, rows: number,
+  originX = 0, originY = 0,
 ): { col: number; row: number } {
-  const col = Math.max(0, Math.min(cols - 1, Math.floor(wx / cellSizePx)));
-  const row = Math.max(0, Math.min(rows - 1, Math.floor(wy / cellSizePx)));
+  const col = Math.max(0, Math.min(cols - 1, Math.floor((wx - originX) / cellSizePx)));
+  const row = Math.max(0, Math.min(rows - 1, Math.floor((wy - originY) / cellSizePx)));
   return { col, row };
 }
 
 function cellToWorld(
   col: number, row: number,
   cellSizePx: number,
+  originX = 0, originY = 0,
 ): { wx: number; wy: number } {
   const half = cellSizePx * 0.5;
-  return { wx: col * cellSizePx + half, wy: row * cellSizePx + half };
+  return { wx: originX + col * cellSizePx + half, wy: originY + row * cellSizePx + half };
 }
 
 function cellIndex(col: number, row: number, cols: number): number {
@@ -346,11 +357,11 @@ export function findRpgPath(
   goalX: number,  goalY: number,
   terrain: TopographicTerrainState | null,
 ): RpgWaypoint[] {
-  const { cols, rows, cellSizePx, blocked, moveCost } = navGrid;
+  const { cols, rows, cellSizePx, blocked, moveCost, originX, originY } = navGrid;
 
   // Convert to cell coordinates, snap blocked cells to nearest walkable.
-  let { col: sc, row: sr } = worldToCell(startX, startY, cellSizePx, cols, rows);
-  let { col: gc, row: gr } = worldToCell(goalX,  goalY,  cellSizePx, cols, rows);
+  let { col: sc, row: sr } = worldToCell(startX, startY, cellSizePx, cols, rows, originX, originY);
+  let { col: gc, row: gr } = worldToCell(goalX,  goalY,  cellSizePx, cols, rows, originX, originY);
   ({ col: sc, row: sr } = snapToWalkable(sc, sr, navGrid));
   ({ col: gc, row: gr } = snapToWalkable(gc, gr, navGrid));
 
@@ -427,7 +438,7 @@ export function findRpgPath(
     cur = parent[cur];
   }
   // Convert to world waypoints.
-  const rawWaypoints: RpgWaypoint[] = rawCells.map(({ col, row }) => cellToWorld(col, row, cellSizePx));
+  const rawWaypoints: RpgWaypoint[] = rawCells.map(({ col, row }) => cellToWorld(col, row, cellSizePx, originX, originY));
   // Replace last waypoint with the exact goal position.
   if (rawWaypoints.length > 0) {
     rawWaypoints[rawWaypoints.length - 1] = { wx: goalX, wy: goalY };
@@ -663,7 +674,7 @@ export function drawRpgPathfindingDebug(
 ): void {
   if (!enabled || !navGrid) return;
 
-  const { cols, rows, cellSizePx, blocked, moveCost } = navGrid;
+  const { cols, rows, cellSizePx, blocked, moveCost, originX, originY } = navGrid;
 
   ctx.save();
 
@@ -673,7 +684,7 @@ export function drawRpgPathfindingDebug(
     for (let c = 0; c < cols; c++) {
       const idx = cellIndex(c, r, cols);
       if (!blocked[idx] && moveCost[idx] > 1) {
-        ctx.fillRect(c * cellSizePx, r * cellSizePx, cellSizePx, cellSizePx);
+        ctx.fillRect(originX + c * cellSizePx, originY + r * cellSizePx, cellSizePx, cellSizePx);
       }
     }
   }
@@ -683,7 +694,7 @@ export function drawRpgPathfindingDebug(
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (blocked[cellIndex(c, r, cols)]) {
-        ctx.fillRect(c * cellSizePx, r * cellSizePx, cellSizePx, cellSizePx);
+        ctx.fillRect(originX + c * cellSizePx, originY + r * cellSizePx, cellSizePx, cellSizePx);
       }
     }
   }
