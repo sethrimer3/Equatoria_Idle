@@ -402,14 +402,16 @@ function _buildVoronoiTexture(
 
   for (let iy = 0; iy < lowH; iy++) {
     for (let ix = 0; ix < lowW; ix++) {
-      const worldX = Math.min(state.widthPx - 1, ix * TEXTURE_SCALE + TEXTURE_SCALE * 0.5);
-      const worldY = Math.min(state.heightPx - 1, iy * TEXTURE_SCALE + TEXTURE_SCALE * 0.5);
-      if (!isPointInVerdureWall(state, worldX, worldY)) continue;
+      // localX/localY are in 0..widthPx space — use the local-coord wall test
+      // to avoid double-subtracting state.originX/Y.
+      const localX = Math.min(state.widthPx - 1, ix * TEXTURE_SCALE + TEXTURE_SCALE * 0.5);
+      const localY = Math.min(state.heightPx - 1, iy * TEXTURE_SCALE + TEXTURE_SCALE * 0.5);
+      if (!isPointInVerdureWallLocal(state, localX, localY)) continue;
       let bestIdx = 0;
       let bestDistSq = Infinity;
       for (let s = 0; s < seeds.length; s++) {
-        const dx = worldX - seeds[s].x;
-        const dy = worldY - seeds[s].y;
+        const dx = localX - seeds[s].x;
+        const dy = localY - seeds[s].y;
         const distSq = dx * dx + dy * dy;
         if (distSq < bestDistSq) {
           bestDistSq = distSq;
@@ -602,8 +604,33 @@ export function generateVerdureCaveWalls(
   return state;
 }
 
+/**
+ * Returns `true` if world-space point `(px, py)` is inside the Verdure wall region.
+ * Converts world → local internally by subtracting `state.originX/Y`.
+ *
+ * Use for collision checks, spawn validation, and any call site that holds world coordinates.
+ * For code that already works in local space (0..widthPx, 0..heightPx), use
+ * {@link isPointInVerdureWallLocal} instead to avoid a double origin subtraction.
+ */
 export function isPointInVerdureWall(state: VerdureCaveWallState, px: number, py: number): boolean {
   return _isPointInVerdureWallWithMargin(state, px, py, 0);
+}
+
+/**
+ * Returns `true` if **local-space** point `(lx, ly)` is inside the Verdure wall region.
+ * `lx` and `ly` must already be in the 0..widthPx / 0..heightPx range — i.e. no
+ * further origin offset should be applied.
+ *
+ * Use this variant in functions that build or bake geometry in local canvas space
+ * (e.g. triangle / Voronoi cell builders, pixel-mask bakers) so that the origin
+ * offset is not subtracted a second time.  All gameplay / collision code should
+ * use the world-coordinate form {@link isPointInVerdureWall}.
+ */
+export function isPointInVerdureWallLocal(state: VerdureCaveWallState, lx: number, ly: number): boolean {
+  return ly < _sampleTopDepth(state, lx)
+    || ly > state.heightPx - _sampleBottomDepth(state, lx)
+    || lx < _sampleLeftDepth(state, ly)
+    || lx > state.widthPx - _sampleRightDepth(state, ly);
 }
 
 export function pushPointOutsideVerdureWall(

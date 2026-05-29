@@ -679,6 +679,7 @@ export function drawRpgFrame(
     canvas2d.restore();
   }
   // Verdure zone: dark forest-green / bioluminescent atmosphere tint.
+  // drawVerdureBackground — LOCAL coords (drawn after translate(vwX, vwY), fills 0..vwW × 0..vwH).
   if (isVerdureZone) {
     canvas2d.save();
     canvas2d.translate(vwX, vwY);
@@ -692,10 +693,13 @@ export function drawRpgFrame(
       const verdureWave = ctx.getCurrentWave();
       const isEliteVerdureWave = verdureWave > 0 && verdureWave % 10 === 0;
       if (isEliteVerdureWave) {
+        // drawVerdureFloor / drawVerdureCaveWalls — WORLD coords (drawn at wState.originX/Y, no translate).
         drawVerdureFloor(canvas2d, wState, ctx.getIsLowGraphicsMode());
         drawVerdureCaveWalls(canvas2d, wState, ctx.getIsLowGraphicsMode());
       } else {
         // Segmented surface: static base + dynamic tint from nearby combat objects.
+        // drawVerdureFloorSegmented / drawVerdureWallsSegmented — WORLD coords
+        // (static canvas drawn at wState.originX/Y; dynamic tint translates internally).
         const influences = ctx.getIsLowGraphicsMode()
           ? ([] as VerdureInfluenceObj[])
           : _collectVerdureInfluences(ctx);
@@ -703,6 +707,7 @@ export function drawRpgFrame(
         drawVerdureWallsSegmented(canvas2d, wState, ctx.getIsLowGraphicsMode(), influences);
       }
     } else {
+      // Fallback before wState is ready (first frame of wave): LOCAL coords.
       canvas2d.save();
       canvas2d.translate(vwX, vwY);
       drawVerdureEdgeRocks(canvas2d, vwW, vwH, ctx.getIsLowGraphicsMode());
@@ -792,6 +797,8 @@ export function drawRpgFrame(
     canvas2d.restore();
   }
   // Verdure zone: floor plant decoration, procedural vines, pollen particles.
+  // drawVerdureFloorEffects — LOCAL coords (drawn after translate(vwX, vwY); purely atmospheric).
+  // drawVerdurePlants / drawVerdureFragments — WORLD coords (plant positions are world-space; no translate).
   if (isVerdureZone) {
     canvas2d.save();
     canvas2d.translate(vwX, vwY);
