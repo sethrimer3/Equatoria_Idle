@@ -39,6 +39,7 @@ import {
   AMETHYSTFISH_TELEPORT_CD_MS,
   DIAMONDFISH_ARMOR_OFF_MS,
 } from '../../render/rpg/rpg-procedural-constants';
+import { createRpgPathState } from '../../render/rpg/terrain/rpg-pathfinding';
 
 // ─── Icon canvas size ─────────────────────────────────────────────
 
@@ -262,28 +263,28 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
       state = { kind: 'shadowhand', e: { ...base, kind: 'proc_shadowhand', animPhase: ap, graspPhase: 0, reachFraction: 0.55 } };
       break;
     case 'proc_sandfish':
-      state = { kind: 'sandfish', e: { ...base, kind: 'proc_sandfish', animPhase: ap, swimAngle: 0, turnPhase: ap, lungeTimerMs: 1200 } };
+      state = { kind: 'sandfish', e: { ...base, kind: 'proc_sandfish', animPhase: ap, swimAngle: 0, turnPhase: ap, lungeTimerMs: 1200, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     case 'proc_quartzfish':
-      state = { kind: 'quartzfish', e: { ...base, kind: 'proc_quartzfish', animPhase: ap, swimAngle: 0, turnPhase: ap, shieldHp: QUARTZFISH_SHIELD_HP, shieldBroken: false } };
+      state = { kind: 'quartzfish', e: { ...base, kind: 'proc_quartzfish', animPhase: ap, swimAngle: 0, turnPhase: ap, shieldHp: QUARTZFISH_SHIELD_HP, shieldBroken: false, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     case 'proc_rubyfish':
-      state = { kind: 'rubyfish', e: { ...base, kind: 'proc_rubyfish', animPhase: ap, swimAngle: 0, turnPhase: ap, dashState: 'idle', dashTimerMs: RUBYFISH_DASH_WINDUP_MS, dashVx: 0, dashVy: 0 } };
+      state = { kind: 'rubyfish', e: { ...base, kind: 'proc_rubyfish', animPhase: ap, swimAngle: 0, turnPhase: ap, dashState: 'idle', dashTimerMs: RUBYFISH_DASH_WINDUP_MS, dashVx: 0, dashVy: 0, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     case 'proc_sunstonefish':
-      state = { kind: 'sunstonefish', e: { ...base, kind: 'proc_sunstonefish', animPhase: ap, swimAngle: 0, turnPhase: ap, mineTimerMs: SUNSTONEFISH_MINE_CD_MS } };
+      state = { kind: 'sunstonefish', e: { ...base, kind: 'proc_sunstonefish', animPhase: ap, swimAngle: 0, turnPhase: ap, mineTimerMs: SUNSTONEFISH_MINE_CD_MS, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     case 'proc_emeraldfish':
-      state = { kind: 'emeraldfish', e: { ...base, kind: 'proc_emeraldfish', animPhase: ap, swimAngle: 0, turnPhase: ap, isMini: false, splitDone: false } };
+      state = { kind: 'emeraldfish', e: { ...base, kind: 'proc_emeraldfish', animPhase: ap, swimAngle: 0, turnPhase: ap, isMini: false, splitDone: false, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     case 'proc_sapphirefish':
-      state = { kind: 'sapphirefish', e: { ...base, kind: 'proc_sapphirefish', animPhase: ap, swimAngle: 0, turnPhase: ap, boltTimerMs: SAPPHIREFISH_BOLT_CD_MS } };
+      state = { kind: 'sapphirefish', e: { ...base, kind: 'proc_sapphirefish', animPhase: ap, swimAngle: 0, turnPhase: ap, boltTimerMs: SAPPHIREFISH_BOLT_CD_MS, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     case 'proc_amethystfish':
-      state = { kind: 'amethystfish', e: { ...base, kind: 'proc_amethystfish', animPhase: ap, swimAngle: 0, turnPhase: ap, teleportCdMs: AMETHYSTFISH_TELEPORT_CD_MS } };
+      state = { kind: 'amethystfish', e: { ...base, kind: 'proc_amethystfish', animPhase: ap, swimAngle: 0, turnPhase: ap, teleportCdMs: AMETHYSTFISH_TELEPORT_CD_MS, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     case 'proc_diamondfish':
-      state = { kind: 'diamondfish', e: { ...base, kind: 'proc_diamondfish', animPhase: ap, swimAngle: 0, turnPhase: ap, armorActive: true, armorTimerMs: DIAMONDFISH_ARMOR_OFF_MS } };
+      state = { kind: 'diamondfish', e: { ...base, kind: 'proc_diamondfish', animPhase: ap, swimAngle: 0, turnPhase: ap, armorActive: true, armorTimerMs: DIAMONDFISH_ARMOR_OFF_MS, pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0 } };
       break;
     default:
       return canvas;

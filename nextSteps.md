@@ -1,10 +1,105 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#188**
+Current build: **#190**
 
 ---
 
-## Build #189 — Topographic lighting expanded to visibleBounds
+## Build #190 — Caustics fish terrain-aware pathfinding
+
+### Status
+
+Caustics fish enemies now navigate around Caustics topology instead of pressing
+straight into terrain. They use A*-guided path steering layered on top of the
+existing Boids schooling system, with multi-angle terrain probes and stuck
+detection/recovery.
+
+### Approach: Hybrid steering + A* path following
+
+Fish pathfinding uses a **hybrid** approach:
+
+1. **A* path steering (primary seek force)** — when a nav grid is available
+   (Caustics and any zone with topographic terrain), `computePathSteeredDirection`
+   is called each frame to follow the pre-computed A* path to the player.  The A*
+   grid is built once when the wave starts (existing infrastructure, no new cost).
+   Repathing is throttled to `DEFAULT_REPATH_MS` (600 ms) with a ±20% stagger so
+   all fish don't repath on the same frame.
+
+2. **Multi-angle terrain probe fan (local avoidance)** — when the forward probe
+   hits terrain, six candidate escape angles (±45°, ±90°, ±135° from current
+   heading) are tried in preference order biased toward the player direction.  The
+   first clear direction is chosen rather than defaulting to a fixed perpendicular.
+
+3. **Stuck detection and recovery** — if a fish's speed drops below
+   `FISH_STUCK_SPEED_THRESHOLD` (0.25 px/frame) for more than
+   `FISH_STUCK_THRESHOLD_MS` (700 ms), a stuck event fires:
+   - The fish's path state is forced to repath immediately.
+   - `stuckRecoveryMs` is set to `FISH_STUCK_RECOVERY_MS` (900 ms).
+   - During recovery the terrain-avoidance weight is boosted ×2.5.
+   - A small random perpendicular nudge prevents all fish in a group from
+     choosing the same escape vector.
+
+4. **Smooth fish-like motion** — the existing clamped turn rate, sinusoidal wander,
+   tail-kick thrust, and velocity damping are preserved unchanged.
+
+### Changes in this build
+
+- **`src/render/rpg/rpg-procedural-types.ts`** — Added `pathState: RpgPathState`,
+  `stuckMs: number`, `stuckRecoveryMs: number` to `BaseFishEnemy`.  All 8 fish
+  types inherit these automatically.
+
+- **`src/render/rpg/rpg-procedural-factories.ts`** — `makeFishBase` now initialises
+  `pathState: createRpgPathState(), stuckMs: 0, stuckRecoveryMs: 0`.
+
+- **`src/render/rpg/rpg-procedural-constants.ts`** — `FISH_SCHOOL_PROBE_DIST`
+  increased 20 → 28 for earlier avoidance; three new stuck-detection constants
+  added: `FISH_STUCK_SPEED_THRESHOLD`, `FISH_STUCK_THRESHOLD_MS`,
+  `FISH_STUCK_RECOVERY_MS`.
+
+- **`src/render/rpg/rpg-procedural-fish-update.ts`** — `schoolSwimStep` rewritten:
+  - A*-guided seek via `computePathSteeredDirection` when terrain + nav grid present.
+  - Multi-angle fan probe with player-biased escape direction selection.
+  - Stuck detection and recovery with boosted avoidance + random nudge.
+  - `_tryEscape` helper to short-circuit probe fan evaluation.
+  - `SwimEntity` type updated to include the three new pathfinding fields.
+
+- **`src/ui/panels/rpg-enemies-tab-icons.ts`** — All 8 inline fish icon stubs
+  updated to include `pathState`, `stuckMs`, `stuckRecoveryMs`.
+
+### Known limitations
+
+- **Debug visualisation not wired** — `drawRpgPathfindingDebug` in
+  `rpg-render-draw.ts` currently passes `[]` for enemy path states.  Fish path
+  state arrays would need to be collected and passed through draw context to show
+  fish paths in the debug overlay.  Deferred to a follow-up build.
+
+- **No per-type turn-rate difference** — All 8 fish species use the same
+  `FISH_SCHOOL_MAX_TURN_RATE`.  Smaller fish could in principle use a higher rate
+  and larger fish a lower one, but the current constants are shared across species.
+  The Boids `isMini` flag already adjusts separation radius.
+
+- **Nav grid availability** — On zones without a nav grid (non-topographic zones),
+  fish fall back gracefully to direct seek.  This is correct since non-Caustics
+  zones generally lack complex topology.
+
+### Follow-up recommendations
+
+1. **Wire fish path states into the debug overlay** so that per-fish A* paths,
+   lookahead probes, and stuck state are visible during playtesting.
+
+2. **Per-species turn rates** — Differentiate `FISH_SCHOOL_MAX_TURN_RATE` by
+   species size (e.g., diamond fish turns wider than sand fish).
+
+3. **Monitor narrow-passage edge cases** — Large fish approaching single-cell
+   passages in dense topology may still get temporarily stuck; further tuning of
+   the avoidance weight or a larger probe distance for large fish could help.
+
+4. **A* soft obstacles for fish spawn zones** — Caustics fish spawns at formation
+   edges could optionally register as soft obstacles so fish are nudged away from
+   walls at spawn rather than waiting for a stuck event.
+
+---
+
+
 
 ### Status
 

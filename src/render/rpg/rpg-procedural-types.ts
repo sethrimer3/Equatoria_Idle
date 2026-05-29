@@ -202,6 +202,12 @@ interface BaseFishEnemy {
   contactCdMs: number;
   swimAngle: number;
   turnPhase: number;
+  /** A* path state for terrain-aware navigation around Caustics topology. */
+  pathState: import('./terrain/rpg-pathfinding').RpgPathState;
+  /** Accumulated ms during which the fish has had near-zero movement speed. */
+  stuckMs: number;
+  /** Remaining ms of post-stuck recovery period (boosted terrain avoidance). */
+  stuckRecoveryMs: number;
 }
 
 export interface SandFishEnemy extends BaseFishEnemy {
