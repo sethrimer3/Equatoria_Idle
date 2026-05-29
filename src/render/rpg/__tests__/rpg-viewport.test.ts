@@ -28,17 +28,15 @@ interface RpgViewport {
  * Kept here as a white-box spec so regressions are caught immediately.
  *
  * The invariant:
- *   safePx  = Math.min(containerW, containerH, RPG_LOGICAL_WIDTH)
- *   scale   = safePx / RPG_LOGICAL_WIDTH
+ *   scale = Math.min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT, 1)
  *
- * Scale is therefore:
- *   - 1.0 when canvas is at or above reference size in both dimensions.
- *   - < 1 when the canvas is narrower OR shorter than the reference.
- *   - Never > 1 for any canvas size (scale is capped at 1).
+ * This ensures the full 360×640 safe core always fits inside the host:
+ *   - scale = 1.0 when the host is at or above the full reference size.
+ *   - scale < 1 when the host is narrower OR shorter than the safe core.
+ *   - scale is never > 1 (safe core never zooms beyond 1 px-per-world-unit).
  */
 function computeRpgViewport(containerW: number, containerH: number): RpgViewport {
-  const safePx       = Math.min(containerW, containerH, RPG_LOGICAL_WIDTH);
-  const scale        = safePx / RPG_LOGICAL_WIDTH;
+  const scale        = Math.min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT, 1);
   const visibleWorldW = containerW / scale;
   const visibleWorldH = containerH / scale;
   const offsetX      = (containerW - RPG_LOGICAL_WIDTH  * scale) / 2;
@@ -99,17 +97,17 @@ describe('RPG viewport scale invariant', () => {
     expect(vp.visibleWorldW).toBeCloseTo(360, 3);
   });
 
-  it('scale < 1 on a short canvas (world shrinks to fit)', () => {
+  it('scale < 1 on a short canvas (safe core must fit vertically)', () => {
     const vp = computeRpgViewport(360, 480);
-    // min(360, 480, 360) = 360 → scale = 1.0  (width is limiting)
-    expect(vp.scale).toBeCloseTo(1.0, 5);
-    expect(vp.visibleWorldH).toBeCloseTo(480, 3);
+    // min(360/360, 480/640, 1) = min(1, 0.75, 1) = 0.75  (height is now limiting)
+    expect(vp.scale).toBeCloseTo(480 / 640, 5);
+    expect(vp.visibleWorldH).toBeCloseTo(640, 3);
   });
 
   it('scale is less than 1 on a very short canvas', () => {
     const vp = computeRpgViewport(360, 200);
-    // min(360, 200, 360) = 200 → scale ≈ 0.555
-    expect(vp.scale).toBeCloseTo(200 / 360, 5);
+    // min(360/360, 200/640, 1) = min(1, 0.3125, 1) = 200/640
+    expect(vp.scale).toBeCloseTo(200 / 640, 5);
   });
 
   it('offsetX is positive (centred) on a wider canvas', () => {
@@ -124,5 +122,48 @@ describe('RPG viewport scale invariant', () => {
     // World is 640 tall at scale 1.0.  Canvas is 900.  Extra = 260 / 2 = 130.
     expect(vp.offsetX).toBeCloseTo(0, 3);
     expect(vp.offsetY).toBeCloseTo(130, 3);
+  });
+});
+
+// ── Problem-statement regression cases ────────────────────────────────────────
+
+describe('RPG viewport — safe-core fit regression cases', () => {
+  it('wide and tall enough (760×640): scale=1, full safe core visible', () => {
+    const vp = computeRpgViewport(760, 640);
+    // min(760/360, 640/640, 1) = 1.0
+    expect(vp.scale).toBeCloseTo(1.0, 5);
+    expect(vp.visibleWorldW).toBeCloseTo(760, 3);
+    expect(vp.visibleWorldH).toBeCloseTo(640, 3);
+  });
+
+  it('wide but too short (480×415): scale≈415/640, full safe core height visible', () => {
+    const vp = computeRpgViewport(480, 415);
+    // min(480/360, 415/640, 1) = min(1.333, 0.648, 1) = 415/640
+    expect(vp.scale).toBeCloseTo(415 / 640, 5);
+    // Visible world height must cover the full 640 safe core.
+    expect(vp.visibleWorldH).toBeCloseTo(640, 3);
+    // Visible world must be wider than the 360 safe core.
+    expect(vp.visibleWorldW).toBeGreaterThan(360);
+    // offsetX must be positive (extra space distributed evenly).
+    expect(vp.offsetX).toBeGreaterThanOrEqual(0);
+    // offsetY must be 0 (safe core exactly fills height).
+    expect(vp.offsetY).toBeCloseTo(0, 3);
+  });
+
+  it('narrow phone (320×640): scale=320/360, full safe core height visible', () => {
+    const vp = computeRpgViewport(320, 640);
+    // min(320/360, 640/640, 1) = min(0.888, 1, 1) = 320/360
+    expect(vp.scale).toBeCloseTo(320 / 360, 5);
+    // Visible world must show the full safe core width and height.
+    expect(vp.visibleWorldW).toBeCloseTo(360, 3);
+    expect(vp.visibleWorldH).toBeGreaterThanOrEqual(640);
+  });
+
+  it('very short host (360×400): scale=400/640, full safe core fits', () => {
+    const vp = computeRpgViewport(360, 400);
+    // min(360/360, 400/640, 1) = min(1, 0.625, 1) = 400/640
+    expect(vp.scale).toBeCloseTo(400 / 640, 5);
+    expect(vp.visibleWorldH).toBeCloseTo(640, 3);
+    expect(vp.visibleWorldW).toBeGreaterThanOrEqual(360);
   });
 });

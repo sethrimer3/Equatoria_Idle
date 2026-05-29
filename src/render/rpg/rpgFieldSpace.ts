@@ -22,10 +22,10 @@
  *   - Physical coordinates: screen × devicePixelRatio (used for canvas backing store).
  *
  * Scale invariant (checked by rpgFieldSpace.test.ts):
- *   When only the canvas WIDTH increases, `scale` must not change and
- *   `visibleBounds.width` must increase proportionally.
- *   When only the canvas HEIGHT increases, `scale` must not change and
- *   `visibleBounds.height` must increase proportionally.
+ *   The full 360×640 safe core must always fit inside the visible canvas.
+ *   Scale = min(containerW / 360, containerH / 640, 1).
+ *   Growing the canvas beyond the safe core reveals more world without zooming in.
+ *   Shrinking the host reduces the scale so the full safe core remains visible.
  */
 
 // ── Core types ────────────────────────────────────────────────────────────────
@@ -72,9 +72,11 @@ export interface RpgFieldSpace {
   // ── World-space scale ─────────────────────────────────────────
   /**
    * Stable pixels-per-world-unit scale.
-   * Derived from `Math.min(canvasCssW, canvasCssH, safeCoreWorldW) / safeCoreWorldW`.
-   * This value must NOT increase when only the canvas width or height increases —
-   * growing the canvas should reveal more world, not zoom in.
+   * Derived from `Math.min(canvasCssW / safeCoreWorldW, canvasCssH / safeCoreWorldH, 1)`.
+   * This ensures the full safe core (360×640) always fits inside the canvas.
+   * Growing the canvas beyond the safe core reveals more world without zooming in;
+   * shrinking the host below safe-core size reduces scale so the full safe core
+   * remains visible.
    */
   scale: number;
 
@@ -211,6 +213,27 @@ export function makeSpawnBounds(_args: {
 // ── Main factory ──────────────────────────────────────────────────────────────
 
 /**
+ * Computes the stable RPG safe-core scale from container CSS dimensions.
+ *
+ * The scale is the largest value ≤ 1 that makes the full `RPG_LOGICAL_WIDTH ×
+ * RPG_LOGICAL_HEIGHT` safe core fit inside the container:
+ *
+ * ```ts
+ * Math.min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT, 1)
+ * ```
+ *
+ * Use this in `doResize()` and tests to ensure the formula cannot drift.
+ */
+export function computeRpgSafeCoreScale(
+  containerW: number,
+  containerH: number,
+  safeCoreW: number,
+  safeCoreH: number,
+): number {
+  return Math.min(containerW / safeCoreW, containerH / safeCoreH, 1);
+}
+
+/**
  * Computes a complete `RpgFieldSpace` snapshot from raw canvas metrics and the
  * stable scale.
  *
@@ -218,7 +241,8 @@ export function makeSpawnBounds(_args: {
  * so subsystems can read it without recomputing it.
  *
  * @param args.stableScale
- *   The already-computed stable scale: `Math.min(canvasCssW, canvasCssH, safeCoreWorldW) / safeCoreWorldW`.
+ *   The already-computed stable scale:
+ *   `Math.min(canvasCssW / safeCoreWorldW, canvasCssH / safeCoreWorldH, 1)`.
  *   Must be passed in pre-computed so callers control exactly which scale
  *   formula is used; this function does NOT derive a scale independently.
  *
