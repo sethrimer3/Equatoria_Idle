@@ -1,6 +1,73 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#186**
+Current build: **#187**
+
+---
+
+## Build #187 — RPG responsive field-space migration (continued)
+
+### Status
+
+`RpgFieldSpace` in `src/render/rpg/rpgFieldSpace.ts` is the single authoritative
+source for RPG sizing, bounds, coordinate conversion, and spawn areas.  All
+high-priority adoption gaps from the build #185 audit have been closed.
+
+### Changes in this build
+
+- **Floor effects now cover the full visible world.**
+  `drawImpetusFloorEffects`, `drawVerdureFloorEffects`, and `drawVerdureEdgeRocks`
+  are wrapped with `translate(vwX, vwY)` and receive `(vwW, vwH)` so they fill the
+  entire visible canvas rather than only the safe core.
+
+- **Persistent topographic sunlight fills the visible world.**
+  `renderPersistentTopographySunlight` is wrapped with `translate(vwX, vwY)` and
+  receives `(vwW, vwH)`.
+
+- **Terrain light emitter culling uses `paddedEffectBounds`.**
+  `_collectTerrainLightEmitters` now calls `ctx.getFieldSpace().paddedEffectBounds`
+  instead of accepting `canvasW/canvasH` parameters, so Euhedral light emitters
+  outside the old safe-core boundary are no longer incorrectly culled.
+
+- **Eigenstein beam length uses visible world diagonal.**
+  `drawEigensteinBeams` now receives `(vwW, vwH)` instead of `(widthPx, heightPx)`,
+  so beams extend across the full visible canvas.
+
+- **Player mote clamping uses `fieldSpace.activeBounds`.**
+  After resize, the player mote is clamped to the active world bounds rather than
+  to the fixed safe-core dimensions.
+
+- **Dev aliven spawn uses `fieldSpace.spawnBounds`.**
+  `devSpawnAliven` now spawns on the edge ring of `spawnBounds` rather than the
+  edge ring of the safe core.
+
+- **Nadir cubic grid update uses visible world dimensions.**
+  `nadirCubicGrid.update` now receives `(rpgWorldViewW, rpgWorldViewH)` so the
+  lattice fills the full visible canvas.
+
+### Intentional safe-core uses (unchanged)
+
+These systems remain deliberately scoped to the safe core:
+
+- `drawBottomSafeZone` / `drawBossStageDirector` / `drawWaveClearBanner` — boss
+  composition and HUD are centred on the stable 360×640 core for readability.
+- `renderTopographyLighting` — terrain geometry only exists within
+  `[0, widthPx] × [0, heightPx]`; overlay is limited to that area intentionally.
+- `drawCausticsFloorEffects` — seafloor ridge geometry is stored in absolute world
+  coords within the safe-core bounds.  Expanding requires translating the ridge
+  buffer; deferred to a future pass.
+- `drawEmpowerParticles` — uses an offscreen glow canvas sized to the safe core;
+  expanding requires coordinating particle positions with the visible area.
+
+### Remaining work
+
+- **`drawCausticsFloorEffects`**: Migrate seafloor ridge absolute-coord geometry to
+  support visible-bounds expansion with translate(vwX, vwY).
+- **`drawEmpowerParticles`**: Resize the glow canvas to `(vwW, vwH)` and offset
+  particle draw positions by `(vwX, vwY)`.
+- **`renderTopographyLighting`**: Expand cached lighting overlay to cover
+  `paddedEffectBounds` — requires generating terrain topology for extended area.
+- Add spawn-candidate debug overlay: accepted / rejected / fallback spawn dots in
+  dev mode, showing `fieldSpace.spawnBounds` ring clearly.
 
 ---
 
