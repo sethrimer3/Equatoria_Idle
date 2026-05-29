@@ -239,10 +239,28 @@ export const FISH_SCHOOL_EDGE_AVOID_WEIGHT  = 1.0;
 export const FISH_SCHOOL_MAX_TURN_RATE = 0.12;
 /** Maximum total swim speed to prevent runaway acceleration (px/frame). */
 export const FISH_SCHOOL_MAX_SPEED = 1.8;
-/** Look-ahead distance for terrain-anticipation probe (px). */
-export const FISH_SCHOOL_PROBE_DIST = 20;
+/** Look-ahead distance for terrain-anticipation probe (px). Longer = earlier avoidance. */
+export const FISH_SCHOOL_PROBE_DIST = 28;
 /** Pixel margin from canvas edge at which soft edge-avoidance begins. */
 export const FISH_SCHOOL_EDGE_MARGIN = 28;
+
+// ── Fish stuck-detection constants ────────────────────────────────────────────
+
+/**
+ * Fish speed (px/frame) below which a fish is considered potentially stuck.
+ * Below this threshold stuckMs accumulates.
+ */
+export const FISH_STUCK_SPEED_THRESHOLD = 0.25;
+/**
+ * How long (ms) a fish must be near-stationary before triggering stuck recovery.
+ * Shorter = more responsive recovery; longer = fewer false triggers.
+ */
+export const FISH_STUCK_THRESHOLD_MS = 700;
+/**
+ * Duration (ms) of the post-stuck recovery window, during which terrain-avoidance
+ * weight is boosted to help the fish steer away from blocking geometry.
+ */
+export const FISH_STUCK_RECOVERY_MS = 900;
 
 // ── Fluid explosion RGB colours per type ──────────────────────────────────────
 export const FLUID_DUSTWISP_R      = 180, FLUID_DUSTWISP_G      = 210, FLUID_DUSTWISP_B      = 230;

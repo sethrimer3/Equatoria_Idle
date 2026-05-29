@@ -2,9 +2,16 @@
  * rpg-procedural-fish-update.ts — Per-frame update logic for the 8 fish
  * creature types and fish-related projectiles/hazards.
  *
- * Fish use Boids-style schooling (swimSchoolStep) layered on top of the shared
+ * Fish use Boids-style schooling (schoolSwimStep) layered on top of the shared
  * contact-damage model.  Species-specific behaviours (lunge, dash, teleport,
  * diamond armour) are implemented per function.
+ *
+ * Navigation in Caustics (and any other zone with terrain):
+ *   schoolSwimStep integrates A* path steering from the zone nav grid so fish
+ *   route around topology islands instead of pressing straight into them.
+ *   A multi-angle terrain probe fan is used for immediate local avoidance when
+ *   the forward path is blocked.  A stuck-detection system forces repathing and
+ *   boosts terrain avoidance when a fish has been near-stationary for too long.
  *
  * Extracted from rpg-procedural-update.ts to keep that file manageable.
  */
@@ -27,10 +34,15 @@ import {
   FISH_SCHOOL_SEPARATION_WEIGHT, FISH_SCHOOL_ALIGNMENT_WEIGHT, FISH_SCHOOL_COHESION_WEIGHT,
   FISH_SCHOOL_PLAYER_SEEK_WEIGHT, FISH_SCHOOL_TERRAIN_AVOID_WEIGHT, FISH_SCHOOL_EDGE_AVOID_WEIGHT,
   FISH_SCHOOL_MAX_TURN_RATE, FISH_SCHOOL_MAX_SPEED, FISH_SCHOOL_PROBE_DIST, FISH_SCHOOL_EDGE_MARGIN,
+  FISH_STUCK_SPEED_THRESHOLD, FISH_STUCK_THRESHOLD_MS, FISH_STUCK_RECOVERY_MS,
 } from './rpg-procedural-constants';
 import { makeFishMine, makeFishSpike, makeFishBolt, makeFishDecoy } from './rpg-procedural-factories';
 import { TARGET_FRAME_MS, PLAYER_HIT_RADIUS } from './rpg-constants';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
+import {
+  computePathSteeredDirection,
+  type RpgPathState,
+} from './terrain/rpg-pathfinding';
 
 /** Check contact damage (mirrors the same helper in rpg-procedural-update.ts). */
 function contactDamage(
@@ -51,8 +63,16 @@ function contactDamage(
 
 // ── Fish helpers ────────────────────────────────────────────────────────────────
 
-// SwimEntity is structurally compatible with SchoolableFish (BaseFishEnemy satisfies both).
-type SwimEntity = SchoolableFish;
+/**
+ * SwimEntity is the mutable fish type used inside schoolSwimStep.
+ * It extends SchoolableFish with the per-fish navigation state fields
+ * added to BaseFishEnemy.
+ */
+type SwimEntity = SchoolableFish & {
+  pathState: RpgPathState;
+  stuckMs: number;
+  stuckRecoveryMs: number;
+};
 
 // Pre-computed squared radii — avoids repeated ** in the per-entity inner loop.
 const _SEP_R2 = FISH_SCHOOL_SEPARATION_RADIUS ** 2;
@@ -62,22 +82,49 @@ const _COH_R2 = FISH_SCHOOL_COHESION_RADIUS   ** 2;
 const _MINI_SEP_R2 = (FISH_SCHOOL_SEPARATION_RADIUS * 0.65) ** 2;
 
 /**
- * Fish locomotion step that incorporates Boids-style schooling.
+ * Try several candidate escape angles (starting from the most player-aligned)
+ * and return the direction unit vector of the first clear probe, or null.
  *
- * Extends the original swimStep with:
- *  1. Separation   — steer away from close neighbours.
- *  2. Alignment    — match the heading of nearby neighbours.
- *  3. Cohesion     — steer toward the local group centre of mass.
- *  4. Player seek  — maintain pressure toward the player (blended, not dominant).
- *  5. Edge avoidance — soft push inward before hard clamp.
- *  6. Terrain anticipation — probe ahead along current heading; turn away before
- *     pressing into terrain (applyEnemyTerrainPushOut still corrects any miss).
+ * @param terrain  — terrain state from ctx.getTerrainState()
+ * @param ex/ey    — fish world position
+ * @param angles   — candidate angles to try, in preference order
+ * @param probeDist — probe length
+ */
+function _tryEscape(
+  terrain: NonNullable<ReturnType<RpgEnemyCtx['getTerrainState']>>,
+  ex: number, ey: number,
+  angles: readonly number[],
+  probeDist: number,
+): { dx: number; dy: number } | null {
+  for (const a of angles) {
+    const px = ex + Math.cos(a) * probeDist;
+    const py = ey + Math.sin(a) * probeDist;
+    if (!segmentIntersectsTopographicTerrain(terrain, ex, ey, px, py)) {
+      return { dx: Math.cos(a), dy: Math.sin(a) };
+    }
+  }
+  return null;
+}
+
+/**
+ * Fish locomotion step that incorporates Boids-style schooling, A* terrain-aware
+ * path steering, multi-angle obstacle probing, and stuck detection/recovery.
  *
- * All steering forces are blended into a single desired heading; the fish then
- * turns toward that heading at the existing clamped rate, and propels itself via
- * the animPhase-driven tail-kick thrust exactly as before.
+ * Steering layers (blended into a single desired heading):
+ *  1. Separation    — steer away from close neighbours.
+ *  2. Alignment     — match the heading of nearby neighbours.
+ *  3. Cohesion      — steer toward the local group centre of mass.
+ *  4. Player seek   — A*-guided path direction when a nav grid is available;
+ *                     otherwise direct seek toward the player.
+ *  5. Edge avoidance — soft push inward before hard boundary clamp.
+ *  6. Terrain anticipation — multi-angle fan probe; steer to first open direction.
  *
- * @param e        — mutable fish entity (satisfies SchoolableFish / SwimEntity)
+ * Stuck detection: when the fish speed is below FISH_STUCK_SPEED_THRESHOLD for
+ * FISH_STUCK_THRESHOLD_MS ms, a stuck event fires — the path state is forced to
+ * repath immediately, terrain avoidance weight is boosted for FISH_STUCK_RECOVERY_MS,
+ * and a small random escape nudge is added to prevent all fish picking the same vector.
+ *
+ * @param e        — mutable fish entity (satisfies SwimEntity)
  * @param dt       — frame delta (1 = one target frame)
  * @param ctx      — shared enemy update context
  * @param speedMul — per-fish speed multiplier (unchanged from original swimStep)
@@ -90,6 +137,34 @@ function schoolSwimStep(
   speedMul: number,
   school: readonly SchoolableFish[],
 ): void {
+  const approxDeltaMs = dt * TARGET_FRAME_MS;
+  const terrain = ctx.getTerrainState();
+  const navGrid = ctx.getNavGrid();
+
+  // ── Current speed (before this tick) ─────────────────────────────────────
+  const curSpd = Math.sqrt(e.vx * e.vx + e.vy * e.vy);
+
+  // ── Stuck detection ───────────────────────────────────────────────────────
+  if (curSpd < FISH_STUCK_SPEED_THRESHOLD) {
+    e.stuckMs += approxDeltaMs;
+    if (e.stuckMs >= FISH_STUCK_THRESHOLD_MS) {
+      // Trigger recovery: force immediate repath + boost avoidance window.
+      e.stuckMs = 0;
+      e.stuckRecoveryMs = FISH_STUCK_RECOVERY_MS;
+      // Force A* repath on next computePathSteeredDirection call.
+      e.pathState.nextRepathMs = 0;
+    }
+  } else {
+    // Moving — decay stuck timer faster than it accumulates, but don't zero-snap.
+    e.stuckMs = Math.max(0, e.stuckMs - approxDeltaMs * 1.5);
+  }
+
+  // Decay recovery window.
+  if (e.stuckRecoveryMs > 0) {
+    e.stuckRecoveryMs = Math.max(0, e.stuckRecoveryMs - approxDeltaMs);
+  }
+  const isRecovering = e.stuckRecoveryMs > 0;
+
   // ── 1–3. Boids neighbour scan ─────────────────────────────────────────────
   let sepX = 0, sepY = 0;
   let aliVx = 0, aliVy = 0, aliCount = 0;
@@ -142,12 +217,38 @@ function schoolSwimStep(
     if (cohLen > 0.001) { cohX /= cohLen; cohY /= cohLen; }
   }
 
-  // ── 4. Player seek ────────────────────────────────────────────────────────
-  const pdx = ctx.mote.x - e.x;
-  const pdy = ctx.mote.y - e.y;
-  const pLen = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
-  const seekX = pdx / pLen;
-  const seekY = pdy / pLen;
+  // ── 4. Player seek (A*-guided when terrain and nav grid are available) ────
+  let seekX: number, seekY: number;
+
+  if (terrain && navGrid) {
+    // Use the existing A* steering helper — throttled internally to DEFAULT_REPATH_MS.
+    const steered = computePathSteeredDirection(
+      e.pathState,
+      e.x, e.y,
+      ctx.mote.x, ctx.mote.y,
+      performance.now(),
+      navGrid,
+      terrain,
+    );
+    if (steered) {
+      seekX = steered.dx;
+      seekY = steered.dy;
+    } else {
+      // Fallback: direct seek (e.g. path not yet computed this tick).
+      const pdx = ctx.mote.x - e.x;
+      const pdy = ctx.mote.y - e.y;
+      const pLen = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
+      seekX = pdx / pLen;
+      seekY = pdy / pLen;
+    }
+  } else {
+    // No terrain/nav grid — direct seek as before.
+    const pdx = ctx.mote.x - e.x;
+    const pdy = ctx.mote.y - e.y;
+    const pLen = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
+    seekX = pdx / pLen;
+    seekY = pdy / pLen;
+  }
 
   // ── 5. Edge avoidance ─────────────────────────────────────────────────────
   let edgeX = 0, edgeY = 0;
@@ -163,31 +264,54 @@ function schoolSwimStep(
     edgeY -= (e.y - (ctx.viewport.bottom - em)) / em;
   }
 
-  // ── 6. Terrain anticipation ───────────────────────────────────────────────
+  // ── 6. Terrain anticipation — multi-angle fan probe ───────────────────────
   let terrX = 0, terrY = 0;
-  const terrain = ctx.getTerrainState();
+  let terrainHit = false;
   if (terrain) {
     const probeX = e.x + Math.cos(e.swimAngle) * FISH_SCHOOL_PROBE_DIST;
     const probeY = e.y + Math.sin(e.swimAngle) * FISH_SCHOOL_PROBE_DIST;
     if (segmentIntersectsTopographicTerrain(terrain, e.x, e.y, probeX, probeY)) {
-      // Try perpendicular escape directions; prefer the clear one.
-      const perpA = e.swimAngle + Math.PI / 2;
-      const perpB = e.swimAngle - Math.PI / 2;
-      const paX = e.x + Math.cos(perpA) * FISH_SCHOOL_PROBE_DIST;
-      const paY = e.y + Math.sin(perpA) * FISH_SCHOOL_PROBE_DIST;
-      const pbX = e.x + Math.cos(perpB) * FISH_SCHOOL_PROBE_DIST;
-      const pbY = e.y + Math.sin(perpB) * FISH_SCHOOL_PROBE_DIST;
-      const clearA = !segmentIntersectsTopographicTerrain(terrain, e.x, e.y, paX, paY);
-      const clearB = !segmentIntersectsTopographicTerrain(terrain, e.x, e.y, pbX, pbY);
-      if (clearA && !clearB) {
-        terrX = Math.cos(perpA); terrY = Math.sin(perpA);
-      } else if (!clearA && clearB) {
-        terrX = Math.cos(perpB); terrY = Math.sin(perpB);
+      terrainHit = true;
+      // Build a fan of candidate escape angles ordered by proximity to the
+      // player-seek direction so fish preferentially route around in the correct
+      // direction.  Player-side perpendicular is tried first, then ±45°, ±90°,
+      // and ±135° (backward near-reversal as last resort).
+      const toPlayerAngle = Math.atan2(ctx.mote.y - e.y, ctx.mote.x - e.x);
+      const leftOf  = e.swimAngle + Math.PI / 4;
+      const rightOf = e.swimAngle - Math.PI / 4;
+      const left90  = e.swimAngle + Math.PI / 2;
+      const right90 = e.swimAngle - Math.PI / 2;
+      const left135 = e.swimAngle + (3 * Math.PI / 4);
+      const right135 = e.swimAngle - (3 * Math.PI / 4);
+      // Determine which perpendicular is closer to the player direction.
+      const diffLeft  = Math.abs(((left90  - toPlayerAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      const diffRight = Math.abs(((right90 - toPlayerAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      const [firstPerp, secondPerp]   = diffLeft <= diffRight ? [left90, right90] : [right90, left90];
+      const [firstDiag, secondDiag]   = diffLeft <= diffRight ? [leftOf, rightOf] : [rightOf, leftOf];
+      const [firstBack, secondBack]   = diffLeft <= diffRight ? [left135, right135] : [right135, left135];
+      const escapeCandidates: number[] = [firstDiag, secondDiag, firstPerp, secondPerp, firstBack, secondBack];
+      const escape = _tryEscape(terrain, e.x, e.y, escapeCandidates, FISH_SCHOOL_PROBE_DIST);
+      if (escape) {
+        terrX = escape.dx;
+        terrY = escape.dy;
       } else {
-        // Both blocked or both clear — default nudge to perpA.
-        terrX = Math.cos(perpA); terrY = Math.sin(perpA);
+        // All probes blocked (fully enclosed) — push backward.
+        terrX = -Math.cos(e.swimAngle);
+        terrY = -Math.sin(e.swimAngle);
       }
     }
+  }
+
+  // ── Terrain avoidance weight — boosted during stuck recovery ─────────────
+  const terrW = FISH_SCHOOL_TERRAIN_AVOID_WEIGHT * (isRecovering ? 2.5 : 1.0);
+
+  // During recovery with no terrain hit, add a small random perpendicular nudge
+  // to break symmetry so fish groups don't all pick the same escape direction.
+  let nudgeX = 0, nudgeY = 0;
+  if (isRecovering && !terrainHit) {
+    const nudgeAngle = e.swimAngle + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1);
+    nudgeX = Math.cos(nudgeAngle) * 0.4;
+    nudgeY = Math.sin(nudgeAngle) * 0.4;
   }
 
   // ── Blend all steering forces ─────────────────────────────────────────────
@@ -196,13 +320,15 @@ function schoolSwimStep(
              + cohX  * FISH_SCHOOL_COHESION_WEIGHT
              + seekX * FISH_SCHOOL_PLAYER_SEEK_WEIGHT
              + edgeX * FISH_SCHOOL_EDGE_AVOID_WEIGHT
-             + terrX * FISH_SCHOOL_TERRAIN_AVOID_WEIGHT;
+             + terrX * terrW
+             + nudgeX;
   const desY = sepY  * FISH_SCHOOL_SEPARATION_WEIGHT
              + aliY  * FISH_SCHOOL_ALIGNMENT_WEIGHT
              + cohY  * FISH_SCHOOL_COHESION_WEIGHT
              + seekY * FISH_SCHOOL_PLAYER_SEEK_WEIGHT
              + edgeY * FISH_SCHOOL_EDGE_AVOID_WEIGHT
-             + terrY * FISH_SCHOOL_TERRAIN_AVOID_WEIGHT;
+             + terrY * terrW
+             + nudgeY;
 
   // Derive target angle from the blended heading.
   const desLen = Math.sqrt(desX * desX + desY * desY);

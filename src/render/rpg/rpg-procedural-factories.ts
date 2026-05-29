@@ -8,6 +8,7 @@
  * Stats are wave-scaled at spawn time using getWaveStatScale.
  */
 import { getWaveStatScale } from '../../sim/rpg/rpg-state';
+import { createRpgPathState } from './terrain/rpg-pathfinding';
 import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
@@ -182,6 +183,9 @@ function makeFishBase<T extends string>(kind: T, x: number, y: number, wave: num
     contactCdMs: 0,
     swimAngle: Math.random() * Math.PI * 2,
     turnPhase: Math.random() * Math.PI * 2,
+    pathState: createRpgPathState(),
+    stuckMs: 0,
+    stuckRecoveryMs: 0,
   };
 }
 
