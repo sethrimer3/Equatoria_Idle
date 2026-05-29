@@ -737,11 +737,14 @@ export function drawRpgFrame(
 
   // Euhedral full-screen hex floor — drawn after the background fill and before
   // the fluid/terrain so it sits as ground-level atmosphere.
-  // Translated to vwX/vwY so hexes cover the full visible canvas.
+  // Canvas is translated to (vwX, vwY) so hexes fill the full visible canvas in
+  // local draw coords.  vwX/vwY are passed as worldOriginX/Y so the function can
+  // convert local cell centers to world space before sampling terrain light emitters
+  // (which always carry world-space coordinates).
   if (isEuhedralZone && !ctx.getIsLowGraphicsMode()) {
     canvas2d.save();
     canvas2d.translate(vwX, vwY);
-    drawEuhedralHexFloor(canvas2d, vwW, vwH, euhedralLights ?? [], false);
+    drawEuhedralHexFloor(canvas2d, vwW, vwH, euhedralLights ?? [], false, vwX, vwY);
     canvas2d.restore();
   }
 
