@@ -36,10 +36,16 @@ export interface RpgInputCtx {
    */
   onZoneLabelTap?: () => void;
   /**
-   * Optional viewport getters — when provided, pointer events are mapped using
-   * the full safe-core transform instead of the simpler dim/CSS ratio.
-   * This ensures input coords are correct when the canvas is wider than the
-   * 360×640 logical world (e.g. on landscape or wide portrait layouts).
+   * Authoritative field-space snapshot — when provided, pointer events are
+   * mapped using `fieldSpace.screenToWorld()` which uses the same scale and
+   * offset that the draw system uses.  Supersedes the legacy
+   * `getSafeScale/getSafeOffsetX/Y` getters.
+   */
+  getFieldSpace?: () => import('./rpgFieldSpace').RpgFieldSpace;
+  /**
+   * Optional viewport getters — kept for backward compatibility.  Prefer
+   * `getFieldSpace` for new code; these are ignored when `getFieldSpace` is
+   * present.
    */
   getSafeScale?:   () => number;
   getSafeOffsetX?: () => number;
@@ -67,23 +73,27 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
 
   function toCanvasCoords(clientX: number, clientY: number): { x: number; y: number } {
     const rect = canvas.getBoundingClientRect();
+    const cssPxX = clientX - rect.left;
+    const cssPxY = clientY - rect.top;
+    // Prefer fieldSpace.screenToWorld — it uses the same scale/offset as the
+    // draw system and handles wide/tall canvases correctly.
+    if (ctx.getFieldSpace) {
+      return ctx.getFieldSpace().screenToWorld({ x: cssPxX, y: cssPxY });
+    }
     if (ctx.getSafeScale && ctx.getSafeOffsetX && ctx.getSafeOffsetY) {
-      // Full safe-core mapping: accounts for the expanded canvas and the offset
-      // of the 360×640 logical world within the full render area.
+      // Legacy fallback: explicit safe-core transform getters.
       const scale   = ctx.getSafeScale();
       const offsetX = ctx.getSafeOffsetX();
       const offsetY = ctx.getSafeOffsetY();
-      const cssPxX = clientX - rect.left;
-      const cssPxY = clientY - rect.top;
       return {
         x: (cssPxX - offsetX) / (scale || 1),
         y: (cssPxY - offsetY) / (scale || 1),
       };
     }
-    // Fallback: simple ratio mapping (correct only when offsetX/Y are zero).
+    // Last-resort fallback: simple ratio mapping (correct only when offsets are zero).
     const scaleX = rect.width  > 0 ? dim.w / rect.width  : 1;
     const scaleY = rect.height > 0 ? dim.h / rect.height : 1;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    return { x: cssPxX * scaleX, y: cssPxY * scaleY };
   }
 
   // ── Tap tracking state ─────────────────────────────────────────────────────

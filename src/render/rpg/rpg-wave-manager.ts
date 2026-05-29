@@ -49,13 +49,17 @@ import type {
 import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
+import type { RpgFieldSpace } from './rpgFieldSpace';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
 export interface WaveManagerCtx {
-  dim: { w: number; h: number };
-  /** Full visible world-space bounds — updated on every resize. */
-  viewport: { left: number; top: number; right: number; bottom: number };
+  /**
+   * Authoritative field-space snapshot — provides `spawnBounds` (threaded
+   * through to `spawnEnemyById`) and other bounds as needed.
+   * Updated on every canvas resize via the shared closure in rpg-render.ts.
+   */
+  getFieldSpace(): RpgFieldSpace;
   mote: { x: number; y: number };
   rpgSimState: RpgSimState;
 

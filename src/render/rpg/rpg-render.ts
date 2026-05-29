@@ -949,8 +949,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // All helper functions referenced in waveManagerCtx are function declarations
   // and are hoisted, so this is safe even though they appear later in the file.
   waveManager = createWaveManager({
-    dim,
-    viewport,
+    getFieldSpace: () => rpgFieldSpace,
     mote,
     rpgSimState,
     enemies, sapphireMissiles, sapphireEnemies, emeraldEnemies,
@@ -1313,6 +1312,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsActive: () => _isActive,
     tryTargetEnemyAt,
     onZoneLabelTap: () => { zoneSelectPanel.open(); },
+    getFieldSpace:  () => rpgFieldSpace,
     getSafeScale:   () => rpgSafeScale,
     getSafeOffsetX: () => rpgSafeOffsetX,
     getSafeOffsetY: () => rpgSafeOffsetY,

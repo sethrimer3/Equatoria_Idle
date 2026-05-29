@@ -16,21 +16,25 @@
 import { PLAYER_BASE_ATK } from '../../sim/rpg/rpg-state';
 
 /**
- * Fixed logical width of the RPG game world in canvas pixels.
+ * Safe-core world width — the fixed 360-unit horizontal extent of the central
+ * guaranteed-visible gameplay area.
  *
  * All RPG gameplay objects (player, enemies, terrain, projectiles, particles)
- * live in [0, RPG_LOGICAL_WIDTH] × [0, RPG_LOGICAL_HEIGHT] world coordinates.
- * This value NEVER changes at runtime — it is the single authoritative arena size.
+ * are defined in world-coordinate space.  The safe core is always centred within
+ * the visible canvas; wider canvases reveal additional world space on each side
+ * rather than letterboxing or pillarboxing.
  *
- * The canvas backing store is always this width.  The `#rpg-area` wrapper div
- * is CSS-scaled by `resizeRpgArea()` to fit the available container while
- * preserving this aspect ratio (letterbox / pillarbox).
+ * Use `RpgFieldSpace.safeCoreBounds` for stable composition (boss placement, UI
+ * anchoring) and `RpgFieldSpace.visibleBounds` for the full visible world area.
  */
 export const RPG_LOGICAL_WIDTH  = 360;
 /**
- * Fixed logical height of the RPG game world in canvas pixels.
- * Together with RPG_LOGICAL_WIDTH this gives a 9:16 portrait aspect ratio —
- * the natural orientation for the RPG tab on phones.
+ * Safe-core world height — the fixed 640-unit vertical extent of the central
+ * guaranteed-visible gameplay area.  Together with `RPG_LOGICAL_WIDTH` this
+ * defines a 9:16 safe composition region around the camera centre.
+ *
+ * Taller canvases reveal additional world space above and below; the canvas is
+ * not letterboxed or pillarboxed.
  */
 export const RPG_LOGICAL_HEIGHT = 640;
 
