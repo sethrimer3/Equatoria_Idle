@@ -503,13 +503,11 @@ function _collectVerdureInfluences(ctx: RpgDrawCtx): VerdureInfluenceObj[] {
  */
 function _collectTerrainLightEmitters(
   ctx: RpgDrawCtx,
-  canvasW: number,
-  canvasH: number,
 ): TerrainLightEmitter[] {
-  const margin = 120;
+  const pb = ctx.getFieldSpace().paddedEffectBounds;
   const inView = (x: number, y: number) =>
-    x >= -margin && x <= canvasW + margin &&
-    y >= -margin && y <= canvasH + margin;
+    x >= pb.left && x <= pb.right &&
+    y >= pb.top && y <= pb.bottom;
 
   const emitters: TerrainLightEmitter[] = [];
 
@@ -704,7 +702,10 @@ export function drawRpgFrame(
         drawVerdureWallsSegmented(canvas2d, wState, ctx.getIsLowGraphicsMode(), influences);
       }
     } else {
-      drawVerdureEdgeRocks(canvas2d, widthPx, heightPx, ctx.getIsLowGraphicsMode());
+      canvas2d.save();
+      canvas2d.translate(vwX, vwY);
+      drawVerdureEdgeRocks(canvas2d, vwW, vwH, ctx.getIsLowGraphicsMode());
+      canvas2d.restore();
     }
   }
   if (isImpetusZone) {
@@ -730,7 +731,7 @@ export function drawRpgFrame(
   // For Euhedral: collect terrain light emitters once per frame and reuse for
   // both the hex floor and the basalt formation renderer.
   const euhedralLights: TerrainLightEmitter[] | undefined = (isEuhedralZone && !ctx.getIsLowGraphicsMode())
-    ? _collectTerrainLightEmitters(ctx, widthPx, heightPx)
+    ? _collectTerrainLightEmitters(ctx)
     : undefined;
 
   // Euhedral full-screen hex floor — drawn after the background fill and before
@@ -744,7 +745,10 @@ export function drawRpgFrame(
   }
 
   if (shouldDrawPersistentTopographySunlight(ctx.rpgSimState.activeZoneId, terrainState)) {
-    renderPersistentTopographySunlight(canvas2d, widthPx, heightPx, terrainState!.paletteId);
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
+    renderPersistentTopographySunlight(canvas2d, vwW, vwH, terrainState!.paletteId);
+    canvas2d.restore();
   }
   if (terrainState) {
     // For recursive-square and basalt terrain, collect enemy positions for
@@ -756,12 +760,20 @@ export function drawRpgFrame(
     renderTopographicTerrain(canvas2d, terrainState, nowMs, squareEnemies, ctx.getIsLowGraphicsMode(), euhedralLights);
     // Topographic lighting overlay is only applicable to the organic contour variant;
     // skip it for recursive-square terrain which has its own visual style.
+    // NOTE: renderTopographyLighting is intentionally drawn at safe-core dimensions
+    // (widthPx × heightPx) because the terrain geometry itself only exists in the
+    // [0, widthPx] × [0, heightPx] area.  Extended world space beyond the safe core
+    // is handled by the background fill and other per-zone effects.
     if (terrainState.terrainKind === 'topographic') {
       renderTopographyLighting(canvas2d, terrainState, widthPx, heightPx);
     }
   }
 
   // Zone floor effects — rendered after terrain so they sit above the floor, below enemies.
+  // NOTE: drawCausticsFloorEffects is intentionally at safe-core dimensions because its
+  // seafloor ridge geometry is stored in absolute world coords within [0, widthPx × heightPx].
+  // Expanding it to visible bounds requires translating the ridge buffer — deferred to a
+  // future migration pass (see nextSteps.md).
   if (isCausticsZone) {
     drawCausticsFloorEffects(
       canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode(),
@@ -769,15 +781,22 @@ export function drawRpgFrame(
     );
   }
   if (isImpetusZone) {
-    drawImpetusFloorEffects(canvas2d, widthPx, heightPx, nowMs, ctx.getIsLowGraphicsMode());
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
+    drawImpetusFloorEffects(canvas2d, vwW, vwH, nowMs, ctx.getIsLowGraphicsMode());
+    canvas2d.restore();
   }
   // Verdure zone: floor plant decoration, procedural vines, pollen particles.
   if (isVerdureZone) {
+    canvas2d.save();
+    canvas2d.translate(vwX, vwY);
     drawVerdureFloorEffects(
-      canvas2d, widthPx, heightPx, nowMs,
-      ctx.mote.x, ctx.mote.y,
+      canvas2d, vwW, vwH, nowMs,
+      // Player position in local (translated) space so proximity physics align correctly.
+      ctx.mote.x - vwX, ctx.mote.y - vwY,
       ctx.getIsLowGraphicsMode(),
     );
+    canvas2d.restore();
     // Procedural hazard plants (grow inward from rocks during combat).
     drawVerdurePlants(canvas2d, ctx.verdurePlants, ctx.getIsLowGraphicsMode());
     drawVerdureFragments(canvas2d, verdureFragments);
@@ -834,7 +853,7 @@ export function drawRpgFrame(
   drawVoidTendrils(canvas2d, ctx.voidTendrils);
   drawFracterylEnemies(canvas2d, ctx.fracterylEnemies, ctx.fracterylShards);
   drawEigensteinEnemies(canvas2d, ctx.eigensteinEnemies);
-  drawEigensteinBeams(canvas2d, ctx.eigensteinBeams, widthPx, heightPx);
+  drawEigensteinBeams(canvas2d, ctx.eigensteinBeams, vwW, vwH);
   drawEliteEnemies(canvas2d, ctx.eliteEnemies);
   drawPolyominoEnemies(canvas2d, ctx.polyominoEnemies, nowMs);
   drawFissilePolyominoEnemies(canvas2d, ctx.fissilePolyominoEnemies, nowMs);

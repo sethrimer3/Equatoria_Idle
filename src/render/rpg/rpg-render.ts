@@ -344,7 +344,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     if (rpgSimState.activeZoneId !== 'horizon' || rpgSimState.activeSubzoneId !== 'nadir') return null;
     if (!nadirCubicGrid) nadirCubicGrid = createNadirCubicGridBackground();
     const isEliteWaveActive = isNadirEliteWave && !isInterWave;
-    nadirCubicGrid.update(nowMs, widthPx, heightPx, isEliteWaveActive, isLowGraphicsMode);
+    nadirCubicGrid.update(nowMs, rpgWorldViewW, rpgWorldViewH, isEliteWaveActive, isLowGraphicsMode);
     return nadirCubicGrid.getProjectionState();
   }
 
@@ -1641,8 +1641,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     resize(cont: HTMLElement): void {
       doResize(cont);
       const half = RPG_MOTE_SIZE / 2;
-      mote.x = Math.max(half, Math.min(widthPx  - half, mote.x));
-      mote.y = Math.max(half, Math.min(heightPx - half, mote.y));
+      const ab = rpgFieldSpace.activeBounds;
+      mote.x = Math.max(ab.left + half, Math.min(ab.right  - half, mote.x));
+      mote.y = Math.max(ab.top  + half, Math.min(ab.bottom - half, mote.y));
     },
 
     setActive(active: boolean): void {
@@ -1728,11 +1729,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         : 'aliven_spark_cluster';
       const margin = 30;
       const edge = Math.floor(Math.random() * 4);
+      const sb = rpgFieldSpace.spawnBounds;
       let spawnX = 0, spawnY = 0;
-      if      (edge === 0) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = margin; }
-      else if (edge === 1) { spawnX = margin + Math.random() * (widthPx  - margin * 2); spawnY = heightPx - margin; }
-      else if (edge === 2) { spawnX = margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
-      else                 { spawnX = widthPx - margin; spawnY = margin + Math.random() * (heightPx - margin * 2); }
+      if      (edge === 0) { spawnX = sb.left + margin + Math.random() * (sb.width  - margin * 2); spawnY = sb.top + margin; }
+      else if (edge === 1) { spawnX = sb.left + margin + Math.random() * (sb.width  - margin * 2); spawnY = sb.bottom - margin; }
+      else if (edge === 2) { spawnX = sb.left + margin; spawnY = sb.top + margin + Math.random() * (sb.height - margin * 2); }
+      else                 { spawnX = sb.right - margin; spawnY = sb.top + margin + Math.random() * (sb.height - margin * 2); }
       alivenGroups.push(makeAlivenGroup(vid, spawnX, spawnY, currentWave));
     },
 

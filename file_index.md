@@ -35,7 +35,7 @@
 - `#canvas-container` — full-screen flex container that letterboxes / pillarboxes `#game-area`.
 - `#game-area` — `position: relative` wrapper whose CSS size is set by `resizeCanvas()` to maintain the 320:640 logical aspect ratio; children are `#game-canvas` and `#hud-overlay`.
 - `#rpg-container` — flex-centred container for the RPG canvas (height excludes stats panel + tab bar).
-- `#rpg-canvas` — fixed `aspect-ratio: 320/568` with `max-width/max-height: 100%` for uniform letterbox/pillarbox scaling on desktop; no independent X/Y stretch.
+- `#rpg-canvas` — responsive RPG canvas; the render host expands to fill `#rpg-container`. Increasing the host's width or height reveals more visible RPG world rather than zooming in. A stable safe-core transform keeps the `RPG_LOGICAL_WIDTH × RPG_LOGICAL_HEIGHT` (360×640) world centred; extra space is live world area with real enemies, terrain, and effects.
 - `#rpg-stats-panel` — DOM stats panel (3×tab-height) above the navigation bar, with `.rpg-stat`, `.rpg-stat-label`, `.rpg-stat-value` child classes.
 - `.rpg-dps-widget` — compact square right-side RPG stats widget with per-equipped-weapon DPS rows, low/high axis labels, tracks, and animated colored bars.
 
@@ -1486,7 +1486,7 @@
 - Instantiates `createRpgFluid()` and renders it as the first background layer in `draw()`, before all entities.
 - Injects fluid forces from: player movement, laser enemy movement, sapphire enemy patrol, sand projectiles, sapphire missile heat-seeker trail (every frame), missile launch impulse, laser beam fire (multi-point), chain whip lash, AoE weapon pulse, and enemy-death explosions.
 - Calls `fluid.step(deltaMs)` each update frame (including dying/restarting phases) and `fluid.reset()` on restart.
-- Fixed internal resolution: `INTERNAL_WIDTH = 320`, `INTERNAL_HEIGHT = 568` (portrait 9:16).  CSS `aspect-ratio` provides letterbox/pillarbox scaling so pixels are always uniform on desktop.
+- Fixed internal resolution: `INTERNAL_WIDTH = 320`, `INTERNAL_HEIGHT = 568` (portrait 9:16) for the main game canvas.  CSS `aspect-ratio` provides letterbox/pillarbox scaling so pixels are always uniform on desktop.  The RPG canvas uses a different model: see `rpgFieldSpace.ts` for `RpgFieldSpace` which governs the RPG world dimensions.
 - **Player mote** — 3×3 sand-colored mote with touch joystick, WASD/Arrow key controls, always-on pulsing glow, smoothly-interpolated comet trail, and starting stats HP=100 ATK=10 DEF=5.
 - **Movement glow smoothing** — `playerMovementState.glowMovementIntensity` (0–1) LERP-ramps up when moving and down when stopped; gates trail and halo brightness. Owned by `playerMovementState: PlayerMovementState`.
 - **Laser enemy** — 2×2 red mote with five-phase AI: `idle`, `decelerate`, `dash`, `overshoot`, `cooldown`.  Bezier lineDash attack-trail with draw/erase phases.
