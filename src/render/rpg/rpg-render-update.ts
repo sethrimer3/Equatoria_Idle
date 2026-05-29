@@ -368,10 +368,17 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
   if (ctx.rpgSimState.activeZoneId === 'horizon' && ctx.rpgSimState.activeSubzoneId === 'zenith' && !ctx.getIsBossWaveActive()) {
     if (a.binaryRingEnemies.length === 0 && ctx.getCurrentWave() % 10 === 0 && !ctx.getIsInterWave()) {
-      a.binaryRingEnemies.push(createBinaryRingEnemy(ctx.enemyCtx.dim.w * 0.5, ctx.enemyCtx.dim.h * 0.5, ctx.getCurrentWave()));
+      // Binary ring orbits the safe-core centre (stable under any canvas size).
+      const scb = ctx.drawCtx.getFieldSpace().safeCoreBounds;
+      a.binaryRingEnemies.push(createBinaryRingEnemy(
+        scb.left + scb.width * 0.5,
+        scb.top + scb.height * 0.5,
+        ctx.getCurrentWave(),
+      ));
     }
     if (a.binaryRingEnemies.length > 0) {
       const ring = a.binaryRingEnemies[0]!;
+      const scb = ctx.drawCtx.getFieldSpace().safeCoreBounds;
       const result = updateBinaryRingEnemy(
         ring,
         a.binaryRingMissiles,
@@ -379,8 +386,8 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
         deltaMs,
         ctx.mote.x,
         ctx.mote.y,
-        ctx.enemyCtx.dim.w,
-        ctx.enemyCtx.dim.h,
+        scb.width,
+        scb.height,
       );
       ctx.setBinaryLaserSweep(result.setLaserSweep);
       for (let i = 0; i < result.newMissiles.length; i++) a.binaryRingMissiles.push(result.newMissiles[i]!);

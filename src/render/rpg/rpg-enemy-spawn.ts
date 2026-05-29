@@ -88,6 +88,7 @@ import {
   type BuffableEnemy,
 } from './rpg-elite-buff';
 import { spawnEmpowerParticles } from './rpg-elite-empower-particles';
+import type { RpgFieldSpace } from './rpgFieldSpace';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -97,9 +98,12 @@ import { spawnEmpowerParticles } from './rpg-elite-empower-particles';
  * interface, so it can be passed directly.
  */
 export interface EnemySpawnCtx {
-  dim: { w: number; h: number };
-  /** Full visible world-space bounds — updated on every resize. */
-  viewport: { left: number; top: number; right: number; bottom: number };
+  /**
+   * Authoritative field-space snapshot — provides `spawnBounds` for random
+   * placement and `safeCoreBounds` for intentional central positioning (bosses).
+   * Updated on every canvas resize via the shared closure in rpg-render.ts.
+   */
+  getFieldSpace(): RpgFieldSpace;
   mote: { x: number; y: number };
   getCurrentWave(): number;
   setBossEnemy(boss: BossEnemy | null): void;
@@ -263,16 +267,13 @@ function _onEliteSpawned(ctx: EnemySpawnCtx, spawnX: number, spawnY: number): vo
  * the player mote.
  */
 export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
-  const { dim, mote, viewport } = ctx;
-  // Use the full visible viewport for spawn bounds so enemies don't appear
-  // off-screen on wide/short canvases.  dim.w/h (360×640 safe core) is only
-  // kept for legacy-compatibility callsites that reference it indirectly.
-  const spawnLeft   = viewport.left;
-  const spawnTop    = viewport.top;
-  const spawnRight  = viewport.right;
-  const spawnBottom = viewport.bottom;
-  const spawnW = spawnRight - spawnLeft;
-  const spawnH = spawnBottom - spawnTop;
+  const { mote } = ctx;
+  const fieldSpace = ctx.getFieldSpace();
+  // Use the full visible spawn bounds so enemies don't appear off-screen on
+  // wide/short canvases.  spawnBounds == activeBounds == visibleBounds under
+  // current policy; future waves may narrow it independently.
+  const { left: spawnLeft, top: spawnTop, right: spawnRight, bottom: spawnBottom,
+          width: spawnW, height: spawnH } = fieldSpace.spawnBounds;
   const minDist  = 80;
   let spawnX = 0, spawnY = 0, attempts = 0;
   const wn = ctx.getCurrentWave();
@@ -606,7 +607,10 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     ctx.refractorPolyominoEnemies.push(e);
     _onNonEliteSpawned(ctx, e, spawnX, spawnY);
   } else if (enemyTypeId === 'boss') {
-    ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, dim.w, dim.h));
+    // Boss is positioned relative to the stable safe-core area so its composition
+    // remains centred on all canvas sizes.
+    const sc = fieldSpace.safeCoreBounds;
+    ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, sc.width, sc.height));
     ctx.enterBossWave();
   } else if (
     enemyTypeId === 'elite_quartz' || enemyTypeId === 'elite_ruby'   ||

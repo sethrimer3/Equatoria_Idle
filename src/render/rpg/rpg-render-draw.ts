@@ -321,7 +321,7 @@ export interface RpgDrawCtx {
   /** Returns the expanded world-space height visible through the full canvas. */
   getWorldViewH?(): number;
   /** Returns the authoritative field-space snapshot for this frame. */
-  getFieldSpace?(): RpgFieldSpace;
+  getFieldSpace(): RpgFieldSpace;
   /** Returns the current navigation grid for pathfinding debug draw. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns true when pathfinding debug visualization should be drawn. */
@@ -626,37 +626,31 @@ export function drawRpgFrame(
   const bossEnemy  = ctx.getBossEnemy();
 
   // ── Step 1: clear the full physical backing at identity transform ─────────
-  // The safe-core approach makes the canvas fill the full container, so areas
-  // outside the 360×640 world need to be explicitly filled with the background
-  // colour before the world-space safe-core transform is applied.
-  const fullW = ctx.getFullW?.() ?? widthPx;
-  const fullH = ctx.getFullH?.() ?? heightPx;
-  const safeOffsetX = ctx.getSafeOffsetX?.() ?? 0;
-  const safeOffsetY = ctx.getSafeOffsetY?.() ?? 0;
-  const safeScale   = ctx.getSafeScale?.()   ?? 1;
-  const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+  // The canvas fills the full container; all areas (including those beyond the
+  // safe-core world) must be explicitly cleared before the world transform is
+  // applied.  Use fieldSpace as the authoritative source for all sizing.
+  const fs = ctx.getFieldSpace();
+  const dpr = fs.dpr;
 
   canvas2d.setTransform(1, 0, 0, 1, 0, 0);
-  canvas2d.clearRect(0, 0, fullW * dpr, fullH * dpr);
+  canvas2d.clearRect(0, 0, fs.backingW, fs.backingH);
   canvas2d.fillStyle = '#0a0a12';
-  canvas2d.fillRect(0, 0, fullW * dpr, fullH * dpr);
+  canvas2d.fillRect(0, 0, fs.backingW, fs.backingH);
 
-  // ── Step 2: apply safe-core transform (world → full canvas) ───────────────
-  // All subsequent draw calls use world coordinates (0–360, 0–640).
-  canvas2d.setTransform(safeScale * dpr, 0, 0, safeScale * dpr, safeOffsetX * dpr, safeOffsetY * dpr);
+  // ── Step 2: apply world transform (world → full canvas) ───────────────────
+  // All subsequent draw calls use world coordinates.
+  // The transform maps world origin to (offsetX*dpr, offsetY*dpr) in physical pixels.
+  canvas2d.setTransform(fs.scale * dpr, 0, 0, fs.scale * dpr, fs.offsetX * dpr, fs.offsetY * dpr);
 
-  // Visible-world bounds in world coordinates: the canvas area seen at this scale.
-  // vwX/vwY is the world coord mapped to the canvas top-left corner.
-  // vwW/vwH is the total world-space size of the visible canvas area.
-  // On a 360×640 reference device: vwX=0, vwY=0, vwW=360, vwH=640.
-  // On a 600×640 wider canvas (scale=1.0): vwX=-120, vwY=0, vwW=600, vwH=640.
-  const safeScaleNz = safeScale || 1;
-  const vwX = -safeOffsetX / safeScaleNz;
-  const vwY = -safeOffsetY / safeScaleNz;
-  const vwW = fullW / safeScaleNz;
-  const vwH = fullH / safeScaleNz;
+  // Visible-world rect: the entire canvas area expressed in world coordinates.
+  // On a 360×640 reference device: left=0, top=0, width=360, height=640.
+  // On a 600×640 wider canvas (scale=1.0): left=-120, width=600.
+  const vwX = fs.visibleBounds.left;
+  const vwY = fs.visibleBounds.top;
+  const vwW = fs.visibleBounds.width;
+  const vwH = fs.visibleBounds.height;
 
-  // Clear and fill the full visible world area (covers gutters when canvas > world).
+  // Clear and fill the full visible world area (covers extra space when canvas > safe-core).
   canvas2d.clearRect(vwX, vwY, vwW, vwH);
   canvas2d.fillStyle = '#0a0a12';
   canvas2d.fillRect(vwX, vwY, vwW, vwH);
@@ -672,8 +666,8 @@ export function drawRpgFrame(
   // Zone atmosphere tints — rendered immediately after the background fill so
   // they sit behind fluid, terrain, and all gameplay elements.
   // Each zone background is drawn with translate(vwX, vwY) so that the
-  // background fills the full visible canvas area (including gutters when the
-  // canvas is wider/taller than the 360×640 world).
+  // background fills the full visible canvas area (including extra space when the
+  // canvas is wider/taller than the safe-core world).
   const isCausticsZone  = ctx.rpgSimState.activeZoneId === 'caustics';
   const isVerdureZone   = ctx.rpgSimState.activeZoneId === 'verdure';
   const isImpetusZone   = ctx.rpgSimState.activeZoneId === 'impetus';
@@ -979,11 +973,11 @@ export function drawRpgFrame(
   const screenDarken = ctx.getScreenDarken();
   if (screenDarken > 0) {
     canvas2d.globalAlpha = screenDarken; canvas2d.fillStyle = '#000000';
-    canvas2d.fillRect(0, 0, widthPx, heightPx); canvas2d.globalAlpha = 1;
+    canvas2d.fillRect(vwX, vwY, vwW, vwH); canvas2d.globalAlpha = 1;
   }
   if (rpgPhase === 'restarting') {
     canvas2d.globalAlpha = 1 - ctx.getRestartFadeAlpha(); canvas2d.fillStyle = '#000000';
-    canvas2d.fillRect(0, 0, widthPx, heightPx); canvas2d.globalAlpha = 1;
+    canvas2d.fillRect(vwX, vwY, vwW, vwH); canvas2d.globalAlpha = 1;
   }
 
   // ── Developer-mode viewport diagnostics ──────────────────────
@@ -1022,23 +1016,25 @@ export function drawRpgFrame(
 function drawRpgViewportDiagnostics(
   canvas2d: CanvasRenderingContext2D,
   _widthPx: number,
-  heightPx: number,
+  _heightPx: number,
   ctx: RpgDrawCtx,
 ): void {
+  const fs = ctx.getFieldSpace();
   const css = ctx.getCssDisplaySize();
-  const fullW = ctx.getFullW?.() ?? css.w;
-  const fullH = ctx.getFullH?.() ?? css.h;
-  const safeOffX = ctx.getSafeOffsetX?.() ?? 0;
-  const safeOffY = ctx.getSafeOffsetY?.() ?? 0;
-  const safeScl  = ctx.getSafeScale?.()   ?? 1;
-  const worldViewW = ctx.getWorldViewW?.() ?? RPG_LOGICAL_WIDTH;
-  const worldViewH = ctx.getWorldViewH?.() ?? RPG_LOGICAL_HEIGHT;
-  const fs = ctx.getFieldSpace?.() ?? null;
-  const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
-  const backingW = Math.round(fullW * dpr);
-  const backingH = Math.round(fullH * dpr);
-  // The stable clamped safePx that drives the RPG scale (mirrors doResize logic).
-  const safePx = Math.round(Math.min(fullW, fullH, RPG_LOGICAL_WIDTH));
+  const dpr = fs.dpr;
+
+  // Derive legacy-compatible values from fieldSpace for display.
+  const fullW     = fs.canvasCssW;
+  const fullH     = fs.canvasCssH;
+  const safeOffX  = fs.offsetX;
+  const safeOffY  = fs.offsetY;
+  const safeScl   = fs.scale;
+  const backingW  = fs.backingW;
+  const backingH  = fs.backingH;
+  const worldViewW = fs.visibleBounds.width;
+  const worldViewH = fs.visibleBounds.height;
+  const safePx    = Math.round(Math.min(fullW, fullH, RPG_LOGICAL_WIDTH));
+
   const mx = ctx.mote.x.toFixed(1);
   const my = ctx.mote.y.toFixed(1);
   const terrainState = ctx.getTopographicTerrainState();
@@ -1054,19 +1050,17 @@ function drawRpgViewportDiagnostics(
   // (indicates cover-style zoom was applied).
   const scaleTooLarge = safeScl > 1.001 && fullW <= RPG_LOGICAL_WIDTH && fullH <= RPG_LOGICAL_HEIGHT;
   // Warn if activeBounds is smaller than visibleBounds (field-space invariant check).
-  const activeSmallerThanVisible = fs != null && (
+  const activeSmallerThanVisible =
     fs.activeBounds.width < fs.visibleBounds.width - 1 ||
-    fs.activeBounds.height < fs.visibleBounds.height - 1
-  );
+    fs.activeBounds.height < fs.visibleBounds.height - 1;
 
   // World-space visible bounds for camera info display.
-  const safeNz = safeScl || 1;
-  const camLeft   = (-safeOffX / safeNz).toFixed(1);
-  const camTop    = (-safeOffY / safeNz).toFixed(1);
-  const camRight  = ((fullW - safeOffX) / safeNz).toFixed(1);
-  const camBottom = ((fullH - safeOffY) / safeNz).toFixed(1);
-  const camCenterX = ((fullW * 0.5 - safeOffX) / safeNz).toFixed(1);
-  const camCenterY = ((fullH * 0.5 - safeOffY) / safeNz).toFixed(1);
+  const camLeft    = fs.visibleBounds.left.toFixed(1);
+  const camTop     = fs.visibleBounds.top.toFixed(1);
+  const camRight   = fs.visibleBounds.right.toFixed(1);
+  const camBottom  = fs.visibleBounds.bottom.toFixed(1);
+  const camCenterX = (fs.visibleBounds.left + fs.visibleBounds.width  * 0.5).toFixed(1);
+  const camCenterY = (fs.visibleBounds.top  + fs.visibleBounds.height * 0.5).toFixed(1);
 
   // ── Background/effect route label ────────────────────────────────
   let bgRoute: string;
@@ -1098,8 +1092,8 @@ function drawRpgViewportDiagnostics(
     { text: `cam center: (${camCenterX}, ${camCenterY})` },
   ];
 
-  // ── Field-space block (shown when available) ──────────────────────
-  if (fs != null) {
+  // ── Field-space block ─────────────────────────────────────────────
+  {
     const vb = fs.visibleBounds;
     const ab = fs.activeBounds;
     const sb = fs.safeCoreBounds;
@@ -1168,7 +1162,9 @@ function drawRpgViewportDiagnostics(
   const pad = 4;
   const boxW = 220;  // widened for subzone + bg route lines
   const boxH = lines.length * lineH + pad * 2;
-  const boxY = heightPx - boxH - 2;
+  // Anchor the text box to the bottom of the safe-core region so it stays
+  // inside the stable composition area regardless of canvas height.
+  const boxY = fs.safeCoreBounds.bottom - boxH - 2;
 
   canvas2d.globalAlpha = 0.72;
   canvas2d.fillStyle = '#000000';
@@ -1180,6 +1176,48 @@ function drawRpgViewportDiagnostics(
     canvas2d.fillText(lines[i].text, 1 + pad, boxY + pad + (i + 1) * lineH - 2);
   }
   canvas2d.restore();
+
+  // ── Field-space rectangle overlays ────────────────────────────────
+  // Draw labelled outlines for each RpgFieldSpace bound so the active world
+  // viewport is immediately visible in dev mode.
+  _drawFieldSpaceOverlay(canvas2d, fs);
+}
+
+/**
+ * Draws labelled rectangle outlines for each RpgFieldSpace bound.
+ * Called only in dev mode from within the world-coordinate transform.
+ */
+function _drawFieldSpaceOverlay(
+  c2d: CanvasRenderingContext2D,
+  fs: RpgFieldSpace,
+): void {
+  c2d.save();
+  c2d.lineWidth = 1 / fs.scale;  // 1 physical pixel regardless of zoom
+
+  const rects: Array<{ rect: import('./rpgFieldSpace').WorldRect; color: string; label: string }> = [
+    { rect: fs.paddedEffectBounds, color: 'rgba(128,128,255,0.4)',  label: 'paddedEffect' },
+    { rect: fs.visibleBounds,      color: 'rgba(0,255,255,0.7)',    label: 'visible' },
+    { rect: fs.activeBounds,       color: 'rgba(0,255,128,0.5)',    label: 'active' },
+    { rect: fs.safeCoreBounds,     color: 'rgba(255,220,0,0.5)',    label: 'safeCore' },
+    { rect: fs.spawnBounds,        color: 'rgba(255,80,80,0.5)',    label: 'spawn' },
+  ];
+
+  c2d.font = `${Math.round(8 / fs.scale)}px monospace`;
+
+  for (const { rect, color, label } of rects) {
+    c2d.strokeStyle = color;
+    c2d.setLineDash([4 / fs.scale, 3 / fs.scale]);
+    c2d.strokeRect(rect.left, rect.top, rect.width, rect.height);
+    c2d.setLineDash([]);
+
+    // Label near the top-left corner of each rect
+    c2d.fillStyle = color;
+    c2d.globalAlpha = 0.9;
+    c2d.fillText(label, rect.left + 2 / fs.scale, rect.top + 10 / fs.scale);
+    c2d.globalAlpha = 1;
+  }
+
+  c2d.restore();
 }
 
 // ── Low-graphics mode forwarding ──────────────────────────────────────────────

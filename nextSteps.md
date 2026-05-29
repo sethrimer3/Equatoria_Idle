@@ -1,6 +1,6 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#178**
+Current build: **#186**
 
 ---
 
@@ -2702,6 +2702,51 @@ Stored in `localStorage` under `equatoria_settings` (same key as all other setti
 
 
 ---
+
+## Build #186 — RpgFieldSpace adopted in draw, spawn, wave, and input contexts
+
+### What was implemented
+
+- **`rpg-constants.ts`**: Updated JSDoc for `RPG_LOGICAL_WIDTH` and `RPG_LOGICAL_HEIGHT` — removed stale "letterbox/pillarbox" and "canvas backing store is always this width" language; now accurately describes the safe-core concept and extra world space behavior.
+
+- **`rpg-enemy-spawn.ts`**:
+  - Removed `dim` and `viewport` from `EnemySpawnCtx`.
+  - Added `getFieldSpace(): RpgFieldSpace` to `EnemySpawnCtx`.
+  - `spawnEnemyById` now derives spawn bounds from `fieldSpace.spawnBounds` for all normal/elite/procedural/polyomino enemies.
+  - Boss spawning uses `fieldSpace.safeCoreBounds` with an explicit comment.
+
+- **`rpg-wave-manager.ts`**:
+  - Removed `dim` and `viewport` from `WaveManagerCtx`.
+  - Added `getFieldSpace(): RpgFieldSpace`.
+
+- **`rpg-render.ts`**:
+  - `createWaveManager` call passes `getFieldSpace: () => rpgFieldSpace` instead of `dim`/`viewport`.
+  - `createRpgInput` call receives `getFieldSpace: () => rpgFieldSpace`.
+
+- **`rpg-input.ts`**:
+  - Added `getFieldSpace?(): RpgFieldSpace` to `RpgInputCtx`.
+  - `toCanvasCoords` now prefers `fieldSpace.screenToWorld()`, falling back to legacy getters for compatibility.
+
+- **`rpg-render-draw.ts`**:
+  - `getFieldSpace()` made required in `RpgDrawCtx` (removed `?`).
+  - `drawRpgFrame` now derives all sizing (`backingW/H`, transform, `vwX/Y/W/H`) from `ctx.getFieldSpace()` — replacing legacy `getFullW/H`, `getSafeOffsetX/Y`, `getSafeScale`, and manual `safeScaleNz`/`vwX/Y` derivations.
+  - Screen-darken and restart-fade overlays now fill `vwX, vwY, vwW, vwH` (full visible world) instead of the safe-core region only.
+  - `drawRpgViewportDiagnostics` rewritten to derive all values from `ctx.getFieldSpace()` directly; legacy optional getters no longer needed.
+  - Added `_drawFieldSpaceOverlay`: draws labelled dashed rectangle outlines in world-space coordinates for `paddedEffectBounds`, `visibleBounds`, `activeBounds`, `safeCoreBounds`, and `spawnBounds`; gated by dev mode.
+
+- **`rpg-render-update.ts`**:
+  - Binary ring enemy creation and update now uses `ctx.drawCtx.getFieldSpace().safeCoreBounds` for center position and world dimensions — instead of `ctx.enemyCtx.dim.w/h`.
+
+- **`buildInfo.ts`**: bumped 185 → 186.
+
+### Still deferred
+
+The following systems still use legacy `widthPx`/`heightPx` fixed-dimension calls and should be migrated in a follow-up build:
+
+- **`rpg-render.ts` `beginWaveTerrain()`**: passes 360×640 to terrain builders. Should use `rpgFieldSpace.visibleBounds`.
+- **Terrain modules** (`topographic-terrain.ts`, `topographic-lighting.ts`, `caustics-overlay.ts`, `euhedral-hex-floor.ts`, `verdure-cave-walls.ts`): bake sizes derived from `widthPx`/`heightPx`; should accept `WorldRect` from `rpgFieldSpace`.
+- **`RpgEnemyCtx`** (in `rpg-enemy-updates.ts`): still has `dim` and `viewport` fields used by `clampEnemyToBounds` and all enemy update functions. Migration requires updating the entire enemy update pipeline.
+- **Terrain draw calls in `rpg-render-draw.ts`**: `renderTopographyLighting`, `drawImpetusFloorEffects`, `drawEmpowerParticles`, `drawBottomSafeZone`, `drawWaveClearBanner` still pass `widthPx`/`heightPx` (intentionally: these are safe-core UI/overlay elements or terrain already sized to the logical canvas).
 
 ## Build #185 — RpgFieldSpace centralized field-space abstraction
 
