@@ -49,6 +49,7 @@
 
 ### src/styles/components.css
 - Loading screen, loom cards, equation display (locked/unlocked), achievement cards.
+- **Build 192+:** `.hud-equation-pixel-canvas` styles (`image-rendering: pixelated/crisp-edges`, `width: 100%`, `height: auto`) for the pixel equation canvas.
 
 ### src/styles/idle-overlay.css
 - Styles for the idle/offline reward overlay (`.idle-overlay`, `.idle-overlay__card`, tier rows, animations).
@@ -82,6 +83,7 @@
 - Calls `computeForgePreviewTerms` each frame and passes `forgePreviewTerms` to `hudOverlay.update`.
 - Calls `drawIdleViewportDebug(cc)` when `settings.isDevMode` is true (drawn last so it is always visible).
 - Newly unlocked achievement notifications are queued and emitted at 700 ms intervals so popup text and achievement SFX do not stack on the same frame.
+- **Build 192+:** passes `ctx.settings.equationRenderStyle` to `hudOverlay.update` so the HUD can toggle pixel/smooth equation mode.
 
 - Resets the main canvas 2D context state before each full-frame render so leaked alpha, transforms, filters, or blend modes cannot blank later layers.
 
@@ -1729,6 +1731,24 @@
 ### src/ui/loading/loading-screen.ts
 - Loading screen with company logo and fade-out transition.
 
+### src/ui/hud/hud-overlay.ts
+- DOM-based HUD overlay rendered above the game canvas.
+- Shows equation, equivalence score, and mote count; forge warm-up preview arrow + preview equation.
+- `createHudOverlay()` — returns `element` and `update(params: HudUpdateParams)`.
+- **Build 192+:** `HudUpdateParams.equationRenderStyle` selects pixel or smooth mode.  In pixel mode the DOM equation is hidden and the `PixelEquationRenderer` canvas is shown; in smooth mode the DOM HTML path is active.
+
+### src/ui/hud/equation-segments.ts *(NEW — Build 192)*
+- Flat coloured text-segment builder for the pixel equation renderer.
+- `buildEquationSegments(terms)` — mirrors `buildStructuredEquationHtml` logic but returns `EqSegment[]` (plain `{text, color}` pairs) instead of HTML.
+- Wrappers use compact bracket notation (e.g. `Σ[5](...)`) suitable for a single low-resolution canvas row.
+
+### src/ui/hud/pixel-equation-renderer.ts *(NEW — Build 192)*
+- Low-resolution offscreen pixel canvas renderer for the equation HUD.
+- `createPixelEquationRenderer()` — allocates one offscreen canvas (`160×48`) and one visible canvas (`320×96`), never reallocated after construction.
+- Three fixed rows: main equation (row 0), forge-preview arrow (row 1), forge-preview equation (row 2).
+- Blits the offscreen canvas into the visible canvas at 2× with `imageSmoothingEnabled = false`.  CSS `image-rendering: pixelated` prevents further browser interpolation.
+- Change detection skips redraws when equation content has not changed.
+
 ### src/ui/tabs/tab-bar.ts
 - Bottom tab bar: Equation / Looms / Tiers / Achievements / Settings.
 - Adds `menuBarDecor.png` as a decorative outline overlay above the tab bar.
@@ -1869,6 +1889,7 @@ Audio system — eight focused modules:
 ### src/ui/panels/settings-panel.ts
 - Settings panel orchestrator for controls, toggles, save/reset actions, credits, and dev-only embedded panels.
 - Wires `settings-panel-controls.ts` row builders and `settings-panel-dev-tweaks.ts` particle tweak section.
+- **Build 192+:** "Equation Render Style" select row (Pixel Canvas / Smooth DOM) added after "Loom Equation Visibility".
 
 ### src/ui/panels/settings-panel-controls.ts
 - Shared DOM row builders for settings controls.
@@ -1885,6 +1906,7 @@ Audio system — eight focused modules:
 - `isDevMode: boolean` — when true, all game actions bypass cost checks.
 - `numberFormat: 'letters' | 'scientific' | 'engineering'` — controls number display format across all UI panels and canvas score.
 - **Build 108+:** `skipIdlePopupAtStart: boolean` — when true, the startup idle earnings overlay is skipped; rewards are still applied silently.
+- **Build 192+:** `equationRenderStyle: 'pixel' | 'smooth'` — toggles between low-resolution pixel-canvas equation rendering (default) and smooth DOM HTML rendering.
 
 ### src/settings/save-load.ts
 - Thin localStorage I/O layer (~45 lines after extraction).

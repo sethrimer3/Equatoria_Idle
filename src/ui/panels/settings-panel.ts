@@ -152,6 +152,21 @@ export function createSettingsPanel(
   );
   panel.appendChild(generatorEquationVisibilityRow);
 
+  const equationRenderStyleRow = createSelectRow(
+    'Equation Render Style',
+    settings.equationRenderStyle,
+    [
+      { value: 'pixel',  label: 'Pixel Canvas' },
+      { value: 'smooth', label: 'Smooth DOM' },
+    ],
+    (v) => {
+      settings.equationRenderStyle = v as SettingsState['equationRenderStyle'];
+      saveSettings(settings);
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  panel.appendChild(equationRenderStyleRow);
+
   // Screen shake toggle
   const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
     settings.isScreenShakeEnabled = v;
