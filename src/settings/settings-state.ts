@@ -63,6 +63,8 @@ export interface SettingsState {
    *               world render is sharp and smooth (current crisp behaviour).
    */
   idleCanvasRenderStyle: 'pixelated' | 'crisp';
+  /** Dev-mode only: draw the idle canvas viewport diagnostic overlay. */
+  isIdleViewportDebugEnabled: boolean;
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -92,6 +94,7 @@ export function createDefaultSettings(): SettingsState {
     skipIdlePopupAtStart: false,
     equationRenderStyle: 'pixel',
     idleCanvasRenderStyle: 'pixelated',
+    isIdleViewportDebugEnabled: false,
   };
 }
 

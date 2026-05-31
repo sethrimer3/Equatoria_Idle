@@ -205,6 +205,17 @@ export function createSettingsPanel(
   const devSection = createDevTweaksSection();
   devSection.style.display = settings.isDevMode ? '' : 'none';
 
+  // Dev-mode-only visual toggles (idle-canvas diagnostics, etc.)
+  const idleViewportDebugRow = createToggleRow(
+    'Idle Viewport Debug',
+    settings.isIdleViewportDebugEnabled,
+    (v) => {
+      settings.isIdleViewportDebugEnabled = v;
+      saveSettings(settings);
+    },
+  );
+  idleViewportDebugRow.style.display = settings.isDevMode ? '' : 'none';
+
   // Balance Forecast panel — also dev-mode only
   const balanceForecastPanel = createBalanceForecastPanel();
   balanceForecastPanel.setDevMode(settings.isDevMode);
@@ -218,10 +229,12 @@ export function createSettingsPanel(
     saveSettings(settings);
     audioSystem?.onSettingsChanged();
     devSection.style.display = v ? '' : 'none';
+    idleViewportDebugRow.style.display = v ? '' : 'none';
     balanceForecastPanel.setDevMode(v);
     devPanel.element.style.display = v ? '' : 'none';
   });
   panel.appendChild(devModeRow);
+  panel.appendChild(idleViewportDebugRow);
 
   // Save button
   const saveBtn = document.createElement('button');

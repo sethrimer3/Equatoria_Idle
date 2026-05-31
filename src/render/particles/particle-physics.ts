@@ -159,13 +159,18 @@ export function updateParticlePhysics(
 
   // Velocity clamping
   // Min: size-based floor to keep particles from stalling entirely.
-  //      Generator fields use a boosted floor so particles stay active near spawners.
+  //      Generator fields use a boosted floor so particles stay active near spawners,
+  //      capped at PL_MAX_VELOCITY so higher-tier motes cannot oscillate above the
+  //      velocity ceiling and escape their loom's gravity range.
   // Max: effective max velocity accounts for the drag-boost fade.
   //      While locked to pointer: 4× PL_MAX_VELOCITY.
   //      Within DRAG_RELEASE_FADE_MS after release: linearly interpolates from
   //      4× back to 1× PL_MAX_VELOCITY.
   //      Otherwise: PL_MAX_VELOCITY unchanged.
-  const genMinVel = p.minVelocity * Math.max(1, p.tierIndex + 1);
+  const genMinVel = Math.min(
+    p.minVelocity * Math.max(1, p.tierIndex + 1),
+    PL_MAX_VELOCITY,
+  );
   const minVel = isInsideGeneratorField ? genMinVel : p.minVelocity;
 
   let effectiveMaxVel: number;
