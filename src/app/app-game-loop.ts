@@ -366,7 +366,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     );
 
     // Dev-mode viewport diagnostic overlay (drawn last so it is always visible)
-    if (ctx.settings.isDevMode) {
+    if (ctx.settings.isDevMode && ctx.settings.isIdleViewportDebugEnabled) {
       drawIdleViewportDebug(ctx.cc);
     }
 
