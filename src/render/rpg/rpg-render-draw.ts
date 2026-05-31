@@ -327,6 +327,12 @@ export interface RpgDrawCtx {
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns true when pathfinding debug visualization should be drawn. */
   getPathfindingDebugEnabled(): boolean;
+  /** Returns true when the viewport/field-space diagnostic overlay should be drawn. */
+  getViewportDebugEnabled(): boolean;
+  /** Returns true when Verdure cave wall debug guides should be drawn. */
+  getVerdureWallDebugEnabled(): boolean;
+  /** Returns true when Nadir cube anchor/projection debug guides should be drawn. */
+  getNadirAnchorDebugEnabled(): boolean;
   /** Optional zone-specific stateful background draw (e.g. substrate for Horizon). */
   drawZoneBgOverlay?: (canvas2d: CanvasRenderingContext2D, w: number, h: number, nowMs: number) => void;
   /** Returns the latest shared Nadir cube projection state for dev overlays. */
@@ -822,7 +828,7 @@ export function drawRpgFrame(
     null,  // player path state not exposed here; could be wired later if desired
     [],    // enemy path states — not collected here; kept lightweight
   );
-  if (ctx.getIsDevMode() && isVerdureZone) {
+  if (ctx.getVerdureWallDebugEnabled() && isVerdureZone) {
     const wState = ctx.getVerdureCaveWallState?.();
     if (wState) drawVerdureWallDebug(canvas2d, wState);
   }
@@ -837,8 +843,8 @@ export function drawRpgFrame(
       ctx.nadirCubeTrailSegments,
       ctx.nadirCubeTurretBolts,
       ctx.nadirCubeLinkLasers,
-      ctx.getIsDevMode() ? (ctx.getNadirCubeProjectionState?.() ?? null) : null,
-      ctx.getIsDevMode(),
+      ctx.getNadirAnchorDebugEnabled() ? (ctx.getNadirCubeProjectionState?.() ?? null) : null,
+      ctx.getNadirAnchorDebugEnabled(),
     );
   }
 
@@ -1012,7 +1018,7 @@ export function drawRpgFrame(
   }
 
   // ── Developer-mode viewport diagnostics ──────────────────────
-  if (ctx.getIsDevMode()) {
+  if (ctx.getViewportDebugEnabled()) {
     drawRpgViewportDiagnostics(canvas2d, widthPx, heightPx, ctx);
   }
 

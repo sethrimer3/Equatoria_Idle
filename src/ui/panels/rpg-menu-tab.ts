@@ -10,7 +10,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import type { ActionHandler } from '../../input';
+import type { ActionHandler, GameAction } from '../../input';
 import { makePageBreak } from '../ui-helpers';
 
 // ─── Constants ─────────────────────────────────────────────────────
@@ -40,6 +40,8 @@ export interface RpgMenuTabPane {
   setTopographicTerrainDebugEnabled(enabled: boolean): void;
   /** Sync the sharp topography shadows setting without a full re-render. */
   setSharpTopographyShadows(enabled: boolean): void;
+  /** Sync an individual developer visual setting without a full re-render. */
+  setDeveloperVisual(kind: GameAction['kind'], enabled: boolean): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────
@@ -56,15 +58,54 @@ export function createRpgMenuTabPane(
   let rpgBarAtTop = false;
   let isInvincibilityMode = false;
   let isTopographicTerrainDebugEnabled = false;
-  /** Default true so sharp shadows are on by default when dev mode is first enabled. */
-  let isSharpTopographyShadows = true;
+  let isRpgViewportDebugEnabled = false;
+  let isRpgPathfindingDebugEnabled = false;
+  let isRpgVerdureWallDebugEnabled = false;
+  let isRpgNadirAnchorDebugEnabled = false;
+  let isRpgBossStageDebugEnabled = false;
+  let isTopographyLightingDebugEnabled = false;
+  let isSharpTopographyShadows = false;
+
+  function appendDevCheckbox(
+    host: HTMLElement,
+    label: string,
+    desc: string,
+    checked: boolean,
+    onChange: (enabled: boolean) => void,
+  ): void {
+    const row = document.createElement('div');
+    row.className = 'rpg-menu__setting-row';
+    row.style.marginTop = '6px';
+
+    const labelGroup = document.createElement('div');
+    labelGroup.className = 'rpg-menu__setting-label-group';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'rpg-menu__setting-label';
+    labelEl.style.color = '#ffcc44';
+    labelEl.textContent = label;
+    const descEl = document.createElement('span');
+    descEl.className = 'rpg-menu__setting-desc';
+    descEl.textContent = desc;
+    labelGroup.appendChild(labelEl);
+    labelGroup.appendChild(descEl);
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'settings-checkbox';
+    checkbox.checked = checked;
+    checkbox.addEventListener('change', () => onChange(checkbox.checked));
+
+    row.appendChild(labelGroup);
+    row.appendChild(checkbox);
+    host.appendChild(row);
+  }
 
   function update(
     rpgState: RpgSimState | null,
     isDevMode = false,
     barAtTop = false,
     topographicTerrainDebugEnabled = false,
-    sharpTopographyShadows = true,
+    sharpTopographyShadows = false,
   ): void {
     rpgBarAtTop = barAtTop;
     isTopographicTerrainDebugEnabled = topographicTerrainDebugEnabled;
@@ -312,34 +353,34 @@ export function createRpgMenuTabPane(
       invincRow.appendChild(invincCheckbox);
       devSection.appendChild(invincRow);
 
-      const terrainDebugRow = document.createElement('div');
-      terrainDebugRow.className = 'rpg-menu__setting-row';
-      terrainDebugRow.style.marginTop = '6px';
-
-      const terrainDebugLabelGroup = document.createElement('div');
-      terrainDebugLabelGroup.className = 'rpg-menu__setting-label-group';
-      const terrainDebugLabel = document.createElement('span');
-      terrainDebugLabel.className = 'rpg-menu__setting-label';
-      terrainDebugLabel.style.color = '#ffcc44';
-      terrainDebugLabel.textContent = 'Topography Debug';
-      const terrainDebugDesc = document.createElement('span');
-      terrainDebugDesc.className = 'rpg-menu__setting-desc';
-      terrainDebugDesc.textContent = 'Show raw terrain island outlines and center dots.';
-      terrainDebugLabelGroup.appendChild(terrainDebugLabel);
-      terrainDebugLabelGroup.appendChild(terrainDebugDesc);
-
-      const terrainDebugCheckbox = document.createElement('input');
-      terrainDebugCheckbox.type = 'checkbox';
-      terrainDebugCheckbox.className = 'settings-checkbox';
-      terrainDebugCheckbox.checked = isTopographicTerrainDebugEnabled;
-      terrainDebugCheckbox.addEventListener('change', () => {
-        isTopographicTerrainDebugEnabled = terrainDebugCheckbox.checked;
-        dispatch({ kind: 'set_topographic_terrain_debug', enabled: isTopographicTerrainDebugEnabled });
+      appendDevCheckbox(devSection, 'RPG viewport debug', 'Show viewport, field-space, spawn bounds, and accepted/fallback spawn dots.', isRpgViewportDebugEnabled, (enabled) => {
+        isRpgViewportDebugEnabled = enabled;
+        dispatch({ kind: 'set_rpg_viewport_debug', enabled });
       });
-
-      terrainDebugRow.appendChild(terrainDebugLabelGroup);
-      terrainDebugRow.appendChild(terrainDebugCheckbox);
-      devSection.appendChild(terrainDebugRow);
+      appendDevCheckbox(devSection, 'Pathfinding debug', 'Show navigation blocked cells and path lines.', isRpgPathfindingDebugEnabled, (enabled) => {
+        isRpgPathfindingDebugEnabled = enabled;
+        dispatch({ kind: 'set_rpg_pathfinding_debug', enabled });
+      });
+      appendDevCheckbox(devSection, 'Topography terrain debug', 'Show raw terrain island outlines and center dots.', isTopographicTerrainDebugEnabled, (enabled) => {
+        isTopographicTerrainDebugEnabled = enabled;
+        dispatch({ kind: 'set_topographic_terrain_debug', enabled });
+      });
+      appendDevCheckbox(devSection, 'Topography lighting debug', 'Show baked height, shadow, and light-direction diagnostics.', isTopographyLightingDebugEnabled, (enabled) => {
+        isTopographyLightingDebugEnabled = enabled;
+        dispatch({ kind: 'set_topography_lighting_debug', enabled });
+      });
+      appendDevCheckbox(devSection, 'Verdure wall debug', 'Show Verdure cave wall collision and boundary guides.', isRpgVerdureWallDebugEnabled, (enabled) => {
+        isRpgVerdureWallDebugEnabled = enabled;
+        dispatch({ kind: 'set_rpg_verdure_wall_debug', enabled });
+      });
+      appendDevCheckbox(devSection, 'Nadir anchor debug', 'Show Nadir cube projection anchors and links.', isRpgNadirAnchorDebugEnabled, (enabled) => {
+        isRpgNadirAnchorDebugEnabled = enabled;
+        dispatch({ kind: 'set_rpg_nadir_anchor_debug', enabled });
+      });
+      appendDevCheckbox(devSection, 'Boss stage debug', 'Show boss corridor, hazard hitboxes, and stage labels.', isRpgBossStageDebugEnabled, (enabled) => {
+        isRpgBossStageDebugEnabled = enabled;
+        dispatch({ kind: 'set_rpg_boss_stage_debug', enabled });
+      });
 
       // ── Sharp Topography Shadows ──
       const sharpShadowRow = document.createElement('div');
@@ -390,6 +431,14 @@ export function createRpgMenuTabPane(
     },
     setSharpTopographyShadows(enabled: boolean): void {
       isSharpTopographyShadows = enabled;
+    },
+    setDeveloperVisual(kind: GameAction['kind'], enabled: boolean): void {
+      if (kind === 'set_rpg_viewport_debug') isRpgViewportDebugEnabled = enabled;
+      else if (kind === 'set_rpg_pathfinding_debug') isRpgPathfindingDebugEnabled = enabled;
+      else if (kind === 'set_rpg_verdure_wall_debug') isRpgVerdureWallDebugEnabled = enabled;
+      else if (kind === 'set_rpg_nadir_anchor_debug') isRpgNadirAnchorDebugEnabled = enabled;
+      else if (kind === 'set_rpg_boss_stage_debug') isRpgBossStageDebugEnabled = enabled;
+      else if (kind === 'set_topography_lighting_debug') isTopographyLightingDebugEnabled = enabled;
     },
   };
 

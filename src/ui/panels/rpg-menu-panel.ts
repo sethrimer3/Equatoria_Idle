@@ -15,6 +15,7 @@
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
+import type { GameAction } from '../../input';
 import type { NumberFormat } from '../../util';
 import { createRpgMenuTabPane } from './rpg-menu-tab';
 import { createRpgWeaponsTabPane } from './rpg-weapons-tab';
@@ -54,6 +55,8 @@ export interface RpgMenuPanel {
   setTopographicTerrainDebugEnabled(enabled: boolean): void;
   /** Sync the sharp topography shadows setting into the menu tab so the checkbox reflects current state. */
   setSharpTopographyShadows(enabled: boolean): void;
+  /** Sync an individual developer visual checkbox without a full re-render. */
+  setDeveloperVisual(kind: GameAction['kind'], enabled: boolean): void;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -232,6 +235,10 @@ export function createRpgMenuPanel(
     setSharpTopographyShadows(enabled: boolean): void {
       lastSharpTopographyShadows = enabled;
       menuTabPane.setSharpTopographyShadows(enabled);
+    },
+
+    setDeveloperVisual(kind: GameAction['kind'], enabled: boolean): void {
+      menuTabPane.setDeveloperVisual(kind, enabled);
     },
 
     isVisible: false,

@@ -27,6 +27,12 @@ export type GameAction =
   | { kind: 'set_boss_speed'; pct: number }
   | { kind: 'set_invincibility_mode'; enabled: boolean }
   | { kind: 'set_topographic_terrain_debug'; enabled: boolean }
+  | { kind: 'set_rpg_viewport_debug'; enabled: boolean }
+  | { kind: 'set_rpg_pathfinding_debug'; enabled: boolean }
+  | { kind: 'set_rpg_verdure_wall_debug'; enabled: boolean }
+  | { kind: 'set_rpg_nadir_anchor_debug'; enabled: boolean }
+  | { kind: 'set_rpg_boss_stage_debug'; enabled: boolean }
+  | { kind: 'set_topography_lighting_debug'; enabled: boolean }
   | { kind: 'set_sharp_topography_shadows'; enabled: boolean }
   | { kind: 'upgrade_loom_efficiency'; tierId: string }
   | { kind: 'toggle_sand_blade' };

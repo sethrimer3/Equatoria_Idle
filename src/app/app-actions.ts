@@ -307,6 +307,36 @@ export function handleAction(
       uiPanels.rpgRender.setTopographicTerrainDebugEnabled(devMode && action.enabled);
       break;
     }
+    case 'set_rpg_viewport_debug':
+      settings.isRpgViewportDebugEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
+    case 'set_rpg_pathfinding_debug':
+      settings.isRpgPathfindingDebugEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
+    case 'set_rpg_verdure_wall_debug':
+      settings.isRpgVerdureWallDebugEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
+    case 'set_rpg_nadir_anchor_debug':
+      settings.isRpgNadirAnchorDebugEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
+    case 'set_rpg_boss_stage_debug':
+      settings.isRpgBossStageDebugEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
+    case 'set_topography_lighting_debug':
+      settings.isTopographyLightingDebugEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
     case 'set_sharp_topography_shadows': {
       settings.isSharpTopographyShadows = action.enabled;
       saveSettings(settings);

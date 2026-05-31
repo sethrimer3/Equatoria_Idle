@@ -179,7 +179,7 @@ import {
   damageVerdurePlant as _damageVerdurePlant,
 } from './terrain/rpg-verdure-growth';
 import { prewarmCausticsTextures } from './terrain/caustics-texture';
-import { generateVerdureCaveWalls, applyVerdureWallsToNavGrid } from './terrain/verdure-cave-walls';
+import { generateVerdureCaveWalls, applyVerdureWallsToNavGrid, pushPointOutsideVerdureWall } from './terrain/verdure-cave-walls';
 import { getImpetusAsteroidObstacles } from './terrain/impetus-overlay';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
@@ -260,6 +260,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let rpgWorldViewH = RPG_LOGICAL_HEIGHT;
   /** Set to true when dev mode is active (controls diagnostic overlay). */
   let _isDevMode = false;
+  const developerVisuals = {
+    viewport: false,
+    pathfinding: false,
+    verdureWalls: false,
+    nadirAnchors: false,
+    bossStage: false,
+    topographyLighting: false,
+  };
   /** Authoritative field-space snapshot — recomputed by doResize() on every resize. */
   let rpgFieldSpace: RpgFieldSpace = computeRpgFieldSpace({
     canvasCssW:     RPG_LOGICAL_WIDTH,
@@ -622,7 +630,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const bossStageDirectorState: BossStageDirectorState = createBossStageDirectorState();
 
   // ── Pathfinding debug flag ─────────────────────────────────────
-  let _pathfindingDebugEnabled = false;
 
   // ── Boss wave management ───────────────────────────────────────
   /** True while a boss wave is active (from spawn until defeat or death). */
@@ -749,6 +756,51 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   function clearArrays(...arrays: Array<{ length: number }>): void {
     for (const array of arrays) array.length = 0;
+  }
+
+  const verdureResizePushScratch = { x: 0, y: 0 };
+
+  function rebuildVerdureBoundsForResize(): void {
+    if (rpgSimState.activeZoneId !== 'verdure' || !verdureCaveWallState) return;
+    const ab = rpgFieldSpace.activeBounds;
+    const prev = verdureCaveWallState;
+    const changed =
+      Math.abs(prev.originX - ab.left) > 0.5 ||
+      Math.abs(prev.originY - ab.top) > 0.5 ||
+      Math.abs(prev.widthPx - ab.width) > 0.5 ||
+      Math.abs(prev.heightPx - ab.height) > 0.5;
+    if (!changed) return;
+
+    verdureCaveWallState.edgePoints.forEach((p) => { p.isOccupied = false; });
+    const seed = currentWave > 0 ? currentWave : prev.seed;
+    verdureCaveWallState = generateVerdureCaveWalls(seed, ab);
+    rpgNavGrid = buildRpgNavigationGrid(topographicTerrainState, ab.width, ab.height, undefined, ab.left, ab.top);
+    applyVerdureWallsToNavGrid(verdureCaveWallState, rpgNavGrid);
+
+    const pushEntity = (entity: { x: number; y: number; vx?: number; vy?: number }, margin: number): void => {
+      if (!verdureCaveWallState) return;
+      if (!pushPointOutsideVerdureWall(verdureCaveWallState, entity.x, entity.y, verdureResizePushScratch, margin)) return;
+      entity.x = verdureResizePushScratch.x;
+      entity.y = verdureResizePushScratch.y;
+      if (typeof entity.vx === 'number') entity.vx = 0;
+      if (typeof entity.vy === 'number') entity.vy = 0;
+    };
+
+    pushEntity(mote, RPG_MOTE_SIZE * 0.5 + 2);
+    for (const arrays of [
+      enemies, sapphireEnemies, emeraldEnemies, amberEnemies, voidEnemies, quartzEnemies,
+      rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies, amethystEnemies,
+      diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
+      polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies, dustWispEnemies,
+      ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies, jellyfishEnemies,
+      clothGhostEnemies, plantTurretEnemies, gearInsectEnemies, spiderCrawlerEnemies,
+      moteSwarmEnemies, shadowHandEnemies, sandFishEnemies, quartzFishEnemies,
+      rubyFishEnemies, sunstoneFishEnemies, emeraldFishEnemies, sapphireFishEnemies,
+      amethystFishEnemies, diamondFishEnemies,
+    ] as Array<Array<{ x: number; y: number; vx?: number; vy?: number }>>) {
+      for (const entity of arrays) pushEntity(entity, 8);
+    }
+    clearVerdurePlants(verdurePlants);
   }
 
   function resetActiveEncounterForZoneSwitch(): void {
@@ -1515,7 +1567,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getTargetedEnemy:             () => targeting.getTargetedEnemy(),
     rpgSimState,
     getNavGrid:                   () => rpgNavGrid,
-    getPathfindingDebugEnabled:   () => _pathfindingDebugEnabled,
+    getPathfindingDebugEnabled:   () => _isDevMode && developerVisuals.pathfinding,
+    getViewportDebugEnabled:      () => _isDevMode && developerVisuals.viewport,
+    getVerdureWallDebugEnabled:   () => _isDevMode && developerVisuals.verdureWalls,
+    getNadirAnchorDebugEnabled:   () => _isDevMode && developerVisuals.nadirAnchors,
     drawZoneBgOverlay:            (c2d, w, h, nowMs) => drawZoneBgOverlay(c2d, w, h, nowMs),
     getNadirCubeProjectionState:  () => nadirCubicGrid?.getProjectionState() ?? null,
     getZenithShakeOffset:         () => {
@@ -1645,6 +1700,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     resize(cont: HTMLElement): void {
       doResize(cont);
+      rebuildVerdureBoundsForResize();
       const half = RPG_MOTE_SIZE / 2;
       const ab = rpgFieldSpace.activeBounds;
       mote.x = Math.max(ab.left + half, Math.min(ab.right  - half, mote.x));
@@ -1709,9 +1765,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setDevMode(enabled: boolean): void {
       _isDevMode = enabled;
       statsPanel.setDevMode(enabled);
-      setTopographyLightingDevMode(enabled);
-      bossStageDirectorState.isDevMode = enabled;
-      _pathfindingDebugEnabled = enabled;
+      setTopographyLightingDevMode(enabled && developerVisuals.topographyLighting);
+      bossStageDirectorState.isDevMode = enabled && developerVisuals.bossStage;
     },
 
     setInvincibilityMode(enabled: boolean): void {
@@ -1720,6 +1775,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setTopographicTerrainDebugEnabled(enabled: boolean): void {
       setTopographicTerrainDevMode(enabled);
+    },
+
+    setDeveloperVisuals(options): void {
+      developerVisuals.viewport = options.viewport;
+      developerVisuals.pathfinding = options.pathfinding;
+      developerVisuals.verdureWalls = options.verdureWalls;
+      developerVisuals.nadirAnchors = options.nadirAnchors;
+      developerVisuals.bossStage = options.bossStage;
+      developerVisuals.topographyLighting = options.topographyLighting;
+      bossStageDirectorState.isDevMode = _isDevMode && developerVisuals.bossStage;
+      setTopographyLightingDevMode(_isDevMode && developerVisuals.topographyLighting);
     },
 
     setSharpTopographyShadows(enabled: boolean): void {

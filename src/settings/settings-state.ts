@@ -21,10 +21,21 @@ export interface SettingsState {
   isInvincibilityMode: boolean;
   /** When true, draw raw topographic terrain debug outlines/dots in RPG (dev mode only). */
   isTopographicTerrainDebugEnabled: boolean;
+  /** Dev-mode only: draw the RPG viewport/field-space diagnostics overlay. */
+  isRpgViewportDebugEnabled: boolean;
+  /** Dev-mode only: draw the RPG pathfinding grid/paths overlay. */
+  isRpgPathfindingDebugEnabled: boolean;
+  /** Dev-mode only: draw Verdure cave wall collision/boundary guides. */
+  isRpgVerdureWallDebugEnabled: boolean;
+  /** Dev-mode only: draw Nadir cube anchor/projection guides. */
+  isRpgNadirAnchorDebugEnabled: boolean;
+  /** Dev-mode only: draw boss-stage corridor/hazard hitbox guides. */
+  isRpgBossStageDebugEnabled: boolean;
+  /** Dev-mode only: draw topographic lighting cache diagnostics. */
+  isTopographyLightingDebugEnabled: boolean;
   /**
    * When true, topography lighting uses sharp cylinder-style shadows (dev mode only).
    * Hard-edged, directional shadows that treat each contour level as a flat terrace.
-   * Defaults to true so the sharp mode is active by default when dev mode is turned on.
    */
   isSharpTopographyShadows: boolean;
   /** When true, the RPG stats bar is anchored to the top of the screen instead of the bottom. */
@@ -70,7 +81,13 @@ export function createDefaultSettings(): SettingsState {
     isDevMode: false,
     isInvincibilityMode: false,
     isTopographicTerrainDebugEnabled: false,
-    isSharpTopographyShadows: true,
+    isRpgViewportDebugEnabled: false,
+    isRpgPathfindingDebugEnabled: false,
+    isRpgVerdureWallDebugEnabled: false,
+    isRpgNadirAnchorDebugEnabled: false,
+    isRpgBossStageDebugEnabled: false,
+    isTopographyLightingDebugEnabled: false,
+    isSharpTopographyShadows: false,
     rpgBarAtTop: false,
     skipIdlePopupAtStart: false,
     equationRenderStyle: 'pixel',

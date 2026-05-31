@@ -105,6 +105,27 @@ export interface LaserBeamWeaponHandle {
   reset: () => void;
 }
 
+export function computeLaserBeamMaxT(
+  originX: number,
+  originY: number,
+  dirX: number,
+  dirY: number,
+  viewport: { left: number; top: number; right: number; bottom: number },
+  terrain: TopographicTerrainState | null,
+): number {
+  let tMax = Infinity;
+  if (dirX > 0) tMax = Math.min(tMax, (viewport.right - originX) / dirX);
+  if (dirX < 0) tMax = Math.min(tMax, (viewport.left - originX) / dirX);
+  if (dirY > 0) tMax = Math.min(tMax, (viewport.bottom - originY) / dirY);
+  if (dirY < 0) tMax = Math.min(tMax, (viewport.top - originY) / dirY);
+
+  if (terrain) {
+    const fraction = terrainFirstIntersectionT(terrain, originX, originY, dirX, dirY, tMax);
+    tMax *= fraction;
+  }
+  return tMax;
+}
+
 // ── Factory ───────────────────────────────────────────────────────────────
 
 export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamWeaponHandle {
@@ -138,18 +159,8 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
     laserBeamEffect = { active: true, startX: mote.x, startY: mote.y, dirX, dirY, timerMs: LASER_BEAM_VISIBLE_MS, endX: 0, endY: 0 };
 
     // Compute the endpoint (extend to canvas edge, then truncate at terrain)
-    let tMax = Infinity;
-    if (dirX > 0)  tMax = Math.min(tMax, (viewport.right  - mote.x) / dirX);
-    if (dirX < 0)  tMax = Math.min(tMax, -mote.x / dirX);
-    if (dirY > 0)  tMax = Math.min(tMax, (viewport.bottom - mote.y) / dirY);
-    if (dirY < 0)  tMax = Math.min(tMax, -mote.y / dirY);
-
-    // Terrain truncation: shorten beam to first terrain intersection.
     const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
-    if (terrain) {
-      const fraction = terrainFirstIntersectionT(terrain, mote.x, mote.y, dirX, dirY, tMax);
-      tMax = tMax * fraction;
-    }
+    const tMax = computeLaserBeamMaxT(mote.x, mote.y, dirX, dirY, viewport, terrain);
 
     const endX = mote.x + dirX * tMax;
     const endY = mote.y + dirY * tMax;

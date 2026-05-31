@@ -338,6 +338,12 @@ export async function startApp(): Promise<void> {
   rpgMenuPanel.setTopographicTerrainDebugEnabled(settings.isTopographicTerrainDebugEnabled);
   rpgMenuPanel.setSharpTopographyShadows(settings.isSharpTopographyShadows);
   rpgRender.setSharpTopographyShadows(settings.isSharpTopographyShadows);
+  rpgMenuPanel.setDeveloperVisual('set_rpg_viewport_debug', settings.isRpgViewportDebugEnabled);
+  rpgMenuPanel.setDeveloperVisual('set_rpg_pathfinding_debug', settings.isRpgPathfindingDebugEnabled);
+  rpgMenuPanel.setDeveloperVisual('set_rpg_verdure_wall_debug', settings.isRpgVerdureWallDebugEnabled);
+  rpgMenuPanel.setDeveloperVisual('set_rpg_nadir_anchor_debug', settings.isRpgNadirAnchorDebugEnabled);
+  rpgMenuPanel.setDeveloperVisual('set_rpg_boss_stage_debug', settings.isRpgBossStageDebugEnabled);
+  rpgMenuPanel.setDeveloperVisual('set_topography_lighting_debug', settings.isTopographyLightingDebugEnabled);
 
   // ── Menu toggle button (appended to the stats panel by the renderer) ──
   const menuToggleBtn = document.createElement('button');

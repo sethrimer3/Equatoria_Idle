@@ -39,6 +39,8 @@
 - `#rpg-canvas` — responsive RPG canvas; the render host expands to fill `#rpg-container`. Increasing the host's width or height reveals more visible RPG world rather than zooming in. A stable safe-core transform keeps the `RPG_LOGICAL_WIDTH × RPG_LOGICAL_HEIGHT` (360×640) world centred; extra space is live world area with real enemies, terrain, and effects.
 - `#rpg-stats-panel` — DOM stats panel (3×tab-height) above the navigation bar, with `.rpg-stat`, `.rpg-stat-label`, `.rpg-stat-value` child classes.
 - `.rpg-dps-widget` — compact square right-side RPG stats widget with per-equipped-weapon DPS rows, low/high axis labels, tracks, and animated colored bars.
+- RPG developer visual overlays are dev-mode-gated and individually controlled from the RPG Menu tab; all default off.
+- Ruby beam clipping uses the live RPG viewport in all directions; Verdure cave walls/nav-grid rebuild on material active-bound resize changes.
 
 ### src/styles/panels.css
 - `#panels-container` overlay, panel base, upgrade buttons, resource rows, settings controls, credits.
@@ -1906,6 +1908,7 @@ Audio system — eight focused modules:
 ### src/settings/settings-state.ts
 - User settings model and localStorage persistence.
 - `isDevMode: boolean` — when true, all game actions bypass cost checks.
+- RPG developer visual toggles: viewport/field-space, pathfinding, Verdure wall, Nadir anchor, boss-stage, topographic terrain, and topographic lighting debug overlays. These are visible only in dev mode and default off.
 - `numberFormat: 'letters' | 'scientific' | 'engineering'` — controls number display format across all UI panels and canvas score.
 - **Build 108+:** `skipIdlePopupAtStart: boolean` — when true, the startup idle earnings overlay is skipped; rewards are still applied silently.
 - **Build 192+:** `equationRenderStyle: 'pixel' | 'smooth'` — toggles between low-resolution pixel-canvas equation rendering (default) and smooth DOM HTML rendering.
@@ -2031,6 +2034,10 @@ Audio system — eight focused modules:
 ### src/render/rpg/__tests__/verdure-polyomino-wave.test.ts
 - Regression tests for Verdure wave generation.
 - Verifies `getZoneWaveDefinition` uses only polyomino variants on multiples of 10 and keeps the normal procedural pool on non-elite Verdure waves.
+
+### src/render/rpg/__tests__/rpg-expanded-bounds.test.ts
+- Regression tests for expanded RPG field-space gameplay bounds.
+- Verifies Ruby laser beams clip to `viewport.left/top/right/bottom`, terrain still truncates beams first, and Verdure wall/nav-grid helpers respect nonzero-origin active bounds.
 
 #### Stardust (Particle Cloud Elite — Build 109+)
 - **rpg-stardust-factories.ts** — Factory functions for creating Stardust enemies. Exports getStardustParticleCount (scales 6→40 particles over 120 waves) and makeStardustEnemy (initializes particle cloud with random drift velocities and rainbow hue offsets).

@@ -31,6 +31,15 @@ export interface RpgRender {
   setInvincibilityMode(enabled: boolean): void;
   /** Enable/disable topographic terrain debug outlines/dots (dev mode only). */
   setTopographicTerrainDebugEnabled(enabled: boolean): void;
+  /** Configure individual RPG developer visual overlays. */
+  setDeveloperVisuals(options: {
+    viewport: boolean;
+    pathfinding: boolean;
+    verdureWalls: boolean;
+    nadirAnchors: boolean;
+    bossStage: boolean;
+    topographyLighting: boolean;
+  }): void;
   /**
    * Switch between smooth gradient and sharp cylinder topography shadow modes
    * (dev mode only).  When enabled, shadows are hard-edged and directional;
