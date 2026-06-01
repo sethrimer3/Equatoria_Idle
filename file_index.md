@@ -7,11 +7,12 @@
 - `tsconfig.json` — TypeScript compiler configuration
 - `package.json` — Dependencies and scripts, including Vite browser commands and Electron desktop launch commands.
 - `electron/main.cjs` — Minimal Electron main process that disables Chromium GPU/sandbox startup paths, stores profile/cache data in `.electron-user-data`, logs desktop startup/crash diagnostics to `electron-runtime.log`, serves `dist` through the Electron-only `equatoria://app/` protocol with production CSP headers, supports an optional Vite dev-server CSP through `EQUATORIA_ELECTRON_DEV_SERVER`, and loads the renderer with context isolation, sandboxing, web security enabled, and Node integration disabled.
-- `RUN-DESKTOP.bat` — Windows double-click launcher: installs missing dependencies, builds the desktop output, starts Electron, and closes its console automatically after the app exits unless an error occurs.
+- `run-desktop.bat` — Windows double-click launcher: installs missing dependencies, builds the desktop output, starts Electron, and starts a delayed helper that hides the launcher console during normal play.
 - `run-browser-dev.bat` — Windows double-click launcher for the Vite browser development server.
 - `build-game.bat` — Windows double-click launcher for the normal production/static build.
 - `ELECTRON.md` — Desktop launch, batch-file, save-profile, and missing-asset troubleshooting notes.
 - `scripts/copy-assets.mjs` — Cross-platform postbuild helper that copies required runtime asset directories into `dist/ASSETS`.
+- `scripts/hide-console-after-delay.ps1` — Windows launcher helper that waits one second, then hides the console window handle passed by `run-desktop.bat`.
 - `idle_progression_spreadsheet_guide.md` — Consolidated formulas/constants for modeling idle pacing in spreadsheets.
 
 ## src/
