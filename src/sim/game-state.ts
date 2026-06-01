@@ -1,5 +1,7 @@
 import type { TierId } from '../data/tiers';
 import { TIERS } from '../data/tiers';
+import { createCraftedWeaponDefinition, getForgeCapacity, registerCraftedWeapons } from '../data/rpg/crafted-weapon-helpers';
+import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
 import type { SizeIndex } from '../data/particles/size-tiers';
 import { MERGE_THRESHOLD } from '../data/particles/size-tiers';
 import {
@@ -33,7 +35,14 @@ import {
   getAutoTapIntervalMs,
   type ProgressionState,
 } from './progression';
-import { createForgeCrunchState, tapForgeHeat, startForgeWarmup, tickForgeHeatTimeout, type ForgeCrunchState } from './forge';
+import {
+  createForgeCrunchState,
+  REFINED_CRYSTAL_THRESHOLD,
+  tapForgeHeat,
+  startForgeWarmup,
+  tickForgeHeatTimeout,
+  type ForgeCrunchState,
+} from './forge';
 import {
   createLoomState,
   tickLooms,
@@ -287,7 +296,57 @@ export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, nu
       applyEquationUpgrade(state.equation, tierId as TierId);
     }
     state.forge.sacrificeProgressByTierId.set(tierId, total);
+
+    let refinedTotal = (state.forge.refinedProgressByTierId.get(tierId) ?? 0) + mass;
+    const refinedCrystalsGained = Math.floor(refinedTotal / REFINED_CRYSTAL_THRESHOLD);
+    if (refinedCrystalsGained > 0) {
+      const currentCrystals = state.rpg.refinedCrystalsByTierId.get(tierId) ?? 0;
+      state.rpg.refinedCrystalsByTierId.set(tierId, currentCrystals + refinedCrystalsGained);
+      refinedTotal -= refinedCrystalsGained * REFINED_CRYSTAL_THRESHOLD;
+    }
+    state.forge.refinedProgressByTierId.set(tierId, refinedTotal);
   }
+}
+
+export function craftWeapon(
+  state: GameState,
+  ingredients: CraftedWeaponIngredient[],
+  bypassCost = false,
+): boolean {
+  const normalizedIngredients = ingredients
+    .map((ingredient) => ({
+      tierId: ingredient.tierId,
+      refinedCount: Math.max(0, Math.floor(ingredient.refinedCount)),
+    }))
+    .filter((ingredient) => ingredient.refinedCount > 0);
+  if (normalizedIngredients.length === 0) return false;
+  if (normalizedIngredients.length > getForgeCapacity(state.forge.forgeCraftLevel)) return false;
+
+  for (const ingredient of normalizedIngredients) {
+    const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+    if (!bypassCost && available < ingredient.refinedCount) return false;
+  }
+
+  if (!bypassCost) {
+    for (const ingredient of normalizedIngredients) {
+      const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+      state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
+    }
+  }
+
+  let nextIndex = state.rpg.craftedWeapons.length + 1;
+  let weaponId = `crafted_weapon_${nextIndex}`;
+  while (state.rpg.purchasedWeaponIds.has(weaponId)) {
+    nextIndex++;
+    weaponId = `crafted_weapon_${nextIndex}`;
+  }
+
+  const craftedWeapon = createCraftedWeaponDefinition(weaponId, normalizedIngredients, state.forge.forgeCraftLevel);
+  state.rpg.craftedWeapons.push(craftedWeapon);
+  state.rpg.purchasedWeaponIds.add(craftedWeapon.id);
+  state.rpg.weaponTiersByWeaponId.set(craftedWeapon.id, 1);
+  registerCraftedWeapons([craftedWeapon]);
+  return true;
 }
 
 // ─── Simulation tick ────────────────────────────────────────────

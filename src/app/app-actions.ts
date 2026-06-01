@@ -16,6 +16,7 @@ import {
   tapEquationForge,
   claimAchievement,
   claimAllUnlockedAchievements,
+  craftWeapon,
 } from '../sim';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import { getMotes, spendMotes } from '../sim/resources';
