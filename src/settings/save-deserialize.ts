@@ -13,7 +13,7 @@ import { recomputeBonuses } from '../sim/achievements';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 import { sizeCountsToTotal } from '../sim/resources';
 import { deserializeInteractionMatrix } from '../data/particles/interaction-matrix';
-import { registerCraftedWeapons } from '../data/rpg/crafted-weapon-helpers';
+import { registerCraftedWeapons, computeCraftedWeaponModifiers } from '../data/rpg/crafted-weapon-helpers';
 import type { CraftedWeaponData } from '../data/rpg/crafted-weapon-types';
 import type { SaveData } from './save-types';
 
@@ -300,6 +300,10 @@ export function deserializeGameState(data: SaveData): GameState {
             defBonus: cw.definition.stats.defBonus,
             effect: cw.definition.stats.effect as import('../data/rpg/weapon-definitions').WeaponEffect | undefined,
           },
+        },
+        // Modifiers are derived from composition — not stored in save, re-computed on load.
+        get modifiers() {
+          return computeCraftedWeaponModifiers(this.composition);
         },
       }));
       state.rpg.craftedWeapons = restored;

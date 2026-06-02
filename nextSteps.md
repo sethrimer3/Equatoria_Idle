@@ -1,6 +1,69 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#202**
+Current build: **#203**
+
+---
+
+## Build #203 — Crafted weapons: modifier combat wiring, crit, armor ignore, tests
+
+### Completed in this build
+
+* **`CraftedWeaponModifiers` type**: Added to `CraftedWeaponData`. Stores
+  `critChancePct`, `armorIgnorePct`, `poisonBonusDmg`, `nullstonePullRadius`,
+  `fracterylStrikes`, `emeraldAcquisitionRangePx`. Computed from composition by
+  `computeCraftedWeaponModifiers()`. Cached at craft time and re-derived on load
+  (not serialized — re-computed from saved composition). `resolveCraftedWeaponModifiers(weaponId)`
+  provides O(1) lookup at attack time.
+
+* **Sand fire-rate / damage divisor**: Baked into `deriveCraftedWeaponStats`.
+  Formula: `divisor = 1 + sandShare × 10`. Both `cooldownMs` and `damage` are
+  divided by this factor. Net DPS stays approximately flat; Sand trades per-hit
+  power for attack frequency. Guards: `damage ≥ 6`, `cooldownMs ≥ 220ms`.
+
+* **Sapphire crit**: Applied in `performWeaponAttack`. Each attack rolls
+  `Math.random() < critChancePct/100`; on crit, `rawDamage` is doubled before
+  dispatch to all attack handlers. Capped at 60% in `computeCraftedWeaponModifiers`.
+
+* **Diamond armor ignore**: Implemented as `armorIgnore` passed to
+  `performAoeAttack` and `performMultiAttack` (new optional parameter, default 0),
+  and merged into `defPierceRatio` for single/piercing attacks via
+  `Math.max(armorIgnore, effectivePierce)`. All 18 AoE and 20 multi enemy damage
+  calls updated to forward `armorIgnore` as `defPierceRatio`.
+
+* **Tests** (`src/data/rpg/__tests__/crafted-weapons.test.ts`, 22 tests):
+  - `100 sand + 1 quartz = 50/50` composition (tier-weighted)
+  - `getForgeCapacity` levels 1–5 → slots 2–6 (and overflow caps)
+  - Sand damage divisor never reaches below 6; cooldown never below 220ms
+  - Sand produces lower damage and lower cooldown than ruby baseline
+  - Fracteryl repeat cap never exceeds 10
+  - Sapphire crit capped at 60%, Diamond armor ignore capped at 1
+  - Nullstone pull radius capped at 80px
+  - `createCraftedWeaponDefinition` round-trip: consistent id, name, modifiers
+
+### Remaining deferred
+
+* **Iolite poison bonus** in combat: `poisonBonusDmg` is computed and stored but
+  not yet applied. Iolite bonus would need a hook into the poison tick system.
+
+* **Nullstone pull** in combat: `nullstonePullRadius` computed and stored.
+  On-hit black-hole pull requires new render logic (enemy attraction force on hit).
+
+* **Fracteryl recursive strikes** in combat: `fracterylStrikes` computed and stored.
+  Recursive follow-up hits require new post-attack dispatch with damage decay.
+
+* **Emerald acquisition range** in combat: `emeraldAcquisitionRangePx` computed
+  and stored but not passed to the missile spawn system.
+
+* **Amethyst extra ships**: Still placeholder. Requires new weapon effect kind and
+  companion ship render system.
+
+* **Eigenstein**: Reserved — no final behavior defined.
+
+* **`forge.forgeCraftLevel` cleanup**: Still written to v30 saves but no longer
+  authoritative. Can be dropped in a future v31 save bump.
+
+* **Balance**: Modifier coefficients, upgrade costs, `REFINED_CRYSTAL_THRESHOLD`
+  all need playtesting.
 
 ---
 

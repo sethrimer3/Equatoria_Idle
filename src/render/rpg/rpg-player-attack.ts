@@ -18,7 +18,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
-import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
+import { resolveWeaponDefinition, resolveCraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-helpers';
 import { TIER_BY_ID } from '../../data/tiers';
 import { PLAYER_BASE_RANGE_PX } from './rpg-constants';
 import type { LaserEnemy, SapphireMissile, RpgPlayerStats, SapphireEnemy } from './rpg-types';
@@ -252,9 +252,15 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
 
   const range     = (weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX) * Math.max(1, ctx.getWeaponRngMultiplier(weaponId));
   const tier      = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-  const rawDamage = (weaponDef
+  const craftedMods = resolveCraftedWeaponModifiers(weaponId);
+  const baseDmg   = (weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
     : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
+  // Sapphire crit: roll for 2× damage on each attack.
+  const isCrit    = craftedMods && craftedMods.critChancePct > 0
+    ? Math.random() * 100 < craftedMods.critChancePct
+    : false;
+  const rawDamage = isCrit ? baseDmg * 2 : baseDmg;
   const effect    = weaponDef?.stats.effect ?? { kind: 'single' as const };
   const rangeSq   = range * range;
 
@@ -287,24 +293,27 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     return;
   }
 
+  // Diamond armor ignore: applies as a minimum defPierceRatio regardless of effect kind.
+  const armorIgnore = craftedMods ? craftedMods.armorIgnorePct : 0;
+
   // ── Attack-mode handlers ──────────────────────────────────────────────────
 
   if (effect.kind === 'aoe') {
-    performAoeAttack(ctx, rawDamage, effect.aoeRadius);
+    performAoeAttack(ctx, rawDamage, effect.aoeRadius, armorIgnore);
     return;
   }
 
   if (effect.kind === 'multi') {
-    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount);
+    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount, armorIgnore);
     return;
   }
 
   // single / piercing
   const isPiercing     = effect.kind === 'piercing';
   const basePierce     = isPiercing ? effect.defPierceRatio : 0;
-  const defPierceRatio = isPiercing
-    ? Math.min(1, basePierce * Math.max(1, ctx.getWeaponPrcMultiplier(weaponId)))
-    : 0;
+  const defPierceRatio = Math.min(1, Math.max(armorIgnore, isPiercing
+    ? basePierce * Math.max(1, ctx.getWeaponPrcMultiplier(weaponId))
+    : 0));
   // Resolve the weapon's source/shot color from its tier for gradient damage numbers.
   // Default '#ffd764' is the player mote's sand/gold glow (used when no weapon or unknown tier).
   const weaponShotColor = weaponDef

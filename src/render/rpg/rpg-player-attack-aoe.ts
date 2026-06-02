@@ -18,6 +18,7 @@ export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
   rawDamage: number,
   aoeRadius: number,
+  armorIgnore = 0,
 ): void {
   const {
     mote,
@@ -40,105 +41,105 @@ export function performAoeAttack(
   for (const enemy of enemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageEnemy(enemy, rawDamage, 0);
+      const dmg = damageEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisuals(enemy, dmg, '#e6c850');
     }
   }
   for (const enemy of sapphireEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageSapphireEnemy(enemy, rawDamage, 0, false);
+      const dmg = damageSapphireEnemy(enemy, rawDamage, armorIgnore, false);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of emeraldEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageEmeraldEnemy(enemy, rawDamage, 0);
+      const dmg = damageEmeraldEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of amberEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageAmberEnemy(enemy, rawDamage, 0);
+      const dmg = damageAmberEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of voidEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageVoidEnemy(enemy, rawDamage, 0);
+      const dmg = damageVoidEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of quartzEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageQuartzEnemy(enemy, rawDamage, 0);
+      const dmg = damageQuartzEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of rubyEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageRubyEnemy(enemy, rawDamage, 0);
+      const dmg = damageRubyEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of sunstoneEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageSunstoneEnemy(enemy, rawDamage, 0);
+      const dmg = damageSunstoneEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of citrineEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageCitrineEnemy(enemy, rawDamage, 0);
+      const dmg = damageCitrineEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of ioliteEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageIoliteEnemy(enemy, rawDamage, 0);
+      const dmg = damageIoliteEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of amethystEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageAmethystEnemy(enemy, rawDamage, 0, false);
+      const dmg = damageAmethystEnemy(enemy, rawDamage, armorIgnore, false);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of diamondEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageDiamondEnemy(enemy, rawDamage, 0);
+      const dmg = damageDiamondEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of nullstoneEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageNullstoneEnemy(enemy, rawDamage, 0);
+      const dmg = damageNullstoneEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of fracterylEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageFracterylEnemy(enemy, rawDamage, 0);
+      const dmg = damageFracterylEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
   for (const enemy of eigensteinEnemies) {
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageEigensteinEnemy(enemy, rawDamage, 0);
+      const dmg = damageEigensteinEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e6c850');
     }
   }
@@ -153,7 +154,7 @@ export function performAoeAttack(
       if (dx * dx + dy * dy <= aoeSq) { inRange = true; break; }
     }
     if (inRange) {
-      const dmg = damagePolyominoEnemy(enemy, rawDamage, 0);
+      const dmg = damagePolyominoEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#52b788');
     }
   }
@@ -168,7 +169,7 @@ export function performAoeAttack(
       if (dx * dx + dy * dy <= aoeSq) { inRange = true; break; }
     }
     if (inRange) {
-      const dmg = damageFissilePolyominoEnemy(enemy, rawDamage, 0);
+      const dmg = damageFissilePolyominoEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#e9c46a');
     }
   }
@@ -183,7 +184,7 @@ export function performAoeAttack(
       if (dx * dx + dy * dy <= aoeSq) { inRange = true; break; }
     }
     if (inRange) {
-      const dmg = damageRefractorPolyominoEnemy(enemy, rawDamage, 0);
+      const dmg = damageRefractorPolyominoEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#00f5d4');
     }
   }
@@ -191,14 +192,14 @@ export function performAoeAttack(
     if (enemy.isInvuln) continue;
     const dx = enemy.x - mote.x, dy = enemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageEliteEnemy(enemy, rawDamage, 0);
+      const dmg = damageEliteEnemy(enemy, rawDamage, armorIgnore);
       spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, '#ffe060');
     }
   }
   if (bossEnemy) {
     const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
     if (dx * dx + dy * dy <= aoeSq) {
-      const dmg = damageBossEnemy(rawDamage, 0);
+      const dmg = damageBossEnemy(rawDamage, armorIgnore);
       if (dmg > 0) spawnHitVisualsAt(bossEnemy.x, bossEnemy.y, bossEnemy.maxHp, dmg, '#e6c850');
     }
   }

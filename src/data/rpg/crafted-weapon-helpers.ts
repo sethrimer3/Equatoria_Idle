@@ -10,9 +10,11 @@ import type {
   CraftedWeaponCompositionEntry,
   CraftedWeaponData,
   CraftedWeaponIngredient,
+  CraftedWeaponModifiers,
 } from './crafted-weapon-types';
 
 const craftedWeaponCache = new Map<string, WeaponDefinition>();
+const craftedModifierCache = new Map<string, CraftedWeaponModifiers>();
 
 const EFFECT_LABELS: Record<string, string> = {
   single: 'single-target strike',
@@ -33,6 +35,52 @@ const EFFECT_NOUNS: Record<string, string> = {
   emeraldMissile: 'Swarm',
   poisonBolt: 'Sting',
 };
+
+export function computeCraftedWeaponModifiers(
+  composition: CraftedWeaponCompositionEntry[],
+): CraftedWeaponModifiers {
+  let critChancePct = 0;
+  let armorIgnorePct = 0;
+  let poisonBonusDmg = 0;
+  let nullstonePullRadius = 0;
+  let fracterylStrikes = 0;
+  let emeraldAcquisitionRangePx = 0;
+  for (const entry of composition) {
+    const s = entry.share;
+    switch (entry.tierId) {
+      case 'sapphire':
+        critChancePct = Math.min(60, critChancePct + s * 100);
+        break;
+      case 'diamond':
+        armorIgnorePct = Math.min(1, armorIgnorePct + s);
+        break;
+      case 'iolite':
+        poisonBonusDmg += Math.round(s * 18);
+        break;
+      case 'nullstone':
+        nullstonePullRadius = Math.min(80, nullstonePullRadius + Math.round(s * 80));
+        break;
+      case 'fracteryl':
+        fracterylStrikes = Math.min(10, fracterylStrikes + Math.round(s * 10));
+        break;
+      case 'emerald':
+        emeraldAcquisitionRangePx += Math.round(s * 120);
+        break;
+    }
+  }
+  return {
+    critChancePct,
+    armorIgnorePct,
+    poisonBonusDmg,
+    nullstonePullRadius,
+    fracterylStrikes,
+    emeraldAcquisitionRangePx,
+  };
+}
+
+export function resolveCraftedWeaponModifiers(weaponId: string): CraftedWeaponModifiers | undefined {
+  return craftedModifierCache.get(weaponId);
+}
 
 export function getTierForgeWeight(tierId: TierId): number {
   const tier = TIER_BY_ID.get(tierId);
@@ -222,6 +270,16 @@ export function deriveCraftedWeaponStats(
       break;
   }
 
+  // Sand modifier: more rapid fire, proportionally less damage per hit.
+  // effectPower = sandShare * 10; cooldown and damage both divided by (1 + effectPower).
+  // Net DPS stays approximately flat; Sand changes the attack rhythm not the power.
+  const sandEntry = composition.find(e => e.tierId === 'sand');
+  if (sandEntry && sandEntry.share > 0) {
+    const divisor = 1 + sandEntry.share * 10;
+    cooldownMs = Math.max(220, Math.round(cooldownMs / divisor));
+    damage = Math.max(6, Math.round(damage / divisor));
+  }
+
   return {
     composition,
     dominantTierId,
@@ -338,6 +396,7 @@ export function createCraftedWeaponDefinition(
   const { composition, dominantTierId, secondaryTierId, stats } = deriveCraftedWeaponStats(normalized, forgeCraftLevel);
   const name = getCraftedWeaponName(dominantTierId, secondaryTierId, stats.effect ?? { kind: 'single' });
   const description = getCraftedWeaponDescription(normalized, dominantTierId, secondaryTierId, stats.effect ?? { kind: 'single' });
+  const modifiers = computeCraftedWeaponModifiers(composition);
   const definition: WeaponDefinition = {
     id,
     name,
@@ -356,14 +415,19 @@ export function createCraftedWeaponDefinition(
     secondaryTierId,
     forgeCraftLevel,
     definition,
+    modifiers,
   };
   craftedWeaponCache.set(id, definition);
+  craftedModifierCache.set(id, modifiers);
   return craftedWeapon;
 }
 
 export function registerCraftedWeapons(craftedWeapons: CraftedWeaponData[]): void {
   for (const craftedWeapon of craftedWeapons) {
     craftedWeaponCache.set(craftedWeapon.id, craftedWeapon.definition);
+    // Re-derive modifiers from stored composition on load (not persisted in save).
+    const modifiers = craftedWeapon.modifiers ?? computeCraftedWeaponModifiers(craftedWeapon.composition);
+    craftedModifierCache.set(craftedWeapon.id, modifiers);
   }
 }
 
