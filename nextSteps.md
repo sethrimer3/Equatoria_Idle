@@ -1,6 +1,41 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#204**
+Current build: **#205**
+
+---
+
+## Build #205 — Crafted weapons: Amethyst companion ships (first pass)
+
+### Completed in this build
+
+* **`amethystShipCount` modifier**: Added to `CraftedWeaponModifiers`.
+  Formula: `Math.min(10, Math.round(amethystShare × 10))`. Computed by
+  `computeCraftedWeaponModifiers`; 100% Amethyst → 10 ships, 60% → 6 ships.
+
+* **Modifier display**: Replaced `"companion ships (placeholder)"` with
+  `"+N furthest-target ship(s)"` using the same formula as the actual modifier.
+
+* **Ship sync (`syncAmethystShips`)**: Extended to also allocate ships for
+  crafted weapons whose `amethystShipCount > 0`. Ship slots are filled in
+  equip order (static amethystShip weapon first, then crafted weapons).
+  Global cap: 16 total ships. Ships store `sourceWeaponId: string | null`
+  to track which weapon they came from.
+
+* **Damage attribution**: `AmethystShip` and `AmethystLaser` both carry
+  `sourceWeaponId`. Lasers fired from crafted ships use the crafted weapon
+  for `withDamageSource`. Static ships fall back to the equipped `amethystShip`
+  weapon ID as before.
+
+* **Tests**: 4 new tests in `crafted-weapons.test.ts` covering 100%, 60%,
+  0% Amethyst share and cap enforcement.
+
+### Known limitations / deferred
+
+* Crafted Amethyst ships use the same visual as static Amethyst ships
+  (no procedural color from weapon composition yet).
+* Ships target furthest enemies regardless of the crafted weapon's primary
+  attack family — "true weapon mirroring" (e.g. poison ships) is deferred.
+* Balance (ship count coefficients, damage multipliers) needs playtesting.
 
 ---
 
@@ -20,9 +55,7 @@ Current build: **#204**
 
 ### Real remaining next steps after Build #204
 
-1. **Amethyst extra ships**
-   - Still placeholder.
-   - Needs a new crafted/support weapon behavior where Amethyst content adds extra ships that attack furthest targets using the player's crafted weapon identity or a safe approximation of it.
+1. **Amethyst extra ships** — Implemented as first pass in Build #205 above.
 
 2. **Eigenstein behavior**
    - Still intentionally undefined.
@@ -83,15 +116,11 @@ Current build: **#204**
 
 * **Tests** (`src/data/rpg/__tests__/crafted-weapons.test.ts`, 22 tests): tier-weighted composition, forge capacity, Sand divisor floor, Fracteryl cap, Sapphire/Diamond caps, Nullstone cap, and crafted weapon round-trip.
 
-### Historical deferred items resolved or superseded by Build #204
+### Historical deferred items resolved or superseded
 
-* Iolite poison bonus, Emerald acquisition range, Nullstone pull, and Fracteryl recursive strikes moved from data-only to first-pass combat hooks in Build #204.
-
-### Still relevant from this build
-
-* Amethyst extra ships remain placeholder.
+* Iolite, Emerald, Nullstone, and Fracteryl moved to first-pass combat hooks in Build #204.
+* Amethyst extra ships moved to first-pass implementation in Build #205.
 * Eigenstein remains reserved.
-* Balance and playtesting are still needed.
 
 ---
 

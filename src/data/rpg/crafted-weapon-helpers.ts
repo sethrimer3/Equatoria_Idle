@@ -45,6 +45,7 @@ export function computeCraftedWeaponModifiers(
   let nullstonePullRadius = 0;
   let fracterylStrikes = 0;
   let emeraldAcquisitionRangePx = 0;
+  let amethystShipCount = 0;
   for (const entry of composition) {
     const s = entry.share;
     switch (entry.tierId) {
@@ -66,6 +67,9 @@ export function computeCraftedWeaponModifiers(
       case 'emerald':
         emeraldAcquisitionRangePx += Math.round(s * 120);
         break;
+      case 'amethyst':
+        amethystShipCount = Math.min(10, amethystShipCount + Math.round(s * 10));
+        break;
     }
   }
   return {
@@ -75,6 +79,7 @@ export function computeCraftedWeaponModifiers(
     nullstonePullRadius,
     fracterylStrikes,
     emeraldAcquisitionRangePx,
+    amethystShipCount,
   };
 }
 
@@ -337,7 +342,7 @@ export function getCraftedModifierLines(craftedWeapon: CraftedWeaponData): strin
         lines.push(`Iolite ${pct}%: +${Math.round(entry.share * 18)} poison dmg/tick`);
         break;
       case 'amethyst':
-        lines.push(`Amethyst ${pct}%: companion ships (placeholder)`);
+        lines.push(`Amethyst ${pct}%: +${Math.min(10, Math.round(entry.share * 10))} furthest-target ship(s)`);
         break;
       case 'diamond':
         lines.push(`Diamond ${pct}%: ${pct}% armor ignored`);

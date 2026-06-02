@@ -30,6 +30,8 @@ export interface CraftedWeaponModifiers {
   fracterylStrikes: number;
   /** Emerald: extra homing acquisition range in px. */
   emeraldAcquisitionRangePx: number;
+  /** Amethyst: number of extra companion ships (capped at 10). */
+  amethystShipCount: number;
 }
 
 export interface CraftedWeaponData {

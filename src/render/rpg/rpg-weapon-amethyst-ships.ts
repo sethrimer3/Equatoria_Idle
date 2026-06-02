@@ -15,7 +15,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
-import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
+import { resolveWeaponDefinition, resolveCraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-helpers';
 import {
   AMETHYST_SHIP_FIRE_MS, AMETHYST_SHIP_ORBIT_RADIUS, AMETHYST_SHIP_MAX_SPEED, AMETHYST_SHIP_TRAIL_CAP,
   AMETHYST_LASER_DAMAGE_MULT, AMETHYST_LASER_INITIAL_RADIUS,
@@ -100,40 +100,73 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
 
   // ── Amethyst ship system ──────────────────────────────────────────
 
+  /** Global cap: never allow more than this many amethyst ships total. */
+  const MAX_AMETHYST_SHIPS = 16;
+
   /**
-   * Syncs amethyst ships to match equipped weapon tier.
+   * Syncs amethyst ships to match:
+   *   1. Static amethystShip weapon tier (as before).
+   *   2. Crafted weapons with amethystShipCount > 0.
    * Call when weapon equip state changes.
    */
   function syncAmethystShips(): void {
-    let equippedTier = 0;
-    let baseDamage = 0;
+    // Build desired list: (sourceWeaponId, count, baseDamage) tuples in equip order.
+    const desired: Array<{ sourceWeaponId: string | null; count: number; baseDamage: number }> = [];
+
     for (const weaponId of getEffectiveEquippedIds()) {
       const wd = resolveWeaponDefinition(weaponId);
       if (wd?.stats.effect?.kind === 'amethystShip') {
-        equippedTier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
-        baseDamage = wd.stats.damage;
-        break;
+        const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+        desired.push({ sourceWeaponId: null, count: tier, baseDamage: wd.stats.damage });
+        break; // only one static amethystShip weapon slot
       }
     }
 
-    while (amethystShips.length > equippedTier) amethystShips.pop();
-    while (amethystShips.length < equippedTier) {
-      const angle = (amethystShips.length / equippedTier) * Math.PI * 2;
+    for (const weaponId of getEffectiveEquippedIds()) {
+      const mods = resolveCraftedWeaponModifiers(weaponId);
+      if (!mods || mods.amethystShipCount <= 0) continue;
+      const wd = resolveWeaponDefinition(weaponId);
+      const baseDamage = wd?.stats.damage ?? 0;
+      desired.push({ sourceWeaponId: weaponId, count: mods.amethystShipCount, baseDamage });
+    }
+
+    // Flatten desired into ordered slots, applying the global cap.
+    const slots: Array<{ sourceWeaponId: string | null; baseDamage: number }> = [];
+    for (const { sourceWeaponId, count, baseDamage } of desired) {
+      for (let i = 0; i < count && slots.length < MAX_AMETHYST_SHIPS; i++) {
+        slots.push({ sourceWeaponId, baseDamage });
+      }
+    }
+
+    // Trim excess ships.
+    while (amethystShips.length > slots.length) amethystShips.pop();
+
+    // Add new ships for new slots.
+    while (amethystShips.length < slots.length) {
+      const idx = amethystShips.length;
+      const total = slots.length;
+      const angle = (idx / total) * Math.PI * 2;
+      const slot = slots[idx]!;
       amethystShips.push({
         x: mote.x + Math.cos(angle) * AMETHYST_SHIP_ORBIT_RADIUS,
         y: mote.y + Math.sin(angle) * AMETHYST_SHIP_ORBIT_RADIUS,
-        vx: 0,
-        vy: 0,
+        vx: 0, vy: 0,
         orbitAngle: angle,
         fireCooldownMs: Math.random() * AMETHYST_SHIP_FIRE_MS,
-        baseDamage,
+        baseDamage: slot.baseDamage,
+        sourceWeaponId: slot.sourceWeaponId,
         trailX: new Float64Array(AMETHYST_SHIP_TRAIL_CAP),
         trailY: new Float64Array(AMETHYST_SHIP_TRAIL_CAP),
-        trailHead: 0,
-        trailCount: 0,
+        trailHead: 0, trailCount: 0,
       });
     }
-    for (const ship of amethystShips) ship.baseDamage = baseDamage;
+
+    // Refresh baseDamage and sourceWeaponId for existing ships in case tiers changed.
+    for (let i = 0; i < amethystShips.length; i++) {
+      const slot = slots[i]!;
+      amethystShips[i]!.baseDamage = slot.baseDamage;
+      amethystShips[i]!.sourceWeaponId = slot.sourceWeaponId;
+    }
   }
 
   /**
@@ -187,13 +220,13 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
 
   /**
    * Spawns an amethyst laser from a ship toward a target enemy.
+   * Damage is attributed to ship.sourceWeaponId (crafted) or the static amethystShip weapon.
    */
   function spawnAmethystLaser(ship: AmethystShip, target: ClosestTarget): void {
     const angle = Math.atan2(ship.y - target.y, ship.x - target.x);
 
-    // Calculate damage based on weapon tier (30× base damage)
-    const weaponId = findEquippedWeaponIdByEffect('amethystShip');
-    const tier = weaponId ? (rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1) : 1;
+    const resolvedSourceId = ship.sourceWeaponId ?? findEquippedWeaponIdByEffect('amethystShip');
+    const tier = resolvedSourceId ? (rpgSimState.weaponTiersByWeaponId.get(resolvedSourceId) ?? 1) : 1;
     const scaledDamage = getScaledWeaponDamage(ship.baseDamage, tier, playerStats.atk) * AMETHYST_LASER_DAMAGE_MULT;
 
     amethystLasers.push({
@@ -205,6 +238,7 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
       angle,
       lifeMs: AMETHYST_LASER_DURATION_MS,
       scaledDamage,
+      sourceWeaponId: ship.sourceWeaponId,
       piercedEnemies: new Set(),
       targetEnemy: target.boss ?? target.eigenstein ?? target.fracteryl ?? target.nullstone ?? target.diamond
         ?? target.amethyst ?? target.iolite ?? target.citrine ?? target.sunstone ?? target.ruby
@@ -218,16 +252,22 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
 
   /**
    * Updates amethyst lasers: move with spiral, pierce through enemies.
+   * Each laser is updated inside withDamageSource for its own source weapon.
    */
   function updateAmethystLasers(deltaMs: number): void {
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
-    const weaponId = findEquippedWeaponIdByEffect('amethystShip');
-    ctx.withDamageSource(weaponId, () => {
-      const liveTargets = collectEnemyBodyTargets();
-      for (let i = amethystLasers.length - 1; i >= 0; i--) {
-        const laser = amethystLasers[i];
+    const staticWeaponId = findEquippedWeaponIdByEffect('amethystShip');
+    const liveTargets = collectEnemyBodyTargets();
+
+    for (let i = amethystLasers.length - 1; i >= 0; i--) {
+      const laser = amethystLasers[i]!;
+      const sourceId = laser.sourceWeaponId ?? staticWeaponId;
+      let remove = false;
+
+      ctx.withDamageSource(sourceId, () => {
         laser.lifeMs -= deltaMs;
+
         const targetStillAlive = laser.targetEnemy === null || liveTargets.some(t =>
           t.laser === laser.targetEnemy || t.sapphire === laser.targetEnemy || t.emerald === laser.targetEnemy ||
           t.amber === laser.targetEnemy || t.void === laser.targetEnemy || t.quartz === laser.targetEnemy ||
@@ -236,10 +276,7 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
           t.nullstone === laser.targetEnemy || t.fracteryl === laser.targetEnemy || t.eigenstein === laser.targetEnemy ||
           t.boss === laser.targetEnemy
         );
-        if (!targetStillAlive) {
-          amethystLasers.splice(i, 1);
-          continue;
-        }
+        if (!targetStillAlive) { remove = true; return; }
 
         if (laser.targetEnemy && 'x' in laser.targetEnemy && 'y' in laser.targetEnemy) {
           const targetPos = laser.targetEnemy as { x: number; y: number };
@@ -252,15 +289,12 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
         laser.x = laser.centerX + Math.cos(laser.angle) * laser.radius;
         laser.y = laser.centerY + Math.sin(laser.angle) * laser.radius;
 
-        // Terrain blocking: destroy the laser if it crossed a solid island.
         if (terrain && segmentIntersectsTopographicTerrain(terrain, prevX, prevY, laser.x, laser.y)) {
-          amethystLasers.splice(i, 1); continue;
+          remove = true; return;
         }
 
         updateShipTrail(laser.x, laser.y, laser.trailX, laser.trailY, laser);
 
-        // Inject swirling + inward fluid force in the direction the laser is traveling.
-        // Tangential direction (CCW rotation at current angle) plus inward pull toward center.
         if (laser.radius > 1) {
           const tangentX = -Math.sin(laser.angle);
           const tangentY =  Math.cos(laser.angle);
@@ -297,10 +331,12 @@ export function createAmethystShipSystem(ctx: AmethystShipCtx): AmethystShipHand
         }
 
         if (hitIntendedTarget || laser.lifeMs <= 0 || laser.radius <= 0) {
-          amethystLasers.splice(i, 1);
+          remove = true;
         }
-      }
-    });
+      });
+
+      if (remove) amethystLasers.splice(i, 1);
+    }
   }
 
   // ── Handle ────────────────────────────────────────────────────────

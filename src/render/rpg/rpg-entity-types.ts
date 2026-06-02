@@ -114,6 +114,12 @@ export interface AmethystShip {
   fireCooldownMs: number;
   /** Weapon base damage (pre-scaled, then 30× multiplier applied). */
   baseDamage: number;
+  /**
+   * Source weapon ID for damage attribution.
+   * null → static amethystShip weapon (looked up at fire time).
+   * non-null → crafted weapon that created this ship.
+   */
+  sourceWeaponId: string | null;
   /** Trail for motion visualization. */
   trailX: Float64Array; trailY: Float64Array;
   trailHead: number; trailCount: number;
@@ -131,6 +137,11 @@ export interface AmethystLaser {
   lifeMs: number;
   /** Pre-computed scaled damage (30× base). */
   scaledDamage: number;
+  /**
+   * Source weapon ID for damage attribution (mirrors the firing ship).
+   * null → static amethystShip; non-null → crafted weapon.
+   */
+  sourceWeaponId: string | null;
   /** Intended target; laser dissipates when this target dies or is hit. */
   targetEnemy: object | null;
   /** Enemies already pierced this lifetime (avoid repeat hits). */

@@ -173,6 +173,35 @@ describe('computeCraftedWeaponModifiers', () => {
     expect(mods.critChancePct).toBe(0);
     expect(mods.armorIgnorePct).toBe(0);
     expect(mods.fracterylStrikes).toBe(0);
+    expect(mods.amethystShipCount).toBe(0);
+  });
+});
+
+// ─── computeCraftedWeaponModifiers — Amethyst ship count ─────────
+
+describe('computeCraftedWeaponModifiers — Amethyst ship count', () => {
+  it('100% amethyst gives 10 ships', () => {
+    const fullAmethyst = [{ tierId: 'amethyst' as const, weightedValue: 1, share: 1 }];
+    const mods = computeCraftedWeaponModifiers(fullAmethyst);
+    expect(mods.amethystShipCount).toBe(10);
+  });
+
+  it('60% amethyst gives 6 ships', () => {
+    const comp = [{ tierId: 'amethyst' as const, weightedValue: 0.6, share: 0.6 }];
+    const mods = computeCraftedWeaponModifiers(comp);
+    expect(mods.amethystShipCount).toBe(6);
+  });
+
+  it('0% amethyst gives 0 ships', () => {
+    const noAmethyst = [{ tierId: 'ruby' as const, weightedValue: 1, share: 1 }];
+    const mods = computeCraftedWeaponModifiers(noAmethyst);
+    expect(mods.amethystShipCount).toBe(0);
+  });
+
+  it('amethystShipCount never exceeds 10', () => {
+    const fullAmethyst = [{ tierId: 'amethyst' as const, weightedValue: 1, share: 1 }];
+    const mods = computeCraftedWeaponModifiers(fullAmethyst);
+    expect(mods.amethystShipCount).toBeLessThanOrEqual(10);
   });
 });
 
