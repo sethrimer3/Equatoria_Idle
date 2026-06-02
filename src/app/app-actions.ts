@@ -350,6 +350,16 @@ export function handleAction(
       if (!ok) audioSystem?.onError();
       break;
     }
+    case 'craft_weapon': {
+      const ok = craftWeapon(state.game, action.ingredients as import('../data/rpg/crafted-weapon-types').CraftedWeaponIngredient[], devMode);
+      if (ok) {
+        audioSystem?.onBuyLoomUpgrade();
+        uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      } else {
+        audioSystem?.onError();
+      }
+      break;
+    }
     case 'toggle_sand_blade': {
       state.game.rpg.sandBladeEnabled = !state.game.rpg.sandBladeEnabled;
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);

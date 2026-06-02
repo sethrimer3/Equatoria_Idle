@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 29;
+export const SAVE_VERSION = 30;
 
 export interface SaveData {
   version: number;
@@ -53,6 +53,10 @@ export interface SaveData {
   forge?: {
     heatTapCount: number;
     sacrificeProgressByTierId: Record<string, number>;
+    /** v30+: accumulated refined-crystal progress per tier (small-mote equivalents). */
+    refinedProgressByTierId?: Record<string, number>;
+    /** v30+: crafting capacity tier for forged weapons. Absent in older saves (defaults to 1). */
+    forgeCraftLevel?: number;
   };
   achievements: {
     unlockedIds: string[];
@@ -140,6 +144,33 @@ export interface SaveData {
     playerXp?: number;
     /** v29+: XP required to reach next level. Absent in older saves (recomputed from playerLevel). */
     playerXpToNextLevel?: number;
+    /** v30+: crafted weapon definitions (ingredients, composition, stats). Absent in older saves. */
+    craftedWeapons?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      dominantTierId: string;
+      secondaryTierId: string;
+      forgeCraftLevel: number;
+      ingredients: Array<{ tierId: string; refinedCount: number }>;
+      composition: Array<{ tierId: string; weightedValue: number; share: number }>;
+      definition: {
+        id: string;
+        name: string;
+        description: string;
+        costTierId: string;
+        cost: number;
+        stats: {
+          damage: number;
+          cooldownMs: number;
+          range: number;
+          defBonus: number;
+          effect?: { kind: string; targetCount?: number; aoeRadius?: number; defPierceRatio?: number };
+        };
+      };
+    }>;
+    /** v30+: refined crystal inventory per tier. Absent in older saves. */
+    refinedCrystalsByTierId?: Record<string, number>;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */

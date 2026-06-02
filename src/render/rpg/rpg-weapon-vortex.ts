@@ -15,7 +15,7 @@
  * per-frame update functions (called from rpg-weapon-systems.ts).
  */
 
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
 import {
   VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS,
@@ -124,7 +124,7 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
   const vortexWeaponStates: Map<string, VortexWeaponState> = new Map();
 
   function fireVortex(weaponId: string, tier: number): void {
-    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    const weaponDef = resolveWeaponDefinition(weaponId);
     const rawDamage = weaponDef
       ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
       : playerStats.atk;

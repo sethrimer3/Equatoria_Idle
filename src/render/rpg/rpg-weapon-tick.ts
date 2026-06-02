@@ -16,7 +16,7 @@
  *   the Sand Blade is suppressed.
  */
 
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   PLAYER_BASE_COOLDOWN_MS,
   BASE_ATTACK_TIMER_KEY,
@@ -82,14 +82,14 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
   statsPanel.withDamageSource(ctx.findEquippedWeaponIdByEffect('gatling'), () => weaponSystems.updateSandProjectiles(deltaMs));
 
   for (const weaponId of equippedIds) {
-    const wd = WEAPON_BY_ID.get(weaponId);
+    const wd = resolveWeaponDefinition(weaponId);
     if (wd?.stats.effect?.kind === 'chainWhip') {
       statsPanel.withDamageSource(weaponId, () => weaponSystems.updateChainWhip(weaponId, deltaMs));
     }
   }
 
   for (const weaponId of equippedIds) {
-    const wd = WEAPON_BY_ID.get(weaponId);
+    const wd = resolveWeaponDefinition(weaponId);
     if (wd?.stats.effect?.kind === 'vortex') {
       statsPanel.withDamageSource(weaponId, () => weaponSystems.updateVortexWeapon(weaponId, deltaMs));
     }
@@ -122,7 +122,7 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
 
   // ── Per-weapon auto-attack timer countdown ────────────────────────────────────
   for (const weaponId of equippedIds) {
-    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    const weaponDef = resolveWeaponDefinition(weaponId);
     // Weapons that manage their own timing — skip the generic cooldown here.
     if (weaponDef?.stats.effect?.kind === 'chainWhip'    ||
         weaponDef?.stats.effect?.kind === 'vortex'       ||

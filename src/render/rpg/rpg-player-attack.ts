@@ -18,7 +18,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { TIER_BY_ID } from '../../data/tiers';
 import { PLAYER_BASE_RANGE_PX } from './rpg-constants';
 import type { LaserEnemy, SapphireMissile, RpgPlayerStats, SapphireEnemy } from './rpg-types';
@@ -198,7 +198,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const { rpgSimState, playerStats, findClosestTarget } = ctx;
   const bossEnemy = ctx.bossEnemy;
 
-  const weaponDef = WEAPON_BY_ID.get(weaponId);
+  const weaponDef = resolveWeaponDefinition(weaponId);
 
   // Sunstone mines can always be placed (no target needed).
   if (weaponDef?.stats.effect?.kind === 'sunstoneMine') {

@@ -1,4 +1,4 @@
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   getLuckPercent,
   getEffectiveXpLuckBonus,
@@ -22,7 +22,7 @@ export function findEquippedWeaponIdByEffect(
   equippedWeaponIds: Iterable<string>,
 ): string | null {
   for (const weaponId of equippedWeaponIds) {
-    const wd = WEAPON_BY_ID.get(weaponId);
+    const wd = resolveWeaponDefinition(weaponId);
     if (wd?.stats.effect?.kind === effectKind) return weaponId;
   }
   return null;

@@ -31,7 +31,7 @@ import {
   getEffectiveXpHpBonus,
   getPlayerLevelAtkBonus, getPlayerLevelDefBonus, getPlayerLevelHpBonus,
 } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import { createDamageFns } from './rpg-damage';
@@ -686,7 +686,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // Aggregate DEF from all equipped weapons.
     let totalDefBonus = 0;
     for (const weaponId of effectiveIds) {
-      const weaponDef = WEAPON_BY_ID.get(weaponId);
+      const weaponDef = resolveWeaponDefinition(weaponId);
       if (weaponDef) totalDefBonus += weaponDef.stats.defBonus;
     }
     playerStats.def = PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState) + getPlayerLevelDefBonus(rpgSimState.playerLevel);

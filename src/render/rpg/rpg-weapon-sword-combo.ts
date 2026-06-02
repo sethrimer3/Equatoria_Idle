@@ -15,7 +15,7 @@
  */
 
 import { getScaledWeaponDamage, getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   SWORD_SWING_MS, SWORD_PRISMATIC_COLORS, SAND_BLADE_COLORS,
   SWORD_SHARD_COUNT, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
@@ -56,7 +56,7 @@ export function updateSwordComboForWeapon(
 ): void {
   if (!swordComboStates.has(weaponId)) swordComboStates.set(weaponId, buildSwordCombo(weaponId, ctx));
   const state      = swordComboStates.get(weaponId)!;
-  const weaponDef  = WEAPON_BY_ID.get(weaponId);
+  const weaponDef  = resolveWeaponDefinition(weaponId);
   const tier       = ctx.rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
   const rawDamage  = weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, ctx.playerStats.atk)

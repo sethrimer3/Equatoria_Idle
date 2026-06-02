@@ -24,7 +24,8 @@ import {
 import {
   getMultiplierXpCost, tickMultiplierXpProgress, tickPlayerXpProgress,
 } from '../../sim/rpg/rpg-state-xp';
-import { WEAPON_BY_ID, INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
+import { INFINITE_RANGE } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { RpgPlayerStats } from './rpg-types';
 import { BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID } from './rpg-constants';
@@ -327,13 +328,13 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   function weaponAbbrev(weaponId: string): string {
     if (weaponId === SAND_SLOT_KEY) return 'SAN';
-    const tierId = WEAPON_BY_ID.get(weaponId)?.costTierId ?? 'sand';
+    const tierId = resolveWeaponDefinition(weaponId)?.costTierId ?? 'sand';
     return tierId.slice(0, 3).toUpperCase();
   }
 
   function weaponColor(weaponId: string): string {
     if (weaponId === SAND_SLOT_KEY) return TIER_BY_ID.get('sand')?.color ?? '#ffd764';
-    const tierId = WEAPON_BY_ID.get(weaponId)?.costTierId;
+    const tierId = resolveWeaponDefinition(weaponId)?.costTierId;
     return (tierId ? TIER_BY_ID.get(tierId)?.color : null) ?? '#ffd764';
   }
 
@@ -355,7 +356,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   /** Return the pierce percentage (0-100) for a weapon, or 0 for non-piercing weapons. */
   function weaponPiercePercent(weaponId: string): number {
-    const effect = WEAPON_BY_ID.get(weaponId)?.stats.effect;
+    const effect = resolveWeaponDefinition(weaponId)?.stats.effect;
     if (!effect || effect.kind !== 'piercing') return 0;
     return Math.round(effect.defPierceRatio * 100);
   }
@@ -517,7 +518,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
         }
         continue;
       }
-      const def = WEAPON_BY_ID.get(weaponId);
+      const def = resolveWeaponDefinition(weaponId);
       const color = weaponColor(weaponId);
       // WEAP column: show the tier abbreviation (short name)
       spans[0].style.color = color;

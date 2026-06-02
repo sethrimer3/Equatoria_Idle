@@ -18,7 +18,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   LASER_BEAM_VISIBLE_MS, LASER_BEAM_COLOR, LASER_BEAM_GLOW,
 } from './rpg-weapon-constants';
@@ -165,7 +165,7 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
     const endX = mote.x + dirX * tMax;
     const endY = mote.y + dirY * tMax;
 
-    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    const weaponDef = resolveWeaponDefinition(weaponId);
     const tier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
     const baseDamage = getScaledWeaponDamage(weaponDef?.stats.damage ?? 80, tier, playerStats.atk);
 

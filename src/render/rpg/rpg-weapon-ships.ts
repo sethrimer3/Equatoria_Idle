@@ -19,7 +19,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   SAPPHIRE_SHIP_FIRE_MS, SAPPHIRE_SHIP_ORBIT_RADIUS, SAPPHIRE_SHIP_MAX_SPEED,
   SAPPHIRE_SHIP_LASER_RANGE, SAPPHIRE_SHIP_TRAIL_CAP, SAPPHIRE_SHIP_TRAIL_MIN_DIST,
@@ -147,7 +147,7 @@ export function createShipWeaponSystems(ctx: ShipWeaponCtx): ShipWeaponHandle {
     let equippedTier = 0;
     let baseDamage = 0;
     for (const weaponId of getEffectiveEquippedIds()) {
-      const wd = WEAPON_BY_ID.get(weaponId);
+      const wd = resolveWeaponDefinition(weaponId);
       if (wd?.stats.effect?.kind === 'sapphireShip') {
         equippedTier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
         baseDamage = wd.stats.damage;

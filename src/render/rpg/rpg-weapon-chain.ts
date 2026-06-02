@@ -17,7 +17,7 @@
  * the per-frame update function (called from rpg-weapon-systems.ts).
  */
 
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
 import {
   CHAIN_NODES, CHAIN_NODE_COLOR,
@@ -125,7 +125,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
     const linkSides = new Uint8Array(CHAIN_NODES);
     for (let i = 0; i < CHAIN_NODES; i++) { nodesX[i] = mote.x; nodesY[i] = mote.y; }
     for (let i = 0; i < CHAIN_NODES; i++) linkSides[i] = 3 + Math.floor(Math.random() * 5);
-    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    const weaponDef = resolveWeaponDefinition(weaponId);
     return {
       phase: 'idle' as ChainPhase,
       phaseMs: 0,
@@ -189,7 +189,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
   }
 
   function updateChainWhip(weaponId: string, deltaMs: number): void {
-    const weaponDef = WEAPON_BY_ID.get(weaponId);
+    const weaponDef = resolveWeaponDefinition(weaponId);
     if (!weaponDef || weaponDef.stats.effect?.kind !== 'chainWhip') {
       chainWhipStates.delete(weaponId);
       return;

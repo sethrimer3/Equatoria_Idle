@@ -40,7 +40,9 @@ export function getTierForgeWeight(tierId: TierId): number {
 }
 
 export function getForgeCapacity(forgeCraftLevel: number): number {
-  return Math.max(1, Math.min(5, Math.floor(forgeCraftLevel) || 1));
+  // Level 1→2, Level 2→3, Level 3→4, Level 4→5, Level 5+→6
+  const level = Math.max(1, Math.floor(forgeCraftLevel) || 1);
+  return Math.min(6, level + 1);
 }
 
 export function normalizeCraftedWeaponIngredients(

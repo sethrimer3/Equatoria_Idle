@@ -18,7 +18,7 @@ import type {
 } from './rpg-enemy-types';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgSpeedMultiplier } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { getSwordLength } from './rpg-helpers';
 import type { RpgFluid } from './rpg-fluid';
 import {
@@ -186,7 +186,7 @@ export function updatePlayerMovement(
       const hasDiamondBlade = equippedIds.has(DIAMOND_BLADE_ID);
 
       for (const weaponId of equippedIds) {
-        const wd = WEAPON_BY_ID.get(weaponId);
+        const wd = resolveWeaponDefinition(weaponId);
         if (!wd) continue;
         let effectiveRange: number;
         if (wd.stats.effect?.kind === 'swordCombo') {

@@ -11,7 +11,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { WeaponOrbitParticle, OrbitProjectile, RpgMote } from './rpg-types';
 import {
@@ -35,7 +35,7 @@ export function buildWeaponOrbitParticle(
   weaponId: string,
   startAngle: number,
 ): WeaponOrbitParticle | null {
-  const weaponDef = WEAPON_BY_ID.get(weaponId);
+  const weaponDef = resolveWeaponDefinition(weaponId);
   if (!weaponDef) return null;
   const tierDef   = TIER_BY_ID.get(weaponDef.costTierId);
   const color     = tierDef?.color     ?? '#ffd764';

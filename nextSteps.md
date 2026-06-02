@@ -1,6 +1,78 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#194**
+Current build: **#201**
+
+---
+
+## Build #201 — Crafted weapons: save/load, combat resolver, crafting action, UI
+
+### Completed in this build
+
+* **Save/load (v30)**: `SAVE_VERSION` bumped to 30. `SaveData` extended with
+  `rpg.craftedWeapons`, `rpg.refinedCrystalsByTierId`, `forge.refinedProgressByTierId`,
+  and `forge.forgeCraftLevel`. Serialize and deserialize wired up. After loading,
+  `registerCraftedWeapons()` is called so crafted weapon IDs resolve immediately.
+  Old saves default safely (no crafted weapons, no refined crystals, forge level 1).
+
+* **Resolver integration**: All combat and display files that look up an equipped weapon
+  by ID now use `resolveWeaponDefinition()` instead of `WEAPON_BY_ID.get()`:
+  `rpg-weapon-tick.ts`, `rpg-player-attack.ts`, `rpg-weapon-orbit.ts`,
+  `rpg-render-helpers.ts`, `rpg-render.ts`, `rpg-stats-panel.ts`,
+  `rpg-weapon-amethyst-ships.ts`, `rpg-weapon-ships.ts`, `rpg-weapon-chain.ts`,
+  `rpg-weapon-vortex.ts`, `rpg-weapon-sword-combo.ts`, `rpg-weapon-sword-combo-helpers.ts`,
+  `rpg-weapon-laser-beam.ts`, `rpg-player-movement.ts`.
+  Static catalogue lookups (`purchase_weapon`, `upgrade_weapon_tier`, achievement text)
+  remain on `WEAPON_BY_ID`.
+
+* **`craft_weapon` action**: Wired in `app-actions.ts`. Validates via `craftWeapon()`,
+  plays buy sound on success and error sound on failure, refreshes the RPG menu panel.
+
+* **Forge capacity**: `getForgeCapacity` now maps level 1→2 slots, level 2→3,
+  level 3→4, level 4→5, level 5+→6 (was capped at 5).
+
+* **Weapons tab UI**: Forge crafting panel visible when the player has refined crystals
+  (or in dev mode). Shows crystal inventory, per-tier number inputs, live composition
+  preview, and a Craft button. Crafted weapons appear in the weapon list with name,
+  composition percentages, stats, equip/unequip controls. Slot picker uses
+  `resolveWeaponDefinition` so crafted weapon names display correctly.
+
+* **Build 201**: Incremented from 200.
+
+### Known limitations / deferred work
+
+* **Forge craft level upgrade path**: `forgeCraftLevel` is persisted and the capacity
+  table is correct (levels 1–5 → 2–6 slots), but there is no in-game upgrade purchase
+  that increases `forgeCraftLevel` beyond 1. A forge upgrade definition and UI action
+  are needed before the full 6-slot capacity is reachable.
+
+* **Refined crystal UI in forge**: The forge crunch panel does not yet show a
+  "refined crystals gained" confirmation message or running totals. Crystals do
+  accumulate in state and are visible in the weapons tab crafting panel.
+
+* **Crafted weapon visuals**: No procedural icon. Crafted weapon cards use text
+  only. A silhouette + composition-color gradient icon is documented as deferred.
+
+* **Percent-based mote modifiers (step 6)**: The `effectPowerPercent` formula
+  and per-tier modifiers (fire rate, pierce, AoE radius, etc.) are not yet applied
+  on top of the current `deriveCraftedWeaponStats` output. The existing stat system
+  applies a simpler composition-weighted formula. Full modifier model deferred.
+
+* **Eigenstein**: No behavior implemented. Effect resolves as a high `defPierceRatio`
+  `piercing` weapon — placeholder only.
+
+* **Amethyst extra ships**: Crafted amethyst-dominant weapons use `piercing` as
+  the base effect. The "extra ships attacking furthest targets" mechanic requires
+  a new weapon effect kind and render system; deferred.
+
+* **Nullstone, Fracteryl advanced behavior**: Black hole pull and recursive strike
+  are not yet implemented as crafted modifiers. Both resolve to generic effects.
+
+* **Balance**: `REFINED_CRYSTAL_THRESHOLD = 500` small-mote equivalents per crystal
+  is a placeholder playtest value. Composition stat weights and damage formulas have
+  not been playtested.
+
+* **Tests**: No automated tests for crafted weapon save/load roundtrip, forge capacity,
+  or composition math. Manual verification only.
 
 ---
 

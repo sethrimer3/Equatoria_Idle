@@ -8,9 +8,10 @@
  * Extracted from rpg-menu-panel.ts to keep each sub-tab in its own module.
  */
 
-import { WEAPON_DEFINITIONS, WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { WEAPON_DEFINITIONS } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition, getForgeCapacity, formatCraftedWeaponModifier, computeCraftedWeaponComposition } from '../../data/rpg/crafted-weapon-helpers';
 import type { WeaponDefinition } from '../../data/rpg/weapon-definitions';
-import { TIER_BY_ID } from '../../data/tiers';
+import { TIER_BY_ID, type TierId } from '../../data/tiers';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
@@ -92,7 +93,7 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
       btn.className = 'weapon-store__btn weapon-slot-popup-slot-btn';
       const isLocked = s >= maxSlots;
       const occupant = rpgState.equippedWeaponSlots.get(s);
-      const occupantDef = occupant ? WEAPON_BY_ID.get(occupant) : undefined;
+      const occupantDef = occupant ? resolveWeaponDefinition(occupant) : undefined;
       const occupantName = occupantDef ? occupantDef.name : (occupant ?? 'Empty');
       btn.textContent = `Slot ${s + 1}: ${isLocked ? '🔒 Locked' : (occupant ? occupantName : 'Empty')}`;
       btn.disabled = isLocked;
@@ -295,6 +296,195 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     return card;
   }
 
+  // ── Crafted weapon card ────────────────────────────────────────
+  function buildCraftedWeaponCard(
+    craftedWeapon: import('../../data/rpg/crafted-weapon-types').CraftedWeaponData,
+    rpgState: RpgSimState,
+  ): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'weapon-store__card';
+    const isEquipped = rpgState.equippedWeaponIds.has(craftedWeapon.id);
+    if (isEquipped) card.classList.add('weapon-store__card--equipped');
+    const dominantColor = tierColor(craftedWeapon.dominantTierId);
+    card.style.borderColor = dominantColor + '66';
+
+    // Name row
+    const nameRow = document.createElement('div');
+    nameRow.className = 'weapon-store__card-name';
+    nameRow.style.color = dominantColor;
+    nameRow.textContent = craftedWeapon.name;
+    const craftBadge = document.createElement('span');
+    craftBadge.className = 'weapon-tier-badge';
+    craftBadge.style.color = dominantColor;
+    craftBadge.style.borderColor = dominantColor + '88';
+    craftBadge.textContent = 'Forged';
+    nameRow.appendChild(craftBadge);
+    if (isEquipped) {
+      const eqBadge = document.createElement('span');
+      eqBadge.className = 'weapon-store__equipped-badge';
+      eqBadge.textContent = 'Equipped';
+      nameRow.appendChild(eqBadge);
+    }
+    card.appendChild(nameRow);
+
+    // Composition percentages
+    const compRow = document.createElement('div');
+    compRow.className = 'weapon-store__card-desc';
+    compRow.textContent = formatCraftedWeaponModifier(craftedWeapon);
+    card.appendChild(compRow);
+
+    // Stats row
+    const { stats } = craftedWeapon.definition;
+    const statsRow = document.createElement('div');
+    statsRow.className = 'weapon-store__card-stats';
+    const effect = stats.effect;
+    let effectLabel = 'Single target';
+    if (effect?.kind === 'multi')    effectLabel = `Hits ${(effect as { targetCount: number }).targetCount} targets`;
+    if (effect?.kind === 'aoe')      effectLabel = `AoE ${(effect as { aoeRadius: number }).aoeRadius}px`;
+    if (effect?.kind === 'piercing') effectLabel = `${Math.round((effect as { defPierceRatio: number }).defPierceRatio * 100)}% DEF pierce`;
+    statsRow.innerHTML =
+      `<span>+${stats.damage} ATK</span>` +
+      `<span>+${stats.defBonus} DEF</span>` +
+      `<span>${stats.cooldownMs}ms CD</span>` +
+      `<span>${stats.range >= 9999 ? '∞' : stats.range}px RNG</span>` +
+      `<span>${effectLabel}</span>`;
+    card.appendChild(statsRow);
+
+    // Equip/unequip buttons
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '8px';
+    btnRow.style.flexWrap = 'wrap';
+    const maxSlots = getMaxEquippedWeapons(rpgState);
+    const canEquipMore = rpgState.equippedWeaponIds.size < maxSlots;
+    if (!isEquipped) {
+      const equipBtn = document.createElement('button');
+      equipBtn.className = 'weapon-store__btn';
+      equipBtn.textContent = canEquipMore ? 'Equip' : `Full (${maxSlots}/${maxSlots})`;
+      equipBtn.disabled = !canEquipMore;
+      equipBtn.addEventListener('click', () => showSlotPicker(craftedWeapon.id, craftedWeapon.name, rpgState));
+      btnRow.appendChild(equipBtn);
+    } else {
+      const unequipBtn = document.createElement('button');
+      unequipBtn.className = 'weapon-store__btn weapon-store__btn--equipped';
+      unequipBtn.textContent = 'Unequip';
+      unequipBtn.addEventListener('click', () => dispatch({ kind: 'unequip_weapon', weaponId: craftedWeapon.id }));
+      btnRow.appendChild(unequipBtn);
+    }
+    card.appendChild(btnRow);
+    return card;
+  }
+
+  // ── Forge crafting panel ───────────────────────────────────────
+  function buildForgeCraftingPanel(rpgState: RpgSimState, isDevMode: boolean): HTMLElement {
+    const panel = document.createElement('div');
+    panel.style.cssText =
+      'background:rgba(20,10,30,0.85);border:1px solid rgba(200,160,80,0.4);border-radius:6px;' +
+      'padding:12px;margin-bottom:12px;';
+
+    const heading = document.createElement('div');
+    heading.style.cssText = 'color:#d4a040;font-weight:700;font-size:0.9em;letter-spacing:0.05em;margin-bottom:8px;';
+    const capacity = getForgeCapacity(1); // forgeCraftLevel placeholder — state not yet exposed here; uses level 1 default
+    heading.textContent = `Forge Crafting  (Capacity: ${capacity} mote types)`;
+    panel.appendChild(heading);
+
+    // Refined crystal inventory
+    const inventoryEl = document.createElement('div');
+    inventoryEl.style.cssText = 'font-size:0.8em;margin-bottom:10px;color:#bbb;';
+    if (rpgState.refinedCrystalsByTierId.size === 0) {
+      inventoryEl.textContent = 'No refined crystals yet. Trigger forge crunches to produce them.';
+    } else {
+      const rows: string[] = [];
+      for (const [tierId, count] of rpgState.refinedCrystalsByTierId) {
+        if (count <= 0) continue;
+        const name = TIER_BY_ID.get(tierId as TierId)?.displayName ?? tierId;
+        rows.push(`${name}: ${count}`);
+      }
+      inventoryEl.textContent = rows.length > 0
+        ? 'Refined crystals: ' + rows.join(' · ')
+        : 'No refined crystals yet. Trigger forge crunches to produce them.';
+    }
+    panel.appendChild(inventoryEl);
+
+    // Ingredient inputs
+    const inputsHeading = document.createElement('div');
+    inputsHeading.style.cssText = 'color:#ccc;font-size:0.8em;margin-bottom:6px;';
+    inputsHeading.textContent = 'Select ingredients:';
+    panel.appendChild(inputsHeading);
+
+    const ingredientMap = new Map<TierId, HTMLInputElement>();
+    const previewEl = document.createElement('div');
+    previewEl.style.cssText = 'font-size:0.78em;color:#aaa;margin:8px 0;min-height:1.4em;';
+
+    function refreshPreview(): void {
+      const ingredients: Array<{ tierId: TierId; refinedCount: number }> = [];
+      for (const [tierId, input] of ingredientMap) {
+        const n = Math.max(0, parseInt(input.value, 10) || 0);
+        if (n > 0) ingredients.push({ tierId, refinedCount: n });
+      }
+      if (ingredients.length === 0) {
+        previewEl.textContent = '';
+        return;
+      }
+      const comp = computeCraftedWeaponComposition(ingredients);
+      previewEl.textContent = 'Preview: ' + comp
+        .map(e => `${TIER_BY_ID.get(e.tierId as TierId)?.displayName ?? e.tierId} ${Math.round(e.share * 100)}%`)
+        .join(' · ');
+    }
+
+    const inputGrid = document.createElement('div');
+    inputGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:8px;';
+
+    for (const [tierId, available] of rpgState.refinedCrystalsByTierId) {
+      if (available <= 0 && !isDevMode) continue;
+      const name = TIER_BY_ID.get(tierId as TierId)?.displayName ?? tierId;
+      const color = TIER_BY_ID.get(tierId as TierId)?.color ?? '#fff';
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+      const label = document.createElement('label');
+      label.style.cssText = `color:${color};font-size:0.78em;min-width:64px;`;
+      label.textContent = `${name} (${available})`;
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.max = isDevMode ? '9999' : String(available);
+      input.value = '0';
+      input.style.cssText =
+        'width:54px;background:rgba(0,0,0,0.5);border:1px solid rgba(200,200,200,0.3);' +
+        'color:#fff;padding:2px 4px;border-radius:3px;font-size:0.78em;';
+      input.addEventListener('input', refreshPreview);
+      ingredientMap.set(tierId as TierId, input);
+
+      row.appendChild(label);
+      row.appendChild(input);
+      inputGrid.appendChild(row);
+    }
+    panel.appendChild(inputGrid);
+    panel.appendChild(previewEl);
+
+    // Craft button
+    const craftBtn = document.createElement('button');
+    craftBtn.className = 'weapon-store__btn';
+    craftBtn.style.cssText = 'background:rgba(200,160,0,0.15);border-color:rgba(200,160,0,0.5);color:#d4a040;';
+    craftBtn.textContent = 'Craft Weapon';
+    craftBtn.addEventListener('click', () => {
+      const ingredients: Array<{ tierId: string; refinedCount: number }> = [];
+      for (const [tierId, input] of ingredientMap) {
+        const n = Math.max(0, parseInt(input.value, 10) || 0);
+        if (n > 0) ingredients.push({ tierId, refinedCount: n });
+      }
+      if (ingredients.length > 0) {
+        dispatch({ kind: 'craft_weapon', ingredients });
+      }
+    });
+    panel.appendChild(craftBtn);
+
+    return panel;
+  }
+
   function update(
     rpgState: RpgSimState,
     resources: ResourceState,
@@ -312,10 +502,20 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
 
     element.appendChild(makePageBreak('small'));
 
+    // Forge crafting section (only if forge is relevant or crystals exist)
+    const hasCrystals = Array.from(rpgState.refinedCrystalsByTierId.values()).some(n => n > 0);
+    if (hasCrystals || isDevMode) {
+      element.appendChild(buildForgeCraftingPanel(rpgState, isDevMode));
+    }
+
     const list = document.createElement('div');
     list.className = 'weapon-store__list';
     // Sand blade card appears at the very top — it is the default melee with an Enable/Disable toggle.
     list.appendChild(buildSandBladeCard(rpgState));
+    // Crafted weapons appear after sand blade, before purchasable weapons
+    for (const craftedWeapon of rpgState.craftedWeapons) {
+      list.appendChild(buildCraftedWeaponCard(craftedWeapon, rpgState));
+    }
     for (const weapon of WEAPON_DEFINITIONS) {
       list.appendChild(buildWeaponCard(weapon, rpgState, resources, numberFormat, isDevMode));
     }

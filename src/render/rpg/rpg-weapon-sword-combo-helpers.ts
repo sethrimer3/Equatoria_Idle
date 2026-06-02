@@ -17,7 +17,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
-import { WEAPON_BY_ID } from '../../data/rpg/weapon-definitions';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   SWORD_COLOR,
   SWORD_SHARD_COUNT,
@@ -100,7 +100,7 @@ export const SPIN_TICK_THRESHOLDS = [0, 0.5, 1.0] as const;
 // ── Build initial combo state ─────────────────────────────────────────────
 
 export function buildSwordCombo(weaponId: string, ctx: SwordWeaponCtx): SwordComboState {
-  const weaponDef  = WEAPON_BY_ID.get(weaponId);
+  const weaponDef  = resolveWeaponDefinition(weaponId);
   const tier       = ctx.rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
   const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
   const initAngle  = ctx.playerAimAngle + Math.PI / 2;

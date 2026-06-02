@@ -13,6 +13,8 @@ import { recomputeBonuses } from '../sim/achievements';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 import { sizeCountsToTotal } from '../sim/resources';
 import { deserializeInteractionMatrix } from '../data/particles/interaction-matrix';
+import { registerCraftedWeapons } from '../data/rpg/crafted-weapon-helpers';
+import type { CraftedWeaponData } from '../data/rpg/crafted-weapon-types';
 import type { SaveData } from './save-types';
 
 // ─── Deserialize ────────────────────────────────────────────────
@@ -128,6 +130,13 @@ export function deserializeGameState(data: SaveData): GameState {
         state.forge.sacrificeProgressByTierId.set(tierId as TierId, progress);
       }
     }
+    // v30+: refined crystal progress and forge craft level
+    if (data.forge.refinedProgressByTierId) {
+      for (const [tierId, progress] of Object.entries(data.forge.refinedProgressByTierId)) {
+        state.forge.refinedProgressByTierId.set(tierId as TierId, progress);
+      }
+    }
+    state.forge.forgeCraftLevel = data.forge.forgeCraftLevel ?? 1;
   }
 
   // RPG state (v10+; older saves default to no progress)
@@ -267,6 +276,48 @@ export function deserializeGameState(data: SaveData): GameState {
     state.rpg.playerXp = data.rpg.playerXp ?? 0;
     state.rpg.playerXpToNextLevel = data.rpg.playerXpToNextLevel
       ?? Math.floor(25 * Math.pow(Math.max(1, state.rpg.playerLevel), 1.35));
+    // v30+: crafted weapons — reconstruct from saved wire data and register into resolver
+    if (data.rpg.craftedWeapons && data.rpg.craftedWeapons.length > 0) {
+      const restored: CraftedWeaponData[] = data.rpg.craftedWeapons.map(cw => ({
+        id: cw.id,
+        name: cw.name,
+        description: cw.description,
+        dominantTierId: cw.dominantTierId as TierId,
+        secondaryTierId: cw.secondaryTierId as TierId,
+        forgeCraftLevel: cw.forgeCraftLevel,
+        ingredients: cw.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount })),
+        composition: cw.composition.map(c => ({ tierId: c.tierId as TierId, weightedValue: c.weightedValue, share: c.share })),
+        definition: {
+          id: cw.definition.id,
+          name: cw.definition.name,
+          description: cw.definition.description,
+          costTierId: cw.definition.costTierId as TierId,
+          cost: cw.definition.cost,
+          stats: {
+            damage: cw.definition.stats.damage,
+            cooldownMs: cw.definition.stats.cooldownMs,
+            range: cw.definition.stats.range,
+            defBonus: cw.definition.stats.defBonus,
+            effect: cw.definition.stats.effect as import('../data/rpg/weapon-definitions').WeaponEffect | undefined,
+          },
+        },
+      }));
+      state.rpg.craftedWeapons = restored;
+      registerCraftedWeapons(restored);
+      // Ensure crafted weapon IDs are in purchasedWeaponIds and have a tier
+      for (const cw of restored) {
+        state.rpg.purchasedWeaponIds.add(cw.id);
+        if (!state.rpg.weaponTiersByWeaponId.has(cw.id)) {
+          state.rpg.weaponTiersByWeaponId.set(cw.id, 1);
+        }
+      }
+    }
+    // v30+: refined crystal inventory
+    if (data.rpg.refinedCrystalsByTierId) {
+      for (const [tierId, count] of Object.entries(data.rpg.refinedCrystalsByTierId)) {
+        state.rpg.refinedCrystalsByTierId.set(tierId as TierId, count);
+      }
+    }
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)
