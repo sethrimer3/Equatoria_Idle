@@ -10,6 +10,7 @@
  */
 
 import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
+import type { CraftedWeaponData } from '../../data/rpg/crafted-weapon-types';
 export type { RpgZoneId };
 
 // ─── Constants ────────────────────────────────────────────────────
@@ -63,8 +64,12 @@ export interface RpgSimState {
   currentWaveByZone: Record<RpgZoneId, number>;
   /** Wave to restart at on death (a multiple of 10 that has been unlocked). 0 = start from wave 1. */
   respawnWave: number;
-  /** Weapon IDs the player has purchased. */
+  /** Weapon IDs the player has purchased or crafted. */
   purchasedWeaponIds: Set<string>;
+  /** Crafted forged weapons created from refined crystals. */
+  craftedWeapons: CraftedWeaponData[];
+  /** Refined crystal inventory available for forging crafted weapons. */
+  refinedCrystalsByTierId: Map<string, number>;
   /**
    * Set of currently equipped weapon IDs.
    * Maximum size = getMaxEquippedWeapons(state).
@@ -247,6 +252,8 @@ export function createRpgSimState(): RpgSimState {
     },
     respawnWave: 0,
     purchasedWeaponIds: new Set(),
+    craftedWeapons: [],
+    refinedCrystalsByTierId: new Map(),
     equippedWeaponIds: new Set(),
     equippedWeaponSlots: new Map(),
     xp: 0,

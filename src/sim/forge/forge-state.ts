@@ -1,3 +1,5 @@
+export const REFINED_CRYSTAL_THRESHOLD = 500;
+
 export interface ForgeCrunchState {
   // Legacy visual fields (kept for backward compat with renderer/particle system)
   validParticlesTimerMs: number | null;
@@ -10,6 +12,10 @@ export interface ForgeCrunchState {
   lastHeatTapMs: number;
   /** Accumulated sacrifice mass per tier (small-mote equivalents). Persisted. */
   sacrificeProgressByTierId: Map<string, number>;
+  /** Accumulated refined-crystal progress per tier (small-mote equivalents). Persisted. */
+  refinedProgressByTierId: Map<string, number>;
+  /** Crafting capacity tier for forged weapons. */
+  forgeCraftLevel: number;
   /** Whether the forge is currently in the 9-second warm-up phase. */
   isWarmingUp: boolean;
   /** Wall-clock timestamp (ms) when the warm-up sequence started. Null when idle. */
@@ -26,6 +32,8 @@ export function createForgeCrunchState(): ForgeCrunchState {
     heatTapCount: 0,
     lastHeatTapMs: 0,
     sacrificeProgressByTierId: new Map(),
+    refinedProgressByTierId: new Map(),
+    forgeCraftLevel: 1,
     isWarmingUp: false,
     warmupStartMs: null,
   };
