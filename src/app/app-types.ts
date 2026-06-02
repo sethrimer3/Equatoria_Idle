@@ -35,6 +35,11 @@ export interface AppState {
    * 0 means no flash has occurred yet.
    */
   forgeSacrificeFlashMs: number;
+  /**
+   * Refined crystals gained during the most recent forge crunch, by tier ID.
+   * Displayed as an overlay alongside the sacrifice flash. Cleared on the next crunch.
+   */
+  lastRefinedCrystalsGained: Map<string, number>;
 }
 
 /** Configuration object grouping all UI panels for tab switching. */

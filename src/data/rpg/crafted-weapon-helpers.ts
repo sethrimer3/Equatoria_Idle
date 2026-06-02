@@ -241,11 +241,64 @@ function formatEffectLabel(effect: WeaponEffect): string {
 }
 
 export function formatCraftedWeaponModifier(craftedWeapon: CraftedWeaponData): string {
-  const dominant = TIER_BY_ID.get(craftedWeapon.dominantTierId)?.displayName ?? craftedWeapon.dominantTierId;
-  const secondary = TIER_BY_ID.get(craftedWeapon.secondaryTierId)?.displayName ?? craftedWeapon.secondaryTierId;
-  const dominantShare = Math.round((craftedWeapon.composition[0]?.share ?? 1) * 100);
-  const secondaryShare = Math.round((craftedWeapon.composition[1]?.share ?? 0) * 100);
-  return `${dominant} ${dominantShare}% · ${secondary} ${secondaryShare}%`;
+  return craftedWeapon.composition
+    .map(e => {
+      const name = TIER_BY_ID.get(e.tierId)?.displayName ?? e.tierId;
+      return `${name} ${Math.round(e.share * 100)}%`;
+    })
+    .join(' · ');
+}
+
+/** Return per-tier modifier description lines for display on the weapon card. */
+export function getCraftedModifierLines(craftedWeapon: CraftedWeaponData): string[] {
+  const lines: string[] = [];
+  for (const entry of craftedWeapon.composition) {
+    const pct = Math.round(entry.share * 100);
+    if (pct <= 0) continue;
+    const power = Math.round(entry.share * 1000);
+    switch (entry.tierId) {
+      case 'sand':
+        lines.push(`Sand ${pct}%: +${power}% fire rate, ÷${(1 + entry.share).toFixed(1)} dmg/hit`);
+        break;
+      case 'quartz':
+        lines.push(`Quartz ${pct}%: +${Math.round(entry.share * 3)} extra targets`);
+        break;
+      case 'ruby':
+        lines.push(`Ruby ${pct}%: +${pct}% DEF pierce`);
+        break;
+      case 'citrine':
+        lines.push(`Citrine ${pct}%: +${Math.round(entry.share * 40)}px AoE radius`);
+        break;
+      case 'emerald':
+        lines.push(`Emerald ${pct}%: +${Math.round(entry.share * 120)}px homing range`);
+        break;
+      case 'sapphire':
+        lines.push(`Sapphire ${pct}%: +${Math.min(pct, 60)}% crit chance`);
+        break;
+      case 'iolite':
+        lines.push(`Iolite ${pct}%: +${Math.round(entry.share * 18)} poison dmg/tick`);
+        break;
+      case 'amethyst':
+        lines.push(`Amethyst ${pct}%: companion ships (placeholder)`);
+        break;
+      case 'diamond':
+        lines.push(`Diamond ${pct}%: ${pct}% armor ignored`);
+        break;
+      case 'nullstone':
+        lines.push(`Nullstone ${pct}%: pull radius ${Math.round(entry.share * 80)}px (capped)`);
+        break;
+      case 'fracteryl':
+        lines.push(`Fracteryl ${pct}%: ${Math.min(Math.round(entry.share * 10), 10)} recursive strikes`);
+        break;
+      case 'eigenstein':
+        lines.push(`Eigenstein ${pct}%: (reserved — no final behavior)`);
+        break;
+      case 'sunstone':
+        lines.push(`Sunstone ${pct}%: +${Math.round(entry.share * 30)}px mine radius`);
+        break;
+    }
+  }
+  return lines;
 }
 
 function getCraftedWeaponName(

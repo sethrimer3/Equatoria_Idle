@@ -1,6 +1,7 @@
 import type { TierId } from '../data/tiers';
 import { TIERS } from '../data/tiers';
 import { createCraftedWeaponDefinition, getForgeCapacity, registerCraftedWeapons } from '../data/rpg/crafted-weapon-helpers';
+import { getRpgUpgradeLevel } from './rpg';
 import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
 import type { SizeIndex } from '../data/particles/size-tiers';
 import { MERGE_THRESHOLD } from '../data/particles/size-tiers';
@@ -277,8 +278,10 @@ export function processLoomCapture(state: GameState, inputTierId: TierId, mass: 
  * Apply sacrifice totals from a completed forge crunch.
  * Each 10,000 small-mote equivalents of a given tier produces one equation upgrade for that tier.
  */
-export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, number>): void {
+/** Returns a map of { tierId → refined crystals gained } for this crunch (may be empty). */
+export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, number>): Map<string, number> {
   const THRESHOLD = 2_000; // 2000 ≈ 20 medium-particle captures — playtestable baseline
+  const crystalsGained = new Map<string, number>();
 
   // Telemetry: total mass to detect zero-particle crunches
   let totalMass = 0;
@@ -303,9 +306,11 @@ export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, nu
       const currentCrystals = state.rpg.refinedCrystalsByTierId.get(tierId) ?? 0;
       state.rpg.refinedCrystalsByTierId.set(tierId, currentCrystals + refinedCrystalsGained);
       refinedTotal -= refinedCrystalsGained * REFINED_CRYSTAL_THRESHOLD;
+      crystalsGained.set(tierId, refinedCrystalsGained);
     }
     state.forge.refinedProgressByTierId.set(tierId, refinedTotal);
   }
+  return crystalsGained;
 }
 
 export function craftWeapon(
@@ -313,6 +318,8 @@ export function craftWeapon(
   ingredients: CraftedWeaponIngredient[],
   bypassCost = false,
 ): boolean {
+  // Derive forge craft level from the RPG upgrade so it's always in sync.
+  const forgeCraftLevel = getRpgUpgradeLevel(state.rpg, 'forge_craft_level') + 1;
   const normalizedIngredients = ingredients
     .map((ingredient) => ({
       tierId: ingredient.tierId,
@@ -320,7 +327,7 @@ export function craftWeapon(
     }))
     .filter((ingredient) => ingredient.refinedCount > 0);
   if (normalizedIngredients.length === 0) return false;
-  if (normalizedIngredients.length > getForgeCapacity(state.forge.forgeCraftLevel)) return false;
+  if (normalizedIngredients.length > getForgeCapacity(forgeCraftLevel)) return false;
 
   for (const ingredient of normalizedIngredients) {
     const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
@@ -341,7 +348,7 @@ export function craftWeapon(
     weaponId = `crafted_weapon_${nextIndex}`;
   }
 
-  const craftedWeapon = createCraftedWeaponDefinition(weaponId, normalizedIngredients, state.forge.forgeCraftLevel);
+  const craftedWeapon = createCraftedWeaponDefinition(weaponId, normalizedIngredients, forgeCraftLevel);
   state.rpg.craftedWeapons.push(craftedWeapon);
   state.rpg.purchasedWeaponIds.add(craftedWeapon.id);
   state.rpg.weaponTiersByWeaponId.set(craftedWeapon.id, 1);

@@ -184,6 +184,7 @@ export function drawForgeSacrificeFlash(
   forgeY: number,
   nowMs: number,
   forgeSacrificeFlashMs: number,
+  lastRefinedCrystalsGained?: Map<string, number>,
 ): void {
   if (forgeSacrificeFlashMs === 0) return;
   const elapsed = nowMs - forgeSacrificeFlashMs;
@@ -223,6 +224,24 @@ export function drawForgeSacrificeFlash(
     ctx.beginPath();
     ctx.arc(forgeX, forgeY, flashRadius, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // Crystal gain text — rises and fades over the second half of the flash
+  if (lastRefinedCrystalsGained && lastRefinedCrystalsGained.size > 0 && t < 0.85) {
+    const textAlpha = t < 0.2 ? t / 0.2 : (1 - (t - 0.2) / 0.65);
+    const riseY = forgeY - 28 - t * 44;
+    ctx.globalAlpha = Math.max(0, textAlpha);
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    let lineOffset = 0;
+    for (const [tierId, count] of lastRefinedCrystalsGained) {
+      const color = TIER_BY_ID.get(tierId as import('../../data/tiers').TierId)?.color ?? '#fff172';
+      ctx.fillStyle = color;
+      ctx.fillText(`+${count} ${tierId} crystal${count !== 1 ? 's' : ''}`, forgeX, riseY - lineOffset);
+      lineOffset += 14;
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
   }
 
   ctx.restore();

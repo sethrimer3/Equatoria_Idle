@@ -99,10 +99,11 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     }
   };
   ctx.particles.onEquationForgeCrunchCompleted = (sacrifices) => {
-    applyForgeSacrifice(ctx.appState.game, sacrifices);
+    const crystalsGained = applyForgeSacrifice(ctx.appState.game, sacrifices);
     ctx.audioSystem?.onForgeCrunchCompleted();
     // Record the timestamp so the sacrifice flash visual plays this frame.
     ctx.appState.forgeSacrificeFlashMs = performance.now();
+    ctx.appState.lastRefinedCrystalsGained = crystalsGained;
   };
 
   function gameLoop(nowMs: number): void {
@@ -321,7 +322,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       drawForge(ctx.cc, equationCenterX, equationCenterY, ctx.particles.forgeRotation, ctx.appState.forge, nowMs, ctx.appState.forge.heatTapCount);
       drawForgeCrunch(ctx.cc, equationCenterX, equationCenterY, ctx.appState.forge);
       // Post-crunch sacrifice shockwave flash
-      drawForgeSacrificeFlash(ctx.cc, equationCenterX, equationCenterY, nowMs, ctx.appState.forgeSacrificeFlashMs);
+      drawForgeSacrificeFlash(ctx.cc, equationCenterX, equationCenterY, nowMs, ctx.appState.forgeSacrificeFlashMs, ctx.appState.lastRefinedCrystalsGained);
     }
 
     const terms = buildEquationView(ctx.appState.game.equation);

@@ -1,6 +1,61 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#201**
+Current build: **#202**
+
+---
+
+## Build #202 — Crafted weapons: forge capacity upgrade, crystal feedback, visuals, modifiers
+
+### Completed in this build
+
+* **Forge craft level upgrade**: Added `forge_craft_level` RPG upgrade (max level 4,
+  costs emerald motes, 8k per level). `craftWeapon()` now derives `forgeCraftLevel`
+  from `getRpgUpgradeLevel(state.rpg, 'forge_craft_level') + 1` rather than the
+  `forge.forgeCraftLevel` field (which is retained in save for backward compat but
+  is no longer the authority). Weapons tab reads the same derived value so the
+  displayed capacity is always accurate. Capacity at upgrade level 0–4 → 2–6 slots.
+
+* **Refined crystal feedback**: `applyForgeSacrifice` now returns a
+  `Map<string, number>` of crystals gained per tier. The app game loop captures
+  this in `AppState.lastRefinedCrystalsGained` and passes it to
+  `drawForgeSacrificeFlash`, which renders tier-colored floating text
+  ("+N <tier> crystal(s)") above the forge during the sacrifice flash animation.
+
+* **Crafted weapon visual icon**: Each crafted weapon card shows a diamond SVG
+  silhouette filled with a linear gradient whose color stops are derived from the
+  weapon's composition shares (dominant color → secondary → tertiary, proportional
+  widths). Glows with the dominant tier color.
+
+* **Percent-based modifier display** (`getCraftedModifierLines`): Each tier in the
+  composition now contributes a human-readable modifier line shown on the weapon
+  card. Formula: `effectPower = share × 1000`. Covers all 12 tiers:
+  Sand (fire rate/damage), Quartz (targets), Ruby (pierce), Citrine (AoE),
+  Emerald (homing range), Sapphire (crit, capped 60%), Iolite (poison),
+  Amethyst (placeholder), Diamond (armor ignore), Nullstone (pull, capped),
+  Fracteryl (recursive strikes, capped 10), Eigenstein (reserved).
+
+### Remaining deferred work
+
+* **`forge.forgeCraftLevel` in save**: The field is still written/read in v30 saves
+  but is no longer the authority. A future cleanup can remove it from
+  `ForgeCrunchState` and the save format (would need a v31 migration note).
+
+* **Modifier effects on combat**: The modifier lines are display-only. The underlying
+  `deriveCraftedWeaponStats` stat formula does not yet apply per-tier modifiers
+  (fire rate multiplier, pierce bonus, crit, poison damage, etc.) as live combat
+  effects. Full modifier integration requires changes to the RPG weapon tick and
+  damage calculation systems.
+
+* **Amethyst extra ships**: Still a placeholder — modifier line says "companion
+  ships (placeholder)". Requires a new weapon effect kind and render system.
+
+* **Eigenstein**: Reserved. Modifier line shown as "(reserved — no final behavior)".
+
+* **Balance**: All per-tier modifier coefficients are first-draft guesses.
+  `REFINED_CRYSTAL_THRESHOLD = 500` and upgrade costs are placeholder values.
+
+* **Tests**: No automated tests for the new upgrade path, modifier math, or
+  visual icon output.
 
 ---
 

@@ -60,6 +60,16 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
     costPerLevel: 5_000,
     maxLevel: 4,
   },
+  {
+    id: 'forge_craft_level',
+    name: 'Forge Capacity',
+    description:
+      'Increases the number of mote types that can be combined in a single ' +
+      'forge craft. Level 1 allows 3 types, up to 6 at max level.',
+    costTierId: 'emerald',
+    costPerLevel: 8_000,
+    maxLevel: 4,
+  },
 ];
 
 /** Lookup map for O(1) access by upgrade id. */
