@@ -1,6 +1,53 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#205**
+Current build: **#206**
+
+---
+
+## Build #206 — Crafted weapons: base level system
+
+### Completed in this build
+
+* **`computeTotalWeightedMoteValue(ingredients)`**: Sums `refinedCount × getTierForgeWeight(tierId)`
+  across all ingredients. Tier weights follow composition math (100^unlockOrder):
+  Sand=1, Quartz=100, Ruby=10 000, …
+
+* **`computeCraftedWeaponBaseLevel(totalWeightedMoteValue)`**:
+  `Math.max(1, floor(log10(totalWeightedMoteValue + 1)))`.
+  log10 scaling means each order-of-magnitude jump in resources is one level.
+
+* **`computeCraftedWeaponBaseStatMultiplier(totalWeightedMoteValue)`**:
+  `1 + log10(totalWeightedMoteValue + 1) × 0.12`.
+  Examples: 200 → ×1.28, 10 000 → ×1.48, 1 000 000 → ×1.72.
+
+* **Stat application** (in `deriveCraftedWeaponStats`, after sand divisor):
+  - `damage  ×= baseStatMult` (floor 6)
+  - `cooldownMs /= 1 + (baseStatMult - 1) × 0.25` (floor 220 ms)
+  - `range    ×= 1 + (baseStatMult - 1) × 0.35` (infinite range weapons unchanged)
+  - `defBonus ×= baseStatMult` (floor 0)
+
+* **`critDamageMultiplier`** added to `CraftedWeaponModifiers`:
+  `Math.min(3.0, 2.0 + log10(totalWeightedMoteValue + 1) × 0.05)`.
+  Crit damage now uses this multiplier instead of the hard-coded ×2.
+  Wired into `performWeaponAttack` in `rpg-player-attack.ts`.
+
+* **`CraftedWeaponData` new fields**: `totalWeightedMoteValue`, `baseLevel`,
+  `baseStatMultiplier`. Populated in `createCraftedWeaponDefinition` and
+  recomputed on deserialization from `ingredients` (no save format change).
+
+* **UI**: weapon cards show `Lv.X | ×Y.YY base | Z mote-wt` row.
+
+* **Tests**: 13 new tests covering weighted value math, base level monotonicity,
+  stat multiplier monotonicity, stat floors, and round-trip field presence
+  (218 total passing).
+
+### Balance notes (first pass — needs playtesting)
+
+* `baseStatMult` coefficients (0.12 per log10 unit) and stat-application fractions
+  (damage=full, range=0.35, cooldown=0.25) are intentionally conservative.
+  Adjust after playtesting with typical recipe sizes.
+* A 100% Amethyst recipe with 1 refined crystal gives mote-wt=100^9≈1e18 → mult≈×3.16;
+  clamp `baseStatMult` if needed to avoid extreme values from deep-tier single crystals.
 
 ---
 

@@ -20,6 +20,11 @@ export interface CraftedWeaponCompositionEntry {
 export interface CraftedWeaponModifiers {
   /** Sapphire: probability of dealing 2× damage per hit (0–60, capped). */
   critChancePct: number;
+  /**
+   * Crit damage multiplier (base 2.0, scales slightly with totalWeightedMoteValue, capped at 3.0).
+   * The crit system multiplies rawDamage by this value on a critical hit.
+   */
+  critDamageMultiplier: number;
   /** Diamond: fraction of enemy DEF ignored (0–1). Applied as defPierceRatio for non-piercing effects. */
   armorIgnorePct: number;
   /** Iolite: extra poison damage per tick added on top of the weapon's base effect. */
@@ -45,4 +50,10 @@ export interface CraftedWeaponData {
   forgeCraftLevel: number;
   definition: WeaponDefinition;
   modifiers: CraftedWeaponModifiers;
+  /** Sum of (refinedCount × tierForgeWeight) across all ingredients. Determines base level. */
+  totalWeightedMoteValue: number;
+  /** log10-derived level: Math.max(1, floor(log10(totalWeightedMoteValue + 1))). */
+  baseLevel: number;
+  /** Stat scaling multiplier derived from totalWeightedMoteValue via log10 scaling. */
+  baseStatMultiplier: number;
 }

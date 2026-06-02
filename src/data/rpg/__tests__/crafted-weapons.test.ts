@@ -16,6 +16,9 @@ import {
   deriveCraftedWeaponStats,
   computeCraftedWeaponModifiers,
   createCraftedWeaponDefinition,
+  computeTotalWeightedMoteValue,
+  computeCraftedWeaponBaseLevel,
+  computeCraftedWeaponBaseStatMultiplier,
 } from '../crafted-weapon-helpers';
 import type { CraftedWeaponIngredient } from '../crafted-weapon-types';
 
@@ -205,6 +208,102 @@ describe('computeCraftedWeaponModifiers — Amethyst ship count', () => {
   });
 });
 
+// ─── computeTotalWeightedMoteValue ───────────────────────────────
+
+describe('computeTotalWeightedMoteValue', () => {
+  it('100 sand + 1 quartz = 200 (sand weight=1, quartz weight=100)', () => {
+    const ingredients: CraftedWeaponIngredient[] = [
+      { tierId: 'sand', refinedCount: 100 },
+      { tierId: 'quartz', refinedCount: 1 },
+    ];
+    expect(computeTotalWeightedMoteValue(ingredients)).toBe(200);
+  });
+
+  it('higher tiers weight 100× each tier', () => {
+    // Sand=1, Quartz=100, Ruby=10000
+    const sand1 = computeTotalWeightedMoteValue([{ tierId: 'sand', refinedCount: 1 }]);
+    const quartz1 = computeTotalWeightedMoteValue([{ tierId: 'quartz', refinedCount: 1 }]);
+    const ruby1 = computeTotalWeightedMoteValue([{ tierId: 'ruby', refinedCount: 1 }]);
+    expect(quartz1 / sand1).toBe(100);
+    expect(ruby1 / quartz1).toBe(100);
+  });
+
+  it('zero ingredients = 0', () => {
+    expect(computeTotalWeightedMoteValue([])).toBe(0);
+  });
+});
+
+// ─── computeCraftedWeaponBaseLevel ───────────────────────────────
+
+describe('computeCraftedWeaponBaseLevel', () => {
+  it('returns 1 for 0 weighted value', () => {
+    expect(computeCraftedWeaponBaseLevel(0)).toBe(1);
+  });
+
+  it('returns 1 for value < 10', () => {
+    expect(computeCraftedWeaponBaseLevel(9)).toBe(1);
+  });
+
+  it('returns 2 for value = 100', () => {
+    expect(computeCraftedWeaponBaseLevel(100)).toBe(2);
+  });
+
+  it('increases with higher weighted value', () => {
+    const low = computeCraftedWeaponBaseLevel(100);
+    const mid = computeCraftedWeaponBaseLevel(10000);
+    const high = computeCraftedWeaponBaseLevel(1e6);
+    expect(mid).toBeGreaterThan(low);
+    expect(high).toBeGreaterThan(mid);
+  });
+});
+
+// ─── computeCraftedWeaponBaseStatMultiplier ──────────────────────
+
+describe('computeCraftedWeaponBaseStatMultiplier', () => {
+  it('returns exactly 1 when weighted value is 0', () => {
+    expect(computeCraftedWeaponBaseStatMultiplier(0)).toBeCloseTo(1, 5);
+  });
+
+  it('returns > 1 for any positive weighted value', () => {
+    expect(computeCraftedWeaponBaseStatMultiplier(200)).toBeGreaterThan(1);
+  });
+
+  it('increases monotonically with higher weighted value', () => {
+    const a = computeCraftedWeaponBaseStatMultiplier(200);
+    const b = computeCraftedWeaponBaseStatMultiplier(10000);
+    const c = computeCraftedWeaponBaseStatMultiplier(1e6);
+    expect(b).toBeGreaterThan(a);
+    expect(c).toBeGreaterThan(b);
+  });
+});
+
+// ─── Base stat scaling floors ─────────────────────────────────────
+
+describe('deriveCraftedWeaponStats — base level scaling floors', () => {
+  it('damage never drops below 6 regardless of recipe size', () => {
+    const tiny: CraftedWeaponIngredient[] = [{ tierId: 'sand', refinedCount: 1 }];
+    const { stats } = deriveCraftedWeaponStats(tiny, 1);
+    expect(stats.damage).toBeGreaterThanOrEqual(6);
+  });
+
+  it('cooldownMs never drops below 220ms regardless of recipe size', () => {
+    const huge: CraftedWeaponIngredient[] = [
+      { tierId: 'sand', refinedCount: 99999 },
+      { tierId: 'ruby', refinedCount: 1000 },
+    ];
+    const { stats } = deriveCraftedWeaponStats(huge, 5);
+    expect(stats.cooldownMs).toBeGreaterThanOrEqual(220);
+  });
+
+  it('stats are higher for a larger recipe than a minimal one', () => {
+    const small: CraftedWeaponIngredient[] = [{ tierId: 'ruby', refinedCount: 1 }];
+    const large: CraftedWeaponIngredient[] = [{ tierId: 'ruby', refinedCount: 100 }];
+    const { stats: sSmall } = deriveCraftedWeaponStats(small, 1);
+    const { stats: sLarge } = deriveCraftedWeaponStats(large, 1);
+    expect(sLarge.damage).toBeGreaterThan(sSmall.damage);
+  });
+});
+
 // ─── createCraftedWeaponDefinition round-trip ────────────────────
 
 describe('createCraftedWeaponDefinition', () => {
@@ -219,6 +318,11 @@ describe('createCraftedWeaponDefinition', () => {
     expect(cw.definition.id).toBe('crafted_weapon_test_1');
     expect(cw.modifiers).toBeDefined();
     expect(cw.composition.length).toBeGreaterThan(0);
+    // Base level fields
+    expect(cw.totalWeightedMoteValue).toBe(200); // 100 sand×1 + 1 quartz×100
+    expect(cw.baseLevel).toBeGreaterThanOrEqual(1);
+    expect(cw.baseStatMultiplier).toBeGreaterThanOrEqual(1);
+    expect(cw.modifiers.critDamageMultiplier).toBeGreaterThanOrEqual(2);
   });
 
   it('modifiers derived from composition are consistent', () => {

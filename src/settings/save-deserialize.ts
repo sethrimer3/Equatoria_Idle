@@ -13,7 +13,10 @@ import { recomputeBonuses } from '../sim/achievements';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
 import { sizeCountsToTotal } from '../sim/resources';
 import { deserializeInteractionMatrix } from '../data/particles/interaction-matrix';
-import { registerCraftedWeapons, computeCraftedWeaponModifiers } from '../data/rpg/crafted-weapon-helpers';
+import {
+  registerCraftedWeapons, computeCraftedWeaponModifiers,
+  computeTotalWeightedMoteValue, computeCraftedWeaponBaseLevel, computeCraftedWeaponBaseStatMultiplier,
+} from '../data/rpg/crafted-weapon-helpers';
 import type { CraftedWeaponData } from '../data/rpg/crafted-weapon-types';
 import type { SaveData } from './save-types';
 
@@ -278,34 +281,44 @@ export function deserializeGameState(data: SaveData): GameState {
       ?? Math.floor(25 * Math.pow(Math.max(1, state.rpg.playerLevel), 1.35));
     // v30+: crafted weapons — reconstruct from saved wire data and register into resolver
     if (data.rpg.craftedWeapons && data.rpg.craftedWeapons.length > 0) {
-      const restored: CraftedWeaponData[] = data.rpg.craftedWeapons.map(cw => ({
-        id: cw.id,
-        name: cw.name,
-        description: cw.description,
-        dominantTierId: cw.dominantTierId as TierId,
-        secondaryTierId: cw.secondaryTierId as TierId,
-        forgeCraftLevel: cw.forgeCraftLevel,
-        ingredients: cw.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount })),
-        composition: cw.composition.map(c => ({ tierId: c.tierId as TierId, weightedValue: c.weightedValue, share: c.share })),
-        definition: {
-          id: cw.definition.id,
-          name: cw.definition.name,
-          description: cw.definition.description,
-          costTierId: cw.definition.costTierId as TierId,
-          cost: cw.definition.cost,
-          stats: {
-            damage: cw.definition.stats.damage,
-            cooldownMs: cw.definition.stats.cooldownMs,
-            range: cw.definition.stats.range,
-            defBonus: cw.definition.stats.defBonus,
-            effect: cw.definition.stats.effect as import('../data/rpg/weapon-definitions').WeaponEffect | undefined,
+      const restored: CraftedWeaponData[] = data.rpg.craftedWeapons.map(cw => {
+        const ingredients = cw.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount }));
+        const composition = cw.composition.map(c => ({ tierId: c.tierId as TierId, weightedValue: c.weightedValue, share: c.share }));
+        const totalWeightedMoteValue = computeTotalWeightedMoteValue(ingredients);
+        const baseLevel = computeCraftedWeaponBaseLevel(totalWeightedMoteValue);
+        const baseStatMultiplier = computeCraftedWeaponBaseStatMultiplier(totalWeightedMoteValue);
+        return {
+          id: cw.id,
+          name: cw.name,
+          description: cw.description,
+          dominantTierId: cw.dominantTierId as TierId,
+          secondaryTierId: cw.secondaryTierId as TierId,
+          forgeCraftLevel: cw.forgeCraftLevel,
+          ingredients,
+          composition,
+          definition: {
+            id: cw.definition.id,
+            name: cw.definition.name,
+            description: cw.definition.description,
+            costTierId: cw.definition.costTierId as TierId,
+            cost: cw.definition.cost,
+            stats: {
+              damage: cw.definition.stats.damage,
+              cooldownMs: cw.definition.stats.cooldownMs,
+              range: cw.definition.stats.range,
+              defBonus: cw.definition.stats.defBonus,
+              effect: cw.definition.stats.effect as import('../data/rpg/weapon-definitions').WeaponEffect | undefined,
+            },
           },
-        },
-        // Modifiers are derived from composition — not stored in save, re-computed on load.
-        get modifiers() {
-          return computeCraftedWeaponModifiers(this.composition);
-        },
-      }));
+          // Derived fields — not stored in save, recomputed from ingredients on load.
+          totalWeightedMoteValue,
+          baseLevel,
+          baseStatMultiplier,
+          get modifiers() {
+            return computeCraftedWeaponModifiers(this.composition, this.totalWeightedMoteValue);
+          },
+        };
+      });
       state.rpg.craftedWeapons = restored;
       registerCraftedWeapons(restored);
       // Ensure crafted weapon IDs are in purchasedWeaponIds and have a tier

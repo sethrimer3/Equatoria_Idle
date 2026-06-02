@@ -391,6 +391,14 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     compRow.textContent = formatCraftedWeaponModifier(craftedWeapon);
     card.appendChild(compRow);
 
+    // Base level / weighted mote value row
+    const baseLvlRow = document.createElement('div');
+    baseLvlRow.style.cssText = 'font-size:0.72em;color:#aaa;margin:2px 0 2px;';
+    const multStr = craftedWeapon.baseStatMultiplier.toFixed(2);
+    baseLvlRow.textContent =
+      `Lv.${craftedWeapon.baseLevel} | ×${multStr} base | ${craftedWeapon.totalWeightedMoteValue.toLocaleString()} mote-wt`;
+    card.appendChild(baseLvlRow);
+
     // Per-tier modifier lines
     const modLines = getCraftedModifierLines(craftedWeapon);
     if (modLines.length > 0) {

@@ -36,8 +36,36 @@ const EFFECT_NOUNS: Record<string, string> = {
   poisonBolt: 'Sting',
 };
 
+/**
+ * Returns the sum of (refinedCount × tierForgeWeight) for all ingredients.
+ * Tier weights are 100^unlockOrder (Sand=1, Quartz=100, Ruby=10000, …).
+ * This value drives base level and stat multiplier via log10 scaling.
+ */
+export function computeTotalWeightedMoteValue(ingredients: CraftedWeaponIngredient[]): number {
+  return ingredients.reduce((sum, i) => sum + i.refinedCount * getTierForgeWeight(i.tierId), 0);
+}
+
+/**
+ * Converts a total weighted mote value into a base level (1-based integer).
+ * Uses log10 so that each order-of-magnitude jump in resources advances one level,
+ * preventing exponential tier values from producing unreasonably large numbers.
+ */
+export function computeCraftedWeaponBaseLevel(totalWeightedMoteValue: number): number {
+  return Math.max(1, Math.floor(Math.log10(totalWeightedMoteValue + 1)));
+}
+
+/**
+ * Returns a stat multiplier (≥ 1) derived from total weighted mote value.
+ * log10 scaling keeps high-tier recipes from exploding combat stats.
+ * Examples: 200 mote-value → ×1.28, 10000 → ×1.48, 1e6 → ×1.72.
+ */
+export function computeCraftedWeaponBaseStatMultiplier(totalWeightedMoteValue: number): number {
+  return 1 + Math.log10(totalWeightedMoteValue + 1) * 0.12;
+}
+
 export function computeCraftedWeaponModifiers(
   composition: CraftedWeaponCompositionEntry[],
+  totalWeightedMoteValue = 0,
 ): CraftedWeaponModifiers {
   let critChancePct = 0;
   let armorIgnorePct = 0;
@@ -46,6 +74,8 @@ export function computeCraftedWeaponModifiers(
   let fracterylStrikes = 0;
   let emeraldAcquisitionRangePx = 0;
   let amethystShipCount = 0;
+  // critDamageMultiplier: base 2× plus a small log-scaled bonus from total mote value, capped at 3.0.
+  const critDamageMultiplier = Math.min(3.0, 2.0 + Math.log10(totalWeightedMoteValue + 1) * 0.05);
   for (const entry of composition) {
     const s = entry.share;
     switch (entry.tierId) {
@@ -74,6 +104,7 @@ export function computeCraftedWeaponModifiers(
   }
   return {
     critChancePct,
+    critDamageMultiplier,
     armorIgnorePct,
     poisonBonusDmg,
     nullstonePullRadius,
@@ -285,6 +316,15 @@ export function deriveCraftedWeaponStats(
     damage = Math.max(6, Math.round(damage / divisor));
   }
 
+  // Base level scaling: log10 of total weighted mote value prevents exponential
+  // tier values from exploding combat stats while still rewarding bigger recipes.
+  const totalWeightedMoteValue = computeTotalWeightedMoteValue(ingredients);
+  const baseStatMult = computeCraftedWeaponBaseStatMultiplier(totalWeightedMoteValue);
+  damage    = Math.max(6,   Math.round(damage * baseStatMult));
+  cooldownMs = Math.max(220, Math.round(cooldownMs / (1 + (baseStatMult - 1) * 0.25)));
+  range      = range === INFINITE_RANGE ? INFINITE_RANGE : Math.round(range * (1 + (baseStatMult - 1) * 0.35));
+  defBonus   = Math.max(0,   Math.round(defBonus * baseStatMult));
+
   return {
     composition,
     dominantTierId,
@@ -401,7 +441,10 @@ export function createCraftedWeaponDefinition(
   const { composition, dominantTierId, secondaryTierId, stats } = deriveCraftedWeaponStats(normalized, forgeCraftLevel);
   const name = getCraftedWeaponName(dominantTierId, secondaryTierId, stats.effect ?? { kind: 'single' });
   const description = getCraftedWeaponDescription(normalized, dominantTierId, secondaryTierId, stats.effect ?? { kind: 'single' });
-  const modifiers = computeCraftedWeaponModifiers(composition);
+  const totalWeightedMoteValue = computeTotalWeightedMoteValue(normalized);
+  const baseLevel = computeCraftedWeaponBaseLevel(totalWeightedMoteValue);
+  const baseStatMultiplier = computeCraftedWeaponBaseStatMultiplier(totalWeightedMoteValue);
+  const modifiers = computeCraftedWeaponModifiers(composition, totalWeightedMoteValue);
   const definition: WeaponDefinition = {
     id,
     name,
@@ -421,6 +464,9 @@ export function createCraftedWeaponDefinition(
     forgeCraftLevel,
     definition,
     modifiers,
+    totalWeightedMoteValue,
+    baseLevel,
+    baseStatMultiplier,
   };
   craftedWeaponCache.set(id, definition);
   craftedModifierCache.set(id, modifiers);
@@ -430,8 +476,16 @@ export function createCraftedWeaponDefinition(
 export function registerCraftedWeapons(craftedWeapons: CraftedWeaponData[]): void {
   for (const craftedWeapon of craftedWeapons) {
     craftedWeaponCache.set(craftedWeapon.id, craftedWeapon.definition);
-    // Re-derive modifiers from stored composition on load (not persisted in save).
-    const modifiers = craftedWeapon.modifiers ?? computeCraftedWeaponModifiers(craftedWeapon.composition);
+    // Re-derive fields from stored ingredients/composition on load (not persisted in save).
+    const totalWeightedMoteValue = craftedWeapon.totalWeightedMoteValue
+      ?? computeTotalWeightedMoteValue(craftedWeapon.ingredients);
+    if (!('totalWeightedMoteValue' in craftedWeapon)) {
+      (craftedWeapon as CraftedWeaponData).totalWeightedMoteValue = totalWeightedMoteValue;
+      (craftedWeapon as CraftedWeaponData).baseLevel = computeCraftedWeaponBaseLevel(totalWeightedMoteValue);
+      (craftedWeapon as CraftedWeaponData).baseStatMultiplier = computeCraftedWeaponBaseStatMultiplier(totalWeightedMoteValue);
+    }
+    const modifiers = craftedWeapon.modifiers
+      ?? computeCraftedWeaponModifiers(craftedWeapon.composition, totalWeightedMoteValue);
     craftedModifierCache.set(craftedWeapon.id, modifiers);
   }
 }

@@ -261,11 +261,12 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const baseDmg   = (weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
     : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
-  // Sapphire crit: roll for 2× damage on each attack.
+  // Sapphire crit: roll for critChancePct% chance, deal critDamageMultiplier× damage.
   const isCrit    = craftedMods && craftedMods.critChancePct > 0
     ? Math.random() * 100 < craftedMods.critChancePct
     : false;
-  const rawDamage = isCrit ? baseDmg * 2 : baseDmg;
+  const critMult  = (craftedMods?.critDamageMultiplier ?? 2);
+  const rawDamage = isCrit ? baseDmg * critMult : baseDmg;
   const effect    = weaponDef?.stats.effect ?? { kind: 'single' as const };
   const rangeSq   = range * range;
 
