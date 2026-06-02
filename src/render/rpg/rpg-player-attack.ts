@@ -176,10 +176,15 @@ export interface RpgPlayerAttackCtx {
   // Weapon spawn callbacks (from weaponSystems handle)
   spawnSandProjectile: (targetX: number, targetY: number, damage: number) => void;
   spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number) => void;
-  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number) => void;
+  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number) => void;
   fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => void;
   layMine: (damage: number, tier: number) => void;
 
+  /**
+   * Pulls all enemies within `radius` px of (hitX, hitY) toward that point.
+   * Called after a crafted weapon hit if nullstonePullRadius > 0.
+   */
+  applyNullstonePull(hitX: number, hitY: number, radius: number): void;
   /** Returns the ATK multiplier for the given weapon (>= 1). Multiply base damage by this. */
   getWeaponAtkMultiplier(weaponId: string): number;
   /** Returns the RNG multiplier for the given weapon (>= 1). Multiply base range by this. */
@@ -283,7 +288,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
 
   if (effect.kind === 'emeraldMissile') {
     const target = findClosestTarget(rangeSq);
-    if (target) ctx.spawnEmeraldMissile(target.x, target.y, rawDamage, tier);
+    if (target) ctx.spawnEmeraldMissile(target.x, target.y, rawDamage, tier, craftedMods?.emeraldAcquisitionRangePx ?? 0);
     return;
   }
 
@@ -319,5 +324,5 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const weaponShotColor = weaponDef
     ? (TIER_BY_ID.get(weaponDef.costTierId as import('../../data/tiers').TierId)?.color ?? '#ffd764')
     : '#ffd764';
-  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, weaponShotColor);
+  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, weaponShotColor, craftedMods ?? undefined);
 }

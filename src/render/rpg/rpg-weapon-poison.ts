@@ -22,6 +22,7 @@ import {
   POISON_TOTAL_MULTIPLIER, POISON_BOLT_SPEED, POISON_BOLT_SIZE, POISON_BOLT_COLOR,
   POISON_BOLT_LIFE_MS, POISON_BOLT_TRAIL_CAP, POISON_TICK_INTERVAL_MS,
 } from './rpg-weapon-constants';
+import { resolveCraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-helpers';
 import {
   TARGET_FRAME_MS, FLUID_VEL_FRAME_TO_PX_S,
 } from './rpg-constants';
@@ -121,6 +122,7 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
     const dx = targetX - mote.x, dy = targetY - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 0.01) return;
+    const bonusDmgPerTick = resolveCraftedWeaponModifiers(weaponId)?.poisonBonusDmg ?? 0;
     poisonBolts.push({
       x: mote.x, y: mote.y,
       vx: (dx / dist) * POISON_BOLT_SPEED,
@@ -128,6 +130,7 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
       lifeMs: POISON_BOLT_LIFE_MS,
       scaledDamage: rawDamage,
       tier, weaponId,
+      bonusDmgPerTick,
       trailX: new Float64Array(POISON_BOLT_TRAIL_CAP),
       trailY: new Float64Array(POISON_BOLT_TRAIL_CAP),
       trailHead: 0, trailCount: 0,
@@ -140,12 +143,14 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
     rawDamage: number,
     tier: number,
     damageFn: (enemy: T, dmg: number, pierce: number) => number,
+    bonusDmgPerTick = 0,
   ): void {
     const armorIgnore   = Math.min(1, tier * POISON_ARMOR_IGNORE_PER_TIER);
     const clampedTier   = Math.min(tier, POISON_DURATION_BASE_TIER - 1);
     const durationMs    = (POISON_DURATION_BASE_TIER - clampedTier) * POISON_DURATION_MS_PER_TIER;
-    const poisonTotal   = rawDamage * tier * POISON_TOTAL_MULTIPLIER;
-    const damagePerTick = poisonTotal / (durationMs / POISON_TICK_INTERVAL_MS);
+    const tickCount     = durationMs / POISON_TICK_INTERVAL_MS;
+    const poisonTotal   = rawDamage * tier * POISON_TOTAL_MULTIPLIER + bonusDmgPerTick * tickCount;
+    const damagePerTick = poisonTotal / tickCount;
     poisonDebuffs.set(target, {
       remainingDamage: poisonTotal,
       damagePerTick,
@@ -203,7 +208,7 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
         if (dx * dx + dy * dy >= hitR * hitR) return false;
         const dmg = damageFn(e, p.scaledDamage, 0);
         spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, POISON_BOLT_COLOR);
-        attachPoisonDebuff(e, p.scaledDamage, p.tier, damageFn);
+        attachPoisonDebuff(e, p.scaledDamage, p.tier, damageFn, p.bonusDmgPerTick);
         return true;
       };
 
@@ -233,7 +238,7 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
           const dmg = ctx.damageBodyTarget(target, p.scaledDamage, 0, false);
           spawnHitVisualsAt(target.x, target.y, body.maxHp, dmg, POISON_BOLT_COLOR);
           if (body.hp > 0) {
-            attachPoisonDebuff(body, p.scaledDamage, p.tier, (_body, tick, pierce) => ctx.damageBodyTarget(target, tick, pierce, false));
+            attachPoisonDebuff(body, p.scaledDamage, p.tier, (_body, tick, pierce) => ctx.damageBodyTarget(target, tick, pierce, false), p.bonusDmgPerTick);
           }
           hit = true;
           break;
@@ -245,7 +250,7 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
         if (dx * dx + dy * dy < hitR * hitR) {
           const dmg = damageBossEnemy(p.scaledDamage, 0);
           if (dmg > 0) spawnHitVisualsAt(boss.x, boss.y, boss.maxHp, dmg, POISON_BOLT_COLOR);
-          attachPoisonDebuff(boss, p.scaledDamage, p.tier, (_b, d, r) => damageBossEnemy(d, r));
+          attachPoisonDebuff(boss, p.scaledDamage, p.tier, (_b, d, r) => damageBossEnemy(d, r), p.bonusDmgPerTick);
           hit = true;
         }
       }

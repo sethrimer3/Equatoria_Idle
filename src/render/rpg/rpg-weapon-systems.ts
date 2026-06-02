@@ -271,7 +271,7 @@ export interface RpgWeaponHandle {
   // Attack spawn functions called from performWeaponAttack in rpg-render.ts
   spawnSandProjectile: (targetX: number, targetY: number, damage: number) => void;
   spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number) => void;
-  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number) => void;
+  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number) => void;
   fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => void;
   layMine: (damage: number, tier: number) => void;
 
@@ -346,7 +346,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
 
     spawnSandProjectile: (targetX: number, targetY: number, damage: number) => sand.spawnSandProjectile(targetX, targetY, damage),
     spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number) => poison.spawnPoisonBolt(targetX, targetY, weaponId, tier, damage),
-    spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number) => emerald.spawnEmeraldMissile(targetX, targetY, damage, tier),
+    spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx = 0) => emerald.spawnEmeraldMissile(targetX, targetY, damage, tier, bonusDetectPx),
     fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => laserBeam.fireLaserBeam(targetX, targetY, weaponId),
     layMine: (damage: number, tier: number) => sunstone.layMine(damage, tier),
 

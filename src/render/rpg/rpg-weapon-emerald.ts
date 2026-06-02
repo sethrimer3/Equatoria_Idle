@@ -98,7 +98,7 @@ export interface EmeraldWeaponHandle {
   readonly emeraldPlayerMissiles: EmeraldPlayerMissile[];
   readonly emeraldSubMissiles: EmeraldSubMissile[];
   readonly emeraldSwirlParticles: EmeraldSwirlParticle[];
-  spawnEmeraldMissile: (targetX: number, targetY: number, scaledDamage: number, tier: number) => void;
+  spawnEmeraldMissile: (targetX: number, targetY: number, scaledDamage: number, tier: number, bonusDetectPx?: number) => void;
   updateEmeraldPlayerMissiles: (deltaMs: number) => void;
   updateEmeraldSubMissiles: (deltaMs: number) => void;
   updateEmeraldSwirlParticles: (deltaMs: number) => void;
@@ -129,7 +129,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
 
   const emeraldPlayerMissiles: EmeraldPlayerMissile[] = [];
 
-  function spawnEmeraldMissile(targetX: number, targetY: number, scaledDamage: number, tier: number): void {
+  function spawnEmeraldMissile(targetX: number, targetY: number, scaledDamage: number, tier: number, bonusDetectPx = 0): void {
     const dx = targetX - mote.x, dy = targetY - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 0.01) return;
@@ -142,6 +142,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       noTargetMs: 0,
       isFizzling: false,
       proximityAlpha: EMERALD_MISSILE_MIN_ALPHA,
+      bonusDetectPx,
       trailX: new Float64Array(EMERALD_MISSILE_TRAIL_CAP),
       trailY: new Float64Array(EMERALD_MISSILE_TRAIL_CAP),
       trailHead: 0, trailCount: 0,
@@ -153,7 +154,6 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
     const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
     const hitR        = EMERALD_MISSILE_HIT_RADIUS;
     const proxR2      = EMERALD_MISSILE_PROXIMITY_PX * EMERALD_MISSILE_PROXIMITY_PX;
-    const detectR2    = EMERALD_MISSILE_DETECT_PX * EMERALD_MISSILE_DETECT_PX;
     const fizzleDrag  = Math.pow(EMERALD_MISSILE_FIZZLE_DRAG, dt);
     const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
 
@@ -201,6 +201,8 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       );
 
       // If an enemy is close enough to detect, reset fizzle timer and home toward it.
+      const detectPx = EMERALD_MISSILE_DETECT_PX + m.bonusDetectPx;
+      const detectR2 = detectPx * detectPx;
       if (nearestDistSq <= detectR2 && nearestEnemyX !== null && nearestEnemyY !== null) {
         m.noTargetMs = 0;
         m.isFizzling = false;

@@ -287,6 +287,8 @@ export interface IolitePoisonBolt {
   scaledDamage: number;
   tier: number;
   weaponId: string;
+  /** Extra damage added per poison tick from Iolite in a crafted weapon (0 for standard weapons). */
+  bonusDmgPerTick: number;
   trailX: Float64Array; trailY: Float64Array;
   trailHead: number; trailCount: number;
 }

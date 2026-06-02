@@ -19,6 +19,8 @@ export interface EmeraldPlayerMissile {
   isFizzling: boolean;
   /** Visual opacity from enemy proximity: 0.3 far away, 1 near a target. */
   proximityAlpha: number;
+  /** Extra homing detection radius in px from Emerald in a crafted weapon (0 for standard weapons). */
+  bonusDetectPx: number;
   trailX: Float64Array; trailY: Float64Array;
   trailHead: number; trailCount: number;
 }

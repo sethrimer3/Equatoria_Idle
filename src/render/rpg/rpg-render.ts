@@ -1250,12 +1250,42 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     findClosestTarget:    (rangeSq) => findClosestTarget(rangeSq),
     spawnSandProjectile:  (tx, ty, dmg) => weaponSystems.spawnSandProjectile(tx, ty, dmg),
     spawnPoisonBolt:      (tx, ty, wid, tier, dmg) => weaponSystems.spawnPoisonBolt(tx, ty, wid, tier, dmg),
-    spawnEmeraldMissile:  (tx, ty, dmg, tier) => weaponSystems.spawnEmeraldMissile(tx, ty, dmg, tier),
+    spawnEmeraldMissile:  (tx, ty, dmg, tier, bonusPx) => weaponSystems.spawnEmeraldMissile(tx, ty, dmg, tier, bonusPx),
     fireLaserBeam:        (tx, ty, wid) => weaponSystems.fireLaserBeam(tx, ty, wid),
     layMine:              (dmg, tier) => weaponSystems.layMine(dmg, tier),
     getWeaponAtkMultiplier,
     getWeaponRngMultiplier,
     getWeaponPrcMultiplier,
+    applyNullstonePull(hitX: number, hitY: number, radius: number): void {
+      const r2 = radius * radius;
+      const PULL_FRAC = 0.35;
+      const nudge = (e: { x: number; y: number }) => {
+        const dx = hitX - e.x, dy = hitY - e.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= 0 || d2 > r2) return;
+        const dist = Math.sqrt(d2);
+        const move = Math.min(dist * PULL_FRAC, dist);
+        e.x += (dx / dist) * move;
+        e.y += (dy / dist) * move;
+      };
+      for (const e of enemies)            nudge(e);
+      for (const e of sapphireEnemies)    nudge(e);
+      for (const e of emeraldEnemies)     nudge(e);
+      for (const e of amberEnemies)       nudge(e);
+      for (const e of voidEnemies)        nudge(e);
+      for (const e of quartzEnemies)      nudge(e);
+      for (const e of rubyEnemies)        nudge(e);
+      for (const e of sunstoneEnemies)    nudge(e);
+      for (const e of citrineEnemies)     nudge(e);
+      for (const e of ioliteEnemies)      nudge(e);
+      for (const e of amethystEnemies)    nudge(e);
+      for (const e of diamondEnemies)     nudge(e);
+      for (const e of nullstoneEnemies)   nudge(e);
+      for (const e of fracterylEnemies)   nudge(e);
+      for (const e of eigensteinEnemies)  nudge(e);
+      for (const e of eliteEnemies)       nudge(e);
+      if (bossEnemy) nudge(bossEnemy);
+    },
   };
 
   statsPanel = createRpgStatsPanel({
