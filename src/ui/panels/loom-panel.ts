@@ -2,7 +2,7 @@
  * loom-panel.ts — Combined Upgrades panel orchestrator.
  *
  * Hosts four sub-tabs:
- *   Forge     – live forge preview + future forge upgrade controls
+ *   Forge     – live forge preview + weapon crafting + weapon inventory
  *   Equa(STUB)– equation forge + upgrade buttons (dev mode only)
  *   Loom      – passive production Looms + special one-time upgrades
  *   Aliven    – the Particle Life Aliven matrix
@@ -18,6 +18,10 @@ import type { TraceEffect } from '../../render/ui/trace-effect';
 import { createLoomUpgradesPane } from './loom-upgrades-pane';
 import { createAlivenPane } from './aliven-pane';
 import { drawForgePreview } from '../../render/forge';
+import { createRpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
+import type { RpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
+import { createForgeInventory } from './forge-inventory';
+import type { ForgeInventory } from './forge-inventory';
 
 // ── Forge preview canvas dimensions ─────────────────────────────
 const FORGE_PREVIEW_SIZE = 160;
@@ -58,12 +62,13 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   alivenTabBtn.textContent = 'Aliven';
   subTabBar.appendChild(alivenTabBtn);
 
-  // ── Forge preview pane ───────────────────────────────────────
+  // ── Forge pane ───────────────────────────────────────────────
 
   const forgePane = document.createElement('div');
   forgePane.className = 'looms-sub-pane forge-preview-pane';
   panel.appendChild(forgePane);
 
+  // Canvas preview (top center)
   const forgePreviewWrapper = document.createElement('div');
   forgePreviewWrapper.className = 'forge-preview-wrapper';
   forgePane.appendChild(forgePreviewWrapper);
@@ -75,6 +80,24 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   forgePreviewWrapper.appendChild(forgePreviewCanvas);
 
   const forgePreviewCtx = forgePreviewCanvas.getContext('2d')!;
+
+  // Section divider helper
+  function makeDivider(label: string): HTMLElement {
+    const div = document.createElement('div');
+    div.className = 'forge-section-divider';
+    div.textContent = label;
+    return div;
+  }
+
+  // Weapon crafting section
+  forgePane.appendChild(makeDivider('Craft Weapon'));
+  const craftingPage: RpgWeaponCraftingPage = createRpgWeaponCraftingPage(dispatch);
+  forgePane.appendChild(craftingPage.element);
+
+  // Inventory section
+  forgePane.appendChild(makeDivider('Weapon Inventory'));
+  const inventory: ForgeInventory = createForgeInventory();
+  forgePane.appendChild(inventory.element);
 
   // ── Forge preview animation loop ─────────────────────────────
 
@@ -137,24 +160,12 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     }
   }
 
-  forgeTabBtn.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    setSubTab('forge');
-  });
-  equationTabBtn.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    setSubTab('equation');
-  });
-  upgradesTabBtn.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    setSubTab('loom');
-  });
-  alivenTabBtn.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    setSubTab('aliven');
-  });
+  forgeTabBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); setSubTab('forge'); });
+  equationTabBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); setSubTab('equation'); });
+  upgradesTabBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); setSubTab('loom'); });
+  alivenTabBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); setSubTab('aliven'); });
 
-  // Start forge preview animation immediately since FORGE is the default tab
+  // Start forge preview immediately since FORGE is the default tab
   forgePreviewTick();
 
   // ── Update ───────────────────────────────────────────────────
@@ -164,11 +175,12 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
 
     // Show/hide equation sub-tab based on dev mode
     equationTabBtn.style.display = isDevMode ? '' : 'none';
-    // If we're on the equation tab but dev mode was turned off, switch to forge
-    if (!isDevMode && activeSubTab === 'equation') {
-      setSubTab('forge');
-    }
+    if (!isDevMode && activeSubTab === 'equation') setSubTab('forge');
 
+    if (activeSubTab === 'forge') {
+      craftingPage.update(state.rpg, isDevMode);
+      inventory.update(state.rpg.craftedWeapons);
+    }
     if (activeSubTab === 'loom')   loomUpgradesPane.update(state, numberFormat);
     if (activeSubTab === 'aliven') alivenPane.update(state, numberFormat);
   }
