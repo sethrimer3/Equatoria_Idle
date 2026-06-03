@@ -30,7 +30,7 @@ import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ────────────────────────────────────────────────────────
 
-type RpgMenuTab = 'menu' | 'weapons' | 'upgrades' | 'bosses' | 'enemies' | 'forge';
+type RpgMenuTab = 'menu' | 'weapons' | 'upgrades' | 'bosses' | 'enemies';
 
 export interface RpgMenuPanel {
   /** Root element — append to #app root, above the tab bar. */
