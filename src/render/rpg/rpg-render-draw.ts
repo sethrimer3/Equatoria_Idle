@@ -49,6 +49,10 @@ import {
   setLowGraphicsMode as setEntityLowGraphics,
 } from './rpg-entity-draw';
 import {
+  drawFracterylSpears, drawFracterylBlooms,
+  setFracterylLowGraphicsMode,
+} from './rpg-weapon-draw-fracteryl';
+import {
   drawWeaponOrbitParticle, drawOrbitProjectile,
   drawTargetReticle,
   drawPlayerMote,
@@ -904,6 +908,8 @@ export function drawRpgFrame(
   drawEmeraldSubMissiles(canvas2d, ctx.weaponSystems.emeraldSubMissiles);
   drawEmeraldSwirlParticles(canvas2d, ctx.weaponSystems.emeraldSwirlParticles);
   drawSunstoneMines(canvas2d, ctx.weaponSystems.sunstoneMines);
+  drawFracterylSpears(canvas2d, ctx.weaponSystems.fracterylSpears);
+  drawFracterylBlooms(canvas2d, ctx.weaponSystems.fracterylBlooms);
   drawLaserBeamEffect(canvas2d, ctx.weaponSystems.laserBeamEffect);
   drawEnemyIndicators(canvas2d, ctx.getEnemyIndicatorStyle(),
     ctx.enemies, ctx.sapphireEnemies, ctx.emeraldEnemies, ctx.amberEnemies, ctx.voidEnemies,
@@ -1299,5 +1305,6 @@ export function setAllDrawLowGraphics(enabled: boolean): void {
   setAlivenLowGraphics(enabled);
   setDrawBossAttacksLowGraphics(enabled);
   setStageDirLowGraphics(enabled);
+  setFracterylLowGraphicsMode(enabled);
   // No per-module low-graphics for terrain (it already skips when hidden)
 }

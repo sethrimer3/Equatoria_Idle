@@ -60,6 +60,8 @@ import { createSunstoneWeaponSystem } from './rpg-weapon-sunstone';
 import { createSwordWeaponSystem } from './rpg-weapon-sword';
 import { createEmeraldWeaponSystem } from './rpg-weapon-emerald';
 import { createLaserBeamWeaponSystem } from './rpg-weapon-laser-beam';
+import { createFracterylSpearSystem } from './rpg-weapon-fracteryl-spear';
+import type { FracterylSpear, FracterylBloom } from './rpg-weapon-fracteryl-spear';
 
 // ── Dependency-injection context passed in from rpg-render.ts ─────────────
 
@@ -243,6 +245,8 @@ export interface RpgWeaponHandle {
   readonly sapphireLasers: SapphireLaser[];
   readonly amethystShips: AmethystShip[];
   readonly amethystLasers: AmethystLaser[];
+  readonly fracterylSpears: FracterylSpear[];
+  readonly fracterylBlooms: FracterylBloom[];
 
   // Per-frame update functions called by the main update loop
   updateSandProjectiles: (deltaMs: number) => void;
@@ -263,6 +267,8 @@ export interface RpgWeaponHandle {
   updateAmethystLasers: (deltaMs: number) => void;
   /** Updates the sand blade when no weapon is equipped. */
   updateSandBlade: (deltaMs: number) => void;
+  updateFracterylSpears: (deltaMs: number) => void;
+  updateFracterylBlooms: (deltaMs: number) => void;
 
   // Companion ship sync (called by applyEquipmentStats and notifyEquip)
   syncSapphireShips: () => void;
@@ -274,6 +280,7 @@ export interface RpgWeaponHandle {
   spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number) => void;
   fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => void;
   layMine: (damage: number, tier: number) => void;
+  spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) => void;
 
   // Reset all weapon state (called by doRestart in rpg-render.ts)
   reset: () => void;
@@ -292,6 +299,15 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
   const sword = createSwordWeaponSystem(ctx);
   const emerald = createEmeraldWeaponSystem(ctx);
   const laserBeam = createLaserBeamWeaponSystem(ctx);
+  const fracterylSpear = createFracterylSpearSystem({
+    mote: ctx.mote,
+    findClosestTarget: (rangeSq) => ctx.findClosestTarget(rangeSq),
+    collectEnemyBodyTargets: () => ctx.collectEnemyBodyTargets(),
+    damageBodyTarget: (target, rawDamage, defPierceRatio, bypassShield) =>
+      ctx.damageBodyTarget(target, rawDamage, defPierceRatio, bypassShield),
+    spawnHitVisualsAt: (x, y, maxHp, dmg, color) =>
+      ctx.spawnHitVisualsAt(x, y, maxHp, dmg, color),
+  });
 
 
   // ── Sand blade (starter weapon, no weapon equipped) ───────────────
@@ -322,6 +338,8 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     get sapphireLasers() { return ships.sapphireLasers; },
     get amethystShips() { return ships.amethystShips; },
     get amethystLasers() { return ships.amethystLasers; },
+    get fracterylSpears() { return fracterylSpear.fracterylSpears; },
+    get fracterylBlooms() { return fracterylSpear.fracterylBlooms; },
 
     updateSandProjectiles: (deltaMs: number) => sand.updateSandProjectiles(deltaMs),
     updateChainWhip: (weaponId: string, deltaMs: number) => chain.updateChainWhip(weaponId, deltaMs),
@@ -340,6 +358,8 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     updateAmethystShips: (deltaMs: number) => ships.updateAmethystShips(deltaMs),
     updateAmethystLasers: (deltaMs: number) => ships.updateAmethystLasers(deltaMs),
     updateSandBlade,
+    updateFracterylSpears: (deltaMs: number) => fracterylSpear.updateFracterylSpears(deltaMs),
+    updateFracterylBlooms: (deltaMs: number) => fracterylSpear.updateFracterylBlooms(deltaMs),
 
     syncSapphireShips: () => ships.syncSapphireShips(),
     syncAmethystShips: () => ships.syncAmethystShips(),
@@ -349,6 +369,8 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx = 0) => emerald.spawnEmeraldMissile(targetX, targetY, damage, tier, bonusDetectPx),
     fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => laserBeam.fireLaserBeam(targetX, targetY, weaponId),
     layMine: (damage: number, tier: number) => sunstone.layMine(damage, tier),
+    spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) =>
+      fracterylSpear.spawnFracterylSpearVolley(weaponId, damage, tier),
 
     reset(): void {
       sand.reset();
@@ -360,6 +382,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
       sunstone.reset();
       laserBeam.reset();
       ships.reset();
+      fracterylSpear.reset();
     },
   };
 }

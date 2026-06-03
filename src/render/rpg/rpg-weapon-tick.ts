@@ -110,6 +110,10 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
   weaponSystems.updateEmeraldSwirlParticles(deltaMs);
   statsPanel.withDamageSource(ctx.findEquippedWeaponIdByEffect('sunstoneMine'), () => weaponSystems.updateSunstoneMines(deltaMs));
   weaponSystems.updateLaserBeamEffect(deltaMs);
+  statsPanel.withDamageSource(ctx.findEquippedWeaponIdByEffect('fracterylSpear'), () => {
+    weaponSystems.updateFracterylSpears(deltaMs);
+    weaponSystems.updateFracterylBlooms(deltaMs);
+  });
 
   // ── Companion ship systems ────────────────────────────────────────────────────
   weaponSystems.updateSapphireShips(deltaMs);

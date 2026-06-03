@@ -1,6 +1,66 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#208**
+Current build: **#209**
+
+---
+
+## Build #209 — Fracteryl Spear Array (dominant crafted weapon)
+
+### Completed in this build
+
+* **`fracterylSpear`** added to `WeaponEffect` union in `weapon-definitions.ts`.
+* **`getDominantCraftedEffect('fracteryl')`** now returns `{ kind: 'fracterylSpear' }`
+  instead of the placeholder `emeraldMissile`.
+* Stat-scaling switch in `deriveCraftedWeaponStats` handles `fracterylSpear`:
+  damage ×0.90, cooldown ×1.10, range = INFINITE_RANGE.
+* **`rpg-weapon-fracteryl-spear.ts`** — new weapon system:
+  - `spawnFracterylSpearVolley(weaponId, damage, tier)`: spawns 3–10 spears
+    (3 base, +1 per 2 tiers, capped 10) radially around the player.
+  - Each spear orbits the player during its stagger delay (110 ms apart),
+    tracking the nearest target, then launches straight toward it.
+  - `updateFracterylSpears(deltaMs)`: advances forming/flying state, hit detection
+    via `collectEnemyBodyTargets` + `damageBodyTarget`, spawns a bloom on impact.
+  - `updateFracterylBlooms(deltaMs)`: ticks bloom damage every 200 ms, checks
+    all branch endpoints against enemies, per-tick deduplication by position key.
+  - Branch generation: iterative BFS, 3-fold symmetry, up to 5 generations,
+    64 branches max, length ×0.65 per gen, damage ×0.55 per gen.
+  - Hard caps: 30 active spears, 10 active blooms.
+* **`rpg-weapon-draw-fracteryl.ts`** — draw module:
+  - `drawFracterylSpears`: crystalline shaft + diamond spearhead, pointing at target.
+  - `drawFracterylBlooms`: recursive branch lines fading with lifetime and generation,
+    small endpoint motes at gen 0/1 for accent.
+* Wired into `rpg-weapon-systems.ts` (factory, handle, reset).
+* Wired into `rpg-weapon-tick.ts` (update dispatch under `fracterylSpear` effect).
+* Wired into `rpg-player-attack.ts` (`fracterylSpear` dispatch calls volley spawn).
+* Wired into `rpg-render.ts` (`spawnFracterylSpearVolley` passed into attack ctx).
+* Wired into `rpg-render-draw.ts` (draw calls + low-graphics propagation).
+* **Fracteryl modifier unchanged**: non-dominant Fracteryl still contributes
+  `fracterylStrikes` recursive strikes to other weapon families via `applyCraftedPostHit`.
+* **Tests** (`crafted-weapons.test.ts`): 3 new tests confirming
+  - `getDominantCraftedEffect('fracteryl')` → `fracterylSpear`
+  - fracteryl-dominant crafted weapon definition uses `fracterylSpear`
+  - non-dominant fracteryl still contributes `fracterylStrikes > 0`
+
+### Known limitations (first pass)
+
+* Spears fly straight (no homing) — intentional for simplicity and predictability.
+* Bloom hit detection uses endpoint proximity (12 px radius), not full segment
+  intersection. Fine for first pass; true segment collision can be added later.
+* Branch count and damage balance are first-pass estimates; tune after playtesting.
+* No per-spear particle trail yet (purely solid shaft draw).
+* Bloom does not despawn when its source enemy dies — expires naturally by lifetime.
+
+### Manual verification checklist
+
+- [ ] Craft a Fracteryl-dominant weapon, equip it.
+- [ ] Confirm spears appear and orbit around the player before launching.
+- [ ] Confirm spears launch one by one with stagger delay.
+- [ ] Confirm each impact spawns a visible fractal bloom.
+- [ ] Confirm bloom damages enemies repeatedly.
+- [ ] Confirm Fracteryl modifier still fires recursive strikes on non-Fracteryl weapons.
+- [ ] Confirm Emerald missiles still work normally.
+- [ ] Confirm no crashes on enemy death during spear flight.
+- [ ] Confirm no crashes on wave transition with active blooms.
 
 ---
 

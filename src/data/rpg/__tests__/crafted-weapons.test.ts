@@ -459,9 +459,36 @@ describe('Multi/AoE crafted post-hit shared pool cap', () => {
   });
 });
 
-// ─── Eigenstein swordCombo effect ────────────────────────────────
+// ─── Fracteryl dominant effect ────────────────────────────────────
 
 import { getDominantCraftedEffect, isEigensteinDominant } from '../crafted-weapon-helpers';
+
+describe('getDominantCraftedEffect — fracteryl', () => {
+  it('returns fracterylSpear for fracteryl dominant tier', () => {
+    const effect = getDominantCraftedEffect('fracteryl');
+    expect(effect.kind).toBe('fracterylSpear');
+  });
+
+  it('fracteryl-dominant crafted weapon resolves to fracterylSpear', () => {
+    const cw = createCraftedWeaponDefinition(
+      'crafted_weapon_fracteryl_test',
+      [{ tierId: 'fracteryl', refinedCount: 1 }],
+      1,
+    );
+    expect(cw.definition.stats.effect?.kind).toBe('fracterylSpear');
+  });
+
+  it('fracteryl modifier (non-dominant) still contributes fracterylStrikes', () => {
+    const mods = computeCraftedWeaponModifiers([
+      { tierId: 'eigenstein' as const, weightedValue: 0.9, share: 0.9 },
+      { tierId: 'fracteryl' as const, weightedValue: 0.1, share: 0.1 },
+    ]);
+    expect(mods.fracterylStrikes).toBeGreaterThan(0);
+    expect(mods.fracterylStrikes).toBeLessThanOrEqual(10);
+  });
+});
+
+// ─── Eigenstein swordCombo effect ────────────────────────────────
 
 describe('getDominantCraftedEffect — eigenstein', () => {
   it('returns swordCombo for eigenstein dominant tier', () => {

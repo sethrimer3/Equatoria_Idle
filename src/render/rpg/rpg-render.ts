@@ -1253,6 +1253,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnEmeraldMissile:  (tx, ty, dmg, tier, bonusPx) => weaponSystems.spawnEmeraldMissile(tx, ty, dmg, tier, bonusPx),
     fireLaserBeam:        (tx, ty, wid) => weaponSystems.fireLaserBeam(tx, ty, wid),
     layMine:              (dmg, tier) => weaponSystems.layMine(dmg, tier),
+    spawnFracterylSpearVolley: (wid, dmg, tier) => weaponSystems.spawnFracterylSpearVolley(wid, dmg, tier),
     getWeaponAtkMultiplier,
     getWeaponRngMultiplier,
     getWeaponPrcMultiplier,

@@ -179,6 +179,7 @@ export interface RpgPlayerAttackCtx {
   spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number) => void;
   fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => void;
   layMine: (damage: number, tier: number) => void;
+  spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) => void;
 
   /**
    * Pulls all enemies within `radius` px of (hitX, hitY) toward that point.
@@ -296,6 +297,11 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   if (effect.kind === 'laserBeam') {
     const target = findClosestTarget(rangeSq);
     if (target) ctx.fireLaserBeam(target.x, target.y, weaponId);
+    return;
+  }
+
+  if (effect.kind === 'fracterylSpear') {
+    ctx.spawnFracterylSpearVolley(weaponId, rawDamage, tier);
     return;
   }
 

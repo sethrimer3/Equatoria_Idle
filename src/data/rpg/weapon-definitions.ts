@@ -66,7 +66,13 @@ export type WeaponEffect =
    * Amethyst companion ships that target the furthest enemies from the player.
    * Ship count = weapon tier (1-7). Ships fire spiraling lasers that pierce enemies.
    */
-  | { kind: 'amethystShip' };
+  | { kind: 'amethystShip' }
+  /**
+   * Fracteryl spear array — crystalline spears orbit the player, then launch one by one
+   * toward the nearest target. Each spear impact spawns a recursive fractal bloom that
+   * deals decaying damage across up to 5 branch generations.
+   */
+  | { kind: 'fracterylSpear' };
 
 /** Combat stats granted by equipping this weapon. */
 export interface WeaponStats {

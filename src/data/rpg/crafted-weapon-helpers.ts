@@ -31,6 +31,7 @@ const EFFECT_LABELS: Record<string, string> = {
   emeraldMissile: 'seeking missile swarm',
   poisonBolt: 'venom bolt',
   swordCombo: 'dimensional sword slash',
+  fracterylSpear: 'fractal spear array',
 };
 
 const EFFECT_NOUNS: Record<string, string> = {
@@ -42,6 +43,7 @@ const EFFECT_NOUNS: Record<string, string> = {
   emeraldMissile: 'Swarm',
   poisonBolt: 'Sting',
   swordCombo: 'Blade',
+  fracterylSpear: 'Array',
 };
 
 /**
@@ -196,7 +198,7 @@ export function getDominantCraftedEffect(tierId: TierId): WeaponEffect {
     case 'nullstone':
       return { kind: 'aoe', aoeRadius: 58 };
     case 'fracteryl':
-      return { kind: 'emeraldMissile' };
+      return { kind: 'fracterylSpear' };
     case 'eigenstein':
       return { kind: 'swordCombo' };
   }
@@ -303,6 +305,11 @@ export function deriveCraftedWeaponStats(
     case 'emeraldMissile':
       damage = Math.max(8, Math.round(damage * 0.84));
       cooldownMs = Math.round(cooldownMs * 0.82);
+      range = INFINITE_RANGE;
+      break;
+    case 'fracterylSpear':
+      damage = Math.max(10, Math.round(damage * 0.90));
+      cooldownMs = Math.round(cooldownMs * 1.10);
       range = INFINITE_RANGE;
       break;
     case 'poisonBolt':
