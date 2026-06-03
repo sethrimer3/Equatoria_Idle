@@ -13,12 +13,16 @@ import {
   FLUID_EXPLOSION_STRENGTH, FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B,
 } from './rpg-constants';
 import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
+import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
+import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
   rawDamage: number,
   aoeRadius: number,
   armorIgnore = 0,
+  craftedMods?: CraftedWeaponModifiers,
+  rangeSq?: number,
 ): void {
   const {
     mote,
@@ -215,4 +219,11 @@ export function performAoeAttack(
   }
   fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
     FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
+
+  // Crafted post-hit: Nullstone pulls toward mote center; Fracteryl fires capped follow-ups.
+  // Both are applied once per AoE burst (not per enemy hit) to avoid O(n²) pull cost.
+  if (craftedMods && rangeSq !== undefined) {
+    const pool = makeFracterylPool(craftedMods.fracterylStrikes);
+    applyCraftedPostHit(ctx, mote.x, mote.y, rawDamage, armorIgnore, craftedMods, rangeSq, pool, '#e6c850');
+  }
 }

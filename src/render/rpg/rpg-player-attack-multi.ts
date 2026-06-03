@@ -26,8 +26,25 @@ import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
+import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
+import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 
 // ── Sort-entry type (local to this module) ────────────────────────────────────
+
+/** Extract world position from a MultiSortEntry, falling back to (fallX, fallY). */
+function getSortEntryPos(t: MultiSortEntry, fallX: number, fallY: number): [number, number] {
+  const x = t.laser?.x ?? t.sapphire?.x ?? t.emerald?.x ?? t.amber?.x ?? t.void?.x
+    ?? t.quartz?.x ?? t.ruby?.x ?? t.sunstone?.x ?? t.citrine?.x ?? t.iolite?.x
+    ?? t.amethyst?.x ?? t.diamond?.x ?? t.nullstone?.x ?? t.fracteryl?.x ?? t.eigenstein?.x
+    ?? t.polyomino?.x ?? t.fissilePolyomino?.x ?? t.refractorPolyomino?.x ?? t.elite?.x
+    ?? t.boss?.x ?? t.alivenParticle?.x ?? fallX;
+  const y = t.laser?.y ?? t.sapphire?.y ?? t.emerald?.y ?? t.amber?.y ?? t.void?.y
+    ?? t.quartz?.y ?? t.ruby?.y ?? t.sunstone?.y ?? t.citrine?.y ?? t.iolite?.y
+    ?? t.amethyst?.y ?? t.diamond?.y ?? t.nullstone?.y ?? t.fracteryl?.y ?? t.eigenstein?.y
+    ?? t.polyomino?.y ?? t.fissilePolyomino?.y ?? t.refractorPolyomino?.y ?? t.elite?.y
+    ?? t.boss?.y ?? t.alivenParticle?.y ?? fallY;
+  return [x, y];
+}
 
 type MultiSortEntry = {
   distSq: number;
@@ -72,6 +89,7 @@ export function performMultiAttack(
   rangeSq: number,
   targetCount: number,
   armorIgnore = 0,
+  craftedMods?: CraftedWeaponModifiers,
 ): void {
   const {
     mote,
@@ -282,6 +300,9 @@ export function performMultiAttack(
   inRange.sort((a, b) => a.distSq - b.distSq);
   const targets = inRange.slice(0, targetCount);
 
+  // Shared Fracteryl pool: capped at fracterylStrikes total across all targets.
+  const fracterylPool = craftedMods ? makeFracterylPool(craftedMods.fracterylStrikes) : null;
+
   for (const t of targets) {
     if (t.laser) {
       const dmg = damageEnemy(t.laser, rawDamage, armorIgnore);
@@ -364,6 +385,11 @@ export function performMultiAttack(
     } else if (t.alivenParticle && t.alivenGroup) {
       const dmg = ctx.damageAlivenParticle(t.alivenParticle, t.alivenGroup, rawDamage);
       if (dmg > 0) spawnHitVisualsAt(t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, dmg, t.alivenParticle.glowColor);
+    }
+    // Crafted post-hit: Nullstone pull at this target's position; Fracteryl from shared pool.
+    if (craftedMods && fracterylPool) {
+      const [hitX, hitY] = getSortEntryPos(t, mote.x, mote.y);
+      applyCraftedPostHit(ctx, hitX, hitY, rawDamage, armorIgnore, craftedMods, rangeSq, fracterylPool, '#50b464');
     }
   }
 }

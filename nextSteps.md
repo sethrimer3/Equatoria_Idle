@@ -1,6 +1,77 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#207**
+Current build: **#208**
+
+---
+
+## Build #208 — Crafted weapon post-hit centralization (Nullstone + Fracteryl)
+
+### Completed in this build
+
+* **`rpg-crafted-post-hit.ts`** — new shared helper module in `src/render/rpg/`.
+  Exports `makeFracterylPool(strikes)` and `applyCraftedPostHit(...)`.
+  Contains the single comprehensive `damageFollowUpTarget` dispatch that covers
+  all ClosestTarget variants reachable via `RpgPlayerAttackCtx`, replacing the
+  partial inline list that was in `performSingleAttack`.
+
+* **Nullstone pull** moved out of `performSingleAttack` into `applyCraftedPostHit`.
+  Now fires for single/piercing, multi, and AoE attacks.
+  - Single/piercing: pull at the hit target's position.
+  - Multi: pull at each hit target's position (bounded by targetCount ≤ 6).
+  - AoE: one pull at the mote center after all AoE hits (avoids O(n²) per burst).
+  - Guards: skipped when hitX/hitY is NaN or Infinity.
+
+* **Fracteryl follow-ups** moved out of `performSingleAttack` into `applyCraftedPostHit`.
+  Now fires for single/piercing, multi, and AoE attacks.
+  - **No recursion**: follow-up strikes are dispatched directly through
+    `damageFollowUpTarget`; `applyCraftedPostHit` is never called from within it.
+  - **Shared pool cap**: multi and AoE create one `makeFracterylPool` instance
+    shared across all targets — total follow-ups per attack ≤ `fracterylStrikes`,
+    not `fracterylStrikes × targetCount`. Prevents runaway DPS.
+  - **Damage decay**: 50% per follow-up, loop exits when `strikeDmg < 0.5`.
+  - **Full target coverage**: `damageFollowUpTarget` handles all enemy types that
+    `performSingleAttack`'s original Fracteryl code missed (missile, ambershard,
+    quartzspike, rubybolt, citrinebolt, amethystshard, diamondshard, voidtendril,
+    fracterylshard, and all procedural creature types).
+
+* **`performMultiAttack`** gains `craftedMods?` param; `getSortEntryPos` helper
+  extracts hit position from a `MultiSortEntry` without changing the type.
+
+* **`performAoeAttack`** gains `craftedMods?` and `rangeSq?` params.
+
+* **`performWeaponAttack`** passes `craftedMods` and `rangeSq` through to both
+  `performAoeAttack` and `performMultiAttack`.
+
+* **Tests** (12 new, 237 total passing):
+  - `makeFracterylPool` value, clamp, reference semantics.
+  - Fracteryl damage decay formula (50% per repeat).
+  - Fracteryl pool drain and no-recursion guard.
+  - Nullstone pull guard against NaN / Infinity coordinates.
+  - Multi/AoE shared pool cap: total follow-ups ≤ `fracterylStrikes` across all targets.
+  - `fracterylStrikes=0` produces zero follow-ups.
+
+### Deferred / first-pass notes
+
+* **Projectile/self-managed families** (gatling/sand, poisonBolt, emeraldMissile,
+  laserBeam, chainWhip, vortex, swordCombo): Nullstone and Fracteryl still do not
+  fire for these. They are deferred to avoid risky rewrites of their self-managed
+  update loops. Gatling projectiles land asynchronously so a synchronous post-hit
+  hook doesn't cleanly fit without a broader refactor.
+
+* **Nullstone visual (vortex pulse)**: No black-hole/vortex visual was added.
+  The pull is still an instant positional nudge without a visible field effect.
+  Requires hooks into a visual particle layer or a new short-lived effect type.
+  Deferred to a future build.
+
+* **Fracteryl visual**: Follow-up hits use `FRACTERYL_ENEMY_GLOW` color on the
+  `spawnHitVisualsAt` call. No dedicated "chain strike" visual trajectory or audio.
+  Deferred.
+
+* **Pre-existing lint errors** (unrelated to this build):
+  - `npm run lint` reports 8 errors in `src/render/rpg/rpg-render.ts` (4× `no-explicit-any`),
+    `src/render/rpg/rpg-elite-empower-particles.ts` (1× `prefer-const`),
+    and `src/render/rpg/rpg-render-update.ts` (1× `no-explicit-any`).
+  - None introduced by Build #208.
 
 ---
 
@@ -189,10 +260,9 @@ Current build: **#207**
    - Still intentionally undefined.
    - Do not invent final behavior casually. It needs a deliberate design pass because it is meant to feel like an endgame/rule-altering mote.
 
-3. **Broaden crafted modifier coverage beyond the current first-pass paths**
-   - Nullstone pull and Fracteryl recursive strikes are currently wired through the single-target hit path.
-   - Decide whether they should also trigger from multi-target, AoE, laser, gatling/sand projectile, poison bolt impact, emerald missile, sunstone mines, vortex, chain whip, and sword combo.
-   - If they should, centralize crafted post-hit handling so every attack family can call the same safe hook.
+3. **Broaden crafted modifier coverage beyond the current first-pass paths** ✅ Done in Build #208.
+   - Nullstone and Fracteryl now fire for single/piercing, multi, and AoE via `rpg-crafted-post-hit.ts`.
+   - Projectile/self-managed families (gatling, poisonBolt, emeraldMissile, laserBeam, chainWhip, vortex, swordCombo) remain deferred — see Build #208 deferred notes.
 
 4. **Improve Nullstone visual/feel**
    - Current implementation is an instant positional nudge, not a visible black-hole field.

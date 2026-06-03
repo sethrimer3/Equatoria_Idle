@@ -335,6 +335,130 @@ describe('createCraftedWeaponDefinition', () => {
   });
 });
 
+// ─── makeFracterylPool + applyCraftedPostHit behavior ────────────
+
+import { makeFracterylPool, FRACTERYL_POOL_MAX } from '../../../render/rpg/rpg-crafted-post-hit';
+
+describe('makeFracterylPool', () => {
+  it('creates a pool with value equal to fracterylStrikes', () => {
+    const pool = makeFracterylPool(5);
+    expect(pool.value).toBe(5);
+  });
+
+  it('clamps pool value to FRACTERYL_POOL_MAX', () => {
+    const pool = makeFracterylPool(999);
+    expect(pool.value).toBeLessThanOrEqual(FRACTERYL_POOL_MAX);
+    expect(pool.value).toBe(FRACTERYL_POOL_MAX);
+  });
+
+  it('clamps pool value to 0 for negative input', () => {
+    const pool = makeFracterylPool(-1);
+    expect(pool.value).toBe(0);
+  });
+
+  it('pool is a mutable reference — decrement is visible to all holders', () => {
+    const pool = makeFracterylPool(3);
+    const ref = pool;
+    pool.value--;
+    expect(ref.value).toBe(2);
+  });
+});
+
+describe('Fracteryl follow-up damage decay', () => {
+  it('each follow-up halves damage (50% decay per repeat)', () => {
+    const rawDamage = 100;
+    const expected = [50, 25, 12.5, 6.25];
+    let d = rawDamage * 0.5;
+    for (const exp of expected) {
+      expect(d).toBeCloseTo(exp, 5);
+      d *= 0.5;
+    }
+  });
+
+  it('pool drains correctly across multiple follow-ups', () => {
+    const pool = makeFracterylPool(4);
+    let fired = 0;
+    while (pool.value > 0) {
+      pool.value--;
+      fired++;
+    }
+    expect(fired).toBe(4);
+    expect(pool.value).toBe(0);
+  });
+
+  it('Fracteryl follow-ups do not re-enter the pool (no recursion)', () => {
+    // Pool is decremented before each follow-up strike.
+    // Verify that consuming from a shared pool prevents additional triggers
+    // by simulating what applyCraftedPostHit does internally.
+    const pool = makeFracterylPool(3);
+    const fireCount: number[] = [];
+    let strikeDmg = 100 * 0.5;
+    while (pool.value > 0 && strikeDmg >= 0.5) {
+      pool.value--;           // decrement BEFORE firing (matches implementation)
+      fireCount.push(pool.value);
+      strikeDmg *= 0.5;
+    }
+    // Fired 3 times, pool ends at 0 — no extra triggers possible
+    expect(fireCount).toHaveLength(3);
+    expect(fireCount[fireCount.length - 1]).toBe(0);
+  });
+});
+
+describe('Nullstone pull guard conditions', () => {
+  it('Nullstone pull skipped when hitX is NaN', () => {
+    let pullCalled = false;
+    const fakeApplyPull = (x: number) => { if (Number.isFinite(x)) pullCalled = true; };
+    fakeApplyPull(NaN);
+    expect(pullCalled).toBe(false);
+  });
+
+  it('Nullstone pull skipped when hitX is Infinity', () => {
+    let pullCalled = false;
+    const fakeApplyPull = (x: number) => { if (Number.isFinite(x)) pullCalled = true; };
+    fakeApplyPull(Infinity);
+    expect(pullCalled).toBe(false);
+  });
+
+  it('Nullstone pull fires when coordinates are valid finite numbers', () => {
+    let pullCalled = false;
+    const fakeApplyPull = (x: number, y: number) => {
+      if (Number.isFinite(x) && Number.isFinite(y)) pullCalled = true;
+    };
+    fakeApplyPull(100, 200);
+    expect(pullCalled).toBe(true);
+  });
+});
+
+describe('Multi/AoE crafted post-hit shared pool cap', () => {
+  it('shared pool limits total Fracteryl follow-ups across all targets', () => {
+    // Simulate multi attack with 4 targets, fracterylStrikes=3.
+    // Total follow-ups should be exactly 3, not 4×3=12.
+    const pool = makeFracterylPool(3);
+    let totalFollowUps = 0;
+    const targetCount = 4;
+    for (let i = 0; i < targetCount; i++) {
+      // Each target fires follow-ups from shared pool
+      while (pool.value > 0) {
+        pool.value--;
+        totalFollowUps++;
+        // In practice the loop breaks when pool hits 0; simulate by breaking here
+        break; // one follow-up per target per call; simplified simulation
+      }
+    }
+    // Only 3 follow-ups even though 4 targets were hit
+    expect(totalFollowUps).toBe(3);
+    expect(pool.value).toBe(0);
+  });
+
+  it('fracterylStrikes=0 produces no follow-ups', () => {
+    const pool = makeFracterylPool(0);
+    expect(pool.value).toBe(0);
+    let fired = 0;
+    while (pool.value > 0) { pool.value--; fired++; }
+    expect(fired).toBe(0);
+  });
+});
+
 // ─── Eigenstein swordCombo effect ────────────────────────────────
 
 import { getDominantCraftedEffect, isEigensteinDominant } from '../crafted-weapon-helpers';

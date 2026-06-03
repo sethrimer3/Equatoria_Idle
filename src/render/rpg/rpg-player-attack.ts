@@ -305,12 +305,12 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   // ── Attack-mode handlers ──────────────────────────────────────────────────
 
   if (effect.kind === 'aoe') {
-    performAoeAttack(ctx, rawDamage, effect.aoeRadius, armorIgnore);
+    performAoeAttack(ctx, rawDamage, effect.aoeRadius, armorIgnore, craftedMods ?? undefined, rangeSq);
     return;
   }
 
   if (effect.kind === 'multi') {
-    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount, armorIgnore);
+    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount, armorIgnore, craftedMods ?? undefined);
     return;
   }
 

@@ -1099,20 +1099,23 @@
 - Handles delegating weapon kinds inline (gatling, chainWhip, vortex, swordCombo, poisonBolt, emeraldMissile, laserBeam, sunstoneMine) and delegates aoe/multi/single to the three handler modules below.
 - `rpg-render.ts` initialises `playerAttackCtx` after `weaponSystems` is created.
 
+### src/render/rpg/rpg-crafted-post-hit.ts
+- Shared crafted-weapon post-hit effects. Exports `makeFracterylPool(strikes)` and `applyCraftedPostHit(...)`.
+- `damageFollowUpTarget` (module-private): comprehensive dispatch across all ClosestTarget variants reachable via RpgPlayerAttackCtx.
+- Fracteryl follow-ups never re-enter the function (no recursion). Multi/AoE share one pool to cap total follow-ups.
+
 ### src/render/rpg/rpg-player-attack-aoe.ts
-- AOE weapon attack handler (~158 lines). Exported: `performAoeAttack(ctx, rawDamage, aoeRadius)`.
-- Loops all enemy arrays to damage everything within `aoeRadius` of the mote, then emits a fluid explosion.
-- Extracted from `rpg-player-attack.ts` to keep the dispatcher under ~225 lines.
+- AOE weapon attack handler. Exported: `performAoeAttack(ctx, rawDamage, aoeRadius, armorIgnore?, craftedMods?, rangeSq?)`.
+- Loops all enemy arrays within `aoeRadius` of the mote, emits fluid explosion, then calls `applyCraftedPostHit` once at mote center.
 
 ### src/render/rpg/rpg-player-attack-multi.ts
-- Multi-target weapon attack handler (~298 lines). Exported: `performMultiAttack(ctx, rawDamage, rangeSq, targetCount)`.
+- Multi-target weapon attack handler. Exported: `performMultiAttack(ctx, rawDamage, rangeSq, targetCount, armorIgnore?, craftedMods?)`.
 - Collects all in-range entities into a typed `MultiSortEntry[]`, sorts by distance, damages the closest N.
-- Extracted from `rpg-player-attack.ts` to keep the dispatcher under ~225 lines.
+- Calls `applyCraftedPostHit` per target with a shared Fracteryl pool; `getSortEntryPos` extracts hit position.
 
 ### src/render/rpg/rpg-player-attack-single.ts
-- Single and piercing weapon attack handler (~131 lines). Exported: `performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, shotColor)`.
-- Uses `findClosestTarget` then dispatches to the matching damage/visual call.
-- Extracted from `rpg-player-attack.ts` to keep the dispatcher under ~225 lines.
+- Single and piercing weapon attack handler. Exported: `performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, shotColor, craftedMods?)`.
+- Uses `findClosestTarget`, dispatches to the matching damage/visual call, then delegates to `applyCraftedPostHit`.
 
 ### src/render/rpg/rpg-player-damage.ts
 - Player damage application and hit-visual helpers extracted from `rpg-render.ts` (~198 lines).

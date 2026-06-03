@@ -19,6 +19,7 @@ import {
 } from './rpg-enemy-constants';
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
+import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 
 export function performSingleAttack(
   ctx: RpgPlayerAttackCtx,
@@ -156,62 +157,8 @@ export function performSingleAttack(
 
   // ── Crafted weapon post-hit effects ──────────────────────────────────────
 
-  // Nullstone: pull enemies near the hit point toward it.
-  if (craftedMods && craftedMods.nullstonePullRadius > 0) {
-    ctx.applyNullstonePull(hitX, hitY, craftedMods.nullstonePullRadius);
-  }
-
-  // Fracteryl: fire follow-up strikes at 50% decaying damage each.
-  if (craftedMods && craftedMods.fracterylStrikes > 0) {
-    let strikeDmg = rawDamage * 0.5;
-    for (let s = 0; s < craftedMods.fracterylStrikes; s++) {
-      const followTarget = findClosestTarget(rangeSq);
-      if (!followTarget) break;
-      if (followTarget.laser) {
-        damageEnemy(followTarget.laser, strikeDmg, defPierceRatio);
-      } else if (followTarget.sapphire) {
-        damageSapphireEnemy(followTarget.sapphire, strikeDmg, defPierceRatio, false);
-      } else if (followTarget.emerald) {
-        damageEmeraldEnemy(followTarget.emerald, strikeDmg, defPierceRatio);
-      } else if (followTarget.amber) {
-        damageAmberEnemy(followTarget.amber, strikeDmg, defPierceRatio);
-      } else if (followTarget.void) {
-        damageVoidEnemy(followTarget.void, strikeDmg, defPierceRatio);
-      } else if (followTarget.quartz) {
-        damageQuartzEnemy(followTarget.quartz, strikeDmg, defPierceRatio);
-      } else if (followTarget.ruby) {
-        damageRubyEnemy(followTarget.ruby, strikeDmg, defPierceRatio);
-      } else if (followTarget.sunstone) {
-        damageSunstoneEnemy(followTarget.sunstone, strikeDmg, defPierceRatio);
-      } else if (followTarget.citrine) {
-        damageCitrineEnemy(followTarget.citrine, strikeDmg, defPierceRatio);
-      } else if (followTarget.iolite) {
-        damageIoliteEnemy(followTarget.iolite, strikeDmg, defPierceRatio);
-      } else if (followTarget.amethyst) {
-        damageAmethystEnemy(followTarget.amethyst, strikeDmg, defPierceRatio, false);
-      } else if (followTarget.diamond) {
-        damageDiamondEnemy(followTarget.diamond, strikeDmg, defPierceRatio);
-      } else if (followTarget.nullstone) {
-        damageNullstoneEnemy(followTarget.nullstone, strikeDmg, defPierceRatio);
-      } else if (followTarget.fracteryl) {
-        damageFracterylEnemy(followTarget.fracteryl, strikeDmg, defPierceRatio);
-      } else if (followTarget.eigenstein) {
-        damageEigensteinEnemy(followTarget.eigenstein, strikeDmg, defPierceRatio);
-      } else if (followTarget.polyomino) {
-        damagePolyominoEnemy(followTarget.polyomino, strikeDmg, defPierceRatio);
-      } else if (followTarget.fissilePolyomino) {
-        damageFissilePolyominoEnemy(followTarget.fissilePolyomino, strikeDmg, defPierceRatio);
-      } else if (followTarget.refractorPolyomino) {
-        damageRefractorPolyominoEnemy(followTarget.refractorPolyomino, strikeDmg, defPierceRatio);
-      } else if (followTarget.elite) {
-        damageEliteEnemy(followTarget.elite, strikeDmg, defPierceRatio);
-      } else if (followTarget.boss) {
-        damageBossEnemy(strikeDmg, defPierceRatio);
-      } else if (followTarget.alivenParticle && followTarget.alivenGroup) {
-        ctx.damageAlivenParticle(followTarget.alivenParticle, followTarget.alivenGroup, strikeDmg);
-      }
-      spawnHitVisualsAt(followTarget.x, followTarget.y, 1000, strikeDmg, FRACTERYL_ENEMY_GLOW, effectiveSourceColor);
-      strikeDmg *= 0.5;
-    }
+  if (craftedMods && (craftedMods.nullstonePullRadius > 0 || craftedMods.fracterylStrikes > 0)) {
+    const pool = makeFracterylPool(craftedMods.fracterylStrikes);
+    applyCraftedPostHit(ctx, hitX, hitY, rawDamage, defPierceRatio, craftedMods, rangeSq, pool, effectiveSourceColor);
   }
 }
