@@ -162,7 +162,6 @@ export function createRpgMenuPanel(
   function showActivePane(): void {
     menuTabPane.element.style.display    = activeTab === 'menu'     ? '' : 'none';
     weaponsTabPane.element.style.display  = activeTab === 'weapons'  ? '' : 'none';
-    forgeTabPane.element.style.display    = activeTab === 'forge'    ? '' : 'none';
     upgradesTabPane.element.style.display = activeTab === 'upgrades' ? '' : 'none';
     bossesTabPane.element.style.display   = activeTab === 'bosses'   ? '' : 'none';
     enemiesTabPane.element.style.display  = activeTab === 'enemies'  ? '' : 'none';
