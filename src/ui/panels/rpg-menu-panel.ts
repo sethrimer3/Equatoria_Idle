@@ -96,7 +96,6 @@ export function createRpgMenuPanel(
   const tabDefs: Array<{ id: RpgMenuTab; label: string }> = [
     { id: 'menu',     label: 'Menu' },
     { id: 'weapons',  label: 'Weapons' },
-    { id: 'forge',    label: 'Forge' },
     { id: 'upgrades', label: 'Upgrades' },
     { id: 'bosses',   label: 'Bosses' },
     { id: 'enemies',  label: 'Enemies' },
