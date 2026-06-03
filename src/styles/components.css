@@ -299,6 +299,135 @@
   box-shadow: 0 0 16px rgba(255, 160, 30, 0.15);
 }
 
+/* Section divider inside forge pane */
+.forge-section-divider {
+  width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255, 200, 50, 0.55);
+  text-align: center;
+  padding: 4px 0 2px;
+  border-top: 1px solid rgba(255, 200, 50, 0.15);
+  margin-top: 4px;
+}
+
+/* ── Forge weapon inventory ──────────────────────────────────── */
+.forge-inventory {
+  width: 100%;
+  padding: 4px 0 8px;
+}
+
+.forge-inventory__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 200, 50, 0.6);
+  text-align: center;
+  margin-bottom: 10px;
+  display: none; /* title already shown by forge-section-divider */
+}
+
+.forge-inventory__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 56px);
+  gap: 8px;
+  justify-content: center;
+}
+
+.forge-inventory__slot {
+  width: 56px;
+  height: 56px;
+  border: 2px solid rgba(200, 160, 40, 0.45);
+  border-radius: 10px;
+  background: rgba(2, 4, 18, 0.94);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  box-shadow: inset 0 0 0 1px rgba(200, 160, 40, 0.07);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.forge-inventory__slot:not(:empty) {
+  cursor: pointer;
+}
+
+.forge-inventory__slot:not(:empty):hover {
+  border-color: rgba(255, 210, 60, 0.85);
+  box-shadow: 0 0 10px rgba(255, 200, 40, 0.22), inset 0 0 0 1px rgba(255, 200, 40, 0.12);
+}
+
+.forge-inventory__slot--drag-over {
+  border-color: rgba(255, 220, 80, 1);
+  box-shadow: 0 0 14px rgba(255, 210, 50, 0.4);
+}
+
+.forge-inventory__lvl {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 241, 114, 0.9);
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.7);
+}
+
+.forge-inventory__drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0.88;
+  transform: scale(1.15);
+}
+
+/* ── Weapon stat popup ───────────────────────────────────────── */
+.forge-inventory__popup {
+  position: fixed;
+  z-index: 9990;
+  width: 248px;
+  background: rgba(6, 4, 22, 0.97);
+  border: 1px solid rgba(200, 160, 40, 0.45);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.75);
+}
+
+.forge-inventory__popup-name {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.forge-inventory__popup-row {
+  font-size: 11px;
+  color: #9a9a9a;
+  margin-bottom: 3px;
+}
+
+.forge-inventory__popup-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64c8ff;
+  margin: 6px 0;
+}
+
+.forge-inventory__popup-mods {
+  font-size: 10px;
+  color: #c0c0c0;
+  white-space: pre-line;
+  line-height: 1.55;
+  margin-top: 4px;
+}
+
 /* ── Aliven tier rows ────────────────────────────────────────── */
 .aliven-rows {
   margin-bottom: 16px;
