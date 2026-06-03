@@ -183,9 +183,6 @@ export function createRpgMenuPanel(
       case 'weapons':
         weaponsTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
         break;
-      case 'forge':
-        forgeTabPane.update(lastRpgState, lastIsDevMode);
-        break;
       case 'upgrades':
         upgradesTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
         break;
