@@ -1276,4 +1276,293 @@
   color: #fca5a5 !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Forge Weapon Crafting Page  (rpg-weapon-crafting-page.ts)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forge-craft {
+  background: rgba(14, 8, 24, 0.92);
+  border: 1px solid rgba(212, 160, 64, 0.45);
+  border-radius: 8px;
+  padding: 14px 12px 16px;
+  margin-bottom: 14px;
+}
+
+.forge-craft__header {
+  margin-bottom: 10px;
+}
+
+.forge-craft__title {
+  color: #d4a040;
+  font-weight: 700;
+  font-size: 0.95em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.forge-craft__capacity {
+  font-size: 0.76em;
+  color: #aaa;
+}
+
+.forge-craft__inventory {
+  font-size: 0.78em;
+  color: #bbb;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.forge-craft__section-label {
+  font-size: 0.8em;
+  color: #ccc;
+  margin-bottom: 6px;
+}
+
+/* ── Tier chip selector ──────────────────────────────────────────── */
+
+.forge-craft__chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.forge-craft__chip {
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--chip-color, #aaa);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--chip-color, #aaa);
+  font-size: 0.76em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, box-shadow 0.15s;
+  line-height: 1.2;
+}
+
+.forge-craft__chip--selected {
+  background: color-mix(in srgb, var(--chip-color, #aaa) 28%, transparent);
+  box-shadow: 0 0 8px var(--chip-color, #aaa), inset 0 0 4px rgba(255,255,255,0.08);
+  font-weight: 700;
+}
+
+.forge-craft__chip--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Percentage slider ───────────────────────────────────────────── */
+
+.forge-craft__slider-section {
+  margin-bottom: 12px;
+}
+
+.forge-craft__hint {
+  font-size: 0.78em;
+  color: #888;
+  font-style: italic;
+}
+
+.forge-craft__track-wrap {
+  padding: 8px 0;
+}
+
+.forge-craft__track {
+  position: relative;
+  height: 44px;
+  border-radius: 6px;
+  overflow: visible;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  user-select: none;
+}
+
+.forge-craft__segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-right: 1px solid rgba(0, 0, 0, 0.4);
+  transition: left 0.05s, width 0.05s;
+}
+
+.forge-craft__segment:first-child {
+  border-radius: 5px 0 0 5px;
+}
+
+.forge-craft__segment:last-of-type {
+  border-right: none;
+  border-radius: 0 5px 5px 0;
+}
+
+.forge-craft__segment-label {
+  font-size: 0.7em;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+/* Handle — draggable boundary between segments */
+.forge-craft__handle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 16px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 5px;
+  cursor: ew-resize;
+  z-index: 10;
+  touch-action: none;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.7), 0 0 16px rgba(200, 160, 80, 0.45);
+  transition: box-shadow 0.12s;
+}
+
+.forge-craft__handle:hover,
+.forge-craft__handle:focus {
+  outline: none;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.95), 0 0 24px rgba(212, 160, 64, 0.7);
+}
+
+/* ── Power slider ────────────────────────────────────────────────── */
+
+.forge-craft__power-section {
+  margin-bottom: 12px;
+}
+
+.forge-craft__power-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.forge-craft__power-range {
+  width: 100%;
+  accent-color: #d4a040;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.forge-craft__power-max {
+  font-size: 0.72em;
+  color: #888;
+}
+
+/* ── Actual composition preview ─────────────────────────────────── */
+
+.forge-craft__preview-section {
+  margin-bottom: 10px;
+}
+
+.forge-craft__comp-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.forge-craft__comp-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--chip-color, #aaa) 50%, transparent);
+  background: color-mix(in srgb, var(--chip-color, #aaa) 12%, transparent);
+  font-size: 0.76em;
+}
+
+.forge-craft__comp-name {
+  font-weight: 600;
+}
+
+.forge-craft__comp-pct {
+  color: #ddd;
+}
+
+.forge-craft__comp-count {
+  color: #999;
+  font-size: 0.9em;
+}
+
+.forge-craft__stats-row {
+  font-size: 0.74em;
+  color: #999;
+}
+
+/* ── Validation + craft button ──────────────────────────────────── */
+
+.forge-craft__validation {
+  font-size: 0.78em;
+  color: #88c878;
+  min-height: 1.2em;
+  margin-bottom: 6px;
+}
+
+.forge-craft__validation--error {
+  color: #ff8888;
+}
+
+.forge-craft__craft-btn {
+  width: 100%;
+  padding: 10px !important;
+  font-size: 0.9em !important;
+  font-weight: 700 !important;
+  background: rgba(212, 160, 0, 0.14) !important;
+  border-color: rgba(212, 160, 0, 0.55) !important;
+  color: #d4a040 !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.forge-craft__craft-btn:not(:disabled):active {
+  background: rgba(212, 160, 0, 0.28) !important;
+}
+
+/* ── Advanced / exact counts ─────────────────────────────────────── */
+
+.forge-craft__advanced {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.forge-craft__advanced-summary {
+  padding: 6px 10px;
+  font-size: 0.78em;
+  color: #888;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.forge-craft__advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.forge-craft__advanced[open] .forge-craft__advanced-summary {
+  color: #bbb;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.forge-craft__advanced-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
 

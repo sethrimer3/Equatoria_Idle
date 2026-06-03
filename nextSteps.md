@@ -1,6 +1,80 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#209**
+Current build: **#210**
+
+---
+
+## Build #210 — Weapon Crafting page with percentage slider (Upgrades tab)
+
+### Completed in this build
+
+* **`src/data/rpg/crafting-allocation.ts`** — pure math helpers for the crafting UI:
+  - `enforceMinSegmentSize(shares, minFraction)`: fixes segments below minimum via iterative
+    redistribution (clamp → renormalize from unfixed segments), stable result.
+  - `snapToStep(value, stepFraction)`: snaps to nearest step multiple.
+  - `sharesFromHandles / handlesFromShares`: convert between N-1 handle positions and N shares.
+  - `clampHandle(hi, pos, handles, minFraction)`: enforce minimum segment size per handle move.
+  - `computeMaxBudget(tiers, shares, inventory, devMode)`: weighted budget ceiling from inventory.
+  - `allocateIngredients(tiers, shares, inventory, powerFraction, devMode)`: full allocation →
+    refined crystal ingredient array. Ensures ≥1 crystal when budget > 0, clamps to inventory.
+
+* **`src/ui/panels/rpg-weapon-crafting-page.ts`** — new standalone crafting workspace:
+  - Tier chip selector (up to forge capacity; only shows tiers with available crystals or in dev mode).
+  - Multi-segment percentage slider: N-1 draggable handles, colored segments, tier name + % labels.
+  - Mouse, touch, and keyboard drag (arrow keys, Shift+arrow for 5% steps).
+  - Minimum 5% segment size enforced; 1% snap step.
+  - Power slider (1–100% of max weighted budget).
+  - Live actual composition preview (post-floor, using `computeCraftedWeaponComposition`).
+  - Shows Lv/×mult/mote-wt estimate.
+  - Craft button with validation messages (no types selected, insufficient crystals, over-capacity).
+  - Collapsible `<details>` "Exact counts / advanced" fallback with per-tier number inputs.
+  - Dispatches `{ kind: 'craft_weapon', ingredients }` (same action as before).
+  - Slider/selection state is preserved across tab updates (crafting page persists on the pane).
+
+* **`src/ui/panels/rpg-upgrades-tab.ts`** — wires the crafting page:
+  - Creates one `RpgWeaponCraftingPage` instance (persists across updates).
+  - Renders it at the top of the Upgrades tab when crystals exist or dev mode is on.
+  - Existing upgrade purchase cards remain unchanged below.
+
+* **CSS** (`src/styles/canvas.css`) — `forge-craft__*` classes:
+  - Dark background panel, gold border.
+  - Chip buttons with tier color CSS variable.
+  - `.forge-craft__track` + `.forge-craft__segment` + `.forge-craft__handle` for the slider.
+  - Glowing handles with focus/hover states.
+  - Power range input, composition chips, stats row, validation, craft button.
+  - Advanced `<details>` collapsible section.
+
+* **Tests** (`src/data/rpg/__tests__/crafting-allocation.test.ts`, 20 tests):
+  - `enforceMinSegmentSize` sums to 1, minimum enforced in all cases.
+  - `snapToStep` rounding.
+  - `sharesFromHandles` / `handlesFromShares` round-trip.
+  - `clampHandle` minimum constraint.
+  - `computeMaxBudget` inventory gating, dev mode, limiting-tier logic.
+  - `allocateIngredients` floor counts, power scaling, inventory clamping, empty inventory,
+    forge capacity (only selected tiers appear in result).
+
+### Deferred / next steps
+
+* **Move to a dedicated Forge tab**: The crafting page is currently shown in the Upgrades tab
+  as a temporary home. When a dedicated RPG Forge tab is created, import and mount
+  `createRpgWeaponCraftingPage` there and remove it from `rpg-upgrades-tab.ts`.
+
+* **Remove `buildForgeCraftingPanel` from `rpg-weapons-tab.ts`**: The old number-input crafting
+  panel is still live in the Weapons tab. Once the new percentage-slider page is validated,
+  remove the old panel (or keep it as a permanent dev-only fallback). They dispatch the same
+  action so both are safe simultaneously.
+
+* **Segment label overflow**: On very narrow segments (< ~15%) the tier name + % label
+  is clipped. Future polish: hide label or show only % when segment is too narrow.
+
+* **Slider keyboard focus indicator**: The handle has a glow on `:focus` but no visible
+  focus ring for accessibility compliance. A visible outline can be added later.
+
+* **Pre-existing lint errors (unrelated)**:
+  - `npm run lint` reports 8 errors in pre-existing files (rpg-render.ts, rpg-elite-empower-particles.ts,
+    rpg-render-update.ts, topographic-terrain.test.ts). None introduced by Build #210.
+
+---
 
 ---
 

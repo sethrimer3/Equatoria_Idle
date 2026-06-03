@@ -1627,9 +1627,28 @@
 - In dev mode: appends a **Quartz Whip Physics** section at the bottom with labelled number inputs for all 15 tunable `CHAIN_*` constants (via `setChainWhipParam` / `resetChainWhipParams` from `rpg-weapon-constants.ts`).
 
 ### src/ui/panels/rpg-upgrades-tab.ts
-- Upgrades sub-tab pane for the RPG overlay panel (per-upgrade purchase cards).
+- Upgrades sub-tab pane for the RPG overlay panel (per-upgrade purchase cards + weapon crafting page).
 - `RpgUpgradesTabPane` interface; `createRpgUpgradesTabPane(dispatch)` factory.
 - `update(rpgState, resources, numberFormat, isDevMode)` rebuilds the upgrade list.
+- When crystals exist or dev mode is on, renders `RpgWeaponCraftingPage` at the top (temporary location).
+
+### src/ui/panels/rpg-weapon-crafting-page.ts
+- Standalone weapon-crafting workspace rendered inside the Upgrades tab (temporary; move to a Forge tab later).
+- `RpgWeaponCraftingPage` interface; `createRpgWeaponCraftingPage(dispatch)` factory.
+- `update(rpgState, isDevMode)` rebuilds the full crafting UI while preserving slider/chip state.
+- Multi-segment percentage slider: N-1 draggable handles (mouse + touch + keyboard), colored segments.
+- Tier chip selector (respects forge capacity); power slider (1–100% of max budget).
+- Live actual composition preview (post-floor via `computeCraftedWeaponComposition`).
+- Dispatches `{ kind: 'craft_weapon', ingredients }`.
+- Collapsible "Exact counts / advanced" fallback with number inputs.
+
+### src/data/rpg/crafting-allocation.ts
+- Pure math helpers for the crafting page percentage-to-ingredient conversion.
+- `enforceMinSegmentSize`: clamp shares to minimum, redistribute from unfixed segments.
+- `sharesFromHandles` / `handlesFromShares`: convert between N-1 handle positions and N shares.
+- `clampHandle`: enforce minimum segment size when moving a handle.
+- `computeMaxBudget`: weighted budget ceiling given shares and inventory.
+- `allocateIngredients`: convert shares + power fraction → refined crystal ingredient array.
 
 ### src/ui/panels/rpg-bosses-tab.ts
 - Bosses sub-tab pane for the RPG overlay panel (boss list + speed selector).
