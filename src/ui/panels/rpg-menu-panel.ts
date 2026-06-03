@@ -126,7 +126,6 @@ export function createRpgMenuPanel(
     (atTop) => { onRpgBarAtTopChange(atTop); },
   );
   const weaponsTabPane  = createRpgWeaponsTabPane(dispatch);
-  const forgeTabPane: RpgWeaponCraftingPage = createRpgWeaponCraftingPage(dispatch);
   const upgradesTabPane = createRpgUpgradesTabPane(dispatch);
   const bossesTabPane: RpgBossesTabPane = createRpgBossesTabPane(dispatch);
   const enemiesTabPane: RpgEnemiesTabPane = createRpgEnemiesTabPane(dispatch);
