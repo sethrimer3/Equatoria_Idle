@@ -24,13 +24,15 @@ import { createRpgBossesTabPane } from './rpg-bosses-tab';
 import type { RpgBossesTabPane } from './rpg-bosses-tab';
 import { createRpgEnemiesTabPane } from './rpg-enemies-tab';
 import type { RpgEnemiesTabPane } from './rpg-enemies-tab';
+import { createRpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
+import type { RpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
 import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ────────────────────────────────────────────────────────
 
 // ─── Types ────────────────────────────────────────────────────────
 
-type RpgMenuTab = 'menu' | 'weapons' | 'upgrades' | 'bosses' | 'enemies';
+type RpgMenuTab = 'menu' | 'weapons' | 'upgrades' | 'bosses' | 'enemies' | 'forge';
 
 export interface RpgMenuPanel {
   /** Root element — append to #app root, above the tab bar. */
@@ -96,6 +98,7 @@ export function createRpgMenuPanel(
   const tabDefs: Array<{ id: RpgMenuTab; label: string }> = [
     { id: 'menu',     label: 'Menu' },
     { id: 'weapons',  label: 'Weapons' },
+    { id: 'forge',    label: 'Forge' },
     { id: 'upgrades', label: 'Upgrades' },
     { id: 'bosses',   label: 'Bosses' },
     { id: 'enemies',  label: 'Enemies' },
@@ -126,6 +129,7 @@ export function createRpgMenuPanel(
     (atTop) => { onRpgBarAtTopChange(atTop); },
   );
   const weaponsTabPane  = createRpgWeaponsTabPane(dispatch);
+  const forgeTabPane: RpgWeaponCraftingPage = createRpgWeaponCraftingPage(dispatch);
   const upgradesTabPane = createRpgUpgradesTabPane(dispatch);
   const bossesTabPane: RpgBossesTabPane = createRpgBossesTabPane(dispatch);
   const enemiesTabPane: RpgEnemiesTabPane = createRpgEnemiesTabPane(dispatch);
@@ -136,6 +140,7 @@ export function createRpgMenuPanel(
   content.appendChild(makePageBreak('large'));
   content.appendChild(menuTabPane.element);
   content.appendChild(weaponsTabPane.element);
+  content.appendChild(forgeTabPane.element);
   content.appendChild(upgradesTabPane.element);
   content.appendChild(bossesTabPane.element);
   content.appendChild(enemiesTabPane.element);
@@ -162,6 +167,7 @@ export function createRpgMenuPanel(
   function showActivePane(): void {
     menuTabPane.element.style.display    = activeTab === 'menu'     ? '' : 'none';
     weaponsTabPane.element.style.display  = activeTab === 'weapons'  ? '' : 'none';
+    forgeTabPane.element.style.display    = activeTab === 'forge'    ? '' : 'none';
     upgradesTabPane.element.style.display = activeTab === 'upgrades' ? '' : 'none';
     bossesTabPane.element.style.display   = activeTab === 'bosses'   ? '' : 'none';
     enemiesTabPane.element.style.display  = activeTab === 'enemies'  ? '' : 'none';
@@ -182,6 +188,9 @@ export function createRpgMenuPanel(
         break;
       case 'weapons':
         weaponsTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
+        break;
+      case 'forge':
+        forgeTabPane.update(lastRpgState, lastIsDevMode);
         break;
       case 'upgrades':
         upgradesTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);

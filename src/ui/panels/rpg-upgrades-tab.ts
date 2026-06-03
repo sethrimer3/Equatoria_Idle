@@ -17,8 +17,6 @@ import type { ActionHandler } from '../../input';
 import { formatNumberAs } from '../../util';
 import type { NumberFormat } from '../../util';
 import { makePageBreak } from '../ui-helpers';
-import { createRpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
-import type { RpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -31,9 +29,6 @@ export interface RpgUpgradesTabPane {
 
 export function createRpgUpgradesTabPane(dispatch: ActionHandler): RpgUpgradesTabPane {
   const element = document.createElement('div');
-
-  // Weapon crafting page — persists across update() calls so slider state is kept.
-  const craftingPage: RpgWeaponCraftingPage = createRpgWeaponCraftingPage(dispatch);
 
   function buildUpgradeCard(
     upgradeDef: RpgUpgradeDefinition,
@@ -96,14 +91,6 @@ export function createRpgUpgradesTabPane(dispatch: ActionHandler): RpgUpgradesTa
     isDevMode: boolean,
   ): void {
     element.innerHTML = '';
-
-    // ── Weapon Crafting section ──
-    const hasCrystals = Array.from(rpgState.refinedCrystalsByTierId.values()).some(n => n > 0);
-    if (hasCrystals || isDevMode) {
-      craftingPage.update(rpgState, isDevMode);
-      element.appendChild(craftingPage.element);
-      element.appendChild(makePageBreak('small'));
-    }
 
     // ── RPG Upgrades ──
     const list = document.createElement('div');
