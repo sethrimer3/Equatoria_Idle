@@ -136,7 +136,6 @@ export function createRpgMenuPanel(
   content.appendChild(makePageBreak('large'));
   content.appendChild(menuTabPane.element);
   content.appendChild(weaponsTabPane.element);
-  content.appendChild(forgeTabPane.element);
   content.appendChild(upgradesTabPane.element);
   content.appendChild(bossesTabPane.element);
   content.appendChild(enemiesTabPane.element);
