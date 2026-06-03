@@ -24,8 +24,6 @@ import { createRpgBossesTabPane } from './rpg-bosses-tab';
 import type { RpgBossesTabPane } from './rpg-bosses-tab';
 import { createRpgEnemiesTabPane } from './rpg-enemies-tab';
 import type { RpgEnemiesTabPane } from './rpg-enemies-tab';
-import { createRpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
-import type { RpgWeaponCraftingPage } from './rpg-weapon-crafting-page';
 import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ────────────────────────────────────────────────────────
