@@ -15,6 +15,12 @@ import type {
 
 const craftedWeaponCache = new Map<string, WeaponDefinition>();
 const craftedModifierCache = new Map<string, CraftedWeaponModifiers>();
+const eigensteinWeaponIds = new Set<string>();
+
+/** Returns true if the given weapon ID was forged with Eigenstein as its dominant tier. */
+export function isEigensteinDominant(weaponId: string): boolean {
+  return eigensteinWeaponIds.has(weaponId);
+}
 
 const EFFECT_LABELS: Record<string, string> = {
   single: 'single-target strike',
@@ -24,6 +30,7 @@ const EFFECT_LABELS: Record<string, string> = {
   gatling: 'rapid-fire barrage',
   emeraldMissile: 'seeking missile swarm',
   poisonBolt: 'venom bolt',
+  swordCombo: 'dimensional sword slash',
 };
 
 const EFFECT_NOUNS: Record<string, string> = {
@@ -34,6 +41,7 @@ const EFFECT_NOUNS: Record<string, string> = {
   gatling: 'Spray',
   emeraldMissile: 'Swarm',
   poisonBolt: 'Sting',
+  swordCombo: 'Blade',
 };
 
 /**
@@ -190,7 +198,7 @@ export function getDominantCraftedEffect(tierId: TierId): WeaponEffect {
     case 'fracteryl':
       return { kind: 'emeraldMissile' };
     case 'eigenstein':
-      return { kind: 'piercing', defPierceRatio: 0.65 };
+      return { kind: 'swordCombo' };
   }
 }
 
@@ -394,7 +402,7 @@ export function getCraftedModifierLines(craftedWeapon: CraftedWeaponData): strin
         lines.push(`Fracteryl ${pct}%: ${Math.min(Math.round(entry.share * 10), 10)} recursive strikes`);
         break;
       case 'eigenstein':
-        lines.push(`Eigenstein ${pct}%: (reserved — no final behavior)`);
+        lines.push(`Eigenstein ${pct}%: dimensional rift — damage compounds per hit on same enemy`);
         break;
       case 'sunstone':
         lines.push(`Sunstone ${pct}%: +${Math.round(entry.share * 30)}px mine radius`);
@@ -470,6 +478,7 @@ export function createCraftedWeaponDefinition(
   };
   craftedWeaponCache.set(id, definition);
   craftedModifierCache.set(id, modifiers);
+  if (dominantTierId === 'eigenstein') eigensteinWeaponIds.add(id);
   return craftedWeapon;
 }
 
@@ -487,6 +496,7 @@ export function registerCraftedWeapons(craftedWeapons: CraftedWeaponData[]): voi
     const modifiers = craftedWeapon.modifiers
       ?? computeCraftedWeaponModifiers(craftedWeapon.composition, totalWeightedMoteValue);
     craftedModifierCache.set(craftedWeapon.id, modifiers);
+    if (craftedWeapon.dominantTierId === 'eigenstein') eigensteinWeaponIds.add(craftedWeapon.id);
   }
 }
 

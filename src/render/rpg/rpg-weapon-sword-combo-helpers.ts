@@ -17,17 +17,22 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
-import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
+import { resolveWeaponDefinition, isEigensteinDominant } from '../../data/rpg/crafted-weapon-helpers';
 import {
   SWORD_COLOR,
   SWORD_SHARD_COUNT,
   SWORD_BEAM_DURATION_MS,
   SWORD_DEFAULT_COOLDOWN_MS,
+  EIGENSTEIN_SHARD_COUNT,
+  EIGENSTEIN_RIFT_DURATION_MS,
+  EIGENSTEIN_RIFT_MAX,
+  EIGENSTEIN_RIFT_ACCUM_CAP,
+  EIGENSTEIN_RIFT_COLORS,
 } from './rpg-weapon-constants';
 import { HIT_EFFECT_DURATION_MS } from './rpg-constants';
 import { wrapAngleDiff } from './rpg-helpers';
 import type { FluidImpulse } from './rpg-fluid';
-import type { ClosestTarget, RpgPlayerStats, SwordComboState, HitEffect, LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, RpgPlayerStats, SwordComboState, HitEffect, LaserEnemy, SapphireEnemy, EigensteinRiftEffect } from './rpg-types';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy,
@@ -104,17 +109,22 @@ export function buildSwordCombo(weaponId: string, ctx: SwordWeaponCtx): SwordCom
   const tier       = ctx.rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
   const cooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
   const initAngle  = ctx.playerAimAngle + Math.PI / 2;
+  const isEigenstein = isEigensteinDominant(weaponId);
+  const shardCount = isEigenstein ? EIGENSTEIN_SHARD_COUNT : SWORD_SHARD_COUNT;
   return {
     phase: 'idle', phaseMs: 0, cooldownMs,
     hitThisSwing: new Set(),
     swordAngle: initAngle, swordAngularVel: 0,
-    shardAngles: Array.from({ length: SWORD_SHARD_COUNT }, () => initAngle),
+    shardAngles: Array.from({ length: shardCount }, () => initAngle),
     swipeArcStart: 0, swipeArcEnd: 0,
     swipeEffects: [], beamEffects: [],
     swingIsRightToLeft: true,
     comboCount: 0,
     spinComboAngle: 0,
     spinComboDamageTicks: 0,
+    isEigensteinBlade: isEigenstein,
+    riftAccum: isEigenstein ? new WeakMap() : undefined,
+    riftEffects: isEigenstein ? [] : undefined,
   };
 }
 
@@ -173,30 +183,63 @@ export function swordHitInArc(
   weaponId: string,
 ): void {
   const { mote, hitEffects, spawnDamageNumber } = ctx;
-  const hitColor = SWORD_COLOR;
+  const isEigenstein = state.isEigensteinBlade === true;
+  const hitColor = isEigenstein ? '#cc00ff' : SWORD_COLOR;
   const isDiamondBlade = weaponId === 'diamond_bastion';
   const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
-  // Minimum distance (px) at which a target is considered "touching" the player
-  // and should not be blocked by terrain (prevents edge-case situations where
-  // an enemy pushed right next to the player cannot be hit).
   const MELEE_TOUCH_SQ = 16 * 16;
+
+  const applyRiftDamage = (enemyRef: object, baseHitDmg: number): number => {
+    if (!isEigenstein || !state.riftAccum) return baseHitDmg;
+    const prior = Math.min(EIGENSTEIN_RIFT_ACCUM_CAP, state.riftAccum.get(enemyRef) ?? 0);
+    const total = baseHitDmg + prior;
+    state.riftAccum.set(enemyRef, Math.min(EIGENSTEIN_RIFT_ACCUM_CAP, prior + baseHitDmg));
+    return total;
+  };
+
+  const spawnRift = (x: number, y: number, intensity: number): void => {
+    if (!isEigenstein || !state.riftEffects) return;
+    if (state.riftEffects.length >= EIGENSTEIN_RIFT_MAX) state.riftEffects.shift();
+    const branchAngles = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5, Math.PI * 0.25, Math.PI * 0.75];
+    const numBranches = 3 + Math.floor(intensity * 3);
+    const branches = branchAngles.slice(0, numBranches).map((angle, i) => ({
+      angle: angle + (((i * 1.618) % 1) - 0.5) * 0.4,
+      length: 0,
+      maxLength: (15 + intensity * 25) * (0.7 + ((i * 0.37) % 0.6)),
+      color: EIGENSTEIN_RIFT_COLORS[i % EIGENSTEIN_RIFT_COLORS.length] ?? '#00ffe0',
+    }));
+    const rift: EigensteinRiftEffect = {
+      x, y,
+      timerMs: 0,
+      maxTimerMs: EIGENSTEIN_RIFT_DURATION_MS * (0.8 + intensity * 0.4),
+      branches,
+      intensity,
+    };
+    state.riftEffects.push(rift);
+  };
+
   const check = (
     target: ClosestTarget,
     e: { x: number; y: number; maxHp: number },
+    enemyRef: object,
   ) => {
     if (state.hitThisSwing.has(e)) return;
     const dx = e.x - mote.x, dy = e.y - mote.y;
     const distSq = dx * dx + dy * dy;
     if (distSq > swordLength * swordLength) return;
     if (!angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) return;
-    // LOS check: skip enemies behind terrain unless they are within touch range.
     if (terrain && distSq > MELEE_TOUCH_SQ && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, e.x, e.y)) return;
-    const dmg = ctx.damageBodyTarget(target, rawDamage, 1.0, false);
+    const effectiveDamage = applyRiftDamage(enemyRef, rawDamage);
+    const dmg = ctx.damageBodyTarget(target, effectiveDamage, 1.0, false);
     state.hitThisSwing.add(e);
     if (dmg > 0) {
       hitEffects.push({ x: e.x, y: e.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
       spawnDamageNumber(e.x, e.y, 0, -1, String(Math.round(dmg)), dmg / e.maxHp, hitColor);
       spawnSwordBeam(state, e.x, e.y, arcStart, arcEnd, swordLength);
+      if (isEigenstein) {
+        const accum = state.riftAccum?.get(enemyRef) ?? 0;
+        spawnRift(e.x, e.y, Math.min(1, accum / (rawDamage * 5 + 1)));
+      }
     }
   };
   const damageBossEnemy = ctx.damageBossEnemy;
@@ -205,7 +248,9 @@ export function swordHitInArc(
     const body = getClosestTargetBody(target);
     if (!body) continue;
     if (target.elite?.isInvuln) continue;
-    check(target, body);
+    const ref = getEnemyRef(target);
+    if (!ref) continue;
+    check(target, body, ref);
   }
   if (ctx.bossEnemy && !state.hitThisSwing.has(ctx.bossEnemy)) {
     const dx = ctx.bossEnemy.x - mote.x, dy = ctx.bossEnemy.y - mote.y;
@@ -213,12 +258,17 @@ export function swordHitInArc(
     if (bossDist2 <= swordLength * swordLength &&
         angleInArc(Math.atan2(dy, dx), arcStart, arcEnd) &&
         !(terrain && bossDist2 > MELEE_TOUCH_SQ && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, ctx.bossEnemy.x, ctx.bossEnemy.y))) {
-      const dmg = damageBossEnemy(rawDamage, 1.0, isDiamondBlade);
+      const effectiveDamage = applyRiftDamage(ctx.bossEnemy, rawDamage);
+      const dmg = damageBossEnemy(effectiveDamage, 1.0, isDiamondBlade);
       state.hitThisSwing.add(ctx.bossEnemy);
       if (dmg > 0) {
         hitEffects.push({ x: ctx.bossEnemy.x, y: ctx.bossEnemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: hitColor });
         spawnDamageNumber(ctx.bossEnemy.x, ctx.bossEnemy.y, 0, -1, String(Math.round(dmg)), dmg / ctx.bossEnemy.maxHp, hitColor);
         spawnSwordBeam(state, ctx.bossEnemy.x, ctx.bossEnemy.y, arcStart, arcEnd, swordLength);
+        if (isEigenstein) {
+          const accum = state.riftAccum?.get(ctx.bossEnemy) ?? 0;
+          spawnRift(ctx.bossEnemy.x, ctx.bossEnemy.y, Math.min(1, accum / (rawDamage * 5 + 1)));
+        }
       }
     }
   }
@@ -232,17 +282,36 @@ export function swordHitInArc(
       const pDistSq = dx * dx + dy * dy;
       if (pDistSq > swordLength * swordLength) continue;
       if (!angleInArc(Math.atan2(dy, dx), arcStart, arcEnd)) continue;
-      // LOS check for aliven particles.
       if (terrain && pDistSq > MELEE_TOUCH_SQ && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, p.x, p.y)) continue;
-      const dmg = ctx.damageAlivenParticle(p, group, rawDamage);
+      const effectiveDamage = applyRiftDamage(p, rawDamage);
+      const dmg = ctx.damageAlivenParticle(p, group, effectiveDamage);
       state.hitThisSwing.add(p);
       if (dmg > 0) {
         hitEffects.push({ x: p.x, y: p.y, timerMs: HIT_EFFECT_DURATION_MS, color: p.glowColor });
         spawnDamageNumber(p.x, p.y, 0, -1, String(Math.round(dmg)), dmg / p.maxHp, p.glowColor);
         spawnSwordBeam(state, p.x, p.y, arcStart, arcEnd, swordLength);
+        if (isEigenstein) {
+          const accum = state.riftAccum?.get(p) ?? 0;
+          spawnRift(p.x, p.y, Math.min(1, accum / (rawDamage * 5 + 1)));
+        }
       }
     }
   }
+}
+
+function getEnemyRef(target: ClosestTarget): object | null {
+  return (
+    target.laser ?? target.sapphire ?? target.emerald ?? target.amber ?? target.void ??
+    target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite ??
+    target.amethyst ?? target.diamond ?? target.nullstone ?? target.fracteryl ??
+    target.eigenstein ?? target.elite ?? target.binaryRing ?? target.dustWisp ??
+    target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ?? target.jellyfish ??
+    target.clothGhost ?? target.plantTurret ?? target.gearInsect ?? target.spiderCrawler ??
+    target.moteSwarm ?? target.shadowHand ?? target.sandFish ?? target.quartzFish ??
+    target.rubyFish ?? target.sunstoneFish ?? target.emeraldFish ?? target.sapphireFish ??
+    target.amethystFish ?? target.diamondFish ?? target.plantProj ?? target.verdurePlant ??
+    null
+  );
 }
 
 // Nothing further — all exports from this module are listed above.

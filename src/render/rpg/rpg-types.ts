@@ -219,6 +219,28 @@ export interface VortexWeaponState {
 
 export type SwordComboPhase = 'idle' | 'swing' | 'combo_window' | 'spin_combo';
 
+// ── Eigenstein rift slash visual ──────────────────────────────
+
+export interface EigensteinRiftBranch {
+  angle: number;
+  length: number;
+  maxLength: number;
+  color: string;
+}
+
+/**
+ * Short-lived dimensional-rift crack effect spawned on each Eigenstein sword hit.
+ * Branches grow from the impact point, substrate-style, with inverted neon colors.
+ */
+export interface EigensteinRiftEffect {
+  x: number; y: number;
+  timerMs: number;
+  maxTimerMs: number;
+  branches: EigensteinRiftBranch[];
+  /** 0–1 intensity based on prior rift accumulation on the struck target. */
+  intensity: number;
+}
+
 /** A disconnected prismatic arc visual spawned when the sword swipes. */
 export interface SwipeEffect {
   /** Player position at moment of swipe. */
@@ -276,6 +298,15 @@ export interface SwordComboState {
   spinComboAngle: number;
   /** How many full-rotation damage ticks have been applied during the combo so far. */
   spinComboDamageTicks: number;
+  /** True when this state belongs to an Eigenstein-dominant crafted weapon. */
+  isEigensteinBlade?: boolean;
+  /**
+   * Per-enemy accumulated rift damage for Eigenstein compounding mechanic.
+   * Key = enemy object reference (WeakMap — clears automatically when enemy is GC'd).
+   */
+  riftAccum?: WeakMap<object, number>;
+  /** Short-lived dimensional-rift slash visuals spawned on each Eigenstein hit. */
+  riftEffects?: EigensteinRiftEffect[];
 }
 
 // ── Iolite poison bolt interfaces ─────────────────────────────

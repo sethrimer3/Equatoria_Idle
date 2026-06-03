@@ -18,12 +18,13 @@ import { getScaledWeaponDamage, getScaledWeaponCooldown } from '../../sim/rpg/rp
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   SWORD_SWING_MS, SWORD_PRISMATIC_COLORS, SAND_BLADE_COLORS,
-  SWORD_SHARD_COUNT, SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
+  SWORD_HINGE_SPRING_K, SWORD_HINGE_DAMPING,
   SWORD_SHARD_FOLLOW_BASE, SWORD_SHARD_FOLLOW_DECAY,
   SWORD_FLUID_DRAG_STR, SWORD_FLUID_SWIPE_STR, SWORD_DEFAULT_COOLDOWN_MS,
   SWORD_COMBO_MIN_SWIPE_DELAY_MS, SWORD_SWIPE_VISUAL_MS,
   SWORD_COMBO_THRESHOLD, SWORD_COMBO_WINDOW_MS,
   SWORD_COMBO_SPIN_TURNS, SWORD_COMBO_SPIN_MS, SWORD_COMBO_DAMAGE_MULT,
+  EIGENSTEIN_BLADE_LENGTH_MULT,
 } from './rpg-weapon-constants';
 import {
   FLUID_VEL_FRAME_TO_PX_S, FLUID_PROJECTILE_STRENGTH,
@@ -61,7 +62,7 @@ export function updateSwordComboForWeapon(
   const rawDamage  = weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, ctx.playerStats.atk)
     : ctx.playerStats.atk;
-  const swordLength    = getSwordLength(tier);
+  const swordLength    = getSwordLength(tier) * (state.isEigensteinBlade ? EIGENSTEIN_BLADE_LENGTH_MULT : 1);
   const fullCooldownMs = getScaledWeaponCooldown(weaponDef?.stats.cooldownMs ?? SWORD_DEFAULT_COOLDOWN_MS, tier);
   const nowMs = Date.now();
   const { mote, fluid } = ctx;
@@ -89,7 +90,7 @@ export function updateSwordComboForWeapon(
   if (state.phase !== 'swing' && state.phase !== 'spin_combo') {
     const d0 = wrapAngleDiff(state.swordAngle - state.shardAngles[0]);
     state.shardAngles[0] += d0 * followBase;
-    for (let i = 1; i < SWORD_SHARD_COUNT; i++) {
+    for (let i = 1; i < state.shardAngles.length; i++) {
       const followRate = Math.max(0.08, followBase - i * followDecay);
       const di = wrapAngleDiff(state.shardAngles[i - 1] - state.shardAngles[i]);
       state.shardAngles[i] += di * followRate;
@@ -109,7 +110,7 @@ export function updateSwordComboForWeapon(
     }
     state.swordAngle = driveAngle;
     state.shardAngles[0] = driveAngle;
-    for (let i = 1; i < SWORD_SHARD_COUNT; i++) {
+    for (let i = 1; i < state.shardAngles.length; i++) {
       const followRate = Math.max(0.08, followBase - i * followDecay);
       const di = wrapAngleDiff(state.shardAngles[i - 1] - state.shardAngles[i]);
       state.shardAngles[i] += di * followRate;
@@ -120,7 +121,7 @@ export function updateSwordComboForWeapon(
   const isSandBlade = weaponId === BASE_ATTACK_TIMER_KEY;
   const comboLength = swordLength;
   if (state.phase !== 'combo_window') {
-    const dists = getShardDistances(comboLength);
+    const dists = getShardDistances(comboLength, state.shardAngles.length);
     const colorPaletteDrag = isSandBlade ? SAND_BLADE_COLORS : SWORD_PRISMATIC_COLORS;
     const colIdx = Math.floor(nowMs / 60) % colorPaletteDrag.length;
     const hexColor = colorPaletteDrag[colIdx];
@@ -133,7 +134,7 @@ export function updateSwordComboForWeapon(
       pg = Math.min(255, Math.round(pg * bright));
       pb = Math.min(255, Math.round(pb * bright));
     }
-    for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
+    for (let i = 0; i < state.shardAngles.length; i++) {
       const sx = mote.x + Math.cos(state.shardAngles[i]) * dists[i];
       const sy = mote.y + Math.sin(state.shardAngles[i]) * dists[i];
       const perpX = -Math.sin(state.shardAngles[i]);
@@ -320,7 +321,7 @@ export function updateSwordComboForWeapon(
       // Snap sword back to right-hand rest position and reset combo.
       const restAngle2 = ctx.playerAimAngle + Math.PI / 2;
       state.swordAngle = restAngle2;
-      for (let i = 0; i < SWORD_SHARD_COUNT; i++) state.shardAngles[i] = restAngle2;
+      for (let i = 0; i < state.shardAngles.length; i++) state.shardAngles[i] = restAngle2;
       state.swingIsRightToLeft = true;
       state.comboCount = 0;
       state.phase = 'idle'; state.phaseMs = 0;
@@ -406,7 +407,7 @@ export function updateSwordComboForWeapon(
     }
   }
 
-  // ── 5. Age swipe and beam effects (unconditional). ───────────────────────
+  // ── 5. Age swipe, beam, and rift effects (unconditional). ───────────────
   for (let i = state.swipeEffects.length - 1; i >= 0; i--) {
     state.swipeEffects[i].timerMs -= deltaMs;
     if (state.swipeEffects[i].timerMs <= 0) state.swipeEffects.splice(i, 1);
@@ -414,5 +415,16 @@ export function updateSwordComboForWeapon(
   for (let i = state.beamEffects.length - 1; i >= 0; i--) {
     state.beamEffects[i].progress += deltaMs / (state.beamEffects[i].maxTimerMs * 0.5);
     if (state.beamEffects[i].progress >= 2) state.beamEffects.splice(i, 1);
+  }
+  if (state.riftEffects) {
+    for (let i = state.riftEffects.length - 1; i >= 0; i--) {
+      const fx = state.riftEffects[i];
+      fx.timerMs += deltaMs;
+      if (fx.timerMs >= fx.maxTimerMs) { state.riftEffects.splice(i, 1); continue; }
+      const growT = Math.min(1, fx.timerMs / (fx.maxTimerMs * 0.45));
+      for (const branch of fx.branches) {
+        branch.length = branch.maxLength * growT;
+      }
+    }
   }
 }

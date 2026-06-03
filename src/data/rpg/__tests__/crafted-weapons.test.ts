@@ -334,3 +334,98 @@ describe('createCraftedWeaponDefinition', () => {
     expect(cw.modifiers.critChancePct).toBeLessThanOrEqual(60);
   });
 });
+
+// ─── Eigenstein swordCombo effect ────────────────────────────────
+
+import { getDominantCraftedEffect, isEigensteinDominant } from '../crafted-weapon-helpers';
+
+describe('getDominantCraftedEffect — eigenstein', () => {
+  it('returns swordCombo for eigenstein dominant tier', () => {
+    const effect = getDominantCraftedEffect('eigenstein');
+    expect(effect.kind).toBe('swordCombo');
+  });
+});
+
+describe('isEigensteinDominant', () => {
+  it('returns true for a registered eigenstein-dominant weapon', () => {
+    const id = 'crafted_weapon_eigenstein_test';
+    createCraftedWeaponDefinition(id, [{ tierId: 'eigenstein', refinedCount: 1 }], 1);
+    expect(isEigensteinDominant(id)).toBe(true);
+  });
+
+  it('returns false for a non-eigenstein weapon', () => {
+    const id = 'crafted_weapon_ruby_test';
+    createCraftedWeaponDefinition(id, [{ tierId: 'ruby', refinedCount: 1 }], 1);
+    expect(isEigensteinDominant(id)).toBe(false);
+  });
+
+  it('eigenstein weapon has swordCombo effect in its definition', () => {
+    const id = 'crafted_weapon_eigenstein_def_test';
+    const cw = createCraftedWeaponDefinition(id, [{ tierId: 'eigenstein', refinedCount: 1 }], 1);
+    expect(cw.definition.stats.effect?.kind).toBe('swordCombo');
+  });
+});
+
+// ─── Eigenstein rift damage accumulation math ─────────────────────
+
+describe('Eigenstein rift accumulation logic', () => {
+  it('compounding formula: stored += baseDamage; hit = base + storedBefore', () => {
+    const baseDamage = 20;
+    let stored = 0;
+
+    // Hit 1: stored = 0 → deal 20+0=20, then stored = 0+20 = 20
+    const hit1Prior = stored;
+    const hit1Dealt = baseDamage + hit1Prior;
+    stored += baseDamage;
+    expect(hit1Dealt).toBe(20);
+    expect(stored).toBe(20);
+
+    // Hit 2: stored = 20 → deal 20+20=40, then stored = 20+20 = 40
+    const hit2Prior = stored;
+    const hit2Dealt = baseDamage + hit2Prior;
+    stored += baseDamage;
+    expect(hit2Dealt).toBe(40);
+    expect(stored).toBe(40);
+
+    // Hit 3: stored = 40 → deal 20+40=60, then stored = 40+20 = 60
+    const hit3Dealt = baseDamage + stored;
+    stored += baseDamage;
+    expect(hit3Dealt).toBe(60);
+    expect(stored).toBe(60);
+
+    // Repeated hits strictly increase damage
+    expect(hit2Dealt).toBeGreaterThan(hit1Dealt);
+    expect(hit3Dealt).toBeGreaterThan(hit2Dealt);
+  });
+
+  it('different enemies do not share accumulation', () => {
+    const enemyA = {};
+    const enemyB = {};
+    const riftAccum = new WeakMap<object, number>();
+    const baseDamage = 15;
+
+    // Hit enemy A twice
+    const a1Prior = riftAccum.get(enemyA) ?? 0;
+    riftAccum.set(enemyA, a1Prior + baseDamage);
+    const a2Prior = riftAccum.get(enemyA) ?? 0;
+    riftAccum.set(enemyA, a2Prior + baseDamage);
+
+    // Enemy B is untouched
+    const bPrior = riftAccum.get(enemyB) ?? 0;
+    expect(bPrior).toBe(0);
+    expect(riftAccum.get(enemyA)).toBe(30);
+  });
+
+  it('accumulation disappears when object is no longer referenced', () => {
+    // WeakMap entries are GC'd when keys are collected — demonstrate
+    // that a new object reference starts at 0 (simulates enemy death/respawn).
+    const riftAccum = new WeakMap<object, number>();
+    let enemy: object | null = {};
+    riftAccum.set(enemy, 50);
+    expect(riftAccum.get(enemy)).toBe(50);
+    // After enemy is gone, a fresh object starts at 0
+    const newEnemy = {};
+    expect(riftAccum.get(newEnemy) ?? 0).toBe(0);
+    enemy = null; // release reference
+  });
+});

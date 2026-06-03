@@ -154,6 +154,52 @@ export const SAND_BLADE_COLORS: readonly string[] = [
   '#e4d890', // light straw
 ] as const;
 
+// ── Eigenstein sword constants ─────────────────────────────────
+
+/** Number of shards making up the Eigenstein blade (more than diamond's 7). */
+export const EIGENSTEIN_SHARD_COUNT = 10;
+/** Multiplier applied to getSwordLength() for the Eigenstein blade. */
+export const EIGENSTEIN_BLADE_LENGTH_MULT = 1.7;
+/** Number of stable hilt/crossguard shards (do not oscillate). */
+export const EIGENSTEIN_STABLE_SHARDS = 3;
+/** Amplitude (radians) of per-shard blade oscillation. */
+export const EIGENSTEIN_OSCILLATION_AMP = 0.28;
+/** Frequency (rad/ms) of blade polygon oscillation. */
+export const EIGENSTEIN_OSCILLATION_FREQ = 0.0028;
+/** Per-shard phase offset for staggered oscillation. */
+export const EIGENSTEIN_OSCILLATION_PHASE = 0.9;
+/**
+ * Neon "imaginary-plane" blade shard colors — highly saturated impossibles.
+ * Cycles through the blade; hilt shards use EIGENSTEIN_HILT_COLOR.
+ */
+export const EIGENSTEIN_BLADE_COLORS: readonly string[] = [
+  '#cc00ff', // electric violet
+  '#00ffe0', // inverted cyan
+  '#ff00aa', // hot magenta
+  '#6600ff', // deep neon violet
+  '#00ccff', // ice neon blue
+  '#ff3300', // negative orange
+  '#cc99ff', // soft lavender
+] as const;
+/** Core fill color for the hilt and crossguard (dark void-purple). */
+export const EIGENSTEIN_HILT_COLOR = '#0d0020';
+/** Glow/outline color for the hilt. */
+export const EIGENSTEIN_HILT_GLOW  = '#8800ff';
+/** Duration (ms) of the dimensional-rift slash visual after a hit. */
+export const EIGENSTEIN_RIFT_DURATION_MS = 700;
+/** Maximum number of rift effects rendered simultaneously per weapon. */
+export const EIGENSTEIN_RIFT_MAX = 8;
+/** Cap on per-enemy stored rift accumulation (safety ceiling). */
+export const EIGENSTEIN_RIFT_ACCUM_CAP = 9999;
+/** Rift crack branch colors — neon on dark. */
+export const EIGENSTEIN_RIFT_COLORS: readonly string[] = [
+  '#00ffe0', // inverted cyan
+  '#cc00ff', // neon violet
+  '#ff0099', // hot magenta
+  '#00aaff', // electric blue
+  '#aaff00', // acid green
+] as const;
+
 // ── Iolite poison bolt constants ───────────────────────────────
 export const POISON_ARMOR_IGNORE_PER_TIER = 0.1;   // armorIgnore = tier * this
 export const POISON_DURATION_BASE_TIER    = 8;      // (base - tier) * POISON_DURATION_MS_PER_TIER

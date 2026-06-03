@@ -1,6 +1,87 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#206**
+Current build: **#207**
+
+---
+
+## Build #207 — Eigenstein sword: dimensional rift weapon
+
+### Completed in this build
+
+* **`getDominantCraftedEffect` for `eigenstein`** now returns `{ kind: 'swordCombo' }`
+  instead of `piercing`, so Eigenstein-dominant crafted weapons are recognized as
+  sword-family weapons throughout the combat and visual pipeline.
+
+* **`isEigensteinDominant(weaponId)`** registry in `crafted-weapon-helpers.ts`.
+  Populated when a weapon is created or loaded via `registerCraftedWeapons`.
+  Used by the sword combo system to enable Eigenstein-specific behavior.
+
+* **`EFFECT_LABELS['swordCombo']` and `EFFECT_NOUNS['swordCombo']`** added so
+  Eigenstein weapon cards show "dimensional sword slash" / "Blade" correctly.
+
+* **`EigensteinRiftEffect` / `EigensteinRiftBranch`** types in `rpg-types.ts`.
+  Short-lived rift crack visuals spawned on each Eigenstein hit. Stored on
+  `SwordComboState` per-weapon.
+
+* **`SwordComboState` extended** with optional `isEigensteinBlade`, `riftAccum`
+  (WeakMap<object, number>), and `riftEffects` (EigensteinRiftEffect[]).
+  Non-eigenstein weapons leave these as `undefined`.
+
+* **Per-enemy rift damage compounding** in `swordHitInArc`:
+  - `storedBefore = riftAccum.get(enemy) ?? 0`
+  - `effectiveDamage = baseDamage + storedBefore`
+  - `riftAccum.set(enemy, storedBefore + baseDamage)` (capped at 9999)
+  - Accumulation is per-enemy via WeakMap — clears naturally on enemy GC.
+  - Different enemies do not share accumulation.
+
+* **Eigenstein sword visual** (`drawEigensteinBlade` in `rpg-weapon-draw-sword.ts`):
+  - 1.7× longer than diamond sword at same tier (10 shards vs 7).
+  - First 3 shards: stable hilt / crossguard (dark void-purple, neon outline).
+  - Shards 3–9: continuously oscillate in angle (amplitude=0.28 rad, freq-staggered),
+    cycling through neon "impossible" blade colors, polygon shape changes over time.
+  - Swipe arc and beam effects use matching neon palette.
+
+* **Dimensional rift slash visual** (part of `drawEigensteinBlade`):
+  - On each Eigenstein hit, 3–6 branch cracks grow from the impact point.
+  - Dark void core + bright neon outline per branch, substrate-inspired.
+  - Perpendicular tick marks at branch tips.
+  - Intensity scales with rift accumulation (bigger/more intense on repeated hits).
+  - Duration ~700 ms; branches grow in first 45% of lifetime, then fade.
+  - Capped at 8 simultaneous rift effects per weapon.
+
+* **`getShardDistances(length, count?)` extended** with optional count parameter
+  so Eigenstein (10 shards) generates correct distance arrays without breaking
+  existing callers (default still uses `SWORD_SHARD_COUNT = 7`).
+
+* **Eigenstein constants** added to `rpg-weapon-constants.ts`:
+  `EIGENSTEIN_SHARD_COUNT`, `EIGENSTEIN_BLADE_LENGTH_MULT`, `EIGENSTEIN_STABLE_SHARDS`,
+  oscillation params, color palettes, `EIGENSTEIN_RIFT_DURATION_MS`,
+  `EIGENSTEIN_RIFT_MAX`, `EIGENSTEIN_RIFT_ACCUM_CAP`.
+
+* **Tests** (28 new, 225 total passing):
+  - `getDominantCraftedEffect('eigenstein')` → `swordCombo`
+  - `isEigensteinDominant` registry round-trip
+  - Pure rift accumulation math: compounding formula, per-enemy isolation, WeakMap isolation
+
+### Deferred / first-pass notes
+
+* **Per-enemy rift tint visual**: enemies with accumulated rift damage do not yet show
+  a faint inverted outline. Implementing this requires hooks into the per-enemy draw
+  loop for every enemy type. Deferred to a future build.
+
+* **Rift branch secondary branching**: rift cracks currently have no sub-branches
+  (only tick marks at tips). Substrate-style recursive branching deferred.
+
+* **Fluid color**: Eigenstein fluid drag still uses `SWORD_PRISMATIC_COLORS` palette
+  during the combo update (the physics update path). The draw path uses eigenstein
+  neon colors. A dedicated eigenstein fluid color could be added later.
+
+* **Accumulation cap**: `EIGENSTEIN_RIFT_ACCUM_CAP = 9999`. This is a hard ceiling;
+  a soft-cap (logarithmic) may feel better in playtesting.
+
+* **Rift color inversion**: colors are neon/saturated impossibles approximating
+  an imaginary-plane feeling, not true pixel-level color inversion. True pixel
+  inversion would require `destination-out` or `difference` compositing.
 
 ---
 

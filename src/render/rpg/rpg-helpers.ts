@@ -45,11 +45,11 @@ export function getSwordLength(tier: number): number {
 }
 
 /** Returns an array of evenly-spaced shard distances from handle to tip. */
-export function getShardDistances(swordLength: number): number[] {
+export function getShardDistances(swordLength: number, count = SWORD_SHARD_COUNT): number[] {
   const handleDist = 5;
   const dists: number[] = [];
-  for (let i = 0; i < SWORD_SHARD_COUNT; i++) {
-    dists.push(handleDist + (swordLength - handleDist) * (i / (SWORD_SHARD_COUNT - 1)));
+  for (let i = 0; i < count; i++) {
+    dists.push(handleDist + (swordLength - handleDist) * (i / Math.max(1, count - 1)));
   }
   return dists;
 }
