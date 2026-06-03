@@ -135,6 +135,7 @@ export function serializeGameState(state: GameState): SaveData {
       sacrificeProgressByTierId: Object.fromEntries(state.forge.sacrificeProgressByTierId),
       refinedProgressByTierId: Object.fromEntries(state.forge.refinedProgressByTierId),
       forgeCraftLevel: state.forge.forgeCraftLevel,
+      forgeLevel: state.forge.forgeLevel,
     },
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
       tierId: e.tierId,

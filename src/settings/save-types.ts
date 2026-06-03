@@ -57,6 +57,8 @@ export interface SaveData {
     refinedProgressByTierId?: Record<string, number>;
     /** v30+: crafting capacity tier for forged weapons. Absent in older saves (defaults to 1). */
     forgeCraftLevel?: number;
+    /** Forge upgrade level (1–5). Absent in older saves (defaults to 1). */
+    forgeLevel?: number;
   };
   achievements: {
     unlockedIds: string[];

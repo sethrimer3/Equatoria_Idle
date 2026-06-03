@@ -140,6 +140,7 @@ export function deserializeGameState(data: SaveData): GameState {
       }
     }
     state.forge.forgeCraftLevel = data.forge.forgeCraftLevel ?? 1;
+    state.forge.forgeLevel = (data.forge as { forgeLevel?: number }).forgeLevel ?? 1;
   }
 
   // RPG state (v10+; older saves default to no progress)

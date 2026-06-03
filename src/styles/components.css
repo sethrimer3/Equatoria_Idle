@@ -278,6 +278,27 @@
   /* no special layout needed; fills the panel naturally */
 }
 
+/* ── Forge preview pane ──────────────────────────────────────── */
+.forge-preview-pane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.forge-preview-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.forge-preview-canvas {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30, 18, 8, 0.85) 0%, rgba(10, 6, 3, 0.95) 100%);
+  box-shadow: 0 0 16px rgba(255, 160, 30, 0.15);
+}
+
 /* ── Aliven tier rows ────────────────────────────────────────── */
 .aliven-rows {
   margin-bottom: 16px;

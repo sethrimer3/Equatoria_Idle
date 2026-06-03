@@ -20,6 +20,8 @@ export interface ForgeCrunchState {
   isWarmingUp: boolean;
   /** Wall-clock timestamp (ms) when the warm-up sequence started. Null when idle. */
   warmupStartMs: number | null;
+  /** Current forge level (1–5). Each level unlocks one additional ring. */
+  forgeLevel: number;
 }
 
 export function createForgeCrunchState(): ForgeCrunchState {
@@ -36,6 +38,7 @@ export function createForgeCrunchState(): ForgeCrunchState {
     forgeCraftLevel: 1,
     isWarmingUp: false,
     warmupStartMs: null,
+    forgeLevel: 1,
   };
 }
 
@@ -51,6 +54,8 @@ export const FORGE_TAP_RESET_MS = 5_000;
 export const FORGE_WARMUP_RING_INTERVAL_MS = 2_000;
 /** Total number of rings in the warm-up sequence. */
 export const FORGE_WARMUP_TOTAL_RINGS = 5;
+/** Maximum forge level (one ring per level). */
+export const FORGE_MAX_LEVEL = 5;
 /** Extra delay after the last ring lights before the final crunch fires. */
 export const FORGE_FINAL_CRUNCH_DELAY_AFTER_LAST_RING_MS = 1_000;
 /**
@@ -125,11 +130,12 @@ export function tickForgeWarmup(state: ForgeCrunchState, nowMs: number): void {
  * All 5 rings are lit once the crunch begins.
  */
 export function getActiveRingCount(state: ForgeCrunchState, nowMs: number): number {
-  if (state.isActive || state.endTimeMs !== null) return FORGE_WARMUP_TOTAL_RINGS;
+  const maxRings = state.forgeLevel ?? 1;
+  if (state.isActive || state.endTimeMs !== null) return maxRings;
   if (!state.isWarmingUp || state.warmupStartMs === null) return 0;
   const elapsed = nowMs - state.warmupStartMs;
   // Ring i (0-indexed) lights at t = i * FORGE_WARMUP_RING_INTERVAL_MS
-  return Math.min(FORGE_WARMUP_TOTAL_RINGS, Math.floor(elapsed / FORGE_WARMUP_RING_INTERVAL_MS) + 1);
+  return Math.min(maxRings, Math.floor(elapsed / FORGE_WARMUP_RING_INTERVAL_MS) + 1);
 }
 
 /**

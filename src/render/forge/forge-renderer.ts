@@ -80,7 +80,7 @@ export function drawForge(
     ctx.restore();
   }
 
-  drawForgeRings(ctx, forgeX, forgeY, forgeSize, nowMs, fireAlpha, activeRingCount);
+  drawForgeRings(ctx, forgeX, forgeY, forgeSize, nowMs, fireAlpha, activeRingCount, crunchState.forgeLevel);
 
   // ── Heat rings — drawn before the sprite, one ring per tap ──────────────
   if (heatTapCount > 0 && !crunchState.isActive && !crunchState.isWarmingUp) {
@@ -245,4 +245,51 @@ export function drawForgeSacrificeFlash(
   }
 
   ctx.restore();
+}
+
+/**
+ * Draw a self-contained forge preview into any canvas 2D context.
+ * Renders rings + sprite scaled to fit the given canvas dimensions.
+ * Intended for the FORGE tab mini-preview canvas.
+ */
+export function drawForgePreview(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  forgeState: ForgeCrunchState,
+  nowMs: number,
+): void {
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
+  const forgeSize = FORGE_RADIUS;
+  const fireAlpha = getForgeFireAlpha(forgeState, nowMs);
+  const activeRingCount = getActiveRingCount(forgeState, nowMs);
+  const warmupProgress = getForgeWarmupProgress(forgeState, nowMs);
+  const spinMult = getForgeRotationMultiplier(
+    forgeState, nowMs,
+    FORGE_VALID_WAIT_TIME_MS, FORGE_SPIN_UP_DURATION_MS, FORGE_SPIN_DOWN_DURATION_MS,
+  );
+  const idleSpinMult = FORGE_COLD_ROTATION_MULTIPLIER + (spinMult - FORGE_COLD_ROTATION_MULTIPLIER) * Math.max(fireAlpha, warmupProgress);
+  const rotation = nowMs / 1000 * idleSpinMult;
+
+  const glowAlpha = Math.max(fireAlpha, warmupProgress * 0.85);
+  if (glowAlpha > 0.05) {
+    ctx.save();
+    ctx.globalAlpha = glowAlpha;
+    drawForgeBackgroundGlow(ctx, cx, cy, forgeSize, nowMs);
+    ctx.restore();
+  }
+
+  drawForgeRings(ctx, cx, cy, forgeSize, nowMs, fireAlpha, activeRingCount, forgeState.forgeLevel);
+
+  const sprite = getCachedImage(FORGE_SPRITE_PATH) ?? getCachedImage(FORGE_SPRITE_LEGACY_PATH);
+  const spriteAlt = getCachedImage(FORGE_SPRITE_ALT_PATH) ?? getCachedImage(FORGE_SPRITE_ALT_LEGACY_PATH);
+  const coldSprite = getCachedImage(FORGE_COLD_SPRITE_PATH);
+  const coldSpriteAlt = getCachedImage(FORGE_COLD_SPRITE_ALT_PATH);
+  const spriteFireAlpha = Math.max(fireAlpha, warmupProgress);
+  if (sprite && spriteAlt) {
+    drawForgeSprite(ctx, cx, cy, forgeSize, rotation, sprite, spriteAlt, coldSprite, coldSpriteAlt, spriteFireAlpha);
+  } else {
+    drawForgeFallback(ctx, cx, cy, forgeSize, rotation);
+  }
 }

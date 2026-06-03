@@ -440,7 +440,7 @@ export function updateVisiblePanels(
     // The combined Upgrades tab (loomPanel) handles all three sub-tabs:
     // Equation, Loom, Aliven. Update the underlying panels so they stay
     // current regardless of which sub-tab is showing.
-    panels.loomPanel.update(game, numberFormat);
+    panels.loomPanel.update(game, numberFormat, isDevMode);
     panels.equationPanel.update(game, isDevMode, numberFormat);
     panels.upgradePanel.update(game, isDevMode, numberFormat);
     panels.resourcePanel.update(game, numberFormat);

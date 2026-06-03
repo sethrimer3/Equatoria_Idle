@@ -33,13 +33,15 @@ export function preloadForgeRingSprites(): void {
 }
 
 /**
- * Draw all five forge rings.
+ * Draw forge rings.
  *
- * @param activeRingCount  How many rings are currently lit (0–5).
- *   Active rings (index < activeRingCount) spin at FORGE_RING_ACTIVE_SPIN_MULTIPLIER
- *   times their base speed and render at full alpha.  Unlit rings continue their
- *   subtle idle animation at reduced opacity.
- * @param intensity  Legacy fire-intensity scalar (0–1) still used for unlit ring alpha.
+ * @param activeRingCount     How many of the available rings are currently lit (0–forgeLevelRingCount).
+ *   Lit rings spin at FORGE_RING_ACTIVE_SPIN_MULTIPLIER times their base speed and render at full
+ *   alpha. Unlit available rings continue their subtle idle animation at reduced opacity.
+ * @param intensity           Fire-intensity scalar (0–1) used for unlit ring alpha.
+ * @param forgeLevelRingCount How many rings exist at the current forge level (1–5). Rings beyond
+ *   this count (the outermost ones) are completely hidden. Defaults to 5 (all rings visible).
+ *   Rings are unlocked inward: level 1 = innermost ring only; level 5 = all rings.
  */
 export function drawForgeRings(
   ctx: CanvasRenderingContext2D,
@@ -49,20 +51,28 @@ export function drawForgeRings(
   nowMs: number,
   intensity: number,
   activeRingCount = 0,
+  forgeLevelRingCount = 5,
 ): void {
   const clampedIntensity = Math.max(0, Math.min(1, intensity));
   const timeSec = nowMs / 1000;
+  // Rings are indexed 0 (outermost) to 4 (innermost).
+  // At forge level N, only the innermost N rings are visible.
+  const firstVisibleRingIndex = FORGE_RING_CONFIGS.length - forgeLevelRingCount;
 
   ctx.save();
   ctx.translate(x, y);
   ctx.globalCompositeOperation = 'lighter';
 
   for (let ringIndex = 0; ringIndex < FORGE_RING_CONFIGS.length; ringIndex++) {
+    if (ringIndex < firstVisibleRingIndex) continue;
+
     const config = FORGE_RING_CONFIGS[ringIndex];
     const sprite = getCachedImage(config.spritePath);
     if (!sprite || !sprite.complete || sprite.naturalWidth <= 0) continue;
 
-    const isLit = ringIndex < activeRingCount;
+    // A ring is lit if it falls within the first activeRingCount visible rings
+    // counting outward from the outermost visible ring.
+    const isLit = (ringIndex - firstVisibleRingIndex) < activeRingCount;
 
     const pulse = config.pulseAmount === 0
       ? 0
