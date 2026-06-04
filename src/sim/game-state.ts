@@ -393,6 +393,29 @@ export function craftWeave(
   return true;
 }
 
+// ─── Weave loom bonus helper ────────────────────────────────────
+
+import type { CraftedWeaveData } from '../data/rpg/weave-types';
+
+function computeEquippedWeaveLoomBonus(
+  equippedSlots: (string | null)[],
+  craftedWeaves: CraftedWeaveData[],
+): number {
+  const weaveById = new Map(craftedWeaves.map(w => [w.id, w]));
+  let bonus = 0;
+  for (const id of equippedSlots) {
+    if (!id) continue;
+    const weave = weaveById.get(id);
+    if (!weave) continue;
+    for (const affix of weave.affixes) {
+      if (affix.affixId === 'citrine_all_loom') {
+        bonus += affix.value / 100;
+      }
+    }
+  }
+  return bonus;
+}
+
 // ─── Simulation tick ────────────────────────────────────────────
 
 export interface SimTickResult {
