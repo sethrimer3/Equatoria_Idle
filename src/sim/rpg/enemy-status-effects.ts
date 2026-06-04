@@ -357,7 +357,7 @@ function _tickEnemy(enemy: TickableEnemy, deltaMs: number, moteX: number, moteY:
     }
 
     // ── Gravitized: small pull toward player mote ─────────────────────────────
-    if (s.key === 'gravitized') {
+    if (s.key === 'gravitized' && typeof enemy.vx === 'number' && typeof enemy.vy === 'number') {
       const dx = moteX - enemy.x;
       const dy = moteY - enemy.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
