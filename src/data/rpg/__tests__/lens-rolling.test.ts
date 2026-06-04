@@ -353,7 +353,8 @@ describe('save/load round-trip', () => {
     expect(restoredLens.effects).toHaveLength(originalEffects.length);
     expect(restoredLens.effects[0]!.effectTier).toBe(originalEffects[0]!.effectTier);
     expect(restoredLens.effects[0]!.name).toBe(originalEffects[0]!.name);
-    expect(restoredLens.effects[0]!.isApplied).toBe(false);
+    // T1 effects are active (isApplied: true); T2/T3 are stubs (isApplied: false)
+    expect(restoredLens.effects[0]!.isApplied).toBe(restoredLens.effects[0]!.effectTier === 1);
   });
 
   it('attached lens on weapon persists through save/load', () => {
