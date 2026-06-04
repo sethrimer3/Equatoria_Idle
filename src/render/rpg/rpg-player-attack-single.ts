@@ -238,6 +238,7 @@ export function performSingleAttack(
   // ── Lens status post-hit: apply Tier 1 statuses to target ───────────────────
   if (attachedLens && targetEntity && weaponId) {
     applyLensStatusesOnHit(targetEntity, attachedLens, weaponId, rawDamage);
+    handleLensTier2EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
   }
 
   // ── Crafted weapon post-hit effects ──────────────────────────────────────
