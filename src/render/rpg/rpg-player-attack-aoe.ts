@@ -17,6 +17,7 @@ import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import { applyLensStatus } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
+import { handleLensTier2EffectsOnWeaponHit, extractT2TargetEntity } from './lens-tier2-effects';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
