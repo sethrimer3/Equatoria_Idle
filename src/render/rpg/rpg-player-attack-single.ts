@@ -123,8 +123,15 @@ export function performSingleAttack(
   const hitX = closestT.x;
   const hitY = closestT.y;
 
+  // ── Lens status pre-hit: apply incoming-damage multipliers ───────────────────
+  const targetEntity = attachedLens ? extractTargetEntity(closestT) : null;
+  const lensSourceKey = attachedLens?.id ?? '';
+  const statusMult = targetEntity ? getIncomingDamageMult(targetEntity) : 1;
+  const riftMult   = (targetEntity && lensSourceKey) ? getRiftScarredDamageMult(targetEntity, lensSourceKey) : 1;
+  const effectiveRaw = rawDamage * statusMult * riftMult;
+
   if (closestT.laser) {
-    const dmg = damageEnemy(closestT.laser, rawDamage, defPierceRatio);
+    const dmg = damageEnemy(closestT.laser, effectiveRaw, defPierceRatio);
     spawnHitVisuals(closestT.laser, dmg, isPiercing ? piercingColor : shotColor, effectiveSourceColor);
   } else if (closestT.sapphire) {
     const dmg = damageSapphireEnemy(closestT.sapphire, rawDamage, defPierceRatio, false);
