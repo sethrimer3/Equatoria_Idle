@@ -6,7 +6,7 @@
  *   - Forge-level unlock chances
  *   - T1 always rolls; T2/T3 probabilistic with deterministic rng
  *   - T3 never rolls at forge level 1 (tier3Chance = 0)
- *   - All effects have isApplied: false and name includes "STUB"
+ *   - T1 and all T2 effects have isApplied: true; T3 effects have isApplied: false and name includes "STUB"
  *   - Rarity classification at thresholds
  *   - Save/load round-trip (lenses in inventory and attached to weapons)
  *   - Old saves without lenses load safely
