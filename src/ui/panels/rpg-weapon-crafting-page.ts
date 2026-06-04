@@ -614,6 +614,43 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       statsRow.className = 'forge-craft__stats-row';
       statsRow.textContent = `${totalWt.toLocaleString()} mote-wt · power scale ×${powerScale.toFixed(2)}`;
       previewSectionEl.appendChild(statsRow);
+    } else if (craftingMode === 'lens') {
+      const heading = document.createElement('div');
+      heading.className = 'forge-craft__section-label';
+      heading.textContent = 'Expected lens effects:';
+      previewSectionEl.appendChild(heading);
+
+      const lensScale = computeLensPowerScale(totalWt);
+
+      for (const ing of ingredients) {
+        const entry = LENS_EFFECT_FAMILIES[ing.tierId as import('../../data/tiers').TierId];
+        if (!entry) continue;
+
+        const tier = TIER_BY_ID.get(ing.tierId as import('../../data/tiers').TierId);
+        const color = tier?.color ?? '#aaa';
+
+        const row = document.createElement('div');
+        row.className = 'forge-craft__weave-preview-row';
+
+        const chip = document.createElement('span');
+        chip.className = 'forge-craft__weave-tier-chip';
+        chip.style.background = color;
+        chip.textContent = entry.familyName;
+        row.appendChild(chip);
+
+        const desc = document.createElement('span');
+        desc.className = 'forge-craft__weave-preview-desc';
+        const maxVal = entry.specs.reduce((mx, s) => Math.max(mx, s.baseMaxValue), 0) * lensScale;
+        desc.textContent = `1 of ${entry.specs.length} possible effects, up to ${maxVal.toFixed(0)}${entry.specs[0]?.unit ?? '%'} at Mythic`;
+        row.appendChild(desc);
+
+        previewSectionEl.appendChild(row);
+      }
+
+      const statsRow = document.createElement('div');
+      statsRow.className = 'forge-craft__stats-row';
+      statsRow.textContent = `${totalWt.toLocaleString()} mote-wt · power scale ×${lensScale.toFixed(2)}`;
+      previewSectionEl.appendChild(statsRow);
     }
   }
 
