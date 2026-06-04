@@ -75,6 +75,10 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let latestIsDevMode = false;
   let latestForgeState: ForgeCrunchState = createForgeCrunchState();
 
+  // Craft mode — determines output item type
+  let craftMode: 'weapon' | 'weave' | 'lens' = 'weapon';
+  let modeBarEl: HTMLElement | null = null;
+
   // ── Animation ────────────────────────────────────────────────────────────
   let forgeCoreCanvas: HTMLCanvasElement | null = null;
   let forgeCoreCtx: CanvasRenderingContext2D | null = null;
@@ -197,6 +201,44 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     refreshMoteLooms();
   }
 
+  // ── Mode bar (WEAVE / LENS / WEAPON) ────────────────────────────────────
+  function getCraftBtnLabel(): string {
+    if (craftMode === 'weave') return 'Forge Weave';
+    if (craftMode === 'lens')  return 'Forge Lens';
+    return 'Forge Weapon';
+  }
+
+  function buildModeBar(): HTMLElement {
+    const bar = document.createElement('div');
+    bar.className = 'forge-craft__mode-bar';
+
+    const modes: Array<{ id: 'weave' | 'lens' | 'weapon'; label: string }> = [
+      { id: 'weave',  label: 'WEAVE' },
+      { id: 'lens',   label: 'LENS' },
+      { id: 'weapon', label: 'WEAPON' },
+    ];
+
+    for (const mode of modes) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'forge-craft__mode-btn';
+      btn.textContent = mode.label;
+      btn.dataset.mode = mode.id;
+      btn.classList.toggle('forge-craft__mode-btn--active', craftMode === mode.id);
+      btn.addEventListener('click', () => {
+        craftMode = mode.id;
+        if (modeBarEl) {
+          for (const b of modeBarEl.querySelectorAll<HTMLButtonElement>('.forge-craft__mode-btn')) {
+            b.classList.toggle('forge-craft__mode-btn--active', b.dataset.mode === craftMode);
+          }
+        }
+        if (craftBtnEl) craftBtnEl.textContent = getCraftBtnLabel();
+      });
+      bar.appendChild(btn);
+    }
+    return bar;
+  }
+
   // ── Build mote loom field ────────────────────────────────────────────────
   function buildMoteLoomField(): HTMLElement {
     const field = document.createElement('div');
@@ -293,15 +335,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     sliderSectionEl.innerHTML = '';
 
     const n = selectedTiers.length;
-    if (n < 2) {
-      if (n === 1) {
-        const hint = document.createElement('div');
-        hint.className = 'forge-craft__hint';
-        hint.textContent = 'Select at least 2 mote types to enable the percentage slider.';
-        sliderSectionEl.appendChild(hint);
-      }
-      return;
-    }
+    if (n < 2) return;
 
     const shares = computeShares();
 
@@ -556,8 +590,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   function getValidationMessage(): string | null {
     const n = selectedTiers.length;
-    if (n === 0) return 'Select at least 2 mote types to craft.';
-    if (n === 1) return 'Select at least 2 mote types to craft.';
+    if (n === 0) return 'Select a mote type to forge.';
     const inventory = getInventory();
     const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
     const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction, latestIsDevMode);
@@ -580,7 +613,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   function buildCraftButton(): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.className = 'weapon-store__btn forge-craft__craft-btn';
-    btn.textContent = 'Craft Weapon';
+    btn.textContent = getCraftBtnLabel();
     btn.addEventListener('click', () => {
       const inventory = getInventory();
       const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
@@ -678,7 +711,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const titleEl = document.createElement('div');
     titleEl.className = 'forge-craft__title';
-    titleEl.textContent = 'Weapon Crafting';
+    titleEl.textContent = 'Forging';
     header.appendChild(titleEl);
 
     capacityLabelEl = document.createElement('div');
@@ -686,6 +719,10 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     capacityLabelEl.textContent = `Forge capacity: ${capacity} mote types`;
     header.appendChild(capacityLabelEl);
     element.appendChild(header);
+
+    // Mode selector (WEAVE / LENS / WEAPON)
+    modeBarEl = buildModeBar();
+    element.appendChild(modeBarEl);
 
     // Refined crystal inventory
     inventoryEl = document.createElement('div');

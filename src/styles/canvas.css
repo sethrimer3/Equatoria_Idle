@@ -1319,6 +1319,43 @@
   margin-bottom: 6px;
 }
 
+/* ── Craft mode selector (WEAVE / LENS / WEAPON) ────────────────── */
+
+.forge-craft__mode-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 0 0 12px;
+}
+
+.forge-craft__mode-btn {
+  width: 84px;
+  height: 68px;
+  border: 1px solid rgba(212, 160, 64, 0.28);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.42);
+  font-family: inherit;
+  font-size: 0.68em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: border-color 0.14s, color 0.14s, background 0.14s, box-shadow 0.14s;
+}
+
+.forge-craft__mode-btn:hover {
+  border-color: rgba(212, 160, 64, 0.56);
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(212, 160, 64, 0.07);
+}
+
+.forge-craft__mode-btn--active {
+  border-color: rgba(212, 160, 64, 0.88);
+  background: rgba(212, 160, 64, 0.13);
+  color: #f7d879;
+  box-shadow: 0 0 14px rgba(212, 160, 64, 0.28), inset 0 0 10px rgba(212, 160, 64, 0.06);
+}
+
 /* ── Mote loom selector ──────────────────────────────────────────── */
 
 .forge-craft__loom-field {
