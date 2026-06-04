@@ -99,6 +99,8 @@ export function performSingleAttack(
   defPierceRatio: number,
   shotColor: string,
   craftedMods?: CraftedWeaponModifiers,
+  attachedLens?: CraftedLensData,
+  weaponId?: string,
 ): void {
   const {
     damageEnemy, damageSapphireEnemy, damageMissile,
