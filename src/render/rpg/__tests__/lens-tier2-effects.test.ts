@@ -27,7 +27,7 @@ import {
   getActiveStatuses,
   clearEnemyStatuses,
 } from '../../../sim/rpg/enemy-status-effects';
-import { rollLensEffects, createCraftedLens } from '../../../data/rpg/lens-rolling';
+import { rollLensEffects } from '../../../data/rpg/lens-rolling';
 import { LENS_T2_IMPLEMENTED_TIER_IDS } from '../../../data/rpg/lens-definitions';
 import type { CraftedLensData } from '../../../data/rpg/lens-types';
 import type { TierId } from '../../../data/tiers';
