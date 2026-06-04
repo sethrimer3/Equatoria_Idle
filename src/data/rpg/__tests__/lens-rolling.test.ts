@@ -224,15 +224,41 @@ describe('rollLensEffects — names', () => {
     }
   });
 
-  it('T2 and T3 effect names contain "STUB"', () => {
+  it('T2 effect names for implemented tiers do not contain "STUB"', () => {
     const effects = rollLensEffects(
       [{ tierId: 'ruby', refinedCount: 5 }, { tierId: 'sapphire', refinedCount: 3 }],
       5,
       () => 0, // triggers T2 and T3
     );
-    const stubEffects = effects.filter(e => e.effectTier > 1);
-    expect(stubEffects.length).toBeGreaterThan(0);
-    for (const e of stubEffects) {
+    const t2s = effects.filter(e => e.effectTier === 2);
+    expect(t2s.length).toBeGreaterThan(0);
+    for (const e of t2s) {
+      expect(e.name).not.toContain('STUB');
+    }
+  });
+
+  it('T2 effect names for unimplemented tiers contain "STUB"', () => {
+    const effects = rollLensEffects(
+      [{ tierId: 'amethyst', refinedCount: 5 }],
+      5,
+      () => 0, // triggers T2 and T3
+    );
+    const t2s = effects.filter(e => e.effectTier === 2);
+    expect(t2s.length).toBeGreaterThan(0);
+    for (const e of t2s) {
+      expect(e.name).toContain('STUB');
+    }
+  });
+
+  it('T3 effect names always contain "STUB"', () => {
+    const effects = rollLensEffects(
+      [{ tierId: 'ruby', refinedCount: 5 }],
+      5,
+      () => 0, // triggers T2 and T3
+    );
+    const t3s = effects.filter(e => e.effectTier === 3);
+    expect(t3s.length).toBeGreaterThan(0);
+    for (const e of t3s) {
       expect(e.name).toContain('STUB');
     }
   });
