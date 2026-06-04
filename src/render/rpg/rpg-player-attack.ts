@@ -315,12 +315,12 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   // ── Attack-mode handlers ──────────────────────────────────────────────────
 
   if (effect.kind === 'aoe') {
-    performAoeAttack(ctx, rawDamage, effect.aoeRadius, armorIgnore, craftedMods ?? undefined, rangeSq);
+    performAoeAttack(ctx, rawDamage, effect.aoeRadius, armorIgnore, craftedMods ?? undefined, rangeSq, attachedLens, weaponId);
     return;
   }
 
   if (effect.kind === 'multi') {
-    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount, armorIgnore, craftedMods ?? undefined);
+    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount, armorIgnore, craftedMods ?? undefined, attachedLens, weaponId);
     return;
   }
 
@@ -335,5 +335,5 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const weaponShotColor = weaponDef
     ? (TIER_BY_ID.get(weaponDef.costTierId as import('../../data/tiers').TierId)?.color ?? '#ffd764')
     : '#ffd764';
-  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, weaponShotColor, craftedMods ?? undefined);
+  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, weaponShotColor, craftedMods ?? undefined, attachedLens, weaponId);
 }
