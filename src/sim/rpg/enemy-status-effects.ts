@@ -292,8 +292,8 @@ interface TickableEnemy {
   hp: number;
   x: number;
   y: number;
-  vx: number;
-  vy: number;
+  vx?: number;
+  vy?: number;
 }
 
 function _tickEnemy(enemy: TickableEnemy, deltaMs: number, moteX: number, moteY: number): void {
