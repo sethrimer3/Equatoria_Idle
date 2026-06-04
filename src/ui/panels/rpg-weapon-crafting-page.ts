@@ -783,11 +783,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
     advancedEl.appendChild(inputGrid);
 
-    const actionKind = craftingMode === 'weave' ? 'craft_weave' : 'craft_weapon';
+    const actionKind = craftingMode === 'weave' ? 'craft_weave' : craftingMode === 'lens' ? 'craft_lens' : 'craft_weapon';
+    const craftExactLabel = craftingMode === 'weave' ? 'weave' : craftingMode === 'lens' ? 'lens' : 'weapon';
     const craftExactBtn = document.createElement('button');
     craftExactBtn.className = 'weapon-store__btn';
     craftExactBtn.style.cssText = 'margin-top:8px;background:rgba(200,160,0,0.1);border-color:rgba(200,160,0,0.4);color:#c8a832;font-size:0.8em;';
-    craftExactBtn.textContent = `Craft ${craftingMode === 'weave' ? 'weave' : 'weapon'} with exact counts`;
+    craftExactBtn.textContent = `Craft ${craftExactLabel} with exact counts`;
     craftExactBtn.addEventListener('click', () => {
       const ingredients: Array<{ tierId: string; refinedCount: number }> = [];
       for (const [tierId, input] of ingredientMap) {
