@@ -179,13 +179,13 @@ export interface SaveData {
         ingredients: Array<{ tierId: string; refinedCount: number }>;
         effects: Array<{
           tierId: string;
-          family: string;
-          statKey: string;
-          label: string;
-          value: number;
-          unit: string;
-          rarity: string;
+          effectTier: number;
+          key: string;
+          name: string;
+          description: string;
+          magnitude: number;
           quality: number;
+          rarity: string;
           isApplied: boolean;
         }>;
       };
