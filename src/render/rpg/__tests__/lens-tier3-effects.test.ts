@@ -32,6 +32,9 @@ import {
   getMeltdownHeat,
   isCitrineTagged,
   isEmeraldTagged,
+  getEventHorizonZoneCount,
+  getDescentRepeatCount,
+  getRealityCascadeInstability,
   type LensTier3HitParams,
 } from '../lens-tier3-effects';
 import {
@@ -140,12 +143,18 @@ function makeLensWithT3(tierId: TierId, magnitude = 25): CraftedLensData {
       },
       {
         tierId, effectTier: 3, key: `${tierId}_t3`,
-        name: tierId === 'sand' ? 'Sandstorm Cascade'
-          : tierId === 'quartz' ? 'Perfect Refraction'
-          : tierId === 'ruby' ? 'Meltdown Core'
-          : tierId === 'citrine' ? 'Radiant Detonation'
-          : tierId === 'emerald' ? 'Viridian Bloom'
-          : 'Absolute Zero',
+        name: tierId === 'sand'      ? 'Sandstorm Cascade'
+          : tierId === 'quartz'      ? 'Perfect Refraction'
+          : tierId === 'ruby'        ? 'Meltdown Core'
+          : tierId === 'citrine'     ? 'Radiant Detonation'
+          : tierId === 'emerald'     ? 'Viridian Bloom'
+          : tierId === 'sapphire'    ? 'Absolute Zero'
+          : tierId === 'iolite'      ? 'Time Fracture'
+          : tierId === 'amethyst'    ? 'Mirror Volley'
+          : tierId === 'diamond'     ? 'Faultline Break'
+          : tierId === 'nullstone'   ? 'Event Horizon'
+          : tierId === 'fracteryl'   ? 'Infinite Descent'
+          : 'Reality Cascade',
         description: 'T3', magnitude, quality: 0.5, rarity: 'Common',
         isApplied: LENS_T3_IMPLEMENTED_TIER_IDS.has(tierId),
       },
@@ -565,7 +574,8 @@ describe('lens-tier3-effects — 15. Frozen enemy shatters on next hit', () => {
 // ── 16. No recursive T3 procs ────────────────────────────────────────────────
 
 describe('lens-tier3-effects — 16. T3 effects do not create infinite T2/T3 procs', () => {
-  const t3Tiers: TierId[] = ['sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire'];
+  const t3Tiers: TierId[] = ['sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire',
+    'iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein'];
 
   it.each(t3Tiers)('%s T3: no infinite loop or stack overflow', (tierId) => {
     const enemy = makeEnemy({ hp: 50000 });
@@ -581,37 +591,344 @@ describe('lens-tier3-effects — 16. T3 effects do not create infinite T2/T3 pro
   });
 });
 
-// ── 17. Remaining T3 effects stay STUB ───────────────────────────────────────
+// ── 17. All 12 T3 effects are now fully implemented (no STUB) ────────────────
 
-describe('lens-tier3-effects — 17. Iolite/Amethyst/Diamond/Nullstone/Fracteryl/Eigenstein T3 remain STUB', () => {
-  const stubTiers: TierId[] = ['iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein'];
+describe('lens-tier3-effects — 17. All 12 T3 effects implemented, no STUB', () => {
+  const allT3Tiers: TierId[] = ['sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire',
+    'iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein'];
 
-  it.each(stubTiers)('%s T3: isApplied false and name contains STUB', (tierId) => {
+  it.each(allT3Tiers)('%s T3: isApplied true and name has no STUB', (tierId) => {
     const effects = rollLensEffects([{ tierId, refinedCount: 5 }], 5, () => 0);
     const t3 = effects.find(e => e.effectTier === 3);
     expect(t3).toBeDefined();
-    expect(t3!.isApplied).toBe(false);
-    expect(t3!.name).toContain('STUB');
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).not.toContain('STUB');
   });
 
-  it('STUB T3 effects in lens cause no secondary hits', () => {
+  it('lens with isApplied:false T3 still causes no secondary hits (guard check)', () => {
     const enemy = makeEnemy({ hp: 200 });
     const initialHp = enemy.hp;
-    const lensWithStubT3: CraftedLensData = {
-      id: 'lens_stub', type: 'lens', name: 'stub lens',
+    const lensNotApplied: CraftedLensData = {
+      id: 'lens_notapplied', type: 'lens', name: 'not applied lens',
       ingredients: [{ tierId: 'iolite', refinedCount: 5 }],
       totalWeightedMoteValue: 500, forgeCraftLevel: 5,
       effects: [{
-        tierId: 'iolite', effectTier: 3, key: 'iolite_t3', name: 'Time Fracture STUB',
-        description: 'STUB', magnitude: 20, quality: 0.5, rarity: 'Common', isApplied: false,
+        tierId: 'iolite', effectTier: 3, key: 'iolite_t3', name: 'Time Fracture',
+        description: '', magnitude: 20, quality: 0.5, rarity: 'Common', isApplied: false,
       }],
     };
     const params: LensTier3HitParams = {
-      targetEntity: enemy, hitDamage: 100, lens: lensWithStubT3, weaponId: 'w1',
+      targetEntity: enemy, hitDamage: 100, lens: lensNotApplied, weaponId: 'w1',
       ctx: makeCtx(enemy) as any,
     };
     withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
     expect(enemy.hp).toBe(initialHp);
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 20. Iolite: Time Fracture ────────────────────────────────────────────────
+
+describe('lens-tier3-effects — 20. Iolite Time Fracture', () => {
+  it('Iolite T3: isApplied true and name is "Time Fracture"', () => {
+    const effects = rollLensEffects([{ tierId: 'iolite', refinedCount: 5 }], 5, () => 0);
+    const t3 = effects.find(e => e.effectTier === 3);
+    expect(t3).toBeDefined();
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).toBe('Time Fracture');
+  });
+
+  it('fires hits and applies timeWarped when enemy is Time-Warped on proc', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    applyLensStatus(enemy, { key: 'timeWarped', sourceTierId: 'iolite', durationMs: 5000, magnitude: 20 });
+    const params = makeParams('iolite', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(hasStatus(enemy, 'timeWarped')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not fire if target is NOT Time-Warped', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    // No timeWarped status
+    const initialHp = enemy.hp;
+    const params = makeParams('iolite', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(enemy.hp).toBe(initialHp);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not create infinite loop (depth guard)', () => {
+    const enemy = makeEnemy({ hp: 50000 });
+    applyLensStatus(enemy, { key: 'timeWarped', sourceTierId: 'iolite', durationMs: 5000, magnitude: 20 });
+    const params = makeParams('iolite', enemy);
+    expect(() => withAlwaysProc(() => {
+      for (let i = 0; i < 5; i++) handleLensTier3EffectsOnWeaponHit(params);
+    })).not.toThrow();
+    expect(Number.isFinite(enemy.hp)).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 21. Amethyst: Mirror Volley ──────────────────────────────────────────────
+
+describe('lens-tier3-effects — 21. Amethyst Mirror Volley', () => {
+  it('Amethyst T3: isApplied true and name is "Mirror Volley"', () => {
+    const effects = rollLensEffects([{ tierId: 'amethyst', refinedCount: 5 }], 5, () => 0);
+    const t3 = effects.find(e => e.effectTier === 3);
+    expect(t3).toBeDefined();
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).toBe('Mirror Volley');
+  });
+
+  it('applies Echo-Marked to target on proc', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    const params = makeParams('amethyst', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(hasStatus(enemy, 'echoMarked')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not recursively trigger itself (depth guard — no stack overflow)', () => {
+    const enemy = makeEnemy({ hp: 50000 });
+    const params = makeParams('amethyst', enemy);
+    expect(() => withAlwaysProc(() => {
+      for (let i = 0; i < 10; i++) handleLensTier3EffectsOnWeaponHit(params);
+    })).not.toThrow();
+    expect(Number.isFinite(enemy.hp)).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 22. Diamond: Faultline Break ────────────────────────────────────────────
+
+describe('lens-tier3-effects — 22. Diamond Faultline Break', () => {
+  it('Diamond T3: isApplied true and name is "Faultline Break"', () => {
+    const effects = rollLensEffects([{ tierId: 'diamond', refinedCount: 5 }], 5, () => 0);
+    const t3 = effects.find(e => e.effectTier === 3);
+    expect(t3).toBeDefined();
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).toBe('Faultline Break');
+  });
+
+  it('fires hits and applies Cracked when enemy is Cracked on proc', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    applyLensStatus(enemy, { key: 'cracked', sourceTierId: 'diamond', durationMs: 5000, magnitude: 20 });
+    const params = makeParams('diamond', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(hasStatus(enemy, 'cracked')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not fire if target is NOT Cracked', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    const initialHp = enemy.hp;
+    const params = makeParams('diamond', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(enemy.hp).toBe(initialHp);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('depth guard prevents recursive break', () => {
+    const enemy = makeEnemy({ hp: 50000 });
+    applyLensStatus(enemy, { key: 'cracked', sourceTierId: 'diamond', durationMs: 5000, magnitude: 20 });
+    const params = makeParams('diamond', enemy);
+    expect(() => withAlwaysProc(() => {
+      for (let i = 0; i < 5; i++) handleLensTier3EffectsOnWeaponHit(params);
+    })).not.toThrow();
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 23. Nullstone: Event Horizon ─────────────────────────────────────────────
+
+describe('lens-tier3-effects — 23. Nullstone Event Horizon', () => {
+  it('Nullstone T3: isApplied true and name is "Event Horizon"', () => {
+    const effects = rollLensEffects([{ tierId: 'nullstone', refinedCount: 5 }], 5, () => 0);
+    const t3 = effects.find(e => e.effectTier === 3);
+    expect(t3).toBeDefined();
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).toBe('Event Horizon');
+  });
+
+  it('creates an event horizon zone when enemy is Gravitized on proc', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    applyLensStatus(enemy, { key: 'gravitized', sourceTierId: 'nullstone', durationMs: 5000, magnitude: 20 });
+    const params = makeParams('nullstone', enemy);
+    const before = getEventHorizonZoneCount();
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(getEventHorizonZoneCount()).toBeGreaterThan(before);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not create zone if enemy is NOT Gravitized', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    const params = makeParams('nullstone', enemy);
+    const before = getEventHorizonZoneCount();
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(getEventHorizonZoneCount()).toBe(before);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('respects max active zone cap', () => {
+    // Fill up to cap
+    for (let i = 0; i < 3; i++) {
+      const enemy = makeEnemy({ hp: 5000 });
+      applyLensStatus(enemy, { key: 'gravitized', sourceTierId: 'nullstone', durationMs: 5000, magnitude: 20 });
+      const params = makeParams('nullstone', enemy);
+      withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+      clearEnemyStatuses(enemy);
+    }
+    const atCap = getEventHorizonZoneCount();
+    // One more should be rejected
+    const enemy = makeEnemy({ hp: 5000 });
+    applyLensStatus(enemy, { key: 'gravitized', sourceTierId: 'nullstone', durationMs: 5000, magnitude: 20 });
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(makeParams('nullstone', enemy)));
+    expect(getEventHorizonZoneCount()).toBe(atCap);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('zone expires after ticking', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    applyLensStatus(enemy, { key: 'gravitized', sourceTierId: 'nullstone', durationMs: 5000, magnitude: 20 });
+    const params = makeParams('nullstone', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    if (getEventHorizonZoneCount() > 0) {
+      tickLensTier3Effects(makeArrays() as any, 2000); // tick past duration
+      expect(getEventHorizonZoneCount()).toBe(0);
+    }
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 24. Fracteryl: Infinite Descent ─────────────────────────────────────────
+
+describe('lens-tier3-effects — 24. Fracteryl Infinite Descent', () => {
+  it('Fracteryl T3: isApplied true and name is "Infinite Descent"', () => {
+    const effects = rollLensEffects([{ tierId: 'fracteryl', refinedCount: 5 }], 5, () => 0);
+    const t3 = effects.find(e => e.effectTier === 3);
+    expect(t3).toBeDefined();
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).toBe('Infinite Descent');
+  });
+
+  it('tags enemy with descent data on proc hit', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    const params = makeParams('fracteryl', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(getDescentRepeatCount(enemy)).toBe(0); // tagged but not yet repeated
+    clearEnemyStatuses(enemy);
+  });
+
+  it('reapplies fractalWound within hard repeat cap', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    applyLensStatus(enemy, {
+      key: 'fractalWound', sourceTierId: 'fracteryl', durationMs: 100,
+      magnitude: 20, tickEveryMs: 50, fractalInitialDamage: 5,
+    });
+    const params = makeParams('fracteryl', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+
+    // Simulate wound expiry by clearing statuses
+    clearEnemyStatuses(enemy);
+
+    // Tick should detect wound gone and attempt descent (always proc → repeat count becomes 1)
+    withAlwaysProc(() => tickLensTier3Effects(makeArrays(enemy) as any, 16));
+    expect(getDescentRepeatCount(enemy)).toBeLessThanOrEqual(2);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('repeat count never exceeds hard cap (max 2)', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    const params = makeParams('fracteryl', enemy);
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+
+    // Force multiple descent cycles
+    withAlwaysProc(() => {
+      for (let i = 0; i < 10; i++) {
+        clearEnemyStatuses(enemy); // remove any wound
+        tickLensTier3Effects(makeArrays(enemy) as any, 16);
+      }
+    });
+    expect(getDescentRepeatCount(enemy)).toBeLessThanOrEqual(2);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not create unbounded tick chains', () => {
+    const enemy = makeEnemy({ hp: 50000 });
+    const params = makeParams('fracteryl', enemy);
+    expect(() => withAlwaysProc(() => {
+      for (let i = 0; i < 10; i++) handleLensTier3EffectsOnWeaponHit(params);
+      tickLensTier3Effects(makeArrays(enemy) as any, 100);
+    })).not.toThrow();
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 25. Eigenstein: Reality Cascade ──────────────────────────────────────────
+
+describe('lens-tier3-effects — 25. Eigenstein Reality Cascade', () => {
+  it('Eigenstein T3: isApplied true and name is "Reality Cascade"', () => {
+    const effects = rollLensEffects([{ tierId: 'eigenstein', refinedCount: 5 }], 5, () => 0);
+    const t3 = effects.find(e => e.effectTier === 3);
+    expect(t3).toBeDefined();
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).toBe('Reality Cascade');
+  });
+
+  it('tracks per-enemy/source instability and fires break at threshold', () => {
+    const enemy = makeEnemy({ hp: 50000 });
+    applyLensStatus(enemy, { key: 'riftScarred', sourceTierId: 'eigenstein', durationMs: 10000, magnitude: 20 });
+    const params = makeParams('eigenstein', enemy);
+    const lensId = params.lens.id;
+
+    // Hit 5 times — instability should be 5, below threshold (6)
+    withAlwaysProc(() => {
+      for (let i = 0; i < 5; i++) handleLensTier3EffectsOnWeaponHit(params);
+    });
+    expect(getRealityCascadeInstability(enemy, lensId)).toBe(5);
+
+    // 6th hit triggers break → instability reduces
+    withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
+    expect(getRealityCascadeInstability(enemy, lensId)).toBeLessThan(6);
+
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not track instability if riftScarred is absent', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    // No riftScarred status
+    const params = makeParams('eigenstein', enemy);
+    withAlwaysProc(() => {
+      for (let i = 0; i < 6; i++) handleLensTier3EffectsOnWeaponHit(params);
+    });
+    expect(getRealityCascadeInstability(enemy, params.lens.id)).toBe(0);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('instability resets when riftScarred expires (via tick)', () => {
+    const enemy = makeEnemy({ hp: 5000 });
+    applyLensStatus(enemy, { key: 'riftScarred', sourceTierId: 'eigenstein', durationMs: 10000, magnitude: 20 });
+    const params = makeParams('eigenstein', enemy);
+    withAlwaysProc(() => {
+      for (let i = 0; i < 4; i++) handleLensTier3EffectsOnWeaponHit(params);
+    });
+    expect(getRealityCascadeInstability(enemy, params.lens.id)).toBeGreaterThan(0);
+
+    // Remove riftScarred and tick — instability should clear
+    clearEnemyStatuses(enemy);
+    tickLensTier3Effects(makeArrays(enemy) as any, 16);
+    expect(getRealityCascadeInstability(enemy, params.lens.id)).toBe(0);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('cascade does not create infinite T3 procs (no stack overflow)', () => {
+    const enemy = makeEnemy({ hp: 50000 });
+    applyLensStatus(enemy, { key: 'riftScarred', sourceTierId: 'eigenstein', durationMs: 10000, magnitude: 20 });
+    const params = makeParams('eigenstein', enemy);
+    expect(() => withAlwaysProc(() => {
+      for (let i = 0; i < 20; i++) handleLensTier3EffectsOnWeaponHit(params);
+    })).not.toThrow();
+    expect(Number.isFinite(enemy.hp)).toBe(true);
     clearEnemyStatuses(enemy);
   });
 });

@@ -7,21 +7,28 @@
  *   clearPendingTier3Effects()                 — reset module state (for tests).
  *
  * Implemented effects:
- *   Sand     → Sandstorm Cascade  (enhances Sand Spray; depth-capped cascade)
- *   Quartz   → Perfect Refraction (Prism Split shard bounces once; no infinite loop)
- *   Ruby     → Meltdown Core      (heat build-up → capped fire explosion)
- *   Citrine  → Radiant Detonation (death-triggered golden explosion from Radiant enemies)
- *   Emerald  → Viridian Bloom     (death-triggered toxic zone from Poisoned enemies)
- *   Sapphire → Absolute Zero      (chill-stack freeze + shatter on next hit)
+ *   Sand      → Sandstorm Cascade  (enhances Sand Spray; depth-capped cascade)
+ *   Quartz    → Perfect Refraction (Prism Split shard bounces once; no infinite loop)
+ *   Ruby      → Meltdown Core      (heat build-up → capped fire explosion)
+ *   Citrine   → Radiant Detonation (death-triggered golden explosion from Radiant enemies)
+ *   Emerald   → Viridian Bloom     (death-triggered toxic zone from Poisoned enemies)
+ *   Sapphire  → Absolute Zero      (chill-stack freeze + shatter on next hit)
+ *   Iolite    → Time Fracture      (burst hits against Time-Warped enemies; depth-capped)
+ *   Amethyst  → Mirror Volley      (ghostly mirror hits to nearby enemies; chain depth capped)
+ *   Diamond   → Faultline Break    (fracture burst against Cracked enemies; depth-capped)
+ *   Nullstone → Event Horizon      (micro black-hole zone on Gravitized enemies; capped zones)
+ *   Fracteryl → Infinite Descent   (Fractal Wound reapplied on expiry; repeat cap = 2)
+ *   Eigenstein→ Reality Cascade    (per-enemy/source instability → rift burst at threshold)
  *
  * Anti-recursion rules:
  *   - Secondary/T3 hits call damageSecTarget (same as T2) — bypass weapon-attack pipeline.
- *   - All T3 procs set allowLensProcs:false via source:'lens_tier3' context (damage direct).
- *   - Sand cascade depth capped at 1 via _sandCascading flag (synchronous, safe).
- *   - Quartz bounce capped at 1 via _quartzBouncing flag (synchronous, safe).
+ *   - Sand/Quartz/Iolite/Amethyst/Diamond depth capped at 1 via synchronous boolean flags.
  *   - Citrine/Emerald detonation caps per death: at most T3_MAX_SPAWNS_PER_DEATH secondary hits.
  *   - Bloom ticking cannot trigger further death blooms (bloom damage bypasses T3 death check).
  *   - Ruby explosion capped by per-enemy heat cap and explosion cooldown.
+ *   - Event Horizon zone damage bypasses T3/T2 proc pipeline entirely.
+ *   - Infinite Descent repeat count hard-capped at INFINITE_DESCENT_MAX_REPEATS (2).
+ *   - Reality Cascade instability per enemy/source; break partially clears instability.
  */
 
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
@@ -31,6 +38,7 @@ import {
   applyLensStatus,
   hasStatus,
   removeStatus,
+  getRiftScarredDamageMult,
 } from '../../sim/rpg/enemy-status-effects';
 import type { LensStatusParams, EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 import type { TierId } from '../../data/tiers';
@@ -69,6 +77,23 @@ const BLOOM_RANGE_SQ           = 140 * 140;
 // Citrine – Radiant Detonation
 const DETONATE_CHANCE          = 0.60; // per-death proc chance
 
+// Nullstone – Event Horizon
+const EVENT_HORIZON_DURATION_MS = 1800;
+const EVENT_HORIZON_TICK_MS     = 600;
+const EVENT_HORIZON_MAX_ACTIVE  = 3;
+const EVENT_HORIZON_RANGE_SQ    = 120 * 120;
+const EVENT_HORIZON_PULL_STR    = 0.015; // conservative pull per ms
+
+// Fracteryl – Infinite Descent
+const INFINITE_DESCENT_MAX_REPEATS = 2;
+const INFINITE_DESCENT_PROC_CHANCE = 0.25;
+const INFINITE_DESCENT_MAG_DECAY   = 0.55; // magnitude multiplier per repeat
+
+// Eigenstein – Reality Cascade
+const REALITY_CASCADE_THRESHOLD    = 6;    // instability hits to trigger break
+const REALITY_CASCADE_BASE_MULT    = 0.80; // base damage multiplier
+const REALITY_CASCADE_MAX_CHAIN    = 5;    // max secondary hits from cascade
+
 // ── Module-level state ─────────────────────────────────────────────────────────
 
 /** Depth guard for Sand Cascade — prevents T3 from recursively cascading. */
@@ -91,6 +116,42 @@ const _t3CitrineTagged = new WeakSet<object>();
 
 /** Emerald: enemies tagged as bloom candidates (hit by T3 Emerald lens). */
 const _t3EmeraldTagged = new WeakSet<object>();
+
+/** Depth guard for Iolite Time Fracture — prevents recursion. */
+let _ioliteTimeFracturing = false;
+
+/** Depth guard for Amethyst Mirror Volley — prevents mirror hits triggering more mirrors. */
+let _amethystMirroring = false;
+
+/** Depth guard for Diamond Faultline Break — prevents recursion. */
+let _diamondFaultlining = false;
+
+interface EventHorizonZone {
+  x: number;
+  y: number;
+  remainingMs: number;
+  tickTimer: number;
+  damage: number;
+  magnitude: number;
+  lensId: string;
+  weaponId: string;
+}
+
+const _eventHorizonZones: EventHorizonZone[] = [];
+
+interface DescentData {
+  hadFractalWound: boolean;
+  repeatCount: number;
+  lensId: string;
+  weaponId: string;
+  magnitude: number;
+}
+
+/** Fracteryl: per-enemy Infinite Descent tracking data. */
+const _fracterylDescentData = new WeakMap<object, DescentData>();
+
+/** Eigenstein: per-enemy, per-source instability stacks for Reality Cascade. */
+const _realityCascadeInstability = new WeakMap<object, Map<string, number>>();
 
 interface BloomZone {
   x: number;
@@ -123,8 +184,12 @@ export interface LensTier3HitParams {
 
 export function clearPendingTier3Effects(): void {
   _bloomZones.length = 0;
+  _eventHorizonZones.length = 0;
   _sandCascading = false;
   _quartzBouncing = false;
+  _ioliteTimeFracturing = false;
+  _amethystMirroring = false;
+  _diamondFaultlining = false;
   _storedCtx = null;
 }
 
@@ -507,6 +572,160 @@ export function handleLensTier3EffectsOnWeaponHit(params: LensTier3HitParams): v
         }
         break;
       }
+
+      // ── Iolite: Time Fracture ────────────────────────────────────────────────
+      case 'iolite': {
+        if (!targetEntity) break;
+        if (_ioliteTimeFracturing) break;          // depth guard
+        if (!hasStatus(targetEntity, 'timeWarped')) break;
+        if (Math.random() >= getProcChance(mag)) break;
+
+        _ioliteTimeFracturing = true;
+        const fractureDmg  = hitDamage * 0.40;
+        const fractureHits = clamp(1 + Math.floor(mag * 0.06), 1, T3_MAX_SPAWNS_PER_HIT);
+        fireT3MultiHit(ctx, fractureDmg, fractureHits, 'timeWarped', tierId, mag, lensId, weaponId, '#8866ff');
+        const ite = targetEntity as { x?: number; y?: number };
+        ctx.fluid.addExplosion(ite.x ?? ctx.mote.x, ite.y ?? ctx.mote.y, 0.25, 0.55, 0.9, 0.25);
+        _ioliteTimeFracturing = false;
+        break;
+      }
+
+      // ── Amethyst: Mirror Volley ──────────────────────────────────────────────
+      case 'amethyst': {
+        if (_amethystMirroring) break;             // depth guard — mirror hits cannot mirror
+        if (Math.random() >= getProcChance(mag)) break;
+
+        _amethystMirroring = true;
+        const mirrorDmg  = hitDamage * 0.35;
+        const mirrorHits = clamp(2 + Math.floor(mag * 0.06), 2, Math.min(T3_MAX_SPAWNS_PER_HIT, 5));
+        for (let i = 0; i < mirrorHits; i++) {
+          const t = ctx.findClosestTarget(T3_RANGE_SQ);
+          if (!t) break;
+          const dmg = damageT3Target(ctx, t, mirrorDmg);
+          if (dmg > 0) {
+            const entity = extractT2TargetEntity(t);
+            if (entity) {
+              // Apply Echo-Marked with a real echo damage so the mark has value.
+              applyLensStatus(entity, {
+                key: 'echoMarked',
+                sourceTierId: tierId,
+                sourceLensId: lensId,
+                sourceWeaponId: weaponId,
+                durationMs: 3500,
+                magnitude: mag,
+                echoDamage: mirrorDmg * 0.5,
+              });
+            }
+            ctx.spawnHitVisualsAt(t.x, t.y, 200, dmg, '#dd88ff', '#bb66dd');
+          }
+        }
+        const ame = targetEntity as { x?: number; y?: number } | null;
+        const ameSrcX = ame?.x ?? ctx.mote.x;
+        const ameSrcY = ame?.y ?? ctx.mote.y;
+        ctx.fluid.addExplosion(ameSrcX, ameSrcY, 0.2, 0.8, 0.45, 0.9);
+        _amethystMirroring = false;
+        break;
+      }
+
+      // ── Diamond: Faultline Break ─────────────────────────────────────────────
+      case 'diamond': {
+        if (!targetEntity) break;
+        if (_diamondFaultlining) break;            // depth guard
+        if (!hasStatus(targetEntity, 'cracked')) break;
+        if (Math.random() >= getProcChance(mag)) break;
+
+        _diamondFaultlining = true;
+        // TODO: scale faultlineDmg from armor/defense reduction when armor system exists.
+        const faultlineDmg  = hitDamage * 0.45;
+        const faultlineHits = clamp(1 + Math.floor(mag * 0.05), 1, T3_MAX_SPAWNS_PER_HIT);
+        fireT3MultiHit(ctx, faultlineDmg, faultlineHits, 'cracked', tierId, mag, lensId, weaponId, '#ccffff');
+        const die = targetEntity as { x?: number; y?: number };
+        ctx.fluid.addExplosion(die.x ?? ctx.mote.x, die.y ?? ctx.mote.y, 0.5, 0.95, 1.0, 0.9);
+        _diamondFaultlining = false;
+        break;
+      }
+
+      // ── Nullstone: Event Horizon ─────────────────────────────────────────────
+      case 'nullstone': {
+        if (!targetEntity) break;
+        if (!hasStatus(targetEntity, 'gravitized')) break;
+        if (Math.random() >= getProcChance(mag)) break;
+        if (_eventHorizonZones.length >= EVENT_HORIZON_MAX_ACTIVE) break;
+
+        const nse = targetEntity as { x?: number; y?: number };
+        const ehX = nse.x ?? ctx.mote.x;
+        const ehY = nse.y ?? ctx.mote.y;
+        _eventHorizonZones.push({
+          x: ehX, y: ehY,
+          remainingMs: EVENT_HORIZON_DURATION_MS,
+          tickTimer: EVENT_HORIZON_TICK_MS,
+          damage: hitDamage * 0.20,
+          magnitude: mag,
+          lensId,
+          weaponId,
+        });
+        applyT3Status(targetEntity, 'gravitized', tierId, mag, lensId, weaponId);
+        ctx.spawnHitVisualsAt(ehX, ehY, 200, 0, '#220033', '#440066');
+        ctx.fluid.addExplosion(ehX, ehY, 0.05, 0.1, 0.0, 0.3);
+        break;
+      }
+
+      // ── Fracteryl: Infinite Descent ──────────────────────────────────────────
+      case 'fracteryl': {
+        if (!targetEntity) break;
+        if (Math.random() >= getProcChance(mag)) break;
+
+        // Tag enemy for descent monitoring; update if already tagged.
+        const existingDescent = _fracterylDescentData.get(targetEntity);
+        if (!existingDescent) {
+          _fracterylDescentData.set(targetEntity, {
+            hadFractalWound: hasStatus(targetEntity, 'fractalWound'),
+            repeatCount: 0,
+            lensId,
+            weaponId,
+            magnitude: mag,
+          });
+        } else {
+          existingDescent.hadFractalWound = existingDescent.hadFractalWound || hasStatus(targetEntity, 'fractalWound');
+          existingDescent.magnitude       = Math.max(existingDescent.magnitude, mag);
+        }
+        break;
+      }
+
+      // ── Eigenstein: Reality Cascade ──────────────────────────────────────────
+      case 'eigenstein': {
+        if (!targetEntity) break;
+        if (!hasStatus(targetEntity, 'riftScarred')) break;
+
+        // Increment per-enemy/source instability (reset when riftScarred expires).
+        let instabilityMap = _realityCascadeInstability.get(targetEntity);
+        if (!instabilityMap) {
+          instabilityMap = new Map<string, number>();
+          _realityCascadeInstability.set(targetEntity, instabilityMap);
+        }
+        const sourceKey   = lensId || weaponId;
+        const instability = (instabilityMap.get(sourceKey) ?? 0) + 1;
+        instabilityMap.set(sourceKey, instability);
+
+        if (instability >= REALITY_CASCADE_THRESHOLD) {
+          // Partial clear: floor(instability / 2) remains.
+          instabilityMap.set(sourceKey, Math.floor(instability / 2));
+
+          const riftMult    = getRiftScarredDamageMult(targetEntity, sourceKey);
+          const rawDmg      = hitDamage * REALITY_CASCADE_BASE_MULT * riftMult;
+          const cascadeDmg  = clamp(rawDmg, hitDamage * 0.5, hitDamage * 3.0);
+
+          const ege = targetEntity as { x?: number; y?: number };
+          const egX = ege.x ?? ctx.mote.x;
+          const egY = ege.y ?? ctx.mote.y;
+          ctx.spawnHitVisualsAt(egX, egY, 300, cascadeDmg, '#9922cc', '#440088');
+          ctx.fluid.addExplosion(egX, egY, 0.1, 0.5, 0.0, 0.7);
+
+          const chainHits = clamp(2 + Math.floor(mag * 0.04), 2, REALITY_CASCADE_MAX_CHAIN);
+          fireT3MultiHit(ctx, cascadeDmg * 0.6, chainHits, 'riftScarred', tierId, mag, lensId, weaponId, '#9922cc');
+        }
+        break;
+      }
     }
   }
 }
@@ -517,6 +736,8 @@ interface MinimalEnemy {
   hp: number;
   x: number;
   y: number;
+  vx?: number;
+  vy?: number;
 }
 
 /** Iterate all enemy arrays looking for dead tagged enemies; returns those arrays. */
@@ -615,7 +836,137 @@ export function tickLensTier3Effects(arrays: EnemyArrays, deltaMs: number): void
     }
   }
 
-  // ── 3. Tick active Emerald bloom zones ────────────────────────────────────────
+  // ── 3. Tick active Event Horizon zones (pull + damage + Gravitized) ─────────
+  if (ctx) {
+    for (let i = _eventHorizonZones.length - 1; i >= 0; i--) {
+      const zone = _eventHorizonZones[i]!;
+      zone.remainingMs -= deltaMs;
+      if (zone.remainingMs <= 0) {
+        _eventHorizonZones.splice(i, 1);
+        continue;
+      }
+
+      zone.tickTimer -= deltaMs;
+      if (zone.tickTimer <= 0) {
+        zone.tickTimer += EVENT_HORIZON_TICK_MS;
+
+        const ehAllArrays: MinimalEnemy[][] = [
+          arrays.enemies, arrays.sapphireEnemies, arrays.emeraldEnemies,
+          arrays.amberEnemies, arrays.voidEnemies, arrays.quartzEnemies,
+          arrays.rubyEnemies, arrays.sunstoneEnemies, arrays.citrineEnemies,
+          arrays.ioliteEnemies, arrays.amethystEnemies, arrays.diamondEnemies,
+          arrays.nullstoneEnemies, arrays.fracterylEnemies, arrays.eigensteinEnemies,
+          arrays.eliteEnemies, arrays.polyominoEnemies, arrays.fissilePolyominoEnemies,
+          arrays.refractorPolyominoEnemies,
+          arrays.dustWispEnemies, arrays.ribbonWormEnemies, arrays.lanternMothEnemies,
+          arrays.eyeStalkEnemies, arrays.jellyfishEnemies, arrays.clothGhostEnemies,
+          arrays.plantTurretEnemies, arrays.gearInsectEnemies, arrays.spiderCrawlerEnemies,
+          arrays.moteSwarmEnemies, arrays.shadowHandEnemies,
+          arrays.sandFishEnemies, arrays.quartzFishEnemies, arrays.rubyFishEnemies,
+          arrays.sunstoneFishEnemies, arrays.emeraldFishEnemies, arrays.sapphireFishEnemies,
+          arrays.amethystFishEnemies, arrays.diamondFishEnemies,
+        ];
+
+        let ehHits = 0;
+        for (const arr of ehAllArrays) {
+          for (let j = 0; j < arr.length && ehHits < 6; j++) {
+            const e = arr[j]!;
+            if (e.hp <= 0) continue;
+            const dx = e.x - zone.x;
+            const dy = e.y - zone.y;
+            if (dx * dx + dy * dy > EVENT_HORIZON_RANGE_SQ) continue;
+
+            // Inward pull (capped, conservative)
+            if (typeof e.vx === 'number' && typeof e.vy === 'number') {
+              const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+              const pull = Math.min(EVENT_HORIZON_PULL_STR * deltaMs, 5);
+              e.vx -= (dx / dist) * pull;
+              e.vy -= (dy / dist) * pull;
+            }
+
+            // Periodic void damage (direct hp modification, bypasses T3 pipeline)
+            const dmgAmt = clamp(zone.damage, 1, 150);
+            e.hp = Math.max(0, e.hp - dmgAmt);
+            applyT3Status(e as object, 'gravitized', 'nullstone', zone.magnitude, zone.lensId, zone.weaponId);
+            ctx.spawnHitVisualsAt(e.x, e.y, 200, dmgAmt, '#330055', '#660099');
+            ehHits++;
+          }
+        }
+      }
+    }
+  }
+
+  // ── 4. Fracteryl: Infinite Descent — check for fractalWound expiry ──────────
+  {
+    const descentArrays: MinimalEnemy[][] = [
+      arrays.enemies, arrays.sapphireEnemies, arrays.emeraldEnemies,
+      arrays.amberEnemies, arrays.voidEnemies, arrays.quartzEnemies,
+      arrays.rubyEnemies, arrays.sunstoneEnemies, arrays.citrineEnemies,
+      arrays.ioliteEnemies, arrays.amethystEnemies, arrays.diamondEnemies,
+      arrays.nullstoneEnemies, arrays.fracterylEnemies, arrays.eigensteinEnemies,
+      arrays.eliteEnemies, arrays.polyominoEnemies, arrays.fissilePolyominoEnemies,
+      arrays.refractorPolyominoEnemies,
+      arrays.dustWispEnemies, arrays.ribbonWormEnemies, arrays.lanternMothEnemies,
+      arrays.eyeStalkEnemies, arrays.jellyfishEnemies, arrays.clothGhostEnemies,
+      arrays.plantTurretEnemies, arrays.gearInsectEnemies, arrays.spiderCrawlerEnemies,
+      arrays.moteSwarmEnemies, arrays.shadowHandEnemies,
+      arrays.sandFishEnemies, arrays.quartzFishEnemies, arrays.rubyFishEnemies,
+      arrays.sunstoneFishEnemies, arrays.emeraldFishEnemies, arrays.sapphireFishEnemies,
+      arrays.amethystFishEnemies, arrays.diamondFishEnemies,
+    ];
+
+    for (const arr of descentArrays) {
+      for (let j = 0; j < arr.length; j++) {
+        const e = arr[j]!;
+        const obj = e as object;
+
+        // Eigenstein: clear per-source instability when riftScarred expires (check all living enemies)
+        if (e.hp > 0) {
+          const instabilityMap = _realityCascadeInstability.get(obj);
+          if (instabilityMap && instabilityMap.size > 0 && !hasStatus(obj, 'riftScarred')) {
+            instabilityMap.clear();
+          }
+        }
+
+        const descent = _fracterylDescentData.get(obj);
+        if (!descent) continue;
+
+        // Enemy died — WeakMap auto-GCs; just skip
+        if (e.hp <= 0) continue;
+
+        const hasFractalWound = hasStatus(obj, 'fractalWound');
+
+        if (hasFractalWound) {
+          // Record that a wound has been active
+          descent.hadFractalWound = true;
+        } else if (descent.hadFractalWound) {
+          // Wound was present but is now gone — check for descent
+          if (descent.repeatCount < INFINITE_DESCENT_MAX_REPEATS && Math.random() < INFINITE_DESCENT_PROC_CHANCE) {
+            descent.repeatCount++;
+            // hadFractalWound = false so we wait for the new wound to appear before re-triggering
+            descent.hadFractalWound = false;
+            const reducedMag = descent.magnitude * Math.pow(INFINITE_DESCENT_MAG_DECAY, descent.repeatCount);
+            applyLensStatus(obj, {
+              key: 'fractalWound',
+              sourceTierId: 'fracteryl',
+              sourceLensId: descent.lensId,
+              sourceWeaponId: descent.weaponId,
+              durationMs: 3500,
+              magnitude: reducedMag,
+              tickEveryMs: 900,
+              fractalInitialDamage: reducedMag * 0.5,
+            });
+            if (ctx) ctx.spawnHitVisualsAt(e.x, e.y, 150, 0, '#44ff88', '#22aa44');
+          } else {
+            // Failed roll or cap reached — clear descent data for this enemy
+            _fracterylDescentData.delete(obj);
+          }
+        }
+      }
+    }
+  }
+
+  // ── 5. Tick active Emerald bloom zones ────────────────────────────────────────
   if (ctx) {
     for (let i = _bloomZones.length - 1; i >= 0; i--) {
       const zone = _bloomZones[i]!;
@@ -691,4 +1042,19 @@ export function isCitrineTagged(enemy: object): boolean {
 /** Returns true if an enemy is tagged for Emerald bloom (for tests). */
 export function isEmeraldTagged(enemy: object): boolean {
   return _t3EmeraldTagged.has(enemy);
+}
+
+/** Returns the number of active Event Horizon zones (for tests). */
+export function getEventHorizonZoneCount(): number {
+  return _eventHorizonZones.length;
+}
+
+/** Returns Infinite Descent repeat count for an enemy (for tests). */
+export function getDescentRepeatCount(enemy: object): number {
+  return _fracterylDescentData.get(enemy)?.repeatCount ?? 0;
+}
+
+/** Returns Reality Cascade instability for an enemy/source (for tests). */
+export function getRealityCascadeInstability(enemy: object, sourceKey: string): number {
+  return _realityCascadeInstability.get(enemy)?.get(sourceKey) ?? 0;
 }

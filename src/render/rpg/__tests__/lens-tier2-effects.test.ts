@@ -412,18 +412,19 @@ describe('lens-tier2-effects — 9. No recursive T2 triggering', () => {
   });
 });
 
-// ── 10. T3 effects remain STUB ───────────────────────────────────────────────
+// ── 10. All T3 effects now implemented; T2 handler skips T3 ────────────────
 
-describe('lens-tier2-effects — 10. Unimplemented T3 effects remain STUB', () => {
-  // Only the 6 tiers NOT yet implemented remain STUB; sand/quartz/ruby/citrine/emerald/sapphire T3 are now implemented.
-  const stubTierIds: TierId[] = ['iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein'];
+describe('lens-tier2-effects — 10. All T3 effects implemented; T2 handler skips T3', () => {
+  // All 12 T3 effects are now fully implemented — none remain STUB.
+  const allT3TierIds: TierId[] = ['sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire',
+    'iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein'];
 
-  it.each(stubTierIds)('%s T3: isApplied false and name contains STUB', (tierId) => {
+  it.each(allT3TierIds)('%s T3: isApplied true and name has no STUB', (tierId) => {
     const effects = rollLensEffects([{ tierId, refinedCount: 5 }], 5, () => 0);
     const t3 = effects.find(e => e.effectTier === 3);
     expect(t3).toBeDefined();
-    expect(t3!.isApplied).toBe(false);
-    expect(t3!.name).toContain('STUB');
+    expect(t3!.isApplied).toBe(true);
+    expect(t3!.name).not.toContain('STUB');
   });
 
   it('T2 handler skips T3 effects (T3 effects have effectTier 3, not 2)', () => {
@@ -440,12 +441,12 @@ describe('lens-tier2-effects — 10. Unimplemented T3 effects remain STUB', () =
         tierId: 'iolite',
         effectTier: 3,
         key: 'iolite_t3',
-        name: 'Time Fracture STUB',
-        description: 'STUB',
+        name: 'Time Fracture',
+        description: '',
         magnitude: 20,
         quality: 0.5,
         rarity: 'Common',
-        isApplied: false,
+        isApplied: true,
       }],
     };
     const params: LensTier2HitParams = {

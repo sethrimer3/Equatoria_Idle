@@ -194,8 +194,8 @@ describe('rollLensEffects — isApplied', () => {
     }
   });
 
-  it('T3 effects for unimplemented tiers have isApplied: false', () => {
-    // iolite T3 is not yet implemented
+  it('T3 effects for all 12 implemented tiers have isApplied: true', () => {
+    // All 12 T3 effects are now implemented (iolite included)
     const effects = rollLensEffects(
       [{ tierId: 'iolite', refinedCount: 5 }],
       5,
@@ -204,11 +204,11 @@ describe('rollLensEffects — isApplied', () => {
     const t3s = effects.filter(e => e.effectTier === 3);
     expect(t3s.length).toBeGreaterThan(0);
     for (const e of t3s) {
-      expect(e.isApplied).toBe(false);
+      expect(e.isApplied).toBe(true);
     }
   });
 
-  it('T3 effects for implemented tiers (sand/quartz/ruby/citrine/emerald/sapphire) have isApplied: true', () => {
+  it('T3 effects for implemented tiers have isApplied: true', () => {
     const effects = rollLensEffects(
       [{ tierId: 'ruby', refinedCount: 5 }],
       5,
@@ -264,8 +264,8 @@ describe('rollLensEffects — names', () => {
     }
   });
 
-  it('T3 effect names for unimplemented tiers contain "STUB"', () => {
-    // iolite T3 is not yet implemented
+  it('T3 effect names for all implemented tiers do not contain "STUB"', () => {
+    // All 12 T3 effects are now implemented — iolite is no longer STUB
     const effects = rollLensEffects(
       [{ tierId: 'iolite', refinedCount: 5 }],
       5,
@@ -274,7 +274,7 @@ describe('rollLensEffects — names', () => {
     const t3s = effects.filter(e => e.effectTier === 3);
     expect(t3s.length).toBeGreaterThan(0);
     for (const e of t3s) {
-      expect(e.name).toContain('STUB');
+      expect(e.name).not.toContain('STUB');
     }
   });
 

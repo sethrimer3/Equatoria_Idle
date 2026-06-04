@@ -3,8 +3,7 @@
  *
  * Tier 1 effects are active combat statuses.
  * Tier 2 effects for all 12 mote tiers are implemented.
- * Tier 3 effects for sand/quartz/ruby/citrine/emerald/sapphire are implemented.
- * Iolite, amethyst, diamond, nullstone, fracteryl, eigenstein T3 remain STUB.
+ * Tier 3 effects for all 12 mote tiers are implemented.
  */
 
 import type { TierId } from '../tiers';
@@ -23,6 +22,7 @@ export const LENS_T2_IMPLEMENTED_TIER_IDS = new Set<TierId>([
 /** Tier IDs whose Tier 3 effects are fully implemented. */
 export const LENS_T3_IMPLEMENTED_TIER_IDS = new Set<TierId>([
   'sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire',
+  'iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein',
 ]);
 
 // ─── Effect naming map ────────────────────────────────────────────
@@ -62,32 +62,32 @@ export const LENS_EFFECT_NAMES: Partial<Record<TierId, Record<LensEffectTier, st
   iolite: {
     1: 'Time-Warped',
     2: 'Delayed Echo Strike',
-    3: 'Time Fracture STUB',
+    3: 'Time Fracture',
   },
   amethyst: {
     1: 'Echo-Marked',
     2: 'Phantom Repeat',
-    3: 'Mirror Volley STUB',
+    3: 'Mirror Volley',
   },
   diamond: {
     1: 'Cracked',
     2: 'Diamond Shrapnel',
-    3: 'Faultline Break STUB',
+    3: 'Faultline Break',
   },
   nullstone: {
     1: 'Gravitized',
     2: 'Gravity Pulse',
-    3: 'Event Horizon STUB',
+    3: 'Event Horizon',
   },
   fracteryl: {
     1: 'Fractal Wound',
     2: 'Recursive Splinter',
-    3: 'Infinite Descent STUB',
+    3: 'Infinite Descent',
   },
   eigenstein: {
     1: 'Rift-Scarred',
     2: 'Rift Slash',
-    3: 'Reality Cascade STUB',
+    3: 'Reality Cascade',
   },
   // sunstone intentionally omitted — power scaling only, no effects
 };
@@ -114,12 +114,18 @@ export const LENS_T2_DESCRIPTIONS: Partial<Record<TierId, string>> = {
 
 /** Human-readable description for implemented Tier 3 effects. */
 export const LENS_T3_DESCRIPTIONS: Partial<Record<TierId, string>> = {
-  sand:     'Sandstorm Cascade: Sand Spray fragments have a chance to release a smaller secondary cascade — deals reduced damage and applies Abraded. Cascade depth capped at 1.',
-  quartz:   'Perfect Refraction: Prism Split shards bounce once to a nearby enemy after hitting — deals reduced bounce damage and applies Refracted. No infinite bouncing.',
-  ruby:     'Meltdown Core: Ruby hits build heat on the target; at threshold, trigger a fire explosion — damages nearby enemies and applies Burning. Heat and explosion rate capped.',
-  citrine:  'Radiant Detonation: When a Radiant-tagged enemy dies, it has a chance to detonate — damages nearby enemies in a golden flash and applies Radiant. Capped per death chain.',
-  emerald:  'Viridian Bloom: When a Poison-tagged enemy dies, create a temporary toxic bloom zone — damages enemies inside over time and applies Poisoned. Zone duration and rate capped.',
-  sapphire: 'Absolute Zero: Repeated Sapphire lens hits on a Chilled enemy can freeze it — frozen enemies nearly stop moving for a capped duration. The next hit shatters the ice for bonus damage.',
+  sand:      'Sandstorm Cascade: Sand Spray fragments have a chance to release a smaller secondary cascade — deals reduced damage and applies Abraded. Cascade depth capped at 1.',
+  quartz:    'Perfect Refraction: Prism Split shards bounce once to a nearby enemy after hitting — deals reduced bounce damage and applies Refracted. No infinite bouncing.',
+  ruby:      'Meltdown Core: Ruby hits build heat on the target; at threshold, trigger a fire explosion — damages nearby enemies and applies Burning. Heat and explosion rate capped.',
+  citrine:   'Radiant Detonation: When a Radiant-tagged enemy dies, it has a chance to detonate — damages nearby enemies in a golden flash and applies Radiant. Capped per death chain.',
+  emerald:   'Viridian Bloom: When a Poison-tagged enemy dies, create a temporary toxic bloom zone — damages enemies inside over time and applies Poisoned. Zone duration and rate capped.',
+  sapphire:  'Absolute Zero: Repeated Sapphire lens hits on a Chilled enemy can freeze it — frozen enemies nearly stop moving for a capped duration. The next hit shatters the ice for bonus damage.',
+  iolite:    'Time Fracture: Hits against Time-Warped enemies have a chance to fracture time — bursts secondary hits around the target and refreshes Time-Warped. Capped; must not loop.',
+  amethyst:  'Mirror Volley: On proc, split the hit into ghostly mirror strikes against nearby enemies — deals reduced damage and applies Echo-Marked. Chain depth capped at 1; mirror hits cannot mirror.',
+  diamond:   'Faultline Break: Hits against Cracked enemies have a chance to trigger a fracture burst — damages nearby enemies and applies Cracked. TODO: scale with armor when armor system exists.',
+  nullstone: 'Event Horizon: Hits against Gravitized enemies have a chance to spawn a micro black hole — pulls nearby enemies inward, deals periodic void damage, and applies Gravitized. Active zones capped.',
+  fracteryl: 'Infinite Descent: When Fractal Wound fully expires on a tagged enemy, a capped chance exists to reapply it at reduced strength (max 2 repeats). Visual: recursive fractal glyph.',
+  eigenstein:'Reality Cascade: Repeated hits against Rift-Scarred enemies build per-source instability; at threshold, trigger a dimensional break — deals rift damage scaled by Rift-Scarred stacks and partially clears instability.',
 };
 
 // ─── Tier 1 effect descriptions ───────────────────────────────────
