@@ -11,6 +11,8 @@ import { TIER_BY_ID, type TierId } from '../tiers';
 import {
   LENS_EFFECT_NAMES,
   LENS_T1_DESCRIPTIONS,
+  LENS_T2_DESCRIPTIONS,
+  LENS_T2_IMPLEMENTED_TIER_IDS,
   getLensEffectUnlockChances,
   getLensMaxMoteTypes,
 } from './lens-definitions';
