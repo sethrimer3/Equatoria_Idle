@@ -2,8 +2,8 @@
  * lens-definitions.ts — Naming map and forge-level unlock chances for the Lens system.
  *
  * Tier 1 effects are active combat statuses.
- * Tier 2 effects for sand/quartz/ruby/citrine/emerald/sapphire/iolite are implemented.
- * Tier 2 effects for amethyst and above, and all Tier 3 effects, remain STUB.
+ * Tier 2 effects for all 12 mote tiers are implemented.
+ * All Tier 3 effects remain STUB.
  */
 
 import type { TierId } from '../tiers';
