@@ -173,6 +173,26 @@ export interface SaveData {
     }>;
     /** v30+: refined crystal inventory per tier. Absent in older saves. */
     refinedCrystalsByTierId?: Record<string, number>;
+    /** v31+: crafted weave inventory. Absent in older saves. */
+    craftedWeaves?: Array<{
+      id: string;
+      name: string;
+      forgeCraftLevel: number;
+      totalWeightedMoteValue: number;
+      ingredients: Array<{ tierId: string; refinedCount: number }>;
+      affixes: Array<{
+        affixId: string;
+        tierId: string;
+        label: string;
+        quality: number;
+        rarity: string;
+        value: number;
+        unit: string;
+        applied: boolean;
+      }>;
+    }>;
+    /** v31+: equipped weave slot assignments (array of 6 weave IDs or null). Absent in older saves. */
+    equippedWeaveSlots?: Array<string | null>;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
