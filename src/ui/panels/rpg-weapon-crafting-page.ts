@@ -685,6 +685,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
         dispatch({ kind: 'craft_weapon', ingredients });
       } else if (craftingMode === 'weave') {
         dispatch({ kind: 'craft_weave', ingredients });
+      } else if (craftingMode === 'lens') {
+        dispatch({ kind: 'craft_lens', ingredients });
       }
     });
     return btn;
