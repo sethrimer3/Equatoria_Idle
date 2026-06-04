@@ -15,7 +15,7 @@ import {
 import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
-import { applyLensStatus, getIncomingDamageMult } from '../../sim/rpg/enemy-status-effects';
+import { applyLensStatus } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 
 export function performAoeAttack(
