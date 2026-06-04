@@ -257,7 +257,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     if (!moteLoomFieldEl) return;
     const loomField = moteLoomFieldEl;
 
-    const capacity = getForgeCapacityCurrent();
+    const capacity = getEffectiveCapacity();
     const inventory = getInventory();
     if (moteHeadingEl) {
       if (craftingMode === 'lens' && latestRpgState) {
