@@ -38,30 +38,25 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
 import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
-import { loadImage } from '../../render/assets/asset-loader';
-import { createTintedCanvas } from '../../render/assets/sprite-tint';
+import { getTintedSpriteCanvas } from '../../render/assets/sprite-tint';
+import { drawForgePreview } from '../../render/forge';
+import type { ForgeCrunchState } from '../../sim/forge/forge-state';
+import { createForgeCrunchState } from '../../sim/forge/forge-state';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface RpgWeaponCraftingPage {
   element: HTMLElement;
-  update(rpgState: RpgSimState, isDevMode: boolean): void;
+  update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState): void;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MIN_FRACTION = MIN_SEGMENT_PCT / 100;
 const STEP_FRACTION = SEGMENT_STEP_PCT / 100;
-
-function renderMoteLoomGlyph(canvas: HTMLCanvasElement, spritePath: string, color: string): void {
-  loadImage(spritePath).then((sprite) => {
-    const tinted = createTintedCanvas(sprite, color);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(tinted, 0, 0, canvas.width, canvas.height);
-  }).catch(() => { /* Sprite fallback is the CSS ring around the canvas. */ });
-}
+const FORGE_CANVAS_SIZE = 160; // internal resolution of the forge preview canvas
+const LOOM_GLYPH_SIZE = 56;
+const LOOM_ROTATION_SPEED = 0.01; // rad per frame at 60 fps, matching spawner rotation
 
 // ─── Factory ─────────────────────────────────────────────────────────────────
 
@@ -78,6 +73,57 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   // Latest rpgState snapshot (for inventory etc.)
   let latestRpgState: RpgSimState | null = null;
   let latestIsDevMode = false;
+  let latestForgeState: ForgeCrunchState = createForgeCrunchState();
+
+  // ── Animation ────────────────────────────────────────────────────────────
+  let forgeCoreCanvas: HTMLCanvasElement | null = null;
+  let forgeCoreCtx: CanvasRenderingContext2D | null = null;
+  // Per-tier glyph canvases and accumulated rotation angles
+  const loomCanvases = new Map<TierId, HTMLCanvasElement>();
+  const loomRotations = new Map<TierId, number>();
+  let animRafId: number | null = null;
+  let lastAnimMs: number | null = null;
+
+  function animTick(nowMs: number): void {
+    const deltaMs = lastAnimMs !== null ? nowMs - lastAnimMs : 16.67;
+    lastAnimMs = nowMs;
+    const frameDelta = deltaMs / (1000 / 60);
+
+    // Forge core preview
+    if (forgeCoreCanvas && forgeCoreCtx) {
+      forgeCoreCtx.clearRect(0, 0, FORGE_CANVAS_SIZE, FORGE_CANVAS_SIZE);
+      drawForgePreview(forgeCoreCtx, FORGE_CANVAS_SIZE, FORGE_CANVAS_SIZE, latestForgeState, nowMs);
+    }
+
+    // Loom glyph rotation
+    for (const [tierId, canvas] of loomCanvases) {
+      const tier = TIER_BY_ID.get(tierId);
+      if (!tier) continue;
+      const spritePath = getGeneratorSpritePath(tier.unlockOrder);
+      const tinted = getTintedSpriteCanvas(spritePath, tier.color);
+      if (!tinted) continue;
+
+      const rot = (loomRotations.get(tierId) ?? 0) + LOOM_ROTATION_SPEED * frameDelta;
+      loomRotations.set(tierId, rot);
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+      const s = canvas.width;
+      ctx.clearRect(0, 0, s, s);
+      ctx.save();
+      ctx.translate(s / 2, s / 2);
+      ctx.rotate(rot);
+      ctx.drawImage(tinted, -s / 2, -s / 2, s, s);
+      ctx.restore();
+    }
+
+    animRafId = requestAnimationFrame(animTick);
+  }
+
+  function startAnimLoop(): void {
+    if (animRafId !== null) return;
+    animRafId = requestAnimationFrame(animTick);
+  }
 
   // ── Sections created during build() ─────────────────────────────────────
   let inventoryEl: HTMLElement | null = null;
@@ -155,19 +201,21 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   function buildMoteLoomField(): HTMLElement {
     const field = document.createElement('div');
     field.className = 'forge-craft__loom-field';
-    const forgeCore = document.createElement('div');
-    forgeCore.className = 'forge-craft__forge-core';
-    forgeCore.setAttribute('aria-hidden', 'true');
-    field.appendChild(forgeCore);
+
+    forgeCoreCanvas = document.createElement('canvas');
+    forgeCoreCanvas.className = 'forge-craft__forge-core';
+    forgeCoreCanvas.width = FORGE_CANVAS_SIZE;
+    forgeCoreCanvas.height = FORGE_CANVAS_SIZE;
+    forgeCoreCanvas.setAttribute('aria-hidden', 'true');
+    forgeCoreCtx = forgeCoreCanvas.getContext('2d');
+    field.appendChild(forgeCoreCanvas);
+
     return field;
   }
 
   function refreshMoteLooms(): void {
     if (!moteLoomFieldEl) return;
     const loomField = moteLoomFieldEl;
-    const forgeCore = loomField.querySelector('.forge-craft__forge-core');
-    loomField.innerHTML = '';
-    if (forgeCore) loomField.appendChild(forgeCore);
 
     const capacity = getForgeCapacityCurrent();
     const inventory = getInventory();
@@ -177,22 +225,49 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     const availableTiers = TIERS.filter(tier => latestIsDevMode || (inventory.get(tier.id) ?? 0) > 0);
     const total = Math.max(availableTiers.length, 1);
 
+    // Remove buttons for tiers no longer in the available set
+    const availableIds = new Set(availableTiers.map(t => t.id));
+    const existingBtns = loomField.querySelectorAll<HTMLButtonElement>('.forge-craft__mote-loom');
+    for (const btn of existingBtns) {
+      const tid = btn.dataset.tierId as TierId | undefined;
+      if (tid && !availableIds.has(tid)) {
+        btn.remove();
+        loomCanvases.delete(tid);
+      }
+    }
+
     availableTiers.forEach((tier, index) => {
-      const available = latestIsDevMode
-        ? 9999
-        : (inventory.get(tier.id) ?? 0);
+      const available = latestIsDevMode ? 9999 : (inventory.get(tier.id) ?? 0);
       const isSelected = selectedTiers.includes(tier.id);
       const atCapacity = selectedTiers.length >= capacity && !isSelected;
       const angleRad = -Math.PI / 2 + (Math.PI * 2 * index) / total;
       const xPct = 50 + Math.cos(angleRad) * 39;
       const yPct = 50 + Math.sin(angleRad) * 39;
 
-      const loom = document.createElement('button');
-      loom.type = 'button';
-      loom.className = 'forge-craft__mote-loom';
+      // Reuse existing button element to preserve hover/focus state
+      let loom = loomField.querySelector<HTMLButtonElement>(`[data-tier-id="${tier.id}"]`);
+      if (!loom) {
+        loom = document.createElement('button');
+        loom.type = 'button';
+        loom.className = 'forge-craft__mote-loom';
+        loom.dataset.tierId = tier.id;
+        loom.style.setProperty('--loom-color', tier.color);
+
+        const glyph = document.createElement('canvas');
+        glyph.className = 'forge-craft__mote-loom-glyph';
+        glyph.width = LOOM_GLYPH_SIZE;
+        glyph.height = LOOM_GLYPH_SIZE;
+        glyph.setAttribute('aria-hidden', 'true');
+        loom.appendChild(glyph);
+        loomCanvases.set(tier.id, glyph);
+
+        loom.addEventListener('click', () => toggleTier(tier.id));
+        loomField.appendChild(loom);
+      }
+
+      // Update mutable state in-place (never destroy the element)
       loom.classList.toggle('forge-craft__mote-loom--selected', isSelected);
       loom.classList.toggle('forge-craft__mote-loom--disabled', atCapacity && !isSelected);
-      loom.style.setProperty('--loom-color', tier.color);
       loom.style.left = `${xPct}%`;
       loom.style.top = `${yPct}%`;
       loom.disabled = atCapacity && !isSelected;
@@ -201,17 +276,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
         'aria-label',
         `${isSelected ? 'Remove' : 'Add'} ${tier.displayName} mote type (${available === 9999 ? 'unlimited' : available} crystals)`,
       );
-
-      const glyph = document.createElement('canvas');
-      glyph.className = 'forge-craft__mote-loom-glyph';
-      glyph.width = 56;
-      glyph.height = 56;
-      glyph.setAttribute('aria-hidden', 'true');
-      renderMoteLoomGlyph(glyph, getGeneratorSpritePath(tier.unlockOrder), tier.color);
-      loom.appendChild(glyph);
-
-      loom.addEventListener('click', () => toggleTier(tier.id));
-      loomField.appendChild(loom);
     });
   }
   // ── Multi-segment percentage slider ─────────────────────────────────────
@@ -668,13 +732,16 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     advancedEl = buildAdvancedSection();
     element.appendChild(advancedEl);
     refreshAdvanced();
+
+    startAnimLoop();
   }
 
   // ── Public interface ──────────────────────────────────────────────────────
 
-  function update(rpgState: RpgSimState, isDevMode: boolean): void {
+  function update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState): void {
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
+    if (forgeState) latestForgeState = forgeState;
     if (element.childElementCount === 0) {
       build(rpgState, isDevMode);
       return;

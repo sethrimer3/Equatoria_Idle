@@ -1339,38 +1339,14 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 72px;
-  height: 72px;
+  width: 130px;
+  height: 130px;
   transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background:
-    conic-gradient(from 0deg, #4b2a12, #d4a040, #f7d879, #6d3414, #4b2a12),
-    radial-gradient(circle, #ffe3a3 0 20%, #d4a040 21% 45%, #2a160a 46% 100%);
-  border: 2px solid rgba(255, 225, 140, 0.7);
-  box-shadow:
-    0 0 18px rgba(212, 160, 64, 0.72),
-    0 0 38px rgba(255, 118, 48, 0.24),
-    inset 0 0 16px rgba(0, 0, 0, 0.72);
-  animation: forge-craft-core-spin 5.5s linear infinite;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+  display: block;
   z-index: 2;
-}
-
-.forge-craft__forge-core::before,
-.forge-craft__forge-core::after {
-  content: '';
-  position: absolute;
-  inset: 14px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 239, 184, 0.78);
-  box-shadow: inset 0 0 12px rgba(255, 210, 96, 0.45);
-}
-
-.forge-craft__forge-core::after {
-  inset: 28px;
-  background: #fff0b8;
-  border: 0;
-  box-shadow: 0 0 16px rgba(255, 224, 128, 0.82);
-  animation: forge-craft-core-pulse 1.6s ease-in-out infinite alternate;
 }
 
 .forge-craft__mote-loom {
@@ -1457,15 +1433,6 @@
   cursor: not-allowed;
 }
 
-@keyframes forge-craft-core-spin {
-  from { rotate: 0deg; }
-  to { rotate: 360deg; }
-}
-
-@keyframes forge-craft-core-pulse {
-  from { opacity: 0.72; transform: scale(0.86); }
-  to { opacity: 1; transform: scale(1.12); }
-}
 
 /* ── Percentage slider ───────────────────────────────────────────── */
 
