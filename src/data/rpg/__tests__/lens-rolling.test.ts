@@ -237,7 +237,7 @@ describe('rollLensEffects — names', () => {
     }
   });
 
-  it('T2 effect names for unimplemented tiers contain "STUB"', () => {
+  it('T2 effect names for amethyst do not contain "STUB" (now implemented)', () => {
     const effects = rollLensEffects(
       [{ tierId: 'amethyst', refinedCount: 5 }],
       5,
@@ -246,7 +246,7 @@ describe('rollLensEffects — names', () => {
     const t2s = effects.filter(e => e.effectTier === 2);
     expect(t2s.length).toBeGreaterThan(0);
     for (const e of t2s) {
-      expect(e.name).toContain('STUB');
+      expect(e.name).not.toContain('STUB');
     }
   });
 
