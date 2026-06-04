@@ -12,7 +12,8 @@
  *   - Secondary hits use ctx.findClosestTarget and direct damage fns — they do NOT
  *     re-enter performWeaponAttack, so Tier 2 effects cannot trigger recursively.
  *   - Iolite delayed strikes modify hp directly, bypassing the hit pipeline.
- *   - Tier 2 effects for Amethyst and above are silently skipped.
+ *   - Amethyst Phantom Repeat uses the echoMarked pending-echo system (tickEnemyStatuses)
+ *     with echoDamage; it does NOT re-enter the T2 handler.
  *   - All Tier 3 effects are silently skipped.
  */
 
