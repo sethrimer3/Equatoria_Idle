@@ -484,8 +484,9 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   // Empower particles (elite-to-non-elite visual effect)
   updateEmpowerParticles(deltaMs);
 
-  // ── Tick Tier 1 lens status effects ─────────────────────────────────────────
+  // ── Tick lens status effects ─────────────────────────────────────────────────
   tickLensStatuses(a, deltaMs, ctx.mote.x, ctx.mote.y);
+  tickLensTier2DelayedEffects(deltaMs);
 
   const bossEnemy = ctx.getBossEnemy();
   if (bossEnemy) {
