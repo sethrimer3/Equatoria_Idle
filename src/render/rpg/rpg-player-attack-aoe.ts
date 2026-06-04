@@ -224,6 +224,32 @@ export function performAoeAttack(
   fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
     FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
 
+  // Lens status post-hit: apply Tier 1 statuses to all in-range enemies.
+  if (attachedLens && weaponId) {
+    const lensParams = buildAllTier1StatusParams(attachedLens, weaponId, rawDamage);
+    if (lensParams.length > 0) {
+      const mainArrays = [
+        ...enemies, ...sapphireEnemies, ...emeraldEnemies, ...amberEnemies,
+        ...voidEnemies, ...quartzEnemies, ...rubyEnemies, ...sunstoneEnemies,
+        ...citrineEnemies, ...ioliteEnemies, ...amethystEnemies, ...diamondEnemies,
+        ...nullstoneEnemies, ...fracterylEnemies, ...eigensteinEnemies, ...eliteEnemies,
+      ];
+      for (const e of mainArrays) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        if (dx * dx + dy * dy <= aoeSq) {
+          for (const p of lensParams) applyLensStatus(e, p);
+        }
+      }
+      if (bossEnemy && bossEnemy.hp > 0) {
+        const bx = bossEnemy.x - mote.x, by = bossEnemy.y - mote.y;
+        if (bx * bx + by * by <= aoeSq) {
+          for (const p of lensParams) applyLensStatus(bossEnemy, p);
+        }
+      }
+    }
+  }
+
   // Crafted post-hit: Nullstone pulls toward mote center; Fracteryl fires capped follow-ups.
   // Both are applied once per AoE burst (not per enemy hit) to avoid O(n²) pull cost.
   if (craftedMods && rangeSq !== undefined) {
