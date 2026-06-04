@@ -35,7 +35,6 @@ import {
 import { WEAVE_AFFIX_FAMILIES } from '../../data/rpg/weave-definitions';
 import { computeWeavePowerScale } from '../../data/rpg/weave-rolling';
 import { LENS_EFFECT_NAMES, getLensMaxMoteTypes, getLensEffectUnlockChances } from '../../data/rpg/lens-definitions';
-import { computeLensPowerScale } from '../../data/rpg/lens-rolling';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import { buildLensInventorySection } from './lens-inventory';
