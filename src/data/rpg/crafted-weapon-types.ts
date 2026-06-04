@@ -1,5 +1,6 @@
 import type { TierId } from '../tiers';
 import type { WeaponDefinition } from './weapon-definitions';
+import type { CraftedLensData } from './lens-types';
 
 export interface CraftedWeaponIngredient {
   tierId: TierId;
