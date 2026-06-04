@@ -281,6 +281,30 @@ export function deserializeGameState(data: SaveData): GameState {
     state.rpg.playerXp = data.rpg.playerXp ?? 0;
     state.rpg.playerXpToNextLevel = data.rpg.playerXpToNextLevel
       ?? Math.floor(25 * Math.pow(Math.max(1, state.rpg.playerLevel), 1.35));
+    // ─── Lens helper (used for inventory and weapon attachments) ───
+    type SavedLens = NonNullable<NonNullable<typeof data.rpg>['craftedLenses']>[0];
+    function deserializeLens(l: SavedLens): CraftedLensData {
+      return {
+        id: l.id,
+        type: 'lens',
+        name: l.name,
+        forgeCraftLevel: l.forgeCraftLevel,
+        totalWeightedMoteValue: l.totalWeightedMoteValue,
+        ingredients: l.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount })),
+        effects: l.effects.map(e => ({
+          tierId: e.tierId as TierId,
+          family: e.family,
+          statKey: e.statKey as LensEffectStatKey,
+          label: e.label,
+          value: e.value,
+          unit: e.unit,
+          rarity: e.rarity as LensRarity,
+          quality: e.quality,
+          isApplied: e.isApplied,
+        } satisfies LensEffect)),
+      };
+    }
+
     // v30+: crafted weapons — reconstruct from saved wire data and register into resolver
     if (data.rpg.craftedWeapons && data.rpg.craftedWeapons.length > 0) {
       const restored: CraftedWeaponData[] = data.rpg.craftedWeapons.map(cw => {
