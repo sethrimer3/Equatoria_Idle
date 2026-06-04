@@ -855,7 +855,13 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     // 6. Mote type looms
     moteHeadingEl = document.createElement('div');
     moteHeadingEl.className = 'forge-craft__section-label';
-    moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
+    if (craftingMode === 'lens') {
+      const forgeCraftLevel = getRpgUpgradeLevel(rpgState, 'forge_craft_level') + 1;
+      const lensMax = getLensMaxMoteTypes(forgeCraftLevel);
+      moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${lensMax} for lens):`;
+    } else {
+      moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
+    }
     element.appendChild(moteHeadingEl);
 
     moteLoomFieldEl = buildMoteLoomField();
