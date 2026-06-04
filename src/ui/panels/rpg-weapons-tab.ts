@@ -29,6 +29,71 @@ import type { ChainWhipParamKey } from '../../render/rpg/rpg-weapon-constants';
 // Sand blade accent color — matches the player mote's gold-sand glow.
 const SAND_BLADE_ACCENT_COLOR = '#ffd764';
 
+const LENS_RARITY_COLOR: Record<string, string> = {
+  Common:    '#aaa',
+  Uncommon:  '#5f5',
+  Rare:      '#55f',
+  Epic:      '#c5f',
+  Legendary: '#fa0',
+  Mythic:    '#f55',
+};
+
+function buildLensSlot(attachedLens: import('../../data/rpg/lens-types').CraftedLensData | undefined): HTMLElement {
+  const el = document.createElement('div');
+  el.style.cssText =
+    'margin:6px 0 4px;padding:5px 8px;border-radius:4px;font-size:0.78em;' +
+    'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);cursor:default;';
+
+  if (!attachedLens) {
+    el.style.color = '#666';
+    el.textContent = 'Lens: Empty';
+    return el;
+  }
+
+  const domTierId = attachedLens.ingredients[0]?.tierId;
+  const domColor = TIER_BY_ID.get(domTierId as import('../../data/tiers').TierId)?.color ?? '#aaa';
+  el.style.borderColor = domColor + '55';
+
+  const header = document.createElement('div');
+  header.style.cssText = `color:${domColor};font-weight:600;margin-bottom:3px;`;
+  header.textContent = `Lens: ${attachedLens.name}`;
+  el.appendChild(header);
+
+  for (const effect of attachedLens.effects) {
+    const effEl = document.createElement('div');
+    effEl.style.cssText = 'display:flex;align-items:center;gap:5px;margin:1px 0;';
+
+    const rarityColor = LENS_RARITY_COLOR[effect.rarity] ?? '#aaa';
+    const tierColor = TIER_BY_ID.get(effect.tierId as import('../../data/tiers').TierId)?.color ?? '#aaa';
+
+    const tierTag = document.createElement('span');
+    tierTag.style.cssText = `background:${tierColor};color:#000;font-size:0.68em;padding:0 3px;border-radius:2px;font-weight:700;`;
+    tierTag.textContent = effect.family;
+    effEl.appendChild(tierTag);
+
+    const rTag = document.createElement('span');
+    rTag.style.cssText = `color:${rarityColor};font-size:0.7em;font-weight:700;`;
+    rTag.textContent = effect.rarity;
+    effEl.appendChild(rTag);
+
+    const val = document.createElement('span');
+    val.style.color = '#bbb';
+    val.textContent = `${effect.label}: +${effect.value}${effect.unit}`;
+    effEl.appendChild(val);
+
+    if (!effect.isApplied) {
+      const note = document.createElement('span');
+      note.style.cssText = 'color:#555;font-size:0.7em;font-style:italic;';
+      note.textContent = '(stored)';
+      effEl.appendChild(note);
+    }
+
+    el.appendChild(effEl);
+  }
+
+  return el;
+}
+
 // ─── Types ─────────────────────────────────────────────────────────
 
 export interface RpgWeaponsTabPane {
