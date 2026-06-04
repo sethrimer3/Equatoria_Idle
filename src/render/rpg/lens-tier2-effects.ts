@@ -342,6 +342,69 @@ export function handleLensTier2EffectsOnWeaponHit(params: LensTier2HitParams): v
           totalSpawns += 1;
         }
         break;
+
+      case 'amethyst': {
+        // Phantom Repeat: queue a delayed ghost echo via the echoMarked pending-echo system.
+        // Damage fires ~600ms later inside tickEnemyStatuses — does NOT re-enter the T2 handler.
+        if (targetEntity) {
+          const te = targetEntity as { x?: number; y?: number };
+          applyLensStatus(targetEntity, {
+            key: 'echoMarked',
+            sourceTierId: tierId,
+            sourceLensId: lens.id,
+            sourceWeaponId: weaponId,
+            durationMs: 3500,
+            magnitude: effect.magnitude,
+            echoDamage: secDmg,
+          });
+          ctx.spawnHitVisualsAt(te.x ?? 0, te.y ?? 0, 200, secDmg, '#bb77ff', '#cc88ff');
+          totalSpawns += 1;
+        }
+        break;
+      }
+
+      case 'diamond':
+        // Diamond Shrapnel: 2–5 angular shard hits that apply Cracked
+        totalSpawns += fireMultiHitEffect(
+          ctx, secDmg, spawnBudget,
+          Math.min(5, 2 + Math.floor(effect.magnitude * 0.12)),
+          'cracked', tierId, effect.magnitude, lens.id, weaponId,
+          '#d8f4ff',
+        );
+        break;
+
+      case 'nullstone': {
+        // Gravity Pulse: inward void ripple + 2–5 hits that apply Gravitized
+        ctx.fluid.addExplosion(ctx.mote.x, ctx.mote.y, 0.2, 0.1, 0.1, 0.3);
+        totalSpawns += fireMultiHitEffect(
+          ctx, secDmg, spawnBudget,
+          Math.min(5, 2 + Math.floor(effect.magnitude * 0.12)),
+          'gravitized', tierId, effect.magnitude, lens.id, weaponId,
+          '#6633aa',
+        );
+        break;
+      }
+
+      case 'fracteryl':
+        // Recursive Splinter: fractal shard hits (depth capped at 1) that apply Fractal Wound.
+        // Reduced damage fraction reflects the split/decay nature of fractal shards.
+        totalSpawns += fireMultiHitEffect(
+          ctx, secDmg * 0.7, spawnBudget,
+          Math.min(4, 1 + Math.floor(effect.magnitude * 0.10)),
+          'fractalWound', tierId, effect.magnitude, lens.id, weaponId,
+          '#55ee77',
+        );
+        break;
+
+      case 'eigenstein':
+        // Rift Slash: 1–2 dimensional rift hits that apply Rift-Scarred
+        totalSpawns += fireMultiHitEffect(
+          ctx, secDmg, spawnBudget,
+          Math.min(2, 1 + Math.floor(effect.magnitude * 0.04)),
+          'riftScarred', tierId, effect.magnitude, lens.id, weaponId,
+          '#9933cc',
+        );
+        break;
     }
   }
 }
