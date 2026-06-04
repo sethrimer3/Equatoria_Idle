@@ -426,6 +426,10 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
       `<span>${effectLabel}</span>`;
     card.appendChild(statsRow);
 
+    // Lens slot
+    const lensSlotEl = buildLensSlot(craftedWeapon.attachedLens);
+    card.appendChild(lensSlotEl);
+
     // Equip/unequip buttons
     const btnRow = document.createElement('div');
     btnRow.style.display = 'flex';
