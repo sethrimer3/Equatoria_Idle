@@ -278,13 +278,13 @@ describe('rollLensEffects — names', () => {
     expect(t2?.description).not.toContain('STUB');
   });
 
-  it('T2 description for unimplemented tier says STUB', () => {
+  it('T2 description for amethyst does not say STUB (now implemented)', () => {
     let callCount = 0;
     // trigger T2: odd=quality(0.5), even=chance(0.07 < 0.08)
     const rng = () => { callCount++; return callCount % 2 === 0 ? 0.07 : 0.5; };
     const effects = rollLensEffects([{ tierId: 'amethyst', refinedCount: 5 }], 1, rng);
     const t2 = effects.find(e => e.effectTier === 2);
-    expect(t2?.description).toContain('STUB');
+    expect(t2?.description).not.toContain('STUB');
   });
 });
 
