@@ -181,7 +181,7 @@ describe('rollLensEffects — isApplied', () => {
     }
   });
 
-  it('T2 effects for unimplemented tiers (amethyst) have isApplied: false', () => {
+  it('T2 effects for amethyst now have isApplied: true (all 12 tiers implemented)', () => {
     const effects = rollLensEffects(
       [{ tierId: 'amethyst', refinedCount: 5 }],
       5,
@@ -190,7 +190,7 @@ describe('rollLensEffects — isApplied', () => {
     const t2s = effects.filter(e => e.effectTier === 2);
     expect(t2s.length).toBeGreaterThan(0);
     for (const e of t2s) {
-      expect(e.isApplied).toBe(false);
+      expect(e.isApplied).toBe(true);
     }
   });
 
