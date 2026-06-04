@@ -86,10 +86,17 @@ function buildLensSlot(attachedLens: import('../../data/rpg/lens-types').Crafted
     val.textContent = `${effect.name}  ×${effect.magnitude.toFixed(1)}`;
     effEl.appendChild(val);
 
-    const note = document.createElement('span');
-    note.style.cssText = 'color:#555;font-size:0.7em;font-style:italic;';
-    note.textContent = '(not yet applied)';
-    effEl.appendChild(note);
+    if (!effect.isApplied) {
+      const note = document.createElement('span');
+      note.style.cssText = 'color:#555;font-size:0.7em;font-style:italic;';
+      note.textContent = 'STUB';
+      effEl.appendChild(note);
+    } else {
+      const note = document.createElement('span');
+      note.style.cssText = 'color:#4a4;font-size:0.7em;font-style:italic;';
+      note.textContent = '✓ active';
+      effEl.appendChild(note);
+    }
 
     el.appendChild(effEl);
   }
