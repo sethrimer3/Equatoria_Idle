@@ -304,14 +304,14 @@ describe('craftLens', () => {
     expect(state.rpg.craftedLenses[0]!.type).toBe('lens');
   });
 
-  it('crafted lens has at least one T1 STUB effect', () => {
+  it('crafted lens has at least one T1 active effect', () => {
     const state = createGameState();
     state.rpg.refinedCrystalsByTierId.set('ruby', 10);
     craftLens(state, [{ tierId: 'ruby', refinedCount: 5 }]);
     const t1s = state.rpg.craftedLenses[0]!.effects.filter(e => e.effectTier === 1);
     expect(t1s).toHaveLength(1);
-    expect(t1s[0]!.name).toContain('STUB');
-    expect(t1s[0]!.isApplied).toBe(false);
+    expect(t1s[0]!.name).not.toContain('STUB');
+    expect(t1s[0]!.isApplied).toBe(true);
   });
 });
 
