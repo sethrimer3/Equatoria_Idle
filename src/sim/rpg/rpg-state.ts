@@ -69,6 +69,14 @@ export interface RpgSimState {
   purchasedWeaponIds: Set<string>;
   /** Crafted forged weapons created from refined crystals. */
   craftedWeapons: CraftedWeaponData[];
+  /** Crafted weaves created from refined crystals. */
+  craftedWeaves: CraftedWeaveData[];
+  /**
+   * 6-element array of equipped weave IDs (or null for empty).
+   * Index 0–5 correspond to the six weave slots in the UI.
+   * Slots beyond getUnlockedWeaveSlotCount(forgeLevel) are locked and cannot hold weaves.
+   */
+  equippedWeaveSlots: (string | null)[];
   /** Refined crystal inventory available for forging crafted weapons. */
   refinedCrystalsByTierId: Map<string, number>;
   /**
