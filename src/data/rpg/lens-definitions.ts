@@ -58,27 +58,27 @@ export const LENS_EFFECT_NAMES: Partial<Record<TierId, Record<LensEffectTier, st
   },
   amethyst: {
     1: 'Echo-Marked',
-    2: 'Phantom Repeat STUB',
+    2: 'Phantom Repeat',
     3: 'Mirror Volley STUB',
   },
   diamond: {
     1: 'Cracked',
-    2: 'Diamond Shrapnel STUB',
+    2: 'Diamond Shrapnel',
     3: 'Faultline Break STUB',
   },
   nullstone: {
     1: 'Gravitized',
-    2: 'Gravity Pulse STUB',
+    2: 'Gravity Pulse',
     3: 'Event Horizon STUB',
   },
   fracteryl: {
     1: 'Fractal Wound',
-    2: 'Recursive Splinter STUB',
+    2: 'Recursive Splinter',
     3: 'Infinite Descent STUB',
   },
   eigenstein: {
     1: 'Rift-Scarred',
-    2: 'Rift Slash STUB',
+    2: 'Rift Slash',
     3: 'Reality Cascade STUB',
   },
   // sunstone intentionally omitted — power scaling only, no effects
