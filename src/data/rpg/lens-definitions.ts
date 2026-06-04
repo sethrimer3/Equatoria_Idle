@@ -83,6 +83,19 @@ export const LENS_EFFECT_NAMES: Partial<Record<TierId, Record<LensEffectTier, st
   // sunstone intentionally omitted — power scaling only, no effects
 };
 
+// ─── Tier 2 effect descriptions (implemented tiers only) ─────────
+
+/** Human-readable description for implemented Tier 2 effects. */
+export const LENS_T2_DESCRIPTIONS: Partial<Record<TierId, string>> = {
+  sand:     'On hit (proc): emit sand fragments from the target — deals physical damage and applies Abraded to nearby enemies.',
+  quartz:   'On hit (proc): split crystal beams toward nearby enemies — deals precision damage and applies Refracted.',
+  ruby:     'On hit (proc): fire red beamlets in a cone — deals fire damage and applies Burning to hit enemies.',
+  citrine:  'On hit (proc): create a solar flare burst — deals radiant damage and applies Radiant to nearby enemies.',
+  emerald:  'On hit (proc): release venom spores — deals poison damage and applies Poisoned to nearby enemies.',
+  sapphire: 'On hit (proc): burst icy shards outward — deals damage and applies Chilled to nearby enemies.',
+  iolite:   'On hit (proc): schedule a delayed echo strike — applies Time-Warped and repeats damage after a short delay.',
+};
+
 // ─── Tier 1 effect descriptions ───────────────────────────────────
 
 /** Human-readable description for Tier 1 effects (used in buildLensEffect). */
