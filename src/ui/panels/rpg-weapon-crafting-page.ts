@@ -327,7 +327,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const n = selectedTiers.length;
     if (n < 2) {
-      if (n === 1 && craftingMode === 'weapon') {
+      if (n === 1 && (craftingMode === 'weapon' || craftingMode === 'lens')) {
         const hint = document.createElement('div');
         hint.className = 'forge-craft__hint';
         hint.textContent = 'Select at least 2 mote types to enable the percentage slider.';
