@@ -147,7 +147,7 @@ function applyT2Status(
     sourceWeaponId: weaponId,
     durationMs: statusKey === 'poisoned' ? 6000 : statusKey === 'burning' ? 4000 : 3500,
     magnitude,
-    tickEveryMs: (statusKey === 'burning' || statusKey === 'poisoned') ? 1000 : undefined,
+    tickEveryMs: (statusKey === 'burning' || statusKey === 'poisoned' || statusKey === 'fractalWound') ? 1000 : undefined,
   };
   applyLensStatus(entity, params);
 }
