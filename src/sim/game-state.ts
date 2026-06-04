@@ -4,7 +4,6 @@ import { createCraftedWeaponDefinition, getForgeCapacity, registerCraftedWeapons
 import { createCraftedWeave } from '../data/rpg/weave-rolling';
 import { getRpgUpgradeLevel } from './rpg';
 import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
-import type { TierId as _TierId } from '../data/tiers';
 import type { SizeIndex } from '../data/particles/size-tiers';
 import { MERGE_THRESHOLD } from '../data/particles/size-tiers';
 import {
