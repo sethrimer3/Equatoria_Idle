@@ -93,8 +93,13 @@ export const LENS_T2_DESCRIPTIONS: Partial<Record<TierId, string>> = {
   ruby:     'On hit (proc): fire red beamlets in a cone — deals fire damage and applies Burning to hit enemies.',
   citrine:  'On hit (proc): create a solar flare burst — deals radiant damage and applies Radiant to nearby enemies.',
   emerald:  'On hit (proc): release venom spores — deals poison damage and applies Poisoned to nearby enemies.',
-  sapphire: 'On hit (proc): burst icy shards outward — deals damage and applies Chilled to nearby enemies.',
-  iolite:   'On hit (proc): schedule a delayed echo strike — applies Time-Warped and repeats damage after a short delay.',
+  sapphire:   'On hit (proc): burst icy shards outward — deals damage and applies Chilled to nearby enemies.',
+  iolite:     'On hit (proc): schedule a delayed echo strike — applies Time-Warped and repeats damage after a short delay.',
+  amethyst:   'On hit (proc): queue a ghostly phantom repeat — repeats triggering hit damage after ~600ms and applies Echo-Marked.',
+  diamond:    'On hit (proc): emit diamond shrapnel outward — deals piercing damage and applies Cracked to nearby enemies.',
+  nullstone:  'On hit (proc): release a gravity pulse — pulls nearby enemies inward, deals void damage, and applies Gravitized.',
+  fracteryl:  'On hit (proc): spawn fractal splinter shards (depth capped at 1) — deals reduced damage and applies Fractal Wound.',
+  eigenstein: 'On hit (proc): tear a dimensional rift slash — deals rift damage and applies Rift-Scarred.',
 };
 
 // ─── Tier 1 effect descriptions ───────────────────────────────────
