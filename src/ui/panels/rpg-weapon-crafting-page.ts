@@ -252,7 +252,13 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     const capacity = getForgeCapacityCurrent();
     const inventory = getInventory();
     if (moteHeadingEl) {
-      moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
+      if (craftingMode === 'lens' && latestRpgState) {
+        const forgeCraftLevel = getRpgUpgradeLevel(latestRpgState, 'forge_craft_level') + 1;
+        const lensMax = getLensMaxMoteTypes(forgeCraftLevel);
+        moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${lensMax} for lens):`;
+      } else {
+        moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
+      }
     }
     const availableTiers = TIERS.filter(tier => latestIsDevMode || (inventory.get(tier.id) ?? 0) > 0);
     const total = Math.max(availableTiers.length, 1);
