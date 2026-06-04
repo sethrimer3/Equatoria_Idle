@@ -61,12 +61,9 @@ describe('getLensEffectUnlockChances', () => {
 // ─── T1 always rolls ─────────────────────────────────────────────
 
 describe('rollLensEffects — T1 always generated', () => {
-  // rng that always returns 0 → never triggers T2/T3
-  const neverRng = () => 0;
-  // rng for quality uses triangularFromU(0,1,0.6,u) where u=0 → quality=0
-  // The T2/T3 roll also draws from rng. With neverRng=0: 0 < tier2Chance triggers T2.
-  // Wait — 0 < 0.08 is true, so neverRng(0) triggers T2. We need rng > chance.
-  const neverT2Rng = () => 1; // 1 ≥ any chance → no T2/T3; quality roll = triangularFromU(0,1,0.6,1) = 1
+  // rng for quality uses triangularFromU(0,1,0.6,u) where u=1 → quality=1
+  // 1 ≥ any chance → no T2/T3
+  const neverT2Rng = () => 1;
 
   it('single ingredient tier → exactly 1 T1 effect with never-trigger rng', () => {
     const effects = rollLensEffects([{ tierId: 'ruby', refinedCount: 5 }], 1, neverT2Rng);
