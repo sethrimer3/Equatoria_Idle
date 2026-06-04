@@ -25,6 +25,7 @@ import {
   applyLensStatus, getIncomingDamageMult, getRiftScarredDamageMult, incrementRiftScarredStacks,
 } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
+import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import type { ClosestTarget } from './rpg-types';
 
 /** Extracts the primary hittable enemy object from a ClosestTarget (null for sub-projectiles). */
