@@ -152,33 +152,61 @@ describe('rollLensEffects — T3 at forge level 5', () => {
   });
 });
 
-// ─── isApplied always false ───────────────────────────────────────
+// ─── isApplied: T1 active, T2/T3 stub ───────────────────────────
 
-describe('rollLensEffects — isApplied always false', () => {
-  it('all effects have isApplied: false', () => {
+describe('rollLensEffects — isApplied', () => {
+  it('T1 effects have isApplied: true', () => {
+    const effects = rollLensEffects(
+      [{ tierId: 'ruby', refinedCount: 5 }],
+      1,
+      () => 1, // no T2/T3
+    );
+    const t1s = effects.filter(e => e.effectTier === 1);
+    expect(t1s.length).toBeGreaterThan(0);
+    for (const e of t1s) {
+      expect(e.isApplied).toBe(true);
+    }
+  });
+
+  it('T2 and T3 effects have isApplied: false', () => {
     const effects = rollLensEffects(
       [{ tierId: 'ruby', refinedCount: 5 }, { tierId: 'sand', refinedCount: 3 }],
       5,
       () => 0, // triggers T2 and T3
     );
-    expect(effects.length).toBeGreaterThan(0);
-    for (const e of effects) {
+    const stubEffects = effects.filter(e => e.effectTier > 1);
+    expect(stubEffects.length).toBeGreaterThan(0);
+    for (const e of stubEffects) {
       expect(e.isApplied).toBe(false);
     }
   });
 });
 
-// ─── Effect names include "STUB" ──────────────────────────────────
+// ─── Effect names: T1 clean, T2/T3 include STUB ──────────────────
 
-describe('rollLensEffects — names include STUB', () => {
-  it('every effect name contains "STUB"', () => {
+describe('rollLensEffects — names', () => {
+  it('T1 effect names do not contain "STUB"', () => {
+    const effects = rollLensEffects(
+      [{ tierId: 'ruby', refinedCount: 5 }, { tierId: 'sapphire', refinedCount: 3 }],
+      1,
+      () => 1, // no T2/T3
+    );
+    const t1s = effects.filter(e => e.effectTier === 1);
+    expect(t1s.length).toBeGreaterThan(0);
+    for (const e of t1s) {
+      expect(e.name).not.toContain('STUB');
+    }
+  });
+
+  it('T2 and T3 effect names contain "STUB"', () => {
     const effects = rollLensEffects(
       [{ tierId: 'ruby', refinedCount: 5 }, { tierId: 'sapphire', refinedCount: 3 }],
       5,
-      () => 0,
+      () => 0, // triggers T2 and T3
     );
-    expect(effects.length).toBeGreaterThan(0);
-    for (const e of effects) {
+    const stubEffects = effects.filter(e => e.effectTier > 1);
+    expect(stubEffects.length).toBeGreaterThan(0);
+    for (const e of stubEffects) {
       expect(e.name).toContain('STUB');
     }
   });
