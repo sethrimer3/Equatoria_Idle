@@ -83,6 +83,15 @@ type MultiSortEntry = {
   alivenGroup?: AlivenParticleGroup;
 };
 
+// ── Lens status helpers ───────────────────────────────────────────────────────
+
+function extractMultiEntity(t: MultiSortEntry): object | null {
+  return t.laser ?? t.sapphire ?? t.emerald ?? t.amber ?? t.void ?? t.quartz
+    ?? t.ruby ?? t.sunstone ?? t.citrine ?? t.iolite ?? t.amethyst ?? t.diamond
+    ?? t.nullstone ?? t.fracteryl ?? t.eigenstein ?? t.polyomino ?? t.fissilePolyomino
+    ?? t.refractorPolyomino ?? t.elite ?? t.boss ?? t.alivenParticle ?? null;
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export function performMultiAttack(
