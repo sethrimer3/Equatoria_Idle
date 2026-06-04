@@ -211,9 +211,19 @@ describe('rollLensEffects — names', () => {
     }
   });
 
-  it('description says STUB', () => {
+  it('T1 description does not say STUB (it is active)', () => {
     const effects = rollLensEffects([{ tierId: 'sand', refinedCount: 5 }], 1, () => 1);
-    expect(effects[0]!.description).toContain('STUB');
+    const t1 = effects.find(e => e.effectTier === 1);
+    expect(t1?.description).not.toContain('STUB');
+  });
+
+  it('T2 description says STUB', () => {
+    let callCount = 0;
+    // trigger T2: odd=quality(0.5), even=chance(0.07 < 0.08)
+    const rng = () => { callCount++; return callCount % 2 === 0 ? 0.07 : 0.5; };
+    const effects = rollLensEffects([{ tierId: 'ruby', refinedCount: 5 }], 1, rng);
+    const t2 = effects.find(e => e.effectTier === 2);
+    expect(t2?.description).toContain('STUB');
   });
 });
 
