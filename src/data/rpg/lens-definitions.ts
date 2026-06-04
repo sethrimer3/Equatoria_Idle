@@ -14,6 +14,7 @@ import type { LensEffectTier } from './lens-types';
 /** Tier IDs whose Tier 2 effects are fully implemented. */
 export const LENS_T2_IMPLEMENTED_TIER_IDS = new Set<TierId>([
   'sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire', 'iolite',
+  'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein',
 ]);
 
 // ─── Effect naming map ────────────────────────────────────────────
