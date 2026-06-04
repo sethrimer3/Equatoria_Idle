@@ -394,6 +394,65 @@ export function craftWeave(
   return true;
 }
 
+export function craftLens(
+  state: GameState,
+  ingredients: CraftedWeaponIngredient[],
+  bypassCost = false,
+): boolean {
+  const forgeCraftLevel = getRpgUpgradeLevel(state.rpg, 'forge_craft_level') + 1;
+  const normalizedIngredients = ingredients
+    .map(i => ({ tierId: i.tierId, refinedCount: Math.max(0, Math.floor(i.refinedCount)) }))
+    .filter(i => i.refinedCount > 0);
+  if (normalizedIngredients.length === 0) return false;
+
+  for (const ingredient of normalizedIngredients) {
+    const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+    if (!bypassCost && available < ingredient.refinedCount) return false;
+  }
+
+  if (!bypassCost) {
+    for (const ingredient of normalizedIngredients) {
+      const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+      state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
+    }
+  }
+
+  let nextIndex = state.rpg.craftedLenses.length + 1;
+  let lensId = `crafted_lens_${nextIndex}`;
+  const existingIds = new Set(state.rpg.craftedLenses.map(l => l.id));
+  while (existingIds.has(lensId)) {
+    nextIndex++;
+    lensId = `crafted_lens_${nextIndex}`;
+  }
+
+  const lens = createCraftedLens(lensId, normalizedIngredients, forgeCraftLevel);
+  state.rpg.craftedLenses.push(lens);
+  return true;
+}
+
+/**
+ * Attaches a lens to a weapon.  If the weapon already has a lens, it is
+ * permanently destroyed and replaced.  The lens is removed from craftedLenses.
+ */
+export function attachLensToWeapon(
+  state: GameState,
+  lensId: string,
+  weaponId: string,
+): boolean {
+  const lensIdx = state.rpg.craftedLenses.findIndex(l => l.id === lensId);
+  if (lensIdx === -1) return false;
+
+  const lens = state.rpg.craftedLenses[lensIdx]!;
+  const weapon = state.rpg.craftedWeapons.find(w => w.id === weaponId);
+  if (!weapon) return false;
+
+  // Remove lens from inventory
+  state.rpg.craftedLenses.splice(lensIdx, 1);
+  // Attach (overwrites any existing lens — old lens is gone forever)
+  weapon.attachedLens = lens;
+  return true;
+}
+
 // ─── Weave loom bonus helper ────────────────────────────────────
 
 import type { CraftedWeaveData } from '../data/rpg/weave-types';
