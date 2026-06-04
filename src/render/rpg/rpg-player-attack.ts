@@ -260,6 +260,9 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const range     = (weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX) * Math.max(1, ctx.getWeaponRngMultiplier(weaponId));
   const tier      = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
   const craftedMods = resolveCraftedWeaponModifiers(weaponId);
+  // Resolve attached lens (undefined for non-crafted or lens-less weapons).
+  const attachedLens: CraftedLensData | undefined =
+    rpgSimState.craftedWeapons.find(w => w.id === weaponId)?.attachedLens;
   const baseDmg   = (weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
     : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
