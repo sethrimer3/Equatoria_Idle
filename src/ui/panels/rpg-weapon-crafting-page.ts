@@ -922,6 +922,15 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
     weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots);
 
+    // 13. Lens inventory (below crafting controls, LENS mode only)
+    if (craftingMode === 'lens') {
+      const invDivider = document.createElement('div');
+      invDivider.className = 'forge-section-divider';
+      invDivider.textContent = 'Lens Inventory';
+      element.appendChild(invDivider);
+      element.appendChild(buildLensInventorySection(rpgState, dispatch));
+    }
+
     startAnimLoop();
   }
 
