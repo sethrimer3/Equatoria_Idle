@@ -18,6 +18,8 @@ import {
   claimAllUnlockedAchievements,
   craftWeapon,
   craftWeave,
+  craftLens,
+  attachLensToWeapon,
 } from '../sim';
 import { getUnlockedWeaveSlotCount } from '../sim/forge/forge-state';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
