@@ -19,8 +19,8 @@ export interface LensEffect {
   /** Quality roll [0,1] used for rarity classification only. */
   quality: number;
   rarity: LensRarity;
-  /** Always false — no combat integration yet. */
-  isApplied: false;
+  /** True for Tier 1 effects (active combat integration). False for Tier 2/3 (STUB). */
+  isApplied: boolean;
 }
 
 export interface CraftedLensData {
