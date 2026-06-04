@@ -80,16 +80,21 @@ function buildLensEffect(
   const rarity = getLensRarity(quality);
   const magnitude = computeLensMagnitude(tierWeightedValue, effectTier);
 
+  const isT1 = effectTier === 1;
+  const description = isT1
+    ? (LENS_T1_DESCRIPTIONS[tierId] ?? 'Active Tier 1 effect.')
+    : 'STUB: effect behavior not implemented yet.';
+
   return {
     tierId,
     effectTier,
     key,
     name,
-    description: 'STUB: effect behavior not implemented yet.',
+    description,
     magnitude,
     quality,
     rarity,
-    isApplied: false,
+    isApplied: isT1,
   };
 }
 
