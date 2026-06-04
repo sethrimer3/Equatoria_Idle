@@ -11,6 +11,7 @@
 
 import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import type { CraftedWeaponData } from '../../data/rpg/crafted-weapon-types';
+import type { CraftedWeaveData } from '../../data/rpg/weave-types';
 export type { RpgZoneId };
 
 // ─── Constants ────────────────────────────────────────────────────
