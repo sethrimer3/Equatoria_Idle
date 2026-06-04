@@ -1,5 +1,16 @@
 export const REFINED_CRYSTAL_THRESHOLD = 500;
 
+/** Total number of weave slots available to the player. */
+export const TOTAL_WEAVE_SLOTS = 6;
+
+/**
+ * Returns how many weave slots are currently unlocked.
+ * Forge level 1 → 2 unlocked; each additional forge level adds one, capped at 6.
+ */
+export function getUnlockedWeaveSlotCount(forgeLevel: number): number {
+  return Math.min(TOTAL_WEAVE_SLOTS, Math.max(1, forgeLevel) + 1);
+}
+
 export interface ForgeCrunchState {
   // Legacy visual fields (kept for backward compat with renderer/particle system)
   validParticlesTimerMs: number | null;
