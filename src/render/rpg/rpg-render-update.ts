@@ -116,6 +116,7 @@ import {
 import { updateEmpowerParticles } from './rpg-elite-empower-particles';
 import { spawnNadirCubeEncounter, updateNadirCubePointEnemies, clearNadirCubeEncounter } from './nadir-cube-point-update';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
+import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
