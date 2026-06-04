@@ -96,9 +96,16 @@ function buildEffectRow(effect: LensEffect): HTMLElement {
   const rarityColor = RARITY_COLOR[effect.rarity] ?? '#aaa';
   const tierColor = TIER_BY_ID.get(effect.tierId)?.color ?? '#aaa';
 
+  // "T1" / "T2" / "T3" tier badge
+  const tierNumChip = document.createElement('span');
+  tierNumChip.style.cssText = 'background:rgba(255,255,255,0.12);color:#ddd;font-size:0.68em;padding:0 4px;border-radius:2px;font-weight:700;white-space:nowrap;';
+  tierNumChip.textContent = `T${effect.effectTier}`;
+  row.appendChild(tierNumChip);
+
+  // Tier color chip
   const tierChip = document.createElement('span');
-  tierChip.style.cssText = `background:${tierColor};color:#000;font-size:0.7em;padding:1px 4px;border-radius:2px;font-weight:600;white-space:nowrap;`;
-  tierChip.textContent = effect.family;
+  tierChip.style.cssText = `background:${tierColor};color:#000;font-size:0.68em;padding:0 3px;border-radius:2px;font-weight:600;white-space:nowrap;`;
+  tierChip.textContent = TIER_BY_ID.get(effect.tierId)?.displayName ?? effect.tierId;
   row.appendChild(tierChip);
 
   const rarityBadge = document.createElement('span');
@@ -106,17 +113,16 @@ function buildEffectRow(effect: LensEffect): HTMLElement {
   rarityBadge.textContent = effect.rarity;
   row.appendChild(rarityBadge);
 
-  const label = document.createElement('span');
-  label.style.color = '#ccc';
-  label.textContent = `${effect.label}: +${effect.value}${effect.unit}`;
-  row.appendChild(label);
+  const nameEl = document.createElement('span');
+  nameEl.style.color = '#ccc';
+  nameEl.textContent = `${effect.name}  ×${effect.magnitude.toFixed(1)}`;
+  row.appendChild(nameEl);
 
-  if (!effect.isApplied) {
-    const note = document.createElement('span');
-    note.style.cssText = 'color:#666;font-size:0.72em;font-style:italic;';
-    note.textContent = '(stored, not yet applied)';
-    row.appendChild(note);
-  }
+  // Always show STUB / not applied notice
+  const note = document.createElement('span');
+  note.style.cssText = 'color:#666;font-size:0.72em;font-style:italic;';
+  note.textContent = '(not yet applied)';
+  row.appendChild(note);
 
   return row;
 }
