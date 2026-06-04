@@ -41,7 +41,8 @@ function makeEnemy(overrides: Partial<{ hp: number; x: number; y: number }> = {}
 type MockEnemy = ReturnType<typeof makeEnemy>;
 
 /** Build a minimal RpgPlayerAttackCtx mock that routes findClosestTarget to a provided enemy. */
-function makeCtx(enemy: MockEnemy | null = null) {
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+function makeCtx(enemy: MockEnemy | null = null): import('../../../render/rpg/rpg-player-attack').RpgPlayerAttackCtx & { _hitVisualsLog: Array<{x:number;y:number}>; _fluidLog: Array<{x:number;y:number}> } {
   const hitVisualsLog: Array<{ x: number; y: number }> = [];
   const fluidLog: Array<{ x: number; y: number }> = [];
   let t2EffectCallCount = 0;
