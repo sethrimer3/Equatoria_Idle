@@ -336,6 +336,40 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.refinedCrystalsByTierId.set(tierId as TierId, count);
       }
     }
+    // v31+: crafted weaves
+    if (data.rpg.craftedWeaves && data.rpg.craftedWeaves.length > 0) {
+      state.rpg.craftedWeaves = data.rpg.craftedWeaves.map(w => ({
+        id: w.id,
+        name: w.name,
+        forgeCraftLevel: w.forgeCraftLevel,
+        totalWeightedMoteValue: w.totalWeightedMoteValue,
+        ingredients: w.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount })),
+        affixes: w.affixes.map(a => ({
+          affixId: a.affixId as import('../data/rpg/weave-types').WeaveAffixId,
+          tierId: a.tierId as TierId,
+          label: a.label,
+          quality: a.quality,
+          rarity: a.rarity as import('../data/rpg/weave-types').WeaveRarity,
+          value: a.value,
+          unit: a.unit,
+          applied: a.applied,
+        })),
+      }));
+    }
+    // v31+: equipped weave slots (6-element array, null = empty)
+    if (data.rpg.equippedWeaveSlots && Array.isArray(data.rpg.equippedWeaveSlots)) {
+      const savedSlots = data.rpg.equippedWeaveSlots;
+      for (let i = 0; i < 6; i++) {
+        state.rpg.equippedWeaveSlots[i] = savedSlots[i] ?? null;
+      }
+      // Remove any slot assignments for weaves that no longer exist
+      const weaveIds = new Set(state.rpg.craftedWeaves.map(w => w.id));
+      for (let i = 0; i < 6; i++) {
+        if (state.rpg.equippedWeaveSlots[i] !== null && !weaveIds.has(state.rpg.equippedWeaveSlots[i]!)) {
+          state.rpg.equippedWeaveSlots[i] = null;
+        }
+      }
+    }
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)
