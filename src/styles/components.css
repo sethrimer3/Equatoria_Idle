@@ -1387,3 +1387,386 @@
   animation: achieved-popup-rise 2s ease-out forwards;
   z-index: 200;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Weave System — Slots, Inventory, Cards, Popups
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Forge crafting mode selector ────────────────────────────── */
+.forge-craft__mode-bar {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 6px;
+  border-bottom: 1px solid rgba(255, 200, 50, 0.15);
+  padding-bottom: 6px;
+}
+
+.forge-craft__mode-btn {
+  flex: 1;
+  padding: 5px 8px;
+  font-family: var(--font-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid rgba(255, 200, 50, 0.2);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.forge-craft__mode-btn--active {
+  background: rgba(255, 241, 114, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.forge-craft__mode-btn--unavailable {
+  opacity: 0.45;
+  cursor: not-allowed;
+  color: var(--text-secondary) !important;
+}
+
+.forge-craft__mode-btn:not(.forge-craft__mode-btn--active):not(.forge-craft__mode-btn--unavailable):hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+/* ── Weave crafting preview ──────────────────────────────────── */
+.forge-craft__weave-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+  font-size: 11px;
+}
+
+.forge-craft__weave-tier-chip {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: rgba(0,0,0,0.85);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.forge-craft__weave-preview-desc {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.forge-craft__lens-stub {
+  padding: 16px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  border: 1px dashed rgba(255, 200, 50, 0.2);
+  border-radius: var(--border-radius);
+  margin: 8px 0;
+}
+
+/* ── Weave slots row ─────────────────────────────────────────── */
+.weave-slots {
+  width: 100%;
+  padding: 6px 0 4px;
+}
+
+.weave-slots__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(160, 200, 255, 0.5);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.weave-slots__row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Individual weave slot ───────────────────────────────────── */
+.weave-slot {
+  width: 52px;
+  height: 52px;
+  border: 2px solid rgba(160, 200, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(2, 4, 20, 0.92);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  box-shadow: inset 0 0 0 1px rgba(160, 200, 255, 0.06);
+  transition: border-color 0.12s, box-shadow 0.12s;
+  user-select: none;
+  touch-action: none;
+}
+
+.weave-slot--locked {
+  opacity: 0.4;
+  font-size: 18px;
+  cursor: not-allowed;
+}
+
+.weave-slot--empty {
+  border-style: dashed;
+  border-color: rgba(160, 200, 255, 0.18);
+}
+
+.weave-slot--valid-drop {
+  border-color: rgba(180, 220, 255, 0.75) !important;
+  border-style: solid !important;
+  box-shadow: 0 0 10px rgba(160, 200, 255, 0.35) !important;
+  animation: weave-slot-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes weave-slot-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(160, 200, 255, 0.25); }
+  50%       { box-shadow: 0 0 16px rgba(160, 200, 255, 0.55); }
+}
+
+.weave-slot--drop-target {
+  border-color: rgba(255, 255, 180, 0.9) !important;
+  border-style: solid !important;
+  box-shadow: 0 0 14px rgba(255, 255, 160, 0.45) !important;
+}
+
+.weave-slot--occupied {
+  cursor: pointer;
+  border-color: rgba(160, 200, 255, 0.45);
+}
+
+.weave-slot--occupied:hover {
+  border-color: rgba(200, 230, 255, 0.8);
+  box-shadow: 0 0 10px rgba(160, 200, 255, 0.3);
+}
+
+/* Ghost element for slot drag reordering */
+.weave-slot-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0.9;
+  transform: scale(1.1);
+}
+
+/* ── Weave inventory ─────────────────────────────────────────── */
+.weave-inventory {
+  width: 100%;
+  padding: 4px 0 8px;
+}
+
+.weave-inventory__empty {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 8px 12px;
+}
+
+.weave-inventory__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Weave card ──────────────────────────────────────────────── */
+.weave-card {
+  background: rgba(8, 10, 26, 0.9);
+  border: 1px solid rgba(160, 200, 255, 0.2);
+  border-left: 3px solid rgba(160, 200, 255, 0.4);
+  border-radius: var(--border-radius);
+  padding: 8px 10px;
+  cursor: grab;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  touch-action: none;
+  user-select: none;
+}
+
+.weave-card:active {
+  cursor: grabbing;
+}
+
+.weave-card--equipped {
+  border-left-color: rgba(200, 255, 200, 0.6);
+  background: rgba(10, 20, 14, 0.9);
+}
+
+.weave-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.weave-card__name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.weave-card__equipped-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #a0e0a0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: rgba(80, 160, 80, 0.15);
+  border: 1px solid rgba(80, 160, 80, 0.3);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.weave-card__affix-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.weave-card__tier-chip {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  color: rgba(0,0,0,0.85);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.weave-card__stat {
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weave-card__stored {
+  font-size: 9px;
+  color: rgba(180, 180, 180, 0.5);
+  flex-shrink: 0;
+}
+
+.weave-card__rarity {
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+/* Rarity colors */
+.weave-card__rarity--common     { color: #aaa; }
+.weave-card__rarity--uncommon   { color: #60c060; }
+.weave-card__rarity--rare       { color: #4090e0; }
+.weave-card__rarity--epic       { color: #b060e0; }
+.weave-card__rarity--legendary  { color: #e09020; }
+.weave-card__rarity--mythic     { color: #ff4060; text-shadow: 0 0 6px rgba(255, 60, 80, 0.6); }
+
+/* Ghost for inventory → slot drag */
+.weave-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  background: rgba(8, 10, 26, 0.95);
+  border: 1px solid rgba(160, 200, 255, 0.6);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  opacity: 0.92;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+  transform: scale(1.05);
+}
+
+/* ── Weave stat popup ────────────────────────────────────────── */
+.weave-popup {
+  position: fixed;
+  z-index: 9990;
+  width: 220px;
+  background: rgba(4, 6, 22, 0.98);
+  border: 1px solid rgba(160, 200, 255, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.8);
+}
+
+.weave-popup__name {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+.weave-popup__affix {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+.weave-popup__tier-chip {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  color: rgba(0,0,0,0.85);
+  flex-shrink: 0;
+}
+
+.weave-popup__stat {
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weave-popup__rarity {
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Reuse weave-card rarity colors */
+.weave-popup__rarity--common     { color: #aaa; }
+.weave-popup__rarity--uncommon   { color: #60c060; }
+.weave-popup__rarity--rare       { color: #4090e0; }
+.weave-popup__rarity--epic       { color: #b060e0; }
+.weave-popup__rarity--legendary  { color: #e09020; }
+.weave-popup__rarity--mythic     { color: #ff4060; }
+
+.weave-popup__not-applied {
+  font-size: 9px;
+  color: rgba(180, 180, 180, 0.45);
+  flex-shrink: 0;
+}
+
+.weave-popup__unequip-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--font-primary);
+  background: rgba(200, 50, 50, 0.12);
+  border: 1px solid rgba(200, 50, 50, 0.3);
+  border-radius: var(--border-radius);
+  color: #ff8888;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.weave-popup__unequip-btn:hover {
+  background: rgba(200, 50, 50, 0.25);
+}
