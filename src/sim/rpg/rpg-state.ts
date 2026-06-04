@@ -72,6 +72,8 @@ export interface RpgSimState {
   craftedWeapons: CraftedWeaponData[];
   /** Crafted weaves created from refined crystals. */
   craftedWeaves: CraftedWeaveData[];
+  /** Crafted lenses in the player's inventory (not yet attached to a weapon). */
+  craftedLenses: CraftedLensData[];
   /**
    * 6-element array of equipped weave IDs (or null for empty).
    * Index 0–5 correspond to the six weave slots in the UI.
