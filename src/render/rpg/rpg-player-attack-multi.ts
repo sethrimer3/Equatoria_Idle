@@ -90,6 +90,8 @@ export function performMultiAttack(
   targetCount: number,
   armorIgnore = 0,
   craftedMods?: CraftedWeaponModifiers,
+  attachedLens?: import('../../data/rpg/lens-types').CraftedLensData,
+  weaponId?: string,
 ): void {
   const {
     mote,
