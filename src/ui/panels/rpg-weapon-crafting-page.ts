@@ -1,18 +1,16 @@
 /**
- * rpg-weapon-crafting-page.ts — Standalone weapon-crafting workspace for the RPG Upgrades tab.
+ * rpg-weapon-crafting-page.ts — Forge crafting workspace supporting Weapon, Weave, and Lens modes.
  *
- * Features:
- *   • Tier chip selector (up to forge capacity)
- *   • Multi-segment percentage slider with N-1 draggable handles
- *   • Power slider (1–100% of max budget)
- *   • Live composition preview (actual, post-floor)
- *   • Craft button with validation messages
- *   • Collapsible "Exact counts / advanced" fallback
+ * Modes:
+ *   WEAPON — existing behavior, dispatches craft_weapon
+ *   WEAVE  — new, dispatches craft_weave; one affix per distinct ingredient tier
+ *   LENS   — stub (not yet implemented)
  *
- * This module dispatches { kind: 'craft_weapon', ingredients } just like the
- * previous buildForgeCraftingPanel in rpg-weapons-tab.ts.  Move this file into
- * its own tab or the RPG Forge location whenever ready — no other file depends
- * on its internal structure.
+ * Layout from top to bottom:
+ *   1. Weave slots row (6 slots, always visible)
+ *   2. Mode selector (WEAPON / WEAVE / LENS)
+ *   3. Mode-specific crafting controls
+ *   4. Weave inventory (WEAVE mode only)
  */
 
 import { TIERS, TIER_BY_ID, type TierId } from '../../data/tiers';
@@ -34,15 +32,22 @@ import {
   MIN_SEGMENT_PCT,
   SEGMENT_STEP_PCT,
 } from '../../data/rpg/crafting-allocation';
+import { WEAVE_AFFIX_FAMILIES } from '../../data/rpg/weave-definitions';
+import { computeWeavePowerScale } from '../../data/rpg/weave-rolling';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
+import { getUnlockedWeaveSlotCount } from '../../sim/forge/forge-state';
 import type { ActionHandler } from '../../input';
+import { createWeaveSlotsPanel } from './weave-slots';
+import { createWeaveInventoryPanel } from './weave-inventory';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+type CraftingMode = 'weapon' | 'weave' | 'lens';
+
 export interface RpgWeaponCraftingPage {
   element: HTMLElement;
-  update(rpgState: RpgSimState, isDevMode: boolean): void;
+  update(rpgState: RpgSimState, isDevMode: boolean, forgeLevel: number): void;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -53,20 +58,23 @@ const STEP_FRACTION = SEGMENT_STEP_PCT / 100;
 // ─── Factory ─────────────────────────────────────────────────────────────────
 
 export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponCraftingPage {
-  // ── Root element ────────────────────────────────────────────────────────
   const element = document.createElement('div');
   element.className = 'forge-craft';
 
-  // ── State ───────────────────────────────────────────────────────────────
+  // ── State ────────────────────────────────────────────────────────────────
+  let craftingMode: CraftingMode = 'weapon';
   const selectedTiers: TierId[] = [];
-  let handlePositions: number[] = [];   // N-1 values in (0,1), one per boundary
-  let powerFraction = 1.0;              // 0–1 of max budget
-
-  // Latest rpgState snapshot (for inventory etc.)
+  let handlePositions: number[] = [];
+  let powerFraction = 1.0;
   let latestRpgState: RpgSimState | null = null;
   let latestIsDevMode = false;
+  let latestForgeLevel = 1;
 
-  // ── Sections created during build() ─────────────────────────────────────
+  // ── Sub-components ────────────────────────────────────────────────────────
+  const weaveSlotsPanel = createWeaveSlotsPanel(dispatch);
+  const weaveInventoryPanel = createWeaveInventoryPanel(weaveSlotsPanel);
+
+  // ── Section elements ──────────────────────────────────────────────────────
   let inventoryEl: HTMLElement | null = null;
   let chipRowEl: HTMLElement | null = null;
   let capacityLabelEl: HTMLElement | null = null;
@@ -75,14 +83,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let previewSectionEl: HTMLElement | null = null;
   let craftBtnEl: HTMLButtonElement | null = null;
   let validationEl: HTMLElement | null = null;
-  let advancedEl: HTMLElement | null = null;   // <details>
+  let advancedEl: HTMLElement | null = null;
 
-  // ── Derived shares from handle positions ────────────────────────────────
   function computeShares(): number[] {
     return sharesFromHandles(handlePositions);
   }
 
-  // ── Inventory snapshot from rpgState ────────────────────────────────────
   function getInventory(): Map<TierId, number> {
     return latestRpgState?.refinedCrystalsByTierId ?? new Map();
   }
@@ -93,7 +99,39 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return getForgeCapacity(level);
   }
 
-  // ── Toggle a tier chip ───────────────────────────────────────────────────
+  // ── Mode selector ─────────────────────────────────────────────────────────
+
+  function buildModeSelector(): HTMLElement {
+    const bar = document.createElement('div');
+    bar.className = 'forge-craft__mode-bar';
+
+    const modes: Array<{ id: CraftingMode; label: string }> = [
+      { id: 'weapon', label: 'Weapon' },
+      { id: 'weave',  label: 'Weave' },
+      { id: 'lens',   label: 'Lens' },
+    ];
+
+    for (const { id, label } of modes) {
+      const btn = document.createElement('button');
+      btn.className = 'forge-craft__mode-btn';
+      btn.textContent = label;
+      btn.classList.toggle('forge-craft__mode-btn--active', id === craftingMode);
+      if (id === 'lens') {
+        btn.classList.add('forge-craft__mode-btn--unavailable');
+        btn.title = 'Lenses are not yet available';
+      }
+      btn.addEventListener('click', () => {
+        if (id === craftingMode) return;
+        craftingMode = id;
+        if (latestRpgState) build(latestRpgState, latestIsDevMode, latestForgeLevel);
+      });
+      bar.appendChild(btn);
+    }
+    return bar;
+  }
+
+  // ── Tier chip row ─────────────────────────────────────────────────────────
+
   function toggleTier(tierId: TierId): void {
     const capacity = getForgeCapacityCurrent();
     const idx = selectedTiers.indexOf(tierId);
@@ -103,7 +141,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       if (selectedTiers.length >= capacity) return;
       selectedTiers.push(tierId);
     }
-    // Reset to equal shares when tier list changes
     const n = selectedTiers.length;
     if (n <= 1) {
       handlePositions = [];
@@ -117,13 +154,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     refreshCraftBtn();
     refreshAdvanced();
     refreshChips();
-  }
-
-  // ── Build tier chip row ──────────────────────────────────────────────────
-  function buildChipRow(): HTMLElement {
-    const row = document.createElement('div');
-    row.className = 'forge-craft__chip-row';
-    return row;
   }
 
   function refreshChips(): void {
@@ -152,7 +182,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
   }
 
-  // ── Multi-segment percentage slider ─────────────────────────────────────
+  // ── Slider ────────────────────────────────────────────────────────────────
 
   let trackEl: HTMLElement | null = null;
 
@@ -168,7 +198,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const n = selectedTiers.length;
     if (n < 2) {
-      if (n === 1) {
+      if (n === 1 && craftingMode === 'weapon') {
         const hint = document.createElement('div');
         hint.className = 'forge-craft__hint';
         hint.textContent = 'Select at least 2 mote types to enable the percentage slider.';
@@ -179,20 +209,17 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const shares = computeShares();
 
-    // Heading
     const heading = document.createElement('div');
     heading.className = 'forge-craft__section-label';
     heading.textContent = 'Target composition:';
     sliderSectionEl.appendChild(heading);
 
-    // Track container
     const trackWrap = document.createElement('div');
     trackWrap.className = 'forge-craft__track-wrap';
 
     trackEl = document.createElement('div');
     trackEl.className = 'forge-craft__track';
 
-    // Segments
     let cumPct = 0;
     for (let i = 0; i < n; i++) {
       const pct = shares[i] * 100;
@@ -215,7 +242,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       cumPct += pct;
     }
 
-    // Handles (N-1)
     for (let hi = 0; hi < n - 1; hi++) {
       const handlePct = handlePositions[hi] * 100;
       const handle = document.createElement('div');
@@ -224,10 +250,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       handle.setAttribute('tabindex', '0');
       handle.setAttribute('aria-label', `Handle ${hi + 1}`);
       handle.dataset.handleIndex = String(hi);
-
       attachHandleDrag(handle, hi);
       attachHandleKeyboard(handle, hi);
-
       trackEl.appendChild(handle);
     }
 
@@ -235,7 +259,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     sliderSectionEl.appendChild(trackWrap);
   }
 
-  // ── Drag handling ────────────────────────────────────────────────────────
+  // ── Drag handling ─────────────────────────────────────────────────────────
 
   function getTrackRect(): DOMRect | null {
     return trackEl?.getBoundingClientRect() ?? null;
@@ -278,7 +302,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       document.addEventListener('mouseup', onMouseUp);
     });
 
-    // Touch
     const onTouchMove = (e: TouchEvent) => {
       if (!dragging) return;
       e.preventDefault();
@@ -311,7 +334,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     });
   }
 
-  // ── Power slider ─────────────────────────────────────────────────────────
+  // ── Power slider ──────────────────────────────────────────────────────────
 
   function buildPowerSection(): HTMLElement {
     const section = document.createElement('div');
@@ -385,56 +408,105 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     const inventory = getInventory();
     const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
     const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction, latestIsDevMode);
-
     if (ingredients.length === 0) return;
 
-    const actualComp = computeCraftedWeaponComposition(ingredients);
     const totalWt = computeTotalWeightedMoteValue(ingredients);
-    const baseLevel = computeCraftedWeaponBaseLevel(totalWt);
-    const baseMult = computeCraftedWeaponBaseStatMultiplier(totalWt);
 
-    const heading = document.createElement('div');
-    heading.className = 'forge-craft__section-label';
-    heading.textContent = 'Actual composition after floor:';
-    previewSectionEl.appendChild(heading);
+    if (craftingMode === 'weapon') {
+      const actualComp = computeCraftedWeaponComposition(ingredients);
+      const baseLevel = computeCraftedWeaponBaseLevel(totalWt);
+      const baseMult = computeCraftedWeaponBaseStatMultiplier(totalWt);
 
-    const compRow = document.createElement('div');
-    compRow.className = 'forge-craft__comp-row';
+      const heading = document.createElement('div');
+      heading.className = 'forge-craft__section-label';
+      heading.textContent = 'Actual composition after floor:';
+      previewSectionEl.appendChild(heading);
 
-    for (const entry of actualComp) {
-      const tier = TIER_BY_ID.get(entry.tierId);
-      const color = tier?.color ?? '#aaa';
-      const pct = Math.round(entry.share * 100);
-      const ingEntry = ingredients.find(e => e.tierId === entry.tierId);
-      const count = ingEntry?.refinedCount ?? 0;
+      const compRow = document.createElement('div');
+      compRow.className = 'forge-craft__comp-row';
 
-      const chip = document.createElement('div');
-      chip.className = 'forge-craft__comp-chip';
-      chip.style.setProperty('--chip-color', color);
-      chip.innerHTML =
-        `<span class="forge-craft__comp-name" style="color:${color}">${tier?.displayName ?? entry.tierId}</span>` +
-        `<span class="forge-craft__comp-pct">${pct}%</span>` +
-        `<span class="forge-craft__comp-count">${count}×</span>`;
-      compRow.appendChild(chip);
+      for (const entry of actualComp) {
+        const tier = TIER_BY_ID.get(entry.tierId);
+        const color = tier?.color ?? '#aaa';
+        const pct = Math.round(entry.share * 100);
+        const ingEntry = ingredients.find(e => e.tierId === entry.tierId);
+        const count = ingEntry?.refinedCount ?? 0;
+
+        const chip = document.createElement('div');
+        chip.className = 'forge-craft__comp-chip';
+        chip.style.setProperty('--chip-color', color);
+        chip.innerHTML =
+          `<span class="forge-craft__comp-name" style="color:${color}">${tier?.displayName ?? entry.tierId}</span>` +
+          `<span class="forge-craft__comp-pct">${pct}%</span>` +
+          `<span class="forge-craft__comp-count">${count}×</span>`;
+        compRow.appendChild(chip);
+      }
+      previewSectionEl.appendChild(compRow);
+
+      const statsRow = document.createElement('div');
+      statsRow.className = 'forge-craft__stats-row';
+      statsRow.textContent = `Lv.${baseLevel}  ×${baseMult.toFixed(2)} base  ${totalWt.toLocaleString()} mote-wt`;
+      previewSectionEl.appendChild(statsRow);
+    } else if (craftingMode === 'weave') {
+      // Weave preview: one affix family per distinct ingredient tier
+      const heading = document.createElement('div');
+      heading.className = 'forge-craft__section-label';
+      heading.textContent = 'Expected thread affixes:';
+      previewSectionEl.appendChild(heading);
+
+      const powerScale = computeWeavePowerScale(totalWt);
+
+      for (const ing of ingredients) {
+        const family = WEAVE_AFFIX_FAMILIES[ing.tierId];
+        if (!family) continue;
+
+        const tier = TIER_BY_ID.get(ing.tierId);
+        const color = tier?.color ?? '#aaa';
+
+        const row = document.createElement('div');
+        row.className = 'forge-craft__weave-preview-row';
+
+        const chip = document.createElement('span');
+        chip.className = 'forge-craft__weave-tier-chip';
+        chip.style.background = color;
+        chip.textContent = tier?.displayName ?? ing.tierId;
+        row.appendChild(chip);
+
+        const desc = document.createElement('span');
+        desc.className = 'forge-craft__weave-preview-desc';
+        const maxVal = family.reduce((mx, s) => Math.max(mx, s.baseMaxValue), 0) * powerScale;
+        desc.textContent = `1 of ${family.length} possible affixes, up to ${maxVal.toFixed(0)}${family[0]?.unit ?? '%'} at Mythic`;
+        row.appendChild(desc);
+
+        previewSectionEl.appendChild(row);
+      }
+
+      const statsRow = document.createElement('div');
+      statsRow.className = 'forge-craft__stats-row';
+      statsRow.textContent = `${totalWt.toLocaleString()} mote-wt · power scale ×${powerScale.toFixed(2)}`;
+      previewSectionEl.appendChild(statsRow);
     }
-    previewSectionEl.appendChild(compRow);
-
-    const statsRow = document.createElement('div');
-    statsRow.className = 'forge-craft__stats-row';
-    statsRow.textContent =
-      `Lv.${baseLevel}  ×${baseMult.toFixed(2)} base  ${totalWt.toLocaleString()} mote-wt`;
-    previewSectionEl.appendChild(statsRow);
   }
 
-  // ── Craft button + validation ─────────────────────────────────────────────
+  // ── Validation ────────────────────────────────────────────────────────────
 
   function getValidationMessage(): string | null {
     const n = selectedTiers.length;
-    if (n === 0) return 'Select at least 2 mote types to craft.';
-    if (n === 1) return 'Select at least 2 mote types to craft.';
+    if (craftingMode === 'weapon') {
+      if (n < 2) return 'Select at least 2 mote types to craft.';
+    } else if (craftingMode === 'weave') {
+      if (n === 0) return 'Select at least 1 mote type to weave.';
+    } else {
+      return 'Lens crafting is not yet available.';
+    }
     const inventory = getInventory();
-    const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
-    const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction, latestIsDevMode);
+    const shares = enforceMinSegmentSize(
+      n > 1 ? computeShares() : [1],
+      MIN_FRACTION,
+    );
+    const tiersForAlloc = n === 1 ? [selectedTiers[0]!] : selectedTiers;
+    const sharesForAlloc = n === 1 ? [1] : shares;
+    const ingredients = allocateIngredients(tiersForAlloc, sharesForAlloc, inventory, powerFraction, latestIsDevMode);
     if (ingredients.length === 0) return 'Not enough refined crystals. Forge some motes first.';
     const hasCrystals = ingredients.some(e => e.refinedCount > 0);
     if (!hasCrystals) return 'All ingredient counts rounded to zero. Use more crystals or a different ratio.';
@@ -447,6 +519,13 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     if (!craftBtnEl || !validationEl) return;
     const msg = getValidationMessage();
     craftBtnEl.disabled = msg !== null;
+    if (craftingMode === 'weave') {
+      craftBtnEl.textContent = 'Craft Weave';
+    } else if (craftingMode === 'weapon') {
+      craftBtnEl.textContent = 'Craft Weapon';
+    } else {
+      craftBtnEl.textContent = 'Craft Lens (unavailable)';
+    }
     validationEl.textContent = msg ?? '';
     validationEl.className = 'forge-craft__validation' + (msg ? ' forge-craft__validation--error' : '');
   }
@@ -454,19 +533,28 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   function buildCraftButton(): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.className = 'weapon-store__btn forge-craft__craft-btn';
-    btn.textContent = 'Craft Weapon';
     btn.addEventListener('click', () => {
       const inventory = getInventory();
-      const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
-      const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction, latestIsDevMode);
-      if (ingredients.length > 0) {
+      const n = selectedTiers.length;
+      const shares = enforceMinSegmentSize(
+        n > 1 ? computeShares() : [1],
+        MIN_FRACTION,
+      );
+      const tiersForAlloc = n === 1 ? [selectedTiers[0]!] : selectedTiers;
+      const sharesForAlloc = n === 1 ? [1] : shares;
+      const ingredients = allocateIngredients(tiersForAlloc, sharesForAlloc, inventory, powerFraction, latestIsDevMode);
+      if (ingredients.length === 0) return;
+
+      if (craftingMode === 'weapon') {
         dispatch({ kind: 'craft_weapon', ingredients });
+      } else if (craftingMode === 'weave') {
+        dispatch({ kind: 'craft_weave', ingredients });
       }
     });
     return btn;
   }
 
-  // ── Advanced / exact-counts fallback (<details>) ─────────────────────────
+  // ── Advanced / exact-counts fallback ─────────────────────────────────────
 
   function buildAdvancedSection(): HTMLElement {
     const details = document.createElement('details');
@@ -480,7 +568,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   function refreshAdvanced(): void {
     if (!advancedEl) return;
-    // Keep only the summary element, rebuild content
     const summary = advancedEl.querySelector('summary');
     advancedEl.innerHTML = '';
     if (summary) advancedEl.appendChild(summary);
@@ -521,30 +608,61 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
     advancedEl.appendChild(inputGrid);
 
+    const actionKind = craftingMode === 'weave' ? 'craft_weave' : 'craft_weapon';
     const craftExactBtn = document.createElement('button');
     craftExactBtn.className = 'weapon-store__btn';
     craftExactBtn.style.cssText = 'margin-top:8px;background:rgba(200,160,0,0.1);border-color:rgba(200,160,0,0.4);color:#c8a832;font-size:0.8em;';
-    craftExactBtn.textContent = 'Craft with exact counts';
+    craftExactBtn.textContent = `Craft ${craftingMode === 'weave' ? 'weave' : 'weapon'} with exact counts`;
     craftExactBtn.addEventListener('click', () => {
       const ingredients: Array<{ tierId: string; refinedCount: number }> = [];
       for (const [tierId, input] of ingredientMap) {
         const n = Math.max(0, parseInt(input.value, 10) || 0);
         if (n > 0) ingredients.push({ tierId, refinedCount: n });
       }
-      if (ingredients.length > 0) dispatch({ kind: 'craft_weapon', ingredients });
+      if (ingredients.length > 0) dispatch({ kind: actionKind, ingredients });
     });
     advancedEl.appendChild(craftExactBtn);
   }
 
-  // ── Full build ────────────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────
 
-  function build(rpgState: RpgSimState, isDevMode: boolean): void {
+  function build(rpgState: RpgSimState, isDevMode: boolean, forgeLevel: number): void {
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
+    latestForgeLevel = forgeLevel;
 
     element.innerHTML = '';
 
-    // Header
+    // 1. Weave slots (always at top)
+    element.appendChild(weaveSlotsPanel.element);
+    const unlockedSlots = getUnlockedWeaveSlotCount(forgeLevel);
+    weaveSlotsPanel.update(
+      rpgState.equippedWeaveSlots,
+      rpgState.craftedWeaves,
+      unlockedSlots,
+    );
+
+    // 2. Mode selector
+    element.appendChild(buildModeSelector());
+
+    // 3. Lens stub — show notice and return early
+    if (craftingMode === 'lens') {
+      const notice = document.createElement('div');
+      notice.className = 'forge-craft__lens-stub';
+      notice.textContent = 'Lens crafting is coming soon. Lenses will amplify specific mote-tier effects.';
+      element.appendChild(notice);
+
+      // Weave inventory always shown
+      const invDivider = document.createElement('div');
+      invDivider.className = 'forge-section-divider';
+      invDivider.textContent = 'Weave Inventory';
+      element.appendChild(invDivider);
+      element.appendChild(weaveInventoryPanel.element);
+      weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots);
+      return;
+    }
+
+    // 4. Header (below mode selector for weapon/weave modes)
     const header = document.createElement('div');
     header.className = 'forge-craft__header';
     const forgeCraftLevel = getRpgUpgradeLevel(rpgState, 'forge_craft_level') + 1;
@@ -552,7 +670,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const titleEl = document.createElement('div');
     titleEl.className = 'forge-craft__title';
-    titleEl.textContent = 'Weapon Crafting';
+    titleEl.textContent = craftingMode === 'weave' ? 'Weave Crafting' : 'Weapon Crafting';
     header.appendChild(titleEl);
 
     capacityLabelEl = document.createElement('div');
@@ -561,10 +679,9 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     header.appendChild(capacityLabelEl);
     element.appendChild(header);
 
-    // Refined crystal inventory
+    // 5. Refined crystal inventory
     inventoryEl = document.createElement('div');
     inventoryEl.className = 'forge-craft__inventory';
-
     const invMap = rpgState.refinedCrystalsByTierId;
     const hasAnyCrystals = Array.from(invMap.values()).some(n => n > 0);
     if (!hasAnyCrystals && !isDevMode) {
@@ -580,32 +697,34 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
     element.appendChild(inventoryEl);
 
-    // Mote type chips
+    // 6. Mote type chips
     const chipHeading = document.createElement('div');
     chipHeading.className = 'forge-craft__section-label';
-    chipHeading.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
+    const minTiers = craftingMode === 'weave' ? 1 : 2;
+    chipHeading.textContent = `Select mote types (${selectedTiers.length}/${capacity}, min ${minTiers}):`;
     element.appendChild(chipHeading);
 
-    chipRowEl = buildChipRow();
+    chipRowEl = document.createElement('div');
+    chipRowEl.className = 'forge-craft__chip-row';
     element.appendChild(chipRowEl);
     refreshChips();
 
-    // Slider
+    // 7. Slider (skip for weave with single tier)
     sliderSectionEl = buildSliderSection();
     element.appendChild(sliderSectionEl);
     refreshSlider();
 
-    // Power
+    // 8. Power
     powerSectionEl = buildPowerSection();
     element.appendChild(powerSectionEl);
     refreshPower();
 
-    // Preview
+    // 9. Preview
     previewSectionEl = buildPreviewSection();
     element.appendChild(previewSectionEl);
     refreshPreview();
 
-    // Validation + craft button
+    // 10. Validation + craft button
     validationEl = document.createElement('div');
     validationEl.className = 'forge-craft__validation';
     element.appendChild(validationEl);
@@ -614,21 +733,31 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     element.appendChild(craftBtnEl);
     refreshCraftBtn();
 
-    // Advanced fallback
+    // 11. Advanced fallback
     advancedEl = buildAdvancedSection();
     element.appendChild(advancedEl);
     refreshAdvanced();
+
+    // 12. Weave inventory (below crafting controls)
+    if (craftingMode === 'weave') {
+      const invDivider = document.createElement('div');
+      invDivider.className = 'forge-section-divider';
+      invDivider.textContent = 'Weave Inventory';
+      element.appendChild(invDivider);
+      element.appendChild(weaveInventoryPanel.element);
+    }
+
+    weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots);
   }
 
   // ── Public interface ──────────────────────────────────────────────────────
 
-  function update(rpgState: RpgSimState, isDevMode: boolean): void {
-    // Full rebuild on update; state (selectedTiers, handles, power) is preserved.
+  function update(rpgState: RpgSimState, isDevMode: boolean, forgeLevel: number): void {
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
-    build(rpgState, isDevMode);
+    latestForgeLevel = forgeLevel;
+    build(rpgState, isDevMode, forgeLevel);
   }
 
-  // Initial build happens on first update() call
   return { element, update };
 }
