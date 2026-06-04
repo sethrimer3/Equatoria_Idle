@@ -89,8 +89,13 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     return div;
   }
 
+<<<<<<< HEAD
   // Crafting section
   forgePane.appendChild(makeDivider('Forge Crafting'));
+=======
+  // Forging section
+  forgePane.appendChild(makeDivider('Forging'));
+>>>>>>> dfcb9513e225fbb340e31b29e9c8dc3cfd23d091
   const craftingPage: RpgWeaponCraftingPage = createRpgWeaponCraftingPage(dispatch);
   forgePane.appendChild(craftingPage.element);
 
@@ -178,7 +183,11 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     if (!isDevMode && activeSubTab === 'equation') setSubTab('forge');
 
     if (activeSubTab === 'forge') {
+<<<<<<< HEAD
       craftingPage.update(state.rpg, isDevMode, state.forge.forgeLevel);
+=======
+      craftingPage.update(state.rpg, isDevMode, state.forge);
+>>>>>>> dfcb9513e225fbb340e31b29e9c8dc3cfd23d091
       inventory.update(state.rpg.craftedWeapons);
     }
     if (activeSubTab === 'loom')   loomUpgradesPane.update(state, numberFormat);

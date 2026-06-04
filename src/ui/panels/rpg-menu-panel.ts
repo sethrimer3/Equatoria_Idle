@@ -5,8 +5,7 @@
  * Menu button.  Contains three tabs; each tab's content is owned by a
  * dedicated sub-pane module:
  *   1. Menu     — rpg-menu-tab.ts     (Auto Move toggle + respawn checkpoint)
- *   2. Weapons  — rpg-weapons-tab.ts  (weapon purchase / equip / tier-upgrade)
- *   3. Upgrades — rpg-upgrades-tab.ts (RPG-specific upgrade purchases)
+ *   2. Upgrades — rpg-upgrades-tab.ts (RPG-specific upgrade purchases)
  *
  * This file is responsible only for the outer shell, header, tab bar,
  * content area, and routing updates to the active sub-pane.
@@ -18,7 +17,6 @@ import type { ActionHandler } from '../../input';
 import type { GameAction } from '../../input';
 import type { NumberFormat } from '../../util';
 import { createRpgMenuTabPane } from './rpg-menu-tab';
-import { createRpgWeaponsTabPane } from './rpg-weapons-tab';
 import { createRpgUpgradesTabPane } from './rpg-upgrades-tab';
 import { createRpgBossesTabPane } from './rpg-bosses-tab';
 import type { RpgBossesTabPane } from './rpg-bosses-tab';
@@ -30,7 +28,7 @@ import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ────────────────────────────────────────────────────────
 
-type RpgMenuTab = 'menu' | 'weapons' | 'upgrades' | 'bosses' | 'enemies';
+type RpgMenuTab = 'menu' | 'upgrades' | 'bosses' | 'enemies';
 
 export interface RpgMenuPanel {
   /** Root element — append to #app root, above the tab bar. */
@@ -95,7 +93,6 @@ export function createRpgMenuPanel(
 
   const tabDefs: Array<{ id: RpgMenuTab; label: string }> = [
     { id: 'menu',     label: 'Menu' },
-    { id: 'weapons',  label: 'Weapons' },
     { id: 'upgrades', label: 'Upgrades' },
     { id: 'bosses',   label: 'Bosses' },
     { id: 'enemies',  label: 'Enemies' },
@@ -125,7 +122,6 @@ export function createRpgMenuPanel(
     (enabled) => { panel.isAutoMoveEnabled = enabled; },
     (atTop) => { onRpgBarAtTopChange(atTop); },
   );
-  const weaponsTabPane  = createRpgWeaponsTabPane(dispatch);
   const upgradesTabPane = createRpgUpgradesTabPane(dispatch);
   const bossesTabPane: RpgBossesTabPane = createRpgBossesTabPane(dispatch);
   const enemiesTabPane: RpgEnemiesTabPane = createRpgEnemiesTabPane(dispatch);
@@ -135,7 +131,6 @@ export function createRpgMenuPanel(
   content.className = 'rpg-menu__content';
   content.appendChild(makePageBreak('large'));
   content.appendChild(menuTabPane.element);
-  content.appendChild(weaponsTabPane.element);
   content.appendChild(upgradesTabPane.element);
   content.appendChild(bossesTabPane.element);
   content.appendChild(enemiesTabPane.element);
@@ -161,7 +156,6 @@ export function createRpgMenuPanel(
 
   function showActivePane(): void {
     menuTabPane.element.style.display    = activeTab === 'menu'     ? '' : 'none';
-    weaponsTabPane.element.style.display  = activeTab === 'weapons'  ? '' : 'none';
     upgradesTabPane.element.style.display = activeTab === 'upgrades' ? '' : 'none';
     bossesTabPane.element.style.display   = activeTab === 'bosses'   ? '' : 'none';
     enemiesTabPane.element.style.display  = activeTab === 'enemies'  ? '' : 'none';
@@ -179,9 +173,6 @@ export function createRpgMenuPanel(
           lastTopographicTerrainDebugEnabled,
           lastSharpTopographyShadows,
         );
-        break;
-      case 'weapons':
-        weaponsTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
         break;
       case 'upgrades':
         upgradesTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
