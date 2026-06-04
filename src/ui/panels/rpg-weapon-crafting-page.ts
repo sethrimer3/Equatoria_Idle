@@ -206,8 +206,16 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   // ── Mote loom field ───────────────────────────────────────────────────────
 
+  function getEffectiveCapacity(): number {
+    if (craftingMode === 'lens' && latestRpgState) {
+      const forgeCraftLevel = getRpgUpgradeLevel(latestRpgState, 'forge_craft_level') + 1;
+      return getLensMaxMoteTypes(forgeCraftLevel);
+    }
+    return getForgeCapacityCurrent();
+  }
+
   function toggleTier(tierId: TierId): void {
-    const capacity = getForgeCapacityCurrent();
+    const capacity = getEffectiveCapacity();
     const idx = selectedTiers.indexOf(tierId);
     if (idx >= 0) {
       selectedTiers.splice(idx, 1);
