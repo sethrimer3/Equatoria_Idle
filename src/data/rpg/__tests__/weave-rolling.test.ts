@@ -21,6 +21,10 @@ import {
 } from '../weave-rolling';
 import { getUnlockedWeaveSlotCount } from '../../../sim/forge/forge-state';
 import { aggregateEquippedWeaveEffects } from '../weave-effects';
+import { createRpgSimState } from '../../../sim/rpg/rpg-state';
+import { createGameState } from '../../../sim/game-state';
+import { deserializeGameState } from '../../../settings/save-deserialize';
+import { serializeGameState } from '../../../settings/save-serialize';
 import type { CraftedWeaveData } from '../weave-types';
 
 // ─── triangularFromU ─────────────────────────────────────────────
