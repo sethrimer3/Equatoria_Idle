@@ -19,7 +19,77 @@ import {
 } from './rpg-enemy-constants';
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
+import type { CraftedLensData } from '../../data/rpg/lens-types';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
+import {
+  applyLensStatus, getIncomingDamageMult, getRiftScarredDamageMult, incrementRiftScarredStacks,
+} from '../../sim/rpg/enemy-status-effects';
+import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
+import type { ClosestTarget } from './rpg-types';
+
+/** Extracts the primary hittable enemy object from a ClosestTarget (null for sub-projectiles). */
+function extractTargetEntity(t: ClosestTarget): object | null {
+  if (t.laser) return t.laser;
+  if (t.sapphire) return t.sapphire;
+  if (t.emerald) return t.emerald;
+  if (t.amber) return t.amber;
+  if (t.void) return t.void;
+  if (t.quartz) return t.quartz;
+  if (t.ruby) return t.ruby;
+  if (t.sunstone) return t.sunstone;
+  if (t.citrine) return t.citrine;
+  if (t.iolite) return t.iolite;
+  if (t.amethyst) return t.amethyst;
+  if (t.diamond) return t.diamond;
+  if (t.nullstone) return t.nullstone;
+  if (t.fracteryl) return t.fracteryl;
+  if (t.eigenstein) return t.eigenstein;
+  if (t.polyomino) return t.polyomino;
+  if (t.fissilePolyomino) return t.fissilePolyomino;
+  if (t.refractorPolyomino) return t.refractorPolyomino;
+  if (t.elite) return t.elite;
+  if (t.boss) return t.boss;
+  if (t.alivenParticle) return t.alivenParticle;
+  if (t.dustWisp) return t.dustWisp;
+  if (t.ribbonWorm) return t.ribbonWorm;
+  if (t.lanternMoth) return t.lanternMoth;
+  if (t.eyeStalk) return t.eyeStalk;
+  if (t.jellyfish) return t.jellyfish;
+  if (t.clothGhost) return t.clothGhost;
+  if (t.plantTurret) return t.plantTurret;
+  if (t.gearInsect) return t.gearInsect;
+  if (t.spiderCrawler) return t.spiderCrawler;
+  if (t.moteSwarm) return t.moteSwarm;
+  if (t.shadowHand) return t.shadowHand;
+  if (t.sandFish) return t.sandFish;
+  if (t.quartzFish) return t.quartzFish;
+  if (t.rubyFish) return t.rubyFish;
+  if (t.sunstoneFish) return t.sunstoneFish;
+  if (t.emeraldFish) return t.emeraldFish;
+  if (t.sapphireFish) return t.sapphireFish;
+  if (t.amethystFish) return t.amethystFish;
+  if (t.diamondFish) return t.diamondFish;
+  if (t.binaryRing) return t.binaryRing;
+  if (t.nadirCubePoint) return t.nadirCubePoint;
+  // Sub-entities (shards, missiles, spikes, bolts) do not receive statuses
+  return null;
+}
+
+/** Apply all Tier 1 lens statuses to the given enemy after a successful hit. */
+function applyLensStatusesOnHit(
+  entity: object,
+  lens: CraftedLensData,
+  weaponId: string,
+  hitDamage: number,
+): void {
+  const params = buildAllTier1StatusParams(lens, weaponId, hitDamage);
+  for (const p of params) {
+    applyLensStatus(entity, p);
+  }
+  // Increment Rift-Scarred stacks (only if rift-scarred effect was applied)
+  const hasRift = lens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
+  if (hasRift) incrementRiftScarredStacks(entity, lens.id);
+}
 
 export function performSingleAttack(
   ctx: RpgPlayerAttackCtx,
