@@ -271,22 +271,19 @@ describe('aggregateEquippedWeaveEffects — caps', () => {
 
 describe('save/load defaults for old saves', () => {
   it('rpgState defaults produce empty weave inventory', () => {
-    const { createRpgSimState } = require('../../../sim/rpg/rpg-state');
     const state = createRpgSimState();
     expect(state.craftedWeaves).toEqual([]);
     expect(state.equippedWeaveSlots).toHaveLength(6);
-    expect(state.equippedWeaveSlots.every((s: unknown) => s === null)).toBe(true);
+    expect(state.equippedWeaveSlots.every(s => s === null)).toBe(true);
   });
 
   it('deserializing an old save (no weave fields) does not crash', () => {
-    const { createGameState } = require('../../../sim/game-state');
-    const { deserializeGameState } = require('../../../settings/save-deserialize');
     const base = createGameState();
-    // Simulate an old v30 save with no weave fields
-    const { serializeGameState } = require('../../../settings/save-serialize');
+    // Simulate an old save with no weave fields
     const save = serializeGameState(base);
-    delete save.rpg!.craftedWeaves;
-    delete save.rpg!.equippedWeaveSlots;
+    // Strip the v31+ fields to mimic an older save format
+    delete (save.rpg as Record<string, unknown>)['craftedWeaves'];
+    delete (save.rpg as Record<string, unknown>)['equippedWeaveSlots'];
     const restored = deserializeGameState(save);
     expect(restored.rpg.craftedWeaves).toEqual([]);
     expect(restored.rpg.equippedWeaveSlots).toHaveLength(6);
