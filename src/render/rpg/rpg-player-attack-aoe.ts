@@ -15,6 +15,8 @@ import {
 import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
+import { applyLensStatus, getIncomingDamageMult } from '../../sim/rpg/enemy-status-effects';
+import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
@@ -23,6 +25,8 @@ export function performAoeAttack(
   armorIgnore = 0,
   craftedMods?: CraftedWeaponModifiers,
   rangeSq?: number,
+  attachedLens?: import('../../data/rpg/lens-types').CraftedLensData,
+  weaponId?: string,
 ): void {
   const {
     mote,
