@@ -134,7 +134,7 @@ export function performSingleAttack(
     const dmg = damageEnemy(closestT.laser, effectiveRaw, defPierceRatio);
     spawnHitVisuals(closestT.laser, dmg, isPiercing ? piercingColor : shotColor, effectiveSourceColor);
   } else if (closestT.sapphire) {
-    const dmg = damageSapphireEnemy(closestT.sapphire, rawDamage, defPierceRatio, false);
+    const dmg = damageSapphireEnemy(closestT.sapphire, effectiveRaw, defPierceRatio, false);
     spawnHitVisualsAt(closestT.sapphire.x, closestT.sapphire.y, closestT.sapphire.maxHp, dmg,
       isPiercing ? piercingColor : SAPPHIRE_ENEMY_GLOW, effectiveSourceColor);
   } else if (closestT.missile) {
