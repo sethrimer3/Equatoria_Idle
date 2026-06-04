@@ -178,7 +178,7 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     if (!isDevMode && activeSubTab === 'equation') setSubTab('forge');
 
     if (activeSubTab === 'forge') {
-      craftingPage.update(state.rpg, isDevMode);
+      craftingPage.update(state.rpg, isDevMode, state.forge.forgeLevel);
       inventory.update(state.rpg.craftedWeapons);
     }
     if (activeSubTab === 'loom')   loomUpgradesPane.update(state, numberFormat);
