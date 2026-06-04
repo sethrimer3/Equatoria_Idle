@@ -2,49 +2,57 @@
  * lens-definitions.ts — Naming map and forge-level unlock chances for the Lens system.
  *
  * Tier 1 effects are active combat statuses.
- * Tier 2 and Tier 3 effects remain STUB — no combat behavior implemented yet.
+ * Tier 2 effects for sand/quartz/ruby/citrine/emerald/sapphire/iolite are implemented.
+ * Tier 2 effects for amethyst and above, and all Tier 3 effects, remain STUB.
  */
 
 import type { TierId } from '../tiers';
 import type { LensEffectTier } from './lens-types';
 
+// ─── Implemented Tier 2 tier IDs ──────────────────────────────────
+
+/** Tier IDs whose Tier 2 effects are fully implemented. */
+export const LENS_T2_IMPLEMENTED_TIER_IDS = new Set<TierId>([
+  'sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire', 'iolite',
+]);
+
 // ─── Effect naming map ────────────────────────────────────────────
 
-/** Display names per (tier, effectTier). T1 names are clean; T2/T3 include "STUB". */
+/** Display names per (tier, effectTier). Implemented effects have clean names; unimplemented include "STUB". */
 export const LENS_EFFECT_NAMES: Partial<Record<TierId, Record<LensEffectTier, string>>> = {
   sand: {
     1: 'Abraded',
-    2: 'Sand Spray STUB',
+    2: 'Sand Spray',
     3: 'Sandstorm Cascade STUB',
   },
   quartz: {
     1: 'Refracted',
-    2: 'Prism Split STUB',
+    2: 'Prism Split',
     3: 'Perfect Refraction STUB',
   },
   ruby: {
     1: 'Burning',
-    2: 'Ruby Beam Splinters STUB',
+    2: 'Ruby Beam Splinters',
     3: 'Meltdown Core STUB',
   },
   citrine: {
     1: 'Radiant',
-    2: 'Solar Flare Burst STUB',
+    2: 'Solar Flare Burst',
     3: 'Radiant Detonation STUB',
   },
   emerald: {
     1: 'Poisoned',
-    2: 'Venom Spores STUB',
+    2: 'Venom Spores',
     3: 'Viridian Bloom STUB',
   },
   sapphire: {
     1: 'Chilled',
-    2: 'Ice Shards STUB',
+    2: 'Ice Shards',
     3: 'Absolute Zero STUB',
   },
   iolite: {
     1: 'Time-Warped',
-    2: 'Delayed Echo Strike STUB',
+    2: 'Delayed Echo Strike',
     3: 'Time Fracture STUB',
   },
   amethyst: {
