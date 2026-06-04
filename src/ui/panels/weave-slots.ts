@@ -272,11 +272,11 @@ export function createWeaveSlotsPanel(dispatch: ActionHandler): WeaveSlotsPanel 
     }
 
     if (!weave) {
-      // Empty unlocked slot
+      // Empty unlocked slot with subtle trinity knot pattern
       slot.classList.add('weave-slot--empty');
-      slot.style.backgroundImage = TRIQUETRA_BG.split(' ')[0];
+      slot.style.backgroundImage = TRIQUETRA_URL;
       slot.style.backgroundPosition = 'center';
-      slot.style.backgroundSize = '70%';
+      slot.style.backgroundSize = '72%';
       slot.style.backgroundRepeat = 'no-repeat';
       slot.setAttribute('aria-label', 'Empty weave slot');
       // Highlight when a drag is active
