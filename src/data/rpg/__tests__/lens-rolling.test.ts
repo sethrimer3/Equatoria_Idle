@@ -367,8 +367,10 @@ describe('save/load round-trip', () => {
 
     const weapon = restored.rpg.craftedWeapons[0]!;
     expect(weapon.attachedLens).toBeDefined();
-    expect(weapon.attachedLens!.effects[0]!.isApplied).toBe(false);
-    expect(weapon.attachedLens!.effects[0]!.name).toContain('STUB');
+    // T1 effect is active; T2/T3 are stub
+    const t1 = weapon.attachedLens!.effects.find(e => e.effectTier === 1)!;
+    expect(t1.isApplied).toBe(true);
+    expect(t1.name).not.toContain('STUB');
     // Inventory empty after attach
     expect(restored.rpg.craftedLenses).toHaveLength(0);
   });
