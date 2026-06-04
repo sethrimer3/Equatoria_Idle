@@ -40,6 +40,7 @@ import type {
 import { performAoeAttack } from './rpg-player-attack-aoe';
 import { performMultiAttack } from './rpg-player-attack-multi';
 import { performSingleAttack } from './rpg-player-attack-single';
+import type { CraftedLensData } from '../../data/rpg/lens-types';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
