@@ -265,10 +265,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ── 1. Implemented T2 effects recognized ─────────────────────────────────────
+// ── 1. All implemented T2 effects recognized ──────────────────────────────────
 
-describe('lens-tier2-effects — 1. Implemented T2 tiers recognized', () => {
-  const implementedTiers: TierId[] = ['sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire', 'iolite'];
+describe('lens-tier2-effects — 1. All 12 T2 tiers recognized', () => {
+  const implementedTiers: TierId[] = [
+    'sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire', 'iolite',
+    'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein',
+  ];
 
   it.each(implementedTiers)('%s T2: isApplied true and name has no STUB', (tierId) => {
     const effects = rollLensEffects([{ tierId, refinedCount: 5 }], 5, () => 0);
