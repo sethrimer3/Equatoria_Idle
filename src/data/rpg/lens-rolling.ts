@@ -83,9 +83,12 @@ function buildLensEffect(
   const magnitude = computeLensMagnitude(tierWeightedValue, effectTier);
 
   const isT1 = effectTier === 1;
+  const isImplementedT2 = effectTier === 2 && LENS_T2_IMPLEMENTED_TIER_IDS.has(tierId);
   const description = isT1
     ? (LENS_T1_DESCRIPTIONS[tierId] ?? 'Active Tier 1 effect.')
-    : 'STUB: effect behavior not implemented yet.';
+    : isImplementedT2
+      ? (LENS_T2_DESCRIPTIONS[tierId] ?? 'Active Tier 2 effect.')
+      : 'STUB: effect behavior not implemented yet.';
 
   return {
     tierId,
@@ -96,7 +99,7 @@ function buildLensEffect(
     magnitude,
     quality,
     rarity,
-    isApplied: isT1,
+    isApplied: isT1 || isImplementedT2,
   };
 }
 
