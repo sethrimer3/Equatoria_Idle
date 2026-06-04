@@ -15,7 +15,7 @@
  *   11. Existing weapons without lenses behave as before (no status applied)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   applyLensStatus,
   clearEnemyStatuses,
@@ -91,25 +91,25 @@ function makeArrays(enemies: ReturnType<typeof makeEnemy>[] = []) {
 // ── Status param helpers ───────────────────────────────────────────────────────
 
 function abradedParams(): LensStatusParams {
-  return { key: 'abraded', sourceTierId: 'sand', durationMs: 3500, magnitude: 13, tickMs: 0 };
+  return { key: 'abraded', sourceTierId: 'sand', durationMs: 3500, magnitude: 13 };
 }
 function burningParams(): LensStatusParams {
-  return { key: 'burning', sourceTierId: 'ruby', durationMs: 4000, magnitude: 13, tickEveryMs: 1000, tickMs: 0 };
+  return { key: 'burning', sourceTierId: 'ruby', durationMs: 4000, magnitude: 13, tickEveryMs: 1000 };
 }
 function poisonedParams(): LensStatusParams {
-  return { key: 'poisoned', sourceTierId: 'emerald', durationMs: 6000, magnitude: 13, tickEveryMs: 1000, tickMs: 0 };
+  return { key: 'poisoned', sourceTierId: 'emerald', durationMs: 6000, magnitude: 13, tickEveryMs: 1000 };
 }
 function chilledParams(): LensStatusParams {
-  return { key: 'chilled', sourceTierId: 'sapphire', durationMs: 3500, magnitude: 13, tickMs: 0 };
+  return { key: 'chilled', sourceTierId: 'sapphire', durationMs: 3500, magnitude: 13 };
 }
 function echoParams(echoDamage: number): LensStatusParams {
-  return { key: 'echoMarked', sourceTierId: 'amethyst', durationMs: 1000, magnitude: 13, echoDamage, tickMs: 0 };
+  return { key: 'echoMarked', sourceTierId: 'amethyst', durationMs: 1000, magnitude: 13, echoDamage };
 }
 function riftParams(): LensStatusParams {
-  return { key: 'riftScarred', sourceTierId: 'eigenstein', sourceLensId: 'lens1', durationMs: 30000, magnitude: 13, tickMs: 0 };
+  return { key: 'riftScarred', sourceTierId: 'eigenstein', sourceLensId: 'lens1', durationMs: 30000, magnitude: 13 };
 }
 function crackedParams(): LensStatusParams {
-  return { key: 'cracked', sourceTierId: 'diamond', durationMs: 3500, magnitude: 13, tickMs: 0 };
+  return { key: 'cracked', sourceTierId: 'diamond', durationMs: 3500, magnitude: 13 };
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ describe('enemy-status-effects — 4. Sapphire T1 → Chilled', () => {
   it('chilled does not fully stop enemy (min speed 0.2)', () => {
     const enemy = makeEnemy();
     // Apply max-magnitude chill
-    applyLensStatus(enemy, { key: 'chilled', sourceTierId: 'sapphire', durationMs: 5000, magnitude: 1000, tickMs: 0 });
+    applyLensStatus(enemy, { key: 'chilled', sourceTierId: 'sapphire', durationMs: 5000, magnitude: 1000 });
     expect(getMovementSlowMult(enemy)).toBeGreaterThanOrEqual(0.2);
   });
 });
