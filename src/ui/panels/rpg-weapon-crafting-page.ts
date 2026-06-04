@@ -935,10 +935,14 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       return;
     }
 
-    const capacity = getForgeCapacityCurrent();
+    const capacity = getEffectiveCapacity();
     while (selectedTiers.length > capacity) selectedTiers.pop();
     if (capacityLabelEl) {
-      capacityLabelEl.textContent = `Forge capacity: ${capacity} mote types`;
+      if (craftingMode === 'lens') {
+        capacityLabelEl.textContent = `Lens limit: ${capacity} mote type${capacity === 1 ? '' : 's'}`;
+      } else {
+        capacityLabelEl.textContent = `Forge capacity: ${capacity} mote types`;
+      }
     }
     refreshInventory();
     refreshMoteLooms();
