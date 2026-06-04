@@ -660,7 +660,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     } else if (craftingMode === 'weapon') {
       craftBtnEl.textContent = 'Craft Weapon';
     } else {
-      craftBtnEl.textContent = 'Craft Lens (unavailable)';
+      craftBtnEl.textContent = 'Craft Lens';
     }
     validationEl.textContent = msg ?? '';
     validationEl.className = 'forge-craft__validation' + (msg ? ' forge-craft__validation--error' : '');
