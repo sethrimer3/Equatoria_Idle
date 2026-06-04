@@ -38,6 +38,8 @@ export type GameAction =
   | { kind: 'toggle_sand_blade' }
   | { kind: 'craft_weapon'; ingredients: Array<{ tierId: string; refinedCount: number }> }
   | { kind: 'craft_weave'; ingredients: Array<{ tierId: string; refinedCount: number }> }
+  | { kind: 'craft_lens'; ingredients: Array<{ tierId: string; refinedCount: number }> }
+  | { kind: 'attach_lens_to_weapon'; lensId: string; weaponId: string }
   | { kind: 'equip_weave_to_slot'; weaveId: string; slotIndex: number }
   | { kind: 'unequip_weave'; weaveId: string }
   | { kind: 'move_weave_slot'; fromSlotIndex: number; toSlotIndex: number };
