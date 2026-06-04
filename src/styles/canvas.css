@@ -1323,12 +1323,12 @@
 
 .forge-craft__loom-field {
   position: relative;
-  height: 238px;
+  height: 292px;
   margin: 4px auto 14px;
-  max-width: 340px;
+  max-width: 420px;
   border-radius: 8px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(212, 160, 64, 0.16) 0 18%, rgba(0, 0, 0, 0) 37%),
+    radial-gradient(circle at 50% 50%, rgba(212, 160, 64, 0.16) 0 16%, rgba(0, 0, 0, 0) 34%),
     radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0 1px, rgba(255, 255, 255, 0) 2px),
     rgba(0, 0, 0, 0.24);
   border: 1px solid rgba(212, 160, 64, 0.22);
@@ -1375,23 +1375,17 @@
 
 .forge-craft__mote-loom {
   position: absolute;
-  width: 76px;
-  height: 52px;
+  width: 74px;
+  height: 74px;
   transform: translate(-50%, -50%);
-  border: 1px solid color-mix(in srgb, var(--loom-color, #aaa) 72%, #ffffff 10%);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--loom-color, #aaa) 48%, transparent);
+  border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--loom-color, #aaa) 36%, transparent), rgba(0, 0, 0, 0) 58%),
-    rgba(5, 5, 12, 0.82);
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--loom-color, #aaa) 18%, transparent) 0 42%, rgba(0, 0, 0, 0) 68%),
+    rgba(2, 2, 8, 0.18);
   color: var(--loom-color, #aaa);
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  line-height: 1.05;
-  padding: 4px;
+  padding: 0;
   touch-action: manipulation;
   transition: transform 0.12s, opacity 0.12s, box-shadow 0.12s, background 0.12s;
   z-index: 3;
@@ -1400,33 +1394,34 @@
 .forge-craft__mote-loom::before {
   content: '';
   position: absolute;
-  inset: 6px 10px;
+  inset: 7px;
   border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--loom-color, #aaa) 78%, transparent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--loom-color, #aaa) 48%, transparent);
+  border: 2px dotted color-mix(in srgb, var(--loom-color, #aaa) 62%, transparent);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--loom-color, #aaa) 26%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--loom-color, #aaa) 16%, transparent);
   pointer-events: none;
 }
 
-.forge-craft__mote-loom-name,
-.forge-craft__mote-loom-count {
-  position: relative;
+.forge-craft__mote-loom::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--loom-color, #aaa) 22%, transparent);
+  pointer-events: none;
+}
+
+.forge-craft__mote-loom-glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+  pointer-events: none;
   z-index: 1;
-  pointer-events: none;
-}
-
-.forge-craft__mote-loom-name {
-  font-size: 0.68em;
-  font-weight: 700;
-  max-width: 68px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
-}
-
-.forge-craft__mote-loom-count {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.62em;
 }
 
 .forge-craft__mote-loom:hover,
@@ -1438,8 +1433,8 @@
 
 .forge-craft__mote-loom--selected {
   background:
-    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--loom-color, #aaa) 64%, transparent), rgba(0, 0, 0, 0) 62%),
-    color-mix(in srgb, var(--loom-color, #aaa) 18%, rgba(5, 5, 12, 0.92));
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--loom-color, #aaa) 34%, transparent) 0 46%, rgba(0, 0, 0, 0) 70%),
+    rgba(2, 2, 8, 0.22);
   border-color: color-mix(in srgb, var(--loom-color, #aaa) 88%, #ffffff 12%);
   box-shadow:
     0 0 14px var(--loom-color, #aaa),
@@ -1450,9 +1445,10 @@
 .forge-craft__mote-loom--selected::after {
   content: '';
   position: absolute;
-  inset: -5px;
-  border-radius: 10px;
-  border: 2px solid color-mix(in srgb, var(--loom-color, #aaa) 72%, #ffffff 18%);
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--loom-color, #aaa) 68%, #ffffff 12%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--loom-color, #aaa) 58%, transparent);
   pointer-events: none;
 }
 

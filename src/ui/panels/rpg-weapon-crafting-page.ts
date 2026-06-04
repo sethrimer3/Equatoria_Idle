@@ -37,6 +37,9 @@ import {
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
+import { getGeneratorSpritePath } from '../../render/assets/asset-paths';
+import { loadImage } from '../../render/assets/asset-loader';
+import { createTintedCanvas } from '../../render/assets/sprite-tint';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,6 +52,16 @@ export interface RpgWeaponCraftingPage {
 
 const MIN_FRACTION = MIN_SEGMENT_PCT / 100;
 const STEP_FRACTION = SEGMENT_STEP_PCT / 100;
+
+function renderMoteLoomGlyph(canvas: HTMLCanvasElement, spritePath: string, color: string): void {
+  loadImage(spritePath).then((sprite) => {
+    const tinted = createTintedCanvas(sprite, color);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tinted, 0, 0, canvas.width, canvas.height);
+  }).catch(() => { /* Sprite fallback is the CSS ring around the canvas. */ });
+}
 
 // ─── Factory ─────────────────────────────────────────────────────────────────
 
@@ -92,6 +105,24 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     if (!latestRpgState) return 2;
     const level = getRpgUpgradeLevel(latestRpgState, 'forge_craft_level') + 1;
     return getForgeCapacity(level);
+  }
+
+  function refreshInventory(): void {
+    if (!inventoryEl || !latestRpgState) return;
+    const invMap = latestRpgState.refinedCrystalsByTierId;
+    const hasAnyCrystals = Array.from(invMap.values()).some(n => n > 0);
+    if (!hasAnyCrystals && !latestIsDevMode) {
+      inventoryEl.textContent = 'No refined crystals yet. Trigger forge crunches to produce them.';
+      return;
+    }
+
+    const rows: string[] = [];
+    for (const tier of TIERS) {
+      const count = invMap.get(tier.id) ?? 0;
+      if (count <= 0 && !latestIsDevMode) continue;
+      rows.push(`${tier.displayName}: ${latestIsDevMode && count === 0 ? 'inf' : count}`);
+    }
+    inventoryEl.textContent = rows.length > 0 ? 'Refined crystals: ' + rows.join(' · ') : '';
   }
 
   // ── Toggle a mote loom ───────────────────────────────────────────────────
@@ -171,15 +202,13 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
         `${isSelected ? 'Remove' : 'Add'} ${tier.displayName} mote type (${available === 9999 ? 'unlimited' : available} crystals)`,
       );
 
-      const name = document.createElement('span');
-      name.className = 'forge-craft__mote-loom-name';
-      name.textContent = tier.displayName;
-      loom.appendChild(name);
-
-      const count = document.createElement('span');
-      count.className = 'forge-craft__mote-loom-count';
-      count.textContent = available === 9999 ? 'inf' : String(available);
-      loom.appendChild(count);
+      const glyph = document.createElement('canvas');
+      glyph.className = 'forge-craft__mote-loom-glyph';
+      glyph.width = 56;
+      glyph.height = 56;
+      glyph.setAttribute('aria-hidden', 'true');
+      renderMoteLoomGlyph(glyph, getGeneratorSpritePath(tier.unlockOrder), tier.color);
+      loom.appendChild(glyph);
 
       loom.addEventListener('click', () => toggleTier(tier.id));
       loomField.appendChild(loom);
@@ -598,19 +627,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     inventoryEl = document.createElement('div');
     inventoryEl.className = 'forge-craft__inventory';
 
-    const invMap = rpgState.refinedCrystalsByTierId;
-    const hasAnyCrystals = Array.from(invMap.values()).some(n => n > 0);
-    if (!hasAnyCrystals && !isDevMode) {
-      inventoryEl.textContent = 'No refined crystals yet. Trigger forge crunches to produce them.';
-    } else {
-      const rows: string[] = [];
-      for (const tier of TIERS) {
-        const count = invMap.get(tier.id) ?? 0;
-        if (count <= 0 && !isDevMode) continue;
-        rows.push(`${tier.displayName}: ${isDevMode && count === 0 ? '∞' : count}`);
-      }
-      inventoryEl.textContent = rows.length > 0 ? 'Refined crystals: ' + rows.join(' · ') : '';
-    }
+    refreshInventory();
     element.appendChild(inventoryEl);
 
     // Mote type looms
@@ -656,10 +673,25 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   // ── Public interface ──────────────────────────────────────────────────────
 
   function update(rpgState: RpgSimState, isDevMode: boolean): void {
-    // Full rebuild on update; state (selectedTiers, handles, power) is preserved.
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
-    build(rpgState, isDevMode);
+    if (element.childElementCount === 0) {
+      build(rpgState, isDevMode);
+      return;
+    }
+
+    const capacity = getForgeCapacityCurrent();
+    while (selectedTiers.length > capacity) selectedTiers.pop();
+    if (capacityLabelEl) {
+      capacityLabelEl.textContent = `Forge capacity: ${capacity} mote types`;
+    }
+    refreshInventory();
+    refreshMoteLooms();
+    refreshSlider();
+    refreshPower();
+    refreshPreview();
+    refreshCraftBtn();
+    refreshAdvanced();
   }
 
   // Initial build happens on first update() call
