@@ -343,6 +343,8 @@ export function deserializeGameState(data: SaveData): GameState {
           get modifiers() {
             return computeCraftedWeaponModifiers(this.composition, this.totalWeightedMoteValue);
           },
+          // v32+: attached lens snapshot
+          attachedLens: cw.attachedLens ? deserializeLens(cw.attachedLens as SavedLens) : undefined,
         };
       });
       state.rpg.craftedWeapons = restored;
