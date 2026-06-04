@@ -149,13 +149,6 @@ function getWeaveName(tiers: TierId[]): string {
 
 // ─── Public factory ───────────────────────────────────────────────────────────
 
-let nextWeaveIndex = 1;
-
-/** Resets the weave ID counter (for testing only). */
-export function resetWeaveIdCounter(): void {
-  nextWeaveIndex = 1;
-}
-
 /**
  * Creates a crafted weave from the given ingredients.
  * One affix is rolled per distinct tier (tiers without a defined family are skipped).
