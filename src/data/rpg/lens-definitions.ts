@@ -1,78 +1,96 @@
 /**
- * lens-definitions.ts — STUB naming map and forge-level unlock chances for the Lens system.
+ * lens-definitions.ts — Naming map and forge-level unlock chances for the Lens system.
  *
- * Effects are placeholders. No combat behavior is implemented yet.
- * Each entry displays as "STUB" to prevent any impression of being active.
+ * Tier 1 effects are active combat statuses.
+ * Tier 2 and Tier 3 effects remain STUB — no combat behavior implemented yet.
  */
 
 import type { TierId } from '../tiers';
 import type { LensEffectTier } from './lens-types';
 
-// ─── STUB naming map ──────────────────────────────────────────────
+// ─── Effect naming map ────────────────────────────────────────────
 
-/** Display names per (tier, effectTier). All names include "STUB". */
+/** Display names per (tier, effectTier). T1 names are clean; T2/T3 include "STUB". */
 export const LENS_EFFECT_NAMES: Partial<Record<TierId, Record<LensEffectTier, string>>> = {
   sand: {
-    1: 'Abraded STUB',
+    1: 'Abraded',
     2: 'Sand Spray STUB',
     3: 'Sandstorm Cascade STUB',
   },
   quartz: {
-    1: 'Refracted STUB',
+    1: 'Refracted',
     2: 'Prism Split STUB',
     3: 'Perfect Refraction STUB',
   },
   ruby: {
-    1: 'Burning STUB',
+    1: 'Burning',
     2: 'Ruby Beam Splinters STUB',
     3: 'Meltdown Core STUB',
   },
   citrine: {
-    1: 'Radiant STUB',
+    1: 'Radiant',
     2: 'Solar Flare Burst STUB',
     3: 'Radiant Detonation STUB',
   },
   emerald: {
-    1: 'Poisoned STUB',
+    1: 'Poisoned',
     2: 'Venom Spores STUB',
     3: 'Viridian Bloom STUB',
   },
   sapphire: {
-    1: 'Chilled STUB',
+    1: 'Chilled',
     2: 'Ice Shards STUB',
     3: 'Absolute Zero STUB',
   },
   iolite: {
-    1: 'Time-Warped STUB',
+    1: 'Time-Warped',
     2: 'Delayed Echo Strike STUB',
     3: 'Time Fracture STUB',
   },
   amethyst: {
-    1: 'Echo-Marked STUB',
+    1: 'Echo-Marked',
     2: 'Phantom Repeat STUB',
     3: 'Mirror Volley STUB',
   },
   diamond: {
-    1: 'Cracked STUB',
+    1: 'Cracked',
     2: 'Diamond Shrapnel STUB',
     3: 'Faultline Break STUB',
   },
   nullstone: {
-    1: 'Gravitized STUB',
+    1: 'Gravitized',
     2: 'Gravity Pulse STUB',
     3: 'Event Horizon STUB',
   },
   fracteryl: {
-    1: 'Fractal Wound STUB',
+    1: 'Fractal Wound',
     2: 'Recursive Splinter STUB',
     3: 'Infinite Descent STUB',
   },
   eigenstein: {
-    1: 'Rift-Scarred STUB',
+    1: 'Rift-Scarred',
     2: 'Rift Slash STUB',
     3: 'Reality Cascade STUB',
   },
   // sunstone intentionally omitted — power scaling only, no effects
+};
+
+// ─── Tier 1 effect descriptions ───────────────────────────────────
+
+/** Human-readable description for Tier 1 effects (used in buildLensEffect). */
+export const LENS_T1_DESCRIPTIONS: Partial<Record<TierId, string>> = {
+  sand:       'On hit: applies Abraded — enemy takes increased weapon damage.',
+  quartz:     'On hit: applies Refracted — enemy takes increased weapon damage (precision vulnerability).',
+  ruby:       'On hit: applies Burning — enemy takes fire damage over time.',
+  citrine:    'On hit: applies Radiant — enemy takes increased damage (radiance vulnerability).',
+  emerald:    'On hit: applies Poisoned — enemy takes poison damage over time.',
+  sapphire:   'On hit: applies Chilled — enemy movement speed reduced.',
+  iolite:     'On hit: applies Time-Warped — enemy movement and action rate slowed.',
+  amethyst:   'On hit: applies Echo-Marked — repeats a portion of hit damage after a short delay.',
+  diamond:    'On hit: applies Cracked — enemy takes increased damage (armor vulnerability).',
+  nullstone:  'On hit: applies Gravitized — enemy slowed and pulled toward impact.',
+  fracteryl:  'On hit: applies Fractal Wound — recursive damage ticks with decay.',
+  eigenstein: 'On hit: applies Rift-Scarred — stacking bonus damage per hit with same lens.',
 };
 
 // ─── Forge-level unlock chances ───────────────────────────────────
