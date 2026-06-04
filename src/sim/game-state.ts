@@ -2,6 +2,7 @@ import type { TierId } from '../data/tiers';
 import { TIERS } from '../data/tiers';
 import { createCraftedWeaponDefinition, getForgeCapacity, registerCraftedWeapons } from '../data/rpg/crafted-weapon-helpers';
 import { createCraftedWeave } from '../data/rpg/weave-rolling';
+import { createCraftedLens } from '../data/rpg/lens-rolling';
 import { getRpgUpgradeLevel } from './rpg';
 import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
 import type { SizeIndex } from '../data/particles/size-tiers';
