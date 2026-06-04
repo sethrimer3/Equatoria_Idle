@@ -18,6 +18,7 @@ import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import { applyLensStatus } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 import { handleLensTier2EffectsOnWeaponHit, extractT2TargetEntity } from './lens-tier2-effects';
+import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
@@ -256,6 +257,7 @@ export function performAoeAttack(
     const closestForT2 = ctx.findClosestTarget(rangeSq ?? (300 * 300));
     const t2Entity = closestForT2 ? extractT2TargetEntity(closestForT2) : null;
     handleLensTier2EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
+    handleLensTier3EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
   }
 
   // Crafted post-hit: Nullstone pulls toward mote center; Fracteryl fires capped follow-ups.

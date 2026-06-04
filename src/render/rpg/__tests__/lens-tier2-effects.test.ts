@@ -414,10 +414,11 @@ describe('lens-tier2-effects — 9. No recursive T2 triggering', () => {
 
 // ── 10. T3 effects remain STUB ───────────────────────────────────────────────
 
-describe('lens-tier2-effects — 10. All T3 effects remain STUB', () => {
-  const tierIds: TierId[] = ['sand', 'ruby', 'citrine', 'amethyst', 'diamond', 'fracteryl', 'eigenstein'];
+describe('lens-tier2-effects — 10. Unimplemented T3 effects remain STUB', () => {
+  // Only the 6 tiers NOT yet implemented remain STUB; sand/quartz/ruby/citrine/emerald/sapphire T3 are now implemented.
+  const stubTierIds: TierId[] = ['iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein'];
 
-  it.each(tierIds)('%s T3: isApplied false and name contains STUB', (tierId) => {
+  it.each(stubTierIds)('%s T3: isApplied false and name contains STUB', (tierId) => {
     const effects = rollLensEffects([{ tierId, refinedCount: 5 }], 5, () => 0);
     const t3 = effects.find(e => e.effectTier === 3);
     expect(t3).toBeDefined();
@@ -425,21 +426,21 @@ describe('lens-tier2-effects — 10. All T3 effects remain STUB', () => {
     expect(t3!.name).toContain('STUB');
   });
 
-  it('T3 effects in lens do not trigger any secondary hits', () => {
+  it('T2 handler skips T3 effects (T3 effects have effectTier 3, not 2)', () => {
     const enemy = makeEnemy({ hp: 200 });
     const initialHp = enemy.hp;
-    const lensWithT3: CraftedLensData = {
-      id: 'lens_t3',
+    const lensWithOnlyT3: CraftedLensData = {
+      id: 'lens_t3only',
       type: 'lens',
-      name: 'T3 lens',
-      ingredients: [{ tierId: 'sand', refinedCount: 5 }],
+      name: 'T3-only lens',
+      ingredients: [{ tierId: 'iolite', refinedCount: 5 }],
       totalWeightedMoteValue: 500,
       forgeCraftLevel: 5,
       effects: [{
-        tierId: 'sand',
+        tierId: 'iolite',
         effectTier: 3,
-        key: 'sand_t3',
-        name: 'Sandstorm Cascade STUB',
+        key: 'iolite_t3',
+        name: 'Time Fracture STUB',
         description: 'STUB',
         magnitude: 20,
         quality: 0.5,
@@ -450,7 +451,7 @@ describe('lens-tier2-effects — 10. All T3 effects remain STUB', () => {
     const params: LensTier2HitParams = {
       targetEntity: enemy,
       hitDamage: 100,
-      lens: lensWithT3,
+      lens: lensWithOnlyT3,
       weaponId: 'w1',
       ctx: makeCtx(enemy) as any,
     };

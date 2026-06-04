@@ -12,7 +12,9 @@ import {
   LENS_EFFECT_NAMES,
   LENS_T1_DESCRIPTIONS,
   LENS_T2_DESCRIPTIONS,
+  LENS_T3_DESCRIPTIONS,
   LENS_T2_IMPLEMENTED_TIER_IDS,
+  LENS_T3_IMPLEMENTED_TIER_IDS,
   getLensEffectUnlockChances,
   getLensMaxMoteTypes,
 } from './lens-definitions';
@@ -84,11 +86,14 @@ function buildLensEffect(
 
   const isT1 = effectTier === 1;
   const isImplementedT2 = effectTier === 2 && LENS_T2_IMPLEMENTED_TIER_IDS.has(tierId);
+  const isImplementedT3 = effectTier === 3 && LENS_T3_IMPLEMENTED_TIER_IDS.has(tierId);
   const description = isT1
     ? (LENS_T1_DESCRIPTIONS[tierId] ?? 'Active Tier 1 effect.')
     : isImplementedT2
       ? (LENS_T2_DESCRIPTIONS[tierId] ?? 'Active Tier 2 effect.')
-      : 'STUB: effect behavior not implemented yet.';
+      : isImplementedT3
+        ? (LENS_T3_DESCRIPTIONS[tierId] ?? 'Active Tier 3 effect.')
+        : 'STUB: effect behavior not implemented yet.';
 
   return {
     tierId,
@@ -99,7 +104,7 @@ function buildLensEffect(
     magnitude,
     quality,
     rarity,
-    isApplied: isT1 || isImplementedT2,
+    isApplied: isT1 || isImplementedT2 || isImplementedT3,
   };
 }
 

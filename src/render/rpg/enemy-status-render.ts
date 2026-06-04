@@ -32,6 +32,7 @@ const STATUS_LABELS: Record<EnemyStatusKey, StatusLabel> = {
   gravitized:  { text: 'GRV', color: '#666688' },
   fractalWound:{ text: 'FRC', color: '#ff44aa' },
   riftScarred: { text: 'RFT', color: '#44ffee' },
+  frozen:      { text: 'FRZ', color: '#aaeeff' },
 };
 
 /** Minimum HP an enemy must have for labels to render (avoids labelling dying enemies). */

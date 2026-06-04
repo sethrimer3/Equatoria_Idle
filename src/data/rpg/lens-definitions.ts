@@ -3,7 +3,8 @@
  *
  * Tier 1 effects are active combat statuses.
  * Tier 2 effects for all 12 mote tiers are implemented.
- * All Tier 3 effects remain STUB.
+ * Tier 3 effects for sand/quartz/ruby/citrine/emerald/sapphire are implemented.
+ * Iolite, amethyst, diamond, nullstone, fracteryl, eigenstein T3 remain STUB.
  */
 
 import type { TierId } from '../tiers';
@@ -17,6 +18,13 @@ export const LENS_T2_IMPLEMENTED_TIER_IDS = new Set<TierId>([
   'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein',
 ]);
 
+// ─── Implemented Tier 3 tier IDs ──────────────────────────────────
+
+/** Tier IDs whose Tier 3 effects are fully implemented. */
+export const LENS_T3_IMPLEMENTED_TIER_IDS = new Set<TierId>([
+  'sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire',
+]);
+
 // ─── Effect naming map ────────────────────────────────────────────
 
 /** Display names per (tier, effectTier). Implemented effects have clean names; unimplemented include "STUB". */
@@ -24,32 +32,32 @@ export const LENS_EFFECT_NAMES: Partial<Record<TierId, Record<LensEffectTier, st
   sand: {
     1: 'Abraded',
     2: 'Sand Spray',
-    3: 'Sandstorm Cascade STUB',
+    3: 'Sandstorm Cascade',
   },
   quartz: {
     1: 'Refracted',
     2: 'Prism Split',
-    3: 'Perfect Refraction STUB',
+    3: 'Perfect Refraction',
   },
   ruby: {
     1: 'Burning',
     2: 'Ruby Beam Splinters',
-    3: 'Meltdown Core STUB',
+    3: 'Meltdown Core',
   },
   citrine: {
     1: 'Radiant',
     2: 'Solar Flare Burst',
-    3: 'Radiant Detonation STUB',
+    3: 'Radiant Detonation',
   },
   emerald: {
     1: 'Poisoned',
     2: 'Venom Spores',
-    3: 'Viridian Bloom STUB',
+    3: 'Viridian Bloom',
   },
   sapphire: {
     1: 'Chilled',
     2: 'Ice Shards',
-    3: 'Absolute Zero STUB',
+    3: 'Absolute Zero',
   },
   iolite: {
     1: 'Time-Warped',
@@ -100,6 +108,18 @@ export const LENS_T2_DESCRIPTIONS: Partial<Record<TierId, string>> = {
   nullstone:  'On hit (proc): release a gravity pulse — pulls nearby enemies inward, deals void damage, and applies Gravitized.',
   fracteryl:  'On hit (proc): spawn fractal splinter shards (depth capped at 1) — deals reduced damage and applies Fractal Wound.',
   eigenstein: 'On hit (proc): tear a dimensional rift slash — deals rift damage and applies Rift-Scarred.',
+};
+
+// ─── Tier 3 effect descriptions (implemented tiers only) ─────────
+
+/** Human-readable description for implemented Tier 3 effects. */
+export const LENS_T3_DESCRIPTIONS: Partial<Record<TierId, string>> = {
+  sand:     'Sandstorm Cascade: Sand Spray fragments have a chance to release a smaller secondary cascade — deals reduced damage and applies Abraded. Cascade depth capped at 1.',
+  quartz:   'Perfect Refraction: Prism Split shards bounce once to a nearby enemy after hitting — deals reduced bounce damage and applies Refracted. No infinite bouncing.',
+  ruby:     'Meltdown Core: Ruby hits build heat on the target; at threshold, trigger a fire explosion — damages nearby enemies and applies Burning. Heat and explosion rate capped.',
+  citrine:  'Radiant Detonation: When a Radiant-tagged enemy dies, it has a chance to detonate — damages nearby enemies in a golden flash and applies Radiant. Capped per death chain.',
+  emerald:  'Viridian Bloom: When a Poison-tagged enemy dies, create a temporary toxic bloom zone — damages enemies inside over time and applies Poisoned. Zone duration and rate capped.',
+  sapphire: 'Absolute Zero: Repeated Sapphire lens hits on a Chilled enemy can freeze it — frozen enemies nearly stop moving for a capped duration. The next hit shatters the ice for bonus damage.',
 };
 
 // ─── Tier 1 effect descriptions ───────────────────────────────────

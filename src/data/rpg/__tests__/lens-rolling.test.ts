@@ -194,7 +194,21 @@ describe('rollLensEffects — isApplied', () => {
     }
   });
 
-  it('T3 effects always have isApplied: false', () => {
+  it('T3 effects for unimplemented tiers have isApplied: false', () => {
+    // iolite T3 is not yet implemented
+    const effects = rollLensEffects(
+      [{ tierId: 'iolite', refinedCount: 5 }],
+      5,
+      () => 0, // triggers T2 and T3
+    );
+    const t3s = effects.filter(e => e.effectTier === 3);
+    expect(t3s.length).toBeGreaterThan(0);
+    for (const e of t3s) {
+      expect(e.isApplied).toBe(false);
+    }
+  });
+
+  it('T3 effects for implemented tiers (sand/quartz/ruby/citrine/emerald/sapphire) have isApplied: true', () => {
     const effects = rollLensEffects(
       [{ tierId: 'ruby', refinedCount: 5 }],
       5,
@@ -203,7 +217,7 @@ describe('rollLensEffects — isApplied', () => {
     const t3s = effects.filter(e => e.effectTier === 3);
     expect(t3s.length).toBeGreaterThan(0);
     for (const e of t3s) {
-      expect(e.isApplied).toBe(false);
+      expect(e.isApplied).toBe(true);
     }
   });
 });
@@ -250,7 +264,21 @@ describe('rollLensEffects — names', () => {
     }
   });
 
-  it('T3 effect names always contain "STUB"', () => {
+  it('T3 effect names for unimplemented tiers contain "STUB"', () => {
+    // iolite T3 is not yet implemented
+    const effects = rollLensEffects(
+      [{ tierId: 'iolite', refinedCount: 5 }],
+      5,
+      () => 0, // triggers T2 and T3
+    );
+    const t3s = effects.filter(e => e.effectTier === 3);
+    expect(t3s.length).toBeGreaterThan(0);
+    for (const e of t3s) {
+      expect(e.name).toContain('STUB');
+    }
+  });
+
+  it('T3 effect names for implemented tiers do not contain "STUB"', () => {
     const effects = rollLensEffects(
       [{ tierId: 'ruby', refinedCount: 5 }],
       5,
@@ -259,7 +287,7 @@ describe('rollLensEffects — names', () => {
     const t3s = effects.filter(e => e.effectTier === 3);
     expect(t3s.length).toBeGreaterThan(0);
     for (const e of t3s) {
-      expect(e.name).toContain('STUB');
+      expect(e.name).not.toContain('STUB');
     }
   });
 

@@ -118,6 +118,7 @@ import { spawnNadirCubeEncounter, updateNadirCubePointEnemies, clearNadirCubeEnc
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
+import { tickLensTier3Effects } from './lens-tier3-effects';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -487,6 +488,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   // ── Tick lens status effects ─────────────────────────────────────────────────
   tickLensStatuses(a, deltaMs, ctx.mote.x, ctx.mote.y);
   tickLensTier2DelayedEffects(deltaMs);
+  tickLensTier3Effects(a, deltaMs);
 
   const bossEnemy = ctx.getBossEnemy();
   if (bossEnemy) {

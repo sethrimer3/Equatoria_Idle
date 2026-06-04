@@ -26,6 +26,7 @@ import {
 } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
+import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import type { ClosestTarget } from './rpg-types';
 
 /** Extracts the primary hittable enemy object from a ClosestTarget (null for sub-projectiles). */
@@ -239,6 +240,7 @@ export function performSingleAttack(
   if (attachedLens && targetEntity && weaponId) {
     applyLensStatusesOnHit(targetEntity, attachedLens, weaponId, rawDamage);
     handleLensTier2EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
+    handleLensTier3EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
   }
 
   // ── Crafted weapon post-hit effects ──────────────────────────────────────

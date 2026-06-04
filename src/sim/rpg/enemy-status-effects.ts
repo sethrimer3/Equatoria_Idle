@@ -30,7 +30,8 @@ export type EnemyStatusKey =
   | 'cracked'
   | 'gravitized'
   | 'fractalWound'
-  | 'riftScarred';
+  | 'riftScarred'
+  | 'frozen';
 
 // ── Pending echo (Amethyst echo-marked) ───────────────────────────────────────
 
@@ -226,6 +227,7 @@ export function getIncomingDamageMult(enemy: object): number {
       case 'refracted': mult *= 1 + clamp(s.magnitude * VULN_RATE, 0, VULN_CAP); break;
       case 'radiant':   mult *= 1 + clamp(s.magnitude * VULN_RATE, 0, VULN_CAP); break;
       case 'cracked':   mult *= 1 + clamp(s.magnitude * VULN_RATE, 0, VULN_CAP); break;
+      case 'frozen':    mult *= 1.5; break; // shatter bonus on frozen enemies
     }
   }
   return mult;
@@ -253,10 +255,12 @@ export function incrementRiftScarredStacks(enemy: object, sourceKey: string): vo
 
 // ── Movement slow multiplier ───────────────────────────────────────────────────
 
-/** Returns effective speed multiplier for this enemy (MIN_SPEED–1.0). */
+/** Returns effective speed multiplier for this enemy (0.02–1.0). */
 export function getMovementSlowMult(enemy: object): number {
   const state = _registry.get(enemy);
   if (!state) return 1;
+  // Frozen overrides all other slows — nearly immobilises the enemy.
+  if (state.statuses.some(s => s.key === 'frozen')) return 0.02;
   let totalSlow = 0;
   for (const s of state.statuses) {
     switch (s.key) {
@@ -473,4 +477,19 @@ export function tickLensStatuses(
 /** Returns all active statuses for an enemy (empty array if none). */
 export function getActiveStatuses(enemy: object): readonly ActiveEnemyStatus[] {
   return _registry.get(enemy)?.statuses ?? [];
+}
+
+/** Returns true if the enemy has the given status active. */
+export function hasStatus(enemy: object, key: EnemyStatusKey): boolean {
+  const state = _registry.get(enemy);
+  if (!state) return false;
+  return state.statuses.some(s => s.key === key);
+}
+
+/** Remove the first matching status by key (no-op if not present). */
+export function removeStatus(enemy: object, key: EnemyStatusKey): void {
+  const state = _registry.get(enemy);
+  if (!state) return;
+  const idx = state.statuses.findIndex(s => s.key === key);
+  if (idx !== -1) state.statuses.splice(idx, 1);
 }

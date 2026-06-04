@@ -31,6 +31,7 @@ import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import { applyLensStatus, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
+import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 
 // ── Sort-entry type (local to this module) ────────────────────────────────────
 
@@ -409,6 +410,7 @@ export function performMultiAttack(
         const hasRift = attachedLens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
         if (hasRift) incrementRiftScarredStacks(entity, attachedLens.id);
         handleLensTier2EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
+        handleLensTier3EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
       }
     }
     // Crafted post-hit: Nullstone pull at this target's position; Fracteryl from shared pool.
