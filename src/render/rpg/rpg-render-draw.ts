@@ -920,6 +920,7 @@ export function drawRpgFrame(
 
   drawPlayerMote(canvas2d, ctx.mote, ctx.getGlowMovementIntensity(), rpgPhase, ctx.getDeathAlpha(), glowTimeS, ctx.getPlayerIFramesMs());
 
+  renderEnemyStatusLabels(canvas2d, ctx);
   drawHitEffects(canvas2d, ctx.hitEffects);
   drawLuckyMotes(canvas2d, ctx.luckyMotes, ctx.getIsLowGraphicsMode());
   drawDamageNumbers(canvas2d, ctx.damageNumbers);
