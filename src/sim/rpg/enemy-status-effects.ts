@@ -380,6 +380,7 @@ function _tickEnemy(enemy: TickableEnemy, deltaMs: number, moteX: number, moteY:
 
 /** Apply movement slow to enemy velocity (post-update pass). */
 function _applySlowToEnemy(enemy: TickableEnemy): void {
+  if (typeof enemy.vx !== 'number' || typeof enemy.vy !== 'number') return;
   const slowMult = getMovementSlowMult(enemy);
   if (slowMult < 1) {
     enemy.vx *= slowMult;
