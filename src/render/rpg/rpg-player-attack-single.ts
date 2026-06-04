@@ -234,6 +234,11 @@ export function performSingleAttack(
       isPiercing ? piercingColor : closestT.alivenParticle.glowColor, effectiveSourceColor);
   }
 
+  // ── Lens status post-hit: apply Tier 1 statuses to target ───────────────────
+  if (attachedLens && targetEntity && weaponId) {
+    applyLensStatusesOnHit(targetEntity, attachedLens, weaponId, rawDamage);
+  }
+
   // ── Crafted weapon post-hit effects ──────────────────────────────────────
 
   if (craftedMods && (craftedMods.nullstonePullRadius > 0 || craftedMods.fracterylStrikes > 0)) {
