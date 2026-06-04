@@ -118,11 +118,12 @@ function buildEffectRow(effect: LensEffect): HTMLElement {
   nameEl.textContent = `${effect.name}  ×${effect.magnitude.toFixed(1)}`;
   row.appendChild(nameEl);
 
-  // Always show STUB / not applied notice
-  const note = document.createElement('span');
-  note.style.cssText = 'color:#666;font-size:0.72em;font-style:italic;';
-  note.textContent = '(not yet applied)';
-  row.appendChild(note);
+  if (!effect.isApplied) {
+    const note = document.createElement('span');
+    note.style.cssText = 'color:#666;font-size:0.72em;font-style:italic;';
+    note.textContent = '(not yet applied)';
+    row.appendChild(note);
+  }
 
   return row;
 }
