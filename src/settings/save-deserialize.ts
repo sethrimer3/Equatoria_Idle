@@ -18,7 +18,7 @@ import {
   computeTotalWeightedMoteValue, computeCraftedWeaponBaseLevel, computeCraftedWeaponBaseStatMultiplier,
 } from '../data/rpg/crafted-weapon-helpers';
 import type { CraftedWeaponData } from '../data/rpg/crafted-weapon-types';
-import type { CraftedLensData, LensEffect, LensEffectStatKey, LensRarity } from '../data/rpg/lens-types';
+import type { CraftedLensData, LensEffect, LensEffectTier, LensRarity } from '../data/rpg/lens-types';
 import type { SaveData } from './save-types';
 
 // ─── Deserialize ────────────────────────────────────────────────
