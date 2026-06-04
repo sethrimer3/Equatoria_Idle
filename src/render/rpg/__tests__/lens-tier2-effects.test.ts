@@ -485,3 +485,132 @@ describe('lens-tier2-effects — 11. Weapons without lenses unaffected', () => {
     expect(getActiveStatuses(enemy)).toHaveLength(0);
   });
 });
+
+// ── 12. Amethyst Phantom Repeat ───────────────────────────────────────────────
+
+describe('lens-tier2-effects — 12. Amethyst Phantom Repeat', () => {
+  it('applies Echo-Marked with a pending echo on proc', () => {
+    const enemy = makeEnemy();
+    const params = makeParams('amethyst', enemy);
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    const statuses = getActiveStatuses(enemy);
+    const echoStatus = statuses.find(s => s.key === 'echoMarked');
+    expect(echoStatus).toBeDefined();
+    expect(echoStatus?.pendingEchoes?.length).toBeGreaterThan(0);
+    expect(echoStatus?.pendingEchoes?.[0]?.damage).toBeGreaterThan(0);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Phantom Repeat is implemented (isApplied true, no STUB)', () => {
+    const effects = rollLensEffects([{ tierId: 'amethyst', refinedCount: 5 }], 5, () => 0);
+    const t2 = effects.find(e => e.effectTier === 2);
+    expect(t2?.isApplied).toBe(true);
+    expect(t2?.name).not.toContain('STUB');
+  });
+
+  it('does not reduce HP on the same call (echo fires async via status tick)', () => {
+    const enemy = makeEnemy({ hp: 200 });
+    const params = makeParams('amethyst', enemy);
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    expect(enemy.hp).toBe(200);
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 13. Diamond Shrapnel ──────────────────────────────────────────────────────
+
+describe('lens-tier2-effects — 13. Diamond Shrapnel applies Cracked', () => {
+  it('Diamond Shrapnel applies Cracked to target', () => {
+    const enemy = makeEnemy();
+    const params = makeParams('diamond', enemy);
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    const statuses = getActiveStatuses(enemy);
+    expect(statuses.some(s => s.key === 'cracked')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Diamond Shrapnel is implemented (isApplied true, no STUB)', () => {
+    const effects = rollLensEffects([{ tierId: 'diamond', refinedCount: 5 }], 5, () => 0);
+    const t2 = effects.find(e => e.effectTier === 2);
+    expect(t2?.isApplied).toBe(true);
+    expect(t2?.name).not.toContain('STUB');
+  });
+});
+
+// ── 14. Nullstone Gravity Pulse ───────────────────────────────────────────────
+
+describe('lens-tier2-effects — 14. Nullstone Gravity Pulse applies Gravitized', () => {
+  it('Gravity Pulse applies Gravitized to target', () => {
+    const enemy = makeEnemy();
+    const params = makeParams('nullstone', enemy);
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    const statuses = getActiveStatuses(enemy);
+    expect(statuses.some(s => s.key === 'gravitized')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Gravity Pulse is implemented (isApplied true, no STUB)', () => {
+    const effects = rollLensEffects([{ tierId: 'nullstone', refinedCount: 5 }], 5, () => 0);
+    const t2 = effects.find(e => e.effectTier === 2);
+    expect(t2?.isApplied).toBe(true);
+    expect(t2?.name).not.toContain('STUB');
+  });
+
+  it('Gravity Pulse pull is safe — HP stays finite and non-negative', () => {
+    const enemy = makeEnemy({ hp: 1000 });
+    const params = makeParams('nullstone', enemy);
+    expect(() => withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params))).not.toThrow();
+    expect(enemy.hp).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(enemy.hp)).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 15. Fracteryl Recursive Splinter ─────────────────────────────────────────
+
+describe('lens-tier2-effects — 15. Fracteryl Recursive Splinter applies Fractal Wound', () => {
+  it('Recursive Splinter applies Fractal Wound to target', () => {
+    const enemy = makeEnemy();
+    const params = makeParams('fracteryl', enemy);
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    const statuses = getActiveStatuses(enemy);
+    expect(statuses.some(s => s.key === 'fractalWound')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Recursive Splinter is implemented (isApplied true, no STUB)', () => {
+    const effects = rollLensEffects([{ tierId: 'fracteryl', refinedCount: 5 }], 5, () => 0);
+    const t2 = effects.find(e => e.effectTier === 2);
+    expect(t2?.isApplied).toBe(true);
+    expect(t2?.name).not.toContain('STUB');
+  });
+
+  it('Recursive Splinter depth capped — no infinite loop or stack overflow', () => {
+    const enemy = makeEnemy({ hp: 1000 });
+    const params = makeParams('fracteryl', enemy);
+    expect(() => withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params))).not.toThrow();
+    expect(enemy.hp).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(enemy.hp)).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+});
+
+// ── 16. Eigenstein Rift Slash ─────────────────────────────────────────────────
+
+describe('lens-tier2-effects — 16. Eigenstein Rift Slash applies Rift-Scarred', () => {
+  it('Rift Slash applies Rift-Scarred to target', () => {
+    const enemy = makeEnemy();
+    const params = makeParams('eigenstein', enemy);
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    const statuses = getActiveStatuses(enemy);
+    expect(statuses.some(s => s.key === 'riftScarred')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Rift Slash is implemented (isApplied true, no STUB)', () => {
+    const effects = rollLensEffects([{ tierId: 'eigenstein', refinedCount: 5 }], 5, () => 0);
+    const t2 = effects.find(e => e.effectTier === 2);
+    expect(t2?.isApplied).toBe(true);
+    expect(t2?.name).not.toContain('STUB');
+  });
+});
