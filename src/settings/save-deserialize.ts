@@ -293,14 +293,14 @@ export function deserializeGameState(data: SaveData): GameState {
         ingredients: l.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount })),
         effects: l.effects.map(e => ({
           tierId: e.tierId as TierId,
-          family: e.family,
-          statKey: e.statKey as LensEffectStatKey,
-          label: e.label,
-          value: e.value,
-          unit: e.unit,
-          rarity: e.rarity as LensRarity,
+          effectTier: e.effectTier as LensEffectTier,
+          key: e.key,
+          name: e.name,
+          description: e.description,
+          magnitude: e.magnitude,
           quality: e.quality,
-          isApplied: e.isApplied,
+          rarity: e.rarity as LensRarity,
+          isApplied: false as const,
         } satisfies LensEffect)),
       };
     }
