@@ -251,6 +251,13 @@ export function performAoeAttack(
     }
   }
 
+  // Lens Tier 2 post-hit: fired once per AoE burst (same as crafted post-hit).
+  if (attachedLens && weaponId) {
+    const closestForT2 = ctx.findClosestTarget(rangeSq ?? (300 * 300));
+    const t2Entity = closestForT2 ? extractT2TargetEntity(closestForT2) : null;
+    handleLensTier2EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
+  }
+
   // Crafted post-hit: Nullstone pulls toward mote center; Fracteryl fires capped follow-ups.
   // Both are applied once per AoE burst (not per enemy hit) to avoid O(n²) pull cost.
   if (craftedMods && rangeSq !== undefined) {
