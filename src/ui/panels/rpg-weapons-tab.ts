@@ -61,32 +61,35 @@ function buildLensSlot(attachedLens: import('../../data/rpg/lens-types').Crafted
 
   for (const effect of attachedLens.effects) {
     const effEl = document.createElement('div');
-    effEl.style.cssText = 'display:flex;align-items:center;gap:5px;margin:1px 0;';
+    effEl.style.cssText = 'display:flex;align-items:center;gap:4px;margin:1px 0;font-size:0.75em;';
 
     const rarityColor = LENS_RARITY_COLOR[effect.rarity] ?? '#aaa';
     const tierColor = TIER_BY_ID.get(effect.tierId as import('../../data/tiers').TierId)?.color ?? '#aaa';
 
+    const tierNumTag = document.createElement('span');
+    tierNumTag.style.cssText = 'background:rgba(255,255,255,0.12);color:#ddd;font-size:0.7em;padding:0 3px;border-radius:2px;font-weight:700;';
+    tierNumTag.textContent = `T${effect.effectTier}`;
+    effEl.appendChild(tierNumTag);
+
     const tierTag = document.createElement('span');
-    tierTag.style.cssText = `background:${tierColor};color:#000;font-size:0.68em;padding:0 3px;border-radius:2px;font-weight:700;`;
-    tierTag.textContent = effect.family;
+    tierTag.style.cssText = `background:${tierColor};color:#000;font-size:0.7em;padding:0 3px;border-radius:2px;font-weight:700;`;
+    tierTag.textContent = TIER_BY_ID.get(effect.tierId as import('../../data/tiers').TierId)?.displayName ?? effect.tierId;
     effEl.appendChild(tierTag);
 
     const rTag = document.createElement('span');
-    rTag.style.cssText = `color:${rarityColor};font-size:0.7em;font-weight:700;`;
+    rTag.style.cssText = `color:${rarityColor};font-weight:700;`;
     rTag.textContent = effect.rarity;
     effEl.appendChild(rTag);
 
     const val = document.createElement('span');
     val.style.color = '#bbb';
-    val.textContent = `${effect.label}: +${effect.value}${effect.unit}`;
+    val.textContent = `${effect.name}  ×${effect.magnitude.toFixed(1)}`;
     effEl.appendChild(val);
 
-    if (!effect.isApplied) {
-      const note = document.createElement('span');
-      note.style.cssText = 'color:#555;font-size:0.7em;font-style:italic;';
-      note.textContent = '(stored)';
-      effEl.appendChild(note);
-    }
+    const note = document.createElement('span');
+    note.style.cssText = 'color:#555;font-size:0.7em;font-style:italic;';
+    note.textContent = '(not yet applied)';
+    effEl.appendChild(note);
 
     el.appendChild(effEl);
   }
