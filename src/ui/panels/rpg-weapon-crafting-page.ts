@@ -635,11 +635,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       heading.textContent = 'Expected lens effects:';
       previewSectionEl.appendChild(heading);
 
-      const lensScale = computeLensPowerScale(totalWt);
+      const forgeCraftLevel = getRpgUpgradeLevel(latestRpgState!, 'forge_craft_level') + 1;
+      const { tier2Chance, tier3Chance } = getLensEffectUnlockChances(forgeCraftLevel);
 
       for (const ing of ingredients) {
-        const entry = LENS_EFFECT_FAMILIES[ing.tierId as import('../../data/tiers').TierId];
-        if (!entry) continue;
+        const names = LENS_EFFECT_NAMES[ing.tierId as import('../../data/tiers').TierId];
+        if (!names) continue;
 
         const tier = TIER_BY_ID.get(ing.tierId as import('../../data/tiers').TierId);
         const color = tier?.color ?? '#aaa';
@@ -650,13 +651,15 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
         const chip = document.createElement('span');
         chip.className = 'forge-craft__weave-tier-chip';
         chip.style.background = color;
-        chip.textContent = entry.familyName;
+        chip.textContent = tier?.displayName ?? ing.tierId;
         row.appendChild(chip);
 
         const desc = document.createElement('span');
         desc.className = 'forge-craft__weave-preview-desc';
-        const maxVal = entry.specs.reduce((mx, s) => Math.max(mx, s.baseMaxValue), 0) * lensScale;
-        desc.textContent = `1 of ${entry.specs.length} possible effects, up to ${maxVal.toFixed(0)}${entry.specs[0]?.unit ?? '%'} at Mythic`;
+        const t2pct = Math.round(tier2Chance * 100);
+        const t3pct = Math.round(tier3Chance * 100);
+        desc.textContent =
+          `T1: ${names[1]} (always) · T2: ${names[2]} (${t2pct}%) · T3: ${names[3]} (${t3pct}%)`;
         row.appendChild(desc);
 
         previewSectionEl.appendChild(row);
