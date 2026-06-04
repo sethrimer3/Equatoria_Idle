@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 30;
+export const SAVE_VERSION = 32;
 
 export interface SaveData {
   version: number;
