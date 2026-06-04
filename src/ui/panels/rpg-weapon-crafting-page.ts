@@ -174,10 +174,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       btn.className = 'forge-craft__mode-btn';
       btn.textContent = label;
       btn.classList.toggle('forge-craft__mode-btn--active', id === craftingMode);
-      if (id === 'lens') {
-        btn.classList.add('forge-craft__mode-btn--unavailable');
-        btn.title = 'Lenses are not yet available';
-      }
       btn.addEventListener('click', () => {
         if (id === craftingMode) return;
         craftingMode = id;
