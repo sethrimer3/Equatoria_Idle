@@ -378,6 +378,20 @@ export function handleAction(
       }
       break;
     }
+    case 'craft_lens': {
+      const ok = craftLens(state.game, action.ingredients as import('../data/rpg/crafted-weapon-types').CraftedWeaponIngredient[], devMode);
+      if (ok) {
+        audioSystem?.onBuyLoomUpgrade();
+      } else {
+        audioSystem?.onError();
+      }
+      break;
+    }
+    case 'attach_lens_to_weapon': {
+      const ok = attachLensToWeapon(state.game, action.lensId, action.weaponId);
+      if (!ok) audioSystem?.onError();
+      break;
+    }
     case 'equip_weave_to_slot': {
       const { weaveId, slotIndex } = action;
       const weave = state.game.rpg.craftedWeaves.find(w => w.id === weaveId);
