@@ -77,7 +77,7 @@ function buildLensEffect(
 
   const name = names[effectTier];
   const key = `${tierId}_t${effectTier}`;
-  const quality = triangularRandom(0, 1, 0.6, rng);
+  const quality = triangularFromU(0, 1, 0.6, rng());
   const rarity = getLensRarity(quality);
   const magnitude = computeLensMagnitude(tierWeightedValue, effectTier);
 
