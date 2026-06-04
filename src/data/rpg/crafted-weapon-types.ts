@@ -57,4 +57,9 @@ export interface CraftedWeaponData {
   baseLevel: number;
   /** Stat scaling multiplier derived from totalWeightedMoteValue via log10 scaling. */
   baseStatMultiplier: number;
+  /**
+   * Lens attached to this weapon's lens slot.
+   * Undefined = empty slot.  Once attached, a lens cannot be removed (only replaced).
+   */
+  attachedLens?: CraftedLensData;
 }
