@@ -2,7 +2,7 @@
  * lens-tier2-effects.test.ts — Tests for the Tier 2 lens effect handler.
  *
  * Covers:
- *   1. Each implemented T2 effect is recognised (isApplied: true, no STUB in name)
+ *   1. All 12 implemented T2 effects are recognised (isApplied: true, no STUB in name)
  *   2. Sand Spray triggers and applies Abraded
  *   3. Quartz Prism Split triggers and applies Refracted
  *   4. Ruby Beam Splinters triggers and applies Burning
@@ -11,9 +11,13 @@
  *   7. Sapphire Ice Shards triggers and applies Chilled
  *   8. Iolite Delayed Echo Strike fires after delay and applies Time-Warped
  *   9. Secondary hits do not recursively trigger Tier 2 effects
- *  10. Amethyst T2 and above remain STUB (not triggered)
- *  11. All T3 effects remain STUB (not triggered)
- *  12. Weapons without lenses behave as before
+ *  10. All T3 effects remain STUB (not triggered)
+ *  11. Weapons without lenses behave as before
+ *  12. Amethyst Phantom Repeat applies Echo-Marked with a pending echo
+ *  13. Diamond Shrapnel triggers and applies Cracked
+ *  14. Nullstone Gravity Pulse triggers and applies Gravitized
+ *  15. Fracteryl Recursive Splinter triggers and applies Fractal Wound
+ *  16. Eigenstein Rift Slash triggers and applies Rift-Scarred
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
