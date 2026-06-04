@@ -821,21 +821,6 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     // 2. Mode selector
     element.appendChild(buildModeSelector());
 
-    // 3. Lens stub — show notice and return early
-    if (craftingMode === 'lens') {
-      const notice = document.createElement('div');
-      notice.className = 'forge-craft__lens-stub';
-      notice.textContent = 'Lens crafting is coming soon. Lenses will amplify specific mote-tier effects.';
-      element.appendChild(notice);
-
-      const invDivider = document.createElement('div');
-      invDivider.className = 'forge-section-divider';
-      invDivider.textContent = 'Weave Inventory';
-      element.appendChild(invDivider);
-      element.appendChild(weaveInventoryPanel.element);
-      weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots);
-      return;
-    }
 
     // 4. Header
     const header = document.createElement('div');
