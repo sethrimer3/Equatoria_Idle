@@ -89,8 +89,8 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     return div;
   }
 
-  // Weapon crafting section
-  forgePane.appendChild(makeDivider('Craft Weapon'));
+  // Crafting section
+  forgePane.appendChild(makeDivider('Forge Crafting'));
   const craftingPage: RpgWeaponCraftingPage = createRpgWeaponCraftingPage(dispatch);
   forgePane.appendChild(craftingPage.element);
 
