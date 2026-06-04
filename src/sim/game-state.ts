@@ -357,6 +357,42 @@ export function craftWeapon(
   return true;
 }
 
+export function craftWeave(
+  state: GameState,
+  ingredients: CraftedWeaponIngredient[],
+  bypassCost = false,
+): boolean {
+  const forgeCraftLevel = getRpgUpgradeLevel(state.rpg, 'forge_craft_level') + 1;
+  const normalizedIngredients = ingredients
+    .map(i => ({ tierId: i.tierId, refinedCount: Math.max(0, Math.floor(i.refinedCount)) }))
+    .filter(i => i.refinedCount > 0);
+  if (normalizedIngredients.length === 0) return false;
+
+  for (const ingredient of normalizedIngredients) {
+    const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+    if (!bypassCost && available < ingredient.refinedCount) return false;
+  }
+
+  if (!bypassCost) {
+    for (const ingredient of normalizedIngredients) {
+      const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+      state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
+    }
+  }
+
+  let nextIndex = state.rpg.craftedWeaves.length + 1;
+  let weaveId = `crafted_weave_${nextIndex}`;
+  const existingIds = new Set(state.rpg.craftedWeaves.map(w => w.id));
+  while (existingIds.has(weaveId)) {
+    nextIndex++;
+    weaveId = `crafted_weave_${nextIndex}`;
+  }
+
+  const weave = createCraftedWeave(weaveId, normalizedIngredients, forgeCraftLevel);
+  state.rpg.craftedWeaves.push(weave);
+  return true;
+}
+
 // ─── Simulation tick ────────────────────────────────────────────
 
 export interface SimTickResult {
