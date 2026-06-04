@@ -170,6 +170,25 @@ export interface SaveData {
           effect?: { kind: string; targetCount?: number; aoeRadius?: number; defPierceRatio?: number };
         };
       };
+      /** v32+: attached lens snapshot. Absent on older saves or weapons without a lens. */
+      attachedLens?: {
+        id: string;
+        name: string;
+        forgeCraftLevel: number;
+        totalWeightedMoteValue: number;
+        ingredients: Array<{ tierId: string; refinedCount: number }>;
+        effects: Array<{
+          tierId: string;
+          family: string;
+          statKey: string;
+          label: string;
+          value: number;
+          unit: string;
+          rarity: string;
+          quality: number;
+          isApplied: boolean;
+        }>;
+      };
     }>;
     /** v30+: refined crystal inventory per tier. Absent in older saves. */
     refinedCrystalsByTierId?: Record<string, number>;
