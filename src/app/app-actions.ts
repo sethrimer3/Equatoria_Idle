@@ -367,6 +367,51 @@ export function handleAction(
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
+    case 'craft_weave': {
+      const ok = craftWeave(state.game, action.ingredients as import('../data/rpg/crafted-weapon-types').CraftedWeaponIngredient[], devMode);
+      if (ok) {
+        audioSystem?.onBuyLoomUpgrade();
+      } else {
+        audioSystem?.onError();
+      }
+      break;
+    }
+    case 'equip_weave_to_slot': {
+      const { weaveId, slotIndex } = action;
+      const weave = state.game.rpg.craftedWeaves.find(w => w.id === weaveId);
+      if (!weave) { audioSystem?.onError(); break; }
+      const unlocked = getUnlockedWeaveSlotCount(state.game.forge.forgeLevel);
+      if (slotIndex < 0 || slotIndex >= unlocked) { audioSystem?.onError(); break; }
+      // Remove the weave from any other slot it currently occupies
+      for (let i = 0; i < 6; i++) {
+        if (state.game.rpg.equippedWeaveSlots[i] === weaveId) {
+          state.game.rpg.equippedWeaveSlots[i] = null;
+        }
+      }
+      state.game.rpg.equippedWeaveSlots[slotIndex] = weaveId;
+      break;
+    }
+    case 'unequip_weave': {
+      const { weaveId } = action;
+      for (let i = 0; i < 6; i++) {
+        if (state.game.rpg.equippedWeaveSlots[i] === weaveId) {
+          state.game.rpg.equippedWeaveSlots[i] = null;
+        }
+      }
+      break;
+    }
+    case 'move_weave_slot': {
+      const { fromSlotIndex, toSlotIndex } = action;
+      const unlocked = getUnlockedWeaveSlotCount(state.game.forge.forgeLevel);
+      if (
+        fromSlotIndex < 0 || fromSlotIndex >= 6 ||
+        toSlotIndex < 0 || toSlotIndex >= unlocked
+      ) { audioSystem?.onError(); break; }
+      const tmp = state.game.rpg.equippedWeaveSlots[fromSlotIndex];
+      state.game.rpg.equippedWeaveSlots[fromSlotIndex] = state.game.rpg.equippedWeaveSlots[toSlotIndex];
+      state.game.rpg.equippedWeaveSlots[toSlotIndex] = tmp;
+      break;
+    }
     case 'set_active_tab':
       state.activeTab = action.tabId;
       audioSystem?.onTabChange(action.tabId);
