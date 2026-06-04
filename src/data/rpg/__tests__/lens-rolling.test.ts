@@ -168,15 +168,41 @@ describe('rollLensEffects — isApplied', () => {
     }
   });
 
-  it('T2 and T3 effects have isApplied: false', () => {
+  it('T2 effects for implemented tiers (sand) have isApplied: true', () => {
     const effects = rollLensEffects(
-      [{ tierId: 'ruby', refinedCount: 5 }, { tierId: 'sand', refinedCount: 3 }],
+      [{ tierId: 'sand', refinedCount: 5 }],
       5,
       () => 0, // triggers T2 and T3
     );
-    const stubEffects = effects.filter(e => e.effectTier > 1);
-    expect(stubEffects.length).toBeGreaterThan(0);
-    for (const e of stubEffects) {
+    const t2s = effects.filter(e => e.effectTier === 2);
+    expect(t2s.length).toBeGreaterThan(0);
+    for (const e of t2s) {
+      expect(e.isApplied).toBe(true);
+    }
+  });
+
+  it('T2 effects for unimplemented tiers (amethyst) have isApplied: false', () => {
+    const effects = rollLensEffects(
+      [{ tierId: 'amethyst', refinedCount: 5 }],
+      5,
+      () => 0, // triggers T2 and T3
+    );
+    const t2s = effects.filter(e => e.effectTier === 2);
+    expect(t2s.length).toBeGreaterThan(0);
+    for (const e of t2s) {
+      expect(e.isApplied).toBe(false);
+    }
+  });
+
+  it('T3 effects always have isApplied: false', () => {
+    const effects = rollLensEffects(
+      [{ tierId: 'ruby', refinedCount: 5 }],
+      5,
+      () => 0, // triggers T2 and T3
+    );
+    const t3s = effects.filter(e => e.effectTier === 3);
+    expect(t3s.length).toBeGreaterThan(0);
+    for (const e of t3s) {
       expect(e.isApplied).toBe(false);
     }
   });
