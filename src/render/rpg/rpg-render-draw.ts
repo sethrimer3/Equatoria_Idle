@@ -179,6 +179,7 @@ import { drawEuhedralHexFloor } from './terrain/euhedral-hex-floor';
 import { drawEmpowerParticles } from './rpg-elite-empower-particles';
 import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
+import { renderEnemyStatusLabels } from './enemy-status-render';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
