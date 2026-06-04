@@ -626,7 +626,14 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     } else if (craftingMode === 'weave') {
       if (n === 0) return 'Select at least 1 mote type to weave.';
     } else {
-      return 'Lens crafting is not yet available.';
+      // lens mode
+      if (n === 0) return 'Select at least 1 mote type to craft a lens.';
+      const forgeCraftLevel = getRpgUpgradeLevel(latestRpgState!, 'forge_craft_level') + 1;
+      const maxMoteTypes = getLensMaxMoteTypes(forgeCraftLevel);
+      if (n > maxMoteTypes) {
+        const plural = maxMoteTypes === 1 ? 'mote type' : 'mote types';
+        return `Lenses can use up to ${maxMoteTypes} ${plural} at this forge level. Upgrade the forge to combine more lens effects.`;
+      }
     }
     const inventory = getInventory();
     const shares = enforceMinSegmentSize(
