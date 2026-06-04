@@ -412,9 +412,11 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
 
   const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map(), newlyUnlockedAchievementIds: [] };
 
-  // Tick Looms — passive production (with achievement loom bonus × wave boost)
+  // Tick Looms — passive production (with achievement loom bonus × wave boost × weave bonus)
   const waveBoost = getWaveBoostMultiplier(state.rpg);
-  const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus * waveBoost);
+  // Apply citrine_all_loom weave affixes — the only weave bonus currently integrated.
+  const weaveLoomBonus = computeEquippedWeaveLoomBonus(state.rpg.equippedWeaveSlots, state.rpg.craftedWeaves);
+  const loomProduction = tickLooms(state.looms, deltaMs, state.achievements.loomMultiplierBonus * waveBoost * (1 + weaveLoomBonus));
   for (const [tierId, amount] of loomProduction) {
     addMotes(state.resources, tierId, amount);
     // Telemetry: record non-sand passive motes (sand is high-frequency, less interesting)
