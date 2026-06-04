@@ -17,7 +17,9 @@ import {
   claimAchievement,
   claimAllUnlockedAchievements,
   craftWeapon,
+  craftWeave,
 } from '../sim';
+import { getUnlockedWeaveSlotCount } from '../sim/forge/forge-state';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import { getMotes, spendMotes } from '../sim/resources';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
