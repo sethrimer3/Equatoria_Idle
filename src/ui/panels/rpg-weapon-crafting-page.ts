@@ -830,7 +830,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const titleEl = document.createElement('div');
     titleEl.className = 'forge-craft__title';
-    titleEl.textContent = craftingMode === 'weave' ? 'Weave Crafting' : 'Weapon Crafting';
+    titleEl.textContent = craftingMode === 'weave' ? 'Weave Crafting' : craftingMode === 'lens' ? 'Lens Crafting' : 'Weapon Crafting';
     header.appendChild(titleEl);
 
     capacityLabelEl = document.createElement('div');
