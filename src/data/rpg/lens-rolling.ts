@@ -1,19 +1,26 @@
 /**
- * lens-rolling.ts — Lens effect rolling logic.
+ * lens-rolling.ts — Lens STUB effect generation.
  *
- * Uses the same triangular distribution as weave-rolling, biased above 0.5.
- * Power scaling uses sqrt(log) to prevent linear runaway.
- * One effect per distinct mote tier used as an ingredient.
+ * Each distinct ingredient tier always receives a Tier 1 effect.
+ * Tier 2 and Tier 3 are rolled independently per tier at forge-level-defined chances.
+ * Quality uses a triangular distribution (biased above 0.5) for rarity only.
+ * Magnitude scales with per-tier mote investment via sqrt(log) — not linear.
+ *
+ * All effects are stubs: isApplied is always false.
  */
 
 import { TIER_BY_ID, type TierId } from '../tiers';
-import { LENS_EFFECT_FAMILIES } from './lens-definitions';
+import {
+  LENS_EFFECT_NAMES,
+  getLensEffectUnlockChances,
+  getLensMaxMoteTypes,
+} from './lens-definitions';
 import { getTierForgeWeight } from './crafted-weapon-helpers';
 import { triangularRandom, triangularFromU } from './weave-rolling';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
-import type { LensEffect, LensRarity, CraftedLensData } from './lens-types';
+import type { LensEffect, LensEffectTier, LensRarity, CraftedLensData } from './lens-types';
 
-export { triangularRandom, triangularFromU };
+export { triangularRandom, triangularFromU, getLensMaxMoteTypes, getLensEffectUnlockChances };
 
 // ─── Rarity classification ────────────────────────────────────────────────────
 
@@ -33,38 +40,107 @@ export function getLensRarity(quality: number): LensRarity {
   return 'Common';
 }
 
-// ─── Power scaling ────────────────────────────────────────────────────────────
+// ─── Magnitude scaling ────────────────────────────────────────────────────────
 
+/** Base magnitude per effect tier. T2 and T3 are stronger stubs. */
+const BASE_MAGNITUDE_BY_TIER: Record<LensEffectTier, number> = {
+  1: 10,
+  2: 16,
+  3: 26,
+};
+
+/**
+ * Returns a magnitude value for a lens effect based on per-tier mote investment.
+ * Uses sqrt(1 + log10(weighted+1)) to prevent linear runaway.
+ */
+export function computeLensMagnitude(tierWeightedValue: number, effectTier: LensEffectTier): number {
+  const scale = Math.sqrt(1 + Math.log10(tierWeightedValue + 1));
+  const raw = BASE_MAGNITUDE_BY_TIER[effectTier] * scale;
+  return parseFloat(raw.toFixed(1));
+}
+
+/** Total-value power scale — exported for UI previews. */
 export function computeLensPowerScale(totalWeightedMoteValue: number): number {
   return Math.sqrt(1 + Math.log10(totalWeightedMoteValue + 1));
 }
 
-// ─── Effect rolling ───────────────────────────────────────────────────────────
+// ─── Single-effect builder ────────────────────────────────────────────────────
 
-const TRIANGULAR_MODE = 0.6;
+function buildLensEffect(
+  tierId: TierId,
+  effectTier: LensEffectTier,
+  tierWeightedValue: number,
+  rng: () => number,
+): LensEffect | null {
+  const names = LENS_EFFECT_NAMES[tierId];
+  if (!names) return null;
 
-export function rollLensEffect(tierId: TierId, totalWeightedMoteValue: number): LensEffect | null {
-  const entry = LENS_EFFECT_FAMILIES[tierId];
-  if (!entry || entry.specs.length === 0) return null;
-
-  const spec = entry.specs[Math.floor(Math.random() * entry.specs.length)]!;
-  const quality = triangularRandom(0, 1, TRIANGULAR_MODE);
+  const name = names[effectTier];
+  const key = `${tierId}_t${effectTier}`;
+  const quality = triangularRandom(0, 1, 0.6, rng);
   const rarity = getLensRarity(quality);
-  const powerScale = computeLensPowerScale(totalWeightedMoteValue);
-  const rawValue = spec.baseMaxValue * powerScale * quality;
-  const value = parseFloat(rawValue.toFixed(1));
+  const magnitude = computeLensMagnitude(tierWeightedValue, effectTier);
 
   return {
     tierId,
-    family: entry.familyName,
-    statKey: spec.statKey,
-    label: spec.label,
-    value,
-    unit: spec.unit,
-    rarity,
+    effectTier,
+    key,
+    name,
+    description: 'STUB: effect behavior not implemented yet.',
+    magnitude,
     quality,
-    isApplied: spec.isApplied,
+    rarity,
+    isApplied: false,
   };
+}
+
+// ─── Public roll helpers ──────────────────────────────────────────────────────
+
+/**
+ * Rolls effects for all ingredient tiers at the given forge level.
+ * - T1 is always generated for each tier with an LENS_EFFECT_NAMES entry.
+ * - T2 and T3 are rolled independently per tier using forge-level chances.
+ * - rng defaults to Math.random; inject a deterministic function for testing.
+ */
+export function rollLensEffects(
+  ingredients: CraftedWeaponIngredient[],
+  forgeLevel: number,
+  rng: () => number = Math.random,
+): LensEffect[] {
+  const { tier2Chance, tier3Chance } = getLensEffectUnlockChances(forgeLevel);
+
+  // Merge duplicate tiers and sum counts
+  const tierCounts = new Map<TierId, number>();
+  for (const ing of ingredients) {
+    const cur = tierCounts.get(ing.tierId) ?? 0;
+    tierCounts.set(ing.tierId, cur + ing.refinedCount);
+  }
+
+  const effects: LensEffect[] = [];
+
+  for (const [tierId, refinedCount] of tierCounts) {
+    if (!LENS_EFFECT_NAMES[tierId]) continue; // sunstone etc. — no effects
+
+    const tierWeightedValue = refinedCount * getTierForgeWeight(tierId);
+
+    // T1 — always
+    const t1 = buildLensEffect(tierId, 1, tierWeightedValue, rng);
+    if (t1) effects.push(t1);
+
+    // T2 — probabilistic
+    if (rng() < tier2Chance) {
+      const t2 = buildLensEffect(tierId, 2, tierWeightedValue, rng);
+      if (t2) effects.push(t2);
+    }
+
+    // T3 — probabilistic (never at forge level 1 since tier3Chance=0)
+    if (rng() < tier3Chance) {
+      const t3 = buildLensEffect(tierId, 3, tierWeightedValue, rng);
+      if (t3) effects.push(t3);
+    }
+  }
+
+  return effects;
 }
 
 // ─── Lens name generation ─────────────────────────────────────────────────────
@@ -109,6 +185,7 @@ export function createCraftedLens(
   id: string,
   ingredients: CraftedWeaponIngredient[],
   forgeCraftLevel: number,
+  rng: () => number = Math.random,
 ): CraftedLensData {
   const tierCounts = new Map<TierId, number>();
   for (const ing of ingredients) {
@@ -124,12 +201,7 @@ export function createCraftedLens(
     totalWeightedMoteValue += ing.refinedCount * getTierForgeWeight(ing.tierId);
   }
 
-  const effects: LensEffect[] = [];
-  for (const [tierId] of tierCounts) {
-    const effect = rollLensEffect(tierId, totalWeightedMoteValue);
-    if (effect) effects.push(effect);
-  }
-
+  const effects = rollLensEffects(normalizedIngredients, forgeCraftLevel, rng);
   const tiers = Array.from(tierCounts.keys());
   const name = getLensName(tiers);
 
