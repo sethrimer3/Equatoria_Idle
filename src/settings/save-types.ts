@@ -193,6 +193,25 @@ export interface SaveData {
     }>;
     /** v31+: equipped weave slot assignments (array of 6 weave IDs or null). Absent in older saves. */
     equippedWeaveSlots?: Array<string | null>;
+    /** v32+: crafted lens inventory (unattached lenses). Absent in older saves. */
+    craftedLenses?: Array<{
+      id: string;
+      name: string;
+      forgeCraftLevel: number;
+      totalWeightedMoteValue: number;
+      ingredients: Array<{ tierId: string; refinedCount: number }>;
+      effects: Array<{
+        tierId: string;
+        family: string;
+        statKey: string;
+        label: string;
+        value: number;
+        unit: string;
+        rarity: string;
+        quality: number;
+        isApplied: boolean;
+      }>;
+    }>;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
