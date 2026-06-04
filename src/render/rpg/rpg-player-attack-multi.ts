@@ -408,6 +408,7 @@ export function performMultiAttack(
         for (const p of statusParams) applyLensStatus(entity, p);
         const hasRift = attachedLens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
         if (hasRift) incrementRiftScarredStacks(entity, attachedLens.id);
+        handleLensTier2EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
       }
     }
     // Crafted post-hit: Nullstone pull at this target's position; Fracteryl from shared pool.
