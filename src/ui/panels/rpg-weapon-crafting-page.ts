@@ -667,7 +667,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
       const statsRow = document.createElement('div');
       statsRow.className = 'forge-craft__stats-row';
-      statsRow.textContent = `${totalWt.toLocaleString()} mote-wt · power scale ×${lensScale.toFixed(2)}`;
+      statsRow.textContent = `${totalWt.toLocaleString()} mote-wt`;
       previewSectionEl.appendChild(statsRow);
     }
   }
