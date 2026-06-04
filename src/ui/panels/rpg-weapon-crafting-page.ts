@@ -836,7 +836,13 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     capacityLabelEl = document.createElement('div');
     capacityLabelEl.className = 'forge-craft__capacity';
-    capacityLabelEl.textContent = `Forge capacity: ${capacity} mote types`;
+    if (craftingMode === 'lens') {
+      const forgeCraftLevel = getRpgUpgradeLevel(rpgState, 'forge_craft_level') + 1;
+      const lensMax = getLensMaxMoteTypes(forgeCraftLevel);
+      capacityLabelEl.textContent = `Lens limit: ${lensMax} mote type${lensMax === 1 ? '' : 's'}`;
+    } else {
+      capacityLabelEl.textContent = `Forge capacity: ${capacity} mote types`;
+    }
     header.appendChild(capacityLabelEl);
     element.appendChild(header);
 
