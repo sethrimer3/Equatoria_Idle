@@ -38,7 +38,6 @@ import { LENS_EFFECT_FAMILIES, getLensMaxMoteTypes } from '../../data/rpg/lens-d
 import { computeLensPowerScale } from '../../data/rpg/lens-rolling';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
-import { TIER_BY_ID as _TIER_BY_ID_FOR_LENS } from '../../data/tiers';
 import { buildLensInventorySection } from './lens-inventory';
 import { getUnlockedWeaveSlotCount } from '../../sim/forge/forge-state';
 import type { ActionHandler } from '../../input';
