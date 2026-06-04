@@ -2,7 +2,7 @@
  * rpg-weapon-crafting-page.ts — Standalone weapon-crafting workspace for the RPG Upgrades tab.
  *
  * Features:
- *   • Tier chip selector (up to forge capacity)
+ *   • Mote loom selector around the forge icon (up to forge capacity)
  *   • Multi-segment percentage slider with N-1 draggable handles
  *   • Power slider (1–100% of max budget)
  *   • Live composition preview (actual, post-floor)
@@ -68,7 +68,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   // ── Sections created during build() ─────────────────────────────────────
   let inventoryEl: HTMLElement | null = null;
-  let chipRowEl: HTMLElement | null = null;
+  let moteLoomFieldEl: HTMLElement | null = null;
+  let moteHeadingEl: HTMLElement | null = null;
   let capacityLabelEl: HTMLElement | null = null;
   let sliderSectionEl: HTMLElement | null = null;
   let powerSectionEl: HTMLElement | null = null;
@@ -93,7 +94,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return getForgeCapacity(level);
   }
 
-  // ── Toggle a tier chip ───────────────────────────────────────────────────
+  // ── Toggle a mote loom ───────────────────────────────────────────────────
   function toggleTier(tierId: TierId): void {
     const capacity = getForgeCapacityCurrent();
     const idx = selectedTiers.indexOf(tierId);
@@ -116,42 +117,74 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     refreshPreview();
     refreshCraftBtn();
     refreshAdvanced();
-    refreshChips();
+    refreshMoteLooms();
   }
 
-  // ── Build tier chip row ──────────────────────────────────────────────────
-  function buildChipRow(): HTMLElement {
-    const row = document.createElement('div');
-    row.className = 'forge-craft__chip-row';
-    return row;
+  // ── Build mote loom field ────────────────────────────────────────────────
+  function buildMoteLoomField(): HTMLElement {
+    const field = document.createElement('div');
+    field.className = 'forge-craft__loom-field';
+    const forgeCore = document.createElement('div');
+    forgeCore.className = 'forge-craft__forge-core';
+    forgeCore.setAttribute('aria-hidden', 'true');
+    field.appendChild(forgeCore);
+    return field;
   }
 
-  function refreshChips(): void {
-    if (!chipRowEl) return;
-    chipRowEl.innerHTML = '';
+  function refreshMoteLooms(): void {
+    if (!moteLoomFieldEl) return;
+    const loomField = moteLoomFieldEl;
+    const forgeCore = loomField.querySelector('.forge-craft__forge-core');
+    loomField.innerHTML = '';
+    if (forgeCore) loomField.appendChild(forgeCore);
+
     const capacity = getForgeCapacityCurrent();
     const inventory = getInventory();
+    if (moteHeadingEl) {
+      moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
+    }
+    const availableTiers = TIERS.filter(tier => latestIsDevMode || (inventory.get(tier.id) ?? 0) > 0);
+    const total = Math.max(availableTiers.length, 1);
 
-    for (const tier of TIERS) {
+    availableTiers.forEach((tier, index) => {
       const available = latestIsDevMode
         ? 9999
         : (inventory.get(tier.id) ?? 0);
-      if (available <= 0 && !latestIsDevMode) continue;
-
-      const chip = document.createElement('button');
-      chip.className = 'forge-craft__chip';
       const isSelected = selectedTiers.includes(tier.id);
       const atCapacity = selectedTiers.length >= capacity && !isSelected;
-      chip.classList.toggle('forge-craft__chip--selected', isSelected);
-      chip.classList.toggle('forge-craft__chip--disabled', atCapacity && !isSelected);
-      chip.style.setProperty('--chip-color', tier.color);
-      chip.textContent = `${tier.displayName} (${available === 9999 ? '∞' : available})`;
-      chip.disabled = atCapacity && !isSelected;
-      chip.addEventListener('click', () => toggleTier(tier.id));
-      chipRowEl.appendChild(chip);
-    }
-  }
+      const angleRad = -Math.PI / 2 + (Math.PI * 2 * index) / total;
+      const xPct = 50 + Math.cos(angleRad) * 39;
+      const yPct = 50 + Math.sin(angleRad) * 39;
 
+      const loom = document.createElement('button');
+      loom.type = 'button';
+      loom.className = 'forge-craft__mote-loom';
+      loom.classList.toggle('forge-craft__mote-loom--selected', isSelected);
+      loom.classList.toggle('forge-craft__mote-loom--disabled', atCapacity && !isSelected);
+      loom.style.setProperty('--loom-color', tier.color);
+      loom.style.left = `${xPct}%`;
+      loom.style.top = `${yPct}%`;
+      loom.disabled = atCapacity && !isSelected;
+      loom.setAttribute('aria-pressed', String(isSelected));
+      loom.setAttribute(
+        'aria-label',
+        `${isSelected ? 'Remove' : 'Add'} ${tier.displayName} mote type (${available === 9999 ? 'unlimited' : available} crystals)`,
+      );
+
+      const name = document.createElement('span');
+      name.className = 'forge-craft__mote-loom-name';
+      name.textContent = tier.displayName;
+      loom.appendChild(name);
+
+      const count = document.createElement('span');
+      count.className = 'forge-craft__mote-loom-count';
+      count.textContent = available === 9999 ? 'inf' : String(available);
+      loom.appendChild(count);
+
+      loom.addEventListener('click', () => toggleTier(tier.id));
+      loomField.appendChild(loom);
+    });
+  }
   // ── Multi-segment percentage slider ─────────────────────────────────────
 
   let trackEl: HTMLElement | null = null;
@@ -580,15 +613,15 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
     element.appendChild(inventoryEl);
 
-    // Mote type chips
-    const chipHeading = document.createElement('div');
-    chipHeading.className = 'forge-craft__section-label';
-    chipHeading.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
-    element.appendChild(chipHeading);
+    // Mote type looms
+    moteHeadingEl = document.createElement('div');
+    moteHeadingEl.className = 'forge-craft__section-label';
+    moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
+    element.appendChild(moteHeadingEl);
 
-    chipRowEl = buildChipRow();
-    element.appendChild(chipRowEl);
-    refreshChips();
+    moteLoomFieldEl = buildMoteLoomField();
+    element.appendChild(moteLoomFieldEl);
+    refreshMoteLooms();
 
     // Slider
     sliderSectionEl = buildSliderSection();
