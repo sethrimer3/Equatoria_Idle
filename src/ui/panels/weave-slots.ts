@@ -14,16 +14,15 @@ import { TIER_BY_ID } from '../../data/tiers';
 import type { ActionHandler } from '../../input';
 import { TOTAL_WEAVE_SLOTS } from '../../sim/forge/forge-state';
 
-// Inline SVG for the Celtic trinity knot (triquetra) background
-const TRIQUETRA_SVG = encodeURIComponent(
+// Inline SVG for the Celtic trinity knot (triquetra) background pattern
+const TRIQUETRA_URL = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">` +
   `<g fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1.5">` +
   `<circle cx="28" cy="18" r="13"/>` +
   `<circle cx="18" cy="38" r="13"/>` +
   `<circle cx="38" cy="38" r="13"/>` +
   `</g></svg>`,
-);
-const TRIQUETRA_BG = `url("data:image/svg+xml,${TRIQUETRA_SVG}") center/70% no-repeat`;
+)}")`;
 
 export interface WeaveSlotsPanel {
   element: HTMLElement;
