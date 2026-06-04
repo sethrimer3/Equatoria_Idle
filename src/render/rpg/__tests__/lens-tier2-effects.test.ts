@@ -412,42 +412,10 @@ describe('lens-tier2-effects — 9. No recursive T2 triggering', () => {
   });
 });
 
-// ── 10. Amethyst T2 and above remain STUB ────────────────────────────────────
+// ── 10. T3 effects remain STUB ───────────────────────────────────────────────
 
-describe('lens-tier2-effects — 10. Amethyst+ T2 remain STUB', () => {
-  const unimplementedT2Tiers: TierId[] = ['amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein'];
-
-  it.each(unimplementedT2Tiers)('%s T2: isApplied false and name contains STUB', (tierId) => {
-    const effects = rollLensEffects([{ tierId, refinedCount: 5 }], 5, () => 0);
-    const t2 = effects.find(e => e.effectTier === 2);
-    expect(t2).toBeDefined();
-    expect(t2!.isApplied).toBe(false);
-    expect(t2!.name).toContain('STUB');
-  });
-
-  it('Amethyst T2 effect does not trigger on weapon hit', () => {
-    const enemy = makeEnemy({ hp: 200 });
-    const initialHp = enemy.hp;
-    const lens = makeLensWithT2('amethyst');
-    const params: LensTier2HitParams = {
-      targetEntity: enemy,
-      hitDamage: 100,
-      lens,
-      weaponId: 'w1',
-      ctx: makeCtx(enemy) as any,
-    };
-    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
-    // No secondary damage should be dealt (amethyst T2 is skipped)
-    expect(enemy.hp).toBe(initialHp);
-    const statuses = getActiveStatuses(enemy);
-    expect(statuses.some(s => s.key === 'echoMarked')).toBe(false);
-  });
-});
-
-// ── 11. T3 effects remain STUB ────────────────────────────────────────────────
-
-describe('lens-tier2-effects — 11. All T3 effects remain STUB', () => {
-  const tierIds: TierId[] = ['sand', 'ruby', 'citrine', 'amethyst'];
+describe('lens-tier2-effects — 10. All T3 effects remain STUB', () => {
+  const tierIds: TierId[] = ['sand', 'ruby', 'citrine', 'amethyst', 'diamond', 'fracteryl', 'eigenstein'];
 
   it.each(tierIds)('%s T3: isApplied false and name contains STUB', (tierId) => {
     const effects = rollLensEffects([{ tierId, refinedCount: 5 }], 5, () => 0);
@@ -491,9 +459,9 @@ describe('lens-tier2-effects — 11. All T3 effects remain STUB', () => {
   });
 });
 
-// ── 12. No lens = no T2 effects ───────────────────────────────────────────────
+// ── 11. No lens = no T2 effects ──────────────────────────────────────────────
 
-describe('lens-tier2-effects — 12. Weapons without lenses unaffected', () => {
+describe('lens-tier2-effects — 11. Weapons without lenses unaffected', () => {
   it('handleLensTier2EffectsOnWeaponHit does nothing with empty effects array', () => {
     const enemy = makeEnemy({ hp: 200 });
     const emptyLens: CraftedLensData = {
