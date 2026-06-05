@@ -95,7 +95,7 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   forgePane.appendChild(craftingPage.element);
 
   // Inventory section
-  forgePane.appendChild(makeDivider('Weapon Inventory'));
+  forgePane.appendChild(makeDivider('Inventory'));
   const inventory: ForgeInventory = createForgeInventory();
   forgePane.appendChild(inventory.element);
 
