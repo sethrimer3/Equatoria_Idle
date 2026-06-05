@@ -205,7 +205,7 @@ export function createEquationPanel(
         const tierColor = def.tierId ? TIER_BY_ID.get(def.tierId)?.color ?? '#888' : '#ecf0f1';
         btn.style.borderColor = tierColor;
 
-        const iconSrc = def.tierId ? getGemIconPath(def.tierId) : '';
+        const iconSrc = def.tierId ? getMoteIconPath(def.tierId) : '';
         const iconHtml = def.tierId
           ? `<img class="gem-icon" src="${iconSrc}" alt="" />`
           : '';
