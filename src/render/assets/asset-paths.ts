@@ -45,7 +45,7 @@ export function getGemIconPath(tierId: TierId): string {
 
 // ── Refined Mote Icons ─────────────────────────────────────────
 // Sprites shown for refined crystals in the crafting UI, inventory
-// chips, loom orbital buttons, and resource panel.
+// chips, and resource panel.
 // Folder: ASSETS/SPRITES/refinedMotes/
 // fracteryl and eigenstein fall back to nullstone (no dedicated sprite yet).
 
