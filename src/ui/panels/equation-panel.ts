@@ -7,7 +7,7 @@ import { EQUATION_FORGE_COST } from '../../data/balance';
 import { getUpgradeLevel, getUpgradeCost } from '../../sim/progression';
 import { getMotes } from '../../sim/resources';
 import { formatNumberAs, type NumberFormat } from '../../util';
-import { getGemIconPath } from '../../render/assets/asset-paths';
+import { getMoteIconPath } from '../../render/assets/asset-paths';
 import type { TraceEffect } from '../../render/ui/trace-effect';
 import { HEAT_TAP_COUNT_FOR_CRUNCH } from '../../sim/forge';
 
