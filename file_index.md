@@ -286,7 +286,12 @@
 
 ### src/render/assets/asset-paths.ts
 - Centralized asset path definitions (single source of truth).
-- Exports hot/cold Equation Forge sprite paths and `FORGE_RING_SPRITE_PATHS` for the five Thero-derived blurred forge ring sprites.
+- `getRefinedGemPath(tierId)` — returns full path to the refined gem sprite (`.webp` for sand–nullstone, `.png` for fracteryl/eigenstein). Each tier has a dedicated sprite; fracteryl and eigenstein no longer fall back to nullstone.
+- `getGemIconPath(tierId)` — raw gem icon (unrefined, for equation/resource display).
+- Exports hot/cold Equation Forge sprite paths and `FORGE_RING_SPRITE_PATHS`.
+
+### src/render/assets/refined-gem-preload.ts
+- `preloadRefinedGemSprites()` — fires and forgets all 13 refined gem images into the asset-loader cache at startup, ensuring they are ready before loom glyphs and inventory chips need them.
 
 ### src/render/assets/asset-loader.ts
 - Image loading utility with caching.
