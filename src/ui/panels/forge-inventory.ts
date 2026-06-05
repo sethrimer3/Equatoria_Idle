@@ -254,6 +254,7 @@ export function createForgeInventory(): ForgeInventory {
     let dragStartX = 0;
     let dragStartY = 0;
     let thisDragging = false;
+    let isPointerDown = false;
 
     slot.addEventListener('pointerdown', (e: PointerEvent) => {
       if (e.button !== 0) return;
@@ -262,9 +263,11 @@ export function createForgeInventory(): ForgeInventory {
       dragStartX = e.clientX;
       dragStartY = e.clientY;
       thisDragging = false;
+      isPointerDown = true;
     });
 
     slot.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!isPointerDown) return;
       if (isDragging && activeDragPointerId !== e.pointerId) return;
       if (thisDragging || isDragging) return;
       const dx = e.clientX - dragStartX;
@@ -291,10 +294,15 @@ export function createForgeInventory(): ForgeInventory {
     });
 
     slot.addEventListener('pointerup', (e: PointerEvent) => {
-      if (!thisDragging && e.timeStamp - pointerDownTs < 400) {
+      if (!thisDragging && isPointerDown && e.timeStamp - pointerDownTs < 400) {
         showWeaponPopup(weapon, slot);
       }
       thisDragging = false;
+      isPointerDown = false;
+    });
+
+    slot.addEventListener('pointerleave', () => {
+      isPointerDown = false;
     });
 
     return slot;
