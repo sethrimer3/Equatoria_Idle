@@ -4,62 +4,105 @@
  */
 
 import type { TierId } from '../../data/tiers';
+import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 
 /** Base path for all assets in the repository root. */
 const BASE = 'ASSETS';
 
-// ── Gem Icons ──────────────────────────────────────────────────
+// ── Mote Icons ─────────────────────────────────────────────────
+// Small per-tier gem sprites used in the idle reward overlay,
+// achievements tab, equation upgrades panel, and anywhere a tier
+// needs a quick visual indicator.
+// Folder: ASSETS/SPRITES/moteIcons/
 
-/** Maps tier IDs to their raw gem icon filenames. */
-const GEM_ICON_MAP: Record<TierId, string> = {
-  sand: 'sand',
-  quartz: 'quartz',
-  ruby: 'ruby',
-  sunstone: 'sunstone',
-  citrine: 'citrine',
-  emerald: 'emerald',
-  sapphire: 'sapphire',
-  iolite: 'iolite',
-  amethyst: 'amethyst',
-  diamond: 'diamond',
-  nullstone: 'nullstone',
-  fracteryl: 'nullstone',
-  eigenstein: 'nullstone',
+const MOTE_ICON_MAP: Record<TierId, string> = {
+  sand:       'sand',
+  quartz:     'quartz',
+  ruby:       'ruby',
+  sunstone:   'sunstone',
+  citrine:    'citrine',
+  emerald:    'emerald',
+  sapphire:   'sapphire',
+  iolite:     'iolite',
+  amethyst:   'amethyst',
+  diamond:    'diamond',
+  nullstone:  'nullstone',
+  fracteryl:  'fracteryl',
+  eigenstein: 'eigenstein',
 };
 
-export function getGemIconPath(tierId: TierId): string {
-  return `${BASE}/SPRITES/gemIcons/${GEM_ICON_MAP[tierId]}.webp`;
-}
-
-// ── Refined Gem Icons ──────────────────────────────────────────
-
-/** Full filename (with extension) for each refined gem sprite. */
-const REFINED_GEM_MAP: Record<TierId, string> = {
-  sand:       'refinedSand.webp',
-  quartz:     'refinedQuartz.webp',
-  ruby:       'refinedRuby.webp',
-  sunstone:   'refinedSunstone.webp',
-  citrine:    'refinedCitrine.webp',
-  emerald:    'refinedEmerald.webp',
-  sapphire:   'refinedSapphire.webp',
-  iolite:     'refinedIolite.webp',
-  amethyst:   'refinedAmethyst.webp',
-  diamond:    'refinedDiamond.webp',
-  nullstone:  'refinedNullstone.webp',
-  fracteryl:  'refinedFracteryl.png',
-  eigenstein: 'refinedEigenstein.png',
-};
-
-export function getRefinedGemPath(tierId: TierId): string {
-  return `${BASE}/SPRITES/refinedGems/${REFINED_GEM_MAP[tierId]}`;
+export function getMoteIconPath(tierId: TierId): string {
+  return `${BASE}/SPRITES/moteIcons/${MOTE_ICON_MAP[tierId]}.webp`;
 }
 
 /**
- * Legacy fallback path currently aliases to the same file set in ASSETS.
- * Keep this helper to preserve onerror fallback call sites.
+ * @deprecated Renamed to getMoteIconPath. Kept for call-site compatibility
+ * until all usages are migrated.
+ */
+export function getGemIconPath(tierId: TierId): string {
+  return getMoteIconPath(tierId);
+}
+
+// ── Refined Mote Icons ─────────────────────────────────────────
+// Sprites shown for refined crystals in the crafting UI, inventory
+// chips, loom orbital buttons, and resource panel.
+// Folder: ASSETS/SPRITES/refinedMotes/
+// fracteryl and eigenstein fall back to nullstone (no dedicated sprite yet).
+
+const REFINED_MOTE_MAP: Record<TierId, string> = {
+  sand:       'refinedSand',
+  quartz:     'refinedQuartz',
+  ruby:       'refinedRuby',
+  sunstone:   'refinedSunstone',
+  citrine:    'refinedCitrine',
+  emerald:    'refinedEmerald',
+  sapphire:   'refinedSapphire',
+  iolite:     'refinedIolite',
+  amethyst:   'refinedAmethyst',
+  diamond:    'refinedDiamond',
+  nullstone:  'refinedNullstone',
+  fracteryl:  'refinedNullstone',  // no dedicated sprite yet
+  eigenstein: 'refinedNullstone',  // no dedicated sprite yet
+};
+
+export function getRefinedGemPath(tierId: TierId): string {
+  return `${BASE}/SPRITES/refinedMotes/${REFINED_MOTE_MAP[tierId]}.webp`;
+}
+
+/**
+ * Legacy fallback path — aliases to the primary path.
+ * Kept to preserve onerror fallback call sites.
  */
 export function getRefinedGemFallbackPath(tierId: TierId): string {
   return getRefinedGemPath(tierId);
+}
+
+// ── Status Effect Icons ─────────────────────────────────────────
+// Tiny icons rendered above enemy health bars while a status is active.
+// One icon per tier — the tier associated with the lens effect that
+// applied the status.
+// Folder: ASSETS/SPRITES/statusEffectIcons/
+
+/** Maps each EnemyStatusKey to the tier whose icon represents it. */
+const STATUS_EFFECT_TIER: Record<EnemyStatusKey, TierId> = {
+  abraded:      'sand',
+  refracted:    'quartz',
+  burning:      'ruby',
+  radiant:      'sunstone',
+  poisoned:     'emerald',
+  chilled:      'sapphire',
+  timeWarped:   'iolite',
+  echoMarked:   'amethyst',
+  cracked:      'diamond',
+  gravitized:   'nullstone',
+  fractalWound: 'fracteryl',
+  riftScarred:  'eigenstein',
+  frozen:       'sapphire',   // shares sapphire (cold / freeze)
+};
+
+export function getStatusEffectIconPath(key: EnemyStatusKey): string {
+  const tierId = STATUS_EFFECT_TIER[key];
+  return `${BASE}/SPRITES/statusEffectIcons/${tierId}.webp`;
 }
 
 // ── Generator Sprites ──────────────────────────────────────────
