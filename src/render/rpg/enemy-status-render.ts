@@ -1,22 +1,27 @@
 /**
- * enemy-status-render.ts — Minimal canvas overlay for active enemy status effects.
+ * enemy-status-render.ts — Canvas overlay for active enemy status effects.
  *
- * Draws small colored status labels above enemies that have at least one
- * active Tier 1 lens status. Keeps it simple: abbreviated text tags in the
- * enemy's glow color, positioned above the enemy sprite.
+ * Draws small status icons above enemies that have at least one active
+ * Tier 1 lens status. Each icon is the tier sprite from
+ * ASSETS/SPRITES/statusEffectIcons/ clipped to a small rounded square with
+ * a colored glow tint, arranged in a row above the enemy.
  *
- * Rendering is intentionally lightweight — no icons, no health-bar integration.
+ * Falls back to the previous abbreviated text tag if the sprite is not yet
+ * loaded (e.g. first frame before preload completes).
+ *
  * Labels are sorted and drawn in a single pass after enemy sprites are rendered.
  */
 
 import { getActiveStatuses } from '../../sim/rpg/enemy-status-effects';
 import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
+import { getStatusEffectIconPath } from '../../render/assets/asset-paths';
+import { getCachedImage } from '../../render/assets/asset-loader';
 
 // ── Label config ───────────────────────────────────────────────────────────────
 
 interface StatusLabel {
-  text: string;
-  color: string;
+  text: string;   // fallback text tag
+  color: string;  // glow / tint color
 }
 
 const STATUS_LABELS: Record<EnemyStatusKey, StatusLabel> = {
@@ -35,12 +40,16 @@ const STATUS_LABELS: Record<EnemyStatusKey, StatusLabel> = {
   frozen:      { text: 'FRZ', color: '#aaeeff' },
 };
 
-/** Minimum HP an enemy must have for labels to render (avoids labelling dying enemies). */
+/** Icon size in canvas pixels (world-space). */
+const ICON_SIZE = 10;
+/** Gap between icon centres. */
+const ICON_GAP = 12;
+/** Minimum HP to render status icons (avoids labelling dying enemies). */
 const MIN_HP_FOR_LABEL = 1;
 
-// ── Per-enemy label renderer ───────────────────────────────────────────────────
+// ── Per-enemy icon renderer ───────────────────────────────────────────────────
 
-function _drawLabelsForEnemy(
+function _drawStatusIconsForEnemy(
   c: CanvasRenderingContext2D,
   enemy: { x: number; y: number; hp: number },
   halfSize: number,
@@ -49,38 +58,59 @@ function _drawLabelsForEnemy(
   const statuses = getActiveStatuses(enemy);
   if (statuses.length === 0) return;
 
-  const x = enemy.x;
-  const topY = enemy.y - halfSize - 4;
+  const topY = enemy.y - halfSize - ICON_SIZE - 4;
+  const totalW = statuses.length * ICON_GAP;
+  const startX = enemy.x - totalW / 2 + ICON_GAP / 2;
+  const half = ICON_SIZE / 2;
 
-  c.font = '5px monospace';
-  c.textAlign = 'center';
-  c.textBaseline = 'bottom';
-
-  let xOffset = 0;
-  const GAP = 13;
-  const totalW = statuses.length * GAP;
-  const startX = x - totalW / 2 + GAP / 2;
+  c.save();
 
   for (let i = 0; i < statuses.length; i++) {
     const s = statuses[i]!;
     const label = STATUS_LABELS[s.key];
     if (!label) continue;
 
-    const lx = startX + i * GAP + xOffset;
-    // Background tag
-    c.fillStyle = 'rgba(0,0,0,0.55)';
-    c.fillRect(lx - 6, topY - 6, 12, 7);
-    // Text
-    c.fillStyle = label.color;
-    c.fillText(label.text, lx, topY);
+    const cx = startX + i * ICON_GAP;
+    const lx = cx - half;
+    const ly = topY;
+
+    const sprite = getCachedImage(getStatusEffectIconPath(s.key));
+
+    if (sprite) {
+      // Dark background square
+      c.fillStyle = 'rgba(0,0,0,0.6)';
+      c.beginPath();
+      c.roundRect(lx - 1, ly - 1, ICON_SIZE + 2, ICON_SIZE + 2, 2);
+      c.fill();
+
+      // Sprite
+      c.drawImage(sprite, lx, ly, ICON_SIZE, ICON_SIZE);
+
+      // Colored glow border
+      c.strokeStyle = label.color + 'bb';
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.roundRect(lx - 1, ly - 1, ICON_SIZE + 2, ICON_SIZE + 2, 2);
+      c.stroke();
+    } else {
+      // Fallback: text tag (used on first frame before sprites are cached)
+      c.fillStyle = 'rgba(0,0,0,0.55)';
+      c.fillRect(cx - 6, topY - 6, 12, 7);
+      c.font = '5px monospace';
+      c.textAlign = 'center';
+      c.textBaseline = 'bottom';
+      c.fillStyle = label.color;
+      c.fillText(label.text, cx, topY);
+    }
   }
-  void xOffset; // used above
+
+  c.restore();
 }
 
 // ── Main render entry point ────────────────────────────────────────────────────
 
 /**
- * Renders status labels above all enemies that have active Tier 1 statuses.
+ * Renders status icons above all enemies that have active Tier 1 statuses.
  * Call after enemy sprites are drawn, while the world transform is active.
  *
  * Accepts a minimal duck-type subset of RpgDrawCtx so this file does not
@@ -129,50 +159,46 @@ export function renderEnemyStatusLabels(
     diamondFishEnemies: Array<{ x: number; y: number; hp: number }>;
   },
 ): void {
-  c.save();
+  const draw6  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 6);
+  const draw8  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 8);
+  const draw10 = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 10);
 
-  const draw6 = (e: { x: number; y: number; hp: number }) => _drawLabelsForEnemy(c, e, 6);
-  const draw8 = (e: { x: number; y: number; hp: number }) => _drawLabelsForEnemy(c, e, 8);
-  const draw10 = (e: { x: number; y: number; hp: number }) => _drawLabelsForEnemy(c, e, 10);
-
-  for (const e of arrays.enemies)                  draw6(e);
-  for (const e of arrays.sapphireEnemies)          draw8(e);
-  for (const e of arrays.emeraldEnemies)           draw6(e);
-  for (const e of arrays.amberEnemies)             draw6(e);
-  for (const e of arrays.voidEnemies)              draw6(e);
-  for (const e of arrays.quartzEnemies)            draw8(e);
-  for (const e of arrays.rubyEnemies)              draw6(e);
-  for (const e of arrays.sunstoneEnemies)          draw8(e);
-  for (const e of arrays.citrineEnemies)           draw6(e);
-  for (const e of arrays.ioliteEnemies)            draw6(e);
-  for (const e of arrays.amethystEnemies)          draw8(e);
-  for (const e of arrays.diamondEnemies)           draw8(e);
-  for (const e of arrays.nullstoneEnemies)         draw8(e);
-  for (const e of arrays.fracterylEnemies)         draw6(e);
-  for (const e of arrays.eigensteinEnemies)        draw8(e);
-  for (const e of arrays.eliteEnemies)             draw10(e);
-  for (const e of arrays.polyominoEnemies)         draw6(e);
-  for (const e of arrays.fissilePolyominoEnemies)  draw6(e);
-  for (const e of arrays.refractorPolyominoEnemies)draw6(e);
-  for (const e of arrays.dustWispEnemies)          draw6(e);
-  for (const e of arrays.ribbonWormEnemies)        draw6(e);
-  for (const e of arrays.lanternMothEnemies)       draw6(e);
-  for (const e of arrays.eyeStalkEnemies)          draw6(e);
-  for (const e of arrays.jellyfishEnemies)         draw6(e);
-  for (const e of arrays.clothGhostEnemies)        draw6(e);
-  for (const e of arrays.plantTurretEnemies)       draw6(e);
-  for (const e of arrays.gearInsectEnemies)        draw6(e);
-  for (const e of arrays.spiderCrawlerEnemies)     draw6(e);
-  for (const e of arrays.moteSwarmEnemies)         draw6(e);
-  for (const e of arrays.shadowHandEnemies)        draw6(e);
-  for (const e of arrays.sandFishEnemies)          draw6(e);
-  for (const e of arrays.quartzFishEnemies)        draw6(e);
-  for (const e of arrays.rubyFishEnemies)          draw6(e);
-  for (const e of arrays.sunstoneFishEnemies)      draw6(e);
-  for (const e of arrays.emeraldFishEnemies)       draw6(e);
-  for (const e of arrays.sapphireFishEnemies)      draw6(e);
-  for (const e of arrays.amethystFishEnemies)      draw6(e);
-  for (const e of arrays.diamondFishEnemies)       draw6(e);
-
-  c.restore();
+  for (const e of arrays.enemies)                   draw6(e);
+  for (const e of arrays.sapphireEnemies)           draw8(e);
+  for (const e of arrays.emeraldEnemies)            draw6(e);
+  for (const e of arrays.amberEnemies)              draw6(e);
+  for (const e of arrays.voidEnemies)               draw6(e);
+  for (const e of arrays.quartzEnemies)             draw8(e);
+  for (const e of arrays.rubyEnemies)               draw6(e);
+  for (const e of arrays.sunstoneEnemies)           draw8(e);
+  for (const e of arrays.citrineEnemies)            draw6(e);
+  for (const e of arrays.ioliteEnemies)             draw6(e);
+  for (const e of arrays.amethystEnemies)           draw8(e);
+  for (const e of arrays.diamondEnemies)            draw8(e);
+  for (const e of arrays.nullstoneEnemies)          draw8(e);
+  for (const e of arrays.fracterylEnemies)          draw6(e);
+  for (const e of arrays.eigensteinEnemies)         draw8(e);
+  for (const e of arrays.eliteEnemies)              draw10(e);
+  for (const e of arrays.polyominoEnemies)          draw6(e);
+  for (const e of arrays.fissilePolyominoEnemies)   draw6(e);
+  for (const e of arrays.refractorPolyominoEnemies) draw6(e);
+  for (const e of arrays.dustWispEnemies)           draw6(e);
+  for (const e of arrays.ribbonWormEnemies)         draw6(e);
+  for (const e of arrays.lanternMothEnemies)        draw6(e);
+  for (const e of arrays.eyeStalkEnemies)           draw6(e);
+  for (const e of arrays.jellyfishEnemies)          draw6(e);
+  for (const e of arrays.clothGhostEnemies)         draw6(e);
+  for (const e of arrays.plantTurretEnemies)        draw6(e);
+  for (const e of arrays.gearInsectEnemies)         draw6(e);
+  for (const e of arrays.spiderCrawlerEnemies)      draw6(e);
+  for (const e of arrays.moteSwarmEnemies)          draw6(e);
+  for (const e of arrays.shadowHandEnemies)         draw6(e);
+  for (const e of arrays.sandFishEnemies)           draw6(e);
+  for (const e of arrays.quartzFishEnemies)         draw6(e);
+  for (const e of arrays.rubyFishEnemies)           draw6(e);
+  for (const e of arrays.sunstoneFishEnemies)       draw6(e);
+  for (const e of arrays.emeraldFishEnemies)        draw6(e);
+  for (const e of arrays.sapphireFishEnemies)       draw6(e);
+  for (const e of arrays.amethystFishEnemies)       draw6(e);
+  for (const e of arrays.diamondFishEnemies)        draw6(e);
 }
