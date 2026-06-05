@@ -4,6 +4,31 @@ Current build: **#213**
 
 ---
 
+## Build #213 — Animated low-res procedural blob fill for Target composition bar
+
+### Completed in this build
+
+* **`src/ui/panels/rpg-weapon-crafting-page.ts`** — replaced flat linear-gradient segment fills with animated canvas-backed blob fills:
+  - Each `.forge-craft__segment` now contains a `<canvas class="forge-craft__segment-fill">` (64×16 px internal resolution, CSS-stretched to segment size).
+  - `drawSegmentBlobs()` helper: fills canvas with darkened tier base color, then overlays 6 soft radial-gradient blobs.
+  - Blob positions animate deterministically using `sin`/`cos` keyed on `timeMs`, `segIndex`, and blob index — no random jitter per rebuild.
+  - Blob colors are lighter, base, and mid-bright variants of the tier color for an organic energy feel.
+  - `activeSegmentFills[]` list is rebuilt each `refreshSlider()` call and drawn each `animTick()` frame.
+  - Narrow segments (`offsetWidth ≤ 4`) are skipped each frame to avoid wasted work.
+  - `hexToRgb()` utility parses tier hex colors for per-channel math.
+
+* **`src/styles/canvas.css`** — CSS additions:
+  - `.forge-craft__segment-fill { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }` — stretches fill canvas over segment without interfering with events.
+  - `.forge-craft__segment-label` gains `position: relative; z-index: 2` and stronger text-shadow for readability on animated fill.
+
+### Deferred / next steps
+
+* **Apply same fill system to crafted weapon card icon**: the SVG gradient silhouette icon in weapon cards (Build #202) could adopt a matching blob-animated fill. Deferred to avoid scope creep — the card icon uses a different rendering path (SVG + CSS gradient, not canvas).
+* **Neighbor-tier color blending at segment edges**: blobs near left/right segment edges could tint slightly toward adjacent tier colors for a softer transition. Currently each segment uses only its own tier color variants.
+* **Segment label overflow on narrow segments**: still deferred from Build #210 — hide label or show only % when segment width is below ~60 px.
+
+---
+
 ## Build #210 — Weapon Crafting page with percentage slider (Upgrades tab)
 
 ### Completed in this build
