@@ -22,10 +22,48 @@
  */
 
 import { loadImage, getCachedImage } from './asset-loader';
+import { getMoteIconPath } from './asset-paths';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
 
 const _warnedMissingMasks = new Set<string>();
+
+// ─── Luminance-to-alpha mask conversion (weapon PNG masks) ───────────────────
+// Weapon PNG files are black silhouettes on white backgrounds with no alpha
+// channel.  destination-in using the raw image treats the white background as
+// opaque and shows the whole square.  Convert once: dark=opaque, light=transparent.
+
+const _processedMaskCache = new Map<string, HTMLCanvasElement>();
+
+function getLuminanceMaskCanvas(
+  path: string,
+  maskImg: HTMLImageElement,
+  res: number,
+): HTMLCanvasElement {
+  const cached = _processedMaskCache.get(path);
+  if (cached) return cached;
+
+  const off = document.createElement('canvas');
+  off.width  = res;
+  off.height = res;
+  const ctx = off.getContext('2d')!;
+  ctx.drawImage(maskImg, 0, 0, res, res);
+
+  const imageData = ctx.getImageData(0, 0, res, res);
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    // dark pixels (weapon shape) → opaque; light pixels (background) → transparent
+    d[i + 3] = Math.max(0, Math.min(255, 255 - lum)) | 0;
+    d[i]     = 255;
+    d[i + 1] = 255;
+    d[i + 2] = 255;
+  }
+  ctx.putImageData(imageData, 0, 0);
+
+  _processedMaskCache.set(path, off);
+  return off;
+}
 
 function loadMaskWithWarning(path: string): void {
   loadImage(path).catch(() => {
@@ -282,11 +320,14 @@ export function drawMaskedAnimatedItemIcon(
   drawGradientFill(state.fillCtx, state.blobs, timeMs);
 
   if (maskImg) {
+    const maskSource = itemType === 'weapon'
+      ? getLuminanceMaskCanvas(maskPath, maskImg, FILL_RES)
+      : maskImg;
     state.maskCtx.clearRect(0, 0, FILL_RES, FILL_RES);
     state.maskCtx.globalCompositeOperation = 'source-over';
     state.maskCtx.drawImage(state.fillCanvas, 0, 0);
     state.maskCtx.globalCompositeOperation = 'destination-in';
-    state.maskCtx.drawImage(maskImg, 0, 0, FILL_RES, FILL_RES);
+    state.maskCtx.drawImage(maskSource, 0, 0, FILL_RES, FILL_RES);
     state.maskCtx.globalCompositeOperation = 'source-over';
     ctx.drawImage(state.maskCanvas, x, y, width, height);
   } else {
@@ -299,6 +340,7 @@ export function drawMaskedAnimatedItemIcon(
 interface LiveIconState {
   blobs: BlobDef[];
   maskPath: string;
+  isLuminanceMask: boolean;
   fillCanvas: HTMLCanvasElement;
   fillCtx: CanvasRenderingContext2D;
   maskCanvas: HTMLCanvasElement;
@@ -306,19 +348,70 @@ interface LiveIconState {
 }
 
 const liveIcons = new Map<HTMLCanvasElement, LiveIconState>();
+
+// ─── Mote-symbol icon canvases (weave/loom inventory) ────────────────────────
+
+interface MoteIconState {
+  tierId: TierId;
+  glowColor: string;
+}
+
+const _moteIcons = new Map<HTMLCanvasElement, MoteIconState>();
+const MOTE_ICON_ROTATION_RPS = 0.08; // rotations per second — slow, matches loom orbital
+
+/**
+ * Shared helper: draw the mote symbol/glyph sprite for a tier.
+ * Uses the same moteIcons/*.webp sprite the equation upgrades panel and
+ * loom orbital buttons use.  Falls back to a colored circle if the sprite
+ * has not yet loaded.
+ */
+export function drawEquationMoteIcon(
+  ctx: CanvasRenderingContext2D,
+  tierId: TierId,
+  x: number,
+  y: number,
+  size: number,
+  rotation = 0,
+): void {
+  const path = getMoteIconPath(tierId);
+  const img  = getCachedImage(path);
+  if (!img) {
+    loadImage(path).catch(() => {});
+    const tier = TIER_BY_ID.get(tierId);
+    if (tier) {
+      ctx.save();
+      ctx.fillStyle = tier.color;
+      ctx.beginPath();
+      ctx.arc(x + size / 2, y + size / 2, size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    return;
+  }
+  ctx.save();
+  ctx.translate(x + size / 2, y + size / 2);
+  ctx.rotate(rotation);
+  ctx.drawImage(img, -size / 2, -size / 2, size, size);
+  ctx.restore();
+}
+
 let rafHandle = 0;
 
 function rafLoop(nowMs: number): void {
-  // Prune disconnected canvases every frame
+  // Prune disconnected canvases
   for (const [canvas] of liveIcons) {
     if (!canvas.isConnected) liveIcons.delete(canvas);
   }
+  for (const [canvas] of _moteIcons) {
+    if (!canvas.isConnected) _moteIcons.delete(canvas);
+  }
 
-  if (liveIcons.size === 0) {
+  if (liveIcons.size === 0 && _moteIcons.size === 0) {
     rafHandle = 0;
     return;
   }
 
+  // ── Item icons (blob fill + mask) ─────────────────────────────────────────
   for (const [canvas, state] of liveIcons) {
     const ctx = canvas.getContext('2d');
     if (!ctx) continue;
@@ -332,11 +425,14 @@ function rafLoop(nowMs: number): void {
     ctx.clearRect(0, 0, w, h);
 
     if (maskImg) {
+      const maskSource = state.isLuminanceMask
+        ? getLuminanceMaskCanvas(state.maskPath, maskImg, FILL_RES)
+        : maskImg;
       state.maskCtx.clearRect(0, 0, FILL_RES, FILL_RES);
       state.maskCtx.globalCompositeOperation = 'source-over';
       state.maskCtx.drawImage(state.fillCanvas, 0, 0);
       state.maskCtx.globalCompositeOperation = 'destination-in';
-      state.maskCtx.drawImage(maskImg, 0, 0, FILL_RES, FILL_RES);
+      state.maskCtx.drawImage(maskSource, 0, 0, FILL_RES, FILL_RES);
       state.maskCtx.globalCompositeOperation = 'source-over';
       ctx.drawImage(state.maskCanvas, 0, 0, w, h);
     } else {
@@ -344,7 +440,53 @@ function rafLoop(nowMs: number): void {
     }
   }
 
+  // ── Mote-symbol icons (weave/loom inventory) ──────────────────────────────
+  const rotation = (nowMs / 1000) * MOTE_ICON_ROTATION_RPS * Math.PI * 2;
+  for (const [canvas, state] of _moteIcons) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) continue;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.shadowBlur = w * 0.5;
+    ctx.shadowColor = state.glowColor;
+    drawEquationMoteIcon(ctx, state.tierId, 0, 0, w, rotation);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
   rafHandle = requestAnimationFrame(rafLoop);
+}
+
+/**
+ * Creates a self-animating canvas showing the mote symbol sprite for a tier.
+ * Matches the visual used by the loom orbital buttons in the crafting page:
+ * the moteIcons/*.webp sprite with a slow rotation and tier-color glow.
+ * Use this for weave and loom inventory icons instead of the blob-fill renderer.
+ */
+export function createMoteIconCanvas(
+  tierId: TierId,
+  width: number,
+  height: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width  = width;
+  canvas.height = height;
+
+  const path = getMoteIconPath(tierId);
+  if (!getCachedImage(path)) {
+    loadImage(path).catch(() => {});
+  }
+
+  const glowColor = TIER_BY_ID.get(tierId)?.glowColor ?? '#ffffff';
+  _moteIcons.set(canvas, { tierId, glowColor });
+
+  if (rafHandle === 0) {
+    rafHandle = requestAnimationFrame(rafLoop);
+  }
+
+  return canvas;
 }
 
 /**
@@ -380,6 +522,7 @@ export function createItemIconCanvas(opts: ItemIconOptions): HTMLCanvasElement {
   liveIcons.set(canvas, {
     blobs: buildBlobs(composition, seed),
     maskPath,
+    isLuminanceMask: itemType === 'weapon',
     fillCanvas,
     fillCtx,
     maskCanvas,

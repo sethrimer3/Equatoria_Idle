@@ -12,7 +12,7 @@
 import type { CraftedWeaveData, WeaveTierEffect } from '../../data/rpg/weave-types';
 import type { WeaveSlotsPanel } from './weave-slots';
 import { TIER_BY_ID } from '../../data/tiers';
-import { createItemIconCanvas, stringToIconSeed, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
+import { createMoteIconCanvas, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
 
 export interface WeaveInventoryPanel {
   element: HTMLElement;
@@ -148,19 +148,12 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
 
     card.appendChild(header);
 
-    // Animated mote icon (equation-render style blob fill)
+    // Animated mote icon — same moteIcons sprite used by the loom orbital buttons
     {
       const comp = ingredientsToComposition(weave.ingredients);
       const domTierId = comp[0]?.tierId ?? 'sand';
       const domColor = TIER_BY_ID.get(domTierId)?.color ?? '#aaa';
-      const iconCanvas = createItemIconCanvas({
-        itemType: 'weave',
-        tierId: domTierId,
-        composition: comp.length > 0 ? comp : [{ tierId: domTierId, share: 1 }],
-        width: 36,
-        height: 36,
-        seed: stringToIconSeed(weave.id),
-      });
+      const iconCanvas = createMoteIconCanvas(domTierId, 36, 36);
       iconCanvas.style.cssText =
         'display:block;margin:4px 0;image-rendering:pixelated;' +
         'filter:drop-shadow(0 0 4px ' + domColor + '88);';
