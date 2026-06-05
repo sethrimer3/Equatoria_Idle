@@ -176,6 +176,7 @@ export function createForgeInventory(): ForgeInventory {
   let dragGhost: HTMLElement | null = null;
   let isDragging = false;
   let activeDragPointerId = -1;
+  let lastDragOverIdx = -1;
 
   function getSlotIndexAtPoint(x: number, y: number): number {
     const slots = grid.querySelectorAll<HTMLElement>('.forge-inventory__slot');
