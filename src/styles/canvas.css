@@ -1518,11 +1518,21 @@
   border-radius: 0 5px 5px 0;
 }
 
+.forge-craft__segment-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .forge-craft__segment-label {
+  position: relative;
+  z-index: 2;
   font-size: 0.7em;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 1), 0 0 8px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
