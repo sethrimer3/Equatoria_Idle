@@ -44,6 +44,7 @@ import { createWeaveSlotsPanel } from './weave-slots';
 import { createWeaveInventoryPanel } from './weave-inventory';
 import { getRefinedGemPath, getGeneratorSpritePath } from '../../render/assets/asset-paths';
 import { getCachedImage, loadImage } from '../../render/assets/asset-loader';
+import { getTintedSpriteCanvas } from '../../render/assets/sprite-tint';
 import { drawForgePreview } from '../../render/forge';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
 import { createForgeCrunchState } from '../../sim/forge/forge-state';
@@ -156,8 +157,11 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       const tier = TIER_BY_ID.get(tierId);
       if (!tier) continue;
       const loomSpritePath = getGeneratorSpritePath(tier.unlockOrder);
-      const loomSprite = getCachedImage(loomSpritePath);
-      if (!loomSprite) { loadImage(loomSpritePath).catch(() => {}); continue; }
+      const tinted = getTintedSpriteCanvas(loomSpritePath, tier.color);
+      if (!tinted) {
+        if (!getCachedImage(loomSpritePath)) loadImage(loomSpritePath).catch(() => {});
+        continue;
+      }
 
       const rot = (loomRotations.get(tierId) ?? 0) + LOOM_ROTATION_SPEED * frameDelta;
       loomRotations.set(tierId, rot);
@@ -169,7 +173,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       ctx.save();
       ctx.translate(s / 2, s / 2);
       ctx.rotate(rot);
-      ctx.drawImage(loomSprite, -s / 2, -s / 2, s, s);
+      ctx.drawImage(tinted, -s / 2, -s / 2, s, s);
       ctx.restore();
     }
 
