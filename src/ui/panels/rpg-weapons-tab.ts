@@ -402,62 +402,20 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
     }
     card.appendChild(nameRow);
 
-    // Procedural SVG icon — linear gradient filled from composition colors
+    // Animated masked icon — PNG silhouette clipped composition gradient blobs
     {
-      const svgNS = 'http://www.w3.org/2000/svg';
-      const iconSize = 36;
-      const gradId = `cw-grad-${craftedWeapon.id}`;
-      const svg = document.createElementNS(svgNS, 'svg');
-      svg.setAttribute('width', String(iconSize));
-      svg.setAttribute('height', String(iconSize));
-      svg.setAttribute('viewBox', '0 0 36 36');
-      svg.style.cssText = 'display:block;margin:4px 0;filter:drop-shadow(0 0 4px ' + dominantColor + '88);';
-
-      const defs = document.createElementNS(svgNS, 'defs');
-      const grad = document.createElementNS(svgNS, 'linearGradient');
-      grad.setAttribute('id', gradId);
-      grad.setAttribute('x1', '0%');
-      grad.setAttribute('y1', '0%');
-      grad.setAttribute('x2', '100%');
-      grad.setAttribute('y2', '100%');
-
-      // Build gradient stops from composition shares
-      let cumulative = 0;
-      const sorted = [...craftedWeapon.composition].sort((a, b) => b.share - a.share);
-      for (const entry of sorted) {
-        const color = TIER_BY_ID.get(entry.tierId as TierId)?.color ?? '#ffffff';
-        const stop1 = document.createElementNS(svgNS, 'stop');
-        stop1.setAttribute('offset', `${Math.round(cumulative * 100)}%`);
-        stop1.setAttribute('stop-color', color);
-        grad.appendChild(stop1);
-        cumulative += entry.share;
-        const stop2 = document.createElementNS(svgNS, 'stop');
-        stop2.setAttribute('offset', `${Math.round(cumulative * 100)}%`);
-        stop2.setAttribute('stop-color', color);
-        grad.appendChild(stop2);
-      }
-      defs.appendChild(grad);
-      svg.appendChild(defs);
-
-      // Crystal/diamond silhouette path (centered in 36×36 viewBox)
-      const path = document.createElementNS(svgNS, 'path');
-      // Diamond: top point, right ear, bottom point, left ear; with a horizontal divider line
-      path.setAttribute('d', 'M18 2 L30 14 L18 34 L6 14 Z');
-      path.setAttribute('fill', `url(#${gradId})`);
-      path.setAttribute('opacity', '0.92');
-      svg.appendChild(path);
-
-      // Horizontal facet line (top facet separator)
-      const line = document.createElementNS(svgNS, 'line');
-      line.setAttribute('x1', '6');
-      line.setAttribute('y1', '14');
-      line.setAttribute('x2', '30');
-      line.setAttribute('y2', '14');
-      line.setAttribute('stroke', 'rgba(255,255,255,0.25)');
-      line.setAttribute('stroke-width', '1');
-      svg.appendChild(line);
-
-      card.appendChild(svg);
+      const iconCanvas = createItemIconCanvas({
+        itemType: 'weapon',
+        tierId: craftedWeapon.dominantTierId,
+        composition: craftedWeapon.composition.map(e => ({ tierId: e.tierId, share: e.share })),
+        width: 48,
+        height: 48,
+        seed: stringToIconSeed(craftedWeapon.id),
+      });
+      iconCanvas.style.cssText =
+        'display:block;margin:4px 0;filter:drop-shadow(0 0 5px ' + dominantColor + '88);' +
+        'image-rendering:pixelated;';
+      card.appendChild(iconCanvas);
     }
 
     // Composition percentages
