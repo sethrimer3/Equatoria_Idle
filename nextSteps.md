@@ -1,6 +1,42 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#213**
+Current build: **#214**
+
+---
+
+## Build #214 — Masked animated item icon renderer (PNG silhouette + radial-gradient blobs)
+
+### Completed in this build
+
+* **`src/render/assets/item-icon-renderer.ts`** (new) — generic masked animated fill renderer:
+  - `getItemMaskPath(itemType, tierId)` resolves PNG paths from naming convention (`ASSETS/SPRITES/ITEMS/WEAPONS/${tierId}Weapon.png`, etc.).
+  - `createItemIconCanvas(opts)` returns a self-animating `HTMLCanvasElement` driven by an internal `requestAnimationFrame` loop. Canvas auto-unregisters when disconnected from the DOM.
+  - `drawMaskedAnimatedItemIcon(ctx, opts)` for direct embedding in game canvas rendering.
+  - Animation: per-composition-entry radial-gradient blobs drifting via `sin`/`cos` with seeded deterministic layout. Blob count/size scales with composition share.
+  - Compositing: 64×64 offscreen fill canvas → `destination-in` PNG alpha mask → scaled to target size.
+  - Graceful fallback: diamond clip-path if mask PNG is absent; PNG loads asynchronously in background via `prefetchItemMask`.
+  - `ingredientsToComposition(ingredients)` utility for weave/lens ingredient arrays.
+  - `stringToIconSeed(id)` converts item id string to a stable numeric seed.
+* **`src/render/assets/index.ts`** — re-exports new module.
+* **`src/ui/panels/rpg-weapons-tab.ts`** — replaced static SVG diamond gradient icon in crafted weapon cards with `createItemIconCanvas` (48×48, `weapon` type, full composition data).
+* **`src/ui/panels/weave-inventory.ts`** — added 36×36 animated icon to weave cards (derived from ingredients).
+* **`src/ui/panels/lens-inventory.ts`** — added 36×36 animated icon to lens cards (derived from ingredients).
+* **`ASSETS/SPRITES/ITEMS/WEAPONS/sandWeapon.png`** — first production mask asset (sand gatling / flurry of squares); confirms naming convention.
+
+### Asset convention
+Drop new PNG silhouettes here and they work automatically:
+- `ASSETS/SPRITES/ITEMS/WEAPONS/${tierId}Weapon.png`
+- `ASSETS/SPRITES/ITEMS/WEAVES/${tierId}Weave.png`
+- `ASSETS/SPRITES/ITEMS/LENSES/${tierId}Lens.png`
+
+### Deferred / next steps
+
+* **Add more PNG mask assets** for quartz, ruby, and other tiers as art is created.
+* **Weave/lens masks**: currently no PNG assets exist for weaves or lenses; cards use diamond fallback until PNGs are added.
+* **Overlay/outline layer**: a thin glowing border following the mask silhouette would add polish. Deferred — requires second compositing pass.
+* **Per-item special effects** (e.g., fracteryl fractal shimmer, nullstone void pulse): deferred, design-dependent.
+* **Static caching** for paused/off-screen items: the RAF loop self-idles when no canvases are connected, so this is not urgent.
+* **Segment label overflow on narrow segments**: still deferred from Build #210.
 
 ---
 
