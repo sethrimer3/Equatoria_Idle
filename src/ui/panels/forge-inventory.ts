@@ -190,6 +190,7 @@ export function createForgeInventory(): ForgeInventory {
   function clearDragHighlight(): void {
     grid.querySelectorAll('.forge-inventory__slot--drag-over')
       .forEach(el => el.classList.remove('forge-inventory__slot--drag-over'));
+    lastDragOverIdx = -1;
   }
 
   function cleanupDrag(): void {
@@ -206,11 +207,15 @@ export function createForgeInventory(): ForgeInventory {
       dragGhost.style.left = `${e.clientX - 28}px`;
       dragGhost.style.top = `${e.clientY - 28}px`;
     }
-    clearDragHighlight();
     const targetIdx = getSlotIndexAtPoint(e.clientX, e.clientY);
-    if (targetIdx !== -1 && targetIdx !== dragSourceIdx) {
-      const slots = grid.querySelectorAll<HTMLElement>('.forge-inventory__slot');
-      slots[targetIdx]?.classList.add('forge-inventory__slot--drag-over');
+    const newDragOver = (targetIdx !== -1 && targetIdx !== dragSourceIdx) ? targetIdx : -1;
+    if (newDragOver !== lastDragOverIdx) {
+      clearDragHighlight();
+      if (newDragOver !== -1) {
+        const slots = grid.querySelectorAll<HTMLElement>('.forge-inventory__slot');
+        slots[newDragOver]?.classList.add('forge-inventory__slot--drag-over');
+        lastDragOverIdx = newDragOver;
+      }
     }
   }
 
