@@ -25,6 +25,7 @@ import {
   CHAIN_WHIP_PARAM_DEFAULTS,
 } from '../../render/rpg/rpg-weapon-constants';
 import type { ChainWhipParamKey } from '../../render/rpg/rpg-weapon-constants';
+import { createItemIconCanvas, stringToIconSeed } from '../../render/assets/item-icon-renderer';
 
 // Sand blade accent color — matches the player mote's gold-sand glow.
 const SAND_BLADE_ACCENT_COLOR = '#ffd764';
