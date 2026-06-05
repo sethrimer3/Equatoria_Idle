@@ -249,18 +249,43 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     if (!inventoryEl || !latestRpgState) return;
     const invMap = latestRpgState.refinedCrystalsByTierId;
     const hasAnyCrystals = Array.from(invMap.values()).some(n => n > 0);
+    inventoryEl.innerHTML = '';
+
     if (!hasAnyCrystals && !latestIsDevMode) {
       inventoryEl.textContent = 'No refined crystals yet. Trigger forge crunches to produce them.';
       return;
     }
 
-    const rows: string[] = [];
+    // Label
+    const label = document.createElement('span');
+    label.style.cssText = 'color:#888;margin-right:6px;';
+    label.textContent = 'Crystals:';
+    inventoryEl.appendChild(label);
+
+    // One chip per tier
     for (const tier of TIERS) {
       const count = invMap.get(tier.id) ?? 0;
       if (count <= 0 && !latestIsDevMode) continue;
-      rows.push(`${tier.displayName}: ${latestIsDevMode && count === 0 ? 'inf' : count}`);
+
+      const chip = document.createElement('span');
+      chip.style.cssText =
+        'display:inline-flex;align-items:center;gap:3px;' +
+        'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);' +
+        'border-radius:4px;padding:1px 5px 1px 2px;margin:2px 3px 2px 0;';
+
+      const img = document.createElement('img');
+      img.src = getRefinedGemPath(tier.id);
+      img.alt = tier.displayName;
+      img.style.cssText = 'width:16px;height:16px;object-fit:contain;image-rendering:pixelated;';
+
+      const countEl = document.createElement('span');
+      countEl.style.cssText = `color:${tier.color};font-size:0.8em;font-weight:600;`;
+      countEl.textContent = latestIsDevMode && count === 0 ? '∞' : String(count);
+
+      chip.appendChild(img);
+      chip.appendChild(countEl);
+      inventoryEl.appendChild(chip);
     }
-    inventoryEl.textContent = rows.length > 0 ? 'Refined crystals: ' + rows.join(' · ') : '';
   }
 
   // ── Mote loom field ───────────────────────────────────────────────────────
