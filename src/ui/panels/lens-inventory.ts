@@ -65,6 +65,25 @@ function buildLensCard(
   }
   card.appendChild(ingRow);
 
+  // Animated masked icon
+  {
+    const comp = ingredientsToComposition(lens.ingredients);
+    const domTierId = comp[0]?.tierId ?? 'sand';
+    const iconCanvas = createItemIconCanvas({
+      itemType: 'lens',
+      tierId: domTierId,
+      composition: comp.length > 0 ? comp : [{ tierId: domTierId, share: 1 }],
+      width: 36,
+      height: 36,
+      seed: stringToIconSeed(lens.id),
+    });
+    const domColorLens = TIER_BY_ID.get(domTierId)?.color ?? '#aaa';
+    iconCanvas.style.cssText =
+      'display:block;margin:4px 0;filter:drop-shadow(0 0 4px ' + domColorLens + '88);' +
+      'image-rendering:pixelated;';
+    card.appendChild(iconCanvas);
+  }
+
   // Total mote-weight
   const powerRow = document.createElement('div');
   powerRow.style.cssText = 'font-size:0.72em;color:#aaa;margin:2px 0;';
