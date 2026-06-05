@@ -12,6 +12,7 @@
 import type { CraftedWeaveData, WeaveTierEffect } from '../../data/rpg/weave-types';
 import type { WeaveSlotsPanel } from './weave-slots';
 import { TIER_BY_ID } from '../../data/tiers';
+import { createItemIconCanvas, stringToIconSeed, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
 
 export interface WeaveInventoryPanel {
   element: HTMLElement;
