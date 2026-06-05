@@ -61,6 +61,7 @@ export async function startApp(): Promise<void> {
   // ── Preload essential sprites ──
   preloadGeneratorSprites();
   preloadForgeSprites();
+  preloadRefinedGemSprites();
 
   // ── Initialize game state ──
   const resetPending = sessionStorage.getItem('equatoria_reset_pending') === '1';
