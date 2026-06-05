@@ -1,6 +1,29 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#214**
+Current build: **#215**
+
+---
+
+## Build #215 — Refined gem sprites wired into all UI
+
+### Completed in this build
+
+* **`src/render/assets/asset-paths.ts`** — `REFINED_GEM_MAP` updated:
+  - fracteryl and eigenstein now point to their own dedicated sprites (`refinedFracteryl.png`, `refinedEigenstein.png`) instead of falling back to nullstone.
+  - Map stores full filename with extension so `.webp` and `.png` entries coexist cleanly.
+* **`src/render/assets/refined-gem-preload.ts`** (new) — `preloadRefinedGemSprites()` fires off all 13 refined gem images at startup so they land in cache before any UI needs them.
+* **`src/app/game-app.ts`** — calls `preloadRefinedGemSprites()` at startup alongside generator and forge sprite preloads.
+* **`src/ui/panels/rpg-weapon-crafting-page.ts`**:
+  - Loom glyph animation (`animTick`) now draws the refined gem sprite for each tier instead of a tinted generator sprite. The gems spin in the orbital loom buttons, giving immediate visual feedback of which crystal type each button represents.
+  - `refreshInventory()` redesigned from a single text string to per-tier icon chips (16 px sprite + colored count), matching the resource panel style.
+* **`src/ui/panels/rpg-weapons-tab.ts`**:
+  - Refined crystal inventory section (in the Forge Crafting panel) converted from text to icon chips.
+  - Ingredient input rows now show the 18 px refined gem sprite beside each label.
+
+### Deferred / next steps
+
+* **Forge inventory slot icons** — the golden weapon-slot grid in `forge-inventory.ts` currently uses SVG diamond icons; could adopt the masked animated icon system from Build #214.
+* **Weapon store panel** — basic (non-crafted) weapon cards have no icon; they use the weapon's `costTierId` gem as a natural candidate.
 
 ---
 
