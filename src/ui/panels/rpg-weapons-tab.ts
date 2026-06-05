@@ -506,19 +506,34 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
 
     // Refined crystal inventory
     const inventoryEl = document.createElement('div');
-    inventoryEl.style.cssText = 'font-size:0.8em;margin-bottom:10px;color:#bbb;';
-    if (rpgState.refinedCrystalsByTierId.size === 0) {
+    inventoryEl.style.cssText = 'font-size:0.8em;margin-bottom:10px;display:flex;flex-wrap:wrap;align-items:center;gap:2px;';
+    const hasAnyCrystals = Array.from(rpgState.refinedCrystalsByTierId.values()).some(n => n > 0);
+    if (!hasAnyCrystals) {
       inventoryEl.textContent = 'No refined crystals yet. Trigger forge crunches to produce them.';
     } else {
-      const rows: string[] = [];
+      const invLabel = document.createElement('span');
+      invLabel.style.cssText = 'color:#888;margin-right:4px;';
+      invLabel.textContent = 'Crystals:';
+      inventoryEl.appendChild(invLabel);
       for (const [tierId, count] of rpgState.refinedCrystalsByTierId) {
         if (count <= 0) continue;
-        const name = TIER_BY_ID.get(tierId as TierId)?.displayName ?? tierId;
-        rows.push(`${name}: ${count}`);
+        const tierDef = TIER_BY_ID.get(tierId as TierId);
+        const chip = document.createElement('span');
+        chip.style.cssText =
+          'display:inline-flex;align-items:center;gap:3px;' +
+          'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);' +
+          'border-radius:4px;padding:1px 5px 1px 2px;margin:1px 2px;';
+        const img = document.createElement('img');
+        img.src = getRefinedGemPath(tierId as TierId);
+        img.alt = tierDef?.displayName ?? tierId;
+        img.style.cssText = 'width:16px;height:16px;object-fit:contain;image-rendering:pixelated;';
+        const countEl = document.createElement('span');
+        countEl.style.cssText = `color:${tierDef?.color ?? '#fff'};font-weight:600;`;
+        countEl.textContent = String(count);
+        chip.appendChild(img);
+        chip.appendChild(countEl);
+        inventoryEl.appendChild(chip);
       }
-      inventoryEl.textContent = rows.length > 0
-        ? 'Refined crystals: ' + rows.join(' · ')
-        : 'No refined crystals yet. Trigger forge crunches to produce them.';
     }
     panel.appendChild(inventoryEl);
 
