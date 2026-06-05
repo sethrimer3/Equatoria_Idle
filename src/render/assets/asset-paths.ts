@@ -33,24 +33,25 @@ export function getGemIconPath(tierId: TierId): string {
 
 // ── Refined Gem Icons ──────────────────────────────────────────
 
+/** Full filename (with extension) for each refined gem sprite. */
 const REFINED_GEM_MAP: Record<TierId, string> = {
-  sand: 'refinedSand',
-  quartz: 'refinedQuartz',
-  ruby: 'refinedRuby',
-  sunstone: 'refinedSunstone',
-  citrine: 'refinedCitrine',
-  emerald: 'refinedEmerald',
-  sapphire: 'refinedSapphire',
-  iolite: 'refinedIolite',
-  amethyst: 'refinedAmethyst',
-  diamond: 'refinedDiamond',
-  nullstone: 'refinedNullstone',
-  fracteryl: 'refinedNullstone',
-  eigenstein: 'refinedNullstone',
+  sand:       'refinedSand.webp',
+  quartz:     'refinedQuartz.webp',
+  ruby:       'refinedRuby.webp',
+  sunstone:   'refinedSunstone.webp',
+  citrine:    'refinedCitrine.webp',
+  emerald:    'refinedEmerald.webp',
+  sapphire:   'refinedSapphire.webp',
+  iolite:     'refinedIolite.webp',
+  amethyst:   'refinedAmethyst.webp',
+  diamond:    'refinedDiamond.webp',
+  nullstone:  'refinedNullstone.webp',
+  fracteryl:  'refinedFracteryl.png',
+  eigenstein: 'refinedEigenstein.png',
 };
 
 export function getRefinedGemPath(tierId: TierId): string {
-  return `${BASE}/SPRITES/refinedGems/${REFINED_GEM_MAP[tierId]}.webp`;
+  return `${BASE}/SPRITES/refinedGems/${REFINED_GEM_MAP[tierId]}`;
 }
 
 /**
