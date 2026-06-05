@@ -12,6 +12,7 @@
 
 import type { IdleRewardSummary } from '../../sim/idle/idle-reward';
 import { formatNumber } from '../../util';
+import { getMoteIconPath } from '../../render/assets/asset-paths';
 
 // ─── Types ────────────────────────────────────────────────────────
 
