@@ -17,6 +17,7 @@ import {
 } from '../render';
 import { preloadGeneratorSprites } from '../render/generators/generator-renderer';
 import { preloadForgeSprites } from '../render/forge/forge-renderer';
+import { preloadRefinedGemSprites } from '../render/assets/refined-gem-preload';
 import { createBackgroundAnimation, createVermiculateEffect, createSubstrateEffect } from '../render/background';
 import { type GameAction } from '../input';
 import { createParticleDragState } from '../input/particle-drag';
