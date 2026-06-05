@@ -297,6 +297,18 @@
 - `activeRingCount` (0–5): lit rings spin at `FORGE_RING_ACTIVE_SPIN_MULTIPLIER` (4×) and render at 1.8× alpha; unlit rings keep their subtle idle animation.
 - Contains the data-driven five-ring config for sprite path, radius scale, rotation speed/direction, opacity, phase, and optional pulsing.
 
+### src/render/assets/item-icon-renderer.ts
+- Masked animated fill renderer for item icons (weapons, weaves, lenses).
+- Uses PNG silhouette masks (alpha channel, `destination-in` compositing) to clip animated radial-gradient blobs.
+- `createItemIconCanvas(opts)` — returns a self-animating `HTMLCanvasElement` driven by a shared internal RAF loop. Canvas auto-unregisters when removed from DOM.
+- `drawMaskedAnimatedItemIcon(ctx, opts)` — standalone draw for embedding in game canvas contexts.
+- `getItemMaskPath(itemType, tierId)` — resolves PNG paths from the naming convention.
+- `prefetchItemMask(itemType, tierId)` — kicks off async background load.
+- `ingredientsToComposition(ingredients)` — converts raw ingredient counts to `CompositionEntry[]` shares.
+- `stringToIconSeed(id)` — deterministic numeric seed from item id string.
+- Graceful fallback: diamond clip-path when no PNG mask is loaded yet.
+- Asset convention: `ASSETS/SPRITES/ITEMS/{WEAPONS|WEAVES|LENSES}/${tierId}{Weapon|Weave|Lens}.png`.
+
 ### src/render/assets/color-utils.ts
 - Shared color parsing utilities for the render layer.
 - `colorWithAlpha(color, alpha)` — converts `#RRGGBB` or `rgb()` strings to `rgba()`, used by generator and forge renderers.
