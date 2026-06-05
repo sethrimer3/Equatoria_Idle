@@ -10,6 +10,7 @@ import type { CraftedLensData, LensEffect } from '../../data/rpg/lens-types';
 import type { CraftedWeaponData } from '../../data/rpg/crafted-weapon-types';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { ActionHandler } from '../../input';
+import { createItemIconCanvas, stringToIconSeed, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
 
 // ─── Rarity colors ────────────────────────────────────────────────
 
