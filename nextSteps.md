@@ -1,6 +1,29 @@
 # Next Steps — Equatoria Idle
 
-Current build: **#215**
+Current build: **#216**
+
+---
+
+## Build #216 — Asset path unification + status effect icons + fracteryl/eigenstein mote icons
+
+### Completed in this build
+
+* **`src/render/assets/asset-paths.ts`** — full rewrite of all three sprite-set path functions:
+  - `getMoteIconPath(tierId)` — new primary function, points to `ASSETS/SPRITES/moteIcons/{tierId}.webp`. All 13 tiers including fracteryl and eigenstein have dedicated sprites.
+  - `getGemIconPath(tierId)` — kept as a `@deprecated` alias for `getMoteIconPath` so old call sites compile without changes.
+  - `getRefinedGemPath(tierId)` — updated folder to `ASSETS/SPRITES/refinedMotes/` (was `refinedGems`). All extensions uniformly `.webp`. fracteryl/eigenstein fall back to nullstone (no dedicated refined sprites yet).
+  - `getStatusEffectIconPath(key: EnemyStatusKey)` — new function, maps each of the 13 status keys to its tier icon at `ASSETS/SPRITES/statusEffectIcons/{tierId}.webp`. Includes `STATUS_EFFECT_TIER` mapping table.
+* **`src/render/assets/refined-gem-preload.ts`** — extended to also preload mote icons and status effect icons at startup (previously only loaded refined gems).
+* **`src/render/rpg/enemy-status-render.ts`** — upgraded from text-only ABR/BRN/PSN tags to sprite icons:
+  - Draws `ICON_SIZE=10px` status effect sprites in a row above each enemy, with a dark background rounded square and colored glow border.
+  - Falls back to text tag if the sprite is not yet cached (covers the first frame before preload completes).
+* **`src/ui/idle/idle-overlay.ts`** — replaced the colored dot `<span>` with a 20 px `<img>` using `getMoteIconPath` for each tier row in the idle reward popup.
+* **`src/ui/panels/equation-panel.ts`** — updated import from `getGemIconPath` to `getMoteIconPath` (same behavior, correct folder now).
+
+### Deferred / next steps
+
+* **Dedicated refined mote sprites for fracteryl and eigenstein** — currently fall back to nullstone. Add `refinedFracteryl.webp` and `refinedEigenstein.webp` to `ASSETS/SPRITES/refinedMotes/` when art is ready, then update `REFINED_MOTE_MAP`.
+* **Achievements tab mote icons** — the achievements panel may use `getGemIconPath`; confirm and migrate once the panel is rebuilt.
 
 ---
 
