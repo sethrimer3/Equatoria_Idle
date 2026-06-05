@@ -88,6 +88,60 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let animRafId: number | null = null;
   let lastAnimMs: number | null = null;
 
+  // ── Segment blob fills ────────────────────────────────────────────────────
+  const FILL_W = 64;
+  const FILL_H = 16;
+  const BLOB_COUNT = 6;
+
+  interface SegmentFillEntry {
+    canvas: HTMLCanvasElement;
+    color: string;
+    segIndex: number;
+  }
+  let activeSegmentFills: SegmentFillEntry[] = [];
+
+  function hexToRgb(hex: string): [number, number, number] {
+    const h = hex.replace('#', '');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
+  function drawSegmentBlobs(canvas: HTMLCanvasElement, color: string, segIndex: number, timeMs: number): void {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    const [r, g, b] = hexToRgb(color);
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = `rgb(${Math.round(r * 0.18)},${Math.round(g * 0.18)},${Math.round(b * 0.18)})`;
+    ctx.fillRect(0, 0, w, h);
+
+    const t = timeMs / 1000;
+    for (let bi = 0; bi < BLOB_COUNT; bi++) {
+      const seed = segIndex * 7 + bi * 13;
+      const speed = 0.14 + (seed % 5) * 0.038;
+      const phase = (seed * 1.618) % (Math.PI * 2);
+      const bx = (0.1 + 0.8 * ((Math.sin(t * speed + phase) + 1) / 2)) * w;
+      const by = (0.1 + 0.8 * ((Math.cos(t * speed * 0.71 + phase * 1.3) + 1) / 2)) * h;
+      const blobR = h * (0.8 + (seed % 3) * 0.25);
+      const variant = bi % 3;
+      let rr: number, gg: number, bb: number;
+      if (variant === 0) {
+        rr = Math.min(255, r + 90); gg = Math.min(255, g + 90); bb = Math.min(255, b + 90);
+      } else if (variant === 1) {
+        rr = r; gg = g; bb = b;
+      } else {
+        rr = Math.min(255, r + 50); gg = Math.min(255, g + 50); bb = Math.min(255, b + 50);
+      }
+      const alpha = 0.42 + (seed % 4) * 0.06;
+      const grad = ctx.createRadialGradient(bx, by, 0, bx, by, blobR);
+      grad.addColorStop(0, `rgba(${Math.round(rr)},${Math.round(gg)},${Math.round(bb)},${alpha})`);
+      grad.addColorStop(1, `rgba(${Math.round(rr)},${Math.round(gg)},${Math.round(bb)},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
   function animTick(nowMs: number): void {
     const deltaMs = lastAnimMs !== null ? nowMs - lastAnimMs : 16.67;
     lastAnimMs = nowMs;
@@ -117,6 +171,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       ctx.rotate(rot);
       ctx.drawImage(tinted, -s / 2, -s / 2, s, s);
       ctx.restore();
+    }
+
+    for (const entry of activeSegmentFills) {
+      if (entry.canvas.offsetWidth > 4) {
+        drawSegmentBlobs(entry.canvas, entry.color, entry.segIndex, nowMs);
+      }
     }
 
     animRafId = requestAnimationFrame(animTick);
