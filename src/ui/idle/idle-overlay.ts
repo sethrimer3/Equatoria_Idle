@@ -137,9 +137,11 @@ export function createIdleOverlay(): IdleOverlay {
         row.setAttribute('aria-hidden', 'true');
       }
 
-      const dot = document.createElement('span');
+      const dot = document.createElement('img');
       dot.className = 'idle-overlay__tier-dot';
-      dot.style.background = reward.color;
+      dot.src = getMoteIconPath(reward.tierId);
+      dot.alt = reward.displayName;
+      dot.style.cssText = 'width:20px;height:20px;object-fit:contain;image-rendering:pixelated;flex-shrink:0;';
 
       const name = document.createElement('span');
       name.className = 'idle-overlay__row-name';
