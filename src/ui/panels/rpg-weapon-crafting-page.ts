@@ -155,9 +155,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     for (const [tierId, canvas] of loomCanvases) {
       const tier = TIER_BY_ID.get(tierId);
       if (!tier) continue;
-      const spritePath = getGeneratorSpritePath(tier.unlockOrder);
-      const tinted = getTintedSpriteCanvas(spritePath, tier.color);
-      if (!tinted) continue;
+      const gemSprite = getCachedImage(getRefinedGemPath(tierId));
+      if (!gemSprite) continue;
 
       const rot = (loomRotations.get(tierId) ?? 0) + LOOM_ROTATION_SPEED * frameDelta;
       loomRotations.set(tierId, rot);
@@ -169,7 +168,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       ctx.save();
       ctx.translate(s / 2, s / 2);
       ctx.rotate(rot);
-      ctx.drawImage(tinted, -s / 2, -s / 2, s, s);
+      ctx.drawImage(gemSprite, -s / 2, -s / 2, s, s);
       ctx.restore();
     }
 
