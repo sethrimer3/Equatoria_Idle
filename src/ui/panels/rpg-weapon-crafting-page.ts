@@ -676,7 +676,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   function getValidationMessage(): string | null {
     const n = selectedTiers.length;
     if (craftingMode === 'weapon') {
-      if (n < 2) return 'Select at least 2 mote types to craft.';
+      if (n < 1) return 'Select at least 1 mote type to craft.';
     } else if (craftingMode === 'weave') {
       if (n === 0) return 'Select at least 1 mote type to weave.';
     } else {
