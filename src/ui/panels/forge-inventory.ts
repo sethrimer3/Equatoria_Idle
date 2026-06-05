@@ -8,9 +8,9 @@
  */
 
 import type { CraftedWeaponData } from '../../data/rpg/crafted-weapon-types';
-import type { TierId } from '../../data/tiers';
 import { TIER_BY_ID } from '../../data/tiers';
 import { getCraftedModifierLines, formatCraftedWeaponModifier } from '../../data/rpg/crafted-weapon-helpers';
+import { createItemIconCanvas, stringToIconSeed } from '../../render/assets/item-icon-renderer';
 
 const MIN_SLOT_COUNT = 12;
 
@@ -119,55 +119,21 @@ export function createForgeInventory(): ForgeInventory {
     }, 0);
   }
 
-  // ── SVG icon builder ───────────────────────────────────────────────
+  // ── Weapon icon canvas builder ──────────────────────────────────────
 
-  function buildWeaponSvg(weapon: CraftedWeaponData, size = 40): SVGSVGElement {
-    const ns = 'http://www.w3.org/2000/svg';
-    const gradId = `inv-grad-${weapon.id}`;
-    const svg = document.createElementNS(ns, 'svg') as SVGSVGElement;
-    svg.setAttribute('width', String(size));
-    svg.setAttribute('height', String(size));
-    svg.setAttribute('viewBox', '0 0 36 36');
+  function buildWeaponIconCanvas(weapon: CraftedWeaponData, size = 40): HTMLCanvasElement {
     const dominantColor = TIER_BY_ID.get(weapon.dominantTierId)?.color ?? '#fff';
-    svg.style.cssText = `display:block;filter:drop-shadow(0 0 3px ${dominantColor}99);`;
-
-    const defs = document.createElementNS(ns, 'defs');
-    const grad = document.createElementNS(ns, 'linearGradient');
-    grad.setAttribute('id', gradId);
-    grad.setAttribute('x1', '0%'); grad.setAttribute('y1', '0%');
-    grad.setAttribute('x2', '100%'); grad.setAttribute('y2', '100%');
-
-    let cumulative = 0;
-    const sorted = [...weapon.composition].sort((a, b) => b.share - a.share);
-    for (const entry of sorted) {
-      const color = TIER_BY_ID.get(entry.tierId as TierId)?.color ?? '#ffffff';
-      const s1 = document.createElementNS(ns, 'stop');
-      s1.setAttribute('offset', `${Math.round(cumulative * 100)}%`);
-      s1.setAttribute('stop-color', color);
-      grad.appendChild(s1);
-      cumulative += entry.share;
-      const s2 = document.createElementNS(ns, 'stop');
-      s2.setAttribute('offset', `${Math.round(cumulative * 100)}%`);
-      s2.setAttribute('stop-color', color);
-      grad.appendChild(s2);
-    }
-    defs.appendChild(grad);
-    svg.appendChild(defs);
-
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', 'M18 2 L30 14 L18 34 L6 14 Z');
-    path.setAttribute('fill', `url(#${gradId})`);
-    path.setAttribute('opacity', '0.92');
-    svg.appendChild(path);
-
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', '6'); line.setAttribute('y1', '14');
-    line.setAttribute('x2', '30'); line.setAttribute('y2', '14');
-    line.setAttribute('stroke', 'rgba(255,255,255,0.25)');
-    line.setAttribute('stroke-width', '1');
-    svg.appendChild(line);
-
-    return svg;
+    const iconCanvas = createItemIconCanvas({
+      itemType: 'weapon',
+      tierId: weapon.dominantTierId,
+      composition: weapon.composition.map(e => ({ tierId: e.tierId, share: e.share })),
+      width: size,
+      height: size,
+      seed: stringToIconSeed(weapon.id),
+    });
+    iconCanvas.style.cssText =
+      `display:block;image-rendering:pixelated;filter:drop-shadow(0 0 3px ${dominantColor}99);`;
+    return iconCanvas;
   }
 
   // ── Drag-and-drop state ────────────────────────────────────────────
@@ -242,8 +208,7 @@ export function createForgeInventory(): ForgeInventory {
 
     if (!weapon) return slot;
 
-    const svg = buildWeaponSvg(weapon, 40);
-    slot.appendChild(svg);
+    slot.appendChild(buildWeaponIconCanvas(weapon, 40));
 
     const lvlBadge = document.createElement('span');
     lvlBadge.className = 'forge-inventory__lvl';
@@ -281,7 +246,7 @@ export function createForgeInventory(): ForgeInventory {
 
         const ghost = document.createElement('div');
         ghost.className = 'forge-inventory__drag-ghost';
-        ghost.appendChild(buildWeaponSvg(weapon, 56));
+        ghost.appendChild(buildWeaponIconCanvas(weapon, 56));
         ghost.style.left = `${e.clientX - 28}px`;
         ghost.style.top = `${e.clientY - 28}px`;
         document.body.appendChild(ghost);

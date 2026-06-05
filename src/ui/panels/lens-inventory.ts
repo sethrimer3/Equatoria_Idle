@@ -10,8 +10,7 @@ import type { CraftedLensData, LensEffect } from '../../data/rpg/lens-types';
 import type { CraftedWeaponData } from '../../data/rpg/crafted-weapon-types';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { ActionHandler } from '../../input';
-import { ingredientsToComposition } from '../../render/assets/item-icon-renderer';
-import { getMoteIconPath } from '../../render/assets/asset-paths';
+import { createItemIconCanvas, stringToIconSeed, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
 
 // ─── Rarity colors ────────────────────────────────────────────────
 
@@ -66,19 +65,23 @@ function buildLensCard(
   }
   card.appendChild(ingRow);
 
-  // Mote icon (equation-render style)
+  // Animated mote icon (equation-render style blob fill)
   {
     const comp = ingredientsToComposition(lens.ingredients);
     const domTierId = comp[0]?.tierId ?? 'sand';
     const domColorLens = TIER_BY_ID.get(domTierId)?.color ?? '#aaa';
-    const icon = document.createElement('img');
-    icon.src = getMoteIconPath(domTierId);
-    icon.alt = '';
-    icon.className = 'gem-icon';
-    icon.style.cssText =
-      'display:block;width:32px;height:32px;margin:4px 0;object-fit:contain;' +
-      'image-rendering:pixelated;filter:drop-shadow(0 0 4px ' + domColorLens + '88);';
-    card.appendChild(icon);
+    const iconCanvas = createItemIconCanvas({
+      itemType: 'lens',
+      tierId: domTierId,
+      composition: comp.length > 0 ? comp : [{ tierId: domTierId, share: 1 }],
+      width: 36,
+      height: 36,
+      seed: stringToIconSeed(lens.id),
+    });
+    iconCanvas.style.cssText =
+      'display:block;margin:4px 0;image-rendering:pixelated;' +
+      'filter:drop-shadow(0 0 4px ' + domColorLens + '88);';
+    card.appendChild(iconCanvas);
   }
 
   // Total mote-weight

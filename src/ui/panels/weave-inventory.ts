@@ -12,8 +12,7 @@
 import type { CraftedWeaveData, WeaveTierEffect } from '../../data/rpg/weave-types';
 import type { WeaveSlotsPanel } from './weave-slots';
 import { TIER_BY_ID } from '../../data/tiers';
-import { ingredientsToComposition } from '../../render/assets/item-icon-renderer';
-import { getMoteIconPath } from '../../render/assets/asset-paths';
+import { createItemIconCanvas, stringToIconSeed, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
 
 export interface WeaveInventoryPanel {
   element: HTMLElement;
@@ -149,19 +148,23 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
 
     card.appendChild(header);
 
-    // Mote icon (equation-render style)
+    // Animated mote icon (equation-render style blob fill)
     {
       const comp = ingredientsToComposition(weave.ingredients);
       const domTierId = comp[0]?.tierId ?? 'sand';
       const domColor = TIER_BY_ID.get(domTierId)?.color ?? '#aaa';
-      const icon = document.createElement('img');
-      icon.src = getMoteIconPath(domTierId);
-      icon.alt = '';
-      icon.className = 'gem-icon';
-      icon.style.cssText =
-        'display:block;width:32px;height:32px;margin:4px 0;object-fit:contain;' +
-        'image-rendering:pixelated;filter:drop-shadow(0 0 4px ' + domColor + '88);';
-      card.appendChild(icon);
+      const iconCanvas = createItemIconCanvas({
+        itemType: 'weave',
+        tierId: domTierId,
+        composition: comp.length > 0 ? comp : [{ tierId: domTierId, share: 1 }],
+        width: 36,
+        height: 36,
+        seed: stringToIconSeed(weave.id),
+      });
+      iconCanvas.style.cssText =
+        'display:block;margin:4px 0;image-rendering:pixelated;' +
+        'filter:drop-shadow(0 0 4px ' + domColor + '88);';
+      card.appendChild(iconCanvas);
     }
 
     // Affix rows
