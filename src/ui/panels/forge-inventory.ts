@@ -132,7 +132,8 @@ export function createForgeInventory(): ForgeInventory {
       seed: stringToIconSeed(weapon.id),
     });
     iconCanvas.style.cssText =
-      `display:block;image-rendering:pixelated;filter:drop-shadow(0 0 3px ${dominantColor}99);`;
+      `display:block;image-rendering:pixelated;` +
+      `filter:drop-shadow(0 0 1px rgba(255,255,255,0.85)) drop-shadow(0 0 3px ${dominantColor}99);`;
     return iconCanvas;
   }
 
@@ -243,6 +244,7 @@ export function createForgeInventory(): ForgeInventory {
         isDragging = true;
         dragSourceIdx = index;
         activeDragPointerId = e.pointerId;
+        slot.setPointerCapture(e.pointerId);
 
         const ghost = document.createElement('div');
         ghost.className = 'forge-inventory__drag-ghost';

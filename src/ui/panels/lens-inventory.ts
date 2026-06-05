@@ -73,7 +73,7 @@ function buildLensCard(
     const iconCanvas = createMoteIconCanvas(domTierId, 36, 36);
     iconCanvas.style.cssText =
       'display:block;margin:4px 0;image-rendering:pixelated;' +
-      'filter:drop-shadow(0 0 4px ' + domColorLens + '88);';
+      'filter:drop-shadow(0 0 1px rgba(255,255,255,0.85)) drop-shadow(0 0 4px ' + domColorLens + '88);';
     card.appendChild(iconCanvas);
   }
 
@@ -304,7 +304,9 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
   const container = document.createElement('div');
   container.className = 'lens-inventory';
 
-  if (rpgState.craftedLenses.length === 0) {
+  const lenses = rpgState.craftedLenses;
+
+  if (lenses.length === 0) {
     const empty = document.createElement('div');
     empty.style.cssText = 'color:#888;font-size:0.85em;text-align:center;padding:12px;';
     empty.textContent = 'No lenses crafted yet. Select mote types above and craft a lens.';
@@ -312,11 +314,135 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
     return container;
   }
 
-  // TODO: add sort buttons (sort by type / tier / power / rarity)
+  // ── Local drag-and-drop ordering ──────────────────────────────────────────
 
-  for (const lens of rpgState.craftedLenses) {
-    container.appendChild(buildLensCard(lens, rpgState, dispatch, container));
+  const lensByIdMap = new Map(lenses.map(l => [l.id, l]));
+  let localOrder: string[] = lenses.map(l => l.id);
+
+  let draggingLensId: string | null = null;
+  let activeDragPointerId = -1;
+  let dragGhost: HTMLElement | null = null;
+  let lastDragOverLensId: string | null = null;
+
+  function getLensCardAtPoint(x: number, y: number): string | null {
+    const cards = container.querySelectorAll<HTMLElement>('.lens-card[data-lens-id]');
+    for (const card of Array.from(cards)) {
+      const r = card.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        return card.dataset.lensId ?? null;
+      }
+    }
+    return null;
   }
 
+  function clearLensHighlight(): void {
+    container.querySelectorAll('.crafting-card--drag-over')
+      .forEach(el => el.classList.remove('crafting-card--drag-over'));
+    lastDragOverLensId = null;
+  }
+
+  function cleanupLensDrag(): void {
+    dragGhost?.remove();
+    dragGhost = null;
+    draggingLensId = null;
+    activeDragPointerId = -1;
+    clearLensHighlight();
+  }
+
+  function onDocLensPointerMove(e: PointerEvent): void {
+    if (e.pointerId !== activeDragPointerId) return;
+    if (dragGhost) {
+      dragGhost.style.left = `${e.clientX - 60}px`;
+      dragGhost.style.top = `${e.clientY - 20}px`;
+    }
+    const targetId = getLensCardAtPoint(e.clientX, e.clientY);
+    const isValidTarget = targetId !== null && targetId !== draggingLensId;
+    const newHighlight = isValidTarget ? targetId : null;
+    if (lastDragOverLensId !== newHighlight) {
+      clearLensHighlight();
+      if (isValidTarget && targetId) {
+        container.querySelector<HTMLElement>(`[data-lens-id="${targetId}"]`)
+          ?.classList.add('crafting-card--drag-over');
+        lastDragOverLensId = targetId;
+      }
+    }
+  }
+
+  function onDocLensPointerUp(e: PointerEvent): void {
+    if (e.pointerId !== activeDragPointerId) return;
+    const targetId = getLensCardAtPoint(e.clientX, e.clientY);
+    if (targetId && targetId !== draggingLensId && draggingLensId) {
+      const fromIdx = localOrder.indexOf(draggingLensId);
+      const toIdx = localOrder.indexOf(targetId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        localOrder[fromIdx] = targetId;
+        localOrder[toIdx] = draggingLensId;
+        renderCards();
+      }
+    }
+    cleanupLensDrag();
+    document.removeEventListener('pointermove', onDocLensPointerMove);
+    document.removeEventListener('pointerup', onDocLensPointerUp);
+  }
+
+  function addLensDrag(card: HTMLElement, lensId: string): void {
+    card.dataset.lensId = lensId;
+    card.style.cursor = 'grab';
+    card.style.touchAction = 'none';
+    card.style.userSelect = 'none';
+
+    let downX = 0, downY = 0;
+    let thisDragging = false;
+
+    card.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      downX = e.clientX;
+      downY = e.clientY;
+      thisDragging = false;
+    });
+
+    card.addEventListener('pointermove', (e: PointerEvent) => {
+      if (thisDragging || draggingLensId) return;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 8) {
+        thisDragging = true;
+        draggingLensId = lensId;
+        activeDragPointerId = e.pointerId;
+        card.setPointerCapture(e.pointerId);
+
+        const ghost = document.createElement('div');
+        ghost.style.cssText =
+          'position:fixed;pointer-events:none;z-index:10000;opacity:0.88;' +
+          'background:rgba(6,4,22,0.95);border:1px solid rgba(200,180,255,0.5);' +
+          'border-radius:4px;padding:4px 12px;font-size:0.8em;color:#c8b4ff;';
+        ghost.textContent = lensByIdMap.get(lensId)?.name ?? lensId;
+        ghost.style.left = `${e.clientX - 60}px`;
+        ghost.style.top = `${e.clientY - 20}px`;
+        document.body.appendChild(ghost);
+        dragGhost = ghost;
+
+        document.addEventListener('pointermove', onDocLensPointerMove);
+        document.addEventListener('pointerup', onDocLensPointerUp);
+      }
+    });
+
+    card.addEventListener('pointerup', () => { thisDragging = false; });
+    card.addEventListener('pointerleave', () => {
+      if (!thisDragging) return;
+    });
+  }
+
+  function renderCards(): void {
+    container.innerHTML = '';
+    for (const id of localOrder) {
+      const lens = lensByIdMap.get(id);
+      if (!lens) continue;
+      const card = buildLensCard(lens, rpgState, dispatch, container);
+      card.classList.add('lens-card');
+      addLensDrag(card, id);
+      container.appendChild(card);
+    }
+  }
+
+  renderCards();
   return container;
 }

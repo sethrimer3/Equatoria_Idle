@@ -351,6 +351,7 @@
   cursor: default;
   box-shadow: inset 0 0 0 1px rgba(200, 160, 40, 0.07);
   transition: border-color 0.12s, box-shadow 0.12s;
+  touch-action: none;
 }
 
 .forge-inventory__slot:not(:empty) {
@@ -1671,6 +1672,18 @@
 .weave-card__rarity--epic       { color: #b060e0; }
 .weave-card__rarity--legendary  { color: #e09020; }
 .weave-card__rarity--mythic     { color: #ff4060; text-shadow: 0 0 6px rgba(255, 60, 80, 0.6); }
+
+/* Drop-target highlight for inventory card swapping */
+.weave-card--drag-over {
+  border-color: rgba(160, 220, 255, 0.9);
+  box-shadow: 0 0 12px rgba(140, 200, 255, 0.35);
+}
+
+/* Shared drop-target highlight for lens cards */
+.crafting-card--drag-over {
+  border-color: rgba(200, 180, 255, 0.9) !important;
+  box-shadow: 0 0 10px rgba(160, 140, 255, 0.35) !important;
+}
 
 /* Ghost for inventory → slot drag */
 .weave-drag-ghost {

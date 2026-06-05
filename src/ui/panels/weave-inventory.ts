@@ -34,18 +34,38 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
 
   let currentWeaves: readonly CraftedWeaveData[] = [];
   let equippedIds: Set<string> = new Set();
+  let localOrder: string[] = [];
 
   // ── Drag state ─────────────────────────────────────────────────────────
 
   let dragGhost: HTMLElement | null = null;
   let draggingWeaveId: string | null = null;
   let activeDragPointerId = -1;
+  let lastDragOverCardId: string | null = null;
+
+  function getCardIdAtPoint(x: number, y: number): string | null {
+    const cards = list.querySelectorAll<HTMLElement>('.weave-card[data-weave-id]');
+    for (const card of Array.from(cards)) {
+      const r = card.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        return card.dataset.weaveId ?? null;
+      }
+    }
+    return null;
+  }
+
+  function clearCardHighlight(): void {
+    list.querySelectorAll('.weave-card--drag-over')
+      .forEach(el => el.classList.remove('weave-card--drag-over'));
+    lastDragOverCardId = null;
+  }
 
   function cleanupDrag(): void {
     dragGhost?.remove();
     dragGhost = null;
     draggingWeaveId = null;
     activeDragPointerId = -1;
+    clearCardHighlight();
     slotsPanel.setDragActive(null);
   }
 
@@ -55,10 +75,33 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
       dragGhost.style.left = `${e.clientX - 60}px`;
       dragGhost.style.top = `${e.clientY - 20}px`;
     }
+    // Highlight card drop target
+    const targetId = getCardIdAtPoint(e.clientX, e.clientY);
+    const isValidTarget = targetId !== null && targetId !== draggingWeaveId;
+    const newHighlight = isValidTarget ? targetId : null;
+    if (lastDragOverCardId !== newHighlight) {
+      clearCardHighlight();
+      if (isValidTarget && targetId) {
+        list.querySelector<HTMLElement>(`[data-weave-id="${targetId}"]`)
+          ?.classList.add('weave-card--drag-over');
+        lastDragOverCardId = targetId;
+      }
+    }
   }
 
   function onDocPointerUp(e: PointerEvent): void {
     if (e.pointerId !== activeDragPointerId) return;
+    // Card-to-card swap
+    const targetId = getCardIdAtPoint(e.clientX, e.clientY);
+    if (targetId && targetId !== draggingWeaveId && draggingWeaveId) {
+      const fromIdx = localOrder.indexOf(draggingWeaveId);
+      const toIdx = localOrder.indexOf(targetId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        localOrder[fromIdx] = targetId;
+        localOrder[toIdx] = draggingWeaveId;
+        render();
+      }
+    }
     cleanupDrag();
     document.removeEventListener('pointermove', onDocPointerMove);
     document.removeEventListener('pointerup', onDocPointerUp);
@@ -156,7 +199,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
       const iconCanvas = createMoteIconCanvas(domTierId, 36, 36);
       iconCanvas.style.cssText =
         'display:block;margin:4px 0;image-rendering:pixelated;' +
-        'filter:drop-shadow(0 0 4px ' + domColor + '88);';
+        'filter:drop-shadow(0 0 1px rgba(255,255,255,0.85)) drop-shadow(0 0 4px ' + domColor + '88);';
       card.appendChild(iconCanvas);
     }
 
@@ -255,14 +298,25 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
     const isEmpty = currentWeaves.length === 0;
     emptyMsg.style.display = isEmpty ? '' : 'none';
 
-    for (const weave of currentWeaves) {
-      list.appendChild(buildWeaveCard(weave));
+    const weaveById = new Map(currentWeaves.map(w => [w.id, w]));
+    for (const id of localOrder) {
+      const weave = weaveById.get(id);
+      if (weave) list.appendChild(buildWeaveCard(weave));
     }
   }
 
   function update(craftedWeaves: readonly CraftedWeaveData[], equippedSlots: (string | null)[]): void {
     currentWeaves = craftedWeaves;
     equippedIds = new Set(equippedSlots.filter((id): id is string => id !== null));
+
+    // Sync localOrder: remove deleted, append new
+    const existingIds = new Set(craftedWeaves.map(w => w.id));
+    localOrder = localOrder.filter(id => existingIds.has(id));
+    const orderSet = new Set(localOrder);
+    for (const weave of craftedWeaves) {
+      if (!orderSet.has(weave.id)) localOrder.push(weave.id);
+    }
+
     render();
   }
 
