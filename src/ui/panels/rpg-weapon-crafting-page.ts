@@ -398,6 +398,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   function refreshSlider(): void {
     if (!sliderSectionEl) return;
     sliderSectionEl.innerHTML = '';
+    activeSegmentFills = [];
 
     const n = selectedTiers.length;
     if (n < 2) {
@@ -433,8 +434,15 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       seg.className = 'forge-craft__segment';
       seg.style.left = `${cumPct}%`;
       seg.style.width = `${pct}%`;
-      seg.style.background = `linear-gradient(135deg, ${color}cc, ${color}66)`;
       seg.style.setProperty('--seg-color', color);
+
+      const fillCanvas = document.createElement('canvas');
+      fillCanvas.className = 'forge-craft__segment-fill';
+      fillCanvas.width = FILL_W;
+      fillCanvas.height = FILL_H;
+      fillCanvas.setAttribute('aria-hidden', 'true');
+      seg.appendChild(fillCanvas);
+      activeSegmentFills.push({ canvas: fillCanvas, color, segIndex: i });
 
       const segLabel = document.createElement('div');
       segLabel.className = 'forge-craft__segment-label';
