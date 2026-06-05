@@ -148,6 +148,25 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
 
     card.appendChild(header);
 
+    // Animated masked icon
+    {
+      const comp = ingredientsToComposition(weave.ingredients);
+      const domTierId = (comp[0]?.tierId ?? 'sand');
+      const iconCanvas = createItemIconCanvas({
+        itemType: 'weave',
+        tierId: domTierId,
+        composition: comp.length > 0 ? comp : [{ tierId: domTierId, share: 1 }],
+        width: 36,
+        height: 36,
+        seed: stringToIconSeed(weave.id),
+      });
+      const domColor = TIER_BY_ID.get(domTierId)?.color ?? '#aaa';
+      iconCanvas.style.cssText =
+        'display:block;margin:4px 0;filter:drop-shadow(0 0 4px ' + domColor + '88);' +
+        'image-rendering:pixelated;';
+      card.appendChild(iconCanvas);
+    }
+
     // Affix rows
     for (const affix of weave.affixes) {
       const tier = TIER_BY_ID.get(affix.tierId);
