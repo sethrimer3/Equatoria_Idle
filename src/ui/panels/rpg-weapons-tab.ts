@@ -568,14 +568,20 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
 
     for (const [tierId, available] of rpgState.refinedCrystalsByTierId) {
       if (available <= 0 && !isDevMode) continue;
-      const name = TIER_BY_ID.get(tierId as TierId)?.displayName ?? tierId;
-      const color = TIER_BY_ID.get(tierId as TierId)?.color ?? '#fff';
+      const tierDef = TIER_BY_ID.get(tierId as TierId);
+      const name = tierDef?.displayName ?? tierId;
+      const color = tierDef?.color ?? '#fff';
 
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:6px;';
 
+      const gemImg = document.createElement('img');
+      gemImg.src = getRefinedGemPath(tierId as TierId);
+      gemImg.alt = name;
+      gemImg.style.cssText = 'width:18px;height:18px;object-fit:contain;image-rendering:pixelated;flex-shrink:0;';
+
       const label = document.createElement('label');
-      label.style.cssText = `color:${color};font-size:0.78em;min-width:64px;`;
+      label.style.cssText = `color:${color};font-size:0.78em;min-width:52px;`;
       label.textContent = `${name} (${available})`;
 
       const input = document.createElement('input');
@@ -589,6 +595,7 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
       input.addEventListener('input', refreshPreview);
       ingredientMap.set(tierId as TierId, input);
 
+      row.appendChild(gemImg);
       row.appendChild(label);
       row.appendChild(input);
       inputGrid.appendChild(row);
