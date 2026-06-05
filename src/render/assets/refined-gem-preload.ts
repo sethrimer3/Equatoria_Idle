@@ -8,6 +8,7 @@
 
 import { TIERS } from '../../data/tiers';
 import { getRefinedGemPath, getMoteIconPath, getStatusEffectIconPath } from './asset-paths';
+import { getItemMaskPath } from './item-icon-renderer';
 import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 import { loadImage } from './asset-loader';
 
@@ -25,6 +26,9 @@ export function preloadRefinedGemSprites(): void {
   for (const tier of TIERS) {
     silentLoad(getRefinedGemPath(tier.id));
     silentLoad(getMoteIconPath(tier.id));
+    // Weapon mask PNGs — preloaded so the first crafted weapon card renders
+    // the masked icon immediately rather than showing the diamond fallback.
+    silentLoad(getItemMaskPath('weapon', tier.id));
   }
   // Status effect icons are deduplicated by asset-loader cache; some tiers
   // share an icon (e.g. frozen → sapphire) so duplicates are no-ops.

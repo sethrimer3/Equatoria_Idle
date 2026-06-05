@@ -37,6 +37,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Copy static assets
+        run: cp -r ASSETS dist/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

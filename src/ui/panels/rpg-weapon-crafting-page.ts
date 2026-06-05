@@ -42,7 +42,7 @@ import { getUnlockedWeaveSlotCount } from '../../sim/forge/forge-state';
 import type { ActionHandler } from '../../input';
 import { createWeaveSlotsPanel } from './weave-slots';
 import { createWeaveInventoryPanel } from './weave-inventory';
-import { getRefinedGemPath } from '../../render/assets/asset-paths';
+import { getRefinedGemPath, getMoteIconPath } from '../../render/assets/asset-paths';
 import { getCachedImage } from '../../render/assets/asset-loader';
 import { drawForgePreview } from '../../render/forge';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
@@ -155,7 +155,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     for (const [tierId, canvas] of loomCanvases) {
       const tier = TIER_BY_ID.get(tierId);
       if (!tier) continue;
-      const gemSprite = getCachedImage(getRefinedGemPath(tierId));
+      const gemSprite = getCachedImage(getMoteIconPath(tierId));
       if (!gemSprite) continue;
 
       const rot = (loomRotations.get(tierId) ?? 0) + LOOM_ROTATION_SPEED * frameDelta;

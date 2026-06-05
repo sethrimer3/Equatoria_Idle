@@ -25,6 +25,17 @@ import { loadImage, getCachedImage } from './asset-loader';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
 
+const _warnedMissingMasks = new Set<string>();
+
+function loadMaskWithWarning(path: string): void {
+  loadImage(path).catch(() => {
+    if (!_warnedMissingMasks.has(path)) {
+      _warnedMissingMasks.add(path);
+      console.warn(`[item-icon-renderer] Missing mask PNG: ${path}`);
+    }
+  });
+}
+
 // ─── Public types ─────────────────────────────────────────────────────────────
 
 export type ItemIconType = 'weapon' | 'weave' | 'lens';
@@ -97,7 +108,7 @@ export function ingredientsToComposition(
 export function prefetchItemMask(itemType: ItemIconType, tierId: string): void {
   const path = getItemMaskPath(itemType, tierId);
   if (!getCachedImage(path)) {
-    loadImage(path).catch(() => { /* graceful: mask stays absent */ });
+    loadMaskWithWarning(path);
   }
 }
 
@@ -353,7 +364,7 @@ export function createItemIconCanvas(opts: ItemIconOptions): HTMLCanvasElement {
 
   const maskPath = getItemMaskPath(itemType, tierId);
   if (!getCachedImage(maskPath)) {
-    loadImage(maskPath).catch(() => { /* graceful: renders diamond fallback */ });
+    loadMaskWithWarning(maskPath);
   }
 
   const fillCanvas = document.createElement('canvas');
