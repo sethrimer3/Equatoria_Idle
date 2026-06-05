@@ -381,6 +381,18 @@ export function deserializeGameState(data: SaveData): GameState {
           unit: a.unit,
           applied: a.applied,
         })),
+        // v33+: tier effects — default to [] for backward compat with pre-v33 saves
+        tierEffects: (w.tierEffects ?? []).map(e => ({
+          tierId: e.tierId as TierId,
+          effectTier: e.effectTier as import('../data/rpg/weave-types').WeaveTierEffectTier,
+          key: e.key,
+          name: e.name,
+          description: e.description,
+          magnitude: e.magnitude,
+          quality: e.quality,
+          rarity: e.rarity as import('../data/rpg/weave-types').WeaveRarity,
+          isApplied: false, // always false — all weave tier effects are stubs
+        })),
       }));
     }
     // v31+: equipped weave slots (6-element array, null = empty)

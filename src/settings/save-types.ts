@@ -209,6 +209,18 @@ export interface SaveData {
         unit: string;
         applied: boolean;
       }>;
+      /** v33+: tier 1–3 STUB effects rolled at craft time. Absent in older weave saves. */
+      tierEffects?: Array<{
+        tierId: string;
+        effectTier: number;
+        key: string;
+        name: string;
+        description: string;
+        magnitude: number;
+        quality: number;
+        rarity: string;
+        isApplied: boolean;
+      }>;
     }>;
     /** v31+: equipped weave slot assignments (array of 6 weave IDs or null). Absent in older saves. */
     equippedWeaveSlots?: Array<string | null>;

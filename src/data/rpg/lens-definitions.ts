@@ -8,6 +8,7 @@
 
 import type { TierId } from '../tiers';
 import type { LensEffectTier } from './lens-types';
+import { getForgeEffectUnlockChances, type ForgeEffectUnlockChances } from './weave-rolling';
 
 // ─── Implemented Tier 2 tier IDs ──────────────────────────────────
 
@@ -148,21 +149,11 @@ export const LENS_T1_DESCRIPTIONS: Partial<Record<TierId, string>> = {
 
 // ─── Forge-level unlock chances ───────────────────────────────────
 
-export interface LensEffectUnlockChances {
-  tier2Chance: number;
-  tier3Chance: number;
-}
-
-const LENS_FORGE_CHANCES: Record<number, LensEffectUnlockChances> = {
-  1: { tier2Chance: 0.08, tier3Chance: 0.00 },
-  2: { tier2Chance: 0.14, tier3Chance: 0.01 },
-  3: { tier2Chance: 0.24, tier3Chance: 0.03 },
-  4: { tier2Chance: 0.34, tier3Chance: 0.06 },
-  5: { tier2Chance: 0.48, tier3Chance: 0.12 },
-};
+/** Re-exported as the lens-specific alias; the shared table lives in weave-rolling. */
+export type LensEffectUnlockChances = ForgeEffectUnlockChances;
 
 export function getLensEffectUnlockChances(forgeLevel: number): LensEffectUnlockChances {
-  return LENS_FORGE_CHANCES[forgeLevel] ?? LENS_FORGE_CHANCES[5]!;
+  return getForgeEffectUnlockChances(forgeLevel);
 }
 
 // ─── Max mote types ───────────────────────────────────────────────

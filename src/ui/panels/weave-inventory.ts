@@ -9,7 +9,7 @@
  * - "not yet applied" indicator for stored-only effects
  */
 
-import type { CraftedWeaveData } from '../../data/rpg/weave-types';
+import type { CraftedWeaveData, WeaveTierEffect } from '../../data/rpg/weave-types';
 import type { WeaveSlotsPanel } from './weave-slots';
 import { TIER_BY_ID } from '../../data/tiers';
 
@@ -61,6 +61,57 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
     cleanupDrag();
     document.removeEventListener('pointermove', onDocPointerMove);
     document.removeEventListener('pointerup', onDocPointerUp);
+  }
+
+  // ── Rarity colors (mirrors lens-inventory) ────────────────────────────
+  const RARITY_COLOR: Record<string, string> = {
+    Common: '#aaa',
+    Uncommon: '#5f5',
+    Rare: '#55f',
+    Epic: '#c5f',
+    Legendary: '#fa0',
+    Mythic: '#f55',
+  };
+
+  // ── Weave tier effect row (STUB display) ──────────────────────────────
+
+  function buildTierEffectRow(effect: WeaveTierEffect): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;margin:2px 0;';
+
+    const rarityColor = RARITY_COLOR[effect.rarity] ?? '#aaa';
+    const tierColor = TIER_BY_ID.get(effect.tierId)?.color ?? '#aaa';
+
+    // "T1" / "T2" / "T3" badge
+    const tierNumChip = document.createElement('span');
+    tierNumChip.style.cssText = 'background:rgba(255,255,255,0.12);color:#ddd;font-size:0.68em;padding:0 4px;border-radius:2px;font-weight:700;white-space:nowrap;';
+    tierNumChip.textContent = `T${effect.effectTier}`;
+    row.appendChild(tierNumChip);
+
+    // Mote tier color chip
+    const tierChip = document.createElement('span');
+    tierChip.style.cssText = `background:${tierColor};color:#000;font-size:0.68em;padding:0 3px;border-radius:2px;font-weight:600;white-space:nowrap;`;
+    tierChip.textContent = TIER_BY_ID.get(effect.tierId)?.displayName ?? effect.tierId;
+    row.appendChild(tierChip);
+
+    const rarityBadge = document.createElement('span');
+    rarityBadge.style.cssText = `color:${rarityColor};font-size:0.75em;font-weight:700;white-space:nowrap;`;
+    rarityBadge.textContent = effect.rarity;
+    row.appendChild(rarityBadge);
+
+    const nameEl = document.createElement('span');
+    nameEl.style.color = '#ccc';
+    nameEl.textContent = `${effect.name}  ×${effect.magnitude.toFixed(1)}`;
+    row.appendChild(nameEl);
+
+    // All weave tier effects are stubs — show clearly
+    const stubNote = document.createElement('span');
+    stubNote.style.cssText = 'color:#888;font-size:0.72em;font-style:italic;';
+    stubNote.title = effect.description;
+    stubNote.textContent = '[STUB]';
+    row.appendChild(stubNote);
+
+    return row;
   }
 
   // ── Card builder ───────────────────────────────────────────────────────
@@ -127,6 +178,18 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
       }
 
       card.appendChild(row);
+    }
+
+    // Tier effects section (STUB)
+    if (weave.tierEffects.length > 0) {
+      const tierEffectsHeader = document.createElement('div');
+      tierEffectsHeader.style.cssText = 'font-size:0.7em;color:#666;margin:4px 0 2px;letter-spacing:0.05em;';
+      tierEffectsHeader.textContent = 'TIER EFFECTS (STUB)';
+      card.appendChild(tierEffectsHeader);
+
+      for (const effect of weave.tierEffects) {
+        card.appendChild(buildTierEffectRow(effect));
+      }
     }
 
     // Drag interaction (pointer events — works on mobile)

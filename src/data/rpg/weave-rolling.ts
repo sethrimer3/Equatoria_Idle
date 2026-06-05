@@ -9,9 +9,15 @@
 
 import { TIER_BY_ID, type TierId } from '../tiers';
 import { WEAVE_AFFIX_FAMILIES } from './weave-definitions';
+import {
+  WEAVE_TIER_EFFECT_NAMES,
+  WEAVE_T1_DESCRIPTIONS,
+  WEAVE_T2_DESCRIPTIONS,
+  WEAVE_T3_DESCRIPTIONS,
+} from './weave-tier-definitions';
 import { getTierForgeWeight } from './crafted-weapon-helpers';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
-import type { WeaveAffix, WeaveRarity, CraftedWeaveData } from './weave-types';
+import type { WeaveAffix, WeaveRarity, WeaveTierEffect, WeaveTierEffectTier, CraftedWeaveData } from './weave-types';
 
 // ─── Triangular distribution ─────────────────────────────────────────────────
 
@@ -77,6 +83,136 @@ export function getWeaveRarity(quality: number): WeaveRarity {
  */
 export function computeWeavePowerScale(totalWeightedMoteValue: number): number {
   return Math.sqrt(1 + Math.log10(totalWeightedMoteValue + 1));
+}
+
+// ─── Shared forge-level unlock chances ───────────────────────────────────────
+
+export interface ForgeEffectUnlockChances {
+  tier2Chance: number;
+  tier3Chance: number;
+}
+
+const FORGE_EFFECT_CHANCES: Record<number, ForgeEffectUnlockChances> = {
+  1: { tier2Chance: 0.08, tier3Chance: 0.00 },
+  2: { tier2Chance: 0.14, tier3Chance: 0.01 },
+  3: { tier2Chance: 0.24, tier3Chance: 0.03 },
+  4: { tier2Chance: 0.34, tier3Chance: 0.06 },
+  5: { tier2Chance: 0.48, tier3Chance: 0.12 },
+};
+
+/**
+ * Returns tier2/tier3 unlock chances for a given forge level.
+ * Shared by both lens and weave tier rolling.
+ */
+export function getForgeEffectUnlockChances(forgeLevel: number): ForgeEffectUnlockChances {
+  return FORGE_EFFECT_CHANCES[forgeLevel] ?? FORGE_EFFECT_CHANCES[5]!;
+}
+
+// ─── Weave tier effect magnitude scaling ─────────────────────────────────────
+
+const WEAVE_TIER_BASE_MAGNITUDE: Record<WeaveTierEffectTier, number> = {
+  1: 10,
+  2: 16,
+  3: 26,
+};
+
+/**
+ * Returns a magnitude for a weave tier effect based on per-tier mote investment.
+ * Uses the same sqrt(log) formula as lenses to prevent linear runaway.
+ */
+export function computeWeaveTierMagnitude(tierWeightedValue: number, effectTier: WeaveTierEffectTier): number {
+  const scale = Math.sqrt(1 + Math.log10(tierWeightedValue + 1));
+  const raw = WEAVE_TIER_BASE_MAGNITUDE[effectTier] * scale;
+  return parseFloat(raw.toFixed(1));
+}
+
+// ─── Single weave tier effect builder ────────────────────────────────────────
+
+function buildWeaveTierEffect(
+  tierId: TierId,
+  effectTier: WeaveTierEffectTier,
+  tierWeightedValue: number,
+  rng: () => number,
+): WeaveTierEffect | null {
+  const names = WEAVE_TIER_EFFECT_NAMES[tierId];
+  if (!names) return null;
+
+  const descriptions: Record<WeaveTierEffectTier, Partial<Record<TierId, string>>> = {
+    1: WEAVE_T1_DESCRIPTIONS,
+    2: WEAVE_T2_DESCRIPTIONS,
+    3: WEAVE_T3_DESCRIPTIONS,
+  };
+  const description = descriptions[effectTier][tierId] ?? 'STUB: effect behavior not implemented yet.';
+  const name = names[effectTier];
+  const key = `${tierId}_wt${effectTier}`;
+  const quality = triangularFromU(0, 1, 0.6, rng());
+  const rarity = getWeaveRarity(quality);
+  const magnitude = computeWeaveTierMagnitude(tierWeightedValue, effectTier);
+
+  return {
+    tierId,
+    effectTier,
+    key,
+    name,
+    description,
+    magnitude,
+    quality,
+    rarity,
+    isApplied: false, // all weave tier effects are stubs
+  };
+}
+
+// ─── Weave tier effect rolling ────────────────────────────────────────────────
+
+/**
+ * Rolls tier 1–3 effects for all ingredient tiers at the given forge level.
+ *
+ * - T1 is always generated for each tier with a WEAVE_TIER_EFFECT_NAMES entry.
+ * - T2 is rolled probabilistically using forge-level chances.
+ * - T3 is rolled probabilistically only if T2 was already rolled (strict ordering).
+ *   This ensures results are always: T1 / T1+T2 / T1+T2+T3.
+ *
+ * rng defaults to Math.random; inject a deterministic function for testing.
+ */
+export function rollWeaveTierEffects(
+  ingredients: CraftedWeaponIngredient[],
+  forgeLevel: number,
+  rng: () => number = Math.random,
+): WeaveTierEffect[] {
+  const { tier2Chance, tier3Chance } = getForgeEffectUnlockChances(forgeLevel);
+
+  const tierCounts = new Map<TierId, number>();
+  for (const ing of ingredients) {
+    const cur = tierCounts.get(ing.tierId) ?? 0;
+    tierCounts.set(ing.tierId, cur + ing.refinedCount);
+  }
+
+  const effects: WeaveTierEffect[] = [];
+
+  for (const [tierId, refinedCount] of tierCounts) {
+    if (!WEAVE_TIER_EFFECT_NAMES[tierId]) continue;
+
+    const tierWeightedValue = refinedCount * getTierForgeWeight(tierId);
+
+    // T1 — always
+    const t1 = buildWeaveTierEffect(tierId, 1, tierWeightedValue, rng);
+    if (t1) effects.push(t1);
+
+    // T2 — probabilistic
+    const t2Rolled = rng() < tier2Chance;
+    if (t2Rolled) {
+      const t2 = buildWeaveTierEffect(tierId, 2, tierWeightedValue, rng);
+      if (t2) effects.push(t2);
+
+      // T3 — probabilistic, only if T2 was rolled (enforces T1 ≤ T2 ≤ T3 ordering)
+      if (rng() < tier3Chance) {
+        const t3 = buildWeaveTierEffect(tierId, 3, tierWeightedValue, rng);
+        if (t3) effects.push(t3);
+      }
+    }
+  }
+
+  return effects;
 }
 
 // ─── Affix rolling ────────────────────────────────────────────────────────────
@@ -152,11 +288,13 @@ function getWeaveName(tiers: TierId[]): string {
 /**
  * Creates a crafted weave from the given ingredients.
  * One affix is rolled per distinct tier (tiers without a defined family are skipped).
+ * Tier 1–3 STUB effects are also rolled and attached per distinct tier.
  */
 export function createCraftedWeave(
   id: string,
   ingredients: CraftedWeaponIngredient[],
   forgeCraftLevel: number,
+  rng: () => number = Math.random,
 ): CraftedWeaveData {
   // Merge duplicate tiers and sum weighted value
   const tierCounts = new Map<TierId, number>();
@@ -180,6 +318,9 @@ export function createCraftedWeave(
     if (affix) affixes.push(affix);
   }
 
+  // Roll tier 1–3 STUB effects per distinct tier
+  const tierEffects = rollWeaveTierEffects(normalizedIngredients, forgeCraftLevel, rng);
+
   const tiers = Array.from(tierCounts.keys());
   const name = getWeaveName(tiers);
 
@@ -190,5 +331,6 @@ export function createCraftedWeave(
     affixes,
     totalWeightedMoteValue,
     forgeCraftLevel,
+    tierEffects,
   };
 }

@@ -162,6 +162,17 @@ export function serializeGameState(state: GameState): SaveData {
           unit: a.unit,
           applied: a.applied,
         })),
+        tierEffects: w.tierEffects.map(e => ({
+          tierId: e.tierId,
+          effectTier: e.effectTier,
+          key: e.key,
+          name: e.name,
+          description: e.description,
+          magnitude: e.magnitude,
+          quality: e.quality,
+          rarity: e.rarity,
+          isApplied: e.isApplied,
+        })),
       })),
       equippedWeaveSlots: state.rpg.equippedWeaveSlots.slice(),
       craftedLenses: state.rpg.craftedLenses.map(l => ({
