@@ -268,6 +268,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossStage: false,
     topographyLighting: false,
     softImpetusAsteroidShadows: false,
+    rpgPixelatedRender: false,
   };
   /** Authoritative field-space snapshot — recomputed by doResize() on every resize. */
   let rpgFieldSpace: RpgFieldSpace = computeRpgFieldSpace({
@@ -1617,6 +1618,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       return zenithBinaryHorizon?.getShakeOffset() ?? { x: 0, y: 0 };
     },
     getIsDevMode:                 () => _isDevMode,
+    getRpgPixelatedRenderEnabled: () => _isDevMode && developerVisuals.rpgPixelatedRender,
     getCssDisplaySize:            () => ({ w: rpgCssW, h: rpgCssH }),
     getFullW:                     () => rpgFullW,
     getFullH:                     () => rpgFullH,
@@ -1822,6 +1824,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       developerVisuals.bossStage = options.bossStage;
       developerVisuals.topographyLighting = options.topographyLighting;
       developerVisuals.softImpetusAsteroidShadows = options.softImpetusAsteroidShadows;
+      developerVisuals.rpgPixelatedRender = options.rpgPixelatedRender;
       bossStageDirectorState.isDevMode = _isDevMode && developerVisuals.bossStage;
       setTopographyLightingDevMode(_isDevMode && developerVisuals.topographyLighting);
     },

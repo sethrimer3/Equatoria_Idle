@@ -153,6 +153,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
         bossStage: ctx.settings.isRpgBossStageDebugEnabled,
         topographyLighting: ctx.settings.isTopographyLightingDebugEnabled,
         softImpetusAsteroidShadows: ctx.settings.isSoftImpetusAsteroidShadows,
+        rpgPixelatedRender: ctx.settings.isRpgPixelatedRender,
       });
       ctx.uiPanels.rpgRender.setTopographicTerrainDebugEnabled(
         ctx.settings.isDevMode && ctx.settings.isTopographicTerrainDebugEnabled,

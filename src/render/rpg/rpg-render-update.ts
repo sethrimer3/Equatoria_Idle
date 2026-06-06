@@ -105,7 +105,7 @@ import {
 } from './rpg-death-restart';
 import { updateWeaponOrbitParticles as _updateWeaponOrbitParticles } from './rpg-weapon-orbit';
 import { tickWeaponSystems } from './rpg-weapon-tick';
-import { drawRpgFrame } from './rpg-render-draw';
+import { drawRpgFramePixelated } from './rpg-pixel-backbuffer';
 import { updateProceduralEnemies } from './rpg-procedural-update';
 import { updateTopographicTerrain } from './terrain/topographic-terrain';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
@@ -319,14 +319,14 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   if (phase === 'dying') {
     _updateDying(ctx.deathRestartCtx, deltaMs);
     ctx.fluid.step(deltaMs);
-    drawRpgFrame(ctx.drawCtx, ctx.drawFrameState, nowMs);
+    drawRpgFramePixelated(ctx.drawCtx, ctx.drawFrameState, nowMs);
     ctx.statsPanel.update();
     return;
   }
   if (phase === 'restarting') {
     _updateRestarting(ctx.deathRestartCtx, deltaMs);
     ctx.fluid.step(deltaMs);
-    drawRpgFrame(ctx.drawCtx, ctx.drawFrameState, nowMs);
+    drawRpgFramePixelated(ctx.drawCtx, ctx.drawFrameState, nowMs);
     ctx.statsPanel.update();
     return;
   }
@@ -613,5 +613,5 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
   ctx.updateVerdurePlants?.(deltaMs);
   ctx.fluid.step(deltaMs);
-  drawRpgFrame(ctx.drawCtx, ctx.drawFrameState, nowMs);
+  drawRpgFramePixelated(ctx.drawCtx, ctx.drawFrameState, nowMs);
 }

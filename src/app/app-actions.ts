@@ -354,6 +354,11 @@ export function handleAction(
       saveSettings(settings);
       uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
       break;
+    case 'set_rpg_pixelated_render':
+      settings.isRpgPixelatedRender = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
     case 'upgrade_loom_efficiency': {
       const ok = tryUpgradeLoomEfficiencyAction(state.game, action.tierId as TierId, devMode);
       if (!ok) audioSystem?.onError();

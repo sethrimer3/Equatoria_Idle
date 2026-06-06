@@ -40,6 +40,7 @@ export interface RpgRender {
     bossStage: boolean;
     topographyLighting: boolean;
     softImpetusAsteroidShadows: boolean;
+    rpgPixelatedRender: boolean;
   }): void;
   /**
    * Switch between smooth gradient and sharp cylinder topography shadow modes

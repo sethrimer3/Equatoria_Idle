@@ -67,6 +67,13 @@ export interface SettingsState {
   idleCanvasRenderStyle: 'pixelated' | 'crisp';
   /** Dev-mode only: draw the idle canvas viewport diagnostic overlay. */
   isIdleViewportDebugEnabled: boolean;
+  /**
+   * When true (dev mode only), all RPG zone rendering is drawn at a
+   * quarter-resolution offscreen canvas then upscaled with nearest-neighbor,
+   * producing a crisply pixelated look that matches the equation renderer.
+   * OFF by default; only takes effect when isDevMode is also true.
+   */
+  isRpgPixelatedRender: boolean;
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -98,6 +105,7 @@ export function createDefaultSettings(): SettingsState {
     equationRenderStyle: 'pixel',
     idleCanvasRenderStyle: 'pixelated',
     isIdleViewportDebugEnabled: false,
+    isRpgPixelatedRender: false,
   };
 }
 

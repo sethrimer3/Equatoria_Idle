@@ -66,6 +66,7 @@ export function createRpgMenuTabPane(
   let isTopographyLightingDebugEnabled = false;
   let isSharpTopographyShadows = false;
   let isSoftImpetusAsteroidShadows = false;
+  let isRpgPixelatedRender = false;
 
   function appendDevCheckbox(
     host: HTMLElement,
@@ -386,6 +387,10 @@ export function createRpgMenuTabPane(
         isSoftImpetusAsteroidShadows = enabled;
         dispatch({ kind: 'set_soft_impetus_asteroid_shadows', enabled });
       });
+      appendDevCheckbox(devSection, '⚙ Pixelated RPG zones', 'Render all RPG zones at 1/4 resolution and upscale with nearest-neighbor for a crisp pixelated look (dev mode only).', isRpgPixelatedRender, (enabled) => {
+        isRpgPixelatedRender = enabled;
+        dispatch({ kind: 'set_rpg_pixelated_render', enabled });
+      });
 
       // ── Sharp Topography Shadows ──
       const sharpShadowRow = document.createElement('div');
@@ -445,6 +450,7 @@ export function createRpgMenuTabPane(
       else if (kind === 'set_rpg_boss_stage_debug') isRpgBossStageDebugEnabled = enabled;
       else if (kind === 'set_topography_lighting_debug') isTopographyLightingDebugEnabled = enabled;
       else if (kind === 'set_soft_impetus_asteroid_shadows') isSoftImpetusAsteroidShadows = enabled;
+      else if (kind === 'set_rpg_pixelated_render') isRpgPixelatedRender = enabled;
     },
   };
 

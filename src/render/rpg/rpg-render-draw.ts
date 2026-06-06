@@ -320,6 +320,8 @@ export interface RpgDrawCtx {
   rpgSimState: RpgSimState;
   /** Returns true when developer-mode diagnostics should be rendered. */
   getIsDevMode(): boolean;
+  /** Returns true when pixelated RPG rendering is active (dev mode only). */
+  getRpgPixelatedRenderEnabled(): boolean;
   /** Returns the current CSS display size of the #rpg-area wrapper (for dev overlay). */
   getCssDisplaySize(): { w: number; h: number };
   /** Returns the full canvas CSS width (may be wider than the 360×640 safe core). */
