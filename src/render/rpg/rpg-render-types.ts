@@ -39,6 +39,7 @@ export interface RpgRender {
     nadirAnchors: boolean;
     bossStage: boolean;
     topographyLighting: boolean;
+    softImpetusAsteroidShadows: boolean;
   }): void;
   /**
    * Switch between smooth gradient and sharp cylinder topography shadow modes

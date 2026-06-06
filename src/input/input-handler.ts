@@ -34,6 +34,7 @@ export type GameAction =
   | { kind: 'set_rpg_boss_stage_debug'; enabled: boolean }
   | { kind: 'set_topography_lighting_debug'; enabled: boolean }
   | { kind: 'set_sharp_topography_shadows'; enabled: boolean }
+  | { kind: 'set_soft_impetus_asteroid_shadows'; enabled: boolean }
   | { kind: 'upgrade_loom_efficiency'; tierId: string }
   | { kind: 'toggle_sand_blade' }
   | { kind: 'craft_weapon'; ingredients: Array<{ tierId: string; refinedCount: number }> }

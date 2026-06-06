@@ -303,6 +303,7 @@ export interface RpgDrawCtx {
   getScreenDarken(): number;
   getRestartFadeAlpha(): number;
   getIsLowGraphicsMode(): boolean;
+  getSoftImpetusAsteroidShadowsEnabled(): boolean;
   getEnemyIndicatorStyle(): 'triangle' | 'outline' | 'off';
   getTopographicTerrainState(): TopographicTerrainState | null;
   getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
@@ -813,7 +814,10 @@ export function drawRpgFrame(
   if (isImpetusZone) {
     canvas2d.save();
     canvas2d.translate(vwX, vwY);
-    drawImpetusFloorEffects(canvas2d, vwW, vwH, nowMs, ctx.getIsLowGraphicsMode());
+    drawImpetusFloorEffects(
+      canvas2d, vwW, vwH, nowMs, ctx.getIsLowGraphicsMode(),
+      ctx.getSoftImpetusAsteroidShadowsEnabled(),
+    );
     canvas2d.restore();
   }
   // Verdure zone: floor plant decoration, procedural vines, pollen particles.

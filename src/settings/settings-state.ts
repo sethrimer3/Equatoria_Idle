@@ -38,6 +38,8 @@ export interface SettingsState {
    * Hard-edged, directional shadows that treat each contour level as a flat terrace.
    */
   isSharpTopographyShadows: boolean;
+  /** Dev-mode only: soften Impetus asteroid sun shadows through a blurred buffer. */
+  isSoftImpetusAsteroidShadows: boolean;
   /** When true, the RPG stats bar is anchored to the top of the screen instead of the bottom. */
   rpgBarAtTop: boolean;
   /**
@@ -90,6 +92,7 @@ export function createDefaultSettings(): SettingsState {
     isRpgBossStageDebugEnabled: false,
     isTopographyLightingDebugEnabled: false,
     isSharpTopographyShadows: false,
+    isSoftImpetusAsteroidShadows: false,
     rpgBarAtTop: false,
     skipIdlePopupAtStart: false,
     equationRenderStyle: 'pixel',

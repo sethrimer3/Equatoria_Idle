@@ -38,8 +38,8 @@ const OUTER_STRENGTH      = 0.00011;
 
 // ── Matrix value range ────────────────────────────────────────────────────────
 
-const MIN_COEFF = -0.40;
-const MAX_COEFF =  0.40;
+const MIN_COEFF = -1;
+const MAX_COEFF =  1;
 
 // ── Variant display metadata ──────────────────────────────────────────────────
 

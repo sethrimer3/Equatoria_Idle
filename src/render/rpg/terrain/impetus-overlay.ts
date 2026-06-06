@@ -85,9 +85,10 @@ const _ASTER_RADII  = [1.00, 0.75, 0.90, 0.68, 0.85, 0.78, 0.92];
 // ── Visual constants ──────────────────────────────────────────────────────────
 
 const _STAR_COLORS: readonly string[] = ['#ffffff', '#e8f0ff', '#fffde8', '#f8f0ff'];
-const _WELL_RING_COLOR = '#8855ff';
 const _WELL_SWIRL_COLOR = '#aa77ff';
-const _WELL_RING_COLOR_LOW = '#aa66ff';  // slightly brighter for low-graphics contrast
+const _WELL_FIELD_ALPHA = 0.12;
+const _WELL_RING_ALPHA = 0.16;
+const _WELL_BLUR_PX = 7;
 const _ASTEROID_FILL = '#4a4050';
 const _ASTEROID_EDGE = '#7a6880';
 
@@ -96,6 +97,10 @@ const _SUN_X_FRAC = 1.08;
 const _SUN_Y_FRAC = -0.06;
 // Shadow extends this many pixels from the sun origin (through the polygon vertex)
 const _SHADOW_LENGTH = 2200;
+const _SOFT_SHADOW_SCALE = 0.5;
+const _SOFT_SHADOW_BLUR_PX = 10;
+let _shadowCanvas: HTMLCanvasElement | null = null;
+let _shadowCtx: CanvasRenderingContext2D | null = null;
 
 const _BG_ALPHA_HIGH = 0.55;
 const _BG_ALPHA_LOW  = 0.50;  // raised from 0.38 — more visible on mobile
@@ -218,9 +223,10 @@ export function drawImpetusFloorEffects(
   heightPx: number,
   nowMs: number,
   lowGraphics: boolean,
+  softAsteroidShadows = false,
 ): void {
   const tS = nowMs * 0.001;
-  _drawAsteroidShadows(canvas2d, widthPx, heightPx, tS, lowGraphics);
+  _drawAsteroidShadows(canvas2d, widthPx, heightPx, tS, lowGraphics, softAsteroidShadows);
   _drawAsteroidField(canvas2d, widthPx, heightPx, tS, lowGraphics);
   // Gravity wells render in both modes; low graphics uses a simplified version.
   if (lowGraphics) {
@@ -322,47 +328,36 @@ function _drawGravityWells(
     const rAlpha = row[4];
     const s1Ph   = row[5];
     const s2Ph   = row[6];
-
-    // Slow rotation
     const rotOffset = tS * 0.18;
-
-    // Outer distortion ring — slightly pulsing
-    const pulse = 0.7 + 0.3 * Math.sin(tS * 0.8 + s1Ph);
-    canvas2d.globalAlpha = rAlpha * pulse;
-    canvas2d.strokeStyle = _WELL_RING_COLOR;
-    canvas2d.lineWidth = 1.0;
+    const pulse = 0.92 + 0.08 * Math.sin(tS * 0.45 + s1Ph);
+    const fieldR = outerR * 1.35 * pulse;
+    const field = canvas2d.createRadialGradient(cx, cy, innerR * 0.2, cx, cy, fieldR);
+    field.addColorStop(0, 'rgba(20,0,40,0.18)');
+    field.addColorStop(0.28, 'rgba(60,22,110,0.055)');
+    field.addColorStop(0.66, 'rgba(120,72,210,0.022)');
+    field.addColorStop(1, 'rgba(120,72,210,0)');
+    canvas2d.globalAlpha = rAlpha * _WELL_FIELD_ALPHA;
+    canvas2d.fillStyle = field;
     canvas2d.beginPath();
-    canvas2d.arc(cx, cy, outerR * pulse, 0, Math.PI * 2);
-    canvas2d.stroke();
+    canvas2d.arc(cx, cy, fieldR, 0, Math.PI * 2);
+    canvas2d.fill();
 
-    // Second inner ring
-    canvas2d.globalAlpha = rAlpha * 0.6 * pulse;
-    canvas2d.lineWidth = 0.7;
-    canvas2d.beginPath();
-    canvas2d.arc(cx, cy, outerR * 0.65 * pulse, 0, Math.PI * 2);
-    canvas2d.stroke();
-
-    // Swirl arcs — two slow-rotating partial arcs
-    canvas2d.globalAlpha = rAlpha * 0.5 * pulse;
+    canvas2d.filter = `blur(${_WELL_BLUR_PX}px)`;
+    canvas2d.globalCompositeOperation = 'screen';
     canvas2d.strokeStyle = _WELL_SWIRL_COLOR;
-    canvas2d.lineWidth = 0.8;
-    for (let arc = 0; arc < 2; arc++) {
-      const startAngle = rotOffset + (arc === 0 ? s1Ph : s2Ph);
-      const arcSpan = Math.PI * 0.6;
+    canvas2d.lineCap = 'round';
+    for (let arc = 0; arc < 5; arc++) {
+      const layerT = arc / 4;
+      const startAngle = rotOffset * (0.7 + layerT * 0.4) + s1Ph + s2Ph * layerT;
+      const arcSpan = Math.PI * (0.42 + layerT * 0.25);
+      canvas2d.globalAlpha = rAlpha * _WELL_RING_ALPHA * (1 - layerT * 0.7) * pulse;
+      canvas2d.lineWidth = 1.2 + layerT * 2.8;
       canvas2d.beginPath();
-      canvas2d.arc(cx, cy, outerR * 0.82, startAngle, startAngle + arcSpan);
+      canvas2d.arc(cx, cy, outerR * (0.62 + layerT * 0.38) * pulse, startAngle, startAngle + arcSpan);
       canvas2d.stroke();
     }
-
-    // Dark central void
-    canvas2d.globalAlpha = 0.55;
-    const voidGrad = canvas2d.createRadialGradient(cx, cy, 0, cx, cy, innerR);
-    voidGrad.addColorStop(0, 'rgba(20,0,40,0.8)');
-    voidGrad.addColorStop(1, 'rgba(20,0,40,0)');
-    canvas2d.fillStyle = voidGrad;
-    canvas2d.beginPath();
-    canvas2d.arc(cx, cy, innerR, 0, Math.PI * 2);
-    canvas2d.fill();
+    canvas2d.filter = 'none';
+    canvas2d.globalCompositeOperation = 'source-over';
   }
   canvas2d.restore();
 }
@@ -382,32 +377,18 @@ function _drawGravityWellsSimple(
     const cx    = row[0] * widthPx;
     const cy    = row[1] * heightPx;
     const outerR = row[2];
-    const innerR = row[3];
     const rAlpha = row[4];
     const s1Ph   = row[5];
-
-    const pulse = 0.75 + 0.25 * Math.sin(tS * 0.8 + s1Ph);
-
-    // Outer ring — single, more opaque than high-graphics for visibility
-    canvas2d.globalAlpha = Math.min(1, rAlpha * 1.5 * pulse);
-    canvas2d.strokeStyle = _WELL_RING_COLOR_LOW;
-    canvas2d.lineWidth = 1.5;
+    const pulse = 0.94 + 0.06 * Math.sin(tS * 0.45 + s1Ph);
+    const fieldR = outerR * 1.25 * pulse;
+    const field = canvas2d.createRadialGradient(cx, cy, 0, cx, cy, fieldR);
+    field.addColorStop(0, 'rgba(35,8,65,0.10)');
+    field.addColorStop(0.55, 'rgba(130,72,220,0.025)');
+    field.addColorStop(1, 'rgba(130,72,220,0)');
+    canvas2d.globalAlpha = rAlpha * 0.3;
+    canvas2d.fillStyle = field;
     canvas2d.beginPath();
-    canvas2d.arc(cx, cy, outerR * pulse, 0, Math.PI * 2);
-    canvas2d.stroke();
-
-    // Inner ring for depth
-    canvas2d.globalAlpha = Math.min(1, rAlpha * pulse);
-    canvas2d.lineWidth = 1.0;
-    canvas2d.beginPath();
-    canvas2d.arc(cx, cy, outerR * 0.6 * pulse, 0, Math.PI * 2);
-    canvas2d.stroke();
-
-    // Solid dark center dot — cheap, no gradient
-    canvas2d.globalAlpha = 0.65;
-    canvas2d.fillStyle = '#100020';
-    canvas2d.beginPath();
-    canvas2d.arc(cx, cy, innerR, 0, Math.PI * 2);
+    canvas2d.arc(cx, cy, fieldR, 0, Math.PI * 2);
     canvas2d.fill();
   }
   canvas2d.restore();
@@ -464,6 +445,43 @@ function _drawAsteroidShadows(
   heightPx: number,
   tS: number,
   lowGraphics: boolean,
+  softened: boolean,
+): void {
+  if (softened) {
+    const bufferW = Math.max(1, Math.ceil(widthPx * _SOFT_SHADOW_SCALE));
+    const bufferH = Math.max(1, Math.ceil(heightPx * _SOFT_SHADOW_SCALE));
+    if (!_shadowCanvas) {
+      _shadowCanvas = document.createElement('canvas');
+      _shadowCtx = _shadowCanvas.getContext('2d');
+    }
+    if (!_shadowCtx) return;
+    if (_shadowCanvas.width !== bufferW || _shadowCanvas.height !== bufferH) {
+      _shadowCanvas.width = bufferW;
+      _shadowCanvas.height = bufferH;
+    }
+    _shadowCtx.clearRect(0, 0, bufferW, bufferH);
+    _shadowCtx.save();
+    _shadowCtx.scale(_SOFT_SHADOW_SCALE, _SOFT_SHADOW_SCALE);
+    _drawAsteroidShadowQuads(_shadowCtx, widthPx, heightPx, tS, lowGraphics, 0.22);
+    _shadowCtx.restore();
+
+    canvas2d.save();
+    canvas2d.globalAlpha = 0.72;
+    canvas2d.filter = `blur(${_SOFT_SHADOW_BLUR_PX}px)`;
+    canvas2d.drawImage(_shadowCanvas, 0, 0, widthPx, heightPx);
+    canvas2d.restore();
+    return;
+  }
+  _drawAsteroidShadowQuads(canvas2d, widthPx, heightPx, tS, lowGraphics, 0.38);
+}
+
+function _drawAsteroidShadowQuads(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+  tS: number,
+  lowGraphics: boolean,
+  alphaScale: number,
 ): void {
   const count  = lowGraphics ? Math.floor(_ASTEROID_DATA.length * 0.5) : _ASTEROID_DATA.length;
   const sunX   = _SUN_X_FRAC * widthPx;
@@ -478,7 +496,7 @@ function _drawAsteroidShadows(
     _getAsteroidVerts(i, widthPx, heightPx, tS, _VERT_BUF);
 
     // Set opacity once per asteroid — all its shadow quads share the same alpha
-    canvas2d.globalAlpha = alpha * 0.38;
+    canvas2d.globalAlpha = alpha * alphaScale;
 
     for (let e = 0; e < n; e++) {
       const ne  = (e + 1) % n;

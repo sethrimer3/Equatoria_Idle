@@ -65,6 +65,7 @@ export function createRpgMenuTabPane(
   let isRpgBossStageDebugEnabled = false;
   let isTopographyLightingDebugEnabled = false;
   let isSharpTopographyShadows = false;
+  let isSoftImpetusAsteroidShadows = false;
 
   function appendDevCheckbox(
     host: HTMLElement,
@@ -381,6 +382,10 @@ export function createRpgMenuTabPane(
         isRpgBossStageDebugEnabled = enabled;
         dispatch({ kind: 'set_rpg_boss_stage_debug', enabled });
       });
+      appendDevCheckbox(devSection, 'Soft Impetus asteroid shadows', 'Blur and feather the sun shadows cast from Impetus asteroids.', isSoftImpetusAsteroidShadows, (enabled) => {
+        isSoftImpetusAsteroidShadows = enabled;
+        dispatch({ kind: 'set_soft_impetus_asteroid_shadows', enabled });
+      });
 
       // ── Sharp Topography Shadows ──
       const sharpShadowRow = document.createElement('div');
@@ -439,6 +444,7 @@ export function createRpgMenuTabPane(
       else if (kind === 'set_rpg_nadir_anchor_debug') isRpgNadirAnchorDebugEnabled = enabled;
       else if (kind === 'set_rpg_boss_stage_debug') isRpgBossStageDebugEnabled = enabled;
       else if (kind === 'set_topography_lighting_debug') isTopographyLightingDebugEnabled = enabled;
+      else if (kind === 'set_soft_impetus_asteroid_shadows') isSoftImpetusAsteroidShadows = enabled;
     },
   };
 

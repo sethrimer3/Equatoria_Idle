@@ -349,6 +349,11 @@ export function handleAction(
       uiPanels.rpgRender.setSharpTopographyShadows(action.enabled);
       break;
     }
+    case 'set_soft_impetus_asteroid_shadows':
+      settings.isSoftImpetusAsteroidShadows = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      break;
     case 'upgrade_loom_efficiency': {
       const ok = tryUpgradeLoomEfficiencyAction(state.game, action.tierId as TierId, devMode);
       if (!ok) audioSystem?.onError();

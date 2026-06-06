@@ -347,6 +347,7 @@ export async function startApp(): Promise<void> {
   rpgMenuPanel.setDeveloperVisual('set_rpg_nadir_anchor_debug', settings.isRpgNadirAnchorDebugEnabled);
   rpgMenuPanel.setDeveloperVisual('set_rpg_boss_stage_debug', settings.isRpgBossStageDebugEnabled);
   rpgMenuPanel.setDeveloperVisual('set_topography_lighting_debug', settings.isTopographyLightingDebugEnabled);
+  rpgMenuPanel.setDeveloperVisual('set_soft_impetus_asteroid_shadows', settings.isSoftImpetusAsteroidShadows);
 
   // ── Menu toggle button (appended to the stats panel by the renderer) ──
   const menuToggleBtn = document.createElement('button');

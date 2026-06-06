@@ -267,6 +267,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nadirAnchors: false,
     bossStage: false,
     topographyLighting: false,
+    softImpetusAsteroidShadows: false,
   };
   /** Authoritative field-space snapshot — recomputed by doResize() on every resize. */
   let rpgFieldSpace: RpgFieldSpace = computeRpgFieldSpace({
@@ -1591,6 +1592,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getScreenDarken:              () => screenDarken,
     getRestartFadeAlpha:          () => restartFadeAlpha,
     getIsLowGraphicsMode:         () => isLowGraphicsMode,
+    getSoftImpetusAsteroidShadowsEnabled: () => _isDevMode && developerVisuals.softImpetusAsteroidShadows,
     getEnemyIndicatorStyle:       () => enemyIndicatorStyle,
     getTopographicTerrainState:   () => topographicTerrainState,
     getVerdureCaveWallState:      () => verdureCaveWallState,
@@ -1815,6 +1817,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       developerVisuals.nadirAnchors = options.nadirAnchors;
       developerVisuals.bossStage = options.bossStage;
       developerVisuals.topographyLighting = options.topographyLighting;
+      developerVisuals.softImpetusAsteroidShadows = options.softImpetusAsteroidShadows;
       bossStageDirectorState.isDevMode = _isDevMode && developerVisuals.bossStage;
       setTopographyLightingDevMode(_isDevMode && developerVisuals.topographyLighting);
     },
