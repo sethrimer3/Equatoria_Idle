@@ -24,6 +24,24 @@ export const ALIVEN_VARIANTS = [
 
 export type AlivenVariantId = typeof ALIVEN_VARIANTS[number];
 
+/**
+ * Elite aliven variant IDs — one per base variant, spawned on every 10th wave.
+ * Each elite uses its base variant's params but retains the player-seeking bias
+ * that normal groups no longer apply.
+ */
+export const ALIVEN_ELITE_VARIANTS = [
+  'aliven_elite_spark_cluster',
+  'aliven_elite_shard_bloom',
+  'aliven_elite_pulse_swarm',
+  'aliven_elite_ember_ring',
+  'aliven_elite_void_splinters',
+  'aliven_elite_healer_nodes',
+  'aliven_elite_orbit_bloom',
+  'aliven_elite_quartz_ghost',
+  'aliven_elite_iolite_prism',
+  'aliven_elite_fracteryl_storm',
+] as const satisfies readonly string[];
+
 // ── Safety caps ────────────────────────────────────────────────────────────
 
 /** Maximum total particles a group can hold (guards splitter runaway). */

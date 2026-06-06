@@ -32,6 +32,10 @@ export function drawAlivenGroups(
     if (!_lowGraphics && group.aliveCount > 0) {
       drawCentroidGlow(ctx, group);
     }
+    // Elite gold halo (drawn behind particles).
+    if (group.isElite && group.aliveCount > 0) {
+      drawEliteHalo(ctx, group);
+    }
     // Splitter death burst ring.
     if (group.splitFlashMs > 0) {
       drawSplitBurst(ctx, group);
@@ -42,7 +46,7 @@ export function drawAlivenGroups(
       if (p.specialKind === 'healer' && p.healBeamMs > 0) {
         drawHealerBeam(ctx, p);
       }
-      drawParticle(ctx, p);
+      drawParticle(ctx, p, group.isElite);
     }
     for (const b of group.bullets) {
       drawBullet(ctx, b);
@@ -51,7 +55,62 @@ export function drawAlivenGroups(
     if (group.aliveCount > 0 && group.targetCount > 1) {
       drawGroupHealthBar(ctx, group);
     }
+    // Elite crown marker above health bar.
+    if (group.isElite && group.aliveCount > 0) {
+      drawEliteCrown(ctx, group);
+    }
   }
+}
+
+// ── Elite halo & crown ────────────────────────────────────────────
+
+/** Pulsing golden ring drawn behind the swarm to mark elite groups. */
+function drawEliteHalo(ctx: CanvasRenderingContext2D, group: AlivenParticleGroup): void {
+  ctx.save();
+  ctx.globalAlpha = 0.40;
+  ctx.strokeStyle = '#ffdd66';
+  ctx.lineWidth = 1.5;
+  if (!_lowGraphics) {
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#ffaa00';
+  }
+  ctx.beginPath();
+  ctx.arc(group.cx, group.cy, 20, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Small crown drawn above the health bar to identify elite groups. */
+function drawEliteCrown(ctx: CanvasRenderingContext2D, group: AlivenParticleGroup): void {
+  // Crown is centred at group.cx, just above the health bar (which sits at cy - 14).
+  const cx = group.cx;
+  const baseY = group.cy - 19; // bottom of crown
+  const tipH = 5;              // height of each crown point
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = '#ffdd66';
+  if (!_lowGraphics) {
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = '#ffaa00';
+  }
+  // Three crown points: left, centre, right
+  const w = 5; // half-width of crown base
+  ctx.beginPath();
+  // Left point
+  ctx.moveTo(cx - w, baseY);
+  ctx.lineTo(cx - w + 1, baseY - tipH + 1);
+  ctx.lineTo(cx - w + 2, baseY);
+  // Centre point (taller)
+  ctx.lineTo(cx - 1, baseY);
+  ctx.lineTo(cx, baseY - tipH - 1);
+  ctx.lineTo(cx + 1, baseY);
+  // Right point
+  ctx.lineTo(cx + w - 2, baseY);
+  ctx.lineTo(cx + w - 1, baseY - tipH + 1);
+  ctx.lineTo(cx + w, baseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 // ── Centroid glow ─────────────────────────────────────────────────
@@ -131,7 +190,7 @@ function drawHealerBeam(ctx: CanvasRenderingContext2D, p: AlivenParticle): void 
   ctx.restore();
 }
 
-function drawParticle(ctx: CanvasRenderingContext2D, p: AlivenParticle): void {
+function drawParticle(ctx: CanvasRenderingContext2D, p: AlivenParticle, isElite = false): void {
   const pulse = 0.78 + 0.22 * Math.sin(p.pulseMs / 420);
   const r     = p.radiusPx * pulse;
   const isFlashing = p.hitFlashMs > 0;
@@ -200,6 +259,17 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: AlivenParticle): void {
     ctx.shadowBlur  = 0;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r + 2.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Elite: gold outer rim on each particle
+  if (isElite) {
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = '#ffdd66';
+    ctx.lineWidth   = 0.8;
+    ctx.shadowBlur  = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r + 1.8, 0, Math.PI * 2);
     ctx.stroke();
   }
 

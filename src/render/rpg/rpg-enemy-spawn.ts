@@ -73,7 +73,7 @@ import {
   makeEmeraldFishEnemy, makeSapphireFishEnemy, makeAmethystFishEnemy, makeDiamondFishEnemy,
 } from './rpg-procedural-factories';
 import { makeAlivenGroup } from './rpg-aliven-factories';
-import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
+import { ALIVEN_VARIANTS, ALIVEN_ELITE_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
 import {
   recordAlivenSpawn,
   recordAlivenCapSkip,
@@ -681,6 +681,23 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       enemyTypeId as typeof ALIVEN_VARIANTS[number],
       spawnX, spawnY, wn,
     ));
+    recordAlivenSpawn(enemyTypeId, ctx.alivenGroups.length);
+  } else if (ALIVEN_ELITE_VARIANTS.includes(enemyTypeId as typeof ALIVEN_ELITE_VARIANTS[number])) {
+    // Elite aliven: strip the 'elite_' segment to get the base variant ID, then
+    // spawn as an isElite group — retaining the player-seeking movement bias.
+    const baseId = enemyTypeId.replace('aliven_elite_', 'aliven_') as typeof ALIVEN_VARIANTS[number];
+    if (!(ALIVEN_VARIANTS as readonly string[]).includes(baseId)) return;
+    if (ctx.alivenGroups.length >= MAX_ACTIVE_ALIVEN_GROUPS) {
+      recordAlivenCapSkip();
+      return;
+    }
+    const margin = 30;
+    const edge = Math.floor(Math.random() * 4);
+    if      (edge === 0) { spawnX = spawnLeft + margin + Math.random() * (spawnW - margin * 2); spawnY = spawnTop + margin; }
+    else if (edge === 1) { spawnX = spawnLeft + margin + Math.random() * (spawnW - margin * 2); spawnY = spawnBottom - margin; }
+    else if (edge === 2) { spawnX = spawnLeft + margin; spawnY = spawnTop + margin + Math.random() * (spawnH - margin * 2); }
+    else                 { spawnX = spawnRight - margin; spawnY = spawnTop + margin + Math.random() * (spawnH - margin * 2); }
+    ctx.alivenGroups.push(makeAlivenGroup(baseId, spawnX, spawnY, wn, true));
     recordAlivenSpawn(enemyTypeId, ctx.alivenGroups.length);
   } else {
     // ── Procedural creature spawns ────────────────────────────────

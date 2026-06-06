@@ -179,12 +179,14 @@ function tickMovement(
   p.vx += (Math.random() - 0.5) * ALIVEN_WANDER_STRENGTH * deltaMs;
   p.vy += (Math.random() - 0.5) * ALIVEN_WANDER_STRENGTH * deltaMs;
 
-  // Bias toward player
-  const dpx = ctx.playerX - p.x, dpy = ctx.playerY - p.y;
-  const dpLen = Math.sqrt(dpx * dpx + dpy * dpy);
-  if (dpLen > 0.01) {
-    p.vx += (dpx / dpLen) * ALIVEN_SEEK_STRENGTH * deltaMs;
-    p.vy += (dpy / dpLen) * ALIVEN_SEEK_STRENGTH * deltaMs;
+  // Player-seeking bias — elite groups only; normal groups are driven by the matrix.
+  if (group.isElite) {
+    const dpx = ctx.playerX - p.x, dpy = ctx.playerY - p.y;
+    const dpLen = Math.sqrt(dpx * dpx + dpy * dpy);
+    if (dpLen > 0.01) {
+      p.vx += (dpx / dpLen) * ALIVEN_SEEK_STRENGTH * deltaMs;
+      p.vy += (dpy / dpLen) * ALIVEN_SEEK_STRENGTH * deltaMs;
+    }
   }
 
   // Orbiter centripetal pull toward centroid

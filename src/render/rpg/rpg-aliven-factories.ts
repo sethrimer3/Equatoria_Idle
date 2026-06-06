@@ -47,6 +47,7 @@ export function makeAlivenGroup(
   spawnX: number,
   spawnY: number,
   waveNumber: number,
+  isElite = false,
 ): AlivenParticleGroup {
   const params = ALIVEN_VARIANT_PARAMS[variantId];
   const waveStatScale = getWaveStatScale(waveNumber);
@@ -69,6 +70,7 @@ export function makeAlivenGroup(
     targetCount:  params.particleCount,
     spawnCdMs:    0,
     aliveCount:   0,
+    isElite,
     splitFlashMs: 0,
     splitFlashX:  spawnX,
     splitFlashY:  spawnY,

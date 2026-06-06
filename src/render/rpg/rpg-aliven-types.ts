@@ -99,6 +99,9 @@ export interface AlivenParticleGroup {
   targetCount: number;
   /** Countdown until the next particle activates. */
   spawnCdMs: number;
+  /** True for elite variants that spawn on every 10th wave. Elite groups keep the
+   *  player-seeking movement bias; normal groups use matrix forces only. */
+  isElite: boolean;
   // ── Visual-only fields ──────────────────────────────────────────
   /** Remaining ms for the splitter-death burst ring visual. */
   splitFlashMs: number;

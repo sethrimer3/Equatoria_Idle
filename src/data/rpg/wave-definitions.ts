@@ -178,14 +178,15 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'aliven_shard_bloom',   count: 1, spawnDelay: 1800 },
     ],
   },
-  // Wave 10: no boss before wave 100
+  // Wave 10: no boss before wave 100; first elite aliven wave.
   {
     waveNumber: 10,
     spawns: [
-      { enemyTypeId: 'laser',                count: 3, spawnDelay:  500 },
-      { enemyTypeId: 'quartz',               count: 2, spawnDelay:  480 },
-      { enemyTypeId: 'sapphire',             count: 1, spawnDelay: 1000 },
-      { enemyTypeId: 'aliven_shard_bloom',   count: 1, spawnDelay: 1600 },
+      { enemyTypeId: 'laser',                     count: 3, spawnDelay:  500 },
+      { enemyTypeId: 'quartz',                    count: 2, spawnDelay:  480 },
+      { enemyTypeId: 'sapphire',                  count: 1, spawnDelay: 1000 },
+      { enemyTypeId: 'aliven_shard_bloom',         count: 1, spawnDelay: 1600 },
+      { enemyTypeId: 'aliven_elite_shard_bloom',   count: 1, spawnDelay: 2400 },
     ],
   },
   {
@@ -293,16 +294,17 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'aliven_void_splinters', count: 1, spawnDelay: 1900 },
     ],
   },
-  // Wave 20: no boss before wave 100
+  // Wave 20: no boss before wave 100; elite aliven wave.
   {
     waveNumber: 20,
     spawns: [
-      { enemyTypeId: 'laser',                count: 4, spawnDelay:  380 },
-      { enemyTypeId: 'quartz',               count: 3, spawnDelay:  360 },
-      { enemyTypeId: 'sapphire',             count: 2, spawnDelay:  820 },
-      { enemyTypeId: 'amber',               count: 2, spawnDelay:  950 },
-      { enemyTypeId: 'void',                count: 1, spawnDelay: 1400 },
-      { enemyTypeId: 'aliven_pulse_swarm',   count: 1, spawnDelay: 1700 },
+      { enemyTypeId: 'laser',                     count: 4, spawnDelay:  380 },
+      { enemyTypeId: 'quartz',                    count: 3, spawnDelay:  360 },
+      { enemyTypeId: 'sapphire',                  count: 2, spawnDelay:  820 },
+      { enemyTypeId: 'amber',                     count: 2, spawnDelay:  950 },
+      { enemyTypeId: 'void',                      count: 1, spawnDelay: 1400 },
+      { enemyTypeId: 'aliven_pulse_swarm',         count: 1, spawnDelay: 1700 },
+      { enemyTypeId: 'aliven_elite_pulse_swarm',   count: 1, spawnDelay: 2500 },
     ],
   },
   {
@@ -491,6 +493,25 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (waveNumber >= 28)  spawns.push({ enemyTypeId: 'aliven_orbit_bloom',      count: 1, spawnDelay: delay + 1900 });
   if (waveNumber >= 38)  spawns.push({ enemyTypeId: 'aliven_iolite_prism',     count: 1, spawnDelay: delay + 2100 });
   if (waveNumber >= 65)  spawns.push({ enemyTypeId: 'aliven_fracteryl_storm',  count: 1, spawnDelay: delay + 2300 });
+
+  // Elite aliven spawns: every 10th wave, spawn the highest-tier unlocked elite aliven variant.
+  // These elite groups keep the player-seeking behavior that normal aliven particles no longer have.
+  if (waveNumber % 10 === 0) {
+    let eliteAlivenId: string | null = null;
+    if (waveNumber >= 65)       eliteAlivenId = 'aliven_elite_fracteryl_storm';
+    else if (waveNumber >= 38)  eliteAlivenId = 'aliven_elite_iolite_prism';
+    else if (waveNumber >= 28)  eliteAlivenId = 'aliven_elite_orbit_bloom';
+    else if (waveNumber >= 22)  eliteAlivenId = 'aliven_elite_healer_nodes';
+    else if (waveNumber >= 18)  eliteAlivenId = 'aliven_elite_void_splinters';
+    else if (waveNumber >= 12)  eliteAlivenId = 'aliven_elite_ember_ring';
+    else if (waveNumber >= 8)   eliteAlivenId = 'aliven_elite_pulse_swarm';
+    else if (waveNumber >= 5)   eliteAlivenId = 'aliven_elite_shard_bloom';
+    else if (waveNumber >= 4)   eliteAlivenId = 'aliven_elite_quartz_ghost';
+    else if (waveNumber >= 2)   eliteAlivenId = 'aliven_elite_spark_cluster';
+    if (eliteAlivenId !== null) {
+      spawns.push({ enemyTypeId: eliteAlivenId, count: 1, spawnDelay: delay + 2600 });
+    }
+  }
 
   // Elite spawns: one per wave at the correct tier unlock threshold, then sparse thereafter.
   // Each elite spawns well after the main pack to give it a dramatic entrance.

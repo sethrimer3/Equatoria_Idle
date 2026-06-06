@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { WAVE_DEFINITIONS, PROCEDURAL_WAVE_ENEMY_IDS, STANDARD_WAVE_ENEMY_IDS, ELITE_WAVE_ENEMY_IDS } from '../../../data/rpg/wave-definitions';
 import { ENEMY_CATALOG } from '../../../ui/panels/rpg-enemies-catalog';
-import { ALIVEN_VARIANTS } from '../rpg-aliven-constants';
+import { ALIVEN_VARIANTS, ALIVEN_ELITE_VARIANTS } from '../rpg-aliven-constants';
 
 /** Enemy type IDs that are intentionally absent from ENEMY_CATALOG. */
 const KNOWN_EXCLUSIONS = new Set<string>([
@@ -69,6 +69,12 @@ describe('Enemy catalog coverage', () => {
 
   it('all aliven variant IDs have catalog entries', () => {
     const missing = (ALIVEN_VARIANTS as readonly string[])
+      .filter(id => !KNOWN_EXCLUSIONS.has(id) && !catalogIds.has(id));
+    expect(missing).toEqual([]);
+  });
+
+  it('all elite aliven variant IDs have catalog entries', () => {
+    const missing = (ALIVEN_ELITE_VARIANTS as readonly string[])
       .filter(id => !KNOWN_EXCLUSIONS.has(id) && !catalogIds.has(id));
     expect(missing).toEqual([]);
   });
