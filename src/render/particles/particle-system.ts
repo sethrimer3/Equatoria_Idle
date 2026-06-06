@@ -70,7 +70,7 @@ import {
   enforceParticleLimit,
 } from './particle-merge';
 import { checkAndStartForgeCrunch, completeForgeCrunch, completeEquationForgeCrunch } from './particle-forge';
-import { applyForgeFieldForces } from './forge-field-forces';
+import { applyForgeFieldForces, applyLoomContainmentCap } from './forge-field-forces';
 import type { ForgeFieldInfo, LoomCapture } from './forge-field-forces';
 import { updateShockwaves } from './particle-shockwave';
 import { drawParticles, updateParticleRendererTime, getParticleRendererAnimTimeMs } from './particle-renderer';
@@ -153,6 +153,8 @@ export class ParticleSystem {
   alivenedTierIndices: Set<number> = new Set();
   /** Debug visualization toggles. */
   debugState: ParticleLifeDebugState = createDefaultDebugState();
+  /** When true, loom containment cap emits sparse console.debug diagnostics. */
+  devMode = false;
 
   private readonly _pool = new ParticlePool();
 
@@ -346,6 +348,16 @@ export class ParticleSystem {
 
       // Velocity damping + max speed clamp
       applyParticleLifeDamping(this.particles, FIXED_STEP_DELTA, nowMs);
+
+      // Loom containment governor — MUST run after all velocity sources for this
+      // substep (generator gravity, Particle Life, drag-release boost, PL damping).
+      // For every compatible mote inside a loom field's outerRadius:
+      //   • position-corrects one-step escapes
+      //   • eliminates 95 % of outward radial velocity
+      //   • hard-caps total speed (0.65 at outer edge → 0.28 near capture radius)
+      // This makes it physically impossible for any upstream force to fling a
+      // compatible mote out of its loom field.
+      applyLoomContainmentCap(this.particles, this.forgeFields, this.devMode);
 
       // Toroidal wraparound
       applyWrapAround(this.particles, canvasWidth, canvasHeight);

@@ -291,6 +291,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     ctx.particles.setForgeFields(forgeFieldsBuffer);
 
     const isDevMode = ctx.settings.isDevMode;
+    ctx.particles.devMode = isDevMode;
     if (isDevMode) resetPerfStats();
 
     // Flush batched pointermove — applies the latest pointer position to locked
