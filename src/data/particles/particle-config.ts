@@ -100,6 +100,16 @@ export const MERGE_TRAIL_DRAW_DURATION_MS = 150;
 export const MERGE_TRAIL_ERASE_DURATION_MS = 150;
 /** Maximum random curve angle for suction merge trails, in degrees. Trails curve randomly between ±this value. */
 export const MERGE_TRAIL_CURVE_ANGLE_DEG = 10;
+
+// ─── Merge ray rendering (absorption effect) ─────────────────────
+/** Max absorption rays sampled per active merge in crisp/high-DPI mode. */
+export const MERGE_RAY_COUNT_CRISP = 4;
+/** Max absorption rays sampled per active merge in pixelated mode. */
+export const MERGE_RAY_COUNT_PIXELATED = 6;
+/** Global per-frame ctx.stroke() budget for merge rays in crisp/high-DPI mode. */
+export const MERGE_RAY_BUDGET_CRISP = 28;
+/** Global per-frame ctx.stroke() budget for merge rays in pixelated mode. */
+export const MERGE_RAY_BUDGET_PIXELATED = 64;
 export const GENERATOR_ROTATION_STRENGTH = 0.4;
 /** Per-generator phase offset multiplier for the rotation swirl sine wave. */
 export const GENERATOR_ROTATION_PHASE_OFFSET = 1.23;

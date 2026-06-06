@@ -18,6 +18,12 @@ import { getTrailPosition } from './particle-physics';
 import { parseHexToRgb } from '../assets/color-utils';
 import { drawParticleGlowField } from './particle-glow-field';
 import { perfStats } from '../debug/perf-stats';
+import {
+  MERGE_RAY_COUNT_CRISP,
+  MERGE_RAY_COUNT_PIXELATED,
+  MERGE_RAY_BUDGET_CRISP,
+  MERGE_RAY_BUDGET_PIXELATED,
+} from '../../data/particles/particle-config';
 
 // ─── Tier index constants ───────────────────────────────────────
 const DIAMOND_TIER_INDEX = 9;
@@ -89,99 +95,108 @@ function pushPosition(batch: DrawBatch, x: number, y: number): void {
  */
 const _trailPos = { x: 0, y: 0 };
 
-// ─── Animated merge trail rendering ──────────────────────────────
+// ─── Animated merge ray rendering ────────────────────────────────
 
 /**
- * Draw animated trails for all active suction merges.
+ * Draw cheap absorption rays for active suction merges.
  *
- * For each merge up to MERGE_TRAIL_COUNT trails are drawn as quadratic bezier
- * curves from the particle's pre-teleport position to the generator.
+ * Replaces the previous dashed quadratic-Bézier approach. Each merge renders a
+ * small number of straight solid rays sampled from stored start positions,
+ * animated by interpolating the visible segment endpoints. No ctx.setLineDash,
+ * no per-ray shadowBlur.
  *
- * Each trail has two phases driven by lineDashOffset:
- *   Draw  (0 → drawDur):  trail grows from tail (particle start) toward tip (generator).
- *   Erase (0 → eraseDur): trail shrinks from tail, leaving tip last.
+ * All rays for one merge share the same color/width/alpha, so they are batched
+ * into a single ctx.stroke() per merge — one canvas draw call per active merge
+ * instead of one per trail.
  *
- * lineDashOffset derivation (path length ≈ L, dash pattern [L, L]):
- *   Draw  phase:  offset = L × (1 − drawProgress)   → [dashLen→0], tail appears first.
- *   Erase phase:  offset = −L × eraseProgress        → [0→−dashLen], tail disappears first.
+ * A global per-frame budget (stroke calls) prevents heavy concurrent merging
+ * from spiking render time in crisp/high-DPI mode. Lower-priority merges (later
+ * in the list) are skipped once the budget is exhausted.
+ *
+ * Animation phases (mirroring the original dash-offset behaviour):
+ *   Draw  (0 → drawDur):  each ray grows from its start toward the target.
+ *   Erase (0 → eraseDur): each ray shrinks from its start end, tip stays at target.
  */
-function drawActiveMergeTrails(
+function drawActiveMergeRays(
   ctx: CanvasRenderingContext2D,
   activeMerges: ActiveMerge[],
   nowMs: number,
+  isCrisp: boolean,
 ): void {
+  const rayBudget    = isCrisp ? MERGE_RAY_BUDGET_CRISP    : MERGE_RAY_BUDGET_PIXELATED;
+  const raysPerMerge = isCrisp ? MERGE_RAY_COUNT_CRISP     : MERGE_RAY_COUNT_PIXELATED;
+
+  let strokeCalls = 0;
+  perfStats.activeMergeCount = 0;
+
   ctx.save();
   ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
 
   for (let mi = 0, mlen = activeMerges.length; mi < mlen; mi++) {
     const merge = activeMerges[mi];
     if (!merge.trailStartXY || merge.trailCount === 0) continue;
 
-    const elapsed = nowMs - merge.trailAnimStartMs;
-    const drawDur = merge.trailDrawDurationMs;
+    const elapsed  = nowMs - merge.trailAnimStartMs;
+    const drawDur  = merge.trailDrawDurationMs;
     const eraseDur = merge.trailEraseDurationMs;
     if (elapsed < 0 || elapsed >= drawDur + eraseDur) continue;
 
+    perfStats.activeMergeCount++;
+
+    // Skip lower-priority merges once the stroke budget is consumed.
+    if (strokeCalls >= rayBudget) continue;
+
     const isDrawPhase = elapsed < drawDur;
-    const drawProgress = isDrawPhase ? elapsed / drawDur : 1.0;
-    const eraseProgress = isDrawPhase ? 0.0 : (elapsed - drawDur) / eraseDur;
+    const progress = isDrawPhase ? elapsed / drawDur : (elapsed - drawDur) / eraseDur;
+
+    // Alpha: ramp up quickly in draw phase, fade linearly in erase phase.
+    const alpha = isDrawPhase
+      ? Math.min(1, progress * 3) * 0.65
+      : (1 - progress) * 0.65;
+    if (alpha <= 0.01) continue;
 
     const [r, g, b] = parseHexToRgb(merge.trailColor);
+    ctx.strokeStyle = `rgb(${r},${g},${b})`;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = isDrawPhase ? 1.0 + progress * 0.5 : 1.5 - progress * 0.5;
 
-    for (let ti = 0; ti < merge.trailCount; ti++) {
+    // Evenly-spaced sample from stored start positions; no allocation.
+    const available  = merge.trailCount;
+    const raysToDraw = Math.min(raysPerMerge, available);
+
+    // Batch all rays for this merge into one path → one stroke call.
+    ctx.beginPath();
+    for (let ri = 0; ri < raysToDraw; ri++) {
+      const ti = available <= raysToDraw
+        ? ri
+        : Math.min(Math.floor((ri / raysToDraw) * available), available - 1);
       const sx = merge.trailStartXY[ti * 2];
       const sy = merge.trailStartXY[ti * 2 + 1];
       const tx = merge.targetX;
       const ty = merge.targetY;
 
-      const ddx = tx - sx;
-      const ddy = ty - sy;
-      const L = Math.sqrt(ddx * ddx + ddy * ddy);
-      if (L < 1) continue;
+      // Animate visible segment endpoints (same visual as original dash offset).
+      let x0: number, y0: number, x1: number, y1: number;
+      if (isDrawPhase) {
+        x0 = sx;               y0 = sy;
+        x1 = sx + (tx - sx) * progress;
+        y1 = sy + (ty - sy) * progress;
+      } else {
+        x0 = sx + (tx - sx) * progress;
+        y0 = sy + (ty - sy) * progress;
+        x1 = tx;               y1 = ty;
+      }
 
-      // Bezier control point: perpendicular offset at midpoint
-      const curveAngle = merge.trailCurveAngles![ti];
-      const midX = (sx + tx) * 0.5;
-      const midY = (sy + ty) * 0.5;
-      const perpX = -ddy / L;
-      const perpY = ddx / L;
-      const curveOffset = L * Math.tan(curveAngle);
-      const controlX = midX + perpX * curveOffset;
-      const controlY = midY + perpY * curveOffset;
-
-      // dashLen slightly exceeds straight-line distance to cover bezier arc length
-      const dashLen = L * 1.1;
-
-      // lineDashOffset animation (see function comment above)
-      const dashOffset = isDrawPhase
-        ? dashLen * (1 - drawProgress)
-        : -(dashLen * eraseProgress);
-
-      ctx.setLineDash([dashLen, dashLen]);
-      ctx.lineDashOffset = dashOffset;
-
-      // Alpha fades slightly during erase
-      ctx.globalAlpha = isDrawPhase ? 0.82 : 0.82 * (1 - eraseProgress * 0.5);
-
-      // Glow behind trail
-      ctx.shadowBlur = 4;
-      ctx.shadowColor = `rgb(${r},${g},${b})`;
-      ctx.strokeStyle = `rgb(${r},${g},${b})`;
-      ctx.lineWidth = 1.5;
-
-      ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.quadraticCurveTo(controlX, controlY, tx, ty);
-      ctx.stroke();
-      perfStats.trailDrawCalls++;
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
     }
+    ctx.stroke();
+
+    strokeCalls++;
+    perfStats.trailDrawCalls++;
   }
 
-  ctx.setLineDash([]);
-  ctx.lineDashOffset = 0;
   ctx.globalAlpha = 1;
-  ctx.shadowBlur = 0;
   ctx.restore();
 }
 
@@ -205,11 +220,9 @@ export function drawParticles(
     drawParticleGlowField(ctx, particles, cc.widthPx, cc.heightPx);
   }
 
-  // ── Draw animated merge trails ──
-  drawActiveMergeTrails(ctx, activeMerges, nowMs);
-
-  // ── Draw trails for medium+ particles ──
+  // ── Draw animated merge rays + particle trails (both gated on enableTrails) ──
   if (options.enableTrails) {
+    drawActiveMergeRays(ctx, activeMerges, nowMs, cc.idleCanvasRenderStyle === 'crisp');
     for (let pi = 0, plen = particles.length; pi < plen; pi++) {
       const p = particles[pi];
       // Skip suction-merge particles — they are at the generator and invisible.

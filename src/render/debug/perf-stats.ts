@@ -21,6 +21,8 @@ export interface PerfStats {
   mergesPerFrame: number;
   trailDrawCalls: number;
   particleCount: number;
+  /** Number of visually active merges this frame (animation window not yet elapsed). */
+  activeMergeCount: number;
 }
 
 export const perfStats: PerfStats = {
@@ -31,6 +33,7 @@ export const perfStats: PerfStats = {
   mergesPerFrame: 0,
   trailDrawCalls: 0,
   particleCount: 0,
+  activeMergeCount: 0,
 };
 
 export function resetPerfStats(): void {
@@ -41,6 +44,7 @@ export function resetPerfStats(): void {
   perfStats.mergesPerFrame = 0;
   perfStats.trailDrawCalls = 0;
   perfStats.particleCount = 0;
+  perfStats.activeMergeCount = 0;
 }
 
 /** Draw perf stats as a small text block in the bottom-right corner of the canvas. */
@@ -56,7 +60,8 @@ export function drawPerfStats(
     `motes  ${perfStats.particleCount}`,
     `mergeC ${perfStats.mergeCheckCount}`,
     `merges ${perfStats.mergesPerFrame}`,
-    `trails ${perfStats.trailDrawCalls}`,
+    `actMrg ${perfStats.activeMergeCount}`,
+    `mrgRay ${perfStats.trailDrawCalls}`,
   ];
 
   const fontSize = 6;
