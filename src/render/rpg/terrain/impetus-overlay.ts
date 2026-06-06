@@ -423,7 +423,7 @@ function _getAsteroidVerts(
   heightPx: number,
   tS: number,
   out: Float32Array,
-): { ax: number; ay: number } {
+): void {
   const row   = _ASTEROID_DATA[i];
   const bXF   = row[0];
   const bYF   = row[1];
@@ -452,7 +452,6 @@ function _getAsteroidVerts(
     out[v * 2]     = ax + cosR * lx - sinR * ly;
     out[v * 2 + 1] = ay + sinR * lx + cosR * ly;
   }
-  return { ax, ay };
 }
 
 // Reusable vertex buffer — avoids per-frame allocation
@@ -472,13 +471,14 @@ function _drawAsteroidShadows(
   const n      = _ASTER_ANGLES.length;
 
   canvas2d.save();
-  // Soft translucent shadow — no expensive blur
-  canvas2d.fillStyle = 'rgba(0,0,0,0.28)';
-  canvas2d.globalAlpha = 1;
+  canvas2d.fillStyle = '#000000';
 
   for (let i = 0; i < count; i++) {
     const alpha = _ASTEROID_DATA[i][7];
     _getAsteroidVerts(i, widthPx, heightPx, tS, _VERT_BUF);
+
+    // Set opacity once per asteroid — all its shadow quads share the same alpha
+    canvas2d.globalAlpha = alpha * 0.38;
 
     for (let e = 0; e < n; e++) {
       const ne  = (e + 1) % n;
@@ -487,30 +487,28 @@ function _drawAsteroidShadows(
       const v2x = _VERT_BUF[ne * 2];
       const v2y = _VERT_BUF[ne * 2 + 1];
 
-      // Edge normal (pointing outward for CCW winding)
-      const ecx = (v1x + v2x) * 0.5;
-      const ecy = (v1y + v2y) * 0.5;
+      // Inward normal for CW polygon in Y-down canvas: (-(v2y-v1y), v2x-v1x)
+      // dot > 0 with inward normal means toSun aligns inward → edge faces AWAY from sun → cast shadow
+      const ecx    = (v1x + v2x) * 0.5;
+      const ecy    = (v1y + v2y) * 0.5;
       const toSunX = sunX - ecx;
       const toSunY = sunY - ecy;
-      // Normal of the edge (perpendicular, left-hand side)
-      const nx = -(v2y - v1y);
-      const ny =  (v2x - v1x);
-      // dot < 0 means the edge faces away from the sun
-      if (toSunX * nx + toSunY * ny >= 0) continue;
+      const nx     = -(v2y - v1y);
+      const ny     =  (v2x - v1x);
+      if (toSunX * nx + toSunY * ny <= 0) continue;
 
-      // Direction from sun through each vertex, scaled to _SHADOW_LENGTH
-      const d1x  = v1x - sunX;
-      const d1y  = v1y - sunY;
-      const d1l  = Math.sqrt(d1x * d1x + d1y * d1y) || 1;
-      const d2x  = v2x - sunX;
-      const d2y  = v2y - sunY;
-      const d2l  = Math.sqrt(d2x * d2x + d2y * d2y) || 1;
-      const s1x  = v1x + (d1x / d1l) * _SHADOW_LENGTH;
-      const s1y  = v1y + (d1y / d1l) * _SHADOW_LENGTH;
-      const s2x  = v2x + (d2x / d2l) * _SHADOW_LENGTH;
-      const s2y  = v2y + (d2y / d2l) * _SHADOW_LENGTH;
+      // Extend vertices away from sun by _SHADOW_LENGTH
+      const d1x = v1x - sunX;
+      const d1y = v1y - sunY;
+      const d1l = Math.sqrt(d1x * d1x + d1y * d1y) || 1;
+      const d2x = v2x - sunX;
+      const d2y = v2y - sunY;
+      const d2l = Math.sqrt(d2x * d2x + d2y * d2y) || 1;
+      const s1x = v1x + (d1x / d1l) * _SHADOW_LENGTH;
+      const s1y = v1y + (d1y / d1l) * _SHADOW_LENGTH;
+      const s2x = v2x + (d2x / d2l) * _SHADOW_LENGTH;
+      const s2y = v2y + (d2y / d2l) * _SHADOW_LENGTH;
 
-      canvas2d.globalAlpha = alpha * 0.55;
       canvas2d.beginPath();
       canvas2d.moveTo(v1x, v1y);
       canvas2d.lineTo(v2x, v2y);
