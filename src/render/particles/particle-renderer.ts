@@ -17,6 +17,7 @@ import { MEDIUM_SIZE_INDEX, LARGE_SIZE_INDEX } from '../../data/particles/size-t
 import { getTrailPosition } from './particle-physics';
 import { parseHexToRgb } from '../assets/color-utils';
 import { drawParticleGlowField } from './particle-glow-field';
+import { perfStats } from '../debug/perf-stats';
 
 // ─── Tier index constants ───────────────────────────────────────
 const DIAMOND_TIER_INDEX = 9;
@@ -173,6 +174,7 @@ function drawActiveMergeTrails(
       ctx.moveTo(sx, sy);
       ctx.quadraticCurveTo(controlX, controlY, tx, ty);
       ctx.stroke();
+      perfStats.trailDrawCalls++;
     }
   }
 

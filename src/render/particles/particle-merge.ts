@@ -18,6 +18,7 @@
 
 import type { TierId } from '../../data/tiers';
 import { TIER_BY_ID } from '../../data/tiers';
+import { perfStats } from '../debug/perf-stats';
 import type { SizeIndex } from '../../data/particles/size-tiers';
 import {
   MERGE_THRESHOLD,
@@ -54,6 +55,12 @@ interface TierSizeGroup {
  * Cleared before each use to avoid per-frame allocation.
  */
 const _groupMap = new Map<number, TierSizeGroup>();
+
+/**
+ * Pool of particle arrays returned from _groupMap entries on clear.
+ * Prevents per-call allocation of the TierSizeGroup.particles arrays.
+ */
+const _particleArrayPool: EquatoriaParticle[][] = [];
 
 /**
  * Encode tierId index + sizeIndex into a single numeric key.
@@ -114,15 +121,23 @@ export function attemptSuctionMerge(
   generators: readonly GeneratorInfo[],
   nowMs: number,
 ): void {
+  // Return particle arrays from the previous call back to the pool before clearing
+  for (const group of _groupMap.values()) {
+    group.particles.length = 0;
+    _particleArrayPool.push(group.particles);
+  }
   _groupMap.clear();
 
+  perfStats.mergeCheckCount += particles.length;
   for (let i = 0, len = particles.length; i < len; i++) {
     const p = particles[i];
     if (p.isMerging) continue; // already in-flight
     const key = groupKey(p.tierIndex, p.sizeIndex);
     let group = _groupMap.get(key);
     if (!group) {
-      group = { tierId: p.tierId, sizeIndex: p.sizeIndex, particles: [] };
+      const arr = _particleArrayPool.pop() ?? [];
+      arr.length = 0;
+      group = { tierId: p.tierId, sizeIndex: p.sizeIndex, particles: arr };
       _groupMap.set(key, group);
     }
     group.particles.push(p);
@@ -204,6 +219,9 @@ export function attemptSuctionMerge(
 
 // ─── Process active merges ──────────────────────────────────────
 
+/** Reusable removal set — cleared each call, never reallocated. */
+const _toRemove = new Set<EquatoriaParticle>();
+
 export function processActiveMerges(
   particles: EquatoriaParticle[],
   activeMerges: ActiveMerge[],
@@ -213,7 +231,8 @@ export function processActiveMerges(
   nowMs: number,
   generators: readonly GeneratorInfo[],
 ): { particles: EquatoriaParticle[]; mergeCooldownFrames: number; completedCount: number } {
-  const toRemove = new Set<EquatoriaParticle>();
+  _toRemove.clear();
+  const toRemove = _toRemove;
   let cooldown = 0;
   let completedCount = 0;
 
@@ -268,6 +287,7 @@ export function processActiveMerges(
 
     cooldown = Math.max(cooldown, 1);
     completedCount++;
+    perfStats.mergesPerFrame++;
   }
   activeMerges.length = writeIdx;
 

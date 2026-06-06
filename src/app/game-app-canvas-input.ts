@@ -1,7 +1,7 @@
 import { updateGeneratorPointerPos, clearGeneratorPointerPos } from '../render/generators/generator-renderer';
 import {
   handleParticleDragDown,
-  handleParticleDragMove,
+  recordParticleDragMove,
   handleParticleDragUp,
 } from '../input/particle-drag';
 import type { ActionHandler } from '../input';
@@ -70,7 +70,8 @@ export function wireCanvasPointerInput(
     }
     if (!appState.particleDrag.isDown) return;
     event.preventDefault();
-    handleParticleDragMove(appState.particleDrag, pos.x, pos.y, event.timeStamp, particles.particles);
+    // Record latest position only — actual particle update is batched to the game loop via flushParticleDragMove
+    recordParticleDragMove(appState.particleDrag, pos.x, pos.y, event.timeStamp);
   }, { passive: false });
 
   cc.canvas.addEventListener('pointerleave', () => {
