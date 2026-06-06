@@ -33,7 +33,8 @@ export function createForgeInventory(): ForgeInventory {
   element.appendChild(grid);
 
   // Per-slot weapon mapping — preserves user arrangement across updates
-  let slotWeapons: Array<CraftedWeaponData | null> = Array(MIN_SLOT_COUNT).fill(null);
+  const slotWeapons: Array<CraftedWeaponData | null> = Array(MIN_SLOT_COUNT).fill(null);
+  let renderedWeaponRefs: Array<CraftedWeaponData | null> = [];
 
   // ── Popup ──────────────────────────────────────────────────────────
 
@@ -281,6 +282,7 @@ export function createForgeInventory(): ForgeInventory {
     for (let i = 0; i < totalSlots; i++) {
       grid.appendChild(buildSlot(i));
     }
+    renderedWeaponRefs = slotWeapons.slice();
   }
 
   renderGrid();
@@ -288,6 +290,8 @@ export function createForgeInventory(): ForgeInventory {
   // ── Public update ──────────────────────────────────────────────────
 
   function update(craftedWeapons: readonly CraftedWeaponData[]): void {
+    let changed = slotWeapons.length !== renderedWeaponRefs.length;
+
     // Track which weapon IDs already have a slot position
     const existingIds = new Set(slotWeapons.filter(Boolean).map(w => w!.id));
 
@@ -295,6 +299,7 @@ export function createForgeInventory(): ForgeInventory {
     for (let i = 0; i < slotWeapons.length; i++) {
       if (slotWeapons[i]) {
         const fresh = craftedWeapons.find(w => w.id === slotWeapons[i]!.id);
+        if (fresh !== slotWeapons[i]) changed = true;
         slotWeapons[i] = fresh ?? null;
       }
     }
@@ -303,6 +308,7 @@ export function createForgeInventory(): ForgeInventory {
     for (let i = 0; i < slotWeapons.length; i++) {
       if (slotWeapons[i] && !craftedWeapons.some(w => w.id === slotWeapons[i]!.id)) {
         slotWeapons[i] = null;
+        changed = true;
       }
     }
 
@@ -315,13 +321,17 @@ export function createForgeInventory(): ForgeInventory {
         } else {
           slotWeapons.push(weapon);
         }
+        changed = true;
       }
     }
 
     // Maintain minimum slot count
-    while (slotWeapons.length < MIN_SLOT_COUNT) slotWeapons.push(null);
+    while (slotWeapons.length < MIN_SLOT_COUNT) {
+      slotWeapons.push(null);
+      changed = true;
+    }
 
-    renderGrid();
+    if (changed) renderGrid();
   }
 
   return { element, update };
