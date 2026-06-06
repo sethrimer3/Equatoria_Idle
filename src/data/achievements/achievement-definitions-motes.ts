@@ -2,7 +2,7 @@ import type { AchievementDefinition } from './achievement-definition-types';
 
 const MOTES_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   // ── First Motes ──────────────────────────────────────────────
-  { id: 'first_grain',    groupId: 'motes', subcategoryId: 'motes_first', displayName: 'First Grain',    description: 'Earn your first Sand mote.',      condition: { kind: 'lifetime_motes', tierId: 'sand',      amount: 1 }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05 },
+  { id: 'first_grain',    groupId: 'motes', subcategoryId: 'motes_first', displayName: 'First Handful',  description: 'Earn 25 lifetime Sand motes.',    condition: { kind: 'lifetime_motes', tierId: 'sand',      amount: 25 }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05 },
   { id: 'crystal_clear',  groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Crystal Clear',  description: 'Earn your first Quartz mote.',    condition: { kind: 'lifetime_motes', tierId: 'quartz',    amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.05 },
   { id: 'fire_starter',   groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Fire Starter',   description: 'Earn your first Ruby mote.',      condition: { kind: 'lifetime_motes', tierId: 'ruby',      amount: 1 }, bonusKind: 'tap_multiplier',  bonusMultiplier: 1.10 },
   { id: 'solar_flare',    groupId: 'motes', subcategoryId: 'motes_first', displayName: 'Solar Flare',    description: 'Earn your first Sunstone mote.',  condition: { kind: 'lifetime_motes', tierId: 'sunstone',  amount: 1 }, bonusKind: 'loom_multiplier', bonusMultiplier: 1.10 },
@@ -23,7 +23,6 @@ const MOTES_ACHIEVEMENTS: readonly AchievementDefinition[] = [
   //   limited; their motes are harder to earn. This asymmetry is deliberate — adding
   //   100M/1B milestones for late tiers would inflate rewards without meaningful gameplay.
 
-  { id: 'mote_sand_100',   groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 100',       description: 'Earn 100 lifetime Sand motes.',         condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 100        }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
   { id: 'mote_sand_1k',    groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 1,000',     description: 'Earn 1,000 lifetime Sand motes.',       condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 1000       }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
   { id: 'mote_sand_10k',   groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 10,000',    description: 'Earn 10,000 lifetime Sand motes.',      condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 10000      }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffd764' },
   { id: 'mote_sand_100k',  groupId: 'motes', subcategoryId: 'motes_sand', displayName: 'Sand — 100,000',   description: 'Earn 100,000 lifetime Sand motes.',     condition: { kind: 'lifetime_motes', tierId: 'sand', amount: 100000     }, bonusKind: 'tap_multiplier', bonusMultiplier: 1.05, displayColor: '#ffc840' },

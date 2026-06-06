@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-03
-Current build: 206
+Current build: 230
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,14 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 230: achievement pacing cleanup
+
+Completed:
+
+- Replaced the automatic first-tap Sand achievement with a 25 lifetime Sand milestone.
+- Removed the redundant 100 lifetime Sand milestone.
+- Repurposed three duplicate long-term Equivalence achievements into distinct long-term tap-count goals while preserving their save IDs.
 
 ### Build 206: crafted weapon base level system
 
