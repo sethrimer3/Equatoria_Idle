@@ -51,9 +51,9 @@ export interface LoomCapture {
 /** Weak attraction strength toward a loom field (canvas px/s per unit). */
 const LOOM_ATTRACTION_STRENGTH = 1.2;
 /** Velocity steering strength that keeps compatible motes from slingshotting past loom fields. */
-const LOOM_STEERING_BLEND = 0.18;
+const LOOM_STEERING_BLEND = 0.25;
 /** Maximum inward target speed used by loom steering. */
-const LOOM_MAX_STEER_SPEED = 1.6;
+const LOOM_MAX_STEER_SPEED = 2.0;
 
 // ─── Implementation ──────────────────────────────────────────────
 

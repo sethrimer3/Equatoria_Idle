@@ -30,6 +30,13 @@ import {
 } from '../render';
 import type { ForgeFieldInfo } from '../render/particles/forge-field-forces';
 import { FORGE_RADIUS, MAX_FORGE_ATTRACTION_DISTANCE } from '../data/particles/particle-config';
+import { GENERATOR_RADIUS_PX } from '../sim/particles/generator-state';
+
+// Distance between adjacent generators on the 11-slot ring (chord length).
+// Loom outerRadius must reach at least to the centre of the previous-tier
+// generator so compatible motes are steered inward before they overshoot.
+const _ADJACENT_GEN_DIST = 2 * GENERATOR_RADIUS_PX * Math.sin(Math.PI / 11);
+const LOOM_OUTER_RADIUS = Math.max(FORGE_RADIUS * 3.8, _ADJACENT_GEN_DIST + 10);
 import { getGeneratorPointerPos, updateGeneratorRendererTime } from '../render/generators/generator-renderer';
 import type { CanvasContext } from '../render/canvas';
 import type { BackgroundAnimation, VermiculateEffect, SubstrateEffect } from '../render/background';
@@ -276,7 +283,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
         x: loomX,
         y: loomY,
         captureRadius: FORGE_RADIUS * 1.2,
-        outerRadius: FORGE_RADIUS * 3,
+        outerRadius: LOOM_OUTER_RADIUS,
         compatibleTierId: inputTierId,
         isUnlocked: true,
       });

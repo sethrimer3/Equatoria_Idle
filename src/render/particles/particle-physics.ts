@@ -28,6 +28,14 @@ import {
   GENERATOR_ROTATION_TIME_SCALE,
 } from '../../data/particles/particle-config';
 import { PL_MAX_VELOCITY } from '../../data/particles/particle-life-config';
+
+/**
+ * Maximum tier-index boost applied to the generator-field minimum velocity.
+ * Tier 3 (Sunstone) → boost = 4; Citrine and higher → same cap.
+ * Without this cap, Citrine+ get genMinVel == PL_MAX_VELOCITY and can never
+ * decelerate inside their own generator field, causing loom slingshot escapes.
+ */
+const GENERATOR_FIELD_MIN_VELOCITY_TIER_CAP = 4;
 import { particleTweaks } from '../../data/particles/particle-tweaks';
 import {
   SMALL_SIZE_INDEX,
@@ -159,18 +167,17 @@ export function updateParticlePhysics(
 
   // Velocity clamping
   // Min: size-based floor to keep particles from stalling entirely.
-  //      Generator fields use a boosted floor so particles stay active near spawners,
-  //      capped at PL_MAX_VELOCITY so higher-tier motes cannot oscillate above the
-  //      velocity ceiling and escape their loom's gravity range.
+  //      Generator fields use a tier-boosted floor (capped at tier 4 / Sunstone)
+  //      so particles stay active near spawners without being pinned at PL_MAX_VELOCITY.
+  //      Citrine and higher tiers use the same boost as Sunstone (×4), keeping
+  //      genMinVel below PL_MAX_VELOCITY so loom steering can decelerate them.
   // Max: effective max velocity accounts for the drag-boost fade.
   //      While locked to pointer: 4× PL_MAX_VELOCITY.
   //      Within DRAG_RELEASE_FADE_MS after release: linearly interpolates from
   //      4× back to 1× PL_MAX_VELOCITY.
   //      Otherwise: PL_MAX_VELOCITY unchanged.
-  const genMinVel = Math.min(
-    p.minVelocity * Math.max(1, p.tierIndex + 1),
-    PL_MAX_VELOCITY,
-  );
+  const tierBoost = Math.min(Math.max(1, p.tierIndex + 1), GENERATOR_FIELD_MIN_VELOCITY_TIER_CAP);
+  const genMinVel = p.minVelocity * tierBoost;
   const minVel = isInsideGeneratorField ? genMinVel : p.minVelocity;
 
   let effectiveMaxVel: number;
