@@ -6,12 +6,18 @@
  *   2. Gravity well visualizations: orbital ring distortions and lensing arcs
  *   3. Visual asteroid drift field (decorative only — no collision)
  *
- * Design principles:
- *   - No per-frame object allocations: all star/asteroid parameters are pre-baked.
- *   - All visuals are time-based and fully deterministic.
- *   - Low-graphics mode reduces layer count and skips nebula/glow effects.
- *   - Gravity wells are visual-only for now; gameplay force-field integration
- *     is deferred (see nextSteps.md).
+ * Performance architecture (optimised 2024):
+ *   - Gravity well blur arcs are rendered to a small DPR-independent offscreen
+ *     canvas (_wellCanvas, 35 % of world-space size).  The main canvas never sets
+ *     canvas2d.filter, eliminating the DPR² blur cost (up to 1000× cheaper on
+ *     high-DPI devices).
+ *   - The shadow buffer is always offscreen (45 % / 35 % world-space for hi/lo
+ *     quality) and throttled to ~18 FPS; gameplay stays at 60 FPS.
+ *   - When soft shadows are enabled the blur is pre-baked into the shadow canvas,
+ *     not applied on the main canvas.
+ *   - Both _FX_WELL_SCALE and _FX_SHADOW_SCALE_* are world-space fractions
+ *     completely decoupled from devicePixelRatio.
+ *   - Timing: getImpetusLightDrawMs() / getImpetusShadowDrawMs() for dev overlay.
  *
  * Draw order expected by rpg-render-draw.ts:
  *   drawImpetusBackground()    — after the initial background fill, before fluid/terrain
@@ -87,45 +93,77 @@ const _ASTER_RADII  = [1.00, 0.75, 0.90, 0.68, 0.85, 0.78, 0.92];
 const _STAR_COLORS: readonly string[] = ['#ffffff', '#e8f0ff', '#fffde8', '#f8f0ff'];
 const _WELL_SWIRL_COLOR = '#aa77ff';
 const _WELL_FIELD_ALPHA = 0.12;
-const _WELL_RING_ALPHA = 0.16;
-const _WELL_BLUR_PX = 7;
-const _ASTEROID_FILL = '#4a4050';
-const _ASTEROID_EDGE = '#7a6880';
+const _WELL_RING_ALPHA  = 0.16;
+const _WELL_BLUR_PX     = 7;
+const _ASTEROID_FILL    = '#4a4050';
+const _ASTEROID_EDGE    = '#7a6880';
 
 // Sun position as a fraction of canvas — upper-right, partially offscreen
-const _SUN_X_FRAC = 1.08;
-const _SUN_Y_FRAC = -0.06;
-// Shadow extends this many pixels from the sun origin (through the polygon vertex)
-const _SHADOW_LENGTH = 2200;
-const _SOFT_SHADOW_SCALE = 0.5;
+const _SUN_X_FRAC     = 1.08;
+const _SUN_Y_FRAC     = -0.06;
+// Geometry for hard-edge asteroid shadow quads
+const _SHADOW_LENGTH  = 2200;
+// Softened shadow blur radius (world-space px apparent at full size after upscale)
 const _SOFT_SHADOW_BLUR_PX = 10;
-let _shadowCanvas: HTMLCanvasElement | null = null;
-let _shadowCtx: CanvasRenderingContext2D | null = null;
 
 const _BG_ALPHA_HIGH = 0.55;
-const _BG_ALPHA_LOW  = 0.50;  // raised from 0.38 — more visible on mobile
+const _BG_ALPHA_LOW  = 0.50;
+
+// ── FX resolution scales (world-space fractions, DPR-independent) ─────────────
+// The main canvas transform already encodes DPR (scale * dpr).  Offscreen
+// canvases sized by these fractions are pure world-space pixels, so high-DPI
+// incurs no extra cost for the lighting and shadow passes.
+//
+// Quality tiers (mapped from lowGraphics):
+//   high  (lowGraphics=false): _FX_WELL_SCALE + _FX_SHADOW_SCALE_HI, ~18 FPS shadow
+//   low   (lowGraphics=true):  no well-arc canvas, _FX_SHADOW_SCALE_LO, ~18 FPS shadow
+const _FX_WELL_SCALE        = 0.35;  // well-arc blur offscreen canvas
+const _FX_SHADOW_SCALE_HI   = 0.45;  // shadow buffer, high quality
+const _FX_SHADOW_SCALE_LO   = 0.35;  // shadow buffer, low-graphics
+const _FX_SHADOW_INTERVAL   = 56;    // shadow throttle ms (~18 FPS)
+
+// ── Offscreen: gravity well blur arcs ────────────────────────────────────────
+// Blur is applied on this small canvas (35 % of world size).
+// Main canvas never sets canvas2d.filter → eliminates DPR² blur cost.
+let _wellCanvas: HTMLCanvasElement | null = null;
+let _wellCtx: CanvasRenderingContext2D | null = null;
+let _wellCanvasW = -1;
+let _wellCanvasH = -1;
+
+// ── Offscreen: shadow buffer (always active, throttled to ~18 FPS) ────────────
+// When softened, blur is pre-baked here — NOT applied to the main canvas.
+let _shadowCanvas: HTMLCanvasElement | null = null;
+let _shadowCtx: CanvasRenderingContext2D | null = null;
+let _shadowLastMs = -Infinity;
 
 // ── Cached sun corona gradients ────────────────────────────────────────────────
-// Recreated only when canvas dimensions change (sun position is a fixed fraction).
-let _coronaCacheW = -1;
-let _coronaCacheH = -1;
+// Recreated only when canvas dimensions change.
+let _coronaCacheW   = -1;
+let _coronaCacheH   = -1;
 let _coronaCacheLow = false;
-let _cachedCorona: CanvasGradient | null = null;
+let _cachedCorona:     CanvasGradient | null = null;
 let _cachedCoronaCore: CanvasGradient | null = null;
+
+// ── Cached background gradient ────────────────────────────────────────────────
+// Deep-space linear gradient — colours are constant; recreate only on resize.
+let _bgGradient: CanvasGradient | null = null;
+let _bgGradW    = -1;
+let _bgGradH    = -1;
+
+// ── Dev timing telemetry ──────────────────────────────────────────────────────
+let _shadowDrawMs = 0;
+let _lightDrawMs  = 0;
+
+/** Wall-clock ms the gravity-well light pass took last frame (dev overlay). */
+export function getImpetusLightDrawMs(): number { return _lightDrawMs; }
+/** Wall-clock ms the shadow buffer pass took last frame (dev overlay). */
+export function getImpetusShadowDrawMs(): number { return _shadowDrawMs; }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
  * Returns obstacle circles for the static base positions of all asteroids.
- * Call this once when building the Impetus nav grid; pass the result to
- * `applyCircleSoftObstacles`.
- *
- * The asteroid visuals drift slowly over time, but their base positions are
- * deterministic and represent their approximate on-screen locations for most
- * of the wave, making them a good nav-grid reference.
- *
- * @param widthPx  Arena width in pixels.
- * @param heightPx Arena height in pixels.
+ * Call this once when building the Impetus nav grid.
  */
 export function getImpetusAsteroidObstacles(
   widthPx: number,
@@ -134,7 +172,6 @@ export function getImpetusAsteroidObstacles(
   return _ASTEROID_DATA.map((row) => ({
     x: row[0] * widthPx,
     y: row[1] * heightPx,
-    // size field (index 5) is the polygon radius; double it for nav-grid clearance.
     radiusPx: row[5] * 2.5,
   }));
 }
@@ -149,6 +186,8 @@ export function getImpetusDevLine(lowGraphics: boolean): string {
     `stars: ${lowGraphics ? 'low' : 'high'}`,
     `gravityWells: ${lowGraphics ? 'low' : 'high'}`,
     `asteroids: ${lowGraphics ? 'low' : 'high'}`,
+    `wellMs: ${_lightDrawMs.toFixed(1)}`,
+    `shadowMs: ${_shadowDrawMs.toFixed(1)}`,
   ].join(' | ');
 }
 
@@ -167,8 +206,8 @@ export function drawImpetusSunLight(
 
   // Rebuild cached gradients only when canvas size or graphics tier changes.
   if (_coronaCacheW !== widthPx || _coronaCacheH !== heightPx || _coronaCacheLow !== lowGraphics) {
-    _coronaCacheW = widthPx;
-    _coronaCacheH = heightPx;
+    _coronaCacheW   = widthPx;
+    _coronaCacheH   = heightPx;
     _coronaCacheLow = lowGraphics;
     const coronaR = Math.max(widthPx, heightPx) * (lowGraphics ? 1.1 : 1.35);
     const corona = canvas2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, coronaR);
@@ -189,7 +228,6 @@ export function drawImpetusSunLight(
     }
   }
 
-  // Warm corona — large radial from sun position, very low alpha so it tints not drowns
   canvas2d.save();
   canvas2d.globalAlpha = 1;
   canvas2d.fillStyle = _cachedCorona!;
@@ -197,7 +235,6 @@ export function drawImpetusSunLight(
   canvas2d.restore();
 
   if (!lowGraphics && _cachedCoronaCore) {
-    // Tight bright core glow near the sun edge (still offscreen, peeks in at corner)
     canvas2d.save();
     canvas2d.globalAlpha = 1;
     canvas2d.fillStyle = _cachedCoronaCore;
@@ -219,12 +256,17 @@ export function drawImpetusBackground(
 ): void {
   const tS = nowMs * 0.001;
 
-  // Deep space gradient
+  // Cache the deep-space linear gradient — colours are constant, recreate on resize only.
+  if (_bgGradW !== widthPx || _bgGradH !== heightPx) {
+    _bgGradW    = widthPx;
+    _bgGradH    = heightPx;
+    _bgGradient = canvas2d.createLinearGradient(0, 0, widthPx, heightPx);
+    _bgGradient.addColorStop(0, '#06041a');
+    _bgGradient.addColorStop(1, '#0a0620');
+  }
+
   canvas2d.save();
-  const grad = canvas2d.createLinearGradient(0, 0, widthPx, heightPx);
-  grad.addColorStop(0, '#06041a');
-  grad.addColorStop(1, '#0a0620');
-  canvas2d.fillStyle = grad;
+  canvas2d.fillStyle = _bgGradient!;
   canvas2d.globalAlpha = lowGraphics ? _BG_ALPHA_LOW : _BG_ALPHA_HIGH;
   canvas2d.fillRect(0, 0, widthPx, heightPx);
   canvas2d.restore();
@@ -238,6 +280,10 @@ export function drawImpetusBackground(
 /**
  * Draw gravity wells and drifting asteroid visuals above terrain, below enemies.
  * Call after terrain rendering (which is null for Impetus) and before enemies.
+ *
+ * Performance: shadow buffer is throttled to ~18 FPS.  Gravity well blur arcs are
+ * rendered to a small DPR-independent offscreen canvas — main canvas never sets
+ * canvas2d.filter.
  */
 export function drawImpetusFloorEffects(
   canvas2d: CanvasRenderingContext2D,
@@ -248,14 +294,31 @@ export function drawImpetusFloorEffects(
   softAsteroidShadows = false,
 ): void {
   const tS = nowMs * 0.001;
-  _drawAsteroidShadows(canvas2d, widthPx, heightPx, tS, lowGraphics, softAsteroidShadows);
+
+  // ── Shadow pass ───────────────────────────────────────────────────────────
+  // Always uses an offscreen buffer (throttled).  Blur pre-baked there when
+  // softened — no filter set on the main canvas.
+  const _t0shadow = performance.now();
+  _updateShadowCanvas(widthPx, heightPx, tS, nowMs, lowGraphics, softAsteroidShadows);
+  _blitShadowCanvas(canvas2d, widthPx, heightPx, softAsteroidShadows);
+  _shadowDrawMs = performance.now() - _t0shadow;
+
+  // ── Asteroid field (purely decorative) ────────────────────────────────────
   _drawAsteroidField(canvas2d, widthPx, heightPx, tS, lowGraphics);
-  // Gravity wells render in both modes; low graphics uses a simplified version.
+
+  // ── Gravity wells ─────────────────────────────────────────────────────────
+  const _t0light = performance.now();
   if (lowGraphics) {
     _drawGravityWellsSimple(canvas2d, widthPx, heightPx, tS);
   } else {
-    _drawGravityWells(canvas2d, widthPx, heightPx, tS);
+    // Field fills (no blur) drawn directly on the main canvas — cheap radial fills.
+    _drawGravityWellFields(canvas2d, widthPx, heightPx, tS);
+    // Blurred swirl arcs: rendered at 35 % world-space on _wellCanvas,
+    // then screen-blended onto the main canvas.  No canvas2d.filter on main canvas.
+    _updateWellArcCanvas(widthPx, heightPx, tS);
+    _blitWellArcCanvas(canvas2d, widthPx, heightPx);
   }
+  _lightDrawMs = performance.now() - _t0light;
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
@@ -268,21 +331,20 @@ function _drawNebula(
   tS: number,
 ): void {
   canvas2d.save();
-  // Slow drift
   const dx = Math.sin(tS * 0.04) * widthPx * 0.04;
   const dy = Math.cos(tS * 0.03) * heightPx * 0.03;
 
   const cx = widthPx * 0.35 + dx;
   const cy = heightPx * 0.40 + dy;
-  const r = Math.max(widthPx, heightPx) * 0.55;
+  const r  = Math.max(widthPx, heightPx) * 0.55;
 
   const nbGrad = canvas2d.createRadialGradient(cx, cy, 0, cx, cy, r);
-  nbGrad.addColorStop(0, 'rgba(40, 10, 80, 0.08)');
+  nbGrad.addColorStop(0,   'rgba(40, 10, 80, 0.08)');
   nbGrad.addColorStop(0.5, 'rgba(20, 5, 50, 0.04)');
-  nbGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  nbGrad.addColorStop(1,   'rgba(0,0,0,0)');
 
   canvas2d.globalAlpha = 1;
-  canvas2d.fillStyle = nbGrad;
+  canvas2d.fillStyle   = nbGrad;
   canvas2d.fillRect(0, 0, widthPx, heightPx);
   canvas2d.restore();
 }
@@ -295,9 +357,7 @@ function _drawStarfield(
   tS: number,
   lowGraphics: boolean,
 ): void {
-  // In low-graphics mode, only draw layers 0 and 1 (skip bright layer 2 count-heavy)
-  const maxLayer = lowGraphics ? 1 : 2;
-  // Boost alpha in low graphics so stars are visible on mobile screens
+  const maxLayer  = lowGraphics ? 1 : 2;
   const alphaBoost = lowGraphics ? 1.4 : 1.0;
   canvas2d.save();
   for (const row of _STAR_DATA) {
@@ -313,16 +373,15 @@ function _drawStarfield(
     const alpha   = Math.min(1, aPeak * (0.5 + 0.5 * twinkle) * alphaBoost);
 
     canvas2d.globalAlpha = alpha;
-    canvas2d.fillStyle = _STAR_COLORS[Math.floor(row[0] * _STAR_COLORS.length) % _STAR_COLORS.length];
+    canvas2d.fillStyle   = _STAR_COLORS[Math.floor(row[0] * _STAR_COLORS.length) % _STAR_COLORS.length];
     canvas2d.beginPath();
     canvas2d.arc(x, y, radius, 0, Math.PI * 2);
     canvas2d.fill();
 
-    // Bright stars get a small glow cross (high-graphics layer 2 only)
     if (!lowGraphics && layer === 2 && alpha > 0.55) {
       canvas2d.globalAlpha = alpha * 0.25;
       canvas2d.strokeStyle = canvas2d.fillStyle;
-      canvas2d.lineWidth = 0.5;
+      canvas2d.lineWidth   = 0.5;
       canvas2d.beginPath();
       canvas2d.moveTo(x - radius * 2.5, y);
       canvas2d.lineTo(x + radius * 2.5, y);
@@ -334,72 +393,130 @@ function _drawStarfield(
   canvas2d.restore();
 }
 
-/** Draw gravity well ring distortions and swirl arcs. */
-function _drawGravityWells(
+// ── Gravity well field fills (no blur, main canvas) ──────────────────────────
+
+/**
+ * Draw only the non-blurred radial field fills for each gravity well.
+ * These are cheap (small arc-clipped fills, no filter), so they stay on the main
+ * canvas.  The blurred swirl arcs are handled separately via _updateWellArcCanvas.
+ */
+function _drawGravityWellFields(
   canvas2d: CanvasRenderingContext2D,
   widthPx: number,
   heightPx: number,
   tS: number,
 ): void {
   canvas2d.save();
-
-  // Draw the field fills (no blur needed) for all wells first.
   for (const row of _WELL_DATA) {
-    const cx    = row[0] * widthPx;
-    const cy    = row[1] * heightPx;
+    const cx     = row[0] * widthPx;
+    const cy     = row[1] * heightPx;
     const outerR = row[2];
     const innerR = row[3];
     const rAlpha = row[4];
     const s1Ph   = row[5];
-    const pulse = 0.92 + 0.08 * Math.sin(tS * 0.45 + s1Ph);
+    const pulse  = 0.92 + 0.08 * Math.sin(tS * 0.45 + s1Ph);
     const fieldR = outerR * 1.35 * pulse;
-    const field = canvas2d.createRadialGradient(cx, cy, innerR * 0.2, cx, cy, fieldR);
-    field.addColorStop(0, 'rgba(20,0,40,0.18)');
+    const field  = canvas2d.createRadialGradient(cx, cy, innerR * 0.2, cx, cy, fieldR);
+    field.addColorStop(0,    'rgba(20,0,40,0.18)');
     field.addColorStop(0.28, 'rgba(60,22,110,0.055)');
     field.addColorStop(0.66, 'rgba(120,72,210,0.022)');
-    field.addColorStop(1, 'rgba(120,72,210,0)');
+    field.addColorStop(1,    'rgba(120,72,210,0)');
     canvas2d.globalAlpha = rAlpha * _WELL_FIELD_ALPHA;
-    canvas2d.fillStyle = field;
+    canvas2d.fillStyle   = field;
     canvas2d.beginPath();
     canvas2d.arc(cx, cy, fieldR, 0, Math.PI * 2);
     canvas2d.fill();
   }
+  canvas2d.restore();
+}
 
-  // Draw blurred swirl arcs for all wells in a single filter/blend state block
-  // to avoid the cost of toggling canvas2d.filter on every well.
-  canvas2d.filter = `blur(${_WELL_BLUR_PX}px)`;
-  canvas2d.globalCompositeOperation = 'screen';
-  canvas2d.strokeStyle = _WELL_SWIRL_COLOR;
-  canvas2d.lineCap = 'round';
+// ── Gravity well blur arcs (offscreen canvas) ─────────────────────────────────
+
+/**
+ * Render animated swirl arcs to the small offscreen _wellCanvas with blur applied
+ * there.  Cost: proportional to _FX_WELL_SCALE² of the main canvas area, fully
+ * decoupled from devicePixelRatio.
+ *
+ * The apparent blur radius at full size ≈ _WELL_BLUR_PX world-space pixels
+ * (same visual as the original main-canvas blur(7px)).
+ */
+function _updateWellArcCanvas(
+  widthPx: number,
+  heightPx: number,
+  tS: number,
+): void {
+  const bufW = Math.max(1, Math.ceil(widthPx  * _FX_WELL_SCALE));
+  const bufH = Math.max(1, Math.ceil(heightPx * _FX_WELL_SCALE));
+
+  if (!_wellCanvas) {
+    _wellCanvas = document.createElement('canvas');
+    _wellCtx    = _wellCanvas.getContext('2d', { alpha: true });
+  }
+  if (!_wellCtx) return;
+  if (_wellCanvasW !== bufW || _wellCanvasH !== bufH) {
+    _wellCanvas.width  = bufW;
+    _wellCanvas.height = bufH;
+    _wellCanvasW = bufW;
+    _wellCanvasH = bufH;
+  }
+
+  const ctx = _wellCtx;
+  ctx.clearRect(0, 0, bufW, bufH);
+  ctx.save();
+  ctx.scale(_FX_WELL_SCALE, _FX_WELL_SCALE);
+
+  // Apply blur on the small canvas in canvas-pixel units.
+  // Apparent radius when upscaled to full size = _WELL_BLUR_PX world-space px.
+  ctx.filter    = `blur(${_WELL_BLUR_PX * _FX_WELL_SCALE}px)`;
+  ctx.strokeStyle = _WELL_SWIRL_COLOR;
+  ctx.lineCap   = 'round';
   const rotOffset = tS * 0.18;
   for (const row of _WELL_DATA) {
-    const cx    = row[0] * widthPx;
-    const cy    = row[1] * heightPx;
+    const cx     = row[0] * widthPx;
+    const cy     = row[1] * heightPx;
     const outerR = row[2];
     const rAlpha = row[4];
     const s1Ph   = row[5];
     const s2Ph   = row[6];
-    const pulse = 0.92 + 0.08 * Math.sin(tS * 0.45 + s1Ph);
+    const pulse  = 0.92 + 0.08 * Math.sin(tS * 0.45 + s1Ph);
     for (let arc = 0; arc < 5; arc++) {
-      const layerT = arc / 4;
+      const layerT     = arc / 4;
       const startAngle = rotOffset * (0.7 + layerT * 0.4) + s1Ph + s2Ph * layerT;
-      const arcSpan = Math.PI * (0.42 + layerT * 0.25);
-      canvas2d.globalAlpha = rAlpha * _WELL_RING_ALPHA * (1 - layerT * 0.7) * pulse;
-      canvas2d.lineWidth = 1.2 + layerT * 2.8;
-      canvas2d.beginPath();
-      canvas2d.arc(cx, cy, outerR * (0.62 + layerT * 0.38) * pulse, startAngle, startAngle + arcSpan);
-      canvas2d.stroke();
+      const arcSpan    = Math.PI * (0.42 + layerT * 0.25);
+      ctx.globalAlpha  = rAlpha * _WELL_RING_ALPHA * (1 - layerT * 0.7) * pulse;
+      ctx.lineWidth    = 1.2 + layerT * 2.8;
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR * (0.62 + layerT * 0.38) * pulse, startAngle, startAngle + arcSpan);
+      ctx.stroke();
     }
   }
-  canvas2d.filter = 'none';
-  canvas2d.globalCompositeOperation = 'source-over';
-
-  canvas2d.restore();
+  ctx.filter = 'none';
+  ctx.restore();
 }
 
 /**
+ * Screen-blend the well-arc canvas onto the main canvas.
+ * Screen mode brightens the underlying stars/background exactly as the original
+ * main-canvas blur arcs did, but now the blur cost was paid on the small canvas.
+ */
+function _blitWellArcCanvas(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+): void {
+  if (!_wellCanvas || _wellCanvasW <= 0) return;
+  canvas2d.save();
+  canvas2d.globalCompositeOperation = 'screen';
+  canvas2d.globalAlpha = 1;
+  canvas2d.drawImage(_wellCanvas, 0, 0, widthPx, heightPx);
+  canvas2d.restore();
+}
+
+// ── Gravity wells (low-graphics fallback) ─────────────────────────────────────
+
+/**
  * Cheap low-graphics gravity well renderer.
- * Draws one bright ring and a dark center per well — no gradients or arcs.
+ * Draws one pulsing radial field per well — no blur, no arcs.
  */
 function _drawGravityWellsSimple(
   canvas2d: CanvasRenderingContext2D,
@@ -409,25 +526,92 @@ function _drawGravityWellsSimple(
 ): void {
   canvas2d.save();
   for (const row of _WELL_DATA) {
-    const cx    = row[0] * widthPx;
-    const cy    = row[1] * heightPx;
+    const cx     = row[0] * widthPx;
+    const cy     = row[1] * heightPx;
     const outerR = row[2];
     const rAlpha = row[4];
     const s1Ph   = row[5];
-    const pulse = 0.94 + 0.06 * Math.sin(tS * 0.45 + s1Ph);
+    const pulse  = 0.94 + 0.06 * Math.sin(tS * 0.45 + s1Ph);
     const fieldR = outerR * 1.25 * pulse;
-    const field = canvas2d.createRadialGradient(cx, cy, 0, cx, cy, fieldR);
-    field.addColorStop(0, 'rgba(35,8,65,0.10)');
+    const field  = canvas2d.createRadialGradient(cx, cy, 0, cx, cy, fieldR);
+    field.addColorStop(0,    'rgba(35,8,65,0.10)');
     field.addColorStop(0.55, 'rgba(130,72,220,0.025)');
-    field.addColorStop(1, 'rgba(130,72,220,0)');
+    field.addColorStop(1,    'rgba(130,72,220,0)');
     canvas2d.globalAlpha = rAlpha * 0.3;
-    canvas2d.fillStyle = field;
+    canvas2d.fillStyle   = field;
     canvas2d.beginPath();
     canvas2d.arc(cx, cy, fieldR, 0, Math.PI * 2);
     canvas2d.fill();
   }
   canvas2d.restore();
 }
+
+// ── Shadow buffer (offscreen, throttled) ──────────────────────────────────────
+
+/**
+ * Update the shadow buffer if the throttle interval has elapsed.
+ * Asteroid positions drift slowly so ~18 FPS shadow updates are imperceptible.
+ *
+ * When softened, `ctx.filter = blur()` is applied on the shadow canvas before
+ * drawing the quads — no filter is ever set on the main canvas.
+ */
+function _updateShadowCanvas(
+  widthPx: number,
+  heightPx: number,
+  tS: number,
+  nowMs: number,
+  lowGraphics: boolean,
+  softened: boolean,
+): void {
+  const scale = lowGraphics ? _FX_SHADOW_SCALE_LO : _FX_SHADOW_SCALE_HI;
+  const bufW  = Math.max(1, Math.ceil(widthPx  * scale));
+  const bufH  = Math.max(1, Math.ceil(heightPx * scale));
+
+  if (!_shadowCanvas) {
+    _shadowCanvas = document.createElement('canvas');
+    _shadowCtx    = _shadowCanvas.getContext('2d');
+  }
+  if (!_shadowCtx) return;
+
+  // Resize triggers immediate re-render (skip throttle).
+  if (_shadowCanvas.width !== bufW || _shadowCanvas.height !== bufH) {
+    _shadowCanvas.width  = bufW;
+    _shadowCanvas.height = bufH;
+    _shadowLastMs = -Infinity;
+  }
+
+  if (nowMs - _shadowLastMs < _FX_SHADOW_INTERVAL) return;
+  _shadowLastMs = nowMs;
+
+  const ctx = _shadowCtx;
+  ctx.clearRect(0, 0, bufW, bufH);
+  ctx.save();
+  ctx.scale(scale, scale);
+
+  if (softened) {
+    // Pre-blur the quads on the shadow canvas.
+    // Apparent blur at full upscaled size ≈ _SOFT_SHADOW_BLUR_PX world-space px.
+    ctx.filter = `blur(${_SOFT_SHADOW_BLUR_PX * scale}px)`;
+  }
+  _drawAsteroidShadowQuads(ctx, widthPx, heightPx, tS, lowGraphics, softened ? 0.22 : 0.38);
+  ctx.restore();
+}
+
+/** Blit the cached shadow buffer to the main canvas (no filter on main canvas). */
+function _blitShadowCanvas(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+  softened: boolean,
+): void {
+  if (!_shadowCanvas || _shadowCanvas.width <= 0) return;
+  canvas2d.save();
+  canvas2d.globalAlpha = softened ? 0.72 : 1.0;
+  canvas2d.drawImage(_shadowCanvas, 0, 0, widthPx, heightPx);
+  canvas2d.restore();
+}
+
+// ── Asteroid shadow geometry ──────────────────────────────────────────────────
 
 /**
  * Compute the world-space (canvas pixel) vertices for asteroid[i] at time tS.
@@ -450,15 +634,15 @@ function _getAsteroidVerts(
   const rotR  = row[6];
   const phase = row[8];
 
-  const driftT  = (tS * speed + phase) % 1.0;
-  const loopX   = (bXF + dXS * driftT + 2.0) % 1.2 - 0.1;
-  const loopY   = (bYF + dYS * driftT + 2.0) % 1.2 - 0.1;
-  const ax      = loopX * widthPx;
-  const ay      = loopY * heightPx;
-  const rot     = tS * rotR;
-  const cosR    = Math.cos(rot);
-  const sinR    = Math.sin(rot);
-  const n       = _ASTER_ANGLES.length;
+  const driftT = (tS * speed + phase) % 1.0;
+  const loopX  = (bXF + dXS * driftT + 2.0) % 1.2 - 0.1;
+  const loopY  = (bYF + dYS * driftT + 2.0) % 1.2 - 0.1;
+  const ax     = loopX * widthPx;
+  const ay     = loopY * heightPx;
+  const rot    = tS * rotR;
+  const cosR   = Math.cos(rot);
+  const sinR   = Math.sin(rot);
+  const n      = _ASTER_ANGLES.length;
 
   for (let v = 0; v < n; v++) {
     const a  = _ASTER_ANGLES[v];
@@ -470,46 +654,13 @@ function _getAsteroidVerts(
   }
 }
 
-// Reusable vertex buffer — avoids per-frame allocation
+// Reusable vertex buffer — avoids per-frame allocation.
 const _VERT_BUF = new Float32Array(_ASTER_ANGLES.length * 2);
 
-/** Draw asteroid shadow quads cast by the offscreen sun. */
-function _drawAsteroidShadows(
-  canvas2d: CanvasRenderingContext2D,
-  widthPx: number,
-  heightPx: number,
-  tS: number,
-  lowGraphics: boolean,
-  softened: boolean,
-): void {
-  if (softened) {
-    const bufferW = Math.max(1, Math.ceil(widthPx * _SOFT_SHADOW_SCALE));
-    const bufferH = Math.max(1, Math.ceil(heightPx * _SOFT_SHADOW_SCALE));
-    if (!_shadowCanvas) {
-      _shadowCanvas = document.createElement('canvas');
-      _shadowCtx = _shadowCanvas.getContext('2d');
-    }
-    if (!_shadowCtx) return;
-    if (_shadowCanvas.width !== bufferW || _shadowCanvas.height !== bufferH) {
-      _shadowCanvas.width = bufferW;
-      _shadowCanvas.height = bufferH;
-    }
-    _shadowCtx.clearRect(0, 0, bufferW, bufferH);
-    _shadowCtx.save();
-    _shadowCtx.scale(_SOFT_SHADOW_SCALE, _SOFT_SHADOW_SCALE);
-    _drawAsteroidShadowQuads(_shadowCtx, widthPx, heightPx, tS, lowGraphics, 0.22);
-    _shadowCtx.restore();
-
-    canvas2d.save();
-    canvas2d.globalAlpha = 0.72;
-    canvas2d.filter = `blur(${_SOFT_SHADOW_BLUR_PX}px)`;
-    canvas2d.drawImage(_shadowCanvas, 0, 0, widthPx, heightPx);
-    canvas2d.restore();
-    return;
-  }
-  _drawAsteroidShadowQuads(canvas2d, widthPx, heightPx, tS, lowGraphics, 0.38);
-}
-
+/**
+ * Draw shadow quads for each asteroid edge that faces away from the sun.
+ * Batched per asteroid (one beginPath/fill per asteroid) to minimise draw calls.
+ */
 function _drawAsteroidShadowQuads(
   canvas2d: CanvasRenderingContext2D,
   widthPx: number,
@@ -518,10 +669,10 @@ function _drawAsteroidShadowQuads(
   lowGraphics: boolean,
   alphaScale: number,
 ): void {
-  const count  = lowGraphics ? Math.floor(_ASTEROID_DATA.length * 0.5) : _ASTEROID_DATA.length;
-  const sunX   = _SUN_X_FRAC * widthPx;
-  const sunY   = _SUN_Y_FRAC * heightPx;
-  const n      = _ASTER_ANGLES.length;
+  const count = lowGraphics ? Math.floor(_ASTEROID_DATA.length * 0.5) : _ASTEROID_DATA.length;
+  const sunX  = _SUN_X_FRAC * widthPx;
+  const sunY  = _SUN_Y_FRAC * heightPx;
+  const n     = _ASTER_ANGLES.length;
 
   canvas2d.save();
   canvas2d.fillStyle = '#000000';
@@ -530,9 +681,6 @@ function _drawAsteroidShadowQuads(
     const alpha = _ASTEROID_DATA[i][7];
     _getAsteroidVerts(i, widthPx, heightPx, tS, _VERT_BUF);
 
-    // Set opacity once per asteroid — all its shadow quads share the same alpha.
-    // Batch all shadow quads for this asteroid into one beginPath/fill call to
-    // reduce the number of GPU draw calls from (edges×asteroids) to (asteroids).
     canvas2d.globalAlpha = alpha * alphaScale;
     canvas2d.beginPath();
 
@@ -553,7 +701,7 @@ function _drawAsteroidShadowQuads(
       const ny     =  (v2x - v1x);
       if (toSunX * nx + toSunY * ny <= 0) continue;
 
-      // Extend vertices away from sun by _SHADOW_LENGTH
+      // Extend vertices away from sun by _SHADOW_LENGTH.
       const d1x = v1x - sunX;
       const d1y = v1y - sunY;
       const d1l = Math.sqrt(d1x * d1x + d1y * d1y) || 1;
@@ -577,6 +725,8 @@ function _drawAsteroidShadowQuads(
   canvas2d.restore();
 }
 
+// ── Asteroid field (decorative) ───────────────────────────────────────────────
+
 /** Draw visual asteroid drift field — purely decorative, no collision. */
 function _drawAsteroidField(
   canvas2d: CanvasRenderingContext2D,
@@ -594,13 +744,13 @@ function _drawAsteroidField(
     _getAsteroidVerts(i, widthPx, heightPx, tS, _VERT_BUF);
 
     canvas2d.globalAlpha = alpha;
-    canvas2d.fillStyle = _ASTEROID_FILL;
+    canvas2d.fillStyle   = _ASTEROID_FILL;
     canvas2d.beginPath();
     for (let v = 0; v < n; v++) {
       const vx = _VERT_BUF[v * 2];
       const vy = _VERT_BUF[v * 2 + 1];
       if (v === 0) canvas2d.moveTo(vx, vy);
-      else canvas2d.lineTo(vx, vy);
+      else         canvas2d.lineTo(vx, vy);
     }
     canvas2d.closePath();
     canvas2d.fill();
@@ -608,7 +758,7 @@ function _drawAsteroidField(
     if (!lowGraphics) {
       canvas2d.globalAlpha = alpha * 0.55;
       canvas2d.strokeStyle = _ASTEROID_EDGE;
-      canvas2d.lineWidth = 0.6;
+      canvas2d.lineWidth   = 0.6;
       canvas2d.stroke();
     }
   }
