@@ -25,6 +25,7 @@ import { removeDeadEnemiesImpl } from './rpg-wave-dead-enemies';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import { clearEliteBuffRegistry } from './rpg-elite-buff';
 import { clearEmpowerParticles } from './rpg-elite-empower-particles';
+import { initParticleLifeMatrix } from './terrain/impetus-particle-life';
 import type {
   LaserEnemy, SapphireEnemy, SapphireMissile, SpawnEntry,
 } from './rpg-types';
@@ -238,6 +239,14 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     // (The old single-elite spawn has been replaced by the dedicated cube system.)
     ctx.setIsInterWave(false);
     beginWaveTerrain(wave);
+    // Impetus zone: generate a randomized particle-life matrix from the aliven
+    // variants present in this wave's spawn list.
+    if (rpgSimState.activeZoneId === 'impetus') {
+      const alivenIds = waveDef.spawns
+        .map(s => s.enemyTypeId)
+        .filter(id => id.startsWith('aliven_'));
+      initParticleLifeMatrix(alivenIds);
+    }
   }
 
   function checkWaveCompletion(): void {

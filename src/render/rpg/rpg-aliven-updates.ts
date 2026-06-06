@@ -23,6 +23,7 @@ import {
   ALIVEN_FRICTION,
   ALIVEN_VARIANT_PARAMS,
 } from './rpg-aliven-constants';
+import { applyParticleLifeForces } from './terrain/impetus-particle-life';
 import {
   tickContact,
   tickSpitter,
@@ -48,6 +49,7 @@ export function updateAlivenGroups(
   ctx: AlivenUpdateCtx,
   deltaMs: number,
 ): void {
+  applyParticleLifeForces(groups, deltaMs);
   for (const group of groups) {
     tickSpawnOneParticle(group, deltaMs, ctx.canvasW, ctx.canvasH);
     updateCentroid(group);

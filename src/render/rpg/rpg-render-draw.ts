@@ -142,6 +142,7 @@ import {
   drawImpetusFloorEffects,
   getImpetusDevLine,
 } from './terrain/impetus-overlay';
+import { drawImpetusParticleLifeMatrix } from './terrain/impetus-particle-life';
 import {
   drawVerdureEdgeRocks,
   drawVerdurePlants,
@@ -180,6 +181,9 @@ import { drawEmpowerParticles } from './rpg-elite-empower-particles';
 import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 import { renderEnemyStatusLabels } from './enemy-status-render';
+import { getCachedImage, loadImage } from '../assets/asset-loader';
+
+const RPG_ZONE_LABEL_ICON_PATH = 'ASSETS/SPRITES/menuElements/icons/rpgTab/rpgTab_icon_selected.png';
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -406,9 +410,9 @@ const _ELITE_RGB: Record<string, [number, number, number]> = {
 };
 
 /**
- * Collects all currently-alive enemy positions together with their RGB colours
- * into a flat `EnemyInfluencePoint[]`.  Only called when the terrain is the
- * recursiveSquares variant so it is never executed on non-square wave rounds.
+ * Collects the player and all currently-alive enemy positions together with
+ * their RGB colours into a flat `EnemyInfluencePoint[]`. Only called for
+ * terrain variants that use proximity-gradient colouring.
  */
 function collectEnemyInfluencePoints(ctx: RpgDrawCtx): EnemyInfluencePoint[] {
   const pts: EnemyInfluencePoint[] = [];
@@ -416,6 +420,8 @@ function collectEnemyInfluencePoints(ctx: RpgDrawCtx): EnemyInfluencePoint[] {
   function push(x: number, y: number, rgb: [number, number, number]): void {
     pts.push({ x, y, r: rgb[0], g: rgb[1], b: rgb[2] });
   }
+
+  push(ctx.mote.x, ctx.mote.y, [FLUID_SAND_R, FLUID_SAND_G, FLUID_SAND_B]);
 
   for (const e of ctx.enemies)          push(e.x, e.y, _LASER_RGB);
   for (const e of ctx.sapphireEnemies)  push(e.x, e.y, _SAPPHIRE_RGB);
@@ -729,6 +735,7 @@ export function drawRpgFrame(
     canvas2d.save();
     canvas2d.translate(vwX, vwY);
     drawImpetusBackground(canvas2d, vwW, vwH, nowMs, ctx.getIsLowGraphicsMode());
+    drawImpetusParticleLifeMatrix(canvas2d, vwW, vwH);
     canvas2d.restore();
   }
   if (isHorizonZone) {
@@ -771,7 +778,7 @@ export function drawRpgFrame(
     canvas2d.restore();
   }
   if (terrainState) {
-    // For recursive-square and basalt terrain, collect enemy positions for
+    // For recursive-square and basalt terrain, collect nearby actor positions for
     // proximity-gradient colouring.  This is skipped for other terrain variants.
     const squareEnemies =
       (terrainState.terrainKind === 'recursiveSquares' || terrainState.terrainKind === 'basalt')
@@ -971,24 +978,28 @@ export function drawRpgFrame(
   // ── Top-left zone + wave number overlay ──────────────────────────
   const currentWave = ctx.getCurrentWave();
   if (currentWave > 0) {
-    // Check if any enemy or player is near the top-left corner region
-    const TL_X = 210, TL_Y = 55;
+    const overlayRight = fs.visibleBounds.right - 8;
+    const overlayTop = fs.visibleBounds.top + 8;
+    const overlapLeft = overlayRight - 210;
+    const overlapBottom = overlayTop + 55;
+
+    // Check if any enemy or player is near the top-right overlay region.
     let anyOverlap = false;
-    const moteNear = ctx.mote.x < TL_X && ctx.mote.y < TL_Y;
+    const moteNear = ctx.mote.x > overlapLeft && ctx.mote.y < overlapBottom;
     if (moteNear) {
       anyOverlap = true;
     } else {
       for (const e of ctx.enemies) {
-        if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
+        if (e.x > overlapLeft && e.y < overlapBottom) { anyOverlap = true; break; }
       }
       if (!anyOverlap) {
         for (const e of ctx.sapphireEnemies) {
-          if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
+          if (e.x > overlapLeft && e.y < overlapBottom) { anyOverlap = true; break; }
         }
       }
       if (!anyOverlap) {
         for (const e of ctx.emeraldEnemies) {
-          if (e.x < TL_X && e.y < TL_Y) { anyOverlap = true; break; }
+          if (e.x > overlapLeft && e.y < overlapBottom) { anyOverlap = true; break; }
         }
       }
     }
@@ -1002,15 +1013,23 @@ export function drawRpgFrame(
     canvas2d.globalAlpha = state.waveOverlapAlpha;
     canvas2d.font = 'bold 14px monospace';
     canvas2d.fillStyle = '#fff172';
-    canvas2d.fillText(label, 8, 22);
+    canvas2d.textAlign = 'right';
+    canvas2d.textBaseline = 'top';
+    canvas2d.fillText(label, overlayRight, overlayTop + 2);
     // Subtle underline hint to indicate tappability
     const textW = canvas2d.measureText(label).width;
+    const icon = getCachedImage(RPG_ZONE_LABEL_ICON_PATH);
+    if (icon) {
+      canvas2d.drawImage(icon, overlayRight - textW - 25, overlayTop, 20, 20);
+    } else {
+      loadImage(RPG_ZONE_LABEL_ICON_PATH).catch(() => {});
+    }
     canvas2d.globalAlpha = state.waveOverlapAlpha * 0.45;
     canvas2d.strokeStyle = '#fff172';
     canvas2d.lineWidth = 0.5;
     canvas2d.beginPath();
-    canvas2d.moveTo(8, 24);
-    canvas2d.lineTo(8 + textW, 24);
+    canvas2d.moveTo(overlayRight - textW, overlayTop + 18);
+    canvas2d.lineTo(overlayRight, overlayTop + 18);
     canvas2d.stroke();
     canvas2d.restore();
   }
