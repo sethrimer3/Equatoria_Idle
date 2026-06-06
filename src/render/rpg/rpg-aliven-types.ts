@@ -125,6 +125,14 @@ export interface AlivenUpdateCtx {
   setPlayerIFramesMs(ms: number): void;
   canvasW: number;
   canvasH: number;
+  /** Left edge of the active arena in world coordinates (== activeBounds.left). */
+  arenaLeft: number;
+  /** Top edge of the active arena in world coordinates (== activeBounds.top). */
+  arenaTop: number;
+  /** Right edge of the active arena in world coordinates (== activeBounds.right). */
+  arenaRight: number;
+  /** Bottom edge of the active arena in world coordinates (== activeBounds.bottom). */
+  arenaBottom: number;
   dealContactDamageToPlayer(atk: number): void;
 }
 

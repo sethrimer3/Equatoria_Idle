@@ -105,6 +105,14 @@ let _shadowCtx: CanvasRenderingContext2D | null = null;
 const _BG_ALPHA_HIGH = 0.55;
 const _BG_ALPHA_LOW  = 0.50;  // raised from 0.38 — more visible on mobile
 
+// ── Cached sun corona gradients ────────────────────────────────────────────────
+// Recreated only when canvas dimensions change (sun position is a fixed fraction).
+let _coronaCacheW = -1;
+let _coronaCacheH = -1;
+let _coronaCacheLow = false;
+let _cachedCorona: CanvasGradient | null = null;
+let _cachedCoronaCore: CanvasGradient | null = null;
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -156,29 +164,43 @@ export function drawImpetusSunLight(
 ): void {
   const sunX = _SUN_X_FRAC * widthPx;
   const sunY = _SUN_Y_FRAC * heightPx;
+
+  // Rebuild cached gradients only when canvas size or graphics tier changes.
+  if (_coronaCacheW !== widthPx || _coronaCacheH !== heightPx || _coronaCacheLow !== lowGraphics) {
+    _coronaCacheW = widthPx;
+    _coronaCacheH = heightPx;
+    _coronaCacheLow = lowGraphics;
+    const coronaR = Math.max(widthPx, heightPx) * (lowGraphics ? 1.1 : 1.35);
+    const corona = canvas2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, coronaR);
+    corona.addColorStop(0.00, 'rgba(255,192,96,0.18)');
+    corona.addColorStop(0.25, 'rgba(255,166,70,0.10)');
+    corona.addColorStop(0.55, 'rgba(255,140,56,0.05)');
+    corona.addColorStop(1.00, 'rgba(255,120,40,0)');
+    _cachedCorona = corona;
+    if (!lowGraphics) {
+      const coreR = Math.max(widthPx, heightPx) * 0.38;
+      const core = canvas2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, coreR);
+      core.addColorStop(0.00, 'rgba(255,220,140,0.22)');
+      core.addColorStop(0.40, 'rgba(255,180,80,0.08)');
+      core.addColorStop(1.00, 'rgba(255,160,60,0)');
+      _cachedCoronaCore = core;
+    } else {
+      _cachedCoronaCore = null;
+    }
+  }
+
   // Warm corona — large radial from sun position, very low alpha so it tints not drowns
   canvas2d.save();
-  const coronaR = Math.max(widthPx, heightPx) * (lowGraphics ? 1.1 : 1.35);
-  const corona = canvas2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, coronaR);
-  corona.addColorStop(0.00, 'rgba(255,192,96,0.18)');
-  corona.addColorStop(0.25, 'rgba(255,166,70,0.10)');
-  corona.addColorStop(0.55, 'rgba(255,140,56,0.05)');
-  corona.addColorStop(1.00, 'rgba(255,120,40,0)');
   canvas2d.globalAlpha = 1;
-  canvas2d.fillStyle = corona;
+  canvas2d.fillStyle = _cachedCorona!;
   canvas2d.fillRect(0, 0, widthPx, heightPx);
   canvas2d.restore();
 
-  if (!lowGraphics) {
+  if (!lowGraphics && _cachedCoronaCore) {
     // Tight bright core glow near the sun edge (still offscreen, peeks in at corner)
     canvas2d.save();
-    const coreR = Math.max(widthPx, heightPx) * 0.38;
-    const core = canvas2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, coreR);
-    core.addColorStop(0.00, 'rgba(255,220,140,0.22)');
-    core.addColorStop(0.40, 'rgba(255,180,80,0.08)');
-    core.addColorStop(1.00, 'rgba(255,160,60,0)');
     canvas2d.globalAlpha = 1;
-    canvas2d.fillStyle = core;
+    canvas2d.fillStyle = _cachedCoronaCore;
     canvas2d.fillRect(0, 0, widthPx, heightPx);
     canvas2d.restore();
   }
@@ -320,6 +342,8 @@ function _drawGravityWells(
   tS: number,
 ): void {
   canvas2d.save();
+
+  // Draw the field fills (no blur needed) for all wells first.
   for (const row of _WELL_DATA) {
     const cx    = row[0] * widthPx;
     const cy    = row[1] * heightPx;
@@ -327,8 +351,6 @@ function _drawGravityWells(
     const innerR = row[3];
     const rAlpha = row[4];
     const s1Ph   = row[5];
-    const s2Ph   = row[6];
-    const rotOffset = tS * 0.18;
     const pulse = 0.92 + 0.08 * Math.sin(tS * 0.45 + s1Ph);
     const fieldR = outerR * 1.35 * pulse;
     const field = canvas2d.createRadialGradient(cx, cy, innerR * 0.2, cx, cy, fieldR);
@@ -341,11 +363,23 @@ function _drawGravityWells(
     canvas2d.beginPath();
     canvas2d.arc(cx, cy, fieldR, 0, Math.PI * 2);
     canvas2d.fill();
+  }
 
-    canvas2d.filter = `blur(${_WELL_BLUR_PX}px)`;
-    canvas2d.globalCompositeOperation = 'screen';
-    canvas2d.strokeStyle = _WELL_SWIRL_COLOR;
-    canvas2d.lineCap = 'round';
+  // Draw blurred swirl arcs for all wells in a single filter/blend state block
+  // to avoid the cost of toggling canvas2d.filter on every well.
+  canvas2d.filter = `blur(${_WELL_BLUR_PX}px)`;
+  canvas2d.globalCompositeOperation = 'screen';
+  canvas2d.strokeStyle = _WELL_SWIRL_COLOR;
+  canvas2d.lineCap = 'round';
+  const rotOffset = tS * 0.18;
+  for (const row of _WELL_DATA) {
+    const cx    = row[0] * widthPx;
+    const cy    = row[1] * heightPx;
+    const outerR = row[2];
+    const rAlpha = row[4];
+    const s1Ph   = row[5];
+    const s2Ph   = row[6];
+    const pulse = 0.92 + 0.08 * Math.sin(tS * 0.45 + s1Ph);
     for (let arc = 0; arc < 5; arc++) {
       const layerT = arc / 4;
       const startAngle = rotOffset * (0.7 + layerT * 0.4) + s1Ph + s2Ph * layerT;
@@ -356,9 +390,10 @@ function _drawGravityWells(
       canvas2d.arc(cx, cy, outerR * (0.62 + layerT * 0.38) * pulse, startAngle, startAngle + arcSpan);
       canvas2d.stroke();
     }
-    canvas2d.filter = 'none';
-    canvas2d.globalCompositeOperation = 'source-over';
   }
+  canvas2d.filter = 'none';
+  canvas2d.globalCompositeOperation = 'source-over';
+
   canvas2d.restore();
 }
 
@@ -495,8 +530,11 @@ function _drawAsteroidShadowQuads(
     const alpha = _ASTEROID_DATA[i][7];
     _getAsteroidVerts(i, widthPx, heightPx, tS, _VERT_BUF);
 
-    // Set opacity once per asteroid — all its shadow quads share the same alpha
+    // Set opacity once per asteroid — all its shadow quads share the same alpha.
+    // Batch all shadow quads for this asteroid into one beginPath/fill call to
+    // reduce the number of GPU draw calls from (edges×asteroids) to (asteroids).
     canvas2d.globalAlpha = alpha * alphaScale;
+    canvas2d.beginPath();
 
     for (let e = 0; e < n; e++) {
       const ne  = (e + 1) % n;
@@ -527,14 +565,14 @@ function _drawAsteroidShadowQuads(
       const s2x = v2x + (d2x / d2l) * _SHADOW_LENGTH;
       const s2y = v2y + (d2y / d2l) * _SHADOW_LENGTH;
 
-      canvas2d.beginPath();
       canvas2d.moveTo(v1x, v1y);
       canvas2d.lineTo(v2x, v2y);
       canvas2d.lineTo(s2x, s2y);
       canvas2d.lineTo(s1x, s1y);
       canvas2d.closePath();
-      canvas2d.fill();
     }
+
+    canvas2d.fill();
   }
   canvas2d.restore();
 }

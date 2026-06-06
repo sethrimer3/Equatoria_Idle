@@ -51,7 +51,7 @@ export function updateAlivenGroups(
 ): void {
   applyParticleLifeForces(groups, deltaMs);
   for (const group of groups) {
-    tickSpawnOneParticle(group, deltaMs, ctx.canvasW, ctx.canvasH);
+    tickSpawnOneParticle(group, deltaMs, ctx);
     updateCentroid(group);
     if (group.aliveCount > 1 && group.aliveCount <= ALIVEN_SEPARATION_MAX_COUNT) {
       separateOverlappingParticles(group, deltaMs);
@@ -76,8 +76,7 @@ export function updateAlivenGroups(
 function tickSpawnOneParticle(
   group: AlivenParticleGroup,
   deltaMs: number,
-  canvasW: number,
-  canvasH: number,
+  ctx: AlivenUpdateCtx,
 ): void {
   if (group.spawnedCount >= group.targetCount) return;
   group.spawnCdMs -= deltaMs;
@@ -89,13 +88,14 @@ function tickSpawnOneParticle(
 
   const minR = p.radiusPx + 1;
   const maxR = minR + 12;
+  const { arenaLeft, arenaTop, arenaRight, arenaBottom } = ctx;
   for (let attempt = 0; attempt < 16; attempt++) {
     const angle = Math.random() * Math.PI * 2;
     const r = minR + Math.random() * (maxR - minR);
     const nx = group.cx + Math.cos(angle) * r;
     const ny = group.cy + Math.sin(angle) * r;
-    if (nx < p.radiusPx || nx > canvasW - p.radiusPx) continue;
-    if (ny < p.radiusPx || ny > canvasH - p.radiusPx) continue;
+    if (nx < arenaLeft + p.radiusPx || nx > arenaRight - p.radiusPx) continue;
+    if (ny < arenaTop + p.radiusPx  || ny > arenaBottom - p.radiusPx) continue;
     let overlaps = false;
     for (const other of group.particles) {
       if (!other.isAlive) continue;
@@ -113,8 +113,8 @@ function tickSpawnOneParticle(
   }
   // Fallback: wider radius if spiral fails.
   const angle = Math.random() * Math.PI * 2;
-  p.x = Math.max(p.radiusPx, Math.min(canvasW - p.radiusPx, group.cx + Math.cos(angle) * (maxR + 5)));
-  p.y = Math.max(p.radiusPx, Math.min(canvasH - p.radiusPx, group.cy + Math.sin(angle) * (maxR + 5)));
+  p.x = Math.max(arenaLeft + p.radiusPx, Math.min(arenaRight - p.radiusPx, group.cx + Math.cos(angle) * (maxR + 5)));
+  p.y = Math.max(arenaTop + p.radiusPx,  Math.min(arenaBottom - p.radiusPx, group.cy + Math.sin(angle) * (maxR + 5)));
   p.isAlive = true;
 }
 
@@ -212,12 +212,12 @@ function tickMovement(
   p.x += p.vx * deltaMs;
   p.y += p.vy * deltaMs;
 
-  // Bounce off walls
+  // Bounce off arena walls (uses full visible activeBounds, not the fixed safe core).
   const r = p.radiusPx;
-  if (p.x < r)               { p.x = r;               p.vx =  Math.abs(p.vx); }
-  if (p.x > ctx.canvasW - r) { p.x = ctx.canvasW - r; p.vx = -Math.abs(p.vx); }
-  if (p.y < r)               { p.y = r;               p.vy =  Math.abs(p.vy); }
-  if (p.y > ctx.canvasH - r) { p.y = ctx.canvasH - r; p.vy = -Math.abs(p.vy); }
+  if (p.x < ctx.arenaLeft   + r) { p.x = ctx.arenaLeft   + r; p.vx =  Math.abs(p.vx); }
+  if (p.x > ctx.arenaRight  - r) { p.x = ctx.arenaRight  - r; p.vx = -Math.abs(p.vx); }
+  if (p.y < ctx.arenaTop    + r) { p.y = ctx.arenaTop    + r; p.vy =  Math.abs(p.vy); }
+  if (p.y > ctx.arenaBottom - r) { p.y = ctx.arenaBottom - r; p.vy = -Math.abs(p.vy); }
 }
 
 // ── Trail ─────────────────────────────────────────────────────────────────

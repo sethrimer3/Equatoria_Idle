@@ -185,7 +185,8 @@ export function tickBullets(
     b.x += b.vx * deltaMs;
     b.y += b.vy * deltaMs;
 
-    if (b.x < -10 || b.x > ctx.canvasW + 10 || b.y < -10 || b.y > ctx.canvasH + 10) {
+    if (b.x < ctx.arenaLeft - 10 || b.x > ctx.arenaRight + 10 ||
+        b.y < ctx.arenaTop - 10  || b.y > ctx.arenaBottom + 10) {
       group.bullets.splice(i, 1);
       continue;
     }

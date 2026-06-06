@@ -1450,6 +1450,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setPlayerIFramesMs(ms: number) { playerIFramesMs = ms; },
     get canvasW()         { return dim.w; },
     get canvasH()         { return dim.h; },
+    get arenaLeft()       { return rpgFieldSpace.activeBounds.left; },
+    get arenaTop()        { return rpgFieldSpace.activeBounds.top; },
+    get arenaRight()      { return rpgFieldSpace.activeBounds.right; },
+    get arenaBottom()     { return rpgFieldSpace.activeBounds.bottom; },
     dealContactDamageToPlayer(atk: number) {
       dealDamageToPlayerKnockback(atk, 0, 0);
     },
