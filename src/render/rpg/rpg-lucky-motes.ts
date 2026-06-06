@@ -16,6 +16,8 @@ import {
 } from './rpg-constants';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
+import { getMoteIconPath } from '../assets/asset-paths';
+import { getCachedImage, loadImage } from '../assets/asset-loader';
 
 /** Maps enemy type strings to the mote tier they drop.
  * Most enemies map to the tier of the same name. Exceptions:
@@ -191,17 +193,31 @@ export function drawLuckyMotes(
     ctx.beginPath();
     ctx.arc(lm.x, lm.y, outerR, 0, Math.PI * 2);
     ctx.stroke();
-    // Tier-colored fill
+    // Mote icon sprite — canonical raw moteIcon (same source as achievements/idle UI)
     ctx.globalAlpha = 1;
-    if (!isLowGraphicsMode) {
-      ctx.shadowBlur = LUCKY_MOTE_RADIUS * 3;
-      ctx.shadowColor = lm.glowColor;
+    const iconPath = getMoteIconPath(lm.tierId as TierId);
+    const img = getCachedImage(iconPath);
+    if (img) {
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = LUCKY_MOTE_RADIUS * 3;
+        ctx.shadowColor = lm.glowColor;
+      }
+      const d = LUCKY_MOTE_RADIUS * 2;
+      ctx.drawImage(img, lm.x - LUCKY_MOTE_RADIUS, lm.y - LUCKY_MOTE_RADIUS, d, d);
+      ctx.shadowBlur = 0;
+    } else {
+      // Sprite not yet loaded — trigger async load and fall back to colored circle
+      loadImage(iconPath).catch(() => {});
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = LUCKY_MOTE_RADIUS * 3;
+        ctx.shadowColor = lm.glowColor;
+      }
+      ctx.fillStyle = lm.color;
+      ctx.beginPath();
+      ctx.arc(lm.x, lm.y, LUCKY_MOTE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
-    ctx.fillStyle = lm.color;
-    ctx.beginPath();
-    ctx.arc(lm.x, lm.y, LUCKY_MOTE_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1;
   ctx.restore();
