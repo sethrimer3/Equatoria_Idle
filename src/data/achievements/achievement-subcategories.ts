@@ -4,32 +4,35 @@
  * list from becoming unmanageably long.
  */
 
+import type { TierId } from '../tiers';
+
 export interface AchievementSubcategory {
   readonly id: string;
   readonly groupId: string;
   readonly name: string;
   readonly icon: string;
+  readonly moteIconTierId?: TierId;
 }
 
 export const ACHIEVEMENT_SUBCATEGORIES: readonly AchievementSubcategory[] = [
   // ── Motes subcategories ──────────────────────────────────────────
-  { id: 'motes_first',      groupId: 'motes', name: 'First Motes',          icon: '✨' },
-  { id: 'motes_sand',       groupId: 'motes', name: 'Sand Milestones',       icon: '🟡' },
-  { id: 'motes_quartz',     groupId: 'motes', name: 'Quartz Milestones',     icon: '⬜' },
-  { id: 'motes_ruby',       groupId: 'motes', name: 'Ruby Milestones',       icon: '🔴' },
-  { id: 'motes_sunstone',   groupId: 'motes', name: 'Sunstone Milestones',   icon: '🟠' },
-  { id: 'motes_citrine',    groupId: 'motes', name: 'Citrine Milestones',    icon: '🌕' },
-  { id: 'motes_emerald',    groupId: 'motes', name: 'Emerald Milestones',    icon: '🟢' },
-  { id: 'motes_sapphire',   groupId: 'motes', name: 'Sapphire Milestones',   icon: '🔵' },
-  { id: 'motes_iolite',     groupId: 'motes', name: 'Iolite Milestones',     icon: '🟣' },
-  { id: 'motes_amethyst',   groupId: 'motes', name: 'Amethyst Milestones',   icon: '💜' },
-  { id: 'motes_diamond',    groupId: 'motes', name: 'Diamond Milestones',    icon: '💎' },
-  { id: 'motes_nullstone',  groupId: 'motes', name: 'Nullstone Milestones',  icon: '🌑' },
-  { id: 'motes_fracteryl',  groupId: 'motes', name: 'Fracteryl Milestones',  icon: '🔮' },
-  { id: 'motes_eigenstein', groupId: 'motes', name: 'Eigenstein Milestones', icon: '🌋' },
-  { id: 'motes_cross_tier', groupId: 'motes', name: 'Cross-Tier Milestones', icon: '🌈' },
-  { id: 'motes_size',       groupId: 'motes', name: 'Mote Size Milestones',  icon: '📦' },
-  { id: 'motes_aliven',     groupId: 'motes', name: 'Aliven Mote Milestones',icon: '💫' },
+  { id: 'motes_first',      groupId: 'motes', name: 'First Motes',           icon: '', moteIconTierId: 'sand' },
+  { id: 'motes_sand',       groupId: 'motes', name: 'Sand Milestones',       icon: '', moteIconTierId: 'sand' },
+  { id: 'motes_quartz',     groupId: 'motes', name: 'Quartz Milestones',     icon: '', moteIconTierId: 'quartz' },
+  { id: 'motes_ruby',       groupId: 'motes', name: 'Ruby Milestones',       icon: '', moteIconTierId: 'ruby' },
+  { id: 'motes_sunstone',   groupId: 'motes', name: 'Sunstone Milestones',   icon: '', moteIconTierId: 'sunstone' },
+  { id: 'motes_citrine',    groupId: 'motes', name: 'Citrine Milestones',    icon: '', moteIconTierId: 'citrine' },
+  { id: 'motes_emerald',    groupId: 'motes', name: 'Emerald Milestones',    icon: '', moteIconTierId: 'emerald' },
+  { id: 'motes_sapphire',   groupId: 'motes', name: 'Sapphire Milestones',   icon: '', moteIconTierId: 'sapphire' },
+  { id: 'motes_iolite',     groupId: 'motes', name: 'Iolite Milestones',     icon: '', moteIconTierId: 'iolite' },
+  { id: 'motes_amethyst',   groupId: 'motes', name: 'Amethyst Milestones',   icon: '', moteIconTierId: 'amethyst' },
+  { id: 'motes_diamond',    groupId: 'motes', name: 'Diamond Milestones',    icon: '', moteIconTierId: 'diamond' },
+  { id: 'motes_nullstone',  groupId: 'motes', name: 'Nullstone Milestones',  icon: '', moteIconTierId: 'nullstone' },
+  { id: 'motes_fracteryl',  groupId: 'motes', name: 'Fracteryl Milestones',  icon: '', moteIconTierId: 'fracteryl' },
+  { id: 'motes_eigenstein', groupId: 'motes', name: 'Eigenstein Milestones', icon: '', moteIconTierId: 'eigenstein' },
+  { id: 'motes_cross_tier', groupId: 'motes', name: 'Cross-Tier Milestones', icon: '', moteIconTierId: 'fracteryl' },
+  { id: 'motes_size',       groupId: 'motes', name: 'Mote Size Milestones',  icon: '', moteIconTierId: 'diamond' },
+  { id: 'motes_aliven',     groupId: 'motes', name: 'Aliven Mote Milestones',icon: '', moteIconTierId: 'eigenstein' },
   // ── Equation subcategories ───────────────────────────────────────
   { id: 'eq_forge_unlock',  groupId: 'equation', name: 'Forge Unlocks',               icon: '🔥' },
   { id: 'eq_taps',          groupId: 'equation', name: 'Equation Taps',               icon: '👆' },

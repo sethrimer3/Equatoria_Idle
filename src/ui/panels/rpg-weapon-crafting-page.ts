@@ -90,7 +90,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let lastAnimMs: number | null = null;
 
   // ── Segment blob fills ────────────────────────────────────────────────────
-  const FILL_W = 64;
+  const FILL_W = 320;
   const FILL_H = 16;
   const BLOB_COUNT = 6;
 
@@ -469,6 +469,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       fillCanvas.className = 'forge-craft__segment-fill';
       fillCanvas.width = FILL_W;
       fillCanvas.height = FILL_H;
+      fillCanvas.style.left = `${-(cumPct / pct) * 100}%`;
+      fillCanvas.style.width = `${(100 / pct) * 100}%`;
       fillCanvas.setAttribute('aria-hidden', 'true');
       seg.appendChild(fillCanvas);
       activeSegmentFills.push({ canvas: fillCanvas, color, segIndex: i });

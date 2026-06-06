@@ -154,6 +154,73 @@ function nearestPointOnSegment(
 }
 
 /**
+ * Pushes a point outside a union of overlapping world-space polygons.
+ * Candidate exits that remain inside any other polygon are rejected, avoiding
+ * the repeated push-back jitter caused by resolving only the first overlap.
+ */
+function pushPointOutsidePolygonUnion(
+  polygons: TopographicTerrainPoint[][],
+  x: number,
+  y: number,
+  outPos: { x: number; y: number },
+  marginPx: number,
+): boolean {
+  let isInside = false;
+  let bestMoveSq = Infinity;
+  let bestX = x, bestY = y;
+
+  for (const polygon of polygons) {
+    if (polygon.length < 3 || !isPointInPolygon(polygon, x, y)) continue;
+    isInside = true;
+
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+      const nearest = nearestPointOnSegment(x, y, a.x, a.y, b.x, b.y);
+      const dx = nearest.x - x, dy = nearest.y - y;
+      const len = Math.sqrt(nearest.distSq) || 1;
+      const candidateX = nearest.x + (dx / len) * marginPx;
+      const candidateY = nearest.y + (dy / len) * marginPx;
+
+      let candidateInside = false;
+      for (const other of polygons) {
+        if (other.length >= 3 && isPointInPolygon(other, candidateX, candidateY)) {
+          candidateInside = true;
+          break;
+        }
+      }
+      if (candidateInside) continue;
+
+      const moveX = candidateX - x, moveY = candidateY - y;
+      const moveSq = moveX * moveX + moveY * moveY;
+      if (moveSq < bestMoveSq) {
+        bestMoveSq = moveSq;
+        bestX = candidateX;
+        bestY = candidateY;
+      }
+    }
+  }
+
+  if (!isInside) {
+    outPos.x = x;
+    outPos.y = y;
+    return false;
+  }
+
+  if (bestMoveSq < Infinity) {
+    outPos.x = bestX;
+    outPos.y = bestY;
+    return true;
+  }
+
+  // Fully enclosed overlap: leave collision unresolved this frame rather than
+  // violently bouncing between incompatible polygon exits.
+  outPos.x = x;
+  outPos.y = y;
+  return false;
+}
+
+/**
  * Returns the solid boundary polygons for the current terrain plus the
  * "inverse-scaling centre" to use when going from world space to unscaled space.
  */
@@ -743,50 +810,11 @@ export function pushPointOutsideTopographicTerrain(
 
   // Recursive-square branch: corners are in world space.
   if (state.terrainKind === 'recursiveSquares') {
-    for (const polygon of _getActiveSquarePolygons(state)) {
-      if (polygon.length < 3) continue;
-      if (!isPointInPolygon(polygon, x, y)) continue;
-      let bestDistSq = Infinity;
-      let bestNx = x, bestNy = y;
-      for (let i = 0; i < polygon.length; i++) {
-        const a = polygon[i];
-        const b = polygon[(i + 1) % polygon.length];
-        const { x: nx, y: ny, distSq } = nearestPointOnSegment(x, y, a.x, a.y, b.x, b.y);
-        if (distSq < bestDistSq) { bestDistSq = distSq; bestNx = nx; bestNy = ny; }
-      }
-      const bdx = bestNx - x, bdy = bestNy - y;
-      const bdLen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
-      outPos.x = bestNx + (bdx / bdLen) * marginPx;
-      outPos.y = bestNy + (bdy / bdLen) * marginPx;
-      return true;
-    }
-    outPos.x = x; outPos.y = y;
-    return false;
+    return pushPointOutsidePolygonUnion(_getActiveSquarePolygons(state), x, y, outPos, marginPx);
   }
 
   if (state.terrainKind === 'basalt') {
-    if (!state.basalt) { outPos.x = x; outPos.y = y; return false; }
-    for (const cell of state.basalt.cells) {
-      if (getBasaltCellAlpha(cell, g) <= 0.1) continue;
-      const polygon = cell.corners;
-      if (polygon.length < 3) continue;
-      if (!isPointInPolygon(polygon, x, y)) continue;
-      let bestDistSq = Infinity;
-      let bestNx = x, bestNy = y;
-      for (let i = 0; i < polygon.length; i++) {
-        const a = polygon[i];
-        const b = polygon[(i + 1) % polygon.length];
-        const { x: nx, y: ny, distSq } = nearestPointOnSegment(x, y, a.x, a.y, b.x, b.y);
-        if (distSq < bestDistSq) { bestDistSq = distSq; bestNx = nx; bestNy = ny; }
-      }
-      const bdx = bestNx - x, bdy = bestNy - y;
-      const bdLen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
-      outPos.x = bestNx + (bdx / bdLen) * marginPx;
-      outPos.y = bestNy + (bdy / bdLen) * marginPx;
-      return true;
-    }
-    outPos.x = x; outPos.y = y;
-    return false;
+    return pushPointOutsidePolygonUnion(_getActiveBasaltPolygons(state), x, y, outPos, marginPx);
   }
 
   const { polygons, invCx, invCy } = _getSolidPolygonsAndCenter(state);

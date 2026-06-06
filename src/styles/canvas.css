@@ -1520,8 +1520,8 @@
 
 .forge-craft__segment-fill {
   position: absolute;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  bottom: 0;
   height: 100%;
   pointer-events: none;
 }

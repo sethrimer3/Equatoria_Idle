@@ -1090,6 +1090,10 @@
 }
 
 .ach-sub-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex: 0 0 18px;
   font-size: 13px;
 }
 

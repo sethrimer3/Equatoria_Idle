@@ -18,6 +18,7 @@ import {
 } from '../../data/achievements';
 import type { AchievementCondition } from '../../data/achievements/achievement-definitions';
 import { TIER_BY_ID } from '../../data/tiers';
+import { getMoteIconPath } from '../../render/assets/asset-paths';
 
 // ── Text helpers ──────────────────────────────────────────────────────────────
 
@@ -193,9 +194,17 @@ export function buildAchievementsDom(
 
         const subLeft = document.createElement('span');
         subLeft.className = 'ach-sub-toggle-left';
-        const subIcon = document.createElement('span');
-        subIcon.textContent = sub.icon;
+        const subIcon = sub.moteIconTierId
+          ? document.createElement('img')
+          : document.createElement('span');
         subIcon.className = 'ach-sub-icon';
+        if (sub.moteIconTierId) {
+          subIcon.setAttribute('src', getMoteIconPath(sub.moteIconTierId));
+          subIcon.setAttribute('alt', '');
+          subIcon.setAttribute('aria-hidden', 'true');
+        } else {
+          subIcon.textContent = sub.icon;
+        }
         const subLabel = document.createElement('span');
         subLabel.className = 'ach-sub-label';
         subLabel.textContent = sub.name;

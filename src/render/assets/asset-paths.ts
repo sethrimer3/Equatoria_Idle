@@ -47,7 +47,6 @@ export function getGemIconPath(tierId: TierId): string {
 // Sprites shown for refined crystals in the crafting UI, inventory
 // chips, and resource panel.
 // Folder: ASSETS/SPRITES/refinedMotes/
-// fracteryl and eigenstein fall back to nullstone (no dedicated sprite yet).
 
 const REFINED_MOTE_MAP: Record<TierId, string> = {
   sand:       'refinedSand',
@@ -61,8 +60,8 @@ const REFINED_MOTE_MAP: Record<TierId, string> = {
   amethyst:   'refinedAmethyst',
   diamond:    'refinedDiamond',
   nullstone:  'refinedNullstone',
-  fracteryl:  'refinedNullstone',  // no dedicated sprite yet
-  eigenstein: 'refinedNullstone',  // no dedicated sprite yet
+  fracteryl:  'refinedFracteryl',
+  eigenstein: 'refinedEigenstein',
 };
 
 export function getRefinedGemPath(tierId: TierId): string {
