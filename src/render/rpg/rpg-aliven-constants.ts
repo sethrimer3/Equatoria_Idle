@@ -93,8 +93,11 @@ export const ALIVEN_WINDUP_THRESHOLD = 10_000;
 
 // ── Dasher ─────────────────────────────────────────────────────────────────
 
-/** Speed (px/ms) applied during a dash toward the player. */
+/** Speed (px/ms) applied during a dash toward the player (elite groups). */
 export const ALIVEN_DASH_SPEED = 0.35;
+
+/** Reduced dash injection for non-elite groups — keeps matrix-driven motion intact. */
+export const ALIVEN_DASH_SPEED_NORMAL = 0.06;
 
 // ── Pulser ─────────────────────────────────────────────────────────────────
 

@@ -143,7 +143,11 @@ import {
   drawImpetusFloorEffects,
   getImpetusDevLine,
 } from './terrain/impetus-overlay';
-import { drawImpetusParticleLifeMatrix } from './terrain/impetus-particle-life';
+import {
+  drawImpetusParticleLifeMatrix,
+  getParticleLifeTelemetry,
+} from './terrain/impetus-particle-life';
+import { getAlivenGroupTelemetry } from './rpg-aliven-updates';
 import {
   drawVerdureEdgeRocks,
   drawVerdurePlants,
@@ -1203,9 +1207,17 @@ function drawRpgViewportDiagnostics(
     lines.push({ text: `⚠ activeBounds < visibleBounds!`, warn: true });
   }
 
-  // Append Impetus-specific diagnostic if in Impetus zone.
+  // Append Impetus-specific diagnostics if in Impetus zone.
   if (activeZone === 'impetus') {
     lines.push({ text: getImpetusDevLine(lowG) });
+    const { activeGroups, totalAliveParticles } = getAlivenGroupTelemetry(ctx.alivenGroups);
+    const { pairChecks, frameMs, profileName, coeffMin, coeffMax } = getParticleLifeTelemetry();
+    lines.push({
+      text: `aliven: ${activeGroups}g ${totalAliveParticles}p  plPairs:${pairChecks}  plMs:${frameMs.toFixed(1)}`,
+    });
+    lines.push({
+      text: `plProfile:${profileName}  coeff:${coeffMin.toFixed(2)}..${coeffMax.toFixed(2)}`,
+    });
   }
 
   // Append Caustics seafloor diagnostics.

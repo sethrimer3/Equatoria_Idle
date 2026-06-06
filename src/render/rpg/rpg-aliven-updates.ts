@@ -20,10 +20,13 @@ import {
   ALIVEN_WANDER_STRENGTH,
   ALIVEN_SEEK_STRENGTH,
   ALIVEN_ORBIT_STRENGTH,
-  ALIVEN_FRICTION,
   ALIVEN_VARIANT_PARAMS,
 } from './rpg-aliven-constants';
-import { applyParticleLifeForces } from './terrain/impetus-particle-life';
+import {
+  applyParticleLifeForces,
+  getActiveAlivenFriction,
+  getActiveAlivenMaxVelocity,
+} from './terrain/impetus-particle-life';
 import {
   tickContact,
   tickSpitter,
@@ -35,6 +38,27 @@ import {
 } from './rpg-aliven-specials';
 // Re-export handleAlivenParticleDeath for backward compatibility with rpg-damage.ts.
 export { handleAlivenParticleDeath } from './rpg-aliven-specials';
+
+// ── Dev telemetry ─────────────────────────────────────────────────────────
+
+/**
+ * Returns a snapshot of aliven group activity for the dev overlay.
+ * Cheap O(G) walk over the groups array — safe to call every frame.
+ */
+export function getAlivenGroupTelemetry(groups: AlivenParticleGroup[]): {
+  activeGroups: number;
+  totalAliveParticles: number;
+} {
+  let activeGroups = 0;
+  let totalAliveParticles = 0;
+  for (const g of groups) {
+    if (g.aliveCount > 0) {
+      activeGroups++;
+      totalAliveParticles += g.aliveCount;
+    }
+  }
+  return { activeGroups, totalAliveParticles };
+}
 
 // ── Per-frame spawn interval per variant ──────────────────────────────────
 function getSpawnIntervalMs(variantId: string): number {
@@ -196,17 +220,18 @@ function tickMovement(
     p.vy += dcy * ALIVEN_ORBIT_STRENGTH * deltaMs;
   }
 
-  // Cap velocity
+  // Cap velocity — uses per-profile max from active Impetus matrix (falls back to 0.18)
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-  const maxSpeed = 0.18; // px/ms
+  const maxSpeed = getActiveAlivenMaxVelocity();
   if (speed > maxSpeed) {
     const s = maxSpeed / speed;
     p.vx *= s; p.vy *= s;
   }
 
-  // Friction
-  p.vx *= ALIVEN_FRICTION;
-  p.vy *= ALIVEN_FRICTION;
+  // Friction — uses per-profile damping from active Impetus matrix (falls back to 0.985)
+  const friction = getActiveAlivenFriction();
+  p.vx *= friction;
+  p.vy *= friction;
 
   // Integrate position
   p.x += p.vx * deltaMs;
@@ -255,7 +280,7 @@ function tickSpecial(
 ): void {
   switch (p.specialKind) {
     case 'spitter':  tickSpitter(p, group, ctx, deltaMs); break;
-    case 'dasher':   tickDasher(p, ctx, deltaMs);          break;
+    case 'dasher':   tickDasher(p, ctx, deltaMs, group.isElite); break;
     case 'pulser':   tickPulser(p, ctx, deltaMs);          break;
     case 'healer':   tickHealer(p, group, deltaMs);        break;
     case 'ghost':    tickGhost(p, deltaMs);                break;

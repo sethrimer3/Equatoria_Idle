@@ -24,6 +24,7 @@ import {
   ALIVEN_SPITTER_BULLET_SPEED,
   ALIVEN_WINDUP_SENTINEL,
   ALIVEN_DASH_SPEED,
+  ALIVEN_DASH_SPEED_NORMAL,
   ALIVEN_PULSER_RING_DURATION_MS,
   ALIVEN_PULSE_RADIUS_PX,
   ALIVEN_PULSE_ATK_MULT,
@@ -113,16 +114,26 @@ export function tickSpitter(
   }
 }
 
-/** Dasher — bursts of velocity toward the player every cooldown interval. */
-export function tickDasher(p: AlivenParticle, ctx: AlivenUpdateCtx, deltaMs: number): void {
+/**
+ * Dasher — bursts of velocity toward the player every cooldown interval.
+ * Elite dashers use the full ALIVEN_DASH_SPEED; normal dashers use the reduced
+ * ALIVEN_DASH_SPEED_NORMAL so the small kick doesn't overwhelm matrix-driven motion.
+ */
+export function tickDasher(
+  p: AlivenParticle,
+  ctx: AlivenUpdateCtx,
+  deltaMs: number,
+  isElite: boolean,
+): void {
   p.specialCdMs -= deltaMs;
   if (p.specialCdMs > 0) return;
   p.specialCdMs = p.specialCdMin + Math.random() * (p.specialCdMax - p.specialCdMin);
   const dx = ctx.playerX - p.x, dy = ctx.playerY - p.y;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len > 0.01) {
-    p.vx += (dx / len) * ALIVEN_DASH_SPEED;
-    p.vy += (dy / len) * ALIVEN_DASH_SPEED;
+    const speed = isElite ? ALIVEN_DASH_SPEED : ALIVEN_DASH_SPEED_NORMAL;
+    p.vx += (dx / len) * speed;
+    p.vy += (dy / len) * speed;
   }
 }
 

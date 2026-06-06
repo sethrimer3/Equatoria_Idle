@@ -245,7 +245,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
       const alivenIds = waveDef.spawns
         .map(s => s.enemyTypeId)
         .filter(id => id.startsWith('aliven_'));
-      initParticleLifeMatrix(alivenIds);
+      initParticleLifeMatrix(alivenIds, wave);
     }
   }
 

@@ -283,10 +283,8 @@ describe('applyLoomContainmentCap — position correction and no-escape guarante
 
     // Particle must still be inside outerRadius after next step
     const distAfterNextStep = distToField(p, field);
-    expect(distAfterNextStep).toBeLessThanOrEqual(
-      field.outerRadius + 1e-6, // allow floating-point epsilon
-      `expected dist ${distAfterNextStep.toFixed(4)} <= outerRadius ${field.outerRadius} after next position step`,
-    );
+    // allow floating-point epsilon; message omitted (Vitest types don't accept second arg)
+    expect(distAfterNextStep, `expected dist ${distAfterNextStep.toFixed(4)} <= outerRadius ${field.outerRadius} after next position step`).toBeLessThanOrEqual(field.outerRadius + 1e-6);
   });
 
   it('pull-back margin is sufficient to absorb one full PL_MAX_VELOCITY substep', () => {
