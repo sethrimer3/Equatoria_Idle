@@ -139,6 +139,7 @@ import {
 } from './terrain/verdure-overlay';
 import {
   drawImpetusBackground,
+  drawImpetusSunLight,
   drawImpetusFloorEffects,
   getImpetusDevLine,
 } from './terrain/impetus-overlay';
@@ -736,6 +737,7 @@ export function drawRpgFrame(
     canvas2d.translate(vwX, vwY);
     drawImpetusBackground(canvas2d, vwW, vwH, nowMs, ctx.getIsLowGraphicsMode());
     drawImpetusParticleLifeMatrix(canvas2d, vwW, vwH);
+    drawImpetusSunLight(canvas2d, vwW, vwH, ctx.getIsLowGraphicsMode());
     canvas2d.restore();
   }
   if (isHorizonZone) {

@@ -91,6 +91,12 @@ const _WELL_RING_COLOR_LOW = '#aa66ff';  // slightly brighter for low-graphics c
 const _ASTEROID_FILL = '#4a4050';
 const _ASTEROID_EDGE = '#7a6880';
 
+// Sun position as a fraction of canvas — upper-right, partially offscreen
+const _SUN_X_FRAC = 1.08;
+const _SUN_Y_FRAC = -0.06;
+// Shadow extends this many pixels from the sun origin (through the polygon vertex)
+const _SHADOW_LENGTH = 2200;
+
 const _BG_ALPHA_HIGH = 0.55;
 const _BG_ALPHA_LOW  = 0.50;  // raised from 0.38 — more visible on mobile
 
@@ -134,6 +140,46 @@ export function getImpetusDevLine(lowGraphics: boolean): string {
 }
 
 /**
+ * Draw warm ambient sunlight from the upper-right offscreen sun.
+ * Call after drawImpetusBackground(), before floor effects.
+ */
+export function drawImpetusSunLight(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+  lowGraphics: boolean,
+): void {
+  const sunX = _SUN_X_FRAC * widthPx;
+  const sunY = _SUN_Y_FRAC * heightPx;
+  // Warm corona — large radial from sun position, very low alpha so it tints not drowns
+  canvas2d.save();
+  const coronaR = Math.max(widthPx, heightPx) * (lowGraphics ? 1.1 : 1.35);
+  const corona = canvas2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, coronaR);
+  corona.addColorStop(0.00, 'rgba(255,192,96,0.18)');
+  corona.addColorStop(0.25, 'rgba(255,166,70,0.10)');
+  corona.addColorStop(0.55, 'rgba(255,140,56,0.05)');
+  corona.addColorStop(1.00, 'rgba(255,120,40,0)');
+  canvas2d.globalAlpha = 1;
+  canvas2d.fillStyle = corona;
+  canvas2d.fillRect(0, 0, widthPx, heightPx);
+  canvas2d.restore();
+
+  if (!lowGraphics) {
+    // Tight bright core glow near the sun edge (still offscreen, peeks in at corner)
+    canvas2d.save();
+    const coreR = Math.max(widthPx, heightPx) * 0.38;
+    const core = canvas2d.createRadialGradient(sunX, sunY, 0, sunX, sunY, coreR);
+    core.addColorStop(0.00, 'rgba(255,220,140,0.22)');
+    core.addColorStop(0.40, 'rgba(255,180,80,0.08)');
+    core.addColorStop(1.00, 'rgba(255,160,60,0)');
+    canvas2d.globalAlpha = 1;
+    canvas2d.fillStyle = core;
+    canvas2d.fillRect(0, 0, widthPx, heightPx);
+    canvas2d.restore();
+  }
+}
+
+/**
  * Draw the space background tint, starfield, and nebula haze.
  * Call immediately after the initial background fill, before fluid and terrain.
  */
@@ -174,6 +220,7 @@ export function drawImpetusFloorEffects(
   lowGraphics: boolean,
 ): void {
   const tS = nowMs * 0.001;
+  _drawAsteroidShadows(canvas2d, widthPx, heightPx, tS, lowGraphics);
   _drawAsteroidField(canvas2d, widthPx, heightPx, tS, lowGraphics);
   // Gravity wells render in both modes; low graphics uses a simplified version.
   if (lowGraphics) {
@@ -366,6 +413,116 @@ function _drawGravityWellsSimple(
   canvas2d.restore();
 }
 
+/**
+ * Compute the world-space (canvas pixel) vertices for asteroid[i] at time tS.
+ * Writes into the provided pre-allocated flat array [x0,y0, x1,y1, ...].
+ */
+function _getAsteroidVerts(
+  i: number,
+  widthPx: number,
+  heightPx: number,
+  tS: number,
+  out: Float32Array,
+): { ax: number; ay: number } {
+  const row   = _ASTEROID_DATA[i];
+  const bXF   = row[0];
+  const bYF   = row[1];
+  const dXS   = row[2];
+  const dYS   = row[3];
+  const speed = row[4];
+  const size  = row[5];
+  const rotR  = row[6];
+  const phase = row[8];
+
+  const driftT  = (tS * speed + phase) % 1.0;
+  const loopX   = (bXF + dXS * driftT + 2.0) % 1.2 - 0.1;
+  const loopY   = (bYF + dYS * driftT + 2.0) % 1.2 - 0.1;
+  const ax      = loopX * widthPx;
+  const ay      = loopY * heightPx;
+  const rot     = tS * rotR;
+  const cosR    = Math.cos(rot);
+  const sinR    = Math.sin(rot);
+  const n       = _ASTER_ANGLES.length;
+
+  for (let v = 0; v < n; v++) {
+    const a  = _ASTER_ANGLES[v];
+    const r  = size * _ASTER_RADII[v];
+    const lx = Math.cos(a) * r;
+    const ly = Math.sin(a) * r;
+    out[v * 2]     = ax + cosR * lx - sinR * ly;
+    out[v * 2 + 1] = ay + sinR * lx + cosR * ly;
+  }
+  return { ax, ay };
+}
+
+// Reusable vertex buffer — avoids per-frame allocation
+const _VERT_BUF = new Float32Array(_ASTER_ANGLES.length * 2);
+
+/** Draw asteroid shadow quads cast by the offscreen sun. */
+function _drawAsteroidShadows(
+  canvas2d: CanvasRenderingContext2D,
+  widthPx: number,
+  heightPx: number,
+  tS: number,
+  lowGraphics: boolean,
+): void {
+  const count  = lowGraphics ? Math.floor(_ASTEROID_DATA.length * 0.5) : _ASTEROID_DATA.length;
+  const sunX   = _SUN_X_FRAC * widthPx;
+  const sunY   = _SUN_Y_FRAC * heightPx;
+  const n      = _ASTER_ANGLES.length;
+
+  canvas2d.save();
+  // Soft translucent shadow — no expensive blur
+  canvas2d.fillStyle = 'rgba(0,0,0,0.28)';
+  canvas2d.globalAlpha = 1;
+
+  for (let i = 0; i < count; i++) {
+    const alpha = _ASTEROID_DATA[i][7];
+    _getAsteroidVerts(i, widthPx, heightPx, tS, _VERT_BUF);
+
+    for (let e = 0; e < n; e++) {
+      const ne  = (e + 1) % n;
+      const v1x = _VERT_BUF[e  * 2];
+      const v1y = _VERT_BUF[e  * 2 + 1];
+      const v2x = _VERT_BUF[ne * 2];
+      const v2y = _VERT_BUF[ne * 2 + 1];
+
+      // Edge normal (pointing outward for CCW winding)
+      const ecx = (v1x + v2x) * 0.5;
+      const ecy = (v1y + v2y) * 0.5;
+      const toSunX = sunX - ecx;
+      const toSunY = sunY - ecy;
+      // Normal of the edge (perpendicular, left-hand side)
+      const nx = -(v2y - v1y);
+      const ny =  (v2x - v1x);
+      // dot < 0 means the edge faces away from the sun
+      if (toSunX * nx + toSunY * ny >= 0) continue;
+
+      // Direction from sun through each vertex, scaled to _SHADOW_LENGTH
+      const d1x  = v1x - sunX;
+      const d1y  = v1y - sunY;
+      const d1l  = Math.sqrt(d1x * d1x + d1y * d1y) || 1;
+      const d2x  = v2x - sunX;
+      const d2y  = v2y - sunY;
+      const d2l  = Math.sqrt(d2x * d2x + d2y * d2y) || 1;
+      const s1x  = v1x + (d1x / d1l) * _SHADOW_LENGTH;
+      const s1y  = v1y + (d1y / d1l) * _SHADOW_LENGTH;
+      const s2x  = v2x + (d2x / d2l) * _SHADOW_LENGTH;
+      const s2y  = v2y + (d2y / d2l) * _SHADOW_LENGTH;
+
+      canvas2d.globalAlpha = alpha * 0.55;
+      canvas2d.beginPath();
+      canvas2d.moveTo(v1x, v1y);
+      canvas2d.lineTo(v2x, v2y);
+      canvas2d.lineTo(s2x, s2y);
+      canvas2d.lineTo(s1x, s1y);
+      canvas2d.closePath();
+      canvas2d.fill();
+    }
+  }
+  canvas2d.restore();
+}
+
 /** Draw visual asteroid drift field — purely decorative, no collision. */
 function _drawAsteroidField(
   canvas2d: CanvasRenderingContext2D,
@@ -375,57 +532,31 @@ function _drawAsteroidField(
   lowGraphics: boolean,
 ): void {
   const count = lowGraphics ? Math.floor(_ASTEROID_DATA.length * 0.5) : _ASTEROID_DATA.length;
+  const n     = _ASTER_ANGLES.length;
   canvas2d.save();
 
   for (let i = 0; i < count; i++) {
-    const row        = _ASTEROID_DATA[i];
-    const bXF        = row[0];
-    const bYF        = row[1];
-    const dXS        = row[2];
-    const dYS        = row[3];
-    const speed      = row[4];
-    const size       = row[5];
-    const rotRate    = row[6];
-    const alpha      = row[7];
-    const phase      = row[8];
+    const alpha = _ASTEROID_DATA[i][7];
+    _getAsteroidVerts(i, widthPx, heightPx, tS, _VERT_BUF);
 
-    // Loop drift: position cycles within full-canvas range
-    const driftT = (tS * speed + phase) % 1.0;
-    const loopX  = (bXF + dXS * driftT + 2.0) % 1.2 - 0.1;
-    const loopY  = (bYF + dYS * driftT + 2.0) % 1.2 - 0.1;
-    const ax     = loopX * widthPx;
-    const ay     = loopY * heightPx;
-
-    const rotation = tS * rotRate;
-
-    canvas2d.save();
-    canvas2d.translate(ax, ay);
-    canvas2d.rotate(rotation);
     canvas2d.globalAlpha = alpha;
-
-    // Main body
     canvas2d.fillStyle = _ASTEROID_FILL;
     canvas2d.beginPath();
-    for (let v = 0; v < _ASTER_ANGLES.length; v++) {
-      const a  = _ASTER_ANGLES[v];
-      const r  = size * _ASTER_RADII[v];
-      const vx = Math.cos(a) * r;
-      const vy = Math.sin(a) * r;
+    for (let v = 0; v < n; v++) {
+      const vx = _VERT_BUF[v * 2];
+      const vy = _VERT_BUF[v * 2 + 1];
       if (v === 0) canvas2d.moveTo(vx, vy);
       else canvas2d.lineTo(vx, vy);
     }
     canvas2d.closePath();
     canvas2d.fill();
 
-    // Bright edge highlight
     if (!lowGraphics) {
       canvas2d.globalAlpha = alpha * 0.55;
       canvas2d.strokeStyle = _ASTEROID_EDGE;
       canvas2d.lineWidth = 0.6;
       canvas2d.stroke();
     }
-
-    canvas2d.restore();
   }
 
   canvas2d.restore();
