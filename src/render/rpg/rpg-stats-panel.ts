@@ -318,12 +318,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     for (let c = 0; c < 5; c++) {
       const plugId = `weaponSlot:${r + 1}:${weaponSlotColIds[c]}`;
       equipWiring.registerPlug(plugId, weaponSlotColTypes[c], weaponRowPlugEls[r][c]);
-      // Expand the drop zone for stat input plugs (atkIn, spdIn, rngIn, prcIn):
-      // dropping a modifier cable anywhere inside the stat cell connects to this plug.
-      if (c > 0) {
-        const statCell = weaponRowPlugEls[r][c].parentElement as HTMLElement | null;
-        if (statCell) equipWiring.setPlugDropHitElement(plugId, statCell);
-      }
+      // Dropping a compatible cable anywhere inside the destination cell
+      // connects to its plug, rather than requiring the small circle.
+      const destinationCell = weaponRowPlugEls[r][c].parentElement as HTMLElement | null;
+      if (destinationCell) equipWiring.setPlugDropHitElement(plugId, destinationCell);
     }
   }
 

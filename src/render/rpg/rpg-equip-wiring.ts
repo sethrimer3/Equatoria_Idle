@@ -366,7 +366,10 @@ export function createEquipWiringSystem(ctx: EquipWiringCtx): EquipWiringHandle 
   // ── Handle implementation ─────────────────────────────────────────
 
   function registerPlug(plugId: string, type: PlugType, el: HTMLElement): void {
-    plugs.set(plugId, { plugId, type, el, hitEl: null, dropHitEl: null, locked: false });
+    const owningBox = isOutputPlug(type)
+      ? null
+      : el.closest<HTMLElement>('.rpg-xp-box, .rpg-box4-cell');
+    plugs.set(plugId, { plugId, type, el, hitEl: null, dropHitEl: owningBox, locked: false });
   }
 
   function unregisterPlug(plugId: string): void {
