@@ -521,18 +521,6 @@ export function simTick(state: GameState, deltaMs: number): SimTickResult {
     }
   }
 
-  // Drain one pending idle mote per frame (drip-add from idle reward queue).
-  // Queue is ordered: lowest tier first, largest size first within each tier.
-  if (state.pendingIdleMotes.length > 0) {
-    const entry = state.pendingIdleMotes[0];
-    const moteValue = pendingMoteValue(entry.sizeIndex);
-    addMotes(state.resources, entry.tierId, moteValue);
-    entry.count--;
-    if (entry.count <= 0) {
-      state.pendingIdleMotes.shift();
-    }
-  }
-
   // Check for newly-unlocked achievements
   const globalTapMultiplier = state.progression.globalMultiplier * state.achievements.tapMultiplierBonus;
   result.newlyUnlockedAchievementIds = checkAndUnlockAchievements(

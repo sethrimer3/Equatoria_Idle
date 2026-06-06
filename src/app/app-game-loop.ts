@@ -12,6 +12,8 @@ import {
   getWaveBoostMultiplier,
   processLoomCapture,
   applyForgeSacrifice,
+  addMotes,
+  pendingMoteValue,
 } from '../sim';
 import { tickForgeWarmup } from '../sim/forge/forge-state';
 import { getLoomInputTierId } from '../sim/looms';
@@ -220,6 +222,21 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // Ensure generators are initialized on first frame
     if (ctx.appState.generatorState.generators.length === 0) {
       ctx.recomputeGenerators();
+    }
+
+    // Drain one pending idle mote per frame as a real physical particle.
+    // Only runs here (not in simTick) so particles are visible on the equation
+    // canvas and resources are credited exactly when the particle spawns.
+    // RPG tab never reaches this point (early return above), satisfying the
+    // "do not drain while activeTab === 'rpg'" requirement.
+    if (ctx.appState.game.pendingIdleMotes.length > 0) {
+      const entry = ctx.appState.game.pendingIdleMotes[0]!;
+      ctx.particles.emit(entry.tierId, entry.sizeIndex, ctx.appState.generatorState.generators, nowMs);
+      addMotes(ctx.appState.game.resources, entry.tierId, pendingMoteValue(entry.sizeIndex));
+      entry.count--;
+      if (entry.count <= 0) {
+        ctx.appState.game.pendingIdleMotes.shift();
+      }
     }
 
     // Sync aliven state into particle system (cheap: at most 11 entries)
