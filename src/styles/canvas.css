@@ -586,6 +586,39 @@
   text-align: center;
 }
 
+.rpg-box4-weapon-stat:first-of-type {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.rpg-box4-weapon-icon-canvas {
+  width: 28px;
+  height: 28px;
+  max-width: 100%;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+.rpg-box4-weapon-tier {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  min-width: 9px;
+  padding: 0 1px;
+  border-radius: 3px;
+  background: rgba(5, 4, 12, 0.88);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 10px;
+  text-align: center;
+  text-shadow: 0 1px 2px #000;
+}
+
 /* Weapon cell layout: circle plug on the left, value on the right */
 .rpg-box4-cell--weapon {
   flex-direction: row;

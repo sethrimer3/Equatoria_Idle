@@ -32,6 +32,7 @@ import { BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID } from './rpg-constants';
 import type { NumberFormat } from '../../util/format';
 import { createEquipWiringSystem } from './rpg-equip-wiring';
 import { buildStatsPanelDom } from './rpg-stats-panel-dom';
+import { createItemIconCanvas, stringToIconSeed } from '../assets/item-icon-renderer';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
 // Sand blade (base attack) and sand gatling share a single "SAN" DPS slot so
@@ -512,17 +513,43 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       const weaponId = rpgSimState.equippedWeaponSlots.get(r);
       if (!weaponId) {
         // Empty slot
-        for (const sp of spans) {
+        for (let c = 0; c < spans.length; c++) {
+          const sp = spans[c];
           sp.style.color = 'rgba(255,255,255,0.18)';
           sp.textContent = '—';
+          if (c === 0) delete sp.dataset.weaponIconId;
         }
         continue;
       }
       const def = resolveWeaponDefinition(weaponId);
       const color = weaponColor(weaponId);
-      // WEAP column: show the tier abbreviation (short name)
+      // WEAP column: mirror the inventory icon with the weapon tier in its corner.
+      const weaponTier = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
+      const iconKey = `${weaponId}:${weaponTier}`;
+      if (spans[0].dataset.weaponIconId !== iconKey) {
+        const craftedWeapon = rpgSimState.craftedWeapons.find(weapon => weapon.id === weaponId);
+        const tierId = craftedWeapon?.dominantTierId ?? def?.costTierId ?? 'sand';
+        const composition = craftedWeapon?.composition.map(entry => ({
+          tierId: entry.tierId,
+          share: entry.share,
+        })) ?? [{ tierId, share: 1 }];
+        const iconCanvas = createItemIconCanvas({
+          itemType: 'weapon',
+          tierId,
+          composition,
+          width: 28,
+          height: 28,
+          seed: stringToIconSeed(weaponId),
+        });
+        iconCanvas.className = 'rpg-box4-weapon-icon-canvas';
+        const tierBadge = document.createElement('span');
+        tierBadge.className = 'rpg-box4-weapon-tier';
+        tierBadge.textContent = String(weaponTier);
+        spans[0].textContent = '';
+        spans[0].append(iconCanvas, tierBadge);
+        spans[0].dataset.weaponIconId = iconKey;
+      }
       spans[0].style.color = color;
-      spans[0].textContent = weaponAbbrev(weaponId);
       if (def) {
         const dim = 'rgba(255,255,255,0.7)';
         // Show effective stats including multipliers where a modifier is wired.
