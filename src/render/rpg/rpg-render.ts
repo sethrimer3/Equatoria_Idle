@@ -181,6 +181,7 @@ import {
 import { prewarmCausticsTextures } from './terrain/caustics-texture';
 import { generateVerdureCaveWalls, applyVerdureWallsToNavGrid, pushPointOutsideVerdureWall } from './terrain/verdure-cave-walls';
 import { getImpetusAsteroidObstacles } from './terrain/impetus-overlay';
+import { showWeapInventoryPicker } from '../../ui/panels/weap-inventory-picker';
 
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
@@ -1302,6 +1303,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       applyEquipmentStats();
       spawnDamageNumber(mote.x, mote.y - 10, 0, -1, 'Level Up!', 1, '#a78bfa');
     },
+    onWeapCellTap: options.dispatch ? (slotIdx, anchorEl) => {
+      showWeapInventoryPicker({
+        anchor: anchorEl,
+        slotIdx,
+        rpgSimState,
+        dispatch: options.dispatch!,
+        weapSlotCells: statsPanel.getWeapSlotCells(),
+      });
+    } : undefined,
   });
   _forwardRecordDps = (dmg, color) => statsPanel.recordDps(dmg, color);
 

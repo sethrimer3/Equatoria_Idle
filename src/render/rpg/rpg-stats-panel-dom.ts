@@ -64,6 +64,8 @@ export interface StatsPanelDomRefs {
   playerLevelEl: HTMLSpanElement;
   /** XP progress bar fill element below the player icon. Width updated each frame. */
   playerXpBarFill: HTMLDivElement;
+  /** The "Weap" header cell — first cell of the label row. Used for WEAP-column tap handling. */
+  weapHeaderCell: HTMLDivElement;
 
   // DPS chart elements
   dpsLabelEl: HTMLSpanElement;
@@ -128,6 +130,7 @@ export function buildStatsPanelDom(): StatsPanelDomRefs {
     modLevelTexts: primary.modLevelTexts,
     playerLevelEl: primary.playerLevelEl,
     playerXpBarFill: primary.playerXpBarFill,
+    weapHeaderCell: primary.box4LabelCells[0] as HTMLDivElement,
     dpsLabelEl: right.dpsLabelEl,
     dpsValueEl: right.dpsValueEl,
     dpsChartEl: right.dpsChartEl,

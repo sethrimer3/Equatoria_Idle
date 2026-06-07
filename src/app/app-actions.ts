@@ -223,6 +223,24 @@ export function handleAction(
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }
+    case 'swap_weapon_slots': {
+      const { slotA, slotB } = action;
+      const maxSlots = getMaxEquippedWeapons(state.game.rpg);
+      if (slotA < 0 || slotA >= maxSlots || slotB < 0 || slotB >= maxSlots || slotA === slotB) break;
+      const idA = state.game.rpg.equippedWeaponSlots.get(slotA) ?? null;
+      const idB = state.game.rpg.equippedWeaponSlots.get(slotB) ?? null;
+      if (idA) state.game.rpg.equippedWeaponSlots.set(slotB, idA);
+      else state.game.rpg.equippedWeaponSlots.delete(slotB);
+      if (idB) state.game.rpg.equippedWeaponSlots.set(slotA, idB);
+      else state.game.rpg.equippedWeaponSlots.delete(slotA);
+      // Re-derive the Set from the Map to stay in sync
+      state.game.rpg.equippedWeaponIds.clear();
+      for (const [, wid] of state.game.rpg.equippedWeaponSlots) state.game.rpg.equippedWeaponIds.add(wid);
+      state.game.rpg.equipChangedDuringInterwave = true;
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
     case 'upgrade_weapon_tier': {
       const weaponDef = WEAPON_BY_ID.get(action.weaponId);
       if (!weaponDef) { audioSystem?.onError(); break; }

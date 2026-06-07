@@ -61,6 +61,11 @@ export interface RpgStatsPanelCtx {
   onError(): void;
   /** Called after each tick in which the player gained one or more levels. */
   onPlayerLevelUp?(): void;
+  /**
+   * Called when the player taps the WEAP column header (slotIdx = null) or
+   * any WEAP data-row cell (slotIdx = 0–4).  anchorEl is the tapped DOM cell.
+   */
+  onWeapCellTap?(slotIdx: number | null, anchorEl: HTMLElement): void;
 }
 
 export interface RpgStatsPanelHandle {
@@ -86,6 +91,8 @@ export interface RpgStatsPanelHandle {
    * Returns 1 (no multiplier) if no modifier box is connected to that slot/stat.
    */
   getWeaponStatMultiplier(slotIdx: number, statKey: 'atkIn' | 'spdIn' | 'rngIn' | 'prcIn'): number;
+  /** Returns the five WEAP column cell elements (one per weapon row) for drag-drop targeting. */
+  getWeapSlotCells(): HTMLElement[];
 }
 
 export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle {
@@ -133,8 +140,39 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     mod1XpIn, mod1Out, mod2XpIn, mod2Out, mod3XpIn, mod3Out,
     modProgressFills, modLevelTexts,
     playerLevelEl, playerXpBarFill,
+    weapHeaderCell,
     dpsLabelEl, dpsValueEl, dpsChartEl, dpsAxisEl, dpsAxisLowEl, dpsAxisHighEl,
   } = buildStatsPanelDom();
+
+  // ── WEAP column tap handling ───────────────────────────────────────────────
+  // Collect the WEAP cell elements (col 0 of each weapon data row) for later.
+  const weapSlotCells: HTMLElement[] = [];
+  if (ctx.onWeapCellTap) {
+    // Header: "Weap" label cell
+    weapHeaderCell.style.cursor = 'pointer';
+    weapHeaderCell.addEventListener('click', () => ctx.onWeapCellTap!(null, weapHeaderCell));
+
+    // Data rows: col 0 of each weapon row
+    for (let r = 0; r < weaponRowPlugEls.length; r++) {
+      const cell = weaponRowPlugEls[r][0].parentElement as HTMLElement;
+      if (cell) {
+        cell.dataset.weapSlotIdx = String(r);
+        cell.style.cursor = 'pointer';
+        const slotIdx = r;
+        cell.addEventListener('click', () => ctx.onWeapCellTap!(slotIdx, cell));
+        weapSlotCells.push(cell);
+      }
+    }
+  } else {
+    // Still collect cells for getWeapSlotCells() even without a tap callback
+    for (let r = 0; r < weaponRowPlugEls.length; r++) {
+      const cell = weaponRowPlugEls[r][0].parentElement as HTMLElement;
+      if (cell) {
+        cell.dataset.weapSlotIdx = String(r);
+        weapSlotCells.push(cell);
+      }
+    }
+  }
 
   // ── Wire connection state (ephemeral — resets on page load) ──────────────────
   //
@@ -650,5 +688,6 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     isSlotEquippedByWire,
     hasAnyEquipWire,
     getWeaponStatMultiplier,
+    getWeapSlotCells(): HTMLElement[] { return weapSlotCells; },
   };
 }

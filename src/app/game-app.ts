@@ -306,6 +306,7 @@ export async function startApp(): Promise<void> {
     },
     getAchievementAtkBonus: () => appState.game.achievements.baseAtkBonus,
     onError: () => { audioSystem.onError(); },
+    dispatch,
   });
   rpgRender.setNumberFormat(settings.numberFormat);
   // Stats panel is positioned in the root (above the tab bar); visibility

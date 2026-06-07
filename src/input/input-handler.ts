@@ -44,7 +44,8 @@ export type GameAction =
   | { kind: 'attach_lens_to_weapon'; lensId: string; weaponId: string }
   | { kind: 'equip_weave_to_slot'; weaveId: string; slotIndex: number }
   | { kind: 'unequip_weave'; weaveId: string }
-  | { kind: 'move_weave_slot'; fromSlotIndex: number; toSlotIndex: number };
+  | { kind: 'move_weave_slot'; fromSlotIndex: number; toSlotIndex: number }
+  | { kind: 'swap_weapon_slots'; slotA: number; slotB: number };
 
 export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 

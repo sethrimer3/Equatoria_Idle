@@ -1,5 +1,6 @@
 import type { TierId } from '../../data/tiers';
 import type { NumberFormat } from '../../util/format';
+import type { ActionHandler } from '../../input';
 
 export interface RpgRender {
   canvas: HTMLCanvasElement;
@@ -74,4 +75,10 @@ export interface RpgRenderOptions {
    * to add a 4th XP wire).  Callers should play the error SFX.
    */
   onError?: () => void;
+  /**
+   * Action dispatcher for the weapon inventory picker popup.
+   * When provided, tapping the WEAP column header or any WEAP slot cell opens
+   * the inventory picker, which dispatches equip/swap actions through this handler.
+   */
+  dispatch?: ActionHandler;
 }

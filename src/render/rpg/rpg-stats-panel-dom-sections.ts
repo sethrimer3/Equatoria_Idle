@@ -30,6 +30,8 @@ export interface StatsPanelPrimaryColumnRefs {
   playerLevelEl: HTMLSpanElement;
   /** XP progress bar fill element below the player icon. Width updated each frame. */
   playerXpBarFill: HTMLDivElement;
+  /** The 5 cell divs in the header label row (Weap / ATK / Spd / Rng / Prc). */
+  box4LabelCells: HTMLDivElement[];
 }
 
 export interface StatsPanelRightColumnRefs {
@@ -352,6 +354,7 @@ export function createStatsPanelPrimaryColumn(
     modLevelTexts: [mod1Level, mod2Level, mod3Level],
     playerLevelEl,
     playerXpBarFill,
+    box4LabelCells: box4LabelsRow,
   };
 }
 
