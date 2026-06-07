@@ -1,9 +1,9 @@
 /**
- * weap-inventory-picker.ts — Floating weapon-inventory popup for the WEAP column.
+ * weap-inventory-picker.ts — Full-screen INVENTORY grid overlay for the WEAP column.
  *
  * Opened by tapping the "Weap" header or any WEAP data cell in the RPG stats panel.
- * Shows all owned weapons; supports tap-to-select + slot-button equip and
- * drag-and-drop directly onto WEAP slot cells in the stats panel.
+ * Shows all owned weapons as large square grid slots with gold borders and sprite previews.
+ * Supports tap-to-select + slot-button equip and drag-and-drop onto WEAP cells.
  *
  * Reuse guide: the component is column-agnostic in structure; ATK/SPD/RNG/PRC
  * columns can instantiate similar pickers with their own item lists and actions.
@@ -66,24 +66,27 @@ function buildWeaponEntries(rpgSimState: RpgSimState): WeaponEntry[] {
 // ── Public interface ───────────────────────────────────────────────────────
 
 export interface WeapInventoryPickerOpts {
-  /** The DOM element that was tapped — popup anchors relative to it. */
+  /** The DOM element that was tapped — used to highlight the source WEAP cell. */
   anchor: HTMLElement;
   /** Which weapon-row slot was tapped (0–4), or null when the header was tapped. */
   slotIdx: number | null;
   rpgSimState: RpgSimState;
   dispatch: ActionHandler;
-  /** The WEAP column cell elements for drag-drop target detection (from statsPanel.getWeapSlotCells()). */
+  /** The WEAP column cell elements for drag-drop target detection. */
   weapSlotCells: HTMLElement[];
 }
 
+const GRID_COLS = 4;
+const ICON_PX   = 44; // weapon icon canvas size in px
+const MIN_SLOTS = 8;  // minimum visible slots (fills grid with empty boxes)
+
 export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismiss: () => void } {
-  const { anchor, slotIdx, rpgSimState, dispatch, weapSlotCells } = opts;
+  const { slotIdx, rpgSimState, dispatch, weapSlotCells } = opts;
 
   // Pre-select the weapon already in the tapped slot (if any)
   let selectedWeaponId: string | null =
     slotIdx !== null ? (rpgSimState.equippedWeaponSlots.get(slotIdx) ?? null) : null;
 
-  // ── Helper: which slot (0–4) holds a given weapon ID ──────────────────────
   function getWeaponSlot(weaponId: string): number | null {
     for (const [s, wid] of rpgSimState.equippedWeaponSlots) {
       if (wid === weaponId) return s;
@@ -91,7 +94,6 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     return null;
   }
 
-  // ── Helper: compact stat summary line ─────────────────────────────────────
   function formatStatSummary(entry: WeaponEntry): string {
     const stats = entry.craftedData?.definition.stats ?? resolveWeaponDefinition(entry.id)?.stats;
     if (!stats) return '';
@@ -102,59 +104,40 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     return `ATK:${stats.damage}  SPD:${spdText}  RNG:${rngText}`;
   }
 
-  // ── Build popup skeleton ───────────────────────────────────────────────────
-  const popup = document.createElement('div');
-  popup.className = 'weap-picker';
+  // ── Build full-screen overlay ──────────────────────────────────────────────
+  const overlay = document.createElement('div');
+  overlay.className = 'weap-inv-overlay';
+
+  const panel = document.createElement('div');
+  panel.className = 'weap-inv-panel';
+  overlay.appendChild(panel);
 
   // Header
   const header = document.createElement('div');
-  header.className = 'weap-picker__header';
+  header.className = 'weap-inv-header';
   const title = document.createElement('span');
-  title.className = 'weap-picker__title';
-  title.textContent = 'WEAPONS';
+  title.className = 'weap-inv-title';
+  title.textContent = 'INVENTORY';
   const closeBtn = document.createElement('button');
-  closeBtn.className = 'weap-picker__close';
+  closeBtn.className = 'weap-inv-close';
   closeBtn.textContent = '×';
   closeBtn.addEventListener('click', dismiss);
   header.appendChild(title);
   header.appendChild(closeBtn);
-  popup.appendChild(header);
+  panel.appendChild(header);
 
-  // Weapon list
-  const list = document.createElement('div');
-  list.className = 'weap-picker__list';
-  popup.appendChild(list);
+  // Grid
+  const grid = document.createElement('div');
+  grid.className = 'weap-inv-grid';
+  panel.appendChild(grid);
 
-  // Info section — initially hidden, shown when a weapon is selected
+  // Info panel — hidden until an item is selected
   const infoSection = document.createElement('div');
-  infoSection.className = 'weap-picker__info';
+  infoSection.className = 'weap-inv-info';
   infoSection.hidden = true;
-  popup.appendChild(infoSection);
+  panel.appendChild(infoSection);
 
-  document.body.appendChild(popup);
-
-  // ── Position popup: prefer above anchor, fall back to below ──────────────
-  const POPUP_W = 240;
-  const POPUP_MAX_H = 340;
-  const MARGIN = 8;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const anchorRect = anchor.getBoundingClientRect();
-  const popupH = popup.offsetHeight || 160;
-
-  let left = anchorRect.left;
-  if (left + POPUP_W > vw - MARGIN) left = vw - POPUP_W - MARGIN;
-  if (left < MARGIN) left = MARGIN;
-
-  let top = anchorRect.top - popupH - 4;
-  if (top < MARGIN) top = anchorRect.bottom + 4;
-  if (top + POPUP_MAX_H > vh - MARGIN) top = vh - POPUP_MAX_H - MARGIN;
-  if (top < MARGIN) top = MARGIN;
-
-  popup.style.left   = `${left}px`;
-  popup.style.top    = `${top}px`;
-  popup.style.width  = `${POPUP_W}px`;
-  popup.style.maxHeight = `${POPUP_MAX_H}px`;
+  document.body.appendChild(overlay);
 
   // ── Info section builder ───────────────────────────────────────────────────
   function buildInfoSection(entry: WeaponEntry): void {
@@ -164,22 +147,40 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     const def = entry.craftedData?.definition ?? resolveWeaponDefinition(entry.id);
     const color = TIER_BY_ID.get(entry.tierId)?.color ?? '#fff';
 
+    // Name row
     const nameEl = document.createElement('div');
-    nameEl.className = 'weap-picker__info-name';
+    nameEl.className = 'weap-inv-info-name';
     nameEl.style.color = color;
-    nameEl.textContent = entry.name;
+    const nameText = document.createElement('span');
+    nameText.textContent = entry.name;
+    nameEl.appendChild(nameText);
+    if (entry.craftedData) {
+      const badge = document.createElement('span');
+      badge.className = 'weap-inv-forge-badge';
+      badge.style.color = color;
+      badge.style.borderColor = color + '88';
+      badge.textContent = 'Forged';
+      nameEl.appendChild(badge);
+    }
     infoSection.appendChild(nameEl);
 
     const statsEl = document.createElement('div');
-    statsEl.className = 'weap-picker__info-stats';
+    statsEl.className = 'weap-inv-info-stats';
     statsEl.textContent = formatStatSummary(entry);
     infoSection.appendChild(statsEl);
 
+    if (entry.craftedData) {
+      const compEl = document.createElement('div');
+      compEl.className = 'weap-inv-info-comp';
+      compEl.textContent = formatCraftedWeaponModifier(entry.craftedData);
+      infoSection.appendChild(compEl);
+    }
+
     if (def?.description) {
       const descEl = document.createElement('div');
-      descEl.className = 'weap-picker__info-desc';
-      descEl.textContent = def.description.length > 90
-        ? def.description.slice(0, 90) + '…'
+      descEl.className = 'weap-inv-info-desc';
+      descEl.textContent = def.description.length > 100
+        ? def.description.slice(0, 100) + '…'
         : def.description;
       infoSection.appendChild(descEl);
     }
@@ -187,34 +188,34 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     // Slot selector
     const maxSlots = getMaxEquippedWeapons(rpgSimState);
     const slotsLabel = document.createElement('div');
-    slotsLabel.className = 'weap-picker__slots-label';
+    slotsLabel.className = 'weap-inv-slots-label';
     slotsLabel.textContent = 'Equip to slot:';
     infoSection.appendChild(slotsLabel);
 
     const slotRow = document.createElement('div');
-    slotRow.className = 'weap-picker__slot-row';
+    slotRow.className = 'weap-inv-slot-row';
 
     for (let s = 0; s < maxSlots; s++) {
       const occupant = rpgSimState.equippedWeaponSlots.get(s);
       const btn = document.createElement('button');
-      btn.className = 'weap-picker__slot-btn';
+      btn.className = 'weap-inv-slot-btn';
 
       if (occupant === entry.id) {
-        btn.classList.add('weap-picker__slot-btn--current');
+        btn.classList.add('weap-inv-slot-btn--current');
         btn.title = 'Already in this slot';
         btn.disabled = true;
       } else if (occupant) {
-        btn.classList.add('weap-picker__slot-btn--occupied');
+        btn.classList.add('weap-inv-slot-btn--occupied');
         const occName = entries.find(e => e.id === occupant)?.name
           ?? resolveWeaponDefinition(occupant)?.name
           ?? occupant;
         btn.title = `Swap with ${occName}`;
       } else {
-        btn.classList.add('weap-picker__slot-btn--empty');
-        btn.title = `Empty slot`;
+        btn.classList.add('weap-inv-slot-btn--empty');
+        btn.title = 'Empty slot';
       }
 
-      if (s === slotIdx) btn.classList.add('weap-picker__slot-btn--target');
+      if (s === slotIdx) btn.classList.add('weap-inv-slot-btn--target');
       btn.textContent = String(s + 1);
 
       if (!btn.disabled) {
@@ -222,7 +223,6 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
           e.stopPropagation();
           const sourceSlot = getWeaponSlot(entry.id);
           if (sourceSlot !== null && occupant) {
-            // Already equipped elsewhere — true slot-to-slot swap
             dispatch({ kind: 'swap_weapon_slots', slotA: sourceSlot, slotB: s });
           } else {
             dispatch({ kind: 'equip_weapon_to_slot', weaponId: entry.id, slotIndex: s });
@@ -239,7 +239,7 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     const currentSlot = getWeaponSlot(entry.id);
     if (currentSlot !== null) {
       const unequipBtn = document.createElement('button');
-      unequipBtn.className = 'weap-picker__unequip-btn';
+      unequipBtn.className = 'weap-inv-unequip-btn';
       unequipBtn.textContent = `Unequip from slot ${currentSlot + 1}`;
       unequipBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -250,19 +250,13 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     }
   }
 
-  // ── Card selection ─────────────────────────────────────────────────────────
+  // ── Grid slot selection ────────────────────────────────────────────────────
   function selectEntry(entry: WeaponEntry): void {
     selectedWeaponId = entry.id;
-    list.querySelectorAll<HTMLElement>('.weap-picker__card').forEach(el => {
-      el.classList.toggle('weap-picker__card--selected', el.dataset.weaponId === entry.id);
+    grid.querySelectorAll<HTMLElement>('.weap-inv-slot').forEach(el => {
+      el.classList.toggle('weap-inv-slot--selected', el.dataset.weaponId === entry.id);
     });
     buildInfoSection(entry);
-    // Reposition if bottom-anchored and now taller
-    const newH = popup.offsetHeight;
-    const tTop = parseFloat(popup.style.top);
-    if (tTop + newH > vh - MARGIN) {
-      popup.style.top = `${Math.max(MARGIN, vh - newH - MARGIN)}px`;
-    }
   }
 
   // ── Drag-and-drop ──────────────────────────────────────────────────────────
@@ -272,7 +266,8 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
   let dragOverCell: HTMLElement | null = null;
 
   function findWeapCellAt(x: number, y: number): HTMLElement | null {
-    // Hide ghost so elementsFromPoint can see through it
+    // elementsFromPoint returns all elements at the point regardless of visual
+    // occlusion, so WEAP cells behind the overlay are still reachable.
     if (dragGhost) dragGhost.style.display = 'none';
     const els = document.elementsFromPoint(x, y);
     if (dragGhost) dragGhost.style.display = '';
@@ -331,7 +326,7 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     dragSourceSlot = getWeaponSlot(entry.id);
 
     const ghost = document.createElement('div');
-    ghost.className = 'weap-picker__drag-ghost';
+    ghost.className = 'weap-inv-drag-ghost';
     const ic = createItemIconCanvas({
       itemType: 'weapon',
       tierId: entry.tierId,
@@ -350,191 +345,140 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     document.addEventListener('pointerup',   onDragEnd);
   }
 
-  // ── Build weapon cards ─────────────────────────────────────────────────────
+  // ── Build inventory grid ───────────────────────────────────────────────────
   const entries = buildWeaponEntries(rpgSimState);
 
-  for (const entry of entries) {
-    const card = document.createElement('div');
-    card.className = 'weap-picker__card';
-    card.dataset.weaponId = entry.id;
+  // Always show at least MIN_SLOTS, padded to a full GRID_COLS row.
+  const minCount   = Math.max(entries.length, MIN_SLOTS);
+  const totalSlots = Math.ceil(minCount / GRID_COLS) * GRID_COLS;
 
-    const inSlot = getWeaponSlot(entry.id);
-    if (inSlot !== null) card.classList.add('weap-picker__card--equipped');
-    if (entry.id === selectedWeaponId) card.classList.add('weap-picker__card--selected');
+  for (let i = 0; i < totalSlots; i++) {
+    const entry = entries[i] ?? null;
+    const slot  = document.createElement('div');
+    slot.className = 'weap-inv-slot';
 
-    const color = TIER_BY_ID.get(entry.tierId)?.color ?? '#fff';
+    if (entry) {
+      slot.dataset.weaponId = entry.id;
 
-    if (entry.craftedData) {
-      // ── Forged weapon — richer card with 48px icon, composition, stats ──
-      card.classList.add('weap-picker__card--crafted');
-      card.style.borderColor = color + '55';
+      const inSlot = getWeaponSlot(entry.id);
+      if (inSlot !== null) slot.classList.add('weap-inv-slot--occupied');
+      if (entry.id === selectedWeaponId) slot.classList.add('weap-inv-slot--selected');
 
-      // Top row: icon + name/badges
-      const topRow = document.createElement('div');
-      topRow.className = 'weap-picker__card-row';
+      const color = TIER_BY_ID.get(entry.tierId)?.color ?? '#fff';
 
+      // Icon canvas
       const ic = createItemIconCanvas({
         itemType: 'weapon',
         tierId: entry.tierId,
         composition: entry.composition,
-        width: 48,
-        height: 48,
+        width: ICON_PX,
+        height: ICON_PX,
         seed: stringToIconSeed(entry.id),
       });
-      ic.className = 'weap-picker__card-icon';
-      ic.style.filter = `drop-shadow(0 0 4px ${color}88)`;
-      topRow.appendChild(ic);
+      ic.className = 'weap-inv-slot__icon';
+      ic.style.filter = `drop-shadow(0 0 5px ${color}55)`;
+      slot.appendChild(ic);
 
-      const nameCol = document.createElement('div');
-      nameCol.className = 'weap-picker__card-name-col';
-
+      // Weapon name
       const nameEl = document.createElement('div');
-      nameEl.className = 'weap-picker__card-name';
+      nameEl.className = 'weap-inv-slot__name';
       nameEl.style.color = color;
-      const nameText = document.createElement('span');
-      nameText.textContent = entry.name;
-      nameEl.appendChild(nameText);
+      nameEl.textContent = entry.name;
+      slot.appendChild(nameEl);
 
-      const forgeBadge = document.createElement('span');
-      forgeBadge.className = 'weap-picker__forge-badge';
-      forgeBadge.style.color = color;
-      forgeBadge.style.borderColor = color + '88';
-      forgeBadge.textContent = 'Forged';
-      nameEl.appendChild(forgeBadge);
-
+      // Equipped-slot badge (top-right corner)
       if (inSlot !== null) {
-        const badge = document.createElement('span');
-        badge.className = 'weap-picker__slot-badge';
+        const badge = document.createElement('div');
+        badge.className = 'weap-inv-slot__equip-badge';
         badge.textContent = `S${inSlot + 1}`;
-        nameEl.appendChild(badge);
+        slot.appendChild(badge);
       }
-      nameCol.appendChild(nameEl);
 
-      // Composition line
-      const compEl = document.createElement('div');
-      compEl.className = 'weap-picker__card-comp';
-      compEl.textContent = formatCraftedWeaponModifier(entry.craftedData);
-      nameCol.appendChild(compEl);
+      // Forged indicator (top-left corner)
+      if (entry.craftedData) {
+        const forgeBadge = document.createElement('div');
+        forgeBadge.className = 'weap-inv-slot__forge-badge';
+        forgeBadge.style.borderColor = color + '88';
+        forgeBadge.style.color = color;
+        forgeBadge.textContent = '⚒';
+        slot.appendChild(forgeBadge);
+      }
 
-      // Stats line
-      const statsLine = document.createElement('div');
-      statsLine.className = 'weap-picker__card-stats-line';
-      statsLine.textContent = formatStatSummary(entry);
-      nameCol.appendChild(statsLine);
+      // Drag + tap support
+      let downTs = 0;
+      let downX  = 0;
+      let downY  = 0;
+      let slotDragging = false;
 
-      topRow.appendChild(nameCol);
-      card.appendChild(topRow);
+      slot.addEventListener('pointerdown', (e: PointerEvent) => {
+        if (e.button !== 0) return;
+        downTs = e.timeStamp;
+        downX  = e.clientX;
+        downY  = e.clientY;
+        slotDragging = false;
+      });
+
+      slot.addEventListener('pointermove', (e: PointerEvent) => {
+        if (slotDragging || dragWeaponId !== null) return;
+        if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) {
+          slotDragging = true;
+          startDrag(e, entry);
+        }
+      });
+
+      slot.addEventListener('pointerup', (e: PointerEvent) => {
+        if (!slotDragging && e.timeStamp - downTs < 400) {
+          selectEntry(entry);
+        }
+        slotDragging = false;
+      });
     } else {
-      // ── Standard purchased weapon — compact icon + name ──
-      const ic = createItemIconCanvas({
-        itemType: 'weapon',
-        tierId: entry.tierId,
-        composition: entry.composition,
-        width: 28,
-        height: 28,
-        seed: stringToIconSeed(entry.id),
-      });
-      ic.className = 'weap-picker__card-icon';
-      card.appendChild(ic);
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'weap-picker__card-name';
-      nameEl.style.color = color;
-      const nameText = document.createElement('span');
-      nameText.textContent = entry.name;
-      nameEl.appendChild(nameText);
-      if (inSlot !== null) {
-        const badge = document.createElement('span');
-        badge.className = 'weap-picker__slot-badge';
-        badge.textContent = `S${inSlot + 1}`;
-        nameEl.appendChild(badge);
-      }
-      card.appendChild(nameEl);
+      // Empty placeholder — stays visible as a gold-bordered box
+      slot.classList.add('weap-inv-slot--placeholder');
     }
 
-    // Drag support
-    let downTs = 0;
-    let downX = 0;
-    let downY = 0;
-    let cardDragging = false;
-
-    card.addEventListener('pointerdown', (e: PointerEvent) => {
-      if (e.button !== 0) return;
-      downTs = e.timeStamp;
-      downX  = e.clientX;
-      downY  = e.clientY;
-      cardDragging = false;
-    });
-
-    card.addEventListener('pointermove', (e: PointerEvent) => {
-      if (cardDragging || dragWeaponId !== null) return;
-      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) {
-        cardDragging = true;
-        startDrag(e, entry);
-      }
-    });
-
-    card.addEventListener('pointerup', (e: PointerEvent) => {
-      if (!cardDragging && e.timeStamp - downTs < 400) {
-        selectEntry(entry);
-      }
-      cardDragging = false;
-    });
-
-    list.appendChild(card);
+    grid.appendChild(slot);
   }
 
   if (entries.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'weap-picker__empty';
-    empty.textContent = 'No weapons owned';
-    list.appendChild(empty);
+    const emptyMsg = document.createElement('div');
+    emptyMsg.className = 'weap-inv-empty';
+    emptyMsg.textContent = 'No weapons owned';
+    grid.appendChild(emptyMsg);
   }
 
   // Auto-show info for the pre-selected weapon
   if (selectedWeaponId) {
     const entry = entries.find(e => e.id === selectedWeaponId);
-    if (entry) {
-      buildInfoSection(entry);
-      list.querySelector<HTMLElement>(`[data-weapon-id="${selectedWeaponId}"]`)
-        ?.classList.add('weap-picker__card--selected');
-    }
+    if (entry) buildInfoSection(entry);
   }
 
-  // ── Highlight the tapped cell's column in the stats panel ─────────────────
-  // Adds a subtle ring to the source slot so users see the selection context.
+  // Highlight the tapped WEAP cell in the stats panel
   if (slotIdx !== null && weapSlotCells[slotIdx]) {
     weapSlotCells[slotIdx].classList.add('weap-slot-picker-source');
   }
 
   // ── Dismiss logic ──────────────────────────────────────────────────────────
   function dismiss(): void {
-    popup.remove();
+    overlay.remove();
     cleanupDrag();
     if (slotIdx !== null && weapSlotCells[slotIdx]) {
       weapSlotCells[slotIdx].classList.remove('weap-slot-picker-source');
     }
-    document.removeEventListener('pointerdown', onOutsideTap, true);
     document.removeEventListener('keydown', onEscape);
   }
 
-  function onOutsideTap(e: PointerEvent): void {
-    if (!popup.contains(e.target as Node)) {
-      // Stop propagation so the pointerdown doesn't reach the tapped element.
-      // This prevents a click on a WEAP cell from immediately re-opening the
-      // picker in the same gesture that closed it.
-      e.stopPropagation();
-      dismiss();
-    }
-  }
+  // Click on the dark backdrop (overlay itself, not the panel) dismisses
+  overlay.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (e.target === overlay) dismiss();
+  });
 
   function onEscape(e: KeyboardEvent): void {
     if (e.key === 'Escape') { e.stopPropagation(); dismiss(); }
   }
 
-  // Delay registration by one frame so the triggering click doesn't immediately dismiss.
+  // Delay by one frame so the triggering tap doesn't immediately dismiss
   setTimeout(() => {
-    document.addEventListener('pointerdown', onOutsideTap, true);
     document.addEventListener('keydown', onEscape);
   }, 0);
 
