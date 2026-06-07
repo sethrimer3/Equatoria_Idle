@@ -1,3 +1,8 @@
+import {
+  drawImpetusDustFar,
+  drawImpetusDustNear,
+} from './impetus-space-dust';
+
 /**
  * impetus-overlay.ts — Animated space/gravity visual overlay for the Impetus RPG zone.
  *
@@ -275,6 +280,9 @@ export function drawImpetusBackground(
     _drawNebula(canvas2d, widthPx, heightPx, tS);
   }
   _drawStarfield(canvas2d, widthPx, heightPx, tS, lowGraphics);
+
+  // Far dust layer: faint colored motes above stars, drawn before sunlight overlay.
+  drawImpetusDustFar(canvas2d, nowMs);
 }
 
 /**
@@ -302,6 +310,9 @@ export function drawImpetusFloorEffects(
   _updateShadowCanvas(widthPx, heightPx, tS, nowMs, lowGraphics, softAsteroidShadows);
   _blitShadowCanvas(canvas2d, widthPx, heightPx, softAsteroidShadows);
   _shadowDrawMs = performance.now() - _t0shadow;
+
+  // Near dust layer: reactive colored motes above shadow, below asteroids.
+  drawImpetusDustNear(canvas2d, nowMs);
 
   // ── Asteroid field (purely decorative) ────────────────────────────────────
   _drawAsteroidField(canvas2d, widthPx, heightPx, tS, lowGraphics);

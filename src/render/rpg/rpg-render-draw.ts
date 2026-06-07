@@ -144,6 +144,7 @@ import {
   drawImpetusFloorEffects,
   getImpetusDevLine,
 } from './terrain/impetus-overlay';
+import { getImpetusDustDevLine } from './terrain/impetus-space-dust';
 import {
   drawImpetusParticleLifeMatrix,
   getParticleLifeTelemetry,
@@ -1227,6 +1228,7 @@ function drawRpgViewportDiagnostics(
   // Append Impetus-specific diagnostics if in Impetus zone.
   if (activeZone === 'impetus') {
     lines.push({ text: getImpetusDevLine(lowG) });
+    lines.push({ text: getImpetusDustDevLine() });
     const { activeGroups, totalAliveParticles } = getAlivenGroupTelemetry(ctx.alivenGroups);
     const { pairChecks, frameMs, profileName, coeffMin, coeffMax } = getParticleLifeTelemetry();
     lines.push({

@@ -59,6 +59,7 @@ import {
   updateAlivenGroups,
 } from './rpg-aliven-updates';
 import { tickParticleLifeMatrix } from './terrain/impetus-particle-life';
+import { updateImpetusDust } from './terrain/impetus-space-dust';
 import {
   updateEmeraldEnemies, updateAmberEnemies, updateAmberShards, updateVoidEnemies,
   applyEnemyVerdureWallPushOut,
@@ -482,7 +483,20 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   // AlivenParticle group updates (contact damage, particle-life physics, special abilities)
   updateAlivenGroups(a.alivenGroups, ctx.alivenUpdateCtx, deltaMs);
   // Impetus zone: advance the wave-intro particle-life matrix animation clock
-  if (ctx.rpgSimState.activeZoneId === 'impetus') tickParticleLifeMatrix(deltaMs);
+  if (ctx.rpgSimState.activeZoneId === 'impetus') {
+    tickParticleLifeMatrix(deltaMs);
+    const _fs = ctx.drawCtx.getFieldSpace();
+    const _vb = _fs.visibleBounds;
+    updateImpetusDust(
+      deltaMs,
+      _vb.left, _vb.top, _vb.width, _vb.height,
+      ctx.mote.x, ctx.mote.y, ctx.mote.vx, ctx.mote.vy,
+      a.alivenGroups,
+      ctx.drawCtx.weaponSystems,
+      ctx.drawCtx.getIsLowGraphicsMode(),
+      nowMs,
+    );
+  }
   // Procedural creatures
   updateProceduralEnemies(a, ctx.enemyCtx, deltaMs);
   // Empower particles (elite-to-non-elite visual effect)
