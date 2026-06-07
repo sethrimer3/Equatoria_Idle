@@ -123,7 +123,8 @@ import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCu
 import type { NadirCubeProjectionState } from '../background/nadir-cube-projection';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
-import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, DIAMOND_BLADE_ID, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
+import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
+import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { renderTopographicTerrain } from './terrain/topographic-terrain';
 import type { EnemyInfluencePoint } from './terrain/topographic-terrain';
 import { renderPersistentTopographySunlight, renderTopographyLighting } from './terrain/topographic-lighting';
@@ -952,16 +953,30 @@ export function drawRpgFrame(
     drawOrbitProjectile(canvas2d, ctx.getOrbitProjectile());
     for (const ws of ctx.weaponSystems.chainWhipStates.values()) drawChainWhip(canvas2d, ws);
     const effectiveEquippedIds = ctx.getEffectiveEquippedIds();
-    // Draw prismatic diamond sword combos only when Diamond Blade is equipped.
-    if (effectiveEquippedIds.has(DIAMOND_BLADE_ID)) {
-      drawSwordCombos(canvas2d, ctx.weaponSystems.swordComboStates, ctx.mote, ctx.rpgSimState.weaponTiersByWeaponId);
+    // Build the set of equipped swordCombo weapons. This excludes BASE_ATTACK_TIMER_KEY
+    // (__base__ / Sand Blade) and any weapon that isn't effect.kind === 'swordCombo'.
+    const equippedSwordComboIds = new Set<string>();
+    for (const wid of effectiveEquippedIds) {
+      if (resolveWeaponDefinition(wid)?.stats.effect?.kind === 'swordCombo') {
+        equippedSwordComboIds.add(wid);
+      }
     }
-    // Draw the Sand Blade when Diamond Blade is not equipped.
-    // Sand Blade is the permanent default melee weapon; it is only suppressed
-    // by Diamond Blade, not by any other equipped weapon.
-    if (!effectiveEquippedIds.has(DIAMOND_BLADE_ID)) {
+    // Draw swordCombo blades (Diamond, Eigenstein, or any future swordCombo weapon).
+    if (equippedSwordComboIds.size > 0) {
+      drawSwordCombos(canvas2d, ctx.weaponSystems.swordComboStates, ctx.mote, ctx.rpgSimState.weaponTiersByWeaponId, equippedSwordComboIds);
+    }
+    // Sand Blade: active only when no weapon is equipped and sandBladeEnabled is true.
+    if (effectiveEquippedIds.size === 0 && ctx.rpgSimState.sandBladeEnabled) {
       drawSandBladeCombo(canvas2d, ctx.weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY), ctx.mote);
       drawSandDriftPixels(canvas2d);
+    }
+    if (ctx.getIsDevMode()) {
+      console.debug('[sword-render]', {
+        effectiveEquippedIds: [...effectiveEquippedIds],
+        swordComboStateKeys: [...ctx.weaponSystems.swordComboStates.keys()],
+        equippedSwordComboIds: [...equippedSwordComboIds],
+        sandBladeActive: effectiveEquippedIds.size === 0 && ctx.rpgSimState.sandBladeEnabled,
+      });
     }
     // ── Companion ships and lasers ────────────────────────────────
     drawSapphireShips(canvas2d, ctx.weaponSystems.sapphireShips);

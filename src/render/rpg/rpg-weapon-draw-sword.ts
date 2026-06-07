@@ -49,20 +49,24 @@ function _diamondCometWidth(t: number): number {
 // ── Diamond sword combos ──────────────────────────────────────────────────────
 
 /**
- * Draws all active diamond sword combo states — prismatic shards, swipe arcs,
- * and prismatic beam effects.
+ * Draws active swordCombo weapon states — prismatic shards, swipe arcs, and beam effects.
  *
  * @param comboStates  Map from weaponId to SwordComboState.
  * @param mote         Player position (x, y).
  * @param weaponTiers  Map from weaponId to equipped tier (used for blade length).
+ * @param allowedIds   If provided, only draw states whose weaponId is in this set.
+ *                     Pass the set of equipped swordCombo weapon IDs to exclude
+ *                     BASE_ATTACK_TIMER_KEY (__base__ / Sand Blade) automatically.
  */
 export function drawSwordCombos(
   ctx: CanvasRenderingContext2D,
   comboStates: Map<string, SwordComboState>,
   mote: { x: number; y: number },
   weaponTiers: Map<string, number>,
+  allowedIds?: ReadonlySet<string>,
 ): void {
   for (const [weaponId, state] of comboStates) {
+    if (allowedIds && !allowedIds.has(weaponId)) continue;
     const tier = weaponTiers.get(weaponId) ?? 1;
     const nowMs = Date.now();
     if (state.isEigensteinBlade) {
@@ -279,6 +283,50 @@ function drawEigensteinBlade(
     ctx.lineWidth = 1;
   }
 
+  // ── Dark void blade spine (hilt → tip) ──────────────────────────────────────
+  // Drawn before shards so shards appear on top of the spine.
+  {
+    const spineAngle = state.swordAngle;
+    const spineHiltX = mote.x + Math.cos(spineAngle) * handleDist;
+    const spineHiltY = mote.y + Math.sin(spineAngle) * handleDist;
+    const spineTipX  = mote.x + Math.cos(spineAngle) * swordLength;
+    const spineTipY  = mote.y + Math.sin(spineAngle) * swordLength;
+
+    // Dark void core of the spine.
+    ctx.globalAlpha = 0.88;
+    ctx.strokeStyle = '#000018';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(spineHiltX, spineHiltY);
+    ctx.lineTo(spineTipX, spineTipY);
+    ctx.stroke();
+
+    // Neon edge outline — gives the spine a visible glow against dark backgrounds.
+    ctx.globalAlpha = 0.75;
+    ctx.strokeStyle = EIGENSTEIN_HILT_GLOW;
+    ctx.lineWidth = 1.0;
+    if (!isLowGraphicsMode) { ctx.shadowBlur = 14; ctx.shadowColor = EIGENSTEIN_HILT_GLOW; }
+    ctx.beginPath();
+    ctx.moveTo(spineHiltX, spineHiltY);
+    ctx.lineTo(spineTipX, spineTipY);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Animated reality-tear flicker on the spine (not in low-graphics).
+    if (!isLowGraphicsMode) {
+      const tearColor = EIGENSTEIN_BLADE_COLORS[Math.floor(nowMs / 80) % EIGENSTEIN_BLADE_COLORS.length] ?? '#cc00ff';
+      ctx.globalAlpha = 0.25 + 0.20 * Math.abs(Math.sin(nowMs * 0.013));
+      ctx.strokeStyle = tearColor;
+      ctx.lineWidth = 0.6;
+      ctx.shadowBlur = 10; ctx.shadowColor = tearColor;
+      ctx.beginPath();
+      ctx.moveTo(spineHiltX, spineHiltY);
+      ctx.lineTo(spineTipX, spineTipY);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+
   // ── Blade shards ─────────────────────────────────────────────────────────────
   for (let i = 0; i < EIGENSTEIN_SHARD_COUNT; i++) {
     const isStable = i < EIGENSTEIN_STABLE_SHARDS;
@@ -301,12 +349,11 @@ function drawEigensteinBlade(
       const hiltAlpha = isSpinCombo ? 1.0 : (state.phase === 'swing' ? 1.0 : 0.9);
       ctx.globalAlpha = hiltAlpha;
       if (!isLowGraphicsMode) {
-        ctx.shadowBlur  = 8; ctx.shadowColor = EIGENSTEIN_HILT_GLOW;
+        ctx.shadowBlur  = 12; ctx.shadowColor = EIGENSTEIN_HILT_GLOW;
       }
-      // Hilt rectangle (index 0-1) or crossguard bar (index 2).
       if (i === 1) {
-        // Crossguard — perpendicular thick bar.
-        const hw = 5, hh = 1.8;
+        // Crossguard — perpendicular thick bar, visually heavier than the blade.
+        const hw = 7, hh = 2.5;
         ctx.fillStyle = EIGENSTEIN_HILT_COLOR;
         ctx.beginPath();
         const verts: Array<[number, number]> = [[hw, -hh], [-hw, -hh], [-hw, hh], [hw, hh]];
@@ -318,14 +365,13 @@ function drawEigensteinBlade(
         }
         ctx.closePath();
         ctx.fill();
-        // Bright outline.
         ctx.strokeStyle = EIGENSTEIN_HILT_GLOW;
-        ctx.lineWidth = 0.8;
+        ctx.lineWidth = 1.2;
         ctx.stroke();
         ctx.lineWidth = 1;
       } else {
-        // Handle shards (index 0, 2) — small compact diamond.
-        const r = 2.5;
+        // Handle shards (index 0, 2) — larger compact diamond for visual weight.
+        const r = 3.5;
         ctx.fillStyle = EIGENSTEIN_HILT_COLOR;
         ctx.beginPath();
         const pts: Array<[number, number]> = [[0, -r * 1.2], [r * 0.7, 0], [0, r * 1.2], [-r * 0.7, 0]];
@@ -338,29 +384,42 @@ function drawEigensteinBlade(
         ctx.closePath();
         ctx.fill();
         ctx.strokeStyle = EIGENSTEIN_HILT_GLOW;
-        ctx.lineWidth = 0.6;
+        ctx.lineWidth = 0.9;
         ctx.stroke();
         ctx.lineWidth = 1;
       }
       ctx.shadowBlur = 0;
     } else {
-      // Blade shards — neon inverted colors, flickering geometry.
+      // Blade shards — brighter neon colors, larger, more visible against dark backgrounds.
       const bladeIdx = i - EIGENSTEIN_STABLE_SHARDS;
       const colorIdx = (bladeIdx + Math.floor(nowMs / 55)) % EIGENSTEIN_BLADE_COLORS.length;
       const color = EIGENSTEIN_BLADE_COLORS[colorIdx] ?? '#cc00ff';
-      const shardAlpha = isSpinCombo ? 1.0 : (state.phase === 'swing' ? 0.95 : 0.82);
+      const shardAlpha = isSpinCombo ? 1.0 : (state.phase === 'swing' ? 0.98 : 0.88);
       ctx.globalAlpha = shardAlpha;
       if (!isLowGraphicsMode) {
-        ctx.shadowBlur  = 10 + (state.phase === 'swing' ? 6 : 0);
+        ctx.shadowBlur  = 18 + (state.phase === 'swing' ? 8 : 0);
         ctx.shadowColor = color;
       }
-      // Polygon shape cycles unpredictably for the "unstable" feel.
       const shapeChoice = (bladeIdx + Math.floor(nowMs / 120 + i * 3.7)) % SWORD_SHARD_SHAPES.length;
       const verts = SWORD_SHARD_SHAPES[shapeChoice];
-      // Scale: blade tip shards are slightly larger.
-      const baseRadius = 1.6 + (bladeIdx / (EIGENSTEIN_SHARD_COUNT - EIGENSTEIN_STABLE_SHARDS)) * 1.2;
-      const scaledRadius = (isSpinCombo ? 1.5 : 1) * baseRadius;
+      // Larger shards — blade tip shards grow to 5.5 px radius.
+      const baseRadius = 3.5 + (bladeIdx / (EIGENSTEIN_SHARD_COUNT - EIGENSTEIN_STABLE_SHARDS)) * 2.0;
+      const scaledRadius = (isSpinCombo ? 1.4 : 1) * baseRadius;
+
+      // Dark negative-space core first (renders behind the neon fill).
+      ctx.globalAlpha = shardAlpha * 0.6;
+      ctx.fillStyle = '#000018';
+      ctx.beginPath();
+      ctx.arc(sx, sy, scaledRadius * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Neon shard polygon on top.
+      ctx.globalAlpha = shardAlpha;
       ctx.fillStyle = color;
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur  = 18 + (state.phase === 'swing' ? 8 : 0);
+        ctx.shadowColor = color;
+      }
       ctx.beginPath();
       for (let v = 0; v < verts.length; v++) {
         const [cu, su] = verts[v];
@@ -371,38 +430,77 @@ function drawEigensteinBlade(
       ctx.closePath();
       ctx.fill();
       ctx.shadowBlur = 0;
-
-      // Dark negative-space core inside each blade shard.
-      ctx.globalAlpha = 0.45;
-      ctx.fillStyle = '#000018';
-      ctx.beginPath();
-      ctx.arc(sx, sy, scaledRadius * 0.38, 0, Math.PI * 2);
-      ctx.fill();
     }
   }
 
-  // ── Swipe arc (eigenstein crescent: dark with neon edges) ─────────────────
+  // ── Swipe arc (eigenstein crescent: dark core + neon rim + crack branches) ──
   for (const fx of state.swipeEffects) {
     const elapsed   = fx.maxTimerMs - fx.timerMs;
     const lifeRatio = elapsed / fx.maxTimerMs;
-    const baseAlpha = (1 - lifeRatio) * 0.85;
+    const baseAlpha = (1 - lifeRatio) * 0.90;
     const arcSpan   = fx.arcEnd - fx.arcStart;
     const SEGS = 20;
-    ctx.globalAlpha = baseAlpha;
     ctx.lineCap = 'round';
+
+    // Dark inner core arc (slightly smaller radius).
+    ctx.globalAlpha = baseAlpha * 0.65;
+    ctx.strokeStyle = '#00001a';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(fx.x, fx.y, fx.swordLength * 0.92, fx.arcStart, fx.arcEnd);
+    ctx.stroke();
+
+    // Neon rim segments.
     for (let seg = 0; seg < SEGS; seg++) {
       const t0 = seg / SEGS;
-      const segW = 1.5 + 8 * (t0 < 0.15 ? t0 / 0.15 : 1 - (t0 - 0.15) / 0.85);
+      const segW = 1.5 + 10 * (t0 < 0.15 ? t0 / 0.15 : 1 - (t0 - 0.15) / 0.85);
       const cIdx = Math.floor(t0 * EIGENSTEIN_BLADE_COLORS.length) % EIGENSTEIN_BLADE_COLORS.length;
       const col = EIGENSTEIN_BLADE_COLORS[cIdx] ?? '#cc00ff';
+      ctx.globalAlpha = baseAlpha;
       ctx.lineWidth  = segW;
       ctx.strokeStyle = col;
-      if (!isLowGraphicsMode) { ctx.shadowBlur = segW * 2.5; ctx.shadowColor = col; }
+      if (!isLowGraphicsMode) { ctx.shadowBlur = segW * 3; ctx.shadowColor = col; }
       ctx.beginPath();
       ctx.arc(fx.x, fx.y, fx.swordLength, fx.arcStart + arcSpan * t0, fx.arcStart + arcSpan * (t0 + 1 / SEGS));
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
+
+    // Jagged crack branches along the arc (3 cracks at leading/mid/trailing edge).
+    if (!isLowGraphicsMode || true) {
+      const crackCount = 3;
+      for (let c = 0; c < crackCount; c++) {
+        const t = (c + 0.5) / crackCount;
+        const crackAngleOnArc = fx.arcStart + arcSpan * t;
+        const crackBaseX = fx.x + Math.cos(crackAngleOnArc) * fx.swordLength;
+        const crackBaseY = fx.y + Math.sin(crackAngleOnArc) * fx.swordLength;
+        // Cracks extend outward from the arc center.
+        const crackDir = crackAngleOnArc;
+        const crackLen = (8 + 10 * (1 - lifeRatio)) * (0.7 + c * 0.15);
+        const crackEndX = crackBaseX + Math.cos(crackDir) * crackLen;
+        const crackEndY = crackBaseY + Math.sin(crackDir) * crackLen;
+        const cCol = EIGENSTEIN_BLADE_COLORS[(c + Math.floor(nowMs / 70)) % EIGENSTEIN_BLADE_COLORS.length] ?? '#cc00ff';
+
+        ctx.globalAlpha = baseAlpha * 0.6;
+        ctx.strokeStyle = '#00001a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(crackBaseX, crackBaseY);
+        ctx.lineTo(crackEndX, crackEndY);
+        ctx.stroke();
+
+        ctx.globalAlpha = baseAlpha * 0.7;
+        ctx.strokeStyle = cCol;
+        ctx.lineWidth = 0.7;
+        if (!isLowGraphicsMode) { ctx.shadowBlur = 6; ctx.shadowColor = cCol; }
+        ctx.beginPath();
+        ctx.moveTo(crackBaseX, crackBaseY);
+        ctx.lineTo(crackEndX, crackEndY);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    }
+
     ctx.lineCap = 'butt';
   }
 
@@ -459,52 +557,78 @@ function drawEigensteinBlade(
     for (const rift of state.riftEffects) {
       const lifeRatio = rift.timerMs / rift.maxTimerMs;
       const fadeAlpha = lifeRatio < 0.5 ? 1 : 1 - (lifeRatio - 0.5) * 2;
+      const riftOriginR = 3 + rift.intensity * 6;
       for (const branch of rift.branches) {
         if (branch.length < 0.5) continue;
         const ex = rift.x + Math.cos(branch.angle) * branch.length;
         const ey = rift.y + Math.sin(branch.angle) * branch.length;
-        // Dark void core of the crack.
-        ctx.globalAlpha = fadeAlpha * 0.85;
+
+        // Dark void core.
+        ctx.globalAlpha = fadeAlpha * 0.9;
         ctx.strokeStyle = '#000010';
-        ctx.lineWidth = 2.5 + rift.intensity * 2;
-        if (!isLowGraphicsMode) { ctx.shadowBlur = 0; }
+        ctx.lineWidth = 2.8 + rift.intensity * 2.5;
         ctx.beginPath(); ctx.moveTo(rift.x, rift.y); ctx.lineTo(ex, ey); ctx.stroke();
+
         // Bright neon outline.
-        ctx.globalAlpha = fadeAlpha * (0.7 + rift.intensity * 0.3);
+        ctx.globalAlpha = fadeAlpha * (0.75 + rift.intensity * 0.25);
         ctx.strokeStyle = branch.color;
-        ctx.lineWidth = 0.8;
-        if (!isLowGraphicsMode) { ctx.shadowBlur = 6 + rift.intensity * 8; ctx.shadowColor = branch.color; }
+        ctx.lineWidth = 1.0;
+        if (!isLowGraphicsMode) { ctx.shadowBlur = 8 + rift.intensity * 10; ctx.shadowColor = branch.color; }
         ctx.beginPath(); ctx.moveTo(rift.x, rift.y); ctx.lineTo(ex, ey); ctx.stroke();
         ctx.shadowBlur = 0;
-        // Perpendicular tick marks at branch tip (substrate-style).
-        if (branch.length > branch.maxLength * 0.6) {
+
+        // Perpendicular tick at branch tip (substrate-style jaggedness).
+        if (branch.length > branch.maxLength * 0.55) {
           const perpX = -Math.sin(branch.angle);
           const perpY =  Math.cos(branch.angle);
-          const tickLen = 4 + rift.intensity * 5;
-          ctx.globalAlpha = fadeAlpha * 0.5;
+          const tickLen = 5 + rift.intensity * 7;
+          ctx.globalAlpha = fadeAlpha * 0.55;
           ctx.strokeStyle = branch.color;
-          ctx.lineWidth = 0.6;
+          ctx.lineWidth = 0.7;
           ctx.beginPath();
           ctx.moveTo(ex - perpX * tickLen, ey - perpY * tickLen);
           ctx.lineTo(ex + perpX * tickLen, ey + perpY * tickLen);
           ctx.stroke();
         }
+
+        // 1-level sub-branches at the mid-point for Substrate-like jaggedness.
+        if (!isLowGraphicsMode && branch.length > branch.maxLength * 0.45 && rift.intensity > 0.25) {
+          const midX = rift.x + Math.cos(branch.angle) * branch.length * 0.5;
+          const midY = rift.y + Math.sin(branch.angle) * branch.length * 0.5;
+          const subLen = branch.length * (0.35 + rift.intensity * 0.15);
+          const subAngles = [branch.angle + 0.65, branch.angle - 0.52];
+          for (const subAngle of subAngles) {
+            const sx2 = midX + Math.cos(subAngle) * subLen;
+            const sy2 = midY + Math.sin(subAngle) * subLen;
+            ctx.globalAlpha = fadeAlpha * 0.55;
+            ctx.strokeStyle = '#000010';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(midX, midY); ctx.lineTo(sx2, sy2); ctx.stroke();
+            ctx.globalAlpha = fadeAlpha * (0.5 + rift.intensity * 0.2);
+            ctx.strokeStyle = branch.color;
+            ctx.lineWidth = 0.5;
+            ctx.shadowBlur = 4; ctx.shadowColor = branch.color;
+            ctx.beginPath(); ctx.moveTo(midX, midY); ctx.lineTo(sx2, sy2); ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
+        }
       }
-      // Small negative-space circle at impact origin.
-      ctx.globalAlpha = fadeAlpha * (0.3 + rift.intensity * 0.4);
+
+      // Negative-space circle at impact origin — scales with intensity.
+      ctx.globalAlpha = fadeAlpha * (0.35 + rift.intensity * 0.45);
       ctx.fillStyle = '#000010';
       ctx.beginPath();
-      ctx.arc(rift.x, rift.y, 3 + rift.intensity * 4, 0, Math.PI * 2);
+      ctx.arc(rift.x, rift.y, riftOriginR, 0, Math.PI * 2);
       ctx.fill();
       if (!isLowGraphicsMode) {
-        ctx.shadowBlur  = 12 + rift.intensity * 12;
+        ctx.shadowBlur  = 14 + rift.intensity * 14;
         ctx.shadowColor = '#cc00ff';
       }
-      ctx.globalAlpha = fadeAlpha * (0.4 + rift.intensity * 0.4);
+      ctx.globalAlpha = fadeAlpha * (0.45 + rift.intensity * 0.45);
       ctx.strokeStyle = '#cc00ff';
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 1.0;
       ctx.beginPath();
-      ctx.arc(rift.x, rift.y, 3 + rift.intensity * 4, 0, Math.PI * 2);
+      ctx.arc(rift.x, rift.y, riftOriginR, 0, Math.PI * 2);
       ctx.stroke();
       ctx.shadowBlur = 0;
     }

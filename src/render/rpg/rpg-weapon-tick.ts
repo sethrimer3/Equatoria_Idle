@@ -8,19 +8,17 @@
  *   - Sand blade default melee (active unless Diamond Blade is equipped)
  *
  * Sand Blade behaviour:
- *   The Sand Blade is the player's permanent default melee weapon.  It runs
- *   whenever Diamond Blade (diamond_bastion) is NOT in the effective equipped
- *   set.  Equipping Ruby Laser, Chain Whip, or any other non-diamond weapon
- *   does NOT suppress the Sand Blade — those weapons coexist with it.
- *   When Diamond Blade IS equipped it takes over the melee slot entirely and
- *   the Sand Blade is suppressed.
+ *   The Sand Blade is the player's permanent default melee weapon.  It is active
+ *   only when the player has NO equipped weapon at all AND sandBladeEnabled is
+ *   true.  Any equipped weapon — Diamond Blade, Eigenstein, or otherwise —
+ *   suppresses the Sand Blade entirely.  This makes the Sand Blade a true
+ *   fallback that never coexists with equipped swordCombo weapons.
  */
 
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import {
   PLAYER_BASE_COOLDOWN_MS,
   BASE_ATTACK_TIMER_KEY,
-  DIAMOND_BLADE_ID,
 } from './rpg-constants';
 import { getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
@@ -153,12 +151,10 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
     }
   }
 
-  // ── Sand blade default melee (active unless Diamond Blade is equipped or disabled) ──
-  // Sand Blade is always the default melee weapon.  It is suppressed when either:
-  //   (a) diamond_bastion is equipped — Diamond Sword takes over the melee slot entirely, OR
-  //   (b) rpgSimState.sandBladeEnabled is false — player explicitly disabled it (e.g., to
-  //       stay at ranged distance using only ranged weapons).
-  if (!equippedIds.has(DIAMOND_BLADE_ID) && ctx.rpgSimState.sandBladeEnabled) {
+  // ── Sand blade default melee (active only when no weapon is equipped) ────────
+  // Any equipped weapon suppresses the Sand Blade; sandBladeEnabled can also
+  // disable it explicitly (e.g., player prefers pure ranged builds).
+  if (equippedIds.size === 0 && ctx.rpgSimState.sandBladeEnabled) {
     weaponSystems.updateSandBlade(deltaMs);
     const sandState = weaponSystems.swordComboStates.get(BASE_ATTACK_TIMER_KEY);
     if (sandState) {

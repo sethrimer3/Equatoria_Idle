@@ -104,11 +104,7 @@ export const PLAYER_BASE_RANGE_PX     = 50;
 export const HIT_EFFECT_DURATION_MS   = 220;
 /** Sentinel weapon id used in `weaponAttackTimers` when no weapon is equipped. */
 export const BASE_ATTACK_TIMER_KEY    = '__base__';
-/**
- * The weapon ID of the Diamond Blade (Diamond Sword).
- * When this weapon is equipped it replaces the default Sand Blade melee attack.
- * All other equipped weapons coexist with the Sand Blade.
- */
+/** The weapon ID of the Diamond Blade (Diamond Sword) — one of the swordCombo weapons. */
 export const DIAMOND_BLADE_ID         = 'diamond_bastion';
 /** Duration (ms) for the shot-line visual effect. */
 export const SHOT_LINE_DURATION_MS    = 120;
