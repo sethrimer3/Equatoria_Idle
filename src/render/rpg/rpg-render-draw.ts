@@ -1006,28 +1006,28 @@ export function drawRpgFrame(
   // ── Top-left zone + wave number overlay ──────────────────────────
   const currentWave = ctx.getCurrentWave();
   if (currentWave > 0) {
-    const overlayRight = fs.visibleBounds.right - 8;
+    const overlayLeft = fs.visibleBounds.left + 8;
     const overlayTop = fs.visibleBounds.top + 8;
-    const overlapLeft = overlayRight - 210;
+    const overlapRight = overlayLeft + 210;
     const overlapBottom = overlayTop + 55;
 
-    // Check if any enemy or player is near the top-right overlay region.
+    // Check if any enemy or player is near the top-left overlay region.
     let anyOverlap = false;
-    const moteNear = ctx.mote.x > overlapLeft && ctx.mote.y < overlapBottom;
+    const moteNear = ctx.mote.x < overlapRight && ctx.mote.y < overlapBottom;
     if (moteNear) {
       anyOverlap = true;
     } else {
       for (const e of ctx.enemies) {
-        if (e.x > overlapLeft && e.y < overlapBottom) { anyOverlap = true; break; }
+        if (e.x < overlapRight && e.y < overlapBottom) { anyOverlap = true; break; }
       }
       if (!anyOverlap) {
         for (const e of ctx.sapphireEnemies) {
-          if (e.x > overlapLeft && e.y < overlapBottom) { anyOverlap = true; break; }
+          if (e.x < overlapRight && e.y < overlapBottom) { anyOverlap = true; break; }
         }
       }
       if (!anyOverlap) {
         for (const e of ctx.emeraldEnemies) {
-          if (e.x > overlapLeft && e.y < overlapBottom) { anyOverlap = true; break; }
+          if (e.x < overlapRight && e.y < overlapBottom) { anyOverlap = true; break; }
         }
       }
     }
@@ -1037,28 +1037,46 @@ export function drawRpgFrame(
     const zoneName = ctx.getActiveZoneDisplayName();
     const label = `${zoneName} - x${currentWave}`;
 
+    const iconSize = 20;
+    const iconGap = 5;
+    const textX = overlayLeft + iconSize + iconGap;
+
     canvas2d.save();
     canvas2d.globalAlpha = state.waveOverlapAlpha;
     canvas2d.font = 'bold 14px monospace';
     canvas2d.fillStyle = '#fff172';
-    canvas2d.textAlign = 'right';
+    canvas2d.textAlign = 'left';
     canvas2d.textBaseline = 'top';
-    canvas2d.fillText(label, overlayRight, overlayTop + 2);
-    // Subtle underline hint to indicate tappability
+    canvas2d.fillText(label, textX, overlayTop + 2);
     const textW = canvas2d.measureText(label).width;
     const icon = getCachedImage(RPG_ZONE_LABEL_ICON_PATH);
     if (icon) {
-      canvas2d.drawImage(icon, overlayRight - textW - 25, overlayTop, 20, 20);
+      canvas2d.drawImage(icon, overlayLeft, overlayTop, iconSize, iconSize);
     } else {
       loadImage(RPG_ZONE_LABEL_ICON_PATH).catch(() => {});
     }
+    // Underline
     canvas2d.globalAlpha = state.waveOverlapAlpha * 0.45;
     canvas2d.strokeStyle = '#fff172';
     canvas2d.lineWidth = 0.5;
     canvas2d.beginPath();
-    canvas2d.moveTo(overlayRight - textW, overlayTop + 18);
-    canvas2d.lineTo(overlayRight, overlayTop + 18);
+    canvas2d.moveTo(textX, overlayTop + 18);
+    canvas2d.lineTo(textX + textW, overlayTop + 18);
     canvas2d.stroke();
+    // Upward-pointing golden triangle — tap affordance below the zone title group
+    const groupWidth = iconSize + iconGap + textW;
+    const triCx = overlayLeft + groupWidth / 2;
+    const triY = overlayTop + 23;
+    const triHalfW = 5;
+    const triH = 4;
+    canvas2d.globalAlpha = state.waveOverlapAlpha * 0.55;
+    canvas2d.fillStyle = '#fff172';
+    canvas2d.beginPath();
+    canvas2d.moveTo(triCx, triY);
+    canvas2d.lineTo(triCx - triHalfW, triY + triH);
+    canvas2d.lineTo(triCx + triHalfW, triY + triH);
+    canvas2d.closePath();
+    canvas2d.fill();
     canvas2d.restore();
   }
 
