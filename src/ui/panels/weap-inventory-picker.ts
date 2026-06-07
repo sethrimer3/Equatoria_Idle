@@ -11,7 +11,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getMaxEquippedWeapons } from '../../sim/rpg/rpg-state';
-import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
+import { resolveWeaponDefinition, formatCraftedWeaponModifier } from '../../data/rpg/crafted-weapon-helpers';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
 import type { ActionHandler } from '../../input';
@@ -34,28 +34,30 @@ function buildWeaponEntries(rpgSimState: RpgSimState): WeaponEntry[] {
   const craftedById = new Map(rpgSimState.craftedWeapons.map(w => [w.id, w]));
   const entries: WeaponEntry[] = [];
 
+  // Always include all crafted weapons directly — their IDs are UUIDs that may
+  // not resolve through resolveWeaponDefinition before syncCraftedWeapons runs.
+  for (const crafted of rpgSimState.craftedWeapons) {
+    entries.push({
+      id: crafted.id,
+      name: crafted.name,
+      tierId: crafted.dominantTierId,
+      composition: crafted.composition.map(e => ({ tierId: e.tierId as TierId, share: e.share })),
+      craftedData: crafted,
+    });
+  }
+
+  // Then include standard purchased weapons that are not crafted.
   for (const weaponId of rpgSimState.purchasedWeaponIds) {
-    const crafted = craftedById.get(weaponId);
+    if (craftedById.has(weaponId)) continue;
     const def = resolveWeaponDefinition(weaponId);
     if (!def) continue;
-
-    if (crafted) {
-      entries.push({
-        id: weaponId,
-        name: crafted.name,
-        tierId: crafted.dominantTierId,
-        composition: crafted.composition.map(e => ({ tierId: e.tierId as TierId, share: e.share })),
-        craftedData: crafted,
-      });
-    } else {
-      entries.push({
-        id: weaponId,
-        name: def.name,
-        tierId: def.costTierId as TierId,
-        composition: [{ tierId: def.costTierId as TierId, share: 1 }],
-        craftedData: null,
-      });
-    }
+    entries.push({
+      id: weaponId,
+      name: def.name,
+      tierId: def.costTierId as TierId,
+      composition: [{ tierId: def.costTierId as TierId, share: 1 }],
+      craftedData: null,
+    });
   }
 
   return entries;
@@ -90,14 +92,14 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
   }
 
   // ── Helper: compact stat summary line ─────────────────────────────────────
-  function formatStatSummary(weaponId: string): string {
-    const def = resolveWeaponDefinition(weaponId);
-    if (!def) return '';
-    const spdText = def.stats.cooldownMs < 1000
-      ? `${def.stats.cooldownMs}ms`
-      : `${(def.stats.cooldownMs / 1000).toFixed(1)}s`;
-    const rngText = def.stats.range >= INFINITE_RANGE ? '∞' : String(def.stats.range);
-    return `ATK:${def.stats.damage}  SPD:${spdText}  RNG:${rngText}`;
+  function formatStatSummary(entry: WeaponEntry): string {
+    const stats = entry.craftedData?.definition.stats ?? resolveWeaponDefinition(entry.id)?.stats;
+    if (!stats) return '';
+    const spdText = stats.cooldownMs < 1000
+      ? `${stats.cooldownMs}ms`
+      : `${(stats.cooldownMs / 1000).toFixed(1)}s`;
+    const rngText = stats.range >= INFINITE_RANGE ? '∞' : String(stats.range);
+    return `ATK:${stats.damage}  SPD:${spdText}  RNG:${rngText}`;
   }
 
   // ── Build popup skeleton ───────────────────────────────────────────────────
@@ -159,7 +161,7 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
     infoSection.innerHTML = '';
     infoSection.hidden = false;
 
-    const def = resolveWeaponDefinition(entry.id);
+    const def = entry.craftedData?.definition ?? resolveWeaponDefinition(entry.id);
     const color = TIER_BY_ID.get(entry.tierId)?.color ?? '#fff';
 
     const nameEl = document.createElement('div');
@@ -170,7 +172,7 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
 
     const statsEl = document.createElement('div');
     statsEl.className = 'weap-picker__info-stats';
-    statsEl.textContent = formatStatSummary(entry.id);
+    statsEl.textContent = formatStatSummary(entry);
     infoSection.appendChild(statsEl);
 
     if (def?.description) {
@@ -203,8 +205,10 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
         btn.disabled = true;
       } else if (occupant) {
         btn.classList.add('weap-picker__slot-btn--occupied');
-        const occDef = resolveWeaponDefinition(occupant);
-        btn.title = `Swap with ${occDef?.name ?? occupant}`;
+        const occName = entries.find(e => e.id === occupant)?.name
+          ?? resolveWeaponDefinition(occupant)?.name
+          ?? occupant;
+        btn.title = `Swap with ${occName}`;
       } else {
         btn.classList.add('weap-picker__slot-btn--empty');
         btn.title = `Empty slot`;
@@ -360,32 +364,93 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
 
     const color = TIER_BY_ID.get(entry.tierId)?.color ?? '#fff';
 
-    // Icon
-    const ic = createItemIconCanvas({
-      itemType: 'weapon',
-      tierId: entry.tierId,
-      composition: entry.composition,
-      width: 28,
-      height: 28,
-      seed: stringToIconSeed(entry.id),
-    });
-    ic.className = 'weap-picker__card-icon';
-    card.appendChild(ic);
+    if (entry.craftedData) {
+      // ── Forged weapon — richer card with 48px icon, composition, stats ──
+      card.classList.add('weap-picker__card--crafted');
+      card.style.borderColor = color + '55';
 
-    // Name (+ slot badge if equipped)
-    const nameEl = document.createElement('div');
-    nameEl.className = 'weap-picker__card-name';
-    nameEl.style.color = color;
-    const nameText = document.createElement('span');
-    nameText.textContent = entry.name;
-    nameEl.appendChild(nameText);
-    if (inSlot !== null) {
-      const badge = document.createElement('span');
-      badge.className = 'weap-picker__slot-badge';
-      badge.textContent = `S${inSlot + 1}`;
-      nameEl.appendChild(badge);
+      // Top row: icon + name/badges
+      const topRow = document.createElement('div');
+      topRow.className = 'weap-picker__card-row';
+
+      const ic = createItemIconCanvas({
+        itemType: 'weapon',
+        tierId: entry.tierId,
+        composition: entry.composition,
+        width: 48,
+        height: 48,
+        seed: stringToIconSeed(entry.id),
+      });
+      ic.className = 'weap-picker__card-icon';
+      ic.style.filter = `drop-shadow(0 0 4px ${color}88)`;
+      topRow.appendChild(ic);
+
+      const nameCol = document.createElement('div');
+      nameCol.className = 'weap-picker__card-name-col';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'weap-picker__card-name';
+      nameEl.style.color = color;
+      const nameText = document.createElement('span');
+      nameText.textContent = entry.name;
+      nameEl.appendChild(nameText);
+
+      const forgeBadge = document.createElement('span');
+      forgeBadge.className = 'weap-picker__forge-badge';
+      forgeBadge.style.color = color;
+      forgeBadge.style.borderColor = color + '88';
+      forgeBadge.textContent = 'Forged';
+      nameEl.appendChild(forgeBadge);
+
+      if (inSlot !== null) {
+        const badge = document.createElement('span');
+        badge.className = 'weap-picker__slot-badge';
+        badge.textContent = `S${inSlot + 1}`;
+        nameEl.appendChild(badge);
+      }
+      nameCol.appendChild(nameEl);
+
+      // Composition line
+      const compEl = document.createElement('div');
+      compEl.className = 'weap-picker__card-comp';
+      compEl.textContent = formatCraftedWeaponModifier(entry.craftedData);
+      nameCol.appendChild(compEl);
+
+      // Stats line
+      const statsLine = document.createElement('div');
+      statsLine.className = 'weap-picker__card-stats-line';
+      statsLine.textContent = formatStatSummary(entry);
+      nameCol.appendChild(statsLine);
+
+      topRow.appendChild(nameCol);
+      card.appendChild(topRow);
+    } else {
+      // ── Standard purchased weapon — compact icon + name ──
+      const ic = createItemIconCanvas({
+        itemType: 'weapon',
+        tierId: entry.tierId,
+        composition: entry.composition,
+        width: 28,
+        height: 28,
+        seed: stringToIconSeed(entry.id),
+      });
+      ic.className = 'weap-picker__card-icon';
+      card.appendChild(ic);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'weap-picker__card-name';
+      nameEl.style.color = color;
+      const nameText = document.createElement('span');
+      nameText.textContent = entry.name;
+      nameEl.appendChild(nameText);
+      if (inSlot !== null) {
+        const badge = document.createElement('span');
+        badge.className = 'weap-picker__slot-badge';
+        badge.textContent = `S${inSlot + 1}`;
+        nameEl.appendChild(badge);
+      }
+      card.appendChild(nameEl);
     }
-    card.appendChild(nameEl);
 
     // Drag support
     let downTs = 0;
