@@ -45,8 +45,8 @@ export function clampEnemyToBounds(
   bottom: number,
 ): void {
   const half = 2.5; // Conservative margin that works for all enemy sizes
-  if (enemy.x < left + half)    { enemy.x = left + half;    enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-  if (enemy.x > right - half)   { enemy.x = right - half;   enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-  if (enemy.y < top + half)     { enemy.y = top + half;     enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-  if (enemy.y > bottom - half)  { enemy.y = bottom - half;  enemy.vy = -Math.abs(enemy.vy) * 0.5; }
+  if (enemy.x < left + half)    { enemy.x = left + half;    enemy.vx = 0; }
+  if (enemy.x > right - half)   { enemy.x = right - half;   enemy.vx = 0; }
+  if (enemy.y < top + half)     { enemy.y = top + half;     enemy.vy = 0; }
+  if (enemy.y > bottom - half)  { enemy.y = bottom - half;  enemy.vy = 0; }
 }

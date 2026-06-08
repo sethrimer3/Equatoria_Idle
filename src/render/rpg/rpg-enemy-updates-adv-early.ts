@@ -44,8 +44,8 @@ import {
   makeVoidTendril,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
-import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
+import { actorMoveX, actorMoveY, buildActorSolidCtx, type ActorSolidCtx } from './rpg-actor-collision';
 
 // ── Iolite enemy system (wave 40) ─────────────────────────────────────────────
 
@@ -57,6 +57,8 @@ export function updateIoliteEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -65,9 +67,9 @@ export function updateIoliteEnemies(
       enemy.vx = Math.cos(angle) * IOLITE_PATROL_SPEED;
       enemy.vy = Math.sin(angle) * IOLITE_PATROL_SPEED;
     }
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, terrain, IOLITE_ENEMY_SIZE / 2);
+    const half = IOLITE_ENEMY_SIZE / 2;
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
     enemy.beamTimerMs -= deltaMs;
     if (enemy.beamTimerMs <= 0) {
       enemy.beamTimerMs = IOLITE_BEAM_CD_MS + Math.random() * IOLITE_BEAM_JITTER;
@@ -100,6 +102,8 @@ export function updateAmethystEnemies(
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -108,9 +112,9 @@ export function updateAmethystEnemies(
       enemy.vx = Math.cos(angle) * AMETHYST_PATROL_SPEED;
       enemy.vy = Math.sin(angle) * AMETHYST_PATROL_SPEED;
     }
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, terrain, AMETHYST_ENEMY_SIZE / 2);
+    const half = AMETHYST_ENEMY_SIZE / 2;
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
     enemy.burstTimerMs -= deltaMs;
     if (enemy.burstTimerMs <= 0) {
       enemy.burstTimerMs = AMETHYST_BURST_CD_MS + Math.random() * AMETHYST_BURST_JITTER;
@@ -160,6 +164,8 @@ export function updateDiamondEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, viewport } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.phaseTimerMs -= deltaMs;
     if (enemy.phaseTimerMs <= 0) {
@@ -183,9 +189,9 @@ export function updateDiamondEnemies(
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
       enemy.vx = (dx / dist) * DIAMOND_PATROL_SPEED;
       enemy.vy = (dy / dist) * DIAMOND_PATROL_SPEED;
-      enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      ctx.clampEnemyToBounds(enemy);
-      applyEnemyTerrainPushOut(enemy, terrain, DIAMOND_ENEMY_SIZE / 2);
+      const half = DIAMOND_ENEMY_SIZE / 2;
+      actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+      actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
       enemy.shardTimerMs -= deltaMs;
       if (enemy.shardTimerMs <= 0) {
         enemy.shardTimerMs = DIAMOND_SHARD_CD_MS + Math.random() * 500;
@@ -236,6 +242,8 @@ export function updateNullstoneEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.pulseMs += deltaMs;
     // Gravity pull on player
@@ -261,9 +269,9 @@ export function updateNullstoneEnemies(
       enemy.vx = Math.cos(angle) * NULLSTONE_PATROL_SPEED;
       enemy.vy = Math.sin(angle) * NULLSTONE_PATROL_SPEED;
     }
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, terrain, NULLSTONE_ENEMY_SIZE / 2);
+    const half = NULLSTONE_ENEMY_SIZE / 2;
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
     // Tendril attack
     enemy.tendrilTimerMs -= deltaMs;
     if (enemy.tendrilTimerMs <= 0) {

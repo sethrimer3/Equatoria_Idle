@@ -30,7 +30,7 @@ import {
 } from './rpg-constants';
 import { makeSapphireMissile } from './rpg-factories';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
-import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
+import { actorMoveX, actorMoveY, buildActorSolidCtx, type ActorSolidCtx } from './rpg-actor-collision';
 
 // ── Sapphire enemy system ──────────────────────────────────────────────────────
 
@@ -67,6 +67,8 @@ export function updateSapphireEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx = buildActorSolidCtx(viewport, terrain, wallState);
   for (const enemy of enemies) {
     // Patrol
     enemy.patrolTimerMs -= deltaMs;
@@ -78,14 +80,9 @@ export function updateSapphireEnemies(
     }
     enemy.vx *= Math.pow(LASER_PATROL_DAMPING, dt);
     enemy.vy *= Math.pow(LASER_PATROL_DAMPING, dt);
-    enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    // Clamp to bounds
     const half = SAPPHIRE_ENEMY_SIZE / 2;
-    if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half;   enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half;    enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-    applyEnemyTerrainPushOut(enemy, terrain, half);
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
     const sespd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
     if (sespd > 0.04) {
       fluid.addForce({
@@ -188,7 +185,7 @@ export function updateSapphireMissiles(
 
 // ── Laser enemy system ─────────────────────────────────────────────────────────
 
-function updateEnemyIdle(enemy: LaserEnemy, ctx: RpgEnemyCtx, dt: number, deltaMs: number): void {
+function updateEnemyIdle(enemy: LaserEnemy, ctx: RpgEnemyCtx, dt: number, deltaMs: number, solidCtx: ActorSolidCtx): void {
   enemy.patrolTimerMs -= deltaMs;
   if (enemy.patrolTimerMs <= 0) {
     const angle = Math.random() * Math.PI * 2;
@@ -198,8 +195,9 @@ function updateEnemyIdle(enemy: LaserEnemy, ctx: RpgEnemyCtx, dt: number, deltaM
   }
   const dampFactor = Math.pow(LASER_PATROL_DAMPING, dt);
   enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-  enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-  ctx.clampEnemyToBounds(enemy);
+  const half = LASER_ENEMY_SIZE / 2;
+  actorMoveX(enemy, half, half, enemy.vx * dt, solidCtx, () => { enemy.vx = 0; });
+  actorMoveY(enemy, half, half, enemy.vy * dt, solidCtx, () => { enemy.vy = 0; });
   const dx = ctx.mote.x - enemy.x; const dy = ctx.mote.y - enemy.y;
   if (dx * dx + dy * dy < LASER_ATTACK_RADIUS * LASER_ATTACK_RADIUS) {
     enemy.lockedTargetX = ctx.mote.x; enemy.lockedTargetY = ctx.mote.y;
@@ -207,12 +205,13 @@ function updateEnemyIdle(enemy: LaserEnemy, ctx: RpgEnemyCtx, dt: number, deltaM
   }
 }
 
-function updateEnemyDecelerate(enemy: LaserEnemy, ctx: RpgEnemyCtx, dt: number, deltaMs: number): void {
+function updateEnemyDecelerate(enemy: LaserEnemy, _ctx: RpgEnemyCtx, dt: number, deltaMs: number, solidCtx: ActorSolidCtx): void {
   enemy.phaseElapsedMs += deltaMs;
   const dampFactor = Math.pow(LASER_DECEL_FACTOR, dt);
   enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-  enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-  ctx.clampEnemyToBounds(enemy);
+  const half = LASER_ENEMY_SIZE / 2;
+  actorMoveX(enemy, half, half, enemy.vx * dt, solidCtx, () => { enemy.vx = 0; });
+  actorMoveY(enemy, half, half, enemy.vy * dt, solidCtx, () => { enemy.vy = 0; });
   if (enemy.phaseElapsedMs >= LASER_DECEL_DURATION_MS) {
     enemy.vx = 0; enemy.vy = 0;
     const dx = enemy.lockedTargetX - enemy.x; const dy = enemy.lockedTargetY - enemy.y;
@@ -252,11 +251,12 @@ function updateEnemyDash(enemy: LaserEnemy, ctx: RpgEnemyCtx, dt: number, nowMs:
   }
 }
 
-function updateEnemyOvershoot(enemy: LaserEnemy, ctx: RpgEnemyCtx, dt: number): void {
+function updateEnemyOvershoot(enemy: LaserEnemy, _ctx: RpgEnemyCtx, dt: number, solidCtx: ActorSolidCtx): void {
   const dampFactor = Math.pow(LASER_OVERSHOOT_DAMPING, dt);
   enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-  enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-  ctx.clampEnemyToBounds(enemy);
+  const half = LASER_ENEMY_SIZE / 2;
+  actorMoveX(enemy, half, half, enemy.vx * dt, solidCtx, () => { enemy.vx = 0; });
+  actorMoveY(enemy, half, half, enemy.vy * dt, solidCtx, () => { enemy.vy = 0; });
   if (Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy) < LASER_OVERSHOOT_STOP) {
     enemy.vx = 0; enemy.vy = 0;
     enemy.phase = 'cooldown'; enemy.phaseElapsedMs = 0;
@@ -277,15 +277,16 @@ export function updateLaserEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { fluid } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     switch (enemy.phase) {
-      case 'idle':       updateEnemyIdle(enemy, ctx, dt, deltaMs);       break;
-      case 'decelerate': updateEnemyDecelerate(enemy, ctx, dt, deltaMs); break;
-      case 'dash':       updateEnemyDash(enemy, ctx, dt, nowMs);         break;
-      case 'overshoot':  updateEnemyOvershoot(enemy, ctx, dt);           break;
-      case 'cooldown':   updateEnemyCooldown(enemy, deltaMs);            break;
+      case 'idle':       updateEnemyIdle(enemy, ctx, dt, deltaMs, _solidCtx);       break;
+      case 'decelerate': updateEnemyDecelerate(enemy, ctx, dt, deltaMs, _solidCtx); break;
+      case 'dash':       updateEnemyDash(enemy, ctx, dt, nowMs);                    break;
+      case 'overshoot':  updateEnemyOvershoot(enemy, ctx, dt, _solidCtx);           break;
+      case 'cooldown':   updateEnemyCooldown(enemy, deltaMs);                       break;
     }
-    applyEnemyTerrainPushOut(enemy, terrain, LASER_ENEMY_SIZE / 2);
     // Inject laser-enemy movement into fluid.
     const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
     if (espd > 0.05) {

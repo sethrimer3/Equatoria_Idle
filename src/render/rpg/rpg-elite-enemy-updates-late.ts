@@ -32,7 +32,7 @@ import {
   fireTendrilRing,
   FLUID_EXPLOSION_STRENGTH,
 } from './rpg-elite-enemy-helpers';
-import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
+import { actorMoveX, actorMoveY, buildActorSolidCtx } from './rpg-actor-collision';
 
 // ── Iolite elite — heptagon ───────────────────────────────────────────────────
 // A1: Prism Fan    — 7 instant beams in a 150° arc aimed at player.
@@ -45,9 +45,10 @@ export function updateEliteIolite(
   toPlayerAngle: number,
 ): void {
   const { mote } = ctx;
+  const _solidCtxI = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
   patrolStep(enemy, dt);
-  ctx.clampEnemyToBounds(enemy);
-  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_IOLITE_RADIUS);
+  actorMoveX(enemy, ELITE_IOLITE_RADIUS, ELITE_IOLITE_RADIUS, enemy.vx * dt, _solidCtxI, () => { enemy.vx = 0; });
+  actorMoveY(enemy, ELITE_IOLITE_RADIUS, ELITE_IOLITE_RADIUS, enemy.vy * dt, _solidCtxI, () => { enemy.vy = 0; });
 
   // Active gravity well
   if (enemy.gravityTimerMs > 0) {
@@ -110,9 +111,10 @@ export function updateEliteAmethyst(
   deltaMs: number,
   _toPlayerAngle: number,
 ): void {
+  const _solidCtxA = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
   patrolStep(enemy, dt);
-  ctx.clampEnemyToBounds(enemy);
-  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_AMETHYST_RADIUS);
+  actorMoveX(enemy, ELITE_AMETHYST_RADIUS, ELITE_AMETHYST_RADIUS, enemy.vx * dt, _solidCtxA, () => { enemy.vx = 0; });
+  actorMoveY(enemy, ELITE_AMETHYST_RADIUS, ELITE_AMETHYST_RADIUS, enemy.vy * dt, _solidCtxA, () => { enemy.vy = 0; });
 
   // Shield regeneration
   if (enemy.shieldHp < enemy.maxShieldHp) {
@@ -178,6 +180,7 @@ export function updateEliteDiamond(
     }
   }
 
+  const _solidCtxD = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
   if (enemy.isInvuln) {
     // Fast orbit around player
     enemy.orbitAngle += 0.0035 * deltaMs;
@@ -186,14 +189,12 @@ export function updateEliteDiamond(
     const targetY = mote.y + Math.sin(enemy.orbitAngle) * orbitR;
     enemy.vx = (targetX - enemy.x) * 0.18 * dt;
     enemy.vy = (targetY - enemy.y) * 0.18 * dt;
-    enemy.x += enemy.vx * dt;
-    enemy.y += enemy.vy * dt;
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_DIAMOND_RADIUS);
+    actorMoveX(enemy, ELITE_DIAMOND_RADIUS, ELITE_DIAMOND_RADIUS, enemy.vx * dt, _solidCtxD, () => { enemy.vx = 0; });
+    actorMoveY(enemy, ELITE_DIAMOND_RADIUS, ELITE_DIAMOND_RADIUS, enemy.vy * dt, _solidCtxD, () => { enemy.vy = 0; });
   } else {
     patrolStep(enemy, dt);
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_DIAMOND_RADIUS);
+    actorMoveX(enemy, ELITE_DIAMOND_RADIUS, ELITE_DIAMOND_RADIUS, enemy.vx * dt, _solidCtxD, () => { enemy.vx = 0; });
+    actorMoveY(enemy, ELITE_DIAMOND_RADIUS, ELITE_DIAMOND_RADIUS, enemy.vy * dt, _solidCtxD, () => { enemy.vy = 0; });
 
     enemy.attack1TimerMs -= deltaMs;
     if (enemy.attack1TimerMs <= 0) {
@@ -217,9 +218,10 @@ export function updateEliteNullstone(
   _toPlayerAngle: number,
 ): void {
   const { mote } = ctx;
+  const _solidCtxN = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
   patrolStep(enemy, dt);
-  ctx.clampEnemyToBounds(enemy);
-  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_NULLSTONE_RADIUS);
+  actorMoveX(enemy, ELITE_NULLSTONE_RADIUS, ELITE_NULLSTONE_RADIUS, enemy.vx * dt, _solidCtxN, () => { enemy.vx = 0; });
+  actorMoveY(enemy, ELITE_NULLSTONE_RADIUS, ELITE_NULLSTONE_RADIUS, enemy.vy * dt, _solidCtxN, () => { enemy.vy = 0; });
 
   // Invuln countdown (singularity phase)
   if (enemy.isInvuln) {

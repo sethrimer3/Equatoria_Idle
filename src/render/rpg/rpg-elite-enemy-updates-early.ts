@@ -33,7 +33,7 @@ import {
   fireHomingBolts,
   FLUID_EXPLOSION_STRENGTH,
 } from './rpg-elite-enemy-helpers';
-import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
+import { actorMoveX, actorMoveY, buildActorSolidCtx } from './rpg-actor-collision';
 
 // ── Quartz elite — triangle ───────────────────────────────────────────────────
 // A1: Crystal Salvo — two staggered 3-spike bursts.
@@ -45,9 +45,10 @@ export function updateEliteQuartz(
   deltaMs: number,
   toPlayerAngle: number,
 ): void {
+  const _solidCtxQ = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
   patrolStep(enemy, dt);
-  ctx.clampEnemyToBounds(enemy);
-  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_QUARTZ_RADIUS);
+  actorMoveX(enemy, ELITE_QUARTZ_RADIUS, ELITE_QUARTZ_RADIUS, enemy.vx * dt, _solidCtxQ, () => { enemy.vx = 0; });
+  actorMoveY(enemy, ELITE_QUARTZ_RADIUS, ELITE_QUARTZ_RADIUS, enemy.vy * dt, _solidCtxQ, () => { enemy.vy = 0; });
   if (enemy.pendingSalvoMs >= 0) {
     enemy.pendingSalvoMs -= deltaMs;
     if (enemy.pendingSalvoMs <= 0) {
@@ -84,9 +85,10 @@ export function updateEliteRuby(
   deltaMs: number,
   toPlayerAngle: number,
 ): void {
+  const _solidCtxR = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
   patrolStep(enemy, dt);
-  ctx.clampEnemyToBounds(enemy);
-  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_RUBY_RADIUS);
+  actorMoveX(enemy, ELITE_RUBY_RADIUS, ELITE_RUBY_RADIUS, enemy.vx * dt, _solidCtxR, () => { enemy.vx = 0; });
+  actorMoveY(enemy, ELITE_RUBY_RADIUS, ELITE_RUBY_RADIUS, enemy.vy * dt, _solidCtxR, () => { enemy.vy = 0; });
 
   enemy.attack1TimerMs -= deltaMs;
   if (enemy.attack1TimerMs <= 0) {
@@ -134,10 +136,9 @@ export function updateEliteSunstone(
   enemy.vy += Math.sin(enemy.orbitAngle) * 0.02 * dt;
   enemy.vx = clamp(enemy.vx, -0.7, 0.7);
   enemy.vy = clamp(enemy.vy, -0.7, 0.7);
-  enemy.x += enemy.vx * dt;
-  enemy.y += enemy.vy * dt;
-  ctx.clampEnemyToBounds(enemy);
-  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_SUNSTONE_RADIUS);
+  const _solidCtxS = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
+  actorMoveX(enemy, ELITE_SUNSTONE_RADIUS, ELITE_SUNSTONE_RADIUS, enemy.vx * dt, _solidCtxS, () => { enemy.vx = 0; });
+  actorMoveY(enemy, ELITE_SUNSTONE_RADIUS, ELITE_SUNSTONE_RADIUS, enemy.vy * dt, _solidCtxS, () => { enemy.vy = 0; });
 
   enemy.attack1TimerMs -= deltaMs;
   if (enemy.attack1TimerMs <= 0) {
@@ -167,9 +168,10 @@ export function updateEliteCitrine(
   toPlayerAngle: number,
 ): void {
   const { mote } = ctx;
+  const _solidCtxC = buildActorSolidCtx(ctx.viewport, ctx.getTerrainState(), ctx.getVerdureCaveWallState?.() ?? null);
   patrolStep(enemy, dt);
-  ctx.clampEnemyToBounds(enemy);
-  applyEnemyTerrainPushOut(enemy, ctx.getTerrainState(), ELITE_CITRINE_RADIUS);
+  actorMoveX(enemy, ELITE_CITRINE_RADIUS, ELITE_CITRINE_RADIUS, enemy.vx * dt, _solidCtxC, () => { enemy.vx = 0; });
+  actorMoveY(enemy, ELITE_CITRINE_RADIUS, ELITE_CITRINE_RADIUS, enemy.vy * dt, _solidCtxC, () => { enemy.vy = 0; });
 
   enemy.attack1TimerMs -= deltaMs;
   if (enemy.attack1TimerMs <= 0) {

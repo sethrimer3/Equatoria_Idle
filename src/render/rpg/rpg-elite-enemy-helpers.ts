@@ -96,8 +96,7 @@ export function patrolStep(enemy: EliteEnemy, dt: number): void {
   }
   enemy.vx *= ELITE_PATROL_DAMPING;
   enemy.vy *= ELITE_PATROL_DAMPING;
-  enemy.x  += enemy.vx * dt;
-  enemy.y  += enemy.vy * dt;
+  // Position update intentionally omitted — callers use actorMoveX/Y after this call.
 }
 
 /** Emit a fluid force/explosion centered on the enemy. */

@@ -30,8 +30,8 @@ import {
   makeFracterylShard,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
-import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
+import { actorMoveX, actorMoveY, buildActorSolidCtx, type ActorSolidCtx } from './rpg-actor-collision';
 
 // ── Fracteryl enemy system ─────────────────────────────────────────────────────
 
@@ -42,8 +42,10 @@ export function updateFracterylEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, fluid, viewport } = ctx;
+  const { mote, fluid } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
     if (enemy.patrolTimerMs > 0) {
@@ -55,13 +57,9 @@ export function updateFracterylEnemies(
     enemy.vx += Math.cos(enemy.orbitAngle) * 0.15;
     enemy.vy += Math.sin(enemy.orbitAngle) * 0.15;
     enemy.vx *= 0.92; enemy.vy *= 0.92;
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     const half = FRACTERYL_ENEMY_SIZE / 2;
-    if (enemy.x < viewport.left + half)  { enemy.x = viewport.left + half;  enemy.vx = Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > viewport.right - half) { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < viewport.top + half)   { enemy.y = viewport.top + half;   enemy.vy = Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-    applyEnemyTerrainPushOut(enemy, terrain, half);
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
 
     enemy.burstTimerMs -= deltaMs;
     if (enemy.burstTimerMs <= 0) {
@@ -111,8 +109,10 @@ export function updateEigensteinEnemies(
   deltaMs: number,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const { mote, fluid, viewport } = ctx;
+  const { mote, fluid } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % 3000;
     if (enemy.patrolTimerMs > 0) {
@@ -124,13 +124,9 @@ export function updateEigensteinEnemies(
     enemy.vx += Math.cos(enemy.beamAngle) * 0.12;
     enemy.vy += Math.sin(enemy.beamAngle) * 0.12;
     enemy.vx *= 0.91; enemy.vy *= 0.91;
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
     const half = EIGENSTEIN_ENEMY_SIZE / 2;
-    if (enemy.x < viewport.left + half)  { enemy.x = viewport.left + half;  enemy.vx = Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > viewport.right - half) { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < viewport.top + half)   { enemy.y = viewport.top + half;   enemy.vy = Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half;   enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-    applyEnemyTerrainPushOut(enemy, terrain, half);
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
 
     enemy.beamTimerMs -= deltaMs;
     if (enemy.beamTimerMs <= 0) {

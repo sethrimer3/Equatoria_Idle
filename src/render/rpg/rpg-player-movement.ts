@@ -33,15 +33,12 @@ import {
   DIAMOND_BLADE_ID,
 } from './rpg-constants';
 import {
-  pushPointOutsideTopographicTerrain,
-  computeTerrainRepulsionForce,
   hasTopographicTerrainLineOfSight,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 import {
-  computeVerdureWallRepulsion,
-  pushPointOutsideVerdureWall,
-} from './terrain/verdure-cave-walls';
+  actorMoveX, actorMoveY, buildActorSolidCtx,
+} from './rpg-actor-collision';
 import {
   createRpgPathState, computePathSteeredDirection, PLAYER_REPATH_MS,
   type RpgPathState,
@@ -268,75 +265,16 @@ export function updatePlayerMovement(
     }
   }
 
-  // ── Position integration and arena clamping ─────────────────────
-  mote.x += mote.vx * dt; mote.y += mote.vy * dt;
+  // ── Position integration with deterministic AABB collision ────────────────
+  // Resolves X then Y independently so diagonal-into-wall movement slides
+  // cleanly along the free axis with no oscillation or bounce-back.
   const half = RPG_MOTE_SIZE / 2;
   const ab = ctx.getFieldSpace().activeBounds;
-  if (mote.x < ab.left  + half) { mote.x = ab.left  + half; mote.vx = 0; }
-  if (mote.x > ab.right - half) { mote.x = ab.right - half; mote.vx = 0; }
-  if (mote.y < ab.top    + half) { mote.y = ab.top    + half; mote.vy = 0; }
-  if (mote.y > ab.bottom - half) { mote.y = ab.bottom - half; mote.vy = 0; }
-
-  // ── Terrain collision: soft repulsion + hard fail-safe ────────────────────
   const terrainState = ctx.getTerrainState();
-  if (terrainState) {
-    // 1. Soft repulsion — apply before position is committed.
-    //    Strength: enough to noticeably push back without jitter.
-    const repForce = { x: 0, y: 0 };
-    const depth = computeTerrainRepulsionForce(terrainState, mote.x, mote.y, 0.22, repForce);
-    if (depth > 0) {
-      mote.vx += repForce.x;
-      mote.vy += repForce.y;
-      // Damp inward velocity component to prevent tunnelling.
-      const forceLen = Math.sqrt(repForce.x ** 2 + repForce.y ** 2) || 1;
-      const nx = repForce.x / forceLen, ny = repForce.y / forceLen;
-      const velDot = mote.vx * nx + mote.vy * ny;
-      if (velDot < 0) { mote.vx -= velDot * nx; mote.vy -= velDot * ny; }
-    }
-
-    // 2. Hard fail-safe — snap out if still inside boundary.
-    const pushed = { x: 0, y: 0 };
-    if (pushPointOutsideTopographicTerrain(terrainState, mote.x, mote.y, pushed, half + 2)) {
-      // Zero out velocity components pointing into the terrain island.
-      const pushDx = pushed.x - mote.x;
-      const pushDy = pushed.y - mote.y;
-      const pushLen = Math.sqrt(pushDx * pushDx + pushDy * pushDy) || 1;
-      const nx = pushDx / pushLen;
-      const ny = pushDy / pushLen;
-      const velDot = mote.vx * nx + mote.vy * ny;
-      if (velDot < 0) { mote.vx -= velDot * nx; mote.vy -= velDot * ny; }
-      mote.x = pushed.x;
-      mote.y = pushed.y;
-    }
-  }
-
-  // Verdure cave wall collision
-  const wallState = ctx.getVerdureCaveWallState?.();
-  if (wallState) {
-    const wallRepForce = { x: 0, y: 0 };
-    const wallDepth = computeVerdureWallRepulsion(wallState, mote.x, mote.y, 0.22, wallRepForce);
-    if (wallDepth > 0) {
-      mote.vx += wallRepForce.x;
-      mote.vy += wallRepForce.y;
-      const wfl = Math.sqrt(wallRepForce.x ** 2 + wallRepForce.y ** 2) || 1;
-      const wnx = wallRepForce.x / wfl;
-      const wny = wallRepForce.y / wfl;
-      const wvDot = mote.vx * wnx + mote.vy * wny;
-      if (wvDot < 0) { mote.vx -= wvDot * wnx; mote.vy -= wvDot * wny; }
-    }
-    const wallPushed = { x: 0, y: 0 };
-    if (pushPointOutsideVerdureWall(wallState, mote.x, mote.y, wallPushed, half + 2)) {
-      const wpdx = wallPushed.x - mote.x;
-      const wpdy = wallPushed.y - mote.y;
-      const wplen = Math.sqrt(wpdx * wpdx + wpdy * wpdy) || 1;
-      const wpnx = wpdx / wplen;
-      const wpny = wpdy / wplen;
-      const wvd = mote.vx * wpnx + mote.vy * wpny;
-      if (wvd < 0) { mote.vx -= wvd * wpnx; mote.vy -= wvd * wpny; }
-      mote.x = wallPushed.x;
-      mote.y = wallPushed.y;
-    }
-  }
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx = buildActorSolidCtx(ab, terrainState, wallState);
+  actorMoveX(mote, half, half, mote.vx * dt, _solidCtx, () => { mote.vx = 0; });
+  actorMoveY(mote, half, half, mote.vy * dt, _solidCtx, () => { mote.vy = 0; });
 
   // ── Trail update (distance-gated to prevent bunching at high Hz) ──
   const lastTrailIdx = (mote.trailHead - 1 + RPG_TRAIL_CAPACITY) % RPG_TRAIL_CAPACITY;

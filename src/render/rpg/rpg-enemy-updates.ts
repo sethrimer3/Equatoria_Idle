@@ -56,7 +56,6 @@ import {
 import {
   segmentIntersectsTopographicTerrain,
   pushPointOutsideTopographicTerrain,
-  computeTerrainRepulsionForce,
   type TopographicTerrainState,
 } from './terrain/topographic-terrain';
 import {
@@ -64,9 +63,11 @@ import {
   type RpgPathState,
 } from './terrain/rpg-pathfinding';
 import {
-  computeVerdureWallRepulsion,
   pushPointOutsideVerdureWall,
 } from './terrain/verdure-cave-walls';
+import {
+  actorMoveX, actorMoveY, buildActorSolidCtx,
+} from './rpg-actor-collision';
 
 // ── Shared context interface ───────────────────────────────────────────────────
 
@@ -126,22 +127,18 @@ export interface RpgEnemyCtx {
 
 /** Reusable scratch objects to avoid allocations in push-out calls. */
 const _pushOutScratch = { x: 0, y: 0 };
-const _repForce = { x: 0, y: 0 };
-const _wallRepForce = { x: 0, y: 0 };
 const _wallPushScratch = { x: 0, y: 0 };
 
 /**
- * Applies soft terrain repulsion followed by a hard push-out fail-safe to an
- * enemy entity.  Enemies cannot remain inside terrain after this call.
+ * Spawn-overlap recovery for terrain.  Snaps entity out of any terrain polygon
+ * it currently overlaps, zeroing the velocity component pointing into the solid.
  *
- * - Soft repulsion: applies a quadratic outward force proportional to
- *   penetration depth so collision feels like an invisible barrier.
- * - Hard fail-safe: projects the entity to just outside the boundary if it
- *   is still inside after repulsion, guaranteeing robustness.
+ * This is a SPAWN-TIME / post-teleport fix only.  Normal per-frame movement
+ * uses `actorMoveX` / `actorMoveY` which prevents overlap entirely.
  *
- * @param entity  - mutable {x, y, vx, vy}
- * @param terrain - current terrain state (may be null)
- * @param halfSize - half the enemy's collision width/height (px)
+ * @param entity   - mutable {x, y, vx, vy}
+ * @param terrain  - current terrain state (may be null)
+ * @param halfSize - half the enemy's collision radius (px)
  */
 export function applyEnemyTerrainPushOut(
   entity: { x: number; y: number; vx: number; vy: number },
@@ -149,39 +146,25 @@ export function applyEnemyTerrainPushOut(
   halfSize: number,
 ): void {
   if (!terrain) return;
-
-  // 1. Soft repulsion.
-  const depth = computeTerrainRepulsionForce(terrain, entity.x, entity.y, 0.18, _repForce);
-  if (depth > 0) {
-    entity.vx += _repForce.x;
-    entity.vy += _repForce.y;
-    const fLen = Math.sqrt(_repForce.x ** 2 + _repForce.y ** 2) || 1;
-    const nx = _repForce.x / fLen, ny = _repForce.y / fLen;
+  if (!pushPointOutsideTopographicTerrain(terrain, entity.x, entity.y, _pushOutScratch, halfSize + 2)) return;
+  const pdx = _pushOutScratch.x - entity.x;
+  const pdy = _pushOutScratch.y - entity.y;
+  entity.x = _pushOutScratch.x;
+  entity.y = _pushOutScratch.y;
+  const plen = Math.sqrt(pdx * pdx + pdy * pdy);
+  if (plen > 0) {
+    const nx = pdx / plen, ny = pdy / plen;
     const dot = entity.vx * nx + entity.vy * ny;
     if (dot < 0) { entity.vx -= dot * nx; entity.vy -= dot * ny; }
-  }
-
-  // 2. Hard fail-safe.
-  if (pushPointOutsideTopographicTerrain(terrain, entity.x, entity.y, _pushOutScratch, halfSize + 2)) {
-    const oldX = entity.x, oldY = entity.y;
-    entity.x = _pushOutScratch.x;
-    entity.y = _pushOutScratch.y;
-    const pdx = _pushOutScratch.x - oldX, pdy = _pushOutScratch.y - oldY;
-    const plen = Math.sqrt(pdx * pdx + pdy * pdy);
-    if (plen > 0) {
-      const nx = pdx / plen, ny = pdy / plen;
-      const dot = entity.vx * nx + entity.vy * ny;
-      if (dot < 0) { entity.vx -= dot * nx; entity.vy -= dot * ny; }
-    }
   }
 }
 
 /**
- * Applies soft Verdure cave-wall repulsion followed by a hard push-out
- * fail-safe to an enemy entity.  Mirrors the player-movement wall handling
- * in rpg-player-movement.ts.
+ * Spawn-overlap recovery for Verdure cave walls.  Snaps entity out of any
+ * wall overlap, zeroing the inward velocity component.
  *
- * Call this every frame for every enemy when the Verdure zone is active.
+ * This is a SPAWN-TIME / post-teleport fix only.  Normal per-frame movement
+ * uses `actorMoveX` / `actorMoveY` which prevents overlap entirely.
  *
  * @param entity    Mutable enemy {x, y, vx, vy}.
  * @param wallState Current Verdure cave wall state.
@@ -192,30 +175,16 @@ export function applyEnemyVerdureWallPushOut(
   wallState: import('./terrain/verdure-cave-walls').VerdureCaveWallState,
   halfSize: number,
 ): void {
-  // 1. Soft repulsion keeps enemies from hugging the wall boundary.
-  const wallDepth = computeVerdureWallRepulsion(wallState, entity.x, entity.y, 0.22, _wallRepForce);
-  if (wallDepth > 0) {
-    entity.vx += _wallRepForce.x;
-    entity.vy += _wallRepForce.y;
-    const wfl = Math.sqrt(_wallRepForce.x ** 2 + _wallRepForce.y ** 2) || 1;
-    const wnx = _wallRepForce.x / wfl;
-    const wny = _wallRepForce.y / wfl;
-    const wvd = entity.vx * wnx + entity.vy * wny;
-    if (wvd < 0) { entity.vx -= wvd * wnx; entity.vy -= wvd * wny; }
-  }
-
-  // 2. Hard fail-safe — snap out if still inside boundary.
-  if (pushPointOutsideVerdureWall(wallState, entity.x, entity.y, _wallPushScratch, halfSize + 2)) {
-    const wpdx = _wallPushScratch.x - entity.x;
-    const wpdy = _wallPushScratch.y - entity.y;
-    entity.x = _wallPushScratch.x;
-    entity.y = _wallPushScratch.y;
-    const wplen = Math.sqrt(wpdx * wpdx + wpdy * wpdy) || 1;
-    const wpnx = wpdx / wplen;
-    const wpny = wpdy / wplen;
-    const wvd2 = entity.vx * wpnx + entity.vy * wpny;
-    if (wvd2 < 0) { entity.vx -= wvd2 * wpnx; entity.vy -= wvd2 * wpny; }
-  }
+  if (!pushPointOutsideVerdureWall(wallState, entity.x, entity.y, _wallPushScratch, halfSize + 2)) return;
+  const wpdx = _wallPushScratch.x - entity.x;
+  const wpdy = _wallPushScratch.y - entity.y;
+  entity.x = _wallPushScratch.x;
+  entity.y = _wallPushScratch.y;
+  const wplen = Math.sqrt(wpdx * wpdx + wpdy * wpdy) || 1;
+  const wpnx = wpdx / wplen;
+  const wpny = wpdy / wplen;
+  const wvd = entity.vx * wpnx + entity.vy * wpny;
+  if (wvd < 0) { entity.vx -= wvd * wpnx; entity.vy -= wvd * wpny; }
 }
 
 /**
@@ -300,6 +269,8 @@ export function updateEmeraldEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx = buildActorSolidCtx(viewport, terrain, wallState);
   for (const enemy of enemies) {
     // Fade ghost afterimage
     if (enemy.ghostAlpha > 0) {
@@ -317,14 +288,9 @@ export function updateEmeraldEnemies(
       }
       const dampFactor = Math.pow(EMERALD_PATROL_DAMPING, dt);
       enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-      enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
-      // Clamp
       const half = EMERALD_ENEMY_SIZE / 2;
-      if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half;   enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-      if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-      if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half;    enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-      if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-      applyEnemyTerrainPushOut(enemy, terrain, half);
+      actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+      actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
 
       // Fluid from patrol movement
       const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
@@ -423,6 +389,8 @@ export function updateAmberEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx = buildActorSolidCtx(viewport, terrain, wallState);
   for (const enemy of enemies) {
     // Patrol
     enemy.patrolTimerMs -= deltaMs;
@@ -434,13 +402,9 @@ export function updateAmberEnemies(
     }
     const dampFactor = Math.pow(AMBER_PATROL_DAMPING, dt);
     enemy.vx *= dampFactor; enemy.vy *= dampFactor;
-    enemy.x  += enemy.vx * dt; enemy.y += enemy.vy * dt;
     const half = AMBER_ENEMY_SIZE / 2;
-    if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half;   enemy.vx =  Math.abs(enemy.vx) * 0.5; }
-    if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half;  enemy.vx = -Math.abs(enemy.vx) * 0.5; }
-    if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half;    enemy.vy =  Math.abs(enemy.vy) * 0.5; }
-    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; enemy.vy = -Math.abs(enemy.vy) * 0.5; }
-    applyEnemyTerrainPushOut(enemy, terrain, half);
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
 
     // Fluid from movement
     const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
@@ -548,6 +512,8 @@ export function updateVoidEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote, fluid, viewport } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx = buildActorSolidCtx(viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.pulseMs = (enemy.pulseMs + deltaMs) % VOID_AURA_PULSE_MS;
 
@@ -566,15 +532,9 @@ export function updateVoidEnemies(
     );
     enemy.vx = dir.dx * VOID_PURSUE_SPEED;
     enemy.vy = dir.dy * VOID_PURSUE_SPEED;
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-
-    // Clamp to bounds
     const half = VOID_ENEMY_SIZE / 2;
-    if (enemy.x < viewport.left + half)   { enemy.x = viewport.left + half; }
-    if (enemy.x > viewport.right - half)  { enemy.x = viewport.right - half; }
-    if (enemy.y < viewport.top + half)    { enemy.y = viewport.top + half; }
-    if (enemy.y > viewport.bottom - half) { enemy.y = viewport.bottom - half; }
-    applyEnemyTerrainPushOut(enemy, terrain, half);
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
 
     // Fluid from movement
     const espd = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);

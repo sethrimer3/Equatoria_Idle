@@ -42,8 +42,8 @@ import {
   makeCitrineBolt,
 } from './rpg-factories';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
-import { applyEnemyTerrainPushOut } from './rpg-enemy-updates';
 import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
+import { actorMoveX, actorMoveY, buildActorSolidCtx, type ActorSolidCtx } from './rpg-actor-collision';
 
 // ── Quartz enemy system ────────────────────────────────────────────────────────
 
@@ -56,6 +56,8 @@ export function updateQuartzEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     const dx = mote.x - enemy.x, dy = mote.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -73,9 +75,9 @@ export function updateQuartzEnemies(
     const speed = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
     if (speed > 2.0) { enemy.vx = (enemy.vx / speed) * 2.0; enemy.vy = (enemy.vy / speed) * 2.0; }
     enemy.vx *= 0.85; enemy.vy *= 0.85;
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, terrain, QUARTZ_ENEMY_SIZE / 2);
+    const half = QUARTZ_ENEMY_SIZE / 2;
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
     enemy.strafeDirFlipMs -= deltaMs;
     if (enemy.strafeDirFlipMs <= 0) {
       enemy.strafeDir = (enemy.strafeDir === 1 ? -1 : 1) as 1 | -1;
@@ -129,6 +131,8 @@ export function updateRubyEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -143,9 +147,9 @@ export function updateRubyEnemies(
       enemy.vx = (dx / dist) * RUBY_PATROL_SPEED;
       enemy.vy = (dy / dist) * RUBY_PATROL_SPEED;
     }
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, terrain, RUBY_ENEMY_SIZE / 2);
+    const half = RUBY_ENEMY_SIZE / 2;
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
     enemy.boltTimerMs -= deltaMs;
     if (enemy.boltTimerMs <= 0) {
       enemy.boltTimerMs = RUBY_BOLT_CD_MS + Math.random() * RUBY_BOLT_JITTER;
@@ -231,6 +235,8 @@ export function updateCitrineEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const { mote } = ctx;
   const terrain = ctx.getTerrainState();
+  const wallState = ctx.getVerdureCaveWallState?.() ?? null;
+  const _solidCtx: ActorSolidCtx = buildActorSolidCtx(ctx.viewport, terrain, wallState);
   for (const enemy of enemies) {
     enemy.patrolTimerMs -= deltaMs;
     if (enemy.patrolTimerMs <= 0) {
@@ -239,9 +245,9 @@ export function updateCitrineEnemies(
       enemy.vx = Math.cos(angle) * CITRINE_PATROL_SPEED;
       enemy.vy = Math.sin(angle) * CITRINE_PATROL_SPEED;
     }
-    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-    ctx.clampEnemyToBounds(enemy);
-    applyEnemyTerrainPushOut(enemy, terrain, CITRINE_ENEMY_SIZE / 2);
+    const half = CITRINE_ENEMY_SIZE / 2;
+    actorMoveX(enemy, half, half, enemy.vx * dt, _solidCtx, () => { enemy.vx = 0; });
+    actorMoveY(enemy, half, half, enemy.vy * dt, _solidCtx, () => { enemy.vy = 0; });
     enemy.boltTimerMs -= deltaMs;
     if (enemy.boltTimerMs <= 0) {
       enemy.boltTimerMs = CITRINE_BOLT_CD_MS + Math.random() * CITRINE_BOLT_JITTER;
