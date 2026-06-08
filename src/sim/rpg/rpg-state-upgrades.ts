@@ -51,12 +51,17 @@ export function getRpgSpeedMultiplier(state: RpgSimState): number {
   return 1 + level * 0.1;
 }
 
+/** Returns the player level required to unlock a given weapon slot (0-indexed). */
+export function getLevelRequiredForSlot(slotIndex: number): number {
+  return slotIndex * 25;
+}
+
 /**
  * Returns the maximum number of weapons that can be equipped simultaneously.
- * Base: 1. Each `extra_weapon_slot` upgrade level adds 1.
+ * Base: 1 slot. One additional slot unlocks every 25 player levels (max 5).
  */
 export function getMaxEquippedWeapons(state: RpgSimState): number {
-  return 1 + getRpgUpgradeLevel(state, 'extra_weapon_slot');
+  return Math.min(5, Math.floor(state.playerLevel / 25) + 1);
 }
 
 // ─── Boss helpers ─────────────────────────────────────────────────
