@@ -172,9 +172,13 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
       const occupant = rpgState.equippedWeaponSlots.get(s);
       const occupantDef = occupant ? resolveWeaponDefinition(occupant) : undefined;
       const occupantName = occupantDef ? occupantDef.name : (occupant ?? 'Empty');
-      btn.textContent = `Slot ${s + 1}: ${isLocked ? '🔒 Locked' : (occupant ? occupantName : 'Empty')}`;
       btn.disabled = isLocked;
-      if (!isLocked) {
+
+      if (isLocked) {
+        const reqLevel = getLevelRequiredForSlot(s);
+        btn.innerHTML = `Slot ${s + 1}: <span style="margin-left:4px">🔒</span><span style="margin-left:4px;font-size:0.85em;opacity:0.7">Lv. ${reqLevel}</span>`;
+      } else {
+        btn.textContent = `Slot ${s + 1}: ${occupant ? occupantName : 'Empty'}`;
         btn.addEventListener('click', () => {
           slotPopupOverlay.style.display = 'none';
           dispatch({ kind: 'equip_weapon_to_slot', weaponId, slotIndex: s });
