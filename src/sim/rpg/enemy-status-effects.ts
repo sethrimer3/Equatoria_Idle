@@ -74,6 +74,16 @@ interface EnemyStatusState {
 
 const _registry = new WeakMap<object, EnemyStatusState>();
 
+// ── Status-applied callback (used by rpg-enemy-barks.ts for bark events) ─────
+
+type StatusAppliedCb = (enemy: object, statusKey: string) => void;
+let _statusAppliedCb: StatusAppliedCb | null = null;
+
+/** Register a callback fired whenever applyLensStatus is called. Pass null to clear. */
+export function setStatusAppliedCallback(cb: StatusAppliedCb | null): void {
+  _statusAppliedCb = cb;
+}
+
 function _getOrCreate(enemy: object): EnemyStatusState {
   let s = _registry.get(enemy);
   if (!s) { s = { statuses: [], riftScarredStacks: new Map() }; _registry.set(enemy, s); }
@@ -130,6 +140,9 @@ export interface LensStatusParams {
 }
 
 export function applyLensStatus(enemy: object, params: LensStatusParams): void {
+  // Notify bark system whenever a status is applied (no-op if unregistered).
+  _statusAppliedCb?.(enemy, params.key);
+
   const state = _getOrCreate(enemy);
   const existing = state.statuses.find(s => s.key === params.key);
 

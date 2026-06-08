@@ -57,6 +57,13 @@ import {
 
 export interface DamageCtx {
   recordDps(dmg: number, color?: string): void;
+  /**
+   * Optional hook fired after each hit on an enemy's main HP pool (not projectiles/shards).
+   *   dmg > 0, blocked = false  → enemy took real damage (small/major)
+   *   dmg = 0, blocked = true   → attack was negated (shield, invuln, full DEF absorption)
+   * Used by rpg-enemy-barks.ts to trigger speech bubbles.
+   */
+  onEnemyHit?(enemy: { x: number; y: number; hp: number; maxHp: number }, dmg: number, blocked: boolean): void;
 }
 
 export function createDamageFns(ctx: DamageCtx) {
@@ -71,6 +78,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#d3f3ff');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -90,6 +98,7 @@ export function createDamageFns(ctx: DamageCtx) {
       const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
       enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
       recordDps(dmg, '#6bd9ff');
+      ctx.onEnemyHit?.(enemy, 0, true); // shield blocked the body
       return dmg;
     }
     // Hit the enemy body.
@@ -99,6 +108,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#6bd9ff');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -118,6 +128,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#8fff8f');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -129,6 +140,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#ffb86c');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -148,6 +160,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#7b68ee');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -158,6 +171,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#e0e0e0');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -175,6 +189,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#ff6b6b');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -192,6 +207,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#ffd700');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -202,6 +218,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#fff176');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -219,6 +236,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#9b59b6');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -227,6 +245,7 @@ export function createDamageFns(ctx: DamageCtx) {
       const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
       enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
       recordDps(dmg, '#b388ff');
+      ctx.onEnemyHit?.(enemy, 0, true); // shield blocked the body
       return dmg;
     }
     const effectiveDef = enemy.def * (1 - defPierceRatio);
@@ -235,6 +254,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#b388ff');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -246,13 +266,17 @@ export function createDamageFns(ctx: DamageCtx) {
   }
 
   function damageDiamondEnemy(enemy: DiamondEnemy, rawDamage: number, defPierceRatio: number): number {
-    if (enemy.phaseInvuln) return 0;
+    if (enemy.phaseInvuln) {
+      ctx.onEnemyHit?.(enemy, 0, true); // invulnerable — blocked
+      return 0;
+    }
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
     if (dmg > 0) {
       enemy.hp -= dmg;
       recordDps(dmg, '#e0e0ff');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -264,13 +288,17 @@ export function createDamageFns(ctx: DamageCtx) {
   }
 
   function damageNullstoneEnemy(enemy: NullstoneEnemy, rawDamage: number, defPierceRatio: number): number {
-    if (enemy.isAbsorbing) return 0;
+    if (enemy.isAbsorbing) {
+      ctx.onEnemyHit?.(enemy, 0, true); // absorbing — blocked
+      return 0;
+    }
     const effectiveDef = enemy.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
     if (dmg > 0) {
       enemy.hp -= dmg;
       recordDps(dmg, '#2c2c2c');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -288,6 +316,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#ff69b4');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -305,6 +334,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hp -= dmg;
       recordDps(dmg, '#00ffff');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -316,6 +346,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hitFlashMs = 120;
       recordDps(dmg, '#52b788');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -328,6 +359,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.pendingSplit = true;
       recordDps(dmg, '#e9c46a');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -339,6 +371,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hitFlashMs = 120;
       recordDps(dmg, '#00f5d4');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -369,13 +402,17 @@ export function createDamageFns(ctx: DamageCtx) {
 
   function damageEliteEnemy(enemy: EliteEnemy, rawDamage: number, defPierceRatio: number): number {
     // Invuln check for diamond and nullstone elites
-    if (enemy.isInvuln && (enemy.tier === 'diamond' || enemy.tier === 'nullstone')) return 0;
+    if (enemy.isInvuln && (enemy.tier === 'diamond' || enemy.tier === 'nullstone')) {
+      ctx.onEnemyHit?.(enemy, 0, true); // invulnerable — blocked
+      return 0;
+    }
 
     // Amethyst elite shield
     if (enemy.tier === 'amethyst' && enemy.shieldHp > 0) {
       const dmg = Math.max(MINIMUM_SHIELD_DAMAGE, rawDamage);
       enemy.shieldHp = Math.max(0, enemy.shieldHp - dmg);
       recordDps(dmg, ELITE_AMETHYST_GLOW);
+      ctx.onEnemyHit?.(enemy, 0, true); // shield blocked the body
       return dmg;
     }
 
@@ -390,6 +427,7 @@ export function createDamageFns(ctx: DamageCtx) {
       };
       recordDps(dmg, GLOW_MAP[enemy.tier] ?? '#ffffff');
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 
@@ -397,7 +435,7 @@ export function createDamageFns(ctx: DamageCtx) {
 
   /** Generic proc damage: DEF pierce, hit-flash, no special shield. */
   function _damageProcEnemy(
-    enemy: { hp: number; def: number; hitFlashMs: number },
+    enemy: { hp: number; def: number; hitFlashMs: number; x: number; y: number; maxHp: number },
     rawDamage: number,
     defPierceRatio: number,
     color: string,
@@ -409,6 +447,7 @@ export function createDamageFns(ctx: DamageCtx) {
       enemy.hitFlashMs = PROC_HIT_FLASH_MS;
       recordDps(dmg, color);
     }
+    ctx.onEnemyHit?.(enemy, dmg, dmg === 0);
     return dmg;
   }
 

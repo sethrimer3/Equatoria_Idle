@@ -43,6 +43,13 @@ export interface PlayerDamageCtx {
   isInvincibilityMode(): boolean;
   /** Optional callback fired each time the player actually takes damage (not blocked, not iframes). */
   onPlayerHit?: () => void;
+  /**
+   * Optional callback fired on every player damage attempt (blocked OR real hit).
+   * Used by rpg-enemy-barks.ts to trigger enemy speech bubbles.
+   *   dmg = 0, blocked = true  → attack was negated (iframes, shield, full DEF)
+   *   dmg > 0                  → real hit; playerDied = true if HP reached 0
+   */
+  onPlayerDamaged?: (dmg: number, blocked: boolean, playerDied: boolean, playerMaxHp: number) => void;
 }
 
 // ── Return handle ────────────────────────────────────────────────────
@@ -192,17 +199,20 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
     if (pCtx.getPlayerIFramesMs() > 0) return;
     if (pCtx.isInvincibilityMode()) {
       spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+      pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
       return;
     }
     const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+      pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
     } else {
       playerStats.hp = Math.max(0, playerStats.hp - dmg);
       const ratio = Math.min(1, dmg / playerStats.maxHp);
       pCtx.setPlayerIFramesMs(PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS);
       spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
       pCtx.onPlayerHit?.();
+      pCtx.onPlayerDamaged?.(dmg, false, playerStats.hp <= 0, playerStats.maxHp);
     }
   }
 
@@ -210,11 +220,13 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
     if (pCtx.getPlayerIFramesMs() > 0) return;
     if (pCtx.isInvincibilityMode()) {
       spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, 'BLOCKED', 0.25, '#74c0fc');
+      pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
       return;
     }
     const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, 'BLOCKED', 0.25, '#74c0fc');
+      pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
     } else {
       playerStats.hp = Math.max(0, playerStats.hp - dmg);
       const ratio = Math.min(1, dmg / playerStats.maxHp);
@@ -223,6 +235,7 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       pCtx.onPlayerHit?.();
       pCtx.setPlayerIFramesMs(PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS);
       spawnDamageNumber(mote.x, mote.y, normDirX, normDirY, String(Math.round(dmg)), ratio, '#ff6666');
+      pCtx.onPlayerDamaged?.(dmg, false, playerStats.hp <= 0, playerStats.maxHp);
     }
   }
 

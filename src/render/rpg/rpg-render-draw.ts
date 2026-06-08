@@ -72,6 +72,7 @@ import { drawSwordCombos, drawSandBladeCombo, drawSandDriftPixels, setLowGraphic
 import { drawLuckyMotes, drawLuckyMotePopups } from './rpg-lucky-motes';
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import { drawAlivenGroups, setAlivenLowGraphics } from './rpg-aliven-draw';
+import { renderEnemySpeechBubbles } from './rpg-enemy-barks';
 import { drawProceduralEnemies } from './rpg-procedural-draw';
 import {
   drawEliteEnemies,
@@ -948,6 +949,7 @@ export function drawRpgFrame(
   drawHitEffects(canvas2d, ctx.hitEffects);
   drawLuckyMotes(canvas2d, ctx.luckyMotes, ctx.getIsLowGraphicsMode());
   drawDamageNumbers(canvas2d, ctx.damageNumbers);
+  renderEnemySpeechBubbles(canvas2d, fs.visibleBounds);
   drawLuckyMotePopups(canvas2d, ctx.luckyMotePopups, ctx.getIsLowGraphicsMode());
   if (ctx.deathParticles.length > 0) drawDeathParticles(canvas2d, ctx.deathParticles);
 

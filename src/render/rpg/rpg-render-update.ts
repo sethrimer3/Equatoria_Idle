@@ -118,6 +118,7 @@ import {
 } from './rpg-boss-stage-director';
 import { updateEmpowerParticles } from './rpg-elite-empower-particles';
 import { spawnNadirCubeEncounter, updateNadirCubePointEnemies, clearNadirCubeEncounter } from './nadir-cube-point-update';
+import { tickEnemySpeechBubbles, tickNoDamageBarks } from './rpg-enemy-barks';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
@@ -516,6 +517,21 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   tickLensStatuses(a, deltaMs, ctx.mote.x, ctx.mote.y);
   tickLensTier2DelayedEffects(deltaMs);
   tickLensTier3Effects(a, deltaMs);
+
+  // ── Enemy speech bubble barks ────────────────────────────────────────────────
+  tickEnemySpeechBubbles(deltaMs);
+  tickNoDamageBarks(deltaMs,
+    a.enemies, a.sapphireEnemies, a.emeraldEnemies, a.amberEnemies,
+    a.voidEnemies, a.quartzEnemies, a.rubyEnemies, a.sunstoneEnemies,
+    a.citrineEnemies, a.ioliteEnemies, a.amethystEnemies,
+    a.diamondEnemies, a.nullstoneEnemies, a.fracterylEnemies, a.eigensteinEnemies,
+    a.eliteEnemies, a.polyominoEnemies, a.fissilePolyominoEnemies, a.refractorPolyominoEnemies,
+    a.dustWispEnemies, a.ribbonWormEnemies, a.lanternMothEnemies, a.eyeStalkEnemies,
+    a.jellyfishEnemies, a.clothGhostEnemies, a.plantTurretEnemies, a.gearInsectEnemies,
+    a.spiderCrawlerEnemies, a.moteSwarmEnemies, a.shadowHandEnemies,
+    a.sandFishEnemies, a.quartzFishEnemies, a.rubyFishEnemies, a.sunstoneFishEnemies,
+    a.emeraldFishEnemies, a.sapphireFishEnemies, a.amethystFishEnemies, a.diamondFishEnemies,
+  );
 
   const bossEnemy = ctx.getBossEnemy();
   if (bossEnemy) {

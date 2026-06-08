@@ -113,6 +113,11 @@ import {
 import { createRpgInput } from './rpg-input';
 import { createPlayerDamageFns, type PlayerDamageCtx } from './rpg-player-damage';
 import {
+  initEnemyBarkSystem,
+  notifyEnemyHit,
+  notifyPlayerDamaged,
+} from './rpg-enemy-barks';
+import {
   setAllDrawLowGraphics,
   type RpgDrawCtx, createRpgDrawFrameState,
 } from './rpg-render-draw';
@@ -615,7 +620,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damagePlantProjectile,
     damageHorizonPentagonReal,
     damageHorizonMissile,
-  } = createDamageFns({ recordDps });
+  } = createDamageFns({
+    recordDps,
+    onEnemyHit: (enemy, dmg, blocked) => notifyEnemyHit(enemy, dmg, blocked),
+  });
 
   // eslint-disable-next-line prefer-const
   let targeting!: RpgTargetingHandle;
@@ -906,6 +914,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getViewport:         () => viewport,
     isInvincibilityMode: () => isInvincibilityMode,
     onPlayerHit: () => { waveManager?.onPlayerHit(); },
+    onPlayerDamaged: (dmg, blocked, playerDied, playerMaxHp) => {
+      notifyPlayerDamaged(dmg, blocked, playerDied, playerMaxHp);
+    },
   };
   const {
     spawnDamageNumber,
@@ -1000,6 +1011,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     getTerrainState: () => topographicTerrainState,
+  });
+
+  // ── Enemy bark system (speech bubbles) ────────────────────────
+  initEnemyBarkSystem({
+    // findClosestEnemy returns the enemy object directly (union type); cast to the bark
+    // system's minimal BarkableEnemy shape (all enemy types in the union have these fields).
+    getClosestLivingEnemy: () => {
+      const t = targeting.findClosestEnemy(Infinity);
+      if (!t || t.hp <= 0) return null;
+      return t as unknown as { x: number; y: number; hp: number; maxHp: number };
+    },
   });
 
   // ── Create wave manager ────────────────────────────────────────
