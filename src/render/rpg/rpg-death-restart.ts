@@ -120,6 +120,7 @@ export interface RpgDeathRestartCtx {
   nadirCubeTurretBolts: NadirCubeTurretBolt[];
   nadirCubeLinkLasers: NadirCubeLinkLaser[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays (cleared on restart) ──────────────────────────
   dustWispEnemies: DustWispEnemy[];
@@ -235,6 +236,7 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.nadirCubeTrailSegments.length = 0;
   ctx.nadirCubeTurretBolts.length = 0;
   ctx.nadirCubeLinkLasers.length = 0;
+  ctx.horizonPentagonGroups.length = 0;
   ctx.alivenGroups.length = 0;
   ctx.dustWispEnemies.length = 0; ctx.ribbonWormEnemies.length = 0;
   ctx.lanternMothEnemies.length = 0; ctx.eyeStalkEnemies.length = 0;

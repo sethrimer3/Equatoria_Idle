@@ -36,7 +36,7 @@ export function performAoeAttack(
     quartzEnemies, rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies,
     amethystEnemies, diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    eliteEnemies, alivenGroups,
+    eliteEnemies, alivenGroups, horizonPentagonGroups,
     damageEnemy, damageSapphireEnemy, damageEmeraldEnemy, damageAmberEnemy, damageVoidEnemy,
     damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy, damageCitrineEnemy,
     damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy, damageNullstoneEnemy,
@@ -221,6 +221,14 @@ export function performAoeAttack(
         const dmg = ctx.damageAlivenParticle(p, group, rawDamage);
         if (dmg > 0) spawnHitVisualsAt(p.x, p.y, p.maxHp, dmg, p.glowColor);
       }
+    }
+  }
+  for (const g of horizonPentagonGroups) {
+    if (g.hp <= 0 || g.swapCdMs > 0) continue;
+    const dx = g.x - mote.x, dy = g.y - mote.y;
+    if (dx * dx + dy * dy <= aoeSq) {
+      const dmg = ctx.damageHorizonPentagonReal(g, rawDamage, armorIgnore);
+      if (dmg > 0) spawnHitVisualsAt(g.x, g.y, g.maxHp, dmg, '#6699ff');
     }
   }
   fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,

@@ -25,6 +25,7 @@ import {
   IOLITE_XP_MULT, AMETHYST_XP_MULT, DIAMOND_XP_MULT, NULLSTONE_XP_MULT,
   FRACTERYL_XP_MULT, EIGENSTEIN_XP_MULT,
 } from './rpg-enemy-constants';
+import { PENTAGON_XP_MULT, FLUID_PENTAGON_R, FLUID_PENTAGON_G, FLUID_PENTAGON_B } from './horizon-pentagon-constants';
 import {
   DUSTWISP_XP_MULT, RIBBONWORM_XP_MULT, LANTERNMOTH_XP_MULT, EYESTALK_XP_MULT,
   JELLYFISH_XP_MULT, CLOTHGHOST_XP_MULT, PLANTTURRET_XP_MULT, GEARINSECT_XP_MULT,
@@ -54,6 +55,7 @@ export function sweepStandardDeadEnemies(
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
     plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
+    horizonPentagonGroups,
     luckyMotes, fluid, getCachedLuckPercent,
   } = ctx;
 
@@ -417,5 +419,16 @@ export function sweepStandardDeadEnemies(
     if (fishDecoys[i].lifeMs <= 0) fishDecoys.splice(i, 1);
   }
 
+  for (let i = horizonPentagonGroups.length - 1; i >= 0; i--) {
+    const g = horizonPentagonGroups[i]!;
+    if (g.hp <= 0) {
+      fluid.addExplosion(g.x, g.y, FLUID_EXPLOSION_STRENGTH * 3.0, FLUID_PENTAGON_R, FLUID_PENTAGON_G, FLUID_PENTAGON_B);
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * PENTAGON_XP_MULT;
+      trySpawnLuckyMote(luckyMotes, 'horizon_pentagon', g.x, g.y, getCachedLuckPercent());
+      addKill('horizon_pentagon');
+      rpgSimState.lifetimeLateEnemyKills++;
+      horizonPentagonGroups.splice(i, 1);
+    }
+  }
   return totalXpFromKills;
 }

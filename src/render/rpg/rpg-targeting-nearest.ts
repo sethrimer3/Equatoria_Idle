@@ -215,6 +215,19 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'nadir_cube_point', x: e.x, y: e.y, distSq: d, nadirCubePoint: e }; }
   }
+  // Horizon pentagon — real body + missiles
+  for (const g of ctx.horizonPentagonGroups) {
+    if (g.hp <= 0) continue;
+    const dx = g.x - mx, dy = g.y - my;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq && !isLosBlocked(terrain, mx, my, g.x, g.y)) { bestSq = d; best = { kind: 'horizon_pentagon_real', x: g.x, y: g.y, distSq: d, horizonPentagonReal: g }; }
+    for (const m of g.missiles) {
+      if (m.hp <= 0 || m.explodeFlashMs > 0) continue;
+      const mdx = m.x - mx, mdy = m.y - my;
+      const md = mdx * mdx + mdy * mdy;
+      if (md <= bestSq && !isLosBlocked(terrain, mx, my, m.x, m.y)) { bestSq = md; best = { kind: 'horizon_missile', x: m.x, y: m.y, distSq: md, horizonMissile: m }; }
+    }
+  }
   // Aliven particle groups — target individual particles
   for (const group of ctx.alivenGroups) {
     for (const p of group.particles) {

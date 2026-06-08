@@ -234,6 +234,12 @@ export function performSingleAttack(
     const dmg = ctx.damageAlivenParticle(closestT.alivenParticle, closestT.alivenGroup, effectiveRaw);
     if (dmg > 0) spawnHitVisualsAt(closestT.alivenParticle.x, closestT.alivenParticle.y, closestT.alivenParticle.maxHp, dmg,
       isPiercing ? piercingColor : closestT.alivenParticle.glowColor, effectiveSourceColor);
+  } else if (closestT.horizonPentagonReal) {
+    const g = closestT.horizonPentagonReal;
+    const dmg = ctx.damageHorizonPentagonReal(g, effectiveRaw, defPierceRatio);
+    if (dmg > 0) spawnHitVisualsAt(g.x, g.y, g.maxHp, dmg, isPiercing ? piercingColor : '#6699ff', effectiveSourceColor);
+  } else if (closestT.horizonMissile) {
+    ctx.damageHorizonMissile(closestT.horizonMissile, effectiveRaw, defPierceRatio);
   }
 
   // ── Lens status post-hit: apply Tier 1 statuses to target ───────────────────

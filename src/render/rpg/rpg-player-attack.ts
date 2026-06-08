@@ -161,6 +161,9 @@ export interface RpgPlayerAttackCtx {
   damageAmethystFishEnemy: (e: import('./rpg-procedural-types').AmethystFishEnemy, raw: number, pierce: number) => number;
   damageDiamondFishEnemy: (e: import('./rpg-procedural-types').DiamondFishEnemy, raw: number, pierce: number) => number;
   damagePlantProjectile: (p: import('./rpg-procedural-types').PlantProjectile, raw: number) => number;
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
+  damageHorizonPentagonReal: (g: import('./horizon-pentagon-types').HorizonPentagonGroup, raw: number, pierce: number) => number;
+  damageHorizonMissile: (m: import('./horizon-pentagon-types').HorizonMissile, raw: number, pierce: number) => number;
 
   // Visual spawners
   spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string, sourceColor?: string) => void;

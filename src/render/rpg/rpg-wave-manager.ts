@@ -128,6 +128,7 @@ export interface WaveManagerCtx {
   nadirCubeTrailSegments: import('./nadir-cube-point-types').NadirCubeTrailSegment[];
   nadirCubeTurretBolts: import('./nadir-cube-point-types').NadirCubeTurretBolt[];
   nadirCubeLinkLasers: import('./nadir-cube-point-types').NadirCubeLinkLaser[];
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
 
   fluid: {
     addExplosion(x: number, y: number, strength: number, r: number, g: number, b: number): void;
@@ -183,7 +184,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
     eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    stardustEnemies, alivenGroups,
+    stardustEnemies, alivenGroups, horizonPentagonGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -277,6 +278,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || nadirCubeTrailSegments.length > 0
         || nadirCubeTurretBolts.length > 0
         || nadirCubeLinkLasers.length > 0
+        || horizonPentagonGroups.length > 0
         || ctx.getBossEnemy() !== null) return;
     // Aliven groups alive: either still partially spawned or still have live particles
     for (const group of alivenGroups) {

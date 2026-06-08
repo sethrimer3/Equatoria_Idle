@@ -113,6 +113,7 @@ export interface RpgWeaponCtx {
   eliteEnemies: EliteEnemy[];
   binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: StardustEnemy[];
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: import('./rpg-procedural-types').DustWispEnemy[];

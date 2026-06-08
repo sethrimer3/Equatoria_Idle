@@ -94,6 +94,11 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
     const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
     targets.push({ kind: 'nadir_cube_point', x: e.x, y: e.y, distSq: dx * dx + dy * dy, nadirCubePoint: e });
   }
+  for (const g of ctx.horizonPentagonGroups) {
+    if (g.hp <= 0) continue;
+    const dx = g.x - ctx.mote.x, dy = g.y - ctx.mote.y;
+    targets.push({ kind: 'horizon_pentagon_real', x: g.x, y: g.y, distSq: dx * dx + dy * dy, horizonPentagonReal: g });
+  }
   // Aliven: add each alive particle as an individual target
   for (const group of ctx.alivenGroups) {
     for (const p of group.particles) {

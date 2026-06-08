@@ -78,6 +78,7 @@ import {
   setLowGraphicsMode as setEliteDrawLowGraphics,
 } from './rpg-elite-enemy-draw';
 import { drawStardustEnemies, setLowGraphicsMode as setStardustDrawLowGraphics } from './rpg-stardust-draw';
+import { drawHorizonPentagonGroups } from './horizon-pentagon-draw';
 import {
   drawPolyominoEnemies,
   drawFissilePolyominoEnemies,
@@ -242,6 +243,7 @@ export interface RpgDrawCtx {
   nadirCubeTurretBolts: NadirCubeTurretBolt[];
   nadirCubeLinkLasers: NadirCubeLinkLaser[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
@@ -904,6 +906,7 @@ export function drawRpgFrame(
   drawRefractorPolyominoEnemies(canvas2d, ctx.refractorPolyominoEnemies, nowMs);
   drawEmpowerParticles(canvas2d, fs.visibleBounds);
   drawStardustEnemies(canvas2d, ctx.stardustEnemies);
+  drawHorizonPentagonGroups(canvas2d, ctx.horizonPentagonGroups, widthPx);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), widthPx, heightPx, glowTimeS);

@@ -60,6 +60,7 @@ import {
   makeEliteEnemy,
 } from './rpg-factories';
 import { makeStardustEnemy } from './rpg-stardust-factories';
+import { makeHorizonPentagonGroup } from './horizon-pentagon-factories';
 import {
   makePolyominoEnemy,
   makeFissilePolyominoEnemy,
@@ -157,6 +158,7 @@ export interface EnemySpawnCtx {
   amethystFishEnemies: AmethystFishEnemy[];
   diamondFishEnemies: DiamondFishEnemy[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
 }
 
 // ── Dev-mode spawn-candidate debug log ───────────────────────────────────────
@@ -751,6 +753,18 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       else if (enemyTypeId === 'proc_diamondfish') { const e = makeDiamondFishEnemy(spawnX, spawnY, wn);   ctx.diamondFishEnemies.push(e);     _proc = e; }
       if (_proc !== null) _onNonEliteSpawned(ctx, _proc, spawnX, spawnY);
     }
+  }
+  // ── Horizon pentagon ───────────────────────────────────────────────────────
+  if (enemyTypeId === 'horizon_pentagon') {
+    do {
+      spawnX = spawnLeft + 30 + Math.random() * (spawnW - 60);
+      spawnY = spawnTop  + 30 + Math.random() * (spawnH - 60);
+      const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+      if (dx * dx + dy * dy >= minDist * minDist) break;
+      attempts++;
+    } while (attempts < 20);
+    const g = makeHorizonPentagonGroup(spawnX, spawnY, wn, spawnTop, spawnTop + spawnH);
+    ctx.horizonPentagonGroups.push(g);
   }
   // Record final spawn position for the dev overlay (no-op outside dev mode).
   _logSpawn(spawnX, spawnY, _usedFallback ? 'fallback' : 'accepted', _devMode);

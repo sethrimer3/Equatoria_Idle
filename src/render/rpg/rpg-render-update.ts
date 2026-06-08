@@ -91,6 +91,7 @@ import {
   updateBinaryLaserSweep,
 } from './rpg-binary-ring-encounter';
 import { updateStardustEnemies } from './rpg-stardust-update';
+import { updateHorizonPentagonGroups } from './horizon-pentagon-update';
 import {
   updatePolyominoEnemies,
   updateFissilePolyominoEnemies,
@@ -166,6 +167,7 @@ export interface RpgEnemyUpdateArrays {
   nadirCubeTurretBolts: NadirCubeTurretBolt[];
   nadirCubeLinkLasers: NadirCubeLinkLaser[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
@@ -479,6 +481,14 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
       fluid: ctx.fluid as any,
     };
     updateStardustEnemies(a.stardustEnemies, stardustCtx, deltaMs);
+  }
+  // Horizon pentagon mirror-enemy update
+  if (a.horizonPentagonGroups.length > 0) {
+    updateHorizonPentagonGroups(a.horizonPentagonGroups, {
+      mote: ctx.mote,
+      dim: { w: ctx.enemyCtx.dim.w, h: ctx.enemyCtx.dim.h },
+      dealDamageToPlayer: (atk) => ctx.enemyCtx.dealDamageToPlayer(atk),
+    }, deltaMs);
   }
   // AlivenParticle group updates (contact damage, particle-life physics, special abilities)
   updateAlivenGroups(a.alivenGroups, ctx.alivenUpdateCtx, deltaMs);

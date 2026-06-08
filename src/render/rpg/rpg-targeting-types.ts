@@ -152,6 +152,9 @@ export interface RpgTargetingCtx {
   damageVerdurePlant: (plant: import('./terrain/rpg-verdure-growth').VerdurePlant, raw: number) => number;
   nadirCubePointEnemies: NadirCubePointEnemy[];
   damageNadirCubePointEnemy: (e: NadirCubePointEnemy, raw: number, pierce: number) => number;
+  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
+  damageHorizonPentagonReal: (g: import('./horizon-pentagon-types').HorizonPentagonGroup, raw: number, pierce: number) => number;
+  damageHorizonMissile: (m: import('./horizon-pentagon-types').HorizonMissile, raw: number, pierce: number) => number;
   /** Returns the current topographic terrain state, or null if none is active. */
   getTerrainState(): TopographicTerrainState | null;
 }

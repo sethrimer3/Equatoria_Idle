@@ -39,6 +39,8 @@ import type {
 } from './polyomino-enemy-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
+import type { HorizonPentagonGroup, HorizonMissile } from './horizon-pentagon-types';
+import { triggerHorizonPentagonSwap } from './horizon-pentagon-update';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
 import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
@@ -502,7 +504,28 @@ export function createDamageFns(ctx: DamageCtx) {
     damageAmethystFishEnemy,
     damageDiamondFishEnemy,
     damagePlantProjectile,
+    damageHorizonPentagonReal,
+    damageHorizonMissile,
   };
+
+  function damageHorizonPentagonReal(g: HorizonPentagonGroup, rawDamage: number, defPierceRatio: number): number {
+    if (g.swapCdMs > 0) return 0;
+    const effectiveDef = g.def * (1 - defPierceRatio);
+    const dmg = Math.max(0, rawDamage - effectiveDef);
+    if (dmg > 0) {
+      g.hp -= dmg;
+      recordDps(dmg, '#6699ff');
+      if (g.hp > 0) triggerHorizonPentagonSwap(g);
+    }
+    return dmg;
+  }
+
+  function damageHorizonMissile(m: HorizonMissile, rawDamage: number, _pierce: number): number {
+    const dmg = Math.min(rawDamage, m.hp);
+    m.hp -= dmg;
+    recordDps(dmg, '#ff99cc');
+    return dmg;
+  }
 }
 
 /**

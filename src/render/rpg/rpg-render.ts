@@ -528,6 +528,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const fissilePolyominoEnemies: FissilePolyominoEnemy[] = [];
   const refractorPolyominoEnemies: RefractorPolyominoEnemy[] = [];
   const stardustEnemies: StardustEnemy[]   = [];
+  const horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[] = [];
   const alivenGroups: AlivenParticleGroup[] = [];
 
   // ── Procedural creature arrays ─────────────────────────────────
@@ -612,6 +613,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
     damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
     damagePlantProjectile,
+    damageHorizonPentagonReal,
+    damageHorizonMissile,
   } = createDamageFns({ recordDps });
 
   // eslint-disable-next-line prefer-const
@@ -817,7 +820,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
       nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies, eigensteinBeams,
       eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-      binaryRingEnemies, binaryRingMissiles, stardustEnemies, alivenGroups,
+      binaryRingEnemies, binaryRingMissiles, stardustEnemies, horizonPentagonGroups, alivenGroups,
       dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
       jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
       spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -967,6 +970,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     binaryRingEnemies,
     nadirCubePointEnemies,
+    horizonPentagonGroups,
     stardustEnemies,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
@@ -985,7 +989,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageDiamondShard, damageNullstoneEnemy, damageVoidTendril,
     damageFracterylEnemy, damageFracterylShard, damageEigensteinEnemy,
     damagePolyominoEnemy, damageFissilePolyominoEnemy, damageRefractorPolyominoEnemy,
-    damageBinaryRingEnemy, damageNadirCubePointEnemy, damageEliteEnemy,
+    damageBinaryRingEnemy, damageNadirCubePointEnemy, damageHorizonPentagonReal, damageHorizonMissile, damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
@@ -1011,7 +1015,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    stardustEnemies, alivenGroups,
+    stardustEnemies, alivenGroups, horizonPentagonGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1200,6 +1204,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eliteEnemies,
     binaryRingEnemies,
     stardustEnemies,
+    horizonPentagonGroups,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
@@ -1222,13 +1227,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    eliteEnemies, binaryRingEnemies, stardustEnemies, alivenGroups,
+    eliteEnemies, binaryRingEnemies, stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
     plantProjectiles,
+    damageHorizonPentagonReal, damageHorizonMissile,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageQuartzSpike,
@@ -1521,7 +1527,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eigensteinEnemies, eigensteinBeams, eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     binaryRingEnemies, binaryRingMissiles,
     nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
-    stardustEnemies, alivenGroups,
+    stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1579,7 +1585,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     binaryRingEnemies, binaryRingMissiles,
     nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
-    stardustEnemies, alivenGroups,
+    stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -1652,7 +1658,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     binaryRingEnemies, binaryRingMissiles,
     nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
-    stardustEnemies, alivenGroups,
+    stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,

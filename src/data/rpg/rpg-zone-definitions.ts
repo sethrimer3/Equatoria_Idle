@@ -167,7 +167,7 @@ export const RPG_ZONE_DEFINITIONS: RpgZoneDefinition[] = [
         shortDescription: 'Equilibrium — a horizon boundary that transforms everything crossing it.',
       },
     ],
-    enemyIds: [],
+    enemyIds: ['horizon_pentagon'],
   },
 ];
 
