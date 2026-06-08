@@ -11,27 +11,14 @@
  *   4. Call tickEnemySpeechBubbles(dt) + tickNoDamageBarks(dt, ...arrays) each frame.
  *   5. Call renderEnemySpeechBubbles(ctx, viewport) in the draw loop.
  *
- * Enemy-specific and zone-specific line overrides can be added to ENEMY_BARK_OVERRIDES.
- * Add lines like: ENEMY_BARK_OVERRIDES['laser'] = { TOOK_MAJOR_DAMAGE: ["Pierced!"] }
+ * To add or edit enemy dialogue, edit src/data/enemy-barks.ts — no changes needed here.
  */
 
 import { setStatusAppliedCallback } from '../../sim/rpg/enemy-status-effects';
 import { DAMAGE_NUM_FONT_FAMILY } from './rpg-constants';
-
-// ── Bark event types ──────────────────────────────────────────────────────────
-
-export type BarkEventType =
-  | 'NO_DAMAGE_FOR_A_WHILE'
-  | 'BLOCKED_ATTACK'
-  | 'TOOK_SMALL_DAMAGE'
-  | 'TOOK_MAJOR_DAMAGE'
-  | 'STATUS_RESISTED'
-  | 'STATUS_WEAK'
-  | 'STATUS_NEUTRAL'
-  | 'DEALT_MAJOR_PLAYER_DAMAGE'
-  | 'KILLED_PLAYER'
-  | 'PLAYER_BLOCKED_DAMAGE'
-  | 'DEALT_TINY_PLAYER_DAMAGE';
+import { getEnemyBarkLine } from '../../data/enemy-barks';
+export type { BarkEventType } from '../../data/enemy-barks';
+import type { BarkEventType, BarkContext } from '../../data/enemy-barks';
 
 // ── Balancing constants ───────────────────────────────────────────────────────
 
@@ -58,32 +45,7 @@ const MAJOR_DAMAGE_RATIO  = 0.20;   // > 20 % of enemy maxHp = "major"
 const PLAYER_TINY_DAMAGE_RATIO  = 0.025; // < 2.5 % of player maxHp
 const PLAYER_MAJOR_DAMAGE_RATIO = 0.18;  // > 18 % of player maxHp
 
-// ── Bark text table ───────────────────────────────────────────────────────────
-
-const DEFAULT_BARKS: Record<BarkEventType, string[]> = {
-  NO_DAMAGE_FOR_A_WHILE:     ['Missed again.', 'Still standing.', 'Try harder.'],
-  BLOCKED_ATTACK:            ['Denied.', 'Too weak.', 'Not enough.'],
-  TOOK_SMALL_DAMAGE:         ['Was that it?', 'Barely felt it.', 'A scratch.'],
-  TOOK_MAJOR_DAMAGE:         ['That hurt!', 'Impossible...', 'Cracked!'],
-  STATUS_RESISTED:           ['I resist that.', 'No effect.', 'Wrong element.'],
-  STATUS_WEAK:               ['My weakness!', 'Not that!', 'It burns!'],
-  STATUS_NEUTRAL:            ['Annoying.', 'I feel it.', 'Tch.'],
-  DEALT_MAJOR_PLAYER_DAMAGE: ['Direct hit.', 'Break.', 'Good hit.'],
-  KILLED_PLAYER:             ['Fall.', 'Ended.', 'Silence.'],
-  PLAYER_BLOCKED_DAMAGE:     ['A shield?', 'Blocked?', 'Stand still.'],
-  DEALT_TINY_PLAYER_DAMAGE:  ['Hmph.', 'No...', 'Too guarded.'],
-};
-
-/**
- * Per-enemy-type or per-zone bark overrides.
- * Key is enemy type string (e.g. 'laser', 'elite', 'rubyfish').
- * Add entries here as the game grows with distinct enemy personalities.
- *
- * Example:
- *   ENEMY_BARK_OVERRIDES['laser'] = { TOOK_MAJOR_DAMAGE: ['Pierced!'] };
- *   ENEMY_BARK_OVERRIDES['elite'] = { KILLED_PLAYER: ['Pathetic.', 'Too easy.'] };
- */
-export const ENEMY_BARK_OVERRIDES: Partial<Record<string, Partial<Record<BarkEventType, string[]>>>> = {};
+// Bark dialogue lives in src/data/enemy-barks.ts — edit there to add/change lines.
 
 // ── Internal types ────────────────────────────────────────────────────────────
 
@@ -93,6 +55,8 @@ export interface BarkableEnemy {
   y: number;
   hp: number;
   maxHp: number;
+  /** Stable type identifier used to look up per-enemy dialogue (e.g. 'proc_dustwisp'). */
+  kind?: string;
 }
 
 interface SpeechBubble {
@@ -164,21 +128,21 @@ export function initEnemyBarkSystem(opts: {
 
 // ── Core try-bark ─────────────────────────────────────────────────────────────
 
-function _pickLine(eventType: BarkEventType, enemyTypeHint?: string): string {
-  // Look up per-type override first, fall back to defaults.
-  const overrideTable = enemyTypeHint ? ENEMY_BARK_OVERRIDES[enemyTypeHint] : undefined;
-  const lines         = overrideTable?.[eventType] ?? DEFAULT_BARKS[eventType];
-  return lines[Math.floor(Math.random() * lines.length)]!;
-}
-
-function _tryBark(enemy: BarkableEnemy, eventType: BarkEventType, chance: number): void {
+function _tryBark(
+  enemy:     BarkableEnemy,
+  eventType: BarkEventType,
+  chance:    number,
+  context?:  BarkContext,
+): void {
   if (!_initialized)             return;
   if (enemy.hp <= 0)             return;   // dead enemy — no bark
   if (_globalCooldownMs > 0)     return;   // global throttle active
   if ((_enemyCooldowns.get(enemy) ?? 0) > 0) return;  // per-enemy cooldown
   if (Math.random() > chance)    return;   // probability roll
 
-  const text      = _pickLine(eventType);
+  const text = getEnemyBarkLine(enemy, eventType, context);
+  if (text === null) return;   // no dialogue defined for this event/enemy combo
+
   const textWidth = _measureText(text);
 
   // Replace any existing bubble for this enemy (one at a time per enemy).
@@ -262,11 +226,11 @@ export function notifyPlayerDamaged(
  * No native affinity system exists yet; all statuses are classified as neutral.
  * Future: check an enemy affinity table and fire STATUS_RESISTED or STATUS_WEAK.
  */
-function _handleStatusApplied(enemy: BarkableEnemy, _statusKey: string): void {
+function _handleStatusApplied(enemy: BarkableEnemy, statusKey: string): void {
   // Future hook points:
   //   STATUS_RESISTED — if enemy has explicit resistance to this status type
   //   STATUS_WEAK     — if enemy has explicit weakness to this status type
-  _tryBark(enemy, 'STATUS_NEUTRAL', ENEMY_BARK_BASE_CHANCE);
+  _tryBark(enemy, 'STATUS_NEUTRAL', ENEMY_BARK_BASE_CHANCE, { statusType: statusKey });
 }
 
 // ── Tick ──────────────────────────────────────────────────────────────────────
