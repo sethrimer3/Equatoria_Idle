@@ -369,6 +369,6 @@ export {
 
 export {
   getWaveBoostMultiplier, formatWaveBoostPercent,
-  getRpgUpgradeLevel, getRpgSpeedMultiplier, getMaxEquippedWeapons,
+  getRpgUpgradeLevel, getRpgSpeedMultiplier, getMaxEquippedWeapons, getLevelRequiredForSlot,
   getBossXpMultiplier, isBossUnlocked,
 } from './rpg-state-upgrades';
