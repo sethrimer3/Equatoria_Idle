@@ -438,6 +438,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = sapphireFishEnemies.length - 1; i >= 0; i--) {
     if (sapphireFishEnemies[i].hp <= 0) {
+      pushDyingEnemy(sapphireFishEnemies[i].x, sapphireFishEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(sapphireFishEnemies[i].x, sapphireFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.35, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SAPPHIREFISH_XP_MULT;
       addKill('proc_sapphirefish'); sapphireFishEnemies.splice(i, 1);
