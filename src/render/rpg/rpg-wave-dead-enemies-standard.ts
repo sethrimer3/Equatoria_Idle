@@ -423,6 +423,7 @@ export function sweepStandardDeadEnemies(
   for (let i = emeraldFishEnemies.length - 1; i >= 0; i--) {
     if (emeraldFishEnemies[i].hp <= 0) {
       const fish = emeraldFishEnemies[i];
+      pushDyingEnemy(fish.x, fish.y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(fish.x, fish.y, FLUID_EXPLOSION_STRENGTH * 1.25, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EMERALDFISH_XP_MULT;
       addKill('proc_emeraldfish');
