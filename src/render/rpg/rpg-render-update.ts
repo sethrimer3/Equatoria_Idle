@@ -92,6 +92,8 @@ import {
 } from './rpg-binary-ring-encounter';
 import { updateStardustEnemies } from './rpg-stardust-update';
 import { updateHorizonPentagonGroups } from './horizon-pentagon-update';
+import { updateSpawnFlashes } from './rpg-spawn-flash';
+import { updateDyingEnemies } from './rpg-death-fade';
 import {
   updatePolyominoEnemies,
   updateFissilePolyominoEnemies,
