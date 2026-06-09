@@ -358,6 +358,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = gearInsectEnemies.length - 1; i >= 0; i--) {
     if (gearInsectEnemies[i].hp <= 0) {
+      pushDyingEnemy(gearInsectEnemies[i].x, gearInsectEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 6);
       fluid.addExplosion(gearInsectEnemies[i].x, gearInsectEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.8, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * GEARINSECT_XP_MULT;
       addKill('proc_gearinsect'); gearInsectEnemies.splice(i, 1);
