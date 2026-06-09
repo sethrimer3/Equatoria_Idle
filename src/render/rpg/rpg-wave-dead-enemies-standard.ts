@@ -285,6 +285,7 @@ export function sweepStandardDeadEnemies(
   // ── Procedural creature dead-enemy sweeps ────────────────────────────────────
   for (let i = dustWispEnemies.length - 1; i >= 0; i--) {
     if (dustWispEnemies[i].hp <= 0) {
+      pushDyingEnemy(dustWispEnemies[i].x, dustWispEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 4);
       fluid.addExplosion(dustWispEnemies[i].x, dustWispEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.0, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * DUSTWISP_XP_MULT;
       addKill('proc_dustwisp'); dustWispEnemies.splice(i, 1);
