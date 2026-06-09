@@ -293,6 +293,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = ribbonWormEnemies.length - 1; i >= 0; i--) {
     if (ribbonWormEnemies[i].hp <= 0) {
+      pushDyingEnemy(ribbonWormEnemies[i].x, ribbonWormEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(ribbonWormEnemies[i].x, ribbonWormEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.2, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * RIBBONWORM_XP_MULT;
       addKill('proc_ribbonworm'); ribbonWormEnemies.splice(i, 1);
