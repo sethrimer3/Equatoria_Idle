@@ -69,6 +69,7 @@ export function sweepStandardDeadEnemies(
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (enemies[i].hp <= 0) {
+      pushDyingEnemy(enemies[i].x, enemies[i].y, FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B, 4);
       fluid.addExplosion(enemies[i].x, enemies[i].y, FLUID_EXPLOSION_STRENGTH, FLUID_LASER_R, FLUID_LASER_G, FLUID_LASER_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * LASER_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'laser', enemies[i].x, enemies[i].y, getCachedLuckPercent());
