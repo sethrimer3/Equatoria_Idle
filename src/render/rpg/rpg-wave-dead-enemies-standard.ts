@@ -406,6 +406,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = rubyFishEnemies.length - 1; i >= 0; i--) {
     if (rubyFishEnemies[i].hp <= 0) {
+      pushDyingEnemy(rubyFishEnemies[i].x, rubyFishEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(rubyFishEnemies[i].x, rubyFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * RUBYFISH_XP_MULT;
       addKill('proc_rubyfish'); rubyFishEnemies.splice(i, 1);
