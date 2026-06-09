@@ -203,6 +203,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = diamondEnemies.length - 1; i >= 0; i--) {
     if (diamondEnemies[i].hp <= 0) {
+      pushDyingEnemy(diamondEnemies[i].x, diamondEnemies[i].y, FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B, 7);
       fluid.addExplosion(diamondEnemies[i].x, diamondEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 3.0, FLUID_DIAMOND_R, FLUID_DIAMOND_G, FLUID_DIAMOND_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * DIAMOND_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'diamond', diamondEnemies[i].x, diamondEnemies[i].y, getCachedLuckPercent());
