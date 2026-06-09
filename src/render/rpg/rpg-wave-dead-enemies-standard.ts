@@ -79,6 +79,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = sapphireEnemies.length - 1; i >= 0; i--) {
     if (sapphireEnemies[i].hp <= 0) {
+      pushDyingEnemy(sapphireEnemies[i].x, sapphireEnemies[i].y, FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B, 5);
       fluid.addExplosion(sapphireEnemies[i].x, sapphireEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_SAPPH_R, FLUID_SAPPH_G, FLUID_SAPPH_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SAPPHIRE_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'sapphire', sapphireEnemies[i].x, sapphireEnemies[i].y, getCachedLuckPercent());
