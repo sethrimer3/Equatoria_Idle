@@ -202,8 +202,8 @@
         },
         "computerBackground_00010.png": {
             "frame": {
-                "x": 2,
-                "y": 1286,
+                "x": 7242,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -222,8 +222,8 @@
         },
         "computerBackground_00011.png": {
             "frame": {
-                "x": 726,
-                "y": 1286,
+                "x": 7966,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -242,8 +242,8 @@
         },
         "computerBackground_00012.png": {
             "frame": {
-                "x": 1450,
-                "y": 1286,
+                "x": 8690,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -262,8 +262,8 @@
         },
         "computerBackground_00013.png": {
             "frame": {
-                "x": 2174,
-                "y": 1286,
+                "x": 9414,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -282,8 +282,8 @@
         },
         "computerBackground_00014.png": {
             "frame": {
-                "x": 2898,
-                "y": 1286,
+                "x": 10138,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -302,8 +302,8 @@
         },
         "computerBackground_00015.png": {
             "frame": {
-                "x": 3622,
-                "y": 1286,
+                "x": 10862,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -322,8 +322,8 @@
         },
         "computerBackground_00016.png": {
             "frame": {
-                "x": 4346,
-                "y": 1286,
+                "x": 11586,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -342,8 +342,8 @@
         },
         "computerBackground_00017.png": {
             "frame": {
-                "x": 5070,
-                "y": 1286,
+                "x": 12310,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -362,8 +362,8 @@
         },
         "computerBackground_00018.png": {
             "frame": {
-                "x": 5794,
-                "y": 1286,
+                "x": 13034,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -382,8 +382,8 @@
         },
         "computerBackground_00019.png": {
             "frame": {
-                "x": 6518,
-                "y": 1286,
+                "x": 13758,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -402,8 +402,8 @@
         },
         "computerBackground_00020.png": {
             "frame": {
-                "x": 2,
-                "y": 2570,
+                "x": 14482,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -422,8 +422,8 @@
         },
         "computerBackground_00021.png": {
             "frame": {
-                "x": 726,
-                "y": 2570,
+                "x": 15206,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -442,8 +442,8 @@
         },
         "computerBackground_00022.png": {
             "frame": {
-                "x": 1450,
-                "y": 2570,
+                "x": 15930,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -462,8 +462,8 @@
         },
         "computerBackground_00023.png": {
             "frame": {
-                "x": 2174,
-                "y": 2570,
+                "x": 16654,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -482,8 +482,8 @@
         },
         "computerBackground_00024.png": {
             "frame": {
-                "x": 2898,
-                "y": 2570,
+                "x": 17378,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -502,8 +502,8 @@
         },
         "computerBackground_00025.png": {
             "frame": {
-                "x": 3622,
-                "y": 2570,
+                "x": 18102,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -522,8 +522,8 @@
         },
         "computerBackground_00026.png": {
             "frame": {
-                "x": 4346,
-                "y": 2570,
+                "x": 18826,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -542,8 +542,8 @@
         },
         "computerBackground_00027.png": {
             "frame": {
-                "x": 5070,
-                "y": 2570,
+                "x": 19550,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -562,8 +562,8 @@
         },
         "computerBackground_00028.png": {
             "frame": {
-                "x": 5794,
-                "y": 2570,
+                "x": 20274,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -582,8 +582,8 @@
         },
         "computerBackground_00029.png": {
             "frame": {
-                "x": 6518,
-                "y": 2570,
+                "x": 20998,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -602,8 +602,8 @@
         },
         "computerBackground_00030.png": {
             "frame": {
-                "x": 2,
-                "y": 3854,
+                "x": 21722,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -622,8 +622,8 @@
         },
         "computerBackground_00031.png": {
             "frame": {
-                "x": 726,
-                "y": 3854,
+                "x": 22446,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -642,8 +642,8 @@
         },
         "computerBackground_00032.png": {
             "frame": {
-                "x": 1450,
-                "y": 3854,
+                "x": 23170,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -662,8 +662,8 @@
         },
         "computerBackground_00033.png": {
             "frame": {
-                "x": 2174,
-                "y": 3854,
+                "x": 23894,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -682,8 +682,8 @@
         },
         "computerBackground_00034.png": {
             "frame": {
-                "x": 2898,
-                "y": 3854,
+                "x": 24618,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -702,8 +702,8 @@
         },
         "computerBackground_00035.png": {
             "frame": {
-                "x": 3622,
-                "y": 3854,
+                "x": 25342,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -722,8 +722,8 @@
         },
         "computerBackground_00036.png": {
             "frame": {
-                "x": 4346,
-                "y": 3854,
+                "x": 26066,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -742,8 +742,8 @@
         },
         "computerBackground_00037.png": {
             "frame": {
-                "x": 5070,
-                "y": 3854,
+                "x": 26790,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -762,8 +762,8 @@
         },
         "computerBackground_00038.png": {
             "frame": {
-                "x": 5794,
-                "y": 3854,
+                "x": 27514,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -782,8 +782,8 @@
         },
         "computerBackground_00039.png": {
             "frame": {
-                "x": 6518,
-                "y": 3854,
+                "x": 28238,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -802,8 +802,8 @@
         },
         "computerBackground_00040.png": {
             "frame": {
-                "x": 2,
-                "y": 5138,
+                "x": 28962,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -822,8 +822,8 @@
         },
         "computerBackground_00041.png": {
             "frame": {
-                "x": 726,
-                "y": 5138,
+                "x": 29686,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -842,8 +842,8 @@
         },
         "computerBackground_00042.png": {
             "frame": {
-                "x": 1450,
-                "y": 5138,
+                "x": 30410,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -862,8 +862,8 @@
         },
         "computerBackground_00043.png": {
             "frame": {
-                "x": 2174,
-                "y": 5138,
+                "x": 31134,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -882,8 +882,8 @@
         },
         "computerBackground_00044.png": {
             "frame": {
-                "x": 2898,
-                "y": 5138,
+                "x": 31858,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -902,8 +902,8 @@
         },
         "computerBackground_00045.png": {
             "frame": {
-                "x": 3622,
-                "y": 5138,
+                "x": 32582,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -922,8 +922,8 @@
         },
         "computerBackground_00046.png": {
             "frame": {
-                "x": 4346,
-                "y": 5138,
+                "x": 33306,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -942,8 +942,8 @@
         },
         "computerBackground_00047.png": {
             "frame": {
-                "x": 5070,
-                "y": 5138,
+                "x": 34030,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -962,8 +962,8 @@
         },
         "computerBackground_00048.png": {
             "frame": {
-                "x": 5794,
-                "y": 5138,
+                "x": 34754,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -982,8 +982,8 @@
         },
         "computerBackground_00049.png": {
             "frame": {
-                "x": 6518,
-                "y": 5138,
+                "x": 35478,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1002,7 +1002,7 @@
         },
         "computerBackground_00050.png": {
             "frame": {
-                "x": 7242,
+                "x": 36202,
                 "y": 2,
                 "w": 720,
                 "h": 1280
@@ -1022,8 +1022,8 @@
         },
         "computerBackground_00051.png": {
             "frame": {
-                "x": 7242,
-                "y": 1286,
+                "x": 36926,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1042,8 +1042,8 @@
         },
         "computerBackground_00052.png": {
             "frame": {
-                "x": 7242,
-                "y": 2570,
+                "x": 37650,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1062,8 +1062,8 @@
         },
         "computerBackground_00053.png": {
             "frame": {
-                "x": 7242,
-                "y": 3854,
+                "x": 38374,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1082,8 +1082,8 @@
         },
         "computerBackground_00054.png": {
             "frame": {
-                "x": 7242,
-                "y": 5138,
+                "x": 39098,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1102,8 +1102,8 @@
         },
         "computerBackground_00055.png": {
             "frame": {
-                "x": 2,
-                "y": 6422,
+                "x": 39822,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1122,8 +1122,8 @@
         },
         "computerBackground_00056.png": {
             "frame": {
-                "x": 726,
-                "y": 6422,
+                "x": 40546,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1142,8 +1142,8 @@
         },
         "computerBackground_00057.png": {
             "frame": {
-                "x": 1450,
-                "y": 6422,
+                "x": 41270,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1162,8 +1162,8 @@
         },
         "computerBackground_00058.png": {
             "frame": {
-                "x": 2174,
-                "y": 6422,
+                "x": 41994,
+                "y": 2,
                 "w": 720,
                 "h": 1280
             },
@@ -1187,8 +1187,8 @@
         "image": "spritesheet.png",
         "format": "RGBA8888",
         "size": {
-            "w": 7964,
-            "h": 7704
+            "w": 42716,
+            "h": 1284
         },
         "scale": "1",
         "comment": "Created with TexturePacker Online (free version)\nhttps://www.codeandweb.com/texturepacker-online\n\nTexturePacker desktop offers better support for Pixi and Phaser with sprite trimming, better packing algorithms, hardware texture compression, and PNG optimization.\nTry TexturePacker desktop: https://www.codeandweb.com/texturepacker"

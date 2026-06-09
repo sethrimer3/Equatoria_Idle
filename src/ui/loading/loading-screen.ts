@@ -1,69 +1,129 @@
 /**
- * Loading screen — displays company logo while essential assets load.
+ * Loading screen shown while the application finishes bootstrap work.
  */
 
-import { LOGO_PATH } from '../../render/assets/asset-paths';
-import { loadImage } from '../../render/assets/asset-loader';
+const SPRITESHEET_PATH = 'ASSETS/ANIMATIONS/computerBackground/spritesheet.png';
+const SPRITESHEET_DATA_PATH = 'ASSETS/ANIMATIONS/computerBackground/spritesheet.json';
+const FRAME_DURATION_MS = 1000 / 30;
+const LAST_FRAME_HOLD_MS = 3000;
+const MINIMUM_DISPLAY_MS = 4000;
+
+interface AtlasFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface AtlasData {
+  frames: Record<string, { frame: AtlasFrame }>;
+}
 
 export interface LoadingScreen {
   /** The loading screen DOM element. */
   readonly element: HTMLElement;
-  /** Fade out and remove the loading screen. Returns a promise that resolves when complete. */
+  /** Fade out and remove the loading screen after its minimum display time. */
   fadeOut(): Promise<void>;
 }
 
+function delay(durationMs: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, durationMs));
+}
+
 /**
- * Create the loading screen and begin loading the logo.
- * The returned promise resolves when the logo is loaded (or after a timeout).
+ * Create the loading screen and begin its controlled frame animation.
  */
 export async function createLoadingScreen(): Promise<LoadingScreen> {
+  const createdAtMs = performance.now();
   const overlay = document.createElement('div');
   overlay.className = 'loading-screen';
 
-  const logoContainer = document.createElement('div');
-  logoContainer.className = 'loading-logo-container';
+  const canvas = document.createElement('canvas');
+  canvas.className = 'loading-animation';
+  canvas.width = 720;
+  canvas.height = 1280;
+  canvas.setAttribute('aria-label', 'Loading Equatoria Idle');
+  overlay.appendChild(canvas);
 
-  const logoImg = document.createElement('img');
-  logoImg.className = 'loading-logo';
-  logoImg.alt = 'Gravy Thyme';
+  const context = canvas.getContext('2d');
+  const spritesheet = new Image();
+  let frames: AtlasFrame[] = [];
+  let animationFrameId = 0;
+  let animationStartMs = 0;
 
-  const loadingText = document.createElement('div');
-  loadingText.className = 'loading-text';
-  loadingText.textContent = 'Loading...';
+  const drawFrame = (frameIndex: number): void => {
+    const frame = frames[frameIndex];
+    if (!context || !frame) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(
+      spritesheet,
+      frame.x,
+      frame.y,
+      frame.w,
+      frame.h,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+  };
 
-  logoContainer.appendChild(logoImg);
-  overlay.appendChild(logoContainer);
-  overlay.appendChild(loadingText);
+  const animate = (nowMs: number): void => {
+    const cycleAnimationMs = frames.length * FRAME_DURATION_MS;
+    const cycleDurationMs = cycleAnimationMs + LAST_FRAME_HOLD_MS;
+    const cycleElapsedMs = (nowMs - animationStartMs) % cycleDurationMs;
+    const frameIndex = cycleElapsedMs >= cycleAnimationMs
+      ? frames.length - 1
+      : Math.min(frames.length - 1, Math.floor(cycleElapsedMs / FRAME_DURATION_MS));
+    drawFrame(frameIndex);
+    animationFrameId = requestAnimationFrame(animate);
+  };
 
-  // Try to load the logo
-  try {
-    const img = await Promise.race([
-      loadImage(LOGO_PATH),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
-    ]);
-    logoImg.src = img.src;
-  } catch {
-    // If logo fails, just show text
-    logoImg.style.display = 'none';
-  }
+  const spritesheetLoaded = new Promise<void>((resolve, reject) => {
+    spritesheet.addEventListener('load', () => resolve(), { once: true });
+    spritesheet.addEventListener('error', () => reject(new Error('Failed to load loading-screen spritesheet')), { once: true });
+  });
+  spritesheet.src = SPRITESHEET_PATH;
 
-  // Show for at least 1.5 seconds for branding
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  Promise.all([
+    spritesheetLoaded,
+    fetch(SPRITESHEET_DATA_PATH).then(async response => {
+      if (!response.ok) throw new Error(`Failed to load loading-screen atlas data: ${response.status}`);
+      return response.json() as Promise<AtlasData>;
+    }),
+  ]).then(([, atlas]) => {
+    frames = Object.entries(atlas.frames)
+      .sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
+      .map(([, entry]) => entry.frame);
+    const firstFrame = frames[0];
+    if (!firstFrame) throw new Error('Loading-screen atlas contains no frames');
+    canvas.width = firstFrame.w;
+    canvas.height = firstFrame.h;
+    animationStartMs = performance.now();
+    animationFrameId = requestAnimationFrame(animate);
+  }).catch(() => {
+    canvas.classList.add('loading-animation--unavailable');
+  });
 
   return {
     element: overlay,
-    fadeOut(): Promise<void> {
+    async fadeOut(): Promise<void> {
+      const remainingDisplayMs = Math.max(0, MINIMUM_DISPLAY_MS - (performance.now() - createdAtMs));
+      await delay(remainingDisplayMs);
+
       return new Promise(resolve => {
+        let resolved = false;
+        const finish = (): void => {
+          if (resolved) return;
+          resolved = true;
+          cancelAnimationFrame(animationFrameId);
+          overlay.remove();
+          resolve();
+        };
+
         overlay.classList.add('loading-screen--fade-out');
-        overlay.addEventListener('transitionend', () => {
-          overlay.remove();
-          resolve();
-        }, { once: true });
-        // Fallback in case transition doesn't fire
-        setTimeout(() => {
-          overlay.remove();
-          resolve();
-        }, 1000);
+        overlay.addEventListener('transitionend', finish, { once: true });
+        setTimeout(finish, 1000);
       });
     },
   };
