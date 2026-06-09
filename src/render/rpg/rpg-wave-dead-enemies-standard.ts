@@ -157,6 +157,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = sunstoneEnemies.length - 1; i >= 0; i--) {
     if (sunstoneEnemies[i].hp <= 0) {
+      pushDyingEnemy(sunstoneEnemies[i].x, sunstoneEnemies[i].y, FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B, 5);
       fluid.addExplosion(sunstoneEnemies[i].x, sunstoneEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.6, FLUID_SUNSTONE_R, FLUID_SUNSTONE_G, FLUID_SUNSTONE_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SUNSTONE_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'sunstone', sunstoneEnemies[i].x, sunstoneEnemies[i].y, getCachedLuckPercent());
