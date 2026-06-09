@@ -382,6 +382,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = shadowHandEnemies.length - 1; i >= 0; i--) {
     if (shadowHandEnemies[i].hp <= 0) {
+      pushDyingEnemy(shadowHandEnemies[i].x, shadowHandEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 7);
       fluid.addExplosion(shadowHandEnemies[i].x, shadowHandEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 2.2, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SHADOWHAND_XP_MULT;
       addKill('proc_shadowhand'); shadowHandEnemies.splice(i, 1);
