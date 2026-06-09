@@ -273,7 +273,6 @@ export function createSettingsPanel(
   credits.className = 'credits';
   credits.innerHTML = `
     <p>Equatoria Idle — Build #${BUILD_NUMBER}</p>
-    <p>A mathematical idle adventure</p>
   `;
   panel.appendChild(credits);
 

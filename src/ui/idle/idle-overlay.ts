@@ -87,6 +87,7 @@ export function createIdleOverlay(): IdleOverlay {
 
   // ── Tier rows (one per tier, hidden if locked) ──
   const tierTotalEls: HTMLElement[] = [];
+  let visibleTierRewards: IdleRewardSummary['tierRewards'] = [];
 
   // We create rows dynamically from the summary on show()
   // but we need a container ready.
@@ -126,16 +127,12 @@ export function createIdleOverlay(): IdleOverlay {
     // Build / rebuild tier rows
     tierRowsContainer.innerHTML = '';
     tierTotalEls.length = 0;
+    visibleTierRewards = summary.tierRewards.filter(reward => reward.isUnlocked);
 
-    for (const reward of summary.tierRewards) {
+    for (const reward of visibleTierRewards) {
       const row = document.createElement('div');
       row.className = 'idle-overlay__row';
       row.style.borderLeftColor = reward.color;
-
-      if (!reward.isUnlocked) {
-        row.hidden = true;
-        row.setAttribute('aria-hidden', 'true');
-      }
 
       const dot = document.createElement('img');
       dot.className = 'idle-overlay__tier-dot';
@@ -184,9 +181,8 @@ export function createIdleOverlay(): IdleOverlay {
       const currentEquiv = summary.equivalenceGained * ease;
       equivTotal.textContent = '+' + formatNumber(currentEquiv);
 
-      for (let i = 0; i < summary.tierRewards.length; i++) {
-        const reward = summary.tierRewards[i];
-        if (!reward.isUnlocked) continue;
+      for (let i = 0; i < visibleTierRewards.length; i++) {
+        const reward = visibleTierRewards[i];
         const el = tierTotalEls[i];
         if (el) {
           el.textContent = formatNumber(reward.totalMotes * ease);
@@ -198,9 +194,8 @@ export function createIdleOverlay(): IdleOverlay {
       } else {
         // Snap to final values
         equivTotal.textContent = '+' + formatNumber(summary.equivalenceGained);
-        for (let i = 0; i < summary.tierRewards.length; i++) {
-          const reward = summary.tierRewards[i];
-          if (!reward.isUnlocked) continue;
+        for (let i = 0; i < visibleTierRewards.length; i++) {
+          const reward = visibleTierRewards[i];
           const el = tierTotalEls[i];
           if (el) el.textContent = formatNumber(reward.totalMotes);
         }

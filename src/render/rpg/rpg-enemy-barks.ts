@@ -15,7 +15,16 @@
  */
 
 import { setStatusAppliedCallback } from '../../sim/rpg/enemy-status-effects';
-import { DAMAGE_NUM_FONT_FAMILY } from './rpg-constants';
+import {
+  DAMAGE_NUM_DECEL, DAMAGE_NUM_DURATION_MS, DAMAGE_NUM_FONT_FAMILY, DAMAGE_NUM_INITIAL_SPEED,
+  LASER_ENEMY_COLOR, SAPPHIRE_ENEMY_COLOR,
+} from './rpg-constants';
+import {
+  AMBER_ENEMY_COLOR, AMETHYST_ENEMY_COLOR, CITRINE_ENEMY_COLOR, DIAMOND_ENEMY_COLOR,
+  EIGENSTEIN_ENEMY_COLOR, EMERALD_ENEMY_COLOR, FRACTERYL_ENEMY_COLOR, IOLITE_ENEMY_COLOR,
+  NULLSTONE_ENEMY_COLOR, QUARTZ_ENEMY_COLOR, RUBY_ENEMY_COLOR, SUNSTONE_ENEMY_COLOR,
+  VOID_ENEMY_COLOR,
+} from './rpg-enemy-constants';
 import { getEnemyBarkLine } from '../../data/enemy-barks';
 export type { BarkEventType } from '../../data/enemy-barks';
 import type { BarkEventType, BarkContext } from '../../data/enemy-barks';
@@ -33,7 +42,7 @@ export const ENEMY_BARK_PER_ENEMY_COOLDOWN_MS = 6000;   // 6 s
 /** Minimum ms between any two barks across all enemies (global throttle). */
 export const ENEMY_BARK_GLOBAL_COOLDOWN_MS    = 1800;   // 1.8 s
 /** How long a speech bubble stays visible. */
-export const ENEMY_BARK_DURATION_MS           = 2200;   // 2.2 s
+export const ENEMY_BARK_DURATION_MS           = DAMAGE_NUM_DURATION_MS * 3;
 /** Seconds without taking damage before an enemy fires a taunt bark. */
 export const ENEMY_NO_DAMAGE_BARK_DELAY_MS    = 5000;   // 5 s
 
@@ -57,13 +66,18 @@ export interface BarkableEnemy {
   maxHp: number;
   /** Stable type identifier used to look up per-enemy dialogue (e.g. 'proc_dustwisp'). */
   kind?: string;
+  color?: string;
 }
 
 interface SpeechBubble {
   enemy: BarkableEnemy;
   text: string;
-  /** Cached text width in world-space px (measured once at spawn, avoids per-frame layout). */
-  textWidth: number;
+  /** Independent floating-text position and velocity in world-space pixels. */
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
   timerMs: number;
   maxTimerMs: number;
 }
@@ -82,27 +96,22 @@ let _initialized                           = false;
 
 const BARK_FONT_PX      = 7;
 const BARK_FONT         = `bold ${BARK_FONT_PX}px ${DAMAGE_NUM_FONT_FAMILY}`;
-const BUBBLE_PAD_X      = 5;   // horizontal padding inside bubble
-const BUBBLE_PAD_Y      = 3;   // vertical padding inside bubble
-const BUBBLE_ABOVE_Y    = 16;  // world-px above enemy center where bubble sits
-const BUBBLE_TAIL_H     = 5;   // height of the pointing tail
-const BUBBLE_CORNER_R   = 3;   // rounded-corner radius
-const BUBBLE_BG_COLOR   = 'rgba(235, 240, 255, 0.93)';
-const BUBBLE_TEXT_COLOR = '#181828';
 
-// ── Text measurement ─────────────────────────────────────────────────────────
+const BARK_COLORS: Readonly<Record<string, string>> = {
+  laser: LASER_ENEMY_COLOR, sapphire: SAPPHIRE_ENEMY_COLOR, emerald: EMERALD_ENEMY_COLOR,
+  amber: AMBER_ENEMY_COLOR, void: VOID_ENEMY_COLOR, quartz: QUARTZ_ENEMY_COLOR,
+  ruby: RUBY_ENEMY_COLOR, sunstone: SUNSTONE_ENEMY_COLOR, citrine: CITRINE_ENEMY_COLOR,
+  iolite: IOLITE_ENEMY_COLOR, amethyst: AMETHYST_ENEMY_COLOR, diamond: DIAMOND_ENEMY_COLOR,
+  nullstone: NULLSTONE_ENEMY_COLOR, fracteryl: FRACTERYL_ENEMY_COLOR,
+  eigenstein: EIGENSTEIN_ENEMY_COLOR,
+};
 
-let _measureCtx: CanvasRenderingContext2D | null = null;
-
-function _measureText(text: string): number {
-  if (!_measureCtx) {
-    const c  = document.createElement('canvas');
-    c.width  = 1;
-    c.height = 1;
-    _measureCtx = c.getContext('2d')!;
-  }
-  _measureCtx.font = BARK_FONT;
-  return _measureCtx.measureText(text).width;
+function _getBarkColor(enemy: BarkableEnemy): string {
+  if (enemy.color) return enemy.color;
+  if (enemy.kind) return BARK_COLORS[enemy.kind] ?? '#ffffff';
+  if ('phase' in enemy) return LASER_ENEMY_COLOR;
+  if ('shieldHp' in enemy) return SAPPHIRE_ENEMY_COLOR;
+  return '#ffffff';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -143,7 +152,7 @@ function _tryBark(
   const text = getEnemyBarkLine(enemy, eventType, context);
   if (text === null) return;   // no dialogue defined for this event/enemy combo
 
-  const textWidth = _measureText(text);
+  const angle = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 2);
 
   // Replace any existing bubble for this enemy (one at a time per enemy).
   for (let i = _activeBubbles.length - 1; i >= 0; i--) {
@@ -153,7 +162,11 @@ function _tryBark(
   _activeBubbles.push({
     enemy,
     text,
-    textWidth,
+    x: enemy.x,
+    y: enemy.y,
+    vx: Math.cos(angle) * DAMAGE_NUM_INITIAL_SPEED,
+    vy: Math.sin(angle) * DAMAGE_NUM_INITIAL_SPEED,
+    color: _getBarkColor(enemy),
     timerMs:    ENEMY_BARK_DURATION_MS,
     maxTimerMs: ENEMY_BARK_DURATION_MS,
   });
@@ -245,6 +258,12 @@ export function tickEnemySpeechBubbles(deltaMs: number): void {
   for (let i = _activeBubbles.length - 1; i >= 0; i--) {
     const b = _activeBubbles[i]!;
     b.timerMs -= deltaMs;
+    const dtScale = deltaMs / 16.667;
+    b.x += b.vx * dtScale;
+    b.y += b.vy * dtScale;
+    const damp = Math.pow(DAMAGE_NUM_DECEL, dtScale);
+    b.vx *= damp;
+    b.vy *= damp;
     if (b.timerMs <= 0 || b.enemy.hp <= 0) _activeBubbles.splice(i, 1);
   }
 }
@@ -284,7 +303,7 @@ export function tickNoDamageBarks(
  */
 export function renderEnemySpeechBubbles(
   ctx: CanvasRenderingContext2D,
-  viewport: { left: number; top: number; right: number; bottom: number },
+  _viewport: { left: number; top: number; right: number; bottom: number },
 ): void {
   if (_activeBubbles.length === 0) return;
 
@@ -292,6 +311,8 @@ export function renderEnemySpeechBubbles(
   ctx.font          = BARK_FONT;
   ctx.textAlign     = 'center';
   ctx.textBaseline  = 'middle';
+  ctx.lineWidth     = 2;
+  ctx.strokeStyle   = '#000000';
 
   for (const b of _activeBubbles) {
     if (b.enemy.hp <= 0) continue;
@@ -301,69 +322,12 @@ export function renderEnemySpeechBubbles(
     const alpha    = progress < 0.3 ? progress / 0.3 : 1.0;
     if (alpha <= 0) continue;
 
-    const bubbleW = b.textWidth + BUBBLE_PAD_X * 2;
-    const bubbleH = BARK_FONT_PX + BUBBLE_PAD_Y * 2;
-    // Tail base is at the bottom of the bubble box; tip points down toward the enemy.
-    const tailHalfW = Math.min(4, bubbleW * 0.18);
-
-    // Horizontal centre — clamped so bubble stays inside viewport.
-    const minCx = viewport.left  + bubbleW / 2 + 2;
-    const maxCx = viewport.right - bubbleW / 2 - 2;
-    const cx    = Math.max(minCx, Math.min(maxCx, b.enemy.x));
-
-    // Vertical position — prefer above the enemy; flip below if no room.
-    const flipped   = (b.enemy.y - BUBBLE_ABOVE_Y - bubbleH) < viewport.top + 2;
-    const bubbleTop = flipped
-      ? b.enemy.y + BUBBLE_ABOVE_Y
-      : b.enemy.y - BUBBLE_ABOVE_Y - bubbleH;
-
-    const bubbleLeft = cx - bubbleW / 2;
-    const bubbleMidY = bubbleTop + bubbleH / 2;
-    // Tail extends from the bubble edge nearest the enemy, pointing toward it.
-    const tailBaseY  = flipped ? bubbleTop : bubbleTop + bubbleH;
-    const tailTipY   = flipped ? tailBaseY - BUBBLE_TAIL_H : tailBaseY + BUBBLE_TAIL_H;
-    // Tail tip x clamps to bubble left/right so the tail never detaches.
-    const tailTipX   = Math.max(bubbleLeft + tailHalfW, Math.min(bubbleLeft + bubbleW - tailHalfW, b.enemy.x));
-
     ctx.globalAlpha = alpha;
-
-    // Background box
-    ctx.fillStyle = BUBBLE_BG_COLOR;
-    ctx.beginPath();
-    _rrect(ctx, bubbleLeft, bubbleTop, bubbleW, bubbleH, BUBBLE_CORNER_R);
-    ctx.fill();
-
-    // Pointer tail
-    ctx.beginPath();
-    ctx.moveTo(tailTipX - tailHalfW, tailBaseY);
-    ctx.lineTo(tailTipX + tailHalfW, tailBaseY);
-    ctx.lineTo(tailTipX, tailTipY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Text
-    ctx.fillStyle = BUBBLE_TEXT_COLOR;
-    ctx.fillText(b.text, cx, bubbleMidY);
+    ctx.fillStyle = b.color;
+    ctx.strokeText(b.text, Math.round(b.x), Math.round(b.y));
+    ctx.fillText(b.text, Math.round(b.x), Math.round(b.y));
   }
 
   ctx.globalAlpha = 1;
   ctx.restore();
-}
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-
-function _rrect(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number,
-): void {
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y,     x + w, y + r,     r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x,     y + h, x,     y + h - r, r);
-  ctx.lineTo(x,     y + r);
-  ctx.arcTo(x,     y,     x + r, y,         r);
-  ctx.closePath();
 }
