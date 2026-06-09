@@ -18,6 +18,7 @@
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { RpgMote } from './rpg-types';
 import type { BossEnemy, TeleportParticle } from './rpg-enemy-types';
+import type { BossDialogueEvent } from '../../data/boss-dialogue';
 import { makeBossEnemy } from './rpg-factories';
 import {
   SWORD_COMBO_THRESHOLD,
@@ -81,6 +82,9 @@ export interface BossWaveCtx {
   onExitBossWave?: () => void;
   /** Called each time the player is teleported back to the safe zone. */
   onTeleportToSafeZone?: () => void;
+  onBossSpawned?(boss: BossEnemy): void;
+  onBossDamaged?(boss: BossEnemy, damageAmount: number): void;
+  onBossEvent?(boss: BossEnemy, eventType: BossDialogueEvent): void;
 }
 
 // ── Handle returned by factory ────────────────────────────────────────────────
@@ -181,7 +185,9 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
   function startBossFight(bossId: number): void {
     if (ctx.getIsBossWaveActive()) return;
     const waveForScaling = Math.max(bossId * 100, ctx.rpgSimState.highestWaveReached);
-    ctx.setBossEnemy(makeBossEnemy(bossId, waveForScaling, ctx.dim.w, ctx.dim.h));
+    const boss = makeBossEnemy(bossId, waveForScaling, ctx.dim.w, ctx.dim.h);
+    ctx.setBossEnemy(boss);
+    ctx.onBossSpawned?.(boss);
     ctx.setIsBossFightFromMenu(true);
     enterBossWave();
   }
@@ -197,15 +203,19 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
       return 0;
     }
     if (boss.shieldHp > 0) {
+      const previousShieldHp = boss.shieldHp;
       const shieldDmg = Math.min(boss.shieldHp, rawDamage);
       boss.shieldHp -= shieldDmg;
       ctx.recordDps(shieldDmg, '#ffd700');
+      ctx.onBossDamaged?.(boss, previousShieldHp - boss.shieldHp);
+      if (previousShieldHp > 0 && boss.shieldHp <= 0) ctx.onBossEvent?.(boss, 'BOSS_SHIELD_BROKEN');
       return shieldDmg;
     }
     const effectiveDef = boss.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
     boss.hp = Math.max(0, boss.hp - dmg);
     if (dmg > 0) {
+      ctx.onBossDamaged?.(boss, dmg);
       ctx.recordDps(dmg, '#ffd700');
       boss.isFiringPaused = true;
       if (ctx.getIsBossWaveActive()) {

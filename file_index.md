@@ -747,6 +747,12 @@
 - `rpg-render.ts` retains `isBossWaveActive`, `bossActiveEquipIds`, and `bossPreWaveWeaponTiers` as let-variables; `getEffectiveEquippedIds()` stays in `rpg-render.ts` and reads them directly.
 - Initialized after `statsPanel` is created (which sets up `recordDps`), since `damageBossEnemy` and `spawnDamageNumber` callbacks are required.
 
+### src/data/boss-dialogue.ts and src/render/rpg/rpg-boss-dialogue.ts
+
+- Boss-specific scripted dialogue is separate from normal enemy barks.
+- Edit only `src/data/boss-dialogue.ts` to add boss names, intro lines, phase lines, HP thresholds, and event dialogue.
+- The render-side director tracks one-time thresholds/phases, priority, cooldowns, and the boss subtitle box.
+
 ### src/render/rpg/rpg-boss-stage-director.ts (NEW, build 110)
 - Stage director for boss-wave fights. Choreographs a bottom-to-boss traversal loop.
 - State type: `BossStageDirectorState` — tracks stage index, timer, corridor, hazards, wisps, flash, dev mode.

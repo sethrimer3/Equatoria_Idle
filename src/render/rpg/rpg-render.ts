@@ -119,6 +119,13 @@ import {
   notifyPlayerDamaged,
 } from './rpg-enemy-barks';
 import {
+  initBossDialogueSystem,
+  notifyBossDamaged,
+  notifyBossEvent,
+  notifyBossKilledPlayer,
+  notifyBossSpawned,
+} from './rpg-boss-dialogue';
+import {
   setAllDrawLowGraphics,
   type RpgDrawCtx, createRpgDrawFrameState,
 } from './rpg-render-draw';
@@ -919,6 +926,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onPlayerHit: () => { waveManager?.onPlayerHit(); },
     onPlayerDamaged: (dmg, blocked, playerDied, playerMaxHp) => {
       notifyPlayerDamaged(dmg, blocked, playerDied, playerMaxHp);
+      if (bossEnemy) {
+        if (playerDied) notifyBossKilledPlayer(bossEnemy);
+        else if (blocked) notifyBossEvent(bossEnemy, 'PLAYER_BLOCKED_BOSS_ATTACK');
+        else if (dmg / Math.max(1, playerMaxHp) >= 0.18) notifyBossEvent(bossEnemy, 'BOSS_HIT_PLAYER_HARD');
+        if (!playerDied && playerStats.hp / Math.max(1, playerStats.maxHp) <= 0.15) {
+          notifyBossEvent(bossEnemy, 'PLAYER_NEAR_DEATH');
+        }
+      }
     },
   };
   const {
@@ -1114,6 +1129,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsDevMode:            () => _isDevMode,
     onNewCodexEntry:         () => { drawFrameState.codexNotificationStartedMs = performance.now(); },
   });
+  initBossDialogueSystem();
 
   // ── Create weapon systems ──────────────────────────────────────
   // All helper functions referenced in weaponCtx are function declarations
@@ -1377,6 +1393,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
     onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); },
     onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
+    onBossSpawned:              (boss) => notifyBossSpawned(boss),
+    onBossDamaged:              (boss, damageAmount) => notifyBossDamaged(boss, damageAmount),
+    onBossEvent:                (boss, eventType) => notifyBossEvent(boss, eventType),
   });
   startBossFightFromZoneSelect = (bossId) => bossWave.startBossFight(bossId);
 

@@ -37,6 +37,7 @@ export interface AttackTrailState {
 }
 
 export interface LaserEnemy {
+  readonly kind: 'laser';
   x: number; y: number;
   vx: number; vy: number;
   hp: number; maxHp: number;
@@ -131,6 +132,7 @@ export interface OrbitProjectile {
 // ── Sapphire enemy and missile interfaces ─────────────────────
 
 export interface SapphireEnemy {
+  readonly kind: 'sapphire';
   x: number; y: number;
   vx: number; vy: number;
   hp: number; maxHp: number;

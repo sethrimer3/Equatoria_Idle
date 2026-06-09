@@ -230,6 +230,32 @@ export const BARK_TABLE: EnemyBarkTable = {
       },
     },
 
+    emerald: { TOOK_MAJOR_DAMAGE: ['Ghost path broken!', 'You found me.'], KILLED_PLAYER: ['Outpaced.', 'A clean pursuit.'] },
+    amber: { TOOK_MAJOR_DAMAGE: ['Resin cracked!', 'Shard the threat!'], KILLED_PLAYER: ['Preserved in amber.', 'Held fast.'] },
+    void: { TOOK_MAJOR_DAMAGE: ['The void recoils.', 'Containment failing.'], KILLED_PLAYER: ['Unmade.', 'Nothing remains.'] },
+    quartz: { TOOK_MAJOR_DAMAGE: ['Fracture spreading!', 'Spikes, defend me!'], KILLED_PLAYER: ['Shattered.', 'Quartz endures.'] },
+    ruby: { TOOK_MAJOR_DAMAGE: ['Flame flickers!', 'Core cracked!'], KILLED_PLAYER: ['Scorched.', 'Ruby claims you.'] },
+    sunstone: { TOOK_MAJOR_DAMAGE: ['Corona broken!', 'Light falters!'], KILLED_PLAYER: ['Burn away.', 'Dawn wins.'] },
+    citrine: { TOOK_MAJOR_DAMAGE: ['Charge disrupted!', 'Current unstable!'], KILLED_PLAYER: ['Conducted.', 'Circuit closed.'] },
+    iolite: { TOOK_MAJOR_DAMAGE: ['Gravity slipping!', 'Orbit broken!'], KILLED_PLAYER: ['Pulled under.', 'No escape velocity.'] },
+    amethyst: { TOOK_MAJOR_DAMAGE: ['Fleet disrupted!', 'Shield lattice cracked!'], KILLED_PLAYER: ['Surrounded.', 'Formation complete.'] },
+    diamond: { BLOCKED_ATTACK: ['Diamond deflects.', 'Unbreakable.'], TOOK_MAJOR_DAMAGE: ['A flaw?!', 'Facet chipped!'], KILLED_PLAYER: ['Cut clean.', 'Precision.'] },
+    nullstone: { TOOK_MAJOR_DAMAGE: ['Horizon ruptured!', 'Mass destabilized!'], KILLED_PLAYER: ['Collapsed.', 'Past the horizon.'] },
+    fracteryl: { TOOK_MAJOR_DAMAGE: ['Pattern severed!', 'Recursion broken!'], KILLED_PLAYER: ['Repeated.', 'The pattern wins.'] },
+    eigenstein: { TOOK_MAJOR_DAMAGE: ['Rule disrupted!', 'State unstable!'], KILLED_PLAYER: ['Equation resolved.', 'Invariant restored.'] },
+
+    proc_quartzfish: { TOOK_MAJOR_DAMAGE: ['Scales cracked!', 'Reef breached!'], KILLED_PLAYER: ['Dragged below.', 'Quartz tides.'] },
+    proc_rubyfish: { TOOK_MAJOR_DAMAGE: ['Fins aflame!', 'Heat fading!'], KILLED_PLAYER: ['Boiled away.', 'Red tide.'] },
+    proc_sunstonefish: { TOOK_MAJOR_DAMAGE: ['Light scattered!', 'Surface broken!'], KILLED_PLAYER: ['Sunken.', 'Bright waters win.'] },
+    proc_emeraldfish: { TOOK_MAJOR_DAMAGE: ['Current lost!', 'Wake exposed!'], KILLED_PLAYER: ['Outswum.', 'Lost in the green.'] },
+    proc_sapphirefish: { TOOK_MAJOR_DAMAGE: ['Blue scales split!', 'Deep shield broken!'], KILLED_PLAYER: ['Into the deep.', 'Cold current.'] },
+    proc_amethystfish: { TOOK_MAJOR_DAMAGE: ['Shoal scattered!', 'Formation broken!'], KILLED_PLAYER: ['Encircled.', 'The shoal closes.'] },
+    proc_diamondfish: { BLOCKED_ATTACK: ['Scales deflect.', 'Too soft.'], TOOK_MAJOR_DAMAGE: ['A scale chipped!', 'Armor breached!'], KILLED_PLAYER: ['Cut by the current.', 'Hard waters.'] },
+
+    verdure_polyomino: { TOOK_MAJOR_DAMAGE: ['Shape broken!', 'Roots shifting!'], KILLED_PLAYER: ['Fit complete.', 'The garden closes.'] },
+    verdure_polyomino_fissile: { TOOK_MAJOR_DAMAGE: ['Split again!', 'Pieces scatter!'], KILLED_PLAYER: ['Divided and conquered.', 'More pieces remain.'] },
+    verdure_polyomino_refractor: { BLOCKED_ATTACK: ['Refracted.', 'Angle denied.'], TOOK_MAJOR_DAMAGE: ['Prism cracked!', 'Light misaligned!'], KILLED_PLAYER: ['Bent away.', 'Refraction wins.'] },
+
     elite_quartz: {
       NO_DAMAGE_FOR_A_WHILE:     ['Crystalline patience.', 'I can wait forever.'],
       TOOK_MAJOR_DAMAGE:         ['A fracture?!', 'This formation holds.'],
@@ -242,12 +268,17 @@ export const BARK_TABLE: EnemyBarkTable = {
       KILLED_PLAYER:             ['Scorched.', 'Ruby fire claims all.'],
     },
 
+    elite_sunstone: { TOOK_MAJOR_DAMAGE: ['Royal corona cracked!', 'The zenith wavers!'], KILLED_PLAYER: ['Kneel to the sun.', 'Ash at noon.'] },
+    elite_citrine: { TOOK_MAJOR_DAMAGE: ['Prime circuit broken!', 'Voltage falling!'], KILLED_PLAYER: ['Judgment conducted.', 'Grounded.'] },
+    elite_iolite: { TOOK_MAJOR_DAMAGE: ['Gravity throne shaken!', 'Orbit decays!'], KILLED_PLAYER: ['Crushed by orbit.', 'You fall inward.'] },
+    elite_amethyst: { TOOK_MAJOR_DAMAGE: ['Regal lattice fractured!', 'Formation, hold!'], KILLED_PLAYER: ['The fleet prevails.', 'Amethyst reigns.'] },
     elite_diamond: {
       NO_DAMAGE_FOR_A_WHILE:     ['Unbreakable.', 'Your patience will fail first.'],
       BLOCKED_ATTACK:            ['Diamond deflects.', 'Futile.'],
       TOOK_MAJOR_DAMAGE:         ['Impossible!', 'A chip...'],
       KILLED_PLAYER:             ['Cleaved.', 'Precision.'],
     },
+    elite_nullstone: { TOOK_MAJOR_DAMAGE: ['Singularity wounded!', 'The horizon tears!'], KILLED_PLAYER: ['All paths end here.', 'Erased.'] },
 
   },
 };
@@ -279,14 +310,14 @@ function _resolveEntry(entry: BarkLineEntry, statusType?: string): string | null
  *   5. null
  */
 export function getEnemyBarkLine(
-  enemy:     { kind?: string },
+  enemy:     { kind?: string; tier?: string },
   eventType: BarkEventType,
   context?:  BarkContext,
 ): string | null {
   const statusType = context?.statusType;
 
   // Steps 1+2: enemy-specific (try the enemy's own entry first)
-  const kind = enemy.kind;
+  const kind = getEnemyBarkKey(enemy);
   if (kind) {
     const enemyEntry = BARK_TABLE.enemies[kind]?.[eventType];
     if (enemyEntry !== undefined) {
@@ -306,4 +337,10 @@ export function getEnemyBarkLine(
 
   // Step 5: no bark
   return null;
+}
+
+/** Resolves runtime enemy identity to the stable key used by BARK_TABLE. */
+export function getEnemyBarkKey(enemy: { kind?: string; tier?: string }): string | undefined {
+  if (enemy.kind === 'elite' && enemy.tier) return `elite_${enemy.tier}`;
+  return enemy.kind;
 }

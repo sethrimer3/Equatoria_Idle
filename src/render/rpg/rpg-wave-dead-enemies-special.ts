@@ -26,6 +26,7 @@ import { ALIVEN_FLUID_COLORS } from './rpg-aliven-constants';
 import type { WaveManagerCtx } from './rpg-wave-manager';
 import { recordAlivenKill } from '../../dev/session-telemetry';
 import { recalcAllNonEliteBuffs, type BuffableEnemy } from './rpg-elite-buff';
+import { notifyBossDefeated } from './rpg-boss-dialogue';
 
 const ALL_ELITE_TYPE_IDS = [
   'elite_quartz', 'elite_ruby', 'elite_sunstone', 'elite_citrine',
@@ -229,6 +230,7 @@ export function handleBossDefeat(ctx: WaveManagerCtx): void {
   }
 
   ctx.setIsBossFightFromMenu(false);
+  notifyBossDefeated(bossEnemy);
   ctx.exitBossWave();
   const glowC = BOSS_GLOW_COLORS[Math.min(bossEnemy.bossId, BOSS_GLOW_COLORS.length - 1)];
   spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP (${xpMult.toFixed(0)}x)`, 1.0, glowC);

@@ -119,6 +119,7 @@ import {
 import { updateEmpowerParticles } from './rpg-elite-empower-particles';
 import { spawnNadirCubeEncounter, updateNadirCubePointEnemies, clearNadirCubeEncounter } from './nadir-cube-point-update';
 import { tickEnemySpeechBubbles, tickNoDamageBarks } from './rpg-enemy-barks';
+import { tickBossDialogue } from './rpg-boss-dialogue';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
@@ -534,6 +535,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   );
 
   const bossEnemy = ctx.getBossEnemy();
+  tickBossDialogue(deltaMs, bossEnemy);
   if (bossEnemy) {
     const bossSpeedMult = ctx.getIsBossWaveActive() ? (ctx.rpgSimState.bossSpeedPct / 100) : 1;
     updateBossEnemy(bossEnemy, ctx.bossCtx, deltaMs * bossSpeedMult);

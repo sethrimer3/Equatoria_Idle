@@ -66,6 +66,7 @@ export interface BarkableEnemy {
   maxHp: number;
   /** Stable type identifier used to look up per-enemy dialogue (e.g. 'proc_dustwisp'). */
   kind?: string;
+  tier?: string;
   color?: string;
 }
 
@@ -188,6 +189,7 @@ export function notifyEnemyHit(
   blocked: boolean,
 ): void {
   if (!_initialized) return;
+  if (enemy.kind === 'boss') return;
   // Always reset the no-damage timer on any hit (blocked or not).
   _noDamageTimers.set(enemy, 0);
 
@@ -217,6 +219,7 @@ export function notifyPlayerDamaged(
   if (!_initialized) return;
   const attacker = _getClosestLivingEnemy?.();
   if (!attacker) return;
+  if (attacker.kind === 'boss') return;
 
   if (playerDied) {
     _tryBark(attacker, 'KILLED_PLAYER', ENEMY_BARK_KILL_CHANCE);
@@ -239,11 +242,21 @@ export function notifyPlayerDamaged(
  * No native affinity system exists yet; all statuses are classified as neutral.
  * Future: check an enemy affinity table and fire STATUS_RESISTED or STATUS_WEAK.
  */
+export function classifyEnemyStatusAffinity(
+  _enemy: BarkableEnemy,
+  _statusKey: string,
+): 'resisted' | 'weak' | 'neutral' {
+  return 'neutral';
+}
+
 function _handleStatusApplied(enemy: BarkableEnemy, statusKey: string): void {
-  // Future hook points:
-  //   STATUS_RESISTED — if enemy has explicit resistance to this status type
-  //   STATUS_WEAK     — if enemy has explicit weakness to this status type
-  _tryBark(enemy, 'STATUS_NEUTRAL', ENEMY_BARK_BASE_CHANCE, { statusType: statusKey });
+  const affinity = classifyEnemyStatusAffinity(enemy, statusKey);
+  const eventType: BarkEventType = affinity === 'resisted'
+    ? 'STATUS_RESISTED'
+    : affinity === 'weak'
+      ? 'STATUS_WEAK'
+      : 'STATUS_NEUTRAL';
+  _tryBark(enemy, eventType, ENEMY_BARK_BASE_CHANCE, { statusType: statusKey });
 }
 
 // ── Tick ──────────────────────────────────────────────────────────────────────

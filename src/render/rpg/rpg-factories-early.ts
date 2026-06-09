@@ -39,6 +39,7 @@ export function makeAttackTrail(): AttackTrailState {
 export function makeLaserEnemy(x: number, y: number, waveNumber: number): LaserEnemy {
   const scale = getWaveStatScale(waveNumber);
   return {
+    kind: 'laser',
     x, y, vx: 0, vy: 0,
     hp: Math.ceil(LASER_HP_INIT * scale), maxHp: Math.ceil(LASER_HP_INIT * scale),
     atk: Math.ceil(LASER_ATK_INIT * scale), def: Math.ceil(LASER_DEF_INIT * scale),
@@ -54,6 +55,7 @@ export function makeLaserEnemy(x: number, y: number, waveNumber: number): LaserE
 export function makeSapphireEnemy(x: number, y: number, waveNumber: number): SapphireEnemy {
   const scale = getWaveStatScale(waveNumber);
   return {
+    kind: 'sapphire',
     x, y, vx: 0, vy: 0,
     hp: Math.ceil(SAPPHIRE_HP_INIT * scale), maxHp: Math.ceil(SAPPHIRE_HP_INIT * scale),
     atk: Math.ceil(SAPPHIRE_ATK_INIT * scale), def: Math.ceil(SAPPHIRE_DEF_INIT * scale),

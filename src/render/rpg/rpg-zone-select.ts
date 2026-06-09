@@ -38,6 +38,7 @@ const CORNER_R          = 12;    // rounded-rect corner radius
 const EXIT_SIZE         = 46;    // exit button CSS px
 const EXIT_MARGIN       = 12;
 const DRAG_THRESHOLD    = 5;     // px before a tap becomes a drag
+const BACKGROUND_PATH   = 'ASSETS/ANIMATIONS/rpgBackground/rpgBackground_animation.webp';
 
 // Pan soft-limits in world coordinates (camera center)
 const PAN_MIN_X = -100;
@@ -131,6 +132,26 @@ function roundedRect(
   ctx.lineTo(x, y + r);
   ctx.arcTo(x, y, x + r, y, r);
   ctx.closePath();
+}
+
+function drawBackground(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | undefined,
+  width: number,
+  height: number,
+): void {
+  ctx.fillStyle = '#04040c';
+  ctx.fillRect(0, 0, width, height);
+
+  if (image && image.naturalWidth > 1 && image.naturalHeight > 1) {
+    const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+    const drawWidth = image.naturalWidth * scale;
+    const drawHeight = image.naturalHeight * scale;
+    ctx.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+  }
+
+  ctx.fillStyle = 'rgba(4,4,12,0.58)';
+  ctx.fillRect(0, 0, width, height);
 }
 
 function drawSquareNode(
@@ -462,6 +483,10 @@ export function createRpgZoneSelectPanel(
       console.warn(`[ZoneSelect] missing icon: ${node.iconPath}`);
     });
   }
+  loadImage(BACKGROUND_PATH).catch(() => {
+    // eslint-disable-next-line no-console
+    console.warn(`[ZoneSelect] missing background: ${BACKGROUND_PATH}`);
+  });
 
   // ── Camera ────────────────────────────────────────────────────────────────
 
@@ -670,9 +695,7 @@ export function createRpgZoneSelectPanel(
     const W = canvas.width;
     const H = canvas.height;
 
-    // Background
-    ctx.fillStyle = 'rgba(4,4,12,0.93)';
-    ctx.fillRect(0, 0, W, H);
+    drawBackground(ctx, getCachedImage(BACKGROUND_PATH), W, H);
 
     // Screen-space title (drawn before world transform)
     ctx.font         = 'bold 13px monospace';
