@@ -446,6 +446,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = amethystFishEnemies.length - 1; i >= 0; i--) {
     if (amethystFishEnemies[i].hp <= 0) {
+      pushDyingEnemy(amethystFishEnemies[i].x, amethystFishEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(amethystFishEnemies[i].x, amethystFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.35, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * AMETHYSTFISH_XP_MULT;
       addKill('proc_amethystfish'); amethystFishEnemies.splice(i, 1);
