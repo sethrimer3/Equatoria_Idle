@@ -55,6 +55,11 @@ const NODE_DAMPING      = 0.92;
 const MAX_PHYSICS_DT_MS = 32;
 const AMBIENT_PARTICLE_COUNT = 180;
 const AMBIENT_PUSH_RADIUS = 115;
+const AMBIENT_TRAIL_CAP = 9;
+const AMBIENT_TRAIL_SAMPLE_MS = 24;
+const AMBIENT_COLOR_RADIUS = 125;
+const POINTER_FORCE_SCALE = 0.004;
+const DRAG_FORCE_SCALE = 0.012;
 const AMBIENT_COLORS = [
   '#d8d0c0', '#8fa8ff', // Euhedral
   '#9a72ff', '#ff9b42', // Impetus
@@ -62,6 +67,14 @@ const AMBIENT_COLORS = [
   '#55e080', '#b6ff70', // Verdure
   '#fff172', '#cf70ff', // Horizon
 ] as const;
+const NODE_COLORS: Record<string, string> = {
+  euhedral: '#d8d0c0', impetus: '#9a72ff', caustics: '#4fdfff', verdure: '#55e080',
+  zenith: '#fff172', true: '#f0f0ff', nadir: '#7840b8',
+  boss_quartz: '#d8d0c0', boss_ruby: '#ef3b4f', boss_sunstone: '#ff9b32',
+  boss_citrine: '#ffd84a', boss_iolite: '#6458d8', boss_amethyst: '#b154e8',
+  boss_diamond: '#d8f4ff', boss_nullstone: '#541080', boss_fracteryl: '#ee4ac8',
+  boss_eigenstein: '#32d5dc', boss_equation: '#d5a328', boss_void: '#7c32e8',
+};
 const BACKGROUND_PATH   = 'ASSETS/ANIMATIONS/rpgBackground/rpgBackground_animation.webp';
 
 // Pan soft-limits in world coordinates (camera center)
@@ -94,6 +107,14 @@ const BOSS_IDS = [
 
 function getBossIconPath(id: string): string {
   return `ASSETS/SPRITES/bossIcons/bossIcon_${id}.png`;
+}
+
+function hexToRgb(color: string): { r: number; g: number; b: number } {
+  return {
+    r: parseInt(color.slice(1, 3), 16),
+    g: parseInt(color.slice(3, 5), 16),
+    b: parseInt(color.slice(5, 7), 16),
+  };
 }
 
 // ─── World layout ──────────────────────────────────────────────────────────
@@ -166,6 +187,9 @@ interface MapConnection {
 interface AmbientParticle {
   x: number; y: number; vx: number; vy: number;
   radius: number; alpha: number; color: string;
+  colorR: number; colorG: number; colorB: number;
+  trailX: Float32Array; trailY: Float32Array;
+  trailHead: number; trailCount: number; trailSampleMs: number;
 }
 
 // ─── Render helpers ────────────────────────────────────────────────────────
@@ -619,15 +643,24 @@ export function createRpgZoneSelectPanel(
     makeGlowSprite(24, '#ffd866'),
     makeGlowSprite(32, '#e2a83e'),
   ];
-  const ambientParticles: AmbientParticle[] = Array.from({ length: AMBIENT_PARTICLE_COUNT }, (_, i) => ({
-    x: seededUnit(i + 301) * 1100 - 100,
-    y: seededUnit(i + 503) * 900 - 100,
-    vx: (seededUnit(i + 701) - 0.5) * 0.018,
-    vy: (seededUnit(i + 907) - 0.5) * 0.018,
-    radius: 0.8 + seededUnit(i + 1103) * 2.2,
-    alpha: 0.18 + seededUnit(i + 1301) * 0.5,
-    color: AMBIENT_COLORS[Math.floor(seededUnit(i + 1501) * AMBIENT_COLORS.length)],
-  }));
+  const ambientParticles: AmbientParticle[] = Array.from({ length: AMBIENT_PARTICLE_COUNT }, (_, i) => {
+    const color = AMBIENT_COLORS[Math.floor(seededUnit(i + 1501) * AMBIENT_COLORS.length)];
+    const rgb = hexToRgb(color);
+    return {
+      x: seededUnit(i + 301) * 1100 - 100,
+      y: seededUnit(i + 503) * 900 - 100,
+      vx: (seededUnit(i + 701) - 0.5) * 0.018,
+      vy: (seededUnit(i + 907) - 0.5) * 0.018,
+      radius: 0.8 + seededUnit(i + 1103) * 2.2,
+      alpha: 0.18 + seededUnit(i + 1301) * 0.5,
+      color, colorR: rgb.r, colorG: rgb.g, colorB: rgb.b,
+      trailX: new Float32Array(AMBIENT_TRAIL_CAP),
+      trailY: new Float32Array(AMBIENT_TRAIL_CAP),
+      trailHead: 0,
+      trailCount: 0,
+      trailSampleMs: seededUnit(i + 1701) * AMBIENT_TRAIL_SAMPLE_MS,
+    };
+  });
 
   function openBossModal(bossId: number): void {
     bossCard.innerHTML = `<div style="color:#fff172;font-weight:700;margin-bottom:10px">Boss ${bossId}: ${bossNodes[bossId - 1].label}</div>`;
@@ -789,15 +822,43 @@ export function createRpgZoneSelectPanel(
 
   function updateAmbientParticles(deltaMs: number): void {
     const dt = Math.min(MAX_PHYSICS_DT_MS, Math.max(0, deltaMs));
+    const nodes = allNodes();
+    const colorRadiusSq = AMBIENT_COLOR_RADIUS * AMBIENT_COLOR_RADIUS;
     for (const particle of ambientParticles) {
+      particle.trailSampleMs += dt;
+      if (particle.trailSampleMs >= AMBIENT_TRAIL_SAMPLE_MS) {
+        particle.trailSampleMs %= AMBIENT_TRAIL_SAMPLE_MS;
+        particle.trailX[particle.trailHead] = particle.x;
+        particle.trailY[particle.trailHead] = particle.y;
+        particle.trailHead = (particle.trailHead + 1) % AMBIENT_TRAIL_CAP;
+        if (particle.trailCount < AMBIENT_TRAIL_CAP) particle.trailCount++;
+      }
       particle.vx *= 0.985;
       particle.vy *= 0.985;
       particle.x += particle.vx * dt;
       particle.y += particle.vy * dt;
-      if (particle.x < -120) particle.x = 1100;
-      else if (particle.x > 1120) particle.x = -100;
-      if (particle.y < -120) particle.y = 900;
-      else if (particle.y > 920) particle.y = -100;
+      let closestNode: MapNode | null = null;
+      let closestDistSq = colorRadiusSq;
+      for (const node of nodes) {
+        const dx = particle.x - node.x;
+        const dy = particle.y - node.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < closestDistSq) { closestDistSq = distSq; closestNode = node; }
+      }
+      if (closestNode) {
+        const target = hexToRgb(NODE_COLORS[closestNode.id] ?? '#ffffff');
+        const blend = (1 - Math.sqrt(closestDistSq) / AMBIENT_COLOR_RADIUS) * 0.045;
+        particle.colorR += (target.r - particle.colorR) * blend;
+        particle.colorG += (target.g - particle.colorG) * blend;
+        particle.colorB += (target.b - particle.colorB) * blend;
+        particle.color = `rgb(${Math.round(particle.colorR)},${Math.round(particle.colorG)},${Math.round(particle.colorB)})`;
+      }
+      let wrapped = false;
+      if (particle.x < -120) { particle.x = 1100; wrapped = true; }
+      else if (particle.x > 1120) { particle.x = -100; wrapped = true; }
+      if (particle.y < -120) { particle.y = 900; wrapped = true; }
+      else if (particle.y > 920) { particle.y = -100; wrapped = true; }
+      if (wrapped) particle.trailCount = 0;
     }
     pointerVelocityX *= 0.82;
     pointerVelocityY *= 0.82;
@@ -807,6 +868,28 @@ export function createRpgZoneSelectPanel(
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const particle of ambientParticles) {
+      for (let i = 1; i < particle.trailCount; i++) {
+        const previous = (particle.trailHead - particle.trailCount + i - 1 + AMBIENT_TRAIL_CAP) % AMBIENT_TRAIL_CAP;
+        const current = (particle.trailHead - particle.trailCount + i + AMBIENT_TRAIL_CAP) % AMBIENT_TRAIL_CAP;
+        const t = i / particle.trailCount;
+        ctx.globalAlpha = particle.alpha * t * 0.42;
+        ctx.strokeStyle = particle.color;
+        ctx.lineWidth = Math.max(0.45, particle.radius * t);
+        ctx.beginPath();
+        ctx.moveTo(particle.trailX[previous], particle.trailY[previous]);
+        ctx.lineTo(particle.trailX[current], particle.trailY[current]);
+        ctx.stroke();
+      }
+      if (particle.trailCount > 0) {
+        const newest = (particle.trailHead - 1 + AMBIENT_TRAIL_CAP) % AMBIENT_TRAIL_CAP;
+        ctx.globalAlpha = particle.alpha * 0.55;
+        ctx.strokeStyle = particle.color;
+        ctx.lineWidth = particle.radius;
+        ctx.beginPath();
+        ctx.moveTo(particle.trailX[newest], particle.trailY[newest]);
+        ctx.lineTo(particle.x, particle.y);
+        ctx.stroke();
+      }
       ctx.globalAlpha = particle.alpha;
       ctx.fillStyle = particle.color;
       ctx.beginPath();
@@ -912,7 +995,7 @@ export function createRpgZoneSelectPanel(
     if (hasPointerWorld) {
       pointerVelocityX = currentWorld.x - pointerWorldX;
       pointerVelocityY = currentWorld.y - pointerWorldY;
-      pushAmbientParticles(currentWorld.x, currentWorld.y, pointerVelocityX * 0.035, pointerVelocityY * 0.035);
+      pushAmbientParticles(currentWorld.x, currentWorld.y, pointerVelocityX * POINTER_FORCE_SCALE, pointerVelocityY * POINTER_FORCE_SCALE);
     }
     pointerWorldX = currentWorld.x;
     pointerWorldY = currentWorld.y;
@@ -948,7 +1031,7 @@ export function createRpgZoneSelectPanel(
           draggedNode.y = wp.y - dragNodeOffsetY;
           draggedNode.vx = 0;
           draggedNode.vy = 0;
-          pushAmbientParticles(draggedNode.x, draggedNode.y, pointerVelocityX * 0.09, pointerVelocityY * 0.09);
+          pushAmbientParticles(draggedNode.x, draggedNode.y, pointerVelocityX * DRAG_FORCE_SCALE, pointerVelocityY * DRAG_FORCE_SCALE);
         } else {
           camX = dragBaseCamX - (sx - dragBaseMidX) / camZoom;
           camY = dragBaseCamY - (sy - dragBaseMidY) / camZoom;

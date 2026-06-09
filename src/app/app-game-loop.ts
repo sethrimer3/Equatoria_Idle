@@ -288,6 +288,18 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
         compatibleTierId: inputTierId,
         isUnlocked: true,
       });
+      // Orbit-containment field: keeps OUTPUT tier particles near this loom's
+      // generator so they don't escape before a higher loom or the forge can
+      // capture them. captureRadius = 0 so no loom capture is ever triggered.
+      forgeFieldsBuffer.push({
+        id: `loom_orbit_${loom.tierId}`,
+        x: loomX,
+        y: loomY,
+        captureRadius: 0,
+        outerRadius: LOOM_OUTER_RADIUS,
+        compatibleTierId: loom.tierId,
+        isUnlocked: true,
+      });
     }
     ctx.particles.setForgeFields(forgeFieldsBuffer);
 
