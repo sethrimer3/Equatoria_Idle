@@ -58,26 +58,27 @@ const LOOM_MAX_STEER_SPEED = 2.0;
 // ─── Loom containment governor constants ─────────────────────────
 
 /**
- * Hard max speed (canvas px/frame-unit) for contained motes at the outer edge of a loom field.
- * At FIXED_STEP_DELTA = 0.5 this is 0.325 px per substep — well below escape distance.
+ * Speed cap (canvas px/frame-unit) for motes that have escaped their loom field.
+ * 10× the old outer cap so escaped motes move freely without being completely unconstrained.
  */
-const LOOM_CONTAINED_OUTER_MAX_SPEED = 0.65;
-/**
- * Hard max speed (canvas px/frame-unit) for contained motes near the loom capture radius.
- * Stronger containment close to the capture point.
- */
-const LOOM_CONTAINED_INNER_MAX_SPEED = 0.28;
-/**
- * Fraction of outward radial velocity retained after containment damping.
- * 0.05 = keep 5 % (95 % eliminated), making outward escape essentially impossible.
- */
-const LOOM_RADIAL_OUTWARD_DAMP = 0.05;
+const LOOM_OUTSIDE_MAX_SPEED = 6.5;
 /**
  * Detection margin (canvas px) beyond outerRadius used for catching motes that
  * stepped just outside during the frame's position integration.
  * Must be >= PL_MAX_VELOCITY * FIXED_STEP_DELTA = 1.5 * 0.5 = 0.75 px.
  */
 const LOOM_CONTAINMENT_MARGIN_PX = 2.0;
+/**
+ * Power for the smooth outward-velocity suppression multiplier inside the loom.
+ * multiplier = (1 - dist/outerRadius)^POWER
+ * Power = 2 gives ~1% outward velocity at 90% of outerRadius and 0% at the edge,
+ * while leaving the inner ~50% of the loom relatively unconstrained.
+ */
+const LOOM_SMOOTH_DAMP_POWER = 2;
+// Minimum velocity boosts for inner zones — tangential (swirl) only.
+const LOOM_MIN_VEL_INNER_75 = 0.12; // motes within 75% of outerRadius
+const LOOM_MIN_VEL_INNER_50 = 0.22; // motes within 50%
+const LOOM_MIN_VEL_INNER_25 = 0.35; // motes within 25%
 
 /** Dev-mode rate limiter: log at most once per this many substeps (~1.5 s at 60 fps). */
 let _devLogSubstep = 0;
