@@ -690,6 +690,8 @@ export function createRpgZoneSelectPanel(
   let hoveredId: string | null = null;
   let selectedId: string | null = null;
   let draggedNode: MapNode | null = null;
+  let dragNodeOffsetX = 0;
+  let dragNodeOffsetY = 0;
 
   function visibleBossCount(): number {
     let unlockedCount = 0;
