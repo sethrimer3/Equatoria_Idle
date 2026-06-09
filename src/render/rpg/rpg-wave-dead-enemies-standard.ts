@@ -266,6 +266,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = fissilePolyominoEnemies.length - 1; i >= 0; i--) {
     if (fissilePolyominoEnemies[i].hp <= 0) {
+      pushDyingEnemy(fissilePolyominoEnemies[i].x, fissilePolyominoEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(fissilePolyominoEnemies[i].x, fissilePolyominoEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.9, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * 2.6;
       trySpawnLuckyMote(luckyMotes, 'verdure_polyomino_fissile', fissilePolyominoEnemies[i].x, fissilePolyominoEnemies[i].y, getCachedLuckPercent());
