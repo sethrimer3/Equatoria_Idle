@@ -75,10 +75,6 @@ const LOOM_CONTAINMENT_MARGIN_PX = 2.0;
  * while leaving the inner ~50% of the loom relatively unconstrained.
  */
 const LOOM_SMOOTH_DAMP_POWER = 2;
-// Minimum velocity boosts for inner zones — tangential (swirl) only.
-const LOOM_MIN_VEL_INNER_75 = 0.36; // motes within 75% of outerRadius
-const LOOM_MIN_VEL_INNER_50 = 0.66; // motes within 50%
-const LOOM_MIN_VEL_INNER_25 = 1.05; // motes within 25%
 
 /** Dev-mode rate limiter: log at most once per this many substeps (~1.5 s at 60 fps). */
 let _devLogSubstep = 0;
