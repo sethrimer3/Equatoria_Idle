@@ -390,6 +390,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = sandFishEnemies.length - 1; i >= 0; i--) {
     if (sandFishEnemies[i].hp <= 0) {
+      pushDyingEnemy(sandFishEnemies[i].x, sandFishEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(sandFishEnemies[i].x, sandFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.1, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SANDFISH_XP_MULT;
       addKill('proc_sandfish'); sandFishEnemies.splice(i, 1);
