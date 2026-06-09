@@ -224,40 +224,24 @@ export function applyForgeFieldForces(
 }
 
 /**
- * Hard velocity governor for compatible motes inside loom fields.
+ * Velocity governor for compatible motes relative to their loom fields.
  *
- * Must be called AFTER applyParticleLifeDamping in each substep so that
- * generator gravity, Particle Life forces, loom attraction, and the PL velocity
- * clamp have all already contributed to velocity for this substep.
+ * Must be called AFTER applyParticleLifeDamping in each substep.
  *
- * For each non-forge field where field.compatibleTierId === p.tierId and
- * the particle is within (field.outerRadius + LOOM_CONTAINMENT_MARGIN_PX):
+ * For motes OUTSIDE their loom (within MARGIN_PX):
+ *   - Position-correct back to outerRadius - 0.5 px (failsafe against one-step escape).
+ *   - Cap total speed at LOOM_OUTSIDE_MAX_SPEED (6.5 px/frame-unit) — free movement,
+ *     just not unlimited.
  *
- *   1. Position correction — if the particle's position update this substep moved
- *      it just outside outerRadius, pull it back to outerRadius - 0.5 px.
- *      This closes the "one-step escape" window where a particle with velocity
- *      near PL_MAX_VELOCITY could stride over the boundary before being caught.
+ * For motes INSIDE their loom:
+ *   - Smooth outward-velocity suppression:
+ *       multiplier = (1 - dist/outerRadius)^LOOM_SMOOTH_DAMP_POWER
+ *     This is ~1 at the centre (no suppression) and 0 at the exact edge (full suppression).
+ *     Only the outward radial component is scaled; tangential and inward velocity untouched.
+ *   - Minimum velocity boosts in the inner 75%/50%/25% zones using tangential (swirl) motion.
+ *     Applied only when the mote is not locked to the pointer.
  *
- *   2. Outward radial velocity elimination — multiply the outward component of
- *      velocity by LOOM_RADIAL_OUTWARD_DAMP (0.05), keeping only 5 %.
- *      Tangential velocity (responsible for visible orbiting) is unaffected.
- *
- *   3. Speed cap — clamp total speed to an interpolated maximum:
- *        LOOM_CONTAINED_OUTER_MAX_SPEED (0.65) at outerRadius →
- *        LOOM_CONTAINED_INNER_MAX_SPEED  (0.28) at captureRadius.
- *      At 0.65 px/frame-unit × FIXED_STEP_DELTA 0.5 = 0.325 px per substep,
- *      which is less than the 0.5 px pull-back margin, so the particle cannot
- *      escape after correction.
- *
- * Why generator / Particle Life / drag forces can no longer fling motes out:
- *   All those sources add velocity during steps 1–5 of the substep pipeline.
- *   This function is step 6 — the final authority on velocity magnitude before
- *   position is next updated.  No matter how much velocity was added upstream,
- *   the speed is hard-capped and the outward component removed here, guaranteeing
- *   maximum one-substep displacement < pull-back margin every cycle.
- *
- * Non-compatible motes are not affected (field.compatibleTierId !== p.tierId).
- * Forge fields are skipped — they use a separate capture mechanism.
+ * Non-compatible motes are not affected. Forge fields are skipped.
  */
 export function applyLoomContainmentCap(
   particles: EquatoriaParticle[],
@@ -280,7 +264,7 @@ export function applyLoomContainmentCap(
       if (!field.isUnlocked || field.id === 'forge') continue;
       if (field.compatibleTierId !== p.tierId) continue;
 
-      // Outward vector: field centre → particle (positive = particle is farther out)
+      // Outward vector: field centre → particle
       let dx = p.x - field.x;
       let dy = p.y - field.y;
       let distSq = dx * dx + dy * dy;
@@ -289,58 +273,68 @@ export function applyLoomContainmentCap(
       if (distSq > checkR * checkR) continue;
 
       let dist = Math.sqrt(distSq);
-
-      // ── 1. Position correction ────────────────────────────────────
-      // Pull any particle that stepped outside outerRadius back inside.
-      if (dist > field.outerRadius && dist > 0.01) {
-        const pullScale = (field.outerRadius - 0.5) / dist;
-        p.x = field.x + dx * pullScale;
-        p.y = field.y + dy * pullScale;
-        dx = p.x - field.x;
-        dy = p.y - field.y;
-        dist = Math.sqrt(dx * dx + dy * dy);
-      }
-
-      // Radial unit vector pointing outward (field centre → particle)
-      const nx = dist > 0.01 ? dx / dist : 0;
-      const ny = dist > 0.01 ? dy / dist : 0;
-
-      // ── 2. Kill outward radial velocity ──────────────────────────
-      const radialVBefore = p.vx * nx + p.vy * ny; // positive = outward
       const speedBefore = doLog ? Math.sqrt(p.vx * p.vx + p.vy * p.vy) : 0;
 
-      if (radialVBefore > 0) {
-        // Remove 95 % of the outward component; keep 5 % for micro-drift feel.
-        const toRemove = radialVBefore * (1 - LOOM_RADIAL_OUTWARD_DAMP);
-        p.vx -= nx * toRemove;
-        p.vy -= ny * toRemove;
-      }
+      if (dist > field.outerRadius) {
+        // ── Outside: position correct + speed cap ─────────────────
+        if (dist > 0.01) {
+          const pullScale = (field.outerRadius - 0.5) / dist;
+          p.x = field.x + dx * pullScale;
+          p.y = field.y + dy * pullScale;
+          dx = p.x - field.x;
+          dy = p.y - field.y;
+          dist = Math.sqrt(dx * dx + dy * dy);
+        }
+        const speedNow = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (speedNow > LOOM_OUTSIDE_MAX_SPEED && speedNow > 0) {
+          const capScale = LOOM_OUTSIDE_MAX_SPEED / speedNow;
+          p.vx *= capScale;
+          p.vy *= capScale;
+        }
+      } else if (!p.isLockedToPointer) {
+        // ── Inside: smooth outward suppression + minimum velocity ──
+        const nx = dist > 0.01 ? dx / dist : 0;
+        const ny = dist > 0.01 ? dy / dist : 0;
 
-      // ── 3. Speed cap (interpolated by distance from captureRadius) ─
-      const radialRange = field.outerRadius - field.captureRadius;
-      const t = radialRange > 0
-        ? Math.max(0, Math.min(1, (dist - field.captureRadius) / radialRange))
-        : 1;
-      // t = 0 at captureRadius → INNER_MAX_SPEED; t = 1 at outerRadius → OUTER_MAX_SPEED
-      const maxSpeed = LOOM_CONTAINED_INNER_MAX_SPEED
-        + (LOOM_CONTAINED_OUTER_MAX_SPEED - LOOM_CONTAINED_INNER_MAX_SPEED) * t;
+        const radialV = p.vx * nx + p.vy * ny; // positive = outward
+        if (radialV > 0) {
+          // Suppression multiplier fades from 1 (centre) to 0 (edge)
+          const ratio = dist / field.outerRadius; // 0..1
+          const multiplier = Math.pow(Math.max(0, 1 - ratio), LOOM_SMOOTH_DAMP_POWER);
+          // Remove the fraction of outward velocity that the multiplier suppresses
+          const toRemove = radialV * (1 - multiplier);
+          p.vx -= nx * toRemove;
+          p.vy -= ny * toRemove;
+        }
 
-      const speedNow = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-      if (speedNow > maxSpeed && speedNow > 0) {
-        const capScale = maxSpeed / speedNow;
-        p.vx *= capScale;
-        p.vy *= capScale;
+        // Minimum velocity (tangential swirl) in inner zones
+        const frac = dist / field.outerRadius;
+        let minVel = 0;
+        if (frac < 0.25) minVel = LOOM_MIN_VEL_INNER_25;
+        else if (frac < 0.50) minVel = LOOM_MIN_VEL_INNER_50;
+        else if (frac < 0.75) minVel = LOOM_MIN_VEL_INNER_75;
+
+        if (minVel > 0) {
+          const speedNow = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+          if (speedNow < minVel) {
+            // Add CCW tangential velocity to bring up to minVel
+            const tx = -ny; // CCW tangential unit vector
+            const ty =  nx;
+            const boost = minVel - speedNow;
+            p.vx += tx * boost;
+            p.vy += ty * boost;
+          }
+        }
       }
 
       // ── Dev diagnostics ──────────────────────────────────────────
       if (doLog) {
+        const distFinal = Math.sqrt((p.x - field.x) ** 2 + (p.y - field.y) ** 2);
         const speedAfter = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-        const radialVAfter = p.vx * nx + p.vy * ny;
         console.debug(
           `[loomContainment] field=${field.id} tier=${p.tierId}`,
-          `dist=${dist.toFixed(1)}/${field.outerRadius.toFixed(1)}`,
+          `dist=${distFinal.toFixed(1)}/${field.outerRadius.toFixed(1)}`,
           `speed: ${speedBefore.toFixed(3)}→${speedAfter.toFixed(3)}`,
-          `radialV: ${radialVBefore.toFixed(3)}→${radialVAfter.toFixed(3)}`,
         );
       }
 
