@@ -568,6 +568,8 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   tickWeaponSystems(ctx.weaponTickCtx, deltaMs);
   ctx.updateShotVisuals(deltaMs);
   ctx.updateDamageNumbers(deltaMs);
+  updateSpawnFlashes(deltaMs);
+  updateDyingEnemies(deltaMs);
 
   // Track lucky motes collected for achievements
   const luckyMoteCallback = (tierId: TierId, bonusPct: number, ageMs: number, fromElite: boolean) => {
