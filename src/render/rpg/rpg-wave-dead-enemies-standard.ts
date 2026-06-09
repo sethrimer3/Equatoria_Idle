@@ -131,6 +131,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = quartzEnemies.length - 1; i >= 0; i--) {
     if (quartzEnemies[i].hp <= 0) {
+      pushDyingEnemy(quartzEnemies[i].x, quartzEnemies[i].y, FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B, 4);
       fluid.addExplosion(quartzEnemies[i].x, quartzEnemies[i].y, FLUID_EXPLOSION_STRENGTH, FLUID_QUARTZ_R, FLUID_QUARTZ_G, FLUID_QUARTZ_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * QUARTZ_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'quartz', quartzEnemies[i].x, quartzEnemies[i].y, getCachedLuckPercent());
