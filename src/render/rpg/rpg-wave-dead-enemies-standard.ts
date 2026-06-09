@@ -95,6 +95,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = emeraldEnemies.length - 1; i >= 0; i--) {
     if (emeraldEnemies[i].hp <= 0) {
+      pushDyingEnemy(emeraldEnemies[i].x, emeraldEnemies[i].y, FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B, 6);
       fluid.addExplosion(emeraldEnemies[i].x, emeraldEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.1, FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EMERALD_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'emerald', emeraldEnemies[i].x, emeraldEnemies[i].y, getCachedLuckPercent());
