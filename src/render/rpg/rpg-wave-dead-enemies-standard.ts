@@ -301,6 +301,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = lanternMothEnemies.length - 1; i >= 0; i--) {
     if (lanternMothEnemies[i].hp <= 0) {
+      pushDyingEnemy(lanternMothEnemies[i].x, lanternMothEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(lanternMothEnemies[i].x, lanternMothEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.1, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * LANTERNMOTH_XP_MULT;
       addKill('proc_lanternmoth'); lanternMothEnemies.splice(i, 1);
