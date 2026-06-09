@@ -275,6 +275,8 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.weaponAttackTimers.clear();
   ctx.hitEffects.length = 0; ctx.shotLines.length = 0;
   ctx.damageNumbers.length = 0;
+  clearSpawnFlashes();
+  clearDyingEnemies();
   ctx.setPlayerIFramesMs(0);
   ctx.luckyMotes.length = 0; ctx.luckyMotePopups.length = 0;
   ctx.fluid.reset();
