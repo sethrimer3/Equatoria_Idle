@@ -52,6 +52,8 @@ import {
   DEATH_ANIM_DURATION_MS, DEATH_HOLD_DURATION_MS, RESTART_FADE_IN_MS,
   INTER_WAVE_DELAY_MS,
 } from './rpg-constants';
+import { clearSpawnFlashes } from './rpg-spawn-flash';
+import { clearDyingEnemies } from './rpg-death-fade';
 
 // ── Context ──────────────────────────────────────────────────────────────────
 
