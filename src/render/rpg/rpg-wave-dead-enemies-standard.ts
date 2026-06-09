@@ -317,6 +317,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = jellyfishEnemies.length - 1; i >= 0; i--) {
     if (jellyfishEnemies[i].hp <= 0) {
+      pushDyingEnemy(jellyfishEnemies[i].x, jellyfishEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 6);
       fluid.addExplosion(jellyfishEnemies[i].x, jellyfishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * JELLYFISH_XP_MULT;
       addKill('proc_jellyfish'); jellyfishEnemies.splice(i, 1);
