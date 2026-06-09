@@ -374,6 +374,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = moteSwarmEnemies.length - 1; i >= 0; i--) {
     if (moteSwarmEnemies[i].hp <= 0) {
+      pushDyingEnemy(moteSwarmEnemies[i].x, moteSwarmEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(moteSwarmEnemies[i].x, moteSwarmEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * MOTESWARM_XP_MULT;
       addKill('proc_moteswarm'); moteSwarmEnemies.splice(i, 1);
