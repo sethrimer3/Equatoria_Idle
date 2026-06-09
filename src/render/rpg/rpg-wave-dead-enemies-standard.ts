@@ -347,6 +347,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = plantTurretEnemies.length - 1; i >= 0; i--) {
     if (plantTurretEnemies[i].hp <= 0) {
+      pushDyingEnemy(plantTurretEnemies[i].x, plantTurretEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 6);
       fluid.addExplosion(plantTurretEnemies[i].x, plantTurretEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.6, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * PLANTTURRET_XP_MULT;
       addKill('proc_plantturret'); plantTurretEnemies.splice(i, 1);
