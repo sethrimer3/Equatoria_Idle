@@ -121,6 +121,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = voidEnemies.length - 1; i >= 0; i--) {
     if (voidEnemies[i].hp <= 0) {
+      pushDyingEnemy(voidEnemies[i].x, voidEnemies[i].y, FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B, 6);
       fluid.addExplosion(voidEnemies[i].x, voidEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 2.0, FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * VOID_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'void', voidEnemies[i].x, voidEnemies[i].y, getCachedLuckPercent());
