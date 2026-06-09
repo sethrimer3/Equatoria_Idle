@@ -231,6 +231,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = fracterylEnemies.length - 1; i >= 0; i--) {
     if (fracterylEnemies[i].hp <= 0) {
+      pushDyingEnemy(fracterylEnemies[i].x, fracterylEnemies[i].y, FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B, 8);
       fluid.addExplosion(fracterylEnemies[i].x, fracterylEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 3.5, FLUID_FRACTERYL_R, FLUID_FRACTERYL_G, FLUID_FRACTERYL_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * FRACTERYL_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'fracteryl', fracterylEnemies[i].x, fracterylEnemies[i].y, getCachedLuckPercent());
