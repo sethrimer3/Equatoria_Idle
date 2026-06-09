@@ -30,8 +30,18 @@ const HORIZON_R         = 44;    // horizon subnode circle radius
 const HORIZON_TRIAD_R   = 90;    // radius of the invisible triad circle
 const FLOAT_AMP         = 5;     // float oscillation amplitude (world px)
 const FLOAT_SPD         = 0.0008;// radians per ms
-const PARTICLES_PER_CONN = 8;
-const PARTICLE_RADIUS   = 2.5;
+const MOTES_PER_CONN     = 5;
+const MOTE_SPEED_MIN     = 0.000055;
+const MOTE_SPEED_MAX     = 0.000095;
+const MOTE_RADIUS_MIN    = 1.25;
+const MOTE_RADIUS_MAX    = 2.15;
+const MOTE_WOBBLE_MIN    = 1.5;
+const MOTE_WOBBLE_MAX    = 4.5;
+const MOTE_TRAIL_STEPS   = 3;
+const MOTE_TRAIL_GAP_MS  = 42;
+const MOTE_GLOW_ALPHA    = 0.62;
+const BOSS_CURVE_OFFSET  = 20;
+const GOLD_PALETTE       = ['#fff4a8', '#ffd866', '#f2b84b', '#cfae52'] as const;
 const ZOOM_MIN          = 0.28;
 const ZOOM_MAX          = 2.6;
 const CORNER_R          = 12;    // rounded-rect corner radius
@@ -113,6 +123,24 @@ interface MapNode {
   /** Phase offset so every node floats out of sync */
   phase: number;
   iconPath: string;
+}
+
+interface ConnectionMote {
+  phase: number;
+  speed: number;
+  radius: number;
+  wobble: number;
+  wobblePhase: number;
+  color: string;
+  glowIndex: number;
+}
+
+interface MapConnection {
+  a: MapNode;
+  b: MapNode;
+  curveOffset: number;
+  guideColor: string;
+  motes: ConnectionMote[];
 }
 
 // ─── Render helpers ────────────────────────────────────────────────────────
@@ -256,43 +284,115 @@ function drawCircleNode(
   ctx.textBaseline = 'alphabetic';
 }
 
+function makeGlowSprite(size: number, color: string): HTMLCanvasElement {
+  const sprite = document.createElement('canvas');
+  sprite.width = size;
+  sprite.height = size;
+  const spriteCtx = sprite.getContext('2d')!;
+  const center = size / 2;
+  const gradient = spriteCtx.createRadialGradient(center, center, 0, center, center, center);
+  gradient.addColorStop(0, color + 'e8');
+  gradient.addColorStop(0.28, color + '80');
+  gradient.addColorStop(1, color + '00');
+  spriteCtx.fillStyle = gradient;
+  spriteCtx.fillRect(0, 0, size, size);
+  return sprite;
+}
+
+function seededUnit(seed: number): number {
+  const x = Math.sin(seed * 91.731 + 17.17) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function makeConnection(a: MapNode, b: MapNode, index: number, guideColor: string, curveOffset = 0): MapConnection {
+  const motes: ConnectionMote[] = [];
+  for (let i = 0; i < MOTES_PER_CONN; i++) {
+    const seed = index * MOTES_PER_CONN + i + 1;
+    motes.push({
+      phase: (i / MOTES_PER_CONN + seededUnit(seed) * 0.18) % 1,
+      speed: MOTE_SPEED_MIN + seededUnit(seed + 11) * (MOTE_SPEED_MAX - MOTE_SPEED_MIN),
+      radius: MOTE_RADIUS_MIN + seededUnit(seed + 23) * (MOTE_RADIUS_MAX - MOTE_RADIUS_MIN),
+      wobble: MOTE_WOBBLE_MIN + seededUnit(seed + 37) * (MOTE_WOBBLE_MAX - MOTE_WOBBLE_MIN),
+      wobblePhase: seededUnit(seed + 51) * Math.PI * 2,
+      color: GOLD_PALETTE[Math.floor(seededUnit(seed + 67) * GOLD_PALETTE.length)],
+      glowIndex: seededUnit(seed + 79) > 0.7 ? 2 : seededUnit(seed + 83) > 0.45 ? 1 : 0,
+    });
+  }
+  return { a, b, curveOffset, guideColor, motes };
+}
+
+function sampleConnection(
+  conn: MapConnection,
+  ay: number,
+  by: number,
+  t: number,
+  wobble: number,
+): { x: number; y: number } {
+  const dx = conn.b.x - conn.a.x;
+  const dy = by - ay;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const controlX = (conn.a.x + conn.b.x) * 0.5 + nx * conn.curveOffset;
+  const controlY = (ay + by) * 0.5 + ny * conn.curveOffset;
+  const inv = 1 - t;
+  return {
+    x: inv * inv * conn.a.x + 2 * inv * t * controlX + t * t * conn.b.x + nx * wobble,
+    y: inv * inv * ay + 2 * inv * t * controlY + t * t * by + ny * wobble,
+  };
+}
+
 function drawParticleConn(
   ctx: CanvasRenderingContext2D,
-  ax: number, ay: number,
-  bx: number, by: number,
+  conn: MapConnection,
+  ay: number,
+  by: number,
   tMs: number,
-  connIdx: number,
-  hexColor: string,
+  glowSprites: readonly HTMLCanvasElement[],
 ): void {
-  const dx  = bx - ax;
-  const dy  = by - ay;
-  const len = Math.hypot(dx, dy);
-  if (len < 2) return;
-  const nx = -dy / len;
-  const ny =  dx / len;
-
   // Subtle guide line
   ctx.beginPath();
-  ctx.moveTo(ax, ay);
-  ctx.lineTo(bx, by);
-  ctx.strokeStyle = hexColor + '20';
+  const guideStart = sampleConnection(conn, ay, by, 0, 0);
+  ctx.moveTo(guideStart.x, guideStart.y);
+  for (let i = 1; i <= 8; i++) {
+    const point = sampleConnection(conn, ay, by, i / 8, 0);
+    ctx.lineTo(point.x, point.y);
+  }
+  ctx.strokeStyle = conn.guideColor;
   ctx.lineWidth   = 0.8;
   ctx.stroke();
 
-  // Particles
-  for (let p = 0; p < PARTICLES_PER_CONN; p++) {
-    const phase = (p / PARTICLES_PER_CONN) + connIdx * 0.19;
-    const t     = ((tMs * 0.00028 + phase) % 1 + 1) % 1;
-    const px    = ax + dx * t;
-    const py    = ay + dy * t;
-    const wiggle = 5 * Math.sin(tMs * 0.0011 + p * 2.3 + connIdx * 3.1) * Math.sin(t * Math.PI);
-    const alpha = 0.25 + 0.55 * Math.sin(t * Math.PI);
-    const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  for (const mote of conn.motes) {
+    const cycle = (tMs * mote.speed + mote.phase) % 1;
+    const t = 1 - Math.abs(cycle * 2 - 1);
+    const wobble = mote.wobble * Math.sin(tMs * 0.0013 + mote.wobblePhase) * Math.sin(t * Math.PI);
+    const point = sampleConnection(conn, ay, by, t, wobble);
+
+    for (let trail = MOTE_TRAIL_STEPS; trail >= 1; trail--) {
+      const trailCycle = ((tMs - trail * MOTE_TRAIL_GAP_MS) * mote.speed + mote.phase + 1) % 1;
+      const trailT = 1 - Math.abs(trailCycle * 2 - 1);
+      const trailWobble = mote.wobble * Math.sin((tMs - trail * MOTE_TRAIL_GAP_MS) * 0.0013 + mote.wobblePhase) * Math.sin(trailT * Math.PI);
+      const trailPoint = sampleConnection(conn, ay, by, trailT, trailWobble);
+      ctx.beginPath();
+      ctx.moveTo(trailPoint.x, trailPoint.y);
+      ctx.lineTo(point.x, point.y);
+      ctx.strokeStyle = mote.color;
+      ctx.globalAlpha = 0.07 * (MOTE_TRAIL_STEPS - trail + 1);
+      ctx.lineWidth = mote.radius * 0.55;
+      ctx.stroke();
+    }
+
+    const glow = glowSprites[mote.glowIndex];
+    const glowSize = glow.width * 0.5;
+    ctx.globalAlpha = MOTE_GLOW_ALPHA;
+    ctx.drawImage(glow, point.x - glowSize / 2, point.y - glowSize / 2, glowSize, glowSize);
+    ctx.globalAlpha = 0.9;
     ctx.beginPath();
-    ctx.arc(px + nx * wiggle, py + ny * wiggle, PARTICLE_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = hexColor + alphaHex;
+    ctx.arc(point.x, point.y, mote.radius, 0, Math.PI * 2);
+    ctx.fillStyle = mote.color;
     ctx.fill();
   }
+  ctx.globalAlpha = 1;
 }
 
 // ─── Public interface ──────────────────────────────────────────────────────
@@ -443,6 +543,29 @@ export function createRpgZoneSelectPanel(
     phase:    i * 0.85 + 2.1,
     iconPath: getBossIconPath(id),
   }));
+
+  const connections: MapConnection[] = [];
+  for (let i = 0; i < zoneNodes.length - 1; i++) {
+    connections.push(makeConnection(zoneNodes[i], zoneNodes[i + 1], connections.length, '#4466cc20'));
+  }
+  const verdure = zoneNodes.find(n => n.id === 'verdure')!;
+  for (const node of horizonNodes) {
+    connections.push(makeConnection(verdure, node, connections.length, '#7755cc20'));
+  }
+  for (let i = 0; i < horizonNodes.length; i++) {
+    connections.push(makeConnection(horizonNodes[i], horizonNodes[(i + 1) % horizonNodes.length], connections.length, '#9966dd20'));
+  }
+  for (let i = 0; i < bossNodes.length - 1; i++) {
+    const curveOffset = (i % 2 === 0 ? 1 : -1) * BOSS_CURVE_OFFSET;
+    connections.push(makeConnection(bossNodes[i], bossNodes[i + 1], connections.length, '#cc664420', curveOffset));
+  }
+
+  // Cached radial sprites provide soft blur without per-frame gradients, filters, or shadowBlur.
+  const glowSprites = [
+    makeGlowSprite(16, '#fff4a8'),
+    makeGlowSprite(24, '#ffd866'),
+    makeGlowSprite(32, '#e2a83e'),
+  ];
 
   function openBossModal(bossId: number): void {
     bossCard.innerHTML = `<div style="color:#fff172;font-weight:700;margin-bottom:10px">Boss ${bossId}: ${bossNodes[bossId - 1].label}</div>`;
@@ -719,42 +842,13 @@ export function createRpgZoneSelectPanel(
 
     // ── Connections ──────────────────────────────────────────────────────────
 
-    // Zone chain: euhedral→impetus→caustics→verdure
-    for (let i = 0; i < zoneNodes.length - 1; i++) {
-      const a = zoneNodes[i], b = zoneNodes[i + 1];
+    for (const connection of connections) {
       drawParticleConn(ctx,
-        a.x, a.y + fy(a),
-        b.x, b.y + fy(b),
-        tMs, i, '#4466cc');
-    }
-
-    // Verdure → each horizon subnode
-    const verdure = zoneNodes.find(n => n.id === 'verdure')!;
-    for (let i = 0; i < horizonNodes.length; i++) {
-      const hn = horizonNodes[i];
-      drawParticleConn(ctx,
-        verdure.x, verdure.y + fy(verdure),
-        hn.x, hn.y + fy(hn),
-        tMs, 10 + i, '#7755cc');
-    }
-
-    // Horizon subnode ring connections
-    for (let i = 0; i < horizonNodes.length; i++) {
-      const a = horizonNodes[i];
-      const b = horizonNodes[(i + 1) % horizonNodes.length];
-      drawParticleConn(ctx,
-        a.x, a.y + fy(a),
-        b.x, b.y + fy(b),
-        tMs, 20 + i, '#9966dd');
-    }
-
-    // Boss S-curve connections
-    for (let i = 0; i < bossNodes.length - 1; i++) {
-      const a = bossNodes[i], b = bossNodes[i + 1];
-      drawParticleConn(ctx,
-        a.x, a.y + fy(a),
-        b.x, b.y + fy(b),
-        tMs, 30 + i, '#cc6644');
+        connection,
+        connection.a.y + fy(connection.a),
+        connection.b.y + fy(connection.b),
+        tMs,
+        glowSprites);
     }
 
     // ── Zone nodes ───────────────────────────────────────────────────────────
