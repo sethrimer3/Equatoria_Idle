@@ -366,6 +366,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = spiderCrawlerEnemies.length - 1; i >= 0; i--) {
     if (spiderCrawlerEnemies[i].hp <= 0) {
+      pushDyingEnemy(spiderCrawlerEnemies[i].x, spiderCrawlerEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(spiderCrawlerEnemies[i].x, spiderCrawlerEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.6, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SPIDERCRAWLER_XP_MULT;
       addKill('proc_spidercrawler'); spiderCrawlerEnemies.splice(i, 1);
