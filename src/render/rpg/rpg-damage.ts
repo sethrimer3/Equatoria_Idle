@@ -574,13 +574,12 @@ export function createDamageFns(ctx: DamageCtx) {
   return damageFns;
 
   function damageHorizonPentagonReal(g: HorizonPentagonGroup, rawDamage: number, defPierceRatio: number): number {
-    if (g.swapCdMs > 0) return 0;
     const effectiveDef = g.def * (1 - defPierceRatio);
     const dmg = Math.max(0, rawDamage - effectiveDef);
     if (dmg > 0) {
       g.hp -= dmg;
       recordDps(dmg, '#6699ff');
-      if (g.hp > 0) triggerHorizonPentagonSwap(g);
+      if (g.hp > 0 && g.swapCdMs <= 0) triggerHorizonPentagonSwap(g);
     }
     return dmg;
   }
