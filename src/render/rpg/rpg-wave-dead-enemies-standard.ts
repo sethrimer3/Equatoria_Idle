@@ -476,6 +476,7 @@ export function sweepStandardDeadEnemies(
   for (let i = horizonPentagonGroups.length - 1; i >= 0; i--) {
     const g = horizonPentagonGroups[i]!;
     if (g.hp <= 0) {
+      pushDyingEnemy(g.x, g.y, FLUID_PENTAGON_R, FLUID_PENTAGON_G, FLUID_PENTAGON_B, 10);
       fluid.addExplosion(g.x, g.y, FLUID_EXPLOSION_STRENGTH * 3.0, FLUID_PENTAGON_R, FLUID_PENTAGON_G, FLUID_PENTAGON_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * PENTAGON_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'horizon_pentagon', g.x, g.y, getCachedLuckPercent());
