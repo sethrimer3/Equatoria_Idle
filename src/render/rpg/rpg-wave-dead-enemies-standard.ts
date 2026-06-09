@@ -245,6 +245,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = eigensteinEnemies.length - 1; i >= 0; i--) {
     if (eigensteinEnemies[i].hp <= 0) {
+      pushDyingEnemy(eigensteinEnemies[i].x, eigensteinEnemies[i].y, FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B, 9);
       fluid.addExplosion(eigensteinEnemies[i].x, eigensteinEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 4.5, FLUID_EIGENSTEIN_R, FLUID_EIGENSTEIN_G, FLUID_EIGENSTEIN_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EIGENSTEIN_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'eigenstein', eigensteinEnemies[i].x, eigensteinEnemies[i].y, getCachedLuckPercent());
