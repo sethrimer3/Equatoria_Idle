@@ -57,6 +57,7 @@ import {
 
 export interface DamageCtx {
   recordDps(dmg: number, color?: string): void;
+  getCodexDamageMultiplier?(typeId: string): number;
   /**
    * Optional hook fired after each hit on an enemy's main HP pool (not projectiles/shards).
    *   dmg > 0, blocked = false  → enemy took real damage (small/major)
@@ -491,7 +492,7 @@ export function createDamageFns(ctx: DamageCtx) {
     return dmg;
   }
 
-  return {
+  const damageFns = {
     damageEnemy,
     damageSapphireEnemy,
     damageMissile,
@@ -546,6 +547,29 @@ export function createDamageFns(ctx: DamageCtx) {
     damageHorizonPentagonReal,
     damageHorizonMissile,
   };
+  const typeByDamageFn: Record<string, string> = {
+    damageEnemy: 'laser', damageSapphireEnemy: 'sapphire', damageEmeraldEnemy: 'emerald',
+    damageAmberEnemy: 'amber', damageVoidEnemy: 'void', damageQuartzEnemy: 'quartz',
+    damageRubyEnemy: 'ruby', damageSunstoneEnemy: 'sunstone', damageCitrineEnemy: 'citrine',
+    damageIoliteEnemy: 'iolite', damageAmethystEnemy: 'amethyst', damageDiamondEnemy: 'diamond',
+    damageNullstoneEnemy: 'nullstone', damageFracterylEnemy: 'fracteryl', damageEigensteinEnemy: 'eigenstein',
+    damagePolyominoEnemy: 'polyomino', damageFissilePolyominoEnemy: 'fissile_polyomino',
+    damageRefractorPolyominoEnemy: 'refractor_polyomino', damageDustWispEnemy: 'dust_wisp',
+    damageRibbonWormEnemy: 'ribbon_worm', damageLanternMothEnemy: 'lantern_moth', damageEyeStalkEnemy: 'eye_stalk',
+    damageJellyfishEnemy: 'jellyfish', damageClothGhostEnemy: 'cloth_ghost', damagePlantTurretEnemy: 'plant_turret',
+    damageGearInsectEnemy: 'gear_insect', damageSpiderCrawlerEnemy: 'spider_crawler', damageMoteSwarmEnemy: 'mote_swarm',
+    damageShadowHandEnemy: 'shadow_hand', damageSandFishEnemy: 'sand_fish', damageQuartzFishEnemy: 'quartz_fish',
+    damageRubyFishEnemy: 'ruby_fish', damageSunstoneFishEnemy: 'sunstone_fish', damageEmeraldFishEnemy: 'emerald_fish',
+    damageSapphireFishEnemy: 'sapphire_fish', damageAmethystFishEnemy: 'amethyst_fish', damageDiamondFishEnemy: 'diamond_fish',
+  };
+  for (const [fnName, typeId] of Object.entries(typeByDamageFn)) {
+    const original = damageFns[fnName as keyof typeof damageFns] as (...args: unknown[]) => unknown;
+    (damageFns as Record<string, unknown>)[fnName] = (...args: unknown[]) => {
+      args[1] = Number(args[1]) * (ctx.getCodexDamageMultiplier?.(typeId) ?? 1);
+      return original(...args);
+    };
+  }
+  return damageFns;
 
   function damageHorizonPentagonReal(g: HorizonPentagonGroup, rawDamage: number, defPierceRatio: number): number {
     if (g.swapCdMs > 0) return 0;

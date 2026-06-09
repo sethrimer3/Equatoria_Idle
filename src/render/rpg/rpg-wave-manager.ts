@@ -160,6 +160,7 @@ export interface WaveManagerCtx {
   getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
   /** Returns true when dev/diagnostic mode is active (for spawn debug logging). */
   getIsDevMode?(): boolean;
+  onNewCodexEntry?(): void;
 }
 
 // ── Handle returned to rpg-render.ts ─────────────────────────────────────
@@ -332,7 +333,10 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
       if (spawnQueue[i].timerMs <= 0) {
         const typeId = spawnQueue[i].enemyTypeId;
         spawnEnemyById(ctx, typeId);
-        rpgSimState.encounteredEnemyTypes.add(typeId);
+        if (!rpgSimState.encounteredEnemyTypes.has(typeId)) {
+          rpgSimState.encounteredEnemyTypes.add(typeId);
+          ctx.onNewCodexEntry?.();
+        }
         spawnQueue.splice(i, 1);
       }
     }

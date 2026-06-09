@@ -372,11 +372,12 @@ export interface RpgDrawCtx {
 export interface RpgDrawFrameState {
   /** Smoothly interpolated alpha for the top-left wave number; dims when entities overlap it. */
   waveOverlapAlpha: number;
+  codexNotificationStartedMs: number;
 }
 
 /** Creates the initial draw frame state. */
 export function createRpgDrawFrameState(): RpgDrawFrameState {
-  return { waveOverlapAlpha: 1.0 };
+  return { waveOverlapAlpha: 1.0, codexNotificationStartedMs: 0 };
 }
 
 // ── Enemy-influence point collection ──────────────────────────────────────────
@@ -1083,6 +1084,20 @@ export function drawRpgFrame(
     canvas2d.closePath();
     canvas2d.fill();
     canvas2d.restore();
+    if (state.codexNotificationStartedMs > 0) {
+      const elapsedMs = nowMs - state.codexNotificationStartedMs;
+      if (elapsedMs < 2_200) {
+        const alpha = Math.min(1, elapsedMs / 180) * Math.min(1, (2_200 - elapsedMs) / 450);
+        canvas2d.save();
+        canvas2d.globalAlpha = alpha;
+        canvas2d.font = 'bold 12px monospace';
+        canvas2d.fillStyle = '#fff172';
+        canvas2d.textAlign = 'left';
+        canvas2d.textBaseline = 'top';
+        canvas2d.fillText('New Codex Entry!', textX, overlayTop + 30 + Math.min(24, elapsedMs * 0.025));
+        canvas2d.restore();
+      }
+    }
   }
 
   const screenDarken = ctx.getScreenDarken();

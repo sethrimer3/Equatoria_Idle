@@ -14,6 +14,7 @@ import {
   sweepEliteAndAlivenDefeats,
   handleBossDefeat,
 } from './rpg-wave-dead-enemies-special';
+import { getCodexMultiplier } from '../../sim/rpg/rpg-codex';
 
 /**
  * Sweep all enemy arrays for dead entities, award XP, handle boss defeat, and
@@ -25,12 +26,20 @@ export function removeDeadEnemiesImpl(
 ): void {
   const { rpgSimState, applyEquipmentStats } = ctx;
   let totalXpFromKills = 0;
+  let codexMultiplierTotal = 0;
+  let codexKillCount = 0;
+  const trackedAddKill = (typeId: string): void => {
+    codexMultiplierTotal += getCodexMultiplier(rpgSimState.lifetimeKillsByType.get(typeId) ?? 0);
+    codexKillCount++;
+    addKill(typeId);
+  };
 
-  totalXpFromKills += sweepStandardDeadEnemies(ctx, addKill);
-  totalXpFromKills += sweepEliteAndAlivenDefeats(ctx, addKill);
+  totalXpFromKills += sweepStandardDeadEnemies(ctx, trackedAddKill);
+  totalXpFromKills += sweepEliteAndAlivenDefeats(ctx, trackedAddKill);
   handleBossDefeat(ctx);
 
   if (totalXpFromKills > 0) {
+    if (codexKillCount > 0) totalXpFromKills *= codexMultiplierTotal / codexKillCount;
     addXpWithAllocation(rpgSimState, totalXpFromKills);
     applyEquipmentStats();
   }

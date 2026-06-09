@@ -35,6 +35,7 @@ import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import { createDamageFns } from './rpg-damage';
+import { getCodexMultiplier } from '../../sim/rpg/rpg-codex';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
 import {
@@ -210,6 +211,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   rpgArea.appendChild(canvas);
 
   // ── Zone select overlay (DOM, inside rpgArea) ──────────────────
+  let startBossFightFromZoneSelect = (_bossId: number): void => undefined;
   const zoneSelectPanel = createRpgZoneSelectPanel(rpgSimState, (newZoneId: RpgZoneId) => {
     // Save the current zone's wave before switching so we can resume it later.
     rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = currentWave;
@@ -234,7 +236,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nadirSubstrate = null;
     nadirCubicGrid = null;
     isNadirEliteWave = false;
-  });
+  }, (bossId) => startBossFightFromZoneSelect(bossId));
   rpgArea.appendChild(zoneSelectPanel.element);
 
   const ctx = canvas.getContext('2d')!;
@@ -623,6 +625,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   } = createDamageFns({
     recordDps,
     onEnemyHit: (enemy, dmg, blocked) => notifyEnemyHit(enemy, dmg, blocked),
+    getCodexDamageMultiplier: (typeId) => getCodexMultiplier(rpgSimState.lifetimeKillsByType.get(typeId) ?? 0),
   });
 
   // eslint-disable-next-line prefer-const
@@ -1109,6 +1112,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getPlayerHpRatio:        () => playerStats.maxHp > 0 ? playerStats.hp / playerStats.maxHp : 0,
     getVerdureCaveWallState: () => verdureCaveWallState,
     getIsDevMode:            () => _isDevMode,
+    onNewCodexEntry:         () => { drawFrameState.codexNotificationStartedMs = performance.now(); },
   });
 
   // ── Create weapon systems ──────────────────────────────────────
@@ -1374,6 +1378,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); },
     onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
   });
+  startBossFightFromZoneSelect = (bossId) => bossWave.startBossFight(bossId);
 
   // ── Boss stage director context ────────────────────────────────
   const bossStageDirectorCtx: BossStageDirectorCtx = {

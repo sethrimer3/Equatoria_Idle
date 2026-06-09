@@ -14,6 +14,10 @@
 import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import { RPG_ZONE_DEFINITIONS } from '../../data/rpg/rpg-zone-definitions';
 import type { RpgSimState, HorizonSubzoneId } from '../../sim/rpg/rpg-state';
+import {
+  BOSS_SPEED_STEP, MAX_BOSS_SPEED_PCT, MIN_BOSS_SPEED_PCT,
+  getBossXpMultiplier, isBossUnlocked,
+} from '../../sim/rpg/rpg-state';
 import { loadImage, getCachedImage } from '../assets/asset-loader';
 
 export type { HorizonSubzoneId };
@@ -90,7 +94,7 @@ function makeBossPositions(): Array<{ x: number; y: number }> {
     const t = i / (BOSS_IDS.length - 1);
     return {
       x: 730 + 52 * Math.sin(t * Math.PI * 2.2),
-      y: 80 + t * 560,
+      y: 60 + t * 700,
     };
   });
 }
@@ -286,6 +290,7 @@ export function createRpgZoneSelectPanel(
   rpgSimState: RpgSimState,
   onZoneSelect: (zoneId: RpgZoneId) => void,
   onSubzoneSelect?: (subzoneId: HorizonSubzoneId) => void,
+  onBossFight?: (bossId: number) => void,
 ): RpgZoneSelectPanel {
 
   let _isOpen  = false;
@@ -362,6 +367,17 @@ export function createRpgZoneSelectPanel(
   exitBtn.addEventListener('click', () => handle.close());
   overlay.appendChild(exitBtn);
 
+  const bossModal = document.createElement('div');
+  bossModal.style.cssText = 'display:none;position:absolute;inset:0;z-index:23;background:rgba(2,2,10,.72);align-items:center;justify-content:center;padding:16px;';
+  const bossCard = document.createElement('div');
+  bossCard.style.cssText = 'width:min(560px,100%);background:rgba(14,14,30,.98);border:1.5px solid #fff17266;border-radius:10px;padding:16px;box-shadow:0 0 30px #000;';
+  bossModal.appendChild(bossCard);
+  overlay.appendChild(bossModal);
+
+  function closeBossModal(): void {
+    bossModal.style.display = 'none';
+  }
+
   // ── Build node arrays ─────────────────────────────────────────────────────
 
   // Non-horizon zone nodes
@@ -406,6 +422,38 @@ export function createRpgZoneSelectPanel(
     phase:    i * 0.85 + 2.1,
     iconPath: getBossIconPath(id),
   }));
+
+  function openBossModal(bossId: number): void {
+    bossCard.innerHTML = `<div style="color:#fff172;font-weight:700;margin-bottom:10px">Boss ${bossId}: ${bossNodes[bossId - 1].label}</div>`;
+    const description = document.createElement('div');
+    description.style.cssText = 'color:#999;font-size:.8rem;margin-bottom:12px;';
+    description.textContent = `Speed ${rpgSimState.bossSpeedPct}% · XP multiplier ${getBossXpMultiplier(rpgSimState.bossSpeedPct).toFixed(0)}x`;
+    bossCard.appendChild(description);
+    const speeds = document.createElement('div');
+    speeds.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;';
+    for (let pct = MIN_BOSS_SPEED_PCT; pct <= MAX_BOSS_SPEED_PCT; pct += BOSS_SPEED_STEP) {
+      const button = document.createElement('button');
+      const active = pct === rpgSimState.bossSpeedPct;
+      button.textContent = `${pct}%`;
+      button.style.cssText = `padding:7px 9px;border-radius:5px;background:${active ? '#fff17233' : '#141428'};color:${active ? '#fff172' : '#aaa'};border:1px solid ${active ? '#fff17299' : '#ffffff22'};`;
+      button.addEventListener('click', () => { rpgSimState.bossSpeedPct = pct; openBossModal(bossId); });
+      speeds.appendChild(button);
+    }
+    bossCard.appendChild(speeds);
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
+    const back = document.createElement('button');
+    back.textContent = 'Back';
+    back.style.cssText = 'padding:8px 18px;border-radius:5px;background:#18182c;color:#bbb;border:1px solid #ffffff33;';
+    back.addEventListener('click', closeBossModal);
+    const fight = document.createElement('button');
+    fight.textContent = 'Fight!';
+    fight.style.cssText = 'padding:8px 18px;border-radius:5px;background:#fff17233;color:#fff172;border:1px solid #fff17299;font-weight:700;';
+    fight.addEventListener('click', () => { onBossFight?.(bossId); handle.close(); });
+    actions.append(back, fight);
+    bossCard.appendChild(actions);
+    bossModal.style.display = 'flex';
+  }
 
   // Kick off icon preloads (fire-and-forget; getCachedImage used during draw)
   for (const node of [...zoneNodes, ...horizonNodes, ...bossNodes]) {
@@ -481,7 +529,11 @@ export function createRpgZoneSelectPanel(
     const node = hitTest(wp.x, wp.y, _lastTMs);
     if (!node) return;
 
-    if (isBossNode(node.id)) return; // placeholder — no behavior yet
+    if (isBossNode(node.id)) {
+      const bossId = bossNodes.indexOf(node) + 1;
+      if (isBossUnlocked(bossId, rpgSimState.highestWaveReached)) openBossModal(bossId);
+      return;
+    }
 
     if (HORIZON_SUBZONE_IDS.includes(node.id as HorizonSubzoneId)) {
       if (rpgSimState.activeZoneId !== 'horizon') {
@@ -746,6 +798,7 @@ export function createRpgZoneSelectPanel(
       hoveredId = null;
       ptrs.clear();
       isDragging = false;
+      closeBossModal();
       syncCanvasSize();
       resetCamera();
       cancelAnimationFrame(_rafId);

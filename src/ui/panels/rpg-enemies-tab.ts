@@ -16,6 +16,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import { getCodexBonusPercent, getNextVisibleCodexMilestone } from '../../sim/rpg/rpg-codex';
 import { TOTAL_BOSS_COUNT } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
 import {
@@ -325,7 +326,15 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
       // Skip locked entries unless in dev mode
       if (isLocked && !isDevMode) continue;
       anyEnemyVisible = true;
-      element.appendChild(buildEnemyEntry(entry, isLocked, isDevMode));
+      const enemyEntry = buildEnemyEntry(entry, isLocked, isDevMode);
+      const kills = rpgState.lifetimeKillsByType.get(entry.id) ?? 0;
+      const bonus = getCodexBonusPercent(kills);
+      const next = getNextVisibleCodexMilestone(kills);
+      const mastery = document.createElement('div');
+      mastery.style.cssText = 'font-size:0.72em;color:#b9ad72;padding:2px 4px 6px;';
+      mastery.textContent = `Kills: ${kills.toLocaleString()} | Codex bonus: +${bonus}% damage & XP${next ? ` | Next: ${next.toLocaleString()}` : ''}`;
+      enemyEntry.appendChild(mastery);
+      element.appendChild(enemyEntry);
     }
 
     if (!anyEnemyVisible) {
