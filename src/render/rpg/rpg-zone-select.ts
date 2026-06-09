@@ -53,6 +53,15 @@ const NODE_HOME_SPRING  = 0.000018;
 const ROPE_SPRING       = 0.000012;
 const NODE_DAMPING      = 0.92;
 const MAX_PHYSICS_DT_MS = 32;
+const AMBIENT_PARTICLE_COUNT = 180;
+const AMBIENT_PUSH_RADIUS = 115;
+const AMBIENT_COLORS = [
+  '#d8d0c0', '#8fa8ff', // Euhedral
+  '#9a72ff', '#ff9b42', // Impetus
+  '#4fdfff', '#5b8cff', // Caustics
+  '#55e080', '#b6ff70', // Verdure
+  '#fff172', '#cf70ff', // Horizon
+] as const;
 const BACKGROUND_PATH   = 'ASSETS/ANIMATIONS/rpgBackground/rpgBackground_animation.webp';
 
 // Pan soft-limits in world coordinates (camera center)
@@ -152,6 +161,11 @@ interface MapConnection {
   guideColor: string;
   motes: ConnectionMote[];
   restLength: number;
+}
+
+interface AmbientParticle {
+  x: number; y: number; vx: number; vy: number;
+  radius: number; alpha: number; color: string;
 }
 
 // ─── Render helpers ────────────────────────────────────────────────────────
@@ -605,6 +619,15 @@ export function createRpgZoneSelectPanel(
     makeGlowSprite(24, '#ffd866'),
     makeGlowSprite(32, '#e2a83e'),
   ];
+  const ambientParticles: AmbientParticle[] = Array.from({ length: AMBIENT_PARTICLE_COUNT }, (_, i) => ({
+    x: seededUnit(i + 301) * 1100 - 100,
+    y: seededUnit(i + 503) * 900 - 100,
+    vx: (seededUnit(i + 701) - 0.5) * 0.018,
+    vy: (seededUnit(i + 907) - 0.5) * 0.018,
+    radius: 0.8 + seededUnit(i + 1103) * 2.2,
+    alpha: 0.18 + seededUnit(i + 1301) * 0.5,
+    color: AMBIENT_COLORS[Math.floor(seededUnit(i + 1501) * AMBIENT_COLORS.length)],
+  }));
 
   function openBossModal(bossId: number): void {
     bossCard.innerHTML = `<div style="color:#fff172;font-weight:700;margin-bottom:10px">Boss ${bossId}: ${bossNodes[bossId - 1].label}</div>`;
@@ -692,6 +715,11 @@ export function createRpgZoneSelectPanel(
   let draggedNode: MapNode | null = null;
   let dragNodeOffsetX = 0;
   let dragNodeOffsetY = 0;
+  let pointerWorldX = 0;
+  let pointerWorldY = 0;
+  let pointerVelocityX = 0;
+  let pointerVelocityY = 0;
+  let hasPointerWorld = false;
 
   function visibleBossCount(): number {
     let unlockedCount = 0;
@@ -744,6 +772,48 @@ export function createRpgZoneSelectPanel(
       node.x += node.vx * dt;
       node.y += node.vy * dt;
     }
+  }
+
+  function pushAmbientParticles(x: number, y: number, forceX: number, forceY: number): void {
+    const radiusSq = AMBIENT_PUSH_RADIUS * AMBIENT_PUSH_RADIUS;
+    for (const particle of ambientParticles) {
+      const dx = particle.x - x;
+      const dy = particle.y - y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq >= radiusSq) continue;
+      const strength = 1 - Math.sqrt(distSq) / AMBIENT_PUSH_RADIUS;
+      particle.vx += forceX * strength;
+      particle.vy += forceY * strength;
+    }
+  }
+
+  function updateAmbientParticles(deltaMs: number): void {
+    const dt = Math.min(MAX_PHYSICS_DT_MS, Math.max(0, deltaMs));
+    for (const particle of ambientParticles) {
+      particle.vx *= 0.985;
+      particle.vy *= 0.985;
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      if (particle.x < -120) particle.x = 1100;
+      else if (particle.x > 1120) particle.x = -100;
+      if (particle.y < -120) particle.y = 900;
+      else if (particle.y > 920) particle.y = -100;
+    }
+    pointerVelocityX *= 0.82;
+    pointerVelocityY *= 0.82;
+  }
+
+  function drawAmbientParticles(ctx: CanvasRenderingContext2D): void {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const particle of ambientParticles) {
+      ctx.globalAlpha = particle.alpha;
+      ctx.fillStyle = particle.color;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   function hitTest(wx: number, wy: number, tMs: number): MapNode | null {
@@ -837,9 +907,24 @@ export function createRpgZoneSelectPanel(
   });
 
   overlay.addEventListener('pointermove', (e: PointerEvent) => {
+    const current = canvasXY(e);
+    const currentWorld = screenToWorld(current.sx, current.sy);
+    if (hasPointerWorld) {
+      pointerVelocityX = currentWorld.x - pointerWorldX;
+      pointerVelocityY = currentWorld.y - pointerWorldY;
+      pushAmbientParticles(currentWorld.x, currentWorld.y, pointerVelocityX * 0.035, pointerVelocityY * 0.035);
+    }
+    pointerWorldX = currentWorld.x;
+    pointerWorldY = currentWorld.y;
+    hasPointerWorld = true;
     const ps = ptrs.get(e.pointerId);
-    if (!ps) return;
-    const { sx, sy } = canvasXY(e);
+    if (!ps) {
+      const node = hitTest(currentWorld.x, currentWorld.y, _lastTMs);
+      hoveredId = node?.id ?? null;
+      overlay.style.cursor = node ? 'pointer' : 'default';
+      return;
+    }
+    const { sx, sy } = current;
     ps.lastX = sx;
     ps.lastY = sy;
 
@@ -863,6 +948,7 @@ export function createRpgZoneSelectPanel(
           draggedNode.y = wp.y - dragNodeOffsetY;
           draggedNode.vx = 0;
           draggedNode.vy = 0;
+          pushAmbientParticles(draggedNode.x, draggedNode.y, pointerVelocityX * 0.09, pointerVelocityY * 0.09);
         } else {
           camX = dragBaseCamX - (sx - dragBaseMidX) / camZoom;
           camY = dragBaseCamY - (sy - dragBaseMidY) / camZoom;
@@ -928,7 +1014,9 @@ export function createRpgZoneSelectPanel(
   }
 
   function drawFrame(tMs: number): void {
-    updateNodePhysics(_lastTMs > 0 ? tMs - _lastTMs : 0);
+    const deltaMs = _lastTMs > 0 ? tMs - _lastTMs : 0;
+    updateNodePhysics(deltaMs);
+    updateAmbientParticles(deltaMs);
     _lastTMs = tMs;
     syncCanvasSize();
     const W = canvas.width;
@@ -949,6 +1037,7 @@ export function createRpgZoneSelectPanel(
     ctx.translate(W / 2, H / 2);
     ctx.scale(camZoom, camZoom);
     ctx.translate(-camX, -camY);
+    drawAmbientParticles(ctx);
 
     const activeZone    = rpgSimState.activeZoneId;
     const activeSub     = rpgSimState.activeSubzoneId;
@@ -1049,6 +1138,7 @@ export function createRpgZoneSelectPanel(
       hoveredId = null;
       selectedId = null;
       draggedNode = null;
+      hasPointerWorld = false;
       ptrs.clear();
       isDragging = false;
       closeBossModal();
