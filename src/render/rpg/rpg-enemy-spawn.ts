@@ -784,6 +784,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     const g = makeHorizonPentagonGroup(spawnX, spawnY, wn, spawnTop, spawnTop + spawnH);
     ctx.horizonPentagonGroups.push(g);
   }
+  // Spawn flash — visual only, skipped for boss (whose spawn coords aren't meaningful here).
+  if (enemyTypeId !== 'boss') pushSpawnFlash(spawnX, spawnY);
   // Record final spawn position for the dev overlay (no-op outside dev mode).
   _logSpawn(spawnX, spawnY, _usedFallback ? 'fallback' : 'accepted', _devMode);
 }
