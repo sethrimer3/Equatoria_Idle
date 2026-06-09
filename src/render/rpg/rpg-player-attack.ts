@@ -259,6 +259,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     + sandFishEnemies.length + quartzFishEnemies.length + rubyFishEnemies.length
     + sunstoneFishEnemies.length + emeraldFishEnemies.length + sapphireFishEnemies.length
     + amethystFishEnemies.length + diamondFishEnemies.length + plantProjectiles.length
+    + ctx.horizonPentagonGroups.length
     + (bossEnemy ? 1 : 0);
   if (totalTargets === 0) return;
 
