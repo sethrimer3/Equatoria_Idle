@@ -309,6 +309,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = eyeStalkEnemies.length - 1; i >= 0; i--) {
     if (eyeStalkEnemies[i].hp <= 0) {
+      pushDyingEnemy(eyeStalkEnemies[i].x, eyeStalkEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(eyeStalkEnemies[i].x, eyeStalkEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.3, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * EYESTALK_XP_MULT;
       addKill('proc_eyestalk'); eyeStalkEnemies.splice(i, 1);
