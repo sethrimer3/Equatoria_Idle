@@ -48,6 +48,10 @@ const CORNER_R          = 12;    // rounded-rect corner radius
 const EXIT_SIZE         = 46;    // exit button CSS px
 const EXIT_MARGIN       = 12;
 const DRAG_THRESHOLD    = 5;     // px before a tap becomes a drag
+const NODE_HOME_SPRING  = 0.000018;
+const ROPE_SPRING       = 0.000012;
+const NODE_DAMPING      = 0.92;
+const MAX_PHYSICS_DT_MS = 32;
 const BACKGROUND_PATH   = 'ASSETS/ANIMATIONS/rpgBackground/rpgBackground_animation.webp';
 
 // Pan soft-limits in world coordinates (camera center)
@@ -124,6 +128,10 @@ interface MapNode {
   /** Phase offset so every node floats out of sync */
   phase: number;
   iconPath: string;
+  homeX: number;
+  homeY: number;
+  vx: number;
+  vy: number;
 }
 
 interface ConnectionMote {
@@ -142,6 +150,7 @@ interface MapConnection {
   curveOffset: number;
   guideColor: string;
   motes: ConnectionMote[];
+  restLength: number;
 }
 
 // ─── Render helpers ────────────────────────────────────────────────────────
@@ -342,7 +351,7 @@ function makeConnection(a: MapNode, b: MapNode, index: number, guideColor: strin
       glowIndex: seededUnit(seed + 79) > 0.7 ? 2 : seededUnit(seed + 83) > 0.45 ? 1 : 0,
     });
   }
-  return { a, b, curveOffset, guideColor, motes };
+  return { a, b, curveOffset, guideColor, motes, restLength: Math.hypot(b.x - a.x, b.y - a.y) };
 }
 
 function sampleConnection(
@@ -537,6 +546,7 @@ export function createRpgZoneSelectPanel(
       isCircle: false,
       phase:    i * 1.3,
       iconPath: getZoneIconPath(z.id),
+      homeX: ZONE_POS[z.id].x, homeY: ZONE_POS[z.id].y, vx: 0, vy: 0,
     }));
 
   // Horizon triad nodes
@@ -552,6 +562,9 @@ export function createRpgZoneSelectPanel(
       isCircle: true,
       phase:    i * 0.9 + 5,
       iconPath: getZoneIconPath(sub),
+      homeX: hCenter.x + HORIZON_TRIAD_R * Math.cos(ang),
+      homeY: hCenter.y + HORIZON_TRIAD_R * Math.sin(ang),
+      vx: 0, vy: 0,
     };
   });
 
@@ -566,6 +579,7 @@ export function createRpgZoneSelectPanel(
     isCircle: false,
     phase:    i * 0.85 + 2.1,
     iconPath: getBossIconPath(id),
+    homeX: bossPos[i].x, homeY: bossPos[i].y, vx: 0, vy: 0,
   }));
 
   const connections: MapConnection[] = [];
@@ -673,6 +687,10 @@ export function createRpgZoneSelectPanel(
   let pinchBaseDist   = 0;
   let pinchBaseZoom   = 1;
   let hoveredId: string | null = null;
+  let selectedId: string | null = null;
+  let draggedNode: MapNode | null = null;
+  let dragNodeOffsetX = 0;
+  let dragNodeOffsetY = 0;
 
   function visibleBossCount(): number {
     let unlockedCount = 0;
@@ -689,6 +707,42 @@ export function createRpgZoneSelectPanel(
 
   function allNodes(): MapNode[] {
     return [...zoneNodes, ...horizonNodes, ...visibleBossNodes()];
+  }
+
+  function visibleConnections(): MapConnection[] {
+    const result = connections.slice();
+    const bossCount = visibleBossCount();
+    for (let i = 0; i < bossCount - 1; i++) result.push(bossConnections[i]);
+    return result;
+  }
+
+  function updateNodePhysics(deltaMs: number): void {
+    const dt = Math.min(MAX_PHYSICS_DT_MS, Math.max(0, deltaMs));
+    if (dt <= 0) return;
+    const nodes = allNodes();
+    for (const node of nodes) {
+      if (node === draggedNode) continue;
+      node.vx += (node.homeX - node.x) * NODE_HOME_SPRING * dt;
+      node.vy += (node.homeY - node.y) * NODE_HOME_SPRING * dt;
+    }
+    for (const connection of visibleConnections()) {
+      const dx = connection.b.x - connection.a.x;
+      const dy = connection.b.y - connection.a.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const force = (length - connection.restLength) * ROPE_SPRING * dt;
+      const fx = dx / length * force;
+      const fy = dy / length * force;
+      if (connection.a !== draggedNode) { connection.a.vx += fx; connection.a.vy += fy; }
+      if (connection.b !== draggedNode) { connection.b.vx -= fx; connection.b.vy -= fy; }
+    }
+    const damping = Math.pow(NODE_DAMPING, dt / 16.67);
+    for (const node of nodes) {
+      if (node === draggedNode) continue;
+      node.vx *= damping;
+      node.vy *= damping;
+      node.x += node.vx * dt;
+      node.y += node.vy * dt;
+    }
   }
 
   function hitTest(wx: number, wy: number, tMs: number): MapNode | null {
@@ -712,7 +766,11 @@ export function createRpgZoneSelectPanel(
   function handleTap(sx: number, sy: number): void {
     const wp   = screenToWorld(sx, sy);
     const node = hitTest(wp.x, wp.y, _lastTMs);
-    if (!node) return;
+    if (!node) { selectedId = null; return; }
+    if (selectedId !== node.id) {
+      selectedId = node.id;
+      return;
+    }
 
     if (isBossNode(node.id)) {
       const bossId = bossNodes.indexOf(node) + 1;
@@ -752,6 +810,14 @@ export function createRpgZoneSelectPanel(
 
     if (ptrs.size === 1) {
       isDragging   = false;
+      const wp = screenToWorld(sx, sy);
+      draggedNode = hitTest(wp.x, wp.y, _lastTMs);
+      if (draggedNode) {
+        dragNodeOffsetX = wp.x - draggedNode.x;
+        dragNodeOffsetY = wp.y - draggedNode.y;
+        draggedNode.vx = 0;
+        draggedNode.vy = 0;
+      }
       dragBaseCamX = camX;
       dragBaseCamY = camY;
       dragBaseMidX = sx;
@@ -765,6 +831,7 @@ export function createRpgZoneSelectPanel(
       dragBaseCamX  = camX;
       dragBaseCamY  = camY;
       isDragging    = true;
+      draggedNode   = null;
     }
   });
 
@@ -789,9 +856,17 @@ export function createRpgZoneSelectPanel(
       const dy = sy - ps.startY;
       if (!isDragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) isDragging = true;
       if (isDragging) {
-        camX = dragBaseCamX - (sx - dragBaseMidX) / camZoom;
-        camY = dragBaseCamY - (sy - dragBaseMidY) / camZoom;
-        clampCam();
+        if (draggedNode) {
+          const wp = screenToWorld(sx, sy);
+          draggedNode.x = wp.x - dragNodeOffsetX;
+          draggedNode.y = wp.y - dragNodeOffsetY;
+          draggedNode.vx = 0;
+          draggedNode.vy = 0;
+        } else {
+          camX = dragBaseCamX - (sx - dragBaseMidX) / camZoom;
+          camY = dragBaseCamY - (sy - dragBaseMidY) / camZoom;
+          clampCam();
+        }
       }
       // Hover
       const wp   = screenToWorld(sx, sy);
@@ -807,6 +882,7 @@ export function createRpgZoneSelectPanel(
     const { sx, sy } = canvasXY(e);
     if (!isDragging && ptrs.size === 1) handleTap(sx, sy);
     ptrs.delete(e.pointerId);
+    draggedNode = null;
     isDragging = false;
     if (ptrs.size === 1) {
       const rem    = [...ptrs.values()][0];
@@ -819,6 +895,7 @@ export function createRpgZoneSelectPanel(
 
   overlay.addEventListener('pointercancel', (e: PointerEvent) => {
     ptrs.delete(e.pointerId);
+    draggedNode = null;
     isDragging = false;
   });
 
@@ -850,6 +927,7 @@ export function createRpgZoneSelectPanel(
   }
 
   function drawFrame(tMs: number): void {
+    updateNodePhysics(_lastTMs > 0 ? tMs - _lastTMs : 0);
     _lastTMs = tMs;
     syncCanvasSize();
     const W = canvas.width;
@@ -905,10 +983,11 @@ export function createRpgZoneSelectPanel(
     for (const node of zoneNodes) {
       const isActive  = node.id === activeZone;
       const isHov     = node.id === hoveredId;
+      const isSelected = node.id === selectedId;
       ctx.save();
-      if (isHov && !isActive) {
+      if (isSelected || (isHov && !isActive)) {
         ctx.translate(node.x, node.y + fy(node));
-        ctx.scale(1.07, 1.07);
+        ctx.scale(isSelected ? SELECTED_SCALE : 1.07, isSelected ? SELECTED_SCALE : 1.07);
         ctx.translate(-node.x, -(node.y + fy(node)));
       }
       drawSquareNode(ctx, node, node.y + fy(node), isActive, isHov);
@@ -920,10 +999,11 @@ export function createRpgZoneSelectPanel(
     for (const node of horizonNodes) {
       const isActive  = activeZone === 'horizon' && node.id === (activeSub as string);
       const isHov     = node.id === hoveredId;
+      const isSelected = node.id === selectedId;
       ctx.save();
-      if (isHov && !isActive) {
+      if (isSelected || (isHov && !isActive)) {
         ctx.translate(node.x, node.y + fy(node));
-        ctx.scale(1.07, 1.07);
+        ctx.scale(isSelected ? SELECTED_SCALE : 1.07, isSelected ? SELECTED_SCALE : 1.07);
         ctx.translate(-node.x, -(node.y + fy(node)));
       }
       drawCircleNode(ctx, node, node.y + fy(node), isActive, isHov);
@@ -936,10 +1016,11 @@ export function createRpgZoneSelectPanel(
       const node = bossNodes[i];
       const isUnlocked = isBossUnlocked(i + 1, rpgSimState.highestWaveReached);
       const isHov = node.id === hoveredId;
+      const isSelected = node.id === selectedId;
       ctx.save();
-      if (isHov) {
+      if (isSelected || isHov) {
         ctx.translate(node.x, node.y + fy(node));
-        ctx.scale(1.07, 1.07);
+        ctx.scale(isSelected ? SELECTED_SCALE : 1.07, isSelected ? SELECTED_SCALE : 1.07);
         ctx.translate(-node.x, -(node.y + fy(node)));
       }
       if (isUnlocked) drawSquareNode(ctx, node, node.y + fy(node), false, isHov);
@@ -965,6 +1046,8 @@ export function createRpgZoneSelectPanel(
       overlay.style.display = 'block';
       _isOpen   = true;
       hoveredId = null;
+      selectedId = null;
+      draggedNode = null;
       ptrs.clear();
       isDragging = false;
       closeBossModal();
