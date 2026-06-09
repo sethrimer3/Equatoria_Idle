@@ -80,6 +80,7 @@ import {
 } from './rpg-jellyfish-elite-factories';
 import { ELITE_JELLYFISH_BASE_SIZE } from './rpg-jellyfish-elite-constants';
 import { makeAlivenGroup } from './rpg-aliven-factories';
+import { pushSpawnFlash } from './rpg-spawn-flash';
 import { ALIVEN_VARIANTS, ALIVEN_ELITE_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
 import {
   recordAlivenSpawn,
