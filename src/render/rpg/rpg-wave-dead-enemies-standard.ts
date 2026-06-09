@@ -256,6 +256,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = polyominoEnemies.length - 1; i >= 0; i--) {
     if (polyominoEnemies[i].hp <= 0) {
+      pushDyingEnemy(polyominoEnemies[i].x, polyominoEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(polyominoEnemies[i].x, polyominoEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.7, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * 2.2;
       trySpawnLuckyMote(luckyMotes, 'verdure_polyomino', polyominoEnemies[i].x, polyominoEnemies[i].y, getCachedLuckPercent());
