@@ -27,6 +27,8 @@ import type {
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
   FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
+import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
+import { drawEliteJellyfishEnemies, setEliteJellyfishLowGraphics } from './rpg-jellyfish-elite-draw';
 import {
   DUSTWISP_SIZE, DUSTWISP_COLOR, DUSTWISP_GLOW,
   RIBBONWORM_SIZE, RIBBONWORM_COLOR, RIBBONWORM_GLOW,
@@ -58,6 +60,7 @@ let isLowGraphicsMode = false;
 export function setProcLowGraphicsMode(enabled: boolean): void {
   isLowGraphicsMode = enabled;
   setFishDrawLowGraphics(enabled);
+  setEliteJellyfishLowGraphics(enabled);
 }
 
 // ── Shared glow helper ─────────────────────────────────────────────────────────
@@ -523,6 +526,7 @@ export function drawProceduralEnemies(
     lanternMothEnemies: LanternMothEnemy[];
     eyeStalkEnemies: EyeStalkEnemy[];
     jellyfishEnemies: JellyfishEnemy[];
+    eliteJellyfishEnemies: EliteJellyfishEnemy[];
     clothGhostEnemies: ClothGhostEnemy[];
     plantTurretEnemies: PlantTurretEnemy[];
     gearInsectEnemies: GearInsectEnemy[];
@@ -550,6 +554,7 @@ export function drawProceduralEnemies(
   drawLanternMothEnemies(canvas, ctx.lanternMothEnemies);
   drawEyeStalkEnemies(canvas, ctx.eyeStalkEnemies);
   drawJellyfishEnemies(canvas, ctx.jellyfishEnemies);
+  drawEliteJellyfishEnemies(canvas, ctx.eliteJellyfishEnemies);
   drawClothGhostEnemies(canvas, ctx.clothGhostEnemies);
   drawPlantTurretEnemies(canvas, ctx.plantTurretEnemies);
   drawPlantProjectiles(canvas, ctx.plantProjectiles);

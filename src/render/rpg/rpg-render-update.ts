@@ -177,6 +177,7 @@ export interface RpgEnemyUpdateArrays {
   lanternMothEnemies: LanternMothEnemy[];
   eyeStalkEnemies: EyeStalkEnemy[];
   jellyfishEnemies: JellyfishEnemy[];
+  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
   clothGhostEnemies: ClothGhostEnemy[];
   plantTurretEnemies: PlantTurretEnemy[];
   gearInsectEnemies: GearInsectEnemy[];
@@ -528,7 +529,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     a.diamondEnemies, a.nullstoneEnemies, a.fracterylEnemies, a.eigensteinEnemies,
     a.eliteEnemies, a.polyominoEnemies, a.fissilePolyominoEnemies, a.refractorPolyominoEnemies,
     a.dustWispEnemies, a.ribbonWormEnemies, a.lanternMothEnemies, a.eyeStalkEnemies,
-    a.jellyfishEnemies, a.clothGhostEnemies, a.plantTurretEnemies, a.gearInsectEnemies,
+    a.jellyfishEnemies, a.eliteJellyfishEnemies, a.clothGhostEnemies, a.plantTurretEnemies, a.gearInsectEnemies,
     a.spiderCrawlerEnemies, a.moteSwarmEnemies, a.shadowHandEnemies,
     a.sandFishEnemies, a.quartzFishEnemies, a.rubyFishEnemies, a.sunstoneFishEnemies,
     a.emeraldFishEnemies, a.sapphireFishEnemies, a.amethystFishEnemies, a.diamondFishEnemies,
@@ -645,8 +646,9 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     _applyVerdureWallPassToArray(a.ribbonWormEnemies,_verdureWallState, _HW);
     _applyVerdureWallPassToArray(a.lanternMothEnemies,_verdureWallState,_HW);
     _applyVerdureWallPassToArray(a.eyeStalkEnemies,  _verdureWallState, _HW);
-    _applyVerdureWallPassToArray(a.jellyfishEnemies, _verdureWallState, _HW);
-    _applyVerdureWallPassToArray(a.clothGhostEnemies,_verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.jellyfishEnemies,      _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.eliteJellyfishEnemies, _verdureWallState, _HW);
+    _applyVerdureWallPassToArray(a.clothGhostEnemies,     _verdureWallState, _HW);
     _applyVerdureWallPassToArray(a.gearInsectEnemies,_verdureWallState, _HW);
     _applyVerdureWallPassToArray(a.spiderCrawlerEnemies,_verdureWallState,_HW);
     _applyVerdureWallPassToArray(a.moteSwarmEnemies, _verdureWallState, _HW);

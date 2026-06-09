@@ -73,6 +73,12 @@ import {
   makeSandFishEnemy, makeQuartzFishEnemy, makeRubyFishEnemy, makeSunstoneFishEnemy,
   makeEmeraldFishEnemy, makeSapphireFishEnemy, makeAmethystFishEnemy, makeDiamondFishEnemy,
 } from './rpg-procedural-factories';
+import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
+import {
+  makeBasicJellyfishEnemy, makeLongtailJellyfishEnemy,
+  makeWhiplashJellyfishEnemy, makeEncirclingJellyfishEnemy,
+} from './rpg-jellyfish-elite-factories';
+import { ELITE_JELLYFISH_BASE_SIZE } from './rpg-jellyfish-elite-constants';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, ALIVEN_ELITE_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
 import {
@@ -143,6 +149,7 @@ export interface EnemySpawnCtx {
   lanternMothEnemies: LanternMothEnemy[];
   eyeStalkEnemies: EyeStalkEnemy[];
   jellyfishEnemies: JellyfishEnemy[];
+  eliteJellyfishEnemies: EliteJellyfishEnemy[];
   clothGhostEnemies: ClothGhostEnemy[];
   plantTurretEnemies: PlantTurretEnemy[];
   gearInsectEnemies: GearInsectEnemy[];
@@ -227,6 +234,7 @@ function _getNonEliteArrays(ctx: EnemySpawnCtx): ReadonlyArray<ReadonlyArray<Buf
     ctx.lanternMothEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.eyeStalkEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.jellyfishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.eliteJellyfishEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.clothGhostEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.plantTurretEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.gearInsectEnemies as ReadonlyArray<BuffableEnemy>,
@@ -706,7 +714,12 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     const procSizeMap: Record<string, number> = {
       'proc_dustwisp': DUSTWISP_SIZE, 'proc_ribbonworm': RIBBONWORM_SIZE,
       'proc_lanternmoth': LANTERNMOTH_SIZE, 'proc_eyestalk': EYESTALK_SIZE,
-      'proc_jellyfish': JELLYFISH_SIZE, 'proc_clothghost': CLOTHGHOST_SIZE,
+      'proc_jellyfish': JELLYFISH_SIZE,
+      'proc_jellyfish_elite_basic': ELITE_JELLYFISH_BASE_SIZE,
+      'proc_jellyfish_elite_longtail': ELITE_JELLYFISH_BASE_SIZE,
+      'proc_jellyfish_elite_whiplash': ELITE_JELLYFISH_BASE_SIZE,
+      'proc_jellyfish_elite_encircling': ELITE_JELLYFISH_BASE_SIZE,
+      'proc_clothghost': CLOTHGHOST_SIZE,
       'proc_plantturret': PLANTTURRET_SIZE, 'proc_gearinsect': GEARINSECT_SIZE,
       'proc_spidercrawler': SPIDERCRAWLER_SIZE, 'proc_moteswarm': MOTESWARM_SIZE,
       'proc_shadowhand': SHADOWHAND_SIZE,
@@ -736,7 +749,11 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       else if (enemyTypeId === 'proc_ribbonworm')  { const e = makeRibbonWormEnemy(spawnX, spawnY, wn);    ctx.ribbonWormEnemies.push(e);      _proc = e; }
       else if (enemyTypeId === 'proc_lanternmoth') { const e = makeLanternMothEnemy(spawnX, spawnY, wn);   ctx.lanternMothEnemies.push(e);     _proc = e; }
       else if (enemyTypeId === 'proc_eyestalk')    { const e = makeEyeStalkEnemy(spawnX, spawnY, wn);      ctx.eyeStalkEnemies.push(e);        _proc = e; }
-      else if (enemyTypeId === 'proc_jellyfish')   { const e = makeJellyfishEnemy(spawnX, spawnY, wn);     ctx.jellyfishEnemies.push(e);       _proc = e; }
+      else if (enemyTypeId === 'proc_jellyfish')            { const e = makeJellyfishEnemy(spawnX, spawnY, wn);           ctx.jellyfishEnemies.push(e);            _proc = e; }
+      else if (enemyTypeId === 'proc_jellyfish_elite_basic')     { const e = makeBasicJellyfishEnemy(spawnX, spawnY, wn);     ctx.eliteJellyfishEnemies.push(e);       _proc = e; }
+      else if (enemyTypeId === 'proc_jellyfish_elite_longtail')  { const e = makeLongtailJellyfishEnemy(spawnX, spawnY, wn);  ctx.eliteJellyfishEnemies.push(e);       _proc = e; }
+      else if (enemyTypeId === 'proc_jellyfish_elite_whiplash')  { const e = makeWhiplashJellyfishEnemy(spawnX, spawnY, wn);  ctx.eliteJellyfishEnemies.push(e);       _proc = e; }
+      else if (enemyTypeId === 'proc_jellyfish_elite_encircling') { const e = makeEncirclingJellyfishEnemy(spawnX, spawnY, wn); ctx.eliteJellyfishEnemies.push(e);      _proc = e; }
       else if (enemyTypeId === 'proc_clothghost')  { const e = makeClothGhostEnemy(spawnX, spawnY, wn);    ctx.clothGhostEnemies.push(e);      _proc = e; }
       else if (enemyTypeId === 'proc_plantturret') { const e = makePlantTurretEnemy(spawnX, spawnY, wn);   ctx.plantTurretEnemies.push(e);     _proc = e; }
       else if (enemyTypeId === 'proc_gearinsect')  { const e = makeGearInsectEnemy(spawnX, spawnY, wn);    ctx.gearInsectEnemies.push(e);      _proc = e; }

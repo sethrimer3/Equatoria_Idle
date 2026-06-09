@@ -357,6 +357,7 @@ import type {
   SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
+import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
 import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
@@ -370,7 +371,8 @@ export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' 
   | 'aliven_particle'
   | 'boss'
   | 'proc_dustwisp' | 'proc_ribbonworm' | 'proc_lanternmoth' | 'proc_eyestalk'
-  | 'proc_jellyfish' | 'proc_clothghost' | 'proc_plantturret' | 'proc_gearinsect'
+  | 'proc_jellyfish' | 'proc_jellyfish_elite'
+  | 'proc_clothghost' | 'proc_plantturret' | 'proc_gearinsect'
   | 'proc_spidercrawler' | 'proc_moteswarm' | 'proc_shadowhand'
   | 'proc_sandfish' | 'proc_quartzfish' | 'proc_rubyfish' | 'proc_sunstonefish'
   | 'proc_emeraldfish' | 'proc_sapphirefish' | 'proc_amethystfish' | 'proc_diamondfish'
@@ -424,6 +426,7 @@ export interface ClosestTarget {
   lanternMoth?: LanternMothEnemy;
   eyeStalk?: EyeStalkEnemy;
   jellyfish?: JellyfishEnemy;
+  eliteJellyfish?: EliteJellyfishEnemy;
   clothGhost?: ClothGhostEnemy;
   plantTurret?: PlantTurretEnemy;
   gearInsect?: GearInsectEnemy;

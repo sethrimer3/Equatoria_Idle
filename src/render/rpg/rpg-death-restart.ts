@@ -128,6 +128,7 @@ export interface RpgDeathRestartCtx {
   lanternMothEnemies: LanternMothEnemy[];
   eyeStalkEnemies: EyeStalkEnemy[];
   jellyfishEnemies: JellyfishEnemy[];
+  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
   clothGhostEnemies: ClothGhostEnemy[];
   plantTurretEnemies: PlantTurretEnemy[];
   gearInsectEnemies: GearInsectEnemy[];
@@ -240,7 +241,7 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.alivenGroups.length = 0;
   ctx.dustWispEnemies.length = 0; ctx.ribbonWormEnemies.length = 0;
   ctx.lanternMothEnemies.length = 0; ctx.eyeStalkEnemies.length = 0;
-  ctx.jellyfishEnemies.length = 0; ctx.clothGhostEnemies.length = 0;
+  ctx.jellyfishEnemies.length = 0; ctx.eliteJellyfishEnemies.length = 0; ctx.clothGhostEnemies.length = 0;
   ctx.plantTurretEnemies.length = 0; ctx.gearInsectEnemies.length = 0;
   ctx.spiderCrawlerEnemies.length = 0; ctx.moteSwarmEnemies.length = 0;
   ctx.shadowHandEnemies.length = 0;

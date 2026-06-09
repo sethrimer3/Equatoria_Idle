@@ -101,6 +101,7 @@ export interface WaveManagerCtx {
   lanternMothEnemies: LanternMothEnemy[];
   eyeStalkEnemies: EyeStalkEnemy[];
   jellyfishEnemies: JellyfishEnemy[];
+  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
   clothGhostEnemies: ClothGhostEnemy[];
   plantTurretEnemies: PlantTurretEnemy[];
   gearInsectEnemies: GearInsectEnemy[];

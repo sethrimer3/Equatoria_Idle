@@ -58,6 +58,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.lanternMoth) return ctx.damageLanternMothEnemy(target.lanternMoth, rawDamage, defPierceRatio);
     if (target.eyeStalk) return ctx.damageEyeStalkEnemy(target.eyeStalk, rawDamage, defPierceRatio);
     if (target.jellyfish) return ctx.damageJellyfishEnemy(target.jellyfish, rawDamage, defPierceRatio);
+    if (target.eliteJellyfish) return ctx.damageEliteJellyfishEnemy(target.eliteJellyfish, rawDamage, defPierceRatio);
     if (target.clothGhost) return ctx.damageClothGhostEnemy(target.clothGhost, rawDamage, defPierceRatio);
     if (target.plantTurret) return ctx.damagePlantTurretEnemy(target.plantTurret, rawDamage, defPierceRatio);
     if (target.gearInsect) return ctx.damageGearInsectEnemy(target.gearInsect, rawDamage, defPierceRatio);

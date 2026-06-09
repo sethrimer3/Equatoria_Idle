@@ -457,6 +457,7 @@ export function createDamageFns(ctx: DamageCtx) {
   function damageLanternMothEnemy(e: LanternMothEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#f0d088'); }
   function damageEyeStalkEnemy(e: EyeStalkEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#d0b870'); }
   function damageJellyfishEnemy(e: JellyfishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#96d8f0'); }
+  function damageEliteJellyfishEnemy(e: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#78d8ff'); }
   function damageClothGhostEnemy(e: ClothGhostEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#c8c8e8'); }
   function damagePlantTurretEnemy(e: PlantTurretEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#50b850'); }
   function damageGearInsectEnemy(e: GearInsectEnemy, raw: number, pierce: number): number { return _damageProcEnemy(e, raw, pierce, '#a0a0b0'); }
@@ -529,6 +530,7 @@ export function createDamageFns(ctx: DamageCtx) {
     damageLanternMothEnemy,
     damageEyeStalkEnemy,
     damageJellyfishEnemy,
+    damageEliteJellyfishEnemy,
     damageClothGhostEnemy,
     damagePlantTurretEnemy,
     damageGearInsectEnemy,

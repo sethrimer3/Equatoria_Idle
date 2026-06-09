@@ -32,6 +32,7 @@ import type {
   SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
 } from './rpg-procedural-types';
+import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
@@ -79,6 +80,7 @@ export interface RpgTargetingCtx {
   lanternMothEnemies: LanternMothEnemy[];
   eyeStalkEnemies: EyeStalkEnemy[];
   jellyfishEnemies: JellyfishEnemy[];
+  eliteJellyfishEnemies: EliteJellyfishEnemy[];
   clothGhostEnemies: ClothGhostEnemy[];
   plantTurretEnemies: PlantTurretEnemy[];
   gearInsectEnemies: GearInsectEnemy[];
@@ -131,6 +133,7 @@ export interface RpgTargetingCtx {
   damageLanternMothEnemy: (e: LanternMothEnemy, raw: number, pierce: number) => number;
   damageEyeStalkEnemy: (e: EyeStalkEnemy, raw: number, pierce: number) => number;
   damageJellyfishEnemy: (e: JellyfishEnemy, raw: number, pierce: number) => number;
+  damageEliteJellyfishEnemy: (e: EliteJellyfishEnemy, raw: number, pierce: number) => number;
   damageClothGhostEnemy: (e: ClothGhostEnemy, raw: number, pierce: number) => number;
   damagePlantTurretEnemy: (e: PlantTurretEnemy, raw: number, pierce: number) => number;
   damageGearInsectEnemy: (e: GearInsectEnemy, raw: number, pierce: number) => number;

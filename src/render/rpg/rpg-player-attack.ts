@@ -93,6 +93,7 @@ export interface RpgPlayerAttackCtx {
   lanternMothEnemies: import('./rpg-procedural-types').LanternMothEnemy[];
   eyeStalkEnemies: import('./rpg-procedural-types').EyeStalkEnemy[];
   jellyfishEnemies: import('./rpg-procedural-types').JellyfishEnemy[];
+  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
   clothGhostEnemies: import('./rpg-procedural-types').ClothGhostEnemy[];
   plantTurretEnemies: import('./rpg-procedural-types').PlantTurretEnemy[];
   gearInsectEnemies: import('./rpg-procedural-types').GearInsectEnemy[];
@@ -146,6 +147,7 @@ export interface RpgPlayerAttackCtx {
   damageLanternMothEnemy: (e: import('./rpg-procedural-types').LanternMothEnemy, raw: number, pierce: number) => number;
   damageEyeStalkEnemy: (e: import('./rpg-procedural-types').EyeStalkEnemy, raw: number, pierce: number) => number;
   damageJellyfishEnemy: (e: import('./rpg-procedural-types').JellyfishEnemy, raw: number, pierce: number) => number;
+  damageEliteJellyfishEnemy: (e: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy, raw: number, pierce: number) => number;
   damageClothGhostEnemy: (e: import('./rpg-procedural-types').ClothGhostEnemy, raw: number, pierce: number) => number;
   damagePlantTurretEnemy: (e: import('./rpg-procedural-types').PlantTurretEnemy, raw: number, pierce: number) => number;
   damageGearInsectEnemy: (e: import('./rpg-procedural-types').GearInsectEnemy, raw: number, pierce: number) => number;
@@ -231,7 +233,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     eliteEnemies, binaryRingEnemies, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -251,7 +253,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     + polyominoEnemies.length + fissilePolyominoEnemies.length + refractorPolyominoEnemies.length
     + eliteEnemies.length + binaryRingEnemies.length + alivenParticleCount
     + dustWispEnemies.length + ribbonWormEnemies.length + lanternMothEnemies.length
-    + eyeStalkEnemies.length + jellyfishEnemies.length + clothGhostEnemies.length
+    + eyeStalkEnemies.length + jellyfishEnemies.length + eliteJellyfishEnemies.length + clothGhostEnemies.length
     + plantTurretEnemies.length + gearInsectEnemies.length + spiderCrawlerEnemies.length
     + moteSwarmEnemies.length + shadowHandEnemies.length
     + sandFishEnemies.length + quartzFishEnemies.length + rubyFishEnemies.length

@@ -85,6 +85,7 @@ import type {
   EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
   FishMine, FishSpike, FishBolt, FishDecoy,
 } from './rpg-procedural-types';
+import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
 import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
@@ -550,8 +551,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const ribbonWormEnemies: RibbonWormEnemy[]         = [];
   const lanternMothEnemies: LanternMothEnemy[]       = [];
   const eyeStalkEnemies: EyeStalkEnemy[]             = [];
-  const jellyfishEnemies: JellyfishEnemy[]           = [];
-  const clothGhostEnemies: ClothGhostEnemy[]         = [];
+  const jellyfishEnemies: JellyfishEnemy[]             = [];
+  const eliteJellyfishEnemies: EliteJellyfishEnemy[]   = [];
+  const clothGhostEnemies: ClothGhostEnemy[]           = [];
   const plantTurretEnemies: PlantTurretEnemy[]       = [];
   const gearInsectEnemies: GearInsectEnemy[]         = [];
   const spiderCrawlerEnemies: SpiderCrawlerEnemy[]   = [];
@@ -622,7 +624,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damagePolyominoEnemy, damageFissilePolyominoEnemy, damageRefractorPolyominoEnemy,
     damageBinaryRingEnemy, damageNadirCubePointEnemy, damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
-    damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
+    damageJellyfishEnemy, damageEliteJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
     damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
     damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
@@ -816,7 +818,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       rubyEnemies, sunstoneEnemies, citrineEnemies, ioliteEnemies, amethystEnemies,
       diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
       polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies, dustWispEnemies,
-      ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies, jellyfishEnemies,
+      ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies, jellyfishEnemies, eliteJellyfishEnemies,
       clothGhostEnemies, plantTurretEnemies, gearInsectEnemies, spiderCrawlerEnemies,
       moteSwarmEnemies, shadowHandEnemies, sandFishEnemies, quartzFishEnemies,
       rubyFishEnemies, sunstoneFishEnemies, emeraldFishEnemies, sapphireFishEnemies,
@@ -840,7 +842,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
       binaryRingEnemies, binaryRingMissiles, stardustEnemies, horizonPentagonGroups, alivenGroups,
       dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-      jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+      jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
       spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
       sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
       emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -1003,7 +1005,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     stardustEnemies,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -1020,7 +1022,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damagePolyominoEnemy, damageFissilePolyominoEnemy, damageRefractorPolyominoEnemy,
     damageBinaryRingEnemy, damageNadirCubePointEnemy, damageHorizonPentagonReal, damageHorizonMissile, damageEliteEnemy,
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
-    damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
+    damageJellyfishEnemy, damageEliteJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
     damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
     damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
@@ -1057,7 +1059,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     stardustEnemies, alivenGroups, horizonPentagonGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -1199,7 +1201,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageEliteEnemy,
     damageBossEnemy:         (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
-    damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
+    damageJellyfishEnemy, damageEliteJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
     damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
     damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
@@ -1249,7 +1251,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     horizonPentagonGroups,
     alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -1271,7 +1273,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     eliteEnemies, binaryRingEnemies, stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -1290,7 +1292,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageBossEnemy:        (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     damageAlivenParticle:   (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
-    damageJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
+    damageJellyfishEnemy, damageEliteJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,
     damageSandFishEnemy, damageQuartzFishEnemy, damageRubyFishEnemy, damageSunstoneFishEnemy,
     damageEmeraldFishEnemy, damageSapphireFishEnemy, damageAmethystFishEnemy, damageDiamondFishEnemy,
@@ -1575,7 +1577,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
     stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -1633,7 +1635,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
     stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -1706,7 +1708,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
     stardustEnemies, horizonPentagonGroups, alivenGroups,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,

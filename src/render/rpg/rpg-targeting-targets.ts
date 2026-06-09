@@ -115,6 +115,7 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
   for (const e of ctx.lanternMothEnemies) addTarget('proc_lanternmoth', e, 'lanternMoth');
   for (const e of ctx.eyeStalkEnemies) addTarget('proc_eyestalk', e, 'eyeStalk');
   for (const e of ctx.jellyfishEnemies) addTarget('proc_jellyfish', e, 'jellyfish');
+  for (const e of ctx.eliteJellyfishEnemies) addTarget('proc_jellyfish_elite', e, 'eliteJellyfish');
   for (const e of ctx.clothGhostEnemies) addTarget('proc_clothghost', e, 'clothGhost');
   for (const e of ctx.plantTurretEnemies) addTarget('proc_plantturret', e, 'plantTurret');
   for (const e of ctx.gearInsectEnemies) addTarget('proc_gearinsect', e, 'gearInsect');

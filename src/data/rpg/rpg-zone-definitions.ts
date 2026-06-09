@@ -123,6 +123,11 @@ export const RPG_ZONE_DEFINITIONS: RpgZoneDefinition[] = [
       'proc_amethystfish',
       'proc_diamondfish',
       'proc_jellyfish',
+      // Elite jellyfish — unlock progressively in later waves
+      'proc_jellyfish_elite_basic',
+      'proc_jellyfish_elite_longtail',
+      'proc_jellyfish_elite_whiplash',
+      'proc_jellyfish_elite_encircling',
     ],
   },
   {

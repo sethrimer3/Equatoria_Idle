@@ -263,6 +263,10 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_jellyfish', x: e.x, y: e.y, distSq: d, jellyfish: e }; }
   }
+  for (const e of ctx.eliteJellyfishEnemies) {
+    const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy;
+    if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_jellyfish_elite', x: e.x, y: e.y, distSq: d, eliteJellyfish: e }; }
+  }
   for (const e of ctx.clothGhostEnemies) {
     const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'proc_clothghost', x: e.x, y: e.y, distSq: d, clothGhost: e }; }

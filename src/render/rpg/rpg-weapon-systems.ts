@@ -121,6 +121,7 @@ export interface RpgWeaponCtx {
   lanternMothEnemies: import('./rpg-procedural-types').LanternMothEnemy[];
   eyeStalkEnemies: import('./rpg-procedural-types').EyeStalkEnemy[];
   jellyfishEnemies: import('./rpg-procedural-types').JellyfishEnemy[];
+  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
   clothGhostEnemies: import('./rpg-procedural-types').ClothGhostEnemy[];
   plantTurretEnemies: import('./rpg-procedural-types').PlantTurretEnemy[];
   gearInsectEnemies: import('./rpg-procedural-types').GearInsectEnemy[];
@@ -177,6 +178,7 @@ export interface RpgWeaponCtx {
   damageLanternMothEnemy: (e: import('./rpg-procedural-types').LanternMothEnemy, raw: number, pierce: number) => number;
   damageEyeStalkEnemy: (e: import('./rpg-procedural-types').EyeStalkEnemy, raw: number, pierce: number) => number;
   damageJellyfishEnemy: (e: import('./rpg-procedural-types').JellyfishEnemy, raw: number, pierce: number) => number;
+  damageEliteJellyfishEnemy: (e: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy, raw: number, pierce: number) => number;
   damageClothGhostEnemy: (e: import('./rpg-procedural-types').ClothGhostEnemy, raw: number, pierce: number) => number;
   damagePlantTurretEnemy: (e: import('./rpg-procedural-types').PlantTurretEnemy, raw: number, pierce: number) => number;
   damageGearInsectEnemy: (e: import('./rpg-procedural-types').GearInsectEnemy, raw: number, pierce: number) => number;

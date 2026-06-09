@@ -33,6 +33,11 @@ import {
   SANDFISH_XP_MULT, QUARTZFISH_XP_MULT, RUBYFISH_XP_MULT, SUNSTONEFISH_XP_MULT,
   EMERALDFISH_XP_MULT, SAPPHIREFISH_XP_MULT, AMETHYSTFISH_XP_MULT, DIAMONDFISH_XP_MULT,
 } from './rpg-procedural-constants';
+import {
+  BASIC_JELLYFISH_XP_MULT, LONGTAIL_JELLYFISH_XP_MULT,
+  WHIPLASH_JELLYFISH_XP_MULT, ENCIRCLING_JELLYFISH_XP_MULT,
+  FLUID_ELITE_JELLYFISH_R, FLUID_ELITE_JELLYFISH_G, FLUID_ELITE_JELLYFISH_B,
+} from './rpg-jellyfish-elite-constants';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
 import { makeEmeraldFishMini } from './rpg-procedural-factories';
 import type { WaveManagerCtx } from './rpg-wave-manager';
@@ -50,7 +55,7 @@ export function sweepStandardDeadEnemies(
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
@@ -295,6 +300,19 @@ export function sweepStandardDeadEnemies(
       fluid.addExplosion(jellyfishEnemies[i].x, jellyfishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.4, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * JELLYFISH_XP_MULT;
       addKill('proc_jellyfish'); jellyfishEnemies.splice(i, 1);
+    }
+  }
+  for (let i = eliteJellyfishEnemies.length - 1; i >= 0; i--) {
+    if (eliteJellyfishEnemies[i].hp <= 0) {
+      const e = eliteJellyfishEnemies[i];
+      fluid.addExplosion(e.x, e.y, FLUID_EXPLOSION_STRENGTH * 2.0, FLUID_ELITE_JELLYFISH_R, FLUID_ELITE_JELLYFISH_G, FLUID_ELITE_JELLYFISH_B);
+      const xpMult = e.variant === 'longtail' ? LONGTAIL_JELLYFISH_XP_MULT
+        : e.variant === 'whiplash' ? WHIPLASH_JELLYFISH_XP_MULT
+        : e.variant === 'encircling' ? ENCIRCLING_JELLYFISH_XP_MULT
+        : BASIC_JELLYFISH_XP_MULT;
+      totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * xpMult;
+      trySpawnLuckyMote(luckyMotes, `proc_jellyfish_elite_${e.variant}`, e.x, e.y, getCachedLuckPercent());
+      addKill(`proc_jellyfish_elite_${e.variant}`); eliteJellyfishEnemies.splice(i, 1);
     }
   }
   for (let i = clothGhostEnemies.length - 1; i >= 0; i--) {

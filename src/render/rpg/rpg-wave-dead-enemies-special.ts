@@ -78,6 +78,7 @@ function _getNonEliteArrays(ctx: WaveManagerCtx): ReadonlyArray<BuffableEnemy>[]
     ctx.lanternMothEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.eyeStalkEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.jellyfishEnemies as ReadonlyArray<BuffableEnemy>,
+    ctx.eliteJellyfishEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.clothGhostEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.plantTurretEnemies as ReadonlyArray<BuffableEnemy>,
     ctx.gearInsectEnemies as ReadonlyArray<BuffableEnemy>,

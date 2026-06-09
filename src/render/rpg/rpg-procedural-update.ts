@@ -20,6 +20,8 @@ import type {
   FishMine, FishSpike, FishBolt, FishDecoy,
   SchoolableFish,
 } from './rpg-procedural-types';
+import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
+import { updateEliteJellyfishEnemies } from './rpg-jellyfish-elite-update';
 import {
   PROC_PATROL_SPEED, PROC_PATROL_TURN_MS, PROC_PATROL_DAMPING,
   PROC_CONTACT_RADIUS, PROC_CONTACT_CD_MS,
@@ -399,6 +401,7 @@ export function updateProceduralEnemies(
     lanternMothEnemies: LanternMothEnemy[];
     eyeStalkEnemies: EyeStalkEnemy[];
     jellyfishEnemies: JellyfishEnemy[];
+    eliteJellyfishEnemies: EliteJellyfishEnemy[];
     clothGhostEnemies: ClothGhostEnemy[];
     plantTurretEnemies: PlantTurretEnemy[];
     gearInsectEnemies: GearInsectEnemy[];
@@ -427,6 +430,7 @@ export function updateProceduralEnemies(
   updateLanternMothEnemies(arrays.lanternMothEnemies, ctx, deltaMs);
   updateEyeStalkEnemies(arrays.eyeStalkEnemies, ctx, deltaMs);
   updateJellyfishEnemies(arrays.jellyfishEnemies, ctx, deltaMs);
+  updateEliteJellyfishEnemies(arrays.eliteJellyfishEnemies, ctx, deltaMs);
   updateClothGhostEnemies(arrays.clothGhostEnemies, ctx, deltaMs);
   updatePlantTurretEnemies(arrays.plantTurretEnemies, arrays.plantProjectiles, ctx, deltaMs);
   updatePlantProjectiles(arrays.plantProjectiles, ctx, deltaMs);
