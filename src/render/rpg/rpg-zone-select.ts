@@ -717,6 +717,34 @@ export function createRpgZoneSelectPanel(
     return result;
   }
 
+  function updateNodePhysics(deltaMs: number): void {
+    const dt = Math.min(MAX_PHYSICS_DT_MS, Math.max(0, deltaMs));
+    if (dt <= 0) return;
+    const nodes = allNodes();
+    for (const node of nodes) {
+      if (node === draggedNode) continue;
+      node.vx += (node.homeX - node.x) * NODE_HOME_SPRING * dt;
+      node.vy += (node.homeY - node.y) * NODE_HOME_SPRING * dt;
+    }
+    for (const connection of visibleConnections()) {
+      const dx = connection.b.x - connection.a.x;
+      const dy = connection.b.y - connection.a.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const force = (length - connection.restLength) * ROPE_SPRING * dt;
+      const fx = dx / length * force;
+      const fy = dy / length * force;
+      if (connection.a !== draggedNode) { connection.a.vx += fx; connection.a.vy += fy; }
+      if (connection.b !== draggedNode) { connection.b.vx -= fx; connection.b.vy -= fy; }
+    }
+    const damping = Math.pow(NODE_DAMPING, dt / 16.67);
+    for (const node of nodes) {
+      if (node === draggedNode) continue;
+      node.vx *= damping;
+      node.vy *= damping;
+      node.x += node.vx * dt;
+      node.y += node.vy * dt;
+    }
+  }
 
   function hitTest(wx: number, wy: number, tMs: number): MapNode | null {
     for (const node of allNodes()) {
