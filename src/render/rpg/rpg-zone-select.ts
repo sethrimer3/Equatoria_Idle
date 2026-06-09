@@ -40,7 +40,7 @@ const MOTE_WOBBLE_MAX    = 4.5;
 const MOTE_TRAIL_STEPS   = 3;
 const MOTE_TRAIL_GAP_MS  = 42;
 const MOTE_GLOW_ALPHA    = 0.62;
-const BOSS_CURVE_OFFSET  = 20;
+const BOSS_CURVE_OFFSET  = 28;
 const GOLD_PALETTE       = ['#fff4a8', '#ffd866', '#f2b84b', '#cfae52'] as const;
 const ZOOM_MIN          = 0.28;
 const ZOOM_MAX          = 2.6;
@@ -102,10 +102,11 @@ const HORIZON_SUBZONE_ANGLES: Record<HorizonSubzoneId, number> = {
 
 function makeBossPositions(): Array<{ x: number; y: number }> {
   return BOSS_IDS.map((_, i) => {
-    const t = i / (BOSS_IDS.length - 1);
+    const angle = -Math.PI * 0.7 + i * 0.82;
+    const radius = 82 + i * 24;
     return {
-      x: 730 + 52 * Math.sin(t * Math.PI * 2.2),
-      y: 60 + t * 700,
+      x: 720 + Math.cos(angle) * radius,
+      y: 390 + Math.sin(angle) * radius,
     };
   });
 }
@@ -231,6 +232,29 @@ function drawSquareNode(
   ctx.fillStyle   = isActive ? '#fff172' : '#b0a880';
   ctx.fillText(node.label, node.x, cy + node.half + 4);
   ctx.textBaseline = 'alphabetic';
+}
+
+function drawLockedBossNode(
+  ctx: CanvasRenderingContext2D,
+  node: MapNode,
+  cy: number,
+  isHovered: boolean,
+): void {
+  ctx.save();
+  ctx.globalAlpha = isHovered ? 0.62 : 0.42;
+  drawSquareNode(ctx, { ...node, label: '?????' }, cy, false, isHovered);
+  ctx.globalAlpha = isHovered ? 0.9 : 0.72;
+  const lockY = cy - 2;
+  ctx.fillStyle = '#090912';
+  ctx.strokeStyle = '#c0b98a';
+  ctx.lineWidth = 2.5;
+  roundedRect(ctx, node.x - 12, lockY - 4, 24, 19, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(node.x, lockY - 4, 8, Math.PI, 0);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawCircleNode(
@@ -555,9 +579,9 @@ export function createRpgZoneSelectPanel(
   for (let i = 0; i < horizonNodes.length; i++) {
     connections.push(makeConnection(horizonNodes[i], horizonNodes[(i + 1) % horizonNodes.length], connections.length, '#9966dd20'));
   }
+  const bossConnections: MapConnection[] = [];
   for (let i = 0; i < bossNodes.length - 1; i++) {
-    const curveOffset = (i % 2 === 0 ? 1 : -1) * BOSS_CURVE_OFFSET;
-    connections.push(makeConnection(bossNodes[i], bossNodes[i + 1], connections.length, '#cc664420', curveOffset));
+    bossConnections.push(makeConnection(bossNodes[i], bossNodes[i + 1], connections.length + i, '#cc664420', BOSS_CURVE_OFFSET));
   }
 
   // Cached radial sprites provide soft blur without per-frame gradients, filters, or shadowBlur.
@@ -650,8 +674,21 @@ export function createRpgZoneSelectPanel(
   let pinchBaseZoom   = 1;
   let hoveredId: string | null = null;
 
+  function visibleBossCount(): number {
+    let unlockedCount = 0;
+    while (unlockedCount < bossNodes.length
+      && isBossUnlocked(unlockedCount + 1, rpgSimState.highestWaveReached)) {
+      unlockedCount++;
+    }
+    return Math.min(bossNodes.length, unlockedCount + (unlockedCount < bossNodes.length ? 1 : 0));
+  }
+
+  function visibleBossNodes(): MapNode[] {
+    return bossNodes.slice(0, visibleBossCount());
+  }
+
   function allNodes(): MapNode[] {
-    return [...zoneNodes, ...horizonNodes, ...bossNodes];
+    return [...zoneNodes, ...horizonNodes, ...visibleBossNodes()];
   }
 
   function hitTest(wx: number, wy: number, tMs: number): MapNode | null {
@@ -850,6 +887,18 @@ export function createRpgZoneSelectPanel(
         tMs,
         glowSprites);
     }
+    const bossCount = visibleBossCount();
+    if (bossCount >= 2) {
+      for (let i = 0; i < bossCount - 1; i++) {
+        const connection = bossConnections[i];
+        drawParticleConn(ctx,
+          connection,
+          connection.a.y + fy(connection.a),
+          connection.b.y + fy(connection.b),
+          tMs,
+          glowSprites);
+      }
+    }
 
     // ── Zone nodes ───────────────────────────────────────────────────────────
 
@@ -883,7 +932,9 @@ export function createRpgZoneSelectPanel(
 
     // ── Boss nodes ────────────────────────────────────────────────────────────
 
-    for (const node of bossNodes) {
+    for (let i = 0; i < bossCount; i++) {
+      const node = bossNodes[i];
+      const isUnlocked = isBossUnlocked(i + 1, rpgSimState.highestWaveReached);
       const isHov = node.id === hoveredId;
       ctx.save();
       if (isHov) {
@@ -891,7 +942,8 @@ export function createRpgZoneSelectPanel(
         ctx.scale(1.07, 1.07);
         ctx.translate(-node.x, -(node.y + fy(node)));
       }
-      drawSquareNode(ctx, node, node.y + fy(node), false, isHov);
+      if (isUnlocked) drawSquareNode(ctx, node, node.y + fy(node), false, isHov);
+      else drawLockedBossNode(ctx, node, node.y + fy(node), isHov);
       ctx.restore();
     }
 
