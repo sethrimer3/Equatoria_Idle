@@ -81,6 +81,8 @@ import {
 } from './rpg-elite-enemy-draw';
 import { drawStardustEnemies, setLowGraphicsMode as setStardustDrawLowGraphics } from './rpg-stardust-draw';
 import { drawHorizonPentagonGroups } from './horizon-pentagon-draw';
+import { drawSpawnFlashes } from './rpg-spawn-flash';
+import { drawDyingEnemies } from './rpg-death-fade';
 import {
   drawPolyominoEnemies,
   drawFissilePolyominoEnemies,
