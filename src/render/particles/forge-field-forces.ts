@@ -291,8 +291,14 @@ export function applyLoomContainmentCap(
           p.vx *= capScale;
           p.vy *= capScale;
         }
-      } else if (!p.isLockedToPointer) {
+        // Fall through to inside suppression so newly-corrected motes
+        // don't retain their outward velocity after being snapped back.
+      }
+
+      if (!p.isLockedToPointer) {
         // ── Inside: smooth outward suppression + minimum velocity ──
+        // Also runs immediately after position correction above so motes
+        // snapped back to the edge have their outward velocity zeroed.
         const nx = dist > 0.01 ? dx / dist : 0;
         const ny = dist > 0.01 ? dy / dist : 0;
 
