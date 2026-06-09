@@ -190,6 +190,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = amethystEnemies.length - 1; i >= 0; i--) {
     if (amethystEnemies[i].hp <= 0) {
+      pushDyingEnemy(amethystEnemies[i].x, amethystEnemies[i].y, FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B, 7);
       fluid.addExplosion(amethystEnemies[i].x, amethystEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 2.5, FLUID_AMETHYST_R, FLUID_AMETHYST_G, FLUID_AMETHYST_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * AMETHYST_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'amethyst', amethystEnemies[i].x, amethystEnemies[i].y, getCachedLuckPercent());
