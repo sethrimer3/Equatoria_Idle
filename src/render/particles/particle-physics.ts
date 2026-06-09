@@ -188,9 +188,10 @@ export function updateParticlePhysics(
     const elapsed = nowMs - p.dragReleaseTimeMs;
     if (elapsed < DRAG_RELEASE_FADE_MS) {
       const t = elapsed / DRAG_RELEASE_FADE_MS;
-      effectiveMaxVel = PL_MAX_VELOCITY * (particleTweaks.dragBoostMultiplier - t * (particleTweaks.dragBoostMultiplier - 1));
+      const boostMax = PL_MAX_VELOCITY * particleTweaks.dragBoostMultiplier;
+      effectiveMaxVel = boostMax + t * (DRAG_RELEASE_FREE_MAX_SPEED - boostMax);
     } else {
-      effectiveMaxVel = PL_MAX_VELOCITY;
+      effectiveMaxVel = DRAG_RELEASE_FREE_MAX_SPEED;
     }
   } else {
     effectiveMaxVel = PL_MAX_VELOCITY;
