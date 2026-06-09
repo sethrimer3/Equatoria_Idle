@@ -339,6 +339,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = clothGhostEnemies.length - 1; i >= 0; i--) {
     if (clothGhostEnemies[i].hp <= 0) {
+      pushDyingEnemy(clothGhostEnemies[i].x, clothGhostEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(clothGhostEnemies[i].x, clothGhostEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.2, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * CLOTHGHOST_XP_MULT;
       addKill('proc_clothghost'); clothGhostEnemies.splice(i, 1);
