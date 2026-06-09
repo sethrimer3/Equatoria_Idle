@@ -414,6 +414,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = sunstoneFishEnemies.length - 1; i >= 0; i--) {
     if (sunstoneFishEnemies[i].hp <= 0) {
+      pushDyingEnemy(sunstoneFishEnemies[i].x, sunstoneFishEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 5);
       fluid.addExplosion(sunstoneFishEnemies[i].x, sunstoneFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.5, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * SUNSTONEFISH_XP_MULT;
       addKill('proc_sunstonefish'); sunstoneFishEnemies.splice(i, 1);
