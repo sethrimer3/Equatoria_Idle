@@ -326,6 +326,7 @@ export function sweepStandardDeadEnemies(
   for (let i = eliteJellyfishEnemies.length - 1; i >= 0; i--) {
     if (eliteJellyfishEnemies[i].hp <= 0) {
       const e = eliteJellyfishEnemies[i];
+      pushDyingEnemy(e.x, e.y, FLUID_ELITE_JELLYFISH_R, FLUID_ELITE_JELLYFISH_G, FLUID_ELITE_JELLYFISH_B, 8);
       fluid.addExplosion(e.x, e.y, FLUID_EXPLOSION_STRENGTH * 2.0, FLUID_ELITE_JELLYFISH_R, FLUID_ELITE_JELLYFISH_G, FLUID_ELITE_JELLYFISH_B);
       const xpMult = e.variant === 'longtail' ? LONGTAIL_JELLYFISH_XP_MULT
         : e.variant === 'whiplash' ? WHIPLASH_JELLYFISH_XP_MULT
