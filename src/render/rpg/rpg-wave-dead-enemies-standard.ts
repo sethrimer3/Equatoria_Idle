@@ -454,6 +454,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = diamondFishEnemies.length - 1; i >= 0; i--) {
     if (diamondFishEnemies[i].hp <= 0) {
+      pushDyingEnemy(diamondFishEnemies[i].x, diamondFishEnemies[i].y, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B, 6);
       fluid.addExplosion(diamondFishEnemies[i].x, diamondFishEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.8, FLUID_PROC_R, FLUID_PROC_G, FLUID_PROC_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * DIAMONDFISH_XP_MULT;
       addKill('proc_diamondfish'); diamondFishEnemies.splice(i, 1);
