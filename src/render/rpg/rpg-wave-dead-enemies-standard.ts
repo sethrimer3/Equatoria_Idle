@@ -39,6 +39,7 @@ import {
   FLUID_ELITE_JELLYFISH_R, FLUID_ELITE_JELLYFISH_G, FLUID_ELITE_JELLYFISH_B,
 } from './rpg-jellyfish-elite-constants';
 import { trySpawnLuckyMote } from './rpg-lucky-motes';
+import { pushDyingEnemy } from './rpg-death-fade';
 import { makeEmeraldFishMini } from './rpg-procedural-factories';
 import type { WaveManagerCtx } from './rpg-wave-manager';
 
