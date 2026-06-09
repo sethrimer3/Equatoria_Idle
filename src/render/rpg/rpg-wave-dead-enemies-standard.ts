@@ -180,6 +180,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = ioliteEnemies.length - 1; i >= 0; i--) {
     if (ioliteEnemies[i].hp <= 0) {
+      pushDyingEnemy(ioliteEnemies[i].x, ioliteEnemies[i].y, FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B, 6);
       fluid.addExplosion(ioliteEnemies[i].x, ioliteEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 2.2, FLUID_IOLITE_R, FLUID_IOLITE_G, FLUID_IOLITE_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * IOLITE_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'iolite', ioliteEnemies[i].x, ioliteEnemies[i].y, getCachedLuckPercent());
