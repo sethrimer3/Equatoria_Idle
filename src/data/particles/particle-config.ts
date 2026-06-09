@@ -60,6 +60,8 @@ export const DRAG_BOOST_MULTIPLIER = 4;
  * Life inertness both fade linearly back to their normal values.
  */
 export const DRAG_RELEASE_FADE_MS = 5000;
+/** Free-flight speed cap (px/frame-unit) that drag-release boost fades to. Must match LOOM_OUTSIDE_MAX_SPEED. */
+export const DRAG_RELEASE_FREE_MAX_SPEED = 6.5;
 export const TRAIL_FADE = 0.15;
 export const MAX_SHOCKWAVES = 5;
 
