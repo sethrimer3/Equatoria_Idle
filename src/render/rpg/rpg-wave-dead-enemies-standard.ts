@@ -167,6 +167,7 @@ export function sweepStandardDeadEnemies(
   }
   for (let i = citrineEnemies.length - 1; i >= 0; i--) {
     if (citrineEnemies[i].hp <= 0) {
+      pushDyingEnemy(citrineEnemies[i].x, citrineEnemies[i].y, FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B, 5);
       fluid.addExplosion(citrineEnemies[i].x, citrineEnemies[i].y, FLUID_EXPLOSION_STRENGTH * 1.8, FLUID_CITRINE_R, FLUID_CITRINE_G, FLUID_CITRINE_B);
       totalXpFromKills += getXpPerKill(ctx.getCurrentWave()) * CITRINE_XP_MULT;
       trySpawnLuckyMote(luckyMotes, 'citrine', citrineEnemies[i].x, citrineEnemies[i].y, getCachedLuckPercent());
