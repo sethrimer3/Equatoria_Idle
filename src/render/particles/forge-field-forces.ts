@@ -309,24 +309,6 @@ export function applyLoomContainmentCap(
           p.vy -= ny * toRemove;
         }
 
-        // Minimum velocity (tangential swirl) in inner zones
-        const frac = dist / field.outerRadius;
-        let minVel = 0;
-        if (frac < 0.25) minVel = LOOM_MIN_VEL_INNER_25;
-        else if (frac < 0.50) minVel = LOOM_MIN_VEL_INNER_50;
-        else if (frac < 0.75) minVel = LOOM_MIN_VEL_INNER_75;
-
-        if (minVel > 0) {
-          const speedNow = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-          if (speedNow < minVel) {
-            // Add CCW tangential velocity to bring up to minVel
-            const tx = -ny; // CCW tangential unit vector
-            const ty =  nx;
-            const boost = minVel - speedNow;
-            p.vx += tx * boost;
-            p.vy += ty * boost;
-          }
-        }
       }
 
       // ── Dev diagnostics ──────────────────────────────────────────
