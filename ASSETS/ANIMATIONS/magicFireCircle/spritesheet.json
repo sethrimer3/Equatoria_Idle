@@ -222,8 +222,8 @@
         },
         "magicFireCircle_frame (012).png": {
             "frame": {
-                "x": 2,
-                "y": 518,
+                "x": 5678,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -242,8 +242,8 @@
         },
         "magicFireCircle_frame (013).png": {
             "frame": {
-                "x": 518,
-                "y": 518,
+                "x": 6194,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -262,8 +262,8 @@
         },
         "magicFireCircle_frame (014).png": {
             "frame": {
-                "x": 1034,
-                "y": 518,
+                "x": 6710,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -282,8 +282,8 @@
         },
         "magicFireCircle_frame (015).png": {
             "frame": {
-                "x": 1550,
-                "y": 518,
+                "x": 7226,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -302,8 +302,8 @@
         },
         "magicFireCircle_frame (016).png": {
             "frame": {
-                "x": 2066,
-                "y": 518,
+                "x": 7742,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -322,8 +322,8 @@
         },
         "magicFireCircle_frame (017).png": {
             "frame": {
-                "x": 2582,
-                "y": 518,
+                "x": 8258,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -342,8 +342,8 @@
         },
         "magicFireCircle_frame (018).png": {
             "frame": {
-                "x": 3098,
-                "y": 518,
+                "x": 8774,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -362,8 +362,8 @@
         },
         "magicFireCircle_frame (019).png": {
             "frame": {
-                "x": 3614,
-                "y": 518,
+                "x": 9290,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -382,8 +382,8 @@
         },
         "magicFireCircle_frame (020).png": {
             "frame": {
-                "x": 4130,
-                "y": 518,
+                "x": 9806,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -402,8 +402,8 @@
         },
         "magicFireCircle_frame (021).png": {
             "frame": {
-                "x": 4646,
-                "y": 518,
+                "x": 10322,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -422,8 +422,8 @@
         },
         "magicFireCircle_frame (022).png": {
             "frame": {
-                "x": 5162,
-                "y": 518,
+                "x": 10838,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -442,8 +442,8 @@
         },
         "magicFireCircle_frame (023).png": {
             "frame": {
-                "x": 2,
-                "y": 1034,
+                "x": 11354,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -462,8 +462,8 @@
         },
         "magicFireCircle_frame (024).png": {
             "frame": {
-                "x": 518,
-                "y": 1034,
+                "x": 11870,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -482,8 +482,8 @@
         },
         "magicFireCircle_frame (025).png": {
             "frame": {
-                "x": 1034,
-                "y": 1034,
+                "x": 12386,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -502,8 +502,8 @@
         },
         "magicFireCircle_frame (026).png": {
             "frame": {
-                "x": 1550,
-                "y": 1034,
+                "x": 12902,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -522,8 +522,8 @@
         },
         "magicFireCircle_frame (027).png": {
             "frame": {
-                "x": 2066,
-                "y": 1034,
+                "x": 13418,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -542,8 +542,8 @@
         },
         "magicFireCircle_frame (028).png": {
             "frame": {
-                "x": 2582,
-                "y": 1034,
+                "x": 13934,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -562,8 +562,8 @@
         },
         "magicFireCircle_frame (029).png": {
             "frame": {
-                "x": 3098,
-                "y": 1034,
+                "x": 14450,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -582,8 +582,8 @@
         },
         "magicFireCircle_frame (030).png": {
             "frame": {
-                "x": 3614,
-                "y": 1034,
+                "x": 14966,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -602,8 +602,8 @@
         },
         "magicFireCircle_frame (031).png": {
             "frame": {
-                "x": 4130,
-                "y": 1034,
+                "x": 15482,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -622,8 +622,8 @@
         },
         "magicFireCircle_frame (032).png": {
             "frame": {
-                "x": 4646,
-                "y": 1034,
+                "x": 15998,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -642,8 +642,8 @@
         },
         "magicFireCircle_frame (033).png": {
             "frame": {
-                "x": 5162,
-                "y": 1034,
+                "x": 16514,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -662,8 +662,8 @@
         },
         "magicFireCircle_frame (034).png": {
             "frame": {
-                "x": 2,
-                "y": 1550,
+                "x": 17030,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -682,8 +682,8 @@
         },
         "magicFireCircle_frame (035).png": {
             "frame": {
-                "x": 518,
-                "y": 1550,
+                "x": 17546,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -702,8 +702,8 @@
         },
         "magicFireCircle_frame (036).png": {
             "frame": {
-                "x": 1034,
-                "y": 1550,
+                "x": 18062,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -722,8 +722,8 @@
         },
         "magicFireCircle_frame (037).png": {
             "frame": {
-                "x": 1550,
-                "y": 1550,
+                "x": 18578,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -742,8 +742,8 @@
         },
         "magicFireCircle_frame (038).png": {
             "frame": {
-                "x": 2066,
-                "y": 1550,
+                "x": 19094,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -762,8 +762,8 @@
         },
         "magicFireCircle_frame (039).png": {
             "frame": {
-                "x": 2582,
-                "y": 1550,
+                "x": 19610,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -782,8 +782,8 @@
         },
         "magicFireCircle_frame (040).png": {
             "frame": {
-                "x": 3098,
-                "y": 1550,
+                "x": 20126,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -802,8 +802,8 @@
         },
         "magicFireCircle_frame (041).png": {
             "frame": {
-                "x": 3614,
-                "y": 1550,
+                "x": 20642,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -822,8 +822,8 @@
         },
         "magicFireCircle_frame (042).png": {
             "frame": {
-                "x": 4130,
-                "y": 1550,
+                "x": 21158,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -842,8 +842,8 @@
         },
         "magicFireCircle_frame (043).png": {
             "frame": {
-                "x": 4646,
-                "y": 1550,
+                "x": 21674,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -862,8 +862,8 @@
         },
         "magicFireCircle_frame (044).png": {
             "frame": {
-                "x": 5162,
-                "y": 1550,
+                "x": 22190,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -882,8 +882,8 @@
         },
         "magicFireCircle_frame (045).png": {
             "frame": {
-                "x": 2,
-                "y": 2066,
+                "x": 22706,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -902,8 +902,8 @@
         },
         "magicFireCircle_frame (046).png": {
             "frame": {
-                "x": 518,
-                "y": 2066,
+                "x": 23222,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -922,8 +922,8 @@
         },
         "magicFireCircle_frame (047).png": {
             "frame": {
-                "x": 1034,
-                "y": 2066,
+                "x": 23738,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -942,8 +942,8 @@
         },
         "magicFireCircle_frame (048).png": {
             "frame": {
-                "x": 1550,
-                "y": 2066,
+                "x": 24254,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -962,8 +962,8 @@
         },
         "magicFireCircle_frame (049).png": {
             "frame": {
-                "x": 2066,
-                "y": 2066,
+                "x": 24770,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -982,8 +982,8 @@
         },
         "magicFireCircle_frame (050).png": {
             "frame": {
-                "x": 2582,
-                "y": 2066,
+                "x": 25286,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1002,8 +1002,8 @@
         },
         "magicFireCircle_frame (051).png": {
             "frame": {
-                "x": 3098,
-                "y": 2066,
+                "x": 25802,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1022,8 +1022,8 @@
         },
         "magicFireCircle_frame (052).png": {
             "frame": {
-                "x": 3614,
-                "y": 2066,
+                "x": 26318,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1042,8 +1042,8 @@
         },
         "magicFireCircle_frame (053).png": {
             "frame": {
-                "x": 4130,
-                "y": 2066,
+                "x": 26834,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1062,8 +1062,8 @@
         },
         "magicFireCircle_frame (054).png": {
             "frame": {
-                "x": 4646,
-                "y": 2066,
+                "x": 27350,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1082,8 +1082,8 @@
         },
         "magicFireCircle_frame (055).png": {
             "frame": {
-                "x": 5162,
-                "y": 2066,
+                "x": 27866,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1102,8 +1102,8 @@
         },
         "magicFireCircle_frame (056).png": {
             "frame": {
-                "x": 2,
-                "y": 2582,
+                "x": 28382,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1122,8 +1122,8 @@
         },
         "magicFireCircle_frame (057).png": {
             "frame": {
-                "x": 518,
-                "y": 2582,
+                "x": 28898,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1142,8 +1142,8 @@
         },
         "magicFireCircle_frame (058).png": {
             "frame": {
-                "x": 1034,
-                "y": 2582,
+                "x": 29414,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1162,8 +1162,8 @@
         },
         "magicFireCircle_frame (059).png": {
             "frame": {
-                "x": 1550,
-                "y": 2582,
+                "x": 29930,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1182,8 +1182,8 @@
         },
         "magicFireCircle_frame (060).png": {
             "frame": {
-                "x": 2066,
-                "y": 2582,
+                "x": 30446,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1202,8 +1202,8 @@
         },
         "magicFireCircle_frame (061).png": {
             "frame": {
-                "x": 2582,
-                "y": 2582,
+                "x": 30962,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1222,8 +1222,8 @@
         },
         "magicFireCircle_frame (062).png": {
             "frame": {
-                "x": 3098,
-                "y": 2582,
+                "x": 31478,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1242,8 +1242,8 @@
         },
         "magicFireCircle_frame (063).png": {
             "frame": {
-                "x": 3614,
-                "y": 2582,
+                "x": 31994,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1262,8 +1262,8 @@
         },
         "magicFireCircle_frame (064).png": {
             "frame": {
-                "x": 4130,
-                "y": 2582,
+                "x": 32510,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1282,8 +1282,8 @@
         },
         "magicFireCircle_frame (065).png": {
             "frame": {
-                "x": 4646,
-                "y": 2582,
+                "x": 33026,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1302,8 +1302,8 @@
         },
         "magicFireCircle_frame (066).png": {
             "frame": {
-                "x": 5162,
-                "y": 2582,
+                "x": 33542,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1322,8 +1322,8 @@
         },
         "magicFireCircle_frame (067).png": {
             "frame": {
-                "x": 2,
-                "y": 3098,
+                "x": 34058,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1342,8 +1342,8 @@
         },
         "magicFireCircle_frame (068).png": {
             "frame": {
-                "x": 518,
-                "y": 3098,
+                "x": 34574,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1362,8 +1362,8 @@
         },
         "magicFireCircle_frame (069).png": {
             "frame": {
-                "x": 1034,
-                "y": 3098,
+                "x": 35090,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1382,8 +1382,8 @@
         },
         "magicFireCircle_frame (070).png": {
             "frame": {
-                "x": 1550,
-                "y": 3098,
+                "x": 35606,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1402,8 +1402,8 @@
         },
         "magicFireCircle_frame (071).png": {
             "frame": {
-                "x": 2066,
-                "y": 3098,
+                "x": 36122,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1422,8 +1422,8 @@
         },
         "magicFireCircle_frame (072).png": {
             "frame": {
-                "x": 2582,
-                "y": 3098,
+                "x": 36638,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1442,8 +1442,8 @@
         },
         "magicFireCircle_frame (073).png": {
             "frame": {
-                "x": 3098,
-                "y": 3098,
+                "x": 37154,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1462,8 +1462,8 @@
         },
         "magicFireCircle_frame (074).png": {
             "frame": {
-                "x": 3614,
-                "y": 3098,
+                "x": 37670,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1482,8 +1482,8 @@
         },
         "magicFireCircle_frame (075).png": {
             "frame": {
-                "x": 4130,
-                "y": 3098,
+                "x": 38186,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1502,8 +1502,8 @@
         },
         "magicFireCircle_frame (076).png": {
             "frame": {
-                "x": 4646,
-                "y": 3098,
+                "x": 38702,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1522,8 +1522,8 @@
         },
         "magicFireCircle_frame (077).png": {
             "frame": {
-                "x": 5162,
-                "y": 3098,
+                "x": 39218,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1542,8 +1542,8 @@
         },
         "magicFireCircle_frame (078).png": {
             "frame": {
-                "x": 2,
-                "y": 3614,
+                "x": 39734,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1562,8 +1562,8 @@
         },
         "magicFireCircle_frame (079).png": {
             "frame": {
-                "x": 518,
-                "y": 3614,
+                "x": 40250,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1582,8 +1582,8 @@
         },
         "magicFireCircle_frame (080).png": {
             "frame": {
-                "x": 1034,
-                "y": 3614,
+                "x": 40766,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1602,8 +1602,8 @@
         },
         "magicFireCircle_frame (081).png": {
             "frame": {
-                "x": 1550,
-                "y": 3614,
+                "x": 41282,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1622,8 +1622,8 @@
         },
         "magicFireCircle_frame (082).png": {
             "frame": {
-                "x": 2066,
-                "y": 3614,
+                "x": 41798,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1642,8 +1642,8 @@
         },
         "magicFireCircle_frame (083).png": {
             "frame": {
-                "x": 2582,
-                "y": 3614,
+                "x": 42314,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1662,8 +1662,8 @@
         },
         "magicFireCircle_frame (084).png": {
             "frame": {
-                "x": 3098,
-                "y": 3614,
+                "x": 42830,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1682,8 +1682,8 @@
         },
         "magicFireCircle_frame (085).png": {
             "frame": {
-                "x": 3614,
-                "y": 3614,
+                "x": 43346,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1702,8 +1702,8 @@
         },
         "magicFireCircle_frame (086).png": {
             "frame": {
-                "x": 4130,
-                "y": 3614,
+                "x": 43862,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1722,8 +1722,8 @@
         },
         "magicFireCircle_frame (087).png": {
             "frame": {
-                "x": 4646,
-                "y": 3614,
+                "x": 44378,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1742,8 +1742,8 @@
         },
         "magicFireCircle_frame (088).png": {
             "frame": {
-                "x": 5162,
-                "y": 3614,
+                "x": 44894,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1762,8 +1762,8 @@
         },
         "magicFireCircle_frame (089).png": {
             "frame": {
-                "x": 2,
-                "y": 4130,
+                "x": 45410,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1782,8 +1782,8 @@
         },
         "magicFireCircle_frame (090).png": {
             "frame": {
-                "x": 518,
-                "y": 4130,
+                "x": 45926,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1802,8 +1802,8 @@
         },
         "magicFireCircle_frame (091).png": {
             "frame": {
-                "x": 1034,
-                "y": 4130,
+                "x": 46442,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1822,8 +1822,8 @@
         },
         "magicFireCircle_frame (092).png": {
             "frame": {
-                "x": 1550,
-                "y": 4130,
+                "x": 46958,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1842,8 +1842,8 @@
         },
         "magicFireCircle_frame (093).png": {
             "frame": {
-                "x": 2066,
-                "y": 4130,
+                "x": 47474,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1862,8 +1862,8 @@
         },
         "magicFireCircle_frame (094).png": {
             "frame": {
-                "x": 2582,
-                "y": 4130,
+                "x": 47990,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1882,8 +1882,8 @@
         },
         "magicFireCircle_frame (095).png": {
             "frame": {
-                "x": 3098,
-                "y": 4130,
+                "x": 48506,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1902,8 +1902,8 @@
         },
         "magicFireCircle_frame (096).png": {
             "frame": {
-                "x": 3614,
-                "y": 4130,
+                "x": 49022,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1922,8 +1922,8 @@
         },
         "magicFireCircle_frame (097).png": {
             "frame": {
-                "x": 4130,
-                "y": 4130,
+                "x": 49538,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1942,8 +1942,8 @@
         },
         "magicFireCircle_frame (098).png": {
             "frame": {
-                "x": 4646,
-                "y": 4130,
+                "x": 50054,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1962,8 +1962,8 @@
         },
         "magicFireCircle_frame (099).png": {
             "frame": {
-                "x": 5162,
-                "y": 4130,
+                "x": 50570,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -1982,8 +1982,8 @@
         },
         "magicFireCircle_frame (100).png": {
             "frame": {
-                "x": 2,
-                "y": 4646,
+                "x": 51086,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2002,8 +2002,8 @@
         },
         "magicFireCircle_frame (101).png": {
             "frame": {
-                "x": 518,
-                "y": 4646,
+                "x": 51602,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2022,8 +2022,8 @@
         },
         "magicFireCircle_frame (102).png": {
             "frame": {
-                "x": 1034,
-                "y": 4646,
+                "x": 52118,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2042,8 +2042,8 @@
         },
         "magicFireCircle_frame (103).png": {
             "frame": {
-                "x": 1550,
-                "y": 4646,
+                "x": 52634,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2062,8 +2062,8 @@
         },
         "magicFireCircle_frame (104).png": {
             "frame": {
-                "x": 2066,
-                "y": 4646,
+                "x": 53150,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2082,8 +2082,8 @@
         },
         "magicFireCircle_frame (105).png": {
             "frame": {
-                "x": 2582,
-                "y": 4646,
+                "x": 53666,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2102,8 +2102,8 @@
         },
         "magicFireCircle_frame (106).png": {
             "frame": {
-                "x": 3098,
-                "y": 4646,
+                "x": 54182,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2122,8 +2122,8 @@
         },
         "magicFireCircle_frame (107).png": {
             "frame": {
-                "x": 3614,
-                "y": 4646,
+                "x": 54698,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2142,8 +2142,8 @@
         },
         "magicFireCircle_frame (108).png": {
             "frame": {
-                "x": 4130,
-                "y": 4646,
+                "x": 55214,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2162,8 +2162,8 @@
         },
         "magicFireCircle_frame (109).png": {
             "frame": {
-                "x": 4646,
-                "y": 4646,
+                "x": 55730,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2182,8 +2182,8 @@
         },
         "magicFireCircle_frame (110).png": {
             "frame": {
-                "x": 5162,
-                "y": 4646,
+                "x": 56246,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2202,8 +2202,8 @@
         },
         "magicFireCircle_frame (111).png": {
             "frame": {
-                "x": 2,
-                "y": 5162,
+                "x": 56762,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2222,8 +2222,8 @@
         },
         "magicFireCircle_frame (112).png": {
             "frame": {
-                "x": 518,
-                "y": 5162,
+                "x": 57278,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2242,8 +2242,8 @@
         },
         "magicFireCircle_frame (113).png": {
             "frame": {
-                "x": 1034,
-                "y": 5162,
+                "x": 57794,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2262,8 +2262,8 @@
         },
         "magicFireCircle_frame (114).png": {
             "frame": {
-                "x": 1550,
-                "y": 5162,
+                "x": 58310,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2282,8 +2282,8 @@
         },
         "magicFireCircle_frame (115).png": {
             "frame": {
-                "x": 2066,
-                "y": 5162,
+                "x": 58826,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2302,8 +2302,8 @@
         },
         "magicFireCircle_frame (116).png": {
             "frame": {
-                "x": 2582,
-                "y": 5162,
+                "x": 59342,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2322,8 +2322,8 @@
         },
         "magicFireCircle_frame (117).png": {
             "frame": {
-                "x": 3098,
-                "y": 5162,
+                "x": 59858,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2342,8 +2342,8 @@
         },
         "magicFireCircle_frame (118).png": {
             "frame": {
-                "x": 3614,
-                "y": 5162,
+                "x": 60374,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2362,8 +2362,8 @@
         },
         "magicFireCircle_frame (119).png": {
             "frame": {
-                "x": 4130,
-                "y": 5162,
+                "x": 60890,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2382,8 +2382,8 @@
         },
         "magicFireCircle_frame (120).png": {
             "frame": {
-                "x": 4646,
-                "y": 5162,
+                "x": 61406,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2402,8 +2402,8 @@
         },
         "magicFireCircle_frame (121).png": {
             "frame": {
-                "x": 5162,
-                "y": 5162,
+                "x": 61922,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2422,7 +2422,7 @@
         },
         "magicFireCircle_frame (122).png": {
             "frame": {
-                "x": 5678,
+                "x": 62438,
                 "y": 2,
                 "w": 512,
                 "h": 512
@@ -2442,8 +2442,8 @@
         },
         "magicFireCircle_frame (123).png": {
             "frame": {
-                "x": 5678,
-                "y": 518,
+                "x": 62954,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2462,8 +2462,8 @@
         },
         "magicFireCircle_frame (124).png": {
             "frame": {
-                "x": 5678,
-                "y": 1034,
+                "x": 63470,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2482,8 +2482,8 @@
         },
         "magicFireCircle_frame (125).png": {
             "frame": {
-                "x": 5678,
-                "y": 1550,
+                "x": 63986,
+                "y": 2,
                 "w": 512,
                 "h": 512
             },
@@ -2507,8 +2507,8 @@
         "image": "spritesheet.png",
         "format": "RGBA8888",
         "size": {
-            "w": 6192,
-            "h": 5676
+            "w": 64500,
+            "h": 516
         },
         "scale": "1",
         "comment": "Created with TexturePacker Online (free version)\nhttps://www.codeandweb.com/texturepacker-online\n\nTexturePacker desktop offers better support for Pixi and Phaser with sprite trimming, better packing algorithms, hardware texture compression, and PNG optimization.\nTry TexturePacker desktop: https://www.codeandweb.com/texturepacker"
