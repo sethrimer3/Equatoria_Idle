@@ -48,6 +48,7 @@ const CORNER_R          = 12;    // rounded-rect corner radius
 const EXIT_SIZE         = 46;    // exit button CSS px
 const EXIT_MARGIN       = 12;
 const DRAG_THRESHOLD    = 5;     // px before a tap becomes a drag
+const SELECTED_SCALE    = 1.25;
 const NODE_HOME_SPRING  = 0.000018;
 const ROPE_SPRING       = 0.000012;
 const NODE_DAMPING      = 0.92;
