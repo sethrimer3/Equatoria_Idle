@@ -17,7 +17,7 @@
  *   the wallpaper-repeat artefact when layers align.
  *
  *     Layer A: scale 1.00×, slow rightward+downward drift  (~8.5 / 6.0 px/s)
- *     Layer B: scale 1.28×, leftward+downward drift + slow rotation (~0.015 rad/s)
+ *     Layer B: scale 1.28×, elliptical sin/cos orbit + slow rotation (~0.015 rad/s)
  *     Layer C: scale 0.78×, rightward+upward drift         (~4.2 / 5.8 px/s)
  *
  * Offscreen light buffer:
