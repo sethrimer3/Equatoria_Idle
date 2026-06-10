@@ -375,7 +375,7 @@ export function drawCausticsFloorEffects(
  *
  * Layer parameters (drift speeds in source-tile pixels per second):
  *   A: scale 1.00×, (+8.5, +6.0) px/s — main caustic weave  [tile variant A]
- *   B: scale 1.28×, (−6.2, +4.5) px/s + slow rotation       [tile variant B, high only]
+ *   B: scale 1.28×, elliptical sin/cos orbit + slow rotation  [tile variant B, high only]
  *   C: scale 0.78×, (+4.2, −5.8) px/s — finer detail        [tile variant A, high only]
  */
 function _drawCausticsTileLayers(
