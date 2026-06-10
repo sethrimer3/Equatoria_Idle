@@ -417,16 +417,25 @@ function _drawCausticsTileLayers(
 
   if (!lowGraphics) {
     if (_patternB) {
-      // ── Layer B: tile variant B, scale 1.28×, leftward + slow downward drift
-      //    + very slow rotation (~0.015 rad/s) for domain variation.
+      // ── Layer B: tile variant B, scale 1.28×, slow drift + very slow rotation.
+      //
+      // Translation uses sin/cos circular orbit rather than linear+modulo drift.
+      // Reason: with a rotated CanvasPattern the canvas-space period for txB is
+      // NOT simply tileW*scale — it is tileW*scale only when sin(rotB)=0.  At any
+      // other rotation angle, wrapping txB by tileBW shifts the pattern origin in
+      // pattern space by (tileW*cos r, −tileW*sin r), introducing a visible y-jump.
+      // Sin/cos offsets are inherently periodic and never wrap abruptly.
       const scaleB = 1.28;
       const rotB   = tS * 0.015;          // ~1° per 1.16 s; imperceptible frame-to-frame
       const cosRB  = Math.cos(rotB) * scaleB;
       const sinRB  = Math.sin(rotB) * scaleB;
       const tileBW = tileB!.width  * scaleB;
       const tileBH = tileB!.height * scaleB;
-      const txB = (((-(tS * 6.2)) % tileBW) + tileBW) % tileBW;
-      const tyB = (tS * 4.5) % tileBH;
+      // Circular orbit: periods ~52.7 s (x) and ~72.4 s (y), phase-offset so the
+      // path is elliptical.  Amplitudes ≈ 48 % / 38 % of the scaled tile dimension,
+      // giving similar apparent motion speed to the former linear drift.
+      const txB = tileBW * 0.48 * Math.sin(tS * 0.1194);
+      const tyB = tileBH * 0.38 * Math.cos(tS * 0.0868 - 0.8);
       _matB.a = cosRB;  _matB.b = sinRB;
       _matB.c = -sinRB; _matB.d = cosRB;
       _matB.e = txB;    _matB.f = tyB;
