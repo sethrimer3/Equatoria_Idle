@@ -73,6 +73,7 @@ function extractTargetEntity(t: ClosestTarget): object | null {
   if (t.diamondFish) return t.diamondFish;
   if (t.binaryRing) return t.binaryRing;
   if (t.nadirCubePoint) return t.nadirCubePoint;
+  if (t.horizonPentagonReal) return t.horizonPentagonReal;
   // Sub-entities (shards, missiles, spikes, bolts) do not receive statuses
   return null;
 }

@@ -22,6 +22,7 @@ import type {
 import type { RpgTargetingCtx } from './rpg-targeting-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
+import type { HorizonPentagonGroup } from './horizon-pentagon-types';
 import type {
   DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
   JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
@@ -333,7 +334,7 @@ export function findClosestEnemy(
   | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
   | SandFishEnemy | QuartzFishEnemy | RubyFishEnemy | SunstoneFishEnemy
   | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy
-  | NadirCubePointEnemy | null {
+  | NadirCubePointEnemy | HorizonPentagonGroup | null {
   let bestSq = rangeSq;
   let best: LaserEnemy | SapphireEnemy | EmeraldEnemy | AmberEnemy | VoidEnemy
     | QuartzEnemy | RubyEnemy | SunstoneEnemy | CitrineEnemy | IoliteEnemy | AmethystEnemy | DiamondEnemy | NullstoneEnemy
@@ -344,7 +345,7 @@ export function findClosestEnemy(
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
     | SandFishEnemy | QuartzFishEnemy | RubyFishEnemy | SunstoneFishEnemy
     | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy
-    | NadirCubePointEnemy | null = null;
+    | NadirCubePointEnemy | HorizonPentagonGroup | null = null;
   const terrain = ctx.getTerrainState();
   const mx = ctx.mote.x, my = ctx.mote.y;
   for (const e of ctx.enemies) {
@@ -496,5 +497,11 @@ export function findClosestEnemy(
   for (const e of ctx.sapphireFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
   for (const e of ctx.amethystFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
   for (const e of ctx.diamondFishEnemies) { const dx = e.x - mx, dy = e.y - my; const d = dx*dx+dy*dy; if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; } }
+  for (const g of ctx.horizonPentagonGroups) {
+    if (g.hp <= 0) continue;
+    const dx = g.x - mx, dy = g.y - my;
+    const d = dx * dx + dy * dy;
+    if (d <= bestSq && !isLosBlocked(terrain, mx, my, g.x, g.y)) { bestSq = d; best = g; }
+  }
   return best;
 }

@@ -36,6 +36,7 @@ import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
+import type { HorizonPentagonGroup } from './horizon-pentagon-types';
 import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
@@ -190,7 +191,7 @@ export interface RpgTargetingHandle {
     | SpiderCrawlerEnemy | MoteSwarmEnemy | ShadowHandEnemy
     | SandFishEnemy | QuartzFishEnemy | RubyFishEnemy | SunstoneFishEnemy
     | EmeraldFishEnemy | SapphireFishEnemy | AmethystFishEnemy | DiamondFishEnemy
-    | NadirCubePointEnemy | null;
+    | NadirCubePointEnemy | HorizonPentagonGroup | null;
   collectEnemyBodyTargets(opts?: TargetCollectionOptions): ClosestTarget[];
   findClosestEnemyFrom(x: number, y: number, rangeSq: number, opts?: TargetCollectionOptions): ClosestTarget | null;
   getTargetedEnemy(): ClosestTarget | null;

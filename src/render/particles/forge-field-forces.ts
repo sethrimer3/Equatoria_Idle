@@ -297,11 +297,11 @@ export function applyLoomContainmentCap(
         // snapped back to the edge have their outward velocity zeroed.
         const nx = dist > 0.01 ? dx / dist : 0;
         const ny = dist > 0.01 ? dy / dist : 0;
+        const ratio = dist / field.outerRadius; // 0..1
 
         const radialV = p.vx * nx + p.vy * ny; // positive = outward
         if (radialV > 0) {
           // Suppression multiplier fades from 1 (centre) to 0 (edge)
-          const ratio = dist / field.outerRadius; // 0..1
           const multiplier = Math.pow(Math.max(0, 1 - ratio), LOOM_SMOOTH_DAMP_POWER);
           // Remove the fraction of outward velocity that the multiplier suppresses
           const toRemove = radialV * (1 - multiplier);
@@ -309,6 +309,23 @@ export function applyLoomContainmentCap(
           p.vy -= ny * toRemove;
         }
 
+        // Inner zone minimum tangential velocity (swirl, not outward)
+        if (ratio < 0.75) {
+          const minV = ratio < 0.25
+            ? p.minVelocity * 2.0
+            : ratio < 0.5
+            ? p.minVelocity * 1.5
+            : p.minVelocity;
+          // Tangential component: positive = CCW relative to outward radial
+          const tangV = -p.vx * ny + p.vy * nx;
+          const tangSpeed = Math.abs(tangV);
+          if (tangSpeed < minV) {
+            const dir = tangV >= 0 ? 1 : -1;
+            const boost = (minV - tangSpeed) * dir;
+            p.vx -= ny * boost;
+            p.vy += nx * boost;
+          }
+        }
       }
 
       // ── Dev diagnostics ──────────────────────────────────────────

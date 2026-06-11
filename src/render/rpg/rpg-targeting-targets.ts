@@ -241,6 +241,7 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       ctx.sapphireFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').SapphireFishEnemy) ||
       ctx.amethystFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').AmethystFishEnemy) ||
       ctx.diamondFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').DiamondFishEnemy) ||
+      ctx.horizonPentagonGroups.some(g => g === targetedEnemy) ||
       (ctx.bossEnemy === targetedEnemy);
 
     if (isAlive) {
@@ -335,6 +336,10 @@ export function getTargetedEnemy(ctx: RpgTargetingCtx, targetedEnemy: object | n
       }
       if (ctx.diamondFishEnemies.includes(targetedEnemy as import('./rpg-procedural-types').DiamondFishEnemy)) {
         return { kind: 'proc_diamondfish', x: e.x, y: e.y, distSq, diamondFish: targetedEnemy as import('./rpg-procedural-types').DiamondFishEnemy };
+      }
+      const pentagonGroup = ctx.horizonPentagonGroups.find(g => g === targetedEnemy);
+      if (pentagonGroup) {
+        return { kind: 'horizon_pentagon_real', x: e.x, y: e.y, distSq, horizonPentagonReal: pentagonGroup };
       }
       if (ctx.bossEnemy === targetedEnemy) {
         return { kind: 'boss', x: e.x, y: e.y, distSq, boss: ctx.bossEnemy };
