@@ -1,9 +1,53 @@
 # Equatoria Idle Compact Architecture Guide
 
-Last verified: 2026-06-03
-Current build at verification: 206
+Last verified: 2026-06-06
+Current build at verification: 230
 
 This file is the compact AI-facing architecture guide. The root `ARCHITECTURE.md` and `DECISIONS.md` remain the deeper references.
+
+## Runtime flow diagram
+
+```
+index.html
+  └── src/main.ts (DOMContentLoaded)
+        └── src/app/game-app.ts :: startApp()
+              ├── loadGame() / createGameState()    ← localStorage or fresh
+              ├── loadSettings()                    ← localStorage settings
+              ├── preloadGeneratorSprites(), preloadForgeSprites(), preloadRefinedGemSprites()
+              ├── createGameCanvas() + resizeCanvas()
+              ├── createParticleSystem()
+              ├── createAudioSystem()
+              ├── createTabBar(), createUpgradePanel(), createLoomPanel(), ...
+              ├── createRpgRender(container, game.rpg, callbacks)
+              ├── wireCanvasPointerInput()           ← pointer/touch → GameAction → dispatch()
+              ├── applyIdleRewardsIfEligible()       ← if offline time elapsed
+              └── requestAnimationFrame(gameLoop)   ← starts main loop
+
+Main loop (app-game-loop.ts :: createGameLoop()):
+  1. simTick(game, deltaMs)           ← looms, auto-tap, achievements, idle drip
+  2. tickForgeWarmup(forge, nowMs)    ← forge crunch timer
+  3. if RPG tab active: rpgRender.update(deltaMs) → return early
+  4. emit particles from looms
+  5. particles.update(deltaMs, ...)   ← physics, Particle Life, merges, forge crunch
+  6. audio events (merges, forge, achievements)
+  7. bgAnimation.update() + render background
+  8. drawGenerators(), drawForge(), drawForgeCrunch()
+  9. hudOverlay.update(...)           ← live equation + score DOM update (every frame)
+  10. particles.draw(...)             ← batched canvas draw
+  11. if devMode: drawPerfStats()
+  12. if 100ms elapsed: updateVisiblePanels()  ← DOM panel throttle
+  13. autosave check (every 30s)
+  14. requestAnimationFrame(gameLoop)
+
+Persistence flows:
+  Save:  saveGame(state) → serializeGameState() → JSON → localStorage['equatoria_save']
+  Load:  localStorage['equatoria_save'] → JSON.parse → deserializeGameState() → GameState
+  Reset: sessionStorage['equatoria_reset_pending'] = '1' → deleteSave() → location.reload()
+  Offline: localStorage['equatoria_last_active_ts'] → elapsed → applyIdleRewardsIfEligible()
+
+Action flow:
+  DOM event → pointer/button handler → dispatch(GameAction) → handleAction() → sim mutation → panel refresh
+```
 
 ## Runtime shape
 
@@ -197,14 +241,20 @@ Avoid:
 
 Use the docs as layers:
 
-1. `AGENTS.md`: shortest required agent entry point.
-2. `docs/AI_REPO_MAP.md`: compact subsystem map.
-3. `docs/ARCHITECTURE.md`: this compact architecture guide.
-4. `docs/CURRENT_STATUS.md`: current status, recent builds, known limitations.
-5. `docs/TODO.md`: condensed actionable tasks.
-6. Root `file_index.md`: detailed file-level map.
-7. Root `ARCHITECTURE.md` and `DECISIONS.md`: deeper historical/technical references.
-8. `nextSteps.md`: build history and implementation notes.
+1. `AGENTS.md`: required agent entry point — read order, checklists, constraints.
+2. `docs/REPO_MAP.md`: compact folder map with HIGH VALUE / CAUTION / IGNORE labels.
+3. `docs/AI_REPO_MAP.md`: extended subsystem map with risks and routing table.
+4. `docs/ARCHITECTURE.md`: this compact architecture guide.
+5. `docs/AI_TASK_ROUTING.md`: first files, keywords, and pitfalls per task type.
+6. `docs/FILE_GUIDE.md`: per-file responsibilities grouped by system.
+7. `docs/CONVENTIONS.md`: naming, state, rendering, and testing rules.
+8. `docs/DEPENDENCY_MAP.md`: module dependency hierarchy.
+9. `docs/CURRENT_STATUS.md`: current status, recent builds, known limitations.
+10. `docs/TODO.md`: condensed actionable tasks.
+11. `docs/CHANGELOG_FOR_AGENTS.md`: structural change log for agents.
+12. Root `file_index.md`: detailed file-level map.
+13. Root `ARCHITECTURE.md` and `DECISIONS.md`: deeper historical/technical references.
+14. `nextSteps.md`: build history and implementation notes.
 
 ## Common failure modes
 

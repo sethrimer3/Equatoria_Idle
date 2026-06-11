@@ -585,6 +585,73 @@ export const ELITE_WAVE_ENEMY_IDS: readonly string[] = [
 
 // ─── Zone-aware wave generation ────────────────────────────────────
 
+// ─── Impetus zone wave generator ──────────────────────────────────────────────
+
+/**
+ * Aliven types in unlock order for the Impetus zone, matching the difficulty
+ * progression used in the hand-authored Euhedral waves.
+ */
+const _IMPETUS_ALIVEN_ORDER = [
+  'aliven_spark_cluster',
+  'aliven_quartz_ghost',
+  'aliven_shard_bloom',
+  'aliven_pulse_swarm',
+  'aliven_ember_ring',
+  'aliven_void_splinters',
+  'aliven_healer_nodes',
+  'aliven_orbit_bloom',
+  'aliven_iolite_prism',
+  'aliven_fracteryl_storm',
+] as const;
+
+/**
+ * Returns a curated WaveDefinition for the Impetus zone.
+ *
+ * Hard cap: at most 2 normal aliven groups per wave (the two most-recently
+ * unlocked types) plus 1 elite group on every 10th wave.  This bounds particle-
+ * life pair-check cost regardless of wave number, while still surfacing new
+ * mechanics as the player progresses.  Proc enemies scale normally.
+ */
+function _getImpetusWaveDefinition(waveNumber: number): WaveDefinition {
+  const delay = Math.max(130, 600 - waveNumber * 18);
+  const spawns: WaveSpawn[] = [];
+
+  // Unlock one new aliven type every 3 waves, capped at the full roster.
+  const unlockedCount = Math.min(
+    Math.ceil(waveNumber / 3),
+    _IMPETUS_ALIVEN_ORDER.length,
+  );
+
+  // Normal group 1 — most recently unlocked type.
+  const g1 = _IMPETUS_ALIVEN_ORDER[unlockedCount - 1];
+  spawns.push({ enemyTypeId: g1, count: 1, spawnDelay: delay + 400 });
+
+  // Normal group 2 — second-most recently unlocked type (if available).
+  if (unlockedCount >= 2) {
+    const g2 = _IMPETUS_ALIVEN_ORDER[unlockedCount - 2];
+    spawns.push({ enemyTypeId: g2, count: 1, spawnDelay: delay + 900 });
+  }
+
+  // Elite aliven every 10th wave — one group of the highest-tier unlocked type.
+  // Elite groups retain player-seeking behavior that normal groups do not have.
+  if (waveNumber % 10 === 0 && unlockedCount >= 1) {
+    const eliteBase = _IMPETUS_ALIVEN_ORDER[unlockedCount - 1];
+    // Derives e.g. 'aliven_elite_spark_cluster' from 'aliven_spark_cluster'.
+    const eliteId = eliteBase.replace('aliven_', 'aliven_elite_');
+    spawns.push({ enemyTypeId: eliteId, count: 1, spawnDelay: delay + 1600 });
+  }
+
+  // Proc enemies native to Impetus — scale normally.
+  const procCount = Math.min(1 + Math.floor(waveNumber * 0.2), 4);
+  if (waveNumber >= 5)  spawns.push({ enemyTypeId: 'proc_dustwisp',   count: procCount,              spawnDelay: delay + 200 });
+  if (waveNumber >= 26) spawns.push({ enemyTypeId: 'proc_moteswarm',  count: Math.min(procCount, 3), spawnDelay: delay + 500 });
+  if (waveNumber >= 32) spawns.push({ enemyTypeId: 'proc_shadowhand', count: Math.min(procCount, 2), spawnDelay: delay + 700 });
+
+  return { waveNumber, spawns };
+}
+
+// ─── Zone-aware wave generation ────────────────────────────────────────────────
+
 /**
  * Tracks which empty-pool zones have already emitted a dev warning this session,
  * to avoid spamming the console.
@@ -607,6 +674,10 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
   if (zoneId === 'euhedral') {
     return getWaveDefinition(waveNumber);
   }
+  if (zoneId === 'impetus') {
+    return _getImpetusWaveDefinition(waveNumber);
+  }
+
   if (zoneId === 'verdure' && waveNumber > 0 && waveNumber % 10 === 0) {
     const tier = Math.max(1, Math.floor(waveNumber / 10));
     const baseCount = Math.min(2 + tier, 7);

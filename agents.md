@@ -5,12 +5,25 @@ This is the short, high-signal entry point for AI coding agents. The longer lega
 ## Required read order before editing
 
 1. `AGENTS.md` — this file.
-2. `docs/AI_REPO_MAP.md` — fast orientation and subsystem-to-file map.
-3. `docs/CURRENT_STATUS.md` — current build, recent work, known incomplete areas.
-4. `docs/TODO.md` — condensed task list and deferred work.
-5. `file_index.md` — detailed per-file reference when a subsystem needs deeper inspection.
-6. `ARCHITECTURE.md` and `DECISIONS.md` — read when changing runtime flow, coordinate systems, save data, rendering architecture, or long-lived technical decisions.
-7. `agents.md` — full standing rules for architecture, TypeScript discipline, naming, performance, docs, and build workflow.
+2. `docs/REPO_MAP.md` — compact folder map with HIGH VALUE / CAUTION / IGNORE labels.
+3. `docs/AI_REPO_MAP.md` — extended orientation: per-subsystem risks and routing table.
+4. `docs/CURRENT_STATUS.md` — current build, recent work, known incomplete areas.
+5. `docs/TODO.md` — condensed task list and deferred work.
+6. `docs/AI_TASK_ROUTING.md` — task-type routing: first files, keywords, pitfalls, verify commands.
+7. `file_index.md` — detailed per-file reference when a subsystem needs deeper inspection.
+8. `docs/FILE_GUIDE.md` — per-file responsibilities grouped by system with risk labels.
+9. `docs/CONVENTIONS.md` — naming, folder, state, rendering, and testing conventions.
+10. `docs/DEPENDENCY_MAP.md` — module dependency hierarchy and shared-module risk table.
+11. `ARCHITECTURE.md` and `DECISIONS.md` — read when changing runtime flow, coordinate systems, save data, rendering architecture, or long-lived technical decisions.
+12. `agents.md` — full standing rules for architecture, TypeScript discipline, naming, performance, docs, and build workflow.
+
+### Short-circuit by task type
+- **UI/panel change** → skip to step 6 (`AI_TASK_ROUTING.md`)
+- **Rendering/visual** → step 6
+- **Save/persistence** → step 6
+- **Economy/gameplay** → step 6
+- **RPG content** → step 6
+- **New file** → steps 2–4, then step 8 to find the right system
 
 ## Minimal-context workflow
 
@@ -53,12 +66,32 @@ npm run lint
 - Keep coordinate spaces explicit. Use suffixes such as `World`, `Px`, `Ms`, `Rad`, `Screen`, `Canvas`, and `Ui` where helpful.
 - Keep docs concise and factual. Mark uncertain summaries as uncertain instead of guessing.
 
+## Before editing checklist
+
+- [ ] Read `docs/CURRENT_STATUS.md` — is the feature already in-progress or known broken?
+- [ ] Identify the smallest subsystem likely to contain the change (use `docs/AI_TASK_ROUTING.md`)
+- [ ] Read only the relevant source files, not the whole repo
+- [ ] Check `src/settings/save-types.ts` if the change touches any persisted state
+- [ ] Confirm no `sim/` → `render/` or `sim/` → `ui/` import is being introduced
+- [ ] Check `src/data/tiers/tier-definitions.ts` if the change touches tier identifiers
+
+## Before final response checklist
+
+- [ ] `npm run typecheck` passes
+- [ ] `npm run test` passes (if sim/data/settings files were changed)
+- [ ] `npm run lint` passes
+- [ ] If save format changed: `SAVE_VERSION` was incremented in `save-types.ts`
+- [ ] If build number should change: `src/buildInfo.ts::BUILD_NUMBER` was incremented
+- [ ] Docs updated where architecture, file responsibilities, or known issues changed
+
 ## Documentation update rule
 
 When a change affects repo orientation:
 
 - Update `docs/AI_REPO_MAP.md` when files are added, removed, split, or their responsibility changes.
+- Update `docs/FILE_GUIDE.md` when file-level responsibilities change.
 - Update `docs/CURRENT_STATUS.md` when a major feature is completed or a current limitation changes.
 - Update `docs/TODO.md` when work is deferred, discovered, completed, or superseded.
+- Update `docs/CHANGELOG_FOR_AGENTS.md` for significant architectural changes.
 - Update root `ARCHITECTURE.md` or `DECISIONS.md` only for durable architecture or technical decision changes.
 - Update `file_index.md` when detailed file-level summaries change.
