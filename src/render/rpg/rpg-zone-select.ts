@@ -73,7 +73,7 @@ const NODE_COLORS: Record<string, string> = {
   boss_quartz: '#d8d0c0', boss_ruby: '#ef3b4f', boss_sunstone: '#ff9b32',
   boss_citrine: '#ffd84a', boss_iolite: '#6458d8', boss_amethyst: '#b154e8',
   boss_diamond: '#d8f4ff', boss_nullstone: '#541080', boss_fracteryl: '#ee4ac8',
-  boss_eigenstein: '#32d5dc', boss_equation: '#d5a328', boss_void: '#7c32e8',
+  boss_eigenstein: '#32d5dc',
 };
 const BACKGROUND_PATH   = 'ASSETS/ANIMATIONS/rpgBackground/rpgBackground_animation.webp';
 
@@ -100,9 +100,11 @@ function getZoneIconPath(id: string): string {
   return `ASSETS/SPRITES/zoneIcons/ZoneIcon_${name}.png`;
 }
 
+// Must match TOTAL_BOSS_COUNT (10) in rpg-state.ts so every visible node is
+// enterable and the start_boss_fight action accepts every displayed ID.
 const BOSS_IDS = [
-  'quartz', 'ruby', 'sunstone', 'citrine', 'iolite', 'amethyst',
-  'diamond', 'nullstone', 'fracteryl', 'eigenstein', 'equation', 'void',
+  'quartz', 'ruby', 'sunstone', 'citrine', 'iolite',
+  'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein',
 ] as const;
 
 function getBossIconPath(id: string): string {

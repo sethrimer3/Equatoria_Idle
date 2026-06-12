@@ -107,8 +107,13 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     seed: number;
   }
   let activeFogBar: FogBarState | null = null;
+  let lastFogMs    = 0;
+  const FOG_INTERVAL_MS = 33; // ~30 fps for fog; full-speed for looms/forge
 
   function animTick(nowMs: number): void {
+    // Stop the loop if the component has been removed from the DOM
+    if (!element.isConnected) { animRafId = null; return; }
+
     const deltaMs = lastAnimMs !== null ? nowMs - lastAnimMs : 16.67;
     lastAnimMs = nowMs;
     const frameDelta = deltaMs / (1000 / 60);
@@ -142,21 +147,25 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       ctx.restore();
     }
 
-    if (activeFogBar && activeSegmentFills.length > 0) {
-      // Render fog once to a shared offscreen, then blit to each segment canvas
-      const fogCanvas = renderFogBarToCanvas(
-        FILL_W, FILL_H,
-        activeFogBar.colors,
-        activeFogBar.shares,
-        nowMs,
-        activeFogBar.seed,
-      );
-      for (const entry of activeSegmentFills) {
-        if (entry.canvas.offsetWidth > 4) {
-          const segCtx = entry.canvas.getContext('2d');
-          if (segCtx) {
-            segCtx.clearRect(0, 0, FILL_W, FILL_H);
-            segCtx.drawImage(fogCanvas, 0, 0);
+    if (activeFogBar && activeSegmentFills.length > 0 && !document.hidden) {
+      const fogElapsed = nowMs - lastFogMs;
+      if (fogElapsed >= FOG_INTERVAL_MS) {
+        lastFogMs = nowMs;
+        // Render fog once to a shared offscreen, then blit to each segment canvas
+        const fogCanvas = renderFogBarToCanvas(
+          FILL_W, FILL_H,
+          activeFogBar.colors,
+          activeFogBar.shares,
+          nowMs,
+          activeFogBar.seed,
+        );
+        for (const entry of activeSegmentFills) {
+          if (entry.canvas.offsetWidth > 4) {
+            const segCtx = entry.canvas.getContext('2d');
+            if (segCtx) {
+              segCtx.clearRect(0, 0, FILL_W, FILL_H);
+              segCtx.drawImage(fogCanvas, 0, 0);
+            }
           }
         }
       }

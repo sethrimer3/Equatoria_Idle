@@ -336,6 +336,8 @@ export function drawEquationMoteIcon(
 }
 
 let rafHandle = 0;
+let _lastIconFogMs = 0;
+const ICON_FOG_INTERVAL_MS = 33; // ~30 fps for fog fill; mote icons run at full rate
 
 function rafLoop(nowMs: number): void {
   // Prune disconnected canvases
@@ -351,8 +353,15 @@ function rafLoop(nowMs: number): void {
     return;
   }
 
+  // Skip expensive fog rendering when the page is hidden
+  const hidden = document.hidden;
+  const fogElapsed = nowMs - _lastIconFogMs;
+  const shouldRenderFog = !hidden && fogElapsed >= ICON_FOG_INTERVAL_MS;
+  if (shouldRenderFog) _lastIconFogMs = nowMs;
+
   // ── Item icons (fog fill + mask) ──────────────────────────────────────────
   for (const [canvas, state] of liveIcons) {
+    if (!shouldRenderFog) break; // skip the whole fog pass this frame
     const ctx = canvas.getContext('2d');
     if (!ctx) continue;
 

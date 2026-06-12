@@ -17,7 +17,7 @@ import { BOSS_NAMES, BOSS_GLOW_COLORS } from '../../render/rpg/rpg-constants';
 
 export interface RpgBossesTabPane {
   element: HTMLElement;
-  update(rpgState: RpgSimState | null): void;
+  update(rpgState: RpgSimState | null, isDevMode?: boolean): void;
 }
 
 export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPane {
@@ -25,7 +25,7 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
   element.className = 'rpg-bosses-tab';
   element.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:6px 0;';
 
-  function update(rpgState: RpgSimState | null): void {
+  function update(rpgState: RpgSimState | null, isDevMode = false): void {
     element.innerHTML = '';
     if (!rpgState) return;
 
@@ -68,15 +68,17 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
     element.appendChild(speedSection);
 
     // ── Next unlock hint ──
-    let nextBossId: number | null = null;
-    for (let id = 1; id <= TOTAL_BOSS_COUNT; id++) {
-      if (!isBossUnlocked(id, rpgState.highestWaveReached)) { nextBossId = id; break; }
-    }
-    if (nextBossId !== null) {
-      const hint = document.createElement('div');
-      hint.style.cssText = 'text-align:center;font-size:0.78em;color:#888;padding:2px 0;';
-      hint.textContent = `Next boss unlocks at wave ${nextBossId * 100} (highest: wave ${rpgState.highestWaveReached})`;
-      element.appendChild(hint);
+    if (!isDevMode) {
+      let nextBossId: number | null = null;
+      for (let id = 1; id <= TOTAL_BOSS_COUNT; id++) {
+        if (!isBossUnlocked(id, rpgState.highestWaveReached)) { nextBossId = id; break; }
+      }
+      if (nextBossId !== null) {
+        const hint = document.createElement('div');
+        hint.style.cssText = 'text-align:center;font-size:0.78em;color:#888;padding:2px 0;';
+        hint.textContent = `Next boss unlocks at wave ${nextBossId * 100} (highest: wave ${rpgState.highestWaveReached})`;
+        element.appendChild(hint);
+      }
     }
 
     // ── Boss list ──
@@ -84,7 +86,7 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
     listContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
     for (let bossId = 1; bossId <= TOTAL_BOSS_COUNT; bossId++) {
-      const unlocked = isBossUnlocked(bossId, rpgState.highestWaveReached);
+      const unlocked = isDevMode || isBossUnlocked(bossId, rpgState.highestWaveReached);
       const bestSpeed = rpgState.bossCompletions.get(bossId) ?? 0;
       const isCompleted = bestSpeed > 0;
       const glowColor = BOSS_GLOW_COLORS[Math.min(bossId, BOSS_GLOW_COLORS.length - 1)];
@@ -98,7 +100,8 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
 
       const nameSpan = document.createElement('span');
       nameSpan.style.cssText = `font-weight:700;font-size:0.9em;color:${unlocked ? (isCompleted ? glowColor : '#ccc') : '#666'};`;
-      nameSpan.textContent = unlocked
+      const reallyUnlocked = isBossUnlocked(bossId, rpgState.highestWaveReached);
+      nameSpan.textContent = reallyUnlocked || isDevMode
         ? `${isCompleted ? '✦ ' : ''}Boss ${bossId}: ${bossName}`
         : `🔒 Boss ${bossId}: ${bossName}`;
       topRow.appendChild(nameSpan);
