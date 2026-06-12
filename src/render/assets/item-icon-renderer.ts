@@ -25,6 +25,7 @@ import { loadImage, getCachedImage } from './asset-loader';
 import { getMoteIconPath } from './asset-paths';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { TierId } from '../../data/tiers';
+import { drawFogFill, hexToFogRgb } from '../composition-fog';
 
 const _warnedMissingMasks = new Set<string>();
 
@@ -150,98 +151,35 @@ export function prefetchItemMask(itemType: ItemIconType, tierId: string): void {
   }
 }
 
-// ─── Internal blob definition ─────────────────────────────────────────────────
-
-interface BlobDef {
-  color: string;
-  cx: number;    // base center x [0,1]
-  cy: number;    // base center y [0,1]
-  dx: number;    // drift amplitude x [0,1]
-  dy: number;    // drift amplitude y [0,1]
-  r: number;     // radius as fraction of canvas min-dimension
-  speedX: number;
-  speedY: number;
-  phaseX: number;
-  phaseY: number;
-  alpha: number;
-}
-
-function lcgRand(seed: number): () => number {
-  let s = seed >>> 0;
-  return (): number => {
-    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
-    return s / 0x100000000;
-  };
-}
-
-function buildBlobs(composition: CompositionEntry[], seed: number): BlobDef[] {
-  const rand = lcgRand(seed);
-  const blobs: BlobDef[] = [];
-
-  for (const entry of composition) {
-    if (entry.share <= 0) continue;
-    const color = TIER_BY_ID.get(entry.tierId)?.color ?? '#ffffff';
-    // 1-4 blobs: more share → more blobs
-    const count = Math.max(1, Math.min(4, Math.round(1 + entry.share * 3)));
-    for (let i = 0; i < count; i++) {
-      blobs.push({
-        color,
-        cx: 0.15 + rand() * 0.7,
-        cy: 0.15 + rand() * 0.7,
-        dx: 0.08 + rand() * 0.22,
-        dy: 0.08 + rand() * 0.22,
-        r: (0.22 + rand() * 0.32) * (0.4 + entry.share * 0.6),
-        speedX: 0.25 + rand() * 0.45,
-        speedY: 0.25 + rand() * 0.45,
-        phaseX: rand() * Math.PI * 2,
-        phaseY: rand() * Math.PI * 2,
-        alpha: 0.45 + entry.share * 0.55,
-      });
-    }
-  }
-  return blobs;
-}
 
 // ─── Fill canvas drawing ──────────────────────────────────────────────────────
 
-const FILL_RES = 64; // low-res offscreen fill; scaled up to target size
+const FILL_RES = 64; // offscreen fill resolution; scaled up to target size
 
-function drawGradientFill(
+function drawCompositionFogFill(
   ctx: CanvasRenderingContext2D,
-  blobs: BlobDef[],
+  composition: CompositionEntry[],
   timeMs: number,
+  seed: number,
 ): void {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
   ctx.clearRect(0, 0, w, h);
 
-  // Dark base so unlit areas aren't transparent (mask will clip edges)
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#08080f';
-  ctx.fillRect(0, 0, w, h);
-
-  const t = timeMs / 1000;
-
-  for (const blob of blobs) {
-    const bx = (blob.cx + blob.dx * Math.sin(t * blob.speedX + blob.phaseX)) * w;
-    const by = (blob.cy + blob.dy * Math.cos(t * blob.speedY + blob.phaseY)) * h;
-    const radius = blob.r * Math.min(w, h);
-
-    const grad = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
-    grad.addColorStop(0,   blob.color + 'dd');
-    grad.addColorStop(0.4, blob.color + '88');
-    grad.addColorStop(1,   blob.color + '00');
-
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = blob.alpha;
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(bx, by, radius, 0, Math.PI * 2);
-    ctx.fill();
+  if (composition.length === 0) {
+    ctx.fillStyle = '#08080f';
+    ctx.fillRect(0, 0, w, h);
+    return;
   }
 
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
+  const colorRgbs = composition.map(e => hexToFogRgb(TIER_BY_ID.get(e.tierId)?.color ?? '#ffffff'));
+  const weights   = composition.map(e => e.share);
+
+  // Dark base so unlit areas aren't transparent (mask will clip edges)
+  ctx.fillStyle = '#06060e';
+  ctx.fillRect(0, 0, w, h);
+
+  drawFogFill(ctx, 0, 0, w, h, colorRgbs, weights, timeMs, seed);
 }
 
 // Diamond fallback path when no mask PNG is available yet
@@ -268,7 +206,8 @@ function drawDiamondFallback(
 // ─── Standalone draw (game-canvas use) ───────────────────────────────────────
 
 interface StandaloneState {
-  blobs: BlobDef[];
+  composition: CompositionEntry[];
+  seed: number;
   fillCanvas: HTMLCanvasElement;
   fillCtx: CanvasRenderingContext2D;
   maskCanvas: HTMLCanvasElement;
@@ -293,7 +232,7 @@ function getOrCreateStandaloneState(
     maskCanvas.height = FILL_RES;
     const maskCtx = maskCanvas.getContext('2d')!;
 
-    state = { blobs: buildBlobs(composition, seed), fillCanvas, fillCtx, maskCanvas, maskCtx };
+    state = { composition, seed, fillCanvas, fillCtx, maskCanvas, maskCtx };
     standaloneCache.set(seed, state);
   }
   return state;
@@ -317,7 +256,7 @@ export function drawMaskedAnimatedItemIcon(
   if (!maskImg) prefetchItemMask(itemType, tierId);
 
   const state = getOrCreateStandaloneState(composition, seed);
-  drawGradientFill(state.fillCtx, state.blobs, timeMs);
+  drawCompositionFogFill(state.fillCtx, state.composition, timeMs, state.seed);
 
   if (maskImg) {
     const maskSource = itemType === 'weapon'
@@ -338,7 +277,8 @@ export function drawMaskedAnimatedItemIcon(
 // ─── Animated canvas element (DOM integration) ───────────────────────────────
 
 interface LiveIconState {
-  blobs: BlobDef[];
+  composition: CompositionEntry[];
+  seed: number;
   maskPath: string;
   isLuminanceMask: boolean;
   fillCanvas: HTMLCanvasElement;
@@ -411,7 +351,7 @@ function rafLoop(nowMs: number): void {
     return;
   }
 
-  // ── Item icons (blob fill + mask) ─────────────────────────────────────────
+  // ── Item icons (fog fill + mask) ──────────────────────────────────────────
   for (const [canvas, state] of liveIcons) {
     const ctx = canvas.getContext('2d');
     if (!ctx) continue;
@@ -420,7 +360,7 @@ function rafLoop(nowMs: number): void {
     const w = canvas.width;
     const h = canvas.height;
 
-    drawGradientFill(state.fillCtx, state.blobs, nowMs);
+    drawCompositionFogFill(state.fillCtx, state.composition, nowMs, state.seed);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -520,7 +460,8 @@ export function createItemIconCanvas(opts: ItemIconOptions): HTMLCanvasElement {
   const maskCtx = maskCanvas.getContext('2d')!;
 
   liveIcons.set(canvas, {
-    blobs: buildBlobs(composition, seed),
+    composition,
+    seed,
     maskPath,
     isLuminanceMask: itemType === 'weapon',
     fillCanvas,

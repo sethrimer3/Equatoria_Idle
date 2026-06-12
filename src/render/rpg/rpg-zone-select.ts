@@ -475,6 +475,7 @@ export interface RpgZoneSelectPanel {
   open(): void;
   close(): void;
   isOpen: boolean;
+  setDevMode(enabled: boolean): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────────────
@@ -486,9 +487,10 @@ export function createRpgZoneSelectPanel(
   onBossFight?: (bossId: number) => void,
 ): RpgZoneSelectPanel {
 
-  let _isOpen  = false;
-  let _rafId   = 0;
-  let _lastTMs = 0;
+  let _isOpen     = false;
+  let _rafId      = 0;
+  let _lastTMs    = 0;
+  let _isDevMode  = false;
 
   // ── Overlay div ───────────────────────────────────────────────────────────
   const overlay = document.createElement('div');
@@ -755,6 +757,7 @@ export function createRpgZoneSelectPanel(
   let hasPointerWorld = false;
 
   function visibleBossCount(): number {
+    if (_isDevMode) return bossNodes.length;
     let unlockedCount = 0;
     while (unlockedCount < bossNodes.length
       && isBossUnlocked(unlockedCount + 1, rpgSimState.highestWaveReached)) {
@@ -928,7 +931,7 @@ export function createRpgZoneSelectPanel(
 
     if (isBossNode(node.id)) {
       const bossId = bossNodes.indexOf(node) + 1;
-      if (isBossUnlocked(bossId, rpgSimState.highestWaveReached)) openBossModal(bossId);
+      if (_isDevMode || isBossUnlocked(bossId, rpgSimState.highestWaveReached)) openBossModal(bossId);
       return;
     }
 
@@ -1187,7 +1190,7 @@ export function createRpgZoneSelectPanel(
 
     for (let i = 0; i < bossCount; i++) {
       const node = bossNodes[i];
-      const isUnlocked = isBossUnlocked(i + 1, rpgSimState.highestWaveReached);
+      const isUnlocked = _isDevMode || isBossUnlocked(i + 1, rpgSimState.highestWaveReached);
       const isHov = node.id === hoveredId;
       const isSelected = node.id === selectedId;
       ctx.save();
@@ -1239,6 +1242,10 @@ export function createRpgZoneSelectPanel(
 
     get isOpen(): boolean {
       return _isOpen;
+    },
+
+    setDevMode(enabled: boolean): void {
+      _isDevMode = enabled;
     },
   };
 

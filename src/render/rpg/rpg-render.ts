@@ -1882,6 +1882,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setDevMode(enabled: boolean): void {
       _isDevMode = enabled;
       statsPanel.setDevMode(enabled);
+      zoneSelectPanel.setDevMode(enabled);
       setTopographyLightingDevMode(enabled && developerVisuals.topographyLighting);
       bossStageDirectorState.isDevMode = enabled && developerVisuals.bossStage;
     },
