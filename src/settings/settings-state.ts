@@ -40,8 +40,12 @@ export interface SettingsState {
   isSharpTopographyShadows: boolean;
   /** Dev-mode only: soften Impetus asteroid sun shadows through a blurred buffer. */
   isSoftImpetusAsteroidShadows: boolean;
-  /** When true, the RPG stats bar is anchored to the top of the screen instead of the bottom. */
-  rpgBarAtTop: boolean;
+  /** Battlefield position of the RPG rack. The rack remains available inside the RPG menu. */
+  rpgRackPosition: 'bottom' | 'top' | 'hidden';
+  /** Position of the standalone RPG menu button while the rack is hidden. */
+  rpgMenuButtonPosition: 'top' | 'bottom';
+  /** Position of the tappable RPG zone name / wave label. */
+  rpgZonePosition: 'top' | 'bottom';
   /**
    * When true, the idle earnings count-up overlay is skipped at startup.
    * Offline/idle rewards are still applied silently; only the popup is suppressed.
@@ -100,7 +104,9 @@ export function createDefaultSettings(): SettingsState {
     isTopographyLightingDebugEnabled: false,
     isSharpTopographyShadows: false,
     isSoftImpetusAsteroidShadows: false,
-    rpgBarAtTop: false,
+    rpgRackPosition: 'bottom',
+    rpgMenuButtonPosition: 'top',
+    rpgZonePosition: 'top',
     skipIdlePopupAtStart: false,
     equationRenderStyle: 'pixel',
     idleCanvasRenderStyle: 'pixelated',
@@ -115,8 +121,12 @@ export function loadSettings(): SettingsState {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return createDefaultSettings();
-    const parsed = JSON.parse(raw) as Partial<SettingsState>;
-    return { ...createDefaultSettings(), ...parsed };
+    const parsed = JSON.parse(raw) as Partial<SettingsState> & { rpgBarAtTop?: boolean };
+    const settings = { ...createDefaultSettings(), ...parsed };
+    if (parsed.rpgRackPosition === undefined && parsed.rpgBarAtTop !== undefined) {
+      settings.rpgRackPosition = parsed.rpgBarAtTop ? 'top' : 'bottom';
+    }
+    return settings;
   } catch {
     return createDefaultSettings();
   }

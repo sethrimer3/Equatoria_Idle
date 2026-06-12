@@ -98,6 +98,17 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
     if (g.hp <= 0) continue;
     const dx = g.x - ctx.mote.x, dy = g.y - ctx.mote.y;
     targets.push({ kind: 'horizon_pentagon_real', x: g.x, y: g.y, distSq: dx * dx + dy * dy, horizonPentagonReal: g });
+    for (const shadow of g.shadows) {
+      if (requireLos && !hasTopographicTerrainLineOfSight(terrain, ox, oy, shadow.x, shadow.y)) continue;
+      const shadowDx = shadow.x - ctx.mote.x, shadowDy = shadow.y - ctx.mote.y;
+      targets.push({
+        kind: 'horizon_pentagon_real',
+        x: shadow.x,
+        y: shadow.y,
+        distSq: shadowDx * shadowDx + shadowDy * shadowDy,
+        horizonPentagonReal: g,
+      });
+    }
   }
   // Aliven: add each alive particle as an individual target
   for (const group of ctx.alivenGroups) {

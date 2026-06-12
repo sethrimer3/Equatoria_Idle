@@ -49,6 +49,12 @@ export const VORTEX_SPAWN_DIST         = 60;     // px from player center at spa
 export const VORTEX_COLOR              = '#9664c8';
 export const VORTEX_GLOW               = '#c496f0';
 export const VORTEX_SPIN_RATE          = 2.0;    // rad/s
+export const CRAFTED_VORTEX_DURATION_MS = 450;
+export const CRAFTED_VORTEX_MAX_RADIUS_PX = 80;
+export const CRAFTED_VORTEX_MAX_ACTIVE = 4;
+export const CRAFTED_VORTEX_MAX_TARGETS = 24;
+/** Matches the old instant crafted Nullstone nudge, distributed across the vortex lifetime. */
+export const CRAFTED_VORTEX_TOTAL_PULL_FRACTION = 0.35;
 
 // ── Diamond sword constants ────────────────────────────────────
 /** Duration of the single swipe animation (ms). Much faster than before. */

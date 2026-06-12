@@ -35,6 +35,8 @@ export interface RpgInputCtx {
    * x < 210, y < 45 (canvas coordinate space).
    */
   onZoneLabelTap?: () => void;
+  /** Returns the current vertical position of the zone-name / wave label. */
+  getZonePosition?: () => 'top' | 'bottom';
   /**
    * Authoritative field-space snapshot — when provided, pointer events are
    * mapped using `fieldSpace.screenToWorld()` which uses the same scale and
@@ -141,8 +143,9 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
       const dy = pos.y - pointerDownY;
       const moveDist = Math.sqrt(dx * dx + dy * dy);
       if (elapsed <= TAP_MAX_MS && moveDist <= TAP_MAX_MOVE_PX) {
-        // Zone label region: top-left corner (generous tap target)
-        if (onZoneLabelTap && pos.x < 210 && pos.y < 45) {
+        const zoneLabelAtBottom = ctx.getZonePosition?.() === 'bottom';
+        const isInZoneLabelY = zoneLabelAtBottom ? pos.y > dim.h - 45 : pos.y < 45;
+        if (onZoneLabelTap && pos.x < 210 && isInZoneLabelY) {
           onZoneLabelTap();
         } else {
           // Regular tap — find enemy at tap location

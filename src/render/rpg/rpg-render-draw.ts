@@ -322,6 +322,8 @@ export interface RpgDrawCtx {
   getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
   /** Returns the display name for the currently active zone (e.g. "Euhedral"). */
   getActiveZoneDisplayName(): string;
+  /** Returns the configured vertical position for the zone label. */
+  getZonePosition(): 'top' | 'bottom';
 
   // ── Callbacks & shared context ────────────────────────────
   getEffectiveEquippedIds(): Set<string>;
@@ -702,11 +704,12 @@ export function drawRpgFrame(
   // Each zone background is drawn with translate(vwX, vwY) so that the
   // background fills the full visible canvas area (including extra space when the
   // canvas is wider/taller than the safe-core world).
-  const isCausticsZone  = ctx.rpgSimState.activeZoneId === 'caustics';
-  const isVerdureZone   = ctx.rpgSimState.activeZoneId === 'verdure';
-  const isImpetusZone   = ctx.rpgSimState.activeZoneId === 'impetus';
-  const isHorizonZone   = ctx.rpgSimState.activeZoneId === 'horizon';
-  const isEuhedralZone  = ctx.rpgSimState.activeZoneId === 'euhedral';
+  const isBossZone      = ctx.getIsBossWaveActive();
+  const isCausticsZone  = !isBossZone && ctx.rpgSimState.activeZoneId === 'caustics';
+  const isVerdureZone   = !isBossZone && ctx.rpgSimState.activeZoneId === 'verdure';
+  const isImpetusZone   = !isBossZone && ctx.rpgSimState.activeZoneId === 'impetus';
+  const isHorizonZone   = !isBossZone && ctx.rpgSimState.activeZoneId === 'horizon';
+  const isEuhedralZone  = !isBossZone && ctx.rpgSimState.activeZoneId === 'euhedral';
   if (isCausticsZone) {
     canvas2d.save();
     canvas2d.translate(vwX, vwY);
@@ -790,7 +793,7 @@ export function drawRpgFrame(
     canvas2d.restore();
   }
 
-  if (shouldDrawPersistentTopographySunlight(ctx.rpgSimState.activeZoneId, terrainState)) {
+  if (!isBossZone && shouldDrawPersistentTopographySunlight(ctx.rpgSimState.activeZoneId, terrainState)) {
     canvas2d.save();
     canvas2d.translate(vwX, vwY);
     renderPersistentTopographySunlight(canvas2d, vwW, vwH, terrainState!.paletteId);
@@ -1020,7 +1023,9 @@ export function drawRpgFrame(
   const currentWave = ctx.getCurrentWave();
   if (currentWave > 0) {
     const overlayLeft = fs.visibleBounds.left + 8;
-    const overlayTop = fs.visibleBounds.top + 8;
+    const overlayTop = ctx.getZonePosition() === 'bottom'
+      ? fs.visibleBounds.bottom - 38
+      : fs.visibleBounds.top + 8;
     const overlapRight = overlayLeft + 210;
     const overlapBottom = overlayTop + 55;
 

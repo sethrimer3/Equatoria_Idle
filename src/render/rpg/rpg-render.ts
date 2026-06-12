@@ -784,6 +784,39 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     for (const array of arrays) array.length = 0;
   }
 
+  function clearStageForBossFight(): void {
+    clearArrays(
+      spawnQueue,
+      enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
+      amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
+      rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
+      ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+      nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies, eigensteinBeams,
+      eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
+      binaryRingEnemies, binaryRingMissiles, stardustEnemies, horizonPentagonGroups, alivenGroups,
+      dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
+      jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
+      spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+      sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+      emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+      plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
+      bossProjectiles, hitEffects, shotLines, damageNumbers, deathParticles,
+      luckyMotes, luckyMotePopups,
+    );
+    binaryLaserSweep = null;
+    zenithBinaryRingBg = null;
+    nadirCubicGrid = null;
+    isNadirEliteWave = false;
+    danmakuSafeZone = null;
+    bossAttackState.attacks.length = 0;
+    bossAttackState.schedulerCooldowns.clear();
+    bossAttackState.activePressure = 0;
+    clearVerdurePlants(verdurePlants);
+    verdureCaveWallState?.edgePoints.forEach((p) => { p.isOccupied = false; });
+    verdureCaveWallState = null;
+    clearWaveTerrainForBossFight();
+  }
+
   const verdureResizePushScratch = { x: 0, y: 0 };
 
   function rebuildVerdureBoundsForResize(): void {
@@ -1311,34 +1344,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getWeaponRngMultiplier,
     getWeaponPrcMultiplier,
     applyNullstonePull(hitX: number, hitY: number, radius: number): void {
-      const r2 = radius * radius;
-      const PULL_FRAC = 0.35;
-      const nudge = (e: { x: number; y: number }) => {
-        const dx = hitX - e.x, dy = hitY - e.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 <= 0 || d2 > r2) return;
-        const dist = Math.sqrt(d2);
-        const move = Math.min(dist * PULL_FRAC, dist);
-        e.x += (dx / dist) * move;
-        e.y += (dy / dist) * move;
-      };
-      for (const e of enemies)            nudge(e);
-      for (const e of sapphireEnemies)    nudge(e);
-      for (const e of emeraldEnemies)     nudge(e);
-      for (const e of amberEnemies)       nudge(e);
-      for (const e of voidEnemies)        nudge(e);
-      for (const e of quartzEnemies)      nudge(e);
-      for (const e of rubyEnemies)        nudge(e);
-      for (const e of sunstoneEnemies)    nudge(e);
-      for (const e of citrineEnemies)     nudge(e);
-      for (const e of ioliteEnemies)      nudge(e);
-      for (const e of amethystEnemies)    nudge(e);
-      for (const e of diamondEnemies)     nudge(e);
-      for (const e of nullstoneEnemies)   nudge(e);
-      for (const e of fracterylEnemies)   nudge(e);
-      for (const e of eigensteinEnemies)  nudge(e);
-      for (const e of eliteEnemies)       nudge(e);
-      if (bossEnemy) nudge(bossEnemy);
+      weaponSystems.spawnCraftedVortex(hitX, hitY, radius);
     },
   };
 
@@ -1388,9 +1394,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnDamageNumber:          (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
     recordDps:                  (dmg, color) => recordDps(dmg, color),
     onEnterBossWave:            () => {
-      // Boss fights must not have random wave terrain.  Clear any existing terrain
-      // and rebuild the nav grid with null so pathfinding treats the arena as open.
-      clearWaveTerrainForBossFight();
+      clearStageForBossFight();
       resetBossStageDirector(bossStageDirectorState);
     },
     onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); },
@@ -1464,6 +1468,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsActive: () => _isActive,
     tryTargetEnemyAt,
     onZoneLabelTap: () => { zoneSelectPanel.open(); },
+    getZonePosition: () => zonePosition,
     getFieldSpace:  () => rpgFieldSpace,
     getSafeScale:   () => rpgSafeScale,
     getSafeOffsetX: () => rpgSafeOffsetX,
@@ -1477,6 +1482,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
+  let zonePosition: 'top' | 'bottom' = 'top';
 
   // ── Enemy update context (shared reference object for rpg-enemy-updates) ──
   const enemyCtx: RpgEnemyCtx = {
@@ -1690,6 +1696,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getSafeOffsetY:               () => rpgSafeOffsetY,
     getSafeScale:                 () => rpgSafeScale,
     getActiveZoneDisplayName:     () => getRpgZoneDisplayName(rpgSimState.activeZoneId),
+    getZonePosition:              () => zonePosition,
     getWorldViewW:                () => rpgWorldViewW,
     getWorldViewH:                () => rpgWorldViewH,
     getFieldSpace:                () => rpgFieldSpace,
@@ -1863,6 +1870,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     setNumberFormat(format: NumberFormat): void {
       currentNumberFormat = format;
+    },
+
+    setZonePosition(position: 'top' | 'bottom'): void {
+      zonePosition = position;
     },
 
     setDevMode(enabled: boolean): void {

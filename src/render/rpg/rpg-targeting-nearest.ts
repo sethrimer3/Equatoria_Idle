@@ -222,6 +222,14 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     const dx = g.x - mx, dy = g.y - my;
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, g.x, g.y)) { bestSq = d; best = { kind: 'horizon_pentagon_real', x: g.x, y: g.y, distSq: d, horizonPentagonReal: g }; }
+    for (const shadow of g.shadows) {
+      const sdx = shadow.x - mx, sdy = shadow.y - my;
+      const sd = sdx * sdx + sdy * sdy;
+      if (sd <= bestSq && !isLosBlocked(terrain, mx, my, shadow.x, shadow.y)) {
+        bestSq = sd;
+        best = { kind: 'horizon_pentagon_real', x: shadow.x, y: shadow.y, distSq: sd, horizonPentagonReal: g };
+      }
+    }
     for (const m of g.missiles) {
       if (m.hp <= 0 || m.explodeFlashMs > 0) continue;
       const mdx = m.x - mx, mdy = m.y - my;

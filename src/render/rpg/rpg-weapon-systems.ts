@@ -256,6 +256,7 @@ export interface RpgWeaponHandle {
   updateChainWhip: (weaponId: string, deltaMs: number) => void;
   updateVortexWeapon: (weaponId: string, deltaMs: number) => void;
   updateVortexes: (deltaMs: number) => void;
+  spawnCraftedVortex: (hitX: number, hitY: number, radiusPx: number) => void;
   updateSwordCombo: (weaponId: string, deltaMs: number) => void;
   updatePoisonBolts: (deltaMs: number) => void;
   updatePoisonDebuffs: (deltaMs: number) => void;
@@ -348,6 +349,7 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     updateChainWhip: (weaponId: string, deltaMs: number) => chain.updateChainWhip(weaponId, deltaMs),
     updateVortexWeapon: (weaponId: string, deltaMs: number) => vortex.updateVortexWeapon(weaponId, deltaMs),
     updateVortexes: (deltaMs: number) => vortex.updateVortexes(deltaMs),
+    spawnCraftedVortex: (hitX: number, hitY: number, radiusPx: number) => vortex.spawnCraftedVortex(hitX, hitY, radiusPx),
     updateSwordCombo: (weaponId: string, deltaMs: number) => sword.updateSwordCombo(weaponId, deltaMs),
     updatePoisonBolts: (deltaMs: number) => poison.updatePoisonBolts(deltaMs),
     updatePoisonDebuffs: (deltaMs: number) => poison.updatePoisonDebuffs(deltaMs),

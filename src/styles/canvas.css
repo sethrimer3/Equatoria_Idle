@@ -170,10 +170,25 @@
   height: calc(100% - var(--tab-height) * 4 - var(--safe-bottom));
 }
 
-/* Menu panel adjusts its top edge when bar is at top */
-#rpg-menu-panel.rpg-bar-at-top {
-  top: calc(var(--tab-height) * 3);
-  bottom: calc(var(--tab-height) + var(--safe-bottom));
+#rpg-stats-panel.rpg-rack-hidden {
+  display: none !important;
+}
+
+#rpg-stats-panel.rpg-rack-in-menu {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: calc(var(--tab-height) * 3);
+  border: 1px solid rgba(255, 241, 114, 0.15);
+  border-radius: 6px;
+  display: flex !important;
+}
+
+.rpg-menu__rack-section {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
 }
 
 /* Row holding HP / ATK / DEF widgets */
@@ -1037,6 +1052,34 @@
 }
 
 /* ── RPG menu panel (replaces weapon-store-panel) ─────────────── */
+.rpg-hidden-rack-menu-btn {
+  display: none;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 5;
+  width: var(--rpg-dps-box-size);
+  height: calc(var(--tab-height) * 0.8);
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 241, 114, 0.25);
+  border-radius: 6px;
+  background: rgba(12, 12, 20, 0.95);
+  color: var(--accent);
+  font-family: var(--font-primary);
+  font-size: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#rpg-container.rpg-rack-hidden .rpg-hidden-rack-menu-btn {
+  display: block;
+}
+
+#rpg-container.rpg-menu-button-at-bottom .rpg-hidden-rack-menu-btn {
+  top: auto;
+  bottom: 4px;
+}
+
 #rpg-menu-panel {
   position: absolute;
   top: 0;
@@ -1156,6 +1199,51 @@
 .rpg-menu__setting-label-group {
   display: flex;
   flex-direction: column;
+}
+
+.rpg-menu__position-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-left: 10px;
+}
+
+.rpg-menu__position-button {
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 241, 114, 0.25);
+  border-radius: 4px;
+  background: rgba(26, 26, 46, 0.8);
+  color: var(--text-secondary);
+  font-family: var(--font-primary);
+  font-size: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.rpg-menu__position-button--active {
+  border-color: var(--accent);
+  background: rgba(255, 241, 114, 0.15);
+  color: var(--accent);
+}
+
+.rpg-menu__conditional-position {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: max-height 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.rpg-menu__conditional-position--visible {
+  max-height: 80px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rpg-menu__setting-row--nested {
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 241, 114, 0.22);
 }
 
 /* ── RPG upgrade cards ─────────────────────────────────────────── */

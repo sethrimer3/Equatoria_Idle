@@ -17,6 +17,7 @@ import type { ActionHandler } from '../../input';
 import type { GameAction } from '../../input';
 import type { NumberFormat } from '../../util';
 import { createRpgMenuTabPane } from './rpg-menu-tab';
+import type { RpgRackPosition, RpgVerticalPosition } from './rpg-menu-tab';
 import { createRpgUpgradesTabPane } from './rpg-upgrades-tab';
 import { createRpgEnemiesTabPane } from './rpg-enemies-tab';
 import type { RpgEnemiesTabPane } from './rpg-enemies-tab';
@@ -43,8 +44,10 @@ export interface RpgMenuPanel {
   isVisible: boolean;
   /** Whether auto-move is currently enabled (session-only, not persisted). */
   isAutoMoveEnabled: boolean;
-  /** Sync the persisted rpgBarAtTop value into the menu tab so the checkbox reflects current state. */
-  setRpgBarAtTop(atTop: boolean): void;
+  /** Sync the persisted RPG rack position into the menu tab. */
+  setRpgRackPosition(position: RpgRackPosition): void;
+  setRpgMenuButtonPosition(position: RpgVerticalPosition): void;
+  setRpgZonePosition(position: RpgVerticalPosition): void;
   /** Sync the invincibility mode setting into the menu tab so the checkbox reflects current state. */
   setInvincibilityMode(enabled: boolean): void;
   /** Sync the topography debug setting into the menu tab so the checkbox reflects current state. */
@@ -59,7 +62,11 @@ export interface RpgMenuPanel {
 
 export function createRpgMenuPanel(
   dispatch: ActionHandler,
-  onRpgBarAtTopChange: (atTop: boolean) => void = () => undefined,
+  rackElement: HTMLElement,
+  rackHome: HTMLElement,
+  onRpgRackPositionChange: (position: RpgRackPosition) => void = () => undefined,
+  onRpgMenuButtonPositionChange: (position: RpgVerticalPosition) => void = () => undefined,
+  onRpgZonePositionChange: (position: RpgVerticalPosition) => void = () => undefined,
 ): RpgMenuPanel {
   const element = document.createElement('div');
   element.id = 'rpg-menu-panel';
@@ -117,7 +124,10 @@ export function createRpgMenuPanel(
   const menuTabPane = createRpgMenuTabPane(
     dispatch,
     (enabled) => { panel.isAutoMoveEnabled = enabled; },
-    (atTop) => { onRpgBarAtTopChange(atTop); },
+    rackElement,
+    (position) => { onRpgRackPositionChange(position); },
+    (position) => { onRpgMenuButtonPositionChange(position); },
+    (position) => { onRpgZonePositionChange(position); },
   );
   const upgradesTabPane = createRpgUpgradesTabPane(dispatch);
   const enemiesTabPane: RpgEnemiesTabPane = createRpgEnemiesTabPane(dispatch);
@@ -137,7 +147,9 @@ export function createRpgMenuPanel(
   let lastResources: ResourceState | null = null;
   let lastFormat: NumberFormat = 'letters';
   let lastIsDevMode = false;
-  let lastRpgBarAtTop = false;
+  let lastRpgRackPosition: RpgRackPosition = 'bottom';
+  let lastRpgMenuButtonPosition: RpgVerticalPosition = 'top';
+  let lastRpgZonePosition: RpgVerticalPosition = 'top';
   let lastTopographicTerrainDebugEnabled = false;
   let lastSharpTopographyShadows = true;
 
@@ -163,7 +175,9 @@ export function createRpgMenuPanel(
         menuTabPane.update(
           lastRpgState,
           lastIsDevMode,
-          lastRpgBarAtTop,
+          lastRpgRackPosition,
+          lastRpgMenuButtonPosition,
+          lastRpgZonePosition,
           lastTopographicTerrainDebugEnabled,
           lastSharpTopographyShadows,
         );
@@ -195,14 +209,26 @@ export function createRpgMenuPanel(
 
     setVisible(visible: boolean): void {
       isVisible = visible;
+      if (!visible) {
+        rackElement.classList.remove('rpg-rack-in-menu');
+        rackHome.appendChild(rackElement);
+      }
       element.style.display = visible ? 'flex' : 'none';
       panel.isVisible = visible;
       if (visible) renderActiveTab();
     },
 
-    setRpgBarAtTop(atTop: boolean): void {
-      lastRpgBarAtTop = atTop;
-      menuTabPane.setRpgBarAtTop(atTop);
+    setRpgRackPosition(position: RpgRackPosition): void {
+      lastRpgRackPosition = position;
+      menuTabPane.setRpgRackPosition(position);
+    },
+    setRpgMenuButtonPosition(position: RpgVerticalPosition): void {
+      lastRpgMenuButtonPosition = position;
+      menuTabPane.setRpgMenuButtonPosition(position);
+    },
+    setRpgZonePosition(position: RpgVerticalPosition): void {
+      lastRpgZonePosition = position;
+      menuTabPane.setRpgZonePosition(position);
     },
 
     setInvincibilityMode(enabled: boolean): void {

@@ -20,6 +20,9 @@ import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
 import {
   VORTEX_PULL_STRENGTH, VORTEX_DAMAGE_INTERVAL_MS,
   VORTEX_SPAWN_DIST, VORTEX_COLOR, VORTEX_SPIN_RATE,
+  CRAFTED_VORTEX_DURATION_MS, CRAFTED_VORTEX_MAX_RADIUS_PX,
+  CRAFTED_VORTEX_MAX_ACTIVE, CRAFTED_VORTEX_MAX_TARGETS,
+  CRAFTED_VORTEX_TOTAL_PULL_FRACTION,
 } from './rpg-weapon-constants';
 import {
   TARGET_FRAME_MS,
@@ -105,7 +108,58 @@ export interface VortexWeaponHandle {
   readonly vortexWeaponStates: Map<string, VortexWeaponState>;
   updateVortexWeapon(weaponId: string, deltaMs: number): void;
   updateVortexes(deltaMs: number): void;
+  spawnCraftedVortex(hitX: number, hitY: number, radiusPx: number): void;
   reset(): void;
+}
+
+export interface CraftedVortexPullTarget {
+  x: number;
+  y: number;
+  hp: number;
+}
+
+function applyCraftedVortexPullToTarget(
+  vortex: NullstoneVortex,
+  target: CraftedVortexPullTarget,
+  activeDeltaMs: number,
+  radiusSq: number,
+  pullFraction: number,
+): boolean {
+  if (!Number.isFinite(target.hp) || target.hp <= 0) return false;
+  const dx = vortex.x - target.x;
+  const dy = vortex.y - target.y;
+  const distSq = dx * dx + dy * dy;
+  if (!Number.isFinite(distSq) || distSq <= 0 || distSq > radiusSq || activeDeltaMs <= 0) return false;
+  target.x += dx * pullFraction;
+  target.y += dy * pullFraction;
+  return true;
+}
+
+/**
+ * Applies one frame of the crafted pull-only vortex. The exponential step
+ * distributes the old 35% instant nudge across the full visible lifetime.
+ */
+export function applyCraftedVortexPullStep(
+  vortex: NullstoneVortex,
+  targets: CraftedVortexPullTarget[],
+  deltaMs: number,
+  targetCap = CRAFTED_VORTEX_MAX_TARGETS,
+): number {
+  if (deltaMs <= 0 || vortex.maxDurationMs <= 0 || targetCap <= 0) return 0;
+  const activeDeltaMs = Math.min(deltaMs, Math.max(0, vortex.durationMs));
+  if (activeDeltaMs <= 0) return 0;
+  const radiusPx = Math.min(CRAFTED_VORTEX_MAX_RADIUS_PX, Math.max(0, vortex.radiusPx));
+  const radiusSq = radiusPx * radiusPx;
+  const pullFraction = 1 - Math.pow(
+    1 - CRAFTED_VORTEX_TOTAL_PULL_FRACTION,
+    activeDeltaMs / vortex.maxDurationMs,
+  );
+  let affected = 0;
+  for (const target of targets) {
+    if (affected >= targetCap) break;
+    if (applyCraftedVortexPullToTarget(vortex, target, activeDeltaMs, radiusSq, pullFraction)) affected++;
+  }
+  return affected;
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────────
@@ -167,6 +221,37 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
     if (state.cooldownMs <= 0) fireVortex(weaponId, tier);
   }
 
+  function spawnCraftedVortex(hitX: number, hitY: number, radiusPx: number): void {
+    if (!Number.isFinite(hitX) || !Number.isFinite(hitY) || !Number.isFinite(radiusPx) || radiusPx <= 0) return;
+    let craftedCount = 0;
+    let oldestCraftedIndex = -1;
+    let oldestCraftedRemainingMs = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < activeVortexes.length; i++) {
+      const vortex = activeVortexes[i];
+      if (!vortex.isCraftedPull) continue;
+      craftedCount++;
+      if (vortex.durationMs < oldestCraftedRemainingMs) {
+        oldestCraftedRemainingMs = vortex.durationMs;
+        oldestCraftedIndex = i;
+      }
+    }
+    if (craftedCount >= CRAFTED_VORTEX_MAX_ACTIVE && oldestCraftedIndex >= 0) {
+      activeVortexes.splice(oldestCraftedIndex, 1);
+    }
+    activeVortexes.push({
+      x: hitX,
+      y: hitY,
+      radiusPx: Math.min(radiusPx, CRAFTED_VORTEX_MAX_RADIUS_PX),
+      durationMs: CRAFTED_VORTEX_DURATION_MS,
+      maxDurationMs: CRAFTED_VORTEX_DURATION_MS,
+      spinAngle: 0,
+      damageTimerMs: Number.POSITIVE_INFINITY,
+      scaledDamage: 0,
+      weaponId: '__crafted_nullstone_pull__',
+      isCraftedPull: true,
+    });
+  }
+
   /** Applies vortex damage to one enemy; shows a damage number if any dealt.
    *  Terrain blocks the vortex: enemies with no line of sight from the vortex
    *  centre are neither pulled nor damaged through an island. */
@@ -192,6 +277,38 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
 
     for (let i = activeVortexes.length - 1; i >= 0; i--) {
       const v = activeVortexes[i];
+      if (v.isCraftedPull) {
+        let remainingTargets = CRAFTED_VORTEX_MAX_TARGETS;
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.enemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.sapphireEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.emeraldEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.amberEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.voidEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.quartzEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.rubyEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.sunstoneEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.citrineEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.ioliteEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.amethystEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.diamondEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.nullstoneEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.fracterylEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.eigensteinEnemies, deltaMs, remainingTargets);
+        remainingTargets -= applyCraftedVortexPullStep(v, ctx.eliteEnemies, deltaMs, remainingTargets);
+        if (ctx.bossEnemy && remainingTargets > 0) {
+          const activeDeltaMs = Math.min(deltaMs, Math.max(0, v.durationMs));
+          const radiusPx = Math.min(CRAFTED_VORTEX_MAX_RADIUS_PX, Math.max(0, v.radiusPx));
+          const pullFraction = 1 - Math.pow(
+            1 - CRAFTED_VORTEX_TOTAL_PULL_FRACTION,
+            activeDeltaMs / v.maxDurationMs,
+          );
+          applyCraftedVortexPullToTarget(v, ctx.bossEnemy, activeDeltaMs, radiusPx * radiusPx, pullFraction);
+        }
+        v.durationMs -= deltaMs;
+        v.spinAngle += VORTEX_SPIN_RATE * deltaMs / 1000;
+        if (v.durationMs <= 0) activeVortexes.splice(i, 1);
+        continue;
+      }
       v.durationMs -= deltaMs;
       if (v.durationMs <= 0) { activeVortexes.splice(i, 1); continue; }
 
@@ -296,6 +413,7 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
     get vortexWeaponStates() { return vortexWeaponStates; },
     updateVortexWeapon,
     updateVortexes,
+    spawnCraftedVortex,
     reset() {
       activeVortexes.length = 0;
       vortexWeaponStates.clear();

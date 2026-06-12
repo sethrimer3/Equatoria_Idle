@@ -238,7 +238,7 @@ export function performSingleAttack(
   } else if (closestT.horizonPentagonReal) {
     const g = closestT.horizonPentagonReal;
     const dmg = ctx.damageHorizonPentagonReal(g, effectiveRaw, defPierceRatio);
-    if (dmg > 0) spawnHitVisualsAt(g.x, g.y, g.maxHp, dmg, isPiercing ? piercingColor : '#6699ff', effectiveSourceColor);
+    spawnHitVisualsAt(hitX, hitY, g.maxHp, dmg, isPiercing ? piercingColor : '#6699ff', effectiveSourceColor);
   } else if (closestT.horizonMissile) {
     ctx.damageHorizonMissile(closestT.horizonMissile, effectiveRaw, defPierceRatio);
   }

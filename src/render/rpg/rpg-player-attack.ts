@@ -188,7 +188,7 @@ export interface RpgPlayerAttackCtx {
   spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) => void;
 
   /**
-   * Pulls all enemies within `radius` px of (hitX, hitY) toward that point.
+   * Spawns a short pull-only vortex at (hitX, hitY).
    * Called after a crafted weapon hit if nullstonePullRadius > 0.
    */
   applyNullstonePull(hitX: number, hitY: number, radius: number): void;

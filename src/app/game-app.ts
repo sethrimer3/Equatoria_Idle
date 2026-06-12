@@ -320,25 +320,52 @@ export async function startApp(): Promise<void> {
   });
 
   // ── Helper: apply the RPG bar position setting to DOM elements ──
-  function applyRpgBarPosition(atTop: boolean): void {
+  function applyRpgRackPosition(position: 'bottom' | 'top' | 'hidden'): void {
+    const atTop = position === 'top';
     rpgRender.statsPanel.classList.toggle('rpg-bar-at-top', atTop);
+    rpgRender.statsPanel.classList.toggle('rpg-rack-hidden', position === 'hidden');
     rpgContainer.classList.toggle('rpg-bar-at-top', atTop);
-    rpgMenuPanel.element.classList.toggle('rpg-bar-at-top', atTop);
+    rpgContainer.classList.toggle('rpg-rack-hidden', position === 'hidden');
+  }
+
+  function applyRpgMenuButtonPosition(position: 'top' | 'bottom'): void {
+    rpgContainer.classList.toggle('rpg-menu-button-at-bottom', position === 'bottom');
   }
 
   // ── RPG menu panel (replaces weapon store) ──
-  const rpgMenuPanel = createRpgMenuPanel(dispatch, (atTop) => {
-    settings.rpgBarAtTop = atTop;
-    saveSettings(settings);
-    applyRpgBarPosition(atTop);
-    rpgMenuPanel.setRpgBarAtTop(atTop);
-  });
+  const rpgMenuPanel = createRpgMenuPanel(
+    dispatch,
+    rpgRender.statsPanel,
+    root,
+    (position) => {
+      settings.rpgRackPosition = position;
+      saveSettings(settings);
+      applyRpgRackPosition(position);
+      rpgMenuPanel.setRpgRackPosition(position);
+    },
+    (position) => {
+      settings.rpgMenuButtonPosition = position;
+      saveSettings(settings);
+      applyRpgMenuButtonPosition(position);
+      rpgMenuPanel.setRpgMenuButtonPosition(position);
+    },
+    (position) => {
+      settings.rpgZonePosition = position;
+      saveSettings(settings);
+      rpgRender.setZonePosition(position);
+      rpgMenuPanel.setRpgZonePosition(position);
+    },
+  );
   rpgMenuPanel.element.style.display = 'none';
   root.appendChild(rpgMenuPanel.element);
 
   // Apply saved bar position immediately after panel is in the DOM
-  applyRpgBarPosition(settings.rpgBarAtTop);
-  rpgMenuPanel.setRpgBarAtTop(settings.rpgBarAtTop);
+  applyRpgRackPosition(settings.rpgRackPosition);
+  rpgMenuPanel.setRpgRackPosition(settings.rpgRackPosition);
+  applyRpgMenuButtonPosition(settings.rpgMenuButtonPosition);
+  rpgMenuPanel.setRpgMenuButtonPosition(settings.rpgMenuButtonPosition);
+  rpgRender.setZonePosition(settings.rpgZonePosition);
+  rpgMenuPanel.setRpgZonePosition(settings.rpgZonePosition);
   rpgMenuPanel.setTopographicTerrainDebugEnabled(settings.isTopographicTerrainDebugEnabled);
   rpgMenuPanel.setSharpTopographyShadows(settings.isSharpTopographyShadows);
   rpgRender.setSharpTopographyShadows(settings.isSharpTopographyShadows);
@@ -355,14 +382,23 @@ export async function startApp(): Promise<void> {
   menuToggleBtn.className = 'rpg-menu-btn';
   menuToggleBtn.textContent = '⚔ Menu';
   menuToggleBtn.setAttribute('aria-label', 'Open RPG menu');
-  menuToggleBtn.addEventListener('click', () => {
+  function toggleRpgMenu(): void {
     const nowVisible = !rpgMenuPanel.isVisible;
     rpgMenuPanel.setVisible(nowVisible);
     if (nowVisible) {
       rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
     }
-  });
+  }
+
+  menuToggleBtn.addEventListener('click', toggleRpgMenu);
   rpgRender.menuButtonContainer.appendChild(menuToggleBtn);
+
+  const hiddenRackMenuBtn = document.createElement('button');
+  hiddenRackMenuBtn.className = 'rpg-hidden-rack-menu-btn';
+  hiddenRackMenuBtn.textContent = menuToggleBtn.textContent;
+  hiddenRackMenuBtn.setAttribute('aria-label', 'Open RPG menu');
+  hiddenRackMenuBtn.addEventListener('click', toggleRpgMenu);
+  rpgContainer.appendChild(hiddenRackMenuBtn);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);

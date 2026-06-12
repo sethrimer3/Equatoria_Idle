@@ -26,6 +26,8 @@ export interface RpgRender {
   startBossFight(bossId: number): void;
   /** Update the number-format setting used to render stat values in the stats panel. */
   setNumberFormat(format: NumberFormat): void;
+  /** Position the tappable zone name / wave label at the top or bottom of the battlefield. */
+  setZonePosition(position: 'top' | 'bottom'): void;
   /** Show or hide dev-mode numerical designators on each RPG stats panel box. */
   setDevMode(enabled: boolean): void;
   /** Enable/disable invincibility mode — player takes no damage (dev mode only). */

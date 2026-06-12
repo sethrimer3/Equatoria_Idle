@@ -95,8 +95,9 @@ let _initialized                           = false;
 
 // ── Visual constants ──────────────────────────────────────────────────────────
 
-const BARK_FONT_PX      = 7;
+const BARK_FONT_PX      = 21;
 const BARK_FONT         = `bold ${BARK_FONT_PX}px ${DAMAGE_NUM_FONT_FAMILY}`;
+const STARDUST_ENEMY_COLOR = '#c88cff';
 
 const BARK_COLORS: Readonly<Record<string, string>> = {
   laser: LASER_ENEMY_COLOR, sapphire: SAPPHIRE_ENEMY_COLOR, emerald: EMERALD_ENEMY_COLOR,
@@ -104,11 +105,12 @@ const BARK_COLORS: Readonly<Record<string, string>> = {
   ruby: RUBY_ENEMY_COLOR, sunstone: SUNSTONE_ENEMY_COLOR, citrine: CITRINE_ENEMY_COLOR,
   iolite: IOLITE_ENEMY_COLOR, amethyst: AMETHYST_ENEMY_COLOR, diamond: DIAMOND_ENEMY_COLOR,
   nullstone: NULLSTONE_ENEMY_COLOR, fracteryl: FRACTERYL_ENEMY_COLOR,
-  eigenstein: EIGENSTEIN_ENEMY_COLOR,
+  eigenstein: EIGENSTEIN_ENEMY_COLOR, stardust: STARDUST_ENEMY_COLOR,
 };
 
 function _getBarkColor(enemy: BarkableEnemy): string {
   if (enemy.color) return enemy.color;
+  if (enemy.tier) return BARK_COLORS[enemy.tier] ?? '#ffffff';
   if (enemy.kind) return BARK_COLORS[enemy.kind] ?? '#ffffff';
   if ('phase' in enemy) return LASER_ENEMY_COLOR;
   if ('shieldHp' in enemy) return SAPPHIRE_ENEMY_COLOR;

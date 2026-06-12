@@ -13,6 +13,9 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { ActionHandler, GameAction } from '../../input';
 import { makePageBreak } from '../ui-helpers';
 
+export type RpgRackPosition = 'bottom' | 'top' | 'hidden';
+export type RpgVerticalPosition = 'top' | 'bottom';
+
 // ─── Constants ─────────────────────────────────────────────────────
 
 /** Highest wave available in the dev "Jump to Wave" selector. */
@@ -28,12 +31,16 @@ export interface RpgMenuTabPane {
   update(
     rpgState: RpgSimState | null,
     isDevMode?: boolean,
-    rpgBarAtTop?: boolean,
+    rpgRackPosition?: RpgRackPosition,
+    rpgMenuButtonPosition?: RpgVerticalPosition,
+    rpgZonePosition?: RpgVerticalPosition,
     isTopographicTerrainDebugEnabled?: boolean,
     isSharpTopographyShadows?: boolean,
   ): void;
-  /** Sync the stored rpgBarAtTop value without a full re-render. */
-  setRpgBarAtTop(atTop: boolean): void;
+  /** Sync the stored RPG rack position without a full re-render. */
+  setRpgRackPosition(position: RpgRackPosition): void;
+  setRpgMenuButtonPosition(position: RpgVerticalPosition): void;
+  setRpgZonePosition(position: RpgVerticalPosition): void;
   /** Sync the stored isInvincibilityMode value without a full re-render. */
   setInvincibilityMode(enabled: boolean): void;
   /** Sync the stored topographic terrain debug value without a full re-render. */
@@ -49,13 +56,18 @@ export interface RpgMenuTabPane {
 export function createRpgMenuTabPane(
   dispatch: ActionHandler,
   onAutoMoveChange: (enabled: boolean) => void,
-  onRpgBarAtTopChange: (atTop: boolean) => void,
+  rackElement: HTMLElement,
+  onRpgRackPositionChange: (position: RpgRackPosition) => void,
+  onRpgMenuButtonPositionChange: (position: RpgVerticalPosition) => void,
+  onRpgZonePositionChange: (position: RpgVerticalPosition) => void,
 ): RpgMenuTabPane {
   const element = document.createElement('div');
 
   let isAutoMoveEnabled = false;
   let isConfirmingRespawn = false;
-  let rpgBarAtTop = false;
+  let rpgRackPosition: RpgRackPosition = 'bottom';
+  let rpgMenuButtonPosition: RpgVerticalPosition = 'top';
+  let rpgZonePosition: RpgVerticalPosition = 'top';
   let isInvincibilityMode = false;
   let isTopographicTerrainDebugEnabled = false;
   let isRpgViewportDebugEnabled = false;
@@ -105,14 +117,25 @@ export function createRpgMenuTabPane(
   function update(
     rpgState: RpgSimState | null,
     isDevMode = false,
-    barAtTop = false,
+    rackPosition: RpgRackPosition = 'bottom',
+    menuButtonPosition: RpgVerticalPosition = 'top',
+    zonePosition: RpgVerticalPosition = 'top',
     topographicTerrainDebugEnabled = false,
     sharpTopographyShadows = false,
   ): void {
-    rpgBarAtTop = barAtTop;
+    rpgRackPosition = rackPosition;
+    rpgMenuButtonPosition = menuButtonPosition;
+    rpgZonePosition = zonePosition;
     isTopographicTerrainDebugEnabled = topographicTerrainDebugEnabled;
     isSharpTopographyShadows = sharpTopographyShadows;
     element.innerHTML = '';
+
+    const rackSection = document.createElement('section');
+    rackSection.className = 'rpg-menu__rack-section';
+    rackElement.classList.add('rpg-rack-in-menu');
+    rackSection.appendChild(rackElement);
+    element.appendChild(rackSection);
+    element.appendChild(makePageBreak('small'));
 
     // ── Auto Move row ──
     const row = document.createElement('div');
@@ -144,32 +167,106 @@ export function createRpgMenuTabPane(
     element.appendChild(row);
 
     // ── Bar at Top row ──
-    const barTopRow = document.createElement('div');
-    barTopRow.className = 'rpg-menu__setting-row';
+    const rackPositionRow = document.createElement('div');
+    rackPositionRow.className = 'rpg-menu__setting-row';
 
-    const barTopLabelGroup = document.createElement('div');
-    barTopLabelGroup.className = 'rpg-menu__setting-label-group';
-    const barTopLabel = document.createElement('span');
-    barTopLabel.className = 'rpg-menu__setting-label';
-    barTopLabel.textContent = 'Bar at Top';
-    const barTopDesc = document.createElement('span');
-    barTopDesc.className = 'rpg-menu__setting-desc';
-    barTopDesc.textContent = 'Show the RPG stats bar at the top of the screen instead of the bottom.';
-    barTopLabelGroup.appendChild(barTopLabel);
-    barTopLabelGroup.appendChild(barTopDesc);
+    const rackPositionLabelGroup = document.createElement('div');
+    rackPositionLabelGroup.className = 'rpg-menu__setting-label-group';
+    const rackPositionLabel = document.createElement('span');
+    rackPositionLabel.className = 'rpg-menu__setting-label';
+    rackPositionLabel.textContent = 'RPG Rack Position';
+    const rackPositionDesc = document.createElement('span');
+    rackPositionDesc.className = 'rpg-menu__setting-desc';
+    rackPositionDesc.textContent = 'Choose where the rack appears on the battlefield.';
+    rackPositionLabelGroup.appendChild(rackPositionLabel);
+    rackPositionLabelGroup.appendChild(rackPositionDesc);
 
-    const barTopCheckbox = document.createElement('input');
-    barTopCheckbox.type = 'checkbox';
-    barTopCheckbox.className = 'settings-checkbox';
-    barTopCheckbox.checked = rpgBarAtTop;
-    barTopCheckbox.addEventListener('change', () => {
-      rpgBarAtTop = barTopCheckbox.checked;
-      onRpgBarAtTopChange(rpgBarAtTop);
-    });
+    function makePositionButtons<T extends string>(
+      positions: readonly T[],
+      selected: T,
+      onChange: (position: T) => void,
+    ): HTMLElement {
+      const buttons = document.createElement('div');
+      buttons.className = 'rpg-menu__position-buttons';
+      for (const position of positions) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'rpg-menu__position-button';
+        button.classList.toggle('rpg-menu__position-button--active', position === selected);
+        button.setAttribute('aria-pressed', String(position === selected));
+        button.textContent = position[0]!.toUpperCase() + position.slice(1);
+        button.addEventListener('click', () => {
+          selected = position;
+          onChange(position);
+          for (const sibling of buttons.children) {
+            sibling.classList.toggle('rpg-menu__position-button--active', sibling === button);
+            sibling.setAttribute('aria-pressed', String(sibling === button));
+          }
+        });
+        buttons.appendChild(button);
+      }
+      return buttons;
+    }
 
-    barTopRow.appendChild(barTopLabelGroup);
-    barTopRow.appendChild(barTopCheckbox);
-    element.appendChild(barTopRow);
+    const menuButtonPositionReveal = document.createElement('div');
+    menuButtonPositionReveal.className = 'rpg-menu__conditional-position';
+    menuButtonPositionReveal.classList.toggle('rpg-menu__conditional-position--visible', rpgRackPosition === 'hidden');
+
+    const menuButtonPositionRow = document.createElement('div');
+    menuButtonPositionRow.className = 'rpg-menu__setting-row rpg-menu__setting-row--nested';
+    const menuButtonPositionLabel = document.createElement('span');
+    menuButtonPositionLabel.className = 'rpg-menu__setting-label';
+    menuButtonPositionLabel.textContent = 'Menu Button Position';
+    const menuButtonPositionButtons = makePositionButtons(
+      ['top', 'bottom'] as const,
+      rpgMenuButtonPosition,
+      (position) => {
+        rpgMenuButtonPosition = position;
+        onRpgMenuButtonPositionChange(position);
+      },
+    );
+    menuButtonPositionRow.appendChild(menuButtonPositionLabel);
+    menuButtonPositionRow.appendChild(menuButtonPositionButtons);
+    menuButtonPositionReveal.appendChild(menuButtonPositionRow);
+
+    const rackPositionButtons = makePositionButtons(
+      ['bottom', 'top', 'hidden'] as const,
+      rpgRackPosition,
+      (position) => {
+        rpgRackPosition = position;
+        onRpgRackPositionChange(position);
+        menuButtonPositionReveal.classList.toggle('rpg-menu__conditional-position--visible', position === 'hidden');
+      },
+    );
+
+    rackPositionRow.appendChild(rackPositionLabelGroup);
+    rackPositionRow.appendChild(rackPositionButtons);
+    element.appendChild(rackPositionRow);
+    element.appendChild(menuButtonPositionReveal);
+
+    const zonePositionRow = document.createElement('div');
+    zonePositionRow.className = 'rpg-menu__setting-row';
+    const zonePositionLabelGroup = document.createElement('div');
+    zonePositionLabelGroup.className = 'rpg-menu__setting-label-group';
+    const zonePositionLabel = document.createElement('span');
+    zonePositionLabel.className = 'rpg-menu__setting-label';
+    zonePositionLabel.textContent = 'Zone Position';
+    const zonePositionDesc = document.createElement('span');
+    zonePositionDesc.className = 'rpg-menu__setting-desc';
+    zonePositionDesc.textContent = 'Choose where the zone name and selection control appears.';
+    zonePositionLabelGroup.appendChild(zonePositionLabel);
+    zonePositionLabelGroup.appendChild(zonePositionDesc);
+    const zonePositionButtons = makePositionButtons(
+      ['top', 'bottom'] as const,
+      rpgZonePosition,
+      (position) => {
+        rpgZonePosition = position;
+        onRpgZonePositionChange(position);
+      },
+    );
+    zonePositionRow.appendChild(zonePositionLabelGroup);
+    zonePositionRow.appendChild(zonePositionButtons);
+    element.appendChild(zonePositionRow);
 
     // ── Checkpoint selector ──
     const checkpointCount = rpgState ? Math.floor(rpgState.highestWaveReached / 10) : 0;
@@ -430,8 +527,14 @@ export function createRpgMenuTabPane(
     element,
     isAutoMoveEnabled,
     update,
-    setRpgBarAtTop(atTop: boolean): void {
-      rpgBarAtTop = atTop;
+    setRpgRackPosition(position: RpgRackPosition): void {
+      rpgRackPosition = position;
+    },
+    setRpgMenuButtonPosition(position: RpgVerticalPosition): void {
+      rpgMenuButtonPosition = position;
+    },
+    setRpgZonePosition(position: RpgVerticalPosition): void {
+      rpgZonePosition = position;
     },
     setInvincibilityMode(enabled: boolean): void {
       isInvincibilityMode = enabled;

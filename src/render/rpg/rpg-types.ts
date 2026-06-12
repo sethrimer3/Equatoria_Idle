@@ -210,6 +210,8 @@ export interface NullstoneVortex {
   /** Damage per tick, pre-computed at spawn (rawDamage / 3). */
   scaledDamage: number;
   weaponId: string;
+  /** True for the short pull-only vortex spawned by a crafted Nullstone modifier. */
+  isCraftedPull?: boolean;
 }
 
 export interface VortexWeaponState {

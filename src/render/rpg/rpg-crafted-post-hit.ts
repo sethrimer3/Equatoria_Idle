@@ -131,7 +131,7 @@ export function applyCraftedPostHit(
   fracterylPool: { value: number },
   shotColor: string,
 ): void {
-  // Nullstone: pull enemies within radius toward the hit point.
+  // Nullstone: spawn a short pull-only vortex at the hit point.
   // applyNullstonePull handles dead / invalid / out-of-radius targets internally.
   if (craftedMods.nullstonePullRadius > 0 && Number.isFinite(hitX) && Number.isFinite(hitY)) {
     ctx.applyNullstonePull(hitX, hitY, craftedMods.nullstonePullRadius);
