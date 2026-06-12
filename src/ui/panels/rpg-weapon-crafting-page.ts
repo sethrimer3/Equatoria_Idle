@@ -23,11 +23,11 @@ import {
 } from '../../data/rpg/crafted-weapon-helpers';
 import {
   enforceMinSegmentSize,
-  snapToStep,
   sharesFromHandles,
   handlesFromShares,
-  clampHandle,
-  computeMaxBudget,
+  computeBudgetRange,
+  findNearestFeasibleHandle,
+  minimumPowerPct,
   allocateIngredients,
   MIN_SEGMENT_PCT,
   SEGMENT_STEP_PCT,
@@ -60,8 +60,8 @@ export interface RpgWeaponCraftingPage {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MIN_FRACTION = MIN_SEGMENT_PCT / 100;
-const STEP_FRACTION = SEGMENT_STEP_PCT / 100;
+const MIN_FRACTION = MIN_SEGMENT_PCT;
+const STEP_FRACTION = SEGMENT_STEP_PCT;
 const FORGE_CANVAS_SIZE = 160;
 const LOOM_GLYPH_SIZE = 56;
 const LOOM_ROTATION_SPEED = 0.01; // rad per frame at 60 fps, matching spawner rotation
@@ -316,8 +316,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     if (n <= 1) {
       handlePositions = [];
     } else {
-      const equalShare = 1 / n;
-      handlePositions = handlesFromShares(new Array(n).fill(equalShare));
+      handlePositions = handlesFromShares(new Array(n).fill(Math.floor(100 / n)));
     }
     refreshSlider();
     refreshPower();
@@ -372,7 +371,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
 
     availableTiers.forEach((tier, index) => {
-      const available = latestIsDevMode ? 9999 : (inventory.get(tier.id) ?? 0);
+      const available = inventory.get(tier.id) ?? 0n;
       const isSelected = selectedTiers.includes(tier.id);
       const atCapacity = selectedTiers.length >= capacity && !isSelected;
       const angleRad = -Math.PI / 2 + (Math.PI * 2 * index) / total;
@@ -409,7 +408,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       loom.setAttribute('aria-pressed', String(isSelected));
       loom.setAttribute(
         'aria-label',
-        `${isSelected ? 'Remove' : 'Add'} ${tier.displayName} mote type (${available === 9999 ? 'unlimited' : available} crystals)`,
+        `${isSelected ? 'Remove' : 'Add'} ${tier.displayName} mote type (${latestIsDevMode ? 'unlimited' : available} crystals)`,
       );
     });
   }
@@ -455,7 +454,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     let cumPct = 0;
     for (let i = 0; i < n; i++) {
-      const pct = shares[i] * 100;
+      const pct = shares[i];
       const tier = TIER_BY_ID.get(selectedTiers[i]);
       const color = tier?.color ?? '#aaa';
 
@@ -478,6 +477,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       const segLabel = document.createElement('div');
       segLabel.className = 'forge-craft__segment-label';
       segLabel.textContent = `${tier?.displayName ?? selectedTiers[i]} ${Math.round(pct)}%`;
+      if (pct < 14) segLabel.hidden = true;
+      seg.setAttribute('aria-label', `${tier?.displayName ?? selectedTiers[i]} target ${pct}%`);
       seg.appendChild(segLabel);
 
       trackEl.appendChild(seg);
@@ -485,7 +486,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
 
     for (let hi = 0; hi < n - 1; hi++) {
-      const handlePct = handlePositions[hi] * 100;
+      const handlePct = handlePositions[hi];
       const handle = document.createElement('div');
       handle.className = 'forge-craft__handle';
       handle.style.left = `${handlePct}%`;
@@ -499,6 +500,21 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     trackWrap.appendChild(trackEl);
     sliderSectionEl.appendChild(trackWrap);
+
+    const targetChips = document.createElement('div');
+    targetChips.className = 'forge-craft__comp-row forge-craft__target-chips';
+    for (let i = 0; i < n; i++) {
+      const tier = TIER_BY_ID.get(selectedTiers[i]);
+      const color = tier?.color ?? '#aaa';
+      const chip = document.createElement('div');
+      chip.className = 'forge-craft__comp-chip';
+      chip.style.setProperty('--chip-color', color);
+      chip.innerHTML =
+        `<span class="forge-craft__comp-name" style="color:${color}">${tier?.displayName ?? selectedTiers[i]}</span>` +
+        `<span class="forge-craft__comp-pct">${shares[i]}%</span>`;
+      targetChips.appendChild(chip);
+    }
+    sliderSectionEl.appendChild(targetChips);
   }
 
   // ── Drag handling ─────────────────────────────────────────────────────────
@@ -510,12 +526,11 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   function pctFromClientX(clientX: number): number {
     const rect = getTrackRect();
     if (!rect || rect.width === 0) return 0;
-    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
   }
 
   function moveHandle(hi: number, rawFraction: number): void {
-    const snapped = snapToStep(rawFraction, STEP_FRACTION);
-    const clamped = clampHandle(hi, snapped, handlePositions, MIN_FRACTION);
+    const clamped = findNearestFeasibleHandle(hi, rawFraction, handlePositions, selectedTiers, getInventory(), latestIsDevMode);
     if (Math.abs(handlePositions[hi] - clamped) < 1e-9) return;
     handlePositions[hi] = clamped;
     refreshSlider();
@@ -593,9 +608,11 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const inventory = getInventory();
     const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
-    const maxBudget = computeMaxBudget(selectedTiers, shares, inventory, latestIsDevMode);
-    const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction, latestIsDevMode);
-    const totalCount = ingredients.reduce((s, e) => s + e.refinedCount, 0);
+    const range = computeBudgetRange(selectedTiers, shares, inventory, latestIsDevMode);
+    const minPower = minimumPowerPct(range);
+    powerFraction = Math.max(powerFraction, minPower / 100);
+    const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction * 100, latestIsDevMode);
+    const totalCount = ingredients.reduce((s, e) => s + BigInt(e.refinedCount), 0n);
 
     const row = document.createElement('div');
     row.className = 'forge-craft__power-row';
@@ -610,7 +627,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     rangeEl.type = 'range';
     rangeEl.id = 'forge-power-input';
     rangeEl.className = 'forge-craft__power-range';
-    rangeEl.min = '1';
+    rangeEl.min = String(minPower);
     rangeEl.max = '100';
     rangeEl.value = String(Math.round(powerFraction * 100));
     rangeEl.addEventListener('input', () => {
@@ -622,10 +639,10 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     });
     row.appendChild(rangeEl);
 
-    if (maxBudget > 0) {
+    if (range.maximumBudget > 0n) {
       const maxEl = document.createElement('div');
       maxEl.className = 'forge-craft__power-max';
-      maxEl.textContent = `Max budget: ${Math.floor(maxBudget).toLocaleString()} mote-weight`;
+      maxEl.textContent = `Max budget: ${range.maximumBudget.toLocaleString()} mote-weight · Minimum ${minPower}% for this composition.`;
       row.appendChild(maxEl);
     }
 
@@ -649,7 +666,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const inventory = getInventory();
     const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
-    const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction, latestIsDevMode);
+    const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction * 100, latestIsDevMode);
     if (ingredients.length === 0) return;
 
     const totalWt = computeTotalWeightedMoteValue(ingredients);
@@ -795,9 +812,14 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     );
     const tiersForAlloc = n === 1 ? [selectedTiers[0]!] : selectedTiers;
     const sharesForAlloc = n === 1 ? [1] : shares;
-    const ingredients = allocateIngredients(tiersForAlloc, sharesForAlloc, inventory, powerFraction, latestIsDevMode);
+    const range = computeBudgetRange(tiersForAlloc, sharesForAlloc, inventory, latestIsDevMode);
+    if (!range.feasible) {
+      const tierName = TIER_BY_ID.get(range.limitingTierId!)?.displayName ?? range.limitingTierId;
+      return `Not enough ${tierName} to combine at the minimum 1%.`;
+    }
+    const ingredients = allocateIngredients(tiersForAlloc, sharesForAlloc, inventory, powerFraction * 100, latestIsDevMode);
     if (ingredients.length === 0) return 'Not enough refined crystals. Forge some motes first.';
-    const hasCrystals = ingredients.some(e => e.refinedCount > 0);
+    const hasCrystals = ingredients.some(e => BigInt(e.refinedCount) > 0n);
     if (!hasCrystals) return 'All ingredient counts rounded to zero. Use more crystals or a different ratio.';
     const capacity = getForgeCapacityCurrent();
     if (n > capacity) return `Over forge capacity (${capacity} types max). Deselect some mote types.`;
@@ -831,7 +853,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       );
       const tiersForAlloc = n === 1 ? [selectedTiers[0]!] : selectedTiers;
       const sharesForAlloc = n === 1 ? [1] : shares;
-      const ingredients = allocateIngredients(tiersForAlloc, sharesForAlloc, inventory, powerFraction, latestIsDevMode);
+      const ingredients = allocateIngredients(tiersForAlloc, sharesForAlloc, inventory, powerFraction * 100, latestIsDevMode);
       if (ingredients.length === 0) return;
 
       if (craftingMode === 'weapon') {
@@ -874,19 +896,20 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       : TIERS.filter(t => (inventory.get(t.id) ?? 0) > 0);
 
     for (const tier of allTiers) {
-      const available = latestIsDevMode ? 9999 : (inventory.get(tier.id) ?? 0);
+      const available = inventory.get(tier.id) ?? 0n;
 
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:6px;';
 
       const label = document.createElement('label');
       label.style.cssText = `color:${tier.color};font-size:0.78em;min-width:70px;`;
-      label.textContent = `${tier.displayName} (${available === 9999 ? '∞' : available})`;
+      label.textContent = `${tier.displayName} (${latestIsDevMode ? '∞' : available})`;
 
       const input = document.createElement('input');
-      input.type = 'number';
+      input.type = 'text';
+      input.inputMode = 'numeric';
       input.min = '0';
-      input.max = latestIsDevMode ? '9999' : String(available);
+      if (!latestIsDevMode) input.max = String(available);
       input.value = '0';
       input.style.cssText =
         'width:54px;background:rgba(0,0,0,0.5);border:1px solid rgba(200,200,200,0.3);' +
@@ -906,10 +929,10 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     craftExactBtn.style.cssText = 'margin-top:8px;background:rgba(200,160,0,0.1);border-color:rgba(200,160,0,0.4);color:#c8a832;font-size:0.8em;';
     craftExactBtn.textContent = `Craft ${craftExactLabel} with exact counts`;
     craftExactBtn.addEventListener('click', () => {
-      const ingredients: Array<{ tierId: string; refinedCount: number }> = [];
+      const ingredients: Array<{ tierId: string; refinedCount: bigint }> = [];
       for (const [tierId, input] of ingredientMap) {
-        const n = Math.max(0, parseInt(input.value, 10) || 0);
-        if (n > 0) ingredients.push({ tierId, refinedCount: n });
+        const n = /^\d+$/.test(input.value) ? BigInt(input.value) : 0n;
+        if (n > 0n) ingredients.push({ tierId, refinedCount: n });
       }
       if (ingredients.length > 0) dispatch({ kind: actionKind, ingredients });
     });

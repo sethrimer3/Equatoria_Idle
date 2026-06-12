@@ -290,7 +290,7 @@ export function deserializeGameState(data: SaveData): GameState {
         name: l.name,
         forgeCraftLevel: l.forgeCraftLevel,
         totalWeightedMoteValue: l.totalWeightedMoteValue,
-        ingredients: l.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount })),
+        ingredients: l.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: BigInt(i.refinedCount) })),
         effects: l.effects.map(e => ({
           tierId: e.tierId as TierId,
           effectTier: e.effectTier as LensEffectTier,
@@ -308,7 +308,7 @@ export function deserializeGameState(data: SaveData): GameState {
     // v30+: crafted weapons — reconstruct from saved wire data and register into resolver
     if (data.rpg.craftedWeapons && data.rpg.craftedWeapons.length > 0) {
       const restored: CraftedWeaponData[] = data.rpg.craftedWeapons.map(cw => {
-        const ingredients = cw.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount }));
+        const ingredients = cw.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: BigInt(i.refinedCount) }));
         const composition = cw.composition.map(c => ({ tierId: c.tierId as TierId, weightedValue: c.weightedValue, share: c.share }));
         const totalWeightedMoteValue = computeTotalWeightedMoteValue(ingredients);
         const baseLevel = computeCraftedWeaponBaseLevel(totalWeightedMoteValue);
@@ -360,7 +360,7 @@ export function deserializeGameState(data: SaveData): GameState {
     // v30+: refined crystal inventory
     if (data.rpg.refinedCrystalsByTierId) {
       for (const [tierId, count] of Object.entries(data.rpg.refinedCrystalsByTierId)) {
-        state.rpg.refinedCrystalsByTierId.set(tierId as TierId, count);
+        state.rpg.refinedCrystalsByTierId.set(tierId as TierId, BigInt(count));
       }
     }
     // v31+: crafted weaves
@@ -370,7 +370,7 @@ export function deserializeGameState(data: SaveData): GameState {
         name: w.name,
         forgeCraftLevel: w.forgeCraftLevel,
         totalWeightedMoteValue: w.totalWeightedMoteValue,
-        ingredients: w.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: i.refinedCount })),
+        ingredients: w.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: BigInt(i.refinedCount) })),
         affixes: w.affixes.map(a => ({
           affixId: a.affixId as import('../data/rpg/weave-types').WeaveAffixId,
           tierId: a.tierId as TierId,

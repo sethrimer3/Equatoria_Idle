@@ -52,7 +52,17 @@ const EFFECT_NOUNS: Record<string, string> = {
  * This value drives base level and stat multiplier via log10 scaling.
  */
 export function computeTotalWeightedMoteValue(ingredients: CraftedWeaponIngredient[]): number {
-  return ingredients.reduce((sum, i) => sum + i.refinedCount * getTierForgeWeight(i.tierId), 0);
+  return bigintLogDisplayValue(computeTotalWeightedMoteValueBigInt(ingredients));
+}
+
+export function computeTotalWeightedMoteValueBigInt(ingredients: CraftedWeaponIngredient[]): bigint {
+  return ingredients.reduce((sum, i) => sum + BigInt(i.refinedCount) * getTierForgeWeightBigInt(i.tierId), 0n);
+}
+
+function bigintLogDisplayValue(value: bigint): number {
+  if (value <= BigInt(Number.MAX_SAFE_INTEGER)) return Number(value);
+  const text = value.toString();
+  return Number(`${text.slice(0, 15)}e${text.length - 15}`);
 }
 
 /**
@@ -133,6 +143,11 @@ export function getTierForgeWeight(tierId: TierId): number {
   return Math.pow(100, tier?.unlockOrder ?? 0);
 }
 
+export function getTierForgeWeightBigInt(tierId: TierId): bigint {
+  const tier = TIER_BY_ID.get(tierId);
+  return 100n ** BigInt(tier?.unlockOrder ?? 0);
+}
+
 export function getForgeCapacity(forgeCraftLevel: number): number {
   // Level 1→2, Level 2→3, Level 3→4, Level 4→5, Level 5+→6
   const level = Math.max(1, Math.floor(forgeCraftLevel) || 1);
@@ -142,11 +157,11 @@ export function getForgeCapacity(forgeCraftLevel: number): number {
 export function normalizeCraftedWeaponIngredients(
   ingredients: CraftedWeaponIngredient[],
 ): CraftedWeaponIngredient[] {
-  const merged = new Map<TierId, number>();
+  const merged = new Map<TierId, bigint>();
   for (const ingredient of ingredients) {
-    const refinedCount = Math.max(0, Math.floor(ingredient.refinedCount));
-    if (refinedCount <= 0) continue;
-    merged.set(ingredient.tierId, (merged.get(ingredient.tierId) ?? 0) + refinedCount);
+    const refinedCount = BigInt(ingredient.refinedCount);
+    if (refinedCount <= 0n) continue;
+    merged.set(ingredient.tierId, (merged.get(ingredient.tierId) ?? 0n) + refinedCount);
   }
   return Array.from(merged.entries())
     .map(([tierId, refinedCount]) => ({ tierId, refinedCount }))
@@ -162,15 +177,20 @@ export function computeCraftedWeaponComposition(
   const normalized = normalizeCraftedWeaponIngredients(ingredients);
   const weightedEntries = normalized.map((ingredient) => ({
     tierId: ingredient.tierId,
-    weightedValue: ingredient.refinedCount * getTierForgeWeight(ingredient.tierId),
+    weightedValueExact: BigInt(ingredient.refinedCount) * getTierForgeWeightBigInt(ingredient.tierId),
   }));
-  const totalWeight = weightedEntries.reduce((sum, entry) => sum + entry.weightedValue, 0);
-  return weightedEntries
+  const totalWeight = weightedEntries.reduce((sum, entry) => sum + entry.weightedValueExact, 0n);
+  const result = weightedEntries
     .map((entry) => ({
-      ...entry,
-      share: totalWeight > 0 ? entry.weightedValue / totalWeight : 0,
+      tierId: entry.tierId,
+      weightedValue: bigintLogDisplayValue(entry.weightedValueExact),
+      share: totalWeight > 0n ? Number(entry.weightedValueExact * 1_000_000n / totalWeight) / 1_000_000 : 0,
     }))
     .sort((a, b) => b.weightedValue - a.weightedValue);
+  if (result.length > 0) {
+    result[result.length - 1].share = 1 - result.slice(0, -1).reduce((sum, entry) => sum + entry.share, 0);
+  }
+  return result;
 }
 
 export function getDominantCraftedEffect(tierId: TierId): WeaponEffect {

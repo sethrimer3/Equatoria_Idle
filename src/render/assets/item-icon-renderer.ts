@@ -130,13 +130,13 @@ export function stringToIconSeed(s: string): number {
  * a pre-computed composition.
  */
 export function ingredientsToComposition(
-  ingredients: readonly { tierId: TierId; refinedCount: number }[],
+  ingredients: readonly { tierId: TierId; refinedCount: number | bigint }[],
 ): CompositionEntry[] {
-  const total = ingredients.reduce((s, i) => s + i.refinedCount, 0);
+  const total = ingredients.reduce((s, i) => s + Number(i.refinedCount), 0);
   if (total === 0) return [];
   return ingredients
-    .filter(i => i.refinedCount > 0)
-    .map(i => ({ tierId: i.tierId, share: i.refinedCount / total }));
+    .filter(i => BigInt(i.refinedCount) > 0n)
+    .map(i => ({ tierId: i.tierId, share: Number(i.refinedCount) / total }));
 }
 
 /**

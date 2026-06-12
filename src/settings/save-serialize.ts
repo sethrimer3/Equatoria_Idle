@@ -110,7 +110,7 @@ export function serializeGameState(state: GameState): SaveData {
         dominantTierId: cw.dominantTierId,
         secondaryTierId: cw.secondaryTierId,
         forgeCraftLevel: cw.forgeCraftLevel,
-        ingredients: cw.ingredients.map(i => ({ tierId: i.tierId, refinedCount: i.refinedCount })),
+        ingredients: cw.ingredients.map(i => ({ tierId: i.tierId, refinedCount: BigInt(i.refinedCount).toString() })),
         composition: cw.composition.map(c => ({ tierId: c.tierId, weightedValue: c.weightedValue, share: c.share })),
         definition: {
           id: cw.definition.id,
@@ -131,7 +131,7 @@ export function serializeGameState(state: GameState): SaveData {
           name: cw.attachedLens.name,
           forgeCraftLevel: cw.attachedLens.forgeCraftLevel,
           totalWeightedMoteValue: cw.attachedLens.totalWeightedMoteValue,
-          ingredients: cw.attachedLens.ingredients.map(i => ({ tierId: i.tierId, refinedCount: i.refinedCount })),
+          ingredients: cw.attachedLens.ingredients.map(i => ({ tierId: i.tierId, refinedCount: BigInt(i.refinedCount).toString() })),
           effects: cw.attachedLens.effects.map(e => ({
             tierId: e.tierId,
             effectTier: e.effectTier,
@@ -145,13 +145,13 @@ export function serializeGameState(state: GameState): SaveData {
           })),
         } : undefined,
       })),
-      refinedCrystalsByTierId: Object.fromEntries(state.rpg.refinedCrystalsByTierId),
+      refinedCrystalsByTierId: Object.fromEntries(Array.from(state.rpg.refinedCrystalsByTierId, ([k, v]) => [k, BigInt(v).toString()])),
       craftedWeaves: state.rpg.craftedWeaves.map(w => ({
         id: w.id,
         name: w.name,
         forgeCraftLevel: w.forgeCraftLevel,
         totalWeightedMoteValue: w.totalWeightedMoteValue,
-        ingredients: w.ingredients.map(i => ({ tierId: i.tierId, refinedCount: i.refinedCount })),
+        ingredients: w.ingredients.map(i => ({ tierId: i.tierId, refinedCount: BigInt(i.refinedCount).toString() })),
         affixes: w.affixes.map(a => ({
           affixId: a.affixId,
           tierId: a.tierId,
@@ -180,7 +180,7 @@ export function serializeGameState(state: GameState): SaveData {
         name: l.name,
         forgeCraftLevel: l.forgeCraftLevel,
         totalWeightedMoteValue: l.totalWeightedMoteValue,
-        ingredients: l.ingredients.map(i => ({ tierId: i.tierId, refinedCount: i.refinedCount })),
+        ingredients: l.ingredients.map(i => ({ tierId: i.tierId, refinedCount: BigInt(i.refinedCount).toString() })),
         effects: l.effects.map(e => ({
           tierId: e.tierId,
           effectTier: e.effectTier,

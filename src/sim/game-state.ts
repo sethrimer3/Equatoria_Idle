@@ -305,8 +305,8 @@ export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, nu
     let refinedTotal = (state.forge.refinedProgressByTierId.get(tierId) ?? 0) + mass;
     const refinedCrystalsGained = Math.floor(refinedTotal / REFINED_CRYSTAL_THRESHOLD);
     if (refinedCrystalsGained > 0) {
-      const currentCrystals = state.rpg.refinedCrystalsByTierId.get(tierId) ?? 0;
-      state.rpg.refinedCrystalsByTierId.set(tierId, currentCrystals + refinedCrystalsGained);
+      const currentCrystals = BigInt(state.rpg.refinedCrystalsByTierId.get(tierId) ?? 0);
+      state.rpg.refinedCrystalsByTierId.set(tierId, currentCrystals + BigInt(refinedCrystalsGained));
       refinedTotal -= refinedCrystalsGained * REFINED_CRYSTAL_THRESHOLD;
       crystalsGained.set(tierId, refinedCrystalsGained);
     }
@@ -325,20 +325,20 @@ export function craftWeapon(
   const normalizedIngredients = ingredients
     .map((ingredient) => ({
       tierId: ingredient.tierId,
-      refinedCount: Math.max(0, Math.floor(ingredient.refinedCount)),
+      refinedCount: BigInt(ingredient.refinedCount),
     }))
-    .filter((ingredient) => ingredient.refinedCount > 0);
+    .filter((ingredient) => ingredient.refinedCount > 0n);
   if (normalizedIngredients.length === 0) return false;
   if (normalizedIngredients.length > getForgeCapacity(forgeCraftLevel)) return false;
 
   for (const ingredient of normalizedIngredients) {
-    const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+    const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
     if (!bypassCost && available < ingredient.refinedCount) return false;
   }
 
   if (!bypassCost) {
     for (const ingredient of normalizedIngredients) {
-      const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+      const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
       state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
     }
   }
@@ -365,18 +365,18 @@ export function craftWeave(
 ): boolean {
   const forgeCraftLevel = getRpgUpgradeLevel(state.rpg, 'forge_craft_level') + 1;
   const normalizedIngredients = ingredients
-    .map(i => ({ tierId: i.tierId, refinedCount: Math.max(0, Math.floor(i.refinedCount)) }))
-    .filter(i => i.refinedCount > 0);
+    .map(i => ({ tierId: i.tierId, refinedCount: BigInt(i.refinedCount) }))
+    .filter(i => i.refinedCount > 0n);
   if (normalizedIngredients.length === 0) return false;
 
   for (const ingredient of normalizedIngredients) {
-    const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+    const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
     if (!bypassCost && available < ingredient.refinedCount) return false;
   }
 
   if (!bypassCost) {
     for (const ingredient of normalizedIngredients) {
-      const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+      const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
       state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
     }
   }
@@ -401,18 +401,18 @@ export function craftLens(
 ): boolean {
   const forgeCraftLevel = getRpgUpgradeLevel(state.rpg, 'forge_craft_level') + 1;
   const normalizedIngredients = ingredients
-    .map(i => ({ tierId: i.tierId, refinedCount: Math.max(0, Math.floor(i.refinedCount)) }))
-    .filter(i => i.refinedCount > 0);
+    .map(i => ({ tierId: i.tierId, refinedCount: BigInt(i.refinedCount) }))
+    .filter(i => i.refinedCount > 0n);
   if (normalizedIngredients.length === 0) return false;
 
   for (const ingredient of normalizedIngredients) {
-    const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+    const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
     if (!bypassCost && available < ingredient.refinedCount) return false;
   }
 
   if (!bypassCost) {
     for (const ingredient of normalizedIngredients) {
-      const available = state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0;
+      const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
       state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
     }
   }

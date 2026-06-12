@@ -1994,10 +1994,16 @@
   font-weight: 600;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 1), 0 0 8px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   padding: 0 4px;
   pointer-events: none;
+}
+
+.forge-craft__segment-label[hidden] {
+  display: none;
+}
+
+.forge-craft__target-chips {
+  margin-top: 6px;
 }
 
 /* Handle — draggable boundary between segments */

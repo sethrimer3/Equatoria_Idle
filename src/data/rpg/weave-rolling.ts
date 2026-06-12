@@ -184,7 +184,7 @@ export function rollWeaveTierEffects(
   const tierCounts = new Map<TierId, number>();
   for (const ing of ingredients) {
     const cur = tierCounts.get(ing.tierId) ?? 0;
-    tierCounts.set(ing.tierId, cur + ing.refinedCount);
+    tierCounts.set(ing.tierId, cur + Number(ing.refinedCount));
   }
 
   const effects: WeaveTierEffect[] = [];
@@ -300,7 +300,7 @@ export function createCraftedWeave(
   const tierCounts = new Map<TierId, number>();
   for (const ing of ingredients) {
     const cur = tierCounts.get(ing.tierId) ?? 0;
-    tierCounts.set(ing.tierId, cur + ing.refinedCount);
+    tierCounts.set(ing.tierId, cur + Number(ing.refinedCount));
   }
   const normalizedIngredients = Array.from(tierCounts.entries())
     .filter(([, count]) => count > 0)

@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 32;
+export const SAVE_VERSION = 33;
 
 export interface SaveData {
   version: number;
@@ -154,7 +154,7 @@ export interface SaveData {
       dominantTierId: string;
       secondaryTierId: string;
       forgeCraftLevel: number;
-      ingredients: Array<{ tierId: string; refinedCount: number }>;
+      ingredients: Array<{ tierId: string; refinedCount: string | number }>;
       composition: Array<{ tierId: string; weightedValue: number; share: number }>;
       definition: {
         id: string;
@@ -176,7 +176,7 @@ export interface SaveData {
         name: string;
         forgeCraftLevel: number;
         totalWeightedMoteValue: number;
-        ingredients: Array<{ tierId: string; refinedCount: number }>;
+        ingredients: Array<{ tierId: string; refinedCount: string | number }>;
         effects: Array<{
           tierId: string;
           effectTier: number;
@@ -191,14 +191,14 @@ export interface SaveData {
       };
     }>;
     /** v30+: refined crystal inventory per tier. Absent in older saves. */
-    refinedCrystalsByTierId?: Record<string, number>;
+    refinedCrystalsByTierId?: Record<string, string | number>;
     /** v31+: crafted weave inventory. Absent in older saves. */
     craftedWeaves?: Array<{
       id: string;
       name: string;
       forgeCraftLevel: number;
       totalWeightedMoteValue: number;
-      ingredients: Array<{ tierId: string; refinedCount: number }>;
+      ingredients: Array<{ tierId: string; refinedCount: string | number }>;
       affixes: Array<{
         affixId: string;
         tierId: string;
@@ -230,7 +230,7 @@ export interface SaveData {
       name: string;
       forgeCraftLevel: number;
       totalWeightedMoteValue: number;
-      ingredients: Array<{ tierId: string; refinedCount: number }>;
+      ingredients: Array<{ tierId: string; refinedCount: string | number }>;
       effects: Array<{
         tierId: string;
         effectTier: number;

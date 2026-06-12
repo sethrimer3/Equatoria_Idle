@@ -81,7 +81,7 @@ export interface RpgSimState {
    */
   equippedWeaveSlots: (string | null)[];
   /** Refined crystal inventory available for forging crafted weapons. */
-  refinedCrystalsByTierId: Map<string, number>;
+  refinedCrystalsByTierId: Map<string, number | bigint>;
   /**
    * Set of currently equipped weapon IDs.
    * Maximum size = getMaxEquippedWeapons(state).

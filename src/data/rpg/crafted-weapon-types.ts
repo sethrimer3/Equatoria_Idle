@@ -4,7 +4,7 @@ import type { CraftedLensData } from './lens-types';
 
 export interface CraftedWeaponIngredient {
   tierId: TierId;
-  refinedCount: number;
+  refinedCount: number | bigint;
 }
 
 export interface CraftedWeaponCompositionEntry {

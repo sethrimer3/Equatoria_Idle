@@ -38,9 +38,9 @@ export type GameAction =
   | { kind: 'set_rpg_pixelated_render'; enabled: boolean }
   | { kind: 'upgrade_loom_efficiency'; tierId: string }
   | { kind: 'toggle_sand_blade' }
-  | { kind: 'craft_weapon'; ingredients: Array<{ tierId: string; refinedCount: number }> }
-  | { kind: 'craft_weave'; ingredients: Array<{ tierId: string; refinedCount: number }> }
-  | { kind: 'craft_lens'; ingredients: Array<{ tierId: string; refinedCount: number }> }
+  | { kind: 'craft_weapon'; ingredients: Array<{ tierId: string; refinedCount: number | bigint }> }
+  | { kind: 'craft_weave'; ingredients: Array<{ tierId: string; refinedCount: number | bigint }> }
+  | { kind: 'craft_lens'; ingredients: Array<{ tierId: string; refinedCount: number | bigint }> }
   | { kind: 'attach_lens_to_weapon'; lensId: string; weaponId: string }
   | { kind: 'equip_weave_to_slot'; weaveId: string; slotIndex: number }
   | { kind: 'unequip_weave'; weaveId: string }
