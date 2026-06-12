@@ -41,6 +41,8 @@ export interface RpgMenuPanel {
   ): void;
   /** Show or hide the menu overlay. */
   setVisible(visible: boolean): void;
+  /** Show the menu overlay directly on the enemy codex tab. */
+  openEnemiesTab(): void;
   isVisible: boolean;
   /** Whether auto-move is currently enabled (session-only, not persisted). */
   isAutoMoveEnabled: boolean;
@@ -216,6 +218,12 @@ export function createRpgMenuPanel(
       element.style.display = visible ? 'flex' : 'none';
       panel.isVisible = visible;
       if (visible) renderActiveTab();
+    },
+
+    openEnemiesTab(): void {
+      activeTab = 'enemies';
+      updateTabHighlight();
+      panel.setVisible(true);
     },
 
     setRpgRackPosition(position: RpgRackPosition): void {

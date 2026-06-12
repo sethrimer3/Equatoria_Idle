@@ -77,6 +77,8 @@ export interface RpgRenderOptions {
    * to add a 4th XP wire).  Callers should play the error SFX.
    */
   onError?: () => void;
+  /** Called when an enemy type is added to the codex for the first time. */
+  onNewCodexEntry?: () => void;
   /**
    * Action dispatcher for the weapon inventory picker popup.
    * When provided, tapping the WEAP column header or any WEAP slot cell opens

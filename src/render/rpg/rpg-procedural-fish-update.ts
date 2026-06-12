@@ -80,6 +80,8 @@ const _ALI_R2 = FISH_SCHOOL_ALIGNMENT_RADIUS  ** 2;
 const _COH_R2 = FISH_SCHOOL_COHESION_RADIUS   ** 2;
 // Tighter separation radius for mini fish (squared).
 const _MINI_SEP_R2 = (FISH_SCHOOL_SEPARATION_RADIUS * 0.65) ** 2;
+const FISH_MOVEMENT_SPEED_MULTIPLIER = 3;
+const FISH_TERRAIN_BERTH_PROBE_MULTIPLIER = 1.65;
 
 /**
  * Try several candidate escape angles (starting from the most player-aligned)
@@ -229,6 +231,8 @@ function schoolSwimStep(
       performance.now(),
       navGrid,
       terrain,
+      undefined,
+      curSpd,
     );
     if (steered) {
       seekX = steered.dx;
@@ -268,8 +272,15 @@ function schoolSwimStep(
   let terrX = 0, terrY = 0;
   let terrainHit = false;
   if (terrain) {
-    const probeX = e.x + Math.cos(e.swimAngle) * FISH_SCHOOL_PROBE_DIST;
-    const probeY = e.y + Math.sin(e.swimAngle) * FISH_SCHOOL_PROBE_DIST;
+    const playerDist = Math.hypot(ctx.mote.x - e.x, ctx.mote.y - e.y);
+    // Keep a modest buffer from topology while pursuing, but relax it near the
+    // player so fish can still reach a player pressed against an island.
+    const berthScale = playerDist > FISH_SCHOOL_PROBE_DIST * 2
+      ? FISH_TERRAIN_BERTH_PROBE_MULTIPLIER
+      : 1;
+    const terrainProbeDist = FISH_SCHOOL_PROBE_DIST * berthScale;
+    const probeX = e.x + Math.cos(e.swimAngle) * terrainProbeDist;
+    const probeY = e.y + Math.sin(e.swimAngle) * terrainProbeDist;
     if (segmentIntersectsTopographicTerrain(terrain, e.x, e.y, probeX, probeY)) {
       terrainHit = true;
       // Build a fan of candidate escape angles ordered by proximity to the
@@ -290,7 +301,7 @@ function schoolSwimStep(
       const [firstDiag, secondDiag]   = diffLeft <= diffRight ? [leftOf, rightOf] : [rightOf, leftOf];
       const [firstBack, secondBack]   = diffLeft <= diffRight ? [left135, right135] : [right135, left135];
       const escapeCandidates: number[] = [firstDiag, secondDiag, firstPerp, secondPerp, firstBack, secondBack];
-      const escape = _tryEscape(terrain, e.x, e.y, escapeCandidates, FISH_SCHOOL_PROBE_DIST);
+      const escape = _tryEscape(terrain, e.x, e.y, escapeCandidates, terrainProbeDist);
       if (escape) {
         terrX = escape.dx;
         terrY = escape.dy;
@@ -352,7 +363,7 @@ function schoolSwimStep(
 
   // ── Tail-kick thrust (preserved from original swimStep) ───────────────────
   const kick  = 0.65 + 0.35 * Math.max(0, Math.sin(e.animPhase * 2.8));
-  const speed = PROC_PATROL_SPEED * 0.85 * speedMul;
+  const speed = PROC_PATROL_SPEED * 0.85 * speedMul * FISH_MOVEMENT_SPEED_MULTIPLIER;
   e.vx += Math.cos(e.swimAngle) * speed * kick * 0.09;
   e.vy += Math.sin(e.swimAngle) * speed * kick * 0.09;
 
@@ -362,10 +373,11 @@ function schoolSwimStep(
 
   // ── Speed clamp (prevent runaway from accumulated boids forces) ───────────
   const spd2 = e.vx * e.vx + e.vy * e.vy;
-  if (spd2 > FISH_SCHOOL_MAX_SPEED * FISH_SCHOOL_MAX_SPEED) {
+  const maxSpeed = FISH_SCHOOL_MAX_SPEED * FISH_MOVEMENT_SPEED_MULTIPLIER;
+  if (spd2 > maxSpeed * maxSpeed) {
     const spd = Math.sqrt(spd2);
-    e.vx = (e.vx / spd) * FISH_SCHOOL_MAX_SPEED;
-    e.vy = (e.vy / spd) * FISH_SCHOOL_MAX_SPEED;
+    e.vx = (e.vx / spd) * maxSpeed;
+    e.vy = (e.vy / spd) * maxSpeed;
   }
 
   // ── Move + clamp ──────────────────────────────────────────────────────────

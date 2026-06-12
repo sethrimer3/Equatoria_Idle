@@ -39,6 +39,7 @@ import { createTraceEffect } from '../render/ui/trace-effect';
 import { createRpgRender } from '../render/rpg/rpg-render';
 import { createRpgMenuPanel } from '../ui/panels/rpg-menu-panel';
 import { addMotes } from '../sim/resources/resource-state';
+import { ENEMY_CODEX_GLOW_ICON_PATH, ENEMY_CODEX_ICON_PATH } from '../render/assets/asset-paths';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
@@ -296,6 +297,7 @@ export async function startApp(): Promise<void> {
   rpgContainer.style.display = 'none';
   root.appendChild(rpgContainer);
 
+  let setCodexUnread = (_unread: boolean): void => undefined;
   const rpgRender = createRpgRender(rpgContainer, appState.game.rpg, {
     onLuckyMoteCollected: (tierId: TierId, bonusPct: number) => {
       const current = appState.game.resources.moteTotals.get(tierId) ?? 0;
@@ -306,6 +308,7 @@ export async function startApp(): Promise<void> {
     },
     getAchievementAtkBonus: () => appState.game.achievements.baseAtkBonus,
     onError: () => { audioSystem.onError(); },
+    onNewCodexEntry: () => { setCodexUnread(true); },
     dispatch,
   });
   rpgRender.setNumberFormat(settings.numberFormat);
@@ -326,6 +329,7 @@ export async function startApp(): Promise<void> {
     rpgRender.statsPanel.classList.toggle('rpg-rack-hidden', position === 'hidden');
     rpgContainer.classList.toggle('rpg-bar-at-top', atTop);
     rpgContainer.classList.toggle('rpg-rack-hidden', position === 'hidden');
+    rpgRender.resize(rpgContainer);
   }
 
   function applyRpgMenuButtonPosition(position: 'top' | 'bottom'): void {
@@ -399,6 +403,27 @@ export async function startApp(): Promise<void> {
   hiddenRackMenuBtn.setAttribute('aria-label', 'Open RPG menu');
   hiddenRackMenuBtn.addEventListener('click', toggleRpgMenu);
   rpgContainer.appendChild(hiddenRackMenuBtn);
+
+  const codexBtn = document.createElement('button');
+  codexBtn.className = 'rpg-codex-btn';
+  codexBtn.setAttribute('aria-label', 'Open enemy codex');
+  for (const [path, className] of [
+    [ENEMY_CODEX_ICON_PATH, 'rpg-codex-btn__icon'],
+    [ENEMY_CODEX_GLOW_ICON_PATH, 'rpg-codex-btn__icon rpg-codex-btn__icon--glow'],
+  ] as const) {
+    const image = document.createElement('img');
+    image.src = path;
+    image.className = className;
+    image.alt = '';
+    codexBtn.appendChild(image);
+  }
+  setCodexUnread = (unread) => { codexBtn.classList.toggle('rpg-codex-btn--unread', unread); };
+  codexBtn.addEventListener('click', () => {
+    setCodexUnread(false);
+    rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
+    rpgMenuPanel.openEnemiesTab();
+  });
+  rpgContainer.appendChild(codexBtn);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);

@@ -133,6 +133,8 @@ export const FORGE_RING_SPRITE_PATHS = [
 
 export const LOGO_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo.webp`;
 export const LOGO_ALT_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo_alt.webp`;
+export const ENEMY_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex.webp`;
+export const ENEMY_CODEX_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex_glow.webp`;
 
 // ── Background Animation ───────────────────────────────────────
 

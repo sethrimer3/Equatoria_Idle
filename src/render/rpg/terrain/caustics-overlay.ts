@@ -244,7 +244,9 @@ export function drawCausticsBackground(
   if (!lowGraphics && _poolGrad) {
     canvas2d.fillStyle = _poolGrad;
     canvas2d.globalAlpha = 1;
-    canvas2d.fillRect(0, heightPx * 0.68, widthPx, heightPx * 0.32);
+    // Paint the full gradient. Clipping it to the lower 32% creates a visible
+    // horizontal tint discontinuity at the clip boundary.
+    canvas2d.fillRect(0, 0, widthPx, heightPx);
   }
 
   canvas2d.restore();

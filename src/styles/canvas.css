@@ -170,6 +170,11 @@
   height: calc(100% - var(--tab-height) * 4 - var(--safe-bottom));
 }
 
+#rpg-container.rpg-rack-hidden {
+  top: 0;
+  height: calc(100% - var(--tab-height) - var(--safe-bottom));
+}
+
 #rpg-stats-panel.rpg-rack-hidden {
   display: none !important;
 }
@@ -1078,6 +1083,43 @@
 #rpg-container.rpg-menu-button-at-bottom .rpg-hidden-rack-menu-btn {
   top: auto;
   bottom: 4px;
+}
+
+.rpg-codex-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#rpg-container.rpg-rack-hidden:not(.rpg-menu-button-at-bottom) .rpg-codex-btn {
+  top: calc(var(--tab-height) * 0.8 + 8px);
+}
+
+.rpg-codex-btn__icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  transition: opacity 180ms ease-in-out;
+}
+
+.rpg-codex-btn__icon--glow,
+.rpg-codex-btn--unread .rpg-codex-btn__icon:not(.rpg-codex-btn__icon--glow) {
+  opacity: 0;
+}
+
+.rpg-codex-btn--unread .rpg-codex-btn__icon--glow {
+  opacity: 1;
 }
 
 #rpg-menu-panel {

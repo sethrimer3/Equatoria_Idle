@@ -1162,7 +1162,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getPlayerHpRatio:        () => playerStats.maxHp > 0 ? playerStats.hp / playerStats.maxHp : 0,
     getVerdureCaveWallState: () => verdureCaveWallState,
     getIsDevMode:            () => _isDevMode,
-    onNewCodexEntry:         () => { drawFrameState.codexNotificationStartedMs = performance.now(); },
+    onNewCodexEntry:         () => {
+      drawFrameState.codexNotificationStartedMs = performance.now();
+      options.onNewCodexEntry?.();
+    },
   });
   initBossDialogueSystem();
 
