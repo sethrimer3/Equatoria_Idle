@@ -34,7 +34,7 @@ import {
   RIBBONWORM_SIZE, RIBBONWORM_COLOR, RIBBONWORM_GLOW,
   LANTERNMOTH_SIZE, LANTERNMOTH_COLOR, LANTERNMOTH_GLOW,
   EYESTALK_SIZE, EYESTALK_COLOR, EYESTALK_GLOW,
-  JELLYFISH_SIZE, JELLYFISH_COLOR, JELLYFISH_GLOW,
+  JELLYFISH_SIZE, JELLYFISH_GLOW,
   CLOTHGHOST_SIZE, CLOTHGHOST_COLOR, CLOTHGHOST_GLOW,
   PLANTTURRET_SIZE, PLANTTURRET_COLOR, PLANTTURRET_GLOW,
   GEARINSECT_SIZE, GEARINSECT_COLOR, GEARINSECT_GLOW,
@@ -230,30 +230,29 @@ export function drawJellyfishEnemies(
 ): void {
   for (const e of enemies) {
     canvas.save();
-    const bellScale = 0.7 + 0.3 * Math.sin(e.bellPhase * 2.5);
+    const bellScale = e.movementState === 'compress' ? 1.2 : e.movementState === 'pulse' ? 0.76 : 1;
     applyGlow(canvas, JELLYFISH_GLOW, 12);
     canvas.globalAlpha = 0.65;
-    canvas.fillStyle = JELLYFISH_COLOR;
+    canvas.fillStyle = e.bellTint;
     // Bell — upper half arc
     canvas.save();
     canvas.translate(e.x, e.y);
-    canvas.scale(bellScale, 1);
+    canvas.rotate(e.facingRad + Math.PI / 2);
+    canvas.scale(bellScale, 2 - bellScale);
     canvas.beginPath();
-    canvas.arc(0, 0, JELLYFISH_SIZE, Math.PI, 0, false);
+    canvas.arc(0, 0, e.bellSize, Math.PI, 0, false);
     canvas.closePath();
     canvas.fill();
     canvas.restore();
     // Tentacles
     canvas.globalAlpha = 0.45;
-    canvas.strokeStyle = JELLYFISH_COLOR;
+    canvas.strokeStyle = e.bellTint;
     canvas.lineWidth = 1;
-    for (let i = -2; i <= 2; i++) {
-      const tx = e.x + i * JELLYFISH_SIZE * 0.38;
-      const ty = e.y + JELLYFISH_SIZE * 0.1;
-      const wobble = Math.sin(e.bellPhase * 3 + i) * 3;
+    for (let t = 0; t < e.tailCount; t++) {
+      const base = t * e.segmentsPerTail;
       canvas.beginPath();
-      canvas.moveTo(tx, ty);
-      canvas.quadraticCurveTo(tx + wobble, ty + JELLYFISH_SIZE * 1.2, tx - wobble, ty + JELLYFISH_SIZE * 2.0);
+      canvas.moveTo(e.segX[base], e.segY[base]);
+      for (let s = 1; s < e.segmentsPerTail; s++) canvas.lineTo(e.segX[base + s], e.segY[base + s]);
       canvas.stroke();
     }
     clearGlow(canvas);

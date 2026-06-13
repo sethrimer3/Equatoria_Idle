@@ -92,12 +92,21 @@ export function makeEyeStalkEnemy(x: number, y: number, wave: number): EyeStalkE
 
 export function makeJellyfishEnemy(x: number, y: number, wave: number): JellyfishEnemy {
   const s = getWaveStatScale(wave);
+  const seed = Math.abs(Math.sin(x * 12.9898 + y * 78.233 + wave * 5.17));
+  const tailCount = 3 + Math.floor(seed * 3), segmentsPerTail = 6 + Math.floor(seed * 3);
+  const segX = new Float64Array(tailCount * segmentsPerTail).fill(x);
+  const segY = new Float64Array(tailCount * segmentsPerTail).fill(y);
   return {
     kind: 'proc_jellyfish', x, y, vx: 0, vy: 0,
     hp: Math.ceil(JELLYFISH_HP_INIT * s), maxHp: Math.ceil(JELLYFISH_HP_INIT * s),
     atk: Math.ceil(JELLYFISH_ATK_INIT * s), def: Math.ceil(JELLYFISH_DEF_INIT * s),
     animPhase: Math.random() * Math.PI * 2, hitFlashMs: 0, contactCdMs: 0,
     bellPhase: Math.random() * Math.PI * 2,
+    movementState: 'drift', stateTimerMs: 500 + seed * 700,
+    facingRad: seed * Math.PI * 2, targetX: x, targetY: y, wanderPhase: seed * Math.PI * 2,
+    bellSize: 7.2 + seed * 1.8, bellTint: seed > 0.66 ? '#a8e8ff' : seed > 0.33 ? '#96d8f0' : '#86cbea',
+    pulseCadenceMs: 1650 + seed * 650, tailCount, segmentsPerTail, segLength: 3.5 + seed,
+    segX, segY, segPrevX: segX.slice(), segPrevY: segY.slice(),
   };
 }
 

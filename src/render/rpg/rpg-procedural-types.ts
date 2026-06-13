@@ -87,6 +87,19 @@ export interface JellyfishEnemy {
   contactCdMs: number;
   /** Bell expansion/contraction phase (seconds). */
   bellPhase: number;
+  movementState: 'drift' | 'compress' | 'pulse' | 'coast' | 'recover';
+  stateTimerMs: number;
+  facingRad: number;
+  targetX: number; targetY: number;
+  wanderPhase: number;
+  bellSize: number;
+  bellTint: string;
+  pulseCadenceMs: number;
+  tailCount: number;
+  segmentsPerTail: number;
+  segLength: number;
+  segX: Float64Array; segY: Float64Array;
+  segPrevX: Float64Array; segPrevY: Float64Array;
 }
 
 // ── Cloth Ghost ────────────────────────────────────────────────────────────────

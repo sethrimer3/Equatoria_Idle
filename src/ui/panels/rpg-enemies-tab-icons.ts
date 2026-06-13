@@ -239,9 +239,11 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
     case 'proc_eyestalk':
       state = { kind: 'eyestalk',   e: { ...base, kind: 'proc_eyestalk', animPhase: ap, stalkPhase: ap, eyeAngle: ap } };
       break;
-    case 'proc_jellyfish':
-      state = { kind: 'jellyfish',  e: { ...base, kind: 'proc_jellyfish', animPhase: ap, bellPhase: ap } };
+    case 'proc_jellyfish': {
+      const segX = new Float64Array(24).fill(cx), segY = new Float64Array(24).fill(cy);
+      state = { kind: 'jellyfish', e: { ...base, kind: 'proc_jellyfish', animPhase: ap, bellPhase: ap, movementState: 'coast', stateTimerMs: 9999, facingRad: -Math.PI / 2, targetX: cx, targetY: cy, wanderPhase: ap, bellSize: 8, bellTint: '#96d8f0', pulseCadenceMs: 1900, tailCount: 4, segmentsPerTail: 6, segLength: 3.8, segX, segY, segPrevX: segX.slice(), segPrevY: segY.slice() } };
       break;
+    }
     case 'proc_clothghost':
       state = { kind: 'clothghost', e: { ...base, kind: 'proc_clothghost', animPhase: ap, flutterPhase: ap } };
       break;

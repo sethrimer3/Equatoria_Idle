@@ -202,22 +202,61 @@ export function updateJellyfishEnemies(
   ctx: RpgEnemyCtx,
   deltaMs: number,
 ): void {
-  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  const dt = Math.min(deltaMs / TARGET_FRAME_MS, 2.5);
   for (const e of enemies) {
     e.animPhase += deltaMs / 1000;
     e.bellPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    // Slow pulsing drift toward player
-    const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
-    const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    const pulse = (Math.sin(e.bellPhase * 2.5) * 0.5 + 0.5);
-    e.vx = e.vx * PROC_PATROL_DAMPING + (dx / len) * PROC_PATROL_SPEED * 0.35 * pulse * (1 - PROC_PATROL_DAMPING);
-    e.vy = e.vy * PROC_PATROL_DAMPING + (dy / len) * PROC_PATROL_SPEED * 0.35 * pulse * (1 - PROC_PATROL_DAMPING);
+    e.stateTimerMs -= deltaMs;
+    e.wanderPhase += deltaMs * 0.00035;
+    if (e.stateTimerMs <= 0) {
+      if (e.movementState === 'drift') { e.movementState = 'compress'; e.stateTimerMs = 330; }
+      else if (e.movementState === 'compress') { e.movementState = 'pulse'; e.stateTimerMs = 180; e.targetX = ctx.mote.x + Math.cos(e.wanderPhase) * 45; e.targetY = ctx.mote.y + Math.sin(e.wanderPhase * 0.73) * 45; }
+      else if (e.movementState === 'pulse') { e.movementState = 'coast'; e.stateTimerMs = 720; }
+      else if (e.movementState === 'coast') { e.movementState = 'recover'; e.stateTimerMs = 420; }
+      else { e.movementState = 'drift'; e.stateTimerMs = e.pulseCadenceMs; }
+    }
+    const desired = Math.atan2(e.targetY - e.y, e.targetX - e.x);
+    let turn = Math.atan2(Math.sin(desired - e.facingRad), Math.cos(desired - e.facingRad));
+    turn = Math.max(-0.018 * dt, Math.min(0.018 * dt, turn));
+    e.facingRad += turn;
+    const thrust = e.movementState === 'pulse' ? 0.13 : e.movementState === 'compress' ? 0.025 : e.movementState === 'drift' ? 0.008 : 0;
+    e.vx += (Math.cos(e.facingRad) * thrust + Math.cos(e.wanderPhase) * 0.002) * dt;
+    e.vy += (Math.sin(e.facingRad) * thrust + Math.sin(e.wanderPhase * 0.73) * 0.002) * dt;
+    const drag = e.movementState === 'coast' ? 0.992 : 0.982;
+    e.vx *= Math.pow(drag, dt); e.vy *= Math.pow(drag, dt);
+    const speed = Math.sqrt(e.vx * e.vx + e.vy * e.vy);
+    if (speed > 1.45) { e.vx *= 1.45 / speed; e.vy *= 1.45 / speed; }
     e.x += e.vx * dt;
     e.y += e.vy * dt;
     ctx.clampEnemyToBounds(e);
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), JELLYFISH_SIZE / 2);
-    contactDamage(e, dt, ctx);
+    for (let t = 0; t < e.tailCount; t++) {
+      const base = t * e.segmentsPerTail, spread = (t / (e.tailCount - 1 || 1) - 0.5) * 1.25;
+      e.segX[base] = e.x + Math.cos(e.facingRad + Math.PI / 2) * spread * e.bellSize;
+      e.segY[base] = e.y + Math.sin(e.facingRad + Math.PI / 2) * spread * e.bellSize;
+      e.segPrevX[base] = e.segX[base]; e.segPrevY[base] = e.segY[base];
+      for (let s = 1; s < e.segmentsPerTail; s++) {
+        const i = base + s, ox = e.segX[i], oy = e.segY[i];
+        e.segX[i] += (e.segX[i] - e.segPrevX[i]) * 0.88 * dt;
+        e.segY[i] += (e.segY[i] - e.segPrevY[i]) * 0.88 * dt + 0.012 * dt;
+        e.segPrevX[i] = ox; e.segPrevY[i] = oy;
+      }
+      for (let iter = 0; iter < 3; iter++) for (let s = 1; s < e.segmentsPerTail; s++) {
+        const i = base + s, p = i - 1, dx = e.segX[i] - e.segX[p], dy = e.segY[i] - e.segY[p], d = Math.sqrt(dx * dx + dy * dy);
+        if (!Number.isFinite(d) || d > 200) { e.segX[i] = e.segX[p]; e.segY[i] = e.segY[p]; e.segPrevX[i] = e.segX[i]; e.segPrevY[i] = e.segY[i]; }
+        else if (d > e.segLength) { const k = (d - e.segLength) / (d || 1); e.segX[i] -= dx * k; e.segY[i] -= dy * k; }
+      }
+    }
+    if (e.contactCdMs > 0) e.contactCdMs -= deltaMs;
+    else {
+      const r2 = (PLAYER_HIT_RADIUS + 1.4) ** 2;
+      outer: for (let i = 1; i < e.segX.length; i++) {
+        const dx = ctx.mote.x - e.segX[i], dy = ctx.mote.y - e.segY[i];
+        if (dx * dx + dy * dy <= r2) { ctx.dealDamageToPlayer(e.atk); e.contactCdMs = PROC_CONTACT_CD_MS; break outer; }
+      }
+      if (e.contactCdMs <= 0) contactDamage(e, dt, ctx);
+    }
   }
 }
 
