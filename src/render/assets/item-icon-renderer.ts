@@ -35,6 +35,8 @@ const _warnedMissingMasks = new Set<string>();
 // opaque and shows the whole square.  Convert once: dark=opaque, light=transparent.
 
 const _processedMaskCache = new Map<string, HTMLCanvasElement>();
+const _itemOutlineCache = new Map<string, HTMLCanvasElement>();
+const ITEM_OUTLINE_COLOR = '#d8ad45';
 
 function getLuminanceMaskCanvas(
   path: string,
@@ -64,6 +66,44 @@ function getLuminanceMaskCanvas(
 
   _processedMaskCache.set(path, off);
   return off;
+}
+
+function getItemOutlineCanvas(path: string, maskSource: CanvasImageSource): HTMLCanvasElement {
+  const cached = _itemOutlineCache.get(path);
+  if (cached) return cached;
+
+  const outline = document.createElement('canvas');
+  outline.width = FILL_RES;
+  outline.height = FILL_RES;
+  const ctx = outline.getContext('2d')!;
+
+  ctx.fillStyle = ITEM_OUTLINE_COLOR;
+  for (let y = -1; y <= 1; y++) {
+    for (let x = -1; x <= 1; x++) {
+      if (x === 0 && y === 0) continue;
+      ctx.drawImage(maskSource, x, y, FILL_RES, FILL_RES);
+    }
+  }
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.fillRect(0, 0, FILL_RES, FILL_RES);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.drawImage(maskSource, 0, 0, FILL_RES, FILL_RES);
+  ctx.globalCompositeOperation = 'source-over';
+
+  _itemOutlineCache.set(path, outline);
+  return outline;
+}
+
+function drawItemOutline(
+  ctx: CanvasRenderingContext2D,
+  path: string,
+  maskSource: CanvasImageSource,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  ctx.drawImage(getItemOutlineCanvas(path, maskSource), x, y, width, height);
 }
 
 function loadMaskWithWarning(path: string): void {
@@ -268,6 +308,7 @@ export function drawMaskedAnimatedItemIcon(
     state.maskCtx.globalCompositeOperation = 'destination-in';
     state.maskCtx.drawImage(maskSource, 0, 0, FILL_RES, FILL_RES);
     state.maskCtx.globalCompositeOperation = 'source-over';
+    drawItemOutline(ctx, maskPath, maskSource, x, y, width, height);
     ctx.drawImage(state.maskCanvas, x, y, width, height);
   } else {
     drawDiamondFallback(ctx, state.fillCanvas, x, y, width, height);
@@ -383,6 +424,7 @@ function rafLoop(nowMs: number): void {
       state.maskCtx.globalCompositeOperation = 'destination-in';
       state.maskCtx.drawImage(maskSource, 0, 0, FILL_RES, FILL_RES);
       state.maskCtx.globalCompositeOperation = 'source-over';
+      drawItemOutline(ctx, state.maskPath, maskSource, 0, 0, w, h);
       ctx.drawImage(state.maskCanvas, 0, 0, w, h);
     } else {
       drawDiamondFallback(ctx, state.fillCanvas, 0, 0, w, h);
