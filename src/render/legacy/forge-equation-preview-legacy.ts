@@ -1,4 +1,8 @@
 /**
+ * LEGACY/HISTORY ONLY: intentionally no longer imported by runtime systems.
+ * The visible forge-preview equation was retired; this code is preserved only
+ * for historical/reference purposes.
+ *
  * app-forge-preview.ts — Real-time equation upgrade preview for the forge warm-up.
  *
  * During the forge warm-up, this module computes what the equation would look
@@ -15,13 +19,13 @@
  * - It NEVER mutates authoritative state; all changes are made on a shallow copy.
  */
 
-import type { EquatoriaParticle } from '../render/particles/particle-types';
-import type { EquationState } from '../sim/equation';
-import { buildEquationView, type EquationTermView } from '../sim/equation';
-import type { ForgeCrunchState } from '../sim/forge/forge-state';
-import { MEDIUM_SIZE_INDEX } from '../data/particles/size-tiers';
-import { getSizeSmallEquivalent } from '../data/particles/size-tiers';
-import { MAX_FORGE_ATTRACTION_DISTANCE } from '../data/particles/particle-config';
+import type { EquatoriaParticle } from '../particles/particle-types';
+import type { EquationState } from '../../sim/equation';
+import { buildEquationView, type EquationTermView } from './equation-term-view-legacy';
+import type { ForgeCrunchState } from '../../sim/forge/forge-state';
+import { MEDIUM_SIZE_INDEX } from '../../data/particles/size-tiers';
+import { getSizeSmallEquivalent } from '../../data/particles/size-tiers';
+import { MAX_FORGE_ATTRACTION_DISTANCE } from '../../data/particles/particle-config';
 
 /** Must match the THRESHOLD in applyForgeSacrifice (game-state.ts). */
 const SACRIFICE_THRESHOLD = 2_000;

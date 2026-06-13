@@ -1,4 +1,8 @@
 /**
+ * LEGACY/HISTORY ONLY: intentionally no longer imported by runtime systems.
+ * The visible equation display was retired; these display segments are
+ * preserved only for historical/reference purposes.
+ *
  * equation-segments.ts — Flat coloured text-segment builder for the pixel equation renderer.
  *
  * Mirrors the structure of `buildStructuredEquationHtml` but produces a plain array of
@@ -10,7 +14,7 @@
  * use `buildStructuredEquationHtml` from `equation-view.ts` unchanged.
  */
 
-import type { EquationTermView } from '../../sim/equation';
+import type { EquationTermView } from '../../render/legacy/equation-term-view-legacy';
 import type { EquationRole } from '../../data/equation';
 
 // ─── Types ───────────────────────────────────────────────────────

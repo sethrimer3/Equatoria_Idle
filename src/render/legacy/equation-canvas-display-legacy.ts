@@ -1,5 +1,10 @@
+/**
+ * LEGACY/HISTORY ONLY: intentionally no longer imported by runtime systems.
+ * The visible canvas equation/equivalence display was retired; this code is
+ * preserved only for historical/reference purposes.
+ */
 import type { CanvasContext } from '../canvas';
-import type { EquationTermView } from '../../sim/equation';
+import type { EquationTermView } from './equation-term-view-legacy';
 import type { EquationRole } from '../../data/equation';
 import { formatNumberAs, type NumberFormat } from '../../util';
 

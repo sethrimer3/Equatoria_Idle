@@ -131,7 +131,7 @@ export function getProgressText(
 
     case 'equivalence_reached': {
       const equiv = getEquivalence(state.resources);
-      return `Equivalence: ${formatNumberAs(equiv, numberFormat)} / ${formatNumberAs(condition.amount, numberFormat)}`;
+      return `Output: ${formatNumberAs(equiv, numberFormat)} / ${formatNumberAs(condition.amount, numberFormat)}`;
     }
 
     // ── Existing conditions ──────────────────────────────────────

@@ -6,8 +6,6 @@
 
 import {
   simTick,
-  getEquivalence,
-  buildEquationView,
   getLoomRate,
   getWaveBoostMultiplier,
   processLoomCapture,
@@ -49,7 +47,6 @@ import type { TierId } from '../data/tiers';
 import { computeOutputCompression } from '../util/particle-compression';
 import type { AppState, UIPanels } from './app-types';
 import { updateVisiblePanels } from './app-actions';
-import { computeForgePreviewTerms } from './app-forge-preview';
 import type { HudOverlay } from '../ui/hud/hud-overlay';
 import type { AudioSystem } from '../audio';
 import { drawIdleViewportDebug } from '../render/canvas/idle-viewport-debug';
@@ -368,26 +365,12 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       drawForgeSacrificeFlash(ctx.cc, equationCenterX, equationCenterY, nowMs, ctx.appState.forgeSacrificeFlashMs, ctx.appState.lastRefinedCrystalsGained);
     }
 
-    const terms = buildEquationView(ctx.appState.game.equation);
-
-    // Compute live forge preview terms during warm-up (pure read, no side effects)
-    const forgePreviewTerms = computeForgePreviewTerms(
-      ctx.particles.particles,
-      ctx.appState.game.equation,
-      ctx.appState.forge,
-      equationCenterX,
-      equationCenterY,
-    );
-
-    // Update DOM HUD overlay (equation, score, motes — non-pixelated)
+    // The visible equation and equivalence displays were intentionally retired.
+    // Keep the active HUD focused on mote counts and loom production rates.
     const pointerPos = getGeneratorPointerPos();
     ctx.hudOverlay.update({
-      equivalence: getEquivalence(ctx.appState.game.resources),
       onScreenMotes: ctx.particles.getOnScreenMoteCount(),
       onScreenParticleCount: ctx.particles.getOnScreenParticleCount(),
-      terms,
-      tapFlashAlpha: ctx.appState.tapFlashAlpha,
-      isForgeUnlocked: ctx.appState.game.equation.isForgeUnlocked,
       numberFormat: ctx.settings.numberFormat,
       generatorInfos: ctx.appState.generatorState.generators,
       generatorRatesPerSec: generatorRatesPerSec,
@@ -396,8 +379,6 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       pointerX: pointerPos.x,
       pointerY: pointerPos.y,
       generatorEquationVisibility: ctx.settings.generatorEquationVisibility,
-      forgePreviewTerms,
-      equationRenderStyle: ctx.settings.equationRenderStyle,
     });
 
     ctx.particles.draw(

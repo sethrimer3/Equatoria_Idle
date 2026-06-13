@@ -38,7 +38,7 @@ Declared in `package.json`:
 | Idle/equation progression | `src/sim/equation/`, `src/data/equation/`, `src/ui/` equation panels | `src/app/app-actions.ts`, `src/app/app-game-loop.ts` |
 | Motes/resources/save | `src/sim/resources/`, `src/settings/`, `src/sim/game-state.ts` | `DECISIONS.md` save section |
 | Looms | `src/sim/looms/`, `src/data/looms/`, loom UI panel | particle loom-capture files |
-| Equation forge | `src/sim/forge/`, `src/render/forge/`, `src/render/particles/particle-forge.ts` | `src/app/app-forge-preview.ts` |
+| Equation forge | `src/sim/forge/`, `src/render/forge/`, `src/render/particles/particle-forge.ts` | Retired display preview in `src/render/legacy/` |
 | Particle simulation | `src/render/particles/`, `src/data/particles/` | canvas/render loop files |
 | RPG combat | `src/render/rpg/`, `src/data/rpg/`, `src/sim/rpg/` | `docs/CURRENT_STATUS.md` for recent crafted-weapon context |
 | Crafted weapons | `src/data/rpg/crafted-weapons*`, RPG weapons UI, RPG player attack files | save/load and resolver registration files |
@@ -75,7 +75,7 @@ Key files:
 - `game-app.ts`: starts the app, wires DOM, panels, canvas input, resize, loop.
 - `app-actions.ts`: central `handleAction()` dispatcher and tab switching.
 - `app-game-loop.ts`: frame loop and cross-system update/render order.
-- `app-forge-preview.ts`: pure forge warm-up equation preview bridge between render particles and sim equation state.
+- Retired equation/forge-preview display implementations live under `src/render/legacy/` and `src/ui/legacy/`; active runtime code must not import them.
 - `game-app-canvas-input.ts`: pointer input wiring for tap, drag, hover, forge/equation actions.
 - `game-app-idle.ts`: offline/idle reward eligibility and queueing helper.
 
@@ -92,7 +92,7 @@ Authoritative gameplay state and deterministic rules.
 Important subareas:
 
 - `game-state.ts`: aggregate state, tap actions, forge sacrifice, loom capture, dev bypasses, tick integration.
-- `equation/`: equation state, tap gains, structured equation views, output evaluation.
+- `equation/`: equation state, tap gains, and output evaluation. Display-only equation views are retired to `src/render/legacy/`.
 - `resources/`: mote totals, lifetime totals, equivalence score, base-100 size count encode/decode.
 - `progression/`: upgrade levels, costs, auto-tap, global multiplier.
 - `forge/`: forge crunch/warm-up state, heat taps, timers, crunch lifecycle.

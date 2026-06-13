@@ -1,12 +1,16 @@
 /**
+ * LEGACY/HISTORY ONLY: intentionally no longer imported by runtime systems.
+ * The visible equation display was retired; this display-only view model and
+ * HTML builder are preserved only for historical/reference purposes.
+ *
  * equation-view.ts — Equation view model and structured HTML builder
  *
  * Builds the display representation of the equation from state.
  * Used by both the canvas renderer and the DOM equation panel.
  */
 
-import type { EquationState, TierEquationSegment } from './equation-state';
-import { getUnlockedSegments } from './equation-state';
+import type { EquationState, TierEquationSegment } from '../../sim/equation/equation-state';
+import { getUnlockedSegments } from '../../sim/equation/equation-state';
 import { TIER_BY_ID } from '../../data/tiers';
 import { EQUATION_ROLE_BY_TIER } from '../../data/equation';
 import type { EquationRole } from '../../data/equation';

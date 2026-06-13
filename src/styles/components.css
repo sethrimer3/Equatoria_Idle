@@ -41,10 +41,7 @@
 
 /* Ensure all HUD text over the render has a clearly visible black outline. */
 .hud-motes-value,
-.hud-motes-label,
-.hud-score-value,
-.hud-score-label,
-.hud-tap-hint {
+.hud-motes-label {
   -webkit-text-stroke: 1.5px #000;
   paint-order: stroke fill;
   text-shadow:
@@ -56,18 +53,6 @@
     -2px  2px 0 #000,
      0    2px 0 #000,
      2px  2px 0 #000;
-}
-
-/*
- * Equation glyphs already contain many tightly packed symbols (sup/sub/operators).
- * Using an 8-direction faux outline on every glyph makes the stroke look like
- * multiple offset shadows. Keep equation text to a single real stroke.
- */
-.hud-equation,
-.hud-equation * {
-  -webkit-text-stroke: 1px #000;
-  paint-order: stroke fill;
-  text-shadow: none;
 }
 
 #hud-overlay {
@@ -97,109 +82,6 @@
 .hud-motes-label {
   font-size: 10px;
   color: #666;
-}
-
-.hud-score {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  line-height: 1.2;
-}
-
-.hud-score-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-.hud-score-label {
-  font-size: 10px;
-  color: var(--text-secondary);
-  letter-spacing: 1px;
-}
-
-.hud-equation-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 92%;
-  text-align: center;
-}
-
-.hud-equation {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: var(--text-primary);
-}
-
-.hud-equation .eq-prefix {
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-.hud-equation .eq-term {
-  font-weight: 700;
-}
-
-.hud-equation .eq-dormant {
-  color: var(--text-secondary);
-  opacity: 0.5;
-}
-
-/* ── Forge warm-up preview ──────────────────────────────────── */
-.hud-forge-arrow {
-  font-size: 14px;
-  color: rgba(255, 200, 80, 0.8);
-  text-align: center;
-  line-height: 1.2;
-  margin: 2px 0;
-  animation: hud-forge-arrow-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes hud-forge-arrow-pulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
-
-.hud-equation-preview {
-  opacity: 0.65;
-  filter: drop-shadow(0 0 6px rgba(255, 200, 80, 0.5));
-  animation: hud-preview-glow 2s ease-in-out infinite;
-}
-
-@keyframes hud-preview-glow {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 200, 80, 0.4)); }
-  50% { filter: drop-shadow(0 0 10px rgba(255, 200, 80, 0.75)); }
-}
-
-/* ── Pixel-canvas equation (pixel render style) ─────────────── */
-/*
- * Upscaled canvas element that sits inside .hud-equation-container.
- * image-rendering: pixelated prevents the browser from applying any
- * bilinear interpolation when CSS scales the element.  The offscreen
- * rendering at low resolution plus nearest-neighbor blit in JS is what
- * actually creates the crisp pixel-art effect.
- */
-.hud-equation-pixel-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  pointer-events: none;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
-
-.hud-tap-hint {
-  margin-top: 12px;
-  font-size: 13px;
-  color: var(--text-primary);
-  letter-spacing: 1px;
 }
 
 .hud-generator-equations {
@@ -791,60 +673,6 @@
   text-align: center;
 }
 
-.equation-display {
-  font-family: 'Cormorant Garamond', serif;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--border-radius);
-  padding: 16px 12px;
-  margin-bottom: 16px;
-  text-align: center;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.eq-prefix {
-  color: var(--text-secondary);
-  font-style: italic;
-  margin-right: 4px;
-}
-
-.eq-dormant {
-  color: var(--text-secondary);
-  opacity: 0.5;
-  font-size: 24px;
-  letter-spacing: 4px;
-}
-
-.eq-term {
-  font-weight: 700;
-  transition: text-shadow 0.2s;
-}
-
-.eq-term:hover {
-  text-shadow: 0 0 8px currentColor;
-}
-
-.eq-term.eq-highlight {
-  text-shadow: 0 0 8px #FFB21A, 0 0 18px #FFB21A;
-  filter: brightness(1.25) saturate(1.1);
-}
-
-.eq-term.eq-dimmed {
-  opacity: 0.35;
-}
-
-.eq-operator {
-  font-weight: 400;
-}
-
 .eq-upgrades-title {
   font-size: 12px;
   margin-bottom: 8px;
@@ -852,16 +680,6 @@
 
 .eq-upgrade-btn {
   font-size: 12px;
-}
-
-.equation-display sup {
-  font-size: 0.7em;
-  vertical-align: super;
-}
-
-.equation-display sub {
-  font-size: 0.6em;
-  vertical-align: sub;
 }
 
 /* ── Achievement cards ───────────────────────────────────────── */

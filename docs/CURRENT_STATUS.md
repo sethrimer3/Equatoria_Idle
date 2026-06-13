@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-03
-Current build: 264
+Current build: 265
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,15 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 265: visible equation and equivalence retirement
+
+Completed:
+
+- Removed the visible equation, forge-preview equation, and equivalence score from the active idle HUD.
+- Removed the visible equation formula from the Equation Forge upgrade panel.
+- Removed equivalence from the idle reward overlay while preserving reward calculation and application.
+- Archived the retired display implementations under non-runtime legacy folders.
 
 ### Build 264: normal mote attraction reset
 

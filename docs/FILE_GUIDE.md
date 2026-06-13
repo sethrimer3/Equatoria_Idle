@@ -16,7 +16,7 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `app-game-loop.ts` | `createGameLoop()` — per-frame sim+render+autosave | CAUTION — update order matters |
 | `app-actions.ts` | `handleAction()` + `setActiveTab()` + `updateVisiblePanels()` | CAUTION — central dispatch |
 | `app-types.ts` | `AppState`, `UIPanels` interfaces | CAUTION — shape used in loop and actions |
-| `app-forge-preview.ts` | `computeForgePreviewTerms()` — pure preview bridge | SAFE |
+| `render/legacy/forge-equation-preview-legacy.ts` | Retired forge equation-preview bridge | Never import at runtime |
 | `game-app-canvas-input.ts` | `wireCanvasPointerInput()` — pointer/touch input wiring | Medium |
 | `game-app-idle.ts` | `applyIdleRewardsIfEligible()` — offline reward queue | SAFE |
 
@@ -28,7 +28,7 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `equation/equation-state.ts` | Equation segment state, tap counters | `EquationState`, `createEquationState` |
 | `equation/equation-logic.ts` | Tap gain calculation, upgrade application | `computeTapGains`, `applyEquationUpgrade` |
 | `equation/equation-eval.ts` | `getEquivalence()` | score from resources |
-| `equation/equation-view.ts` | `buildEquationView()` → `EquationTermView[]` | HUD equation terms |
+| `render/legacy/equation-term-view-legacy.ts` | Retired `EquationTermView` and structured equation display | Never import at runtime |
 | `resources/resource-state.ts` | `ResourceState`, mote add/spend/get | `addMotes`, `spendMotes`, `getMotes` |
 | `progression/progression-state.ts` | Upgrade levels, auto-tap, global multiplier | `purchaseUpgrade`, `getAutoTapIntervalMs` |
 | `forge/forge-state.ts` | `ForgeCrunchState`, heat taps, warm-up timer | `tapForgeHeat`, `tickForgeWarmup` |
@@ -91,9 +91,10 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `panels/rpg-menu-panel.ts` | RPG menu (weapons/upgrades/crafting sub-tabs) | Large |
 | `panels/settings-panel.ts` | Settings UI | Medium |
 | `panels/achievements-panel.ts` | Achievement list + sparkle effects | Medium |
-| `ui/hud/hud-overlay.ts` | `createHudOverlay()` — live equation + score DOM | Updated every frame |
+| `ui/hud/hud-overlay.ts` | `createHudOverlay()` — mote counts + loom rate labels | No equation/equivalence display |
 | `tabs/tab-bar.ts` | `createTabBar()` — tab navigation | Dispatches `set_active_tab` |
-| `ui/idle/idle-overlay.ts` | Idle reward popup | Shown on session start |
+| `ui/idle/idle-overlay.ts` | Idle reward popup with duration + mote rewards | Equivalence intentionally hidden |
+| `ui/legacy/`, `render/legacy/` | Retired equation/equivalence display history | Never import at runtime |
 
 ## src/settings/ — Persistence
 

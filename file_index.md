@@ -87,14 +87,12 @@
 - Calls `computeForgePreviewTerms` each frame and passes `forgePreviewTerms` to `hudOverlay.update`.
 - Calls `drawIdleViewportDebug(cc)` when `settings.isDevMode` is true (drawn last so it is always visible).
 - Newly unlocked achievement notifications are queued and emitted at 700 ms intervals so popup text and achievement SFX do not stack on the same frame.
-- **Build 192+:** passes `ctx.settings.equationRenderStyle` to `hudOverlay.update` so the HUD can toggle pixel/smooth equation mode.
 
 - Resets the main canvas 2D context state before each full-frame render so leaked alpha, transforms, filters, or blend modes cannot blank later layers.
 
-### src/app/app-forge-preview.ts *(NEW)*
-- Pure preview logic for the forge warm-up equation display.
-- `computeForgePreviewTerms(particles, equationState, forgeState, forgeX, forgeY)` — collects sacrifice candidates inside `MAX_FORGE_ATTRACTION_DISTANCE`, shallow-copies equation segments, simulates sacrifice at the same `SACRIFICE_THRESHOLD = 2000` as the real apply, returns `EquationTermView[] | null` (null when no upgrade would occur or forge is idle).
-- Never mutates authoritative state. Lives in the app layer so it can bridge render-layer particles and sim-layer equation state without violating sim/render separation.
+### src/render/legacy/forge-equation-preview-legacy.ts
+- Retired display-only forge warm-up equation preview bridge.
+- Intentionally not imported by active runtime systems.
 
 ### src/app/game-app-canvas-input.ts
 - Canvas pointer-input wiring extracted from `game-app.ts`.
@@ -203,16 +201,15 @@
 
 ### src/sim/equation/equation-logic.ts
 - Re-export barrel for backward compatibility.
-- Re-exports from `equation-tap.ts`, `equation-view.ts`, `equation-eval.ts`.
+- Re-exports active equation tap/state/evaluation logic; display-only equation views are retired to `src/render/legacy/`.
 
 ### src/sim/equation/equation-tap.ts
 - `segmentTapValue()` — motes per tap for a single segment.
 - `computeTapGains()` — per-tier mote gains for a single tap (skips Sand foundation tier).
 
-### src/sim/equation/equation-view.ts
-- `EquationTermView` interface — per-tier display data with `operator` field (EquationRole).
-- `buildEquationView()` — generates `EquationTermView[]` for canvas and DOM rendering.
-- `buildStructuredEquationHtml()` — builds nested equation HTML from inside out (slot/wrapper model).
+### src/render/legacy/equation-term-view-legacy.ts
+- Retired display-only `EquationTermView`, view builder, and structured equation HTML implementation.
+- Intentionally not imported by active runtime systems.
 
 ### src/sim/equation/equation-eval.ts
 - `computeEquationOutput()` — evaluates the structured equation for scoring. Pure function.
@@ -513,8 +510,8 @@
 - `drawParticleLifeDebug()` — entry point for all debug overlays.
 - Sub-tools: interaction radius circles, spatial grid view, inert mote highlights, size factor labels, interaction matrix color overlay.
 
-### src/render/equation/equation-renderer.ts
-- `drawEquation()` — renders equation terms on canvas.
+### src/render/legacy/equation-canvas-display-legacy.ts
+- Retired canvas equation/equivalence renderer, preserved for history only.
 - `drawScore()` — score display at top.
 - `drawTapHint()` — pulsing hint for new players.
 
@@ -1785,21 +1782,12 @@
 
 ### src/ui/hud/hud-overlay.ts
 - DOM-based HUD overlay rendered above the game canvas.
-- Shows equation, equivalence score, and mote count; forge warm-up preview arrow + preview equation.
+- Shows mote counts and loom production-rate labels only; visible equation/equivalence presentation is intentionally retired.
 - `createHudOverlay()` — returns `element` and `update(params: HudUpdateParams)`.
-- **Build 192+:** `HudUpdateParams.equationRenderStyle` selects pixel or smooth mode.  In pixel mode the DOM equation is hidden and the `PixelEquationRenderer` canvas is shown; in smooth mode the DOM HTML path is active.
 
-### src/ui/hud/equation-segments.ts *(NEW — Build 192)*
-- Flat coloured text-segment builder for the pixel equation renderer.
-- `buildEquationSegments(terms)` — mirrors `buildStructuredEquationHtml` logic but returns `EqSegment[]` (plain `{text, color}` pairs) instead of HTML.
-- Wrappers use compact bracket notation (e.g. `Σ[5](...)`) suitable for a single low-resolution canvas row.
-
-### src/ui/hud/pixel-equation-renderer.ts *(NEW — Build 192)*
-- Low-resolution offscreen pixel canvas renderer for the equation HUD.
-- `createPixelEquationRenderer()` — allocates one offscreen canvas (`160×48`) and one visible canvas (`320×96`), never reallocated after construction.
-- Three fixed rows: main equation (row 0), forge-preview arrow (row 1), forge-preview equation (row 2).
-- Blits the offscreen canvas into the visible canvas at 2× with `imageSmoothingEnabled = false`.  CSS `image-rendering: pixelated` prevents further browser interpolation.
-- Change detection skips redraws when equation content has not changed.
+### src/ui/legacy/ and src/render/legacy/
+- Preserve the retired HUD equation, panel equation, forge-preview equation, canvas equation/equivalence renderer, pixel renderer, display view model, and idle equivalence row.
+- Intentionally not imported by active runtime systems.
 
 ### src/ui/tabs/tab-bar.ts
 - Bottom tab bar: Equation / Looms / Tiers / Achievements / Settings.
@@ -1820,7 +1808,7 @@
 ### src/ui/panels/equation-panel.ts
 - Equation tab content — the central Equation Forge panel.
 - Before forge unlock: shows dormant locked forge state with description and unlock button (50 Sand).
-- After forge unlock: shows the structured nested f(t) equation display + equation upgrades grouped by tier.
+- After forge unlock: shows forge heat state and equation upgrades grouped by tier without rendering the formula.
 - `buildStructuredEquationHtml()` from sim layer generates the nested HTML.
 - Hovering an equation upgrade highlights the corresponding tier's equation fragments with a golden glow.
 - When a `TraceEffect` is provided, the golden outline + tracing circles appear over the highlighted spans.
@@ -1919,7 +1907,7 @@ Audio system — eight focused modules:
 
 ### src/ui/idle/idle-overlay.ts
 - DOM overlay shown when the player returns after being away ≥ 1 minute.
-- Lists Equivalence gained (always shown) and per-tier Mote gains (hidden if tier Loom is locked).
+- Lists time away and per-tier Mote gains; equivalence is intentionally not shown.
 - Numbers animate from 0 to their target over ~600 ms (ease-out cubic via requestAnimationFrame).
 - `IdleOverlay` interface — `{ element, show(summary), hide() }`.
 - `createIdleOverlay()` — factory function; tap/click anywhere to dismiss.
@@ -1941,7 +1929,7 @@ Audio system — eight focused modules:
 ### src/ui/panels/settings-panel.ts
 - Settings panel orchestrator for controls, toggles, save/reset actions, credits, and dev-only embedded panels.
 - Wires `settings-panel-controls.ts` row builders and `settings-panel-dev-tweaks.ts` particle tweak section.
-- **Build 192+:** "Equation Render Style" select row (Pixel Canvas / Smooth DOM) added after "Loom Equation Visibility".
+- The retired Equation Render Style setting remains load-compatible but is no longer shown.
 - **Build 193+:** "Idle Canvas Render" select row (Pixelated / Crisp HiDPI) added after "Background Style". Accepts optional `onIdleCanvasRenderStyleChange` callback invoked on change.
 
 ### src/ui/panels/settings-panel-controls.ts
@@ -1960,7 +1948,7 @@ Audio system — eight focused modules:
 - RPG developer visual toggles: viewport/field-space, pathfinding, Verdure wall, Nadir anchor, boss-stage, topographic terrain, and topographic lighting debug overlays. These are visible only in dev mode and default off.
 - `numberFormat: 'letters' | 'scientific' | 'engineering'` — controls number display format across all UI panels and canvas score.
 - **Build 108+:** `skipIdlePopupAtStart: boolean` — when true, the startup idle earnings overlay is skipped; rewards are still applied silently.
-- **Build 192+:** `equationRenderStyle: 'pixel' | 'smooth'` — toggles between low-resolution pixel-canvas equation rendering (default) and smooth DOM HTML rendering.
+- `equationRenderStyle: 'pixel' | 'smooth'` is retained only for settings-file compatibility.
 - **Build 193+:** `idleCanvasRenderStyle: 'pixelated' | 'crisp'` — controls the backing-store resolution of the main idle/world canvas. Default `'pixelated'`: low-res ~320 px wide backing, nearest-neighbor upscaled. `'crisp'`: HiDPI backing (CSS × DPR).
 
 ### src/settings/save-load.ts

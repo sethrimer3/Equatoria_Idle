@@ -1,4 +1,8 @@
 /**
+ * LEGACY/HISTORY ONLY: intentionally no longer imported by runtime systems.
+ * The visible equation display was retired; this renderer is preserved only
+ * for historical/reference purposes.
+ *
  * pixel-equation-renderer.ts — Low-resolution offscreen pixel equation canvas.
  *
  * Renders the equation as coloured text into a deliberately tiny offscreen canvas,
@@ -17,7 +21,7 @@
  * Keeping all three rows at fixed height avoids layout jitter (requirement #9).
  */
 
-import type { EqSegment } from './equation-segments';
+import type { EqSegment } from './equation-segments-legacy';
 
 // ─── Constants ───────────────────────────────────────────────────
 

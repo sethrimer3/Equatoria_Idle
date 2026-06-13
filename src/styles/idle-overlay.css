@@ -76,7 +76,6 @@
   gap: 5px;
 }
 
-/* ── Equivalence row (always shown) ──────────────────────────── */
 .idle-overlay__row {
   display: flex;
   align-items: center;
@@ -117,11 +116,6 @@
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
-}
-
-/* Equivalence row uses accent color for total */
-.idle-overlay__row--equivalence .idle-overlay__row-total {
-  color: var(--accent);
 }
 
 /* ── Dismiss hint ─────────────────────────────────────────────── */

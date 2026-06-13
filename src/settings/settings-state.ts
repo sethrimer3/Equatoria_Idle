@@ -51,12 +51,7 @@ export interface SettingsState {
    * Offline/idle rewards are still applied silently; only the popup is suppressed.
    */
   skipIdlePopupAtStart: boolean;
-  /**
-   * Controls how the central HUD equation is rendered.
-   * 'pixel' — draws to a low-resolution offscreen canvas then upscales with
-   *           nearest-neighbor so the equation has crisp pixel edges.
-   * 'smooth' — renders as DOM HTML (anti-aliased, the legacy behaviour).
-   */
+  /** Retained for settings-file compatibility; no active UI reads this field. */
   equationRenderStyle: 'pixel' | 'smooth';
   /**
    * Controls the backing-store resolution of the main idle / world canvas.
