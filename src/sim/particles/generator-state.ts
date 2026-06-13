@@ -5,16 +5,18 @@ import { SCENE_ZOOM_SCALE } from '../../data/particles/particle-config';
 /** Fixed generator layout radius in canvas pixels (also used for 12th/13th tier distance). */
 export const GENERATOR_RADIUS_PX = 160 * SCENE_ZOOM_SCALE;
 
-/** Total generator slots in the circular layout (tiers 1–11). */
-const TOTAL_GENERATOR_SLOTS = 11;
+/** Total generator slots in the Sand-through-Diamond outer ring. */
+const TOTAL_OUTER_GENERATOR_SLOTS = 10;
 
 /** Angular spacing between adjacent generator slots (radians). */
-const ANGLE_STEP = (Math.PI * 2) / TOTAL_GENERATOR_SLOTS;
+const OUTER_ANGLE_STEP = (Math.PI * 2) / TOTAL_OUTER_GENERATOR_SLOTS;
 
-/** Tier placed directly above the forge (12th tier, unlockOrder 11). */
-const SPECIAL_ABOVE_TIER: TierId = TIERS[11].id;
-/** Tier placed directly below the forge (13th tier, unlockOrder 12). */
-const SPECIAL_BELOW_TIER: TierId = TIERS[12].id;
+/** Late tiers placed equidistantly around the forge on the inner ring. */
+const INNER_TRIANGLE_TIERS: readonly TierId[] = ['nullstone', 'fracteryl', 'eigenstein'];
+const INNER_TRIANGLE_INDEX = new Map<TierId, number>(
+  INNER_TRIANGLE_TIERS.map((tierId, index) => [tierId, index]),
+);
+const INNER_ANGLE_STEP = (Math.PI * 2) / INNER_TRIANGLE_TIERS.length;
 
 export interface GeneratorInfo {
   readonly tierId: TierId;
@@ -54,32 +56,25 @@ export function computeGeneratorPositions(
 
   const unlockedList = TIERS.filter(t => unlockedTiers.has(t.id));
 
-  // Half-distance used for the special 12th/13th tier generators
+  // Half-distance used for the late-tier inner triangle.
   const innerRadius = GENERATOR_RADIUS_PX / 2;
 
-  // Tiers 1–11 go in the ring; fracteryl and eigenstein get special positions
+  // Sand through Diamond use the outer ring; late tiers use the inner triangle.
   let ringIndex = 0;
   state.generators = unlockedList.map((tier) => {
-    if (tier.id === SPECIAL_ABOVE_TIER) {
+    const innerIndex = INNER_TRIANGLE_INDEX.get(tier.id);
+    if (innerIndex !== undefined) {
+      const angle = -Math.PI / 2 + innerIndex * INNER_ANGLE_STEP;
       return {
         tierId: tier.id,
-        x: equationCenterX,
-        y: equationCenterY - innerRadius,
+        x: equationCenterX + Math.cos(angle) * innerRadius,
+        y: equationCenterY + Math.sin(angle) * innerRadius,
         range: spawnerGravityRadius,
         tierIndex: tier.unlockOrder,
       };
     }
-    if (tier.id === SPECIAL_BELOW_TIER) {
-      return {
-        tierId: tier.id,
-        x: equationCenterX,
-        y: equationCenterY + innerRadius,
-        range: spawnerGravityRadius,
-        tierIndex: tier.unlockOrder,
-      };
-    }
-    // Start at 270° (12 o'clock = -π/2) and space evenly using fixed 11-slot layout
-    const angle = -Math.PI / 2 + ringIndex * ANGLE_STEP;
+    // Start at 270° (12 o'clock = -π/2) and use the fixed ten-slot layout.
+    const angle = -Math.PI / 2 + ringIndex * OUTER_ANGLE_STEP;
     ringIndex++;
     return {
       tierId: tier.id,
