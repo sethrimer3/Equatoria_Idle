@@ -6,8 +6,8 @@
  * so no changes are required in rpg-render.ts.
  *
  * Layout (world coordinates):
- *   Zone chain  — left/center  (x: ~120–530)
- *   Horizon triad — branching from Verdure
+ *   Zone chain  — vertical center spine, Euhedral at the top
+ *   Horizon triad — branching below Verdure
  *   Boss S-curve — right side  (x: ~700–820)
  */
 
@@ -41,6 +41,7 @@ const MOTE_TRAIL_STEPS   = 3;
 const MOTE_TRAIL_GAP_MS  = 42;
 const MOTE_GLOW_ALPHA    = 0.62;
 const BOSS_CURVE_OFFSET  = 28;
+const ZONE_CURVE_OFFSET  = 22;
 const GOLD_PALETTE       = ['#fff4a8', '#ffd866', '#f2b84b', '#cfae52'] as const;
 const ZOOM_MIN          = 0.28;
 const ZOOM_MAX          = 2.6;
@@ -122,11 +123,11 @@ function hexToRgb(color: string): { r: number; g: number; b: number } {
 // ─── World layout ──────────────────────────────────────────────────────────
 
 const ZONE_POS: Record<RpgZoneId, { x: number; y: number }> = {
-  euhedral: { x: 130, y: 230 },
-  impetus:  { x: 270, y: 130 },
-  caustics: { x: 420, y: 215 },
-  verdure:  { x: 305, y: 375 },
-  horizon:  { x: 480, y: 400 }, // triad center (not drawn itself)
+  euhedral: { x: 420, y: 100 },
+  impetus:  { x: 420, y: 245 },
+  caustics: { x: 420, y: 390 },
+  verdure:  { x: 420, y: 535 },
+  horizon:  { x: 420, y: 720 }, // triad center (not drawn itself)
 };
 
 const HORIZON_SUBZONE_IDS: HorizonSubzoneId[] = ['zenith', 'true', 'nadir'];
@@ -627,11 +628,13 @@ export function createRpgZoneSelectPanel(
 
   const connections: MapConnection[] = [];
   for (let i = 0; i < zoneNodes.length - 1; i++) {
-    connections.push(makeConnection(zoneNodes[i], zoneNodes[i + 1], connections.length, '#4466cc20'));
+    const curveOffset = (i % 2 === 0 ? 1 : -1) * ZONE_CURVE_OFFSET;
+    connections.push(makeConnection(zoneNodes[i], zoneNodes[i + 1], connections.length, '#4466cc20', curveOffset));
   }
   const verdure = zoneNodes.find(n => n.id === 'verdure')!;
-  for (const node of horizonNodes) {
-    connections.push(makeConnection(verdure, node, connections.length, '#7755cc20'));
+  for (let i = 0; i < horizonNodes.length; i++) {
+    const curveOffset = (i - 1) * ZONE_CURVE_OFFSET;
+    connections.push(makeConnection(verdure, horizonNodes[i], connections.length, '#7755cc20', curveOffset));
   }
   for (let i = 0; i < horizonNodes.length; i++) {
     connections.push(makeConnection(horizonNodes[i], horizonNodes[(i + 1) % horizonNodes.length], connections.length, '#9966dd20'));
@@ -724,9 +727,12 @@ export function createRpgZoneSelectPanel(
   function resetCamera(): void {
     const w = canvas.width  || overlay.clientWidth  || 600;
     const h = canvas.height || overlay.clientHeight || 400;
-    camX    = 420;
-    camY    = 330;
-    camZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.min(w / 960, h / 740) * 0.88));
+    const activeNode = rpgSimState.activeZoneId === 'horizon'
+      ? horizonNodes.find(node => node.id === rpgSimState.activeSubzoneId)
+      : zoneNodes.find(node => node.id === rpgSimState.activeZoneId);
+    camX    = activeNode?.x ?? ZONE_POS[rpgSimState.activeZoneId].x;
+    camY    = activeNode?.y ?? ZONE_POS[rpgSimState.activeZoneId].y;
+    camZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.min(w / 720, h / 560)));
   }
 
   function screenToWorld(sx: number, sy: number): { x: number; y: number } {
