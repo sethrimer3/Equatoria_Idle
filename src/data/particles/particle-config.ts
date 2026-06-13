@@ -6,16 +6,10 @@ export const SIZE_MULTIPLIER = 2.5;
 export const EXTRA_LARGE_SIZE_BONUS = 1.5;
 export const MIN_VELOCITY = 0.312;
 export const MAX_VELOCITY = 2;
-export const ATTRACTION_STRENGTH = 3.0;
 const BASE_FORGE_RADIUS = 28;
 export const FORGE_RADIUS = BASE_FORGE_RADIUS * SCENE_ZOOM_SCALE;
 export const MAX_FORGE_ATTRACTION_DISTANCE = FORGE_RADIUS * 2 * 0.9 * 1.25;
-export const DISTANCE_SCALE = 0.01;
-export const FORCE_SCALE = 0.006;
-export const SPAWNER_GRAVITY_STRENGTH = 1.5;
 export const SPAWNER_GRAVITY_RANGE_MULTIPLIER = 4;
-export const SMALL_TIER_GENERATOR_GRAVITY_STRENGTH = 1.5;
-export const MEDIUM_TIER_FORGE_GRAVITY_STRENGTH = 0.30;
 export const MAX_PARTICLES_FULL = 2000;
 export const PERFORMANCE_THRESHOLD = 1500;
 export const MERGE_GATHER_SPEED = 10.0;
@@ -44,7 +38,6 @@ export const FORGE_SPIN_DOWN_DURATION_MS = 3000;
 export const FORGE_SPIN_UP_THRESHOLD_MS = FORGE_VALID_WAIT_TIME_MS - FORGE_SPIN_UP_DURATION_MS;
 export const CONVERSION_SPREAD_VELOCITY = 3;
 export const INTERACTION_RADIUS_FRACTION = 0.1;
-export const MOUSE_ATTRACTION_STRENGTH = 3.0;
 export const DRAG_RELEASE_STILLNESS_MS = 120;
 export const DRAG_RELEASE_SPEED_THRESHOLD = 0.02;
 export const GENERATOR_FADE_IN_DURATION_MS = 1000;
@@ -112,11 +105,6 @@ export const MERGE_RAY_COUNT_PIXELATED = 6;
 export const MERGE_RAY_BUDGET_CRISP = 28;
 /** Global per-frame ctx.stroke() budget for merge rays in pixelated mode. */
 export const MERGE_RAY_BUDGET_PIXELATED = 64;
-export const GENERATOR_ROTATION_STRENGTH = 0.4;
-/** Per-generator phase offset multiplier for the rotation swirl sine wave. */
-export const GENERATOR_ROTATION_PHASE_OFFSET = 1.23;
-/** Time-based rotation speed for the swirl sine wave (radians per ms). */
-export const GENERATOR_ROTATION_TIME_SCALE = 0.00018;
 /** Canvas-space hit radius for detecting a tap on a generator (px). */
 export const GENERATOR_HIT_RADIUS_PX = 24;
 
@@ -140,13 +128,6 @@ export const POINTER_LOCKED_DAMPING = 0.8;
 // ─── Wall bounce ─────────────────────────────────────────────────
 /** Velocity coefficient retained after bouncing off a canvas edge (0–1). */
 export const PARTICLE_WALL_BOUNCE = 0.8;
-
-// ─── Gravity minimum distance ────────────────────────────────────
-/**
- * Minimum distance (canvas units) for generator and forge gravity computations.
- * Prevents extreme forces when a particle is very close to the attractor.
- */
-export const GRAVITY_MIN_DIST = 0.5;
 
 // ─── Frame-interval constants for ParticleSystem ────────────────
 /** Number of render frames between suction-merge eligibility checks. */

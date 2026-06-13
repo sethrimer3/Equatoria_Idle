@@ -17,7 +17,7 @@
  *
  * NEW SACRIFICE PATHWAY (equation upgrade):
  *   - Triggered by 3 player heat-taps on the forge via `tapEquationForge`.
- *   - During an active crunch (`crunchState.isActive`), `applyForgeFieldForces`
+ *   - During an active crunch (`crunchState.isActive`), capture-only field checks
  *     marks nearby eligible particles `isCaptured = true, capturedById = 'forge'`.
  *   - On completion, `completeEquationForgeCrunch` (this file) removes those
  *     captured particles and returns their mass totals by tier.

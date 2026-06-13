@@ -412,15 +412,18 @@
 - Pre-computed `TIER_INDEX_MAP` for O(1) tier index lookup.
 
 ### src/render/particles/forge-field-forces.ts
-- Particle capture field logic for the forge and looms.
+- Capture-only field logic for the forge and looms; normal motes are not attracted or steered.
 - `ForgeFieldInfo` interface — id, position, radii, `compatibleTierId`, `isUnlocked`.
 - `LoomCapture` interface — `particle`, `fieldId`, `inputTierId`, `mass`.
-- `applyForgeFieldForces(particles, fields, crunchState, outLoomCaptures, delta, nowMs)` — runs each substep; captures forge-compatible particles during active crunch; applies gravitational warmup pull (scaled `FORGE_GRAVITY_BASE`→`FORGE_GRAVITY_MAX`) during warmup; captures loom-compatible particles immediately.
-- `nowMs` parameter added to enable warmup gravity computation.
+- `applyCaptureFields(particles, fields, crunchState, outLoomCaptures, delta)` — captures eligible particles that naturally enter an inner radius without changing free-moving trajectories.
+
+### src/render/particles/legacy/loom-forge-attraction-legacy.ts
+- Non-runtime history of removed normal-mote generator/loom attraction, forge attraction/warmup pull, loom steering, and containment behavior.
+- Intentionally not imported by active runtime systems.
 
 ### src/render/particles/particle-physics.ts
-- Per-particle physics: gravity, veer, velocity clamping, bounce.
-- `updateParticlePhysics()` — full per-particle physics step. Accepts `isForgeUnlocked` flag; forge attraction is skipped when the forge is not yet unlocked.
+- Per-particle physics: pointer pull, veer, velocity clamping, bounce.
+- `updateParticlePhysics()` — normal mote movement step; intentionally has no loom/forge attraction.
 - `applyEdgeRepulsion()` — boundary push forces.
 - `updateTrails()` / `clearTrails()` — ring-buffer trail management.
 - `getTrailPosition()` — zero-allocation trail position reader.
@@ -471,7 +474,7 @@
 ### src/render/particles/particle-system.ts
 - Slim orchestrator class.
 - Owns particle array, merge/shockwave lists, pool, interaction matrix, aliven set, and debug state.
-- Runs per-frame update pipeline: physics → trails → **Particle Life forces** → **forge field forces** → damping → wrap → merges → forge → shockwaves.
+- Runs per-frame update pipeline: physics → trails → **Particle Life forces** → **capture-only field checks** → damping → wrap → merges → forge → shockwaves.
 - Delegates loom-capture particle removal + callback emission to `particle-system-loom-capture.ts`.
 - Delegates forge spin-up/crunch transition event detection to `particle-system-audio.ts`.
 - `forgeFields: ForgeFieldInfo[]` — updated each frame via `setForgeFields()` from the game loop.

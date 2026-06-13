@@ -66,7 +66,8 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `particles/particle-system.ts` | `ParticleSystem` class — idle particle orchestrator | CAUTION — many callbacks |
 | `particles/particle-types.ts` | `EquatoriaParticle`, `ActiveMerge`, `Shockwave` | Type definitions |
 | `particles/particle-renderer.ts` | `drawParticles()` — batched canvas draw | Hot path |
-| `particles/forge-field-forces.ts` | `ForgeFieldInfo`, loom/forge capture fields | `setForgeFields()` |
+| `particles/forge-field-forces.ts` | `ForgeFieldInfo`, capture-only loom/forge field checks | No attraction or steering |
+| `particles/legacy/loom-forge-attraction-legacy.ts` | Removed normal-mote loom/forge attraction history | Never import at runtime |
 | `forge/forge-renderer.ts` | `drawForge()`, `drawForgeCrunch()` | Forge visual |
 | `generators/generator-renderer.ts` | `drawGenerators()`, sprite management | Preloads sprites |
 | `background/background-animation.ts` | `createBackgroundAnimation()` — ring animation | Non-idle, always-on |

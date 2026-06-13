@@ -6,11 +6,7 @@
  */
 
 import type { EquatoriaParticle } from './particle-types';
-import type { GeneratorInfo } from '../../sim/particles/generator-state';
 import {
-  MAX_FORGE_ATTRACTION_DISTANCE,
-  DISTANCE_SCALE,
-  FORCE_SCALE,
   SUCTION_GATHER_SPEED,
   VEER_ANGLE_MIN_DEG,
   VEER_ANGLE_MAX_DEG,
@@ -24,25 +20,12 @@ import {
   DRAG_RELEASE_FADE_MS,
   DRAG_RELEASE_FREE_MAX_SPEED,
   POINTER_LOCKED_DAMPING,
-  GRAVITY_MIN_DIST,
-  GENERATOR_ROTATION_PHASE_OFFSET,
-  GENERATOR_ROTATION_TIME_SCALE,
 } from '../../data/particles/particle-config';
 import { PL_MAX_VELOCITY } from '../../data/particles/particle-life-config';
-
-/**
- * Maximum tier-index boost applied to the generator-field minimum velocity.
- * Tier 3 (Sunstone) → boost = 4; Citrine and higher → same cap.
- * Without this cap, Citrine+ get genMinVel == PL_MAX_VELOCITY and can never
- * decelerate inside their own generator field, causing loom slingshot escapes.
- */
-const GENERATOR_FIELD_MIN_VELOCITY_TIER_CAP = 4;
 import { particleTweaks } from '../../data/particles/particle-tweaks';
 import {
-  SMALL_SIZE_INDEX,
   MEDIUM_SIZE_INDEX,
   LARGE_SIZE_INDEX,
-  EXTRA_LARGE_SIZE_INDEX,
 } from '../../data/particles/size-tiers';
 
 // ─── Per-particle physics step ──────────────────────────────────
@@ -51,15 +34,9 @@ export function updateParticlePhysics(
   p: EquatoriaParticle,
   clampedDelta: number,
   nowMs: number,
-  generators: readonly GeneratorInfo[],
-  forgeX: number,
-  forgeY: number,
   canvasWidth: number,
   canvasHeight: number,
-  isForgeUnlocked: boolean,
 ): void {
-  let isInsideGeneratorField = false;
-
   if (p.isMerging) {
     const dx = p.mergeTargetX - p.x;
     const dy = p.mergeTargetY - p.y;
@@ -91,62 +68,6 @@ export function updateParticlePhysics(
       p.vx *= damping;
       p.vy *= damping;
     }
-  } else {
-    // Generator gravity
-    if (p.sizeIndex < EXTRA_LARGE_SIZE_INDEX) {
-      for (let gi = 0, glen = generators.length; gi < glen; gi++) {
-        const gen = generators[gi];
-        if (gen.tierId !== p.tierId) continue;
-        const dx = gen.x - p.x;
-        const dy = gen.y - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= gen.range && dist > GRAVITY_MIN_DIST) {
-          isInsideGeneratorField = true;
-          const force = (particleTweaks.spawnerGravityStrength / (dist * DISTANCE_SCALE)) * p.forceModifier;
-          const angle = Math.atan2(dy, dx);
-          p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
-          p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
-          // Rotational force — smooth CW/CCW variation per generator.
-          // nowMs is an absolute monotonic timestamp (performance.now()), so the
-          // phase advances continuously and consistently across frames.
-          const rotPhase = gen.tierIndex * GENERATOR_ROTATION_PHASE_OFFSET + nowMs * GENERATOR_ROTATION_TIME_SCALE;
-          const rotStrength = Math.sin(rotPhase) * particleTweaks.generatorRotationStrength;
-          const perpX = -(dy / dist);
-          const perpY = dx / dist;
-          p.vx += perpX * rotStrength * FORCE_SCALE * clampedDelta;
-          p.vy += perpY * rotStrength * FORCE_SCALE * clampedDelta;
-        }
-        // 1×1 motes get a stronger generator pull limited to 2× the generator's
-        // gravity range (unlike larger motes, they are never attracted by the forge).
-        if (p.sizeIndex === SMALL_SIZE_INDEX && dist > GRAVITY_MIN_DIST && dist <= gen.range * 2) {
-          const force = (particleTweaks.smallTierGeneratorGravityStrength / (dist * DISTANCE_SCALE)) * p.forceModifier;
-          const angle = Math.atan2(dy, dx);
-          p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
-          p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
-        }
-      }
-    }
-
-    // Forge attraction (only when forge is unlocked)
-    if (isForgeUnlocked) {
-      const fdx = forgeX - p.x;
-      const fdy = forgeY - p.y;
-      const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
-      const isForgeAttractable = p.sizeIndex >= MEDIUM_SIZE_INDEX;
-      const forgeRange = p.sizeIndex >= EXTRA_LARGE_SIZE_INDEX ? Infinity : MAX_FORGE_ATTRACTION_DISTANCE;
-      if (isForgeAttractable && fdist <= forgeRange && fdist > 1) {
-        const force = (particleTweaks.attractionStrength / (fdist * DISTANCE_SCALE)) * p.forceModifier;
-        const angle = Math.atan2(fdy, fdx);
-        p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
-        p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
-      }
-      if (p.sizeIndex === MEDIUM_SIZE_INDEX && fdist > GRAVITY_MIN_DIST) {
-        const force = (particleTweaks.mediumTierForgeGravityStrength / (fdist * DISTANCE_SCALE)) * p.forceModifier;
-        const angle = Math.atan2(fdy, fdx);
-        p.vx += Math.cos(angle) * force * FORCE_SCALE * clampedDelta;
-        p.vy += Math.sin(angle) * force * FORCE_SCALE * clampedDelta;
-      }
-    }
   }
 
   // Veer
@@ -168,18 +89,12 @@ export function updateParticlePhysics(
 
   // Velocity clamping
   // Min: size-based floor to keep particles from stalling entirely.
-  //      Generator fields use a tier-boosted floor (capped at tier 4 / Sunstone)
-  //      so particles stay active near spawners without being pinned at PL_MAX_VELOCITY.
-  //      Citrine and higher tiers use the same boost as Sunstone (×4), keeping
-  //      genMinVel below PL_MAX_VELOCITY so loom steering can decelerate them.
   // Max: effective max velocity accounts for the drag-boost fade.
   //      While locked to pointer: 4× PL_MAX_VELOCITY.
   //      Within DRAG_RELEASE_FADE_MS after release: linearly interpolates from
   //      4× back to 1× PL_MAX_VELOCITY.
   //      Otherwise: PL_MAX_VELOCITY unchanged.
-  const tierBoost = Math.min(Math.max(1, p.tierIndex + 1), GENERATOR_FIELD_MIN_VELOCITY_TIER_CAP);
-  const genMinVel = p.minVelocity * tierBoost;
-  const minVel = isInsideGeneratorField ? genMinVel : p.minVelocity;
+  const minVel = p.minVelocity;
 
   let effectiveMaxVel: number;
   if (p.isLockedToPointer) {

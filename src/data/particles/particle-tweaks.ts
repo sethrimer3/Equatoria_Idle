@@ -13,20 +13,10 @@
 export interface ParticleTweaks {
   /** Base minimum speed for newly spawned particles (canvas px/frame-unit). */
   minVelocity: number;
-  /** Gravitational pull strength toward spawner generators. */
-  spawnerGravityStrength: number;
-  /** Extra gravity for 1×1 (small) tier particles near generators. */
-  smallTierGeneratorGravityStrength: number;
-  /** Extra forge gravity for 2×2 (medium) tier particles. */
-  mediumTierForgeGravityStrength: number;
-  /** Forge attraction strength for medium+ particles. */
-  attractionStrength: number;
   /** Force applied toward the pointer while a particle is dragged (drag speed). */
   pointerLockedForce: number;
   /** Max-velocity multiplier while a particle is locked to the pointer. */
   dragBoostMultiplier: number;
-  /** Perpendicular rotation force applied inside generator fields (rotational bias). */
-  generatorRotationStrength: number;
   /** Velocity coefficient retained after bouncing off a canvas wall (0–1). */
   particleWallBounce: number;
   /** Particle Life maximum velocity (canvas px/frame-unit). */
@@ -41,13 +31,8 @@ export interface ParticleTweaks {
 
 export const PARTICLE_TWEAKS_DEFAULTS: Readonly<ParticleTweaks> = {
   minVelocity: 0.312,
-  spawnerGravityStrength: 1.5,
-  smallTierGeneratorGravityStrength: 1.5,
-  mediumTierForgeGravityStrength: 0.30,
-  attractionStrength: 3.0,
   pointerLockedForce: 3.0,
   dragBoostMultiplier: 4,
-  generatorRotationStrength: 0.4,
   particleWallBounce: 0.8,
   plMaxVelocity: 1.5,
   plVelocityDamping: 0.992,

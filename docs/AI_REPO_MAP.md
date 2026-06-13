@@ -150,11 +150,12 @@ High-value files:
 - `particle-system.ts`: orchestrator and owner of particle arrays, pool, matrix, callbacks, debug state.
 - `particle-types.ts`: particle interfaces and effect types.
 - `particle-pool.ts`: allocation control.
-- `particle-physics.ts`: per-particle movement and trails.
+- `particle-physics.ts`: normal mote drift, pointer movement, velocity limits, walls, and trails; intentionally no loom/forge attraction.
 - `particle-life.ts`: pairwise Particle Life force calculation.
 - `particle-merge.ts`: generator and procedural merge logic.
 - `particle-forge.ts`: crunch completion and particle-to-mass conversion.
-- `forge-field-forces.ts`: forge and loom capture fields.
+- `forge-field-forces.ts`: capture-only forge and loom field checks; does not attract or steer motes.
+- `legacy/loom-forge-attraction-legacy.ts`: non-runtime history of the removed loom/forge attraction and containment implementation.
 - `particle-renderer.ts`: batched draw pipeline.
 - `particle-glow-field.ts`: high-graphics nebula-style glow field.
 

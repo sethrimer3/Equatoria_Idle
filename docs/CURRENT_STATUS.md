@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-03
-Current build: 230
+Current build: 264
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,14 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 264: normal mote attraction reset
+
+Completed:
+
+- Removed normal equation-render mote attraction, steering, and containment toward looms and the forge.
+- Preserved natural drift, pointer dragging, Particle Life, merges, and capture-only loom/forge transactions.
+- Archived the removed movement implementation in a non-runtime legacy file.
 
 ### Build 230: achievement pacing cleanup
 

@@ -74,10 +74,6 @@ export const FORGE_FINAL_CRUNCH_DELAY_AFTER_LAST_RING_MS = 1_000;
  * Ring 1 lights at t=0s, ring 5 at t=8s, crunch fires at t=9s.
  */
 export const FORGE_TOTAL_WARMUP_MS = 9_000;
-/** Base gravitational pull strength toward the forge during warm-up. */
-export const FORGE_GRAVITY_BASE = 0.4;
-/** Maximum gravitational pull strength at the end of warm-up. */
-export const FORGE_GRAVITY_MAX = 2.0;
 /** Spin-speed multiplier applied to each lit ring relative to its base speed. */
 export const FORGE_RING_ACTIVE_SPIN_MULTIPLIER = 4.0;
 

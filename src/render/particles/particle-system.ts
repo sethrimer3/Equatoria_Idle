@@ -70,7 +70,7 @@ import {
   enforceParticleLimit,
 } from './particle-merge';
 import { checkAndStartForgeCrunch, completeForgeCrunch, completeEquationForgeCrunch } from './particle-forge';
-import { applyForgeFieldForces, applyLoomContainmentCap } from './forge-field-forces';
+import { applyCaptureFields } from './forge-field-forces';
 import type { ForgeFieldInfo, LoomCapture } from './forge-field-forces';
 import { updateShockwaves } from './particle-shockwave';
 import { drawParticles, updateParticleRendererTime, getParticleRendererAnimTimeMs } from './particle-renderer';
@@ -153,9 +153,6 @@ export class ParticleSystem {
   alivenedTierIndices: Set<number> = new Set();
   /** Debug visualization toggles. */
   debugState: ParticleLifeDebugState = createDefaultDebugState();
-  /** When true, loom containment cap emits sparse console.debug diagnostics. */
-  devMode = false;
-
   private readonly _pool = new ParticlePool();
 
   /** Accumulates unprocessed frame time for fixed-timestep substep integration. */
@@ -309,12 +306,11 @@ export class ParticleSystem {
     while (this._accumMs >= FIXED_STEP_MS) {
       this._accumMs -= FIXED_STEP_MS;
 
-      // Per-particle physics (generator gravity, forge attraction, veer, clamping, bounce)
+      // Normal motes intentionally have no loom/forge attraction or steering.
       if (!skipPhysics) {
         for (let i = 0, len = this.particles.length; i < len; i++) {
           updateParticlePhysics(
-            this.particles[i], FIXED_STEP_DELTA, nowMs, generators,
-            forgeX, forgeY, canvasWidth, canvasHeight, isForgeUnlocked,
+            this.particles[i], FIXED_STEP_DELTA, nowMs, canvasWidth, canvasHeight,
           );
         }
         applyEdgeRepulsion(this.particles, canvasWidth, canvasHeight, FIXED_STEP_DELTA);
@@ -336,28 +332,17 @@ export class ParticleSystem {
         );
       }
 
-      // Capture-field forces — after PL so PL can't override capture
-      applyForgeFieldForces(
+      // Capture-only checks. These do not alter free-moving mote trajectories.
+      applyCaptureFields(
         this.particles,
         this.forgeFields,
         crunchState,
         this._newLoomCaptures,
         FIXED_STEP_DELTA,
-        nowMs,
       );
 
       // Velocity damping + max speed clamp
       applyParticleLifeDamping(this.particles, FIXED_STEP_DELTA, nowMs);
-
-      // Loom containment governor — MUST run after all velocity sources for this
-      // substep (generator gravity, Particle Life, drag-release boost, PL damping).
-      // For every compatible mote inside a loom field's outerRadius:
-      //   • position-corrects one-step escapes
-      //   • eliminates 95 % of outward radial velocity
-      //   • hard-caps total speed (0.65 at outer edge → 0.28 near capture radius)
-      // This makes it physically impossible for any upstream force to fling a
-      // compatible mote out of its loom field.
-      applyLoomContainmentCap(this.particles, this.forgeFields, this.devMode);
 
       // Toroidal wraparound
       applyWrapAround(this.particles, canvasWidth, canvasHeight);

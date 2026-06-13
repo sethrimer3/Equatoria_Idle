@@ -6,13 +6,8 @@ const DEV_TWEAK_FIELDS: ReadonlyArray<{
   label: string;
 }> = [
   { key: 'minVelocity',                       label: 'Min Velocity' },
-  { key: 'spawnerGravityStrength',             label: 'Spawner Gravity Strength' },
-  { key: 'smallTierGeneratorGravityStrength',  label: 'Small Tier Generator Gravity' },
-  { key: 'mediumTierForgeGravityStrength',     label: 'Medium Tier Forge Gravity' },
-  { key: 'attractionStrength',                 label: 'Forge Attraction Strength' },
   { key: 'pointerLockedForce',                 label: 'Drag Force (Dragging Speed)' },
   { key: 'dragBoostMultiplier',                label: 'Drag Boost Multiplier' },
-  { key: 'generatorRotationStrength',          label: 'Rotational Bias' },
   { key: 'particleWallBounce',                 label: 'Wall Bounce' },
   { key: 'plMaxVelocity',                      label: 'PL Max Velocity' },
   { key: 'plVelocityDamping',                  label: 'PL Velocity Damping' },
