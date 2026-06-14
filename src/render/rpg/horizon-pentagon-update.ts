@@ -26,6 +26,7 @@ import {
   PUFF_COUNT, PUFF_SPEED_MAX, PUFF_LIFE_MS,
 } from './horizon-pentagon-constants';
 import { computeShadowPositions } from './horizon-mirror-system';
+import { updateGalaxyGroup } from './true-galaxy-enemy';
 
 // ── Minimal update context ────────────────────────────────────────────────────
 
@@ -409,6 +410,7 @@ export function updateHorizonPentagonGroups(
   const fr = deltaMs * 0.06;
 
   for (const g of groups) {
+    if (updateGalaxyGroup(g, moteX, moteY, deltaMs, ctx.dealDamageToPlayer)) continue;
     g.pulseMs += deltaMs;
 
     // ── Swap cooldown ──────────────────────────────────────────────

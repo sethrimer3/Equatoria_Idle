@@ -11,6 +11,7 @@ import {
   MIRROR_LINE_FRACTIONS,
 } from './horizon-pentagon-constants';
 import { fractionToLineY, computeShadowPositions } from './horizon-mirror-system';
+import { makeGalaxyState } from './true-galaxy-enemy';
 
 function _makeShadowBody(x: number, y: number): HorizonShadowBody {
   return {
@@ -20,6 +21,16 @@ function _makeShadowBody(x: number, y: number): HorizonShadowBody {
     gatlingTimerMs: GATLING_CD_BASE_MS * 0.4 + Math.random() * GATLING_CD_JITTER_MS,
     activeLaser: null,
   };
+}
+
+export function makeTrueGalaxyGroup(spawnX: number, spawnY: number, waveNumber: number): HorizonPentagonGroup {
+  const group = makeHorizonPentagonGroup(spawnX, spawnY, waveNumber, 0, 640);
+  group.hp = group.maxHp = 900 + waveNumber * 70;
+  group.def = 4 + waveNumber * 0.2;
+  group.shadows.length = 0;
+  group.mirrorLineYs.length = 0;
+  group.galaxy = makeGalaxyState(waveNumber * 97 + Math.floor(spawnX));
+  return group;
 }
 
 /**

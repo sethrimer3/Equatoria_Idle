@@ -106,4 +106,5 @@ export interface HorizonPentagonGroup {
 
   // ── Visual puff particles ────────────────────────────────────────
   puffs: HorizonPuffParticle[];
+  galaxy?: import('./true-galaxy-enemy').GalaxyState;
 }

@@ -60,7 +60,7 @@ import {
   makeEliteEnemy,
 } from './rpg-factories';
 import { makeStardustEnemy } from './rpg-stardust-factories';
-import { makeHorizonPentagonGroup } from './horizon-pentagon-factories';
+import { makeHorizonPentagonGroup, makeTrueGalaxyGroup } from './horizon-pentagon-factories';
 import {
   makePolyominoEnemy,
   makeFissilePolyominoEnemy,
@@ -773,7 +773,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     }
   }
   // ── Horizon pentagon ───────────────────────────────────────────────────────
-  if (enemyTypeId === 'horizon_pentagon') {
+  if (enemyTypeId === 'horizon_pentagon' || enemyTypeId === 'true_galaxy') {
     do {
       spawnX = spawnLeft + 30 + Math.random() * (spawnW - 60);
       spawnY = spawnTop  + 30 + Math.random() * (spawnH - 60);
@@ -781,7 +781,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       if (dx * dx + dy * dy >= minDist * minDist) break;
       attempts++;
     } while (attempts < 20);
-    const g = makeHorizonPentagonGroup(spawnX, spawnY, wn, spawnTop, spawnTop + spawnH);
+    const g = enemyTypeId === 'true_galaxy'
+      ? makeTrueGalaxyGroup(spawnX, spawnY, wn)
+      : makeHorizonPentagonGroup(spawnX, spawnY, wn, spawnTop, spawnTop + spawnH);
     ctx.horizonPentagonGroups.push(g);
   }
   // Spawn flash — visual only, skipped for boss (whose spawn coords aren't meaningful here).

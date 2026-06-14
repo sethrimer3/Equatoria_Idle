@@ -51,6 +51,7 @@ import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
 import type { RpgFieldSpace } from './rpgFieldSpace';
+import { resetGalaxyWaveHitChain } from './true-galaxy-enemy';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -229,9 +230,12 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     }
     // Reset per-wave state
     rpgSimState.equipChangedDuringInterwave = false;
+    resetGalaxyWaveHitChain();
     const waveDef = getZoneWaveDefinition(wave, rpgSimState.activeZoneId);
     spawnQueue.length = 0;
-    for (const spawn of waveDef.spawns) {
+    const waveSpawns = rpgSimState.activeZoneId === 'horizon' && rpgSimState.activeSubzoneId === 'true'
+      && wave % 5 !== 0 ? waveDef.spawns.map(spawn => ({ ...spawn, enemyTypeId: 'true_galaxy' })) : waveDef.spawns;
+    for (const spawn of waveSpawns) {
       for (let i = 0; i < spawn.count; i++) {
         spawnQueue.push({ enemyTypeId: spawn.enemyTypeId, timerMs: spawn.spawnDelay * i });
       }

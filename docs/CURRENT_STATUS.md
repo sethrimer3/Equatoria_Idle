@@ -18,6 +18,13 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 
 ## Latest verified build notes
 
+### Build 270: True Galaxy normal enemies
+
+Completed:
+
+- Added rotating Galaxy particle-cloud enemies to ordinary True-subzone waves.
+- Galaxies fire particle streams whose wave-shared hit damage starts at 2 and doubles after every hit.
+
 ### Build 269: Bohemian Dome True super elite
 
 Completed:

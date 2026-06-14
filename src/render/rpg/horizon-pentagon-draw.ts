@@ -15,6 +15,7 @@ import {
   MISSILE_TRAIL_CAP,
 } from './horizon-pentagon-constants';
 import { shouldDrawEnemyHealthBar, enemyHealthFraction } from './rpg-health-bar';
+import { drawGalaxyGroup } from './true-galaxy-enemy';
 
 // ── Polygon builder ───────────────────────────────────────────────────────────
 
@@ -247,6 +248,7 @@ export function drawHorizonPentagonGroups(
   arenaW: number,
 ): void {
   for (const g of groups) {
+    if (drawGalaxyGroup(ctx, g)) { _drawHpBar(ctx, g); continue; }
     // Mirror lines (subtle background hint)
     _drawMirrorLines(ctx, g, arenaW);
 

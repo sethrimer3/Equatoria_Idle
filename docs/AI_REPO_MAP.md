@@ -193,6 +193,7 @@ Important effects:
 - `nadir-substrate-effect.ts`: Nadir variant.
 - `true-binary-horizon.ts`: preserved original True subzone Binary Horizon.
 - `true-surface-elite.ts`: True-subzone parametric surface elites plus the dense, long-trail Bohemian Dome super elite.
+- `true-galaxy-enemy.ts`: True-subzone normal Galaxy particle-cloud enemy, projectile streams, and wave-scoped doubling damage chain.
 - `zenith-binary-horizon.ts`: Zenith wave/cut/collapse Binary Horizon lifecycle.
 - `zenith-binary-ring-background.ts`: elite Binary Ring background.
 - `nadir-cubic-grid-background.ts`: CubicGrid-style rotating lattice, exposes projection state for gameplay anchoring.
