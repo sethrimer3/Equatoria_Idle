@@ -18,6 +18,14 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 
 ## Latest verified build notes
 
+### Build 267: True parametric surface elites
+
+Completed:
+
+- Added alternating Corkscrew and Dini surface elite encounters to every tenth True-subzone wave.
+- Added screen-spanning parametric scaffold rendering.
+- Dini scaffold points must all be struck and activated before its core can take damage.
+
 ### Build 265: visible equation and equivalence retirement
 
 Completed:

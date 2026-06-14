@@ -39,6 +39,7 @@ import type {
 } from './polyomino-enemy-types';
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
+import { isTrueSurfaceCoreVulnerable } from './true-surface-elite';
 import type { HorizonPentagonGroup, HorizonMissile } from './horizon-pentagon-types';
 import { triggerHorizonPentagonSwap } from './horizon-pentagon-update';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
@@ -57,6 +58,7 @@ import {
 
 export interface DamageCtx {
   recordDps(dmg: number, color?: string): void;
+  getNadirCubePointEnemies?(): NadirCubePointEnemy[];
   getCodexDamageMultiplier?(typeId: string): number;
   /**
    * Optional hook fired after each hit on an enemy's main HP pool (not projectiles/shards).
@@ -394,6 +396,15 @@ export function createDamageFns(ctx: DamageCtx) {
   }
 
   function damageNadirCubePointEnemy(e: NadirCubePointEnemy, raw: number, pierce: number): number {
+    if (e.surfaceKind && !e.surfaceCore) {
+      e.surfaceActivated = true;
+      e.hitFlashMs = 220;
+      return 0;
+    }
+    if (e.surfaceCore && !isTrueSurfaceCoreVulnerable(e, ctx.getNadirCubePointEnemies?.() ?? [e])) {
+      e.hitFlashMs = 120;
+      return 0;
+    }
     const actual = Math.max(1, raw - e.def * (1 - pierce));
     e.hp -= actual;
     e.hitFlashMs = 120;

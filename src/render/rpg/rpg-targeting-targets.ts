@@ -90,7 +90,7 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
   for (const e of ctx.eliteEnemies) addTarget('elite', e, 'elite');
   for (const e of ctx.binaryRingEnemies) addTarget('binary_ring', e, 'binaryRing');
   for (const e of ctx.nadirCubePointEnemies) {
-    if (e.hp <= 0 || !e.projectedVisible) continue;
+    if (e.hp <= 0 || !e.projectedVisible || e.surfaceActivated) continue;
     const dx = e.x - ctx.mote.x, dy = e.y - ctx.mote.y;
     targets.push({ kind: 'nadir_cube_point', x: e.x, y: e.y, distSq: dx * dx + dy * dy, nadirCubePoint: e });
   }

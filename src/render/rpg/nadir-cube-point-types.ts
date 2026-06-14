@@ -83,6 +83,11 @@ export interface NadirCubePointEnemy {
   projectedVisible: boolean;
   /** Depth-based alpha [0,1] from projection (1 = close/bright). */
   depthAlpha: number;
+  surfaceKind?: 'corkscrew' | 'dini';
+  surfaceUIndex?: number;
+  surfaceVIndex?: number;
+  surfaceCore?: boolean;
+  surfaceActivated?: boolean;
 }
 
 // ── Hazard types ──────────────────────────────────────────────────────────────

@@ -126,6 +126,7 @@ import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCu
 import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
 import { tickLensTier3Effects } from './lens-tier3-effects';
+import { createTrueSurfaceElite, updateTrueSurfaceElite } from './true-surface-elite';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -462,7 +463,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
           if (a.nadirCubePointEnemies[i]!.hp <= 0) a.nadirCubePointEnemies.splice(i, 1);
         }
       }
-    } else if (a.nadirCubePointEnemies.length > 0 || a.nadirCubeMines.length > 0 ||
+    } else if (a.nadirCubePointEnemies.some(p => !p.surfaceKind) || a.nadirCubeMines.length > 0 ||
                a.nadirCubeTrailSegments.length > 0 || a.nadirCubeTurretBolts.length > 0 ||
                a.nadirCubeLinkLasers.length > 0) {
       clearNadirCubeEncounter(
@@ -472,6 +473,26 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
         a.nadirCubeTurretBolts,
         a.nadirCubeLinkLasers,
       );
+    }
+  }
+  {
+    const isTrueElite = ctx.rpgSimState.activeZoneId === 'horizon'
+      && ctx.rpgSimState.activeSubzoneId === 'true'
+      && ctx.getCurrentWave() % 10 === 0 && !ctx.getIsBossWaveActive();
+    const hasSurface = a.nadirCubePointEnemies.some(p => p.surfaceKind);
+    if (isTrueElite && !ctx.getIsInterWave() && !hasSurface) {
+      const kind = ctx.getCurrentWave() % 20 === 0 ? 'dini' : 'corkscrew';
+      a.nadirCubePointEnemies.push(...createTrueSurfaceElite(kind, ctx.getCurrentWave()));
+    }
+    if (hasSurface || a.nadirCubePointEnemies.some(p => p.surfaceKind)) {
+      updateTrueSurfaceElite(a.nadirCubePointEnemies, ctx.enemyCtx.dim.w, ctx.enemyCtx.dim.h, nowMs);
+      const deadSurfaceKinds = new Set(
+        a.nadirCubePointEnemies.filter(p => p.surfaceCore && p.hp <= 0).map(p => p.surfaceKind),
+      );
+      for (let i = a.nadirCubePointEnemies.length - 1; i >= 0; i--) {
+        const p = a.nadirCubePointEnemies[i]!;
+        if (p.surfaceKind && deadSurfaceKinds.has(p.surfaceKind)) a.nadirCubePointEnemies.splice(i, 1);
+      }
     }
   }
   // Stardust enemy update (prismatic particle cloud + laser bounce)

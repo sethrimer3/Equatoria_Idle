@@ -633,6 +633,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageHorizonMissile,
   } = createDamageFns({
     recordDps,
+    getNadirCubePointEnemies: () => nadirCubePointEnemies,
     onEnemyHit: (enemy, dmg, blocked) => notifyEnemyHit(enemy, dmg, blocked),
     getCodexDamageMultiplier: (typeId) => getCodexMultiplier(rpgSimState.lifetimeKillsByType.get(typeId) ?? 0),
   });

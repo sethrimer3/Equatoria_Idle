@@ -192,6 +192,7 @@ Important effects:
 - `substrate-effect.ts`: crystalline crack effect.
 - `nadir-substrate-effect.ts`: Nadir variant.
 - `true-binary-horizon.ts`: preserved original True subzone Binary Horizon.
+- `true-surface-elite.ts`: True-subzone Corkscrew and Dini parametric surface elite encounters.
 - `zenith-binary-horizon.ts`: Zenith wave/cut/collapse Binary Horizon lifecycle.
 - `zenith-binary-ring-background.ts`: elite Binary Ring background.
 - `nadir-cubic-grid-background.ts`: CubicGrid-style rotating lattice, exposes projection state for gameplay anchoring.

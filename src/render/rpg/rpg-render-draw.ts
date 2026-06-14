@@ -126,6 +126,7 @@ import type {
 import { drawNadirCubeEncounter, setNadirCubeLowGraphics } from './nadir-cube-point-draw';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import type { NadirCubeProjectionState } from '../background/nadir-cube-projection';
+import { drawTrueSurfaceElite } from './true-surface-elite';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
@@ -870,7 +871,9 @@ export function drawRpgFrame(
     if (wState) drawVerdureWallDebug(canvas2d, wState);
   }
 
-  if (ctx.nadirCubePointEnemies.length > 0 || ctx.nadirCubeMines.length > 0 ||
+  if (ctx.nadirCubePointEnemies.some(p => p.surfaceKind)) {
+    drawTrueSurfaceElite(canvas2d, ctx.nadirCubePointEnemies);
+  } else if (ctx.nadirCubePointEnemies.length > 0 || ctx.nadirCubeMines.length > 0 ||
       ctx.nadirCubeTrailSegments.length > 0 || ctx.nadirCubeTurretBolts.length > 0 ||
       ctx.nadirCubeLinkLasers.length > 0) {
     drawNadirCubeEncounter(

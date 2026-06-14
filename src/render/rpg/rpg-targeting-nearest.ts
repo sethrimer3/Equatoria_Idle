@@ -211,7 +211,7 @@ export function findClosestTarget(ctx: RpgTargetingCtx, rangeSq: number): Closes
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'binary_ring', x: e.x, y: e.y, distSq: d, binaryRing: e }; }
   }
   for (const e of ctx.nadirCubePointEnemies) {
-    if (e.hp <= 0 || !e.projectedVisible) continue;
+    if (e.hp <= 0 || !e.projectedVisible || e.surfaceActivated) continue;
     const dx = e.x - mx, dy = e.y - my;
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = { kind: 'nadir_cube_point', x: e.x, y: e.y, distSq: d, nadirCubePoint: e }; }
@@ -475,7 +475,7 @@ export function findClosestEnemy(
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; }
   }
   for (const e of ctx.nadirCubePointEnemies) {
-    if (e.hp <= 0 || !e.projectedVisible) continue;
+    if (e.hp <= 0 || !e.projectedVisible || e.surfaceActivated) continue;
     const dx = e.x - mx, dy = e.y - my;
     const d = dx * dx + dy * dy;
     if (d <= bestSq && !isLosBlocked(terrain, mx, my, e.x, e.y)) { bestSq = d; best = e; }
