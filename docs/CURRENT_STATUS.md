@@ -18,6 +18,13 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 
 ## Latest verified build notes
 
+### Build 272: long-range gently homing Horizon shots
+
+Completed:
+
+- Extended Pentagon missile, Pentagon gatling, and Galaxy stream range to roughly four times their previous travel duration.
+- Added very slight homing to Pentagon gatling rounds and Galaxy streams while preserving Pentagon missile homing.
+
 ### Build 271: lively Horizon projectiles
 
 Completed:

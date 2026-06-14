@@ -51,7 +51,7 @@ export function updateGalaxyGroup(
       const a = Math.atan2(dy, dx) + i * 0.045 + (Math.random() - 0.5) * 0.06;
       const speed = 2.2 * (0.82 + Math.random() * 0.38);
       galaxy.streams.push({
-        x: g.x, y: g.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, lifeMs: 2600,
+        x: g.x, y: g.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, lifeMs: 10400,
         trailX: new Float32Array(32), trailY: new Float32Array(32), trailHead: 0, trailCount: 0,
       });
     }
@@ -63,10 +63,15 @@ export function updateGalaxyGroup(
     p.trailX[p.trailHead] = p.x; p.trailY[p.trailHead] = p.y;
     p.trailHead = (p.trailHead + 1) % p.trailX.length;
     p.trailCount = Math.min(p.trailX.length, p.trailCount + 1);
-    p.lifeMs -= deltaMs; p.x += p.vx * fr; p.y += p.vy * fr;
-    if (p.lifeMs <= 0) { galaxy.streams.splice(i, 1); continue; }
+    p.lifeMs -= deltaMs;
     const dx = playerX - p.x, dy = playerY - p.y;
-    if (dx * dx + dy * dy < 8 * 8) {
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    p.vx += (dx / dist) * 0.00036 * deltaMs;
+    p.vy += (dy / dist) * 0.00036 * deltaMs;
+    p.x += p.vx * fr; p.y += p.vy * fr;
+    if (p.lifeMs <= 0) { galaxy.streams.splice(i, 1); continue; }
+    const hitDx = playerX - p.x, hitDy = playerY - p.y;
+    if (hitDx * hitDx + hitDy * hitDy < 8 * 8) {
       dealDamageToPlayer(nextGalaxyStreamDamage());
       galaxy.streams.splice(i, 1);
     }

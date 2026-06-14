@@ -340,7 +340,7 @@ function _updateMissiles(
     if (m.trailCount < MISSILE_TRAIL_CAP) m.trailCount++;
 
     // Out of bounds
-    if (m.x < -50 || m.x > dimW + 50 || m.y < -50 || m.y > dimH + 50) {
+    if (m.x < -dimW * 3 || m.x > dimW * 4 || m.y < -dimH * 3 || m.y > dimH * 4) {
       group.missiles.splice(i, 1);
       continue;
     }
@@ -374,9 +374,13 @@ function _updateBullets(
     b.trailHead = (b.trailHead + 1) % b.trailX.length;
     b.trailCount = Math.min(b.trailX.length, b.trailCount + 1);
     if (b.lifeMs <= 0) { group.bullets.splice(i, 1); continue; }
+    const seekDx = moteX - b.x, seekDy = moteY - b.y;
+    const seekDist = Math.sqrt(seekDx * seekDx + seekDy * seekDy) || 1;
+    b.vx += (seekDx / seekDist) * 0.00042 * deltaMs;
+    b.vy += (seekDy / seekDist) * 0.00042 * deltaMs;
     b.x += b.vx * fr;
     b.y += b.vy * fr;
-    if (b.x < -20 || b.x > dimW + 20 || b.y < -20 || b.y > dimH + 20) {
+    if (b.x < -dimW * 3 || b.x > dimW * 4 || b.y < -dimH * 3 || b.y > dimH * 4) {
       group.bullets.splice(i, 1); continue;
     }
     if (!b.hasHitPlayer) {
