@@ -126,7 +126,7 @@ import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCu
 import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
 import { tickLensTier3Effects } from './lens-tier3-effects';
-import { createTrueSurfaceElite, updateTrueSurfaceElite } from './true-surface-elite';
+import { createTrueSurfaceElite, TRUE_SURFACE_ROTATION, updateTrueSurfaceElite } from './true-surface-elite';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -481,7 +481,8 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
       && ctx.getCurrentWave() % 10 === 0 && !ctx.getIsBossWaveActive();
     const hasSurface = a.nadirCubePointEnemies.some(p => p.surfaceKind);
     if (isTrueElite && !ctx.getIsInterWave() && !hasSurface) {
-      const kind = ctx.getCurrentWave() % 20 === 0 ? 'dini' : 'corkscrew';
+      const eliteIndex = Math.floor(ctx.getCurrentWave() / 10 - 1) % TRUE_SURFACE_ROTATION.length;
+      const kind = TRUE_SURFACE_ROTATION[eliteIndex]!;
       a.nadirCubePointEnemies.push(...createTrueSurfaceElite(kind, ctx.getCurrentWave()));
     }
     if (hasSurface || a.nadirCubePointEnemies.some(p => p.surfaceKind)) {

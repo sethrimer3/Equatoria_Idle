@@ -83,7 +83,7 @@ export interface NadirCubePointEnemy {
   projectedVisible: boolean;
   /** Depth-based alpha [0,1] from projection (1 = close/bright). */
   depthAlpha: number;
-  surfaceKind?: 'corkscrew' | 'dini';
+  surfaceKind?: 'corkscrew' | 'dini' | 'henneberg' | 'seashell' | 'enneper';
   surfaceUIndex?: number;
   surfaceVIndex?: number;
   surfaceCore?: boolean;

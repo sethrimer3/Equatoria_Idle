@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createTrueSurfaceElite, isTrueSurfaceCoreVulnerable, isTrueSurfacePointTargetable } from '../true-surface-elite';
+import { createTrueSurfaceElite, isTrueSurfaceCoreVulnerable, isTrueSurfacePointTargetable, TRUE_SURFACE_ROTATION } from '../true-surface-elite';
 
 describe('True surface elites', () => {
-  it('creates finite corkscrew and Dini scaffold points', () => {
-    for (const kind of ['corkscrew', 'dini'] as const) {
+  it('creates finite scaffold points for every True elite surface', () => {
+    for (const kind of TRUE_SURFACE_ROTATION) {
       const points = createTrueSurfaceElite(kind, 20);
       expect(points.length).toBeGreaterThan(40);
       expect(points.every(p => Number.isFinite(p.anchorX) && Number.isFinite(p.anchorY) && Number.isFinite(p.anchorZ))).toBe(true);

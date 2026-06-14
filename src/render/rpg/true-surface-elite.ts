@@ -1,6 +1,10 @@
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
 
-export type TrueSurfaceKind = 'corkscrew' | 'dini';
+export type TrueSurfaceKind = 'corkscrew' | 'dini' | 'henneberg' | 'seashell' | 'enneper';
+
+export const TRUE_SURFACE_ROTATION: readonly TrueSurfaceKind[] = [
+  'corkscrew', 'dini', 'henneberg', 'seashell', 'enneper',
+];
 
 const U_STEPS = 12;
 const V_STEPS = 5;
@@ -24,20 +28,44 @@ export function createTrueSurfaceElite(kind: TrueSurfaceKind, wave: number): Nad
   const result: NadirCubePointEnemy[] = [];
   let id = wave * 1000;
   for (let ui = 0; ui < U_STEPS; ui++) {
-    const u = kind === 'corkscrew' ? (ui / (U_STEPS - 1) - 0.5) * Math.PI * 4 : ui / (U_STEPS - 1) * Math.PI * 4;
+    const ut = ui / (U_STEPS - 1);
     for (let vi = 0; vi < V_STEPS; vi++) {
-      const v = kind === 'corkscrew'
-        ? (vi / (V_STEPS - 1) - 0.5) * Math.PI
-        : 0.18 + vi / (V_STEPS - 1) * 1.72;
+      const vt = vi / (V_STEPS - 1);
       let x: number; let y: number; let z: number;
       if (kind === 'corkscrew') {
+        const u = (ut - 0.5) * Math.PI * 4;
+        const v = (vt - 0.5) * Math.PI;
         x = Math.cos(u) * Math.cos(v);
         y = Math.sin(u) * Math.cos(v);
         z = Math.sin(v) + 0.22 * u;
-      } else {
+      } else if (kind === 'dini') {
+        const u = ut * Math.PI * 4;
+        const v = 0.18 + vt * 1.72;
         x = Math.cos(u) * Math.sin(v);
         y = Math.sin(u) * Math.sin(v);
         z = Math.cos(v) + Math.log(Math.tan(v * 0.5)) + 0.2 * u;
+      } else if (kind === 'henneberg') {
+        const u = (ut - 0.5) * 1.45;
+        const v = vt * Math.PI * 2;
+        x = 2 * Math.sinh(u) * Math.cos(v) - (2 / 3) * Math.sinh(3 * u) * Math.cos(3 * v);
+        y = 2 * Math.sinh(u) * Math.sin(v) + (2 / 3) * Math.sinh(3 * u) * Math.sin(3 * v);
+        z = 2 * Math.cosh(2 * u) * Math.cos(2 * v);
+        x *= 0.18; y *= 0.18; z *= 0.18;
+      } else if (kind === 'seashell') {
+        const u = ut * Math.PI * 6;
+        const v = vt * Math.PI * 2;
+        const growth = Math.exp(u / (6 * Math.PI));
+        x = 2 * (1 - growth) * Math.cos(u) * Math.cos(v * 0.5) ** 2;
+        y = 2 * (-1 + growth) * Math.sin(u) * Math.cos(v * 0.5) ** 2;
+        z = 1 - Math.exp(u / (3 * Math.PI)) - Math.sin(v) + growth * Math.sin(v);
+        x *= 0.7; y *= 0.7; z *= 0.35;
+      } else {
+        const u = (ut - 0.5) * 3;
+        const v = (vt - 0.5) * 3;
+        x = (u * (1 - u * u / 3 + v * v)) / 3;
+        y = (v * (1 - v * v / 3 + u * u)) / 3;
+        z = (u * u - v * v) / 3;
+        x *= 0.75; y *= 0.75; z *= 0.75;
       }
       result.push(point(id++, kind, ui, vi, x, y, z, wave, false));
     }
@@ -48,7 +76,7 @@ export function createTrueSurfaceElite(kind: TrueSurfaceKind, wave: number): Nad
 
 export function isTrueSurfaceCoreVulnerable(core: NadirCubePointEnemy, all: NadirCubePointEnemy[]): boolean {
   if (!core.surfaceCore || !core.surfaceKind) return true;
-  if (core.surfaceKind === 'corkscrew') return true;
+  if (core.surfaceKind !== 'dini') return true;
   return all.every(p => p.surfaceKind !== core.surfaceKind || p.surfaceCore || p.surfaceActivated);
 }
 
@@ -87,7 +115,17 @@ export function drawTrueSurfaceElite(ctx: CanvasRenderingContext2D, points: Nadi
   const nodes = points.filter(p => p.surfaceKind === surface.surfaceKind && !p.surfaceCore);
   ctx.save();
   ctx.lineWidth = 1;
-  ctx.strokeStyle = surface.surfaceKind === 'dini' ? 'rgba(255,90,210,.45)' : 'rgba(90,240,255,.48)';
+  const colors: Record<TrueSurfaceKind, [string, string]> = {
+    corkscrew: ['rgba(90,240,255,.48)', '#35e8ff'],
+    dini: ['rgba(255,90,210,.45)', '#ff309f'],
+    henneberg: ['rgba(255,220,100,.48)', '#ffd45a'],
+    seashell: ['rgba(255,135,80,.48)', '#ff884e'],
+    enneper: ['rgba(140,255,145,.48)', '#78ff88'],
+  };
+  const surfaceKind = surface.surfaceKind;
+  if (!surfaceKind) return;
+  const colorsForSurface = colors[surfaceKind];
+  ctx.strokeStyle = colorsForSurface[0];
   for (const a of nodes) {
     for (const b of nodes) {
       const adjacent = (a.surfaceUIndex === b.surfaceUIndex && Math.abs(a.surfaceVIndex! - b.surfaceVIndex!) === 1)
@@ -99,8 +137,8 @@ export function drawTrueSurfaceElite(ctx: CanvasRenderingContext2D, points: Nadi
   for (const p of points) {
     if (p.surfaceKind !== surface.surfaceKind || p.hp <= 0) continue;
     const active = p.surfaceActivated || p.surfaceCore;
-    ctx.fillStyle = active ? '#ffffff' : surface.surfaceKind === 'dini' ? '#ff309f' : '#35e8ff';
-    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = active ? 14 : 6;
+    ctx.fillStyle = active ? '#ffffff' : colorsForSurface[1];
+    ctx.shadowColor = active ? '#ffffff' : colorsForSurface[1]; ctx.shadowBlur = active ? 14 : 6;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.surfaceCore ? 13 : 4.5, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();

@@ -18,11 +18,18 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 
 ## Latest verified build notes
 
+### Build 268: expanded True surface elite rotation
+
+Completed:
+
+- Added Henneberg's Minimal Surface, Seashell, and Enneper surface elites.
+- True elite waves now rotate through five parametric surface forms.
+
 ### Build 267: True parametric surface elites
 
 Completed:
 
-- Added alternating Corkscrew and Dini surface elite encounters to every tenth True-subzone wave.
+- Added Corkscrew and Dini surface elite encounters to True-subzone elite waves.
 - Added screen-spanning parametric scaffold rendering.
 - Dini scaffold points must all be struck and activated before its core can take damage.
 
