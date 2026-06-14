@@ -31,6 +31,8 @@ export interface HorizonBullet {
   atk: number;
   hasHitPlayer: boolean;
   lifeMs: number;
+  trailX: Float32Array; trailY: Float32Array;
+  trailHead: number; trailCount: number;
 }
 
 // ── Laser charge-up + fire ───────────────────────────────────────────────────

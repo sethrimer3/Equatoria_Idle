@@ -16,6 +16,7 @@ import {
 } from './horizon-pentagon-constants';
 import { shouldDrawEnemyHealthBar, enemyHealthFraction } from './rpg-health-bar';
 import { drawGalaxyGroup } from './true-galaxy-enemy';
+import { drawCachedProjectileGlow } from './horizon-projectile-glow';
 
 // ── Polygon builder ───────────────────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ function _drawMissile(
   }
 
   // Body
+  drawCachedProjectileGlow(ctx, m.x, m.y, MISSILE_GLOW, 22, 0.72);
   ctx.save();
   ctx.fillStyle   = MISSILE_COLOR;
   ctx.shadowColor = MISSILE_GLOW;
@@ -177,6 +179,17 @@ function _drawMissile(
 // ── Gatling bullet ────────────────────────────────────────────────────────────
 
 function _drawBullet(ctx: CanvasRenderingContext2D, b: HorizonBullet): void {
+  ctx.save();
+  ctx.strokeStyle = GATLING_COLOR;
+  ctx.lineWidth = 1.5;
+  for (let i = 1; i < b.trailCount; i++) {
+    const a = (b.trailHead - i - 1 + b.trailX.length) % b.trailX.length;
+    const z = (b.trailHead - i + b.trailX.length) % b.trailX.length;
+    ctx.globalAlpha = (1 - i / b.trailCount) * 0.5;
+    ctx.beginPath(); ctx.moveTo(b.trailX[a]!, b.trailY[a]!); ctx.lineTo(b.trailX[z]!, b.trailY[z]!); ctx.stroke();
+  }
+  ctx.restore();
+  drawCachedProjectileGlow(ctx, b.x, b.y, GATLING_GLOW, 15, 0.72);
   ctx.save();
   ctx.fillStyle   = GATLING_COLOR;
   ctx.shadowColor = GATLING_GLOW;

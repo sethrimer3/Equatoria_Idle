@@ -18,6 +18,13 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 
 ## Latest verified build notes
 
+### Build 271: lively Horizon projectiles
+
+Completed:
+
+- Added trails and cached radial glow sprites to Pentagon missiles, Pentagon gatling rounds, and Galaxy streams.
+- Added controlled per-shot speed and spread variation to Pentagon and Galaxy projectiles.
+
 ### Build 270: True Galaxy normal enemies
 
 Completed:

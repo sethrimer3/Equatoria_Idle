@@ -53,13 +53,14 @@ function _fireMissile(
   moteX: number, moteY: number,
 ): void {
   const dx = moteX - fromX, dy = moteY - fromY;
-  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
   const trailX = new Float64Array(MISSILE_TRAIL_CAP);
   const trailY = new Float64Array(MISSILE_TRAIL_CAP);
+  const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.12;
+  const speed = MISSILE_SPEED * (0.9 + Math.random() * 0.22);
   const m: HorizonMissile = {
     x: fromX, y: fromY,
-    vx: (dx / dist) * MISSILE_SPEED,
-    vy: (dy / dist) * MISSILE_SPEED,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
     hp: MISSILE_HP, maxHp: MISSILE_HP,
     atk: MISSILE_ATK,
     hasHitPlayer: false,
@@ -78,15 +79,18 @@ function _fireGatling(
   const dx = moteX - fromX, dy = moteY - fromY;
   const baseAngle = Math.atan2(dy, dx);
   for (let i = 0; i < GATLING_COUNT; i++) {
-    const spread = (i / (GATLING_COUNT - 1) - 0.5) * 2 * GATLING_SPREAD_RAD;
+    const spread = (i / (GATLING_COUNT - 1) - 0.5) * 2 * GATLING_SPREAD_RAD + (Math.random() - 0.5) * 0.1;
     const angle = baseAngle + spread;
+    const speed = GATLING_SPEED * (0.84 + Math.random() * 0.34);
     const b: HorizonBullet = {
       x: fromX, y: fromY,
-      vx: Math.cos(angle) * GATLING_SPEED,
-      vy: Math.sin(angle) * GATLING_SPEED,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
       atk: GATLING_ATK,
       hasHitPlayer: false,
       lifeMs: GATLING_LIFE_MS,
+      trailX: new Float32Array(20), trailY: new Float32Array(20),
+      trailHead: 0, trailCount: 0,
     };
     group.bullets.push(b);
   }
@@ -366,6 +370,9 @@ function _updateBullets(
   for (let i = group.bullets.length - 1; i >= 0; i--) {
     const b = group.bullets[i]!;
     b.lifeMs -= deltaMs;
+    b.trailX[b.trailHead] = b.x; b.trailY[b.trailHead] = b.y;
+    b.trailHead = (b.trailHead + 1) % b.trailX.length;
+    b.trailCount = Math.min(b.trailX.length, b.trailCount + 1);
     if (b.lifeMs <= 0) { group.bullets.splice(i, 1); continue; }
     b.x += b.vx * fr;
     b.y += b.vy * fr;
