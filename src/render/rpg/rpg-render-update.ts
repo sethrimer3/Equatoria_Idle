@@ -476,13 +476,15 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     }
   }
   {
-    const isTrueElite = ctx.rpgSimState.activeZoneId === 'horizon'
+    const isTrueZone = ctx.rpgSimState.activeZoneId === 'horizon'
       && ctx.rpgSimState.activeSubzoneId === 'true'
-      && ctx.getCurrentWave() % 10 === 0 && !ctx.getIsBossWaveActive();
+      && !ctx.getIsBossWaveActive();
+    const isTrueSuperElite = isTrueZone && ctx.getCurrentWave() % 10 === 0;
+    const isTrueElite = isTrueZone && ctx.getCurrentWave() % 10 === 5;
     const hasSurface = a.nadirCubePointEnemies.some(p => p.surfaceKind);
-    if (isTrueElite && !ctx.getIsInterWave() && !hasSurface) {
-      const eliteIndex = Math.floor(ctx.getCurrentWave() / 10 - 1) % TRUE_SURFACE_ROTATION.length;
-      const kind = TRUE_SURFACE_ROTATION[eliteIndex]!;
+    if ((isTrueElite || isTrueSuperElite) && !ctx.getIsInterWave() && !hasSurface) {
+      const eliteIndex = Math.floor(ctx.getCurrentWave() / 10) % TRUE_SURFACE_ROTATION.length;
+      const kind = isTrueSuperElite ? 'bohemian_dome' : TRUE_SURFACE_ROTATION[eliteIndex]!;
       a.nadirCubePointEnemies.push(...createTrueSurfaceElite(kind, ctx.getCurrentWave()));
     }
     if (hasSurface || a.nadirCubePointEnemies.some(p => p.surfaceKind)) {

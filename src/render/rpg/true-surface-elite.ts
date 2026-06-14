@@ -1,6 +1,6 @@
 import type { NadirCubePointEnemy } from './nadir-cube-point-types';
 
-export type TrueSurfaceKind = 'corkscrew' | 'dini' | 'henneberg' | 'seashell' | 'enneper';
+export type TrueSurfaceKind = 'corkscrew' | 'dini' | 'henneberg' | 'seashell' | 'enneper' | 'bohemian_dome';
 
 export const TRUE_SURFACE_ROTATION: readonly TrueSurfaceKind[] = [
   'corkscrew', 'dini', 'henneberg', 'seashell', 'enneper',
@@ -8,13 +8,16 @@ export const TRUE_SURFACE_ROTATION: readonly TrueSurfaceKind[] = [
 
 const U_STEPS = 12;
 const V_STEPS = 5;
+const BOHEMIAN_U_STEPS = 24;
+const BOHEMIAN_V_STEPS = 10;
+const BOHEMIAN_TRAIL_CAP = 48;
 
 function point(
   id: number, kind: TrueSurfaceKind, uIndex: number, vIndex: number,
   x: number, y: number, z: number, wave: number, isCore: boolean,
 ): NadirCubePointEnemy {
-  const hp = isCore ? 1800 + wave * 80 : kind === 'dini' ? 1 : 180 + wave * 12;
-  return {
+  const hp = isCore ? (kind === 'bohemian_dome' ? 5200 + wave * 160 : 1800 + wave * 80) : kind === 'dini' ? 1 : 180 + wave * 12;
+  const result: NadirCubePointEnemy = {
     kind: 'nadir_cube_point', id, anchorX: x, anchorY: y, anchorZ: z,
     x, y, prevX: x, prevY: y, hp, maxHp: hp, atk: 18 + wave, def: isCore ? 8 : 3,
     behavior: 'turret', cooldownMs: Number.POSITIVE_INFINITY, pulseMs: id * 41,
@@ -22,15 +25,24 @@ function point(
     surfaceKind: kind, surfaceUIndex: uIndex, surfaceVIndex: vIndex,
     surfaceCore: isCore, surfaceActivated: false,
   };
+  if (kind === 'bohemian_dome' && !isCore) {
+    result.surfaceTrailX = new Float32Array(BOHEMIAN_TRAIL_CAP);
+    result.surfaceTrailY = new Float32Array(BOHEMIAN_TRAIL_CAP);
+    result.surfaceTrailHead = 0;
+    result.surfaceTrailCount = 0;
+  }
+  return result;
 }
 
 export function createTrueSurfaceElite(kind: TrueSurfaceKind, wave: number): NadirCubePointEnemy[] {
   const result: NadirCubePointEnemy[] = [];
   let id = wave * 1000;
-  for (let ui = 0; ui < U_STEPS; ui++) {
-    const ut = ui / (U_STEPS - 1);
-    for (let vi = 0; vi < V_STEPS; vi++) {
-      const vt = vi / (V_STEPS - 1);
+  const uSteps = kind === 'bohemian_dome' ? BOHEMIAN_U_STEPS : U_STEPS;
+  const vSteps = kind === 'bohemian_dome' ? BOHEMIAN_V_STEPS : V_STEPS;
+  for (let ui = 0; ui < uSteps; ui++) {
+    const ut = ui / (uSteps - 1);
+    for (let vi = 0; vi < vSteps; vi++) {
+      const vt = vi / (vSteps - 1);
       let x: number; let y: number; let z: number;
       if (kind === 'corkscrew') {
         const u = (ut - 0.5) * Math.PI * 4;
@@ -59,13 +71,20 @@ export function createTrueSurfaceElite(kind: TrueSurfaceKind, wave: number): Nad
         y = 2 * (-1 + growth) * Math.sin(u) * Math.cos(v * 0.5) ** 2;
         z = 1 - Math.exp(u / (3 * Math.PI)) - Math.sin(v) + growth * Math.sin(v);
         x *= 0.7; y *= 0.7; z *= 0.35;
-      } else {
+      } else if (kind === 'enneper') {
         const u = (ut - 0.5) * 3;
         const v = (vt - 0.5) * 3;
         x = (u * (1 - u * u / 3 + v * v)) / 3;
         y = (v * (1 - v * v / 3 + u * u)) / 3;
         z = (u * u - v * v) / 3;
         x *= 0.75; y *= 0.75; z *= 0.75;
+      } else {
+        const u = ut * Math.PI * 2;
+        const v = vt * Math.PI * 2;
+        x = Math.cos(u);
+        y = Math.cos(v);
+        z = Math.sin(u) + Math.sin(v);
+        x *= 1.25; y *= 1.25; z *= 0.62;
       }
       result.push(point(id++, kind, ui, vi, x, y, z, wave, false));
     }
@@ -106,6 +125,13 @@ export function updateTrueSurfaceElite(points: NadirCubePointEnemy[], width: num
     p.x = width * 0.5 + rx * scaleX;
     p.y = height * 0.48 + (p.anchorY * 0.75 + rz * 0.18) * scaleY;
     p.depthAlpha = Math.max(0.35, Math.min(1, 0.65 + rz * 0.15));
+    if (p.surfaceKind === 'bohemian_dome' && p.surfaceTrailX && p.surfaceTrailY) {
+      const head = p.surfaceTrailHead ?? 0;
+      p.surfaceTrailX[head] = p.x;
+      p.surfaceTrailY[head] = p.y;
+      p.surfaceTrailHead = (head + 1) % BOHEMIAN_TRAIL_CAP;
+      p.surfaceTrailCount = Math.min(BOHEMIAN_TRAIL_CAP, (p.surfaceTrailCount ?? 0) + 1);
+    }
   }
 }
 
@@ -121,11 +147,27 @@ export function drawTrueSurfaceElite(ctx: CanvasRenderingContext2D, points: Nadi
     henneberg: ['rgba(255,220,100,.48)', '#ffd45a'],
     seashell: ['rgba(255,135,80,.48)', '#ff884e'],
     enneper: ['rgba(140,255,145,.48)', '#78ff88'],
+    bohemian_dome: ['rgba(190,130,255,.28)', '#bd70ff'],
   };
   const surfaceKind = surface.surfaceKind;
   if (!surfaceKind) return;
   const colorsForSurface = colors[surfaceKind];
   ctx.strokeStyle = colorsForSurface[0];
+  if (surfaceKind === 'bohemian_dome') {
+    for (const p of nodes) {
+      if (!p.surfaceTrailX || !p.surfaceTrailY) continue;
+      const count = p.surfaceTrailCount ?? 0;
+      const head = p.surfaceTrailHead ?? 0;
+      for (let i = 1; i < count; i++) {
+        const a = (head - i - 1 + BOHEMIAN_TRAIL_CAP) % BOHEMIAN_TRAIL_CAP;
+        const b = (head - i + BOHEMIAN_TRAIL_CAP) % BOHEMIAN_TRAIL_CAP;
+        ctx.globalAlpha = (1 - i / count) * 0.32;
+        ctx.beginPath(); ctx.moveTo(p.surfaceTrailX[a]!, p.surfaceTrailY[a]!);
+        ctx.lineTo(p.surfaceTrailX[b]!, p.surfaceTrailY[b]!); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
   for (const a of nodes) {
     for (const b of nodes) {
       const adjacent = (a.surfaceUIndex === b.surfaceUIndex && Math.abs(a.surfaceVIndex! - b.surfaceVIndex!) === 1)

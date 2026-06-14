@@ -18,6 +18,14 @@ Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop sup
 
 ## Latest verified build notes
 
+### Build 269: Bohemian Dome True super elite
+
+Completed:
+
+- Added a dense Bohemian Dome super elite to every tenth True-subzone wave.
+- Bohemian Dome particles retain long motion trails and protect a substantially tougher core.
+- Existing True surface elites now rotate on the intervening fifth-wave cadence.
+
 ### Build 268: expanded True surface elite rotation
 
 Completed:

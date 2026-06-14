@@ -83,11 +83,15 @@ export interface NadirCubePointEnemy {
   projectedVisible: boolean;
   /** Depth-based alpha [0,1] from projection (1 = close/bright). */
   depthAlpha: number;
-  surfaceKind?: 'corkscrew' | 'dini' | 'henneberg' | 'seashell' | 'enneper';
+  surfaceKind?: 'corkscrew' | 'dini' | 'henneberg' | 'seashell' | 'enneper' | 'bohemian_dome';
   surfaceUIndex?: number;
   surfaceVIndex?: number;
   surfaceCore?: boolean;
   surfaceActivated?: boolean;
+  surfaceTrailX?: Float32Array;
+  surfaceTrailY?: Float32Array;
+  surfaceTrailHead?: number;
+  surfaceTrailCount?: number;
 }
 
 // ── Hazard types ──────────────────────────────────────────────────────────────

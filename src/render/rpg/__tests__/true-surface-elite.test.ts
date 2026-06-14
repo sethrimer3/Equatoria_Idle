@@ -19,4 +19,11 @@ describe('True surface elites', () => {
     expect(isTrueSurfaceCoreVulnerable(core, points)).toBe(true);
     expect(isTrueSurfacePointTargetable(core, points)).toBe(true);
   });
+
+  it('creates a denser Bohemian Dome super elite with long particle trails', () => {
+    const points = createTrueSurfaceElite('bohemian_dome', 20);
+    const nodes = points.filter(p => !p.surfaceCore);
+    expect(nodes.length).toBeGreaterThan(200);
+    expect(nodes.every(p => p.surfaceTrailX?.length === 48 && p.surfaceTrailY?.length === 48)).toBe(true);
+  });
 });
