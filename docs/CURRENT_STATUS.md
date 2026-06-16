@@ -7,7 +7,7 @@ This file is the concise current-status layer for AI agents. It intentionally su
 
 ## Product shape
 
-Equatoria Idle is currently a Vite/TypeScript web game with Electron desktop support and GitHub Pages deployment. It is not yet an Android/Google Play project. A future mobile store release would need a native wrapper such as Capacitor, store assets, manifest/icon cleanup, privacy/data-safety documentation, and validation against current Android target/API requirements.
+Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitHub Pages deployment, and an Android Capacitor shell targeting Google Play. The Android wrapper (Capacitor 8.4.0, package `com.sethrimer.equatoriaidle`, targetSdk 36 / Android 16) has been scaffolded and synced; a signed .aab can be produced once the developer installs JDK 17 and the Android SDK locally. See `docs/ANDROID_RELEASE.md` for full setup steps. Remaining gaps before first Play submission: launcher icons, splash screen, privacy policy URL, and Play Console Data Safety declaration.
 
 ## Current core pillars
 

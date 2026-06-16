@@ -109,15 +109,20 @@ When completing or deferring work:
 
 ## Google Play readiness
 
-- [ ] Decide native wrapper approach, likely Capacitor if continuing toward Android.
+- [x] Decide native wrapper approach — Capacitor chosen.
+- [x] Scaffold Android project with Capacitor 8.4.0 (package `com.sethrimer.equatoriaidle`, targetSdk 36).
+- [x] Add `android:sync`, `android:open`, `android:build` npm scripts.
+- [x] Document local setup in `docs/ANDROID_RELEASE.md`.
 
-- [ ] Add Android project/build path only after wrapper decision.
+Remaining before first Play submission (see ANDROID_RELEASE.md):
 
-- [ ] Remove or localize any external network font/asset dependency before store release.
-
-- [ ] Verify manifest name, short name, icon paths, splash/icon assets, privacy policy, and data-safety disclosures.
-
-- [ ] Validate save behavior and localStorage assumptions in the native wrapper.
+- [ ] Install JDK 17 and Android SDK 36 locally to enable `npm run android:build`.
+- [ ] Add launcher icons (replace default Capacitor mipmap images via Android Studio Image Asset wizard).
+- [ ] Add splash screen (`@capacitor/splash-screen`) or remove the need for one.
+- [ ] Add privacy policy URL in Play Console.
+- [ ] Complete Play Console Data Safety declaration (localStorage, no external sharing).
+- [ ] Remove or localize any external CDN font/asset dependency before store release.
+- [ ] Validate save behavior and localStorage assumptions in the native WebView wrapper.
 
 ## Documentation maintenance
 

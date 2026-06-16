@@ -5,3 +5,7 @@ dist/
 electron-runtime.log
 *.log
 .DS_Store
+
+# Android — android/.gitignore covers build artifacts; exclude only the keystore from root
+android/release.keystore
+android/app/release.keystore

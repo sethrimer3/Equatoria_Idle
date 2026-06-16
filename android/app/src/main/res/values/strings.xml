@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Equatoria Idle</string>
+    <string name="title_activity_main">Equatoria Idle</string>
+    <string name="package_name">com.sethrimer.equatoriaidle</string>
+    <string name="custom_url_scheme">com.sethrimer.equatoriaidle</string>
+</resources>

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://capacitorjs.com/docs/v8/config",
+  "appId": "com.sethrimer.equatoriaidle",
+  "appName": "Equatoria Idle",
+  "webDir": "dist",
+  "android": {
+    "buildOptions": {
+      "keystorePath": null
+    }
+  }
+}
