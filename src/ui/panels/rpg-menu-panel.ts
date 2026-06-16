@@ -18,7 +18,8 @@ import type { GameAction } from '../../input';
 import type { NumberFormat } from '../../util';
 import { createRpgMenuTabPane } from './rpg-menu-tab';
 import type { RpgRackPosition, RpgVerticalPosition } from './rpg-menu-tab';
-import { createRpgUpgradesTabPane } from './rpg-upgrades-tab';
+import { createRpgSkillTreeTabPane } from './rpg-skill-tree-tab';
+import type { RpgSkillTreeTabPane } from './rpg-skill-tree-tab';
 import { createRpgEnemiesTabPane } from './rpg-enemies-tab';
 import type { RpgEnemiesTabPane } from './rpg-enemies-tab';
 import { makePageBreak } from '../ui-helpers';
@@ -43,6 +44,8 @@ export interface RpgMenuPanel {
   setVisible(visible: boolean): void;
   /** Show the menu overlay directly on the enemy codex tab. */
   openEnemiesTab(): void;
+  /** Show the menu overlay directly on the Skill Tree tab. */
+  openSkillTreeTab(): void;
   isVisible: boolean;
   /** Whether auto-move is currently enabled (session-only, not persisted). */
   isAutoMoveEnabled: boolean;
@@ -100,7 +103,7 @@ export function createRpgMenuPanel(
 
   const tabDefs: Array<{ id: RpgMenuTab; label: string }> = [
     { id: 'menu',     label: 'Menu' },
-    { id: 'upgrades', label: 'Upgrades' },
+    { id: 'upgrades', label: 'Skill Tree' },
     { id: 'enemies',  label: 'Enemies' },
   ];
 
@@ -131,7 +134,7 @@ export function createRpgMenuPanel(
     (position) => { onRpgMenuButtonPositionChange(position); },
     (position) => { onRpgZonePositionChange(position); },
   );
-  const upgradesTabPane = createRpgUpgradesTabPane(dispatch);
+  const skillTreePane: RpgSkillTreeTabPane = createRpgSkillTreeTabPane(dispatch);
   const enemiesTabPane: RpgEnemiesTabPane = createRpgEnemiesTabPane(dispatch);
 
   // All pane elements live in the content area; we show/hide per active tab.
@@ -139,7 +142,7 @@ export function createRpgMenuPanel(
   content.className = 'rpg-menu__content';
   content.appendChild(makePageBreak('large'));
   content.appendChild(menuTabPane.element);
-  content.appendChild(upgradesTabPane.element);
+  content.appendChild(skillTreePane.element);
   content.appendChild(enemiesTabPane.element);
   element.appendChild(content);
 
@@ -164,9 +167,16 @@ export function createRpgMenuPanel(
   // ── Tab visibility helpers ────────────────────────────────────
 
   function showActivePane(): void {
-    menuTabPane.element.style.display    = activeTab === 'menu'     ? '' : 'none';
-    upgradesTabPane.element.style.display = activeTab === 'upgrades' ? '' : 'none';
-    enemiesTabPane.element.style.display  = activeTab === 'enemies'  ? '' : 'none';
+    const isSkillTree = activeTab === 'upgrades';
+    menuTabPane.element.style.display   = activeTab === 'menu'    ? '' : 'none';
+    skillTreePane.element.style.display = isSkillTree             ? '' : 'none';
+    enemiesTabPane.element.style.display = activeTab === 'enemies' ? '' : 'none';
+    content.classList.toggle('rpg-menu__content--canvas-fill', isSkillTree);
+    if (isSkillTree) {
+      skillTreePane.startLoop();
+    } else {
+      skillTreePane.stopLoop();
+    }
   }
 
   function renderActiveTab(): void {
@@ -185,7 +195,7 @@ export function createRpgMenuPanel(
         );
         break;
       case 'upgrades':
-        upgradesTabPane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
+        skillTreePane.update(lastRpgState, lastResources, lastFormat, lastIsDevMode);
         break;
       case 'enemies':
         enemiesTabPane.update(lastRpgState, lastIsDevMode);
@@ -214,6 +224,7 @@ export function createRpgMenuPanel(
       if (!visible) {
         rackElement.classList.remove('rpg-rack-in-menu');
         rackHome.appendChild(rackElement);
+        skillTreePane.stopLoop();
       }
       element.style.display = visible ? 'flex' : 'none';
       panel.isVisible = visible;
@@ -222,6 +233,12 @@ export function createRpgMenuPanel(
 
     openEnemiesTab(): void {
       activeTab = 'enemies';
+      updateTabHighlight();
+      panel.setVisible(true);
+    },
+
+    openSkillTreeTab(): void {
+      activeTab = 'upgrades';
       updateTabHighlight();
       panel.setVisible(true);
     },

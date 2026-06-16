@@ -425,6 +425,16 @@ export async function startApp(): Promise<void> {
   });
   rpgContainer.appendChild(codexBtn);
 
+  const skillTreeBtn = document.createElement('button');
+  skillTreeBtn.className = 'rpg-skill-tree-btn';
+  skillTreeBtn.setAttribute('aria-label', 'Open skill tree');
+  skillTreeBtn.textContent = '✦';
+  skillTreeBtn.addEventListener('click', () => {
+    rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
+    rpgMenuPanel.openSkillTreeTab();
+  });
+  rpgContainer.appendChild(skillTreeBtn);
+
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);
 

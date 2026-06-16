@@ -103,6 +103,8 @@ export function serializeGameState(state: GameState): SaveData {
       playerLevel: state.rpg.playerLevel,
       playerXp: state.rpg.playerXp,
       playerXpToNextLevel: state.rpg.playerXpToNextLevel,
+      unspentSkillPoints: state.rpg.unspentSkillPoints,
+      skillPointMigrationDone: state.rpg.skillPointMigrationDone,
       craftedWeapons: state.rpg.craftedWeapons.map(cw => ({
         id: cw.id,
         name: cw.name,

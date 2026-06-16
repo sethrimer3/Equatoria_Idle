@@ -146,6 +146,10 @@ export interface SaveData {
     playerXp?: number;
     /** v29+: XP required to reach next level. Absent in older saves (recomputed from playerLevel). */
     playerXpToNextLevel?: number;
+    /** v34+: unspent skill points. Absent in older saves (migrated from playerLevel). */
+    unspentSkillPoints?: number;
+    /** v34+: whether the one-time skill point migration has already run. */
+    skillPointMigrationDone?: boolean;
     /** v30+: crafted weapon definitions (ingredients, composition, stats). Absent in older saves. */
     craftedWeapons?: Array<{
       id: string;

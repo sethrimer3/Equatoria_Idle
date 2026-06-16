@@ -265,8 +265,10 @@ export function handleAction(
       const currentLevel = getRpgUpgradeLevel(state.game.rpg, action.upgradeId);
       if (currentLevel >= upgradeDef.maxLevel) break;
       if (!devMode) {
+        if (state.game.rpg.unspentSkillPoints < 1) { audioSystem?.onError(); break; }
         const balance = getMotes(state.game.resources, upgradeDef.costTierId);
         if (balance < upgradeDef.costPerLevel) { audioSystem?.onError(); break; }
+        state.game.rpg.unspentSkillPoints--;
         spendMotes(state.game.resources, upgradeDef.costTierId, upgradeDef.costPerLevel);
       }
       state.game.rpg.rpgUpgradeLevels.set(action.upgradeId, currentLevel + 1);

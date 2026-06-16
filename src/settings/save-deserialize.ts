@@ -281,6 +281,21 @@ export function deserializeGameState(data: SaveData): GameState {
     state.rpg.playerXp = data.rpg.playerXp ?? 0;
     state.rpg.playerXpToNextLevel = data.rpg.playerXpToNextLevel
       ?? Math.floor(25 * Math.pow(Math.max(1, state.rpg.playerLevel), 1.35));
+    // v34+: skill point migration — runs once per save, grants retroactive points
+    if (data.rpg.skillPointMigrationDone) {
+      state.rpg.unspentSkillPoints = data.rpg.unspentSkillPoints ?? 0;
+      state.rpg.skillPointMigrationDone = true;
+    } else {
+      // Points earned = levels gained (level 1 = 0 points, each level-up = +1)
+      const pointsEarned = Math.max(0, state.rpg.playerLevel - 1);
+      // Points already spent = sum of all upgrade levels purchased
+      let pointsSpent = 0;
+      for (const level of state.rpg.rpgUpgradeLevels.values()) {
+        pointsSpent += level;
+      }
+      state.rpg.unspentSkillPoints = Math.max(0, pointsEarned - pointsSpent);
+      state.rpg.skillPointMigrationDone = true;
+    }
     // ─── Lens helper (used for inventory and weapon attachments) ───
     type SavedLens = NonNullable<NonNullable<typeof data.rpg>['craftedLenses']>[0];
     function deserializeLens(l: SavedLens): CraftedLensData {

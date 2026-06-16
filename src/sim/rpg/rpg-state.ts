@@ -239,6 +239,10 @@ export interface RpgSimState {
   playerXp: number;
   /** v29+: XP required to advance to the next player level. Recomputed from playerLevel. */
   playerXpToNextLevel: number;
+  /** v34+: Unspent skill points. Earned one per player level-up. Spent in the Skill Tree. */
+  unspentSkillPoints: number;
+  /** v34+: Whether the one-time skill point migration (level → points) has already run. */
+  skillPointMigrationDone: boolean;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -308,6 +312,8 @@ export function createRpgSimState(): RpgSimState {
     playerLevel: 1,
     playerXp: 0,
     playerXpToNextLevel: 25, // getPlayerXpToNextLevel(1) = Math.floor(25 * 1^1.35) = 25
+    unspentSkillPoints: 0,
+    skillPointMigrationDone: false,
   };
 }
 

@@ -59,8 +59,8 @@ export interface RpgStatsPanelCtx {
   getNumberFormat(): NumberFormat;
   /** Called when the player attempts an invalid wire action. */
   onError(): void;
-  /** Called after each tick in which the player gained one or more levels. */
-  onPlayerLevelUp?(): void;
+  /** Called after each tick in which the player gained one or more levels. levelsGained ≥ 1. */
+  onPlayerLevelUp?(levelsGained: number): void;
   /**
    * Called when the player taps the WEAP column header (slotIdx = null) or
    * any WEAP data-row cell (slotIdx = 0–4).  anchorEl is the tapped DOM cell.
@@ -505,7 +505,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
         if (rpgSimState.xpReservoir < 0) rpgSimState.xpReservoir = 0;
         const levelsGained = tickPlayerXpProgress(rpgSimState, drainAmount);
         if (levelsGained > 0) {
-          ctx.onPlayerLevelUp?.();
+          ctx.onPlayerLevelUp?.(levelsGained);
         }
       }
     }

@@ -1359,7 +1359,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getEffectiveEquippedIds,
     getNumberFormat: () => currentNumberFormat,
     onError: () => { options.onError?.(); },
-    onPlayerLevelUp: () => {
+    onPlayerLevelUp: (levelsGained: number) => {
+      rpgSimState.unspentSkillPoints += levelsGained;
       applyEquipmentStats();
       spawnDamageNumber(mote.x, mote.y - 10, 0, -1, 'Level Up!', 1, '#a78bfa');
     },
