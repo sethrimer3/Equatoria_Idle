@@ -265,16 +265,12 @@ function getOrBuildFields(colorRgbs: FogRgb[], weights: number[], seed: number):
     } as ColorField;
   });
 
-  // Rebuild presence with correct proportionality: dominant colors get larger
-  // territory; trace ingredients get a small but non-zero floor.
-  const minorFloor = 0.04;
+  // Rebuild presence: sqrt-compressed scaling so dominant colors lead but
+  // minor ingredients (≥5%) show as visible ribbons rather than disappearing.
+  // A 5% ingredient gets ~0.56 presence vs a dominant's ~2.2 — streak territory.
   for (let ci = 0; ci < fields.length; ci++) {
     const share = weights[ci] / totalWt;
-    fields[ci].presence = Math.max(share, minorFloor) * 2.5;
-    // Scale down floor-boosted entries so 1% and 5% are visually distinct
-    if (share < minorFloor) {
-      fields[ci].presence = minorFloor * 2.5 * (share / minorFloor);
-    }
+    fields[ci].presence = Math.pow(Math.max(share, 0.10), 0.60) * 2.5;
   }
 
   _fillCache.set(seed, fields);
@@ -360,13 +356,19 @@ export function drawFogFill(
         bSum = fields[0].b;
       }
 
-      // Brightness from large-scale noise → restrained internal luminosity/glow
-      const lum = 0.09 + 0.33 * ((lumNoise + 1) * 0.5);
+      // Bright base luminosity [0.72, 1.00] — high saturation, no dark regions.
+      const baseLum = 0.72 + 0.28 * ((lumNoise + 1) * 0.5);
+
+      // Sweeping shimmer highlight: a bright diagonal band that drifts over time.
+      // Creates the liquid-energy / stained-glass feel.
+      const shimmerPhase = t * 0.85 + (seed >>> 16) * 0.000096;
+      const shimmerWave  = Math.sin(fx * 3.9 + fy * 1.7 - shimmerPhase);
+      const shimmer      = Math.max(0, shimmerWave) * 0.25;
 
       const i = (py * LO_W + px) * 4;
-      d[i]     = (rSum * lum) | 0;
-      d[i + 1] = (gSum * lum) | 0;
-      d[i + 2] = (bSum * lum) | 0;
+      d[i]     = Math.min(255, rSum * baseLum + 255 * shimmer) | 0;
+      d[i + 1] = Math.min(255, gSum * baseLum + 255 * shimmer) | 0;
+      d[i + 2] = Math.min(255, bSum * baseLum + 255 * shimmer) | 0;
       d[i + 3] = 255;
     }
   }
