@@ -6,6 +6,11 @@ electron-runtime.log
 *.log
 .DS_Store
 
-# Android — android/.gitignore covers build artifacts; exclude only the keystore from root
+# Android signing secrets — NEVER commit these
+android/keystore.properties
 android/release.keystore
 android/app/release.keystore
+*.jks
+*.keystore
+*.p12
+upload-key*
