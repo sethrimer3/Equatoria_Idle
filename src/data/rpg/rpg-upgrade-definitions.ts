@@ -132,7 +132,6 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
     costPerLevel: 2_000,
     maxLevel: 2,
     skillPointCost: 2,
-    implementationStatus: 'placeholder',
   },
 
   // ── Defense branch ────────────────────────────────────────────────
