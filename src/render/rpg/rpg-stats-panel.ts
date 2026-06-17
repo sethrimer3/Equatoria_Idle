@@ -537,6 +537,9 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
       : 0;
     lastStatsPanelUpdateCallMs = nowMs;
 
+    // ── Player status bar ─────────────────────────────────────────
+    _updatePlayerStatusBar();
+
     // ── Box 13: HP / Reg / Def ────────────────────────────────────
     hpFractionValue.textContent = Math.max(0, Math.ceil(playerStats.hp)) + ' / ' + playerStats.maxHp;
     regValue.textContent = (Number.isInteger(playerStats.regen) ? playerStats.regen.toString() : playerStats.regen.toFixed(1)) + '%';
