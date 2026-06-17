@@ -244,7 +244,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: FRACTERYL_ENEMY_SIZE,
     hp: FRACTERYL_HP_INIT, atk: FRACTERYL_ATK_INIT, def: FRACTERYL_DEF_INIT,
     firstWave: 74,
-    description: 'A fractal purple entity that explodes into recursive shard storms that themselves split on impact.',
+    description: 'A fractal purple entity that explodes into recursive shard storms that themselves split on impact. Its recursive nature resists Fractal Wound — Cracked lenses shatter its pattern effectively.',
     shape: 'diamond',
     zone: 'euhedral',
   },
