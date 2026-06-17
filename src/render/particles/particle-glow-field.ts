@@ -197,6 +197,13 @@ let _gridH = 0;
  */
 let _intensities = new Float32Array(0);
 
+/**
+ * Set of linear cell indices (cy*gridW+cx) that have at least one
+ * tier intensity above the visibility threshold.  Only these cells are
+ * processed in Steps 1 and 3, avoiding the full 166 k-element sweep.
+ */
+const _activeCells = new Set<number>();
+
 /** Low-resolution offscreen canvas for the glow field pixels. */
 let _offCanvas: HTMLCanvasElement | null = null;
 let _offCtx: CanvasRenderingContext2D | null = null;
