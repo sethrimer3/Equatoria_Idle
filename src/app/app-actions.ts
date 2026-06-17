@@ -261,16 +261,12 @@ export function handleAction(
       break;
     }
     case 'purchase_rpg_upgrade': {
-      const upgradeDef = RPG_UPGRADE_BY_ID.get(action.upgradeId);
-      if (!upgradeDef) { audioSystem?.onError(); break; }
+      const check = canPurchaseRpgSkill(state.game.rpg, state.game.resources, action.upgradeId, devMode);
+      if (!check.ok) { audioSystem?.onError(); break; }
+      const upgradeDef = RPG_UPGRADE_BY_ID.get(action.upgradeId)!;
       const currentLevel = getRpgUpgradeLevel(state.game.rpg, action.upgradeId);
-      if (currentLevel >= upgradeDef.maxLevel) break;
-      const spCost = upgradeDef.skillPointCost;
       if (!devMode) {
-        if (state.game.rpg.unspentSkillPoints < spCost) { audioSystem?.onError(); break; }
-        const balance = getMotes(state.game.resources, upgradeDef.costTierId);
-        if (upgradeDef.costPerLevel > 0 && balance < upgradeDef.costPerLevel) { audioSystem?.onError(); break; }
-        state.game.rpg.unspentSkillPoints -= spCost;
+        state.game.rpg.unspentSkillPoints -= upgradeDef.skillPointCost;
         if (upgradeDef.costPerLevel > 0) spendMotes(state.game.resources, upgradeDef.costTierId, upgradeDef.costPerLevel);
       }
       state.game.rpg.rpgUpgradeLevels.set(action.upgradeId, currentLevel + 1);
