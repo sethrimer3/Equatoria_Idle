@@ -25,6 +25,7 @@ import {
   applyLensStatus, getIncomingDamageMult, getRiftScarredDamageMult, incrementRiftScarredStacks,
 } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
+import { getEnemyStatusAffinityMultiplier } from '../../data/rpg/enemy-status-affinities';
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import type { ClosestTarget } from './rpg-types';
