@@ -150,6 +150,8 @@ export interface SaveData {
     unspentSkillPoints?: number;
     /** v34+: whether the one-time skill point migration has already run. */
     skillPointMigrationDone?: boolean;
+    /** v35+: accounting migration version (0/absent = old; 1 = weighted visible-only). */
+    skillPointAccountingVersion?: number;
     /** v30+: crafted weapon definitions (ingredients, composition, stats). Absent in older saves. */
     craftedWeapons?: Array<{
       id: string;
