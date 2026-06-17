@@ -17,6 +17,14 @@
 
 import type { RpgSimState } from './rpg-state';
 import { getSkillNodeRank } from './rpg-state';
+import {
+  PLAYER_BURN_DPS_PER_MAG, PLAYER_POISON_DPS_PER_MAG,
+  PLAYER_FROZEN_MOVEMENT, PLAYER_SLOWED_MOVEMENT,
+  PLAYER_CHILLED_MAX_SLOW, PLAYER_CHILLED_MIN_SPEED,
+  PLAYER_SPEED_FLOOR, PLAYER_TIMEWARP_CADENCE,
+  PLAYER_FROZEN_COOLDOWN_MS,
+  STATUS_RESIST_PER_RANK, STATUS_RESIST_MIN_MULT, STATUS_MIN_DURATION_MS,
+} from '../../data/rpg/status-balance';
 
 // ── Status key type ────────────────────────────────────────────────────────────
 
@@ -40,50 +48,37 @@ export interface ActivePlayerStatus {
   source?: string;
 }
 
-// ── Balance constants (single source of truth for tuning) ─────────────────────
+// ── Re-export balance constants so existing callers (tests, rpg-render) compile ─
+// All tuning lives in status-balance.ts; these aliases keep the public API stable.
 
-/** Burning applied by ruby attacks: duration, magnitude, tick interval. */
 export const PLAYER_BURNING_DURATION_MS   = 3000;
 export const PLAYER_BURNING_MAGNITUDE     = 10;
 export const PLAYER_BURNING_TICK_MS       = 1000;
 
-/** Poisoned applied by emerald attacks. */
 export const PLAYER_POISONED_DURATION_MS  = 5000;
 export const PLAYER_POISONED_MAGNITUDE    = 10;
 export const PLAYER_POISONED_TICK_MS      = 1000;
 
-/** Chilled applied by sapphire attacks. */
 export const PLAYER_CHILLED_DURATION_MS   = 2500;
 export const PLAYER_CHILLED_MAGNITUDE     = 10;
-/** Frozen escalates from chilled when sapphire hits a chilled player. */
+/** Frozen escalates from chilled when sapphire hits a chilled player. Intentionally brief. */
 export const PLAYER_FROZEN_DURATION_MS    = 1200;
 
-/** Slowed applied by nullstone void-tendril hits. */
 export const PLAYER_SLOWED_DURATION_MS    = 2000;
-
-/** Time-Warped applied by iolite beam hits. */
 export const PLAYER_TIMEWARP_DURATION_MS  = 3500;
 
-/** DoT rates: damage per magnitude per second per tick. */
-export const BURN_DPS_PER_MAG             = 0.4;
-export const POISON_DPS_PER_MAG           = 0.2;
-
-/** Movement speed multipliers for movement-impairing statuses. */
-export const FROZEN_MOVEMENT_MULT         = 0.30;
-export const SLOWED_MOVEMENT_MULT         = 0.55;
-export const CHILLED_MAX_SLOW_FRAC        = 0.35;
-export const CHILLED_MIN_SPEED            = 0.65;
-export const STATUS_SPEED_FLOOR           = 0.25;
-
-/** Attack-cadence multiplier while time-warped. */
-export const TIMEWARP_CADENCE_MULT        = 0.75;
-
-/** Status Resistance skill: 20% reduction per rank, floor at 40% of full duration. */
-export const STATUS_RESISTANCE_PER_RANK   = 0.2;
-export const STATUS_RESISTANCE_MIN_MULT   = 0.4;
-
-/** Minimum effective duration after resistance (prevents instant-clear exploits). */
-export const STATUS_MIN_DURATION_MS       = 300;
+// Re-export balance constants under the names tests/render import.
+export const BURN_DPS_PER_MAG             = PLAYER_BURN_DPS_PER_MAG;
+export const POISON_DPS_PER_MAG           = PLAYER_POISON_DPS_PER_MAG;
+export const FROZEN_MOVEMENT_MULT         = PLAYER_FROZEN_MOVEMENT;
+export const SLOWED_MOVEMENT_MULT         = PLAYER_SLOWED_MOVEMENT;
+export const CHILLED_MAX_SLOW_FRAC        = PLAYER_CHILLED_MAX_SLOW;
+export const CHILLED_MIN_SPEED            = PLAYER_CHILLED_MIN_SPEED;
+export const STATUS_SPEED_FLOOR           = PLAYER_SPEED_FLOOR;
+export const TIMEWARP_CADENCE_MULT        = PLAYER_TIMEWARP_CADENCE;
+export const STATUS_RESISTANCE_PER_RANK   = STATUS_RESIST_PER_RANK;
+export const STATUS_RESISTANCE_MIN_MULT   = STATUS_RESIST_MIN_MULT;
+export { STATUS_MIN_DURATION_MS };
 
 // ── Status Resistance skill ────────────────────────────────────────────────────
 
@@ -93,7 +88,7 @@ export const STATUS_MIN_DURATION_MS       = 300;
  */
 export function getPlayerStatusDurationMultiplier(sim: RpgSimState): number {
   const rank = getSkillNodeRank(sim, 'status_resistance');
-  return Math.max(STATUS_RESISTANCE_MIN_MULT, 1 - STATUS_RESISTANCE_PER_RANK * rank);
+  return Math.max(STATUS_RESIST_MIN_MULT, 1 - STATUS_RESIST_PER_RANK * rank);
 }
 
 // ── Apply / refresh a player status ───────────────────────────────────────────
@@ -107,12 +102,13 @@ export interface PlayerStatusParams {
 }
 
 export function applyPlayerStatus(sim: RpgSimState, params: PlayerStatusParams): void {
+  // Frozen is blocked during its cooldown window to prevent rapid chill→freeze cycles.
+  if (params.key === 'frozen' && sim.frozenCooldownMs > 0) return;
+
   const resistMult = getPlayerStatusDurationMultiplier(sim);
   const effectiveDuration = Math.max(STATUS_MIN_DURATION_MS, params.durationMs * resistMult);
   const list = sim.activePlayerStatuses;
 
-  // Frozen: only escalate from chilled; otherwise treat like any other status.
-  // Refresh if already frozen; add fresh otherwise.
   const existing = list.find(s => s.key === params.key);
   if (existing) {
     existing.remainingMs = Math.max(existing.remainingMs, effectiveDuration);
@@ -134,13 +130,14 @@ export function applyPlayerStatus(sim: RpgSimState, params: PlayerStatusParams):
 
 export function clearPlayerStatuses(sim: RpgSimState): void {
   sim.activePlayerStatuses.length = 0;
+  sim.frozenCooldownMs = 0;
 }
 
 // ── Per-frame tick ─────────────────────────────────────────────────────────────
 
 /**
  * Advances all active player statuses by deltaMs.
- * Handles DoT (burning, poisoned) and expiry.
+ * Handles DoT (burning, poisoned), expiry, and the frozen re-apply cooldown.
  * onDotTick fires for each damage tick so the render layer can spawn a number.
  */
 export function tickPlayerStatuses(
@@ -149,6 +146,11 @@ export function tickPlayerStatuses(
   deltaMs: number,
   onDotTick?: (key: PlayerStatusKey, dmg: number) => void,
 ): void {
+  // Tick down the frozen cooldown each frame.
+  if (sim.frozenCooldownMs > 0) {
+    sim.frozenCooldownMs = Math.max(0, sim.frozenCooldownMs - deltaMs);
+  }
+
   const list = sim.activePlayerStatuses;
   for (let i = list.length - 1; i >= 0; i--) {
     const s = list[i]!;
@@ -161,9 +163,9 @@ export function tickPlayerStatuses(
         s.tickMs -= s.tickEveryMs;
         let dmg = 0;
         if (s.key === 'burning') {
-          dmg = s.magnitude * BURN_DPS_PER_MAG * (s.tickEveryMs / 1000);
+          dmg = s.magnitude * PLAYER_BURN_DPS_PER_MAG * (s.tickEveryMs / 1000);
         } else if (s.key === 'poisoned') {
-          dmg = s.magnitude * POISON_DPS_PER_MAG * (s.tickEveryMs / 1000);
+          dmg = s.magnitude * PLAYER_POISON_DPS_PER_MAG * (s.tickEveryMs / 1000);
         }
         if (dmg > 0) {
           playerStats.hp = Math.max(0, playerStats.hp - dmg);
@@ -173,6 +175,10 @@ export function tickPlayerStatuses(
     }
 
     if (s.remainingMs <= 0) {
+      // When frozen expires, start the cooldown to prevent immediate re-freeze.
+      if (s.key === 'frozen') {
+        sim.frozenCooldownMs = PLAYER_FROZEN_COOLDOWN_MS;
+      }
       list.splice(i, 1);
     }
   }
@@ -182,27 +188,27 @@ export function tickPlayerStatuses(
 
 /**
  * Returns the effective player movement speed multiplier from active statuses.
- * Frozen overrides everything and gives a very strong slow (0.3×).
- * Chilled: up to 35% slow (min 0.65×).
- * Slowed: 45% slow (0.55×).
+ * Frozen overrides everything and gives a very strong slow (PLAYER_FROZEN_MOVEMENT).
+ * Chilled: up to 35% slow.
+ * Slowed: 45% slow.
  * Effects stack multiplicatively.
  */
 export function getPlayerMovementStatusMultiplier(sim: RpgSimState): number {
   const list = sim.activePlayerStatuses;
   if (list.length === 0) return 1;
 
-  if (list.some(s => s.key === 'frozen')) return FROZEN_MOVEMENT_MULT;
+  if (list.some(s => s.key === 'frozen')) return PLAYER_FROZEN_MOVEMENT;
 
   let mult = 1;
   for (const s of list) {
     if (s.key === 'chilled') {
-      const slow = Math.min(CHILLED_MAX_SLOW_FRAC, s.magnitude * 0.006);
-      mult *= Math.max(CHILLED_MIN_SPEED, 1 - slow);
+      const slow = Math.min(PLAYER_CHILLED_MAX_SLOW, s.magnitude * 0.006);
+      mult *= Math.max(PLAYER_CHILLED_MIN_SPEED, 1 - slow);
     } else if (s.key === 'slowed') {
-      mult *= SLOWED_MOVEMENT_MULT;
+      mult *= PLAYER_SLOWED_MOVEMENT;
     }
   }
-  return Math.max(STATUS_SPEED_FLOOR, mult);
+  return Math.max(PLAYER_SPEED_FLOOR, mult);
 }
 
 // ── Attack speed multiplier ────────────────────────────────────────────────────
@@ -212,7 +218,7 @@ export function getPlayerMovementStatusMultiplier(sim: RpgSimState): number {
  * Applied to dash cooldown recovery; weapon attack speed is unaffected for now.
  */
 export function getPlayerAttackSpeedStatusMultiplier(sim: RpgSimState): number {
-  if (sim.activePlayerStatuses.some(s => s.key === 'timeWarped')) return TIMEWARP_CADENCE_MULT;
+  if (sim.activePlayerStatuses.some(s => s.key === 'timeWarped')) return PLAYER_TIMEWARP_CADENCE;
   return 1;
 }
 
