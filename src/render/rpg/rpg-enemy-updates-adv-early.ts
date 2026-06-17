@@ -84,6 +84,7 @@ export function updateIoliteEnemies(
           const perpDist = Math.abs(pdx2 * bdirY - pdy2 * bdirX);
           if (perpDist <= PLAYER_HIT_RADIUS) {
             ctx.dealDamageToPlayer(enemy.atk);
+            ctx.applyPlayerStatusFromSource?.('iolite');
           }
         }
         ctx.shotLines.push({ x1: enemy.x, y1: enemy.y, x2: enemy.x + bdirX * IOLITE_BEAM_RANGE, y2: enemy.y + bdirY * IOLITE_BEAM_RANGE, timerMs: 200, color: IOLITE_ENEMY_GLOW });
