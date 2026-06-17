@@ -182,7 +182,9 @@ export function performSingleAttack(
   const hitY = closestT.y;
 
   // ── Lens status pre-hit: apply incoming-damage multipliers ───────────────────
-  const targetEntity = attachedLens ? extractTargetEntity(closestT) : null;
+  const comboTargetEntity = extractTargetEntity(closestT);
+  const comboEnemyTypeId = getTargetEnemyTypeId(closestT);
+  const targetEntity = attachedLens ? comboTargetEntity : null;
   const lensSourceKey = attachedLens?.id ?? '';
   const statusMult = targetEntity ? getIncomingDamageMult(targetEntity) : 1;
   const riftMult   = (targetEntity && lensSourceKey) ? getRiftScarredDamageMult(targetEntity, lensSourceKey) : 1;
