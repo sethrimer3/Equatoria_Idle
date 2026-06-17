@@ -888,7 +888,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: SAPPHIREFISH_SIZE,
     hp: SAPPHIREFISH_HP_INIT, atk: SAPPHIREFISH_ATK_INIT, def: SAPPHIREFISH_DEF_INIT,
     firstWave: 54,
-    description: 'A deep-blue fish that releases slow homing bolts while circling just outside the player’s path.',
+    description: "A deep-blue fish that releases slow homing bolts while circling just outside the player’s path. Bolts chill on hit — repeated chills can freeze. Immune to Chilled; fire lenses are effective.",
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
