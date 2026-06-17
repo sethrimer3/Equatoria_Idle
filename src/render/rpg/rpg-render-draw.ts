@@ -13,6 +13,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import { getActivePlayerStatuses } from '../../sim/rpg/player-status-effects';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
   drawEmeraldEnemies,
