@@ -11,6 +11,8 @@ import type { CraftedWeaponData } from '../../data/rpg/crafted-weapon-types';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { ActionHandler } from '../../input';
 import { createMoteIconCanvas, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
+import { TIER1_STATUS_MAP } from '../../data/rpg/lens-status-effects';
+import { ENEMY_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
 
 // ─── Rarity colors ────────────────────────────────────────────────
 
