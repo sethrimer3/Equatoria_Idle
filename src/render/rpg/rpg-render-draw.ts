@@ -958,6 +958,7 @@ export function drawRpgFrame(
 
   drawAfterimages(canvas2d, ctx.getAfterimages());
   drawPlayerMote(canvas2d, ctx.mote, ctx.getGlowMovementIntensity(), rpgPhase, ctx.getDeathAlpha(), glowTimeS, ctx.getPlayerIFramesMs());
+  drawPlayerStatusVFX(canvas2d, ctx.mote.x, ctx.mote.y, getActivePlayerStatuses(ctx.rpgSimState), nowMs);
 
   renderEnemyStatusLabels(canvas2d, ctx);
   drawSpawnFlashes(canvas2d, ctx.getIsLowGraphicsMode());
