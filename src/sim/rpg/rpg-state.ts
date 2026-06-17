@@ -337,6 +337,8 @@ export function createRpgSimState(): RpgSimState {
     secondWindAvailable: true,
     activePlayerStatuses: [],
     frozenCooldownMs: 0,
+    statusCombosTriggered: 0,
+    statusComboDamageDealt: 0,
   };
 }
 
