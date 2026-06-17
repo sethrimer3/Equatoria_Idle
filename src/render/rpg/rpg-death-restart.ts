@@ -164,6 +164,8 @@ export interface RpgDeathRestartCtx {
   weaponAttackTimers: Map<string, number>;
   fluid: { reset(): void };
   bossWave: { exitBossWave(): void };
+  /** Optional: clear ephemeral player status effects on restart. */
+  onRestart?(): void;
 
   // ── Scalar setters (bossEnemy/zone need setters since they're nullables) ─
   setBossEnemy(b: BossEnemy | null): void;
