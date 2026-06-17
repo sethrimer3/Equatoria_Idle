@@ -397,4 +397,5 @@ export function resetGlowField(): void {
   if (_intensities.length > 0) {
     _intensities.fill(0);
   }
+  _activeCells.clear();
 }
