@@ -119,7 +119,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: EMERALD_ENEMY_SIZE,
     hp: EMERALD_HP_INIT, atk: EMERALD_ATK_INIT, def: EMERALD_DEF_INIT,
     firstWave: 9,
-    description: 'A teleporting green sprite that charges briefly then blinks directly onto the player.',
+    description: 'A teleporting green sprite that charges briefly then blinks directly onto the player. Poisons on contact — resists poison lenses but is weak to fire.',
     shape: 'square',
     zone: 'euhedral',
   },
