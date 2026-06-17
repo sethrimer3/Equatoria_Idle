@@ -131,7 +131,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: RUBY_ENEMY_SIZE,
     hp: RUBY_HP_INIT, atk: RUBY_ATK_INIT, def: RUBY_DEF_INIT,
     firstWave: 10,
-    description: 'A fast crimson marauder that closes range quickly and unleashes rapid bursts of bolts.',
+    description: 'A fast crimson marauder that closes range quickly and unleashes rapid bursts of fire bolts. Burns on hit — immune to Burning itself.',
     shape: 'square',
     zone: 'euhedral',
   },
