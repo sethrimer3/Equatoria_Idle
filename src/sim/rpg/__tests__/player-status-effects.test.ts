@@ -33,6 +33,7 @@ import {
   STATUS_RESISTANCE_PER_RANK,
   type PlayerStatusParams,
 } from '../player-status-effects';
+import { PLAYER_FROZEN_COOLDOWN_MS } from '../../../data/rpg/status-balance';
 import type { RpgSimState } from '../rpg-state';
 
 // ── Minimal sim-state factory ──────────────────────────────────────────────────
