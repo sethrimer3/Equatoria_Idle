@@ -1849,6 +1849,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         }
         const dashCdRank = rpgSimState.rpgUpgradeLevels.get('dash_cooldown') ?? 0;
         rpgSimState.dashCooldownMs = DASH_COOLDOWN_MS * Math.max(0.2, 1 - dashCdRank * 0.15);
+        // Afterimage: spawn 2–3 translucent snapshots if skill is active.
+        const afterimageRank = getSkillNodeRank(rpgSimState, 'afterimage');
+        if (afterimageRank > 0) {
+          const count = afterimageRank >= 2 ? 3 : 2;
+          for (let _i = 0; _i < count; _i++) {
+            afterimages.push({ x: mote.x, y: mote.y, alpha: 0.55 - _i * 0.1 });
+          }
+        }
       }
       dashRequested = false;
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
