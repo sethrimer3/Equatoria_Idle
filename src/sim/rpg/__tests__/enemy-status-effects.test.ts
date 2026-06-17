@@ -445,32 +445,35 @@ describe('enemy-status-effects — 13. Boss Fractal Wound reduced tick count', (
     const enemy = makeEnemy({ hp: 1000 });
     applyLensStatus(enemy, {
       key: 'fractalWound', sourceTierId: 'fracteryl',
-      durationMs: 3600, magnitude: 10, tickEveryMs: 600,
+      durationMs: 5000, magnitude: 10, tickEveryMs: 600,
       fractalInitialDamage: 10,
     });
     const arrays = makeArrays([enemy] as any);
-    // Tick enough to exhaust all ticks
-    tickLensStatuses(arrays, 3600, 0, 0);
+    // Tick in 600ms increments so DoT fires before expiry check
+    for (let i = 0; i < 8; i++) tickLensStatuses(arrays, 600, 0, 0);
     // Should have taken damage (ticks fired)
     expect(enemy.hp).toBeLessThan(1000);
-    // After expiry, status should be gone
+    // After all ticks exhausted, status should be gone
     expect(getActiveStatuses(enemy).some(s => s.key === 'fractalWound')).toBe(false);
   });
 
-  it('boss Fractal Wound with 2-tick override has fewer total ticks', () => {
+  it('boss Fractal Wound with 2-tick override deals less damage than normal', () => {
     const normal = makeEnemy({ hp: 1000 });
     const boss   = makeEnemy({ hp: 1000 });
     const baseParams = {
       key: 'fractalWound' as const, sourceTierId: 'fracteryl' as const,
-      durationMs: 3600, magnitude: 10, tickEveryMs: 600,
+      durationMs: 5000, magnitude: 10, tickEveryMs: 600,
       fractalInitialDamage: 10,
     };
     applyLensStatus(normal, baseParams);
     applyLensStatus(boss,   { ...baseParams, fractalTickCount: ENEMY_FRAC_TICKS_BOSS });
     const normalArrays = makeArrays([normal] as any);
     const bossArrays   = makeArrays([boss] as any);
-    tickLensStatuses(normalArrays, 3600, 0, 0);
-    tickLensStatuses(bossArrays,   3600, 0, 0);
+    // Tick in 600ms increments
+    for (let i = 0; i < 8; i++) {
+      tickLensStatuses(normalArrays, 600, 0, 0);
+      tickLensStatuses(bossArrays,   600, 0, 0);
+    }
     const normalDmg = 1000 - normal.hp;
     const bossDmg   = 1000 - boss.hp;
     expect(bossDmg).toBeLessThan(normalDmg);
