@@ -18,6 +18,7 @@ import type {
 } from './rpg-enemy-types';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgSpeedMultiplier, getSkillNodeRank } from '../../sim/rpg/rpg-state';
+import { getPlayerMovementStatusMultiplier } from '../../sim/rpg/player-status-effects';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { getSwordLength } from './rpg-helpers';
 import type { RpgFluid } from './rpg-fluid';
