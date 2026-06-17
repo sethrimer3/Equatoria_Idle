@@ -219,7 +219,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: DIAMOND_ENEMY_SIZE,
     hp: DIAMOND_HP_INIT, atk: DIAMOND_ATK_INIT, def: DIAMOND_DEF_INIT,
     firstWave: 60,
-    description: 'A prismatic phase-shifter that cycles between invulnerable and vulnerable states while firing orbiting shards.',
+    description: 'A prismatic phase-shifter that cycles between invulnerable and vulnerable states while firing orbiting shards. Its lattice resists Cracked but its polished surface is weak to Abraded.',
     shape: 'diamond',
     zone: 'euhedral',
   },
