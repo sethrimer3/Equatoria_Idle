@@ -2,8 +2,9 @@
  * enemy-status-affinities.ts — Per-enemy resistance/weakness data for player-applied
  * lens statuses.
  *
- * Only used for statuses applied TO enemies by lenses (not player-received statuses).
- * Future: wire getEnemyStatusAffinity into applyLensStatus duration/magnitude scaling.
+ * Used in applyLensStatusesOnHit (rpg-player-attack-single.ts) to scale duration
+ * and magnitude of statuses applied TO enemies by lens effects.
+ * Not used for player-received statuses.
  *
  * Affinity values:
  *   'weak'      — duration/magnitude × 1.25 (extra-susceptible)
