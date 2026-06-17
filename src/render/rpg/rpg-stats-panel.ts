@@ -33,6 +33,7 @@ import type { NumberFormat } from '../../util/format';
 import { createEquipWiringSystem } from './rpg-equip-wiring';
 import { buildStatsPanelDom } from './rpg-stats-panel-dom';
 import { getActivePlayerStatuses, type PlayerStatusKey } from '../../sim/rpg/player-status-effects';
+import { PLAYER_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
 import { createItemIconCanvas, stringToIconSeed } from '../assets/item-icon-renderer';
 
 // ── DPS slot grouping ─────────────────────────────────────────────────────────
