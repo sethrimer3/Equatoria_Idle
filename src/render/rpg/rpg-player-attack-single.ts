@@ -41,6 +41,8 @@ function _canShowAffinityFeedback(entity: object): boolean {
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import type { ClosestTarget } from './rpg-types';
+import { evaluateStatusCombosOnStatusApplied, evaluateShatterCombo } from '../../sim/rpg/enemy-status-combos';
+import { applyComboResults } from './rpg-combo-apply';
 
 /** Extracts the primary hittable enemy object from a ClosestTarget (null for sub-projectiles). */
 function extractTargetEntity(t: ClosestTarget): object | null {
