@@ -405,11 +405,12 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'boss_spoils',
     name: 'Boss Spoils',
-    description: 'Bosses drop enhanced lucky mote rewards. (TODO: boss loot hook)',
+    description: 'Bosses drop enhanced lucky mote rewards.',
     costTierId: 'sunstone',
     costPerLevel: 8_000,
     maxLevel: 1,
     skillPointCost: 3,
+    implementationStatus: 'placeholder',
   },
   {
     id: 'treasure_sense',
