@@ -277,7 +277,16 @@ export function performSingleAttack(
 
   // ── Lens status post-hit: apply Tier 1 statuses to target ───────────────────
   if (attachedLens && targetEntity && weaponId) {
-    applyLensStatusesOnHit(targetEntity, attachedLens, weaponId, rawDamage);
+    const enemyTypeId = getTargetEnemyTypeId(closestT);
+    applyLensStatusesOnHit(
+      targetEntity, attachedLens, weaponId, rawDamage, enemyTypeId,
+      (text, x, y) => {
+        const color = text === 'IMMUNE' ? '#9ab' : text === 'WEAK!' ? '#7ef' : '#fa8';
+        spawnHitVisualsAt(x, y, 1, 0, color, color);
+        ctx.spawnDamageNumber(x, y, 0, -1, text, 0.18, color);
+      },
+      hitX, hitY,
+    );
     handleLensTier2EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
     handleLensTier3EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
   }
