@@ -32,7 +32,13 @@ import {
   getPlayerLevelAtkBonus, getPlayerLevelDefBonus, getPlayerLevelHpBonus,
   isSkillNodeUnlocked, getSkillNodeRank,
 } from '../../sim/rpg/rpg-state';
-import { applyPlayerStatus, hasPlayerStatus, clearPlayerStatuses, getPlayerAttackSpeedStatusMultiplier } from '../../sim/rpg/player-status-effects';
+import {
+  applyPlayerStatus, hasPlayerStatus, clearPlayerStatuses, getPlayerAttackSpeedStatusMultiplier,
+  PLAYER_BURNING_DURATION_MS, PLAYER_BURNING_MAGNITUDE, PLAYER_BURNING_TICK_MS,
+  PLAYER_POISONED_DURATION_MS, PLAYER_POISONED_MAGNITUDE, PLAYER_POISONED_TICK_MS,
+  PLAYER_CHILLED_DURATION_MS, PLAYER_CHILLED_MAGNITUDE, PLAYER_FROZEN_DURATION_MS,
+  PLAYER_SLOWED_DURATION_MS, PLAYER_TIMEWARP_DURATION_MS,
+} from '../../sim/rpg/player-status-effects';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
