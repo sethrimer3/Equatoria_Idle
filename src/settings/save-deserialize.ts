@@ -20,6 +20,7 @@ import {
 import type { CraftedWeaponData } from '../data/rpg/crafted-weapon-types';
 import type { CraftedLensData, LensEffect, LensEffectTier, LensRarity } from '../data/rpg/lens-types';
 import type { SaveData } from './save-types';
+import { getVisibleSkillTreeSpentPoints } from '../data/rpg/rpg-skill-tree-definitions';
 
 // ─── Deserialize ────────────────────────────────────────────────
 
