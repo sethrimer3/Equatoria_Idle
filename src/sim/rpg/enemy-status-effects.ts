@@ -512,3 +512,12 @@ export function removeStatus(enemy: object, key: EnemyStatusKey): void {
 export function getRiftScarredStackCap(enemy: object): number {
   return _registry.get(enemy)?.riftScarredStackCap ?? ENEMY_RIFT_STACK_CAP;
 }
+
+/** Returns the total Rift-Scarred stacks across all sources for this enemy. */
+export function getTotalRiftScarredStacks(enemy: object): number {
+  const state = _registry.get(enemy);
+  if (!state) return 0;
+  let total = 0;
+  for (const v of state.riftScarredStacks.values()) total += v;
+  return total;
+}
