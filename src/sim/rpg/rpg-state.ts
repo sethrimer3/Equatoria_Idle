@@ -253,6 +253,8 @@ export interface RpgSimState {
   dashCooldownMs: number;
   /** Whether the Second Wind effect is available this wave (resets each wave start). */
   secondWindAvailable: boolean;
+  /** Active player status effects (ephemeral — not saved, clears on restart). */
+  activePlayerStatuses: ActivePlayerStatus[];
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
