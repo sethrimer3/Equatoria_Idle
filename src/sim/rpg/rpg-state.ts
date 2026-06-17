@@ -323,6 +323,7 @@ export function createRpgSimState(): RpgSimState {
     playerXpToNextLevel: 25, // getPlayerXpToNextLevel(1) = Math.floor(25 * 1^1.35) = 25
     unspentSkillPoints: 0,
     skillPointMigrationDone: false,
+    skillPointAccountingVersion: 0,
     dashCooldownMs: 0,
     secondWindAvailable: true,
   };
