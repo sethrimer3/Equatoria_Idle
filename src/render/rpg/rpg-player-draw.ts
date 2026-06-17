@@ -12,7 +12,7 @@
 
 import type {
   WeaponOrbitParticle, OrbitProjectile,
-  RpgMote, RpgPhase,
+  RpgMote, RpgPhase, AfterimageSnapshot,
 } from './rpg-types';
 import {
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_TRAIL_CAP, ORBIT_PROJ_SIZE,
