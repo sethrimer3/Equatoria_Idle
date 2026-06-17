@@ -14,6 +14,7 @@ import type {
   WeaponOrbitParticle, OrbitProjectile,
   RpgMote, RpgPhase, AfterimageSnapshot,
 } from './rpg-types';
+import type { ActivePlayerStatus } from '../../sim/rpg/player-status-effects';
 import {
   WEAPON_ORBIT_TRAIL_CAP, ORBIT_PROJ_TRAIL_CAP, ORBIT_PROJ_SIZE,
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE, RPG_MOTE_COLOR, RPG_MOTE_GLOW,
