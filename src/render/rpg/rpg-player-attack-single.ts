@@ -117,6 +117,7 @@ function applyLensStatusesOnHit(
   feedbackY?: number,
 ): void {
   const params = buildAllTier1StatusParams(lens, weaponId, hitDamage);
+  const isBossElite = isBossOrEliteType(enemyTypeId);
   let feedbackShown = false;
   for (const p of params) {
     const mult = getEnemyStatusAffinityMultiplier(enemyTypeId, p.key);
@@ -127,7 +128,15 @@ function applyLensStatusesOnHit(
       }
       continue;
     }
-    const scaled = mult === 1 ? p : { ...p, durationMs: p.durationMs * mult, magnitude: p.magnitude * mult };
+    let scaled = mult === 1 ? p : { ...p, durationMs: p.durationMs * mult, magnitude: p.magnitude * mult };
+    // Bosses/elites use lower Rift-Scarred stack cap and fewer Fractal Wound ticks.
+    if (isBossElite) {
+      if (scaled.key === 'riftScarred') {
+        scaled = { ...scaled, riftScarredStackCap: ENEMY_RIFT_STACK_CAP_BOSS };
+      } else if (scaled.key === 'fractalWound') {
+        scaled = { ...scaled, fractalTickCount: ENEMY_FRAC_TICKS_BOSS };
+      }
+    }
     applyLensStatus(entity, scaled);
     if (!feedbackShown && mult !== 1 && onStatusFeedback && feedbackX !== undefined) {
       onStatusFeedback(mult > 1 ? 'WEAK!' : 'RESIST', feedbackX, feedbackY ?? 0);
