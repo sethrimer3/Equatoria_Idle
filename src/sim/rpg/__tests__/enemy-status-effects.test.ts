@@ -28,7 +28,8 @@ import {
   getActiveStatuses,
   type LensStatusParams,
 } from '../enemy-status-effects';
-import { ENEMY_RIFT_STACK_CAP, ENEMY_RIFT_STACK_CAP_BOSS, ENEMY_FRAC_TICKS, ENEMY_FRAC_TICKS_BOSS } from '../../../data/rpg/status-balance';
+import { ENEMY_RIFT_STACK_CAP, ENEMY_RIFT_STACK_CAP_BOSS, ENEMY_FRAC_TICKS, ENEMY_FRAC_TICKS_BOSS, ENEMY_FRAC_MAX_CONCURRENT } from '../../../data/rpg/status-balance';
+import { getEnemyStatusAffinityMultiplier } from '../../../data/rpg/enemy-status-affinities';
 
 // ── Test enemy factory ─────────────────────────────────────────────────────────
 
