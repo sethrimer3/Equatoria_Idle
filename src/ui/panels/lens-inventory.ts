@@ -133,6 +133,23 @@ function buildEffectRow(effect: LensEffect): HTMLElement {
   nameEl.textContent = `${effect.name}  ×${effect.magnitude.toFixed(1)}`;
   row.appendChild(nameEl);
 
+  // T1 effects — show the status key as a colored chip
+  if (effect.effectTier === 1) {
+    const statusKey = TIER1_STATUS_MAP[effect.tierId];
+    if (statusKey) {
+      const def = ENEMY_STATUS_DEFS[statusKey];
+      if (def) {
+        const statusChip = document.createElement('span');
+        statusChip.style.cssText =
+          `font-size:0.72em;padding:0 4px;border-radius:3px;` +
+          `border:1px solid ${def.color}66;color:${def.color};white-space:nowrap;`;
+        statusChip.textContent = def.name;
+        statusChip.title = def.description;
+        row.appendChild(statusChip);
+      }
+    }
+  }
+
   if (!effect.isApplied) {
     const note = document.createElement('span');
     note.style.cssText = 'color:#666;font-size:0.72em;font-style:italic;';
