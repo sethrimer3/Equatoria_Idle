@@ -1057,6 +1057,15 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     }
     textY += 14;
 
+    // Placeholder notice
+    if (upgradeDef && upgradeDef.implementationStatus === 'placeholder') {
+      textY += 4;
+      ctx.font      = '9px monospace';
+      ctx.fillStyle = 'rgba(200, 170, 80, 0.65)';
+      ctx.fillText('⚠ Effect hook pending', textX, textY);
+      textY += 13;
+    }
+
     // ── Costs & buy button (upgradeable only) ────────────────────────────
     if (!isRoot && upgradeDef && !isMaxed) {
       textY += 8;
