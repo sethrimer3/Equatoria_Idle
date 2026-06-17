@@ -170,7 +170,6 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
     costPerLevel: 3_000,
     maxLevel: 3,
     skillPointCost: 2,
-    implementationStatus: 'placeholder',
   },
   {
     id: 'second_wind',
