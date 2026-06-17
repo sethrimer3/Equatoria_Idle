@@ -1059,7 +1059,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     ctx.font      = 'bold 13px monospace';
     ctx.fillStyle = '#ffd060';
     ctx.fillText(name, textX, textY);
-    textY += 18;
+    textY += NAME_LINE_H;
 
     // Description (light grey, word-wrapped)
     textY += 5;
@@ -1067,7 +1067,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     ctx.fillStyle = 'rgba(215, 210, 238, 0.85)';
     for (const line of descLines) {
       ctx.fillText(line, textX, textY);
-      textY += 14;
+      textY += DESC_LINE_H;
     }
 
     // Level indicator
@@ -1085,47 +1085,47 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
         textX, textY,
       );
     }
-    textY += 14;
+    textY += META_LINE_H;
 
-    // Placeholder notice
-    if (upgradeDef && upgradeDef.implementationStatus === 'placeholder') {
+    // Placeholder notice (only for pending skills)
+    if (showPlaceholderNotice) {
       textY += 4;
       ctx.font      = '9px monospace';
       ctx.fillStyle = 'rgba(200, 170, 80, 0.65)';
       ctx.fillText('⚠ Effect hook pending', textX, textY);
-      textY += 13;
+      textY += PLACEHOLDER_LINE_H;
     }
 
     // ── Costs & buy button (upgradeable only) ────────────────────────────
-    if (!isRoot && upgradeDef && !isMaxed) {
+    if (showCostsAndButton) {
       textY += 8;
 
       // SP cost
       ctx.font      = '10px monospace';
       ctx.fillStyle = (hasSkillPt || _isDevMode) ? '#8ec87a' : '#e07070';
       ctx.fillText(`✦ ${spCost} SP  (have ${_rpgState.unspentSkillPoints})`, textX, textY);
-      textY += 14;
+      textY += META_LINE_H;
 
       // Mote cost (hide if free)
       textY += 4;
-      if (upgradeDef.costPerLevel > 0) {
+      if (upgradeDef!.costPerLevel > 0) {
         ctx.fillStyle = canAffordMotes ? '#8ec87a' : '#e07070';
         ctx.fillText(
-          `${formatNumberAs(upgradeDef.costPerLevel, _format)} ${upgradeDef.costTierId} motes`,
+          `${formatNumberAs(upgradeDef!.costPerLevel, _format)} ${upgradeDef!.costTierId} motes`,
           textX, textY,
         );
       } else {
         ctx.fillStyle = '#8ec87a';
         ctx.fillText('No mote cost', textX, textY);
       }
-      textY += 14;
+      textY += META_LINE_H;
 
-      // Locked reason
-      if (isLocked) {
+      // Locked reason (from shared helper)
+      if (showLockedReason) {
         textY += 4;
         ctx.fillStyle = '#e07070';
-        ctx.fillText('Prerequisites not met', textX, textY);
-        textY += 14;
+        ctx.fillText(formatPurchaseBlockReason(purchaseCheck.reason), textX, textY);
+        textY += META_LINE_H;
       }
 
       // Buy button
@@ -1146,10 +1146,9 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       ctx.lineWidth   = 1.2;
       ctx.stroke();
 
-      const btnLabel = (!hasSkillPt && !_isDevMode) ? `Need ${spCost} SP`
-                     : !canAffordMotes              ? 'Need motes'
-                     : isLocked                     ? 'Prerequisites not met'
-                     : (maxLevel === 1 ? 'Unlock' : 'Upgrade');
+      const btnLabel = canPurchase
+        ? (maxLevel === 1 ? 'Unlock' : 'Upgrade')
+        : formatPurchaseBlockReason(purchaseCheck.reason);
 
       ctx.save();
       ctx.beginPath(); ctx.rect(btnX, btnY, btnW, btnH); ctx.clip();
@@ -1160,10 +1159,8 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       ctx.fillText(btnLabel, btnX + btnW / 2, btnY + btnH / 2);
       ctx.restore();
 
-      // Store button rect for hit-testing
-      if (canPurchase) {
-        cardButtonWorldRect = { x: btnX, y: btnY, w: btnW, h: btnH };
-      }
+      // Store button rect for hit-testing (always record so taps register even disabled)
+      cardButtonWorldRect = { x: btnX, y: btnY, w: btnW, h: btnH };
     }
 
     ctx.restore();
