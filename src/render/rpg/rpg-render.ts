@@ -1672,6 +1672,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     hitEffects, shotLines, damageNumbers, luckyMotes, luckyMotePopups,
     deathParticles, weaponOrbitParticles,
     getOrbitProjectiles:          () => orbitProjectiles,
+    getAfterimages:               () => afterimages,
     getGlowMovementIntensity:     () => playerMovementState.glowMovementIntensity,
     getRpgPhase:                  () => rpgPhase,
     getDeathAlpha:                () => deathAlpha,
