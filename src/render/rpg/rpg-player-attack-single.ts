@@ -25,7 +25,8 @@ import {
   applyLensStatus, getIncomingDamageMult, getRiftScarredDamageMult, incrementRiftScarredStacks,
 } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
-import { getEnemyStatusAffinityMultiplier } from '../../data/rpg/enemy-status-affinities';
+import { getEnemyStatusAffinityMultiplier, isBossOrEliteType } from '../../data/rpg/enemy-status-affinities';
+import { ENEMY_RIFT_STACK_CAP_BOSS, ENEMY_FRAC_TICKS_BOSS } from '../../data/rpg/status-balance';
 
 // Throttle affinity feedback (IMMUNE/RESIST/WEAK) to once per entity per 2500ms,
 // preventing rapid-fire weapons from flooding the screen.
