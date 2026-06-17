@@ -255,6 +255,8 @@ export interface RpgSimState {
   secondWindAvailable: boolean;
   /** Active player status effects (ephemeral — not saved, clears on restart). */
   activePlayerStatuses: ActivePlayerStatus[];
+  /** Remaining ms before Frozen can be reapplied (ephemeral, not saved). */
+  frozenCooldownMs: number;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
