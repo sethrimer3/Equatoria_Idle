@@ -146,6 +146,26 @@ export function drawTargetReticle(
   ctx.restore();
 }
 
+// ── Afterimage snapshots ──────────────────────────────────────────────────────
+
+/**
+ * Draws translucent player-silhouette afterimages spawned on dash.
+ * Called before drawPlayerMote so images appear behind the player.
+ */
+export function drawAfterimages(ctx: CanvasRenderingContext2D, afterimages: AfterimageSnapshot[]): void {
+  if (isLowGraphicsMode || afterimages.length === 0) return;
+  const half = RPG_MOTE_SIZE / 2;
+  for (const img of afterimages) {
+    ctx.save();
+    ctx.globalAlpha = img.alpha;
+    ctx.shadowBlur = RPG_MOTE_SIZE * 3;
+    ctx.shadowColor = RPG_MOTE_GLOW;
+    ctx.fillStyle = RPG_MOTE_COLOR;
+    ctx.fillRect(Math.floor(img.x - half), Math.floor(img.y - half), RPG_MOTE_SIZE, RPG_MOTE_SIZE);
+    ctx.restore();
+  }
+}
+
 // ── Player mote ────────────────────────────────────────────────────────────────
 
 /**
