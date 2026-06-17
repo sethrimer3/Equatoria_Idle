@@ -100,11 +100,12 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'acceleration',
     name: 'Acceleration',
-    description: 'Faster start-up responsiveness when changing direction. (TODO: acceleration model)',
+    description: 'Faster start-up responsiveness when changing direction.',
     costTierId: 'sand',
     costPerLevel: 800,
     maxLevel: 5,
     skillPointCost: 1,
+    implementationStatus: 'placeholder',
   },
   {
     id: 'dash',
