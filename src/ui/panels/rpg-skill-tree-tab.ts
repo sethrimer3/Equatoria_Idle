@@ -757,7 +757,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const cx = node.x - CARD_W / 2;
     const cy = nodeCY + node.nodeRadius + GAP;
     const cr = cx + CARD_W;
-    const cb = cy + 190;   // generous height estimate
+    const cb = cy + 280;   // generous height estimate (covers placeholder + costs + button)
 
     let dx = 0, dy = 0;
     if      (cx < wb.left   + MARG) dx = cx - MARG - wb.left;
