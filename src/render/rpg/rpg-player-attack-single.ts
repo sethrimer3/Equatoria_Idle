@@ -291,11 +291,10 @@ export function performSingleAttack(
     const enemyTypeId = getTargetEnemyTypeId(closestT);
     applyLensStatusesOnHit(
       targetEntity, attachedLens, weaponId, rawDamage, enemyTypeId,
-      (text, x, y) => {
+      _canShowAffinityFeedback(targetEntity) ? (text, x, y) => {
         const color = text === 'IMMUNE' ? '#9ab' : text === 'WEAK!' ? '#7ef' : '#fa8';
-        spawnHitVisualsAt(x, y, 1, 0, color, color);
-        ctx.spawnDamageNumber(x, y, 0, -1, text, 0.18, color);
-      },
+        ctx.spawnDamageNumber(x, y, 0, -0.8, text, 0.15, color);
+      } : undefined,
       hitX, hitY,
     );
     handleLensTier2EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
