@@ -205,6 +205,7 @@ export function updateOrbitProjectile(
       ctx.hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: HIT_COLOR });
       const ratio = dmg / enemy.maxHp;
       ctx.spawnDamageNumber(enemy.x, enemy.y, 0, -1, String(Math.round(dmg)), ratio, HIT_COLOR);
+      if (reformDelay > 0) op.reformMs = reformDelay;
     }
   }
 
