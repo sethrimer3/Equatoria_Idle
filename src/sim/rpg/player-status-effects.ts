@@ -108,7 +108,7 @@ export interface PlayerStatusParams {
 
 export function applyPlayerStatus(sim: RpgSimState, params: PlayerStatusParams): void {
   const resistMult = getPlayerStatusDurationMultiplier(sim);
-  const effectiveDuration = Math.max(300, params.durationMs * resistMult);
+  const effectiveDuration = Math.max(STATUS_MIN_DURATION_MS, params.durationMs * resistMult);
   const list = sim.activePlayerStatuses;
 
   // Frozen: only escalate from chilled; otherwise treat like any other status.
