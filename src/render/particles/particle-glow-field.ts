@@ -224,6 +224,7 @@ function ensureGrid(canvasW: number, canvasH: number): void {
   _gridW = gw;
   _gridH = gh;
   _intensities = new Float32Array(gw * gh * TIER_COUNT);
+  _activeCells.clear();
 
   if (_offCanvas === null) {
     _offCanvas = document.createElement('canvas');
