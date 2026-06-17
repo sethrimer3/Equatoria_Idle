@@ -528,7 +528,6 @@ describe('enemy-status-effects — 15. Rapid-fire application does not create du
   });
 
   it('Fractal Wound caps at ENEMY_FRAC_MAX_CONCURRENT concurrent wounds', () => {
-    const { ENEMY_FRAC_MAX_CONCURRENT } = require('../../../data/rpg/status-balance');
     const enemy = makeEnemy();
     const p = {
       key: 'fractalWound' as const, sourceTierId: 'fracteryl' as const,
