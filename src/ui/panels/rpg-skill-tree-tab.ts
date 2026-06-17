@@ -11,8 +11,9 @@ import {
   SKILL_TREE_TOTAL_POINTS,
   getVisibleSkillTreeSpentPoints,
   validateSkillTreeBudget,
+  canPurchaseRpgSkill,
 } from '../../data/rpg/rpg-skill-tree-definitions';
-import type { SkillTreeNodeDef } from '../../data/rpg/rpg-skill-tree-definitions';
+import type { SkillTreeNodeDef, PurchaseBlockReason } from '../../data/rpg/rpg-skill-tree-definitions';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
