@@ -130,11 +130,19 @@ export function updateOrbitProjectile(
   const detonationRank = ctx.rpgSimState ? getSkillNodeRank(ctx.rpgSimState, 'orbit_detonation') : 0;
   const orbitDamage = ORBIT_PROJ_DAMAGE * (1 + detonationRank * 0.3);
 
+  // ── Reform cooldown (comet_return skill) ───────────────────────
+  if (op.reformMs > 0) {
+    op.reformMs = Math.max(0, op.reformMs - deltaMs);
+    if (op.reformMs > 0) return;
+  }
+
   // ── Angle and position ──────────────────────────────────────────
+  const orbitRadiusRank = ctx.rpgSimState ? getSkillNodeRank(ctx.rpgSimState, 'orbital_radius') : 0;
+  const effectiveRadius = ORBIT_PROJ_RADIUS * (1 + orbitRadiusRank * 0.12);
   const dt = deltaMs / 1000;
   op.angle -= ORBIT_PROJ_SPEED_RAD * dt;  // counter-clockwise
-  op.x = mote.x + Math.cos(op.angle) * ORBIT_PROJ_RADIUS;
-  op.y = mote.y + Math.sin(op.angle) * ORBIT_PROJ_RADIUS;
+  op.x = mote.x + Math.cos(op.angle) * effectiveRadius;
+  op.y = mote.y + Math.sin(op.angle) * effectiveRadius;
 
   // ── Distance-based trail update ─────────────────────────────────
   const lastTrailIdx = (op.trailHead - 1 + ORBIT_PROJ_TRAIL_CAP) % ORBIT_PROJ_TRAIL_CAP;
