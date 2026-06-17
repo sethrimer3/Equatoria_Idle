@@ -312,6 +312,7 @@ export function updateVoidTendrils(
       if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
         t.hasHitPlayer = true;
         ctx.dealDamageToPlayer(t.atk);
+        ctx.applyPlayerStatusFromSource?.('nullstone');
       }
     }
   }
