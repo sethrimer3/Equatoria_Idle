@@ -1494,6 +1494,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let dashRequested = false;
   const DASH_BURST_SPEED = MAX_RPG_SPEED * 4;
   const DASH_COOLDOWN_MS = 600;
+  const afterimages: import('./rpg-types').AfterimageSnapshot[] = [];
+  const AFTERIMAGE_FADE_PER_MS = 0.004;
 
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
