@@ -107,6 +107,7 @@ export function createRpgMenuPanel(
     { id: 'menu',     label: 'Menu' },
     { id: 'upgrades', label: 'Skill Tree' },
     { id: 'enemies',  label: 'Enemies' },
+    { id: 'status',   label: 'Statuses' },
   ];
 
   const tabBtns: Map<RpgMenuTab, HTMLButtonElement> = new Map();
