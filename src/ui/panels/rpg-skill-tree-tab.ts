@@ -41,6 +41,24 @@ const CARD_W   = 220;
 const CARD_PAD = 14;
 const CARD_BTN_H = 44;
 
+// Named line heights used for both card-height measurement and drawing
+const NAME_LINE_H        = 18;
+const DESC_LINE_H        = 14;
+const META_LINE_H        = 14;
+const PLACEHOLDER_LINE_H = 13;
+
+function formatPurchaseBlockReason(reason: PurchaseBlockReason | undefined): string {
+  switch (reason) {
+    case 'missing_prerequisite':    return 'Prerequisites not met';
+    case 'not_enough_skill_points': return 'Need skill points';
+    case 'not_enough_resource':     return 'Need motes';
+    case 'max_level':               return 'Max level reached';
+    case 'unknown_upgrade':         return 'Unknown skill';
+    case 'not_in_skill_tree':       return 'Not in skill tree';
+    default:                        return 'Cannot purchase';
+  }
+}
+
 // ── Branch colours ──────────────────────────────────────────────────────
 const BRANCH_COLOR: Record<string, string> = {
   movement:  '#40d4e0',
