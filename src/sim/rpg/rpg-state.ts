@@ -329,6 +329,7 @@ export function createRpgSimState(): RpgSimState {
     skillPointAccountingVersion: 0,
     dashCooldownMs: 0,
     secondWindAvailable: true,
+    activePlayerStatuses: [],
   };
 }
 
