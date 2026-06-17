@@ -68,10 +68,28 @@ function _drawStatusIconsForEnemy(
   c: CanvasRenderingContext2D,
   enemy: { x: number; y: number; hp: number },
   halfSize: number,
+  nowMs?: number,
 ): void {
   if (enemy.hp < MIN_HP_FOR_LABEL) return;
   const statuses = getActiveStatuses(enemy);
   if (statuses.length === 0) return;
+
+  // Draw a faint colored rim on the enemy body for the primary active status.
+  const primaryStatus = statuses[0]!;
+  const bodyColor = STATUS_BODY_COLORS[primaryStatus.key];
+  if (bodyColor) {
+    const pct = Math.max(0, primaryStatus.remainingMs / primaryStatus.durationMs);
+    const pulse = nowMs !== undefined ? 0.5 + 0.5 * Math.sin(nowMs / 250) : 0.8;
+    c.save();
+    c.globalAlpha = pct * (0.35 + pulse * 0.25);
+    c.strokeStyle = bodyColor;
+    c.shadowBlur = halfSize * 1.5;
+    c.shadowColor = bodyColor;
+    c.lineWidth = 1.2;
+    c.strokeRect(enemy.x - halfSize - 0.5, enemy.y - halfSize - 0.5, halfSize * 2 + 1, halfSize * 2 + 1);
+    c.shadowBlur = 0;
+    c.restore();
+  }
 
   const topY = enemy.y - halfSize - ICON_SIZE - 4;
   const totalW = statuses.length * ICON_GAP;
