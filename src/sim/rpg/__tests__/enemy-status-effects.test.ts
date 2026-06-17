@@ -401,3 +401,126 @@ describe('enemy-status-effects — 11. No status without lens', () => {
     expect(getActiveStatuses(enemy)).toHaveLength(0);
   });
 });
+
+describe('enemy-status-effects — 12. Boss/elite Rift-Scarred stack cap', () => {
+  it('normal enemy uses default stack cap', () => {
+    const enemy = makeEnemy();
+    applyLensStatus(enemy, riftParams());
+    expect(getRiftScarredStackCap(enemy)).toBe(ENEMY_RIFT_STACK_CAP);
+  });
+
+  it('boss enemy uses lower stack cap when override is passed', () => {
+    const enemy = makeEnemy();
+    applyLensStatus(enemy, { ...riftParams(), riftScarredStackCap: ENEMY_RIFT_STACK_CAP_BOSS });
+    expect(getRiftScarredStackCap(enemy)).toBe(ENEMY_RIFT_STACK_CAP_BOSS);
+  });
+
+  it('boss stack cap clamps stacks below normal cap', () => {
+    const enemy = makeEnemy();
+    applyLensStatus(enemy, { ...riftParams(), riftScarredStackCap: ENEMY_RIFT_STACK_CAP_BOSS });
+    for (let i = 0; i < ENEMY_RIFT_STACK_CAP + 5; i++) {
+      incrementRiftScarredStacks(enemy, 'lens1');
+    }
+    // Mult at boss cap should be less than mult would be at normal cap
+    const bossCapMult = getRiftScarredDamageMult(enemy, 'lens1');
+
+    const normalEnemy = makeEnemy();
+    applyLensStatus(normalEnemy, riftParams());
+    for (let i = 0; i < ENEMY_RIFT_STACK_CAP + 5; i++) {
+      incrementRiftScarredStacks(normalEnemy, 'lens1');
+    }
+    const normalCapMult = getRiftScarredDamageMult(normalEnemy, 'lens1');
+
+    expect(bossCapMult).toBeLessThan(normalCapMult);
+  });
+});
+
+describe('enemy-status-effects — 13. Boss Fractal Wound reduced tick count', () => {
+  it('boss fractal wound uses fewer ticks than normal', () => {
+    expect(ENEMY_FRAC_TICKS_BOSS).toBeLessThan(ENEMY_FRAC_TICKS);
+  });
+
+  it('normal Fractal Wound fires ENEMY_FRAC_TICKS ticks', () => {
+    const enemy = makeEnemy({ hp: 1000 });
+    applyLensStatus(enemy, {
+      key: 'fractalWound', sourceTierId: 'fracteryl',
+      durationMs: 3600, magnitude: 10, tickEveryMs: 600,
+      fractalInitialDamage: 10,
+    });
+    const arrays = makeArrays([enemy] as any);
+    // Tick enough to exhaust all ticks
+    tickLensStatuses(arrays, 3600, 0, 0);
+    // Should have taken damage (ticks fired)
+    expect(enemy.hp).toBeLessThan(1000);
+    // After expiry, status should be gone
+    expect(getActiveStatuses(enemy).some(s => s.key === 'fractalWound')).toBe(false);
+  });
+
+  it('boss Fractal Wound with 2-tick override has fewer total ticks', () => {
+    const normal = makeEnemy({ hp: 1000 });
+    const boss   = makeEnemy({ hp: 1000 });
+    const baseParams = {
+      key: 'fractalWound' as const, sourceTierId: 'fracteryl' as const,
+      durationMs: 3600, magnitude: 10, tickEveryMs: 600,
+      fractalInitialDamage: 10,
+    };
+    applyLensStatus(normal, baseParams);
+    applyLensStatus(boss,   { ...baseParams, fractalTickCount: ENEMY_FRAC_TICKS_BOSS });
+    const normalArrays = makeArrays([normal] as any);
+    const bossArrays   = makeArrays([boss] as any);
+    tickLensStatuses(normalArrays, 3600, 0, 0);
+    tickLensStatuses(bossArrays,   3600, 0, 0);
+    const normalDmg = 1000 - normal.hp;
+    const bossDmg   = 1000 - boss.hp;
+    expect(bossDmg).toBeLessThan(normalDmg);
+  });
+});
+
+describe('enemy-status-effects — 14. Affinity: immunity blocks, resistance reduces, weakness amplifies', () => {
+  it('immunity multiplier is 0', () => {
+    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+    expect(getEnemyStatusAffinityMultiplier('ruby', 'burning')).toBe(0);
+  });
+
+  it('resistance multiplier is less than 1', () => {
+    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+    expect(getEnemyStatusAffinityMultiplier('emerald', 'poisoned')).toBeLessThan(1);
+  });
+
+  it('weakness multiplier is greater than 1', () => {
+    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+    expect(getEnemyStatusAffinityMultiplier('emerald', 'burning')).toBeGreaterThan(1);
+  });
+
+  it('neutral returns 1', () => {
+    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+    expect(getEnemyStatusAffinityMultiplier('emerald', 'chilled')).toBe(1);
+  });
+});
+
+describe('enemy-status-effects — 15. Rapid-fire application does not create duplicates', () => {
+  it('applying abraded 10 times yields exactly 1 status entry', () => {
+    const enemy = makeEnemy();
+    for (let i = 0; i < 10; i++) applyLensStatus(enemy, abradedParams());
+    expect(getActiveStatuses(enemy).filter(s => s.key === 'abraded')).toHaveLength(1);
+  });
+
+  it('applying burning 10 times yields exactly 1 status entry', () => {
+    const enemy = makeEnemy();
+    for (let i = 0; i < 10; i++) applyLensStatus(enemy, burningParams());
+    expect(getActiveStatuses(enemy).filter(s => s.key === 'burning')).toHaveLength(1);
+  });
+
+  it('Fractal Wound caps at ENEMY_FRAC_MAX_CONCURRENT concurrent wounds', () => {
+    const { ENEMY_FRAC_MAX_CONCURRENT } = require('../../../data/rpg/status-balance');
+    const enemy = makeEnemy();
+    const p = {
+      key: 'fractalWound' as const, sourceTierId: 'fracteryl' as const,
+      durationMs: 3600, magnitude: 10, tickEveryMs: 600,
+    };
+    for (let i = 0; i < ENEMY_FRAC_MAX_CONCURRENT + 5; i++) {
+      applyLensStatus(enemy, p);
+    }
+    expect(getActiveStatuses(enemy).filter(s => s.key === 'fractalWound')).toHaveLength(ENEMY_FRAC_MAX_CONCURRENT);
+  });
+});
