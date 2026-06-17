@@ -428,7 +428,7 @@ export async function startApp(): Promise<void> {
   const skillTreeBtn = document.createElement('button');
   skillTreeBtn.className = 'rpg-skill-tree-btn';
   skillTreeBtn.setAttribute('aria-label', 'Open skill tree');
-  skillTreeBtn.textContent = '✦';
+  skillTreeBtn.innerHTML = '<span class="rpg-skill-tree-btn__icon" aria-hidden="true"></span>';
   skillTreeBtn.addEventListener('click', () => {
     rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
     rpgMenuPanel.openSkillTreeTab();
