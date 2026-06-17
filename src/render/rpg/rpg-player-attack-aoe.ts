@@ -270,6 +270,60 @@ export function performAoeAttack(
     handleLensTier3EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
   }
 
+  // AoE status combo evaluation: check each in-range enemy for combo conditions.
+  if (attachedLens && weaponId) {
+    const nowMs = performance.now();
+    type MinE = { x: number; y: number; hp: number };
+    const regularArrays: MinE[][] = [
+      enemies as unknown as MinE[],
+      sapphireEnemies as unknown as MinE[],
+      emeraldEnemies as unknown as MinE[],
+      amberEnemies as unknown as MinE[],
+      voidEnemies as unknown as MinE[],
+      quartzEnemies as unknown as MinE[],
+      rubyEnemies as unknown as MinE[],
+      sunstoneEnemies as unknown as MinE[],
+      citrineEnemies as unknown as MinE[],
+      ioliteEnemies as unknown as MinE[],
+      amethystEnemies as unknown as MinE[],
+      diamondEnemies as unknown as MinE[],
+      nullstoneEnemies as unknown as MinE[],
+      fracterylEnemies as unknown as MinE[],
+      eigensteinEnemies as unknown as MinE[],
+    ];
+    for (const arr of regularArrays) {
+      for (const e of arr) {
+        if (e.hp <= 0) continue;
+        const dx = e.x - mote.x, dy = e.y - mote.y;
+        if (dx * dx + dy * dy <= aoeSq) {
+          const results = evaluateStatusCombosOnStatusApplied({
+            enemy: e, enemyTypeId: 'other', x: e.x, y: e.y, baseDamage: rawDamage, nowMs,
+          });
+          applyComboResults(ctx, results);
+        }
+      }
+    }
+    for (const e of eliteEnemies) {
+      if (e.isInvuln || e.hp <= 0) continue;
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) {
+        const results = evaluateStatusCombosOnStatusApplied({
+          enemy: e, enemyTypeId: `elite_${e.tier}`, x: e.x, y: e.y, baseDamage: rawDamage, nowMs,
+        });
+        applyComboResults(ctx, results);
+      }
+    }
+    if (bossEnemy && bossEnemy.hp > 0) {
+      const bx = bossEnemy.x - mote.x, by = bossEnemy.y - mote.y;
+      if (bx * bx + by * by <= aoeSq) {
+        const results = evaluateStatusCombosOnStatusApplied({
+          enemy: bossEnemy, enemyTypeId: 'boss', x: bossEnemy.x, y: bossEnemy.y, baseDamage: rawDamage, nowMs,
+        });
+        applyComboResults(ctx, results);
+      }
+    }
+  }
+
   // Crafted post-hit: Nullstone pulls toward mote center; Fracteryl fires capped follow-ups.
   // Both are applied once per AoE burst (not per enemy hit) to avoid O(n²) pull cost.
   if (craftedMods && rangeSq !== undefined) {
