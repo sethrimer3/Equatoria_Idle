@@ -128,11 +128,12 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'afterimage',
     name: 'Afterimage',
-    description: 'Dashing leaves a brief visual afterimage. (TODO: afterimage/decoy visual)',
+    description: 'Dashing leaves a brief visual afterimage.',
     costTierId: 'quartz',
     costPerLevel: 2_000,
     maxLevel: 2,
     skillPointCost: 2,
+    implementationStatus: 'placeholder',
   },
 
   // ── Defense branch ────────────────────────────────────────────────
