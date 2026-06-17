@@ -35,6 +35,13 @@ export interface RpgUpgradeDefinition {
   maxLevel: number;
   /** Skill points spent per rank purchase (1–4). */
   skillPointCost: number;
+  /**
+   * Whether the gameplay effect is fully wired into the simulation.
+   * 'active'      — effect is implemented and running.
+   * 'placeholder' — node can be purchased and persists, but the hook is pending.
+   * Omitted (undefined) defaults to 'active' for legacy entries.
+   */
+  implementationStatus?: 'active' | 'placeholder';
 }
 
 // ─── Upgrade catalogue ────────────────────────────────────────────
