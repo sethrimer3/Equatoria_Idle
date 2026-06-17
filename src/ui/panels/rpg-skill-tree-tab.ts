@@ -81,69 +81,9 @@ const PAN_MAX_X = 720;
 const PAN_MIN_Y = -560;
 const PAN_MAX_Y = 640;
 
-// ─── Skill tree data definitions ──────────────────────────────────────────
-
-interface SkillTreeNodeDef {
-  upgradeId: string | null;
-  x: number;
-  y: number;
-  icon: string;
-  /** null = requires root; string = upgradeId of required parent */
-  prerequisiteId: string | null;
-  branch: 'movement' | 'defense' | 'weapons' | 'resources' | 'root' | 'orbits' | 'elemental';
-  /** root = gold large medallion; unlock = one-time medallion; repeatable = smaller circle */
-  nodeType: 'root' | 'unlock' | 'repeatable';
-}
-
-// All positions are world-space, centred on the root at (0,0).
-// Total skill point budget: 200 SP across 38 nodes.
-const SKILL_TREE_NODES: SkillTreeNodeDef[] = [
-  // ── Root / Core ───────────────────────────────────────────────────────
-  { upgradeId: 'awakening',       x:    0, y:    0, icon: '✦', prerequisiteId: null,                  branch: 'root',      nodeType: 'root'       },
-  { upgradeId: 'rpg_training',    x:    0, y: -115, icon: '⚔', prerequisiteId: null,                  branch: 'root',      nodeType: 'repeatable' },
-  { upgradeId: 'battle_focus',    x: -140, y: -215, icon: '◎', prerequisiteId: 'rpg_training',        branch: 'root',      nodeType: 'repeatable' },
-  { upgradeId: 'codex_initiate',  x:  140, y: -215, icon: '≡', prerequisiteId: 'rpg_training',        branch: 'root',      nodeType: 'repeatable' },
-  // ── Movement branch ───────────────────────────────────────────────────
-  { upgradeId: 'speed',           x: -260, y:  -65, icon: '▲', prerequisiteId: null,                  branch: 'movement',  nodeType: 'repeatable' },
-  { upgradeId: 'acceleration',    x: -400, y: -155, icon: '▶', prerequisiteId: 'speed',               branch: 'movement',  nodeType: 'repeatable' },
-  { upgradeId: 'dash',            x: -510, y: -255, icon: '⚡', prerequisiteId: 'acceleration',        branch: 'movement',  nodeType: 'unlock'     },
-  { upgradeId: 'dash_cooldown',   x: -590, y: -375, icon: '○', prerequisiteId: 'dash',                branch: 'movement',  nodeType: 'repeatable' },
-  { upgradeId: 'afterimage',      x: -430, y: -380, icon: '≈', prerequisiteId: 'dash',                branch: 'movement',  nodeType: 'repeatable' },
-  // ── Defense branch ────────────────────────────────────────────────────
-  { upgradeId: 'block_chance',    x:  255, y:  -90, icon: '■', prerequisiteId: null,                  branch: 'defense',   nodeType: 'repeatable' },
-  { upgradeId: 'block_strength',  x:  400, y: -195, icon: '⊞', prerequisiteId: 'block_chance',        branch: 'defense',   nodeType: 'repeatable' },
-  { upgradeId: 'projectile_deflection', x: 255, y: -265, icon: '⊘', prerequisiteId: 'block_chance',  branch: 'defense',   nodeType: 'repeatable' },
-  { upgradeId: 'status_resistance', x: 400, y: -380, icon: '◈', prerequisiteId: 'block_strength',     branch: 'defense',   nodeType: 'repeatable' },
-  { upgradeId: 'second_wind',     x:  140, y: -350, icon: '♥', prerequisiteId: 'block_chance',        branch: 'defense',   nodeType: 'unlock'     },
-  // ── Weapons branch ────────────────────────────────────────────────────
-  { upgradeId: 'extra_weapon_slot', x: 255, y:  90, icon: '⊕', prerequisiteId: null,                  branch: 'weapons',   nodeType: 'repeatable' },
-  { upgradeId: 'weapon_mastery',  x:  400, y:  190, icon: '◆', prerequisiteId: 'extra_weapon_slot',   branch: 'weapons',   nodeType: 'repeatable' },
-  { upgradeId: 'dominance_amp',   x:  530, y:  290, icon: '★', prerequisiteId: 'weapon_mastery',      branch: 'weapons',   nodeType: 'repeatable' },
-  { upgradeId: 'balanced_alloy',  x:  375, y:  315, icon: '⊙', prerequisiteId: 'weapon_mastery',      branch: 'weapons',   nodeType: 'repeatable' },
-  { upgradeId: 'quick_swap',      x:  175, y:  215, icon: '↺', prerequisiteId: 'extra_weapon_slot',   branch: 'weapons',   nodeType: 'unlock'     },
-  // ── Orbiting branch ───────────────────────────────────────────────────
-  { upgradeId: 'orbit_projectile', x:  90, y:  120, icon: '○', prerequisiteId: null,                  branch: 'orbits',    nodeType: 'unlock'     },
-  { upgradeId: 'orbit_count',     x:  -55, y:  220, icon: '⊚', prerequisiteId: 'orbit_projectile',    branch: 'orbits',    nodeType: 'repeatable' },
-  { upgradeId: 'orbit_detonation', x: 195, y:  225, icon: '✸', prerequisiteId: 'orbit_projectile',    branch: 'orbits',    nodeType: 'unlock'     },
-  { upgradeId: 'piercing_orbit',  x: -155, y:  325, icon: '◈', prerequisiteId: 'orbit_count',         branch: 'orbits',    nodeType: 'repeatable' },
-  { upgradeId: 'orbital_radius',  x:   35, y:  355, icon: '⊛', prerequisiteId: 'orbit_count',         branch: 'orbits',    nodeType: 'repeatable' },
-  { upgradeId: 'comet_return',    x:  185, y:  335, icon: '↩', prerequisiteId: 'orbit_detonation',    branch: 'orbits',    nodeType: 'unlock'     },
-  // ── Elemental branch ──────────────────────────────────────────────────
-  { upgradeId: 'elemental_attunement', x: -40, y: 450, icon: '◇', prerequisiteId: null,               branch: 'elemental', nodeType: 'repeatable' },
-  { upgradeId: 'sand_agility',    x: -545, y:  360, icon: '▲', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
-  { upgradeId: 'quartz_multiplicity', x: -545, y: 475, icon: '◇', prerequisiteId: 'sand_agility',     branch: 'elemental', nodeType: 'repeatable' },
-  { upgradeId: 'ruby_penetration', x: -395, y:  495, icon: '▶', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
-  { upgradeId: 'citrine_bloom',   x: -230, y:  510, icon: '⊛', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
-  { upgradeId: 'emerald_seeking', x:   65, y:  510, icon: '◉', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
-  { upgradeId: 'sapphire_precision', x: 250, y:  495, icon: '✚', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
-  { upgradeId: 'amethyst_echo',   x:  450, y:  430, icon: '≈', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'unlock'     },
-  { upgradeId: 'diamond_severance', x: 570, y:  430, icon: '✦', prerequisiteId: 'amethyst_echo',       branch: 'elemental', nodeType: 'unlock'     },
-  // ── Resource branch ───────────────────────────────────────────────────
-  { upgradeId: 'mote_magnetism',  x: -255, y:  120, icon: '⊛', prerequisiteId: null,                  branch: 'resources', nodeType: 'repeatable' },
-  { upgradeId: 'battle_salvage',  x: -385, y:  225, icon: '◉', prerequisiteId: 'mote_magnetism',      branch: 'resources', nodeType: 'repeatable' },
-  { upgradeId: 'boss_spoils',     x: -505, y:  130, icon: '★', prerequisiteId: 'mote_magnetism',      branch: 'resources', nodeType: 'unlock'     },
-  { upgradeId: 'treasure_sense',  x: -445, y:  345, icon: '◆', prerequisiteId: 'battle_salvage',      branch: 'resources', nodeType: 'repeatable' },
-];
+// ─── Skill tree data ─────────────────────────────────────────────────────────
+// Nodes and node type are imported from rpg-skill-tree-definitions.ts.
+// Use VISIBLE_SKILL_TREE_NODES as the authoritative list for rendering.
 
 // ─── Internal types ───────────────────────────────────────────────────────
 
