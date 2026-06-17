@@ -6,6 +6,13 @@
  */
 
 import { RPG_UPGRADE_BY_ID } from '../../data/rpg/rpg-upgrade-definitions';
+import {
+  VISIBLE_SKILL_TREE_NODES,
+  SKILL_TREE_TOTAL_POINTS,
+  getVisibleSkillTreeSpentPoints,
+  validateSkillTreeBudget,
+} from '../../data/rpg/rpg-skill-tree-definitions';
+import type { SkillTreeNodeDef } from '../../data/rpg/rpg-skill-tree-definitions';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
@@ -14,6 +21,8 @@ import type { ActionHandler } from '../../input';
 import { formatNumberAs } from '../../util';
 import type { NumberFormat } from '../../util';
 import { getCachedImage, loadImage } from '../../render/assets/asset-loader';
+
+validateSkillTreeBudget();
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
