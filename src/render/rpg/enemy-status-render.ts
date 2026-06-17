@@ -193,9 +193,10 @@ export function renderEnemyStatusLabels(
     diamondFishEnemies: Array<{ x: number; y: number; hp: number }>;
   },
 ): void {
-  const draw6  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 6);
-  const draw8  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 8);
-  const draw10 = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 10);
+  const nowMs = arrays.nowMs;
+  const draw6  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 6,  nowMs);
+  const draw8  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 8,  nowMs);
+  const draw10 = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 10, nowMs);
 
   for (const e of arrays.enemies)                   draw6(e);
   for (const e of arrays.sapphireEnemies)           draw8(e);
