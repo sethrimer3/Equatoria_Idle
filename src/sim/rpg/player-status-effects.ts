@@ -136,21 +136,18 @@ export function clearPlayerStatuses(sim: RpgSimState): void {
   sim.activePlayerStatuses.length = 0;
 }
 
-// ── DoT damage constants ───────────────────────────────────────────────────────
-
-// Burn: ~0.4 damage per magnitude per second per tick.
-// Poison: ~0.2 damage per magnitude per second per tick.
-// With typical magnitude 10 and 1000ms ticks:
-//   Burn = 4 dmg/tick, Poison = 2 dmg/tick — noticeable but not lethal solo.
-const BURN_DPS_PER_MAG   = 0.4;
-const POISON_DPS_PER_MAG = 0.2;
-
 // ── Per-frame tick ─────────────────────────────────────────────────────────────
 
+/**
+ * Advances all active player statuses by deltaMs.
+ * Handles DoT (burning, poisoned) and expiry.
+ * onDotTick fires for each damage tick so the render layer can spawn a number.
+ */
 export function tickPlayerStatuses(
   sim: RpgSimState,
   playerStats: { hp: number; maxHp: number },
   deltaMs: number,
+  onDotTick?: (key: PlayerStatusKey, dmg: number) => void,
 ): void {
   const list = sim.activePlayerStatuses;
   for (let i = list.length - 1; i >= 0; i--) {
@@ -170,6 +167,7 @@ export function tickPlayerStatuses(
         }
         if (dmg > 0) {
           playerStats.hp = Math.max(0, playerStats.hp - dmg);
+          onDotTick?.(s.key, dmg);
         }
       }
     }
