@@ -158,8 +158,7 @@ export function canPurchaseRpgSkill(
   upgradeId: string,
   isDevMode: boolean,
 ): PurchaseCheckResult {
-  if (isDevMode) return { ok: true };
-
+  // These checks always apply — dev mode cannot bypass them.
   const upgradeDef = RPG_UPGRADE_BY_ID.get(upgradeId);
   if (!upgradeDef) return { ok: false, reason: 'unknown_upgrade' };
 
@@ -169,6 +168,9 @@ export function canPurchaseRpgSkill(
 
   const currentRank = rpgState.rpgUpgradeLevels.get(upgradeId) ?? 0;
   if (currentRank >= upgradeDef.maxLevel) return { ok: false, reason: 'max_level' };
+
+  // Dev mode bypasses prerequisite, skill point, and resource checks.
+  if (isDevMode) return { ok: true };
 
   // Prerequisite check
   const nodeDef = VISIBLE_SKILL_TREE_NODE_BY_ID.get(upgradeId);
