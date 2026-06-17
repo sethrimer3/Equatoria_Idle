@@ -13,7 +13,7 @@ import { resolveWeaponDefinition, getForgeCapacity, formatCraftedWeaponModifier,
 import type { WeaponDefinition } from '../../data/rpg/weapon-definitions';
 import { TIER_BY_ID, type TierId } from '../../data/tiers';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getWeaponTierUpgradeCost, getMaxEquippedWeapons, getLevelRequiredForSlot, MAX_WEAPON_TIER, getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
+import { getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER, getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
 import { getMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
@@ -175,8 +175,7 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
       btn.disabled = isLocked;
 
       if (isLocked) {
-        const reqLevel = getLevelRequiredForSlot(s);
-        btn.innerHTML = `Slot ${s + 1}: <span style="margin-left:4px">🔒</span><span style="margin-left:4px;font-size:0.85em;opacity:0.7">Lv. ${reqLevel}</span>`;
+        btn.innerHTML = `Slot ${s + 1}: <span style="margin-left:4px">🔒</span><span style="margin-left:4px;font-size:0.85em;opacity:0.7">Extra Weapon Slot ×${s}</span>`;
       } else {
         btn.textContent = `Slot ${s + 1}: ${occupant ? occupantName : 'Empty'}`;
         btn.addEventListener('click', () => {

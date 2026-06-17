@@ -13,7 +13,9 @@ export function createCachedLuckPercentGetter(rpgSimState: RpgSimState): () => n
       cachedLuckXp = rpgSimState.xp;
       cachedLuckPct = getLuckPercent(rpgSimState.xp) + getEffectiveXpLuckBonus(rpgSimState);
     }
-    return cachedLuckPct;
+    // battle_salvage: +8% lucky mote drop rate per rank
+    const salvageRank = rpgSimState.rpgUpgradeLevels.get('battle_salvage') ?? 0;
+    return cachedLuckPct + salvageRank * 8;
   };
 }
 

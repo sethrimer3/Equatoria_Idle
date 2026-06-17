@@ -272,11 +272,14 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   let baseDmg   = (weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
     : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
+  // RPG Training: global damage bonus.
+  const trainingRank = getSkillNodeRank(rpgSimState, 'rpg_training');
+  if (trainingRank > 0) baseDmg *= 1 + trainingRank * 0.03;
   // Weapon Mastery and Dominance Amplifier scale crafted weapon damage only.
   if (craftedMods) {
     const masteryRank = getSkillNodeRank(rpgSimState, 'weapon_mastery');
     const ampRank     = getSkillNodeRank(rpgSimState, 'dominance_amp');
-    if (masteryRank > 0) baseDmg *= 1 + masteryRank * 0.05;
+    if (masteryRank > 0) baseDmg *= 1 + masteryRank * 0.04;
     if (ampRank     > 0) baseDmg *= 1 + ampRank     * 0.06;
   }
   // Sapphire crit: roll for critChancePct% chance, deal critDamageMultiplier× damage.

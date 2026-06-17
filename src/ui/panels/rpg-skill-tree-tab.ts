@@ -38,6 +38,8 @@ const BRANCH_COLOR: Record<string, string> = {
   weapons:   '#b064ff',
   resources: '#60d870',
   root:      '#ffd060',
+  orbits:    '#ffaa44',
+  elemental: '#6cbfff',
 };
 
 // ── Node radii (world pixels) ───────────────────────────────────────────
@@ -65,10 +67,10 @@ const AMBIENT_COLORS = [
   '#86efac', '#4fdfff', '#93c5fd', '#fca5a5',
 ] as const;
 
-const PAN_MIN_X = -620;
-const PAN_MAX_X = 620;
-const PAN_MIN_Y = -520;
-const PAN_MAX_Y = 520;
+const PAN_MIN_X = -720;
+const PAN_MAX_X = 720;
+const PAN_MIN_Y = -560;
+const PAN_MAX_Y = 640;
 
 // ─── Skill tree data definitions ──────────────────────────────────────────
 
@@ -79,33 +81,59 @@ interface SkillTreeNodeDef {
   icon: string;
   /** null = requires root; string = upgradeId of required parent */
   prerequisiteId: string | null;
-  branch: 'movement' | 'defense' | 'weapons' | 'resources' | 'root';
+  branch: 'movement' | 'defense' | 'weapons' | 'resources' | 'root' | 'orbits' | 'elemental';
   /** root = gold large medallion; unlock = one-time medallion; repeatable = smaller circle */
   nodeType: 'root' | 'unlock' | 'repeatable';
 }
 
 // All positions are world-space, centred on the root at (0,0).
+// Total skill point budget: 200 SP across 38 nodes.
 const SKILL_TREE_NODES: SkillTreeNodeDef[] = [
-  // ── Root ─────────────────────────────────────────────────────────────
-  { upgradeId: null,              x:    0, y:    0, icon: '✦', prerequisiteId: null,              branch: 'root',      nodeType: 'root'       },
-  // ── Movement branch ──────────────────────────────────────────────────
-  { upgradeId: 'speed',           x: -320, y:  -80, icon: '▲', prerequisiteId: null,              branch: 'movement',  nodeType: 'repeatable' },
-  { upgradeId: 'dash',            x: -480, y: -220, icon: '⚡', prerequisiteId: 'speed',           branch: 'movement',  nodeType: 'unlock'     },
-  { upgradeId: 'evasion',         x: -320, y: -260, icon: '◌', prerequisiteId: 'speed',           branch: 'movement',  nodeType: 'repeatable' },
-  // ── Defense branch ───────────────────────────────────────────────────
-  { upgradeId: 'block_chance',    x:  200, y: -220, icon: '▣', prerequisiteId: null,              branch: 'defense',   nodeType: 'repeatable' },
-  { upgradeId: 'block_strength',  x:  340, y: -360, icon: '⊞', prerequisiteId: 'block_chance',    branch: 'defense',   nodeType: 'repeatable' },
-  { upgradeId: 'second_wind',     x:  140, y: -390, icon: '♥', prerequisiteId: 'block_chance',    branch: 'defense',   nodeType: 'unlock'     },
-  // ── Weapons branch ───────────────────────────────────────────────────
-  { upgradeId: 'orbit_projectile',x:  220, y:   80, icon: '◎', prerequisiteId: null,              branch: 'weapons',   nodeType: 'unlock'     },
-  { upgradeId: 'orbit_count',     x:  380, y:  180, icon: '⊕', prerequisiteId: 'orbit_projectile',branch: 'weapons',   nodeType: 'repeatable' },
-  { upgradeId: 'orbit_detonation',x:  380, y:   60, icon: '✸', prerequisiteId: 'orbit_count',     branch: 'weapons',   nodeType: 'repeatable' },
-  { upgradeId: 'extra_weapon_slot',x:  80, y:  220, icon: '⚔', prerequisiteId: null,              branch: 'weapons',   nodeType: 'repeatable' },
-  { upgradeId: 'weapon_mastery',  x:  240, y:  300, icon: '◆', prerequisiteId: 'extra_weapon_slot',branch: 'weapons',  nodeType: 'repeatable' },
-  { upgradeId: 'dominance_amp',   x:  400, y:  350, icon: '★', prerequisiteId: 'weapon_mastery',  branch: 'weapons',   nodeType: 'repeatable' },
-  // ── Resources branch ─────────────────────────────────────────────────
-  { upgradeId: 'mote_magnetism',  x: -240, y:  240, icon: '◉', prerequisiteId: null,              branch: 'resources', nodeType: 'repeatable' },
-  { upgradeId: 'xp_gain',        x: -380, y:  160, icon: '⬆', prerequisiteId: 'mote_magnetism',  branch: 'resources', nodeType: 'repeatable' },
+  // ── Root / Core ───────────────────────────────────────────────────────
+  { upgradeId: 'awakening',       x:    0, y:    0, icon: '✦', prerequisiteId: null,                  branch: 'root',      nodeType: 'root'       },
+  { upgradeId: 'rpg_training',    x:    0, y: -115, icon: '⚔', prerequisiteId: null,                  branch: 'root',      nodeType: 'repeatable' },
+  { upgradeId: 'battle_focus',    x: -140, y: -215, icon: '◎', prerequisiteId: 'rpg_training',        branch: 'root',      nodeType: 'repeatable' },
+  { upgradeId: 'codex_initiate',  x:  140, y: -215, icon: '≡', prerequisiteId: 'rpg_training',        branch: 'root',      nodeType: 'repeatable' },
+  // ── Movement branch ───────────────────────────────────────────────────
+  { upgradeId: 'speed',           x: -260, y:  -65, icon: '▲', prerequisiteId: null,                  branch: 'movement',  nodeType: 'repeatable' },
+  { upgradeId: 'acceleration',    x: -400, y: -155, icon: '▶', prerequisiteId: 'speed',               branch: 'movement',  nodeType: 'repeatable' },
+  { upgradeId: 'dash',            x: -510, y: -255, icon: '⚡', prerequisiteId: 'acceleration',        branch: 'movement',  nodeType: 'unlock'     },
+  { upgradeId: 'dash_cooldown',   x: -590, y: -375, icon: '○', prerequisiteId: 'dash',                branch: 'movement',  nodeType: 'repeatable' },
+  { upgradeId: 'afterimage',      x: -430, y: -380, icon: '≈', prerequisiteId: 'dash',                branch: 'movement',  nodeType: 'repeatable' },
+  // ── Defense branch ────────────────────────────────────────────────────
+  { upgradeId: 'block_chance',    x:  255, y:  -90, icon: '■', prerequisiteId: null,                  branch: 'defense',   nodeType: 'repeatable' },
+  { upgradeId: 'block_strength',  x:  400, y: -195, icon: '⊞', prerequisiteId: 'block_chance',        branch: 'defense',   nodeType: 'repeatable' },
+  { upgradeId: 'projectile_deflection', x: 255, y: -265, icon: '⊘', prerequisiteId: 'block_chance',  branch: 'defense',   nodeType: 'repeatable' },
+  { upgradeId: 'status_resistance', x: 400, y: -380, icon: '◈', prerequisiteId: 'block_strength',     branch: 'defense',   nodeType: 'repeatable' },
+  { upgradeId: 'second_wind',     x:  140, y: -350, icon: '♥', prerequisiteId: 'block_chance',        branch: 'defense',   nodeType: 'unlock'     },
+  // ── Weapons branch ────────────────────────────────────────────────────
+  { upgradeId: 'extra_weapon_slot', x: 255, y:  90, icon: '⊕', prerequisiteId: null,                  branch: 'weapons',   nodeType: 'repeatable' },
+  { upgradeId: 'weapon_mastery',  x:  400, y:  190, icon: '◆', prerequisiteId: 'extra_weapon_slot',   branch: 'weapons',   nodeType: 'repeatable' },
+  { upgradeId: 'dominance_amp',   x:  530, y:  290, icon: '★', prerequisiteId: 'weapon_mastery',      branch: 'weapons',   nodeType: 'repeatable' },
+  { upgradeId: 'balanced_alloy',  x:  375, y:  315, icon: '⊙', prerequisiteId: 'weapon_mastery',      branch: 'weapons',   nodeType: 'repeatable' },
+  { upgradeId: 'quick_swap',      x:  175, y:  215, icon: '↺', prerequisiteId: 'extra_weapon_slot',   branch: 'weapons',   nodeType: 'unlock'     },
+  // ── Orbiting branch ───────────────────────────────────────────────────
+  { upgradeId: 'orbit_projectile', x:  90, y:  120, icon: '○', prerequisiteId: null,                  branch: 'orbits',    nodeType: 'unlock'     },
+  { upgradeId: 'orbit_count',     x:  -55, y:  220, icon: '⊚', prerequisiteId: 'orbit_projectile',    branch: 'orbits',    nodeType: 'repeatable' },
+  { upgradeId: 'orbit_detonation', x: 195, y:  225, icon: '✸', prerequisiteId: 'orbit_projectile',    branch: 'orbits',    nodeType: 'unlock'     },
+  { upgradeId: 'piercing_orbit',  x: -155, y:  325, icon: '◈', prerequisiteId: 'orbit_count',         branch: 'orbits',    nodeType: 'repeatable' },
+  { upgradeId: 'orbital_radius',  x:   35, y:  355, icon: '⊛', prerequisiteId: 'orbit_count',         branch: 'orbits',    nodeType: 'repeatable' },
+  { upgradeId: 'comet_return',    x:  185, y:  335, icon: '↩', prerequisiteId: 'orbit_detonation',    branch: 'orbits',    nodeType: 'unlock'     },
+  // ── Elemental branch ──────────────────────────────────────────────────
+  { upgradeId: 'elemental_attunement', x: -40, y: 450, icon: '◇', prerequisiteId: null,               branch: 'elemental', nodeType: 'repeatable' },
+  { upgradeId: 'sand_agility',    x: -545, y:  360, icon: '▲', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
+  { upgradeId: 'quartz_multiplicity', x: -545, y: 475, icon: '◇', prerequisiteId: 'sand_agility',     branch: 'elemental', nodeType: 'repeatable' },
+  { upgradeId: 'ruby_penetration', x: -395, y:  495, icon: '▶', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
+  { upgradeId: 'citrine_bloom',   x: -230, y:  510, icon: '⊛', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
+  { upgradeId: 'emerald_seeking', x:   65, y:  510, icon: '◉', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
+  { upgradeId: 'sapphire_precision', x: 250, y:  495, icon: '✚', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'repeatable' },
+  { upgradeId: 'amethyst_echo',   x:  450, y:  430, icon: '≈', prerequisiteId: 'elemental_attunement', branch: 'elemental', nodeType: 'unlock'     },
+  { upgradeId: 'diamond_severance', x: 570, y:  430, icon: '✦', prerequisiteId: 'amethyst_echo',       branch: 'elemental', nodeType: 'unlock'     },
+  // ── Resource branch ───────────────────────────────────────────────────
+  { upgradeId: 'mote_magnetism',  x: -255, y:  120, icon: '⊛', prerequisiteId: null,                  branch: 'resources', nodeType: 'repeatable' },
+  { upgradeId: 'battle_salvage',  x: -385, y:  225, icon: '◉', prerequisiteId: 'mote_magnetism',      branch: 'resources', nodeType: 'repeatable' },
+  { upgradeId: 'boss_spoils',     x: -505, y:  130, icon: '★', prerequisiteId: 'mote_magnetism',      branch: 'resources', nodeType: 'unlock'     },
+  { upgradeId: 'treasure_sense',  x: -445, y:  345, icon: '◆', prerequisiteId: 'battle_salvage',      branch: 'resources', nodeType: 'repeatable' },
 ];
 
 // ─── Internal types ───────────────────────────────────────────────────────
@@ -274,28 +302,38 @@ function drawConnection(
   ctx.globalAlpha = 1;
 }
 
-type NodeStatus = 'purchased' | 'available' | 'locked';
+type NodeStatus = 'maxed' | 'purchased' | 'available' | 'locked';
 
 function getNodeStatus(
   def: SkillTreeNodeDef,
   rpgState: RpgSimState,
   isDevMode: boolean,
 ): NodeStatus {
-  if (def.upgradeId === null) return 'purchased'; // root always purchased
+  // Awakening root node — always purchased once tree is active
+  if (def.upgradeId === 'awakening') {
+    const level = getRpgUpgradeLevel(rpgState, 'awakening');
+    return level >= 1 ? 'maxed' : 'available';
+  }
+  if (def.upgradeId === null) return 'maxed';
+
   const level = getRpgUpgradeLevel(rpgState, def.upgradeId);
   const upgradeDef = RPG_UPGRADE_BY_ID.get(def.upgradeId);
   const isMaxed = upgradeDef ? level >= upgradeDef.maxLevel : false;
 
-  // Root-level nodes: always available (prerequisite = root = always purchased)
+  // Root-prerequisite nodes: unlocked once the tree root (awakening) is purchased
   if (def.prerequisiteId === null) {
-    if (level > 0 || isMaxed) return 'purchased';
-    return isDevMode ? 'available' : 'available';
+    const awakeningLevel = getRpgUpgradeLevel(rpgState, 'awakening');
+    if (awakeningLevel < 1 && !isDevMode) return 'locked';
+    if (isMaxed) return 'maxed';
+    if (level > 0) return 'purchased';
+    return 'available';
   }
 
   // Nodes with a specific upgrade prerequisite
   const prereqLevel = getRpgUpgradeLevel(rpgState, def.prerequisiteId);
   if (prereqLevel < 1 && !isDevMode) return 'locked';
-  if (level > 0 || isMaxed) return 'purchased';
+  if (isMaxed) return 'maxed';
+  if (level > 0) return 'purchased';
   return 'available';
 }
 
@@ -316,19 +354,21 @@ function drawNode(
   const isRoot = node.def.nodeType === 'root';
   const isMedallion = node.def.nodeType !== 'repeatable';
   const pulse = (Math.sin(tMs * 0.0018) + 1) * 0.5;
+  const isMaxed = status === 'maxed';
+  const glowColor = isMaxed ? '#ffd060' : branchCol;
 
   // ── Outer glow / pulse ──────────────────────────────────────────────
   if (status !== 'locked') {
     ctx.save();
-    const glowStr = status === 'purchased'
-      ? (isRoot ? 28 : isMedallion ? 20 : 14)
+    const glowStr = (isMaxed || status === 'purchased')
+      ? (isRoot ? 32 : isMedallion ? 22 : 16)
       : (isRoot ? 20 : isMedallion ? 14 : 10) * (0.6 + pulse * 0.4);
-    ctx.shadowColor = branchCol;
+    ctx.shadowColor = glowColor;
     ctx.shadowBlur  = glowStr;
     ctx.beginPath();
     ctx.arc(x, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = branchCol;
-    ctx.lineWidth   = status === 'purchased' ? (isMedallion ? 2.8 : 2.2) : (isMedallion ? 1.6 : 1.2);
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth   = (isMaxed || status === 'purchased') ? (isMedallion ? 2.8 : 2.2) : (isMedallion ? 1.6 : 1.2);
     ctx.globalAlpha = status === 'available' ? (0.6 + pulse * 0.4) : 1;
     ctx.stroke();
     ctx.restore();
@@ -337,7 +377,18 @@ function drawNode(
   // ── Background fill ─────────────────────────────────────────────────
   ctx.beginPath();
   ctx.arc(x, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = status === 'locked' ? 'rgba(5,5,12,0.90)' : 'rgba(8,6,20,0.95)';
+  if (status === 'locked') {
+    ctx.fillStyle = 'rgba(5,5,12,0.90)';
+  } else if (isMaxed) {
+    // Ornate gold fill for maxed nodes
+    const grad = ctx.createRadialGradient(x, cy - r * 0.3, r * 0.1, x, cy, r);
+    grad.addColorStop(0, 'rgba(255,240,140,0.30)');
+    grad.addColorStop(0.6, 'rgba(200,140,20,0.18)');
+    grad.addColorStop(1, 'rgba(8,6,20,0.95)');
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = 'rgba(8,6,20,0.95)';
+  }
   ctx.fill();
 
   // ── Border ring ─────────────────────────────────────────────────────
@@ -347,8 +398,8 @@ function drawNode(
     ctx.strokeStyle = '#1e1e30';
     ctx.lineWidth   = 1.2;
   } else {
-    ctx.strokeStyle = branchCol;
-    ctx.lineWidth   = status === 'purchased' ? (isMedallion ? 2.6 : 2.0) : (isMedallion ? 1.4 : 1.0);
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth   = (isMaxed || status === 'purchased') ? (isMedallion ? 2.6 : 2.0) : (isMedallion ? 1.4 : 1.0);
     ctx.globalAlpha = status === 'available' ? (0.65 + pulse * 0.35) : 1;
   }
   ctx.stroke();
@@ -358,13 +409,27 @@ function drawNode(
   if (isMedallion && status !== 'locked') {
     ctx.beginPath();
     ctx.arc(x, cy, r - 7, 0, Math.PI * 2);
-    ctx.strokeStyle = branchCol + (status === 'purchased' ? '55' : '30');
-    ctx.lineWidth   = 1;
+    ctx.strokeStyle = glowColor + (isMaxed ? '88' : status === 'purchased' ? '55' : '30');
+    ctx.lineWidth   = isMaxed ? 1.4 : 1;
     ctx.stroke();
   }
 
-  // ── Rank progress arc (repeatable nodes) ────────────────────────────
-  if (!isMedallion && node.def.upgradeId) {
+  // ── Ornate outer ring (maxed nodes get an extra decorative ring) ─────
+  if (isMaxed) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, cy, r + 5, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffd060';
+    ctx.lineWidth   = 1.2;
+    ctx.globalAlpha = 0.45;
+    ctx.setLineDash([3, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ── Rank progress arc (purchased/repeatable nodes) ───────────────────
+  if (!isMaxed && !isMedallion && node.def.upgradeId) {
     const upgDef = RPG_UPGRADE_BY_ID.get(node.def.upgradeId);
     if (upgDef && upgDef.maxLevel > 1) {
       const rank = rpgState.rpgUpgradeLevels?.get(node.def.upgradeId) ?? 0;
@@ -385,11 +450,11 @@ function drawNode(
 
   // ── Icon ────────────────────────────────────────────────────────────
   ctx.save();
-  ctx.globalAlpha = status === 'locked' ? 0.20 : 1;
-  ctx.font        = `${isRoot ? 24 : isMedallion ? 17 : 13}px sans-serif`;
-  ctx.textAlign   = 'center';
+  ctx.globalAlpha  = status === 'locked' ? 0.20 : 1;
+  ctx.font         = `${isRoot ? 24 : isMedallion ? 17 : 13}px sans-serif`;
+  ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = status === 'locked' ? '#333355' : branchCol;
+  ctx.fillStyle    = status === 'locked' ? '#333355' : glowColor;
   ctx.fillText(node.def.icon, x, cy);
   ctx.restore();
 
@@ -401,12 +466,12 @@ function drawNode(
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'top';
   ctx.globalAlpha  = status === 'locked' ? 0.28 : 0.88;
-  ctx.fillStyle    = status === 'locked' ? '#33335a' : branchCol;
+  ctx.fillStyle    = status === 'locked' ? '#33335a' : glowColor;
   ctx.fillText(label, x, cy + r + 5);
   ctx.restore();
 
-  // ── Rank badge (purchased repeatable) ───────────────────────────────
-  if (status === 'purchased' && upgDef && upgDef.maxLevel > 1) {
+  // ── Rank badge (purchased repeatable, not maxed) ─────────────────────
+  if ((status === 'purchased') && upgDef && upgDef.maxLevel > 1) {
     const rank = getRpgUpgradeLevel(rpgState, upgDef.id);
     ctx.save();
     ctx.font         = 'bold 7px monospace';
@@ -415,6 +480,18 @@ function drawNode(
     ctx.fillStyle    = branchCol;
     ctx.globalAlpha  = 0.9;
     ctx.fillText(`${rank}/${upgDef.maxLevel}`, x, cy - r - 3);
+    ctx.restore();
+  }
+
+  // ── Max rank checkmark badge ─────────────────────────────────────────
+  if (isMaxed && !isRoot) {
+    ctx.save();
+    ctx.font         = 'bold 8px monospace';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle    = '#ffd060';
+    ctx.globalAlpha  = 0.95;
+    ctx.fillText('MAX', x, cy - r - 3);
     ctx.restore();
   }
 }
@@ -520,10 +597,10 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const w = canvas.width  || canvasArea.clientWidth  || 400;
     const h = canvas.height || canvasArea.clientHeight || 300;
     camX = 0;
-    camY = 0;
-    // Fit the full tree extent (~900 × 760 world units) with a 15 % margin.
-    // Cap at 0.72 so the tree is never tiny on large screens.
-    camZoom = Math.max(ZOOM_MIN, Math.min(0.72, Math.min(w / 900, h / 760)));
+    camY = 150;
+    // Fit the full tree extent (~1400 × 1180 world units) with a 15 % margin.
+    // Cap at 0.55 so the tree is never tiny on large screens.
+    camZoom = Math.max(ZOOM_MIN, Math.min(0.55, Math.min(w / 1400, h / 1180)));
   }
 
   function screenToWorld(sx: number, sy: number): { x: number; y: number } {
@@ -690,9 +767,9 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const status   = getNodeStatus(node.def, _rpgState, _isDevMode);
     const curLevel = getRpgUpgradeLevel(_rpgState, node.def.upgradeId);
     if (curLevel >= upgradeDef.maxLevel || status === 'locked') return;
-    const hasSkillPt     = _rpgState.unspentSkillPoints >= 1;
+    const hasSkillPt     = _rpgState.unspentSkillPoints >= upgradeDef.skillPointCost;
     const moteBalance    = getMotes(_resources, upgradeDef.costTierId);
-    const canAffordMotes = _isDevMode || moteBalance >= upgradeDef.costPerLevel;
+    const canAffordMotes = _isDevMode || upgradeDef.costPerLevel === 0 || moteBalance >= upgradeDef.costPerLevel;
     if (_isDevMode || (hasSkillPt && canAffordMotes)) {
       dispatch({ kind: 'purchase_rpg_upgrade', upgradeId: upgradeDef.id });
     }
@@ -874,11 +951,12 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const curLevel       = upgradeDef ? getRpgUpgradeLevel(_rpgState, upgradeDef.id) : 0;
     const maxLevel       = upgradeDef ? upgradeDef.maxLevel : 1;
     const isMaxed        = upgradeDef ? curLevel >= maxLevel : false;
-    const status         = def.upgradeId ? getNodeStatus(def, _rpgState, _isDevMode) : 'purchased';
+    const spCost         = upgradeDef ? upgradeDef.skillPointCost : 1;
+    const status         = def.upgradeId ? getNodeStatus(def, _rpgState, _isDevMode) : 'maxed';
     const isLocked       = status === 'locked';
-    const hasSkillPt     = _rpgState.unspentSkillPoints >= 1;
+    const hasSkillPt     = _rpgState.unspentSkillPoints >= spCost;
     const moteBalance    = (upgradeDef && _resources) ? getMotes(_resources, upgradeDef.costTierId) : 0;
-    const canAffordMotes = _isDevMode || (upgradeDef ? moteBalance >= upgradeDef.costPerLevel : false);
+    const canAffordMotes = _isDevMode || (upgradeDef ? (upgradeDef.costPerLevel === 0 || moteBalance >= upgradeDef.costPerLevel) : false);
     const canPurchase    = !isRoot && !isMaxed && !isLocked && (_isDevMode || (hasSkillPt && canAffordMotes));
 
     // Measure wrapped description before computing card height
@@ -1037,16 +1115,21 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       // SP cost
       ctx.font      = '10px monospace';
       ctx.fillStyle = (hasSkillPt || _isDevMode) ? '#8ec87a' : '#e07070';
-      ctx.fillText(`✦ 1 SP  (have ${_rpgState.unspentSkillPoints})`, textX, textY);
+      ctx.fillText(`✦ ${spCost} SP  (have ${_rpgState.unspentSkillPoints})`, textX, textY);
       textY += 14;
 
-      // Mote cost
+      // Mote cost (hide if free)
       textY += 4;
-      ctx.fillStyle = canAffordMotes ? '#8ec87a' : '#e07070';
-      ctx.fillText(
-        `${formatNumberAs(upgradeDef.costPerLevel, _format)} ${upgradeDef.costTierId} motes`,
-        textX, textY,
-      );
+      if (upgradeDef.costPerLevel > 0) {
+        ctx.fillStyle = canAffordMotes ? '#8ec87a' : '#e07070';
+        ctx.fillText(
+          `${formatNumberAs(upgradeDef.costPerLevel, _format)} ${upgradeDef.costTierId} motes`,
+          textX, textY,
+        );
+      } else {
+        ctx.fillStyle = '#8ec87a';
+        ctx.fillText('No mote cost', textX, textY);
+      }
       textY += 14;
 
       // Locked reason
@@ -1075,7 +1158,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       ctx.lineWidth   = 1.2;
       ctx.stroke();
 
-      const btnLabel = (!hasSkillPt && !_isDevMode) ? 'Need skill point'
+      const btnLabel = (!hasSkillPt && !_isDevMode) ? `Need ${spCost} SP`
                      : !canAffordMotes              ? 'Need motes'
                      : isLocked                     ? 'Prerequisites not met'
                      : (maxLevel === 1 ? 'Unlock' : 'Upgrade');
@@ -1148,7 +1231,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     for (const conn of connections) {
       const aStatus = _rpgState ? getNodeStatus(conn.a.def, _rpgState, _isDevMode) : 'locked';
       const bStatus = _rpgState ? getNodeStatus(conn.b.def, _rpgState, _isDevMode) : 'locked';
-      const connAlpha = (aStatus === 'purchased' || bStatus === 'available') ? 1 : 0.35;
+      const connAlpha = (aStatus === 'purchased' || aStatus === 'maxed' || bStatus === 'available') ? 1 : 0.35;
       drawConnection(ctx2d, conn, conn.a.y + fy(conn.a), conn.b.y + fy(conn.b), tMs, glowSprites, connAlpha);
     }
 
@@ -1204,9 +1287,12 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       _isDevMode  = isDevMode;
 
       const sp = rpgState.unspentSkillPoints;
-      spLabel.textContent = sp === 1
-        ? '✦ 1 skill point available'
-        : `✦ ${sp} skill points available`;
+      let totalSpent = 0;
+      for (const [upgradeId, level] of rpgState.rpgUpgradeLevels) {
+        const def = RPG_UPGRADE_BY_ID.get(upgradeId);
+        if (def) totalSpent += level * def.skillPointCost;
+      }
+      spLabel.textContent = `✦ ${sp} available  ·  ${totalSpent} / 200 spent`;
       spLabel.className = 'skill-tree__sp-label' + (sp > 0 ? ' skill-tree__sp-label--has-points' : '');
       // The canvas-drawn card auto-refreshes from _rpgState each frame — no DOM refresh needed.
     },

@@ -264,12 +264,13 @@ export function handleAction(
       if (!upgradeDef) { audioSystem?.onError(); break; }
       const currentLevel = getRpgUpgradeLevel(state.game.rpg, action.upgradeId);
       if (currentLevel >= upgradeDef.maxLevel) break;
+      const spCost = upgradeDef.skillPointCost;
       if (!devMode) {
-        if (state.game.rpg.unspentSkillPoints < 1) { audioSystem?.onError(); break; }
+        if (state.game.rpg.unspentSkillPoints < spCost) { audioSystem?.onError(); break; }
         const balance = getMotes(state.game.resources, upgradeDef.costTierId);
-        if (balance < upgradeDef.costPerLevel) { audioSystem?.onError(); break; }
-        state.game.rpg.unspentSkillPoints--;
-        spendMotes(state.game.resources, upgradeDef.costTierId, upgradeDef.costPerLevel);
+        if (upgradeDef.costPerLevel > 0 && balance < upgradeDef.costPerLevel) { audioSystem?.onError(); break; }
+        state.game.rpg.unspentSkillPoints -= spCost;
+        if (upgradeDef.costPerLevel > 0) spendMotes(state.game.resources, upgradeDef.costTierId, upgradeDef.costPerLevel);
       }
       state.game.rpg.rpgUpgradeLevels.set(action.upgradeId, currentLevel + 1);
       audioSystem?.onBuyLoomUpgrade();

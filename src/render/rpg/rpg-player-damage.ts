@@ -231,7 +231,7 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       }
       // Block: chance to reduce damage
       const blockRank = getSkillNodeRank(sim, 'block_chance');
-      if (blockRank > 0 && Math.random() * 100 < blockRank * 12) {
+      if (blockRank > 0 && Math.random() * 100 < blockRank * 4) {
         const blockStrRank = getSkillNodeRank(sim, 'block_strength');
         const damageFraction = Math.max(0.1, 0.5 - blockStrRank * 0.07);
         const blockedDmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100) * damageFraction);

@@ -288,13 +288,26 @@ export function deserializeGameState(data: SaveData): GameState {
     } else {
       // Points earned = levels gained (level 1 = 0 points, each level-up = +1)
       const pointsEarned = Math.max(0, state.rpg.playerLevel - 1);
-      // Points already spent = sum of all upgrade levels purchased
+      // Points already spent = sum of all upgrade levels purchased (old saves used 1 SP/rank)
       let pointsSpent = 0;
       for (const level of state.rpg.rpgUpgradeLevels.values()) {
         pointsSpent += level;
       }
       state.rpg.unspentSkillPoints = Math.max(0, pointsEarned - pointsSpent);
       state.rpg.skillPointMigrationDone = true;
+    }
+    // Migrate weapon slots: extra_weapon_slot rank should match level-based slot count for older saves.
+    // This ensures players who earned slots via player level don't lose them.
+    {
+      const levelSlots = Math.min(4, Math.floor(state.rpg.playerLevel / 25));
+      const upgradeSlots = state.rpg.rpgUpgradeLevels.get('extra_weapon_slot') ?? 0;
+      if (upgradeSlots < levelSlots) {
+        state.rpg.rpgUpgradeLevels.set('extra_weapon_slot', levelSlots);
+      }
+    }
+    // Auto-grant awakening for existing players (level 2+) — retroactive free grant.
+    if (!state.rpg.rpgUpgradeLevels.has('awakening') && state.rpg.playerLevel >= 2) {
+      state.rpg.rpgUpgradeLevels.set('awakening', 1);
     }
     // ─── Lens helper (used for inventory and weapon attachments) ───
     type SavedLens = NonNullable<NonNullable<typeof data.rpg>['craftedLenses']>[0];

@@ -39,7 +39,7 @@ export interface WeaponTickCtx {
   /** Stats-panel DPS tracker — wraps callbacks to attribute damage. */
   readonly statsPanel: { withDamageSource: (id: string | null, fn: () => void) => void };
   /** Simulation state providing weapon tier look-up. */
-  readonly rpgSimState: Pick<RpgSimState, 'weaponTiersByWeaponId' | 'sandBladeEnabled'>;
+  readonly rpgSimState: Pick<RpgSimState, 'weaponTiersByWeaponId' | 'sandBladeEnabled' | 'rpgUpgradeLevels'>;
   /** Per-weapon countdown timers (ms until next auto-attack). Mutated in-place. */
   readonly weaponAttackTimers: Map<string, number>;
   /** Player mote position — used to anchor sand-drift pixel spawns. */
@@ -134,9 +134,12 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
 
     const tier = ctx.rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
     const spdMult = ctx.getWeaponSpdMultiplier(weaponId);
-    const baseCooldownMs = weaponDef
+    let baseCooldownMs = weaponDef
       ? getScaledWeaponCooldown(weaponDef.stats.cooldownMs, tier)
       : PLAYER_BASE_COOLDOWN_MS;
+    // Battle Focus: -2% cooldown per rank (up to -4% total at rank 2).
+    const battleFocusRank = (ctx.rpgSimState.rpgUpgradeLevels.get('battle_focus') ?? 0);
+    if (battleFocusRank > 0) baseCooldownMs *= Math.max(0.5, 1 - battleFocusRank * 0.02);
     const cooldownMs = baseCooldownMs / Math.max(1, spdMult);
 
     const current = ctx.weaponAttackTimers.get(weaponId) ?? 0;

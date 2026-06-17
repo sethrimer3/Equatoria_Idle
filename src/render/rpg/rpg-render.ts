@@ -1845,7 +1845,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           mote.vx = (dx / len) * DASH_BURST_SPEED;
           mote.vy = (dy / len) * DASH_BURST_SPEED;
         }
-        rpgSimState.dashCooldownMs = DASH_COOLDOWN_MS;
+        const dashCdRank = rpgSimState.rpgUpgradeLevels.get('dash_cooldown') ?? 0;
+        rpgSimState.dashCooldownMs = DASH_COOLDOWN_MS * Math.max(0.2, 1 - dashCdRank * 0.15);
       }
       dashRequested = false;
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
