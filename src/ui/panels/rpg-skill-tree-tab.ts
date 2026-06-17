@@ -922,10 +922,15 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const spCost         = upgradeDef ? upgradeDef.skillPointCost : 1;
     const status         = def.upgradeId ? getNodeStatus(def, _rpgState, _isDevMode) : 'maxed';
     const isLocked       = status === 'locked';
+    // Keep these for display-color purposes only (not for purchase gate)
     const hasSkillPt     = _rpgState.unspentSkillPoints >= spCost;
     const moteBalance    = (upgradeDef && _resources) ? getMotes(_resources, upgradeDef.costTierId) : 0;
     const canAffordMotes = _isDevMode || (upgradeDef ? (upgradeDef.costPerLevel === 0 || moteBalance >= upgradeDef.costPerLevel) : false);
-    const canPurchase    = !isRoot && !isMaxed && !isLocked && (_isDevMode || (hasSkillPt && canAffordMotes));
+    // Purchase gate comes from the shared helper so UI and action handler always agree
+    const purchaseCheck  = (!isRoot && def.upgradeId && _resources)
+      ? canPurchaseRpgSkill(_rpgState, _resources, def.upgradeId, _isDevMode)
+      : { ok: false, reason: undefined };
+    const canPurchase    = !isRoot && !isMaxed && purchaseCheck.ok;
 
     // Measure wrapped description before computing card height
     const DESC_FONT = '10px monospace';
