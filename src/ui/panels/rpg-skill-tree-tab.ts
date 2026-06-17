@@ -1,12 +1,8 @@
 /**
  * rpg-skill-tree-tab.ts — Skill Tree sub-tab for the RPG overlay panel.
  *
- * Renders a pannable/zoomable canvas-based skill tree that mirrors the
- * visual language of rpg-zone-select.ts (dark cosmic background, floating
- * nodes, connection motes, ambient particles).
- *
- * Tree layout is data-driven via SKILL_TREE_NODES.  Adding a future node
- * only requires adding an entry there — no other file needs to change.
+ * Renders a pannable/zoomable canvas-based skill tree. The node detail card
+ * is drawn in world/canvas coordinates so it pans and zooms with the tree.
  */
 
 import { RPG_UPGRADE_BY_ID } from '../../data/rpg/rpg-upgrade-definitions';
@@ -29,6 +25,11 @@ const ZOOM_MIN     = 0.30;
 const ZOOM_MAX     = 2.2;
 const DRAG_THRESHOLD = 5;
 const SELECTED_SCALE = 1.18;
+
+// Detail card world-space dimensions
+const CARD_W   = 220;
+const CARD_PAD = 14;
+const CARD_BTN_H = 44;
 
 // ── Branch colours ──────────────────────────────────────────────────────
 const BRANCH_COLOR: Record<string, string> = {
@@ -142,6 +143,8 @@ interface AmbientParticle {
   trailX: Float32Array; trailY: Float32Array;
   trailHead: number; trailCount: number; trailSampleMs: number;
 }
+
+interface WorldRect { x: number; y: number; w: number; h: number }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -416,6 +419,48 @@ function drawNode(
   }
 }
 
+// ─── Card drawing helpers ─────────────────────────────────────────────────
+
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  font: string,
+  maxWidth: number,
+): string[] {
+  ctx.font = font;
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth) {
+      if (current) { lines.push(current); current = word; }
+      else { lines.push(word); }
+    } else {
+      current = test;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y,       x + w, y + r,       r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h,   x + w - r, y + h,   r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x,     y + h,   x,     y + h - r,   r);
+  ctx.lineTo(x,     y + r);
+  ctx.arcTo(x,     y,       x + r, y,            r);
+  ctx.closePath();
+}
+
 // ─── Public interface ─────────────────────────────────────────────────────
 
 export interface RpgSkillTreeTabPane {
@@ -452,12 +497,6 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
   canvasArea.appendChild(canvas);
   const ctx2d = canvas.getContext('2d')!;
 
-  // ── Detail panel (DOM overlay) ────────────────────────────────────────
-  const detailPanel = document.createElement('div');
-  detailPanel.className = 'skill-tree__detail';
-  detailPanel.style.display = 'none';
-  canvasArea.appendChild(detailPanel);
-
   // ── State ─────────────────────────────────────────────────────────────
   let _rpgState: RpgSimState | null = null;
   let _resources: ResourceState | null = null;
@@ -468,8 +507,8 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
   let _lastTMs = 0;
 
   // Camera
-  let camX = 420;
-  let camY = 220;
+  let camX = 0;
+  let camY = 0;
   let camZoom = 1;
 
   function clampCam(): void {
@@ -482,13 +521,27 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const h = canvas.height || canvasArea.clientHeight || 300;
     camX = 0;
     camY = 0;
-    camZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.min(w / 620, h / 440)));
+    // Fit the full tree extent (~900 × 760 world units) with a 15 % margin.
+    // Cap at 0.72 so the tree is never tiny on large screens.
+    camZoom = Math.max(ZOOM_MIN, Math.min(0.72, Math.min(w / 900, h / 760)));
   }
 
   function screenToWorld(sx: number, sy: number): { x: number; y: number } {
     return {
       x: (sx - canvas.width  / 2) / camZoom + camX,
       y: (sy - canvas.height / 2) / camZoom + camY,
+    };
+  }
+
+  // Visible canvas bounds in world space
+  function worldBounds(): { left: number; right: number; top: number; bottom: number } {
+    const W = canvas.width  || canvasArea.clientWidth  || 400;
+    const H = canvas.height || canvasArea.clientHeight || 300;
+    return {
+      left:   camX - W / (2 * camZoom),
+      right:  camX + W / (2 * camZoom),
+      top:    camY - H / (2 * camZoom),
+      bottom: camY + H / (2 * camZoom),
     };
   }
 
@@ -598,6 +651,14 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
   let pinchBaseDist = 0; let pinchBaseZoom = 1;
   let hoveredIdx: number = -1;
   let selectedIdx: number = -1;
+  // Set to true once a second pointer goes down; suppresses tap-on-up for the
+  // whole gesture so pinch-zoom never accidentally deselects the card.
+  let gestureWasPinch = false;
+
+  // World-space rects of the currently drawn card and its buy button.
+  // Updated every frame in drawDetailCard; read in handleTap.
+  let cardBoundsWorldRect: WorldRect | null = null;
+  let cardButtonWorldRect: WorldRect | null = null;
 
   function hitTest(wx: number, wy: number, tMs: number): number {
     for (let i = 0; i < nodes.length; i++) {
@@ -619,21 +680,80 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     };
   }
 
+  // ── Trigger purchase ───────────────────────────────────────────────────
+  function triggerPurchase(): void {
+    if (selectedIdx < 0 || !_rpgState || !_resources) return;
+    const node = nodes[selectedIdx];
+    if (!node.def.upgradeId) return;
+    const upgradeDef = RPG_UPGRADE_BY_ID.get(node.def.upgradeId);
+    if (!upgradeDef) return;
+    const status   = getNodeStatus(node.def, _rpgState, _isDevMode);
+    const curLevel = getRpgUpgradeLevel(_rpgState, node.def.upgradeId);
+    if (curLevel >= upgradeDef.maxLevel || status === 'locked') return;
+    const hasSkillPt     = _rpgState.unspentSkillPoints >= 1;
+    const moteBalance    = getMotes(_resources, upgradeDef.costTierId);
+    const canAffordMotes = _isDevMode || moteBalance >= upgradeDef.costPerLevel;
+    if (_isDevMode || (hasSkillPt && canAffordMotes)) {
+      dispatch({ kind: 'purchase_rpg_upgrade', upgradeId: upgradeDef.id });
+    }
+  }
+
+  // ── Auto-pan to show card ─────────────────────────────────────────────
+  function autoPanToShowCard(nodeIdx: number): void {
+    if (nodeIdx < 0) return;
+    const node   = nodes[nodeIdx];
+    const fy     = FLOAT_AMP * Math.sin(_lastTMs * FLOAT_SPD + node.phase);
+    const nodeCY = node.y + fy;
+    const wb     = worldBounds();
+    const MARG   = 12;
+    const GAP    = 14;
+
+    // Estimate card below node
+    const cx = node.x - CARD_W / 2;
+    const cy = nodeCY + node.nodeRadius + GAP;
+    const cr = cx + CARD_W;
+    const cb = cy + 190;   // generous height estimate
+
+    let dx = 0, dy = 0;
+    if      (cx < wb.left   + MARG) dx = cx - MARG - wb.left;
+    else if (cr > wb.right  - MARG) dx = cr + MARG - wb.right;
+    if      (cy < wb.top    + MARG) dy = cy - MARG - wb.top;
+    else if (cb > wb.bottom - MARG) dy = cb + MARG - wb.bottom;
+
+    camX += dx;
+    camY += dy;
+    clampCam();
+  }
+
+  // ── Handle tap ────────────────────────────────────────────────────────
   function handleTap(sx: number, sy: number): void {
     const wp = screenToWorld(sx, sy);
+
+    // Buy-button hit?
+    if (selectedIdx >= 0 && cardButtonWorldRect) {
+      const b = cardButtonWorldRect;
+      if (wp.x >= b.x && wp.x <= b.x + b.w && wp.y >= b.y && wp.y <= b.y + b.h) {
+        triggerPurchase();
+        return;
+      }
+    }
+
+    // Tap on card body (not a node, not the button) → keep card open
+    if (selectedIdx >= 0 && cardBoundsWorldRect) {
+      const b = cardBoundsWorldRect;
+      if (wp.x >= b.x && wp.x <= b.x + b.w && wp.y >= b.y && wp.y <= b.y + b.h) {
+        return;
+      }
+    }
+
+    // Node hit?
     const idx = hitTest(wp.x, wp.y, _lastTMs);
     if (idx < 0) {
       selectedIdx = -1;
-      closeDetailPanel();
       return;
     }
-    if (selectedIdx !== idx) {
-      selectedIdx = idx;
-      closeDetailPanel();
-      return;
-    }
-    // Second tap on same node → open detail panel
-    openDetailPanel(idx);
+    selectedIdx = idx;
+    autoPanToShowCard(idx);
   }
 
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
@@ -641,10 +761,12 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const { sx, sy } = canvasXY(e);
     ptrs.set(e.pointerId, { startX: sx, startY: sy, lastX: sx, lastY: sy });
     if (ptrs.size === 1) {
+      gestureWasPinch = false;
       isDragging = false;
       dragBaseCamX = camX; dragBaseCamY = camY;
       dragBaseMidX = sx; dragBaseMidY = sy;
-    } else if (ptrs.size === 2) {
+    } else if (ptrs.size >= 2) {
+      gestureWasPinch = true;
       const [a, b] = [...ptrs.values()];
       pinchBaseDist = Math.hypot(a.lastX - b.lastX, a.lastY - b.lastY);
       pinchBaseZoom = camZoom;
@@ -693,7 +815,8 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const ps = ptrs.get(e.pointerId);
     if (!ps) return;
     const { sx, sy } = canvasXY(e);
-    if (!isDragging && ptrs.size === 1) handleTap(sx, sy);
+    // Only fire a tap if this was a single-finger gesture with no pinch
+    if (!isDragging && ptrs.size === 1 && !gestureWasPinch) handleTap(sx, sy);
     ptrs.delete(e.pointerId);
     isDragging = false;
     if (ptrs.size === 1) {
@@ -723,133 +846,256 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     clampCam();
   }, { passive: false });
 
-  // ── Detail panel ──────────────────────────────────────────────────────
-
-  function closeDetailPanel(): void {
-    detailPanel.style.display = 'none';
-  }
-
-  function openDetailPanel(nodeIdx: number): void {
-    if (!_rpgState || !_resources) return;
-    const node = nodes[nodeIdx];
-    const def = node.def;
-
-    // Root node: just show info, no purchase
-    if (def.upgradeId === null) {
-      buildRootDetail();
-      detailPanel.style.display = 'block';
+  // ── Draw world-space detail card ───────────────────────────────────────
+  //
+  // Called inside the active world transform so the card naturally pans and
+  // zooms with the rest of the tree.  cardBoundsWorldRect and
+  // cardButtonWorldRect are updated every frame for hit-testing in handleTap.
+  //
+  function drawDetailCard(ctx: CanvasRenderingContext2D, nodeIdx: number, tMs: number): void {
+    if (nodeIdx < 0 || !_rpgState) {
+      cardBoundsWorldRect = null;
+      cardButtonWorldRect = null;
       return;
     }
 
-    const upgradeDef = RPG_UPGRADE_BY_ID.get(def.upgradeId);
-    if (!upgradeDef) return;
+    const node    = nodes[nodeIdx];
+    const def     = node.def;
+    const fy      = FLOAT_AMP * Math.sin(tMs * FLOAT_SPD + node.phase);
+    const nodeCY  = node.y + fy;
 
-    const currentLevel = getRpgUpgradeLevel(_rpgState, def.upgradeId);
-    const isMaxed = currentLevel >= upgradeDef.maxLevel;
-    const status = getNodeStatus(def, _rpgState, _isDevMode);
+    const isRoot     = def.upgradeId === null;
+    const upgradeDef = isRoot ? null : RPG_UPGRADE_BY_ID.get(def.upgradeId!);
+    const name       = upgradeDef ? upgradeDef.name : 'Player Core';
+    const descStr    = upgradeDef
+      ? upgradeDef.description
+      : 'The root of all your abilities. Grants access to every first-tier skill.';
 
-    const hasSkillPoint = _rpgState.unspentSkillPoints >= 1;
-    const moteBalance = getMotes(_resources, upgradeDef.costTierId);
-    const canAffordMotes = _isDevMode || moteBalance >= upgradeDef.costPerLevel;
-    const canPurchase = !isMaxed && (_isDevMode || (hasSkillPoint && canAffordMotes));
+    const curLevel       = upgradeDef ? getRpgUpgradeLevel(_rpgState, upgradeDef.id) : 0;
+    const maxLevel       = upgradeDef ? upgradeDef.maxLevel : 1;
+    const isMaxed        = upgradeDef ? curLevel >= maxLevel : false;
+    const status         = def.upgradeId ? getNodeStatus(def, _rpgState, _isDevMode) : 'purchased';
+    const isLocked       = status === 'locked';
+    const hasSkillPt     = _rpgState.unspentSkillPoints >= 1;
+    const moteBalance    = (upgradeDef && _resources) ? getMotes(_resources, upgradeDef.costTierId) : 0;
+    const canAffordMotes = _isDevMode || (upgradeDef ? moteBalance >= upgradeDef.costPerLevel : false);
+    const canPurchase    = !isRoot && !isMaxed && !isLocked && (_isDevMode || (hasSkillPt && canAffordMotes));
 
-    detailPanel.innerHTML = '';
+    // Measure wrapped description before computing card height
+    const DESC_FONT = '10px monospace';
+    const innerW    = CARD_W - CARD_PAD * 2;
+    ctx.save();
+    const descLines = wrapText(ctx, descStr, DESC_FONT, innerW);
+    ctx.restore();
 
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'skill-tree__detail-close';
-    closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', closeDetailPanel);
-    detailPanel.appendChild(closeBtn);
-
-    const nameEl = document.createElement('div');
-    nameEl.className = 'skill-tree__detail-name';
-    nameEl.textContent = upgradeDef.name;
-    detailPanel.appendChild(nameEl);
-
-    const descEl = document.createElement('div');
-    descEl.className = 'skill-tree__detail-desc';
-    descEl.textContent = upgradeDef.description;
-    detailPanel.appendChild(descEl);
-
-    const levelEl = document.createElement('div');
-    levelEl.className = 'skill-tree__detail-level';
-    if (upgradeDef.maxLevel === 1) {
-      levelEl.textContent = isMaxed ? '✓ Unlocked' : 'Not yet unlocked';
-    } else {
-      levelEl.textContent = `Level ${currentLevel} / ${upgradeDef.maxLevel}`;
+    // ── Compute card height ──────────────────────────────────────────────
+    let cardH  = CARD_PAD;                        // top padding
+    cardH += 18;                                  // name
+    cardH += 5;                                   // gap
+    cardH += descLines.length * 14;               // description lines
+    cardH += 6;                                   // gap
+    cardH += 14;                                  // level text
+    if (!isRoot && upgradeDef && !isMaxed) {
+      cardH += 8;                                 // gap
+      cardH += 14;                                // SP cost
+      cardH += 4;                                 // gap
+      cardH += 14;                                // mote cost
+      if (isLocked) { cardH += 4; cardH += 14; } // locked reason
+      cardH += 8;                                 // gap before button
+      cardH += CARD_BTN_H;                        // button
     }
-    detailPanel.appendChild(levelEl);
+    cardH += CARD_PAD;                            // bottom padding
 
-    if (!isMaxed) {
-      const costsEl = document.createElement('div');
-      costsEl.className = 'skill-tree__detail-costs';
+    // ── Position card in world space ─────────────────────────────────────
+    const wb   = worldBounds();
+    const r    = node.nodeRadius;
+    const GAP  = 14;
+    const MARG = 12;
 
-      const spCost = document.createElement('span');
-      spCost.className = 'skill-tree__detail-cost' + (hasSkillPoint || _isDevMode ? '' : ' skill-tree__detail-cost--unmet');
-      spCost.textContent = `✦ 1 skill point${_rpgState.unspentSkillPoints > 0 ? ` (have ${_rpgState.unspentSkillPoints})` : ' (none available)'}`;
-      costsEl.appendChild(spCost);
+    let cardX = node.x - CARD_W / 2;
+    let cardY = nodeCY + r + GAP;
+    type ConnSide = 'top' | 'bottom' | 'left' | 'right';
+    let connSide: ConnSide = 'top';
 
-      const moteCost = document.createElement('span');
-      moteCost.className = 'skill-tree__detail-cost' + (canAffordMotes ? '' : ' skill-tree__detail-cost--unmet');
-      moteCost.textContent = `${formatNumberAs(upgradeDef.costPerLevel, _format)} ${upgradeDef.costTierId} motes`;
-      costsEl.appendChild(moteCost);
-
-      detailPanel.appendChild(costsEl);
-
-      if (status === 'locked') {
-        const lockEl = document.createElement('div');
-        lockEl.className = 'skill-tree__detail-locked';
-        lockEl.textContent = 'Prerequisite not met';
-        detailPanel.appendChild(lockEl);
-      }
-
-      const buyBtn = document.createElement('button');
-      buyBtn.className = 'skill-tree__detail-buy';
-      if (canPurchase && status !== 'locked') {
-        buyBtn.textContent = upgradeDef.maxLevel === 1 ? 'Unlock' : 'Upgrade';
-        buyBtn.addEventListener('click', () => {
-          dispatch({ kind: 'purchase_rpg_upgrade', upgradeId: upgradeDef.id });
-          // Refresh the panel after purchase
-          if (_rpgState && _resources) openDetailPanel(nodeIdx);
-        });
+    if (cardY + cardH > wb.bottom - MARG) {
+      const tryAbove = nodeCY - r - GAP - cardH;
+      if (tryAbove >= wb.top + MARG) {
+        cardY    = tryAbove;
+        connSide = 'bottom';
       } else {
-        buyBtn.textContent = !hasSkillPoint && !_isDevMode
-          ? 'Need skill point'
-          : !canAffordMotes
-            ? 'Need motes'
-            : status === 'locked'
-              ? 'Prerequisites not met'
-              : 'Cannot purchase';
-        buyBtn.disabled = true;
+        const tryRight = node.x + r + GAP;
+        if (tryRight + CARD_W <= wb.right - MARG) {
+          cardX    = tryRight;
+          cardY    = nodeCY - cardH / 2;
+          connSide = 'left';
+        } else {
+          cardX    = node.x - r - GAP - CARD_W;
+          cardY    = nodeCY - cardH / 2;
+          connSide = 'right';
+        }
       }
-      detailPanel.appendChild(buyBtn);
     }
 
-    detailPanel.style.display = 'block';
-  }
+    // Clamp into visible viewport
+    cardX = Math.max(wb.left  + MARG, Math.min(wb.right  - MARG - CARD_W, cardX));
+    cardY = Math.max(wb.top   + MARG, Math.min(wb.bottom - MARG - cardH,  cardY));
 
-  function buildRootDetail(): void {
-    detailPanel.innerHTML = '';
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'skill-tree__detail-close';
-    closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', closeDetailPanel);
-    detailPanel.appendChild(closeBtn);
+    // Store rects for hit-testing (overwrite each frame)
+    cardBoundsWorldRect = { x: cardX, y: cardY, w: CARD_W, h: cardH };
+    cardButtonWorldRect = null;
 
-    const nameEl = document.createElement('div');
-    nameEl.className = 'skill-tree__detail-name';
-    nameEl.textContent = '✦ Player Core';
-    detailPanel.appendChild(nameEl);
+    // ── Connector line from node to card ─────────────────────────────────
+    let connEndX = cardX + CARD_W / 2;
+    let connEndY = cardY;
+    if      (connSide === 'bottom') { connEndY = cardY + cardH; }
+    else if (connSide === 'left')   { connEndX = cardX;          connEndY = cardY + cardH / 2; }
+    else if (connSide === 'right')  { connEndX = cardX + CARD_W; connEndY = cardY + cardH / 2; }
 
-    const descEl = document.createElement('div');
-    descEl.className = 'skill-tree__detail-desc';
-    descEl.textContent = 'The root of all your abilities. Grants access to every first-tier skill.';
-    detailPanel.appendChild(descEl);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(node.x, nodeCY);
+    ctx.lineTo(connEndX, connEndY);
+    ctx.strokeStyle = '#ffd060';
+    ctx.lineWidth   = 1;
+    ctx.globalAlpha = 0.45;
+    ctx.stroke();
+    ctx.restore();
 
-    const statusEl = document.createElement('div');
-    statusEl.className = 'skill-tree__detail-level';
-    statusEl.textContent = '✓ Always active';
-    detailPanel.appendChild(statusEl);
+    // ── Card background ──────────────────────────────────────────────────
+    ctx.save();
+
+    // Subtle outer glow
+    ctx.shadowColor = 'rgba(255, 208, 96, 0.5)';
+    ctx.shadowBlur  = 20;
+    drawRoundRect(ctx, cardX, cardY, CARD_W, cardH, 10);
+    ctx.fillStyle = 'rgba(10, 8, 20, 0.94)';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Gold border
+    drawRoundRect(ctx, cardX, cardY, CARD_W, cardH, 10);
+    ctx.strokeStyle = '#ffd060';
+    ctx.lineWidth   = 1.3;
+    ctx.globalAlpha = 0.68;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Ornamental corner accents (diagonal gold lines)
+    const CL = 8;   // line length
+    const CO = 5;   // inset from corner
+    ctx.strokeStyle = '#ffd060';
+    ctx.lineWidth   = 1.8;
+    ctx.globalAlpha = 0.82;
+    ctx.beginPath(); ctx.moveTo(cardX + CO,          cardY + CO + CL);    ctx.lineTo(cardX + CO,          cardY + CO);         ctx.lineTo(cardX + CO + CL,    cardY + CO);         ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cardX + CARD_W - CO - CL, cardY + CO);    ctx.lineTo(cardX + CARD_W - CO, cardY + CO);         ctx.lineTo(cardX + CARD_W - CO, cardY + CO + CL);   ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cardX + CO,          cardY + cardH - CO - CL); ctx.lineTo(cardX + CO,     cardY + cardH - CO); ctx.lineTo(cardX + CO + CL,    cardY + cardH - CO); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cardX + CARD_W - CO - CL, cardY + cardH - CO); ctx.lineTo(cardX + CARD_W - CO, cardY + cardH - CO); ctx.lineTo(cardX + CARD_W - CO, cardY + cardH - CO - CL); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // ── Text content ─────────────────────────────────────────────────────
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'top';
+    const textX = cardX + CARD_PAD;
+    let   textY = cardY + CARD_PAD;
+
+    // Name (gold, bold)
+    ctx.font      = 'bold 13px monospace';
+    ctx.fillStyle = '#ffd060';
+    ctx.fillText(name, textX, textY);
+    textY += 18;
+
+    // Description (light grey, word-wrapped)
+    textY += 5;
+    ctx.font      = DESC_FONT;
+    ctx.fillStyle = 'rgba(215, 210, 238, 0.85)';
+    for (const line of descLines) {
+      ctx.fillText(line, textX, textY);
+      textY += 14;
+    }
+
+    // Level indicator
+    textY += 6;
+    ctx.font = '10px monospace';
+    if (isRoot) {
+      ctx.fillStyle = '#7de88a';
+      ctx.fillText('✓ Always active', textX, textY);
+    } else if (upgradeDef) {
+      ctx.fillStyle = isMaxed ? '#7de88a' : 'rgba(255,255,255,0.72)';
+      ctx.fillText(
+        maxLevel === 1
+          ? (isMaxed ? '✓ Unlocked' : 'Not yet unlocked')
+          : `Level ${curLevel} / ${maxLevel}`,
+        textX, textY,
+      );
+    }
+    textY += 14;
+
+    // ── Costs & buy button (upgradeable only) ────────────────────────────
+    if (!isRoot && upgradeDef && !isMaxed) {
+      textY += 8;
+
+      // SP cost
+      ctx.font      = '10px monospace';
+      ctx.fillStyle = (hasSkillPt || _isDevMode) ? '#8ec87a' : '#e07070';
+      ctx.fillText(`✦ 1 SP  (have ${_rpgState.unspentSkillPoints})`, textX, textY);
+      textY += 14;
+
+      // Mote cost
+      textY += 4;
+      ctx.fillStyle = canAffordMotes ? '#8ec87a' : '#e07070';
+      ctx.fillText(
+        `${formatNumberAs(upgradeDef.costPerLevel, _format)} ${upgradeDef.costTierId} motes`,
+        textX, textY,
+      );
+      textY += 14;
+
+      // Locked reason
+      if (isLocked) {
+        textY += 4;
+        ctx.fillStyle = '#e07070';
+        ctx.fillText('Prerequisites not met', textX, textY);
+        textY += 14;
+      }
+
+      // Buy button
+      textY += 8;
+      const btnX = cardX + CARD_PAD;
+      const btnY = textY;
+      const btnW = CARD_W - CARD_PAD * 2;
+      const btnH = CARD_BTN_H;
+
+      drawRoundRect(ctx, btnX, btnY, btnW, btnH, 6);
+      ctx.fillStyle = canPurchase
+        ? 'rgba(196, 164, 74, 0.22)'
+        : 'rgba(55, 55, 55, 0.22)';
+      ctx.fill();
+
+      drawRoundRect(ctx, btnX, btnY, btnW, btnH, 6);
+      ctx.strokeStyle = canPurchase ? 'rgba(240, 208, 96, 0.82)' : 'rgba(85, 85, 85, 0.50)';
+      ctx.lineWidth   = 1.2;
+      ctx.stroke();
+
+      const btnLabel = (!hasSkillPt && !_isDevMode) ? 'Need skill point'
+                     : !canAffordMotes              ? 'Need motes'
+                     : isLocked                     ? 'Prerequisites not met'
+                     : (maxLevel === 1 ? 'Unlock' : 'Upgrade');
+
+      ctx.save();
+      ctx.beginPath(); ctx.rect(btnX, btnY, btnW, btnH); ctx.clip();
+      ctx.font         = 'bold 11px monospace';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle    = canPurchase ? '#f0d070' : 'rgba(135, 135, 135, 0.70)';
+      ctx.fillText(btnLabel, btnX + btnW / 2, btnY + btnH / 2);
+      ctx.restore();
+
+      // Store button rect for hit-testing
+      if (canPurchase) {
+        cardButtonWorldRect = { x: btnX, y: btnY, w: btnW, h: btnH };
+      }
+    }
+
+    ctx.restore();
   }
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -924,6 +1170,9 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       ctx2d.restore();
     }
 
+    // Detail card drawn in world space — pans and zooms with the tree
+    drawDetailCard(ctx2d, selectedIdx, tMs);
+
     ctx2d.restore(); // end world transform
 
     // Screen-space title hint
@@ -959,11 +1208,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
         ? '✦ 1 skill point available'
         : `✦ ${sp} skill points available`;
       spLabel.className = 'skill-tree__sp-label' + (sp > 0 ? ' skill-tree__sp-label--has-points' : '');
-
-      // Refresh detail panel if open
-      if (detailPanel.style.display !== 'none' && selectedIdx >= 0) {
-        openDetailPanel(selectedIdx);
-      }
+      // The canvas-drawn card auto-refreshes from _rpgState each frame — no DOM refresh needed.
     },
 
     startLoop(): void {
@@ -972,7 +1217,8 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       _lastTMs = 0;
       resetCamera();
       selectedIdx = -1;
-      closeDetailPanel();
+      cardBoundsWorldRect = null;
+      cardButtonWorldRect = null;
       syncSize();
       cancelAnimationFrame(_rafId);
       _rafId = requestAnimationFrame(loop);
