@@ -875,7 +875,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: EMERALDFISH_SIZE,
     hp: EMERALDFISH_HP_INIT, atk: EMERALDFISH_ATK_INIT, def: EMERALDFISH_DEF_INIT,
     firstWave: 50,
-    description: 'A green hunter that splinters into smaller fry when destroyed, preserving pressure after the kill.',
+    description: 'A green hunter that splinters into smaller fry when destroyed, preserving pressure after the kill. Poisons on contact — resists poison lenses; fire lenses deal extra damage.',
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
