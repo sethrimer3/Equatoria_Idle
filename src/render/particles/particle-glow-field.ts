@@ -84,13 +84,6 @@ const BASE_SPLAT_SIGMA = 0.9;
 /** Hard cap on per-particle σ (cells). */
 const MAX_SPLAT_SIGMA = 2.5;
 
-/**
- * Blur radius applied to the low-res canvas before compositing onto the main
- * canvas, measured in internal canvas pixels (i.e. before any CSS upscale).
- * This converts hard cell-boundary edges into smooth circular halos.
- * Increase for a softer/larger glow; decrease for a tighter one.
- */
-const BLUR_RADIUS = 3;
 
 /**
  * Base energy contribution per particle per frame (after kernel normalisation).
