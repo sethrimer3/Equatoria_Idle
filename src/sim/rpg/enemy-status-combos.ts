@@ -34,7 +34,10 @@ export interface ComboResult {
 const _cooldowns = new WeakMap<object, Map<string, number>>();
 
 function _isOnCooldown(enemy: object, comboId: string, nowMs: number, cooldownMs: number): boolean {
-  const last = _cooldowns.get(enemy)?.get(comboId) ?? 0;
+  const map = _cooldowns.get(enemy);
+  if (!map) return false;
+  const last = map.get(comboId);
+  if (last === undefined) return false;
   return nowMs - last < cooldownMs;
 }
 
