@@ -124,7 +124,7 @@ import { tickEnemySpeechBubbles, tickNoDamageBarks } from './rpg-enemy-barks';
 import { tickBossDialogue } from './rpg-boss-dialogue';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
-import { tickPlayerStatuses, getPlayerAttackSpeedStatusMultiplier } from '../../sim/rpg/player-status-effects';
+import { tickPlayerStatuses } from '../../sim/rpg/player-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
 import { tickLensTier3Effects } from './lens-tier3-effects';
 import { createTrueSurfaceElite, TRUE_SURFACE_ROTATION, updateTrueSurfaceElite } from './true-surface-elite';
