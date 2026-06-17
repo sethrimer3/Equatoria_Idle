@@ -1527,26 +1527,27 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     applyPlayerStatusFromSource(source: string): void {
       if (playerIFramesMs > 0 || isInvincibilityMode) return;
       const sim = rpgSimState;
+      // Values sourced from PLAYER_* constants in player-status-effects.ts
       switch (source) {
         case 'ruby':
-          applyPlayerStatus(sim, { key: 'burning',   durationMs: 3000, magnitude: 10, tickEveryMs: 1000, source });
+          applyPlayerStatus(sim, { key: 'burning',    durationMs: PLAYER_BURNING_DURATION_MS,  magnitude: PLAYER_BURNING_MAGNITUDE,  tickEveryMs: PLAYER_BURNING_TICK_MS,  source });
           break;
         case 'emerald':
-          applyPlayerStatus(sim, { key: 'poisoned',  durationMs: 5000, magnitude: 10, tickEveryMs: 1000, source });
+          applyPlayerStatus(sim, { key: 'poisoned',   durationMs: PLAYER_POISONED_DURATION_MS, magnitude: PLAYER_POISONED_MAGNITUDE, tickEveryMs: PLAYER_POISONED_TICK_MS, source });
           break;
         case 'sapphire': {
           const wasChilled = hasPlayerStatus(sim, 'chilled');
-          applyPlayerStatus(sim, { key: 'chilled',   durationMs: 2500, magnitude: 10, source });
+          applyPlayerStatus(sim, { key: 'chilled',    durationMs: PLAYER_CHILLED_DURATION_MS,  magnitude: PLAYER_CHILLED_MAGNITUDE,  source });
           if (wasChilled) {
-            applyPlayerStatus(sim, { key: 'frozen',  durationMs: 1200, magnitude: 10, source });
+            applyPlayerStatus(sim, { key: 'frozen',   durationMs: PLAYER_FROZEN_DURATION_MS,   magnitude: PLAYER_CHILLED_MAGNITUDE,  source });
           }
           break;
         }
         case 'iolite':
-          applyPlayerStatus(sim, { key: 'timeWarped', durationMs: 3500, magnitude: 10, source });
+          applyPlayerStatus(sim, { key: 'timeWarped', durationMs: PLAYER_TIMEWARP_DURATION_MS, magnitude: 10, source });
           break;
         case 'nullstone':
-          applyPlayerStatus(sim, { key: 'slowed',    durationMs: 2000, magnitude: 10, source });
+          applyPlayerStatus(sim, { key: 'slowed',     durationMs: PLAYER_SLOWED_DURATION_MS,   magnitude: 10, source });
           break;
       }
     },
