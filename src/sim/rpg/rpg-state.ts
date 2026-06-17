@@ -13,6 +13,7 @@ import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
 import type { CraftedWeaponData } from '../../data/rpg/crafted-weapon-types';
 import type { CraftedWeaveData } from '../../data/rpg/weave-types';
 import type { CraftedLensData } from '../../data/rpg/lens-types';
+import type { ActivePlayerStatus } from './player-status-effects';
 export type { RpgZoneId };
 
 // ─── Constants ────────────────────────────────────────────────────
