@@ -38,12 +38,13 @@ import type { RpgSimState } from '../rpg-state';
 
 // ── Minimal sim-state factory ──────────────────────────────────────────────────
 
-function makeSim(resistanceRank = 0): Pick<RpgSimState, 'activePlayerStatuses' | 'rpgUpgradeLevels'> {
+function makeSim(resistanceRank = 0): Pick<RpgSimState, 'activePlayerStatuses' | 'rpgUpgradeLevels' | 'frozenCooldownMs'> {
   const upgradeLevels = new Map<string, number>();
   if (resistanceRank > 0) upgradeLevels.set('status_resistance', resistanceRank);
   return {
     activePlayerStatuses: [],
     rpgUpgradeLevels: upgradeLevels,
+    frozenCooldownMs: 0,
   };
 }
 
