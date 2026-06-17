@@ -243,6 +243,11 @@ export interface RpgSimState {
   unspentSkillPoints: number;
   /** v34+: Whether the one-time skill point migration (level → points) has already run. */
   skillPointMigrationDone: boolean;
+  /**
+   * v35+: Accounting migration version for visible-tree weighted spent points.
+   * 0 (absent) = old flat-count migration; 1 = weighted visible-only migration applied.
+   */
+  skillPointAccountingVersion: number;
   /** Milliseconds remaining on the dash cooldown (ephemeral, not saved). */
   dashCooldownMs: number;
   /** Whether the Second Wind effect is available this wave (resets each wave start). */
