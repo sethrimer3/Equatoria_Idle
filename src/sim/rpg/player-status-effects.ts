@@ -40,6 +40,51 @@ export interface ActivePlayerStatus {
   source?: string;
 }
 
+// ── Balance constants (single source of truth for tuning) ─────────────────────
+
+/** Burning applied by ruby attacks: duration, magnitude, tick interval. */
+export const PLAYER_BURNING_DURATION_MS   = 3000;
+export const PLAYER_BURNING_MAGNITUDE     = 10;
+export const PLAYER_BURNING_TICK_MS       = 1000;
+
+/** Poisoned applied by emerald attacks. */
+export const PLAYER_POISONED_DURATION_MS  = 5000;
+export const PLAYER_POISONED_MAGNITUDE    = 10;
+export const PLAYER_POISONED_TICK_MS      = 1000;
+
+/** Chilled applied by sapphire attacks. */
+export const PLAYER_CHILLED_DURATION_MS   = 2500;
+export const PLAYER_CHILLED_MAGNITUDE     = 10;
+/** Frozen escalates from chilled when sapphire hits a chilled player. */
+export const PLAYER_FROZEN_DURATION_MS    = 1200;
+
+/** Slowed applied by nullstone void-tendril hits. */
+export const PLAYER_SLOWED_DURATION_MS    = 2000;
+
+/** Time-Warped applied by iolite beam hits. */
+export const PLAYER_TIMEWARP_DURATION_MS  = 3500;
+
+/** DoT rates: damage per magnitude per second per tick. */
+export const BURN_DPS_PER_MAG             = 0.4;
+export const POISON_DPS_PER_MAG           = 0.2;
+
+/** Movement speed multipliers for movement-impairing statuses. */
+export const FROZEN_MOVEMENT_MULT         = 0.30;
+export const SLOWED_MOVEMENT_MULT         = 0.55;
+export const CHILLED_MAX_SLOW_FRAC        = 0.35;
+export const CHILLED_MIN_SPEED            = 0.65;
+export const STATUS_SPEED_FLOOR           = 0.25;
+
+/** Attack-cadence multiplier while time-warped. */
+export const TIMEWARP_CADENCE_MULT        = 0.75;
+
+/** Status Resistance skill: 20% reduction per rank, floor at 40% of full duration. */
+export const STATUS_RESISTANCE_PER_RANK   = 0.2;
+export const STATUS_RESISTANCE_MIN_MULT   = 0.4;
+
+/** Minimum effective duration after resistance (prevents instant-clear exploits). */
+export const STATUS_MIN_DURATION_MS       = 300;
+
 // ── Status Resistance skill ────────────────────────────────────────────────────
 
 /**
@@ -48,7 +93,7 @@ export interface ActivePlayerStatus {
  */
 export function getPlayerStatusDurationMultiplier(sim: RpgSimState): number {
   const rank = getSkillNodeRank(sim, 'status_resistance');
-  return Math.max(0.4, 1 - 0.2 * rank);
+  return Math.max(STATUS_RESISTANCE_MIN_MULT, 1 - STATUS_RESISTANCE_PER_RANK * rank);
 }
 
 // ── Apply / refresh a player status ───────────────────────────────────────────
