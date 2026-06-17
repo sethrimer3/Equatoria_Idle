@@ -64,6 +64,7 @@ export function drawWeaponOrbitParticle(ctx: CanvasRenderingContext2D, p: Weapon
 
 export function drawOrbitProjectile(ctx: CanvasRenderingContext2D, op: OrbitProjectile | null): void {
   if (!op) return;
+  if (op.reformMs > 0) return;
   const projColor   = '#ffaa44';
   const projGlow    = '#ffcc88';
   ctx.save();
