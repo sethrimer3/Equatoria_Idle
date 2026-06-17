@@ -544,7 +544,11 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
   // ── Tick lens status effects ─────────────────────────────────────────────────
   tickLensStatuses(a, deltaMs, ctx.mote.x, ctx.mote.y);
-  tickPlayerStatuses(ctx.rpgSimState, ctx.playerStats, deltaMs);
+  // onDotTick: spawn small status-colored floating numbers for burning/poison ticks.
+  tickPlayerStatuses(ctx.rpgSimState, ctx.playerStats, deltaMs, (key, dmg) => {
+    const color = key === 'burning' ? '#ff6030' : '#4ec94e';
+    ctx.spawnDamageNumber(ctx.mote.x, ctx.mote.y, 0, -0.7, String(Math.round(dmg)), 0.10, color);
+  });
   tickLensTier2DelayedEffects(deltaMs);
   tickLensTier3Effects(a, deltaMs);
 
