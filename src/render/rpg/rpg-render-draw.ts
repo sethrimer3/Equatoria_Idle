@@ -303,6 +303,7 @@ export interface RpgDrawCtx {
   deathParticles: DeathParticle[];
   weaponOrbitParticles: WeaponOrbitParticle[];
   getOrbitProjectiles(): OrbitProjectile[];
+  getAfterimages(): import('./rpg-types').AfterimageSnapshot[];
 
   // ── Scalar getters (mutated elsewhere, so read via function) ─
   getGlowMovementIntensity(): number;
