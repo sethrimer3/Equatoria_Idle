@@ -243,3 +243,96 @@ export function drawPlayerMote(
     ctx.shadowBlur = 0; ctx.globalAlpha = 1;
   }
 }
+
+// ── Player status VFX ─────────────────────────────────────────────────────────
+
+/**
+ * Draws lightweight colored rims around the player mote for each active status.
+ * Call after drawPlayerMote while the world transform is active.
+ */
+export function drawPlayerStatusVFX(
+  ctx: CanvasRenderingContext2D,
+  moteX: number,
+  moteY: number,
+  activeStatuses: readonly ActivePlayerStatus[],
+  nowMs: number,
+): void {
+  if (activeStatuses.length === 0) return;
+
+  const baseR = RPG_MOTE_SIZE * 0.7;
+  const pulse = 0.5 + 0.5 * Math.sin(nowMs / 280);
+
+  ctx.save();
+  for (const s of activeStatuses) {
+    const pct = Math.max(0, s.remainingMs / s.durationMs);
+    const alpha = pct * (0.55 + pulse * 0.35);
+
+    switch (s.key) {
+      case 'burning': {
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#ff6030';
+        if (!isLowGraphicsMode) { ctx.shadowBlur = 7; ctx.shadowColor = '#ff8040'; }
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(moteX, moteY, baseR + 1.5 + pulse * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case 'poisoned': {
+        ctx.globalAlpha = alpha * 0.9;
+        ctx.strokeStyle = '#4ec94e';
+        if (!isLowGraphicsMode) { ctx.shadowBlur = 6; ctx.shadowColor = '#4ec94e'; }
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(moteX, moteY, baseR + pulse * 1.2, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case 'chilled': {
+        ctx.globalAlpha = alpha * 0.8;
+        ctx.strokeStyle = '#60c0ff';
+        if (!isLowGraphicsMode) { ctx.shadowBlur = 5; ctx.shadowColor = '#80d8ff'; }
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(moteX, moteY, baseR + 2, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case 'frozen': {
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#a0e8ff';
+        if (!isLowGraphicsMode) { ctx.shadowBlur = 9; ctx.shadowColor = '#c0f0ff'; }
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(moteX, moteY, baseR + 3, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case 'slowed': {
+        ctx.globalAlpha = alpha * 0.7;
+        ctx.strokeStyle = '#8899bb';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.arc(moteX, moteY, baseR + 2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        break;
+      }
+      case 'timeWarped': {
+        const angle = (nowMs / 480) % (Math.PI * 2);
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#cc88ff';
+        if (!isLowGraphicsMode) { ctx.shadowBlur = 6; ctx.shadowColor = '#bb77ee'; }
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(moteX, moteY, baseR + 2 + pulse, angle, angle + Math.PI * 1.4);
+        ctx.stroke();
+        break;
+      }
+    }
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
