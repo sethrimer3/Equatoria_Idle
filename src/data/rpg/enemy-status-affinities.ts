@@ -22,33 +22,40 @@ type EnemyAffinityMap = Partial<Record<EnemyStatusKey, StatusAffinity>>;
 // ── Affinity table ─────────────────────────────────────────────────────────────
 
 const AFFINITIES: Record<string, EnemyAffinityMap> = {
-  // Ruby enemies resist burning (fire-type, immune to their own element)
-  ruby:          { burning: 'immune' },
-  rubyFish:      { burning: 'immune' },
-  elite_ruby:    { burning: 'resistant' },
+  // Ruby enemies: immune to burning (fire-type), weak to chilled/frozen
+  ruby:          { burning: 'immune',     chilled: 'weak', frozen: 'weak' },
+  rubyFish:      { burning: 'immune',     chilled: 'weak', frozen: 'weak' },
+  elite_ruby:    { burning: 'resistant',  chilled: 'weak' },
 
-  // Emerald enemies resist poison
-  emerald:       { poisoned: 'resistant' },
-  emeraldFish:   { poisoned: 'resistant' },
-  elite_emerald: { poisoned: 'resistant' },
+  // Emerald enemies: resist poison, weak to burning (fire beats toxin)
+  emerald:       { poisoned: 'resistant', burning: 'weak' },
+  emeraldFish:   { poisoned: 'resistant', burning: 'weak' },
+  elite_emerald: { poisoned: 'resistant', burning: 'weak' },
 
-  // Sapphire/ice enemies resist chilled and frozen
-  sapphire:      { chilled: 'immune', frozen: 'resistant' },
-  sapphireFish:  { chilled: 'immune', frozen: 'resistant' },
-  elite_sapphire:{ chilled: 'resistant', frozen: 'resistant' },
+  // Sapphire/ice enemies: immune/resistant to chilled and frozen, weak to burning
+  sapphire:      { chilled: 'immune', frozen: 'resistant', burning: 'weak' },
+  sapphireFish:  { chilled: 'immune', frozen: 'resistant', burning: 'weak' },
+  elite_sapphire:{ chilled: 'resistant', frozen: 'resistant', burning: 'weak' },
 
   // Nullstone resists gravitized (gravity-type)
   nullstone:     { gravitized: 'resistant' },
   elite_nullstone:{ gravitized: 'resistant' },
 
-  // Bosses: resistant to most statuses but not immune
+  // Fracteryl enemies: resistant to fractal wound (already fractal in nature)
+  fracteryl:     { fractalWound: 'resistant' },
+
+  // Eigenstein enemies: resistant to rift-scarred (already quantum-scarred)
+  eigenstein:    { riftScarred: 'resistant' },
+
+  // Bosses: broadly resistant, not immune — preserves difficulty
   boss:          {
     burning: 'resistant', poisoned: 'resistant',
     chilled: 'resistant', frozen: 'resistant',
     gravitized: 'resistant', timeWarped: 'resistant',
+    fractalWound: 'resistant', riftScarred: 'resistant',
   },
 
-  // Elite enemies: mildly resistant
+  // Generic elites: mild resistance to DoTs
   elite: {
     burning: 'resistant', poisoned: 'resistant',
   },
