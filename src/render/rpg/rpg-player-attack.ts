@@ -170,6 +170,7 @@ export interface RpgPlayerAttackCtx {
   // Visual spawners
   spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string, sourceColor?: string) => void;
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string, sourceColor?: string) => void;
+  spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, ratio: number, color: string) => void;
 
   // Fluid explosion
   fluid: {
