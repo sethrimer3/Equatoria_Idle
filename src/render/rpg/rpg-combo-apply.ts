@@ -1,0 +1,91 @@
+/**
+ * rpg-combo-apply.ts — Render-layer: apply combo results (damage + visuals).
+ *
+ * Imported by rpg-player-attack-single.ts and rpg-player-attack-aoe.ts.
+ * Keeps visual/damage-application code out of the pure combo engine.
+ */
+
+import type { RpgPlayerAttackCtx } from './rpg-player-attack';
+import type { ComboResult } from '../../sim/rpg/enemy-status-combos';
+
+type MinEnemy = { x: number; y: number; hp: number; maxHp: number };
+
+/**
+ * Iterate main enemy arrays from ctx and deal combo AoE damage to those
+ * within radius of (cx, cy), skipping the primary enemy (already hit).
+ */
+function _applyAoeDmg(
+  ctx: RpgPlayerAttackCtx,
+  cx: number, cy: number, radius: number,
+  dmg: number, skipEnemy: object, color: string,
+): void {
+  if (dmg <= 0 || radius <= 0) return;
+  const rSq = radius * radius;
+
+  const arrays: MinEnemy[][] = [
+    ctx.enemies as unknown as MinEnemy[],
+    ctx.sapphireEnemies as unknown as MinEnemy[],
+    ctx.emeraldEnemies as unknown as MinEnemy[],
+    ctx.amberEnemies as unknown as MinEnemy[],
+    ctx.voidEnemies as unknown as MinEnemy[],
+    ctx.quartzEnemies as unknown as MinEnemy[],
+    ctx.rubyEnemies as unknown as MinEnemy[],
+    ctx.sunstoneEnemies as unknown as MinEnemy[],
+    ctx.citrineEnemies as unknown as MinEnemy[],
+    ctx.ioliteEnemies as unknown as MinEnemy[],
+    ctx.amethystEnemies as unknown as MinEnemy[],
+    ctx.diamondEnemies as unknown as MinEnemy[],
+    ctx.nullstoneEnemies as unknown as MinEnemy[],
+    ctx.fracterylEnemies as unknown as MinEnemy[],
+    ctx.eigensteinEnemies as unknown as MinEnemy[],
+    ctx.eliteEnemies as unknown as MinEnemy[],
+  ];
+
+  for (const arr of arrays) {
+    for (const e of arr) {
+      if ((e as object) === skipEnemy || e.hp <= 0) continue;
+      const dx = e.x - cx, dy = e.y - cy;
+      if (dx * dx + dy * dy <= rSq) {
+        e.hp = Math.max(0, e.hp - dmg);
+        ctx.spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, color);
+      }
+    }
+  }
+}
+
+/**
+ * Apply an array of combo results: deal primary damage, spawn feedback text,
+ * apply AoE damage, and record into rpgSimState counters.
+ */
+export function applyComboResults(
+  ctx: RpgPlayerAttackCtx,
+  results: ComboResult[],
+): void {
+  if (results.length === 0) return;
+  const state = ctx.rpgSimState;
+
+  for (const r of results) {
+    const e = r.primaryEnemy as MinEnemy;
+
+    // Primary damage
+    if (r.primaryDamage > 0 && e.hp > 0) {
+      e.hp = Math.max(0, e.hp - r.primaryDamage);
+      ctx.spawnDamageNumber(
+        r.x, r.y, 0, -0.7,
+        r.label,
+        r.primaryDamage / Math.max(e.maxHp, 1),
+        r.color,
+      );
+    }
+
+    // AoE damage to nearby enemies
+    if (r.aoeDamage > 0) {
+      _applyAoeDmg(ctx, r.x, r.y, r.aoeRadius, r.aoeDamage, r.primaryEnemy, r.color);
+    }
+
+    // Achievement counters (ephemeral, not saved)
+    const totalDmg = r.primaryDamage + r.aoeDamage;
+    state.statusCombosTriggered += 1;
+    state.statusComboDamageDealt += totalDmg;
+  }
+}
