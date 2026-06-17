@@ -169,6 +169,7 @@ export function updateSapphireMissiles(
         const normDirX = m.vx / (speed + SPEED_EPSILON);
         const normDirY = m.vy / (speed + SPEED_EPSILON);
         ctx.dealDamageToPlayerKnockback(m.atk, normDirX, normDirY);
+        ctx.applyPlayerStatusFromSource?.('sapphire');
         sapphireMissiles.splice(i, 1);
         continue;
       }
