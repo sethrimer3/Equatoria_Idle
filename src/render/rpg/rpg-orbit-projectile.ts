@@ -166,6 +166,13 @@ export function updateOrbitProjectile(
   const hitRadSq = ORBIT_PROJ_HIT_RADIUS * ORBIT_PROJ_HIT_RADIUS;
 
   // ── Collision detection helpers ─────────────────────────────────
+  const cometReturnRank = ctx.rpgSimState ? getSkillNodeRank(ctx.rpgSimState, 'comet_return') : 0;
+  // Base reform delay when orbit_detonation fires; comet_return reduces it by 40%.
+  const BASE_REFORM_MS = 800;
+  const reformDelay = detonationRank > 0
+    ? BASE_REFORM_MS * (cometReturnRank > 0 ? 0.6 : 1)
+    : 0;
+
   /** Minimal shape required by tryHit — used as the Map key only. */
   interface HittableEntity { x: number; y: number }
   function tryHit(
@@ -184,6 +191,7 @@ export function updateOrbitProjectile(
     if (dmg > 0 && maxHp !== null) {
       ctx.spawnDamageNumber(ex, ey, 0, -1, String(Math.round(dmg)), dmg / maxHp, HIT_COLOR);
     }
+    if (reformDelay > 0) op.reformMs = reformDelay;
   }
 
   // ── Laser enemies ───────────────────────────────────────────────
