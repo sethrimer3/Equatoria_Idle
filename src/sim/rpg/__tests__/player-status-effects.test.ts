@@ -274,6 +274,50 @@ describe('player-status-effects — 9. clearPlayerStatuses', () => {
   });
 });
 
+describe('player-status-effects — 10a. Frozen cooldown', () => {
+  it('frozen can be applied normally when no cooldown', () => {
+    const sim = makeSim() as RpgSimState;
+    applyPlayerStatus(sim, frozen());
+    expect(hasPlayerStatus(sim, 'frozen')).toBe(true);
+  });
+
+  it('frozen is blocked while cooldown is active', () => {
+    const sim = makeSim() as RpgSimState;
+    const stats = makeStats();
+    applyPlayerStatus(sim, frozen({ durationMs: 500 }));
+    // Let frozen expire — this starts the cooldown
+    tickPlayerStatuses(sim, stats, 600);
+    expect(hasPlayerStatus(sim, 'frozen')).toBe(false);
+    expect(sim.frozenCooldownMs).toBeGreaterThan(0);
+    // Attempt to reapply immediately — should be blocked
+    applyPlayerStatus(sim, frozen());
+    expect(hasPlayerStatus(sim, 'frozen')).toBe(false);
+  });
+
+  it('frozen can be reapplied after cooldown expires', () => {
+    const sim = makeSim() as RpgSimState;
+    const stats = makeStats();
+    applyPlayerStatus(sim, frozen({ durationMs: 500 }));
+    // Expire frozen + drain cooldown
+    tickPlayerStatuses(sim, stats, 600);
+    tickPlayerStatuses(sim, stats, PLAYER_FROZEN_COOLDOWN_MS + 100);
+    expect(sim.frozenCooldownMs).toBe(0);
+    // Now frozen can be applied again
+    applyPlayerStatus(sim, frozen());
+    expect(hasPlayerStatus(sim, 'frozen')).toBe(true);
+  });
+
+  it('clearPlayerStatuses resets frozen cooldown', () => {
+    const sim = makeSim() as RpgSimState;
+    const stats = makeStats();
+    applyPlayerStatus(sim, frozen({ durationMs: 500 }));
+    tickPlayerStatuses(sim, stats, 600);
+    expect(sim.frozenCooldownMs).toBeGreaterThan(0);
+    clearPlayerStatuses(sim);
+    expect(sim.frozenCooldownMs).toBe(0);
+  });
+});
+
 describe('player-status-effects — 10. Query helpers', () => {
   it('hasPlayerStatus returns false when absent', () => {
     const sim = makeSim() as RpgSimState;
