@@ -152,7 +152,6 @@ function _drawStatusIconsForEnemy(
 export function renderEnemyStatusLabels(
   c: CanvasRenderingContext2D,
   arrays: {
-    nowMs?: number;
     enemies: Array<{ x: number; y: number; hp: number }>;
     sapphireEnemies: Array<{ x: number; y: number; hp: number }>;
     emeraldEnemies: Array<{ x: number; y: number; hp: number }>;
