@@ -138,6 +138,11 @@ export function updatePlayerMovement(
   const speedMul = getRpgSpeedMultiplier(rpgSimState);
   const effectiveMaxSpeed = MAX_RPG_SPEED * speedMul;
 
+  // Acceleration skill: ranks 1–5 add responsiveness (lerp factor towards target velocity).
+  // Rank 0 = instant snap (lerpFactor clamped to 1). Rank 5 = instant snap.
+  const accelRank = getSkillNodeRank(rpgSimState, 'acceleration');
+  const accelFactor = Math.min(1.0, 0.55 + accelRank * 0.09);
+
   if (joystick.isActive) {
     // Manual input: clear cached path so A* re-runs when auto-move resumes.
     _playerPathState.path.length = 0;
@@ -146,8 +151,11 @@ export function updatePlayerMovement(
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > AUTO_MOVE_JOYSTICK_DEAD_ZONE) {
       const speed = (dist / JOYSTICK_OUTER_RADIUS) * effectiveMaxSpeed;
-      mote.vx = (dx / dist) * speed;
-      mote.vy = (dy / dist) * speed;
+      const targetVx = (dx / dist) * speed;
+      const targetVy = (dy / dist) * speed;
+      const lerpT = Math.min(1, accelFactor * dt);
+      mote.vx += (targetVx - mote.vx) * lerpT;
+      mote.vy += (targetVy - mote.vy) * lerpT;
     } else {
       mote.vx *= RPG_VELOCITY_DAMPING;
       mote.vy *= RPG_VELOCITY_DAMPING;
@@ -161,8 +169,11 @@ export function updatePlayerMovement(
     if (hasKeyInput) {
       // Manual keyboard input: clear cached path so A* re-runs when auto-move resumes.
       _playerPathState.path.length = 0;
-      mote.vx = (dirX / dirLen) * effectiveMaxSpeed;
-      mote.vy = (dirY / dirLen) * effectiveMaxSpeed;
+      const targetVx = (dirX / dirLen) * effectiveMaxSpeed;
+      const targetVy = (dirY / dirLen) * effectiveMaxSpeed;
+      const lerpT = Math.min(1, accelFactor * dt);
+      mote.vx += (targetVx - mote.vx) * lerpT;
+      mote.vy += (targetVy - mote.vy) * lerpT;
     } else if (ctx.autoMoveEnabled && !ctx.isBossWaveActive && _anyEnemiesPresent(ctx)) {
       // Auto-move: steer toward the nearest enemy, stopping within weapon range.
       //
