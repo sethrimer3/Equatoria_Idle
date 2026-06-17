@@ -191,18 +191,18 @@ export function getPlayerMovementStatusMultiplier(sim: RpgSimState): number {
   const list = sim.activePlayerStatuses;
   if (list.length === 0) return 1;
 
-  if (list.some(s => s.key === 'frozen')) return 0.30;
+  if (list.some(s => s.key === 'frozen')) return FROZEN_MOVEMENT_MULT;
 
   let mult = 1;
   for (const s of list) {
     if (s.key === 'chilled') {
-      const slow = Math.min(0.35, s.magnitude * 0.006);
-      mult *= Math.max(0.65, 1 - slow);
+      const slow = Math.min(CHILLED_MAX_SLOW_FRAC, s.magnitude * 0.006);
+      mult *= Math.max(CHILLED_MIN_SPEED, 1 - slow);
     } else if (s.key === 'slowed') {
-      mult *= 0.55;
+      mult *= SLOWED_MOVEMENT_MULT;
     }
   }
-  return Math.max(0.25, mult);
+  return Math.max(STATUS_SPEED_FLOOR, mult);
 }
 
 // ── Attack speed multiplier ────────────────────────────────────────────────────
