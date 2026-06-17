@@ -54,7 +54,6 @@ import {
 } from './rpg-constants';
 import { clearSpawnFlashes } from './rpg-spawn-flash';
 import { clearDyingEnemies } from './rpg-death-fade';
-import { clearPlayerStatuses } from '../../sim/rpg/player-status-effects';
 
 // ── Context ──────────────────────────────────────────────────────────────────
 
