@@ -162,51 +162,63 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     timeWarped: '#cc88ff',
   };
   const STATUS_LABELS: Record<PlayerStatusKey, string> = {
-    burning:    '🔥',
-    poisoned:   '☠',
-    chilled:    '❄',
-    frozen:     '🧊',
-    slowed:     '⧖',
-    timeWarped: '⌛',
+    burning:    'BRN',
+    poisoned:   'PSN',
+    chilled:    'CHL',
+    frozen:     'FRZ',
+    slowed:     'SLW',
+    timeWarped: 'TWP',
   };
 
-  const _chipEls = new Map<PlayerStatusKey, HTMLDivElement>();
+  interface ChipElements { chip: HTMLDivElement; textEl: HTMLSpanElement; barEl: HTMLDivElement }
+  const _chipEls = new Map<PlayerStatusKey, ChipElements>();
 
-  function _getOrCreateChip(key: PlayerStatusKey): HTMLDivElement {
-    let chip = _chipEls.get(key);
-    if (!chip) {
-      chip = document.createElement('div');
+  function _getOrCreateChip(key: PlayerStatusKey): ChipElements {
+    let els = _chipEls.get(key);
+    if (!els) {
+      const chip = document.createElement('div');
       chip.title = key;
       chip.style.cssText = [
-        'display:inline-flex', 'align-items:center', 'gap:2px',
-        'padding:1px 4px', 'border-radius:3px',
+        'display:inline-flex', 'flex-direction:column', 'align-items:stretch',
+        'padding:1px 4px 0', 'border-radius:3px',
         'font-size:10px', 'font-family:monospace',
         'border:1px solid rgba(255,255,255,0.2)',
         'background:rgba(0,0,0,0.55)',
+        'min-width:32px',
       ].join(';');
-      _chipEls.set(key, chip);
+      const textEl = document.createElement('span');
+      textEl.style.cssText = 'display:block;text-align:center;line-height:1.3';
+      const barEl = document.createElement('div');
+      barEl.style.cssText = [
+        'height:2px', 'border-radius:1px', 'margin-top:1px',
+        'transition:width 0.1s linear',
+      ].join(';');
+      chip.appendChild(textEl);
+      chip.appendChild(barEl);
+      els = { chip, textEl, barEl };
+      _chipEls.set(key, els);
     }
-    return chip;
+    return els;
   }
 
   function _updatePlayerStatusBar(): void {
     const statuses = getActivePlayerStatuses(rpgSimState);
     // Remove chips for expired statuses
-    for (const [key, chip] of _chipEls) {
+    for (const [key, { chip }] of _chipEls) {
       if (!statuses.some(s => s.key === key)) {
         chip.remove();
       }
     }
     // Add / update chips for active statuses
     for (const s of statuses) {
-      const chip = _getOrCreateChip(s.key);
+      const { chip, textEl, barEl } = _getOrCreateChip(s.key);
       const color = STATUS_COLORS[s.key];
       const pct = Math.max(0, s.remainingMs / s.durationMs);
       chip.style.borderColor = color;
       chip.style.color = color;
-      chip.textContent = STATUS_LABELS[s.key] + ' ' + Math.ceil(s.remainingMs / 1000) + 's';
-      // Progress bar via box-shadow width
-      chip.style.boxShadow = `inset 0 -2px 0 0 ${color}`;
+      textEl.textContent = STATUS_LABELS[s.key] + ' ' + Math.ceil(s.remainingMs / 1000) + 's';
+      barEl.style.background = color;
+      barEl.style.width = Math.round(pct * 100) + '%';
       chip.style.opacity = (0.6 + pct * 0.4).toFixed(2);
       if (!chip.parentElement) playerStatusBar.appendChild(chip);
     }
