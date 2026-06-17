@@ -282,23 +282,8 @@ export function deserializeGameState(data: SaveData): GameState {
     state.rpg.playerXp = data.rpg.playerXp ?? 0;
     state.rpg.playerXpToNextLevel = data.rpg.playerXpToNextLevel
       ?? Math.floor(25 * Math.pow(Math.max(1, state.rpg.playerLevel), 1.35));
-    // v34+: skill point migration — runs once per save, grants retroactive points
-    if (data.rpg.skillPointMigrationDone) {
-      state.rpg.unspentSkillPoints = data.rpg.unspentSkillPoints ?? 0;
-      state.rpg.skillPointMigrationDone = true;
-    } else {
-      // Points earned = levels gained (level 1 = 0 points, each level-up = +1)
-      const pointsEarned = Math.max(0, state.rpg.playerLevel - 1);
-      // Points already spent = sum of all upgrade levels purchased (old saves used 1 SP/rank)
-      let pointsSpent = 0;
-      for (const level of state.rpg.rpgUpgradeLevels.values()) {
-        pointsSpent += level;
-      }
-      state.rpg.unspentSkillPoints = Math.max(0, pointsEarned - pointsSpent);
-      state.rpg.skillPointMigrationDone = true;
-    }
-    // Migrate weapon slots: extra_weapon_slot rank should match level-based slot count for older saves.
-    // This ensures players who earned slots via player level don't lose them.
+    // Migrate weapon slots: extra_weapon_slot rank should be at least the level-based slot count.
+    // This preserves slots earned before the skill tree existed.
     {
       const levelSlots = Math.min(4, Math.floor(state.rpg.playerLevel / 25));
       const upgradeSlots = state.rpg.rpgUpgradeLevels.get('extra_weapon_slot') ?? 0;
@@ -309,6 +294,23 @@ export function deserializeGameState(data: SaveData): GameState {
     // Auto-grant awakening for existing players (level 2+) — retroactive free grant.
     if (!state.rpg.rpgUpgradeLevels.has('awakening') && state.rpg.playerLevel >= 2) {
       state.rpg.rpgUpgradeLevels.set('awakening', 1);
+    }
+    // v35+ accounting migration: recompute unspentSkillPoints using visible weighted spend.
+    // This supersedes the old flat-count v34 migration (which ignored variable costs
+    // and counted hidden legacy upgrades).
+    const savedAccountingVersion = data.rpg.skillPointAccountingVersion ?? 0;
+    if (savedAccountingVersion >= 1) {
+      // Accounting already correct — load the saved value directly.
+      state.rpg.unspentSkillPoints = data.rpg.unspentSkillPoints ?? 0;
+      state.rpg.skillPointMigrationDone = true;
+      state.rpg.skillPointAccountingVersion = savedAccountingVersion;
+    } else {
+      // Run the weighted visible-only migration.
+      const pointsEarned = Math.max(0, state.rpg.playerLevel - 1);
+      const visibleSpent = getVisibleSkillTreeSpentPoints(state.rpg);
+      state.rpg.unspentSkillPoints = Math.max(0, pointsEarned - visibleSpent);
+      state.rpg.skillPointMigrationDone = true;
+      state.rpg.skillPointAccountingVersion = 1;
     }
     // ─── Lens helper (used for inventory and weapon attachments) ───
     type SavedLens = NonNullable<NonNullable<typeof data.rpg>['craftedLenses']>[0];
