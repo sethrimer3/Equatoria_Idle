@@ -849,7 +849,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: RUBYFISH_SIZE,
     hp: RUBYFISH_HP_INIT, atk: RUBYFISH_ATK_INIT, def: RUBYFISH_DEF_INIT,
     firstWave: 42,
-    description: 'An aggressive crimson fish that winds up before bursting into a straight-line dash.',
+    description: 'An aggressive crimson fish that winds up before bursting into a straight-line dash. Burns on contact — immune to Burning; weak to Chilled.',
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
