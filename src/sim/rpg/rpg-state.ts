@@ -332,6 +332,7 @@ export function createRpgSimState(): RpgSimState {
     dashCooldownMs: 0,
     secondWindAvailable: true,
     activePlayerStatuses: [],
+    frozenCooldownMs: 0,
   };
 }
 
