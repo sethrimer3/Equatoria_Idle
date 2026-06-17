@@ -1236,12 +1236,8 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       _isDevMode  = isDevMode;
 
       const sp = rpgState.unspentSkillPoints;
-      let totalSpent = 0;
-      for (const [upgradeId, level] of rpgState.rpgUpgradeLevels) {
-        const def = RPG_UPGRADE_BY_ID.get(upgradeId);
-        if (def) totalSpent += level * def.skillPointCost;
-      }
-      spLabel.textContent = `✦ ${sp} available  ·  ${totalSpent} / 200 spent`;
+      const totalSpent = getVisibleSkillTreeSpentPoints(rpgState);
+      spLabel.textContent = `✦ ${sp} available  ·  ${totalSpent} / ${SKILL_TREE_TOTAL_POINTS} spent`;
       spLabel.className = 'skill-tree__sp-label' + (sp > 0 ? ' skill-tree__sp-label--has-points' : '');
       // The canvas-drawn card auto-refreshes from _rpgState each frame — no DOM refresh needed.
     },
