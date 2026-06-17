@@ -145,6 +145,73 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     dpsLabelEl, dpsValueEl, dpsChartEl, dpsAxisEl, dpsAxisLowEl, dpsAxisHighEl,
   } = buildStatsPanelDom();
 
+  // ── Player status bar ─────────────────────────────────────────────────────
+  const playerStatusBar = document.createElement('div');
+  playerStatusBar.style.cssText = [
+    'display:flex', 'flex-wrap:wrap', 'gap:3px', 'padding:2px 4px',
+    'min-height:0', 'pointer-events:none',
+  ].join(';');
+  statsPanel.appendChild(playerStatusBar);
+
+  const STATUS_COLORS: Record<PlayerStatusKey, string> = {
+    burning:    '#ff6030',
+    poisoned:   '#4ec94e',
+    chilled:    '#60c0ff',
+    frozen:     '#a0e8ff',
+    slowed:     '#8899bb',
+    timeWarped: '#cc88ff',
+  };
+  const STATUS_LABELS: Record<PlayerStatusKey, string> = {
+    burning:    '🔥',
+    poisoned:   '☠',
+    chilled:    '❄',
+    frozen:     '🧊',
+    slowed:     '⧖',
+    timeWarped: '⌛',
+  };
+
+  const _chipEls = new Map<PlayerStatusKey, HTMLDivElement>();
+
+  function _getOrCreateChip(key: PlayerStatusKey): HTMLDivElement {
+    let chip = _chipEls.get(key);
+    if (!chip) {
+      chip = document.createElement('div');
+      chip.title = key;
+      chip.style.cssText = [
+        'display:inline-flex', 'align-items:center', 'gap:2px',
+        'padding:1px 4px', 'border-radius:3px',
+        'font-size:10px', 'font-family:monospace',
+        'border:1px solid rgba(255,255,255,0.2)',
+        'background:rgba(0,0,0,0.55)',
+      ].join(';');
+      _chipEls.set(key, chip);
+    }
+    return chip;
+  }
+
+  function _updatePlayerStatusBar(): void {
+    const statuses = getActivePlayerStatuses(rpgSimState);
+    // Remove chips for expired statuses
+    for (const [key, chip] of _chipEls) {
+      if (!statuses.some(s => s.key === key)) {
+        chip.remove();
+      }
+    }
+    // Add / update chips for active statuses
+    for (const s of statuses) {
+      const chip = _getOrCreateChip(s.key);
+      const color = STATUS_COLORS[s.key];
+      const pct = Math.max(0, s.remainingMs / s.durationMs);
+      chip.style.borderColor = color;
+      chip.style.color = color;
+      chip.textContent = STATUS_LABELS[s.key] + ' ' + Math.ceil(s.remainingMs / 1000) + 's';
+      // Progress bar via box-shadow width
+      chip.style.boxShadow = `inset 0 -2px 0 0 ${color}`;
+      chip.style.opacity = (0.6 + pct * 0.4).toFixed(2);
+      if (!chip.parentElement) playerStatusBar.appendChild(chip);
+    }
+  }
+
   // ── WEAP column tap handling ───────────────────────────────────────────────
   // Collect the WEAP cell elements (col 0 of each weapon data row) for later.
   const weapSlotCells: HTMLElement[] = [];
