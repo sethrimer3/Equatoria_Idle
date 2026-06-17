@@ -19,6 +19,8 @@ import { applyLensStatus } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 import { handleLensTier2EffectsOnWeaponHit, extractT2TargetEntity } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
+import { evaluateStatusCombosOnStatusApplied } from '../../sim/rpg/enemy-status-combos';
+import { applyComboResults } from './rpg-combo-apply';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
