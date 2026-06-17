@@ -257,6 +257,10 @@ export interface RpgSimState {
   activePlayerStatuses: ActivePlayerStatus[];
   /** Remaining ms before Frozen can be reapplied (ephemeral, not saved). */
   frozenCooldownMs: number;
+  /** Total status combos triggered this run (ephemeral — not saved). */
+  statusCombosTriggered: number;
+  /** Total combo damage dealt this run (ephemeral — not saved). */
+  statusComboDamageDealt: number;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
