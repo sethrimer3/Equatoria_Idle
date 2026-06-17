@@ -151,6 +151,64 @@ function buildEnemyEntry(
       blurb.textContent = 'While alive, this elite empowers all non-elite enemies by +25%.';
       textArea.appendChild(blurb);
     }
+
+    // Status affinities (weak / resistant / immune — skip neutral)
+    const ALL_ENEMY_STATUS_KEYS: EnemyStatusKey[] = [
+      'burning', 'poisoned', 'chilled', 'frozen', 'timeWarped',
+      'abraded', 'refracted', 'radiant', 'echoMarked', 'cracked',
+      'gravitized', 'fractalWound', 'riftScarred',
+    ];
+    const immune: EnemyStatusKey[]    = [];
+    const resistant: EnemyStatusKey[] = [];
+    const weak: EnemyStatusKey[]      = [];
+    for (const sk of ALL_ENEMY_STATUS_KEYS) {
+      const aff = getEnemyStatusAffinity(entry.id, sk);
+      if (aff === 'immune')    immune.push(sk);
+      else if (aff === 'resistant') resistant.push(sk);
+      else if (aff === 'weak')      weak.push(sk);
+    }
+    if (immune.length + resistant.length + weak.length > 0) {
+      const affRow = document.createElement('div');
+      affRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;align-items:center;';
+      const affLabel = document.createElement('span');
+      affLabel.style.cssText = 'font-size:0.68em;color:#666;white-space:nowrap;';
+      affLabel.textContent = 'Affinities:';
+      affRow.appendChild(affLabel);
+      function addChips(keys: EnemyStatusKey[], bg: string, prefix: string): void {
+        for (const k of keys) {
+          const chip = document.createElement('span');
+          const def = ENEMY_STATUS_DEFS[k];
+          chip.style.cssText = `font-size:0.68em;padding:1px 4px;border-radius:3px;background:${bg};color:#fff;white-space:nowrap;`;
+          chip.textContent = `${prefix}${def?.label ?? k}`;
+          chip.title = `${def?.name ?? k}: ${prefix === '✦' ? 'WEAK' : prefix === '✕' ? 'IMMUNE' : 'RESISTANT'}`;
+          affRow.appendChild(chip);
+        }
+      }
+      addChips(weak,      'rgba(120,220,80,0.25)',  '✦');
+      addChips(immune,    'rgba(150,150,180,0.25)', '✕');
+      addChips(resistant, 'rgba(80,120,200,0.20)',  '▼');
+      textArea.appendChild(affRow);
+    }
+
+    // Inflicts (which player statuses this enemy can apply)
+    const inflicts = ENEMY_STATUS_SOURCES[entry.id] ?? ENEMY_STATUS_SOURCES[entry.id.replace(/^elite_/, 'elite')];
+    if (inflicts && inflicts.length > 0) {
+      const inflictRow = document.createElement('div');
+      inflictRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;align-items:center;';
+      const inflictLabel = document.createElement('span');
+      inflictLabel.style.cssText = 'font-size:0.68em;color:#666;white-space:nowrap;';
+      inflictLabel.textContent = 'Inflicts:';
+      inflictRow.appendChild(inflictLabel);
+      for (const pk of inflicts) {
+        const def = PLAYER_STATUS_DEFS[pk];
+        const chip = document.createElement('span');
+        chip.style.cssText = `font-size:0.68em;padding:1px 4px;border-radius:3px;border:1px solid ${def?.color ?? '#888'}55;color:${def?.color ?? '#aaa'};white-space:nowrap;`;
+        chip.textContent = def?.label ?? pk;
+        chip.title = def?.name ?? pk;
+        inflictRow.appendChild(chip);
+      }
+      textArea.appendChild(inflictRow);
+    }
   }
 
   box.appendChild(textArea);
