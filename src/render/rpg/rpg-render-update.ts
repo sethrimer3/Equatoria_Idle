@@ -544,6 +544,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
 
   // ── Tick lens status effects ─────────────────────────────────────────────────
   tickLensStatuses(a, deltaMs, ctx.mote.x, ctx.mote.y);
+  tickPlayerStatuses(ctx.rpgSimState, ctx.playerStats, deltaMs);
   tickLensTier2DelayedEffects(deltaMs);
   tickLensTier3Effects(a, deltaMs);
 
