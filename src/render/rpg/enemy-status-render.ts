@@ -40,6 +40,21 @@ const STATUS_LABELS: Record<EnemyStatusKey, StatusLabel> = {
   frozen:      { text: 'FRZ', color: '#aaeeff' },
 };
 
+// Body VFX color per status — drawn as a faint rim overlay on the enemy sprite.
+const STATUS_BODY_COLORS: Partial<Record<EnemyStatusKey, string>> = {
+  burning:     '#ff5533',
+  poisoned:    '#44cc33',
+  chilled:     '#55ccff',
+  frozen:      '#aaeeff',
+  timeWarped:  '#9966cc',
+  gravitized:  '#5555aa',
+  fractalWound:'#ff44aa',
+  riftScarred: '#44ffee',
+  echoMarked:  '#cc88ff',
+  abraded:     '#d4a042',
+  cracked:     '#aaccff',
+};
+
 /** Icon size in canvas pixels (world-space). */
 const ICON_SIZE = 10;
 /** Gap between icon centres. */
