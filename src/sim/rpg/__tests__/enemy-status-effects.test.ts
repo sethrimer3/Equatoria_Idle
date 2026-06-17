@@ -22,11 +22,13 @@ import {
   getIncomingDamageMult,
   getMovementSlowMult,
   getRiftScarredDamageMult,
+  getRiftScarredStackCap,
   incrementRiftScarredStacks,
   tickLensStatuses,
   getActiveStatuses,
   type LensStatusParams,
 } from '../enemy-status-effects';
+import { ENEMY_RIFT_STACK_CAP, ENEMY_RIFT_STACK_CAP_BOSS, ENEMY_FRAC_TICKS, ENEMY_FRAC_TICKS_BOSS } from '../../../data/rpg/status-balance';
 
 // ── Test enemy factory ─────────────────────────────────────────────────────────
 
