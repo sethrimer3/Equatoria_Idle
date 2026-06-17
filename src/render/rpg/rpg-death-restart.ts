@@ -216,6 +216,7 @@ export function triggerDeath(ctx: RpgDeathRestartCtx): void {
 
 export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.playerStats.hp = ctx.playerStats.maxHp;
+  ctx.onRestart?.();
   ctx.enemies.length = 0; ctx.spawnQueue.length = 0;
   ctx.sapphireEnemies.length = 0; ctx.sapphireMissiles.length = 0;
   ctx.emeraldEnemies.length = 0;
