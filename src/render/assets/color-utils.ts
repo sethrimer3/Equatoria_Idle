@@ -15,24 +15,32 @@ const HEX_COLOR_RE = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
 /** Matches rgb(r,g,b) or rgba(r,g,b,x). */
 const RGB_COLOR_RE = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/;
 
+const _colorAlphaCache = new Map<string, string>();
+
 /**
  * Return an `rgba(...)` string for `color` with the given alpha.
  * Supports `#RRGGBB` hex and `rgb(r,g,b)` / `rgba(r,g,b,x)` inputs.
  * Falls back to returning the color unchanged when format is unrecognised.
+ * Results are cached so repeated calls with the same arguments are O(1).
  */
 export function colorWithAlpha(color: string, alpha: number): string {
+  const key = `${color}|${alpha}`;
+  const hit = _colorAlphaCache.get(key);
+  if (hit !== undefined) return hit;
+
+  let result: string;
   const hexMatch = HEX_COLOR_RE.exec(color);
   if (hexMatch) {
     const r = parseInt(hexMatch[1], 16);
     const g = parseInt(hexMatch[2], 16);
     const b = parseInt(hexMatch[3], 16);
-    return `rgba(${r},${g},${b},${alpha})`;
+    result = `rgba(${r},${g},${b},${alpha})`;
+  } else {
+    const rgbMatch = RGB_COLOR_RE.exec(color);
+    result = rgbMatch ? `rgba(${rgbMatch[1]},${rgbMatch[2]},${rgbMatch[3]},${alpha})` : color;
   }
-  const rgbMatch = RGB_COLOR_RE.exec(color);
-  if (rgbMatch) {
-    return `rgba(${rgbMatch[1]},${rgbMatch[2]},${rgbMatch[3]},${alpha})`;
-  }
-  return color;
+  _colorAlphaCache.set(key, result);
+  return result;
 }
 
 // ─── parseHexToRgb ───────────────────────────────────────────────
