@@ -73,6 +73,7 @@ export function buildOrbitProjectile(
       trailY: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
       trailHead: 0, trailCount: 0,
       hitCooldowns: new Map(),
+      reformMs: 0,
     });
   }
   return result;
