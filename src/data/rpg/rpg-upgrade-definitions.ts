@@ -215,20 +215,22 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'balanced_alloy',
     name: 'Balanced Alloy',
-    description: 'Reduces penalties from mixed-color weapon compositions. (TODO: composition penalty hook)',
+    description: 'Reduces penalties from mixed-color weapon compositions.',
     costTierId: 'sunstone',
     costPerLevel: 4_000,
     maxLevel: 3,
     skillPointCost: 2,
+    implementationStatus: 'placeholder',
   },
   {
     id: 'quick_swap',
     name: 'Quick Swap',
-    description: 'Unlocks faster weapon swapping utility. (TODO: swap speed hook)',
+    description: 'Unlocks faster weapon swapping utility.',
     costTierId: 'ruby',
     costPerLevel: 3_000,
     maxLevel: 1,
     skillPointCost: 2,
+    implementationStatus: 'placeholder',
   },
 
   // ── Orbiting Projectile branch ────────────────────────────────────
