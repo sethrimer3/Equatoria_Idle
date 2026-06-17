@@ -69,12 +69,12 @@ export function getLevelRequiredForSlot(slotIndex: number): number {
 /**
  * Returns the maximum number of weapons that can be equipped simultaneously.
  * Base: 1 slot. +1 per Extra Weapon Slot skill rank (max 5 total).
- * Falls back to the legacy level-based formula for saves without the upgrade.
+ * Old saves are migrated in save-deserialize so their extra_weapon_slot rank
+ * already covers any slots they earned via level — no level fallback needed here.
  */
 export function getMaxEquippedWeapons(state: RpgSimState): number {
   const slotUpgrades = getRpgUpgradeLevel(state, 'extra_weapon_slot');
-  const levelSlots = Math.min(4, Math.floor(state.playerLevel / 25));
-  return 1 + Math.max(slotUpgrades, levelSlots);
+  return Math.min(5, 1 + slotUpgrades);
 }
 
 // ─── Boss helpers ─────────────────────────────────────────────────
