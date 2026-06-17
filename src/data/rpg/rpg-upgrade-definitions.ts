@@ -285,7 +285,6 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
     costPerLevel: 4_000,
     maxLevel: 1,
     skillPointCost: 3,
-    implementationStatus: 'placeholder',
   },
 
   // ── Elemental / Crystal branch ────────────────────────────────────
