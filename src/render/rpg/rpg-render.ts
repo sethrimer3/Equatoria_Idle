@@ -32,7 +32,7 @@ import {
   getPlayerLevelAtkBonus, getPlayerLevelDefBonus, getPlayerLevelHpBonus,
   isSkillNodeUnlocked, getSkillNodeRank,
 } from '../../sim/rpg/rpg-state';
-import { applyPlayerStatus, hasPlayerStatus } from '../../sim/rpg/player-status-effects';
+import { applyPlayerStatus, hasPlayerStatus, clearPlayerStatuses, getPlayerAttackSpeedStatusMultiplier } from '../../sim/rpg/player-status-effects';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
