@@ -231,7 +231,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: NULLSTONE_ENEMY_SIZE,
     hp: NULLSTONE_HP_INIT, atk: NULLSTONE_ATK_INIT, def: NULLSTONE_DEF_INIT,
     firstWave: 70,
-    description: 'A dark gravitational horror that pulls the player into its core and launches void tendrils.',
+    description: 'A dark gravitational horror that pulls the player into its core and launches void tendrils. Tendrils inflict Slowed — resists Gravitized lenses but is vulnerable to Time-Warped.',
     shape: 'circle',
     zone: 'euhedral',
     auraRadius: NULLSTONE_GRAVITY_RADIUS * 0.22,
