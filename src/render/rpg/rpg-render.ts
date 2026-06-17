@@ -1859,6 +1859,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         }
       }
       dashRequested = false;
+      // Fade afterimages
+      for (let _i = afterimages.length - 1; _i >= 0; _i--) {
+        afterimages[_i].alpha -= AFTERIMAGE_FADE_PER_MS * deltaMs;
+        if (afterimages[_i].alpha <= 0) afterimages.splice(_i, 1);
+      }
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
     },
 
