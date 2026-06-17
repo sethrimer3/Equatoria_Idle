@@ -382,8 +382,6 @@ function drawPrismaticRect(
   alpha: number,
 ): void {
   ctx.globalAlpha = alpha;
-  ctx.shadowBlur = size * 5;
-  ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
   ctx.fillStyle = `hsl(${hue}, 100%, 75%)`;
   ctx.fillRect(Math.floor(x - half), Math.floor(y - half), Math.ceil(size), Math.ceil(size));
 }
