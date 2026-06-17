@@ -1518,7 +1518,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getNavGrid: () => rpgNavGrid,
     getVerdureCaveWallState: () => verdureCaveWallState,
     applyPlayerStatusFromSource(source: string): void {
-      if (playerIFramesMs > 0 || isInvincibilityMode()) return;
+      if (playerIFramesMs > 0 || isInvincibilityMode) return;
       const sim = rpgSimState;
       switch (source) {
         case 'ruby':
