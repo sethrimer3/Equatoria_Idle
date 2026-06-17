@@ -127,6 +127,15 @@ export interface OrbitProjectile {
   trailHead: number; trailCount: number;
   /** Per-target cooldown tracking (uses object identity as key). */
   hitCooldowns: Map<object, number>;
+  /** Remaining reform delay in ms (comet_return skill). 0 = active. */
+  reformMs: number;
+}
+
+/** Snapshot of the player's position/angle for the afterimage trail effect. */
+export interface AfterimageSnapshot {
+  x: number;
+  y: number;
+  alpha: number;
 }
 
 // ── Sapphire enemy and missile interfaces ─────────────────────
