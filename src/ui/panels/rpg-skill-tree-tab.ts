@@ -572,7 +572,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
   }
 
   // ── Build nodes and connections ───────────────────────────────────────
-  const nodes: SkillNode[] = SKILL_TREE_NODES.map((def, i) => ({
+  const nodes: SkillNode[] = VISIBLE_SKILL_TREE_NODES.map((def, i) => ({
     def,
     x: def.x,
     y: def.y,
