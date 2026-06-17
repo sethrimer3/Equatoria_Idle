@@ -6,7 +6,6 @@ import { SPAWNER_SIZE } from '../../data/particles/particle-config';
 import { getGeneratorSpritePath } from '../assets/asset-paths';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 import { getTintedSpriteCanvas } from '../assets/sprite-tint';
-import { colorWithAlpha } from '../assets/color-utils';
 import { formatNumber } from '../../util';
 
 // Module-level animation clock advanced by drawGenerators callers
