@@ -347,6 +347,7 @@ export function updateEmeraldEnemies(
       if (!enemy.hasHitPlayer) {
         enemy.hasHitPlayer = true;
         ctx.dealDamageToPlayer(enemy.atk);
+        ctx.applyPlayerStatusFromSource?.('emerald');
       }
       enemy.phase = 'cooldown'; enemy.phaseMs = 0;
 
