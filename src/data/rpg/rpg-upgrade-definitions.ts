@@ -79,11 +79,12 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'codex_initiate',
     name: 'Codex Initiate',
-    description: '+5% XP from enemy codex progress per rank. (TODO: additional codex reward hook)',
+    description: '+5% XP from enemy codex progress per rank.',
     costTierId: 'quartz',
     costPerLevel: 1_000,
     maxLevel: 2,
     skillPointCost: 1,
+    implementationStatus: 'placeholder',
   },
 
   // ── Movement branch ───────────────────────────────────────────────
