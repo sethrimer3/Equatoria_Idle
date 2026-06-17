@@ -17,7 +17,7 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getRpgSpeedMultiplier } from '../../sim/rpg/rpg-state';
+import { getRpgSpeedMultiplier, getSkillNodeRank } from '../../sim/rpg/rpg-state';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { getSwordLength } from './rpg-helpers';
 import type { RpgFluid } from './rpg-fluid';
