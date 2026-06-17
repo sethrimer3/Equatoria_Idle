@@ -192,7 +192,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: IOLITE_ENEMY_SIZE,
     hp: IOLITE_HP_INIT, atk: IOLITE_ATK_INIT, def: IOLITE_DEF_INIT,
     firstWave: 40,
-    description: 'A heavily armored indigo titan that fires a spread of five beams in a wide arc.',
+    description: 'A heavily armored indigo titan that fires a spread of five beams in a wide arc. Beams inflict Time-Warped, slowing attack cadence. Resists Time-Warped; vulnerable to Radiant lenses.',
     shape: 'circle',
     zone: 'euhedral',
   },
