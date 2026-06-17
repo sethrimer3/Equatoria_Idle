@@ -283,15 +283,7 @@ export function drawParticles(
   // ── Draw each batch ──
   for (const batch of _batchMap.values()) {
     if (batch.count === 0) continue;
-    if (options.enableGlow && batch.glow) {
-      // With the glow field providing broad ambient glow, reduce per-particle
-      // shadowBlur to a crisp highlight rather than a heavy bloom.  This keeps
-      // particle bodies readable and avoids double-glow muddiness.
-      ctx.shadowBlur = batch.size * 1.5;
-      ctx.shadowColor = batch.glow;
-    } else {
-      ctx.shadowBlur = 0;
-    }
+    ctx.shadowBlur = 0;
     ctx.fillStyle = batch.color;
     const half = batch.size / 2;
     const positions = batch.positions;
