@@ -256,7 +256,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: EIGENSTEIN_ENEMY_SIZE,
     hp: EIGENSTEIN_HP_INIT, atk: EIGENSTEIN_ATK_INIT, def: EIGENSTEIN_DEF_INIT,
     firstWave: 85,
-    description: 'A transcendent cyan construct that charges a sweeping beam of pure mathematics before firing.',
+    description: 'A transcendent cyan construct that charges a sweeping beam of pure mathematics before firing. Already quantum-scarred — Rift-Scarred stacks accumulate slower. Radiant light collapses its wave functions.',
     shape: 'circle',
     zone: 'euhedral',
   },
