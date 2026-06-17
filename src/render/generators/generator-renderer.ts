@@ -189,31 +189,20 @@ function drawRangeSwirl(
   const numArcs = 5;
   const arcSpan = (Math.PI * 2) / numArcs;
 
-  // Parse color into rgba components for gradient stops
-  // We pass the hex/rgb color as-is and embed alpha via globalAlpha.
   ctx.save();
+  // Batch all swirl arcs into a single path + stroke, avoiding per-arc
+  // gradient allocation (previously 5 LinearGradient objects per generator).
   ctx.globalAlpha = alpha * 0.18;
-
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
   for (let i = 0; i < numArcs; i++) {
     const startAngle = t * 0.8 + i * arcSpan;
     const endAngle = startAngle + arcSpan * 0.55;
-
-    const grad = ctx.createLinearGradient(
-      x + Math.cos(startAngle) * range,
-      y + Math.sin(startAngle) * range,
-      x + Math.cos(endAngle) * range,
-      y + Math.sin(endAngle) * range,
-    );
-    grad.addColorStop(0, colorWithAlpha(color, 0));
-    grad.addColorStop(0.5, colorWithAlpha(color, 1));
-    grad.addColorStop(1, colorWithAlpha(color, 0));
-
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(startAngle) * range, y + Math.sin(startAngle) * range);
     ctx.arc(x, y, range, startAngle, endAngle);
-    ctx.stroke();
   }
+  ctx.stroke();
 
   // Faint dashed boundary circle
   ctx.globalAlpha = alpha * 0.12;
