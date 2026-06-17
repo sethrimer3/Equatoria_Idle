@@ -204,7 +204,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: AMETHYST_ENEMY_SIZE,
     hp: AMETHYST_HP_INIT, atk: AMETHYST_ATK_INIT, def: AMETHYST_DEF_INIT,
     firstWave: 50,
-    description: 'A crystal-shielded violet tank that periodically shatters its own barrier into a burst of shards.',
+    description: 'A crystal-shielded violet tank that periodically shatters its own barrier into a burst of shards. Its resonant structure amplifies Echo-Marked — target it with amethyst lenses for extra burst.',
     shape: 'circle',
     zone: 'euhedral',
     hasShield: true,
