@@ -726,21 +726,12 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
   }
 
   // ── Trigger purchase ───────────────────────────────────────────────────
+  // Dispatch to the action handler; canPurchaseRpgSkill there is authoritative.
   function triggerPurchase(): void {
-    if (selectedIdx < 0 || !_rpgState || !_resources) return;
+    if (selectedIdx < 0) return;
     const node = nodes[selectedIdx];
     if (!node.def.upgradeId) return;
-    const upgradeDef = RPG_UPGRADE_BY_ID.get(node.def.upgradeId);
-    if (!upgradeDef) return;
-    const status   = getNodeStatus(node.def, _rpgState, _isDevMode);
-    const curLevel = getRpgUpgradeLevel(_rpgState, node.def.upgradeId);
-    if (curLevel >= upgradeDef.maxLevel || status === 'locked') return;
-    const hasSkillPt     = _rpgState.unspentSkillPoints >= upgradeDef.skillPointCost;
-    const moteBalance    = getMotes(_resources, upgradeDef.costTierId);
-    const canAffordMotes = _isDevMode || upgradeDef.costPerLevel === 0 || moteBalance >= upgradeDef.costPerLevel;
-    if (_isDevMode || (hasSkillPt && canAffordMotes)) {
-      dispatch({ kind: 'purchase_rpg_upgrade', upgradeId: upgradeDef.id });
-    }
+    dispatch({ kind: 'purchase_rpg_upgrade', upgradeId: node.def.upgradeId });
   }
 
   // ── Auto-pan to show card ─────────────────────────────────────────────
