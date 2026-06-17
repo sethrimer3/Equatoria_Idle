@@ -396,8 +396,6 @@ function drawPaletteRect(
   alpha: number,
 ): void {
   ctx.globalAlpha = alpha;
-  ctx.shadowBlur = size * 4.5;
-  ctx.shadowColor = color;
   ctx.fillStyle = color;
   ctx.fillRect(Math.floor(x - half), Math.floor(y - half), Math.ceil(size), Math.ceil(size));
 }
