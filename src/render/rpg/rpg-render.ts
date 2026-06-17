@@ -1517,6 +1517,32 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getTerrainState: () => topographicTerrainState,
     getNavGrid: () => rpgNavGrid,
     getVerdureCaveWallState: () => verdureCaveWallState,
+    applyPlayerStatusFromSource(source: string): void {
+      if (playerIFramesMs > 0 || isInvincibilityMode()) return;
+      const sim = rpgSimState;
+      switch (source) {
+        case 'ruby':
+          applyPlayerStatus(sim, { key: 'burning',   durationMs: 3000, magnitude: 10, tickEveryMs: 1000, source });
+          break;
+        case 'emerald':
+          applyPlayerStatus(sim, { key: 'poisoned',  durationMs: 5000, magnitude: 10, tickEveryMs: 1000, source });
+          break;
+        case 'sapphire': {
+          const wasChilled = hasPlayerStatus(sim, 'chilled');
+          applyPlayerStatus(sim, { key: 'chilled',   durationMs: 2500, magnitude: 10, source });
+          if (wasChilled) {
+            applyPlayerStatus(sim, { key: 'frozen',  durationMs: 1200, magnitude: 10, source });
+          }
+          break;
+        }
+        case 'iolite':
+          applyPlayerStatus(sim, { key: 'timeWarped', durationMs: 3500, magnitude: 10, source });
+          break;
+        case 'nullstone':
+          applyPlayerStatus(sim, { key: 'slowed',    durationMs: 2000, magnitude: 10, source });
+          break;
+      }
+    },
   };
 
   // EliteEnemyCtx extends RpgEnemyCtx with the projectile arrays elites fire into.
