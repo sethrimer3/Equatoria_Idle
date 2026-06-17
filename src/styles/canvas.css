@@ -1115,19 +1115,52 @@
   background: transparent;
   cursor: pointer;
   touch-action: manipulation;
-  font-size: 22px;
-  color: #c4a44a;
-  text-shadow: 0 0 8px rgba(196, 164, 74, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 180ms ease-in-out, text-shadow 180ms ease-in-out;
 }
 
-.rpg-skill-tree-btn:hover,
-.rpg-skill-tree-btn:active {
-  color: #f0d070;
-  text-shadow: 0 0 14px rgba(240, 208, 112, 0.9);
+/* CSS book icon for the skill tree shortcut */
+.rpg-skill-tree-btn__icon {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 26px;
+  background: linear-gradient(135deg, #b89030 0%, #c4a44a 40%, #e0c060 100%);
+  border: 1.5px solid #f0d070;
+  border-radius: 2px 3px 3px 2px;
+  box-shadow: 0 0 7px rgba(196, 164, 74, 0.5), inset 0 0 4px rgba(255, 220, 80, 0.15);
+  transition: box-shadow 180ms ease-in-out, border-color 180ms ease-in-out;
+}
+
+/* Spine line */
+.rpg-skill-tree-btn__icon::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background: rgba(80, 50, 0, 0.45);
+  border-radius: 1px;
+}
+
+/* ✦ glyph centred on cover */
+.rpg-skill-tree-btn__icon::after {
+  content: '✦';
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: rgba(60, 30, 0, 0.6);
+  line-height: 1;
+}
+
+.rpg-skill-tree-btn:hover .rpg-skill-tree-btn__icon,
+.rpg-skill-tree-btn:active .rpg-skill-tree-btn__icon {
+  border-color: #fff4a8;
+  box-shadow: 0 0 14px rgba(240, 208, 112, 0.9), inset 0 0 6px rgba(255, 240, 120, 0.2);
 }
 
 #rpg-container.rpg-rack-hidden:not(.rpg-menu-button-at-bottom) .rpg-skill-tree-btn {
