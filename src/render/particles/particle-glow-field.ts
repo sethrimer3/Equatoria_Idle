@@ -425,10 +425,8 @@ export function drawParticleGlowField(
   //   Lightens without clipping to white; avoids grey/brown mud.
   ctx.save();
   ctx.globalCompositeOperation = BLEND_MODE;
-  ctx.imageSmoothingEnabled = false; // nearest-neighbour; blur filter provides smoothing
-  ctx.filter = `blur(${BLUR_RADIUS}px)`;
+  ctx.imageSmoothingEnabled = true; // bilinear upscale softens cell edges without an explicit blur pass
   ctx.drawImage(_offCanvas, 0, 0, _gridW * CELL_SIZE, _gridH * CELL_SIZE);
-  ctx.filter = 'none';
   ctx.restore();
 }
 
