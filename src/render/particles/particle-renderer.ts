@@ -241,23 +241,6 @@ export function drawParticles(
           const alpha = t * 0.6;
           if (tailSize < 0.3) continue;
 
-          if (options.enableGlow && p.glowColorString) {
-            ctx.globalAlpha = alpha * 0.4;
-            // With the glow field active, reduce trail shadowBlur to keep
-            // particle bodies crisp without double-glow muddiness.
-            ctx.shadowBlur = tailSize * 2;
-            ctx.shadowColor = p.glowColorString;
-            ctx.fillStyle = p.glowColorString;
-            const glowHalf = tailSize * 1.5;
-            ctx.fillRect(
-              Math.floor(_trailPos.x - glowHalf),
-              Math.floor(_trailPos.y - glowHalf),
-              Math.ceil(glowHalf * 2),
-              Math.ceil(glowHalf * 2),
-            );
-            ctx.shadowBlur = 0;
-          }
-
           ctx.globalAlpha = alpha;
           ctx.fillStyle = p.colorString;
           const half = tailSize / 2;
