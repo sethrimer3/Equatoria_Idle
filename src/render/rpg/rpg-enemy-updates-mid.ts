@@ -191,6 +191,7 @@ export function updateRubyBolts(
       if (dx * dx + dy * dy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
         b.hasHitPlayer = true;
         ctx.dealDamageToPlayer(b.atk);
+        ctx.applyPlayerStatusFromSource?.('ruby');
       }
     }
   }
