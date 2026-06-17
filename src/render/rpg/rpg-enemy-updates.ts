@@ -121,6 +121,11 @@ export interface RpgEnemyCtx {
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns the Verdure cave wall state if in the Verdure zone, otherwise null. */
   getVerdureCaveWallState?(): import('./terrain/verdure-cave-walls').VerdureCaveWallState | null;
+  /**
+   * Optional: apply a player status from an enemy source (e.g. 'ruby', 'sapphire').
+   * No-op when not wired. Respects player iframes and invincibility mode.
+   */
+  applyPlayerStatusFromSource?(source: string): void;
 }
 
 // ── Shared terrain push-out helper ────────────────────────────────────────────
