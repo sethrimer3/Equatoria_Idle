@@ -79,18 +79,49 @@ function extractTargetEntity(t: ClosestTarget): object | null {
   return null;
 }
 
+/** Maps a ClosestTarget to the enemy type ID used in the affinity table. */
+function getTargetEnemyTypeId(t: ClosestTarget): string {
+  if (t.ruby) return 'ruby';
+  if (t.rubyFish) return 'rubyFish';
+  if (t.emerald) return 'emerald';
+  if (t.emeraldFish) return 'emeraldFish';
+  if (t.sapphire) return 'sapphire';
+  if (t.sapphireFish) return 'sapphireFish';
+  if (t.nullstone) return 'nullstone';
+  if (t.elite) return `elite_${t.elite.tier}`;
+  if (t.boss) return 'boss';
+  return 'other';
+}
+
 /** Apply all Tier 1 lens statuses to the given enemy after a successful hit. */
 function applyLensStatusesOnHit(
   entity: object,
   lens: CraftedLensData,
   weaponId: string,
   hitDamage: number,
+  enemyTypeId: string,
+  onStatusFeedback?: (text: string, x: number, y: number) => void,
+  feedbackX?: number,
+  feedbackY?: number,
 ): void {
   const params = buildAllTier1StatusParams(lens, weaponId, hitDamage);
+  let feedbackShown = false;
   for (const p of params) {
-    applyLensStatus(entity, p);
+    const mult = getEnemyStatusAffinityMultiplier(enemyTypeId, p.key);
+    if (mult === 0) {
+      if (!feedbackShown && onStatusFeedback && feedbackX !== undefined) {
+        onStatusFeedback('IMMUNE', feedbackX, feedbackY ?? 0);
+        feedbackShown = true;
+      }
+      continue;
+    }
+    const scaled = mult === 1 ? p : { ...p, durationMs: p.durationMs * mult, magnitude: p.magnitude * mult };
+    applyLensStatus(entity, scaled);
+    if (!feedbackShown && mult !== 1 && onStatusFeedback && feedbackX !== undefined) {
+      onStatusFeedback(mult > 1 ? 'WEAK!' : 'RESIST', feedbackX, feedbackY ?? 0);
+      feedbackShown = true;
+    }
   }
-  // Increment Rift-Scarred stacks (only if rift-scarred effect was applied)
   const hasRift = lens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
   if (hasRift) incrementRiftScarredStacks(entity, lens.id);
 }
