@@ -955,6 +955,7 @@ export function drawRpgFrame(
     ctx.amethystEnemies, ctx.diamondEnemies, ctx.nullstoneEnemies, ctx.fracterylEnemies, ctx.eigensteinEnemies,
     bossEnemy, ctx.alivenGroups);
 
+  drawAfterimages(canvas2d, ctx.getAfterimages());
   drawPlayerMote(canvas2d, ctx.mote, ctx.getGlowMovementIntensity(), rpgPhase, ctx.getDeathAlpha(), glowTimeS, ctx.getPlayerIFramesMs());
 
   renderEnemyStatusLabels(canvas2d, ctx);
