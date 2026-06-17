@@ -1850,9 +1850,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     menuButtonContainer: statsPanel.menuButtonContainer,
 
     update(deltaMs: number, autoMoveEnabled = false): void {
-      // Tick dash cooldown
+      // Tick dash cooldown (reduced by time-warp status)
       if (rpgSimState.dashCooldownMs > 0) {
-        rpgSimState.dashCooldownMs = Math.max(0, rpgSimState.dashCooldownMs - deltaMs);
+        const dashTickRate = getPlayerAttackSpeedStatusMultiplier(rpgSimState);
+        rpgSimState.dashCooldownMs = Math.max(0, rpgSimState.dashCooldownMs - deltaMs * dashTickRate);
       }
       // Fire dash if requested and unlocked
       if (dashRequested && rpgPhase === 'alive' && isSkillNodeUnlocked(rpgSimState, 'dash') && rpgSimState.dashCooldownMs <= 0) {
