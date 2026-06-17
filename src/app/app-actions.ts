@@ -27,6 +27,7 @@ import { getMotes, spendMotes } from '../sim/resources';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import { RPG_UPGRADE_BY_ID } from '../data/rpg/rpg-upgrade-definitions';
 import { getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER, isBossUnlocked, MIN_BOSS_SPEED_PCT, MAX_BOSS_SPEED_PCT, BOSS_SPEED_STEP } from '../sim/rpg/rpg-state';
+import { canPurchaseRpgSkill } from '../data/rpg/rpg-skill-tree-definitions';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
 import { DOUBLE_TAP_MAX_MS, DOUBLE_TAP_MAX_PX } from '../input';
