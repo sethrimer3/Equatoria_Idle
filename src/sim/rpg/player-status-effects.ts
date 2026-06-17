@@ -212,7 +212,7 @@ export function getPlayerMovementStatusMultiplier(sim: RpgSimState): number {
  * Applied to dash cooldown recovery; weapon attack speed is unaffected for now.
  */
 export function getPlayerAttackSpeedStatusMultiplier(sim: RpgSimState): number {
-  if (sim.activePlayerStatuses.some(s => s.key === 'timeWarped')) return 0.75;
+  if (sim.activePlayerStatuses.some(s => s.key === 'timeWarped')) return TIMEWARP_CADENCE_MULT;
   return 1;
 }
 
