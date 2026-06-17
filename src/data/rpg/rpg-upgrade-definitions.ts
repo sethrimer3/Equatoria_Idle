@@ -167,11 +167,12 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'status_resistance',
     name: 'Status Resistance',
-    description: 'Reduces duration of poison/burn/freeze/slow by 20% per rank. (TODO: status duration hook)',
+    description: 'Reduces duration of poison/burn/freeze/slow by 20% per rank.',
     costTierId: 'emerald',
     costPerLevel: 3_000,
     maxLevel: 3,
     skillPointCost: 2,
+    implementationStatus: 'placeholder',
   },
   {
     id: 'second_wind',
