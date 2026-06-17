@@ -939,23 +939,29 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const descLines = wrapText(ctx, descStr, DESC_FONT, innerW);
     ctx.restore();
 
+    // ── Pre-compute layout booleans (must match the draw code below) ────────
+    const showPlaceholderNotice = upgradeDef?.implementationStatus === 'placeholder';
+    const showCostsAndButton    = !isRoot && !!upgradeDef && !isMaxed;
+    const showLockedReason      = showCostsAndButton && isLocked;
+
     // ── Compute card height ──────────────────────────────────────────────
-    let cardH  = CARD_PAD;                        // top padding
-    cardH += 18;                                  // name
-    cardH += 5;                                   // gap
-    cardH += descLines.length * 14;               // description lines
-    cardH += 6;                                   // gap
-    cardH += 14;                                  // level text
-    if (!isRoot && upgradeDef && !isMaxed) {
-      cardH += 8;                                 // gap
-      cardH += 14;                                // SP cost
-      cardH += 4;                                 // gap
-      cardH += 14;                                // mote cost
-      if (isLocked) { cardH += 4; cardH += 14; } // locked reason
-      cardH += 8;                                 // gap before button
-      cardH += CARD_BTN_H;                        // button
+    let cardH  = CARD_PAD;                                       // top padding
+    cardH += NAME_LINE_H;                                        // name
+    cardH += 5;                                                  // gap
+    cardH += descLines.length * DESC_LINE_H;                     // description lines
+    cardH += 6;                                                  // gap
+    cardH += META_LINE_H;                                        // level text
+    if (showPlaceholderNotice) { cardH += 4; cardH += PLACEHOLDER_LINE_H; }
+    if (showCostsAndButton) {
+      cardH += 8;                                                // gap
+      cardH += META_LINE_H;                                      // SP cost
+      cardH += 4;                                                // gap
+      cardH += META_LINE_H;                                      // mote cost
+      if (showLockedReason) { cardH += 4; cardH += META_LINE_H; }
+      cardH += 8;                                                // gap before button
+      cardH += CARD_BTN_H;                                       // button
     }
-    cardH += CARD_PAD;                            // bottom padding
+    cardH += CARD_PAD;                                           // bottom padding
 
     // ── Position card in world space ─────────────────────────────────────
     const wb   = worldBounds();
