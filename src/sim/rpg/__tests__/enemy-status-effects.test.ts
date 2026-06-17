@@ -478,24 +478,39 @@ describe('enemy-status-effects — 13. Boss Fractal Wound reduced tick count', (
 });
 
 describe('enemy-status-effects — 14. Affinity: immunity blocks, resistance reduces, weakness amplifies', () => {
-  it('immunity multiplier is 0', () => {
-    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+  it('immunity multiplier is 0 (ruby immune to burning)', () => {
     expect(getEnemyStatusAffinityMultiplier('ruby', 'burning')).toBe(0);
   });
 
-  it('resistance multiplier is less than 1', () => {
-    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+  it('resistance multiplier is less than 1 (emerald resists poisoned)', () => {
     expect(getEnemyStatusAffinityMultiplier('emerald', 'poisoned')).toBeLessThan(1);
   });
 
-  it('weakness multiplier is greater than 1', () => {
-    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+  it('weakness multiplier is greater than 1 (emerald weak to burning)', () => {
     expect(getEnemyStatusAffinityMultiplier('emerald', 'burning')).toBeGreaterThan(1);
   });
 
-  it('neutral returns 1', () => {
-    const { getEnemyStatusAffinityMultiplier } = require('../../../data/rpg/enemy-status-affinities');
+  it('neutral returns 1 for unrelated type/status combo', () => {
     expect(getEnemyStatusAffinityMultiplier('emerald', 'chilled')).toBe(1);
+  });
+
+  it('iolite resists timeWarped', () => {
+    expect(getEnemyStatusAffinityMultiplier('iolite', 'timeWarped')).toBeLessThan(1);
+  });
+
+  it('iolite is weak to radiant', () => {
+    expect(getEnemyStatusAffinityMultiplier('iolite', 'radiant')).toBeGreaterThan(1);
+  });
+
+  it('boss resists burning', () => {
+    expect(getEnemyStatusAffinityMultiplier('boss', 'burning')).toBeLessThan(1);
+  });
+
+  it('boss does not fully immunize any standard status', () => {
+    const keys = ['burning', 'poisoned', 'chilled', 'frozen', 'gravitized'] as const;
+    for (const k of keys) {
+      expect(getEnemyStatusAffinityMultiplier('boss', k)).toBeGreaterThan(0);
+    }
   });
 });
 
