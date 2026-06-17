@@ -30,7 +30,7 @@ import {
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpHpBonus,
   getPlayerLevelAtkBonus, getPlayerLevelDefBonus, getPlayerLevelHpBonus,
-  isSkillNodeUnlocked,
+  isSkillNodeUnlocked, getSkillNodeRank,
 } from '../../sim/rpg/rpg-state';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
