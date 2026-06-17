@@ -302,7 +302,7 @@ export interface RpgDrawCtx {
   luckyMotePopups: LuckyMotePopup[];
   deathParticles: DeathParticle[];
   weaponOrbitParticles: WeaponOrbitParticle[];
-  getOrbitProjectile(): OrbitProjectile | null;
+  getOrbitProjectiles(): OrbitProjectile[];
 
   // ── Scalar getters (mutated elsewhere, so read via function) ─
   getGlowMovementIntensity(): number;
@@ -970,7 +970,7 @@ export function drawRpgFrame(
   // Draw weapon orbit particles, orbit projectile, and special weapon visuals above the player.
   if (rpgPhase === 'alive') {
     for (const p of ctx.weaponOrbitParticles) drawWeaponOrbitParticle(canvas2d, p);
-    drawOrbitProjectile(canvas2d, ctx.getOrbitProjectile());
+    for (const op of ctx.getOrbitProjectiles()) drawOrbitProjectile(canvas2d, op);
     for (const ws of ctx.weaponSystems.chainWhipStates.values()) drawChainWhip(canvas2d, ws);
     const effectiveEquippedIds = ctx.getEffectiveEquippedIds();
     // Build the set of equipped swordCombo weapons. This excludes BASE_ATTACK_TIMER_KEY

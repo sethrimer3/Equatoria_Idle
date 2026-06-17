@@ -10,6 +10,8 @@
  * so rpg-render.ts retains authoritative ownership.
  */
 
+import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import { getSkillNodeRank, isSkillNodeUnlocked } from '../../sim/rpg/rpg-state';
 import type { HitEffect, ShotLine, DamageNumber, LaserEnemy } from './rpg-types';
 import {
   HIT_EFFECT_DURATION_MS, SHOT_LINE_DURATION_MS,
@@ -50,6 +52,10 @@ export interface PlayerDamageCtx {
    *   dmg > 0                  → real hit; playerDied = true if HP reached 0
    */
   onPlayerDamaged?: (dmg: number, blocked: boolean, playerDied: boolean, playerMaxHp: number) => void;
+  /** RPG sim state — used by evasion, block, and second wind skill checks. */
+  rpgSimState?: RpgSimState;
+  /** Returns live player velocity — used by evasion (dodge while moving). */
+  getPlayerVelocity?(): { vx: number; vy: number };
 }
 
 // ── Return handle ────────────────────────────────────────────────────
@@ -195,6 +201,14 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
     spawnHitVisualsAt(enemy.x, enemy.y, enemy.maxHp, dmg, color, sourceColor);
   }
 
+  function applySecondWind(sim: RpgSimState): void {
+    if (playerStats.hp <= 0 && isSkillNodeUnlocked(sim, 'second_wind') && sim.secondWindAvailable) {
+      playerStats.hp = 1;
+      sim.secondWindAvailable = false;
+      spawnDamageNumber(mote.x, mote.y, 0, -1, 'REVIVED', 0.5, '#ffd060');
+    }
+  }
+
   function dealDamageToPlayer(atkValue: number): void {
     if (pCtx.getPlayerIFramesMs() > 0) return;
     if (pCtx.isInvincibilityMode()) {
@@ -202,12 +216,47 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
       return;
     }
+    const sim = pCtx.rpgSimState;
+    // Evasion: chance to fully dodge while moving
+    if (sim) {
+      const evasionRank = getSkillNodeRank(sim, 'evasion');
+      if (evasionRank > 0) {
+        const vel = pCtx.getPlayerVelocity?.();
+        const isMoving = vel !== undefined && (vel.vx * vel.vx + vel.vy * vel.vy) > 0.01;
+        if (isMoving && Math.random() * 100 < evasionRank * 14) {
+          spawnDamageNumber(mote.x, mote.y, 0, -1, 'EVADED', 0.25, '#40d4e0');
+          pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
+          return;
+        }
+      }
+      // Block: chance to reduce damage
+      const blockRank = getSkillNodeRank(sim, 'block_chance');
+      if (blockRank > 0 && Math.random() * 100 < blockRank * 12) {
+        const blockStrRank = getSkillNodeRank(sim, 'block_strength');
+        const damageFraction = Math.max(0.1, 0.5 - blockStrRank * 0.07);
+        const blockedDmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100) * damageFraction);
+        if (blockedDmg <= 0) {
+          spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+          pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
+          return;
+        }
+        playerStats.hp = Math.max(0, playerStats.hp - blockedDmg);
+        applySecondWind(sim);
+        const ratio = Math.min(1, blockedDmg / playerStats.maxHp);
+        pCtx.setPlayerIFramesMs(PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS);
+        spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(blockedDmg)), ratio, '#ff9966');
+        pCtx.onPlayerHit?.();
+        pCtx.onPlayerDamaged?.(blockedDmg, false, playerStats.hp <= 0, playerStats.maxHp);
+        return;
+      }
+    }
     const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
       pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
     } else {
       playerStats.hp = Math.max(0, playerStats.hp - dmg);
+      if (sim) applySecondWind(sim);
       const ratio = Math.min(1, dmg / playerStats.maxHp);
       pCtx.setPlayerIFramesMs(PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS);
       spawnDamageNumber(mote.x, mote.y, 0, -1, String(Math.round(dmg)), ratio, '#ff6666');
@@ -229,6 +278,7 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
     } else {
       playerStats.hp = Math.max(0, playerStats.hp - dmg);
+      if (pCtx.rpgSimState) applySecondWind(pCtx.rpgSimState);
       const ratio = Math.min(1, dmg / playerStats.maxHp);
       mote.vx += normDirX * PLAYER_KNOCKBACK_MAX * ratio;
       mote.vy += normDirY * PLAYER_KNOCKBACK_MAX * ratio;

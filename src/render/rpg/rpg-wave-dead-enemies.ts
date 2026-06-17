@@ -7,7 +7,7 @@
  * - rpg-wave-dead-enemies-special.ts (elite/aliven/boss handling)
  */
 
-import { addXpWithAllocation } from '../../sim/rpg/rpg-state';
+import { addXpWithAllocation, getSkillNodeRank } from '../../sim/rpg/rpg-state';
 import type { WaveManagerCtx } from './rpg-wave-manager';
 import { sweepStandardDeadEnemies } from './rpg-wave-dead-enemies-standard';
 import {
@@ -40,6 +40,8 @@ export function removeDeadEnemiesImpl(
 
   if (totalXpFromKills > 0) {
     if (codexKillCount > 0) totalXpFromKills *= codexMultiplierTotal / codexKillCount;
+    const xpGainRank = getSkillNodeRank(rpgSimState, 'xp_gain');
+    if (xpGainRank > 0) totalXpFromKills *= 1 + xpGainRank * 0.08;
     addXpWithAllocation(rpgSimState, totalXpFromKills);
     applyEquipmentStats();
   }

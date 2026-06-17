@@ -19,6 +19,8 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy,
   BossEnemy, EliteEnemy,
 } from './rpg-enemy-types';
+import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import { getSkillNodeRank } from '../../sim/rpg/rpg-state';
 import {
   ORBIT_PROJ_SPEED_RAD, ORBIT_PROJ_RADIUS, ORBIT_PROJ_TRAIL_CAP,
   ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_HIT_CD_MS, ORBIT_PROJ_DAMAGE,
@@ -56,6 +58,8 @@ export interface OrbitProjectileCtx {
 
   /** Hit-flash effect list (pushed to on each hit). */
   hitEffects: HitEffect[];
+  /** RPG sim state — used to scale damage via orbit_detonation skill. */
+  rpgSimState?: RpgSimState;
 
   // Per-enemy damage functions
   damageEnemy(enemy: LaserEnemy, dmg: number, armorMult: number): number;
@@ -122,6 +126,10 @@ export function updateOrbitProjectile(
 
   const { mote } = ctx;
 
+  // Orbital Detonation: scale base damage by 1 + rank * 0.3
+  const detonationRank = ctx.rpgSimState ? getSkillNodeRank(ctx.rpgSimState, 'orbit_detonation') : 0;
+  const orbitDamage = ORBIT_PROJ_DAMAGE * (1 + detonationRank * 0.3);
+
   // ── Angle and position ──────────────────────────────────────────
   const dt = deltaMs / 1000;
   op.angle -= ORBIT_PROJ_SPEED_RAD * dt;  // counter-clockwise
@@ -175,7 +183,7 @@ export function updateOrbitProjectile(
     if (op.hitCooldowns.has(enemy)) continue;
     const dx = op.x - enemy.x, dy = op.y - enemy.y;
     if (dx * dx + dy * dy < hitRadSq) {
-      const dmg = Math.max(0, ORBIT_PROJ_DAMAGE - enemy.def);
+      const dmg = Math.max(0, orbitDamage - enemy.def);
       if (dmg > 0) enemy.hp -= dmg;
       op.hitCooldowns.set(enemy, ORBIT_PROJ_HIT_CD_MS);
       ctx.hitEffects.push({ x: enemy.x, y: enemy.y, timerMs: HIT_EFFECT_DURATION_MS, color: HIT_COLOR });
@@ -187,7 +195,7 @@ export function updateOrbitProjectile(
   // ── Sapphire enemies ────────────────────────────────────────────
   for (const enemy of ctx.sapphireEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageSapphireEnemy(enemy, ORBIT_PROJ_DAMAGE, 0, false),
+      () => ctx.damageSapphireEnemy(enemy, orbitDamage, 0, false),
       enemy.maxHp);
   }
 
@@ -196,7 +204,7 @@ export function updateOrbitProjectile(
     if (op.hitCooldowns.has(m)) continue;
     const dx = op.x - m.x, dy = op.y - m.y;
     if (dx * dx + dy * dy < hitRadSq) {
-      ctx.damageMissile(m, ORBIT_PROJ_DAMAGE);
+      ctx.damageMissile(m, orbitDamage);
       op.hitCooldowns.set(m, ORBIT_PROJ_HIT_CD_MS);
       ctx.hitEffects.push({ x: m.x, y: m.y, timerMs: HIT_EFFECT_DURATION_MS, color: HIT_COLOR });
     }
@@ -205,14 +213,14 @@ export function updateOrbitProjectile(
   // ── Emerald enemies ─────────────────────────────────────────────
   for (const enemy of ctx.emeraldEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageEmeraldEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageEmeraldEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Amber enemies ───────────────────────────────────────────────
   for (const enemy of ctx.amberEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageAmberEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageAmberEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
@@ -221,7 +229,7 @@ export function updateOrbitProjectile(
     if (op.hitCooldowns.has(s)) continue;
     const dx = op.x - s.x, dy = op.y - s.y;
     if (dx * dx + dy * dy < hitRadSq) {
-      ctx.damageAmberShard(s, ORBIT_PROJ_DAMAGE);
+      ctx.damageAmberShard(s, orbitDamage);
       op.hitCooldowns.set(s, ORBIT_PROJ_HIT_CD_MS);
       ctx.hitEffects.push({ x: s.x, y: s.y, timerMs: HIT_EFFECT_DURATION_MS, color: HIT_COLOR });
     }
@@ -230,77 +238,77 @@ export function updateOrbitProjectile(
   // ── Void enemies ────────────────────────────────────────────────
   for (const enemy of ctx.voidEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageVoidEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageVoidEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Quartz enemies ──────────────────────────────────────────────
   for (const enemy of ctx.quartzEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageQuartzEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageQuartzEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Ruby enemies ────────────────────────────────────────────────
   for (const enemy of ctx.rubyEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageRubyEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageRubyEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Sunstone enemies ────────────────────────────────────────────
   for (const enemy of ctx.sunstoneEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageSunstoneEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageSunstoneEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Citrine enemies ─────────────────────────────────────────────
   for (const enemy of ctx.citrineEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageCitrineEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageCitrineEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Iolite enemies ──────────────────────────────────────────────
   for (const enemy of ctx.ioliteEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageIoliteEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageIoliteEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Amethyst enemies ────────────────────────────────────────────
   for (const enemy of ctx.amethystEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageAmethystEnemy(enemy, ORBIT_PROJ_DAMAGE, 0, false),
+      () => ctx.damageAmethystEnemy(enemy, orbitDamage, 0, false),
       enemy.maxHp);
   }
 
   // ── Diamond enemies ─────────────────────────────────────────────
   for (const enemy of ctx.diamondEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageDiamondEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageDiamondEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Nullstone enemies ───────────────────────────────────────────
   for (const enemy of ctx.nullstoneEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageNullstoneEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageNullstoneEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Fracteryl enemies ───────────────────────────────────────────
   for (const enemy of ctx.fracterylEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageFracterylEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageFracterylEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
   // ── Eigenstein enemies ──────────────────────────────────────────
   for (const enemy of ctx.eigensteinEnemies) {
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageEigensteinEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageEigensteinEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
@@ -308,7 +316,7 @@ export function updateOrbitProjectile(
   for (const enemy of ctx.eliteEnemies) {
     if (enemy.isInvuln) continue;
     tryHit(op, enemy, enemy.x, enemy.y,
-      () => ctx.damageEliteEnemy(enemy, ORBIT_PROJ_DAMAGE, 0),
+      () => ctx.damageEliteEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
   }
 
@@ -322,7 +330,7 @@ export function updateOrbitProjectile(
     const body = getOrbitTargetBody(target);
     if (!body) continue;
     tryHit(op, body, target.x, target.y,
-      () => ctx.damageBodyTarget(target, ORBIT_PROJ_DAMAGE, 0, false),
+      () => ctx.damageBodyTarget(target, orbitDamage, 0, false),
       body.maxHp);
   }
 
@@ -330,7 +338,7 @@ export function updateOrbitProjectile(
   if (boss && !op.hitCooldowns.has(boss)) {
     const dx = op.x - boss.x, dy = op.y - boss.y;
     if (dx * dx + dy * dy < hitRadSq) {
-      const dmg = ctx.damageBossEnemy(ORBIT_PROJ_DAMAGE, 0);
+      const dmg = ctx.damageBossEnemy(orbitDamage, 0);
       op.hitCooldowns.set(boss, ORBIT_PROJ_HIT_CD_MS);
       ctx.hitEffects.push({ x: boss.x, y: boss.y, timerMs: HIT_EFFECT_DURATION_MS, color: HIT_COLOR });
       if (dmg > 0) ctx.spawnDamageNumber(boss.x, boss.y, 0, -1, String(Math.round(dmg)), dmg / boss.maxHp, HIT_COLOR);

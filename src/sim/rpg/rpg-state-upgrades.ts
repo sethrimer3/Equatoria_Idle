@@ -42,6 +42,16 @@ export function getRpgUpgradeLevel(state: RpgSimState, upgradeId: string): numbe
   return state.rpgUpgradeLevels.get(upgradeId) ?? 0;
 }
 
+/** Returns the purchased rank of a skill tree node (alias for getRpgUpgradeLevel). */
+export function getSkillNodeRank(state: RpgSimState, nodeId: string): number {
+  return state.rpgUpgradeLevels.get(nodeId) ?? 0;
+}
+
+/** Returns true when a skill tree node has been purchased at least once. */
+export function isSkillNodeUnlocked(state: RpgSimState, nodeId: string): boolean {
+  return getSkillNodeRank(state, nodeId) >= 1;
+}
+
 /**
  * Speed multiplier from the speed upgrade.
  * Each level adds 10% to base speed.

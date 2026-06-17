@@ -10,7 +10,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
+import { getRpgUpgradeLevel, getSkillNodeRank } from '../../sim/rpg/rpg-state';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { WeaponOrbitParticle, OrbitProjectile, RpgMote } from './rpg-types';
@@ -56,18 +56,26 @@ export function buildWeaponOrbitParticle(
 
 export function buildOrbitProjectile(
   ctx: WeaponOrbitCtx,
-): OrbitProjectile | null {
+): OrbitProjectile[] {
   const hasUpgrade = getRpgUpgradeLevel(ctx.rpgSimState, 'orbit_projectile') >= 1;
-  if (!hasUpgrade) return null;
-  return {
-    angle: Math.PI,   // start on the opposite side from weapon particle
-    x: ctx.mote.x - ORBIT_PROJ_RADIUS,
-    y: ctx.mote.y,
-    trailX: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
-    trailY: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
-    trailHead: 0, trailCount: 0,
-    hitCooldowns: new Map(),
-  };
+  if (!hasUpgrade) return [];
+  // orbit_count adds up to 3 extra projectiles
+  const extraCount = getSkillNodeRank(ctx.rpgSimState, 'orbit_count');
+  const totalCount = 1 + extraCount;
+  const result: OrbitProjectile[] = [];
+  for (let i = 0; i < totalCount; i++) {
+    const angle = Math.PI + (2 * Math.PI * i) / totalCount;
+    result.push({
+      angle,
+      x: ctx.mote.x + Math.cos(angle) * ORBIT_PROJ_RADIUS,
+      y: ctx.mote.y + Math.sin(angle) * ORBIT_PROJ_RADIUS,
+      trailX: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
+      trailY: new Float64Array(ORBIT_PROJ_TRAIL_CAP),
+      trailHead: 0, trailCount: 0,
+      hitCooldowns: new Map(),
+    });
+  }
+  return result;
 }
 
 // ── Per-frame update ──────────────────────────────────────────────────────────

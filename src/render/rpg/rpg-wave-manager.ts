@@ -230,6 +230,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     }
     // Reset per-wave state
     rpgSimState.equipChangedDuringInterwave = false;
+    rpgSimState.secondWindAvailable = true;
     resetGalaxyWaveHitChain();
     const waveDef = getZoneWaveDefinition(wave, rpgSimState.activeZoneId);
     spawnQueue.length = 0;

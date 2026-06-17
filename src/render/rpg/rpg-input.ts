@@ -29,6 +29,8 @@ export interface RpgInputCtx {
   getIsActive: () => boolean;
   /** Called on a confirmed tap to lock player targeting onto a nearby enemy. */
   tryTargetEnemyAt: (x: number, y: number) => void;
+  /** Optional callback invoked when the player taps the Dash button. */
+  onDashRequest?: () => void;
   /**
    * Optional callback invoked when the player taps the zone-name / wave label
    * at the top-left of the canvas.  The label hit region is approximately
@@ -172,6 +174,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
       case 'ArrowRight': case 'KeyD': keys.right = true;  break;
       case 'ArrowUp':    case 'KeyW': keys.up    = true;  break;
       case 'ArrowDown':  case 'KeyS': keys.down  = true;  break;
+      case 'Space': ctx.onDashRequest?.(); e.preventDefault(); return;
       default: return;
     }
     if (e.code.startsWith('Arrow')) e.preventDefault();

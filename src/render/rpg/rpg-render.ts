@@ -30,6 +30,7 @@ import {
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpHpBonus,
   getPlayerLevelAtkBonus, getPlayerLevelDefBonus, getPlayerLevelHpBonus,
+  isSkillNodeUnlocked,
 } from '../../sim/rpg/rpg-state';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
@@ -42,7 +43,7 @@ import {
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
   RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT,
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT, PLAYER_REGEN_INIT,
-  INTER_WAVE_DELAY_MS,
+  INTER_WAVE_DELAY_MS, MAX_RPG_SPEED, JOYSTICK_OUTER_RADIUS,
 } from './rpg-constants';
 import {
   setBossAttacksLowGraphics, type BossAttackUpdateCtx,
@@ -703,7 +704,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const weaponAttackTimers: Map<string, number> = new Map();
 
   // ── Orbiting projectile upgrade ───────────────────────────────
-  let orbitProjectile: OrbitProjectile | null = null;
+  let orbitProjectiles: OrbitProjectile[] = [];
 
   // Shared context for weapon orbit particle helpers.
   const weaponOrbitCtx: WeaponOrbitCtx = { mote, weaponOrbitParticles, rpgSimState };
@@ -758,7 +759,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (!effectiveIds.has(weaponId)) weaponAttackTimers.delete(weaponId);
     }
 
-    orbitProjectile = _buildOrbitProjectile(weaponOrbitCtx);
+    orbitProjectiles = _buildOrbitProjectile(weaponOrbitCtx);
     weaponSystems.syncSapphireShips();
     weaponSystems.syncAmethystShips();
   }
@@ -932,7 +933,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     targeting.tryTargetEnemyAt(0, 0);
     weaponSystems.reset();
     applyEquipmentStats();
-    orbitProjectile = _buildOrbitProjectile(weaponOrbitCtx);
+    orbitProjectiles = _buildOrbitProjectile(weaponOrbitCtx);
   }
 
   /**
@@ -959,6 +960,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getDim:              () => dim,
     getViewport:         () => viewport,
     isInvincibilityMode: () => isInvincibilityMode,
+    rpgSimState,
+    getPlayerVelocity: () => ({ vx: mote.vx, vy: mote.vy }),
     onPlayerHit: () => { waveManager?.onPlayerHit(); },
     onPlayerDamaged: (dmg, blocked, playerDied, playerMaxHp) => {
       notifyPlayerDamaged(dmg, blocked, playerDied, playerMaxHp);
@@ -1444,6 +1447,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   };
   const orbitProjectileCtx: OrbitProjectileCtx = {
     mote,
+    rpgSimState,
     get bossEnemy() { return bossEnemy; },
     enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
     amberEnemies, amberShards, voidEnemies, quartzEnemies,
@@ -1472,6 +1476,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     keys,
     getIsActive: () => _isActive,
     tryTargetEnemyAt,
+    onDashRequest: () => { dashRequested = true; },
     onZoneLabelTap: () => { zoneSelectPanel.open(); },
     getZonePosition: () => zonePosition,
     getFieldSpace:  () => rpgFieldSpace,
@@ -1484,6 +1489,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const ab = rpgFieldSpace.activeBounds;
     clampEnemyToBoundsHelper(enemy, ab.left, ab.top, ab.right, ab.bottom);
   }
+
+  // ── Dash system ──────────────────────────────────────────────────
+  let dashRequested = false;
+  const DASH_BURST_SPEED = MAX_RPG_SPEED * 4;
+  const DASH_COOLDOWN_MS = 600;
 
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
@@ -1659,7 +1669,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     weaponSystems, mote, joystick,
     hitEffects, shotLines, damageNumbers, luckyMotes, luckyMotePopups,
     deathParticles, weaponOrbitParticles,
-    getOrbitProjectile:           () => orbitProjectile,
+    getOrbitProjectiles:          () => orbitProjectiles,
     getGlowMovementIntensity:     () => playerMovementState.glowMovementIntensity,
     getRpgPhase:                  () => rpgPhase,
     getDeathAlpha:                () => deathAlpha,
@@ -1755,7 +1765,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossStageDirectorState,
     bossStageDirectorCtx,
     weaponOrbitCtx,
-    getOrbitProjectile:     () => orbitProjectile,
+    getOrbitProjectiles:    () => orbitProjectiles,
     orbitProjectileCtx,
     weaponTickCtx,
     updateShotVisuals,
@@ -1810,6 +1820,34 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     menuButtonContainer: statsPanel.menuButtonContainer,
 
     update(deltaMs: number, autoMoveEnabled = false): void {
+      // Tick dash cooldown
+      if (rpgSimState.dashCooldownMs > 0) {
+        rpgSimState.dashCooldownMs = Math.max(0, rpgSimState.dashCooldownMs - deltaMs);
+      }
+      // Fire dash if requested and unlocked
+      if (dashRequested && rpgPhase === 'alive' && isSkillNodeUnlocked(rpgSimState, 'dash') && rpgSimState.dashCooldownMs <= 0) {
+        // Derive direction from joystick or keys (same priority order as player movement)
+        let dx = 0, dy = 0;
+        if (joystick.isActive) {
+          dx = (joystick.thumbX - joystick.baseX) / JOYSTICK_OUTER_RADIUS;
+          dy = (joystick.thumbY - joystick.baseY) / JOYSTICK_OUTER_RADIUS;
+        } else {
+          if (keys.right) dx += 1; if (keys.left) dx -= 1;
+          if (keys.down)  dy += 1; if (keys.up)   dy -= 1;
+        }
+        if (dx === 0 && dy === 0 && (mote.vx !== 0 || mote.vy !== 0)) {
+          // Fall back to current movement direction
+          const spd = Math.hypot(mote.vx, mote.vy);
+          dx = mote.vx / spd; dy = mote.vy / spd;
+        }
+        const len = Math.hypot(dx, dy);
+        if (len > 0) {
+          mote.vx = (dx / len) * DASH_BURST_SPEED;
+          mote.vy = (dy / len) * DASH_BURST_SPEED;
+        }
+        rpgSimState.dashCooldownMs = DASH_COOLDOWN_MS;
+      }
+      dashRequested = false;
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
     },
 

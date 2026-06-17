@@ -70,6 +70,98 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
     costPerLevel: 8_000,
     maxLevel: 4,
   },
+  // ── Movement branch ───────────────────────────────────────────────
+  {
+    id: 'dash',
+    name: 'Dash',
+    description: 'Unlocks a short velocity burst with a 0.6 s cooldown.',
+    costTierId: 'sand',
+    costPerLevel: 500,
+    maxLevel: 1,
+  },
+  {
+    id: 'evasion',
+    name: 'Evasion',
+    description: 'While moving, grants a 14 % chance per rank to dodge incoming hits.',
+    costTierId: 'quartz',
+    costPerLevel: 2_000,
+    maxLevel: 5,
+  },
+  // ── Defense branch ────────────────────────────────────────────────
+  {
+    id: 'block_chance',
+    name: 'Block Chance',
+    description: 'Adds a 12 % per rank chance to block incoming damage.',
+    costTierId: 'ruby',
+    costPerLevel: 3_000,
+    maxLevel: 5,
+  },
+  {
+    id: 'block_strength',
+    name: 'Block Strength',
+    description: 'Reduces blocked damage taken by 7 % per rank (min 10 %).',
+    costTierId: 'ruby',
+    costPerLevel: 3_000,
+    maxLevel: 5,
+  },
+  {
+    id: 'second_wind',
+    name: 'Second Wind',
+    description: 'Once per wave, survive a lethal hit at 1 HP instead of dying.',
+    costTierId: 'emerald',
+    costPerLevel: 10_000,
+    maxLevel: 1,
+  },
+  // ── Weapons branch ────────────────────────────────────────────────
+  {
+    id: 'orbit_count',
+    name: 'Orbit Count',
+    description: 'Adds one extra orbiting projectile per rank (max +3).',
+    costTierId: 'quartz',
+    costPerLevel: 4_000,
+    maxLevel: 3,
+  },
+  {
+    id: 'orbit_detonation',
+    name: 'Orbit Detonation',
+    description: 'Increases orbital projectile damage by 30 % per rank.',
+    costTierId: 'quartz',
+    costPerLevel: 3_000,
+    maxLevel: 3,
+  },
+  {
+    id: 'weapon_mastery',
+    name: 'Weapon Mastery',
+    description: 'Crafted weapon damage +5 % per rank.',
+    costTierId: 'ruby',
+    costPerLevel: 5_000,
+    maxLevel: 5,
+  },
+  {
+    id: 'dominance_amp',
+    name: 'Dominance Amplifier',
+    description: 'Crafted weapon damage +6 % per rank (stacks with Weapon Mastery).',
+    costTierId: 'sunstone',
+    costPerLevel: 5_000,
+    maxLevel: 5,
+  },
+  // ── Resources branch ─────────────────────────────────────────────
+  {
+    id: 'mote_magnetism',
+    name: 'Mote Magnetism',
+    description: 'Increases lucky mote pickup radius by 30 % per rank.',
+    costTierId: 'sand',
+    costPerLevel: 800,
+    maxLevel: 5,
+  },
+  {
+    id: 'xp_gain',
+    name: 'XP Gain',
+    description: 'Increases XP earned from enemies by 8 % per rank.',
+    costTierId: 'sand',
+    costPerLevel: 800,
+    maxLevel: 5,
+  },
 ];
 
 /** Lookup map for O(1) access by upgrade id. */

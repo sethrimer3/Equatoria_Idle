@@ -257,7 +257,7 @@ export interface RpgUpdateCtx {
 
   // Weapon systems
   weaponOrbitCtx: WeaponOrbitCtx;
-  getOrbitProjectile(): OrbitProjectile | null;
+  getOrbitProjectiles(): OrbitProjectile[];
   orbitProjectileCtx: OrbitProjectileCtx;
   weaponTickCtx: WeaponTickCtx;
 
@@ -590,7 +590,9 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   }
   updateTeleportParticles(a.teleportParticles, deltaMs);
   _updateWeaponOrbitParticles(ctx.weaponOrbitCtx, deltaMs);
-  updateOrbitProjectile(ctx.orbitProjectileCtx, ctx.getOrbitProjectile(), deltaMs);
+  for (const op of ctx.getOrbitProjectiles()) {
+    updateOrbitProjectile(ctx.orbitProjectileCtx, op, deltaMs);
+  }
   tickWeaponSystems(ctx.weaponTickCtx, deltaMs);
   ctx.updateShotVisuals(deltaMs);
   ctx.updateDamageNumbers(deltaMs);
@@ -621,7 +623,9 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     if (recentCount >= 3) ctx.rpgSimState.secretAchievementFlags.add('lucky_mote_triple_10s');
     if (ctx.onLuckyMoteCollected) ctx.onLuckyMoteCollected(tierId, bonusPct);
   };
-  updateLuckyMotes(a.luckyMotes, a.luckyMotePopups, ctx.mote.x, ctx.mote.y, deltaMs, luckyMoteCallback);
+  const moteMagnetRank = ctx.rpgSimState ? (ctx.rpgSimState.rpgUpgradeLevels.get('mote_magnetism') ?? 0) : 0;
+  const motePickupMult = 1 + moteMagnetRank * 0.3;
+  updateLuckyMotes(a.luckyMotes, a.luckyMotePopups, ctx.mote.x, ctx.mote.y, deltaMs, luckyMoteCallback, motePickupMult);
   updateLuckyMotePopups(a.luckyMotePopups, deltaMs);
 
   // Accumulate survival time

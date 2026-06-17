@@ -17,7 +17,7 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getScaledWeaponDamage } from '../../sim/rpg/rpg-state';
+import { getScaledWeaponDamage, getSkillNodeRank } from '../../sim/rpg/rpg-state';
 import { resolveWeaponDefinition, resolveCraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-helpers';
 import { TIER_BY_ID } from '../../data/tiers';
 import { PLAYER_BASE_RANGE_PX } from './rpg-constants';
@@ -269,9 +269,16 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   // Resolve attached lens (undefined for non-crafted or lens-less weapons).
   const attachedLens: CraftedLensData | undefined =
     rpgSimState.craftedWeapons.find(w => w.id === weaponId)?.attachedLens;
-  const baseDmg   = (weaponDef
+  let baseDmg   = (weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
     : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
+  // Weapon Mastery and Dominance Amplifier scale crafted weapon damage only.
+  if (craftedMods) {
+    const masteryRank = getSkillNodeRank(rpgSimState, 'weapon_mastery');
+    const ampRank     = getSkillNodeRank(rpgSimState, 'dominance_amp');
+    if (masteryRank > 0) baseDmg *= 1 + masteryRank * 0.05;
+    if (ampRank     > 0) baseDmg *= 1 + ampRank     * 0.06;
+  }
   // Sapphire crit: roll for critChancePct% chance, deal critDamageMultiplier× damage.
   const isCrit    = craftedMods && craftedMods.critChancePct > 0
     ? Math.random() * 100 < craftedMods.critChancePct

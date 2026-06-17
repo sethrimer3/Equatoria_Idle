@@ -98,8 +98,11 @@ export function updateLuckyMotes(
   moteY: number,
   deltaMs: number,
   onCollected: (tierId: TierId, bonusPct: number, ageMs: number, fromElite: boolean) => void,
+  pickupMultiplier = 1,
 ): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  const effectiveMagnetDist = LUCKY_MOTE_MAGNET_DIST * pickupMultiplier;
+  const effectiveCollectDist = LUCKY_MOTE_COLLECT_DIST * pickupMultiplier;
   for (let i = luckyMotes.length - 1; i >= 0; i--) {
     const lm = luckyMotes[i];
     lm.pulseTimeS += deltaMs / 1000;
@@ -107,7 +110,7 @@ export function updateLuckyMotes(
     const dx = moteX - lm.x;
     const dy = moteY - lm.y;
     const distSq = dx * dx + dy * dy;
-    const collectDistSq = LUCKY_MOTE_COLLECT_DIST * LUCKY_MOTE_COLLECT_DIST;
+    const collectDistSq = effectiveCollectDist * effectiveCollectDist;
     if (distSq <= collectDistSq) {
       // Collected — apply bonus via callback and spawn popup
       onCollected(lm.tierId as TierId, lm.bonusPct, lm.ageMs, lm.fromElite);
@@ -130,12 +133,12 @@ export function updateLuckyMotes(
       continue;
     }
     // Magnetism when player is close enough
-    const magnetDistSq = LUCKY_MOTE_MAGNET_DIST * LUCKY_MOTE_MAGNET_DIST;
+    const magnetDistSq = effectiveMagnetDist * effectiveMagnetDist;
     if (distSq <= magnetDistSq) {
       const dist = Math.sqrt(distSq);
       // Linear falloff: full pull strength at center, zero at the magnet boundary.
       // No base constant so the pull is smooth (no discontinuity at entry).
-      const pullStr = LUCKY_MOTE_MAGNET_SPEED * dt * (1 - dist / LUCKY_MOTE_MAGNET_DIST);
+      const pullStr = LUCKY_MOTE_MAGNET_SPEED * dt * (1 - dist / effectiveMagnetDist);
       lm.vx += (dx / dist) * pullStr;
       lm.vy += (dy / dist) * pullStr;
     }
