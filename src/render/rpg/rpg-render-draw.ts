@@ -55,7 +55,7 @@ import {
 import {
   drawWeaponOrbitParticle, drawOrbitProjectile,
   drawTargetReticle,
-  drawPlayerMote, drawAfterimages,
+  drawPlayerMote, drawAfterimages, drawPlayerStatusVFX,
   setLowGraphicsMode as setPlayerDrawLowGraphics,
 } from './rpg-player-draw';
 import {
