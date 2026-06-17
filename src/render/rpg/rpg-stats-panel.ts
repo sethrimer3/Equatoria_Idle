@@ -178,7 +178,8 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     let els = _chipEls.get(key);
     if (!els) {
       const chip = document.createElement('div');
-      chip.title = key;
+      const _def = PLAYER_STATUS_DEFS[key];
+      chip.title = _def ? `${_def.name}\n${_def.description}` : key;
       chip.style.cssText = [
         'display:inline-flex', 'flex-direction:column', 'align-items:stretch',
         'padding:1px 4px 0', 'border-radius:3px',
