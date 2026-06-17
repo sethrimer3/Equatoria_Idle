@@ -191,8 +191,8 @@ export function renderEnemyStatusLabels(
     amethystFishEnemies: Array<{ x: number; y: number; hp: number }>;
     diamondFishEnemies: Array<{ x: number; y: number; hp: number }>;
   },
+  nowMs?: number,
 ): void {
-  const nowMs = arrays.nowMs;
   const draw6  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 6,  nowMs);
   const draw8  = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 8,  nowMs);
   const draw10 = (e: { x: number; y: number; hp: number }) => _drawStatusIconsForEnemy(c, e, 10, nowMs);
