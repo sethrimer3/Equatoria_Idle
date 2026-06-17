@@ -321,4 +321,20 @@ export function performSingleAttack(
     const pool = makeFracterylPool(craftedMods.fracterylStrikes);
     applyCraftedPostHit(ctx, hitX, hitY, rawDamage, defPierceRatio, craftedMods, rangeSq, pool, effectiveSourceColor);
   }
+
+  // ── Status combo evaluation ───────────────────────────────────────────────
+
+  if (comboTargetEntity) {
+    const nowMs = performance.now();
+    const comboResults = evaluateStatusCombosOnStatusApplied({
+      enemy: comboTargetEntity, enemyTypeId: comboEnemyTypeId,
+      x: hitX, y: hitY, baseDamage: rawDamage, nowMs,
+    });
+    const shatter = evaluateShatterCombo({
+      enemy: comboTargetEntity, enemyTypeId: comboEnemyTypeId,
+      x: hitX, y: hitY, hitDamage: rawDamage, nowMs,
+    });
+    if (shatter) comboResults.push(shatter);
+    applyComboResults(ctx, comboResults);
+  }
 }
