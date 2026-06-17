@@ -136,20 +136,32 @@ const _splatRBySi    = new Uint8Array(_MAX_PRECOMPUTED_SI + 1);
 const _inv2s2BySi    = new Float64Array(_MAX_PRECOMPUTED_SI + 1);
 const _invNormBySi   = new Float64Array(_MAX_PRECOMPUTED_SI + 1);
 
+// Precomputed flat kernel weight tables — indexed by integer (dy,dx) offsets.
+// Replaces per-particle Math.exp calls in the hot splat loop with typed-array lookups.
+// Layout: _kernelWeights[si][(dy+r)*(2r+1)+(dx+r)] = exp(-(dx²+dy²)*inv2s2)
+const _kernelWeights: Float32Array[] = new Array(_MAX_PRECOMPUTED_SI + 1);
+const _kernelDiam    = new Uint8Array(_MAX_PRECOMPUTED_SI + 1);
+
 (function precomputeSizeKernels(): void {
   for (let si = 0; si <= _MAX_PRECOMPUTED_SI; si++) {
     const r     = Math.min(BASE_SPLAT_RADIUS * (si + 1), MAX_SPLAT_RADIUS);
     const sigma = Math.min(BASE_SPLAT_SIGMA  * (si + 1), MAX_SPLAT_SIGMA);
     const inv2s2 = 1.0 / (2.0 * sigma * sigma);
+    const diam = 2 * r + 1;
     let norm = 0;
+    const weights = new Float32Array(diam * diam);
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
-        norm += Math.exp(-(dx * dx + dy * dy) * inv2s2);
+        const w = Math.exp(-(dx * dx + dy * dy) * inv2s2);
+        weights[(dy + r) * diam + (dx + r)] = w;
+        norm += w;
       }
     }
-    _splatRBySi[si]  = r;
-    _inv2s2BySi[si]  = inv2s2;
-    _invNormBySi[si] = norm > 0 ? 1.0 / norm : 1.0;
+    _splatRBySi[si]     = r;
+    _inv2s2BySi[si]     = inv2s2;
+    _invNormBySi[si]    = norm > 0 ? 1.0 / norm : 1.0;
+    _kernelWeights[si]  = weights;
+    _kernelDiam[si]     = diam;
   }
 })();
 
