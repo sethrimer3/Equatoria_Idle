@@ -26,6 +26,17 @@ import {
 } from '../../sim/rpg/enemy-status-effects';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 import { getEnemyStatusAffinityMultiplier } from '../../data/rpg/enemy-status-affinities';
+
+// Throttle affinity feedback (IMMUNE/RESIST/WEAK) to once per entity per 2500ms,
+// preventing rapid-fire weapons from flooding the screen.
+const _affinityFeedbackTs = new WeakMap<object, number>();
+function _canShowAffinityFeedback(entity: object): boolean {
+  const now = performance.now();
+  const last = _affinityFeedbackTs.get(entity) ?? 0;
+  if (now - last < 2500) return false;
+  _affinityFeedbackTs.set(entity, now);
+  return true;
+}
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import type { ClosestTarget } from './rpg-types';
