@@ -173,9 +173,10 @@ export function createRpgMenuPanel(
 
   function showActivePane(): void {
     const isSkillTree = activeTab === 'upgrades';
-    menuTabPane.element.style.display   = activeTab === 'menu'    ? '' : 'none';
-    skillTreePane.element.style.display = isSkillTree             ? '' : 'none';
-    enemiesTabPane.element.style.display = activeTab === 'enemies' ? '' : 'none';
+    menuTabPane.element.style.display        = activeTab === 'menu'    ? '' : 'none';
+    skillTreePane.element.style.display      = isSkillTree             ? '' : 'none';
+    enemiesTabPane.element.style.display     = activeTab === 'enemies' ? '' : 'none';
+    statusGlossaryPane.element.style.display = activeTab === 'status'  ? '' : 'none';
     content.classList.toggle('rpg-menu__content--canvas-fill', isSkillTree);
     if (isSkillTree) {
       skillTreePane.startLoop();
@@ -204,6 +205,9 @@ export function createRpgMenuPanel(
         break;
       case 'enemies':
         enemiesTabPane.update(lastRpgState, lastIsDevMode);
+        break;
+      case 'status':
+        // Static content — no update needed
         break;
     }
   }
