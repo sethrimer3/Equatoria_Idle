@@ -264,147 +264,92 @@ export function drawParticleGlowField(
   const intensities = _intensities;
   const tierCount = TIER_COUNT;
 
-  // ── Step 1: Temporal decay ───────────────────────────────────
-  // Applied once per render frame (not per deltaMs) so large deltaMs from
-  // background-tab wakeup cannot accumulate a glow burst.
-  for (let i = 0, len = intensities.length; i < len; i++) {
-    intensities[i] *= PERSISTENCE;
+  // ── Step 1: Temporal decay (active cells only) ──────────────
+  // Only cells with meaningful intensity are visited — skips the full
+  // 166 k-element sweep when most of the grid is dark.
+  for (const cellIdx of _activeCells) {
+    const base = cellIdx * tierCount;
+    let anyAboveThreshold = false;
+    for (let ti = 0; ti < tierCount; ti++) {
+      const v = intensities[base + ti] * PERSISTENCE;
+      intensities[base + ti] = v;
+      if (v > 0.0001) anyAboveThreshold = true;
+    }
+    if (!anyAboveThreshold) _activeCells.delete(cellIdx);
   }
 
   // ── Step 2: Splat particles into grid ────────────────────────
-  //
-  // Each particle splats energy into nearby grid cells using a continuous
-  // Gaussian weight based on the exact sub-cell fractional distance from
-  // the particle to each cell's integer-grid position.  Using the raw
-  // floating-point particle position (not rounded to cell boundaries) means
-  // the glow contribution shifts smoothly as the particle moves — there is
-  // no cell-snap stepping artefact.
+  // Per-particle kernel weights are read from precomputed tables (integer
+  // offsets from the nearest cell center) — eliminates Math.exp per cell.
   for (let pi = 0, plen = particles.length; pi < plen; pi++) {
     const p = particles[pi];
-    // Skip silently-merging particles (they are invisible at the generator).
-    // Forge-crunch particles are still flying and contribute normally.
     if (p.isMerging && !p.isForgeCrunchParticle) continue;
 
-    const ti = Math.min(p.tierIndex, tierCount - 1);
+    const ti        = Math.min(p.tierIndex, tierCount - 1);
+    const si        = Math.min(p.sizeIndex, _MAX_PRECOMPUTED_SI);
+    const sizeWeight = 0.5 + si * 0.25;
+    const splatR    = _splatRBySi[si];
+    const invNorm   = _invNormBySi[si];
+    const contrib   = INTENSITY_MULT * sizeWeight * invNorm;
+    const weights   = _kernelWeights[si];
+    const diam      = _kernelDiam[si];
 
-    // Larger particles contribute more glow — small motes remain subtle.
-    // Larger particles contribute more energy AND have a proportionally
-    // larger kernel (scaling is handled in _splatRBySi / _invNormBySi).
-    // sizeWeight provides an additional brightness boost for bigger motes
-    // so their halos remain visually distinct even after kernel normalisation.
-    // We use the clamped `si` (computed below) so sizeWeight stays consistent
-    // with the kernel parameters; beyond _MAX_PRECOMPUTED_SI both the kernel
-    // and the weight are capped at the same level.
-    //
-    // Per-sizeIndex precomputed kernel parameters (avoid float recomputation
-    // in the inner loop).
-    const si       = Math.min(p.sizeIndex, _MAX_PRECOMPUTED_SI);
-    const sizeWeight = 0.5 + si * 0.25; // 0.50 / 0.75 / 1.00 / 1.25 … capped at si=_MAX
-    const splatR   = _splatRBySi[si];
-    const inv2s2   = _inv2s2BySi[si];
-    const invNorm  = _invNormBySi[si];
+    const half  = p.size * 0.5;
+    const ceilS = Math.ceil(p.size);
+    const bodyX = Math.floor(p.x - half) + ceilS * 0.5;
+    const bodyY = Math.floor(p.y - half) + ceilS * 0.5;
+    // Snap to nearest cell center (integer-offset kernel)
+    const gcxi  = Math.round(bodyX / CELL_SIZE - 0.5);
+    const gcyi  = Math.round(bodyY / CELL_SIZE - 0.5);
 
-    // _invNormBySi ensures total energy per particle ≈ INTENSITY_MULT × sizeWeight.
-    const contrib = INTENSITY_MULT * sizeWeight * invNorm;
-
-    // ── Coordinate alignment ──────────────────────────────────────────
-    //
-    // The mote body is drawn via:
-    //   fillRect(Math.floor(p.x − half), Math.floor(p.y − half), ceil(size), ceil(size))
-    // so its visual centre (in canvas pixels) is:
-    //   bodyCenterX = Math.floor(p.x − half) + Math.ceil(p.size) / 2
-    //
-    // If we used raw p.x the glow centre would be offset to the right/down by
-    // up to ~1 px (sub-pixel position never perfectly matches the floor-aligned
-    // fillRect centre).  Using the rendered body centre removes this offset.
-    //
-    // pcx / pcy are in cell-space (divide by CELL_SIZE so each unit = one grid
-    // cell).  The drawImage destination (Step 5) maps cell cx back to canvas
-    // pixel cx × CELL_SIZE — the same scale that was used here — so there is no
-    // round-trip coordinate error.
-    //
-    // Note: p.size is constant for a particle's lifetime (changes only on
-    // merge events), so half and ceilS could be cached on the particle object
-    // for a micro-optimisation; they are cheap to compute here at ~4 ops/frame.
-    const half      = p.size * 0.5;
-    const ceilS     = Math.ceil(p.size);
-    const bodyX     = Math.floor(p.x - half) + ceilS * 0.5;  // rendered centre X
-    const bodyY     = Math.floor(p.y - half) + ceilS * 0.5;  // rendered centre Y
-    const pcx       = bodyX / CELL_SIZE - 0.5;   // cell-centre-space X
-    const pcy       = bodyY / CELL_SIZE - 0.5;   // cell-centre-space Y
-    const gcxi      = Math.floor(pcx);
-    const gcyi      = Math.floor(pcy);
-
-    // Gaussian splat — weight uses real fractional distance so the contribution
-    // shifts smoothly as the particle moves (no cell-snap stepping artefact).
     for (let dy = -splatR; dy <= splatR; dy++) {
       const cy = gcyi + dy;
       if (cy < 0 || cy >= gridH) continue;
-      const ddy = cy - pcy;
+      const wRow    = (dy + splatR) * diam;
+      const cellRow = cy * gridW;
       for (let dx = -splatR; dx <= splatR; dx++) {
         const cx = gcxi + dx;
         if (cx < 0 || cx >= gridW) continue;
-        const ddx = cx - pcx;
-        const w = Math.exp(-(ddx * ddx + ddy * ddy) * inv2s2);
-        intensities[(cy * gridW + cx) * tierCount + ti] += contrib * w;
+        const cellIdx = cellRow + cx;
+        intensities[cellIdx * tierCount + ti] += contrib * weights[wRow + (dx + splatR)];
+        _activeCells.add(cellIdx);
       }
     }
   }
 
-  // ── Step 3: Build pixel data for the low-res glow canvas ─────
-  //
-  // Colour mixing: weighted-average RGB so each tier contributes
-  // proportionally to its intensity.  This produces smooth gradients
-  // between neighbouring colour regions instead of hard hue jumps.
-  //
-  //   totalWeight  = Σ intensity[ti]
-  //   finalColor   = Σ (intensity[ti] × tierColor[ti]) / totalWeight
-  //   finalAlpha   = clamp(1 − exp(−GLOW_K × totalWeight), 0, MAX_ALPHA)
+  // ── Step 3: Build pixel data (active cells only) ─────────────
+  // Clear the entire image in one fast pass, then write only active cells.
   const data = _imageData.data;
-  for (let cy = 0; cy < gridH; cy++) {
-    const rowBase = cy * gridW;
-    for (let cx = 0; cx < gridW; cx++) {
-      const cellBase = (rowBase + cx) * tierCount;
-      const pixBase  = (rowBase + cx) * 4;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (data as any).fill(0);
 
-      let totalI = 0.0;
-      let sumR   = 0.0;
-      let sumG   = 0.0;
-      let sumB   = 0.0;
+  for (const cellIdx of _activeCells) {
+    const cellBase = cellIdx * tierCount;
+    const pixBase  = cellIdx * 4;
 
-      for (let ti = 0; ti < tierCount; ti++) {
-        const iv = intensities[cellBase + ti];
-        if (iv < 0.0001) continue;
-        totalI += iv;
-        sumR   += iv * _tierR[ti];
-        sumG   += iv * _tierG[ti];
-        sumB   += iv * _tierB[ti];
-      }
+    let totalI = 0.0;
+    let sumR   = 0.0;
+    let sumG   = 0.0;
+    let sumB   = 0.0;
 
-      if (totalI < 0.001) {
-        // Empty cell — fully transparent.
-        data[pixBase]     = 0;
-        data[pixBase + 1] = 0;
-        data[pixBase + 2] = 0;
-        data[pixBase + 3] = 0;
-        continue;
-      }
-
-      // Normalise colour by total weight → smooth RGB gradient between tiers.
-      const invTotal = 1.0 / totalI;
-      const r = sumR * invTotal;
-      const g = sumG * invTotal;
-      const b = sumB * invTotal;
-
-      // Soft alpha curve — faint halos fade gracefully; clusters brighten
-      // smoothly but are capped so brightness never blows out.
-      const alpha = Math.min(MAX_ALPHA, 1.0 - Math.exp(-GLOW_K * totalI));
-
-      data[pixBase]     = Math.round(r);
-      data[pixBase + 1] = Math.round(g);
-      data[pixBase + 2] = Math.round(b);
-      data[pixBase + 3] = Math.round(alpha * 255);
+    for (let ti = 0; ti < tierCount; ti++) {
+      const iv = intensities[cellBase + ti];
+      if (iv < 0.0001) continue;
+      totalI += iv;
+      sumR   += iv * _tierR[ti];
+      sumG   += iv * _tierG[ti];
+      sumB   += iv * _tierB[ti];
     }
+
+    if (totalI < 0.001) continue;
+
+    const invTotal = 1.0 / totalI;
+    const alpha = Math.min(MAX_ALPHA, 1.0 - Math.exp(-GLOW_K * totalI));
+
+    data[pixBase]     = (sumR * invTotal + 0.5) | 0;
+    data[pixBase + 1] = (sumG * invTotal + 0.5) | 0;
+    data[pixBase + 2] = (sumB * invTotal + 0.5) | 0;
+    data[pixBase + 3] = (alpha * 255 + 0.5) | 0;
   }
 
   // ── Step 4: Write pixel data to offscreen canvas ─────────────
