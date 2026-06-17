@@ -273,20 +273,22 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'orbital_radius',
     name: 'Orbital Radius',
-    description: '+12% orbital radius per rank for wider coverage. (TODO: orbit radius hook)',
+    description: '+12% orbital radius per rank for wider coverage.',
     costTierId: 'quartz',
     costPerLevel: 2_000,
     maxLevel: 3,
     skillPointCost: 1,
+    implementationStatus: 'placeholder',
   },
   {
     id: 'comet_return',
     name: 'Comet Return',
-    description: 'Orbital projectile reforms 40% faster after impact or expiration. (TODO: reform speed hook)',
+    description: 'Orbital projectile reforms 40% faster after impact or expiration.',
     costTierId: 'quartz',
     costPerLevel: 4_000,
     maxLevel: 1,
     skillPointCost: 3,
+    implementationStatus: 'placeholder',
   },
 
   // ── Elemental / Crystal branch ────────────────────────────────────
