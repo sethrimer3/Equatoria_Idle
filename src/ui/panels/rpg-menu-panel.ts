@@ -139,6 +139,7 @@ export function createRpgMenuPanel(
   );
   const skillTreePane: RpgSkillTreeTabPane = createRpgSkillTreeTabPane(dispatch);
   const enemiesTabPane: RpgEnemiesTabPane = createRpgEnemiesTabPane(dispatch);
+  const statusGlossaryPane: RpgStatusGlossaryTabPane = createRpgStatusGlossaryTabPane();
 
   // All pane elements live in the content area; we show/hide per active tab.
   const content = document.createElement('div');
@@ -147,6 +148,7 @@ export function createRpgMenuPanel(
   content.appendChild(menuTabPane.element);
   content.appendChild(skillTreePane.element);
   content.appendChild(enemiesTabPane.element);
+  content.appendChild(statusGlossaryPane.element);
   element.appendChild(content);
 
   // ── Internal state ────────────────────────────────────────────
