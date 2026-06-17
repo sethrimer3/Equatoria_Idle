@@ -137,7 +137,8 @@ export function updatePlayerMovement(
   const { mote, joystick, keys, rpgSimState, fluid } = ctx;
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   const speedMul = getRpgSpeedMultiplier(rpgSimState);
-  const effectiveMaxSpeed = MAX_RPG_SPEED * speedMul;
+  const statusSpeedMul = getPlayerMovementStatusMultiplier(rpgSimState);
+  const effectiveMaxSpeed = MAX_RPG_SPEED * speedMul * statusSpeedMul;
 
   // Acceleration skill: ranks 1–5 add responsiveness (lerp factor towards target velocity).
   // Rank 0 = instant snap (lerpFactor clamped to 1). Rank 5 = instant snap.
