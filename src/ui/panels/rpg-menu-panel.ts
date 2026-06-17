@@ -22,6 +22,8 @@ import { createRpgSkillTreeTabPane } from './rpg-skill-tree-tab';
 import type { RpgSkillTreeTabPane } from './rpg-skill-tree-tab';
 import { createRpgEnemiesTabPane } from './rpg-enemies-tab';
 import type { RpgEnemiesTabPane } from './rpg-enemies-tab';
+import { createRpgStatusGlossaryTabPane } from './rpg-status-glossary-tab';
+import type { RpgStatusGlossaryTabPane } from './rpg-status-glossary-tab';
 import { makePageBreak } from '../ui-helpers';
 
 // ─── Types ────────────────────────────────────────────────────────
