@@ -105,7 +105,6 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
     costPerLevel: 800,
     maxLevel: 5,
     skillPointCost: 1,
-    implementationStatus: 'placeholder',
   },
   {
     id: 'dash',
