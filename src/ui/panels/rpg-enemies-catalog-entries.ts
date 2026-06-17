@@ -104,7 +104,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     size: SAPPHIRE_ENEMY_SIZE,
     hp: SAPPHIRE_HP_INIT, atk: SAPPHIRE_ATK_INIT, def: SAPPHIRE_DEF_INIT,
     firstWave: 6,
-    description: 'A shielded blue sentry that fires homing missiles while staying behind its protective barrier.',
+    description: 'A shielded blue sentry that fires homing missiles while staying behind its protective barrier. Missiles chill on hit — repeated hits can freeze. Immune to Chilled; fire lenses are effective.',
     shape: 'square',
     zone: 'euhedral',
     hasShield: true,
