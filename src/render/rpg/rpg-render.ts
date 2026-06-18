@@ -42,7 +42,7 @@ import {
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
-import { applyLensStatus, getActiveStatuses } from '../../sim/rpg/enemy-status-effects';
+import { applyLensStatus, getActiveStatuses, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
 import { getRecentComboEvents } from '../../dev/rpg-combat-event-log';
 import { createDamageFns } from './rpg-damage';
 import { getCodexMultiplier } from '../../sim/rpg/rpg-codex';
@@ -2118,7 +2118,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         case 'riftDetonation':
           applyLensStatus(nearest, { ...rb, key: 'riftScarred' });
           for (let _ri = 0; _ri < 9; _ri++) {
-            import('../../sim/rpg/enemy-status-effects').then(m => m.incrementRiftScarredStacks(nearest!, 'dev'));
+            incrementRiftScarredStacks(nearest!, 'dev');
           }
           break;
       }
