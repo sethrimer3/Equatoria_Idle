@@ -29,6 +29,7 @@ import {
   ICON_SIZE,
   createAlivenIconCanvas, createProcIconCanvas, drawEnemyIcon, drawBossIcon,
 } from './rpg-enemies-tab-icons';
+import { getEnemyIconPath, FALLBACK_ENEMY_ICON_PATH } from '../../render/assets/asset-paths';
 import { getEnemyStatusAffinity } from '../../data/rpg/enemy-status-affinities';
 import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 import { ENEMY_STATUS_DEFS, PLAYER_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
