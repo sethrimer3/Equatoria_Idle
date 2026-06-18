@@ -277,7 +277,7 @@ function drawSquareNode(
   }
 
   // Label below node
-  ctx.font        = `bold 10px monospace`;
+  ctx.font        = `bold 12px "Cormorant Garamond", serif`;
   ctx.textAlign   = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle   = isActive ? '#fff172' : '#b0a880';
