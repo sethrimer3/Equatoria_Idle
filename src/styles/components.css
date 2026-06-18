@@ -981,24 +981,32 @@
   font-size: 14px;
   font-weight: 700;
   flex: 1;
+  color: var(--text-gold);
+  line-height: 1.2;
+}
+
+.achievement-unlocked .achievement-name,
+.achievement-earned-unclaimed .achievement-name {
+  color: var(--text-gold-bright);
+  text-shadow: 0 0 8px var(--text-gold-glow);
 }
 
 .achievement-bonus {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #a0e080;
   white-space: nowrap;
 }
 
 .achievement-desc {
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-size: 12px;
+  color: var(--text-gold-muted);
   margin-bottom: 4px;
   line-height: 1.4;
 }
 
 .achievement-progress {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
