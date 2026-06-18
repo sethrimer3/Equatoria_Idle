@@ -117,8 +117,8 @@ export function evaluateStatusCombosOnStatusApplied(args: {
       _setCooldown(enemy, steam.id, nowMs);
       results.push({
         comboId: steam.id, label: steam.feedbackLabel, color: steam.feedbackColor,
-        primaryEnemy: enemy, x, y,
-        primaryDamage: rawPrimary, aoeDamage: rawAoe, aoeRadius: 80,
+        primaryEnemy: enemy, enemyTypeId, x, y,
+        primaryDamage: rawPrimary, aoeDamage: rawAoe, aoeRadius: 80, triggerKind,
       });
     }
 
