@@ -109,6 +109,7 @@ export function createDefaultSettings(): SettingsState {
     idleCanvasRenderStyle: 'pixelated',
     isIdleViewportDebugEnabled: false,
     isRpgPixelatedRender: false,
+    isRpgDebugOverlayEnabled: false,
   };
 }
 
