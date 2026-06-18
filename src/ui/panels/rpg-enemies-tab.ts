@@ -475,7 +475,7 @@ function buildBossEntry(
     if (bestSpeed > 0) {
       const beatChip = document.createElement('span');
       beatChip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--beat';
-      beatChip.textContent = `Best: ${bestSpeed}% speed`;
+      beatChip.innerHTML = `<span aria-hidden="true">⚡</span><span class="rpg-codex-stat-label">Best</span><span class="rpg-codex-stat-val">${bestSpeed}%</span>`;
       statsRow.appendChild(beatChip);
     }
     body.appendChild(statsRow);
