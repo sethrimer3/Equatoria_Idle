@@ -13,6 +13,8 @@
  *   • Bosses: visible once the boss has been beaten (bossCompletions has
  *     a non-zero entry for the boss ID).
  *   • In developer mode: ALL entries are visible regardless of progress.
+ *   • In normal mode: up to 2 locked future entries per zone (3 for ALL)
+ *     are shown as dim teaser cards without revealing real stats/descriptions.
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
@@ -56,25 +58,68 @@ function emptyZoneMessage(zoneId: EnemyZoneTabId): string {
   return zone ? `No ${zone.label} enemies documented yet.` : 'No enemies documented yet.';
 }
 
+// ─── Codex header ─────────────────────────────────────────────────
+
+function buildCodexHeader(rpgState: RpgSimState, isDevMode: boolean): HTMLElement {
+  const highestWave = rpgState.highestWaveReached;
+  const totalEncountered = rpgState.encounteredEnemyTypes.size;
+  const totalEntries = ENEMY_CATALOG.length;
+
+  const header = document.createElement('div');
+  header.className = 'rpg-codex-header';
+
+  const title = document.createElement('div');
+  title.className = 'rpg-codex-title';
+  title.textContent = 'ENEMY CODEX';
+  header.appendChild(title);
+
+  const subtitle = document.createElement('div');
+  subtitle.className = 'rpg-codex-subtitle';
+  if (isDevMode) {
+    subtitle.textContent = '🔧 Dev Mode — all entries visible';
+  } else {
+    subtitle.textContent = `${totalEncountered} encountered · Wave ${highestWave}`;
+  }
+  header.appendChild(subtitle);
+
+  const progressWrap = document.createElement('div');
+  progressWrap.className = 'rpg-codex-progress-wrap';
+  const progressBar = document.createElement('div');
+  progressBar.className = 'rpg-codex-progress-bar';
+  const pct = totalEntries > 0 ? Math.min(100, (totalEncountered / totalEntries) * 100) : 0;
+  progressBar.style.width = `${pct}%`;
+  progressWrap.appendChild(progressBar);
+  header.appendChild(progressWrap);
+
+  return header;
+}
+
 // ─── Entry builders ───────────────────────────────────────────────
 
 function buildEnemyEntry(
   entry: EnemyCatalogEntry,
   isLocked: boolean,
   isDevMode: boolean,
+  isHighlighted: boolean,
 ): HTMLElement {
-  const box = document.createElement('div');
-  box.style.cssText =
-    `display:flex;gap:10px;align-items:flex-start;` +
-    `background:${isLocked && !isDevMode ? 'rgba(15,10,20,0.5)' : 'rgba(20,15,35,0.85)'};` +
-    `border:1px solid ${isLocked && !isDevMode ? 'rgba(255,255,255,0.07)' : entry.glowColor + '44'};` +
-    `border-radius:6px;padding:10px 12px;opacity:${isLocked && !isDevMode ? '0.45' : '1'};`;
+  const showLocked = isLocked && !isDevMode;
 
-  // Icon canvas — aliven entries get an animated mini-sim; proc entries get an
-  // animated procedural preview; others get a static icon.
+  const box = document.createElement('div');
+  box.className = [
+    'rpg-codex-card',
+    showLocked ? 'rpg-codex-card--locked' : '',
+    isHighlighted ? 'rpg-codex-card--selected' : '',
+  ].filter(Boolean).join(' ');
+
+  // Icon frame
+  const iconFrame = document.createElement('div');
+  iconFrame.className = 'rpg-codex-icon-frame';
+  if (!showLocked) {
+    iconFrame.style.borderColor = entry.glowColor + '55';
+  }
+
   const isAliven = entry.id.startsWith('aliven_');
   const isProc   = entry.id.startsWith('proc_');
-  const showLocked = isLocked && !isDevMode;
   let canvas: HTMLCanvasElement;
 
   if ((isAliven || isProc) && !showLocked) {
@@ -83,73 +128,81 @@ function buildEnemyEntry(
     canvas = document.createElement('canvas');
     canvas.width  = ICON_SIZE;
     canvas.height = ICON_SIZE;
-    canvas.style.cssText = 'flex-shrink:0;border-radius:4px;background:rgba(0,0,0,0.35);';
     if (!showLocked) {
       drawEnemyIcon(canvas, entry);
     } else {
-      // Draw a question mark for undiscovered entries
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.font = `bold ${ICON_SIZE * 0.5}px sans-serif`;
-        ctx.fillStyle = '#555';
+        ctx.fillStyle = '#3a3050';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('?', ICON_SIZE / 2, ICON_SIZE / 2);
       }
     }
   }
-  box.appendChild(canvas);
+  canvas.className = 'rpg-codex-icon-canvas';
+  iconFrame.appendChild(canvas);
+  box.appendChild(iconFrame);
 
-  // Text area
-  const textArea = document.createElement('div');
-  textArea.style.cssText = 'flex:1;min-width:0;';
+  // Body
+  const body = document.createElement('div');
+  body.className = 'rpg-codex-body';
 
   // Name row
   const nameRow = document.createElement('div');
-  nameRow.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;';
+  nameRow.className = 'rpg-codex-name-row';
 
   const nameEl = document.createElement('span');
-  nameEl.style.cssText = `font-weight:700;font-size:0.88em;color:${isLocked && !isDevMode ? '#555' : entry.glowColor};`;
-  nameEl.textContent = isLocked && !isDevMode ? `🔒 ??? (wave ${entry.firstWave}+)` : entry.name;
+  nameEl.className = 'rpg-codex-name' + (showLocked ? ' rpg-codex-name--locked' : '');
+  if (showLocked) {
+    const zoneLabel = entry.zone
+      ? entry.zone.charAt(0).toUpperCase() + entry.zone.slice(1)
+      : 'Enemy';
+    nameEl.textContent = `Unknown ${zoneLabel}`;
+  } else {
+    nameEl.style.color = entry.glowColor;
+    nameEl.textContent = entry.name;
+  }
   nameRow.appendChild(nameEl);
 
   if (isDevMode && isLocked) {
     const devBadge = document.createElement('span');
-    devBadge.style.cssText = 'font-size:0.68em;color:#ff8844;font-weight:600;margin-left:6px;white-space:nowrap;';
+    devBadge.className = 'rpg-codex-dev-badge';
     devBadge.textContent = `wave ${entry.firstWave}+`;
     nameRow.appendChild(devBadge);
   }
-  textArea.appendChild(nameRow);
+  body.appendChild(nameRow);
 
-  if (!isLocked || isDevMode) {
+  if (!showLocked) {
     // Stats row
     const statsRow = document.createElement('div');
-    statsRow.style.cssText = 'display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap;';
+    statsRow.className = 'rpg-codex-stat-row';
     const stats: Array<[string, number, string]> = [
-      ['HP', entry.hp, '#69db7c'],
-      ['ATK', entry.atk, '#ff6b6b'],
-      ['DEF', entry.def, '#74c0fc'],
+      ['HP', entry.hp, 'hp'],
+      ['ATK', entry.atk, 'atk'],
+      ['DEF', entry.def, 'def'],
     ];
-    for (const [label, val, col] of stats) {
+    for (const [label, val, type] of stats) {
       const chip = document.createElement('span');
-      chip.style.cssText = `font-size:0.72em;color:${col};white-space:nowrap;`;
+      chip.className = `rpg-codex-stat-chip rpg-codex-stat-chip--${type}`;
       chip.textContent = `${label} ${val}`;
       statsRow.appendChild(chip);
     }
-    textArea.appendChild(statsRow);
+    body.appendChild(statsRow);
 
     // Description
     const desc = document.createElement('div');
-    desc.style.cssText = 'font-size:0.75em;color:#99a;line-height:1.35;';
+    desc.className = 'rpg-codex-desc';
     desc.textContent = entry.description;
-    textArea.appendChild(desc);
+    body.appendChild(desc);
 
     // Elite empower blurb
     if (entry.id.startsWith('elite_')) {
       const blurb = document.createElement('div');
-      blurb.style.cssText = 'font-size:0.72em;color:#ff8c00;font-style:italic;margin-top:4px;';
+      blurb.className = 'rpg-codex-elite-blurb';
       blurb.textContent = 'While alive, this elite empowers all non-elite enemies by +25%.';
-      textArea.appendChild(blurb);
+      body.appendChild(blurb);
     }
 
     // Status affinities (weak / resistant / immune — skip neutral)
@@ -163,55 +216,73 @@ function buildEnemyEntry(
     const weak: EnemyStatusKey[]      = [];
     for (const sk of ALL_ENEMY_STATUS_KEYS) {
       const aff = getEnemyStatusAffinity(entry.id, sk);
-      if (aff === 'immune')    immune.push(sk);
+      if (aff === 'immune')         immune.push(sk);
       else if (aff === 'resistant') resistant.push(sk);
       else if (aff === 'weak')      weak.push(sk);
     }
     if (immune.length + resistant.length + weak.length > 0) {
       const affRow = document.createElement('div');
-      affRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;align-items:center;';
+      affRow.className = 'rpg-codex-chip-row';
       const affLabel = document.createElement('span');
-      affLabel.style.cssText = 'font-size:0.68em;color:#666;white-space:nowrap;';
+      affLabel.className = 'rpg-codex-chip-label';
       affLabel.textContent = 'Affinities:';
       affRow.appendChild(affLabel);
-      function addChips(keys: EnemyStatusKey[], bg: string, prefix: string): void {
+      function addAffinityChips(keys: EnemyStatusKey[], modifier: string, prefix: string): void {
         for (const k of keys) {
           const chip = document.createElement('span');
           const def = ENEMY_STATUS_DEFS[k];
-          chip.style.cssText = `font-size:0.68em;padding:1px 4px;border-radius:3px;background:${bg};color:#fff;white-space:nowrap;`;
+          chip.className = `rpg-codex-affinity-chip rpg-codex-affinity-chip--${modifier}`;
           chip.textContent = `${prefix}${def?.label ?? k}`;
-          chip.title = `${def?.name ?? k}: ${prefix === '✦' ? 'WEAK' : prefix === '✕' ? 'IMMUNE' : 'RESISTANT'}`;
+          chip.title = `${def?.name ?? k}: ${modifier === 'weak' ? 'WEAK' : modifier === 'immune' ? 'IMMUNE' : 'RESISTANT'}`;
           affRow.appendChild(chip);
         }
       }
-      addChips(weak,      'rgba(120,220,80,0.25)',  '✦');
-      addChips(immune,    'rgba(150,150,180,0.25)', '✕');
-      addChips(resistant, 'rgba(80,120,200,0.20)',  '▼');
-      textArea.appendChild(affRow);
+      addAffinityChips(weak,      'weak',      '✦');
+      addAffinityChips(immune,    'immune',    '✕');
+      addAffinityChips(resistant, 'resistant', '▼');
+      body.appendChild(affRow);
     }
 
     // Inflicts (which player statuses this enemy can apply)
     const inflicts = ENEMY_STATUS_SOURCES[entry.id] ?? ENEMY_STATUS_SOURCES[entry.id.replace(/^elite_/, 'elite')];
     if (inflicts && inflicts.length > 0) {
       const inflictRow = document.createElement('div');
-      inflictRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;align-items:center;';
+      inflictRow.className = 'rpg-codex-chip-row';
       const inflictLabel = document.createElement('span');
-      inflictLabel.style.cssText = 'font-size:0.68em;color:#666;white-space:nowrap;';
+      inflictLabel.className = 'rpg-codex-chip-label';
       inflictLabel.textContent = 'Inflicts:';
       inflictRow.appendChild(inflictLabel);
       for (const pk of inflicts) {
         const def = PLAYER_STATUS_DEFS[pk];
         const chip = document.createElement('span');
-        chip.style.cssText = `font-size:0.68em;padding:1px 4px;border-radius:3px;border:1px solid ${def?.color ?? '#888'}55;color:${def?.color ?? '#aaa'};white-space:nowrap;`;
+        chip.className = 'rpg-codex-inflict-chip';
+        chip.style.borderColor = (def?.color ?? '#888') + '55';
+        chip.style.color = def?.color ?? '#aaa';
         chip.textContent = def?.label ?? pk;
         chip.title = def?.name ?? pk;
         inflictRow.appendChild(chip);
       }
-      textArea.appendChild(inflictRow);
+      body.appendChild(inflictRow);
     }
+  } else {
+    // Locked teaser: ??? stats + wave requirement (no real data revealed)
+    const lockedStats = document.createElement('div');
+    lockedStats.className = 'rpg-codex-stat-row';
+    for (const label of ['HP', 'ATK', 'DEF']) {
+      const chip = document.createElement('span');
+      chip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--locked';
+      chip.textContent = `${label} ???`;
+      lockedStats.appendChild(chip);
+    }
+    body.appendChild(lockedStats);
+
+    const waveReq = document.createElement('div');
+    waveReq.className = 'rpg-codex-desc rpg-codex-desc--locked';
+    waveReq.textContent = `Encountered at wave ${entry.firstWave}+`;
+    body.appendChild(waveReq);
   }
 
-  box.appendChild(textArea);
+  box.appendChild(body);
   return box;
 }
 
@@ -224,89 +295,112 @@ function buildBossEntry(
   const glowColor = BOSS_GLOW_COLORS[Math.min(bossId, BOSS_GLOW_COLORS.length - 1)];
   const bossName = BOSS_NAMES[Math.min(bossId, BOSS_NAMES.length - 1)];
   const description = BOSS_DESCRIPTIONS[Math.min(bossId, BOSS_DESCRIPTIONS.length - 1)] ?? '';
+  const showLocked = isLocked && !isDevMode;
 
   const box = document.createElement('div');
-  box.style.cssText =
-    `display:flex;gap:10px;align-items:flex-start;` +
-    `background:${isLocked && !isDevMode ? 'rgba(15,10,20,0.5)' : 'rgba(25,10,40,0.9)'};` +
-    `border:1px solid ${isLocked && !isDevMode ? 'rgba(255,255,255,0.07)' : glowColor + '55'};` +
-    `border-radius:6px;padding:10px 12px;opacity:${isLocked && !isDevMode ? '0.4' : '1'};`;
+  box.className = [
+    'rpg-codex-card',
+    'rpg-codex-card--boss',
+    showLocked ? 'rpg-codex-card--locked' : '',
+  ].filter(Boolean).join(' ');
 
-  // Icon canvas
+  // Icon frame
+  const iconFrame = document.createElement('div');
+  iconFrame.className = 'rpg-codex-icon-frame';
+  if (!showLocked) {
+    iconFrame.style.borderColor = glowColor + '66';
+  }
+
   const canvas = document.createElement('canvas');
-  canvas.width = ICON_SIZE;
+  canvas.width  = ICON_SIZE;
   canvas.height = ICON_SIZE;
-  canvas.style.cssText = 'flex-shrink:0;border-radius:4px;background:rgba(0,0,0,0.45);';
-  if (!isLocked || isDevMode) {
+  canvas.className = 'rpg-codex-icon-canvas';
+  if (!showLocked) {
     drawBossIcon(canvas, bossId);
   } else {
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.font = `bold ${ICON_SIZE * 0.5}px sans-serif`;
-      ctx.fillStyle = '#444';
+      ctx.fillStyle = '#3a2050';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('?', ICON_SIZE / 2, ICON_SIZE / 2);
     }
   }
-  box.appendChild(canvas);
+  iconFrame.appendChild(canvas);
+  box.appendChild(iconFrame);
 
-  // Text area
-  const textArea = document.createElement('div');
-  textArea.style.cssText = 'flex:1;min-width:0;';
+  // Body
+  const body = document.createElement('div');
+  body.className = 'rpg-codex-body';
 
   // Name row
   const nameRow = document.createElement('div');
-  nameRow.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;';
+  nameRow.className = 'rpg-codex-name-row';
 
   const nameEl = document.createElement('span');
-  nameEl.style.cssText = `font-weight:700;font-size:0.88em;color:${isLocked && !isDevMode ? '#555' : glowColor};`;
-  if (isLocked && !isDevMode) {
-    nameEl.textContent = `🔒 Boss ${bossId} (wave ${bossId * 100})`;
+  nameEl.className = 'rpg-codex-name' + (showLocked ? ' rpg-codex-name--locked' : '');
+  if (showLocked) {
+    nameEl.textContent = `Unknown Boss ${bossId}`;
   } else {
+    nameEl.style.color = glowColor;
     nameEl.textContent = `${bestSpeed > 0 ? '✦ ' : ''}Boss ${bossId}: ${bossName}`;
   }
   nameRow.appendChild(nameEl);
 
   if (isDevMode && isLocked) {
     const devBadge = document.createElement('span');
-    devBadge.style.cssText = 'font-size:0.68em;color:#ff8844;font-weight:600;margin-left:6px;white-space:nowrap;';
+    devBadge.className = 'rpg-codex-dev-badge';
     devBadge.textContent = `wave ${bossId * 100}`;
     nameRow.appendChild(devBadge);
   }
-  textArea.appendChild(nameRow);
+  body.appendChild(nameRow);
 
-  if (!isLocked || isDevMode) {
-    // Stats row
+  if (!showLocked) {
+    // Stats
     const statsRow = document.createElement('div');
-    statsRow.style.cssText = 'display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap;';
+    statsRow.className = 'rpg-codex-stat-row';
     const stats: Array<[string, number, string]> = [
-      ['HP', BOSS_HP_INIT, '#69db7c'],
-      ['ATK', BOSS_ATK_INIT, '#ff6b6b'],
-      ['DEF', BOSS_DEF_INIT, '#74c0fc'],
+      ['HP', BOSS_HP_INIT, 'hp'],
+      ['ATK', BOSS_ATK_INIT, 'atk'],
+      ['DEF', BOSS_DEF_INIT, 'def'],
     ];
-    for (const [label, val, col] of stats) {
+    for (const [label, val, type] of stats) {
       const chip = document.createElement('span');
-      chip.style.cssText = `font-size:0.72em;color:${col};white-space:nowrap;`;
+      chip.className = `rpg-codex-stat-chip rpg-codex-stat-chip--${type}`;
       chip.textContent = `${label} ${val}`;
       statsRow.appendChild(chip);
     }
     if (bestSpeed > 0) {
       const beatChip = document.createElement('span');
-      beatChip.style.cssText = 'font-size:0.72em;color:#69db7c;white-space:nowrap;';
+      beatChip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--beat';
       beatChip.textContent = `Best: ${bestSpeed}% speed`;
       statsRow.appendChild(beatChip);
     }
-    textArea.appendChild(statsRow);
+    body.appendChild(statsRow);
 
-    // Description
     const desc = document.createElement('div');
-    desc.style.cssText = 'font-size:0.75em;color:#99a;line-height:1.35;';
+    desc.className = 'rpg-codex-desc';
     desc.textContent = description;
-    textArea.appendChild(desc);
+    body.appendChild(desc);
+  } else {
+    const lockedStats = document.createElement('div');
+    lockedStats.className = 'rpg-codex-stat-row';
+    for (const label of ['HP', 'ATK', 'DEF']) {
+      const chip = document.createElement('span');
+      chip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--locked';
+      chip.textContent = `${label} ???`;
+      lockedStats.appendChild(chip);
+    }
+    body.appendChild(lockedStats);
+
+    const waveReq = document.createElement('div');
+    waveReq.className = 'rpg-codex-desc rpg-codex-desc--locked';
+    waveReq.textContent = `Appears at wave ${bossId * 100}`;
+    body.appendChild(waveReq);
   }
 
-  box.appendChild(textArea);
+  box.appendChild(body);
   return box;
 }
 
@@ -314,16 +408,14 @@ function buildBossEntry(
 
 export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTabPane {
   const element = document.createElement('div');
-  element.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:4px 0;';
+  element.className = 'rpg-enemies-pane';
   let selectedZoneTab: EnemyZoneTabId = 'all';
   let latestRpgState: RpgSimState | null = null;
   let latestIsDevMode = false;
 
   function buildZoneTabs(): HTMLElement {
     const tabBar = document.createElement('div');
-    tabBar.style.cssText =
-      'display:flex;gap:6px;overflow-x:auto;flex-wrap:wrap;padding:2px 0 6px;' +
-      '-webkit-overflow-scrolling:touch;';
+    tabBar.className = 'rpg-codex-zone-tabs';
 
     for (const tab of ENEMY_ZONE_TABS) {
       const isSelected = selectedZoneTab === tab.id;
@@ -331,13 +423,7 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
       button.type = 'button';
       button.textContent = tab.label;
       button.setAttribute('aria-pressed', String(isSelected));
-      button.style.cssText =
-        'flex:0 0 auto;border-radius:6px;padding:6px 9px;min-height:32px;' +
-        'font-size:0.72em;font-weight:700;letter-spacing:0.02em;' +
-        'font-family:var(--font-primary);touch-action:manipulation;cursor:pointer;' +
-        `color:${isSelected ? 'var(--accent)' : '#9aa'};` +
-        `background:${isSelected ? 'rgba(255, 241, 114, 0.12)' : 'rgba(255,255,255,0.04)'};` +
-        `border:1px solid ${isSelected ? 'rgba(255, 241, 114, 0.5)' : 'rgba(255,255,255,0.10)'};`;
+      button.className = 'rpg-codex-zone-tab' + (isSelected ? ' rpg-codex-zone-tab--active' : '');
       button.addEventListener('click', () => {
         selectedZoneTab = tab.id;
         update(latestRpgState, latestIsDevMode);
@@ -355,78 +441,94 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     if (!rpgState) return;
 
     const highestWave = rpgState.highestWaveReached;
-    // Use explicit encounter tracking when the set is populated; fall back to
-    // highestWaveReached-based visibility for old saves (empty set, wave > 0).
     const useEncounterSet = rpgState.encounteredEnemyTypes.size > 0 || highestWave === 0;
 
-    // ── Section heading ───────────────────────────────────────
-    const heading = document.createElement('div');
-    heading.style.cssText = 'font-size:0.78em;color:#888;text-align:center;margin-bottom:2px;';
-    heading.textContent = isDevMode
-      ? '🔧 Dev Mode — all entries visible'
-      : `Encountered through wave ${highestWave}`;
-    element.appendChild(heading);
+    // ── Codex header + zone tabs ──────────────────────────────────
+    element.appendChild(buildCodexHeader(rpgState, isDevMode));
     element.appendChild(buildZoneTabs());
 
-    // ── Regular enemies ───────────────────────────────────────
+    // ── Regular enemies ───────────────────────────────────────────
     const enemiesHeading = document.createElement('div');
-    enemiesHeading.style.cssText =
-      'font-size:0.8em;font-weight:700;color:#aaa;letter-spacing:0.05em;' +
-      'padding:4px 0 2px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px;';
+    enemiesHeading.className = 'rpg-codex-section-heading';
     enemiesHeading.textContent = '⚔ Enemies';
     element.appendChild(enemiesHeading);
 
     const visibleEnemyCatalog = selectedZoneTab === 'all'
       ? ENEMY_CATALOG
       : ENEMY_CATALOG.filter(entry => entry.zone === selectedZoneTab);
-    let anyEnemyVisible = false;
+
+    const unlockedEntries: Array<{ entry: EnemyCatalogEntry; isLocked: boolean }> = [];
+    const lockedEntries: EnemyCatalogEntry[] = [];
 
     for (const entry of visibleEnemyCatalog) {
       const isLocked = useEncounterSet
         ? !rpgState.encounteredEnemyTypes.has(entry.id)
         : highestWave < entry.firstWave;
-      // Skip locked entries unless in dev mode
-      if (isLocked && !isDevMode) continue;
-      anyEnemyVisible = true;
-      const enemyEntry = buildEnemyEntry(entry, isLocked, isDevMode);
+      if (isLocked && !isDevMode) {
+        lockedEntries.push(entry);
+      } else {
+        unlockedEntries.push({ entry, isLocked });
+      }
+    }
+
+    // Render unlocked/dev-visible entries; highlight the first one
+    let firstHighlight = true;
+    for (const { entry, isLocked } of unlockedEntries) {
+      const isHighlighted = firstHighlight;
+      firstHighlight = false;
+      const enemyEntry = buildEnemyEntry(entry, isLocked, isDevMode, isHighlighted);
       const kills = rpgState.lifetimeKillsByType.get(entry.id) ?? 0;
       const bonus = getCodexBonusPercent(kills);
       const next = getNextVisibleCodexMilestone(kills);
       const mastery = document.createElement('div');
-      mastery.style.cssText = 'font-size:0.72em;color:#b9ad72;padding:2px 4px 6px;';
+      mastery.className = 'rpg-codex-mastery';
       mastery.textContent = `Kills: ${kills.toLocaleString()} | Codex bonus: +${bonus}% damage & XP${next ? ` | Next: ${next.toLocaleString()}` : ''}`;
       enemyEntry.appendChild(mastery);
       element.appendChild(enemyEntry);
     }
 
-    if (!anyEnemyVisible) {
+    // Locked teaser cards: up to 3 in ALL mode, up to 2 per specific zone
+    const maxTeasers = selectedZoneTab === 'all' ? 3 : 2;
+    for (let i = 0; i < Math.min(lockedEntries.length, maxTeasers); i++) {
+      element.appendChild(buildEnemyEntry(lockedEntries[i], true, false, false));
+    }
+
+    if (unlockedEntries.length === 0 && Math.min(lockedEntries.length, maxTeasers) === 0) {
       const noEnemies = document.createElement('div');
-      noEnemies.style.cssText = 'font-size:0.78em;color:#666;text-align:center;padding:8px 0 10px;';
+      noEnemies.className = 'rpg-codex-empty-msg';
       noEnemies.textContent = emptyZoneMessage(selectedZoneTab);
       element.appendChild(noEnemies);
     }
 
-    // ── Bosses ────────────────────────────────────────────────
+    // ── Bosses ────────────────────────────────────────────────────
     const bossesHeading = document.createElement('div');
-    bossesHeading.style.cssText =
-      'font-size:0.8em;font-weight:700;color:#aaa;letter-spacing:0.05em;' +
-      'padding:8px 0 2px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px;';
-    bossesHeading.textContent = '👑 Bosses';
+    bossesHeading.className = 'rpg-codex-boss-section-heading';
+    bossesHeading.textContent = '👑 Boss Archives';
     element.appendChild(bossesHeading);
 
     let anyBossVisible = false;
+    const lockedBossIds: number[] = [];
+
     for (let bossId = 1; bossId <= TOTAL_BOSS_COUNT; bossId++) {
       const bestSpeed = rpgState.bossCompletions.get(bossId) ?? 0;
       const isBeaten = bestSpeed > 0;
-      // Locked = not yet beaten
-      if (!isBeaten && !isDevMode) continue;
+      if (!isBeaten && !isDevMode) {
+        lockedBossIds.push(bossId);
+        continue;
+      }
       anyBossVisible = true;
       element.appendChild(buildBossEntry(bossId, !isBeaten, isDevMode, bestSpeed));
     }
 
+    // Show up to 2 locked boss teasers
+    for (let i = 0; i < Math.min(lockedBossIds.length, 2); i++) {
+      anyBossVisible = true;
+      element.appendChild(buildBossEntry(lockedBossIds[i], true, false, 0));
+    }
+
     if (!anyBossVisible) {
       const noBosses = document.createElement('div');
-      noBosses.style.cssText = 'font-size:0.78em;color:#666;text-align:center;padding:6px 0;';
+      noBosses.className = 'rpg-codex-empty-msg';
       noBosses.textContent = 'No bosses defeated yet.';
       element.appendChild(noBosses);
     }
