@@ -285,7 +285,7 @@ export function performSingleAttack(
     const nowMs = performance.now();
     const comboResults = evaluateStatusCombosOnStatusApplied({
       enemy: comboTargetEntity, enemyTypeId: comboEnemyTypeId,
-      x: hitX, y: hitY, baseDamage: rawDamage, nowMs,
+      x: hitX, y: hitY, baseDamage: rawDamage, nowMs, triggerKind: 'statusApplied',
     });
     const shatter = evaluateShatterCombo({
       enemy: comboTargetEntity, enemyTypeId: comboEnemyTypeId,
