@@ -266,8 +266,8 @@
 .credits {
   margin-top: 16px;
   text-align: center;
-  color: var(--text-secondary);
-  font-size: 11px;
+  color: var(--text-gold-muted);
+  font-size: 12px;
   line-height: 1.6;
 }
 
