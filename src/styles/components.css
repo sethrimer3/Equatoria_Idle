@@ -589,7 +589,7 @@
 }
 
 .forge-heat-label {
-  color: var(--text-secondary);
+  color: var(--text-gold-muted);
   font-size: 11px;
   margin-right: 2px;
 }
