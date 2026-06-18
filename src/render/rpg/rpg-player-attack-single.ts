@@ -105,47 +105,6 @@ function getTargetEnemyTypeId(t: ClosestTarget): string {
   return 'other';
 }
 
-/** Apply all Tier 1 lens statuses to the given enemy after a successful hit. */
-function applyLensStatusesOnHit(
-  entity: object,
-  lens: CraftedLensData,
-  weaponId: string,
-  hitDamage: number,
-  enemyTypeId: string,
-  onStatusFeedback?: (text: string, x: number, y: number) => void,
-  feedbackX?: number,
-  feedbackY?: number,
-): void {
-  const params = buildAllTier1StatusParams(lens, weaponId, hitDamage);
-  const isBossElite = isBossOrEliteType(enemyTypeId);
-  let feedbackShown = false;
-  for (const p of params) {
-    const mult = getEnemyStatusAffinityMultiplier(enemyTypeId, p.key);
-    if (mult === 0) {
-      if (!feedbackShown && onStatusFeedback && feedbackX !== undefined) {
-        onStatusFeedback('IMMUNE', feedbackX, feedbackY ?? 0);
-        feedbackShown = true;
-      }
-      continue;
-    }
-    let scaled = mult === 1 ? p : { ...p, durationMs: p.durationMs * mult, magnitude: p.magnitude * mult };
-    // Bosses/elites use lower Rift-Scarred stack cap and fewer Fractal Wound ticks.
-    if (isBossElite) {
-      if (scaled.key === 'riftScarred') {
-        scaled = { ...scaled, riftScarredStackCap: ENEMY_RIFT_STACK_CAP_BOSS };
-      } else if (scaled.key === 'fractalWound') {
-        scaled = { ...scaled, fractalTickCount: ENEMY_FRAC_TICKS_BOSS };
-      }
-    }
-    applyLensStatus(entity, scaled);
-    if (!feedbackShown && mult !== 1 && onStatusFeedback && feedbackX !== undefined) {
-      onStatusFeedback(mult > 1 ? 'WEAK!' : 'RESIST', feedbackX, feedbackY ?? 0);
-      feedbackShown = true;
-    }
-  }
-  const hasRift = lens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
-  if (hasRift) incrementRiftScarredStacks(entity, lens.id);
-}
 
 export function performSingleAttack(
   ctx: RpgPlayerAttackCtx,
