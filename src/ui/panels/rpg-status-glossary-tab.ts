@@ -6,6 +6,8 @@
  */
 
 import { ENEMY_STATUS_DEFS, PLAYER_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
+import { STATUS_COMBO_DEFINITIONS } from '../../data/rpg/status-combo-definitions';
+import { ENEMY_STATUS_DEFS as _ESD } from '../../data/rpg/status-effect-definitions';
 
 export interface RpgStatusGlossaryTabPane {
   element: HTMLElement;
