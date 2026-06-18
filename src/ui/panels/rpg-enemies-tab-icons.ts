@@ -43,7 +43,7 @@ import { createRpgPathState } from '../../render/rpg/terrain/rpg-pathfinding';
 
 // ─── Icon canvas size ─────────────────────────────────────────────
 
-export const ICON_SIZE = 40;
+export const ICON_SIZE = 54;
 
 // ─── Animated aliven mini-sim ─────────────────────────────────────
 
