@@ -351,7 +351,7 @@ function drawCircleNode(
     ctx.restore();
   }
 
-  ctx.font        = `bold 9px monospace`;
+  ctx.font        = `bold 11px "Cormorant Garamond", serif`;
   ctx.textAlign   = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle   = isActive ? '#fff172' : '#b0a880';
