@@ -2709,7 +2709,7 @@
 /* ── Stat chips ─────────────────────────────────────────────────── */
 .rpg-codex-stat-row {
   display: flex;
-  gap: 7px;
+  gap: 5px;
   margin-bottom: 4px;
   flex-wrap: wrap;
 }
