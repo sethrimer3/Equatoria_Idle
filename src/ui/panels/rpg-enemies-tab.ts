@@ -301,13 +301,58 @@ function buildEnemyEntry(
 
   box.appendChild(body);
 
-  // Zone icon cluster
-  if (!showLocked && entry.zone) {
-    const zoneCluster = document.createElement('div');
-    zoneCluster.className = 'rpg-codex-zone-cluster';
-    zoneCluster.appendChild(makeZoneIconChip(entry.zone));
-    box.appendChild(zoneCluster);
+  // Symbol cluster: zone icon + affinity/inflict status icons
+  const symbolCluster = document.createElement('div');
+  symbolCluster.className = 'rpg-codex-symbol-cluster';
+
+  if (!showLocked) {
+    if (entry.zone) {
+      symbolCluster.appendChild(makeZoneIconChip(entry.zone));
+    }
+
+    const ALL_ENEMY_STATUS_KEYS: EnemyStatusKey[] = [
+      'burning', 'poisoned', 'chilled', 'frozen', 'timeWarped',
+      'abraded', 'refracted', 'radiant', 'echoMarked', 'cracked',
+      'gravitized', 'fractalWound', 'riftScarred',
+    ];
+    const immune: EnemyStatusKey[]    = [];
+    const resistant: EnemyStatusKey[] = [];
+    const weak: EnemyStatusKey[]      = [];
+    for (const sk of ALL_ENEMY_STATUS_KEYS) {
+      const aff = getEnemyStatusAffinity(entry.id, sk);
+      if (aff === 'immune')         immune.push(sk);
+      else if (aff === 'resistant') resistant.push(sk);
+      else if (aff === 'weak')      weak.push(sk);
+    }
+    for (const k of weak) {
+      const def = ENEMY_STATUS_DEFS[k];
+      symbolCluster.appendChild(makeStatusIconChip(k, 'weak', def?.color ?? '#88cc44', def?.name ?? k));
+    }
+    for (const k of immune) {
+      const def = ENEMY_STATUS_DEFS[k];
+      symbolCluster.appendChild(makeStatusIconChip(k, 'immune', def?.color ?? '#888', def?.name ?? k));
+    }
+    for (const k of resistant) {
+      const def = ENEMY_STATUS_DEFS[k];
+      symbolCluster.appendChild(makeStatusIconChip(k, 'resistant', def?.color ?? '#4488cc', def?.name ?? k));
+    }
+
+    const inflicts = ENEMY_STATUS_SOURCES[entry.id] ?? ENEMY_STATUS_SOURCES[entry.id.replace(/^elite_/, 'elite')];
+    if (inflicts) {
+      for (const pk of inflicts) {
+        const def = PLAYER_STATUS_DEFS[pk];
+        const chip = document.createElement('span');
+        chip.className = 'rpg-codex-status-icon-chip rpg-codex-status-icon-chip--inflict';
+        chip.style.setProperty('--chip-color', def?.color ?? '#aaa');
+        chip.setAttribute('title', `Inflicts: ${def?.name ?? pk}`);
+        chip.setAttribute('aria-label', `Inflicts: ${def?.name ?? pk}`);
+        chip.textContent = STATUS_ICON_GLYPH[pk] ?? '?';
+        symbolCluster.appendChild(chip);
+      }
+    }
   }
+
+  box.appendChild(symbolCluster);
 
   // Mastery column
   const masteryCol = document.createElement('div');
@@ -340,7 +385,7 @@ function buildEnemyEntry(
 
     const bonusVal = document.createElement('div');
     bonusVal.className = 'rpg-codex-mastery-value rpg-codex-mastery-value--bonus';
-    bonusVal.textContent = `+${bonus}%`;
+    bonusVal.textContent = formatBonus(bonus);
     if (nextMilestone !== null) {
       bonusVal.setAttribute('title', `Next milestone: ${nextMilestone.toLocaleString()} kills`);
     }
