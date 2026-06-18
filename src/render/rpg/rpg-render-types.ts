@@ -55,6 +55,11 @@ export interface RpgRender {
   devSpawnAliven(variantId: string): void;
   /** Dev-mode only: remove all active Aliven groups instantly. */
   devClearAliven(): void;
+  /**
+   * Dev-mode only: apply a status combo preset to the nearest enemy.
+   * Preset IDs: 'steamBurst' | 'shatter' | 'toxicRupture' | 'gravityCollapse' | 'riftDetonation'
+   */
+  devApplyStatusCombo(preset: string): void;
   /** Returns the current number of active AlivenParticleGroups (dev use). */
   getAlivenGroupCount(): number;
 }
