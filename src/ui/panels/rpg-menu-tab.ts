@@ -489,6 +489,10 @@ export function createRpgMenuTabPane(
         isRpgPixelatedRender = enabled;
         dispatch({ kind: 'set_rpg_pixelated_render', enabled });
       });
+      appendDevCheckbox(devSection, '⚙ RPG debug overlay', 'Show nearby enemy HP/statuses and recent combo events in the top-right corner (dev mode only).', isRpgDebugOverlayEnabled, (enabled) => {
+        isRpgDebugOverlayEnabled = enabled;
+        dispatch({ kind: 'set_rpg_debug_overlay', enabled });
+      });
 
       // ── Sharp Topography Shadows ──
       const sharpShadowRow = document.createElement('div');
