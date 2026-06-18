@@ -2370,4 +2370,349 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Enemy Codex UI
+   Dark fantasy-scientific bestiary: glass panels, gold borders, glow accents
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── RPG menu panel: glass codex shell ─────────────────────────── */
+/* Override background + add border/shadow; position is untouched */
+#rpg-menu-panel {
+  background:
+    radial-gradient(ellipse at 30% 12%, rgba(22, 12, 44, 0.99) 0%, rgba(8, 8, 18, 0.99) 58%),
+    rgba(8, 8, 18, 0.98);
+  border: 1px solid rgba(212, 170, 64, 0.22);
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px rgba(212, 170, 64, 0.07),
+    0 8px 48px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(212, 170, 64, 0.10);
+  /* Small inset from screen edge */
+  top: 3px;
+  left: 3px;
+  right: 3px;
+  bottom: calc(var(--tab-height) + var(--safe-bottom) + 3px);
+}
+
+.rpg-menu__close {
+  border-radius: 50%;
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
+  border-color: rgba(212, 170, 64, 0.38);
+  color: rgba(212, 170, 64, 0.75);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.rpg-menu__close:hover {
+  border-color: rgba(212, 170, 64, 0.7);
+  box-shadow: 0 0 8px rgba(212, 170, 64, 0.25);
+}
+
+/* ── Enemies pane outer wrapper ────────────────────────────────── */
+.rpg-enemies-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+/* ── Codex header ───────────────────────────────────────────────── */
+.rpg-codex-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid rgba(212, 170, 64, 0.18);
+  margin-bottom: 4px;
+}
+
+.rpg-codex-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #f0d060 0%, #e8b840 45%, #ffeea0 80%, #d4a030 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 0 8px rgba(212, 170, 64, 0.4));
+  line-height: 1.1;
+}
+
+.rpg-codex-subtitle {
+  font-size: 0.72em;
+  color: rgba(212, 170, 64, 0.6);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.rpg-codex-progress-wrap {
+  width: 80%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.rpg-codex-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(212, 170, 64, 0.5) 0%, rgba(255, 220, 100, 0.85) 100%);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 6px rgba(212, 170, 64, 0.5);
+}
+
+/* ── Zone filter tabs ───────────────────────────────────────────── */
+.rpg-codex-zone-tabs {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  -webkit-overflow-scrolling: touch;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+
+.rpg-codex-zone-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.rpg-codex-zone-tab {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 11px;
+  min-height: 30px;
+  font-size: 0.70em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-family: var(--font-primary);
+  touch-action: manipulation;
+  cursor: pointer;
+  color: rgba(180, 170, 200, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  transition: color 0.14s, background 0.14s, border-color 0.14s, box-shadow 0.14s;
+  white-space: nowrap;
+}
+
+.rpg-codex-zone-tab--active {
+  color: rgba(255, 230, 100, 0.95);
+  background: rgba(212, 170, 64, 0.13);
+  border-color: rgba(212, 170, 64, 0.5);
+  box-shadow: 0 0 8px rgba(212, 170, 64, 0.18);
+}
+
+/* ── Section headings (Enemies / Boss Archives) ─────────────────── */
+.rpg-codex-section-heading {
+  font-size: 0.75em;
+  font-weight: 700;
+  color: rgba(180, 160, 120, 0.7);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(212, 170, 64, 0.12);
+  margin-bottom: 2px;
+}
+
+.rpg-codex-boss-section-heading {
+  font-size: 0.75em;
+  font-weight: 700;
+  color: rgba(200, 160, 220, 0.75);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 0 2px;
+  border-bottom: 1px solid rgba(160, 80, 200, 0.2);
+  margin-bottom: 2px;
+}
+
+/* ── Enemy codex card ───────────────────────────────────────────── */
+.rpg-codex-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  background: rgba(18, 12, 32, 0.88);
+  border: 1px solid rgba(80, 55, 120, 0.32);
+  border-radius: 8px;
+  padding: 10px 11px;
+  transition: border-color 0.15s;
+}
+
+.rpg-codex-card--selected {
+  border-color: rgba(212, 170, 64, 0.55);
+  background: rgba(22, 16, 40, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(212, 170, 64, 0.10),
+    0 0 16px rgba(212, 170, 64, 0.10),
+    inset 0 0 24px rgba(212, 170, 64, 0.04);
+}
+
+.rpg-codex-card--locked {
+  background: rgba(10, 7, 18, 0.65);
+  border-color: rgba(255, 255, 255, 0.07);
+  opacity: 0.58;
+}
+
+.rpg-codex-card--boss {
+  background: rgba(20, 10, 36, 0.92);
+  border-color: rgba(120, 60, 180, 0.28);
+}
+
+.rpg-codex-card--boss.rpg-codex-card--selected {
+  border-color: rgba(160, 80, 220, 0.6);
+  box-shadow: 0 0 16px rgba(160, 80, 220, 0.15);
+}
+
+/* ── Icon frame ─────────────────────────────────────────────────── */
+.rpg-codex-icon-frame {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rpg-codex-icon-canvas {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+/* ── Body ───────────────────────────────────────────────────────── */
+.rpg-codex-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rpg-codex-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+  gap: 6px;
+}
+
+.rpg-codex-name {
+  font-weight: 700;
+  font-size: 0.88em;
+}
+
+.rpg-codex-name--locked {
+  color: #556 !important;
+}
+
+.rpg-codex-dev-badge {
+  font-size: 0.68em;
+  color: #ff8844;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Stat chips ─────────────────────────────────────────────────── */
+.rpg-codex-stat-row {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.rpg-codex-stat-chip {
+  font-size: 0.70em;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.rpg-codex-stat-chip--hp     { color: #69db7c; border: 1px solid rgba(105, 219, 124, 0.25); }
+.rpg-codex-stat-chip--atk    { color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.25); }
+.rpg-codex-stat-chip--def    { color: #74c0fc; border: 1px solid rgba(116, 192, 252, 0.25); }
+.rpg-codex-stat-chip--beat   { color: #69db7c; border: 1px solid rgba(105, 219, 124, 0.25); }
+.rpg-codex-stat-chip--locked { color: #444; border: 1px solid rgba(255, 255, 255, 0.06); }
+
+/* ── Description ────────────────────────────────────────────────── */
+.rpg-codex-desc {
+  font-size: 0.74em;
+  color: rgba(160, 155, 185, 0.88);
+  line-height: 1.4;
+}
+
+.rpg-codex-desc--locked {
+  color: rgba(100, 90, 130, 0.7);
+  font-style: italic;
+}
+
+.rpg-codex-elite-blurb {
+  font-size: 0.70em;
+  color: #ff8c00;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* ── Chip rows (affinities / inflicts) ──────────────────────────── */
+.rpg-codex-chip-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+  align-items: center;
+}
+
+.rpg-codex-chip-label {
+  font-size: 0.66em;
+  color: #555;
+  white-space: nowrap;
+}
+
+.rpg-codex-affinity-chip {
+  font-size: 0.66em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.rpg-codex-affinity-chip--weak      { background: rgba(100, 210, 60, 0.22); }
+.rpg-codex-affinity-chip--immune    { background: rgba(140, 140, 170, 0.22); }
+.rpg-codex-affinity-chip--resistant { background: rgba(70, 110, 200, 0.18); }
+
+.rpg-codex-inflict-chip {
+  font-size: 0.66em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+/* ── Mastery / codex bonus row ──────────────────────────────────── */
+.rpg-codex-mastery {
+  font-size: 0.68em;
+  color: rgba(180, 165, 105, 0.75);
+  padding: 3px 1px 2px;
+  width: 100%;
+  border-top: 1px solid rgba(212, 170, 64, 0.08);
+  margin-top: 4px;
+}
+
+/* ── Empty zone / no-bosses message ─────────────────────────────── */
+.rpg-codex-empty-msg {
+  font-size: 0.76em;
+  color: #555;
+  text-align: center;
+  padding: 8px 0 10px;
+}
+
 
