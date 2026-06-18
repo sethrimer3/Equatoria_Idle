@@ -418,3 +418,78 @@ describe('cooldown isolation', () => {
     clearEnemyStatuses(enemy2);
   });
 });
+
+// ── Definitions as source of truth ────────────────────────────────────────────
+
+describe('combo definitions drive engine behavior', () => {
+  it('all combo IDs in definitions match what the engine returns', () => {
+    const definedIds = STATUS_COMBO_DEFINITIONS.map(c => c.id);
+    // Steam Burst
+    const e1 = makeEnemy();
+    applyStatus(e1, 'burning'); applyStatus(e1, 'chilled');
+    const r1 = evaluateStatusCombosOnStatusApplied({ enemy: e1, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 10, nowMs: 0 });
+    expect(definedIds).toContain(r1[0]?.comboId);
+    clearEnemyStatuses(e1);
+
+    // Shatter
+    const e2 = makeEnemy();
+    applyStatus(e2, 'frozen');
+    const r2 = evaluateShatterCombo({ enemy: e2, enemyTypeId: 'other', x: 0, y: 0, hitDamage: 10, nowMs: 0 });
+    expect(definedIds).toContain(r2?.comboId);
+    clearEnemyStatuses(e2);
+  });
+
+  it('Steam Burst consumes exactly the statuses listed in consumeStatuses', () => {
+    const steamDef = getComboById('steamBurst')!;
+    const enemy = makeEnemy();
+    applyStatus(enemy, 'burning');
+    applyStatus(enemy, 'chilled');
+    evaluateStatusCombosOnStatusApplied({ enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 10, nowMs: 0 });
+    for (const s of steamDef.consumeStatuses) {
+      expect(hasStatus(enemy, s)).toBe(false);
+    }
+    // burning is NOT in consumeStatuses, should remain
+    expect(hasStatus(enemy, 'burning')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Shatter consumes exactly the statuses listed in consumeStatuses', () => {
+    const shatterDef = getComboById('shatter')!;
+    const enemy = makeEnemy();
+    applyStatus(enemy, 'frozen');
+    evaluateShatterCombo({ enemy, enemyTypeId: 'other', x: 0, y: 0, hitDamage: 10, nowMs: 0 });
+    for (const s of shatterDef.consumeStatuses) {
+      expect(hasStatus(enemy, s)).toBe(false);
+    }
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Steam Burst label and color come from definition', () => {
+    const steamDef = getComboById('steamBurst')!;
+    const enemy = makeEnemy();
+    applyStatus(enemy, 'burning'); applyStatus(enemy, 'chilled');
+    const results = evaluateStatusCombosOnStatusApplied({ enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 10, nowMs: 0 });
+    expect(results[0]!.label).toBe(steamDef.feedbackLabel);
+    expect(results[0]!.color).toBe(steamDef.feedbackColor);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('Rift Detonation uses riftStackThreshold from definition', () => {
+    const riftDef = getComboById('riftDetonation')!;
+    const threshold = riftDef.riftStackThreshold ?? 8;
+
+    const e1 = makeEnemy();
+    applyStatus(e1, 'riftScarred');
+    for (let i = 0; i < threshold - 1; i++) incrementRiftScarredStacks(e1, 'lens1');
+    const r1 = evaluateStatusCombosOnStatusApplied({ enemy: e1, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0 });
+    expect(r1.find(r => r.comboId === 'riftDetonation')).toBeUndefined();
+    clearEnemyStatuses(e1);
+
+    const e2 = makeEnemy();
+    applyStatus(e2, 'riftScarred');
+    for (let i = 0; i < threshold; i++) incrementRiftScarredStacks(e2, 'lens1');
+    const r2 = evaluateStatusCombosOnStatusApplied({ enemy: e2, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0 });
+    expect(r2.find(r => r.comboId === 'riftDetonation')).toBeDefined();
+    clearEnemyStatuses(e2);
+  });
+});
