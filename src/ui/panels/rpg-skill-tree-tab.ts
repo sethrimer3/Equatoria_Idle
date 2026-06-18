@@ -1063,7 +1063,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
 
     // Level indicator
     textY += 6;
-    ctx.font = '10px monospace';
+    ctx.font = '12px "Cormorant Garamond", serif';
     if (isRoot) {
       ctx.fillStyle = '#7de88a';
       ctx.fillText('✓ Always active', textX, textY);
