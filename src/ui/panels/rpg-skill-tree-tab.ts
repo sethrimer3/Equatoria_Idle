@@ -1047,7 +1047,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     let   textY = cardY + CARD_PAD;
 
     // Name (gold, bold)
-    ctx.font      = 'bold 13px monospace';
+    ctx.font      = 'bold 15px "Cormorant Garamond", serif';
     ctx.fillStyle = '#ffd060';
     ctx.fillText(name, textX, textY);
     textY += NAME_LINE_H;
