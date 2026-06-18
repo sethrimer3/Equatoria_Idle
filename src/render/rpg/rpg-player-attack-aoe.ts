@@ -235,28 +235,43 @@ export function performAoeAttack(
   fluid.addExplosion(mote.x, mote.y, FLUID_EXPLOSION_STRENGTH,
     FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B);
 
-  // Lens status post-hit: apply Tier 1 statuses to all in-range enemies.
+  // Lens status post-hit: apply Tier 1 statuses to all in-range enemies,
+  // respecting affinities, immunities, and boss/elite overrides.
   if (attachedLens && weaponId) {
-    const lensParams = buildAllTier1StatusParams(attachedLens, weaponId, rawDamage);
-    if (lensParams.length > 0) {
-      const mainArrays = [
-        ...enemies, ...sapphireEnemies, ...emeraldEnemies, ...amberEnemies,
-        ...voidEnemies, ...quartzEnemies, ...rubyEnemies, ...sunstoneEnemies,
-        ...citrineEnemies, ...ioliteEnemies, ...amethystEnemies, ...diamondEnemies,
-        ...nullstoneEnemies, ...fracterylEnemies, ...eigensteinEnemies, ...eliteEnemies,
-      ];
-      for (const e of mainArrays) {
-        if (e.hp <= 0) continue;
-        const dx = e.x - mote.x, dy = e.y - mote.y;
-        if (dx * dx + dy * dy <= aoeSq) {
-          for (const p of lensParams) applyLensStatus(e, p);
-        }
+    type AoeEntry = { enemy: { hp: number; x: number; y: number }; enemyTypeId: string };
+    const aoeTargets: AoeEntry[] = [
+      ...enemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...sapphireEnemies.map(e => ({ enemy: e, enemyTypeId: 'sapphire' })),
+      ...emeraldEnemies.map(e => ({ enemy: e, enemyTypeId: 'emerald' })),
+      ...amberEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...voidEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...quartzEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...rubyEnemies.map(e => ({ enemy: e, enemyTypeId: 'ruby' })),
+      ...sunstoneEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...citrineEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...ioliteEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...amethystEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...diamondEnemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
+      ...nullstoneEnemies.map(e => ({ enemy: e, enemyTypeId: 'nullstone' })),
+      ...fracterylEnemies.map(e => ({ enemy: e, enemyTypeId: 'fracteryl' })),
+      ...eigensteinEnemies.map(e => ({ enemy: e, enemyTypeId: 'eigenstein' })),
+      ...eliteEnemies.map(e => ({ enemy: e, enemyTypeId: `elite_${(e as { tier: string }).tier}` })),
+    ];
+    for (const { enemy: e, enemyTypeId } of aoeTargets) {
+      if (e.hp <= 0) continue;
+      const dx = e.x - mote.x, dy = e.y - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) {
+        applyTier1LensStatusesToEnemy({
+          enemy: e, lens: attachedLens, weaponId, hitDamage: rawDamage, enemyTypeId,
+        });
       }
-      if (bossEnemy && bossEnemy.hp > 0) {
-        const bx = bossEnemy.x - mote.x, by = bossEnemy.y - mote.y;
-        if (bx * bx + by * by <= aoeSq) {
-          for (const p of lensParams) applyLensStatus(bossEnemy, p);
-        }
+    }
+    if (bossEnemy && bossEnemy.hp > 0) {
+      const bx = bossEnemy.x - mote.x, by = bossEnemy.y - mote.y;
+      if (bx * bx + by * by <= aoeSq) {
+        applyTier1LensStatusesToEnemy({
+          enemy: bossEnemy, lens: attachedLens, weaponId, hitDamage: rawDamage, enemyTypeId: 'boss',
+        });
       }
     }
   }
