@@ -222,31 +222,46 @@ function buildEnemyEntry(
     iconFrame.style.borderColor = entry.glowColor + '55';
   }
 
-  const isAliven = entry.id.startsWith('aliven_');
-  const isProc   = entry.id.startsWith('proc_');
-  let canvas: HTMLCanvasElement;
-
-  if ((isAliven || isProc) && !showLocked) {
-    canvas = isAliven ? createAlivenIconCanvas(entry) : createProcIconCanvas(entry);
-  } else {
-    canvas = document.createElement('canvas');
+  if (showLocked) {
+    // Locked placeholder canvas
+    const canvas = document.createElement('canvas');
     canvas.width  = ICON_SIZE;
     canvas.height = ICON_SIZE;
-    if (!showLocked) {
-      drawEnemyIcon(canvas, entry);
-    } else {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.font = `bold ${ICON_SIZE * 0.5}px sans-serif`;
-        ctx.fillStyle = '#3a3050';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('?', ICON_SIZE / 2, ICON_SIZE / 2);
-      }
+    canvas.className = 'rpg-codex-icon-canvas';
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.font = `bold ${ICON_SIZE * 0.5}px sans-serif`;
+      ctx.fillStyle = '#3a3050';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', ICON_SIZE / 2, ICON_SIZE / 2);
     }
+    iconFrame.appendChild(canvas);
+  } else {
+    // Main icon: dedicated PNG or fallback
+    const iconImg = document.createElement('img');
+    iconImg.className = 'rpg-codex-icon-img';
+    iconImg.src = getEnemyIconPath(entry);
+    iconImg.onerror = () => { iconImg.src = FALLBACK_ENEMY_ICON_PATH; };
+    iconImg.alt = entry.name;
+    iconFrame.appendChild(iconImg);
+
+    // Overlay: small animated/procedural canvas in top-right corner
+    const isAliven = entry.id.startsWith('aliven_');
+    const isProc   = entry.id.startsWith('proc_');
+    let overlayCanvas: HTMLCanvasElement;
+    if (isAliven || isProc) {
+      overlayCanvas = isAliven ? createAlivenIconCanvas(entry) : createProcIconCanvas(entry);
+    } else {
+      overlayCanvas = document.createElement('canvas');
+      overlayCanvas.width  = ICON_SIZE;
+      overlayCanvas.height = ICON_SIZE;
+      drawEnemyIcon(overlayCanvas, entry);
+    }
+    overlayCanvas.className = 'rpg-codex-icon-overlay';
+    iconFrame.appendChild(overlayCanvas);
   }
-  canvas.className = 'rpg-codex-icon-canvas';
-  iconFrame.appendChild(canvas);
+
   box.appendChild(iconFrame);
 
   // Body
