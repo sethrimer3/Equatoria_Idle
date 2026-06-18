@@ -99,6 +99,15 @@ export interface DamageNumber {
   sourceColor?: string;
 }
 
+/** Short-lived combo burst effect drawn on the canvas at the point of impact. */
+export interface ComboEffect {
+  x: number; y: number;
+  comboId: string;
+  color: string;
+  timerMs: number;
+  totalMs: number;
+}
+
 /** Visual-only orbit particle for the equipped weapon. */
 export interface WeaponOrbitParticle {
   /** Current angle in radians (advances each frame). */
