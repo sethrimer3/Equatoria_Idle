@@ -83,7 +83,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A nimble red assailant that dashes straight through the player, leaving a glowing curved trail.',
     shape: 'square',
     zone: 'euhedral',
-    iconFile: 'EnemyIcon_Euhedral__0000_Laser-Striker.png',
+    iconFile: 'EnemyIcon_Laser-Striker.png',
   },
   {
     id: 'quartz',
@@ -426,7 +426,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A swarm of 8 alivened motes that drift and seek the player. Each spitter fires a slow, dodgeable bullet every 3–5 s. Defeat all particles to clear the group.',
     shape: 'circle',
     zone: 'impetus',
-    iconFile: 'EnemyIcon_Impetus__0000_Aliven-Spark-Cluster.png',
+    iconFile: 'EnemyIcon_Aliven-Spark-Cluster.png',
   },
   {
     id: 'aliven_shard_bloom',
@@ -699,7 +699,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
-    iconFile: 'EnemyIcon_Verdure__0000_Ribbon-Worm.png',
+    iconFile: 'EnemyIcon_Ribbon-Worm.png',
   },
   {
     id: 'proc_lanternmoth',
@@ -830,7 +830,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
-    iconFile: 'EnemyIcon_Caustics__0000_Sand-Fish.png',
+    iconFile: 'EnemyIcon_Sand-Fish.png',
   },
   {
     id: 'proc_quartzfish',

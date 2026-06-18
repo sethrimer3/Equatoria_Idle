@@ -172,17 +172,25 @@ export function getBgAnimationFramePath(frameIndex: number): string {
 
 // ── Enemy Codex Icons ──────────────────────────────────────────
 // Dedicated PNG icons displayed as the main image in codex cards.
-// Folder: ASSETS/SPRITES/enemyIcons/{zone}/
-// Horizon sub-zones: ASSETS/SPRITES/enemyIcons/horizon/{Zenith|Nadir|True}/
+// Folder: ASSETS/SPRITES/enemyIcons/{Zone}/
+// Horizon sub-zones: ASSETS/SPRITES/enemyIcons/{Zenith|Nadir|True}/
 // When an entry has no iconFile the codex falls back to fallBack_icon.png.
 
 export const FALLBACK_ENEMY_ICON_PATH = `${BASE}/SPRITES/enemyIcons/fallBack_icon.png`;
+
+const ENEMY_ICON_ZONE_FOLDER: Record<Exclude<EnemyCatalogEntry['zone'], undefined>, string> = {
+  euhedral: 'Euhedral',
+  impetus: 'Impetus',
+  caustics: 'Caustics',
+  verdure: 'Verdure',
+  horizon: 'Horizon',
+};
 
 export function getEnemyIconPath(entry: EnemyCatalogEntry): string {
   if (!entry.iconFile || !entry.zone) return FALLBACK_ENEMY_ICON_PATH;
   if (entry.zone === 'horizon') {
     if (!entry.horizonSubZone) return FALLBACK_ENEMY_ICON_PATH;
-    return `${BASE}/SPRITES/enemyIcons/horizon/${entry.horizonSubZone}/${entry.iconFile}`;
+    return `${BASE}/SPRITES/enemyIcons/${entry.horizonSubZone}/${entry.iconFile}`;
   }
-  return `${BASE}/SPRITES/enemyIcons/${entry.zone}/${entry.iconFile}`;
+  return `${BASE}/SPRITES/enemyIcons/${ENEMY_ICON_ZONE_FOLDER[entry.zone]}/${entry.iconFile}`;
 }
