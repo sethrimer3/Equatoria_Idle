@@ -1119,7 +1119,7 @@ export function createRpgZoneSelectPanel(
     drawBackground(ctx, getCachedImage(BACKGROUND_PATH), W, H);
 
     // Screen-space title (drawn before world transform)
-    ctx.font         = 'bold 13px monospace';
+    ctx.font         = 'bold 15px "Cormorant Garamond", serif';
     ctx.textAlign    = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle    = '#fff172cc';
