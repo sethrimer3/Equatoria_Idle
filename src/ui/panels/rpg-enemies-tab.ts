@@ -112,6 +112,7 @@ const STATUS_ICON_GLYPH: Record<string, string> = {
   chilled:      '❄',
   frozen:       '✦',
   timeWarped:   '⏱',
+  slowed:       '⧖',
   abraded:      '⚙',
   refracted:    '◈',
   radiant:      '☀',
