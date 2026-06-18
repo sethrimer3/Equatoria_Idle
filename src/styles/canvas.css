@@ -2750,7 +2750,7 @@
   margin-top: 4px;
 }
 
-/* ── Status icon chips & zone cluster ────────────────────────────── */
+/* ── Stat chip sub-elements ──────────────────────────────────────── */
 .rpg-codex-stat-label {
   opacity: 0.75;
 }
@@ -2759,50 +2759,18 @@
   font-size: 0.9em;
 }
 
-.rpg-codex-chip-cluster {
+/* ── Symbol cluster (zone + status/affinity/inflict icons) ──────── */
+.rpg-codex-symbol-cluster {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 3px;
-  margin-top: 4px;
-}
-
-.rpg-codex-chip-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.rpg-codex-status-icon-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  font-size: 0.75em;
-  border: 1px solid color-mix(in srgb, var(--chip-color, #888) 35%, transparent);
-  background: color-mix(in srgb, var(--chip-color, #888) 12%, transparent);
-  color: var(--chip-color, #aaa);
-  cursor: default;
   flex-shrink: 0;
+  width: 26px;
+  padding-top: 1px;
 }
 
-.rpg-codex-status-icon-chip--weak {
-  box-shadow: 0 0 5px color-mix(in srgb, var(--chip-color, #88cc44) 25%, transparent);
-}
-
-.rpg-codex-zone-cluster {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  padding-top: 2px;
-  flex-shrink: 0;
-  width: 28px;
-}
-
+/* Zone icon — circle shape, zone-tinted */
 .rpg-codex-zone-icon-chip {
   display: inline-flex;
   align-items: center;
@@ -2810,11 +2778,42 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  font-size: 0.78em;
-  border: 1px solid color-mix(in srgb, var(--chip-color, #aaa) 40%, transparent);
-  background: color-mix(in srgb, var(--chip-color, #aaa) 10%, transparent);
+  font-size: 0.76em;
+  border: 1px solid color-mix(in srgb, var(--chip-color, #aaa) 45%, transparent);
+  background: color-mix(in srgb, var(--chip-color, #aaa) 12%, transparent);
   color: var(--chip-color, #aaa);
   cursor: default;
+  flex-shrink: 0;
+}
+
+/* Status/affinity/inflict icon chips — rounded square */
+.rpg-codex-status-icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  font-size: 0.72em;
+  border: 1px solid color-mix(in srgb, var(--chip-color, #888) 35%, transparent);
+  background: color-mix(in srgb, var(--chip-color, #888) 10%, transparent);
+  color: var(--chip-color, #aaa);
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.rpg-codex-status-icon-chip--weak {
+  box-shadow: 0 0 4px color-mix(in srgb, var(--chip-color, #88cc44) 30%, transparent);
+  border-style: solid;
+}
+.rpg-codex-status-icon-chip--immune {
+  opacity: 0.55;
+}
+.rpg-codex-status-icon-chip--resistant {
+  opacity: 0.75;
+}
+.rpg-codex-status-icon-chip--inflict {
+  border-style: dashed;
 }
 
 /* ── Mastery column ──────────────────────────────────────────────── */
