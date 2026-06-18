@@ -430,7 +430,7 @@ function drawNode(
   const upgDef = node.def.upgradeId ? RPG_UPGRADE_BY_ID.get(node.def.upgradeId) : null;
   const label  = upgDef ? upgDef.name : 'Awakening';
   ctx.save();
-  ctx.font         = 'bold 8px monospace';
+  ctx.font         = 'bold 10px "Cormorant Garamond", serif';
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'top';
   ctx.globalAlpha  = status === 'locked' ? 0.28 : 0.88;
