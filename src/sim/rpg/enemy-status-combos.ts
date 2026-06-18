@@ -21,6 +21,8 @@ export interface ComboResult {
   label: string;
   color: string;
   primaryEnemy: object;
+  /** Enemy type ID for logging/affinity purposes (e.g. 'ruby', 'boss', 'other'). */
+  enemyTypeId: string;
   x: number;
   y: number;
   /** Damage to deal to the primary target (already scaled for boss/elite). */
@@ -29,6 +31,8 @@ export interface ComboResult {
   aoeDamage: number;
   /** Radius in px for the AoE component (0 if aoeDamage = 0). */
   aoeRadius: number;
+  /** The trigger kind that caused this combo (for logging/dev). */
+  triggerKind: ComboTriggerKind;
 }
 
 // ── Trigger kind ───────────────────────────────────────────────────────────────
