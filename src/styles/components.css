@@ -729,11 +729,12 @@
 .achievement-group-label {
   font-size: 13px;
   font-weight: 700;
+  color: var(--text-gold);
 }
 
 .achievement-group-count {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-gold-muted);
   font-weight: 700;
 }
 
