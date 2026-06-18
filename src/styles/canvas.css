@@ -2801,7 +2801,11 @@
   gap: 3px;
   flex-shrink: 0;
   width: 26px;
-  padding-top: 1px;
+  padding-top: 2px;
+}
+
+.rpg-codex-symbol-cluster:empty {
+  display: none;
 }
 
 /* Zone icon — circle shape, zone-tinted */
