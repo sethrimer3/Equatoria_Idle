@@ -2656,6 +2656,7 @@
 
 /* ── Icon frame ─────────────────────────────────────────────────── */
 .rpg-codex-icon-frame {
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   flex-shrink: 0;
