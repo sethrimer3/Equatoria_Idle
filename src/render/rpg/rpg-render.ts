@@ -1923,9 +1923,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (afterimages[_i].alpha <= 0) afterimages.splice(_i, 1);
       }
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
+
+      if (_isDevMode) {
+        _devOverlayUpdateMs -= deltaMs;
+        if (_devOverlayUpdateMs <= 0) {
+          _devOverlayUpdateMs = 250;
+          _updateDevOverlay(_devOverlay, mote, enemies as Array<{ x: number; y: number; hp: number; maxHp: number }>);
+        }
+      }
     },
 
     resize(cont: HTMLElement): void {
+      _devOverlayContainer = cont;
+      if (_isDevMode && !_devOverlay.parentElement) cont.appendChild(_devOverlay);
       doResize(cont);
       rebuildVerdureBoundsForResize();
       const half = RPG_MOTE_SIZE / 2;
