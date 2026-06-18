@@ -2509,9 +2509,25 @@
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  padding: 8px 0 10px;
-  border-bottom: 1px solid rgba(212, 170, 64, 0.18);
+  padding: 8px 0 6px;
   margin-bottom: 4px;
+}
+
+.rpg-codex-header-ornament {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 68%;
+  font-size: 0.58em;
+  color: rgba(212, 170, 64, 0.5);
+  margin-top: 2px;
+}
+.rpg-codex-header-ornament::before,
+.rpg-codex-header-ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(212, 170, 64, 0.28);
 }
 
 .rpg-codex-title {
