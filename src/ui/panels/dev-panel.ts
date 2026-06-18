@@ -163,7 +163,7 @@ export function createDevPanel(): DevPanel {
   const loomTableWrap = el('div', 'dev-panel-table-wrap');
   section.appendChild(loomTableWrap);
 
-  // ── 5. Aliven Balance Validation Table ────────────────────────
+  // ── 7. Aliven Balance Validation Table ────────────────────────
   section.appendChild(makeSubTitle('Aliven Balance Table'));
   section.appendChild(buildAlivenBalanceTable());
 
