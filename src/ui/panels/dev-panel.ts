@@ -167,7 +167,7 @@ export function createDevPanel(): DevPanel {
   section.appendChild(makeSubTitle('Aliven Balance Table'));
   section.appendChild(buildAlivenBalanceTable());
 
-  // ── 6. Session Telemetry ───────────────────────────────────────
+  // ── 8. Session Telemetry ───────────────────────────────────────
   section.appendChild(makeSubTitle('Session Telemetry'));
 
   // Reset button
