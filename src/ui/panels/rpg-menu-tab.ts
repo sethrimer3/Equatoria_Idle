@@ -79,6 +79,7 @@ export function createRpgMenuTabPane(
   let isSharpTopographyShadows = false;
   let isSoftImpetusAsteroidShadows = false;
   let isRpgPixelatedRender = false;
+  let isRpgDebugOverlayEnabled = false;
 
   function appendDevCheckbox(
     host: HTMLElement,
