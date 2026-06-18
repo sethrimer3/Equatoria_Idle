@@ -2874,4 +2874,29 @@
   padding: 8px 0 10px;
 }
 
+/* ── Responsive: narrow viewport ────────────────────────────────── */
+@media (max-width: 480px) {
+  .rpg-codex-card {
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+  .rpg-codex-body {
+    flex: 1 1 55%;
+    min-width: 0;
+  }
+  .rpg-codex-symbol-cluster {
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 60px;
+    align-items: flex-start;
+  }
+  .rpg-codex-mastery-col {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 56px;
+  }
+}
+
 
