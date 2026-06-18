@@ -133,8 +133,18 @@ export const FORGE_RING_SPRITE_PATHS = [
 
 export const LOGO_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo.webp`;
 export const LOGO_ALT_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo_alt.webp`;
-export const ENEMY_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex.webp`;
-export const ENEMY_CODEX_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex_glow.webp`;
+export const ENEMY_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex/enemyCodex.png`;
+export const ENEMY_CODEX_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex/enemyCodex_glow.png`;
+export const ENEMY_CODEX_SHARD_ICON_PATHS = Array.from(
+  { length: 8 },
+  (_, index) => `${BASE}/SPRITES/menuElements/icons/enemyCodex/codexShard (${index + 1}).png`,
+) as readonly string[];
+export const SKILL_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/skillCodex/skillCodex.png`;
+export const SKILL_CODEX_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/skillCodex/skillCodex_glow.png`;
+export const SKILL_CODEX_SHARD_ICON_PATHS = Array.from(
+  { length: 8 },
+  (_, index) => `${BASE}/SPRITES/menuElements/icons/skillCodex/codexShard (${index + 1}).png`,
+) as readonly string[];
 
 // ── Background Animation ───────────────────────────────────────
 

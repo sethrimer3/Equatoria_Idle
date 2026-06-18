@@ -1186,6 +1186,91 @@
   opacity: 1;
 }
 
+.rpg-codex-shortcut__sprite {
+  position: absolute;
+  inset: 0;
+  display: block;
+  animation: rpg-codex-soft-bob 2.9s ease-in-out infinite;
+  will-change: transform;
+}
+
+.rpg-codex-shortcut__icon,
+.rpg-codex-shortcut__shard {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.rpg-codex-shortcut__icon {
+  transition: opacity 900ms ease-in-out;
+}
+
+.rpg-codex-shortcut__icon--glow,
+.rpg-codex-btn--unread .rpg-codex-shortcut__icon:not(.rpg-codex-shortcut__icon--glow),
+.rpg-skill-tree-btn--unread .rpg-codex-shortcut__icon:not(.rpg-codex-shortcut__icon--glow) {
+  opacity: 0;
+}
+
+.rpg-codex-btn--unread .rpg-codex-shortcut__icon--glow,
+.rpg-skill-tree-btn--unread .rpg-codex-shortcut__icon--glow {
+  opacity: 1;
+}
+
+.rpg-codex-shortcut:hover .rpg-codex-shortcut__icon--glow,
+.rpg-codex-shortcut:active .rpg-codex-shortcut__icon--glow {
+  opacity: 0.72;
+}
+
+.rpg-codex-shortcut__shard {
+  opacity: 0.9;
+  mix-blend-mode: screen;
+  filter:
+    sepia(1)
+    saturate(4.4)
+    hue-rotate(218deg)
+    brightness(1.28)
+    drop-shadow(0 0 4px rgba(184, 92, 255, 0.88))
+    drop-shadow(0 0 9px rgba(112, 38, 220, 0.55));
+}
+
+.rpg-codex-shortcut__shard--1 { animation: rpg-codex-shard-bob-a 2.25s ease-in-out infinite; }
+.rpg-codex-shortcut__shard--2 { animation: rpg-codex-shard-bob-b 2.55s ease-in-out infinite; }
+.rpg-codex-shortcut__shard--3 { animation: rpg-codex-shard-bob-c 2.8s ease-in-out infinite; }
+.rpg-codex-shortcut__shard--4 { animation: rpg-codex-shard-bob-d 3.05s ease-in-out infinite; }
+.rpg-codex-shortcut__shard--5 { animation: rpg-codex-shard-bob-a 3.35s ease-in-out infinite reverse; }
+.rpg-codex-shortcut__shard--6 { animation: rpg-codex-shard-bob-b 2.7s ease-in-out infinite reverse; }
+.rpg-codex-shortcut__shard--7 { animation: rpg-codex-shard-bob-c 3.2s ease-in-out infinite reverse; }
+.rpg-codex-shortcut__shard--8 { animation: rpg-codex-shard-bob-d 2.45s ease-in-out infinite reverse; }
+
+@keyframes rpg-codex-soft-bob {
+  0%, 100% { transform: translateY(-1px); }
+  50% { transform: translateY(2px); }
+}
+
+@keyframes rpg-codex-shard-bob-a {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(2px); }
+}
+
+@keyframes rpg-codex-shard-bob-b {
+  0%, 100% { transform: translateY(1px); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes rpg-codex-shard-bob-c {
+  0%, 100% { transform: translateY(-1px); }
+  50% { transform: translateY(3px); }
+}
+
+@keyframes rpg-codex-shard-bob-d {
+  0%, 100% { transform: translateY(2px); }
+  50% { transform: translateY(-2px); }
+}
+
 #rpg-menu-panel {
   position: absolute;
   top: 0;

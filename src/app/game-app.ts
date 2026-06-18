@@ -39,7 +39,14 @@ import { createTraceEffect } from '../render/ui/trace-effect';
 import { createRpgRender } from '../render/rpg/rpg-render';
 import { createRpgMenuPanel } from '../ui/panels/rpg-menu-panel';
 import { addMotes } from '../sim/resources/resource-state';
-import { ENEMY_CODEX_GLOW_ICON_PATH, ENEMY_CODEX_ICON_PATH } from '../render/assets/asset-paths';
+import {
+  ENEMY_CODEX_GLOW_ICON_PATH,
+  ENEMY_CODEX_ICON_PATH,
+  ENEMY_CODEX_SHARD_ICON_PATHS,
+  SKILL_CODEX_GLOW_ICON_PATH,
+  SKILL_CODEX_ICON_PATH,
+  SKILL_CODEX_SHARD_ICON_PATHS,
+} from '../render/assets/asset-paths';
 
 import type { AppState, UIPanels } from './app-types';
 import { handleAction as handleActionImpl, setActiveTab } from './app-actions';
@@ -298,6 +305,15 @@ export async function startApp(): Promise<void> {
   root.appendChild(rpgContainer);
 
   let setCodexUnread = (_unread: boolean): void => undefined;
+  let setSkillCodexUnread = (_unread: boolean): void => undefined;
+  let lastSeenUnspentSkillPoints = game.rpg.unspentSkillPoints;
+  window.setInterval(() => {
+    const currentSkillPoints = appState.game.rpg.unspentSkillPoints;
+    if (currentSkillPoints > lastSeenUnspentSkillPoints) {
+      setSkillCodexUnread(true);
+    }
+    lastSeenUnspentSkillPoints = currentSkillPoints;
+  }, 250);
   const rpgRender = createRpgRender(rpgContainer, appState.game.rpg, {
     onLuckyMoteCollected: (tierId: TierId, bonusPct: number) => {
       const current = appState.game.resources.moteTotals.get(tierId) ?? 0;
@@ -405,18 +421,29 @@ export async function startApp(): Promise<void> {
   rpgContainer.appendChild(hiddenRackMenuBtn);
 
   const codexBtn = document.createElement('button');
-  codexBtn.className = 'rpg-codex-btn';
+  codexBtn.className = 'rpg-codex-btn rpg-codex-shortcut';
   codexBtn.setAttribute('aria-label', 'Open enemy codex');
+  const codexSpriteWrap = document.createElement('span');
+  codexSpriteWrap.className = 'rpg-codex-shortcut__sprite';
   for (const [path, className] of [
-    [ENEMY_CODEX_ICON_PATH, 'rpg-codex-btn__icon'],
-    [ENEMY_CODEX_GLOW_ICON_PATH, 'rpg-codex-btn__icon rpg-codex-btn__icon--glow'],
+    [ENEMY_CODEX_ICON_PATH, 'rpg-codex-shortcut__icon'],
+    [ENEMY_CODEX_GLOW_ICON_PATH, 'rpg-codex-shortcut__icon rpg-codex-shortcut__icon--glow'],
   ] as const) {
     const image = document.createElement('img');
     image.src = path;
     image.className = className;
     image.alt = '';
-    codexBtn.appendChild(image);
+    codexSpriteWrap.appendChild(image);
   }
+  ENEMY_CODEX_SHARD_ICON_PATHS.forEach((path, index) => {
+    const shard = document.createElement('img');
+    shard.src = path;
+    shard.className = `rpg-codex-shortcut__shard rpg-codex-shortcut__shard--${index + 1}`;
+    shard.alt = '';
+    shard.setAttribute('aria-hidden', 'true');
+    codexSpriteWrap.appendChild(shard);
+  });
+  codexBtn.appendChild(codexSpriteWrap);
   setCodexUnread = (unread) => { codexBtn.classList.toggle('rpg-codex-btn--unread', unread); };
   codexBtn.addEventListener('click', () => {
     setCodexUnread(false);
@@ -426,10 +453,33 @@ export async function startApp(): Promise<void> {
   rpgContainer.appendChild(codexBtn);
 
   const skillTreeBtn = document.createElement('button');
-  skillTreeBtn.className = 'rpg-skill-tree-btn';
+  skillTreeBtn.className = 'rpg-skill-tree-btn rpg-codex-shortcut';
   skillTreeBtn.setAttribute('aria-label', 'Open skill tree');
-  skillTreeBtn.innerHTML = '<span class="rpg-skill-tree-btn__icon" aria-hidden="true"></span>';
+  const skillSpriteWrap = document.createElement('span');
+  skillSpriteWrap.className = 'rpg-codex-shortcut__sprite';
+  for (const [path, className] of [
+    [SKILL_CODEX_ICON_PATH, 'rpg-codex-shortcut__icon'],
+    [SKILL_CODEX_GLOW_ICON_PATH, 'rpg-codex-shortcut__icon rpg-codex-shortcut__icon--glow'],
+  ] as const) {
+    const image = document.createElement('img');
+    image.src = path;
+    image.className = className;
+    image.alt = '';
+    skillSpriteWrap.appendChild(image);
+  }
+  SKILL_CODEX_SHARD_ICON_PATHS.forEach((path, index) => {
+    const shard = document.createElement('img');
+    shard.src = path;
+    shard.className = `rpg-codex-shortcut__shard rpg-codex-shortcut__shard--${index + 1}`;
+    shard.alt = '';
+    shard.setAttribute('aria-hidden', 'true');
+    skillSpriteWrap.appendChild(shard);
+  });
+  skillTreeBtn.appendChild(skillSpriteWrap);
+  setSkillCodexUnread = (unread) => { skillTreeBtn.classList.toggle('rpg-skill-tree-btn--unread', unread); };
   skillTreeBtn.addEventListener('click', () => {
+    setSkillCodexUnread(false);
+    lastSeenUnspentSkillPoints = appState.game.rpg.unspentSkillPoints;
     rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
     rpgMenuPanel.openSkillTreeTab();
   });

@@ -84,9 +84,9 @@ const TAB_SPRITES: Record<TabId, TabSprites> = {
   },
   achievements: {
     kind: 'static',
-    normal:   `${ICON_BASE}/achievementsTab/achievementsTab_icon.png`,
-    hover:    `${ICON_BASE}/achievementsTab/achievementsTab_icon_hover.png`,
-    selected: `${ICON_BASE}/achievementsTab/achievementsTab_icon_selected.png`,
+    normal:   `${ICON_BASE}/achievementsTab/achievementsTab_icon.webp`,
+    hover:    `${ICON_BASE}/achievementsTab/achievementsTab_icon_hover.webp`,
+    selected: `${ICON_BASE}/achievementsTab/achievementsTab_icon_selected.webp`,
   },
   settings: {
     kind: 'static',
