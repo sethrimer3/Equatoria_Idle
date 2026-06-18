@@ -1143,7 +1143,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
 
       ctx.save();
       ctx.beginPath(); ctx.rect(btnX, btnY, btnW, btnH); ctx.clip();
-      ctx.font         = 'bold 11px monospace';
+      ctx.font         = 'bold 13px "Cormorant Garamond", serif';
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle    = canPurchase ? '#f0d070' : 'rgba(135, 135, 135, 0.70)';
