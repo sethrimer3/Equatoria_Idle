@@ -1811,6 +1811,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     weaponTickCtx,
     updateShotVisuals,
     updateDamageNumbers,
+    comboEffects,
     spawnDamageNumber:      (x, y, vx, vy, text, ratio, color, sourceColor) => {
       spawnDamageNumber(x, y, vx, vy, text, ratio, color, sourceColor);
     },
