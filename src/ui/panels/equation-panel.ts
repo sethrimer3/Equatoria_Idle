@@ -110,19 +110,26 @@ export function createEquationPanel(
 
   function update(state: GameState, isDevMode = false, numberFormat: NumberFormat = 'letters'): void {
     if (state.equation.isForgeUnlocked) {
-      lockedSection.style.display = 'none';
-      unlockedSection.style.display = '';
+      if (lastForgeUnlocked !== true) {
+        lockedSection.style.display = 'none';
+        unlockedSection.style.display = '';
+        lastForgeUnlocked = true;
+      }
 
       const heatCount = state.forge.heatTapCount;
-      if (heatCount > 0) {
-        forgeHeatRow.style.display = '';
-        let dotsHtml = '';
-        for (let i = 0; i < HEAT_TAP_COUNT_FOR_CRUNCH; i++) {
-          dotsHtml += `<span class="forge-heat-dot${i < heatCount ? ' forge-heat-dot--filled' : ''}">&#9679;</span>`;
+      const heatSig = String(heatCount);
+      if (heatSig !== lastHeatSig) {
+        lastHeatSig = heatSig;
+        if (heatCount > 0) {
+          forgeHeatRow.style.display = '';
+          let dotsHtml = '';
+          for (let i = 0; i < HEAT_TAP_COUNT_FOR_CRUNCH; i++) {
+            dotsHtml += `<span class="forge-heat-dot${i < heatCount ? ' forge-heat-dot--filled' : ''}">&#9679;</span>`;
+          }
+          forgeHeatRow.innerHTML = `<span class="forge-heat-label">Forge heat:</span>${dotsHtml}<span class="forge-heat-hint">(${heatCount}/${HEAT_TAP_COUNT_FOR_CRUNCH})</span>`;
+        } else {
+          forgeHeatRow.style.display = 'none';
         }
-        forgeHeatRow.innerHTML = `<span class="forge-heat-label">Forge heat:</span>${dotsHtml}<span class="forge-heat-hint">(${heatCount}/${HEAT_TAP_COUNT_FOR_CRUNCH})</span>`;
-      } else {
-        forgeHeatRow.style.display = 'none';
       }
 
       for (const def of EQUATION_PART_UPGRADES) {
@@ -134,6 +141,12 @@ export function createEquationPanel(
         const canAfford = isDevMode || (cost !== null && getMotes(state.resources, costTierId) >= cost);
         const isVisible = isDevMode || def.tierId === null ||
           state.equation.segments.some(s => s.tierId === def.tierId && s.isUnlocked);
+
+        // Single signature gates every DOM write for this button.
+        const sig = `${isVisible ? 1 : 0}|${isMaxed ? 1 : 0}|${level}|${cost ?? ''}|${canAfford ? 1 : 0}|${numberFormat}`;
+        if (sig === upgradeSig.get(def.id)) continue;
+        upgradeSig.set(def.id, sig);
+
         btn.style.display = isVisible ? '' : 'none';
         btn.style.borderColor = def.tierId ? TIER_BY_ID.get(def.tierId)?.color ?? '#888' : '#ecf0f1';
         const iconHtml = def.tierId ? `<img class="gem-icon" src="${getMoteIconPath(def.tierId)}" alt="" />` : '';
@@ -147,11 +160,18 @@ export function createEquationPanel(
         }
       }
     } else {
-      lockedSection.style.display = '';
-      unlockedSection.style.display = 'none';
+      if (lastForgeUnlocked !== false) {
+        lockedSection.style.display = '';
+        unlockedSection.style.display = 'none';
+        lastForgeUnlocked = false;
+      }
       const sandMotes = getMotes(state.resources, 'sand');
-      forgeUnlockBtn.disabled = !isDevMode && sandMotes < EQUATION_FORGE_COST;
-      forgeUnlockBtn.textContent = `🔥 Ignite the Forge — ${formatNumberAs(sandMotes, numberFormat)} / ${EQUATION_FORGE_COST} Sand`;
+      const lockedSig = `${sandMotes}|${isDevMode ? 1 : 0}|${numberFormat}`;
+      if (lockedSig !== lastLockedSig) {
+        lastLockedSig = lockedSig;
+        forgeUnlockBtn.disabled = !isDevMode && sandMotes < EQUATION_FORGE_COST;
+        forgeUnlockBtn.textContent = `🔥 Ignite the Forge — ${formatNumberAs(sandMotes, numberFormat)} / ${EQUATION_FORGE_COST} Sand`;
+      }
     }
   }
 
