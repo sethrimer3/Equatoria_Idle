@@ -830,6 +830,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Caustics__0000_Sand-Fish.png',
   },
   {
     id: 'proc_quartzfish',
