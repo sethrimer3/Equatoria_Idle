@@ -31,4 +31,14 @@ export interface EnemyCatalogEntry {
   hasShield?: boolean;
   shieldRadius?: number;
   shieldColor?: string;
+  /**
+   * Filename of the dedicated icon PNG within the zone's enemyIcons subfolder.
+   * When absent the codex falls back to fallBack_icon.png.
+   */
+  iconFile?: string;
+  /**
+   * Sub-zone within the Horizon zone. Required for Horizon enemies when
+   * iconFile is set, so the correct subfolder path can be resolved.
+   */
+  horizonSubZone?: 'Zenith' | 'Nadir' | 'True';
 }
