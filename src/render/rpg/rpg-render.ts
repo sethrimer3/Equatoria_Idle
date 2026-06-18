@@ -2009,6 +2009,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       zoneSelectPanel.setDevMode(enabled);
       setTopographyLightingDevMode(enabled && developerVisuals.topographyLighting);
       bossStageDirectorState.isDevMode = enabled && developerVisuals.bossStage;
+      _devOverlay.style.display = enabled ? 'block' : 'none';
+      if (enabled && _devOverlayContainer && !_devOverlay.parentElement) {
+        _devOverlayContainer.appendChild(_devOverlay);
+      }
     },
 
     setInvincibilityMode(enabled: boolean): void {
