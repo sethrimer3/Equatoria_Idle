@@ -279,10 +279,10 @@ export function drawWaveClearBanner(
     : `Wave ${currentWave} Cleared!`;
   ctx.fillText(bannerText, widthPx / 2, heightPx / 2 - 8);
   ctx.shadowBlur = 0;
-  ctx.fillStyle = '#fff172'; ctx.font = '10px "Poiret One", sans-serif';
+  ctx.fillStyle = '#fff172'; ctx.font = '12px "Cormorant Garamond", serif';
   ctx.fillText('Next wave incoming\u2026', widthPx / 2, heightPx / 2 + 10);
   if (currentWave > 0 && currentWave % 10 === 0) {
-    ctx.fillStyle = '#69db7c'; ctx.font = '9px "Poiret One", sans-serif';
+    ctx.fillStyle = '#69db7c'; ctx.font = '11px "Cormorant Garamond", serif';
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = 6; ctx.shadowColor = '#69db7c';
     }
