@@ -377,6 +377,12 @@ export function handleAction(
       saveSettings(settings);
       uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
       break;
+    case 'set_rpg_debug_overlay':
+      settings.isRpgDebugOverlayEnabled = action.enabled;
+      saveSettings(settings);
+      uiPanels.rpgMenuPanel.setDeveloperVisual(action.kind, action.enabled);
+      uiPanels.rpgRender.setRpgDebugOverlay(action.enabled);
+      break;
     case 'upgrade_loom_efficiency': {
       const ok = tryUpgradeLoomEfficiencyAction(state.game, action.tierId as TierId, devMode);
       if (!ok) audioSystem?.onError();
