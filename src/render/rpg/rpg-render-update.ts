@@ -265,6 +265,7 @@ export interface RpgUpdateCtx {
   // Player damage visuals
   updateShotVisuals(deltaMs: number): void;
   updateDamageNumbers(deltaMs: number): void;
+  comboEffects: import('./rpg-types').ComboEffect[];
   spawnDamageNumber(x: number, y: number, vx: number, vy: number, text: string, ratio: number, color: string, sourceColor?: string): void;
 
   // Lucky motes and achievement state
