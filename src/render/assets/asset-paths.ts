@@ -139,6 +139,19 @@ export const ENEMY_CODEX_SHARD_ICON_PATHS = Array.from(
   { length: 8 },
   (_, index) => `${BASE}/SPRITES/menuElements/icons/enemyCodex/codexShard (${index + 1}).png`,
 ) as readonly string[];
+export const ZONE_SELECTION_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/zoneSelection/zoneSelection_icon.png`;
+export const ZONE_SELECTION_GLOW_OVERLAY_PATHS = Array.from(
+  { length: 5 },
+  (_, index) => `${BASE}/SPRITES/menuElements/icons/zoneSelection/glowOverlay (${index + 1}).png`,
+) as readonly string[];
+export const ZONE_SELECTION_BAR_OVERLAY_PATHS = Array.from(
+  { length: 2 },
+  (_, index) => `${BASE}/SPRITES/menuElements/icons/zoneSelection/barOverlay (${index + 1}).png`,
+) as readonly string[];
+export const ZONE_SELECTION_SHEEN_OVERLAY_PATHS = Array.from(
+  { length: 22 },
+  (_, index) => `${BASE}/SPRITES/menuElements/icons/zoneSelection/sheenOverlay (${index + 1}).png`,
+) as readonly string[];
 export const SKILL_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/skillCodex/skillCodex.png`;
 export const SKILL_CODEX_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/skillCodex/skillCodex_glow.png`;
 export const SKILL_CODEX_SHARD_ICON_PATHS = Array.from(

@@ -94,6 +94,85 @@ function buildCodexHeader(rpgState: RpgSimState, isDevMode: boolean): HTMLElemen
   return header;
 }
 
+// ─── Icon helpers ─────────────────────────────────────────────────
+
+function makeStatIconSvg(type: 'hp' | 'atk' | 'def'): string {
+  if (type === 'hp') {
+    return `<svg width="11" height="10" viewBox="0 0 11 10" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5.5 9S1 5.9 1 3.4C1 2 2.1 1 3.4 1c.7 0 1.4.4 2.1 1.1C6.2 1.4 6.9 1 7.6 1 8.9 1 10 2 10 3.4 10 5.9 5.5 9 5.5 9Z"/></svg>`;
+  } else if (type === 'atk') {
+    return `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="2" y1="8" x2="8" y2="2"/><polyline points="5.5,2 8,2 8,4.5"/></svg>`;
+  } else {
+    return `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 1L1.5 3V6C1.5 7.9 3.1 9.3 5 9.3S8.5 7.9 8.5 6V3Z"/></svg>`;
+  }
+}
+
+const STATUS_ICON_GLYPH: Record<string, string> = {
+  burning:      '♨',
+  poisoned:     '☠',
+  chilled:      '❄',
+  frozen:       '✦',
+  timeWarped:   '⏱',
+  abraded:      '⚙',
+  refracted:    '◈',
+  radiant:      '☀',
+  echoMarked:   '◎',
+  cracked:      '✕',
+  gravitized:   '⊙',
+  fractalWound: '✿',
+  riftScarred:  '◆',
+};
+
+const ZONE_ICON_GLYPH: Record<string, string> = {
+  euhedral: '◆',
+  impetus:  '⊕',
+  caustics: '≈',
+  verdure:  '✿',
+  horizon:  '✦',
+};
+
+const ZONE_COLOR: Record<string, string> = {
+  euhedral: '#74c0fc',
+  impetus:  '#ffe066',
+  caustics: '#55e0c0',
+  verdure:  '#69db7c',
+  horizon:  '#cc99ff',
+};
+
+function makeStatChip(label: string, val: number | string, type: string): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = `rpg-codex-stat-chip rpg-codex-stat-chip--${type}`;
+  chip.innerHTML = `${makeStatIconSvg(type as 'hp' | 'atk' | 'def')}<span class="rpg-codex-stat-label">${label}</span><span class="rpg-codex-stat-val">${val}</span>`;
+  return chip;
+}
+
+function makeLockedStatChip(label: string): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--locked';
+  chip.innerHTML = `<span class="rpg-codex-stat-icon-stub">–</span><span class="rpg-codex-stat-label">${label}</span><span class="rpg-codex-stat-val">???</span>`;
+  return chip;
+}
+
+function makeStatusIconChip(statusKey: string, modifier: string, color: string, defName: string): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = `rpg-codex-status-icon-chip rpg-codex-status-icon-chip--${modifier}`;
+  chip.style.setProperty('--chip-color', color);
+  chip.setAttribute('title', `${defName}: ${modifier.toUpperCase()}`);
+  chip.setAttribute('aria-label', `${defName}: ${modifier.toUpperCase()}`);
+  const glyph = STATUS_ICON_GLYPH[statusKey] ?? '?';
+  chip.textContent = glyph;
+  return chip;
+}
+
+function makeZoneIconChip(zone: string): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = 'rpg-codex-zone-icon-chip';
+  const color = ZONE_COLOR[zone] ?? '#aaa';
+  chip.style.setProperty('--chip-color', color);
+  chip.setAttribute('title', zone.charAt(0).toUpperCase() + zone.slice(1));
+  chip.textContent = ZONE_ICON_GLYPH[zone] ?? '◈';
+  return chip;
+}
+
 // ─── Entry builders ───────────────────────────────────────────────
 
 function buildEnemyEntry(
@@ -101,6 +180,9 @@ function buildEnemyEntry(
   isLocked: boolean,
   isDevMode: boolean,
   isHighlighted: boolean,
+  kills: number,
+  bonus: number,
+  nextMilestone: number | null,
 ): HTMLElement {
   const showLocked = isLocked && !isDevMode;
 
@@ -175,20 +257,12 @@ function buildEnemyEntry(
   body.appendChild(nameRow);
 
   if (!showLocked) {
-    // Stats row
+    // Stats row with icon chips
     const statsRow = document.createElement('div');
     statsRow.className = 'rpg-codex-stat-row';
-    const stats: Array<[string, number, string]> = [
-      ['HP', entry.hp, 'hp'],
-      ['ATK', entry.atk, 'atk'],
-      ['DEF', entry.def, 'def'],
-    ];
-    for (const [label, val, type] of stats) {
-      const chip = document.createElement('span');
-      chip.className = `rpg-codex-stat-chip rpg-codex-stat-chip--${type}`;
-      chip.textContent = `${label} ${val}`;
-      statsRow.appendChild(chip);
-    }
+    statsRow.appendChild(makeStatChip('HP', entry.hp, 'hp'));
+    statsRow.appendChild(makeStatChip('ATK', entry.atk, 'atk'));
+    statsRow.appendChild(makeStatChip('DEF', entry.def, 'def'));
     body.appendChild(statsRow);
 
     // Description
@@ -205,7 +279,7 @@ function buildEnemyEntry(
       body.appendChild(blurb);
     }
 
-    // Status affinities (weak / resistant / immune — skip neutral)
+    // Affinity + inflict icon chips
     const ALL_ENEMY_STATUS_KEYS: EnemyStatusKey[] = [
       'burning', 'poisoned', 'chilled', 'frozen', 'timeWarped',
       'abraded', 'refracted', 'radiant', 'echoMarked', 'cracked',
@@ -220,69 +294,123 @@ function buildEnemyEntry(
       else if (aff === 'resistant') resistant.push(sk);
       else if (aff === 'weak')      weak.push(sk);
     }
-    if (immune.length + resistant.length + weak.length > 0) {
-      const affRow = document.createElement('div');
-      affRow.className = 'rpg-codex-chip-row';
-      const affLabel = document.createElement('span');
-      affLabel.className = 'rpg-codex-chip-label';
-      affLabel.textContent = 'Affinities:';
-      affRow.appendChild(affLabel);
-      function addAffinityChips(keys: EnemyStatusKey[], modifier: string, prefix: string): void {
-        for (const k of keys) {
-          const chip = document.createElement('span');
-          const def = ENEMY_STATUS_DEFS[k];
-          chip.className = `rpg-codex-affinity-chip rpg-codex-affinity-chip--${modifier}`;
-          chip.textContent = `${prefix}${def?.label ?? k}`;
-          chip.title = `${def?.name ?? k}: ${modifier === 'weak' ? 'WEAK' : modifier === 'immune' ? 'IMMUNE' : 'RESISTANT'}`;
-          affRow.appendChild(chip);
-        }
-      }
-      addAffinityChips(weak,      'weak',      '✦');
-      addAffinityChips(immune,    'immune',    '✕');
-      addAffinityChips(resistant, 'resistant', '▼');
-      body.appendChild(affRow);
-    }
 
-    // Inflicts (which player statuses this enemy can apply)
     const inflicts = ENEMY_STATUS_SOURCES[entry.id] ?? ENEMY_STATUS_SOURCES[entry.id.replace(/^elite_/, 'elite')];
-    if (inflicts && inflicts.length > 0) {
-      const inflictRow = document.createElement('div');
-      inflictRow.className = 'rpg-codex-chip-row';
-      const inflictLabel = document.createElement('span');
-      inflictLabel.className = 'rpg-codex-chip-label';
-      inflictLabel.textContent = 'Inflicts:';
-      inflictRow.appendChild(inflictLabel);
-      for (const pk of inflicts) {
-        const def = PLAYER_STATUS_DEFS[pk];
-        const chip = document.createElement('span');
-        chip.className = 'rpg-codex-inflict-chip';
-        chip.style.borderColor = (def?.color ?? '#888') + '55';
-        chip.style.color = def?.color ?? '#aaa';
-        chip.textContent = def?.label ?? pk;
-        chip.title = def?.name ?? pk;
-        inflictRow.appendChild(chip);
+    const hasAffinity = immune.length + resistant.length + weak.length > 0;
+    const hasInflicts = inflicts && inflicts.length > 0;
+
+    if (hasAffinity || hasInflicts) {
+      const chipCluster = document.createElement('div');
+      chipCluster.className = 'rpg-codex-chip-cluster';
+
+      if (hasAffinity) {
+        const affGroup = document.createElement('div');
+        affGroup.className = 'rpg-codex-chip-group';
+        const affLabel = document.createElement('span');
+        affLabel.className = 'rpg-codex-chip-label';
+        affLabel.textContent = 'Affinity:';
+        affGroup.appendChild(affLabel);
+        for (const k of weak) {
+          const def = ENEMY_STATUS_DEFS[k];
+          affGroup.appendChild(makeStatusIconChip(k, 'weak', def?.color ?? '#88cc44', def?.name ?? k));
+        }
+        for (const k of immune) {
+          const def = ENEMY_STATUS_DEFS[k];
+          affGroup.appendChild(makeStatusIconChip(k, 'immune', def?.color ?? '#888', def?.name ?? k));
+        }
+        for (const k of resistant) {
+          const def = ENEMY_STATUS_DEFS[k];
+          affGroup.appendChild(makeStatusIconChip(k, 'resistant', def?.color ?? '#4488cc', def?.name ?? k));
+        }
+        chipCluster.appendChild(affGroup);
       }
-      body.appendChild(inflictRow);
+
+      if (hasInflicts) {
+        const inflictGroup = document.createElement('div');
+        inflictGroup.className = 'rpg-codex-chip-group';
+        const inflictLabel = document.createElement('span');
+        inflictLabel.className = 'rpg-codex-chip-label';
+        inflictLabel.textContent = 'Inflicts:';
+        inflictGroup.appendChild(inflictLabel);
+        for (const pk of inflicts) {
+          const def = PLAYER_STATUS_DEFS[pk];
+          const chip = document.createElement('span');
+          chip.className = 'rpg-codex-status-icon-chip rpg-codex-status-icon-chip--inflict';
+          chip.style.setProperty('--chip-color', def?.color ?? '#aaa');
+          chip.setAttribute('title', def?.name ?? pk);
+          chip.setAttribute('aria-label', def?.name ?? pk);
+          chip.textContent = STATUS_ICON_GLYPH[pk] ?? def?.label ?? '?';
+          inflictGroup.appendChild(chip);
+        }
+        chipCluster.appendChild(inflictGroup);
+      }
+
+      body.appendChild(chipCluster);
     }
   } else {
-    // Locked teaser: ??? stats + wave requirement (no real data revealed)
+    // Locked teaser: ??? stats + wave requirement
     const lockedStats = document.createElement('div');
     lockedStats.className = 'rpg-codex-stat-row';
-    for (const label of ['HP', 'ATK', 'DEF']) {
-      const chip = document.createElement('span');
-      chip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--locked';
-      chip.textContent = `${label} ???`;
-      lockedStats.appendChild(chip);
-    }
+    lockedStats.appendChild(makeLockedStatChip('HP'));
+    lockedStats.appendChild(makeLockedStatChip('ATK'));
+    lockedStats.appendChild(makeLockedStatChip('DEF'));
     body.appendChild(lockedStats);
 
     const waveReq = document.createElement('div');
     waveReq.className = 'rpg-codex-desc rpg-codex-desc--locked';
-    waveReq.textContent = `Encountered at wave ${entry.firstWave}+`;
+    waveReq.textContent = 'Not yet encountered.';
     body.appendChild(waveReq);
   }
 
   box.appendChild(body);
+
+  // Zone icon cluster
+  if (!showLocked && entry.zone) {
+    const zoneCluster = document.createElement('div');
+    zoneCluster.className = 'rpg-codex-zone-cluster';
+    zoneCluster.appendChild(makeZoneIconChip(entry.zone));
+    box.appendChild(zoneCluster);
+  }
+
+  // Mastery column
+  const masteryCol = document.createElement('div');
+  masteryCol.className = 'rpg-codex-mastery-col';
+
+  if (showLocked) {
+    const lockIcon = document.createElement('div');
+    lockIcon.className = 'rpg-codex-mastery-lock';
+    lockIcon.textContent = '🔒';
+    masteryCol.appendChild(lockIcon);
+    const waveHint = document.createElement('div');
+    waveHint.className = 'rpg-codex-mastery-wave-hint';
+    waveHint.textContent = `WAVE ${entry.firstWave}`;
+    masteryCol.appendChild(waveHint);
+  } else {
+    const killsLabel = document.createElement('div');
+    killsLabel.className = 'rpg-codex-mastery-label';
+    killsLabel.textContent = 'KILLS';
+    masteryCol.appendChild(killsLabel);
+
+    const killsVal = document.createElement('div');
+    killsVal.className = 'rpg-codex-mastery-value';
+    killsVal.textContent = kills.toLocaleString();
+    masteryCol.appendChild(killsVal);
+
+    const bonusLabel = document.createElement('div');
+    bonusLabel.className = 'rpg-codex-mastery-label';
+    bonusLabel.textContent = 'BONUS';
+    masteryCol.appendChild(bonusLabel);
+
+    const bonusVal = document.createElement('div');
+    bonusVal.className = 'rpg-codex-mastery-value rpg-codex-mastery-value--bonus';
+    bonusVal.textContent = `+${bonus}%`;
+    if (nextMilestone !== null) {
+      bonusVal.setAttribute('title', `Next milestone: ${nextMilestone.toLocaleString()} kills`);
+    }
+    masteryCol.appendChild(bonusVal);
+  }
+
+  box.appendChild(masteryCol);
   return box;
 }
 

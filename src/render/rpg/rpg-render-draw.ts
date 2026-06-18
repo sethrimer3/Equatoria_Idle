@@ -196,8 +196,96 @@ import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 import { renderEnemyStatusLabels } from './enemy-status-render';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
+import {
+  ZONE_SELECTION_BAR_OVERLAY_PATHS,
+  ZONE_SELECTION_GLOW_OVERLAY_PATHS,
+  ZONE_SELECTION_ICON_PATH,
+  ZONE_SELECTION_SHEEN_OVERLAY_PATHS,
+} from '../assets/asset-paths';
 
-const RPG_ZONE_LABEL_ICON_PATH = 'ASSETS/SPRITES/menuElements/icons/rpgTab/rpgTab_icon_selected.png';
+type ZoneIconLayerTiming = {
+  readonly cycleMs: number;
+  readonly fadeInMs: number;
+  readonly holdMs: number;
+  readonly fadeOutMs: number;
+  readonly offsetMs: number;
+  readonly alpha: number;
+};
+
+const ZONE_ICON_GLOW_TIMINGS: readonly ZoneIconLayerTiming[] = [
+  { cycleMs: 18_700, fadeInMs: 1_800, holdMs: 1_100, fadeOutMs: 2_200, offsetMs: 1_300, alpha: 0.78 },
+  { cycleMs: 24_900, fadeInMs: 2_200, holdMs: 1_500, fadeOutMs: 2_600, offsetMs: 7_900, alpha: 0.70 },
+  { cycleMs: 31_400, fadeInMs: 1_500, holdMs: 900, fadeOutMs: 2_100, offsetMs: 12_600, alpha: 0.74 },
+  { cycleMs: 27_300, fadeInMs: 2_500, holdMs: 1_300, fadeOutMs: 2_900, offsetMs: 18_200, alpha: 0.66 },
+  { cycleMs: 36_800, fadeInMs: 1_900, holdMs: 1_800, fadeOutMs: 2_400, offsetMs: 23_700, alpha: 0.72 },
+];
+
+const ZONE_ICON_BAR_TIMINGS: readonly ZoneIconLayerTiming[] = [
+  { cycleMs: 9_600, fadeInMs: 95, holdMs: 1_850, fadeOutMs: 140, offsetMs: 850, alpha: 0.88 },
+  { cycleMs: 13_400, fadeInMs: 120, holdMs: 2_350, fadeOutMs: 150, offsetMs: 5_400, alpha: 0.82 },
+];
+
+const ZONE_ICON_SHEEN_TIMINGS: readonly ZoneIconLayerTiming[] = ZONE_SELECTION_SHEEN_OVERLAY_PATHS.map((_, index) => ({
+  cycleMs: 7_800 + ((index * 1_937) % 8_600),
+  fadeInMs: 650 + ((index * 173) % 700),
+  holdMs: 1_900 + ((index * 467) % 3_200),
+  fadeOutMs: 700 + ((index * 211) % 900),
+  offsetMs: (index * 2_711) % 19_000,
+  alpha: 0.38 + ((index * 37) % 30) / 100,
+}));
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function getZoneIconLayerAlpha(nowMs: number, timing: ZoneIconLayerTiming): number {
+  const phaseMs = (nowMs + timing.offsetMs) % timing.cycleMs;
+  if (phaseMs < timing.fadeInMs) return clamp01(phaseMs / timing.fadeInMs) * timing.alpha;
+  if (phaseMs < timing.fadeInMs + timing.holdMs) return timing.alpha;
+  const fadeOutStartMs = timing.fadeInMs + timing.holdMs;
+  if (phaseMs < fadeOutStartMs + timing.fadeOutMs) {
+    return (1 - clamp01((phaseMs - fadeOutStartMs) / timing.fadeOutMs)) * timing.alpha;
+  }
+  return 0;
+}
+
+function drawZoneIconLayer(
+  ctx: CanvasRenderingContext2D,
+  path: string,
+  x: number,
+  y: number,
+  size: number,
+  alpha: number,
+): void {
+  if (alpha <= 0.01) return;
+  const image = getCachedImage(path);
+  if (image) {
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(image, x, y, size, size);
+  } else {
+    loadImage(path).catch(() => {});
+  }
+}
+
+function drawZoneSelectionLabelIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  nowMs: number,
+  baseAlpha: number,
+): void {
+  drawZoneIconLayer(ctx, ZONE_SELECTION_ICON_PATH, x, y, size, baseAlpha);
+  for (let i = 0; i < ZONE_SELECTION_GLOW_OVERLAY_PATHS.length; i++) {
+    drawZoneIconLayer(ctx, ZONE_SELECTION_GLOW_OVERLAY_PATHS[i], x, y, size, baseAlpha * getZoneIconLayerAlpha(nowMs, ZONE_ICON_GLOW_TIMINGS[i]));
+  }
+  for (let i = 0; i < ZONE_SELECTION_BAR_OVERLAY_PATHS.length; i++) {
+    drawZoneIconLayer(ctx, ZONE_SELECTION_BAR_OVERLAY_PATHS[i], x, y, size, baseAlpha * getZoneIconLayerAlpha(nowMs, ZONE_ICON_BAR_TIMINGS[i]));
+  }
+  for (let i = 0; i < ZONE_SELECTION_SHEEN_OVERLAY_PATHS.length; i++) {
+    drawZoneIconLayer(ctx, ZONE_SELECTION_SHEEN_OVERLAY_PATHS[i], x, y, size, baseAlpha * getZoneIconLayerAlpha(nowMs, ZONE_ICON_SHEEN_TIMINGS[i]));
+  }
+}
 
 // ── Context passed once at setup time ─────────────────────────────────────────
 
@@ -1076,12 +1164,7 @@ export function drawRpgFrame(
     canvas2d.textBaseline = 'top';
     canvas2d.fillText(label, textX, overlayTop + 2);
     const textW = canvas2d.measureText(label).width;
-    const icon = getCachedImage(RPG_ZONE_LABEL_ICON_PATH);
-    if (icon) {
-      canvas2d.drawImage(icon, overlayLeft, overlayTop, iconSize, iconSize);
-    } else {
-      loadImage(RPG_ZONE_LABEL_ICON_PATH).catch(() => {});
-    }
+    drawZoneSelectionLabelIcon(canvas2d, overlayLeft, overlayTop, iconSize, nowMs, state.waveOverlapAlpha);
     // Underline
     canvas2d.globalAlpha = state.waveOverlapAlpha * 0.45;
     canvas2d.strokeStyle = '#fff172';
