@@ -1707,7 +1707,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossProjectiles, bossAttackState, teleportParticles,
     bossStageDirectorState,
     weaponSystems, mote, joystick,
-    hitEffects, shotLines, damageNumbers, luckyMotes, luckyMotePopups,
+    hitEffects, shotLines, damageNumbers, comboEffects, luckyMotes, luckyMotePopups,
     deathParticles, weaponOrbitParticles,
     getOrbitProjectiles:          () => orbitProjectiles,
     getAfterimages:               () => afterimages,
