@@ -1152,8 +1152,8 @@ export function drawRpgFrame(
     const zoneName = ctx.getActiveZoneDisplayName();
     const label = `${zoneName} - x${currentWave}`;
 
-    const iconSize = 20;
-    const iconGap = 5;
+    const iconSize = 60;
+    const iconGap = 8;
     const textX = overlayLeft + iconSize + iconGap;
 
     canvas2d.save();
@@ -1162,7 +1162,7 @@ export function drawRpgFrame(
     canvas2d.fillStyle = '#fff172';
     canvas2d.textAlign = 'left';
     canvas2d.textBaseline = 'top';
-    canvas2d.fillText(label, textX, overlayTop + 2);
+    canvas2d.fillText(label, textX, overlayTop + iconSize / 2 - 7);
     const textW = canvas2d.measureText(label).width;
     drawZoneSelectionLabelIcon(canvas2d, overlayLeft, overlayTop, iconSize, nowMs, state.waveOverlapAlpha);
     // Underline
@@ -1170,13 +1170,13 @@ export function drawRpgFrame(
     canvas2d.strokeStyle = '#fff172';
     canvas2d.lineWidth = 0.5;
     canvas2d.beginPath();
-    canvas2d.moveTo(textX, overlayTop + 18);
-    canvas2d.lineTo(textX + textW, overlayTop + 18);
+    canvas2d.moveTo(textX, overlayTop + iconSize / 2 + 8);
+    canvas2d.lineTo(textX + textW, overlayTop + iconSize / 2 + 8);
     canvas2d.stroke();
     // Upward-pointing golden triangle — tap affordance below the zone title group
     const groupWidth = iconSize + iconGap + textW;
     const triCx = overlayLeft + groupWidth / 2;
-    const triY = overlayTop + 23;
+    const triY = overlayTop + iconSize + 4;
     const triHalfW = 5;
     const triH = 4;
     canvas2d.globalAlpha = state.waveOverlapAlpha * 0.55;
