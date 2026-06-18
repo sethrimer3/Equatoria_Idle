@@ -13,6 +13,7 @@ import {
   hasStatus,
   incrementRiftScarredStacks,
 } from '../enemy-status-effects';
+import { getComboById, STATUS_COMBO_DEFINITIONS } from '../../../data/rpg/status-combo-definitions';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
