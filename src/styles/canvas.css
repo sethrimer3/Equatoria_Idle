@@ -2902,14 +2902,9 @@
   white-space: nowrap;
 }
 
-/* ── Mastery / codex bonus row ──────────────────────────────────── */
+/* ── Mastery (legacy class kept for safety) ─────────────────────── */
 .rpg-codex-mastery {
-  font-size: 0.68em;
-  color: rgba(180, 165, 105, 0.75);
-  padding: 3px 1px 2px;
-  width: 100%;
-  border-top: 1px solid rgba(212, 170, 64, 0.08);
-  margin-top: 4px;
+  display: none;
 }
 
 /* ── Empty zone / no-bosses message ─────────────────────────────── */
