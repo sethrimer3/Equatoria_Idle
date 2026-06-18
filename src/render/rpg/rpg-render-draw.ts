@@ -965,6 +965,7 @@ export function drawRpgFrame(
   drawSpawnFlashes(canvas2d, ctx.getIsLowGraphicsMode());
   drawDyingEnemies(canvas2d, ctx.getIsLowGraphicsMode());
   drawHitEffects(canvas2d, ctx.hitEffects);
+  drawComboEffects(canvas2d, ctx.comboEffects);
   drawLuckyMotes(canvas2d, ctx.luckyMotes, ctx.getIsLowGraphicsMode());
   drawDamageNumbers(canvas2d, ctx.damageNumbers);
   renderEnemySpeechBubbles(canvas2d, fs.visibleBounds);
