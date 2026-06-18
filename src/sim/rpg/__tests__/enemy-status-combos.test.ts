@@ -256,31 +256,51 @@ describe('Toxic Rupture combo', () => {
 // ── Gravity Collapse ──────────────────────────────────────────────────────────
 
 describe('Gravity Collapse combo', () => {
-  it('triggers on gravitized enemy', () => {
+  it('triggers on gravitized enemy from aoeHit', () => {
     const enemy = makeEnemy();
     applyStatus(enemy, 'gravitized');
     const results = evaluateStatusCombosOnStatusApplied({
-      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0,
+      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0, triggerKind: 'aoeHit',
     });
     expect(results.find(r => r.comboId === 'gravityCollapse')).toBeDefined();
     clearEnemyStatuses(enemy);
   });
 
-  it('does not trigger on boss (bossMultiplier = 0)', () => {
+  it('does NOT trigger on gravitized enemy from direct single-target hit', () => {
     const enemy = makeEnemy();
     applyStatus(enemy, 'gravitized');
     const results = evaluateStatusCombosOnStatusApplied({
-      enemy, enemyTypeId: 'boss', x: 0, y: 0, baseDamage: 20, nowMs: 0,
+      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0, triggerKind: 'statusApplied',
     });
     expect(results.find(r => r.comboId === 'gravityCollapse')).toBeUndefined();
     clearEnemyStatuses(enemy);
   });
 
-  it('applies reduced damage to elite', () => {
+  it('does NOT trigger on gravitized enemy from default triggerKind', () => {
     const enemy = makeEnemy();
     applyStatus(enemy, 'gravitized');
     const results = evaluateStatusCombosOnStatusApplied({
-      enemy, enemyTypeId: 'elite_nullstone', x: 0, y: 0, baseDamage: 100, nowMs: 0,
+      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0,
+    });
+    expect(results.find(r => r.comboId === 'gravityCollapse')).toBeUndefined();
+    clearEnemyStatuses(enemy);
+  });
+
+  it('does not trigger on boss (bossMultiplier = 0) even with aoeHit', () => {
+    const enemy = makeEnemy();
+    applyStatus(enemy, 'gravitized');
+    const results = evaluateStatusCombosOnStatusApplied({
+      enemy, enemyTypeId: 'boss', x: 0, y: 0, baseDamage: 20, nowMs: 0, triggerKind: 'aoeHit',
+    });
+    expect(results.find(r => r.comboId === 'gravityCollapse')).toBeUndefined();
+    clearEnemyStatuses(enemy);
+  });
+
+  it('applies reduced damage to elite from aoeHit', () => {
+    const enemy = makeEnemy();
+    applyStatus(enemy, 'gravitized');
+    const results = evaluateStatusCombosOnStatusApplied({
+      enemy, enemyTypeId: 'elite_nullstone', x: 0, y: 0, baseDamage: 100, nowMs: 0, triggerKind: 'aoeHit',
     });
     const r = results.find(r => r.comboId === 'gravityCollapse');
     expect(r).toBeDefined();
@@ -289,11 +309,11 @@ describe('Gravity Collapse combo', () => {
     clearEnemyStatuses(enemy);
   });
 
-  it('includes AoE component', () => {
+  it('includes AoE component from aoeHit', () => {
     const enemy = makeEnemy();
     applyStatus(enemy, 'gravitized');
     const results = evaluateStatusCombosOnStatusApplied({
-      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0,
+      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0, triggerKind: 'aoeHit',
     });
     const r = results.find(r => r.comboId === 'gravityCollapse');
     expect(r!.aoeRadius).toBe(100);
