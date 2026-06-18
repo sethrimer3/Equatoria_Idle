@@ -67,8 +67,29 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
 
   // ── Loom cards ───────────────────────────────────────────────
 
-  const cards: Map<string, HTMLElement> = new Map();
-  const upgradeButtons: Map<string, HTMLButtonElement> = new Map();
+  // Persistent per-card element refs so update() can set textContent on
+  // existing nodes instead of re-parsing innerHTML every tick (~10x/sec).
+  interface LoomCardRefs {
+    card: HTMLElement;
+    btn: HTMLButtonElement;
+    effBtn: HTMLButtonElement;
+    lvSpan: HTMLElement;
+    rawSpan: HTMLElement;
+    sizeSpan: HTMLElement;
+    rateSpan: HTMLElement;
+    motesSpan: HTMLElement;
+    convSpan: HTMLElement;
+    convInputSpan: HTMLElement;
+    convEffSpan: HTMLElement;
+  }
+  const cards: Map<string, LoomCardRefs> = new Map();
+
+  function makeStat(parent: HTMLElement, className = 'loom-stat'): HTMLElement {
+    const el = document.createElement('span');
+    el.className = className;
+    parent.appendChild(el);
+    return el;
+  }
 
   for (const def of LOOM_DEFINITIONS) {
     const tier = TIER_BY_ID.get(def.tierId);
@@ -104,6 +125,17 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
 
     const stats = document.createElement('div');
     stats.className = 'loom-stats';
+    const lvSpan = makeStat(stats);
+    const rawSpan = makeStat(stats);
+    const sizeSpan = makeStat(stats, 'loom-stat loom-emit-size');
+    const rateSpan = makeStat(stats);
+    const motesSpan = makeStat(stats);
+    // Conversion stats: a wrapper holding the input-progress and efficiency
+    // lines, toggled as a unit for looms that consume an input tier.
+    const convSpan = document.createElement('span');
+    const convInputSpan = makeStat(convSpan, 'loom-stat loom-conv');
+    const convEffSpan = makeStat(convSpan, 'loom-stat loom-conv');
+    stats.appendChild(convSpan);
     card.appendChild(stats);
 
     const btn = document.createElement('button');
@@ -126,8 +158,11 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
     card.appendChild(effBtn);
 
     pane.appendChild(card);
-    cards.set(def.tierId, card);
-    upgradeButtons.set(def.tierId, btn);
+    cards.set(def.tierId, {
+      card, btn, effBtn,
+      lvSpan, rawSpan, sizeSpan, rateSpan, motesSpan,
+      convSpan, convInputSpan, convEffSpan,
+    });
   }
 
   // Small page break after loom cards section
