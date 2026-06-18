@@ -106,9 +106,10 @@ export function applyComboResults(
       timeMs: performance.now(),
       comboId: r.comboId,
       comboLabel: r.label,
-      enemyTypeId: (r.primaryEnemy as { _devTypeId?: string })._devTypeId ?? 'unknown',
+      enemyTypeId: r.enemyTypeId,
       primaryDamage: primaryActual,
       aoeDamage: aoeDmgActual,
+      triggerKind: r.triggerKind,
     });
   }
 }
