@@ -13,14 +13,16 @@ type MinEnemy = { x: number; y: number; hp: number; maxHp: number };
 /**
  * Iterate main enemy arrays from ctx and deal combo AoE damage to those
  * within radius of (cx, cy), skipping the primary enemy (already hit).
+ * Returns total damage actually dealt across all hit enemies.
  */
 function _applyAoeDmg(
   ctx: RpgPlayerAttackCtx,
   cx: number, cy: number, radius: number,
   dmg: number, skipEnemy: object, color: string,
-): void {
-  if (dmg <= 0 || radius <= 0) return;
+): number {
+  if (dmg <= 0 || radius <= 0) return 0;
   const rSq = radius * radius;
+  let totalDealt = 0;
 
   const arrays: MinEnemy[][] = [
     ctx.enemies as unknown as MinEnemy[],
@@ -46,11 +48,15 @@ function _applyAoeDmg(
       if ((e as object) === skipEnemy || e.hp <= 0) continue;
       const dx = e.x - cx, dy = e.y - cy;
       if (dx * dx + dy * dy <= rSq) {
+        const before = e.hp;
         e.hp = Math.max(0, e.hp - dmg);
-        ctx.spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, color);
+        const dealt = before - e.hp;
+        totalDealt += dealt;
+        ctx.spawnHitVisualsAt(e.x, e.y, e.maxHp, dealt, color);
       }
     }
   }
+  return totalDealt;
 }
 
 /**
