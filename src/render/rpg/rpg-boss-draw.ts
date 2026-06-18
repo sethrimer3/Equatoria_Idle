@@ -162,7 +162,7 @@ export function drawBossEnemy(
   if (boss.bossId === 7 && boss.isInvuln) {
     ctx.globalAlpha = 0.8;
     ctx.fillStyle = drawGlow;
-    ctx.font = '7px "Poiret One", sans-serif';
+    ctx.font = '9px "Cormorant Garamond", serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = 4; ctx.shadowColor = drawGlow;
