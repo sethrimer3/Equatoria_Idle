@@ -159,8 +159,8 @@ export function evaluateStatusCombosOnStatusApplied(args: {
         _setCooldown(enemy, gravity.id, nowMs);
         results.push({
           comboId: gravity.id, label: gravity.feedbackLabel, color: gravity.feedbackColor,
-          primaryEnemy: enemy, x, y,
-          primaryDamage: rawPrimary, aoeDamage: rawAoe, aoeRadius: 100,
+          primaryEnemy: enemy, enemyTypeId, x, y,
+          primaryDamage: rawPrimary, aoeDamage: rawAoe, aoeRadius: 100, triggerKind,
         });
       }
     }
