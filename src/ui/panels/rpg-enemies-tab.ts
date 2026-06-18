@@ -485,20 +485,11 @@ function buildBossEntry(
   body.appendChild(nameRow);
 
   if (!showLocked) {
-    // Stats
     const statsRow = document.createElement('div');
     statsRow.className = 'rpg-codex-stat-row';
-    const stats: Array<[string, number, string]> = [
-      ['HP', BOSS_HP_INIT, 'hp'],
-      ['ATK', BOSS_ATK_INIT, 'atk'],
-      ['DEF', BOSS_DEF_INIT, 'def'],
-    ];
-    for (const [label, val, type] of stats) {
-      const chip = document.createElement('span');
-      chip.className = `rpg-codex-stat-chip rpg-codex-stat-chip--${type}`;
-      chip.textContent = `${label} ${val}`;
-      statsRow.appendChild(chip);
-    }
+    statsRow.appendChild(makeStatChip('HP', BOSS_HP_INIT, 'hp'));
+    statsRow.appendChild(makeStatChip('ATK', BOSS_ATK_INIT, 'atk'));
+    statsRow.appendChild(makeStatChip('DEF', BOSS_DEF_INIT, 'def'));
     if (bestSpeed > 0) {
       const beatChip = document.createElement('span');
       beatChip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--beat';
@@ -514,21 +505,61 @@ function buildBossEntry(
   } else {
     const lockedStats = document.createElement('div');
     lockedStats.className = 'rpg-codex-stat-row';
-    for (const label of ['HP', 'ATK', 'DEF']) {
-      const chip = document.createElement('span');
-      chip.className = 'rpg-codex-stat-chip rpg-codex-stat-chip--locked';
-      chip.textContent = `${label} ???`;
-      lockedStats.appendChild(chip);
-    }
+    lockedStats.appendChild(makeLockedStatChip('HP'));
+    lockedStats.appendChild(makeLockedStatChip('ATK'));
+    lockedStats.appendChild(makeLockedStatChip('DEF'));
     body.appendChild(lockedStats);
 
     const waveReq = document.createElement('div');
     waveReq.className = 'rpg-codex-desc rpg-codex-desc--locked';
-    waveReq.textContent = `Appears at wave ${bossId * 100}`;
+    waveReq.textContent = 'Not yet encountered.';
     body.appendChild(waveReq);
   }
 
   box.appendChild(body);
+
+  // Zone cluster placeholder for bosses (horizon zone)
+  const zoneCluster = document.createElement('div');
+  zoneCluster.className = 'rpg-codex-zone-cluster';
+  if (!showLocked) {
+    zoneCluster.appendChild(makeZoneIconChip('horizon'));
+  }
+  box.appendChild(zoneCluster);
+
+  // Mastery column
+  const masteryCol = document.createElement('div');
+  masteryCol.className = 'rpg-codex-mastery-col';
+
+  if (showLocked) {
+    const lockIcon = document.createElement('div');
+    lockIcon.className = 'rpg-codex-mastery-lock';
+    lockIcon.textContent = '🔒';
+    masteryCol.appendChild(lockIcon);
+    const waveHint = document.createElement('div');
+    waveHint.className = 'rpg-codex-mastery-wave-hint';
+    waveHint.textContent = `WAVE ${bossId * 100}`;
+    masteryCol.appendChild(waveHint);
+  } else if (bestSpeed > 0) {
+    const killsLabel = document.createElement('div');
+    killsLabel.className = 'rpg-codex-mastery-label';
+    killsLabel.textContent = 'BEST';
+    masteryCol.appendChild(killsLabel);
+    const killsVal = document.createElement('div');
+    killsVal.className = 'rpg-codex-mastery-value';
+    killsVal.textContent = `${bestSpeed}%`;
+    masteryCol.appendChild(killsVal);
+    const bonusLabel = document.createElement('div');
+    bonusLabel.className = 'rpg-codex-mastery-label';
+    bonusLabel.textContent = 'SPEED';
+    masteryCol.appendChild(bonusLabel);
+  } else {
+    const defeatedLabel = document.createElement('div');
+    defeatedLabel.className = 'rpg-codex-mastery-label';
+    defeatedLabel.textContent = 'BOSS';
+    masteryCol.appendChild(defeatedLabel);
+  }
+
+  box.appendChild(masteryCol);
   return box;
 }
 
