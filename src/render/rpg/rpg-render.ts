@@ -1936,7 +1936,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     resize(cont: HTMLElement): void {
       _devOverlayContainer = cont;
-      if (_isDevMode && !_devOverlay.parentElement) cont.appendChild(_devOverlay);
+      if (_isDevMode && _showDebugOverlay && !_devOverlay.parentElement) cont.appendChild(_devOverlay);
       doResize(cont);
       rebuildVerdureBoundsForResize();
       const half = RPG_MOTE_SIZE / 2;
