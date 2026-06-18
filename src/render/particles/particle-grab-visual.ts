@@ -108,24 +108,30 @@ export function drawGrabVisual(
       const dotRadius = ORB_TIP_RADIUS * (1 - trailFrac * 0.72);
       if (dotRadius < 0.1) continue;
 
-      ctx.globalAlpha = alpha;
+      const fill = `rgb(${r},${g},${b})`;
 
-      // Glow for the front portion of the trail
+      // Glow for the front portion of the trail. Instead of ctx.shadowBlur
+      // (an offscreen blur pass per fill — catastrophic when this runs every
+      // frame while dragging), fake the glow with a single larger, faint
+      // additive circle underneath the core dot. The 'lighter' composite mode
+      // makes overlapping fills brighten, giving the same comet-glow look at a
+      // fraction of the cost.
       if (trailFrac < 0.35) {
-        ctx.shadowBlur = dotRadius * 5;
-        ctx.shadowColor = `rgb(${r},${g},${b})`;
-      } else {
-        ctx.shadowBlur = 0;
+        ctx.globalAlpha = alpha * 0.35;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.arc(x, y, dotRadius * 3, 0, Math.PI * 2);
+        ctx.fill();
       }
 
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = fill;
       ctx.beginPath();
       ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  ctx.shadowBlur = 0;
   ctx.globalAlpha = 1;
   ctx.restore();
 }
