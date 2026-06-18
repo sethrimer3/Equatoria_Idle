@@ -1092,7 +1092,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       textY += 8;
 
       // SP cost
-      ctx.font      = '10px monospace';
+      ctx.font      = '12px "Cormorant Garamond", serif';
       ctx.fillStyle = (hasSkillPt || _isDevMode) ? '#8ec87a' : '#e07070';
       ctx.fillText(`✦ ${spCost} SP  (have ${_rpgState.unspentSkillPoints})`, textX, textY);
       textY += META_LINE_H;
