@@ -180,8 +180,8 @@ export function evaluateStatusCombosOnStatusApplied(args: {
         _setCooldown(enemy, rift.id, nowMs);
         results.push({
           comboId: rift.id, label: rift.feedbackLabel, color: rift.feedbackColor,
-          primaryEnemy: enemy, x, y,
-          primaryDamage: raw, aoeDamage: 0, aoeRadius: 0,
+          primaryEnemy: enemy, enemyTypeId, x, y,
+          primaryDamage: raw, aoeDamage: 0, aoeRadius: 0, triggerKind,
         });
       }
     }
