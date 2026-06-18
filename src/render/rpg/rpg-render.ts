@@ -42,6 +42,8 @@ import {
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
+import { applyLensStatus, getActiveStatuses } from '../../sim/rpg/enemy-status-effects';
+import { getRecentComboEvents } from '../../dev/rpg-combat-event-log';
 import { createDamageFns } from './rpg-damage';
 import { getCodexMultiplier } from '../../sim/rpg/rpg-codex';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
