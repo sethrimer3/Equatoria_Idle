@@ -699,6 +699,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Verdure__0000_Ribbon-Worm.png',
   },
   {
     id: 'proc_lanternmoth',
