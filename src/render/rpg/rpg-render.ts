@@ -504,6 +504,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let glowTimeS = 0;
   let _isActive = false;
   let rpgPhase: RpgPhase = 'alive';
+
+  // ── Dev overlay DOM element ────────────────────────────────────────────────
+  let _devOverlayContainer: HTMLElement | null = null;
+  let _devOverlayUpdateMs = 0;
+  const _devOverlay = (() => {
+    const el = document.createElement('div');
+    el.style.cssText = [
+      'position:absolute;top:8px;right:8px;width:260px;max-height:80vh;overflow-y:auto',
+      'background:rgba(0,0,0,0.75);border:1px solid #444;border-radius:6px',
+      'padding:6px 8px;font:11px/1.4 monospace;color:#ccc;z-index:200;display:none',
+      'pointer-events:none',
+    ].join(';');
+    el.setAttribute('data-rpg-dev-overlay', '1');
+    return el;
+  })();
   let phaseTimerMs     = 0;
   let deathAlpha       = 1;
   let screenDarken     = 0;
