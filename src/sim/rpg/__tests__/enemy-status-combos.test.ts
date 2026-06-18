@@ -1,23 +1,5 @@
 /**
  * enemy-status-combos.test.ts — Tests for the status combo trigger engine.
- *
- * Covers:
- *   1. Steam Burst triggers on burning + chilled
- *   2. Steam Burst consumes Chilled
- *   3. Steam Burst respects per-enemy cooldown
- *   4. Steam Burst fires again after cooldown expires
- *   5. Shatter triggers on frozen + direct hit
- *   6. Shatter removes Frozen
- *   7. Shatter does not trigger without Frozen
- *   8. Shatter respects cooldown
- *   9. Toxic Rupture triggers on poisoned + cracked
- *   10. Gravity Collapse triggers on gravitized (non-boss)
- *   11. Gravity Collapse skips boss (bossMultiplier = 0)
- *   12. Rift Detonation triggers at stack threshold
- *   13. Rift Detonation does not trigger below threshold
- *   14. Boss/elite multipliers applied to Steam Burst
- *   15. Re-entrancy guard: combos do not trigger other combos
- *   16. Existing status application tests still pass (no regression)
  */
 
 import { describe, it, expect } from 'vitest';
