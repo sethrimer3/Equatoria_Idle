@@ -196,8 +196,8 @@
 }
 
 .settings-row label {
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
+  color: var(--text-gold-muted);
 }
 
 .settings-slider {
