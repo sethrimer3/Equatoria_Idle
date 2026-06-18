@@ -1081,7 +1081,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     // Placeholder notice (only for pending skills)
     if (showPlaceholderNotice) {
       textY += 4;
-      ctx.font      = '9px monospace';
+      ctx.font      = '11px "Cormorant Garamond", serif';
       ctx.fillStyle = 'rgba(200, 170, 80, 0.65)';
       ctx.fillText('⚠ Effect hook pending', textX, textY);
       textY += PLACEHOLDER_LINE_H;
