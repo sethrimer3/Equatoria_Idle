@@ -89,6 +89,12 @@ export function createEquationPanel(
   panel.appendChild(unlockedSection);
 
   const upgradeButtons: Map<string, HTMLButtonElement> = new Map();
+  // Per-button render signatures so update() only touches the DOM when the
+  // rendered content actually changes (update() runs ~10x/sec).
+  const upgradeSig: Map<string, string> = new Map();
+  let lastForgeUnlocked: boolean | null = null;
+  let lastHeatSig = '';
+  let lastLockedSig = '';
   for (const def of EQUATION_PART_UPGRADES) {
     const btn = document.createElement('button');
     btn.className = 'upgrade-btn eq-upgrade-btn';
