@@ -924,7 +924,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const canPurchase    = !isRoot && !isMaxed && purchaseCheck.ok;
 
     // Measure wrapped description before computing card height
-    const DESC_FONT = '10px monospace';
+    const DESC_FONT = '12px "Cormorant Garamond", serif';
     const innerW    = CARD_W - CARD_PAD * 2;
     ctx.save();
     const descLines = wrapText(ctx, descStr, DESC_FONT, innerW);
