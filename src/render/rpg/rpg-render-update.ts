@@ -603,6 +603,10 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   tickWeaponSystems(ctx.weaponTickCtx, deltaMs);
   ctx.updateShotVisuals(deltaMs);
   ctx.updateDamageNumbers(deltaMs);
+  for (let _ci = ctx.comboEffects.length - 1; _ci >= 0; _ci--) {
+    ctx.comboEffects[_ci].timerMs -= deltaMs;
+    if (ctx.comboEffects[_ci].timerMs <= 0) ctx.comboEffects.splice(_ci, 1);
+  }
   updateSpawnFlashes(deltaMs);
   updateDyingEnemies(deltaMs);
 
