@@ -181,8 +181,12 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
   specialSubtitle.textContent = 'One-time upgrades that double Loom production';
   pane.appendChild(specialSubtitle);
 
-  const specialCards: Map<string, HTMLElement> = new Map();
-  const specialButtons: Map<string, HTMLButtonElement> = new Map();
+  interface SpecialCardRefs {
+    card: HTMLElement;
+    btn: HTMLButtonElement;
+    statSpan: HTMLElement;
+  }
+  const specialCards: Map<string, SpecialCardRefs> = new Map();
 
   for (const def of SPECIAL_LOOM_DEFINITIONS) {
     const tier = TIER_BY_ID.get(def.tierId);
@@ -210,6 +214,7 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
 
     const stats = document.createElement('div');
     stats.className = 'loom-stats';
+    const statSpan = makeStat(stats);
     card.appendChild(stats);
 
     const btn = document.createElement('button');
@@ -222,8 +227,7 @@ export function createLoomUpgradesPane(dispatch: ActionHandler): LoomUpgradesPan
     card.appendChild(btn);
 
     pane.appendChild(card);
-    specialCards.set(def.tierId, card);
-    specialButtons.set(def.tierId, btn);
+    specialCards.set(def.tierId, { card, btn, statSpan });
   }
 
   // Small page break after special upgrades section
