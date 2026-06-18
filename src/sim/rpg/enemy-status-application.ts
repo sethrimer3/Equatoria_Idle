@@ -10,9 +10,7 @@ import type { CraftedLensData } from '../../data/rpg/lens-types';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 import { getEnemyStatusAffinityMultiplier, isBossOrEliteType } from '../../data/rpg/enemy-status-affinities';
 import { ENEMY_RIFT_STACK_CAP_BOSS, ENEMY_FRAC_TICKS_BOSS } from '../../data/rpg/status-balance';
-import {
-  applyLensStatus, hasStatus, incrementRiftScarredStacks,
-} from './enemy-status-effects';
+import { applyLensStatus, incrementRiftScarredStacks } from './enemy-status-effects';
 
 export interface ApplyLensStatusesResult {
   appliedAny: boolean;
@@ -23,6 +21,8 @@ export interface ApplyLensStatusesResult {
 /**
  * Apply all Tier 1 lens statuses to `enemy`, respecting affinities and
  * boss/elite overrides. Returns affinity feedback info for callers to render.
+ *
+ * Rift-Scarred stacks are not incremented when the target is immune to Rift-Scarred.
  */
 export function applyTier1LensStatusesToEnemy(args: {
   enemy: object;
@@ -51,9 +51,6 @@ export function applyTier1LensStatusesToEnemy(args: {
       continue;
     }
 
-    // Rift-Scarred immune check: skip stack increment if immune
-    if (p.key === 'riftScarred' && mult === 0) continue;
-
     let scaled = mult === 1 ? p : { ...p, durationMs: p.durationMs * mult, magnitude: p.magnitude * mult };
     if (isBossElite) {
       if (scaled.key === 'riftScarred') {
@@ -63,20 +60,8 @@ export function applyTier1LensStatusesToEnemy(args: {
       }
     }
 
-    const hadRiftBefore = scaled.key === 'riftScarred' ? hasStatus(enemy, 'riftScarred') : false;
     applyLensStatus(enemy, scaled);
     appliedAny = true;
-
-    // Increment Rift-Scarred stacks only when it actually applied (not blocked by immunity)
-    if (scaled.key === 'riftScarred') {
-      // Check if the rift effect source is eigenstein lens (Rift-Scarred comes from eigenstein tier)
-      const hasEigensteinEffect = lens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
-      if (hasEigensteinEffect) {
-        // Only increment if riftScarred was successfully applied (mult != 0)
-        if (mult !== 0) incrementRiftScarredStacks(enemy, lens.id);
-      }
-      void hadRiftBefore; // acknowledged
-    }
 
     if (!feedbackShown && mult !== 1) {
       affinityFeedback = mult > 1 ? 'WEAK!' : 'RESIST';
@@ -84,15 +69,12 @@ export function applyTier1LensStatusesToEnemy(args: {
     }
   }
 
-  // Handle eigenstein rift stack increment for non-riftScarred param paths
-  // (original code checked lens.effects separately; replicate that here for lenses
-  // whose rift-scarred param key may differ)
+  // Increment Rift-Scarred stacks only when the lens has an eigenstein effect
+  // AND the target is not immune to Rift-Scarred.
   const hasRiftEffect = lens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
-  const hasRiftScarredParam = params.some(p => p.key === 'riftScarred');
-  if (hasRiftEffect && !hasRiftScarredParam) {
-    // eigenstein lens but no riftScarred param built — still increment stacks if not immune
-    const mult = getEnemyStatusAffinityMultiplier(enemyTypeId, 'riftScarred');
-    if (mult !== 0) incrementRiftScarredStacks(enemy, lens.id);
+  if (hasRiftEffect) {
+    const riftMult = getEnemyStatusAffinityMultiplier(enemyTypeId, 'riftScarred');
+    if (riftMult !== 0) incrementRiftScarredStacks(enemy, lens.id);
   }
 
   return { appliedAny, blockedByImmunity, affinityFeedback };
