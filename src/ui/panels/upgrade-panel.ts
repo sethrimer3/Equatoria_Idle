@@ -41,6 +41,8 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
   unlockSection.appendChild(unlockBtn);
   panel.appendChild(unlockSection);
 
+  let lastSig = '';
+
   function update(state: GameState, isDevMode = false, numberFormat: NumberFormat = 'letters'): void {
     // Update unlock button
     const nextIndex = state.progression.unlockedTierCount;
@@ -49,10 +51,14 @@ export function createUpgradePanel(dispatch: ActionHandler): UpgradePanel {
       const cost = tierUnlockCost(nextIndex);
       const payTierId = TIERS[nextIndex - 1]?.id ?? 'sand';
       const canAfford = isDevMode || getMotes(state.resources, payTierId) >= cost;
-      unlockBtn.textContent = `🔓 Unlock ${nextTier.displayName} — ${formatNumberAs(cost, numberFormat)} ${TIER_BY_ID.get(payTierId)?.displayName ?? ''} motes`;
-      unlockBtn.disabled = !canAfford;
-      unlockBtn.style.borderColor = nextTier.color;
-      unlockSection.style.display = '';
+      const sig = `${nextIndex}|${cost}|${canAfford ? 1 : 0}|${numberFormat}`;
+      if (sig !== lastSig) {
+        lastSig = sig;
+        unlockBtn.textContent = `🔓 Unlock ${nextTier.displayName} — ${formatNumberAs(cost, numberFormat)} ${TIER_BY_ID.get(payTierId)?.displayName ?? ''} motes`;
+        unlockBtn.disabled = !canAfford;
+        unlockBtn.style.borderColor = nextTier.color;
+        unlockSection.style.display = '';
+      }
     } else {
       unlockSection.style.display = 'none';
     }
