@@ -85,13 +85,16 @@ export function applyComboResults(
     }
 
     // AoE damage to nearby enemies
+    let aoeDmgActual = 0;
     if (r.aoeDamage > 0) {
-      _applyAoeDmg(ctx, r.x, r.y, r.aoeRadius, r.aoeDamage, r.primaryEnemy, r.color);
+      aoeDmgActual = _applyAoeDmg(ctx, r.x, r.y, r.aoeRadius, r.aoeDamage, r.primaryEnemy, r.color);
     }
 
     // Achievement counters (ephemeral, not saved)
-    const totalDmg = r.primaryDamage + r.aoeDamage;
+    const primaryActual = r.primaryDamage > 0 && (r.primaryEnemy as MinEnemy).hp >= 0
+      ? r.primaryDamage
+      : 0;
     state.statusCombosTriggered += 1;
-    state.statusComboDamageDealt += totalDmg;
+    state.statusComboDamageDealt += primaryActual + aoeDmgActual;
   }
 }
