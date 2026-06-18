@@ -452,13 +452,11 @@ function buildBossEntry(
     iconFrame.style.borderColor = glowColor + '66';
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width  = ICON_SIZE;
-  canvas.height = ICON_SIZE;
-  canvas.className = 'rpg-codex-icon-canvas';
-  if (!showLocked) {
-    drawBossIcon(canvas, bossId);
-  } else {
+  if (showLocked) {
+    const canvas = document.createElement('canvas');
+    canvas.width  = ICON_SIZE;
+    canvas.height = ICON_SIZE;
+    canvas.className = 'rpg-codex-icon-canvas';
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.font = `bold ${ICON_SIZE * 0.5}px sans-serif`;
@@ -467,8 +465,24 @@ function buildBossEntry(
       ctx.textBaseline = 'middle';
       ctx.fillText('?', ICON_SIZE / 2, ICON_SIZE / 2);
     }
+    iconFrame.appendChild(canvas);
+  } else {
+    // Main icon: fallback PNG (no boss-specific PNGs yet)
+    const iconImg = document.createElement('img');
+    iconImg.className = 'rpg-codex-icon-img';
+    iconImg.src = FALLBACK_ENEMY_ICON_PATH;
+    iconImg.alt = `Boss ${bossId}`;
+    iconFrame.appendChild(iconImg);
+
+    // Overlay: procedural boss canvas in top-right corner
+    const overlayCanvas = document.createElement('canvas');
+    overlayCanvas.width  = ICON_SIZE;
+    overlayCanvas.height = ICON_SIZE;
+    overlayCanvas.className = 'rpg-codex-icon-overlay';
+    drawBossIcon(overlayCanvas, bossId);
+    iconFrame.appendChild(overlayCanvas);
   }
-  iconFrame.appendChild(canvas);
+
   box.appendChild(iconFrame);
 
   // Body
