@@ -2050,5 +2050,115 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getAlivenGroupCount(): number {
       return alivenGroups.length;
     },
+
+    devApplyStatusCombo(preset: string): void {
+      // Find nearest live enemy to the mote across all main arrays
+      type MinE = { x: number; y: number; hp: number };
+      const allArrays: MinE[][] = [
+        enemies as unknown as MinE[],
+        rubyEnemies as unknown as MinE[], emeraldEnemies as unknown as MinE[],
+        sapphireEnemies as unknown as MinE[], nullstoneEnemies as unknown as MinE[],
+        fracterylEnemies as unknown as MinE[], eigensteinEnemies as unknown as MinE[],
+        eliteEnemies as unknown as MinE[],
+      ];
+      let nearest: object | null = null;
+      let nearestDist = Infinity;
+      for (const arr of allArrays) {
+        for (const e of arr) {
+          if (e.hp <= 0) continue;
+          const dx = e.x - mote.x, dy = e.y - mote.y;
+          const d = dx * dx + dy * dy;
+          if (d < nearestDist) { nearestDist = d; nearest = e as object; }
+        }
+      }
+      if (bossEnemy && bossEnemy.hp > 0) {
+        const dx = bossEnemy.x - mote.x, dy = bossEnemy.y - mote.y;
+        const d = dx * dx + dy * dy;
+        if (d < nearestDist) { nearest = bossEnemy as unknown as object; }
+      }
+      if (!nearest) return;
+
+      const base = { sourceTierId: 'ruby' as import('../../data/tiers').TierId, durationMs: 10000, magnitude: 50, tickEveryMs: 1000 };
+      const rb = { ...base, sourceTierId: 'eigenstein' as import('../../data/tiers').TierId, durationMs: 30000 };
+      switch (preset) {
+        case 'steamBurst':
+          applyLensStatus(nearest, { ...base, key: 'burning' });
+          applyLensStatus(nearest, { ...base, sourceTierId: 'sapphire' as import('../../data/tiers').TierId, key: 'chilled' });
+          break;
+        case 'shatter':
+          applyLensStatus(nearest, { ...base, sourceTierId: 'sapphire' as import('../../data/tiers').TierId, key: 'frozen', durationMs: 8000 });
+          break;
+        case 'toxicRupture':
+          applyLensStatus(nearest, { ...base, sourceTierId: 'emerald' as import('../../data/tiers').TierId, key: 'poisoned' });
+          applyLensStatus(nearest, { ...base, sourceTierId: 'diamond' as import('../../data/tiers').TierId, key: 'cracked' });
+          break;
+        case 'gravityCollapse':
+          applyLensStatus(nearest, { ...base, sourceTierId: 'nullstone' as import('../../data/tiers').TierId, key: 'gravitized' });
+          break;
+        case 'riftDetonation':
+          applyLensStatus(nearest, { ...rb, key: 'riftScarred' });
+          for (let _ri = 0; _ri < 9; _ri++) {
+            import('../../sim/rpg/enemy-status-effects').then(m => m.incrementRiftScarredStacks(nearest!, 'dev'));
+          }
+          break;
+      }
+    },
   };
+}
+
+// ── Dev overlay update (module-level so rpg-render.ts calls it) ───────────────
+
+function _updateDevOverlay(
+  el: HTMLElement,
+  mote: { x: number; y: number },
+  enemies: Array<{ x: number; y: number; hp: number; maxHp: number }>,
+): void {
+  const events = getRecentComboEvents();
+  const allE: Array<{ x: number; y: number; hp: number; maxHp: number } & object> =
+    enemies as Array<{ x: number; y: number; hp: number; maxHp: number } & object>;
+  let nearest: (typeof allE)[0] | null = null;
+  let nd = Infinity;
+  for (const e of allE) {
+    if (e.hp <= 0) continue;
+    const dx = e.x - mote.x, dy = e.y - mote.y;
+    const d = dx * dx + dy * dy;
+    if (d < nd) { nd = d; nearest = e; }
+  }
+
+  const lines: string[] = ['<b style="color:#fff">⬛ RPG Debug</b>'];
+
+  if (nearest) {
+    const statuses = getActiveStatuses(nearest);
+    lines.push(`<span style="color:#adf">HP:</span> ${Math.round(nearest.hp)}/${Math.round(nearest.maxHp)}`);
+    if (statuses.length === 0) {
+      lines.push('<span style="color:#666">No statuses</span>');
+    } else {
+      for (const s of statuses) {
+        const rem = Math.round(s.remainingMs / 100) / 10;
+        lines.push(`• <span style="color:#fc9">${s.key}</span> ${rem}s`);
+      }
+    }
+  } else {
+    lines.push('<span style="color:#666">No nearby enemy</span>');
+  }
+
+  lines.push('<hr style="border-color:#333;margin:3px 0">');
+  lines.push('<b style="color:#aaa">Recent Combos</b>');
+  const recent = [...events].reverse().slice(0, 10);
+  if (recent.length === 0) {
+    lines.push('<span style="color:#666">None yet</span>');
+  } else {
+    for (const ev of recent) {
+      const ago = Math.round((performance.now() - ev.timeMs) / 100) / 10;
+      const dmg = Math.round(ev.primaryDamage + ev.aoeDamage);
+      lines.push(
+        `<span style="color:#6ef">${ev.comboLabel}</span>` +
+        ` <span style="color:#888">${ev.enemyTypeId}</span>` +
+        ` <span style="color:#fca">${dmg}dmg</span>` +
+        ` <span style="color:#555">${ago}s ago</span>`,
+      );
+    }
+  }
+
+  el.innerHTML = lines.join('<br>');
 }
