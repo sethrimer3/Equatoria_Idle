@@ -2691,9 +2691,9 @@
 /* ── Icon frame ─────────────────────────────────────────────────── */
 .rpg-codex-icon-frame {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.10);
   overflow: hidden;
@@ -2704,8 +2704,8 @@
 
 .rpg-codex-icon-canvas {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 54px;
+  height: 54px;
 }
 
 /* ── Body ───────────────────────────────────────────────────────── */
