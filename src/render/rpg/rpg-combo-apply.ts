@@ -7,6 +7,7 @@
 
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
 import type { ComboResult } from '../../sim/rpg/enemy-status-combos';
+import { recordComboEvent } from '../../dev/rpg-combat-event-log';
 
 type MinEnemy = { x: number; y: number; hp: number; maxHp: number };
 
