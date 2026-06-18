@@ -5,6 +5,7 @@
 
 import type { TierId } from '../../data/tiers';
 import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
+import type { EnemyCatalogEntry } from '../../ui/panels/rpg-enemies-catalog-types';
 
 /** Base path for all assets in the repository root. */
 const BASE = 'ASSETS';
