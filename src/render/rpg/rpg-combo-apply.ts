@@ -91,11 +91,24 @@ export function applyComboResults(
       aoeDmgActual = _applyAoeDmg(ctx, r.x, r.y, r.aoeRadius, r.aoeDamage, r.primaryEnemy, r.color);
     }
 
+    // Combo burst visual effect
+    ctx.spawnComboEffect(r.x, r.y, r.comboId, r.color);
+
     // Achievement counters (ephemeral, not saved)
     const primaryActual = r.primaryDamage > 0 && (r.primaryEnemy as MinEnemy).hp >= 0
       ? r.primaryDamage
       : 0;
     state.statusCombosTriggered += 1;
     state.statusComboDamageDealt += primaryActual + aoeDmgActual;
+
+    // Dev event log (cheap ring buffer, safe to always call)
+    recordComboEvent({
+      timeMs: performance.now(),
+      comboId: r.comboId,
+      comboLabel: r.label,
+      enemyTypeId: (r.primaryEnemy as { _devTypeId?: string })._devTypeId ?? 'unknown',
+      primaryDamage: primaryActual,
+      aoeDamage: aoeDmgActual,
+    });
   }
 }
