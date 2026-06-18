@@ -128,7 +128,26 @@ export function createDevPanel(): DevPanel {
 
   section.appendChild(alivenBulkRow);
 
-  // ── 3. Forge State Snapshot ────────────────────────────────────
+  // ── 3. Status Combo Testing ────────────────────────────────────
+  section.appendChild(makeSubTitle('Status Combo Testing'));
+
+  const comboPresets: Array<{ preset: string; label: string }> = [
+    { preset: 'steamBurst',      label: '💨 Steam Burst'      },
+    { preset: 'shatter',         label: '❄️ Shatter'           },
+    { preset: 'toxicRupture',    label: '☠️ Toxic Rupture'     },
+    { preset: 'gravityCollapse', label: '🌀 Gravity Collapse'  },
+    { preset: 'riftDetonation',  label: '⚡ Rift Detonation'   },
+  ];
+  for (const { preset, label } of comboPresets) {
+    const btn = el('button', 'settings-dev-btn');
+    btn.textContent = label;
+    btn.title = `Apply ${preset} statuses to nearest enemy`;
+    btn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    btn.addEventListener('click', () => { hooks?.rpgRender.devApplyStatusCombo(preset); });
+    section.appendChild(btn);
+  }
+
+  // ── 4. Forge State Snapshot ────────────────────────────────────
   section.appendChild(makeSubTitle('Forge State'));
 
   const forgeHeatLine    = el('div', 'dev-panel-info-line');
