@@ -871,7 +871,7 @@
   border: 0;
   border-left: 3px solid rgba(160, 160, 200, 0.25);
   background: rgba(20, 20, 35, 0.85);
-  color: var(--text-primary);
+  color: var(--text-gold-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;
