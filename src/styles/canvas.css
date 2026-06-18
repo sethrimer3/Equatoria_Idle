@@ -2620,8 +2620,8 @@
 .rpg-codex-card {
   display: flex;
   gap: 10px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  align-items: stretch;
+  flex-wrap: nowrap;
   background: rgba(18, 12, 32, 0.88);
   border: 1px solid rgba(80, 55, 120, 0.32);
   border-radius: 8px;
