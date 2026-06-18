@@ -157,7 +157,7 @@ export function createDevPanel(): DevPanel {
   section.appendChild(forgeCrunchLine);
   section.appendChild(forgeSacrText);
 
-  // ── 4. Loom State Snapshot ────────────────────────────────────
+  // ── 6. Loom State Snapshot ────────────────────────────────────
   section.appendChild(makeSubTitle('Loom States'));
 
   const loomTableWrap = el('div', 'dev-panel-table-wrap');
