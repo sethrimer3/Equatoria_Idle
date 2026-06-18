@@ -577,9 +577,19 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
       const isSelected = selectedZoneTab === tab.id;
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = tab.label;
       button.setAttribute('aria-pressed', String(isSelected));
       button.className = 'rpg-codex-zone-tab' + (isSelected ? ' rpg-codex-zone-tab--active' : '');
+
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'rpg-codex-zone-tab__icon';
+      iconSpan.textContent = ZONE_TAB_GLYPH[tab.id];
+      iconSpan.setAttribute('aria-hidden', 'true');
+      button.appendChild(iconSpan);
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'rpg-codex-zone-tab__label';
+      labelSpan.textContent = tab.label;
+      button.appendChild(labelSpan);
       button.addEventListener('click', () => {
         selectedZoneTab = tab.id;
         update(latestRpgState, latestIsDevMode);
