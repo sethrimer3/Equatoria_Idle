@@ -244,10 +244,10 @@
   padding: 10px;
   margin-top: 8px;
   background: var(--bg-secondary);
-  color: var(--text-primary);
+  color: var(--text-gold);
   border: 1px solid var(--accent-border);
   border-radius: var(--border-radius);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   font-family: var(--font-primary);
   cursor: pointer;
