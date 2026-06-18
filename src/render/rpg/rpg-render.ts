@@ -508,6 +508,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Dev overlay DOM element ────────────────────────────────────────────────
   let _devOverlayContainer: HTMLElement | null = null;
   let _devOverlayUpdateMs = 0;
+  let _showDebugOverlay = false;
   const _devOverlay = (() => {
     const el = document.createElement('div');
     el.style.cssText = [
