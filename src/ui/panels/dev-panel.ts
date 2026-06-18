@@ -147,7 +147,7 @@ export function createDevPanel(): DevPanel {
     section.appendChild(btn);
   }
 
-  // ── 4. Forge State Snapshot ────────────────────────────────────
+  // ── 5. Forge State Snapshot ────────────────────────────────────
   section.appendChild(makeSubTitle('Forge State'));
 
   const forgeHeatLine    = el('div', 'dev-panel-info-line');
