@@ -442,7 +442,7 @@ function drawNode(
   if ((status === 'purchased') && upgDef && upgDef.maxLevel > 1) {
     const rank = getRpgUpgradeLevel(rpgState, upgDef.id);
     ctx.save();
-    ctx.font         = 'bold 7px monospace';
+    ctx.font         = 'bold 9px "Cormorant Garamond", serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle    = branchCol;
@@ -454,7 +454,7 @@ function drawNode(
   // ── Max rank checkmark badge ─────────────────────────────────────────
   if (isMaxed && !isRoot) {
     ctx.save();
-    ctx.font         = 'bold 8px monospace';
+    ctx.font         = 'bold 10px "Cormorant Garamond", serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle    = '#ffd060';
