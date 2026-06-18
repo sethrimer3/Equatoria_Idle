@@ -66,6 +66,8 @@ export interface SettingsState {
   idleCanvasRenderStyle: 'pixelated' | 'crisp';
   /** Dev-mode only: draw the idle canvas viewport diagnostic overlay. */
   isIdleViewportDebugEnabled: boolean;
+  /** Dev-mode only: show the RPG debug overlay (nearby enemy HP, statuses, recent combos). */
+  isRpgDebugOverlayEnabled: boolean;
   /**
    * When true (dev mode only), all RPG zone rendering is drawn at a
    * quarter-resolution offscreen canvas then upscaled with nearest-neighbor,
