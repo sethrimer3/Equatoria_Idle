@@ -118,14 +118,14 @@
   flex: 1;
   padding: 6px 12px;
   font-family: var(--font-primary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase;
   background: transparent;
   border: 1px solid var(--accent-border);
   border-radius: var(--border-radius);
-  color: var(--text-secondary);
+  color: var(--text-gold-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
