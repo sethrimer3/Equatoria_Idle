@@ -96,6 +96,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A pale crystal that strafe-orbits the player and periodically fires sharp spikes.',
     shape: 'diamond',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Quartz-Orbiter.png',
   },
   {
     id: 'sapphire',
@@ -439,6 +440,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A crystalline swarm of 10 particles that periodically dash toward the player with staggered, randomised timing.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Shard-Bloom.png',
   },
   {
     id: 'aliven_pulse_swarm',
@@ -713,6 +715,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Lantern-Moth.png',
   },
   {
     id: 'proc_eyestalk',
@@ -739,6 +742,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Floating-Jellyfish.png',
   },
   {
     id: 'proc_clothghost',
