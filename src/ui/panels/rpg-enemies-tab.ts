@@ -500,13 +500,13 @@ function buildBossEntry(
 
   box.appendChild(body);
 
-  // Zone cluster placeholder for bosses (horizon zone)
-  const zoneCluster = document.createElement('div');
-  zoneCluster.className = 'rpg-codex-zone-cluster';
+  // Symbol cluster for bosses (horizon zone icon only)
+  const symbolCluster = document.createElement('div');
+  symbolCluster.className = 'rpg-codex-symbol-cluster';
   if (!showLocked) {
-    zoneCluster.appendChild(makeZoneIconChip('horizon'));
+    symbolCluster.appendChild(makeZoneIconChip('horizon'));
   }
-  box.appendChild(zoneCluster);
+  box.appendChild(symbolCluster);
 
   // Mastery column
   const masteryCol = document.createElement('div');
