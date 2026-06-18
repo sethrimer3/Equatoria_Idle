@@ -559,6 +559,7 @@ export function createRpgMenuTabPane(
       else if (kind === 'set_topography_lighting_debug') isTopographyLightingDebugEnabled = enabled;
       else if (kind === 'set_soft_impetus_asteroid_shadows') isSoftImpetusAsteroidShadows = enabled;
       else if (kind === 'set_rpg_pixelated_render') isRpgPixelatedRender = enabled;
+      else if (kind === 'set_rpg_debug_overlay') isRpgDebugOverlayEnabled = enabled;
     },
   };
 
