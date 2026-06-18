@@ -635,14 +635,10 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     for (const { entry, isLocked } of unlockedEntries) {
       const isHighlighted = firstHighlight;
       firstHighlight = false;
-      const enemyEntry = buildEnemyEntry(entry, isLocked, isDevMode, isHighlighted);
       const kills = rpgState.lifetimeKillsByType.get(entry.id) ?? 0;
       const bonus = getCodexBonusPercent(kills);
       const next = getNextVisibleCodexMilestone(kills);
-      const mastery = document.createElement('div');
-      mastery.className = 'rpg-codex-mastery';
-      mastery.textContent = `Kills: ${kills.toLocaleString()} | Codex bonus: +${bonus}% damage & XP${next ? ` | Next: ${next.toLocaleString()}` : ''}`;
-      enemyEntry.appendChild(mastery);
+      const enemyEntry = buildEnemyEntry(entry, isLocked, isDevMode, isHighlighted, kills, bonus, next);
       element.appendChild(enemyEntry);
     }
 
