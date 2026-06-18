@@ -288,30 +288,32 @@ export function performAoeAttack(
   if (attachedLens && weaponId) {
     const nowMs = performance.now();
     type MinE = { x: number; y: number; hp: number };
-    const regularArrays: MinE[][] = [
-      enemies as unknown as MinE[],
-      sapphireEnemies as unknown as MinE[],
-      emeraldEnemies as unknown as MinE[],
-      amberEnemies as unknown as MinE[],
-      voidEnemies as unknown as MinE[],
-      quartzEnemies as unknown as MinE[],
-      rubyEnemies as unknown as MinE[],
-      sunstoneEnemies as unknown as MinE[],
-      citrineEnemies as unknown as MinE[],
-      ioliteEnemies as unknown as MinE[],
-      amethystEnemies as unknown as MinE[],
-      diamondEnemies as unknown as MinE[],
-      nullstoneEnemies as unknown as MinE[],
-      fracterylEnemies as unknown as MinE[],
-      eigensteinEnemies as unknown as MinE[],
+    // Map each array to its type ID for correct affinity/scaling.
+    const comboArrays: { arr: MinE[]; typeId: string }[] = [
+      { arr: enemies as unknown as MinE[], typeId: 'other' },
+      { arr: sapphireEnemies as unknown as MinE[], typeId: 'sapphire' },
+      { arr: emeraldEnemies as unknown as MinE[], typeId: 'emerald' },
+      { arr: amberEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: voidEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: quartzEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: rubyEnemies as unknown as MinE[], typeId: 'ruby' },
+      { arr: sunstoneEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: citrineEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: ioliteEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: amethystEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: diamondEnemies as unknown as MinE[], typeId: 'other' },
+      { arr: nullstoneEnemies as unknown as MinE[], typeId: 'nullstone' },
+      { arr: fracterylEnemies as unknown as MinE[], typeId: 'fracteryl' },
+      { arr: eigensteinEnemies as unknown as MinE[], typeId: 'eigenstein' },
     ];
-    for (const arr of regularArrays) {
+    for (const { arr, typeId } of comboArrays) {
       for (const e of arr) {
         if (e.hp <= 0) continue;
         const dx = e.x - mote.x, dy = e.y - mote.y;
         if (dx * dx + dy * dy <= aoeSq) {
           const results = evaluateStatusCombosOnStatusApplied({
-            enemy: e, enemyTypeId: 'other', x: e.x, y: e.y, baseDamage: rawDamage, nowMs,
+            enemy: e, enemyTypeId: typeId, x: e.x, y: e.y,
+            baseDamage: rawDamage, nowMs, triggerKind: 'aoeHit',
           });
           applyComboResults(ctx, results);
         }
@@ -322,7 +324,8 @@ export function performAoeAttack(
       const dx = e.x - mote.x, dy = e.y - mote.y;
       if (dx * dx + dy * dy <= aoeSq) {
         const results = evaluateStatusCombosOnStatusApplied({
-          enemy: e, enemyTypeId: `elite_${e.tier}`, x: e.x, y: e.y, baseDamage: rawDamage, nowMs,
+          enemy: e, enemyTypeId: `elite_${e.tier}`, x: e.x, y: e.y,
+          baseDamage: rawDamage, nowMs, triggerKind: 'aoeHit',
         });
         applyComboResults(ctx, results);
       }
@@ -331,7 +334,8 @@ export function performAoeAttack(
       const bx = bossEnemy.x - mote.x, by = bossEnemy.y - mote.y;
       if (bx * bx + by * by <= aoeSq) {
         const results = evaluateStatusCombosOnStatusApplied({
-          enemy: bossEnemy, enemyTypeId: 'boss', x: bossEnemy.x, y: bossEnemy.y, baseDamage: rawDamage, nowMs,
+          enemy: bossEnemy, enemyTypeId: 'boss', x: bossEnemy.x, y: bossEnemy.y,
+          baseDamage: rawDamage, nowMs, triggerKind: 'aoeHit',
         });
         applyComboResults(ctx, results);
       }
