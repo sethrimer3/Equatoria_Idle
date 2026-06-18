@@ -51,9 +51,9 @@
   border: 1px solid #b9942e;
   border-left-width: 0.5px;
   border-right-width: 0.5px;
-  color: var(--text-secondary);
+  color: var(--text-gold-muted);
   font-family: var(--font-primary);
-  font-size: 12.5px;
+  font-size: 12px;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 0;
