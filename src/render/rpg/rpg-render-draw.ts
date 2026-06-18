@@ -60,7 +60,7 @@ import {
   setLowGraphicsMode as setPlayerDrawLowGraphics,
 } from './rpg-player-draw';
 import {
-  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers,
+  drawDeathParticles, drawShotLines, drawHitEffects, drawDamageNumbers, drawComboEffects,
   setLowGraphicsMode as setCombatEffectsLowGraphics,
 } from './rpg-combat-effects-draw';
 import {
