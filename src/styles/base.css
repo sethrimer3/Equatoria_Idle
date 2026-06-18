@@ -56,12 +56,28 @@
   --bg-secondary: #1a1a2e;
   --bg-panel: #12121e;
   --bg-overlay: rgba(8, 8, 16, 0.88);
-  --text-primary: #e6e6ea;
-  --text-secondary: #8a8a9a;
+  --text-primary: #e8dfc8;
+  --text-secondary: #a09078;
   --accent: #fff172;
   --accent-glow: rgba(255, 241, 114, 0.3);
   --accent-border: rgba(255, 241, 114, 0.2);
-  --font-primary: 'Poiret One', sans-serif;
+  /*
+   * Primary UI font: Cormorant Garamond (elegant serif).
+   * BJ Cree is included as a second entry so Unified Canadian Aboriginal
+   * Syllabics (U+1401–U+1676) — used by the secret-achievement glyph
+   * scrambler — render in the intended glyph font rather than a random
+   * system fallback.
+   */
+  --font-primary: 'Cormorant Garamond', 'BJ Cree', serif;
+  /* Secret achievement glyph font — intentionally preserved; do not convert to Cormorant. */
+  --font-glyph: 'BJ Cree', sans-serif;
+  /* ── Gold text scale ──────────────────────────────────────────── */
+  --text-gold: #f3d179;
+  --text-gold-bright: #ffe9a6;
+  --text-gold-deep: #b9822f;
+  --text-gold-muted: #c6a15a;
+  --text-gold-shadow: rgba(0, 0, 0, 0.75);
+  --text-gold-glow: rgba(255, 210, 110, 0.35);
   --border-radius: 16px;
   --tab-height: 70px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
