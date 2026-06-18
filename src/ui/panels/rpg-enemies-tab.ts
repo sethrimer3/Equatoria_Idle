@@ -52,6 +52,15 @@ const ENEMY_ZONE_TABS: ReadonlyArray<{ id: EnemyZoneTabId; label: string }> = [
   { id: 'horizon', label: 'Horizon' },
 ];
 
+const ZONE_TAB_GLYPH: Record<EnemyZoneTabId, string> = {
+  all:      '◇',
+  euhedral: '◆',
+  impetus:  '⊕',
+  caustics: '≈',
+  verdure:  '✿',
+  horizon:  '✦',
+};
+
 function emptyZoneMessage(zoneId: EnemyZoneTabId): string {
   if (zoneId === 'horizon') return 'No Horizon enemies documented yet.';
   const zone = ENEMY_ZONE_TABS.find(tab => tab.id === zoneId);
