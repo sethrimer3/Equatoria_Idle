@@ -69,34 +69,36 @@ describe('Steam Burst combo', () => {
     clearEnemyStatuses(enemy);
   });
 
-  it('respects cooldown within cooldown window', () => {
+  it('respects cooldown within cooldown window (from definition)', () => {
+    const steamDef = getComboById('steamBurst')!;
     const enemy = makeEnemy();
     applyStatus(enemy, 'burning');
     applyStatus(enemy, 'chilled');
-    // First trigger
     evaluateStatusCombosOnStatusApplied({
       enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0,
     });
-    // Re-apply chilled, still within 3000ms cooldown
+    // Re-apply chilled, still within cooldown
     applyStatus(enemy, 'chilled');
     const results2 = evaluateStatusCombosOnStatusApplied({
-      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 1000,
+      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20,
+      nowMs: steamDef.cooldownMs - 1,
     });
     expect(results2).toHaveLength(0);
     clearEnemyStatuses(enemy);
   });
 
-  it('fires again after cooldown expires', () => {
+  it('fires again after cooldown expires (from definition)', () => {
+    const steamDef = getComboById('steamBurst')!;
     const enemy = makeEnemy();
     applyStatus(enemy, 'burning');
     applyStatus(enemy, 'chilled');
     evaluateStatusCombosOnStatusApplied({
       enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 0,
     });
-    // Re-apply chilled after 3001ms
     applyStatus(enemy, 'chilled');
     const results2 = evaluateStatusCombosOnStatusApplied({
-      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20, nowMs: 3001,
+      enemy, enemyTypeId: 'other', x: 0, y: 0, baseDamage: 20,
+      nowMs: steamDef.cooldownMs + 1,
     });
     expect(results2).toHaveLength(1);
     expect(results2[0]!.comboId).toBe('steamBurst');
