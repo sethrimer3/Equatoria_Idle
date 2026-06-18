@@ -112,3 +112,68 @@ export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: Damage
   ctx.shadowBlur = 0; ctx.globalAlpha = 1;
   ctx.restore();
 }
+
+/**
+ * Draw short-lived per-combo burst effects at the point of impact.
+ * t = timerMs / totalMs ranges from 1 (just spawned) to 0 (expiring).
+ */
+export function drawComboEffects(ctx: CanvasRenderingContext2D, effects: ComboEffect[]): void {
+  if (effects.length === 0) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (const e of effects) {
+    const t = e.timerMs / e.totalMs;
+    ctx.shadowColor = e.color;
+    const glow = isLowGraphicsMode ? 0 : 6;
+    switch (e.comboId) {
+      case 'steamBurst': {
+        ctx.globalAlpha = t * 0.85; ctx.shadowBlur = glow; ctx.strokeStyle = e.color;
+        const r1 = 8 + (1 - t) * 72; const r2 = 4 + (1 - t) * 40;
+        ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(e.x, e.y, r1, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = t * 0.5; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(e.x, e.y, r2, 0, Math.PI * 2); ctx.stroke();
+        break;
+      }
+      case 'shatter': {
+        ctx.globalAlpha = t; ctx.shadowBlur = glow; ctx.strokeStyle = e.color; ctx.lineWidth = 1.5;
+        const len = (1 - t) * 44;
+        for (let i = 0; i < 8; i++) {
+          const ang = (i / 8) * Math.PI * 2;
+          ctx.beginPath(); ctx.moveTo(e.x + Math.cos(ang) * 4, e.y + Math.sin(ang) * 4);
+          ctx.lineTo(e.x + Math.cos(ang) * (4 + len), e.y + Math.sin(ang) * (4 + len)); ctx.stroke();
+        }
+        break;
+      }
+      case 'toxicRupture': {
+        ctx.globalAlpha = t * 0.9; ctx.shadowBlur = glow; ctx.strokeStyle = e.color; ctx.lineWidth = 2.5;
+        const rO = Math.max(1, (1 - t) * 52);
+        ctx.beginPath(); ctx.arc(e.x, e.y, rO, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = t * 0.4; ctx.fillStyle = e.color; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(e.x, e.y, Math.max(1, rO * 0.35), 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case 'gravityCollapse': {
+        const rC = t * 68;
+        if (rC > 1) {
+          ctx.globalAlpha = t; ctx.shadowBlur = glow; ctx.strokeStyle = e.color;
+          ctx.lineWidth = 2 + t * 2; ctx.beginPath(); ctx.arc(e.x, e.y, rC, 0, Math.PI * 2); ctx.stroke();
+        }
+        break;
+      }
+      case 'riftDetonation': {
+        ctx.globalAlpha = t; ctx.shadowBlur = glow; ctx.strokeStyle = e.color; ctx.lineWidth = 1.5;
+        const rB = (1 - t) * 56;
+        for (let i = 0; i < 5; i++) {
+          const ang = (i / 5) * Math.PI * 2 + t * 0.8;
+          const jag = Math.sin(t * Math.PI * 4 + i) * 8;
+          ctx.beginPath(); ctx.moveTo(e.x + Math.cos(ang) * 6, e.y + Math.sin(ang) * 6);
+          ctx.lineTo(e.x + Math.cos(ang + 0.18) * (rB + jag), e.y + Math.sin(ang + 0.18) * (rB + jag)); ctx.stroke();
+          if (rB > 1) { ctx.beginPath(); ctx.arc(e.x, e.y, rB * 0.6, ang - 0.15, ang + 0.15); ctx.stroke(); }
+        }
+        break;
+      }
+      default: break;
+    }
+  }
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  ctx.restore();
+}

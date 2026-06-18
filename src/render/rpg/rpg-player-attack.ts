@@ -171,6 +171,8 @@ export interface RpgPlayerAttackCtx {
   spawnHitVisuals: (enemy: LaserEnemy, dmg: number, color: string, sourceColor?: string) => void;
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string, sourceColor?: string) => void;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, ratio: number, color: string) => void;
+  /** Spawn a short-lived combo burst effect at (x, y) for the given combo. */
+  spawnComboEffect: (x: number, y: number, comboId: string, color: string) => void;
 
   // Fluid explosion
   fluid: {
