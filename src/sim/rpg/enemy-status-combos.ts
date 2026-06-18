@@ -224,8 +224,8 @@ export function evaluateShatterCombo(args: {
     _setCooldown(enemy, shatter.id, nowMs);
     return {
       comboId: shatter.id, label: shatter.feedbackLabel, color: shatter.feedbackColor,
-      primaryEnemy: enemy, x, y,
-      primaryDamage: raw, aoeDamage: 0, aoeRadius: 0,
+      primaryEnemy: enemy, enemyTypeId, x, y,
+      primaryDamage: raw, aoeDamage: 0, aoeRadius: 0, triggerKind: 'directHit' as ComboTriggerKind,
     };
   } finally {
     _inEval = false;
