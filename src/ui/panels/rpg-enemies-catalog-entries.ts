@@ -83,6 +83,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A nimble red assailant that dashes straight through the player, leaving a glowing curved trail.',
     shape: 'square',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Euhedral__0000_Laser-Striker.png',
   },
   {
     id: 'quartz',
