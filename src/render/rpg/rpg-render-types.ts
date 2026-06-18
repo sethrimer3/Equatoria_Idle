@@ -30,6 +30,8 @@ export interface RpgRender {
   setZonePosition(position: 'top' | 'bottom'): void;
   /** Show or hide dev-mode numerical designators on each RPG stats panel box. */
   setDevMode(enabled: boolean): void;
+  /** Show or hide the RPG debug overlay (nearby enemy HP/status + recent combos). Hidden by default even in dev mode. */
+  setRpgDebugOverlay(enabled: boolean): void;
   /** Enable/disable invincibility mode — player takes no damage (dev mode only). */
   setInvincibilityMode(enabled: boolean): void;
   /** Enable/disable topographic terrain debug outlines/dots (dev mode only). */
