@@ -2715,6 +2715,9 @@
 }
 
 .rpg-codex-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 0.70em;
   font-weight: 700;
   white-space: nowrap;
