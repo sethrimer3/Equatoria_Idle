@@ -1348,6 +1348,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnHitVisuals:      (enemy, dmg, color, sourceColor) => spawnHitVisuals(enemy, dmg, color, sourceColor),
     spawnHitVisualsAt:    (x, y, maxHp, dmg, color, sourceColor) => spawnHitVisualsAt(x, y, maxHp, dmg, color, sourceColor),
     spawnDamageNumber:    (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
+    spawnComboEffect:     (x, y, comboId, color) => comboEffects.push({ x, y, comboId, color, timerMs: 480, totalMs: 480 }),
     fluid,
     findClosestTarget:    (rangeSq) => findClosestTarget(rangeSq),
     spawnSandProjectile:  (tx, ty, dmg) => weaponSystems.spawnSandProjectile(tx, ty, dmg),
