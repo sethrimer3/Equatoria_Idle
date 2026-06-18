@@ -512,6 +512,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const hitEffects: HitEffect[] = [];
   const shotLines:  ShotLine[]  = [];
   const damageNumbers: DamageNumber[] = [];
+  const comboEffects: import('./rpg-types').ComboEffect[] = [];
   let playerIFramesMs = 0;
 
   // ── Sand blade swing tracking (for sand drift pixel spawning) ──
