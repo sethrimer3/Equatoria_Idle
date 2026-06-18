@@ -139,6 +139,11 @@ const ZONE_COLOR: Record<string, string> = {
   horizon:  '#cc99ff',
 };
 
+function formatBonus(bonus: number): string {
+  const rounded = Math.round(bonus * 10) / 10;
+  return `+${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)}%`;
+}
+
 function makeStatChip(label: string, val: number | string, type: string): HTMLElement {
   const chip = document.createElement('span');
   chip.className = `rpg-codex-stat-chip rpg-codex-stat-chip--${type}`;
