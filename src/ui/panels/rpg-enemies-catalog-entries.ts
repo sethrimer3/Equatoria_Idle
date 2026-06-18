@@ -109,6 +109,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A shielded blue sentry that fires homing missiles while staying behind its protective barrier. Missiles chill on hit — repeated hits can freeze. Immune to Chilled; fire lenses are effective.',
     shape: 'square',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Sapphire-Guard.png',
     hasShield: true,
     shieldRadius: SAPPHIRE_SHIELD_RADIUS,
     shieldColor: SAPPHIRE_ENEMY_GLOW,
@@ -453,6 +454,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A citrine-hued swarm of 10 pulsers that emit area shockwaves on randomised cooldowns. The pulses deal bonus damage and stack dangerously at close range.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Pulse-Swarm.png',
   },
   {
     id: 'aliven_ember_ring',
@@ -729,6 +731,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Eye-Stalk.png',
   },
   {
     id: 'proc_jellyfish',
@@ -848,6 +851,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Quartz-Fish.png',
   },
   {
     id: 'proc_rubyfish',
