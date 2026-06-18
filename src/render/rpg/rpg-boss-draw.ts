@@ -268,7 +268,7 @@ export function drawWaveClearBanner(
   ctx.globalAlpha = alpha;
   ctx.fillStyle = 'rgba(10, 10, 18, 0.75)';
   ctx.fillRect(0, heightPx / 2 - 32, widthPx, 64);
-  ctx.fillStyle = '#ffd764'; ctx.font = 'bold 14px "Poiret One", sans-serif';
+  ctx.fillStyle = '#ffd764'; ctx.font = 'bold 16px "Cormorant Garamond", serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (!isLowGraphicsMode) {
     ctx.shadowBlur = 8; ctx.shadowColor = '#ffe599';
