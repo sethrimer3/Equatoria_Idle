@@ -645,7 +645,7 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     // Locked teaser cards: up to 3 in ALL mode, up to 2 per specific zone
     const maxTeasers = selectedZoneTab === 'all' ? 3 : 2;
     for (let i = 0; i < Math.min(lockedEntries.length, maxTeasers); i++) {
-      element.appendChild(buildEnemyEntry(lockedEntries[i], true, false, false));
+      element.appendChild(buildEnemyEntry(lockedEntries[i], true, false, false, 0, 0, null));
     }
 
     if (unlockedEntries.length === 0 && Math.min(lockedEntries.length, maxTeasers) === 0) {
