@@ -100,6 +100,12 @@ function buildCodexHeader(rpgState: RpgSimState, isDevMode: boolean): HTMLElemen
   progressWrap.appendChild(progressBar);
   header.appendChild(progressWrap);
 
+  const ornament = document.createElement('div');
+  ornament.className = 'rpg-codex-header-ornament';
+  ornament.setAttribute('aria-hidden', 'true');
+  ornament.textContent = '◆';
+  header.appendChild(ornament);
+
   return header;
 }
 
