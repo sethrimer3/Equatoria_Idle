@@ -904,17 +904,18 @@
 .ach-sub-label {
   font-size: 12px;
   font-weight: 700;
+  color: var(--text-gold);
 }
 
 .ach-sub-count {
   font-size: 10px;
-  color: var(--text-secondary);
+  color: var(--text-gold-muted);
   font-weight: 700;
 }
 
 .ach-sub-chevron {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-gold-muted);
   transition: transform 0.2s ease;
 }
 
