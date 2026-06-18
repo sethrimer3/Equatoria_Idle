@@ -426,6 +426,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A swarm of 8 alivened motes that drift and seek the player. Each spitter fires a slow, dodgeable bullet every 3–5 s. Defeat all particles to clear the group.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Impetus__0000_Aliven-Spark-Cluster.png',
   },
   {
     id: 'aliven_shard_bloom',
