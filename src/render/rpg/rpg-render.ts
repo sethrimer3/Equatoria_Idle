@@ -1925,7 +1925,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
 
-      if (_isDevMode) {
+      if (_isDevMode && _showDebugOverlay) {
         _devOverlayUpdateMs -= deltaMs;
         if (_devOverlayUpdateMs <= 0) {
           _devOverlayUpdateMs = 250;
