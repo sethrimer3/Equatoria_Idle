@@ -10,6 +10,7 @@ import {
   pickWeightedWeaveEffect,
   createCraftedWeave,
 } from '../weave-rolling';
+import { ALL_WEAVE_EFFECT_IDS } from '../weave-effects-registry';
 import type { CraftedWeaveData } from '../weave-types';
 
 function makeAffix(rarity: string): CraftedWeaveData['affixes'][number] {
