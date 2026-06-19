@@ -227,5 +227,6 @@ export function createCraftedLens(
     totalWeightedMoteValue,
     forgeCraftLevel,
     effects,
+    refinementLevel: 0,
   };
 }
