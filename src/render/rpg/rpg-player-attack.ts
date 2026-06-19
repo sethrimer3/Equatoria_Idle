@@ -195,6 +195,15 @@ export interface RpgPlayerAttackCtx {
   spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) => void;
 
   /**
+   * Optional hook called after a real weapon hit (finalDmg > 0) on a main enemy.
+   * Used by weave echo-strike: caller receives final hit damage, position, enemy
+   * max HP, and a callback to apply bonus damage directly to that enemy.
+   * Not called for sub-projectile targets (shards, bolts, spikes, missiles).
+   * Not called from within echo bonus application — no recursion is possible.
+   */
+  onWeaponHitEnemy?(finalDmg: number, hitX: number, hitY: number, maxHp: number, applyBonusDmg: (bonus: number) => void): void;
+
+  /**
    * Spawns a short pull-only vortex at (hitX, hitY).
    * Called after a crafted weapon hit if nullstonePullRadius > 0.
    */
