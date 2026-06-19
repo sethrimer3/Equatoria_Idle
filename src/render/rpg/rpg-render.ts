@@ -538,6 +538,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const wardEffects: import('./rpg-types').WardEffect[] = [];
   /** Timestamp of the last "Reactive Ward" floating text, for anti-spam debounce. */
   let lastWardTextMs = -Infinity;
+  /** Timestamp of the last "Echo Strike" floating text — debounce for multi-hit proc spam. */
+  let lastEchoTextMs = -Infinity;
   let playerIFramesMs = 0;
 
   // ── Sand blade swing tracking (for sand drift pixel spawning) ──
