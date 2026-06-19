@@ -28,6 +28,8 @@ import { getUnlockedWeaveSlotCount } from '../../../sim/forge/forge-state';
 import { aggregateEquippedWeaveEffects } from '../weave-effects';
 import { getEquippedWeaveModifiers } from '../equipment-modifiers';
 import { createRpgSimState } from '../../../sim/rpg/rpg-state';
+import { tryTriggerPlayerDamagedWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct } from '../weave-proc-effects';
+import { ALL_WEAVE_EFFECT_IDS, getWeaveEffectDef } from '../weave-passive-effects';
 import { createGameState } from '../../../sim/game-state';
 import { craftWeave } from '../../../sim/game-state';
 import { deserializeGameState } from '../../../settings/save-deserialize';
