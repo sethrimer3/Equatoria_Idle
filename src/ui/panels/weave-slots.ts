@@ -13,6 +13,7 @@ import type { CraftedWeaveData } from '../../data/rpg/weave-types';
 import { TIER_BY_ID } from '../../data/tiers';
 import type { ActionHandler } from '../../input';
 import { TOTAL_WEAVE_SLOTS } from '../../sim/forge/forge-state';
+import { getWeaveEffectDef } from '../../data/rpg/weave-effects-registry';
 
 // Inline SVG for the Celtic trinity knot (triquetra) background pattern
 const TRIQUETRA_URL = `url("data:image/svg+xml,${encodeURIComponent(
