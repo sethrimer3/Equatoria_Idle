@@ -15,15 +15,16 @@ import { WEAVE_PROC_EFFECT_REGISTRY } from './weave-passive-effects';
  * Checks each equipped weave for proc effects triggered by playerDamaged.
  * Rolls each eligible effect independently and pushes buffs into state.
  *
- * Returns true if any new buff was applied (caller should re-apply stats).
+ * Returns the ids of newly triggered effects (empty array = nothing triggered).
+ * Caller should re-apply stats if non-empty, and can use the ids to spawn VFX.
  */
 export function tryTriggerPlayerDamagedWeaveEffects(
   state: RpgSimState,
   rng: () => number = Math.random,
-): boolean {
+): string[] {
   const { equippedWeaveSlots, craftedWeaves } = state;
   const weaveById = new Map(craftedWeaves.map(w => [w.id, w]));
-  let triggered = false;
+  const triggered: string[] = [];
 
   for (const slotId of equippedWeaveSlots) {
     if (!slotId) continue;
@@ -47,7 +48,7 @@ export function tryTriggerPlayerDamagedWeaveEffects(
         };
         state.activeWeaveBuffs.push(buff);
       }
-      triggered = true;
+      triggered.push(effect.id);
     }
   }
 
