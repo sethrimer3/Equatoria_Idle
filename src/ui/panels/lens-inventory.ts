@@ -387,6 +387,26 @@ function buildWeaponPickerBtn(
   }
   btn.appendChild(lensStatusEl);
 
+  // Stat comparison strip
+  const comparisons = getLensEquipComparison(rpgState, lens, weapon.id);
+  if (comparisons.length > 0) {
+    const compRow = document.createElement('div');
+    compRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;';
+    for (const c of comparisons) {
+      if (Math.abs(c.delta) < 0.05) continue;
+      const chip = document.createElement('span');
+      chip.style.cssText =
+        `font-size:0.68em;padding:1px 4px;border-radius:3px;white-space:nowrap;` +
+        (c.better ? 'color:#5f5;background:rgba(80,200,80,0.1);' :
+         c.worse  ? 'color:#f88;background:rgba(200,80,80,0.1);' :
+                    'color:#aaa;');
+      const sign = c.delta > 0 ? '+' : '';
+      chip.textContent = `${c.label} ${sign}${c.delta.toFixed(1)}`;
+      compRow.appendChild(chip);
+    }
+    if (compRow.children.length > 0) btn.appendChild(compRow);
+  }
+
   btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.10)'; });
   btn.addEventListener('mouseleave', () => { btn.style.background = 'rgba(255,255,255,0.05)'; });
 
