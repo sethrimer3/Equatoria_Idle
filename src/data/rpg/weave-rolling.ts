@@ -472,8 +472,8 @@ export function createCraftedWeave(
   // Roll tier 1–3 STUB effects per distinct tier
   const tierEffects = rollWeaveTierEffects(normalizedIngredients, forgeCraftLevel, rng);
 
-  // Roll passive effects (0 or 1 depending on best affix rarity)
-  const effects = rollWeavePassiveEffects(affixes, totalWeightedMoteValue, rng);
+  // Roll effects (0 or 1 depending on best affix rarity, flavor-weighted by ingredients)
+  const effects = rollWeaveEffects(affixes, normalizedIngredients, totalWeightedMoteValue, rng);
 
   const tiers = Array.from(tierCounts.keys());
   const name = getWeaveName(tiers);
