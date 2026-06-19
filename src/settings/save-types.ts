@@ -231,7 +231,7 @@ export interface SaveData {
       }>;
       /** v34+: refinement level 0–3. Absent in older saves (defaults to 0). */
       refinementLevel?: number;
-      /** v35+: passive effects rolled at craft time. Absent in older saves (defaults to []). */
+      /** Passive effects rolled at craft time. Absent in older saves (defaults to []). */
       effects?: Array<{ id: string; value: number }>;
     }>;
     /** v31+: equipped weave slot assignments (array of 6 weave IDs or null). Absent in older saves. */
