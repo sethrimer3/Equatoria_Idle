@@ -227,6 +227,7 @@ export function createDevPanel(): DevPanel {
     refreshForgeStateLines(game, forgeHeatLine, forgeCrunchLine, forgeSacrText);
     refreshLoomStateTable(game, loomTableWrap);
     refreshTelemetry();
+    refreshWeavePassives();
   }
 
   return {
