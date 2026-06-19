@@ -710,7 +710,8 @@ describe('tryTriggerPlayerDamagedWeaveEffects', () => {
     const state = makeStateWithProcWeave(10);
     // 10% chance: rng=0.05 → 0.05 * 100 = 5 < 10 → triggers
     const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0.05);
-    expect(triggered).toBe(true);
+    expect(triggered).toHaveLength(1);
+    expect(triggered[0]).toBe('weave_reactive_ward');
     expect(state.activeWeaveBuffs).toHaveLength(1);
     expect(state.activeWeaveBuffs[0]!.effectId).toBe('weave_reactive_ward');
     expect(state.activeWeaveBuffs[0]!.defPct).toBe(10);
@@ -721,7 +722,7 @@ describe('tryTriggerPlayerDamagedWeaveEffects', () => {
     const state = makeStateWithProcWeave(10);
     // rng=0.5 → 0.5 * 100 = 50 >= 10 → no trigger
     const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0.5);
-    expect(triggered).toBe(false);
+    expect(triggered).toHaveLength(0);
     expect(state.activeWeaveBuffs).toHaveLength(0);
   });
 
