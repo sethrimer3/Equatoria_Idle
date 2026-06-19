@@ -138,6 +138,10 @@ export function performSingleAttack(
   const hitX = closestT.x;
   const hitY = closestT.y;
 
+  // Populated when a real hit lands on a main enemy (dmg > 0). Used by the
+  // onWeaponHitEnemy hook (weave_echo_strike) after the main hit/VFX block.
+  let echoHit: { dmg: number; x: number; y: number; maxHp: number; applyFn: (b: number) => void } | null = null;
+
   // ── Lens status pre-hit: apply incoming-damage multipliers ───────────────────
   const comboTargetEntity = extractTargetEntity(closestT);
   const comboEnemyTypeId = getTargetEnemyTypeId(closestT);
