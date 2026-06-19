@@ -935,3 +935,128 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects — multi-hit behavior', () => {
     expect(recursionCount).toBe(1); // called exactly once, no recursion
   });
 });
+
+// ─── weave_swiftstrike proc / buff tests ─────────────────────────
+
+function makeStateWithSwiftstrikeWeave(effectValue: number) {
+  const state = createRpgSimState();
+  const weave: CraftedWeaveData = {
+    id: 'w-swift-test',
+    name: 'Swift Test',
+    ingredients: [],
+    affixes: [],
+    totalWeightedMoteValue: 100,
+    forgeCraftLevel: 1,
+    tierEffects: [],
+    refinementLevel: 0,
+    effects: [{ id: 'weave_swiftstrike', value: effectValue }],
+  };
+  state.craftedWeaves = [weave];
+  state.equippedWeaveSlots = ['w-swift-test', null, null, null, null, null];
+  return state;
+}
+
+describe('weave_swiftstrike proc behavior', () => {
+  it('zero-damage hit → no trigger', () => {
+    const state = makeStateWithSwiftstrikeWeave(5);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 0, () => {});
+    expect(triggered).toHaveLength(0);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+
+  it('unequipped swiftstrike weave → no trigger', () => {
+    const state = createRpgSimState();
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(triggered).toHaveLength(0);
+  });
+
+  it('deterministic rng triggers swiftstrike and adds cooldown buff', () => {
+    const state = makeStateWithSwiftstrikeWeave(5);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(triggered).toContain('weave_swiftstrike');
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    const buff = state.activeWeaveBuffs[0]!;
+    expect(buff.effectId).toBe('weave_swiftstrike');
+    expect(buff.statKey).toBe('cooldownPct');
+    expect(buff.valuePct).toBe(5);
+    expect(buff.remainingMs).toBe(2000);
+  });
+
+  it('second trigger refreshes duration and keeps stronger value', () => {
+    const state = makeStateWithSwiftstrikeWeave(5);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    state.activeWeaveBuffs[0]!.remainingMs = 200;
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(2000);
+  });
+
+  it('expired buff no longer contributes cooldown', () => {
+    const state = makeStateWithSwiftstrikeWeave(5);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tickActiveWeaveBuffs(state, 2001);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBe(0);
+  });
+
+  it('swiftstrike does not affect DEF', () => {
+    const state = makeStateWithSwiftstrikeWeave(5);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
+  });
+
+  it('swiftstrike does not apply bonus damage', () => {
+    const state = makeStateWithSwiftstrikeWeave(5);
+    let bonusDmg = 0;
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusDmg += b; }, () => 0);
+    expect(bonusDmg).toBe(0);
+  });
+
+  it('reactive ward still affects DEF after buff refactor', () => {
+    const state = createRpgSimState();
+    const weave: CraftedWeaveData = {
+      id: 'w-ward-test',
+      name: 'Ward Test',
+      ingredients: [],
+      affixes: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      tierEffects: [],
+      refinementLevel: 0,
+      effects: [{ id: 'weave_reactive_ward', value: 12 }],
+    };
+    state.craftedWeaves = [weave];
+    state.equippedWeaveSlots = ['w-ward-test', null, null, null, null, null];
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(12, 5);
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBe(0);
+  });
+
+  it('echo strike still applies bonus damage after playerHitEnemy refactor', () => {
+    const state = makeStateWithEchoWeave(20);
+    let bonus = 0;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonus += b; }, () => 0);
+    expect(triggered).toContain('weave_echo_strike');
+    expect(bonus).toBeCloseTo(20, 5);
+    expect(state.activeWeaveBuffs).toHaveLength(0); // echo strike adds no buff
+  });
+
+  it('invalid effect id in weave.effects is ignored', () => {
+    const state = createRpgSimState();
+    const weave: CraftedWeaveData = {
+      id: 'w-bad-test',
+      name: 'Bad Test',
+      ingredients: [],
+      affixes: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      tierEffects: [],
+      refinementLevel: 0,
+      effects: [{ id: 'weave_nonexistent' as never, value: 10 }],
+    };
+    state.craftedWeaves = [weave];
+    state.equippedWeaveSlots = ['w-bad-test', null, null, null, null, null];
+    expect(() => tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0)).not.toThrow();
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+});
