@@ -9,6 +9,7 @@
  *   - Slot unlock count by forge level
  *   - Aggregation caps
  *   - Save/load defaults do not crash on old saves
+ *   - Passive effects: rolling, equip aggregation, invalid id safety, save round-trip
  */
 
 import { describe, it, expect } from 'vitest';
@@ -20,10 +21,12 @@ import {
   rollWeaveTierEffects,
   createCraftedWeave,
   rollWeaveAffix,
+  rollWeavePassiveEffects,
 } from '../weave-rolling';
 import { getLensEffectUnlockChances } from '../lens-definitions';
 import { getUnlockedWeaveSlotCount } from '../../../sim/forge/forge-state';
 import { aggregateEquippedWeaveEffects } from '../weave-effects';
+import { getEquippedWeaveModifiers } from '../equipment-modifiers';
 import { createRpgSimState } from '../../../sim/rpg/rpg-state';
 import { createGameState } from '../../../sim/game-state';
 import { craftWeave } from '../../../sim/game-state';
