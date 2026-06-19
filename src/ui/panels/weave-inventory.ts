@@ -43,6 +43,20 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
   let currentWeaves: readonly CraftedWeaveData[] = [];
   let equippedIds: Set<string> = new Set();
   let localOrder: string[] = [];
+  let currentRpgState: RpgSimState | undefined;
+
+  // ── Resonance Dust header ──────────────────────────────────────────────
+  const dustHeader = document.createElement('div');
+  dustHeader.className = 'weave-inventory__dust-header';
+  dustHeader.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 0 8px;font-size:0.8em;color:#e6c850;';
+  const dustIcon = document.createElement('span');
+  dustIcon.textContent = '✦';
+  const dustLabel = document.createElement('span');
+  dustLabel.className = 'weave-inventory__dust-label';
+  dustLabel.textContent = `${REFINEMENT_RESOURCE_NAME}: 0`;
+  dustHeader.appendChild(dustIcon);
+  dustHeader.appendChild(dustLabel);
+  element.insertBefore(dustHeader, emptyMsg);
 
   // ── Drag state ─────────────────────────────────────────────────────────
 
