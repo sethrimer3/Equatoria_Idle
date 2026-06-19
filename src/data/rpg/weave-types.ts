@@ -96,6 +96,6 @@ export interface CraftedWeaveData {
   forgeCraftLevel: number;
   /** Tier 1–3 passive/utility effects rolled at craft time. All are STUB placeholders. */
   tierEffects: WeaveTierEffect[];
-  /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). */
-  refinementLevel: number;
+  /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). Absent in old items = 0. */
+  refinementLevel?: number;
 }
