@@ -196,8 +196,19 @@ function makeZoneIconChip(zone: string): HTMLElement {
   chip.className = 'rpg-codex-zone-icon-chip';
   const color = ZONE_COLOR[zone] ?? '#aaa';
   chip.style.setProperty('--chip-color', color);
-  chip.setAttribute('title', zone.charAt(0).toUpperCase() + zone.slice(1));
-  chip.textContent = ZONE_ICON_GLYPH[zone] ?? '◈';
+  const label = zone.charAt(0).toUpperCase() + zone.slice(1);
+  chip.setAttribute('title', label);
+  const iconPath = ZONE_TAB_ICON_PATHS[zone];
+  if (iconPath) {
+    const img = document.createElement('img');
+    img.src = iconPath;
+    img.alt = label;
+    img.className = 'rpg-codex-zone-icon-chip__img';
+    img.onerror = () => { img.replaceWith(document.createTextNode(ZONE_ICON_GLYPH[zone] ?? '◈')); };
+    chip.appendChild(img);
+  } else {
+    chip.textContent = ZONE_ICON_GLYPH[zone] ?? '◈';
+  }
   return chip;
 }
 
