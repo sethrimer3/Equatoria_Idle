@@ -199,6 +199,29 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     return row;
   }
 
+  // ── Passive effect row ─────────────────────────────────────────────────
+
+  function buildEffectRow(effect: WeaveEffectRoll): HTMLElement | null {
+    const def = getWeavePassiveEffectDef(effect.id);
+    if (!def) return null;
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;margin:2px 0;';
+
+    const nameEl = document.createElement('span');
+    nameEl.style.color = '#c8e8ff';
+    nameEl.style.fontWeight = '600';
+    nameEl.textContent = `${def.displayName}:`;
+    row.appendChild(nameEl);
+
+    const descEl = document.createElement('span');
+    descEl.style.color = '#aad4ff';
+    descEl.textContent = def.description(effect.value);
+    row.appendChild(descEl);
+
+    return row;
+  }
+
   // ── Card builder ───────────────────────────────────────────────────────
 
   function buildWeaveCard(weave: CraftedWeaveData): HTMLElement {
