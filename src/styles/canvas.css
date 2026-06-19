@@ -2889,6 +2889,20 @@
   flex-shrink: 0;
 }
 
+.rpg-codex-zone-icon-chip__img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+}
+
+.rpg-codex-zone-tab__icon-img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  display: block;
+}
+
 /* Status/affinity/inflict icon chips — rounded square */
 .rpg-codex-status-icon-chip {
   display: inline-flex;
