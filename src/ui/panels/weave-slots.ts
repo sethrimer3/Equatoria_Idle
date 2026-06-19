@@ -113,6 +113,25 @@ export function createWeaveSlotsPanel(dispatch: ActionHandler): WeaveSlotsPanel 
       popup.appendChild(row);
     }
 
+    // Effects section
+    const weaveEffects = weave.effects ?? [];
+    if (weaveEffects.length > 0) {
+      const effectsHeader = document.createElement('div');
+      effectsHeader.className = 'weave-popup__effects-header';
+      effectsHeader.textContent = 'Effects';
+      popup.appendChild(effectsHeader);
+
+      for (const effect of weaveEffects) {
+        const def = getWeaveEffectDef(effect.id);
+        if (!def) continue;
+        const effectRow = document.createElement('div');
+        effectRow.className = 'weave-popup__effect';
+        const roleLabel = def.role.charAt(0).toUpperCase() + def.role.slice(1);
+        effectRow.textContent = `${roleLabel} · ${def.displayName}: ${def.description(effect.value)}`;
+        popup.appendChild(effectRow);
+      }
+    }
+
     // Unequip button
     const unequipBtn = document.createElement('button');
     unequipBtn.className = 'weave-popup__unequip-btn';
