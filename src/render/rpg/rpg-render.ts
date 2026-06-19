@@ -1468,6 +1468,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     applyNullstonePull(hitX: number, hitY: number, radius: number): void {
       weaponSystems.spawnCraftedVortex(hitX, hitY, radius);
     },
+    onWeaponHitEnemy(finalDmg, hitX, hitY, _maxHp, applyBonusDmg): void {
+      const triggered = tryTriggerPlayerHitEnemyWeaveEffects(rpgSimState, finalDmg, applyBonusDmg);
+      if (triggered.length > 0) {
+        spawnDamageNumber(hitX, hitY - 4, 0, -0.8, 'Echo Strike', 0.25, '#ffd060');
+      }
+    },
   };
 
   statsPanel = createRpgStatsPanel({
