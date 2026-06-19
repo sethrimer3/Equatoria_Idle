@@ -125,6 +125,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A teleporting green sprite that charges briefly then blinks directly onto the player. Poisons on contact — resists poison lenses but is weak to fire.',
     shape: 'square',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Emerald-Blinker.png',
   },
   {
     id: 'ruby',
@@ -390,6 +391,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'square',
     zone: 'verdure',
     category: 'elite',
+    iconFile: 'EnemyIcon_Verdure-Polyomino.png',
   },
   {
     id: 'verdure_polyomino_fissile',
@@ -467,6 +469,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A sunstone-tinted cluster of 10 ember particles that leave comet trails as they swirl. High contact damage — stay mobile.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Ember-Ring.png',
   },
   {
     id: 'aliven_void_splinters',
@@ -865,6 +868,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Ruby-Fish.png',
   },
   {
     id: 'proc_sunstonefish',

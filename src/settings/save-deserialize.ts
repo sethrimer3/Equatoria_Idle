@@ -333,6 +333,8 @@ export function deserializeGameState(data: SaveData): GameState {
           rarity: e.rarity as LensRarity,
           isApplied: e.isApplied ?? e.effectTier === 1,
         } satisfies LensEffect)),
+        // v34+: defaults to 0 for pre-v34 saves
+        refinementLevel: l.refinementLevel ?? 0,
       };
     }
 
