@@ -34,6 +34,7 @@ import {
   FALLBACK_ENEMY_ICON_PATH,
   ENEMY_ICON_FRAME_MASK_PATH,
   ENEMY_ICON_FRAME_PATH,
+  ZONE_TAB_ICON_PATHS,
 } from '../../render/assets/asset-paths';
 import { getEnemyStatusAffinity } from '../../data/rpg/enemy-status-affinities';
 import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
