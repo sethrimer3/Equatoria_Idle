@@ -75,6 +75,8 @@ export interface RpgSimState {
   craftedWeaves: CraftedWeaveData[];
   /** Crafted lenses in the player's inventory (not yet attached to a weapon). */
   craftedLenses: CraftedLensData[];
+  /** v34+: Resonance Dust currency earned from dismantling lenses and weaves. */
+  resonanceDust: number;
   /**
    * 6-element array of equipped weave IDs (or null for empty).
    * Index 0–5 correspond to the six weave slots in the UI.
