@@ -635,8 +635,18 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
 
       const iconSpan = document.createElement('span');
       iconSpan.className = 'rpg-codex-zone-tab__icon';
-      iconSpan.textContent = ZONE_TAB_GLYPH[tab.id];
       iconSpan.setAttribute('aria-hidden', 'true');
+      const tabIconPath = ZONE_TAB_ICON_PATHS[tab.id];
+      if (tabIconPath) {
+        const img = document.createElement('img');
+        img.src = tabIconPath;
+        img.alt = '';
+        img.className = 'rpg-codex-zone-tab__icon-img';
+        img.onerror = () => { img.replaceWith(document.createTextNode(ZONE_TAB_GLYPH[tab.id])); };
+        iconSpan.appendChild(img);
+      } else {
+        iconSpan.textContent = ZONE_TAB_GLYPH[tab.id];
+      }
       button.appendChild(iconSpan);
 
       const labelSpan = document.createElement('span');
