@@ -4,7 +4,7 @@ export type EnemyShape = 'square' | 'diamond' | 'circle' | 'polygon';
 export type EnemyCategory = 'standard' | 'elite' | 'aliven' | 'procedural' | 'boss';
 
 /** RPG zone used by the encyclopedia's local filter tabs. */
-export type EnemyZoneId = 'euhedral' | 'impetus' | 'caustics' | 'verdure' | 'horizon';
+export type EnemyZoneId = 'euhedral' | 'impetus' | 'caustics' | 'verdure' | 'horizon' | 'boss';
 
 export interface EnemyCatalogEntry {
   id: string;

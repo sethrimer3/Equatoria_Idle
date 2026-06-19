@@ -27,10 +27,11 @@ import {
 import { type EnemyCatalogEntry, type EnemyZoneId, ENEMY_CATALOG, BOSS_DESCRIPTIONS } from './rpg-enemies-catalog';
 import {
   ICON_SIZE,
-  createAlivenIconCanvas, createProcIconCanvas, drawEnemyIcon, drawBossIcon,
+  createAlivenIconCanvas, createProcIconCanvas, drawEnemyIcon,
 } from './rpg-enemies-tab-icons';
 import {
   getEnemyIconPath,
+  getBossEnemyIconPath,
   FALLBACK_ENEMY_ICON_PATH,
   ENEMY_ICON_FRAME_MASK_PATH,
   ENEMY_ICON_FRAME_PATH,
@@ -57,6 +58,7 @@ const ENEMY_ZONE_TABS: ReadonlyArray<{ id: EnemyZoneTabId; label: string }> = [
   { id: 'caustics', label: 'Caustics' },
   { id: 'verdure', label: 'Verdure' },
   { id: 'horizon', label: 'Horizon' },
+  { id: 'boss', label: 'Boss' },
 ];
 
 const ZONE_TAB_GLYPH: Record<EnemyZoneTabId, string> = {
@@ -66,10 +68,12 @@ const ZONE_TAB_GLYPH: Record<EnemyZoneTabId, string> = {
   caustics: '≈',
   verdure:  '✿',
   horizon:  '✦',
+  boss:     'B',
 };
 
 function emptyZoneMessage(zoneId: EnemyZoneTabId): string {
   if (zoneId === 'horizon') return 'No Horizon enemies documented yet.';
+  if (zoneId === 'boss') return 'No bosses documented yet.';
   const zone = ENEMY_ZONE_TABS.find(tab => tab.id === zoneId);
   return zone ? `No ${zone.label} enemies documented yet.` : 'No enemies documented yet.';
 }
@@ -500,20 +504,13 @@ function buildBossEntry(
     }
     iconFrame.appendChild(canvas);
   } else {
-    // Main icon: fallback PNG (no boss-specific PNGs yet)
+    // Main icon: dedicated boss PNG
     const iconImg = document.createElement('img');
     iconImg.className = 'rpg-codex-icon-img';
-    iconImg.src = FALLBACK_ENEMY_ICON_PATH;
+    iconImg.src = getBossEnemyIconPath(bossId);
+    iconImg.onerror = () => { iconImg.src = FALLBACK_ENEMY_ICON_PATH; };
     iconImg.alt = `Boss ${bossId}`;
     iconFrame.appendChild(iconImg);
-
-    // Overlay: procedural boss canvas in top-right corner
-    const overlayCanvas = document.createElement('canvas');
-    overlayCanvas.width  = ICON_SIZE;
-    overlayCanvas.height = ICON_SIZE;
-    overlayCanvas.className = 'rpg-codex-icon-overlay';
-    drawBossIcon(overlayCanvas, bossId);
-    iconFrame.appendChild(overlayCanvas);
   }
   applyEnemyIconFrame(iconFrame, `Boss ${bossId}`);
 
@@ -579,11 +576,11 @@ function buildBossEntry(
 
   box.appendChild(body);
 
-  // Symbol cluster for bosses (horizon zone icon only)
+  // Symbol cluster for bosses
   const symbolCluster = document.createElement('div');
   symbolCluster.className = 'rpg-codex-symbol-cluster';
   if (!showLocked) {
-    symbolCluster.appendChild(makeZoneIconChip('horizon'));
+    symbolCluster.appendChild(makeZoneIconChip('boss'));
   }
   box.appendChild(symbolCluster);
 
@@ -688,6 +685,7 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     element.appendChild(buildZoneTabs());
 
     // ── Regular enemies ───────────────────────────────────────────
+    if (selectedZoneTab !== 'boss') {
     const enemiesHeading = document.createElement('div');
     enemiesHeading.className = 'rpg-codex-section-heading';
     enemiesHeading.textContent = '⚔ Enemies';
@@ -736,7 +734,11 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
       element.appendChild(noEnemies);
     }
 
+    }
+
     // ── Bosses ────────────────────────────────────────────────────
+    if (selectedZoneTab !== 'all' && selectedZoneTab !== 'boss') return;
+
     const bossesHeading = document.createElement('div');
     bossesHeading.className = 'rpg-codex-boss-section-heading';
     bossesHeading.textContent = '👑 Boss Archives';

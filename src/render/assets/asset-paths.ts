@@ -159,6 +159,7 @@ export const ZONE_TAB_ICON_PATHS: Record<string, string> = {
   impetus:  `${BASE}/SPRITES/menuElements/icons/zones/Impetus.png`,
   caustics: `${BASE}/SPRITES/menuElements/icons/zones/Caustics.png`,
   verdure:  `${BASE}/SPRITES/menuElements/icons/zones/Verdure.png`,
+  boss:     `${BASE}/SPRITES/menuElements/icons/zones/Boss.png`,
 };
 
 export const SKILL_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/skillCodex/skillCodex.png`;
@@ -182,6 +183,7 @@ export function getBgAnimationFramePath(frameIndex: number): string {
 // Dedicated PNG icons displayed as the main image in codex cards.
 // Folder: ASSETS/SPRITES/enemyIcons/{Zone}/
 // Horizon sub-zones: ASSETS/SPRITES/enemyIcons/{Zenith|Nadir|True}/
+// Bosses: ASSETS/SPRITES/enemyIcons/Bosses/
 // When an entry has no iconFile the codex falls back to fallBack_icon.png.
 
 export const FALLBACK_ENEMY_ICON_PATH = `${BASE}/SPRITES/enemyIcons/fallBack_icon.png`;
@@ -194,7 +196,27 @@ const ENEMY_ICON_ZONE_FOLDER: Record<Exclude<EnemyCatalogEntry['zone'], undefine
   caustics: 'Caustics',
   verdure: 'Verdure',
   horizon: 'Horizon',
+  boss: 'Bosses',
 };
+
+export const BOSS_ENEMY_ICON_FILES = [
+  '',
+  'EnemyIcon_Boss-01-Quartz-Sovereign.png',
+  'EnemyIcon_Boss-02-Ruby-King.png',
+  'EnemyIcon_Boss-03-Sunstone-Herald.png',
+  'EnemyIcon_Boss-04-Citrine-Weaver.png',
+  'EnemyIcon_Boss-05-Iolite-Colossus.png',
+  'EnemyIcon_Boss-06-Amethyst-Breaker.png',
+  'EnemyIcon_Boss-07-Diamond-Eternal.png',
+  'EnemyIcon_Boss-08-Nullstone-Devourer.png',
+  'EnemyIcon_Boss-09-Void-Nexus.png',
+  'EnemyIcon_Boss-10-Equation-Incarnate.png',
+] as const;
+
+export function getBossEnemyIconPath(bossId: number): string {
+  const iconFile = BOSS_ENEMY_ICON_FILES[bossId];
+  return iconFile ? `${BASE}/SPRITES/enemyIcons/Bosses/${iconFile}` : FALLBACK_ENEMY_ICON_PATH;
+}
 
 export function getEnemyIconPath(entry: EnemyCatalogEntry): string {
   if (!entry.iconFile || !entry.zone) return FALLBACK_ENEMY_ICON_PATH;
