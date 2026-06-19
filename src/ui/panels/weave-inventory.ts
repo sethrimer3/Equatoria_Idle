@@ -24,10 +24,10 @@ import { getWeaveEquipComparison, getRefinementLabel, getRefinementMultiplierLab
 
 export interface WeaveInventoryPanel {
   element: HTMLElement;
-  update(craftedWeaves: readonly CraftedWeaveData[], equippedSlots: (string | null)[]): void;
+  update(craftedWeaves: readonly CraftedWeaveData[], equippedSlots: (string | null)[], rpgState?: RpgSimState): void;
 }
 
-export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInventoryPanel {
+export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?: ActionHandler): WeaveInventoryPanel {
   const element = document.createElement('div');
   element.className = 'weave-inventory';
 
