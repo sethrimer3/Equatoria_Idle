@@ -310,16 +310,16 @@ describe('weave_swiftstrike registry', () => {
 // ─── createCraftedWeave — flavor-weighted effects ─────────────────────────────
 
 describe('createCraftedWeave — flavor-weighted effect rolling', () => {
-  it('amethyst-only weave with rng=0.9 rolls weave_echo_strike when affix is Uncommon+', () => {
+  it('amethyst-only weave with rng=0.7 rolls weave_echo_strike when affix is Uncommon+', () => {
     // rollWeaveAffix uses Math.random (not injectable rng) for quality, so the affix rarity
-    // is random. We test that if the weave DOES get an effect, rng=0.9 selects echo_strike.
-    // We force that by seeding rng to 0.6 for tier effects (T1 always), then 0.9 for effect pick.
+    // is random. We test that if the weave DOES get an effect, rng=0.7 selects echo_strike.
+    // Pool (amethyst): focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1). Total=8.
+    // rng=0.7 → threshold=5.6 → falls in echo_strike range (4–7).
     let callCount = 0;
     const rng = () => {
       callCount++;
       // rng calls: 1 = tier2 chance check, 2 = effect quality, 3+ = effect pick
-      // The third rng call in rollWeaveTierEffects is for quality; effect pick uses final call.
-      return callCount <= 2 ? 0.99 : 0.9; // fail tier2 check, then pick with 0.9
+      return callCount <= 2 ? 0.99 : 0.7; // fail tier2 check, then pick with 0.7
     };
     const weave = createCraftedWeave(
       'w-amethyst-test',
