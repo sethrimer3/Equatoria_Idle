@@ -1780,7 +1780,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossAttackState, weaponSystems, weaponAttackTimers,
     fluid: { reset: () => fluid.reset() },
     bossWave: { exitBossWave: () => bossWave.exitBossWave() },
-    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; },
+    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; lastEmberSurgeTextMs = -Infinity; },
     setBossEnemy:            (b) => { bossEnemy = b; },
     setBinaryLaserSweep:     (_sweep) => { binaryLaserSweep = null; },
     setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },
