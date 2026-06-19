@@ -178,8 +178,8 @@ export function getEquippedWeaveModifiers(
     const refineMult = getStatMultiplierForLevel(weave.refinementLevel ?? 0);
     for (const affix of weave.affixes ?? []) addPercentByAffix(mods, affix.affixId, affix.value, refineMult);
     for (const effect of weave.effects ?? []) {
-      const def = getWeavePassiveEffectDef(effect.id);
-      if (!def) continue; // unknown id — safe fallback
+      const def = getWeaveEffectDef(effect.id);
+      if (!def || def.category !== 'passive') continue; // proc effects don't contribute static stats
       mods[def.statKey] += effect.value * refineMult;
     }
   }
