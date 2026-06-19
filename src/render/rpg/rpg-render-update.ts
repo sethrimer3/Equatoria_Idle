@@ -608,6 +608,10 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     ctx.comboEffects[_ci].timerMs -= deltaMs;
     if (ctx.comboEffects[_ci].timerMs <= 0) ctx.comboEffects.splice(_ci, 1);
   }
+  for (let _wi = ctx.wardEffects.length - 1; _wi >= 0; _wi--) {
+    ctx.wardEffects[_wi].timerMs -= deltaMs;
+    if (ctx.wardEffects[_wi].timerMs <= 0) ctx.wardEffects.splice(_wi, 1);
+  }
   updateSpawnFlashes(deltaMs);
   updateDyingEnemies(deltaMs);
 
