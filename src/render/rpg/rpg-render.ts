@@ -1490,6 +1490,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           // Pale gold — matches the sand/quartz flavor palette.
           spawnDamageNumber(hitX, hitY - 12, 0, -0.8, 'Swiftstrike', 0.25, '#e8d89a');
         }
+        if (triggered.includes('weave_ember_surge') && nowMs - lastEmberSurgeTextMs > 300) {
+          lastEmberSurgeTextMs = nowMs;
+          // Warm orange-gold — matches the citrine/ruby flavor palette.
+          spawnDamageNumber(hitX, hitY - 20, 0, -0.8, 'Ember Surge', 0.25, '#ff8c42');
+        }
       }
     },
   };
