@@ -18,7 +18,7 @@ import {
 import { getTierForgeWeight } from './crafted-weapon-helpers';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
 import type { WeaveAffix, WeaveRarity, WeaveTierEffect, WeaveTierEffectTier, CraftedWeaveData, WeaveEffectRoll } from './weave-types';
-import { ALL_WEAVE_PASSIVE_EFFECT_IDS, WEAVE_PASSIVE_EFFECT_REGISTRY } from './weave-passive-effects';
+import { ALL_WEAVE_EFFECT_IDS, WEAVE_PASSIVE_EFFECT_REGISTRY, WEAVE_PROC_EFFECT_REGISTRY } from './weave-passive-effects';
 
 // ─── Triangular distribution ─────────────────────────────────────────────────
 
