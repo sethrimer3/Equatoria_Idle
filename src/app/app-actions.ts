@@ -22,6 +22,10 @@ import {
   attachLensToWeapon,
   grantSampleLensWeaveItems,
   grantEquipmentReward,
+  dismantleLens,
+  dismantleWeave,
+  refineLens,
+  refineWeave,
 } from '../sim';
 import { rollLensDrop, rollWeaveDrop, rollEquipmentReward } from '../data/rpg/equipment-rewards';
 import { getUnlockedWeaveSlotCount } from '../sim/forge/forge-state';
