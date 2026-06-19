@@ -246,6 +246,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A dark gravitational horror that pulls the player into its core and launches void tendrils. Tendrils inflict Slowed — resists Gravitized lenses but is vulnerable to Time-Warped.',
     shape: 'circle',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Nullstone-Gravity-Well.png',
     auraRadius: NULLSTONE_GRAVITY_RADIUS * 0.22,
   },
   {
@@ -259,6 +260,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A fractal purple entity that explodes into recursive shard storms that themselves split on impact. Its recursive nature resists Fractal Wound — Cracked lenses shatter its pattern effectively.',
     shape: 'diamond',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Fracteryl-Manifestation.png',
   },
   {
     id: 'eigenstein',
@@ -271,6 +273,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A transcendent cyan construct that charges a sweeping beam of pure mathematics before firing. Already quantum-scarred — Rift-Scarred stacks accumulate slower. Radiant light collapses its wave functions.',
     shape: 'circle',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Eigenstein-Entity.png',
   },
   {
     id: 'elite_quartz',
@@ -711,6 +714,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Dust-Wisp.png',
   },
   {
     id: 'proc_ribbonworm',
@@ -836,6 +840,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Magnetic-Swarm.png',
   },
   {
     id: 'proc_shadowhand',
@@ -849,6 +854,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Shadow-Hand.png',
   },
   {
     id: 'proc_sandfish',
@@ -960,5 +966,6 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Diamond-Fish.png',
   },
 ] as const;
