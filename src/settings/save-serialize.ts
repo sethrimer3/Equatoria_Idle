@@ -176,6 +176,7 @@ export function serializeGameState(state: GameState): SaveData {
           rarity: e.rarity,
           isApplied: e.isApplied,
         })),
+        refinementLevel: w.refinementLevel ?? 0,
       })),
       equippedWeaveSlots: state.rpg.equippedWeaveSlots.slice(),
       resonanceDust: state.rpg.resonanceDust ?? 0,
