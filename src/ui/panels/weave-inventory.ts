@@ -362,9 +362,11 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     }
   }
 
-  function update(craftedWeaves: readonly CraftedWeaveData[], equippedSlots: (string | null)[]): void {
+  function update(craftedWeaves: readonly CraftedWeaveData[], equippedSlots: (string | null)[], rpgState?: RpgSimState): void {
     currentWeaves = craftedWeaves;
     equippedIds = new Set(equippedSlots.filter((id): id is string => id !== null));
+    currentRpgState = rpgState;
+    dustLabel.textContent = `${REFINEMENT_RESOURCE_NAME}: ${rpgState?.resonanceDust ?? 0}`;
 
     // Sync localOrder: remove deleted, append new sorted by equipped status, rarity, then power.
     const existingIds = new Set(craftedWeaves.map(w => w.id));
