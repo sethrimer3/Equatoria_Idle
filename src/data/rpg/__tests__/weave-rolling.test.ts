@@ -28,7 +28,7 @@ import { getUnlockedWeaveSlotCount } from '../../../sim/forge/forge-state';
 import { aggregateEquippedWeaveEffects } from '../weave-effects';
 import { getEquippedWeaveModifiers } from '../equipment-modifiers';
 import { createRpgSimState } from '../../../sim/rpg/rpg-state';
-import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct } from '../weave-proc-effects';
+import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, getTotalActiveWeaveBuffWeaponDamagePct } from '../weave-proc-effects';
 import { ALL_WEAVE_EFFECT_IDS, getWeaveEffectDef } from '../weave-effects-registry';
 import { createGameState } from '../../../sim/game-state';
 import { craftWeave } from '../../../sim/game-state';
