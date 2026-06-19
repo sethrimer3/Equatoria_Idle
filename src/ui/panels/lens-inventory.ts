@@ -13,6 +13,7 @@ import type { ActionHandler } from '../../input';
 import { createMoteIconCanvas, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
 import { TIER1_STATUS_MAP } from '../../data/rpg/lens-status-effects';
 import { ENEMY_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
+import { getEquippedLensModifiers } from '../../data/rpg/equipment-modifiers';
 
 // ─── Rarity colors ────────────────────────────────────────────────
 
@@ -35,6 +36,7 @@ function buildLensCard(
 ): HTMLElement {
   const card = document.createElement('div');
   card.className = 'weapon-store__card';
+  card.title = lens.effects.map(e => `T${e.effectTier} ${e.name}: ${e.description}`).join('\n') || 'Unknown Item';
 
   // Name row with ingredient tier colors
   const nameRow = document.createElement('div');
@@ -84,6 +86,21 @@ function buildLensCard(
   powerRow.style.cssText = 'font-size:0.72em;color:#aaa;margin:2px 0;';
   powerRow.textContent = `${lens.totalWeightedMoteValue.toLocaleString()} mote-wt`;
   card.appendChild(powerRow);
+
+  const previewMods = getEquippedLensModifiers(lens, 'preview', Math.max(1, lens.totalWeightedMoteValue * 0.01));
+  const previewParts = [
+    previewMods.weaponDamagePct > 0 ? `+${previewMods.weaponDamagePct.toFixed(1)}% DMG` : '',
+    previewMods.statusChancePct > 0 ? `+${previewMods.statusChancePct.toFixed(1)}% STATUS` : '',
+    previewMods.critChancePct > 0 ? `+${previewMods.critChancePct.toFixed(1)}% CRIT` : '',
+    previewMods.critDamagePct > 0 ? `+${previewMods.critDamagePct.toFixed(1)}% CRIT DMG` : '',
+  ].filter(Boolean);
+  if (previewParts.length > 0) {
+    const preview = document.createElement('div');
+    preview.className = 'lens-card__preview';
+    preview.style.cssText = 'font-size:0.72em;color:#e6c850;margin:2px 0 5px;';
+    preview.textContent = previewParts.join(' / ');
+    card.appendChild(preview);
+  }
 
   // Effects list
   for (const effect of lens.effects) {
@@ -336,7 +353,7 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
   // ── Local drag-and-drop ordering ──────────────────────────────────────────
 
   const lensByIdMap = new Map(lenses.map(l => [l.id, l]));
-  let localOrder: string[] = lenses.map(l => l.id);
+  const localOrder: string[] = lenses.map(l => l.id);
 
   let draggingLensId: string | null = null;
   let activeDragPointerId = -1;

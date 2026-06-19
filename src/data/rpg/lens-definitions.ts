@@ -7,7 +7,8 @@
  */
 
 import type { TierId } from '../tiers';
-import type { LensEffectTier } from './lens-types';
+import type { LensEffectTier, LensRarity } from './lens-types';
+import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 import { getForgeEffectUnlockChances, type ForgeEffectUnlockChances } from './weave-rolling';
 
 // ─── Implemented Tier 2 tier IDs ──────────────────────────────────
@@ -169,3 +170,121 @@ const LENS_MAX_MOTE_TYPES: Record<number, number> = {
 export function getLensMaxMoteTypes(forgeLevel: number): number {
   return LENS_MAX_MOTE_TYPES[forgeLevel] ?? 3;
 }
+
+export interface LensStatModifiers {
+  weaponDamagePct?: number;
+  statusChancePct?: number;
+  critChancePct?: number;
+  critDamagePct?: number;
+}
+
+export interface LensItemDefinition {
+  id: string;
+  displayName: string;
+  moteTierId?: TierId;
+  tier: LensEffectTier;
+  rarity: LensRarity;
+  description: string;
+  iconKey: string;
+  statModifiers: LensStatModifiers;
+  statusKey?: EnemyStatusKey;
+  specialHookKey?: string;
+}
+
+export const LENS_ITEM_DEFINITIONS: readonly LensItemDefinition[] = [
+  {
+    id: 'lens-sand-abrasion-t1',
+    displayName: 'Sand Abrasion Lens',
+    moteTierId: 'sand',
+    tier: 1,
+    rarity: 'Common',
+    description: LENS_T1_DESCRIPTIONS.sand ?? 'Applies Abraded on hit.',
+    iconKey: 'lens:sand',
+    statModifiers: { weaponDamagePct: 3, statusChancePct: 4 },
+    statusKey: 'abraded',
+  },
+  {
+    id: 'lens-ruby-kindling-t1',
+    displayName: 'Ruby Kindling Lens',
+    moteTierId: 'ruby',
+    tier: 1,
+    rarity: 'Uncommon',
+    description: LENS_T1_DESCRIPTIONS.ruby ?? 'Applies Burning on hit.',
+    iconKey: 'lens:ruby',
+    statModifiers: { weaponDamagePct: 2, statusChancePct: 6 },
+    statusKey: 'burning',
+  },
+  {
+    id: 'lens-sapphire-chill-t1',
+    displayName: 'Sapphire Chill Lens',
+    moteTierId: 'sapphire',
+    tier: 1,
+    rarity: 'Uncommon',
+    description: LENS_T1_DESCRIPTIONS.sapphire ?? 'Applies Chilled on hit.',
+    iconKey: 'lens:sapphire',
+    statModifiers: { statusChancePct: 7 },
+    statusKey: 'chilled',
+  },
+  {
+    id: 'lens-quartz-prism-t2',
+    displayName: 'Quartz Prism Lens',
+    moteTierId: 'quartz',
+    tier: 2,
+    rarity: 'Rare',
+    description: LENS_T2_DESCRIPTIONS.quartz ?? 'Splits precision beams on proc.',
+    iconKey: 'lens:quartz',
+    statModifiers: { weaponDamagePct: 5, critChancePct: 2 },
+    statusKey: 'refracted',
+    specialHookKey: 'lensTier2',
+  },
+  {
+    id: 'lens-emerald-spore-t2',
+    displayName: 'Emerald Spore Lens',
+    moteTierId: 'emerald',
+    tier: 2,
+    rarity: 'Rare',
+    description: LENS_T2_DESCRIPTIONS.emerald ?? 'Releases venom spores on proc.',
+    iconKey: 'lens:emerald',
+    statModifiers: { weaponDamagePct: 4, statusChancePct: 8 },
+    statusKey: 'poisoned',
+    specialHookKey: 'lensTier2',
+  },
+  {
+    id: 'lens-nullstone-pulse-t2',
+    displayName: 'Nullstone Pulse Lens',
+    moteTierId: 'nullstone',
+    tier: 2,
+    rarity: 'Epic',
+    description: LENS_T2_DESCRIPTIONS.nullstone ?? 'Releases a gravity pulse on proc.',
+    iconKey: 'lens:nullstone',
+    statModifiers: { statusChancePct: 9 },
+    statusKey: 'gravitized',
+    specialHookKey: 'lensTier2',
+  },
+  {
+    id: 'lens-sapphire-zero-t3',
+    displayName: 'Sapphire Absolute Zero Lens',
+    moteTierId: 'sapphire',
+    tier: 3,
+    rarity: 'Legendary',
+    description: LENS_T3_DESCRIPTIONS.sapphire ?? 'Repeated chilled hits can freeze.',
+    iconKey: 'lens:sapphire:t3',
+    statModifiers: { critChancePct: 4, critDamagePct: 12, statusChancePct: 10 },
+    statusKey: 'chilled',
+    specialHookKey: 'lensTier3',
+  },
+  {
+    id: 'lens-eigenstein-cascade-t3',
+    displayName: 'Eigenstein Cascade Lens',
+    moteTierId: 'eigenstein',
+    tier: 3,
+    rarity: 'Mythic',
+    description: LENS_T3_DESCRIPTIONS.eigenstein ?? 'Builds rift instability on scarred enemies.',
+    iconKey: 'lens:eigenstein:t3',
+    statModifiers: { weaponDamagePct: 8, statusChancePct: 8 },
+    statusKey: 'riftScarred',
+    specialHookKey: 'lensTier3',
+  },
+];
+
+export const LENS_ITEM_DEFINITION_BY_ID = new Map(LENS_ITEM_DEFINITIONS.map(def => [def.id, def]));

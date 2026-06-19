@@ -331,7 +331,7 @@ export function deserializeGameState(data: SaveData): GameState {
           magnitude: e.magnitude,
           quality: e.quality,
           rarity: e.rarity as LensRarity,
-          isApplied: e.effectTier === 1,
+          isApplied: e.isApplied ?? e.effectTier === 1,
         } satisfies LensEffect)),
       };
     }

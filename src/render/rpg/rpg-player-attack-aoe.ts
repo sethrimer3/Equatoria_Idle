@@ -20,6 +20,7 @@ import { handleLensTier2EffectsOnWeaponHit, extractT2TargetEntity } from './lens
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import { evaluateStatusCombosOnStatusApplied } from '../../sim/rpg/enemy-status-combos';
 import { applyComboResults } from './rpg-combo-apply';
+import type { CombinedEquipmentModifiers } from '../../data/rpg/equipment-modifiers';
 
 export function performAoeAttack(
   ctx: RpgPlayerAttackCtx,
@@ -28,7 +29,7 @@ export function performAoeAttack(
   armorIgnore = 0,
   craftedMods?: CraftedWeaponModifiers,
   rangeSq?: number,
-  attachedLens?: import('../../data/rpg/lens-types').CraftedLensData,
+  equipment?: CombinedEquipmentModifiers,
   weaponId?: string,
 ): void {
   const {
@@ -237,7 +238,7 @@ export function performAoeAttack(
 
   // Lens status post-hit: apply Tier 1 statuses to all in-range enemies,
   // respecting affinities, immunities, and boss/elite overrides.
-  if (attachedLens && weaponId) {
+  if (equipment?.lens && weaponId) {
     type AoeEntry = { enemy: { hp: number; x: number; y: number }; enemyTypeId: string };
     const aoeTargets: AoeEntry[] = [
       ...enemies.map(e => ({ enemy: e, enemyTypeId: 'other' })),
@@ -262,7 +263,7 @@ export function performAoeAttack(
       const dx = e.x - mote.x, dy = e.y - mote.y;
       if (dx * dx + dy * dy <= aoeSq) {
         applyTier1LensStatusesToEnemy({
-          enemy: e, lens: attachedLens, weaponId, hitDamage: rawDamage, enemyTypeId,
+          enemy: e, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId,
         });
       }
     }
@@ -270,22 +271,22 @@ export function performAoeAttack(
       const bx = bossEnemy.x - mote.x, by = bossEnemy.y - mote.y;
       if (bx * bx + by * by <= aoeSq) {
         applyTier1LensStatusesToEnemy({
-          enemy: bossEnemy, lens: attachedLens, weaponId, hitDamage: rawDamage, enemyTypeId: 'boss',
+          enemy: bossEnemy, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId: 'boss',
         });
       }
     }
   }
 
   // Lens Tier 2 post-hit: fired once per AoE burst (same as crafted post-hit).
-  if (attachedLens && weaponId) {
+  if (equipment?.lens && weaponId) {
     const closestForT2 = ctx.findClosestTarget(rangeSq ?? (300 * 300));
     const t2Entity = closestForT2 ? extractT2TargetEntity(closestForT2) : null;
-    handleLensTier2EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
-    handleLensTier3EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
+    handleLensTier2EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
+    handleLensTier3EffectsOnWeaponHit({ targetEntity: t2Entity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
   }
 
   // AoE status combo evaluation: check each in-range enemy for combo conditions.
-  if (attachedLens && weaponId) {
+  if (equipment?.lens && weaponId) {
     const nowMs = performance.now();
     type MinE = { x: number; y: number; hp: number };
     // Map each array to its type ID for correct affinity/scaling.

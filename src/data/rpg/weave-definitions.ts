@@ -10,7 +10,7 @@
  */
 
 import type { TierId } from '../tiers';
-import type { WeaveAffixId } from './weave-types';
+import type { WeaveAffixId, WeaveRarity } from './weave-types';
 
 export interface WeaveAffixSpec {
   affixId: WeaveAffixId;
@@ -125,3 +125,91 @@ export const WEAVE_AFFIX_FAMILIES: Partial<Record<TierId, WeaveAffixFamily>> = {
   eigenstein: EIGENSTEIN_RIFT,
   // sunstone intentionally omitted — contributes to power scaling only
 };
+
+export type WeaveSlotType = 'weave';
+
+export interface WeaveStatModifiers {
+  weaponDamagePct?: number;
+  cooldownPct?: number;
+  projectileSpeedPct?: number;
+  critChancePct?: number;
+  critDamagePct?: number;
+  statusChancePct?: number;
+  playerDefensePct?: number;
+}
+
+export interface WeaveConditionalModifier {
+  conditionKey: string;
+  description: string;
+  statModifiers: WeaveStatModifiers;
+}
+
+export interface WeaveItemDefinition {
+  id: string;
+  displayName: string;
+  rarity: WeaveRarity;
+  slotType: WeaveSlotType;
+  description: string;
+  iconKey: string;
+  statModifiers: WeaveStatModifiers;
+  conditionalModifiers?: readonly WeaveConditionalModifier[];
+}
+
+export const WEAVE_ITEM_DEFINITIONS: readonly WeaveItemDefinition[] = [
+  {
+    id: 'weave-sand-quickthread',
+    displayName: 'Sand Quickthread',
+    rarity: 'Common',
+    slotType: 'weave',
+    description: 'A simple haste weave that trims weapon cooldowns.',
+    iconKey: 'weave:sand',
+    statModifiers: { cooldownPct: 4 },
+  },
+  {
+    id: 'weave-ruby-cinderloop',
+    displayName: 'Ruby Cinderloop',
+    rarity: 'Uncommon',
+    slotType: 'weave',
+    description: 'A hot thread that sharpens critical openings.',
+    iconKey: 'weave:ruby',
+    statModifiers: { critChancePct: 2, critDamagePct: 8 },
+  },
+  {
+    id: 'weave-citrine-giltmesh',
+    displayName: 'Citrine Giltmesh',
+    rarity: 'Rare',
+    slotType: 'weave',
+    description: 'Radiant mesh that improves broad weapon output.',
+    iconKey: 'weave:citrine',
+    statModifiers: { weaponDamagePct: 5 },
+  },
+  {
+    id: 'weave-emerald-venomcord',
+    displayName: 'Emerald Venomcord',
+    rarity: 'Rare',
+    slotType: 'weave',
+    description: 'A living cord that helps statuses take hold.',
+    iconKey: 'weave:emerald',
+    statModifiers: { statusChancePct: 5 },
+  },
+  {
+    id: 'weave-sapphire-focusband',
+    displayName: 'Sapphire Focusband',
+    rarity: 'Epic',
+    slotType: 'weave',
+    description: 'Cold focus that favors critical precision.',
+    iconKey: 'weave:sapphire',
+    statModifiers: { critChancePct: 3, critDamagePct: 10 },
+  },
+  {
+    id: 'weave-diamond-guardlace',
+    displayName: 'Diamond Guardlace',
+    rarity: 'Epic',
+    slotType: 'weave',
+    description: 'A faceted defensive lace for the mote bearer.',
+    iconKey: 'weave:diamond',
+    statModifiers: { playerDefensePct: 6 },
+  },
+];
+
+export const WEAVE_ITEM_DEFINITION_BY_ID = new Map(WEAVE_ITEM_DEFINITIONS.map(def => [def.id, def]));

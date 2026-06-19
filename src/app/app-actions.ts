@@ -20,6 +20,7 @@ import {
   craftWeave,
   craftLens,
   attachLensToWeapon,
+  grantSampleLensWeaveItems,
 } from '../sim';
 import { getUnlockedWeaveSlotCount } from '../sim/forge/forge-state';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
@@ -289,6 +290,12 @@ export function handleAction(
       const wv = action.wave;
       if (wv < 1 || (wv % 10 !== 0 && wv !== 1)) break;
       uiPanels.rpgRender.devJumpToWave(wv);
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'dev_grant_sample_equipment': {
+      if (!devMode) break;
+      grantSampleLensWeaveItems(state.game);
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;
     }

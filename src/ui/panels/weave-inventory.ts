@@ -13,6 +13,7 @@ import type { CraftedWeaveData, WeaveTierEffect } from '../../data/rpg/weave-typ
 import type { WeaveSlotsPanel } from './weave-slots';
 import { TIER_BY_ID } from '../../data/tiers';
 import { createMoteIconCanvas, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
+import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
 
 export interface WeaveInventoryPanel {
   element: HTMLElement;
@@ -167,6 +168,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
     if (equippedIds.has(weave.id)) {
       card.classList.add('weave-card--equipped');
     }
+    card.title = weave.affixes.map(a => `${a.label} +${a.value.toFixed(1)}${a.unit} [${a.rarity}]`).join('\n') || 'Unknown Item';
 
     const header = document.createElement('div');
     header.className = 'weave-card__header';
@@ -190,6 +192,22 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
     }
 
     card.appendChild(header);
+
+    const previewMods = getEquippedWeaveModifiers([weave.id], [weave]);
+    const previewParts = [
+      previewMods.weaponDamagePct > 0 ? `+${previewMods.weaponDamagePct.toFixed(1)}% DMG` : '',
+      previewMods.cooldownPct > 0 ? `-${previewMods.cooldownPct.toFixed(1)}% CD` : '',
+      previewMods.critChancePct > 0 ? `+${previewMods.critChancePct.toFixed(1)}% CRIT` : '',
+      previewMods.critDamagePct > 0 ? `+${previewMods.critDamagePct.toFixed(1)}% CRIT DMG` : '',
+      previewMods.statusChancePct > 0 ? `+${previewMods.statusChancePct.toFixed(1)}% STATUS` : '',
+      previewMods.playerDefensePct > 0 ? `+${previewMods.playerDefensePct.toFixed(1)}% DEF` : '',
+    ].filter(Boolean);
+    if (previewParts.length > 0) {
+      const preview = document.createElement('div');
+      preview.className = 'weave-card__preview';
+      preview.textContent = previewParts.join(' / ');
+      card.appendChild(preview);
+    }
 
     // Animated mote icon — same moteIcons sprite used by the loom orbital buttons
     {

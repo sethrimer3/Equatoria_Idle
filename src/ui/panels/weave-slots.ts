@@ -271,6 +271,17 @@ export function createWeaveSlotsPanel(dispatch: ActionHandler): WeaveSlotsPanel 
       return slot;
     }
 
+    if (weaveId && !weave) {
+      slot.classList.add('weave-slot--occupied', 'weave-slot--unknown');
+      slot.setAttribute('aria-label', 'Unknown Item');
+      slot.textContent = '?';
+      slot.title = 'Unknown Item';
+      slot.addEventListener('pointerup', () => {
+        dispatch({ kind: 'unequip_weave', weaveId });
+      });
+      return slot;
+    }
+
     if (!weave) {
       // Empty unlocked slot with subtle trinity knot pattern
       slot.classList.add('weave-slot--empty');

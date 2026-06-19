@@ -22,6 +22,7 @@ export type GameAction =
   | { kind: 'purchase_rpg_upgrade'; upgradeId: string }
   | { kind: 'set_respawn_wave'; wave: number }
   | { kind: 'dev_jump_wave'; wave: number }
+  | { kind: 'dev_grant_sample_equipment' }
   | { kind: 'respawn_now' }
   | { kind: 'start_boss_fight'; bossId: number }
   | { kind: 'set_boss_speed'; pct: number }

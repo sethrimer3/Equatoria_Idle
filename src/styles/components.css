@@ -1367,6 +1367,14 @@
   box-shadow: 0 0 10px rgba(160, 200, 255, 0.3);
 }
 
+.weave-slot--unknown {
+  color: #e6c850;
+  font-weight: 800;
+  font-size: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Ghost element for slot drag reordering */
 .weave-slot-drag-ghost {
   position: fixed;
@@ -1489,6 +1497,14 @@
 .weave-card__rarity--epic       { color: #b060e0; }
 .weave-card__rarity--legendary  { color: #e09020; }
 .weave-card__rarity--mythic     { color: #ff4060; text-shadow: 0 0 6px rgba(255, 60, 80, 0.6); }
+
+.weave-card__preview,
+.lens-card__preview {
+  color: #e6c850;
+  font-size: 0.72em;
+  line-height: 1.25;
+  margin: 2px 0 5px;
+}
 
 /* Drop-target highlight for inventory card swapping */
 .weave-card--drag-over {

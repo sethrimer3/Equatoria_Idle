@@ -28,10 +28,10 @@ import type {
 } from './polyomino-enemy-types';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
-import { applyLensStatus, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
-import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
+import { applyTier1LensStatusesToEnemy } from '../../sim/rpg/enemy-status-application';
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
+import type { CombinedEquipmentModifiers } from '../../data/rpg/equipment-modifiers';
 
 // ── Sort-entry type (local to this module) ────────────────────────────────────
 
@@ -94,6 +94,18 @@ function extractMultiEntity(t: MultiSortEntry): object | null {
     ?? t.refractorPolyomino ?? t.elite ?? t.boss ?? t.alivenParticle ?? null;
 }
 
+function getMultiEnemyTypeId(t: MultiSortEntry): string {
+  if (t.sapphire) return 'sapphire';
+  if (t.emerald) return 'emerald';
+  if (t.ruby) return 'ruby';
+  if (t.nullstone) return 'nullstone';
+  if (t.fracteryl) return 'fracteryl';
+  if (t.eigenstein) return 'eigenstein';
+  if (t.elite) return `elite_${t.elite.tier}`;
+  if (t.boss) return 'boss';
+  return 'other';
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export function performMultiAttack(
@@ -103,7 +115,7 @@ export function performMultiAttack(
   targetCount: number,
   armorIgnore = 0,
   craftedMods?: CraftedWeaponModifiers,
-  attachedLens?: import('../../data/rpg/lens-types').CraftedLensData,
+  equipment?: CombinedEquipmentModifiers,
   weaponId?: string,
 ): void {
   const {
@@ -402,15 +414,18 @@ export function performMultiAttack(
       if (dmg > 0) spawnHitVisualsAt(t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, dmg, t.alivenParticle.glowColor);
     }
     // Lens status post-hit: apply Tier 1 statuses to target.
-    if (attachedLens && weaponId) {
+    if (equipment?.lens && weaponId) {
       const entity = extractMultiEntity(t);
       if (entity) {
-        const statusParams = buildAllTier1StatusParams(attachedLens, weaponId, rawDamage);
-        for (const p of statusParams) applyLensStatus(entity, p);
-        const hasRift = attachedLens.effects.some(e => e.effectTier === 1 && e.tierId === 'eigenstein');
-        if (hasRift) incrementRiftScarredStacks(entity, attachedLens.id);
-        handleLensTier2EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
-        handleLensTier3EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
+        applyTier1LensStatusesToEnemy({
+          enemy: entity,
+          lens: equipment.lens,
+          weaponId,
+          hitDamage: rawDamage,
+          enemyTypeId: getMultiEnemyTypeId(t),
+        });
+        handleLensTier2EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
+        handleLensTier3EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
       }
     }
     // Crafted post-hit: Nullstone pull at this target's position; Fracteryl from shared pool.

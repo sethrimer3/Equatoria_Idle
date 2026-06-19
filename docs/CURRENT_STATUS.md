@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
-Last updated: 2026-06-03
-Current build: 265
+Last updated: 2026-06-18
+Current build: 279
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,16 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 279: lens/weave itemization helper pass
+
+Completed:
+
+- Added centralized lens and weave item metadata plus a pure equipment modifier aggregation layer.
+- Generic RPG attacks now consume combined equipment modifiers for damage, crit, and status routing.
+- Single-target, multi-target, and AoE lens status application share the status helper path.
+- Equipped weaves can provide bounded combat passives such as damage, cooldown, crit, status, and defense bonuses.
+- Lens/weave inventory cards show compact stat previews and safe unknown-item fallbacks.
 
 ### Build 272: long-range gently homing Horizon shots
 

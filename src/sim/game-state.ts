@@ -453,6 +453,37 @@ export function attachLensToWeapon(
   return true;
 }
 
+export function grantSampleLensWeaveItems(state: GameState): void {
+  const samples: CraftedWeaponIngredient[][] = [
+    [{ tierId: 'sand', refinedCount: 2n }],
+    [{ tierId: 'ruby', refinedCount: 2n }],
+    [{ tierId: 'sapphire', refinedCount: 2n }],
+    [{ tierId: 'quartz', refinedCount: 2n }, { tierId: 'emerald', refinedCount: 1n }],
+    [{ tierId: 'citrine', refinedCount: 2n }],
+    [{ tierId: 'diamond', refinedCount: 1n }],
+  ];
+  const existingLensIds = new Set(state.rpg.craftedLenses.map(item => item.id));
+  const existingWeaveIds = new Set(state.rpg.craftedWeaves.map(item => item.id));
+  let lensIndex = state.rpg.craftedLenses.length + 1;
+  let weaveIndex = state.rpg.craftedWeaves.length + 1;
+
+  for (let i = 0; i < 3; i++) {
+    let id = `dev_sample_lens_${lensIndex}`;
+    while (existingLensIds.has(id)) id = `dev_sample_lens_${++lensIndex}`;
+    existingLensIds.add(id);
+    state.rpg.craftedLenses.push(createCraftedLens(id, samples[i]!, 3, () => 0.18 + i * 0.11));
+    lensIndex++;
+  }
+
+  for (let i = 0; i < samples.length; i++) {
+    let id = `dev_sample_weave_${weaveIndex}`;
+    while (existingWeaveIds.has(id)) id = `dev_sample_weave_${++weaveIndex}`;
+    existingWeaveIds.add(id);
+    state.rpg.craftedWeaves.push(createCraftedWeave(id, samples[i]!, 3, () => 0.22 + i * 0.07));
+    weaveIndex++;
+  }
+}
+
 // ─── Weave loom bonus helper ────────────────────────────────────
 
 import type { CraftedWeaveData } from '../data/rpg/weave-types';

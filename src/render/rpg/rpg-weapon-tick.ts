@@ -50,6 +50,8 @@ export interface WeaponTickCtx {
   findEquippedWeaponIdByEffect(kind: string): string | null;
   /** Returns the SPD multiplier for the given weapon (>= 1). Used to divide cooldown. */
   getWeaponSpdMultiplier(weaponId: string): number;
+  /** Returns passive equipment cooldown reduction percent. */
+  getEquipmentCooldownPct(): number;
   /** Fire one auto-attack with the given weapon. */
   performWeaponAttack(weaponId: string): void;
   /** Remove enemies whose HP dropped to zero since the last removal pass. */
@@ -140,6 +142,7 @@ export function tickWeaponSystems(ctx: WeaponTickCtx, deltaMs: number): void {
     // Battle Focus: -2% cooldown per rank (up to -4% total at rank 2).
     const battleFocusRank = (ctx.rpgSimState.rpgUpgradeLevels.get('battle_focus') ?? 0);
     if (battleFocusRank > 0) baseCooldownMs *= Math.max(0.5, 1 - battleFocusRank * 0.02);
+    baseCooldownMs *= Math.max(0.4, 1 - ctx.getEquipmentCooldownPct() / 100);
     const cooldownMs = baseCooldownMs / Math.max(1, spdMult);
 
     const current = ctx.weaponAttackTimers.get(weaponId) ?? 0;

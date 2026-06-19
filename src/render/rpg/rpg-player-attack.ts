@@ -40,7 +40,11 @@ import type {
 import { performAoeAttack } from './rpg-player-attack-aoe';
 import { performMultiAttack } from './rpg-player-attack-multi';
 import { performSingleAttack } from './rpg-player-attack-single';
-import type { CraftedLensData } from '../../data/rpg/lens-types';
+import {
+  applyEquipmentModifiersToAttackContext,
+  getCombinedEquipmentModifiers,
+  type CombinedEquipmentModifiers,
+} from '../../data/rpg/equipment-modifiers';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -201,6 +205,8 @@ export interface RpgPlayerAttackCtx {
   getWeaponRngMultiplier(weaponId: string): number;
   /** Returns the PRC multiplier for the given weapon (>= 1). Multiply pierce ratio by this. */
   getWeaponPrcMultiplier(weaponId: string): number;
+  /** Returns the equipped weave/lens cooldown bonus as a percentage. */
+  getEquipmentCooldownPct(): number;
 }
 
 // ── Attack dispatch ───────────────────────────────────────────────────────────
@@ -269,9 +275,6 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const range     = (weaponDef?.stats.range ?? PLAYER_BASE_RANGE_PX) * Math.max(1, ctx.getWeaponRngMultiplier(weaponId));
   const tier      = rpgSimState.weaponTiersByWeaponId.get(weaponId) ?? 1;
   const craftedMods = resolveCraftedWeaponModifiers(weaponId);
-  // Resolve attached lens (undefined for non-crafted or lens-less weapons).
-  const attachedLens: CraftedLensData | undefined =
-    rpgSimState.craftedWeapons.find(w => w.id === weaponId)?.attachedLens;
   let baseDmg   = (weaponDef
     ? getScaledWeaponDamage(weaponDef.stats.damage, tier, playerStats.atk)
     : playerStats.atk) * Math.max(1, ctx.getWeaponAtkMultiplier(weaponId));
@@ -286,11 +289,17 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     if (ampRank     > 0) baseDmg *= 1 + ampRank     * 0.06;
   }
   // Sapphire crit: roll for critChancePct% chance, deal critDamageMultiplier× damage.
-  const isCrit    = craftedMods && craftedMods.critChancePct > 0
-    ? Math.random() * 100 < craftedMods.critChancePct
+  const preCritEquipment = getCombinedEquipmentModifiers({ rpgState: rpgSimState, weaponId, hitDamage: baseDmg });
+  baseDmg = applyEquipmentModifiersToAttackContext(baseDmg, preCritEquipment);
+
+  const totalCritChancePct = (craftedMods?.critChancePct ?? 0) + preCritEquipment.critChancePct;
+  const isCrit    = totalCritChancePct > 0
+    ? Math.random() * 100 < totalCritChancePct
     : false;
-  const critMult  = (craftedMods?.critDamageMultiplier ?? 2);
+  const critMult  = (craftedMods?.critDamageMultiplier ?? 2) * (1 + preCritEquipment.critDamagePct / 100);
   const rawDamage = isCrit ? baseDmg * critMult : baseDmg;
+  const equipment: CombinedEquipmentModifiers =
+    getCombinedEquipmentModifiers({ rpgState: rpgSimState, weaponId, hitDamage: rawDamage });
   const effect    = weaponDef?.stats.effect ?? { kind: 'single' as const };
   const rangeSq   = range * range;
 
@@ -334,12 +343,12 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   // ── Attack-mode handlers ──────────────────────────────────────────────────
 
   if (effect.kind === 'aoe') {
-    performAoeAttack(ctx, rawDamage, effect.aoeRadius, armorIgnore, craftedMods ?? undefined, rangeSq, attachedLens, weaponId);
+    performAoeAttack(ctx, rawDamage, effect.aoeRadius, armorIgnore, craftedMods ?? undefined, rangeSq, equipment, weaponId);
     return;
   }
 
   if (effect.kind === 'multi') {
-    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount, armorIgnore, craftedMods ?? undefined, attachedLens, weaponId);
+    performMultiAttack(ctx, rawDamage, rangeSq, effect.targetCount, armorIgnore, craftedMods ?? undefined, equipment, weaponId);
     return;
   }
 
@@ -354,5 +363,5 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   const weaponShotColor = weaponDef
     ? (TIER_BY_ID.get(weaponDef.costTierId as import('../../data/tiers').TierId)?.color ?? '#ffd764')
     : '#ffd764';
-  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, weaponShotColor, craftedMods ?? undefined, attachedLens, weaponId);
+  performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, weaponShotColor, craftedMods ?? undefined, equipment, weaponId);
 }

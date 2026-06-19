@@ -56,6 +56,7 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `rpg/weapon-definitions.ts` | Base weapon catalog | `WEAPON_BY_ID` — CAUTION: crafted weapons registered here too |
 | `rpg/rpg-upgrade-definitions.ts` | RPG upgrade catalog | `RPG_UPGRADE_BY_ID` |
 | `rpg/crafted-weapon-helpers.ts` | Crafted weapon creation, registration, resolver | `registerCraftedWeapons()`, `resolveWeaponDefinition()` |
+| `rpg/equipment-modifiers.ts` | Pure lens/weave combat-facing aggregation | No DOM/render imports |
 | `achievements/achievement-definitions.ts` | All achievement definitions | `ACHIEVEMENT_BY_ID` |
 
 ## src/render/ — Rendering

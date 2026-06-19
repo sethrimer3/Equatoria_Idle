@@ -19,7 +19,7 @@ import {
 } from './rpg-enemy-constants';
 import type { RpgPlayerAttackCtx } from './rpg-player-attack';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
-import type { CraftedLensData } from '../../data/rpg/lens-types';
+import type { CombinedEquipmentModifiers } from '../../data/rpg/equipment-modifiers';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import {
   getIncomingDamageMult, getRiftScarredDamageMult,
@@ -114,7 +114,7 @@ export function performSingleAttack(
   defPierceRatio: number,
   shotColor: string,
   craftedMods?: CraftedWeaponModifiers,
-  attachedLens?: CraftedLensData,
+  equipment?: CombinedEquipmentModifiers,
   weaponId?: string,
 ): void {
   const {
@@ -141,8 +141,8 @@ export function performSingleAttack(
   // ── Lens status pre-hit: apply incoming-damage multipliers ───────────────────
   const comboTargetEntity = extractTargetEntity(closestT);
   const comboEnemyTypeId = getTargetEnemyTypeId(closestT);
-  const targetEntity = attachedLens ? comboTargetEntity : null;
-  const lensSourceKey = attachedLens?.id ?? '';
+  const targetEntity = equipment?.lens ? comboTargetEntity : null;
+  const lensSourceKey = equipment?.lens?.id ?? '';
   const statusMult = targetEntity ? getIncomingDamageMult(targetEntity) : 1;
   const riftMult   = (targetEntity && lensSourceKey) ? getRiftScarredDamageMult(targetEntity, lensSourceKey) : 1;
   const effectiveRaw = rawDamage * statusMult * riftMult;
@@ -258,18 +258,18 @@ export function performSingleAttack(
   }
 
   // ── Lens status post-hit: apply Tier 1 statuses to target ───────────────────
-  if (attachedLens && targetEntity && weaponId) {
+  if (equipment?.lens && targetEntity && weaponId) {
     const enemyTypeId = getTargetEnemyTypeId(closestT);
     const statusResult = applyTier1LensStatusesToEnemy({
-      enemy: targetEntity, lens: attachedLens, weaponId, hitDamage: rawDamage, enemyTypeId,
+      enemy: targetEntity, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId,
     });
     if (statusResult.affinityFeedback && _canShowAffinityFeedback(targetEntity)) {
       const text = statusResult.affinityFeedback;
       const color = text === 'IMMUNE' ? '#9ab' : text === 'WEAK!' ? '#7ef' : '#fa8';
       ctx.spawnDamageNumber(hitX, hitY, 0, -0.8, text, 0.15, color);
     }
-    handleLensTier2EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
-    handleLensTier3EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: attachedLens, weaponId, ctx });
+    handleLensTier2EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
+    handleLensTier3EffectsOnWeaponHit({ targetEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
   }
 
   // ── Crafted weapon post-hit effects ──────────────────────────────────────

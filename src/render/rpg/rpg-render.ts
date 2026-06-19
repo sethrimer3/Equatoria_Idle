@@ -69,6 +69,7 @@ import type {
 import { createRpgWeaponSystems, type RpgWeaponCtx, type RpgWeaponHandle } from './rpg-weapon-systems';
 import { createRpgTargeting, type RpgTargetingHandle } from './rpg-targeting';
 import { performWeaponAttack as _performWeaponAttack, type RpgPlayerAttackCtx } from './rpg-player-attack';
+import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
 import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
@@ -743,7 +744,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const weaponDef = resolveWeaponDefinition(weaponId);
       if (weaponDef) totalDefBonus += weaponDef.stats.defBonus;
     }
-    playerStats.def = PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState) + getPlayerLevelDefBonus(rpgSimState.playerLevel);
+    const weaveMods = getEquippedWeaveModifiers(rpgSimState.equippedWeaveSlots, rpgSimState.craftedWeaves);
+    playerStats.def = (PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState) + getPlayerLevelDefBonus(rpgSimState.playerLevel))
+      * (1 + weaveMods.playerDefensePct / 100);
     // Regen is a fixed base value (weapon/XP bonuses can be added here in future).
     playerStats.regen = PLAYER_REGEN_INIT;
     // Player ATK is the base multiplier (not including per-weapon tier damage).
@@ -1241,6 +1244,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return statsPanel.getWeaponStatMultiplier(slotIdx, 'prcIn');
   }
 
+  function getEquipmentCooldownPct(): number {
+    return getEquippedWeaveModifiers(rpgSimState.equippedWeaveSlots, rpgSimState.craftedWeaves).cooldownPct;
+  }
+
   const weaponCtx: RpgWeaponCtx = {
     dim,
     viewport,
@@ -1378,6 +1385,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getWeaponAtkMultiplier,
     getWeaponRngMultiplier,
     getWeaponPrcMultiplier,
+    getEquipmentCooldownPct,
     applyNullstonePull(hitX: number, hitY: number, radius: number): void {
       weaponSystems.spawnCraftedVortex(hitX, hitY, radius);
     },
@@ -1689,6 +1697,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getEffectiveEquippedIds,
     findEquippedWeaponIdByEffect,
     getWeaponSpdMultiplier,
+    getEquipmentCooldownPct,
     performWeaponAttack: (weaponId) => performWeaponAttack(weaponId),
     removeDeadEnemies:   () => waveManager.removeDeadEnemies(),
     checkWaveCompletion: () => waveManager.checkWaveCompletion(),

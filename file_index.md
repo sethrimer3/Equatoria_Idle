@@ -1128,17 +1128,17 @@
 - Fracteryl follow-ups never re-enter the function (no recursion). Multi/AoE share one pool to cap total follow-ups.
 
 ### src/render/rpg/rpg-player-attack-aoe.ts
-- AOE weapon attack handler. Exported: `performAoeAttack(ctx, rawDamage, aoeRadius, armorIgnore?, craftedMods?, rangeSq?)`.
-- Loops all enemy arrays within `aoeRadius` of the mote, emits fluid explosion, then calls `applyCraftedPostHit` once at mote center.
+- AOE weapon attack handler. Exported: `performAoeAttack(ctx, rawDamage, aoeRadius, armorIgnore?, craftedMods?, rangeSq?, equipment?)`.
+- Loops all enemy arrays within `aoeRadius` of the mote, applies lens statuses via shared equipment/status helpers, emits fluid explosion, then calls `applyCraftedPostHit` once at mote center.
 
 ### src/render/rpg/rpg-player-attack-multi.ts
-- Multi-target weapon attack handler. Exported: `performMultiAttack(ctx, rawDamage, rangeSq, targetCount, armorIgnore?, craftedMods?)`.
+- Multi-target weapon attack handler. Exported: `performMultiAttack(ctx, rawDamage, rangeSq, targetCount, armorIgnore?, craftedMods?, equipment?)`.
 - Collects all in-range entities into a typed `MultiSortEntry[]`, sorts by distance, damages the closest N.
-- Calls `applyCraftedPostHit` per target with a shared Fracteryl pool; `getSortEntryPos` extracts hit position.
+- Applies Tier 1 lens statuses through `applyTier1LensStatusesToEnemy`, then calls `applyCraftedPostHit` per target with a shared Fracteryl pool.
 
 ### src/render/rpg/rpg-player-attack-single.ts
-- Single and piercing weapon attack handler. Exported: `performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, shotColor, craftedMods?)`.
-- Uses `findClosestTarget`, dispatches to the matching damage/visual call, then delegates to `applyCraftedPostHit`.
+- Single and piercing weapon attack handler. Exported: `performSingleAttack(ctx, rawDamage, rangeSq, isPiercing, defPierceRatio, shotColor, craftedMods?, equipment?)`.
+- Uses `findClosestTarget`, applies lens/status helpers, dispatches to the matching damage/visual call, then delegates to `applyCraftedPostHit`.
 
 ### src/render/rpg/rpg-player-damage.ts
 - Player damage application and hit-visual helpers extracted from `rpg-render.ts` (~198 lines).
@@ -1595,6 +1595,11 @@
   `sapphire_spike`, `iolite_volley`, `amethyst_pierce`, `diamond_bastion`, `nullstone_nova`.
 - Sapphire and Amethyst definitions use persistent companion ship effects rather than the generic piercing effect.
 - `WEAPON_BY_ID` — O(1) lookup map.
+
+### src/data/rpg/equipment-modifiers.ts
+- Pure aggregation layer for equipped lenses and weaves.
+- Exports `getEquippedLensModifiers`, `getEquippedWeaveModifiers`, `getCombinedEquipmentModifiers`, and `applyEquipmentModifiersToAttackContext`.
+- No DOM or render dependencies; combat callers consume `CombinedEquipmentModifiers` instead of reading raw inventory/equipment state directly.
 
 ### src/data/rpg/rpg-zone-definitions.ts
 - Defines `RpgZoneId` ('euhedral' | 'impetus' | 'caustics' | 'verdure' | 'horizon') and `RpgZoneDefinition`.
