@@ -9,7 +9,8 @@
  * - "not yet applied" indicator for stored-only effects
  */
 
-import type { CraftedWeaveData, WeaveTierEffect } from '../../data/rpg/weave-types';
+import type { CraftedWeaveData, WeaveTierEffect, WeaveEffectRoll } from '../../data/rpg/weave-types';
+import { getWeavePassiveEffectDef } from '../../data/rpg/weave-passive-effects';
 import type { WeaveSlotsPanel } from './weave-slots';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
