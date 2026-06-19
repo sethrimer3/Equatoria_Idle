@@ -153,6 +153,14 @@ export const ZONE_SELECTION_SHEEN_OVERLAY_PATHS = Array.from(
   { length: 22 },
   (_, index) => `${BASE}/SPRITES/menuElements/icons/zoneSelection/sheenOverlay (${index + 1}).png`,
 ) as readonly string[];
+export const ZONE_TAB_ICON_PATHS: Record<string, string> = {
+  all:      `${BASE}/SPRITES/menuElements/icons/zones/AllZones.png`,
+  euhedral: `${BASE}/SPRITES/menuElements/icons/zones/Euhedral.png`,
+  impetus:  `${BASE}/SPRITES/menuElements/icons/zones/Impetus.png`,
+  caustics: `${BASE}/SPRITES/menuElements/icons/zones/Caustics.png`,
+  verdure:  `${BASE}/SPRITES/menuElements/icons/zones/Verdure.png`,
+};
+
 export const SKILL_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/skillCodex/skillCodex.png`;
 export const SKILL_CODEX_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/skillCodex/skillCodex_glow.png`;
 export const SKILL_CODEX_SHARD_ICON_PATHS = Array.from(

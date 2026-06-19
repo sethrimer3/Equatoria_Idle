@@ -151,6 +151,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A stocky orange artillery unit that fires a spread of three homing shards in a fan.',
     shape: 'square',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Amber-Gunner.png',
   },
   {
     id: 'void',
@@ -163,6 +164,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A massive purple predator that relentlessly pursues the player and deals heavy contact damage.',
     shape: 'square',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Void-Bruiser.png',
     auraRadius: VOID_AURA_RADIUS,
   },
   {
@@ -420,6 +422,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'square',
     zone: 'verdure',
     category: 'elite',
+    iconFile: 'EnemyIcon_Refractor-Polyomino.png',
   },
   {
     id: 'aliven_spark_cluster',
@@ -497,6 +500,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'An amethyst swarm of 9 particles including healer nodes that restore HP to nearby allies every few seconds. Eliminate healers first — they are marked with a faint outer ring.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Healer-Nodes.png',
   },
   {
     id: 'aliven_orbit_bloom',
@@ -509,6 +513,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A ruby-red swarm of 12 orbiter particles that circle a drifting centroid while relentlessly seeking the player. Beautiful and deadly.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Orbit-Bloom.png',
   },
   {
     id: 'aliven_quartz_ghost',
@@ -765,6 +770,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Cloth-Ghost.png',
   },
   {
     id: 'proc_plantturret',
@@ -899,6 +905,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Emerald-Fish.png',
   },
   {
     id: 'proc_sapphirefish',
@@ -912,6 +919,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Sapphire-Fish.png',
   },
   {
     id: 'proc_amethystfish',
