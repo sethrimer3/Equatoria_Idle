@@ -442,8 +442,13 @@ export function deserializeGameState(data: SaveData): GameState {
     }
     // v32+: crafted lens inventory
     if (data.rpg.craftedLenses && data.rpg.craftedLenses.length > 0) {
-      state.rpg.craftedLenses = data.rpg.craftedLenses.map(deserializeLens);
+      state.rpg.craftedLenses = data.rpg.craftedLenses.map(l => ({
+        ...deserializeLens(l),
+        refinementLevel: l.refinementLevel ?? 0,
+      }));
     }
+    // v34+: Resonance Dust
+    state.rpg.resonanceDust = data.rpg.resonanceDust ?? 0;
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)
