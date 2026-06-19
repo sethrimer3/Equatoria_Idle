@@ -214,8 +214,10 @@ export function createDevPanel(): DevPanel {
 
   const weaveBuffsLine = el('div', 'dev-panel-info-line');
   const weaveBuffDefLine = el('div', 'dev-panel-info-line');
+  const weaveBuffCdrLine = el('div', 'dev-panel-info-line');
   section.appendChild(weaveBuffsLine);
   section.appendChild(weaveBuffDefLine);
+  section.appendChild(weaveBuffCdrLine);
 
   function refreshWeaveBuffs(): void {
     if (!hooks) return;
@@ -224,9 +226,16 @@ export function createDevPanel(): DevPanel {
     if (buffs.length === 0) {
       weaveBuffsLine.textContent = 'No active weave buffs';
       weaveBuffDefLine.textContent = '';
+      weaveBuffCdrLine.textContent = '';
     } else {
-      weaveBuffsLine.textContent = buffs.map(b => `${b.effectId} (${(b.remainingMs / 1000).toFixed(1)}s)`).join(', ');
-      weaveBuffDefLine.textContent = `Buff DEF: +${getTotalActiveWeaveBuffDefPct(rpg).toFixed(2)}%`;
+      weaveBuffsLine.textContent = buffs.map(b => {
+        const label = b.statKey === 'cooldownPct' ? 'cooldown' : 'DEF';
+        return `${b.effectId}: ${b.statKey === 'cooldownPct' ? '-' : '+'}${b.valuePct.toFixed(1)}% ${label}, ${(b.remainingMs / 1000).toFixed(1)}s`;
+      }).join(' | ');
+      const defPct = getTotalActiveWeaveBuffDefPct(rpg);
+      const cdrPct = getTotalActiveWeaveBuffCooldownPct(rpg);
+      weaveBuffDefLine.textContent = defPct > 0 ? `Buff DEF: +${defPct.toFixed(2)}%` : '';
+      weaveBuffCdrLine.textContent = cdrPct > 0 ? `Buff CDR: -${cdrPct.toFixed(2)}%` : '';
     }
   }
 
