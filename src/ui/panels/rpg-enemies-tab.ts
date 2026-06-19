@@ -29,7 +29,12 @@ import {
   ICON_SIZE,
   createAlivenIconCanvas, createProcIconCanvas, drawEnemyIcon, drawBossIcon,
 } from './rpg-enemies-tab-icons';
-import { getEnemyIconPath, FALLBACK_ENEMY_ICON_PATH } from '../../render/assets/asset-paths';
+import {
+  getEnemyIconPath,
+  FALLBACK_ENEMY_ICON_PATH,
+  ENEMY_ICON_FRAME_MASK_PATH,
+  ENEMY_ICON_FRAME_PATH,
+} from '../../render/assets/asset-paths';
 import { getEnemyStatusAffinity } from '../../data/rpg/enemy-status-affinities';
 import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 import { ENEMY_STATUS_DEFS, PLAYER_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
@@ -197,6 +202,21 @@ function makeZoneIconChip(zone: string): HTMLElement {
 
 // ─── Entry builders ───────────────────────────────────────────────
 
+function applyEnemyIconFrame(iconFrame: HTMLElement, alt: string): void {
+  iconFrame.style.setProperty('--rpg-codex-icon-mask', `url("${ENEMY_ICON_FRAME_MASK_PATH}")`);
+
+  const frameImg = document.createElement('img');
+  frameImg.className = 'rpg-codex-icon-frame-img';
+  frameImg.src = ENEMY_ICON_FRAME_PATH;
+  frameImg.alt = '';
+  frameImg.setAttribute('aria-hidden', 'true');
+  frameImg.onerror = () => {
+    frameImg.remove();
+    iconFrame.setAttribute('aria-label', alt);
+  };
+  iconFrame.appendChild(frameImg);
+}
+
 function buildEnemyEntry(
   entry: EnemyCatalogEntry,
   isLocked: boolean,
@@ -261,6 +281,7 @@ function buildEnemyEntry(
     overlayCanvas.className = 'rpg-codex-icon-overlay';
     iconFrame.appendChild(overlayCanvas);
   }
+  applyEnemyIconFrame(iconFrame, entry.name);
 
   box.appendChild(iconFrame);
 
@@ -482,6 +503,7 @@ function buildBossEntry(
     drawBossIcon(overlayCanvas, bossId);
     iconFrame.appendChild(overlayCanvas);
   }
+  applyEnemyIconFrame(iconFrame, `Boss ${bossId}`);
 
   box.appendChild(iconFrame);
 

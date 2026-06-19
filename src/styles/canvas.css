@@ -2693,10 +2693,10 @@
   flex-shrink: 0;
   width: 54px;
   height: 54px;
-  border-radius: 8px;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  overflow: hidden;
+  border: 0;
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2707,6 +2707,16 @@
   display: block;
   width: 54px;
   height: 54px;
+  -webkit-mask-image: linear-gradient(#000 0 0), var(--rpg-codex-icon-mask);
+  -webkit-mask-size: 100% 100%, 100% 100%;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-position: center, center;
+  -webkit-mask-composite: source-out;
+  mask-image: linear-gradient(#000 0 0), var(--rpg-codex-icon-mask);
+  mask-size: 100% 100%, 100% 100%;
+  mask-repeat: no-repeat, no-repeat;
+  mask-position: center, center;
+  mask-composite: exclude;
 }
 
 .rpg-codex-icon-img {
@@ -2714,6 +2724,28 @@
   width: 54px;
   height: 54px;
   object-fit: contain;
+  -webkit-mask-image: linear-gradient(#000 0 0), var(--rpg-codex-icon-mask);
+  -webkit-mask-size: 100% 100%, 100% 100%;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-position: center, center;
+  -webkit-mask-composite: source-out;
+  mask-image: linear-gradient(#000 0 0), var(--rpg-codex-icon-mask);
+  mask-size: 100% 100%, 100% 100%;
+  mask-repeat: no-repeat, no-repeat;
+  mask-position: center, center;
+  mask-composite: exclude;
+}
+
+.rpg-codex-icon-frame-img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 54px;
+  height: 54px;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  z-index: 3;
 }
 
 /* Small rendered-enemy preview overlaid in the top-right corner.
@@ -2729,6 +2761,16 @@
   background: rgba(0, 0, 0, 0.45);
   pointer-events: none;
   z-index: 1;
+  -webkit-mask-image: linear-gradient(#000 0 0), var(--rpg-codex-icon-mask);
+  -webkit-mask-size: 100% 100%, 300% 300%;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-position: center, top right;
+  -webkit-mask-composite: source-out;
+  mask-image: linear-gradient(#000 0 0), var(--rpg-codex-icon-mask);
+  mask-size: 100% 100%, 300% 300%;
+  mask-repeat: no-repeat, no-repeat;
+  mask-position: center, top right;
+  mask-composite: exclude;
 }
 
 /* ── Body ───────────────────────────────────────────────────────── */
