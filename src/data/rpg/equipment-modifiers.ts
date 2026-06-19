@@ -64,7 +64,8 @@ function emptyLensModifiers(): EquippedLensModifiers {
   };
 }
 
-function addPercentByAffix(mods: EquipmentCombatModifiers, affixId: string, value: number): void {
+function addPercentByAffix(mods: EquipmentCombatModifiers, affixId: string, value: number, refineMult = 1.0): void {
+  value = value * refineMult;
   switch (affixId) {
     case 'sand_loom_speed':
     case 'sand_forge_speed':
