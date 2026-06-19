@@ -17,7 +17,7 @@ import type { ActivePlayerStatus } from './player-status-effects';
 export type { RpgZoneId };
 
 /** Which stat an active weave buff applies to. */
-export type ActiveWeaveBuffStat = 'playerDefensePct' | 'cooldownPct';
+export type ActiveWeaveBuffStat = 'playerDefensePct' | 'cooldownPct' | 'weaponDamagePct';
 
 /** Ephemeral buff granted by a proc weave effect. Not saved. */
 export interface ActiveWeaveBuff {
