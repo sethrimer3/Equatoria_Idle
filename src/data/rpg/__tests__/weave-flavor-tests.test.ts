@@ -228,7 +228,6 @@ describe('rollWeaveEffects', () => {
   });
 
   it('rolled effect ID is always in ALL_WEAVE_EFFECT_IDS', () => {
-    const { ALL_WEAVE_EFFECT_IDS } = require('../weave-effects-registry');
     for (let i = 0; i <= 10; i++) {
       const rng = () => i / 10;
       const effects = rollWeaveEffects([makeAffix('Uncommon')], [], 100, rng);
