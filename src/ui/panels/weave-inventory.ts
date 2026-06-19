@@ -305,6 +305,95 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       }
     }
 
+    // ── Refinement row ────────────────────────────────────────────────────
+    const refLevel = weave.refinementLevel ?? 0;
+    const refineRow = document.createElement('div');
+    refineRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0 2px;';
+
+    const refLabel = document.createElement('span');
+    refLabel.style.cssText = 'font-size:0.72em;color:#e6c850;font-weight:700;';
+    refLabel.textContent = `${getRefinementLabel(refLevel)} ${getRefinementMultiplierLabel(refLevel)}`;
+    refineRow.appendChild(refLabel);
+
+    if (refLevel < MAX_REFINEMENT_LEVEL && dispatch) {
+      const rarity = getWeaveHighestRarity(weave);
+      const cost = getRefineCost(rarity, refLevel + 1);
+      const canAfford = (currentRpgState?.resonanceDust ?? 0) >= cost;
+      const refineBtn = document.createElement('button');
+      refineBtn.className = 'weave-card__action-btn';
+      refineBtn.style.cssText =
+        `font-size:0.68em;padding:1px 6px;border-radius:3px;border:1px solid;cursor:pointer;background:none;` +
+        (canAfford
+          ? 'color:#e6c850;border-color:rgba(230,200,80,0.4);'
+          : 'color:#666;border-color:#333;cursor:not-allowed;');
+      refineBtn.textContent = `Refine (${cost} Dust)`;
+      refineBtn.disabled = !canAfford;
+      refineBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dispatch({ kind: 'refine_weave', weaveId: weave.id });
+      });
+      refineRow.appendChild(refineBtn);
+    } else if (refLevel >= MAX_REFINEMENT_LEVEL) {
+      const maxEl = document.createElement('span');
+      maxEl.style.cssText = 'font-size:0.68em;color:#666;font-style:italic;';
+      maxEl.textContent = '(max)';
+      refineRow.appendChild(maxEl);
+    }
+    card.appendChild(refineRow);
+
+    // ── Stat comparison preview ───────────────────────────────────────────
+    if (currentRpgState) {
+      const comparisons = getWeaveEquipComparison(currentRpgState, weave);
+      const relevantComps = comparisons.filter(c => Math.abs(c.delta) > 0.05);
+      if (relevantComps.length > 0) {
+        const compRow = document.createElement('div');
+        compRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin:2px 0;';
+        for (const c of relevantComps) {
+          const chip = document.createElement('span');
+          chip.style.cssText =
+            `font-size:0.65em;padding:1px 4px;border-radius:3px;white-space:nowrap;` +
+            (c.better ? 'color:#5f5;background:rgba(80,200,80,0.1);' :
+             c.worse  ? 'color:#f88;background:rgba(200,80,80,0.1);' : 'color:#aaa;');
+          const sign = c.delta > 0 ? '+' : '';
+          chip.textContent = `${c.label} ${sign}${c.delta.toFixed(1)}`;
+          compRow.appendChild(chip);
+        }
+        card.appendChild(compRow);
+      }
+    }
+
+    // ── Dismantle action ─────────────────────────────────────────────────
+    if (dispatch) {
+      const isEquipped = equippedIds.has(weave.id);
+      const dismantleRow = document.createElement('div');
+      dismantleRow.style.cssText = 'margin-top:4px;';
+      const rarity = getWeaveHighestRarity(weave);
+      const dustYield = getDismantleDust(rarity);
+      const dismantleBtn = document.createElement('button');
+      dismantleBtn.style.cssText =
+        `font-size:0.68em;padding:1px 6px;border-radius:3px;border:1px solid rgba(200,100,60,0.4);` +
+        `background:none;color:#e08060;cursor:pointer;` +
+        (isEquipped ? 'opacity:0.45;' : '');
+      dismantleBtn.textContent = isEquipped
+        ? `Dismantle (+${dustYield} Dust) — unequip first`
+        : `Dismantle (+${dustYield} Dust)`;
+      dismantleBtn.disabled = isEquipped;
+      dismantleBtn.title = isEquipped ? 'Unequip this weave before dismantling.' : '';
+      dismantleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showWeaveDismantleConfirm(weave, dustYield, dispatch);
+      });
+      dismantleRow.appendChild(dismantleBtn);
+      card.appendChild(dismantleRow);
+    }
+
+    // ── Reforge preview ───────────────────────────────────────────────────
+    const reforgeNote = document.createElement('div');
+    reforgeNote.style.cssText = 'font-size:0.65em;color:#444;margin-top:3px;font-style:italic;';
+    reforgeNote.title = 'Reforging will reroll secondary stats — coming later.';
+    reforgeNote.textContent = 'Reforge: coming later';
+    card.appendChild(reforgeNote);
+
     // Drag interaction (pointer events — works on mobile)
     let downTs = 0;
     let downX = 0, downY = 0;
