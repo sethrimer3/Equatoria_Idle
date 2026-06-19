@@ -197,8 +197,9 @@ export function getCombinedEquipmentModifiers(args: {
   const lensMods = getEquippedLensModifiers(lens, args.weaponId, args.hitDamage);
   const weaveMods = getEquippedWeaveModifiers(args.rpgState.equippedWeaveSlots, args.rpgState.craftedWeaves);
 
+  const activeWeaponDamagePct = getTotalActiveWeaveBuffWeaponDamagePct(args.rpgState);
   return clampCombatModifiers({
-    weaponDamagePct: lensMods.weaponDamagePct + weaveMods.weaponDamagePct,
+    weaponDamagePct: lensMods.weaponDamagePct + weaveMods.weaponDamagePct + activeWeaponDamagePct,
     cooldownPct: lensMods.cooldownPct + weaveMods.cooldownPct,
     projectileSpeedPct: lensMods.projectileSpeedPct + weaveMods.projectileSpeedPct,
     critChancePct: lensMods.critChancePct + weaveMods.critChancePct,
