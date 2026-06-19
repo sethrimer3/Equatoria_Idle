@@ -31,6 +31,6 @@ export interface CraftedLensData {
   totalWeightedMoteValue: number;
   forgeCraftLevel: number;
   effects: LensEffect[];
-  /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). */
-  refinementLevel: number;
+  /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). Absent in old items = 0. */
+  refinementLevel?: number;
 }
