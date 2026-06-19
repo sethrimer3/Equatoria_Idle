@@ -8,7 +8,7 @@
  */
 
 import type { RpgSimState, ActiveWeaveBuff } from '../../sim/rpg/rpg-state';
-import { WEAVE_PROC_EFFECT_REGISTRY } from './weave-passive-effects';
+import { WEAVE_PROC_EFFECT_REGISTRY } from './weave-effects-registry';
 
 // ─── Trigger ──────────────────────────────────────────────────────────────────
 

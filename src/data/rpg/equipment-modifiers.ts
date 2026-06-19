@@ -11,7 +11,7 @@ import type { CraftedWeaveData } from './weave-types';
 import { buildAllTier1StatusParams } from './lens-status-effects';
 import type { LensStatusParams } from '../../sim/rpg/enemy-status-effects';
 import { getStatMultiplierForLevel } from './item-refinement';
-import { getWeaveEffectDef } from './weave-passive-effects';
+import { getWeaveEffectDef } from './weave-effects-registry';
 
 export interface EquipmentCombatModifiers {
   weaponDamagePct: number;
