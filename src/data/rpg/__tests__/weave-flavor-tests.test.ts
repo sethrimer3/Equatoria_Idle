@@ -228,11 +228,10 @@ describe('rollWeaveEffects', () => {
     expect(effects[0]!.id).toBe('weave_echo_strike');
   });
 
-  it('diamond-heavy weave with rng=0.7 rolls weave_reactive_ward', () => {
-    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(3). Total=15.
-    // rng=0.7 → threshold=10.5 → focus(3):7.5 → quickness(1):6.5 → guard(3):3.5 → reactive_ward(3):0.5 → echo_strike(1):-0.5 → reactive_ward
-    // Wait: reactive_ward(3): 3.5-3=0.5 (not <0), echo_strike(1): 0.5-1=-0.5 (<0) → echo_strike
-    // Actually need reactive_ward. Let me recalc: rng=0.6 → threshold=9 → focus:6→quickness:5→guard:2→reactive_ward:-1 → reactive_ward ✓
+  it('diamond-heavy weave with rng=0.6 rolls weave_reactive_ward', () => {
+    // ember_surge flavors are citrine/ruby — diamond does NOT boost it.
+    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1). Total=13.
+    // rng=0.6 → threshold=7.8 → focus:4.8 → quickness:3.8 → guard:0.8 → reactive_ward:-2.2 → reactive_ward
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'diamond', refinedCount: 5 }],
