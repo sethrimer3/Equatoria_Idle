@@ -50,7 +50,16 @@ export type GameAction =
   | { kind: 'equip_weave_to_slot'; weaveId: string; slotIndex: number }
   | { kind: 'unequip_weave'; weaveId: string }
   | { kind: 'move_weave_slot'; fromSlotIndex: number; toSlotIndex: number }
-  | { kind: 'swap_weapon_slots'; slotA: number; slotB: number };
+  | { kind: 'swap_weapon_slots'; slotA: number; slotB: number }
+  | { kind: 'dismantle_lens'; lensId: string }
+  | { kind: 'dismantle_weave'; weaveId: string }
+  | { kind: 'refine_lens'; lensId: string }
+  | { kind: 'refine_weave'; weaveId: string }
+  | { kind: 'dev_grant_resonance_dust'; amount: number }
+  | { kind: 'dev_refine_lens_free'; lensId: string }
+  | { kind: 'dev_refine_weave_free'; weaveId: string }
+  | { kind: 'dev_grant_duplicate_lenses' }
+  | { kind: 'dev_grant_duplicate_weaves' };
 
 export type TabId = 'equation' | 'resources' | 'rpg' | 'achievements' | 'settings';
 
