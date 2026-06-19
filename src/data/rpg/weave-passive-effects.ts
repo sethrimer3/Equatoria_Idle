@@ -85,3 +85,57 @@ export const ALL_WEAVE_PASSIVE_EFFECT_IDS: readonly WeavePassiveEffectId[] = [
 export function getWeavePassiveEffectDef(id: string): WeavePassiveEffectDef | null {
   return (WEAVE_PASSIVE_EFFECT_REGISTRY as Record<string, WeavePassiveEffectDef>)[id] ?? null;
 }
+
+// ─── Proc effects ─────────────────────────────────────────────────────────────
+
+export type WeaveProcTrigger = 'playerDamaged';
+export type WeaveProcEffectId = 'weave_reactive_ward';
+
+export interface WeaveProcEffectDef {
+  readonly id: WeaveProcEffectId;
+  readonly displayName: string;
+  readonly description: (value: number) => string;
+  readonly category: 'proc';
+  readonly trigger: WeaveProcTrigger;
+  /** Percent chance [0–100] to proc on the trigger event. */
+  readonly baseChancePct: number;
+  /** How long the buff lasts in milliseconds. */
+  readonly durationMs: number;
+  /**
+   * Maximum DEF% bonus at powerScale = 1.0 and Mythic rarity.
+   * Actual value = baseMaxValue × powerScale × rarityMult (same formula as passive effects).
+   */
+  readonly baseMaxValue: number;
+}
+
+export const WEAVE_PROC_EFFECT_REGISTRY: Readonly<Record<WeaveProcEffectId, WeaveProcEffectDef>> = {
+  weave_reactive_ward: {
+    id: 'weave_reactive_ward',
+    displayName: 'Reactive Ward',
+    description: (v) => `10% chance on hit taken: +${v.toFixed(1)}% DEF for 3.0s`,
+    category: 'proc',
+    trigger: 'playerDamaged',
+    baseChancePct: 10,
+    durationMs: 3000,
+    baseMaxValue: 15,
+  },
+} as const;
+
+// ─── Unified effect types ─────────────────────────────────────────────────────
+
+export type WeaveEffectId = WeavePassiveEffectId | WeaveProcEffectId;
+export type WeaveEffectDef = WeavePassiveEffectDef | WeaveProcEffectDef;
+
+export const ALL_WEAVE_EFFECT_IDS: readonly WeaveEffectId[] = [
+  'weave_focus',
+  'weave_quickness',
+  'weave_guard',
+  'weave_reactive_ward',
+];
+
+/** Returns the def for a given id (passive or proc), or null if unknown. */
+export function getWeaveEffectDef(id: string): WeaveEffectDef | null {
+  return (WEAVE_PASSIVE_EFFECT_REGISTRY as Record<string, WeaveEffectDef>)[id]
+    ?? (WEAVE_PROC_EFFECT_REGISTRY as Record<string, WeaveEffectDef>)[id]
+    ?? null;
+}
