@@ -28,6 +28,7 @@ import {
   refreshLoomStateTable,
   refreshTelemetryTables,
 } from './dev-panel-render';
+import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
 
 // ─── Public interface ────────────────────────────────────────────
 
