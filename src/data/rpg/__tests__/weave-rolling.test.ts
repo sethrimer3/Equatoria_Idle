@@ -799,17 +799,17 @@ describe('rollWeavePassiveEffects — proc in pool', () => {
   }
 
   it('proc effect can be rolled from the pool', () => {
-    // weave_reactive_ward is the 4th id (index 3) in ALL_WEAVE_EFFECT_IDS
-    // rng returning 0.875 → floor(0.875 * 4) = 3 → weave_reactive_ward
-    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.875);
+    // weave_reactive_ward is index 3 in ALL_WEAVE_EFFECT_IDS (5 entries now)
+    // rng returning 0.75 → floor(0.75 * 5) = 3 → weave_reactive_ward
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.75);
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_reactive_ward');
     expect(effects[0]!.value).toBeGreaterThan(0);
   });
 
   it('proc effect rolled value scales with rarity', () => {
-    const uncommon = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.875);
-    const mythic = rollWeavePassiveEffects([makeAffix('Mythic')], 100, () => 0.875);
+    const uncommon = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.75);
+    const mythic = rollWeavePassiveEffects([makeAffix('Mythic')], 100, () => 0.75);
     expect(mythic[0]!.value).toBeGreaterThan(uncommon[0]!.value);
   });
 });
