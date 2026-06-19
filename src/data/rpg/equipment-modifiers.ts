@@ -177,6 +177,11 @@ export function getEquippedWeaveModifiers(
     mods.equippedWeaves.push(weave);
     const refineMult = getStatMultiplierForLevel(weave.refinementLevel ?? 0);
     for (const affix of weave.affixes ?? []) addPercentByAffix(mods, affix.affixId, affix.value, refineMult);
+    for (const effect of weave.effects ?? []) {
+      const def = getWeavePassiveEffectDef(effect.id);
+      if (!def) continue; // unknown id — safe fallback
+      mods[def.statKey] += effect.value * refineMult;
+    }
   }
 
   return clampCombatModifiers(mods);
