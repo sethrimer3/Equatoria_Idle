@@ -209,6 +209,27 @@ export function createDevPanel(): DevPanel {
     weaveDefLine.textContent = `DEF:     +${mods.playerDefensePct.toFixed(2)}%`;
   }
 
+  // ── 10. Active Weave Buffs ─────────────────────────────────────
+  section.appendChild(makeSubTitle('Active Weave Buffs'));
+
+  const weaveBuffsLine = el('div', 'dev-panel-info-line');
+  const weaveBuffDefLine = el('div', 'dev-panel-info-line');
+  section.appendChild(weaveBuffsLine);
+  section.appendChild(weaveBuffDefLine);
+
+  function refreshWeaveBuffs(): void {
+    if (!hooks) return;
+    const rpg = hooks.getGame().rpg;
+    const buffs = rpg.activeWeaveBuffs;
+    if (buffs.length === 0) {
+      weaveBuffsLine.textContent = 'No active weave buffs';
+      weaveBuffDefLine.textContent = '';
+    } else {
+      weaveBuffsLine.textContent = buffs.map(b => `${b.effectId} (${(b.remainingMs / 1000).toFixed(1)}s)`).join(', ');
+      weaveBuffDefLine.textContent = `Buff DEF: +${getTotalActiveWeaveBuffDefPct(rpg).toFixed(2)}%`;
+    }
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────
 
   function refreshAlivenCount(): void {
