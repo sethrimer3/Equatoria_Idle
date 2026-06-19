@@ -4,10 +4,13 @@
  * tryTriggerPlayerDamagedWeaveEffects: call from onPlayerDamaged (dmg > 0).
  * tryTriggerPlayerHitEnemyWeaveEffects: call after a real weapon hit (dmg > 0).
  * tickActiveWeaveBuffs: call each frame before runRpgUpdate.
- * getTotalActiveWeaveBuffDefPct: call in applyEquipmentStats to sum buff DEF.
+ * getTotalActiveWeaveBuffPct: call to sum any stat's active buff contributions.
+ * getTotalActiveWeaveBuffDefPct: compat wrapper for playerDefensePct.
+ * getTotalActiveWeaveBuffCooldownPct: helper for cooldown reduction from active buffs.
  */
 
 import type { RpgSimState, ActiveWeaveBuff } from '../../sim/rpg/rpg-state';
+import type { ActiveWeaveBuffStat } from '../../sim/rpg/rpg-state';
 import { WEAVE_PROC_EFFECT_REGISTRY } from './weave-effects-registry';
 
 // ─── Trigger ──────────────────────────────────────────────────────────────────
@@ -37,15 +40,16 @@ export function tryTriggerPlayerDamagedWeaveEffects(
       if (!def || def.trigger !== 'playerDamaged') continue;
       if (rng() * 100 >= def.baseChancePct) continue;
 
-      // Refresh or add buff
+      // Reactive Ward is a defense buff; refresh or add.
       const existing = state.activeWeaveBuffs.find(b => b.effectId === effect.id);
       if (existing) {
         existing.remainingMs = def.durationMs;
       } else {
         const buff: ActiveWeaveBuff = {
           effectId: effect.id,
+          statKey: 'playerDefensePct',
+          valuePct: effect.value,
           remainingMs: def.durationMs,
-          defPct: effect.value,
         };
         state.activeWeaveBuffs.push(buff);
       }
@@ -59,12 +63,15 @@ export function tryTriggerPlayerDamagedWeaveEffects(
 // ─── playerHitEnemy proc trigger ─────────────────────────────────────────────
 
 /**
- * Checks equipped weaves for `playerHitEnemy` proc effects (e.g. weave_echo_strike).
- * Call after a real weapon hit where finalDmg > 0.
+ * Checks equipped weaves for `playerHitEnemy` proc effects.
+ * Handles two kinds:
+ *   - Instant damage procs (weave_echo_strike): calls applyBonusDmg callback.
+ *   - Temp buff procs (weave_swiftstrike): adds or refreshes an active buff.
  *
- * Returns the ids + bonus damage amounts of any triggered effects.
- * Caller applies the bonus damage directly to the same enemy — no recursion because
- * the bonus is applied via a raw damage function, not through performWeaponAttack.
+ * Multiple Swiftstrike weaves roll independently. If the same effectId is
+ * already in activeWeaveBuffs, duration is refreshed and value kept at the
+ * stronger of the existing vs new value. This prevents unlimited buff stacking
+ * from a single source while allowing natural refresh on repeated procs.
  *
  * @param state          - Current rpg sim state.
  * @param finalDmg       - Actual damage dealt by the triggering hit (post-DEF).
@@ -93,8 +100,28 @@ export function tryTriggerPlayerHitEnemyWeaveEffects(
       if (!def || def.trigger !== 'playerHitEnemy') continue;
       if (rng() * 100 >= def.baseChancePct) continue;
 
-      const bonus = finalDmg * (effect.value / 100);
-      applyBonusDmg(bonus);
+      if (def.durationMs > 0) {
+        // Temp buff proc (e.g. weave_swiftstrike): add or refresh active buff.
+        // Same effectId: refresh duration, keep the stronger value.
+        const existing = state.activeWeaveBuffs.find(b => b.effectId === effect.id);
+        if (existing) {
+          existing.remainingMs = def.durationMs;
+          if (effect.value > existing.valuePct) existing.valuePct = effect.value;
+        } else {
+          const buff: ActiveWeaveBuff = {
+            effectId: effect.id,
+            statKey: 'cooldownPct',
+            valuePct: effect.value,
+            remainingMs: def.durationMs,
+          };
+          state.activeWeaveBuffs.push(buff);
+        }
+      } else {
+        // Instant damage proc (e.g. weave_echo_strike): no buff, apply bonus damage.
+        const bonus = finalDmg * (effect.value / 100);
+        applyBonusDmg(bonus);
+      }
+
       triggered.push(effect.id);
     }
   }
@@ -118,7 +145,19 @@ export function tickActiveWeaveBuffs(state: RpgSimState, deltaMs: number): boole
 
 // ─── Stat aggregation ─────────────────────────────────────────────────────────
 
+/** Returns the total percent contribution from all active weave buffs for the given stat. */
+export function getTotalActiveWeaveBuffPct(state: RpgSimState, statKey: ActiveWeaveBuffStat): number {
+  return state.activeWeaveBuffs
+    .filter(b => b.statKey === statKey)
+    .reduce((sum, b) => sum + b.valuePct, 0);
+}
+
 /** Returns the total DEF% bonus from all currently active weave buffs. */
 export function getTotalActiveWeaveBuffDefPct(state: RpgSimState): number {
-  return state.activeWeaveBuffs.reduce((sum, b) => sum + b.defPct, 0);
+  return getTotalActiveWeaveBuffPct(state, 'playerDefensePct');
+}
+
+/** Returns the total cooldown reduction % from all currently active weave buffs. */
+export function getTotalActiveWeaveBuffCooldownPct(state: RpgSimState): number {
+  return getTotalActiveWeaveBuffPct(state, 'cooldownPct');
 }
