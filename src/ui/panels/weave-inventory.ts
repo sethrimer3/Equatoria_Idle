@@ -199,23 +199,27 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     return row;
   }
 
-  // ── Passive effect row ─────────────────────────────────────────────────
+  // ── Effect row (passive or proc) ──────────────────────────────────────
 
   function buildEffectRow(effect: WeaveEffectRoll): HTMLElement | null {
-    const def = getWeavePassiveEffectDef(effect.id);
+    const def = getWeaveEffectDef(effect.id);
     if (!def) return null;
 
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;margin:2px 0;';
 
+    const isProc = def.category === 'proc';
+    const nameColor = isProc ? '#ffd580' : '#c8e8ff';
+    const descColor = isProc ? '#ffbf4a' : '#aad4ff';
+
     const nameEl = document.createElement('span');
-    nameEl.style.color = '#c8e8ff';
+    nameEl.style.color = nameColor;
     nameEl.style.fontWeight = '600';
     nameEl.textContent = `${def.displayName}:`;
     row.appendChild(nameEl);
 
     const descEl = document.createElement('span');
-    descEl.style.color = '#aad4ff';
+    descEl.style.color = descColor;
     descEl.textContent = def.description(effect.value);
     row.appendChild(descEl);
 
