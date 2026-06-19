@@ -309,6 +309,68 @@ describe('weave_swiftstrike registry', () => {
   });
 });
 
+// ─── weave_ember_surge registry ──────────────────────────────────────────────
+
+describe('weave_ember_surge registry', () => {
+  it('exists in ALL_WEAVE_EFFECT_IDS', () => {
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_ember_surge');
+  });
+
+  it('is eligible for Uncommon+ weaves', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
+    expect(pool.some(e => e.id === 'weave_ember_surge')).toBe(true);
+  });
+
+  it('is excluded from Common-only weaves', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Common' });
+    expect(pool.some(e => e.id === 'weave_ember_surge')).toBe(false);
+  });
+
+  it('citrine ingredients give weave_ember_surge higher weight than non-flavored effects', () => {
+    const pool = getEligibleWeaveEffectsForRoll({
+      ingredients: [{ tierId: 'citrine', refinedCount: 5 }],
+      highestRarity: 'Uncommon',
+    });
+    const emberEntry = pool.find(e => e.id === 'weave_ember_surge')!;
+    const guardEntry  = pool.find(e => e.id === 'weave_guard')!;
+    expect(emberEntry.weight).toBeGreaterThan(guardEntry.weight);
+  });
+
+  it('ruby ingredients give weave_ember_surge higher weight than non-flavored effects', () => {
+    const pool = getEligibleWeaveEffectsForRoll({
+      ingredients: [{ tierId: 'ruby', refinedCount: 5 }],
+      highestRarity: 'Uncommon',
+    });
+    const emberEntry = pool.find(e => e.id === 'weave_ember_surge')!;
+    const swiftEntry = pool.find(e => e.id === 'weave_swiftstrike')!;
+    expect(emberEntry.weight).toBeGreaterThan(swiftEntry.weight);
+  });
+
+  it('can be rolled deterministically with citrine ingredients', () => {
+    // citrine: focus(3), ember_surge(3) get 3×; others get 1×.
+    // Pool: focus(3), quickness(1), guard(1), reactive_ward(1), echo_strike(1), swiftstrike(1), ember_surge(3). Total=11.
+    // ember_surge is at cumulative position 8–11 (from indices 0-based).
+    // rng=0.8 → threshold=8.8 → focus:5.8→quickness:4.8→guard:3.8→reactive_ward:2.8→echo_strike:1.8→swiftstrike:0.8→ember_surge:-2.2 → ember_surge
+    const effects = rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'citrine', refinedCount: 5 }],
+      100,
+      () => 0.8,
+    );
+    expect(effects).toHaveLength(1);
+    expect(effects[0]!.id).toBe('weave_ember_surge');
+  });
+
+  it('rng=1.0 with citrine ingredients does not crash', () => {
+    expect(() => rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'citrine', refinedCount: 5 }],
+      100,
+      () => 1,
+    )).not.toThrow();
+  });
+});
+
 // ─── createCraftedWeave — flavor-weighted effects ─────────────────────────────
 
 describe('createCraftedWeave — flavor-weighted effect rolling', () => {
