@@ -6,12 +6,8 @@
  * getTotalActiveWeaveBuffDefPct: call in applyEquipmentStats to sum buff DEF.
  */
 
-import type { RpgSimState } from '../../sim/rpg/rpg-sim-state';
-import type { ActiveWeaveBuff } from '../../sim/rpg/rpg-state';
+import type { RpgSimState, ActiveWeaveBuff } from '../../sim/rpg/rpg-state';
 import { WEAVE_PROC_EFFECT_REGISTRY } from './weave-passive-effects';
-import { getEquippedWeaveModifiers } from './equipment-modifiers';
-import { computeWeavePowerScale } from './weave-rolling';
-import { EFFECT_RARITY_MULT_EXPORT } from './weave-rolling';
 
 // ─── Trigger ──────────────────────────────────────────────────────────────────
 
