@@ -91,7 +91,7 @@ import {
 } from './polyomino-enemy-draw';
 import type {
   RpgMote, RpgJoystick, RpgPhase,
-  HitEffect, ShotLine, DamageNumber, DeathParticle, ComboEffect,
+  HitEffect, ShotLine, DamageNumber, DeathParticle, ComboEffect, WardEffect,
   WeaponOrbitParticle, OrbitProjectile,
   SapphireEnemy, SapphireMissile, LaserEnemy,
   ClosestTarget,
