@@ -1996,6 +1996,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         afterimages[_i].alpha -= AFTERIMAGE_FADE_PER_MS * deltaMs;
         if (afterimages[_i].alpha <= 0) afterimages.splice(_i, 1);
       }
+      if (tickActiveWeaveBuffs(rpgSimState, deltaMs)) applyEquipmentStats();
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
 
       if (_isDevMode && _showDebugOverlay) {
