@@ -70,6 +70,7 @@ import { createRpgWeaponSystems, type RpgWeaponCtx, type RpgWeaponHandle } from 
 import { createRpgTargeting, type RpgTargetingHandle } from './rpg-targeting';
 import { performWeaponAttack as _performWeaponAttack, type RpgPlayerAttackCtx } from './rpg-player-attack';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
+import { tryTriggerPlayerDamagedWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct } from '../../data/rpg/weave-proc-effects';
 import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
