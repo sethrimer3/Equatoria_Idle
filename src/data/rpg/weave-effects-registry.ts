@@ -191,6 +191,22 @@ export const WEAVE_PROC_EFFECT_REGISTRY: Readonly<Record<WeaveProcEffectId, Weav
     minRarity: 'Uncommon',
     weight: 1.0,
   },
+  weave_ember_surge: {
+    id: 'weave_ember_surge',
+    displayName: 'Ember Surge',
+    description: (v) => `10% chance on hit: +${v.toFixed(1)}% weapon damage for 2.5s`,
+    category: 'proc',
+    trigger: 'playerHitEnemy',
+    baseChancePct: 10,
+    durationMs: 2500,
+    // At Uncommon/powerScale≈1: 10×0.45=4.5%; at Mythic/powerScale≈2: 10×1.0×~2=20%.
+    // Stacks additively with passive weave_focus and lens weaponDamagePct; subject to the 100% cap.
+    baseMaxValue: 10,
+    role: 'offense',
+    flavors: ['citrine', 'ruby'],
+    minRarity: 'Uncommon',
+    weight: 1.0,
+  },
 } as const;
 
 // ─── Unified effect types ─────────────────────────────────────────────────────
