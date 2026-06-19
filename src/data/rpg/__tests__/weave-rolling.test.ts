@@ -757,7 +757,7 @@ describe('tickActiveWeaveBuffs', () => {
   it('decrements remainingMs and removes expired buffs', () => {
     const state = createRpgSimState();
     state.activeWeaveBuffs = [
-      { effectId: 'weave_reactive_ward', remainingMs: 1000, defPct: 10 },
+      { effectId: 'weave_reactive_ward', statKey: 'playerDefensePct', valuePct: 10, remainingMs: 1000 },
     ];
     const expired = tickActiveWeaveBuffs(state, 500);
     expect(expired).toBe(false);
