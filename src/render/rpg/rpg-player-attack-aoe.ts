@@ -343,6 +343,10 @@ export function performAoeAttack(
     }
   }
 
+  // Echo Strike (weave_echo_strike) intentionally does not trigger from AoE attacks.
+  // AoE can hit many enemies simultaneously; per-enemy proc would compound to very high
+  // effective proc rates. Echo Strike is limited to single/piercing and multi attacks.
+
   // Crafted post-hit: Nullstone pulls toward mote center; Fracteryl fires capped follow-ups.
   // Both are applied once per AoE burst (not per enemy hit) to avoid O(n²) pull cost.
   if (craftedMods && rangeSq !== undefined) {
