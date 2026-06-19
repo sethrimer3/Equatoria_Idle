@@ -152,114 +152,147 @@ export function performSingleAttack(
   const effectiveRaw = rawDamage * statusMult * riftMult;
 
   if (closestT.laser) {
-    const dmg = damageEnemy(closestT.laser, effectiveRaw, defPierceRatio);
-    spawnHitVisuals(closestT.laser, dmg, isPiercing ? piercingColor : shotColor, effectiveSourceColor);
+    const e = closestT.laser;
+    const dmg = damageEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisuals(e, dmg, isPiercing ? piercingColor : shotColor, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageEnemy(e, b, 1) };
   } else if (closestT.sapphire) {
-    const dmg = damageSapphireEnemy(closestT.sapphire, effectiveRaw, defPierceRatio, false);
-    spawnHitVisualsAt(closestT.sapphire.x, closestT.sapphire.y, closestT.sapphire.maxHp, dmg,
-      isPiercing ? piercingColor : SAPPHIRE_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.sapphire;
+    const dmg = damageSapphireEnemy(e, effectiveRaw, defPierceRatio, false);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : SAPPHIRE_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageSapphireEnemy(e, b, 1, false) };
   } else if (closestT.missile) {
     damageMissile(closestT.missile, effectiveRaw);
   } else if (closestT.emerald) {
-    const dmg = damageEmeraldEnemy(closestT.emerald, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.emerald.x, closestT.emerald.y, closestT.emerald.maxHp, dmg,
-      isPiercing ? piercingColor : EMERALD_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.emerald;
+    const dmg = damageEmeraldEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : EMERALD_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageEmeraldEnemy(e, b, 1) };
   } else if (closestT.amber) {
-    const dmg = damageAmberEnemy(closestT.amber, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.amber.x, closestT.amber.y, closestT.amber.maxHp, dmg,
-      isPiercing ? piercingColor : AMBER_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.amber;
+    const dmg = damageAmberEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : AMBER_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageAmberEnemy(e, b, 1) };
   } else if (closestT.ambershard) {
     damageAmberShard(closestT.ambershard, effectiveRaw);
   } else if (closestT.void) {
-    const dmg = damageVoidEnemy(closestT.void, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.void.x, closestT.void.y, closestT.void.maxHp, dmg,
-      isPiercing ? piercingColor : VOID_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.void;
+    const dmg = damageVoidEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : VOID_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageVoidEnemy(e, b, 1) };
   } else if (closestT.quartz) {
-    const dmg = damageQuartzEnemy(closestT.quartz, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.quartz.x, closestT.quartz.y, closestT.quartz.maxHp, dmg,
-      isPiercing ? piercingColor : QUARTZ_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.quartz;
+    const dmg = damageQuartzEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : QUARTZ_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageQuartzEnemy(e, b, 1) };
   } else if (closestT.quartzspike) {
     damageQuartzSpike(closestT.quartzspike, effectiveRaw);
   } else if (closestT.ruby) {
-    const dmg = damageRubyEnemy(closestT.ruby, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.ruby.x, closestT.ruby.y, closestT.ruby.maxHp, dmg,
-      isPiercing ? piercingColor : RUBY_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.ruby;
+    const dmg = damageRubyEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : RUBY_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageRubyEnemy(e, b, 1) };
   } else if (closestT.rubybolt) {
     damageRubyBolt(closestT.rubybolt, effectiveRaw);
   } else if (closestT.sunstone) {
-    const dmg = damageSunstoneEnemy(closestT.sunstone, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.sunstone.x, closestT.sunstone.y, closestT.sunstone.maxHp, dmg,
-      isPiercing ? piercingColor : SUNSTONE_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.sunstone;
+    const dmg = damageSunstoneEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : SUNSTONE_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageSunstoneEnemy(e, b, 1) };
   } else if (closestT.citrine) {
-    const dmg = damageCitrineEnemy(closestT.citrine, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.citrine.x, closestT.citrine.y, closestT.citrine.maxHp, dmg,
-      isPiercing ? piercingColor : CITRINE_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.citrine;
+    const dmg = damageCitrineEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : CITRINE_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageCitrineEnemy(e, b, 1) };
   } else if (closestT.citrinebolt) {
     damageCitrineBolt(closestT.citrinebolt, effectiveRaw);
   } else if (closestT.iolite) {
-    const dmg = damageIoliteEnemy(closestT.iolite, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.iolite.x, closestT.iolite.y, closestT.iolite.maxHp, dmg,
-      isPiercing ? piercingColor : IOLITE_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.iolite;
+    const dmg = damageIoliteEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : IOLITE_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageIoliteEnemy(e, b, 1) };
   } else if (closestT.amethyst) {
-    const dmg = damageAmethystEnemy(closestT.amethyst, effectiveRaw, defPierceRatio, false);
-    spawnHitVisualsAt(closestT.amethyst.x, closestT.amethyst.y, closestT.amethyst.maxHp, dmg,
-      isPiercing ? piercingColor : AMETHYST_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.amethyst;
+    const dmg = damageAmethystEnemy(e, effectiveRaw, defPierceRatio, false);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : AMETHYST_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageAmethystEnemy(e, b, 1, false) };
   } else if (closestT.amethystshard) {
     damageAmethystShard(closestT.amethystshard, effectiveRaw);
   } else if (closestT.diamond) {
-    const dmg = damageDiamondEnemy(closestT.diamond, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.diamond.x, closestT.diamond.y, closestT.diamond.maxHp, dmg,
-      isPiercing ? piercingColor : DIAMOND_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.diamond;
+    const dmg = damageDiamondEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : DIAMOND_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageDiamondEnemy(e, b, 1) };
   } else if (closestT.diamondshard) {
     damageDiamondShard(closestT.diamondshard, effectiveRaw);
   } else if (closestT.nullstone) {
-    const dmg = damageNullstoneEnemy(closestT.nullstone, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.nullstone.x, closestT.nullstone.y, closestT.nullstone.maxHp, dmg,
-      isPiercing ? piercingColor : NULLSTONE_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.nullstone;
+    const dmg = damageNullstoneEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : NULLSTONE_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageNullstoneEnemy(e, b, 1) };
   } else if (closestT.voidtendril) {
     damageVoidTendril(closestT.voidtendril, effectiveRaw);
   } else if (closestT.fracteryl) {
-    const dmg = damageFracterylEnemy(closestT.fracteryl, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.fracteryl.x, closestT.fracteryl.y, closestT.fracteryl.maxHp, dmg,
-      isPiercing ? piercingColor : FRACTERYL_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.fracteryl;
+    const dmg = damageFracterylEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : FRACTERYL_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageFracterylEnemy(e, b, 1) };
   } else if (closestT.fracterylshard) {
     damageFracterylShard(closestT.fracterylshard, effectiveRaw);
   } else if (closestT.eigenstein) {
-    const dmg = damageEigensteinEnemy(closestT.eigenstein, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.eigenstein.x, closestT.eigenstein.y, closestT.eigenstein.maxHp, dmg,
-      isPiercing ? piercingColor : EIGENSTEIN_ENEMY_GLOW, effectiveSourceColor);
+    const e = closestT.eigenstein;
+    const dmg = damageEigensteinEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : EIGENSTEIN_ENEMY_GLOW, effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageEigensteinEnemy(e, b, 1) };
   } else if (closestT.polyomino) {
-    const dmg = damagePolyominoEnemy(closestT.polyomino, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.x, closestT.y, closestT.polyomino.maxHp, dmg,
-      isPiercing ? piercingColor : '#52b788', effectiveSourceColor);
+    const e = closestT.polyomino;
+    const dmg = damagePolyominoEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(closestT.x, closestT.y, e.maxHp, dmg, isPiercing ? piercingColor : '#52b788', effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: closestT.x, y: closestT.y, maxHp: e.maxHp, applyFn: (b) => damagePolyominoEnemy(e, b, 1) };
   } else if (closestT.fissilePolyomino) {
-    const dmg = damageFissilePolyominoEnemy(closestT.fissilePolyomino, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.x, closestT.y, closestT.fissilePolyomino.maxHp, dmg,
-      isPiercing ? piercingColor : '#e9c46a', effectiveSourceColor);
+    const e = closestT.fissilePolyomino;
+    const dmg = damageFissilePolyominoEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(closestT.x, closestT.y, e.maxHp, dmg, isPiercing ? piercingColor : '#e9c46a', effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: closestT.x, y: closestT.y, maxHp: e.maxHp, applyFn: (b) => damageFissilePolyominoEnemy(e, b, 1) };
   } else if (closestT.refractorPolyomino) {
-    const dmg = damageRefractorPolyominoEnemy(closestT.refractorPolyomino, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.x, closestT.y, closestT.refractorPolyomino.maxHp, dmg,
-      isPiercing ? piercingColor : '#00f5d4', effectiveSourceColor);
+    const e = closestT.refractorPolyomino;
+    const dmg = damageRefractorPolyominoEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(closestT.x, closestT.y, e.maxHp, dmg, isPiercing ? piercingColor : '#00f5d4', effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: closestT.x, y: closestT.y, maxHp: e.maxHp, applyFn: (b) => damageRefractorPolyominoEnemy(e, b, 1) };
   } else if (closestT.elite) {
-    const dmg = damageEliteEnemy(closestT.elite, effectiveRaw, defPierceRatio);
-    spawnHitVisualsAt(closestT.elite.x, closestT.elite.y, closestT.elite.maxHp, dmg,
-      isPiercing ? piercingColor : '#ffe060', effectiveSourceColor);
+    const e = closestT.elite;
+    const dmg = damageEliteEnemy(e, effectiveRaw, defPierceRatio);
+    spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg, isPiercing ? piercingColor : '#ffe060', effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageEliteEnemy(e, b, 1) };
   } else if (closestT.boss) {
+    const e = closestT.boss;
     const dmg = damageBossEnemy(effectiveRaw, defPierceRatio);
-    if (dmg > 0) spawnHitVisualsAt(closestT.boss.x, closestT.boss.y, closestT.boss.maxHp, dmg,
-      isPiercing ? piercingColor : BOSS_GLOW_COLORS[Math.min(closestT.boss.bossId, BOSS_GLOW_COLORS.length - 1)],
-      effectiveSourceColor);
+    if (dmg > 0) {
+      spawnHitVisualsAt(e.x, e.y, e.maxHp, dmg,
+        isPiercing ? piercingColor : BOSS_GLOW_COLORS[Math.min(e.bossId, BOSS_GLOW_COLORS.length - 1)],
+        effectiveSourceColor);
+      echoHit = { dmg, x: e.x, y: e.y, maxHp: e.maxHp, applyFn: (b) => damageBossEnemy(b, 1) };
+    }
   } else if (closestT.alivenParticle && closestT.alivenGroup) {
-    const dmg = ctx.damageAlivenParticle(closestT.alivenParticle, closestT.alivenGroup, effectiveRaw);
-    if (dmg > 0) spawnHitVisualsAt(closestT.alivenParticle.x, closestT.alivenParticle.y, closestT.alivenParticle.maxHp, dmg,
-      isPiercing ? piercingColor : closestT.alivenParticle.glowColor, effectiveSourceColor);
+    const p = closestT.alivenParticle; const g = closestT.alivenGroup;
+    const dmg = ctx.damageAlivenParticle(p, g, effectiveRaw);
+    if (dmg > 0) {
+      spawnHitVisualsAt(p.x, p.y, p.maxHp, dmg, isPiercing ? piercingColor : p.glowColor, effectiveSourceColor);
+      echoHit = { dmg, x: p.x, y: p.y, maxHp: p.maxHp, applyFn: (b) => ctx.damageAlivenParticle(p, g, b) };
+    }
   } else if (closestT.horizonPentagonReal) {
     const g = closestT.horizonPentagonReal;
     const dmg = ctx.damageHorizonPentagonReal(g, effectiveRaw, defPierceRatio);
     spawnHitVisualsAt(hitX, hitY, g.maxHp, dmg, isPiercing ? piercingColor : '#6699ff', effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: hitX, y: hitY, maxHp: g.maxHp, applyFn: (b) => ctx.damageHorizonPentagonReal(g, b, 1) };
   } else if (closestT.horizonMissile) {
     ctx.damageHorizonMissile(closestT.horizonMissile, effectiveRaw, defPierceRatio);
   }
+
+  // ── Weave echo proc (onWeaponHitEnemy) ────────────────────────────────────
+  // Called after the main hit so the bonus damage is applied to the same enemy
+  // without going through performWeaponAttack — no recursion is possible.
+  if (echoHit) ctx.onWeaponHitEnemy?.(echoHit.dmg, echoHit.x, echoHit.y, echoHit.maxHp, echoHit.applyFn);
 
   // ── Lens status post-hit: apply Tier 1 statuses to target ───────────────────
   if (equipment?.lens && targetEntity && weaponId) {
