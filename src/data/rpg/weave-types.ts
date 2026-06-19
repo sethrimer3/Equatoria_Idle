@@ -87,6 +87,18 @@ export interface WeaveAffix {
   applied: boolean;   // whether this bonus currently affects gameplay
 }
 
+/**
+ * A single passive effect rolled onto a weave at craft time.
+ * Serialized and stored with the weave item. Old weave items without this
+ * field default to no effects (safe backward compat).
+ */
+export interface WeaveEffectRoll {
+  /** Stable effect id from WeavePassiveEffectId. Unknown ids are ignored at runtime. */
+  id: string;
+  /** Rolled numeric magnitude, e.g. 3.2 for +3.2%. */
+  value: number;
+}
+
 export interface CraftedWeaveData {
   id: string;
   name: string;
@@ -98,4 +110,6 @@ export interface CraftedWeaveData {
   tierEffects: WeaveTierEffect[];
   /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). Absent in old items = 0. */
   refinementLevel?: number;
+  /** v35+: Passive effects rolled at craft time. Absent in old items = [] (no effects). */
+  effects?: WeaveEffectRoll[];
 }
