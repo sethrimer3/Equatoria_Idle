@@ -714,7 +714,8 @@ describe('tryTriggerPlayerDamagedWeaveEffects', () => {
     expect(triggered[0]).toBe('weave_reactive_ward');
     expect(state.activeWeaveBuffs).toHaveLength(1);
     expect(state.activeWeaveBuffs[0]!.effectId).toBe('weave_reactive_ward');
-    expect(state.activeWeaveBuffs[0]!.defPct).toBe(10);
+    expect(state.activeWeaveBuffs[0]!.statKey).toBe('playerDefensePct');
+    expect(state.activeWeaveBuffs[0]!.valuePct).toBe(10);
     expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(3000);
   });
 
