@@ -259,6 +259,52 @@ describe('rollWeaveEffects', () => {
   });
 });
 
+// ─── weave_swiftstrike registry ───────────────────────────────────────────────
+
+describe('weave_swiftstrike registry', () => {
+  it('exists in ALL_WEAVE_EFFECT_IDS', () => {
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_swiftstrike');
+  });
+
+  it('has role offense', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
+    const entry = pool.find(e => e.id === 'weave_swiftstrike')!;
+    expect(entry).toBeDefined();
+  });
+
+  it('is eligible for Uncommon+ weaves', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
+    expect(pool.some(e => e.id === 'weave_swiftstrike')).toBe(true);
+  });
+
+  it('is excluded from Common-only weaves', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Common' });
+    expect(pool.some(e => e.id === 'weave_swiftstrike')).toBe(false);
+  });
+
+  it('can be rolled deterministically with sand ingredients', () => {
+    // sand: quickness(3), swiftstrike(3), others(1). Total=10.
+    // rng near 0.55 → threshold=5.5 → focus(1)=9.5 → quickness(3)=6.5 → swiftstrike(3)=3.5 → swiftstrike
+    const effects = rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'sand', refinedCount: 5 }],
+      100,
+      () => 0.55,
+    );
+    expect(effects).toHaveLength(1);
+    expect(effects[0]!.id).toBe('weave_swiftstrike');
+  });
+
+  it('rng=1.0 with sand ingredients does not crash', () => {
+    expect(() => rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'sand', refinedCount: 5 }],
+      100,
+      () => 1,
+    )).not.toThrow();
+  });
+});
+
 // ─── createCraftedWeave — flavor-weighted effects ─────────────────────────────
 
 describe('createCraftedWeave — flavor-weighted effect rolling', () => {
