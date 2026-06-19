@@ -71,6 +71,7 @@ import { createRpgTargeting, type RpgTargetingHandle } from './rpg-targeting';
 import { performWeaponAttack as _performWeaponAttack, type RpgPlayerAttackCtx } from './rpg-player-attack';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
 import { tryTriggerPlayerDamagedWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct } from '../../data/rpg/weave-proc-effects';
+import { WARD_TOTAL_MS } from './rpg-combat-effects-draw';
 import type {
   EmeraldEnemy,
   AmberEnemy, AmberShard,
