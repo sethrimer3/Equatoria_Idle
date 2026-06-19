@@ -181,7 +181,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   // ── Sub-components ────────────────────────────────────────────────────────
   const weaveSlotsPanel = createWeaveSlotsPanel(dispatch);
-  const weaveInventoryPanel = createWeaveInventoryPanel(weaveSlotsPanel);
+  const weaveInventoryPanel = createWeaveInventoryPanel(weaveSlotsPanel, dispatch);
 
   // ── Section elements ──────────────────────────────────────────────────────
   let inventoryEl: HTMLElement | null = null;
