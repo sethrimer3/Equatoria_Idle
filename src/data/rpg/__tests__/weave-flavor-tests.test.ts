@@ -193,47 +193,48 @@ describe('rollWeaveEffects', () => {
     expect(effects[0]!.value).toBeGreaterThan(0);
   });
 
-  it('amethyst-heavy weave with rng=0.9 rolls weave_echo_strike', () => {
-    // amethyst: focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3). Total=7.
-    // rng=0.9 → threshold=6.3 → ... → echo_strike
+  it('amethyst-heavy weave with rng=0.7 rolls weave_echo_strike', () => {
+    // amethyst: focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1). Total=8.
+    // rng=0.7 → threshold=5.6 → focus:4.6 → quickness:3.6 → guard:2.6 → reactive_ward:1.6 → echo_strike:-1.4 → echo_strike
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'amethyst', refinedCount: 5 }],
       100,
-      () => 0.9,
+      () => 0.7,
     );
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_echo_strike');
   });
 
-  it('fracteryl-heavy weave with rng=0.9 rolls weave_echo_strike', () => {
+  it('fracteryl-heavy weave with rng=0.7 rolls weave_echo_strike', () => {
+    // Same pool shape as amethyst (only echo_strike gets 3×).
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'fracteryl', refinedCount: 5 }],
       100,
-      () => 0.9,
+      () => 0.7,
     );
     expect(effects[0]!.id).toBe('weave_echo_strike');
   });
 
-  it('eigenstein-heavy weave with rng=0.9 rolls weave_echo_strike', () => {
+  it('eigenstein-heavy weave with rng=0.7 rolls weave_echo_strike', () => {
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'eigenstein', refinedCount: 5 }],
       100,
-      () => 0.9,
+      () => 0.7,
     );
     expect(effects[0]!.id).toBe('weave_echo_strike');
   });
 
-  it('diamond-heavy weave with rng=0.9 rolls a flavor-matched effect', () => {
-    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo(1). Total=11.
-    // rng=0.9 → threshold=9.9 → focus(3)=6.9 → quickness(1)=5.9 → guard(3)=2.9 → reactive_ward(3)=-0.1 → reactive_ward
+  it('diamond-heavy weave with rng=0.75 rolls weave_reactive_ward', () => {
+    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1). Total=12.
+    // rng=0.75 → threshold=9 → focus:6 → quickness:5 → guard:2 → reactive_ward:-1 → reactive_ward
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'diamond', refinedCount: 5 }],
       100,
-      () => 0.9,
+      () => 0.75,
     );
     expect(effects[0]!.id).toBe('weave_reactive_ward');
   });
