@@ -314,6 +314,10 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
 
   // ── Delegating weapon kinds (self-managed or projectile-based) ────────────
 
+  // ── Delegating weapons: Echo Strike does not trigger from these paths. ────────
+  // Hit resolution happens inside weapon system handlers (spawned projectiles,
+  // self-managed systems, DOT ticks) with no clean hook point here.
+
   if (effect.kind === 'gatling') {
     const target = findClosestTarget(rangeSq);
     if (target) ctx.spawnSandProjectile(target.x, target.y, rawDamage);
@@ -345,6 +349,8 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
     ctx.spawnFracterylSpearVolley(weaponId, rawDamage, tier);
     return;
   }
+
+  // sunstoneMine: placed asynchronously via layMine — no direct hit hook.
 
   // Diamond armor ignore: applies as a minimum defPierceRatio regardless of effect kind.
   const armorIgnore = craftedMods ? craftedMods.armorIgnorePct : 0;
