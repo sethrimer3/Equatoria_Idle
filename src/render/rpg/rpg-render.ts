@@ -1002,7 +1002,18 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onPlayerDamaged: (dmg, blocked, playerDied, playerMaxHp) => {
       notifyPlayerDamaged(dmg, blocked, playerDied, playerMaxHp);
       if (dmg > 0 && !playerDied) {
-        if (tryTriggerPlayerDamagedWeaveEffects(rpgSimState)) applyEquipmentStats();
+        const procIds = tryTriggerPlayerDamagedWeaveEffects(rpgSimState);
+        if (procIds.length > 0) {
+          applyEquipmentStats();
+          // Spawn shimmer ring
+          wardEffects.push({ x: mote.x, y: mote.y, timerMs: WARD_TOTAL_MS, totalMs: WARD_TOTAL_MS });
+          // Floating text — debounced to one label per 800ms to avoid spam
+          const nowMs = performance.now();
+          if (nowMs - lastWardTextMs > 800) {
+            lastWardTextMs = nowMs;
+            spawnDamageNumber(mote.x, mote.y - 4, 0, -1, 'Reactive Ward', 0.25, '#ffd060');
+          }
+        }
       }
       if (bossEnemy) {
         if (playerDied) notifyBossKilledPlayer(bossEnemy);
