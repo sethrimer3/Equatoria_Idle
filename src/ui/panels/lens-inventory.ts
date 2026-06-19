@@ -14,6 +14,11 @@ import { createMoteIconCanvas, ingredientsToComposition } from '../../render/ass
 import { TIER1_STATUS_MAP } from '../../data/rpg/lens-status-effects';
 import { ENEMY_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
 import { getEquippedLensModifiers } from '../../data/rpg/equipment-modifiers';
+import {
+  getLensHighestRarity, getDismantleDust, getRefineCost,
+  MAX_REFINEMENT_LEVEL, REFINEMENT_RESOURCE_NAME, REFINEMENT_STAT_MULTIPLIER,
+} from '../../data/rpg/item-refinement';
+import { getLensEquipComparison, getRefinementLabel, getRefinementMultiplierLabel } from '../../data/rpg/equip-helpers';
 
 // ─── Rarity colors ────────────────────────────────────────────────
 
