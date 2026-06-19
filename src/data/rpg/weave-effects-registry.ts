@@ -175,6 +175,22 @@ export const WEAVE_PROC_EFFECT_REGISTRY: Readonly<Record<WeaveProcEffectId, Weav
     role: 'offense',
     flavors: ['amethyst', 'fracteryl', 'eigenstein'],
   },
+  weave_swiftstrike: {
+    id: 'weave_swiftstrike',
+    displayName: 'Swiftstrike',
+    description: (v) => `10% chance on hit: -${v.toFixed(1)}% attack cooldown for 2.0s`,
+    category: 'proc',
+    trigger: 'playerHitEnemy',
+    baseChancePct: 10,
+    durationMs: 2000,
+    // At Uncommon/powerScale≈1: 8×0.45=3.6%; at Mythic/powerScale≈2: 8×1.0×~2=16%.
+    // Stacks additively with passive weave_quickness; subject to the same 60% cap.
+    baseMaxValue: 8,
+    role: 'offense',
+    flavors: ['sand', 'quartz'],
+    minRarity: 'Uncommon',
+    weight: 1.0,
+  },
 } as const;
 
 // ─── Unified effect types ─────────────────────────────────────────────────────
