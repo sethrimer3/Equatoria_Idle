@@ -388,6 +388,7 @@ export interface RpgDrawCtx {
   shotLines: ShotLine[];
   damageNumbers: DamageNumber[];
   comboEffects: ComboEffect[];
+  wardEffects: WardEffect[];
   luckyMotes: LuckyMote[];
   luckyMotePopups: LuckyMotePopup[];
   deathParticles: DeathParticle[];
