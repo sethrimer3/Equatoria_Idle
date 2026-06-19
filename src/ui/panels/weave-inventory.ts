@@ -11,9 +11,16 @@
 
 import type { CraftedWeaveData, WeaveTierEffect } from '../../data/rpg/weave-types';
 import type { WeaveSlotsPanel } from './weave-slots';
+import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import type { ActionHandler } from '../../input';
 import { TIER_BY_ID } from '../../data/tiers';
 import { createMoteIconCanvas, ingredientsToComposition } from '../../render/assets/item-icon-renderer';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
+import {
+  getWeaveHighestRarity, getDismantleDust, getRefineCost,
+  MAX_REFINEMENT_LEVEL, REFINEMENT_RESOURCE_NAME,
+} from '../../data/rpg/item-refinement';
+import { getWeaveEquipComparison, getRefinementLabel, getRefinementMultiplierLabel } from '../../data/rpg/equip-helpers';
 
 export interface WeaveInventoryPanel {
   element: HTMLElement;
