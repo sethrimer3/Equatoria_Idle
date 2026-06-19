@@ -1326,7 +1326,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function getEquipmentCooldownPct(): number {
-    return getEquippedWeaveModifiers(rpgSimState.equippedWeaveSlots, rpgSimState.craftedWeaves).cooldownPct;
+    const passive = getEquippedWeaveModifiers(rpgSimState.equippedWeaveSlots, rpgSimState.craftedWeaves).cooldownPct;
+    const active = getTotalActiveWeaveBuffCooldownPct(rpgSimState);
+    // Same 60% cap as clampCombatModifiers — prevents zero/negative cooldowns.
+    return Math.min(60, passive + active);
   }
 
   const weaponCtx: RpgWeaponCtx = {
