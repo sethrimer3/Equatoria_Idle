@@ -492,6 +492,68 @@ export function grantSampleLensWeaveItems(state: GameState): void {
   }
 }
 
+// ─── Dismantle / Refine ─────────────────────────────────────────
+
+/** Dismantles a lens from inventory, granting Resonance Dust. Returns dust gained (0 if not found or equipped). */
+export function dismantleLens(state: GameState, lensId: string): number {
+  const idx = state.rpg.craftedLenses.findIndex(l => l.id === lensId);
+  if (idx === -1) return 0;
+  const lens = state.rpg.craftedLenses[idx]!;
+  const rarity = getLensHighestRarity(lens);
+  const dust = getDismantleDust(rarity);
+  state.rpg.craftedLenses.splice(idx, 1);
+  state.rpg.resonanceDust = (state.rpg.resonanceDust ?? 0) + dust;
+  return dust;
+}
+
+/** Dismantles a weave from inventory, granting Resonance Dust. Returns dust gained (0 if not found). */
+export function dismantleWeave(state: GameState, weaveId: string): number {
+  // Remove from equipped slots first
+  for (let i = 0; i < state.rpg.equippedWeaveSlots.length; i++) {
+    if (state.rpg.equippedWeaveSlots[i] === weaveId) state.rpg.equippedWeaveSlots[i] = null;
+  }
+  const idx = state.rpg.craftedWeaves.findIndex(w => w.id === weaveId);
+  if (idx === -1) return 0;
+  const weave = state.rpg.craftedWeaves[idx]!;
+  const rarity = getWeaveHighestRarity(weave);
+  const dust = getDismantleDust(rarity);
+  state.rpg.craftedWeaves.splice(idx, 1);
+  state.rpg.resonanceDust = (state.rpg.resonanceDust ?? 0) + dust;
+  return dust;
+}
+
+/** Returns {ok, cost} for refining a lens. ok=false if already max level or insufficient dust. */
+export function refineLens(state: GameState, lensId: string, bypassCost = false): { ok: boolean; cost: number } {
+  const lens = state.rpg.craftedLenses.find(l => l.id === lensId);
+  if (!lens) return { ok: false, cost: 0 };
+  const level = lens.refinementLevel ?? 0;
+  if (level >= MAX_REFINEMENT_LEVEL) return { ok: false, cost: 0 };
+  const rarity = getLensHighestRarity(lens);
+  const cost = getRefineCost(rarity, level + 1);
+  if (!bypassCost && (state.rpg.resonanceDust ?? 0) < cost) return { ok: false, cost };
+  if (!bypassCost) state.rpg.resonanceDust = (state.rpg.resonanceDust ?? 0) - cost;
+  lens.refinementLevel = level + 1;
+  // Also refine attached lens if same id (shouldn't normally happen since attached lenses are separate objects)
+  for (const weapon of state.rpg.craftedWeapons) {
+    if (weapon.attachedLens?.id === lensId) weapon.attachedLens.refinementLevel = lens.refinementLevel;
+  }
+  return { ok: true, cost };
+}
+
+/** Returns {ok, cost} for refining a weave. ok=false if already max level or insufficient dust. */
+export function refineWeave(state: GameState, weaveId: string, bypassCost = false): { ok: boolean; cost: number } {
+  const weave = state.rpg.craftedWeaves.find(w => w.id === weaveId);
+  if (!weave) return { ok: false, cost: 0 };
+  const level = weave.refinementLevel ?? 0;
+  if (level >= MAX_REFINEMENT_LEVEL) return { ok: false, cost: 0 };
+  const rarity = getWeaveHighestRarity(weave);
+  const cost = getRefineCost(rarity, level + 1);
+  if (!bypassCost && (state.rpg.resonanceDust ?? 0) < cost) return { ok: false, cost };
+  if (!bypassCost) state.rpg.resonanceDust = (state.rpg.resonanceDust ?? 0) - cost;
+  weave.refinementLevel = level + 1;
+  return { ok: true, cost };
+}
+
 // ─── Weave loom bonus helper ────────────────────────────────────
 
 export type GrantedEquipmentReward =
