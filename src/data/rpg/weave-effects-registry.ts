@@ -121,7 +121,7 @@ export function getWeavePassiveEffectDef(id: string): WeavePassiveEffectDef | nu
 // ─── Proc effects ─────────────────────────────────────────────────────────────
 
 export type WeaveProcTrigger = 'playerDamaged' | 'playerHitEnemy';
-export type WeaveProcEffectId = 'weave_reactive_ward' | 'weave_echo_strike' | 'weave_swiftstrike';
+export type WeaveProcEffectId = 'weave_reactive_ward' | 'weave_echo_strike' | 'weave_swiftstrike' | 'weave_ember_surge';
 
 export interface WeaveProcEffectDef {
   readonly id: WeaveProcEffectId;
