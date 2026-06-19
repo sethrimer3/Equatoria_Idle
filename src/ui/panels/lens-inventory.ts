@@ -16,7 +16,7 @@ import { ENEMY_STATUS_DEFS } from '../../data/rpg/status-effect-definitions';
 import { getEquippedLensModifiers } from '../../data/rpg/equipment-modifiers';
 import {
   getLensHighestRarity, getDismantleDust, getRefineCost,
-  MAX_REFINEMENT_LEVEL, REFINEMENT_RESOURCE_NAME, REFINEMENT_STAT_MULTIPLIER,
+  MAX_REFINEMENT_LEVEL, REFINEMENT_RESOURCE_NAME,
 } from '../../data/rpg/item-refinement';
 import { getLensEquipComparison, getRefinementLabel, getRefinementMultiplierLabel } from '../../data/rpg/equip-helpers';
 
