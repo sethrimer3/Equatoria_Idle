@@ -99,7 +99,7 @@ describe('getEligibleWeaveEffectsForRoll', () => {
     }
   });
 
-  it('all 5 effect IDs appear in the pool for Uncommon weave', () => {
+  it('all 6 effect IDs appear in the pool for Uncommon weave', () => {
     const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
     const ids = pool.map(e => e.id);
     expect(ids).toContain('weave_focus');
@@ -107,6 +107,27 @@ describe('getEligibleWeaveEffectsForRoll', () => {
     expect(ids).toContain('weave_guard');
     expect(ids).toContain('weave_reactive_ward');
     expect(ids).toContain('weave_echo_strike');
+    expect(ids).toContain('weave_swiftstrike');
+  });
+
+  it('sand ingredients favor weave_swiftstrike alongside weave_quickness', () => {
+    const pool = getEligibleWeaveEffectsForRoll({
+      ingredients: [{ tierId: 'sand', refinedCount: 5 }],
+      highestRarity: 'Uncommon',
+    });
+    const swiftEntry = pool.find(e => e.id === 'weave_swiftstrike')!;
+    const echoEntry  = pool.find(e => e.id === 'weave_echo_strike')!;
+    expect(swiftEntry.weight).toBeGreaterThan(echoEntry.weight);
+  });
+
+  it('quartz ingredients give weave_swiftstrike higher weight', () => {
+    const pool = getEligibleWeaveEffectsForRoll({
+      ingredients: [{ tierId: 'quartz', refinedCount: 5 }],
+      highestRarity: 'Uncommon',
+    });
+    const swiftEntry  = pool.find(e => e.id === 'weave_swiftstrike')!;
+    const guardEntry  = pool.find(e => e.id === 'weave_guard')!;
+    expect(swiftEntry.weight).toBeGreaterThan(guardEntry.weight);
   });
 });
 
