@@ -250,6 +250,7 @@ export function createDevPanel(): DevPanel {
     refreshLoomStateTable(game, loomTableWrap);
     refreshTelemetry();
     refreshWeavePassives();
+    refreshWeaveBuffs();
   }
 
   return {
