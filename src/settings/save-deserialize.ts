@@ -424,6 +424,8 @@ export function deserializeGameState(data: SaveData): GameState {
           rarity: e.rarity as import('../data/rpg/weave-types').WeaveRarity,
           isApplied: false, // always false — all weave tier effects are stubs
         })),
+        // v34+: refinement level — defaults to 0 for pre-v34 saves
+        refinementLevel: w.refinementLevel ?? 0,
       }));
     }
     // v31+: equipped weave slots (6-element array, null = empty)
