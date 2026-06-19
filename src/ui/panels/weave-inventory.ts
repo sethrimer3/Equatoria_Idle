@@ -211,11 +211,12 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     const isProc = def.category === 'proc';
     const nameColor = isProc ? '#ffd580' : '#c8e8ff';
     const descColor = isProc ? '#ffbf4a' : '#aad4ff';
+    const roleLabel = def.role === 'offense' ? 'Offense' : def.role === 'defense' ? 'Defense' : 'Utility';
 
     const nameEl = document.createElement('span');
     nameEl.style.color = nameColor;
     nameEl.style.fontWeight = '600';
-    nameEl.textContent = `${def.displayName}:`;
+    nameEl.textContent = `${roleLabel} · ${def.displayName}:`;
     row.appendChild(nameEl);
 
     const descEl = document.createElement('span');
