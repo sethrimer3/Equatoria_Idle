@@ -128,17 +128,123 @@ function buildLensCard(
     card.appendChild(effRow);
   }
 
-  // Attach button
+  // ── Refinement row ────────────────────────────────────────────────────────
+  const refineRow = document.createElement('div');
+  refineRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0;';
+
+  const refLevel = lens.refinementLevel ?? 0;
+  const refLabel = document.createElement('span');
+  refLabel.style.cssText = 'font-size:0.75em;color:#e6c850;font-weight:700;';
+  refLabel.textContent = `${getRefinementLabel(refLevel)} ${getRefinementMultiplierLabel(refLevel)}`;
+  refineRow.appendChild(refLabel);
+
+  if (refLevel < MAX_REFINEMENT_LEVEL) {
+    const rarity = getLensHighestRarity(lens);
+    const cost = getRefineCost(rarity, refLevel + 1);
+    const canAfford = (rpgState.resonanceDust ?? 0) >= cost;
+    const refineBtn = document.createElement('button');
+    refineBtn.className = 'weapon-store__btn';
+    refineBtn.style.cssText = `font-size:0.72em;padding:1px 7px;` +
+      (canAfford
+        ? 'background:rgba(230,200,80,0.12);border-color:rgba(230,200,80,0.4);color:#e6c850;'
+        : 'opacity:0.45;cursor:not-allowed;');
+    refineBtn.textContent = `Refine (${cost} Dust)`;
+    refineBtn.disabled = !canAfford;
+    refineBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dispatch({ kind: 'refine_lens', lensId: lens.id });
+    });
+    refineRow.appendChild(refineBtn);
+  } else {
+    const maxLabel = document.createElement('span');
+    maxLabel.style.cssText = 'font-size:0.7em;color:#888;font-style:italic;';
+    maxLabel.textContent = '(max refined)';
+    refineRow.appendChild(maxLabel);
+  }
+  card.appendChild(refineRow);
+
+  // ── Action row: Attach + Dismantle ────────────────────────────────────────
+  const actionRow = document.createElement('div');
+  actionRow.style.cssText = 'display:flex;gap:6px;margin-top:6px;';
+
   const attachBtn = document.createElement('button');
   attachBtn.className = 'weapon-store__btn';
-  attachBtn.style.cssText = 'margin-top:6px;background:rgba(80,200,120,0.12);border-color:rgba(80,200,120,0.4);color:#50c878;';
-  attachBtn.textContent = 'Attach to Weapon';
+  attachBtn.style.cssText = 'flex:1;background:rgba(80,200,120,0.12);border-color:rgba(80,200,120,0.4);color:#50c878;';
+  attachBtn.textContent = 'Attach';
   attachBtn.addEventListener('click', () => {
     showWeaponPicker(lens, rpgState, dispatch, container);
   });
-  card.appendChild(attachBtn);
+  actionRow.appendChild(attachBtn);
+
+  const rarity = getLensHighestRarity(lens);
+  const dustYield = getDismantleDust(rarity);
+  const dismantleBtn = document.createElement('button');
+  dismantleBtn.className = 'weapon-store__btn';
+  dismantleBtn.style.cssText = 'flex:1;background:rgba(200,100,60,0.12);border-color:rgba(200,100,60,0.4);color:#e08060;font-size:0.78em;';
+  dismantleBtn.textContent = `Dismantle (+${dustYield} Dust)`;
+  dismantleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showLensDismantleConfirm(lens, dustYield, dispatch);
+  });
+  actionRow.appendChild(dismantleBtn);
+
+  card.appendChild(actionRow);
+
+  // ── Reforge preview (coming later) ───────────────────────────────────────
+  const reforgeRow = document.createElement('div');
+  reforgeRow.style.cssText = 'font-size:0.68em;color:#555;margin-top:3px;font-style:italic;';
+  reforgeRow.title = 'Reforging will reroll secondary stats — coming later.';
+  reforgeRow.textContent = 'Reforge: coming later';
+  card.appendChild(reforgeRow);
 
   return card;
+}
+
+function showLensDismantleConfirm(lens: CraftedLensData, dustYield: number, dispatch: ActionHandler): void {
+  const overlay = document.createElement('div');
+  overlay.style.cssText =
+    'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);' +
+    'display:flex;align-items:center;justify-content:center;z-index:10001;';
+
+  const box = document.createElement('div');
+  box.style.cssText =
+    'background:#160e22;border:1px solid rgba(200,100,60,0.5);border-radius:8px;' +
+    'padding:18px;max-width:340px;width:90%;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#e08060;font-weight:700;margin-bottom:10px;';
+  title.textContent = `Dismantle "${lens.name}"?`;
+  box.appendChild(title);
+
+  const msg = document.createElement('div');
+  msg.style.cssText = 'color:#aaa;font-size:0.86em;margin-bottom:14px;line-height:1.5;';
+  msg.textContent = `This lens will be permanently destroyed. You will receive ${dustYield} ${REFINEMENT_RESOURCE_NAME}.`;
+  box.appendChild(msg);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'weapon-store__btn';
+  confirmBtn.style.cssText = 'flex:1;background:rgba(200,100,60,0.2);border-color:rgba(200,100,60,0.6);color:#e08060;';
+  confirmBtn.textContent = `Dismantle (+${dustYield} Dust)`;
+  confirmBtn.addEventListener('click', () => {
+    overlay.remove();
+    dispatch({ kind: 'dismantle_lens', lensId: lens.id });
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'weapon-store__btn';
+  cancelBtn.style.cssText = 'flex:1;';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => overlay.remove());
+
+  btnRow.appendChild(confirmBtn);
+  btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 function buildEffectRow(effect: LensEffect): HTMLElement {
