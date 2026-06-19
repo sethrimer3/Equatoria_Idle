@@ -659,3 +659,149 @@ describe('passive effects — save/load round-trip', () => {
     expect(restoredWeave!.effects ?? []).toEqual([]);
   });
 });
+
+// ─── ALL_WEAVE_EFFECT_IDS / getWeaveEffectDef ─────────────────────
+
+describe('ALL_WEAVE_EFFECT_IDS and getWeaveEffectDef', () => {
+  it('includes both passive and proc effect ids', () => {
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_focus');
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_reactive_ward');
+  });
+
+  it('getWeaveEffectDef returns correct category for passive', () => {
+    const def = getWeaveEffectDef('weave_focus');
+    expect(def).not.toBeNull();
+    expect(def!.category).toBe('passive');
+  });
+
+  it('getWeaveEffectDef returns correct category for proc', () => {
+    const def = getWeaveEffectDef('weave_reactive_ward');
+    expect(def).not.toBeNull();
+    expect(def!.category).toBe('proc');
+  });
+
+  it('getWeaveEffectDef returns null for unknown id', () => {
+    expect(getWeaveEffectDef('not_a_real_effect')).toBeNull();
+  });
+});
+
+// ─── weave_reactive_ward — proc trigger ──────────────────────────
+
+describe('tryTriggerPlayerDamagedWeaveEffects', () => {
+  function makeStateWithProcWeave(value = 10): ReturnType<typeof createRpgSimState> {
+    const state = createRpgSimState();
+    const weave: CraftedWeaveData = {
+      id: 'proc-test',
+      name: 'Ward Weave',
+      ingredients: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      affixes: [],
+      tierEffects: [],
+      refinementLevel: 0,
+      effects: [{ id: 'weave_reactive_ward', value }],
+    };
+    state.craftedWeaves = [weave];
+    state.equippedWeaveSlots = ['proc-test', null, null, null, null, null];
+    return state;
+  }
+
+  it('proc triggers when rng < baseChancePct/100', () => {
+    const state = makeStateWithProcWeave(10);
+    // 10% chance: rng=0.05 → 0.05 * 100 = 5 < 10 → triggers
+    const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0.05);
+    expect(triggered).toBe(true);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.effectId).toBe('weave_reactive_ward');
+    expect(state.activeWeaveBuffs[0]!.defPct).toBe(10);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(3000);
+  });
+
+  it('proc does not trigger when rng >= baseChancePct/100', () => {
+    const state = makeStateWithProcWeave(10);
+    // rng=0.5 → 0.5 * 100 = 50 >= 10 → no trigger
+    const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0.5);
+    expect(triggered).toBe(false);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+
+  it('proc refreshes duration if buff already active', () => {
+    const state = makeStateWithProcWeave(10);
+    // Apply once, then tick down some time, then trigger again
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0.05);
+    state.activeWeaveBuffs[0]!.remainingMs = 500;
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0.05);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(3000);
+  });
+
+  it('no active weave slots → no trigger', () => {
+    const state = createRpgSimState();
+    const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(triggered).toBe(false);
+  });
+});
+
+// ─── tickActiveWeaveBuffs ─────────────────────────────────────────
+
+describe('tickActiveWeaveBuffs', () => {
+  it('decrements remainingMs and removes expired buffs', () => {
+    const state = createRpgSimState();
+    state.activeWeaveBuffs = [
+      { effectId: 'weave_reactive_ward', remainingMs: 1000, defPct: 10 },
+    ];
+    const expired = tickActiveWeaveBuffs(state, 500);
+    expect(expired).toBe(false);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(500);
+
+    const expired2 = tickActiveWeaveBuffs(state, 600);
+    expect(expired2).toBe(true);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+
+  it('getTotalActiveWeaveBuffDefPct sums all active buffs', () => {
+    const state = createRpgSimState();
+    state.activeWeaveBuffs = [
+      { effectId: 'weave_reactive_ward', remainingMs: 1000, defPct: 8 },
+      { effectId: 'weave_reactive_ward', remainingMs: 1000, defPct: 5 },
+    ];
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(13, 5);
+  });
+
+  it('getTotalActiveWeaveBuffDefPct returns 0 with no buffs', () => {
+    const state = createRpgSimState();
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
+  });
+});
+
+// ─── proc effect — rolling pool includes weave_reactive_ward ─────
+
+describe('rollWeavePassiveEffects — proc in pool', () => {
+  function makeAffix(rarity: string): CraftedWeaveData['affixes'][number] {
+    return {
+      affixId: 'citrine_all_loom',
+      tierId: 'citrine',
+      label: 'Test',
+      quality: 0.5,
+      rarity: rarity as CraftedWeaveData['affixes'][number]['rarity'],
+      value: 10,
+      unit: '%',
+      applied: true,
+    };
+  }
+
+  it('proc effect can be rolled from the pool', () => {
+    // weave_reactive_ward is the 4th id (index 3) in ALL_WEAVE_EFFECT_IDS
+    // rng returning 0.875 → floor(0.875 * 4) = 3 → weave_reactive_ward
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.875);
+    expect(effects).toHaveLength(1);
+    expect(effects[0]!.id).toBe('weave_reactive_ward');
+    expect(effects[0]!.value).toBeGreaterThan(0);
+  });
+
+  it('proc effect rolled value scales with rarity', () => {
+    const uncommon = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.875);
+    const mythic = rollWeavePassiveEffects([makeAffix('Mythic')], 100, () => 0.875);
+    expect(mythic[0]!.value).toBeGreaterThan(uncommon[0]!.value);
+  });
+});
