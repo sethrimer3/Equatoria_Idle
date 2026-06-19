@@ -1119,12 +1119,18 @@ export function drawRpgFrame(
   // ── Top-left zone + wave number overlay ──────────────────────────
   const currentWave = ctx.getCurrentWave();
   if (currentWave > 0) {
+    const iconSize = 120;
+    const textFontSize = Math.round(14 * 0.7); // 30% smaller than base
+    const textLineH = textFontSize + 5;
+    const textBlockH = textLineH * 2;
+    const totalH = iconSize + 6 + textBlockH + 8;
+
     const overlayLeft = fs.visibleBounds.left + 8;
     const overlayTop = ctx.getZonePosition() === 'bottom'
-      ? fs.visibleBounds.bottom - 38
+      ? fs.visibleBounds.bottom - totalH - 4
       : fs.visibleBounds.top + 8;
-    const overlapRight = overlayLeft + 210;
-    const overlapBottom = overlayTop + 55;
+    const overlapRight = overlayLeft + 160;
+    const overlapBottom = overlayTop + totalH;
 
     // Check if any enemy or player is near the top-left overlay region.
     let anyOverlap = false;
@@ -1150,33 +1156,38 @@ export function drawRpgFrame(
     state.waveOverlapAlpha += (targetAlpha - state.waveOverlapAlpha) * 0.1;
 
     const zoneName = ctx.getActiveZoneDisplayName();
-    const label = `${zoneName} - x${currentWave}`;
-
-    const iconSize = 60;
-    const iconGap = 8;
-    const textX = overlayLeft + iconSize + iconGap;
+    const textY = overlayTop + iconSize + 6;
 
     canvas2d.save();
     canvas2d.globalAlpha = state.waveOverlapAlpha;
-    canvas2d.font = 'bold 14px monospace';
     canvas2d.fillStyle = '#fff172';
     canvas2d.textAlign = 'left';
     canvas2d.textBaseline = 'top';
-    canvas2d.fillText(label, textX, overlayTop + iconSize / 2 - 7);
-    const textW = canvas2d.measureText(label).width;
+
+    // Zone name line
+    canvas2d.font = `bold ${textFontSize}px monospace`;
+    canvas2d.fillText(zoneName, overlayLeft, textY);
+    const zoneNameW = canvas2d.measureText(zoneName).width;
+
+    // Multiplier line
+    const multLabel = `x${currentWave}`;
+    canvas2d.fillText(multLabel, overlayLeft, textY + textLineH);
+    const multW = canvas2d.measureText(multLabel).width;
+
     drawZoneSelectionLabelIcon(canvas2d, overlayLeft, overlayTop, iconSize, nowMs, state.waveOverlapAlpha);
-    // Underline
+
+    // Underline under zone name
     canvas2d.globalAlpha = state.waveOverlapAlpha * 0.45;
     canvas2d.strokeStyle = '#fff172';
     canvas2d.lineWidth = 0.5;
     canvas2d.beginPath();
-    canvas2d.moveTo(textX, overlayTop + iconSize / 2 + 8);
-    canvas2d.lineTo(textX + textW, overlayTop + iconSize / 2 + 8);
+    canvas2d.moveTo(overlayLeft, textY + textFontSize + 1);
+    canvas2d.lineTo(overlayLeft + zoneNameW, textY + textFontSize + 1);
     canvas2d.stroke();
-    // Upward-pointing golden triangle — tap affordance below the zone title group
-    const groupWidth = iconSize + iconGap + textW;
-    const triCx = overlayLeft + groupWidth / 2;
-    const triY = overlayTop + iconSize + 4;
+
+    // Upward-pointing golden triangle — tap affordance below the full block
+    const triCx = overlayLeft + Math.max(zoneNameW, multW) / 2;
+    const triY = overlayTop + totalH;
     const triHalfW = 5;
     const triH = 4;
     canvas2d.globalAlpha = state.waveOverlapAlpha * 0.55;
@@ -1198,7 +1209,7 @@ export function drawRpgFrame(
         canvas2d.fillStyle = '#fff172';
         canvas2d.textAlign = 'left';
         canvas2d.textBaseline = 'top';
-        canvas2d.fillText('New Codex Entry!', textX, overlayTop + 30 + Math.min(24, elapsedMs * 0.025));
+        canvas2d.fillText('New Codex Entry!', overlayLeft + iconSize + 4, overlayTop + Math.min(24, elapsedMs * 0.025));
         canvas2d.restore();
       }
     }
