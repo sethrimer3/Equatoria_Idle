@@ -113,7 +113,7 @@ export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: Damage
   ctx.restore();
 }
 
-const WARD_TOTAL_MS = 600;
+export const WARD_TOTAL_MS = 600;
 const WARD_INNER_RADIUS = 6;
 const WARD_OUTER_RADIUS = 22;
 
