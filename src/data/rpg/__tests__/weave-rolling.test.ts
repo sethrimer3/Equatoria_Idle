@@ -741,6 +741,13 @@ describe('tryTriggerPlayerDamagedWeaveEffects', () => {
     const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
     expect(triggered).toHaveLength(0);
   });
+
+  it('returns effect id string suitable for VFX dispatch', () => {
+    const state = makeStateWithProcWeave(10);
+    const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0.05);
+    // Caller (rpg-render.ts) uses the returned ids to decide what VFX to spawn
+    expect(triggered).toContain('weave_reactive_ward');
+  });
 });
 
 // ─── tickActiveWeaveBuffs ─────────────────────────────────────────
