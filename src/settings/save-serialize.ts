@@ -146,6 +146,7 @@ export function serializeGameState(state: GameState): SaveData {
             rarity: e.rarity,
             isApplied: e.isApplied,
           })),
+          refinementLevel: cw.attachedLens.refinementLevel ?? 0,
         } : undefined,
       })),
       refinedCrystalsByTierId: Object.fromEntries(Array.from(state.rpg.refinedCrystalsByTierId, ([k, v]) => [k, BigInt(v).toString()])),
