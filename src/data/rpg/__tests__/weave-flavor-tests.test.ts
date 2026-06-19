@@ -50,9 +50,9 @@ describe('getWeaveDominantTiers', () => {
 // ─── getEligibleWeaveEffectsForRoll ──────────────────────────────────────────
 
 describe('getEligibleWeaveEffectsForRoll', () => {
-  it('returns all 5 effects for Uncommon with no ingredient flavor', () => {
+  it('returns all 6 effects for Uncommon with no ingredient flavor', () => {
     const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
-    expect(pool).toHaveLength(5);
+    expect(pool).toHaveLength(6);
   });
 
   it('Common rarity: all effects excluded because minRarity is Uncommon', () => {
