@@ -22,6 +22,10 @@ import {
   createCraftedWeave,
   rollWeaveAffix,
   rollWeavePassiveEffects,
+  rollWeaveEffects,
+  getWeaveDominantTiers,
+  getEligibleWeaveEffectsForRoll,
+  pickWeightedWeaveEffect,
 } from '../weave-rolling';
 import { getLensEffectUnlockChances } from '../lens-definitions';
 import { getUnlockedWeaveSlotCount } from '../../../sim/forge/forge-state';
