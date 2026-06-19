@@ -997,6 +997,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onPlayerHit: () => { waveManager?.onPlayerHit(); },
     onPlayerDamaged: (dmg, blocked, playerDied, playerMaxHp) => {
       notifyPlayerDamaged(dmg, blocked, playerDied, playerMaxHp);
+      if (dmg > 0 && !playerDied) {
+        if (tryTriggerPlayerDamagedWeaveEffects(rpgSimState)) applyEquipmentStats();
+      }
       if (bossEnemy) {
         if (playerDied) notifyBossKilledPlayer(bossEnemy);
         else if (blocked) notifyBossEvent(bossEnemy, 'PLAYER_BLOCKED_BOSS_ATTACK');
