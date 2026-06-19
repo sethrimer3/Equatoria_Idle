@@ -13,6 +13,16 @@ import type { RpgSimState, ActiveWeaveBuff } from '../../sim/rpg/rpg-state';
 import type { ActiveWeaveBuffStat } from '../../sim/rpg/rpg-state';
 import { WEAVE_PROC_EFFECT_REGISTRY } from './weave-effects-registry';
 
+/**
+ * Maps each buff-granting playerHitEnemy proc effectId to the stat it modifies.
+ * Instant procs (durationMs === 0, e.g. weave_echo_strike) are not listed here —
+ * they call applyBonusDmg directly and never create an ActiveWeaveBuff.
+ */
+const HIT_BUFF_STAT_MAP: Readonly<Partial<Record<string, ActiveWeaveBuffStat>>> = {
+  weave_swiftstrike: 'cooldownPct',
+  weave_ember_surge: 'weaponDamagePct',
+} as const;
+
 // ─── Trigger ──────────────────────────────────────────────────────────────────
 
 /**
