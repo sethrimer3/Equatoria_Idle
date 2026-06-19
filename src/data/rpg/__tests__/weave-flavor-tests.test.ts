@@ -287,8 +287,8 @@ describe('weave_swiftstrike registry', () => {
   });
 
   it('can be rolled deterministically with sand ingredients', () => {
-    // sand: focus(1), quickness(3), guard(1), reactive_ward(1), echo_strike(1), swiftstrike(3). Total=10.
-    // rng=0.75 → threshold=7.5 → focus:6.5 → quickness:3.5 → guard:2.5 → reactive_ward:1.5 → echo_strike:0.5 → swiftstrike:-2.5 → swiftstrike
+    // sand: focus(1), quickness(3), guard(1), reactive_ward(1), echo_strike(1), swiftstrike(3), ember_surge(1). Total=11.
+    // rng=0.75 → threshold=8.25 → focus:7.25→quickness:4.25→guard:3.25→reactive_ward:2.25→echo_strike:1.25→swiftstrike:-1.75 → swiftstrike
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'sand', refinedCount: 5 }],
