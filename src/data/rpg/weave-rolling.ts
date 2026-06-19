@@ -247,6 +247,59 @@ export function rollWeaveAffix(tierId: TierId, totalWeightedMoteValue: number): 
   };
 }
 
+// ─── Passive effect rolling ───────────────────────────────────────────────────
+
+/** Rarity-based quality multipliers for passive effect value rolls. */
+const EFFECT_RARITY_MULT: Record<WeaveRarity, number> = {
+  Common:    0.0, // no effect for common-only weaves
+  Uncommon:  0.45,
+  Rare:      0.60,
+  Epic:      0.75,
+  Legendary: 0.90,
+  Mythic:    1.0,
+};
+
+/**
+ * Returns the highest rarity present among a weave's affixes.
+ * Returns 'Common' if there are no affixes.
+ */
+function getHighestAffixRarity(affixes: WeaveAffix[]): WeaveRarity {
+  const order: WeaveRarity[] = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+  let best: WeaveRarity = 'Common';
+  for (const affix of affixes) {
+    if (order.indexOf(affix.rarity) > order.indexOf(best)) best = affix.rarity;
+  }
+  return best;
+}
+
+/**
+ * Rolls 0 or 1 passive effect for a weave based on its highest-rarity affix.
+ *
+ * Rules:
+ *   Common-only weaves → no effect.
+ *   Uncommon or better → exactly 1 effect chosen uniformly from the pool.
+ *   Value scales with powerScale and a rarity-based multiplier.
+ *
+ * Returns an empty array if no effect is granted.
+ */
+export function rollWeavePassiveEffects(
+  affixes: WeaveAffix[],
+  totalWeightedMoteValue: number,
+  rng: () => number = Math.random,
+): WeaveEffectRoll[] {
+  const highestRarity = getHighestAffixRarity(affixes);
+  const rarityMult = EFFECT_RARITY_MULT[highestRarity];
+  if (rarityMult <= 0) return [];
+
+  const powerScale = computeWeavePowerScale(totalWeightedMoteValue);
+  const effectId = ALL_WEAVE_PASSIVE_EFFECT_IDS[Math.floor(rng() * ALL_WEAVE_PASSIVE_EFFECT_IDS.length)]!;
+  const def = WEAVE_PASSIVE_EFFECT_REGISTRY[effectId];
+  const rawValue = def.baseMaxValue * powerScale * rarityMult;
+  const value = parseFloat(rawValue.toFixed(1));
+
+  return [{ id: effectId, value }];
+}
+
 // ─── Weave name generation ────────────────────────────────────────────────────
 
 const FAMILY_NOUNS: Partial<Record<TierId, string>> = {
