@@ -7,6 +7,7 @@
  * getTotalActiveWeaveBuffPct: call to sum any stat's active buff contributions.
  * getTotalActiveWeaveBuffDefPct: compat wrapper for playerDefensePct.
  * getTotalActiveWeaveBuffCooldownPct: helper for cooldown reduction from active buffs.
+ * getTotalActiveWeaveBuffWeaponDamagePct: helper for weapon damage bonus from active buffs.
  */
 
 import type { RpgSimState, ActiveWeaveBuff } from '../../sim/rpg/rpg-state';
