@@ -466,6 +466,19 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
   const container = document.createElement('div');
   container.className = 'lens-inventory';
 
+  // Resonance Dust balance header
+  const dustHeader = document.createElement('div');
+  dustHeader.style.cssText =
+    'display:flex;align-items:center;gap:8px;padding:4px 0 8px;font-size:0.8em;color:#e6c850;';
+  const dustIcon = document.createElement('span');
+  dustIcon.textContent = '✦';
+  dustIcon.style.cssText = 'color:#e6c850;font-size:1.1em;';
+  const dustLabel = document.createElement('span');
+  dustLabel.textContent = `${REFINEMENT_RESOURCE_NAME}: ${rpgState.resonanceDust ?? 0}`;
+  dustHeader.appendChild(dustIcon);
+  dustHeader.appendChild(dustLabel);
+  container.appendChild(dustHeader);
+
   const lenses = rpgState.craftedLenses;
 
   if (lenses.length === 0) {
