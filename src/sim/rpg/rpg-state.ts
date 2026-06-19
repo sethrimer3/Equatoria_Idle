@@ -291,6 +291,7 @@ export function createRpgSimState(): RpgSimState {
     craftedWeapons: [],
     craftedWeaves: [],
     craftedLenses: [],
+    resonanceDust: 0,
     equippedWeaveSlots: [null, null, null, null, null, null],
     refinedCrystalsByTierId: new Map(),
     equippedWeaponIds: new Set(),
