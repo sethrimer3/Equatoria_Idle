@@ -329,6 +329,20 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       }
     }
 
+    // ── Passive effects section ───────────────────────────────────────────
+    const activeEffects = (weave.effects ?? []).filter(e => getWeavePassiveEffectDef(e.id) !== null);
+    if (activeEffects.length > 0) {
+      const effectsHeader = document.createElement('div');
+      effectsHeader.style.cssText = 'font-size:0.7em;color:#6699bb;margin:4px 0 2px;letter-spacing:0.05em;text-transform:uppercase;';
+      effectsHeader.textContent = 'Effects';
+      card.appendChild(effectsHeader);
+
+      for (const effect of activeEffects) {
+        const row = buildEffectRow(effect);
+        if (row) card.appendChild(row);
+      }
+    }
+
     // ── Refinement row ────────────────────────────────────────────────────
     const refLevel = weave.refinementLevel ?? 0;
     const refineRow = document.createElement('div');
