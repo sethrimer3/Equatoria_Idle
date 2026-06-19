@@ -16,13 +16,17 @@ import type { CraftedLensData } from '../../data/rpg/lens-types';
 import type { ActivePlayerStatus } from './player-status-effects';
 export type { RpgZoneId };
 
+/** Which stat an active weave buff applies to. */
+export type ActiveWeaveBuffStat = 'playerDefensePct' | 'cooldownPct';
+
 /** Ephemeral buff granted by a proc weave effect. Not saved. */
 export interface ActiveWeaveBuff {
   effectId: string;
+  statKey: ActiveWeaveBuffStat;
+  /** Percent bonus (positive = increase for DEF; positive = reduction for cooldown). */
+  valuePct: number;
   /** Remaining milliseconds until expiry. */
   remainingMs: number;
-  /** DEF% bonus while active. */
-  defPct: number;
 }
 
 // ─── Constants ────────────────────────────────────────────────────
