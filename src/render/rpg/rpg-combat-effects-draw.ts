@@ -13,7 +13,7 @@
  */
 
 import type {
-  DeathParticle, ShotLine, HitEffect, DamageNumber, ComboEffect,
+  DeathParticle, ShotLine, HitEffect, DamageNumber, ComboEffect, WardEffect,
 } from './rpg-types';
 import {
   SHOT_LINE_DURATION_MS, HIT_EFFECT_DURATION_MS,
