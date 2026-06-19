@@ -1473,7 +1473,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onWeaponHitEnemy(finalDmg, hitX, hitY, _maxHp, applyBonusDmg): void {
       const triggered = tryTriggerPlayerHitEnemyWeaveEffects(rpgSimState, finalDmg, applyBonusDmg);
       if (triggered.length > 0) {
-        spawnDamageNumber(hitX, hitY - 4, 0, -0.8, 'Echo Strike', 0.25, '#ffd060');
+        // Bonus damage always applies; text is debounced to avoid spam from multi-target hits.
+        const nowMs = performance.now();
+        if (nowMs - lastEchoTextMs > 300) {
+          lastEchoTextMs = nowMs;
+          spawnDamageNumber(hitX, hitY - 4, 0, -0.8, 'Echo Strike', 0.25, '#ffd060');
+        }
       }
     },
   };
