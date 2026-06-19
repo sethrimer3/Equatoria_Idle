@@ -428,7 +428,7 @@ export function deserializeGameState(data: SaveData): GameState {
         })),
         // v34+: refinement level — defaults to 0 for pre-v34 saves
         refinementLevel: w.refinementLevel ?? 0,
-        // v35+: passive effects — defaults to [] for pre-v35 saves
+        // passive effects — optional field; defaults to [] for saves without it
         effects: (w.effects ?? []).map((e: { id: string; value: number }) => ({
           id: String(e.id ?? ''),
           value: Number(e.value ?? 0),
