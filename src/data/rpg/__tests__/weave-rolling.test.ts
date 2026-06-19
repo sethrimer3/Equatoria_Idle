@@ -813,3 +813,90 @@ describe('rollWeavePassiveEffects — proc in pool', () => {
     expect(mythic[0]!.value).toBeGreaterThan(uncommon[0]!.value);
   });
 });
+
+// ─── tryTriggerPlayerHitEnemyWeaveEffects (weave_echo_strike) ────
+
+function makeStateWithEchoWeave(effectValue: number) {
+  const state = createRpgSimState();
+  const weave: CraftedWeaveData = {
+    id: 'w-echo-test',
+    name: 'Echo Test',
+    affixes: [],
+    moteValue: 100,
+    powerScale: 1,
+    rarity: 'Uncommon',
+    effects: [{ id: 'weave_echo_strike', value: effectValue }],
+    refinement: 0,
+    baseRefinementSlots: 0,
+    resonanceDust: 0,
+  };
+  state.craftedWeaves = [weave];
+  state.equippedWeaveSlots = ['w-echo-test', null, null];
+  return state;
+}
+
+describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
+  it('zero-damage hit → no trigger', () => {
+    const state = makeStateWithEchoWeave(20);
+    let bonusApplied = 0;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 0, (b) => { bonusApplied += b; });
+    expect(triggered).toHaveLength(0);
+    expect(bonusApplied).toBe(0);
+  });
+
+  it('no equipped weaves → no trigger', () => {
+    const state = createRpgSimState();
+    let bonusApplied = 0;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 50, (b) => { bonusApplied += b; });
+    expect(triggered).toHaveLength(0);
+    expect(bonusApplied).toBe(0);
+  });
+
+  it('rng always fails → no trigger', () => {
+    const state = makeStateWithEchoWeave(20);
+    let bonusApplied = 0;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusApplied += b; }, () => 1);
+    expect(triggered).toHaveLength(0);
+    expect(bonusApplied).toBe(0);
+  });
+
+  it('rng always succeeds → triggers and calls applyBonusDmg', () => {
+    const state = makeStateWithEchoWeave(20);
+    let bonusApplied = 0;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusApplied += b; }, () => 0);
+    expect(triggered).toContain('weave_echo_strike');
+    expect(bonusApplied).toBeCloseTo(20, 5); // 100 * 20/100
+  });
+
+  it('bonus damage scales with finalDmg and effect value', () => {
+    const state = makeStateWithEchoWeave(25);
+    let bonusApplied = 0;
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 200, (b) => { bonusApplied += b; }, () => 0);
+    expect(bonusApplied).toBeCloseTo(50, 5); // 200 * 25/100
+  });
+
+  it('weave_echo_strike is in ALL_WEAVE_EFFECT_IDS', () => {
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_echo_strike');
+  });
+
+  it('getWeaveEffectDef returns correct def for weave_echo_strike', () => {
+    const def = getWeaveEffectDef('weave_echo_strike');
+    expect(def).not.toBeNull();
+    expect(def!.category).toBe('proc');
+  });
+
+  it('echo strike can be rolled from the pool', () => {
+    function makeAffix(rarity: string): CraftedWeaveData['affixes'][number] {
+      return {
+        affixId: 'citrine_all_loom', tierId: 'citrine', label: 'Test', quality: 0.5,
+        rarity: rarity as CraftedWeaveData['affixes'][number]['rarity'], value: 10, unit: '%', applied: true,
+      };
+    }
+    // weave_echo_strike is the 5th id (index 4) in ALL_WEAVE_EFFECT_IDS
+    // rng returning 0.95 → floor(0.95 * 5) = 4 → weave_echo_strike
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.95);
+    expect(effects).toHaveLength(1);
+    expect(effects[0]!.id).toBe('weave_echo_strike');
+    expect(effects[0]!.value).toBeGreaterThan(0);
+  });
+});
