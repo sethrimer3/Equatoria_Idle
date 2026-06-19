@@ -768,11 +768,11 @@ describe('tickActiveWeaveBuffs', () => {
     expect(state.activeWeaveBuffs).toHaveLength(0);
   });
 
-  it('getTotalActiveWeaveBuffDefPct sums all active buffs', () => {
+  it('getTotalActiveWeaveBuffDefPct sums only DEF buffs', () => {
     const state = createRpgSimState();
     state.activeWeaveBuffs = [
-      { effectId: 'weave_reactive_ward', remainingMs: 1000, defPct: 8 },
-      { effectId: 'weave_reactive_ward', remainingMs: 1000, defPct: 5 },
+      { effectId: 'weave_reactive_ward', statKey: 'playerDefensePct', valuePct: 8, remainingMs: 1000 },
+      { effectId: 'weave_reactive_ward', statKey: 'playerDefensePct', valuePct: 5, remainingMs: 1000 },
     ];
     expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(13, 5);
   });
@@ -780,6 +780,16 @@ describe('tickActiveWeaveBuffs', () => {
   it('getTotalActiveWeaveBuffDefPct returns 0 with no buffs', () => {
     const state = createRpgSimState();
     expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
+  });
+
+  it('getTotalActiveWeaveBuffCooldownPct sums only cooldown buffs', () => {
+    const state = createRpgSimState();
+    state.activeWeaveBuffs = [
+      { effectId: 'weave_swiftstrike', statKey: 'cooldownPct', valuePct: 4, remainingMs: 1000 },
+      { effectId: 'weave_reactive_ward', statKey: 'playerDefensePct', valuePct: 10, remainingMs: 1000 },
+    ];
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBeCloseTo(4, 5);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(10, 5);
   });
 });
 
