@@ -540,6 +540,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let lastWardTextMs = -Infinity;
   /** Timestamp of the last "Echo Strike" floating text — debounce for multi-hit proc spam. */
   let lastEchoTextMs = -Infinity;
+  /** Timestamp of the last "Swiftstrike" floating text — debounce for multi-hit proc spam. */
+  let lastSwiftstrikeTextMs = -Infinity;
   let playerIFramesMs = 0;
 
   // ── Sand blade swing tracking (for sand drift pixel spawning) ──
