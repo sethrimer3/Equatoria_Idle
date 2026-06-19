@@ -189,6 +189,25 @@ export function createDevPanel(): DevPanel {
   section.appendChild(telemetryLoomWrap);
   section.appendChild(telemetryAlivenWrap);
 
+  // ── 9. Weave Passive Totals ────────────────────────────────────
+  section.appendChild(makeSubTitle('Weave Passive Totals'));
+
+  const weaveDmgLine  = el('div', 'dev-panel-info-line');
+  const weaveCdrLine  = el('div', 'dev-panel-info-line');
+  const weaveDefLine  = el('div', 'dev-panel-info-line');
+  section.appendChild(weaveDmgLine);
+  section.appendChild(weaveCdrLine);
+  section.appendChild(weaveDefLine);
+
+  function refreshWeavePassives(): void {
+    if (!hooks) return;
+    const rpg = hooks.getGame().rpg;
+    const mods = getEquippedWeaveModifiers(rpg.equippedWeaveSlots, rpg.craftedWeaves);
+    weaveDmgLine.textContent = `Damage:  +${mods.weaponDamagePct.toFixed(2)}%`;
+    weaveCdrLine.textContent = `Cooldown: -${mods.cooldownPct.toFixed(2)}%`;
+    weaveDefLine.textContent = `DEF:     +${mods.playerDefensePct.toFixed(2)}%`;
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────
 
   function refreshAlivenCount(): void {
