@@ -1060,3 +1060,142 @@ describe('weave_swiftstrike proc behavior', () => {
     expect(state.activeWeaveBuffs).toHaveLength(0);
   });
 });
+
+// ─── weave_ember_surge proc / buff tests ──────────────────────────
+
+function makeStateWithEmberSurgeWeave(effectValue: number) {
+  const state = createRpgSimState();
+  const weave: CraftedWeaveData = {
+    id: 'w-ember-test',
+    name: 'Ember Test',
+    ingredients: [],
+    affixes: [],
+    totalWeightedMoteValue: 100,
+    forgeCraftLevel: 1,
+    tierEffects: [],
+    refinementLevel: 0,
+    effects: [{ id: 'weave_ember_surge', value: effectValue }],
+  };
+  state.craftedWeaves = [weave];
+  state.equippedWeaveSlots = ['w-ember-test', null, null, null, null, null];
+  return state;
+}
+
+describe('weave_ember_surge proc behavior', () => {
+  it('zero-damage hit → no trigger', () => {
+    const state = makeStateWithEmberSurgeWeave(6);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 0, () => {});
+    expect(triggered).toHaveLength(0);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+
+  it('unequipped ember surge weave → no trigger', () => {
+    const state = createRpgSimState();
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(triggered).toHaveLength(0);
+  });
+
+  it('deterministic rng triggers ember surge and adds weaponDamagePct buff', () => {
+    const state = makeStateWithEmberSurgeWeave(6);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(triggered).toContain('weave_ember_surge');
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    const buff = state.activeWeaveBuffs[0]!;
+    expect(buff.effectId).toBe('weave_ember_surge');
+    expect(buff.statKey).toBe('weaponDamagePct');
+    expect(buff.valuePct).toBe(6);
+    expect(buff.remainingMs).toBe(2500);
+  });
+
+  it('second trigger refreshes duration and keeps stronger value', () => {
+    const state = makeStateWithEmberSurgeWeave(6);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    state.activeWeaveBuffs[0]!.remainingMs = 200;
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(2500);
+  });
+
+  it('expired ember surge buff no longer contributes weapon damage', () => {
+    const state = makeStateWithEmberSurgeWeave(6);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tickActiveWeaveBuffs(state, 2501);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+    expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBe(0);
+  });
+
+  it('ember surge does not affect DEF', () => {
+    const state = makeStateWithEmberSurgeWeave(6);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
+  });
+
+  it('ember surge does not affect cooldown', () => {
+    const state = makeStateWithEmberSurgeWeave(6);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBe(0);
+  });
+
+  it('ember surge does not apply bonus damage', () => {
+    const state = makeStateWithEmberSurgeWeave(6);
+    let bonusDmg = 0;
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusDmg += b; }, () => 0);
+    expect(bonusDmg).toBe(0);
+  });
+
+  it('swiftstrike still affects cooldown after weaponDamagePct stat added', () => {
+    const state = makeStateWithSwiftstrikeWeave(5);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBeCloseTo(5, 5);
+    expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBe(0);
+  });
+
+  it('reactive ward still affects DEF after weaponDamagePct stat added', () => {
+    const state = createRpgSimState();
+    const weave: CraftedWeaveData = {
+      id: 'w-ward-test2',
+      name: 'Ward Test 2',
+      ingredients: [],
+      affixes: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      tierEffects: [],
+      refinementLevel: 0,
+      effects: [{ id: 'weave_reactive_ward', value: 12 }],
+    };
+    state.craftedWeaves = [weave];
+    state.equippedWeaveSlots = ['w-ward-test2', null, null, null, null, null];
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(12, 5);
+    expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBe(0);
+  });
+
+  it('echo strike still applies bonus damage after weaponDamagePct stat added', () => {
+    const state = makeStateWithEchoWeave(20);
+    let bonus = 0;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonus += b; }, () => 0);
+    expect(triggered).toContain('weave_echo_strike');
+    expect(bonus).toBeCloseTo(20, 5);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+
+  it('ember surge and swiftstrike can both be active simultaneously from separate weaves', () => {
+    const state = createRpgSimState();
+    const w1: CraftedWeaveData = {
+      id: 'w-ember2', name: 'Ember', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_ember_surge', value: 6 }],
+    };
+    const w2: CraftedWeaveData = {
+      id: 'w-swift2', name: 'Swift', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_swiftstrike', value: 4 }],
+    };
+    state.craftedWeaves = [w1, w2];
+    state.equippedWeaveSlots = ['w-ember2', 'w-swift2', null, null, null, null];
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    expect(state.activeWeaveBuffs).toHaveLength(2);
+    expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBeCloseTo(6, 5);
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBeCloseTo(4, 5);
+  });
+});
