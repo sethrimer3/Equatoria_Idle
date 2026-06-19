@@ -204,6 +204,7 @@ export const ALL_WEAVE_EFFECT_IDS: readonly WeaveEffectId[] = [
   'weave_guard',
   'weave_reactive_ward',
   'weave_echo_strike',
+  'weave_swiftstrike',
 ];
 
 /** Returns the def for a given id (passive or proc), or null if unknown. */
