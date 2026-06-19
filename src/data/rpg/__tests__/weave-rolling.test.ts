@@ -518,3 +518,142 @@ describe('save/load — weave tierEffects', () => {
     expect(weave!.tierEffects).toEqual([]);
   });
 });
+
+// ─── rollWeavePassiveEffects ──────────────────────────────────────
+
+describe('rollWeavePassiveEffects', () => {
+  function makeAffix(rarity: string): CraftedWeaveData['affixes'][number] {
+    return {
+      affixId: 'citrine_all_loom',
+      tierId: 'citrine',
+      label: 'Test',
+      quality: rarity === 'Uncommon' ? 0.5 : rarity === 'Common' ? 0.1 : 0.8,
+      rarity: rarity as CraftedWeaveData['affixes'][number]['rarity'],
+      value: 10,
+      unit: '%',
+      applied: true,
+    };
+  }
+
+  it('Common-only weave → no effect', () => {
+    const effects = rollWeavePassiveEffects([makeAffix('Common')], 100);
+    expect(effects).toHaveLength(0);
+  });
+
+  it('Uncommon affix → exactly 1 effect', () => {
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0);
+    expect(effects).toHaveLength(1);
+    expect(effects[0]!.id).toBeTruthy();
+    expect(effects[0]!.value).toBeGreaterThan(0);
+  });
+
+  it('Rare affix → exactly 1 effect', () => {
+    const effects = rollWeavePassiveEffects([makeAffix('Rare')], 100, () => 0);
+    expect(effects).toHaveLength(1);
+  });
+
+  it('higher rarity produces larger value than Uncommon', () => {
+    const uncommon = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0);
+    const legendary = rollWeavePassiveEffects([makeAffix('Legendary')], 100, () => 0);
+    expect(legendary[0]!.value).toBeGreaterThan(uncommon[0]!.value);
+  });
+
+  it('empty affix list → no effect', () => {
+    const effects = rollWeavePassiveEffects([], 100);
+    expect(effects).toHaveLength(0);
+  });
+});
+
+// ─── Passive effects — equip/unequip aggregation ─────────────────
+
+describe('passive effects — getEquippedWeaveModifiers', () => {
+  function weaveWithEffect(id: string, effectId: string, value: number): CraftedWeaveData {
+    return {
+      id,
+      name: 'Test',
+      ingredients: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      affixes: [],
+      tierEffects: [],
+      refinementLevel: 0,
+      effects: [{ id: effectId, value }],
+    };
+  }
+
+  it('weave_focus equipped → weaponDamagePct increases', () => {
+    const weave = weaveWithEffect('w1', 'weave_focus', 4.0);
+    const mods = getEquippedWeaveModifiers(['w1'], [weave]);
+    expect(mods.weaponDamagePct).toBeCloseTo(4.0, 5);
+  });
+
+  it('weave_quickness equipped → cooldownPct increases', () => {
+    const weave = weaveWithEffect('w1', 'weave_quickness', 2.5);
+    const mods = getEquippedWeaveModifiers(['w1'], [weave]);
+    expect(mods.cooldownPct).toBeCloseTo(2.5, 5);
+  });
+
+  it('weave_guard equipped → playerDefensePct increases', () => {
+    const weave = weaveWithEffect('w1', 'weave_guard', 3.0);
+    const mods = getEquippedWeaveModifiers(['w1'], [weave]);
+    expect(mods.playerDefensePct).toBeCloseTo(3.0, 5);
+  });
+
+  it('unequipped weave does not affect modifiers', () => {
+    const weave = weaveWithEffect('w1', 'weave_focus', 10.0);
+    // Weave exists in inventory but slot is null
+    const mods = getEquippedWeaveModifiers([null], [weave]);
+    expect(mods.weaponDamagePct).toBe(0);
+  });
+
+  it('unknown/invalid effect id is ignored safely', () => {
+    const weave = weaveWithEffect('w1', 'totally_invalid_effect_xyz', 99.0);
+    const mods = getEquippedWeaveModifiers(['w1'], [weave]);
+    expect(mods.weaponDamagePct).toBe(0);
+    expect(mods.cooldownPct).toBe(0);
+    expect(mods.playerDefensePct).toBe(0);
+  });
+
+  it('multiple equipped weaves with same effect stack additively', () => {
+    const w1 = weaveWithEffect('w1', 'weave_focus', 3.0);
+    const w2 = weaveWithEffect('w2', 'weave_focus', 2.0);
+    const mods = getEquippedWeaveModifiers(['w1', 'w2'], [w1, w2]);
+    expect(mods.weaponDamagePct).toBeCloseTo(5.0, 5);
+  });
+});
+
+// ─── Passive effects — save/load round-trip ───────────────────────
+
+describe('passive effects — save/load round-trip', () => {
+  it('crafted weave effects survive serialize/deserialize', () => {
+    const state = createGameState();
+    // Use ruby tier to get Uncommon+ affixes and thus trigger an effect roll
+    craftWeave(state, [{ tierId: 'ruby', refinedCount: 50 }], true);
+    const weave = state.rpg.craftedWeaves[0]!;
+    // Manually set a known effect to test persistence regardless of rng outcome
+    weave.effects = [{ id: 'weave_focus', value: 3.7 }];
+
+    const saved = serializeGameState(state);
+    const restored = deserializeGameState(saved);
+    const restoredWeave = restored.rpg.craftedWeaves[0];
+    expect(restoredWeave).toBeDefined();
+    expect(restoredWeave!.effects).toHaveLength(1);
+    expect(restoredWeave!.effects![0]!.id).toBe('weave_focus');
+    expect(restoredWeave!.effects![0]!.value).toBeCloseTo(3.7, 5);
+  });
+
+  it('old weave save without effects field deserializes with empty effects', () => {
+    const state = createGameState();
+    craftWeave(state, [{ tierId: 'sand', refinedCount: 3 }], true);
+    const saved = serializeGameState(state);
+    if (saved.rpg?.craftedWeaves) {
+      for (const w of saved.rpg.craftedWeaves) {
+        delete (w as Record<string, unknown>)['effects'];
+      }
+    }
+    const restored = deserializeGameState(saved);
+    const restoredWeave = restored.rpg.craftedWeaves[0];
+    expect(restoredWeave).toBeDefined();
+    expect(restoredWeave!.effects ?? []).toEqual([]);
+  });
+});
