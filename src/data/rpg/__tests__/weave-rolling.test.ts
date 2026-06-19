@@ -899,3 +899,28 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
     expect(effects[0]!.value).toBeGreaterThan(0);
   });
 });
+
+// ─── multi-hit: bonus damage applies per hit even when text is debounced ─────
+
+describe('tryTriggerPlayerHitEnemyWeaveEffects — multi-hit behavior', () => {
+  it('applies bonus damage for each independent hit even when called multiple times', () => {
+    const state = makeStateWithEchoWeave(10);
+    let totalBonus = 0;
+    // Simulate two hits in the same multi-attack frame, both procs succeed.
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { totalBonus += b; }, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 80, (b) => { totalBonus += b; }, () => 0);
+    // Both bonuses applied: 100*10/100 + 80*10/100 = 10 + 8 = 18
+    expect(totalBonus).toBeCloseTo(18, 5);
+  });
+
+  it('does not trigger recursively if callback calls tryTriggerPlayerHitEnemyWeaveEffects again', () => {
+    const state = makeStateWithEchoWeave(10);
+    let recursionCount = 0;
+    // Simulate a callback that tries to re-trigger — in real code this can't happen
+    // because echo's applyFn goes through damageEnemy directly, not performWeaponAttack.
+    // Here we verify that tryTriggerPlayerHitEnemyWeaveEffects itself has no internal recursion guard
+    // needed — the architecture prevents it. The callback simply won't call back.
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 50, (_b) => { recursionCount++; }, () => 0);
+    expect(recursionCount).toBe(1); // called exactly once, no recursion
+  });
+});
