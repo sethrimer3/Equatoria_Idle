@@ -810,9 +810,9 @@ describe('rollWeavePassiveEffects — proc in pool', () => {
   }
 
   it('proc effect can be rolled from the pool', () => {
-    // With no ingredient flavor context (compat wrapper → empty ingredients), all 5 effects
-    // get weight 1.0 each (total=5). rng=0.75 → threshold=3.75 → reactive_ward (index 3).
-    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.75);
+    // With no ingredient flavor context, all 6 effects get weight 1.0 each (total=6).
+    // rng=0.55 → threshold=3.3 → focus:2.3 → quickness:1.3 → guard:0.3 → reactive_ward:-0.7 → reactive_ward (index 3).
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.55);
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_reactive_ward');
     expect(effects[0]!.value).toBeGreaterThan(0);
