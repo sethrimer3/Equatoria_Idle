@@ -1,12 +1,12 @@
 /**
- * weave-passive-effects.ts — Central registry for weave passive effect definitions.
+ * weave-passive-effects.ts — Central registry for all weave effect definitions.
  *
- * Effects are looked up by id at runtime. UI reads display names and descriptions
- * from this registry rather than hardcoding strings in the UI layer.
- *
- * Only 'passive' category effects are implemented. Proc/status/visual effects are
- * not part of this module.
+ * Both passive (always-on stat bonuses) and proc (triggered on game events)
+ * effects are defined here. UI and rolling code both read from this module.
+ * Effects are looked up by id at runtime; no display strings are hardcoded elsewhere.
  */
+
+// ─── Passive effects ──────────────────────────────────────────────────────────
 
 /** Stable string union of all implemented passive effect ids. */
 export type WeavePassiveEffectId = 'weave_focus' | 'weave_quickness' | 'weave_guard';
