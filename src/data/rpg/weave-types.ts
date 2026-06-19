@@ -110,6 +110,6 @@ export interface CraftedWeaveData {
   tierEffects: WeaveTierEffect[];
   /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). Absent in old items = 0. */
   refinementLevel?: number;
-  /** v35+: Passive effects rolled at craft time. Absent in old items = [] (no effects). */
+  /** Passive effects rolled at craft time. Absent in old items = [] (no effects, backward-safe). */
   effects?: WeaveEffectRoll[];
 }
