@@ -1478,11 +1478,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onWeaponHitEnemy(finalDmg, hitX, hitY, _maxHp, applyBonusDmg): void {
       const triggered = tryTriggerPlayerHitEnemyWeaveEffects(rpgSimState, finalDmg, applyBonusDmg);
       if (triggered.length > 0) {
-        // Bonus damage always applies; text is debounced to avoid spam from multi-target hits.
         const nowMs = performance.now();
-        if (nowMs - lastEchoTextMs > 300) {
+        if (triggered.includes('weave_echo_strike') && nowMs - lastEchoTextMs > 300) {
           lastEchoTextMs = nowMs;
           spawnDamageNumber(hitX, hitY - 4, 0, -0.8, 'Echo Strike', 0.25, '#ffd060');
+        }
+        if (triggered.includes('weave_swiftstrike') && nowMs - lastSwiftstrikeTextMs > 300) {
+          lastSwiftstrikeTextMs = nowMs;
+          // Pale gold — matches the sand/quartz flavor palette.
+          spawnDamageNumber(hitX, hitY - 12, 0, -0.8, 'Swiftstrike', 0.25, '#e8d89a');
         }
       }
     },
