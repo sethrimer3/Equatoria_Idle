@@ -29,6 +29,7 @@ import {
   refreshTelemetryTables,
 } from './dev-panel-render';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
+import { getTotalActiveWeaveBuffDefPct } from '../../data/rpg/weave-proc-effects';
 
 // ─── Public interface ────────────────────────────────────────────
 
