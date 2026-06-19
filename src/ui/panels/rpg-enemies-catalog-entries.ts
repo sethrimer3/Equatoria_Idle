@@ -138,6 +138,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A fast crimson marauder that closes range quickly and unleashes rapid bursts of fire bolts. Burns on hit — immune to Burning itself.',
     shape: 'square',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Ruby-Patroller.png',
   },
   {
     id: 'amber',
@@ -405,6 +406,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'square',
     zone: 'verdure',
     category: 'elite',
+    iconFile: 'EnemyIcon_Fissile-Polyomino.png',
   },
   {
     id: 'verdure_polyomino_refractor',
@@ -482,6 +484,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A void-tinted swarm of 12 splitter particles. Each particle that falls in battle erupts into 2 weaker child fragments — prioritise area weapons.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Void-Splinters.png',
   },
   {
     id: 'aliven_healer_nodes',
@@ -882,6 +885,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Sunstone-Fish.png',
   },
   {
     id: 'proc_emeraldfish',
