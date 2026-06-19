@@ -3,6 +3,11 @@ import { TIERS } from '../data/tiers';
 import { createCraftedWeaponDefinition, getForgeCapacity, registerCraftedWeapons } from '../data/rpg/crafted-weapon-helpers';
 import { createCraftedWeave } from '../data/rpg/weave-rolling';
 import { createCraftedLens } from '../data/rpg/lens-rolling';
+import {
+  getLensHighestRarity, getWeaveHighestRarity,
+  getDismantleDust, getRefineCost,
+  MAX_REFINEMENT_LEVEL,
+} from '../data/rpg/item-refinement';
 import type { EquipmentRewardSpec } from '../data/rpg/equipment-rewards';
 import { getRpgUpgradeLevel } from './rpg';
 import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
