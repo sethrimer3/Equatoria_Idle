@@ -484,6 +484,51 @@ export function handleAction(
       if (!ok) audioSystem?.onError();
       break;
     }
+    case 'dismantle_lens': {
+      const dust = dismantleLens(state.game, action.lensId);
+      if (dust === 0) audioSystem?.onError();
+      break;
+    }
+    case 'dismantle_weave': {
+      const dust = dismantleWeave(state.game, action.weaveId);
+      if (dust === 0) audioSystem?.onError();
+      break;
+    }
+    case 'refine_lens': {
+      const result = refineLens(state.game, action.lensId);
+      if (!result.ok) audioSystem?.onError();
+      break;
+    }
+    case 'refine_weave': {
+      const result = refineWeave(state.game, action.weaveId);
+      if (!result.ok) audioSystem?.onError();
+      break;
+    }
+    case 'dev_grant_resonance_dust': {
+      if (!devMode) break;
+      state.game.rpg.resonanceDust = (state.game.rpg.resonanceDust ?? 0) + action.amount;
+      break;
+    }
+    case 'dev_refine_lens_free': {
+      if (!devMode) break;
+      refineLens(state.game, action.lensId, true);
+      break;
+    }
+    case 'dev_refine_weave_free': {
+      if (!devMode) break;
+      refineWeave(state.game, action.weaveId, true);
+      break;
+    }
+    case 'dev_grant_duplicate_lenses': {
+      if (!devMode) break;
+      grantSampleLensWeaveItems(state.game);
+      break;
+    }
+    case 'dev_grant_duplicate_weaves': {
+      if (!devMode) break;
+      grantSampleLensWeaveItems(state.game);
+      break;
+    }
     case 'equip_weave_to_slot': {
       const { weaveId, slotIndex } = action;
       const weave = state.game.rpg.craftedWeaves.find(w => w.id === weaveId);
