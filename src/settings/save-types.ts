@@ -248,7 +248,11 @@ export interface SaveData {
         rarity: string;
         isApplied: boolean;
       }>;
+      /** v34+: refinement level 0–3. Absent in older saves (defaults to 0). */
+      refinementLevel?: number;
     }>;
+    /** v34+: Resonance Dust currency. Absent in older saves (defaults to 0). */
+    resonanceDust?: number;
   };
   elapsedMs: number;
   /** v13+: pending idle-mote drip queue. Absent in older saves (defaults to []). */
