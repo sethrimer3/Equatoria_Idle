@@ -213,11 +213,9 @@ export function createDevPanel(): DevPanel {
   section.appendChild(makeSubTitle('Active Weave Buffs'));
 
   const weaveBuffsLine = el('div', 'dev-panel-info-line');
-  const weaveBuffDefLine = el('div', 'dev-panel-info-line');
-  const weaveBuffCdrLine = el('div', 'dev-panel-info-line');
+  const weaveBuffTotalsLine = el('div', 'dev-panel-info-line');
   section.appendChild(weaveBuffsLine);
-  section.appendChild(weaveBuffDefLine);
-  section.appendChild(weaveBuffCdrLine);
+  section.appendChild(weaveBuffTotalsLine);
 
   function refreshWeaveBuffs(): void {
     if (!hooks) return;
@@ -225,17 +223,23 @@ export function createDevPanel(): DevPanel {
     const buffs = rpg.activeWeaveBuffs;
     if (buffs.length === 0) {
       weaveBuffsLine.textContent = 'No active weave buffs';
-      weaveBuffDefLine.textContent = '';
-      weaveBuffCdrLine.textContent = '';
+      weaveBuffTotalsLine.textContent = '';
     } else {
       weaveBuffsLine.textContent = buffs.map(b => {
-        const label = b.statKey === 'cooldownPct' ? 'cooldown' : 'DEF';
-        return `${b.effectId}: ${b.statKey === 'cooldownPct' ? '-' : '+'}${b.valuePct.toFixed(1)}% ${label}, ${(b.remainingMs / 1000).toFixed(1)}s`;
+        const sign = b.statKey === 'cooldownPct' ? '-' : '+';
+        const label = b.statKey === 'cooldownPct' ? 'cooldown'
+          : b.statKey === 'weaponDamagePct' ? 'weapon damage'
+          : 'DEF';
+        return `${b.effectId}: ${sign}${b.valuePct.toFixed(1)}% ${label}, ${(b.remainingMs / 1000).toFixed(1)}s`;
       }).join(' | ');
-      const defPct = getTotalActiveWeaveBuffDefPct(rpg);
+      const dmgPct = getTotalActiveWeaveBuffWeaponDamagePct(rpg);
       const cdrPct = getTotalActiveWeaveBuffCooldownPct(rpg);
-      weaveBuffDefLine.textContent = defPct > 0 ? `Buff DEF: +${defPct.toFixed(2)}%` : '';
-      weaveBuffCdrLine.textContent = cdrPct > 0 ? `Buff CDR: -${cdrPct.toFixed(2)}%` : '';
+      const defPct = getTotalActiveWeaveBuffDefPct(rpg);
+      const parts: string[] = [];
+      if (dmgPct > 0) parts.push(`DMG +${dmgPct.toFixed(2)}%`);
+      if (cdrPct > 0) parts.push(`CDR -${cdrPct.toFixed(2)}%`);
+      if (defPct > 0) parts.push(`DEF +${defPct.toFixed(2)}%`);
+      weaveBuffTotalsLine.textContent = parts.length > 0 ? parts.join(' / ') : '';
     }
   }
 
