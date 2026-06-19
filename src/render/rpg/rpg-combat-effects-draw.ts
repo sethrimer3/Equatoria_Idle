@@ -113,6 +113,47 @@ export function drawDamageNumbers(ctx: CanvasRenderingContext2D, numbers: Damage
   ctx.restore();
 }
 
+const WARD_TOTAL_MS = 600;
+const WARD_INNER_RADIUS = 6;
+const WARD_OUTER_RADIUS = 22;
+
+/**
+ * Draws brief expanding ward shimmer rings around the player when
+ * weave_reactive_ward procs. t=1 at spawn, t=0 at expiry.
+ * Two concentric arcs: warm gold core ring + pale cyan outer ring.
+ */
+export function drawWardEffects(ctx: CanvasRenderingContext2D, effects: WardEffect[]): void {
+  if (effects.length === 0) return;
+  ctx.save();
+  ctx.lineCap = 'butt';
+  for (const e of effects) {
+    const t = e.timerMs / e.totalMs;
+    const expand = 1 - t; // 0 at spawn, 1 at expiry
+
+    // Inner gold ring
+    const r1 = WARD_INNER_RADIUS + expand * (WARD_OUTER_RADIUS - WARD_INNER_RADIUS) * 0.5;
+    ctx.globalAlpha = t * 0.75;
+    ctx.strokeStyle = '#ffd060';
+    if (!isLowGraphicsMode) { ctx.shadowBlur = 7; ctx.shadowColor = '#ffc030'; }
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, Math.max(1, r1), 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Outer cyan ring — slightly delayed expansion
+    const r2 = WARD_INNER_RADIUS + expand * (WARD_OUTER_RADIUS - WARD_INNER_RADIUS);
+    ctx.globalAlpha = t * 0.45;
+    ctx.strokeStyle = '#a0e8ff';
+    if (!isLowGraphicsMode) { ctx.shadowBlur = 5; ctx.shadowColor = '#80d0ff'; }
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, Math.max(1, r2), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 /**
  * Draw short-lived per-combo burst effects at the point of impact.
  * t = timerMs / totalMs ranges from 1 (just spawned) to 0 (expiring).
