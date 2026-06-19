@@ -350,6 +350,7 @@ export function createRpgSimState(): RpgSimState {
     dashCooldownMs: 0,
     secondWindAvailable: true,
     activePlayerStatuses: [],
+    activeWeaveBuffs: [],
     frozenCooldownMs: 0,
     statusCombosTriggered: 0,
     statusComboDamageDealt: 0,
