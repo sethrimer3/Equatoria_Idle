@@ -747,8 +747,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (weaponDef) totalDefBonus += weaponDef.stats.defBonus;
     }
     const weaveMods = getEquippedWeaveModifiers(rpgSimState.equippedWeaveSlots, rpgSimState.craftedWeaves);
+    const activeBuffDefPct = getTotalActiveWeaveBuffDefPct(rpgSimState);
     playerStats.def = (PLAYER_DEF_INIT + totalDefBonus + getEffectiveXpDefBonus(rpgSimState) + getPlayerLevelDefBonus(rpgSimState.playerLevel))
-      * (1 + weaveMods.playerDefensePct / 100);
+      * (1 + (weaveMods.playerDefensePct + activeBuffDefPct) / 100);
     // Regen is a fixed base value (weapon/XP bonuses can be added here in future).
     playerStats.regen = PLAYER_REGEN_INIT;
     // Player ATK is the base multiplier (not including per-weapon tier damage).
