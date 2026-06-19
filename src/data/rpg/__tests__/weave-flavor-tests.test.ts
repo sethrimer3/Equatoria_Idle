@@ -100,7 +100,7 @@ describe('getEligibleWeaveEffectsForRoll', () => {
     }
   });
 
-  it('all 6 effect IDs appear in the pool for Uncommon weave', () => {
+  it('all 7 effect IDs appear in the pool for Uncommon weave', () => {
     const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
     const ids = pool.map(e => e.id);
     expect(ids).toContain('weave_focus');
@@ -109,6 +109,7 @@ describe('getEligibleWeaveEffectsForRoll', () => {
     expect(ids).toContain('weave_reactive_ward');
     expect(ids).toContain('weave_echo_strike');
     expect(ids).toContain('weave_swiftstrike');
+    expect(ids).toContain('weave_ember_surge');
   });
 
   it('sand ingredients favor weave_swiftstrike alongside weave_quickness', () => {
