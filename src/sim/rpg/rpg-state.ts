@@ -16,6 +16,15 @@ import type { CraftedLensData } from '../../data/rpg/lens-types';
 import type { ActivePlayerStatus } from './player-status-effects';
 export type { RpgZoneId };
 
+/** Ephemeral buff granted by a proc weave effect. Not saved. */
+export interface ActiveWeaveBuff {
+  effectId: string;
+  /** Remaining milliseconds until expiry. */
+  remainingMs: number;
+  /** DEF% bonus while active. */
+  defPct: number;
+}
+
 // ─── Constants ────────────────────────────────────────────────────
 
 /** Base player ATK used as the multiplier baseline. */
