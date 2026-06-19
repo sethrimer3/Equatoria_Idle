@@ -821,17 +821,16 @@ function makeStateWithEchoWeave(effectValue: number) {
   const weave: CraftedWeaveData = {
     id: 'w-echo-test',
     name: 'Echo Test',
+    ingredients: [],
     affixes: [],
-    moteValue: 100,
-    powerScale: 1,
-    rarity: 'Uncommon',
+    totalWeightedMoteValue: 100,
+    forgeCraftLevel: 1,
+    tierEffects: [],
+    refinementLevel: 0,
     effects: [{ id: 'weave_echo_strike', value: effectValue }],
-    refinement: 0,
-    baseRefinementSlots: 0,
-    resonanceDust: 0,
   };
   state.craftedWeaves = [weave];
-  state.equippedWeaveSlots = ['w-echo-test', null, null];
+  state.equippedWeaveSlots = ['w-echo-test', null, null, null, null, null];
   return state;
 }
 
