@@ -2,6 +2,7 @@
  * weave-proc-effects.ts — Runtime helpers for weave proc buff triggering and ticking.
  *
  * tryTriggerPlayerDamagedWeaveEffects: call from onPlayerDamaged (dmg > 0).
+ * tryTriggerPlayerHitEnemyWeaveEffects: call after a real weapon hit (dmg > 0).
  * tickActiveWeaveBuffs: call each frame before runRpgUpdate.
  * getTotalActiveWeaveBuffDefPct: call in applyEquipmentStats to sum buff DEF.
  */
