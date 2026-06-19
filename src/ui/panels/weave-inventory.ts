@@ -439,6 +439,55 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     return card;
   }
 
+  function showWeaveDismantleConfirm(weave: CraftedWeaveData, dustYield: number, dispatchFn: ActionHandler): void {
+    const overlay = document.createElement('div');
+    overlay.style.cssText =
+      'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);' +
+      'display:flex;align-items:center;justify-content:center;z-index:10001;';
+
+    const box = document.createElement('div');
+    box.style.cssText =
+      'background:#160e22;border:1px solid rgba(200,100,60,0.5);border-radius:8px;' +
+      'padding:18px;max-width:340px;width:90%;';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'color:#e08060;font-weight:700;margin-bottom:10px;';
+    title.textContent = `Dismantle "${weave.name}"?`;
+    box.appendChild(title);
+
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#aaa;font-size:0.86em;margin-bottom:14px;line-height:1.5;';
+    msg.textContent = `This weave will be permanently destroyed. You will receive ${dustYield} ${REFINEMENT_RESOURCE_NAME}.`;
+    box.appendChild(msg);
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'weave-card__action-btn';
+    confirmBtn.style.cssText =
+      'flex:1;padding:6px 10px;border-radius:4px;border:1px solid rgba(200,100,60,0.6);' +
+      'background:rgba(200,100,60,0.2);color:#e08060;cursor:pointer;';
+    confirmBtn.textContent = `Dismantle (+${dustYield} Dust)`;
+    confirmBtn.addEventListener('click', () => {
+      overlay.remove();
+      dispatchFn({ kind: 'dismantle_weave', weaveId: weave.id });
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.style.cssText =
+      'flex:1;padding:6px 10px;border-radius:4px;border:1px solid #444;background:none;color:#aaa;cursor:pointer;';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => overlay.remove());
+
+    btnRow.appendChild(confirmBtn);
+    btnRow.appendChild(cancelBtn);
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
   function render(): void {
     list.innerHTML = '';
     const isEmpty = currentWeaves.length === 0;
