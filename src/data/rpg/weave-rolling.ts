@@ -292,10 +292,12 @@ export function rollWeavePassiveEffects(
   if (rarityMult <= 0) return [];
 
   const powerScale = computeWeavePowerScale(totalWeightedMoteValue);
-  const n = ALL_WEAVE_PASSIVE_EFFECT_IDS.length;
-  const effectId = ALL_WEAVE_PASSIVE_EFFECT_IDS[Math.min(Math.floor(rng() * n), n - 1)]!;
-  const def = WEAVE_PASSIVE_EFFECT_REGISTRY[effectId];
-  const rawValue = def.baseMaxValue * powerScale * rarityMult;
+  const n = ALL_WEAVE_EFFECT_IDS.length;
+  const effectId = ALL_WEAVE_EFFECT_IDS[Math.min(Math.floor(rng() * n), n - 1)]!;
+  const passiveDef = (WEAVE_PASSIVE_EFFECT_REGISTRY as Record<string, { baseMaxValue: number }>)[effectId];
+  const procDef = (WEAVE_PROC_EFFECT_REGISTRY as Record<string, { baseMaxValue: number }>)[effectId];
+  const baseMaxValue = (passiveDef ?? procDef)!.baseMaxValue;
+  const rawValue = baseMaxValue * powerScale * rarityMult;
   const value = parseFloat(rawValue.toFixed(1));
 
   return [{ id: effectId, value }];
