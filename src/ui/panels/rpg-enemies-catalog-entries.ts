@@ -191,6 +191,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A swift golden tracker that patrols at high speed and launches homing bolts that curve toward the player.',
     shape: 'square',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Citrine-Chaser.png',
   },
   {
     id: 'iolite',
@@ -203,6 +204,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A heavily armored indigo titan that fires a spread of five beams in a wide arc. Beams inflict Time-Warped, slowing attack cadence. Resists Time-Warped; vulnerable to Radiant lenses.',
     shape: 'circle',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Iolite-Colossus.png',
   },
   {
     id: 'amethyst',
@@ -218,6 +220,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     hasShield: true,
     shieldRadius: AMETHYST_ENEMY_SIZE * 2.4,
     shieldColor: AMETHYST_ENEMY_GLOW,
+    iconFile: 'EnemyIcon_Amethyst-Shielder.png',
   },
   {
     id: 'diamond',
@@ -230,6 +233,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A prismatic phase-shifter that cycles between invulnerable and vulnerable states while firing orbiting shards. Its lattice resists Cracked but its polished surface is weak to Abraded.',
     shape: 'diamond',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Diamond-Phase-Shifter.png',
   },
   {
     id: 'nullstone',
@@ -540,6 +544,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A dense iolite cluster of 14 pulser particles that simultaneously detonate area shockwaves — stay mobile or be overwhelmed.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Iolite-Prism.png',
   },
   {
     id: 'aliven_fracteryl_storm',
@@ -553,6 +558,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'aliven',
+    iconFile: 'EnemyIcon_Aliven-Fracteryl-Storm.png',
   },
   // ── Elite Aliven particle swarms (every 10th wave) ────────────────────────────
   // Elite variants share stats and specials with their base counterpart but retain
@@ -570,6 +576,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Aliven-Spark-Cluster.png',
   },
   {
     id: 'aliven_elite_shard_bloom',
@@ -635,6 +642,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'elite',
+    iconFile: 'EnemyIcon_Aliven-Healer-Nodes.png',
   },
   {
     id: 'aliven_elite_orbit_bloom',
@@ -800,6 +808,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Gear-Insect.png',
   },
   {
     id: 'proc_spidercrawler',
@@ -813,6 +822,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Spider-Crawler.png',
   },
   {
     id: 'proc_moteswarm',
