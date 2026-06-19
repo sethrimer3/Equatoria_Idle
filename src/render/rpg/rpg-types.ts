@@ -99,6 +99,19 @@ export interface DamageNumber {
   sourceColor?: string;
 }
 
+/**
+ * Brief shimmer ring drawn around the player when a weave proc buff triggers.
+ * Expands outward and fades over durationMs.
+ */
+export interface WardEffect {
+  /** Player world-space position at the moment of trigger. */
+  x: number; y: number;
+  /** Remaining lifetime in ms. */
+  timerMs: number;
+  /** Total lifetime in ms (used to compute t = timerMs / totalMs). */
+  totalMs: number;
+}
+
 /** Short-lived combo burst effect drawn on the canvas at the point of impact. */
 export interface ComboEffect {
   x: number; y: number;
