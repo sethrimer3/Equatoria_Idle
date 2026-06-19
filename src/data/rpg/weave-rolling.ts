@@ -332,5 +332,6 @@ export function createCraftedWeave(
     totalWeightedMoteValue,
     forgeCraftLevel,
     tierEffects,
+    refinementLevel: 0,
   };
 }
