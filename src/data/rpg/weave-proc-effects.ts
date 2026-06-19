@@ -111,8 +111,12 @@ export function tryTriggerPlayerHitEnemyWeaveEffects(
       if (rng() * 100 >= def.baseChancePct) continue;
 
       if (def.durationMs > 0) {
-        // Temp buff proc (e.g. weave_swiftstrike): add or refresh active buff.
-        // Same effectId: refresh duration, keep the stronger value.
+        // Temp buff proc (e.g. weave_swiftstrike, weave_ember_surge): add or refresh.
+        // Same effectId: refresh duration and keep the stronger valuePct.
+        // This prevents unlimited stacking from a single source while allowing
+        // natural refresh on repeated procs within the same combat.
+        const statKey = HIT_BUFF_STAT_MAP[effect.id];
+        if (!statKey) continue; // unknown buff stat — skip gracefully
         const existing = state.activeWeaveBuffs.find(b => b.effectId === effect.id);
         if (existing) {
           existing.remainingMs = def.durationMs;
@@ -120,7 +124,7 @@ export function tryTriggerPlayerHitEnemyWeaveEffects(
         } else {
           const buff: ActiveWeaveBuff = {
             effectId: effect.id,
-            statKey: 'cooldownPct',
+            statKey,
             valuePct: effect.value,
             remainingMs: def.durationMs,
           };
