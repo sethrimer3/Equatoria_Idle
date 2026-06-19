@@ -194,6 +194,8 @@ export interface SaveData {
           rarity: string;
           isApplied: boolean;
         }>;
+        /** v34+: refinement level. Absent in older saves (defaults to 0). */
+        refinementLevel?: number;
       };
     }>;
     /** v30+: refined crystal inventory per tier. Absent in older saves. */
