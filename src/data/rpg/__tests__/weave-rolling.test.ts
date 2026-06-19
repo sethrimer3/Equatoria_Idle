@@ -739,7 +739,7 @@ describe('tryTriggerPlayerDamagedWeaveEffects', () => {
   it('no active weave slots → no trigger', () => {
     const state = createRpgSimState();
     const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
-    expect(triggered).toBe(false);
+    expect(triggered).toHaveLength(0);
   });
 });
 
