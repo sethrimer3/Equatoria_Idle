@@ -227,6 +227,8 @@ export interface SaveData {
         rarity: string;
         isApplied: boolean;
       }>;
+      /** v34+: refinement level 0–3. Absent in older saves (defaults to 0). */
+      refinementLevel?: number;
     }>;
     /** v31+: equipped weave slot assignments (array of 6 weave IDs or null). Absent in older saves. */
     equippedWeaveSlots?: Array<string | null>;
