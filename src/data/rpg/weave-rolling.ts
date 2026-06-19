@@ -251,9 +251,9 @@ export function rollWeaveAffix(tierId: TierId, totalWeightedMoteValue: number): 
   };
 }
 
-// ─── Passive effect rolling ───────────────────────────────────────────────────
+// ─── Effect pool selection helpers ───────────────────────────────────────────
 
-/** Rarity-based quality multipliers for passive effect value rolls. */
+/** Rarity-based quality multipliers for effect value rolls. */
 const EFFECT_RARITY_MULT: Record<WeaveRarity, number> = {
   Common:    0.0, // no effect for common-only weaves
   Uncommon:  0.45,
@@ -263,31 +263,107 @@ const EFFECT_RARITY_MULT: Record<WeaveRarity, number> = {
   Mythic:    1.0,
 };
 
+const RARITY_ORDER: WeaveRarity[] = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+
 /**
  * Returns the highest rarity present among a weave's affixes.
  * Returns 'Common' if there are no affixes.
  */
 function getHighestAffixRarity(affixes: WeaveAffix[]): WeaveRarity {
-  const order: WeaveRarity[] = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
   let best: WeaveRarity = 'Common';
   for (const affix of affixes) {
-    if (order.indexOf(affix.rarity) > order.indexOf(best)) best = affix.rarity;
+    if (RARITY_ORDER.indexOf(affix.rarity) > RARITY_ORDER.indexOf(best)) best = affix.rarity;
   }
   return best;
 }
 
 /**
- * Rolls 0 or 1 passive effect for a weave based on its highest-rarity affix.
+ * How much more likely a flavor-matched effect is over a non-matching one.
+ * e.g. a diamond weave gets 3× weight on weave_guard / weave_reactive_ward.
+ */
+const FLAVOR_MATCH_MULTIPLIER = 3;
+
+/**
+ * Returns the ingredient tier IDs present in this weave, as a Set for O(1) lookup.
+ * Used by getEligibleWeaveEffectsForRoll to determine flavor matches.
+ */
+export function getWeaveDominantTiers(ingredients: CraftedWeaponIngredient[]): Set<TierId> {
+  return new Set(ingredients.filter(i => i.refinedCount > 0).map(i => i.tierId));
+}
+
+/**
+ * Returns all eligible effect IDs with computed selection weights for this weave.
+ *
+ * Eligibility rules:
+ *   - The effect's minRarity must be ≤ highestRarity (default minRarity is 'Uncommon').
+ *   - Common-rarity weaves never reach this function (rarityMult check eliminates them first).
+ *
+ * Weighting rules:
+ *   - If any ingredient tier matches an effect's flavors array: weight × FLAVOR_MATCH_MULTIPLIER.
+ *   - Otherwise: weight × 1 (still eligible, just less likely).
+ *   - def.weight (if set) scales the base before the flavor multiplier.
+ */
+export function getEligibleWeaveEffectsForRoll(params: {
+  ingredients: CraftedWeaponIngredient[];
+  highestRarity: WeaveRarity;
+}): Array<{ id: WeaveEffectId; weight: number }> {
+  const { ingredients, highestRarity } = params;
+  const dominantTiers = getWeaveDominantTiers(ingredients);
+
+  const pool: Array<{ id: WeaveEffectId; weight: number }> = [];
+
+  for (const effectId of ALL_WEAVE_EFFECT_IDS) {
+    const def = getWeaveEffectDef(effectId);
+    if (!def) continue;
+    const minRar = def.minRarity ?? 'Uncommon';
+    if (RARITY_ORDER.indexOf(highestRarity) < RARITY_ORDER.indexOf(minRar)) continue;
+
+    const baseWeight = def.weight ?? 1.0;
+    const flavorMatch = def.flavors.some(f => dominantTiers.has(f));
+    const weight = flavorMatch ? baseWeight * FLAVOR_MATCH_MULTIPLIER : baseWeight;
+    pool.push({ id: effectId, weight });
+  }
+
+  return pool;
+}
+
+/**
+ * Picks one effect ID from a weighted pool using the given rng.
+ * Uses standard weighted random selection (linear scan, O(n)).
+ * Returns null only if the pool is empty.
+ */
+export function pickWeightedWeaveEffect(
+  pool: Array<{ id: WeaveEffectId; weight: number }>,
+  rng: () => number,
+): WeaveEffectId | null {
+  if (pool.length === 0) return null;
+  const totalWeight = pool.reduce((s, e) => s + e.weight, 0);
+  let threshold = rng() * totalWeight;
+  for (const entry of pool) {
+    threshold -= entry.weight;
+    if (threshold <= 0) return entry.id;
+  }
+  // Floating-point fallback: return last entry.
+  return pool[pool.length - 1]!.id;
+}
+
+// ─── Effect rolling ───────────────────────────────────────────────────────────
+
+/**
+ * Rolls 0 or 1 effect for a weave, using flavor-weighted selection based on
+ * the weave's ingredient tiers and highest-rarity affix.
  *
  * Rules:
  *   Common-only weaves → no effect.
- *   Uncommon or better → exactly 1 effect chosen uniformly from the pool.
+ *   Uncommon or better → exactly 1 effect from the eligible weighted pool.
+ *   Effects whose flavors match the weave's ingredient tiers are 3× more likely.
  *   Value scales with powerScale and a rarity-based multiplier.
  *
  * Returns an empty array if no effect is granted.
  */
-export function rollWeavePassiveEffects(
+export function rollWeaveEffects(
   affixes: WeaveAffix[],
+  ingredients: CraftedWeaponIngredient[],
   totalWeightedMoteValue: number,
   rng: () => number = Math.random,
 ): WeaveEffectRoll[] {
@@ -295,16 +371,30 @@ export function rollWeavePassiveEffects(
   const rarityMult = EFFECT_RARITY_MULT[highestRarity];
   if (rarityMult <= 0) return [];
 
+  const pool = getEligibleWeaveEffectsForRoll({ ingredients, highestRarity });
+  const effectId = pickWeightedWeaveEffect(pool, rng);
+  if (!effectId) return [];
+
   const powerScale = computeWeavePowerScale(totalWeightedMoteValue);
-  const n = ALL_WEAVE_EFFECT_IDS.length;
-  const effectId = ALL_WEAVE_EFFECT_IDS[Math.min(Math.floor(rng() * n), n - 1)]!;
-  const passiveDef = (WEAVE_PASSIVE_EFFECT_REGISTRY as Record<string, { baseMaxValue: number }>)[effectId];
-  const procDef = (WEAVE_PROC_EFFECT_REGISTRY as Record<string, { baseMaxValue: number }>)[effectId];
-  const baseMaxValue = (passiveDef ?? procDef)!.baseMaxValue;
-  const rawValue = baseMaxValue * powerScale * rarityMult;
+  const def = getWeaveEffectDef(effectId)!;
+  const rawValue = def.baseMaxValue * powerScale * rarityMult;
   const value = parseFloat(rawValue.toFixed(1));
 
   return [{ id: effectId, value }];
+}
+
+/**
+ * Backward-compatible wrapper around rollWeaveEffects with no ingredient flavor context.
+ * Existing call sites that don't have ingredient access still get uniform-weight selection.
+ *
+ * @deprecated Prefer rollWeaveEffects(affixes, ingredients, ...) for flavor-weighted rolling.
+ */
+export function rollWeavePassiveEffects(
+  affixes: WeaveAffix[],
+  totalWeightedMoteValue: number,
+  rng: () => number = Math.random,
+): WeaveEffectRoll[] {
+  return rollWeaveEffects(affixes, [], totalWeightedMoteValue, rng);
 }
 
 // ─── Weave name generation ────────────────────────────────────────────────────
