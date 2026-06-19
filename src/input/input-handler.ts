@@ -23,6 +23,9 @@ export type GameAction =
   | { kind: 'set_respawn_wave'; wave: number }
   | { kind: 'dev_jump_wave'; wave: number }
   | { kind: 'dev_grant_sample_equipment' }
+  | { kind: 'dev_grant_random_lens' }
+  | { kind: 'dev_grant_random_weave' }
+  | { kind: 'dev_simulate_equipment_rewards' }
   | { kind: 'respawn_now' }
   | { kind: 'start_boss_fight'; bossId: number }
   | { kind: 'set_boss_speed'; pct: number }

@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-18
-Current build: 279
+Current build: 280
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,16 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 280: lens/weave acquisition and reward presentation
+
+Completed:
+
+- Added centralized zone-aware lens/weave reward roll helpers with conservative normal, elite, boss, and milestone drop rates.
+- RPG enemy kills, elite defeats, boss defeats, and 10-wave milestones can now add lens/weave rewards to the existing inventories.
+- Added compact dark/gold reward toasts for lens/weave drops with fallback Lens/Weave icons.
+- Added dev-mode RPG menu controls to grant an eligible lens/weave and simulate 100 reward rolls.
+- Lens and weave inventory displays now sort new entries by tier/rarity/power while keeping duplicate copies as separate items.
 
 ### Build 279: lens/weave itemization helper pass
 

@@ -423,6 +423,22 @@ export function createRpgMenuTabPane(
       devRow.appendChild(jumpBtn);
       devSection.appendChild(devRow);
 
+      const rewardRow = document.createElement('div');
+      rewardRow.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;';
+      const rewardButtons: Array<{ label: string; kind: import('../../input').GameAction['kind'] }> = [
+        { label: 'Grant Lens', kind: 'dev_grant_random_lens' },
+        { label: 'Grant Weave', kind: 'dev_grant_random_weave' },
+        { label: 'Sim 100 Rolls', kind: 'dev_simulate_equipment_rewards' },
+      ];
+      for (const def of rewardButtons) {
+        const btn = document.createElement('button');
+        btn.textContent = def.label;
+        btn.style.cssText = 'background:#1b1408;color:#ffcc44;border:1px solid rgba(255,204,68,0.42);padding:4px 6px;border-radius:4px;font-size:0.78em;cursor:pointer;';
+        btn.addEventListener('click', () => dispatch({ kind: def.kind } as import('../../input').GameAction));
+        rewardRow.appendChild(btn);
+      }
+      devSection.appendChild(rewardRow);
+
       // ── Invincibility Mode ──
       const invincRow = document.createElement('div');
       invincRow.className = 'rpg-menu__setting-row';

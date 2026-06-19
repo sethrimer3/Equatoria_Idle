@@ -26,6 +26,21 @@ const RARITY_COLOR: Record<string, string> = {
   Mythic:    '#f55',
 };
 
+const RARITY_RANK: Record<string, number> = {
+  Mythic: 6,
+  Legendary: 5,
+  Epic: 4,
+  Rare: 3,
+  Uncommon: 2,
+  Common: 1,
+};
+
+function getLensSortScore(lens: CraftedLensData): number {
+  const highestTier = Math.max(0, ...lens.effects.map(effect => effect.effectTier));
+  const highestRarity = Math.max(0, ...lens.effects.map(effect => RARITY_RANK[effect.rarity] ?? 0));
+  return highestTier * 1000 + highestRarity * 100 + Math.log10(lens.totalWeightedMoteValue + 1);
+}
+
 // ─── Lens card ────────────────────────────────────────────────────
 
 function buildLensCard(
@@ -353,7 +368,9 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
   // ── Local drag-and-drop ordering ──────────────────────────────────────────
 
   const lensByIdMap = new Map(lenses.map(l => [l.id, l]));
-  const localOrder: string[] = lenses.map(l => l.id);
+  const localOrder: string[] = [...lenses]
+    .sort((a, b) => getLensSortScore(b) - getLensSortScore(a) || a.name.localeCompare(b.name))
+    .map(l => l.id);
 
   let draggingLensId: string | null = null;
   let activeDragPointerId = -1;

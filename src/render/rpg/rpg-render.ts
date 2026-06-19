@@ -158,6 +158,7 @@ import {
   runRpgUpdate, type RpgEnemyUpdateArrays, type RpgUpdateCtx,
 } from './rpg-render-update';
 import type { RpgRender, RpgRenderOptions } from './rpg-render-types';
+import type { GrantedEquipmentReward } from '../../sim/game-state';
 import {
   clampEnemyToBounds as clampEnemyToBoundsHelper,
   createCachedLuckPercentGetter,
@@ -1199,6 +1200,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       drawFrameState.codexNotificationStartedMs = performance.now();
       options.onNewCodexEntry?.();
     },
+    onEquipmentReward:       (reward) => showEquipmentRewardToast(reward),
   });
   initBossDialogueSystem();
 
@@ -1224,6 +1226,63 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const slotIdx = getSlotIdxForWeapon(weaponId);
     if (slotIdx === null) return 1;
     return statsPanel.getWeaponStatMultiplier(slotIdx, 'atkIn');
+  }
+
+  function showEquipmentRewardToast(reward: GrantedEquipmentReward): void {
+    const itemName = reward.item.name || 'Unknown Item';
+    const typeLabel = reward.kind === 'lens' ? 'Lens' : 'Weave';
+    const rarity = reward.kind === 'lens'
+      ? reward.item.effects[0]?.rarity ?? 'Common'
+      : reward.item.affixes[0]?.rarity ?? 'Common';
+    const description = reward.kind === 'lens'
+      ? reward.item.effects[0]?.description ?? 'Equipment reward added to inventory.'
+      : reward.item.affixes[0]
+        ? `${reward.item.affixes[0].label} +${reward.item.affixes[0].value.toFixed(1)}${reward.item.affixes[0].unit}`
+        : 'Equipment reward added to inventory.';
+    let host = container.querySelector<HTMLElement>('.rpg-equipment-reward-toasts');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'rpg-equipment-reward-toasts';
+      host.style.cssText =
+        'position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:25;' +
+        'display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;max-width:min(330px,92%);';
+      container.appendChild(host);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'rpg-equipment-reward-toast';
+    toast.style.cssText =
+      'min-width:220px;max-width:330px;background:rgba(10,8,18,0.94);' +
+      'border:1px solid rgba(226,185,72,0.72);box-shadow:0 0 14px rgba(226,185,72,0.2);' +
+      'border-radius:6px;padding:8px 10px;color:#f6e9bd;font-size:12px;line-height:1.25;' +
+      'font-family:var(--font-primary,serif);';
+    if (reward.isMajor) {
+      toast.style.borderWidth = '2px';
+      toast.style.padding = '10px 12px';
+      toast.style.boxShadow = '0 0 24px rgba(226,185,72,0.34)';
+    }
+    const source = reward.source === 'boss' ? 'Boss Reward' :
+      reward.source === 'milestone' ? 'Milestone Reward' :
+      reward.source === 'elite' ? 'Elite Drop' :
+      reward.source === 'dev' ? 'Dev Reward' : 'Enemy Drop';
+    toast.innerHTML =
+      `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">` +
+      `<span style="width:24px;height:24px;border-radius:50%;border:1px solid rgba(226,185,72,0.7);` +
+      `display:inline-flex;align-items:center;justify-content:center;color:#e2b948;">${reward.kind === 'lens' ? 'L' : 'W'}</span>` +
+      `<span style="color:#e2b948;font-weight:700;">${source}</span>` +
+      `<span style="margin-left:auto;color:#bfa46a;">${typeLabel}</span></div>` +
+      `<div style="font-weight:700;color:#fff5cf;">${itemName}</div>` +
+      `<div style="color:#d8bd74;font-size:11px;">${rarity} ${typeLabel}</div>` +
+      `<div style="color:#bfb6a0;font-size:11px;margin-top:3px;">${description}</div>`;
+    host.appendChild(toast);
+
+    while (host.children.length > 4) host.firstElementChild?.remove();
+    window.setTimeout(() => {
+      toast.style.transition = 'opacity 360ms ease, transform 360ms ease';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-8px)';
+      window.setTimeout(() => toast.remove(), 420);
+    }, reward.isMajor ? 5600 : 3400);
   }
 
   function getWeaponSpdMultiplier(weaponId: string): number {

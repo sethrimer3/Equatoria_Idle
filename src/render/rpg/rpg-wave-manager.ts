@@ -18,6 +18,9 @@
  */
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
+import type { GrantedEquipmentReward } from '../../sim/game-state';
+import { grantEquipmentRewardToRpgState } from '../../sim/game-state';
+import { rollEquipmentReward } from '../../data/rpg/equipment-rewards';
 import { getZoneWaveDefinition } from '../../data/rpg/wave-definitions';
 import { INTER_WAVE_DELAY_MS } from './rpg-constants';
 import { spawnEnemyById } from './rpg-enemy-spawn';
@@ -163,6 +166,7 @@ export interface WaveManagerCtx {
   /** Returns true when dev/diagnostic mode is active (for spawn debug logging). */
   getIsDevMode?(): boolean;
   onNewCodexEntry?(): void;
+  onEquipmentReward?(reward: GrantedEquipmentReward): void;
 }
 
 // ── Handle returned to rpg-render.ts ─────────────────────────────────────
@@ -317,6 +321,16 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     }
     if (rpgSimState.equipChangedDuringInterwave) {
       rpgSimState.secretAchievementFlags.add('wave_clear_after_equip_swap');
+    }
+    if (ctx.getCurrentWave() > 0 && ctx.getCurrentWave() % 10 === 0) {
+      const rewardSpec = rollEquipmentReward({
+        zoneId: rpgSimState.activeZoneId,
+        subzoneId: rpgSimState.activeSubzoneId,
+        wave: ctx.getCurrentWave(),
+        forgeLevel: (rpgSimState.rpgUpgradeLevels.get('forge_craft_level') ?? 0) + 1,
+        source: 'milestone',
+      });
+      if (rewardSpec) ctx.onEquipmentReward?.(grantEquipmentRewardToRpgState(rpgSimState, rewardSpec));
     }
     // wave_clear_all_diff_weapon_tiers: all equipped weapons at different tiers
     if (rpgSimState.equippedWeaponIds.size >= 2) {

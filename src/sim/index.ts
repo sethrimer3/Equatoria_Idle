@@ -1,5 +1,5 @@
-export { createGameState, tapEquation, tryPurchaseUpgrade, tryUnlockNextTier, tryUnlockEquationForge, tryUpgradeLoom, tryPurchaseSpecialLoom, tryAlivenMote, tryUpgradeLoomEfficiencyAction, tapEquationForge, processLoomCapture, applyForgeSacrifice, craftWeapon, craftWeave, craftLens, attachLensToWeapon, grantSampleLensWeaveItems, simTick, getScore, pendingMoteValue } from './game-state';
-export type { GameState, TapResult, SimTickResult, PendingMoteEntry } from './game-state';
+export { createGameState, tapEquation, tryPurchaseUpgrade, tryUnlockNextTier, tryUnlockEquationForge, tryUpgradeLoom, tryPurchaseSpecialLoom, tryAlivenMote, tryUpgradeLoomEfficiencyAction, tapEquationForge, processLoomCapture, applyForgeSacrifice, craftWeapon, craftWeave, craftLens, attachLensToWeapon, grantSampleLensWeaveItems, grantEquipmentReward, grantEquipmentRewardToRpgState, simTick, getScore, pendingMoteValue } from './game-state';
+export type { GameState, TapResult, SimTickResult, PendingMoteEntry, GrantedEquipmentReward } from './game-state';
 
 export * from './equation';
 export * from './resources';

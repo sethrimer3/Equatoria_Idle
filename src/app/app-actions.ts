@@ -21,7 +21,9 @@ import {
   craftLens,
   attachLensToWeapon,
   grantSampleLensWeaveItems,
+  grantEquipmentReward,
 } from '../sim';
+import { rollLensDrop, rollWeaveDrop, rollEquipmentReward } from '../data/rpg/equipment-rewards';
 import { getUnlockedWeaveSlotCount } from '../sim/forge/forge-state';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import { getMotes, spendMotes } from '../sim/resources';
@@ -297,6 +299,51 @@ export function handleAction(
       if (!devMode) break;
       grantSampleLensWeaveItems(state.game);
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'dev_grant_random_lens': {
+      if (!devMode) break;
+      const spec = rollLensDrop({
+        zoneId: state.game.rpg.activeZoneId,
+        subzoneId: state.game.rpg.activeSubzoneId,
+        wave: state.game.rpg.currentWaveByZone[state.game.rpg.activeZoneId] || state.game.rpg.highestWaveReached || 1,
+        forgeLevel: getRpgUpgradeLevel(state.game.rpg, 'forge_craft_level') + 1,
+        source: 'dev',
+        rng: () => 0,
+      });
+      if (spec) grantEquipmentReward(state.game, spec);
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'dev_grant_random_weave': {
+      if (!devMode) break;
+      const spec = rollWeaveDrop({
+        zoneId: state.game.rpg.activeZoneId,
+        subzoneId: state.game.rpg.activeSubzoneId,
+        wave: state.game.rpg.currentWaveByZone[state.game.rpg.activeZoneId] || state.game.rpg.highestWaveReached || 1,
+        forgeLevel: getRpgUpgradeLevel(state.game.rpg, 'forge_craft_level') + 1,
+        source: 'dev',
+        rng: () => 0,
+      });
+      if (spec) grantEquipmentReward(state.game, spec);
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'dev_simulate_equipment_rewards': {
+      if (!devMode) break;
+      const counts: Record<string, number> = {};
+      for (let i = 0; i < 100; i++) {
+        const spec = rollEquipmentReward({
+          zoneId: state.game.rpg.activeZoneId,
+          subzoneId: state.game.rpg.activeSubzoneId,
+          wave: state.game.rpg.currentWaveByZone[state.game.rpg.activeZoneId] || state.game.rpg.highestWaveReached || 1,
+          forgeLevel: getRpgUpgradeLevel(state.game.rpg, 'forge_craft_level') + 1,
+          source: i % 10 === 0 ? 'elite' : 'normal',
+        });
+        const key = spec ? `${spec.source}:${spec.kind}` : 'none';
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+      console.table(counts);
       break;
     }
     case 'respawn_now': {

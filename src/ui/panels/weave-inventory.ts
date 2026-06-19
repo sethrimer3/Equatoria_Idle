@@ -118,6 +118,24 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
     Mythic: '#f55',
   };
 
+  const RARITY_RANK: Record<string, number> = {
+    Mythic: 6,
+    Legendary: 5,
+    Epic: 4,
+    Rare: 3,
+    Uncommon: 2,
+    Common: 1,
+  };
+
+  function getWeaveSortScore(weave: CraftedWeaveData): number {
+    const highestRarity = Math.max(
+      0,
+      ...weave.affixes.map(affix => RARITY_RANK[affix.rarity] ?? 0),
+      ...weave.tierEffects.map(effect => RARITY_RANK[effect.rarity] ?? 0),
+    );
+    return highestRarity * 100 + Math.log10(weave.totalWeightedMoteValue + 1);
+  }
+
   // ── Weave tier effect row (STUB display) ──────────────────────────────
 
   function buildTierEffectRow(effect: WeaveTierEffect): HTMLElement {
@@ -327,11 +345,15 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel): WeaveInv
     currentWeaves = craftedWeaves;
     equippedIds = new Set(equippedSlots.filter((id): id is string => id !== null));
 
-    // Sync localOrder: remove deleted, append new
+    // Sync localOrder: remove deleted, append new sorted by equipped status, rarity, then power.
     const existingIds = new Set(craftedWeaves.map(w => w.id));
     localOrder = localOrder.filter(id => existingIds.has(id));
     const orderSet = new Set(localOrder);
-    for (const weave of craftedWeaves) {
+    const sortedNewWeaves = [...craftedWeaves].sort((a, b) => {
+      const equippedDelta = Number(equippedIds.has(b.id)) - Number(equippedIds.has(a.id));
+      return equippedDelta || getWeaveSortScore(b) - getWeaveSortScore(a) || a.name.localeCompare(b.name);
+    });
+    for (const weave of sortedNewWeaves) {
       if (!orderSet.has(weave.id)) localOrder.push(weave.id);
     }
 

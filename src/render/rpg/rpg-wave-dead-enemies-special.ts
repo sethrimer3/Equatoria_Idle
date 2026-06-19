@@ -27,6 +27,8 @@ import type { WaveManagerCtx } from './rpg-wave-manager';
 import { recordAlivenKill } from '../../dev/session-telemetry';
 import { recalcAllNonEliteBuffs, type BuffableEnemy } from './rpg-elite-buff';
 import { notifyBossDefeated } from './rpg-boss-dialogue';
+import { rollEquipmentReward } from '../../data/rpg/equipment-rewards';
+import { grantEquipmentRewardToRpgState } from '../../sim/game-state';
 
 const ALL_ELITE_TYPE_IDS = [
   'elite_quartz', 'elite_ruby', 'elite_sunstone', 'elite_citrine',
@@ -136,6 +138,14 @@ export function sweepEliteAndAlivenDefeats(
       if (ALL_ELITE_TYPE_IDS.every(t => (rpgSimState.lifetimeKillsByType.get(t) ?? 0) >= 1)) {
         rpgSimState.secretAchievementFlags.add('killed_all_elite_types');
       }
+      const rewardSpec = rollEquipmentReward({
+        zoneId: rpgSimState.activeZoneId,
+        subzoneId: rpgSimState.activeSubzoneId,
+        wave: ctx.getCurrentWave(),
+        forgeLevel: (rpgSimState.rpgUpgradeLevels.get('forge_craft_level') ?? 0) + 1,
+        source: 'elite',
+      });
+      if (rewardSpec) ctx.onEquipmentReward?.(grantEquipmentRewardToRpgState(rpgSimState, rewardSpec));
       eliteEnemies.splice(i, 1);
       recalcAllNonEliteBuffs(_getNonEliteArrays(ctx), eliteEnemies.length);
     }
@@ -235,6 +245,16 @@ export function handleBossDefeat(ctx: WaveManagerCtx): void {
   ctx.exitBossWave();
   const glowC = BOSS_GLOW_COLORS[Math.min(bossEnemy.bossId, BOSS_GLOW_COLORS.length - 1)];
   spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP (${xpMult.toFixed(0)}x)`, 1.0, glowC);
+  for (let i = 0; i < 2; i++) {
+    const rewardSpec = rollEquipmentReward({
+      zoneId: rpgSimState.activeZoneId,
+      subzoneId: rpgSimState.activeSubzoneId,
+      wave: Math.max(ctx.getCurrentWave(), bossEnemy.bossId * 100),
+      forgeLevel: (rpgSimState.rpgUpgradeLevels.get('forge_craft_level') ?? 0) + 1,
+      source: 'boss',
+    });
+    if (rewardSpec) ctx.onEquipmentReward?.(grantEquipmentRewardToRpgState(rpgSimState, rewardSpec));
+  }
   fluid.addExplosion(bossEnemy.x, bossEnemy.y, FLUID_EXPLOSION_STRENGTH * 2.5, FLUID_VOID_R, FLUID_VOID_G, FLUID_VOID_B);
   ctx.setBossEnemy(null);
   bossProjectiles.length = 0;

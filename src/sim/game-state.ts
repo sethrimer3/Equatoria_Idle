@@ -3,8 +3,11 @@ import { TIERS } from '../data/tiers';
 import { createCraftedWeaponDefinition, getForgeCapacity, registerCraftedWeapons } from '../data/rpg/crafted-weapon-helpers';
 import { createCraftedWeave } from '../data/rpg/weave-rolling';
 import { createCraftedLens } from '../data/rpg/lens-rolling';
+import type { EquipmentRewardSpec } from '../data/rpg/equipment-rewards';
 import { getRpgUpgradeLevel } from './rpg';
 import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
+import type { CraftedWeaveData } from '../data/rpg/weave-types';
+import type { CraftedLensData } from '../data/rpg/lens-types';
 import type { SizeIndex } from '../data/particles/size-tiers';
 import { MERGE_THRESHOLD } from '../data/particles/size-tiers';
 import {
@@ -486,7 +489,49 @@ export function grantSampleLensWeaveItems(state: GameState): void {
 
 // ─── Weave loom bonus helper ────────────────────────────────────
 
-import type { CraftedWeaveData } from '../data/rpg/weave-types';
+export type GrantedEquipmentReward =
+  | { kind: 'lens'; item: CraftedLensData; isMajor: boolean; source: EquipmentRewardSpec['source'] }
+  | { kind: 'weave'; item: CraftedWeaveData; isMajor: boolean; source: EquipmentRewardSpec['source'] };
+
+function nextUniqueEquipmentId(prefix: string, existingIds: Set<string>): string {
+  let index = existingIds.size + 1;
+  let id = `${prefix}_${index}`;
+  while (existingIds.has(id)) {
+    index++;
+    id = `${prefix}_${index}`;
+  }
+  existingIds.add(id);
+  return id;
+}
+
+export function grantEquipmentRewardToRpgState(rpgState: RpgSimState, spec: EquipmentRewardSpec): GrantedEquipmentReward {
+  if (spec.kind === 'lens') {
+    const ids = new Set(rpgState.craftedLenses.map(lens => lens.id));
+    for (const weapon of rpgState.craftedWeapons) {
+      if (weapon.attachedLens) ids.add(weapon.attachedLens.id);
+    }
+    const item = createCraftedLens(
+      nextUniqueEquipmentId(`loot_lens_${spec.source}`, ids),
+      spec.ingredients,
+      spec.forgeLevel,
+    );
+    rpgState.craftedLenses.push(item);
+    return { kind: 'lens', item, isMajor: spec.isMajor, source: spec.source };
+  }
+
+  const ids = new Set(rpgState.craftedWeaves.map(weave => weave.id));
+  const item = createCraftedWeave(
+    nextUniqueEquipmentId(`loot_weave_${spec.source}`, ids),
+    spec.ingredients,
+    spec.forgeLevel,
+  );
+  rpgState.craftedWeaves.push(item);
+  return { kind: 'weave', item, isMajor: spec.isMajor, source: spec.source };
+}
+
+export function grantEquipmentReward(state: GameState, spec: EquipmentRewardSpec): GrantedEquipmentReward {
+  return grantEquipmentRewardToRpgState(state.rpg, spec);
+}
 
 function computeEquippedWeaveLoomBonus(
   equippedSlots: (string | null)[],

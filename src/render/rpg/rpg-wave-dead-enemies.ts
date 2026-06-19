@@ -8,6 +8,8 @@
  */
 
 import { addXpWithAllocation, getSkillNodeRank } from '../../sim/rpg/rpg-state';
+import { grantEquipmentRewardToRpgState } from '../../sim/game-state';
+import { rollEquipmentReward } from '../../data/rpg/equipment-rewards';
 import type { WaveManagerCtx } from './rpg-wave-manager';
 import { sweepStandardDeadEnemies } from './rpg-wave-dead-enemies-standard';
 import {
@@ -35,8 +37,22 @@ export function removeDeadEnemiesImpl(
   };
 
   totalXpFromKills += sweepStandardDeadEnemies(ctx, trackedAddKill);
+  const standardKillCount = codexKillCount;
   totalXpFromKills += sweepEliteAndAlivenDefeats(ctx, trackedAddKill);
   handleBossDefeat(ctx);
+
+  for (let i = 0; i < standardKillCount; i++) {
+    const spec = rollEquipmentReward({
+      zoneId: rpgSimState.activeZoneId,
+      subzoneId: rpgSimState.activeSubzoneId,
+      wave: ctx.getCurrentWave(),
+      forgeLevel: (rpgSimState.rpgUpgradeLevels.get('forge_craft_level') ?? 0) + 1,
+      source: 'normal',
+    });
+    if (spec) {
+      ctx.onEquipmentReward?.(grantEquipmentRewardToRpgState(rpgSimState, spec));
+    }
+  }
 
   if (totalXpFromKills > 0) {
     if (codexKillCount > 0) totalXpFromKills *= codexMultiplierTotal / codexKillCount;
