@@ -178,6 +178,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A blazing orange planet-like enemy that circles at range and emits damaging area pulses.',
     shape: 'circle',
     zone: 'euhedral',
+    iconFile: 'EnemyIcon_Sunstone-Orbiter.png',
   },
   {
     id: 'citrine',
@@ -526,6 +527,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     description: 'A pale quartz swarm of 10 particles that periodically phase into an invulnerable ghost state — time your attacks between their flickers.',
     shape: 'circle',
     zone: 'impetus',
+    iconFile: 'EnemyIcon_Aliven-Quartz-Ghost.png',
   },
   {
     id: 'aliven_iolite_prism',
@@ -784,6 +786,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'verdure',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Plant-Turret.png',
   },
   {
     id: 'proc_gearinsect',
@@ -933,6 +936,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'caustics',
     category: 'procedural',
+    iconFile: 'EnemyIcon_Amethyst-Fish.png',
   },
   {
     id: 'proc_diamondfish',
