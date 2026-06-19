@@ -161,3 +161,8 @@ export function getTotalActiveWeaveBuffDefPct(state: RpgSimState): number {
 export function getTotalActiveWeaveBuffCooldownPct(state: RpgSimState): number {
   return getTotalActiveWeaveBuffPct(state, 'cooldownPct');
 }
+
+/** Returns the total weapon damage % bonus from all currently active weave buffs. */
+export function getTotalActiveWeaveBuffWeaponDamagePct(state: RpgSimState): number {
+  return getTotalActiveWeaveBuffPct(state, 'weaponDamagePct');
+}
