@@ -119,6 +119,18 @@ export const WEAVE_PROC_EFFECT_REGISTRY: Readonly<Record<WeaveProcEffectId, Weav
     durationMs: 3000,
     baseMaxValue: 15,
   },
+  weave_echo_strike: {
+    id: 'weave_echo_strike',
+    displayName: 'Echo Strike',
+    description: (v) => `10% chance on hit: +${v.toFixed(1)}% bonus damage`,
+    category: 'proc',
+    trigger: 'playerHitEnemy',
+    baseChancePct: 10,
+    durationMs: 0, // no buff — instant bonus damage
+    // At Uncommon/powerScale≈1: 30×0.45=13.5%; at Mythic/powerScale≈2: 30×1.0×~2=60%.
+    // Kept modest — echo bypasses DEF so effective damage amplification is meaningful.
+    baseMaxValue: 30,
+  },
 } as const;
 
 // ─── Unified effect types ─────────────────────────────────────────────────────
