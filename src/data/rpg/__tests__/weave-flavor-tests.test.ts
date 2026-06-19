@@ -78,6 +78,7 @@ describe('getEligibleWeaveEffectsForRoll', () => {
       highestRarity: 'Uncommon',
     });
     const echoEntry = pool.find(e => e.id === 'weave_echo_strike')!;
+    // echo_strike is the only amethyst-flavored effect — swiftstrike is sand/quartz
     const nonMatchWeights = pool.filter(e => e.id !== 'weave_echo_strike').map(e => e.weight);
     expect(echoEntry.weight).toBeGreaterThan(Math.max(...nonMatchWeights));
   });
