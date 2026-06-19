@@ -535,6 +535,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const shotLines:  ShotLine[]  = [];
   const damageNumbers: DamageNumber[] = [];
   const comboEffects: import('./rpg-types').ComboEffect[] = [];
+  const wardEffects: import('./rpg-types').WardEffect[] = [];
+  /** Timestamp of the last "Reactive Ward" floating text, for anti-spam debounce. */
+  let lastWardTextMs = -Infinity;
   let playerIFramesMs = 0;
 
   // ── Sand blade swing tracking (for sand drift pixel spawning) ──
