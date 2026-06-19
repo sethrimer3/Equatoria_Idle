@@ -1049,7 +1049,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       element.appendChild(invDivider);
       element.appendChild(weaveInventoryPanel.element);
     }
-    weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots);
+    weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots, rpgState);
 
     // 13. Lens inventory (below crafting controls, LENS mode only)
     if (craftingMode === 'lens') {
@@ -1094,7 +1094,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     const forgeLevel = latestForgeState.forgeLevel;
     const unlockedSlots = getUnlockedWeaveSlotCount(forgeLevel);
     weaveSlotsPanel.update(rpgState.equippedWeaveSlots, rpgState.craftedWeaves, unlockedSlots);
-    weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots);
+    weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots, rpgState);
   }
 
   return { element, update };
