@@ -178,6 +178,7 @@ export function serializeGameState(state: GameState): SaveData {
         })),
       })),
       equippedWeaveSlots: state.rpg.equippedWeaveSlots.slice(),
+      resonanceDust: state.rpg.resonanceDust ?? 0,
       craftedLenses: state.rpg.craftedLenses.map(l => ({
         id: l.id,
         name: l.name,
@@ -195,6 +196,7 @@ export function serializeGameState(state: GameState): SaveData {
           rarity: e.rarity,
           isApplied: e.isApplied,
         })),
+        refinementLevel: l.refinementLevel ?? 0,
       })),
     },
     elapsedMs: state.elapsedMs,
