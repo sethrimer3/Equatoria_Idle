@@ -56,6 +56,52 @@ export function tryTriggerPlayerDamagedWeaveEffects(
   return triggered;
 }
 
+// ─── playerHitEnemy proc trigger ─────────────────────────────────────────────
+
+/**
+ * Checks equipped weaves for `playerHitEnemy` proc effects (e.g. weave_echo_strike).
+ * Call after a real weapon hit where finalDmg > 0.
+ *
+ * Returns the ids + bonus damage amounts of any triggered effects.
+ * Caller applies the bonus damage directly to the same enemy — no recursion because
+ * the bonus is applied via a raw damage function, not through performWeaponAttack.
+ *
+ * @param state          - Current rpg sim state.
+ * @param finalDmg       - Actual damage dealt by the triggering hit (post-DEF).
+ * @param applyBonusDmg  - Called with computed bonus HP damage; caller must reduce enemy HP.
+ * @param rng            - RNG function (default Math.random, injectable for tests).
+ */
+export function tryTriggerPlayerHitEnemyWeaveEffects(
+  state: RpgSimState,
+  finalDmg: number,
+  applyBonusDmg: (bonus: number) => void,
+  rng: () => number = Math.random,
+): string[] {
+  if (finalDmg <= 0) return [];
+
+  const { equippedWeaveSlots, craftedWeaves } = state;
+  const weaveById = new Map(craftedWeaves.map(w => [w.id, w]));
+  const triggered: string[] = [];
+
+  for (const slotId of equippedWeaveSlots) {
+    if (!slotId) continue;
+    const weave = weaveById.get(slotId);
+    if (!weave) continue;
+
+    for (const effect of weave.effects ?? []) {
+      const def = WEAVE_PROC_EFFECT_REGISTRY[effect.id as keyof typeof WEAVE_PROC_EFFECT_REGISTRY];
+      if (!def || def.trigger !== 'playerHitEnemy') continue;
+      if (rng() * 100 >= def.baseChancePct) continue;
+
+      const bonus = finalDmg * (effect.value / 100);
+      applyBonusDmg(bonus);
+      triggered.push(effect.id);
+    }
+  }
+
+  return triggered;
+}
+
 // ─── Tick ─────────────────────────────────────────────────────────────────────
 
 /**
