@@ -141,13 +141,14 @@ export function getEquippedLensModifiers(
     }
   }
 
+  const refineMult = getStatMultiplierForLevel(lens.refinementLevel ?? 0);
   return clampCombatModifiers({
-    weaponDamagePct,
+    weaponDamagePct: weaponDamagePct * refineMult,
     cooldownPct: 0,
     projectileSpeedPct: 0,
-    critChancePct,
-    critDamagePct,
-    statusChancePct,
+    critChancePct: critChancePct * refineMult,
+    critDamagePct: critDamagePct * refineMult,
+    statusChancePct: statusChancePct * refineMult,
     playerDefensePct: 0,
     lens,
     tier1StatusParams: buildAllTier1StatusParams(lens, weaponId, hitDamage),
