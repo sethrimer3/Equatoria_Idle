@@ -333,8 +333,8 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       }
     }
 
-    // ── Passive effects section ───────────────────────────────────────────
-    const activeEffects = (weave.effects ?? []).filter(e => getWeavePassiveEffectDef(e.id) !== null);
+    // ── Effects section (passive and proc) ───────────────────────────────
+    const activeEffects = (weave.effects ?? []).filter(e => getWeaveEffectDef(e.id) !== null);
     if (activeEffects.length > 0) {
       const effectsHeader = document.createElement('div');
       effectsHeader.style.cssText = 'font-size:0.7em;color:#6699bb;margin:4px 0 2px;letter-spacing:0.05em;text-transform:uppercase;';
