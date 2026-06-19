@@ -895,8 +895,8 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
         rarity: rarity as CraftedWeaveData['affixes'][number]['rarity'], value: 10, unit: '%', applied: true,
       };
     }
-    // weave_echo_strike is the 5th id (index 4) in ALL_WEAVE_EFFECT_IDS
-    // rng returning 0.95 → floor(0.95 * 5) = 4 → weave_echo_strike
+    // With no flavor context (compat wrapper), all 5 effects get weight 1.0 (total=5).
+    // rng=0.95 → threshold=4.75 → echo_strike (index 4, last in pool).
     const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.95);
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_echo_strike');
