@@ -593,6 +593,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Aliven-Shard-Bloom.png',
   },
   {
     id: 'aliven_elite_pulse_swarm',
@@ -606,6 +607,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Aliven-Pulse-Swarm.png',
   },
   {
     id: 'aliven_elite_ember_ring',
@@ -619,6 +621,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Aliven-Ember-Ring.png',
   },
   {
     id: 'aliven_elite_void_splinters',
@@ -632,6 +635,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shape: 'circle',
     zone: 'impetus',
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Aliven-Void-Splinters.png',
   },
   {
     id: 'aliven_elite_healer_nodes',
