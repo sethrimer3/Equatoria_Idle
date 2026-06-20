@@ -366,6 +366,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     shieldRadius: ELITE_AMETHYST_RADIUS * 2.6,
     shieldColor: ELITE_AMETHYST_GLOW,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Amethyst-Shielder.png',
   },
   {
     id: 'elite_diamond',
@@ -380,6 +381,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     zone: 'euhedral',
     sides: 9,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Diamond-Phase-Shifter.png',
   },
   {
     id: 'elite_nullstone',
@@ -394,6 +396,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     zone: 'euhedral',
     sides: 10,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Nullstone-Gravity-Well.png',
   },
   {
     id: 'verdure_polyomino',
