@@ -1,7 +1,7 @@
 # Equatoria Idle Condensed TODO
 
 Last updated: 2026-06-03
-Current build: 206
+Current build: 298
 
 This file is the condensed action list for AI agents. Keep detailed build history in `nextSteps.md`; keep this file short and current.
 
@@ -136,6 +136,7 @@ Remaining before first Play submission (see ANDROID_RELEASE.md):
 
 ## Completed or superseded references
 
+- [x] Build 298: Quartz boss signature beat missile with three beat-locked split iterations and damaging thick trails.
 - [x] Build 297: Quartz boss now uses the real `ASSETS/bossMidi/1-QuartzBoss/` MIDI/OGG phrase folder instead of the temporary demo MIDI.
 - [x] Build 296: boss MIDI attack scheduler with demo Boss 1 pattern, mapping config, fallback behavior, dev diagnostics, and scheduler/parser tests.
 - [x] Build 201: initial crafted weapon save/load, resolver, action, UI.

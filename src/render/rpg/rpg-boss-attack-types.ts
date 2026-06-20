@@ -279,13 +279,53 @@ export interface SwarmAttackInstance {
 
 // ── Union type ────────────────────────────────────────────────────────────────
 
+export interface QuartzSignatureTrailSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  iteration: number;
+  ageMs: number;
+  hazardMs: number;
+}
+
+export interface QuartzSignatureMissile {
+  x: number;
+  y: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  angle: number;
+  iteration: number;
+  beatProgressMs: number;
+  active: boolean;
+}
+
+export interface QuartzSignatureAttackInstance {
+  readonly kind: 'quartzSignature';
+  ageMs: number;
+  durationMs: number;
+  missiles: QuartzSignatureMissile[];
+  trailSegments: QuartzSignatureTrailSegment[];
+  beatMs: number;
+  stepDistance: number;
+  maxIteration: number;
+  trailHazardMs: number;
+  trailFadeMs: number;
+  color: string;
+  glowColor: string;
+  difficulty: number;
+}
+
 export type BossAttackInstance =
   | GravAttackInstance
   | HexAttackInstance
   | MandalaAttackInstance
   | VermiculateAttackInstance
   | MissileAttackInstance
-  | SwarmAttackInstance;
+  | SwarmAttackInstance
+  | QuartzSignatureAttackInstance;
 
 // ── Boss attack state (held in rpg-render.ts closure) ────────────────────────
 

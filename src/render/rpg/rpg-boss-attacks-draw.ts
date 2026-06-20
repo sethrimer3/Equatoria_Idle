@@ -18,6 +18,7 @@ import type {
   HexAttackInstance,
   MandalaAttackInstance,
   MissileAttackInstance,
+  QuartzSignatureAttackInstance,
   SwarmAttackInstance,
   TrailRing,
   VermiculateAttackInstance,
@@ -83,6 +84,7 @@ export function drawBossAttacks(
       case 'vermiculate': _drawVermiculate(ctx, atk as VermiculateAttackInstance); break;
       case 'missileRing': _drawMissile(ctx, atk as MissileAttackInstance); break;
       case 'motherSwarm': _drawSwarm(ctx, atk as SwarmAttackInstance); break;
+      case 'quartzSignature': _drawQuartzSignature(ctx, atk as QuartzSignatureAttackInstance); break;
     }
   }
 
@@ -336,6 +338,53 @@ function _drawMissile(ctx: CanvasRenderingContext2D, atk: MissileAttackInstance)
 }
 
 // ── Mother swarm ──────────────────────────────────────────────────────────────
+
+function _drawQuartzSignature(ctx: CanvasRenderingContext2D, atk: QuartzSignatureAttackInstance): void {
+  for (const segment of atk.trailSegments) {
+    const fadeAge = Math.max(0, segment.ageMs - segment.hazardMs);
+    const alpha = segment.ageMs <= segment.hazardMs
+      ? 0.95
+      : Math.max(0, 1 - fadeAge / atk.trailFadeMs) * 0.95;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = atk.color;
+    ctx.lineWidth = 10;
+    if (!_lowGraphics) {
+      ctx.shadowColor = atk.glowColor;
+      ctx.shadowBlur = 12;
+    }
+    ctx.beginPath();
+    ctx.moveTo(segment.x1, segment.y1);
+    ctx.lineTo(segment.x2, segment.y2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  for (const missile of atk.missiles) {
+    if (!missile.active) continue;
+    ctx.save();
+    ctx.translate(missile.x, missile.y);
+    ctx.rotate(missile.angle);
+    ctx.fillStyle = atk.color;
+    ctx.strokeStyle = '#bdb6a8';
+    ctx.lineWidth = 1;
+    if (!_lowGraphics) {
+      ctx.shadowColor = atk.glowColor;
+      ctx.shadowBlur = 14;
+    }
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(0, 8);
+    ctx.lineTo(-8, 0);
+    ctx.lineTo(0, -8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
 
 function _drawSwarm(ctx: CanvasRenderingContext2D, atk: SwarmAttackInstance): void {
   const globalFade = Math.min(1, (atk.durationMs - atk.ageMs) / atk.trailPersistenceMs);

@@ -6,7 +6,8 @@ export type BossMidiAttackKind =
   | 'mandala'
   | 'vermiculate'
   | 'missileRing'
-  | 'motherSwarm';
+  | 'motherSwarm'
+  | 'quartzSignature';
 
 export interface BossMidiPatternConfig {
   bossId: number;
@@ -121,6 +122,8 @@ function paramsForKind(kind: BossMidiAttackKind, intensity: number): Record<stri
       return { bodyCount: Math.max(2, Math.round(3 * intensity)), wellCount: 1, strength: 0.002 * intensity, moving: intensity > 1, hazardMode: 'visualOnly' };
     case 'motherSwarm':
       return { followerCount: Math.round(20 + 20 * intensity), hazardMode: 'headOnly' };
+    case 'quartzSignature':
+      return { stepDistance: 112, maxIteration: 3, trailHazardMs: 2000, trailFadeMs: 450 };
     case 'mandala':
     default:
       return { radialCount: Math.max(5, Math.round(6 * intensity)), safeGaps: 2, waveInterval: Math.max(900, 1900 / intensity), speed: 65 + 20 * intensity };

@@ -17,6 +17,7 @@ import type {
   HexAttackInstance,
   MandalaAttackInstance,
   MissileAttackInstance,
+  QuartzSignatureAttackInstance,
   SwarmAttackInstance,
   VermiculateAttackInstance,
 } from './rpg-boss-attack-types';
@@ -27,6 +28,12 @@ import { spawnMandalaAttack,     updateMandalaAttack,     getMandalaHazardCircle
 import { spawnVermiculateAttack, updateVermiculateAttack, getVermiculateHazardCircles } from './attacks/rpg-attack-vermiculate';
 import { spawnMissileAttack,     updateMissileAttack,     getMissileHazardCircles     } from './attacks/rpg-attack-missile';
 import { spawnSwarmAttack,       updateSwarmAttack,       getSwarmHazardCircles       } from './attacks/rpg-attack-swarm';
+import {
+  spawnQuartzSignatureAttack,
+  updateQuartzSignatureAttack,
+  getQuartzSignatureHazardCapsules,
+  getQuartzSignatureHazardCircles,
+} from './attacks/rpg-attack-quartz-signature';
 import { PLAYER_HIT_RADIUS, PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS } from './rpg-constants';
 import { isPlayerInStageDirectorSafeZone } from './rpg-boss-stage-director';
 
@@ -115,6 +122,7 @@ function _dispatchUpdate(
     case 'vermiculate': updateVermiculateAttack(atk as VermiculateAttackInstance, ctx.playerX, ctx.playerY, ctx.dim, deltaMs); break;
     case 'missileRing': updateMissileAttack(atk as MissileAttackInstance, ctx.playerX, ctx.playerY, ctx.dim, deltaMs); break;
     case 'motherSwarm': updateSwarmAttack(atk as SwarmAttackInstance, ctx.playerX, ctx.playerY, ctx.dim, deltaMs); break;
+    case 'quartzSignature': updateQuartzSignatureAttack(atk as QuartzSignatureAttackInstance, ctx.playerX, ctx.playerY, ctx.dim, deltaMs); break;
   }
 }
 
@@ -168,6 +176,9 @@ export function spawnBossAttackFromConfig(
       break;
     case 'motherSwarm':
       instance = spawnSwarmAttack(bossX, bossY, cfg.params, difficulty);
+      break;
+    case 'quartzSignature':
+      instance = spawnQuartzSignatureAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
       break;
   }
 
@@ -259,6 +270,15 @@ function _checkAttackHitsPlayer(
       }
       break;
     }
+    case 'quartzSignature': {
+      for (const { x1, y1, x2, y2, r } of getQuartzSignatureHazardCapsules(atk as QuartzSignatureAttackInstance)) {
+        if (_pointNearSegment(px, py, x1, y1, x2, y2, r + pr)) return true;
+      }
+      for (const { x, y, r } of getQuartzSignatureHazardCircles(atk as QuartzSignatureAttackInstance)) {
+        if (_circlesOverlap(px, py, pr, x, y, r)) return true;
+      }
+      break;
+    }
   }
   return false;
 }
@@ -269,7 +289,7 @@ function _applyDamageToPlayer(
 ): void {
   // Base damage per attack family — can be tuned in config later
   const BASE_DMG: Record<string, number> = {
-    grav: 8, hexTrail: 10, mandala: 9, vermiculate: 9, missileRing: 12, motherSwarm: 7,
+    grav: 8, hexTrail: 10, mandala: 9, vermiculate: 9, missileRing: 12, motherSwarm: 7, quartzSignature: 13,
   };
   const raw = BASE_DMG[atk.kind] ?? 8;
   const defPct = Math.min(80, ctx.playerStats.def) / 100;

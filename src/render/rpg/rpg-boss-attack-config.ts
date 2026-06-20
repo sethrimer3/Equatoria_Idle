@@ -12,7 +12,8 @@ export type BossAttackKind =
   | 'mandala'
   | 'vermiculate'
   | 'missileRing'
-  | 'motherSwarm';
+  | 'motherSwarm'
+  | 'quartzSignature';
 
 export interface BossAttackKindConfig {
   kind: BossAttackKind;

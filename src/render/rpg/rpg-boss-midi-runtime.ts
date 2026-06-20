@@ -21,6 +21,8 @@ interface CachedPattern {
 }
 
 const MAX_MIDI_ACTIVE_ATTACKS = 6;
+const QUARTZ_SIGNATURE_BEAT_MS = 1000;
+const QUARTZ_SIGNATURE_INTERVAL_BEATS = 5;
 
 export interface BossMidiRuntimeState {
   scheduler: BossMidiSchedulerState;
@@ -29,6 +31,7 @@ export interface BossMidiRuntimeState {
   lastTriggered: BossMidiNoteEvent | null;
   lastAttackKind: string | null;
   nextPhraseIndex: number;
+  nextQuartzSignatureMs: number;
   readonly cache: Map<number, CachedPattern>;
 }
 
@@ -40,6 +43,7 @@ export function createBossMidiRuntimeState(): BossMidiRuntimeState {
     lastTriggered: null,
     lastAttackKind: null,
     nextPhraseIndex: 0,
+    nextQuartzSignatureMs: QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS,
     cache: new Map(),
   };
 }
@@ -50,6 +54,7 @@ export function resetBossMidiRuntime(state: BossMidiRuntimeState): void {
   state.lastTriggered = null;
   state.lastAttackKind = null;
   state.nextPhraseIndex = 0;
+  state.nextQuartzSignatureMs = QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS;
 }
 
 export function ensureBossMidiLoaded(state: BossMidiRuntimeState, bossId: number): void {
@@ -96,6 +101,7 @@ export function beginBossMidiRuntime(state: BossMidiRuntimeState, bossId: number
   state.lastTriggered = null;
   state.lastAttackKind = null;
   state.nextPhraseIndex = 0;
+  state.nextQuartzSignatureMs = QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS;
   resetBossMidiScheduler(state.scheduler);
   ensureBossMidiLoaded(state, bossId);
 }
@@ -114,6 +120,9 @@ export function updateBossMidiRuntime(
   if (!cached || cached.status !== 'ready') return;
   const previousMs = state.scheduler.elapsedMs;
   const nextMs = previousMs + deltaMs;
+  if (boss.bossId === 1) {
+    triggerQuartzSignatureOnBeat(state, attackState, attackCtx, boss, nextMs);
+  }
   while (state.nextPhraseIndex < cached.phrases.length) {
     const phrase = cached.phrases[state.nextPhraseIndex];
     if (phrase.startMs > nextMs) break;
@@ -128,6 +137,41 @@ export function updateBossMidiRuntime(
       state.lastAttackKind = mapped.kindConfig.kind;
     }
   });
+}
+
+function triggerQuartzSignatureOnBeat(
+  state: BossMidiRuntimeState,
+  attackState: BossAttackState,
+  attackCtx: BossAttackUpdateCtx,
+  boss: BossEnemy,
+  nextMs: number,
+): void {
+  while (nextMs >= state.nextQuartzSignatureMs) {
+    const spawned = triggerBossMidiAttack(
+      attackState,
+      attackCtx,
+      boss,
+      {
+        timeMs: state.nextQuartzSignatureMs,
+        durationMs: 0,
+        beat: state.nextQuartzSignatureMs / QUARTZ_SIGNATURE_BEAT_MS,
+        durationBeats: 0,
+        note: 0,
+        velocity: 96,
+        channel: 0,
+      },
+      getBossMidiPattern(1)!,
+      {
+        kind: 'quartzSignature',
+        cooldownMs: 0,
+        pressureScore: 2,
+        durationMs: 5450,
+        params: { stepDistance: 112, maxIteration: 3, trailHazardMs: 2000, trailFadeMs: 450 },
+      },
+    );
+    if (spawned) state.lastAttackKind = 'quartzSignature';
+    state.nextQuartzSignatureMs += QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS;
+  }
 }
 
 export function triggerBossMidiAttack(
