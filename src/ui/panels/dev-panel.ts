@@ -29,7 +29,7 @@ import {
   refreshTelemetryTables,
 } from './dev-panel-render';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
-import { getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, getTotalActiveWeaveBuffWeaponDamagePct } from '../../data/rpg/weave-proc-effects';
+import { getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, getTotalActiveWeaveBuffWeaponDamagePct, formatActiveWeaveBuffStat, getActiveWeaveBuffDisplayName } from '../../data/rpg/weave-proc-effects';
 
 // ─── Public interface ────────────────────────────────────────────
 
@@ -225,21 +225,17 @@ export function createDevPanel(): DevPanel {
       weaveBuffsLine.textContent = 'No active weave buffs';
       weaveBuffTotalsLine.textContent = '';
     } else {
-      weaveBuffsLine.textContent = buffs.map(b => {
-        const sign = b.statKey === 'cooldownPct' ? '-' : '+';
-        const label = b.statKey === 'cooldownPct' ? 'cooldown'
-          : b.statKey === 'weaponDamagePct' ? 'weapon damage'
-          : 'DEF';
-        return `${b.effectId}: ${sign}${b.valuePct.toFixed(1)}% ${label}, ${(b.remainingMs / 1000).toFixed(1)}s`;
-      }).join(' | ');
+      weaveBuffsLine.textContent = buffs.map(b =>
+        `${getActiveWeaveBuffDisplayName(b.effectId)}: ${formatActiveWeaveBuffStat(b.statKey, b.valuePct)}, ${(b.remainingMs / 1000).toFixed(1)}s`,
+      ).join(' | ');
       const dmgPct = getTotalActiveWeaveBuffWeaponDamagePct(rpg);
       const cdrPct = getTotalActiveWeaveBuffCooldownPct(rpg);
       const defPct = getTotalActiveWeaveBuffDefPct(rpg);
       const parts: string[] = [];
-      if (dmgPct > 0) parts.push(`DMG +${dmgPct.toFixed(2)}%`);
-      if (cdrPct > 0) parts.push(`CDR -${cdrPct.toFixed(2)}%`);
-      if (defPct > 0) parts.push(`DEF +${defPct.toFixed(2)}%`);
-      weaveBuffTotalsLine.textContent = parts.length > 0 ? parts.join(' / ') : '';
+      if (dmgPct > 0) parts.push(`+${dmgPct.toFixed(2)}% weapon damage`);
+      if (cdrPct > 0) parts.push(`-${cdrPct.toFixed(2)}% cooldown`);
+      if (defPct > 0) parts.push(`+${defPct.toFixed(2)}% DEF`);
+      weaveBuffTotalsLine.textContent = parts.length > 0 ? `Totals: ${parts.join(' / ')}` : '';
     }
   }
 

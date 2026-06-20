@@ -10,16 +10,16 @@
  * getTotalActiveWeaveBuffWeaponDamagePct: helper for weapon damage bonus from active buffs.
  */
 
-import type { RpgSimState, ActiveWeaveBuff } from '../../sim/rpg/rpg-state';
-import type { ActiveWeaveBuffStat } from '../../sim/rpg/rpg-state';
-import { WEAVE_PROC_EFFECT_REGISTRY } from './weave-effects-registry';
+import type { RpgSimState, ActiveWeaveBuff, ActiveWeaveBuffStat } from '../../sim/rpg/rpg-state';
+import { WEAVE_PROC_EFFECT_REGISTRY, getWeaveEffectDef } from './weave-effects-registry';
+import type { WeaveProcEffectId } from './weave-effects-registry';
 
 /**
  * Maps each buff-granting playerHitEnemy proc effectId to the stat it modifies.
  * Instant procs (durationMs === 0, e.g. weave_echo_strike) are not listed here —
  * they call applyBonusDmg directly and never create an ActiveWeaveBuff.
  */
-const HIT_BUFF_STAT_MAP: Readonly<Partial<Record<string, ActiveWeaveBuffStat>>> = {
+const HIT_BUFF_STAT_MAP: Readonly<Partial<Record<WeaveProcEffectId, ActiveWeaveBuffStat>>> = {
   weave_swiftstrike: 'cooldownPct',
   weave_ember_surge: 'weaponDamagePct',
 } as const;
@@ -28,10 +28,56 @@ const HIT_BUFF_STAT_MAP: Readonly<Partial<Record<string, ActiveWeaveBuffStat>>> 
  * Maps each buff-granting playerDamaged proc effectId to the stat it modifies.
  * Add new defensive on-hit procs here without touching the trigger loop.
  */
-const DAMAGE_BUFF_STAT_MAP: Readonly<Partial<Record<string, ActiveWeaveBuffStat>>> = {
+const DAMAGE_BUFF_STAT_MAP: Readonly<Partial<Record<WeaveProcEffectId, ActiveWeaveBuffStat>>> = {
   weave_reactive_ward: 'playerDefensePct',
   weave_aegis_flash: 'playerDefensePct',
 } as const;
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Adds or refreshes an active weave buff for a given effectId.
+ * - If no existing buff for the effectId: pushes a new entry.
+ * - If an existing buff exists: refreshes duration and keeps the stronger valuePct.
+ * Never creates duplicate entries for the same effectId.
+ */
+export function upsertActiveWeaveBuff(
+  state: RpgSimState,
+  effectId: string,
+  statKey: ActiveWeaveBuffStat,
+  valuePct: number,
+  durationMs: number,
+): void {
+  const existing = state.activeWeaveBuffs.find(b => b.effectId === effectId);
+  if (existing) {
+    existing.remainingMs = durationMs;
+    if (valuePct > existing.valuePct) existing.valuePct = valuePct;
+  } else {
+    const buff: ActiveWeaveBuff = { effectId, statKey, valuePct, remainingMs: durationMs };
+    state.activeWeaveBuffs.push(buff);
+  }
+}
+
+/**
+ * Formats a single active weave buff's stat contribution as a short string.
+ * - `playerDefensePct` → `+12.0% DEF`
+ * - `cooldownPct`      → `-5.5% cooldown`
+ * - `weaponDamagePct`  → `+8.0% weapon damage`
+ */
+export function formatActiveWeaveBuffStat(statKey: ActiveWeaveBuffStat, valuePct: number): string {
+  switch (statKey) {
+    case 'cooldownPct':      return `-${valuePct.toFixed(1)}% cooldown`;
+    case 'weaponDamagePct':  return `+${valuePct.toFixed(1)}% weapon damage`;
+    case 'playerDefensePct': return `+${valuePct.toFixed(1)}% DEF`;
+  }
+}
+
+/**
+ * Returns the display name for an active buff's effectId, with a safe fallback.
+ */
+export function getActiveWeaveBuffDisplayName(effectId: string): string {
+  return getWeaveEffectDef(effectId)?.displayName ?? 'Unknown Weave Effect';
+}
 
 // ─── Trigger ──────────────────────────────────────────────────────────────────
 
@@ -60,21 +106,9 @@ export function tryTriggerPlayerDamagedWeaveEffects(
       if (!def || def.trigger !== 'playerDamaged') continue;
       if (rng() * 100 >= def.baseChancePct) continue;
 
-      const statKey = DAMAGE_BUFF_STAT_MAP[effect.id];
+      const statKey = DAMAGE_BUFF_STAT_MAP[effect.id as WeaveProcEffectId];
       if (!statKey) continue; // unknown buff stat — skip gracefully
-      const existing = state.activeWeaveBuffs.find(b => b.effectId === effect.id);
-      if (existing) {
-        existing.remainingMs = def.durationMs;
-        if (effect.value > existing.valuePct) existing.valuePct = effect.value;
-      } else {
-        const buff: ActiveWeaveBuff = {
-          effectId: effect.id,
-          statKey,
-          valuePct: effect.value,
-          remainingMs: def.durationMs,
-        };
-        state.activeWeaveBuffs.push(buff);
-      }
+      upsertActiveWeaveBuff(state, effect.id, statKey, effect.value, def.durationMs);
       triggered.push(effect.id);
     }
   }
@@ -127,21 +161,9 @@ export function tryTriggerPlayerHitEnemyWeaveEffects(
         // Same effectId: refresh duration and keep the stronger valuePct.
         // This prevents unlimited stacking from a single source while allowing
         // natural refresh on repeated procs within the same combat.
-        const statKey = HIT_BUFF_STAT_MAP[effect.id];
+        const statKey = HIT_BUFF_STAT_MAP[effect.id as WeaveProcEffectId];
         if (!statKey) continue; // unknown buff stat — skip gracefully
-        const existing = state.activeWeaveBuffs.find(b => b.effectId === effect.id);
-        if (existing) {
-          existing.remainingMs = def.durationMs;
-          if (effect.value > existing.valuePct) existing.valuePct = effect.value;
-        } else {
-          const buff: ActiveWeaveBuff = {
-            effectId: effect.id,
-            statKey,
-            valuePct: effect.value,
-            remainingMs: def.durationMs,
-          };
-          state.activeWeaveBuffs.push(buff);
-        }
+        upsertActiveWeaveBuff(state, effect.id, statKey, effect.value, def.durationMs);
       } else {
         // Instant damage proc (e.g. weave_echo_strike): no buff, apply bonus damage.
         const bonus = finalDmg * (effect.value / 100);

@@ -28,7 +28,7 @@ import { getUnlockedWeaveSlotCount } from '../../../sim/forge/forge-state';
 import { aggregateEquippedWeaveEffects } from '../weave-effects';
 import { getEquippedWeaveModifiers } from '../equipment-modifiers';
 import { createRpgSimState } from '../../../sim/rpg/rpg-state';
-import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, getTotalActiveWeaveBuffWeaponDamagePct } from '../weave-proc-effects';
+import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, getTotalActiveWeaveBuffWeaponDamagePct, upsertActiveWeaveBuff, formatActiveWeaveBuffStat, getActiveWeaveBuffDisplayName } from '../weave-proc-effects';
 import { ALL_WEAVE_EFFECT_IDS, getWeaveEffectDef } from '../weave-effects-registry';
 import { createGameState } from '../../../sim/game-state';
 import { craftWeave } from '../../../sim/game-state';
@@ -1312,5 +1312,98 @@ describe('weave_aegis_flash proc', () => {
     state.equippedWeaveSlots = ['w-bad', null, null, null, null, null];
     expect(() => tryTriggerPlayerDamagedWeaveEffects(state, () => 0)).not.toThrow();
     expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+});
+
+// ─── upsertActiveWeaveBuff ────────────────────────────────────────
+
+describe('upsertActiveWeaveBuff', () => {
+  it('adds a new buff when none exists for effectId', () => {
+    const state = createRpgSimState();
+    upsertActiveWeaveBuff(state, 'weave_aegis_flash', 'playerDefensePct', 20, 1500);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.effectId).toBe('weave_aegis_flash');
+    expect(state.activeWeaveBuffs[0]!.valuePct).toBe(20);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(1500);
+  });
+
+  it('refreshes duration when effectId already exists', () => {
+    const state = createRpgSimState();
+    upsertActiveWeaveBuff(state, 'weave_aegis_flash', 'playerDefensePct', 20, 1500);
+    state.activeWeaveBuffs[0]!.remainingMs = 300;
+    upsertActiveWeaveBuff(state, 'weave_aegis_flash', 'playerDefensePct', 20, 1500);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(1500);
+  });
+
+  it('keeps stronger valuePct when refreshing', () => {
+    const state = createRpgSimState();
+    upsertActiveWeaveBuff(state, 'weave_aegis_flash', 'playerDefensePct', 20, 1500);
+    upsertActiveWeaveBuff(state, 'weave_aegis_flash', 'playerDefensePct', 30, 1500);
+    expect(state.activeWeaveBuffs[0]!.valuePct).toBe(30);
+    // Weaker value should not overwrite
+    upsertActiveWeaveBuff(state, 'weave_aegis_flash', 'playerDefensePct', 10, 1500);
+    expect(state.activeWeaveBuffs[0]!.valuePct).toBe(30);
+  });
+
+  it('does not create duplicate entries for the same effectId', () => {
+    const state = createRpgSimState();
+    upsertActiveWeaveBuff(state, 'weave_reactive_ward', 'playerDefensePct', 10, 3000);
+    upsertActiveWeaveBuff(state, 'weave_reactive_ward', 'playerDefensePct', 10, 3000);
+    upsertActiveWeaveBuff(state, 'weave_reactive_ward', 'playerDefensePct', 10, 3000);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+  });
+
+  it('different effectIds create separate entries', () => {
+    const state = createRpgSimState();
+    upsertActiveWeaveBuff(state, 'weave_reactive_ward', 'playerDefensePct', 10, 3000);
+    upsertActiveWeaveBuff(state, 'weave_aegis_flash', 'playerDefensePct', 20, 1500);
+    expect(state.activeWeaveBuffs).toHaveLength(2);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(30, 5);
+  });
+
+  it('swiftstrike and ember_surge use distinct stat keys', () => {
+    const state = createRpgSimState();
+    upsertActiveWeaveBuff(state, 'weave_swiftstrike', 'cooldownPct', 5, 2000);
+    upsertActiveWeaveBuff(state, 'weave_ember_surge', 'weaponDamagePct', 8, 2500);
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBeCloseTo(5, 5);
+    expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBeCloseTo(8, 5);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
+  });
+});
+
+// ─── formatActiveWeaveBuffStat ────────────────────────────────────
+
+describe('formatActiveWeaveBuffStat', () => {
+  it('formats DEF as positive', () => {
+    expect(formatActiveWeaveBuffStat('playerDefensePct', 12)).toBe('+12.0% DEF');
+  });
+
+  it('formats cooldown as reduction (negative sign)', () => {
+    expect(formatActiveWeaveBuffStat('cooldownPct', 5.5)).toBe('-5.5% cooldown');
+  });
+
+  it('formats weapon damage as positive', () => {
+    expect(formatActiveWeaveBuffStat('weaponDamagePct', 8)).toBe('+8.0% weapon damage');
+  });
+});
+
+// ─── getActiveWeaveBuffDisplayName ───────────────────────────────
+
+describe('getActiveWeaveBuffDisplayName', () => {
+  it('returns display name for known effect IDs', () => {
+    expect(getActiveWeaveBuffDisplayName('weave_reactive_ward')).toBe('Reactive Ward');
+    expect(getActiveWeaveBuffDisplayName('weave_aegis_flash')).toBe('Aegis Flash');
+    expect(getActiveWeaveBuffDisplayName('weave_swiftstrike')).toBe('Swiftstrike');
+    expect(getActiveWeaveBuffDisplayName('weave_ember_surge')).toBe('Ember Surge');
+  });
+
+  it('falls back safely for unknown effect IDs', () => {
+    expect(getActiveWeaveBuffDisplayName('weave_nonexistent')).toBe('Unknown Weave Effect');
+    expect(getActiveWeaveBuffDisplayName('')).toBe('Unknown Weave Effect');
+  });
+
+  it('echo strike has a display name (instant proc, not a buff)', () => {
+    expect(getActiveWeaveBuffDisplayName('weave_echo_strike')).toBe('Echo Strike');
   });
 });
