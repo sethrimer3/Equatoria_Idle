@@ -71,6 +71,7 @@ import { createRpgTargeting, type RpgTargetingHandle } from './rpg-targeting';
 import { performWeaponAttack as _performWeaponAttack, type RpgPlayerAttackCtx } from './rpg-player-attack';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
 import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct } from '../../data/rpg/weave-proc-effects';
+import { applyLingeringHex, tickLingeringHexDebuffs } from '../../sim/rpg/weave-enemy-debuffs';
 import { WARD_TOTAL_MS } from './rpg-combat-effects-draw';
 import type {
   EmeraldEnemy,
@@ -546,6 +547,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let lastEmberSurgeTextMs = -Infinity;
   /** Timestamp of the last "Aegis Flash" floating text — debounce for repeated damage spam. */
   let lastAegisFlashTextMs = -Infinity;
+  /** Timestamp of the last "Lingering Hex" floating text — debounce for multi-hit proc spam. */
+  let lastLingeringHexTextMs = -Infinity;
   let playerIFramesMs = 0;
 
   // ── Sand blade swing tracking (for sand drift pixel spawning) ──
@@ -1481,8 +1484,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     applyNullstonePull(hitX: number, hitY: number, radius: number): void {
       weaponSystems.spawnCraftedVortex(hitX, hitY, radius);
     },
-    onWeaponHitEnemy(finalDmg, hitX, hitY, _maxHp, applyBonusDmg): void {
-      const triggered = tryTriggerPlayerHitEnemyWeaveEffects(rpgSimState, finalDmg, applyBonusDmg);
+    onWeaponHitEnemy(finalDmg, hitX, hitY, _maxHp, applyBonusDmg, targetEntity): void {
+      const applyDebuff = targetEntity
+        ? (vp: number, dur: number) => applyLingeringHex(targetEntity, vp, dur)
+        : undefined;
+      const triggered = tryTriggerPlayerHitEnemyWeaveEffects(rpgSimState, finalDmg, applyBonusDmg, applyDebuff);
       if (triggered.length > 0) {
         const nowMs = performance.now();
         if (triggered.includes('weave_echo_strike') && nowMs - lastEchoTextMs > 300) {
@@ -1498,6 +1504,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           lastEmberSurgeTextMs = nowMs;
           // Warm orange-gold — matches the citrine/ruby flavor palette.
           spawnDamageNumber(hitX, hitY - 20, 0, -0.8, 'Ember Surge', 0.25, '#ff8c42');
+        }
+        if (triggered.includes('weave_lingering_hex') && nowMs - lastLingeringHexTextMs > 300) {
+          lastLingeringHexTextMs = nowMs;
+          // Muted violet — matches the iolite/amethyst flavor palette.
+          spawnDamageNumber(hitX, hitY - 28, 0, -0.8, 'Lingering Hex', 0.25, '#b57bee');
         }
       }
     },
@@ -1785,7 +1796,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid: { reset: () => fluid.reset() },
     bossWave: { exitBossWave: () => bossWave.exitBossWave(), startBossFight: (id) => bossWave.startBossFight(id) },
     getBossEnemy: () => bossEnemy,
-    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; lastEmberSurgeTextMs = -Infinity; lastAegisFlashTextMs = -Infinity; },
+    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; lastEmberSurgeTextMs = -Infinity; lastAegisFlashTextMs = -Infinity; lastLingeringHexTextMs = -Infinity;},
     setBossEnemy:            (b) => { bossEnemy = b; },
     setBinaryLaserSweep:     (_sweep) => { binaryLaserSweep = null; },
     setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },
@@ -2047,6 +2058,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         if (afterimages[_i].alpha <= 0) afterimages.splice(_i, 1);
       }
       if (tickActiveWeaveBuffs(rpgSimState, deltaMs)) applyEquipmentStats();
+      tickLingeringHexDebuffs(deltaMs);
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
 
       if (_isDevMode && _showDebugOverlay) {

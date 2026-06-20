@@ -25,6 +25,15 @@ const HIT_BUFF_STAT_MAP: Readonly<Partial<Record<WeaveProcEffectId, ActiveWeaveB
 } as const;
 
 /**
+ * Set of playerHitEnemy proc effectIds that apply a debuff to the HIT ENEMY
+ * rather than granting a buff to the player. These call applyEnemyDebuff instead
+ * of upsertActiveWeaveBuff, and intentionally do NOT interact with lens combos.
+ */
+const HIT_ENEMY_DEBUFF_IDS: ReadonlySet<WeaveProcEffectId> = new Set([
+  'weave_lingering_hex',
+]);
+
+/**
  * Maps each buff-granting playerDamaged proc effectId to the stat it modifies.
  * Add new defensive on-hit procs here without touching the trigger loop.
  */
@@ -129,15 +138,19 @@ export function tryTriggerPlayerDamagedWeaveEffects(
  * stronger of the existing vs new value. This prevents unlimited buff stacking
  * from a single source while allowing natural refresh on repeated procs.
  *
- * @param state          - Current rpg sim state.
- * @param finalDmg       - Actual damage dealt by the triggering hit (post-DEF).
- * @param applyBonusDmg  - Called with computed bonus HP damage; caller must reduce enemy HP.
- * @param rng            - RNG function (default Math.random, injectable for tests).
+ * @param state            - Current rpg sim state.
+ * @param finalDmg         - Actual damage dealt by the triggering hit (post-DEF).
+ * @param applyBonusDmg    - Called with computed bonus HP damage; caller must reduce enemy HP.
+ * @param applyEnemyDebuff - Optional: called with (valuePct, durationMs) to debuff the hit enemy.
+ *                           Provided by the caller as a closure that captures the target entity.
+ *                           If omitted, enemy-debuff procs are silently skipped.
+ * @param rng              - RNG function (default Math.random, injectable for tests).
  */
 export function tryTriggerPlayerHitEnemyWeaveEffects(
   state: RpgSimState,
   finalDmg: number,
   applyBonusDmg: (bonus: number) => void,
+  applyEnemyDebuff?: (valuePct: number, durationMs: number) => void,
   rng: () => number = Math.random,
 ): string[] {
   if (finalDmg <= 0) return [];
@@ -156,7 +169,10 @@ export function tryTriggerPlayerHitEnemyWeaveEffects(
       if (!def || def.trigger !== 'playerHitEnemy') continue;
       if (rng() * 100 >= def.baseChancePct) continue;
 
-      if (def.durationMs > 0) {
+      if (HIT_ENEMY_DEBUFF_IDS.has(effect.id as WeaveProcEffectId)) {
+        // Enemy debuff proc (e.g. weave_lingering_hex): debuff the hit enemy, no player buff.
+        applyEnemyDebuff?.(effect.value, def.durationMs);
+      } else if (def.durationMs > 0) {
         // Temp buff proc (e.g. weave_swiftstrike, weave_ember_surge): add or refresh.
         // Same effectId: refresh duration and keep the stronger valuePct.
         // This prevents unlimited stacking from a single source while allowing

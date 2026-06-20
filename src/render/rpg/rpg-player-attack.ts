@@ -201,7 +201,7 @@ export interface RpgPlayerAttackCtx {
    * Not called for sub-projectile targets (shards, bolts, spikes, missiles).
    * Not called from within echo bonus application — no recursion is possible.
    */
-  onWeaponHitEnemy?(finalDmg: number, hitX: number, hitY: number, maxHp: number, applyBonusDmg: (bonus: number) => void): void;
+  onWeaponHitEnemy?(finalDmg: number, hitX: number, hitY: number, maxHp: number, applyBonusDmg: (bonus: number) => void, targetEntity?: object): void;
 
   /**
    * Spawns a short pull-only vortex at (hitX, hitY).

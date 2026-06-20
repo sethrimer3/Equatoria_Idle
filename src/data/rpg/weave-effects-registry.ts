@@ -121,7 +121,7 @@ export function getWeavePassiveEffectDef(id: string): WeavePassiveEffectDef | nu
 // ─── Proc effects ─────────────────────────────────────────────────────────────
 
 export type WeaveProcTrigger = 'playerDamaged' | 'playerHitEnemy';
-export type WeaveProcEffectId = 'weave_reactive_ward' | 'weave_echo_strike' | 'weave_swiftstrike' | 'weave_ember_surge' | 'weave_aegis_flash';
+export type WeaveProcEffectId = 'weave_reactive_ward' | 'weave_echo_strike' | 'weave_swiftstrike' | 'weave_ember_surge' | 'weave_aegis_flash' | 'weave_lingering_hex';
 
 export interface WeaveProcEffectDef {
   readonly id: WeaveProcEffectId;
@@ -223,6 +223,23 @@ export const WEAVE_PROC_EFFECT_REGISTRY: Readonly<Record<WeaveProcEffectId, Weav
     minRarity: 'Uncommon',
     weight: 1.0,
   },
+  weave_lingering_hex: {
+    id: 'weave_lingering_hex',
+    displayName: 'Lingering Hex',
+    description: (v) => `8% chance on hit: enemy takes +${v.toFixed(1)}% damage for 3.0s`,
+    category: 'proc',
+    trigger: 'playerHitEnemy',
+    baseChancePct: 8,
+    durationMs: 3000,
+    // At Uncommon/powerScale≈1: 8×0.45=3.6%; at Mythic/powerScale≈2: 8×1.0×~2=16%.
+    // Modest value — applies to ALL subsequent hits during the window, making it
+    // valuable against tanky enemies while staying balanced for fast-kill encounters.
+    baseMaxValue: 8,
+    role: 'offense',
+    flavors: ['iolite', 'amethyst'],
+    minRarity: 'Uncommon',
+    weight: 1.0,
+  },
 } as const;
 
 // ─── Unified effect types ─────────────────────────────────────────────────────
@@ -239,6 +256,7 @@ export const ALL_WEAVE_EFFECT_IDS: readonly WeaveEffectId[] = [
   'weave_swiftstrike',
   'weave_ember_surge',
   'weave_aegis_flash',
+  'weave_lingering_hex',
 ];
 
 /** Returns the def for a given id (passive or proc), or null if unknown. */

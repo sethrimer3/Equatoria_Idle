@@ -1,4 +1,4 @@
-/**
+﻿/**
  * rpg-player-attack-multi.ts — Multi-target weapon attack handler.
  *
  * Extracted from rpg-player-attack.ts. Handles the `multi` weapon effect kind:
@@ -28,6 +28,7 @@ import type {
 } from './polyomino-enemy-types';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
+import { getLingeringHexDamageMult } from '../../sim/rpg/weave-enemy-debuffs';
 import { applyTier1LensStatusesToEnemy } from '../../sim/rpg/enemy-status-application';
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
@@ -331,131 +332,132 @@ export function performMultiAttack(
   const fracterylPool = craftedMods ? makeFracterylPool(craftedMods.fracterylStrikes) : null;
 
   for (const t of targets) {
+    const hexEntity = extractMultiEntity(t);
+    const effectiveDmg = hexEntity ? rawDamage * getLingeringHexDamageMult(hexEntity) : rawDamage;
     if (t.laser) {
-      const dmg = damageEnemy(t.laser, rawDamage, armorIgnore);
+      const dmg = damageEnemy(t.laser, effectiveDmg, armorIgnore);
       spawnHitVisuals(t.laser, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.laser.x, t.laser.y, t.laser.maxHp, (b) => damageEnemy(t.laser!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.laser.x, t.laser.y, t.laser.maxHp, (b) => damageEnemy(t.laser!, b, 1), hexEntity ?? undefined);
     } else if (t.sapphire) {
-      const dmg = damageSapphireEnemy(t.sapphire, rawDamage, armorIgnore, false);
+      const dmg = damageSapphireEnemy(t.sapphire, effectiveDmg, armorIgnore, false);
       spawnHitVisualsAt(t.sapphire.x, t.sapphire.y, t.sapphire.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.sapphire.x, t.sapphire.y, t.sapphire.maxHp, (b) => damageSapphireEnemy(t.sapphire!, b, 1, false));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.sapphire.x, t.sapphire.y, t.sapphire.maxHp, (b) => damageSapphireEnemy(t.sapphire!, b, 1, false), hexEntity ?? undefined);
     } else if (t.missile) {
       // Echo Strike does not trigger from sapphire sub-missiles.
-      damageMissile(t.missile, rawDamage);
+      damageMissile(t.missile, effectiveDmg);
     } else if (t.emerald) {
-      const dmg = damageEmeraldEnemy(t.emerald, rawDamage, armorIgnore);
+      const dmg = damageEmeraldEnemy(t.emerald, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.emerald.x, t.emerald.y, t.emerald.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.emerald.x, t.emerald.y, t.emerald.maxHp, (b) => damageEmeraldEnemy(t.emerald!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.emerald.x, t.emerald.y, t.emerald.maxHp, (b) => damageEmeraldEnemy(t.emerald!, b, 1), hexEntity ?? undefined);
     } else if (t.amber) {
-      const dmg = damageAmberEnemy(t.amber, rawDamage, armorIgnore);
+      const dmg = damageAmberEnemy(t.amber, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.amber.x, t.amber.y, t.amber.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.amber.x, t.amber.y, t.amber.maxHp, (b) => damageAmberEnemy(t.amber!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.amber.x, t.amber.y, t.amber.maxHp, (b) => damageAmberEnemy(t.amber!, b, 1), hexEntity ?? undefined);
     } else if (t.ambershard) {
       // Echo Strike does not trigger from amber sub-shards.
-      damageAmberShard(t.ambershard, rawDamage);
+      damageAmberShard(t.ambershard, effectiveDmg);
     } else if (t.void) {
-      const dmg = damageVoidEnemy(t.void, rawDamage, armorIgnore);
+      const dmg = damageVoidEnemy(t.void, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.void.x, t.void.y, t.void.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.void.x, t.void.y, t.void.maxHp, (b) => damageVoidEnemy(t.void!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.void.x, t.void.y, t.void.maxHp, (b) => damageVoidEnemy(t.void!, b, 1), hexEntity ?? undefined);
     } else if (t.quartz) {
-      const dmg = damageQuartzEnemy(t.quartz, rawDamage, armorIgnore);
+      const dmg = damageQuartzEnemy(t.quartz, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.quartz.x, t.quartz.y, t.quartz.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.quartz.x, t.quartz.y, t.quartz.maxHp, (b) => damageQuartzEnemy(t.quartz!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.quartz.x, t.quartz.y, t.quartz.maxHp, (b) => damageQuartzEnemy(t.quartz!, b, 1), hexEntity ?? undefined);
     } else if (t.quartzspike) {
       // Echo Strike does not trigger from quartz sub-spikes.
-      damageQuartzSpike(t.quartzspike, rawDamage);
+      damageQuartzSpike(t.quartzspike, effectiveDmg);
     } else if (t.ruby) {
-      const dmg = damageRubyEnemy(t.ruby, rawDamage, armorIgnore);
+      const dmg = damageRubyEnemy(t.ruby, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.ruby.x, t.ruby.y, t.ruby.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.ruby.x, t.ruby.y, t.ruby.maxHp, (b) => damageRubyEnemy(t.ruby!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.ruby.x, t.ruby.y, t.ruby.maxHp, (b) => damageRubyEnemy(t.ruby!, b, 1), hexEntity ?? undefined);
     } else if (t.rubybolt) {
       // Echo Strike does not trigger from ruby sub-bolts.
-      damageRubyBolt(t.rubybolt, rawDamage);
+      damageRubyBolt(t.rubybolt, effectiveDmg);
     } else if (t.sunstone) {
-      const dmg = damageSunstoneEnemy(t.sunstone, rawDamage, armorIgnore);
+      const dmg = damageSunstoneEnemy(t.sunstone, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.sunstone.x, t.sunstone.y, t.sunstone.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.sunstone.x, t.sunstone.y, t.sunstone.maxHp, (b) => damageSunstoneEnemy(t.sunstone!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.sunstone.x, t.sunstone.y, t.sunstone.maxHp, (b) => damageSunstoneEnemy(t.sunstone!, b, 1), hexEntity ?? undefined);
     } else if (t.citrine) {
-      const dmg = damageCitrineEnemy(t.citrine, rawDamage, armorIgnore);
+      const dmg = damageCitrineEnemy(t.citrine, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.citrine.x, t.citrine.y, t.citrine.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.citrine.x, t.citrine.y, t.citrine.maxHp, (b) => damageCitrineEnemy(t.citrine!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.citrine.x, t.citrine.y, t.citrine.maxHp, (b) => damageCitrineEnemy(t.citrine!, b, 1), hexEntity ?? undefined);
     } else if (t.citrinebolt) {
       // Echo Strike does not trigger from citrine sub-bolts.
-      damageCitrineBolt(t.citrinebolt, rawDamage);
+      damageCitrineBolt(t.citrinebolt, effectiveDmg);
     } else if (t.iolite) {
-      const dmg = damageIoliteEnemy(t.iolite, rawDamage, armorIgnore);
+      const dmg = damageIoliteEnemy(t.iolite, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.iolite.x, t.iolite.y, t.iolite.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.iolite.x, t.iolite.y, t.iolite.maxHp, (b) => damageIoliteEnemy(t.iolite!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.iolite.x, t.iolite.y, t.iolite.maxHp, (b) => damageIoliteEnemy(t.iolite!, b, 1), hexEntity ?? undefined);
     } else if (t.amethyst) {
-      const dmg = damageAmethystEnemy(t.amethyst, rawDamage, armorIgnore, false);
+      const dmg = damageAmethystEnemy(t.amethyst, effectiveDmg, armorIgnore, false);
       spawnHitVisualsAt(t.amethyst.x, t.amethyst.y, t.amethyst.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.amethyst.x, t.amethyst.y, t.amethyst.maxHp, (b) => damageAmethystEnemy(t.amethyst!, b, 1, false));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.amethyst.x, t.amethyst.y, t.amethyst.maxHp, (b) => damageAmethystEnemy(t.amethyst!, b, 1, false), hexEntity ?? undefined);
     } else if (t.amethystshard) {
       // Echo Strike does not trigger from amethyst sub-shards.
-      damageAmethystShard(t.amethystshard, rawDamage);
+      damageAmethystShard(t.amethystshard, effectiveDmg);
     } else if (t.diamond) {
-      const dmg = damageDiamondEnemy(t.diamond, rawDamage, armorIgnore);
+      const dmg = damageDiamondEnemy(t.diamond, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.diamond.x, t.diamond.y, t.diamond.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.diamond.x, t.diamond.y, t.diamond.maxHp, (b) => damageDiamondEnemy(t.diamond!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.diamond.x, t.diamond.y, t.diamond.maxHp, (b) => damageDiamondEnemy(t.diamond!, b, 1), hexEntity ?? undefined);
     } else if (t.diamondshard) {
       // Echo Strike does not trigger from diamond sub-shards.
-      damageDiamondShard(t.diamondshard, rawDamage);
+      damageDiamondShard(t.diamondshard, effectiveDmg);
     } else if (t.nullstone) {
-      const dmg = damageNullstoneEnemy(t.nullstone, rawDamage, armorIgnore);
+      const dmg = damageNullstoneEnemy(t.nullstone, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.nullstone.x, t.nullstone.y, t.nullstone.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.nullstone.x, t.nullstone.y, t.nullstone.maxHp, (b) => damageNullstoneEnemy(t.nullstone!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.nullstone.x, t.nullstone.y, t.nullstone.maxHp, (b) => damageNullstoneEnemy(t.nullstone!, b, 1), hexEntity ?? undefined);
     } else if (t.voidtendril) {
       // Echo Strike does not trigger from void sub-tendrils.
-      damageVoidTendril(t.voidtendril, rawDamage);
+      damageVoidTendril(t.voidtendril, effectiveDmg);
     } else if (t.fracteryl) {
-      const dmg = damageFracterylEnemy(t.fracteryl, rawDamage, armorIgnore);
+      const dmg = damageFracterylEnemy(t.fracteryl, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.fracteryl.x, t.fracteryl.y, t.fracteryl.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.fracteryl.x, t.fracteryl.y, t.fracteryl.maxHp, (b) => damageFracterylEnemy(t.fracteryl!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.fracteryl.x, t.fracteryl.y, t.fracteryl.maxHp, (b) => damageFracterylEnemy(t.fracteryl!, b, 1), hexEntity ?? undefined);
     } else if (t.fracterylshard) {
       // Echo Strike does not trigger from fracteryl sub-shards.
-      damageFracterylShard(t.fracterylshard, rawDamage);
+      damageFracterylShard(t.fracterylshard, effectiveDmg);
     } else if (t.eigenstein) {
-      const dmg = damageEigensteinEnemy(t.eigenstein, rawDamage, armorIgnore);
+      const dmg = damageEigensteinEnemy(t.eigenstein, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.eigenstein.x, t.eigenstein.y, t.eigenstein.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.eigenstein.x, t.eigenstein.y, t.eigenstein.maxHp, (b) => damageEigensteinEnemy(t.eigenstein!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.eigenstein.x, t.eigenstein.y, t.eigenstein.maxHp, (b) => damageEigensteinEnemy(t.eigenstein!, b, 1), hexEntity ?? undefined);
     } else if (t.polyomino) {
-      const dmg = damagePolyominoEnemy(t.polyomino, rawDamage, armorIgnore);
+      const dmg = damagePolyominoEnemy(t.polyomino, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.polyomino.x, t.polyomino.y, t.polyomino.maxHp, dmg, '#52b788');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.polyomino.x, t.polyomino.y, t.polyomino.maxHp, (b) => damagePolyominoEnemy(t.polyomino!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.polyomino.x, t.polyomino.y, t.polyomino.maxHp, (b) => damagePolyominoEnemy(t.polyomino!, b, 1), hexEntity ?? undefined);
     } else if (t.fissilePolyomino) {
-      const dmg = damageFissilePolyominoEnemy(t.fissilePolyomino, rawDamage, armorIgnore);
+      const dmg = damageFissilePolyominoEnemy(t.fissilePolyomino, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.fissilePolyomino.x, t.fissilePolyomino.y, t.fissilePolyomino.maxHp, dmg, '#e9c46a');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.fissilePolyomino.x, t.fissilePolyomino.y, t.fissilePolyomino.maxHp, (b) => damageFissilePolyominoEnemy(t.fissilePolyomino!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.fissilePolyomino.x, t.fissilePolyomino.y, t.fissilePolyomino.maxHp, (b) => damageFissilePolyominoEnemy(t.fissilePolyomino!, b, 1), hexEntity ?? undefined);
     } else if (t.refractorPolyomino) {
-      const dmg = damageRefractorPolyominoEnemy(t.refractorPolyomino, rawDamage, armorIgnore);
+      const dmg = damageRefractorPolyominoEnemy(t.refractorPolyomino, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.refractorPolyomino.x, t.refractorPolyomino.y, t.refractorPolyomino.maxHp, dmg, '#00f5d4');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.refractorPolyomino.x, t.refractorPolyomino.y, t.refractorPolyomino.maxHp, (b) => damageRefractorPolyominoEnemy(t.refractorPolyomino!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.refractorPolyomino.x, t.refractorPolyomino.y, t.refractorPolyomino.maxHp, (b) => damageRefractorPolyominoEnemy(t.refractorPolyomino!, b, 1), hexEntity ?? undefined);
     } else if (t.elite) {
-      const dmg = damageEliteEnemy(t.elite, rawDamage, armorIgnore);
+      const dmg = damageEliteEnemy(t.elite, effectiveDmg, armorIgnore);
       spawnHitVisualsAt(t.elite.x, t.elite.y, t.elite.maxHp, dmg, '#ffe060');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.elite.x, t.elite.y, t.elite.maxHp, (b) => damageEliteEnemy(t.elite!, b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.elite.x, t.elite.y, t.elite.maxHp, (b) => damageEliteEnemy(t.elite!, b, 1), hexEntity ?? undefined);
     } else if (t.boss) {
-      const dmg = damageBossEnemy(rawDamage, armorIgnore);
+      const dmg = damageBossEnemy(effectiveDmg, armorIgnore);
       if (dmg > 0) spawnHitVisualsAt(t.boss.x, t.boss.y, t.boss.maxHp, dmg, '#50b464');
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.boss.x, t.boss.y, t.boss.maxHp, (b) => damageBossEnemy(b, 1));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.boss.x, t.boss.y, t.boss.maxHp, (b) => damageBossEnemy(b, 1), hexEntity ?? undefined);
     } else if (t.alivenParticle && t.alivenGroup) {
-      const dmg = ctx.damageAlivenParticle(t.alivenParticle, t.alivenGroup, rawDamage);
+      const dmg = ctx.damageAlivenParticle(t.alivenParticle, t.alivenGroup, effectiveDmg);
       if (dmg > 0) spawnHitVisualsAt(t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, dmg, t.alivenParticle.glowColor);
-      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, (b) => ctx.damageAlivenParticle(t.alivenParticle!, t.alivenGroup!, b));
+      if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, (b) => ctx.damageAlivenParticle(t.alivenParticle!, t.alivenGroup!, b), hexEntity ?? undefined);
     }
     // Lens status post-hit: apply Tier 1 statuses to target.
     if (equipment?.lens && weaponId) {
-      const entity = extractMultiEntity(t);
-      if (entity) {
+      if (hexEntity) {
         applyTier1LensStatusesToEnemy({
-          enemy: entity,
+          enemy: hexEntity,
           lens: equipment.lens,
           weaponId,
           hitDamage: rawDamage,
           enemyTypeId: getMultiEnemyTypeId(t),
         });
-        handleLensTier2EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
-        handleLensTier3EffectsOnWeaponHit({ targetEntity: entity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
+        handleLensTier2EffectsOnWeaponHit({ targetEntity: hexEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
+        handleLensTier3EffectsOnWeaponHit({ targetEntity: hexEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
       }
     }
     // Crafted post-hit: Nullstone pull at this target's position; Fracteryl from shared pool.
@@ -465,3 +467,5 @@ export function performMultiAttack(
     }
   }
 }
+
+

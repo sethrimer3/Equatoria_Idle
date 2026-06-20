@@ -24,6 +24,7 @@ import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import {
   getIncomingDamageMult, getRiftScarredDamageMult,
 } from '../../sim/rpg/enemy-status-effects';
+import { getLingeringHexDamageMult } from '../../sim/rpg/weave-enemy-debuffs';
 import { applyTier1LensStatusesToEnemy } from '../../sim/rpg/enemy-status-application';
 
 // Throttle affinity feedback (IMMUNE/RESIST/WEAK) to once per entity per 2500ms,
@@ -149,7 +150,8 @@ export function performSingleAttack(
   const lensSourceKey = equipment?.lens?.id ?? '';
   const statusMult = targetEntity ? getIncomingDamageMult(targetEntity) : 1;
   const riftMult   = (targetEntity && lensSourceKey) ? getRiftScarredDamageMult(targetEntity, lensSourceKey) : 1;
-  const effectiveRaw = rawDamage * statusMult * riftMult;
+  const hexMult    = comboTargetEntity ? getLingeringHexDamageMult(comboTargetEntity) : 1;
+  const effectiveRaw = rawDamage * statusMult * riftMult * hexMult;
 
   if (closestT.laser) {
     const e = closestT.laser;
@@ -292,7 +294,7 @@ export function performSingleAttack(
   // ── Weave echo proc (onWeaponHitEnemy) ────────────────────────────────────
   // Called after the main hit so the bonus damage is applied to the same enemy
   // without going through performWeaponAttack — no recursion is possible.
-  if (echoHit) ctx.onWeaponHitEnemy?.(echoHit.dmg, echoHit.x, echoHit.y, echoHit.maxHp, echoHit.applyFn);
+  if (echoHit) ctx.onWeaponHitEnemy?.(echoHit.dmg, echoHit.x, echoHit.y, echoHit.maxHp, echoHit.applyFn, comboTargetEntity ?? undefined);
 
   // ── Lens status post-hit: apply Tier 1 statuses to target ───────────────────
   if (equipment?.lens && targetEntity && weaponId) {

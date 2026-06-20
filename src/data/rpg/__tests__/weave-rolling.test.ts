@@ -1,4 +1,4 @@
-/**
+﻿/**
  * weave-rolling.test.ts — Unit tests for the Weave crafting system.
  *
  * Covers:
@@ -30,6 +30,7 @@ import { getEquippedWeaveModifiers } from '../equipment-modifiers';
 import { createRpgSimState } from '../../../sim/rpg/rpg-state';
 import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, getTotalActiveWeaveBuffWeaponDamagePct, upsertActiveWeaveBuff, formatActiveWeaveBuffStat, getActiveWeaveBuffDisplayName } from '../weave-proc-effects';
 import { ALL_WEAVE_EFFECT_IDS, getWeaveEffectDef } from '../weave-effects-registry';
+import type { WeaveProcEffectDef } from '../weave-effects-registry';
 import { createGameState } from '../../../sim/game-state';
 import { craftWeave } from '../../../sim/game-state';
 import { deserializeGameState } from '../../../settings/save-deserialize';
@@ -810,9 +811,9 @@ describe('rollWeavePassiveEffects — proc in pool', () => {
   }
 
   it('proc effect can be rolled from the pool', () => {
-    // With no ingredient flavor context, all 8 effects get weight 1.0 each (total=8).
-    // rng=0.45 → threshold=3.6 → focus:2.6 → quickness:1.6 → guard:0.6 → reactive_ward:-0.4 → reactive_ward (index 3).
-    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.45);
+    // With no ingredient flavor context, all 9 effects get weight 1.0 each (total=9).
+    // rng=0.4 → threshold=3.6 → focus:2.6 → quickness:1.6 → guard:0.6 → reactive_ward:-0.4 → reactive_ward (index 3).
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.4);
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_reactive_ward');
     expect(effects[0]!.value).toBeGreaterThan(0);
@@ -865,7 +866,7 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
   it('rng always fails → no trigger', () => {
     const state = makeStateWithEchoWeave(20);
     let bonusApplied = 0;
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusApplied += b; }, () => 1);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusApplied += b; }, undefined, () => 1);
     expect(triggered).toHaveLength(0);
     expect(bonusApplied).toBe(0);
   });
@@ -873,7 +874,7 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
   it('rng always succeeds → triggers and calls applyBonusDmg', () => {
     const state = makeStateWithEchoWeave(20);
     let bonusApplied = 0;
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusApplied += b; }, () => 0);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusApplied += b; }, undefined, () => 0);
     expect(triggered).toContain('weave_echo_strike');
     expect(bonusApplied).toBeCloseTo(20, 5); // 100 * 20/100
   });
@@ -881,7 +882,7 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
   it('bonus damage scales with finalDmg and effect value', () => {
     const state = makeStateWithEchoWeave(25);
     let bonusApplied = 0;
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 200, (b) => { bonusApplied += b; }, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 200, (b) => { bonusApplied += b; }, undefined, () => 0);
     expect(bonusApplied).toBeCloseTo(50, 5); // 200 * 25/100
   });
 
@@ -902,9 +903,9 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
         rarity: rarity as CraftedWeaveData['affixes'][number]['rarity'], value: 10, unit: '%', applied: true,
       };
     }
-    // With no flavor context, all 8 effects get weight 1.0 (total=8).
-    // rng=0.6 → threshold=4.8 → focus:3.8 → quickness:2.8 → guard:1.8 → reactive_ward:0.8 → echo_strike:-0.2 → echo_strike.
-    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.6);
+    // With no flavor context, all 9 effects get weight 1.0 (total=9).
+    // rng=0.5 → threshold=4.5 → focus:3.5 → quickness:2.5 → guard:1.5 → reactive_ward:0.5 → echo_strike:-0.5 → echo_strike.
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.5);
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_echo_strike');
     expect(effects[0]!.value).toBeGreaterThan(0);
@@ -918,8 +919,8 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects — multi-hit behavior', () => {
     const state = makeStateWithEchoWeave(10);
     let totalBonus = 0;
     // Simulate two hits in the same multi-attack frame, both procs succeed.
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { totalBonus += b; }, () => 0);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 80, (b) => { totalBonus += b; }, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { totalBonus += b; }, undefined, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 80, (b) => { totalBonus += b; }, undefined, () => 0);
     // Both bonuses applied: 100*10/100 + 80*10/100 = 10 + 8 = 18
     expect(totalBonus).toBeCloseTo(18, 5);
   });
@@ -931,7 +932,7 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects — multi-hit behavior', () => {
     // because echo's applyFn goes through damageEnemy directly, not performWeaponAttack.
     // Here we verify that tryTriggerPlayerHitEnemyWeaveEffects itself has no internal recursion guard
     // needed — the architecture prevents it. The callback simply won't call back.
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 50, (_b) => { recursionCount++; }, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 50, (_b) => { recursionCount++; }, undefined, () => 0);
     expect(recursionCount).toBe(1); // called exactly once, no recursion
   });
 });
@@ -966,13 +967,13 @@ describe('weave_swiftstrike proc behavior', () => {
 
   it('unequipped swiftstrike weave → no trigger', () => {
     const state = createRpgSimState();
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(triggered).toHaveLength(0);
   });
 
   it('deterministic rng triggers swiftstrike and adds cooldown buff', () => {
     const state = makeStateWithSwiftstrikeWeave(5);
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(triggered).toContain('weave_swiftstrike');
     expect(state.activeWeaveBuffs).toHaveLength(1);
     const buff = state.activeWeaveBuffs[0]!;
@@ -984,16 +985,16 @@ describe('weave_swiftstrike proc behavior', () => {
 
   it('second trigger refreshes duration and keeps stronger value', () => {
     const state = makeStateWithSwiftstrikeWeave(5);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     state.activeWeaveBuffs[0]!.remainingMs = 200;
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(state.activeWeaveBuffs).toHaveLength(1);
     expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(2000);
   });
 
   it('expired buff no longer contributes cooldown', () => {
     const state = makeStateWithSwiftstrikeWeave(5);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     tickActiveWeaveBuffs(state, 2001);
     expect(state.activeWeaveBuffs).toHaveLength(0);
     expect(getTotalActiveWeaveBuffCooldownPct(state)).toBe(0);
@@ -1001,14 +1002,14 @@ describe('weave_swiftstrike proc behavior', () => {
 
   it('swiftstrike does not affect DEF', () => {
     const state = makeStateWithSwiftstrikeWeave(5);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
   });
 
   it('swiftstrike does not apply bonus damage', () => {
     const state = makeStateWithSwiftstrikeWeave(5);
     let bonusDmg = 0;
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusDmg += b; }, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusDmg += b; }, undefined, () => 0);
     expect(bonusDmg).toBe(0);
   });
 
@@ -1035,7 +1036,7 @@ describe('weave_swiftstrike proc behavior', () => {
   it('echo strike still applies bonus damage after playerHitEnemy refactor', () => {
     const state = makeStateWithEchoWeave(20);
     let bonus = 0;
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonus += b; }, () => 0);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonus += b; }, undefined, () => 0);
     expect(triggered).toContain('weave_echo_strike');
     expect(bonus).toBeCloseTo(20, 5);
     expect(state.activeWeaveBuffs).toHaveLength(0); // echo strike adds no buff
@@ -1056,7 +1057,7 @@ describe('weave_swiftstrike proc behavior', () => {
     };
     state.craftedWeaves = [weave];
     state.equippedWeaveSlots = ['w-bad-test', null, null, null, null, null];
-    expect(() => tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0)).not.toThrow();
+    expect(() => tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0)).not.toThrow();
     expect(state.activeWeaveBuffs).toHaveLength(0);
   });
 });
@@ -1091,13 +1092,13 @@ describe('weave_ember_surge proc behavior', () => {
 
   it('unequipped ember surge weave → no trigger', () => {
     const state = createRpgSimState();
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(triggered).toHaveLength(0);
   });
 
   it('deterministic rng triggers ember surge and adds weaponDamagePct buff', () => {
     const state = makeStateWithEmberSurgeWeave(6);
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(triggered).toContain('weave_ember_surge');
     expect(state.activeWeaveBuffs).toHaveLength(1);
     const buff = state.activeWeaveBuffs[0]!;
@@ -1109,16 +1110,16 @@ describe('weave_ember_surge proc behavior', () => {
 
   it('second trigger refreshes duration and keeps stronger value', () => {
     const state = makeStateWithEmberSurgeWeave(6);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     state.activeWeaveBuffs[0]!.remainingMs = 200;
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(state.activeWeaveBuffs).toHaveLength(1);
     expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(2500);
   });
 
   it('expired ember surge buff no longer contributes weapon damage', () => {
     const state = makeStateWithEmberSurgeWeave(6);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     tickActiveWeaveBuffs(state, 2501);
     expect(state.activeWeaveBuffs).toHaveLength(0);
     expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBe(0);
@@ -1126,26 +1127,26 @@ describe('weave_ember_surge proc behavior', () => {
 
   it('ember surge does not affect DEF', () => {
     const state = makeStateWithEmberSurgeWeave(6);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
   });
 
   it('ember surge does not affect cooldown', () => {
     const state = makeStateWithEmberSurgeWeave(6);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(getTotalActiveWeaveBuffCooldownPct(state)).toBe(0);
   });
 
   it('ember surge does not apply bonus damage', () => {
     const state = makeStateWithEmberSurgeWeave(6);
     let bonusDmg = 0;
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusDmg += b; }, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonusDmg += b; }, undefined, () => 0);
     expect(bonusDmg).toBe(0);
   });
 
   it('swiftstrike still affects cooldown after weaponDamagePct stat added', () => {
     const state = makeStateWithSwiftstrikeWeave(5);
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(getTotalActiveWeaveBuffCooldownPct(state)).toBeCloseTo(5, 5);
     expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBe(0);
   });
@@ -1173,7 +1174,7 @@ describe('weave_ember_surge proc behavior', () => {
   it('echo strike still applies bonus damage after weaponDamagePct stat added', () => {
     const state = makeStateWithEchoWeave(20);
     let bonus = 0;
-    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonus += b; }, () => 0);
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(state, 100, (b) => { bonus += b; }, undefined, () => 0);
     expect(triggered).toContain('weave_echo_strike');
     expect(bonus).toBeCloseTo(20, 5);
     expect(state.activeWeaveBuffs).toHaveLength(0);
@@ -1193,7 +1194,7 @@ describe('weave_ember_surge proc behavior', () => {
     };
     state.craftedWeaves = [w1, w2];
     state.equippedWeaveSlots = ['w-ember2', 'w-swift2', null, null, null, null];
-    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, () => 0);
+    tryTriggerPlayerHitEnemyWeaveEffects(state, 100, () => {}, undefined, () => 0);
     expect(state.activeWeaveBuffs).toHaveLength(2);
     expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBeCloseTo(6, 5);
     expect(getTotalActiveWeaveBuffCooldownPct(state)).toBeCloseTo(4, 5);
@@ -1372,6 +1373,114 @@ describe('upsertActiveWeaveBuff', () => {
   });
 });
 
+// ─── weave_lingering_hex ─────────────────────────────────────────
+
+describe('weave_lingering_hex', () => {
+  function makeHexWeave(effectValue: number): CraftedWeaveData {
+    return {
+      id: 'w-hex-test', name: 'Hex Test', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_lingering_hex', value: effectValue }],
+    };
+  }
+
+  function makeHexState(effectValue: number) {
+    const state = createRpgSimState();
+    state.craftedWeaves = [makeHexWeave(effectValue)];
+    state.equippedWeaveSlots = ['w-hex-test', null, null, null, null, null];
+    return state;
+  }
+
+  it('exists in ALL_WEAVE_EFFECT_IDS', () => {
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_lingering_hex');
+  });
+
+  it('getWeaveEffectDef returns correct def', () => {
+    const def = getWeaveEffectDef('weave_lingering_hex');
+    expect(def).not.toBeNull();
+    expect(def!.category).toBe('proc');
+    expect(def!.role).toBe('offense');
+    expect((def as WeaveProcEffectDef).trigger).toBe('playerHitEnemy');
+  });
+
+  it('returns triggered id and calls applyEnemyDebuff on proc', () => {
+    const state = makeHexState(5);
+    let appliedVp = 0, appliedDur = 0;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(
+      state, 100, () => {},
+      (vp, dur) => { appliedVp = vp; appliedDur = dur; },
+      () => 0,
+    );
+    expect(triggered).toContain('weave_lingering_hex');
+    expect(appliedVp).toBe(5);
+    expect(appliedDur).toBe(3000);
+  });
+
+  it('does NOT add to activeWeaveBuffs (enemy debuff, not player buff)', () => {
+    const state = makeHexState(5);
+    tryTriggerPlayerHitEnemyWeaveEffects(
+      state, 100, () => {},
+      () => {},
+      () => 0,
+    );
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+
+  it('does NOT proc when finalDmg is 0', () => {
+    const state = makeHexState(5);
+    let called = false;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(
+      state, 0, () => {},
+      () => { called = true; },
+    );
+    expect(triggered).toHaveLength(0);
+    expect(called).toBe(false);
+  });
+
+  it('does NOT proc when rng exceeds chance', () => {
+    const state = makeHexState(5);
+    let called = false;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(
+      state, 100, () => {},
+      () => { called = true; },
+      () => 1,
+    );
+    expect(triggered).toHaveLength(0);
+    expect(called).toBe(false);
+  });
+
+  it('skips applyEnemyDebuff gracefully when not provided', () => {
+    const state = makeHexState(5);
+    expect(() => tryTriggerPlayerHitEnemyWeaveEffects(
+      state, 100, () => {}, undefined, () => 0,
+    )).not.toThrow();
+  });
+
+  it('can coexist with echo_strike in the same proc pass', () => {
+    const state = createRpgSimState();
+    const hexWeave = makeHexWeave(5);
+    const echoWeave: CraftedWeaveData = {
+      id: 'w-echo-test', name: 'Echo Test', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_echo_strike', value: 30 }],
+    };
+    state.craftedWeaves = [hexWeave, echoWeave];
+    state.equippedWeaveSlots = ['w-hex-test', 'w-echo-test', null, null, null, null];
+    let bonusDmg = 0;
+    let hexApplied = false;
+    const triggered = tryTriggerPlayerHitEnemyWeaveEffects(
+      state, 100,
+      (b) => { bonusDmg += b; },
+      () => { hexApplied = true; },
+      () => 0,
+    );
+    expect(triggered).toContain('weave_lingering_hex');
+    expect(triggered).toContain('weave_echo_strike');
+    expect(hexApplied).toBe(true);
+    expect(bonusDmg).toBeGreaterThan(0);
+  });
+});
+
 // ─── formatActiveWeaveBuffStat ────────────────────────────────────
 
 describe('formatActiveWeaveBuffStat', () => {
@@ -1407,3 +1516,8 @@ describe('getActiveWeaveBuffDisplayName', () => {
     expect(getActiveWeaveBuffDisplayName('weave_echo_strike')).toBe('Echo Strike');
   });
 });
+
+
+
+
+

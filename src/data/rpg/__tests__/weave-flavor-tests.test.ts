@@ -50,9 +50,9 @@ describe('getWeaveDominantTiers', () => {
 // ─── getEligibleWeaveEffectsForRoll ──────────────────────────────────────────
 
 describe('getEligibleWeaveEffectsForRoll', () => {
-  it('returns all 8 effects for Uncommon with no ingredient flavor', () => {
+  it('returns all 9 effects for Uncommon with no ingredient flavor', () => {
     const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
-    expect(pool).toHaveLength(8);
+    expect(pool).toHaveLength(9);
   });
 
   it('Common rarity: all effects excluded because minRarity is Uncommon', () => {
@@ -72,15 +72,19 @@ describe('getEligibleWeaveEffectsForRoll', () => {
     expect(wardEntry.weight).toBeGreaterThan(quicEntry.weight);
   });
 
-  it('amethyst ingredients give weave_echo_strike the highest weight', () => {
+  it('amethyst ingredients give weave_echo_strike and weave_lingering_hex the highest weight', () => {
     const pool = getEligibleWeaveEffectsForRoll({
       ingredients: [{ tierId: 'amethyst', refinedCount: 5 }],
       highestRarity: 'Uncommon',
     });
     const echoEntry = pool.find(e => e.id === 'weave_echo_strike')!;
-    // echo_strike is the only amethyst-flavored effect — swiftstrike is sand/quartz
-    const nonMatchWeights = pool.filter(e => e.id !== 'weave_echo_strike').map(e => e.weight);
-    expect(echoEntry.weight).toBeGreaterThan(Math.max(...nonMatchWeights));
+    const hexEntry  = pool.find(e => e.id === 'weave_lingering_hex')!;
+    // amethyst boosts echo_strike (amethyst/fracteryl/eigenstein) and lingering_hex (iolite/amethyst)
+    const nonFavoredWeights = pool
+      .filter(e => e.id !== 'weave_echo_strike' && e.id !== 'weave_lingering_hex')
+      .map(e => e.weight);
+    expect(echoEntry.weight).toBeGreaterThan(Math.max(...nonFavoredWeights));
+    expect(hexEntry.weight).toBeGreaterThan(Math.max(...nonFavoredWeights));
   });
 
   it('sand ingredients favor weave_quickness', () => {
@@ -195,49 +199,51 @@ describe('rollWeaveEffects', () => {
     expect(effects[0]!.value).toBeGreaterThan(0);
   });
 
-  it('amethyst-heavy weave with rng=0.65 rolls weave_echo_strike', () => {
-    // amethyst: focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1), ember_surge(1). Total=9.
-    // rng=0.65 → threshold=5.85 → focus:4.85 → quickness:3.85 → guard:2.85 → reactive_ward:1.85 → echo_strike:-1.15 → echo_strike
+  it('amethyst-heavy weave with rng=0.45 rolls weave_echo_strike', () => {
+    // amethyst: focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1), ember_surge(1), aegis_flash(1), lingering_hex(3). Total=13.
+    // rng=0.45 → threshold=5.85 → focus:4.85 → quickness:3.85 → guard:2.85 → reactive_ward:1.85 → echo_strike:-1.15 → echo_strike
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'amethyst', refinedCount: 5 }],
       100,
-      () => 0.65,
+      () => 0.45,
     );
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_echo_strike');
   });
 
-  it('fracteryl-heavy weave with rng=0.65 rolls weave_echo_strike', () => {
-    // Same pool shape as amethyst (only echo_strike gets 3×).
+  it('fracteryl-heavy weave with rng=0.55 rolls weave_echo_strike', () => {
+    // fracteryl: focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1), ember_surge(1), aegis_flash(1), lingering_hex(1). Total=11.
+    // rng=0.55 → threshold=6.05 → focus:5.05 → quickness:4.05 → guard:3.05 → reactive_ward:2.05 → echo_strike:-0.95 → echo_strike
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'fracteryl', refinedCount: 5 }],
       100,
-      () => 0.65,
+      () => 0.55,
     );
     expect(effects[0]!.id).toBe('weave_echo_strike');
   });
 
-  it('eigenstein-heavy weave with rng=0.65 rolls weave_echo_strike', () => {
+  it('eigenstein-heavy weave with rng=0.55 rolls weave_echo_strike', () => {
+    // Same pool shape as fracteryl (only echo_strike gets 3×, lingering_hex 1×). Total=11.
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'eigenstein', refinedCount: 5 }],
       100,
-      () => 0.65,
+      () => 0.55,
     );
     expect(effects[0]!.id).toBe('weave_echo_strike');
   });
 
-  it('diamond-heavy weave with rng=0.6 rolls weave_reactive_ward', () => {
+  it('diamond-heavy weave with rng=0.5 rolls weave_reactive_ward', () => {
     // ember_surge flavors are citrine/ruby — diamond does NOT boost it.
-    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1), aegis_flash(3). Total=16.
-    // rng=0.6 → threshold=9.6 → focus:6.6 → quickness:5.6 → guard:2.6 → reactive_ward:-0.4 → reactive_ward
+    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1), aegis_flash(3), lingering_hex(1). Total=17.
+    // rng=0.5 → threshold=8.5 → focus:5.5 → quickness:4.5 → guard:1.5 → reactive_ward:-1.5 → reactive_ward
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'diamond', refinedCount: 5 }],
       100,
-      () => 0.6,
+      () => 0.5,
     );
     expect(effects[0]!.id).toBe('weave_reactive_ward');
   });
@@ -416,8 +422,8 @@ describe('weave_aegis_flash registry', () => {
   });
 
   it('can be rolled deterministically with diamond ingredients', () => {
-    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1), aegis_flash(3). Total=16.
-    // rng=0.9 → threshold=14.4 → focus:11.4→quickness:10.4→guard:7.4→reactive_ward:4.4→echo_strike:3.4→swiftstrike:2.4→ember_surge:1.4→aegis_flash:-1.6 → aegis_flash
+    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1), aegis_flash(3), lingering_hex(1). Total=17.
+    // rng=0.9 → threshold=15.3 → focus:12.3→quickness:11.3→guard:8.3→reactive_ward:5.3→echo_strike:4.3→swiftstrike:3.3→ember_surge:2.3→aegis_flash:-0.7 → aegis_flash
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'diamond', refinedCount: 5 }],
@@ -450,16 +456,16 @@ describe('weave_aegis_flash registry', () => {
 // ─── createCraftedWeave — flavor-weighted effects ─────────────────────────────
 
 describe('createCraftedWeave — flavor-weighted effect rolling', () => {
-  it('amethyst-only weave with rng=0.65 rolls weave_echo_strike when affix is Uncommon+', () => {
+  it('amethyst-only weave with rng=0.45 rolls weave_echo_strike when affix is Uncommon+', () => {
     // rollWeaveAffix uses Math.random (not injectable rng) for quality, so the affix rarity
-    // is random. We test that if the weave DOES get an effect, rng=0.65 selects echo_strike.
-    // Pool (amethyst): focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1), ember_surge(1). Total=9.
-    // rng=0.65 → threshold=5.85 → falls in echo_strike range (4–7).
+    // is random. We test that if the weave DOES get an effect, rng=0.45 selects echo_strike.
+    // Pool (amethyst): focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1), ember_surge(1), aegis_flash(1), lingering_hex(3). Total=13.
+    // rng=0.45 → threshold=5.85 → falls in echo_strike range (4–7).
     let callCount = 0;
     const rng = () => {
       callCount++;
       // rng calls: 1 = tier2 chance check, 2 = effect quality, 3+ = effect pick
-      return callCount <= 2 ? 0.99 : 0.65; // fail tier2 check, then pick with 0.65
+      return callCount <= 2 ? 0.99 : 0.45; // fail tier2 check, then pick with 0.45
     };
     const weave = createCraftedWeave(
       'w-amethyst-test',
@@ -472,5 +478,44 @@ describe('createCraftedWeave — flavor-weighted effect rolling', () => {
     }
     // Whether or not the effect was granted depends on the affix quality (not injectable),
     // so we don't assert length here — just verify that IF present, it's the right effect.
+  });
+});
+
+// ─── weave_lingering_hex flavor weights ───────────────────────────────────────
+
+describe('weave_lingering_hex flavor weights', () => {
+  it('iolite and amethyst ingredients give lingering_hex higher weight than non-flavored effects', () => {
+    for (const tier of ['iolite', 'amethyst'] as const) {
+      const pool = getEligibleWeaveEffectsForRoll({
+        ingredients: [{ tierId: tier, refinedCount: 5 }],
+        highestRarity: 'Uncommon',
+      });
+      const hexEntry   = pool.find(e => e.id === 'weave_lingering_hex')!;
+      const guardEntry = pool.find(e => e.id === 'weave_guard')!;
+      expect(hexEntry.weight).toBeGreaterThan(guardEntry.weight);
+    }
+  });
+
+  it('amethyst-heavy weave with rng=0.9 rolls weave_lingering_hex', () => {
+    // amethyst: focus(1), quickness(1), guard(1), reactive_ward(1), echo_strike(3), swiftstrike(1), ember_surge(1), aegis_flash(1), lingering_hex(3). Total=13.
+    // rng=0.9 → threshold=11.7 → ...→aegis_flash:1.7→lingering_hex:-1.3 → lingering_hex
+    const effects = rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'amethyst', refinedCount: 5 }],
+      100,
+      () => 0.9,
+    );
+    expect(effects).toHaveLength(1);
+    expect(effects[0]!.id).toBe('weave_lingering_hex');
+  });
+
+  it('non-amethyst non-iolite ingredients do not boost lingering_hex weight', () => {
+    const pool = getEligibleWeaveEffectsForRoll({
+      ingredients: [{ tierId: 'diamond', refinedCount: 5 }],
+      highestRarity: 'Uncommon',
+    });
+    const hexEntry   = pool.find(e => e.id === 'weave_lingering_hex')!;
+    const guardEntry = pool.find(e => e.id === 'weave_guard')!;
+    expect(guardEntry.weight).toBeGreaterThan(hexEntry.weight);
   });
 });
