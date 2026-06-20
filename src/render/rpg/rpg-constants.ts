@@ -269,7 +269,10 @@ export const BOSS_NAMES: string[] = [
 ];
 
 /** Radius (px) of the prismatic safe-zone circle at the bottom of the canvas during boss waves. */
-export const BOSS_BOTTOM_SAFE_ZONE_R = 22;
+export const BOSS_BOTTOM_SAFE_ZONE_R = 44;
+
+/** Vertical position of the boss safe zone as a fraction of canvas height (close to bottom). */
+export const BOSS_SAFE_ZONE_Y_FACTOR = 0.925;
 
 /** UCAS glyph label displayed when a boss wave is cleared (angular aesthetic glyphs). */
 export const BOSS_GLYPH_LABEL = String.fromCodePoint(0x1469, 0x14B1, 0x1553, 0x140A); // ᑩᒱᕓᐊ

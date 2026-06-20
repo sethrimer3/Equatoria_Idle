@@ -25,7 +25,7 @@ import {
   MAX_DANMAKU_LEVEL,
 } from './rpg-weapon-constants';
 import {
-  BOSS_GLOW_COLORS,
+  BOSS_GLOW_COLORS, BOSS_SAFE_ZONE_Y_FACTOR,
 } from './rpg-constants';
 
 // ── Context interface ─────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ const TELEPORT_PRISMATIC_COLORS = ['#e8f0fa', '#ffffff', '#b0c8ff', '#d6aaff', '
 export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
 
   function getSafeZoneX(): number { return ctx.dim.w / 2; }
-  function getSafeZoneY(): number { return ctx.dim.h * 0.85; }
+  function getSafeZoneY(): number { return ctx.dim.h * BOSS_SAFE_ZONE_Y_FACTOR; }
 
   function teleportPlayerToSafeZone(): void {
     const { mote, teleportParticles } = ctx;

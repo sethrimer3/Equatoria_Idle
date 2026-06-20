@@ -18,7 +18,7 @@ import type { BossEnemy, DanmakuSafeZone } from './rpg-enemy-types';
 import {
   BOSS_SIZE_BASE, BOSS_COLORS, BOSS_GLOW_COLORS,
   BOSS_PHASE_TRANSITION_MS, BOSS_PHASE2_HP_RATIO, BOSS_PHASE3_HP_RATIO,
-  BOSS_BOTTOM_SAFE_ZONE_R, BOSS_GLYPH_LABEL,
+  BOSS_BOTTOM_SAFE_ZONE_R, BOSS_SAFE_ZONE_Y_FACTOR, BOSS_GLYPH_LABEL,
   INTER_WAVE_DELAY_MS,
 } from './rpg-constants';
 import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
@@ -189,7 +189,7 @@ export function drawBottomSafeZone(
   glowTimeS: number,
 ): void {
   if (!isBossWaveActive) return;
-  const szX = widthPx / 2, szY = heightPx * 0.85;
+  const szX = widthPx / 2, szY = heightPx * BOSS_SAFE_ZONE_Y_FACTOR;
   const hue = (glowTimeS * 60) % 360;
   ctx.save();
   ctx.globalAlpha = 0.30 + Math.sin(glowTimeS * 3) * 0.08;
@@ -242,6 +242,109 @@ export function drawDanmakuSafeZone(
     ctx.fillText('SAFE', Math.round(sz.x + Math.cos(sz.angle) * 50), Math.round(sz.y + Math.sin(sz.angle) * 50));
     ctx.globalAlpha = 1;
   }
+}
+
+// ── Boss arena walls ──────────────────────────────────────────────────────────
+
+/**
+ * Draws animated energy barrier walls at the safeCoreBounds edges during boss
+ * waves.  On screen-width === 360px the walls coincide with the canvas edge
+ * (no forbidden zone visible); on wider screens the forbidden side fills with
+ * a dark gradient and the barrier line glows at the actual boundary.
+ *
+ * Visual layers (bottom → top):
+ *  1. Dark gradient fill in the forbidden zone (left/right of safeCoreBounds).
+ *  2. Inner glow gradient just inside the barrier (atmospheric halo).
+ *  3. Pulsing vertical barrier line with shadow glow.
+ *  4. Drifting energy nodes — sine-positioned orbs requiring no per-frame state.
+ */
+export function drawBossArenaWalls(
+  ctx: CanvasRenderingContext2D,
+  isBossWaveActive: boolean,
+  scb: { left: number; top: number; right: number; bottom: number },
+  widthPx: number,
+  glowTimeS: number,
+): void {
+  if (!isBossWaveActive) return;
+
+  const hue   = (glowTimeS * 60) % 360;
+  const pulse = 0.55 + Math.sin(glowTimeS * 2.8) * 0.18;
+  const wallColor = `hsl(${hue}, 80%, 72%)`;
+  const glowColor = `hsl(${hue}, 100%, 82%)`;
+  const H = scb.bottom - scb.top;
+
+  ctx.save();
+
+  // 1. Dark forbidden-zone fills (only visible when canvas is wider than safeCore)
+  const rightW = widthPx - scb.right;
+  if (scb.left > 0) {
+    const g = ctx.createLinearGradient(0, 0, scb.left, 0);
+    g.addColorStop(0, `hsla(${hue}, 40%, 6%, 0.80)`);
+    g.addColorStop(1, `hsla(${hue}, 40%, 6%, 0.00)`);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = g;
+    ctx.fillRect(0, scb.top, scb.left, H);
+  }
+  if (rightW > 0) {
+    const g = ctx.createLinearGradient(scb.right, 0, widthPx, 0);
+    g.addColorStop(0, `hsla(${hue}, 40%, 6%, 0.00)`);
+    g.addColorStop(1, `hsla(${hue}, 40%, 6%, 0.80)`);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = g;
+    ctx.fillRect(scb.right, scb.top, rightW, H);
+  }
+
+  // 2. Inner atmospheric halo (safe side, ~20px wide)
+  const haloW = 20;
+  {
+    const gL = ctx.createLinearGradient(scb.left, 0, scb.left + haloW, 0);
+    gL.addColorStop(0, `hsla(${hue}, 80%, 50%, ${0.12 * pulse})`);
+    gL.addColorStop(1, `hsla(${hue}, 80%, 50%, 0.00)`);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = gL;
+    ctx.fillRect(scb.left, scb.top, haloW, H);
+
+    const gR = ctx.createLinearGradient(scb.right - haloW, 0, scb.right, 0);
+    gR.addColorStop(0, `hsla(${hue}, 80%, 50%, 0.00)`);
+    gR.addColorStop(1, `hsla(${hue}, 80%, 50%, ${0.12 * pulse})`);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = gR;
+    ctx.fillRect(scb.right - haloW, scb.top, haloW, H);
+  }
+
+  // 3. Barrier lines: left, right, top
+  ctx.globalAlpha = pulse;
+  if (!isLowGraphicsMode) { ctx.shadowBlur = 10; ctx.shadowColor = glowColor; }
+  ctx.strokeStyle = wallColor;
+  ctx.lineWidth   = 1.2;
+
+  ctx.beginPath(); ctx.moveTo(scb.left,  scb.top); ctx.lineTo(scb.left,  scb.bottom); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(scb.right, scb.top); ctx.lineTo(scb.right, scb.bottom); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(scb.left,  scb.top); ctx.lineTo(scb.right, scb.top);    ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // 4. Drifting energy nodes along left and right walls
+  const NODE_COUNT = 6;
+  for (let i = 0; i < NODE_COUNT; i++) {
+    // Each node drifts at a slightly different speed; phase offset spaces them out.
+    const phase    = i / NODE_COUNT;
+    const tWrapped = ((glowTimeS * 0.14 + phase) % 1 + 1) % 1;
+    const ny       = scb.top + H * tWrapped;
+    const brightness = 0.3 + 0.6 * Math.sin(glowTimeS * 3.5 + i * 1.7);
+    const nr       = 2.2 + Math.sin(glowTimeS * 5 + i * 0.9) * 0.7;
+    const nodeAlpha = pulse * Math.max(0, brightness);
+
+    ctx.globalAlpha = nodeAlpha;
+    if (!isLowGraphicsMode) { ctx.shadowBlur = 9; ctx.shadowColor = glowColor; }
+    ctx.fillStyle = wallColor;
+
+    ctx.beginPath(); ctx.arc(scb.left,  ny, nr, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(scb.right, ny, nr, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 // ── Wave clear banner ─────────────────────────────────────────────────────────

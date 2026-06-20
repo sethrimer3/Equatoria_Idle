@@ -18,7 +18,7 @@ import {
   BOSS_PHASE2_HP_RATIO, BOSS_PHASE3_HP_RATIO, BOSS_PHASE_TRANSITION_MS,
   BOSS_ATTACK1_CD_BASE, BOSS_ATTACK1_CD_P1, BOSS_ATTACK1_CD_P2,
   BOSS_ATTACK2_CD_BASE, BOSS_ATTACK2_CD_P1, BOSS_ATTACK2_CD_P2,
-  BOSS_BOTTOM_SAFE_ZONE_R,
+  BOSS_BOTTOM_SAFE_ZONE_R, BOSS_SAFE_ZONE_Y_FACTOR,
   BOSS_PROJ_SPEED_FAST,
   DANMAKU_TELEPORT_MARGIN, DANMAKU_SAFE_ANGLE_WIDTH,
   FLUID_VEL_FRAME_TO_PX_S, FLUID_ENEMY_STRENGTH, FLUID_MISSILE_STRENGTH,
@@ -73,7 +73,7 @@ export interface BossUpdateCtx {
 // ── Local helper ──────────────────────────────────────────────────────────────
 
 function isInBottomSafeZone(px: number, py: number, dim: { w: number; h: number }): boolean {
-  const dx = px - dim.w / 2, dy = py - dim.h * 0.85;
+  const dx = px - dim.w / 2, dy = py - dim.h * BOSS_SAFE_ZONE_Y_FACTOR;
   return dx * dx + dy * dy <= BOSS_BOTTOM_SAFE_ZONE_R * BOSS_BOTTOM_SAFE_ZONE_R;
 }
 

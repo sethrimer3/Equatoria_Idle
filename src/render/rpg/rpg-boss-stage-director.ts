@@ -26,7 +26,7 @@
  */
 
 import {
-  BOSS_BOTTOM_SAFE_ZONE_R,
+  BOSS_BOTTOM_SAFE_ZONE_R, BOSS_SAFE_ZONE_Y_FACTOR,
   PLAYER_HIT_RADIUS,
   PLAYER_IFRAME_MIN_MS,
   PLAYER_IFRAME_MAX_ADD_MS,
@@ -269,7 +269,7 @@ export function isPlayerInStageDirectorSafeZone(
   dim: { w: number; h: number },
 ): boolean {
   const dx = px - dim.w / 2;
-  const dy = py - dim.h * 0.85;
+  const dy = py - dim.h * BOSS_SAFE_ZONE_Y_FACTOR;
   const r = BOSS_BOTTOM_SAFE_ZONE_R + CORRIDOR_SAFETY_MARGIN;
   return dx * dx + dy * dy <= r * r;
 }
@@ -488,7 +488,7 @@ export function updateBossStageDirector(
 
   const { dim } = ctx;
   const safeZoneX = dim.w / 2;
-  const safeZoneY = dim.h * 0.85;
+  const safeZoneY = dim.h * BOSS_SAFE_ZONE_Y_FACTOR;
 
   state.stageTimerMs += deltaMs;
 

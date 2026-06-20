@@ -162,7 +162,8 @@ export interface RpgDeathRestartCtx {
   weaponSystems: RpgWeaponHandle;
   weaponAttackTimers: Map<string, number>;
   fluid: { reset(): void };
-  bossWave: { exitBossWave(): void };
+  bossWave: { exitBossWave(): void; startBossFight(bossId: number): void };
+  getBossEnemy(): BossEnemy | null;
   /** Optional: clear ephemeral player status effects on restart. */
   onRestart?(): void;
 
@@ -214,6 +215,7 @@ export function triggerDeath(ctx: RpgDeathRestartCtx): void {
 }
 
 export function doRestart(ctx: RpgDeathRestartCtx): void {
+  const restartBossId = ctx.getBossEnemy()?.bossId ?? null;
   ctx.playerStats.hp = ctx.playerStats.maxHp;
   ctx.onRestart?.();
   ctx.enemies.length = 0; ctx.spawnQueue.length = 0;
@@ -271,9 +273,13 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.deathParticles.length = 0;
   ctx.playerMovementState.glowMovementIntensity = 0;
   ctx.setBossHitsInRound(0);
-  ctx.setCurrentWave(ctx.rpgSimState.respawnWave);
-  ctx.setIsInterWave(true);
-  ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS * 0.4);
+  if (restartBossId !== null) {
+    ctx.bossWave.startBossFight(restartBossId);
+  } else {
+    ctx.setCurrentWave(ctx.rpgSimState.respawnWave);
+    ctx.setIsInterWave(true);
+    ctx.setInterWaveTimerMs(INTER_WAVE_DELAY_MS * 0.4);
+  }
   ctx.setScreenDarken(0);
   ctx.weaponAttackTimers.clear();
   ctx.hitEffects.length = 0; ctx.shotLines.length = 0;

@@ -23,7 +23,7 @@ import {
   BOSS_DAMAGE_WINDOW_RADIUS,
   CORRIDOR_SAFETY_MARGIN,
 } from './rpg-boss-stage-director';
-import { PLAYER_HIT_RADIUS, BOSS_BOTTOM_SAFE_ZONE_R } from './rpg-constants';
+import { PLAYER_HIT_RADIUS, BOSS_BOTTOM_SAFE_ZONE_R, BOSS_SAFE_ZONE_Y_FACTOR } from './rpg-constants';
 
 // ── Internal tuning ───────────────────────────────────────────────────────────
 
@@ -52,7 +52,7 @@ export function drawBossStageDirector(
   if (!state.isActive) return;
 
   const safeZoneX = dim.w / 2;
-  const safeZoneY = dim.h * 0.85;
+  const safeZoneY = dim.h * BOSS_SAFE_ZONE_Y_FACTOR;
   const bossX = bossEnemy.x;
   const bossY = bossEnemy.y;
 

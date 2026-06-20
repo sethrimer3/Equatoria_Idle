@@ -71,7 +71,7 @@ import {
 import { drawChainWhip, drawVortexes, setLowGraphicsMode as setWeaponChainLowGraphics } from './rpg-weapon-draw';
 import { drawSwordCombos, drawSandBladeCombo, drawSandDriftPixels, setLowGraphicsMode as setWeaponSwordLowGraphics } from './rpg-weapon-draw-sword';
 import { drawLuckyMotes, drawLuckyMotePopups } from './rpg-lucky-motes';
-import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
+import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, drawBossArenaWalls, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import { drawAlivenGroups, setAlivenLowGraphics } from './rpg-aliven-draw';
 import { renderEnemySpeechBubbles } from './rpg-enemy-barks';
 import { renderBossDialogue } from './rpg-boss-dialogue';
@@ -1013,6 +1013,7 @@ export function drawRpgFrame(
   drawHorizonPentagonGroups(canvas2d, ctx.horizonPentagonGroups, widthPx);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
+  drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.safeCoreBounds, widthPx, glowTimeS);
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), widthPx, heightPx, glowTimeS);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
   drawBossProjectiles(canvas2d, ctx.bossProjectiles);
