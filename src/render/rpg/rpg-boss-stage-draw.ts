@@ -22,6 +22,7 @@ import {
   CORRIDOR_HALF_WIDTH_STAGE,
   BOSS_DAMAGE_WINDOW_RADIUS,
   CORRIDOR_SAFETY_MARGIN,
+  rainParticleX,
 } from './rpg-boss-stage-director';
 import { PLAYER_HIT_RADIUS, BOSS_BOTTOM_SAFE_ZONE_R, BOSS_SAFE_ZONE_Y_FACTOR } from './rpg-constants';
 
@@ -240,7 +241,7 @@ function _drawVerticalRain(
       if (particleAlpha < 0.05) continue;
       c.globalAlpha = alpha * particleAlpha;
       c.beginPath();
-      c.arc(stream.x, p.y, h.particleRadius, 0, Math.PI * 2);
+      c.arc(rainParticleX(stream.x, p), p.y, h.particleRadius, 0, Math.PI * 2);
       c.fill();
     }
   }
@@ -410,7 +411,7 @@ function _drawDebugOverlay(
       for (const stream of h.streams) {
         for (const p of stream.particles) {
           c.beginPath();
-          c.arc(stream.x, p.y, h.particleRadius, 0, Math.PI * 2);
+          c.arc(rainParticleX(stream.x, p), p.y, h.particleRadius, 0, Math.PI * 2);
           c.stroke();
         }
       }

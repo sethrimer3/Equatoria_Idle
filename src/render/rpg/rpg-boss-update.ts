@@ -201,6 +201,21 @@ export function updateBossProjectiles(bossProjectiles: BossProjectile[], ctx: Bo
 
     p.x += p.vx * dt; p.y += p.vy * dt;
 
+    // Wall bounce — phase 3 quartz boss projectiles
+    if ((p.bouncesLeft ?? 0) > 0) {
+      let bounced = false;
+      if (p.x < ab.left)   { p.x = ab.left;   p.vx =  Math.abs(p.vx); bounced = true; }
+      if (p.x > ab.right)  { p.x = ab.right;  p.vx = -Math.abs(p.vx); bounced = true; }
+      if (p.y < ab.top)    { p.y = ab.top;     p.vy =  Math.abs(p.vy); bounced = true; }
+      if (p.y > ab.bottom) { p.y = ab.bottom;  p.vy = -Math.abs(p.vy); bounced = true; }
+      if (bounced) {
+        p.bouncesLeft = (p.bouncesLeft ?? 1) - 1;
+        // Fade out quickly after bouncing
+        p.lifeMs = Math.min(p.lifeMs, 800);
+        p.maxLifeMs = 800;
+      }
+    }
+
     // Boss projectiles are destroyed when they enter the bottom safe zone
     if (ctx.getIsBossWaveActive() && isInBottomSafeZone(p.x, p.y, ab)) {
       bossProjectiles.splice(i, 1); continue;

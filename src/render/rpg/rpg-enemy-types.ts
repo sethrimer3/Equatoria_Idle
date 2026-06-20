@@ -265,6 +265,10 @@ export interface BossProjectile {
   glowColor: string;
   size: number;
   seekStr: number;
+  /** If > 1, draw as a streak elongated along the velocity direction. */
+  lengthScale?: number;
+  /** Remaining wall bounces. When > 0, the projectile reflects off active arena walls. */
+  bouncesLeft?: number;
 }
 
 // ── Fracteryl enemy (tier 11) ─────────────────────────────────────

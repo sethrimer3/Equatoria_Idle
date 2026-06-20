@@ -85,9 +85,13 @@ export function updateBossBehavior(
       for (let i = 0; i < count; i++) {
         const a   = (i / count) * Math.PI * 2;
         const spd = BOSS_PROJ_SPEED * (1 + boss.phaseIndex * 0.3);
-        ctx.bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+        ctx.bossProjectiles.push({
+          x: boss.x, y: boss.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
           atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-          color: BOSS_COLORS[1], glowColor: BOSS_GLOW_COLORS[1], size: BOSS_PROJ_SIZE, seekStr: 0 });
+          color: BOSS_COLORS[1], glowColor: BOSS_GLOW_COLORS[1], size: BOSS_PROJ_SIZE, seekStr: 0,
+          lengthScale: boss.phaseIndex >= 1 ? 4 : undefined,
+          bouncesLeft: boss.phaseIndex >= 2 ? 1 : undefined,
+        });
       }
     }
     if (boss.secondaryTimerMs <= 0) {

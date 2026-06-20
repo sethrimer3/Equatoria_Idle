@@ -80,10 +80,14 @@ const MAX_WISPS = 65;
 
 export type StageHazardPhase = 'telegraph' | 'active' | 'fading';
 
-/** A single rain-stream particle (x is the stream's fixed x). */
+/** A single rain-stream particle. Stream x is the baseline; sinePhase offsets horizontally. */
 export interface RainParticle {
   y: number;
   lifeMs: number;
+  /** Elapsed ms since spawn — drives the sine-wave x displacement. */
+  ageMs: number;
+  /** Per-particle phase offset so adjacent particles don't move in lockstep. */
+  sinePhase: number;
 }
 
 export interface RainStream {
@@ -292,7 +296,11 @@ const RAIN_SPEED_BY_STAGE: readonly number[] = [65, 88, 112];
 const HAZARD_INTERVAL_MS: readonly number[] = [3200, 2400, 1900];
 const RAIN_PARTICLE_LIFE_MS = 5500;
 const RAIN_PARTICLE_RADIUS = 4.5;
-const RAIN_SPAWN_INTERVAL_MS = 290;
+const RAIN_SPAWN_INTERVAL_MS = 700;
+/** Horizontal amplitude (px) of the sine-wave drift applied to rain particles. */
+const RAIN_SINE_AMPLITUDE = 16;
+/** Angular frequency (rad/ms) — one full swing every ~2 seconds. */
+const RAIN_SINE_FREQ = Math.PI * 2 / 2000;
 const SWEEP_SPEED = 58; // px/s
 
 function _spawnVerticalRain(
@@ -404,6 +412,7 @@ function _updateVerticalRain(
     for (let i = stream.particles.length - 1; i >= 0; i--) {
       const p = stream.particles[i];
       p.y += distPerMs * deltaMs;
+      p.ageMs += deltaMs;
       p.lifeMs -= deltaMs;
       if (p.lifeMs <= 0 || p.y > dim.h + h.particleRadius * 2) {
         stream.particles.splice(i, 1);
@@ -413,10 +422,12 @@ function _updateVerticalRain(
     if (spawnActive) {
       stream.nextSpawnMs -= deltaMs;
       if (stream.nextSpawnMs <= 0) {
-        stream.nextSpawnMs = RAIN_SPAWN_INTERVAL_MS + Math.random() * 60;
+        stream.nextSpawnMs = RAIN_SPAWN_INTERVAL_MS + Math.random() * 120;
         stream.particles.push({
           y: -h.particleRadius * 2,
           lifeMs: RAIN_PARTICLE_LIFE_MS,
+          ageMs: 0,
+          sinePhase: Math.random() * Math.PI * 2,
         });
       }
     }
@@ -425,11 +436,15 @@ function _updateVerticalRain(
 
 // ── Collision helpers ─────────────────────────────────────────────────────────
 
+export function rainParticleX(streamX: number, p: RainParticle): number {
+  return streamX + RAIN_SINE_AMPLITUDE * Math.sin(p.ageMs * RAIN_SINE_FREQ + p.sinePhase);
+}
+
 function _rainHitsPlayer(h: VerticalRainHazard, px: number, py: number): boolean {
   const threshold = (PLAYER_HIT_RADIUS + h.particleRadius) ** 2;
   for (const stream of h.streams) {
-    const dx = px - stream.x;
     for (const p of stream.particles) {
+      const dx = px - rainParticleX(stream.x, p);
       const dy = py - p.y;
       if (dx * dx + dy * dy < threshold) return true;
     }

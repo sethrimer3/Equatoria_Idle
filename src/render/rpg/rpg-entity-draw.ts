@@ -124,15 +124,37 @@ export function drawBossProjectiles(ctx: CanvasRenderingContext2D, projectiles: 
     const lifeRatio = p.lifeMs / p.maxLifeMs;
     const alpha = Math.min(1, lifeRatio * 3.0);
     const ph = p.size / 2;
+    const ls = p.lengthScale ?? 1;
+
     ctx.globalAlpha = alpha;
-    if (!isLowGraphicsMode) {
-      ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
-      const gh = ph * 2.2;
-      ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
-      ctx.shadowBlur = 0;
+
+    if (ls > 1) {
+      // Elongated streak aligned to velocity direction
+      const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      const angle = spd > 0.01 ? Math.atan2(p.vy, p.vx) : 0;
+      const len = p.size * ls;
+      ctx.save();
+      ctx.translate(Math.round(p.x), Math.round(p.y));
+      ctx.rotate(angle);
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = p.size * 4; ctx.shadowColor = p.glowColor;
+        ctx.fillStyle = p.glowColor;
+        ctx.fillRect(-len / 2 - ph * 0.6, -ph * 1.8, len + ph * 1.2, ph * 3.6);
+        ctx.shadowBlur = 0;
+      }
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-len / 2, -ph, len, p.size);
+      ctx.restore();
+    } else {
+      if (!isLowGraphicsMode) {
+        ctx.shadowBlur = p.size * 5; ctx.shadowColor = p.glowColor; ctx.fillStyle = p.glowColor;
+        const gh = ph * 2.2;
+        ctx.fillRect(Math.floor(p.x - gh), Math.floor(p.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
+        ctx.shadowBlur = 0;
+      }
+      ctx.fillStyle = p.color;
+      ctx.fillRect(Math.floor(p.x - ph), Math.floor(p.y - ph), p.size, p.size);
     }
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x - ph), Math.floor(p.y - ph), p.size, p.size);
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.restore();
