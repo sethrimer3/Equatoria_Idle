@@ -288,6 +288,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     zone: 'euhedral',
     sides: 3,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Quartz-Orbiter.png',
   },
   {
     id: 'elite_ruby',
@@ -302,6 +303,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     zone: 'euhedral',
     sides: 4,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Ruby-Patroller.png',
   },
   {
     id: 'elite_sunstone',
@@ -316,6 +318,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     zone: 'euhedral',
     sides: 5,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Sunstone-Orbiter.png',
   },
   {
     id: 'elite_citrine',
@@ -330,6 +333,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     zone: 'euhedral',
     sides: 6,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Citrine-Chaser.png',
   },
   {
     id: 'elite_iolite',
@@ -344,6 +348,7 @@ export const ENEMY_CATALOG: readonly EnemyCatalogEntry[] = [
     zone: 'euhedral',
     sides: 7,
     category: 'elite',
+    iconFile: 'EnemyIcon_Elite-Iolite-Colossus.png',
   },
   {
     id: 'elite_amethyst',
