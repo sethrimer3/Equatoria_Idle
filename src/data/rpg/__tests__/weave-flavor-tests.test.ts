@@ -50,9 +50,9 @@ describe('getWeaveDominantTiers', () => {
 // ─── getEligibleWeaveEffectsForRoll ──────────────────────────────────────────
 
 describe('getEligibleWeaveEffectsForRoll', () => {
-  it('returns all 7 effects for Uncommon with no ingredient flavor', () => {
+  it('returns all 8 effects for Uncommon with no ingredient flavor', () => {
     const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
-    expect(pool).toHaveLength(7);
+    expect(pool).toHaveLength(8);
   });
 
   it('Common rarity: all effects excluded because minRarity is Uncommon', () => {
@@ -100,7 +100,7 @@ describe('getEligibleWeaveEffectsForRoll', () => {
     }
   });
 
-  it('all 7 effect IDs appear in the pool for Uncommon weave', () => {
+  it('all 8 effect IDs appear in the pool for Uncommon weave', () => {
     const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
     const ids = pool.map(e => e.id);
     expect(ids).toContain('weave_focus');
@@ -110,6 +110,7 @@ describe('getEligibleWeaveEffectsForRoll', () => {
     expect(ids).toContain('weave_echo_strike');
     expect(ids).toContain('weave_swiftstrike');
     expect(ids).toContain('weave_ember_surge');
+    expect(ids).toContain('weave_aegis_flash');
   });
 
   it('sand ingredients favor weave_swiftstrike alongside weave_quickness', () => {
@@ -230,8 +231,8 @@ describe('rollWeaveEffects', () => {
 
   it('diamond-heavy weave with rng=0.6 rolls weave_reactive_ward', () => {
     // ember_surge flavors are citrine/ruby — diamond does NOT boost it.
-    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1). Total=13.
-    // rng=0.6 → threshold=7.8 → focus:4.8 → quickness:3.8 → guard:0.8 → reactive_ward:-2.2 → reactive_ward
+    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1), aegis_flash(3). Total=16.
+    // rng=0.6 → threshold=9.6 → focus:6.6 → quickness:5.6 → guard:2.6 → reactive_ward:-0.4 → reactive_ward
     const effects = rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'diamond', refinedCount: 5 }],
@@ -365,6 +366,81 @@ describe('weave_ember_surge registry', () => {
     expect(() => rollWeaveEffects(
       [makeAffix('Uncommon')],
       [{ tierId: 'citrine', refinedCount: 5 }],
+      100,
+      () => 1,
+    )).not.toThrow();
+  });
+});
+
+// ─── weave_aegis_flash registry ──────────────────────────────────────────────
+
+describe('weave_aegis_flash registry', () => {
+  it('exists in ALL_WEAVE_EFFECT_IDS', () => {
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_aegis_flash');
+  });
+
+  it('has role defense', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
+    const entry = pool.find(e => e.id === 'weave_aegis_flash')!;
+    expect(entry).toBeDefined();
+  });
+
+  it('is eligible for Uncommon+ weaves', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Uncommon' });
+    expect(pool.some(e => e.id === 'weave_aegis_flash')).toBe(true);
+  });
+
+  it('is excluded from Common-only weaves', () => {
+    const pool = getEligibleWeaveEffectsForRoll({ ingredients: [], highestRarity: 'Common' });
+    expect(pool.some(e => e.id === 'weave_aegis_flash')).toBe(false);
+  });
+
+  it('diamond ingredients give aegis_flash higher weight than non-flavored effects', () => {
+    const pool = getEligibleWeaveEffectsForRoll({
+      ingredients: [{ tierId: 'diamond', refinedCount: 5 }],
+      highestRarity: 'Uncommon',
+    });
+    const aegisEntry = pool.find(e => e.id === 'weave_aegis_flash')!;
+    const swiftEntry = pool.find(e => e.id === 'weave_swiftstrike')!;
+    expect(aegisEntry.weight).toBeGreaterThan(swiftEntry.weight);
+  });
+
+  it('sapphire ingredients give aegis_flash higher weight than non-flavored effects', () => {
+    const pool = getEligibleWeaveEffectsForRoll({
+      ingredients: [{ tierId: 'sapphire', refinedCount: 5 }],
+      highestRarity: 'Uncommon',
+    });
+    const aegisEntry = pool.find(e => e.id === 'weave_aegis_flash')!;
+    const echoEntry  = pool.find(e => e.id === 'weave_echo_strike')!;
+    expect(aegisEntry.weight).toBeGreaterThan(echoEntry.weight);
+  });
+
+  it('can be rolled deterministically with diamond ingredients', () => {
+    // diamond: focus(3), quickness(1), guard(3), reactive_ward(3), echo_strike(1), swiftstrike(1), ember_surge(1), aegis_flash(3). Total=16.
+    // rng=0.9 → threshold=14.4 → focus:11.4→quickness:10.4→guard:7.4→reactive_ward:4.4→echo_strike:3.4→swiftstrike:2.4→ember_surge:1.4→aegis_flash:-1.6 → aegis_flash
+    const effects = rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'diamond', refinedCount: 5 }],
+      100,
+      () => 0.9,
+    );
+    expect(effects).toHaveLength(1);
+    expect(effects[0]!.id).toBe('weave_aegis_flash');
+  });
+
+  it('rng=1.0 with sapphire ingredients does not crash', () => {
+    expect(() => rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'sapphire', refinedCount: 5 }],
+      100,
+      () => 1,
+    )).not.toThrow();
+  });
+
+  it('rng=1.0 with diamond ingredients does not crash', () => {
+    expect(() => rollWeaveEffects(
+      [makeAffix('Uncommon')],
+      [{ tierId: 'diamond', refinedCount: 5 }],
       100,
       () => 1,
     )).not.toThrow();

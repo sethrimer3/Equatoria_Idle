@@ -121,7 +121,7 @@ export function getWeavePassiveEffectDef(id: string): WeavePassiveEffectDef | nu
 // ─── Proc effects ─────────────────────────────────────────────────────────────
 
 export type WeaveProcTrigger = 'playerDamaged' | 'playerHitEnemy';
-export type WeaveProcEffectId = 'weave_reactive_ward' | 'weave_echo_strike' | 'weave_swiftstrike' | 'weave_ember_surge';
+export type WeaveProcEffectId = 'weave_reactive_ward' | 'weave_echo_strike' | 'weave_swiftstrike' | 'weave_ember_surge' | 'weave_aegis_flash';
 
 export interface WeaveProcEffectDef {
   readonly id: WeaveProcEffectId;
@@ -207,6 +207,22 @@ export const WEAVE_PROC_EFFECT_REGISTRY: Readonly<Record<WeaveProcEffectId, Weav
     minRarity: 'Uncommon',
     weight: 1.0,
   },
+  weave_aegis_flash: {
+    id: 'weave_aegis_flash',
+    displayName: 'Aegis Flash',
+    description: (v) => `8% chance when damaged: +${v.toFixed(1)}% DEF for 1.5s`,
+    category: 'proc',
+    trigger: 'playerDamaged',
+    baseChancePct: 8,
+    durationMs: 1500,
+    // At Uncommon/powerScale≈1: 24×0.45=10.8%; at Mythic/powerScale≈2: 24×1.0×~2=48%.
+    // Shorter and stronger than weave_reactive_ward (15, 3000ms) — a burst rather than steady defense.
+    baseMaxValue: 24,
+    role: 'defense',
+    flavors: ['diamond', 'sapphire'],
+    minRarity: 'Uncommon',
+    weight: 1.0,
+  },
 } as const;
 
 // ─── Unified effect types ─────────────────────────────────────────────────────
@@ -222,6 +238,7 @@ export const ALL_WEAVE_EFFECT_IDS: readonly WeaveEffectId[] = [
   'weave_echo_strike',
   'weave_swiftstrike',
   'weave_ember_surge',
+  'weave_aegis_flash',
 ];
 
 /** Returns the def for a given id (passive or proc), or null if unknown. */

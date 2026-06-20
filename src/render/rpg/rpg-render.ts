@@ -544,6 +544,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let lastSwiftstrikeTextMs = -Infinity;
   /** Timestamp of the last "Ember Surge" floating text — debounce for multi-hit proc spam. */
   let lastEmberSurgeTextMs = -Infinity;
+  /** Timestamp of the last "Aegis Flash" floating text — debounce for repeated damage spam. */
+  let lastAegisFlashTextMs = -Infinity;
   let playerIFramesMs = 0;
 
   // ── Sand blade swing tracking (for sand drift pixel spawning) ──
@@ -1011,13 +1013,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const procIds = tryTriggerPlayerDamagedWeaveEffects(rpgSimState);
         if (procIds.length > 0) {
           applyEquipmentStats();
-          // Spawn shimmer ring
           wardEffects.push({ x: mote.x, y: mote.y, timerMs: WARD_TOTAL_MS, totalMs: WARD_TOTAL_MS });
-          // Floating text — debounced to one label per 800ms to avoid spam
           const nowMs = performance.now();
-          if (nowMs - lastWardTextMs > 800) {
+          if (procIds.includes('weave_reactive_ward') && nowMs - lastWardTextMs > 800) {
             lastWardTextMs = nowMs;
             spawnDamageNumber(mote.x, mote.y - 4, 0, -1, 'Reactive Ward', 0.25, '#ffd060');
+          }
+          if (procIds.includes('weave_aegis_flash') && nowMs - lastAegisFlashTextMs > 800) {
+            lastAegisFlashTextMs = nowMs;
+            spawnDamageNumber(mote.x, mote.y - 12, 0, -1, 'Aegis Flash', 0.25, '#80d8ff');
           }
         }
       }
@@ -1781,7 +1785,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid: { reset: () => fluid.reset() },
     bossWave: { exitBossWave: () => bossWave.exitBossWave(), startBossFight: (id) => bossWave.startBossFight(id) },
     getBossEnemy: () => bossEnemy,
-    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; lastEmberSurgeTextMs = -Infinity; },
+    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; lastEmberSurgeTextMs = -Infinity; lastAegisFlashTextMs = -Infinity; },
     setBossEnemy:            (b) => { bossEnemy = b; },
     setBinaryLaserSweep:     (_sweep) => { binaryLaserSweep = null; },
     setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },

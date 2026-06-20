@@ -24,6 +24,15 @@ const HIT_BUFF_STAT_MAP: Readonly<Partial<Record<string, ActiveWeaveBuffStat>>> 
   weave_ember_surge: 'weaponDamagePct',
 } as const;
 
+/**
+ * Maps each buff-granting playerDamaged proc effectId to the stat it modifies.
+ * Add new defensive on-hit procs here without touching the trigger loop.
+ */
+const DAMAGE_BUFF_STAT_MAP: Readonly<Partial<Record<string, ActiveWeaveBuffStat>>> = {
+  weave_reactive_ward: 'playerDefensePct',
+  weave_aegis_flash: 'playerDefensePct',
+} as const;
+
 // ─── Trigger ──────────────────────────────────────────────────────────────────
 
 /**
@@ -51,14 +60,16 @@ export function tryTriggerPlayerDamagedWeaveEffects(
       if (!def || def.trigger !== 'playerDamaged') continue;
       if (rng() * 100 >= def.baseChancePct) continue;
 
-      // Reactive Ward is a defense buff; refresh or add.
+      const statKey = DAMAGE_BUFF_STAT_MAP[effect.id];
+      if (!statKey) continue; // unknown buff stat — skip gracefully
       const existing = state.activeWeaveBuffs.find(b => b.effectId === effect.id);
       if (existing) {
         existing.remainingMs = def.durationMs;
+        if (effect.value > existing.valuePct) existing.valuePct = effect.value;
       } else {
         const buff: ActiveWeaveBuff = {
           effectId: effect.id,
-          statKey: 'playerDefensePct',
+          statKey,
           valuePct: effect.value,
           remainingMs: def.durationMs,
         };

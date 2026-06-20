@@ -810,9 +810,9 @@ describe('rollWeavePassiveEffects — proc in pool', () => {
   }
 
   it('proc effect can be rolled from the pool', () => {
-    // With no ingredient flavor context, all 7 effects get weight 1.0 each (total=7).
-    // rng=0.5 → threshold=3.5 → focus:2.5 → quickness:1.5 → guard:0.5 → reactive_ward:-0.5 → reactive_ward (index 3).
-    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.5);
+    // With no ingredient flavor context, all 8 effects get weight 1.0 each (total=8).
+    // rng=0.45 → threshold=3.6 → focus:2.6 → quickness:1.6 → guard:0.6 → reactive_ward:-0.4 → reactive_ward (index 3).
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.45);
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_reactive_ward');
     expect(effects[0]!.value).toBeGreaterThan(0);
@@ -902,9 +902,9 @@ describe('tryTriggerPlayerHitEnemyWeaveEffects', () => {
         rarity: rarity as CraftedWeaveData['affixes'][number]['rarity'], value: 10, unit: '%', applied: true,
       };
     }
-    // With no flavor context, all 7 effects get weight 1.0 (total=7).
-    // rng=0.65 → threshold=4.55 → focus:3.55 → quickness:2.55 → guard:1.55 → reactive_ward:0.55 → echo_strike:-0.45 → echo_strike.
-    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.65);
+    // With no flavor context, all 8 effects get weight 1.0 (total=8).
+    // rng=0.6 → threshold=4.8 → focus:3.8 → quickness:2.8 → guard:1.8 → reactive_ward:0.8 → echo_strike:-0.2 → echo_strike.
+    const effects = rollWeavePassiveEffects([makeAffix('Uncommon')], 100, () => 0.6);
     expect(effects).toHaveLength(1);
     expect(effects[0]!.id).toBe('weave_echo_strike');
     expect(effects[0]!.value).toBeGreaterThan(0);
@@ -1197,5 +1197,120 @@ describe('weave_ember_surge proc behavior', () => {
     expect(state.activeWeaveBuffs).toHaveLength(2);
     expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBeCloseTo(6, 5);
     expect(getTotalActiveWeaveBuffCooldownPct(state)).toBeCloseTo(4, 5);
+  });
+});
+
+// ─── weave_aegis_flash proc tests ─────────────────────────────────
+
+describe('weave_aegis_flash proc', () => {
+  function makeAegisState(effectValue: number) {
+    const state = createRpgSimState();
+    const weave: CraftedWeaveData = {
+      id: 'w-aegis-test', name: 'Aegis Test', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_aegis_flash', value: effectValue }],
+    };
+    state.craftedWeaves = [weave];
+    state.equippedWeaveSlots = ['w-aegis-test', null, null, null, null, null];
+    return state;
+  }
+
+  it('exists in ALL_WEAVE_EFFECT_IDS', () => {
+    expect(ALL_WEAVE_EFFECT_IDS).toContain('weave_aegis_flash');
+  });
+
+  it('getWeaveEffectDef returns correct def', () => {
+    const def = getWeaveEffectDef('weave_aegis_flash');
+    expect(def).not.toBeNull();
+    expect(def!.category).toBe('proc');
+    expect(def!.role).toBe('defense');
+  });
+
+  it('triggers from valid damage and creates playerDefensePct buff', () => {
+    const state = makeAegisState(20);
+    const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(triggered).toContain('weave_aegis_flash');
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.effectId).toBe('weave_aegis_flash');
+    expect(state.activeWeaveBuffs[0]!.statKey).toBe('playerDefensePct');
+    expect(state.activeWeaveBuffs[0]!.valuePct).toBe(20);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(1500);
+  });
+
+  it('does not trigger when rng fails', () => {
+    const state = makeAegisState(20);
+    const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 1);
+    expect(triggered).toHaveLength(0);
+    expect(state.activeWeaveBuffs).toHaveLength(0);
+  });
+
+  it('does not trigger when weave is not equipped', () => {
+    const state = createRpgSimState();
+    const weave: CraftedWeaveData = {
+      id: 'w-unequipped', name: 'Unequipped', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_aegis_flash', value: 20 }],
+    };
+    state.craftedWeaves = [weave];
+    // slot is null — weave is in inventory but not equipped
+    state.equippedWeaveSlots = [null, null, null, null, null, null];
+    const triggered = tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(triggered).toHaveLength(0);
+  });
+
+  it('refreshes duration on repeated proc and keeps stronger value', () => {
+    const state = makeAegisState(20);
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    state.activeWeaveBuffs[0]!.remainingMs = 300;
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(state.activeWeaveBuffs).toHaveLength(1);
+    expect(state.activeWeaveBuffs[0]!.remainingMs).toBe(1500);
+  });
+
+  it('expired buff no longer contributes DEF', () => {
+    const state = makeAegisState(20);
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(20, 5);
+    tickActiveWeaveBuffs(state, 2000);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBe(0);
+  });
+
+  it('aegis_flash and reactive_ward can coexist as separate buffs', () => {
+    const state = createRpgSimState();
+    const w1: CraftedWeaveData = {
+      id: 'w-aegis', name: 'Aegis', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_aegis_flash', value: 20 }],
+    };
+    const w2: CraftedWeaveData = {
+      id: 'w-ward', name: 'Ward', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_reactive_ward', value: 10 }],
+    };
+    state.craftedWeaves = [w1, w2];
+    state.equippedWeaveSlots = ['w-aegis', 'w-ward', null, null, null, null];
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(state.activeWeaveBuffs).toHaveLength(2);
+    expect(getTotalActiveWeaveBuffDefPct(state)).toBeCloseTo(30, 5);
+  });
+
+  it('does not affect cooldown or weapon damage', () => {
+    const state = makeAegisState(20);
+    tryTriggerPlayerDamagedWeaveEffects(state, () => 0);
+    expect(getTotalActiveWeaveBuffCooldownPct(state)).toBe(0);
+    expect(getTotalActiveWeaveBuffWeaponDamagePct(state)).toBe(0);
+  });
+
+  it('invalid effect id in proc loop is skipped gracefully', () => {
+    const state = createRpgSimState();
+    const weave: CraftedWeaveData = {
+      id: 'w-bad', name: 'Bad', ingredients: [], affixes: [],
+      totalWeightedMoteValue: 100, forgeCraftLevel: 1, tierEffects: [], refinementLevel: 0,
+      effects: [{ id: 'weave_nonexistent' as never, value: 10 }],
+    };
+    state.craftedWeaves = [weave];
+    state.equippedWeaveSlots = ['w-bad', null, null, null, null, null];
+    expect(() => tryTriggerPlayerDamagedWeaveEffects(state, () => 0)).not.toThrow();
+    expect(state.activeWeaveBuffs).toHaveLength(0);
   });
 });
