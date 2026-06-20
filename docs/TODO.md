@@ -136,6 +136,7 @@ Remaining before first Play submission (see ANDROID_RELEASE.md):
 
 ## Completed or superseded references
 
+- [x] Build 297: Quartz boss now uses the real `ASSETS/bossMidi/1-QuartzBoss/` MIDI/OGG phrase folder instead of the temporary demo MIDI.
 - [x] Build 296: boss MIDI attack scheduler with demo Boss 1 pattern, mapping config, fallback behavior, dev diagnostics, and scheduler/parser tests.
 - [x] Build 201: initial crafted weapon save/load, resolver, action, UI.
 - [x] Build 202: forge capacity upgrade, refined crystal feedback, first crafted icon/modifier display.

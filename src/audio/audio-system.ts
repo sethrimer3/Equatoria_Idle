@@ -13,6 +13,7 @@ import { preloadAudioBuffers } from './audio-loader';
 import { MusicPlayer } from './music-player';
 import { AmbiancePlayer } from './ambiance-player';
 import { SfxPlayer } from './sfx-player';
+import { BossMusicPlayer } from './boss-music-player';
 import {
   MUSIC_PATHS,
   AMBIANCE_PATH,
@@ -63,6 +64,11 @@ export interface AudioSystem {
   onForgeCrunchCompleted(): void;
   onForgeSpinUpCancelled(): void;
 
+  // Boss MIDI/music events
+  startBossMusic(beatLoop: string, bgLayers: readonly string[]): void;
+  stopBossMusic(): void;
+  playBossMusicPhrase(path: string): void;
+
   // Settings events
   onSettingsChanged(): void;
 
@@ -89,6 +95,9 @@ function createNoOpAudioSystem(): AudioSystem {
     onForgeCrunchStarted:   () => {},
     onForgeCrunchCompleted: () => {},
     onForgeSpinUpCancelled: () => {},
+    startBossMusic:        () => {},
+    stopBossMusic:         () => {},
+    playBossMusicPhrase:   () => {},
     onSettingsChanged:      () => {},
     updateAmbianceForTab:   () => {},
   };
@@ -111,6 +120,7 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
   const music   = new MusicPlayer(musicVolume);
   const ambiance = new AmbiancePlayer(sfxVolume);
   const sfx     = new SfxPlayer(sfxVolume);
+  const bossMusic = new BossMusicPlayer(() => musicVolume);
 
   let _contextStarted = false;
   let _isFocused = true;
@@ -146,7 +156,9 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
     },
 
     setMusicVolume(v: number): void {
+      musicVolume = v;
       music.setVolume(v);
+      bossMusic.setVolume(v);
     },
 
     setSfxVolume(v: number): void {
@@ -224,6 +236,20 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
     onForgeSpinUpCancelled(): void {
       if (!_isFocused) return;
       sfx.onForgeChargingCancelled();
+    },
+
+    startBossMusic(beatLoop: string, bgLayers: readonly string[]): void {
+      if (!_isFocused) return;
+      bossMusic.start(beatLoop, bgLayers);
+    },
+
+    stopBossMusic(): void {
+      bossMusic.stop();
+    },
+
+    playBossMusicPhrase(path: string): void {
+      if (!_isFocused) return;
+      bossMusic.playPhrase(path);
     },
 
     onSettingsChanged(): void {

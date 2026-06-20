@@ -230,6 +230,8 @@ Boss-wave fights can opt into MIDI-backed attack timing without changing normal 
 - `src/data/rpg/boss-midi-scheduler.ts` advances from boss-wave simulation elapsed time, not wall-clock time, so boss speed scaling also scales MIDI attack timing.
 - `src/data/rpg/boss-midi-config.ts` maps notes to existing boss attack kinds by exact note, pitch class, channel, and velocity intensity ranges.
 - `src/render/rpg/rpg-boss-midi-runtime.ts` loads/parses each boss MIDI file once, caches success/failure, and adapts note events into existing boss special attack spawners.
+- A boss pattern may define multiple phrases; Quartz boss uses `ASSETS/bossMidi/1-QuartzBoss/wave1.mid` through `wave6.mid` as sequential boss attack phrases and plays the matching `waveN.ogg` as each phrase begins.
+- Optional boss music loops use the same ModSynth-style split between `beatLoop.ogg` and background layer OGGs while the boss fight is active.
 - Missing, invalid, unsupported, or still-loading MIDI files fail closed: existing boss-wave stage director/projectile behavior continues unchanged.
 
 To add a new MIDI-backed boss pattern, put the MIDI file in `ASSETS/bossMidi/`, add a `BOSS_MIDI_PATTERNS` entry for that boss id, and map notes/channels/velocity ranges to existing boss attack families. Keep parsing out of per-frame code; the scheduler should only walk already-normalized events.

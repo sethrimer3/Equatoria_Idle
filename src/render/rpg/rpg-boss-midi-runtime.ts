@@ -15,6 +15,7 @@ import { spawnBossAttackFromConfig } from './rpg-boss-attack-update';
 interface CachedPattern {
   status: 'idle' | 'loading' | 'ready' | 'failed';
   events: BossMidiNoteEvent[];
+  phrases: Array<{ startMs: number; introOgg?: string }>;
   error?: string;
   promise?: Promise<void>;
 }
@@ -27,6 +28,7 @@ export interface BossMidiRuntimeState {
   loadedBossId: number | null;
   lastTriggered: BossMidiNoteEvent | null;
   lastAttackKind: string | null;
+  nextPhraseIndex: number;
   readonly cache: Map<number, CachedPattern>;
 }
 
@@ -37,6 +39,7 @@ export function createBossMidiRuntimeState(): BossMidiRuntimeState {
     loadedBossId: null,
     lastTriggered: null,
     lastAttackKind: null,
+    nextPhraseIndex: 0,
     cache: new Map(),
   };
 }
@@ -46,19 +49,35 @@ export function resetBossMidiRuntime(state: BossMidiRuntimeState): void {
   state.activeBossId = null;
   state.lastTriggered = null;
   state.lastAttackKind = null;
+  state.nextPhraseIndex = 0;
 }
 
 export function ensureBossMidiLoaded(state: BossMidiRuntimeState, bossId: number): void {
   const pattern = getBossMidiPattern(bossId);
   if (!pattern || state.cache.has(bossId)) return;
-  const cached: CachedPattern = { status: 'loading', events: [] };
-  cached.promise = fetch(pattern.midiUrl)
-    .then((response) => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.arrayBuffer();
-    })
-    .then((buffer) => {
-      cached.events = parseBossMidi(buffer);
+  const cached: CachedPattern = { status: 'loading', events: [], phrases: [] };
+  cached.promise = Promise.all(pattern.phrases.map((phrase) =>
+    fetch(phrase.midiUrl)
+      .then((response) => {
+        if (!response.ok) throw new Error(`${phrase.midiUrl}: HTTP ${response.status}`);
+        return response.arrayBuffer();
+      })
+      .then((buffer) => ({ phrase, events: parseBossMidi(buffer) })),
+  ))
+    .then((loaded) => {
+      let offsetMs = 0;
+      const allEvents: BossMidiNoteEvent[] = [];
+      const phrases: Array<{ startMs: number; introOgg?: string }> = [];
+      for (const item of loaded) {
+        phrases.push({ startMs: offsetMs, introOgg: item.phrase.introOgg });
+        for (const event of item.events) {
+          allEvents.push({ ...event, timeMs: event.timeMs + offsetMs });
+        }
+        const phraseEndMs = item.events.reduce((max, event) => Math.max(max, event.timeMs + event.durationMs), 0);
+        offsetMs += phraseEndMs + pattern.phraseGapMs;
+      }
+      cached.events = allEvents.sort((a, b) => a.timeMs - b.timeMs || a.note - b.note);
+      cached.phrases = phrases;
       cached.status = cached.events.length > 0 ? 'ready' : 'failed';
       if (cached.events.length === 0) cached.error = 'No MIDI notes found';
     })
@@ -66,7 +85,7 @@ export function ensureBossMidiLoaded(state: BossMidiRuntimeState, bossId: number
       cached.status = 'failed';
       cached.events = [];
       cached.error = err instanceof Error ? err.message : String(err);
-      console.warn('[BossMidi] Failed to load MIDI pattern', pattern.midiUrl, err);
+      console.warn('[BossMidi] Failed to load MIDI pattern for boss', bossId, err);
     });
   state.cache.set(bossId, cached);
 }
@@ -76,6 +95,7 @@ export function beginBossMidiRuntime(state: BossMidiRuntimeState, bossId: number
   state.loadedBossId = bossId;
   state.lastTriggered = null;
   state.lastAttackKind = null;
+  state.nextPhraseIndex = 0;
   resetBossMidiScheduler(state.scheduler);
   ensureBossMidiLoaded(state, bossId);
 }
@@ -86,11 +106,20 @@ export function updateBossMidiRuntime(
   attackState: BossAttackState,
   attackCtx: BossAttackUpdateCtx,
   deltaMs: number,
+  onPhraseStart?: (oggPath: string) => void,
 ): void {
   const pattern = getBossMidiPattern(boss.bossId);
   if (!pattern || state.activeBossId !== boss.bossId) return;
   const cached = state.cache.get(boss.bossId);
   if (!cached || cached.status !== 'ready') return;
+  const previousMs = state.scheduler.elapsedMs;
+  const nextMs = previousMs + deltaMs;
+  while (state.nextPhraseIndex < cached.phrases.length) {
+    const phrase = cached.phrases[state.nextPhraseIndex];
+    if (phrase.startMs > nextMs) break;
+    if ((phrase.startMs > previousMs || previousMs === 0) && phrase.introOgg) onPhraseStart?.(phrase.introOgg);
+    state.nextPhraseIndex++;
+  }
   advanceBossMidiScheduler(state.scheduler, cached.events, deltaMs, (event) => {
     const mapped = mapBossMidiNote(event, pattern.mapping);
     const spawned = triggerBossMidiAttack(attackState, attackCtx, boss, event, pattern, mapped.kindConfig);
@@ -119,5 +148,6 @@ export function getBossMidiDebugText(state: BossMidiRuntimeState): string {
   const status = cached?.status ?? 'idle';
   const count = cached?.events.length ?? 0;
   const note = state.lastTriggered ? `${state.lastTriggered.note}@${Math.round(state.lastTriggered.timeMs)}ms` : '-';
-  return `midi:${status} notes:${count} t:${Math.round(state.scheduler.elapsedMs)} last:${note} atk:${state.lastAttackKind ?? '-'}`;
+  const phrase = cached ? `${Math.min(state.nextPhraseIndex, cached.phrases.length)}/${cached.phrases.length}` : '-';
+  return `midi:${status} notes:${count} phrase:${phrase} t:${Math.round(state.scheduler.elapsedMs)} last:${note} atk:${state.lastAttackKind ?? '-'}`;
 }

@@ -325,6 +325,9 @@ export async function startApp(): Promise<void> {
     getAchievementAtkBonus: () => appState.game.achievements.baseAtkBonus,
     onError: () => { audioSystem.onError(); },
     onNewCodexEntry: () => { setCodexUnread(true); },
+    onBossMusicStart: (beatLoop, bgLayers) => { audioSystem.startBossMusic(beatLoop, bgLayers); },
+    onBossMusicStop: () => { audioSystem.stopBossMusic(); },
+    onBossMusicPhrase: (path) => { audioSystem.playBossMusicPhrase(path); },
     dispatch,
   });
   rpgRender.setNumberFormat(settings.numberFormat);

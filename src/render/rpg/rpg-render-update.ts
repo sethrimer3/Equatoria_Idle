@@ -254,6 +254,7 @@ export interface RpgUpdateCtx {
   bossAttackState: BossAttackState;
   bossAttackCtx: BossAttackUpdateCtx;
   bossMidiState: BossMidiRuntimeState;
+  onBossMusicPhrase?: (path: string) => void;
 
   // Boss stage director
   bossStageDirectorState: BossStageDirectorState;
@@ -583,7 +584,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
       // Tick existing special attacks (so they expire) but pass null boss to
       // prevent spawning new ones; stage director generates corridor-safe hazards.
       updateBossAttacks(ctx.bossAttackState, ctx.bossAttackCtx, null, deltaMs * bossSpeedMult);
-      updateBossMidiRuntime(ctx.bossMidiState, bossEnemy, ctx.bossAttackState, ctx.bossAttackCtx, deltaMs * bossSpeedMult);
+      updateBossMidiRuntime(ctx.bossMidiState, bossEnemy, ctx.bossAttackState, ctx.bossAttackCtx, deltaMs * bossSpeedMult, ctx.onBossMusicPhrase);
       updateBossStageDirector(
         ctx.bossStageDirectorState,
         ctx.bossStageDirectorCtx,

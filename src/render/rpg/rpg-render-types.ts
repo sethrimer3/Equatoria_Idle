@@ -86,6 +86,12 @@ export interface RpgRenderOptions {
   onError?: () => void;
   /** Called when an enemy type is added to the codex for the first time. */
   onNewCodexEntry?: () => void;
+  /** Start layered boss music loops for MIDI-backed boss fights. */
+  onBossMusicStart?: (beatLoop: string, bgLayers: readonly string[]) => void;
+  /** Stop any active boss music loops. */
+  onBossMusicStop?: () => void;
+  /** Play a one-shot phrase/introduction OGG for a MIDI-backed boss attack phrase. */
+  onBossMusicPhrase?: (path: string) => void;
   /**
    * Action dispatcher for the weapon inventory picker popup.
    * When provided, tapping the WEAP column header or any WEAP slot cell opens

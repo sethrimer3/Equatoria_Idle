@@ -40,6 +40,7 @@ import {
   PLAYER_SLOWED_DURATION_MS, PLAYER_TIMEWARP_DURATION_MS,
 } from '../../sim/rpg/player-status-effects';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
+import { getBossMidiPattern } from '../../data/rpg/boss-midi-config';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import { applyLensStatus, getActiveStatuses, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
@@ -1574,9 +1575,17 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       clearStageForBossFight();
       resetBossStageDirector(bossStageDirectorState);
       const boss = bossEnemy;
-      if (boss) beginBossMidiRuntime(bossMidiState, boss.bossId);
+      if (boss) {
+        beginBossMidiRuntime(bossMidiState, boss.bossId);
+        const music = getBossMidiPattern(boss.bossId)?.music;
+        if (music) options.onBossMusicStart?.(music.beatLoop, music.bgLayers);
+      }
     },
-    onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); resetBossMidiRuntime(bossMidiState); },
+    onExitBossWave:             () => {
+      deactivateBossStageDirector(bossStageDirectorState);
+      resetBossMidiRuntime(bossMidiState);
+      options.onBossMusicStop?.();
+    },
     onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
     onBossSpawned:              (boss) => { ensureBossMidiLoaded(bossMidiState, boss.bossId); notifyBossSpawned(boss); },
     onBossDamaged:              (boss, damageAmount) => notifyBossDamaged(boss, damageAmount),
@@ -1968,6 +1977,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossAttackState,
     bossAttackCtx,
     bossMidiState,
+    onBossMusicPhrase:     (path) => { options.onBossMusicPhrase?.(path); },
     bossStageDirectorState,
     bossStageDirectorCtx,
     weaponOrbitCtx,

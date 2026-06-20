@@ -10,8 +10,20 @@ export type BossMidiAttackKind =
 
 export interface BossMidiPatternConfig {
   bossId: number;
-  midiUrl: string;
+  music?: BossMidiMusicConfig;
+  phrases: BossMidiPhraseConfig[];
+  phraseGapMs: number;
   mapping: BossMidiMappingConfig;
+}
+
+export interface BossMidiMusicConfig {
+  beatLoop: string;
+  bgLayers: string[];
+}
+
+export interface BossMidiPhraseConfig {
+  midiUrl: string;
+  introOgg?: string;
 }
 
 export interface BossMidiMappingConfig {
@@ -40,7 +52,22 @@ const DEFAULT_DURATION_MS = 5200;
 export const BOSS_MIDI_PATTERNS: BossMidiPatternConfig[] = [
   {
     bossId: 1,
-    midiUrl: '/ASSETS/bossMidi/quartz-sovereign-demo.mid',
+    music: {
+      beatLoop: 'ASSETS/bossMidi/1-QuartzBoss/beatLoop.ogg',
+      bgLayers: [
+        'ASSETS/bossMidi/1-QuartzBoss/backgroundLoop_layer_1.ogg',
+        'ASSETS/bossMidi/1-QuartzBoss/backgroundLoop_layer_2.ogg',
+      ],
+    },
+    phrases: [
+      { midiUrl: 'ASSETS/bossMidi/1-QuartzBoss/wave1.mid', introOgg: 'ASSETS/bossMidi/1-QuartzBoss/wave1.ogg' },
+      { midiUrl: 'ASSETS/bossMidi/1-QuartzBoss/wave2.mid', introOgg: 'ASSETS/bossMidi/1-QuartzBoss/wave2.ogg' },
+      { midiUrl: 'ASSETS/bossMidi/1-QuartzBoss/wave3.mid', introOgg: 'ASSETS/bossMidi/1-QuartzBoss/wave3.ogg' },
+      { midiUrl: 'ASSETS/bossMidi/1-QuartzBoss/wave4.mid', introOgg: 'ASSETS/bossMidi/1-QuartzBoss/wave4.ogg' },
+      { midiUrl: 'ASSETS/bossMidi/1-QuartzBoss/wave5.mid', introOgg: 'ASSETS/bossMidi/1-QuartzBoss/wave5.ogg' },
+      { midiUrl: 'ASSETS/bossMidi/1-QuartzBoss/wave6.mid', introOgg: 'ASSETS/bossMidi/1-QuartzBoss/wave6.ogg' },
+    ],
+    phraseGapMs: 1000,
     mapping: {
       exactNotes: { 36: 'hexTrail', 48: 'mandala', 72: 'missileRing' },
       pitchClasses: { 0: 'mandala', 7: 'vermiculate' },
