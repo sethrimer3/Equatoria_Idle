@@ -10,6 +10,7 @@
  */
 
 import type { BossEnemy, BossProjectile, DanmakuSafeZone } from './rpg-enemy-types';
+import type { RpgFieldSpace } from './rpgFieldSpace';
 import {
   BOSS_SIZE_BASE,
   BOSS_PROJ_SPEED, BOSS_PROJ_SPEED_FAST,
@@ -36,6 +37,8 @@ export interface BossBehaviorCtx {
   getDanmakuSafeZone(): DanmakuSafeZone | null;
   /** Overwrite the current danmaku safe zone. */
   setDanmakuSafeZone(dz: DanmakuSafeZone | null): void;
+  /** Returns the current field-space snapshot (arena bounds, etc.). */
+  getFieldSpace(): RpgFieldSpace;
 }
 
 // ── Boss-wave danmaku behaviour ───────────────────────────────────────────────
@@ -65,16 +68,17 @@ export function updateBossWaveBehavior(
 ): void {
   const bossId  = boss.bossId;
   const half    = (BOSS_SIZE_BASE + bossId * 1.5) / 2;
+  const ab      = ctx.getFieldSpace().activeBounds;
 
-  // Position boss at top of arena, orbiting horizontally
-  const targetX = ctx.dim.w / 2 + Math.sin(boss.orbitAngle) * ctx.dim.w * 0.18;
-  const targetY = ctx.dim.h * 0.12;
+  // Position boss at top of active arena, orbiting horizontally
+  const targetX = (ab.left + ab.right) / 2 + Math.sin(boss.orbitAngle) * ab.width * 0.18;
+  const targetY = ab.top + ab.height * 0.12;
   boss.orbitAngle += 0.006 * dt;
   boss.vx += (targetX - boss.x) * 0.06;
   boss.vy += (targetY - boss.y) * 0.10;
   boss.vx *= 0.82; boss.vy *= 0.82;
-  boss.x = Math.max(half, Math.min(ctx.dim.w - half, boss.x + boss.vx * dt));
-  boss.y = Math.max(half, Math.min(ctx.dim.h * 0.30, boss.y + boss.vy * dt));
+  boss.x = Math.max(ab.left + half, Math.min(ab.right - half, boss.x + boss.vx * dt));
+  boss.y = Math.max(ab.top  + half, Math.min(ab.top + ab.height * 0.30, boss.y + boss.vy * dt));
 
   const dl = boss.danmakuLevel;
   const bulletSpeed     = BOSS_PROJ_SPEED      * (1.0 + dl * 0.12);

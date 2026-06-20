@@ -179,17 +179,17 @@ export function drawBossEnemy(
 
 /**
  * Draws the prismatic ring that marks the player's safe zone at the bottom of
- * the canvas during boss waves.  No-op when `isBossWaveActive` is false.
+ * the active arena during boss waves.  No-op when `isBossWaveActive` is false.
  */
 export function drawBottomSafeZone(
   ctx: CanvasRenderingContext2D,
   isBossWaveActive: boolean,
-  widthPx: number,
-  heightPx: number,
+  activeBounds: { left: number; top: number; right: number; bottom: number; width: number; height: number },
   glowTimeS: number,
 ): void {
   if (!isBossWaveActive) return;
-  const szX = widthPx / 2, szY = heightPx * BOSS_SAFE_ZONE_Y_FACTOR;
+  const szX = (activeBounds.left + activeBounds.right) / 2;
+  const szY = activeBounds.top + activeBounds.height * BOSS_SAFE_ZONE_Y_FACTOR;
   const hue = (glowTimeS * 60) % 360;
   ctx.save();
   ctx.globalAlpha = 0.30 + Math.sin(glowTimeS * 3) * 0.08;

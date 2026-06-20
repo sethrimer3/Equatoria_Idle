@@ -12,6 +12,7 @@
 
 import type { BossEnemy, BossProjectile, DanmakuSafeZone } from './rpg-enemy-types';
 import type { FluidImpulse } from './rpg-fluid';
+import type { RpgFieldSpace } from './rpgFieldSpace';
 import {
   TARGET_FRAME_MS,
   BOSS_SIZE_BASE,
@@ -44,6 +45,8 @@ export interface BossUpdateCtx {
   readonly mote: { x: number; y: number; vx: number; vy: number };
   /** Current canvas dimensions — updated on resize via shared object. */
   readonly dim: { w: number; h: number };
+  /** Returns the current field-space snapshot (arena bounds, etc.). */
+  getFieldSpace(): RpgFieldSpace;
   /** Euler fluid simulator — only addForce used by boss update code. */
   readonly fluid: { addForce(impulse: FluidImpulse): void };
   /** Player stats — def read, hp read + written. */
@@ -72,8 +75,14 @@ export interface BossUpdateCtx {
 
 // ── Local helper ──────────────────────────────────────────────────────────────
 
-function isInBottomSafeZone(px: number, py: number, dim: { w: number; h: number }): boolean {
-  const dx = px - dim.w / 2, dy = py - dim.h * BOSS_SAFE_ZONE_Y_FACTOR;
+/** Safe-zone test using active arena bounds rather than fixed canvas dimensions. */
+function isInBottomSafeZone(
+  px: number, py: number,
+  ab: { left: number; top: number; right: number; bottom: number; width: number; height: number },
+): boolean {
+  const cx = (ab.left + ab.right) / 2;
+  const cy = ab.top + ab.height * BOSS_SAFE_ZONE_Y_FACTOR;
+  const dx = px - cx, dy = py - cy;
   return dx * dx + dy * dy <= BOSS_BOTTOM_SAFE_ZONE_R * BOSS_BOTTOM_SAFE_ZONE_R;
 }
 
@@ -92,8 +101,11 @@ export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: nu
     boss.phaseTransitionMs = BOSS_PHASE_TRANSITION_MS;
     boss.danmakuLevel = targetPhase;
     if (boss.danmakuLevel > 0) {
-      boss.x = DANMAKU_TELEPORT_MARGIN + Math.random() * (ctx.dim.w - DANMAKU_TELEPORT_MARGIN * 2);
-      boss.y = DANMAKU_TELEPORT_MARGIN + Math.random() * (ctx.dim.h * 0.5);
+      const ab = ctx.getFieldSpace().activeBounds;
+      const xRange = Math.max(0, ab.width  - DANMAKU_TELEPORT_MARGIN * 2);
+      const yRange = Math.max(0, ab.height * 0.5 - DANMAKU_TELEPORT_MARGIN);
+      boss.x = ab.left + DANMAKU_TELEPORT_MARGIN + Math.random() * xRange;
+      boss.y = ab.top  + DANMAKU_TELEPORT_MARGIN + Math.random() * yRange;
       boss.vx = 0; boss.vy = 0;
       const safeAngle = Math.random() * Math.PI * 2;
       ctx.setDanmakuSafeZone(makeDanmakuSafeZone(boss.x, boss.y, safeAngle, DANMAKU_SAFE_ANGLE_WIDTH));
@@ -172,6 +184,7 @@ export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: nu
 
 export function updateBossProjectiles(bossProjectiles: BossProjectile[], ctx: BossUpdateCtx, deltaMs: number): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
+  const ab = ctx.getFieldSpace().activeBounds;
   for (let i = bossProjectiles.length - 1; i >= 0; i--) {
     const p = bossProjectiles[i];
     p.lifeMs -= deltaMs;
@@ -189,7 +202,7 @@ export function updateBossProjectiles(bossProjectiles: BossProjectile[], ctx: Bo
     p.x += p.vx * dt; p.y += p.vy * dt;
 
     // Boss projectiles are destroyed when they enter the bottom safe zone
-    if (ctx.getIsBossWaveActive() && isInBottomSafeZone(p.x, p.y, ctx.dim)) {
+    if (ctx.getIsBossWaveActive() && isInBottomSafeZone(p.x, p.y, ab)) {
       bossProjectiles.splice(i, 1); continue;
     }
 
@@ -203,7 +216,7 @@ export function updateBossProjectiles(bossProjectiles: BossProjectile[], ctx: Bo
 
     if (!p.hasHitPlayer) {
       // Player is immune inside the bottom safe zone
-      if (ctx.getIsBossWaveActive() && isInBottomSafeZone(ctx.mote.x, ctx.mote.y, ctx.dim)) continue;
+      if (ctx.getIsBossWaveActive() && isInBottomSafeZone(ctx.mote.x, ctx.mote.y, ab)) continue;
       const pdx = ctx.mote.x - p.x, pdy = ctx.mote.y - p.y;
       if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
         p.hasHitPlayer = true;
@@ -227,7 +240,7 @@ export function updateBossProjectiles(bossProjectiles: BossProjectile[], ctx: Bo
     }
 
     const margin = 30;
-    if (p.x < -margin || p.x > ctx.dim.w + margin || p.y < -margin || p.y > ctx.dim.h + margin) {
+    if (p.x < ab.left - margin || p.x > ab.right + margin || p.y < ab.top - margin || p.y > ab.bottom + margin) {
       bossProjectiles.splice(i, 1);
     }
   }

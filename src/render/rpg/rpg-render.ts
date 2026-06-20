@@ -1744,6 +1744,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     setDanmakuSafeZone:  (dz) => { danmakuSafeZone = dz; },
     getPlayerIFramesMs:  () => playerIFramesMs,
     setPlayerIFramesMs:  (n) => { playerIFramesMs = n; },
+    getFieldSpace:       () => rpgFieldSpace,
     spawnDamageNumber,
   };
 

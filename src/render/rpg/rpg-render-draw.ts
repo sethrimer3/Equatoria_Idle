@@ -1014,7 +1014,7 @@ export function drawRpgFrame(
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
   drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, fs.visibleBounds, glowTimeS);
-  drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), widthPx, heightPx, glowTimeS);
+  drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, glowTimeS);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
   drawBossProjectiles(canvas2d, ctx.bossProjectiles);
   if (ctx.getIsBossWaveActive() && bossEnemy) {
