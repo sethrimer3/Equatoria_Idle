@@ -22,6 +22,9 @@
 - Exports `BUILD_NUMBER` — increment by 1 with every PR/change.
 - Imported by `settings-panel.ts` to display "Build #N" in the Settings tab footer.
 
+### ASSETS/bossMidi/
+- Boss-only MIDI pattern assets. Files are loaded by `rpg-boss-midi-runtime.ts`, parsed once, and copied into `dist/ASSETS/bossMidi` by `scripts/copy-assets.mjs`.
+
 ### src/main.ts
 - Entry point. Boots the app when DOM is ready.
 

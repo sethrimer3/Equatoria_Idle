@@ -58,6 +58,13 @@ import {
   setBossAttacksLowGraphics, type BossAttackUpdateCtx,
 } from './rpg-boss-attack-update';
 import { createBossAttackState, type BossAttackState } from './rpg-boss-attack-types';
+import {
+  beginBossMidiRuntime,
+  createBossMidiRuntimeState,
+  ensureBossMidiLoaded,
+  getBossMidiDebugText,
+  resetBossMidiRuntime,
+} from './rpg-boss-midi-runtime';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
   LaserEnemy,
@@ -693,6 +700,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const bossProjectiles: BossProjectile[] = [];
   const teleportParticles: TeleportParticle[] = [];
   const bossAttackState: BossAttackState = createBossAttackState();
+  const bossMidiState = createBossMidiRuntimeState();
   /** Counts successive diamond-blade hits on the boss; resets to 0 after every teleport. */
   let bossHitsInRound = 0;
   /** True when the current boss fight was launched from the RPG menu. */
@@ -860,6 +868,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossAttackState.attacks.length = 0;
     bossAttackState.schedulerCooldowns.clear();
     bossAttackState.activePressure = 0;
+    resetBossMidiRuntime(bossMidiState);
     clearVerdurePlants(verdurePlants);
     verdureCaveWallState?.edgePoints.forEach((p) => { p.isOccupied = false; });
     verdureCaveWallState = null;
@@ -943,6 +952,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossAttackState.attacks.length = 0;
     bossAttackState.schedulerCooldowns.clear();
     bossAttackState.activePressure = 0;
+    resetBossMidiRuntime(bossMidiState);
     bossHitsInRound = 0;
     isBossFightFromMenu = false;
     isBossWaveActive = false;
@@ -1563,10 +1573,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onEnterBossWave:            () => {
       clearStageForBossFight();
       resetBossStageDirector(bossStageDirectorState);
+      const boss = bossEnemy;
+      if (boss) beginBossMidiRuntime(bossMidiState, boss.bossId);
     },
-    onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); },
+    onExitBossWave:             () => { deactivateBossStageDirector(bossStageDirectorState); resetBossMidiRuntime(bossMidiState); },
     onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
-    onBossSpawned:              (boss) => notifyBossSpawned(boss),
+    onBossSpawned:              (boss) => { ensureBossMidiLoaded(bossMidiState, boss.bossId); notifyBossSpawned(boss); },
     onBossDamaged:              (boss, damageAmount) => notifyBossDamaged(boss, damageAmount),
     onBossEvent:                (boss, eventType) => notifyBossEvent(boss, eventType),
   });
@@ -1955,6 +1967,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossCtx,
     bossAttackState,
     bossAttackCtx,
+    bossMidiState,
     bossStageDirectorState,
     bossStageDirectorCtx,
     weaponOrbitCtx,
@@ -2066,7 +2079,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         _devOverlayUpdateMs -= deltaMs;
         if (_devOverlayUpdateMs <= 0) {
           _devOverlayUpdateMs = 250;
-          _updateDevOverlay(_devOverlay, mote, enemies as Array<{ x: number; y: number; hp: number; maxHp: number }>);
+          _updateDevOverlay(_devOverlay, mote, enemies as Array<{ x: number; y: number; hp: number; maxHp: number }>, getBossMidiDebugText(bossMidiState));
         }
       }
     },
@@ -2269,6 +2282,7 @@ function _updateDevOverlay(
   el: HTMLElement,
   mote: { x: number; y: number },
   enemies: Array<{ x: number; y: number; hp: number; maxHp: number }>,
+  bossMidiText: string,
 ): void {
   const events = getRecentComboEvents();
   const allE: Array<{ x: number; y: number; hp: number; maxHp: number } & object> =
@@ -2298,6 +2312,7 @@ function _updateDevOverlay(
   } else {
     lines.push('<span style="color:#666">No nearby enemy</span>');
   }
+  lines.push(`<span style="color:#c9f">${bossMidiText}</span>`);
 
   lines.push('<hr style="border-color:#333;margin:3px 0">');
   lines.push('<b style="color:#aaa">Recent Combos</b>');

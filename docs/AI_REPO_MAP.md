@@ -126,6 +126,7 @@ Risks:
 - Crafted weapons depend on tier weight/composition math; avoid hardcoded per-tier assumptions outside the canonical helpers.
 - Lens/weave combat bonuses aggregate through `src/data/rpg/equipment-modifiers.ts`; attack files should consume the combined helper result instead of raw inventory/equipment state.
 - Lens/weave acquisition rolls live in `src/data/rpg/equipment-rewards.ts`; keep drop rates and zone eligibility centralized there.
+- Boss MIDI patterns live in `src/data/rpg/boss-midi-config.ts` and runtime `.mid` files live under `ASSETS/bossMidi/`; parsing is cached and boss-only.
 
 ### `src/render/canvas/`
 

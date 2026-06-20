@@ -44,6 +44,7 @@ import type { AlivenUpdateCtx } from './rpg-aliven-updates';
 import type { BossUpdateCtx } from './rpg-boss-update';
 import type { BossAttackUpdateCtx } from './rpg-boss-attack-update';
 import type { BossAttackState } from './rpg-boss-attack-types';
+import type { BossMidiRuntimeState } from './rpg-boss-midi-runtime';
 import type { WeaponOrbitCtx } from './rpg-weapon-orbit';
 import type { OrbitProjectileCtx } from './rpg-orbit-projectile';
 import type { OrbitProjectile } from './rpg-types';
@@ -101,6 +102,7 @@ import {
 } from './polyomino-enemy-update';
 import { updateBossEnemy, updateBossProjectiles } from './rpg-boss-update';
 import { updateBossAttacks } from './rpg-boss-attack-update';
+import { updateBossMidiRuntime } from './rpg-boss-midi-runtime';
 import { updateOrbitProjectile } from './rpg-orbit-projectile';
 import { updatePlayerMovement } from './rpg-player-movement';
 import {
@@ -251,6 +253,7 @@ export interface RpgUpdateCtx {
   bossCtx: BossUpdateCtx;
   bossAttackState: BossAttackState;
   bossAttackCtx: BossAttackUpdateCtx;
+  bossMidiState: BossMidiRuntimeState;
 
   // Boss stage director
   bossStageDirectorState: BossStageDirectorState;
@@ -580,6 +583,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
       // Tick existing special attacks (so they expire) but pass null boss to
       // prevent spawning new ones; stage director generates corridor-safe hazards.
       updateBossAttacks(ctx.bossAttackState, ctx.bossAttackCtx, null, deltaMs * bossSpeedMult);
+      updateBossMidiRuntime(ctx.bossMidiState, bossEnemy, ctx.bossAttackState, ctx.bossAttackCtx, deltaMs * bossSpeedMult);
       updateBossStageDirector(
         ctx.bossStageDirectorState,
         ctx.bossStageDirectorCtx,

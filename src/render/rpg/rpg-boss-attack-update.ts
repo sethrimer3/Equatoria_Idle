@@ -134,8 +134,17 @@ function _tryScheduleAttack(
 
   // Random selection (Math.random only used for scheduler choice)
   const cfg = candidates[Math.floor(Math.random() * candidates.length)];
-  const key = `${boss.bossId}_${cfg.kind}`;
+  spawnBossAttackFromConfig(state, ctx, boss, cfg, true);
+}
 
+export function spawnBossAttackFromConfig(
+  state: BossAttackState,
+  ctx: BossAttackUpdateCtx,
+  boss: BossEnemy,
+  cfg: BossAttackKindConfig,
+  applyCooldown = false,
+): boolean {
+  const key = `${boss.bossId}_${cfg.kind}`;
   const difficulty = Math.max(0, boss.phaseIndex);
   const bossX = boss.x;
   const bossY = boss.y;
@@ -164,10 +173,14 @@ function _tryScheduleAttack(
 
   if (instance) {
     state.attacks.push(instance);
-    // Total cooldown = per-kind config + minimum global scheduler gap to prevent
-    // rapid re-firing of the same kind immediately after it expires.
-    state.schedulerCooldowns.set(key, cfg.cooldownMs + SCHEDULER_COOLDOWN_MS);
+    if (applyCooldown) {
+      // Total cooldown = per-kind config + minimum global scheduler gap to prevent
+      // rapid re-firing of the same kind immediately after it expires.
+      state.schedulerCooldowns.set(key, cfg.cooldownMs + SCHEDULER_COOLDOWN_MS);
+    }
+    return true;
   }
+  return false;
 }
 
 import type { BossAttackKindConfig, BossAttackProfileConfig } from './rpg-boss-attack-config';

@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-18
-Current build: 280
+Current build: 296
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,16 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 296: boss MIDI attack scheduler
+
+Completed:
+
+- Added a lightweight Type-0/Type-1 MIDI note parser for boss-only attack scheduling.
+- Added boss MIDI mapping config for exact notes, pitch classes, channels, and velocity intensity scaling.
+- Boss 1 can opt into `ASSETS/bossMidi/quartz-sovereign-demo.mid`; missing or invalid MIDI leaves the existing boss behavior intact.
+- MIDI boss timing advances on boss-wave simulation time, including boss speed scaling, and resets on boss wave start/end.
+- Dev RPG debug overlay now includes compact boss MIDI load/time/last-note diagnostics.
 
 ### Build 280: lens/weave acquisition and reward presentation
 

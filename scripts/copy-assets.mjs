@@ -1,7 +1,7 @@
 import { cpSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const assetDirs = ['SPRITES', 'ANIMATIONS', 'font', 'music', 'sfx'];
+const assetDirs = ['SPRITES', 'ANIMATIONS', 'font', 'music', 'sfx', 'bossMidi'];
 const sourceRoot = 'ASSETS';
 const targetRoot = join('dist', 'ASSETS');
 

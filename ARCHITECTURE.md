@@ -221,3 +221,16 @@ Tier-to-gem mapping is defined in `src/render/assets/asset-paths.ts`.
 - Responsive layout with mobile-first CSS, landscape media queries
 - Generator positions are recomputed on every resize event
 
+## Boss MIDI Attack Scheduling
+
+Boss-wave fights can opt into MIDI-backed attack timing without changing normal waves or player attacks.
+
+- Runtime `.mid` files live in `ASSETS/bossMidi/`; `scripts/copy-assets.mjs` copies that folder into `dist/ASSETS`.
+- `src/data/rpg/boss-midi-parser.ts` parses Type-0/Type-1 MIDI files into normalized note events with `timeMs`, `durationMs`, `beat`, `durationBeats`, `note`, `velocity`, `channel`, and optional track/instrument metadata.
+- `src/data/rpg/boss-midi-scheduler.ts` advances from boss-wave simulation elapsed time, not wall-clock time, so boss speed scaling also scales MIDI attack timing.
+- `src/data/rpg/boss-midi-config.ts` maps notes to existing boss attack kinds by exact note, pitch class, channel, and velocity intensity ranges.
+- `src/render/rpg/rpg-boss-midi-runtime.ts` loads/parses each boss MIDI file once, caches success/failure, and adapts note events into existing boss special attack spawners.
+- Missing, invalid, unsupported, or still-loading MIDI files fail closed: existing boss-wave stage director/projectile behavior continues unchanged.
+
+To add a new MIDI-backed boss pattern, put the MIDI file in `ASSETS/bossMidi/`, add a `BOSS_MIDI_PATTERNS` entry for that boss id, and map notes/channels/velocity ranges to existing boss attack families. Keep parsing out of per-frame code; the scheduler should only walk already-normalized events.
+

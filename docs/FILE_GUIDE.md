@@ -55,6 +55,9 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `equation/equation-tier-roles.ts` | Maps `TierId` → equation role | Drives equation structure |
 | `rpg/weapon-definitions.ts` | Base weapon catalog | `WEAPON_BY_ID` — CAUTION: crafted weapons registered here too |
 | `rpg/rpg-upgrade-definitions.ts` | RPG upgrade catalog | `RPG_UPGRADE_BY_ID` |
+| `rpg/boss-midi-parser.ts` | Pure Type-0/Type-1 MIDI note normalization for boss attack schedules | SAFE |
+| `rpg/boss-midi-scheduler.ts` | Deterministic elapsed-time note scheduler with reset/seek helpers | SAFE |
+| `rpg/boss-midi-config.ts` | Boss MIDI asset and note/channel/velocity mapping config | SAFE |
 | `rpg/crafted-weapon-helpers.ts` | Crafted weapon creation, registration, resolver | `registerCraftedWeapons()`, `resolveWeaponDefinition()` |
 | `rpg/equipment-modifiers.ts` | Pure lens/weave combat-facing aggregation | No DOM/render imports |
 | `rpg/equipment-rewards.ts` | Zone-aware lens/weave drop tables and reward roll constants | Pure helper; keep drop rates here |
@@ -76,6 +79,7 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `background/vermiculate-effect.ts` | Vermiculate background pattern | Optional, high-perf |
 | `background/substrate-effect.ts` | Substrate background pattern | Optional |
 | `rpg/rpg-render.ts` | `createRpgRender()` — full RPG combat canvas | CAUTION — very large |
+| `rpg/rpg-boss-midi-runtime.ts` | Boss-only MIDI asset loading/cache and adapter into existing boss attacks | Medium |
 | `rpg/rpg-constants.ts` | RPG layout constants: logical size, player init | `RPG_LOGICAL_WIDTH/HEIGHT` |
 | `rpg/rpg-types.ts` | RPG entity types: `RpgMote`, `LaserEnemy`, etc. | Type definitions |
 | `rpg/rpg-wave-manager.ts` | Wave state machine | Drives enemy spawning |

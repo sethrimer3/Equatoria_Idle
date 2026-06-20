@@ -136,6 +136,7 @@ Remaining before first Play submission (see ANDROID_RELEASE.md):
 
 ## Completed or superseded references
 
+- [x] Build 296: boss MIDI attack scheduler with demo Boss 1 pattern, mapping config, fallback behavior, dev diagnostics, and scheduler/parser tests.
 - [x] Build 201: initial crafted weapon save/load, resolver, action, UI.
 - [x] Build 202: forge capacity upgrade, refined crystal feedback, first crafted icon/modifier display.
 - [x] Build 203: crafted modifier data, crit, armor ignore, tests.
