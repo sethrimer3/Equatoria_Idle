@@ -9,7 +9,7 @@
  *   5. safeCoreBounds always equals the fixed safeCoreWorldW × safeCoreWorldH.
  *   6. paddedEffectBounds correctly wraps visibleBounds.
  *   7. worldToScreen / screenToWorld are mutual inverses.
- *   8. activeBounds equals visibleBounds (current policy).
+ *   8. activeBounds preserves the safe-core aspect ratio inside visibleBounds.
  *   9. spawnBounds equals activeBounds (current policy).
  *
  * These tests mirror the scale invariant checked in rpg-viewport.test.ts but
@@ -147,12 +147,32 @@ describe('computeRpgFieldSpace — safeCoreBounds', () => {
 // ── activeBounds and spawnBounds follow current policy ────────────────────────
 
 describe('computeRpgFieldSpace — activeBounds and spawnBounds', () => {
-  it('activeBounds equals visibleBounds', () => {
-    const fs = makeSpace(760, 900);
+  it('activeBounds equals visibleBounds when the visible world has the safe-core ratio', () => {
+    const fs = makeSpace(360, 640);
     expect(fs.activeBounds.left).toBeCloseTo(fs.visibleBounds.left, 5);
     expect(fs.activeBounds.right).toBeCloseTo(fs.visibleBounds.right, 5);
     expect(fs.activeBounds.top).toBeCloseTo(fs.visibleBounds.top, 5);
     expect(fs.activeBounds.bottom).toBeCloseTo(fs.visibleBounds.bottom, 5);
+  });
+
+  it('activeBounds grows to the largest safe-core-ratio arena inside a wide desktop view', () => {
+    const fs = makeSpace(1280, 800);
+    expect(fs.activeBounds.height).toBeCloseTo(800, 3);
+    expect(fs.activeBounds.width).toBeCloseTo(450, 3);
+    expect(fs.activeBounds.width / fs.activeBounds.height).toBeCloseTo(SAFE_W / SAFE_H, 5);
+    expect(fs.activeBounds.left).toBeGreaterThan(fs.visibleBounds.left);
+    expect(fs.activeBounds.right).toBeLessThan(fs.visibleBounds.right);
+    expect(fs.activeBounds.top).toBeCloseTo(fs.visibleBounds.top, 3);
+    expect(fs.activeBounds.bottom).toBeCloseTo(fs.visibleBounds.bottom, 3);
+  });
+
+  it('activeBounds grows to the largest safe-core-ratio arena inside a tall view', () => {
+    const fs = makeSpace(760, 900);
+    expect(fs.activeBounds.width).toBeCloseTo(506.25, 3);
+    expect(fs.activeBounds.height).toBeCloseTo(900, 3);
+    expect(fs.activeBounds.width / fs.activeBounds.height).toBeCloseTo(SAFE_W / SAFE_H, 5);
+    expect(fs.activeBounds.left).toBeGreaterThan(fs.visibleBounds.left);
+    expect(fs.activeBounds.right).toBeLessThan(fs.visibleBounds.right);
   });
 
   it('spawnBounds equals activeBounds', () => {

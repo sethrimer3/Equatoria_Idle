@@ -247,13 +247,13 @@ export function drawDanmakuSafeZone(
 // ── Boss arena walls ──────────────────────────────────────────────────────────
 
 /**
- * Draws animated energy barrier walls at the safeCoreBounds edges during boss
- * waves.  On screen-width === 360px the walls coincide with the canvas edge
- * (no forbidden zone visible); on wider screens the forbidden side fills with
- * a dark gradient and the barrier line glows at the actual boundary.
+ * Draws animated energy barrier walls at the active arena edges during boss
+ * waves. On reference 360x640 screens the walls coincide with the canvas edge;
+ * on larger screens the arena grows at the fixed RPG aspect ratio and any
+ * visible outer gutters receive a dark gradient.
  *
  * Visual layers (bottom → top):
- *  1. Dark gradient fill in the forbidden zone (left/right of safeCoreBounds).
+ *  1. Dark gradient fill in the forbidden zones outside activeBounds.
  *  2. Inner glow gradient just inside the barrier (atmospheric halo).
  *  3. Pulsing vertical barrier line with shadow glow.
  *  4. Drifting energy nodes — sine-positioned orbs requiring no per-frame state.
@@ -261,8 +261,8 @@ export function drawDanmakuSafeZone(
 export function drawBossArenaWalls(
   ctx: CanvasRenderingContext2D,
   isBossWaveActive: boolean,
-  scb: { left: number; top: number; right: number; bottom: number },
-  widthPx: number,
+  bounds: { left: number; top: number; right: number; bottom: number },
+  visibleBounds: { left: number; top: number; right: number; bottom: number },
   glowTimeS: number,
 ): void {
   if (!isBossWaveActive) return;
@@ -271,56 +271,85 @@ export function drawBossArenaWalls(
   const pulse = 0.55 + Math.sin(glowTimeS * 2.8) * 0.18;
   const wallColor = `hsl(${hue}, 80%, 72%)`;
   const glowColor = `hsl(${hue}, 100%, 82%)`;
-  const H = scb.bottom - scb.top;
+  const H = bounds.bottom - bounds.top;
+  const W = bounds.right - bounds.left;
 
   ctx.save();
 
-  // 1. Dark forbidden-zone fills (only visible when canvas is wider than safeCore)
-  const rightW = widthPx - scb.right;
-  if (scb.left > 0) {
-    const g = ctx.createLinearGradient(0, 0, scb.left, 0);
+  // 1. Dark forbidden-zone fills.
+  if (bounds.left > visibleBounds.left) {
+    const g = ctx.createLinearGradient(visibleBounds.left, 0, bounds.left, 0);
     g.addColorStop(0, `hsla(${hue}, 40%, 6%, 0.80)`);
     g.addColorStop(1, `hsla(${hue}, 40%, 6%, 0.00)`);
     ctx.globalAlpha = 1;
     ctx.fillStyle = g;
-    ctx.fillRect(0, scb.top, scb.left, H);
+    ctx.fillRect(visibleBounds.left, bounds.top, bounds.left - visibleBounds.left, H);
   }
-  if (rightW > 0) {
-    const g = ctx.createLinearGradient(scb.right, 0, widthPx, 0);
+  if (bounds.right < visibleBounds.right) {
+    const g = ctx.createLinearGradient(bounds.right, 0, visibleBounds.right, 0);
     g.addColorStop(0, `hsla(${hue}, 40%, 6%, 0.00)`);
     g.addColorStop(1, `hsla(${hue}, 40%, 6%, 0.80)`);
     ctx.globalAlpha = 1;
     ctx.fillStyle = g;
-    ctx.fillRect(scb.right, scb.top, rightW, H);
+    ctx.fillRect(bounds.right, bounds.top, visibleBounds.right - bounds.right, H);
+  }
+  if (bounds.top > visibleBounds.top) {
+    const g = ctx.createLinearGradient(0, visibleBounds.top, 0, bounds.top);
+    g.addColorStop(0, `hsla(${hue}, 40%, 6%, 0.80)`);
+    g.addColorStop(1, `hsla(${hue}, 40%, 6%, 0.00)`);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = g;
+    ctx.fillRect(visibleBounds.left, visibleBounds.top, visibleBounds.right - visibleBounds.left, bounds.top - visibleBounds.top);
+  }
+  if (bounds.bottom < visibleBounds.bottom) {
+    const g = ctx.createLinearGradient(0, bounds.bottom, 0, visibleBounds.bottom);
+    g.addColorStop(0, `hsla(${hue}, 40%, 6%, 0.00)`);
+    g.addColorStop(1, `hsla(${hue}, 40%, 6%, 0.80)`);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = g;
+    ctx.fillRect(visibleBounds.left, bounds.bottom, visibleBounds.right - visibleBounds.left, visibleBounds.bottom - bounds.bottom);
   }
 
   // 2. Inner atmospheric halo (safe side, ~20px wide)
   const haloW = 20;
   {
-    const gL = ctx.createLinearGradient(scb.left, 0, scb.left + haloW, 0);
+    const gL = ctx.createLinearGradient(bounds.left, 0, bounds.left + haloW, 0);
     gL.addColorStop(0, `hsla(${hue}, 80%, 50%, ${0.12 * pulse})`);
     gL.addColorStop(1, `hsla(${hue}, 80%, 50%, 0.00)`);
     ctx.globalAlpha = 1;
     ctx.fillStyle = gL;
-    ctx.fillRect(scb.left, scb.top, haloW, H);
+    ctx.fillRect(bounds.left, bounds.top, haloW, H);
 
-    const gR = ctx.createLinearGradient(scb.right - haloW, 0, scb.right, 0);
+    const gR = ctx.createLinearGradient(bounds.right - haloW, 0, bounds.right, 0);
     gR.addColorStop(0, `hsla(${hue}, 80%, 50%, 0.00)`);
     gR.addColorStop(1, `hsla(${hue}, 80%, 50%, ${0.12 * pulse})`);
     ctx.globalAlpha = 1;
     ctx.fillStyle = gR;
-    ctx.fillRect(scb.right - haloW, scb.top, haloW, H);
+    ctx.fillRect(bounds.right - haloW, bounds.top, haloW, H);
+
+    const gT = ctx.createLinearGradient(0, bounds.top, 0, bounds.top + haloW);
+    gT.addColorStop(0, `hsla(${hue}, 80%, 50%, ${0.10 * pulse})`);
+    gT.addColorStop(1, `hsla(${hue}, 80%, 50%, 0.00)`);
+    ctx.fillStyle = gT;
+    ctx.fillRect(bounds.left, bounds.top, W, haloW);
+
+    const gB = ctx.createLinearGradient(0, bounds.bottom - haloW, 0, bounds.bottom);
+    gB.addColorStop(0, `hsla(${hue}, 80%, 50%, 0.00)`);
+    gB.addColorStop(1, `hsla(${hue}, 80%, 50%, ${0.10 * pulse})`);
+    ctx.fillStyle = gB;
+    ctx.fillRect(bounds.left, bounds.bottom - haloW, W, haloW);
   }
 
-  // 3. Barrier lines: left, right, top
+  // 3. Barrier lines: full active-arena box
   ctx.globalAlpha = pulse;
   if (!isLowGraphicsMode) { ctx.shadowBlur = 10; ctx.shadowColor = glowColor; }
   ctx.strokeStyle = wallColor;
   ctx.lineWidth   = 1.2;
 
-  ctx.beginPath(); ctx.moveTo(scb.left,  scb.top); ctx.lineTo(scb.left,  scb.bottom); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(scb.right, scb.top); ctx.lineTo(scb.right, scb.bottom); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(scb.left,  scb.top); ctx.lineTo(scb.right, scb.top);    ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bounds.left,  bounds.top);    ctx.lineTo(bounds.left,  bounds.bottom); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bounds.right, bounds.top);    ctx.lineTo(bounds.right, bounds.bottom); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bounds.left,  bounds.top);    ctx.lineTo(bounds.right, bounds.top);    ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bounds.left,  bounds.bottom); ctx.lineTo(bounds.right, bounds.bottom); ctx.stroke();
   ctx.shadowBlur = 0;
 
   // 4. Drifting energy nodes along left and right walls
@@ -329,7 +358,7 @@ export function drawBossArenaWalls(
     // Each node drifts at a slightly different speed; phase offset spaces them out.
     const phase    = i / NODE_COUNT;
     const tWrapped = ((glowTimeS * 0.14 + phase) % 1 + 1) % 1;
-    const ny       = scb.top + H * tWrapped;
+    const ny       = bounds.top + H * tWrapped;
     const brightness = 0.3 + 0.6 * Math.sin(glowTimeS * 3.5 + i * 1.7);
     const nr       = 2.2 + Math.sin(glowTimeS * 5 + i * 0.9) * 0.7;
     const nodeAlpha = pulse * Math.max(0, brightness);
@@ -338,8 +367,8 @@ export function drawBossArenaWalls(
     if (!isLowGraphicsMode) { ctx.shadowBlur = 9; ctx.shadowColor = glowColor; }
     ctx.fillStyle = wallColor;
 
-    ctx.beginPath(); ctx.arc(scb.left,  ny, nr, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(scb.right, ny, nr, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bounds.left,  ny, nr, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bounds.right, ny, nr, 0, Math.PI * 2); ctx.fill();
     ctx.shadowBlur = 0;
   }
 

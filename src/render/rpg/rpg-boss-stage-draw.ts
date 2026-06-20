@@ -2,7 +2,7 @@
  * rpg-boss-stage-draw.ts — Visual rendering for the boss-wave stage director.
  *
  * Draws:
- *   1. Luminous corridor from the bottom safe zone up to the boss.
+ *   1. Optional luminous corridor from the bottom safe zone up to the boss.
  *   2. Wisp particles floating along the corridor.
  *   3. Stage hazards (vertical rain streams, sweep bars) with
  *      telegraph → active → fading visual states.
@@ -56,8 +56,10 @@ export function drawBossStageDirector(
   const bossX = bossEnemy.x;
   const bossY = bossEnemy.y;
 
-  _drawCorridorGlow(c, state, bossX, bossY, safeZoneX, safeZoneY, dim, glowTimeS, isLowGraphics);
-  _drawWisps(c, state.wisps, isLowGraphics);
+  if (state.isDevMode) {
+    _drawCorridorGlow(c, state, bossX, bossY, safeZoneX, safeZoneY, dim, glowTimeS, isLowGraphics);
+    _drawWisps(c, state.wisps, isLowGraphics);
+  }
   _drawHazards(c, state, isLowGraphics);
   _drawBossContactFlash(c, state, bossX, bossY, isLowGraphics);
 

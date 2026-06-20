@@ -190,7 +190,7 @@ Completed:
 Recent builds before the crafted-weapon work completed major field-space adoption:
 
 - RPG safe core remains stable and readable.
-- Expanded host size reveals more real RPG world space instead of zooming in.
+- Expanded host size reveals more real RPG world space instead of zooming in; the hard-clamped active arena now expands at the fixed 9:16 RPG aspect ratio until it hits the visible world.
 - Verdure cave/stone walls, collision, floor texture, spawn rejection, plant anchors, and nav-grid integration now account for expanded active bounds.
 - Caustics fish enemies use terrain-aware pathfinding.
 - Topographic lighting coverage across the full visible world is marked complete in `nextSteps.md`.
@@ -229,7 +229,7 @@ Intentional safe-core elements:
 - Do not assume old root documentation is fully current for save versions or latest build status.
 - Do not bypass dynamic weapon resolution when crafted weapon ids may be equipped.
 - Do not broaden a crafted modifier into every attack path without tests/guards.
-- Do not change field-space scaling without checking expanded active bounds, safe core, spawn bounds, and terrain/collision users.
+- Do not change field-space scaling without checking aspect-preserved active bounds, safe core, spawn bounds, and terrain/collision users.
 - Do not mix Equatoria Idle with the separate Equatoria RPG project.
 
 ## Update rule

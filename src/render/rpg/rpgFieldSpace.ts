@@ -112,9 +112,10 @@ export interface RpgFieldSpace {
   visibleBounds: WorldRect;
 
   /**
-   * The active playable / combat field.  Currently equals `visibleBounds` so that
-   * the entire visible area is live gameplay space (no decorative gutters).
-   * Future waves could shrink this for intentional arena constraints.
+   * The active playable / combat field. This is the largest rect with the
+   * safe-core aspect ratio that fits inside `visibleBounds`, centred on the
+   * camera. Larger hosts expand the arena until either width or height is
+   * exhausted, while preserving the intended 9:16 level shape.
    */
   activeBounds: WorldRect;
 
@@ -130,9 +131,8 @@ export interface RpgFieldSpace {
   safeCoreBounds: WorldRect;
 
   /**
-   * Bounds used for enemy spawn placement.  Currently equals `activeBounds` so
-   * enemies spawn anywhere in the visible field.  Future: use a ring around
-   * `visibleBounds` for off-screen spawns.
+   * Bounds used for enemy spawn placement. Currently equals `activeBounds` so
+   * enemies spawn inside the hard-clamped playable arena.
    */
   spawnBounds: WorldRect;
 
@@ -174,6 +174,26 @@ export function rectCenteredOn(center: Vec2, width: number, height: number): Wor
   const right  = center.x + w / 2;
   const bottom = center.y + h / 2;
   return { left, top, right, bottom, width: w, height: h };
+}
+
+/**
+ * Returns the largest rectangle with `targetW:targetH` aspect ratio that fits
+ * inside `container`, centred on `center`.
+ */
+export function fitAspectRectInside(
+  container: WorldRect,
+  targetW: number,
+  targetH: number,
+  center: Vec2,
+): WorldRect {
+  const aspect = targetW > 0 && targetH > 0 ? targetW / targetH : 1;
+  let width = container.width;
+  let height = width / aspect;
+  if (height > container.height) {
+    height = container.height;
+    width = height * aspect;
+  }
+  return rectCenteredOn(center, width, height);
 }
 
 /**
@@ -284,8 +304,8 @@ export function computeRpgFieldSpace(args: {
   const safeCoreBounds = rectCenteredOn(cameraCenter, safeCoreWorldW, safeCoreWorldH);
 
   // ── Active and spawn bounds ───────────────────────────────────
-  // activeBounds = visibleBounds: the full visible field is live gameplay space.
-  const activeBounds = visibleBounds;
+  // activeBounds = largest safe-core-ratio arena that fits in the visible world.
+  const activeBounds = fitAspectRectInside(visibleBounds, safeCoreWorldW, safeCoreWorldH, cameraCenter);
   const spawnBounds  = makeSpawnBounds({ visibleBounds, activeBounds, safeCoreBounds });
 
   // ── Padded effect bounds ──────────────────────────────────────

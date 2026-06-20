@@ -282,9 +282,7 @@ export function updatePlayerMovement(
   // Resolves X then Y independently so diagonal-into-wall movement slides
   // cleanly along the free axis with no oscillation or bounce-back.
   const half = RPG_MOTE_SIZE / 2;
-  const ab = ctx.isBossWaveActive
-    ? ctx.getFieldSpace().safeCoreBounds
-    : ctx.getFieldSpace().activeBounds;
+  const ab = ctx.getFieldSpace().activeBounds;
   const terrainState = ctx.getTerrainState();
   const wallState = ctx.getVerdureCaveWallState?.() ?? null;
   const _solidCtx = buildActorSolidCtx(ab, terrainState, wallState);

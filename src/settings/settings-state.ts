@@ -29,7 +29,7 @@ export interface SettingsState {
   isRpgVerdureWallDebugEnabled: boolean;
   /** Dev-mode only: draw Nadir cube anchor/projection guides. */
   isRpgNadirAnchorDebugEnabled: boolean;
-  /** Dev-mode only: draw boss-stage corridor/hazard hitbox guides. */
+  /** Dev-mode only: draw boss-stage route corridor and hitbox guides. */
   isRpgBossStageDebugEnabled: boolean;
   /** Dev-mode only: draw topographic lighting cache diagnostics. */
   isTopographyLightingDebugEnabled: boolean;

@@ -1013,7 +1013,7 @@ export function drawRpgFrame(
   drawHorizonPentagonGroups(canvas2d, ctx.horizonPentagonGroups, widthPx);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
-  drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.safeCoreBounds, widthPx, glowTimeS);
+  drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, fs.visibleBounds, glowTimeS);
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), widthPx, heightPx, glowTimeS);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
   drawBossProjectiles(canvas2d, ctx.bossProjectiles);
@@ -1297,10 +1297,9 @@ function drawRpgViewportDiagnostics(
   // Warn if the scale is greater than 1 on a canvas at or below reference size
   // (indicates cover-style zoom was applied).
   const scaleTooLarge = safeScl > 1.001 && fullW <= RPG_LOGICAL_WIDTH && fullH <= RPG_LOGICAL_HEIGHT;
-  // Warn if activeBounds is smaller than visibleBounds (field-space invariant check).
-  const activeSmallerThanVisible =
-    fs.activeBounds.width < fs.visibleBounds.width - 1 ||
-    fs.activeBounds.height < fs.visibleBounds.height - 1;
+  const activeAspect = fs.activeBounds.height > 0 ? fs.activeBounds.width / fs.activeBounds.height : 0;
+  const safeAspect = RPG_LOGICAL_WIDTH / RPG_LOGICAL_HEIGHT;
+  const activeAspectDrift = Math.abs(activeAspect - safeAspect) > 0.01;
 
   // World-space visible bounds for camera info display.
   const camLeft    = fs.visibleBounds.left.toFixed(1);
@@ -1355,7 +1354,7 @@ function drawRpgViewportDiagnostics(
       { text: `cameraCenter: (${fs.cameraCenterX.toFixed(1)}, ${fs.cameraCenterY.toFixed(1)})` },
       { text: `visibleBounds: L${vb.left.toFixed(1)} T${vb.top.toFixed(1)} R${vb.right.toFixed(1)} B${vb.bottom.toFixed(1)}` },
       { text: `  w=${vb.width.toFixed(1)} h=${vb.height.toFixed(1)}`, warn: stillNarrow },
-      { text: `activeBounds:  L${ab.left.toFixed(1)} T${ab.top.toFixed(1)} R${ab.right.toFixed(1)} B${ab.bottom.toFixed(1)}`, warn: activeSmallerThanVisible },
+      { text: `activeBounds:  L${ab.left.toFixed(1)} T${ab.top.toFixed(1)} R${ab.right.toFixed(1)} B${ab.bottom.toFixed(1)}`, warn: activeAspectDrift },
       { text: `safeCoreBounds:L${sb.left.toFixed(1)} T${sb.top.toFixed(1)} R${sb.right.toFixed(1)} B${sb.bottom.toFixed(1)}` },
       { text: `spawnBounds:   L${sp.left.toFixed(1)} T${sp.top.toFixed(1)} R${sp.right.toFixed(1)} B${sp.bottom.toFixed(1)}` },
       { text: `paddedEffectB: L${pb.left.toFixed(1)} T${pb.top.toFixed(1)} R${pb.right.toFixed(1)} B${pb.bottom.toFixed(1)}` },
@@ -1377,8 +1376,8 @@ function drawRpgViewportDiagnostics(
   if (stillNarrow) {
     lines.push({ text: `⚠ worldView still narrow!`, warn: true });
   }
-  if (activeSmallerThanVisible) {
-    lines.push({ text: `⚠ activeBounds < visibleBounds!`, warn: true });
+  if (activeAspectDrift) {
+    lines.push({ text: `⚠ activeBounds aspect drift`, warn: true });
   }
 
   // Append Impetus-specific diagnostics if in Impetus zone.

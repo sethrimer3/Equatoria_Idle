@@ -493,7 +493,7 @@ export function createRpgMenuTabPane(
         isRpgNadirAnchorDebugEnabled = enabled;
         dispatch({ kind: 'set_rpg_nadir_anchor_debug', enabled });
       });
-      appendDevCheckbox(devSection, 'Boss stage debug', 'Show boss corridor, hazard hitboxes, and stage labels.', isRpgBossStageDebugEnabled, (enabled) => {
+      appendDevCheckbox(devSection, 'Boss stage route guide', 'Show the safe-zone-to-boss corridor guide plus stage hitbox labels.', isRpgBossStageDebugEnabled, (enabled) => {
         isRpgBossStageDebugEnabled = enabled;
         dispatch({ kind: 'set_rpg_boss_stage_debug', enabled });
       });
