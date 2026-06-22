@@ -1,124 +1,121 @@
 /**
- * weave-tier-definitions.ts — Tier-1/2/3 STUB effect registry for the Weave crafting system.
+ * weave-tier-definitions.ts — Tier 1/2/3 effect names and descriptions for the Weave system.
  *
- * All effects are STUB placeholders. No real gameplay behavior is implemented yet.
- * Weave tier effects are intended to be passive/economy/utility/defensive modifiers —
- * distinct in purpose from lens effects (which are combat/offensive).
- *
+ * Each effect contributes stat modifiers defined in weave-tier-effect-modifiers.ts.
  * Sunstone is intentionally omitted — it contributes to power scaling only.
  */
 
 import type { TierId } from '../tiers';
 import type { WeaveTierEffectTier } from './weave-types';
 
-/** Display names per (tierId, effectTier). All names include "(STUB)" to signal placeholder status. */
+/** Display names per (tierId, effectTier). */
 export const WEAVE_TIER_EFFECT_NAMES: Partial<Record<TierId, Record<WeaveTierEffectTier, string>>> = {
   sand: {
-    1: 'Minor Haste (STUB)',
-    2: 'Dust Veil (STUB)',
-    3: 'Sandstorm Shroud (STUB)',
+    1: 'Haste Thread',
+    2: 'Dust Veil',
+    3: 'Sandstorm Shroud',
   },
   quartz: {
-    1: 'Crystal Yield (STUB)',
-    2: 'Prismatic Guard (STUB)',
-    3: 'Resonant Lattice (STUB)',
+    1: 'Quartz Focus',
+    2: 'Prismatic Guard',
+    3: 'Resonant Lattice',
   },
   ruby: {
-    1: 'Ember Surge (STUB)',
-    2: 'Ignition Shell (STUB)',
-    3: 'Molten Core (STUB)',
+    1: 'Ember Edge',
+    2: 'Ignition Shell',
+    3: 'Molten Core',
   },
   citrine: {
-    1: 'Radiant Aura (STUB)',
-    2: 'Solar Aegis (STUB)',
-    3: 'Gilded Bastion (STUB)',
+    1: 'Radiant Aura',
+    2: 'Solar Aegis',
+    3: 'Gilded Bastion',
   },
   emerald: {
-    1: 'Overgrowth (STUB)',
-    2: 'Thorn Weave (STUB)',
-    3: 'Verdant Cascade (STUB)',
+    1: 'Verdure Knot',
+    2: 'Thorn Weave',
+    3: 'Verdant Cascade',
   },
   sapphire: {
-    1: 'Tempered Mind (STUB)',
-    2: 'Ice Ward (STUB)',
-    3: 'Glacial Bulwark (STUB)',
+    1: 'Tempered Guard',
+    2: 'Ice Ward',
+    3: 'Glacial Bulwark',
   },
   iolite: {
-    1: 'Stored Momentum (STUB)',
-    2: 'Temporal Buffer (STUB)',
-    3: 'Stasis Weave (STUB)',
+    1: 'Stored Momentum',
+    2: 'Temporal Buffer',
+    3: 'Stasis Weave',
   },
   amethyst: {
-    1: 'Phantom Thread (STUB)',
-    2: 'Echo Barrier (STUB)',
-    3: 'Mirror Shroud (STUB)',
+    1: 'Phantom Thread',
+    2: 'Echo Barrier',
+    3: 'Mirror Shroud',
   },
   diamond: {
-    1: 'Adamantine Weave (STUB)',
-    2: 'Faceted Guard (STUB)',
-    3: 'Diamond Bastion (STUB)',
+    1: 'Diamond Thread',
+    2: 'Faceted Guard',
+    3: 'Diamond Bastion',
   },
   nullstone: {
-    1: 'Null Barrier (STUB)',
-    2: 'Gravity Shroud (STUB)',
-    3: 'Event Dampener (STUB)',
+    1: 'Null Barrier',
+    2: 'Gravity Shroud',
+    3: 'Event Dampener',
   },
   fracteryl: {
-    1: 'Fractal Loop (STUB)',
-    2: 'Recursive Shield (STUB)',
-    3: 'Infinite Weave (STUB)',
+    1: 'Fractal Loop',
+    2: 'Recursive Shield',
+    3: 'Infinite Weave',
   },
   eigenstein: {
-    1: 'Rift Ward (STUB)',
-    2: 'Dimensional Veil (STUB)',
-    3: 'Reality Anchor (STUB)',
+    1: 'Rift Ward',
+    2: 'Dimensional Veil',
+    3: 'Reality Anchor',
   },
 };
 
-/** Placeholder descriptions for Tier 1 weave tier effects. */
+/** Descriptions for Tier 1 weave tier effects. */
 export const WEAVE_T1_DESCRIPTIONS: Partial<Record<TierId, string>> = {
-  sand:       'STUB: Passive haste bonus — intended as an economy production rate modifier.',
-  quartz:     'STUB: Passive crystal yield bonus — intended to boost refined crystal output.',
-  ruby:       'STUB: Passive crit surge bonus — intended as a loom critical chance/output modifier.',
-  citrine:    'STUB: Passive radiant aura — intended as a broad-spectrum production multiplier.',
-  emerald:    'STUB: Passive overgrowth bonus — intended to chain adjacent loom production.',
-  sapphire:   'STUB: Passive precision boost — intended to raise crafting roll floors.',
-  iolite:     'STUB: Passive momentum storage — intended to buffer and persist offline progress.',
-  amethyst:   'STUB: Passive phantom thread — intended to duplicate occasional loom ticks.',
-  diamond:    'STUB: Passive adamantine weave — intended as a defensive armor bonus.',
-  nullstone:  'STUB: Passive null barrier — intended to slow or suppress nearby enemy actions.',
-  fracteryl:  'STUB: Passive fractal loop — intended to recursively echo a portion of production.',
-  eigenstein: 'STUB: Passive rift ward — intended to provide dimensional damage resistance.',
+  sand:       'Passive cooldown reduction from sand tempo.',
+  quartz:     'Passive projectile speed boost from quartz precision.',
+  ruby:       'Passive crit edge — increases critical hit chance.',
+  citrine:    'Passive radiant aura — increases weapon damage output.',
+  emerald:    'Passive status edge — increases status effect chance.',
+  sapphire:   'Passive chill guard — increases defense rating.',
+  iolite:     'Passive momentum — reduces attack cooldown.',
+  amethyst:   'Passive echo strength — increases critical damage.',
+  diamond:    'Passive armor weave — increases defense rating.',
+  nullstone:  'Passive null ward — increases status effect chance.',
+  fracteryl:  'Passive fractal loop — increases critical damage.',
+  eigenstein: 'Passive rift scaling — increases weapon damage output.',
 };
 
-/** Placeholder descriptions for Tier 2 weave tier effects. */
+/** Descriptions for Tier 2 weave tier effects. */
 export const WEAVE_T2_DESCRIPTIONS: Partial<Record<TierId, string>> = {
-  sand:       'STUB: Dust Veil passive — intended to reduce incoming damage by a small percentage.',
-  quartz:     'STUB: Prismatic Guard passive — intended to partially filter loom waste.',
-  ruby:       'STUB: Ignition Shell passive — intended to grant bonus forge output on crit.',
-  citrine:    'STUB: Solar Aegis passive — intended to amplify all production when above a threshold.',
-  emerald:    'STUB: Thorn Weave passive — intended to reflect a fraction of loom feed cost.',
-  sapphire:   'STUB: Ice Ward passive — intended to periodically impede enemy advance.',
-  iolite:     'STUB: Temporal Buffer passive — intended to extend offline progress window.',
-  amethyst:   'STUB: Echo Barrier passive — intended to duplicate forge outputs occasionally.',
-  diamond:    'STUB: Faceted Guard passive — intended to increase armor rating further.',
-  nullstone:  'STUB: Gravity Shroud passive — intended to pull motes inward faster.',
-  fracteryl:  'STUB: Recursive Shield passive — intended to absorb a portion of damage via fractal recursion.',
-  eigenstein: 'STUB: Dimensional Veil passive — intended to reduce rift damage taken.',
+  sand:       'Stronger attack tempo — deeper cooldown reduction.',
+  quartz:     'Enhanced projectile velocity and aim correction.',
+  ruby:       'Broader crit boost — crit chance and crit damage.',
+  citrine:    'Amplified weapon damage for sustained combat.',
+  emerald:    'Stronger status application pressure.',
+  sapphire:   'Reinforced defense against sustained pressure.',
+  iolite:     'Deeper cooldown reduction for prolonged engagements.',
+  amethyst:   'Amplified critical damage on echo hits.',
+  diamond:    'Significant defense rating increase.',
+  nullstone:  'Stronger status disruption from gravity distortion.',
+  fracteryl:  'Amplified critical damage via recursive fractal.',
+  eigenstein: 'Enhanced rift damage scaling across all hits.',
 };
 
-/** Placeholder descriptions for Tier 3 weave tier effects. */
+/** Descriptions for Tier 3 weave tier effects. */
 export const WEAVE_T3_DESCRIPTIONS: Partial<Record<TierId, string>> = {
-  sand:       'STUB: Sandstorm Shroud — intended as an area-of-effect production aura buffing all looms in range.',
-  quartz:     'STUB: Resonant Lattice — intended to create a feedback loop amplifying crystal yield over time.',
-  ruby:       'STUB: Molten Core — intended to periodically trigger a forge surge doubling output briefly.',
-  citrine:    'STUB: Gilded Bastion — intended to grant a temporary production immunity shield.',
-  emerald:    'STUB: Verdant Cascade — intended to create a propagating growth burst across adjacent looms.',
-  sapphire:   'STUB: Glacial Bulwark — intended to create a sustained damage-absorbing ice barrier.',
-  iolite:     'STUB: Stasis Weave — intended to freeze production decay for an extended offline period.',
-  amethyst:   'STUB: Mirror Shroud — intended to mirror all loom production to a phantom second output.',
-  diamond:    'STUB: Diamond Bastion — intended to grant temporary invulnerability when health drops low.',
-  nullstone:  'STUB: Event Dampener — intended to suppress all enemy abilities in a radius periodically.',
-  fracteryl:  'STUB: Infinite Weave — intended to recursively repeat the strongest active weave effect once.',
-  eigenstein: 'STUB: Reality Anchor — intended to pin dimensional rift damage to a fixed cap for a duration.',
+  sand:       'Maximum tempo aura — strongest attack cooldown reduction.',
+  quartz:     'Maximum projectile speed and precision from resonant lattice.',
+  ruby:       'Maximum crit power — highest crit chance and crit damage.',
+  citrine:    'Maximum weapon damage aura from gilded bastion.',
+  emerald:    'Maximum status disruption force from verdant cascade.',
+  sapphire:   'Maximum defense reinforcement from glacial bulwark.',
+  iolite:     'Maximum cooldown reduction from stasis weave.',
+  amethyst:   'Maximum critical damage from mirrored echo resonance.',
+  diamond:    'Maximum defense from compressed diamond bastion.',
+  nullstone:  'Maximum status disruption from nullspace collapse.',
+  fracteryl:  'Maximum critical damage through controlled recursion.',
+  eigenstein: 'Maximum rift-amplified weapon damage output.',
 };

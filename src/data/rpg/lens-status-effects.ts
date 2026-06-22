@@ -2,7 +2,9 @@
  * lens-status-effects.ts — Helpers that translate Tier 1 LensEffects into
  * combat status parameters for enemy-status-effects.ts.
  *
- * Tier 2 and Tier 3 effects are intentionally ignored — they remain STUB.
+ * Only Tier 1 effects are converted here — Tier 2 and Tier 3 lens effects
+ * are handled by their dedicated runtime handlers in lens-tier2-effects.ts
+ * and lens-tier3-effects.ts, not by status params.
  */
 
 import type { TierId } from '../tiers';
@@ -67,7 +69,7 @@ export function buildStatusParams(
   weaponId: string,
   hitDamage: number,
 ): LensStatusParams | null {
-  if (effect.effectTier !== 1) return null;
+  if (effect.effectTier !== 1) return null; // T2/T3 are handled by lens-tier2-effects and lens-tier3-effects
   const key = TIER1_STATUS_MAP[effect.tierId];
   if (!key) return null;
 
@@ -99,7 +101,7 @@ export function buildStatusParams(
 
 /**
  * Returns all Tier 1 status params for an attached lens, ready to apply.
- * Tier 2 and Tier 3 effects are silently skipped.
+ * Tier 2 and Tier 3 effects are skipped here — they have separate runtime handlers.
  */
 export function buildAllTier1StatusParams(
   lens: CraftedLensData,

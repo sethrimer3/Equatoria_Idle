@@ -163,7 +163,7 @@ function buildWeaveTierEffect(
     magnitude,
     quality,
     rarity,
-    isApplied: false, // all weave tier effects are stubs
+    isApplied: true,
   };
 }
 
@@ -469,7 +469,7 @@ export function createCraftedWeave(
     if (affix) affixes.push(affix);
   }
 
-  // Roll tier 1–3 STUB effects per distinct tier
+  // Roll tier 1–3 effects per distinct tier
   const tierEffects = rollWeaveTierEffects(normalizedIngredients, forgeCraftLevel, rng);
 
   // Roll effects (0 or 1 depending on best affix rarity, flavor-weighted by ingredients)

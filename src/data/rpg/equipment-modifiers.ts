@@ -13,6 +13,7 @@ import type { LensStatusParams } from '../../sim/rpg/enemy-status-effects';
 import { getStatMultiplierForLevel } from './item-refinement';
 import { getWeaveEffectDef } from './weave-effects-registry';
 import { getTotalActiveWeaveBuffWeaponDamagePct } from './weave-proc-effects';
+import { applyWeaveTierEffectToMods } from './weave-tier-effect-modifiers';
 
 export interface EquipmentCombatModifiers {
   weaponDamagePct: number;
@@ -182,6 +183,9 @@ export function getEquippedWeaveModifiers(
       const def = getWeaveEffectDef(effect.id);
       if (!def || def.category !== 'passive') continue; // proc effects don't contribute static stats
       mods[def.statKey] += effect.value * refineMult;
+    }
+    for (const te of weave.tierEffects ?? []) {
+      applyWeaveTierEffectToMods(mods, te.tierId, te.effectTier, te.magnitude, te.isApplied, refineMult);
     }
   }
 

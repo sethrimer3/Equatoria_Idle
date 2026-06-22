@@ -10,6 +10,7 @@
  */
 
 import type { CraftedWeaveData, WeaveTierEffect, WeaveEffectRoll } from '../../data/rpg/weave-types';
+import { formatWeaveTierEffectContribution } from '../../data/rpg/weave-tier-effect-modifiers';
 import { getWeaveEffectDef } from '../../data/rpg/weave-effects-registry';
 import type { WeaveSlotsPanel } from './weave-slots';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
@@ -158,7 +159,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     return highestRarity * 100 + Math.log10(weave.totalWeightedMoteValue + 1);
   }
 
-  // ── Weave tier effect row (STUB display) ──────────────────────────────
+  // ── Weave tier effect row ─────────────────────────────────────────────
 
   function buildTierEffectRow(effect: WeaveTierEffect): HTMLElement {
     const row = document.createElement('div');
@@ -186,15 +187,25 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
 
     const nameEl = document.createElement('span');
     nameEl.style.color = '#ccc';
-    nameEl.textContent = `${effect.name}  ×${effect.magnitude.toFixed(1)}`;
+    nameEl.textContent = effect.name;
     row.appendChild(nameEl);
 
-    // All weave tier effects are stubs — show clearly
-    const stubNote = document.createElement('span');
-    stubNote.style.cssText = 'color:#888;font-size:0.72em;font-style:italic;';
-    stubNote.title = effect.description;
-    stubNote.textContent = '[STUB]';
-    row.appendChild(stubNote);
+    if (effect.isApplied) {
+      const contrib = formatWeaveTierEffectContribution(effect.tierId, effect.effectTier, effect.magnitude);
+      if (contrib) {
+        const contribEl = document.createElement('span');
+        contribEl.style.cssText = 'color:#9cf;font-size:0.85em;';
+        contribEl.title = effect.description;
+        contribEl.textContent = contrib;
+        row.appendChild(contribEl);
+      }
+    } else {
+      const notApplied = document.createElement('span');
+      notApplied.style.cssText = 'color:#555;font-size:0.72em;font-style:italic;';
+      notApplied.title = effect.description;
+      notApplied.textContent = 'not applied';
+      row.appendChild(notApplied);
+    }
 
     return row;
   }
@@ -322,11 +333,11 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       card.appendChild(row);
     }
 
-    // Tier effects section (STUB)
+    // Tier effects section
     if (weave.tierEffects.length > 0) {
       const tierEffectsHeader = document.createElement('div');
-      tierEffectsHeader.style.cssText = 'font-size:0.7em;color:#666;margin:4px 0 2px;letter-spacing:0.05em;';
-      tierEffectsHeader.textContent = 'TIER EFFECTS (STUB)';
+      tierEffectsHeader.style.cssText = 'font-size:0.7em;color:#666;margin:4px 0 2px;letter-spacing:0.05em;text-transform:uppercase;';
+      tierEffectsHeader.textContent = 'Tier Effects';
       card.appendChild(tierEffectsHeader);
 
       for (const effect of weave.tierEffects) {

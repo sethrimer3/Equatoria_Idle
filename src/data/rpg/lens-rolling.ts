@@ -2,7 +2,8 @@
  * lens-rolling.ts — Lens effect generation.
  *
  * Each distinct ingredient tier always receives a Tier 1 effect (active).
- * Tier 2 and Tier 3 are rolled independently per tier at forge-level-defined chances (STUB).
+ * Tier 2 and Tier 3 are rolled independently per tier at forge-level-defined chances.
+ * All three tiers are fully implemented; isApplied is true for all rolled effects.
  * Quality uses a triangular distribution (biased above 0.5) for rarity only.
  * Magnitude scales with per-tier mote investment via sqrt(log) — not linear.
  */

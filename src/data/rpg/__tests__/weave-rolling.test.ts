@@ -23,6 +23,7 @@ import {
   rollWeaveAffix,
   rollWeavePassiveEffects,
 } from '../weave-rolling';
+import { applyWeaveTierEffectToMods, formatWeaveTierEffectContribution } from '../weave-tier-effect-modifiers';
 import { getLensEffectUnlockChances } from '../lens-definitions';
 import { getUnlockedWeaveSlotCount } from '../../../sim/forge/forge-state';
 import { aggregateEquippedWeaveEffects } from '../weave-effects';
@@ -409,24 +410,24 @@ describe('rollWeaveTierEffects — T3 only when T2 rolled (strict ordering)', ()
 // ─── rollWeaveTierEffects — effect properties ─────────────────────
 
 describe('rollWeaveTierEffects — effect properties', () => {
-  it('all rolled effects have isApplied: false (stubs)', () => {
+  it('all rolled effects have isApplied: true', () => {
     const effects = rollWeaveTierEffects([{ tierId: 'sand', refinedCount: 5 }], 5, () => 0);
     expect(effects.length).toBeGreaterThan(0);
     for (const e of effects) {
-      expect(e.isApplied).toBe(false);
+      expect(e.isApplied).toBe(true);
     }
   });
 
-  it('T1 name contains "(STUB)"', () => {
+  it('T1 name does not contain "STUB"', () => {
     const effects = rollWeaveTierEffects([{ tierId: 'sand', refinedCount: 5 }], 1, () => 1);
     const t1 = effects.find(e => e.effectTier === 1);
-    expect(t1?.name).toContain('STUB');
+    expect(t1?.name).not.toContain('STUB');
   });
 
-  it('descriptions start with "STUB:"', () => {
+  it('descriptions do not start with "STUB:"', () => {
     const effects = rollWeaveTierEffects([{ tierId: 'ruby', refinedCount: 5 }], 5, () => 0);
     for (const e of effects) {
-      expect(e.description).toMatch(/^STUB:/);
+      expect(e.description).not.toMatch(/^STUB:/);
     }
   });
 
@@ -499,9 +500,9 @@ describe('save/load — weave tierEffects', () => {
     expect(weave).toBeDefined();
     expect(Array.isArray(weave!.tierEffects)).toBe(true);
     expect(weave!.tierEffects.length).toBeGreaterThan(0);
-    // All restored tier effects must have isApplied: false
+    // All restored tier effects are applied
     for (const e of weave!.tierEffects) {
-      expect(e.isApplied).toBe(false);
+      expect(e.isApplied).toBe(true);
     }
   });
 
@@ -1478,6 +1479,164 @@ describe('weave_lingering_hex', () => {
     expect(triggered).toContain('weave_echo_strike');
     expect(hexApplied).toBe(true);
     expect(bonusDmg).toBeGreaterThan(0);
+  });
+});
+
+// ─── weave tier effect modifiers ─────────────────────────────────
+
+describe('applyWeaveTierEffectToMods', () => {
+  function emptyTarget() {
+    return { weaponDamagePct: 0, cooldownPct: 0, projectileSpeedPct: 0, critChancePct: 0, critDamagePct: 0, statusChancePct: 0, playerDefensePct: 0 };
+  }
+
+  it('sand T1 contributes cooldownPct', () => {
+    const t = emptyTarget();
+    applyWeaveTierEffectToMods(t, 'sand', 1, 10, true);
+    expect(t.cooldownPct).toBeCloseTo(10 * 0.04, 5);
+    expect(t.weaponDamagePct).toBe(0);
+  });
+
+  it('diamond T1 contributes playerDefensePct', () => {
+    const t = emptyTarget();
+    applyWeaveTierEffectToMods(t, 'diamond', 1, 10, true);
+    expect(t.playerDefensePct).toBeCloseTo(10 * 0.08, 5);
+  });
+
+  it('ruby T2 contributes both critChancePct and critDamagePct', () => {
+    const t = emptyTarget();
+    applyWeaveTierEffectToMods(t, 'ruby', 2, 10, true);
+    expect(t.critChancePct).toBeCloseTo(10 * 0.07, 5);
+    expect(t.critDamagePct).toBeCloseTo(10 * 0.03, 5);
+  });
+
+  it('diamond T3 contributes largest playerDefensePct', () => {
+    const t = emptyTarget();
+    applyWeaveTierEffectToMods(t, 'diamond', 3, 10, true);
+    expect(t.playerDefensePct).toBeCloseTo(10 * 0.22, 5);
+  });
+
+  it('isApplied: false → no contribution', () => {
+    const t = emptyTarget();
+    applyWeaveTierEffectToMods(t, 'sand', 1, 10, false);
+    expect(t.cooldownPct).toBe(0);
+  });
+
+  it('refineMult scales the contribution', () => {
+    const t1 = emptyTarget();
+    const t2 = emptyTarget();
+    applyWeaveTierEffectToMods(t1, 'citrine', 1, 10, true, 1.0);
+    applyWeaveTierEffectToMods(t2, 'citrine', 1, 10, true, 1.25);
+    expect(t2.weaponDamagePct).toBeCloseTo(t1.weaponDamagePct * 1.25, 5);
+  });
+
+  it('sunstone (no entry) → no contribution', () => {
+    const t = emptyTarget();
+    applyWeaveTierEffectToMods(t, 'sunstone', 1, 10, true);
+    expect(t.cooldownPct).toBe(0);
+    expect(t.weaponDamagePct).toBe(0);
+  });
+
+  it('higher effectTier produces larger contribution for same magnitude', () => {
+    const t1 = emptyTarget();
+    const t2 = emptyTarget();
+    const t3 = emptyTarget();
+    applyWeaveTierEffectToMods(t1, 'sand', 1, 10, true);
+    applyWeaveTierEffectToMods(t2, 'sand', 2, 10, true);
+    applyWeaveTierEffectToMods(t3, 'sand', 3, 10, true);
+    expect(t2.cooldownPct).toBeGreaterThan(t1.cooldownPct);
+    expect(t3.cooldownPct).toBeGreaterThan(t2.cooldownPct);
+  });
+});
+
+describe('formatWeaveTierEffectContribution', () => {
+  it('sand T1 returns cooldown string', () => {
+    const s = formatWeaveTierEffectContribution('sand', 1, 10);
+    expect(s).toContain('CD');
+    expect(s).toContain('-');
+  });
+
+  it('diamond T1 returns DEF string', () => {
+    const s = formatWeaveTierEffectContribution('diamond', 1, 10);
+    expect(s).toContain('DEF');
+    expect(s).toContain('+');
+  });
+
+  it('ruby T2 returns both CRIT and CRIT DMG', () => {
+    const s = formatWeaveTierEffectContribution('ruby', 2, 10);
+    expect(s).toContain('CRIT');
+    expect(s).toContain('CRIT DMG');
+  });
+
+  it('sunstone returns empty string', () => {
+    expect(formatWeaveTierEffectContribution('sunstone', 1, 10)).toBe('');
+  });
+});
+
+describe('getEquippedWeaveModifiers — weave tier effects integrated', () => {
+  it('sand T1 tier effect adds cooldown reduction', () => {
+    const weave: CraftedWeaveData = {
+      id: 'w-tier-test',
+      name: 'Test',
+      ingredients: [{ tierId: 'sand', refinedCount: 5 }],
+      affixes: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      tierEffects: [{
+        tierId: 'sand', effectTier: 1, key: 'sand_wt1',
+        name: 'Haste Thread', description: 'Passive cooldown reduction.',
+        magnitude: 10, quality: 0.5, rarity: 'Uncommon', isApplied: true,
+      }],
+      refinementLevel: 0,
+    };
+    const mods = getEquippedWeaveModifiers(['w-tier-test'], [weave]);
+    expect(mods.cooldownPct).toBeCloseTo(10 * 0.04, 5);
+  });
+
+  it('diamond T1 tier effect adds defense', () => {
+    const weave: CraftedWeaveData = {
+      id: 'w-diamond-tier',
+      name: 'Test',
+      ingredients: [{ tierId: 'diamond', refinedCount: 5 }],
+      affixes: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      tierEffects: [{
+        tierId: 'diamond', effectTier: 1, key: 'diamond_wt1',
+        name: 'Diamond Thread', description: 'Passive armor weave.',
+        magnitude: 10, quality: 0.5, rarity: 'Uncommon', isApplied: true,
+      }],
+      refinementLevel: 0,
+    };
+    const mods = getEquippedWeaveModifiers(['w-diamond-tier'], [weave]);
+    expect(mods.playerDefensePct).toBeCloseTo(10 * 0.08, 5);
+  });
+
+  it('isApplied: false tier effect contributes nothing', () => {
+    const weave: CraftedWeaveData = {
+      id: 'w-unapplied',
+      name: 'Test',
+      ingredients: [],
+      affixes: [],
+      totalWeightedMoteValue: 100,
+      forgeCraftLevel: 1,
+      tierEffects: [{
+        tierId: 'sand', effectTier: 1, key: 'sand_wt1',
+        name: 'Haste Thread', description: '',
+        magnitude: 10, quality: 0.5, rarity: 'Uncommon', isApplied: false,
+      }],
+      refinementLevel: 0,
+    };
+    const mods = getEquippedWeaveModifiers(['w-unapplied'], [weave]);
+    expect(mods.cooldownPct).toBe(0);
+  });
+
+  it('crafted weave tier effects contribute to combat modifiers', () => {
+    const weave = createCraftedWeave('w-crafted-tier', [{ tierId: 'diamond', refinedCount: 10 }], 1, () => 1);
+    const t1 = weave.tierEffects.find(e => e.effectTier === 1 && e.tierId === 'diamond');
+    expect(t1).toBeDefined();
+    expect(t1!.isApplied).toBe(true);
+    const mods = getEquippedWeaveModifiers([weave.id], [weave]);
+    expect(mods.playerDefensePct).toBeGreaterThan(0);
   });
 });
 

@@ -10,16 +10,16 @@ export interface WeaveTierEffect {
   effectTier: WeaveTierEffectTier;
   /** Stable identifier e.g. "sand_wt1", "ruby_wt3". */
   key: string;
-  /** Display name including "(STUB)" suffix e.g. "Minor Haste (STUB)". */
+  /** Display name e.g. "Haste Thread", "Molten Core". */
   name: string;
-  /** Always starts with "STUB:" — no real behavior is implemented yet. */
+  /** Human-readable description of the applied stat contribution. */
   description: string;
   /** Numeric magnitude derived from mote investment via sqrt-log scaling. */
   magnitude: number;
   /** Quality roll [0,1] used for rarity classification only. */
   quality: number;
   rarity: WeaveRarity;
-  /** Always false — all weave tier effects are stubs and not yet integrated. */
+  /** True when the effect is wired into combat via weave-tier-effect-modifiers. */
   isApplied: boolean;
 }
 
@@ -106,7 +106,7 @@ export interface CraftedWeaveData {
   affixes: WeaveAffix[];
   totalWeightedMoteValue: number;
   forgeCraftLevel: number;
-  /** Tier 1–3 passive/utility effects rolled at craft time. All are STUB placeholders. */
+  /** Tier 1–3 passive stat effects rolled at craft time. Applied via weave-tier-effect-modifiers. */
   tierEffects: WeaveTierEffect[];
   /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). Absent in old items = 0. */
   refinementLevel?: number;

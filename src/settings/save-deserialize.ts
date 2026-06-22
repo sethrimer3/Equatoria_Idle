@@ -424,7 +424,7 @@ export function deserializeGameState(data: SaveData): GameState {
           magnitude: e.magnitude,
           quality: e.quality,
           rarity: e.rarity as import('../data/rpg/weave-types').WeaveRarity,
-          isApplied: false, // always false — all weave tier effects are stubs
+          isApplied: e.isApplied ?? true, // pre-stub saves default to applied
         })),
         // v34+: refinement level — defaults to 0 for pre-v34 saves
         refinementLevel: w.refinementLevel ?? 0,

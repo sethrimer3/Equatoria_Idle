@@ -442,8 +442,8 @@ describe('save/load round-trip', () => {
     expect(restoredLens.effects).toHaveLength(originalEffects.length);
     expect(restoredLens.effects[0]!.effectTier).toBe(originalEffects[0]!.effectTier);
     expect(restoredLens.effects[0]!.name).toBe(originalEffects[0]!.name);
-    // T1 effects are active (isApplied: true); T2/T3 are stubs (isApplied: false)
-    expect(restoredLens.effects[0]!.isApplied).toBe(restoredLens.effects[0]!.effectTier === 1);
+    // effects[0] is always T1 (generated first); isApplied is true for all tiers
+    expect(restoredLens.effects[0]!.isApplied).toBe(true);
   });
 
   it('attached lens on weapon persists through save/load', () => {
@@ -457,7 +457,6 @@ describe('save/load round-trip', () => {
 
     const weapon = restored.rpg.craftedWeapons[0]!;
     expect(weapon.attachedLens).toBeDefined();
-    // T1 effect is active; T2/T3 are stub
     const t1 = weapon.attachedLens!.effects.find(e => e.effectTier === 1)!;
     expect(t1.isApplied).toBe(true);
     expect(t1.name).not.toContain('STUB');
