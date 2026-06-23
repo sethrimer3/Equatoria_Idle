@@ -497,21 +497,26 @@ export function createCraftedWeave(
     totalWeightedMoteValue += ing.refinedCount * getTierForgeWeight(ing.tierId);
   }
 
+  const qualityFloor = grantOptions.qualityFloor ?? 0;
+
   // Roll one affix per distinct tier (skipping tiers without a defined family)
   const affixes: WeaveAffix[] = [];
   for (const [tierId] of tierCounts) {
-    const affix = rollWeaveAffix(tierId, totalWeightedMoteValue);
+    const affix = rollWeaveAffix(tierId, totalWeightedMoteValue, qualityFloor);
     if (affix) affixes.push(affix);
   }
 
   // Roll tier 1–3 effects per distinct tier
-  const tierEffects = rollWeaveTierEffects(normalizedIngredients, forgeCraftLevel, rng);
+  const tierEffects = rollWeaveTierEffects(normalizedIngredients, forgeCraftLevel, rng, qualityFloor);
 
   // Roll effects (0 or 1 depending on best affix rarity, flavor-weighted by ingredients)
   const effects = rollWeaveEffects(affixes, normalizedIngredients, totalWeightedMoteValue, rng);
 
   const tiers = Array.from(tierCounts.keys());
-  const name = getWeaveName(tiers);
+  const name = getWeaveName(tiers, {
+    zoneId: grantOptions.sourceZone,
+    isBoss: grantOptions.sourceType === 'boss',
+  });
 
   return {
     id,
@@ -523,5 +528,8 @@ export function createCraftedWeave(
     tierEffects,
     refinementLevel: 0,
     effects,
+    sourceZone: grantOptions.sourceZone,
+    sourceWave: grantOptions.sourceWave,
+    sourceType: grantOptions.sourceType,
   };
 }
