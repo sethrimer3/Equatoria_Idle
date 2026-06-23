@@ -162,38 +162,63 @@ export function rollLensEffects(
 
 // ─── Lens name generation ─────────────────────────────────────────────────────
 
-const LENS_NOUNS: Partial<Record<TierId, string>> = {
-  sand:       'Haste',
-  quartz:     'Clarity',
-  ruby:       'Ignition',
-  citrine:    'Radiance',
-  emerald:    'Propagation',
-  sapphire:   'Precision',
-  iolite:     'Persistence',
-  amethyst:   'Echo',
-  diamond:    'Compression',
-  nullstone:  'Gravity',
-  fracteryl:  'Recursion',
-  eigenstein: 'Rift',
+/** Zone-specific adjective used when source zone is known. */
+export const LENS_ZONE_ADJECTIVES: Record<string, string> = {
+  euhedral:  'Euhedral',
+  impetus:   'Astral',
+  caustics:  'Caustic',
+  verdure:   'Verdant',
+  horizon:   'Liminal',
 };
 
-function getLensName(tiers: TierId[]): string {
+/** Effect-flavor noun appended as "of {noun}" when no zone info is available. */
+export const LENS_EFFECT_NOUNS: Partial<Record<TierId, string>> = {
+  sand:       'Abrasion',
+  quartz:     'Refraction',
+  ruby:       'Ignition',
+  citrine:    'Radiance',
+  emerald:    'Growth',
+  sapphire:   'Frost',
+  iolite:     'Time-Warp',
+  amethyst:   'Echoes',
+  diamond:    'Shattering',
+  nullstone:  'the Hollow Orbit',
+  fracteryl:  'Recursion',
+  eigenstein: 'the Rift',
+};
+
+export interface LensNameOptions {
+  zoneId?: string;
+  isBoss?: boolean;
+}
+
+export function getLensName(tiers: TierId[], options: LensNameOptions = {}): string {
+  const { zoneId, isBoss } = options;
   if (tiers.length === 0) return 'Null Lens';
-  if (tiers.length === 1) {
-    const tier = TIER_BY_ID.get(tiers[0]!);
-    const noun = LENS_NOUNS[tiers[0]!] ?? 'Lens';
-    return `${tier?.displayName ?? tiers[0]} ${noun} Lens`;
-  }
+
   const sorted = [...tiers].sort((a, b) =>
     (TIER_BY_ID.get(b)?.unlockOrder ?? 0) - (TIER_BY_ID.get(a)?.unlockOrder ?? 0),
   );
-  if (tiers.length === 2) {
-    const t1 = TIER_BY_ID.get(sorted[0]!)?.displayName ?? sorted[0];
-    const t2 = TIER_BY_ID.get(sorted[1]!)?.displayName ?? sorted[1];
-    return `${t1}-${t2} Compound Lens`;
+  const domTier = TIER_BY_ID.get(sorted[0]!)?.displayName ?? sorted[0]!;
+
+  if (tiers.length === 1) {
+    const tierId = sorted[0]!;
+    const zoneAdj = zoneId ? (LENS_ZONE_ADJECTIVES[zoneId] ?? null) : null;
+    if (isBoss && zoneAdj) return `Apex ${domTier} Lens`;
+    if (isBoss) return `Grand ${domTier} Lens`;
+    if (zoneAdj) return `${zoneAdj} ${domTier} Lens`;
+    const effectNoun = LENS_EFFECT_NOUNS[tierId];
+    return effectNoun ? `${domTier} Lens of ${effectNoun}` : `${domTier} Lens`;
   }
-  const t1 = TIER_BY_ID.get(sorted[0]!)?.displayName ?? sorted[0];
-  return `${t1} Composite Lens`;
+
+  if (tiers.length === 2) {
+    const t2 = TIER_BY_ID.get(sorted[1]!)?.displayName ?? sorted[1]!;
+    const zoneAdj = zoneId ? (LENS_ZONE_ADJECTIVES[zoneId] ?? null) : null;
+    if (zoneAdj) return `${zoneAdj} ${domTier}-${t2} Compound Lens`;
+    return `${domTier}-${t2} Compound Lens`;
+  }
+
+  return `${domTier} Composite Lens`;
 }
 
 // ─── Public factory ───────────────────────────────────────────────────────────
