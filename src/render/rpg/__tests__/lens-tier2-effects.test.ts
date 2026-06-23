@@ -619,3 +619,56 @@ describe('lens-tier2-effects — 16. Eigenstein Rift Slash applies Rift-Scarred'
     expect(t2?.name).not.toContain('STUB');
   });
 });
+
+// ── 17. T2 proc cooldown ─────────────────────────────────────────────────────
+
+describe('lens-tier2-effects — 17. T2 proc cooldown', () => {
+  it('second call within cooldown window does not apply status again', () => {
+    const enemy = makeEnemy({ hp: 1000 });
+    const params = makeParams('sand', enemy);
+
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    clearEnemyStatuses(enemy);
+
+    // Immediate second call — within cooldown window
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    const statuses = getActiveStatuses(enemy);
+    // Status should NOT have been re-applied during the cooldown window
+    expect(statuses.some(s => s.key === 'abraded')).toBe(false);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('T2_PROC_COOLDOWN_MS is exported and positive', () => {
+    expect(T2_PROC_COOLDOWN_MS).toBeGreaterThan(0);
+  });
+
+  it('different weapon IDs have independent cooldowns', () => {
+    const enemy = makeEnemy({ hp: 1000 });
+    // Use weapon_test (from makeParams) for first hit
+    const params1 = makeParams('sand', enemy);
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params1));
+    clearEnemyStatuses(enemy);
+
+    // Different weapon — should not be on cooldown
+    const params2 = { ...makeParams('sand', enemy), weaponId: 'weapon_other' };
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params2));
+    const statuses = getActiveStatuses(enemy);
+    expect(statuses.some(s => s.key === 'abraded')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+
+  it('clearT2ProcCooldowns allows immediate re-proc', () => {
+    const enemy = makeEnemy({ hp: 1000 });
+    const params = makeParams('sand', enemy);
+
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    clearEnemyStatuses(enemy);
+    clearT2ProcCooldowns();
+
+    // After clearing, proc should fire again immediately
+    withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
+    const statuses = getActiveStatuses(enemy);
+    expect(statuses.some(s => s.key === 'abraded')).toBe(true);
+    clearEnemyStatuses(enemy);
+  });
+});
