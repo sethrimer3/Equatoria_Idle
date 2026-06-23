@@ -17,7 +17,7 @@ import {
 } from './weave-tier-definitions';
 import { getTierForgeWeight } from './crafted-weapon-helpers';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
-import type { WeaveAffix, WeaveRarity, WeaveTierEffect, WeaveTierEffectTier, CraftedWeaveData, WeaveEffectRoll } from './weave-types';
+import type { WeaveAffix, WeaveRarity, WeaveTierEffect, WeaveTierEffectTier, CraftedWeaveData, WeaveEffectRoll, ItemSourceType } from './weave-types';
 import {
   ALL_WEAVE_EFFECT_IDS,
   getWeaveEffectDef,
