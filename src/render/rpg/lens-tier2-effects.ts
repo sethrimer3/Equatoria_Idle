@@ -38,6 +38,19 @@ const T2_DMG_MAX   = 0.45;
 const T2_MAX_HITS_PER_EFFECT = 8;
 const T2_MAX_TOTAL_SPAWNS    = 12;
 
+/**
+ * Minimum ms between procs of the same T2 effect on the same weapon.
+ * Prevents visual spam and runaway DPS from fast multi-hit attacks.
+ * Key: `${weaponId}:${effectKey}`
+ */
+export const T2_PROC_COOLDOWN_MS = 800;
+const _lastT2ProcMs = new Map<string, number>();
+
+/** Reset per-effect proc cooldown state — use in tests to avoid state leakage. */
+export function clearT2ProcCooldowns(): void {
+  _lastT2ProcMs.clear();
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function clamp(v: number, lo: number, hi: number): number {
