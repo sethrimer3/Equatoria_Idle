@@ -114,4 +114,10 @@ export interface CraftedWeaveData {
   refinementLevel?: number;
   /** Passive effects rolled at craft time. Absent in old items = [] (no effects, backward-safe). */
   effects?: WeaveEffectRoll[];
+  /** Source zone where this item dropped. Absent on pre-metadata items — treat as unknown. */
+  sourceZone?: string;
+  /** Wave number at drop time. Absent on pre-metadata items — treat as 0. */
+  sourceWave?: number;
+  /** How this item was obtained. Absent on pre-metadata items — treat as 'normal'. */
+  sourceType?: ItemSourceType;
 }
