@@ -264,6 +264,7 @@ function makeParams(
 
 afterEach(() => {
   clearPendingTier2DelayedStrikes();
+  clearT2ProcCooldowns();
   vi.restoreAllMocks();
 });
 
