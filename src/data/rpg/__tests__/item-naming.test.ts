@@ -98,9 +98,11 @@ describe('getWeaveName', () => {
     expect(name).toBe('Verdant Weave of Echoing Growth');
   });
 
-  it('nullstone with zone → contains "Hollow Orbit"', () => {
+  it('nullstone with zone → uses zone adjective and effect phrase', () => {
+    // zoneId='impetus' → "Astral", nullstone phrase → "the Void Pull"
     const name = getWeaveName(['nullstone'], { zoneId: 'impetus' });
-    expect(name).toContain('Hollow Orbit');
+    expect(name).toContain('Astral');
+    expect(name).toContain('Void Pull');
   });
 
   it('single tier with boss (no zone) → "Grand {Tier} Weave"', () => {
