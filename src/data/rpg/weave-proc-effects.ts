@@ -13,6 +13,7 @@
 import type { RpgSimState, ActiveWeaveBuff, ActiveWeaveBuffStat } from '../../sim/rpg/rpg-state';
 import { WEAVE_PROC_EFFECT_REGISTRY, getWeaveEffectDef } from './weave-effects-registry';
 import type { WeaveProcEffectId } from './weave-effects-registry';
+import { recordEquipmentProcEvent } from '../../dev/equipment-proc-log';
 
 /**
  * Maps each buff-granting playerHitEnemy proc effectId to the stat it modifies.
