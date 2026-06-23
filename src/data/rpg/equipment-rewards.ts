@@ -139,12 +139,17 @@ export function rollLensDrop(ctx: EquipmentRewardRollContext): EquipmentRewardSp
     ctx.source === 'elite' ? EQUIPMENT_REWARD_DROP_RATES.eliteLensChance :
     EQUIPMENT_REWARD_DROP_RATES.normalLensChance;
   if (rng() >= chance) return null;
+  const tiers = getEligibleLensDrops(ctx);
+  const weights = ZONE_LENS_TIER_WEIGHTS[ctx.zoneId] ?? ZONE_LENS_TIER_WEIGHTS.euhedral;
   return {
     kind: 'lens',
     source: ctx.source,
     isMajor: ctx.source === 'boss' || ctx.source === 'milestone',
     forgeLevel: Math.max(1, Math.min(5, ctx.forgeLevel)),
-    ingredients: buildIngredients(getEligibleLensDrops(ctx), ctx),
+    ingredients: buildIngredients(tiers, weights, ctx),
+    zoneId: ctx.zoneId,
+    wave: ctx.wave,
+    qualityFloor: bossQualityFloor(ctx.source),
   };
 }
 
@@ -156,12 +161,17 @@ export function rollWeaveDrop(ctx: EquipmentRewardRollContext): EquipmentRewardS
     ctx.source === 'elite' ? EQUIPMENT_REWARD_DROP_RATES.eliteWeaveChance :
     EQUIPMENT_REWARD_DROP_RATES.normalWeaveChance;
   if (rng() >= chance) return null;
+  const tiers = getEligibleWeaveDrops(ctx);
+  const weights = ZONE_WEAVE_TIER_WEIGHTS[ctx.zoneId] ?? ZONE_WEAVE_TIER_WEIGHTS.euhedral;
   return {
     kind: 'weave',
     source: ctx.source,
     isMajor: ctx.source === 'boss' || ctx.source === 'milestone',
     forgeLevel: Math.max(1, Math.min(5, ctx.forgeLevel)),
-    ingredients: buildIngredients(getEligibleWeaveDrops(ctx), ctx),
+    ingredients: buildIngredients(tiers, weights, ctx),
+    zoneId: ctx.zoneId,
+    wave: ctx.wave,
+    qualityFloor: bossQualityFloor(ctx.source),
   };
 }
 
