@@ -513,11 +513,56 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
     return container;
   }
 
+  // ── Sort mode ─────────────────────────────────────────────────────────────
+
+  let sortMode: ItemSortMode = 'power';
+
+  const sortRow = document.createElement('div');
+  sortRow.style.cssText = 'display:flex;gap:4px;margin-bottom:6px;';
+  const SORT_LABELS: [ItemSortMode, string][] = [
+    ['power',  'Power'],
+    ['rarity', 'Rarity'],
+    ['zone',   'Zone'],
+    ['newest', 'Newest'],
+  ];
+  const sortBtnEls: HTMLButtonElement[] = [];
+  function updateSortButtons(): void {
+    for (const btn of sortBtnEls) {
+      const mode = btn.dataset.sortMode as ItemSortMode;
+      btn.style.background = mode === sortMode ? 'rgba(200,180,255,0.2)' : 'rgba(255,255,255,0.06)';
+      btn.style.color = mode === sortMode ? '#c8b4ff' : '#999';
+      btn.style.borderColor = mode === sortMode ? 'rgba(200,180,255,0.4)' : 'rgba(255,255,255,0.1)';
+    }
+  }
+  for (const [mode, label] of SORT_LABELS) {
+    const btn = document.createElement('button');
+    btn.dataset.sortMode = mode;
+    btn.textContent = label;
+    btn.style.cssText =
+      'font-size:10px;padding:2px 7px;border-radius:3px;border:1px solid rgba(255,255,255,0.1);' +
+      'background:rgba(255,255,255,0.06);color:#999;cursor:pointer;font-family:inherit;';
+    btn.addEventListener('click', () => {
+      sortMode = mode;
+      updateSortButtons();
+      localOrder.sort((a, b) => {
+        const la = lensByIdMap.get(a);
+        const lb = lensByIdMap.get(b);
+        if (!la || !lb) return 0;
+        return compareLens(la, lb, sortMode);
+      });
+      renderCards();
+    });
+    sortBtnEls.push(btn);
+    sortRow.appendChild(btn);
+  }
+  updateSortButtons();
+  container.appendChild(sortRow);
+
   // ── Local drag-and-drop ordering ──────────────────────────────────────────
 
   const lensByIdMap = new Map(lenses.map(l => [l.id, l]));
   const localOrder: string[] = [...lenses]
-    .sort((a, b) => getLensSortScore(b) - getLensSortScore(a) || a.name.localeCompare(b.name))
+    .sort((a, b) => compareLens(a, b, sortMode))
     .map(l => l.id);
 
   let draggingLensId: string | null = null;
