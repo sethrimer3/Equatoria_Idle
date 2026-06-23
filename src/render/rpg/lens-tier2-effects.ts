@@ -277,7 +277,7 @@ export function handleLensTier2EffectsOnWeaponHit(params: LensTier2HitParams): v
     _lastT2ProcMs.set(cooldownKey, now);
 
     const secDmg = hitDamage * getSecDmgFraction(effect.magnitude);
-    const spawnBudget = Math.min(T2_MAX_HITS_PER_EFFECT, T2_MAX_TOTAL_SPAWNS - totalSpawns);
+    const spawnBudget = Math.min(LENS_T2_MAX_HITS_PER_EFFECT, LENS_T2_MAX_TOTAL_SPAWNS - totalSpawns);
     if (spawnBudget <= 0) break;
 
     const tierId = effect.tierId as TierId;
