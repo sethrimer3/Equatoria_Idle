@@ -35,4 +35,10 @@ export interface CraftedLensData {
   effects: LensEffect[];
   /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). Absent in old items = 0. */
   refinementLevel?: number;
+  /** Source zone where this item dropped. Absent on pre-metadata items — treat as unknown. */
+  sourceZone?: string;
+  /** Wave number at drop time. Absent on pre-metadata items — treat as 0. */
+  sourceWave?: number;
+  /** How this item was obtained. Absent on pre-metadata items — treat as 'normal'. */
+  sourceType?: ItemSourceType;
 }
