@@ -29,7 +29,7 @@ export const LENS_T3_IMPLEMENTED_TIER_IDS = new Set<TierId>([
 
 // ─── Effect naming map ────────────────────────────────────────────
 
-/** Display names per (tier, effectTier). Implemented effects have clean names; unimplemented include "STUB". */
+/** Display names per (tier, effectTier). All T1/T2/T3 effects are implemented. */
 export const LENS_EFFECT_NAMES: Partial<Record<TierId, Record<LensEffectTier, string>>> = {
   sand: {
     1: 'Abraded',
