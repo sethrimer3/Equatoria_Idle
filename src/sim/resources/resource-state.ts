@@ -110,3 +110,26 @@ export function sizeCountsToTotal(counts: Map<SizeIndex, number>): number {
   }
   return total;
 }
+
+/**
+ * Low-graphics mote filter: for each tier, render only the largest non-zero size.
+ * If the only motes are 1×1 (SizeIndex 0), those are returned.
+ *
+ * This is a visual-only operation — it does not modify any inventory.
+ *
+ * @param sizeCounts  Map<SizeIndex, count> for a single tier.
+ * @returns           A new Map containing only the single largest-size entry.
+ *                    Returns an empty Map if sizeCounts is empty.
+ */
+export function filterMotesForLowGraphics(
+  sizeCounts: Map<SizeIndex, number>,
+): Map<SizeIndex, number> {
+  let largestSize = -1;
+  for (const [s, count] of sizeCounts) {
+    if (count > 0 && s > largestSize) {
+      largestSize = s;
+    }
+  }
+  if (largestSize < 0) return new Map();
+  return new Map([[largestSize, sizeCounts.get(largestSize)!]]);
+}

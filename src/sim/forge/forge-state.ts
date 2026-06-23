@@ -11,6 +11,9 @@ export function getUnlockedWeaveSlotCount(forgeLevel: number): number {
   return Math.min(TOTAL_WEAVE_SLOTS, Math.max(1, forgeLevel) + 1);
 }
 
+/** State of the drag-based mote conversion in the forge. */
+export type ForgeMoteState = 'idle' | 'forgePending' | 'forgeCancelling' | 'forgeCommitted';
+
 export interface ForgeCrunchState {
   // Legacy visual fields (kept for backward compat with renderer/particle system)
   validParticlesTimerMs: number | null;
@@ -33,6 +36,17 @@ export interface ForgeCrunchState {
   warmupStartMs: number | null;
   /** Current forge level (1–5). Each level unlocks one additional ring. */
   forgeLevel: number;
+  // ─── Mote conversion (drag-based) ───────────────────────────────────────────
+  /** Current state of the mote-drag conversion state machine. */
+  moteConversionState: ForgeMoteState;
+  /** TierId of the mote being converted, or null when idle. */
+  moteConversionTierId: string | null;
+  /** SizeIndex of the mote being converted, or null when idle. */
+  moteConversionSizeIndex: number | null;
+  /** Wall-clock timestamp when the conversion was initiated. Null when idle. */
+  moteConversionStartMs: number | null;
+  /** Forge efficiency multiplier (1.0 = 100%). Affects conversion output. */
+  forgeEfficiency: number;
 }
 
 export function createForgeCrunchState(): ForgeCrunchState {
@@ -50,6 +64,11 @@ export function createForgeCrunchState(): ForgeCrunchState {
     isWarmingUp: false,
     warmupStartMs: null,
     forgeLevel: 1,
+    moteConversionState: 'idle',
+    moteConversionTierId: null,
+    moteConversionSizeIndex: null,
+    moteConversionStartMs: null,
+    forgeEfficiency: 1.0,
   };
 }
 

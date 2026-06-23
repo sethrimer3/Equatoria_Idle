@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 34;
+export const SAVE_VERSION = 35;
 
 export interface SaveData {
   version: number;
@@ -59,6 +59,8 @@ export interface SaveData {
     forgeCraftLevel?: number;
     /** Forge upgrade level (1–5). Absent in older saves (defaults to 1). */
     forgeLevel?: number;
+    /** v35+: forge efficiency multiplier (1.0 = 100%). Absent in older saves (defaults to 1.0). */
+    forgeEfficiency?: number;
   };
   achievements: {
     unlockedIds: string[];

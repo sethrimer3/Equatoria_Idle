@@ -1,151 +1,67 @@
 /**
- * forge-loom-economy.test.ts — Unit tests for the core forge/loom economy functions.
+ * forge-loom-economy.test.ts — Unit tests for the core loom economy functions
+ * and confirmation that the legacy forge-tap mechanic is fully disabled.
  *
  * Covers:
- *   - tapForgeHeat (heat accumulation, 3-tap crunch trigger, timeout reset)
- *   - applyForgeSacrifice (sacrifice mass progress, threshold conversion, fractional remainder)
+ *   - tapEquationForge (now a no-op — always returns false)
+ *   - applyForgeSacrifice (now a no-op — always returns empty Map)
  *   - applyLoomCapture (input → output conversion, fractional progress, efficiency modifies threshold)
  *   - getLoomInputTierId (sand returns null, quartz returns sand, ruby returns quartz, unknown is safe)
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  createForgeCrunchState,
-  tapForgeHeat,
-  tickForgeHeatTimeout,
-  HEAT_TAP_COUNT_FOR_CRUNCH,
-} from '../forge/forge-state';
 import { applyForgeSacrifice, tapEquationForge } from '../game-state';
 import {
-  createLoomState as _createLoomState,  // imported for test clarity but not directly called
   getLoomInputTierId,
   applyLoomCapture,
   getLoomConversionThreshold,
-  tryUpgradeLoomEfficiency as _tryUpgradeLoomEfficiency,
 } from '../looms';
 import { createGameState } from '../game-state';
 import { getMotes } from '../resources';
 import type { TierId } from '../../data/tiers';
 
-// ─── tapForgeHeat ────────────────────────────────────────────────
-
-describe('tapForgeHeat', () => {
-  it('increments heatTapCount on the first tap', () => {
-    const state = createForgeCrunchState();
-    const result = tapForgeHeat(state, 0);
-    expect(result).toBe(false);
-    expect(state.heatTapCount).toBe(1);
-  });
-
-  it('returns true and resets heat count on the third tap', () => {
-    const state = createForgeCrunchState();
-    tapForgeHeat(state, 0);
-    tapForgeHeat(state, 1);
-    const result = tapForgeHeat(state, 2);
-    expect(result).toBe(true);
-    expect(state.heatTapCount).toBe(0);
-  });
-
-  it(`requires exactly ${HEAT_TAP_COUNT_FOR_CRUNCH} taps to trigger`, () => {
-    const state = createForgeCrunchState();
-    for (let i = 1; i < HEAT_TAP_COUNT_FOR_CRUNCH; i++) {
-      expect(tapForgeHeat(state, i)).toBe(false);
-    }
-    expect(tapForgeHeat(state, HEAT_TAP_COUNT_FOR_CRUNCH)).toBe(true);
-  });
-
-  it('returns false while a crunch is already active', () => {
-    const state = createForgeCrunchState();
-    state.isActive = true;
-    const result = tapForgeHeat(state, 0);
-    expect(result).toBe(false);
-    expect(state.heatTapCount).toBe(0); // not incremented while active
-  });
-});
-
-// ─── tickForgeHeatTimeout ────────────────────────────────────────
-
-describe('tickForgeHeatTimeout', () => {
-  it('resets heat count when 30 seconds have elapsed since the last tap', () => {
-    const state = createForgeCrunchState();
-    // Use a non-zero base time so the lastHeatTapMs guard in tickForgeHeatTimeout passes
-    tapForgeHeat(state, 1_000);
-    expect(state.heatTapCount).toBe(1);
-    // Simulate 31 seconds passing after the tap
-    tickForgeHeatTimeout(state, 32_000);
-    expect(state.heatTapCount).toBe(0);
-  });
-
-  it('does not reset if the timeout has not elapsed', () => {
-    const state = createForgeCrunchState();
-    tapForgeHeat(state, 1_000);
-    tickForgeHeatTimeout(state, 6_000);
-    expect(state.heatTapCount).toBe(1);
-  });
-});
+// ─── tapEquationForge (no-op) ────────────────────────────────────
 
 describe('tapEquationForge', () => {
-  it('keeps reopened-save heat taps on the game elapsed-time clock', () => {
+  it('always returns false — forge tapping is no longer a mechanic', () => {
     const game = createGameState();
     game.equation.isForgeUnlocked = true;
-    game.elapsedMs = 250_000;
-
-    expect(tapEquationForge(game, game.elapsedMs, 1_000)).toBe(false);
-    tickForgeHeatTimeout(game.forge, game.elapsedMs + 16);
-
-    expect(game.forge.heatTapCount).toBe(1);
-    expect(game.forge.lastHeatTapMs).toBe(250_000);
+    expect(tapEquationForge(game, 0)).toBe(false);
+    expect(tapEquationForge(game, 1000)).toBe(false);
+    expect(tapEquationForge(game, 2000)).toBe(false);
+    // No heat-tap counter side effects
+    expect(game.forge.heatTapCount).toBe(0);
   });
 });
 
-// ─── applyForgeSacrifice ─────────────────────────────────────────
+// ─── applyForgeSacrifice (no-op) ────────────────────────────────
 
 describe('applyForgeSacrifice', () => {
-  it('accumulates sacrifice mass in sacrificeProgressByTierId', () => {
+  it('returns an empty Map and does not mutate any forge state', () => {
     const game = createGameState();
-    const sacrifices = new Map<string, number>([['sand', 500]]);
-    applyForgeSacrifice(game, sacrifices);
-    expect(game.forge.sacrificeProgressByTierId.get('sand')).toBe(500);
+    const sacrifices = new Map<string, number>([['sand', 5000], ['quartz', 2000]]);
+    const result = applyForgeSacrifice(game, sacrifices);
+    expect(result.size).toBe(0);
+    // No sacrifice progress accumulated
+    expect(game.forge.sacrificeProgressByTierId.size).toBe(0);
+    // No refined-crystal progress accumulated
+    expect(game.forge.refinedProgressByTierId.size).toBe(0);
+    // refinedCrystalsByTierId is always empty
+    expect(game.rpg.refinedCrystalsByTierId.size).toBe(0);
   });
 
-  it('converts progress into equation upgrades at the threshold', () => {
-    const THRESHOLD = 2_000;
+  it('does not grant refined crystals even for large sacrifice amounts', () => {
     const game = createGameState();
-    const sacrifices = new Map<string, number>([['sand', THRESHOLD]]);
-    applyForgeSacrifice(game, sacrifices);
-    // After exactly one threshold's worth of mass, progress should be 0
-    expect(game.forge.sacrificeProgressByTierId.get('sand')).toBe(0);
-    // The equation state should have been updated (at minimum no error thrown)
-    expect(game.equation).toBeTruthy();
-  });
-
-  it('stores fractional progress below the threshold', () => {
-    const game = createGameState();
-    const sacrifices = new Map<string, number>([['sand', 800]]);
-    applyForgeSacrifice(game, sacrifices);
-    expect(game.forge.sacrificeProgressByTierId.get('sand')).toBe(800);
-    // Add more that pushes over the 2000 threshold
-    const sacrifices2 = new Map<string, number>([['sand', 1500]]);
-    applyForgeSacrifice(game, sacrifices2);
-    // Total 2300: one conversion, 300 remaining
-    expect(game.forge.sacrificeProgressByTierId.get('sand')).toBe(300);
-  });
-
-  it('handles multiple tiers independently', () => {
-    const game = createGameState();
-    applyForgeSacrifice(game, new Map([['sand', 100], ['quartz', 200]]));
-    expect(game.forge.sacrificeProgressByTierId.get('sand')).toBe(100);
-    expect(game.forge.sacrificeProgressByTierId.get('quartz')).toBe(200);
+    applyForgeSacrifice(game, new Map([['diamond', 1_000_000]]));
+    expect(game.rpg.refinedCrystalsByTierId.size).toBe(0);
   });
 });
 
 // ─── applyLoomCapture ────────────────────────────────────────────
 
 describe('applyLoomCapture', () => {
-  /** Create a minimal resource state with quartz loom unlocked. */
   function makeSetup() {
     const game = createGameState();
-    // Unlock quartz loom so applyLoomCapture can target it
     const quartzLoom = game.looms.looms.find(l => l.tierId === 'quartz');
     if (quartzLoom) quartzLoom.isUnlocked = true;
     return game;
@@ -153,8 +69,7 @@ describe('applyLoomCapture', () => {
 
   it('converts input-tier mass into output-tier motes at the default threshold', () => {
     const game = makeSetup();
-    const threshold = getLoomConversionThreshold(0); // efficiency level 0
-    // Send exactly one threshold worth of sand mass to the quartz loom
+    const threshold = getLoomConversionThreshold(0);
     applyLoomCapture(game.looms, game.resources, 'sand' as TierId, threshold);
     expect(getMotes(game.resources, 'quartz' as TierId)).toBe(1);
   });
@@ -174,9 +89,7 @@ describe('applyLoomCapture', () => {
     const quartzLoom = game.looms.looms.find(l => l.tierId === 'quartz')!;
     quartzLoom.conversionEfficiencyLevel = 1;
     const threshold1 = getLoomConversionThreshold(1);
-    // The level-1 threshold should be lower than level-0
     expect(threshold1).toBeLessThan(getLoomConversionThreshold(0));
-    // Sending that amount should produce exactly 1 mote
     applyLoomCapture(game.looms, game.resources, 'sand' as TierId, threshold1);
     expect(getMotes(game.resources, 'quartz' as TierId)).toBe(1);
   });
@@ -184,9 +97,7 @@ describe('applyLoomCapture', () => {
   it('does nothing for sand (no input tier)', () => {
     const game = createGameState();
     const before = getMotes(game.resources, 'sand' as TierId);
-    // sand has no loom that accepts sand as input
     applyLoomCapture(game.looms, game.resources, 'sand' as TierId, 9999);
-    // Sand motes should not change from loom capture
     expect(getMotes(game.resources, 'sand' as TierId)).toBe(before);
   });
 });
@@ -207,8 +118,6 @@ describe('getLoomInputTierId', () => {
   });
 
   it('returns null for an unknown tier id without throwing', () => {
-    // The function should safely return null for unrecognised tier IDs
-    // (findIndex returns -1, which is ≤ 0).
     expect(getLoomInputTierId('unknown_tier' as TierId)).toBeNull();
   });
 });

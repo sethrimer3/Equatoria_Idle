@@ -75,6 +75,12 @@ export interface SettingsState {
    * OFF by default; only takes effect when isDevMode is also true.
    */
   isRpgPixelatedRender: boolean;
+  /**
+   * Low-graphics mote rendering: when true, each tier renders only the single
+   * largest non-zero size rather than all sizes simultaneously.
+   * Visual-only — no inventory changes.
+   */
+  lowGraphicsMotes: boolean;
 }
 
 export function createDefaultSettings(): SettingsState {
@@ -110,6 +116,7 @@ export function createDefaultSettings(): SettingsState {
     isIdleViewportDebugEnabled: false,
     isRpgPixelatedRender: false,
     isRpgDebugOverlayEnabled: false,
+    lowGraphicsMotes: false,
   };
 }
 

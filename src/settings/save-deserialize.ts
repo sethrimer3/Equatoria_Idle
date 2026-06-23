@@ -11,7 +11,7 @@ import type { SizeIndex } from '../data/particles/size-tiers';
 import { createGameState } from '../sim/game-state';
 import { recomputeBonuses } from '../sim/achievements';
 import { ACHIEVEMENT_BY_ID } from '../data/achievements';
-import { sizeCountsToTotal } from '../sim/resources';
+import { sizeCountsToTotal, addMotes } from '../sim/resources';
 import { deserializeInteractionMatrix } from '../data/particles/interaction-matrix';
 import {
   registerCraftedWeapons, computeCraftedWeaponModifiers,
@@ -143,6 +143,7 @@ export function deserializeGameState(data: SaveData): GameState {
     }
     state.forge.forgeCraftLevel = data.forge.forgeCraftLevel ?? 1;
     state.forge.forgeLevel = (data.forge as { forgeLevel?: number }).forgeLevel ?? 1;
+    state.forge.forgeEfficiency = (data.forge as { forgeEfficiency?: number }).forgeEfficiency ?? 1.0;
   }
 
   // RPG state (v10+; older saves default to no progress)
@@ -390,11 +391,17 @@ export function deserializeGameState(data: SaveData): GameState {
         }
       }
     }
-    // v30+: refined crystal inventory
+    // v35 migration: old refinedCrystalsByTierId → physical motes in moteTotals.
+    // Each old "refined crystal" was earned by sacrificing 500 small-mote equivalents,
+    // so we convert count → count small-mote equivalents directly (1:1 of the stored unit).
     if (data.rpg.refinedCrystalsByTierId) {
       for (const [tierId, count] of Object.entries(data.rpg.refinedCrystalsByTierId)) {
-        state.rpg.refinedCrystalsByTierId.set(tierId as TierId, BigInt(count));
+        const moteCount = Number(BigInt(count)); // BigInt(string) handles both string and numeric forms
+        if (moteCount > 0) {
+          addMotes(state.resources, tierId as TierId, moteCount);
+        }
       }
+      // refinedCrystalsByTierId is always empty going forward
     }
     // v31+: crafted weaves
     if (data.rpg.craftedWeaves && data.rpg.craftedWeaves.length > 0) {

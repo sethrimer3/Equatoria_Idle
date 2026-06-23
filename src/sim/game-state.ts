@@ -13,7 +13,6 @@ import { getRpgUpgradeLevel } from './rpg';
 import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
 import type { CraftedWeaveData } from '../data/rpg/weave-types';
 import type { CraftedLensData } from '../data/rpg/lens-types';
-import type { SizeIndex } from '../data/particles/size-tiers';
 import { MERGE_THRESHOLD } from '../data/particles/size-tiers';
 import {
   INITIAL_UNLOCKED_TIER_COUNT,
@@ -48,12 +47,14 @@ import {
 } from './progression';
 import {
   createForgeCrunchState,
-  REFINED_CRYSTAL_THRESHOLD,
-  tapForgeHeat,
-  startForgeWarmup,
-  tickForgeHeatTimeout,
   type ForgeCrunchState,
+  startForgeMoteConversion,
+  cancelForgeMoteConversion,
+  commitForgeMoteConversion,
+  resetForgeMoteConversion,
+  isForgeMoteConversionReady,
 } from './forge';
+import type { SizeIndex } from '../data/particles/size-tiers';
 import {
   createLoomState,
   tickLooms,
@@ -84,7 +85,6 @@ import {
 } from './rpg';
 import {
   recordForgeCrunch,
-  recordForgeSacrifice,
   recordLoomCapture,
   recordLoomEfficiencyUpgrade,
   recordLoomPassiveMotes,
@@ -257,21 +257,39 @@ export function tryUpgradeLoomEfficiencyAction(state: GameState, tierId: TierId,
   return result;
 }
 
-// ─── Heat-tap forge system ───────────────────────────────────────
+// ─── Heat-tap forge system (no-op — replaced by drag-based mote conversion) ──
 
-/**
- * Register one player tap on the equation forge (heat tap).
- * After three taps, starts the 9-second warm-up sequence.
- * Returns true if a warm-up was started.
- */
-export function tapEquationForge(state: GameState, heatTapNowMs: number, warmupNowMs = heatTapNowMs): boolean {
-  if (!state.equation.isForgeUnlocked) return false;
-  const warmupTriggered = tapForgeHeat(state.forge, heatTapNowMs);
-  if (warmupTriggered) {
-    startForgeWarmup(state.forge, warmupNowMs);
-    return true;
-  }
+/** @deprecated Forge tapping no longer triggers any mechanic. Always returns false. */
+export function tapEquationForge(_state: GameState, _heatTapNowMs: number, _warmupNowMs?: number): boolean {
   return false;
+}
+
+// ─── Forge mote conversion actions ──────────────────────────────────────────
+
+/** Initiate a mote conversion by dragging a mote (SizeIndex ≥ 1) onto the forge. */
+export function startForgeMoteConversionAction(
+  state: GameState,
+  tierId: TierId,
+  sizeIndex: SizeIndex,
+  nowMs: number,
+): boolean {
+  return startForgeMoteConversion(state.forge, tierId, sizeIndex, nowMs);
+}
+
+/** Cancel a pending mote conversion (only possible before the crunch moment). */
+export function cancelForgeMoteConversionAction(state: GameState, nowMs: number): boolean {
+  return cancelForgeMoteConversion(state.forge, nowMs);
+}
+
+/** Check whether the crunch moment has arrived and commit the conversion if so. */
+export function tickForgeMoteConversionAction(state: GameState, nowMs: number): boolean {
+  if (!isForgeMoteConversionReady(state.forge, nowMs)) return false;
+  return commitForgeMoteConversion(state.forge, state.resources, state.forge.forgeEfficiency) !== null;
+}
+
+/** Reset the forge mote conversion state (call after cancelling animation completes). */
+export function resetForgeMoteConversionAction(state: GameState): void {
+  resetForgeMoteConversion(state.forge);
 }
 
 /**
@@ -285,42 +303,15 @@ export function processLoomCapture(state: GameState, inputTierId: TierId, mass: 
 }
 
 /**
- * Apply sacrifice totals from a completed forge crunch.
- * Each 10,000 small-mote equivalents of a given tier produces one equation upgrade for that tier.
+ * @deprecated Forge sacrifice is no longer a mechanic. Always returns empty Map.
+ * Kept for backward-compatibility with app-game-loop.ts call sites.
  */
-/** Returns a map of { tierId → refined crystals gained } for this crunch (may be empty). */
-export function applyForgeSacrifice(state: GameState, sacrifices: Map<string, number>): Map<string, number> {
-  const THRESHOLD = 2_000; // 2000 ≈ 20 medium-particle captures — playtestable baseline
-  const crystalsGained = new Map<string, number>();
-
-  // Telemetry: total mass to detect zero-particle crunches
+export function applyForgeSacrifice(_state: GameState, sacrifices: Map<string, number>): Map<string, number> {
+  // Record total mass for telemetry; no motes or crystals are generated
   let totalMass = 0;
   for (const mass of sacrifices.values()) totalMass += mass;
   recordForgeCrunch(totalMass);
-
-  for (const [tierId, mass] of sacrifices) {
-    const prev = state.forge.sacrificeProgressByTierId.get(tierId) ?? 0;
-    const upgradesGained = Math.floor((prev + mass) / THRESHOLD);
-    recordForgeSacrifice(tierId, mass, upgradesGained);
-
-    let total = prev + mass;
-    while (total >= THRESHOLD) {
-      total -= THRESHOLD;
-      applyEquationUpgrade(state.equation, tierId as TierId);
-    }
-    state.forge.sacrificeProgressByTierId.set(tierId, total);
-
-    let refinedTotal = (state.forge.refinedProgressByTierId.get(tierId) ?? 0) + mass;
-    const refinedCrystalsGained = Math.floor(refinedTotal / REFINED_CRYSTAL_THRESHOLD);
-    if (refinedCrystalsGained > 0) {
-      const currentCrystals = BigInt(state.rpg.refinedCrystalsByTierId.get(tierId) ?? 0);
-      state.rpg.refinedCrystalsByTierId.set(tierId, currentCrystals + BigInt(refinedCrystalsGained));
-      refinedTotal -= refinedCrystalsGained * REFINED_CRYSTAL_THRESHOLD;
-      crystalsGained.set(tierId, refinedCrystalsGained);
-    }
-    state.forge.refinedProgressByTierId.set(tierId, refinedTotal);
-  }
-  return crystalsGained;
+  return new Map();
 }
 
 export function craftWeapon(
@@ -340,14 +331,13 @@ export function craftWeapon(
   if (normalizedIngredients.length > getForgeCapacity(forgeCraftLevel)) return false;
 
   for (const ingredient of normalizedIngredients) {
-    const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
-    if (!bypassCost && available < ingredient.refinedCount) return false;
+    const available = getMotes(state.resources, ingredient.tierId as TierId);
+    if (!bypassCost && available < Number(ingredient.refinedCount)) return false;
   }
 
   if (!bypassCost) {
     for (const ingredient of normalizedIngredients) {
-      const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
-      state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
+      spendMotes(state.resources, ingredient.tierId as TierId, Number(ingredient.refinedCount));
     }
   }
 
@@ -378,14 +368,13 @@ export function craftWeave(
   if (normalizedIngredients.length === 0) return false;
 
   for (const ingredient of normalizedIngredients) {
-    const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
-    if (!bypassCost && available < ingredient.refinedCount) return false;
+    const available = getMotes(state.resources, ingredient.tierId as TierId);
+    if (!bypassCost && available < Number(ingredient.refinedCount)) return false;
   }
 
   if (!bypassCost) {
     for (const ingredient of normalizedIngredients) {
-      const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
-      state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
+      spendMotes(state.resources, ingredient.tierId as TierId, Number(ingredient.refinedCount));
     }
   }
 
@@ -414,14 +403,13 @@ export function craftLens(
   if (normalizedIngredients.length === 0) return false;
 
   for (const ingredient of normalizedIngredients) {
-    const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
-    if (!bypassCost && available < ingredient.refinedCount) return false;
+    const available = getMotes(state.resources, ingredient.tierId as TierId);
+    if (!bypassCost && available < Number(ingredient.refinedCount)) return false;
   }
 
   if (!bypassCost) {
     for (const ingredient of normalizedIngredients) {
-      const available = BigInt(state.rpg.refinedCrystalsByTierId.get(ingredient.tierId) ?? 0);
-      state.rpg.refinedCrystalsByTierId.set(ingredient.tierId, available - ingredient.refinedCount);
+      spendMotes(state.resources, ingredient.tierId as TierId, Number(ingredient.refinedCount));
     }
   }
 
@@ -636,9 +624,6 @@ export interface SimTickResult {
 /** Advance simulation by deltaMs. */
 export function simTick(state: GameState, deltaMs: number): SimTickResult {
   state.elapsedMs += deltaMs;
-
-  // Reset forge heat tap sequence if the player has been idle too long
-  tickForgeHeatTimeout(state.forge, state.elapsedMs);
 
   const result: SimTickResult = { autoTapped: false, autoTapGains: null, loomGains: new Map(), newlyUnlockedAchievementIds: [] };
 

@@ -149,7 +149,7 @@ export function serializeGameState(state: GameState): SaveData {
           refinementLevel: cw.attachedLens.refinementLevel ?? 0,
         } : undefined,
       })),
-      refinedCrystalsByTierId: Object.fromEntries(Array.from(state.rpg.refinedCrystalsByTierId, ([k, v]) => [k, BigInt(v).toString()])),
+      refinedCrystalsByTierId: {}, // always empty — migrated to moteTotals in v35
       craftedWeaves: state.rpg.craftedWeaves.map(w => ({
         id: w.id,
         name: w.name,
@@ -209,6 +209,7 @@ export function serializeGameState(state: GameState): SaveData {
       refinedProgressByTierId: Object.fromEntries(state.forge.refinedProgressByTierId),
       forgeCraftLevel: state.forge.forgeCraftLevel,
       forgeLevel: state.forge.forgeLevel,
+      forgeEfficiency: state.forge.forgeEfficiency,
     },
     pendingIdleMotes: state.pendingIdleMotes.map(e => ({
       tierId: e.tierId,

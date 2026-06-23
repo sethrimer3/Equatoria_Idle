@@ -24,6 +24,7 @@ import {
 } from '../lens-rolling';
 import { createGameState } from '../../../sim/game-state';
 import { craftLens, attachLensToWeapon, craftWeapon, craftWeave } from '../../../sim/game-state';
+import { addMotes } from '../../../sim/resources';
 import { createRpgSimState } from '../../../sim/rpg/rpg-state';
 import { deserializeGameState } from '../../../settings/save-deserialize';
 import { serializeGameState } from '../../../settings/save-serialize';
@@ -386,7 +387,7 @@ describe('createCraftedLens', () => {
 describe('craftLens', () => {
   it('lens crafting creates a lens, not a weapon', () => {
     const state = createGameState();
-    state.rpg.refinedCrystalsByTierId.set('sand', 10);
+    addMotes(state.resources, 'sand', 10);
     craftLens(state, [{ tierId: 'sand', refinedCount: 5 }]);
     expect(state.rpg.craftedWeapons).toHaveLength(0);
     expect(state.rpg.craftedLenses).toHaveLength(1);
@@ -395,7 +396,7 @@ describe('craftLens', () => {
 
   it('crafted lens has at least one T1 active effect', () => {
     const state = createGameState();
-    state.rpg.refinedCrystalsByTierId.set('ruby', 10);
+    addMotes(state.resources, 'ruby', 10);
     craftLens(state, [{ tierId: 'ruby', refinedCount: 5 }]);
     const t1s = state.rpg.craftedLenses[0]!.effects.filter(e => e.effectTier === 1);
     expect(t1s).toHaveLength(1);
