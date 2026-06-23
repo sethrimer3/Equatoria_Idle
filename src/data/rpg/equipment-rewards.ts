@@ -39,6 +39,24 @@ export const EQUIPMENT_REWARD_DROP_RATES = {
   milestoneWeaveChance: 0.35,
 } as const;
 
+// Relative pick weights per zone pool position. Length must match ZONE_*_TIERS arrays.
+// Earlier (thematic) tiers are more likely; later tiers are rarer but still possible.
+const ZONE_LENS_TIER_WEIGHTS: Record<RpgZoneId, readonly number[]> = {
+  euhedral: [50, 30, 15, 5],   // sand-heavy, grounded
+  impetus:  [20, 30, 35, 15],  // iolite/nullstone astral bias
+  caustics: [25, 30, 35, 10],  // sapphire/citrine flow bias
+  verdure:  [50, 25, 15, 10],  // emerald dominant
+  horizon:  [20, 25, 30, 25],  // mixed high-end
+};
+
+const ZONE_WEAVE_TIER_WEIGHTS: Record<RpgZoneId, readonly number[]> = {
+  euhedral: [60, 40],          // sand dominant
+  impetus:  [25, 35, 40],      // iolite bias
+  caustics: [30, 40, 30],      // sapphire core
+  verdure:  [50, 30, 20],      // emerald dominant
+  horizon:  [30, 35, 35],      // mixed
+};
+
 const ZONE_LENS_TIERS: Record<RpgZoneId, readonly TierId[]> = {
   euhedral: ['sand', 'quartz', 'ruby', 'sapphire'],
   impetus: ['quartz', 'sapphire', 'iolite', 'nullstone'],
