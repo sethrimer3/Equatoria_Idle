@@ -87,23 +87,40 @@ function sourcePower(ctx: EquipmentRewardRollContext): number {
   return 1;
 }
 
-function pick<T>(items: readonly T[], rng: () => number): T {
-  return items[Math.min(items.length - 1, Math.floor(rng() * items.length))]!;
+function pickWeighted<T>(items: readonly T[], weights: readonly number[], rng: () => number): T {
+  const eligible = items.slice(0, Math.min(items.length, weights.length));
+  const eligibleWeights = weights.slice(0, eligible.length);
+  const total = eligibleWeights.reduce((s, w) => s + w, 0);
+  let threshold = rng() * total;
+  for (let i = 0; i < eligible.length; i++) {
+    threshold -= eligibleWeights[i]!;
+    if (threshold <= 0) return eligible[i]!;
+  }
+  return eligible[eligible.length - 1]!;
 }
 
-function buildIngredients(tiers: readonly TierId[], ctx: EquipmentRewardRollContext): CraftedWeaponIngredient[] {
+function buildIngredients(
+  tiers: readonly TierId[],
+  weights: readonly number[],
+  ctx: EquipmentRewardRollContext,
+): CraftedWeaponIngredient[] {
   const rng = ctx.rng ?? Math.random;
   const cap = Math.min(tiers.length, Math.max(1, depthCapForWave(ctx.wave), ctx.forgeLevel));
   const eligible = tiers.slice(0, cap);
-  const primary = pick(eligible, rng);
+  const eligibleWeights = weights.slice(0, cap);
+  const primary = pickWeighted(eligible, eligibleWeights, rng);
   const count = sourcePower(ctx) + Math.floor(Math.max(0, ctx.wave) / 25);
   const ingredients: CraftedWeaponIngredient[] = [{ tierId: primary, refinedCount: BigInt(Math.max(1, count)) }];
   if ((ctx.source === 'boss' || ctx.source === 'milestone') && eligible.length > 1 && rng() < 0.45) {
-    let secondary = pick(eligible, rng);
+    let secondary = pickWeighted(eligible, eligibleWeights, rng);
     if (secondary === primary) secondary = eligible.find(t => t !== primary) ?? secondary;
     if (secondary !== primary) ingredients.push({ tierId: secondary, refinedCount: 1n });
   }
   return ingredients;
+}
+
+function bossQualityFloor(source: EquipmentRewardSource): number {
+  return source === 'boss' ? 0.45 : 0;
 }
 
 export function getEligibleLensDrops(ctx: EquipmentRewardRollContext): readonly TierId[] {
