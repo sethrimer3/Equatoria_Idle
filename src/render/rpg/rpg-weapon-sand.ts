@@ -130,14 +130,14 @@ export function createSandWeaponSystem(ctx: SandWeaponCtx): SandWeaponHandle {
 
   const sandProjectiles: SandProjectile[] = [];
 
-  function spawnSandProjectile(targetX: number, targetY: number, damage: number): void {
+  function spawnSandProjectile(targetX: number, targetY: number, damage: number, speedMult = 1.0): void {
     const dx = targetX - mote.x, dy = targetY - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 0.01) return;
     sandProjectiles.push({
       x: mote.x, y: mote.y,
-      vx: (dx / dist) * SAND_PROJ_SPEED,
-      vy: (dy / dist) * SAND_PROJ_SPEED,
+      vx: (dx / dist) * SAND_PROJ_SPEED * speedMult,
+      vy: (dy / dist) * SAND_PROJ_SPEED * speedMult,
       lifeMs: SAND_PROJ_LIFE_MS,
       scaledDamage: damage,
     });
