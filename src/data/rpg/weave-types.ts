@@ -1,5 +1,7 @@
 import type { TierId } from '../tiers';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
+import type { ItemSourceType } from './lens-types';
+export type { ItemSourceType };
 
 export type WeaveRarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic';
 
