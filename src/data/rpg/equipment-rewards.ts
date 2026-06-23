@@ -124,6 +124,129 @@ export function rollWeaveDrop(ctx: EquipmentRewardRollContext): EquipmentRewardS
   };
 }
 
+// ── Dev/debug tuning helpers ──────────────────────────────────────────────────
+
+export interface RewardTuningInfo {
+  zoneId: RpgZoneId;
+  wave: number;
+  source: EquipmentRewardSource;
+  lensDropChance: number;
+  weaveDropChance: number;
+  eligibleLensTiers: readonly TierId[];
+  eligibleWeaveTiers: readonly TierId[];
+  depthCap: number;
+  /** Why certain mote tiers cannot drop. */
+  ineligibleLensTierReasons: Record<string, string>;
+  ineligibleWeaveTierReasons: Record<string, string>;
+}
+
+const ALL_TIER_IDS: readonly TierId[] = [
+  'sand', 'quartz', 'ruby', 'citrine', 'emerald', 'sapphire',
+  'iolite', 'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein',
+];
+
+/** Returns drop tuning info for the given context — intended for the debug overlay only. */
+export function getRewardTuningInfo(ctx: EquipmentRewardRollContext): RewardTuningInfo {
+  const eligibleLens = getEligibleLensDrops(ctx);
+  const eligibleWeave = getEligibleWeaveDrops(ctx);
+  const eligibleLensSet = new Set(eligibleLens);
+  const eligibleWeaveSet = new Set(eligibleWeave);
+
+  const lensChance =
+    ctx.source === 'boss' ? EQUIPMENT_REWARD_DROP_RATES.bossLensChance :
+    ctx.source === 'milestone' ? EQUIPMENT_REWARD_DROP_RATES.milestoneLensChance :
+    ctx.source === 'elite' ? EQUIPMENT_REWARD_DROP_RATES.eliteLensChance :
+    EQUIPMENT_REWARD_DROP_RATES.normalLensChance;
+
+  const weaveChance =
+    ctx.source === 'boss' ? EQUIPMENT_REWARD_DROP_RATES.bossWeaveChance :
+    ctx.source === 'milestone' ? EQUIPMENT_REWARD_DROP_RATES.milestoneWeaveChance :
+    ctx.source === 'elite' ? EQUIPMENT_REWARD_DROP_RATES.eliteWeaveChance :
+    EQUIPMENT_REWARD_DROP_RATES.normalWeaveChance;
+
+  const ineligibleLensReasons: Record<string, string> = {};
+  const ineligibleWeaveReasons: Record<string, string> = {};
+  const zoneLens = ZONE_LENS_TIERS[ctx.zoneId] ?? ZONE_LENS_TIERS.euhedral;
+  const zoneWeave = ZONE_WEAVE_TIERS[ctx.zoneId] ?? ZONE_WEAVE_TIERS.euhedral;
+  const dc = depthCapForWave(ctx.wave);
+
+  for (const tid of ALL_TIER_IDS) {
+    if (!eligibleLensSet.has(tid)) {
+      if (!zoneLens.includes(tid)) {
+        ineligibleLensReasons[tid] = `not in ${ctx.zoneId} zone pool`;
+      } else {
+        const idx = zoneLens.indexOf(tid);
+        ineligibleLensReasons[tid] = `zone pool index ${idx} exceeds depth cap ${dc} (wave ${ctx.wave})`;
+      }
+    }
+    if (!eligibleWeaveSet.has(tid)) {
+      if (!zoneWeave.includes(tid)) {
+        ineligibleWeaveReasons[tid] = `not in ${ctx.zoneId} zone pool`;
+      } else {
+        const idx = zoneWeave.indexOf(tid);
+        ineligibleWeaveReasons[tid] = `zone pool index ${idx} exceeds depth cap ${dc} (wave ${ctx.wave})`;
+      }
+    }
+  }
+
+  return {
+    zoneId: ctx.zoneId,
+    wave: ctx.wave,
+    source: ctx.source,
+    lensDropChance: lensChance,
+    weaveDropChance: weaveChance,
+    eligibleLensTiers: eligibleLens,
+    eligibleWeaveTiers: eligibleWeave,
+    depthCap: dc,
+    ineligibleLensTierReasons: ineligibleLensReasons,
+    ineligibleWeaveTierReasons: ineligibleWeaveReasons,
+  };
+}
+
+// ── Reward simulation (deterministic, for tests and debug) ────────────────────
+
+export interface RewardSimResult {
+  totalKills: number;
+  lensDrops: number;
+  weaveDrops: number;
+  lensDropRate: number;
+  weaveDropRate: number;
+  tierCounts: Record<string, number>;
+}
+
+/**
+ * Simulates `count` reward rolls using a deterministic RNG and returns aggregate stats.
+ * Pure function — no side effects. Safe to call from tests.
+ */
+export function simulateRewardRolls(
+  count: number,
+  ctx: Omit<EquipmentRewardRollContext, 'rng'>,
+  rng: () => number,
+): RewardSimResult {
+  let lensDrops = 0;
+  let weaveDrops = 0;
+  const tierCounts: Record<string, number> = {};
+
+  for (let i = 0; i < count; i++) {
+    const spec = rollEquipmentReward({ ...ctx, rng });
+    if (!spec) continue;
+    if (spec.kind === 'lens') lensDrops++;
+    else weaveDrops++;
+    for (const ing of spec.ingredients) {
+      tierCounts[ing.tierId] = (tierCounts[ing.tierId] ?? 0) + 1;
+    }
+  }
+
+  return {
+    totalKills: count,
+    lensDrops,
+    weaveDrops,
+    lensDropRate: lensDrops / count,
+    weaveDropRate: weaveDrops / count,
+    tierCounts,
+  };
+}
+
 export function rollEquipmentReward(ctx: EquipmentRewardRollContext): EquipmentRewardSpec | null {
   const lens = rollLensDrop(ctx);
   if (lens) return lens;
