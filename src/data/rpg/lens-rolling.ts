@@ -223,11 +223,19 @@ export function getLensName(tiers: TierId[], options: LensNameOptions = {}): str
 
 // ─── Public factory ───────────────────────────────────────────────────────────
 
+export interface LensGrantOptions {
+  sourceZone?: string;
+  sourceWave?: number;
+  sourceType?: ItemSourceType;
+  qualityFloor?: number;
+}
+
 export function createCraftedLens(
   id: string,
   ingredients: CraftedWeaponIngredient[],
   forgeCraftLevel: number,
   rng: () => number = Math.random,
+  grantOptions: LensGrantOptions = {},
 ): CraftedLensData {
   const tierCounts = new Map<TierId, number>();
   for (const ing of ingredients) {
@@ -243,9 +251,13 @@ export function createCraftedLens(
     totalWeightedMoteValue += ing.refinedCount * getTierForgeWeight(ing.tierId);
   }
 
-  const effects = rollLensEffects(normalizedIngredients, forgeCraftLevel, rng);
+  const qualityFloor = grantOptions.qualityFloor ?? 0;
+  const effects = rollLensEffects(normalizedIngredients, forgeCraftLevel, rng, qualityFloor);
   const tiers = Array.from(tierCounts.keys());
-  const name = getLensName(tiers);
+  const name = getLensName(tiers, {
+    zoneId: grantOptions.sourceZone,
+    isBoss: grantOptions.sourceType === 'boss',
+  });
 
   return {
     id,
@@ -256,5 +268,8 @@ export function createCraftedLens(
     forgeCraftLevel,
     effects,
     refinementLevel: 0,
+    sourceZone: grantOptions.sourceZone,
+    sourceWave: grantOptions.sourceWave,
+    sourceType: grantOptions.sourceType,
   };
 }
