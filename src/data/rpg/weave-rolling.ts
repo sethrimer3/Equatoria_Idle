@@ -468,11 +468,19 @@ export function getWeaveName(tiers: TierId[], options: WeaveNameOptions = {}): s
  * One affix is rolled per distinct tier (tiers without a defined family are skipped).
  * Tier 1–3 effects are also rolled and attached per distinct tier.
  */
+export interface WeaveGrantOptions {
+  sourceZone?: string;
+  sourceWave?: number;
+  sourceType?: ItemSourceType;
+  qualityFloor?: number;
+}
+
 export function createCraftedWeave(
   id: string,
   ingredients: CraftedWeaponIngredient[],
   forgeCraftLevel: number,
   rng: () => number = Math.random,
+  grantOptions: WeaveGrantOptions = {},
 ): CraftedWeaveData {
   // Merge duplicate tiers and sum weighted value
   const tierCounts = new Map<TierId, number>();
