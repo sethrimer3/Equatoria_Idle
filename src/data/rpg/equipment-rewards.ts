@@ -11,6 +11,12 @@ export interface EquipmentRewardSpec {
   forgeLevel: number;
   source: EquipmentRewardSource;
   isMajor: boolean;
+  /** Zone this item was obtained in, for source metadata. */
+  zoneId: RpgZoneId;
+  /** Wave number at drop time, for source metadata. */
+  wave: number;
+  /** Quality floor for rarity rolling. Boss drops use 0.45 (minimum Uncommon). */
+  qualityFloor: number;
 }
 
 export interface EquipmentRewardRollContext {
