@@ -122,6 +122,7 @@ export function rollLensEffects(
   ingredients: CraftedWeaponIngredient[],
   forgeLevel: number,
   rng: () => number = Math.random,
+  qualityFloor = 0,
 ): LensEffect[] {
   const { tier2Chance, tier3Chance } = getLensEffectUnlockChances(forgeLevel);
 
