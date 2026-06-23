@@ -241,8 +241,11 @@ function showLensDismantleConfirm(lens: CraftedLensData, dustYield: number, disp
 }
 
 function buildEffectRow(effect: LensEffect): HTMLElement {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'margin:2px 0 4px;';
+
   const row = document.createElement('div');
-  row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;margin:2px 0;';
+  row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;flex-wrap:wrap;';
 
   const rarityColor = RARITY_COLOR[effect.rarity] ?? '#aaa';
   const tierColor = TIER_BY_ID.get(effect.tierId)?.color ?? '#aaa';
@@ -252,6 +255,14 @@ function buildEffectRow(effect: LensEffect): HTMLElement {
   tierNumChip.style.cssText = 'background:rgba(255,255,255,0.12);color:#ddd;font-size:0.68em;padding:0 4px;border-radius:2px;font-weight:700;white-space:nowrap;';
   tierNumChip.textContent = `T${effect.effectTier}`;
   row.appendChild(tierNumChip);
+
+  // Effect behavior type badge: T1=STATUS, T2=PROC, T3=CHAIN
+  const typeLabel = effect.effectTier === 1 ? 'STATUS' : effect.effectTier === 2 ? 'PROC' : 'CHAIN';
+  const typeColor = effect.effectTier === 1 ? '#888' : effect.effectTier === 2 ? '#f9a' : '#fc8';
+  const typeBadge = document.createElement('span');
+  typeBadge.style.cssText = `color:${typeColor};font-size:0.62em;letter-spacing:0.06em;font-weight:700;white-space:nowrap;`;
+  typeBadge.textContent = typeLabel;
+  row.appendChild(typeBadge);
 
   // Tier color chip
   const tierChip = document.createElement('span');
@@ -293,7 +304,21 @@ function buildEffectRow(effect: LensEffect): HTMLElement {
     row.appendChild(note);
   }
 
-  return row;
+  wrapper.appendChild(row);
+
+  // Show description text inline for readability (not just tooltip)
+  if (effect.description && effect.isApplied) {
+    const descEl = document.createElement('div');
+    descEl.style.cssText = 'font-size:0.68em;color:#777;margin-top:1px;padding-left:2px;line-height:1.3;';
+    const maxLen = 90;
+    descEl.textContent = effect.description.length > maxLen
+      ? effect.description.slice(0, maxLen - 1) + '…'
+      : effect.description;
+    descEl.title = effect.description;
+    wrapper.appendChild(descEl);
+  }
+
+  return wrapper;
 }
 
 // ─── Weapon picker overlay ────────────────────────────────────────
