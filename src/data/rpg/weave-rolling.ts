@@ -147,7 +147,7 @@ function buildWeaveTierEffect(
     2: WEAVE_T2_DESCRIPTIONS,
     3: WEAVE_T3_DESCRIPTIONS,
   };
-  const description = descriptions[effectTier][tierId] ?? 'STUB: effect behavior not implemented yet.';
+  const description = descriptions[effectTier][tierId] ?? 'Effect behavior not yet defined.';
   const name = names[effectTier];
   const key = `${tierId}_wt${effectTier}`;
   const quality = triangularFromU(0, 1, 0.6, rng());
