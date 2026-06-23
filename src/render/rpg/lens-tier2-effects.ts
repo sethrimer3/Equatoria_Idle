@@ -262,11 +262,17 @@ export function handleLensTier2EffectsOnWeaponHit(params: LensTier2HitParams): v
 
   let totalSpawns = 0;
 
+  const now = Date.now();
+
   for (const effect of lens.effects) {
     if (effect.effectTier !== 2) continue;
     if (!LENS_T2_IMPLEMENTED_TIER_IDS.has(effect.tierId)) continue;
 
     if (Math.random() >= getProcChance(effect.magnitude)) continue;
+
+    const cooldownKey = `${weaponId}:${effect.key}`;
+    if (now - (_lastT2ProcMs.get(cooldownKey) ?? 0) < T2_PROC_COOLDOWN_MS) continue;
+    _lastT2ProcMs.set(cooldownKey, now);
 
     const secDmg = hitDamage * getSecDmgFraction(effect.magnitude);
     const spawnBudget = Math.min(T2_MAX_HITS_PER_EFFECT, T2_MAX_TOTAL_SPAWNS - totalSpawns);
