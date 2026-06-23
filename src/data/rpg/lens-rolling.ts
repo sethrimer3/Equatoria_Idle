@@ -75,6 +75,7 @@ function buildLensEffect(
   effectTier: LensEffectTier,
   tierWeightedValue: number,
   rng: () => number,
+  qualityFloor = 0,
 ): LensEffect | null {
   const names = LENS_EFFECT_NAMES[tierId];
   if (!names) return null;
