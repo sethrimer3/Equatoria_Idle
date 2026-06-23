@@ -190,13 +190,6 @@ function buildLensCard(
 
   card.appendChild(actionRow);
 
-  // ── Reforge preview (coming later) ───────────────────────────────────────
-  const reforgeRow = document.createElement('div');
-  reforgeRow.style.cssText = 'font-size:0.68em;color:#555;margin-top:3px;font-style:italic;';
-  reforgeRow.title = 'Reforging will reroll secondary stats — coming later.';
-  reforgeRow.textContent = 'Reforge: coming later';
-  card.appendChild(reforgeRow);
-
   return card;
 }
 
