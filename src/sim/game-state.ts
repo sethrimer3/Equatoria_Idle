@@ -581,6 +581,8 @@ export function grantEquipmentRewardToRpgState(rpgState: RpgSimState, spec: Equi
       nextUniqueEquipmentId(`loot_lens_${spec.source}`, ids),
       spec.ingredients,
       spec.forgeLevel,
+      undefined,
+      { sourceZone: spec.zoneId, sourceWave: spec.wave, sourceType: spec.source, qualityFloor: spec.qualityFloor },
     );
     rpgState.craftedLenses.push(item);
     return { kind: 'lens', item, isMajor: spec.isMajor, source: spec.source };
@@ -591,6 +593,8 @@ export function grantEquipmentRewardToRpgState(rpgState: RpgSimState, spec: Equi
     nextUniqueEquipmentId(`loot_weave_${spec.source}`, ids),
     spec.ingredients,
     spec.forgeLevel,
+    undefined,
+    { sourceZone: spec.zoneId, sourceWave: spec.wave, sourceType: spec.source, qualityFloor: spec.qualityFloor },
   );
   rpgState.craftedWeaves.push(item);
   return { kind: 'weave', item, isMajor: spec.isMajor, source: spec.source };
