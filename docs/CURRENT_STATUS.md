@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-18
-Current build: 298
+Current build: 299
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,13 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 299: BPM-synced boss attacks and boss sanctuary
+
+Completed:
+
+- Added a central per-boss BPM configuration. Existing boss projectile and special-attack intervals now snap to musical half-beat subdivisions derived from each boss BPM; Quartz's signature missile remains every five beats.
+- Added a 68 px boss-centered attack void. Boss projectiles, stage hazards, and special attacks do not render inside it, and the player takes no boss-attack damage while inside.
 
 ### Build 298: Quartz boss signature beat missile
 

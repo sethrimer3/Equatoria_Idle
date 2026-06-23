@@ -31,6 +31,7 @@ import {
   PLAYER_IFRAME_MIN_MS,
   PLAYER_IFRAME_MAX_ADD_MS,
 } from './rpg-constants';
+import { isPointInBossAttackVoid } from './rpg-boss-attack-void';
 
 // ── Fairness & tuning constants ───────────────────────────────────────────────
 
@@ -621,6 +622,7 @@ export function updateBossStageDirector(
   if (isPlayerInStageDirectorSafeZone(playerX, playerY, dim)) return;
   if (state.playerNearBoss) return; // damage window → no hazard damage
 
+  if (isPointInBossAttackVoid(playerX, playerY, bossX, bossY)) return;
   for (const h of state.hazards) {
     if (h.phase !== 'active') continue;
     const hit =

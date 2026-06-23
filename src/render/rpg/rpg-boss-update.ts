@@ -30,6 +30,8 @@ import {
 } from './rpg-constants';
 import { makeDanmakuSafeZone } from './rpg-factories';
 import { updateBossBehavior } from './rpg-boss-behaviors';
+import { getBossTempoSyncedLegacyIntervalMs } from '../../data/rpg/boss-tempo-config';
+import { isPlayerInBossAttackVoid } from './rpg-boss-attack-void';
 
 // ── Shared context interface ───────────────────────────────────────────────────
 
@@ -55,6 +57,7 @@ export interface BossUpdateCtx {
   readonly bossProjectiles: BossProjectile[];
   /** Returns whether a boss wave is currently active. */
   getIsBossWaveActive(): boolean;
+  getBossEnemy(): BossEnemy | null;
   /** Returns the current danmaku safe zone, or null. */
   getDanmakuSafeZone(): DanmakuSafeZone | null;
   /** Overwrites the current danmaku safe zone. */
@@ -125,8 +128,10 @@ export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: nu
   if (boss.phaseTransitionMs > 0) boss.phaseTransitionMs = Math.max(0, boss.phaseTransitionMs - deltaMs);
 
   // ── Attack cooldown timers ────────────────────────────────────────────────
-  const atk1Cd = boss.phaseIndex === 2 ? BOSS_ATTACK1_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK1_CD_P1 : BOSS_ATTACK1_CD_BASE;
-  const atk2Cd = boss.phaseIndex === 2 ? BOSS_ATTACK2_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK2_CD_P1 : BOSS_ATTACK2_CD_BASE;
+  const atk1LegacyMs = boss.phaseIndex === 2 ? BOSS_ATTACK1_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK1_CD_P1 : BOSS_ATTACK1_CD_BASE;
+  const atk2LegacyMs = boss.phaseIndex === 2 ? BOSS_ATTACK2_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK2_CD_P1 : BOSS_ATTACK2_CD_BASE;
+  const atk1Cd = getBossTempoSyncedLegacyIntervalMs(boss.bossId, atk1LegacyMs);
+  const atk2Cd = getBossTempoSyncedLegacyIntervalMs(boss.bossId, atk2LegacyMs);
   if (boss.isFiringPaused) {
     boss.attackTimerMs = Math.max(boss.attackTimerMs, atk1Cd);
     boss.secondaryTimerMs = Math.max(boss.secondaryTimerMs, atk2Cd);
@@ -231,7 +236,10 @@ export function updateBossProjectiles(bossProjectiles: BossProjectile[], ctx: Bo
 
     if (!p.hasHitPlayer) {
       // Player is immune inside the bottom safe zone
-      if (ctx.getIsBossWaveActive() && isInBottomSafeZone(ctx.mote.x, ctx.mote.y, ab)) continue;
+      if (
+        (ctx.getIsBossWaveActive() && isInBottomSafeZone(ctx.mote.x, ctx.mote.y, ab)) ||
+        isPlayerInBossAttackVoid(ctx.mote.x, ctx.mote.y, ctx.getBossEnemy())
+      ) continue;
       const pdx = ctx.mote.x - p.x, pdy = ctx.mote.y - p.y;
       if (pdx * pdx + pdy * pdy < PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS) {
         p.hasHitPlayer = true;

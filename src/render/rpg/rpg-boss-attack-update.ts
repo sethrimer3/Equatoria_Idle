@@ -36,11 +36,13 @@ import {
 } from './attacks/rpg-attack-quartz-signature';
 import { PLAYER_HIT_RADIUS, PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS } from './rpg-constants';
 import { isPlayerInStageDirectorSafeZone } from './rpg-boss-stage-director';
+import { getBossTempoSyncedLegacyIntervalMs } from '../../data/rpg/boss-tempo-config';
+import { isPlayerInBossAttackVoid } from './rpg-boss-attack-void';
 
 // ── Caps ──────────────────────────────────────────────────────────────────────
 
 const MAX_ACTIVE_ATTACKS      = 6;
-const SCHEDULER_COOLDOWN_MS   = 1200; // minimum gap between any two scheduler decisions
+const SCHEDULER_COOLDOWN_BEATS = 1; // minimum gap between any two scheduler decisions
 
 // ── Context interface ─────────────────────────────────────────────────────────
 
@@ -106,7 +108,7 @@ export function updateBossAttacks(
 
   // ── Collision detection ──────────────────────────────────────────────────
   if (ctx.getPlayerIFramesMs() <= 0) {
-    applyBossAttackCollision(state, ctx);
+    applyBossAttackCollision(state, ctx, bossEnemy);
   }
 }
 
@@ -185,9 +187,13 @@ export function spawnBossAttackFromConfig(
   if (instance) {
     state.attacks.push(instance);
     if (applyCooldown) {
-      // Total cooldown = per-kind config + minimum global scheduler gap to prevent
+      // Total cooldown = per-kind musical interval + one beat gap to prevent
       // rapid re-firing of the same kind immediately after it expires.
-      state.schedulerCooldowns.set(key, cfg.cooldownMs + SCHEDULER_COOLDOWN_MS);
+      state.schedulerCooldowns.set(
+        key,
+        getBossTempoSyncedLegacyIntervalMs(boss.bossId, cfg.cooldownMs) +
+          getBossTempoSyncedLegacyIntervalMs(boss.bossId, SCHEDULER_COOLDOWN_BEATS * 1000),
+      );
     }
     return true;
   }
@@ -210,6 +216,7 @@ function _getPhaseAttacks(
 export function applyBossAttackCollision(
   state: BossAttackState,
   ctx: BossAttackUpdateCtx,
+  bossEnemy: BossEnemy | null,
 ): void {
   const px = ctx.playerX;
   const py = ctx.playerY;
@@ -217,6 +224,7 @@ export function applyBossAttackCollision(
 
   // During boss waves, the bottom safe zone protects the player from all special attacks.
   if (ctx.getIsBossWaveActive() && isPlayerInStageDirectorSafeZone(px, py, ctx.dim)) return;
+  if (isPlayerInBossAttackVoid(px, py, bossEnemy)) return;
 
   for (const atk of state.attacks) {
     if (_checkAttackHitsPlayer(atk, px, py, pr)) {

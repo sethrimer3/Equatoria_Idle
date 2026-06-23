@@ -1804,6 +1804,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     playerStats,
     bossProjectiles,
     getIsBossWaveActive: () => isBossWaveActive,
+    getBossEnemy:          () => bossEnemy,
     getDanmakuSafeZone:  () => danmakuSafeZone,
     setDanmakuSafeZone:  (dz) => { danmakuSafeZone = dz; },
     getPlayerIFramesMs:  () => playerIFramesMs,

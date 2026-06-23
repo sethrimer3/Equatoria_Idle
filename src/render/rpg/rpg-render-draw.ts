@@ -36,6 +36,7 @@ import {
   drawTeleportParticles,
 } from './rpg-enemy-draw-adv';
 import { drawBossAttacks, setDrawBossAttacksLowGraphics } from './rpg-boss-attacks-draw';
+import { clipBossAttackVoid } from './rpg-boss-attack-void';
 import {
   drawBossStageDirector,
   setStageDirLowGraphics,
@@ -1016,6 +1017,8 @@ export function drawRpgFrame(
   drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, fs.visibleBounds, glowTimeS);
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, glowTimeS);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
+  canvas2d.save();
+  clipBossAttackVoid(canvas2d, bossEnemy);
   drawBossProjectiles(canvas2d, ctx.bossProjectiles);
   if (ctx.getIsBossWaveActive() && bossEnemy) {
     drawBossStageDirector(
@@ -1028,6 +1031,7 @@ export function drawRpgFrame(
     );
   }
   drawBossAttacks(canvas2d, ctx.bossAttackState);
+  canvas2d.restore();
   drawBossEnemy(canvas2d, bossEnemy, glowTimeS);
   drawTeleportParticles(canvas2d, ctx.teleportParticles);
   drawShotLines(canvas2d, ctx.shotLines);

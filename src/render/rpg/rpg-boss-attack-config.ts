@@ -17,7 +17,10 @@ export type BossAttackKind =
 
 export interface BossAttackKindConfig {
   kind: BossAttackKind;
-  /** Minimum ms between this attack kind re-firing (per boss). */
+  /**
+   * Legacy 60-BPM interval. Runtime quantizes this to a half-beat grid and
+   * scales it from the boss BPM in boss-tempo-config.ts.
+   */
   cooldownMs: number;
   /** Added to BossAttackState.activePressure while this attack instance is alive. */
   pressureScore: number;
