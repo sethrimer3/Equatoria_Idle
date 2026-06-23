@@ -184,6 +184,7 @@ export function rollWeaveTierEffects(
   ingredients: CraftedWeaponIngredient[],
   forgeLevel: number,
   rng: () => number = Math.random,
+  qualityFloor = 0,
 ): WeaveTierEffect[] {
   const { tier2Chance, tier3Chance } = getForgeEffectUnlockChances(forgeLevel);
 
