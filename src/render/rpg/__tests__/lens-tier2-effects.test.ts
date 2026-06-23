@@ -25,6 +25,8 @@ import {
   handleLensTier2EffectsOnWeaponHit,
   tickLensTier2DelayedEffects,
   clearPendingTier2DelayedStrikes,
+  clearT2ProcCooldowns,
+  T2_PROC_COOLDOWN_MS,
   type LensTier2HitParams,
 } from '../lens-tier2-effects';
 import {
