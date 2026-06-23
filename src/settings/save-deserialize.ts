@@ -322,7 +322,7 @@ export function deserializeGameState(data: SaveData): GameState {
         forgeCraftLevel: l.forgeCraftLevel,
         totalWeightedMoteValue: l.totalWeightedMoteValue,
         ingredients: l.ingredients.map(i => ({ tierId: i.tierId as TierId, refinedCount: BigInt(i.refinedCount) })),
-        effects: l.effects.map(e => ({
+        effects: (l.effects ?? []).map(e => ({
           tierId: e.tierId as TierId,
           effectTier: e.effectTier as LensEffectTier,
           key: e.key,
