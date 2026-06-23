@@ -24,6 +24,7 @@ import {
   MAX_REFINEMENT_LEVEL, REFINEMENT_RESOURCE_NAME,
 } from '../../data/rpg/item-refinement';
 import { getWeaveEquipComparison, getRefinementLabel, getRefinementMultiplierLabel } from '../../data/rpg/equip-helpers';
+import { compareWeave, type ItemSortMode } from '../../data/rpg/item-sort-helpers';
 
 export interface WeaveInventoryPanel {
   element: HTMLElement;
