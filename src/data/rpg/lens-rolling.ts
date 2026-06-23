@@ -46,7 +46,7 @@ export function getLensRarity(quality: number): LensRarity {
 
 // ─── Magnitude scaling ────────────────────────────────────────────────────────
 
-/** Base magnitude per effect tier. T2 and T3 are stronger stubs. */
+/** Base magnitude per effect tier. T2 and T3 are progressively stronger. */
 const BASE_MAGNITUDE_BY_TIER: Record<LensEffectTier, number> = {
   1: 10,
   2: 16,
