@@ -116,7 +116,7 @@ export interface SandWeaponCtx {
 
 export interface SandWeaponHandle {
   readonly sandProjectiles: SandProjectile[];
-  spawnSandProjectile: (targetX: number, targetY: number, damage: number) => void;
+  spawnSandProjectile: (targetX: number, targetY: number, damage: number, speedMult?: number) => void;
   updateSandProjectiles: (deltaMs: number) => void;
   reset: () => void;
 }
