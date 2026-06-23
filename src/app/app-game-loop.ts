@@ -51,6 +51,7 @@ import type { HudOverlay } from '../ui/hud/hud-overlay';
 import type { AudioSystem } from '../audio';
 import { drawIdleViewportDebug } from '../render/canvas/idle-viewport-debug';
 import { flushParticleDragMove } from '../input/particle-drag';
+import { tickForgeDrag } from './forge-drag-detection';
 import { perfStats, resetPerfStats, drawPerfStats } from '../render/debug/perf-stats';
 
 interface QueuedAchievementNotification {
@@ -295,6 +296,22 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // particles once per frame instead of once per event (see particle-drag.ts).
     const _t0drag = isDevMode ? performance.now() : 0;
     flushParticleDragMove(ctx.appState.particleDrag);
+
+    // Forge drag detection: check if any dragged particle entered the forge
+    // capture radius, start/cancel/commit mote conversion accordingly.
+    if (ctx.appState.game.equation.isForgeUnlocked) {
+      tickForgeDrag(
+        ctx.appState.forge,
+        ctx.appState.game.resources,
+        ctx.appState.particleDrag,
+        equationCenterX,
+        equationCenterY,
+        FORGE_RADIUS,
+        nowMs,
+        (particleId) => ctx.particles.removeParticleById(particleId),
+      );
+    }
+
     if (isDevMode) perfStats.dragFlushMs = performance.now() - _t0drag;
 
     const _t0update = isDevMode ? performance.now() : 0;
@@ -388,6 +405,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.cc.widthPx,
       ctx.cc.heightPx,
       nowMs,
+      ctx.settings.lowGraphicsMotes,
     );
 
     // Dev-mode overlays (drawn last so they are always visible)

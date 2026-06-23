@@ -37,6 +37,7 @@ import { computeWeavePowerScale } from '../../data/rpg/weave-rolling';
 import { LENS_EFFECT_NAMES, getLensMaxMoteTypes, getLensEffectUnlockChances } from '../../data/rpg/lens-definitions';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
+import type { ResourceState } from '../../sim/resources/resource-state';
 import { buildLensInventorySection } from './lens-inventory';
 import { getUnlockedWeaveSlotCount } from '../../sim/forge/forge-state';
 import type { ActionHandler } from '../../input';
@@ -56,7 +57,7 @@ type CraftingMode = 'weapon' | 'weave' | 'lens';
 
 export interface RpgWeaponCraftingPage {
   element: HTMLElement;
-  update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState): void;
+  update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState): void;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let latestRpgState: RpgSimState | null = null;
   let latestIsDevMode = false;
   let latestForgeState: ForgeCrunchState = createForgeCrunchState();
+  let latestResources: ResourceState | null = null;
 
   // ── Animation ────────────────────────────────────────────────────────────
   let forgeCoreCanvas: HTMLCanvasElement | null = null;
@@ -200,7 +202,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   }
 
   function getInventory(): Map<TierId, number> {
-    return latestRpgState?.refinedCrystalsByTierId ?? new Map();
+    return latestResources?.moteTotals ?? latestRpgState?.refinedCrystalsByTierId ?? new Map();
   }
 
   function getForgeCapacityCurrent(): number {
@@ -240,19 +242,19 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   function refreshInventory(): void {
     if (!inventoryEl || !latestRpgState) return;
-    const invMap = latestRpgState.refinedCrystalsByTierId;
-    const hasAnyCrystals = Array.from(invMap.values()).some(n => n > 0);
+    const invMap = getInventory();
+    const hasAnyMotes = Array.from(invMap.values()).some(n => n > 0);
     inventoryEl.innerHTML = '';
 
-    if (!hasAnyCrystals && !latestIsDevMode) {
-      inventoryEl.textContent = 'No refined crystals yet. Trigger forge crunches to produce them.';
+    if (!hasAnyMotes && !latestIsDevMode) {
+      inventoryEl.textContent = 'No motes available for forging yet.';
       return;
     }
 
     // Label
     const label = document.createElement('span');
     label.style.cssText = 'color:#888;margin-right:6px;';
-    label.textContent = 'Crystals:';
+    label.textContent = 'Motes:';
     inventoryEl.appendChild(label);
 
     // One chip per tier
@@ -1065,10 +1067,11 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   // ── Public interface ──────────────────────────────────────────────────────
 
-  function update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState): void {
+  function update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState): void {
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
     if (forgeState) latestForgeState = forgeState;
+    if (resources) latestResources = resources;
     if (element.childElementCount === 0) {
       build(rpgState, isDevMode);
       return;

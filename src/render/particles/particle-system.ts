@@ -243,6 +243,22 @@ export class ParticleSystem {
     }
   }
 
+  /**
+   * Remove the particle with the given unique ID from the scene.
+   * Used after a forge mote conversion commits to eliminate exactly the
+   * physical particle that was dragged into the forge.
+   * No-op if no particle with that ID exists.
+   */
+  removeParticleById(particleId: number): void {
+    for (let i = 0, len = this.particles.length; i < len; i++) {
+      if (this.particles[i].particleId === particleId) {
+        this._pool.release(this.particles[i]);
+        this.particles.splice(i, 1);
+        return;
+      }
+    }
+  }
+
   /** Rush all particles of the given tier toward the generator position. */
   gatherMotesToGenerator(tierId: TierId, genX: number, genY: number): void {
     for (const p of this.particles) {
@@ -445,9 +461,10 @@ export class ParticleSystem {
     canvasWidth?: number,
     canvasHeight?: number,
     nowMs?: number,
+    lowGraphicsMotes?: boolean,
   ): void {
     const renderNow = nowMs ?? performance.now();
-    drawParticles(cc, this.particles, this.shockwaves, this.activeMerges, options, renderNow);
+    drawParticles(cc, this.particles, this.shockwaves, this.activeMerges, options, renderNow, lowGraphicsMotes ?? false);
     if (dragState !== undefined && canvasWidth !== undefined && canvasHeight !== undefined) {
       drawGrabVisual(cc, dragState, this.particles, canvasWidth, canvasHeight, getParticleRendererAnimTimeMs());
     }

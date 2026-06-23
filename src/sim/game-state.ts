@@ -271,9 +271,10 @@ export function startForgeMoteConversionAction(
   state: GameState,
   tierId: TierId,
   sizeIndex: SizeIndex,
+  particleId: number,
   nowMs: number,
 ): boolean {
-  return startForgeMoteConversion(state.forge, tierId, sizeIndex, nowMs);
+  return startForgeMoteConversion(state.forge, tierId, sizeIndex, particleId, nowMs);
 }
 
 /** Cancel a pending mote conversion (only possible before the crunch moment). */
