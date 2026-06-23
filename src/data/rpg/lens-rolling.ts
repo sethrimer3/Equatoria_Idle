@@ -141,18 +141,18 @@ export function rollLensEffects(
     const tierWeightedValue = refinedCount * getTierForgeWeight(tierId);
 
     // T1 — always
-    const t1 = buildLensEffect(tierId, 1, tierWeightedValue, rng);
+    const t1 = buildLensEffect(tierId, 1, tierWeightedValue, rng, qualityFloor);
     if (t1) effects.push(t1);
 
     // T2 — probabilistic
     if (rng() < tier2Chance) {
-      const t2 = buildLensEffect(tierId, 2, tierWeightedValue, rng);
+      const t2 = buildLensEffect(tierId, 2, tierWeightedValue, rng, qualityFloor);
       if (t2) effects.push(t2);
     }
 
     // T3 — probabilistic (never at forge level 1 since tier3Chance=0)
     if (rng() < tier3Chance) {
-      const t3 = buildLensEffect(tierId, 3, tierWeightedValue, rng);
+      const t3 = buildLensEffect(tierId, 3, tierWeightedValue, rng, qualityFloor);
       if (t3) effects.push(t3);
     }
   }
