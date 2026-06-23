@@ -203,7 +203,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       const notApplied = document.createElement('span');
       notApplied.style.cssText = 'color:#555;font-size:0.72em;font-style:italic;';
       notApplied.title = effect.description;
-      notApplied.textContent = 'not applied';
+      notApplied.textContent = '(not active)';
       row.appendChild(notApplied);
     }
 
