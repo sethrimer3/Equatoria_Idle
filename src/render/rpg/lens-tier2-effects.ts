@@ -24,26 +24,21 @@ import { applyLensStatus } from '../../sim/rpg/enemy-status-effects';
 import type { LensStatusParams, EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 import type { TierId } from '../../data/tiers';
 import { LENS_T2_IMPLEMENTED_TIER_IDS } from '../../data/rpg/lens-definitions';
+import {
+  LENS_T2_RANGE_SQ,
+  LENS_T2_PROC_MAGNITUDE_FACTOR,
+  LENS_T2_PROC_CHANCE_MIN, LENS_T2_PROC_CHANCE_MAX,
+  LENS_T2_DMG_MAGNITUDE_FACTOR,
+  LENS_T2_DMG_FRACTION_MIN, LENS_T2_DMG_FRACTION_MAX,
+  LENS_T2_MAX_HITS_PER_EFFECT, LENS_T2_MAX_TOTAL_SPAWNS,
+  LENS_T2_PROC_COOLDOWN_MS,
+} from '../../data/rpg/lens-weave-balance';
+import { recordEquipmentProcEvent } from '../../dev/equipment-proc-log';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-/** Squared radius within which secondary hits can find targets (200 px). */
-const T2_RANGE_SQ = 200 * 200;
-
-const T2_PROC_MIN  = 0.05;
-const T2_PROC_MAX  = 0.35;
-const T2_DMG_MIN   = 0.10;
-const T2_DMG_MAX   = 0.45;
-
-const T2_MAX_HITS_PER_EFFECT = 8;
-const T2_MAX_TOTAL_SPAWNS    = 12;
-
-/**
- * Minimum ms between procs of the same T2 effect on the same weapon.
- * Prevents visual spam and runaway DPS from fast multi-hit attacks.
- * Key: `${weaponId}:${effectKey}`
- */
-export const T2_PROC_COOLDOWN_MS = 800;
+/** Re-export for callers that imported the old local name. */
+export const T2_PROC_COOLDOWN_MS = LENS_T2_PROC_COOLDOWN_MS;
 const _lastT2ProcMs = new Map<string, number>();
 
 /** Reset per-effect proc cooldown state — use in tests to avoid state leakage. */
