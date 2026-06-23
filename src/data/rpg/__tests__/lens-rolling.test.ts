@@ -486,4 +486,31 @@ describe('save/load round-trip', () => {
     const restored = deserializeGameState(save);
     expect(restored.rpg.craftedWeapons[0]!.attachedLens).toBeUndefined();
   });
+
+  it('lens with missing effects field (pre-v31 save) loads safely with empty effects', () => {
+    const state = createGameState();
+    craftLens(state, [{ tierId: 'ruby', refinedCount: 5 }], true);
+    const save = serializeGameState(state);
+    // Simulate an old lens saved without the effects array
+    if (save.rpg?.craftedLenses?.[0]) {
+      delete (save.rpg.craftedLenses[0] as Record<string, unknown>)['effects'];
+    }
+    expect(() => deserializeGameState(save)).not.toThrow();
+    const restored = deserializeGameState(save);
+    expect(restored.rpg.craftedLenses[0]!.effects).toEqual([]);
+  });
+
+  it('attached lens with missing effects field loads safely', () => {
+    const state = createGameState();
+    craftWeapon(state, [{ tierId: 'sand', refinedCount: 5 }], true);
+    craftLens(state, [{ tierId: 'ruby', refinedCount: 5 }], true);
+    attachLensToWeapon(state, state.rpg.craftedLenses[0]!.id, state.rpg.craftedWeapons[0]!.id);
+    const save = serializeGameState(state);
+    if (save.rpg?.craftedWeapons?.[0]?.attachedLens) {
+      delete (save.rpg.craftedWeapons[0].attachedLens as Record<string, unknown>)['effects'];
+    }
+    expect(() => deserializeGameState(save)).not.toThrow();
+    const restored = deserializeGameState(save);
+    expect(restored.rpg.craftedWeapons[0]!.attachedLens?.effects).toEqual([]);
+  });
 });
