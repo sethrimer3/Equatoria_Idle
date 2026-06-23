@@ -179,18 +179,33 @@ export function tryTriggerPlayerHitEnemyWeaveEffects(
       if (HIT_ENEMY_DEBUFF_IDS.has(effect.id as WeaveProcEffectId)) {
         // Enemy debuff proc (e.g. weave_lingering_hex): debuff the hit enemy, no player buff.
         applyEnemyDebuff?.(effect.value, def.durationMs);
+        recordEquipmentProcEvent({
+          timeMs: performance.now(),
+          kind: 'weave_proc',
+          sourceName: def.displayName,
+          summary: `enemy +${effect.value.toFixed(1)}% dmg taken for ${(def.durationMs / 1000).toFixed(1)}s`,
+        });
       } else if (def.durationMs > 0) {
         // Temp buff proc (e.g. weave_swiftstrike, weave_ember_surge): add or refresh.
-        // Same effectId: refresh duration and keep the stronger valuePct.
-        // This prevents unlimited stacking from a single source while allowing
-        // natural refresh on repeated procs within the same combat.
         const statKey = HIT_BUFF_STAT_MAP[effect.id as WeaveProcEffectId];
         if (!statKey) continue; // unknown buff stat — skip gracefully
         upsertActiveWeaveBuff(state, effect.id, statKey, effect.value, def.durationMs);
+        recordEquipmentProcEvent({
+          timeMs: performance.now(),
+          kind: 'weave_buff_start',
+          sourceName: def.displayName,
+          summary: `${formatActiveWeaveBuffStat(statKey, effect.value)} for ${(def.durationMs / 1000).toFixed(1)}s`,
+        });
       } else {
         // Instant damage proc (e.g. weave_echo_strike): no buff, apply bonus damage.
         const bonus = finalDmg * (effect.value / 100);
         applyBonusDmg(bonus);
+        recordEquipmentProcEvent({
+          timeMs: performance.now(),
+          kind: 'weave_proc',
+          sourceName: def.displayName,
+          summary: `+${bonus.toFixed(1)} bonus dmg (${effect.value.toFixed(1)}% of ${finalDmg.toFixed(1)})`,
+        });
       }
 
       triggered.push(effect.id);
