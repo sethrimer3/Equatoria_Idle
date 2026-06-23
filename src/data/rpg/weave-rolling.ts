@@ -401,39 +401,64 @@ export function rollWeavePassiveEffects(
 
 // ─── Weave name generation ────────────────────────────────────────────────────
 
-const FAMILY_NOUNS: Partial<Record<TierId, string>> = {
+/** Zone-specific adjective used when source zone is known. */
+export const WEAVE_ZONE_ADJECTIVES: Record<string, string> = {
+  euhedral:  'Euhedral',
+  impetus:   'Astral',
+  caustics:  'Caustic',
+  verdure:   'Verdant',
+  horizon:   'Liminal',
+};
+
+/** Effect phrase appended as "of {phrase}" in the weave name. */
+export const WEAVE_EFFECT_PHRASES: Partial<Record<TierId, string>> = {
   sand:       'Haste',
   quartz:     'Clarity',
   ruby:       'Ignition',
   citrine:    'Radiance',
-  emerald:    'Propagation',
+  emerald:    'Echoing Growth',
   sapphire:   'Precision',
-  iolite:     'Persistence',
-  amethyst:   'Echo',
+  iolite:     'the Hollow Orbit',
+  amethyst:   'the Phantom Echo',
   diamond:    'Compression',
-  nullstone:  'Gravity',
+  nullstone:  'the Void Pull',
   fracteryl:  'Recursion',
-  eigenstein: 'Rift',
+  eigenstein: 'the Rift',
 };
 
-function getWeaveName(tiers: TierId[]): string {
+export interface WeaveNameOptions {
+  zoneId?: string;
+  isBoss?: boolean;
+}
+
+export function getWeaveName(tiers: TierId[], options: WeaveNameOptions = {}): string {
+  const { zoneId, isBoss } = options;
   if (tiers.length === 0) return 'Null Thread';
-  if (tiers.length === 1) {
-    const tier = TIER_BY_ID.get(tiers[0]!);
-    const noun = FAMILY_NOUNS[tiers[0]!] ?? 'Thread';
-    return `${tier?.displayName ?? tiers[0]} ${noun} Thread`;
-  }
-  // Sort by unlockOrder descending (dominant first)
+
   const sorted = [...tiers].sort((a, b) =>
     (TIER_BY_ID.get(b)?.unlockOrder ?? 0) - (TIER_BY_ID.get(a)?.unlockOrder ?? 0),
   );
-  if (tiers.length === 2) {
-    const t1 = TIER_BY_ID.get(sorted[0]!)?.displayName ?? sorted[0];
-    const t2 = TIER_BY_ID.get(sorted[1]!)?.displayName ?? sorted[1];
-    return `${t1}-${t2} Weave`;
+  const domTier = TIER_BY_ID.get(sorted[0]!)?.displayName ?? sorted[0]!;
+
+  if (tiers.length === 1) {
+    const tierId = sorted[0]!;
+    const zoneAdj = zoneId ? (WEAVE_ZONE_ADJECTIVES[zoneId] ?? null) : null;
+    if (isBoss && zoneAdj) return `Apex ${zoneAdj} Weave`;
+    if (isBoss) return `Grand ${domTier} Weave`;
+    const effectPhrase = WEAVE_EFFECT_PHRASES[tierId];
+    if (zoneAdj && effectPhrase) return `${zoneAdj} Weave of ${effectPhrase}`;
+    if (zoneAdj) return `${zoneAdj} ${domTier} Weave`;
+    return effectPhrase ? `${domTier} Weave of ${effectPhrase}` : `${domTier} Weave`;
   }
-  const t1 = TIER_BY_ID.get(sorted[0]!)?.displayName ?? sorted[0];
-  return `${t1} Composite Weave`;
+
+  if (tiers.length === 2) {
+    const t2 = TIER_BY_ID.get(sorted[1]!)?.displayName ?? sorted[1]!;
+    const zoneAdj = zoneId ? (WEAVE_ZONE_ADJECTIVES[zoneId] ?? null) : null;
+    if (zoneAdj) return `${zoneAdj} ${domTier}-${t2} Weave`;
+    return `${domTier}-${t2} Weave`;
+  }
+
+  return `${domTier} Composite Weave`;
 }
 
 // ─── Public factory ───────────────────────────────────────────────────────────
