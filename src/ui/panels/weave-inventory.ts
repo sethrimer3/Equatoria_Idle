@@ -238,26 +238,77 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     const def = getWeaveEffectDef(effect.id);
     if (!def) return null;
 
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'margin:2px 0 4px;';
+
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;margin:2px 0;';
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;flex-wrap:wrap;';
 
     const isProc = def.category === 'proc';
-    const nameColor = isProc ? '#ffd580' : '#c8e8ff';
-    const descColor = isProc ? '#ffbf4a' : '#aad4ff';
-    const roleLabel = def.role === 'offense' ? 'Offense' : def.role === 'defense' ? 'Defense' : 'Utility';
 
+    // PASSIVE / PROC badge — mirrors the STATUS/PROC/CHAIN badge on lens effects
+    const categoryBadge = document.createElement('span');
+    categoryBadge.style.cssText = isProc
+      ? 'color:#f9a;font-size:0.62em;letter-spacing:0.06em;font-weight:700;white-space:nowrap;'
+      : 'color:#888;font-size:0.62em;letter-spacing:0.06em;font-weight:700;white-space:nowrap;';
+    categoryBadge.textContent = isProc ? 'PROC' : 'PASSIVE';
+    row.appendChild(categoryBadge);
+
+    // Role chip
+    const roleLabel = def.role === 'offense' ? 'OFF' : def.role === 'defense' ? 'DEF' : 'UTL';
+    const roleColor = def.role === 'offense' ? '#f88' : def.role === 'defense' ? '#8bf' : '#aaa';
+    const roleBadge = document.createElement('span');
+    roleBadge.style.cssText = `color:${roleColor};font-size:0.62em;font-weight:700;white-space:nowrap;`;
+    roleBadge.textContent = roleLabel;
+    row.appendChild(roleBadge);
+
+    // Name
+    const nameColor = isProc ? '#ffd580' : '#c8e8ff';
     const nameEl = document.createElement('span');
     nameEl.style.color = nameColor;
     nameEl.style.fontWeight = '600';
-    nameEl.textContent = `${roleLabel} · ${def.displayName}:`;
+    nameEl.textContent = def.displayName;
     row.appendChild(nameEl);
 
-    const descEl = document.createElement('span');
-    descEl.style.color = descColor;
-    descEl.textContent = def.description(effect.value);
-    row.appendChild(descEl);
+    // For proc effects: show trigger condition + chance + duration inline
+    if (isProc) {
+      const procDef = def as WeaveProcEffectDef;
+      const triggerLabel = procDef.trigger === 'playerHitEnemy' ? 'on hit' : 'on hit taken';
+      const triggerEl = document.createElement('span');
+      triggerEl.style.cssText = 'color:#888;font-size:0.8em;white-space:nowrap;';
+      triggerEl.textContent = triggerLabel;
+      row.appendChild(triggerEl);
 
-    return row;
+      const chanceEl = document.createElement('span');
+      chanceEl.style.cssText = 'color:#fa8;font-size:0.8em;white-space:nowrap;';
+      chanceEl.textContent = `${procDef.baseChancePct}%`;
+      row.appendChild(chanceEl);
+
+      if (procDef.durationMs > 0) {
+        const durEl = document.createElement('span');
+        durEl.style.cssText = 'color:#8af;font-size:0.8em;white-space:nowrap;';
+        durEl.textContent = `${(procDef.durationMs / 1000).toFixed(1)}s`;
+        row.appendChild(durEl);
+      } else {
+        const instEl = document.createElement('span');
+        instEl.style.cssText = 'color:#888;font-size:0.8em;font-style:italic;white-space:nowrap;';
+        instEl.textContent = 'instant';
+        row.appendChild(instEl);
+      }
+    }
+
+    wrapper.appendChild(row);
+
+    // Description line always shown (not just tooltip) — same treatment as lens
+    const descEl = document.createElement('div');
+    descEl.style.cssText = 'font-size:0.68em;color:#777;margin-top:1px;padding-left:2px;line-height:1.3;';
+    const maxLen = 90;
+    const descText = def.description(effect.value);
+    descEl.textContent = descText.length > maxLen ? descText.slice(0, maxLen - 1) + '…' : descText;
+    descEl.title = descText;
+    wrapper.appendChild(descEl);
+
+    return wrapper;
   }
 
   // ── Card builder ───────────────────────────────────────────────────────
