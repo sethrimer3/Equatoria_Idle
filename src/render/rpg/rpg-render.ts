@@ -1276,13 +1276,41 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     const itemName = reward.item.name || 'Unknown Item';
     const typeLabel = reward.kind === 'lens' ? 'Lens' : 'Weave';
     const rarity = reward.kind === 'lens'
-      ? reward.item.effects[0]?.rarity ?? 'Common'
-      : reward.item.affixes[0]?.rarity ?? 'Common';
-    const description = reward.kind === 'lens'
-      ? reward.item.effects[0]?.description ?? 'Equipment reward added to inventory.'
-      : reward.item.affixes[0]
-        ? `${reward.item.affixes[0].label} +${reward.item.affixes[0].value.toFixed(1)}${reward.item.affixes[0].unit}`
-        : 'Equipment reward added to inventory.';
+      ? (reward.item.effects.reduce((best, e) => {
+          const RANK: Record<string, number> = { Mythic:6, Legendary:5, Epic:4, Rare:3, Uncommon:2, Common:1 };
+          return (RANK[e.rarity] ?? 0) > (RANK[best] ?? 0) ? e.rarity : best;
+        }, 'Common'))
+      : (reward.item.affixes.reduce((best, a) => {
+          const RANK: Record<string, number> = { Mythic:6, Legendary:5, Epic:4, Rare:3, Uncommon:2, Common:1 };
+          return (RANK[a.rarity] ?? 0) > (RANK[best] ?? 0) ? a.rarity : best;
+        }, 'Common'));
+
+    // Primary effect summary line
+    const effectSummary = reward.kind === 'lens'
+      ? (() => {
+          const topEffect = reward.item.effects.reduce((best, e) => {
+            const RANK: Record<string, number> = { Mythic:6, Legendary:5, Epic:4, Rare:3, Uncommon:2, Common:1 };
+            return (RANK[e.rarity] ?? 0) >= (RANK[best?.rarity ?? 'Common'] ?? 0) ? e : best;
+          }, reward.item.effects[0]);
+          return topEffect ? `${topEffect.name} (T${topEffect.effectTier})` : null;
+        })()
+      : (() => {
+          const topAffix = reward.item.affixes[0];
+          return topAffix ? `${topAffix.label} +${topAffix.value.toFixed(1)}${topAffix.unit}` : null;
+        })();
+
+    // Primary mote tier for identity hint
+    const dominantIngredient = reward.item.ingredients.reduce(
+      (best, cur) => Number(cur.refinedCount) >= Number(best.refinedCount) ? cur : best,
+      reward.item.ingredients[0] ?? { tierId: 'sand', refinedCount: 0 },
+    );
+
+    // Zone label from source metadata on the item
+    const sourceZone = reward.item.sourceZone;
+    const zoneLabel = sourceZone
+      ? (sourceZone.charAt(0).toUpperCase() + sourceZone.slice(1))
+      : null;
+
     let host = container.querySelector<HTMLElement>('.rpg-equipment-reward-toasts');
     if (!host) {
       host = document.createElement('div');
@@ -1305,19 +1333,31 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       toast.style.padding = '10px 12px';
       toast.style.boxShadow = '0 0 24px rgba(226,185,72,0.34)';
     }
-    const source = reward.source === 'boss' ? 'Boss Reward' :
+    const sourceLabel = reward.source === 'boss' ? 'Boss Reward' :
       reward.source === 'milestone' ? 'Milestone Reward' :
       reward.source === 'elite' ? 'Elite Drop' :
       reward.source === 'dev' ? 'Dev Reward' : 'Enemy Drop';
+    const RARITY_COLOR: Record<string, string> = {
+      Mythic: '#f55', Legendary: '#fa0', Epic: '#c5f', Rare: '#55f', Uncommon: '#5f5', Common: '#aaa',
+    };
+    const rarityColor = RARITY_COLOR[rarity] ?? '#aaa';
+    const tierChipStyle = `background:rgba(255,255,255,0.1);border-radius:3px;padding:1px 5px;font-size:10px;color:#ccc;`;
+
     toast.innerHTML =
-      `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">` +
-      `<span style="width:24px;height:24px;border-radius:50%;border:1px solid rgba(226,185,72,0.7);` +
-      `display:inline-flex;align-items:center;justify-content:center;color:#e2b948;">${reward.kind === 'lens' ? 'L' : 'W'}</span>` +
-      `<span style="color:#e2b948;font-weight:700;">${source}</span>` +
-      `<span style="margin-left:auto;color:#bfa46a;">${typeLabel}</span></div>` +
-      `<div style="font-weight:700;color:#fff5cf;">${itemName}</div>` +
-      `<div style="color:#d8bd74;font-size:11px;">${rarity} ${typeLabel}</div>` +
-      `<div style="color:#bfb6a0;font-size:11px;margin-top:3px;">${description}</div>`;
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">` +
+      `<span style="color:#e2b948;font-weight:700;font-size:11px;">${sourceLabel}</span>` +
+      (zoneLabel ? `<span style="color:#999;font-size:10px;">· ${zoneLabel}</span>` : '') +
+      `<span style="margin-left:auto;color:#bfa46a;font-size:10px;">${typeLabel}</span>` +
+      `</div>` +
+      `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px;">` +
+      `<span style="font-weight:700;color:#fff5cf;font-size:13px;">${itemName}</span>` +
+      `</div>` +
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">` +
+      `<span style="color:${rarityColor};font-size:11px;font-weight:600;">${rarity}</span>` +
+      (dominantIngredient.tierId ? `<span style="${tierChipStyle}">${dominantIngredient.tierId}</span>` : '') +
+      `</div>` +
+      (effectSummary ? `<div style="color:#bfb6a0;font-size:11px;">${effectSummary}</div>` : '');
+
     host.appendChild(toast);
 
     while (host.children.length > 4) host.firstElementChild?.remove();
