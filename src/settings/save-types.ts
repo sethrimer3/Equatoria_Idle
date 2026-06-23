@@ -217,7 +217,7 @@ export interface SaveData {
         unit: string;
         applied: boolean;
       }>;
-      /** v33+: tier 1–3 STUB effects rolled at craft time. Absent in older weave saves. */
+      /** v33+: tier 1–3 effects rolled at craft time. Absent in older weave saves. */
       tierEffects?: Array<{
         tierId: string;
         effectTier: number;
