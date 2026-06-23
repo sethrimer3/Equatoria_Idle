@@ -98,7 +98,7 @@ export interface EmeraldWeaponHandle {
   readonly emeraldPlayerMissiles: EmeraldPlayerMissile[];
   readonly emeraldSubMissiles: EmeraldSubMissile[];
   readonly emeraldSwirlParticles: EmeraldSwirlParticle[];
-  spawnEmeraldMissile: (targetX: number, targetY: number, scaledDamage: number, tier: number, bonusDetectPx?: number) => void;
+  spawnEmeraldMissile: (targetX: number, targetY: number, scaledDamage: number, tier: number, bonusDetectPx?: number, speedMult?: number) => void;
   updateEmeraldPlayerMissiles: (deltaMs: number) => void;
   updateEmeraldSubMissiles: (deltaMs: number) => void;
   updateEmeraldSwirlParticles: (deltaMs: number) => void;
@@ -129,14 +129,15 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
 
   const emeraldPlayerMissiles: EmeraldPlayerMissile[] = [];
 
-  function spawnEmeraldMissile(targetX: number, targetY: number, scaledDamage: number, tier: number, bonusDetectPx = 0): void {
+  function spawnEmeraldMissile(targetX: number, targetY: number, scaledDamage: number, tier: number, bonusDetectPx = 0, speedMult = 1): void {
     const dx = targetX - mote.x, dy = targetY - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 0.01) return;
+    const speed = EMERALD_MISSILE_SPEED * speedMult;
     emeraldPlayerMissiles.push({
       x: mote.x, y: mote.y,
-      vx: (dx / dist) * EMERALD_MISSILE_SPEED,
-      vy: (dy / dist) * EMERALD_MISSILE_SPEED,
+      vx: (dx / dist) * speed,
+      vy: (dy / dist) * speed,
       scaledDamage,
       tier,
       noTargetMs: 0,

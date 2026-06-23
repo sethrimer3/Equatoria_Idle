@@ -22,6 +22,10 @@ export interface ApplyLensStatusesResult {
  * Apply all Tier 1 lens statuses to `enemy`, respecting affinities and
  * boss/elite overrides. Returns affinity feedback info for callers to render.
  *
+ * @param statusPowerPct  Optional bonus from equipped weaves/lenses (statusChancePct field).
+ *                        Scales the magnitude and duration of every applied status by
+ *                        (1 + statusPowerPct/100). Conservative cap at 75% per clampCombatModifiers.
+ *
  * Rift-Scarred stacks are not incremented when the target is immune to Rift-Scarred.
  */
 export function applyTier1LensStatusesToEnemy(args: {
@@ -30,14 +34,11 @@ export function applyTier1LensStatusesToEnemy(args: {
   weaponId: string;
   hitDamage: number;
   enemyTypeId: string;
-  /** Optional bonus scaling in percent. statusPowerPct=50 → magnitude/durationMs × 1.5. */
   statusPowerPct?: number;
 }): ApplyLensStatusesResult {
   const { enemy, lens, weaponId, hitDamage, enemyTypeId, statusPowerPct } = args;
-  const powerMult = 1 + (statusPowerPct ?? 0) / 100;
-  const params = buildAllTier1StatusParams(lens, weaponId, hitDamage).map(p =>
-    powerMult === 1 ? p : { ...p, magnitude: p.magnitude * powerMult, durationMs: p.durationMs * powerMult },
-  );
+  const statusPowerMult = statusPowerPct && statusPowerPct > 0 ? 1 + statusPowerPct / 100 : 1;
+  const params = buildAllTier1StatusParams(lens, weaponId, hitDamage);
   const isBossElite = isBossOrEliteType(enemyTypeId);
 
   let appliedAny = false;
@@ -56,7 +57,8 @@ export function applyTier1LensStatusesToEnemy(args: {
       continue;
     }
 
-    let scaled = mult === 1 ? p : { ...p, durationMs: p.durationMs * mult, magnitude: p.magnitude * mult };
+    const affinityAndPower = mult * statusPowerMult;
+    let scaled = affinityAndPower === 1 ? p : { ...p, durationMs: p.durationMs * affinityAndPower, magnitude: p.magnitude * affinityAndPower };
     if (isBossElite) {
       if (scaled.key === 'riftScarred') {
         scaled = { ...scaled, riftScarredStackCap: ENEMY_RIFT_STACK_CAP_BOSS };

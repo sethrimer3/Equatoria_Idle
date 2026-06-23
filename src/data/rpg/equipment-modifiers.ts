@@ -16,12 +16,19 @@ import { getTotalActiveWeaveBuffWeaponDamagePct } from './weave-proc-effects';
 import { applyWeaveTierEffectToMods } from './weave-tier-effect-modifiers';
 
 export interface EquipmentCombatModifiers {
+  /** Consumed: rpg-player-attack.ts → applyEquipmentModifiersToAttackContext (scales raw damage). */
   weaponDamagePct: number;
+  /** Consumed: rpg-render.ts → getEquipmentCooldownPct() (reduces weapon cooldown). */
   cooldownPct: number;
+  /** Consumed: rpg-player-attack.ts → projSpeedMult (scales sand/poison/emerald/fracteryl velocity). */
   projectileSpeedPct: number;
+  /** Consumed: rpg-player-attack.ts → crit chance roll. */
   critChancePct: number;
+  /** Consumed: rpg-player-attack.ts → crit damage multiplier. */
   critDamagePct: number;
+  /** Consumed: enemy-status-application.ts → statusPowerPct (scales T1 lens status magnitude/duration). */
   statusChancePct: number;
+  /** Consumed: rpg-render.ts → applyEquipmentStats (scales player DEF). */
   playerDefensePct: number;
 }
 
@@ -224,4 +231,17 @@ export function applyEquipmentModifiersToAttackContext(
   modifiers: EquipmentCombatModifiers,
 ): number {
   return rawDamage * (1 + modifiers.weaponDamagePct / 100);
+}
+
+/**
+ * Returns the combined projectile speed multiplier from equipped weaves.
+ * Value is 1.0 when no weaves are equipped, e.g. 1.25 for +25% speed.
+ * Clamped to [1.0, 1.8] to stay within the 80% cap from clampCombatModifiers.
+ */
+export function getEquipmentProjectileSpeedMult(
+  equippedSlots: readonly (string | null)[] | null | undefined,
+  craftedWeaves: readonly import('./weave-types').CraftedWeaveData[] | null | undefined,
+): number {
+  const mods = getEquippedWeaveModifiers(equippedSlots, craftedWeaves);
+  return 1 + mods.projectileSpeedPct / 100;
 }

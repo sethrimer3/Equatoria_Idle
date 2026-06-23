@@ -380,7 +380,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       previewMods.cooldownPct > 0 ? `-${previewMods.cooldownPct.toFixed(1)}% CD` : '',
       previewMods.critChancePct > 0 ? `+${previewMods.critChancePct.toFixed(1)}% CRIT` : '',
       previewMods.critDamagePct > 0 ? `+${previewMods.critDamagePct.toFixed(1)}% CRIT DMG` : '',
-      previewMods.statusChancePct > 0 ? `+${previewMods.statusChancePct.toFixed(1)}% STATUS` : '',
+      previewMods.statusChancePct > 0 ? `+${previewMods.statusChancePct.toFixed(1)}% STATUS PWR` : '',
       previewMods.playerDefensePct > 0 ? `+${previewMods.playerDefensePct.toFixed(1)}% DEF` : '',
     ].filter(Boolean);
     if (previewParts.length > 0) {

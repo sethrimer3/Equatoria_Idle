@@ -455,6 +455,7 @@ export function performMultiAttack(
           weaponId,
           hitDamage: rawDamage,
           enemyTypeId: getMultiEnemyTypeId(t),
+          statusPowerPct: equipment?.statusChancePct,
         });
         handleLensTier2EffectsOnWeaponHit({ targetEntity: hexEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
         handleLensTier3EffectsOnWeaponHit({ targetEntity: hexEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });

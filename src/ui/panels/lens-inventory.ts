@@ -96,7 +96,7 @@ function buildLensCard(
   const previewMods = getEquippedLensModifiers(lens, 'preview', Math.max(1, lens.totalWeightedMoteValue * 0.01));
   const previewParts = [
     previewMods.weaponDamagePct > 0 ? `+${previewMods.weaponDamagePct.toFixed(1)}% DMG` : '',
-    previewMods.statusChancePct > 0 ? `+${previewMods.statusChancePct.toFixed(1)}% STATUS` : '',
+    previewMods.statusChancePct > 0 ? `+${previewMods.statusChancePct.toFixed(1)}% STATUS PWR` : '',
     previewMods.critChancePct > 0 ? `+${previewMods.critChancePct.toFixed(1)}% CRIT` : '',
     previewMods.critDamagePct > 0 ? `+${previewMods.critDamagePct.toFixed(1)}% CRIT DMG` : '',
   ].filter(Boolean);

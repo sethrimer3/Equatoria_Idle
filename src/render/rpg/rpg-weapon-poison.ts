@@ -97,7 +97,7 @@ export interface PoisonWeaponCtx {
 export interface PoisonWeaponHandle {
   /** Live array of in-flight poison bolts — read by rpg-weapon-draw.ts. */
   readonly poisonBolts: IolitePoisonBolt[];
-  spawnPoisonBolt(targetX: number, targetY: number, weaponId: string, tier: number, rawDamage: number): void;
+  spawnPoisonBolt(targetX: number, targetY: number, weaponId: string, tier: number, rawDamage: number, speedMult?: number): void;
   updatePoisonBolts(deltaMs: number): void;
   updatePoisonDebuffs(deltaMs: number): void;
   reset(): void;
@@ -118,15 +118,16 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
   const poisonBolts: IolitePoisonBolt[] = [];
   const poisonDebuffs: Map<object, PoisonDebuff> = new Map();
 
-  function spawnPoisonBolt(targetX: number, targetY: number, weaponId: string, tier: number, rawDamage: number): void {
+  function spawnPoisonBolt(targetX: number, targetY: number, weaponId: string, tier: number, rawDamage: number, speedMult = 1): void {
     const dx = targetX - mote.x, dy = targetY - mote.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 0.01) return;
     const bonusDmgPerTick = resolveCraftedWeaponModifiers(weaponId)?.poisonBonusDmg ?? 0;
+    const speed = POISON_BOLT_SPEED * speedMult;
     poisonBolts.push({
       x: mote.x, y: mote.y,
-      vx: (dx / dist) * POISON_BOLT_SPEED,
-      vy: (dy / dist) * POISON_BOLT_SPEED,
+      vx: (dx / dist) * speed,
+      vy: (dy / dist) * speed,
       lifeMs: POISON_BOLT_LIFE_MS,
       scaledDamage: rawDamage,
       tier, weaponId,

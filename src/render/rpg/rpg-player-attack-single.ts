@@ -301,6 +301,7 @@ export function performSingleAttack(
     const enemyTypeId = getTargetEnemyTypeId(closestT);
     const statusResult = applyTier1LensStatusesToEnemy({
       enemy: targetEntity, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId,
+      statusPowerPct: equipment.statusChancePct,
     });
     if (statusResult.affinityFeedback && _canShowAffinityFeedback(targetEntity)) {
       const text = statusResult.affinityFeedback;

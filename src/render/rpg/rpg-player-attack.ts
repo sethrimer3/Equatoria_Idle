@@ -187,12 +187,14 @@ export interface RpgPlayerAttackCtx {
   findClosestTarget: (rangeSq: number) => ClosestTarget | null;
 
   // Weapon spawn callbacks (from weaponSystems handle)
-  spawnSandProjectile: (targetX: number, targetY: number, damage: number) => void;
-  spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number) => void;
-  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number) => void;
+  spawnSandProjectile: (targetX: number, targetY: number, damage: number, speedMult?: number) => void;
+  spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number, speedMult?: number) => void;
+  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number, speedMult?: number) => void;
   fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => void;
   layMine: (damage: number, tier: number) => void;
-  spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) => void;
+  spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number, speedMult?: number) => void;
+  /** Returns combined projectile speed multiplier (≥1.0) from equipped weaves. */
+  getEquipmentProjectileSpeedPct(): number;
 
   /**
    * Optional hook called after a real weapon hit (finalDmg > 0) on a main enemy.
@@ -300,6 +302,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   // Sapphire crit: roll for critChancePct% chance, deal critDamageMultiplier× damage.
   const preCritEquipment = getCombinedEquipmentModifiers({ rpgState: rpgSimState, weaponId, hitDamage: baseDmg });
   baseDmg = applyEquipmentModifiersToAttackContext(baseDmg, preCritEquipment);
+  const projSpeedMult = 1 + ctx.getEquipmentProjectileSpeedPct() / 100;
 
   const totalCritChancePct = (craftedMods?.critChancePct ?? 0) + preCritEquipment.critChancePct;
   const isCrit    = totalCritChancePct > 0
@@ -320,7 +323,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
 
   if (effect.kind === 'gatling') {
     const target = findClosestTarget(rangeSq);
-    if (target) ctx.spawnSandProjectile(target.x, target.y, rawDamage);
+    if (target) ctx.spawnSandProjectile(target.x, target.y, rawDamage, projSpeedMult);
     return;
   }
 
@@ -329,13 +332,13 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
 
   if (effect.kind === 'poisonBolt') {
     const target = findClosestTarget(rangeSq);
-    if (target) ctx.spawnPoisonBolt(target.x, target.y, weaponId, tier, rawDamage);
+    if (target) ctx.spawnPoisonBolt(target.x, target.y, weaponId, tier, rawDamage, projSpeedMult);
     return;
   }
 
   if (effect.kind === 'emeraldMissile') {
     const target = findClosestTarget(rangeSq);
-    if (target) ctx.spawnEmeraldMissile(target.x, target.y, rawDamage, tier, craftedMods?.emeraldAcquisitionRangePx ?? 0);
+    if (target) ctx.spawnEmeraldMissile(target.x, target.y, rawDamage, tier, craftedMods?.emeraldAcquisitionRangePx ?? 0, projSpeedMult);
     return;
   }
 
@@ -346,7 +349,7 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   }
 
   if (effect.kind === 'fracterylSpear') {
-    ctx.spawnFracterylSpearVolley(weaponId, rawDamage, tier);
+    ctx.spawnFracterylSpearVolley(weaponId, rawDamage, tier, projSpeedMult);
     return;
   }
 

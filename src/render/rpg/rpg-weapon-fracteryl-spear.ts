@@ -69,6 +69,8 @@ export interface FracterylSpear {
   lifeMs: number;
   targetX: number;
   targetY: number;
+  /** Equipment projectile speed multiplier (≥1.0). Applied when spear transitions forming→flying. */
+  speedMult: number;
   // ── Visual fields ─────────────────────────────────────────────────
   seed: number;
   /** Slowly oscillating phase [0..1) used to vary spine shape over time. */
@@ -120,7 +122,7 @@ export interface FracterylSpearCtx {
 export interface FracterylSpearHandle {
   readonly fracterylSpears: FracterylSpear[];
   readonly fracterylBlooms: FracterylBloom[];
-  spawnFracterylSpearVolley(weaponId: string, damage: number, tier: number): void;
+  spawnFracterylSpearVolley(weaponId: string, damage: number, tier: number, speedMult?: number): void;
   updateFracterylSpears(deltaMs: number): void;
   updateFracterylBlooms(deltaMs: number): void;
   reset(): void;
@@ -326,7 +328,7 @@ export function createFracterylSpearSystem(ctx: FracterylSpearCtx): FracterylSpe
     });
   }
 
-  function spawnFracterylSpearVolley(weaponId: string, damage: number, tier: number): void {
+  function spawnFracterylSpearVolley(weaponId: string, damage: number, tier: number, speedMult = 1): void {
     const count = Math.min(10, 3 + Math.floor((Math.max(1, tier) - 1) / 2));
     if (fracterylSpears.length + count > SPEAR_MAX_ACTIVE) return;
 
@@ -348,6 +350,7 @@ export function createFracterylSpearSystem(ctx: FracterylSpearCtx): FracterylSpe
         delayMs: i * SPEAR_STAGGER_MS,
         lifeMs: SPEAR_MAX_LIFE_MS,
         targetX: tx, targetY: ty,
+        speedMult,
         seed,
         visualPhase: 0,
         spineOffsets: new Array(SPEAR_SPINE_POINTS).fill(0) as number[],
@@ -388,11 +391,12 @@ export function createFracterylSpearSystem(ctx: FracterylSpearCtx): FracterylSpe
           const dx = s.targetX - s.x;
           const dy = s.targetY - s.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
+          const speed = SPEAR_SPEED * s.speedMult;
           if (dist > 0.001) {
-            s.vx = (dx / dist) * SPEAR_SPEED;
-            s.vy = (dy / dist) * SPEAR_SPEED;
+            s.vx = (dx / dist) * speed;
+            s.vy = (dy / dist) * speed;
           } else {
-            s.vx = 0; s.vy = -SPEAR_SPEED;
+            s.vx = 0; s.vy = -speed;
           }
           s.angle = Math.atan2(s.vy, s.vx);
         }

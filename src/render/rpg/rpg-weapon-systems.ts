@@ -279,12 +279,12 @@ export interface RpgWeaponHandle {
   syncAmethystShips: () => void;
 
   // Attack spawn functions called from performWeaponAttack in rpg-render.ts
-  spawnSandProjectile: (targetX: number, targetY: number, damage: number) => void;
-  spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number) => void;
-  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number) => void;
+  spawnSandProjectile: (targetX: number, targetY: number, damage: number, speedMult?: number) => void;
+  spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number, speedMult?: number) => void;
+  spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx?: number, speedMult?: number) => void;
   fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => void;
   layMine: (damage: number, tier: number) => void;
-  spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) => void;
+  spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number, speedMult?: number) => void;
 
   // Reset all weapon state (called by doRestart in rpg-render.ts)
   reset: () => void;
@@ -369,13 +369,13 @@ export function createRpgWeaponSystems(ctx: RpgWeaponCtx): RpgWeaponHandle {
     syncSapphireShips: () => ships.syncSapphireShips(),
     syncAmethystShips: () => ships.syncAmethystShips(),
 
-    spawnSandProjectile: (targetX: number, targetY: number, damage: number) => sand.spawnSandProjectile(targetX, targetY, damage),
-    spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number) => poison.spawnPoisonBolt(targetX, targetY, weaponId, tier, damage),
-    spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx = 0) => emerald.spawnEmeraldMissile(targetX, targetY, damage, tier, bonusDetectPx),
+    spawnSandProjectile: (targetX: number, targetY: number, damage: number, speedMult?: number) => sand.spawnSandProjectile(targetX, targetY, damage, speedMult),
+    spawnPoisonBolt: (targetX: number, targetY: number, weaponId: string, tier: number, damage: number, speedMult?: number) => poison.spawnPoisonBolt(targetX, targetY, weaponId, tier, damage, speedMult),
+    spawnEmeraldMissile: (targetX: number, targetY: number, damage: number, tier: number, bonusDetectPx = 0, speedMult?: number) => emerald.spawnEmeraldMissile(targetX, targetY, damage, tier, bonusDetectPx, speedMult),
     fireLaserBeam: (targetX: number, targetY: number, weaponId: string) => laserBeam.fireLaserBeam(targetX, targetY, weaponId),
     layMine: (damage: number, tier: number) => sunstone.layMine(damage, tier),
-    spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number) =>
-      fracterylSpear.spawnFracterylSpearVolley(weaponId, damage, tier),
+    spawnFracterylSpearVolley: (weaponId: string, damage: number, tier: number, speedMult?: number) =>
+      fracterylSpear.spawnFracterylSpearVolley(weaponId, damage, tier, speedMult),
 
     reset(): void {
       sand.reset();

@@ -118,7 +118,7 @@ const STAT_LABEL: Record<StatKey, (v: number) => string> = {
   projectileSpeedPct: (v) => `+${v.toFixed(1)}% Proj Spd`,
   critChancePct:      (v) => `+${v.toFixed(1)}% CRIT`,
   critDamagePct:      (v) => `+${v.toFixed(1)}% CRIT DMG`,
-  statusChancePct:    (v) => `+${v.toFixed(1)}% Status`,
+  statusChancePct:    (v) => `+${v.toFixed(1)}% Status Pwr`,
   playerDefensePct:   (v) => `+${v.toFixed(1)}% DEF`,
 };
 

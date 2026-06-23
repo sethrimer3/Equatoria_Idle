@@ -1522,16 +1522,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnComboEffect:     (x, y, comboId, color) => comboEffects.push({ x, y, comboId, color, timerMs: 480, totalMs: 480 }),
     fluid,
     findClosestTarget:    (rangeSq) => findClosestTarget(rangeSq),
-    spawnSandProjectile:  (tx, ty, dmg) => weaponSystems.spawnSandProjectile(tx, ty, dmg),
-    spawnPoisonBolt:      (tx, ty, wid, tier, dmg) => weaponSystems.spawnPoisonBolt(tx, ty, wid, tier, dmg),
-    spawnEmeraldMissile:  (tx, ty, dmg, tier, bonusPx) => weaponSystems.spawnEmeraldMissile(tx, ty, dmg, tier, bonusPx),
+    spawnSandProjectile:  (tx, ty, dmg, sm?) => weaponSystems.spawnSandProjectile(tx, ty, dmg, sm),
+    spawnPoisonBolt:      (tx, ty, wid, tier, dmg, sm?) => weaponSystems.spawnPoisonBolt(tx, ty, wid, tier, dmg, sm),
+    spawnEmeraldMissile:  (tx, ty, dmg, tier, bonusPx?, sm?) => weaponSystems.spawnEmeraldMissile(tx, ty, dmg, tier, bonusPx, sm),
     fireLaserBeam:        (tx, ty, wid) => weaponSystems.fireLaserBeam(tx, ty, wid),
     layMine:              (dmg, tier) => weaponSystems.layMine(dmg, tier),
-    spawnFracterylSpearVolley: (wid, dmg, tier) => weaponSystems.spawnFracterylSpearVolley(wid, dmg, tier),
+    spawnFracterylSpearVolley: (wid, dmg, tier, sm?) => weaponSystems.spawnFracterylSpearVolley(wid, dmg, tier, sm),
     getWeaponAtkMultiplier,
     getWeaponRngMultiplier,
     getWeaponPrcMultiplier,
     getEquipmentCooldownPct,
+    getEquipmentProjectileSpeedPct(): number {
+      return getEquippedWeaveModifiers(rpgSimState.equippedWeaveSlots, rpgSimState.craftedWeaves).projectileSpeedPct;
+    },
     applyNullstonePull(hitX: number, hitY: number, radius: number): void {
       weaponSystems.spawnCraftedVortex(hitX, hitY, radius);
     },

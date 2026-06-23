@@ -264,6 +264,7 @@ export function performAoeAttack(
       if (dx * dx + dy * dy <= aoeSq) {
         applyTier1LensStatusesToEnemy({
           enemy: e, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId,
+          statusPowerPct: equipment.statusChancePct,
         });
       }
     }
@@ -272,6 +273,7 @@ export function performAoeAttack(
       if (bx * bx + by * by <= aoeSq) {
         applyTier1LensStatusesToEnemy({
           enemy: bossEnemy, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId: 'boss',
+          statusPowerPct: equipment.statusChancePct,
         });
       }
     }
