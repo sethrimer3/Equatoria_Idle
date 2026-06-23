@@ -148,7 +148,6 @@ export function createEquipmentDebugOverlay(): EquipmentDebugOverlay {
     if (weaveMods.critDamagePct > 0)    modLines.push(`+${weaveMods.critDamagePct.toFixed(1)}% CRIT DMG`);
     if (weaveMods.statusChancePct > 0)  modLines.push(`+${weaveMods.statusChancePct.toFixed(1)}% STATUS`);
     if (weaveMods.playerDefensePct > 0) modLines.push(`+${weaveMods.playerDefensePct.toFixed(1)}% DEF`);
-    if (weaveMods.playerArmor > 0)      modLines.push(`+${weaveMods.playerArmor.toFixed(0)} ARMOR`);
 
     // Add lens modifiers per weapon
     for (const lens of lensesForMods) {
