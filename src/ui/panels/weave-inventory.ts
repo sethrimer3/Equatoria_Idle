@@ -659,10 +659,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     const existingIds = new Set(craftedWeaves.map(w => w.id));
     localOrder = localOrder.filter(id => existingIds.has(id));
     const orderSet = new Set(localOrder);
-    const sortedNewWeaves = [...craftedWeaves].sort((a, b) => {
-      const equippedDelta = Number(equippedIds.has(b.id)) - Number(equippedIds.has(a.id));
-      return equippedDelta || getWeaveSortScore(b) - getWeaveSortScore(a) || a.name.localeCompare(b.name);
-    });
+    const sortedNewWeaves = [...craftedWeaves].sort((a, b) => compareWeave(a, b, sortMode, equippedIds));
     for (const weave of sortedNewWeaves) {
       if (!orderSet.has(weave.id)) localOrder.push(weave.id);
     }
