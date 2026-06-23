@@ -12,6 +12,7 @@
 import type { CraftedWeaveData, WeaveTierEffect, WeaveEffectRoll } from '../../data/rpg/weave-types';
 import { formatWeaveTierEffectContribution } from '../../data/rpg/weave-tier-effect-modifiers';
 import { getWeaveEffectDef } from '../../data/rpg/weave-effects-registry';
+import type { WeaveProcEffectDef } from '../../data/rpg/weave-effects-registry';
 import type { WeaveSlotsPanel } from './weave-slots';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
