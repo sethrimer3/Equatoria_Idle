@@ -120,6 +120,12 @@ export function tryTriggerPlayerDamagedWeaveEffects(
       if (!statKey) continue; // unknown buff stat — skip gracefully
       upsertActiveWeaveBuff(state, effect.id, statKey, effect.value, def.durationMs);
       triggered.push(effect.id);
+      recordEquipmentProcEvent({
+        timeMs: performance.now(),
+        kind: 'weave_buff_start',
+        sourceName: def.displayName,
+        summary: `${formatActiveWeaveBuffStat(statKey, effect.value)} for ${(def.durationMs / 1000).toFixed(1)}s`,
+      });
     }
   }
 
