@@ -441,13 +441,6 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       card.appendChild(dismantleRow);
     }
 
-    // ── Reforge preview ───────────────────────────────────────────────────
-    const reforgeNote = document.createElement('div');
-    reforgeNote.style.cssText = 'font-size:0.65em;color:#444;margin-top:3px;font-style:italic;';
-    reforgeNote.title = 'Reforging will reroll secondary stats — coming later.';
-    reforgeNote.textContent = 'Reforge: coming later';
-    card.appendChild(reforgeNote);
-
     // Drag interaction (pointer events — works on mobile)
     let downTs = 0;
     let downX = 0, downY = 0;
