@@ -202,18 +202,18 @@ export function rollWeaveTierEffects(
     const tierWeightedValue = refinedCount * getTierForgeWeight(tierId);
 
     // T1 — always
-    const t1 = buildWeaveTierEffect(tierId, 1, tierWeightedValue, rng);
+    const t1 = buildWeaveTierEffect(tierId, 1, tierWeightedValue, rng, qualityFloor);
     if (t1) effects.push(t1);
 
     // T2 — probabilistic
     const t2Rolled = rng() < tier2Chance;
     if (t2Rolled) {
-      const t2 = buildWeaveTierEffect(tierId, 2, tierWeightedValue, rng);
+      const t2 = buildWeaveTierEffect(tierId, 2, tierWeightedValue, rng, qualityFloor);
       if (t2) effects.push(t2);
 
       // T3 — probabilistic, only if T2 was rolled (enforces T1 ≤ T2 ≤ T3 ordering)
       if (rng() < tier3Chance) {
-        const t3 = buildWeaveTierEffect(tierId, 3, tierWeightedValue, rng);
+        const t3 = buildWeaveTierEffect(tierId, 3, tierWeightedValue, rng, qualityFloor);
         if (t3) effects.push(t3);
       }
     }
