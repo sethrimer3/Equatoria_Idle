@@ -19,6 +19,7 @@ import {
   MAX_REFINEMENT_LEVEL, REFINEMENT_RESOURCE_NAME,
 } from '../../data/rpg/item-refinement';
 import { getLensEquipComparison, getRefinementLabel, getRefinementMultiplierLabel } from '../../data/rpg/equip-helpers';
+import { compareLens, type ItemSortMode } from '../../data/rpg/item-sort-helpers';
 
 // ─── Rarity colors ────────────────────────────────────────────────
 
@@ -30,21 +31,6 @@ const RARITY_COLOR: Record<string, string> = {
   Legendary: '#fa0',
   Mythic:    '#f55',
 };
-
-const RARITY_RANK: Record<string, number> = {
-  Mythic: 6,
-  Legendary: 5,
-  Epic: 4,
-  Rare: 3,
-  Uncommon: 2,
-  Common: 1,
-};
-
-function getLensSortScore(lens: CraftedLensData): number {
-  const highestTier = Math.max(0, ...lens.effects.map(effect => effect.effectTier));
-  const highestRarity = Math.max(0, ...lens.effects.map(effect => RARITY_RANK[effect.rarity] ?? 0));
-  return highestTier * 1000 + highestRarity * 100 + Math.log10(lens.totalWeightedMoteValue + 1);
-}
 
 // ─── Lens card ────────────────────────────────────────────────────
 
