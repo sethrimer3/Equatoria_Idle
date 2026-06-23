@@ -230,12 +230,12 @@ const TRIANGULAR_MODE = 0.6; // biased slightly above 0.5
  * Rolls one weave affix for the given tier at the given power scale.
  * Returns null for tiers without a defined affix family (e.g., sunstone).
  */
-export function rollWeaveAffix(tierId: TierId, totalWeightedMoteValue: number): WeaveAffix | null {
+export function rollWeaveAffix(tierId: TierId, totalWeightedMoteValue: number, qualityFloor = 0): WeaveAffix | null {
   const family = WEAVE_AFFIX_FAMILIES[tierId];
   if (!family || family.length === 0) return null;
 
   const spec = family[Math.floor(Math.random() * family.length)]!;
-  const quality = triangularRandom(0, 1, TRIANGULAR_MODE);
+  const quality = Math.max(qualityFloor, triangularRandom(0, 1, TRIANGULAR_MODE));
   const rarity = getWeaveRarity(quality);
   const powerScale = computeWeavePowerScale(totalWeightedMoteValue);
   const rawValue = spec.baseMaxValue * powerScale * quality;
