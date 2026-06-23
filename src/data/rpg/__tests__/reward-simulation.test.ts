@@ -95,8 +95,10 @@ describe('scenario: mid-zone elite (elite, wave 30)', () => {
     expect(result.lensDropRate).toBeGreaterThan(normalResult.lensDropRate * 5);
   });
 
-  it('only impetus tiers drop (quartz/sapphire/iolite/nullstone)', () => {
-    const allowed = new Set(['quartz', 'sapphire', 'iolite', 'nullstone']);
+  it('only impetus lens/weave tiers drop (quartz/sapphire/iolite/nullstone + sand for weaves)', () => {
+    // Lens pool: quartz, sapphire, iolite, nullstone
+    // Weave pool: sand, sapphire, iolite  (sand IS in the impetus weave pool)
+    const allowed = new Set(['sand', 'quartz', 'sapphire', 'iolite', 'nullstone']);
     for (const tier of Object.keys(result.tierCounts)) {
       expect(allowed.has(tier), `unexpected tier: ${tier}`).toBe(true);
     }
