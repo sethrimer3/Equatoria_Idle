@@ -133,6 +133,52 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     document.removeEventListener('pointerup', onDocPointerUp);
   }
 
+  // ── Sort mode ─────────────────────────────────────────────────────────────
+
+  let sortMode: ItemSortMode = 'power';
+
+  const sortRow = document.createElement('div');
+  sortRow.style.cssText = 'display:flex;gap:4px;margin-bottom:6px;';
+  const SORT_LABELS: [ItemSortMode, string][] = [
+    ['power',  'Power'],
+    ['rarity', 'Rarity'],
+    ['zone',   'Zone'],
+    ['newest', 'Newest'],
+  ];
+  const sortBtnEls: HTMLButtonElement[] = [];
+  function updateSortButtons(): void {
+    for (const btn of sortBtnEls) {
+      const mode = btn.dataset.sortMode as ItemSortMode;
+      btn.style.background = mode === sortMode ? 'rgba(200,180,255,0.2)' : 'rgba(255,255,255,0.06)';
+      btn.style.color = mode === sortMode ? '#c8b4ff' : '#999';
+      btn.style.borderColor = mode === sortMode ? 'rgba(200,180,255,0.4)' : 'rgba(255,255,255,0.1)';
+    }
+  }
+  for (const [mode, label] of SORT_LABELS) {
+    const btn = document.createElement('button');
+    btn.dataset.sortMode = mode;
+    btn.textContent = label;
+    btn.style.cssText =
+      'font-size:10px;padding:2px 7px;border-radius:3px;border:1px solid rgba(255,255,255,0.1);' +
+      'background:rgba(255,255,255,0.06);color:#999;cursor:pointer;font-family:inherit;';
+    btn.addEventListener('click', () => {
+      sortMode = mode;
+      updateSortButtons();
+      const weaveById = new Map(currentWeaves.map(w => [w.id, w]));
+      localOrder.sort((a, b) => {
+        const wa = weaveById.get(a);
+        const wb = weaveById.get(b);
+        if (!wa || !wb) return 0;
+        return compareWeave(wa, wb, sortMode, equippedIds);
+      });
+      render();
+    });
+    sortBtnEls.push(btn);
+    sortRow.appendChild(btn);
+  }
+  updateSortButtons();
+  element.insertBefore(sortRow, emptyMsg);
+
   // ── Rarity colors (mirrors lens-inventory) ────────────────────────────
   const RARITY_COLOR: Record<string, string> = {
     Common: '#aaa',
@@ -142,24 +188,6 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     Legendary: '#fa0',
     Mythic: '#f55',
   };
-
-  const RARITY_RANK: Record<string, number> = {
-    Mythic: 6,
-    Legendary: 5,
-    Epic: 4,
-    Rare: 3,
-    Uncommon: 2,
-    Common: 1,
-  };
-
-  function getWeaveSortScore(weave: CraftedWeaveData): number {
-    const highestRarity = Math.max(
-      0,
-      ...weave.affixes.map(affix => RARITY_RANK[affix.rarity] ?? 0),
-      ...weave.tierEffects.map(effect => RARITY_RANK[effect.rarity] ?? 0),
-    );
-    return highestRarity * 100 + Math.log10(weave.totalWeightedMoteValue + 1);
-  }
 
   // ── Weave tier effect row ─────────────────────────────────────────────
 
