@@ -30,9 +30,14 @@ export function applyTier1LensStatusesToEnemy(args: {
   weaponId: string;
   hitDamage: number;
   enemyTypeId: string;
+  /** Optional bonus scaling in percent. statusPowerPct=50 → magnitude/durationMs × 1.5. */
+  statusPowerPct?: number;
 }): ApplyLensStatusesResult {
-  const { enemy, lens, weaponId, hitDamage, enemyTypeId } = args;
-  const params = buildAllTier1StatusParams(lens, weaponId, hitDamage);
+  const { enemy, lens, weaponId, hitDamage, enemyTypeId, statusPowerPct } = args;
+  const powerMult = 1 + (statusPowerPct ?? 0) / 100;
+  const params = buildAllTier1StatusParams(lens, weaponId, hitDamage).map(p =>
+    powerMult === 1 ? p : { ...p, magnitude: p.magnitude * powerMult, durationMs: p.durationMs * powerMult },
+  );
   const isBossElite = isBossOrEliteType(enemyTypeId);
 
   let appliedAny = false;
