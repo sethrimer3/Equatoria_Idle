@@ -439,7 +439,7 @@ function getWeaveName(tiers: TierId[]): string {
 /**
  * Creates a crafted weave from the given ingredients.
  * One affix is rolled per distinct tier (tiers without a defined family are skipped).
- * Tier 1–3 STUB effects are also rolled and attached per distinct tier.
+ * Tier 1–3 effects are also rolled and attached per distinct tier.
  */
 export function createCraftedWeave(
   id: string,
