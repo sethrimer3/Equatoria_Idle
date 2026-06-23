@@ -46,6 +46,13 @@ export function clearT2ProcCooldowns(): void {
   _lastT2ProcMs.clear();
 }
 
+/** Returns remaining cooldown ms for a given weapon+effect key, or 0 if ready. */
+export function getT2ProcRemainingCooldownMs(weaponId: string, effectKey: string): number {
+  const key = `${weaponId}:${effectKey}`;
+  const last = _lastT2ProcMs.get(key) ?? 0;
+  return Math.max(0, last + LENS_T2_PROC_COOLDOWN_MS - performance.now());
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -53,11 +60,11 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 function getProcChance(magnitude: number): number {
-  return clamp(magnitude * 0.012, T2_PROC_MIN, T2_PROC_MAX);
+  return clamp(magnitude * LENS_T2_PROC_MAGNITUDE_FACTOR, LENS_T2_PROC_CHANCE_MIN, LENS_T2_PROC_CHANCE_MAX);
 }
 
 function getSecDmgFraction(magnitude: number): number {
-  return clamp(magnitude * 0.012, T2_DMG_MIN, T2_DMG_MAX);
+  return clamp(magnitude * LENS_T2_DMG_MAGNITUDE_FACTOR, LENS_T2_DMG_FRACTION_MIN, LENS_T2_DMG_FRACTION_MAX);
 }
 
 // ── Entity extraction ─────────────────────────────────────────────────────────
