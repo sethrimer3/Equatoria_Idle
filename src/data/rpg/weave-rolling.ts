@@ -138,6 +138,7 @@ function buildWeaveTierEffect(
   effectTier: WeaveTierEffectTier,
   tierWeightedValue: number,
   rng: () => number,
+  qualityFloor = 0,
 ): WeaveTierEffect | null {
   const names = WEAVE_TIER_EFFECT_NAMES[tierId];
   if (!names) return null;
