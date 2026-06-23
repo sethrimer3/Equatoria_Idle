@@ -1,6 +1,8 @@
 import type { TierId } from '../tiers';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
 
+export type ItemSourceType = 'normal' | 'elite' | 'boss' | 'milestone' | 'dev';
+
 export type LensRarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic';
 
 export type LensEffectTier = 1 | 2 | 3;
