@@ -276,6 +276,13 @@ export function handleLensTier2EffectsOnWeaponHit(params: LensTier2HitParams): v
     if (now - (_lastT2ProcMs.get(cooldownKey) ?? 0) < T2_PROC_COOLDOWN_MS) continue;
     _lastT2ProcMs.set(cooldownKey, now);
 
+    recordEquipmentProcEvent({
+      timeMs: now,
+      kind: 'lens_t2_proc',
+      sourceName: `${effect.name} (${effect.tierId})`,
+      summary: `${(getProcChance(effect.magnitude) * 100).toFixed(0)}% proc · ×${effect.magnitude.toFixed(1)} mag`,
+    });
+
     const secDmg = hitDamage * getSecDmgFraction(effect.magnitude);
     const spawnBudget = Math.min(LENS_T2_MAX_HITS_PER_EFFECT, LENS_T2_MAX_TOTAL_SPAWNS - totalSpawns);
     if (spawnBudget <= 0) break;
