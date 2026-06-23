@@ -10,9 +10,9 @@ export interface LensEffect {
   effectTier: LensEffectTier;
   /** Stable identifier e.g. "sand_t1", "ruby_t3". */
   key: string;
-  /** Display name including STUB suffix e.g. "Abraded STUB". */
+  /** Display name e.g. "Abraded", "Sand Spray", "Sandstorm Cascade". */
   name: string;
-  /** Always "STUB: effect behavior not implemented yet." */
+  /** Human-readable description of what this effect does in combat. */
   description: string;
   /** Numeric magnitude derived from mote investment via sqrt-log scaling. */
   magnitude: number;
