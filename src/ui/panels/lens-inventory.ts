@@ -296,7 +296,7 @@ function buildEffectRow(effect: LensEffect): HTMLElement {
   if (!effect.isApplied) {
     const note = document.createElement('span');
     note.style.cssText = 'color:#666;font-size:0.72em;font-style:italic;';
-    note.textContent = '(not yet applied)';
+    note.textContent = '(not active)';
     row.appendChild(note);
   }
 
