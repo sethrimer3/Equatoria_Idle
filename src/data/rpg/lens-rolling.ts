@@ -22,7 +22,7 @@ import {
 import { getTierForgeWeight } from './crafted-weapon-helpers';
 import { triangularRandom, triangularFromU } from './weave-rolling';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
-import type { LensEffect, LensEffectTier, LensRarity, CraftedLensData } from './lens-types';
+import type { LensEffect, LensEffectTier, LensRarity, CraftedLensData, ItemSourceType } from './lens-types';
 
 export { triangularRandom, triangularFromU, getLensMaxMoteTypes, getLensEffectUnlockChances };
 
