@@ -91,7 +91,7 @@ function buildLensSlot(attachedLens: import('../../data/rpg/lens-types').Crafted
     if (!effect.isApplied) {
       const note = document.createElement('span');
       note.style.cssText = 'color:#555;font-size:0.7em;font-style:italic;';
-      note.textContent = 'STUB';
+      note.textContent = '(not active)';
       effEl.appendChild(note);
     } else {
       const note = document.createElement('span');
