@@ -4,7 +4,7 @@
  * Modes:
  *   WEAPON — existing behavior, dispatches craft_weapon
  *   WEAVE  — new, dispatches craft_weave; one affix per distinct ingredient tier
- *   LENS   — stub (not yet implemented)
+ *   LENS   — crafting via the lens inventory panel
  *
  * Layout from top to bottom:
  *   1. Weave slots row (6 slots, always visible)
