@@ -188,7 +188,7 @@ function fireMultiHitEffect(
   const count = Math.min(spawnBudget, maxHits);
   let hits = 0;
   for (let i = 0; i < count; i++) {
-    const target = ctx.findClosestTarget(T2_RANGE_SQ);
+    const target = ctx.findClosestTarget(LENS_T2_RANGE_SQ);
     if (!target) break;
     const dmg = damageSecTarget(ctx, target, secDmg);
     if (dmg > 0) {
