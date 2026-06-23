@@ -162,8 +162,11 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
   // ── Weave tier effect row ─────────────────────────────────────────────
 
   function buildTierEffectRow(effect: WeaveTierEffect): HTMLElement {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'margin:2px 0 3px;';
+
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;margin:2px 0;';
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;flex-wrap:wrap;';
 
     const rarityColor = RARITY_COLOR[effect.rarity] ?? '#aaa';
     const tierColor = TIER_BY_ID.get(effect.tierId)?.color ?? '#aaa';
@@ -173,6 +176,12 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     tierNumChip.style.cssText = 'background:rgba(255,255,255,0.12);color:#ddd;font-size:0.68em;padding:0 4px;border-radius:2px;font-weight:700;white-space:nowrap;';
     tierNumChip.textContent = `T${effect.effectTier}`;
     row.appendChild(tierNumChip);
+
+    // Type badge — weave tier effects are always passive stat bonuses
+    const typeBadge = document.createElement('span');
+    typeBadge.style.cssText = 'color:#888;font-size:0.62em;letter-spacing:0.06em;font-weight:700;white-space:nowrap;';
+    typeBadge.textContent = 'PASSIVE';
+    row.appendChild(typeBadge);
 
     // Mote tier color chip
     const tierChip = document.createElement('span');
@@ -195,19 +204,31 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
       if (contrib) {
         const contribEl = document.createElement('span');
         contribEl.style.cssText = 'color:#9cf;font-size:0.85em;';
-        contribEl.title = effect.description;
         contribEl.textContent = contrib;
         row.appendChild(contribEl);
       }
     } else {
       const notApplied = document.createElement('span');
       notApplied.style.cssText = 'color:#555;font-size:0.72em;font-style:italic;';
-      notApplied.title = effect.description;
       notApplied.textContent = '(not active)';
       row.appendChild(notApplied);
     }
 
-    return row;
+    wrapper.appendChild(row);
+
+    // Always show description inline for applied effects (same as lens-inventory)
+    if (effect.description && effect.isApplied) {
+      const descEl = document.createElement('div');
+      descEl.style.cssText = 'font-size:0.68em;color:#777;margin-top:1px;padding-left:2px;line-height:1.3;';
+      const maxLen = 90;
+      descEl.textContent = effect.description.length > maxLen
+        ? effect.description.slice(0, maxLen - 1) + '…'
+        : effect.description;
+      descEl.title = effect.description;
+      wrapper.appendChild(descEl);
+    }
+
+    return wrapper;
   }
 
   // ── Effect row (passive or proc) ──────────────────────────────────────
