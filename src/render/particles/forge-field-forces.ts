@@ -31,6 +31,10 @@ export interface LoomCapture {
   mass: number;
 }
 
+// Pre-computed per-field capture radii squared — expanded on demand, never shrunk.
+// Avoids recomputing field.captureRadius² for every (particle × field) pair per tick.
+const _captureRadiiSq: number[] = [];
+
 function didCrossCaptureRadius(
   p: EquatoriaParticle,
   field: ForgeFieldInfo,
@@ -61,18 +65,25 @@ export function applyCaptureFields(
   newLoomCaptures: LoomCapture[],
   clampedDelta: number,
 ): void {
+  // Pre-compute captureRadius² per field once rather than per (particle × field).
+  const fieldCount = fields.length;
+  while (_captureRadiiSq.length < fieldCount) _captureRadiiSq.push(0);
+  for (let fi = 0; fi < fieldCount; fi++) {
+    _captureRadiiSq[fi] = fields[fi].captureRadius * fields[fi].captureRadius;
+  }
+
   for (let i = 0, len = particles.length; i < len; i++) {
     const p = particles[i];
     if (p.isCaptured || p.isMerging || p.sizeIndex < MEDIUM_SIZE_INDEX) continue;
 
-    for (let fi = 0, fieldCount = fields.length; fi < fieldCount; fi++) {
+    for (let fi = 0; fi < fieldCount; fi++) {
       const field = fields[fi];
       if (!field.isUnlocked || field.captureRadius <= 0) continue;
       if (field.compatibleTierId !== null && field.compatibleTierId !== p.tierId) continue;
 
       const dx = field.x - p.x;
       const dy = field.y - p.y;
-      const captureRadiusSq = field.captureRadius * field.captureRadius;
+      const captureRadiusSq = _captureRadiiSq[fi];
       if (dx * dx + dy * dy > captureRadiusSq
         && !didCrossCaptureRadius(p, field, captureRadiusSq, clampedDelta)) {
         continue;

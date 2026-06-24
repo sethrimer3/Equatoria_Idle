@@ -326,6 +326,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.appState.forge,
       { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
       ctx.appState.game.equation.isForgeUnlocked,
+      isDevMode,
     );
     if (isDevMode) {
       perfStats.updateMs = performance.now() - _t0update;
