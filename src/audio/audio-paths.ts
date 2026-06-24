@@ -62,3 +62,13 @@ export const FORGE_CRUNCH_PATHS: readonly string[] = [
 ];
 
 export const FORGE_CRUNCH_BOOM_PATH = encodePath('ASSETS/sfx/equationForge/forgeCrunchBoom.ogg');
+
+export const CASSETTE_START_PATH = encodePath('ASSETS/music/BossMusic/CassetteStart.ogg');
+export const CASSETTE_END_PATH   = encodePath('ASSETS/music/BossMusic/CassetteEnd.ogg');
+
+const _BEAT_LOOP_BPMS = [40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200] as const;
+
+export function getBossBeatLoopPath(bpm: number): string {
+  const snapped = _BEAT_LOOP_BPMS.reduce((a, b) => Math.abs(b - bpm) < Math.abs(a - bpm) ? b : a);
+  return encodePath(`ASSETS/music/BossMusic/BeatLoops/${snapped}BPMBeatLoop.ogg`);
+}
