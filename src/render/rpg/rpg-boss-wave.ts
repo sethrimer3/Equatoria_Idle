@@ -20,6 +20,7 @@ import type { RpgMote } from './rpg-types';
 import type { BossEnemy, TeleportParticle } from './rpg-enemy-types';
 import type { BossDialogueEvent } from '../../data/boss-dialogue';
 import { makeBossEnemy } from './rpg-factories';
+import { pushBossSpawnCircle } from './rpg-boss-spawn-circle';
 import {
   SWORD_COMBO_THRESHOLD,
   MAX_DANMAKU_LEVEL,
@@ -188,6 +189,7 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
     const waveForScaling = Math.max(bossId * 100, ctx.rpgSimState.highestWaveReached);
     const boss = makeBossEnemy(bossId, waveForScaling, ctx.dim.w, ctx.dim.h);
     ctx.setBossEnemy(boss);
+    pushBossSpawnCircle(boss.x, boss.y);
     ctx.onBossSpawned?.(boss);
     ctx.setIsBossFightFromMenu(true);
     enterBossWave();

@@ -22,6 +22,7 @@ import {
   INTER_WAVE_DELAY_MS,
 } from './rpg-constants';
 import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
+import { BOSS_SPAWN_FADE_MS } from './rpg-boss-spawn-circle';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -52,6 +53,9 @@ export function drawBossEnemy(
   const pulseFactor = (Math.sin(pulseT * Math.PI * 2) + 1) * 0.5;
   const color     = BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)];
   const glowColor = BOSS_GLOW_COLORS[Math.min(boss.bossId, BOSS_GLOW_COLORS.length - 1)];
+  const spawnAlpha = boss.spawnIntroMs > 0
+    ? Math.max(0, 1 - boss.spawnIntroMs / BOSS_SPAWN_FADE_MS)
+    : 1;
 
   ctx.save();
 
@@ -115,6 +119,7 @@ export function drawBossEnemy(
   if (!isLowGraphicsMode) {
     ctx.shadowBlur = bossSize * (4 + pulseFactor * 4); ctx.shadowColor = drawGlow;
   }
+  ctx.globalAlpha = spawnAlpha;
   if (boss.bossId === 7 || boss.bossId === 12) {
     ctx.save();
     ctx.translate(boss.x, boss.y);

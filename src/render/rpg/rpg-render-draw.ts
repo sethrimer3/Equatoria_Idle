@@ -83,6 +83,7 @@ import {
 import { drawStardustEnemies, setLowGraphicsMode as setStardustDrawLowGraphics } from './rpg-stardust-draw';
 import { drawHorizonPentagonGroups } from './horizon-pentagon-draw';
 import { drawSpawnFlashes } from './rpg-spawn-flash';
+import { drawBossSpawnCircles } from './rpg-boss-spawn-circle';
 import { drawDyingEnemies } from './rpg-death-fade';
 import {
   drawPolyominoEnemies,
@@ -1034,6 +1035,7 @@ export function drawRpgFrame(
     bossEnemy?.bossId ?? -1,
     ctx.bossAttackState.elapsedFightMs,
   );
+  drawBossSpawnCircles(canvas2d);
   drawBossEnemy(canvas2d, bossEnemy, glowTimeS);
   drawTeleportParticles(canvas2d, ctx.teleportParticles);
   drawShotLines(canvas2d, ctx.shotLines);

@@ -14,6 +14,7 @@ import {
   DANMAKU_WARN_MS,
   BOSS_HP_INIT, BOSS_ATK_INIT, BOSS_DEF_INIT, BOSS_SHIELD_INIT,
 } from './rpg-constants';
+import { BOSS_SPAWN_INTRO_DURATION_MS } from './rpg-boss-spawn-circle';
 import {
   FRACTERYL_HP_INIT, FRACTERYL_ATK_INIT, FRACTERYL_DEF_INIT,
   FRACTERYL_BURST_CD_MS, FRACTERYL_BURST_JITTER, FRACTERYL_PATROL_TURN_MS,
@@ -172,6 +173,7 @@ export function makeBossEnemy(rawBossId: number, waveNumber: number, w: number, 
       phaseTransitionMs: 0,
       danmakuLevel: 0,
       isFiringPaused: false,
+      spawnIntroMs: BOSS_SPAWN_INTRO_DURATION_MS,
     };
   }
   const bossScale = getWaveStatScale(waveNumber) * 4.0;
@@ -200,5 +202,6 @@ export function makeBossEnemy(rawBossId: number, waveNumber: number, w: number, 
     phaseTransitionMs: 0,
     danmakuLevel: 0,
     isFiringPaused: false,
+    spawnIntroMs: BOSS_SPAWN_INTRO_DURATION_MS,
   };
 }

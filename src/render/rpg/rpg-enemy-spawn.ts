@@ -81,6 +81,7 @@ import {
 import { ELITE_JELLYFISH_BASE_SIZE } from './rpg-jellyfish-elite-constants';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { pushSpawnFlash } from './rpg-spawn-flash';
+import { pushBossSpawnCircle } from './rpg-boss-spawn-circle';
 import { ALIVEN_VARIANTS, ALIVEN_ELITE_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
 import {
   recordAlivenSpawn,
@@ -659,7 +660,9 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     // remains centred on all canvas sizes.
     const sc = fieldSpace.safeCoreBounds;
     const rawBossId = wn === 50 ? 0 : Math.ceil(wn / 100);
-    ctx.setBossEnemy(makeBossEnemy(rawBossId, wn, sc.width, sc.height));
+    const boss = makeBossEnemy(rawBossId, wn, sc.width, sc.height);
+    ctx.setBossEnemy(boss);
+    pushBossSpawnCircle(boss.x, boss.y);
     ctx.enterBossWave();
   } else if (
     enemyTypeId === 'elite_quartz' || enemyTypeId === 'elite_ruby'   ||

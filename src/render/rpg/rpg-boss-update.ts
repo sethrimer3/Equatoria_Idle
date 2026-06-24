@@ -94,6 +94,7 @@ function isInBottomSafeZone(
 export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: number): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   boss.pulseMs = (boss.pulseMs + deltaMs) % 3000;
+  boss.spawnIntroMs = Math.max(0, boss.spawnIntroMs - deltaMs);
   if (boss.contactCdMs > 0) boss.contactCdMs = Math.max(0, boss.contactCdMs - deltaMs);
 
   // ── Phase transition ──────────────────────────────────────────────────────

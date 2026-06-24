@@ -252,6 +252,8 @@ export interface BossEnemy {
   danmakuLevel: number;
   /** Set when the boss is hit; cleared once the player is teleported back to safe zone. */
   isFiringPaused: boolean;
+  /** Boss arrival animation countdown; its final phase is the visual fade-in. */
+  spawnIntroMs: number;
 }
 
 export interface BossProjectile {

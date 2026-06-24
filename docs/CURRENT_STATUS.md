@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-18
-Current build: 300
+Current build: 301
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,13 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 301: gold magic-circle boss arrivals
+
+Completed:
+
+- Bosses now spawn through the `ASSETS/ANIMATIONS/goldMagicCircle` animation at their exact spawn position.
+- The 96-frame animation plays once, holds its final frame, then quickly fades while the boss fades in.
 
 ### Build 300: reordered boss roster and visibility metadata
 

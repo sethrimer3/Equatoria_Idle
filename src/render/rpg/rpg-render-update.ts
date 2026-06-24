@@ -94,6 +94,7 @@ import {
 import { updateStardustEnemies } from './rpg-stardust-update';
 import { updateHorizonPentagonGroups } from './horizon-pentagon-update';
 import { updateSpawnFlashes } from './rpg-spawn-flash';
+import { updateBossSpawnCircles } from './rpg-boss-spawn-circle';
 import { updateDyingEnemies } from './rpg-death-fade';
 import {
   updatePolyominoEnemies,
@@ -618,6 +619,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     if (ctx.wardEffects[_wi].timerMs <= 0) ctx.wardEffects.splice(_wi, 1);
   }
   updateSpawnFlashes(deltaMs);
+  updateBossSpawnCircles(deltaMs);
   updateDyingEnemies(deltaMs);
 
   // Track lucky motes collected for achievements
