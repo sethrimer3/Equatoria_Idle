@@ -115,7 +115,7 @@ export function drawBossEnemy(
   if (!isLowGraphicsMode) {
     ctx.shadowBlur = bossSize * (4 + pulseFactor * 4); ctx.shadowColor = drawGlow;
   }
-  if (boss.bossId === 7 || boss.bossId === 10) {
+  if (boss.bossId === 7 || boss.bossId === 12) {
     ctx.save();
     ctx.translate(boss.x, boss.y);
     ctx.rotate(Math.PI / 4 + glowTimeS * 0.3);

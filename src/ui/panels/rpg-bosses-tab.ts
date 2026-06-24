@@ -14,6 +14,7 @@ import {
 } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
 import { BOSS_NAMES, BOSS_GLOW_COLORS } from '../../render/rpg/rpg-constants';
+import { isSuperSecretBoss } from '../../data/rpg/boss-metadata';
 
 export interface RpgBossesTabPane {
   element: HTMLElement;
@@ -91,7 +92,9 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
       const bestSpeed = rpgState.bossCompletions.get(bossId) ?? 0;
       const isCompleted = bestSpeed > 0;
       const glowColor = BOSS_GLOW_COLORS[Math.min(bossId, BOSS_GLOW_COLORS.length - 1)];
-      const bossName = BOSS_NAMES[Math.min(bossId, BOSS_NAMES.length - 1)];
+      const bossName = !unlocked && isSuperSecretBoss(bossId)
+        ? '???'
+        : BOSS_NAMES[Math.min(bossId, BOSS_NAMES.length - 1)];
 
       const entry = document.createElement('div');
       entry.style.cssText = `background:${unlocked ? 'rgba(20,20,45,0.85)' : 'rgba(15,15,25,0.6)'};border:1px solid ${unlocked ? (isCompleted ? glowColor + '55' : 'rgba(255,255,255,0.15)') : 'rgba(255,255,255,0.06)'};border-radius:6px;padding:10px 12px;opacity:${unlocked ? '1' : '0.5'};`;

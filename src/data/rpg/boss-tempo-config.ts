@@ -18,17 +18,10 @@ const DEFAULT_BOSS_TEMPO: BossTempoConfig = { bpm: 60 };
  */
 export const BOSS_TEMPO_BY_ID: Readonly<Record<number, BossTempoConfig>> = {
   1: { bpm: 60 }, // Quartz Sovereign
-  2: { bpm: 60 },
-  3: { bpm: 60 },
-  4: { bpm: 60 },
-  5: { bpm: 60 },
-  6: { bpm: 60 },
-  7: { bpm: 60 },
-  8: { bpm: 60 },
-  9: { bpm: 60 },
-  10: { bpm: 60 },
-  11: { bpm: 60 },
-  12: { bpm: 60 },
+  2: { bpm: 70 }, 3: { bpm: 80 }, 4: { bpm: 90 }, 5: { bpm: 100 },
+  6: { bpm: 110 }, 7: { bpm: 120 }, 8: { bpm: 130 },
+  9: { bpm: 140 }, 10: { bpm: 150 }, 11: { bpm: 160 },
+  12: { bpm: 170 }, 13: { bpm: 180 },
 };
 
 export function getBossTempoBpm(bossId: number): number {

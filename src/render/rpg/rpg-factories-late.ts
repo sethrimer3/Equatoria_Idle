@@ -144,8 +144,8 @@ export function makeEliteEnemy(tier: EliteTier, x: number, y: number, waveNumber
  * Creates a new BossEnemy for the given raw boss ID and wave number.
  *
  * @param rawBossId  Monotonically increasing boss counter (1-based); cycles
- *                   through 12 visual bosses with increasing extra scale every
- *                   12 bosses.
+ *                   through 13 visual bosses with increasing extra scale every
+ *                   13 bosses.
  * @param waveNumber Current wave number — used to scale boss stats.
  * @param w          Canvas width in pixels — used to centre the initial X position.
  * @param h          Canvas height in pixels — used to set the initial Y position.
@@ -175,8 +175,8 @@ export function makeBossEnemy(rawBossId: number, waveNumber: number, w: number, 
     };
   }
   const bossScale = getWaveStatScale(waveNumber) * 4.0;
-  const bossNum = ((rawBossId - 1) % 12) + 1;
-  const extraScale = Math.floor((rawBossId - 1) / 12) + 1;
+  const bossNum = ((rawBossId - 1) % 13) + 1;
+  const extraScale = Math.floor((rawBossId - 1) / 13) + 1;
   const hp = Math.ceil(BOSS_HP_INIT * bossScale * extraScale);
   const atk = Math.ceil(BOSS_ATK_INIT * getWaveStatScale(waveNumber) * extraScale);
   const def = Math.ceil(BOSS_DEF_INIT * getWaveStatScale(waveNumber) * extraScale);

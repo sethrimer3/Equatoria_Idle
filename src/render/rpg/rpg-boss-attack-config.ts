@@ -380,7 +380,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
   // durationBeats 28–32 are intentional: this is a multi-hazard boss designed to maintain
   // overlapping long-lived attacks simultaneously. 32 × 429ms ≈ 13.7s per hazard.
   {
-    bossId: 9, bossName: 'Void Nexus', maxPressure: 6,
+    bossId: 11, bossName: 'Void Nexus', maxPressure: 6,
     phase0Attacks: [
       {
         kind: 'hexTrail', cooldownBeats: 14, pressureScore: 2, durationBeats: 28,
@@ -429,7 +429,7 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
   // durationBeats 32–36 are intentional: the final boss is designed to layer all attack
   // families simultaneously. 36 × 400ms = 14.4s per hazard, filling the entire phase window.
   {
-    bossId: 10, bossName: 'Equation Incarnate', maxPressure: 8,
+    bossId: 12, bossName: 'The Problem', maxPressure: 8,
     phase0Attacks: [
       {
         kind: 'vermiculate', cooldownBeats: 12, pressureScore: 2, durationBeats: 32,
@@ -484,6 +484,27 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
         params: { wormCount: 3, speed: 85, hazardMode: 'freshTrailHazard' },
       },
     ],
+  },
+  // TODO: tune bespoke recursive Fracteryl hazards.
+  {
+    bossId: 9, bossName: 'Fracteryl Manifestation', maxPressure: 6,
+    phase0Attacks: [{ kind: 'mandala', cooldownMs: 6000, pressureScore: 2, durationMs: 12000, params: { radialCount: 8, safeGaps: 1, waveInterval: 1800, speed: 85 } }],
+    phase1Attacks: [{ kind: 'mandala', cooldownMs: 5000, pressureScore: 2, durationMs: 12000, params: { radialCount: 10, safeGaps: 1, waveInterval: 1600, speed: 95 } }],
+    phase2Attacks: [{ kind: 'mandala', cooldownMs: 4000, pressureScore: 3, durationMs: 12000, params: { radialCount: 12, safeGaps: 1, waveInterval: 1400, speed: 105 } }],
+  },
+  // TODO: tune bespoke Eigenstein beam-wall hazards.
+  {
+    bossId: 10, bossName: 'Eigenstein Entity', maxPressure: 7,
+    phase0Attacks: [{ kind: 'hexTrail', cooldownMs: 5500, pressureScore: 2, durationMs: 12000, params: { boltCount: 2, warnMs: 700, cellSize: 22 } }],
+    phase1Attacks: [{ kind: 'hexTrail', cooldownMs: 4500, pressureScore: 2, durationMs: 12000, params: { boltCount: 3, warnMs: 600, cellSize: 20 } }],
+    phase2Attacks: [{ kind: 'hexTrail', cooldownMs: 3500, pressureScore: 3, durationMs: 12000, params: { boltCount: 4, warnMs: 500, cellSize: 18, hazardMode: 'persistentSegmentHazard' } }],
+  },
+  // TODO: replace The Solution's safe mixed-family profile with unique mechanics.
+  {
+    bossId: 13, bossName: 'The Solution', maxPressure: 8,
+    phase0Attacks: [{ kind: 'missileRing', cooldownMs: 5500, pressureScore: 2, durationMs: 12000, params: { maxMissiles: 3, spawnInterval: 3000, hazardMode: 'ringEdgeHazard' } }],
+    phase1Attacks: [{ kind: 'motherSwarm', cooldownMs: 6000, pressureScore: 2, durationMs: 14000, params: { followerCount: 50, hazardMode: 'headOnly' } }],
+    phase2Attacks: [{ kind: 'vermiculate', cooldownMs: 4500, pressureScore: 2, durationMs: 12000, params: { wormCount: 3, speed: 85, hazardMode: 'freshTrailHazard' } }],
   },
 ];
 

@@ -113,7 +113,7 @@ export function updateLateBossBehavior(
           color: '#4d2280', glowColor: BOSS_GLOW_COLORS[8], size: BOSS_PROJ_SIZE + 1, seekStr: 0.008 });
       }
     }
-  } else if (bossId === 9) {
+  } else if (bossId === 11) {
     boss.orbitAngle += 0.012 * dt * (1 + boss.phaseIndex * 0.4);
     boss.vx += Math.cos(boss.orbitAngle) * 0.25 + dirX * 0.15 * boss.phaseIndex;
     boss.vy += Math.sin(boss.orbitAngle) * 0.25 + dirY * 0.15 * boss.phaseIndex;
@@ -131,7 +131,7 @@ export function updateLateBossBehavior(
         const spd9 = i % 2 === 0 ? BOSS_PROJ_SPEED : BOSS_PROJ_SPEED_FAST;
         ctx.bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd9, vy: Math.sin(a) * spd9,
           atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-          color: BOSS_COLORS[9], glowColor: BOSS_GLOW_COLORS[9], size: BOSS_PROJ_SIZE, seekStr: 0.005 });
+          color: BOSS_COLORS[11], glowColor: BOSS_GLOW_COLORS[11], size: BOSS_PROJ_SIZE, seekStr: 0.005 });
       }
     }
     if (boss.secondaryTimerMs <= 0) {
@@ -146,7 +146,7 @@ export function updateLateBossBehavior(
           color: '#c090ff', glowColor: '#e0c0ff', size: BOSS_PROJ_SIZE - 1, seekStr: 0.02 });
       }
     }
-  } else if (bossId === 10) {
+  } else if (bossId === 12) {
     // The Equation Incarnate — multi-ring spiral
     boss.orbitAngle += 0.01 * dt * (1 + boss.phaseIndex * 0.6);
     boss.vx += Math.cos(boss.orbitAngle) * 0.2 + dirX * 0.2;
@@ -166,7 +166,7 @@ export function updateLateBossBehavior(
           const spd10 = BOSS_PROJ_SPEED * (1 + ring * 0.3);
           ctx.bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd10, vy: Math.sin(a) * spd10,
             atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-            color: BOSS_COLORS[10] ?? '#ffd764', glowColor: BOSS_GLOW_COLORS[10] ?? '#ffe599', size: BOSS_PROJ_SIZE, seekStr: 0.006 });
+            color: BOSS_COLORS[12] ?? '#ffd764', glowColor: BOSS_GLOW_COLORS[12] ?? '#ffe599', size: BOSS_PROJ_SIZE, seekStr: 0.006 });
         }
       }
     }
@@ -181,7 +181,7 @@ export function updateLateBossBehavior(
           color: '#ffe599', glowColor: '#ffffff', size: BOSS_PROJ_SIZE, seekStr: 0.015 });
       }
     }
-  } else if (bossId === 11) {
+  } else if (bossId === 9) {
     // Fracteryl Manifestation — fractal burst danmaku with teleport on phase transitions
     boss.orbitAngle += 0.015 * dt * (1 + boss.phaseIndex * 0.5);
     boss.vx += Math.cos(boss.orbitAngle) * 0.3 + dirX * 0.1;
@@ -199,7 +199,7 @@ export function updateLateBossBehavior(
         const spd11 = DANMAKU_BULLET_SPEED * (1 + boss.phaseIndex * 0.2);
         ctx.bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd11, vy: Math.sin(a) * spd11,
           atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS * 1.5, maxLifeMs: BOSS_PROJ_LIFE_MS * 1.5,
-          color: BOSS_COLORS[11], glowColor: BOSS_GLOW_COLORS[11], size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
+          color: BOSS_COLORS[9], glowColor: BOSS_GLOW_COLORS[9], size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
       }
       ctx.setDanmakuSafeZone(makeDanmakuSafeZone(boss.x, boss.y, safeAngle11 + Math.PI * 0.6, DANMAKU_SAFE_ANGLE_WIDTH));
     }
@@ -221,7 +221,7 @@ export function updateLateBossBehavior(
         const spd12 = DANMAKU_BULLET_SPEED * (1.2 + boss.phaseIndex * 0.15);
         ctx.bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * spd12, vy: Math.sin(a) * spd12,
           atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
-          color: BOSS_COLORS[12], glowColor: BOSS_GLOW_COLORS[12], size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
+          color: BOSS_COLORS[10], glowColor: BOSS_GLOW_COLORS[10], size: BOSS_PROJ_SIZE - 1, seekStr: 0 });
       }
       ctx.setDanmakuSafeZone(makeDanmakuSafeZone(boss.x, boss.y, safeAngle12 + Math.PI * 0.7, DANMAKU_SAFE_ANGLE_WIDTH));
     }
@@ -234,7 +234,7 @@ export function updateLateBossBehavior(
         const life   = BOSS_PROJ_LIFE_MS * 0.7;
         ctx.bossProjectiles.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * BOSS_PROJ_SPEED_FAST, vy: Math.sin(a) * BOSS_PROJ_SPEED_FAST,
           atk: boss.atk, hasHitPlayer: false, lifeMs: life, maxLifeMs: life,
-          color: BOSS_COLORS[12], glowColor: BOSS_GLOW_COLORS[12], size: BOSS_PROJ_SIZE, seekStr: 0.01 });
+          color: BOSS_COLORS[10], glowColor: BOSS_GLOW_COLORS[10], size: BOSS_PROJ_SIZE, seekStr: 0.01 });
       }
     }
   }

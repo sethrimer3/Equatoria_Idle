@@ -105,7 +105,7 @@ function getZoneIconPath(id: string): string {
 // enterable and the start_boss_fight action accepts every displayed ID.
 const BOSS_IDS = [
   'quartz', 'ruby', 'sunstone', 'citrine', 'iolite',
-  'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein',
+  'amethyst', 'diamond', 'nullstone', 'fracteryl', 'eigenstein', 'void', 'problem', 'solution',
 ] as const;
 
 function getBossIconPath(id: string): string {

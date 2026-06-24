@@ -198,7 +198,13 @@ export function deserializeGameState(data: SaveData): GameState {
     // v16+: boss completions and speed
     if (data.rpg.bossCompletions) {
       for (const [idStr, speedPct] of Object.entries(data.rpg.bossCompletions)) {
-        state.rpg.bossCompletions.set(parseInt(idStr, 10), speedPct);
+        const savedBossId = parseInt(idStr, 10);
+        // v36 roster insertion remaps identities, so old Void/Equation clears
+        // cannot be mistaken for new Fracteryl/Eigenstein clears.
+        const bossId = data.version < 36
+          ? ({ 9: 11, 10: 12, 11: 9, 12: 10 }[savedBossId] ?? savedBossId)
+          : savedBossId;
+        state.rpg.bossCompletions.set(bossId, speedPct);
       }
     }
     state.rpg.bossSpeedPct = data.rpg.bossSpeedPct ?? 100;

@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-18
-Current build: 299
+Current build: 300
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,14 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 300: reordered boss roster and visibility metadata
+
+Completed:
+
+- Reordered the late boss roster to Fracteryl, Eigenstein, Void Nexus, The Problem, and The Solution; extended the tempo map through 180 BPM.
+- Added central boss visibility metadata and save-safe boss-completion ID remapping for the roster change.
+- Added explicit attack profiles for every boss, with Fracteryl, Eigenstein, and The Solution marked for bespoke-mechanic tuning.
 
 ### Build 299: BPM-synced boss attacks and boss sanctuary
 

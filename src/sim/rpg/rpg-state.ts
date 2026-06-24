@@ -44,7 +44,7 @@ export const MAX_BOSS_SPEED_PCT = 100;
 /** Step increment for boss speed selector. */
 export const BOSS_SPEED_STEP = 10;
 /** Total number of bosses in the game (each unlocks at wave N*100). */
-export const TOTAL_BOSS_COUNT = 10;
+export const TOTAL_BOSS_COUNT = 13;
 
 // ─── Types ────────────────────────────────────────────────────────
 
