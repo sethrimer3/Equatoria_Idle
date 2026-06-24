@@ -274,17 +274,19 @@ export function drawParticles(
       const isLarge = p.sizeIndex >= LARGE_SIZE_INDEX;
       const trailLen = p.trailCount;
 
+      // fillStyle is constant per particle — set once before the inner loop
+      // to avoid one property-setter call per trail segment.
+      ctx.fillStyle = p.colorString;
+
       for (let i = 0; i < trailLen; i++) {
         const t = i / trailLen;
         getTrailPosition(p, i, _trailPos);
 
         if (isLarge) {
           const tailSize = p.size * t * 0.8;
-          const alpha = t * 0.6;
           if (tailSize < 0.3) continue;
 
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = p.colorString;
+          ctx.globalAlpha = t * 0.6;
           const half = tailSize / 2;
           ctx.fillRect(
             Math.floor(_trailPos.x - half),
@@ -293,9 +295,7 @@ export function drawParticles(
             Math.ceil(tailSize),
           );
         } else {
-          const alpha = t * 0.25;
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = p.colorString;
+          ctx.globalAlpha = t * 0.25;
           ctx.fillRect(Math.floor(_trailPos.x), Math.floor(_trailPos.y), 1, 1);
         }
       }
@@ -308,6 +308,9 @@ export function drawParticles(
   // Reset counts on existing batches
   for (const batch of _batchMap.values()) batch.count = 0;
 
+  const viewW = cc.widthPx;
+  const viewH = cc.heightPx;
+
   for (let pi = 0, plen = particles.length; pi < plen; pi++) {
     const p = particles[pi];
     // Suction-merge particles are teleported to the generator and should not
@@ -316,6 +319,9 @@ export function drawParticles(
     if (p.isMerging && !p.isForgeCrunchParticle) continue;
     // Low-graphics: skip particles smaller than the largest size for their tier.
     if (lowGraphicsMotes && p.sizeIndex < (_lowGfxMaxSize.get(p.tierId) ?? p.sizeIndex)) continue;
+    // Skip particles whose bounding box is entirely outside the canvas viewport.
+    const s = p.size;
+    if (p.x + s < 0 || p.x - s > viewW || p.y + s < 0 || p.y - s > viewH) continue;
     const key = (p.tierIndex << 8) | p.sizeIndex;
     let batch = _batchMap.get(key);
     if (!batch || batch.count === 0) {

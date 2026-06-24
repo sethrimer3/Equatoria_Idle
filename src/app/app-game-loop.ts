@@ -398,6 +398,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       generatorEquationVisibility: ctx.settings.generatorEquationVisibility,
     });
 
+    const _t0ptc = isDevMode ? performance.now() : 0;
     ctx.particles.draw(
       ctx.cc,
       { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
@@ -407,6 +408,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       nowMs,
       ctx.settings.lowGraphicsMotes,
     );
+    if (isDevMode) perfStats.particleDrawMs = performance.now() - _t0ptc;
 
     // Dev-mode overlays (drawn last so they are always visible)
     if (isDevMode) {

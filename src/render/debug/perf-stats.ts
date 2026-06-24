@@ -16,6 +16,8 @@
 export interface PerfStats {
   updateMs: number;
   renderMs: number;
+  /** Time spent inside particles.draw() only (subset of renderMs). */
+  particleDrawMs: number;
   dragFlushMs: number;
   mergeCheckCount: number;
   mergesPerFrame: number;
@@ -28,6 +30,7 @@ export interface PerfStats {
 export const perfStats: PerfStats = {
   updateMs: 0,
   renderMs: 0,
+  particleDrawMs: 0,
   dragFlushMs: 0,
   mergeCheckCount: 0,
   mergesPerFrame: 0,
@@ -39,6 +42,7 @@ export const perfStats: PerfStats = {
 export function resetPerfStats(): void {
   perfStats.updateMs = 0;
   perfStats.renderMs = 0;
+  perfStats.particleDrawMs = 0;
   perfStats.dragFlushMs = 0;
   perfStats.mergeCheckCount = 0;
   perfStats.mergesPerFrame = 0;
@@ -54,9 +58,10 @@ export function drawPerfStats(
   heightPx: number,
 ): void {
   const lines = [
-    `update ${perfStats.updateMs.toFixed(1)} ms`,
-    `render ${perfStats.renderMs.toFixed(1)} ms`,
-    `drag   ${perfStats.dragFlushMs.toFixed(2)} ms`,
+    `update  ${perfStats.updateMs.toFixed(1)} ms`,
+    `render  ${perfStats.renderMs.toFixed(1)} ms`,
+    `ptcDraw ${perfStats.particleDrawMs.toFixed(1)} ms`,
+    `drag    ${perfStats.dragFlushMs.toFixed(2)} ms`,
     `motes  ${perfStats.particleCount}`,
     `mergeC ${perfStats.mergeCheckCount}`,
     `merges ${perfStats.mergesPerFrame}`,

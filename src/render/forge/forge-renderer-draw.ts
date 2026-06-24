@@ -22,6 +22,18 @@ export const FORGE_FIRE_COLORS = [
   '#B7370A',
 ];
 
+// Pre-resolved color stop strings for FORGE_FIRE_COLORS — eliminates repeated
+// colorWithAlpha key-string allocations inside the per-frame draw loop.
+const _fireTransparent = FORGE_FIRE_COLORS.map(c => colorWithAlpha(c, 0));
+const _fireOpaque      = FORGE_FIRE_COLORS.map(c => colorWithAlpha(c, 1));
+
+// Pre-allocated dash-pattern arrays — reused every frame to avoid ephemeral
+// array allocation inside setLineDash().
+const _DASH_2_4: number[] = [2, 4];
+const _DASH_2_3: number[] = [2, 3];
+const _DASH_3_6: number[] = [3, 6];
+const _NO_DASH:  number[] = [];
+
 /**
  * Draw a large, soft ambient glow behind the forge.
  * Uses a slow-pulsing radial gradient in warm golden tones so the forge
@@ -106,8 +118,6 @@ export function drawForgeInfluenceSwirl(
 
     for (let i = 0; i < numArcs; i++) {
       const colorIndex = (i * 2) % colorCount;
-      const color = FORGE_FIRE_COLORS[colorIndex];
-      const colorNext = FORGE_FIRE_COLORS[(colorIndex + 1) % colorCount];
 
       const startAngle = t * speed + i * arcSpan;
       const endAngle = startAngle + arcSpan * 0.55;
@@ -118,9 +128,9 @@ export function drawForgeInfluenceSwirl(
         x + Math.cos(endAngle) * range,
         y + Math.sin(endAngle) * range,
       );
-      grad.addColorStop(0, colorWithAlpha(color, 0));
-      grad.addColorStop(0.5, colorWithAlpha(colorNext, 1));
-      grad.addColorStop(1, colorWithAlpha(color, 0));
+      grad.addColorStop(0, _fireTransparent[colorIndex]);
+      grad.addColorStop(0.5, _fireOpaque[(colorIndex + 1) % colorCount]);
+      grad.addColorStop(1, _fireTransparent[colorIndex]);
 
       ctx.strokeStyle = grad;
       ctx.lineWidth = 1.5;
@@ -134,11 +144,11 @@ export function drawForgeInfluenceSwirl(
   ctx.globalAlpha = 0.1;
   ctx.strokeStyle = FORGE_FIRE_COLORS[0];
   ctx.lineWidth = 0.8;
-  ctx.setLineDash([2, 4]);
+  ctx.setLineDash(_DASH_2_4);
   ctx.beginPath();
   ctx.arc(x, y, range, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.setLineDash(_NO_DASH);
   ctx.restore();
 }
 
@@ -276,20 +286,20 @@ export function drawLoomAura(
   // Inner capture ring
   ctx.strokeStyle = colorWithAlpha(color, 0.25 + 0.15 * pulse);
   ctx.lineWidth = 1.2;
-  ctx.setLineDash([2, 3]);
+  ctx.setLineDash(_DASH_2_3);
   ctx.beginPath();
   ctx.arc(x, y, captureRadius, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.setLineDash(_NO_DASH);
 
   // Outer attraction ring (dashed, more faint)
   ctx.strokeStyle = colorWithAlpha(color, 0.1 + 0.06 * pulse);
   ctx.lineWidth = 0.8;
-  ctx.setLineDash([3, 6]);
+  ctx.setLineDash(_DASH_3_6);
   ctx.beginPath();
   ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.setLineDash(_NO_DASH);
 
   ctx.restore();
 }
