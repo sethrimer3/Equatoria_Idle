@@ -40,9 +40,8 @@ import {
   PLAYER_SLOWED_DURATION_MS, PLAYER_TIMEWARP_DURATION_MS,
 } from '../../sim/rpg/player-status-effects';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
-import { getBossMidiPattern } from '../../data/rpg/boss-midi-config';
 import { getBossTempoBpm } from '../../data/rpg/boss-tempo-config';
-import { CASSETTE_START_PATH, CASSETTE_END_PATH, getBossBeatLoopPath } from '../../audio/audio-paths';
+import { CASSETTE_START_PATH, CASSETTE_END_PATH, getBossBeatLoopPath, getRandomBossMusicTrack } from '../../audio/audio-paths';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import { applyLensStatus, getActiveStatuses, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
@@ -55,7 +54,7 @@ import {
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
   RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT,
   PLAYER_HP_INIT, PLAYER_ATK_INIT, PLAYER_DEF_INIT, PLAYER_REGEN_INIT,
-  INTER_WAVE_DELAY_MS, MAX_RPG_SPEED, JOYSTICK_OUTER_RADIUS,
+  INTER_WAVE_DELAY_MS, MAX_RPG_SPEED, JOYSTICK_OUTER_RADIUS, BOSS_COLORS,
 } from './rpg-constants';
 import {
   setBossAttacksLowGraphics, type BossAttackUpdateCtx,
@@ -1691,13 +1690,24 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const boss = bossEnemy;
       if (boss) {
         beginBossMidiRuntime(bossMidiState, boss.bossId);
-        const music = getBossMidiPattern(boss.bossId)?.music;
         const beatLoop = getBossBeatLoopPath(getBossTempoBpm(boss.bossId));
-        const bgLayers = music?.bgLayers ?? [];
+        const selectedTrack = getRandomBossMusicTrack(getBossTempoBpm(boss.bossId));
+        const bgLayers = selectedTrack ? [selectedTrack.path] : [];
+        if (selectedTrack) {
+          spawnDamageNumber(
+            dim.w / 2,
+            dim.h - 18,
+            0,
+            -1,
+            selectedTrack.title,
+            1,
+            BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)] ?? '#ffffff',
+          );
+        }
         if (options.onBossMusicStartWithCassette) {
           options.onBossMusicStartWithCassette(CASSETTE_START_PATH, beatLoop, bgLayers);
-        } else if (music) {
-          options.onBossMusicStart?.(music.beatLoop, music.bgLayers);
+        } else {
+          options.onBossMusicStart?.(beatLoop, bgLayers);
         }
       }
     },

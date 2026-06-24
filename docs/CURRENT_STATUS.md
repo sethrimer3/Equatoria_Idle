@@ -284,3 +284,7 @@ Intentional safe-core elements:
 ## Update rule
 
 Update this file whenever a build completes a major feature, a limitation is resolved, a new limitation is discovered, or a high-priority direction changes.
+# Build 302: BPM-matched boss music
+
+- Boss fights now select a random full track from `ASSETS/music/BossMusic/<BPM>BPM/`, matching the active boss tempo.
+- The selected track and its BeatLoop are scheduled for the same Web Audio start time; the track title rises from the arena bottom in the boss color during the cassette-start intro.

@@ -55,26 +55,29 @@ export class BossMusicPlayer {
     const ctx = getAudioContext();
     if (!ctx) return;
     this._activeKey = key;
-    for (const path of paths) {
-      void loadAudioBuffer(ctx, path).then((buffer) => {
-        if (!buffer || this._activeKey !== key) return;
+    void Promise.all(paths.map((path) => loadAudioBuffer(ctx, path))).then((buffers) => {
+      if (this._activeKey !== key) return;
+      // Scheduling all sources against one timestamp keeps the BeatLoop and
+      // selected full track phase-locked even when their files decode at different speeds.
+      const startAt = ctx.currentTime + 0.05;
+      for (const buffer of buffers) {
+        if (!buffer) continue;
         try {
-          const now = ctx.currentTime;
           const gain = ctx.createGain();
-          gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(this._volume(), now + fadeSecs);
+          gain.gain.setValueAtTime(0, startAt);
+          gain.gain.linearRampToValueAtTime(this._volume(), startAt + fadeSecs);
           gain.connect(ctx.destination);
           const source = ctx.createBufferSource();
           source.buffer = buffer;
           source.loop = true;
           source.connect(gain);
-          source.start();
+          source.start(startAt);
           this._loops.push({ source, gain });
         } catch {
           // Audio is optional; ignore failures.
         }
-      });
-    }
+      }
+    });
   }
 
   private _fadeOutLoops(fadeSecs: number): void {
