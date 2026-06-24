@@ -1296,6 +1296,52 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     return statsPanel.getWeaponStatMultiplier(slotIdx, 'atkIn');
   }
 
+  function _showBossScoreOverlay(container: HTMLElement, speedPct: number): void {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = [
+      'position:absolute',
+      'top:0',
+      'left:0',
+      'width:100%',
+      'pointer-events:none',
+      'display:flex',
+      'justify-content:center',
+      'z-index:9999',
+      'transform:translateY(-100%)',
+      'transition:transform 0.6s cubic-bezier(0.22,1,0.36,1)',
+    ].join(';');
+
+    const label = document.createElement('div');
+    label.textContent = `${speedPct}%`;
+    label.style.cssText = [
+      'font-size:clamp(3rem,12vw,7rem)',
+      'font-weight:900',
+      'color:#ffd700',
+      'text-shadow:0 0 24px #ffe680,0 0 48px #ff9900,0 2px 8px #000',
+      'letter-spacing:0.05em',
+      'padding:0.2em 0.5em',
+      'user-select:none',
+      'font-family:inherit',
+    ].join(';');
+
+    overlay.appendChild(label);
+    container.appendChild(overlay);
+
+    // Trigger the drop animation on next frame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.style.transform = 'translateY(0)';
+      });
+    });
+
+    // Remove after 4 seconds (1s after zone select opens)
+    setTimeout(() => {
+      overlay.style.transition = 'opacity 0.4s';
+      overlay.style.opacity = '0';
+      setTimeout(() => { overlay.remove(); }, 500);
+    }, 4000);
+  }
+
   function showEquipmentRewardToast(reward: GrantedEquipmentReward): void {
     const itemName = reward.item.name || 'Unknown Item';
     const typeLabel = reward.kind === 'lens' ? 'Lens' : 'Weave';
