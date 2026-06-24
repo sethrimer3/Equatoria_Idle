@@ -1790,6 +1790,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     tryTargetEnemyAt,
     onDashRequest: () => { dashRequested = true; },
     onZoneLabelTap: () => { zoneSelectPanel.open(); },
+    onZoneSelectionSpriteHoverChange: (isHovered) => { drawFrameState.zoneSelectionSpriteHovered = isHovered; },
     getZonePosition: () => zonePosition,
     getFieldSpace:  () => rpgFieldSpace,
     getSafeScale:   () => rpgSafeScale,

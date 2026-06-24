@@ -4,7 +4,10 @@ import { loadAudioBuffer } from './audio-loader';
 interface LoopSource {
   source: AudioBufferSourceNode;
   gain: GainNode;
+  volumeMultiplier: number;
 }
+
+const BEAT_LOOP_VOLUME_MULTIPLIER = Math.pow(10, -14 / 20);
 
 export class BossMusicPlayer {
   private readonly _volume: () => number;
@@ -39,7 +42,7 @@ export class BossMusicPlayer {
     const ctx = getAudioContext();
     if (!ctx) return;
     for (const loop of this._loops) {
-      loop.gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+      loop.gain.gain.setTargetAtTime(volume * loop.volumeMultiplier, ctx.currentTime, 0.05);
     }
   }
 
@@ -60,19 +63,21 @@ export class BossMusicPlayer {
       // Scheduling all sources against one timestamp keeps the BeatLoop and
       // selected full track phase-locked even when their files decode at different speeds.
       const startAt = ctx.currentTime + 0.05;
-      for (const buffer of buffers) {
+      for (let i = 0; i < buffers.length; i++) {
+        const buffer = buffers[i];
         if (!buffer) continue;
         try {
+          const volumeMultiplier = i === 0 ? BEAT_LOOP_VOLUME_MULTIPLIER : 1;
           const gain = ctx.createGain();
           gain.gain.setValueAtTime(0, startAt);
-          gain.gain.linearRampToValueAtTime(this._volume(), startAt + fadeSecs);
+          gain.gain.linearRampToValueAtTime(this._volume() * volumeMultiplier, startAt + fadeSecs);
           gain.connect(ctx.destination);
           const source = ctx.createBufferSource();
           source.buffer = buffer;
           source.loop = true;
           source.connect(gain);
           source.start(startAt);
-          this._loops.push({ source, gain });
+          this._loops.push({ source, gain, volumeMultiplier });
         } catch {
           // Audio is optional; ignore failures.
         }

@@ -31,12 +31,10 @@ export interface RpgInputCtx {
   tryTargetEnemyAt: (x: number, y: number) => void;
   /** Optional callback invoked when the player taps the Dash button. */
   onDashRequest?: () => void;
-  /**
-   * Optional callback invoked when the player taps the zone-name / wave label
-   * at the top-left of the canvas.  The label hit region is approximately
-   * x < 210, y < 45 (canvas coordinate space).
-   */
+  /** Optional callback invoked when the player taps the zone selection sprite. */
   onZoneLabelTap?: () => void;
+  /** Receives whether the pointer is over, or pressing, the zone selection sprite. */
+  onZoneSelectionSpriteHoverChange?: (isHovered: boolean) => void;
   /** Returns the current vertical position of the zone-name / wave label. */
   getZonePosition?: () => 'top' | 'bottom';
   /**
@@ -72,6 +70,25 @@ const TAP_MAX_MOVE_PX = 10;   // max pointer movement in px for a press to count
 
 export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
   const { canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt, onZoneLabelTap } = ctx;
+
+  const ZONE_SELECTION_SPRITE_SIZE = 120;
+  const ZONE_SELECTION_OVERLAY_HEIGHT = ZONE_SELECTION_SPRITE_SIZE + 6 + ((Math.round(14 * 0.7) + 5) * 2) + 8;
+  const ZONE_SELECTION_MARGIN = 8;
+
+  function isInZoneSelectionSprite(pos: { x: number; y: number }): boolean {
+    const visibleBounds = ctx.getFieldSpace?.().visibleBounds;
+    const left = (visibleBounds?.left ?? 0) + ZONE_SELECTION_MARGIN;
+    const top = ctx.getZonePosition?.() === 'bottom'
+      ? (visibleBounds?.bottom ?? dim.h) - ZONE_SELECTION_OVERLAY_HEIGHT - 4
+      : (visibleBounds?.top ?? 0) + ZONE_SELECTION_MARGIN;
+    return pos.x >= left && pos.x <= left + ZONE_SELECTION_SPRITE_SIZE
+      && pos.y >= top && pos.y <= top + ZONE_SELECTION_SPRITE_SIZE;
+  }
+
+  function setZoneSelectionSpriteHover(isHovered: boolean): void {
+    ctx.onZoneSelectionSpriteHoverChange?.(isHovered);
+    canvas.style.cursor = isHovered ? 'pointer' : '';
+  }
 
   // ── Coordinate conversion ──────────────────────────────────────────────────
 
@@ -112,6 +129,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
     e.preventDefault(); e.stopPropagation();
     canvas.setPointerCapture(e.pointerId);
     const pos = toCanvasCoords(e.clientX, e.clientY);
+    setZoneSelectionSpriteHover(isInZoneSelectionSprite(pos));
     joystick.isActive = true; joystick.pointerId = e.pointerId;
     joystick.baseX = pos.x; joystick.baseY = pos.y;
     joystick.thumbX = pos.x; joystick.thumbY = pos.y;
@@ -122,9 +140,10 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
   }, { passive: false });
 
   canvas.addEventListener('pointermove', (e: PointerEvent) => {
+    const pos = toCanvasCoords(e.clientX, e.clientY);
+    setZoneSelectionSpriteHover(isInZoneSelectionSprite(pos));
     if (!joystick.isActive || e.pointerId !== joystick.pointerId) return;
     e.preventDefault();
-    const pos = toCanvasCoords(e.clientX, e.clientY);
     const dx = pos.x - joystick.baseX;
     const dy = pos.y - joystick.baseY;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -145,9 +164,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
       const dy = pos.y - pointerDownY;
       const moveDist = Math.sqrt(dx * dx + dy * dy);
       if (elapsed <= TAP_MAX_MS && moveDist <= TAP_MAX_MOVE_PX) {
-        const zoneLabelAtBottom = ctx.getZonePosition?.() === 'bottom';
-        const isInZoneLabelY = zoneLabelAtBottom ? pos.y > dim.h - 45 : pos.y < 45;
-        if (onZoneLabelTap && pos.x < 210 && isInZoneLabelY) {
+        if (onZoneLabelTap && isInZoneSelectionSprite(pos)) {
           onZoneLabelTap();
         } else {
           // Regular tap — find enemy at tap location
@@ -156,6 +173,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
       }
     }
     joystick.isActive = false; joystick.pointerId = -1;
+    setZoneSelectionSpriteHover(false);
   }
 
   canvas.addEventListener('pointerup', (e: PointerEvent) => {
@@ -164,6 +182,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
   });
 
   canvas.addEventListener('pointercancel', (e: PointerEvent) => endJoystick(e.pointerId));
+  canvas.addEventListener('pointerleave', () => setZoneSelectionSpriteHover(false));
 
   // ── Keyboard event listeners ───────────────────────────────────────────────
 

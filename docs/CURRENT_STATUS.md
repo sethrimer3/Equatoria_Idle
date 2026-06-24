@@ -284,7 +284,13 @@ Intentional safe-core elements:
 ## Update rule
 
 Update this file whenever a build completes a major feature, a limitation is resolved, a new limitation is discovered, or a high-priority direction changes.
-# Build 302: BPM-matched boss music
+# Build 304: zone selection sprite input
 
-- Boss fights now select a random full track from `ASSETS/music/BossMusic/<BPM>BPM/`, matching the active boss tempo.
+- The RPG zone selection sprite now has a full-sprite hit target, rather than a shallow top-label target.
+- Hovering or pressing the sprite gives it a golden blurred outline and pointer cursor.
+
+# Build 303: BPM-matched boss music
+
+- Boss fights now select a random `.mp3`, `.ogg`, or `.wav` track discovered under `ASSETS/music/BossMusic/<BPM>BPM/`, matching the active boss tempo.
+- The BeatLoop is mixed 14 dB below the selected track.
 - The selected track and its BeatLoop are scheduled for the same Web Audio start time; the track title rises from the arena bottom in the boss color during the cassette-start intro.

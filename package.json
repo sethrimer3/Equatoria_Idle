@@ -5,6 +5,9 @@
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
+    "predev": "node scripts/generate-boss-music-track-manifest.mjs",
+    "prebuild": "node scripts/generate-boss-music-track-manifest.mjs",
+    "prebuild:desktop": "node scripts/generate-boss-music-track-manifest.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:desktop": "tsc --noEmit && vite build --mode desktop",

@@ -275,7 +275,19 @@ function drawZoneSelectionLabelIcon(
   size: number,
   nowMs: number,
   baseAlpha: number,
+  isHighlighted: boolean,
 ): void {
+  if (isHighlighted) {
+    const image = getCachedImage(ZONE_SELECTION_ICON_PATH);
+    if (image) {
+      ctx.save();
+      ctx.globalAlpha = baseAlpha * 0.9;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = '#ffd34d';
+      ctx.drawImage(image, x, y, size, size);
+      ctx.restore();
+    }
+  }
   drawZoneIconLayer(ctx, ZONE_SELECTION_ICON_PATH, x, y, size, baseAlpha);
   for (let i = 0; i < ZONE_SELECTION_GLOW_OVERLAY_PATHS.length; i++) {
     drawZoneIconLayer(ctx, ZONE_SELECTION_GLOW_OVERLAY_PATHS[i], x, y, size, baseAlpha * getZoneIconLayerAlpha(nowMs, ZONE_ICON_GLOW_TIMINGS[i]));
@@ -473,11 +485,13 @@ export interface RpgDrawFrameState {
   /** Smoothly interpolated alpha for the top-left wave number; dims when entities overlap it. */
   waveOverlapAlpha: number;
   codexNotificationStartedMs: number;
+  /** True while the pointer is over or pressing the zone selection sprite. */
+  zoneSelectionSpriteHovered: boolean;
 }
 
 /** Creates the initial draw frame state. */
 export function createRpgDrawFrameState(): RpgDrawFrameState {
-  return { waveOverlapAlpha: 1.0, codexNotificationStartedMs: 0 };
+  return { waveOverlapAlpha: 1.0, codexNotificationStartedMs: 0, zoneSelectionSpriteHovered: false };
 }
 
 // ── Enemy-influence point collection ──────────────────────────────────────────
@@ -1185,7 +1199,7 @@ export function drawRpgFrame(
     canvas2d.fillText(multLabel, overlayLeft, textY + textLineH);
     const multW = canvas2d.measureText(multLabel).width;
 
-    drawZoneSelectionLabelIcon(canvas2d, overlayLeft, overlayTop, iconSize, nowMs, state.waveOverlapAlpha);
+    drawZoneSelectionLabelIcon(canvas2d, overlayLeft, overlayTop, iconSize, nowMs, state.waveOverlapAlpha, state.zoneSelectionSpriteHovered);
 
     // Underline under zone name
     canvas2d.globalAlpha = state.waveOverlapAlpha * 0.45;
