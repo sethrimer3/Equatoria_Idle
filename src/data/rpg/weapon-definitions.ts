@@ -104,6 +104,11 @@ export interface WeaponDefinition {
   /** Purchase price in the specified mote tier. */
   cost: number;
   stats: WeaponStats;
+  /**
+   * When true this weapon is granted only for a specific boss encounter and
+   * must not appear in the shop or crafting UI.
+   */
+  isTutorialWeapon?: boolean;
 }
 
 // ─── Constants ────────────────────────────────────────────────────
@@ -114,6 +119,20 @@ export const INFINITE_RANGE = 9999;
 // ─── Weapon catalogue ─────────────────────────────────────────────
 
 export const WEAPON_DEFINITIONS: WeaponDefinition[] = [
+  // ── Tutorial: Sand Warden encounter only ──────────────────────
+  {
+    id: 'wooden_sword',
+    name: 'Wooden Sword',
+    description: 'A practice blade. Sturdy enough to learn on.',
+    costTierId: 'sand',
+    cost: 0,
+    isTutorialWeapon: true,
+    stats: {
+      damage: 12, cooldownMs: 900, range: 70, defBonus: 8,
+      effect: { kind: 'swordCombo' },
+    },
+  },
+
   // ── Tier 0: Sand ──────────────────────────────────────────────
   {
     id: 'sand_blade',

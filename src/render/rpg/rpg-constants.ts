@@ -252,17 +252,17 @@ export const BOSS_INVULN_OFF_P1   = 2500;
 export const BOSS_INVULN_ON_P2    = 1800;
 export const BOSS_INVULN_OFF_P2   = 1500;
 export const BOSS_COLORS: string[] = [
-  '', '#f5f0eb', '#dc3232', '#ff8c3c', '#e6c850',
+  '#e8d9a0', '#f5f0eb', '#dc3232', '#ff8c3c', '#e6c850',
   '#6464b4', '#b464c8', '#e8f0fa', '#1e1e28', '#9664c8', '#ffd764',
   '#cc44ff', '#44ccff',
 ];
 export const BOSS_GLOW_COLORS: string[] = [
-  '', '#faf8f5', '#ff6b6b', '#ffb366', '#f0d870',
+  '#f5ead0', '#faf8f5', '#ff6b6b', '#ffb366', '#f0d870',
   '#8888cc', '#d088e0', '#ffffff', '#9664c8', '#c090ff', '#ffe599',
   '#ee88ff', '#88eeff',
 ];
 export const BOSS_NAMES: string[] = [
-  '', 'Quartz Sovereign', 'Ruby King', 'Sunstone Herald', 'Citrine Weaver',
+  'Sand Warden', 'Quartz Sovereign', 'Ruby King', 'Sunstone Herald', 'Citrine Weaver',
   'Iolite Colossus', 'Amethyst Breaker', 'Diamond Eternal', 'Nullstone Devourer',
   'Void Nexus', 'Equation Incarnate',
   'Fracteryl Manifestation', 'Eigenstein Entity',

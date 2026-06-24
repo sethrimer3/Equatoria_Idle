@@ -38,6 +38,43 @@ export interface BossAttackProfileConfig {
 }
 
 export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
+  // Boss 0 — Sand Warden (tutorial: slow telegraph, visual-only warning, simple mandala)
+  {
+    bossId: 0, bossName: 'Sand Warden', maxPressure: 1,
+    phase0Attacks: [
+      // Warning pulse: purely visual, teaches the player that something is coming
+      {
+        kind: 'grav', cooldownMs: 12000, pressureScore: 0, durationMs: 3000,
+        params: { bodyCount: 2, wellCount: 1, strength: 0, hazardMode: 'visualOnly' },
+      },
+      // Sand Line: generous 1500 ms telegraph so the player can read and dodge
+      {
+        kind: 'hexTrail', cooldownMs: 14000, pressureScore: 1, durationMs: 10000,
+        params: { boltCount: 1, warnMs: 1500, cellSize: 30, hazardMode: 'headOnly' },
+      },
+    ],
+    phase1Attacks: [
+      {
+        kind: 'hexTrail', cooldownMs: 10000, pressureScore: 1, durationMs: 10000,
+        params: { boltCount: 1, warnMs: 1200, cellSize: 28, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'mandala', cooldownMs: 14000, pressureScore: 1, durationMs: 8000,
+        params: { radialCount: 5, safeGaps: 3, waveInterval: 3000, speed: 50 },
+      },
+    ],
+    phase2Attacks: [
+      {
+        kind: 'hexTrail', cooldownMs: 8000, pressureScore: 1, durationMs: 10000,
+        params: { boltCount: 1, warnMs: 1000, cellSize: 26, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'mandala', cooldownMs: 10000, pressureScore: 1, durationMs: 8000,
+        params: { radialCount: 6, safeGaps: 2, waveInterval: 2500, speed: 55 },
+      },
+    ],
+  },
+
   // Boss 1 — Quartz Sovereign (slow intro: single harmless worm)
   {
     bossId: 1, bossName: 'Quartz Sovereign', maxPressure: 2,

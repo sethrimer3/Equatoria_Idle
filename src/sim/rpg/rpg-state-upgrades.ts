@@ -88,9 +88,10 @@ export function getBossXpMultiplier(speedPct: number): number {
 }
 
 /**
- * Returns true when the boss with the given 1-based ID has been unlocked.
- * Boss N is unlocked once the player has reached wave N*100.
+ * Returns true when the boss with the given ID has been unlocked.
+ * The Sand Warden (bossId 0) unlocks at wave 50; all others unlock at bossId*100.
  */
 export function isBossUnlocked(bossId: number, highestWaveReached: number): boolean {
+  if (bossId === 0) return highestWaveReached >= 50;
   return highestWaveReached >= bossId * 100;
 }

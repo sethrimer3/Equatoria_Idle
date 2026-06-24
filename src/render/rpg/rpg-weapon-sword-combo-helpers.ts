@@ -185,7 +185,7 @@ export function swordHitInArc(
   const { mote, hitEffects, spawnDamageNumber } = ctx;
   const isEigenstein = state.isEigensteinBlade === true;
   const hitColor = isEigenstein ? '#cc00ff' : SWORD_COLOR;
-  const isDiamondBlade = weaponId === 'diamond_bastion';
+  const isDiamondBlade = weaponId === 'diamond_bastion' || weaponId === 'wooden_sword';
   const terrain = ctx.getTerrainState ? ctx.getTerrainState() : null;
   const MELEE_TOUCH_SQ = 16 * 16;
 

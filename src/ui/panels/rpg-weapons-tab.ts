@@ -658,6 +658,7 @@ export function createRpgWeaponsTabPane(dispatch: ActionHandler): RpgWeaponsTabP
       list.appendChild(buildCraftedWeaponCard(craftedWeapon, rpgState));
     }
     for (const weapon of WEAPON_DEFINITIONS) {
+      if (weapon.isTutorialWeapon && !rpgState.purchasedWeaponIds.has(weapon.id)) continue;
       list.appendChild(buildWeaponCard(weapon, rpgState, resources, numberFormat, isDevMode));
     }
     element.appendChild(list);
