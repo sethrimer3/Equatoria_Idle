@@ -18,14 +18,14 @@ export class BossMusicPlayer {
     this._volume = volume;
   }
 
-  start(beatLoop: string, bgLayers: readonly string[]): void {
-    this._startLoops(beatLoop, bgLayers, 0.25);
+  start(beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void {
+    this._startLoops(beatLoop, bgLayers, 0.25, onPrimaryTrackReady);
   }
 
-  startWithCassette(cassetteStartPath: string, beatLoopPath: string, bgLayers: readonly string[]): void {
+  startWithCassette(cassetteStartPath: string, beatLoopPath: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void {
     // Play cassette start as one-shot, then crossfade boss loops in over 2s
     this._playOneShot(cassetteStartPath);
-    this._startLoops(beatLoopPath, bgLayers, 2.0);
+    this._startLoops(beatLoopPath, bgLayers, 2.0, onPrimaryTrackReady);
   }
 
   stop(): void {
@@ -50,7 +50,7 @@ export class BossMusicPlayer {
     this._playOneShot(path);
   }
 
-  private _startLoops(beatLoopPath: string, bgLayers: readonly string[], fadeSecs: number): void {
+  private _startLoops(beatLoopPath: string, bgLayers: readonly string[], fadeSecs: number, onPrimaryTrackReady?: (durationMs: number) => void): void {
     const paths = [beatLoopPath, ...bgLayers];
     const key = paths.join('|');
     if (this._activeKey === key && this._loops.length > 0) return;
@@ -63,6 +63,10 @@ export class BossMusicPlayer {
       // Scheduling all sources against one timestamp keeps the BeatLoop and
       // selected full track phase-locked even when their files decode at different speeds.
       const startAt = ctx.currentTime + 0.05;
+      const primaryTrackBuffer = buffers.length > 1 ? buffers[1] : null;
+      if (primaryTrackBuffer && onPrimaryTrackReady) {
+        onPrimaryTrackReady(primaryTrackBuffer.duration * 1000);
+      }
       for (let i = 0; i < buffers.length; i++) {
         const buffer = buffers[i];
         if (!buffer) continue;

@@ -23,6 +23,12 @@ import {
 } from './rpg-constants';
 import { enemyHealthFraction, shouldDrawEnemyHealthBar } from './rpg-health-bar';
 import { BOSS_SPAWN_FADE_MS } from './rpg-boss-spawn-circle';
+import type { BossBeatVisualState } from './rpg-boss-beat-visuals';
+import {
+  BOSS_BULLET_BEAT_PULSE_STRENGTH,
+  BOSS_BAR_PULSE_STRENGTH,
+  BOSS_STAGE_BEAT_PULSE_STRENGTH,
+} from './rpg-boss-beat-visuals';
 
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
@@ -45,12 +51,15 @@ export function drawBossEnemy(
   ctx: CanvasRenderingContext2D,
   boss: BossEnemy | null,
   glowTimeS: number,
+  beatVisual?: BossBeatVisualState | null,
 ): void {
   if (!boss) return;
   const bossSize = BOSS_SIZE_BASE + boss.bossId * 1.5;
   const half = bossSize / 2;
   const pulseT = boss.pulseMs / 3000;
   const pulseFactor = (Math.sin(pulseT * Math.PI * 2) + 1) * 0.5;
+  const beatPulse = beatVisual?.beatPulse ?? 0;
+  const beatScale = 1 + beatPulse * (isLowGraphicsMode ? BOSS_BULLET_BEAT_PULSE_STRENGTH * 0.35 : BOSS_BULLET_BEAT_PULSE_STRENGTH);
   const color     = BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)];
   const glowColor = BOSS_GLOW_COLORS[Math.min(boss.bossId, BOSS_GLOW_COLORS.length - 1)];
   const spawnAlpha = boss.spawnIntroMs > 0
@@ -83,8 +92,8 @@ export function drawBossEnemy(
 
   const ringCount = 1 + boss.phaseIndex;
   for (let r = 0; r < ringCount; r++) {
-    const ringR = bossSize * (1.5 + r * 0.7 + pulseFactor * 0.4);
-    ctx.globalAlpha = (0.15 - r * 0.04) * (0.6 + pulseFactor * 0.4);
+    const ringR = bossSize * (1.5 + r * 0.7 + pulseFactor * 0.4 + beatPulse * 0.35);
+    ctx.globalAlpha = (0.15 - r * 0.04) * (0.6 + pulseFactor * 0.4 + beatPulse * 0.45);
     if (!isLowGraphicsMode) {
       ctx.shadowBlur = ringR * 2; ctx.shadowColor = drawGlow;
     }
@@ -117,19 +126,24 @@ export function drawBossEnemy(
   }
 
   if (!isLowGraphicsMode) {
-    ctx.shadowBlur = bossSize * (4 + pulseFactor * 4); ctx.shadowColor = drawGlow;
+    ctx.shadowBlur = bossSize * (4 + pulseFactor * 4 + beatPulse * 5); ctx.shadowColor = drawGlow;
   }
   ctx.globalAlpha = spawnAlpha;
   if (boss.bossId === 7 || boss.bossId === 12) {
     ctx.save();
     ctx.translate(boss.x, boss.y);
     ctx.rotate(Math.PI / 4 + glowTimeS * 0.3);
+    ctx.scale(beatScale, beatScale);
     ctx.fillStyle = drawColor;
     ctx.fillRect(-half * 0.85, -half * 0.85, bossSize * 0.85, bossSize * 0.85);
     ctx.restore();
   } else if (boss.bossId === 8) {
+    ctx.save();
+    ctx.translate(boss.x, boss.y);
+    ctx.scale(beatScale, beatScale);
     ctx.fillStyle = drawColor;
-    ctx.fillRect(Math.floor(boss.x - half), Math.floor(boss.y - half), Math.ceil(bossSize), Math.ceil(bossSize));
+    ctx.fillRect(Math.floor(-half), Math.floor(-half), Math.ceil(bossSize), Math.ceil(bossSize));
+    ctx.restore();
     ctx.shadowBlur = 0;
     for (let r = 1; r <= 3; r++) {
       const ringAlpha = boss.isAbsorbing ? 0.5 - r * 0.1 : 0.2 - r * 0.04;
@@ -142,8 +156,12 @@ export function drawBossEnemy(
     }
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   } else {
+    ctx.save();
+    ctx.translate(boss.x, boss.y);
+    ctx.scale(beatScale, beatScale);
     ctx.fillStyle = drawColor;
-    ctx.fillRect(Math.floor(boss.x - half), Math.floor(boss.y - half), Math.ceil(bossSize), Math.ceil(bossSize));
+    ctx.fillRect(Math.floor(-half), Math.floor(-half), Math.ceil(bossSize), Math.ceil(bossSize));
+    ctx.restore();
   }
   ctx.shadowBlur = 0;
 
@@ -191,21 +209,26 @@ export function drawBottomSafeZone(
   isBossWaveActive: boolean,
   activeBounds: { left: number; top: number; right: number; bottom: number; width: number; height: number },
   glowTimeS: number,
+  beatVisual?: BossBeatVisualState | null,
 ): void {
   if (!isBossWaveActive) return;
   const szX = (activeBounds.left + activeBounds.right) / 2;
   const szY = activeBounds.top + activeBounds.height * BOSS_SAFE_ZONE_Y_FACTOR;
   const hue = (glowTimeS * 60) % 360;
+  const beatPulse = beatVisual?.beatPulse ?? 0;
+  const barPulse = beatVisual?.barPulse ?? 0;
+  const pulseScale = 1 + beatPulse * BOSS_STAGE_BEAT_PULSE_STRENGTH + barPulse * BOSS_BAR_PULSE_STRENGTH * 0.18;
+  const ringRadius = BOSS_BOTTOM_SAFE_ZONE_R * pulseScale;
   ctx.save();
-  ctx.globalAlpha = 0.30 + Math.sin(glowTimeS * 3) * 0.08;
+  ctx.globalAlpha = 0.30 + Math.sin(glowTimeS * 3) * 0.08 + beatPulse * 0.18;
   if (!isLowGraphicsMode) {
-    ctx.shadowBlur = 16; ctx.shadowColor = `hsl(${hue}, 100%, 80%)`;
+    ctx.shadowBlur = 16 + beatPulse * 18; ctx.shadowColor = `hsl(${hue}, 100%, 80%)`;
   }
-  ctx.strokeStyle = `hsl(${hue}, 80%, 75%)`; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.stroke();
-  ctx.globalAlpha = 0.10;
+  ctx.strokeStyle = `hsl(${hue}, 80%, 75%)`; ctx.lineWidth = 1.5 + beatPulse * 0.9;
+  ctx.beginPath(); ctx.arc(szX, szY, ringRadius, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 0.10 + beatPulse * 0.06;
   ctx.fillStyle = `hsl(${hue}, 80%, 75%)`;
-  ctx.beginPath(); ctx.arc(szX, szY, BOSS_BOTTOM_SAFE_ZONE_R, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(szX, szY, ringRadius, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   ctx.restore();
 }
@@ -269,11 +292,14 @@ export function drawBossArenaWalls(
   bounds: { left: number; top: number; right: number; bottom: number },
   visibleBounds: { left: number; top: number; right: number; bottom: number },
   glowTimeS: number,
+  beatVisual?: BossBeatVisualState | null,
 ): void {
   if (!isBossWaveActive) return;
 
   const hue   = (glowTimeS * 60) % 360;
-  const pulse = 0.55 + Math.sin(glowTimeS * 2.8) * 0.18;
+  const beatPulse = beatVisual?.beatPulse ?? 0;
+  const barPulse = beatVisual?.barPulse ?? 0;
+  const pulse = 0.55 + Math.sin(glowTimeS * 2.8) * 0.18 + beatPulse * BOSS_STAGE_BEAT_PULSE_STRENGTH + barPulse * BOSS_BAR_PULSE_STRENGTH * 0.25;
   const wallColor = `hsl(${hue}, 80%, 72%)`;
   const glowColor = `hsl(${hue}, 100%, 82%)`;
   const H = bounds.bottom - bounds.top;
@@ -347,9 +373,9 @@ export function drawBossArenaWalls(
 
   // 3. Barrier lines: full active-arena box
   ctx.globalAlpha = pulse;
-  if (!isLowGraphicsMode) { ctx.shadowBlur = 10; ctx.shadowColor = glowColor; }
+  if (!isLowGraphicsMode) { ctx.shadowBlur = 10 + beatPulse * 14 + barPulse * 8; ctx.shadowColor = glowColor; }
   ctx.strokeStyle = wallColor;
-  ctx.lineWidth   = 1.2;
+  ctx.lineWidth   = 1.2 + beatPulse * 0.8 + barPulse * 0.6;
 
   ctx.beginPath(); ctx.moveTo(bounds.left,  bounds.top);    ctx.lineTo(bounds.left,  bounds.bottom); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(bounds.right, bounds.top);    ctx.lineTo(bounds.right, bounds.bottom); ctx.stroke();

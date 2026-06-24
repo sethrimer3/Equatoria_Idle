@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
-Last updated: 2026-06-18
-Current build: 301
+Last updated: 2026-06-24
+Current build: 305
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,14 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 305: boss track progress and beat-reactive visuals
+
+Completed:
+
+- Boss fights now draw a top-of-screen progress bar using the decoded duration of the selected boss music track.
+- Boss bodies, the bottom rainbow safe zone, and the boss arena edge barriers now pulse from the shared boss BPM beat-visual state.
+- Existing boss special-attack projectile beat pulses remain on the same shared beat timing surface.
 
 ### Build 301: gold magic-circle boss arrivals
 

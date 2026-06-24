@@ -65,8 +65,8 @@ export interface AudioSystem {
   onForgeSpinUpCancelled(): void;
 
   // Boss MIDI/music events
-  startBossMusic(beatLoop: string, bgLayers: readonly string[]): void;
-  startBossMusicWithCassette(cassetteStart: string, beatLoop: string, bgLayers: readonly string[]): void;
+  startBossMusic(beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void;
+  startBossMusicWithCassette(cassetteStart: string, beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void;
   stopBossMusic(): void;
   stopBossMusicWithCassette(cassetteEnd: string, onDone: () => void): void;
   playBossMusicPhrase(path: string): void;
@@ -242,14 +242,14 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
       sfx.onForgeChargingCancelled();
     },
 
-    startBossMusic(beatLoop: string, bgLayers: readonly string[]): void {
+    startBossMusic(beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void {
       if (!_isFocused) return;
-      bossMusic.start(beatLoop, bgLayers);
+      bossMusic.start(beatLoop, bgLayers, onPrimaryTrackReady);
     },
 
-    startBossMusicWithCassette(cassetteStart: string, beatLoop: string, bgLayers: readonly string[]): void {
+    startBossMusicWithCassette(cassetteStart: string, beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void {
       if (!_isFocused) return;
-      bossMusic.startWithCassette(cassetteStart, beatLoop, bgLayers);
+      bossMusic.startWithCassette(cassetteStart, beatLoop, bgLayers, onPrimaryTrackReady);
     },
 
     stopBossMusic(): void {

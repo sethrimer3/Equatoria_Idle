@@ -720,6 +720,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let isBossWaveActive = false;
   /** Set to true during the boss victory cassette-end sequence to suppress the normal music stop. */
   let pendingBossVictory = false;
+  let bossTrackDurationMs = 0;
+  let bossTrackTitle: string | null = null;
   /**
    * Temporary equipped-weapon override used only during boss waves.
    * The player's actual rpgSimState.equippedWeaponIds is never mutated by boss
@@ -1693,6 +1695,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const beatLoop = getBossBeatLoopPath(getBossTempoBpm(boss.bossId));
         const selectedTrack = getRandomBossMusicTrack(getBossTempoBpm(boss.bossId));
         const bgLayers = selectedTrack ? [selectedTrack.path] : [];
+        bossTrackDurationMs = 0;
+        bossTrackTitle = selectedTrack?.title ?? null;
         if (selectedTrack) {
           spawnDamageNumber(
             dim.w / 2,
@@ -1705,15 +1709,21 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
           );
         }
         if (options.onBossMusicStartWithCassette) {
-          options.onBossMusicStartWithCassette(CASSETTE_START_PATH, beatLoop, bgLayers);
+          options.onBossMusicStartWithCassette(CASSETTE_START_PATH, beatLoop, bgLayers, (durationMs) => {
+            bossTrackDurationMs = durationMs;
+          });
         } else {
-          options.onBossMusicStart?.(beatLoop, bgLayers);
+          options.onBossMusicStart?.(beatLoop, bgLayers, (durationMs) => {
+            bossTrackDurationMs = durationMs;
+          });
         }
       }
     },
     onExitBossWave:             () => {
       deactivateBossStageDirector(bossStageDirectorState);
       resetBossMidiRuntime(bossMidiState);
+      bossTrackDurationMs = 0;
+      bossTrackTitle = null;
       if (!pendingBossVictory) {
         options.onBossMusicStop?.();
       }
@@ -2027,6 +2037,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getCurrentWave:               () => currentWave,
     getInterWaveTimerMs:          () => interWaveTimerMs,
     getIsBossWaveActive:          () => isBossWaveActive,
+    getBossTrackDurationMs:       () => bossTrackDurationMs,
+    getBossTrackTitle:            () => bossTrackTitle,
     getScreenDarken:              () => screenDarken,
     getRestartFadeAlpha:          () => restartFadeAlpha,
     getIsLowGraphicsMode:         () => isLowGraphicsMode,

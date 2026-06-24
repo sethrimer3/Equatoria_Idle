@@ -36,6 +36,7 @@ import {
   drawTeleportParticles,
 } from './rpg-enemy-draw-adv';
 import { drawBossAttacks, setDrawBossAttacksLowGraphics } from './rpg-boss-attacks-draw';
+import { getBossBeatVisualState, type BossBeatVisualState } from './rpg-boss-beat-visuals';
 import {
   drawBossStageDirector,
   setStageDirLowGraphics,
@@ -419,6 +420,8 @@ export interface RpgDrawCtx {
   getCurrentWave(): number;
   getInterWaveTimerMs(): number;
   getIsBossWaveActive(): boolean;
+  getBossTrackDurationMs(): number;
+  getBossTrackTitle(): string | null;
   getScreenDarken(): number;
   getRestartFadeAlpha(): number;
   getIsLowGraphicsMode(): boolean;
@@ -1028,8 +1031,11 @@ export function drawRpgFrame(
   drawHorizonPentagonGroups(canvas2d, ctx.horizonPentagonGroups, widthPx);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
-  drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, fs.visibleBounds, glowTimeS);
-  drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, glowTimeS);
+  const bossBeatVisual = bossEnemy && ctx.getIsBossWaveActive()
+    ? getBossBeatVisualState(bossEnemy.bossId, ctx.bossAttackState.elapsedFightMs)
+    : null;
+  drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, fs.visibleBounds, glowTimeS, bossBeatVisual);
+  drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, glowTimeS, bossBeatVisual);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
   drawBossProjectiles(canvas2d, ctx.bossProjectiles);
   if (ctx.getIsBossWaveActive() && bossEnemy) {
@@ -1050,7 +1056,7 @@ export function drawRpgFrame(
     ctx.bossAttackState.elapsedFightMs,
   );
   drawBossSpawnCircles(canvas2d);
-  drawBossEnemy(canvas2d, bossEnemy, glowTimeS);
+  drawBossEnemy(canvas2d, bossEnemy, glowTimeS, bossBeatVisual);
   drawTeleportParticles(canvas2d, ctx.teleportParticles);
   drawShotLines(canvas2d, ctx.shotLines);
   drawVortexes(canvas2d, ctx.weaponSystems.activeVortexes);
@@ -1083,6 +1089,7 @@ export function drawRpgFrame(
   drawDamageNumbers(canvas2d, ctx.damageNumbers);
   renderEnemySpeechBubbles(canvas2d, fs.visibleBounds);
   renderBossDialogue(canvas2d, fs.visibleBounds, bossEnemy);
+  drawBossTrackProgressBar(canvas2d, ctx, fs.visibleBounds, bossEnemy, bossBeatVisual);
   drawLuckyMotePopups(canvas2d, ctx.luckyMotePopups, ctx.getIsLowGraphicsMode());
   if (ctx.deathParticles.length > 0) drawDeathParticles(canvas2d, ctx.deathParticles);
 
@@ -1461,7 +1468,61 @@ function drawRpgViewportDiagnostics(
   _drawFieldSpaceOverlay(canvas2d, fs);
 }
 
-/**
+function drawBossTrackProgressBar(
+  canvas2d: CanvasRenderingContext2D,
+  ctx: RpgDrawCtx,
+  visibleBounds: { left: number; top: number; right: number; width: number },
+  bossEnemy: BossEnemy | null,
+  beatVisual: BossBeatVisualState | null,
+): void {
+  if (!bossEnemy || !ctx.getIsBossWaveActive()) return;
+  const trackDurationMs = ctx.getBossTrackDurationMs();
+  if (trackDurationMs <= 0) return;
+  const elapsedMs = ctx.bossAttackState.elapsedFightMs % trackDurationMs;
+  const progress = clamp01(elapsedMs / trackDurationMs);
+  const beatPulse = beatVisual?.beatPulse ?? 0;
+  const barPulse = beatVisual?.barPulse ?? 0;
+  const margin = 14;
+  const barW = Math.max(80, visibleBounds.width - margin * 2);
+  const barH = 5 + beatPulse * 1.5 + barPulse * 1.5;
+  const x = visibleBounds.left + margin;
+  const y = visibleBounds.top + 6;
+  const hue = ((beatVisual?.beatIndex ?? 0) * 18 + beatPulse * 35) % 360;
+
+  canvas2d.save();
+  canvas2d.globalAlpha = 0.80;
+  canvas2d.fillStyle = 'rgba(3, 4, 12, 0.72)';
+  canvas2d.fillRect(x - 1, y - 1, barW + 2, barH + 2);
+  canvas2d.globalAlpha = 0.35 + beatPulse * 0.25;
+  canvas2d.strokeStyle = `hsl(${hue}, 100%, 78%)`;
+  canvas2d.lineWidth = 1;
+  if (!ctx.getIsLowGraphicsMode()) {
+    canvas2d.shadowBlur = 7 + beatPulse * 10;
+    canvas2d.shadowColor = `hsl(${hue}, 100%, 74%)`;
+  }
+  canvas2d.strokeRect(x - 1, y - 1, barW + 2, barH + 2);
+  canvas2d.globalAlpha = 0.88;
+  const gradient = canvas2d.createLinearGradient(x, y, x + barW, y);
+  gradient.addColorStop(0, `hsl(${hue}, 100%, 68%)`);
+  gradient.addColorStop(0.55, `hsl(${(hue + 95) % 360}, 100%, 70%)`);
+  gradient.addColorStop(1, `hsl(${(hue + 190) % 360}, 100%, 72%)`);
+  canvas2d.fillStyle = gradient;
+  canvas2d.fillRect(x, y, barW * progress, barH);
+  canvas2d.shadowBlur = 0;
+
+  const title = ctx.getBossTrackTitle();
+  if (title) {
+    canvas2d.globalAlpha = 0.58;
+    canvas2d.fillStyle = '#ffffff';
+    canvas2d.font = '6px monospace';
+    canvas2d.textAlign = 'right';
+    canvas2d.textBaseline = 'top';
+    canvas2d.fillText(title, x + barW, y + barH + 3);
+  }
+  canvas2d.restore();
+}
+
+/** 
  * Draws labelled rectangle outlines for each RpgFieldSpace bound, plus
  * spawn-candidate dots recorded since the last wave start.
  * Called only in dev mode from within the world-coordinate transform.
