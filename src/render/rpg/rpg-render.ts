@@ -1627,17 +1627,26 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onEnterBossWave:            () => {
       clearStageForBossFight();
       resetBossStageDirector(bossStageDirectorState);
+      pendingBossVictory = false;
       const boss = bossEnemy;
       if (boss) {
         beginBossMidiRuntime(bossMidiState, boss.bossId);
         const music = getBossMidiPattern(boss.bossId)?.music;
-        if (music) options.onBossMusicStart?.(music.beatLoop, music.bgLayers);
+        const beatLoop = getBossBeatLoopPath(getBossTempoBpm(boss.bossId));
+        const bgLayers = music?.bgLayers ?? [];
+        if (options.onBossMusicStartWithCassette) {
+          options.onBossMusicStartWithCassette(CASSETTE_START_PATH, beatLoop, bgLayers);
+        } else if (music) {
+          options.onBossMusicStart?.(music.beatLoop, music.bgLayers);
+        }
       }
     },
     onExitBossWave:             () => {
       deactivateBossStageDirector(bossStageDirectorState);
       resetBossMidiRuntime(bossMidiState);
-      options.onBossMusicStop?.();
+      if (!pendingBossVictory) {
+        options.onBossMusicStop?.();
+      }
     },
     onTeleportToSafeZone:       () => { advanceBossStage(bossStageDirectorState); },
     onBossSpawned:              (boss) => { ensureBossMidiLoaded(bossMidiState, boss.bossId); notifyBossSpawned(boss); },
