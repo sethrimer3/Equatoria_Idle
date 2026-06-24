@@ -16,8 +16,11 @@ export const BOSS_BPM: ReadonlyMap<number, number> = new Map([
   [6,  110],  // Amethyst Breaker
   [7,  120],  // Diamond Eternal
   [8,  130],  // Nullstone Devourer
-  [9,  140],  // Void Nexus
-  [10, 150],  // Equation Incarnate
+  [9,  140],  // Fracteryl Manifestation
+  [10, 150],  // Eigenstein Entity
+  [11, 160],  // Void Nexus
+  [12, 170],  // The Problem
+  [13, 180],  // The Solution
 ]);
 
 /** Flat Record form of BOSS_BPM — for indexed access without Map overhead. */
