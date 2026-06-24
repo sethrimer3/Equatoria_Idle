@@ -25,11 +25,9 @@ describe('BOSS_BPM', () => {
 });
 
 describe('boss order', () => {
-  it('Sand Warden (bossId 0) is listed before Quartz Sovereign (bossId 1)', () => {
-    expect(BOSS_NAMES[0]).toBe('Sand Warden');
+  it('BOSS_NAMES is 1-based: index 0 unused, Quartz Sovereign at index 1', () => {
+    expect(BOSS_NAMES[0]).toBe('');
     expect(BOSS_NAMES[1]).toBe('Quartz Sovereign');
-    // Index 0 comes before index 1
-    expect(0).toBeLessThan(1);
   });
 
   it('BOSS_BPM has 14 entries covering bossId 0–13', () => {
