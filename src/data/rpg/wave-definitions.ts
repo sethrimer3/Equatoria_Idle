@@ -388,6 +388,19 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   const predefined = WAVE_DEFINITIONS.find(w => w.waveNumber === waveNumber);
   if (predefined) return predefined;
 
+  // Wave 50 — Sand Warden tutorial boss (minimal escort, very slow)
+  if (waveNumber === 50) {
+    return {
+      waveNumber,
+      isBossWave: true,
+      spawns: [
+        { enemyTypeId: 'laser',  count: 2, spawnDelay: 600 },
+        { enemyTypeId: 'quartz', count: 1, spawnDelay: 800 },
+        { enemyTypeId: 'boss',   count: 1, spawnDelay: 2500 },
+      ],
+    };
+  }
+
   // Boss wave every 100 waves — boss with a small escort
   if (waveNumber % 100 === 0) {
     const delay = Math.max(130, 600 - waveNumber * 18);

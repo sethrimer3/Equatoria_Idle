@@ -12,6 +12,11 @@ import {
   beginNeonGlowBatch, endNeonGlowBatch,
   drawNeonTrailGlow, drawNeonTrailCore,
 } from './neon-trail-draw';
+import {
+  getBossBeatVisualState,
+  BOSS_BULLET_BEAT_PULSE_STRENGTH,
+  BOSS_BAR_PULSE_STRENGTH,
+} from './rpg-boss-beat-visuals';
 import type {
   BossAttackState,
   GravAttackInstance,
@@ -71,20 +76,24 @@ export function setDrawBossAttacksLowGraphics(enabled: boolean): void {
 export function drawBossAttacks(
   ctx: CanvasRenderingContext2D,
   state: BossAttackState,
+  bossId: number,
+  elapsedMs: number,
 ): void {
   if (state.attacks.length === 0) return;
+
+  const { beatPulse, barPulse, isDownbeat } = getBossBeatVisualState(bossId, elapsedMs);
 
   beginNeonGlowBatch(ctx);
 
   for (const atk of state.attacks) {
     switch (atk.kind) {
-      case 'grav':        _drawGrav(ctx, atk as GravAttackInstance); break;
+      case 'grav':        _drawGrav(ctx, atk as GravAttackInstance, beatPulse); break;
       case 'hexTrail':    _drawHex(ctx, atk as HexAttackInstance); break;
-      case 'mandala':     _drawMandala(ctx, atk as MandalaAttackInstance); break;
-      case 'vermiculate': _drawVermiculate(ctx, atk as VermiculateAttackInstance); break;
-      case 'missileRing': _drawMissile(ctx, atk as MissileAttackInstance); break;
-      case 'motherSwarm': _drawSwarm(ctx, atk as SwarmAttackInstance); break;
-      case 'quartzSignature': _drawQuartzSignature(ctx, atk as QuartzSignatureAttackInstance); break;
+      case 'mandala':     _drawMandala(ctx, atk as MandalaAttackInstance, beatPulse); break;
+      case 'vermiculate': _drawVermiculate(ctx, atk as VermiculateAttackInstance, beatPulse); break;
+      case 'missileRing': _drawMissile(ctx, atk as MissileAttackInstance, beatPulse); break;
+      case 'motherSwarm': _drawSwarm(ctx, atk as SwarmAttackInstance, beatPulse, barPulse, isDownbeat); break;
+      case 'quartzSignature': _drawQuartzSignature(ctx, atk as QuartzSignatureAttackInstance, barPulse, isDownbeat); break;
     }
   }
 
@@ -105,8 +114,9 @@ function _drawTrail(
 
 // ── Grav ──────────────────────────────────────────────────────────────────────
 
-function _drawGrav(ctx: CanvasRenderingContext2D, atk: GravAttackInstance): void {
+function _drawGrav(ctx: CanvasRenderingContext2D, atk: GravAttackInstance, beatPulse: number): void {
   const fadeRatio = Math.min(1, (atk.durationMs - atk.ageMs) / atk.trailPersistenceMs);
+  const visualRadiusScale = 1 + beatPulse * BOSS_BULLET_BEAT_PULSE_STRENGTH;
 
   for (const body of atk.bodies) {
     _drawTrail(ctx, body.trail, {
@@ -118,7 +128,7 @@ function _drawGrav(ctx: CanvasRenderingContext2D, atk: GravAttackInstance): void
     ctx.save();
     ctx.globalAlpha = fadeRatio;
     ctx.beginPath();
-    ctx.arc(body.x, body.y, body.radius, 0, Math.PI * 2);
+    ctx.arc(body.x, body.y, body.radius * visualRadiusScale, 0, Math.PI * 2);
     ctx.fillStyle = body.color;
     ctx.shadowColor = body.glowColor;
     ctx.shadowBlur = _lowGraphics ? 0 : 8;
@@ -236,8 +246,9 @@ function _drawHex(ctx: CanvasRenderingContext2D, atk: HexAttackInstance): void {
 
 // ── Mandala ───────────────────────────────────────────────────────────────────
 
-function _drawMandala(ctx: CanvasRenderingContext2D, atk: MandalaAttackInstance): void {
+function _drawMandala(ctx: CanvasRenderingContext2D, atk: MandalaAttackInstance, beatPulse: number): void {
   const globalFade = Math.min(1, (atk.durationMs - atk.ageMs) / 1500);
+  const visualRadius = 2.5 * (1 + beatPulse * BOSS_BULLET_BEAT_PULSE_STRENGTH);
 
   for (const p of atk.projectiles) {
     const trailCfg: NeonTrailConfig = {
@@ -250,7 +261,7 @@ function _drawMandala(ctx: CanvasRenderingContext2D, atk: MandalaAttackInstance)
     ctx.save();
     ctx.globalAlpha = globalFade;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, visualRadius, 0, Math.PI * 2);
     ctx.fillStyle = p.color;
     if (!_lowGraphics) {
       ctx.shadowColor = p.glowColor;
@@ -263,8 +274,9 @@ function _drawMandala(ctx: CanvasRenderingContext2D, atk: MandalaAttackInstance)
 
 // ── Vermiculate ───────────────────────────────────────────────────────────────
 
-function _drawVermiculate(ctx: CanvasRenderingContext2D, atk: VermiculateAttackInstance): void {
+function _drawVermiculate(ctx: CanvasRenderingContext2D, atk: VermiculateAttackInstance, beatPulse: number): void {
   const globalFade = Math.min(1, (atk.durationMs - atk.ageMs) / atk.trailPersistenceMs);
+  const visualRadiusScale = 1 + beatPulse * BOSS_BULLET_BEAT_PULSE_STRENGTH;
 
   for (const worm of atk.worms) {
     _drawTrail(ctx, worm.trail, {
@@ -276,7 +288,7 @@ function _drawVermiculate(ctx: CanvasRenderingContext2D, atk: VermiculateAttackI
     ctx.save();
     ctx.globalAlpha = globalFade;
     ctx.beginPath();
-    ctx.arc(worm.x, worm.y, worm.radius, 0, Math.PI * 2);
+    ctx.arc(worm.x, worm.y, worm.radius * visualRadiusScale, 0, Math.PI * 2);
     ctx.fillStyle = worm.color;
     if (!_lowGraphics) {
       ctx.shadowColor = worm.glowColor;
@@ -289,7 +301,9 @@ function _drawVermiculate(ctx: CanvasRenderingContext2D, atk: VermiculateAttackI
 
 // ── Missile ring ──────────────────────────────────────────────────────────────
 
-function _drawMissile(ctx: CanvasRenderingContext2D, atk: MissileAttackInstance): void {
+function _drawMissile(ctx: CanvasRenderingContext2D, atk: MissileAttackInstance, beatPulse: number): void {
+  const visualScale = 1 + beatPulse * BOSS_BULLET_BEAT_PULSE_STRENGTH * 0.5;
+
   for (const m of atk.missiles) {
     if (!m.hasFired) continue;
 
@@ -306,6 +320,7 @@ function _drawMissile(ctx: CanvasRenderingContext2D, atk: MissileAttackInstance)
       ctx.globalAlpha = stateAlpha;
       ctx.translate(m.x, m.y);
       ctx.rotate(m.angle);
+      ctx.scale(visualScale, visualScale);
       ctx.beginPath();
       ctx.moveTo(5, 0);
       ctx.lineTo(-4, 3);
@@ -339,7 +354,7 @@ function _drawMissile(ctx: CanvasRenderingContext2D, atk: MissileAttackInstance)
 
 // ── Mother swarm ──────────────────────────────────────────────────────────────
 
-function _drawQuartzSignature(ctx: CanvasRenderingContext2D, atk: QuartzSignatureAttackInstance): void {
+function _drawQuartzSignature(ctx: CanvasRenderingContext2D, atk: QuartzSignatureAttackInstance, barPulse: number, isDownbeat: boolean): void {
   for (const segment of atk.trailSegments) {
     const fadeAge = Math.max(0, segment.ageMs - segment.hazardMs);
     const alpha = segment.ageMs <= segment.hazardMs
@@ -382,14 +397,25 @@ function _drawQuartzSignature(ctx: CanvasRenderingContext2D, atk: QuartzSignatur
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    // Downbeat halo: bright outer ring on large Quartz signature missiles
+    if (isDownbeat && !_lowGraphics && barPulse > 0.01) {
+      ctx.globalAlpha = barPulse * BOSS_BAR_PULSE_STRENGTH * 0.7;
+      ctx.strokeStyle = atk.glowColor;
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(0, 0, 13, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 }
 
-function _drawSwarm(ctx: CanvasRenderingContext2D, atk: SwarmAttackInstance): void {
+function _drawSwarm(ctx: CanvasRenderingContext2D, atk: SwarmAttackInstance, beatPulse: number, barPulse: number, isDownbeat: boolean): void {
   const globalFade = Math.min(1, (atk.durationMs - atk.ageMs) / atk.trailPersistenceMs);
+  const motherVisualScale = 1 + beatPulse * BOSS_BULLET_BEAT_PULSE_STRENGTH;
 
-  // Followers
+  // Followers — no beat effect (too small, would be noisy)
   for (const f of atk.followers) {
     _drawTrail(ctx, f.trail, {
       ...FOLLOWER_TRAIL_CFG,
@@ -410,7 +436,7 @@ function _drawSwarm(ctx: CanvasRenderingContext2D, atk: SwarmAttackInstance): vo
     ctx.restore();
   }
 
-  // Mother
+  // Mother — pulse radius on every beat
   const m = atk.mother;
   _drawTrail(ctx, m.trail, {
     ...MOTHER_TRAIL_CFG,
@@ -421,12 +447,22 @@ function _drawSwarm(ctx: CanvasRenderingContext2D, atk: SwarmAttackInstance): vo
   ctx.save();
   ctx.globalAlpha = globalFade;
   ctx.beginPath();
-  ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+  ctx.arc(m.x, m.y, m.radius * motherVisualScale, 0, Math.PI * 2);
   ctx.fillStyle = m.color;
   if (!_lowGraphics) {
     ctx.shadowColor = m.glowColor;
     ctx.shadowBlur  = 14;
   }
   ctx.fill();
+  // Downbeat halo ring around the mother
+  if (isDownbeat && !_lowGraphics && barPulse > 0.01) {
+    ctx.globalAlpha = globalFade * barPulse * BOSS_BAR_PULSE_STRENGTH * 0.7;
+    ctx.strokeStyle = m.glowColor;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, m.radius * motherVisualScale + 6, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }

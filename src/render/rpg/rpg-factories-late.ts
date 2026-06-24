@@ -151,6 +151,29 @@ export function makeEliteEnemy(tier: EliteTier, x: number, y: number, waveNumber
  * @param h          Canvas height in pixels — used to set the initial Y position.
  */
 export function makeBossEnemy(rawBossId: number, waveNumber: number, w: number, h: number): BossEnemy {
+  // Sand Warden (bossId 0) — tutorial boss with low stats
+  if (rawBossId === 0) {
+    return {
+      kind: 'boss',
+      bossId: 0,
+      phaseIndex: 0,
+      x: w / 2, y: h * 0.25,
+      vx: 0, vy: 0,
+      hp: 600, maxHp: 600,
+      atk: 15, def: 5,
+      attackTimerMs: 1000,
+      secondaryTimerMs: 2000,
+      orbitAngle: 0,
+      pulseMs: 0,
+      shieldHp: 0, maxShieldHp: 0,
+      isInvuln: false, invulnTimerMs: 0,
+      isAbsorbing: false, absorbTimerMs: 0,
+      contactCdMs: 0,
+      phaseTransitionMs: 0,
+      danmakuLevel: 0,
+      isFiringPaused: false,
+    };
+  }
   const bossScale = getWaveStatScale(waveNumber) * 4.0;
   const bossNum = ((rawBossId - 1) % 12) + 1;
   const extraScale = Math.floor((rawBossId - 1) / 12) + 1;

@@ -36,61 +36,22 @@ import type { EquatoriaParticle } from './particle-types';
 import { ParticlePool, initParticle } from './particle-pool';
 import {
   MAX_PARTICLES_FULL,
-  FORGE_RADIUS,
   CONVERSION_SPREAD_VELOCITY,
 } from '../../data/particles/particle-config';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
-import { checkForgeCrunch, startForgeCrunch, getCrunchOutput } from '../../sim/forge/forge-logic';
-import type { ForgeParticleInfo } from '../../sim/forge/forge-logic';
-
-/**
- * Reusable scratch array for forge-crunch particle infos.
- * We create new info objects (required since ForgeParticleInfo has
- * readonly properties) but reuse the outer array to reduce GC churn.
- */
-const _scratchInfos: ForgeParticleInfo[] = [];
+import { getCrunchOutput } from '../../sim/forge/forge-logic';
 
 export function checkAndStartForgeCrunch(
-  particles: EquatoriaParticle[],
-  crunchState: ForgeCrunchState,
-  forgeX: number,
-  forgeY: number,
-  nowMs: number,
+  _particles: EquatoriaParticle[],
+  _crunchState: ForgeCrunchState,
+  _forgeX: number,
+  _forgeY: number,
+  _nowMs: number,
 ): void {
-  const len = particles.length;
-  // Resize scratch array if needed
-  if (_scratchInfos.length < len) {
-    _scratchInfos.length = len;
-  }
-  // Build info objects
-  for (let i = 0; i < len; i++) {
-    const p = particles[i];
-    _scratchInfos[i] = {
-      tierId: p.tierId,
-      sizeIndex: p.sizeIndex,
-      x: p.x,
-      y: p.y,
-      isMerging: p.isMerging,
-    };
-  }
-  // Truncate scratch array to exact particle count so checkForgeCrunch
-  // iterates only the valid portion (it uses .filter which reads .length).
-  _scratchInfos.length = len;
-
-  const result = checkForgeCrunch(crunchState, _scratchInfos, forgeX, forgeY, FORGE_RADIUS, nowMs);
-  if (result) {
-    const resultSet = new Set(result);
-    for (let i = 0; i < len; i++) {
-      if (resultSet.has(_scratchInfos[i])) {
-        const p = particles[i];
-        p.isMerging = true;
-        p.mergeTargetX = forgeX;
-        p.mergeTargetY = forgeY;
-        p.isForgeCrunchParticle = true;
-      }
-    }
-    startForgeCrunch(crunchState, nowMs);
-  }
+  // checkForgeCrunch always returns null (legacy auto-crunch disabled — 3-tap heat
+  // system drives crunches instead). Early-return skips the per-particle
+  // ForgeParticleInfo object allocation loop that would otherwise run every frame.
+  return;
 }
 
 /**

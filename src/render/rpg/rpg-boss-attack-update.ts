@@ -21,7 +21,8 @@ import type {
   SwarmAttackInstance,
   VermiculateAttackInstance,
 } from './rpg-boss-attack-types';
-import { getBossAttackProfile } from './rpg-boss-attack-config';
+import { getBossAttackProfile, resolveAttackConfig } from './rpg-boss-attack-config';
+import { getBossBeatMs, computeNextBeatSpawnMs } from '../../data/rpg/boss-bpm';
 import { spawnGravAttack,        updateGravAttack,        getGravHazardCircles        } from './attacks/rpg-attack-grav';
 import { spawnHexAttack,         updateHexAttack,         getHexHazardCapsules, getHexHeadCircles } from './attacks/rpg-attack-hex';
 import { spawnMandalaAttack,     updateMandalaAttack,     getMandalaHazardCircles     } from './attacks/rpg-attack-mandala';
@@ -36,13 +37,10 @@ import {
 } from './attacks/rpg-attack-quartz-signature';
 import { PLAYER_HIT_RADIUS, PLAYER_IFRAME_MIN_MS, PLAYER_IFRAME_MAX_ADD_MS } from './rpg-constants';
 import { isPlayerInStageDirectorSafeZone } from './rpg-boss-stage-director';
-import { getBossTempoSyncedLegacyIntervalMs } from '../../data/rpg/boss-tempo-config';
-import { isPlayerInBossAttackVoid } from './rpg-boss-attack-void';
 
 // ── Caps ──────────────────────────────────────────────────────────────────────
 
-const MAX_ACTIVE_ATTACKS      = 6;
-const SCHEDULER_COOLDOWN_BEATS = 1; // minimum gap between any two scheduler decisions
+const MAX_ACTIVE_ATTACKS = 6;
 
 // ── Context interface ─────────────────────────────────────────────────────────
 
@@ -66,6 +64,19 @@ export function updateBossAttacks(
   bossEnemy: BossEnemy | null,
   deltaMs: number,
 ): void {
+  // ── Reset fight clock on boss change ─────────────────────────────────────
+  if (bossEnemy && state.lastBossId !== bossEnemy.bossId) {
+    state.elapsedFightMs = 0;
+    state.pendingBeatSpawns.clear();
+    state.lastBossId = bossEnemy.bossId;
+  } else if (!bossEnemy) {
+    state.pendingBeatSpawns.clear();
+    state.lastBossId = null;
+  }
+
+  // ── Advance fight clock ───────────────────────────────────────────────────
+  state.elapsedFightMs += deltaMs;
+
   // ── Tick scheduler cooldown ──────────────────────────────────────────────
   for (const [key, remaining] of state.schedulerCooldowns) {
     const next = remaining - deltaMs;
@@ -96,7 +107,17 @@ export function updateBossAttacks(
     }
   }
 
-  // ── Spawn new attacks ────────────────────────────────────────────────────
+  // ── Fire beat-aligned pending spawns ─────────────────────────────────────
+  if (bossEnemy && !bossEnemy.isFiringPaused) {
+    for (const [key, pending] of state.pendingBeatSpawns) {
+      if (state.elapsedFightMs >= pending.targetMs) {
+        spawnBossAttackFromConfig(state, ctx, bossEnemy, pending.cfg, true);
+        state.pendingBeatSpawns.delete(key);
+      }
+    }
+  }
+
+  // ── Queue new attacks (beat-aligned) ────────────────────────────────────
   if (bossEnemy && !bossEnemy.isFiringPaused && profile) {
     if (state.attacks.length < MAX_ACTIVE_ATTACKS) {
       const phaseAttacks = _getPhaseAttacks(profile, bossEnemy.phaseIndex);
@@ -108,7 +129,7 @@ export function updateBossAttacks(
 
   // ── Collision detection ──────────────────────────────────────────────────
   if (ctx.getPlayerIFramesMs() <= 0) {
-    applyBossAttackCollision(state, ctx, bossEnemy);
+    applyBossAttackCollision(state, ctx);
   }
 }
 
@@ -130,21 +151,27 @@ function _dispatchUpdate(
 
 function _tryScheduleAttack(
   state: BossAttackState,
-  ctx: BossAttackUpdateCtx,
+  _ctx: BossAttackUpdateCtx,
   boss: BossEnemy,
   phaseAttacks: ReturnType<typeof _getPhaseAttacks>,
   _deltaMs: number,
 ): void {
-  // Filter to kinds that are off cooldown and not currently active
+  // Filter to kinds that are off cooldown and not already pending a beat-aligned spawn
   const candidates = phaseAttacks.filter(cfg => {
     const key = `${boss.bossId}_${cfg.kind}`;
-    return !state.schedulerCooldowns.has(key);
+    return !state.schedulerCooldowns.has(key) && !state.pendingBeatSpawns.has(key);
   });
   if (candidates.length === 0) return;
 
   // Random selection (Math.random only used for scheduler choice)
   const cfg = candidates[Math.floor(Math.random() * candidates.length)];
-  spawnBossAttackFromConfig(state, ctx, boss, cfg, true);
+  const key = `${boss.bossId}_${cfg.kind}`;
+
+  // Compute the next beat-grid boundary from current fight elapsed time.
+  // Default gridBeats=1.0 (every beat). The attack fires at the next multiple.
+  const gridBeats = cfg.gridBeats ?? 1.0;
+  const targetMs = computeNextBeatSpawnMs(state.elapsedFightMs, boss.bossId, gridBeats);
+  state.pendingBeatSpawns.set(key, { cfg, targetMs });
 }
 
 export function spawnBossAttackFromConfig(
@@ -159,41 +186,39 @@ export function spawnBossAttackFromConfig(
   const bossX = boss.x;
   const bossY = boss.y;
 
+  // Resolve beat-authored config to runtime ms values — single central conversion.
+  const resolved = resolveAttackConfig(boss.bossId, cfg);
+
   let instance: BossAttackInstance | null = null;
-  switch (cfg.kind) {
+  switch (resolved.kind) {
     case 'grav':
-      instance = spawnGravAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnGravAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
     case 'hexTrail':
-      instance = spawnHexAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnHexAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
     case 'mandala':
-      instance = spawnMandalaAttack(bossX, bossY, cfg.params, difficulty);
+      instance = spawnMandalaAttack(bossX, bossY, resolved.params, difficulty);
       break;
     case 'vermiculate':
-      instance = spawnVermiculateAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnVermiculateAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
     case 'missileRing':
-      instance = spawnMissileAttack(bossX, bossY, cfg.params, difficulty);
+      instance = spawnMissileAttack(bossX, bossY, resolved.params, difficulty);
       break;
     case 'motherSwarm':
-      instance = spawnSwarmAttack(bossX, bossY, cfg.params, difficulty);
+      instance = spawnSwarmAttack(bossX, bossY, resolved.params, difficulty);
       break;
     case 'quartzSignature':
-      instance = spawnQuartzSignatureAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnQuartzSignatureAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
   }
 
   if (instance) {
     state.attacks.push(instance);
     if (applyCooldown) {
-      // Total cooldown = per-kind musical interval + one beat gap to prevent
-      // rapid re-firing of the same kind immediately after it expires.
-      state.schedulerCooldowns.set(
-        key,
-        getBossTempoSyncedLegacyIntervalMs(boss.bossId, cfg.cooldownMs) +
-          getBossTempoSyncedLegacyIntervalMs(boss.bossId, SCHEDULER_COOLDOWN_BEATS * 1000),
-      );
+      // Total cooldown = per-kind config ms + one beat gap to avoid rapid re-firing.
+      state.schedulerCooldowns.set(key, resolved.cooldownMs + getBossBeatMs(boss.bossId));
     }
     return true;
   }
@@ -216,7 +241,6 @@ function _getPhaseAttacks(
 export function applyBossAttackCollision(
   state: BossAttackState,
   ctx: BossAttackUpdateCtx,
-  bossEnemy: BossEnemy | null,
 ): void {
   const px = ctx.playerX;
   const py = ctx.playerY;
@@ -224,7 +248,6 @@ export function applyBossAttackCollision(
 
   // During boss waves, the bottom safe zone protects the player from all special attacks.
   if (ctx.getIsBossWaveActive() && isPlayerInStageDirectorSafeZone(px, py, ctx.dim)) return;
-  if (isPlayerInBossAttackVoid(px, py, bossEnemy)) return;
 
   for (const atk of state.attacks) {
     if (_checkAttackHitsPlayer(atk, px, py, pr)) {

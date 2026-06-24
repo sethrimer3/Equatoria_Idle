@@ -73,6 +73,10 @@ export function drawSwordCombos(
       drawEigensteinBlade(ctx, state, mote, tier, nowMs);
       continue;
     }
+    if (weaponId === 'wooden_sword') {
+      drawWoodenSwordCombo(ctx, state, mote, tier);
+      continue;
+    }
     const baseSwordLength = getSwordLength(tier);
     const isSpinCombo = state.phase === 'spin_combo';
     const swordLength = baseSwordLength;
@@ -234,6 +238,98 @@ export function drawSwordCombos(
     ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
     ctx.restore();
   }
+}
+
+// ── Wooden practice sword ────────────────────────────────────────────────────
+
+function drawWoodenSwordCombo(
+  ctx: CanvasRenderingContext2D,
+  state: SwordComboState,
+  mote: { x: number; y: number },
+  tier: number,
+): void {
+  const swordLength = getSwordLength(tier);
+  const angle = state.swordAngle;
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  const perpX = -sinA, perpY = cosA;
+
+  ctx.save();
+
+  // ── Spin combo: warm brown ring ──
+  if (state.phase === 'spin_combo') {
+    const spinT   = Math.min(1, state.phaseMs / SWORD_COMBO_SPIN_MS);
+    const ringAlpha = 0.5 + 0.4 * Math.abs(Math.sin(spinT * Math.PI * SWORD_COMBO_SPIN_TURNS));
+    ctx.globalAlpha = ringAlpha * 0.8;
+    ctx.lineWidth   = 3;
+    ctx.strokeStyle = '#b08040';
+    if (!isLowGraphicsMode) { ctx.shadowBlur = 12; ctx.shadowColor = '#c8a060'; }
+    ctx.beginPath();
+    ctx.arc(mote.x, mote.y, swordLength, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth  = 1;
+  }
+
+  const bladeAlpha = state.phase === 'swing' ? 1.0 : 0.82;
+
+  // ── Blade body: tapered brown stick ──
+  const bladeStart = 6;        // gap from player centre to handle
+  const guardDist  = bladeStart + 10;  // where crossguard sits
+  const tipX = mote.x + cosA * swordLength;
+  const tipY = mote.y + sinA * swordLength;
+  const baseX = mote.x + cosA * bladeStart;
+  const baseY = mote.y + sinA * bladeStart;
+  const halfW  = 2.5;
+  const halfWTip = 0.8;
+
+  ctx.globalAlpha = bladeAlpha;
+  ctx.fillStyle   = '#8b6040';
+  if (!isLowGraphicsMode) { ctx.shadowBlur = 5; ctx.shadowColor = '#c8a060'; }
+  ctx.beginPath();
+  ctx.moveTo(baseX + perpX * halfW,   baseY + perpY * halfW);
+  ctx.lineTo(tipX  + perpX * halfWTip, tipY + perpY * halfWTip);
+  ctx.lineTo(tipX,  tipY);
+  ctx.lineTo(tipX  - perpX * halfWTip, tipY - perpY * halfWTip);
+  ctx.lineTo(baseX - perpX * halfW,   baseY - perpY * halfW);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // ── Crossguard: perpendicular dark-brown bar ──
+  const gx = mote.x + cosA * guardDist;
+  const gy = mote.y + sinA * guardDist;
+  const guardHalfLen = 6;
+  const guardHalfW   = 1.5;
+  ctx.fillStyle  = '#5c3317';
+  ctx.globalAlpha = bladeAlpha;
+  ctx.beginPath();
+  ctx.moveTo(gx + perpX * guardHalfLen - cosA * guardHalfW, gy + perpY * guardHalfLen - sinA * guardHalfW);
+  ctx.lineTo(gx + perpX * guardHalfLen + cosA * guardHalfW, gy + perpY * guardHalfLen + sinA * guardHalfW);
+  ctx.lineTo(gx - perpX * guardHalfLen + cosA * guardHalfW, gy - perpY * guardHalfLen + sinA * guardHalfW);
+  ctx.lineTo(gx - perpX * guardHalfLen - cosA * guardHalfW, gy - perpY * guardHalfLen - sinA * guardHalfW);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Swipe arcs: warm tan crescents ──
+  for (const fx of state.swipeEffects) {
+    const elapsed   = fx.maxTimerMs - fx.timerMs;
+    const lifeRatio = elapsed / fx.maxTimerMs;
+    const arcAlpha  = (1 - lifeRatio) * 0.75;
+    ctx.globalAlpha = arcAlpha;
+    ctx.lineCap     = 'round';
+    ctx.lineWidth   = 3.5 * (1 - lifeRatio * 0.6);
+    ctx.strokeStyle = '#b08040';
+    if (!isLowGraphicsMode) { ctx.shadowBlur = 5; ctx.shadowColor = '#d0a060'; }
+    ctx.beginPath();
+    ctx.arc(fx.x, fx.y, fx.swordLength, fx.arcStart, fx.arcEnd);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.lineCap    = 'butt';
+  }
+
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 1;
+  ctx.restore();
 }
 
 // ── Eigenstein dimensional sword ──────────────────────────────────────────────

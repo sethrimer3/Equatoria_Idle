@@ -200,7 +200,33 @@ function drawActiveMergeRays(
   ctx.restore();
 }
 
+// ─── Low-graphics helpers ──────────────────────────────────────────
+
+/**
+ * Compute the per-tier maximum sizeIndex among active (non-merging) particles.
+ * Used by low-graphics mote rendering to decide which particles to skip.
+ *
+ * Exported for unit testing — verifies that the low-graphics setting is
+ * actually read by the render code path.
+ */
+export function computeLowGraphicsMaxSizeByTier(
+  particles: EquatoriaParticle[],
+): Map<string, number> {
+  const maxByTier = new Map<string, number>();
+  for (let pi = 0, plen = particles.length; pi < plen; pi++) {
+    const p = particles[pi];
+    if (p.isMerging && !p.isForgeCrunchParticle) continue;
+    const prev = maxByTier.get(p.tierId) ?? -1;
+    if (p.sizeIndex > prev) maxByTier.set(p.tierId, p.sizeIndex);
+  }
+  return maxByTier;
+}
+
 // ─── Draw ────────────────────────────────────────────────────────
+
+// Reusable per-frame map for low-graphics max-sizeIndex computation.
+// Keyed by tierId string to avoid allocation.
+const _lowGfxMaxSize = new Map<string, number>();
 
 export function drawParticles(
   cc: CanvasContext,
@@ -209,8 +235,22 @@ export function drawParticles(
   activeMerges: ActiveMerge[],
   options: ParticleRenderOptions,
   nowMs: number,
+  lowGraphicsMotes = false,
 ): void {
   const ctx = cc.ctx;
+
+  // ── Low-graphics mote filter prep ──
+  // When enabled, only the single largest non-zero sizeIndex per tier is
+  // rendered. Compute the per-tier max here so the batching pass can use it.
+  if (lowGraphicsMotes) {
+    _lowGfxMaxSize.clear();
+    for (let pi = 0, plen = particles.length; pi < plen; pi++) {
+      const p = particles[pi];
+      if (p.isMerging && !p.isForgeCrunchParticle) continue;
+      const prev = _lowGfxMaxSize.get(p.tierId) ?? -1;
+      if (p.sizeIndex > prev) _lowGfxMaxSize.set(p.tierId, p.sizeIndex);
+    }
+  }
 
   // ── Draw glow field (high graphics only) ──
   // Must be drawn first so it sits behind trails and particle bodies.
@@ -228,9 +268,15 @@ export function drawParticles(
       // Skip suction-merge particles — they are at the generator and invisible.
       // Forge-crunch particles (isForgeCrunchParticle) still fly visibly.
       if (p.isMerging && !p.isForgeCrunchParticle) continue;
+      // Low-graphics: skip particles smaller than the largest size for their tier.
+      if (lowGraphicsMotes && p.sizeIndex < (_lowGfxMaxSize.get(p.tierId) ?? p.sizeIndex)) continue;
       if (p.sizeIndex < MEDIUM_SIZE_INDEX || p.trailCount < 2) continue;
       const isLarge = p.sizeIndex >= LARGE_SIZE_INDEX;
       const trailLen = p.trailCount;
+
+      // fillStyle is constant per particle — set once before the inner loop
+      // to avoid one property-setter call per trail segment.
+      ctx.fillStyle = p.colorString;
 
       for (let i = 0; i < trailLen; i++) {
         const t = i / trailLen;
@@ -238,11 +284,9 @@ export function drawParticles(
 
         if (isLarge) {
           const tailSize = p.size * t * 0.8;
-          const alpha = t * 0.6;
           if (tailSize < 0.3) continue;
 
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = p.colorString;
+          ctx.globalAlpha = t * 0.6;
           const half = tailSize / 2;
           ctx.fillRect(
             Math.floor(_trailPos.x - half),
@@ -251,9 +295,7 @@ export function drawParticles(
             Math.ceil(tailSize),
           );
         } else {
-          const alpha = t * 0.25;
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = p.colorString;
+          ctx.globalAlpha = t * 0.25;
           ctx.fillRect(Math.floor(_trailPos.x), Math.floor(_trailPos.y), 1, 1);
         }
       }
@@ -266,12 +308,20 @@ export function drawParticles(
   // Reset counts on existing batches
   for (const batch of _batchMap.values()) batch.count = 0;
 
+  const viewW = cc.widthPx;
+  const viewH = cc.heightPx;
+
   for (let pi = 0, plen = particles.length; pi < plen; pi++) {
     const p = particles[pi];
     // Suction-merge particles are teleported to the generator and should not
     // be rendered (they are invisible behind it). Forge-crunch particles are
     // still flying and should remain visible.
     if (p.isMerging && !p.isForgeCrunchParticle) continue;
+    // Low-graphics: skip particles smaller than the largest size for their tier.
+    if (lowGraphicsMotes && p.sizeIndex < (_lowGfxMaxSize.get(p.tierId) ?? p.sizeIndex)) continue;
+    // Skip particles whose bounding box is entirely outside the canvas viewport.
+    const s = p.size;
+    if (p.x + s < 0 || p.x - s > viewW || p.y + s < 0 || p.y - s > viewH) continue;
     const key = (p.tierIndex << 8) | p.sizeIndex;
     let batch = _batchMap.get(key);
     if (!batch || batch.count === 0) {

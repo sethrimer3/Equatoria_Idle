@@ -70,6 +70,32 @@ export function updateBossBehavior(
 
   // ── Non-wave: per-boss-ID movement and attack patterns ───────────────────────
 
+  if (bossId === 0) {
+    // Sand Warden — slow orbit at moderate distance, forgiving projectile burst
+    const preferredDist = 80;
+    const approachSpd   = 0.3;
+    if (dist > preferredDist + 25)      { boss.vx += dirX * approachSpd * 0.12; boss.vy += dirY * approachSpd * 0.12; }
+    else if (dist < preferredDist - 25) { boss.vx -= dirX * approachSpd * 0.08; boss.vy -= dirY * approachSpd * 0.08; }
+    boss.orbitAngle += 0.005 * dt;
+    boss.vx += Math.cos(boss.orbitAngle) * 0.035;
+    boss.vy += Math.sin(boss.orbitAngle) * 0.035;
+    boss.vx *= 0.94; boss.vy *= 0.94;
+    if (boss.attackTimerMs <= 0) {
+      boss.attackTimerMs = atk1Cd;
+      const count = 4 + boss.phaseIndex * 2;
+      for (let i = 0; i < count; i++) {
+        const a   = (i / count) * Math.PI * 2;
+        const spd = BOSS_PROJ_SPEED * 0.65;
+        ctx.bossProjectiles.push({
+          x: boss.x, y: boss.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+          atk: boss.atk, hasHitPlayer: false, lifeMs: BOSS_PROJ_LIFE_MS, maxLifeMs: BOSS_PROJ_LIFE_MS,
+          color: BOSS_COLORS[0], glowColor: BOSS_GLOW_COLORS[0], size: BOSS_PROJ_SIZE, seekStr: 0,
+        });
+      }
+    }
+    return false;
+  }
+
   if (bossId === 1) {
     const preferredDist = 100 + boss.phaseIndex * 20;
     const approachSpd   = 0.5 + boss.phaseIndex * 0.15;

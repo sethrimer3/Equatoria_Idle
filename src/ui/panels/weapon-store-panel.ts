@@ -162,6 +162,7 @@ export function createWeaponStorePanel(dispatch: ActionHandler): WeaponStorePane
     if (!lastRpgState || !lastResources) return;
     list.innerHTML = '';
     for (const weapon of WEAPON_DEFINITIONS) {
+      if (weapon.isTutorialWeapon) continue;
       list.appendChild(buildCard(weapon, lastRpgState, lastResources, lastFormat, lastIsDevMode));
     }
   }

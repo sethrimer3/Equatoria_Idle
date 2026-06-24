@@ -43,6 +43,8 @@ export interface ForgeCrunchState {
   moteConversionTierId: string | null;
   /** SizeIndex of the mote being converted, or null when idle. */
   moteConversionSizeIndex: number | null;
+  /** particleId of the exact physical particle being converted, or null when idle. */
+  moteConversionParticleId: number | null;
   /** Wall-clock timestamp when the conversion was initiated. Null when idle. */
   moteConversionStartMs: number | null;
   /** Forge efficiency multiplier (1.0 = 100%). Affects conversion output. */
@@ -67,6 +69,7 @@ export function createForgeCrunchState(): ForgeCrunchState {
     moteConversionState: 'idle',
     moteConversionTierId: null,
     moteConversionSizeIndex: null,
+    moteConversionParticleId: null,
     moteConversionStartMs: null,
     forgeEfficiency: 1.0,
   };

@@ -42,10 +42,10 @@ export function updateParticlePhysics(
     const dy = p.mergeTargetY - p.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 1) {
-      const angle = Math.atan2(dy, dx);
-      const gatherSpeed = SUCTION_GATHER_SPEED * clampedDelta;
-      p.vx = Math.cos(angle) * gatherSpeed;
-      p.vy = Math.sin(angle) * gatherSpeed;
+      // Direct normalized vector avoids atan2+cos+sin
+      const gatherSpeed = SUCTION_GATHER_SPEED * clampedDelta / dist;
+      p.vx = dx * gatherSpeed;
+      p.vy = dy * gatherSpeed;
     } else {
       p.vx = 0;
       p.vy = 0;
@@ -59,10 +59,10 @@ export function updateParticlePhysics(
     const dy = p.pointerTargetY - p.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 1) {
-      const force = particleTweaks.pointerLockedForce * p.forceModifier;
-      const angle = Math.atan2(dy, dx);
-      p.vx += Math.cos(angle) * force * clampedDelta;
-      p.vy += Math.sin(angle) * force * clampedDelta;
+      // Direct normalized vector avoids atan2+cos+sin
+      const force = particleTweaks.pointerLockedForce * p.forceModifier * clampedDelta / dist;
+      p.vx += dx * force;
+      p.vy += dy * force;
     } else {
       const damping = Math.pow(POINTER_LOCKED_DAMPING, clampedDelta);
       p.vx *= damping;

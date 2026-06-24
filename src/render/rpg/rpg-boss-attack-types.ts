@@ -329,12 +329,28 @@ export type BossAttackInstance =
 
 // ── Boss attack state (held in rpg-render.ts closure) ────────────────────────
 
+export interface PendingBeatSpawn {
+  /** Beat-authored config waiting for its beat boundary. */
+  cfg: import('./rpg-boss-attack-config').BossAttackKindConfig;
+  /** Accumulated fight-ms at which this spawn may fire. */
+  targetMs: number;
+}
+
 export interface BossAttackState {
   attacks: BossAttackInstance[];
   /** key: `${bossId}_${kind}` → ms remaining on cooldown */
   schedulerCooldowns: Map<string, number>;
   /** Sum of pressure scores of all currently active attacks */
   activePressure: number;
+  /** Accumulated ms since the current boss fight began. Used for beat-grid alignment. */
+  elapsedFightMs: number;
+  /**
+   * key: `${bossId}_${kind}` → spawn waiting for its beat-grid boundary.
+   * Populated when a cooldown expires; fired when elapsedFightMs >= targetMs.
+   */
+  pendingBeatSpawns: Map<string, PendingBeatSpawn>;
+  /** Tracks the active boss so we can reset fight-clock on boss change. */
+  lastBossId: number | null;
 }
 
 export function createBossAttackState(): BossAttackState {
@@ -342,5 +358,8 @@ export function createBossAttackState(): BossAttackState {
     attacks: [],
     schedulerCooldowns: new Map(),
     activePressure: 0,
+    elapsedFightMs: 0,
+    pendingBeatSpawns: new Map(),
+    lastBossId: null,
   };
 }

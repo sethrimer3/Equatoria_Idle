@@ -49,6 +49,27 @@ export const BOSS_DIALOGUE: BossDialogueTable = {
     BOSS_DEFEATED: ['This is not the end.'],
   },
   bosses: {
+    boss_0: {
+      name: 'The First Sand',
+      intro: ['A practice blade hums in your hands.', 'Watch the rhythm.'],
+      phaseStart: {
+        0: ['Watch the rhythm.'],
+        1: ['Patterns shift. Stay with it.'],
+        2: ['Sand teaches the first pattern.'],
+      },
+      hpThresholds: [
+        { ratio: 0.75, once: true, lines: ['You are learning.'] },
+        { ratio: 0.50, once: true, lines: ['Halfway through the lesson.'] },
+        { ratio: 0.25, once: true, lines: ['One last pattern.'] },
+      ],
+      events: {
+        BOSS_DANMAKU_STARTED: ['Find the gap in the sand.'],
+        BOSS_HIT_PLAYER_HARD: ['The sand does not forgive hesitation.'],
+        PLAYER_BLOCKED_BOSS_ATTACK: ['Good. Remember that.'],
+        BOSS_KILLED_PLAYER: ['The sand reclaims you.'],
+        BOSS_DEFEATED: ['Sand teaches the first pattern.'],
+      },
+    },
     boss_1: {
       name: 'The First Axiom',
       intro: ['So. The little mote arrives.', 'Let us see what your motion means.'],

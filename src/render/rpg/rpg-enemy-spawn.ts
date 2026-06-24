@@ -658,7 +658,8 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     // Boss is positioned relative to the stable safe-core area so its composition
     // remains centred on all canvas sizes.
     const sc = fieldSpace.safeCoreBounds;
-    ctx.setBossEnemy(makeBossEnemy(Math.ceil(wn / 100), wn, sc.width, sc.height));
+    const rawBossId = wn === 50 ? 0 : Math.ceil(wn / 100);
+    ctx.setBossEnemy(makeBossEnemy(rawBossId, wn, sc.width, sc.height));
     ctx.enterBossWave();
   } else if (
     enemyTypeId === 'elite_quartz' || enemyTypeId === 'elite_ruby'   ||

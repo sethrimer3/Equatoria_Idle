@@ -145,11 +145,12 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
     ctx.setIsBossWaveActive(true);
     // Save weapon tiers so we can restore them after the boss fight.
     ctx.setBossPreWaveWeaponTiers(new Map(ctx.rpgSimState.weaponTiersByWeaponId));
-    // Override active weapons to diamond_bastion at tier 1 for boss combat.
+    // Override active weapons for boss combat — wooden_sword for Sand Warden, diamond_bastion otherwise.
     // The player's rpgSimState.equippedWeaponIds is intentionally NOT modified,
     // so equip actions, saves, and the weapons UI are unaffected.
-    ctx.setBossActiveEquipIds(new Set(['diamond_bastion']));
-    ctx.rpgSimState.weaponTiersByWeaponId.set('diamond_bastion', 1);
+    const bossWeaponId = ctx.getBossEnemy()?.bossId === 0 ? 'wooden_sword' : 'diamond_bastion';
+    ctx.setBossActiveEquipIds(new Set([bossWeaponId]));
+    ctx.rpgSimState.weaponTiersByWeaponId.set(bossWeaponId, 1);
     // Move player to safe zone at bottom-middle
     const { mote } = ctx;
     mote.x = getSafeZoneX(); mote.y = getSafeZoneY();

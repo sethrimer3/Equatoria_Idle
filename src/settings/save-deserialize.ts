@@ -465,6 +465,7 @@ export function deserializeGameState(data: SaveData): GameState {
     }
     // v34+: Resonance Dust
     state.rpg.resonanceDust = data.rpg.resonanceDust ?? 0;
+
   }
 
   // v13+: pending idle-mote drip queue (absent in older saves → empty array)

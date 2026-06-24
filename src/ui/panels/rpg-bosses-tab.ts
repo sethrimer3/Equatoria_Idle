@@ -70,13 +70,14 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
     // ── Next unlock hint ──
     if (!isDevMode) {
       let nextBossId: number | null = null;
-      for (let id = 1; id <= TOTAL_BOSS_COUNT; id++) {
+      for (let id = 0; id <= TOTAL_BOSS_COUNT; id++) {
         if (!isBossUnlocked(id, rpgState.highestWaveReached)) { nextBossId = id; break; }
       }
       if (nextBossId !== null) {
         const hint = document.createElement('div');
         hint.style.cssText = 'text-align:center;font-size:0.78em;color:#888;padding:2px 0;';
-        hint.textContent = `Next boss unlocks at wave ${nextBossId * 100} (highest: wave ${rpgState.highestWaveReached})`;
+        const unlockWave = nextBossId === 0 ? 50 : nextBossId * 100;
+        hint.textContent = `Next boss unlocks at wave ${unlockWave} (highest: wave ${rpgState.highestWaveReached})`;
         element.appendChild(hint);
       }
     }
@@ -85,7 +86,7 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
     const listContainer = document.createElement('div');
     listContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
-    for (let bossId = 1; bossId <= TOTAL_BOSS_COUNT; bossId++) {
+    for (let bossId = 0; bossId <= TOTAL_BOSS_COUNT; bossId++) {
       const unlocked = isDevMode || isBossUnlocked(bossId, rpgState.highestWaveReached);
       const bestSpeed = rpgState.bossCompletions.get(bossId) ?? 0;
       const isCompleted = bestSpeed > 0;
@@ -119,7 +120,7 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
 
       const waveReq = document.createElement('span');
       waveReq.style.cssText = 'font-size:0.75em;color:#666;';
-      waveReq.textContent = `Unlocks at wave ${bossId * 100}`;
+      waveReq.textContent = `Unlocks at wave ${bossId === 0 ? 50 : bossId * 100}`;
       subRow.appendChild(waveReq);
 
       if (unlocked) {

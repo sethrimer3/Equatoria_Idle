@@ -76,6 +76,7 @@ import { updateShockwaves } from './particle-shockwave';
 import { drawParticles, updateParticleRendererTime, getParticleRendererAnimTimeMs } from './particle-renderer';
 import type { ParticleLifeDebugState } from './particle-life-debug';
 import { drawParticleLifeDebug, createDefaultDebugState } from './particle-life-debug';
+import { perfStats } from '../debug/perf-stats';
 import { drawGrabVisual } from './particle-grab-visual';
 import { resetGlowField } from './particle-glow-field';
 import type { ParticleDragState } from '../../input/particle-drag';
@@ -128,6 +129,15 @@ const MAX_SUBSTEPS_PER_FRAME = 4;
  * behaviour is independent of the render frame rate.
  */
 const FIXED_STEP_DELTA = FIXED_STEP_MS / (1000 / 60); // ≈ 0.5
+
+/**
+ * Squared speed threshold for skip-frame physics.
+ * Motes whose speed² is below this value are eligible to run physics every
+ * other tick (half-frequency), saving ~50% physics work for idle particles.
+ * Threshold is (2 × MIN_VELOCITY)² — well below normal drift speed.
+ * Motes in any special state (merging, captured, locked) always run full-rate.
+ */
+const SKIP_PHYSICS_VELOCITY_SQ = (MIN_VELOCITY * 2) * (MIN_VELOCITY * 2);
 
 // ─── ParticleSystem class ────────────────────────────────────────
 
@@ -243,6 +253,24 @@ export class ParticleSystem {
     }
   }
 
+  /**
+   * Remove the particle with the given unique ID from the scene.
+   * Used after a forge mote conversion commits to eliminate exactly the
+   * physical particle that was dragged into the forge.
+   * No-op if no particle with that ID exists.
+   */
+  removeParticleById(particleId: number): void {
+    for (let i = 0, len = this.particles.length; i < len; i++) {
+      if (this.particles[i].particleId === particleId) {
+        this._pool.release(this.particles[i]);
+        // Swap-with-last + pop: O(1) removal for unordered arrays.
+        this.particles[i] = this.particles[len - 1];
+        this.particles.pop();
+        return;
+      }
+    }
+  }
+
   /** Rush all particles of the given tier toward the generator position. */
   gatherMotesToGenerator(tierId: TierId, genX: number, genY: number): void {
     for (const p of this.particles) {
@@ -269,6 +297,7 @@ export class ParticleSystem {
     crunchState: ForgeCrunchState,
     options: ParticleRenderOptions,
     isForgeUnlocked: boolean,
+    isDevMode = false,
   ): ParticleAudioEvents {
     this.frameCount++;
 
@@ -303,15 +332,28 @@ export class ParticleSystem {
     const skipPhysics = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 === 0;
     const skipPL      = this.particles.length > PERFORMANCE_THRESHOLD && this.frameCount % 2 !== 0;
 
+    // Frame parity used for skip-frame idle physics (see SKIP_PHYSICS_VELOCITY_SQ).
+    const frameParity = this.frameCount & 1;
+
+    const _t0tick = isDevMode ? performance.now() : 0;
+
     while (this._accumMs >= FIXED_STEP_MS) {
       this._accumMs -= FIXED_STEP_MS;
 
       // Normal motes intentionally have no loom/forge attraction or steering.
       if (!skipPhysics) {
         for (let i = 0, len = this.particles.length; i < len; i++) {
-          updateParticlePhysics(
-            this.particles[i], FIXED_STEP_DELTA, nowMs, canvasWidth, canvasHeight,
-          );
+          const p = this.particles[i];
+          // Skip-frame idle physics: motes with near-zero velocity that are not in
+          // any special state run at half frequency, alternating by particleId parity.
+          // Motes transitioning into/out of idle have at most one sub-pixel position
+          // lag — invisible at normal speeds.
+          if (!p.isMerging && !p.isCaptured && !p.isLockedToPointer &&
+              p.vx * p.vx + p.vy * p.vy < SKIP_PHYSICS_VELOCITY_SQ &&
+              (p.particleId & 1) !== frameParity) {
+            continue;
+          }
+          updateParticlePhysics(p, FIXED_STEP_DELTA, nowMs, canvasWidth, canvasHeight);
         }
         applyEdgeRepulsion(this.particles, canvasWidth, canvasHeight, FIXED_STEP_DELTA);
       }
@@ -347,6 +389,8 @@ export class ParticleSystem {
       // Toroidal wraparound
       applyWrapAround(this.particles, canvasWidth, canvasHeight);
     }
+
+    if (isDevMode) perfStats.particleTickMs = performance.now() - _t0tick;
 
     // ── Post-simulation (once per render frame) ──────────────────
 
@@ -445,9 +489,10 @@ export class ParticleSystem {
     canvasWidth?: number,
     canvasHeight?: number,
     nowMs?: number,
+    lowGraphicsMotes?: boolean,
   ): void {
     const renderNow = nowMs ?? performance.now();
-    drawParticles(cc, this.particles, this.shockwaves, this.activeMerges, options, renderNow);
+    drawParticles(cc, this.particles, this.shockwaves, this.activeMerges, options, renderNow, lowGraphicsMotes ?? false);
     if (dragState !== undefined && canvasWidth !== undefined && canvasHeight !== undefined) {
       drawGrabVisual(cc, dragState, this.particles, canvasWidth, canvasHeight, getParticleRendererAnimTimeMs());
     }

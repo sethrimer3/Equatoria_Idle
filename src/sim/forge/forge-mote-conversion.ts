@@ -80,11 +80,16 @@ export function calcForgeConversionOutput(
  * Begin a forge mote conversion (player drags a mote onto the forge).
  * Returns false if another conversion is already pending, or if the mote
  * size is 1×1 (SizeIndex 0), which is too small to crunch.
+ *
+ * @param particleId  Unique ID of the exact physical particle being converted.
+ *                    Stored so the game loop can remove that specific particle
+ *                    from the scene at the crunch moment.
  */
 export function startForgeMoteConversion(
   forge: ForgeCrunchState,
   tierId: TierId,
   sizeIndex: SizeIndex,
+  particleId: number,
   nowMs: number,
 ): boolean {
   if (forge.moteConversionState !== 'idle') return false;
@@ -93,6 +98,7 @@ export function startForgeMoteConversion(
   forge.moteConversionState = 'forgePending';
   forge.moteConversionTierId = tierId;
   forge.moteConversionSizeIndex = sizeIndex;
+  forge.moteConversionParticleId = particleId;
   forge.moteConversionStartMs = nowMs;
   return true;
 }
@@ -184,6 +190,7 @@ export function commitForgeMoteConversion(
   forge.moteConversionState = 'idle';
   forge.moteConversionTierId = null;
   forge.moteConversionSizeIndex = null;
+  forge.moteConversionParticleId = null;
   forge.moteConversionStartMs = null;
 
   return result;
@@ -197,5 +204,6 @@ export function resetForgeMoteConversion(forge: ForgeCrunchState): void {
   forge.moteConversionState = 'idle';
   forge.moteConversionTierId = null;
   forge.moteConversionSizeIndex = null;
+  forge.moteConversionParticleId = null;
   forge.moteConversionStartMs = null;
 }

@@ -80,7 +80,7 @@ describe('Test 3 — dragging a valid 2×2 mote converts only that mote', () => 
     const quartzBefore = getMotes(resources, 'quartz' as TierId);
 
     // Start conversion for one 2×2 (SizeIndex 1)
-    const started = startForgeMoteConversion(forge, 'sand' as TierId, 1, 0);
+    const started = startForgeMoteConversion(forge, 'sand' as TierId, 1, 0, 0);
     expect(started).toBe(true);
 
     // Advance past the crunch moment
@@ -100,7 +100,7 @@ describe('Test 3 — dragging a valid 2×2 mote converts only that mote', () => 
 describe('Test 4 — 1×1 motes (SizeIndex 0) are rejected', () => {
   it('startForgeMoteConversion returns false for SizeIndex 0', () => {
     const forge = createForgeCrunchState();
-    const started = startForgeMoteConversion(forge, 'sand' as TierId, 0, 0);
+    const started = startForgeMoteConversion(forge, 'sand' as TierId, 0, 0, 0);
     expect(started).toBe(false);
     expect(forge.moteConversionState).toBe('idle');
   });
@@ -163,7 +163,7 @@ describe('Test 7 — Sand 3×3 at 125% efficiency → 1 Quartz 2×2 + 25 Quartz 
 describe('Test 8 — conversion can be cancelled before the crunch moment', () => {
   it('cancelForgeMoteConversion returns true when called before crunch moment', () => {
     const forge = createForgeCrunchState();
-    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0);
+    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0, 0);
     // Cancel at t=500ms (well before 2000ms crunch moment)
     const cancelled = cancelForgeMoteConversion(forge, 500);
     expect(cancelled).toBe(true);
@@ -174,7 +174,7 @@ describe('Test 8 — conversion can be cancelled before the crunch moment', () =
     const forge = createForgeCrunchState();
     const resources = createResourceState();
     addMotes(resources, 'sand' as TierId, 100);
-    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0);
+    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0, 0);
     cancelForgeMoteConversion(forge, 500);
     // Mote inventory must be unchanged
     expect(getMotes(resources, 'sand' as TierId)).toBe(100);
@@ -186,7 +186,7 @@ describe('Test 8 — conversion can be cancelled before the crunch moment', () =
 describe('Test 9 — conversion cannot be cancelled after the crunch moment', () => {
   it('cancelForgeMoteConversion returns false at or after FORGE_MOTE_CRUNCH_DELAY_MS', () => {
     const forge = createForgeCrunchState();
-    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0);
+    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0, 0);
     // Try to cancel exactly at the crunch moment
     const cancelled = cancelForgeMoteConversion(forge, FORGE_MOTE_CRUNCH_DELAY_MS);
     expect(cancelled).toBe(false);
@@ -195,7 +195,7 @@ describe('Test 9 — conversion cannot be cancelled after the crunch moment', ()
 
   it('isForgeMoteConversionReady is true at or after the delay', () => {
     const forge = createForgeCrunchState();
-    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0);
+    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0, 0);
     expect(isForgeMoteConversionReady(forge, FORGE_MOTE_CRUNCH_DELAY_MS - 1)).toBe(false);
     expect(isForgeMoteConversionReady(forge, FORGE_MOTE_CRUNCH_DELAY_MS)).toBe(true);
   });
@@ -206,8 +206,8 @@ describe('Test 9 — conversion cannot be cancelled after the crunch moment', ()
 describe('Test 10 — pending forge mote cannot be double-converted', () => {
   it('startForgeMoteConversion returns false when a conversion is already pending', () => {
     const forge = createForgeCrunchState();
-    const started1 = startForgeMoteConversion(forge, 'sand' as TierId, 1, 0);
-    const started2 = startForgeMoteConversion(forge, 'quartz' as TierId, 1, 100);
+    const started1 = startForgeMoteConversion(forge, 'sand' as TierId, 1, 0, 0);
+    const started2 = startForgeMoteConversion(forge, 'quartz' as TierId, 1, 1, 100);
     expect(started1).toBe(true);
     expect(started2).toBe(false);
     // The original pending conversion must still be intact
@@ -219,7 +219,7 @@ describe('Test 10 — pending forge mote cannot be double-converted', () => {
     const forge = createForgeCrunchState();
     const resources = createResourceState();
     addMotes(resources, 'sand' as TierId, 100); // exactly one 2×2 worth
-    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0);
+    startForgeMoteConversion(forge, 'sand' as TierId, 1, 0, 0);
 
     const result1 = commitForgeMoteConversion(forge, resources, 1.0);
     expect(result1).not.toBeNull();
