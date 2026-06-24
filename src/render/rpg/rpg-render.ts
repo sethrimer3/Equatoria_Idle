@@ -719,6 +719,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Boss wave management ───────────────────────────────────────
   /** True while a boss wave is active (from spawn until defeat or death). */
   let isBossWaveActive = false;
+  /** Set to true during the boss victory cassette-end sequence to suppress the normal music stop. */
+  let pendingBossVictory = false;
   /**
    * Temporary equipped-weapon override used only during boss waves.
    * The player's actual rpgSimState.equippedWeaponIds is never mutated by boss
