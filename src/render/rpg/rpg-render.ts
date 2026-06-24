@@ -1255,6 +1255,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       options.onNewCodexEntry?.();
     },
     onEquipmentReward:       (reward) => showEquipmentRewardToast(reward),
+    onBossVictory:           (speedPct) => {
+      pendingBossVictory = true;
+      const handleCassetteDone = () => {
+        pendingBossVictory = false;
+        _showBossScoreOverlay(rpgArea, speedPct);
+        setTimeout(() => { zoneSelectPanel.open(); }, 3000);
+      };
+      if (options.onBossMusicStopWithCassette) {
+        options.onBossMusicStopWithCassette(CASSETTE_END_PATH, handleCassetteDone);
+      } else {
+        options.onBossMusicStop?.();
+        handleCassetteDone();
+      }
+    },
   });
   initBossDialogueSystem();
 
