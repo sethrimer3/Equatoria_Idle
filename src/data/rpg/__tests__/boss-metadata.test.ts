@@ -10,7 +10,7 @@ describe('boss metadata', () => {
     expect(BOSS_GLOW_COLORS).toHaveLength(14);
     expect(BOSS_NAMES.slice(9)).toEqual(['Fracteryl Manifestation', 'Eigenstein Entity', 'Void Nexus', 'The Problem', 'The Solution']);
     expect([9, 10, 11, 12, 13].map(getBossBpm)).toEqual([140, 150, 160, 170, 180]);
-    expect(BOSS_ATTACK_PROFILES.map(p => p.bossId).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(BOSS_ATTACK_PROFILES.map(p => p.bossId).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
   });
 
   it('marks secret and super-secret bosses centrally', () => {
