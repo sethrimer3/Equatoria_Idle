@@ -6,6 +6,7 @@ import {
   type BossMidiSchedulerState,
 } from '../../data/rpg/boss-midi-scheduler';
 import { getBossMidiPattern, mapBossMidiNote, type BossMidiPatternConfig } from '../../data/rpg/boss-midi-config';
+import { getBossBeatMs } from '../../data/rpg/boss-bpm';
 import type { BossEnemy } from './rpg-enemy-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
 import type { BossAttackUpdateCtx } from './rpg-boss-attack-update';
@@ -21,8 +22,6 @@ interface CachedPattern {
 }
 
 const MAX_MIDI_ACTIVE_ATTACKS = 6;
-const QUARTZ_SIGNATURE_BEAT_MS = 1000;
-const QUARTZ_SIGNATURE_INTERVAL_BEATS = 5;
 
 export interface BossMidiRuntimeState {
   scheduler: BossMidiSchedulerState;
@@ -31,7 +30,8 @@ export interface BossMidiRuntimeState {
   lastTriggered: BossMidiNoteEvent | null;
   lastAttackKind: string | null;
   nextPhraseIndex: number;
-  nextQuartzSignatureMs: number;
+  /** Next elapsed-ms value at which the signature attack should fire (Infinity = disabled). */
+  nextSignatureMs: number;
   readonly cache: Map<number, CachedPattern>;
 }
 
@@ -43,7 +43,7 @@ export function createBossMidiRuntimeState(): BossMidiRuntimeState {
     lastTriggered: null,
     lastAttackKind: null,
     nextPhraseIndex: 0,
-    nextQuartzSignatureMs: QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS,
+    nextSignatureMs: Infinity,
     cache: new Map(),
   };
 }
@@ -54,7 +54,7 @@ export function resetBossMidiRuntime(state: BossMidiRuntimeState): void {
   state.lastTriggered = null;
   state.lastAttackKind = null;
   state.nextPhraseIndex = 0;
-  state.nextQuartzSignatureMs = QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS;
+  state.nextSignatureMs = Infinity;
 }
 
 export function ensureBossMidiLoaded(state: BossMidiRuntimeState, bossId: number): void {
@@ -101,7 +101,12 @@ export function beginBossMidiRuntime(state: BossMidiRuntimeState, bossId: number
   state.lastTriggered = null;
   state.lastAttackKind = null;
   state.nextPhraseIndex = 0;
-  state.nextQuartzSignatureMs = QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS;
+  // Derive signature attack interval from the pattern's beat config, not a hardcoded constant.
+  const pattern = getBossMidiPattern(bossId);
+  const beatMs = getBossBeatMs(bossId);
+  state.nextSignatureMs = pattern?.signatureAttack
+    ? beatMs * pattern.signatureAttack.intervalBeats
+    : Infinity;
   resetBossMidiScheduler(state.scheduler);
   ensureBossMidiLoaded(state, bossId);
 }
@@ -120,8 +125,8 @@ export function updateBossMidiRuntime(
   if (!cached || cached.status !== 'ready') return;
   const previousMs = state.scheduler.elapsedMs;
   const nextMs = previousMs + deltaMs;
-  if (boss.bossId === 1) {
-    triggerQuartzSignatureOnBeat(state, attackState, attackCtx, boss, nextMs);
+  if (pattern.signatureAttack) {
+    _triggerSignatureAttackOnBeat(state, attackState, attackCtx, boss, pattern, nextMs);
   }
   while (state.nextPhraseIndex < cached.phrases.length) {
     const phrase = cached.phrases[state.nextPhraseIndex];
@@ -130,7 +135,7 @@ export function updateBossMidiRuntime(
     state.nextPhraseIndex++;
   }
   advanceBossMidiScheduler(state.scheduler, cached.events, deltaMs, (event) => {
-    const mapped = mapBossMidiNote(event, pattern.mapping);
+    const mapped = mapBossMidiNote(event, pattern.mapping, boss.bossId);
     const spawned = triggerBossMidiAttack(attackState, attackCtx, boss, event, pattern, mapped.kindConfig);
     if (spawned) {
       state.lastTriggered = event;
@@ -139,38 +144,36 @@ export function updateBossMidiRuntime(
   });
 }
 
-function triggerQuartzSignatureOnBeat(
+function _triggerSignatureAttackOnBeat(
   state: BossMidiRuntimeState,
   attackState: BossAttackState,
   attackCtx: BossAttackUpdateCtx,
   boss: BossEnemy,
+  pattern: BossMidiPatternConfig,
   nextMs: number,
 ): void {
-  while (nextMs >= state.nextQuartzSignatureMs) {
+  if (!pattern.signatureAttack) return;
+  const beatMs = getBossBeatMs(boss.bossId);
+  const intervalMs = pattern.signatureAttack.intervalBeats * beatMs;
+  while (nextMs >= state.nextSignatureMs) {
     const spawned = triggerBossMidiAttack(
       attackState,
       attackCtx,
       boss,
       {
-        timeMs: state.nextQuartzSignatureMs,
+        timeMs: state.nextSignatureMs,
         durationMs: 0,
-        beat: state.nextQuartzSignatureMs / QUARTZ_SIGNATURE_BEAT_MS,
+        beat: state.nextSignatureMs / beatMs,
         durationBeats: 0,
         note: 0,
         velocity: 96,
         channel: 0,
       },
-      getBossMidiPattern(1)!,
-      {
-        kind: 'quartzSignature',
-        cooldownMs: 0,
-        pressureScore: 2,
-        durationMs: 5450,
-        params: { stepDistance: 112, maxIteration: 3, trailHazardMs: 2000, trailFadeMs: 450 },
-      },
+      pattern,
+      pattern.signatureAttack.config,
     );
-    if (spawned) state.lastAttackKind = 'quartzSignature';
-    state.nextQuartzSignatureMs += QUARTZ_SIGNATURE_BEAT_MS * QUARTZ_SIGNATURE_INTERVAL_BEATS;
+    if (spawned) state.lastAttackKind = pattern.signatureAttack.config.kind;
+    state.nextSignatureMs += intervalMs;
   }
 }
 

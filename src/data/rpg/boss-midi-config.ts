@@ -1,4 +1,5 @@
 import type { BossMidiNoteEvent } from './boss-midi-parser';
+import { getBossBeatMs } from './boss-bpm';
 
 export type BossMidiAttackKind =
   | 'grav'
@@ -9,12 +10,28 @@ export type BossMidiAttackKind =
   | 'motherSwarm'
   | 'quartzSignature';
 
+/** Beat-authored signature attack that fires on a fixed rhythmic interval. */
+export interface BossMidiSignatureAttackConfig {
+  /** How many beats between signature attack firings. */
+  intervalBeats: number;
+  /** Beat-authored config; resolved to ms by resolveAttackConfig() at spawn time. */
+  config: {
+    kind: BossMidiAttackKind;
+    cooldownBeats: number;
+    pressureScore: number;
+    durationBeats: number;
+    params: Record<string, number | boolean | string>;
+  };
+}
+
 export interface BossMidiPatternConfig {
   bossId: number;
   music?: BossMidiMusicConfig;
   phrases: BossMidiPhraseConfig[];
   phraseGapMs: number;
   mapping: BossMidiMappingConfig;
+  /** Optional beat-locked signature attack that fires independently of MIDI events. */
+  signatureAttack?: BossMidiSignatureAttackConfig;
 }
 
 export interface BossMidiMusicConfig {
@@ -37,18 +54,18 @@ export interface BossMidiMappingConfig {
   velocityRanges?: Array<{ min: number; max: number; intensity: number }>;
 }
 
+/** Beat-authored attack config returned from mapBossMidiNote. */
 export interface MappedBossMidiAttack {
   kindConfig: {
     kind: BossMidiAttackKind;
-    cooldownMs: number;
+    cooldownBeats: number;
     pressureScore: number;
-    durationMs: number;
+    /** Derived from event.durationBeats, clamped to [0.25, 20]. */
+    durationBeats: number;
     params: Record<string, number | boolean | string>;
   };
   intensity: number;
 }
-
-const DEFAULT_DURATION_MS = 5200;
 
 export const BOSS_MIDI_PATTERNS: BossMidiPatternConfig[] = [
   {
@@ -82,6 +99,16 @@ export const BOSS_MIDI_PATTERNS: BossMidiPatternConfig[] = [
         { min: 100, max: 127, intensity: 1.35 },
       ],
     },
+    signatureAttack: {
+      intervalBeats: 5,
+      config: {
+        kind: 'quartzSignature',
+        cooldownBeats: 0,
+        pressureScore: 2,
+        durationBeats: 5.5,
+        params: { stepDistance: 112, maxIteration: 3, trailHazardBeats: 2, trailFadeBeats: 0.5 },
+      },
+    },
   },
 ];
 
@@ -89,7 +116,16 @@ export function getBossMidiPattern(bossId: number): BossMidiPatternConfig | null
   return BOSS_MIDI_PATTERNS.find((pattern) => pattern.bossId === bossId) ?? null;
 }
 
-export function mapBossMidiNote(event: BossMidiNoteEvent, mapping: BossMidiMappingConfig): MappedBossMidiAttack {
+/**
+ * Map a raw MIDI note event to a beat-authored attack config.
+ * Uses event.durationBeats (clamped to [0.25, 20]) for the attack duration.
+ * Timing params in the returned `params` use *Beats names, resolved by resolveAttackConfig().
+ */
+export function mapBossMidiNote(
+  event: BossMidiNoteEvent,
+  mapping: BossMidiMappingConfig,
+  bossId: number,
+): MappedBossMidiAttack {
   const pitchClass = ((event.note % 12) + 12) % 12;
   const kind =
     mapping.exactNotes?.[event.note] ??
@@ -97,35 +133,73 @@ export function mapBossMidiNote(event: BossMidiNoteEvent, mapping: BossMidiMappi
     mapping.pitchClasses?.[pitchClass] ??
     (event.note < 48 ? mapping.lowNote : event.note < 72 ? mapping.midNote : mapping.highNote) ??
     'mandala';
-  const intensity = mapping.velocityRanges?.find((range) => event.velocity >= range.min && event.velocity <= range.max)?.intensity ?? 1;
+  const intensity =
+    mapping.velocityRanges?.find((range) => event.velocity >= range.min && event.velocity <= range.max)?.intensity ?? 1;
+  const durationBeats = Math.min(20, Math.max(0.25, event.durationBeats));
   return {
     intensity,
     kindConfig: {
       kind,
-      cooldownMs: 0,
+      cooldownBeats: 0,
       pressureScore: Math.max(1, Math.round(intensity)),
-      durationMs: Math.max(1800, DEFAULT_DURATION_MS * intensity),
-      params: paramsForKind(kind, intensity),
+      durationBeats,
+      params: paramsForKind(kind, intensity, bossId),
     },
   };
 }
 
-function paramsForKind(kind: BossMidiAttackKind, intensity: number): Record<string, number | boolean | string> {
+function paramsForKind(
+  kind: BossMidiAttackKind,
+  intensity: number,
+  bossId: number,
+): Record<string, number | boolean | string> {
+  const beatMs = getBossBeatMs(bossId);
   switch (kind) {
     case 'hexTrail':
-      return { boltCount: Math.max(1, Math.round(intensity)), warnMs: Math.max(450, 900 / intensity), cellSize: 26, hazardMode: 'headOnly' };
+      return {
+        boltCount: Math.max(1, Math.round(intensity)),
+        warnBeats: Math.max(0.25, 900 / intensity / beatMs),
+        cellSize: 26,
+        hazardMode: 'headOnly',
+      };
     case 'missileRing':
-      return { maxMissiles: Math.max(1, Math.round(2 * intensity)), spawnInterval: Math.max(900, 2200 / intensity), explosionRadius: 32 * intensity, hazardMode: 'ringEdgeHazard' };
+      return {
+        maxMissiles: Math.max(1, Math.round(2 * intensity)),
+        spawnIntervalBeats: Math.max(0.5, 2200 / intensity / beatMs),
+        explosionRadius: 32 * intensity,
+        hazardMode: 'ringEdgeHazard',
+      };
     case 'vermiculate':
-      return { wormCount: Math.max(1, Math.round(1 + intensity)), speed: 58 + 20 * intensity, maxTurnRate: 1.2 + intensity * 0.25, hazardMode: 'headOnly' };
+      return {
+        wormCount: Math.max(1, Math.round(1 + intensity)),
+        speed: 58 + 20 * intensity,
+        maxTurnRate: 1.2 + intensity * 0.25,
+        hazardMode: 'headOnly',
+      };
     case 'grav':
-      return { bodyCount: Math.max(2, Math.round(3 * intensity)), wellCount: 1, strength: 0.002 * intensity, moving: intensity > 1, hazardMode: 'visualOnly' };
+      return {
+        bodyCount: Math.max(2, Math.round(3 * intensity)),
+        wellCount: 1,
+        strength: 0.002 * intensity,
+        moving: intensity > 1,
+        hazardMode: 'visualOnly',
+      };
     case 'motherSwarm':
       return { followerCount: Math.round(20 + 20 * intensity), hazardMode: 'headOnly' };
     case 'quartzSignature':
-      return { stepDistance: 112, maxIteration: 3, trailHazardMs: 2000, trailFadeMs: 450 };
+      return {
+        stepDistance: 112,
+        maxIteration: 3,
+        trailHazardBeats: 2000 / beatMs,
+        trailFadeBeats: 450 / beatMs,
+      };
     case 'mandala':
     default:
-      return { radialCount: Math.max(5, Math.round(6 * intensity)), safeGaps: 2, waveInterval: Math.max(900, 1900 / intensity), speed: 65 + 20 * intensity };
+      return {
+        radialCount: Math.max(5, Math.round(6 * intensity)),
+        safeGaps: 2,
+        waveIntervalBeats: Math.max(0.5, 1900 / intensity / beatMs),
+        speed: 65 + 20 * intensity,
+      };
   }
 }

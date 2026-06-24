@@ -44,7 +44,7 @@ describe('boss MIDI scheduler', () => {
       pitchClasses: { 0: 'mandala' },
       channels: { 1: 'missileRing' },
       velocityRanges: [{ min: 100, max: 127, intensity: 1.5 }],
-    });
+    }, 1);
     expect(mapped.kindConfig.kind).toBe('missileRing');
     expect(mapped.intensity).toBe(1.5);
     expect(mapped.kindConfig.params.maxMissiles).toBe(3);

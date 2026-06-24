@@ -20,6 +20,24 @@ export const BOSS_BPM: ReadonlyMap<number, number> = new Map([
   [10, 150],  // Equation Incarnate
 ]);
 
+/** Flat Record form of BOSS_BPM — for indexed access without Map overhead. */
+export const BOSS_BPM_BY_ID: Record<number, number> = Object.fromEntries(BOSS_BPM);
+
 export function getBossBpm(bossId: number): number {
   return BOSS_BPM.get(bossId) ?? 60;
+}
+
+/** Milliseconds per beat for a given boss. */
+export function getBossBeatMs(bossId: number): number {
+  return 60000 / getBossBpm(bossId);
+}
+
+/** Convert a beat count to milliseconds for a given boss. */
+export function beatsToMs(bossId: number, beats: number): number {
+  return beats * getBossBeatMs(bossId);
+}
+
+/** Convert milliseconds to beats for a given boss. */
+export function msToBeats(bossId: number, ms: number): number {
+  return ms / getBossBeatMs(bossId);
 }

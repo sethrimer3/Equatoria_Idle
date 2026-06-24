@@ -21,7 +21,8 @@ import type {
   SwarmAttackInstance,
   VermiculateAttackInstance,
 } from './rpg-boss-attack-types';
-import { getBossAttackProfile } from './rpg-boss-attack-config';
+import { getBossAttackProfile, resolveAttackConfig } from './rpg-boss-attack-config';
+import { getBossBeatMs } from '../../data/rpg/boss-bpm';
 import { spawnGravAttack,        updateGravAttack,        getGravHazardCircles        } from './attacks/rpg-attack-grav';
 import { spawnHexAttack,         updateHexAttack,         getHexHazardCapsules, getHexHeadCircles } from './attacks/rpg-attack-hex';
 import { spawnMandalaAttack,     updateMandalaAttack,     getMandalaHazardCircles     } from './attacks/rpg-attack-mandala';
@@ -39,8 +40,7 @@ import { isPlayerInStageDirectorSafeZone } from './rpg-boss-stage-director';
 
 // ── Caps ──────────────────────────────────────────────────────────────────────
 
-const MAX_ACTIVE_ATTACKS      = 6;
-const SCHEDULER_COOLDOWN_MS   = 1200; // minimum gap between any two scheduler decisions
+const MAX_ACTIVE_ATTACKS = 6;
 
 // ── Context interface ─────────────────────────────────────────────────────────
 
@@ -157,37 +157,39 @@ export function spawnBossAttackFromConfig(
   const bossX = boss.x;
   const bossY = boss.y;
 
+  // Resolve beat-authored config to runtime ms values — single central conversion.
+  const resolved = resolveAttackConfig(boss.bossId, cfg);
+
   let instance: BossAttackInstance | null = null;
-  switch (cfg.kind) {
+  switch (resolved.kind) {
     case 'grav':
-      instance = spawnGravAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnGravAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
     case 'hexTrail':
-      instance = spawnHexAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnHexAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
     case 'mandala':
-      instance = spawnMandalaAttack(bossX, bossY, cfg.params, difficulty);
+      instance = spawnMandalaAttack(bossX, bossY, resolved.params, difficulty);
       break;
     case 'vermiculate':
-      instance = spawnVermiculateAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnVermiculateAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
     case 'missileRing':
-      instance = spawnMissileAttack(bossX, bossY, cfg.params, difficulty);
+      instance = spawnMissileAttack(bossX, bossY, resolved.params, difficulty);
       break;
     case 'motherSwarm':
-      instance = spawnSwarmAttack(bossX, bossY, cfg.params, difficulty);
+      instance = spawnSwarmAttack(bossX, bossY, resolved.params, difficulty);
       break;
     case 'quartzSignature':
-      instance = spawnQuartzSignatureAttack(bossX, bossY, ctx.dim, cfg.params, difficulty);
+      instance = spawnQuartzSignatureAttack(bossX, bossY, ctx.dim, resolved.params, difficulty);
       break;
   }
 
   if (instance) {
     state.attacks.push(instance);
     if (applyCooldown) {
-      // Total cooldown = per-kind config + minimum global scheduler gap to prevent
-      // rapid re-firing of the same kind immediately after it expires.
-      state.schedulerCooldowns.set(key, cfg.cooldownMs + SCHEDULER_COOLDOWN_MS);
+      // Total cooldown = per-kind config ms + one beat gap to avoid rapid re-firing.
+      state.schedulerCooldowns.set(key, resolved.cooldownMs + getBossBeatMs(boss.bossId));
     }
     return true;
   }
