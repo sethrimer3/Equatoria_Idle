@@ -32,9 +32,9 @@ describe('boss order', () => {
     expect(0).toBeLessThan(1);
   });
 
-  it('BOSS_BPM has 11 entries covering bossId 0–10', () => {
-    expect(BOSS_BPM.size).toBe(11);
-    for (let id = 0; id <= 10; id++) {
+  it('BOSS_BPM has 14 entries covering bossId 0–13', () => {
+    expect(BOSS_BPM.size).toBe(14);
+    for (let id = 0; id <= 13; id++) {
       expect(BOSS_BPM.has(id)).toBe(true);
     }
   });
