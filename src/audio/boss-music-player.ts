@@ -16,10 +16,42 @@ export class BossMusicPlayer {
   }
 
   start(beatLoop: string, bgLayers: readonly string[]): void {
-    const paths = [beatLoop, ...bgLayers];
+    this._startLoops(beatLoop, bgLayers, 0.25);
+  }
+
+  startWithCassette(cassetteStartPath: string, beatLoopPath: string, bgLayers: readonly string[]): void {
+    // Play cassette start as one-shot, then crossfade boss loops in over 2s
+    this._playOneShot(cassetteStartPath);
+    this._startLoops(beatLoopPath, bgLayers, 2.0);
+  }
+
+  stop(): void {
+    this._fadeOutLoops(0.2);
+  }
+
+  stopWithCassette(cassetteEndPath: string, onDone: () => void): void {
+    // Fade out all loops over 2s while cassette end plays simultaneously
+    this._fadeOutLoops(2.0);
+    this._playOneShotWithCallback(cassetteEndPath, onDone);
+  }
+
+  setVolume(volume: number): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    for (const loop of this._loops) {
+      loop.gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+    }
+  }
+
+  playPhrase(path: string): void {
+    this._playOneShot(path);
+  }
+
+  private _startLoops(beatLoopPath: string, bgLayers: readonly string[], fadeSecs: number): void {
+    const paths = [beatLoopPath, ...bgLayers];
     const key = paths.join('|');
     if (this._activeKey === key && this._loops.length > 0) return;
-    this.stop();
+    this._fadeOutLoops(0.2);
     const ctx = getAudioContext();
     if (!ctx) return;
     this._activeKey = key;
@@ -30,7 +62,7 @@ export class BossMusicPlayer {
           const now = ctx.currentTime;
           const gain = ctx.createGain();
           gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(this._volume(), now + 0.25);
+          gain.gain.linearRampToValueAtTime(this._volume(), now + fadeSecs);
           gain.connect(ctx.destination);
           const source = ctx.createBufferSource();
           source.buffer = buffer;
@@ -45,17 +77,19 @@ export class BossMusicPlayer {
     }
   }
 
-  stop(): void {
+  private _fadeOutLoops(fadeSecs: number): void {
     this._activeKey = null;
     const ctx = getAudioContext();
-    for (const loop of this._loops) {
+    const loops = this._loops;
+    this._loops = [];
+    for (const loop of loops) {
       try {
         if (ctx) {
           const now = ctx.currentTime;
           loop.gain.gain.cancelScheduledValues(now);
           loop.gain.gain.setValueAtTime(loop.gain.gain.value, now);
-          loop.gain.gain.linearRampToValueAtTime(0, now + 0.2);
-          loop.source.stop(now + 0.22);
+          loop.gain.gain.linearRampToValueAtTime(0, now + fadeSecs);
+          loop.source.stop(now + fadeSecs + 0.05);
         } else {
           loop.source.stop();
         }
@@ -63,18 +97,9 @@ export class BossMusicPlayer {
         // Already stopped or unavailable.
       }
     }
-    this._loops = [];
   }
 
-  setVolume(volume: number): void {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    for (const loop of this._loops) {
-      loop.gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
-    }
-  }
-
-  playPhrase(path: string): void {
+  private _playOneShot(path: string): void {
     const ctx = getAudioContext();
     if (!ctx) return;
     void loadAudioBuffer(ctx, path).then((buffer) => {
@@ -92,6 +117,29 @@ export class BossMusicPlayer {
         };
       } catch {
         // Audio is optional; ignore failures.
+      }
+    });
+  }
+
+  private _playOneShotWithCallback(path: string, onDone: () => void): void {
+    const ctx = getAudioContext();
+    if (!ctx) { setTimeout(onDone, 0); return; }
+    void loadAudioBuffer(ctx, path).then((buffer) => {
+      if (!buffer) { onDone(); return; }
+      try {
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(this._volume(), ctx.currentTime);
+        gain.connect(ctx.destination);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(gain);
+        source.start();
+        source.onended = () => {
+          try { gain.disconnect(); } catch { /* ignore */ }
+          onDone();
+        };
+      } catch {
+        onDone();
       }
     });
   }
