@@ -41,3 +41,27 @@ export function beatsToMs(bossId: number, beats: number): number {
 export function msToBeats(bossId: number, ms: number): number {
   return ms / getBossBeatMs(bossId);
 }
+
+/**
+ * Given elapsed fight time and a beat-grid size, returns the next beat-aligned
+ * spawn time in ms from fight start.
+ *
+ * If elapsedFightMs is exactly on a boundary (within floating-point tolerance),
+ * that boundary is returned (spawn now). Otherwise snaps to the next boundary.
+ *
+ * @param elapsedFightMs  Accumulated ms since the fight began.
+ * @param bossId          Determines ms-per-beat.
+ * @param gridBeats       Grid granularity: 1.0 = every beat, 0.5 = every half-beat, etc.
+ */
+export function computeNextBeatSpawnMs(
+  elapsedFightMs: number,
+  bossId: number,
+  gridBeats: number,
+): number {
+  const beatMs = getBossBeatMs(bossId);
+  const elapsedBeats = elapsedFightMs / beatMs;
+  // Subtract a small epsilon before ceil so that values already on a beat boundary
+  // (possibly drifted slightly past it by float accumulation) snap to that beat.
+  const nextBeat = Math.ceil(elapsedBeats / gridBeats - 1e-9) * gridBeats;
+  return nextBeat * beatMs;
+}

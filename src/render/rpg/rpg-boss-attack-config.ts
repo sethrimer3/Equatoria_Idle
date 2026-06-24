@@ -28,6 +28,13 @@ export interface BossAttackKindConfig {
   pressureScore: number;
   /** Lifetime of the attack instance in beats. */
   durationBeats: number;
+  /**
+   * Beat-grid granularity for spawn alignment (default 1.0 = every beat).
+   * 0.5 = every half-beat, 0.25 = every quarter-beat.
+   * When cooldown expires, the scheduler waits for the next multiple of this
+   * value (in beats from fight start) before spawning.
+   */
+  gridBeats?: number;
   /** Kind-specific numeric/boolean/string overrides.  Timing params use *Beats names. */
   params: Record<string, number | boolean | string>;
 }
@@ -47,6 +54,11 @@ export interface RuntimeAttackConfig {
  * This is the single central resolver — call it once at spawn time.
  */
 export function resolveAttackConfig(bossId: number, beatConfig: BossAttackKindConfig): RuntimeAttackConfig {
+  // Reject legacy ms fields — all timing must be authored in beats.
+  const legacy = beatConfig as unknown as Record<string, unknown>;
+  if ('cooldownMs' in legacy) throw new Error(`resolveAttackConfig: found legacy field 'cooldownMs' on kind='${beatConfig.kind}' — author in cooldownBeats instead`);
+  if ('durationMs' in legacy) throw new Error(`resolveAttackConfig: found legacy field 'durationMs' on kind='${beatConfig.kind}' — author in durationBeats instead`);
+
   const beatMs = getBossBeatMs(bossId);
   const params: Record<string, number | boolean | string> = { ...beatConfig.params };
 
@@ -295,6 +307,8 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
   },
 
   // Boss 7 — Diamond Eternal (120 BPM, beatMs=500ms)
+  // durationBeats=32 for motherSwarm is intentional: 32 × 500ms = 16s sustained swarm cloud,
+  // the defining late-game hazard of this boss.
   {
     bossId: 7, bossName: 'Diamond Eternal', maxPressure: 4,
     phase0Attacks: [
@@ -326,6 +340,8 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
   },
 
   // Boss 8 — Nullstone Devourer (130 BPM, beatMs≈462ms)
+  // durationBeats=32 for grav is intentional: 32 × 462ms ≈ 14.8s sustained orbital hazard.
+  // durationBeats=24 for mandala is intentional: keeps the wave field alive for a full phrase.
   {
     bossId: 8, bossName: 'Nullstone Devourer', maxPressure: 5,
     phase0Attacks: [
@@ -361,6 +377,8 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
   },
 
   // Boss 9 — Void Nexus (140 BPM, beatMs≈429ms)
+  // durationBeats 28–32 are intentional: this is a multi-hazard boss designed to maintain
+  // overlapping long-lived attacks simultaneously. 32 × 429ms ≈ 13.7s per hazard.
   {
     bossId: 9, bossName: 'Void Nexus', maxPressure: 6,
     phase0Attacks: [
@@ -408,6 +426,8 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
   },
 
   // Boss 10 — Equation Incarnate (150 BPM, beatMs=400ms)
+  // durationBeats 32–36 are intentional: the final boss is designed to layer all attack
+  // families simultaneously. 36 × 400ms = 14.4s per hazard, filling the entire phase window.
   {
     bossId: 10, bossName: 'Equation Incarnate', maxPressure: 8,
     phase0Attacks: [

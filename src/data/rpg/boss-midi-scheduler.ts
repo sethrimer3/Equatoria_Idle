@@ -1,4 +1,5 @@
 import type { BossMidiNoteEvent } from './boss-midi-parser';
+import { getBossBeatMs } from './boss-bpm';
 
 export interface BossMidiSchedulerState {
   elapsedMs: number;
@@ -19,6 +20,16 @@ export function seekBossMidiScheduler(state: BossMidiSchedulerState, events: rea
   let idx = 0;
   while (idx < events.length && events[idx].timeMs <= state.elapsedMs) idx++;
   state.nextIndex = idx;
+}
+
+/**
+ * Override embedded-MIDI-tempo timing with boss BPM.
+ * Uses event.beat (ticks / ppq, tempo-independent) × boss ms-per-beat.
+ * This ensures notes fire on the boss's own beat grid regardless of
+ * what tempo was written into the MIDI file.
+ */
+export function computeBossOnsetMs(event: BossMidiNoteEvent, bossId: number): number {
+  return event.beat * getBossBeatMs(bossId);
 }
 
 export function advanceBossMidiScheduler(

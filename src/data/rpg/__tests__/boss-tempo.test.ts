@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getBossBpm, getBossBeatMs, beatsToMs, msToBeats, BOSS_BPM_BY_ID } from '../boss-bpm';
+import { getBossBpm, getBossBeatMs, beatsToMs, msToBeats, BOSS_BPM_BY_ID, computeNextBeatSpawnMs } from '../boss-bpm';
 import { BOSS_MIDI_PATTERNS, getBossMidiPattern, mapBossMidiNote } from '../boss-midi-config';
 import { BOSS_ATTACK_PROFILES, resolveAttackConfig } from '../../../render/rpg/rpg-boss-attack-config';
 import { createBossMidiRuntimeState, beginBossMidiRuntime, resetBossMidiRuntime } from '../../../render/rpg/rpg-boss-midi-runtime';
+import { computeBossOnsetMs } from '../boss-midi-scheduler';
 
 // ── BPM mapping ───────────────────────────────────────────────────────────────
 
@@ -237,5 +238,133 @@ describe('BOSS_MIDI_PATTERNS signature config is beat-authored', () => {
       expect('durationBeats' in p.signatureAttack.config).toBe(true);
       expect('durationMs' in p.signatureAttack.config).toBe(false);
     }
+  });
+});
+
+// ── computeNextBeatSpawnMs — beat-grid alignment ──────────────────────────────
+
+describe('computeNextBeatSpawnMs', () => {
+  it('bossId 0 (50 BPM) → 1200 ms/beat', () => expect(getBossBeatMs(0)).toBe(1200));
+  it('bossId 1 (60 BPM) → 1000 ms/beat', () => expect(getBossBeatMs(1)).toBe(1000));
+  it('bossId 7 (120 BPM) → 500 ms/beat',  () => expect(getBossBeatMs(7)).toBe(500));
+
+  it('full-beat grid (gridBeats=1) at 50 BPM: snaps to beat 1 = 1200ms for small elapsed', () => {
+    // 1ms into fight → next beat boundary is beat 1 = 1200ms
+    expect(computeNextBeatSpawnMs(1, 0, 1.0)).toBe(1200);
+  });
+
+  it('full-beat grid (gridBeats=1) at 60 BPM: snaps to beat 1 = 1000ms for small elapsed', () => {
+    expect(computeNextBeatSpawnMs(1, 1, 1.0)).toBe(1000);
+  });
+
+  it('full-beat grid: snaps to current beat when exactly on a beat boundary', () => {
+    // elapsed = 2000ms = exactly beat 2 at 60 BPM → spawn at beat 2
+    expect(computeNextBeatSpawnMs(2000, 1, 1.0)).toBe(2000);
+  });
+
+  it('full-beat grid: snaps to next beat when between beats', () => {
+    // elapsed = 1300ms (between beat 1 and 2 at 60 BPM) → next beat = 2000ms
+    expect(computeNextBeatSpawnMs(1300, 1, 1.0)).toBe(2000);
+  });
+
+  it('half-beat grid (gridBeats=0.5) at 60 BPM: valid spawns at 500ms multiples', () => {
+    expect(computeNextBeatSpawnMs(1,   1, 0.5)).toBe(500);   // 1ms → next half-beat = 500ms
+    expect(computeNextBeatSpawnMs(499, 1, 0.5)).toBe(500);   // just before boundary
+    expect(computeNextBeatSpawnMs(500, 1, 0.5)).toBe(500);   // exactly on boundary → spawn now
+    expect(computeNextBeatSpawnMs(501, 1, 0.5)).toBe(1000);  // just past boundary → next
+  });
+
+  it('quarter-beat grid (gridBeats=0.25) at 60 BPM: valid spawns at 250ms multiples', () => {
+    expect(computeNextBeatSpawnMs(1,   1, 0.25)).toBe(250);
+    expect(computeNextBeatSpawnMs(249, 1, 0.25)).toBe(250);
+    expect(computeNextBeatSpawnMs(250, 1, 0.25)).toBe(250);  // exactly on boundary
+    expect(computeNextBeatSpawnMs(251, 1, 0.25)).toBe(500);  // just past → next
+  });
+
+  it('full-beat grid at 50 BPM: beat 3 = 3600ms', () => {
+    expect(computeNextBeatSpawnMs(3600, 0, 1.0)).toBe(3600);
+  });
+
+  it('full-beat grid at 50 BPM: 3601ms → next beat = 4800ms', () => {
+    expect(computeNextBeatSpawnMs(3601, 0, 1.0)).toBe(4800);
+  });
+});
+
+// ── computeBossOnsetMs — MIDI onset uses boss BPM ────────────────────────────
+
+describe('computeBossOnsetMs', () => {
+  it('MIDI event at beat=4, bossId=1 (60 BPM) → onset 4000ms regardless of embedded timeMs', () => {
+    const event = { timeMs: 2000, durationMs: 500, beat: 4, durationBeats: 1, note: 60, velocity: 80, channel: 0 };
+    expect(computeBossOnsetMs(event, 1)).toBe(4000);
+  });
+
+  it('bossId=0 (50 BPM): beat 2 → 2400ms', () => {
+    const event = { timeMs: 0, durationMs: 0, beat: 2, durationBeats: 1, note: 60, velocity: 80, channel: 0 };
+    expect(computeBossOnsetMs(event, 0)).toBe(2400);
+  });
+
+  it('bossId=7 (120 BPM): beat 8 → 4000ms', () => {
+    const event = { timeMs: 99999, durationMs: 0, beat: 8, durationBeats: 1, note: 60, velocity: 80, channel: 0 };
+    expect(computeBossOnsetMs(event, 7)).toBe(4000); // 8 × 500ms
+  });
+
+  it('beat=0 → 0ms for any boss', () => {
+    const event = { timeMs: 9999, durationMs: 0, beat: 0, durationBeats: 0, note: 60, velocity: 80, channel: 0 };
+    expect(computeBossOnsetMs(event, 1)).toBe(0);
+    expect(computeBossOnsetMs(event, 0)).toBe(0);
+  });
+});
+
+// ── resolveAttackConfig: explicit rejection of legacy *Ms fields ──────────────
+
+describe('resolveAttackConfig rejects legacy ms fields', () => {
+  it('throws with field name if cooldownMs is present on the input config', () => {
+    expect(() => resolveAttackConfig(1, {
+      kind: 'mandala',
+      cooldownBeats: 0,
+      // @ts-expect-error intentionally passing legacy field to verify runtime rejection
+      cooldownMs: 8000,
+      pressureScore: 1,
+      durationBeats: 12,
+      params: {},
+    })).toThrow(/cooldownMs/);
+  });
+
+  it('throws with field name if durationMs is present on the input config', () => {
+    expect(() => resolveAttackConfig(1, {
+      kind: 'mandala',
+      cooldownBeats: 0,
+      pressureScore: 1,
+      durationBeats: 0,
+      // @ts-expect-error intentionally passing legacy field to verify runtime rejection
+      durationMs: 12000,
+      params: {},
+    })).toThrow(/durationMs/);
+  });
+
+  it('resolves all *Beats fields correctly for bossId 0 (50 BPM)', () => {
+    const resolved = resolveAttackConfig(0, {
+      kind: 'hexTrail',
+      cooldownBeats: 10,
+      pressureScore: 1,
+      durationBeats: 8,
+      params: { boltCount: 1, warnBeats: 1, cellSize: 30 },
+    });
+    expect(resolved.cooldownMs).toBe(12000); // 10 × 1200ms
+    expect(resolved.durationMs).toBe(9600);  // 8 × 1200ms
+    expect(resolved.params['warnMs']).toBe(1200);
+  });
+
+  it('resolves all *Beats fields correctly for bossId 1 (60 BPM)', () => {
+    const resolved = resolveAttackConfig(1, {
+      kind: 'mandala',
+      cooldownBeats: 6,
+      pressureScore: 1,
+      durationBeats: 10,
+      params: { radialCount: 6, safeGaps: 2, waveIntervalBeats: 2.5, speed: 80 },
+    });
+    expect(resolved.cooldownMs).toBe(6000);  // 6 × 1000ms
+    expect(resolved.durationMs).toBe(10000); // 10 × 1000ms
+    expect(resolved.params['waveInterval']).toBe(2500); // 2.5 × 1000ms
   });
 });

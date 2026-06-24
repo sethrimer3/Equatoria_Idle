@@ -1,6 +1,7 @@
 import { parseBossMidi, type BossMidiNoteEvent } from '../../data/rpg/boss-midi-parser';
 import {
   advanceBossMidiScheduler,
+  computeBossOnsetMs,
   createBossMidiSchedulerState,
   resetBossMidiScheduler,
   type BossMidiSchedulerState,
@@ -73,12 +74,21 @@ export function ensureBossMidiLoaded(state: BossMidiRuntimeState, bossId: number
       let offsetMs = 0;
       const allEvents: BossMidiNoteEvent[] = [];
       const phrases: Array<{ startMs: number; introOgg?: string }> = [];
+      const beatMs = getBossBeatMs(bossId);
       for (const item of loaded) {
         phrases.push({ startMs: offsetMs, introOgg: item.phrase.introOgg });
         for (const event of item.events) {
-          allEvents.push({ ...event, timeMs: event.timeMs + offsetMs });
+          // Override embedded-MIDI-tempo timing with boss BPM so every note onset
+          // is exactly event.beat × boss-ms-per-beat, regardless of MIDI tempo.
+          const bossOnsetMs = computeBossOnsetMs(event, bossId);
+          const bossDurationMs = event.durationBeats * beatMs;
+          allEvents.push({ ...event, timeMs: bossOnsetMs + offsetMs, durationMs: bossDurationMs });
         }
-        const phraseEndMs = item.events.reduce((max, event) => Math.max(max, event.timeMs + event.durationMs), 0);
+        const phraseEndMs = item.events.reduce((max, event) => {
+          const bossOnsetMs = computeBossOnsetMs(event, bossId);
+          const bossDurationMs = event.durationBeats * beatMs;
+          return Math.max(max, bossOnsetMs + bossDurationMs);
+        }, 0);
         offsetMs += phraseEndMs + pattern.phraseGapMs;
       }
       cached.events = allEvents.sort((a, b) => a.timeMs - b.timeMs || a.note - b.note);
