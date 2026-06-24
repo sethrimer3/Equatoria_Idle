@@ -242,6 +242,7 @@ export function handleBossDefeat(ctx: WaveManagerCtx): void {
 
   ctx.setIsBossFightFromMenu(false);
   notifyBossDefeated(bossEnemy);
+  ctx.onBossVictory?.(speedPct);
   ctx.exitBossWave();
   const glowC = BOSS_GLOW_COLORS[Math.min(bossEnemy.bossId, BOSS_GLOW_COLORS.length - 1)];
   spawnDamageNumber(bossEnemy.x, bossEnemy.y, 0, -1, `BOSS! +${formatXp(bossXp)} XP (${xpMult.toFixed(0)}x)`, 1.0, glowC);
