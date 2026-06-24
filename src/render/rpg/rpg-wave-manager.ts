@@ -167,6 +167,8 @@ export interface WaveManagerCtx {
   getIsDevMode?(): boolean;
   onNewCodexEntry?(): void;
   onEquipmentReward?(reward: GrantedEquipmentReward): void;
+  /** Called when the boss is defeated, before exitBossWave. Receives the speed % used. */
+  onBossVictory?(speedPct: number): void;
 }
 
 // ── Handle returned to rpg-render.ts ─────────────────────────────────────
