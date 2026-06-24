@@ -326,7 +326,9 @@ export async function startApp(): Promise<void> {
     onError: () => { audioSystem.onError(); },
     onNewCodexEntry: () => { setCodexUnread(true); },
     onBossMusicStart: (beatLoop, bgLayers) => { audioSystem.startBossMusic(beatLoop, bgLayers); },
+    onBossMusicStartWithCassette: (cassetteStart, beatLoop, bgLayers) => { audioSystem.startBossMusicWithCassette(cassetteStart, beatLoop, bgLayers); },
     onBossMusicStop: () => { audioSystem.stopBossMusic(); },
+    onBossMusicStopWithCassette: (cassetteEnd, onDone) => { audioSystem.stopBossMusicWithCassette(cassetteEnd, onDone); },
     onBossMusicPhrase: (path) => { audioSystem.playBossMusicPhrase(path); },
     dispatch,
   });
