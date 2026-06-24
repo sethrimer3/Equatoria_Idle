@@ -66,7 +66,9 @@ export interface AudioSystem {
 
   // Boss MIDI/music events
   startBossMusic(beatLoop: string, bgLayers: readonly string[]): void;
+  startBossMusicWithCassette(cassetteStart: string, beatLoop: string, bgLayers: readonly string[]): void;
   stopBossMusic(): void;
+  stopBossMusicWithCassette(cassetteEnd: string, onDone: () => void): void;
   playBossMusicPhrase(path: string): void;
 
   // Settings events
