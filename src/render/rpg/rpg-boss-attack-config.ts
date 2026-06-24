@@ -485,26 +485,156 @@ export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [
       },
     ],
   },
-  // TODO: tune bespoke recursive Fracteryl hazards.
+  // Boss 9 — Fracteryl Manifestation (140 BPM, beatMs≈429ms)
+  // Recursive splitting theme: mandala rings echo on each wave, vermiculate tendrils branch,
+  // motherSwarm resolves as follower clouds mimicking fractal spore dispersal.
   {
     bossId: 9, bossName: 'Fracteryl Manifestation', maxPressure: 6,
-    phase0Attacks: [{ kind: 'mandala', cooldownMs: 6000, pressureScore: 2, durationMs: 12000, params: { radialCount: 8, safeGaps: 1, waveInterval: 1800, speed: 85 } }],
-    phase1Attacks: [{ kind: 'mandala', cooldownMs: 5000, pressureScore: 2, durationMs: 12000, params: { radialCount: 10, safeGaps: 1, waveInterval: 1600, speed: 95 } }],
-    phase2Attacks: [{ kind: 'mandala', cooldownMs: 4000, pressureScore: 3, durationMs: 12000, params: { radialCount: 12, safeGaps: 1, waveInterval: 1400, speed: 105 } }],
+    phase0Attacks: [
+      {
+        kind: 'mandala', cooldownBeats: 14, pressureScore: 2, durationBeats: 28,
+        params: { radialCount: 8, safeGaps: 1, waveIntervalBeats: 3, speed: 80 },
+      },
+      {
+        kind: 'vermiculate', cooldownBeats: 18, pressureScore: 1, durationBeats: 24,
+        params: { wormCount: 1, speed: 55, maxTurnRate: 1.2, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'motherSwarm', cooldownBeats: 20, pressureScore: 2, durationBeats: 28,
+        params: { followerCount: 25, attractionStr: 0.07, hazardMode: 'headOnly' },
+      },
+    ],
+    phase1Attacks: [
+      {
+        kind: 'mandala', cooldownBeats: 12, pressureScore: 2, durationBeats: 28,
+        params: { radialCount: 10, safeGaps: 1, waveIntervalBeats: 2.5, speed: 90 },
+      },
+      {
+        kind: 'vermiculate', cooldownBeats: 14, pressureScore: 2, durationBeats: 24,
+        params: { wormCount: 2, speed: 65, maxTurnRate: 1.4, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'hexTrail', cooldownBeats: 16, pressureScore: 2, durationBeats: 24,
+        params: { boltCount: 2, warnBeats: 1.5, cellSize: 24, hazardMode: 'headOnly' },
+      },
+    ],
+    phase2Attacks: [
+      {
+        kind: 'mandala', cooldownBeats: 10, pressureScore: 2, durationBeats: 28,
+        params: { radialCount: 12, safeGaps: 1, waveIntervalBeats: 2, speed: 100 },
+      },
+      {
+        kind: 'vermiculate', cooldownBeats: 12, pressureScore: 2, durationBeats: 24,
+        params: { wormCount: 2, speed: 80, hazardMode: 'freshTrailHazard' },
+      },
+      {
+        kind: 'motherSwarm', cooldownBeats: 14, pressureScore: 2, durationBeats: 28,
+        params: { followerCount: 50, attractionStr: 0.10, hazardMode: 'filledCircleHazard' },
+      },
+    ],
   },
-  // TODO: tune bespoke Eigenstein beam-wall hazards.
+
+  // Boss 10 — Eigenstein Entity (150 BPM, beatMs=400ms)
+  // Linear-algebra theme: hexTrail sweeps define invariant lanes, grav wells lock coordinate
+  // quadrants, mandala rotations map eigenvalue rotation patterns.
   {
     bossId: 10, bossName: 'Eigenstein Entity', maxPressure: 7,
-    phase0Attacks: [{ kind: 'hexTrail', cooldownMs: 5500, pressureScore: 2, durationMs: 12000, params: { boltCount: 2, warnMs: 700, cellSize: 22 } }],
-    phase1Attacks: [{ kind: 'hexTrail', cooldownMs: 4500, pressureScore: 2, durationMs: 12000, params: { boltCount: 3, warnMs: 600, cellSize: 20 } }],
-    phase2Attacks: [{ kind: 'hexTrail', cooldownMs: 3500, pressureScore: 3, durationMs: 12000, params: { boltCount: 4, warnMs: 500, cellSize: 18, hazardMode: 'persistentSegmentHazard' } }],
+    phase0Attacks: [
+      {
+        kind: 'hexTrail', cooldownBeats: 12, pressureScore: 2, durationBeats: 28,
+        params: { boltCount: 2, warnBeats: 1.5, cellSize: 22, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'mandala', cooldownBeats: 14, pressureScore: 2, durationBeats: 24,
+        params: { radialCount: 8, safeGaps: 2, waveIntervalBeats: 3, speed: 80 },
+      },
+      {
+        kind: 'grav', cooldownBeats: 18, pressureScore: 2, durationBeats: 28,
+        params: { bodyCount: 2, wellCount: 1, strength: 0.0025, moving: false, hazardMode: 'headOnly' },
+      },
+    ],
+    phase1Attacks: [
+      {
+        kind: 'hexTrail', cooldownBeats: 10, pressureScore: 2, durationBeats: 28,
+        params: { boltCount: 3, warnBeats: 1.25, cellSize: 20, hazardMode: 'persistentSegmentHazard' },
+      },
+      {
+        kind: 'grav', cooldownBeats: 14, pressureScore: 3, durationBeats: 32,
+        params: { bodyCount: 3, wellCount: 2, strength: 0.003, moving: true, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'mandala', cooldownBeats: 14, pressureScore: 2, durationBeats: 24,
+        params: { radialCount: 10, safeGaps: 1, waveIntervalBeats: 2.5, speed: 90 },
+      },
+    ],
+    phase2Attacks: [
+      {
+        kind: 'hexTrail', cooldownBeats: 8, pressureScore: 2, durationBeats: 28,
+        params: { boltCount: 4, warnBeats: 1, cellSize: 18, hazardMode: 'persistentSegmentHazard' },
+      },
+      {
+        kind: 'grav', cooldownBeats: 12, pressureScore: 3, durationBeats: 32,
+        params: { bodyCount: 4, wellCount: 2, strength: 0.0038, moving: true, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'mandala', cooldownBeats: 12, pressureScore: 2, durationBeats: 24,
+        params: { radialCount: 12, safeGaps: 1, waveIntervalBeats: 2, speed: 100 },
+      },
+    ],
   },
-  // TODO: replace The Solution's safe mixed-family profile with unique mechanics.
+
+  // Boss 13 — The Solution (180 BPM, beatMs≈333ms)
+  // Final synthesis theme: all prior attack families resolved into clean, readable patterns.
+  // durationBeats=28–32 at 180 BPM ≈ 9.3–10.7s — shorter than The Problem to keep the
+  // curtain dense but fair: high BPM means more beats per hazard window.
   {
     bossId: 13, bossName: 'The Solution', maxPressure: 8,
-    phase0Attacks: [{ kind: 'missileRing', cooldownMs: 5500, pressureScore: 2, durationMs: 12000, params: { maxMissiles: 3, spawnInterval: 3000, hazardMode: 'ringEdgeHazard' } }],
-    phase1Attacks: [{ kind: 'motherSwarm', cooldownMs: 6000, pressureScore: 2, durationMs: 14000, params: { followerCount: 50, hazardMode: 'headOnly' } }],
-    phase2Attacks: [{ kind: 'vermiculate', cooldownMs: 4500, pressureScore: 2, durationMs: 12000, params: { wormCount: 3, speed: 85, hazardMode: 'freshTrailHazard' } }],
+    phase0Attacks: [
+      {
+        kind: 'mandala', cooldownBeats: 12, pressureScore: 2, durationBeats: 28,
+        params: { radialCount: 10, safeGaps: 2, waveIntervalBeats: 3, speed: 90 },
+      },
+      {
+        kind: 'missileRing', cooldownBeats: 14, pressureScore: 2, durationBeats: 28,
+        params: { maxMissiles: 3, spawnIntervalBeats: 4, hazardMode: 'ringEdgeHazard' },
+      },
+      {
+        kind: 'grav', cooldownBeats: 16, pressureScore: 1, durationBeats: 24,
+        params: { bodyCount: 3, wellCount: 1, strength: 0.002, moving: false, hazardMode: 'visualOnly' },
+      },
+    ],
+    phase1Attacks: [
+      {
+        kind: 'mandala', cooldownBeats: 10, pressureScore: 2, durationBeats: 28,
+        params: { radialCount: 12, safeGaps: 1, waveIntervalBeats: 2.5, speed: 100 },
+      },
+      {
+        kind: 'hexTrail', cooldownBeats: 12, pressureScore: 2, durationBeats: 28,
+        params: { boltCount: 2, warnBeats: 1.5, cellSize: 22, hazardMode: 'persistentSegmentHazard' },
+      },
+      {
+        kind: 'motherSwarm', cooldownBeats: 14, pressureScore: 2, durationBeats: 28,
+        params: { followerCount: 50, attractionStr: 0.10, hazardMode: 'headOnly' },
+      },
+    ],
+    phase2Attacks: [
+      {
+        kind: 'mandala', cooldownBeats: 10, pressureScore: 2, durationBeats: 32,
+        params: { radialCount: 14, safeGaps: 1, waveIntervalBeats: 2, speed: 110 },
+      },
+      {
+        kind: 'grav', cooldownBeats: 12, pressureScore: 3, durationBeats: 32,
+        params: { bodyCount: 5, wellCount: 3, strength: 0.0045, moving: true, hazardMode: 'headOnly' },
+      },
+      {
+        kind: 'hexTrail', cooldownBeats: 12, pressureScore: 2, durationBeats: 28,
+        params: { boltCount: 3, warnBeats: 1.25, cellSize: 20, hazardMode: 'persistentSegmentHazard' },
+      },
+      {
+        kind: 'missileRing', cooldownBeats: 12, pressureScore: 2, durationBeats: 32,
+        params: { maxMissiles: 5, spawnIntervalBeats: 4, hazardMode: 'ringEdgeHazard' },
+      },
+    ],
   },
 ];
 
