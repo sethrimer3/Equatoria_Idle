@@ -88,8 +88,12 @@ export interface RpgRenderOptions {
   onNewCodexEntry?: () => void;
   /** Start layered boss music loops for MIDI-backed boss fights. */
   onBossMusicStart?: (beatLoop: string, bgLayers: readonly string[]) => void;
+  /** Start boss music with a cassette-start intro crossfade. */
+  onBossMusicStartWithCassette?: (cassetteStart: string, beatLoop: string, bgLayers: readonly string[]) => void;
   /** Stop any active boss music loops. */
   onBossMusicStop?: () => void;
+  /** Fade boss music and crossfade with cassette-end SFX; calls onDone when cassette ends. */
+  onBossMusicStopWithCassette?: (cassetteEnd: string, onDone: () => void) => void;
   /** Play a one-shot phrase/introduction OGG for a MIDI-backed boss attack phrase. */
   onBossMusicPhrase?: (path: string) => void;
   /**
