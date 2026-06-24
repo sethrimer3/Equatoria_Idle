@@ -247,8 +247,17 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
       bossMusic.start(beatLoop, bgLayers);
     },
 
+    startBossMusicWithCassette(cassetteStart: string, beatLoop: string, bgLayers: readonly string[]): void {
+      if (!_isFocused) return;
+      bossMusic.startWithCassette(cassetteStart, beatLoop, bgLayers);
+    },
+
     stopBossMusic(): void {
       bossMusic.stop();
+    },
+
+    stopBossMusicWithCassette(cassetteEnd: string, onDone: () => void): void {
+      bossMusic.stopWithCassette(cassetteEnd, onDone);
     },
 
     playBossMusicPhrase(path: string): void {
