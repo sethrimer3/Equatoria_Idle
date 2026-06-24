@@ -66,6 +66,8 @@ import {
   getBossMidiDebugText,
   resetBossMidiRuntime,
 } from './rpg-boss-midi-runtime';
+import { getBossBeatVisualState } from './rpg-boss-beat-visuals';
+import { getBossBpm } from '../../data/rpg/boss-bpm';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
   LaserEnemy,
@@ -869,6 +871,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossAttackState.attacks.length = 0;
     bossAttackState.schedulerCooldowns.clear();
     bossAttackState.activePressure = 0;
+    bossAttackState.elapsedFightMs = 0;
+    bossAttackState.lastBossId = null;
     resetBossMidiRuntime(bossMidiState);
     clearVerdurePlants(verdurePlants);
     verdureCaveWallState?.edgePoints.forEach((p) => { p.isOccupied = false; });
@@ -953,6 +957,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossAttackState.attacks.length = 0;
     bossAttackState.schedulerCooldowns.clear();
     bossAttackState.activePressure = 0;
+    bossAttackState.elapsedFightMs = 0;
+    bossAttackState.lastBossId = null;
     resetBossMidiRuntime(bossMidiState);
     bossHitsInRound = 0;
     isBossFightFromMenu = false;
@@ -2132,7 +2138,13 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         _devOverlayUpdateMs -= deltaMs;
         if (_devOverlayUpdateMs <= 0) {
           _devOverlayUpdateMs = 250;
-          _updateDevOverlay(_devOverlay, mote, enemies as Array<{ x: number; y: number; hp: number; maxHp: number }>, getBossMidiDebugText(bossMidiState));
+          _updateDevOverlay(
+            _devOverlay,
+            mote,
+            enemies as Array<{ x: number; y: number; hp: number; maxHp: number }>,
+            getBossMidiDebugText(bossMidiState),
+            _getBeatVisualDebugText(bossEnemy, bossAttackState.elapsedFightMs),
+          );
         }
       }
     },
@@ -2331,11 +2343,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
 // ── Dev overlay update (module-level so rpg-render.ts calls it) ───────────────
 
+function _getBeatVisualDebugText(boss: { bossId: number } | null, elapsedMs: number): string {
+  if (!boss) return 'beat:off';
+  const bpm = getBossBpm(boss.bossId);
+  const vs = getBossBeatVisualState(boss.bossId, elapsedMs);
+  return `bpm:${bpm} beat:${vs.beatIndex} phase:${vs.beatPhase.toFixed(2)} pulse:${vs.beatPulse.toFixed(2)}`;
+}
+
 function _updateDevOverlay(
   el: HTMLElement,
   mote: { x: number; y: number },
   enemies: Array<{ x: number; y: number; hp: number; maxHp: number }>,
   bossMidiText: string,
+  beatDebugText: string,
 ): void {
   const events = getRecentComboEvents();
   const allE: Array<{ x: number; y: number; hp: number; maxHp: number } & object> =
@@ -2366,6 +2386,7 @@ function _updateDevOverlay(
     lines.push('<span style="color:#666">No nearby enemy</span>');
   }
   lines.push(`<span style="color:#c9f">${bossMidiText}</span>`);
+  lines.push(`<span style="color:#fa8">${beatDebugText}</span>`);
 
   lines.push('<hr style="border-color:#333;margin:3px 0">');
   lines.push('<b style="color:#aaa">Recent Combos</b>');

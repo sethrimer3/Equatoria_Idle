@@ -1025,9 +1025,15 @@ export function drawRpgFrame(
       { w: widthPx, h: heightPx },
       glowTimeS,
       ctx.getIsLowGraphicsMode(),
+      ctx.bossAttackState.elapsedFightMs,
     );
   }
-  drawBossAttacks(canvas2d, ctx.bossAttackState);
+  drawBossAttacks(
+    canvas2d,
+    ctx.bossAttackState,
+    bossEnemy?.bossId ?? -1,
+    ctx.bossAttackState.elapsedFightMs,
+  );
   drawBossEnemy(canvas2d, bossEnemy, glowTimeS);
   drawTeleportParticles(canvas2d, ctx.teleportParticles);
   drawShotLines(canvas2d, ctx.shotLines);

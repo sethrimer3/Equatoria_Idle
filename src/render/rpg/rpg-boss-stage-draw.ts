@@ -24,7 +24,13 @@ import {
   CORRIDOR_SAFETY_MARGIN,
   rainParticleX,
 } from './rpg-boss-stage-director';
-import { PLAYER_HIT_RADIUS, BOSS_BOTTOM_SAFE_ZONE_R, BOSS_SAFE_ZONE_Y_FACTOR } from './rpg-constants';
+import { PLAYER_HIT_RADIUS, BOSS_BOTTOM_SAFE_ZONE_R, BOSS_SAFE_ZONE_Y_FACTOR, BOSS_GLOW_COLORS } from './rpg-constants';
+import {
+  getBossBeatVisualState,
+  BOSS_STAGE_BEAT_PULSE_STRENGTH,
+  BOSS_BAR_PULSE_STRENGTH,
+  LOW_GRAPHICS_PULSE_MULTIPLIER,
+} from './rpg-boss-beat-visuals';
 
 // ── Internal tuning ───────────────────────────────────────────────────────────
 
@@ -49,6 +55,7 @@ export function drawBossStageDirector(
   dim: { w: number; h: number },
   glowTimeS: number,
   isLowGraphics: boolean,
+  elapsedMs: number,
 ): void {
   if (!state.isActive) return;
 
@@ -56,6 +63,8 @@ export function drawBossStageDirector(
   const safeZoneY = dim.h * BOSS_SAFE_ZONE_Y_FACTOR;
   const bossX = bossEnemy.x;
   const bossY = bossEnemy.y;
+
+  _drawStageBeatEffects(c, bossEnemy.bossId, bossX, bossY, dim, elapsedMs, isLowGraphics);
 
   if (state.isDevMode) {
     _drawCorridorGlow(c, state, bossX, bossY, safeZoneX, safeZoneY, dim, glowTimeS, isLowGraphics);
@@ -66,6 +75,81 @@ export function drawBossStageDirector(
 
   if (state.isDevMode) {
     _drawDebugOverlay(c, state, bossX, bossY, safeZoneX, safeZoneY, dim);
+  }
+}
+
+// ── Stage beat effects ────────────────────────────────────────────────────────
+
+function _drawStageBeatEffects(
+  c: CanvasRenderingContext2D,
+  bossId: number,
+  bossX: number,
+  bossY: number,
+  dim: { w: number; h: number },
+  elapsedMs: number,
+  isLowGraphics: boolean,
+): void {
+  const { beatPhase, beatPulse, barPulse, isDownbeat } = getBossBeatVisualState(bossId, elapsedMs);
+  const glowColor = BOSS_GLOW_COLORS[Math.min(bossId, BOSS_GLOW_COLORS.length - 1)];
+  const lg = _lowGraphics || isLowGraphics;
+
+  if (lg) {
+    // Low-graphics: one cheap flat fill instead of a gradient
+    const alpha = beatPulse * BOSS_STAGE_BEAT_PULSE_STRENGTH * LOW_GRAPHICS_PULSE_MULTIPLIER;
+    if (alpha > 0.005) {
+      c.save();
+      c.globalAlpha = alpha;
+      c.fillStyle = glowColor;
+      c.fillRect(0, 0, dim.w, dim.h);
+      c.restore();
+    }
+    return;
+  }
+
+  // Radial vignette: pulses on every beat, centered on the boss
+  const vignetteAlpha = beatPulse * BOSS_STAGE_BEAT_PULSE_STRENGTH;
+  if (vignetteAlpha > 0.005) {
+    const arenaR = Math.max(dim.w, dim.h);
+    c.save();
+    c.globalAlpha = vignetteAlpha;
+    const grad = c.createRadialGradient(bossX, bossY, 0, bossX, bossY, arenaR);
+    grad.addColorStop(0.0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.5, 'rgba(0,0,0,0)');
+    grad.addColorStop(1.0, glowColor + '55');
+    c.fillStyle = grad;
+    c.fillRect(0, 0, dim.w, dim.h);
+    c.restore();
+  }
+
+  // Downbeat: stronger vignette + expanding ring from boss
+  if (isDownbeat) {
+    const barAlpha = barPulse * BOSS_BAR_PULSE_STRENGTH;
+    if (barAlpha > 0.005) {
+      const arenaR = Math.max(dim.w, dim.h);
+      c.save();
+      c.globalAlpha = barAlpha * 0.6;
+      const grad2 = c.createRadialGradient(bossX, bossY, 0, bossX, bossY, arenaR);
+      grad2.addColorStop(0.0, 'rgba(0,0,0,0)');
+      grad2.addColorStop(0.4, 'rgba(0,0,0,0)');
+      grad2.addColorStop(1.0, glowColor + '88');
+      c.fillStyle = grad2;
+      c.fillRect(0, 0, dim.w, dim.h);
+      c.restore();
+    }
+
+    // Expanding ring that fades over one beat duration
+    const ringRadius = beatPhase * 90;
+    const ringAlpha = barPulse * BOSS_BAR_PULSE_STRENGTH * 0.8;
+    if (ringRadius > 0.5 && ringAlpha > 0.005) {
+      c.save();
+      c.globalAlpha = ringAlpha;
+      c.strokeStyle = glowColor;
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(bossX, bossY, ringRadius, 0, Math.PI * 2);
+      c.stroke();
+      c.restore();
+    }
   }
 }
 
