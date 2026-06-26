@@ -281,6 +281,11 @@ export interface RpgSimState {
    * Released as an amplified burst when the cap is reached.
    */
   quickenedStitchAttackStacks: number;
+  /**
+   * True while processing a lethal-damage event to prevent double-triggering
+   * Last Thread (undying) within the same hit (ephemeral, not saved).
+   */
+  undyingProcActive: boolean;
   /** Whether the Second Wind effect is available this wave (resets each wave start). */
   secondWindAvailable: boolean;
   /** Active player status effects (ephemeral — not saved, clears on restart). */
@@ -370,6 +375,7 @@ export function createRpgSimState(): RpgSimState {
     playerShieldHp: 0,
     wardHighestIncomingDamage: 0,
     quickenedStitchAttackStacks: 0,
+    undyingProcActive: false,
     secondWindAvailable: true,
     activePlayerStatuses: [],
     activeWeaveBuffs: [],

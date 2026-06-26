@@ -12,7 +12,10 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getSkillNodeRank, isSkillNodeUnlocked } from '../../sim/rpg/rpg-state';
-import { processNamedEffectPlayerDamagedProcs } from '../../data/rpg/weave-proc-effects';
+import {
+  processNamedEffectPlayerDamagedProcs,
+  processNamedEffectPlayerLethalDamageProcs,
+} from '../../data/rpg/weave-proc-effects';
 import type { HitEffect, ShotLine, DamageNumber, LaserEnemy } from './rpg-types';
 import {
   HIT_EFFECT_DURATION_MS, SHOT_LINE_DURATION_MS,
@@ -57,6 +60,14 @@ export interface PlayerDamageCtx {
   rpgSimState?: RpgSimState;
   /** Returns live player velocity — used by evasion (dodge while moving). */
   getPlayerVelocity?(): { vx: number; vy: number };
+  /** Returns the player's base attack stat — used by Last Thread T2/T3 counter-death check. */
+  getPlayerBaseAtk?: () => number;
+  /** Returns the player's max crit-layer attack value — used by Last Thread T3 check. */
+  getPlayerMaxCritAtk?: () => number;
+  /** Called when Guard T2 reflection fires; caller applies damage to the attacker. */
+  onReflectedDamage?: (dmg: number) => void;
+  /** Called when Last Thread T2/T3 fires and the counter-death condition is met. */
+  onUndyingCounterDeath?: () => void;
 }
 
 // ── Return handle ────────────────────────────────────────────────────
@@ -269,9 +280,8 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
         pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
         return;
       }
-      // Reflection fires alongside damage, not instead of it
-      // (caller receives it via onPlayerDamaged; rendered separately if desired)
-      dmg = Math.max(0, dmg - named.reflectedDmg);
+      // Reflection fires alongside damage — apply to attacker, not reduce incoming
+      if (named.reflectedDmg > 0) pCtx.onReflectedDamage?.(named.reflectedDmg);
     }
 
     // Shield absorption: drain playerShieldHp before reducing player HP
@@ -290,7 +300,20 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
       spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
       pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
     } else {
+      const hpBefore = playerStats.hp;
       playerStats.hp = Math.max(0, playerStats.hp - dmg);
+      // Last Thread (undying) — survive lethal damage before second wind check
+      if (sim && playerStats.hp <= 0) {
+        processNamedEffectPlayerLethalDamageProcs(sim, {
+          finalDmg: dmg,
+          currentHp: hpBefore,
+          playerBaseAtk: pCtx.getPlayerBaseAtk?.() ?? 0,
+          playerMaxCritAtk: pCtx.getPlayerMaxCritAtk?.() ?? 0,
+          attackerAtk: atkValue,
+          onSurvive: () => { playerStats.hp = 1; },
+          onCounterDeath: () => { pCtx.onUndyingCounterDeath?.(); },
+        });
+      }
       if (sim) applySecondWind(sim);
       const ratio = Math.min(1, dmg / playerStats.maxHp);
       pCtx.setPlayerIFramesMs(PLAYER_IFRAME_MIN_MS + ratio * PLAYER_IFRAME_MAX_ADD_MS);

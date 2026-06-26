@@ -456,6 +456,16 @@ export function computeNamedEffectMagnitude(
       if (tier === 2) return parseFloat(Math.min(1.0 + x * 0.3, 3.0).toFixed(2)); // multiplier on top of base 1×
       /* tier 3 */ return parseFloat(cappedChance(x, 50, 0.8).toFixed(2));
 
+    case 'undying':
+      if (tier === 1) return parseFloat(cappedChance(x, 60, 1.0).toFixed(2)); // refuse-death chance %
+      if (tier === 2) return parseFloat(cappedChance(x, 45, 0.8).toFixed(2)); // death-reversal chance % (atk ≤ base)
+      /* tier 3 */ return parseFloat(cappedChance(x, 55, 0.9).toFixed(2)); // fated counterdeath % (atk ≤ maxCrit)
+
+    case 'ember':
+      if (tier === 1) return parseFloat(Math.min(x * 15, 200).toFixed(2)); // status duration bonus %
+      if (tier === 2) return parseFloat(Math.min(x * 12, 150).toFixed(2)); // status potency bonus %
+      /* tier 3 */ return parseFloat(cappedChance(x, 40, 0.8).toFixed(2)); // overload proc chance %
+
     default:
       return 0;
   }

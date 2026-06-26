@@ -30,6 +30,7 @@ import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import { getLingeringHexDamageMult } from '../../sim/rpg/weave-enemy-debuffs';
 import { applyTier1LensStatusesToEnemy } from '../../sim/rpg/enemy-status-application';
+import { getEmberDurationMult, getEmberPotencyMult, getEmberOverloadChancePct } from '../../data/rpg/weave-proc-effects';
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import type { CombinedEquipmentModifiers } from '../../data/rpg/equipment-modifiers';
@@ -456,6 +457,9 @@ export function performMultiAttack(
           hitDamage: rawDamage,
           enemyTypeId: getMultiEnemyTypeId(t),
           statusPowerPct: equipment?.statusChancePct,
+          emberDurationMult: getEmberDurationMult(ctx.rpgSimState),
+          emberPotencyMult: getEmberPotencyMult(ctx.rpgSimState),
+          emberOverloadChancePct: getEmberOverloadChancePct(ctx.rpgSimState),
         });
         handleLensTier2EffectsOnWeaponHit({ targetEntity: hexEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });
         handleLensTier3EffectsOnWeaponHit({ targetEntity: hexEntity, hitDamage: rawDamage, lens: equipment.lens, weaponId, ctx });

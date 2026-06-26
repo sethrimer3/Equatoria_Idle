@@ -101,8 +101,8 @@ export interface WeaveEffectRoll {
   value: number;
 }
 
-/** The 5 named weave effect archetypes, each supporting T1/T2/T3 tiers. */
-export type WeaveNamedEffectId = 'focus' | 'quickness' | 'guard' | 'ward' | 'echo';
+/** The 7 named weave effect archetypes, each supporting T1/T2/T3 tiers. */
+export type WeaveNamedEffectId = 'focus' | 'quickness' | 'guard' | 'ward' | 'echo' | 'undying' | 'ember';
 
 /**
  * One tier of a named weave effect rolled at craft time.

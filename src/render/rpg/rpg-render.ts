@@ -81,7 +81,7 @@ import { createRpgWeaponSystems, type RpgWeaponCtx, type RpgWeaponHandle } from 
 import { createRpgTargeting, type RpgTargetingHandle } from './rpg-targeting';
 import { performWeaponAttack as _performWeaponAttack, type RpgPlayerAttackCtx } from './rpg-player-attack';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
-import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct } from '../../data/rpg/weave-proc-effects';
+import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffects, tickActiveWeaveBuffs, getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, processNamedEffectPlayerHitEnemyProcs } from '../../data/rpg/weave-proc-effects';
 import { applyLingeringHex, tickLingeringHexDebuffs } from '../../sim/rpg/weave-enemy-debuffs';
 import { WARD_TOTAL_MS } from './rpg-combat-effects-draw';
 import type {
@@ -1031,6 +1031,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     isInvincibilityMode: () => isInvincibilityMode,
     rpgSimState,
     getPlayerVelocity: () => ({ vx: mote.vx, vy: mote.vy }),
+    getPlayerBaseAtk: () => playerStats.atk,
+    getPlayerMaxCritAtk: () => playerStats.atk * 2,
+    onReflectedDamage: (dmg) => {
+      const t = findClosestEnemy(Infinity);
+      if (t) t.hp = Math.max(0, t.hp - dmg);
+    },
+    onUndyingCounterDeath: () => {
+      const t = findClosestEnemy(Infinity);
+      if (t) t.hp = 0;
+    },
     onPlayerHit: () => { waveManager?.onPlayerHit(); },
     onPlayerDamaged: (dmg, blocked, playerDied, playerMaxHp) => {
       notifyPlayerDamaged(dmg, blocked, playerDied, playerMaxHp);
@@ -1107,8 +1117,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // functions have been defined (see "Create weapon systems" section).
 
 
+  // Tracked for Quickened Stitch extra-attack recursion guard
+  let _currentAttackWeaponId = '';
+  let _extraAttackDepth = 0;
+
   function performWeaponAttack(weaponId: string): void {
+    const prev = _currentAttackWeaponId;
+    _currentAttackWeaponId = weaponId;
     _performWeaponAttack(playerAttackCtx, weaponId);
+    _currentAttackWeaponId = prev;
   }
 
   // ── Create targeting system ───────────────────────────────────
@@ -1613,6 +1630,20 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       const applyDebuff = targetEntity
         ? (vp: number, dur: number) => applyLingeringHex(targetEntity, vp, dur)
         : undefined;
+      // Named effect hit procs (Quickened Stitch T2/T3 extra attack, Echo T1/T3 chain)
+      processNamedEffectPlayerHitEnemyProcs(rpgSimState, {
+        finalDmg,
+        isExtraAttack: _extraAttackDepth > 0,
+        isEchoHit: false,
+        onExtraAttack: () => {
+          if (_extraAttackDepth < 1 && _currentAttackWeaponId) {
+            _extraAttackDepth++;
+            performWeaponAttack(_currentAttackWeaponId);
+            _extraAttackDepth--;
+          }
+        },
+        onEchoHit: (echoDmg) => { applyBonusDmg(echoDmg); },
+      });
       const triggered = tryTriggerPlayerHitEnemyWeaveEffects(rpgSimState, finalDmg, applyBonusDmg, applyDebuff);
       if (triggered.length > 0) {
         const nowMs = performance.now();

@@ -26,6 +26,7 @@ import {
 } from '../../sim/rpg/enemy-status-effects';
 import { getLingeringHexDamageMult } from '../../sim/rpg/weave-enemy-debuffs';
 import { applyTier1LensStatusesToEnemy } from '../../sim/rpg/enemy-status-application';
+import { getEmberDurationMult, getEmberPotencyMult, getEmberOverloadChancePct } from '../../data/rpg/weave-proc-effects';
 
 // Throttle affinity feedback (IMMUNE/RESIST/WEAK) to once per entity per 2500ms,
 // preventing rapid-fire weapons from flooding the screen.
@@ -302,6 +303,9 @@ export function performSingleAttack(
     const statusResult = applyTier1LensStatusesToEnemy({
       enemy: targetEntity, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId,
       statusPowerPct: equipment.statusChancePct,
+      emberDurationMult: getEmberDurationMult(ctx.rpgSimState),
+      emberPotencyMult: getEmberPotencyMult(ctx.rpgSimState),
+      emberOverloadChancePct: getEmberOverloadChancePct(ctx.rpgSimState),
     });
     if (statusResult.affinityFeedback && _canShowAffinityFeedback(targetEntity)) {
       const text = statusResult.affinityFeedback;

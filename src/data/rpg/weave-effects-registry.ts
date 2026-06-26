@@ -380,6 +380,44 @@ export const WEAVE_NAMED_EFFECT_REGISTRY: Readonly<Record<WeaveNamedEffectId, We
       },
     },
   },
+  undying: {
+    id: 'undying',
+    displayName: 'Last Thread',
+    flavors: ['diamond', 'nullstone', 'eigenstein'],
+    tiers: {
+      1: {
+        description: (m) => `${m.toFixed(1)}% chance to survive lethal damage at 1 HP (once per hit)`,
+        role: 'defense',
+      },
+      2: {
+        description: (m) => `${m.toFixed(1)}% chance: lethal attacker dies instead (if atk ≤ your base attack)`,
+        role: 'defense',
+      },
+      3: {
+        description: (m) => `${m.toFixed(1)}% chance: lethal attacker dies instead (if atk ≤ your max crit attack); checked before T2`,
+        role: 'defense',
+      },
+    },
+  },
+  ember: {
+    id: 'ember',
+    displayName: 'Ember Surge',
+    flavors: ['ruby', 'citrine', 'iolite'],
+    tiers: {
+      1: {
+        description: (m) => `+${m.toFixed(0)}% status duration on all player-applied statuses (cap +200%)`,
+        role: 'offense',
+      },
+      2: {
+        description: (m) => `+${m.toFixed(0)}% status potency on all player-applied statuses (cap +150%)`,
+        role: 'offense',
+      },
+      3: {
+        description: (m) => `${m.toFixed(1)}% chance to overload a status already active on the enemy (triggers extra effect)`,
+        role: 'offense',
+      },
+    },
+  },
 } as const;
 
 export const ALL_WEAVE_NAMED_EFFECT_IDS: readonly WeaveNamedEffectId[] = [
@@ -388,6 +426,8 @@ export const ALL_WEAVE_NAMED_EFFECT_IDS: readonly WeaveNamedEffectId[] = [
   'guard',
   'ward',
   'echo',
+  'undying',
+  'ember',
 ];
 
 /** Returns the named effect def for an id, or null if unknown. */

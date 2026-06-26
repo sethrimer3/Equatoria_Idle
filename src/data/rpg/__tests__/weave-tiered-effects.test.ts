@@ -26,7 +26,11 @@ import { createRpgSimState } from '../../../sim/rpg/rpg-state';
 import {
   processNamedEffectPlayerDamagedProcs,
   processNamedEffectPlayerHitEnemyProcs,
+  processNamedEffectPlayerLethalDamageProcs,
   getTotalNamedEffectMagnitude,
+  getEmberDurationMult,
+  getEmberPotencyMult,
+  getEmberOverloadChancePct,
   QUICKENED_STITCH_MAX_STACKS,
   ECHO_NEARBY_RADIUS,
   ECHO_MAX_CHAIN_DEPTH,
@@ -767,5 +771,223 @@ describe('proc-effects constants', () => {
   it('ECHO_MAX_CHAIN_DEPTH is a positive integer', () => {
     expect(Number.isInteger(ECHO_MAX_CHAIN_DEPTH)).toBe(true);
     expect(ECHO_MAX_CHAIN_DEPTH).toBeGreaterThan(0);
+  });
+});
+
+// ─── Last Thread (undying) ────────────────────────────────────────────────────
+
+describe('Last Thread (undying) — processNamedEffectPlayerLethalDamageProcs', () => {
+  function makeUndyingState(tiers: { tier: 1 | 2 | 3; magnitude: number }[]) {
+    const weave = makeWeaveWithNamedTiers(
+      tiers.map(t => ({ tier: t.tier, effectId: 'undying' as const, magnitude: t.magnitude, isApplied: true })),
+    );
+    return makeStateWithWeave(weave);
+  }
+
+  const baseOpts = {
+    finalDmg: 100,
+    currentHp: 50,
+    playerBaseAtk: 80,
+    playerMaxCritAtk: 160,
+    attackerAtk: 70,
+    attackerIsBoss: false,
+  };
+
+  it('T1: survives lethal damage when rng passes', () => {
+    const state = makeUndyingState([{ tier: 1, magnitude: 60 }]);
+    let survived = false;
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      rng: alwaysTrue,
+      onSurvive: () => { survived = true; },
+    });
+    expect(result.survived).toBe(true);
+    expect(result.counterDeath).toBe(false);
+    expect(survived).toBe(true);
+  });
+
+  it('T1: does not trigger when rng fails', () => {
+    const state = makeUndyingState([{ tier: 1, magnitude: 60 }]);
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      rng: alwaysFalse,
+    });
+    expect(result.survived).toBe(false);
+    expect(result.counterDeath).toBe(false);
+  });
+
+  it('T2: counter-death when rng passes and attackerAtk ≤ playerBaseAtk', () => {
+    const state = makeUndyingState([{ tier: 2, magnitude: 45 }]);
+    let survived = false;
+    let counterKill = false;
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      attackerAtk: 80, // exactly equal to playerBaseAtk
+      rng: alwaysTrue,
+      onSurvive: () => { survived = true; },
+      onCounterDeath: () => { counterKill = true; },
+    });
+    expect(result.survived).toBe(true);
+    expect(result.counterDeath).toBe(true);
+    expect(survived).toBe(true);
+    expect(counterKill).toBe(true);
+  });
+
+  it('T2: no counter-death when attackerAtk > playerBaseAtk', () => {
+    const state = makeUndyingState([{ tier: 2, magnitude: 45 }]);
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      attackerAtk: 81, // just over playerBaseAtk
+      rng: alwaysTrue,
+    });
+    // T2 condition fails; no other tiers → no survival
+    expect(result.survived).toBe(false);
+    expect(result.counterDeath).toBe(false);
+  });
+
+  it('T3: counter-death checked before T2 (resolution order)', () => {
+    const state = makeUndyingState([
+      { tier: 2, magnitude: 45 },
+      { tier: 3, magnitude: 55 },
+    ]);
+    const calls: string[] = [];
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      attackerAtk: 100, // > playerBaseAtk (80) but ≤ playerMaxCritAtk (160)
+      rng: alwaysTrue,
+      onSurvive: () => { calls.push('survive'); },
+      onCounterDeath: () => { calls.push('counter'); },
+    });
+    expect(result.survived).toBe(true);
+    expect(result.counterDeath).toBe(true);
+    // T3 fires first; T2 never gets to run
+    expect(calls).toEqual(['survive', 'counter']);
+  });
+
+  it('T3: no counter-death when attackerAtk > playerMaxCritAtk', () => {
+    const state = makeUndyingState([{ tier: 3, magnitude: 55 }]);
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      attackerAtk: 200, // > playerMaxCritAtk (160)
+      rng: alwaysTrue,
+    });
+    expect(result.survived).toBe(false);
+  });
+
+  it('undyingProcActive guard prevents double-trigger within same event', () => {
+    const state = makeUndyingState([{ tier: 1, magnitude: 60 }]);
+    state.undyingProcActive = true; // pre-set the guard (simulates nested call)
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      rng: alwaysTrue,
+    });
+    // Function early-returns without touching the flag (caller owns it)
+    expect(result.survived).toBe(false);
+    expect(state.undyingProcActive).toBe(true); // unchanged — function didn't set it
+  });
+
+  it('does not trigger on non-lethal damage (no undying weave equipped)', () => {
+    const state = createRpgSimState(); // no weave
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      rng: alwaysTrue,
+    });
+    expect(result.survived).toBe(false);
+    expect(result.counterDeath).toBe(false);
+  });
+
+  it('boss attackers skip T2/T3 counter-death but T1 still works', () => {
+    const state = makeUndyingState([
+      { tier: 2, magnitude: 45 },
+      { tier: 1, magnitude: 60 },
+    ]);
+    let survived = false;
+    let counterKill = false;
+    const result = processNamedEffectPlayerLethalDamageProcs(state, {
+      ...baseOpts,
+      attackerIsBoss: true,
+      attackerAtk: 50, // would qualify for T2 if not boss
+      rng: alwaysTrue,
+      onSurvive: () => { survived = true; },
+      onCounterDeath: () => { counterKill = true; },
+    });
+    // T1 should still fire; T2 should be skipped due to boss flag
+    expect(result.survived).toBe(true);
+    expect(result.counterDeath).toBe(false);
+    expect(survived).toBe(true);
+    expect(counterKill).toBe(false);
+  });
+});
+
+// ─── Ember Surge helpers ──────────────────────────────────────────────────────
+
+describe('Ember Surge — getEmberDurationMult / getEmberPotencyMult / getEmberOverloadChancePct', () => {
+  function makeEmberState(tiers: { tier: 1 | 2 | 3; magnitude: number }[]) {
+    const weave = makeWeaveWithNamedTiers(
+      tiers.map(t => ({ tier: t.tier, effectId: 'ember' as const, magnitude: t.magnitude, isApplied: true })),
+    );
+    return makeStateWithWeave(weave);
+  }
+
+  it('T1 duration mult: no ember weave → 1.0 (no bonus)', () => {
+    const state = createRpgSimState();
+    expect(getEmberDurationMult(state)).toBe(1.0);
+  });
+
+  it('T1 duration mult: 100% bonus → 2.0x', () => {
+    const state = makeEmberState([{ tier: 1, magnitude: 100 }]);
+    expect(getEmberDurationMult(state)).toBeCloseTo(2.0, 5);
+  });
+
+  it('T1 duration mult: caps at 200% bonus → 3.0x', () => {
+    const state = makeEmberState([{ tier: 1, magnitude: 300 }]); // > cap of 200
+    expect(getEmberDurationMult(state)).toBeCloseTo(3.0, 5); // 1 + 200/100 = 3.0
+  });
+
+  it('T2 potency mult: no ember weave → 1.0', () => {
+    const state = createRpgSimState();
+    expect(getEmberPotencyMult(state)).toBe(1.0);
+  });
+
+  it('T2 potency mult: 75% bonus → 1.75x', () => {
+    const state = makeEmberState([{ tier: 2, magnitude: 75 }]);
+    expect(getEmberPotencyMult(state)).toBeCloseTo(1.75, 5);
+  });
+
+  it('T2 potency mult: caps at 150% bonus → 2.5x', () => {
+    const state = makeEmberState([{ tier: 2, magnitude: 200 }]); // > cap of 150
+    expect(getEmberPotencyMult(state)).toBeCloseTo(2.5, 5); // 1 + 150/100 = 2.5
+  });
+
+  it('T3 overload chance: no ember weave → 0', () => {
+    const state = createRpgSimState();
+    expect(getEmberOverloadChancePct(state)).toBe(0);
+  });
+
+  it('T3 overload chance: returns magnitude directly', () => {
+    const state = makeEmberState([{ tier: 3, magnitude: 28 }]);
+    expect(getEmberOverloadChancePct(state)).toBeCloseTo(28, 5);
+  });
+
+  it('magnitude formula: T1 uses min(x*15, 200) cap', () => {
+    // x=5 → min(75, 200) = 75 → durationMult = 1+75/100 = 1.75
+    const mag5 = computeNamedEffectMagnitude('ember', 1, 5);
+    expect(mag5).toBeCloseTo(75, 1);
+    // x=20 → min(300, 200) = 200 → hits cap
+    const mag20 = computeNamedEffectMagnitude('ember', 1, 20);
+    expect(mag20).toBeCloseTo(200, 1);
+  });
+
+  it('magnitude formula: T2 uses min(x*12, 150) cap', () => {
+    const mag5 = computeNamedEffectMagnitude('ember', 2, 5);
+    expect(mag5).toBeCloseTo(60, 1);
+    const mag20 = computeNamedEffectMagnitude('ember', 2, 20);
+    expect(mag20).toBeCloseTo(150, 1);
+  });
+
+  it('magnitude formula: T3 uses cappedChance asymptotic formula', () => {
+    const mag1 = computeNamedEffectMagnitude('ember', 3, 1);
+    expect(mag1).toBeGreaterThan(0);
+    expect(mag1).toBeLessThan(40); // cappedChance(x, 40, 0.8) < 40
   });
 });

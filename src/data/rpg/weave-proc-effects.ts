@@ -507,6 +507,139 @@ export function processNamedEffectPlayerHitEnemyProcs(
   }
 }
 
+// ─── Named effect proc triggers (player lethal damage / undying) ──────────────
+
+/**
+ * Trigger options for the undying (Last Thread) proc on lethal damage.
+ */
+export interface NamedEffectLethalOpts {
+  /** Post-mitigation damage that would kill the player (dmg >= playerHp). */
+  finalDmg: number;
+  /** Current player HP before this hit. */
+  currentHp: number;
+  /** Player's base attack stat (for T2 attacker-armor check). */
+  playerBaseAtk: number;
+  /** Player's maximum crit-layer attack value (for T3 attacker-armor check). */
+  playerMaxCritAtk: number;
+  /** Raw ATK of the lethal hit (used for armor comparison against player attack). */
+  attackerAtk: number;
+  /** Whether the attacker is a boss (T2/T3 can choose to skip or handle differently). */
+  attackerIsBoss?: boolean;
+  rng?: () => number;
+  /** Called when undying T1/T2/T3 saves the player (caller sets HP to 1). */
+  onSurvive?: () => void;
+  /**
+   * Called when undying T2 or T3 fires and the counter-death condition is met.
+   * Caller should kill / apply lethal damage to the attacker enemy.
+   */
+  onCounterDeath?: () => void;
+}
+
+/**
+ * Result of the undying lethal-damage proc.
+ */
+export interface NamedEffectLethalResult {
+  /** True if the player survives via Last Thread (caller sets hp = 1). */
+  survived: boolean;
+  /** True if T2/T3 counter-death fired (caller should kill the attacker). */
+  counterDeath: boolean;
+}
+
+/**
+ * Processes Last Thread (undying) procs when the player takes lethal damage.
+ *
+ * Resolution order: T3 → T2 → T1 → normal death.
+ * Each tier is gated by its own cappedChance roll.
+ * Guarded by `state.undyingProcActive` so the same lethal event cannot trigger twice.
+ *
+ * Must be called BEFORE reducing player HP to 0.
+ */
+export function processNamedEffectPlayerLethalDamageProcs(
+  state: RpgSimState,
+  opts: NamedEffectLethalOpts,
+): NamedEffectLethalResult {
+  const result: NamedEffectLethalResult = { survived: false, counterDeath: false };
+  if (state.undyingProcActive) return result; // per-event guard
+
+  const rng = opts.rng ?? Math.random;
+  const nets = getEquippedNamedEffectTiers(state);
+  const undyingNets = nets.filter(n => n.effectId === 'undying');
+  if (undyingNets.length === 0) return result;
+
+  state.undyingProcActive = true;
+  try {
+    // Collect tiers
+    const t1 = undyingNets.find(n => n.tier === 1);
+    const t2 = undyingNets.find(n => n.tier === 2);
+    const t3 = undyingNets.find(n => n.tier === 3);
+
+    // T3 — fated counterdeath (atk ≤ player maxCritAtk)
+    if (t3 && !opts.attackerIsBoss && opts.attackerAtk <= opts.playerMaxCritAtk) {
+      if (rng() * 100 < t3.magnitude) {
+        result.survived = true;
+        result.counterDeath = true;
+        opts.onSurvive?.();
+        opts.onCounterDeath?.();
+        return result;
+      }
+    }
+
+    // T2 — death reversal (atk ≤ player baseAtk)
+    if (t2 && !opts.attackerIsBoss && opts.attackerAtk <= opts.playerBaseAtk) {
+      if (rng() * 100 < t2.magnitude) {
+        result.survived = true;
+        result.counterDeath = true;
+        opts.onSurvive?.();
+        opts.onCounterDeath?.();
+        return result;
+      }
+    }
+
+    // T1 — refuse death
+    if (t1) {
+      if (rng() * 100 < t1.magnitude) {
+        result.survived = true;
+        opts.onSurvive?.();
+        return result;
+      }
+    }
+  } finally {
+    state.undyingProcActive = false;
+  }
+
+  return result;
+}
+
+// ─── Ember helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Returns the ember T1 duration multiplier for status effects from equipped weaves.
+ * Returns 1.0 when ember T1 is not equipped (no bonus).
+ */
+export function getEmberDurationMult(state: RpgSimState): number {
+  const mag = getTotalNamedEffectMagnitude(state, 'ember', 1);
+  if (mag <= 0) return 1.0;
+  return 1.0 + Math.min(mag, 200) / 100;
+}
+
+/**
+ * Returns the ember T2 potency multiplier for status effects from equipped weaves.
+ * Returns 1.0 when ember T2 is not equipped (no bonus).
+ */
+export function getEmberPotencyMult(state: RpgSimState): number {
+  const mag = getTotalNamedEffectMagnitude(state, 'ember', 2);
+  if (mag <= 0) return 1.0;
+  return 1.0 + Math.min(mag, 150) / 100;
+}
+
+/**
+ * Returns the ember T3 overload chance % from equipped weaves.
+ * Returns 0 when ember T3 is not equipped.
+ */
+export function getEmberOverloadChancePct(state: RpgSimState): number {
+  return getTotalNamedEffectMagnitude(state, 'ember', 3);
+}
+
 // ─── Tick ─────────────────────────────────────────────────────────────────────
 
 /**

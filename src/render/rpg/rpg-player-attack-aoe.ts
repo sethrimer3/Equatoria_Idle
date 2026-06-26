@@ -16,6 +16,7 @@ import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import { applyTier1LensStatusesToEnemy } from '../../sim/rpg/enemy-status-application';
+import { getEmberDurationMult, getEmberPotencyMult, getEmberOverloadChancePct } from '../../data/rpg/weave-proc-effects';
 import { handleLensTier2EffectsOnWeaponHit, extractT2TargetEntity } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import { evaluateStatusCombosOnStatusApplied } from '../../sim/rpg/enemy-status-combos';
@@ -258,6 +259,9 @@ export function performAoeAttack(
       ...eigensteinEnemies.map(e => ({ enemy: e, enemyTypeId: 'eigenstein' })),
       ...eliteEnemies.map(e => ({ enemy: e, enemyTypeId: `elite_${(e as { tier: string }).tier}` })),
     ];
+    const emberDurationMult = getEmberDurationMult(ctx.rpgSimState);
+    const emberPotencyMult = getEmberPotencyMult(ctx.rpgSimState);
+    const emberOverloadChancePct = getEmberOverloadChancePct(ctx.rpgSimState);
     for (const { enemy: e, enemyTypeId } of aoeTargets) {
       if (e.hp <= 0) continue;
       const dx = e.x - mote.x, dy = e.y - mote.y;
@@ -265,6 +269,7 @@ export function performAoeAttack(
         applyTier1LensStatusesToEnemy({
           enemy: e, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId,
           statusPowerPct: equipment.statusChancePct,
+          emberDurationMult, emberPotencyMult, emberOverloadChancePct,
         });
       }
     }
@@ -274,6 +279,7 @@ export function performAoeAttack(
         applyTier1LensStatusesToEnemy({
           enemy: bossEnemy, lens: equipment.lens, weaponId, hitDamage: rawDamage, enemyTypeId: 'boss',
           statusPowerPct: equipment.statusChancePct,
+          emberDurationMult, emberPotencyMult, emberOverloadChancePct,
         });
       }
     }

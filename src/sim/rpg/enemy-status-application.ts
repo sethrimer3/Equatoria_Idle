@@ -10,7 +10,10 @@ import type { CraftedLensData } from '../../data/rpg/lens-types';
 import { buildAllTier1StatusParams } from '../../data/rpg/lens-status-effects';
 import { getEnemyStatusAffinityMultiplier, isBossOrEliteType } from '../../data/rpg/enemy-status-affinities';
 import { ENEMY_RIFT_STACK_CAP_BOSS, ENEMY_FRAC_TICKS_BOSS } from '../../data/rpg/status-balance';
-import { applyLensStatus, incrementRiftScarredStacks } from './enemy-status-effects';
+import { applyLensStatus, incrementRiftScarredStacks, hasStatus } from './enemy-status-effects';
+
+// Flag guard: prevents recursive ember overload triggers within the same status application
+let _emberOverloadActive = false;
 
 export interface ApplyLensStatusesResult {
   appliedAny: boolean;
@@ -35,8 +38,15 @@ export function applyTier1LensStatusesToEnemy(args: {
   hitDamage: number;
   enemyTypeId: string;
   statusPowerPct?: number;
+  /** Ember Surge T1: multiplier applied to durationMs (1.0 = no bonus). */
+  emberDurationMult?: number;
+  /** Ember Surge T2: multiplier applied to magnitude (1.0 = no bonus). */
+  emberPotencyMult?: number;
+  /** Ember Surge T3: % chance to overload a status that's already active. */
+  emberOverloadChancePct?: number;
 }): ApplyLensStatusesResult {
-  const { enemy, lens, weaponId, hitDamage, enemyTypeId, statusPowerPct } = args;
+  const { enemy, lens, weaponId, hitDamage, enemyTypeId, statusPowerPct,
+          emberDurationMult = 1, emberPotencyMult = 1, emberOverloadChancePct = 0 } = args;
   const statusPowerMult = statusPowerPct && statusPowerPct > 0 ? 1 + statusPowerPct / 100 : 1;
   const params = buildAllTier1StatusParams(lens, weaponId, hitDamage);
   const isBossElite = isBossOrEliteType(enemyTypeId);
@@ -59,6 +69,9 @@ export function applyTier1LensStatusesToEnemy(args: {
 
     const affinityAndPower = mult * statusPowerMult;
     let scaled = affinityAndPower === 1 ? p : { ...p, durationMs: p.durationMs * affinityAndPower, magnitude: p.magnitude * affinityAndPower };
+    // Ember Surge T1/T2: duration and potency bonuses
+    if (emberDurationMult > 1) scaled = { ...scaled, durationMs: scaled.durationMs * emberDurationMult };
+    if (emberPotencyMult > 1)  scaled = { ...scaled, magnitude:  scaled.magnitude  * emberPotencyMult };
     if (isBossElite) {
       if (scaled.key === 'riftScarred') {
         scaled = { ...scaled, riftScarredStackCap: ENEMY_RIFT_STACK_CAP_BOSS };
@@ -67,8 +80,18 @@ export function applyTier1LensStatusesToEnemy(args: {
       }
     }
 
+    // Ember Surge T3: overload a status that's already active (refresh + 50% bonus)
+    const canOverload = emberOverloadChancePct > 0 && !_emberOverloadActive && hasStatus(enemy, p.key);
     applyLensStatus(enemy, scaled);
     appliedAny = true;
+    if (canOverload && Math.random() * 100 < emberOverloadChancePct) {
+      _emberOverloadActive = true;
+      try {
+        applyLensStatus(enemy, { ...scaled, durationMs: scaled.durationMs * 1.5, magnitude: scaled.magnitude * 1.5 });
+      } finally {
+        _emberOverloadActive = false;
+      }
+    }
 
     if (!feedbackShown && mult !== 1) {
       affinityFeedback = mult > 1 ? 'WEAK!' : 'RESIST';
