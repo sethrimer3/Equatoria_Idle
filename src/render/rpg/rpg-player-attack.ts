@@ -45,6 +45,7 @@ import {
   getCombinedEquipmentModifiers,
   type CombinedEquipmentModifiers,
 } from '../../data/rpg/equipment-modifiers';
+import { resolveCritLayers } from '../../data/rpg/weave-math-helpers';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -304,12 +305,17 @@ export function performWeaponAttack(ctx: RpgPlayerAttackCtx, weaponId: string): 
   baseDmg = applyEquipmentModifiersToAttackContext(baseDmg, preCritEquipment);
   const projSpeedMult = 1 + ctx.getEquipmentProjectileSpeedPct() / 100;
 
-  const totalCritChancePct = (craftedMods?.critChancePct ?? 0) + preCritEquipment.critChancePct;
-  const isCrit    = totalCritChancePct > 0
-    ? Math.random() * 100 < totalCritChancePct
-    : false;
-  const critMult  = (craftedMods?.critDamageMultiplier ?? 2) * (1 + preCritEquipment.critDamagePct / 100);
-  const rawDamage = isCrit ? baseDmg * critMult : baseDmg;
+  // Crit resolution: standard crit chance (clamped) + Focus T3 overflow crit chance (unclamped).
+  // Focus T3 uses resolveCritLayers which handles overflow semantics (>100% = guaranteed layers).
+  const standardCritChancePct = (craftedMods?.critChancePct ?? 0) + preCritEquipment.critChancePct;
+  const namedCritChancePct = preCritEquipment.rawNamedCritChancePct;
+  const totalRawCritChancePct = standardCritChancePct + namedCritChancePct;
+  const critLayers = totalRawCritChancePct > 0 ? resolveCritLayers(totalRawCritChancePct) : 0;
+  const isCrit = critLayers > 0;
+  const baseCritMult = (craftedMods?.critDamageMultiplier ?? 2) * (1 + preCritEquipment.critDamagePct / 100);
+  // Each additional crit layer adds another (critMult - 1) multiplier on top.
+  const critMult = isCrit ? 1 + critLayers * (baseCritMult - 1) : 1;
+  const rawDamage = baseDmg * critMult;
   const equipment: CombinedEquipmentModifiers =
     getCombinedEquipmentModifiers({ rpgState: rpgSimState, weaponId, hitDamage: rawDamage });
   const effect    = weaponDef?.stats.effect ?? { kind: 'single' as const };

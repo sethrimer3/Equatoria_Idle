@@ -101,6 +101,42 @@ export interface WeaveEffectRoll {
   value: number;
 }
 
+/** The 5 named weave effect archetypes, each supporting T1/T2/T3 tiers. */
+export type WeaveNamedEffectId = 'focus' | 'quickness' | 'guard' | 'ward' | 'echo';
+
+/**
+ * One tier of a named weave effect rolled at craft time.
+ * A weave has at most one effectId, with 1–3 tiers (T1 always, T2/T3 probabilistic).
+ */
+export interface WeaveNamedEffectTier {
+  /** Tier number: 1 (base), 2 (enhanced), or 3 (apex). */
+  tier: 1 | 2 | 3;
+  /** Which named effect archetype this tier belongs to. */
+  effectId: WeaveNamedEffectId;
+  /**
+   * Primary numeric magnitude for this tier.
+   * Interpretation depends on effectId and tier:
+   *   focus  T1 = weapon damage %       (linear with effectMultiplier)
+   *   focus  T2 = crit damage %         (linear with effectMultiplier)
+   *   focus  T3 = crit chance %         (linear, can exceed 75 — overflow semantics)
+   *   quickness T1 = cooldown %         (linear)
+   *   quickness T2 = extra attack chance% (cappedChance)
+   *   quickness T3 = stack chance %     (cappedChance)
+   *   guard  T1 = DEF %                 (linear)
+   *   guard  T2 = reflection %          (linear)
+   *   guard  T3 = block chance %        (cappedChance, never 100)
+   *   ward   T1 = shield proc chance %  (cappedChance)
+   *   ward   T2 = shield multiplier     (e.g. 2.0 = 2× the absorbed amount)
+   *   ward   T3 = replenishment %       (cappedChance)
+   *   echo   T1 = echo damage %         (linear; proc chance derived from effectMultiplier)
+   *   echo   T2 = echo damage multiplier (additive above 1.0)
+   *   echo   T3 = chain chance %        (cappedChance)
+   */
+  magnitude: number;
+  /** True when wired into combat. isApplied=false = stored but not active. */
+  isApplied: boolean;
+}
+
 export interface CraftedWeaveData {
   id: string;
   name: string;
@@ -112,8 +148,20 @@ export interface CraftedWeaveData {
   tierEffects: WeaveTierEffect[];
   /** Refinement level 0–3. 0 = unrefined (default, identical to pre-refinement behavior). Absent in old items = 0. */
   refinementLevel?: number;
-  /** Passive effects rolled at craft time. Absent in old items = [] (no effects, backward-safe). */
+  /** Legacy passive effects rolled at craft time. Absent in old items = [] (no effects, backward-safe). */
   effects?: WeaveEffectRoll[];
+  /**
+   * Named effect tiers (T1/T2/T3) rolled via the tiered system at craft time.
+   * New weaves populate this instead of effects[]. Old saves have this absent (= []).
+   * All entries share the same effectId; a weave has one named effect archetype with 1–3 tiers.
+   */
+  namedEffectTiers?: WeaveNamedEffectTier[];
+  /**
+   * Ratio of total mote investment to BASELINE_CRAFT_COST (= 100).
+   * Used to compute magnitudes for named effect tiers.
+   * Absent on old weaves without named effect tiers.
+   */
+  effectMultiplier?: number;
   /** Source zone where this item dropped. Absent on pre-metadata items — treat as unknown. */
   sourceZone?: string;
   /** Wave number at drop time. Absent on pre-metadata items — treat as 0. */

@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 36;
+export const SAVE_VERSION = 37;
 
 export interface SaveData {
   version: number;
@@ -235,6 +235,10 @@ export interface SaveData {
       refinementLevel?: number;
       /** Passive effects rolled at craft time. Absent in older saves (defaults to []). */
       effects?: Array<{ id: string; value: number }>;
+      /** v37+: Named effect tiers (T1/T2/T3). Absent in pre-v37 saves (defaults to []). */
+      namedEffectTiers?: Array<{ tier: number; effectId: string; magnitude: number; isApplied: boolean }>;
+      /** v37+: effectMultiplier = totalWeightedMoteValue / BASELINE_CRAFT_COST. Absent in pre-v37 saves. */
+      effectMultiplier?: number;
     }>;
     /** v31+: equipped weave slot assignments (array of 6 weave IDs or null). Absent in older saves. */
     equippedWeaveSlots?: Array<string | null>;

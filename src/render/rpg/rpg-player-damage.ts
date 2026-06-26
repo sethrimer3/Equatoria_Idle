@@ -12,6 +12,7 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getSkillNodeRank, isSkillNodeUnlocked } from '../../sim/rpg/rpg-state';
+import { processNamedEffectPlayerDamagedProcs } from '../../data/rpg/weave-proc-effects';
 import type { HitEffect, ShotLine, DamageNumber, LaserEnemy } from './rpg-types';
 import {
   HIT_EFFECT_DURATION_MS, SHOT_LINE_DURATION_MS,
@@ -250,7 +251,41 @@ export function createPlayerDamageFns(pCtx: PlayerDamageCtx): PlayerDamageHandle
         return;
       }
     }
-    const dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
+    let dmg = Math.max(0, atkValue * (1 - Math.min(100, playerStats.def) / 100));
+
+    // Named effect tier procs (Guard T3 block, Ward T1 shield, Guard T2 reflection)
+    if (sim && dmg > 0) {
+      const named = processNamedEffectPlayerDamagedProcs(sim, {
+        rawAtkValue: atkValue,
+        finalDmg: dmg,
+      });
+      if (named.guardBlocked) {
+        spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
+        pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
+        return;
+      }
+      if (named.wardShieldConverted > 0) {
+        spawnDamageNumber(mote.x, mote.y, 0, -1, 'SHIELDED', 0.25, '#7adbf5');
+        pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
+        return;
+      }
+      // Reflection fires alongside damage, not instead of it
+      // (caller receives it via onPlayerDamaged; rendered separately if desired)
+      dmg = Math.max(0, dmg - named.reflectedDmg);
+    }
+
+    // Shield absorption: drain playerShieldHp before reducing player HP
+    if (sim && sim.playerShieldHp > 0 && dmg > 0) {
+      const absorbed = Math.min(sim.playerShieldHp, dmg);
+      sim.playerShieldHp -= absorbed;
+      dmg -= absorbed;
+      if (dmg <= 0) {
+        spawnDamageNumber(mote.x, mote.y, 0, -1, 'SHIELDED', 0.25, '#7adbf5');
+        pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);
+        return;
+      }
+    }
+
     if (dmg <= 0) {
       spawnDamageNumber(mote.x, mote.y, 0, -1, 'BLOCKED', 0.25, '#74c0fc');
       pCtx.onPlayerDamaged?.(0, true, false, playerStats.maxHp);

@@ -16,7 +16,7 @@
  */
 
 import type { TierId } from '../tiers';
-import type { WeaveRarity } from './weave-types';
+import type { WeaveRarity, WeaveNamedEffectId } from './weave-types';
 
 // ─── Shared metadata types ────────────────────────────────────────────────────
 
@@ -264,4 +264,133 @@ export function getWeaveEffectDef(id: string): WeaveEffectDef | null {
   return (WEAVE_PASSIVE_EFFECT_REGISTRY as Record<string, WeaveEffectDef>)[id]
     ?? (WEAVE_PROC_EFFECT_REGISTRY as Record<string, WeaveEffectDef>)[id]
     ?? null;
+}
+
+// ─── Named tiered effect definitions ─────────────────────────────────────────
+
+export interface WeaveNamedEffectTierDef {
+  readonly description: (magnitude: number) => string;
+  readonly role: WeaveEffectRole;
+}
+
+export interface WeaveNamedEffectDef {
+  readonly id: WeaveNamedEffectId;
+  readonly displayName: string;
+  readonly flavors: readonly TierId[];
+  readonly tiers: {
+    readonly 1: WeaveNamedEffectTierDef;
+    readonly 2: WeaveNamedEffectTierDef;
+    readonly 3: WeaveNamedEffectTierDef;
+  };
+}
+
+export const WEAVE_NAMED_EFFECT_REGISTRY: Readonly<Record<WeaveNamedEffectId, WeaveNamedEffectDef>> = {
+  focus: {
+    id: 'focus',
+    displayName: 'Focus Thread',
+    flavors: ['citrine', 'ruby', 'diamond'],
+    tiers: {
+      1: {
+        description: (m) => `+${m.toFixed(1)}% weapon damage`,
+        role: 'offense',
+      },
+      2: {
+        description: (m) => `+${m.toFixed(1)}% crit damage`,
+        role: 'offense',
+      },
+      3: {
+        description: (m) => `+${m.toFixed(1)}% crit chance (overflow: guarantees extra crit layers above 100%)`,
+        role: 'offense',
+      },
+    },
+  },
+  quickness: {
+    id: 'quickness',
+    displayName: 'Quickened Stitch',
+    flavors: ['sand', 'quartz'],
+    tiers: {
+      1: {
+        description: (m) => `-${m.toFixed(1)}% attack cooldown`,
+        role: 'offense',
+      },
+      2: {
+        description: (m) => `${m.toFixed(1)}% chance per attack for one extra attack`,
+        role: 'offense',
+      },
+      3: {
+        description: (m) => `${m.toFixed(1)}% chance per attack to accumulate a stacked attack (released amplified at cap)`,
+        role: 'offense',
+      },
+    },
+  },
+  guard: {
+    id: 'guard',
+    displayName: 'Guard Knot',
+    flavors: ['diamond', 'sapphire', 'iolite'],
+    tiers: {
+      1: {
+        description: (m) => `+${m.toFixed(1)}% DEF`,
+        role: 'defense',
+      },
+      2: {
+        description: (m) => `Reflect ${m.toFixed(1)}% of incoming damage (post-mitigation) back to attacker`,
+        role: 'defense',
+      },
+      3: {
+        description: (m) => `${m.toFixed(1)}% chance to fully block incoming attacks`,
+        role: 'defense',
+      },
+    },
+  },
+  ward: {
+    id: 'ward',
+    displayName: 'Reactive Ward',
+    flavors: ['diamond', 'sapphire'],
+    tiers: {
+      1: {
+        description: (m) => `${m.toFixed(1)}% chance on damage taken to convert it to shield HP`,
+        role: 'defense',
+      },
+      2: {
+        description: (m) => `Shield HP multiplied by ${m.toFixed(2)}×`,
+        role: 'defense',
+      },
+      3: {
+        description: (m) => `On ward proc: replenish shield for up to ${m.toFixed(1)}% of highest incoming damage`,
+        role: 'defense',
+      },
+    },
+  },
+  echo: {
+    id: 'echo',
+    displayName: 'Echo Strike',
+    flavors: ['amethyst', 'fracteryl', 'eigenstein'],
+    tiers: {
+      1: {
+        description: (m) => `On hit: chance to deal ${m.toFixed(1)}% of hit damage as echo to nearest enemy`,
+        role: 'offense',
+      },
+      2: {
+        description: (m) => `Echo damage multiplied by ${m.toFixed(2)}×`,
+        role: 'offense',
+      },
+      3: {
+        description: (m) => `${m.toFixed(1)}% chance for echo hit to chain to additional enemies (max 3 deep)`,
+        role: 'offense',
+      },
+    },
+  },
+} as const;
+
+export const ALL_WEAVE_NAMED_EFFECT_IDS: readonly WeaveNamedEffectId[] = [
+  'focus',
+  'quickness',
+  'guard',
+  'ward',
+  'echo',
+];
+
+/** Returns the named effect def for an id, or null if unknown. */
+export function getWeaveNamedEffectDef(id: string): WeaveNamedEffectDef | null {
+  return (WEAVE_NAMED_EFFECT_REGISTRY as Record<string, WeaveNamedEffectDef>)[id] ?? null;
 }

@@ -9,9 +9,9 @@
  * - "not yet applied" indicator for stored-only effects
  */
 
-import type { CraftedWeaveData, WeaveTierEffect, WeaveEffectRoll } from '../../data/rpg/weave-types';
+import type { CraftedWeaveData, WeaveTierEffect, WeaveEffectRoll, WeaveNamedEffectTier } from '../../data/rpg/weave-types';
 import { formatWeaveTierEffectContribution } from '../../data/rpg/weave-tier-effect-modifiers';
-import { getWeaveEffectDef } from '../../data/rpg/weave-effects-registry';
+import { getWeaveEffectDef, getWeaveNamedEffectDef } from '../../data/rpg/weave-effects-registry';
 import type { WeaveProcEffectDef } from '../../data/rpg/weave-effects-registry';
 import type { WeaveSlotsPanel } from './weave-slots';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
@@ -261,6 +261,49 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     return wrapper;
   }
 
+  // ── Named effect tier row ─────────────────────────────────────────────
+
+  const TIER_BADGE_COLORS: Record<number, string> = { 1: '#aaa', 2: '#9cf', 3: '#ffa040' };
+
+  function buildNamedEffectTierRow(net: WeaveNamedEffectTier): HTMLElement {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'margin:2px 0 4px;';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:0.78em;flex-wrap:wrap;';
+
+    // "T1" / "T2" / "T3" badge
+    const tierChip = document.createElement('span');
+    const tierColor = TIER_BADGE_COLORS[net.tier] ?? '#aaa';
+    tierChip.style.cssText = `background:rgba(255,255,255,0.1);color:${tierColor};font-size:0.68em;padding:0 4px;border-radius:2px;font-weight:700;white-space:nowrap;border:1px solid ${tierColor}44;`;
+    tierChip.textContent = `T${net.tier}`;
+    row.appendChild(tierChip);
+
+    const def = getWeaveNamedEffectDef(net.effectId);
+    if (def) {
+      // Effect name
+      const nameEl = document.createElement('span');
+      nameEl.style.cssText = 'color:#d0c0ff;font-weight:600;';
+      nameEl.textContent = def.displayName;
+      row.appendChild(nameEl);
+
+      // Description
+      const desc = def.tiers[net.tier as 1 | 2 | 3].description(net.magnitude);
+      const descEl = document.createElement('span');
+      descEl.style.cssText = 'color:#9cf;font-size:0.88em;';
+      descEl.textContent = desc;
+      row.appendChild(descEl);
+    } else {
+      const unknownEl = document.createElement('span');
+      unknownEl.style.color = '#666';
+      unknownEl.textContent = `${net.effectId} (unknown)`;
+      row.appendChild(unknownEl);
+    }
+
+    wrapper.appendChild(row);
+    return wrapper;
+  }
+
   // ── Effect row (passive or proc) ──────────────────────────────────────
 
   function buildEffectRow(effect: WeaveEffectRoll): HTMLElement | null {
@@ -444,6 +487,19 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
 
       for (const effect of weave.tierEffects) {
         card.appendChild(buildTierEffectRow(effect));
+      }
+    }
+
+    // ── Named effect tiers section (tiered weave system) ─────────────────
+    const namedTiers = (weave.namedEffectTiers ?? []).filter(e => e.isApplied);
+    if (namedTiers.length > 0) {
+      const namedHeader = document.createElement('div');
+      namedHeader.style.cssText = 'font-size:0.7em;color:#88aaff;margin:4px 0 2px;letter-spacing:0.05em;text-transform:uppercase;';
+      namedHeader.textContent = 'Named Effects';
+      card.appendChild(namedHeader);
+
+      for (const net of namedTiers) {
+        card.appendChild(buildNamedEffectTierRow(net));
       }
     }
 

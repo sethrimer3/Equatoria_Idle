@@ -446,6 +446,17 @@ export function deserializeGameState(data: SaveData): GameState {
           id: String(e.id ?? ''),
           value: Number(e.value ?? 0),
         })).filter((e: { id: string; value: number }) => e.id.length > 0),
+        // v37+: named effect tiers; absent in pre-v37 saves (safe default = [])
+        namedEffectTiers: (w.namedEffectTiers ?? []).map((e: {
+          tier: number; effectId: string; magnitude: number; isApplied: boolean;
+        }) => ({
+          tier: (e.tier === 1 || e.tier === 2 || e.tier === 3 ? e.tier : 1) as 1 | 2 | 3,
+          effectId: String(e.effectId ?? '') as import('../data/rpg/weave-types').WeaveNamedEffectId,
+          magnitude: Number(e.magnitude ?? 0),
+          isApplied: e.isApplied !== false,
+        })).filter((e: { effectId: string }) => e.effectId.length > 0),
+        // v37+: effectMultiplier; absent in pre-v37 saves
+        effectMultiplier: typeof w.effectMultiplier === 'number' ? w.effectMultiplier : undefined,
       }));
     }
     // v31+: equipped weave slots (6-element array, null = empty)

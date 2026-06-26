@@ -17,12 +17,15 @@ import {
 } from './weave-tier-definitions';
 import { getTierForgeWeight } from './crafted-weapon-helpers';
 import type { CraftedWeaponIngredient } from './crafted-weapon-types';
-import type { WeaveAffix, WeaveRarity, WeaveTierEffect, WeaveTierEffectTier, CraftedWeaveData, WeaveEffectRoll, ItemSourceType } from './weave-types';
+import type { WeaveAffix, WeaveRarity, WeaveTierEffect, WeaveTierEffectTier, CraftedWeaveData, WeaveEffectRoll, WeaveNamedEffectId, WeaveNamedEffectTier, ItemSourceType } from './weave-types';
 import {
   ALL_WEAVE_EFFECT_IDS,
+  ALL_WEAVE_NAMED_EFFECT_IDS,
   getWeaveEffectDef,
+  getWeaveNamedEffectDef,
   type WeaveEffectId,
 } from './weave-effects-registry';
+import { cappedChance } from './weave-math-helpers';
 
 // ─── Triangular distribution ─────────────────────────────────────────────────
 
@@ -399,6 +402,148 @@ export function rollWeavePassiveEffects(
   return rollWeaveEffects(affixes, [], totalWeightedMoteValue, rng);
 }
 
+// ─── Named effect tier rolling ───────────────────────────────────────────────
+
+/**
+ * Baseline mote investment for effectMultiplier normalisation.
+ * effectMultiplier = totalWeightedMoteValue / BASELINE_CRAFT_COST.
+ * At exactly 100 invested, effectMultiplier = 1.0.
+ */
+export const BASELINE_CRAFT_COST = 100;
+
+/** Echo hit proc chance is derived from effectMultiplier via cappedChance, not stored as magnitude. */
+const ECHO_T1_PROC_MAX_PCT = 30;
+const ECHO_T1_PROC_K = 1.5;
+
+/** Compute the proc chance percentage for Echo T1 given an effectMultiplier. */
+export function getEchoT1ProcChancePct(effectMultiplier: number): number {
+  return cappedChance(effectMultiplier, ECHO_T1_PROC_MAX_PCT, ECHO_T1_PROC_K);
+}
+
+/**
+ * Compute the primary magnitude for a named effect tier at a given effectMultiplier.
+ * See WeaveNamedEffectTier.magnitude for value semantics.
+ */
+export function computeNamedEffectMagnitude(
+  effectId: WeaveNamedEffectId,
+  tier: 1 | 2 | 3,
+  effectMultiplier: number,
+): number {
+  const x = Math.max(0, effectMultiplier);
+  switch (effectId) {
+    case 'focus':
+      if (tier === 1) return parseFloat((x * 5.0).toFixed(2));
+      if (tier === 2) return parseFloat((x * 10.0).toFixed(2));
+      /* tier 3 */ return parseFloat((x * 12.0).toFixed(2)); // raw %, can exceed 75 — overflow semantics
+
+    case 'quickness':
+      if (tier === 1) return parseFloat((x * 3.0).toFixed(2));
+      if (tier === 2) return parseFloat(cappedChance(x, 50, 1.0).toFixed(2));
+      /* tier 3 */ return parseFloat(cappedChance(x, 80, 0.8).toFixed(2));
+
+    case 'guard':
+      if (tier === 1) return parseFloat((x * 5.0).toFixed(2));
+      if (tier === 2) return parseFloat((x * 20.0).toFixed(2));
+      /* tier 3 */ return parseFloat(cappedChance(x, 75, 1.0).toFixed(2));
+
+    case 'ward':
+      if (tier === 1) return parseFloat(cappedChance(x, 60, 1.0).toFixed(2));
+      if (tier === 2) return parseFloat(Math.min(2.0 + x * 0.5, 5.0).toFixed(2)); // multiplier, starts at 2×
+      /* tier 3 */ return parseFloat(cappedChance(x, 100, 0.5).toFixed(2));
+
+    case 'echo':
+      if (tier === 1) return parseFloat((x * 20.0).toFixed(2)); // echo damage % of hit; proc chance derived separately
+      if (tier === 2) return parseFloat(Math.min(1.0 + x * 0.3, 3.0).toFixed(2)); // multiplier on top of base 1×
+      /* tier 3 */ return parseFloat(cappedChance(x, 50, 0.8).toFixed(2));
+
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Selects one named effect archetype (focus/quickness/guard/ward/echo) from a
+ * flavor-weighted pool based on the weave's ingredient tiers.
+ * Returns null if the pool is empty or rarity is too low.
+ */
+export function pickWeightedNamedEffect(
+  ingredients: CraftedWeaponIngredient[],
+  highestRarity: WeaveRarity,
+  rng: () => number,
+): WeaveNamedEffectId | null {
+  // Common-only weaves don't get named effects
+  if (EFFECT_RARITY_MULT[highestRarity] <= 0) return null;
+
+  const dominantTiers = getWeaveDominantTiers(ingredients);
+
+  const pool: Array<{ id: WeaveNamedEffectId; weight: number }> = [];
+  for (const effectId of ALL_WEAVE_NAMED_EFFECT_IDS) {
+    const def = getWeaveNamedEffectDef(effectId);
+    if (!def) continue;
+    const flavorMatch = def.flavors.some(f => dominantTiers.has(f as TierId));
+    pool.push({ id: effectId, weight: flavorMatch ? FLAVOR_MATCH_MULTIPLIER : 1.0 });
+  }
+
+  if (pool.length === 0) return null;
+  const totalWeight = pool.reduce((s, e) => s + e.weight, 0);
+  let threshold = rng() * totalWeight;
+  for (const entry of pool) {
+    threshold -= entry.weight;
+    if (threshold <= 0) return entry.id;
+  }
+  return pool[pool.length - 1]!.id;
+}
+
+/**
+ * Rolls named effect tiers (T1 always, T2/T3 probabilistic) for a single weave.
+ * Returns an empty array for Common-only weaves or when the pool is empty.
+ * All returned entries share the same effectId.
+ */
+export function rollWeaveNamedEffectTiers(
+  affixes: WeaveAffix[],
+  ingredients: CraftedWeaponIngredient[],
+  effectMultiplier: number,
+  forgeCraftLevel: number,
+  rng: () => number = Math.random,
+): WeaveNamedEffectTier[] {
+  const highestRarity = getHighestAffixRarity(affixes);
+  const selectedId = pickWeightedNamedEffect(ingredients, highestRarity, rng);
+  if (!selectedId) return [];
+
+  const { tier2Chance, tier3Chance } = getForgeEffectUnlockChances(forgeCraftLevel);
+  const tiers: WeaveNamedEffectTier[] = [];
+
+  // T1 — always
+  tiers.push({
+    tier: 1,
+    effectId: selectedId,
+    magnitude: computeNamedEffectMagnitude(selectedId, 1, effectMultiplier),
+    isApplied: true,
+  });
+
+  // T2 — probabilistic
+  if (rng() < tier2Chance) {
+    tiers.push({
+      tier: 2,
+      effectId: selectedId,
+      magnitude: computeNamedEffectMagnitude(selectedId, 2, effectMultiplier),
+      isApplied: true,
+    });
+
+    // T3 — probabilistic, only if T2 was rolled
+    if (rng() < tier3Chance) {
+      tiers.push({
+        tier: 3,
+        effectId: selectedId,
+        magnitude: computeNamedEffectMagnitude(selectedId, 3, effectMultiplier),
+        isApplied: true,
+      });
+    }
+  }
+
+  return tiers;
+}
+
 // ─── Weave name generation ────────────────────────────────────────────────────
 
 /** Zone-specific adjective used when source zone is known. */
@@ -509,8 +654,15 @@ export function createCraftedWeave(
   // Roll tier 1–3 effects per distinct tier
   const tierEffects = rollWeaveTierEffects(normalizedIngredients, forgeCraftLevel, rng, qualityFloor);
 
-  // Roll effects (0 or 1 depending on best affix rarity, flavor-weighted by ingredients)
-  const effects = rollWeaveEffects(affixes, normalizedIngredients, totalWeightedMoteValue, rng);
+  // Roll named effect tiers (new tiered system — T1 always, T2/T3 probabilistic).
+  const effectMultiplier = totalWeightedMoteValue > 0 ? totalWeightedMoteValue / BASELINE_CRAFT_COST : 0;
+  const namedEffectTiers = rollWeaveNamedEffectTiers(affixes, normalizedIngredients, effectMultiplier, forgeCraftLevel, rng);
+
+  // Roll legacy effects only when the new tiered system didn't activate
+  // (e.g. Common-only affixes). This prevents double-counting for new weaves.
+  const effects = namedEffectTiers.length === 0
+    ? rollWeaveEffects(affixes, normalizedIngredients, totalWeightedMoteValue, rng)
+    : [];
 
   const tiers = Array.from(tierCounts.keys());
   const name = getWeaveName(tiers, {
@@ -528,6 +680,8 @@ export function createCraftedWeave(
     tierEffects,
     refinementLevel: 0,
     effects,
+    namedEffectTiers,
+    effectMultiplier: namedEffectTiers.length > 0 ? effectMultiplier : undefined,
     sourceZone: grantOptions.sourceZone,
     sourceWave: grantOptions.sourceWave,
     sourceType: grantOptions.sourceType,

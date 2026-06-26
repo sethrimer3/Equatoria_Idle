@@ -42,6 +42,12 @@ export interface EquippedLensModifiers extends EquipmentCombatModifiers {
 
 export interface EquippedWeaveModifiers extends EquipmentCombatModifiers {
   equippedWeaves: CraftedWeaveData[];
+  /**
+   * Unclamped crit chance from Focus T3 named effect tiers.
+   * This can exceed 75 — caller should use resolveCritLayers() instead of a binary roll.
+   * Included separately so clampCombatModifiers does not cap it.
+   */
+  rawNamedCritChancePct: number;
 }
 
 export interface CombinedEquipmentModifiers extends EquipmentCombatModifiers {
@@ -51,6 +57,8 @@ export interface CombinedEquipmentModifiers extends EquipmentCombatModifiers {
   hasTier2Hooks: boolean;
   hasTier3Hooks: boolean;
   hasRiftScarred: boolean;
+  /** Unclamped Focus T3 crit chance — use resolveCritLayers() at attack time. */
+  rawNamedCritChancePct: number;
 }
 
 export const EMPTY_EQUIPMENT_COMBAT_MODIFIERS: EquipmentCombatModifiers = {
@@ -175,6 +183,7 @@ export function getEquippedWeaveModifiers(
   const mods: EquippedWeaveModifiers = {
     ...EMPTY_EQUIPMENT_COMBAT_MODIFIERS,
     equippedWeaves: [],
+    rawNamedCritChancePct: 0,
   };
   if (!equippedSlots || !craftedWeaves) return mods;
 
@@ -194,9 +203,25 @@ export function getEquippedWeaveModifiers(
     for (const te of weave.tierEffects ?? []) {
       applyWeaveTierEffectToMods(mods, te.tierId, te.effectTier, te.magnitude, te.isApplied, refineMult);
     }
+    // Named effect tiers: T1 passive contributions, T2 crit damage, T3 raw crit chance.
+    for (const net of weave.namedEffectTiers ?? []) {
+      if (!net.isApplied) continue;
+      if (net.effectId === 'focus') {
+        if (net.tier === 1) mods.weaponDamagePct += net.magnitude * refineMult;
+        if (net.tier === 2) mods.critDamagePct += net.magnitude * refineMult;
+        if (net.tier === 3) mods.rawNamedCritChancePct += net.magnitude * refineMult; // unclamped
+      } else if (net.effectId === 'quickness' && net.tier === 1) {
+        mods.cooldownPct += net.magnitude * refineMult;
+      } else if (net.effectId === 'guard' && net.tier === 1) {
+        mods.playerDefensePct += net.magnitude * refineMult;
+      }
+      // T2/T3 procs for quickness/guard/ward/echo are handled in weave-proc-effects.ts at runtime.
+    }
   }
 
-  return clampCombatModifiers(mods);
+  // Clamp the standard mods; rawNamedCritChancePct bypasses the 75% cap intentionally.
+  clampCombatModifiers(mods);
+  return mods;
 }
 
 export function getCombinedEquipmentModifiers(args: {
@@ -209,7 +234,7 @@ export function getCombinedEquipmentModifiers(args: {
   const weaveMods = getEquippedWeaveModifiers(args.rpgState.equippedWeaveSlots, args.rpgState.craftedWeaves);
 
   const activeWeaponDamagePct = getTotalActiveWeaveBuffWeaponDamagePct(args.rpgState);
-  return clampCombatModifiers({
+  const combined = clampCombatModifiers({
     weaponDamagePct: lensMods.weaponDamagePct + weaveMods.weaponDamagePct + activeWeaponDamagePct,
     cooldownPct: lensMods.cooldownPct + weaveMods.cooldownPct,
     projectileSpeedPct: lensMods.projectileSpeedPct + weaveMods.projectileSpeedPct,
@@ -217,13 +242,17 @@ export function getCombinedEquipmentModifiers(args: {
     critDamagePct: lensMods.critDamagePct + weaveMods.critDamagePct,
     statusChancePct: lensMods.statusChancePct + weaveMods.statusChancePct,
     playerDefensePct: lensMods.playerDefensePct + weaveMods.playerDefensePct,
+  });
+  return {
+    ...combined,
     lens: lensMods.lens,
     equippedWeaves: weaveMods.equippedWeaves,
     tier1StatusParams: lensMods.tier1StatusParams,
     hasTier2Hooks: lensMods.hasTier2Hooks,
     hasTier3Hooks: lensMods.hasTier3Hooks,
     hasRiftScarred: lensMods.hasRiftScarred,
-  });
+    rawNamedCritChancePct: weaveMods.rawNamedCritChancePct,
+  };
 }
 
 export function applyEquipmentModifiersToAttackContext(

@@ -179,6 +179,13 @@ export function serializeGameState(state: GameState): SaveData {
         })),
         refinementLevel: w.refinementLevel ?? 0,
         effects: (w.effects ?? []).map(e => ({ id: e.id, value: e.value })),
+        namedEffectTiers: (w.namedEffectTiers ?? []).map(e => ({
+          tier: e.tier,
+          effectId: e.effectId,
+          magnitude: e.magnitude,
+          isApplied: e.isApplied,
+        })),
+        effectMultiplier: w.effectMultiplier,
       })),
       equippedWeaveSlots: state.rpg.equippedWeaveSlots.slice(),
       resonanceDust: state.rpg.resonanceDust ?? 0,

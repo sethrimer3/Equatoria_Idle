@@ -266,6 +266,21 @@ export interface RpgSimState {
   skillPointAccountingVersion: number;
   /** Milliseconds remaining on the dash cooldown (ephemeral, not saved). */
   dashCooldownMs: number;
+  /**
+   * Current shield HP from Reactive Ward T1 named effect tiers (ephemeral, not saved).
+   * Absorbs incoming damage before it hits playerStats.hp.
+   */
+  playerShieldHp: number;
+  /**
+   * Highest raw incoming damage value seen since last reset, for Reactive Ward T3 replenishment
+   * (ephemeral, not saved).
+   */
+  wardHighestIncomingDamage: number;
+  /**
+   * Number of stacked attacks accumulated from Quickened Stitch T3 (ephemeral, not saved).
+   * Released as an amplified burst when the cap is reached.
+   */
+  quickenedStitchAttackStacks: number;
   /** Whether the Second Wind effect is available this wave (resets each wave start). */
   secondWindAvailable: boolean;
   /** Active player status effects (ephemeral — not saved, clears on restart). */
@@ -352,6 +367,9 @@ export function createRpgSimState(): RpgSimState {
     skillPointMigrationDone: false,
     skillPointAccountingVersion: 0,
     dashCooldownMs: 0,
+    playerShieldHp: 0,
+    wardHighestIncomingDamage: 0,
+    quickenedStitchAttackStacks: 0,
     secondWindAvailable: true,
     activePlayerStatuses: [],
     activeWeaveBuffs: [],
