@@ -282,7 +282,10 @@ export function updatePlayerMovement(
   // Resolves X then Y independently so diagonal-into-wall movement slides
   // cleanly along the free axis with no oscillation or bounce-back.
   const half = RPG_MOTE_SIZE / 2;
-  const ab = ctx.getFieldSpace().activeBounds;
+  const fieldSpace = ctx.getFieldSpace();
+  // Boss waves use the constrained activeBounds (9:16 arena with visible walls).
+  // Normal levels clamp to visibleBounds so the full screen is playable.
+  const ab = ctx.isBossWaveActive ? fieldSpace.activeBounds : fieldSpace.visibleBounds;
   const terrainState = ctx.getTerrainState();
   const wallState = ctx.getVerdureCaveWallState?.() ?? null;
   const _solidCtx = buildActorSolidCtx(ab, terrainState, wallState);
