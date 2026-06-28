@@ -213,14 +213,20 @@ export function drawForgeSprite(
     ctx.restore();
   }
 
-  // Glow
-  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, forgeSize);
-  gradient.addColorStop(0, `rgba(255,255,255,${0.07 + clampedFireAlpha * 0.08})`);
-  gradient.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = gradient;
+  // Glow — reuse a cached gradient; control intensity via globalAlpha to avoid
+  // recreating a RadialGradient (with new color stop strings) every frame.
+  if (_coreGlowGrad === null || _coreGlowSize !== forgeSize) {
+    _coreGlowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, forgeSize);
+    _coreGlowGrad.addColorStop(0, 'rgba(255,255,255,1)');
+    _coreGlowGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    _coreGlowSize = forgeSize;
+  }
+  ctx.globalAlpha = 0.07 + clampedFireAlpha * 0.08;
+  ctx.fillStyle = _coreGlowGrad;
   ctx.beginPath();
   ctx.arc(0, 0, forgeSize, 0, Math.PI * 2);
   ctx.fill();
+  ctx.globalAlpha = 1;
 
   ctx.restore();
 }
