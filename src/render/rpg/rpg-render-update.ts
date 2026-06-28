@@ -632,7 +632,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     if (ctx.wardEffects[_wi].timerMs <= 0) ctx.wardEffects.splice(_wi, 1);
   }
   updateSpawnFlashes(deltaMs);
-  updateBossSpawnCircles(deltaMs);
+  updateBossIntro(deltaMs);
   updateDyingEnemies(deltaMs);
 
   // Track lucky motes collected for achievements
