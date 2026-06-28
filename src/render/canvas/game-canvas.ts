@@ -114,6 +114,18 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
 
   const ctx = canvas.getContext('2d')!;
 
+  // Crisp overlay canvas — always full DPR resolution, pointer-events: none.
+  // Positioned absolute over the game canvas so it composites on top.
+  const overlayCanvas = document.createElement('canvas');
+  overlayCanvas.id = 'debug-overlay-canvas';
+  overlayCanvas.style.position = 'absolute';
+  overlayCanvas.style.inset = '0';
+  overlayCanvas.style.pointerEvents = 'none';
+  overlayCanvas.style.width = '100%';
+  overlayCanvas.style.height = '100%';
+  gameArea.appendChild(overlayCanvas);
+  const overlayCtx = overlayCanvas.getContext('2d')!;
+
   const cc: CanvasContext = {
     canvas,
     ctx,
