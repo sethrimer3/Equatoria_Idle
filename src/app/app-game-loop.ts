@@ -239,7 +239,49 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
 
     const equationCenterX = ctx.cc.widthPx / 2;
     const equationCenterY = ctx.cc.heightPx / 2;
-    const isLowGraphics = ctx.settings.graphicsQuality === 'low';
+
+    // ── Compute effective graphics flags ─────────────────────────
+    const gfxQuality = ctx.settings.graphicsQuality;
+    const isLowGraphics  = gfxQuality === 'low';
+    const isAutoGraphics = gfxQuality === 'auto';
+
+    // Update FPS rolling window (skip first frame where deltaMs may be 0).
+    if (deltaMs > 0) {
+      _frameDeltasMs[_frameDeltaIdx % AUTO_FPS_WINDOW] = deltaMs;
+      _frameDeltaIdx++;
+    }
+
+    if (isAutoGraphics && _frameDeltaIdx >= AUTO_FPS_WINDOW) {
+      let sumMs = 0;
+      for (let _i = 0; _i < AUTO_FPS_WINDOW; _i++) sumMs += _frameDeltasMs[_i];
+      const avgFps = (AUTO_FPS_WINDOW * 1000) / sumMs;
+
+      // Hysteretic thresholds to avoid oscillation at the boundary.
+      if (_autoTrails  && avgFps < DISABLE_TRAILS_BELOW_FPS)  _autoTrails  = false;
+      if (!_autoTrails && avgFps > REENABLE_TRAILS_ABOVE_FPS)  _autoTrails  = true;
+      if (_autoGlow    && avgFps < DISABLE_GLOW_BELOW_FPS)    _autoGlow    = false;
+      if (!_autoGlow   && avgFps > REENABLE_GLOW_ABOVE_FPS)   _autoGlow    = true;
+      if (!_autoReducedParticles && avgFps < REDUCE_PARTICLES_BELOW_FPS)  _autoReducedParticles = true;
+      if (_autoReducedParticles  && avgFps > RESTORE_PARTICLES_ABOVE_FPS) _autoReducedParticles = false;
+    }
+
+    // Resolve to concrete per-frame booleans.
+    let effectiveGlow: boolean;
+    let effectiveTrails: boolean;
+    let effectiveReducedParticles: boolean;
+    if (isAutoGraphics) {
+      effectiveGlow             = _autoGlow;
+      effectiveTrails           = _autoTrails;
+      effectiveReducedParticles = _autoReducedParticles;
+    } else if (isLowGraphics) {
+      effectiveGlow             = false;
+      effectiveTrails           = false;
+      effectiveReducedParticles = true;
+    } else {
+      effectiveGlow             = true;
+      effectiveTrails           = true;
+      effectiveReducedParticles = ctx.settings.isReducedParticles;
+    }
 
     // Ensure generators are initialized on first frame
     if (ctx.appState.generatorState.generators.length === 0) {
