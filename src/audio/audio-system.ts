@@ -98,6 +98,7 @@ function createNoOpAudioSystem(): AudioSystem {
     onForgeCrunchStarted:   () => {},
     onForgeCrunchCompleted: () => {},
     onForgeSpinUpCancelled: () => {},
+    bossCassetteStart:            (_p, onDone) => { onDone(); },
     startBossMusic:               () => {},
     startBossMusicWithCassette:   () => {},
     stopBossMusic:                () => {},
