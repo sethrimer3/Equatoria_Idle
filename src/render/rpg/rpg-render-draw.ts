@@ -882,6 +882,9 @@ export function drawRpgFrame(
   // background fills the full visible canvas area (including extra space when the
   // canvas is wider/taller than the safe-core world).
   const isBossZone      = ctx.getIsBossWaveActive();
+  if (isBossZone) {
+    drawBossIntroBackground(canvas2d, vwX, vwY, vwW, vwH);
+  }
   const isCausticsZone  = !isBossZone && ctx.rpgSimState.activeZoneId === 'caustics';
   const isVerdureZone   = !isBossZone && ctx.rpgSimState.activeZoneId === 'verdure';
   const isImpetusZone   = !isBossZone && ctx.rpgSimState.activeZoneId === 'impetus';
