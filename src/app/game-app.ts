@@ -325,6 +325,7 @@ export async function startApp(): Promise<void> {
     getAchievementAtkBonus: () => appState.game.achievements.baseAtkBonus,
     onError: () => { audioSystem.onError(); },
     onNewCodexEntry: () => { setCodexUnread(true); },
+    onBossCassetteStart: (path, onDone) => { audioSystem.bossCassetteStart(path, onDone); },
     onBossMusicStart: (beatLoop, bgLayers, onPrimaryTrackReady) => { audioSystem.startBossMusic(beatLoop, bgLayers, onPrimaryTrackReady); },
     onBossMusicStartWithCassette: (cassetteStart, beatLoop, bgLayers, onPrimaryTrackReady) => { audioSystem.startBossMusicWithCassette(cassetteStart, beatLoop, bgLayers, onPrimaryTrackReady); },
     onBossMusicStop: () => { audioSystem.stopBossMusic(); },
