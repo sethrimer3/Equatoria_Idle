@@ -42,6 +42,7 @@ import {
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { getBossTempoBpm } from '../../data/rpg/boss-tempo-config';
 import { CASSETTE_START_PATH, CASSETTE_END_PATH, getBossBeatLoopPath, getRandomBossMusicTrack } from '../../audio/audio-paths';
+import { startBossIntro, onBossIntroCassetteStarted, onBossIntroCassetteDone, resetBossIntro } from './boss-intro-director';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
 import { applyLensStatus, getActiveStatuses, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
