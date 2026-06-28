@@ -1033,7 +1033,7 @@
 .rpg-menu-btn {
   width: 100%;
   height: 100%;
-  padding: 4px 8px;
+  padding: 3px 5px;
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -1065,13 +1065,14 @@
   z-index: 5;
   width: calc(var(--rpg-dps-box-size) * 0.8);
   height: calc(var(--tab-height) * 0.72);
-  padding: 4px 8px;
+  padding: 3px 5px;
   border: 1px solid rgba(255, 241, 114, 0.25);
   border-radius: 6px;
   background: rgba(12, 12, 20, 0.95);
   color: var(--accent);
   font-family: var(--font-primary);
-  font-size: 20px;
+  font-size: 19px;
+  line-height: 0.95;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1087,11 +1088,11 @@
 
 .rpg-codex-btn {
   position: absolute;
-  top: 4px;
+  top: 72px;
   right: 4px;
   z-index: 4;
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -1100,16 +1101,16 @@
 }
 
 #rpg-container.rpg-rack-hidden:not(.rpg-menu-button-at-bottom) .rpg-codex-btn {
-  top: calc(var(--tab-height) * 0.8 + 8px);
+  top: calc(var(--tab-height) * 0.8 + 76px);
 }
 
 .rpg-skill-tree-btn {
   position: absolute;
   top: 4px;
-  right: 48px;
+  right: 4px;
   z-index: 4;
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -2050,26 +2051,80 @@
 .forge-craft__title {
   color: #d4a040;
   font-weight: 700;
-  font-size: 0.95em;
+  font-size: 1.55em;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 2px;
 }
 
 .forge-craft__capacity {
-  font-size: 0.76em;
+  font-size: 1.25em;
   color: #aaa;
 }
 
+.forge-craft__selector-layout {
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.forge-craft__selector-stage {
+  min-width: 0;
+}
+
 .forge-craft__inventory {
-  font-size: 0.78em;
+  font-size: 1.28em;
   color: #bbb;
-  margin-bottom: 10px;
-  line-height: 1.5;
+  line-height: 1.15;
+}
+
+.forge-craft__inventory-label {
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.forge-craft__inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.forge-craft__inventory-chip {
+  display: inline-flex;
+  align-items: center;
+  width: 176px;
+  min-height: 30px;
+  gap: 7px;
+  padding: 3px 8px 3px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.forge-craft__inventory-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+
+.forge-craft__inventory-count {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .forge-craft__section-label {
-  font-size: 0.8em;
+  font-size: 1.3em;
   color: #ccc;
   margin-bottom: 6px;
 }
@@ -2117,7 +2172,7 @@
   position: relative;
   height: 292px;
   margin: 4px auto 14px;
-  max-width: 420px;
+  max-width: 520px;
   border-radius: 8px;
   background:
     radial-gradient(circle at 50% 50%, rgba(212, 160, 64, 0.16) 0 16%, rgba(0, 0, 0, 0) 34%),
@@ -2225,6 +2280,21 @@
   cursor: not-allowed;
 }
 
+@media (max-width: 620px) {
+  .forge-craft__selector-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .forge-craft__inventory-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  }
+
+  .forge-craft__inventory-chip {
+    width: 100%;
+  }
+}
+
 
 /* ── Percentage slider ───────────────────────────────────────────── */
 
@@ -2233,7 +2303,7 @@
 }
 
 .forge-craft__hint {
-  font-size: 0.78em;
+  font-size: 1.25em;
   color: #888;
   font-style: italic;
 }

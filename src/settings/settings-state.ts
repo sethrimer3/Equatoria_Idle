@@ -5,7 +5,7 @@ export interface SettingsState {
   /** When true, music and SFX pause whenever the window loses focus or the tab is hidden. */
   isMusicOnlyWhenFocused: boolean;
   isReducedParticles: boolean;
-  graphicsQuality: 'high' | 'low';
+  graphicsQuality: 'auto' | 'high' | 'low';
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
   backgroundStyle: 'vermiculate' | 'substrate' | 'none';

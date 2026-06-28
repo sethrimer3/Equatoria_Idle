@@ -50,6 +50,7 @@ import { drawForgePreview } from '../../render/forge';
 import type { ForgeCrunchState } from '../../sim/forge/forge-state';
 import { createForgeCrunchState } from '../../sim/forge/forge-state';
 import { hexToFogRgb, renderFogBarToCanvas, type FogRgb } from '../../render/composition-fog';
+import { formatNumberAs, type NumberFormat } from '../../util';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ type CraftingMode = 'weapon' | 'weave' | 'lens';
 
 export interface RpgWeaponCraftingPage {
   element: HTMLElement;
-  update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState): void;
+  update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState, numberFormat?: NumberFormat): void;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let latestIsDevMode = false;
   let latestForgeState: ForgeCrunchState = createForgeCrunchState();
   let latestResources: ResourceState | null = null;
+  let latestNumberFormat: NumberFormat = 'letters';
 
   // ── Animation ────────────────────────────────────────────────────────────
   let forgeCoreCanvas: HTMLCanvasElement | null = null;
@@ -252,10 +254,14 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
 
     // Label
-    const label = document.createElement('span');
-    label.style.cssText = 'color:#888;margin-right:6px;';
+    const label = document.createElement('div');
+    label.className = 'forge-craft__inventory-label';
     label.textContent = 'Motes:';
     inventoryEl.appendChild(label);
+
+    const list = document.createElement('div');
+    list.className = 'forge-craft__inventory-list';
+    inventoryEl.appendChild(list);
 
     // One chip per tier
     for (const tier of TIERS) {
@@ -263,23 +269,21 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       if (count <= 0 && !latestIsDevMode) continue;
 
       const chip = document.createElement('span');
-      chip.style.cssText =
-        'display:inline-flex;align-items:center;gap:3px;' +
-        'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);' +
-        'border-radius:4px;padding:1px 5px 1px 2px;margin:2px 3px 2px 0;';
+      chip.className = 'forge-craft__inventory-chip';
 
       const img = document.createElement('img');
       img.src = getRefinedGemPath(tier.id);
       img.alt = tier.displayName;
-      img.style.cssText = 'width:16px;height:16px;object-fit:contain;image-rendering:pixelated;';
+      img.className = 'forge-craft__inventory-icon';
 
       const countEl = document.createElement('span');
-      countEl.style.cssText = `color:${tier.color};font-size:0.8em;font-weight:600;`;
-      countEl.textContent = latestIsDevMode && count === 0 ? '∞' : String(count);
+      countEl.className = 'forge-craft__inventory-count';
+      countEl.style.color = tier.color;
+      countEl.textContent = latestIsDevMode && count === 0 ? 'inf' : formatNumberAs(count, latestNumberFormat);
 
       chip.appendChild(img);
       chip.appendChild(countEl);
-      inventoryEl.appendChild(chip);
+      list.appendChild(chip);
     }
   }
 
@@ -992,13 +996,18 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     header.appendChild(capacityLabelEl);
     element.appendChild(header);
 
-    // 5. Refined crystal inventory
+    // 5. Mote inventory and type looms
+    const selectorLayout = document.createElement('div');
+    selectorLayout.className = 'forge-craft__selector-layout';
+
     inventoryEl = document.createElement('div');
     inventoryEl.className = 'forge-craft__inventory';
     refreshInventory();
-    element.appendChild(inventoryEl);
+    selectorLayout.appendChild(inventoryEl);
 
-    // 6. Mote type looms
+    const selectorStage = document.createElement('div');
+    selectorStage.className = 'forge-craft__selector-stage';
+
     moteHeadingEl = document.createElement('div');
     moteHeadingEl.className = 'forge-craft__section-label';
     if (craftingMode === 'lens') {
@@ -1008,10 +1017,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     } else {
       moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
     }
-    element.appendChild(moteHeadingEl);
+    selectorStage.appendChild(moteHeadingEl);
 
     moteLoomFieldEl = buildMoteLoomField();
-    element.appendChild(moteLoomFieldEl);
+    selectorStage.appendChild(moteLoomFieldEl);
+    selectorLayout.appendChild(selectorStage);
+    element.appendChild(selectorLayout);
     refreshMoteLooms();
 
     // 7. Slider
@@ -1067,11 +1078,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   // ── Public interface ──────────────────────────────────────────────────────
 
-  function update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState): void {
+  function update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState, numberFormat: NumberFormat = 'letters'): void {
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
     if (forgeState) latestForgeState = forgeState;
     if (resources) latestResources = resources;
+    latestNumberFormat = numberFormat;
     if (element.childElementCount === 0) {
       build(rpgState, isDevMode);
       return;
