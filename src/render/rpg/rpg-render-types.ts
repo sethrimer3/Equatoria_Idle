@@ -86,6 +86,8 @@ export interface RpgRenderOptions {
   onError?: () => void;
   /** Called when an enemy type is added to the codex for the first time. */
   onNewCodexEntry?: () => void;
+  /** Play the cassette-start one-shot SFX and call onDone when it finishes. */
+  onBossCassetteStart?: (path: string, onDone: () => void) => void;
   /** Start layered boss music loops for MIDI-backed boss fights. */
   onBossMusicStart?: (beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void) => void;
   /** Start boss music with a cassette-start intro crossfade. */
