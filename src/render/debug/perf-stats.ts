@@ -55,11 +55,18 @@ export function resetPerfStats(): void {
   perfStats.activeMergeCount = 0;
 }
 
-/** Draw perf stats as a small text block in the bottom-right corner of the canvas. */
+/**
+ * Draw perf stats as a sharp text block in the bottom-right corner.
+ * Uses the crisp overlay canvas (cc.overlayCtx) so the text is never
+ * pixelated, regardless of the main canvas render style.
+ * widthCSS / heightCSS are the container dimensions in CSS pixels.
+ * dpr is used to scale the overlay canvas backing to physical pixels.
+ */
 export function drawPerfStats(
-  ctx: CanvasRenderingContext2D,
-  widthPx: number,
-  heightPx: number,
+  overlayCtx: CanvasRenderingContext2D,
+  widthCSS: number,
+  heightCSS: number,
+  dpr: number,
 ): void {
   const lines = [
     `update  ${perfStats.updateMs.toFixed(1)} ms`,
@@ -74,24 +81,28 @@ export function drawPerfStats(
     `mrgRay ${perfStats.trailDrawCalls}`,
   ];
 
-  const fontSize = 6;
-  ctx.save();
-  ctx.font = `${fontSize}px monospace`;
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'bottom';
+  // Clear overlay then draw text at CSS-pixel coordinates (DPR scale applied below).
+  overlayCtx.clearRect(0, 0, widthCSS * dpr, heightCSS * dpr);
 
-  const lineH = fontSize + 1;
-  const x = widthPx - 3;
-  let y = heightPx - 3;
+  const fontSize = 11; // CSS pixels — readable at all DPR values
+  overlayCtx.save();
+  overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  overlayCtx.font = `${fontSize}px monospace`;
+  overlayCtx.textAlign = 'right';
+  overlayCtx.textBaseline = 'bottom';
+
+  const lineH = fontSize + 2;
+  const x = widthCSS - 4;
+  let y = heightCSS - 4;
 
   for (let i = lines.length - 1; i >= 0; i--) {
-    ctx.fillStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#000';
-    ctx.strokeText(lines[i], x, y);
-    ctx.fillStyle = '#0f0';
-    ctx.fillText(lines[i], x, y);
+    overlayCtx.fillStyle = 'rgba(0,0,0,0.6)';
+    overlayCtx.lineWidth = 3;
+    overlayCtx.strokeStyle = 'rgba(0,0,0,0.6)';
+    overlayCtx.strokeText(lines[i], x, y);
+    overlayCtx.fillStyle = '#00ff44';
+    overlayCtx.fillText(lines[i], x, y);
     y -= lineH;
   }
-  ctx.restore();
+  overlayCtx.restore();
 }
