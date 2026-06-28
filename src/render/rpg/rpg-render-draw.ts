@@ -770,6 +770,60 @@ function shouldDrawPersistentTopographySunlight(
   return true;
 }
 
+// ── Boss intro background ──────────────────────────────────────────────────────
+
+const NEBULAE_SHARP_PATH = 'ASSETS/SPRITES/backgrounds/nebulaeBackground.png';
+const NEBULAE_BLUR_PATH  = 'ASSETS/SPRITES/backgrounds/nebulaeBackground_blur.png';
+
+function drawBossIntroBackground(
+  canvas2d: CanvasRenderingContext2D,
+  vwX: number, vwY: number, vwW: number, vwH: number,
+): void {
+  const intro = getBossIntroDrawState();
+  if (!intro.isActive) return;
+
+  // Cover-fit helper: draw an image centred and scaled to cover the target rect.
+  function drawCover(img: HTMLImageElement): void {
+    const scaleX = vwW / img.naturalWidth;
+    const scaleY = vwH / img.naturalHeight;
+    const scale  = Math.max(scaleX, scaleY);
+    const dw = img.naturalWidth  * scale;
+    const dh = img.naturalHeight * scale;
+    const dx = vwX + (vwW - dw) / 2;
+    const dy = vwY + (vwH - dh) / 2;
+    canvas2d.drawImage(img, dx, dy, dw, dh);
+  }
+
+  const sharp = getCachedImage(NEBULAE_SHARP_PATH);
+  const blur  = getCachedImage(NEBULAE_BLUR_PATH);
+
+  // Preload both images (no-op after first call).
+  if (!sharp) loadImage(NEBULAE_SHARP_PATH).catch(() => {});
+  if (!blur)  loadImage(NEBULAE_BLUR_PATH).catch(() => {});
+
+  canvas2d.save();
+
+  // Draw sharp nebulae base.
+  if (sharp) drawCover(sharp);
+
+  // Crossfade blur on top.
+  if (blur && intro.bgBlend > 0) {
+    canvas2d.globalAlpha = intro.bgBlend;
+    drawCover(blur);
+    canvas2d.globalAlpha = 1;
+  }
+
+  // Fade to black overlay.
+  if (intro.bgBlackAlpha > 0) {
+    canvas2d.globalAlpha = intro.bgBlackAlpha;
+    canvas2d.fillStyle = '#000000';
+    canvas2d.fillRect(vwX, vwY, vwW, vwH);
+    canvas2d.globalAlpha = 1;
+  }
+
+  canvas2d.restore();
+}
+
 // ── Main draw function ─────────────────────────────────────────────────────────
 
 export function drawRpgFrame(
