@@ -123,29 +123,24 @@ export function drawForgeInfluenceSwirl(
   const colorCount = FORGE_FIRE_COLORS.length;
 
   ctx.save();
-  ctx.globalAlpha = 0.22;
 
+  // Draw arcs with solid colors + globalAlpha instead of per-arc LinearGradients.
+  // This eliminates 10 gradient object allocations per frame at the cost of sharp
+  // arc endpoints (invisible in practice due to arc overlap and rotation speed).
   for (let dir = 0; dir < 2; dir++) {
     const sign = dir === 0 ? 1 : -1;
     const speed = sign * 0.65;
 
     for (let i = 0; i < numArcs; i++) {
       const colorIndex = (i * 2) % colorCount;
-
       const startAngle = t * speed + i * arcSpan;
       const endAngle = startAngle + arcSpan * 0.55;
 
-      const grad = ctx.createLinearGradient(
-        x + Math.cos(startAngle) * range,
-        y + Math.sin(startAngle) * range,
-        x + Math.cos(endAngle) * range,
-        y + Math.sin(endAngle) * range,
-      );
-      grad.addColorStop(0, _fireTransparent[colorIndex]);
-      grad.addColorStop(0.5, _fireOpaque[(colorIndex + 1) % colorCount]);
-      grad.addColorStop(1, _fireTransparent[colorIndex]);
-
-      ctx.strokeStyle = grad;
+      // Fade alpha at the arc's angular midpoint to approximate the original gradient.
+      const midAngle = (startAngle + endAngle) * 0.5;
+      const alphaPhase = Math.sin(t * speed * 2 + midAngle) * 0.5 + 0.5;
+      ctx.globalAlpha = 0.12 + alphaPhase * 0.12;
+      ctx.strokeStyle = _fireOpaque[(colorIndex + 1) % colorCount];
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(x, y, range, startAngle, endAngle);
