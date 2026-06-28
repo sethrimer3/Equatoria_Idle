@@ -284,15 +284,15 @@ export function drawLoomAura(
 
   // Soft fill inside capture radius
   const grad = ctx.createRadialGradient(x, y, 0, x, y, captureRadius);
-  grad.addColorStop(0, colorWithAlpha(color, 0.06 * pulse));
-  grad.addColorStop(1, colorWithAlpha(color, 0));
+  grad.addColorStop(0, _rgba(color, 0.06 * pulse));
+  grad.addColorStop(1, _rgba(color, 0));
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(x, y, captureRadius, 0, Math.PI * 2);
   ctx.fill();
 
   // Inner capture ring
-  ctx.strokeStyle = colorWithAlpha(color, 0.25 + 0.15 * pulse);
+  ctx.strokeStyle = _rgba(color, 0.25 + 0.15 * pulse);
   ctx.lineWidth = 1.2;
   ctx.setLineDash(_DASH_2_3);
   ctx.beginPath();
@@ -301,7 +301,7 @@ export function drawLoomAura(
   ctx.setLineDash(_NO_DASH);
 
   // Outer attraction ring (dashed, more faint)
-  ctx.strokeStyle = colorWithAlpha(color, 0.1 + 0.06 * pulse);
+  ctx.strokeStyle = _rgba(color, 0.1 + 0.06 * pulse);
   ctx.lineWidth = 0.8;
   ctx.setLineDash(_DASH_3_6);
   ctx.beginPath();
