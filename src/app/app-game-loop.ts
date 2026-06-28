@@ -103,6 +103,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   let _autoGlow = true;
   let _autoTrails = true;
   let _autoReducedParticles = false;
+  let _nextFrameTargetMs = 0;
   // Hysteresis: require FPS to drop further to disable than to re-enable.
   const DISABLE_GLOW_BELOW_FPS    = 40;
   const REENABLE_GLOW_ABOVE_FPS   = 50;
@@ -132,6 +133,20 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   };
 
   function gameLoop(nowMs: number): void {
+    const fpsLimit = ctx.settings.fpsLimit;
+    if (fpsLimit !== 'unlimited') {
+      const minFrameMs = 1000 / fpsLimit;
+      if (_nextFrameTargetMs > 0 && nowMs + 0.25 < _nextFrameTargetMs) {
+        requestAnimationFrame(gameLoop);
+        return;
+      }
+      _nextFrameTargetMs = _nextFrameTargetMs > 0
+        ? Math.max(_nextFrameTargetMs + minFrameMs, nowMs - minFrameMs)
+        : nowMs + minFrameMs;
+    } else {
+      _nextFrameTargetMs = 0;
+    }
+
     const deltaMs = Math.min(nowMs - ctx.lastFrameMs.value, 200);
     ctx.lastFrameMs.value = nowMs;
 

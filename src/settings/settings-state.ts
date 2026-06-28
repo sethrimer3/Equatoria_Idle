@@ -1,4 +1,6 @@
 /** User-facing settings (persisted separately from game state). */
+export type FpsLimitSetting = 60 | 120 | 'unlimited';
+
 export interface SettingsState {
   musicVolume: number;     // 0–1
   sfxVolume: number;       // 0–1
@@ -6,6 +8,7 @@ export interface SettingsState {
   isMusicOnlyWhenFocused: boolean;
   isReducedParticles: boolean;
   graphicsQuality: 'auto' | 'high' | 'low';
+  fpsLimit: FpsLimitSetting;
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
   backgroundStyle: 'vermiculate' | 'substrate' | 'none';
@@ -90,6 +93,7 @@ export function createDefaultSettings(): SettingsState {
     isMusicOnlyWhenFocused: true,
     isReducedParticles: false,
     graphicsQuality: 'auto',
+    fpsLimit: 'unlimited',
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
     backgroundStyle: 'vermiculate',
@@ -130,6 +134,9 @@ export function loadSettings(): SettingsState {
     const settings = { ...createDefaultSettings(), ...parsed };
     if (parsed.rpgRackPosition === undefined && parsed.rpgBarAtTop !== undefined) {
       settings.rpgRackPosition = parsed.rpgBarAtTop ? 'top' : 'bottom';
+    }
+    if (settings.fpsLimit !== 60 && settings.fpsLimit !== 120 && settings.fpsLimit !== 'unlimited') {
+      settings.fpsLimit = 'unlimited';
     }
     return settings;
   } catch {

@@ -82,6 +82,22 @@ export function createSettingsPanel(
   );
   panel.appendChild(graphicsRow);
 
+  const fpsLimitRow = createSelectRow(
+    'FPS Limit',
+    String(settings.fpsLimit),
+    [
+      { value: '60', label: '60' },
+      { value: '120', label: '120' },
+      { value: 'unlimited', label: 'Unlimited' },
+    ],
+    (v) => {
+      settings.fpsLimit = v === '60' ? 60 : v === '120' ? 120 : 'unlimited';
+      saveSettings(settings);
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  panel.appendChild(fpsLimitRow);
+
   // Reduced particles toggle — disabled (and forced checked) when Auto or Low is active.
   const particleRow = createToggleRow('Reduced Particles', settings.isReducedParticles, (v) => {
     settings.isReducedParticles = v;
