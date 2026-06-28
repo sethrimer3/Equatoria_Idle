@@ -432,6 +432,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.particles.spawnerRotations,
       ctx.appState.generatorState.fadeIns,
       _buildGeneratorRates(ctx, generatorRatesPerSec),
+      isLowGraphics || (isAutoGraphics && !effectiveGlow),
     );
 
     // Draw loom-field auras beneath particles (after generators, before forge)
