@@ -188,6 +188,7 @@ export function getBgAnimationFramePath(frameIndex: number): string {
 // When an entry has no iconFile the codex falls back to fallBack_icon.png.
 
 export const FALLBACK_ENEMY_ICON_PATH = `${BASE}/SPRITES/enemyIcons/fallBack_icon.png`;
+export const UNDISCOVERED_ENEMY_ICON_PATH = `${BASE}/SPRITES/enemyIcons/UndiscoveredEnemy_Icon.png`;
 export const ENEMY_ICON_FRAME_PATH = `${BASE}/SPRITES/enemyIcons/EnemyIconFrame/Frame.png`;
 export const ENEMY_ICON_FRAME_MASK_PATH = `${BASE}/SPRITES/enemyIcons/EnemyIconFrame/FrameMask.png`;
 
