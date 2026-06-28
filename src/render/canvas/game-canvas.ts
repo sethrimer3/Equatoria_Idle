@@ -129,6 +129,8 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
   const cc: CanvasContext = {
     canvas,
     ctx,
+    overlayCanvas,
+    overlayCtx,
     widthPx: IDLE_LOGICAL_WIDTH,
     heightPx: IDLE_LOGICAL_HEIGHT,
     dpr: window.devicePixelRatio || 1,
