@@ -1125,7 +1125,8 @@ export function drawRpgFrame(
     ctx.bossAttackState.elapsedFightMs,
   );
   drawBossSpawnCircles(canvas2d);
-  drawBossEnemy(canvas2d, bossEnemy, glowTimeS, bossBeatVisual);
+  const _introState = getBossIntroDrawState();
+  drawBossEnemy(canvas2d, _introState.hideBoss ? null : bossEnemy, glowTimeS, bossBeatVisual);
   drawTeleportParticles(canvas2d, ctx.teleportParticles);
   drawShotLines(canvas2d, ctx.shotLines);
   drawVortexes(canvas2d, ctx.weaponSystems.activeVortexes);
