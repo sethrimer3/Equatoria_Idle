@@ -23,9 +23,22 @@ export const FORGE_FIRE_COLORS = [
 ];
 
 // Pre-resolved color stop strings for FORGE_FIRE_COLORS — eliminates repeated
-// colorWithAlpha key-string allocations inside the per-frame draw loop.
-const _fireTransparent = FORGE_FIRE_COLORS.map(c => colorWithAlpha(c, 0));
-const _fireOpaque      = FORGE_FIRE_COLORS.map(c => colorWithAlpha(c, 1));
+// rgba string allocations inside the per-frame draw loop.
+const _fireTransparent = FORGE_FIRE_COLORS.map(c => { const [r,g,b] = parseHexToRgb(c); return `rgba(${r},${g},${b},0)`; });
+const _fireOpaque      = FORGE_FIRE_COLORS.map(c => { const [r,g,b] = parseHexToRgb(c); return `rgba(${r},${g},${b},1)`; });
+
+// Per-tier cached RGB components for drawLoomAura — avoids repeated hex parsing.
+const _loomTierRgb = new Map<string, [number, number, number]>();
+
+/** Build an rgba string from a cached hex color without polluting a shared key-string cache. */
+function _rgba(color: string, alpha: number): string {
+  let rgb = _loomTierRgb.get(color);
+  if (!rgb) {
+    rgb = parseHexToRgb(color);
+    _loomTierRgb.set(color, rgb);
+  }
+  return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha.toFixed(2)})`;
+}
 
 // Pre-allocated dash-pattern arrays — reused every frame to avoid ephemeral
 // array allocation inside setLineDash().
