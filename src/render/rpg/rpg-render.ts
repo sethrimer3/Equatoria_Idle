@@ -722,6 +722,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let pendingBossVictory = false;
   let bossTrackDurationMs = 0;
   let bossTrackTitle: string | null = null;
+  let deathBannerText: string | null = null;
   /**
    * Temporary equipped-weapon override used only during boss waves.
    * The player's actual rpgSimState.equippedWeaponIds is never mutated by boss
@@ -1721,6 +1722,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       clearStageForBossFight();
       resetBossStageDirector(bossStageDirectorState);
       pendingBossVictory = false;
+      deathBannerText = null;
       const boss = bossEnemy;
       if (boss) {
         beginBossMidiRuntime(bossMidiState, boss.bossId);
@@ -1756,6 +1758,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       resetBossMidiRuntime(bossMidiState);
       bossTrackDurationMs = 0;
       bossTrackTitle = null;
+      deathBannerText = null;
       if (!pendingBossVictory) {
         options.onBossMusicStop?.();
       }
@@ -1998,7 +2001,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid: { reset: () => fluid.reset() },
     bossWave: { exitBossWave: () => bossWave.exitBossWave(), startBossFight: (id) => bossWave.startBossFight(id) },
     getBossEnemy: () => bossEnemy,
-    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; lastEmberSurgeTextMs = -Infinity; lastAegisFlashTextMs = -Infinity; lastLingeringHexTextMs = -Infinity;},
+    onRestart: () => { clearPlayerStatuses(rpgSimState); rpgSimState.activeWeaveBuffs = []; wardEffects.length = 0; lastWardTextMs = -Infinity; lastEchoTextMs = -Infinity; lastSwiftstrikeTextMs = -Infinity; lastEmberSurgeTextMs = -Infinity; lastAegisFlashTextMs = -Infinity; lastLingeringHexTextMs = -Infinity; deathBannerText = null; },
     setBossEnemy:            (b) => { bossEnemy = b; },
     setBinaryLaserSweep:     (_sweep) => { binaryLaserSweep = null; },
     setDanmakuSafeZone:      (_dz) => { danmakuSafeZone = null; },
@@ -2075,6 +2078,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getIsBossWaveActive:          () => isBossWaveActive,
     getBossTrackDurationMs:       () => bossTrackDurationMs,
     getBossTrackTitle:            () => bossTrackTitle,
+    getDeathBannerText:           () => deathBannerText,
     getScreenDarken:              () => screenDarken,
     getRestartFadeAlpha:          () => restartFadeAlpha,
     getIsLowGraphicsMode:         () => isLowGraphicsMode,
@@ -2157,6 +2161,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     alivenUpdateCtx,
     getBossEnemy:           () => bossEnemy,
     getIsBossWaveActive:    () => isBossWaveActive,
+    getBossTrackDurationMs: () => bossTrackDurationMs,
+    setDeathBannerText:     (text) => { deathBannerText = text; },
     bossCtx,
     bossAttackState,
     bossAttackCtx,

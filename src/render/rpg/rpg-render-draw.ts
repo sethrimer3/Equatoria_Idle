@@ -14,6 +14,14 @@
 
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getActivePlayerStatuses } from '../../sim/rpg/player-status-effects';
+import { getCachedImage, loadImage } from '../assets/asset-loader';
+import {
+  ENEMY_CODEX_TAB_GLOW_ICON_PATH,
+  ZONE_SELECTION_BAR_OVERLAY_PATHS,
+  ZONE_SELECTION_GLOW_OVERLAY_PATHS,
+  ZONE_SELECTION_ICON_PATH,
+  ZONE_SELECTION_SHEEN_OVERLAY_PATHS,
+} from '../assets/asset-paths';
 import {
   drawSapphireEnemies, drawSapphireMissiles,
   drawEmeraldEnemies,
@@ -198,13 +206,6 @@ import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 import { renderEnemyStatusLabels } from './enemy-status-render';
 import { drawTargetNamePopup } from './rpg-target-popup';
-import { getCachedImage, loadImage } from '../assets/asset-loader';
-import {
-  ZONE_SELECTION_BAR_OVERLAY_PATHS,
-  ZONE_SELECTION_GLOW_OVERLAY_PATHS,
-  ZONE_SELECTION_ICON_PATH,
-  ZONE_SELECTION_SHEEN_OVERLAY_PATHS,
-} from '../assets/asset-paths';
 
 type ZoneIconLayerTiming = {
   readonly cycleMs: number;
@@ -429,6 +430,7 @@ export interface RpgDrawCtx {
   getIsBossWaveActive(): boolean;
   getBossTrackDurationMs(): number;
   getBossTrackTitle(): string | null;
+  getDeathBannerText(): string | null;
   getScreenDarken(): number;
   getRestartFadeAlpha(): number;
   getIsLowGraphicsMode(): boolean;
@@ -1098,7 +1100,7 @@ export function drawRpgFrame(
   drawDamageNumbers(canvas2d, ctx.damageNumbers);
   renderEnemySpeechBubbles(canvas2d, fs.visibleBounds);
   renderBossDialogue(canvas2d, fs.visibleBounds, bossEnemy);
-  drawBossTrackProgressBar(canvas2d, ctx, fs.visibleBounds, bossEnemy, bossBeatVisual);
+  drawBossTrackProgressBar(canvas2d, ctx, fs.activeBounds, bossEnemy, bossBeatVisual);
   drawLuckyMotePopups(canvas2d, ctx.luckyMotePopups, ctx.getIsLowGraphicsMode());
   if (ctx.deathParticles.length > 0) drawDeathParticles(canvas2d, ctx.deathParticles);
 
@@ -1268,6 +1270,8 @@ export function drawRpgFrame(
   }
 
   // ── Developer-mode viewport diagnostics ──────────────────────
+  drawDeathBanner(canvas2d, ctx, fs.visibleBounds);
+
   if (ctx.getViewportDebugEnabled()) {
     drawRpgViewportDiagnostics(canvas2d, widthPx, heightPx, ctx);
   }
@@ -1481,22 +1485,27 @@ function drawRpgViewportDiagnostics(
 function drawBossTrackProgressBar(
   canvas2d: CanvasRenderingContext2D,
   ctx: RpgDrawCtx,
-  visibleBounds: { left: number; top: number; right: number; width: number },
+  activeBounds: { left: number; top: number; right: number; width: number },
   bossEnemy: BossEnemy | null,
   beatVisual: BossBeatVisualState | null,
 ): void {
   if (!bossEnemy || !ctx.getIsBossWaveActive()) return;
   const trackDurationMs = ctx.getBossTrackDurationMs();
   if (trackDurationMs <= 0) return;
-  const elapsedMs = ctx.bossAttackState.elapsedFightMs % trackDurationMs;
+  const elapsedMs = Math.min(ctx.bossAttackState.elapsedFightMs, trackDurationMs);
   const progress = clamp01(elapsedMs / trackDurationMs);
   const beatPulse = beatVisual?.beatPulse ?? 0;
   const barPulse = beatVisual?.barPulse ?? 0;
   const margin = 14;
-  const barW = Math.max(80, visibleBounds.width - margin * 2);
+  const iconSize = 24;
+  const iconGap = 7;
+  const reservedIconW = iconSize + iconGap;
+  const barW = Math.max(80, activeBounds.width - margin * 2 - reservedIconW);
   const barH = 5 + beatPulse * 1.5 + barPulse * 1.5;
-  const x = visibleBounds.left + margin;
-  const y = visibleBounds.top + 6;
+  const x = activeBounds.left + margin;
+  const y = activeBounds.top + 6;
+  const iconX = x + barW + iconGap;
+  const iconY = y + barH * 0.5 - iconSize * 0.5;
   const hue = ((beatVisual?.beatIndex ?? 0) * 18 + beatPulse * 35) % 360;
 
   canvas2d.save();
@@ -1520,6 +1529,19 @@ function drawBossTrackProgressBar(
   canvas2d.fillRect(x, y, barW * progress, barH);
   canvas2d.shadowBlur = 0;
 
+  const icon = getCachedImage(ENEMY_CODEX_TAB_GLOW_ICON_PATH);
+  if (icon) {
+    canvas2d.globalAlpha = 0.78 + beatPulse * 0.18;
+    if (!ctx.getIsLowGraphicsMode()) {
+      canvas2d.shadowBlur = 10 + beatPulse * 8;
+      canvas2d.shadowColor = '#ffe66a';
+    }
+    canvas2d.drawImage(icon, iconX, iconY, iconSize, iconSize);
+    canvas2d.shadowBlur = 0;
+  } else {
+    loadImage(ENEMY_CODEX_TAB_GLOW_ICON_PATH).catch(() => {});
+  }
+
   const title = ctx.getBossTrackTitle();
   if (title) {
     canvas2d.globalAlpha = 0.58;
@@ -1529,6 +1551,27 @@ function drawBossTrackProgressBar(
     canvas2d.textBaseline = 'top';
     canvas2d.fillText(title, x + barW, y + barH + 3);
   }
+  canvas2d.restore();
+}
+
+function drawDeathBanner(canvas2d: CanvasRenderingContext2D, ctx: RpgDrawCtx, visibleBounds: { left: number; top: number; width: number; height: number }): void {
+  const text = ctx.getDeathBannerText();
+  if (!text) return;
+  const cx = visibleBounds.left + visibleBounds.width * 0.5;
+  const cy = visibleBounds.top + visibleBounds.height * 0.5;
+  canvas2d.save();
+  canvas2d.textAlign = 'center';
+  canvas2d.textBaseline = 'middle';
+  canvas2d.font = 'bold 28px serif';
+  canvas2d.lineWidth = 4;
+  canvas2d.strokeStyle = 'rgba(20, 0, 0, 0.95)';
+  canvas2d.fillStyle = '#ff2020';
+  if (!ctx.getIsLowGraphicsMode()) {
+    canvas2d.shadowBlur = 18;
+    canvas2d.shadowColor = 'rgba(255, 0, 0, 0.75)';
+  }
+  canvas2d.strokeText(text, cx, cy);
+  canvas2d.fillText(text, cx, cy);
   canvas2d.restore();
 }
 

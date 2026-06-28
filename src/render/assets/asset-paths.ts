@@ -136,6 +136,7 @@ export const LOGO_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo.webp`;
 export const LOGO_ALT_PATH = `${BASE}/SPRITES/logo/gravy_thyme_logo_alt.webp`;
 export const ENEMY_CODEX_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex/enemyCodex.png`;
 export const ENEMY_CODEX_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodex/enemyCodex_glow.png`;
+export const ENEMY_CODEX_TAB_GLOW_ICON_PATH = `${BASE}/SPRITES/menuElements/icons/enemyCodexTab/enemyCodextab_icon_glow.png`;
 export const ENEMY_CODEX_SHARD_ICON_PATHS = Array.from(
   { length: 8 },
   (_, index) => `${BASE}/SPRITES/menuElements/icons/enemyCodex/codexShard (${index + 1}).png`,

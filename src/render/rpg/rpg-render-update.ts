@@ -251,6 +251,8 @@ export interface RpgUpdateCtx {
   // Boss state
   getBossEnemy(): BossEnemy | null;
   getIsBossWaveActive(): boolean;
+  getBossTrackDurationMs(): number;
+  setDeathBannerText(text: string | null): void;
   bossCtx: BossUpdateCtx;
   bossAttackState: BossAttackState;
   bossAttackCtx: BossAttackUpdateCtx;
@@ -597,6 +599,17 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
       );
     } else {
       updateBossAttacks(ctx.bossAttackState, ctx.bossAttackCtx, bossEnemy, deltaMs * bossSpeedMult);
+    }
+    const bossTrackDurationMs = ctx.getBossTrackDurationMs();
+    if (
+      ctx.getIsBossWaveActive() &&
+      bossTrackDurationMs > 0 &&
+      ctx.bossAttackState.elapsedFightMs >= bossTrackDurationMs &&
+      ctx.getRpgPhase() === 'alive'
+    ) {
+      ctx.playerStats.hp = 0;
+      ctx.setDeathBannerText("Song's been sung...");
+      ctx.triggerDeath();
     }
   } else {
     updateBossProjectiles(a.bossProjectiles, ctx.bossCtx, deltaMs);

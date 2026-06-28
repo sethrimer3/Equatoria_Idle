@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-24
-Current build: 305
+Current build: 310
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,14 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 310: boss song timeout and fitted progress HUD
+
+Completed:
+
+- Boss music progress now fits inside the active boss arena walls instead of the full visible side gutters.
+- The progress HUD reserves right-side space for the enemy codex tab glow icon.
+- When the selected boss song reaches its decoded duration, the player dies and the death screen shows "Song's been sung..." in large red text.
 
 ### Build 305: boss track progress and beat-reactive visuals
 
