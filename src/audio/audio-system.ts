@@ -244,6 +244,11 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
       sfx.onForgeChargingCancelled();
     },
 
+    bossCassetteStart(path: string, onDone: () => void): void {
+      if (!_isFocused) { onDone(); return; }
+      bossMusic.playCassetteStart(path, onDone);
+    },
+
     startBossMusic(beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void {
       if (!_isFocused) return;
       bossMusic.start(beatLoop, bgLayers, onPrimaryTrackReady);
