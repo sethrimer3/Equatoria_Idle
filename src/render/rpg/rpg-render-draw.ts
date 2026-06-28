@@ -93,6 +93,7 @@ import { drawStardustEnemies, setLowGraphicsMode as setStardustDrawLowGraphics }
 import { drawHorizonPentagonGroups } from './horizon-pentagon-draw';
 import { drawSpawnFlashes } from './rpg-spawn-flash';
 import { drawBossSpawnCircles } from './rpg-boss-spawn-circle';
+import { getBossIntroDrawState } from './boss-intro-director';
 import { drawDyingEnemies } from './rpg-death-fade';
 import {
   drawPolyominoEnemies,
