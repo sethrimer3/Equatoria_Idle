@@ -144,7 +144,9 @@ export function createRpgMenuPanel(
   // All pane elements live in the content area; we show/hide per active tab.
   const content = document.createElement('div');
   content.className = 'rpg-menu__content';
-  content.appendChild(makePageBreak('large'));
+  menuTabPane.element.prepend(makePageBreak('large'));
+  enemiesTabPane.element.prepend(makePageBreak('large'));
+  statusGlossaryPane.element.prepend(makePageBreak('large'));
   content.appendChild(menuTabPane.element);
   content.appendChild(skillTreePane.element);
   content.appendChild(enemiesTabPane.element);
