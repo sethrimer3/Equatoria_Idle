@@ -20,7 +20,7 @@ import type { RpgMote } from './rpg-types';
 import type { BossEnemy, TeleportParticle } from './rpg-enemy-types';
 import type { BossDialogueEvent } from '../../data/boss-dialogue';
 import { makeBossEnemy } from './rpg-factories';
-import { pushBossSpawnCircle } from './rpg-boss-spawn-circle';
+import { preloadBossSpawnCircleAsset } from './rpg-boss-spawn-circle';
 import {
   SWORD_COMBO_THRESHOLD,
   MAX_DANMAKU_LEVEL,
