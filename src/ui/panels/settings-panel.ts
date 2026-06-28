@@ -96,10 +96,7 @@ export function createSettingsPanel(
 
   // ── Sub-tab switching ────────────────────────────────────────────
 
-  let activeTabId: SubTabId = 'audio';
-
   function showTab(id: SubTabId): void {
-    activeTabId = id;
     for (const [tid, btn] of tabButtons) {
       btn.classList.toggle('active', tid === id);
     }
