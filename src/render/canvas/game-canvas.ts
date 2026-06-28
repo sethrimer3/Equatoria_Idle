@@ -169,8 +169,15 @@ export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   const dpr = window.devicePixelRatio || 1;
 
   // Size #game-area to fill the full container (no pillarboxing).
-  cc.gameArea.style.width  = `${containerW}px`;
-  cc.gameArea.style.height = `${containerH}px`;
+  cc.gameArea.style.width    = `${containerW}px`;
+  cc.gameArea.style.height   = `${containerH}px`;
+  cc.gameArea.style.position = 'relative';
+
+  // Overlay canvas is always crisp at full DPR resolution.
+  const overlayBackingW = Math.round(containerW * dpr);
+  const overlayBackingH = Math.round(containerH * dpr);
+  if (cc.overlayCanvas.width  !== overlayBackingW) cc.overlayCanvas.width  = overlayBackingW;
+  if (cc.overlayCanvas.height !== overlayBackingH) cc.overlayCanvas.height = overlayBackingH;
 
   cc.dpr = dpr;
 
