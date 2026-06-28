@@ -30,6 +30,11 @@ const _fireOpaque      = FORGE_FIRE_COLORS.map(c => { const [r,g,b] = parseHexTo
 // Per-tier cached RGB components for drawLoomAura — avoids repeated hex parsing.
 const _loomTierRgb = new Map<string, [number, number, number]>();
 
+// Cached core-glow gradient for drawForgeSprite.
+// Created once per unique forgeSize; reused across frames via globalAlpha.
+let _coreGlowGrad: CanvasGradient | null = null;
+let _coreGlowSize = -1;
+
 /** Build an rgba string from a cached hex color without polluting a shared key-string cache. */
 function _rgba(color: string, alpha: number): string {
   let rgb = _loomTierRgb.get(color);
