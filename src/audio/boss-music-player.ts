@@ -46,6 +46,10 @@ export class BossMusicPlayer {
     }
   }
 
+  playCassetteStart(path: string, onDone: () => void): void {
+    this._playOneShotWithCallback(path, onDone);
+  }
+
   playPhrase(path: string): void {
     this._playOneShot(path);
   }
