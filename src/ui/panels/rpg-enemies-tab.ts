@@ -482,19 +482,11 @@ function buildBossEntry(
   }
 
   if (showLocked) {
-    const canvas = document.createElement('canvas');
-    canvas.width  = ICON_SIZE;
-    canvas.height = ICON_SIZE;
-    canvas.className = 'rpg-codex-icon-canvas';
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.font = `bold ${ICON_SIZE * 0.5}px sans-serif`;
-      ctx.fillStyle = '#3a2050';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('?', ICON_SIZE / 2, ICON_SIZE / 2);
-    }
-    iconFrame.appendChild(canvas);
+    const undiscoveredImg = document.createElement('img');
+    undiscoveredImg.className = 'rpg-codex-icon-img';
+    undiscoveredImg.src = UNDISCOVERED_ENEMY_ICON_PATH;
+    undiscoveredImg.alt = 'Undiscovered enemy';
+    iconFrame.appendChild(undiscoveredImg);
   } else {
     // Main icon: dedicated boss PNG
     const iconImg = document.createElement('img');
