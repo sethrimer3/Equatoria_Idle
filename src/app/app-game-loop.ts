@@ -465,7 +465,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.cc.widthPx,
       ctx.cc.heightPx,
       nowMs,
-      ctx.settings.lowGraphicsMotes,
+      ctx.settings.lowGraphicsMotes || effectiveReducedParticles,
     );
     if (isDevMode) perfStats.particleDrawMs = performance.now() - _t0ptc;
 
