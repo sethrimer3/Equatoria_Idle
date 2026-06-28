@@ -230,6 +230,7 @@ function drawGeneratorFallback(
   influenceRange: number,
   isDiamond: boolean,
   isNullstone: boolean,
+  lowGraphics: boolean,
 ): void {
   if (alpha <= 0) return;
   ctx.save();
