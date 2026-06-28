@@ -1732,26 +1732,49 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         const bgLayers = selectedTrack ? [selectedTrack.path] : [];
         bossTrackDurationMs = 0;
         bossTrackTitle = selectedTrack?.title ?? null;
-        if (selectedTrack) {
-          spawnDamageNumber(
-            dim.w / 2,
-            dim.h - 18,
-            0,
-            -1,
-            selectedTrack.title,
-            1,
-            BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)] ?? '#ffffff',
-          );
-        }
-        if (options.onBossMusicStartWithCassette) {
-          options.onBossMusicStartWithCassette(CASSETTE_START_PATH, beatLoop, bgLayers, (durationMs) => {
-            bossTrackDurationMs = durationMs;
-          });
-        } else {
-          options.onBossMusicStart?.(beatLoop, bgLayers, (durationMs) => {
-            bossTrackDurationMs = durationMs;
-          });
-        }
+
+        startBossIntro(boss.x, boss.y, () => {
+          // Spawn circle animation complete — play cassette now.
+          if (options.onBossCassetteStart) {
+            onBossIntroCassetteStarted();
+            options.onBossCassetteStart(CASSETTE_START_PATH, () => {
+              // Cassette finished — start boss music and begin fight.
+              if (selectedTrack) {
+                spawnDamageNumber(
+                  dim.w / 2,
+                  dim.h - 18,
+                  0,
+                  -1,
+                  selectedTrack.title,
+                  1,
+                  BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)] ?? '#ffffff',
+                );
+              }
+              options.onBossMusicStart?.(beatLoop, bgLayers, (durationMs) => {
+                bossTrackDurationMs = durationMs;
+              });
+              onBossIntroCassetteDone();
+            });
+          } else {
+            // Fallback: no cassette callback, start music immediately.
+            onBossIntroCassetteStarted();
+            if (selectedTrack) {
+              spawnDamageNumber(
+                dim.w / 2,
+                dim.h - 18,
+                0,
+                -1,
+                selectedTrack.title,
+                1,
+                BOSS_COLORS[Math.min(boss.bossId, BOSS_COLORS.length - 1)] ?? '#ffffff',
+              );
+            }
+            options.onBossMusicStart?.(beatLoop, bgLayers, (durationMs) => {
+              bossTrackDurationMs = durationMs;
+            });
+            onBossIntroCassetteDone();
+          }
+        });
       }
     },
     onExitBossWave:             () => {
