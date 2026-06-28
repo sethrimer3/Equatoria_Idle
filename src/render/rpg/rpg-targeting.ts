@@ -20,11 +20,21 @@ export type { RpgTargetingCtx, RpgTargetingHandle, TargetCollectionOptions } fro
 
 export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
   let targetedEnemy: object | null = null;
+  const TAP_TARGET_RADIUS_PX = 24;
 
   function tryTargetEnemyAt(tapX: number, tapY: number): void {
-    void tapX;
-    void tapY;
-    targetedEnemy = null;
+    let best: ClosestTarget | null = null;
+    let bestSq = TAP_TARGET_RADIUS_PX * TAP_TARGET_RADIUS_PX;
+    for (const target of collectEnemyBodyTargets(ctx)) {
+      const dx = target.x - tapX;
+      const dy = target.y - tapY;
+      const d = dx * dx + dy * dy;
+      if (d <= bestSq) {
+        bestSq = d;
+        best = target;
+      }
+    }
+    targetedEnemy = best ? getTargetObject(best) : null;
   }
 
   function damageBodyTarget(target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number {
@@ -84,7 +94,30 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     collectEnemyBodyTargets: (opts) => collectEnemyBodyTargets(ctx, opts),
     findClosestEnemyFrom: (x, y, rangeSq, opts) => findClosestEnemyFrom(ctx, x, y, rangeSq, opts),
     getTargetedEnemy: () => getTargetedEnemy(ctx, targetedEnemy),
+    getManualTargetedEnemy: () => {
+      if (!targetedEnemy) return null;
+      const resolved = getTargetedEnemy(ctx, targetedEnemy);
+      if (resolved && Object.values(resolved).some((value) => value === targetedEnemy)) return resolved;
+      targetedEnemy = null;
+      return null;
+    },
+    clearTargetedEnemy: () => { targetedEnemy = null; },
     tryTargetEnemyAt,
     damageBodyTarget,
   };
+}
+
+function getTargetObject(target: ClosestTarget): object | null {
+  return target.laser ?? target.sapphire ?? target.emerald ?? target.amber ?? target.void
+    ?? target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite
+    ?? target.amethyst ?? target.diamond ?? target.nullstone ?? target.fracteryl ?? target.eigenstein
+    ?? target.polyomino ?? target.fissilePolyomino ?? target.refractorPolyomino
+    ?? target.elite ?? target.alivenParticle ?? target.boss
+    ?? target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk
+    ?? target.jellyfish ?? target.eliteJellyfish ?? target.clothGhost ?? target.plantTurret
+    ?? target.gearInsect ?? target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand
+    ?? target.sandFish ?? target.quartzFish ?? target.rubyFish ?? target.sunstoneFish
+    ?? target.emeraldFish ?? target.sapphireFish ?? target.amethystFish ?? target.diamondFish
+    ?? target.plantProj ?? target.verdurePlant ?? target.binaryRing ?? target.nadirCubePoint
+    ?? target.horizonPentagonReal ?? null;
 }

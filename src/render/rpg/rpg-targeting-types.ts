@@ -195,6 +195,8 @@ export interface RpgTargetingHandle {
   collectEnemyBodyTargets(opts?: TargetCollectionOptions): ClosestTarget[];
   findClosestEnemyFrom(x: number, y: number, rangeSq: number, opts?: TargetCollectionOptions): ClosestTarget | null;
   getTargetedEnemy(): ClosestTarget | null;
+  getManualTargetedEnemy(): ClosestTarget | null;
+  clearTargetedEnemy(): void;
   tryTargetEnemyAt(tapX: number, tapY: number): void;
   damageBodyTarget(target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean): number;
 }

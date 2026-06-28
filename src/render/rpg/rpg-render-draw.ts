@@ -197,6 +197,7 @@ import { drawEmpowerParticles } from './rpg-elite-empower-particles';
 import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 import { renderEnemyStatusLabels } from './enemy-status-render';
+import { drawTargetNamePopup } from './rpg-target-popup';
 import { getCachedImage, loadImage } from '../assets/asset-loader';
 import {
   ZONE_SELECTION_BAR_OVERLAY_PATHS,
@@ -437,6 +438,8 @@ export interface RpgDrawCtx {
   // ── Callbacks & shared context ────────────────────────────
   getEffectiveEquippedIds(): Set<string>;
   getTargetedEnemy(): ClosestTarget | null;
+  getManualTargetedEnemy(): ClosestTarget | null;
+  getTargetSelectedAtMs(): number;
   rpgSimState: RpgSimState;
   /** Returns true when developer-mode diagnostics should be rendered. */
   getIsDevMode(): boolean;
@@ -1133,6 +1136,7 @@ export function drawRpgFrame(
     const te = ctx.getTargetedEnemy();
     if (te) {
       drawTargetReticle(canvas2d, te.x, te.y, 10, performance.now());
+      drawTargetNamePopup(canvas2d, ctx.getManualTargetedEnemy(), ctx.getTargetSelectedAtMs(), performance.now(), fs.visibleBounds);
     }
   }
 

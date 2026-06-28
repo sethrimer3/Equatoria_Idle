@@ -1171,6 +1171,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     getTerrainState: () => topographicTerrainState,
   });
+  let targetSelectedAtMs = 0;
 
   // ── Enemy bark system (speech bubbles) ────────────────────────
   initEnemyBarkSystem({
@@ -1791,6 +1792,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     get bossEnemy()         { return bossEnemy; },
     get isBossWaveActive()  { return isBossWaveActive; },
     get autoMoveEnabled()   { return _autoMoveEnabled; },
+    getManualTargetedEnemy: () => targeting.getManualTargetedEnemy(),
     rpgSimState,
     getEffectiveEquippedIds,
     fluid,
@@ -1828,7 +1830,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     joystick,
     keys,
     getIsActive: () => _isActive,
-    tryTargetEnemyAt,
+    tryTargetEnemyAt: (x, y) => {
+      tryTargetEnemyAt(x, y);
+      targetSelectedAtMs = targeting.getManualTargetedEnemy() ? performance.now() : 0;
+    },
     onDashRequest: () => { dashRequested = true; },
     onZoneLabelTap: () => { zoneSelectPanel.open(); },
     onZoneSelectionSpriteHoverChange: (isHovered) => { drawFrameState.zoneSelectionSpriteHovered = isHovered; },
@@ -2079,6 +2084,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getVerdureCaveWallState:      () => verdureCaveWallState,
     getEffectiveEquippedIds,
     getTargetedEnemy:             () => targeting.getTargetedEnemy(),
+    getManualTargetedEnemy:       () => targeting.getManualTargetedEnemy(),
+    getTargetSelectedAtMs:        () => targetSelectedAtMs,
     rpgSimState,
     getNavGrid:                   () => rpgNavGrid,
     getPathfindingDebugEnabled:   () => _isDevMode && developerVisuals.pathfinding,
@@ -2215,6 +2222,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     menuButtonContainer: statsPanel.menuButtonContainer,
 
     update(deltaMs: number, autoMoveEnabled = false): void {
+      if (rpgPhase !== 'alive' && targeting.getManualTargetedEnemy()) {
+        targeting.clearTargetedEnemy();
+        targetSelectedAtMs = 0;
+      }
       // Tick dash cooldown (reduced by time-warp status)
       if (rpgSimState.dashCooldownMs > 0) {
         const dashTickRate = getPlayerAttackSpeedStatusMultiplier(rpgSimState);

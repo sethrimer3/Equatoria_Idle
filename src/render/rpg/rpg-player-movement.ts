@@ -10,6 +10,7 @@
  */
 
 import type { RpgMote, RpgJoystick, RpgKeyState, LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget } from './rpg-types';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
@@ -85,6 +86,8 @@ export interface PlayerMovementCtx {
 
   /** True when auto-move is currently enabled by the player. */
   readonly autoMoveEnabled: boolean;
+  /** Manually tapped target, used as auto-move destination while valid. */
+  getManualTargetedEnemy?(): ClosestTarget | null;
 
   rpgSimState: RpgSimState;
   getEffectiveEquippedIds(): Set<string>;
@@ -227,7 +230,8 @@ export function updatePlayerMovement(
       if (autoMoveStopRange === null) autoMoveStopRange = PLAYER_BASE_RANGE_PX;
       void hasWeapon; // used above, suppress lint if needed
 
-      const { distSq: nearestDistSq, x: nearestX, y: nearestY } = _findNearestEnemy(ctx);
+      const manualTarget = ctx.getManualTargetedEnemy?.() ?? null;
+      const { distSq: nearestDistSq, x: nearestX, y: nearestY } = manualTarget ?? _findNearestEnemy(ctx);
       if (nearestDistSq < Infinity) {
         const ex = nearestX - mote.x, ey = nearestY - mote.y;
         const d = Math.sqrt(ex * ex + ey * ey);
