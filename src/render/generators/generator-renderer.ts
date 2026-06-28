@@ -110,16 +110,19 @@ function drawGeneratorTinted(
   color: string,
   isDiamond: boolean,
   isNullstone: boolean,
+  lowGraphics: boolean,
 ): void {
   if (alpha <= 0) return;
   const size = SPAWNER_SIZE * 5;
 
-  // Nullstone: dark purple glow behind sprite
+  // Nullstone: dark purple glow behind sprite (skip shadow in low-graphics)
   if (isNullstone) {
     ctx.save();
     ctx.globalAlpha = alpha * 0.6;
-    ctx.shadowBlur = size * 1.2;
-    ctx.shadowColor = '#6a0dad';
+    if (!lowGraphics) {
+      ctx.shadowBlur = size * 1.2;
+      ctx.shadowColor = '#6a0dad';
+    }
     const glowGrad = ctx.createRadialGradient(x, y, 0, x, y, size * 0.9);
     glowGrad.addColorStop(0, 'rgba(106,13,173,0.35)');
     glowGrad.addColorStop(1, 'rgba(106,13,173,0)');
@@ -136,8 +139,8 @@ function drawGeneratorTinted(
   ctx.translate(x, y);
   ctx.rotate(rotation);
 
-  // Diamond: cycling prismatic shadow glow around sprite
-  if (isDiamond) {
+  // Diamond: cycling prismatic shadow glow (skip in low-graphics)
+  if (isDiamond && !lowGraphics) {
     const t = _genAnimTimeMs / 1000;
     const hue = (t * HUE_CYCLE_DEG_PER_SEC) % 360;
     ctx.shadowBlur = size * 0.8;
@@ -148,8 +151,8 @@ function drawGeneratorTinted(
   ctx.shadowBlur = 0;
   ctx.restore();
 
-  // Diamond: prismatic overlay shimmer on top of sprite
-  if (isDiamond) {
+  // Diamond: prismatic overlay shimmer on top of sprite (skip in low-graphics)
+  if (isDiamond && !lowGraphics) {
     const t = _genAnimTimeMs / 1000;
     const hue1 = (t * HUE_CYCLE_DEG_PER_SEC) % 360;
     const hue2 = (hue1 + 120) % 360;
