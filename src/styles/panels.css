@@ -48,11 +48,10 @@
 
 .page-break-small {
   display: block;
-  width: 100%;
+  width: 60%;
   height: auto;
   object-fit: contain;
-  margin-top: 4px;
-  margin-bottom: 4px;
+  margin: 4px auto;
   pointer-events: none;
   user-select: none;
 }
