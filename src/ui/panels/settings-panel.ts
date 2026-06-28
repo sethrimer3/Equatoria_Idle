@@ -63,7 +63,26 @@ export function createSettingsPanel(
   });
   panel.appendChild(focusRow);
 
-  // Reduced particles toggle
+  // Graphics quality switch — placed before Reduced Particles so we can control
+  // the checkbox state when Auto or Low is selected.
+  const graphicsRow = createSelectRow(
+    'Graphics Quality',
+    settings.graphicsQuality,
+    [
+      { value: 'auto', label: 'Auto (recommended)' },
+      { value: 'high', label: 'High' },
+      { value: 'low',  label: 'Low' },
+    ],
+    (v) => {
+      settings.graphicsQuality = v as SettingsState['graphicsQuality'];
+      saveSettings(settings);
+      audioSystem?.onSettingsChanged();
+      _updateParticleRowState();
+    },
+  );
+  panel.appendChild(graphicsRow);
+
+  // Reduced particles toggle — disabled (and forced checked) when Auto or Low is active.
   const particleRow = createToggleRow('Reduced Particles', settings.isReducedParticles, (v) => {
     settings.isReducedParticles = v;
     saveSettings(settings);
@@ -71,21 +90,24 @@ export function createSettingsPanel(
   });
   panel.appendChild(particleRow);
 
-  // Graphics quality switch
-  const graphicsRow = createSelectRow(
-    'Graphics Quality',
-    settings.graphicsQuality,
-    [
-      { value: 'high', label: 'High' },
-      { value: 'low', label: 'Low' },
-    ],
-    (v) => {
-      settings.graphicsQuality = v as SettingsState['graphicsQuality'];
-      saveSettings(settings);
-      audioSystem?.onSettingsChanged();
-    },
-  );
-  panel.appendChild(graphicsRow);
+  const _particleCheckbox = particleRow.querySelector('input[type="checkbox"]') as HTMLInputElement;
+
+  function _updateParticleRowState(): void {
+    const forceReduced = settings.graphicsQuality === 'auto' || settings.graphicsQuality === 'low';
+    _particleCheckbox.disabled = forceReduced;
+    if (forceReduced) {
+      _particleCheckbox.checked = true;
+      _particleCheckbox.style.opacity = '0.5';
+      _particleCheckbox.style.cursor = 'not-allowed';
+    } else {
+      _particleCheckbox.checked = settings.isReducedParticles;
+      _particleCheckbox.style.opacity = '';
+      _particleCheckbox.style.cursor = '';
+    }
+  }
+
+  // Set initial state.
+  _updateParticleRowState();
 
   // Background style selector
   const bgStyleRow = createSelectRow(

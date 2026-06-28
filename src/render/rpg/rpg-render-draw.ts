@@ -237,6 +237,8 @@ const ZONE_ICON_SHEEN_TIMINGS: readonly ZoneIconLayerTiming[] = ZONE_SELECTION_S
   alpha: 0.38 + ((index * 37) % 30) / 100,
 }));
 
+const ZONE_SELECTION_ICON_SIDE_CROP_FRACTION = 0.10;
+
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
@@ -264,7 +266,8 @@ function drawZoneIconLayer(
   const image = getCachedImage(path);
   if (image) {
     ctx.globalAlpha = alpha;
-    ctx.drawImage(image, x, y, size, size);
+    const cropX = image.width * ZONE_SELECTION_ICON_SIDE_CROP_FRACTION;
+    ctx.drawImage(image, cropX, 0, image.width - cropX * 2, image.height, x, y, size, size);
   } else {
     loadImage(path).catch(() => {});
   }
@@ -286,7 +289,8 @@ function drawZoneSelectionLabelIcon(
       ctx.globalAlpha = baseAlpha * 0.9;
       ctx.shadowBlur = 18;
       ctx.shadowColor = '#ffd34d';
-      ctx.drawImage(image, x, y, size, size);
+      const cropX = image.width * ZONE_SELECTION_ICON_SIDE_CROP_FRACTION;
+      ctx.drawImage(image, cropX, 0, image.width - cropX * 2, image.height, x, y, size, size);
       ctx.restore();
     }
   }
