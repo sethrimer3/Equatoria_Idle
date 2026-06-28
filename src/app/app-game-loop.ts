@@ -412,6 +412,10 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     const _t0render = isDevMode ? performance.now() : 0;
     resetCanvasRenderState(ctx.cc);
     clearCanvas(ctx.cc);
+    if (!isDevMode) {
+      // Clear the overlay canvas each frame when not drawing debug text.
+      ctx.cc.overlayCtx.clearRect(0, 0, ctx.cc.overlayCanvas.width, ctx.cc.overlayCanvas.height);
+    }
     drawBackground(ctx.cc, '#000000');
     if (ctx.settings.backgroundStyle === 'vermiculate') {
       ctx.vermiculateEffect.update(nowMs, ctx.cc.widthPx, ctx.cc.heightPx);
