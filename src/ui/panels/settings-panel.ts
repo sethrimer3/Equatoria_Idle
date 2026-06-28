@@ -61,9 +61,9 @@ export function createSettingsPanel(
   panel.appendChild(subTabBar);
 
   const tabDefs: { id: SubTabId; label: string }[] = [
-    { id: 'audio',    label: 'Audio'    },
-    { id: 'visual',   label: 'Visual'   },
     { id: 'gameplay', label: 'Gameplay' },
+    { id: 'visual',   label: 'Visual'   },
+    { id: 'audio',    label: 'Audio'    },
     { id: 'profile',  label: 'Profile'  },
   ];
 
