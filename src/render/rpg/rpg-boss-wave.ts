@@ -189,7 +189,7 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
     const waveForScaling = Math.max(bossId * 100, ctx.rpgSimState.highestWaveReached);
     const boss = makeBossEnemy(bossId, waveForScaling, ctx.dim.w, ctx.dim.h);
     ctx.setBossEnemy(boss);
-    pushBossSpawnCircle(boss.x, boss.y);
+    preloadBossSpawnCircleAsset();
     ctx.onBossSpawned?.(boss);
     ctx.setIsBossFightFromMenu(true);
     enterBossWave();
