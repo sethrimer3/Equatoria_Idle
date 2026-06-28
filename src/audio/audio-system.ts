@@ -65,6 +65,7 @@ export interface AudioSystem {
   onForgeSpinUpCancelled(): void;
 
   // Boss MIDI/music events
+  bossCassetteStart(path: string, onDone: () => void): void;
   startBossMusic(beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void;
   startBossMusicWithCassette(cassetteStart: string, beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void;
   stopBossMusic(): void;
