@@ -261,14 +261,16 @@ function drawGeneratorFallback(
 
   ctx.rotate(-rotation);
 
-  if (isDiamond) {
-    const t = _genAnimTimeMs / 1000;
-    const hue = (t * HUE_CYCLE_DEG_PER_SEC) % 360;
-    ctx.shadowBlur = size * 3;
-    ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
-  } else if (isNullstone) {
-    ctx.shadowBlur = size * 3;
-    ctx.shadowColor = '#6a0dad';
+  if (!lowGraphics) {
+    if (isDiamond) {
+      const t = _genAnimTimeMs / 1000;
+      const hue = (t * HUE_CYCLE_DEG_PER_SEC) % 360;
+      ctx.shadowBlur = size * 3;
+      ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
+    } else if (isNullstone) {
+      ctx.shadowBlur = size * 3;
+      ctx.shadowColor = '#6a0dad';
+    }
   }
 
   const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
