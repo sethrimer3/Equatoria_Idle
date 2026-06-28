@@ -1778,6 +1778,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       }
     },
     onExitBossWave:             () => {
+      resetBossIntro();
       deactivateBossStageDirector(bossStageDirectorState);
       resetBossMidiRuntime(bossMidiState);
       bossTrackDurationMs = 0;
