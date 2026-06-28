@@ -42,6 +42,14 @@ export interface CanvasContext {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   /**
+   * Full-resolution crisp overlay canvas, always sized to container×DPR.
+   * Used for debug text and UI overlays that must remain sharp regardless of
+   * the main canvas render style (pixelated vs crisp).
+   * Pointer events are disabled; it sits on top of the game canvas.
+   */
+  overlayCanvas: HTMLCanvasElement;
+  overlayCtx: CanvasRenderingContext2D;
+  /**
    * Current world coordinate width of the game area.
    * In crisp mode: matches the container's CSS width.
    * In pixelated mode: low-resolution internal width (~320).
