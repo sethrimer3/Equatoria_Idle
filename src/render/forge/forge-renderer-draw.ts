@@ -9,7 +9,7 @@
  * `drawForgeSacrificeFlash`) and the high-level rendering flow.
  */
 
-import { colorWithAlpha } from '../assets/color-utils';
+import { parseHexToRgb } from '../assets/color-utils';
 
 /** Fire gradient colors for the forge influence swirl (outer to inner heat). */
 export const FORGE_FIRE_COLORS = [
