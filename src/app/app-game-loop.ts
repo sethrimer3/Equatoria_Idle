@@ -95,6 +95,22 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
   let _loomAudioLastMs = 0;
   const LOOM_AUDIO_COOLDOWN_MS = 400;
 
+  // ── Auto-graphics FPS tracking ───────────────────────────────
+  // Rolling window of the last N frame delta-times for a stable avg-FPS estimate.
+  const AUTO_FPS_WINDOW = 60;
+  const _frameDeltasMs = new Float32Array(AUTO_FPS_WINDOW).fill(16.67);
+  let _frameDeltaIdx = 0;
+  let _autoGlow = true;
+  let _autoTrails = true;
+  let _autoReducedParticles = false;
+  // Hysteresis: require FPS to drop further to disable than to re-enable.
+  const DISABLE_GLOW_BELOW_FPS    = 40;
+  const REENABLE_GLOW_ABOVE_FPS   = 50;
+  const DISABLE_TRAILS_BELOW_FPS  = 50;
+  const REENABLE_TRAILS_ABOVE_FPS = 55;
+  const REDUCE_PARTICLES_BELOW_FPS  = 30;
+  const RESTORE_PARTICLES_ABOVE_FPS = 40;
+
   // ── One-time particle system callback wiring ─────────────────
   ctx.particles.onParticleCapturedByLoom = (_, inputTierId, mass) => {
     processLoomCapture(ctx.appState.game, inputTierId as TierId, mass);
