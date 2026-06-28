@@ -153,7 +153,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     // ── RPG tab: run independent render then skip main canvas draw ────────
     if (ctx.appState.activeTab === 'rpg') {
       const autoMove = ctx.uiPanels.rpgMenuPanel.isAutoMoveEnabled;
-      ctx.uiPanels.rpgRender.setLowGraphicsMode(ctx.settings.graphicsQuality === 'low');
+      ctx.uiPanels.rpgRender.setLowGraphicsMode(ctx.settings.graphicsQuality === 'low' || (ctx.settings.graphicsQuality === 'auto' && !_autoGlow));
       ctx.uiPanels.rpgRender.setScreenShakeEnabled(ctx.settings.isScreenShakeEnabled);
       ctx.uiPanels.rpgRender.setEnemyIndicatorStyle(ctx.settings.rpgEnemyIndicatorStyle);
       ctx.uiPanels.rpgRender.setNumberFormat(ctx.settings.numberFormat);
