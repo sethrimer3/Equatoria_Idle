@@ -2,25 +2,41 @@ import type { ActionHandler } from '../../input';
 import type { SettingsState } from '../../settings';
 import { saveSettings } from '../../settings';
 import type { AudioSystem } from '../../audio';
+import type { GameState } from '../../sim';
+import { ACHIEVEMENT_DEFINITIONS } from '../../data/achievements';
 import { makePageBreak } from '../ui-helpers';
 import { BUILD_NUMBER } from '../../buildInfo';
 import { createBalanceForecastPanel, type BalanceForecastPanel } from './balance-forecast/balance-forecast-panel';
 import { createDevPanel, type DevPanel, type DevPanelHooks } from './dev-panel';
 import { createSliderRow, createToggleRow, createSelectRow } from './settings-panel-controls';
 import { createDevTweaksSection } from './settings-panel-dev-tweaks';
+import { createSparkleSystem } from './achievements-panel-sparkle';
 
 /**
- * Settings panel — DOM-based settings controls.
+ * Settings panel — four sub-tabs: Audio, Visual, Gameplay, Profile.
  */
 export interface SettingsPanel {
   element: HTMLElement;
   getSettings(): SettingsState;
+  update(state: GameState): void;
   /** The embedded Balance Forecast dev panel (dev mode only). */
   balanceForecastPanel: BalanceForecastPanel;
   /** The embedded developer playtesting panel (dev mode only). */
   devPanel: DevPanel;
   /** Wire up the dev panel after rpgRender and game are available. */
   registerDevHooks(hooks: DevPanelHooks): void;
+}
+
+type SubTabId = 'audio' | 'visual' | 'gameplay' | 'profile';
+
+function formatElapsedTime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 export function createSettingsPanel(
@@ -38,33 +54,92 @@ export function createSettingsPanel(
   title.textContent = 'Settings';
   panel.appendChild(title);
 
-  // SFX volume
+  // ── Sub-tab bar ──────────────────────────────────────────────────
+
+  const subTabBar = document.createElement('div');
+  subTabBar.className = 'settings-sub-tab-bar';
+  panel.appendChild(subTabBar);
+
+  const tabDefs: { id: SubTabId; label: string }[] = [
+    { id: 'audio',    label: 'Audio'    },
+    { id: 'visual',   label: 'Visual'   },
+    { id: 'gameplay', label: 'Gameplay' },
+    { id: 'profile',  label: 'Profile'  },
+  ];
+
+  const tabButtons = new Map<SubTabId, HTMLButtonElement>();
+  const tabPanes   = new Map<SubTabId, HTMLElement>();
+
+  for (const def of tabDefs) {
+    const btn = document.createElement('button');
+    btn.className = 'settings-sub-tab-btn';
+    btn.textContent = def.label;
+    btn.setAttribute('data-tab', def.id);
+    btn.addEventListener('click', () => showTab(def.id));
+    subTabBar.appendChild(btn);
+    tabButtons.set(def.id, btn);
+
+    const pane = document.createElement('div');
+    pane.className = 'settings-sub-pane';
+    pane.style.display = 'none';
+    panel.appendChild(pane);
+    tabPanes.set(def.id, pane);
+  }
+
+  // ── Profile tab sparkle (runs until game is purchased) ──────────
+
+  const profileTabSparkle = createSparkleSystem();
+  const profileBtn = tabButtons.get('profile')!;
+  profileBtn.classList.add('settings-sub-tab-btn--profile');
+  // Start sparkling immediately (will stop once isGamePurchased becomes true)
+  profileTabSparkle.setSparkleEmitter(profileBtn, true);
+
+  // ── Sub-tab switching ────────────────────────────────────────────
+
+  let activeTabId: SubTabId = 'audio';
+
+  function showTab(id: SubTabId): void {
+    activeTabId = id;
+    for (const [tid, btn] of tabButtons) {
+      btn.classList.toggle('active', tid === id);
+    }
+    for (const [tid, pane] of tabPanes) {
+      pane.style.display = tid === id ? '' : 'none';
+    }
+  }
+
+  // ── Helper to get a pane ─────────────────────────────────────────
+
+  function pane(id: SubTabId): HTMLElement {
+    return tabPanes.get(id)!;
+  }
+
+  // ── AUDIO TAB ───────────────────────────────────────────────────
+
   const sfxRow = createSliderRow('SFX Volume', settings.sfxVolume, (v) => {
     settings.sfxVolume = v;
     saveSettings(settings);
     audioSystem?.setSfxVolume(v);
     audioSystem?.onSettingsChanged();
   });
-  panel.appendChild(sfxRow);
+  pane('audio').appendChild(sfxRow);
 
-  // Music volume — does NOT trigger onSettingsChanged
   const musicRow = createSliderRow('Music Volume', settings.musicVolume, (v) => {
     settings.musicVolume = v;
     saveSettings(settings);
     audioSystem?.setMusicVolume(v);
   });
-  panel.appendChild(musicRow);
+  pane('audio').appendChild(musicRow);
 
-  // Music/SFX Only When Focused toggle
   const focusRow = createToggleRow('Music/SFX Only When Focused', settings.isMusicOnlyWhenFocused, (v) => {
     settings.isMusicOnlyWhenFocused = v;
     saveSettings(settings);
     onFocusSettingChange?.();
   });
-  panel.appendChild(focusRow);
+  pane('audio').appendChild(focusRow);
 
-  // Graphics quality switch — placed before Reduced Particles so we can control
-  // the checkbox state when Auto or Low is selected.
+  // ── VISUAL TAB ──────────────────────────────────────────────────
+
   const graphicsRow = createSelectRow(
     'Graphics Quality',
     settings.graphicsQuality,
@@ -80,14 +155,14 @@ export function createSettingsPanel(
       _updateParticleRowState();
     },
   );
-  panel.appendChild(graphicsRow);
+  pane('visual').appendChild(graphicsRow);
 
   const fpsLimitRow = createSelectRow(
     'FPS Limit',
     String(settings.fpsLimit),
     [
-      { value: '60', label: '60' },
-      { value: '120', label: '120' },
+      { value: '60',        label: '60'        },
+      { value: '120',       label: '120'       },
       { value: 'unlimited', label: 'Unlimited' },
     ],
     (v) => {
@@ -96,15 +171,14 @@ export function createSettingsPanel(
       audioSystem?.onSettingsChanged();
     },
   );
-  panel.appendChild(fpsLimitRow);
+  pane('visual').appendChild(fpsLimitRow);
 
-  // Reduced particles toggle — disabled (and forced checked) when Auto or Low is active.
   const particleRow = createToggleRow('Reduced Particles', settings.isReducedParticles, (v) => {
     settings.isReducedParticles = v;
     saveSettings(settings);
     audioSystem?.onSettingsChanged();
   });
-  panel.appendChild(particleRow);
+  pane('visual').appendChild(particleRow);
 
   const _particleCheckbox = particleRow.querySelector('input[type="checkbox"]') as HTMLInputElement;
 
@@ -121,18 +195,15 @@ export function createSettingsPanel(
       _particleCheckbox.style.cursor = '';
     }
   }
-
-  // Set initial state.
   _updateParticleRowState();
 
-  // Background style selector
   const bgStyleRow = createSelectRow(
     'Background Style',
     settings.backgroundStyle,
     [
       { value: 'vermiculate', label: 'Vermiculate' },
-      { value: 'substrate',   label: 'Substrate' },
-      { value: 'none',        label: 'None' },
+      { value: 'substrate',   label: 'Substrate'   },
+      { value: 'none',        label: 'None'         },
     ],
     (v) => {
       settings.backgroundStyle = v as SettingsState['backgroundStyle'];
@@ -140,14 +211,13 @@ export function createSettingsPanel(
       audioSystem?.onSettingsChanged();
     },
   );
-  panel.appendChild(bgStyleRow);
+  pane('visual').appendChild(bgStyleRow);
 
-  // Idle canvas render style selector
   const idleCanvasRenderStyleRow = createSelectRow(
     'Idle Canvas Render',
     settings.idleCanvasRenderStyle,
     [
-      { value: 'pixelated', label: 'Pixelated' },
+      { value: 'pixelated', label: 'Pixelated'    },
       { value: 'crisp',     label: 'Crisp / HiDPI' },
     ],
     (v) => {
@@ -157,32 +227,22 @@ export function createSettingsPanel(
       audioSystem?.onSettingsChanged();
     },
   );
-  panel.appendChild(idleCanvasRenderStyleRow);
+  pane('visual').appendChild(idleCanvasRenderStyleRow);
 
-  // Number format selector
-  const numberFormatRow = createSelectRow(
-    'Number Format',
-    settings.numberFormat,
-    [
-      { value: 'letters',     label: 'Letters (M, B…)' },
-      { value: 'scientific',  label: 'Scientific (1.23e6)' },
-      { value: 'engineering', label: 'Engineering (1.23×10⁶)' },
-    ],
-    (v) => {
-      settings.numberFormat = v as SettingsState['numberFormat'];
-      saveSettings(settings);
-      audioSystem?.onSettingsChanged();
-    },
-  );
-  panel.appendChild(numberFormatRow);
+  const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
+    settings.isScreenShakeEnabled = v;
+    saveSettings(settings);
+    audioSystem?.onSettingsChanged();
+  });
+  pane('visual').appendChild(shakeRow);
 
   const enemyIndicatorRow = createSelectRow(
     'RPG Enemy Indicator',
     settings.rpgEnemyIndicatorStyle,
     [
-      { value: 'triangle', label: 'Triangle' },
+      { value: 'triangle', label: 'Triangle'   },
       { value: 'outline',  label: 'Red Outline' },
-      { value: 'off',      label: 'OFF' },
+      { value: 'off',      label: 'OFF'         },
     ],
     (v) => {
       settings.rpgEnemyIndicatorStyle = v as SettingsState['rpgEnemyIndicatorStyle'];
@@ -190,45 +250,8 @@ export function createSettingsPanel(
       audioSystem?.onSettingsChanged();
     },
   );
-  panel.appendChild(enemyIndicatorRow);
+  pane('visual').appendChild(enemyIndicatorRow);
 
-  const generatorEquationVisibilityRow = createSelectRow(
-    'Loom Rate Visibility',
-    settings.generatorEquationVisibility,
-    [
-      { value: 'always',    label: 'Always On' },
-      { value: 'proximity', label: 'Proximity' },
-      { value: 'off',       label: 'Always Off' },
-    ],
-    (v) => {
-      settings.generatorEquationVisibility = v as SettingsState['generatorEquationVisibility'];
-      saveSettings(settings);
-      audioSystem?.onSettingsChanged();
-    },
-  );
-  panel.appendChild(generatorEquationVisibilityRow);
-
-  // Screen shake toggle
-  const shakeRow = createToggleRow('Screen Shake', settings.isScreenShakeEnabled, (v) => {
-    settings.isScreenShakeEnabled = v;
-    saveSettings(settings);
-    audioSystem?.onSettingsChanged();
-  });
-  panel.appendChild(shakeRow);
-
-  // Skip idle pop up at start toggle
-  const skipIdlePopupRow = createToggleRow('Skip idle pop up at start', settings.skipIdlePopupAtStart, (v) => {
-    settings.skipIdlePopupAtStart = v;
-    saveSettings(settings);
-  });
-  panel.appendChild(skipIdlePopupRow);
-
-  // Developer mode toggle — devSection is created here so the toggle callback can
-  // reference it immediately; it is appended to the panel later (after credits).
-  const devSection = createDevTweaksSection();
-  devSection.style.display = settings.isDevMode ? '' : 'none';
-
-  // Dev-mode-only visual toggles (idle-canvas diagnostics, etc.)
   const idleViewportDebugRow = createToggleRow(
     'Idle Viewport Debug',
     settings.isIdleViewportDebugEnabled,
@@ -238,12 +261,55 @@ export function createSettingsPanel(
     },
   );
   idleViewportDebugRow.style.display = settings.isDevMode ? '' : 'none';
+  pane('visual').appendChild(idleViewportDebugRow);
 
-  // Balance Forecast panel — also dev-mode only
+  // ── GAMEPLAY TAB ─────────────────────────────────────────────────
+
+  const numberFormatRow = createSelectRow(
+    'Number Format',
+    settings.numberFormat,
+    [
+      { value: 'letters',     label: 'Letters (M, B…)'      },
+      { value: 'scientific',  label: 'Scientific (1.23e6)'   },
+      { value: 'engineering', label: 'Engineering (1.23×10⁶)' },
+    ],
+    (v) => {
+      settings.numberFormat = v as SettingsState['numberFormat'];
+      saveSettings(settings);
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  pane('gameplay').appendChild(numberFormatRow);
+
+  const generatorEquationVisibilityRow = createSelectRow(
+    'Loom Rate Visibility',
+    settings.generatorEquationVisibility,
+    [
+      { value: 'always',    label: 'Always On'  },
+      { value: 'proximity', label: 'Proximity'  },
+      { value: 'off',       label: 'Always Off' },
+    ],
+    (v) => {
+      settings.generatorEquationVisibility = v as SettingsState['generatorEquationVisibility'];
+      saveSettings(settings);
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  pane('gameplay').appendChild(generatorEquationVisibilityRow);
+
+  const skipIdlePopupRow = createToggleRow('Skip idle pop up at start', settings.skipIdlePopupAtStart, (v) => {
+    settings.skipIdlePopupAtStart = v;
+    saveSettings(settings);
+  });
+  pane('gameplay').appendChild(skipIdlePopupRow);
+
+  // Dev section and dev panel (live in Profile tab but toggled by devModeRow)
+  const devSection = createDevTweaksSection();
+  devSection.style.display = settings.isDevMode ? '' : 'none';
+
   const balanceForecastPanel = createBalanceForecastPanel();
   balanceForecastPanel.setDevMode(settings.isDevMode);
 
-  // Developer playtesting panel — also dev-mode only
   const devPanel = createDevPanel();
   devPanel.element.style.display = settings.isDevMode ? '' : 'none';
 
@@ -256,8 +322,54 @@ export function createSettingsPanel(
     balanceForecastPanel.setDevMode(v);
     devPanel.element.style.display = v ? '' : 'none';
   });
-  panel.appendChild(devModeRow);
-  panel.appendChild(idleViewportDebugRow);
+  pane('gameplay').appendChild(devModeRow);
+
+  // ── PROFILE TAB ──────────────────────────────────────────────────
+
+  const profilePane = pane('profile');
+
+  // Purchase button with sparkle
+  const purchaseSparkle = createSparkleSystem();
+
+  const purchaseBtn = document.createElement('button');
+  purchaseBtn.className = 'settings-btn settings-purchase-btn';
+  purchaseBtn.textContent = '✨ Purchase Game — $4.99';
+  purchaseBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    // Purchase flow will be wired up later
+  });
+  profilePane.appendChild(purchaseBtn);
+  purchaseSparkle.setSparkleEmitter(purchaseBtn, true);
+
+  // Stats section
+  const statsSection = document.createElement('div');
+  statsSection.className = 'settings-profile-stats';
+  profilePane.appendChild(statsSection);
+
+  function makeStatRow(label: string): { row: HTMLElement; valueEl: HTMLElement } {
+    const row = document.createElement('div');
+    row.className = 'settings-profile-stat-row';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'settings-profile-stat-label';
+    labelEl.textContent = label;
+    const valueEl = document.createElement('span');
+    valueEl.className = 'settings-profile-stat-value';
+    row.appendChild(labelEl);
+    row.appendChild(valueEl);
+    return { row, valueEl };
+  }
+
+  const { row: timeRow,    valueEl: timeValue    } = makeStatRow('Time Played');
+  const { row: achRow,     valueEl: achValue     } = makeStatRow('Achievements');
+  const { row: claimedRow, valueEl: claimedValue } = makeStatRow('Bonuses Claimed');
+  const { row: tiersRow,   valueEl: tiersValue   } = makeStatRow('Tiers Unlocked');
+  const { row: upgradesRow, valueEl: upgradesValue } = makeStatRow('Upgrades Purchased');
+
+  statsSection.appendChild(timeRow);
+  statsSection.appendChild(achRow);
+  statsSection.appendChild(claimedRow);
+  statsSection.appendChild(tiersRow);
+  statsSection.appendChild(upgradesRow);
 
   // Save button
   const saveBtn = document.createElement('button');
@@ -267,7 +379,7 @@ export function createSettingsPanel(
     e.stopPropagation();
     dispatch({ kind: 'save_game' });
   });
-  panel.appendChild(saveBtn);
+  profilePane.appendChild(saveBtn);
 
   // Reset button
   const resetBtn = document.createElement('button');
@@ -278,42 +390,59 @@ export function createSettingsPanel(
   resetBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     if (isResetConfirmOpen) return;
     isResetConfirmOpen = true;
-
     const shouldReset = confirm('Are you sure you want to reset all progress?');
     isResetConfirmOpen = false;
-
-    if (shouldReset) {
-      dispatch({ kind: 'reset_game' });
-    }
+    if (shouldReset) dispatch({ kind: 'reset_game' });
   });
-  panel.appendChild(resetBtn);
+  profilePane.appendChild(resetBtn);
 
-  // Credits
+  // Page break before dev section
+  profilePane.appendChild(makePageBreak('small'));
+
+  // Credits / build info
   const credits = document.createElement('div');
   credits.className = 'credits';
-  credits.innerHTML = `
-    <p>Equatoria Idle — Build #${BUILD_NUMBER}</p>
-  `;
-  panel.appendChild(credits);
+  credits.innerHTML = `<p>Equatoria Idle — Build #${BUILD_NUMBER}</p>`;
+  profilePane.appendChild(credits);
 
-  // Dev-mode particle tweaks — appended after credits so it sits at the bottom
-  panel.appendChild(devSection);
+  // Dev-mode tools (appended after credits)
+  profilePane.appendChild(devSection);
+  profilePane.appendChild(devPanel.element);
+  profilePane.appendChild(balanceForecastPanel.element);
 
-  // Developer playtesting panel — appended after particle tweaks
-  panel.appendChild(devPanel.element);
+  // ── Activate first tab ───────────────────────────────────────────
 
-  // Balance Forecast panel — appended after dev panel
-  panel.appendChild(balanceForecastPanel.element);
+  showTab('audio');
 
-  // Small page break at the end of the settings panel
+  // ── Update method ────────────────────────────────────────────────
+
+  function update(state: GameState): void {
+    const totalAchievements = ACHIEVEMENT_DEFINITIONS.length;
+    const unlocked = state.achievements.unlockedIds.size;
+    const claimed  = state.achievements.claimedIds.size;
+    let totalUpgrades = 0;
+    for (const lvl of state.progression.upgradeLevels.values()) totalUpgrades += lvl;
+
+    timeValue.textContent    = formatElapsedTime(state.elapsedMs);
+    achValue.textContent     = `${unlocked} / ${totalAchievements}`;
+    claimedValue.textContent = String(claimed);
+    tiersValue.textContent   = String(state.progression.unlockedTierCount);
+    upgradesValue.textContent = String(totalUpgrades);
+
+    if (settings.isDevMode) {
+      balanceForecastPanel.update(state);
+    }
+  }
+
+  // Small page break at very bottom of outer panel
   panel.appendChild(makePageBreak('small'));
 
   return {
     element: panel,
     getSettings: () => settings,
+    update,
     balanceForecastPanel,
     devPanel,
     registerDevHooks(hooks: DevPanelHooks): void {
