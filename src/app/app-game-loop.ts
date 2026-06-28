@@ -475,7 +475,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       if (ctx.settings.isIdleViewportDebugEnabled) {
         drawIdleViewportDebug(ctx.cc);
       }
-      drawPerfStats(ctx.cc.ctx, ctx.cc.widthPx, ctx.cc.heightPx);
+      drawPerfStats(ctx.cc.overlayCtx, ctx.cc.widthPx, ctx.cc.heightPx, ctx.cc.dpr);
     }
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {
