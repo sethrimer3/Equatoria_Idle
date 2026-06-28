@@ -22,10 +22,8 @@ export const FORGE_FIRE_COLORS = [
   '#B7370A',
 ];
 
-// Pre-resolved color stop strings for FORGE_FIRE_COLORS — eliminates repeated
-// rgba string allocations inside the per-frame draw loop.
-const _fireTransparent = FORGE_FIRE_COLORS.map(c => { const [r,g,b] = parseHexToRgb(c); return `rgba(${r},${g},${b},0)`; });
-const _fireOpaque      = FORGE_FIRE_COLORS.map(c => { const [r,g,b] = parseHexToRgb(c); return `rgba(${r},${g},${b},1)`; });
+// Pre-resolved opaque color strings for FORGE_FIRE_COLORS — eliminates per-frame string allocation.
+const _fireOpaque = FORGE_FIRE_COLORS.map(c => { const [r,g,b] = parseHexToRgb(c); return `rgba(${r},${g},${b},1)`; });
 
 // Per-tier cached RGB components for drawLoomAura — avoids repeated hex parsing.
 const _loomTierRgb = new Map<string, [number, number, number]>();
