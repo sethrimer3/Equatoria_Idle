@@ -94,7 +94,7 @@ import {
 import { updateStardustEnemies } from './rpg-stardust-update';
 import { updateHorizonPentagonGroups } from './horizon-pentagon-update';
 import { updateSpawnFlashes } from './rpg-spawn-flash';
-import { updateBossSpawnCircles } from './rpg-boss-spawn-circle';
+import { updateBossIntro } from './boss-intro-director';
 import { updateDyingEnemies } from './rpg-death-fade';
 import {
   updatePolyominoEnemies,
