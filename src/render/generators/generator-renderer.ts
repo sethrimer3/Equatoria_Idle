@@ -67,6 +67,7 @@ export function drawGenerators(
   spawnerRotations: ReadonlyMap<TierId, number>,
   fadeIns: ReadonlyMap<TierId, number>,
   ratesPerSec: ReadonlyMap<TierId, number>,
+  lowGraphics = false,
 ): void {
   const ctx = cc.ctx;
   for (const gen of generators) {
@@ -75,7 +76,7 @@ export function drawGenerators(
     const tier = TIER_BY_ID.get(gen.tierId);
     if (!tier) continue;
 
-    const isDiamond = gen.tierId === 'diamond';
+    const isDiamond   = gen.tierId === 'diamond';
     const isNullstone = gen.tierId === 'nullstone';
 
     const spritePath = getGeneratorSpritePath(tier.unlockOrder);
@@ -83,14 +84,14 @@ export function drawGenerators(
     // Use tinted (color-corrected) sprite; fall back to raw sprite while tint is being cached
     const tinted = getTintedSpriteCanvas(spritePath, tier.color);
     if (tinted) {
-      drawGeneratorTinted(ctx, gen.x, gen.y, tinted, rotation, fadeAlpha, gen.range, tier.color, isDiamond, isNullstone);
+      drawGeneratorTinted(ctx, gen.x, gen.y, tinted, rotation, fadeAlpha, gen.range, tier.color, isDiamond, isNullstone, lowGraphics);
     } else {
       const sprite = getCachedImage(spritePath);
       if (sprite) {
-        drawGeneratorTinted(ctx, gen.x, gen.y, sprite, rotation, fadeAlpha, gen.range, tier.color, isDiamond, isNullstone);
+        drawGeneratorTinted(ctx, gen.x, gen.y, sprite, rotation, fadeAlpha, gen.range, tier.color, isDiamond, isNullstone, lowGraphics);
       } else {
         // Fallback: draw procedural generator while sprite loads
-        drawGeneratorFallback(ctx, gen.x, gen.y, tier.color, tier.glowColor, rotation, fadeAlpha, gen.range, isDiamond, isNullstone);
+        drawGeneratorFallback(ctx, gen.x, gen.y, tier.color, tier.glowColor, rotation, fadeAlpha, gen.range, isDiamond, isNullstone, lowGraphics);
       }
     }
 
