@@ -382,7 +382,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       ctx.cc.widthPx,
       ctx.cc.heightPx,
       ctx.appState.forge,
-      { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
+      { enableGlow: effectiveGlow, enableTrails: effectiveTrails },
       ctx.appState.game.equation.isForgeUnlocked,
       isDevMode,
     );
@@ -460,7 +460,7 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     const _t0ptc = isDevMode ? performance.now() : 0;
     ctx.particles.draw(
       ctx.cc,
-      { enableGlow: !isLowGraphics, enableTrails: !isLowGraphics },
+      { enableGlow: effectiveGlow, enableTrails: effectiveTrails },
       ctx.appState.particleDrag,
       ctx.cc.widthPx,
       ctx.cc.heightPx,
