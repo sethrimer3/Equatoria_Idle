@@ -89,7 +89,7 @@ export function createDefaultSettings(): SettingsState {
     sfxVolume: 0.5,
     isMusicOnlyWhenFocused: true,
     isReducedParticles: false,
-    graphicsQuality: 'high',
+    graphicsQuality: 'auto',
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
     backgroundStyle: 'vermiculate',
