@@ -70,19 +70,19 @@ const CELL_SIZE = 4;
  * Physical radius for sizeIndex=N ≈ BASE_SPLAT_RADIUS × (N+1) × CELL_SIZE px.
  * Increase for a larger base halo; decrease for a tighter core.
  */
-const BASE_SPLAT_RADIUS = 2;
+const BASE_SPLAT_RADIUS = 1;
 
 /** Hard cap on per-particle kernel half-radius (cells). */
-const MAX_SPLAT_RADIUS = 6;
+const MAX_SPLAT_RADIUS = 3;
 
 /**
  * Gaussian σ (cells) for sizeIndex=0 motes.  σ for sizeIndex=N ≈
  * BASE_SPLAT_SIGMA × (N+1).  Larger σ → softer, fluffier falloff.
  */
-const BASE_SPLAT_SIGMA = 0.9;
+const BASE_SPLAT_SIGMA = 0.45;
 
 /** Hard cap on per-particle σ (cells). */
-const MAX_SPLAT_SIGMA = 2.5;
+const MAX_SPLAT_SIGMA = 1.25;
 
 
 /**
