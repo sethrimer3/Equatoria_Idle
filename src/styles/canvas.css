@@ -2051,20 +2051,20 @@
 .forge-craft__title {
   color: #d4a040;
   font-weight: 700;
-  font-size: 1.55em;
+  font-size: 1.1em;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 2px;
 }
 
 .forge-craft__capacity {
-  font-size: 1.25em;
+  font-size: 0.9em;
   color: #aaa;
 }
 
 .forge-craft__selector-layout {
   display: grid;
-  grid-template-columns: 188px minmax(0, 1fr);
+  grid-template-columns: 80px minmax(0, 1fr);
   gap: 14px;
   align-items: start;
   margin-bottom: 14px;
@@ -2075,7 +2075,7 @@
 }
 
 .forge-craft__inventory {
-  font-size: 1.28em;
+  font-size: 0.9em;
   color: #bbb;
   line-height: 1.15;
 }
@@ -2094,7 +2094,7 @@
 .forge-craft__inventory-chip {
   display: inline-flex;
   align-items: center;
-  width: 176px;
+  width: 68px;
   min-height: 30px;
   gap: 7px;
   padding: 3px 8px 3px 4px;
@@ -2124,7 +2124,7 @@
 }
 
 .forge-craft__section-label {
-  font-size: 1.3em;
+  font-size: 0.95em;
   color: #ccc;
   margin-bottom: 6px;
 }
@@ -2287,7 +2287,7 @@
 
   .forge-craft__inventory-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
   }
 
   .forge-craft__inventory-chip {

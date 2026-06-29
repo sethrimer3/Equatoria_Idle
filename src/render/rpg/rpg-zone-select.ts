@@ -488,6 +488,7 @@ export function createRpgZoneSelectPanel(
   onZoneSelect: (zoneId: RpgZoneId) => void,
   onSubzoneSelect?: (subzoneId: HorizonSubzoneId) => void,
   onBossFight?: (bossId: number) => void,
+  getActiveBossId?: () => number | null,
 ): RpgZoneSelectPanel {
 
   let _isOpen     = false;
@@ -1196,18 +1197,20 @@ export function createRpgZoneSelectPanel(
 
     // ── Boss nodes ────────────────────────────────────────────────────────────
 
+    const activeBossId = getActiveBossId?.() ?? null;
     for (let i = 0; i < bossCount; i++) {
       const node = bossNodes[i];
       const isUnlocked = _isDevMode || isBossUnlocked(i + 1, rpgSimState.highestWaveReached);
+      const isActive = activeBossId === (i + 1);
       const isHov = node.id === hoveredId;
       const isSelected = node.id === selectedId;
       ctx.save();
-      if (isSelected || isHov) {
+      if (isSelected || (isHov && !isActive)) {
         ctx.translate(node.x, node.y + fy(node));
         ctx.scale(isSelected ? SELECTED_SCALE : 1.07, isSelected ? SELECTED_SCALE : 1.07);
         ctx.translate(-node.x, -(node.y + fy(node)));
       }
-      if (isUnlocked) drawSquareNode(ctx, node, node.y + fy(node), false, isHov);
+      if (isUnlocked) drawSquareNode(ctx, node, node.y + fy(node), isActive, isHov);
       else drawLockedBossNode(ctx, node, node.y + fy(node), isHov);
       ctx.restore();
     }

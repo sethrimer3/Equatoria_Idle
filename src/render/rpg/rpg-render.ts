@@ -251,7 +251,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const zoneSelectPanel = createRpgZoneSelectPanel(rpgSimState, (newZoneId: RpgZoneId) => {
     // Save the current zone's wave before switching so we can resume it later.
     rpgSimState.currentWaveByZone[rpgSimState.activeZoneId] = currentWave;
-    if (newZoneId === rpgSimState.activeZoneId) return;
+    if (newZoneId === rpgSimState.activeZoneId && !isBossWaveActive) return;
     // Pre-generate caustics tiles before the first Caustics frame to avoid stutter.
     if (newZoneId === 'caustics') prewarmCausticsTextures();
     resetActiveEncounterForZoneSwitch();
@@ -272,7 +272,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nadirSubstrate = null;
     nadirCubicGrid = null;
     isNadirEliteWave = false;
-  }, (bossId) => startBossFightFromZoneSelect(bossId));
+  }, (bossId) => startBossFightFromZoneSelect(bossId), () => activeBossId);
   rpgArea.appendChild(zoneSelectPanel.element);
 
   const ctx = canvas.getContext('2d')!;
@@ -720,6 +720,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // ── Boss wave management ───────────────────────────────────────
   /** True while a boss wave is active (from spawn until defeat or death). */
   let isBossWaveActive = false;
+  /** The bossId (1-based) of the currently active boss fight, or null when not in a boss fight. */
+  let activeBossId: number | null = null;
   /** Set to true during the boss victory cassette-end sequence to suppress the normal music stop. */
   let pendingBossVictory = false;
   let bossTrackDurationMs = 0;
@@ -971,6 +973,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     bossHitsInRound = 0;
     isBossFightFromMenu = false;
     isBossWaveActive = false;
+    activeBossId = null;
     bossActiveEquipIds = null;
     bossPreWaveWeaponTiers.clear();
     deactivateBossStageDirector(bossStageDirectorState);
@@ -1794,7 +1797,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onBossDamaged:              (boss, damageAmount) => notifyBossDamaged(boss, damageAmount),
     onBossEvent:                (boss, eventType) => notifyBossEvent(boss, eventType),
   });
-  startBossFightFromZoneSelect = (bossId) => bossWave.startBossFight(bossId);
+  startBossFightFromZoneSelect = (bossId) => { activeBossId = bossId; bossWave.startBossFight(bossId); };
 
   // ── Boss stage director context ────────────────────────────────
   const bossStageDirectorCtx: BossStageDirectorCtx = {
@@ -2411,6 +2414,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     startBossFight(bossId: number): void {
+      activeBossId = bossId;
       bossWave.startBossFight(bossId);
     },
 
