@@ -417,6 +417,9 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   }
 
   // Procedural: count grows slowly; delay tightens as waves increase.
+  // Only Euhedral-native enemy types spawn here — proc enemies (ribbonworm,
+  // jellyfish, fish, etc.) belong to Verdure / Caustics / Impetus and must
+  // never appear in Euhedral waves.
   const laserCount     = Math.min(2 + Math.floor(waveNumber * 0.4), 9);
   const quartzCount    = Math.min(2 + Math.floor(waveNumber * 0.35), 8);
   const rubyCount      = waveNumber >= 5   ? Math.min(1 + Math.floor((waveNumber -  4) * 0.25), 6) : 0;
@@ -432,28 +435,8 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   const nullstoneCount = waveNumber >= 63  ? Math.min(1 + Math.floor((waveNumber - 62) * 0.05), 2) : 0;
   const fracterylCount = waveNumber >= 74  ? Math.min(1 + Math.floor((waveNumber - 73) * 0.04), 2) : 0;
   const eigensteinCount= waveNumber >= 85  ? Math.min(1 + Math.floor((waveNumber - 84) * 0.03), 2) : 0;
-  // Stardust enemy: rare prismatic particle cloud + laser bouncer
+  // Stardust enemy: rare prismatic particle cloud + laser bouncer (Euhedral-native)
   const stardustCount  = waveNumber >= 35  ? Math.floor((waveNumber - 34) * 0.008 + Math.random() * 0.5) : 0;
-  // ── Procedural creature counts ──────────────────────────────────────────────
-  const dustWispCount      = waveNumber >= 5   ? Math.min(1 + Math.floor((waveNumber -  4) * 0.18), 4) : 0;
-  const ribbonWormCount    = waveNumber >= 7   ? Math.min(1 + Math.floor((waveNumber -  6) * 0.14), 3) : 0;
-  const lanternMothCount   = waveNumber >= 8   ? Math.min(1 + Math.floor((waveNumber -  7) * 0.15), 3) : 0;
-  const eyeStalkCount      = waveNumber >= 10  ? Math.min(1 + Math.floor((waveNumber -  9) * 0.12), 3) : 0;
-  const jellyfishCount     = waveNumber >= 12  ? Math.min(1 + Math.floor((waveNumber - 11) * 0.11), 3) : 0;
-  const clothGhostCount    = waveNumber >= 14  ? Math.min(1 + Math.floor((waveNumber - 13) * 0.10), 3) : 0;
-  const plantTurretCount   = waveNumber >= 16  ? Math.min(1 + Math.floor((waveNumber - 15) * 0.09), 2) : 0;
-  const gearInsectCount    = waveNumber >= 19  ? Math.min(1 + Math.floor((waveNumber - 18) * 0.08), 2) : 0;
-  const spiderCrawlerCount = waveNumber >= 22  ? Math.min(1 + Math.floor((waveNumber - 21) * 0.08), 2) : 0;
-  const moteSwarmCount     = waveNumber >= 26  ? Math.min(1 + Math.floor((waveNumber - 25) * 0.07), 2) : 0;
-  const shadowHandCount    = waveNumber >= 32  ? Math.min(1 + Math.floor((waveNumber - 31) * 0.05), 2) : 0;
-  const sandFishCount      = waveNumber >= 34  ? Math.min(1 + Math.floor((waveNumber - 33) * 0.06), 2) : 0;
-  const quartzFishCount    = waveNumber >= 38  ? Math.min(1 + Math.floor((waveNumber - 37) * 0.05), 2) : 0;
-  const rubyFishCount      = waveNumber >= 42  ? Math.min(1 + Math.floor((waveNumber - 41) * 0.05), 2) : 0;
-  const sunstoneFishCount  = waveNumber >= 46  ? Math.min(1 + Math.floor((waveNumber - 45) * 0.05), 2) : 0;
-  const emeraldFishCount   = waveNumber >= 50  ? Math.min(1 + Math.floor((waveNumber - 49) * 0.05), 2) : 0;
-  const sapphireFishCount  = waveNumber >= 54  ? Math.min(1 + Math.floor((waveNumber - 53) * 0.05), 2) : 0;
-  const amethystFishCount  = waveNumber >= 58  ? Math.min(1 + Math.floor((waveNumber - 57) * 0.05), 2) : 0;
-  const diamondFishCount   = waveNumber >= 62  ? Math.min(1 + Math.floor((waveNumber - 61) * 0.04), 2) : 0;
   const delay = Math.max(130, 600 - waveNumber * 18);
   const spawns: WaveSpawn[] = [
     { enemyTypeId: 'laser',  count: laserCount,  spawnDelay: delay },
@@ -473,26 +456,6 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (waveNumber >= 74)  spawns.push({ enemyTypeId: 'fracteryl',  count: fracterylCount,  spawnDelay: delay + 1700 });
   if (waveNumber >= 85)  spawns.push({ enemyTypeId: 'eigenstein', count: eigensteinCount, spawnDelay: delay + 2000 });
   if (waveNumber >= 35 && stardustCount > 0) spawns.push({ enemyTypeId: 'stardust', count: stardustCount, spawnDelay: delay + 2200 });
-  // ── Procedural creature spawns ──────────────────────────────────────────────
-  if (waveNumber >= 5)   spawns.push({ enemyTypeId: 'proc_dustwisp',      count: dustWispCount,      spawnDelay: delay + 450 });
-  if (waveNumber >= 7)   spawns.push({ enemyTypeId: 'proc_ribbonworm',    count: ribbonWormCount,    spawnDelay: delay + 500 });
-  if (waveNumber >= 8)   spawns.push({ enemyTypeId: 'proc_lanternmoth',   count: lanternMothCount,   spawnDelay: delay + 550 });
-  if (waveNumber >= 10)  spawns.push({ enemyTypeId: 'proc_eyestalk',      count: eyeStalkCount,      spawnDelay: delay + 600 });
-  if (waveNumber >= 12)  spawns.push({ enemyTypeId: 'proc_jellyfish',     count: jellyfishCount,     spawnDelay: delay + 650 });
-  if (waveNumber >= 14)  spawns.push({ enemyTypeId: 'proc_clothghost',    count: clothGhostCount,    spawnDelay: delay + 700 });
-  if (waveNumber >= 16)  spawns.push({ enemyTypeId: 'proc_plantturret',   count: plantTurretCount,   spawnDelay: delay + 750 });
-  if (waveNumber >= 19)  spawns.push({ enemyTypeId: 'proc_gearinsect',    count: gearInsectCount,    spawnDelay: delay + 800 });
-  if (waveNumber >= 22)  spawns.push({ enemyTypeId: 'proc_spidercrawler', count: spiderCrawlerCount, spawnDelay: delay + 850 });
-  if (waveNumber >= 26)  spawns.push({ enemyTypeId: 'proc_moteswarm',     count: moteSwarmCount,     spawnDelay: delay + 900 });
-  if (waveNumber >= 32)  spawns.push({ enemyTypeId: 'proc_shadowhand',    count: shadowHandCount,    spawnDelay: delay + 1050 });
-  if (waveNumber >= 34)  spawns.push({ enemyTypeId: 'proc_sandfish',      count: sandFishCount,      spawnDelay: delay + 1120 });
-  if (waveNumber >= 38)  spawns.push({ enemyTypeId: 'proc_quartzfish',    count: quartzFishCount,    spawnDelay: delay + 1180 });
-  if (waveNumber >= 42)  spawns.push({ enemyTypeId: 'proc_rubyfish',      count: rubyFishCount,      spawnDelay: delay + 1240 });
-  if (waveNumber >= 46)  spawns.push({ enemyTypeId: 'proc_sunstonefish',  count: sunstoneFishCount,  spawnDelay: delay + 1300 });
-  if (waveNumber >= 50)  spawns.push({ enemyTypeId: 'proc_emeraldfish',   count: emeraldFishCount,   spawnDelay: delay + 1360 });
-  if (waveNumber >= 54)  spawns.push({ enemyTypeId: 'proc_sapphirefish',  count: sapphireFishCount,  spawnDelay: delay + 1420 });
-  if (waveNumber >= 58)  spawns.push({ enemyTypeId: 'proc_amethystfish',  count: amethystFishCount,  spawnDelay: delay + 1480 });
-  if (waveNumber >= 62)  spawns.push({ enemyTypeId: 'proc_diamondfish',   count: diamondFishCount,   spawnDelay: delay + 1540 });
 
   // Aliven particle group spawns — each entry spawns one group (count always 1).
   // Capped at 1 group per wave to avoid overlapping too many swarms.
@@ -736,4 +699,33 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
   }));
 
   return { waveNumber, spawns };
+}
+
+// ─── Zone-spawn helper ──────────────────────────────────────────────────────
+
+/**
+ * Returns the canonical set of enemy type IDs that may spawn in the given zone.
+ *
+ * For Euhedral this is derived from STANDARD_WAVE_ENEMY_IDS + ELITE_WAVE_ENEMY_IDS +
+ * stardust + boss.  For all other zones it is their `enemyIds` list from
+ * rpg-zone-definitions.ts, which is the single authoritative source of truth.
+ *
+ * Use this helper wherever you need to validate or filter a spawn candidate
+ * against the active zone.
+ */
+export function getSpawnableEnemyTypesForZone(zoneId: RpgZoneId): readonly string[] {
+  if (zoneId === 'euhedral') {
+    // Euhedral: crystal enemies + elites + stardust.
+    // Aliven variants are intentionally included via the hand-authored Euhedral
+    // waves (1-25); they're listed here so zone validation passes.
+    return [
+      ...STANDARD_WAVE_ENEMY_IDS,
+      ...ELITE_WAVE_ENEMY_IDS,
+      'stardust',
+      'boss',
+    ];
+  }
+  const zoneDef = RPG_ZONE_BY_ID.get(zoneId);
+  if (!zoneDef) return [];
+  return zoneDef.enemyIds;
 }
