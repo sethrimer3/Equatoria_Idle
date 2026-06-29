@@ -235,6 +235,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const rpgArea = document.createElement('div');
   rpgArea.id = 'rpg-area';
   container.appendChild(rpgArea);
+  const overlayFadeElements: HTMLElement[] = [];
 
   const canvas = document.createElement('canvas');
   canvas.id = 'rpg-canvas';
@@ -2142,6 +2143,30 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getWorldViewW:                () => rpgWorldViewW,
     getWorldViewH:                () => rpgWorldViewH,
     getFieldSpace:                () => rpgFieldSpace,
+    getOverlayFadeRects:          () => {
+      const areaRect = rpgArea.getBoundingClientRect();
+      const rects: { left: number; top: number; right: number; bottom: number }[] = [];
+      for (const element of overlayFadeElements) {
+        if (!element.isConnected) continue;
+        const style = getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden') continue;
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        rects.push({
+          left: rect.left - areaRect.left,
+          top: rect.top - areaRect.top,
+          right: rect.right - areaRect.left,
+          bottom: rect.bottom - areaRect.top,
+        });
+      }
+      return rects;
+    },
+    setOverlayFadeAlpha:          (alpha) => {
+      const clampedAlpha = Math.max(0.3, Math.min(1, alpha));
+      for (const element of overlayFadeElements) {
+        element.style.opacity = clampedAlpha.toFixed(3);
+      }
+    },
   };
 
   // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────
@@ -2251,6 +2276,14 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     canvas,
     statsPanel: statsPanel.element,
     menuButtonContainer: statsPanel.menuButtonContainer,
+    registerOverlayFadeElements(elements: readonly HTMLElement[]): void {
+      for (const element of elements) {
+        if (!overlayFadeElements.includes(element)) {
+          element.style.transition = 'opacity 140ms linear';
+          overlayFadeElements.push(element);
+        }
+      }
+    },
 
     update(deltaMs: number, autoMoveEnabled = false): void {
       if (rpgPhase !== 'alive' && targeting.getManualTargetedEnemy()) {

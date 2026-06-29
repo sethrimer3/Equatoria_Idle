@@ -1,10 +1,10 @@
-/**
- * rpg-weapon-crafting-page.ts — Forge crafting workspace supporting Weapon, Weave, and Lens modes.
+﻿/**
+ * rpg-weapon-crafting-page.ts â€” Forge crafting workspace supporting Weapon, Weave, and Lens modes.
  *
  * Modes:
- *   WEAPON — existing behavior, dispatches craft_weapon
- *   WEAVE  — new, dispatches craft_weave; one affix per distinct ingredient tier
- *   LENS   — crafting via the lens inventory panel
+ *   WEAPON â€” existing behavior, dispatches craft_weapon
+ *   WEAVE  â€” new, dispatches craft_weave; one affix per distinct ingredient tier
+ *   LENS   â€” crafting via the lens inventory panel
  *
  * Layout from top to bottom:
  *   1. Weave slots row (6 slots, always visible)
@@ -52,7 +52,7 @@ import { createForgeCrunchState } from '../../sim/forge/forge-state';
 import { hexToFogRgb, renderFogBarToCanvas, type FogRgb } from '../../render/composition-fog';
 import { formatNumberAs, type NumberFormat } from '../../util';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type CraftingMode = 'weapon' | 'weave' | 'lens';
 
@@ -61,7 +61,7 @@ export interface RpgWeaponCraftingPage {
   update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState, numberFormat?: NumberFormat): void;
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const MIN_FRACTION = MIN_SEGMENT_PCT;
 const STEP_FRACTION = SEGMENT_STEP_PCT;
@@ -69,13 +69,13 @@ const FORGE_CANVAS_SIZE = 160;
 const LOOM_GLYPH_SIZE = 56;
 const LOOM_ROTATION_SPEED = 0.01; // rad per frame at 60 fps, matching spawner rotation
 
-// ─── Factory ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponCraftingPage {
   const element = document.createElement('div');
   element.className = 'forge-craft';
 
-  // ── State ────────────────────────────────────────────────────────────────
+  // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let craftingMode: CraftingMode = 'weapon';
   const selectedTiers: TierId[] = [];
   let handlePositions: number[] = [];
@@ -86,7 +86,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let latestResources: ResourceState | null = null;
   let latestNumberFormat: NumberFormat = 'letters';
 
-  // ── Animation ────────────────────────────────────────────────────────────
+  // â”€â”€ Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let forgeCoreCanvas: HTMLCanvasElement | null = null;
   let forgeCoreCtx: CanvasRenderingContext2D | null = null;
   const loomCanvases = new Map<TierId, HTMLCanvasElement>();
@@ -94,7 +94,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let animRafId: number | null = null;
   let lastAnimMs: number | null = null;
 
-  // ── Segment fog fills ────────────────────────────────────────────────────
+  // â”€â”€ Segment fog fills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const FILL_W = 320;
   const FILL_H = 16;
 
@@ -104,7 +104,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   }
   let activeSegmentFills: SegmentFillEntry[] = [];
 
-  // Fog bar state — updated by refreshSlider, consumed by animTick
+  // Fog bar state â€” updated by refreshSlider, consumed by animTick
   interface FogBarState {
     colors: FogRgb[];
     shares: number[]; // fractions summing to ~1
@@ -183,11 +183,11 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     animRafId = requestAnimationFrame(animTick);
   }
 
-  // ── Sub-components ────────────────────────────────────────────────────────
+  // â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const weaveSlotsPanel = createWeaveSlotsPanel(dispatch);
   const weaveInventoryPanel = createWeaveInventoryPanel(weaveSlotsPanel, dispatch);
 
-  // ── Section elements ──────────────────────────────────────────────────────
+  // â”€â”€ Section elements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let inventoryEl: HTMLElement | null = null;
   let moteLoomFieldEl: HTMLElement | null = null;
   let moteHeadingEl: HTMLElement | null = null;
@@ -213,7 +213,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return getForgeCapacity(level);
   }
 
-  // ── Mode selector ─────────────────────────────────────────────────────────
+  // â”€â”€ Mode selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function buildModeSelector(): HTMLElement {
     const bar = document.createElement('div');
@@ -240,7 +240,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return bar;
   }
 
-  // ── Inventory display ─────────────────────────────────────────────────────
+  // â”€â”€ Inventory display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function refreshInventory(): void {
     if (!inventoryEl || !latestRpgState) return;
@@ -287,7 +287,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
   }
 
-  // ── Mote loom field ───────────────────────────────────────────────────────
+  // â”€â”€ Mote loom field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function getEffectiveCapacity(): number {
     if (craftingMode === 'lens' && latestRpgState) {
@@ -407,9 +407,10 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     });
   }
 
-  // ── Multi-segment percentage slider ──────────────────────────────────────
+  // â”€â”€ Multi-segment percentage slider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   let trackEl: HTMLElement | null = null;
+  let sliderStructureKey = '';
 
   function buildSliderSection(): HTMLElement {
     const section = document.createElement('div');
@@ -417,13 +418,87 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return section;
   }
 
+  function updateFogBar(shares: number[]): void {
+    if (selectedTiers.length < 1) {
+      activeFogBar = null;
+      return;
+    }
+
+    let fogSeed = 0;
+    for (const tid of selectedTiers) {
+      for (let ci = 0; ci < tid.length; ci++) {
+        fogSeed = (Math.imul(31, fogSeed) + tid.charCodeAt(ci)) | 0;
+      }
+    }
+    activeFogBar = {
+      colors: selectedTiers.map(tid => hexToFogRgb(TIER_BY_ID.get(tid)?.color ?? '#aaa')),
+      shares: shares.map(s => s / 100),
+      seed: Math.abs(fogSeed),
+    };
+  }
+
+  function updateSliderMutableState(shares: number[]): void {
+    if (!trackEl) return;
+
+    const segments = Array.from(trackEl.querySelectorAll<HTMLElement>('.forge-craft__segment'));
+    const handles = Array.from(trackEl.querySelectorAll<HTMLElement>('.forge-craft__handle'));
+    const targetChips = Array.from(sliderSectionEl?.querySelectorAll<HTMLElement>('.forge-craft__target-chips .forge-craft__comp-chip') ?? []);
+
+    let cumPct = 0;
+    for (let i = 0; i < selectedTiers.length; i++) {
+      const pct = shares[i] ?? 0;
+      const tier = TIER_BY_ID.get(selectedTiers[i]);
+      const segment = segments[i];
+      if (segment) {
+        segment.style.left = `${cumPct}%`;
+        segment.style.width = `${pct}%`;
+        segment.setAttribute('aria-label', `${tier?.displayName ?? selectedTiers[i]} target ${pct}%`);
+        const fillCanvas = segment.querySelector<HTMLElement>('.forge-craft__segment-fill');
+        if (fillCanvas && pct > 0) {
+          fillCanvas.style.left = `${-(cumPct / pct) * 100}%`;
+          fillCanvas.style.width = `${(100 / pct) * 100}%`;
+        }
+        const segLabel = segment.querySelector<HTMLElement>('.forge-craft__segment-label');
+        if (segLabel) {
+          segLabel.textContent = `${tier?.displayName ?? selectedTiers[i]} ${Math.round(pct)}%`;
+          segLabel.hidden = pct < 14;
+        }
+      }
+
+      const targetChip = targetChips[i];
+      if (targetChip) {
+        const pctEl = targetChip.querySelector<HTMLElement>('.forge-craft__comp-pct');
+        if (pctEl) pctEl.textContent = `${pct}%`;
+      }
+      cumPct += pct;
+    }
+
+    for (let hi = 0; hi < handlePositions.length; hi++) {
+      const handle = handles[hi];
+      if (handle) handle.style.left = `${handlePositions[hi]}%`;
+    }
+
+    updateFogBar(shares);
+  }
+
   function refreshSlider(): void {
     if (!sliderSectionEl) return;
+
+    const n = selectedTiers.length;
+    const structureKey = n >= 2
+      ? `${craftingMode}:${selectedTiers.join('|')}`
+      : `${craftingMode}:hint:${n}`;
+    if (structureKey === sliderStructureKey) {
+      if (n >= 2) updateSliderMutableState(computeShares());
+      return;
+    }
+
+    sliderStructureKey = structureKey;
     sliderSectionEl.innerHTML = '';
     activeSegmentFills = [];
     activeFogBar = null;
+    trackEl = null;
 
-    const n = selectedTiers.length;
     if (n < 2) {
       if (n === 1 && (craftingMode === 'weapon' || craftingMode === 'lens')) {
         const hint = document.createElement('div');
@@ -511,24 +586,10 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
     sliderSectionEl.appendChild(targetChips);
 
-    // Populate shared fog bar state for animTick
-    if (n >= 1) {
-      // Compute a stable seed from the tier id string hashes
-      let fogSeed = 0;
-      for (const tid of selectedTiers) {
-        for (let ci = 0; ci < tid.length; ci++) {
-          fogSeed = (Math.imul(31, fogSeed) + tid.charCodeAt(ci)) | 0;
-        }
-      }
-      activeFogBar = {
-        colors: selectedTiers.map(tid => hexToFogRgb(TIER_BY_ID.get(tid)?.color ?? '#aaa')),
-        shares: shares.map(s => s / 100),
-        seed: Math.abs(fogSeed),
-      };
-    }
+    updateFogBar(shares);
   }
 
-  // ── Drag handling ─────────────────────────────────────────────────────────
+  // â”€â”€ Drag handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function getTrackRect(): DOMRect | null {
     return trackEl?.getBoundingClientRect() ?? null;
@@ -602,7 +663,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     });
   }
 
-  // ── Power slider ──────────────────────────────────────────────────────────
+  // â”€â”€ Power slider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  let powerRowEl: HTMLElement | null = null;
+  let powerLabelEl: HTMLLabelElement | null = null;
+  let powerRangeEl: HTMLInputElement | null = null;
+  let powerMaxEl: HTMLElement | null = null;
 
   function buildPowerSection(): HTMLElement {
     const section = document.createElement('div');
@@ -612,10 +678,16 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   function refreshPower(): void {
     if (!powerSectionEl) return;
-    powerSectionEl.innerHTML = '';
 
     const n = selectedTiers.length;
-    if (n === 0) return;
+    if (n === 0) {
+      powerSectionEl.innerHTML = '';
+      powerRowEl = null;
+      powerLabelEl = null;
+      powerRangeEl = null;
+      powerMaxEl = null;
+      return;
+    }
 
     const inventory = getInventory();
     const shares = enforceMinSegmentSize(computeShares(), MIN_FRACTION);
@@ -625,42 +697,52 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     const ingredients = allocateIngredients(selectedTiers, shares, inventory, powerFraction * 100, latestIsDevMode);
     const totalCount = ingredients.reduce((s, e) => s + BigInt(e.refinedCount), 0n);
 
-    const row = document.createElement('div');
-    row.className = 'forge-craft__power-row';
+    if (!powerRowEl || !powerRowEl.isConnected) {
+      powerSectionEl.innerHTML = '';
 
-    const label = document.createElement('label');
-    label.className = 'forge-craft__section-label';
-    label.textContent = `Power: ${Math.round(powerFraction * 100)}%  (${totalCount} crystals)`;
-    label.htmlFor = 'forge-power-input';
-    row.appendChild(label);
+      powerRowEl = document.createElement('div');
+      powerRowEl.className = 'forge-craft__power-row';
 
-    const rangeEl = document.createElement('input');
-    rangeEl.type = 'range';
-    rangeEl.id = 'forge-power-input';
-    rangeEl.className = 'forge-craft__power-range';
-    rangeEl.min = String(minPower);
-    rangeEl.max = '100';
-    rangeEl.value = String(Math.round(powerFraction * 100));
-    rangeEl.addEventListener('input', () => {
-      powerFraction = parseInt(rangeEl.value, 10) / 100;
-      refreshPower();
-      refreshPreview();
-      refreshCraftBtn();
-      refreshAdvanced();
-    });
-    row.appendChild(rangeEl);
+      powerLabelEl = document.createElement('label');
+      powerLabelEl.className = 'forge-craft__section-label';
+      powerLabelEl.htmlFor = 'forge-power-input';
+      powerRowEl.appendChild(powerLabelEl);
 
-    if (range.maximumBudget > 0n) {
-      const maxEl = document.createElement('div');
-      maxEl.className = 'forge-craft__power-max';
-      maxEl.textContent = `Max budget: ${range.maximumBudget.toLocaleString()} mote-weight · Minimum ${minPower}% for this composition.`;
-      row.appendChild(maxEl);
+      powerRangeEl = document.createElement('input');
+      powerRangeEl.type = 'range';
+      powerRangeEl.id = 'forge-power-input';
+      powerRangeEl.className = 'forge-craft__power-range';
+      powerRangeEl.max = '100';
+      powerRangeEl.addEventListener('input', () => {
+        if (!powerRangeEl) return;
+        powerFraction = parseInt(powerRangeEl.value, 10) / 100;
+        refreshPower();
+        refreshPreview();
+        refreshCraftBtn();
+        refreshAdvanced();
+      });
+      powerRowEl.appendChild(powerRangeEl);
+
+      powerMaxEl = document.createElement('div');
+      powerMaxEl.className = 'forge-craft__power-max';
+      powerRowEl.appendChild(powerMaxEl);
+
+      powerSectionEl.appendChild(powerRowEl);
     }
 
-    powerSectionEl.appendChild(row);
+    if (powerLabelEl) {
+      powerLabelEl.textContent = `Power: ${Math.round(powerFraction * 100)}%  (${totalCount} crystals)`;
+    }
+    if (powerRangeEl) {
+      powerRangeEl.min = String(minPower);
+      powerRangeEl.value = String(Math.round(powerFraction * 100));
+    }
+    if (powerMaxEl) {
+      powerMaxEl.hidden = range.maximumBudget <= 0n;
+      powerMaxEl.textContent = `Max budget: ${range.maximumBudget.toLocaleString()} mote-weight · Minimum ${minPower}% for this composition.`;
+    }
   }
-
-  // ── Preview ───────────────────────────────────────────────────────────────
+  // â”€â”€ Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function buildPreviewSection(): HTMLElement {
     const section = document.createElement('div');
@@ -708,14 +790,14 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
         chip.innerHTML =
           `<span class="forge-craft__comp-name" style="color:${color}">${tier?.displayName ?? entry.tierId}</span>` +
           `<span class="forge-craft__comp-pct">${pct}%</span>` +
-          `<span class="forge-craft__comp-count">${count}×</span>`;
+          `<span class="forge-craft__comp-count">${count}Ã—</span>`;
         compRow.appendChild(chip);
       }
       previewSectionEl.appendChild(compRow);
 
       const statsRow = document.createElement('div');
       statsRow.className = 'forge-craft__stats-row';
-      statsRow.textContent = `Lv.${baseLevel}  ×${baseMult.toFixed(2)} base  ${totalWt.toLocaleString()} mote-wt`;
+      statsRow.textContent = `Lv.${baseLevel}  Ã—${baseMult.toFixed(2)} base  ${totalWt.toLocaleString()} mote-wt`;
       previewSectionEl.appendChild(statsRow);
     } else if (craftingMode === 'weave') {
       // Weave preview: one affix family per distinct ingredient tier
@@ -753,7 +835,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
       const statsRow = document.createElement('div');
       statsRow.className = 'forge-craft__stats-row';
-      statsRow.textContent = `${totalWt.toLocaleString()} mote-wt · power scale ×${powerScale.toFixed(2)}`;
+      statsRow.textContent = `${totalWt.toLocaleString()} mote-wt Â· power scale Ã—${powerScale.toFixed(2)}`;
       previewSectionEl.appendChild(statsRow);
     } else if (craftingMode === 'lens') {
       const heading = document.createElement('div');
@@ -785,7 +867,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
         const t2pct = Math.round(tier2Chance * 100);
         const t3pct = Math.round(tier3Chance * 100);
         desc.textContent =
-          `T1: ${names[1]} (always) · T2: ${names[2]} (${t2pct}%) · T3: ${names[3]} (${t3pct}%)`;
+          `T1: ${names[1]} (always) Â· T2: ${names[2]} (${t2pct}%) Â· T3: ${names[3]} (${t3pct}%)`;
         row.appendChild(desc);
 
         previewSectionEl.appendChild(row);
@@ -798,7 +880,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     }
   }
 
-  // ── Validation ────────────────────────────────────────────────────────────
+  // â”€â”€ Validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function getValidationMessage(): string | null {
     const n = selectedTiers.length;
@@ -878,7 +960,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return btn;
   }
 
-  // ── Advanced / exact-counts fallback ─────────────────────────────────────
+  // â”€â”€ Advanced / exact-counts fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function buildAdvancedSection(): HTMLElement {
     const details = document.createElement('details');
@@ -914,7 +996,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
       const label = document.createElement('label');
       label.style.cssText = `color:${tier.color};font-size:0.78em;min-width:70px;`;
-      label.textContent = `${tier.displayName} (${latestIsDevMode ? '∞' : available})`;
+      label.textContent = `${tier.displayName} (${latestIsDevMode ? 'âˆž' : available})`;
 
       const input = document.createElement('input');
       input.type = 'text';
@@ -950,7 +1032,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     advancedEl.appendChild(craftExactBtn);
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function build(rpgState: RpgSimState, isDevMode: boolean): void {
     latestRpgState = rpgState;
@@ -1076,7 +1158,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     startAnimLoop();
   }
 
-  // ── Public interface ──────────────────────────────────────────────────────
+  // â”€â”€ Public interface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState, numberFormat: NumberFormat = 'letters'): void {
     latestRpgState = rpgState;

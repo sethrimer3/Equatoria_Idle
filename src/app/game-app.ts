@@ -492,6 +492,7 @@ export async function startApp(): Promise<void> {
     rpgMenuPanel.openSkillTreeTab();
   });
   rpgContainer.appendChild(skillTreeBtn);
+  rpgRender.registerOverlayFadeElements([hiddenRackMenuBtn, codexBtn, skillTreeBtn]);
 
   const tabBar = createTabBar(dispatch);
   root.appendChild(tabBar.element);

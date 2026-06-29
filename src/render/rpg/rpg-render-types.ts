@@ -7,6 +7,8 @@ export interface RpgRender {
   statsPanel: HTMLElement;
   /** Container inside the right column of the stats panel where the RPG menu button should be appended. */
   menuButtonContainer: HTMLElement;
+  /** Register floating RPG overlay buttons that should fade when gameplay entities pass behind them. */
+  registerOverlayFadeElements(elements: readonly HTMLElement[]): void;
   update(deltaMs: number, autoMoveEnabled?: boolean): void;
   resize(container: HTMLElement): void;
   setActive(active: boolean): void;
