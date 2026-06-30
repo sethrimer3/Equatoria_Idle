@@ -26,7 +26,6 @@ function _drawCell(
   if (alpha <= 0.01) return;
   const x0 = Math.floor(x - HALF_CELL);
   const y0 = Math.floor(y - HALF_CELL);
-  ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = fillColor;
   ctx.fillRect(x0, y0, POLYOMINO_CELL_SIZE, POLYOMINO_CELL_SIZE);
@@ -34,7 +33,6 @@ function _drawCell(
   ctx.lineWidth = hitFlashMs > 0 ? 2.5 : 1.5;
   ctx.globalAlpha = Math.min(1, alpha + (hitFlashMs > 0 ? 0.45 : 0));
   ctx.strokeRect(x0, y0, POLYOMINO_CELL_SIZE, POLYOMINO_CELL_SIZE);
-  ctx.restore();
 }
 
 function _drawCells(
@@ -58,6 +56,7 @@ function _drawCells(
     }
     _drawCell(ctx, pos.x, pos.y, alpha, fillColor, strokeColor, enemy.hitFlashMs);
   }
+  ctx.globalAlpha = 1;
 }
 
 function _drawHpBar(
