@@ -21,6 +21,7 @@ import {
   updateBossWaveBehavior,
 } from './rpg-boss-behaviors-wave';
 import { updateLateBossBehavior } from './rpg-boss-behaviors-late';
+import { scheduleBossRhythmTimer } from './rpg-boss-rhythm-timers';
 
 // Re-export the shared context type so existing importers stay compatible.
 export type { BossBehaviorCtx };
@@ -81,7 +82,7 @@ export function updateBossBehavior(
     boss.vy += Math.sin(boss.orbitAngle) * 0.035;
     boss.vx *= 0.94; boss.vy *= 0.94;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const count = 4 + boss.phaseIndex * 2;
       for (let i = 0; i < count; i++) {
         const a   = (i / count) * Math.PI * 2;
@@ -106,7 +107,7 @@ export function updateBossBehavior(
     boss.vy += Math.sin(boss.orbitAngle) * 0.05;
     boss.vx *= 0.95; boss.vy *= 0.95;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const count = 6 + boss.phaseIndex * 3;
       for (let i = 0; i < count; i++) {
         const a   = (i / count) * Math.PI * 2;
@@ -121,7 +122,7 @@ export function updateBossBehavior(
       }
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       if (boss.phaseIndex >= 1) {
         for (let i = -1; i <= 1; i++) {
           const a    = Math.atan2(dirY, dirX) + i * 0.25;
@@ -138,7 +139,7 @@ export function updateBossBehavior(
     if (dist > preferredDist2) { boss.vx += dirX * speed2 * 0.25; boss.vy += dirY * speed2 * 0.25; }
     boss.vx *= 0.92; boss.vy *= 0.92;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const burstCount = 1 + boss.phaseIndex;
       for (let b = 0; b < burstCount; b++) {
         const spread = (b - (burstCount - 1) / 2) * 0.22;
@@ -151,7 +152,7 @@ export function updateBossBehavior(
       }
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       if (boss.phaseIndex >= 1 && dist > 30) {
         boss.vx = dirX * (8 + boss.phaseIndex * 4);
         boss.vy = dirY * (8 + boss.phaseIndex * 4);
@@ -168,7 +169,7 @@ export function updateBossBehavior(
     if (tdist3 > 2) { boss.vx += (tdx3 / tdist3) * 0.6; boss.vy += (tdy3 / tdist3) * 0.6; }
     boss.vx *= 0.88; boss.vy *= 0.88;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const ringCount3 = 8 + boss.phaseIndex * 4;
       for (let i = 0; i < ringCount3; i++) {
         const a    = (i / ringCount3) * Math.PI * 2;
@@ -180,7 +181,7 @@ export function updateBossBehavior(
       }
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       if (boss.phaseIndex >= 1) {
         const ringCount3b = 8 + boss.phaseIndex * 4;
         for (let i = 0; i < ringCount3b; i++) {
@@ -198,7 +199,7 @@ export function updateBossBehavior(
     boss.vy += Math.sin(boss.orbitAngle) * 0.3 + dirY * 0.1;
     boss.vx *= 0.93; boss.vy *= 0.93;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const count4 = 2 + boss.phaseIndex * 2;
       for (let i = 0; i < count4; i++) {
         const spread = (Math.random() - 0.5) * 0.6;
@@ -209,7 +210,7 @@ export function updateBossBehavior(
       }
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       if (boss.phaseIndex >= 1) {
         for (let i = 0; i < 12; i++) {
           const a    = (i / 12) * Math.PI * 2;
@@ -225,7 +226,7 @@ export function updateBossBehavior(
     if (dist > 40) { boss.vx += dirX * speed5 * 0.2; boss.vy += dirY * speed5 * 0.2; }
     boss.vx *= 0.94; boss.vy *= 0.94;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const fanCount5   = 5 + boss.phaseIndex * 2;
       const angleToPlayer = Math.atan2(dirY, dirX);
       const fanSpread5    = Math.PI / 2.5;
@@ -238,7 +239,7 @@ export function updateBossBehavior(
       }
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       if (boss.phaseIndex >= 2) {
         boss.vx = dirX * 12; boss.vy = dirY * 12;
       }
@@ -250,7 +251,7 @@ export function updateBossBehavior(
     else if (dist < preferredDist6 - 20) { boss.vx -= dirX * speed6 * 0.15; boss.vy -= dirY * speed6 * 0.15; }
     boss.vx *= 0.93; boss.vy *= 0.93;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const count6 = 8 + boss.phaseIndex * 4;
       for (let i = 0; i < count6; i++) {
         const a    = (i / count6) * Math.PI * 2;

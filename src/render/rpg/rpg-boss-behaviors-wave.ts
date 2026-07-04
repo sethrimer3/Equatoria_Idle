@@ -17,6 +17,7 @@ import {
   BOSS_PROJ_LIFE_MS, BOSS_PROJ_SIZE,
   BOSS_COLORS, BOSS_GLOW_COLORS,
 } from './rpg-constants';
+import { scheduleBossRhythmTimer } from './rpg-boss-rhythm-timers';
 
 // ── Shared context interface ──────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ export function updateBossWaveBehavior(
 
   // ── Primary attack: cycling danmaku pattern ─────────────────────────────────
   if (boss.attackTimerMs <= 0) {
-    boss.attackTimerMs = atk1Cd;
+    boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
     boss.isFiringPaused = false;
     const rotOffset   = boss.orbitAngle;
     const patternType = (Math.floor(boss.pulseMs / 3000) + boss.phaseIndex) % 3;
@@ -178,7 +179,7 @@ export function updateBossWaveBehavior(
 
   // ── Secondary attack: aimed fan toward player ───────────────────────────────
   if (boss.secondaryTimerMs <= 0) {
-    boss.secondaryTimerMs = atk2Cd;
+    boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
     const aimAngle = Math.atan2(dy, dx);
     const spread   = 3 + Math.floor(dl * 0.7);
     const fanWidth = 0.40 + dl * 0.04;

@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-24
-Current build: 310
+Current build: 313
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,22 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 313: beat-locked legacy boss projectiles
+
+Completed:
+
+- Older boss primary and secondary projectile salvos now schedule from a boss rhythm clock instead of free-running cooldown drift.
+- Legacy projectile timers still use the boss BPM-scaled cooldowns, but every reset lands on the current boss beat grid.
+- The Bosses tab now lists primary and secondary projectile cadence labels alongside special attack labels.
+
+### Build 312: boss attack rhythm labels
+
+Completed:
+
+- Boss attack profile rows now show note-based cadence labels in the Bosses tab.
+- The label resolver maps beat multipliers to WholeNote, HalfNote, QuarterNote, EighthNote, SixteenthNote, or Atonal for smooth non-beat-locked attacks.
+- Boss attack cadence labels derive from the boss BPM and each attack's authored beat timing.
 
 ### Build 310: boss song timeout and fitted progress HUD
 

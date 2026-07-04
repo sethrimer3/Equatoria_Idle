@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { getBossBpm, getBossBeatMs, beatsToMs, msToBeats, BOSS_BPM_BY_ID, computeNextBeatSpawnMs } from '../boss-bpm';
 import { BOSS_MIDI_PATTERNS, getBossMidiPattern, mapBossMidiNote } from '../boss-midi-config';
-import { BOSS_ATTACK_PROFILES, resolveAttackConfig } from '../../../render/rpg/rpg-boss-attack-config';
+import { BOSS_ATTACK_PROFILES, getBossAttackRhythmInfo, resolveAttackConfig } from '../../../render/rpg/rpg-boss-attack-config';
+import type { BossEnemy } from '../../../render/rpg/rpg-enemy-types';
+import { initializeBossRhythmTimers, scheduleBossRhythmTimer } from '../../../render/rpg/rpg-boss-rhythm-timers';
 import { createBossMidiRuntimeState, beginBossMidiRuntime, resetBossMidiRuntime } from '../../../render/rpg/rpg-boss-midi-runtime';
 import { computeBossOnsetMs } from '../boss-midi-scheduler';
 
@@ -152,6 +154,116 @@ describe('resolveAttackConfig', () => {
 });
 
 // ── MIDI durationBeats drives attack duration ─────────────────────────────────
+
+describe('getBossAttackRhythmInfo', () => {
+  it('maps musical beat multipliers to note labels at 60 BPM', () => {
+    const base = {
+      kind: 'mandala' as const,
+      cooldownBeats: 1,
+      pressureScore: 1,
+      durationBeats: 4,
+      params: {},
+    };
+
+    expect(getBossAttackRhythmInfo(1, { ...base, rhythmBeats: 4 }).label).toBe('WholeNote');
+    expect(getBossAttackRhythmInfo(1, { ...base, rhythmBeats: 2 }).label).toBe('HalfNote');
+    expect(getBossAttackRhythmInfo(1, { ...base, rhythmBeats: 1 }).label).toBe('QuarterNote');
+    expect(getBossAttackRhythmInfo(1, { ...base, rhythmBeats: 0.5 }).label).toBe('EighthNote');
+    expect(getBossAttackRhythmInfo(1, { ...base, rhythmBeats: 0.25 }).label).toBe('SixteenthNote');
+  });
+
+  it('reports quarter-note timing as one second at 60 BPM', () => {
+    const rhythm = getBossAttackRhythmInfo(1, {
+      kind: 'mandala',
+      cooldownBeats: 1,
+      pressureScore: 1,
+      durationBeats: 4,
+      params: {},
+    });
+    expect(rhythm.label).toBe('QuarterNote');
+    expect(rhythm.beats).toBe(1);
+    expect(rhythm.seconds).toBe(1);
+  });
+
+  it('derives active fire cadence from attack-specific beat params', () => {
+    const rhythm = getBossAttackRhythmInfo(1, {
+      kind: 'missileRing',
+      cooldownBeats: 12,
+      pressureScore: 1,
+      durationBeats: 12,
+      params: { spawnIntervalBeats: 4 },
+    });
+    expect(rhythm.label).toBe('WholeNote');
+    expect(rhythm.seconds).toBe(4);
+  });
+
+  it('labels smooth continuous attacks as atonal', () => {
+    const rhythm = getBossAttackRhythmInfo(1, {
+      kind: 'vermiculate',
+      cooldownBeats: 1,
+      pressureScore: 1,
+      durationBeats: 4,
+      params: { speed: 75 },
+    });
+    expect(rhythm.label).toBe('Atonal');
+    expect(rhythm.beats).toBeNull();
+    expect(rhythm.seconds).toBeNull();
+  });
+});
+
+function makeTestBoss(bossId: number, rhythmClockMs: number): BossEnemy {
+  return {
+    kind: 'boss',
+    bossId,
+    phaseIndex: 0,
+    x: 0, y: 0,
+    vx: 0, vy: 0,
+    hp: 1, maxHp: 1,
+    atk: 1, def: 0,
+    attackTimerMs: 0,
+    secondaryTimerMs: 0,
+    rhythmClockMs,
+    areRhythmTimersInitialized: false,
+    orbitAngle: 0,
+    pulseMs: 0,
+    shieldHp: 0,
+    maxShieldHp: 0,
+    isInvuln: false,
+    invulnTimerMs: 0,
+    isAbsorbing: false,
+    absorbTimerMs: 0,
+    contactCdMs: 0,
+    phaseTransitionMs: 0,
+    danmakuLevel: 0,
+    isFiringPaused: false,
+    spawnIntroMs: 0,
+  };
+}
+
+describe('legacy boss projectile rhythm timers', () => {
+  it('schedules a 60 BPM quarter-note projectile on the next exact beat', () => {
+    const boss = makeTestBoss(1, 250);
+    expect(scheduleBossRhythmTimer(boss, 1000)).toBe(750);
+  });
+
+  it('schedules an eighth-note projectile on the half-beat grid', () => {
+    const boss = makeTestBoss(1, 250);
+    expect(scheduleBossRhythmTimer(boss, 500)).toBe(250);
+  });
+
+  it('does not skip a beat when the frame lands just after a boundary', () => {
+    const boss = makeTestBoss(1, 1016);
+    expect(scheduleBossRhythmTimer(boss, 1000)).toBe(984);
+  });
+
+  it('initializes both legacy projectile timers from the boss beat clock', () => {
+    const boss = makeTestBoss(1, 250);
+    initializeBossRhythmTimers(boss, 1000, 2000);
+    expect(boss.attackTimerMs).toBe(750);
+    expect(boss.secondaryTimerMs).toBe(1750);
+    expect(boss.areRhythmTimersInitialized).toBe(true);
+  });
+});
 
 describe('mapBossMidiNote uses event.durationBeats', () => {
   const mapping = {

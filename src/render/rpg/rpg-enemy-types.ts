@@ -239,6 +239,8 @@ export interface BossEnemy {
   atk: number; def: number;
   attackTimerMs: number;
   secondaryTimerMs: number;
+  rhythmClockMs: number;
+  areRhythmTimersInitialized: boolean;
   orbitAngle: number;
   pulseMs: number;
   shieldHp: number;

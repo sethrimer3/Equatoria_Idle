@@ -27,7 +27,11 @@ import {
 } from './rpg-weapon-constants';
 import {
   BOSS_GLOW_COLORS, BOSS_SAFE_ZONE_Y_FACTOR,
+  BOSS_ATTACK1_CD_BASE, BOSS_ATTACK1_CD_P1, BOSS_ATTACK1_CD_P2,
+  BOSS_ATTACK2_CD_BASE, BOSS_ATTACK2_CD_P1, BOSS_ATTACK2_CD_P2,
 } from './rpg-constants';
+import { getBossTempoSyncedLegacyIntervalMs } from '../../data/rpg/boss-tempo-config';
+import { initializeBossRhythmTimers } from './rpg-boss-rhythm-timers';
 
 // ── Context interface ─────────────────────────────────────────────────────────
 
@@ -102,6 +106,18 @@ export interface BossWaveHandle {
 
 const TELEPORT_PRISMATIC_COLORS = ['#e8f0fa', '#ffffff', '#b0c8ff', '#d6aaff', '#a0f0d0', '#fff4a0'];
 
+function getPrimaryLegacyCooldownMs(phaseIndex: 0 | 1 | 2): number {
+  if (phaseIndex === 2) return BOSS_ATTACK1_CD_P2;
+  if (phaseIndex === 1) return BOSS_ATTACK1_CD_P1;
+  return BOSS_ATTACK1_CD_BASE;
+}
+
+function getSecondaryLegacyCooldownMs(phaseIndex: 0 | 1 | 2): number {
+  if (phaseIndex === 2) return BOSS_ATTACK2_CD_P2;
+  if (phaseIndex === 1) return BOSS_ATTACK2_CD_P1;
+  return BOSS_ATTACK2_CD_BASE;
+}
+
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
@@ -135,8 +151,11 @@ export function createBossWaveManager(ctx: BossWaveCtx): BossWaveHandle {
     const boss = ctx.getBossEnemy();
     if (boss) {
       boss.isFiringPaused = false;
-      boss.attackTimerMs = Math.max(boss.attackTimerMs, 450);
-      boss.secondaryTimerMs = Math.max(boss.secondaryTimerMs, 650);
+      initializeBossRhythmTimers(
+        boss,
+        getBossTempoSyncedLegacyIntervalMs(boss.bossId, getPrimaryLegacyCooldownMs(boss.phaseIndex)),
+        getBossTempoSyncedLegacyIntervalMs(boss.bossId, getSecondaryLegacyCooldownMs(boss.phaseIndex)),
+      );
     }
     ctx.onTeleportToSafeZone?.();
   }

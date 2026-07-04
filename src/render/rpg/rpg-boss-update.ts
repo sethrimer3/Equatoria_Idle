@@ -32,6 +32,7 @@ import { makeDanmakuSafeZone } from './rpg-factories';
 import { updateBossBehavior } from './rpg-boss-behaviors';
 import { getBossTempoSyncedLegacyIntervalMs } from '../../data/rpg/boss-tempo-config';
 import { isPlayerInBossAttackVoid } from './rpg-boss-attack-void';
+import { initializeBossRhythmTimers } from './rpg-boss-rhythm-timers';
 
 // ── Shared context interface ───────────────────────────────────────────────────
 
@@ -94,6 +95,7 @@ function isInBottomSafeZone(
 export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: number): void {
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   boss.pulseMs = (boss.pulseMs + deltaMs) % 3000;
+  boss.rhythmClockMs += deltaMs;
   boss.spawnIntroMs = Math.max(0, boss.spawnIntroMs - deltaMs);
   if (boss.contactCdMs > 0) boss.contactCdMs = Math.max(0, boss.contactCdMs - deltaMs);
 
@@ -102,6 +104,7 @@ export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: nu
   const targetPhase: 0|1|2 = hpRatio <= BOSS_PHASE3_HP_RATIO ? 2 : hpRatio <= BOSS_PHASE2_HP_RATIO ? 1 : 0;
   if (targetPhase > boss.phaseIndex) {
     boss.phaseIndex = targetPhase;
+    boss.areRhythmTimersInitialized = false;
     boss.phaseTransitionMs = BOSS_PHASE_TRANSITION_MS;
     boss.danmakuLevel = targetPhase;
     if (boss.danmakuLevel > 0) {
@@ -133,9 +136,11 @@ export function updateBossEnemy(boss: BossEnemy, ctx: BossUpdateCtx, deltaMs: nu
   const atk2LegacyMs = boss.phaseIndex === 2 ? BOSS_ATTACK2_CD_P2 : boss.phaseIndex === 1 ? BOSS_ATTACK2_CD_P1 : BOSS_ATTACK2_CD_BASE;
   const atk1Cd = getBossTempoSyncedLegacyIntervalMs(boss.bossId, atk1LegacyMs);
   const atk2Cd = getBossTempoSyncedLegacyIntervalMs(boss.bossId, atk2LegacyMs);
+  if (!boss.areRhythmTimersInitialized) {
+    initializeBossRhythmTimers(boss, atk1Cd, atk2Cd);
+  }
   if (boss.isFiringPaused) {
-    boss.attackTimerMs = Math.max(boss.attackTimerMs, atk1Cd);
-    boss.secondaryTimerMs = Math.max(boss.secondaryTimerMs, atk2Cd);
+    initializeBossRhythmTimers(boss, atk1Cd, atk2Cd);
   } else {
     boss.attackTimerMs -= deltaMs;
     boss.secondaryTimerMs -= deltaMs;

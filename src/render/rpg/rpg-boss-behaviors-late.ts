@@ -22,6 +22,7 @@ import {
 } from './rpg-constants';
 import { makeDanmakuSafeZone } from './rpg-factories';
 import type { BossBehaviorCtx } from './rpg-boss-behaviors-wave';
+import { scheduleBossRhythmTimer } from './rpg-boss-rhythm-timers';
 
 /**
  * Per-boss (non-wave) movement and attack patterns for bosses 7–12.
@@ -73,7 +74,7 @@ export function updateLateBossBehavior(
     }
     boss.vx *= 0.9; boss.vy *= 0.9;
     if (!boss.isInvuln && boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const count7 = 6 + boss.phaseIndex * 3;
       for (let i = 0; i < count7; i++) {
         const a = (i / count7) * Math.PI * 2;
@@ -102,7 +103,7 @@ export function updateLateBossBehavior(
       boss.absorbTimerMs = boss.isAbsorbing ? 2500 : 5000;
     }
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const count8 = 3 + boss.phaseIndex * 2;
       for (let i = 0; i < count8; i++) {
         const spread = (i - (count8 - 1) / 2) * 0.3;
@@ -124,7 +125,7 @@ export function updateLateBossBehavior(
       ctx.mote.vy -= dirY * gravStr9 * dist;
     }
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const count9 = 10 + boss.phaseIndex * 4;
       for (let i = 0; i < count9; i++) {
         const a    = (i / count9) * Math.PI * 2;
@@ -135,7 +136,7 @@ export function updateLateBossBehavior(
       }
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       const cnt9b = 4 + boss.phaseIndex * 2;
       for (let i = 0; i < cnt9b; i++) {
         const spread = (i - (cnt9b - 1) / 2) * 0.2;
@@ -157,7 +158,7 @@ export function updateLateBossBehavior(
       ctx.mote.vy -= dirY * BOSS_GRAV_STRENGTH * 0.6 * dist;
     }
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       for (let ring = 0; ring < 1 + boss.phaseIndex; ring++) {
         const count10 = 8 + ring * 4;
         const offset  = ring * (Math.PI / count10);
@@ -171,7 +172,7 @@ export function updateLateBossBehavior(
       }
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       const cnt10b = 5 + boss.phaseIndex * 3;
       for (let i = 0; i < cnt10b; i++) {
         const a    = Math.atan2(dirY, dirX) + (i - (cnt10b - 1) / 2) * 0.18;
@@ -188,7 +189,7 @@ export function updateLateBossBehavior(
     boss.vy += Math.sin(boss.orbitAngle) * 0.3 + dirY * 0.1;
     boss.vx *= 0.90; boss.vy *= 0.90;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const ringCount11 = DANMAKU_RING_COUNT + boss.phaseIndex * 8;
       const safeAngle11 = ctx.getDanmakuSafeZone() ? ctx.getDanmakuSafeZone()!.angle : Math.random() * Math.PI * 2;
       const halfSafe11  = DANMAKU_SAFE_ANGLE_WIDTH / 2;
@@ -210,7 +211,7 @@ export function updateLateBossBehavior(
     boss.vy += Math.sin(boss.orbitAngle + Math.PI / 2) * 0.25 + dirY * 0.12;
     boss.vx *= 0.91; boss.vy *= 0.91;
     if (boss.attackTimerMs <= 0) {
-      boss.attackTimerMs = atk1Cd;
+      boss.attackTimerMs = scheduleBossRhythmTimer(boss, atk1Cd);
       const ringCount12 = DANMAKU_RING_COUNT + boss.phaseIndex * 6;
       const safeAngle12 = ctx.getDanmakuSafeZone() ? ctx.getDanmakuSafeZone()!.angle : Math.random() * Math.PI * 2;
       const halfSafe12  = DANMAKU_SAFE_ANGLE_WIDTH / 2;
@@ -226,7 +227,7 @@ export function updateLateBossBehavior(
       ctx.setDanmakuSafeZone(makeDanmakuSafeZone(boss.x, boss.y, safeAngle12 + Math.PI * 0.7, DANMAKU_SAFE_ANGLE_WIDTH));
     }
     if (boss.secondaryTimerMs <= 0) {
-      boss.secondaryTimerMs = atk2Cd;
+      boss.secondaryTimerMs = scheduleBossRhythmTimer(boss, atk2Cd);
       const aimCount12 = 3 + boss.phaseIndex * 2;
       for (let i = 0; i < aimCount12; i++) {
         const spread = (i - (aimCount12 - 1) / 2) * 0.22;

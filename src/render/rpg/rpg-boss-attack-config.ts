@@ -35,6 +35,11 @@ export interface BossAttackKindConfig {
    * value (in beats from fight start) before spawning.
    */
   gridBeats?: number;
+  /**
+   * Primary visible cadence for UI labels. Use null for smooth/non-beat-locked
+   * attacks such as continuous homing or orbiting bodies.
+   */
+  rhythmBeats?: number | null;
   /** Kind-specific numeric/boolean/string overrides.  Timing params use *Beats names. */
   params: Record<string, number | boolean | string>;
 }
@@ -100,6 +105,72 @@ export interface BossAttackProfileConfig {
   phase0Attacks: BossAttackKindConfig[];
   phase1Attacks: BossAttackKindConfig[];
   phase2Attacks: BossAttackKindConfig[];
+}
+
+export type BossAttackRhythmLabel =
+  | 'WholeNote'
+  | 'HalfNote'
+  | 'QuarterNote'
+  | 'EighthNote'
+  | 'SixteenthNote'
+  | 'Atonal'
+  | `${number}-Beat`
+  | `WholeNote x${number}`;
+
+export interface BossAttackRhythmInfo {
+  label: BossAttackRhythmLabel;
+  beats: number | null;
+  seconds: number | null;
+}
+
+const NOTE_BEAT_LABELS: ReadonlyArray<readonly [number, BossAttackRhythmLabel]> = [
+  [4, 'WholeNote'],
+  [2, 'HalfNote'],
+  [1, 'QuarterNote'],
+  [0.5, 'EighthNote'],
+  [0.25, 'SixteenthNote'],
+];
+
+function _getPrimaryRhythmBeats(cfg: BossAttackKindConfig): number | null {
+  if (cfg.rhythmBeats === null) return null;
+  if (typeof cfg.rhythmBeats === 'number') return cfg.rhythmBeats;
+
+  if (cfg.kind === 'grav' || cfg.kind === 'vermiculate' || cfg.kind === 'motherSwarm') {
+    return null;
+  }
+
+  const waveIntervalBeats = cfg.params.waveIntervalBeats;
+  if (typeof waveIntervalBeats === 'number') return waveIntervalBeats;
+
+  const spawnIntervalBeats = cfg.params.spawnIntervalBeats;
+  if (typeof spawnIntervalBeats === 'number') return spawnIntervalBeats;
+
+  const warnBeats = cfg.params.warnBeats;
+  if (typeof warnBeats === 'number') return warnBeats;
+
+  const trailHazardBeats = cfg.params.trailHazardBeats;
+  if (typeof trailHazardBeats === 'number') return trailHazardBeats;
+
+  return cfg.cooldownBeats;
+}
+
+export function getBossAttackRhythmInfo(bossId: number, cfg: BossAttackKindConfig): BossAttackRhythmInfo {
+  const beats = _getPrimaryRhythmBeats(cfg);
+  if (beats === null || !Number.isFinite(beats) || beats <= 0) {
+    return { label: 'Atonal', beats: null, seconds: null };
+  }
+
+  for (const [noteBeats, label] of NOTE_BEAT_LABELS) {
+    if (Math.abs(beats - noteBeats) < 0.0001) {
+      return { label, beats, seconds: beats * getBossBeatMs(bossId) / 1000 };
+    }
+  }
+
+  if (beats > 4 && Math.abs(beats / 4 - Math.round(beats / 4)) < 0.0001) {
+    return { label: `WholeNote x${Math.round(beats / 4)}`, beats, seconds: beats * getBossBeatMs(bossId) / 1000 };
+  }
+
+  return { label: `${beats}-Beat`, beats, seconds: beats * getBossBeatMs(bossId) / 1000 };
 }
 
 export const BOSS_ATTACK_PROFILES: BossAttackProfileConfig[] = [

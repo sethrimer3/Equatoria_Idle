@@ -13,12 +13,31 @@ import {
   TOTAL_BOSS_COUNT, MIN_BOSS_SPEED_PCT, MAX_BOSS_SPEED_PCT, BOSS_SPEED_STEP,
 } from '../../sim/rpg/rpg-state';
 import type { ActionHandler } from '../../input';
-import { BOSS_NAMES, BOSS_GLOW_COLORS } from '../../render/rpg/rpg-constants';
+import {
+  BOSS_NAMES, BOSS_GLOW_COLORS,
+  BOSS_ATTACK1_CD_BASE, BOSS_ATTACK1_CD_P1, BOSS_ATTACK1_CD_P2,
+  BOSS_ATTACK2_CD_BASE, BOSS_ATTACK2_CD_P1, BOSS_ATTACK2_CD_P2,
+} from '../../render/rpg/rpg-constants';
 import { isSuperSecretBoss } from '../../data/rpg/boss-metadata';
+import { getBossAttackProfile, getBossAttackRhythmInfo } from '../../render/rpg/rpg-boss-attack-config';
+import { getBossTempoSyncedLegacyIntervalMs } from '../../data/rpg/boss-tempo-config';
+import { getBossLegacyProjectileRhythmLabel } from '../../render/rpg/rpg-boss-rhythm-timers';
 
 export interface RpgBossesTabPane {
   element: HTMLElement;
   update(rpgState: RpgSimState | null, isDevMode?: boolean): void;
+}
+
+function getPrimaryLegacyCooldownMs(phaseIndex: 0 | 1 | 2): number {
+  if (phaseIndex === 2) return BOSS_ATTACK1_CD_P2;
+  if (phaseIndex === 1) return BOSS_ATTACK1_CD_P1;
+  return BOSS_ATTACK1_CD_BASE;
+}
+
+function getSecondaryLegacyCooldownMs(phaseIndex: 0 | 1 | 2): number {
+  if (phaseIndex === 2) return BOSS_ATTACK2_CD_P2;
+  if (phaseIndex === 1) return BOSS_ATTACK2_CD_P1;
+  return BOSS_ATTACK2_CD_BASE;
 }
 
 export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPane {
@@ -134,6 +153,70 @@ export function createRpgBossesTabPane(dispatch: ActionHandler): RpgBossesTabPan
         subRow.appendChild(fightBtn);
       }
       entry.appendChild(subRow);
+
+      if (unlocked) {
+        const attackProfile = getBossAttackProfile(bossId);
+        if (attackProfile) {
+          const attackRows = document.createElement('div');
+          attackRows.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:8px;';
+          const phases = [
+            ['P1', attackProfile.phase0Attacks],
+            ['P2', attackProfile.phase1Attacks],
+            ['P3', attackProfile.phase2Attacks],
+          ] as const;
+          for (const [phaseLabel, attacks] of phases) {
+            const cell = document.createElement('div');
+            cell.style.cssText = 'min-width:0;background:rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.06);border-radius:4px;padding:4px 5px;';
+
+            const title = document.createElement('div');
+            title.style.cssText = 'font-size:0.66em;color:#888;margin-bottom:2px;';
+            title.textContent = phaseLabel;
+            cell.appendChild(title);
+
+            const phaseIndex = phaseLabel === 'P3' ? 2 : phaseLabel === 'P2' ? 1 : 0;
+            const legacyRows = [
+              ['primary', getPrimaryLegacyCooldownMs(phaseIndex)],
+              ['secondary', getSecondaryLegacyCooldownMs(phaseIndex)],
+            ] as const;
+            for (const [label, legacyMs] of legacyRows) {
+              const intervalMs = getBossTempoSyncedLegacyIntervalMs(bossId, legacyMs);
+              const line = document.createElement('div');
+              line.style.cssText = 'display:flex;justify-content:space-between;gap:4px;font-size:0.68em;line-height:1.25;min-width:0;';
+
+              const kind = document.createElement('span');
+              kind.style.cssText = 'color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+              kind.textContent = label;
+              line.appendChild(kind);
+
+              const note = document.createElement('span');
+              note.style.cssText = 'color:#fff172;font-weight:700;white-space:nowrap;';
+              note.textContent = getBossLegacyProjectileRhythmLabel(bossId, intervalMs);
+              line.appendChild(note);
+              cell.appendChild(line);
+            }
+
+            for (const attack of attacks) {
+              const rhythm = getBossAttackRhythmInfo(bossId, attack);
+              const line = document.createElement('div');
+              line.style.cssText = 'display:flex;justify-content:space-between;gap:4px;font-size:0.68em;line-height:1.25;min-width:0;';
+
+              const kind = document.createElement('span');
+              kind.style.cssText = 'color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+              kind.textContent = attack.kind;
+              line.appendChild(kind);
+
+              const note = document.createElement('span');
+              note.style.cssText = `color:${rhythm.label === 'Atonal' ? '#b9a6ff' : '#fff172'};font-weight:700;white-space:nowrap;`;
+              note.textContent = rhythm.label;
+              line.appendChild(note);
+              cell.appendChild(line);
+            }
+
+            attackRows.appendChild(cell);
+          }
+          entry.appendChild(attackRows);
+        }
+      }
       listContainer.appendChild(entry);
     }
     element.appendChild(listContainer);
