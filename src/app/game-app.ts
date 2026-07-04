@@ -25,7 +25,7 @@ import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
 import { createHudOverlay } from '../ui/hud/hud-overlay';
 import { createLoadingScreen } from '../ui/loading';
-import { loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp, saveSettings } from '../settings';
+import { applyFontSizeOffset, loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp, saveSettings } from '../settings';
 import { TIERS } from '../data/tiers';
 // createForgeCrunchState no longer needed here; appState.forge === game.forge directly
 import {
@@ -82,6 +82,7 @@ export async function startApp(): Promise<void> {
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
   const settings = loadSettings();
+  applyFontSizeOffset(settings.fontSizeOffsetPx);
 
   // ── Preload Poiret One font for canvas rendering ──
   try {

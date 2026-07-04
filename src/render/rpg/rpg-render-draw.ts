@@ -934,6 +934,7 @@ export function drawRpgFrame(
   const vwY = fs.visibleBounds.top;
   const vwW = fs.visibleBounds.width;
   const vwH = fs.visibleBounds.height;
+  const visibleDrawBounds = fs.visibleBounds;
 
   // Clear and fill the full visible world area (covers extra space when canvas > safe-core).
   canvas2d.clearRect(vwX, vwY, vwW, vwH);
@@ -1139,29 +1140,29 @@ export function drawRpgFrame(
     );
   }
 
-  drawLaserEnemies(canvas2d, ctx.enemies, nowMs);
-  drawSapphireEnemies(canvas2d, ctx.sapphireEnemies);
-  drawSapphireMissiles(canvas2d, ctx.sapphireMissiles);
-  drawEmeraldEnemies(canvas2d, ctx.emeraldEnemies);
-  drawAmberEnemies(canvas2d, ctx.amberEnemies);
-  drawAmberShards(canvas2d, ctx.amberShards);
-  drawVoidEnemies(canvas2d, ctx.voidEnemies);
-  drawQuartzEnemies(canvas2d, ctx.quartzEnemies);
-  drawQuartzSpikes(canvas2d, ctx.quartzSpikes);
-  drawRubyEnemies(canvas2d, ctx.rubyEnemies);
-  drawRubyBolts(canvas2d, ctx.rubyBolts);
-  drawSunstoneEnemies(canvas2d, ctx.sunstoneEnemies);
-  drawCitrineEnemies(canvas2d, ctx.citrineEnemies);
-  drawCitrineBolts(canvas2d, ctx.citrineBolts);
-  drawIoliteEnemies(canvas2d, ctx.ioliteEnemies);
-  drawAmethystEnemies(canvas2d, ctx.amethystEnemies);
-  drawAmethystShards(canvas2d, ctx.amethystShards);
-  drawDiamondEnemies(canvas2d, ctx.diamondEnemies);
-  drawDiamondShards(canvas2d, ctx.diamondShards);
-  drawNullstoneEnemies(canvas2d, ctx.nullstoneEnemies);
-  drawVoidTendrils(canvas2d, ctx.voidTendrils);
-  drawFracterylEnemies(canvas2d, ctx.fracterylEnemies, ctx.fracterylShards);
-  drawEigensteinEnemies(canvas2d, ctx.eigensteinEnemies);
+  drawLaserEnemies(canvas2d, ctx.enemies, nowMs, visibleDrawBounds);
+  drawSapphireEnemies(canvas2d, ctx.sapphireEnemies, visibleDrawBounds);
+  drawSapphireMissiles(canvas2d, ctx.sapphireMissiles, visibleDrawBounds);
+  drawEmeraldEnemies(canvas2d, ctx.emeraldEnemies, visibleDrawBounds);
+  drawAmberEnemies(canvas2d, ctx.amberEnemies, visibleDrawBounds);
+  drawAmberShards(canvas2d, ctx.amberShards, visibleDrawBounds);
+  drawVoidEnemies(canvas2d, ctx.voidEnemies, visibleDrawBounds);
+  drawQuartzEnemies(canvas2d, ctx.quartzEnemies, visibleDrawBounds);
+  drawQuartzSpikes(canvas2d, ctx.quartzSpikes, visibleDrawBounds);
+  drawRubyEnemies(canvas2d, ctx.rubyEnemies, visibleDrawBounds);
+  drawRubyBolts(canvas2d, ctx.rubyBolts, visibleDrawBounds);
+  drawSunstoneEnemies(canvas2d, ctx.sunstoneEnemies, visibleDrawBounds);
+  drawCitrineEnemies(canvas2d, ctx.citrineEnemies, visibleDrawBounds);
+  drawCitrineBolts(canvas2d, ctx.citrineBolts, visibleDrawBounds);
+  drawIoliteEnemies(canvas2d, ctx.ioliteEnemies, visibleDrawBounds);
+  drawAmethystEnemies(canvas2d, ctx.amethystEnemies, visibleDrawBounds);
+  drawAmethystShards(canvas2d, ctx.amethystShards, visibleDrawBounds);
+  drawDiamondEnemies(canvas2d, ctx.diamondEnemies, visibleDrawBounds);
+  drawDiamondShards(canvas2d, ctx.diamondShards, visibleDrawBounds);
+  drawNullstoneEnemies(canvas2d, ctx.nullstoneEnemies, visibleDrawBounds);
+  drawVoidTendrils(canvas2d, ctx.voidTendrils, visibleDrawBounds);
+  drawFracterylEnemies(canvas2d, ctx.fracterylEnemies, ctx.fracterylShards, visibleDrawBounds);
+  drawEigensteinEnemies(canvas2d, ctx.eigensteinEnemies, visibleDrawBounds);
   drawEigensteinBeams(canvas2d, ctx.eigensteinBeams, vwW, vwH);
   drawEliteEnemies(canvas2d, ctx.eliteEnemies);
   drawPolyominoEnemies(canvas2d, ctx.polyominoEnemies, nowMs);
@@ -1178,7 +1179,7 @@ export function drawRpgFrame(
   drawBossArenaWalls(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, fs.visibleBounds, glowTimeS, bossBeatVisual);
   drawBottomSafeZone(canvas2d, ctx.getIsBossWaveActive(), fs.activeBounds, glowTimeS, bossBeatVisual);
   drawDanmakuSafeZone(canvas2d, bossEnemy, ctx.getDanmakuSafeZone());
-  drawBossProjectiles(canvas2d, ctx.bossProjectiles);
+  drawBossProjectiles(canvas2d, ctx.bossProjectiles, visibleDrawBounds);
   if (ctx.getIsBossWaveActive() && bossEnemy) {
     drawBossStageDirector(
       canvas2d,
@@ -1199,15 +1200,15 @@ export function drawRpgFrame(
   drawBossSpawnCircles(canvas2d);
   const _introState = getBossIntroDrawState();
   drawBossEnemy(canvas2d, _introState.hideBoss ? null : bossEnemy, glowTimeS, bossBeatVisual);
-  drawTeleportParticles(canvas2d, ctx.teleportParticles);
+  drawTeleportParticles(canvas2d, ctx.teleportParticles, visibleDrawBounds);
   drawShotLines(canvas2d, ctx.shotLines);
   drawVortexes(canvas2d, ctx.weaponSystems.activeVortexes);
-  drawSandProjectiles(canvas2d, ctx.weaponSystems.sandProjectiles);
-  drawPoisonBolts(canvas2d, ctx.weaponSystems.poisonBolts);
-  drawEmeraldPlayerMissiles(canvas2d, ctx.weaponSystems.emeraldPlayerMissiles);
-  drawEmeraldSubMissiles(canvas2d, ctx.weaponSystems.emeraldSubMissiles);
-  drawEmeraldSwirlParticles(canvas2d, ctx.weaponSystems.emeraldSwirlParticles);
-  drawSunstoneMines(canvas2d, ctx.weaponSystems.sunstoneMines);
+  drawSandProjectiles(canvas2d, ctx.weaponSystems.sandProjectiles, visibleDrawBounds);
+  drawPoisonBolts(canvas2d, ctx.weaponSystems.poisonBolts, visibleDrawBounds);
+  drawEmeraldPlayerMissiles(canvas2d, ctx.weaponSystems.emeraldPlayerMissiles, visibleDrawBounds);
+  drawEmeraldSubMissiles(canvas2d, ctx.weaponSystems.emeraldSubMissiles, visibleDrawBounds);
+  drawEmeraldSwirlParticles(canvas2d, ctx.weaponSystems.emeraldSwirlParticles, visibleDrawBounds);
+  drawSunstoneMines(canvas2d, ctx.weaponSystems.sunstoneMines, visibleDrawBounds);
   drawFracterylSpears(canvas2d, ctx.weaponSystems.fracterylSpears);
   drawFracterylBlooms(canvas2d, ctx.weaponSystems.fracterylBlooms);
   drawLaserBeamEffect(canvas2d, ctx.weaponSystems.laserBeamEffect);

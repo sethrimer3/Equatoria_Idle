@@ -49,14 +49,14 @@
 
 .idle-overlay__title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 20px;
+  font-size: calc(20px + var(--game-font-size-offset-px));
   font-weight: 400;
   color: var(--accent);
   letter-spacing: 1px;
 }
 
 .idle-overlay__duration {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: var(--text-secondary);
   margin-top: 4px;
   letter-spacing: 0.5px;
@@ -84,7 +84,7 @@
   background: var(--bg-panel, #12121e);
   border-left: 3px solid var(--accent);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: calc(13px + var(--game-font-size-offset-px));
   min-height: 36px;
 }
 
@@ -106,7 +106,7 @@
 .idle-overlay__row-formula {
   flex: 1;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -122,7 +122,7 @@
 .idle-overlay__dismiss {
   text-align: center;
   font-style: italic;
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: var(--text-secondary);
   padding-top: 4px;
 }

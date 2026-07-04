@@ -46,6 +46,29 @@ export { drawEnemyIndicators } from './rpg-enemy-indicators';
 // ── Low-graphics mode flag ────────────────────────────────────
 let isLowGraphicsMode = false;
 
+type DrawBounds = {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+};
+
+const DENSE_ENEMY_COUNT = 140;
+const DENSE_PROJECTILE_COUNT = 120;
+
+function isCircleVisible(x: number, y: number, radius: number, bounds?: DrawBounds): boolean {
+  return !bounds || (
+    x + radius >= bounds.left &&
+    x - radius <= bounds.right &&
+    y + radius >= bounds.top &&
+    y - radius <= bounds.bottom
+  );
+}
+
+function canDrawEnemyGlow(count: number): boolean {
+  return !isLowGraphicsMode && count < DENSE_ENEMY_COUNT;
+}
+
 function drawEnemyHealthBar(
   ctx: CanvasRenderingContext2D,
   enemy: { hp: number; maxHp: number },
@@ -75,7 +98,7 @@ export function setLowGraphicsMode(enabled: boolean): void {
  * Draws the curved dashed trail left by a laser enemy during its dash attack.
  * Moved here from rpg-entity-draw.ts since this is the sole consumer.
  */
-export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy, nowMs: number): void {
+export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy, nowMs: number, bounds?: DrawBounds): void {
   const trail = enemy.attackTrail;
   if (!trail.active) return;
   const isDashing = trail.trailEndMs === Infinity;
@@ -92,6 +115,7 @@ export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy
   const ddx = tx - sx, ddy = ty - sy;
   const L = Math.sqrt(ddx * ddx + ddy * ddy);
   if (L < 1) return;
+  if (bounds && !isCircleVisible((sx + tx) * 0.5, (sy + ty) * 0.5, L * 0.6, bounds)) return;
   const midX = (sx + tx) * 0.5, midY = (sy + ty) * 0.5;
   const perpX = -ddy / L, perpY = ddx / L;
   const curveOffset = L * Math.tan(trail.controlAngle);
@@ -113,14 +137,16 @@ export function drawAttackTrail(ctx: CanvasRenderingContext2D, enemy: LaserEnemy
   ctx.restore();
 }
 
-export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: SapphireEnemy[]): void {
+export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: SapphireEnemy[], bounds?: DrawBounds): void {
+  const drawGlow = canDrawEnemyGlow(enemies.length);
   // Per-enemy shield visuals (alpha varies per enemy)
   for (const enemy of enemies) {
     if (enemy.shieldHp <= 0) continue;
+    if (!isCircleVisible(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, bounds)) continue;
     const shieldAlpha = enemy.shieldHp / enemy.maxShieldHp;
     ctx.save();
     ctx.globalAlpha = 0.25 + shieldAlpha * 0.35;
-    if (!isLowGraphicsMode) { ctx.shadowBlur = SAPPHIRE_SHIELD_RADIUS * 2; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW; }
+    if (drawGlow) { ctx.shadowBlur = SAPPHIRE_SHIELD_RADIUS * 2; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW; }
     ctx.strokeStyle = SAPPHIRE_ENEMY_GLOW; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, 0, Math.PI * 2); ctx.stroke();
     ctx.shadowBlur = 0;
@@ -133,9 +159,10 @@ export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: Sapp
   if (enemies.length === 0) return;
   // Batch enemy bodies
   const half = SAPPHIRE_ENEMY_SIZE / 2;
-  if (!isLowGraphicsMode) { ctx.shadowBlur = SAPPHIRE_ENEMY_SIZE * 5; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW; }
+  if (drawGlow) { ctx.shadowBlur = SAPPHIRE_ENEMY_SIZE * 5; ctx.shadowColor = SAPPHIRE_ENEMY_GLOW; }
   ctx.fillStyle = SAPPHIRE_ENEMY_COLOR;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS, bounds)) continue;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), SAPPHIRE_ENEMY_SIZE, SAPPHIRE_ENEMY_SIZE);
   }
   ctx.shadowBlur = 0;
@@ -143,6 +170,7 @@ export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: Sapp
   const barW = SAPPHIRE_SHIELD_RADIUS * 2; const barH = 2;
   ctx.globalAlpha = 0.7;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, SAPPHIRE_SHIELD_RADIUS + 6, bounds)) continue;
     const barX = enemy.x - barW / 2;
     const barY = enemy.y + SAPPHIRE_SHIELD_RADIUS + 3;
     drawEnemyHealthBar(ctx, enemy, barX, barY, barW, barH, SAPPHIRE_ENEMY_COLOR);
@@ -155,12 +183,14 @@ export function drawSapphireEnemies(ctx: CanvasRenderingContext2D, enemies: Sapp
   ctx.globalAlpha = 1;
 }
 
-export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: SapphireMissile[]): void {
+export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: SapphireMissile[], bounds?: DrawBounds): void {
   if (missiles.length === 0) return;
+  const drawGlow = !isLowGraphicsMode && missiles.length < DENSE_PROJECTILE_COUNT;
   ctx.save();
   for (const m of missiles) {
+    if (!isCircleVisible(m.x, m.y, MISSILE_SIZE * 4, bounds)) continue;
     // Draw trail using lineDash style similar to laser attack trail
-    if (!isLowGraphicsMode && m.trailCount >= 2) {
+    if (drawGlow && m.trailCount >= 2) {
       const dashLen = MISSILE_TRAIL_CAP * MISSILE_TRAIL_DASH_RATIO;
       const startIdx = (m.trailHead - m.trailCount + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
       const lastIdx  = (m.trailHead - 1 + MISSILE_TRAIL_CAP) % MISSILE_TRAIL_CAP;
@@ -170,7 +200,7 @@ export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: Sa
       ctx.setLineDash([dashLen, dashLen]);
       ctx.lineDashOffset = -(dashLen * (1 - m.trailCount / MISSILE_TRAIL_CAP));
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.globalAlpha = 0.7; ctx.shadowBlur = isLowGraphicsMode ? 0 : 5; ctx.shadowColor = MISSILE_GLOW;
+      ctx.globalAlpha = 0.7; ctx.shadowBlur = 5; ctx.shadowColor = MISSILE_GLOW;
       ctx.strokeStyle = MISSILE_GLOW; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       ctx.shadowBlur = 0;
@@ -182,7 +212,7 @@ export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: Sa
     // Missile body
     const half = MISSILE_SIZE / 2;
     ctx.globalAlpha = 1;
-    if (!isLowGraphicsMode) {
+    if (drawGlow) {
       ctx.shadowBlur = MISSILE_SIZE * 5; ctx.shadowColor = MISSILE_GLOW;
       ctx.fillStyle = MISSILE_GLOW;
       const gh = half * 2;
@@ -196,14 +226,16 @@ export function drawSapphireMissiles(ctx: CanvasRenderingContext2D, missiles: Sa
   ctx.restore();
 }
 
-export function drawEmeraldEnemies(ctx: CanvasRenderingContext2D, enemies: EmeraldEnemy[]): void {
+export function drawEmeraldEnemies(ctx: CanvasRenderingContext2D, enemies: EmeraldEnemy[], bounds?: DrawBounds): void {
+  const drawGlow = canDrawEnemyGlow(enemies.length);
   // Ghost afterimage pass (varying alpha per enemy, no save/restore)
-  if (!isLowGraphicsMode) {
+  if (drawGlow) {
     const half = EMERALD_ENEMY_SIZE / 2;
     ctx.fillStyle = EMERALD_ENEMY_GLOW;
     ctx.shadowBlur = EMERALD_ENEMY_SIZE * 6; ctx.shadowColor = EMERALD_ENEMY_GLOW;
     for (const enemy of enemies) {
       if (enemy.ghostAlpha <= 0.02) continue;
+      if (!isCircleVisible(enemy.ghostX, enemy.ghostY, EMERALD_ENEMY_SIZE * 2, bounds)) continue;
       ctx.globalAlpha = enemy.ghostAlpha * 0.5;
       ctx.fillRect(Math.floor(enemy.ghostX - half), Math.floor(enemy.ghostY - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
     }
@@ -214,8 +246,9 @@ export function drawEmeraldEnemies(ctx: CanvasRenderingContext2D, enemies: Emera
   const half = EMERALD_ENEMY_SIZE / 2;
   ctx.fillStyle = EMERALD_ENEMY_COLOR;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, EMERALD_ENEMY_SIZE * 2, bounds)) continue;
     const chargeGlow = enemy.phase === 'charging' ? (enemy.phaseMs / EMERALD_CHARGE_MS) * 0.6 : 0;
-    if (!isLowGraphicsMode) { ctx.shadowBlur = EMERALD_ENEMY_SIZE * (5 + chargeGlow * 8); ctx.shadowColor = EMERALD_ENEMY_GLOW; }
+    if (drawGlow) { ctx.shadowBlur = EMERALD_ENEMY_SIZE * (5 + chargeGlow * 8); ctx.shadowColor = EMERALD_ENEMY_GLOW; }
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), EMERALD_ENEMY_SIZE, EMERALD_ENEMY_SIZE);
     ctx.shadowBlur = 0;
   }
@@ -223,34 +256,40 @@ export function drawEmeraldEnemies(ctx: CanvasRenderingContext2D, enemies: Emera
   const barW = EMERALD_ENEMY_SIZE * 2.5; const barH = 2;
   ctx.globalAlpha = 0.7;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, EMERALD_ENEMY_SIZE * 2, bounds)) continue;
     drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + half + 3, barW, barH, EMERALD_ENEMY_COLOR);
   }
   ctx.globalAlpha = 1;
 }
 
-export function drawAmberEnemies(ctx: CanvasRenderingContext2D, enemies: AmberEnemy[]): void {
+export function drawAmberEnemies(ctx: CanvasRenderingContext2D, enemies: AmberEnemy[], bounds?: DrawBounds): void {
   if (enemies.length === 0) return;
+  const drawGlow = canDrawEnemyGlow(enemies.length);
   const half = AMBER_ENEMY_SIZE / 2;
-  if (!isLowGraphicsMode) { ctx.shadowBlur = AMBER_ENEMY_SIZE * 5; ctx.shadowColor = AMBER_ENEMY_GLOW; }
+  if (drawGlow) { ctx.shadowBlur = AMBER_ENEMY_SIZE * 5; ctx.shadowColor = AMBER_ENEMY_GLOW; }
   ctx.fillStyle = AMBER_ENEMY_COLOR;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, AMBER_ENEMY_SIZE * 2, bounds)) continue;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), AMBER_ENEMY_SIZE, AMBER_ENEMY_SIZE);
   }
   ctx.shadowBlur = 0;
   const barW = AMBER_ENEMY_SIZE * 2.5; const barH = 2;
   ctx.globalAlpha = 0.7;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, AMBER_ENEMY_SIZE * 2, bounds)) continue;
     drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + half + 3, barW, barH, AMBER_ENEMY_COLOR);
   }
   ctx.globalAlpha = 1;
 }
 
-export function drawAmberShards(ctx: CanvasRenderingContext2D, shards: AmberShard[]): void {
+export function drawAmberShards(ctx: CanvasRenderingContext2D, shards: AmberShard[], bounds?: DrawBounds): void {
   if (shards.length === 0) return;
+  const drawGlow = !isLowGraphicsMode && shards.length < DENSE_PROJECTILE_COUNT;
   // Per-shard trails (varying state per shard)
-  if (!isLowGraphicsMode) {
+  if (drawGlow) {
     for (const s of shards) {
       if (s.trailCount < 2) continue;
+      if (!isCircleVisible(s.x, s.y, AMBER_SHARD_SIZE * 4, bounds)) continue;
       const dashLen = AMBER_SHARD_TRAIL_CAP * 0.6;
       const startIdx = (s.trailHead - s.trailCount + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
       const lastIdx  = (s.trailHead - 1 + AMBER_SHARD_TRAIL_CAP) % AMBER_SHARD_TRAIL_CAP;
@@ -279,6 +318,7 @@ export function drawAmberShards(ctx: CanvasRenderingContext2D, shards: AmberShar
     ctx.shadowBlur = AMBER_SHARD_SIZE * 5; ctx.shadowColor = AMBER_SHARD_GLOW;
     ctx.fillStyle = AMBER_SHARD_GLOW;
     for (const s of shards) {
+      if (!isCircleVisible(s.x, s.y, AMBER_SHARD_SIZE * 4, bounds)) continue;
       ctx.fillRect(Math.floor(s.x - gh), Math.floor(s.y - gh), Math.ceil(gh * 2), Math.ceil(gh * 2));
     }
     ctx.shadowBlur = 0;
@@ -287,15 +327,18 @@ export function drawAmberShards(ctx: CanvasRenderingContext2D, shards: AmberShar
   const half = AMBER_SHARD_SIZE / 2;
   ctx.fillStyle = AMBER_SHARD_COLOR;
   for (const s of shards) {
+    if (!isCircleVisible(s.x, s.y, AMBER_SHARD_SIZE * 2, bounds)) continue;
     ctx.fillRect(Math.floor(s.x - half), Math.floor(s.y - half), AMBER_SHARD_SIZE, AMBER_SHARD_SIZE);
   }
 }
 
-export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnemy[]): void {
+export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnemy[], bounds?: DrawBounds): void {
+  const drawGlow = canDrawEnemyGlow(enemies.length);
   // Per-enemy aura rings (alpha and radius vary per enemy)
   ctx.strokeStyle = VOID_ENEMY_GLOW; ctx.lineWidth = 1;
-  if (!isLowGraphicsMode) { ctx.shadowBlur = VOID_AURA_RADIUS * 2; ctx.shadowColor = VOID_ENEMY_GLOW; }
+  if (drawGlow) { ctx.shadowBlur = VOID_AURA_RADIUS * 2; ctx.shadowColor = VOID_ENEMY_GLOW; }
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, VOID_AURA_RADIUS * 1.4, bounds)) continue;
     const pulseT = enemy.pulseMs / VOID_AURA_PULSE_MS;
     const auraAlpha = Math.sin(pulseT * Math.PI * 2) * 0.3 + 0.35;
     ctx.globalAlpha = auraAlpha * 0.4;
@@ -305,6 +348,7 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
   // Aura fill pass (fixed radius, alpha varies)
   ctx.fillStyle = VOID_ENEMY_GLOW;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, VOID_AURA_RADIUS, bounds)) continue;
     const pulseT = enemy.pulseMs / VOID_AURA_PULSE_MS;
     const auraAlpha = Math.sin(pulseT * Math.PI * 2) * 0.3 + 0.35;
     ctx.globalAlpha = auraAlpha * 0.15;
@@ -314,9 +358,10 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
   if (enemies.length === 0) return;
   // Batch bodies
   const half = VOID_ENEMY_SIZE / 2;
-  if (!isLowGraphicsMode) { ctx.shadowBlur = VOID_ENEMY_SIZE * 6; ctx.shadowColor = VOID_ENEMY_GLOW; }
+  if (drawGlow) { ctx.shadowBlur = VOID_ENEMY_SIZE * 6; ctx.shadowColor = VOID_ENEMY_GLOW; }
   ctx.fillStyle = VOID_ENEMY_COLOR;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, VOID_AURA_RADIUS, bounds)) continue;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), VOID_ENEMY_SIZE, VOID_ENEMY_SIZE);
   }
   ctx.shadowBlur = 0;
@@ -324,6 +369,7 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
   const barW = VOID_ENEMY_SIZE * 3; const barH = 2;
   ctx.globalAlpha = 0.7;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, VOID_AURA_RADIUS + 6, bounds)) continue;
     drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + VOID_AURA_RADIUS + 3, barW, barH, VOID_ENEMY_COLOR);
   }
   ctx.globalAlpha = 1;
@@ -332,19 +378,22 @@ export function drawVoidEnemies(ctx: CanvasRenderingContext2D, enemies: VoidEnem
 // ── Laser enemy draw (first enemy type, inline health bar) ───────────────────
 
 /** Draws the basic (laser-type) enemies: square body with health bar underneath. */
-export function drawLaserEnemies(ctx: CanvasRenderingContext2D, enemies: LaserEnemy[], nowMs: number): void {
+export function drawLaserEnemies(ctx: CanvasRenderingContext2D, enemies: LaserEnemy[], nowMs: number, bounds?: DrawBounds): void {
   if (enemies.length === 0) return;
-  for (const enemy of enemies) drawAttackTrail(ctx, enemy, nowMs);
+  const drawGlow = canDrawEnemyGlow(enemies.length);
+  for (const enemy of enemies) drawAttackTrail(ctx, enemy, nowMs, bounds);
   const half = LASER_ENEMY_SIZE / 2;
-  if (!isLowGraphicsMode) { ctx.shadowBlur = LASER_ENEMY_SIZE * 5; ctx.shadowColor = LASER_ENEMY_GLOW; }
+  if (drawGlow) { ctx.shadowBlur = LASER_ENEMY_SIZE * 5; ctx.shadowColor = LASER_ENEMY_GLOW; }
   ctx.fillStyle = LASER_ENEMY_COLOR;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, LASER_ENEMY_SIZE * 2, bounds)) continue;
     ctx.fillRect(Math.floor(enemy.x - half), Math.floor(enemy.y - half), LASER_ENEMY_SIZE, LASER_ENEMY_SIZE);
   }
   ctx.shadowBlur = 0;
   const barW = LASER_ENEMY_SIZE * 2.5;
   const barH = 2;
   for (const enemy of enemies) {
+    if (!isCircleVisible(enemy.x, enemy.y, LASER_ENEMY_SIZE * 2, bounds)) continue;
     drawEnemyHealthBar(ctx, enemy, enemy.x - barW / 2, enemy.y + half + 2, barW, barH, LASER_ENEMY_COLOR);
   }
 }

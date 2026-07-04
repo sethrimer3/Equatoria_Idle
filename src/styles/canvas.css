@@ -341,12 +341,12 @@
 
 /* Smaller font for HP-box stat values */
 .rpg-hp-box .rpg-stat-value {
-  font-size: 11px;
+  font-size: calc(11px + var(--game-font-size-offset-px));
 }
 
 /* Even smaller for Reg/Def sub-values to fit the narrow column */
 .rpg-hp-sub-value {
-  font-size: 10px !important;
+  font-size: calc(10px + var(--game-font-size-offset-px)) !important;
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -390,7 +390,7 @@
   position: absolute;
   top: 2px;
   right: 3px;
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: #f9a8d4;
   line-height: 1;
@@ -419,7 +419,7 @@
 
 /* "Lv.N" text above the player icon */
 .rpg-player-level-label {
-  font-size: 7px;
+  font-size: calc(7px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: #c4b5fd;
   line-height: 1;
@@ -541,7 +541,7 @@
 .rpg-box5-label {
   flex: 1 1 0;
   min-width: 0;
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: rgba(255, 215, 100, 0.75);
   letter-spacing: 0.5px;
@@ -596,7 +596,7 @@
 
 /* Weapon stat values inside boxes 7–11 — slightly smaller to fit 5 columns */
 .rpg-box4-weapon-stat {
-  font-size: 10px !important;
+  font-size: calc(10px + var(--game-font-size-offset-px)) !important;
   letter-spacing: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -632,7 +632,7 @@
   border-radius: 3px;
   background: rgba(5, 4, 12, 0.88);
   color: #fff;
-  font-size: 8px;
+  font-size: calc(8px + var(--game-font-size-offset-px));
   font-weight: 700;
   line-height: 10px;
   text-align: center;
@@ -672,7 +672,7 @@
 }
 
 .rpg-xp-node {
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: #a78bfa;
   letter-spacing: 1px;
@@ -697,7 +697,7 @@
 
 /* XP label line ("XP") */
 .rpg-xp-label-text {
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   font-weight: 700;
   letter-spacing: 1.5px;
   line-height: 1;
@@ -705,7 +705,7 @@
 
 /* XP amount line (formatted value) */
 .rpg-xp-amount-text {
-  font-size: 7px;
+  font-size: calc(7px + var(--game-font-size-offset-px));
   font-weight: 600;
   letter-spacing: 0;
   opacity: 0.85;
@@ -849,7 +849,7 @@
   position: absolute;
   top: 2px;
   left: 3px;
-  font-size: 8px;
+  font-size: calc(8px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: rgba(255, 215, 100, 0.75);
   line-height: 1;
@@ -888,7 +888,7 @@
 
 /* Level text (x1, x2, x5, etc.) */
 .rpg-modifier-level-text {
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: #c4b5fd;
   line-height: 1;
@@ -918,7 +918,7 @@
 }
 
 .rpg-stat-label {
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 1.5px;
@@ -926,7 +926,7 @@
 }
 
 .rpg-stat-value {
-  font-size: 18px;
+  font-size: calc(18px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: var(--text-primary);
   font-family: var(--font-primary);
@@ -942,12 +942,12 @@
 
 .rpg-stat-value--boost {
   color: #64c8ff;
-  font-size: 14px;
+  font-size: calc(14px + var(--game-font-size-offset-px));
 }
 
 .rpg-stat-value--luck {
   color: #ffd764;
-  font-size: 14px;
+  font-size: calc(14px + var(--game-font-size-offset-px));
 }
 
 /* ── DPS widget with mini bar chart ───────────────────────────── */
@@ -1002,7 +1002,7 @@
 
 .rpg-dps-label {
   color: #ffffff;
-  font-size: 7px;
+  font-size: calc(7px + var(--game-font-size-offset-px));
   font-weight: 700;
   line-height: 1;
 }
@@ -1024,7 +1024,7 @@
   justify-content: space-between;
   gap: 2px;
   color: #ffffff;
-  font-size: 6px;
+  font-size: calc(6px + var(--game-font-size-offset-px));
   line-height: 1;
   opacity: 0.9;
 }
@@ -1039,7 +1039,7 @@
   border-radius: 6px;
   color: var(--accent);
   font-family: var(--font-primary);
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   cursor: pointer;
   z-index: 4;
   touch-action: manipulation;
@@ -1071,7 +1071,7 @@
   background: rgba(12, 12, 20, 0.95);
   color: var(--accent);
   font-family: var(--font-primary);
-  font-size: 19px;
+  font-size: calc(19px + var(--game-font-size-offset-px));
   line-height: 0.95;
   cursor: pointer;
   touch-action: manipulation;
@@ -1153,7 +1153,7 @@
   right: 2px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   color: rgba(60, 30, 0, 0.6);
   line-height: 1;
 }
@@ -1299,7 +1299,7 @@
 
 .rpg-menu__title {
   font-family: var(--font-primary);
-  font-size: 16px;
+  font-size: calc(16px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 1px;
@@ -1310,7 +1310,7 @@
   border: 1px solid rgba(255, 241, 114, 0.3);
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: calc(14px + var(--game-font-size-offset-px));
   width: 32px;
   height: 32px;
   cursor: pointer;
@@ -1341,7 +1341,7 @@
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
   font-family: var(--font-primary);
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
@@ -1392,7 +1392,7 @@
 }
 
 .skill-tree__sp-label {
-  font-size: 14px;
+  font-size: calc(14px + var(--game-font-size-offset-px));
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.03em;
@@ -1441,27 +1441,27 @@
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: calc(16px + var(--game-font-size-offset-px));
   cursor: pointer;
   padding: 2px 6px;
   line-height: 1;
 }
 
 .skill-tree__detail-name {
-  font-size: 16px;
+  font-size: calc(16px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: #e8c84a;
   padding-right: 24px;
 }
 
 .skill-tree__detail-desc {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
 .skill-tree__detail-level {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: var(--text-primary);
 }
 
@@ -1473,7 +1473,7 @@
 }
 
 .skill-tree__detail-cost {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: #a0c88a;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
@@ -1491,7 +1491,7 @@
   border-radius: 6px;
   background: rgba(196, 164, 74, 0.15);
   color: #f0d070;
-  font-size: 13px;
+  font-size: calc(13px + var(--game-font-size-offset-px));
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
@@ -1509,7 +1509,7 @@
 }
 
 .skill-tree__detail-locked {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: #e07070;
   margin-top: 2px;
 }
@@ -1524,12 +1524,12 @@
 }
 
 .rpg-menu__setting-label {
-  font-size: 13px;
+  font-size: calc(13px + var(--game-font-size-offset-px));
   color: var(--text-primary);
 }
 
 .rpg-menu__setting-desc {
-  font-size: 11px;
+  font-size: calc(11px + var(--game-font-size-offset-px));
   color: var(--text-secondary);
   margin-top: 2px;
 }
@@ -1554,7 +1554,7 @@
   background: rgba(26, 26, 46, 0.8);
   color: var(--text-secondary);
   font-family: var(--font-primary);
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1608,25 +1608,25 @@
 
 .rpg-upgrade__name {
   font-family: var(--font-primary);
-  font-size: 14px;
+  font-size: calc(14px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .rpg-upgrade__desc {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
 .rpg-upgrade__level {
-  font-size: 11px;
+  font-size: calc(11px + var(--game-font-size-offset-px));
   color: var(--accent);
   font-weight: 600;
 }
 
 .rpg-upgrade__cost {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: var(--text-secondary);
 }
 
@@ -1641,7 +1641,7 @@
   border-radius: 8px;
   color: var(--accent);
   font-family: var(--font-primary);
-  font-size: 13px;
+  font-size: calc(13px + var(--game-font-size-offset-px));
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
@@ -1660,7 +1660,7 @@
 
 /* ── Weapon tier badge ─────────────────────────────────────────── */
 .weapon-tier-badge {
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 4px;
@@ -1699,7 +1699,7 @@
 
 /* Title text */
 .weapon-slot-popup-title {
-  font-size: 13px;
+  font-size: calc(13px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: #a78bfa;
   letter-spacing: 0.5px;
@@ -1716,7 +1716,7 @@
 /* Individual slot buttons */
 .weapon-slot-popup-slot-btn {
   text-align: left !important;
-  font-size: 12px !important;
+  font-size: calc(12px + var(--game-font-size-offset-px)) !important;
   padding: 7px 10px !important;
 }
 
@@ -1728,7 +1728,7 @@
 /* Cancel button — slightly different style */
 .weapon-slot-popup-cancel {
   align-self: center;
-  font-size: 11px !important;
+  font-size: calc(11px + var(--game-font-size-offset-px)) !important;
   padding: 5px 18px !important;
   background: rgba(60, 20, 20, 0.6) !important;
   border-color: rgba(252, 165, 165, 0.35) !important;
@@ -1757,7 +1757,7 @@
   border-radius: 10px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(200, 168, 90, 0.12);
   font-family: var(--font-primary);
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   color: rgba(255, 255, 255, 0.85);
   max-width: min(328px, 94vw);
   max-height: 86vh;
@@ -1778,7 +1778,7 @@
 }
 
 .weap-inv-title {
-  font-size: 11px;
+  font-size: calc(11px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: rgba(200, 168, 90, 0.95);
   letter-spacing: 0.1em;
@@ -1788,7 +1788,7 @@
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.45);
-  font-size: 18px;
+  font-size: calc(18px + var(--game-font-size-offset-px));
   line-height: 1;
   cursor: pointer;
   padding: 0 2px;
@@ -1858,7 +1858,7 @@
 }
 
 .weap-inv-slot__name {
-  font-size: 7px;
+  font-size: calc(7px + var(--game-font-size-offset-px));
   font-weight: 600;
   text-align: center;
   max-width: 64px;
@@ -1874,7 +1874,7 @@
   position: absolute;
   top: 2px;
   right: 2px;
-  font-size: 7px;
+  font-size: calc(7px + var(--game-font-size-offset-px));
   font-weight: 700;
   background: rgba(80, 220, 80, 0.2);
   border: 1px solid rgba(80, 220, 80, 0.5);
@@ -1889,7 +1889,7 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   border: 1px solid;
   border-radius: 3px;
   padding: 0 1px;
@@ -1907,7 +1907,7 @@
 }
 
 .weap-inv-info-name {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1916,7 +1916,7 @@
 }
 
 .weap-inv-forge-badge {
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   font-weight: 700;
   border: 1px solid;
   border-radius: 3px;
@@ -1925,12 +1925,12 @@
 }
 
 .weap-inv-info-stats {
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   color: rgba(255, 255, 255, 0.6);
 }
 
 .weap-inv-info-comp {
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   color: rgba(255, 255, 255, 0.45);
   white-space: nowrap;
   overflow: hidden;
@@ -1938,7 +1938,7 @@
 }
 
 .weap-inv-info-desc {
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   color: rgba(255, 255, 255, 0.38);
   overflow: hidden;
   display: -webkit-box;
@@ -1947,7 +1947,7 @@
 }
 
 .weap-inv-slots-label {
-  font-size: 9px;
+  font-size: calc(9px + var(--game-font-size-offset-px));
   color: rgba(255, 255, 255, 0.45);
   margin-top: 3px;
 }
@@ -1964,7 +1964,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.7);
-  font-size: 11px;
+  font-size: calc(11px + var(--game-font-size-offset-px));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1996,7 +1996,7 @@
   border: 1px solid rgba(220, 80, 80, 0.38);
   background: rgba(220, 80, 80, 0.07);
   color: rgba(255, 150, 150, 0.82);
-  font-size: 10px;
+  font-size: calc(10px + var(--game-font-size-offset-px));
   cursor: pointer;
   transition: background 0.1s;
   margin-top: 2px;
@@ -2007,7 +2007,7 @@
   grid-column: 1 / -1;
   padding: 24px 8px;
   color: rgba(255, 255, 255, 0.3);
-  font-size: 11px;
+  font-size: calc(11px + var(--game-font-size-offset-px));
   text-align: center;
 }
 
@@ -2602,7 +2602,7 @@
 
 .rpg-codex-title {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 22px;
+  font-size: calc(22px + var(--game-font-size-offset-px));
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;

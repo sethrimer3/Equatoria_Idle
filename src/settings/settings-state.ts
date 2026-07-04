@@ -14,6 +14,8 @@ export interface SettingsState {
   backgroundStyle: 'vermiculate' | 'substrate' | 'none';
   /** Controls how large numbers are displayed: letter suffixes, scientific, or engineering notation. */
   numberFormat: 'letters' | 'scientific' | 'engineering';
+  /** Global UI font size offset in pixels, from -4 to +4. */
+  fontSizeOffsetPx: number;
   /** RPG enemy marker style. */
   rpgEnemyIndicatorStyle: 'triangle' | 'outline' | 'off';
   /** Visibility mode for generator/loom equations in the HUD overlay. */
@@ -98,6 +100,7 @@ export function createDefaultSettings(): SettingsState {
     colorTheme: 'dark',
     backgroundStyle: 'vermiculate',
     numberFormat: 'letters',
+    fontSizeOffsetPx: 0,
     rpgEnemyIndicatorStyle: 'triangle',
     generatorEquationVisibility: 'proximity',
     isDevMode: false,
@@ -138,6 +141,7 @@ export function loadSettings(): SettingsState {
     if (settings.fpsLimit !== 60 && settings.fpsLimit !== 120 && settings.fpsLimit !== 'unlimited') {
       settings.fpsLimit = 'unlimited';
     }
+    settings.fontSizeOffsetPx = clampFontSizeOffset(settings.fontSizeOffsetPx);
     return settings;
   } catch {
     return createDefaultSettings();
@@ -150,4 +154,13 @@ export function saveSettings(settings: SettingsState): void {
   } catch {
     // Storage might be full or unavailable — silently ignore
   }
+}
+
+export function clampFontSizeOffset(value: unknown): number {
+  const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  return Math.max(-4, Math.min(4, Math.round(numeric)));
+}
+
+export function applyFontSizeOffset(offsetPx: number, root: HTMLElement = document.documentElement): void {
+  root.style.setProperty('--game-font-size-offset-px', `${clampFontSizeOffset(offsetPx)}px`);
 }

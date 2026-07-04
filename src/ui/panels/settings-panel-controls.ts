@@ -71,6 +71,75 @@ export function createSliderRow(
   return row;
 }
 
+export function createSteppedSliderRow(
+  label: string,
+  initialValue: number,
+  min: number,
+  max: number,
+  step: number,
+  formatValue: (value: number) => string,
+  onChange: (value: number) => void,
+): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'settings-row';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const sliderWrapper = document.createElement('div');
+  sliderWrapper.className = 'settings-slider-wrapper settings-slider-wrapper--stepped';
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = String(min);
+  slider.max = String(max);
+  slider.step = String(step);
+  slider.value = String(initialValue);
+  slider.className = 'settings-slider settings-slider--stepped';
+
+  const tickList = document.createElement('div');
+  tickList.className = 'settings-slider-ticks';
+  for (let value = min; value <= max; value += step) {
+    const tick = document.createElement('span');
+    tick.className = 'settings-slider-tick';
+    tick.classList.toggle('settings-slider-tick--center', value === 0);
+    tickList.appendChild(tick);
+  }
+
+  const valueLabel = document.createElement('span');
+  valueLabel.className = 'settings-slider-pct settings-slider-value';
+
+  function updateValue(value: number): void {
+    const normalized = max === min ? 0 : (value - min) / (max - min);
+    const r = Math.round(DARK_GOLD_RGB[0] + (BRIGHT_GOLD_RGB[0] - DARK_GOLD_RGB[0]) * normalized);
+    const g = Math.round(DARK_GOLD_RGB[1] + (BRIGHT_GOLD_RGB[1] - DARK_GOLD_RGB[1]) * normalized);
+    const b = Math.round(DARK_GOLD_RGB[2] + (BRIGHT_GOLD_RGB[2] - DARK_GOLD_RGB[2]) * normalized);
+    const color = `rgb(${r},${g},${b})`;
+    const glowColor = `rgba(${r},${g},${b},${normalized * MAX_GLOW_ALPHA})`;
+    valueLabel.textContent = formatValue(value);
+    valueLabel.style.color = color;
+    valueLabel.style.textShadow = Math.abs(value) > 0 ? `0 0 ${MAX_GLOW_RADIUS_PX}px ${glowColor}` : 'none';
+    sliderWrapper.style.borderColor = color;
+    sliderWrapper.style.boxShadow = Math.abs(value) > 0 ? `0 0 ${MAX_BORDER_GLOW_RADIUS_PX}px ${glowColor}` : 'none';
+  }
+
+  updateValue(initialValue);
+
+  slider.addEventListener('input', () => {
+    const value = Number(slider.value);
+    updateValue(value);
+    onChange(value);
+  });
+
+  sliderWrapper.appendChild(slider);
+  sliderWrapper.appendChild(tickList);
+  row.appendChild(sliderWrapper);
+  row.appendChild(valueLabel);
+
+  return row;
+}
+
 export function createToggleRow(
   label: string,
   initialValue: boolean,

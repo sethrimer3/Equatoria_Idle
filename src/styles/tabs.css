@@ -53,7 +53,7 @@
   border-right-width: 0.5px;
   color: var(--text-gold-muted);
   font-family: var(--font-primary);
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 0;
@@ -110,7 +110,7 @@
 }
 
 .tab-btn .tab-label {
-  font-size: 12px;
+  font-size: calc(12px + var(--game-font-size-offset-px));
   font-weight: 600;
   letter-spacing: 0.03em;
 }

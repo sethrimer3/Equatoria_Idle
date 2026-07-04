@@ -1,6 +1,6 @@
 import type { ActionHandler } from '../../input';
 import type { SettingsState } from '../../settings';
-import { saveSettings } from '../../settings';
+import { applyFontSizeOffset, saveSettings } from '../../settings';
 import type { AudioSystem } from '../../audio';
 import type { GameState } from '../../sim';
 import { ACHIEVEMENT_DEFINITIONS } from '../../data/achievements';
@@ -8,7 +8,7 @@ import { makePageBreak } from '../ui-helpers';
 import { BUILD_NUMBER } from '../../buildInfo';
 import { createBalanceForecastPanel, type BalanceForecastPanel } from './balance-forecast/balance-forecast-panel';
 import { createDevPanel, type DevPanel, type DevPanelHooks } from './dev-panel';
-import { createSliderRow, createToggleRow, createSelectRow } from './settings-panel-controls';
+import { createSliderRow, createSteppedSliderRow, createToggleRow, createSelectRow } from './settings-panel-controls';
 import { createDevTweaksSection } from './settings-panel-dev-tweaks';
 import { createSparkleSystem } from './achievements-panel-sparkle';
 
@@ -277,6 +277,22 @@ export function createSettingsPanel(
     },
   );
   pane('gameplay').appendChild(numberFormatRow);
+
+  const fontSizeRow = createSteppedSliderRow(
+    'Font Size',
+    settings.fontSizeOffsetPx,
+    -4,
+    4,
+    1,
+    (value) => value === 0 ? '0' : value > 0 ? `+${value}` : String(value),
+    (value) => {
+      settings.fontSizeOffsetPx = value;
+      saveSettings(settings);
+      applyFontSizeOffset(value);
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  pane('gameplay').appendChild(fontSizeRow);
 
   const generatorEquationVisibilityRow = createSelectRow(
     'Loom Rate Visibility',

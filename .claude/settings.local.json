@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "git fetch origin 2>&1 && git merge --ff-only origin/main 2>&1; EXIT=$?; if [ $EXIT -ne 0 ]; then printf '{\"continue\": false, \"stopReason\": \"Git sync failed — there may be conflicts or unpushed divergence on main. Resolve manually before continuing.\"}'; else printf '{}'; fi",
+            "timeout": 30,
+            "statusMessage": "Syncing with origin/main..."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}
