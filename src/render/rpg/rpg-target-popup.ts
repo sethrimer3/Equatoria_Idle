@@ -42,6 +42,7 @@ const TARGET_LABELS: Record<TargetKind, string> = {
   verdure_polyomino_refractor: 'Refractor Polyomino',
   elite: 'Elite Enemy',
   aliven_particle: 'Aliven Particle',
+  life_cell: 'Life Cell',
   boss: 'Boss',
   proc_dustwisp: 'Dust Wisp',
   proc_ribbonworm: 'Ribbon Worm',

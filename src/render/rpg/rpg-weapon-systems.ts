@@ -115,6 +115,7 @@ export interface RpgWeaponCtx {
   stardustEnemies: StardustEnemy[];
   horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
+  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: import('./rpg-procedural-types').DustWispEnemy[];
   ribbonWormEnemies: import('./rpg-procedural-types').RibbonWormEnemy[];
@@ -172,6 +173,7 @@ export interface RpgWeaponCtx {
   damageEliteEnemy: (enemy: EliteEnemy, dmg: number, armorMult: number) => number;
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
+  damageLifeCell: (cell: import('./life-types').LifeCellEntity, rawDamage: number) => number;
   // ── Proc creature damage fns ────────────────────────────────────────────────
   damageDustWispEnemy: (e: import('./rpg-procedural-types').DustWispEnemy, raw: number, pierce: number) => number;
   damageRibbonWormEnemy: (e: import('./rpg-procedural-types').RibbonWormEnemy, raw: number, pierce: number) => number;

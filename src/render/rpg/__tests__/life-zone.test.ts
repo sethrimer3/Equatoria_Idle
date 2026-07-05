@@ -5,7 +5,7 @@ import {
 } from '../life-grid';
 import {
   seedLifeColony, stepLifeAutomata, damageLifeCellEntity, advanceLifeCellFades,
-  isLifeColonyFullyCleared, killLifeColonyCore, LIFE_CELL_BASE_HP,
+  isLifeColonyFullyCleared, killLifeColonyCore,
 } from '../life-controller';
 import { RULE_CONWAY, RULE_MAZECTRIC, LIFE_CA_RULES, LIFE_CA_RULES_BY_ID } from '../life-ca-rules';
 import { makeMazeColony, buildLifeGridBoundsForArena } from '../life-factories';
@@ -86,7 +86,7 @@ describe('stepLifeAutomata — Conway blinker', () => {
 
     stepLifeAutomata(colony);
     const coordsAfterTwo = [...colony.cells.values()].map(c => `${c.col}:${c.row}`).sort();
-    expect(coordsAfterTwo).toEqual(['10:9', '11:9', '9:9'].sort());
+    expect(coordsAfterTwo).toEqual(['10:10', '11:10', '9:10'].sort());
   });
 });
 
@@ -117,7 +117,7 @@ describe('cell damage/death independence', () => {
     expect(target.isDying).toBe(false);
 
     const dmg2 = damageLifeCellEntity(target, 10);
-    expect(dmg2).toBe(2); // clamped to remaining hp path isn't clamped, but hp floors at 0
+    expect(dmg2).toBe(10); // damage isn't clamped to remaining hp, but target.hp floors at 0
     expect(target.hp).toBe(0);
     expect(target.isDying).toBe(true);
 

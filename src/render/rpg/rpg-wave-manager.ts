@@ -99,6 +99,7 @@ export interface WaveManagerCtx {
   refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
+  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
   ribbonWormEnemies: RibbonWormEnemy[];

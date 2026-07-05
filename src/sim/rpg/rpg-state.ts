@@ -318,6 +318,7 @@ export function createRpgSimState(): RpgSimState {
       caustics: 0,
       verdure:  0,
       horizon:  0,
+      life:     0,
     },
     currentWaveByZone: {
       euhedral: 0,
@@ -325,6 +326,7 @@ export function createRpgSimState(): RpgSimState {
       caustics: 0,
       verdure:  0,
       horizon:  0,
+      life:     0,
     },
     respawnWave: 0,
     purchasedWeaponIds: new Set(),

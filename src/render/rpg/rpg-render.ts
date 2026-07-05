@@ -132,8 +132,6 @@ import {
 } from './rpg-boss-stage-director';
 import { type AlivenUpdateCtx } from './rpg-aliven-updates';
 import { damageAlivenParticle, damageLifeCell } from './rpg-damage';
-import { updateLifeColonies } from './life-updates';
-import { drawLifeColonies } from './life-draw';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS, type AlivenVariantId } from './rpg-aliven-constants';
