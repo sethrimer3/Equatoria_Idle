@@ -43,7 +43,7 @@ import { isTrueSurfaceCoreVulnerable } from './true-surface-elite';
 import type { HorizonPentagonGroup, HorizonMissile } from './horizon-pentagon-types';
 import { triggerHorizonPentagonSwap } from './horizon-pentagon-update';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
-import { damageLifeCellEntity } from './life-controller';
+import { damageLifeCellEntity, damageLifeCoreEntity } from './life-controller';
 import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
 import {
@@ -617,6 +617,21 @@ export function damageLifeCell(
 ): number {
   const dmg = damageLifeCellEntity(cell, rawDamage);
   if (dmg > 0) recordDps(dmg, '#7CFF9E');
+  return dmg;
+}
+
+/**
+ * Deals damage to a Life zone colony's core — a separate targetable entity
+ * from its cells (has its own compact health indicator; individual cells
+ * never get one). Killing the core stops the automata and fades all cells.
+ */
+export function damageLifeCore(
+  colony: import('./life-types').LifeColonyController,
+  rawDamage: number,
+  recordDps: (dmg: number, color?: string) => void,
+): number {
+  const dmg = damageLifeCoreEntity(colony, rawDamage);
+  if (dmg > 0) recordDps(dmg, '#c9ffd8');
   return dmg;
 }
 

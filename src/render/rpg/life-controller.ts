@@ -91,6 +91,15 @@ export function stepLifeAutomata(colony: LifeColonyController, hpForNewCell: num
   const { rule, bounds, cells } = colony;
   const birth = new Set(rule.birth);
   const survive = new Set(rule.survive);
+  // rule.edgeBehavior: only 'dead' is implemented — isLifeGridCoordInBounds excludes
+  // any neighbor outside the arena grid, so out-of-bounds neighbors always count as
+  // dead. 'wrap' is reserved for a future toroidal-neighbor-count implementation and
+  // must not be set on any preset until that's added (see life-ca-rules.ts).
+  // rule.stateCount > 2 (Generations-style multi-state rules) is NOT handled here —
+  // this stepper only tracks binary alive/dead per cell. RULE_GENERATIONS_PLACEHOLDER
+  // exists as a reserved data shape only; do not seed a colony with it until a
+  // dedicated Generations stepper (or the life_generations_ghost transitional-state
+  // layer) consumes stateCount.
 
   // Build the candidate coordinate set: occupied cells ∪ their neighbors.
   const candidates = new Map<string, { col: number; row: number }>();
@@ -174,6 +183,21 @@ export function advanceLifeCellFades(colony: LifeColonyController, deltaMs: numb
     }
   }
   return removed;
+}
+
+/**
+ * Applies damage to a colony's core (a separate targetable entity from its
+ * cells — see life-targeting integration in rpg-targeting-targets.ts). Once
+ * coreHp reaches 0 this calls killLifeColonyCore to stop automata ticking and
+ * fade out remaining cells. Returns actual damage dealt (0 if already dead).
+ */
+export function damageLifeCoreEntity(colony: LifeColonyController, rawDamage: number): number {
+  if (colony.coreHp <= 0) return 0;
+  const dmg = Math.max(1, Math.floor(rawDamage));
+  const applied = Math.min(colony.coreHp, dmg);
+  colony.coreHp -= applied;
+  if (colony.coreHp <= 0) killLifeColonyCore(colony);
+  return applied;
 }
 
 /** Returns true once every cell has been cleared and the colony core is dead. */

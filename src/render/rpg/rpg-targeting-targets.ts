@@ -121,7 +121,9 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
     }
   }
   // Life zone: add each alive cell as an individual target (no LOS filtering —
-  // cells are grid-bound and always in the open arena).
+  // cells are grid-bound and always in the open arena). Also add the colony
+  // core as its own separate targetable entity — killing it stops the
+  // automata and fades out remaining cells (see life-controller.ts).
   for (const colony of ctx.lifeColonies) {
     for (const cell of colony.cells.values()) {
       if (cell.isDying) continue;
@@ -130,6 +132,13 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
       targets.push({
         kind: 'life_cell', x: center.x, y: center.y, distSq: dx * dx + dy * dy,
         lifeCell: cell, lifeColony: colony,
+      });
+    }
+    if (colony.coreHp > 0) {
+      const dx = colony.x - ctx.mote.x, dy = colony.y - ctx.mote.y;
+      targets.push({
+        kind: 'life_core', x: colony.x, y: colony.y, distSq: dx * dx + dy * dy,
+        lifeCoreColony: colony,
       });
     }
   }

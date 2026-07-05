@@ -129,6 +129,7 @@ export interface RpgTargetingCtx {
   damageEliteEnemy: (e: EliteEnemy, raw: number, pierce: number) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, raw: number) => number;
   damageLifeCell: (cell: import('./life-types').LifeCellEntity, raw: number) => number;
+  damageLifeCore: (colony: import('./life-types').LifeColonyController, raw: number) => number;
   damageBossEnemy: (raw: number, pierce: number, fromDiamond?: boolean) => number;
   // ── Procedural creature damage callbacks ──────────────────────────────────
   damageDustWispEnemy: (e: DustWispEnemy, raw: number, pierce: number) => number;

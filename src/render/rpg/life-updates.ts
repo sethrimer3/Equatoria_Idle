@@ -19,7 +19,8 @@ export interface LifeUpdateCtx {
   playerY: number;
   playerRadius: number;
   dealContactDamageToPlayer(atk: number): void;
-  /** Called once per cell removed by its death-fade completing (for XP/kill tracking). */
+  /** Called once per cell removed by its death-fade completing (for XP/kill tracking).
+   *  If several cells finish fading in the same update, this fires that many times. */
   onCellCleared?(colony: LifeColonyController): void;
   /** Called once a colony has no core HP and no remaining cells (fully cleared). */
   onColonyCleared?(colony: LifeColonyController): void;
@@ -64,7 +65,7 @@ export function updateLifeColonies(
     }
 
     const removedCount = advanceLifeCellFades(colony, deltaMs);
-    if (removedCount > 0) ctx.onCellCleared?.(colony);
+    for (let n = 0; n < removedCount; n++) ctx.onCellCleared?.(colony);
 
     if (colony.status !== 'dead' && isLifeColonyFullyCleared(colony)) {
       colony.status = 'dead';

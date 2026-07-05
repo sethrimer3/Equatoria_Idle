@@ -415,7 +415,8 @@ export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' 
   | 'nadir_cube_point'
   | 'horizon_pentagon_real'
   | 'horizon_missile'
-  | 'life_cell';
+  | 'life_cell'
+  | 'life_core';
 
 export interface ClosestTarget {
   kind: TargetKind;
@@ -458,6 +459,8 @@ export interface ClosestTarget {
   lifeCell?: import('./life-types').LifeCellEntity;
   /** Parent colony of the targeted life cell. */
   lifeColony?: import('./life-types').LifeColonyController;
+  /** Life zone colony core (life_core targets) — a separate targetable entity from its cells. */
+  lifeCoreColony?: import('./life-types').LifeColonyController;
   // ── Procedural creature targets ──────────────────────────────────────────
   dustWisp?: DustWispEnemy;
   ribbonWorm?: RibbonWormEnemy;
