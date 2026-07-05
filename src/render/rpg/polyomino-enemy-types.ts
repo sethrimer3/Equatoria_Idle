@@ -14,12 +14,17 @@ export interface PolyominoLaser {
   atk: number;
   lifeMs: number;
   hasHitPlayer: boolean;
+  /** Remaining ms of warning-line warmup before this laser can deal damage. */
+  warmupMs: number;
 }
 
 export interface PolyominoEnemy {
   readonly kind: 'verdure_polyomino';
   x: number;
   y: number;
+  /** Eased display-position centroid (smoothed toward x/y each frame) for jitter-free rendering. */
+  displayX: number;
+  displayY: number;
   hp: number;
   maxHp: number;
   atk: number;
@@ -38,6 +43,8 @@ export interface FissilePolyominoEnemy {
   readonly kind: 'verdure_polyomino_fissile';
   x: number;
   y: number;
+  displayX: number;
+  displayY: number;
   hp: number;
   maxHp: number;
   atk: number;
@@ -59,6 +66,8 @@ export interface RefractorPolyominoEnemy {
   readonly kind: 'verdure_polyomino_refractor';
   x: number;
   y: number;
+  displayX: number;
+  displayY: number;
   hp: number;
   maxHp: number;
   atk: number;

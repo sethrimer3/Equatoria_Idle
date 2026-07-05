@@ -288,11 +288,61 @@ export function updateEyeStalkEnemies(
     e.animPhase += deltaMs / 1000;
     e.stalkPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    pursueStep(e, dt, ctx);
+    e.gazeTimerMs -= deltaMs;
+
+    const chargingOrFiring = e.gazeState === 'charge' || e.gazeState === 'fire';
+    if (!chargingOrFiring) {
+      pursueStep(e, dt, ctx);
+    } else {
+      // Root in place while charging/firing the gaze beam.
+      e.vx *= Math.pow(PROC_PATROL_DAMPING, dt);
+      e.vy *= Math.pow(PROC_PATROL_DAMPING, dt);
+      e.x += e.vx * dt * 0.15;
+      e.y += e.vy * dt * 0.15;
+      ctx.clampEnemyToBounds(e);
+    }
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), EYESTALK_SIZE / 2);
-    // Pupil tracks player
+
     const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
-    e.eyeAngle = Math.atan2(dy, dx);
+    const liveAngle = Math.atan2(dy, dx);
+
+    if (e.gazeState === 'idle') {
+      e.eyeAngle = liveAngle;
+      e.blinkAmount = Math.max(0, e.blinkAmount - deltaMs * 0.01);
+      if (e.gazeTimerMs <= 0) {
+        e.gazeState = 'charge'; e.gazeTimerMs = EYESTALK_CHARGE_MS;
+        e.beamAngle = liveAngle; e.beamHasHit = false;
+      }
+    } else if (e.gazeState === 'charge') {
+      // Cone narrows toward the player as the charge progresses (see draw code).
+      e.beamAngle = liveAngle;
+      e.eyeAngle = liveAngle;
+      if (e.gazeTimerMs <= 0) { e.gazeState = 'fire'; e.gazeTimerMs = EYESTALK_FIRE_MS; }
+    } else if (e.gazeState === 'fire') {
+      e.eyeAngle = e.beamAngle;
+      if (!e.beamHasHit) {
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angDiff = Math.atan2(Math.sin(liveAngle - e.beamAngle), Math.cos(liveAngle - e.beamAngle));
+        if (dist <= EYESTALK_BEAM_RANGE && Math.abs(angDiff) <= EYESTALK_BEAM_HALFWIDTH_RAD) {
+          ctx.dealDamageToPlayer(e.atk);
+          e.beamHasHit = true;
+        }
+      }
+      if (e.gazeTimerMs <= 0) { e.gazeState = 'blink'; e.gazeTimerMs = EYESTALK_BLINK_MS; }
+    } else {
+      const half = EYESTALK_BLINK_MS / 2;
+      e.blinkAmount = e.gazeTimerMs > half ? 1 - (e.gazeTimerMs - half) / half : e.gazeTimerMs / half;
+      if (e.gazeTimerMs <= 0) {
+        e.gazeState = 'idle'; e.gazeTimerMs = EYESTALK_IDLE_MS + Math.random() * 900;
+        e.blinkAmount = 0;
+      }
+    }
+
+    // Spring-lag stalk tip trailing behind the body's own motion.
+    const targetLagX = -e.vx * 6, targetLagY = -e.vy * 6;
+    e.stalkLagX += (targetLagX - e.stalkLagX) * Math.min(1, 0.12 * dt);
+    e.stalkLagY += (targetLagY - e.stalkLagY) * Math.min(1, 0.12 * dt);
+
     contactDamage(e, dt, ctx);
   }
 }
@@ -374,9 +424,51 @@ export function updateClothGhostEnemies(
     e.animPhase += deltaMs / 1000;
     e.flutterPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    pursueStep(e, dt, ctx);
-    applyEnemyTerrainPushOut(e, ctx.getTerrainState(), CLOTHGHOST_SIZE / 2);
-    contactDamage(e, dt, ctx);
+    e.stateTimerMs -= deltaMs;
+
+    const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    if (e.ghostState === 'solid') {
+      pursueStep(e, dt, ctx);
+      applyEnemyTerrainPushOut(e, ctx.getTerrainState(), CLOTHGHOST_SIZE / 2);
+      if (dist <= CLOTHGHOST_WRAP_RANGE) {
+        e.ghostState = 'wrap'; e.stateTimerMs = CLOTHGHOST_WRAP_MS; e.wrapFraction = 0; e.wrapHasHit = false;
+      } else if (e.stateTimerMs <= 0) {
+        e.ghostState = 'intangible'; e.stateTimerMs = CLOTHGHOST_INTANGIBLE_MS;
+      }
+    } else if (e.ghostState === 'intangible') {
+      // Phased: drifts faster and ignores terrain push-out; no contact damage.
+      const dxn = dx / dist, dyn = dy / dist;
+      e.vx = e.vx * PROC_PATROL_DAMPING + dxn * PROC_PATROL_SPEED * CLOTHGHOST_INTANGIBLE_SPEED_MULT * (1 - PROC_PATROL_DAMPING);
+      e.vy = e.vy * PROC_PATROL_DAMPING + dyn * PROC_PATROL_SPEED * CLOTHGHOST_INTANGIBLE_SPEED_MULT * (1 - PROC_PATROL_DAMPING);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) { e.ghostState = 'solid'; e.stateTimerMs = CLOTHGHOST_SOLID_MS + Math.random() * 800; }
+    } else {
+      // Wrap: brief expanding cloth-arc telegraph, then a single hit.
+      e.wrapFraction = Math.min(1, e.wrapFraction + deltaMs / (CLOTHGHOST_WRAP_MS * 0.6));
+      e.vx *= Math.pow(0.9, dt); e.vy *= Math.pow(0.9, dt);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      applyEnemyTerrainPushOut(e, ctx.getTerrainState(), CLOTHGHOST_SIZE / 2);
+      if (!e.wrapHasHit && e.wrapFraction >= 0.7 && dist <= CLOTHGHOST_WRAP_RANGE + 6) {
+        ctx.dealDamageToPlayer(e.atk);
+        e.wrapHasHit = true;
+      }
+      if (e.stateTimerMs <= 0) {
+        e.ghostState = 'solid'; e.stateTimerMs = CLOTHGHOST_SOLID_MS + Math.random() * 800; e.wrapFraction = 0;
+      }
+    }
+
+    // Corner lag: four sheet corners spring-trail behind body velocity (cloth-in-air feel).
+    for (let i = 0; i < 4; i++) {
+      const targetX = -e.vx * (5 + i * 1.5), targetY = -e.vy * (5 + i * 1.5);
+      e.cornerLagX[i] += (targetX - e.cornerLagX[i]) * Math.min(1, 0.1 * dt);
+      e.cornerLagY[i] += (targetY - e.cornerLagY[i]) * Math.min(1, 0.1 * dt);
+    }
+
+    if (e.ghostState !== 'intangible') contactDamage(e, dt, ctx);
   }
 }
 
@@ -397,18 +489,51 @@ export function updatePlantTurretEnemies(
     e.x = e.rootX;
     e.y = e.rootY;
     e.vx = 0; e.vy = 0;
-    // Fire countdown
+
+    const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    // Ease the stem-bend offset toward the player each frame (subtle root sway stays anchored).
+    const targetBendX = (dx / len) * 3.5, targetBendY = (dy / len) * 1.2;
+    e.bendX += (targetBendX - e.bendX) * Math.min(1, 0.05 * dt);
+    e.bendY += (targetBendY - e.bendY) * Math.min(1, 0.05 * dt);
+
     e.fireTimerMs -= deltaMs;
-    if (e.fireTimerMs <= 0) {
-      const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      projectiles.push(makePlantProjectile(
-        e.x, e.y,
-        (dx / len) * PLANT_PROJ_SPEED,
-        (dy / len) * PLANT_PROJ_SPEED,
-      ));
-      e.fireTimerMs = PLANTTURRET_FIRE_CD_MS + Math.random() * PLANTTURRET_FIRE_JITTER;
+
+    if (e.budState === 'closed') {
+      if (e.fireTimerMs <= 0) { e.budState = 'opening'; e.budTimerMs = PLANTTURRET_BUD_OPEN_MS; }
+    } else if (e.budState === 'opening') {
+      e.budTimerMs -= deltaMs;
+      if (e.budTimerMs <= 0) {
+        e.budState = 'open';
+        e.budTimerMs = PLANTTURRET_BUD_OPEN_HOLD_MS;
+        const variety = e.shotIndex % 3;
+        if (variety === 2) {
+          // Arcing seed pod: single slower pod (visual arc handled in draw).
+          projectiles.push(makePlantProjectile(e.x, e.y, (dx / len) * PLANT_PROJ_SPEED * PLANT_PROJ_ARC_SPEED_MULT, (dy / len) * PLANT_PROJ_SPEED * PLANT_PROJ_ARC_SPEED_MULT));
+        } else if (variety === 1) {
+          // Burst shot: a small fan of pellets.
+          for (let b = 0; b < PLANTTURRET_BURST_COUNT; b++) {
+            const spread = (b - (PLANTTURRET_BURST_COUNT - 1) / 2) * 0.22;
+            const ca = Math.cos(spread), sa = Math.sin(spread);
+            const bx = (dx / len) * ca - (dy / len) * sa, by = (dx / len) * sa + (dy / len) * ca;
+            projectiles.push(makePlantProjectile(e.x, e.y, bx * PLANT_PROJ_SPEED, by * PLANT_PROJ_SPEED));
+          }
+        } else {
+          projectiles.push(makePlantProjectile(e.x, e.y, (dx / len) * PLANT_PROJ_SPEED, (dy / len) * PLANT_PROJ_SPEED));
+        }
+        e.shotIndex++;
+      }
+    } else if (e.budState === 'open') {
+      e.budTimerMs -= deltaMs;
+      if (e.budTimerMs <= 0) { e.budState = 'recoil'; e.budTimerMs = PLANTTURRET_RECOIL_MS; }
+    } else {
+      e.budTimerMs -= deltaMs;
+      if (e.budTimerMs <= 0) {
+        e.budState = 'closed';
+        e.fireTimerMs = PLANTTURRET_FIRE_CD_MS + Math.random() * PLANTTURRET_FIRE_JITTER;
+      }
     }
+
     contactDamage(e, dt, ctx);
   }
 }
@@ -451,16 +576,59 @@ export function updateGearInsectEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   for (const e of enemies) {
     e.animPhase += deltaMs / 1000;
-    e.gearAngle += (deltaMs / 1000) * 3.5;
-    e.legPhase  += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    pursueStep(e, dt, ctx);
+    e.stateTimerMs -= deltaMs;
+
+    const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    if (e.moveState === 'scuttle') {
+      e.legPhase += (deltaMs / 1000) * 5.0;
+      e.gearAngle += (deltaMs / 1000) * 3.5;
+      e.vx = e.vx * PROC_PATROL_DAMPING + (dx / len) * GEARINSECT_SCUTTLE_SPEED * (1 - PROC_PATROL_DAMPING);
+      e.vy = e.vy * PROC_PATROL_DAMPING + (dy / len) * GEARINSECT_SCUTTLE_SPEED * (1 - PROC_PATROL_DAMPING);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) { e.moveState = 'pause'; e.stateTimerMs = GEARINSECT_PAUSE_MS; }
+    } else if (e.moveState === 'pause') {
+      e.legPhase += (deltaMs / 1000) * 0.5;
+      e.gearAngle += (deltaMs / 1000) * 1.0;
+      e.vx *= Math.pow(0.85, dt); e.vy *= Math.pow(0.85, dt);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) { e.moveState = 'charge'; e.stateTimerMs = GEARINSECT_CHARGE_MS; }
+    } else if (e.moveState === 'charge') {
+      e.legPhase += (deltaMs / 1000) * 0.5;
+      e.gearAngle += (deltaMs / 1000) * 6.0;
+      e.vx *= Math.pow(0.8, dt); e.vy *= Math.pow(0.8, dt);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) {
+        e.chargeDirX = dx / len; e.chargeDirY = dy / len;
+        e.moveState = 'ricochet'; e.stateTimerMs = GEARINSECT_RICOCHET_MS;
+      }
+    } else {
+      e.legPhase += (deltaMs / 1000) * 8.0;
+      e.gearAngle += (deltaMs / 1000) * 9.0;
+      e.vx = e.chargeDirX * GEARINSECT_RICOCHET_SPEED;
+      e.vy = e.chargeDirY * GEARINSECT_RICOCHET_SPEED;
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      const vp = ctx.viewport;
+      if (e.x <= vp.left || e.x >= vp.right) e.chargeDirX = -e.chargeDirX;
+      if (e.y <= vp.top || e.y >= vp.bottom) e.chargeDirY = -e.chargeDirY;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) { e.moveState = 'scuttle'; e.stateTimerMs = GEARINSECT_SCUTTLE_MS; }
+    }
+
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), GEARINSECT_SIZE / 2);
     contactDamage(e, dt, ctx);
   }
 }
 
 // ── Spider Crawler ─────────────────────────────────────────────────────────────
+
+const SPIDER_FOOT_REST_X = [-6, 6, -6, 6];
+const SPIDER_FOOT_REST_Y = [-5, -5, 5, 5];
 
 export function updateSpiderCrawlerEnemies(
   enemies: SpiderCrawlerEnemy[],
@@ -470,10 +638,95 @@ export function updateSpiderCrawlerEnemies(
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
   for (const e of enemies) {
     e.animPhase += deltaMs / 1000;
-    e.legPhase  += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    pursueStep(e, dt, ctx);
+    e.stateTimerMs -= deltaMs;
+    e.webCdMs -= deltaMs;
+    if (e.webActiveMs > 0) e.webActiveMs -= deltaMs;
+
+    const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const dxn = dx / dist, dyn = dy / dist;
+
+    if (e.spiderState === 'stalk') {
+      e.legPhase += (deltaMs / 1000) * 2.2;
+      e.crouchAmount = Math.max(0, e.crouchAmount - deltaMs * 0.006);
+      e.vx = e.vx * PROC_PATROL_DAMPING + dxn * PROC_PATROL_SPEED * 0.6 * (1 - PROC_PATROL_DAMPING);
+      e.vy = e.vy * PROC_PATROL_DAMPING + dyn * PROC_PATROL_SPEED * 0.6 * (1 - PROC_PATROL_DAMPING);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.webCdMs <= 0 && dist <= SPIDERCRAWLER_WEB_RANGE * 1.2) {
+        e.webCdMs = SPIDERCRAWLER_WEB_CD_MS;
+        e.webActiveMs = SPIDERCRAWLER_WEB_ACTIVE_MS;
+        e.webAngle = Math.atan2(dy, dx);
+      }
+      if (e.stateTimerMs <= 0) {
+        if (dist <= SPIDERCRAWLER_POUNCE_RANGE && Math.random() < 0.6) {
+          e.spiderState = 'crouch'; e.stateTimerMs = SPIDERCRAWLER_CROUCH_MS;
+        } else {
+          e.spiderState = 'sidestep'; e.stateTimerMs = SPIDERCRAWLER_SIDESTEP_MS;
+          e.sidestepDir = -e.sidestepDir;
+        }
+      }
+    } else if (e.spiderState === 'sidestep') {
+      e.legPhase += (deltaMs / 1000) * 3.2;
+      e.crouchAmount = Math.max(0, e.crouchAmount - deltaMs * 0.006);
+      const perpX = -dyn * e.sidestepDir, perpY = dxn * e.sidestepDir;
+      e.vx = e.vx * PROC_PATROL_DAMPING + perpX * PROC_PATROL_SPEED * 0.8 * (1 - PROC_PATROL_DAMPING);
+      e.vy = e.vy * PROC_PATROL_DAMPING + perpY * PROC_PATROL_SPEED * 0.8 * (1 - PROC_PATROL_DAMPING);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) { e.spiderState = 'stalk'; e.stateTimerMs = SPIDERCRAWLER_STALK_MS; }
+    } else if (e.spiderState === 'crouch') {
+      e.legPhase += (deltaMs / 1000) * 0.6;
+      e.crouchAmount = Math.min(1, e.crouchAmount + deltaMs / SPIDERCRAWLER_CROUCH_MS);
+      e.vx *= Math.pow(0.8, dt); e.vy *= Math.pow(0.8, dt);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) {
+        e.spiderState = 'pounce'; e.stateTimerMs = SPIDERCRAWLER_POUNCE_MS;
+        e.vx = dxn * SPIDERCRAWLER_POUNCE_SPEED; e.vy = dyn * SPIDERCRAWLER_POUNCE_SPEED;
+      }
+    } else if (e.spiderState === 'pounce') {
+      e.legPhase += (deltaMs / 1000) * 6.0;
+      e.crouchAmount = Math.max(0, e.crouchAmount - deltaMs * 0.01);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) { e.spiderState = 'recover'; e.stateTimerMs = SPIDERCRAWLER_RECOVER_MS; }
+    } else {
+      e.legPhase += (deltaMs / 1000) * 1.5;
+      e.vx *= Math.pow(0.85, dt); e.vy *= Math.pow(0.85, dt);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) { e.spiderState = 'stalk'; e.stateTimerMs = SPIDERCRAWLER_STALK_MS; }
+    }
+
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), SPIDERCRAWLER_SIZE / 2);
+
+    // IK-style foot planting: replant a foot once it stretches too far from its
+    // body-relative rest offset (feet stay put while the body moves underneath them).
+    const stretchSq = SPIDERCRAWLER_FOOT_STRETCH * SPIDERCRAWLER_FOOT_STRETCH;
+    for (let i = 0; i < 4; i++) {
+      const restX = e.x + SPIDER_FOOT_REST_X[i]!, restY = e.y + SPIDER_FOOT_REST_Y[i]!;
+      const fdx = e.footX[i] - restX, fdy = e.footY[i] - restY;
+      if (fdx * fdx + fdy * fdy > stretchSq) {
+        e.footX[i] = restX; e.footY[i] = restY;
+      }
+    }
+
+    // Web-cone hazard: while active, slow the player if standing inside the cone.
+    if (e.webActiveMs > 0) {
+      const pdx = ctx.mote.x - e.x, pdy = ctx.mote.y - e.y;
+      const pdist = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
+      if (pdist <= SPIDERCRAWLER_WEB_RANGE) {
+        const pAngle = Math.atan2(pdy, pdx);
+        const diff = Math.atan2(Math.sin(pAngle - e.webAngle), Math.cos(pAngle - e.webAngle));
+        if (Math.abs(diff) <= SPIDERCRAWLER_WEB_HALFWIDTH_RAD) {
+          ctx.mote.vx *= SPIDERCRAWLER_WEB_SLOW_MULT;
+          ctx.mote.vy *= SPIDERCRAWLER_WEB_SLOW_MULT;
+        }
+      }
+    }
+
     contactDamage(e, dt, ctx);
   }
 }

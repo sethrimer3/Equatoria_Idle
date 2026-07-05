@@ -42,6 +42,11 @@ import {
   MOTESWARM_SIZE, MOTESWARM_COLOR, MOTESWARM_GLOW, MOTESWARM_ORBIT_DIST, MOTESWARM_MOTE_COUNT,
   SHADOWHAND_SIZE, SHADOWHAND_COLOR, SHADOWHAND_GLOW,
   PLANT_PROJ_SIZE, PLANT_PROJ_COLOR, PLANT_PROJ_GLOW,
+  LANTERNMOTH_PULSE_RADIUS,
+  EYESTALK_CHARGE_MS, EYESTALK_BEAM_HALFWIDTH_RAD, EYESTALK_BEAM_RANGE,
+  CLOTHGHOST_WRAP_RANGE,
+  PLANTTURRET_BUD_OPEN_MS, PLANTTURRET_RECOIL_MS,
+  SPIDERCRAWLER_WEB_ACTIVE_MS, SPIDERCRAWLER_WEB_HALFWIDTH_RAD, SPIDERCRAWLER_WEB_RANGE,
 } from './rpg-procedural-constants';
 import {
   drawSandFishEnemies, drawQuartzFishEnemies, drawRubyFishEnemies,
@@ -135,9 +140,11 @@ export function drawRibbonWormEnemies(
   for (const e of enemies) {
     if (e.segX.length === 0) continue;
     canvas.save();
-    applyGlow(canvas, RIBBONWORM_GLOW, 6);
-    canvas.strokeStyle = RIBBONWORM_COLOR;
-    canvas.lineWidth = RIBBONWORM_SIZE * 1.5;
+    // Coil telegraph: glow intensifies and shifts warmer as the lunge approaches.
+    const telegraph = e.wormState === 'coil' ? e.coilAmount : 0;
+    applyGlow(canvas, RIBBONWORM_GLOW, 6 + telegraph * 10);
+    canvas.strokeStyle = telegraph > 0.5 ? '#e8f088' : RIBBONWORM_COLOR;
+    canvas.lineWidth = RIBBONWORM_SIZE * (1.5 + (e.wormState === 'lunge' ? 0.3 : 0));
     canvas.lineCap = 'round';
     canvas.lineJoin = 'round';
     canvas.beginPath(); canvas.moveTo(e.segX[0], e.segY[0]);
@@ -161,28 +168,50 @@ export function drawLanternMothEnemies(
 ): void {
   for (const e of enemies) {
     canvas.save();
-    const flapOpen = Math.abs(Math.sin(e.flapPhase * 5.0));
-    // Wing ellipses
-    const wingW = LANTERNMOTH_SIZE * 2.0 * flapOpen + 1;
-    const wingH = LANTERNMOTH_SIZE * 0.9;
-    applyGlow(canvas, LANTERNMOTH_GLOW, 8);
+    // Asymmetric wing phase offsets + squash/stretch so wings don't mirror perfectly.
+    const flapOpenL = Math.abs(Math.sin(e.flapPhase * 5.0 + e.wingPhaseOffsetL));
+    const flapOpenR = Math.abs(Math.sin(e.flapPhase * 5.0 + e.wingPhaseOffsetR));
+    const wingWL = LANTERNMOTH_SIZE * 2.0 * flapOpenL + 1;
+    const wingWR = LANTERNMOTH_SIZE * 2.0 * flapOpenR + 1;
+    const wingHL = LANTERNMOTH_SIZE * (0.9 - flapOpenL * 0.15);
+    const wingHR = LANTERNMOTH_SIZE * (0.9 - flapOpenR * 0.15);
+    applyGlow(canvas, LANTERNMOTH_GLOW, 8 + e.chargeGlow * 8);
     canvas.globalAlpha = 0.6;
     canvas.fillStyle = LANTERNMOTH_COLOR;
     // Left wing
     canvas.save(); canvas.translate(e.x - LANTERNMOTH_SIZE * 1.2, e.y);
-    canvas.scale(wingW / LANTERNMOTH_SIZE, wingH / LANTERNMOTH_SIZE);
+    canvas.scale(wingWL / LANTERNMOTH_SIZE, wingHL / LANTERNMOTH_SIZE);
     canvas.beginPath(); canvas.arc(0, 0, LANTERNMOTH_SIZE, 0, Math.PI * 2); canvas.fill();
     canvas.restore();
     // Right wing
     canvas.save(); canvas.translate(e.x + LANTERNMOTH_SIZE * 1.2, e.y);
-    canvas.scale(wingW / LANTERNMOTH_SIZE, wingH / LANTERNMOTH_SIZE);
+    canvas.scale(wingWR / LANTERNMOTH_SIZE, wingHR / LANTERNMOTH_SIZE);
     canvas.beginPath(); canvas.arc(0, 0, LANTERNMOTH_SIZE, 0, Math.PI * 2); canvas.fill();
     canvas.restore();
     // Body teardrop
     canvas.globalAlpha = 1;
     canvas.fillStyle = LANTERNMOTH_GLOW;
     canvas.beginPath(); canvas.arc(e.x, e.y, LANTERNMOTH_SIZE * 0.7, 0, Math.PI * 2); canvas.fill();
+    // Charge-up glow ring — grows brighter as the lure attack approaches.
+    if (e.chargeGlow > 0.01) {
+      canvas.globalAlpha = e.chargeGlow * 0.55;
+      canvas.strokeStyle = '#fff2c0';
+      canvas.lineWidth = 1.5;
+      canvas.beginPath();
+      canvas.arc(e.x, e.y, LANTERNMOTH_SIZE * (1.3 + e.chargeGlow * 0.6), 0, Math.PI * 2);
+      canvas.stroke();
+    }
+    // Lure pulse — an outward ring while actively pulsing.
+    if (e.lureState === 'pulse') {
+      canvas.globalAlpha = 0.35;
+      canvas.strokeStyle = LANTERNMOTH_GLOW;
+      canvas.lineWidth = 1;
+      canvas.beginPath();
+      canvas.arc(e.x, e.y, LANTERNMOTH_PULSE_RADIUS, 0, Math.PI * 2);
+      canvas.stroke();
+    }
     clearGlow(canvas);
+    canvas.globalAlpha = 1;
     drawHitFlash(canvas, e.x, e.y, LANTERNMOTH_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, LANTERNMOTH_SIZE, hpFrac(e));
     canvas.restore();
@@ -198,23 +227,46 @@ export function drawEyeStalkEnemies(
   for (const e of enemies) {
     canvas.save();
     const swayX = Math.sin(e.stalkPhase * 2.0) * 4;
-    const tipX = e.x + swayX, tipY = e.y - EYESTALK_SIZE * 2.2;
+    // Spring-lag offset trails the stalk tip slightly behind the body's own motion.
+    const tipX = e.x + swayX + e.stalkLagX * 0.4, tipY = e.y - EYESTALK_SIZE * 2.2 + e.stalkLagY * 0.4;
     // Stalk line
-    applyGlow(canvas, EYESTALK_GLOW, 5);
-    canvas.strokeStyle = EYESTALK_COLOR;
+    const charging = e.gazeState === 'charge';
+    applyGlow(canvas, EYESTALK_GLOW, charging ? 8 : 5);
+    canvas.strokeStyle = charging ? '#fff0a0' : EYESTALK_COLOR;
     canvas.lineWidth = 2;
     canvas.beginPath(); canvas.moveTo(e.x, e.y); canvas.lineTo(tipX, tipY); canvas.stroke();
     // Blob base
     canvas.fillStyle = EYESTALK_COLOR;
     canvas.beginPath(); canvas.arc(e.x, e.y, EYESTALK_SIZE, 0, Math.PI * 2); canvas.fill();
-    // Eye sclera
+    // Eye sclera — vertical scale collapses toward 0 during a blink.
+    const openFrac = 1 - e.blinkAmount;
+    canvas.save();
+    canvas.translate(tipX, tipY);
+    canvas.scale(1, Math.max(0.05, openFrac));
     canvas.fillStyle = '#f0f0e0';
-    canvas.beginPath(); canvas.arc(tipX, tipY, 4, 0, Math.PI * 2); canvas.fill();
-    // Pupil
-    const px = tipX + Math.cos(e.eyeAngle) * 1.5;
-    const py = tipY + Math.sin(e.eyeAngle) * 1.5;
-    canvas.fillStyle = '#202030';
-    canvas.beginPath(); canvas.arc(px, py, 2, 0, Math.PI * 2); canvas.fill();
+    canvas.beginPath(); canvas.arc(0, 0, 4, 0, Math.PI * 2); canvas.fill();
+    if (openFrac > 0.2) {
+      const px = Math.cos(e.eyeAngle) * 1.5;
+      const py = Math.sin(e.eyeAngle) * 1.5 / Math.max(0.05, openFrac);
+      canvas.fillStyle = '#202030';
+      canvas.beginPath(); canvas.arc(px, py, 2, 0, Math.PI * 2); canvas.fill();
+    }
+    canvas.restore();
+
+    // Gaze charge cone — narrows as the charge timer counts down toward fire.
+    if (e.gazeState === 'charge' || e.gazeState === 'fire') {
+      const chargeFrac = e.gazeState === 'fire' ? 0 : Math.max(0, Math.min(1, 1 - e.gazeTimerMs / EYESTALK_CHARGE_MS));
+      const halfWidth = e.gazeState === 'fire' ? EYESTALK_BEAM_HALFWIDTH_RAD : EYESTALK_BEAM_HALFWIDTH_RAD + (1 - chargeFrac) * 0.35;
+      canvas.globalAlpha = e.gazeState === 'fire' ? 0.55 : 0.22 + chargeFrac * 0.2;
+      canvas.fillStyle = e.gazeState === 'fire' ? '#fff6c8' : EYESTALK_GLOW;
+      canvas.beginPath();
+      canvas.moveTo(tipX, tipY);
+      canvas.lineTo(tipX + Math.cos(e.beamAngle - halfWidth) * EYESTALK_BEAM_RANGE, tipY + Math.sin(e.beamAngle - halfWidth) * EYESTALK_BEAM_RANGE);
+      canvas.lineTo(tipX + Math.cos(e.beamAngle + halfWidth) * EYESTALK_BEAM_RANGE, tipY + Math.sin(e.beamAngle + halfWidth) * EYESTALK_BEAM_RANGE);
+      canvas.closePath();
+      canvas.fill();
+      canvas.globalAlpha = 1;
+    }
     clearGlow(canvas);
     drawHitFlash(canvas, e.x, e.y, EYESTALK_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, EYESTALK_SIZE, hpFrac(e));
@@ -272,19 +324,34 @@ export function drawClothGhostEnemies(
   for (const e of enemies) {
     canvas.save();
     const flutter = Math.sin(e.flutterPhase * 4.0) * CLOTHGHOST_SIZE * 0.5;
-    const opacity = 0.55 + 0.2 * Math.sin(e.animPhase * 1.8);
-    applyGlow(canvas, CLOTHGHOST_GLOW, 10);
+    const intangible = e.ghostState === 'intangible';
+    const opacity = (intangible ? 0.28 : 0.55) + 0.2 * Math.sin(e.animPhase * 1.8);
+    applyGlow(canvas, CLOTHGHOST_GLOW, intangible ? 16 : 10);
     canvas.globalAlpha = opacity;
     canvas.fillStyle = CLOTHGHOST_COLOR;
-    // Sheet: three-point bezier
-    const topY = e.y - CLOTHGHOST_SIZE * 1.5;
+    // Sheet: four corners lag behind body motion (cloth-in-air drag), fluttering as it moves.
+    const topY = e.y - CLOTHGHOST_SIZE * 1.5 + e.cornerLagY[0] * 0.5;
+    const topX1 = e.x - CLOTHGHOST_SIZE * 1.2 + e.cornerLagX[0] * 0.5;
+    const topX2 = e.x + CLOTHGHOST_SIZE * 1.2 + e.cornerLagX[1] * 0.5;
+    const botY = e.y + CLOTHGHOST_SIZE * 1.2 + e.cornerLagY[2] * 0.5;
+    const botX1 = e.x - CLOTHGHOST_SIZE * 0.5 + e.cornerLagX[2] * 0.5;
+    const botX2 = e.x + CLOTHGHOST_SIZE * 0.5 + e.cornerLagX[3] * 0.5;
     canvas.beginPath();
-    canvas.moveTo(e.x - CLOTHGHOST_SIZE * 1.2, topY);
-    canvas.quadraticCurveTo(e.x + flutter, e.y - CLOTHGHOST_SIZE * 0.5, e.x - CLOTHGHOST_SIZE * 0.5, e.y + CLOTHGHOST_SIZE * 1.2);
-    canvas.quadraticCurveTo(e.x, e.y + CLOTHGHOST_SIZE * 1.8, e.x + CLOTHGHOST_SIZE * 0.5, e.y + CLOTHGHOST_SIZE * 1.2);
-    canvas.quadraticCurveTo(e.x - flutter, e.y - CLOTHGHOST_SIZE * 0.5, e.x + CLOTHGHOST_SIZE * 1.2, topY);
+    canvas.moveTo(topX1, topY);
+    canvas.quadraticCurveTo(e.x + flutter, e.y - CLOTHGHOST_SIZE * 0.5, botX1, botY);
+    canvas.quadraticCurveTo(e.x, e.y + CLOTHGHOST_SIZE * 1.8, botX2, botY);
+    canvas.quadraticCurveTo(e.x - flutter, e.y - CLOTHGHOST_SIZE * 0.5, topX2, topY);
     canvas.closePath();
     canvas.fill();
+    // Wrap telegraph — an expanding cloth arc that reads as an incoming grab.
+    if (e.ghostState === 'wrap') {
+      canvas.globalAlpha = 0.4 * (1 - e.wrapFraction * 0.4);
+      canvas.strokeStyle = '#ffffff';
+      canvas.lineWidth = 2;
+      canvas.beginPath();
+      canvas.arc(e.x, e.y, CLOTHGHOST_SIZE + e.wrapFraction * CLOTHGHOST_WRAP_RANGE, 0, Math.PI * 2);
+      canvas.stroke();
+    }
     clearGlow(canvas);
     canvas.globalAlpha = 1;
     drawHitFlash(canvas, e.x, e.y, CLOTHGHOST_SIZE, e.hitFlashMs);
@@ -301,25 +368,32 @@ export function drawPlantTurretEnemies(
 ): void {
   for (const e of enemies) {
     canvas.save();
-    const sway = Math.sin(e.stemPhase * 1.8) * 3;
-    applyGlow(canvas, PLANTTURRET_GLOW, 8);
+    const sway = Math.sin(e.stemPhase * 1.8) * 3 + e.bendX;
+    // Bud scale: closed → opening (telegraph) → open (fire) → recoil (bounce back).
+    const budScale = e.budState === 'closed' ? 0.72
+      : e.budState === 'opening' ? 0.72 + 0.28 * (1 - e.budTimerMs / PLANTTURRET_BUD_OPEN_MS)
+      : e.budState === 'open' ? 1.15
+      : 0.85 + 0.15 * (e.budTimerMs / PLANTTURRET_RECOIL_MS);
+    const headSize = PLANTTURRET_SIZE * budScale;
+    const recoilPull = e.budState === 'recoil' ? (e.budTimerMs / PLANTTURRET_RECOIL_MS) * 2 : 0;
+    applyGlow(canvas, PLANTTURRET_GLOW, 8 + (e.budState === 'opening' ? 6 : 0));
     canvas.strokeStyle = PLANTTURRET_COLOR;
     canvas.lineWidth = 3;
     canvas.lineCap = 'round';
-    // Stem
+    // Stem bends toward the player and recoils slightly opposite after firing.
     canvas.beginPath();
     canvas.moveTo(e.x, e.y + PLANTTURRET_SIZE + 4);
-    canvas.quadraticCurveTo(e.x + sway, e.y, e.x + sway, e.y - PLANTTURRET_SIZE);
+    canvas.quadraticCurveTo(e.x + sway - recoilPull, e.y, e.x + sway - recoilPull, e.y - PLANTTURRET_SIZE - e.bendY);
     canvas.stroke();
     // Flower head
     canvas.fillStyle = PLANTTURRET_GLOW;
-    canvas.beginPath(); canvas.arc(e.x + sway, e.y - PLANTTURRET_SIZE, PLANTTURRET_SIZE, 0, Math.PI * 2); canvas.fill();
+    canvas.beginPath(); canvas.arc(e.x + sway - recoilPull, e.y - PLANTTURRET_SIZE - e.bendY, headSize, 0, Math.PI * 2); canvas.fill();
     // Petal ring
     canvas.fillStyle = '#c8ff80';
     for (let i = 0; i < 6; i++) {
       const pa = (i / 6) * Math.PI * 2 + e.stemPhase;
-      const px = e.x + sway + Math.cos(pa) * (PLANTTURRET_SIZE + 3);
-      const py = e.y - PLANTTURRET_SIZE + Math.sin(pa) * (PLANTTURRET_SIZE + 3);
+      const px = e.x + sway - recoilPull + Math.cos(pa) * (headSize + 3);
+      const py = e.y - PLANTTURRET_SIZE - e.bendY + Math.sin(pa) * (headSize + 3);
       canvas.beginPath(); canvas.arc(px, py, 2.5, 0, Math.PI * 2); canvas.fill();
     }
     clearGlow(canvas);
@@ -366,12 +440,15 @@ export function drawGearInsectEnemies(
   const TEETH = 8;
   for (const e of enemies) {
     canvas.save();
-    applyGlow(canvas, GEARINSECT_GLOW, 6);
-    // Legs (3 per side)
-    canvas.strokeStyle = GEARINSECT_COLOR;
+    const charging = e.moveState === 'charge';
+    const paused = e.moveState === 'pause';
+    applyGlow(canvas, GEARINSECT_GLOW, charging ? 12 : 6);
+    // Legs (3 per side) — alternating pairs; nearly still while paused/charging.
+    canvas.strokeStyle = charging ? '#e8c860' : GEARINSECT_COLOR;
     canvas.lineWidth = 1.5;
+    const legRate = paused || charging ? 0.3 : 4;
     for (let i = 0; i < 3; i++) {
-      const legSwing = Math.sin(e.legPhase * 4 + i * 1.2) * 0.4;
+      const legSwing = Math.sin(e.legPhase * legRate + i * 1.2) * (paused || charging ? 0.08 : 0.4);
       const baseAngle = (Math.PI * 0.25 + i * 0.55);
       // Left leg
       const lax = e.x - GEARINSECT_SIZE * Math.cos(baseAngle);
@@ -386,8 +463,8 @@ export function drawGearInsectEnemies(
       canvas.lineTo(e.x + GEARINSECT_SIZE + 6 - legSwing * 4, lay + 5);
       canvas.stroke();
     }
-    // Gear body
-    canvas.fillStyle = GEARINSECT_COLOR;
+    // Gear body — spins faster while charging/ricocheting for a "revving" read.
+    canvas.fillStyle = charging ? '#e8c860' : GEARINSECT_COLOR;
     canvas.translate(e.x, e.y);
     canvas.rotate(e.gearAngle);
     canvas.beginPath();
@@ -416,32 +493,44 @@ export function drawSpiderCrawlerEnemies(
 ): void {
   for (const e of enemies) {
     canvas.save();
-    applyGlow(canvas, SPIDERCRAWLER_GLOW, 5);
-    canvas.strokeStyle = SPIDERCRAWLER_COLOR;
+    const crouching = e.spiderState === 'crouch';
+    applyGlow(canvas, SPIDERCRAWLER_GLOW, crouching ? 9 : 5);
+    canvas.strokeStyle = crouching ? '#ffd090' : SPIDERCRAWLER_COLOR;
     canvas.lineWidth = 1.5;
-    // 8 legs (4 per side), alternating pairs
+    // 8 legs (4 per side) drawn IK-style: from a body attach point out to the planted foot.
     for (let i = 0; i < 4; i++) {
-      const swing = Math.sin(e.legPhase * 5 + i * Math.PI / 2) * 0.45;
-      const baseY = e.y - SPIDERCRAWLER_SIZE * 0.5 + i * 3;
-      // Left
+      const attachY = e.y + (i < 2 ? -SPIDERCRAWLER_SIZE * 0.5 : SPIDERCRAWLER_SIZE * 0.5);
+      const side = i % 2 === 0 ? -1 : 1;
+      const attachX = e.x + side * SPIDERCRAWLER_SIZE * 0.6;
+      const footIdx = i;
       canvas.beginPath();
-      canvas.moveTo(e.x - SPIDERCRAWLER_SIZE, baseY);
-      canvas.lineTo(e.x - SPIDERCRAWLER_SIZE - 7 + swing * 3, baseY + 7 + swing * 3);
-      canvas.stroke();
-      // Right
-      canvas.beginPath();
-      canvas.moveTo(e.x + SPIDERCRAWLER_SIZE, baseY);
-      canvas.lineTo(e.x + SPIDERCRAWLER_SIZE + 7 - swing * 3, baseY + 7 + swing * 3);
+      canvas.moveTo(attachX, attachY);
+      canvas.lineTo(e.footX[footIdx], e.footY[footIdx]);
       canvas.stroke();
     }
-    // Body (abdomen ellipse)
+    // Body (abdomen ellipse) — squashes down during the crouch telegraph.
+    const squashY = 1 - e.crouchAmount * 0.35;
+    const squashX = 1 + e.crouchAmount * 0.2;
     canvas.fillStyle = SPIDERCRAWLER_COLOR;
     canvas.beginPath();
-    canvas.ellipse(e.x, e.y, SPIDERCRAWLER_SIZE, SPIDERCRAWLER_SIZE * 0.65, 0, 0, Math.PI * 2);
+    canvas.ellipse(e.x, e.y, SPIDERCRAWLER_SIZE * squashX, SPIDERCRAWLER_SIZE * 0.65 * squashY, 0, 0, Math.PI * 2);
     canvas.fill();
     // Head dot
     canvas.fillStyle = SPIDERCRAWLER_GLOW;
-    canvas.beginPath(); canvas.arc(e.x, e.y - SPIDERCRAWLER_SIZE * 0.7, SPIDERCRAWLER_SIZE * 0.4, 0, Math.PI * 2); canvas.fill();
+    canvas.beginPath(); canvas.arc(e.x, e.y - SPIDERCRAWLER_SIZE * 0.7 * squashY, SPIDERCRAWLER_SIZE * 0.4, 0, Math.PI * 2); canvas.fill();
+    // Web-cone telegraph/hazard
+    if (e.webActiveMs > 0) {
+      const frac = Math.max(0, Math.min(1, e.webActiveMs / SPIDERCRAWLER_WEB_ACTIVE_MS));
+      canvas.globalAlpha = 0.22 + frac * 0.15;
+      canvas.fillStyle = '#e8f0ff';
+      canvas.beginPath();
+      canvas.moveTo(e.x, e.y);
+      canvas.lineTo(e.x + Math.cos(e.webAngle - SPIDERCRAWLER_WEB_HALFWIDTH_RAD) * SPIDERCRAWLER_WEB_RANGE, e.y + Math.sin(e.webAngle - SPIDERCRAWLER_WEB_HALFWIDTH_RAD) * SPIDERCRAWLER_WEB_RANGE);
+      canvas.lineTo(e.x + Math.cos(e.webAngle + SPIDERCRAWLER_WEB_HALFWIDTH_RAD) * SPIDERCRAWLER_WEB_RANGE, e.y + Math.sin(e.webAngle + SPIDERCRAWLER_WEB_HALFWIDTH_RAD) * SPIDERCRAWLER_WEB_RANGE);
+      canvas.closePath();
+      canvas.fill();
+      canvas.globalAlpha = 1;
+    }
     clearGlow(canvas);
     drawHitFlash(canvas, e.x, e.y, SPIDERCRAWLER_SIZE, e.hitFlashMs);
     drawHpBar(canvas, e.x, e.y, SPIDERCRAWLER_SIZE, hpFrac(e));

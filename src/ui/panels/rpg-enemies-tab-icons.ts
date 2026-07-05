@@ -230,14 +230,14 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
       break;
     case 'proc_ribbonworm': {
       const { segX, segY } = makeRibbonSegs(cx, cy);
-      state = { kind: 'ribbonworm', e: { ...base, kind: 'proc_ribbonworm', animPhase: ap, segX, segY } };
+      state = { kind: 'ribbonworm', e: { ...base, kind: 'proc_ribbonworm', animPhase: ap, segX, segY, segContactCdMs: new Float64Array(segX.length), wormState: 'pursue', stateTimerMs: 9999, lungeDirX: 0, lungeDirY: 0, coilAmount: 0 } };
       break;
     }
     case 'proc_lanternmoth':
-      state = { kind: 'lanternmoth', e: { ...base, kind: 'proc_lanternmoth', animPhase: ap, flapPhase: ap } };
+      state = { kind: 'lanternmoth', e: { ...base, kind: 'proc_lanternmoth', animPhase: ap, flapPhase: ap, wingPhaseOffsetL: 0, wingPhaseOffsetR: 0.15, hoverPhase: ap, lureState: 'idle', lureTimerMs: 9999, chargeGlow: 0 } };
       break;
     case 'proc_eyestalk':
-      state = { kind: 'eyestalk',   e: { ...base, kind: 'proc_eyestalk', animPhase: ap, stalkPhase: ap, eyeAngle: ap } };
+      state = { kind: 'eyestalk',   e: { ...base, kind: 'proc_eyestalk', animPhase: ap, stalkPhase: ap, eyeAngle: ap, stalkLagX: 0, stalkLagY: 0, gazeState: 'idle', gazeTimerMs: 9999, beamAngle: 0, blinkAmount: 0, beamHasHit: false } };
       break;
     case 'proc_jellyfish': {
       const segX = new Float64Array(24).fill(cx), segY = new Float64Array(24).fill(cy);
@@ -245,17 +245,17 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
       break;
     }
     case 'proc_clothghost':
-      state = { kind: 'clothghost', e: { ...base, kind: 'proc_clothghost', animPhase: ap, flutterPhase: ap } };
+      state = { kind: 'clothghost', e: { ...base, kind: 'proc_clothghost', animPhase: ap, flutterPhase: ap, cornerLagX: new Float64Array(4), cornerLagY: new Float64Array(4), ghostState: 'solid', stateTimerMs: 9999, wrapFraction: 0, wrapHasHit: false } };
       break;
     case 'proc_plantturret':
       // Position the plant turret slightly lower so the stem and flower both fit.
-      state = { kind: 'plantturret', e: { ...base, x: cx, y: cy + 4, kind: 'proc_plantturret', animPhase: ap, stemPhase: ap, fireTimerMs: 9999, rootX: cx, rootY: cy + 4 } };
+      state = { kind: 'plantturret', e: { ...base, x: cx, y: cy + 4, kind: 'proc_plantturret', animPhase: ap, stemPhase: ap, fireTimerMs: 9999, rootX: cx, rootY: cy + 4, bendX: 0, bendY: 0, budState: 'closed', budTimerMs: 0, shotIndex: 0 } };
       break;
     case 'proc_gearinsect':
-      state = { kind: 'gearinsect', e: { ...base, kind: 'proc_gearinsect', animPhase: ap, gearAngle: ap, legPhase: ap } };
+      state = { kind: 'gearinsect', e: { ...base, kind: 'proc_gearinsect', animPhase: ap, gearAngle: ap, legPhase: ap, moveState: 'scuttle', stateTimerMs: 9999, chargeDirX: 0, chargeDirY: 0 } };
       break;
     case 'proc_spidercrawler':
-      state = { kind: 'spidercrawler', e: { ...base, kind: 'proc_spidercrawler', animPhase: ap, legPhase: ap } };
+      state = { kind: 'spidercrawler', e: { ...base, kind: 'proc_spidercrawler', animPhase: ap, legPhase: ap, spiderState: 'stalk', stateTimerMs: 9999, sidestepDir: 1, crouchAmount: 0, footX: new Float64Array([cx - 6, cx + 6, cx - 6, cx + 6]), footY: new Float64Array([cy - 5, cy - 5, cy + 5, cy + 5]), webCdMs: 9999, webActiveMs: 0, webAngle: 0 } };
       break;
     case 'proc_moteswarm':
       state = { kind: 'moteswarm', e: { ...base, kind: 'proc_moteswarm', animPhase: ap, swarmAngle: ap, moteAngles: makeMoteAngles() } };

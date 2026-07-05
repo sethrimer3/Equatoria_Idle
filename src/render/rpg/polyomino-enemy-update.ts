@@ -11,6 +11,8 @@ import {
   POLYOMINO_CLUSTER,
   POLYOMINO_CONTACT_CD_MS,
   POLYOMINO_LASER_LIFE_MS,
+  POLYOMINO_LASER_WARMUP_MS,
+  POLYOMINO_DISPLAY_LERP,
   stepPolyomino,
   getPolyominoCellWorldPos,
 } from './polyomino-enemy-factories';
@@ -20,6 +22,12 @@ const CELL_CONTACT_RADIUS = POLYOMINO_CELL_SIZE * 0.5 + PLAYER_HIT_RADIUS;
 const CELL_CONTACT_RADIUS_SQ = CELL_CONTACT_RADIUS * CELL_CONTACT_RADIUS;
 const LASER_WIDTH_HALF = 2;
 const LASER_RANGE = 200;
+
+/** Eases displayX/displayY toward the enemy's true centroid to avoid step-jitter in rendering. */
+function _easeDisplayPos(enemy: { x: number; y: number; displayX: number; displayY: number }): void {
+  enemy.displayX += (enemy.x - enemy.displayX) * POLYOMINO_DISPLAY_LERP;
+  enemy.displayY += (enemy.y - enemy.displayY) * POLYOMINO_DISPLAY_LERP;
+}
 
 function _updateContact(
   enemy: { atk: number; contactCdMs: number; cells: { state: string; col: number; row: number }[]; gridOriginX: number; gridOriginY: number },
@@ -55,6 +63,8 @@ function _makeSplitChild(
     kind: 'verdure_polyomino_fissile',
     x: parent.x,
     y: parent.y,
+    displayX: parent.x,
+    displayY: parent.y,
     hp,
     maxHp,
     atk: parent.atk,
@@ -102,7 +112,7 @@ function _splitFissile(enemies: FissilePolyominoEnemy[], index: number): void {
 }
 
 function _updateLaserPlayerHit(laser: PolyominoLaser, ctx: RpgEnemyCtx): void {
-  if (laser.hasHitPlayer) return;
+  if (laser.hasHitPlayer || laser.warmupMs > 0) return;
   const px = ctx.mote.x - laser.originX;
   const py = ctx.mote.y - laser.originY;
   const dot = px * laser.dirX + py * laser.dirY;
@@ -118,10 +128,11 @@ function _spawnRefractorLasers(
   x: number,
   y: number,
 ): void {
-  enemy.lasers.push({ originX: x, originY: y, dirX: 1, dirY: 0, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false });
-  enemy.lasers.push({ originX: x, originY: y, dirX: -1, dirY: 0, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false });
-  enemy.lasers.push({ originX: x, originY: y, dirX: 0, dirY: 1, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false });
-  enemy.lasers.push({ originX: x, originY: y, dirX: 0, dirY: -1, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false });
+  // Lasers start as a thin warning line (warmupMs) before they can deal damage.
+  enemy.lasers.push({ originX: x, originY: y, dirX: 1, dirY: 0, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false, warmupMs: POLYOMINO_LASER_WARMUP_MS });
+  enemy.lasers.push({ originX: x, originY: y, dirX: -1, dirY: 0, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false, warmupMs: POLYOMINO_LASER_WARMUP_MS });
+  enemy.lasers.push({ originX: x, originY: y, dirX: 0, dirY: 1, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false, warmupMs: POLYOMINO_LASER_WARMUP_MS });
+  enemy.lasers.push({ originX: x, originY: y, dirX: 0, dirY: -1, atk: enemy.atk, lifeMs: POLYOMINO_LASER_LIFE_MS, hasHitPlayer: false, warmupMs: POLYOMINO_LASER_WARMUP_MS });
 }
 
 export function updatePolyominoEnemies(
@@ -134,6 +145,7 @@ export function updatePolyominoEnemies(
     const enemy = enemies[i]!;
     enemy.hitFlashMs = Math.max(0, enemy.hitFlashMs - deltaMs);
     stepPolyomino(enemy, ctx.mote.x, ctx.mote.y, nowMs, POLYOMINO_CLUSTER);
+    _easeDisplayPos(enemy);
     _updateContact(enemy, ctx, deltaMs);
   }
 }
@@ -155,6 +167,7 @@ export function updateFissilePolyominoEnemies(
     }
     enemy.pendingSplit = false;
     stepPolyomino(enemy, ctx.mote.x, ctx.mote.y, nowMs, POLYOMINO_CLUSTER + 2);
+    _easeDisplayPos(enemy);
     _updateContact(enemy, ctx, deltaMs);
   }
 }
@@ -177,10 +190,12 @@ export function updateRefractorPolyominoEnemies(
     for (let li = enemy.lasers.length - 1; li >= 0; li--) {
       const laser = enemy.lasers[li]!;
       laser.lifeMs -= deltaMs;
+      if (laser.warmupMs > 0) laser.warmupMs -= deltaMs;
       _updateLaserPlayerHit(laser, ctx);
       if (laser.lifeMs <= 0) enemy.lasers.splice(li, 1);
     }
 
+    _easeDisplayPos(enemy);
     _updateContact(enemy, ctx, deltaMs);
   }
 }

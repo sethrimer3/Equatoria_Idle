@@ -13,6 +13,10 @@ export const POLYOMINO_DRIFT_CHANGE_MS = 3200;
 export const POLYOMINO_CONTACT_CD_MS = 600;
 export const POLYOMINO_LASER_LIFE_MS = 400;
 export const FISSILE_SPLIT_CD_MS = 1200;
+/** ms a refractor laser spends as a thin warning line before it can deal damage. */
+export const POLYOMINO_LASER_WARMUP_MS = 160;
+/** Smoothing factor (0-1 per frame at 60fps-equivalent) for the eased display centroid. */
+export const POLYOMINO_DISPLAY_LERP = 0.15;
 
 const CARDINAL_ANGLES = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5] as const;
 
@@ -289,6 +293,8 @@ export function makePolyominoEnemy(x: number, y: number, waveNumber: number): Po
     kind: 'verdure_polyomino',
     x,
     y,
+    displayX: x,
+    displayY: y,
     ...stats,
     cells,
     driftAngle: Math.random() * Math.PI * 2,
@@ -315,6 +321,8 @@ export function makeFissilePolyominoEnemy(
     kind: 'verdure_polyomino_fissile',
     x,
     y,
+    displayX: x,
+    displayY: y,
     ...stats,
     cells,
     driftAngle: Math.random() * Math.PI * 2,
@@ -338,6 +346,8 @@ export function makeRefractorPolyominoEnemy(x: number, y: number, waveNumber: nu
     kind: 'verdure_polyomino_refractor',
     x,
     y,
+    displayX: x,
+    displayY: y,
     ...stats,
     cells,
     driftAngle: Math.random() * Math.PI * 2,
