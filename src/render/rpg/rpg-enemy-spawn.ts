@@ -82,6 +82,7 @@ import { ELITE_JELLYFISH_BASE_SIZE } from './rpg-jellyfish-elite-constants';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import {
   makeMazeColony, makeSeedsBurstColony, makeReplicatorSigilColony, makeWalledCitiesColony,
+  makeLifeWithoutDeathCorruptionColony, makeGenerationsGhostColony,
   buildLifeGridBoundsForArena,
 } from './life-factories';
 import { pushSpawnFlash } from './rpg-spawn-flash';
@@ -688,6 +689,7 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
   } else if (
     enemyTypeId === 'life_colony' || enemyTypeId === 'life_seeds_burst'
     || enemyTypeId === 'life_replicator_sigil' || enemyTypeId === 'life_walled_cities'
+    || enemyTypeId === 'life_without_death_corruption' || enemyTypeId === 'life_generations_ghost'
   ) {
     if (ctx.lifeColonies.length >= MAX_ACTIVE_LIFE_COLONIES) return;
     do {
@@ -704,6 +706,10 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       ctx.lifeColonies.push(makeReplicatorSigilColony(spawnX, spawnY, wn, bounds));
     } else if (enemyTypeId === 'life_walled_cities') {
       ctx.lifeColonies.push(makeWalledCitiesColony(spawnX, spawnY, wn, bounds));
+    } else if (enemyTypeId === 'life_without_death_corruption') {
+      ctx.lifeColonies.push(makeLifeWithoutDeathCorruptionColony(spawnX, spawnY, wn, bounds));
+    } else if (enemyTypeId === 'life_generations_ghost') {
+      ctx.lifeColonies.push(makeGenerationsGhostColony(spawnX, spawnY, wn, bounds));
     } else {
       ctx.lifeColonies.push(makeMazeColony(spawnX, spawnY, wn, bounds));
     }

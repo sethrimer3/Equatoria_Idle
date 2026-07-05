@@ -346,7 +346,10 @@ export function updateOrbitProjectile(
     if (!isLifeBodyTarget(target)) continue;
     const lifeBody = getLifeTargetBody(target);
     if (!lifeBody) continue;
-    tryHit(op, lifeBody.ref, target.x, target.y,
+    // lifeBody.ref (a LifeCellEntity or LifeColonyController) is only ever
+    // used by tryHit as the hit-cooldown Map key — its x/y are never read
+    // there (tx/ty are passed separately) — so the HittableEntity cast is safe.
+    tryHit(op, lifeBody.ref as HittableEntity, target.x, target.y,
       () => ctx.damageBodyTarget(target, orbitDamage, 0, false),
       lifeBody.maxHp);
   }

@@ -27,7 +27,10 @@ export const LIFE_CELL_BASE_HP = 6;
 /** Ms a cell spends shrinking/fading once killed before being removed from occupancy. */
 export const LIFE_CELL_DEATH_FADE_MS = 220;
 
-function makeLifeCell(generation: number, hp: number, dangerous: boolean): LifeCellEntity {
+/** Ms a cell spends in the Generations 'ghost' transitional state before it starts its death-fade. */
+export const LIFE_CELL_GHOST_MS = 900;
+
+function makeLifeCell(generation: number, hp: number, dangerous: boolean, decayMs: number = Infinity): LifeCellEntity {
   return {
     col: 0, row: 0,
     hp, maxHp: hp,
@@ -38,6 +41,9 @@ function makeLifeCell(generation: number, hp: number, dangerous: boolean): LifeC
     isDangerous: dangerous,
     contactCdMs: 0,
     bornAtGeneration: generation,
+    decayMs,
+    lifeState: 'alive',
+    ghostMs: 0,
   };
 }
 
@@ -59,7 +65,7 @@ export function seedLifeColony(
     const col = centerCol + offset.col;
     const row = centerRow + offset.row;
     if (!isLifeGridCoordInBounds({ col, row }, colony.bounds)) continue;
-    const cell = makeLifeCell(colony.generation, hp, dangerous);
+    const cell = makeLifeCell(colony.generation, hp, dangerous, colony.cellDecayLifetimeMs ?? Infinity);
     cell.col = col;
     cell.row = row;
     colony.cells.set(lifeCellKey(col, row), cell);
@@ -67,7 +73,12 @@ export function seedLifeColony(
   colony.status = 'alive';
 }
 
-/** Counts alive Moore-neighbors of (col, row) using the sparse occupancy map. */
+/**
+ * Counts alive Moore-neighbors of (col, row) using the sparse occupancy map.
+ * A cell counts as alive only when it is neither dying nor (for Generations
+ * rules) in the 'ghost' transitional state — ghost cells must not keep a
+ * neighbor alive or cause a birth (see life_generations_ghost).
+ */
 function countAliveNeighbors(
   cells: ReadonlyMap<string, LifeCellEntity>,
   col: number,
@@ -76,7 +87,7 @@ function countAliveNeighbors(
   let count = 0;
   for (const off of LIFE_MOORE_NEIGHBOR_OFFSETS) {
     const neighbor = cells.get(lifeCellKey(col + off.col, row + off.row));
-    if (neighbor && !neighbor.isDying) count++;
+    if (neighbor && !neighbor.isDying && neighbor.lifeState === 'alive') count++;
   }
   return count;
 }
@@ -92,6 +103,16 @@ export function stepLifeAutomata(
   hpForNewCell: number = LIFE_CELL_BASE_HP,
   globalCapRemaining: number = Infinity,
 ): void {
+  // rule.stateCount > 2 (Generations-style multi-state rules) needs a dedicated
+  // stepper: cells there pass through a 'ghost' transitional state that must
+  // not count as alive or reproduce (see stepLifeAutomataGenerations). Every
+  // other rule (stateCount undefined or 2) is classic binary alive/dead and
+  // falls through to the loop below unchanged.
+  if (colony.rule.stateCount && colony.rule.stateCount > 2) {
+    stepLifeAutomataGenerations(colony, hpForNewCell, globalCapRemaining);
+    return;
+  }
+
   const { rule, bounds, cells } = colony;
   // Global cross-colony cap: this colony may only grow beyond its current size
   // by however much of the shared global budget the caller (updateLifeColonies)
@@ -103,11 +124,6 @@ export function stepLifeAutomata(
   // any neighbor outside the arena grid, so out-of-bounds neighbors always count as
   // dead. 'wrap' is reserved for a future toroidal-neighbor-count implementation and
   // must not be set on any preset until that's added (see life-ca-rules.ts).
-  // rule.stateCount > 2 (Generations-style multi-state rules) is NOT handled here —
-  // this stepper only tracks binary alive/dead per cell. RULE_GENERATIONS_PLACEHOLDER
-  // exists as a reserved data shape only; do not seed a colony with it until a
-  // dedicated Generations stepper (or the life_generations_ghost transitional-state
-  // layer) consumes stateCount.
 
   // Build the candidate coordinate set: occupied cells ∪ their neighbors.
   const candidates = new Map<string, { col: number; row: number }>();
@@ -142,7 +158,7 @@ export function stepLifeAutomata(
     if (existing && !existing.isDying) {
       next.set(key, existing);
     } else {
-      const cell = makeLifeCell(colony.generation, hpForNewCell, false);
+      const cell = makeLifeCell(colony.generation, hpForNewCell, false, colony.cellDecayLifetimeMs ?? Infinity);
       cell.col = col;
       cell.row = row;
       next.set(key, cell);
@@ -152,6 +168,95 @@ export function stepLifeAutomata(
   // so death animations aren't cut short by the next generation's occupancy swap.
   for (const [key, cell] of cells) {
     if (cell.isDying && !next.has(key)) next.set(key, cell);
+  }
+  colony.cells = next;
+}
+
+/**
+ * Generations-style stepper for `stateCount > 2` rules (see
+ * RULE_GENERATIONS_GHOST / life_generations_ghost). Only the 3-state case
+ * (one 'ghost' transitional state between alive and dead) is supported:
+ *
+ *   - An 'alive' cell whose alive-neighbor count is in `rule.survive` stays alive.
+ *   - An 'alive' cell that would otherwise die instead becomes 'ghost' (it is
+ *     NOT removed immediately) and starts counting down LIFE_CELL_GHOST_MS.
+ *   - A 'ghost' cell never revives and never contributes to any neighbor's
+ *     alive-count (see countAliveNeighbors) — it just ages out via
+ *     advanceLifeCellFades/advanceLifeCellGhosts, which convert it to the
+ *     normal isDying fade once its ghostMs elapses.
+ *   - A dead cell (no entry, or a 'ghost'/'isDying' entry) is born exactly
+ *     like the binary stepper, using only 'alive' neighbors for the count.
+ *
+ * Same sparse candidate-set approach as stepLifeAutomata, so cost still scales
+ * with population rather than grid area.
+ */
+export function stepLifeAutomataGenerations(
+  colony: LifeColonyController,
+  hpForNewCell: number = LIFE_CELL_BASE_HP,
+  globalCapRemaining: number = Infinity,
+): void {
+  const { rule, bounds, cells } = colony;
+  const effectiveMaxPopulation = Math.min(colony.maxPopulation, cells.size + Math.max(0, globalCapRemaining));
+  const birth = new Set(rule.birth);
+  const survive = new Set(rule.survive);
+
+  const candidates = new Map<string, { col: number; row: number }>();
+  for (const key of cells.keys()) {
+    const { col, row } = parseLifeCellKey(key);
+    candidates.set(key, { col, row });
+    for (const off of LIFE_MOORE_NEIGHBOR_OFFSETS) {
+      const nCol = col + off.col, nRow = row + off.row;
+      if (!isLifeGridCoordInBounds({ col: nCol, row: nRow }, bounds)) continue;
+      candidates.set(lifeCellKey(nCol, nRow), { col: nCol, row: nRow });
+    }
+  }
+
+  interface NextEntry { col: number; row: number; existing: LifeCellEntity | undefined; becomesGhost: boolean }
+  const nextEntries: NextEntry[] = [];
+  for (const [key, coord] of candidates) {
+    const existing = cells.get(key);
+    const aliveNow = !!existing && !existing.isDying && existing.lifeState === 'alive';
+    const neighborCount = countAliveNeighbors(cells, coord.col, coord.row);
+    if (aliveNow) {
+      const survives = survive.has(neighborCount);
+      // Alive cells always persist to next tick — either staying alive or
+      // transitioning to 'ghost' — never disappearing outright this step.
+      nextEntries.push({ col: coord.col, row: coord.row, existing, becomesGhost: !survives });
+    } else if (!existing || existing.isDying) {
+      // Only truly-dead coordinates can birth a new cell — ghost cells occupy
+      // their coordinate until they finish aging out, blocking a birth there.
+      if (birth.has(neighborCount)) {
+        nextEntries.push({ col: coord.col, row: coord.row, existing: undefined, becomesGhost: false });
+      }
+    }
+    // Existing ghost cells are preserved unconditionally below (they age out
+    // via advanceLifeCellFades, not via the birth/survive rule check).
+  }
+
+  colony.generation++;
+
+  const next = new Map<string, LifeCellEntity>();
+  for (const { col, row, existing, becomesGhost } of nextEntries) {
+    if (!existing && next.size >= effectiveMaxPopulation) continue;
+    const key = lifeCellKey(col, row);
+    if (existing) {
+      if (becomesGhost && existing.lifeState === 'alive') {
+        existing.lifeState = 'ghost';
+        existing.ghostMs = LIFE_CELL_GHOST_MS;
+        existing.isDangerous = false; // ghost cells deal no contact damage
+      }
+      next.set(key, existing);
+    } else {
+      const cell = makeLifeCell(colony.generation, hpForNewCell, false, colony.cellDecayLifetimeMs ?? Infinity);
+      cell.col = col;
+      cell.row = row;
+      next.set(key, cell);
+    }
+  }
+  // Preserve ghost/dying cells already past the candidate sweep (e.g. a ghost
+  // cell whose coordinate had no alive neighbors at all this tick).
+  for (const [key, cell] of cells) {
+    if ((cell.isDying || cell.lifeState === 'ghost') && !next.has(key)) next.set(key, cell);
   }
   colony.cells = next;
 }
@@ -174,9 +279,17 @@ export function damageLifeCellEntity(cell: LifeCellEntity, rawDamage: number): n
 }
 
 /**
- * Advances hit-flash and death-fade timers for every cell in a colony, and
- * removes cells whose fade has completed from the occupancy map. Returns the
- * number of cells removed this call (used to grant per-cell XP on death).
+ * Advances hit-flash, death-fade, ghost-aging, and lifetime-decay timers for
+ * every cell in a colony, and removes cells whose fade has completed from the
+ * occupancy map. Returns the number of cells removed this call (used to grant
+ * per-cell XP on death).
+ *
+ * Ghost cells (life_generations_ghost) age out here: once ghostMs elapses,
+ * the cell starts its normal death-fade rather than vanishing instantly.
+ * Cells with a finite decayMs (life_without_death_corruption) expire the same
+ * way once their lifetime runs out, independent of the survival rule —
+ * without this, RULE_LIFE_WITHOUT_DEATH's B3/S012345678 never kills a cell on
+ * its own and a corruption colony would grow forever.
  */
 export function advanceLifeCellFades(colony: LifeColonyController, deltaMs: number): number {
   let removed = 0;
@@ -187,6 +300,22 @@ export function advanceLifeCellFades(colony: LifeColonyController, deltaMs: numb
       if (cell.dyingMs <= 0) {
         colony.cells.delete(key);
         removed++;
+      }
+      continue;
+    }
+    if (cell.lifeState === 'ghost') {
+      cell.ghostMs -= deltaMs;
+      if (cell.ghostMs <= 0) {
+        cell.isDying = true;
+        cell.dyingMs = LIFE_CELL_DEATH_FADE_MS;
+      }
+      continue;
+    }
+    if (Number.isFinite(cell.decayMs)) {
+      cell.decayMs -= deltaMs;
+      if (cell.decayMs <= 0) {
+        cell.isDying = true;
+        cell.dyingMs = LIFE_CELL_DEATH_FADE_MS;
       }
     }
   }

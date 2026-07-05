@@ -384,6 +384,9 @@ describe('applyLaserBeamHitSweep — terrain truncation regression', () => {
       eigensteinEnemies: [],
       eliteEnemies: [],
       alivenGroups: [],
+      lifeColonies: [],
+      damageLifeCell: noop0,
+      damageLifeCore: noop0,
       damageEnemy: (e: any, dmg: number) => {
         if (e === earlyEnemy) earlyHit = true;
         if (e === lateEnemy)  lateHit  = true;

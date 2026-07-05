@@ -80,4 +80,12 @@ export interface LifeColonyController {
   xpMult: number;
   /** Ms remaining before contact damage may fire again from the core itself. */
   coreContactCdMs: number;
+  /**
+   * Per-cell lifetime (ms) newly-born cells receive, tunable per colony
+   * variant. Only meaningful for colonies whose rule never naturally kills a
+   * cell (e.g. RULE_LIFE_WITHOUT_DEATH) — see `life_without_death_corruption`
+   * in life-factories.ts. `undefined` (every other colony variant) means new
+   * cells get `decayMs: Infinity` — no lifetime-based decay.
+   */
+  cellDecayLifetimeMs?: number;
 }

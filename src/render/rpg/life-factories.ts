@@ -10,6 +10,7 @@
 import { getWaveStatScale } from '../../sim/rpg/rpg-state';
 import {
   RULE_MAZECTRIC, RULE_SEEDS, RULE_REPLICATOR, RULE_WALLED_CITIES,
+  RULE_LIFE_WITHOUT_DEATH, RULE_GENERATIONS_GHOST,
 } from './life-ca-rules';
 import { LIFE_CELL_SIZE, makeLifeGridBounds, worldToLifeGrid, type LifeGridBounds } from './life-grid';
 import { seedLifeColony, LIFE_CELL_BASE_HP } from './life-controller';
@@ -182,10 +183,73 @@ export function makeWalledCitiesColony(
   return colony;
 }
 
-// NOTE on the remaining two design-brief variants (life_without_death_corruption,
-// life_generations_ghost): both need extra machinery beyond a rule preset —
-// Life Without Death requires an external decay/lifetime timer since its rule
-// never naturally kills cells, and Generations-style ghost states need a
-// transitional-state layer the stepper does not implement (stateCount > 2 is
-// explicitly unhandled — see stepLifeAutomata's guard comment). Deferred to a
-// follow-up pass rather than bolted on here.
+/** Base core HP for a Life Without Death Corruption colony at wave-scale 1. */
+const LWD_CORRUPTION_CORE_BASE_HP = 50;
+
+/**
+ * Per-cell lifetime for a corruption colony — tunable per variant so a future
+ * elite/weaker version can decay faster or slower. RULE_LIFE_WITHOUT_DEATH's
+ * B3/S012345678 never kills a cell on its own, so this is the only thing
+ * capping the colony's lifespan/size over time (on top of the hard
+ * maxPopulation cap every colony already enforces).
+ */
+const LWD_CORRUPTION_CELL_LIFETIME_MS = 9000;
+
+/** Small seed — Life Without Death grows outward and never loses existing
+ *  cells to the survival rule, so a small starting cluster still fills out
+ *  its capped area over a handful of generations. */
+const LWD_CORRUPTION_SEED_PATTERN: ReadonlyArray<{ col: number; row: number }> = [
+  { col: 0, row: 0 }, { col: 1, row: 0 }, { col: 0, row: 1 }, { col: -1, row: 0 },
+];
+
+/**
+ * Creates a "Life Without Death Corruption" colony (RULE_LIFE_WITHOUT_DEATH).
+ * Cells never die to the survival rule — instead each cell carries a
+ * lifetime (cellDecayLifetimeMs) that expires it independent of neighbor
+ * count (see advanceLifeCellFades), which is what keeps the colony from
+ * growing forever. Killing the core stops new births immediately
+ * (updateLifeColonies only ticks the automata while status is
+ * 'alive'/'seeding') and every remaining cell still decays/fades on its own
+ * timer, same as if the colony were left alone.
+ */
+export function makeLifeWithoutDeathCorruptionColony(
+  spawnX: number, spawnY: number, waveNumber: number, bounds: LifeGridBounds,
+): LifeColonyController {
+  const { colony, cellHp } = makeColonyShell(
+    RULE_LIFE_WITHOUT_DEATH, spawnX, spawnY, bounds, LWD_CORRUPTION_CORE_BASE_HP, waveNumber, 1.2,
+  );
+  colony.cellDecayLifetimeMs = LWD_CORRUPTION_CELL_LIFETIME_MS;
+  const centerCoord = worldToLifeGrid(spawnX, spawnY, bounds);
+  seedLifeColony(colony, LWD_CORRUPTION_SEED_PATTERN, centerCoord.col, centerCoord.row, cellHp, false);
+  return colony;
+}
+
+/** Base core HP for a Generations Ghost colony at wave-scale 1. */
+const GENERATIONS_GHOST_CORE_BASE_HP = 42;
+
+/** Seed pattern for the Generations Ghost colony (RULE_GENERATIONS_GHOST,
+ *  B2/S345678) — a denser cluster than Conway-style seeds so it reliably
+ *  produces an ongoing alive/ghost/dead cycle instead of dying out. */
+const GENERATIONS_GHOST_SEED_PATTERN: ReadonlyArray<{ col: number; row: number }> = [
+  { col: -1, row: -1 }, { col: 0, row: -1 }, { col: 1, row: -1 },
+  { col: -1, row: 0 }, { col: 0, row: 0 }, { col: 1, row: 0 },
+  { col: -1, row: 1 }, { col: 0, row: 1 }, { col: 1, row: 1 },
+];
+
+/**
+ * Creates a "Generations Ghost" colony (RULE_GENERATIONS_GHOST) — limited
+ * Generations support: cells cycle alive -> ghost -> dead instead of
+ * disappearing the instant they'd die under a binary rule. Ghost cells are
+ * handled by stepLifeAutomataGenerations/advanceLifeCellFades in
+ * life-controller.ts; see life-draw.ts for their distinct visual treatment.
+ */
+export function makeGenerationsGhostColony(
+  spawnX: number, spawnY: number, waveNumber: number, bounds: LifeGridBounds,
+): LifeColonyController {
+  const { colony, cellHp } = makeColonyShell(
+    RULE_GENERATIONS_GHOST, spawnX, spawnY, bounds, GENERATIONS_GHOST_CORE_BASE_HP, waveNumber, 1.3,
+  );
+  const centerCoord = worldToLifeGrid(spawnX, spawnY, bounds);
+  seedLifeColony(colony, GENERATIONS_GHOST_SEED_PATTERN, centerCoord.col, centerCoord.row, cellHp, false);
+  return colony;
+}

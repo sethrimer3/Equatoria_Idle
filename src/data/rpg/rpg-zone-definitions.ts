@@ -193,6 +193,8 @@ export const RPG_ZONE_DEFINITIONS: RpgZoneDefinition[] = [
       'life_seeds_burst',
       'life_replicator_sigil',
       'life_walled_cities',
+      'life_without_death_corruption',
+      'life_generations_ghost',
     ],
   },
 ];

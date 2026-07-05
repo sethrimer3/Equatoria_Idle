@@ -6,19 +6,24 @@ import {
 import {
   seedLifeColony, stepLifeAutomata, damageLifeCellEntity, advanceLifeCellFades,
   isLifeColonyFullyCleared, killLifeColonyCore, damageLifeCoreEntity,
+  stepLifeAutomataGenerations, LIFE_CELL_GHOST_MS,
 } from '../life-controller';
 import {
   RULE_CONWAY, RULE_MAZECTRIC, RULE_SEEDS, RULE_REPLICATOR, RULE_WALLED_CITIES,
+  RULE_LIFE_WITHOUT_DEATH, RULE_GENERATIONS_GHOST,
   LIFE_CA_RULES, LIFE_CA_RULES_BY_ID,
 } from '../life-ca-rules';
 import {
   makeMazeColony, makeSeedsBurstColony, makeReplicatorSigilColony, makeWalledCitiesColony,
+  makeLifeWithoutDeathCorruptionColony, makeGenerationsGhostColony,
   buildLifeGridBoundsForArena,
 } from '../life-factories';
 import { updateLifeColonies } from '../life-updates';
 import type { LifeColonyController } from '../life-types';
 import { RPG_ZONE_DEFINITIONS, RPG_ZONE_BY_ID } from '../../../data/rpg/rpg-zone-definitions';
 import { getSpawnableEnemyTypesForZone, getZoneWaveDefinition } from '../../../data/rpg/wave-definitions';
+import { isLifeBodyTarget, getLifeTargetBody } from '../life-weapon-helpers';
+import type { ClosestTarget } from '../rpg-types';
 
 describe('life-grid', () => {
   const bounds = makeLifeGridBounds(0, 0, 280, 280, LIFE_CELL_SIZE);
@@ -317,5 +322,216 @@ describe('Life zone registry integration', () => {
   it('every 10th Life wave is a Walled Cities elite-style wave, within colony caps', () => {
     const wave10 = getZoneWaveDefinition(10, 'life');
     expect(wave10.spawns).toEqual([{ enemyTypeId: 'life_walled_cities', count: 1, spawnDelay: 400 }]);
+  });
+
+  it('new corruption/generations-ghost enemy ids are registered and isolated to the Life zone', () => {
+    const lifePool = getSpawnableEnemyTypesForZone('life');
+    for (const id of ['life_without_death_corruption', 'life_generations_ghost']) {
+      expect(lifePool).toContain(id);
+      expect(getSpawnableEnemyTypesForZone('euhedral')).not.toContain(id);
+      expect(getSpawnableEnemyTypesForZone('verdure')).not.toContain(id);
+    }
+  });
+});
+
+describe('life_without_death_corruption', () => {
+  it('makeLifeWithoutDeathCorruptionColony uses RULE_LIFE_WITHOUT_DEATH and tags a per-cell decay lifetime', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeLifeWithoutDeathCorruptionColony(200, 200, 1, bounds);
+    expect(colony.rule).toBe(RULE_LIFE_WITHOUT_DEATH);
+    expect(colony.cellDecayLifetimeMs).toBeGreaterThan(0);
+    expect(colony.cells.size).toBeGreaterThan(0);
+    expect([...colony.cells.values()].every(c => Number.isFinite(c.decayMs))).toBe(true);
+  });
+
+  it('a cell with an alive-neighbor count outside survive[] still does NOT die under Life Without Death (B3/S012345678 survives on any count)', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony: LifeColonyController = {
+      kind: 'life_colony', rule: RULE_LIFE_WITHOUT_DEATH, bounds, x: 200, y: 200,
+      coreHp: 10, coreMaxHp: 10, cells: new Map(), tickAccumulatorMs: 0,
+      generation: 0, maxPopulation: 240, status: 'seeding', xpMult: 1, coreContactCdMs: 0,
+      cellDecayLifetimeMs: 5000,
+    };
+    seedLifeColony(colony, [{ col: 0, row: 0 }], 10, 10, 6, false);
+    const cell = [...colony.cells.values()][0]!;
+    for (let i = 0; i < 5; i++) stepLifeAutomata(colony);
+    // Isolated cell (0 alive neighbors) still survives — the rule's survive set is 0-8.
+    expect(colony.cells.has(`10:10`)).toBe(true);
+    expect(cell.isDying).toBe(false);
+  });
+
+  it('cells expire via decayMs lifetime even though the survival rule never kills them, capping growth', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeLifeWithoutDeathCorruptionColony(200, 200, 1, bounds);
+    const lifetimeMs = colony.cellDecayLifetimeMs!;
+    expect(colony.cells.size).toBeGreaterThan(0);
+
+    // Advance past every cell's decay lifetime; no automata ticks in between
+    // (isolating the decay mechanism from the survival rule).
+    advanceLifeCellFades(colony, lifetimeMs + 1);
+    expect([...colony.cells.values()].every(c => c.isDying)).toBe(true);
+
+    advanceLifeCellFades(colony, 10_000);
+    expect(colony.cells.size).toBe(0);
+  });
+
+  it('killing the core stops new births and remaining cells still decay/fade out', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeLifeWithoutDeathCorruptionColony(200, 200, 1, bounds);
+    const sizeBeforeKill = colony.cells.size;
+    killLifeColonyCore(colony);
+    // killLifeColonyCore marks every remaining cell dying immediately.
+    expect([...colony.cells.values()].every(c => c.isDying)).toBe(true);
+    expect(colony.status).toBe('dying');
+
+    // updateLifeColonies must not tick the automata (no new births) once dying.
+    updateLifeColonies([colony], {
+      playerX: -1000, playerY: -1000, playerRadius: 6,
+      dealContactDamageToPlayer: () => {},
+    }, 50_000);
+    expect(colony.cells.size).toBe(0);
+    expect(sizeBeforeKill).toBeGreaterThan(0);
+  });
+
+  it('never grows past its hard population cap even left running indefinitely', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeLifeWithoutDeathCorruptionColony(200, 200, 1, bounds);
+    for (let i = 0; i < 40; i++) {
+      stepLifeAutomata(colony);
+      advanceLifeCellFades(colony, colony.rule.tickIntervalMs ?? 500);
+    }
+    expect(colony.cells.size).toBeLessThanOrEqual(colony.maxPopulation);
+  });
+});
+
+describe('life_generations_ghost', () => {
+  it('makeGenerationsGhostColony uses RULE_GENERATIONS_GHOST (stateCount 3)', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeGenerationsGhostColony(200, 200, 1, bounds);
+    expect(colony.rule).toBe(RULE_GENERATIONS_GHOST);
+    expect(colony.rule.stateCount).toBe(3);
+    expect(colony.cells.size).toBeGreaterThan(0);
+    expect([...colony.cells.values()].every(c => c.lifeState === 'alive')).toBe(true);
+  });
+
+  it('stepLifeAutomata dispatches stateCount > 2 rules to stepLifeAutomataGenerations', () => {
+    const bounds = makeLifeGridBounds(0, 0, 400, 400, LIFE_CELL_SIZE);
+    const colony: LifeColonyController = {
+      kind: 'life_colony', rule: RULE_GENERATIONS_GHOST, bounds, x: 200, y: 200,
+      coreHp: 10, coreMaxHp: 10, cells: new Map(), tickAccumulatorMs: 0,
+      generation: 0, maxPopulation: 200, status: 'seeding', xpMult: 1, coreContactCdMs: 0,
+    };
+    // A lone cell (0 alive neighbors) is outside RULE_GENERATIONS_GHOST's
+    // survive set [3..8], so it must transition to 'ghost' rather than vanish.
+    seedLifeColony(colony, [{ col: 0, row: 0 }], 10, 10);
+    expect(colony.cells.size).toBe(1);
+    stepLifeAutomata(colony);
+    const cell = [...colony.cells.values()][0]!;
+    expect(cell.lifeState).toBe('ghost');
+    expect(cell.ghostMs).toBeGreaterThan(0);
+    expect(cell.isDying).toBe(false);
+    // Cell count is preserved (still occupying its coordinate) during the ghost phase.
+    expect(colony.cells.size).toBe(1);
+  });
+
+  it('ghost cells transition alive -> ghost -> dead (fade out) as ghostMs elapses', () => {
+    const bounds = makeLifeGridBounds(0, 0, 400, 400, LIFE_CELL_SIZE);
+    const colony: LifeColonyController = {
+      kind: 'life_colony', rule: RULE_GENERATIONS_GHOST, bounds, x: 200, y: 200,
+      coreHp: 10, coreMaxHp: 10, cells: new Map(), tickAccumulatorMs: 0,
+      generation: 0, maxPopulation: 200, status: 'seeding', xpMult: 1, coreContactCdMs: 0,
+    };
+    seedLifeColony(colony, [{ col: 0, row: 0 }], 10, 10);
+    stepLifeAutomataGenerations(colony);
+    const cell = [...colony.cells.values()][0]!;
+    expect(cell.lifeState).toBe('ghost');
+
+    advanceLifeCellFades(colony, LIFE_CELL_GHOST_MS + 1);
+    expect(cell.isDying).toBe(true);
+    expect(cell.lifeState).toBe('ghost'); // isDying takes over; lifeState is left as-is
+
+    advanceLifeCellFades(colony, 10_000);
+    expect(colony.cells.size).toBe(0);
+  });
+
+  it('ghost cells do not reproduce as normal alive cells (excluded from neighbor counts)', () => {
+    const bounds = makeLifeGridBounds(0, 0, 400, 400, LIFE_CELL_SIZE);
+    const colony: LifeColonyController = {
+      kind: 'life_colony', rule: RULE_GENERATIONS_GHOST, bounds, x: 200, y: 200,
+      coreHp: 10, coreMaxHp: 10, cells: new Map(), tickAccumulatorMs: 0,
+      generation: 0, maxPopulation: 200, status: 'seeding', xpMult: 1, coreContactCdMs: 0,
+    };
+    // Surround one dead cell with exactly 2 ghost cells (below birth[2]... wait
+    // birth is [2], so 2 ghost neighbors must NOT cause a birth, since ghosts
+    // don't count as alive).
+    seedLifeColony(colony, [{ col: -1, row: 0 }, { col: 1, row: 0 }], 10, 10);
+    for (const cell of colony.cells.values()) { cell.lifeState = 'ghost'; cell.ghostMs = 500; }
+    stepLifeAutomataGenerations(colony);
+    // (10,10) had 2 ghost neighbors only — with ghosts excluded from the count,
+    // its alive-neighbor count is 0, which is not in birth: [2], so no birth.
+    expect(colony.cells.has('10:10')).toBe(false);
+  });
+
+  it('binary Life rules (stateCount undefined) are unaffected by the Generations dispatch — Conway blinker still oscillates identically', () => {
+    const bounds = makeLifeGridBounds(0, 0, 400, 400, LIFE_CELL_SIZE);
+    const colony: LifeColonyController = {
+      kind: 'life_colony', rule: RULE_CONWAY, bounds, x: 200, y: 200,
+      coreHp: 10, coreMaxHp: 10, cells: new Map(), tickAccumulatorMs: 0,
+      generation: 0, maxPopulation: 260, status: 'seeding', xpMult: 1, coreContactCdMs: 0,
+    };
+    seedLifeColony(colony, [{ col: -1, row: 0 }, { col: 0, row: 0 }, { col: 1, row: 0 }], 10, 10);
+    stepLifeAutomata(colony);
+    const coordsAfterOne = [...colony.cells.values()].map(c => `${c.col}:${c.row}`).sort();
+    expect(coordsAfterOne).toEqual(['10:10', '10:9', '10:11'].sort());
+    expect([...colony.cells.values()].every(c => c.lifeState === 'alive')).toBe(true);
+  });
+
+  it('never grows past its hard population cap even left running indefinitely', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeGenerationsGhostColony(200, 200, 1, bounds);
+    for (let i = 0; i < 40; i++) {
+      stepLifeAutomata(colony);
+      advanceLifeCellFades(colony, colony.rule.tickIntervalMs ?? 500);
+    }
+    expect(colony.cells.size).toBeLessThanOrEqual(colony.maxPopulation);
+  });
+});
+
+describe('life-weapon-helpers — shared targeting/damage helpers', () => {
+  function makeCellTarget(): { target: ClosestTarget; colony: LifeColonyController } {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const cell = [...colony.cells.values()][0]!;
+    const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, bounds);
+    const target: ClosestTarget = { kind: 'life_cell', x: center.x, y: center.y, distSq: 0, lifeCell: cell, lifeColony: colony };
+    return { target, colony };
+  }
+
+  it('isLifeBodyTarget recognizes life_cell and life_core kinds only', () => {
+    const { target } = makeCellTarget();
+    expect(isLifeBodyTarget(target)).toBe(true);
+    expect(isLifeBodyTarget({ kind: 'proc_dustwisp', x: 0, y: 0, distSq: 0 } as ClosestTarget)).toBe(false);
+  });
+
+  it('getLifeTargetBody resolves a stable ref + maxHp for a cell target', () => {
+    const { target } = makeCellTarget();
+    const body = getLifeTargetBody(target);
+    expect(body).not.toBeNull();
+    expect(body!.ref).toBe(target.lifeCell);
+    expect(body!.maxHp).toBe(target.lifeCell!.maxHp);
+  });
+
+  it('getLifeTargetBody resolves core ref + coreMaxHp for a life_core target', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const target: ClosestTarget = { kind: 'life_core', x: colony.x, y: colony.y, distSq: 0, lifeCoreColony: colony };
+    const body = getLifeTargetBody(target);
+    expect(body).not.toBeNull();
+    expect(body!.ref).toBe(colony);
+    expect(body!.maxHp).toBe(colony.coreMaxHp);
+  });
+
+  it('getLifeTargetBody returns null for non-Life targets', () => {
+    expect(getLifeTargetBody({ kind: 'boss', x: 0, y: 0, distSq: 0 } as ClosestTarget)).toBeNull();
   });
 });

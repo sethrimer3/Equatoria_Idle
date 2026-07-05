@@ -595,7 +595,10 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
     if (waveNumber > 0 && waveNumber % 10 === 0) {
       return { waveNumber, spawns: [{ enemyTypeId: 'life_walled_cities', count: 1, spawnDelay: 400 }] };
     }
-    const rotation = ['life_colony', 'life_seeds_burst', 'life_replicator_sigil'];
+    const rotation = [
+      'life_colony', 'life_seeds_burst', 'life_replicator_sigil',
+      'life_without_death_corruption', 'life_generations_ghost',
+    ];
     const unlockedCount = Math.min(1 + Math.floor(waveNumber / 6), rotation.length);
     const pool = rotation.slice(0, unlockedCount);
     const activeCount = waveNumber < 15 ? 1 : Math.min(2, pool.length);

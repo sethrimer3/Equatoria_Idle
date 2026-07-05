@@ -86,13 +86,21 @@ export const RULE_WALLED_CITIES: CellularAutomataRule = {
 };
 
 /**
- * Placeholder for a future Generations-style rule (e.g. Brian's Brain / Star
- * Wars). Generations rules add a "dying" state chain after survival ends
- * (stateCount > 2); not yet consumed by the controller, but reserved so
- * future work can add multi-state cells without a data-shape migration.
+ * Generations-style rule (limited support — see life_generations_ghost in
+ * life-factories.ts and stepLifeAutomataGenerations in life-controller.ts).
+ *
+ * `stateCount: 3` means each cell cycles through exactly one intermediate
+ * state after alive: alive -> ghost -> dead. This is NOT full Generations
+ * (which allows an arbitrary chain of N-2 dying states) — only the 3-state
+ * case (one "ghost" transitional state) is implemented. A ghost cell:
+ *   - no longer counts as alive for any neighbor's birth/survival count
+ *   - cannot revert to alive
+ *   - counts down its own timer, then dies (fades out) like a normal cell
+ * stepLifeAutomata dispatches any `stateCount > 2` rule to the dedicated
+ * stepLifeAutomataGenerations stepper rather than the binary one.
  */
-export const RULE_GENERATIONS_PLACEHOLDER: CellularAutomataRule = {
-  id: 'generations_placeholder', name: 'Generations (reserved)', notation: 'B2/S345678',
+export const RULE_GENERATIONS_GHOST: CellularAutomataRule = {
+  id: 'generations_ghost', name: 'Generations Ghost', notation: 'B2/S345678',
   birth: [2], survive: [3, 4, 5, 6, 7, 8],
   stateCount: 3, tickIntervalMs: 500, maxPopulation: 200, edgeBehavior: 'dead',
 };
@@ -106,7 +114,7 @@ export const LIFE_CA_RULES: readonly CellularAutomataRule[] = [
   RULE_REPLICATOR,
   RULE_LIFE_WITHOUT_DEATH,
   RULE_WALLED_CITIES,
-  RULE_GENERATIONS_PLACEHOLDER,
+  RULE_GENERATIONS_GHOST,
 ];
 
 export const LIFE_CA_RULES_BY_ID: ReadonlyMap<string, CellularAutomataRule> = new Map(
