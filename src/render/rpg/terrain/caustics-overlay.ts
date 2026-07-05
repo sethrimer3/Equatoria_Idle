@@ -68,8 +68,11 @@ const CAUSTICS_LIGHT_SCALE    = 0.5;
  *  Adds soft glow around caustic filaments.  Set to 0 to rely on upscale alone. */
 const CAUSTICS_BLUR_PX        = 6;
 
-/** Opacity of the composited light buffer over the scene.  0.6–0.8 is typical. */
-const CAUSTICS_COMPOSITE_ALPHA = 0.72;
+/** Opacity of the composited light buffer over the scene. */
+const CAUSTICS_COMPOSITE_ALPHA = 0.36;
+
+/** Low-graphics opacity of the composited light buffer over the scene. */
+const CAUSTICS_LOW_COMPOSITE_ALPHA = 0.225;
 
 // ── Height-aware caustics tunables ────────────────────────────────────────────
 // These control the depth-parallax and brightness effects applied per ridge.
@@ -86,10 +89,10 @@ const CAUSTIC_HEIGHT_SHIFT_PX = 2.0;
 /**
  * Screen-blend alpha increment per unit of normalised ridge elevation (0–1).
  * Higher ridges receive this much additional caustic brightness.
- * Translates the formula `brightnessMultiplier = 1.0 + elevation × 0.08` into
+ * Translates the formula `brightnessMultiplier = 1.0 + elevation × 0.04` into
  * an additive screen-blend contribution.
  */
-const CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER = 0.08;
+const CAUSTIC_ELEVATION_BRIGHTNESS_PER_LAYER = 0.04;
 
 /**
  * Maximum screen-blend alpha for the elevation brightness overlay.
@@ -335,7 +338,7 @@ export function drawCausticsFloorEffects(
   // ── Composite light buffer onto the main canvas ──────────────────────────
   canvas2d.save();
   canvas2d.globalCompositeOperation = 'screen';
-  canvas2d.globalAlpha = lowGraphics ? 0.45 : CAUSTICS_COMPOSITE_ALPHA;
+  canvas2d.globalAlpha = lowGraphics ? CAUSTICS_LOW_COMPOSITE_ALPHA : CAUSTICS_COMPOSITE_ALPHA;
   if (!lowGraphics && CAUSTICS_BLUR_PX > 0) {
     canvas2d.filter = `blur(${CAUSTICS_BLUR_PX}px)`;
   }
