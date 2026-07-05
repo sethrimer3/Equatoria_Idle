@@ -65,6 +65,9 @@ export function makeRibbonWormEnemy(x: number, y: number, wave: number): RibbonW
     atk: Math.ceil(RIBBONWORM_ATK_INIT * s), def: Math.ceil(RIBBONWORM_DEF_INIT * s),
     animPhase: Math.random() * Math.PI * 2, hitFlashMs: 0, contactCdMs: 0,
     segX, segY,
+    segContactCdMs: new Float64Array(RIBBONWORM_SEG_COUNT),
+    wormState: 'pursue', stateTimerMs: 400 + Math.random() * 600,
+    lungeDirX: 0, lungeDirY: 0, coilAmount: 0,
   };
 }
 
@@ -76,6 +79,9 @@ export function makeLanternMothEnemy(x: number, y: number, wave: number): Lanter
     atk: Math.ceil(LANTERNMOTH_ATK_INIT * s), def: Math.ceil(LANTERNMOTH_DEF_INIT * s),
     animPhase: Math.random() * Math.PI * 2, hitFlashMs: 0, contactCdMs: 0,
     flapPhase: Math.random() * Math.PI * 2,
+    wingPhaseOffsetL: Math.random() * 0.3, wingPhaseOffsetR: Math.random() * 0.3,
+    hoverPhase: Math.random() * Math.PI * 2,
+    lureState: 'idle', lureTimerMs: 800 + Math.random() * 1600, chargeGlow: 0,
   };
 }
 
@@ -87,6 +93,9 @@ export function makeEyeStalkEnemy(x: number, y: number, wave: number): EyeStalkE
     atk: Math.ceil(EYESTALK_ATK_INIT * s), def: Math.ceil(EYESTALK_DEF_INIT * s),
     animPhase: Math.random() * Math.PI * 2, hitFlashMs: 0, contactCdMs: 0,
     stalkPhase: Math.random() * Math.PI * 2, eyeAngle: Math.random() * Math.PI * 2,
+    stalkLagX: 0, stalkLagY: 0,
+    gazeState: 'idle', gazeTimerMs: 600 + Math.random() * 1300,
+    beamAngle: 0, blinkAmount: 0, beamHasHit: false,
   };
 }
 
@@ -118,6 +127,9 @@ export function makeClothGhostEnemy(x: number, y: number, wave: number): ClothGh
     atk: Math.ceil(CLOTHGHOST_ATK_INIT * s), def: Math.ceil(CLOTHGHOST_DEF_INIT * s),
     animPhase: Math.random() * Math.PI * 2, hitFlashMs: 0, contactCdMs: 0,
     flutterPhase: Math.random() * Math.PI * 2,
+    cornerLagX: new Float64Array(4), cornerLagY: new Float64Array(4),
+    ghostState: 'solid', stateTimerMs: 900 + Math.random() * 1600,
+    wrapFraction: 0, wrapHasHit: false,
   };
 }
 
@@ -131,6 +143,7 @@ export function makePlantTurretEnemy(x: number, y: number, wave: number): PlantT
     stemPhase: 0,
     fireTimerMs: PLANTTURRET_FIRE_CD_MS + Math.random() * PLANTTURRET_FIRE_JITTER,
     rootX: x, rootY: y,
+    bendX: 0, bendY: 0, budState: 'closed', budTimerMs: 0, shotIndex: 0,
   };
 }
 
@@ -142,6 +155,8 @@ export function makeGearInsectEnemy(x: number, y: number, wave: number): GearIns
     atk: Math.ceil(GEARINSECT_ATK_INIT * s), def: Math.ceil(GEARINSECT_DEF_INIT * s),
     animPhase: Math.random() * Math.PI * 2, hitFlashMs: 0, contactCdMs: 0,
     gearAngle: Math.random() * Math.PI * 2, legPhase: Math.random() * Math.PI * 2,
+    moveState: 'scuttle', stateTimerMs: 200 + Math.random() * 400,
+    chargeDirX: 0, chargeDirY: 0,
   };
 }
 
@@ -153,6 +168,11 @@ export function makeSpiderCrawlerEnemy(x: number, y: number, wave: number): Spid
     atk: Math.ceil(SPIDERCRAWLER_ATK_INIT * s), def: Math.ceil(SPIDERCRAWLER_DEF_INIT * s),
     animPhase: Math.random() * Math.PI * 2, hitFlashMs: 0, contactCdMs: 0,
     legPhase: Math.random() * Math.PI * 2,
+    spiderState: 'stalk', stateTimerMs: 300 + Math.random() * 500,
+    sidestepDir: Math.random() < 0.5 ? -1 : 1, crouchAmount: 0,
+    footX: new Float64Array([x - 6, x + 6, x - 6, x + 6]),
+    footY: new Float64Array([y - 5, y - 5, y + 5, y + 5]),
+    webCdMs: 1000 + Math.random() * 1500, webActiveMs: 0, webAngle: 0,
   };
 }
 

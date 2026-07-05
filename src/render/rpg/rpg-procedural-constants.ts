@@ -39,6 +39,18 @@ export const RIBBONWORM_SEG_COUNT =   7;
 export const RIBBONWORM_SEG_DIST  =   5;
 export const RIBBONWORM_COLOR     = '#78c878';
 export const RIBBONWORM_GLOW      = '#a0e8a0';
+/** ms spent easing into a coil telegraph before lunging. */
+export const RIBBONWORM_COIL_MS       = 620;
+/** ms the lunge dash itself lasts. */
+export const RIBBONWORM_LUNGE_MS      = 340;
+/** ms of slowed recovery after a lunge before resuming pursuit. */
+export const RIBBONWORM_RECOVER_MS    = 520;
+/** px/frame speed reached during the lunge dash (well above patrol speed). */
+export const RIBBONWORM_LUNGE_SPEED   = 2.1;
+/** Worm only considers coiling when within this px range of the player. */
+export const RIBBONWORM_COIL_RANGE    = 90;
+/** ms cooldown between contact-damage ticks for a single body segment. */
+export const RIBBONWORM_SEG_CONTACT_CD_MS = 500;
 
 // ── Lantern Moth ───────────────────────────────────────────────────────────────
 export const LANTERNMOTH_HP_INIT   =  75;
@@ -48,6 +60,16 @@ export const LANTERNMOTH_SIZE      =   5;
 export const LANTERNMOTH_XP_MULT   = 1.5;
 export const LANTERNMOTH_COLOR     = '#f0d088';
 export const LANTERNMOTH_GLOW      = '#ffe8b0';
+/** ms spent charging the lantern glow before it pulses. */
+export const LANTERNMOTH_CHARGE_MS = 900;
+/** ms the lure pulse itself is active (attract force applied). */
+export const LANTERNMOTH_PULSE_MS  = 260;
+/** ms of idle drifting between lure cycles. */
+export const LANTERNMOTH_IDLE_MS   = 2400;
+/** px radius within which the pulse can attract the player. */
+export const LANTERNMOTH_PULSE_RADIUS = 70;
+/** Max px/frame velocity nudge applied to the player per pulse frame. */
+export const LANTERNMOTH_PULSE_STRENGTH = 0.05;
 
 // ── Eye Stalk ──────────────────────────────────────────────────────────────────
 export const EYESTALK_HP_INIT    = 110;
@@ -57,6 +79,18 @@ export const EYESTALK_SIZE       =   7;
 export const EYESTALK_XP_MULT    = 2.2;
 export const EYESTALK_COLOR      = '#d0b870';
 export const EYESTALK_GLOW       = '#f0d890';
+/** ms spent charging (narrowing cone indicator) before the beam fires. */
+export const EYESTALK_CHARGE_MS  = 900;
+/** ms the beam stays active and can deal damage. */
+export const EYESTALK_FIRE_MS    = 260;
+/** ms of blink animation before the next charge begins. */
+export const EYESTALK_BLINK_MS   = 260;
+/** ms of idle tracking between gaze-attack cycles. */
+export const EYESTALK_IDLE_MS    = 1900;
+/** Half-width (radians) of the gaze cone/beam hit-test at full charge. */
+export const EYESTALK_BEAM_HALFWIDTH_RAD = 0.10;
+/** Max beam range in world px. */
+export const EYESTALK_BEAM_RANGE = 160;
 
 // ── Floating Jellyfish ─────────────────────────────────────────────────────────
 export const JELLYFISH_HP_INIT   = 130;
@@ -75,6 +109,16 @@ export const CLOTHGHOST_SIZE      =   6;
 export const CLOTHGHOST_XP_MULT   = 2.0;
 export const CLOTHGHOST_COLOR     = '#c8c8e8';
 export const CLOTHGHOST_GLOW      = '#e0e0ff';
+/** ms spent solid/pursuing before phasing intangible. */
+export const CLOTHGHOST_SOLID_MS       = 2600;
+/** ms spent intangible (drifts faster, ignores terrain, no contact damage). */
+export const CLOTHGHOST_INTANGIBLE_MS  = 1000;
+/** ms the wrap telegraph+attack arc is active once triggered. */
+export const CLOTHGHOST_WRAP_MS        = 500;
+/** Speed multiplier applied while intangible. */
+export const CLOTHGHOST_INTANGIBLE_SPEED_MULT = 1.6;
+/** px range at which cloth ghost may trigger its wrap telegraph on the player. */
+export const CLOTHGHOST_WRAP_RANGE     = 26;
 
 // ── Plant Turret ───────────────────────────────────────────────────────────────
 export const PLANTTURRET_HP_INIT        = 160;
@@ -93,6 +137,16 @@ export const PLANT_PROJ_LIFE_MS         = 2500;
 export const PLANT_PROJ_SIZE            =   3;
 export const PLANT_PROJ_COLOR           = '#78d848';
 export const PLANT_PROJ_GLOW            = '#a0f060';
+/** ms the bud spends opening (telegraph) before firing. */
+export const PLANTTURRET_BUD_OPEN_MS    = 420;
+/** ms the bud stays visibly open at the fire instant. */
+export const PLANTTURRET_BUD_OPEN_HOLD_MS = 120;
+/** ms of recoil after firing before the stem returns to idle sway. */
+export const PLANTTURRET_RECOIL_MS      = 380;
+/** Burst-shot pellet count (fired every 3rd shot). */
+export const PLANTTURRET_BURST_COUNT    = 3;
+/** Arc-seed-pod extra arc height added to the pod's trajectory (visual only). */
+export const PLANT_PROJ_ARC_SPEED_MULT  = 0.7;
 
 // ── Gear Insect ────────────────────────────────────────────────────────────────
 export const GEARINSECT_HP_INIT   = 200;
@@ -102,6 +156,18 @@ export const GEARINSECT_SIZE      =   7;
 export const GEARINSECT_XP_MULT   = 3.5;
 export const GEARINSECT_COLOR     = '#a0a0b0';
 export const GEARINSECT_GLOW      = '#c0c0d0';
+/** ms of a single scuttle burst. */
+export const GEARINSECT_SCUTTLE_MS = 480;
+/** ms paused between scuttle bursts. */
+export const GEARINSECT_PAUSE_MS   = 380;
+/** ms spent charging (telegraph) before a ricochet dash. */
+export const GEARINSECT_CHARGE_MS  = 500;
+/** ms the ricochet dash lasts. */
+export const GEARINSECT_RICOCHET_MS = 900;
+/** px/frame speed during a scuttle burst. */
+export const GEARINSECT_SCUTTLE_SPEED = 0.85;
+/** px/frame speed during the ricochet dash. */
+export const GEARINSECT_RICOCHET_SPEED = 1.7;
 
 // ── Spider Crawler ─────────────────────────────────────────────────────────────
 export const SPIDERCRAWLER_HP_INIT   = 180;
@@ -111,6 +177,32 @@ export const SPIDERCRAWLER_SIZE      =   7;
 export const SPIDERCRAWLER_XP_MULT   = 3.0;
 export const SPIDERCRAWLER_COLOR     = '#a06850';
 export const SPIDERCRAWLER_GLOW      = '#c88868';
+/** ms spent stalking (slow approach) before considering a sidestep or pounce. */
+export const SPIDERCRAWLER_STALK_MS    = 900;
+/** ms spent sidestepping. */
+export const SPIDERCRAWLER_SIDESTEP_MS = 500;
+/** ms spent crouched (telegraph) before the pounce launches. */
+export const SPIDERCRAWLER_CROUCH_MS   = 380;
+/** ms the pounce dash lasts. */
+export const SPIDERCRAWLER_POUNCE_MS   = 260;
+/** ms of recovery (slowed) after a pounce. */
+export const SPIDERCRAWLER_RECOVER_MS  = 480;
+/** px/frame speed during the pounce dash. */
+export const SPIDERCRAWLER_POUNCE_SPEED = 2.4;
+/** Pounce only triggers when within this px range of the player. */
+export const SPIDERCRAWLER_POUNCE_RANGE = 85;
+/** px a foot may stretch from its body-relative rest position before replanting. */
+export const SPIDERCRAWLER_FOOT_STRETCH = 9;
+/** ms cooldown between web-cone hazard casts. */
+export const SPIDERCRAWLER_WEB_CD_MS   = 4200;
+/** ms the web-cone telegraph + active slow window lasts. */
+export const SPIDERCRAWLER_WEB_ACTIVE_MS = 550;
+/** Web-cone half-angle (radians). */
+export const SPIDERCRAWLER_WEB_HALFWIDTH_RAD = 0.45;
+/** Web-cone range in world px. */
+export const SPIDERCRAWLER_WEB_RANGE = 70;
+/** Velocity damping multiplier applied to the player while standing in an active web. */
+export const SPIDERCRAWLER_WEB_SLOW_MULT = 0.9;
 
 // ── Magnetic Mote Swarm ────────────────────────────────────────────────────────
 export const MOTESWARM_HP_INIT     = 140;

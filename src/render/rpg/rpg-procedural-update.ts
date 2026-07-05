@@ -31,6 +31,23 @@ import {
   MOTESWARM_ORBIT_DIST,
   DUSTWISP_SIZE, RIBBONWORM_SIZE, LANTERNMOTH_SIZE, EYESTALK_SIZE, JELLYFISH_SIZE,
   CLOTHGHOST_SIZE, GEARINSECT_SIZE, SPIDERCRAWLER_SIZE, MOTESWARM_SIZE, SHADOWHAND_SIZE,
+  RIBBONWORM_COIL_MS, RIBBONWORM_LUNGE_MS, RIBBONWORM_RECOVER_MS, RIBBONWORM_LUNGE_SPEED,
+  RIBBONWORM_COIL_RANGE, RIBBONWORM_SEG_CONTACT_CD_MS,
+  LANTERNMOTH_CHARGE_MS, LANTERNMOTH_PULSE_MS, LANTERNMOTH_IDLE_MS,
+  LANTERNMOTH_PULSE_RADIUS, LANTERNMOTH_PULSE_STRENGTH,
+  EYESTALK_CHARGE_MS, EYESTALK_FIRE_MS, EYESTALK_BLINK_MS, EYESTALK_IDLE_MS,
+  EYESTALK_BEAM_HALFWIDTH_RAD, EYESTALK_BEAM_RANGE,
+  CLOTHGHOST_SOLID_MS, CLOTHGHOST_INTANGIBLE_MS, CLOTHGHOST_WRAP_MS,
+  CLOTHGHOST_INTANGIBLE_SPEED_MULT, CLOTHGHOST_WRAP_RANGE,
+  PLANTTURRET_BUD_OPEN_MS, PLANTTURRET_BUD_OPEN_HOLD_MS, PLANTTURRET_RECOIL_MS,
+  PLANTTURRET_BURST_COUNT, PLANT_PROJ_ARC_SPEED_MULT,
+  GEARINSECT_SCUTTLE_MS, GEARINSECT_PAUSE_MS, GEARINSECT_CHARGE_MS, GEARINSECT_RICOCHET_MS,
+  GEARINSECT_SCUTTLE_SPEED, GEARINSECT_RICOCHET_SPEED,
+  SPIDERCRAWLER_STALK_MS, SPIDERCRAWLER_SIDESTEP_MS, SPIDERCRAWLER_CROUCH_MS,
+  SPIDERCRAWLER_POUNCE_MS, SPIDERCRAWLER_RECOVER_MS, SPIDERCRAWLER_POUNCE_SPEED,
+  SPIDERCRAWLER_POUNCE_RANGE, SPIDERCRAWLER_FOOT_STRETCH,
+  SPIDERCRAWLER_WEB_CD_MS, SPIDERCRAWLER_WEB_ACTIVE_MS, SPIDERCRAWLER_WEB_HALFWIDTH_RAD,
+  SPIDERCRAWLER_WEB_RANGE, SPIDERCRAWLER_WEB_SLOW_MULT,
 } from './rpg-procedural-constants';
 import { makePlantProjectile } from './rpg-procedural-factories';
 import { TARGET_FRAME_MS, PLAYER_HIT_RADIUS } from './rpg-constants';
@@ -129,21 +146,79 @@ export function updateRibbonWormEnemies(
   for (const e of enemies) {
     e.animPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    pursueStep(e, dt, ctx);
+    e.stateTimerMs -= deltaMs;
+
+    const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    if (e.wormState === 'pursue') {
+      e.coilAmount = Math.max(0, e.coilAmount - deltaMs * 0.004);
+      pursueStep(e, dt, ctx);
+      if (e.stateTimerMs <= 0) {
+        if (dist <= RIBBONWORM_COIL_RANGE) {
+          e.wormState = 'coil';
+          e.stateTimerMs = RIBBONWORM_COIL_MS;
+        } else {
+          e.stateTimerMs = 300 + Math.random() * 500;
+        }
+      }
+    } else if (e.wormState === 'coil') {
+      // Curl in place — telegraph the lunge with an eased-in coil amount.
+      e.coilAmount = Math.min(1, e.coilAmount + deltaMs * 0.003);
+      e.vx *= Math.pow(PROC_PATROL_DAMPING, dt);
+      e.vy *= Math.pow(PROC_PATROL_DAMPING, dt);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) {
+        e.lungeDirX = dx / dist; e.lungeDirY = dy / dist;
+        e.wormState = 'lunge';
+        e.stateTimerMs = RIBBONWORM_LUNGE_MS;
+      }
+    } else if (e.wormState === 'lunge') {
+      e.coilAmount = Math.max(0, e.coilAmount - deltaMs * 0.006);
+      e.vx = e.lungeDirX * RIBBONWORM_LUNGE_SPEED;
+      e.vy = e.lungeDirY * RIBBONWORM_LUNGE_SPEED;
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) {
+        e.wormState = 'recover';
+        e.stateTimerMs = RIBBONWORM_RECOVER_MS;
+      }
+    } else {
+      e.vx *= Math.pow(0.9, dt); e.vy *= Math.pow(0.9, dt);
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.clampEnemyToBounds(e);
+      if (e.stateTimerMs <= 0) {
+        e.wormState = 'pursue';
+        e.stateTimerMs = 500 + Math.random() * 700;
+      }
+    }
+
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), RIBBONWORM_SIZE / 2);
     // Pull segments toward the one in front; index 0 is the head.
+    // Coiling biases the desired segment spacing tighter, curling the body.
     e.segX[0] = e.x;
     e.segY[0] = e.y;
+    const segDist = RIBBONWORM_SEG_DIST * (1 - e.coilAmount * 0.4);
     for (let i = 1; i < e.segX.length; i++) {
       const sx = e.segX[i - 1] - e.segX[i];
       const sy = e.segY[i - 1] - e.segY[i];
       const len = Math.sqrt(sx * sx + sy * sy) || 1;
-      if (len > RIBBONWORM_SEG_DIST) {
-        e.segX[i] += (sx / len) * (len - RIBBONWORM_SEG_DIST);
-        e.segY[i] += (sy / len) * (len - RIBBONWORM_SEG_DIST);
+      if (len > segDist) {
+        e.segX[i] += (sx / len) * (len - segDist);
+        e.segY[i] += (sy / len) * (len - segDist);
       }
     }
     contactDamage(e, dt, ctx);
+    // Body segments deal reduced contact damage independently of the head.
+    for (let i = 1; i < e.segX.length; i++) {
+      if (e.segContactCdMs[i] > 0) { e.segContactCdMs[i] -= deltaMs; continue; }
+      const sdx = ctx.mote.x - e.segX[i], sdy = ctx.mote.y - e.segY[i];
+      if (sdx * sdx + sdy * sdy <= (PROC_CONTACT_RADIUS + PLAYER_HIT_RADIUS) ** 2) {
+        ctx.dealDamageToPlayer(Math.round(e.atk * 0.6));
+        e.segContactCdMs[i] = RIBBONWORM_SEG_CONTACT_CD_MS;
+      }
+    }
   }
 }
 
@@ -158,16 +233,43 @@ export function updateLanternMothEnemies(
   for (const e of enemies) {
     e.animPhase += deltaMs / 1000;
     e.flapPhase += deltaMs / 1000;
+    e.hoverPhase += deltaMs / 1000;
     if (e.hitFlashMs > 0) e.hitFlashMs -= deltaMs;
-    // Weaving sine-wave pursuit
+    e.lureTimerMs -= deltaMs;
+
+    if (e.lureState === 'idle') {
+      e.chargeGlow = Math.max(0, e.chargeGlow - deltaMs * 0.003);
+      if (e.lureTimerMs <= 0) { e.lureState = 'charge'; e.lureTimerMs = LANTERNMOTH_CHARGE_MS; }
+    } else if (e.lureState === 'charge') {
+      e.chargeGlow = Math.min(1, e.chargeGlow + deltaMs / LANTERNMOTH_CHARGE_MS);
+      if (e.lureTimerMs <= 0) { e.lureState = 'pulse'; e.lureTimerMs = LANTERNMOTH_PULSE_MS; }
+    } else {
+      e.chargeGlow = 1;
+      // Light-lure: gently nudges the player's velocity toward the moth while pulsing.
+      const ldx = e.x - ctx.mote.x, ldy = e.y - ctx.mote.y;
+      const d2 = ldx * ldx + ldy * ldy;
+      if (d2 <= LANTERNMOTH_PULSE_RADIUS * LANTERNMOTH_PULSE_RADIUS) {
+        const d = Math.sqrt(d2) || 1;
+        ctx.mote.vx += (ldx / d) * LANTERNMOTH_PULSE_STRENGTH * dt;
+        ctx.mote.vy += (ldy / d) * LANTERNMOTH_PULSE_STRENGTH * dt;
+      }
+      if (e.lureTimerMs <= 0) {
+        e.lureState = 'idle';
+        e.lureTimerMs = LANTERNMOTH_IDLE_MS + Math.random() * 800;
+        e.chargeGlow = 0;
+      }
+    }
+
+    // Weaving sine-wave pursuit with a gentle hover bob; slows while charging/pulsing.
     const dx = ctx.mote.x - e.x, dy = ctx.mote.y - e.y;
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     const perpX = -dy / len, perpY = dx / len;
     const weave = Math.sin(e.flapPhase * 3.5) * PROC_PATROL_SPEED * 0.7;
-    e.vx = e.vx * PROC_PATROL_DAMPING + (dx / len) * PROC_PATROL_SPEED * 0.5 * (1 - PROC_PATROL_DAMPING) + perpX * weave * 0.03;
-    e.vy = e.vy * PROC_PATROL_DAMPING + (dy / len) * PROC_PATROL_SPEED * 0.5 * (1 - PROC_PATROL_DAMPING) + perpY * weave * 0.03;
+    const slow = e.lureState === 'idle' ? 1 : 0.35;
+    e.vx = e.vx * PROC_PATROL_DAMPING + (dx / len) * PROC_PATROL_SPEED * 0.5 * slow * (1 - PROC_PATROL_DAMPING) + perpX * weave * 0.03;
+    e.vy = e.vy * PROC_PATROL_DAMPING + (dy / len) * PROC_PATROL_SPEED * 0.5 * slow * (1 - PROC_PATROL_DAMPING) + perpY * weave * 0.03;
     e.x += e.vx * dt;
-    e.y += e.vy * dt;
+    e.y += (e.vy + Math.sin(e.hoverPhase * 2.2) * 0.05) * dt;
     ctx.clampEnemyToBounds(e);
     applyEnemyTerrainPushOut(e, ctx.getTerrainState(), LANTERNMOTH_SIZE / 2);
     contactDamage(e, dt, ctx);

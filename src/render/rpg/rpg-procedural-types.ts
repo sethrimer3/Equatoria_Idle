@@ -26,7 +26,7 @@ export interface DustWispEnemy {
 }
 
 // ── Ribbon Worm ────────────────────────────────────────────────────────────────
-/** Segmented worm body that wiggles as it pursues the player. */
+/** Segmented worm body that coils, telegraphs, then lunges at the player. */
 export interface RibbonWormEnemy {
   kind: 'proc_ribbonworm';
   x: number; y: number;
@@ -40,10 +40,21 @@ export interface RibbonWormEnemy {
   segX: Float64Array;
   /** Segment center Y positions; index 0 is the head (= enemy y). */
   segY: Float64Array;
+  /** Per-segment contact cooldown so body segments can hit independently. */
+  segContactCdMs: Float64Array;
+  /** Behaviour state: pursue → coil (telegraph) → lunge (dash) → recover. */
+  wormState: 'pursue' | 'coil' | 'lunge' | 'recover';
+  /** Remaining ms in the current wormState. */
+  stateTimerMs: number;
+  /** Locked lunge direction, set when leaving the coil state. */
+  lungeDirX: number;
+  lungeDirY: number;
+  /** Coil curl amount 0-1, eased up during coil and eased back down after. */
+  coilAmount: number;
 }
 
 // ── Lantern Moth ───────────────────────────────────────────────────────────────
-/** Floaty enemy with animated wing flaps; moves in a weaving sine-wave path. */
+/** Floaty insect-like enemy with a charge-and-pulse light-lure attack. */
 export interface LanternMothEnemy {
   kind: 'proc_lanternmoth';
   x: number; y: number;
@@ -55,10 +66,21 @@ export interface LanternMothEnemy {
   contactCdMs: number;
   /** Wing flap phase accumulator (seconds). */
   flapPhase: number;
+  /** Per-wing phase offsets so left/right flap asymmetrically. */
+  wingPhaseOffsetL: number;
+  wingPhaseOffsetR: number;
+  /** Hover bob phase (seconds), independent of flap timing. */
+  hoverPhase: number;
+  /** Lantern-lure behaviour state. */
+  lureState: 'idle' | 'charge' | 'pulse';
+  /** Remaining ms in the current lureState. */
+  lureTimerMs: number;
+  /** 0-1 charge-up glow strength, eased toward 1 while charging. */
+  chargeGlow: number;
 }
 
 // ── Eye Stalk ──────────────────────────────────────────────────────────────────
-/** Round blob body with a spring-swaying eye stalk that tracks the player. */
+/** Round blob body with a spring-swaying eye stalk that charges and fires a gaze beam. */
 export interface EyeStalkEnemy {
   kind: 'proc_eyestalk';
   x: number; y: number;
@@ -72,6 +94,19 @@ export interface EyeStalkEnemy {
   stalkPhase: number;
   /** Angle the pupil is currently facing (radians; tracks player). */
   eyeAngle: number;
+  /** Spring-lag stalk tip offset (world px), trails behind the body. */
+  stalkLagX: number;
+  stalkLagY: number;
+  /** Gaze-attack behaviour state. */
+  gazeState: 'idle' | 'charge' | 'fire' | 'blink';
+  /** Remaining ms in the current gazeState. */
+  gazeTimerMs: number;
+  /** Locked beam direction angle, set when charge begins. */
+  beamAngle: number;
+  /** 0 = eyes open, 1 = fully closed (blink). */
+  blinkAmount: number;
+  /** True once the current fire window has already dealt damage. */
+  beamHasHit: boolean;
 }
 
 // ── Floating Jellyfish ─────────────────────────────────────────────────────────
@@ -103,7 +138,7 @@ export interface JellyfishEnemy {
 }
 
 // ── Cloth Ghost ────────────────────────────────────────────────────────────────
-/** Translucent cloth sheet that flutters and ripples as it glides toward the player. */
+/** Translucent cloth sheet that flutters, phases through terrain, and unfurls a wrap telegraph. */
 export interface ClothGhostEnemy {
   kind: 'proc_clothghost';
   x: number; y: number;
@@ -115,10 +150,21 @@ export interface ClothGhostEnemy {
   contactCdMs: number;
   /** Flutter ripple phase (seconds). */
   flutterPhase: number;
+  /** Corner-lag offsets for the four sheet corners (world px, trailing behind body motion). */
+  cornerLagX: Float64Array;
+  cornerLagY: Float64Array;
+  /** Ghost behaviour state: solid → intangible (phase-drift) → wrap (telegraph+attack) → solid. */
+  ghostState: 'solid' | 'intangible' | 'wrap';
+  /** Remaining ms in the current ghostState. */
+  stateTimerMs: number;
+  /** 0-1 expanding wrap-arc radius fraction, used for the wrap telegraph draw. */
+  wrapFraction: number;
+  /** True once the current wrap has already dealt damage. */
+  wrapHasHit: boolean;
 }
 
 // ── Plant Turret ───────────────────────────────────────────────────────────────
-/** Stationary root-anchored plant that sways and periodically fires spore projectiles. */
+/** Stationary root-anchored plant that bends toward the player, blooms, and fires spore variants. */
 export interface PlantTurretEnemy {
   kind: 'proc_plantturret';
   x: number; y: number;
@@ -136,10 +182,19 @@ export interface PlantTurretEnemy {
   rootX: number;
   /** Anchored root position Y. */
   rootY: number;
+  /** Eased stem-bend offset toward the player (world px), smoothed each frame. */
+  bendX: number;
+  bendY: number;
+  /** Bud behaviour state: closed → opening (telegraph) → open (fire) → recoil. */
+  budState: 'closed' | 'opening' | 'open' | 'recoil';
+  /** Remaining ms in the current budState. */
+  budTimerMs: number;
+  /** Number of shots fired so far; cycles regular/burst/arc spore variety. */
+  shotIndex: number;
 }
 
 // ── Gear Insect ────────────────────────────────────────────────────────────────
-/** Mechanical bug with a spinning central gear and oscillating insect legs. */
+/** Mechanical bug that scuttles in bursts, then charges and ricochets off walls. */
 export interface GearInsectEnemy {
   kind: 'proc_gearinsect';
   x: number; y: number;
@@ -153,10 +208,17 @@ export interface GearInsectEnemy {
   gearAngle: number;
   /** Leg animation phase (seconds). */
   legPhase: number;
+  /** Behaviour state: scuttle (burst move) → pause → charge (telegraph) → ricochet. */
+  moveState: 'scuttle' | 'pause' | 'charge' | 'ricochet';
+  /** Remaining ms in the current moveState. */
+  stateTimerMs: number;
+  /** Locked ricochet direction, set when leaving the charge state. */
+  chargeDirX: number;
+  chargeDirY: number;
 }
 
 // ── Spider Crawler ─────────────────────────────────────────────────────────────
-/** Eight-legged spider with an alternating-pair walking cycle. */
+/** Eight-legged spider with IK-style stepping that stalks, sidesteps, pounces, and recovers. */
 export interface SpiderCrawlerEnemy {
   kind: 'proc_spidercrawler';
   x: number; y: number;
@@ -168,6 +230,23 @@ export interface SpiderCrawlerEnemy {
   contactCdMs: number;
   /** Leg walk cycle phase (seconds). */
   legPhase: number;
+  /** Behaviour state: stalk → sidestep → crouch (telegraph) → pounce → recover. */
+  spiderState: 'stalk' | 'sidestep' | 'crouch' | 'pounce' | 'recover';
+  /** Remaining ms in the current spiderState. */
+  stateTimerMs: number;
+  /** Sidestep direction sign (+1/-1), flipped each sidestep entry. */
+  sidestepDir: number;
+  /** 0-1 crouch/anticipation squash amount, eased up before a pounce. */
+  crouchAmount: number;
+  /** Planted foot world positions (4 feet: front-left/right, back-left/right). */
+  footX: Float64Array;
+  footY: Float64Array;
+  /** Countdown until the web-cone hazard may fire again (ms). */
+  webCdMs: number;
+  /** Remaining ms the web-cone telegraph/hazard is visible/active. */
+  webActiveMs: number;
+  /** Locked web-cone aim angle, set when the web is triggered. */
+  webAngle: number;
 }
 
 // ── Magnetic Mote Swarm ────────────────────────────────────────────────────────
