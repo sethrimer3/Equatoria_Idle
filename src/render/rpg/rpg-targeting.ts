@@ -63,6 +63,7 @@ export function createRpgTargeting(ctx: RpgTargetingCtx): RpgTargetingHandle {
     if (target.elite) return ctx.damageEliteEnemy(target.elite, rawDamage, defPierceRatio);
     if (target.alivenParticle && target.alivenGroup) return ctx.damageAlivenParticle(target.alivenParticle, target.alivenGroup, rawDamage);
     if (target.lifeCell) return ctx.damageLifeCell(target.lifeCell, rawDamage);
+    if (target.lifeCoreColony) return ctx.damageLifeCore(target.lifeCoreColony, rawDamage);
     if (target.boss) return ctx.damageBossEnemy(rawDamage, defPierceRatio);
     if (target.dustWisp) return ctx.damageDustWispEnemy(target.dustWisp, rawDamage, defPierceRatio);
     if (target.ribbonWorm) return ctx.damageRibbonWormEnemy(target.ribbonWorm, rawDamage, defPierceRatio);
@@ -113,7 +114,7 @@ function getTargetObject(target: ClosestTarget): object | null {
     ?? target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite
     ?? target.amethyst ?? target.diamond ?? target.nullstone ?? target.fracteryl ?? target.eigenstein
     ?? target.polyomino ?? target.fissilePolyomino ?? target.refractorPolyomino
-    ?? target.elite ?? target.alivenParticle ?? target.lifeCell ?? target.boss
+    ?? target.elite ?? target.alivenParticle ?? target.lifeCell ?? target.lifeCoreColony ?? target.boss
     ?? target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk
     ?? target.jellyfish ?? target.eliteJellyfish ?? target.clothGhost ?? target.plantTurret
     ?? target.gearInsect ?? target.spiderCrawler ?? target.moteSwarm ?? target.shadowHand

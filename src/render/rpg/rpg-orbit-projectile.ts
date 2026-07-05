@@ -26,6 +26,7 @@ import {
   ORBIT_PROJ_HIT_RADIUS, ORBIT_PROJ_HIT_CD_MS, ORBIT_PROJ_DAMAGE,
   HIT_EFFECT_DURATION_MS, MIN_TRAIL_DISTANCE,
 } from './rpg-constants';
+import { isLifeBodyTarget, getLifeTargetBody } from './life-weapon-helpers';
 
 // ── Dependency-injection context ──────────────────────────────────────────────
 
@@ -335,6 +336,19 @@ export function updateOrbitProjectile(
     tryHit(op, enemy, enemy.x, enemy.y,
       () => ctx.damageEliteEnemy(enemy, orbitDamage, 0),
       enemy.maxHp);
+  }
+
+  // ── Life zone cells/core ─────────────────────────────────────────
+  // Life targets use a dedicated branch (rather than getOrbitTargetBody's
+  // per-call object) so the hit-cooldown map keys off the actual cell/colony
+  // reference — needed for the cooldown to persist across frames.
+  for (const target of ctx.collectEnemyBodyTargets()) {
+    if (!isLifeBodyTarget(target)) continue;
+    const lifeBody = getLifeTargetBody(target);
+    if (!lifeBody) continue;
+    tryHit(op, lifeBody.ref, target.x, target.y,
+      () => ctx.damageBodyTarget(target, orbitDamage, 0, false),
+      lifeBody.maxHp);
   }
 
   // ── Boss ────────────────────────────────────────────────────────

@@ -37,6 +37,7 @@ import type {
 } from './rpg-enemy-types';
 export type { EmeraldSubsCtx, EmeraldSubsHandle } from './rpg-weapon-emerald-subs';
 import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
+import { isLifeBodyTarget, getLifeTargetBody } from './life-weapon-helpers';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
@@ -191,7 +192,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       if (ctx.bossEnemy) checkTarget(ctx.bossEnemy.x, ctx.bossEnemy.y);
       const bodyTargets = ctx.collectEnemyBodyTargets();
       for (const target of bodyTargets) {
-        if (target.kind.startsWith('proc_') || target.kind === 'verdure_plant') checkTarget(target.x, target.y);
+        if (target.kind.startsWith('proc_') || target.kind === 'verdure_plant' || isLifeBodyTarget(target)) checkTarget(target.x, target.y);
       }
 
       m.proximityAlpha = getProximityAlpha(
@@ -319,7 +320,7 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
       if (!hit) for (const e of eliteEnemies) { if (e.isInvuln) continue; if (tryHit(e, (en, d, p) => damageEliteEnemy(en, d, p))) { hit = true; break; } }
       if (!hit) {
         for (const target of bodyTargets) {
-          if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+          if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant' && !isLifeBodyTarget(target)) continue;
           const body = getEmeraldTargetBody(target);
           if (!body) continue;
           const dx = m.x - target.x, dy = m.y - target.y;
@@ -378,6 +379,8 @@ export function createEmeraldWeaponSystem(ctx: EmeraldWeaponCtx): EmeraldWeaponH
 }
 
 function getEmeraldTargetBody(target: ClosestTarget): { maxHp: number } | null {
+  const lifeBody = getLifeTargetBody(target);
+  if (lifeBody) return { maxHp: lifeBody.maxHp };
   const body =
     target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
     target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??

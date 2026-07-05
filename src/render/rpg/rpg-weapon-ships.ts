@@ -73,7 +73,8 @@ function getTargetMaxHp(target: ClosestTarget): number {
   return target.laser?.maxHp ?? target.sapphire?.maxHp ?? target.emerald?.maxHp ?? target.amber?.maxHp
     ?? target.void?.maxHp ?? target.quartz?.maxHp ?? target.ruby?.maxHp ?? target.sunstone?.maxHp
     ?? target.citrine?.maxHp ?? target.iolite?.maxHp ?? target.amethyst?.maxHp ?? target.diamond?.maxHp
-    ?? target.nullstone?.maxHp ?? target.fracteryl?.maxHp ?? target.eigenstein?.maxHp ?? target.boss?.maxHp ?? 1;
+    ?? target.nullstone?.maxHp ?? target.fracteryl?.maxHp ?? target.eigenstein?.maxHp ?? target.boss?.maxHp
+    ?? target.lifeCell?.maxHp ?? target.lifeCoreColony?.coreMaxHp ?? 1;
 }
 
 /** Structural subset of RpgWeaponCtx containing only what ship systems need. */

@@ -22,6 +22,8 @@ import type {
   FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
+import type { LifeColonyController } from './life-types';
+import { lifeGridToWorldCenter } from './life-grid';
 
 export interface LaserBeamHitSweepCtx {
   originX: number;
@@ -74,6 +76,9 @@ export interface LaserBeamHitSweepCtx {
   alivenGroups: AlivenParticleGroup[];
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
+  lifeColonies: LifeColonyController[];
+  damageLifeCell: (cell: import('./life-types').LifeCellEntity, rawDamage: number) => number;
+  damageLifeCore: (colony: LifeColonyController, rawDamage: number) => number;
 }
 
 function isWithinBeam(
@@ -102,13 +107,13 @@ export function applyLaserBeamHitSweep(ctx: LaserBeamHitSweepCtx): void {
     amberEnemies, amberShards, voidEnemies, quartzEnemies, rubyEnemies,
     sunstoneEnemies, citrineEnemies, ioliteEnemies, amethystEnemies,
     diamondEnemies, nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
-    eliteEnemies, alivenGroups,
+    eliteEnemies, alivenGroups, lifeColonies,
     damageEnemy, damageSapphireEnemy, damageMissile, damageEmeraldEnemy,
     damageAmberEnemy, damageAmberShard, damageVoidEnemy, damageQuartzEnemy,
     damageRubyEnemy, damageSunstoneEnemy, damageCitrineEnemy, damageIoliteEnemy,
     damageAmethystEnemy, damageDiamondEnemy, damageNullstoneEnemy,
     damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
-    damageAlivenParticle,
+    damageAlivenParticle, damageLifeCell, damageLifeCore,
     spawnDamageNumber,
   } = ctx;
 
@@ -227,6 +232,29 @@ export function applyLaserBeamHitSweep(ctx: LaserBeamHitSweepCtx): void {
       if (dmg > 0) {
         hitEffects.push({ x: p.x, y: p.y, timerMs: HIT_EFFECT_DURATION_MS, color: p.glowColor });
         spawnDamageNumber(p.x, p.y, 0, -1, String(Math.round(dmg)), dmg / p.maxHp, p.glowColor);
+      }
+    }
+  }
+
+  // Life-zone cells/core: the beam pierces every enemy in its path already
+  // (no per-target cooldown), so it's naturally strong against a colony's
+  // clustered cells — a full sweep can wipe an entire exposed row per shot.
+  for (const colony of lifeColonies) {
+    for (const cell of colony.cells.values()) {
+      if (cell.isDying) continue;
+      const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, colony.bounds);
+      if (!isWithinBeam(originX, originY, dirX, dirY, tMax, center.x, center.y, 8)) continue;
+      const dmg = damageLifeCell(cell, baseDamage);
+      if (dmg > 0) {
+        hitEffects.push({ x: center.x, y: center.y, timerMs: HIT_EFFECT_DURATION_MS, color: beamGlow });
+        spawnDamageNumber(center.x, center.y, 0, -1, String(Math.round(dmg)), dmg / cell.maxHp, beamColor);
+      }
+    }
+    if (colony.coreHp > 0 && isWithinBeam(originX, originY, dirX, dirY, tMax, colony.x, colony.y, 12)) {
+      const dmg = damageLifeCore(colony, baseDamage);
+      if (dmg > 0) {
+        hitEffects.push({ x: colony.x, y: colony.y, timerMs: HIT_EFFECT_DURATION_MS, color: beamGlow });
+        spawnDamageNumber(colony.x, colony.y, 0, -1, String(Math.round(dmg)), dmg / colony.coreMaxHp, beamColor);
       }
     }
   }

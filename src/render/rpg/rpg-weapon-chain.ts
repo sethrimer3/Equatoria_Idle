@@ -39,6 +39,7 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
+import { isLifeBodyTarget, getLifeTargetBody } from './life-weapon-helpers';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
 
@@ -264,7 +265,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
         }
       };
       const applyBodyTargetDamage = (tx: number, ty: number, target: ClosestTarget, nodeIdx: number): void => {
-        if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') return;
+        if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant' && !isLifeBodyTarget(target)) return;
         const body = getChainTargetBody(target);
         if (!body || ws.hitCooldowns.has(body)) return;
         const nodeR = chainNodeRadius(CHAIN_NODES - 1);
@@ -351,6 +352,8 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
 }
 
 function getChainTargetBody(target: ClosestTarget): { maxHp: number } | null {
+  const lifeBody = getLifeTargetBody(target);
+  if (lifeBody) return { maxHp: lifeBody.maxHp };
   const body =
     target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
     target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??

@@ -37,7 +37,8 @@ import {
   FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B,
 } from './rpg-constants';
 import type { FluidImpulse } from './rpg-fluid';
-import type { LaserEnemy, SapphireEnemy } from './rpg-types';
+import type { ClosestTarget, LaserEnemy, SapphireEnemy } from './rpg-types';
+import { isLifeBodyTarget, getLifeTargetBody } from './life-weapon-helpers';
 import type {
   EmeraldEnemy, AmberEnemy, VoidEnemy, QuartzEnemy, RubyEnemy,
   SunstoneEnemy, CitrineEnemy, IoliteEnemy, AmethystEnemy,
@@ -98,6 +99,8 @@ export interface EmeraldSubsCtx {
   spawnHitVisualsAt: (x: number, y: number, maxHp: number, dmg: number, color: string) => void;
   removeDeadEnemies: () => void;
   checkWaveCompletion: () => void;
+  collectEnemyBodyTargets: () => ClosestTarget[];
+  damageBodyTarget: (target: ClosestTarget, rawDamage: number, defPierceRatio: number, bypassShield: boolean) => number;
   /** Returns current terrain state, or null if terrain is not active. */
   getTerrainState?: () => TopographicTerrainState | null;
 }
@@ -231,6 +234,9 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
         for (const e of eigensteinEnemies) checkTarget(e.x, e.y);
         for (const e of eliteEnemies) { if (!e.isInvuln) checkTarget(e.x, e.y); }
         if (ctx.bossEnemy) checkTarget(ctx.bossEnemy.x, ctx.bossEnemy.y);
+        for (const target of ctx.collectEnemyBodyTargets()) {
+          if (isLifeBodyTarget(target)) checkTarget(target.x, target.y);
+        }
 
         if (nearestDist2 <= detectR2 && nearestX !== null && nearestY !== null) {
           const ex = nearestX - s.x, ey = nearestY - s.y;
@@ -340,6 +346,18 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
           applyAoe(fracterylEnemies, (e, d, p) => damageFracterylEnemy(e, d, p));
           applyAoe(eigensteinEnemies,(e, d, p) => damageEigensteinEnemy(e, d, p));
           applyAoe(eliteEnemies.filter(e => !e.isInvuln), (e, d, p) => damageEliteEnemy(e, d, p));
+          // Life-zone cells/core: AoE is deliberately strong here since a colony
+          // can hold dozens of clustered cells within one explosion radius.
+          for (const target of ctx.collectEnemyBodyTargets()) {
+            if (!isLifeBodyTarget(target)) continue;
+            const lifeBody = getLifeTargetBody(target);
+            if (!lifeBody) continue;
+            const ldx = target.x - s.x, ldy = target.y - s.y;
+            if (ldx * ldx + ldy * ldy > aoeR2) continue;
+            if (terrain && segmentIntersectsTopographicTerrain(terrain, s.x, s.y, target.x, target.y)) continue;
+            const dmg = ctx.damageBodyTarget(target, s.scaledDamage, 0, false);
+            if (dmg > 0) spawnHitVisualsAt(target.x, target.y, lifeBody.maxHp, dmg, EMERALD_MISSILE_COLOR);
+          }
           if (ctx.bossEnemy) {
             const bdx = ctx.bossEnemy.x - s.x, bdy = ctx.bossEnemy.y - s.y;
             if (bdx * bdx + bdy * bdy <= aoeR2) {
@@ -389,6 +407,21 @@ export function createEmeraldSubSystem(ctx: EmeraldSubsCtx): EmeraldSubsHandle {
       if (!hit) for (const e of fracterylEnemies) { if (tryHitSub(e, (en, d, p) => damageFracterylEnemy(en, d, p))) { hit = true; break; } }
       if (!hit) for (const e of eigensteinEnemies) { if (tryHitSub(e, (en, d, p) => damageEigensteinEnemy(en, d, p))) { hit = true; break; } }
       if (!hit) for (const e of eliteEnemies) { if (e.isInvuln) continue; if (tryHitSub(e, (en, d, p) => damageEliteEnemy(en, d, p))) { hit = true; break; } }
+      if (!hit) {
+        for (const target of ctx.collectEnemyBodyTargets()) {
+          if (!isLifeBodyTarget(target)) continue;
+          const lifeBody = getLifeTargetBody(target);
+          if (!lifeBody) continue;
+          const dx = s.x - target.x, dy = s.y - target.y;
+          if (dx * dx + dy * dy >= hitR2) continue;
+          const dmg = ctx.damageBodyTarget(target, s.scaledDamage, 0, false);
+          spawnHitVisualsAt(target.x, target.y, lifeBody.maxHp, dmg, EMERALD_MISSILE_COLOR);
+          fluid.addExplosion(target.x, target.y, FLUID_EXPLOSION_STRENGTH * 0.2,
+            FLUID_EMERALD_R, FLUID_EMERALD_G, FLUID_EMERALD_B);
+          hit = true;
+          break;
+        }
+      }
       if (!hit && ctx.bossEnemy) {
         const boss = ctx.bossEnemy;
         const dx = s.x - boss.x, dy = s.y - boss.y;

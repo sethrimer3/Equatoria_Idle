@@ -27,6 +27,27 @@ export interface LifeCellEntity {
   contactCdMs: number;
   /** Generation this cell was born on — used only for fade-in visuals. */
   bornAtGeneration: number;
+  /**
+   * Ms remaining before this cell expires from old age, independent of the
+   * survival rule. `Infinity` (the default for every rule except Life Without
+   * Death corruption colonies) means the cell never decays by lifetime and
+   * only dies from damage or the CA survival rule. See
+   * `life_without_death_corruption` in life-factories.ts — Life Without
+   * Death's B3/S012345678 rule never naturally kills a cell, so without this
+   * timer a corruption colony would grow forever.
+   */
+  decayMs: number;
+  /**
+   * Life-cell state for the limited Generations-style support (Part 4):
+   * 'alive' behaves exactly like classic binary Life. 'ghost' is a transitional
+   * post-survival state (only reachable on `stateCount > 2` rules) — a ghost
+   * cell no longer counts as alive for neighbor counts (so it cannot cause a
+   * birth or keep a neighbor alive) and cannot itself revert to alive; it just
+   * counts down `ghostMs` and then fades out like a normal death.
+   */
+  lifeState: 'alive' | 'ghost';
+  /** Ms remaining in the 'ghost' transitional state before this cell starts its death-fade. Unused while lifeState === 'alive'. */
+  ghostMs: number;
 }
 
 export type LifeColonyStatus = 'seeding' | 'alive' | 'dying' | 'dead';

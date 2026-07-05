@@ -18,6 +18,7 @@
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getScaledWeaponCooldown } from '../../sim/rpg/rpg-state';
 import { resolveWeaponDefinition, isEigensteinDominant } from '../../data/rpg/crafted-weapon-helpers';
+import { getLifeTargetBody } from './life-weapon-helpers';
 import {
   SWORD_COLOR,
   SWORD_SHARD_COUNT,
@@ -300,6 +301,8 @@ export function swordHitInArc(
 }
 
 function getEnemyRef(target: ClosestTarget): object | null {
+  const lifeBody = getLifeTargetBody(target);
+  if (lifeBody) return lifeBody.ref;
   return (
     target.laser ?? target.sapphire ?? target.emerald ?? target.amber ?? target.void ??
     target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite ??
@@ -316,6 +319,8 @@ function getEnemyRef(target: ClosestTarget): object | null {
 
 // Nothing further — all exports from this module are listed above.
 function getClosestTargetBody(target: ClosestTarget): { x: number; y: number; maxHp: number } | null {
+  const lifeBody = getLifeTargetBody(target);
+  if (lifeBody) return { x: target.x, y: target.y, maxHp: lifeBody.maxHp };
   const body =
     target.laser ?? target.sapphire ?? target.emerald ?? target.amber ?? target.void ??
     target.quartz ?? target.ruby ?? target.sunstone ?? target.citrine ?? target.iolite ??

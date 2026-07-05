@@ -39,6 +39,7 @@ import {
   pushPointOutsideTopographicTerrain,
   hasTopographicTerrainLineOfSight,
 } from './terrain/topographic-terrain';
+import { isLifeBodyTarget, getLifeTargetBody } from './life-weapon-helpers';
 
 // Module-level scratch object to avoid per-pull allocation during the vortex pull sweep.
 const _vortexPullScratch = { x: 0, y: 0 };
@@ -354,6 +355,8 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
       if (ctx.bossEnemy) applyPull(ctx.bossEnemy);
       const bodyTargets = ctx.collectEnemyBodyTargets();
       for (const target of bodyTargets) {
+        // Life cells/core are grid-locked (no mutable world position to pull
+        // toward the vortex) — they still take damage ticks below, just no pull.
         if (target.kind.startsWith('proc_') || target.kind === 'verdure_plant') applyPull(target);
       }
 
@@ -385,7 +388,7 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
         for (const e of ctx.eigensteinEnemies) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEigensteinEnemy(en, dmg, p), terrain);
         for (const e of ctx.eliteEnemies) { if (!e.isInvuln) applyVortexTickToEnemy(v, e, (en, dmg, p) => damageEliteEnemy(en, dmg, p), terrain); }
         for (const target of bodyTargets) {
-          if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
+          if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant' && !isLifeBodyTarget(target)) continue;
           const body = getVortexTargetBody(target);
           if (!body) continue;
           const dx = target.x - v.x, dy = target.y - v.y;
@@ -422,6 +425,8 @@ export function createVortexWeaponSystem(ctx: VortexWeaponCtx): VortexWeaponHand
 }
 
 function getVortexTargetBody(target: ClosestTarget): { maxHp: number } | null {
+  const lifeBody = getLifeTargetBody(target);
+  if (lifeBody) return { maxHp: lifeBody.maxHp };
   const body =
     target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
     target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??

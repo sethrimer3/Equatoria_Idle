@@ -34,6 +34,7 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import { segmentIntersectsTopographicTerrain, type TopographicTerrainState } from './terrain/topographic-terrain';
+import { isLifeBodyTarget } from './life-weapon-helpers';
 
 // ── Dependency-injection context ─────────────────────────────────────────────
 
@@ -231,6 +232,19 @@ export function createPoisonWeaponSystem(ctx: PoisonWeaponCtx): PoisonWeaponHand
       if (!hit) for (const e of ctx.eliteEnemies) { if (e.isInvuln) continue; if (tryHit(e, (en, d, r) => damageEliteEnemy(en, d, r))) { hit = true; break; } }
       if (!hit) {
         for (const target of ctx.collectEnemyBodyTargets()) {
+          // Life cells/core take the direct hit but never the DOT debuff below:
+          // cells die in 1-2 hits at their base HP, so a lingering per-tick
+          // debuff would be pure bookkeeping overhead for no gameplay benefit,
+          // and the core has no `hp` field the debuff timer can track.
+          if (isLifeBodyTarget(target)) {
+            const dx = p.x - target.x, dy = p.y - target.y;
+            if (dx * dx + dy * dy >= hitR * hitR) continue;
+            const dmg = ctx.damageBodyTarget(target, p.scaledDamage, 0, false);
+            const maxHp = target.lifeCell?.maxHp ?? target.lifeCoreColony?.coreMaxHp ?? 1;
+            spawnHitVisualsAt(target.x, target.y, maxHp, dmg, POISON_BOLT_COLOR);
+            hit = true;
+            break;
+          }
           if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant') continue;
           const body = getPoisonTargetBody(target);
           if (!body) continue;

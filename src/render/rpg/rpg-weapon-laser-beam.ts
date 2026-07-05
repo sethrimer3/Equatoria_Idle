@@ -37,6 +37,7 @@ import type {
   FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import type { AlivenParticle, AlivenParticleGroup } from './rpg-aliven-types';
+import type { LifeCellEntity, LifeColonyController } from './life-types';
 import { applyLaserBeamHitSweep } from './rpg-weapon-laser-beam-hits';
 import { terrainFirstIntersectionT, type TopographicTerrainState } from './terrain/topographic-terrain';
 
@@ -92,6 +93,9 @@ export interface LaserBeamWeaponCtx {
   alivenGroups: AlivenParticleGroup[];
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
   spawnDamageNumber: (x: number, y: number, vx: number, vy: number, text: string, healthFraction: number, color: string) => void;
+  lifeColonies: LifeColonyController[];
+  damageLifeCell: (cell: LifeCellEntity, rawDamage: number) => number;
+  damageLifeCore: (colony: LifeColonyController, rawDamage: number) => number;
   /** Returns current terrain state, or null if terrain is not active. */
   getTerrainState?: () => TopographicTerrainState | null;
 }
@@ -137,13 +141,13 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
     voidEnemies, quartzEnemies, rubyEnemies, sunstoneEnemies,
     citrineEnemies, ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies, eliteEnemies,
-    alivenGroups,
+    alivenGroups, lifeColonies,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
     damageVoidEnemy, damageQuartzEnemy, damageRubyEnemy, damageSunstoneEnemy,
     damageCitrineEnemy, damageIoliteEnemy, damageAmethystEnemy, damageDiamondEnemy,
     damageNullstoneEnemy, damageFracterylEnemy, damageEigensteinEnemy, damageEliteEnemy, damageBossEnemy,
-    damageAlivenParticle,
+    damageAlivenParticle, damageLifeCell, damageLifeCore,
     spawnDamageNumber,
   } = ctx;
 
@@ -219,6 +223,9 @@ export function createLaserBeamWeaponSystem(ctx: LaserBeamWeaponCtx): LaserBeamW
       damageBossEnemy,
       alivenGroups,
       damageAlivenParticle,
+      lifeColonies,
+      damageLifeCell,
+      damageLifeCore,
       spawnDamageNumber,
     });
 
