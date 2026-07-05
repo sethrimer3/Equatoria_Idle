@@ -358,7 +358,7 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
  * since `Map` keys on identity — every call would mint a new key and
  * `hitCooldowns.has(...)` would never find a match.
  */
-function getChainTargetBody(target: ClosestTarget): { ref: object; maxHp: number } | null {
+export function getChainTargetBody(target: ClosestTarget): { ref: object; maxHp: number } | null {
   const lifeBody = getLifeTargetBody(target);
   if (lifeBody) return lifeBody;
   const body =

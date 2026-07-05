@@ -332,6 +332,43 @@ describe('Life zone registry integration', () => {
       expect(getSpawnableEnemyTypesForZone('verdure')).not.toContain(id);
     }
   });
+
+  it('early Life waves (1-3) spawn only the base life_colony variant', () => {
+    for (let wave = 1; wave <= 3; wave++) {
+      const spawns = getZoneWaveDefinition(wave, 'life').spawns;
+      expect(spawns).toHaveLength(1);
+      expect(spawns[0]!.enemyTypeId).toBe('life_colony');
+    }
+  });
+
+  it('normal Life waves spawn at most 2 colonies', () => {
+    for (let wave = 1; wave <= 60; wave++) {
+      if (wave % 10 === 0) continue; // elite Walled Cities waves are handled separately
+      const spawns = getZoneWaveDefinition(wave, 'life').spawns;
+      expect(spawns.length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('rotates through all unlocked non-elite Life variants after unlock, surfacing later variants (waves 20-50)', () => {
+    const seen = new Set<string>();
+    for (let wave = 20; wave <= 50; wave++) {
+      if (wave % 10 === 0) continue;
+      for (const spawn of getZoneWaveDefinition(wave, 'life').spawns) {
+        seen.add(spawn.enemyTypeId);
+      }
+    }
+    expect(seen).toContain('life_replicator_sigil');
+    expect(seen).toContain('life_generations_ghost');
+    expect(seen).toContain('life_without_death_corruption');
+  });
+
+  it('never spawns the elite life_walled_cities wave on a non-10th wave', () => {
+    for (let wave = 1; wave <= 50; wave++) {
+      const spawns = getZoneWaveDefinition(wave, 'life').spawns;
+      const hasElite = spawns.some(s => s.enemyTypeId === 'life_walled_cities');
+      expect(hasElite).toBe(wave % 10 === 0);
+    }
+  });
 });
 
 describe('life_without_death_corruption', () => {
