@@ -91,7 +91,7 @@ export const RPG_UPGRADE_DEFINITIONS: RpgUpgradeDefinition[] = [
   {
     id: 'speed',
     name: 'Speed Upgrade',
-    description: 'Increases player movement speed by 10% per rank.',
+    description: 'Player contact deals 10% of total DPS per rank, up to 100%, ticking up to 10 times per second.',
     costTierId: 'sand',
     costPerLevel: 1_000,
     maxLevel: 10,

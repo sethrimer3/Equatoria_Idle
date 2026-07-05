@@ -18,7 +18,7 @@ import type {
   NullstoneEnemy, FracterylEnemy, EigensteinEnemy, EliteEnemy, BossEnemy,
 } from './rpg-enemy-types';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getRpgSpeedMultiplier, getSkillNodeRank } from '../../sim/rpg/rpg-state';
+import { getEnabledSkillNodeRank } from '../../sim/rpg/rpg-state';
 import { getPlayerMovementStatusMultiplier } from '../../sim/rpg/player-status-effects';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { getSwordLength } from './rpg-helpers';
@@ -139,13 +139,12 @@ export function updatePlayerMovement(
 ): void {
   const { mote, joystick, keys, rpgSimState, fluid } = ctx;
   const dt = Math.min(deltaMs / TARGET_FRAME_MS, 3);
-  const speedMul = getRpgSpeedMultiplier(rpgSimState);
   const statusSpeedMul = getPlayerMovementStatusMultiplier(rpgSimState);
-  const effectiveMaxSpeed = MAX_RPG_SPEED * speedMul * statusSpeedMul;
+  const effectiveMaxSpeed = MAX_RPG_SPEED * statusSpeedMul;
 
   // Acceleration skill: ranks 1–5 add responsiveness (lerp factor towards target velocity).
   // Rank 0 = instant snap (lerpFactor clamped to 1). Rank 5 = instant snap.
-  const accelRank = getSkillNodeRank(rpgSimState, 'acceleration');
+  const accelRank = getEnabledSkillNodeRank(rpgSimState, 'acceleration');
   const accelFactor = Math.min(1.0, 0.55 + accelRank * 0.09);
 
   if (joystick.isActive) {

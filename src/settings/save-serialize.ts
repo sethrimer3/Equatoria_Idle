@@ -74,6 +74,7 @@ export function serializeGameState(state: GameState): SaveData {
       xp: state.rpg.xp,
       weaponTiersByWeaponId: Object.fromEntries(state.rpg.weaponTiersByWeaponId),
       rpgUpgradeLevels: Object.fromEntries(state.rpg.rpgUpgradeLevels),
+      disabledSkillNodeIds: Array.from(state.rpg.disabledSkillNodeIds),
       respawnWave: state.rpg.respawnWave,
       bossCompletions: Object.fromEntries(state.rpg.bossCompletions),
       bossSpeedPct: state.rpg.bossSpeedPct,

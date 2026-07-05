@@ -85,6 +85,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   let latestForgeState: ForgeCrunchState = createForgeCrunchState();
   let latestResources: ResourceState | null = null;
   let latestNumberFormat: NumberFormat = 'letters';
+  let showMoteAmounts = true;
 
   // â”€â”€ Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let forgeCoreCanvas: HTMLCanvasElement | null = null;
@@ -213,6 +214,13 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return getForgeCapacity(level);
   }
 
+  function formatCraftingMoteCount(count: number): string {
+    if (!Number.isFinite(count)) return '0.0';
+    if (count < 0) return `-${formatCraftingMoteCount(-count)}`;
+    if (count < 1_000) return count.toFixed(1);
+    return formatNumberAs(count, latestNumberFormat);
+  }
+
   // â”€â”€ Mode selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   function buildModeSelector(): HTMLElement {
@@ -256,11 +264,27 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     // Label
     const label = document.createElement('div');
     label.className = 'forge-craft__inventory-label';
-    label.textContent = 'Motes:';
+    const labelText = document.createElement('span');
+    labelText.textContent = 'Motes:';
+    const amountToggle = document.createElement('button');
+    amountToggle.type = 'button';
+    amountToggle.className = 'forge-craft__inventory-toggle';
+    amountToggle.classList.toggle('forge-craft__inventory-toggle--hidden', !showMoteAmounts);
+    amountToggle.textContent = '>';
+    amountToggle.title = showMoteAmounts ? 'Hide mote amounts' : 'Show mote amounts';
+    amountToggle.setAttribute('aria-label', amountToggle.title);
+    amountToggle.setAttribute('aria-pressed', String(showMoteAmounts));
+    amountToggle.addEventListener('click', () => {
+      showMoteAmounts = !showMoteAmounts;
+      refreshInventory();
+    });
+    label.appendChild(labelText);
+    label.appendChild(amountToggle);
     inventoryEl.appendChild(label);
 
     const list = document.createElement('div');
     list.className = 'forge-craft__inventory-list';
+    list.classList.toggle('forge-craft__inventory-list--amounts-hidden', !showMoteAmounts);
     inventoryEl.appendChild(list);
 
     // One chip per tier
@@ -276,13 +300,15 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       img.alt = tier.displayName;
       img.className = 'forge-craft__inventory-icon';
 
-      const countEl = document.createElement('span');
-      countEl.className = 'forge-craft__inventory-count';
-      countEl.style.color = tier.color;
-      countEl.textContent = latestIsDevMode && count === 0 ? 'inf' : formatNumberAs(count, latestNumberFormat);
-
       chip.appendChild(img);
-      chip.appendChild(countEl);
+      if (showMoteAmounts) {
+        const countEl = document.createElement('span');
+        countEl.className = 'forge-craft__inventory-count';
+        countEl.style.color = tier.color;
+        countEl.textContent = latestIsDevMode && count === 0 ? 'inf' : formatCraftingMoteCount(count);
+        countEl.title = `${count.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${tier.displayName} motes`;
+        chip.appendChild(countEl);
+      }
       list.appendChild(chip);
     }
   }

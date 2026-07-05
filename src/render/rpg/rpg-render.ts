@@ -30,7 +30,7 @@ import {
   getEffectiveXpAtkBonus, getEffectiveXpDefBonus,
   getEffectiveXpHpBonus,
   getPlayerLevelAtkBonus, getPlayerLevelDefBonus, getPlayerLevelHpBonus,
-  isSkillNodeUnlocked, getSkillNodeRank,
+  isSkillNodeEffectEnabled, getSkillNodeRank,
 } from '../../sim/rpg/rpg-state';
 import {
   applyPlayerStatus, hasPlayerStatus, clearPlayerStatuses, getPlayerAttackSpeedStatusMultiplier,
@@ -51,6 +51,11 @@ import { createDamageFns } from './rpg-damage';
 import { getCodexMultiplier } from '../../sim/rpg/rpg-codex';
 import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
+import {
+  createPlayerContactDamageState,
+  SPEED_CONTACT_DAMAGE_SOURCE_ID,
+  tickPlayerContactDamage,
+} from './rpg-player-contact-damage';
 import {
   RPG_TRAIL_CAPACITY, RPG_MOTE_SIZE,
   RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT,
@@ -1887,6 +1892,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const DASH_COOLDOWN_MS = 600;
   const afterimages: import('./rpg-types').AfterimageSnapshot[] = [];
   const AFTERIMAGE_FADE_PER_MS = 0.004;
+  const playerContactDamageState = createPlayerContactDamageState();
 
   /** Flag set at the start of each update() call; drives auto-move logic. */
   let _autoMoveEnabled = false;
@@ -2061,6 +2067,19 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     checkWaveCompletion: () => waveManager.checkWaveCompletion(),
     getPrevSandBladePhase: () => prevSandBladePhase,
     setPrevSandBladePhase: (phase) => { prevSandBladePhase = phase; },
+  };
+
+  const playerContactDamageCtx = {
+    rpgSimState,
+    getTotalPlayerDps: () => statsPanel.getTotalDps(SPEED_CONTACT_DAMAGE_SOURCE_ID),
+    collectEnemyBodyTargets: () => collectEnemyBodyTargets(),
+    damageBodyTarget: (target: ClosestTarget, raw: number, pierce: number, bypass: boolean) =>
+      damageBodyTarget(target, raw, pierce, bypass),
+    withDamageSource: <T>(sourceId: string, fn: () => T): T => statsPanel.withDamageSource(sourceId, fn),
+    spawnHitVisualsAt: (tx: number, ty: number, maxHp: number, dmg: number, color: string, sourceColor?: string) =>
+      spawnHitVisualsAt(tx, ty, maxHp, dmg, color, sourceColor),
+    removeDeadEnemies: () => waveManager.removeDeadEnemies(),
+    checkWaveCompletion: () => waveManager.checkWaveCompletion(),
   };
 
   // ── Draw context (built once; getters always return current closure values) ─
@@ -2299,7 +2318,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         rpgSimState.dashCooldownMs = Math.max(0, rpgSimState.dashCooldownMs - deltaMs * dashTickRate);
       }
       // Fire dash if requested and unlocked
-      if (dashRequested && rpgPhase === 'alive' && isSkillNodeUnlocked(rpgSimState, 'dash') && rpgSimState.dashCooldownMs <= 0) {
+      if (dashRequested && rpgPhase === 'alive' && isSkillNodeEffectEnabled(rpgSimState, 'dash') && rpgSimState.dashCooldownMs <= 0) {
         // Derive direction from joystick or keys (same priority order as player movement)
         let dx = 0, dy = 0;
         if (joystick.isActive) {
@@ -2339,6 +2358,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       if (tickActiveWeaveBuffs(rpgSimState, deltaMs)) applyEquipmentStats();
       tickLingeringHexDebuffs(deltaMs);
       runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled);
+      if (rpgPhase === 'alive') {
+        tickPlayerContactDamage(playerContactDamageCtx, playerContactDamageState, deltaMs);
+      }
 
       if (_isDevMode && _showDebugOverlay) {
         _devOverlayUpdateMs -= deltaMs;

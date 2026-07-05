@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 37;
+export const SAVE_VERSION = 38;
 
 export interface SaveData {
   version: number;
@@ -87,6 +87,8 @@ export interface SaveData {
     weaponTiersByWeaponId?: Record<string, number>;
     /** v12+: RPG upgrade levels. Absent in older saves. */
     rpgUpgradeLevels?: Record<string, number>;
+    /** v38+: purchased skill node effects disabled by the player. Absent in older saves. */
+    disabledSkillNodeIds?: string[];
     /** v15+: respawn checkpoint wave. Absent in older saves (defaults to 0). */
     respawnWave?: number;
     /** v16+: per-boss highest speed completion (bossId→speedPct). Absent in older saves. */

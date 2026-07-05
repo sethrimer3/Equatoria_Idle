@@ -33,7 +33,11 @@ import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven'
 import { getMotes, spendMotes } from '../sim/resources';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import { RPG_UPGRADE_BY_ID } from '../data/rpg/rpg-upgrade-definitions';
-import { getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons, MAX_WEAPON_TIER, isBossUnlocked, MIN_BOSS_SPEED_PCT, MAX_BOSS_SPEED_PCT, BOSS_SPEED_STEP, TOTAL_BOSS_COUNT } from '../sim/rpg/rpg-state';
+import {
+  getRpgUpgradeLevel, getWeaponTierUpgradeCost, getMaxEquippedWeapons,
+  MAX_WEAPON_TIER, isBossUnlocked, MIN_BOSS_SPEED_PCT, MAX_BOSS_SPEED_PCT,
+  BOSS_SPEED_STEP, TOTAL_BOSS_COUNT, TOGGLEABLE_SKILL_NODE_IDS,
+} from '../sim/rpg/rpg-state';
 import { canPurchaseRpgSkill } from '../data/rpg/rpg-skill-tree-definitions';
 import type { TierId } from '../data/tiers';
 import type { GameAction } from '../input';
@@ -279,6 +283,18 @@ export function handleAction(
       state.game.rpg.rpgUpgradeLevels.set(action.upgradeId, currentLevel + 1);
       audioSystem?.onBuyLoomUpgrade();
       // Notify the render so speed multiplier updates immediately.
+      uiPanels.rpgRender.notifyEquip();
+      uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
+      break;
+    }
+    case 'toggle_rpg_skill_node': {
+      if (!TOGGLEABLE_SKILL_NODE_IDS.has(action.upgradeId)) { audioSystem?.onError(); break; }
+      if (getRpgUpgradeLevel(state.game.rpg, action.upgradeId) <= 0) { audioSystem?.onError(); break; }
+      if (state.game.rpg.disabledSkillNodeIds.has(action.upgradeId)) {
+        state.game.rpg.disabledSkillNodeIds.delete(action.upgradeId);
+      } else {
+        state.game.rpg.disabledSkillNodeIds.add(action.upgradeId);
+      }
       uiPanels.rpgRender.notifyEquip();
       uiPanels.rpgMenuPanel.update(state.game.rpg, state.game.resources, settings.numberFormat, devMode);
       break;

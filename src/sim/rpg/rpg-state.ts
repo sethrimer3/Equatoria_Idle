@@ -126,6 +126,11 @@ export interface RpgSimState {
    */
   rpgUpgradeLevels: Map<string, number>;
   /**
+   * Purchased skill nodes whose gameplay effect is temporarily disabled by the player.
+   * Ranks remain purchased and still count toward prerequisites / spent points.
+   */
+  disabledSkillNodeIds: Set<string>;
+  /**
    * Per-boss highest speed percentage at which the boss was defeated (10–100).
    * Key = bossId (1-based); value = highest speed % completed (0 = never beaten).
    */
@@ -334,6 +339,7 @@ export function createRpgSimState(): RpgSimState {
     xp: 0,
     weaponTiersByWeaponId: new Map(),
     rpgUpgradeLevels: new Map(),
+    disabledSkillNodeIds: new Set(),
     bossCompletions: new Map(),
     bossSpeedPct: 100,
     xpAllocatedStats: [],
@@ -443,7 +449,8 @@ export {
 
 export {
   getWaveBoostMultiplier, formatWaveBoostPercent,
-  getRpgUpgradeLevel, getRpgSpeedMultiplier, getMaxEquippedWeapons, getLevelRequiredForSlot,
+  getRpgUpgradeLevel, getRpgContactDamageMultiplier, getMaxEquippedWeapons, getLevelRequiredForSlot,
   getBossXpMultiplier, isBossUnlocked,
-  getSkillNodeRank, isSkillNodeUnlocked,
+  getSkillNodeRank, getEnabledSkillNodeRank, isSkillNodeUnlocked, isSkillNodeEffectEnabled,
+  TOGGLEABLE_SKILL_NODE_IDS,
 } from './rpg-state-upgrades';

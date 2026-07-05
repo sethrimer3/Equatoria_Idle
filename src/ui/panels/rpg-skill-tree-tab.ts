@@ -15,7 +15,7 @@ import {
 } from '../../data/rpg/rpg-skill-tree-definitions';
 import type { SkillTreeNodeDef, PurchaseBlockReason } from '../../data/rpg/rpg-skill-tree-definitions';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
-import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
+import { getRpgUpgradeLevel, isSkillNodeEffectEnabled, TOGGLEABLE_SKILL_NODE_IDS } from '../../sim/rpg/rpg-state';
 import type { ResourceState } from '../../sim/resources';
 import { getMotes } from '../../sim/resources';
 import type { ActionHandler } from '../../input';
@@ -704,6 +704,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
   // Updated every frame in drawDetailCard; read in handleTap.
   let cardBoundsWorldRect: WorldRect | null = null;
   let cardButtonWorldRect: WorldRect | null = null;
+  let cardToggleButtonWorldRect: WorldRect | null = null;
 
   function hitTest(wx: number, wy: number, tMs: number): number {
     for (let i = 0; i < nodes.length; i++) {
@@ -732,6 +733,13 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const node = nodes[selectedIdx];
     if (!node.def.upgradeId) return;
     dispatch({ kind: 'purchase_rpg_upgrade', upgradeId: node.def.upgradeId });
+  }
+
+  function triggerToggle(): void {
+    if (selectedIdx < 0) return;
+    const node = nodes[selectedIdx];
+    if (!node.def.upgradeId) return;
+    dispatch({ kind: 'toggle_rpg_skill_node', upgradeId: node.def.upgradeId });
   }
 
   // ── Auto-pan to show card ─────────────────────────────────────────────

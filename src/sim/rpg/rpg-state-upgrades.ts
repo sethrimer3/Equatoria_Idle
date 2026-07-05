@@ -9,6 +9,8 @@
 
 import type { RpgSimState } from './rpg-state';
 
+export const TOGGLEABLE_SKILL_NODE_IDS = new Set<string>(['acceleration', 'dash']);
+
 // ─── Wave boost ───────────────────────────────────────────────────
 
 /**
@@ -53,12 +55,26 @@ export function isSkillNodeUnlocked(state: RpgSimState, nodeId: string): boolean
 }
 
 /**
- * Speed multiplier from the speed upgrade.
- * Each level adds 10% to base speed.
+ * Returns true when a purchased skill node's effect should currently run.
+ * Non-toggleable nodes are enabled whenever purchased.
  */
-export function getRpgSpeedMultiplier(state: RpgSimState): number {
+export function isSkillNodeEffectEnabled(state: RpgSimState, nodeId: string): boolean {
+  if (!isSkillNodeUnlocked(state, nodeId)) return false;
+  return !TOGGLEABLE_SKILL_NODE_IDS.has(nodeId) || !state.disabledSkillNodeIds.has(nodeId);
+}
+
+/** Returns the purchased rank, or 0 when a toggleable skill has been disabled. */
+export function getEnabledSkillNodeRank(state: RpgSimState, nodeId: string): number {
+  return isSkillNodeEffectEnabled(state, nodeId) ? getSkillNodeRank(state, nodeId) : 0;
+}
+
+/**
+ * Damage multiplier for the Speed Upgrade's contact-damage effect.
+ * Each level adds 10% of recent non-contact player DPS, capped by max level at 100%.
+ */
+export function getRpgContactDamageMultiplier(state: RpgSimState): number {
   const level = getRpgUpgradeLevel(state, 'speed');
-  return 1 + level * 0.1;
+  return Math.min(1, level * 0.1);
 }
 
 /** Returns the player level required to unlock a given weapon slot (0-indexed). */

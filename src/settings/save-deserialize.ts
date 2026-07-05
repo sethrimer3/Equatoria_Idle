@@ -193,6 +193,11 @@ export function deserializeGameState(data: SaveData): GameState {
         state.rpg.rpgUpgradeLevels.set(upgradeId, level);
       }
     }
+    if (data.rpg.disabledSkillNodeIds) {
+      for (const upgradeId of data.rpg.disabledSkillNodeIds) {
+        state.rpg.disabledSkillNodeIds.add(upgradeId);
+      }
+    }
     // v15+: respawn checkpoint wave
     state.rpg.respawnWave = data.rpg.respawnWave ?? 0;
     // v16+: boss completions and speed

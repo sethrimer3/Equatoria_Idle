@@ -76,6 +76,7 @@ export interface RpgStatsPanelHandle {
   menuButtonContainer: HTMLElement;
   recordDps(dmg: number, _legacyColor?: string): void;
   withDamageSource<T>(weaponId: string | null, fn: () => T): T;
+  getTotalDps(excludedWeaponId?: string): number;
   update(): void;
   /** Show or hide the dev-mode numerical designators on each panel box. */
   setDevMode(enabled: boolean): void;
@@ -127,6 +128,16 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     if (dmg > 0 && activeDamageWeaponId !== null) {
       dpsWindow.push({ t: Date.now(), dmg, weaponId: dpsSlotKey(activeDamageWeaponId) });
     }
+  }
+
+  function getTotalDps(excludedWeaponId?: string): number {
+    const excludedSlot = excludedWeaponId === undefined ? null : dpsSlotKey(excludedWeaponId);
+    let total = 0;
+    for (const e of dpsWindow) {
+      if (excludedSlot !== null && e.weaponId === excludedSlot) continue;
+      total += e.dmg;
+    }
+    return total / (DPS_WINDOW_MS / 1000);
   }
 
   // ── DOM elements (construction delegated to rpg-stats-panel-dom.ts) ──────────
@@ -763,6 +774,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     menuButtonContainer: menuArea,
     recordDps,
     withDamageSource,
+    getTotalDps,
     update(): void {
       updateStatsPanelDom();
     },
