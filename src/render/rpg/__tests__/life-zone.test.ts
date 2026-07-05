@@ -8,6 +8,10 @@ import {
   isLifeColonyFullyCleared, killLifeColonyCore, damageLifeCoreEntity,
   stepLifeAutomataGenerations, LIFE_CELL_GHOST_MS,
 } from '../life-controller';
+import { getChainTargetBody } from '../rpg-weapon-chain';
+import { createRpgTargeting } from '../rpg-targeting';
+import type { RpgTargetingCtx } from '../rpg-targeting-types';
+import { applyLaserBeamHitSweep, type LaserBeamHitSweepCtx } from '../rpg-weapon-laser-beam-hits';
 import {
   RULE_CONWAY, RULE_MAZECTRIC, RULE_SEEDS, RULE_REPLICATOR, RULE_WALLED_CITIES,
   RULE_LIFE_WITHOUT_DEATH, RULE_GENERATIONS_GHOST,
@@ -570,5 +574,263 @@ describe('life-weapon-helpers — shared targeting/damage helpers', () => {
 
   it('getLifeTargetBody returns null for non-Life targets', () => {
     expect(getLifeTargetBody({ kind: 'boss', x: 0, y: 0, distSq: 0 } as ClosestTarget)).toBeNull();
+  });
+});
+
+// ── Shared minimal RpgTargetingCtx builder for weapon/targeting integration tests ──
+
+const unused = (..._args: unknown[]): never => { throw new Error('unused stub invoked'); };
+
+function makeMinimalTargetingCtx(overrides: Partial<RpgTargetingCtx> = {}): RpgTargetingCtx {
+  return {
+    mote: { x: 0, y: 0 },
+    bossEnemy: null,
+    enemies: [], sapphireEnemies: [], sapphireMissiles: [],
+    emeraldEnemies: [], amberEnemies: [], amberShards: [],
+    voidEnemies: [], quartzEnemies: [], quartzSpikes: [],
+    rubyEnemies: [], rubyBolts: [],
+    sunstoneEnemies: [], citrineEnemies: [], citrineBolts: [],
+    ioliteEnemies: [], amethystEnemies: [], amethystShards: [],
+    diamondEnemies: [], diamondShards: [],
+    nullstoneEnemies: [], voidTendrils: [],
+    fracterylEnemies: [], fracterylShards: [],
+    eigensteinEnemies: [], eliteEnemies: [],
+    polyominoEnemies: [], fissilePolyominoEnemies: [], refractorPolyominoEnemies: [],
+    binaryRingEnemies: [], stardustEnemies: [],
+    alivenGroups: [],
+    lifeColonies: [],
+    dustWispEnemies: [], ribbonWormEnemies: [], lanternMothEnemies: [], eyeStalkEnemies: [],
+    jellyfishEnemies: [], eliteJellyfishEnemies: [],
+    clothGhostEnemies: [], plantTurretEnemies: [], gearInsectEnemies: [],
+    spiderCrawlerEnemies: [], moteSwarmEnemies: [], shadowHandEnemies: [],
+    sandFishEnemies: [], quartzFishEnemies: [], rubyFishEnemies: [], sunstoneFishEnemies: [],
+    emeraldFishEnemies: [], sapphireFishEnemies: [], amethystFishEnemies: [], diamondFishEnemies: [],
+    plantProjectiles: [],
+    damageEnemy: unused, damageSapphireEnemy: unused, damageMissile: unused,
+    damageEmeraldEnemy: unused, damageAmberEnemy: unused, damageAmberShard: unused,
+    damageVoidEnemy: unused, damageQuartzEnemy: unused, damageQuartzSpike: unused,
+    damageRubyEnemy: unused, damageRubyBolt: unused,
+    damageSunstoneEnemy: unused, damageCitrineEnemy: unused, damageCitrineBolt: unused,
+    damageIoliteEnemy: unused, damageAmethystEnemy: unused, damageAmethystShard: unused,
+    damageDiamondEnemy: unused, damageDiamondShard: unused,
+    damageNullstoneEnemy: unused, damageVoidTendril: unused,
+    damageFracterylEnemy: unused, damageFracterylShard: unused,
+    damageEigensteinEnemy: unused,
+    damagePolyominoEnemy: unused, damageFissilePolyominoEnemy: unused, damageRefractorPolyominoEnemy: unused,
+    damageBinaryRingEnemy: unused, damageEliteEnemy: unused,
+    damageAlivenParticle: unused,
+    damageLifeCell: (cell, raw) => damageLifeCellEntity(cell, raw),
+    damageLifeCore: (colony, raw) => damageLifeCoreEntity(colony, raw),
+    damageBossEnemy: unused,
+    damageDustWispEnemy: unused, damageRibbonWormEnemy: unused, damageLanternMothEnemy: unused,
+    damageEyeStalkEnemy: unused, damageJellyfishEnemy: unused, damageEliteJellyfishEnemy: unused,
+    damageClothGhostEnemy: unused, damagePlantTurretEnemy: unused, damageGearInsectEnemy: unused,
+    damageSpiderCrawlerEnemy: unused, damageMoteSwarmEnemy: unused, damageShadowHandEnemy: unused,
+    damageSandFishEnemy: unused, damageQuartzFishEnemy: unused, damageRubyFishEnemy: unused,
+    damageSunstoneFishEnemy: unused, damageEmeraldFishEnemy: unused, damageSapphireFishEnemy: unused,
+    damageAmethystFishEnemy: unused, damageDiamondFishEnemy: unused,
+    damagePlantProjectile: unused,
+    verdurePlants: [],
+    damageVerdurePlant: unused,
+    nadirCubePointEnemies: [],
+    damageNadirCubePointEnemy: unused,
+    horizonPentagonGroups: [],
+    damageHorizonPentagonReal: unused,
+    damageHorizonMissile: unused,
+    getTerrainState: () => null,
+    ...overrides,
+  };
+}
+
+describe('chain whip — stable-ref target body resolution (getChainTargetBody)', () => {
+  it('resolves a life_cell target to { ref: lifeCell, maxHp: lifeCell.maxHp }', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const cell = [...colony.cells.values()][0]!;
+    const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, bounds);
+    const target: ClosestTarget = { kind: 'life_cell', x: center.x, y: center.y, distSq: 0, lifeCell: cell, lifeColony: colony };
+
+    const body = getChainTargetBody(target);
+    expect(body).not.toBeNull();
+    expect(body!.ref).toBe(cell);
+    expect(body!.maxHp).toBe(cell.maxHp);
+  });
+
+  it('resolves a life_core target to { ref: colony, maxHp: colony.coreMaxHp }', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const target: ClosestTarget = { kind: 'life_core', x: colony.x, y: colony.y, distSq: 0, lifeCoreColony: colony };
+
+    const body = getChainTargetBody(target);
+    expect(body).not.toBeNull();
+    expect(body!.ref).toBe(colony);
+    expect(body!.maxHp).toBe(colony.coreMaxHp);
+  });
+
+  it('returns the same ref identity across repeated resolutions of the same Life target', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const cell = [...colony.cells.values()][0]!;
+    const target: ClosestTarget = { kind: 'life_cell', x: 0, y: 0, distSq: 0, lifeCell: cell, lifeColony: colony };
+
+    const first = getChainTargetBody(target);
+    const second = getChainTargetBody(target);
+    expect(first!.ref).toBe(second!.ref);
+  });
+
+  it('a stable ref can be used as a Map key to simulate hitCooldowns.has(ref) succeeding on repeated resolution', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const cell = [...colony.cells.values()][0]!;
+    const target: ClosestTarget = { kind: 'life_cell', x: 0, y: 0, distSq: 0, lifeCell: cell, lifeColony: colony };
+
+    const hitCooldowns = new Map<object, number>();
+    const firstBody = getChainTargetBody(target)!;
+    hitCooldowns.set(firstBody.ref, 500);
+
+    const secondBody = getChainTargetBody(target)!;
+    expect(hitCooldowns.has(secondBody.ref)).toBe(true);
+  });
+
+  it('resolves a non-Life generic body target (verdurePlant) to the actual entity object as ref', () => {
+    const verdurePlant = { x: 10, y: 10, hp: 20, maxHp: 20 } as unknown as NonNullable<ClosestTarget['verdurePlant']>;
+    const target: ClosestTarget = { kind: 'verdure_plant', x: 10, y: 10, distSq: 0, verdurePlant };
+
+    const body = getChainTargetBody(target);
+    expect(body).not.toBeNull();
+    expect(body!.ref).toBe(verdurePlant);
+    expect(body!.maxHp).toBe(20);
+  });
+});
+
+describe('damageBodyTarget — shared damage dispatch path for Life targets', () => {
+  it('life_cell damage reduces that cell HP and marks it dying at 0, without affecting unrelated cells or creating health bars', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const cells = [...colony.cells.values()];
+    expect(cells.length).toBeGreaterThan(1);
+    const target = cells[0]!;
+    const untouched = cells.slice(1).map(c => ({ cell: c, hp: c.hp }));
+
+    const ctx = makeMinimalTargetingCtx({ lifeColonies: [colony] });
+    const targeting = createRpgTargeting(ctx);
+
+    const closestTarget: ClosestTarget = { kind: 'life_cell', x: 0, y: 0, distSq: 0, lifeCell: target, lifeColony: colony };
+    const dmg = targeting.damageBodyTarget(closestTarget, target.maxHp, 0, false);
+    expect(dmg).toBeGreaterThan(0);
+    expect(target.hp).toBe(0);
+    expect(target.isDying).toBe(true);
+
+    for (const { cell, hp } of untouched) {
+      expect(cell.hp).toBe(hp);
+      expect(cell.isDying).toBe(false);
+    }
+    expect('healthBar' in target).toBe(false);
+  });
+
+  it('life_core damage reduces coreHp via the shared dispatch path', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const coreHpBefore = colony.coreHp;
+
+    const ctx = makeMinimalTargetingCtx({ lifeColonies: [colony] });
+    const targeting = createRpgTargeting(ctx);
+
+    const closestTarget: ClosestTarget = { kind: 'life_core', x: colony.x, y: colony.y, distSq: 0, lifeCoreColony: colony };
+    const dmg = targeting.damageBodyTarget(closestTarget, 3, 0, false);
+    expect(dmg).toBe(3);
+    expect(colony.coreHp).toBe(coreHpBefore - 3);
+  });
+});
+
+describe('collectEnemyBodyTargets — Life target collection', () => {
+  it('includes live cells (kind life_cell) and a live core (kind life_core), excluding dying cells and a dead core', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const cells = [...colony.cells.values()];
+    expect(cells.length).toBeGreaterThan(1);
+    // Mark one cell as dying — it should be excluded from collection.
+    cells[0]!.isDying = true;
+
+    const ctx = makeMinimalTargetingCtx({ lifeColonies: [colony] });
+    const targeting = createRpgTargeting(ctx);
+    const targets = targeting.collectEnemyBodyTargets();
+
+    const cellTargets = targets.filter(t => t.kind === 'life_cell');
+    const coreTargets = targets.filter(t => t.kind === 'life_core');
+
+    expect(cellTargets.length).toBe(cells.length - 1);
+    for (const t of cellTargets) {
+      expect(t.lifeCell).toBeDefined();
+      expect(t.lifeColony).toBe(colony);
+      expect(t.lifeCell!.isDying).toBe(false);
+    }
+    expect(coreTargets.length).toBe(1);
+    expect(coreTargets[0]!.lifeCoreColony).toBe(colony);
+
+    // Now kill the core — the colony should stop contributing a life_core target.
+    killLifeColonyCore(colony);
+    const targetsAfterCoreDeath = targeting.collectEnemyBodyTargets();
+    expect(targetsAfterCoreDeath.some(t => t.kind === 'life_core')).toBe(false);
+  });
+});
+
+describe('applyLaserBeamHitSweep — beam damages multiple Life cells independently', () => {
+  function makeBeamCtx(overrides: Partial<LaserBeamHitSweepCtx>): LaserBeamHitSweepCtx {
+    return {
+      originX: 0, originY: 0, dirX: 1, dirY: 0, tMax: 1000,
+      baseDamage: 5, beamColor: '#fff', beamGlow: '#fff',
+      hitEffects: [], bossEnemy: null,
+      enemies: [], sapphireEnemies: [], sapphireMissiles: [],
+      emeraldEnemies: [], amberEnemies: [], amberShards: [],
+      voidEnemies: [], quartzEnemies: [], rubyEnemies: [],
+      sunstoneEnemies: [], citrineEnemies: [], ioliteEnemies: [],
+      amethystEnemies: [], diamondEnemies: [], nullstoneEnemies: [],
+      fracterylEnemies: [], eigensteinEnemies: [], eliteEnemies: [],
+      damageEnemy: unused, damageSapphireEnemy: unused, damageMissile: unused,
+      damageEmeraldEnemy: unused, damageAmberEnemy: unused, damageAmberShard: unused,
+      damageVoidEnemy: unused, damageQuartzEnemy: unused, damageRubyEnemy: unused,
+      damageSunstoneEnemy: unused, damageCitrineEnemy: unused, damageIoliteEnemy: unused,
+      damageAmethystEnemy: unused, damageDiamondEnemy: unused, damageNullstoneEnemy: unused,
+      damageFracterylEnemy: unused, damageEigensteinEnemy: unused, damageEliteEnemy: unused,
+      damageBossEnemy: unused,
+      alivenGroups: [], damageAlivenParticle: unused,
+      spawnDamageNumber: () => {},
+      lifeColonies: [],
+      damageLifeCell: (cell, raw) => damageLifeCellEntity(cell, raw),
+      damageLifeCore: (colony, raw) => damageLifeCoreEntity(colony, raw),
+      ...overrides,
+    };
+  }
+
+  it('damages every Life cell crossed by the beam ray, leaving cells outside the beam untouched', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeTestColony();
+    // Three cells in a horizontal line at row 0 (in the beam path), one far off-beam at row 20.
+    seedLifeColony(colony, [
+      { col: 0, row: 0 }, { col: 1, row: 0 }, { col: 2, row: 0 }, { col: 0, row: 20 },
+    ], 0, 0, 6);
+    colony.bounds = bounds;
+
+    const inBeamCoords = ['0:0', '1:0', '2:0'];
+    const offBeamCell = [...colony.cells.values()].find(c => c.col === 0 && c.row === 20)!;
+    const offBeamCenter = lifeGridToWorldCenter({ col: 0, row: 20 }, bounds);
+
+    // Beam ray travels along +x through row 0's world-y coordinate.
+    const rowCenter = lifeGridToWorldCenter({ col: 0, row: 0 }, bounds);
+    const ctx = makeBeamCtx({
+      originX: rowCenter.x - 50, originY: rowCenter.y, dirX: 1, dirY: 0, tMax: 500,
+      lifeColonies: [colony],
+    });
+
+    applyLaserBeamHitSweep(ctx);
+
+    for (const key of inBeamCoords) {
+      const [col, row] = key.split(':').map(Number);
+      const cell = [...colony.cells.values()].find(c => c.col === col && c.row === row)!;
+      expect(cell.hp).toBeLessThan(cell.maxHp);
+    }
+    expect(offBeamCell.hp).toBe(offBeamCell.maxHp);
+    expect(offBeamCenter.y).not.toBe(rowCenter.y);
   });
 });
