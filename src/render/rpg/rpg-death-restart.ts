@@ -124,6 +124,7 @@ export interface RpgDeathRestartCtx {
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
+  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays (cleared on restart) ──────────────────────────
   dustWispEnemies: DustWispEnemy[];
   ribbonWormEnemies: RibbonWormEnemy[];
@@ -246,6 +247,7 @@ export function doRestart(ctx: RpgDeathRestartCtx): void {
   ctx.nadirCubeLinkLasers.length = 0;
   ctx.horizonPentagonGroups.length = 0;
   ctx.alivenGroups.length = 0;
+  ctx.lifeColonies.length = 0;
   ctx.dustWispEnemies.length = 0; ctx.ribbonWormEnemies.length = 0;
   ctx.lanternMothEnemies.length = 0; ctx.eyeStalkEnemies.length = 0;
   ctx.jellyfishEnemies.length = 0; ctx.eliteJellyfishEnemies.length = 0; ctx.clothGhostEnemies.length = 0;

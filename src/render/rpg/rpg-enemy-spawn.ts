@@ -80,9 +80,11 @@ import {
 } from './rpg-jellyfish-elite-factories';
 import { ELITE_JELLYFISH_BASE_SIZE } from './rpg-jellyfish-elite-constants';
 import { makeAlivenGroup } from './rpg-aliven-factories';
+import { makeMazeColony, buildLifeGridBoundsForArena } from './life-factories';
 import { pushSpawnFlash } from './rpg-spawn-flash';
 import { pushBossSpawnCircle } from './rpg-boss-spawn-circle';
 import { ALIVEN_VARIANTS, ALIVEN_ELITE_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
+import { MAX_ACTIVE_LIFE_COLONIES } from './life-factories';
 import {
   recordAlivenSpawn,
   recordAlivenCapSkip,
@@ -145,6 +147,7 @@ export interface EnemySpawnCtx {
   fissilePolyominoEnemies: FissilePolyominoEnemy[];
   refractorPolyominoEnemies: RefractorPolyominoEnemy[];
   alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
+  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
   ribbonWormEnemies: RibbonWormEnemy[];
@@ -679,6 +682,17 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     else                 { spawnX = spawnRight; spawnY = spawnTop + Math.random() * spawnH; }
     ctx.eliteEnemies.push(makeEliteEnemy(tier, spawnX, spawnY, wn));
     _onEliteSpawned(ctx, spawnX, spawnY);
+  } else if (enemyTypeId === 'life_colony') {
+    if (ctx.lifeColonies.length >= MAX_ACTIVE_LIFE_COLONIES) return;
+    do {
+      spawnX = spawnLeft + 40 + Math.random() * Math.max(1, spawnW - 80);
+      spawnY = spawnTop + 40 + Math.random() * Math.max(1, spawnH - 80);
+      const dx = spawnX - mote.x; const dy = spawnY - mote.y;
+      if (dx * dx + dy * dy >= minDist * minDist) break;
+      attempts++;
+    } while (attempts < 20);
+    const bounds = buildLifeGridBoundsForArena(spawnLeft, spawnTop, spawnW, spawnH);
+    ctx.lifeColonies.push(makeMazeColony(spawnX, spawnY, wn, bounds));
   } else if (ALIVEN_VARIANTS.includes(enemyTypeId as typeof ALIVEN_VARIANTS[number])) {
     // Guard: skip spawning if the active group count is at the cap.
     if (ctx.alivenGroups.length >= MAX_ACTIVE_ALIVEN_GROUPS) {

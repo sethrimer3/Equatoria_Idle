@@ -43,6 +43,7 @@ import { isTrueSurfaceCoreVulnerable } from './true-surface-elite';
 import type { HorizonPentagonGroup, HorizonMissile } from './horizon-pentagon-types';
 import { triggerHorizonPentagonSwap } from './horizon-pentagon-update';
 import { handleAlivenParticleDeath } from './rpg-aliven-updates';
+import { damageLifeCellEntity } from './life-controller';
 import { ALIVEN_HIT_FLASH_MS } from './rpg-aliven-constants';
 import { MINIMUM_SHIELD_DAMAGE } from './rpg-constants';
 import {
@@ -601,6 +602,22 @@ export function createDamageFns(ctx: DamageCtx) {
     recordDps(dmg, '#ff99cc');
     return dmg;
   }
+}
+
+/**
+ * Deals damage to an individual Life zone cell. No DEF, no shield — cells are
+ * meant to die fast to single-target hits but reward AoE/pierce/chain far
+ * more since a colony can hold dozens of them. Death/removal is handled by
+ * the fade-out timer in life-controller.ts / life-updates.ts, not here.
+ */
+export function damageLifeCell(
+  cell: import('./life-types').LifeCellEntity,
+  rawDamage: number,
+  recordDps: (dmg: number, color?: string) => void,
+): number {
+  const dmg = damageLifeCellEntity(cell, rawDamage);
+  if (dmg > 0) recordDps(dmg, '#7CFF9E');
+  return dmg;
 }
 
 /**

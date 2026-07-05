@@ -47,6 +47,7 @@ const ZONE_LENS_TIER_WEIGHTS: Record<RpgZoneId, readonly number[]> = {
   caustics: [25, 30, 35, 10],  // sapphire/citrine flow bias
   verdure:  [50, 25, 15, 10],  // emerald dominant
   horizon:  [20, 25, 30, 25],  // mixed high-end
+  life:     [20, 25, 30, 25],  // mixed high-end (secret zone)
 };
 
 const ZONE_WEAVE_TIER_WEIGHTS: Record<RpgZoneId, readonly number[]> = {
@@ -55,6 +56,7 @@ const ZONE_WEAVE_TIER_WEIGHTS: Record<RpgZoneId, readonly number[]> = {
   caustics: [30, 40, 30],      // sapphire core
   verdure:  [50, 30, 20],      // emerald dominant
   horizon:  [30, 35, 35],      // mixed
+  life:     [30, 35, 35],      // mixed (secret zone)
 };
 
 const ZONE_LENS_TIERS: Record<RpgZoneId, readonly TierId[]> = {
@@ -63,6 +65,7 @@ const ZONE_LENS_TIERS: Record<RpgZoneId, readonly TierId[]> = {
   caustics: ['quartz', 'citrine', 'sapphire', 'diamond'],
   verdure: ['emerald', 'citrine', 'amethyst', 'fracteryl'],
   horizon: ['diamond', 'nullstone', 'fracteryl', 'eigenstein'],
+  life: ['diamond', 'nullstone', 'fracteryl', 'eigenstein'],
 };
 
 const ZONE_WEAVE_TIERS: Record<RpgZoneId, readonly TierId[]> = {
@@ -71,6 +74,7 @@ const ZONE_WEAVE_TIERS: Record<RpgZoneId, readonly TierId[]> = {
   caustics: ['citrine', 'sapphire', 'diamond'],
   verdure: ['emerald', 'amethyst', 'fracteryl'],
   horizon: ['diamond', 'nullstone', 'eigenstein'],
+  life: ['diamond', 'nullstone', 'eigenstein'],
 };
 
 function depthCapForWave(wave: number): number {

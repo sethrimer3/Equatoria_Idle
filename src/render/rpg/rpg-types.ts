@@ -414,7 +414,8 @@ export type TargetKind = 'laser' | 'sapphire' | 'missile' | 'emerald' | 'amber' 
   | 'binary_ring'
   | 'nadir_cube_point'
   | 'horizon_pentagon_real'
-  | 'horizon_missile';
+  | 'horizon_missile'
+  | 'life_cell';
 
 export interface ClosestTarget {
   kind: TargetKind;
@@ -453,6 +454,10 @@ export interface ClosestTarget {
   /** Parent group of the targeted AlivenParticle. */
   alivenGroup?: import('./rpg-aliven-types').AlivenParticleGroup;
   boss?: BossEnemy;
+  /** Life zone individual cell (life_cell targets). */
+  lifeCell?: import('./life-types').LifeCellEntity;
+  /** Parent colony of the targeted life cell. */
+  lifeColony?: import('./life-types').LifeColonyController;
   // ── Procedural creature targets ──────────────────────────────────────────
   dustWisp?: DustWispEnemy;
   ribbonWorm?: RibbonWormEnemy;

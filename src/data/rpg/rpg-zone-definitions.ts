@@ -19,7 +19,8 @@ export type RpgZoneId =
   | 'impetus'
   | 'caustics'
   | 'verdure'
-  | 'horizon';
+  | 'horizon'
+  | 'life';
 
 export interface RpgSubzoneDefinition {
   id: string;
@@ -42,6 +43,12 @@ export interface RpgZoneDefinition {
   terrainProfile?: string;
   /** Hint for background and visual effects; interpreted by future zone-rendering work. */
   visualProfile?: string;
+  /**
+   * Secret/hidden zone — omitted from the normal zone map progression and
+   * only shown when dev/unlock-all mode is active (see rpg-zone-select.ts
+   * `setDevMode`). Normal zones simply omit this flag.
+   */
+  isSecret?: boolean;
 }
 
 // ─── Zone definitions ─────────────────────────────────────────────
@@ -173,6 +180,17 @@ export const RPG_ZONE_DEFINITIONS: RpgZoneDefinition[] = [
       },
     ],
     enemyIds: ['horizon_pentagon'],
+  },
+  {
+    id: 'life',
+    displayName: 'Life',
+    shortDescription: 'A secret grid-aligned battlefield of cellular-automata colonies.',
+    terrainProfile: 'grid',
+    visualProfile: 'cellular',
+    isSecret: true,
+    enemyIds: [
+      'life_colony',
+    ],
   },
 ];
 

@@ -59,6 +59,7 @@ import {
 import {
   updateAlivenGroups,
 } from './rpg-aliven-updates';
+import { updateLifeColonies } from './life-updates';
 import { tickParticleLifeMatrix } from './terrain/impetus-particle-life';
 import { updateImpetusDust } from './terrain/impetus-space-dust';
 import {
@@ -178,6 +179,7 @@ export interface RpgEnemyUpdateArrays {
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
+  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
   ribbonWormEnemies: RibbonWormEnemy[];
@@ -531,6 +533,15 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   }
   // AlivenParticle group updates (contact damage, particle-life physics, special abilities)
   updateAlivenGroups(a.alivenGroups, ctx.alivenUpdateCtx, deltaMs);
+  // Life zone colony updates (fixed-interval automata ticks, cell fades, core contact damage)
+  if (a.lifeColonies.length > 0) {
+    updateLifeColonies(a.lifeColonies, {
+      playerX: ctx.mote.x,
+      playerY: ctx.mote.y,
+      playerRadius: 6,
+      dealContactDamageToPlayer: (atk) => ctx.enemyCtx.dealDamageToPlayer(atk),
+    }, deltaMs);
+  }
   // Impetus zone: advance the wave-intro particle-life matrix animation clock
   if (ctx.rpgSimState.activeZoneId === 'impetus') {
     tickParticleLifeMatrix(deltaMs);

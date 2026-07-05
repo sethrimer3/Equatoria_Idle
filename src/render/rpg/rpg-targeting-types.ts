@@ -75,6 +75,7 @@ export interface RpgTargetingCtx {
   binaryRingEnemies: BinaryRingEnemy[];
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   alivenGroups: AlivenParticleGroup[];
+  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
   ribbonWormEnemies: RibbonWormEnemy[];
@@ -127,6 +128,7 @@ export interface RpgTargetingCtx {
   damageBinaryRingEnemy: (e: BinaryRingEnemy, raw: number, pierce: number) => number;
   damageEliteEnemy: (e: EliteEnemy, raw: number, pierce: number) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, raw: number) => number;
+  damageLifeCell: (cell: import('./life-types').LifeCellEntity, raw: number) => number;
   damageBossEnemy: (raw: number, pierce: number, fromDiamond?: boolean) => number;
   // ── Procedural creature damage callbacks ──────────────────────────────────
   damageDustWispEnemy: (e: DustWispEnemy, raw: number, pierce: number) => number;

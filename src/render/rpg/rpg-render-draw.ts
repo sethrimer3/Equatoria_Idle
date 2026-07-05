@@ -82,6 +82,7 @@ import { drawSwordCombos, drawSandBladeCombo, drawSandDriftPixels, setLowGraphic
 import { drawLuckyMotes, drawLuckyMotePopups } from './rpg-lucky-motes';
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, drawBossArenaWalls, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import { drawAlivenGroups, setAlivenLowGraphics } from './rpg-aliven-draw';
+import { drawLifeColonies } from './life-draw';
 import { renderEnemySpeechBubbles } from './rpg-enemy-barks';
 import { renderBossDialogue } from './rpg-boss-dialogue';
 import { drawProceduralEnemies } from './rpg-procedural-draw';
@@ -362,6 +363,7 @@ export interface RpgDrawCtx {
   stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
   horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   alivenGroups: AlivenParticleGroup[];
+  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
   dustWispEnemies: DustWispEnemy[];
   ribbonWormEnemies: RibbonWormEnemy[];
@@ -1172,6 +1174,7 @@ export function drawRpgFrame(
   drawStardustEnemies(canvas2d, ctx.stardustEnemies);
   drawHorizonPentagonGroups(canvas2d, ctx.horizonPentagonGroups, widthPx);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
+  drawLifeColonies(canvas2d, ctx.lifeColonies);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
   const bossBeatVisual = bossEnemy && ctx.getIsBossWaveActive()
     ? getBossBeatVisualState(bossEnemy.bossId, ctx.bossAttackState.elapsedFightMs)

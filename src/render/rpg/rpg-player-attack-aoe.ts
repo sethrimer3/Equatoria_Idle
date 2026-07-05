@@ -13,6 +13,7 @@ import {
   FLUID_EXPLOSION_STRENGTH, FLUID_PLAYER_R, FLUID_PLAYER_G, FLUID_PLAYER_B,
 } from './rpg-constants';
 import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
+import { lifeGridToWorldCenter } from './life-grid';
 import type { CraftedWeaponModifiers } from '../../data/rpg/crafted-weapon-types';
 import { applyCraftedPostHit, makeFracterylPool } from './rpg-crafted-post-hit';
 import { applyTier1LensStatusesToEnemy } from '../../sim/rpg/enemy-status-application';
@@ -223,6 +224,20 @@ export function performAoeAttack(
       if (dx * dx + dy * dy <= aoeSq) {
         const dmg = ctx.damageAlivenParticle(p, group, rawDamage);
         if (dmg > 0) spawnHitVisualsAt(p.x, p.y, p.maxHp, dmg, p.glowColor);
+      }
+    }
+  }
+  // Life zone: AoE damages every individual cell within range — this is the
+  // whole point of the framework, since single-target hits are inefficient
+  // against a large colony but one AoE pass can clear a cluster.
+  for (const colony of ctx.lifeColonies) {
+    for (const cell of colony.cells.values()) {
+      if (cell.isDying) continue;
+      const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, colony.bounds);
+      const dx = center.x - mote.x, dy = center.y - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) {
+        const dmg = ctx.damageLifeCell(cell, rawDamage);
+        if (dmg > 0) spawnHitVisualsAt(center.x, center.y, cell.maxHp, dmg, '#7CFF9E');
       }
     }
   }

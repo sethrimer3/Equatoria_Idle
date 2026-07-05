@@ -12,7 +12,7 @@
  */
 
 import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
-import { RPG_ZONE_DEFINITIONS } from '../../data/rpg/rpg-zone-definitions';
+import { RPG_ZONE_DEFINITIONS, RPG_ZONE_BY_ID } from '../../data/rpg/rpg-zone-definitions';
 import type { RpgSimState, HorizonSubzoneId } from '../../sim/rpg/rpg-state';
 import {
   BOSS_SPEED_STEP, MAX_BOSS_SPEED_PCT, MIN_BOSS_SPEED_PCT,
@@ -70,6 +70,7 @@ const AMBIENT_COLORS = [
 ] as const;
 const NODE_COLORS: Record<string, string> = {
   euhedral: '#d8d0c0', impetus: '#9a72ff', caustics: '#4fdfff', verdure: '#55e080',
+  life: '#7cff9e',
   zenith: '#fff172', true: '#f0f0ff', nadir: '#7840b8',
   boss_quartz: '#d8d0c0', boss_ruby: '#ef3b4f', boss_sunstone: '#ff9b32',
   boss_citrine: '#ffd84a', boss_iolite: '#6458d8', boss_amethyst: '#b154e8',
@@ -91,6 +92,7 @@ const ZONE_ICON_LABEL: Partial<Record<string, string>> = {
   impetus:  'Impetus',
   caustics: 'Caustics',
   verdure:  'Verdure',
+  life:     'Life',
   zenith:   'Zenith',
   nadir:    'Nadir',
   true:     'True',
@@ -128,6 +130,8 @@ const ZONE_POS: Record<RpgZoneId, { x: number; y: number }> = {
   caustics: { x: 420, y: 390 },
   verdure:  { x: 420, y: 535 },
   horizon:  { x: 420, y: 720 }, // triad center (not drawn itself)
+  // Secret zone — floats off to the side, disconnected from the main chain.
+  life:     { x: 620, y: 620 },
 };
 
 const HORIZON_SUBZONE_IDS: HorizonSubzoneId[] = ['zenith', 'true', 'nadir'];
@@ -627,10 +631,13 @@ export function createRpgZoneSelectPanel(
     homeX: bossPos[i].x, homeY: bossPos[i].y, vx: 0, vy: 0,
   }));
 
+  // Secret zones (e.g. Life) float disconnected from the main chain — they
+  // are not part of this rope sequence.
+  const mainChainNodes = zoneNodes.filter(n => !RPG_ZONE_BY_ID.get(n.id as RpgZoneId)?.isSecret);
   const connections: MapConnection[] = [];
-  for (let i = 0; i < zoneNodes.length - 1; i++) {
+  for (let i = 0; i < mainChainNodes.length - 1; i++) {
     const curveOffset = (i % 2 === 0 ? 1 : -1) * ZONE_CURVE_OFFSET;
-    connections.push(makeConnection(zoneNodes[i], zoneNodes[i + 1], connections.length, '#4466cc20', curveOffset));
+    connections.push(makeConnection(mainChainNodes[i], mainChainNodes[i + 1], connections.length, '#4466cc20', curveOffset));
   }
   const verdure = zoneNodes.find(n => n.id === 'verdure')!;
   for (let i = 0; i < horizonNodes.length; i++) {
@@ -779,8 +786,19 @@ export function createRpgZoneSelectPanel(
     return bossNodes.slice(0, visibleBossCount());
   }
 
+  const _secretZoneIds = new Set(
+    RPG_ZONE_DEFINITIONS.filter(z => z.isSecret).map(z => z.id as string),
+  );
+
+  /** Secret zones (e.g. Life) are hidden from the map unless dev mode is on
+   *  or the zone is already the player's active zone. */
+  function visibleZoneNodes(): MapNode[] {
+    return zoneNodes.filter(n =>
+      !_secretZoneIds.has(n.id) || _isDevMode || rpgSimState.activeZoneId === n.id);
+  }
+
   function allNodes(): MapNode[] {
-    return [...zoneNodes, ...horizonNodes, ...visibleBossNodes()];
+    return [...visibleZoneNodes(), ...horizonNodes, ...visibleBossNodes()];
   }
 
   function visibleConnections(): MapConnection[] {
@@ -1165,7 +1183,7 @@ export function createRpgZoneSelectPanel(
 
     // ── Zone nodes ───────────────────────────────────────────────────────────
 
-    for (const node of zoneNodes) {
+    for (const node of visibleZoneNodes()) {
       const isActive  = node.id === activeZone;
       const isHov     = node.id === hoveredId;
       const isSelected = node.id === selectedId;

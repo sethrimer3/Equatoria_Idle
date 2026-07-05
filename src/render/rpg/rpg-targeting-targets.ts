@@ -22,6 +22,7 @@ import type { RpgTargetingCtx, TargetCollectionOptions } from './rpg-targeting-t
 import type { BinaryRingEnemy } from './rpg-binary-ring-encounter';
 import { hasTopographicTerrainLineOfSight } from './terrain/topographic-terrain';
 import { POLYOMINO_CELL_SIZE } from './polyomino-enemy-factories';
+import { lifeGridToWorldCenter } from './life-grid';
 
 export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetCollectionOptions): ClosestTarget[] {
   const requireLos = opts?.requireLineOfSight ?? false;
@@ -117,6 +118,19 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
       if (requireLos && !hasTopographicTerrainLineOfSight(terrain, ox, oy, p.x, p.y)) continue;
       const dx = p.x - ctx.mote.x, dy = p.y - ctx.mote.y;
       targets.push({ kind: 'aliven_particle', x: p.x, y: p.y, distSq: dx * dx + dy * dy, alivenParticle: p, alivenGroup: group });
+    }
+  }
+  // Life zone: add each alive cell as an individual target (no LOS filtering —
+  // cells are grid-bound and always in the open arena).
+  for (const colony of ctx.lifeColonies) {
+    for (const cell of colony.cells.values()) {
+      if (cell.isDying) continue;
+      const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, colony.bounds);
+      const dx = center.x - ctx.mote.x, dy = center.y - ctx.mote.y;
+      targets.push({
+        kind: 'life_cell', x: center.x, y: center.y, distSq: dx * dx + dy * dy,
+        lifeCell: cell, lifeColony: colony,
+      });
     }
   }
   if (ctx.bossEnemy) addTarget('boss', ctx.bossEnemy, 'boss');
