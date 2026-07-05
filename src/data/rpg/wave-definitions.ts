@@ -36,6 +36,8 @@ import { RPG_ZONE_BY_ID, type RpgZoneId } from './rpg-zone-definitions';
  *  'elite_nullstone' — Event Horizon singularity,           wave 63+
  *
  * ── Aliven particle swarms ────────────────────────────────────────
+ * Aliven variants are exclusive to the Impetus zone (see _getImpetusWaveDefinition);
+ * they are never used by Euhedral's hand-authored or procedural waves.
  *  'aliven_spark_cluster'   — 8-mote spitter swarm,         wave 2+
  *  'aliven_quartz_ghost'    — phasing 10-particle swarm,    wave 4+
  *  'aliven_shard_bloom'     — 10-particle dasher swarm,     wave 5+
@@ -109,9 +111,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
     spawns: [
       { enemyTypeId: 'laser',                count: 2, spawnDelay:  800 },
       { enemyTypeId: 'quartz',               count: 1, spawnDelay:  600 },
-      // First Aliven encounter: a small spitter swarm (aliven_spark_cluster).
-      // Spawns after the normal enemies so the player meets it as a second threat.
-      { enemyTypeId: 'aliven_spark_cluster', count: 1, spawnDelay: 1800 },
     ],
   },
   {
@@ -119,7 +118,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
     spawns: [
       { enemyTypeId: 'laser',                count: 2, spawnDelay:  600 },
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  700 },
-      { enemyTypeId: 'aliven_spark_cluster', count: 1, spawnDelay: 1600 },
     ],
   },
   {
@@ -127,7 +125,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
     spawns: [
       { enemyTypeId: 'laser',                count: 3, spawnDelay:  700 },
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  600 },
-      { enemyTypeId: 'aliven_spark_cluster', count: 1, spawnDelay: 1500 },
     ],
   },
   // Wave 5: no boss before wave 100
@@ -136,8 +133,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
     spawns: [
       { enemyTypeId: 'laser',                count: 2, spawnDelay:  600 },
       { enemyTypeId: 'quartz',               count: 1, spawnDelay:  700 },
-      // Introduce aliven_quartz_ghost so the player learns the ghost/invulnerability mechanic.
-      { enemyTypeId: 'aliven_quartz_ghost',  count: 1, spawnDelay: 1400 },
     ],
   },
   {
@@ -146,7 +141,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'laser',                count: 2, spawnDelay:  700 },
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  600 },
       { enemyTypeId: 'sapphire',             count: 1, spawnDelay:  900 },
-      { enemyTypeId: 'aliven_quartz_ghost',  count: 1, spawnDelay: 1500 },
     ],
   },
   {
@@ -155,7 +149,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'laser',                count: 3, spawnDelay:  600 },
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  550 },
       { enemyTypeId: 'sapphire',             count: 1, spawnDelay:  900 },
-      { enemyTypeId: 'aliven_spark_cluster', count: 1, spawnDelay: 1600 },
     ],
   },
   {
@@ -164,8 +157,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'laser',                count: 3, spawnDelay:  600 },
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  500 },
       { enemyTypeId: 'sapphire',             count: 2, spawnDelay: 1200 },
-      // Introduce aliven_shard_bloom (dasher swarm) — more aggressive than spark_cluster.
-      { enemyTypeId: 'aliven_shard_bloom',   count: 1, spawnDelay: 1700 },
     ],
   },
   {
@@ -175,18 +166,15 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  500 },
       { enemyTypeId: 'sapphire',             count: 2, spawnDelay: 1100 },
       { enemyTypeId: 'emerald',              count: 1, spawnDelay: 1300 },
-      { enemyTypeId: 'aliven_shard_bloom',   count: 1, spawnDelay: 1800 },
     ],
   },
-  // Wave 10: no boss before wave 100; first elite aliven wave.
+  // Wave 10: no boss before wave 100
   {
     waveNumber: 10,
     spawns: [
       { enemyTypeId: 'laser',                     count: 3, spawnDelay:  500 },
       { enemyTypeId: 'quartz',                    count: 2, spawnDelay:  480 },
       { enemyTypeId: 'sapphire',                  count: 1, spawnDelay: 1000 },
-      { enemyTypeId: 'aliven_shard_bloom',         count: 1, spawnDelay: 1600 },
-      { enemyTypeId: 'aliven_elite_shard_bloom',   count: 1, spawnDelay: 2400 },
     ],
   },
   {
@@ -196,7 +184,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  460 },
       { enemyTypeId: 'sapphire',             count: 2, spawnDelay: 1000 },
       { enemyTypeId: 'emerald',              count: 2, spawnDelay: 1100 },
-      { enemyTypeId: 'aliven_quartz_ghost',  count: 1, spawnDelay: 1700 },
     ],
   },
   {
@@ -207,8 +194,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'sapphire',             count: 2, spawnDelay: 1000 },
       { enemyTypeId: 'emerald',              count: 2, spawnDelay: 1100 },
       { enemyTypeId: 'amber',               count: 1, spawnDelay: 1400 },
-      // Introduce aliven_pulse_swarm (pulsers) — teaches AoE shockwave mechanics.
-      { enemyTypeId: 'aliven_pulse_swarm',   count: 1, spawnDelay: 1900 },
     ],
   },
   {
@@ -219,7 +204,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'sapphire',             count: 2, spawnDelay:  950 },
       { enemyTypeId: 'emerald',              count: 2, spawnDelay: 1000 },
       { enemyTypeId: 'amber',               count: 1, spawnDelay: 1300 },
-      { enemyTypeId: 'aliven_pulse_swarm',   count: 1, spawnDelay: 1800 },
     ],
   },
   {
@@ -230,7 +214,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'sapphire',             count: 3, spawnDelay:  900 },
       { enemyTypeId: 'emerald',              count: 2, spawnDelay:  950 },
       { enemyTypeId: 'amber',               count: 2, spawnDelay: 1200 },
-      { enemyTypeId: 'aliven_spark_cluster', count: 1, spawnDelay: 1700 },
     ],
   },
   // Wave 15: no boss before wave 100
@@ -241,8 +224,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'quartz',               count: 2, spawnDelay:  420 },
       { enemyTypeId: 'emerald',              count: 2, spawnDelay:  900 },
       { enemyTypeId: 'amber',               count: 1, spawnDelay: 1100 },
-      // Introduce aliven_ember_ring — trail-leaving swarm that telegraphs movement paths.
-      { enemyTypeId: 'aliven_ember_ring',    count: 1, spawnDelay: 1600 },
     ],
   },
   {
@@ -254,7 +235,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'emerald',              count: 2, spawnDelay:  880 },
       { enemyTypeId: 'amber',               count: 2, spawnDelay: 1100 },
       { enemyTypeId: 'void',                count: 1, spawnDelay: 1700 },
-      { enemyTypeId: 'aliven_ember_ring',    count: 1, spawnDelay: 1900 },
     ],
   },
   {
@@ -266,7 +246,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'emerald',              count: 3, spawnDelay:  860 },
       { enemyTypeId: 'amber',               count: 2, spawnDelay: 1100 },
       { enemyTypeId: 'void',                count: 1, spawnDelay: 1600 },
-      { enemyTypeId: 'aliven_shard_bloom',   count: 1, spawnDelay: 1800 },
     ],
   },
   {
@@ -278,8 +257,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'emerald',              count: 3, spawnDelay:  840 },
       { enemyTypeId: 'amber',               count: 2, spawnDelay: 1050 },
       { enemyTypeId: 'void',                count: 2, spawnDelay: 1600 },
-      // Introduce aliven_void_splinters — splitter particles that spawn children on death.
-      { enemyTypeId: 'aliven_void_splinters', count: 1, spawnDelay: 2000 },
     ],
   },
   {
@@ -291,10 +268,9 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'emerald',              count: 3, spawnDelay:  820 },
       { enemyTypeId: 'amber',               count: 3, spawnDelay: 1000 },
       { enemyTypeId: 'void',                count: 2, spawnDelay: 1500 },
-      { enemyTypeId: 'aliven_void_splinters', count: 1, spawnDelay: 1900 },
     ],
   },
-  // Wave 20: no boss before wave 100; elite aliven wave.
+  // Wave 20: no boss before wave 100
   {
     waveNumber: 20,
     spawns: [
@@ -303,8 +279,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'sapphire',                  count: 2, spawnDelay:  820 },
       { enemyTypeId: 'amber',                     count: 2, spawnDelay:  950 },
       { enemyTypeId: 'void',                      count: 1, spawnDelay: 1400 },
-      { enemyTypeId: 'aliven_pulse_swarm',         count: 1, spawnDelay: 1700 },
-      { enemyTypeId: 'aliven_elite_pulse_swarm',   count: 1, spawnDelay: 2500 },
     ],
   },
   {
@@ -316,7 +290,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'emerald',              count: 4, spawnDelay:  800 },
       { enemyTypeId: 'amber',               count: 3, spawnDelay:  950 },
       { enemyTypeId: 'void',                count: 2, spawnDelay: 1400 },
-      { enemyTypeId: 'aliven_ember_ring',    count: 1, spawnDelay: 1800 },
     ],
   },
   {
@@ -329,8 +302,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'amber',               count: 3, spawnDelay:  920 },
       { enemyTypeId: 'void',                count: 2, spawnDelay: 1350 },
       { enemyTypeId: 'ruby',                count: 2, spawnDelay:  900 },
-      // Introduce aliven_healer_nodes — teaches prioritising healer particles in groups.
-      { enemyTypeId: 'aliven_healer_nodes',  count: 1, spawnDelay: 2000 },
     ],
   },
   {
@@ -343,7 +314,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'amber',               count: 3, spawnDelay:  900 },
       { enemyTypeId: 'void',                count: 3, spawnDelay: 1300 },
       { enemyTypeId: 'ruby',                count: 3, spawnDelay:  880 },
-      { enemyTypeId: 'aliven_healer_nodes',  count: 1, spawnDelay: 1900 },
     ],
   },
   {
@@ -356,8 +326,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'amber',               count: 4, spawnDelay:  880 },
       { enemyTypeId: 'void',                count: 3, spawnDelay: 1250 },
       { enemyTypeId: 'ruby',                count: 3, spawnDelay:  860 },
-      // Mix spark_cluster and healer together — now the player must handle both simultaneously.
-      { enemyTypeId: 'aliven_spark_cluster', count: 1, spawnDelay: 1800 },
     ],
   },
   // Wave 25: no boss before wave 100
@@ -370,8 +338,6 @@ export const WAVE_DEFINITIONS: WaveDefinition[] = [
       { enemyTypeId: 'amber',               count: 2, spawnDelay:  880 },
       { enemyTypeId: 'void',                count: 2, spawnDelay: 1250 },
       { enemyTypeId: 'ruby',                count: 2, spawnDelay:  860 },
-      // Slightly lighter aliven load on this breather wave.
-      { enemyTypeId: 'aliven_void_splinters', count: 1, spawnDelay: 1700 },
     ],
   },
 ];
@@ -456,38 +422,6 @@ export function getWaveDefinition(waveNumber: number): WaveDefinition {
   if (waveNumber >= 74)  spawns.push({ enemyTypeId: 'fracteryl',  count: fracterylCount,  spawnDelay: delay + 1700 });
   if (waveNumber >= 85)  spawns.push({ enemyTypeId: 'eigenstein', count: eigensteinCount, spawnDelay: delay + 2000 });
   if (waveNumber >= 35 && stardustCount > 0) spawns.push({ enemyTypeId: 'stardust', count: stardustCount, spawnDelay: delay + 2200 });
-
-  // Aliven particle group spawns — each entry spawns one group (count always 1).
-  // Capped at 1 group per wave to avoid overlapping too many swarms.
-  if (waveNumber >= 2)   spawns.push({ enemyTypeId: 'aliven_spark_cluster',   count: 1, spawnDelay: delay + 700 });
-  if (waveNumber >= 4)   spawns.push({ enemyTypeId: 'aliven_quartz_ghost',     count: 1, spawnDelay: delay + 800 });
-  if (waveNumber >= 5)   spawns.push({ enemyTypeId: 'aliven_shard_bloom',      count: 1, spawnDelay: delay + 900 });
-  if (waveNumber >= 8)   spawns.push({ enemyTypeId: 'aliven_pulse_swarm',      count: 1, spawnDelay: delay + 1100 });
-  if (waveNumber >= 12)  spawns.push({ enemyTypeId: 'aliven_ember_ring',       count: 1, spawnDelay: delay + 1300 });
-  if (waveNumber >= 18)  spawns.push({ enemyTypeId: 'aliven_void_splinters',   count: 1, spawnDelay: delay + 1500 });
-  if (waveNumber >= 22)  spawns.push({ enemyTypeId: 'aliven_healer_nodes',     count: 1, spawnDelay: delay + 1700 });
-  if (waveNumber >= 28)  spawns.push({ enemyTypeId: 'aliven_orbit_bloom',      count: 1, spawnDelay: delay + 1900 });
-  if (waveNumber >= 38)  spawns.push({ enemyTypeId: 'aliven_iolite_prism',     count: 1, spawnDelay: delay + 2100 });
-  if (waveNumber >= 65)  spawns.push({ enemyTypeId: 'aliven_fracteryl_storm',  count: 1, spawnDelay: delay + 2300 });
-
-  // Elite aliven spawns: every 10th wave, spawn the highest-tier unlocked elite aliven variant.
-  // These elite groups keep the player-seeking behavior that normal aliven particles no longer have.
-  if (waveNumber % 10 === 0) {
-    let eliteAlivenId: string | null = null;
-    if (waveNumber >= 65)       eliteAlivenId = 'aliven_elite_fracteryl_storm';
-    else if (waveNumber >= 38)  eliteAlivenId = 'aliven_elite_iolite_prism';
-    else if (waveNumber >= 28)  eliteAlivenId = 'aliven_elite_orbit_bloom';
-    else if (waveNumber >= 22)  eliteAlivenId = 'aliven_elite_healer_nodes';
-    else if (waveNumber >= 18)  eliteAlivenId = 'aliven_elite_void_splinters';
-    else if (waveNumber >= 12)  eliteAlivenId = 'aliven_elite_ember_ring';
-    else if (waveNumber >= 8)   eliteAlivenId = 'aliven_elite_pulse_swarm';
-    else if (waveNumber >= 5)   eliteAlivenId = 'aliven_elite_shard_bloom';
-    else if (waveNumber >= 4)   eliteAlivenId = 'aliven_elite_quartz_ghost';
-    else if (waveNumber >= 2)   eliteAlivenId = 'aliven_elite_spark_cluster';
-    if (eliteAlivenId !== null) {
-      spawns.push({ enemyTypeId: eliteAlivenId, count: 1, spawnDelay: delay + 2600 });
-    }
-  }
 
   // Elite spawns: one per wave at the correct tier unlock threshold, then sparse thereafter.
   // Each elite spawns well after the main pack to give it a dramatic entrance.
@@ -715,9 +649,9 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
  */
 export function getSpawnableEnemyTypesForZone(zoneId: RpgZoneId): readonly string[] {
   if (zoneId === 'euhedral') {
-    // Euhedral: crystal enemies + elites + stardust.
-    // Aliven variants are intentionally included via the hand-authored Euhedral
-    // waves (1-25); they're listed here so zone validation passes.
+    // Euhedral: standard crystal enemies + elite crystal enemies + stardust + boss only.
+    // Aliven particle swarms belong exclusively to the Impetus zone and must
+    // never appear here.
     return [
       ...STANDARD_WAVE_ENEMY_IDS,
       ...ELITE_WAVE_ENEMY_IDS,
