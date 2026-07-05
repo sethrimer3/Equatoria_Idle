@@ -190,6 +190,9 @@ export const RPG_ZONE_DEFINITIONS: RpgZoneDefinition[] = [
     isSecret: true,
     enemyIds: [
       'life_colony',
+      'life_seeds_burst',
+      'life_replicator_sigil',
+      'life_walled_cities',
     ],
   },
 ];

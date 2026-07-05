@@ -240,6 +240,13 @@ export function performAoeAttack(
         if (dmg > 0) spawnHitVisualsAt(center.x, center.y, cell.maxHp, dmg, '#7CFF9E');
       }
     }
+    if (colony.coreHp > 0) {
+      const dx = colony.x - mote.x, dy = colony.y - mote.y;
+      if (dx * dx + dy * dy <= aoeSq) {
+        const dmg = ctx.damageLifeCore(colony, rawDamage);
+        if (dmg > 0) spawnHitVisualsAt(colony.x, colony.y, colony.coreMaxHp, dmg, '#c9ffd8');
+      }
+    }
   }
   for (const g of horizonPentagonGroups) {
     if (g.hp <= 0 || g.swapCdMs > 0) continue;

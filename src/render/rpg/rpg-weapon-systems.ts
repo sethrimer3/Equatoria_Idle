@@ -174,6 +174,7 @@ export interface RpgWeaponCtx {
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, rawDamage: number) => number;
   damageLifeCell: (cell: import('./life-types').LifeCellEntity, rawDamage: number) => number;
+  damageLifeCore: (colony: import('./life-types').LifeColonyController, rawDamage: number) => number;
   // ── Proc creature damage fns ────────────────────────────────────────────────
   damageDustWispEnemy: (e: import('./rpg-procedural-types').DustWispEnemy, raw: number, pierce: number) => number;
   damageRibbonWormEnemy: (e: import('./rpg-procedural-types').RibbonWormEnemy, raw: number, pierce: number) => number;

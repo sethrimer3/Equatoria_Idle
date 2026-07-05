@@ -82,7 +82,8 @@ import { drawSwordCombos, drawSandBladeCombo, drawSandDriftPixels, setLowGraphic
 import { drawLuckyMotes, drawLuckyMotePopups } from './rpg-lucky-motes';
 import { drawBossEnemy, drawBottomSafeZone, drawDanmakuSafeZone, drawWaveClearBanner, drawBossArenaWalls, setLowGraphicsMode as setBossLowGraphics } from './rpg-boss-draw';
 import { drawAlivenGroups, setAlivenLowGraphics } from './rpg-aliven-draw';
-import { drawLifeColonies } from './life-draw';
+import { drawLifeColonies, drawLifeGridBackground } from './life-draw';
+import { buildLifeGridBoundsForArena } from './life-factories';
 import { renderEnemySpeechBubbles } from './rpg-enemy-barks';
 import { renderBossDialogue } from './rpg-boss-dialogue';
 import { drawProceduralEnemies } from './rpg-procedural-draw';
@@ -1174,6 +1175,12 @@ export function drawRpgFrame(
   drawStardustEnemies(canvas2d, ctx.stardustEnemies);
   drawHorizonPentagonGroups(canvas2d, ctx.horizonPentagonGroups, widthPx);
   drawAlivenGroups(canvas2d, ctx.alivenGroups);
+  if (!isBossZone && ctx.rpgSimState.activeZoneId === 'life') {
+    const lifeBounds = buildLifeGridBoundsForArena(
+      fs.activeBounds.left, fs.activeBounds.top, fs.activeBounds.width, fs.activeBounds.height,
+    );
+    drawLifeGridBackground(canvas2d, lifeBounds, (nowMs % 4000) / 4000);
+  }
   drawLifeColonies(canvas2d, ctx.lifeColonies);
   drawProceduralEnemies(canvas2d, ctx, nowMs);
   const bossBeatVisual = bossEnemy && ctx.getIsBossWaveActive()

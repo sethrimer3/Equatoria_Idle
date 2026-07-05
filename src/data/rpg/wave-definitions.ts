@@ -588,6 +588,24 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
     return _getImpetusWaveDefinition(waveNumber);
   }
 
+  if (zoneId === 'life') {
+    // Every 10th wave is an elite-style Walled Cities colony alone (dense
+    // defensive walls around a tanky core). Otherwise: one simple colony
+    // early on, mixing in a second colony type from wave 15 onward.
+    if (waveNumber > 0 && waveNumber % 10 === 0) {
+      return { waveNumber, spawns: [{ enemyTypeId: 'life_walled_cities', count: 1, spawnDelay: 400 }] };
+    }
+    const rotation = ['life_colony', 'life_seeds_burst', 'life_replicator_sigil'];
+    const unlockedCount = Math.min(1 + Math.floor(waveNumber / 6), rotation.length);
+    const pool = rotation.slice(0, unlockedCount);
+    const activeCount = waveNumber < 15 ? 1 : Math.min(2, pool.length);
+    const picks = pool.slice(0, activeCount);
+    return {
+      waveNumber,
+      spawns: picks.map((enemyTypeId, i) => ({ enemyTypeId, count: 1, spawnDelay: 400 + i * 300 })),
+    };
+  }
+
   if (zoneId === 'verdure' && waveNumber > 0 && waveNumber % 10 === 0) {
     const tier = Math.max(1, Math.floor(waveNumber / 10));
     const baseCount = Math.min(2 + tier, 7);

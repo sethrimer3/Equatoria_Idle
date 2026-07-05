@@ -131,7 +131,7 @@ import {
   type BossStageDirectorCtx,
 } from './rpg-boss-stage-director';
 import { type AlivenUpdateCtx } from './rpg-aliven-updates';
-import { damageAlivenParticle, damageLifeCell } from './rpg-damage';
+import { damageAlivenParticle, damageLifeCell, damageLifeCore } from './rpg-damage';
 import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS, type AlivenVariantId } from './rpg-aliven-constants';
@@ -1181,6 +1181,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageVerdurePlant: (plant, raw) => _damageVerdurePlant(plant, raw),
     damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageLifeCell: (cell, raw) => damageLifeCell(cell, raw, recordDps),
+    damageLifeCore: (colony, raw) => damageLifeCore(colony, raw, recordDps),
     damageBossEnemy: (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     getTerrainState: () => topographicTerrainState,
   });
@@ -1579,6 +1580,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     plantProjectiles,
     damageAlivenParticle: (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageLifeCell: (cell, raw) => damageLifeCell(cell, raw, recordDps),
+    damageLifeCore: (colony, raw) => damageLifeCore(colony, raw, recordDps),
   };
   weaponSystems = createRpgWeaponSystems(weaponCtx);
 
@@ -1614,6 +1616,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     damageBossEnemy:        (raw, pierce, fromDiamond) => bossWave.damageBossEnemy(raw, pierce, fromDiamond),
     damageAlivenParticle:   (p, g, raw) => damageAlivenParticle(p, g, raw, recordDps),
     damageLifeCell:         (cell, raw) => damageLifeCell(cell, raw, recordDps),
+    damageLifeCore:         (colony, raw) => damageLifeCore(colony, raw, recordDps),
     damageDustWispEnemy, damageRibbonWormEnemy, damageLanternMothEnemy, damageEyeStalkEnemy,
     damageJellyfishEnemy, damageEliteJellyfishEnemy, damageClothGhostEnemy, damagePlantTurretEnemy, damageGearInsectEnemy,
     damageSpiderCrawlerEnemy, damageMoteSwarmEnemy, damageShadowHandEnemy,

@@ -34,6 +34,7 @@ import { getEmberDurationMult, getEmberPotencyMult, getEmberOverloadChancePct } 
 import { handleLensTier2EffectsOnWeaponHit } from './lens-tier2-effects';
 import { handleLensTier3EffectsOnWeaponHit } from './lens-tier3-effects';
 import type { CombinedEquipmentModifiers } from '../../data/rpg/equipment-modifiers';
+import { lifeGridToWorldCenter } from './life-grid';
 
 // ── Sort-entry type (local to this module) ────────────────────────────────────
 
@@ -85,6 +86,9 @@ type MultiSortEntry = {
   boss?: BossEnemy;
   alivenParticle?: AlivenParticle;
   alivenGroup?: AlivenParticleGroup;
+  lifeCell?: import('./life-types').LifeCellEntity;
+  lifeColony?: import('./life-types').LifeColonyController;
+  lifeCoreColony?: import('./life-types').LifeColonyController;
 };
 
 // ── Lens status helpers ───────────────────────────────────────────────────────
@@ -323,6 +327,21 @@ export function performMultiAttack(
       if (d <= rangeSq) inRange.push({ distSq: d, alivenParticle: p, alivenGroup: group });
     }
   }
+  // Life zone: individual cells and the colony core are separate multi-hit targets.
+  for (const colony of ctx.lifeColonies) {
+    for (const cell of colony.cells.values()) {
+      if (cell.isDying) continue;
+      const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, colony.bounds);
+      const dx = center.x - mote.x, dy = center.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= rangeSq) inRange.push({ distSq: d, lifeCell: cell, lifeColony: colony });
+    }
+    if (colony.coreHp > 0) {
+      const dx = colony.x - mote.x, dy = colony.y - mote.y;
+      const d = dx * dx + dy * dy;
+      if (d <= rangeSq) inRange.push({ distSq: d, lifeCoreColony: colony });
+    }
+  }
 
   // ── Sort and damage the N closest ────────────────────────────────────────
 
@@ -446,6 +465,18 @@ export function performMultiAttack(
       const dmg = ctx.damageAlivenParticle(t.alivenParticle, t.alivenGroup, effectiveDmg);
       if (dmg > 0) spawnHitVisualsAt(t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, dmg, t.alivenParticle.glowColor);
       if (dmg > 0) ctx.onWeaponHitEnemy?.(dmg, t.alivenParticle.x, t.alivenParticle.y, t.alivenParticle.maxHp, (b) => ctx.damageAlivenParticle(t.alivenParticle!, t.alivenGroup!, b), hexEntity ?? undefined);
+    } else if (t.lifeCell && t.lifeColony) {
+      // No lens/status/combo application for lightweight Life cells (hexEntity stays null).
+      const cell = t.lifeCell;
+      const dmg = ctx.damageLifeCell(cell, effectiveDmg);
+      if (dmg > 0) {
+        const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, t.lifeColony.bounds);
+        spawnHitVisualsAt(center.x, center.y, cell.maxHp, dmg, '#7CFF9E');
+      }
+    } else if (t.lifeCoreColony) {
+      const colony = t.lifeCoreColony;
+      const dmg = ctx.damageLifeCore(colony, effectiveDmg);
+      if (dmg > 0) spawnHitVisualsAt(colony.x, colony.y, colony.coreMaxHp, dmg, '#c9ffd8');
     }
     // Lens status post-hit: apply Tier 1 statuses to target.
     if (equipment?.lens && weaponId) {

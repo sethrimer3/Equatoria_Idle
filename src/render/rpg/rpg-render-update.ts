@@ -60,6 +60,8 @@ import {
   updateAlivenGroups,
 } from './rpg-aliven-updates';
 import { updateLifeColonies } from './life-updates';
+import { addXpWithAllocation } from '../../sim/rpg/rpg-state';
+import { LIFE_CELL_BASE_HP } from './life-controller';
 import { tickParticleLifeMatrix } from './terrain/impetus-particle-life';
 import { updateImpetusDust } from './terrain/impetus-space-dust';
 import {
@@ -540,6 +542,20 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
       playerY: ctx.mote.y,
       playerRadius: 6,
       dealContactDamageToPlayer: (atk) => ctx.enemyCtx.dealDamageToPlayer(atk),
+      // Fires once per cell whose death-fade completes this frame — grants small
+      // per-cell XP so clearing a colony rewards proportionally to cell count.
+      onCellCleared: (colony) => {
+        ctx.rpgSimState.lifetimeKillsByType.set(
+          'life_cell', (ctx.rpgSimState.lifetimeKillsByType.get('life_cell') ?? 0) + 1,
+        );
+        addXpWithAllocation(ctx.rpgSimState, LIFE_CELL_BASE_HP * colony.xpMult);
+      },
+      onColonyCleared: (colony) => {
+        ctx.rpgSimState.lifetimeKillsByType.set(
+          'life_colony', (ctx.rpgSimState.lifetimeKillsByType.get('life_colony') ?? 0) + 1,
+        );
+        addXpWithAllocation(ctx.rpgSimState, colony.coreMaxHp * colony.xpMult);
+      },
     }, deltaMs);
   }
   // Impetus zone: advance the wave-intro particle-life matrix animation clock

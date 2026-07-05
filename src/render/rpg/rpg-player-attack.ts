@@ -148,6 +148,7 @@ export interface RpgPlayerAttackCtx {
   damageBossEnemy: (rawDamage: number, defPierceRatio: number, fromDiamondBlade?: boolean) => number;
   damageAlivenParticle: (particle: AlivenParticle, group: AlivenParticleGroup, dmg: number) => number;
   damageLifeCell: (cell: import('./life-types').LifeCellEntity, dmg: number) => number;
+  damageLifeCore: (colony: import('./life-types').LifeColonyController, dmg: number) => number;
   // ── Proc creature damage fns ────────────────────────────────────────────────
   damageDustWispEnemy: (e: import('./rpg-procedural-types').DustWispEnemy, raw: number, pierce: number) => number;
   damageRibbonWormEnemy: (e: import('./rpg-procedural-types').RibbonWormEnemy, raw: number, pierce: number) => number;

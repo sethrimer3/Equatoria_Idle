@@ -12,6 +12,7 @@ import { lifeGridToWorldCenter } from './life-grid';
 import {
   advanceLifeCellFades, isLifeColonyFullyCleared, stepLifeAutomata,
 } from './life-controller';
+import { MAX_TOTAL_LIFE_CELLS } from './life-factories';
 import type { LifeColonyController } from './life-types';
 
 export interface LifeUpdateCtx {
@@ -35,6 +36,12 @@ export function updateLifeColonies(
   ctx: LifeUpdateCtx,
   deltaMs: number,
 ): void {
+  // Global cross-colony population cap (item 8): computed once per frame so
+  // every colony's step this tick shares the same remaining growth budget,
+  // regardless of iteration order.
+  let totalLiveCells = 0;
+  for (const colony of colonies) totalLiveCells += colony.cells.size;
+
   for (let i = colonies.length - 1; i >= 0; i--) {
     const colony = colonies[i]!;
 
@@ -43,7 +50,9 @@ export function updateLifeColonies(
       const interval = colony.rule.tickIntervalMs ?? 500;
       if (colony.tickAccumulatorMs >= interval) {
         colony.tickAccumulatorMs -= interval;
-        stepLifeAutomata(colony);
+        const beforeSize = colony.cells.size;
+        stepLifeAutomata(colony, undefined, Math.max(0, MAX_TOTAL_LIFE_CELLS - totalLiveCells));
+        totalLiveCells += colony.cells.size - beforeSize;
         if (colony.cells.size === 0 && colony.status === 'seeding') {
           // Pattern died out before ever taking hold — treat as cleared.
           colony.status = 'dying';

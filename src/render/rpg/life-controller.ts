@@ -87,8 +87,16 @@ function countAliveNeighbors(
  * Moore neighbors (a sparse superset), so cost scales with population, not
  * grid area. Newly-born cells are capped by `colony.maxPopulation`.
  */
-export function stepLifeAutomata(colony: LifeColonyController, hpForNewCell: number = LIFE_CELL_BASE_HP): void {
+export function stepLifeAutomata(
+  colony: LifeColonyController,
+  hpForNewCell: number = LIFE_CELL_BASE_HP,
+  globalCapRemaining: number = Infinity,
+): void {
   const { rule, bounds, cells } = colony;
+  // Global cross-colony cap: this colony may only grow beyond its current size
+  // by however much of the shared global budget the caller (updateLifeColonies)
+  // says is left. Existing cells are never evicted to make room.
+  const effectiveMaxPopulation = Math.min(colony.maxPopulation, cells.size + Math.max(0, globalCapRemaining));
   const birth = new Set(rule.birth);
   const survive = new Set(rule.survive);
   // rule.edgeBehavior: only 'dead' is implemented — isLifeGridCoordInBounds excludes
@@ -129,7 +137,7 @@ export function stepLifeAutomata(colony: LifeColonyController, hpForNewCell: num
   // acceptable for a soft cap rather than a fairness guarantee).
   const next = new Map<string, LifeCellEntity>();
   for (const { col, row, existing } of nextAlive) {
-    if (next.size >= colony.maxPopulation) break;
+    if (next.size >= effectiveMaxPopulation) break;
     const key = lifeCellKey(col, row);
     if (existing && !existing.isDying) {
       next.set(key, existing);

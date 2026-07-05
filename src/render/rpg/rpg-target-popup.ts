@@ -43,6 +43,7 @@ const TARGET_LABELS: Record<TargetKind, string> = {
   elite: 'Elite Enemy',
   aliven_particle: 'Aliven Particle',
   life_cell: 'Life Cell',
+  life_core: 'Life Colony Core',
   boss: 'Boss',
   proc_dustwisp: 'Dust Wisp',
   proc_ribbonworm: 'Ribbon Worm',

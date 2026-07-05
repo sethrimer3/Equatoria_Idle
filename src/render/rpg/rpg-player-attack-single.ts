@@ -290,6 +290,20 @@ export function performSingleAttack(
     if (dmg > 0) echoHit = { dmg, x: hitX, y: hitY, maxHp: g.maxHp, applyFn: (b) => ctx.damageHorizonPentagonReal(g, b, 1) };
   } else if (closestT.horizonMissile) {
     ctx.damageHorizonMissile(closestT.horizonMissile, effectiveRaw, defPierceRatio);
+  } else if (closestT.lifeCell && closestT.lifeColony) {
+    // Life cells are lightweight sub-entities: no DEF/pierce math (damageLifeCell
+    // ignores defPierceRatio entirely), no lens/status/shatter-combo application,
+    // no enemy barks. Echo Strike is safe here since it just re-damages the same
+    // cell through the same damage function.
+    const cell = closestT.lifeCell;
+    const dmg = ctx.damageLifeCell(cell, effectiveRaw);
+    spawnHitVisualsAt(hitX, hitY, cell.maxHp, dmg, isPiercing ? piercingColor : '#7CFF9E', effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: hitX, y: hitY, maxHp: cell.maxHp, applyFn: (b) => ctx.damageLifeCell(cell, b) };
+  } else if (closestT.lifeCoreColony) {
+    const colony = closestT.lifeCoreColony;
+    const dmg = ctx.damageLifeCore(colony, effectiveRaw);
+    spawnHitVisualsAt(hitX, hitY, colony.coreMaxHp, dmg, isPiercing ? piercingColor : '#c9ffd8', effectiveSourceColor);
+    if (dmg > 0) echoHit = { dmg, x: hitX, y: hitY, maxHp: colony.coreMaxHp, applyFn: (b) => ctx.damageLifeCore(colony, b) };
   }
 
   // ── Weave echo proc (onWeaponHitEnemy) ────────────────────────────────────

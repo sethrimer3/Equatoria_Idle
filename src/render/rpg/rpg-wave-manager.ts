@@ -194,7 +194,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
     ioliteEnemies, amethystEnemies, diamondEnemies,
     nullstoneEnemies, fracterylEnemies, eigensteinEnemies,
     eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    stardustEnemies, alivenGroups, horizonPentagonGroups,
+    stardustEnemies, alivenGroups, horizonPentagonGroups, lifeColonies,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
     spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
@@ -293,6 +293,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
         || nadirCubeTurretBolts.length > 0
         || nadirCubeLinkLasers.length > 0
         || horizonPentagonGroups.length > 0
+        || lifeColonies.length > 0
         || ctx.getBossEnemy() !== null) return;
     // Aliven groups alive: either still partially spawned or still have live particles
     for (const group of alivenGroups) {

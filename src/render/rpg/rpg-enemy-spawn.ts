@@ -80,7 +80,10 @@ import {
 } from './rpg-jellyfish-elite-factories';
 import { ELITE_JELLYFISH_BASE_SIZE } from './rpg-jellyfish-elite-constants';
 import { makeAlivenGroup } from './rpg-aliven-factories';
-import { makeMazeColony, buildLifeGridBoundsForArena } from './life-factories';
+import {
+  makeMazeColony, makeSeedsBurstColony, makeReplicatorSigilColony, makeWalledCitiesColony,
+  buildLifeGridBoundsForArena,
+} from './life-factories';
 import { pushSpawnFlash } from './rpg-spawn-flash';
 import { pushBossSpawnCircle } from './rpg-boss-spawn-circle';
 import { ALIVEN_VARIANTS, ALIVEN_ELITE_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS } from './rpg-aliven-constants';
@@ -682,7 +685,10 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
     else                 { spawnX = spawnRight; spawnY = spawnTop + Math.random() * spawnH; }
     ctx.eliteEnemies.push(makeEliteEnemy(tier, spawnX, spawnY, wn));
     _onEliteSpawned(ctx, spawnX, spawnY);
-  } else if (enemyTypeId === 'life_colony') {
+  } else if (
+    enemyTypeId === 'life_colony' || enemyTypeId === 'life_seeds_burst'
+    || enemyTypeId === 'life_replicator_sigil' || enemyTypeId === 'life_walled_cities'
+  ) {
     if (ctx.lifeColonies.length >= MAX_ACTIVE_LIFE_COLONIES) return;
     do {
       spawnX = spawnLeft + 40 + Math.random() * Math.max(1, spawnW - 80);
@@ -692,7 +698,15 @@ export function spawnEnemyById(ctx: EnemySpawnCtx, enemyTypeId: string): void {
       attempts++;
     } while (attempts < 20);
     const bounds = buildLifeGridBoundsForArena(spawnLeft, spawnTop, spawnW, spawnH);
-    ctx.lifeColonies.push(makeMazeColony(spawnX, spawnY, wn, bounds));
+    if (enemyTypeId === 'life_seeds_burst') {
+      ctx.lifeColonies.push(makeSeedsBurstColony(spawnX, spawnY, wn, bounds));
+    } else if (enemyTypeId === 'life_replicator_sigil') {
+      ctx.lifeColonies.push(makeReplicatorSigilColony(spawnX, spawnY, wn, bounds));
+    } else if (enemyTypeId === 'life_walled_cities') {
+      ctx.lifeColonies.push(makeWalledCitiesColony(spawnX, spawnY, wn, bounds));
+    } else {
+      ctx.lifeColonies.push(makeMazeColony(spawnX, spawnY, wn, bounds));
+    }
   } else if (ALIVEN_VARIANTS.includes(enemyTypeId as typeof ALIVEN_VARIANTS[number])) {
     // Guard: skip spawning if the active group count is at the cap.
     if (ctx.alivenGroups.length >= MAX_ACTIVE_ALIVEN_GROUPS) {

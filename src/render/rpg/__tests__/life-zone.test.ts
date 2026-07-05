@@ -5,10 +5,16 @@ import {
 } from '../life-grid';
 import {
   seedLifeColony, stepLifeAutomata, damageLifeCellEntity, advanceLifeCellFades,
-  isLifeColonyFullyCleared, killLifeColonyCore,
+  isLifeColonyFullyCleared, killLifeColonyCore, damageLifeCoreEntity,
 } from '../life-controller';
-import { RULE_CONWAY, RULE_MAZECTRIC, LIFE_CA_RULES, LIFE_CA_RULES_BY_ID } from '../life-ca-rules';
-import { makeMazeColony, buildLifeGridBoundsForArena } from '../life-factories';
+import {
+  RULE_CONWAY, RULE_MAZECTRIC, RULE_SEEDS, RULE_REPLICATOR, RULE_WALLED_CITIES,
+  LIFE_CA_RULES, LIFE_CA_RULES_BY_ID,
+} from '../life-ca-rules';
+import {
+  makeMazeColony, makeSeedsBurstColony, makeReplicatorSigilColony, makeWalledCitiesColony,
+  buildLifeGridBoundsForArena,
+} from '../life-factories';
 import { updateLifeColonies } from '../life-updates';
 import type { LifeColonyController } from '../life-types';
 import { RPG_ZONE_DEFINITIONS, RPG_ZONE_BY_ID } from '../../../data/rpg/rpg-zone-definitions';
@@ -196,6 +202,85 @@ describe('makeMazeColony prototype + updateLifeColonies sweep', () => {
   });
 });
 
+describe('colony core is a separate damageable entity', () => {
+  it('damageLifeCoreEntity reduces coreHp independently of cells and kills the core at 0', () => {
+    const colony = makeTestColony();
+    seedLifeColony(colony, [{ col: 0, row: 0 }, { col: 1, row: 0 }], 5, 5);
+    expect(colony.coreHp).toBe(10);
+
+    const dmg = damageLifeCoreEntity(colony, 4);
+    expect(dmg).toBe(4);
+    expect(colony.coreHp).toBe(6);
+    expect(colony.status).not.toBe('dying');
+    // Cells are untouched by core damage.
+    expect([...colony.cells.values()].every(c => !c.isDying)).toBe(true);
+
+    const dmg2 = damageLifeCoreEntity(colony, 100);
+    expect(dmg2).toBe(6); // clamped to remaining core HP
+    expect(colony.coreHp).toBe(0);
+    expect(colony.status).toBe('dying');
+    expect([...colony.cells.values()].every(c => c.isDying)).toBe(true);
+  });
+
+  it('damageLifeCoreEntity on an already-dead core is a no-op', () => {
+    const colony = makeTestColony();
+    killLifeColonyCore(colony);
+    expect(damageLifeCoreEntity(colony, 5)).toBe(0);
+  });
+});
+
+describe('per-cell reward semantics', () => {
+  it('fires onCellCleared once per cell when several finish fading in the same update', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony: LifeColonyController = {
+      kind: 'life_colony', rule: RULE_CONWAY, bounds, x: 200, y: 200,
+      coreHp: 10, coreMaxHp: 10, cells: new Map(), tickAccumulatorMs: 0,
+      generation: 0, maxPopulation: 260, status: 'dying', xpMult: 1, coreContactCdMs: 0,
+    };
+    seedLifeColony(colony, [{ col: 0, row: 0 }, { col: 1, row: 0 }, { col: 2, row: 0 }], 5, 5);
+    for (const cell of colony.cells.values()) { cell.isDying = true; cell.dyingMs = 50; }
+    expect(colony.cells.size).toBe(3);
+
+    let cellClearedCalls = 0;
+    updateLifeColonies([colony], {
+      playerX: -1000, playerY: -1000, playerRadius: 6,
+      dealContactDamageToPlayer: () => {},
+      onCellCleared: () => { cellClearedCalls++; },
+    }, 10_000);
+    expect(cellClearedCalls).toBe(3);
+  });
+});
+
+describe('new Life enemy variants use existing rule presets', () => {
+  it('Seeds Burst colony uses RULE_SEEDS and produces births/deaths', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeSeedsBurstColony(200, 200, 1, bounds);
+    expect(colony.rule).toBe(RULE_SEEDS);
+    expect(colony.cells.size).toBeGreaterThan(0);
+    stepLifeAutomata(colony);
+    // Under Seeds (B2/S), no cell ever survives its own step.
+    expect([...colony.cells.values()].every(c => c.bornAtGeneration === colony.generation)).toBe(true);
+  });
+
+  it('Replicator Sigil colony uses RULE_REPLICATOR and respects a strict population cap', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeReplicatorSigilColony(200, 200, 1, bounds);
+    expect(colony.rule).toBe(RULE_REPLICATOR);
+    expect(colony.maxPopulation).toBeLessThanOrEqual(90);
+    for (let i = 0; i < 15; i++) stepLifeAutomata(colony);
+    expect(colony.cells.size).toBeLessThanOrEqual(colony.maxPopulation);
+  });
+
+  it('Walled Cities colony uses RULE_WALLED_CITIES, spawns, and stays within its cap', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeWalledCitiesColony(200, 200, 1, bounds);
+    expect(colony.rule).toBe(RULE_WALLED_CITIES);
+    expect(colony.cells.size).toBeGreaterThan(0);
+    for (let i = 0; i < 10; i++) stepLifeAutomata(colony);
+    expect(colony.cells.size).toBeLessThanOrEqual(colony.maxPopulation);
+  });
+});
+
 describe('Life zone registry integration', () => {
   it('zone registry includes Life', () => {
     const life = RPG_ZONE_BY_ID.get('life');
@@ -218,5 +303,19 @@ describe('Life zone registry integration', () => {
   it('getZoneWaveDefinition produces life_colony spawns for the life zone', () => {
     const wave = getZoneWaveDefinition(6, 'life');
     expect(wave.spawns.some(s => s.enemyTypeId === 'life_colony')).toBe(true);
+  });
+
+  it('new Life enemy ids are registered and isolated to the Life zone', () => {
+    const lifePool = getSpawnableEnemyTypesForZone('life');
+    for (const id of ['life_seeds_burst', 'life_replicator_sigil', 'life_walled_cities']) {
+      expect(lifePool).toContain(id);
+      expect(getSpawnableEnemyTypesForZone('euhedral')).not.toContain(id);
+      expect(getSpawnableEnemyTypesForZone('verdure')).not.toContain(id);
+    }
+  });
+
+  it('every 10th Life wave is a Walled Cities elite-style wave, within colony caps', () => {
+    const wave10 = getZoneWaveDefinition(10, 'life');
+    expect(wave10.spawns).toEqual([{ enemyTypeId: 'life_walled_cities', count: 1, spawnDelay: 400 }]);
   });
 });
