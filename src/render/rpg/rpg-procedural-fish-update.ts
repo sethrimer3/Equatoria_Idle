@@ -38,7 +38,11 @@ import {
 } from './rpg-procedural-constants';
 import { makeFishMine, makeFishSpike, makeFishBolt, makeFishDecoy } from './rpg-procedural-factories';
 import { TARGET_FRAME_MS, PLAYER_HIT_RADIUS } from './rpg-constants';
-import { segmentIntersectsTopographicTerrain } from './terrain/topographic-terrain';
+import {
+  circleIntersectsTopographicTerrain,
+  segmentIntersectsTopographicTerrain,
+  signedDistanceToTerrainBoundary,
+} from './terrain/topographic-terrain';
 import {
   computePathSteeredDirection,
   type RpgPathState,
@@ -81,7 +85,26 @@ const _COH_R2 = FISH_SCHOOL_COHESION_RADIUS   ** 2;
 // Tighter separation radius for mini fish (squared).
 const _MINI_SEP_R2 = (FISH_SCHOOL_SEPARATION_RADIUS * 0.65) ** 2;
 const FISH_MOVEMENT_SPEED_MULTIPLIER = 3;
-const FISH_TERRAIN_BERTH_PROBE_MULTIPLIER = 1.65;
+const FISH_TERRAIN_BERTH_PROBE_MULTIPLIER = 2.25;
+const FISH_TERRAIN_MIN_BERTH_PX = 22;
+const FISH_TERRAIN_BERTH_REPATH_PX = 12;
+const FISH_TERRAIN_BERTH_WEIGHT = 1.35;
+const _terrainNearestScratch = { x: 0, y: 0 };
+
+function _hasTerrainBerth(
+  terrain: NonNullable<ReturnType<RpgEnemyCtx['getTerrainState']>>,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  clearancePx: number,
+): boolean {
+  if (segmentIntersectsTopographicTerrain(terrain, fromX, fromY, toX, toY)) return false;
+  const midX = (fromX + toX) * 0.5;
+  const midY = (fromY + toY) * 0.5;
+  if (circleIntersectsTopographicTerrain(terrain, midX, midY, clearancePx)) return false;
+  return !circleIntersectsTopographicTerrain(terrain, toX, toY, clearancePx);
+}
 
 /**
  * Try several candidate escape angles (starting from the most player-aligned)
@@ -101,7 +124,7 @@ function _tryEscape(
   for (const a of angles) {
     const px = ex + Math.cos(a) * probeDist;
     const py = ey + Math.sin(a) * probeDist;
-    if (!segmentIntersectsTopographicTerrain(terrain, ex, ey, px, py)) {
+    if (_hasTerrainBerth(terrain, ex, ey, px, py, FISH_TERRAIN_MIN_BERTH_PX)) {
       return { dx: Math.cos(a), dy: Math.sin(a) };
     }
   }
@@ -270,8 +293,26 @@ function schoolSwimStep(
 
   // ── 6. Terrain anticipation — multi-angle fan probe ───────────────────────
   let terrX = 0, terrY = 0;
+  let berthX = 0, berthY = 0, berthStrength = 0;
   let terrainHit = false;
   if (terrain) {
+    const signedDist = signedDistanceToTerrainBoundary(terrain, e.x, e.y, _terrainNearestScratch);
+    if (signedDist < FISH_TERRAIN_MIN_BERTH_PX) {
+      const awayX = signedDist < 0 ? _terrainNearestScratch.x - e.x : e.x - _terrainNearestScratch.x;
+      const awayY = signedDist < 0 ? _terrainNearestScratch.y - e.y : e.y - _terrainNearestScratch.y;
+      const awayLen = Math.sqrt(awayX * awayX + awayY * awayY) || 1;
+      const proximity01 = Math.min(
+        1,
+        Math.max(0, (FISH_TERRAIN_MIN_BERTH_PX - signedDist) / FISH_TERRAIN_MIN_BERTH_PX),
+      );
+      berthStrength = proximity01 * proximity01;
+      berthX = (awayX / awayLen) * berthStrength;
+      berthY = (awayY / awayLen) * berthStrength;
+      if (signedDist < FISH_TERRAIN_BERTH_REPATH_PX) {
+        e.pathState.nextRepathMs = 0;
+      }
+    }
+
     const playerDist = Math.hypot(ctx.mote.x - e.x, ctx.mote.y - e.y);
     // Keep a modest buffer from topology while pursuing, but relax it near the
     // player so fish can still reach a player pressed against an island.
@@ -281,7 +322,7 @@ function schoolSwimStep(
     const terrainProbeDist = FISH_SCHOOL_PROBE_DIST * berthScale;
     const probeX = e.x + Math.cos(e.swimAngle) * terrainProbeDist;
     const probeY = e.y + Math.sin(e.swimAngle) * terrainProbeDist;
-    if (segmentIntersectsTopographicTerrain(terrain, e.x, e.y, probeX, probeY)) {
+    if (!_hasTerrainBerth(terrain, e.x, e.y, probeX, probeY, FISH_TERRAIN_MIN_BERTH_PX)) {
       terrainHit = true;
       // Build a fan of candidate escape angles ordered by proximity to the
       // player-seek direction so fish preferentially route around in the correct
@@ -332,6 +373,7 @@ function schoolSwimStep(
              + seekX * FISH_SCHOOL_PLAYER_SEEK_WEIGHT
              + edgeX * FISH_SCHOOL_EDGE_AVOID_WEIGHT
              + terrX * terrW
+             + berthX * FISH_TERRAIN_BERTH_WEIGHT
              + nudgeX;
   const desY = sepY  * FISH_SCHOOL_SEPARATION_WEIGHT
              + aliY  * FISH_SCHOOL_ALIGNMENT_WEIGHT
@@ -339,6 +381,7 @@ function schoolSwimStep(
              + seekY * FISH_SCHOOL_PLAYER_SEEK_WEIGHT
              + edgeY * FISH_SCHOOL_EDGE_AVOID_WEIGHT
              + terrY * terrW
+             + berthY * FISH_TERRAIN_BERTH_WEIGHT
              + nudgeY;
 
   // Derive target angle from the blended heading.
