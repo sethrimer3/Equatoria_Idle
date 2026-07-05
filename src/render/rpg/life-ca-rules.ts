@@ -6,8 +6,9 @@
  * if its alive neighbor count is in `survive`. All rules here use the 8-cell
  * Moore neighborhood (see LIFE_MOORE_NEIGHBOR_OFFSETS in life-grid.ts).
  *
- * Only Conway and Maze/Mazectric are wired to an actual enemy today (see
- * life-factories.ts); the rest are data-only presets for future colonies.
+ * Conway, Maze/Mazectric, Seeds (burst colony), HighLife (replicator sigil),
+ * Walled Cities, Life Without Death (corruption), and Generations (ghost
+ * colonies) are all wired to actual enemies today (see life-factories.ts).
  */
 
 export interface CellularAutomataRule {

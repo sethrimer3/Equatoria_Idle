@@ -591,7 +591,11 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
   if (zoneId === 'life') {
     // Every 10th wave is an elite-style Walled Cities colony alone (dense
     // defensive walls around a tanky core). Otherwise: one simple colony
-    // early on, mixing in a second colony type from wave 15 onward.
+    // early on (waves 1-3), then a deterministic rotation through every
+    // unlocked non-elite Life variant so later variants (replicator sigil,
+    // Life Without Death corruption, Generations ghost) actually get picked
+    // instead of being crowded out by the front of the pool. At most 2
+    // colonies spawn per normal wave.
     if (waveNumber > 0 && waveNumber % 10 === 0) {
       return { waveNumber, spawns: [{ enemyTypeId: 'life_walled_cities', count: 1, spawnDelay: 400 }] };
     }
@@ -600,9 +604,14 @@ export function getZoneWaveDefinition(waveNumber: number, zoneId: RpgZoneId): Wa
       'life_without_death_corruption', 'life_generations_ghost',
     ];
     const unlockedCount = Math.min(1 + Math.floor(waveNumber / 6), rotation.length);
-    const pool = rotation.slice(0, unlockedCount);
-    const activeCount = waveNumber < 15 ? 1 : Math.min(2, pool.length);
-    const picks = pool.slice(0, activeCount);
+    if (waveNumber <= 3 || unlockedCount <= 1) {
+      return { waveNumber, spawns: [{ enemyTypeId: rotation[0], count: 1, spawnDelay: 400 }] };
+    }
+    const activeCount = Math.min(2, unlockedCount);
+    const picks: string[] = [];
+    for (let i = 0; i < activeCount; i++) {
+      picks.push(rotation[(waveNumber + i) % unlockedCount]);
+    }
     return {
       waveNumber,
       spawns: picks.map((enemyTypeId, i) => ({ enemyTypeId, count: 1, spawnDelay: 400 + i * 300 })),

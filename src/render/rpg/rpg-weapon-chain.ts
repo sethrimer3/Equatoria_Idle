@@ -267,14 +267,14 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
       const applyBodyTargetDamage = (tx: number, ty: number, target: ClosestTarget, nodeIdx: number): void => {
         if (!target.kind.startsWith('proc_') && target.kind !== 'verdure_plant' && !isLifeBodyTarget(target)) return;
         const body = getChainTargetBody(target);
-        if (!body || ws.hitCooldowns.has(body)) return;
+        if (!body || ws.hitCooldowns.has(body.ref)) return;
         const nodeR = chainNodeRadius(CHAIN_NODES - 1);
         const r = nodeR + LASER_ENEMY_SIZE;
         const dx = tx - target.x, dy = ty - target.y;
         if (dx * dx + dy * dy >= r * r) return;
         if (terrain && segmentIntersectsTopographicTerrain(terrain, mote.x, mote.y, ws.nodesX[nodeIdx], ws.nodesY[nodeIdx])) return;
         const dmg = ctx.damageBodyTarget(target, contactDamage, 0, false);
-        ws.hitCooldowns.set(body, CHAIN_HIT_CD_MS);
+        ws.hitCooldowns.set(body.ref, CHAIN_HIT_CD_MS);
         if (dmg > 0) {
           hitEffects.push({ x: target.x, y: target.y, timerMs: HIT_EFFECT_DURATION_MS, color: CHAIN_NODE_COLOR });
           spawnDamageNumber(target.x, target.y, 0, -1, String(Math.round(dmg)), dmg / body.maxHp, CHAIN_NODE_COLOR);
@@ -351,9 +351,16 @@ export function createChainWeaponSystem(ctx: ChainWeaponCtx): ChainWeaponHandle 
   };
 }
 
-function getChainTargetBody(target: ClosestTarget): { maxHp: number } | null {
+/**
+ * Resolves a ClosestTarget to its stable underlying entity reference plus
+ * `maxHp`, suitable for use as a `hitCooldowns` map key. Returning a fresh
+ * wrapper object per call (as this used to do) would break cooldown lookups,
+ * since `Map` keys on identity — every call would mint a new key and
+ * `hitCooldowns.has(...)` would never find a match.
+ */
+function getChainTargetBody(target: ClosestTarget): { ref: object; maxHp: number } | null {
   const lifeBody = getLifeTargetBody(target);
-  if (lifeBody) return { maxHp: lifeBody.maxHp };
+  if (lifeBody) return lifeBody;
   const body =
     target.dustWisp ?? target.ribbonWorm ?? target.lanternMoth ?? target.eyeStalk ??
     target.jellyfish ?? target.clothGhost ?? target.plantTurret ?? target.gearInsect ??
@@ -362,6 +369,6 @@ function getChainTargetBody(target: ClosestTarget): { maxHp: number } | null {
     target.sapphireFish ?? target.amethystFish ?? target.diamondFish ?? target.plantProj ??
     target.verdurePlant;
   return typeof body === 'object' && body !== null && 'maxHp' in body && typeof body.maxHp === 'number'
-    ? { maxHp: body.maxHp }
+    ? { ref: body, maxHp: body.maxHp }
     : null;
 }

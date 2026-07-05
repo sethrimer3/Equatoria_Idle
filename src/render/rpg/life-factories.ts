@@ -1,9 +1,12 @@
 /**
  * life-factories.ts — Spawns Life-zone colony controllers.
  *
- * Ships one prototype enemy, "Maze Colony": a small core that seeds a
- * Mazectric-rule (B3/S1234) pattern near itself. Cells grow into corridor-like
- * shapes, are individually damageable, and have no health bars. Killing the
+ * Ships several colony types, each a small core that seeds a distinct CA
+ * rule pattern near itself: Maze Colony (Mazectric, B3/S1234), Seeds Burst
+ * (B2/S), Replicator Sigil (HighLife, B36/S23), Walled Cities (B45678/S2345,
+ * elite-style), Life Without Death Corruption (B3/S012345678), and
+ * Generations Ghost (B2/S345678, 3-state). Cells grow from each core's
+ * pattern, are individually damageable, and have no health bars. Killing the
  * core stops the automata and fades out all remaining cells.
  */
 
