@@ -87,6 +87,7 @@ const _MINI_SEP_R2 = (FISH_SCHOOL_SEPARATION_RADIUS * 0.65) ** 2;
 const FISH_MOVEMENT_SPEED_MULTIPLIER = 3;
 const FISH_TERRAIN_BERTH_PROBE_MULTIPLIER = 2.25;
 const FISH_TERRAIN_MIN_BERTH_PX = 22;
+const FISH_TERRAIN_CLOSE_PLAYER_BERTH_PX = 12;
 const FISH_TERRAIN_BERTH_REPATH_PX = 12;
 const FISH_TERRAIN_BERTH_WEIGHT = 1.35;
 const _terrainNearestScratch = { x: 0, y: 0 };
@@ -120,11 +121,12 @@ function _tryEscape(
   ex: number, ey: number,
   angles: readonly number[],
   probeDist: number,
+  clearancePx: number,
 ): { dx: number; dy: number } | null {
   for (const a of angles) {
     const px = ex + Math.cos(a) * probeDist;
     const py = ey + Math.sin(a) * probeDist;
-    if (_hasTerrainBerth(terrain, ex, ey, px, py, FISH_TERRAIN_MIN_BERTH_PX)) {
+    if (_hasTerrainBerth(terrain, ex, ey, px, py, clearancePx)) {
       return { dx: Math.cos(a), dy: Math.sin(a) };
     }
   }
@@ -293,19 +295,25 @@ function schoolSwimStep(
 
   // ── 6. Terrain anticipation — multi-angle fan probe ───────────────────────
   let terrX = 0, terrY = 0;
-  let berthX = 0, berthY = 0, berthStrength = 0;
+  let berthX = 0, berthY = 0;
   let terrainHit = false;
   if (terrain) {
+    const playerDist = Math.hypot(ctx.mote.x - e.x, ctx.mote.y - e.y);
+    const isPlayerCloseToFish = playerDist <= FISH_SCHOOL_PROBE_DIST * 2;
+    const berthClearancePx = isPlayerCloseToFish
+      ? FISH_TERRAIN_CLOSE_PLAYER_BERTH_PX
+      : FISH_TERRAIN_MIN_BERTH_PX;
+
     const signedDist = signedDistanceToTerrainBoundary(terrain, e.x, e.y, _terrainNearestScratch);
-    if (signedDist < FISH_TERRAIN_MIN_BERTH_PX) {
+    if (signedDist < berthClearancePx) {
       const awayX = signedDist < 0 ? _terrainNearestScratch.x - e.x : e.x - _terrainNearestScratch.x;
       const awayY = signedDist < 0 ? _terrainNearestScratch.y - e.y : e.y - _terrainNearestScratch.y;
       const awayLen = Math.sqrt(awayX * awayX + awayY * awayY) || 1;
       const proximity01 = Math.min(
         1,
-        Math.max(0, (FISH_TERRAIN_MIN_BERTH_PX - signedDist) / FISH_TERRAIN_MIN_BERTH_PX),
+        Math.max(0, (berthClearancePx - signedDist) / berthClearancePx),
       );
-      berthStrength = proximity01 * proximity01;
+      const berthStrength = proximity01 * proximity01;
       berthX = (awayX / awayLen) * berthStrength;
       berthY = (awayY / awayLen) * berthStrength;
       if (signedDist < FISH_TERRAIN_BERTH_REPATH_PX) {
@@ -313,16 +321,15 @@ function schoolSwimStep(
       }
     }
 
-    const playerDist = Math.hypot(ctx.mote.x - e.x, ctx.mote.y - e.y);
     // Keep a modest buffer from topology while pursuing, but relax it near the
     // player so fish can still reach a player pressed against an island.
-    const berthScale = playerDist > FISH_SCHOOL_PROBE_DIST * 2
+    const berthScale = !isPlayerCloseToFish
       ? FISH_TERRAIN_BERTH_PROBE_MULTIPLIER
       : 1;
     const terrainProbeDist = FISH_SCHOOL_PROBE_DIST * berthScale;
     const probeX = e.x + Math.cos(e.swimAngle) * terrainProbeDist;
     const probeY = e.y + Math.sin(e.swimAngle) * terrainProbeDist;
-    if (!_hasTerrainBerth(terrain, e.x, e.y, probeX, probeY, FISH_TERRAIN_MIN_BERTH_PX)) {
+    if (!_hasTerrainBerth(terrain, e.x, e.y, probeX, probeY, berthClearancePx)) {
       terrainHit = true;
       // Build a fan of candidate escape angles ordered by proximity to the
       // player-seek direction so fish preferentially route around in the correct
@@ -342,7 +349,7 @@ function schoolSwimStep(
       const [firstDiag, secondDiag]   = diffLeft <= diffRight ? [leftOf, rightOf] : [rightOf, leftOf];
       const [firstBack, secondBack]   = diffLeft <= diffRight ? [left135, right135] : [right135, left135];
       const escapeCandidates: number[] = [firstDiag, secondDiag, firstPerp, secondPerp, firstBack, secondBack];
-      const escape = _tryEscape(terrain, e.x, e.y, escapeCandidates, terrainProbeDist);
+      const escape = _tryEscape(terrain, e.x, e.y, escapeCandidates, terrainProbeDist, berthClearancePx);
       if (escape) {
         terrX = escape.dx;
         terrY = escape.dy;
