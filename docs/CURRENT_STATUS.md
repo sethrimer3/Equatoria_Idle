@@ -1,7 +1,7 @@
 # Equatoria Idle Current Status
 
 Last updated: 2026-06-24
-Current build: 313
+Current build: 318
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
@@ -17,6 +17,14 @@ Equatoria Idle is a Vite/TypeScript web game with Electron desktop support, GitH
 4. Crafted weapon system using refined crystals derived from forge/mote progression.
 
 ## Latest verified build notes
+
+### Build 318: Speed contact damage and skill toggles
+
+Completed:
+
+- Speed Upgrade now deals player contact damage based on recent non-contact DPS instead of increasing movement speed.
+- Speed contact damage scales by 10% of total DPS per rank, up to 100%, and ticks at most 10 times per second.
+- Purchased Acceleration and Dash Unlock effects can now be toggled on or off from their skill tree detail cards without changing purchased ranks or spent points.
 
 ### Build 313: beat-locked legacy boss projectiles
 

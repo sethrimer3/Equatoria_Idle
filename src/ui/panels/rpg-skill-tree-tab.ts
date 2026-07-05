@@ -756,7 +756,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const cx = node.x - CARD_W / 2;
     const cy = nodeCY + node.nodeRadius + GAP;
     const cr = cx + CARD_W;
-    const cb = cy + 280;   // generous height estimate (covers placeholder + costs + button)
+    const cb = cy + 340;   // generous height estimate (covers placeholder + costs + buttons)
 
     let dx = 0, dy = 0;
     if      (cx < wb.left   + MARG) dx = cx - MARG - wb.left;
@@ -783,6 +783,14 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     }
 
     // Tap on card body (not a node, not the button) → keep card open
+    if (selectedIdx >= 0 && cardToggleButtonWorldRect) {
+      const b = cardToggleButtonWorldRect;
+      if (wp.x >= b.x && wp.x <= b.x + b.w && wp.y >= b.y && wp.y <= b.y + b.h) {
+        triggerToggle();
+        return;
+      }
+    }
+
     if (selectedIdx >= 0 && cardBoundsWorldRect) {
       const b = cardBoundsWorldRect;
       if (wp.x >= b.x && wp.x <= b.x + b.w && wp.y >= b.y && wp.y <= b.y + b.h) {
@@ -900,6 +908,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     if (nodeIdx < 0 || !_rpgState) {
       cardBoundsWorldRect = null;
       cardButtonWorldRect = null;
+      cardToggleButtonWorldRect = null;
       return;
     }
 
@@ -918,6 +927,8 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     const curLevel       = upgradeDef ? getRpgUpgradeLevel(_rpgState, upgradeDef.id) : 0;
     const maxLevel       = upgradeDef ? upgradeDef.maxLevel : 1;
     const isMaxed        = upgradeDef ? curLevel >= maxLevel : false;
+    const showToggleButton = !!upgradeDef && curLevel > 0 && TOGGLEABLE_SKILL_NODE_IDS.has(upgradeDef.id);
+    const effectEnabled = upgradeDef ? isSkillNodeEffectEnabled(_rpgState, upgradeDef.id) : true;
     const spCost         = upgradeDef ? upgradeDef.skillPointCost : 1;
     const status         = def.upgradeId ? getNodeStatus(def, _rpgState, _isDevMode) : 'maxed';
     const isLocked       = status === 'locked';
@@ -960,6 +971,10 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       cardH += 8;                                                // gap before button
       cardH += CARD_BTN_H;                                       // button
     }
+    if (showToggleButton) {
+      cardH += 8;                                                // gap before toggle
+      cardH += CARD_BTN_H;                                       // toggle button
+    }
     cardH += CARD_PAD;                                           // bottom padding
 
     // ── Position card in world space ─────────────────────────────────────
@@ -999,6 +1014,7 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
     // Store rects for hit-testing (overwrite each frame)
     cardBoundsWorldRect = { x: cardX, y: cardY, w: CARD_W, h: cardH };
     cardButtonWorldRect = null;
+    cardToggleButtonWorldRect = null;
 
     // ── Connector line from node to card ─────────────────────────────────
     let connEndX = cardX + CARD_W / 2;
@@ -1079,8 +1095,8 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
       ctx.fillStyle = isMaxed ? '#7de88a' : 'rgba(255,255,255,0.72)';
       ctx.fillText(
         maxLevel === 1
-          ? (isMaxed ? '✓ Unlocked' : 'Not yet unlocked')
-          : `Level ${curLevel} / ${maxLevel}`,
+          ? (isMaxed ? (showToggleButton && !effectEnabled ? 'Unlocked (disabled)' : '✓ Unlocked') : 'Not yet unlocked')
+          : `Level ${curLevel} / ${maxLevel}${showToggleButton && !effectEnabled ? ' (disabled)' : ''}`,
         textX, textY,
       );
     }
@@ -1160,6 +1176,36 @@ export function createRpgSkillTreeTabPane(dispatch: ActionHandler): RpgSkillTree
 
       // Store button rect for hit-testing (always record so taps register even disabled)
       cardButtonWorldRect = { x: btnX, y: btnY, w: btnW, h: btnH };
+    }
+
+    if (showToggleButton && upgradeDef) {
+      textY += 8;
+      const btnX = cardX + CARD_PAD;
+      const btnY = textY;
+      const btnW = CARD_W - CARD_PAD * 2;
+      const btnH = CARD_BTN_H;
+
+      drawRoundRect(ctx, btnX, btnY, btnW, btnH, 6);
+      ctx.fillStyle = effectEnabled
+        ? 'rgba(120, 70, 70, 0.28)'
+        : 'rgba(70, 130, 88, 0.28)';
+      ctx.fill();
+
+      drawRoundRect(ctx, btnX, btnY, btnW, btnH, 6);
+      ctx.strokeStyle = effectEnabled ? 'rgba(230, 120, 100, 0.82)' : 'rgba(126, 220, 142, 0.82)';
+      ctx.lineWidth   = 1.2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.beginPath(); ctx.rect(btnX, btnY, btnW, btnH); ctx.clip();
+      ctx.font         = 'bold 13px "Cormorant Garamond", serif';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle    = effectEnabled ? '#ffb0a0' : '#91f0a0';
+      ctx.fillText(effectEnabled ? 'Disable effect' : 'Enable effect', btnX + btnW / 2, btnY + btnH / 2);
+      ctx.restore();
+
+      cardToggleButtonWorldRect = { x: btnX, y: btnY, w: btnW, h: btnH };
     }
 
     ctx.restore();
