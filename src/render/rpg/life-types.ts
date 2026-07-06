@@ -53,32 +53,44 @@ export interface LifeCellEntity {
 export type LifeColonyStatus = 'seeding' | 'alive' | 'dying' | 'dead';
 
 /**
- * Owns one colony/core: tracks occupied cells by grid coordinate, advances
- * the CA rule on a fixed tick interval, and enforces population/arena caps.
- * Multiple colonies may share the same LifeGridBounds (the arena grid is
- * global; each colony just owns a subset of occupied coordinates).
+ * Life cells are the enemies. This controller is an invisible rule/spawner —
+ * it tracks occupied cells by grid coordinate, advances the CA rule on a
+ * fixed tick interval, and enforces population/arena caps, but it is NOT
+ * itself a killable combat entity by default. Multiple fields may share the
+ * same LifeGridBounds (the arena grid is global; each field just owns a
+ * subset of occupied coordinates).
+ *
+ * `coreHp`/`coreMaxHp`/`coreContactCdMs` are reserved for a possible future
+ * enemy variant explicitly designed around having a damageable core. Every
+ * current Life factory (life-factories.ts) sets `coreHp`/`coreMaxHp` to 0, so
+ * `collectEnemyBodyTargets()` never emits a `life_core` target and no core
+ * contact damage or core-kill reward ever fires for the shipped Life
+ * enemies (life_colony, life_seeds_burst, life_replicator_sigil,
+ * life_walled_cities, life_without_death_corruption, life_generations_ghost).
+ * Do not give a shipped colony variant `coreHp > 0`.
  */
 export interface LifeColonyController {
   readonly kind: 'life_colony';
   rule: CellularAutomataRule;
   bounds: LifeGridBounds;
-  /** World-space core position (visual anchor + contact-damage source while alive). */
+  /** World-space anchor position (visual/seed origin only — not targetable). */
   x: number;
   y: number;
+  /** Reserved for a future core-bearing variant; 0 for every current Life enemy. */
   coreHp: number;
   coreMaxHp: number;
-  /** Sparse occupancy map, keyed by lifeCellKey(col, row). */
+  /** Sparse occupancy map, keyed by lifeCellKey(col, row). Each entry is an individually damageable enemy cell. */
   cells: Map<string, LifeCellEntity>;
   /** Ms accumulator until the next automata step. */
   tickAccumulatorMs: number;
   /** Current CA generation count (for debug overlay + fade-in staggering). */
   generation: number;
-  /** Hard cap on live cells for this colony (<= rule.maxPopulation). */
+  /** Hard cap on live cells for this field (<= rule.maxPopulation). */
   maxPopulation: number;
   status: LifeColonyStatus;
   /** XP multiplier granted per cell killed. */
   xpMult: number;
-  /** Ms remaining before contact damage may fire again from the core itself. */
+  /** Reserved for a future core-bearing variant; unused (stays 0) while coreHp is 0. */
   coreContactCdMs: number;
   /**
    * Per-cell lifetime (ms) newly-born cells receive, tunable per colony

@@ -211,6 +211,44 @@ describe('makeMazeColony prototype + updateLifeColonies sweep', () => {
   });
 });
 
+describe('cell contact damage (no default core contact damage)', () => {
+  it('a dangerous, non-dying cell deals contact damage to a player standing on it, on its own cooldown', () => {
+    const colony = makeTestColony();
+    seedLifeColony(colony, [{ col: 0, row: 0 }], 5, 5, 6, true);
+    const cell = [...colony.cells.values()][0]!;
+    const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, colony.bounds);
+
+    let hits = 0;
+    updateLifeColonies([colony], {
+      playerX: center.x, playerY: center.y, playerRadius: 6,
+      dealContactDamageToPlayer: () => { hits++; },
+    }, 10);
+    expect(hits).toBe(1);
+    expect(cell.contactCdMs).toBeGreaterThan(0);
+
+    // Still on cooldown — no second hit this frame.
+    updateLifeColonies([colony], {
+      playerX: center.x, playerY: center.y, playerRadius: 6,
+      dealContactDamageToPlayer: () => { hits++; },
+    }, 10);
+    expect(hits).toBe(1);
+  });
+
+  it('a non-dangerous cell never deals contact damage', () => {
+    const colony = makeTestColony();
+    seedLifeColony(colony, [{ col: 0, row: 0 }], 5, 5, 6, false);
+    const cell = [...colony.cells.values()][0]!;
+    const center = lifeGridToWorldCenter({ col: cell.col, row: cell.row }, colony.bounds);
+
+    let hits = 0;
+    updateLifeColonies([colony], {
+      playerX: center.x, playerY: center.y, playerRadius: 6,
+      dealContactDamageToPlayer: () => { hits++; },
+    }, 10);
+    expect(hits).toBe(0);
+  });
+});
+
 describe('colony core is a separate damageable entity', () => {
   it('damageLifeCoreEntity reduces coreHp independently of cells and kills the core at 0', () => {
     const colony = makeTestColony();
@@ -728,10 +766,13 @@ describe('damageBodyTarget — shared damage dispatch path for Life targets', ()
     expect('healthBar' in target).toBe(false);
   });
 
-  it('life_core damage reduces coreHp via the shared dispatch path', () => {
-    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
-    const colony = makeMazeColony(200, 200, 1, bounds);
+  it('reserved future core mechanism: damage still reduces coreHp via the shared dispatch path if a field is ever given one', () => {
+    // No shipped Life field has coreHp > 0 (see makeMazeColony assertion below),
+    // so this exercises the dispatch path with a manually-constructed colony
+    // standing in for a possible future core-bearing variant.
+    const colony = makeTestColony();
     const coreHpBefore = colony.coreHp;
+    expect(coreHpBefore).toBeGreaterThan(0);
 
     const ctx = makeMinimalTargetingCtx({ lifeColonies: [colony] });
     const targeting = createRpgTargeting(ctx);
@@ -741,10 +782,17 @@ describe('damageBodyTarget — shared damage dispatch path for Life targets', ()
     expect(dmg).toBe(3);
     expect(colony.coreHp).toBe(coreHpBefore - 3);
   });
+
+  it('every shipped Life factory produces a field with coreHp 0 — no default killable core', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    expect(colony.coreHp).toBe(0);
+    expect(colony.coreMaxHp).toBe(0);
+  });
 });
 
 describe('collectEnemyBodyTargets — Life target collection', () => {
-  it('includes live cells (kind life_cell) and a live core (kind life_core), excluding dying cells and a dead core', () => {
+  it('includes live cells (kind life_cell) but no life_core target for a normal (coreHp 0) Life field, excluding dying cells', () => {
     const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
     const colony = makeMazeColony(200, 200, 1, bounds);
     const cells = [...colony.cells.values()];
@@ -765,13 +813,70 @@ describe('collectEnemyBodyTargets — Life target collection', () => {
       expect(t.lifeColony).toBe(colony);
       expect(t.lifeCell!.isDying).toBe(false);
     }
+    // No default core: a normal Life field never contributes a life_core target.
+    expect(coreTargets.length).toBe(0);
+  });
+
+  it('reserved future core mechanism: a field manually given coreHp > 0 does contribute a life_core target until killed', () => {
+    const colony = makeTestColony();
+    const ctx = makeMinimalTargetingCtx({ lifeColonies: [colony] });
+    const targeting = createRpgTargeting(ctx);
+
+    const targets = targeting.collectEnemyBodyTargets();
+    const coreTargets = targets.filter(t => t.kind === 'life_core');
     expect(coreTargets.length).toBe(1);
     expect(coreTargets[0]!.lifeCoreColony).toBe(colony);
 
-    // Now kill the core — the colony should stop contributing a life_core target.
     killLifeColonyCore(colony);
     const targetsAfterCoreDeath = targeting.collectEnemyBodyTargets();
     expect(targetsAfterCoreDeath.some(t => t.kind === 'life_core')).toBe(false);
+  });
+});
+
+describe('Life wave completion depends only on cells (no default core)', () => {
+  it('a field with live cells and coreHp 0 is not fully cleared', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    expect(colony.cells.size).toBeGreaterThan(0);
+    expect(isLifeColonyFullyCleared(colony)).toBe(false);
+  });
+
+  it('a field clears once all its cells are gone, with no core involved', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    for (const cell of colony.cells.values()) { cell.isDying = true; cell.dyingMs = 1; }
+    advanceLifeCellFades(colony, 10_000);
+    expect(colony.cells.size).toBe(0);
+    expect(isLifeColonyFullyCleared(colony)).toBe(true);
+  });
+
+  it('killing one cell does not kill or fade any other cell in the same field', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeMazeColony(200, 200, 1, bounds);
+    const cells = [...colony.cells.values()];
+    expect(cells.length).toBeGreaterThan(1);
+    damageLifeCellEntity(cells[0]!, 9999);
+    expect(cells[0]!.isDying).toBe(true);
+    for (const other of cells.slice(1)) {
+      expect(other.isDying).toBe(false);
+    }
+  });
+
+  it('a CA step that births a new cell makes that new cell targetable/damageable', () => {
+    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
+    const colony = makeSeedsBurstColony(200, 200, 1, bounds);
+    const beforeKeys = new Set(colony.cells.keys());
+    stepLifeAutomata(colony);
+    const newCell = [...colony.cells.entries()].find(([key]) => !beforeKeys.has(key));
+    expect(newCell).toBeDefined();
+    const [, cell] = newCell!;
+    expect(cell.hp).toBeGreaterThan(0);
+    expect(cell.hideHealthBar).toBe(true);
+
+    const ctx = makeMinimalTargetingCtx({ lifeColonies: [colony] });
+    const targeting = createRpgTargeting(ctx);
+    const targets = targeting.collectEnemyBodyTargets();
+    expect(targets.some(t => t.kind === 'life_cell' && t.lifeCell === cell)).toBe(true);
   });
 });
 

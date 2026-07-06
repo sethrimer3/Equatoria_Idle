@@ -550,12 +550,10 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
         );
         addXpWithAllocation(ctx.rpgSimState, LIFE_CELL_BASE_HP * colony.xpMult);
       },
-      onColonyCleared: (colony) => {
-        ctx.rpgSimState.lifetimeKillsByType.set(
-          'life_colony', (ctx.rpgSimState.lifetimeKillsByType.get('life_colony') ?? 0) + 1,
-        );
-        addXpWithAllocation(ctx.rpgSimState, colony.coreMaxHp * colony.xpMult);
-      },
+      // Clearing a field grants no reward of its own — cell death already
+      // paid out XP per-cell above. A field is just an invisible rule/spawner,
+      // not a killable enemy, so it must not grant a big "core" reward.
+      onColonyCleared: () => {},
     }, deltaMs);
   }
   // Impetus zone: advance the wave-intro particle-life matrix animation clock

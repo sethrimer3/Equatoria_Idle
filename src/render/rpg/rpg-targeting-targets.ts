@@ -120,10 +120,11 @@ export function collectEnemyBodyTargets(ctx: RpgTargetingCtx, opts?: TargetColle
       targets.push({ kind: 'aliven_particle', x: p.x, y: p.y, distSq: dx * dx + dy * dy, alivenParticle: p, alivenGroup: group });
     }
   }
-  // Life zone: add each alive cell as an individual target (no LOS filtering —
-  // cells are grid-bound and always in the open arena). Also add the colony
-  // core as its own separate targetable entity — killing it stops the
-  // automata and fades out remaining cells (see life-controller.ts).
+  // Life zone: cells are the enemies — add each alive cell as an individual
+  // target (no LOS filtering — cells are grid-bound and always in the open
+  // arena). A `life_core` target is only ever added when `coreHp > 0`, which
+  // no shipped Life field sets — it's reserved for a possible future
+  // core-bearing variant (see LifeColonyController in life-types.ts).
   for (const colony of ctx.lifeColonies) {
     for (const cell of colony.cells.values()) {
       if (cell.isDying) continue;

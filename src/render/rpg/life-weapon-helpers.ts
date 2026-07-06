@@ -1,7 +1,12 @@
 /**
  * life-weapon-helpers.ts — Small, dependency-light helpers shared by weapon
- * systems that need to recognize Life-zone cells/cores among generic
+ * systems that need to recognize Life-zone cells among generic
  * `ClosestTarget` body targets.
+ *
+ * Life cells are the enemies. `life_core` only exists as a target kind for a
+ * possible future core-bearing variant (no shipped Life field ever emits one
+ * — see LifeColonyController in life-types.ts) but these helpers still
+ * recognize it so that mechanism keeps working if it's ever wired up.
  *
  * Several weapon modes (chain whip, emerald missiles, nullstone vortex,
  * orbit projectiles, etc.) filter `collectEnemyBodyTargets()` results down to
@@ -14,7 +19,7 @@
 
 import type { ClosestTarget } from './rpg-types';
 
-/** True when a ClosestTarget is an individual Life-zone cell or colony core. */
+/** True when a ClosestTarget is an individual Life-zone cell (the enemy), or — only for a future core-bearing variant — a colony core. */
 export function isLifeBodyTarget(target: ClosestTarget): boolean {
   return target.kind === 'life_cell' || target.kind === 'life_core';
 }

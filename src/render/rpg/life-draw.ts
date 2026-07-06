@@ -119,6 +119,9 @@ export function drawLifeColonies(canvas2d: CanvasRenderingContext2D, colonies: r
       canvas2d.restore();
     }
 
+    // Core visuals only ever draw for a possible future core-bearing variant
+    // (coreHp is always 0 for every shipped Life field) — no default colony
+    // renders a core.
     if (colony.coreHp > 0) {
       canvas2d.save();
       canvas2d.shadowColor = CORE_COLOR;

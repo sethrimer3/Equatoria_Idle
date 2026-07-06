@@ -1,11 +1,14 @@
 /**
- * life-updates.ts — Per-frame update loop for Life zone colonies.
+ * life-updates.ts — Per-frame update loop for Life zone fields.
  *
- * The automata itself only advances on a fixed tick interval (colony.rule.tickIntervalMs),
- * not every render frame — see stepLifeAutomata in life-controller.ts. This module
- * just accumulates elapsed time, calls the stepper when due, advances cell
- * hit-flash/death-fade timers, handles core contact damage, and sweeps fully-
- * cleared colonies out of the active array.
+ * Life cells are the enemies; the field/controller here only manages rule
+ * stepping and spawning — it is not itself a killable entity and deals no
+ * contact damage of its own. The automata itself only advances on a fixed
+ * tick interval (colony.rule.tickIntervalMs), not every render frame — see
+ * stepLifeAutomata in life-controller.ts. This module accumulates elapsed
+ * time, calls the stepper when due, advances cell hit-flash/death-fade
+ * timers, applies contact damage from individually-dangerous cells, and
+ * sweeps fields with no cells left out of the active array.
  */
 
 import { lifeGridToWorldCenter } from './life-grid';
@@ -27,8 +30,9 @@ export interface LifeUpdateCtx {
   onColonyCleared?(colony: LifeColonyController): void;
 }
 
-const CORE_CONTACT_ATK = 4;
-const CORE_CONTACT_COOLDOWN_MS = 500;
+/** Contact damage dealt by an individually-dangerous cell (e.g. a freshly-born Seeds Burst cell). */
+const CELL_CONTACT_ATK = 3;
+const CELL_CONTACT_COOLDOWN_MS = 500;
 
 /** Advances every colony in `colonies` by one frame, and sweeps cleared ones out in place. */
 export function updateLifeColonies(
@@ -60,16 +64,21 @@ export function updateLifeColonies(
           colony.status = 'alive';
         }
       }
+    }
 
-      // Core contact damage — only while the core itself is still alive.
-      if (colony.coreHp > 0) {
-        colony.coreContactCdMs = Math.max(0, colony.coreContactCdMs - deltaMs);
-        const dx = ctx.playerX - colony.x, dy = ctx.playerY - colony.y;
-        const hitRadius = ctx.playerRadius + 8;
-        if (colony.coreContactCdMs <= 0 && dx * dx + dy * dy <= hitRadius * hitRadius) {
-          ctx.dealContactDamageToPlayer(CORE_CONTACT_ATK);
-          colony.coreContactCdMs = CORE_CONTACT_COOLDOWN_MS;
-        }
+    // Cell contact damage — each dangerous, non-dying cell can hit the player
+    // on its own cooldown. There is no core contact damage: normal Life
+    // fields never give their controller HP or a contact source of its own.
+    const hitRadius = ctx.playerRadius + 8;
+    for (const cell of colony.cells.values()) {
+      if (!cell.isDangerous || cell.isDying) continue;
+      cell.contactCdMs = Math.max(0, cell.contactCdMs - deltaMs);
+      if (cell.contactCdMs > 0) continue;
+      const { x, y } = lifeCellWorldCenter(colony, cell.col, cell.row);
+      const dx = ctx.playerX - x, dy = ctx.playerY - y;
+      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+        ctx.dealContactDamageToPlayer(CELL_CONTACT_ATK);
+        cell.contactCdMs = CELL_CONTACT_COOLDOWN_MS;
       }
     }
 

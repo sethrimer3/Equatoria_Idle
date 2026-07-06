@@ -621,9 +621,11 @@ export function damageLifeCell(
 }
 
 /**
- * Deals damage to a Life zone colony's core — a separate targetable entity
- * from its cells (has its own compact health indicator; individual cells
- * never get one). Killing the core stops the automata and fades all cells.
+ * Deals damage to a Life zone field's core. RESERVED FOR A FUTURE
+ * CORE-BEARING VARIANT — no shipped Life field ever has `coreHp > 0`, so
+ * `collectEnemyBodyTargets()` never emits a `life_core` target for it and
+ * this is unreachable in normal play. See LifeColonyController in
+ * life-types.ts.
  */
 export function damageLifeCore(
   colony: import('./life-types').LifeColonyController,

@@ -1,13 +1,18 @@
 /**
- * life-factories.ts — Spawns Life-zone colony controllers.
+ * life-factories.ts — Spawns Life-zone automata fields.
  *
- * Ships several colony types, each a small core that seeds a distinct CA
- * rule pattern near itself: Maze Colony (Mazectric, B3/S1234), Seeds Burst
- * (B2/S), Replicator Sigil (HighLife, B36/S23), Walled Cities (B45678/S2345,
- * elite-style), Life Without Death Corruption (B3/S012345678), and
- * Generations Ghost (B2/S345678, 3-state). Cells grow from each core's
- * pattern, are individually damageable, and have no health bars. Killing the
- * core stops the automata and fades out all remaining cells.
+ * Life cells are the enemies. Ships several field types, each seeding a
+ * distinct CA rule pattern at a world-space anchor point: Maze Colony
+ * (Mazectric, B3/S1234), Seeds Burst (B2/S), Replicator Sigil (HighLife,
+ * B36/S23), Walled Cities (B45678/S2345, a dense defensive cell pattern),
+ * Life Without Death Corruption (B3/S012345678), and Generations Ghost
+ * (B2/S345678, 3-state). Cells grow from each field's seed pattern, are
+ * individually damageable, and have no health bars.
+ *
+ * Every field here has `coreHp`/`coreMaxHp` fixed at 0 — there is no default
+ * killable core. The field/anchor is only a rule-stepping controller and
+ * visual origin; wave completion, kill tracking, and reward all key off
+ * individual cells (see life-updates.ts / rpg-render-update.ts).
  */
 
 import { getWaveStatScale } from '../../sim/rpg/rpg-state';
@@ -18,9 +23,6 @@ import {
 import { LIFE_CELL_SIZE, makeLifeGridBounds, worldToLifeGrid, type LifeGridBounds } from './life-grid';
 import { seedLifeColony, LIFE_CELL_BASE_HP } from './life-controller';
 import type { LifeColonyController } from './life-types';
-
-/** Base core HP for a Maze Colony at wave-scale 1. */
-const MAZE_COLONY_CORE_BASE_HP = 40;
 
 /** Hard cap on simultaneously active colonies in the arena (perf + readability). */
 export const MAX_ACTIVE_LIFE_COLONIES = 3;
@@ -61,7 +63,6 @@ export function makeMazeColony(
   bounds: LifeGridBounds,
 ): LifeColonyController {
   const waveStatScale = getWaveStatScale(waveNumber);
-  const coreHp = Math.ceil(MAZE_COLONY_CORE_BASE_HP * waveStatScale);
   const cellHp = Math.max(1, Math.ceil(LIFE_CELL_BASE_HP * Math.sqrt(waveStatScale)));
 
   const colony: LifeColonyController = {
@@ -70,8 +71,8 @@ export function makeMazeColony(
     bounds,
     x: spawnX,
     y: spawnY,
-    coreHp,
-    coreMaxHp: coreHp,
+    coreHp: 0,
+    coreMaxHp: 0,
     cells: new Map(),
     tickAccumulatorMs: 0,
     generation: 0,
@@ -86,18 +87,16 @@ export function makeMazeColony(
   return colony;
 }
 
-/** Shared helper: builds a bare colony shell (no cells yet) for a given rule/HP/xpMult. */
+/** Shared helper: builds a bare field shell (no cells yet) for a given rule/xpMult. coreHp is always 0 — no default core. */
 function makeColonyShell(
   rule: LifeColonyController['rule'],
   spawnX: number,
   spawnY: number,
   bounds: LifeGridBounds,
-  coreBaseHp: number,
   waveNumber: number,
   xpMult: number,
 ): { colony: LifeColonyController; cellHp: number } {
   const waveStatScale = getWaveStatScale(waveNumber);
-  const coreHp = Math.ceil(coreBaseHp * waveStatScale);
   const cellHp = Math.max(1, Math.ceil(LIFE_CELL_BASE_HP * Math.sqrt(waveStatScale)));
   const colony: LifeColonyController = {
     kind: 'life_colony',
@@ -105,8 +104,8 @@ function makeColonyShell(
     bounds,
     x: spawnX,
     y: spawnY,
-    coreHp,
-    coreMaxHp: coreHp,
+    coreHp: 0,
+    coreMaxHp: 0,
     cells: new Map(),
     tickAccumulatorMs: 0,
     generation: 0,
@@ -118,10 +117,6 @@ function makeColonyShell(
   return { colony, cellHp };
 }
 
-/** Base core HP for a Seeds Burst colony at wave-scale 1 — low HP, cells are
- *  flickering and briefly dangerous rather than a sustained threat. */
-const SEEDS_BURST_CORE_BASE_HP = 30;
-
 /** Small seed cluster: Seeds (B2/S) makes every cell die each step, but
  *  neighboring pairs constantly rebirth new cells, producing an expanding,
  *  flickering wavefront of briefly-dangerous cells. */
@@ -130,19 +125,16 @@ const SEEDS_BURST_SEED_PATTERN: ReadonlyArray<{ col: number; row: number }> = [
   { col: 1, row: 2 }, { col: -1, row: 1 },
 ];
 
-/** Creates a "Seeds Burst" colony (RULE_SEEDS) — expanding flickering wavefronts. */
+/** Creates a "Seeds Burst" field (RULE_SEEDS) — expanding flickering wavefronts. */
 export function makeSeedsBurstColony(
   spawnX: number, spawnY: number, waveNumber: number, bounds: LifeGridBounds,
 ): LifeColonyController {
-  const { colony, cellHp } = makeColonyShell(RULE_SEEDS, spawnX, spawnY, bounds, SEEDS_BURST_CORE_BASE_HP, waveNumber, 1.1);
+  const { colony, cellHp } = makeColonyShell(RULE_SEEDS, spawnX, spawnY, bounds, waveNumber, 1.1);
   const centerCoord = worldToLifeGrid(spawnX, spawnY, bounds);
   // Seeds cells are dangerous (brief contact damage) while they flicker in and out.
   seedLifeColony(colony, SEEDS_BURST_SEED_PATTERN, centerCoord.col, centerCoord.row, cellHp, true);
   return colony;
 }
-
-/** Base core HP for a Replicator Sigil colony at wave-scale 1. */
-const REPLICATOR_SIGIL_CORE_BASE_HP = 36;
 
 /** Small symmetric seed (a plus-sign) — Replicator (B1357/S1357) copies this
  *  shape outward in a controlled, symmetric bloom rather than sprawling chaos. */
@@ -150,12 +142,12 @@ const REPLICATOR_SIGIL_SEED_PATTERN: ReadonlyArray<{ col: number; row: number }>
   { col: 0, row: 0 }, { col: 1, row: 0 }, { col: -1, row: 0 }, { col: 0, row: 1 }, { col: 0, row: -1 },
 ];
 
-/** Creates a "Replicator Sigil" colony (RULE_REPLICATOR) — a small symmetric
+/** Creates a "Replicator Sigil" field (RULE_REPLICATOR) — a small symmetric
  *  seed that self-replicates under a strict population cap. */
 export function makeReplicatorSigilColony(
   spawnX: number, spawnY: number, waveNumber: number, bounds: LifeGridBounds,
 ): LifeColonyController {
-  const { colony, cellHp } = makeColonyShell(RULE_REPLICATOR, spawnX, spawnY, bounds, REPLICATOR_SIGIL_CORE_BASE_HP, waveNumber, 1);
+  const { colony, cellHp } = makeColonyShell(RULE_REPLICATOR, spawnX, spawnY, bounds, waveNumber, 1);
   // Strict population cap tighter than the rule's own default — keeps the sigil readable.
   colony.maxPopulation = Math.min(colony.maxPopulation, 90);
   const centerCoord = worldToLifeGrid(spawnX, spawnY, bounds);
@@ -163,11 +155,10 @@ export function makeReplicatorSigilColony(
   return colony;
 }
 
-/** Base core HP for a Walled Cities colony at wave-scale 1 — elite-tier, tanky core. */
-const WALLED_CITIES_CORE_BASE_HP = 90;
-
 /** Dense ring seed — Walled Cities (B45678/S2345) needs a dense starting
- *  cluster to trigger its high birth threshold and grow defensive walls. */
+ *  cluster to trigger its high birth threshold and grow defensive walls.
+ *  This is a defensive PATTERN of many cells, not a core protected by cells —
+ *  there is no core; the density itself is the elite-tier difficulty. */
 const WALLED_CITIES_SEED_PATTERN: ReadonlyArray<{ col: number; row: number }> = [
   { col: -1, row: -1 }, { col: 0, row: -1 }, { col: 1, row: -1 },
   { col: -1, row: 0 }, { col: 0, row: 0 }, { col: 1, row: 0 },
@@ -175,19 +166,16 @@ const WALLED_CITIES_SEED_PATTERN: ReadonlyArray<{ col: number; row: number }> = 
   { col: -2, row: 0 }, { col: 2, row: 0 }, { col: 0, row: -2 }, { col: 0, row: 2 },
 ];
 
-/** Creates a "Walled Cities" colony (RULE_WALLED_CITIES) — an elite-style
- *  colony with a tanky core defended by dense walls of cells. */
+/** Creates a "Walled Cities" field (RULE_WALLED_CITIES) — an elite-style
+ *  dense defensive wall of many individually-damageable cells (no core). */
 export function makeWalledCitiesColony(
   spawnX: number, spawnY: number, waveNumber: number, bounds: LifeGridBounds,
 ): LifeColonyController {
-  const { colony, cellHp } = makeColonyShell(RULE_WALLED_CITIES, spawnX, spawnY, bounds, WALLED_CITIES_CORE_BASE_HP, waveNumber, 1.4);
+  const { colony, cellHp } = makeColonyShell(RULE_WALLED_CITIES, spawnX, spawnY, bounds, waveNumber, 1.4);
   const centerCoord = worldToLifeGrid(spawnX, spawnY, bounds);
   seedLifeColony(colony, WALLED_CITIES_SEED_PATTERN, centerCoord.col, centerCoord.row, cellHp * 2, false);
   return colony;
 }
-
-/** Base core HP for a Life Without Death Corruption colony at wave-scale 1. */
-const LWD_CORRUPTION_CORE_BASE_HP = 50;
 
 /**
  * Per-cell lifetime for a corruption colony — tunable per variant so a future
@@ -210,25 +198,20 @@ const LWD_CORRUPTION_SEED_PATTERN: ReadonlyArray<{ col: number; row: number }> =
  * Cells never die to the survival rule — instead each cell carries a
  * lifetime (cellDecayLifetimeMs) that expires it independent of neighbor
  * count (see advanceLifeCellFades), which is what keeps the colony from
- * growing forever. Killing the core stops new births immediately
- * (updateLifeColonies only ticks the automata while status is
- * 'alive'/'seeding') and every remaining cell still decays/fades on its own
- * timer, same as if the colony were left alone.
+ * growing forever. There is no core: the field itself has no HP, and each
+ * cell decays/fades on its own timer independent of the others.
  */
 export function makeLifeWithoutDeathCorruptionColony(
   spawnX: number, spawnY: number, waveNumber: number, bounds: LifeGridBounds,
 ): LifeColonyController {
   const { colony, cellHp } = makeColonyShell(
-    RULE_LIFE_WITHOUT_DEATH, spawnX, spawnY, bounds, LWD_CORRUPTION_CORE_BASE_HP, waveNumber, 1.2,
+    RULE_LIFE_WITHOUT_DEATH, spawnX, spawnY, bounds, waveNumber, 1.2,
   );
   colony.cellDecayLifetimeMs = LWD_CORRUPTION_CELL_LIFETIME_MS;
   const centerCoord = worldToLifeGrid(spawnX, spawnY, bounds);
   seedLifeColony(colony, LWD_CORRUPTION_SEED_PATTERN, centerCoord.col, centerCoord.row, cellHp, false);
   return colony;
 }
-
-/** Base core HP for a Generations Ghost colony at wave-scale 1. */
-const GENERATIONS_GHOST_CORE_BASE_HP = 42;
 
 /** Seed pattern for the Generations Ghost colony (RULE_GENERATIONS_GHOST,
  *  B2/S345678) — a denser cluster than Conway-style seeds so it reliably
@@ -250,7 +233,7 @@ export function makeGenerationsGhostColony(
   spawnX: number, spawnY: number, waveNumber: number, bounds: LifeGridBounds,
 ): LifeColonyController {
   const { colony, cellHp } = makeColonyShell(
-    RULE_GENERATIONS_GHOST, spawnX, spawnY, bounds, GENERATIONS_GHOST_CORE_BASE_HP, waveNumber, 1.3,
+    RULE_GENERATIONS_GHOST, spawnX, spawnY, bounds, waveNumber, 1.3,
   );
   const centerCoord = worldToLifeGrid(spawnX, spawnY, bounds);
   seedLifeColony(colony, GENERATIONS_GHOST_SEED_PATTERN, centerCoord.col, centerCoord.row, cellHp, false);

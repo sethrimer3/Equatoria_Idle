@@ -7,9 +7,25 @@ import {
   makeMazeColony, buildLifeGridBoundsForArena,
 } from '../life-factories';
 import { damageLifeCellEntity, damageLifeCoreEntity } from '../life-controller';
-import { lifeGridToWorldCenter } from '../life-grid';
+import { lifeGridToWorldCenter, makeLifeGridBounds, LIFE_CELL_SIZE } from '../life-grid';
 import type { ClosestTarget } from '../rpg-types';
 import type { LifeColonyController } from '../life-types';
+import { RULE_CONWAY } from '../life-ca-rules';
+
+/**
+ * No shipped Life factory gives its field coreHp > 0 (there is no default
+ * core). This builds a synthetic field standing in for a possible future
+ * core-bearing variant, to exercise the still-supported life_core dispatch
+ * mechanism in isolation from the normal cell-only Life enemies.
+ */
+function makeCoreBearingTestColony(): LifeColonyController {
+  const bounds = makeLifeGridBounds(0, 0, 400, 400, LIFE_CELL_SIZE);
+  return {
+    kind: 'life_colony', rule: RULE_CONWAY, bounds, x: 200, y: 200,
+    coreHp: 10, coreMaxHp: 10, cells: new Map(), tickAccumulatorMs: 0,
+    generation: 0, maxPopulation: 260, status: 'seeding', xpMult: 1, coreContactCdMs: 0,
+  };
+}
 
 /** Minimal mock RpgTargetingCtx — every array/no-op field a test doesn't care
  * about is empty/inert; only Life-zone fields are filled in by callers. */
@@ -82,11 +98,12 @@ describe('damageBodyTarget — Life zone targets', () => {
     const dmg = targeting.damageBodyTarget(cellTarget!, 3, 0, false);
     expect(dmg).toBe(3);
     expect(cell.hp).toBe(hpBefore - 3);
-    expect(colony.coreHp).toBe(colony.coreMaxHp); // core untouched
+    expect(colony.coreHp).toBe(colony.coreMaxHp); // core untouched (and always 0 for shipped fields)
   });
 
-  it('damages a life_core target via damageLifeCore', () => {
-    const { ctx, colony } = makeLifeColonyCtx();
+  it('reserved future core mechanism: damages a life_core target via damageLifeCore when a field is manually given coreHp > 0', () => {
+    const colony = makeCoreBearingTestColony();
+    const ctx = makeTargetingCtx({ lifeColonies: [colony] });
     const targeting = createRpgTargeting(ctx);
     const coreTarget = targeting.collectEnemyBodyTargets().find(t => t.kind === 'life_core');
     expect(coreTarget).toBeDefined();
@@ -99,12 +116,12 @@ describe('damageBodyTarget — Life zone targets', () => {
 });
 
 describe('collectEnemyBodyTargets — Life zone coverage', () => {
-  it('includes both life_cell and life_core targets for an active colony', () => {
+  it('includes life_cell targets but no life_core target for a normal (coreHp 0) active colony', () => {
     const { ctx } = makeLifeColonyCtx();
     const targeting = createRpgTargeting(ctx);
     const targets = targeting.collectEnemyBodyTargets();
     expect(targets.some(t => t.kind === 'life_cell')).toBe(true);
-    expect(targets.some(t => t.kind === 'life_core')).toBe(true);
+    expect(targets.some(t => t.kind === 'life_core')).toBe(false);
   });
 });
 
@@ -125,8 +142,7 @@ describe('chain whip target-body identity — Life cells/cores', () => {
   });
 
   it('getChainTargetBody resolves the same stable ref across two calls for a life_core target', () => {
-    const bounds = buildLifeGridBoundsForArena(0, 0, 400, 400);
-    const colony = makeMazeColony(200, 200, 1, bounds);
+    const colony = makeCoreBearingTestColony();
     const target: ClosestTarget = { kind: 'life_core', x: colony.x, y: colony.y, distSq: 0, lifeCoreColony: colony };
 
     const bodyA = getChainTargetBody(target);

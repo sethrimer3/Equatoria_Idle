@@ -1,5 +1,10 @@
 /**
- * life-controller.ts — Cellular-automata stepping logic for Life zone colonies.
+ * life-controller.ts — Cellular-automata stepping logic for Life zone fields.
+ *
+ * Life cells are the enemies. The LifeColonyController here is only an
+ * invisible rule/spawner: it advances the CA rule and manages occupancy: it
+ * is not itself a killable combat entity by default. There is no default
+ * core — see the doc comment on LifeColonyController in life-types.ts.
  *
  * Pure, canvas-free functions operating on a LifeColonyController's sparse
  * occupancy map. Kept side-effect-free (aside from mutating the passed
@@ -323,10 +328,11 @@ export function advanceLifeCellFades(colony: LifeColonyController, deltaMs: numb
 }
 
 /**
- * Applies damage to a colony's core (a separate targetable entity from its
- * cells — see life-targeting integration in rpg-targeting-targets.ts). Once
- * coreHp reaches 0 this calls killLifeColonyCore to stop automata ticking and
- * fade out remaining cells. Returns actual damage dealt (0 if already dead).
+ * Applies damage to a field's core. RESERVED FOR A FUTURE CORE-BEARING
+ * ENEMY VARIANT — no shipped Life enemy gives its field `coreHp > 0` (see
+ * life-factories.ts and the LifeColonyController doc comment in
+ * life-types.ts), so this is a no-op (returns 0) for every current Life
+ * enemy. Do not call this from default Life combat/reward code.
  */
 export function damageLifeCoreEntity(colony: LifeColonyController, rawDamage: number): number {
   if (colony.coreHp <= 0) return 0;
@@ -337,15 +343,25 @@ export function damageLifeCoreEntity(colony: LifeColonyController, rawDamage: nu
   return applied;
 }
 
-/** Returns true once every cell has been cleared and the colony core is dead. */
+/**
+ * Returns true once every cell has been cleared and the field's core (if any)
+ * is dead. For every shipped Life enemy `coreHp` is always 0, so in practice
+ * a field is cleared exactly when it has no live cells left — the field
+ * itself never "defeats" all cells; cells die individually and this just
+ * detects the field has nothing left to do.
+ */
 export function isLifeColonyFullyCleared(colony: LifeColonyController): boolean {
   return colony.coreHp <= 0 && colony.cells.size === 0;
 }
 
 /**
- * Kills the colony's core: marks the colony 'dying' so the update loop stops
- * ticking the automata and lets all remaining cells fade out naturally
- * (rather than surviving indefinitely with no controller advancing them).
+ * RESERVED FOR A FUTURE CORE-BEARING ENEMY VARIANT — not called by any
+ * default Life update/combat path. Killing a field's core (if it ever has
+ * one) marks the field 'dying' so the update loop stops ticking the automata
+ * and lets all remaining cells fade out naturally. Must never be invoked
+ * just because an invisible controller/field is torn down — normal Life
+ * cells die only from damage, the CA survival rule, or their own decay/ghost
+ * timers, never because a sibling cell or the field itself died.
  */
 export function killLifeColonyCore(colony: LifeColonyController): void {
   colony.coreHp = 0;
