@@ -8,7 +8,7 @@
  * Layout (world coordinates):
  *   Zone chain  — vertical center spine, Euhedral at the top
  *   Horizon triad — branching below Verdure
- *   Boss S-curve — right side  (x: ~700–820)
+ *   Boss S-curve — far right side  (x: ~880–1000)
  */
 
 import type { RpgZoneId } from '../../data/rpg/rpg-zone-definitions';
@@ -81,9 +81,9 @@ const BACKGROUND_PATH   = 'ASSETS/ANIMATIONS/rpgBackground/rpgBackground_animati
 
 // Pan soft-limits in world coordinates (camera center)
 const PAN_MIN_X = -100;
-const PAN_MAX_X = 1000;
+const PAN_MAX_X = 1180;
 const PAN_MIN_Y = -100;
-const PAN_MAX_Y = 800;
+const PAN_MAX_Y = 980;
 
 // ─── Asset path helpers ────────────────────────────────────────────────────
 
@@ -129,9 +129,9 @@ const ZONE_POS: Record<RpgZoneId, { x: number; y: number }> = {
   impetus:  { x: 420, y: 245 },
   caustics: { x: 420, y: 390 },
   verdure:  { x: 420, y: 535 },
-  horizon:  { x: 420, y: 720 }, // triad center (not drawn itself)
-  // Secret zone — floats off to the side, disconnected from the main chain.
-  life:     { x: 620, y: 620 },
+  horizon:  { x: 420, y: 760 }, // triad center (not drawn itself)
+  // Secret zone — centered below the Horizon triad.
+  life:     { x: 420, y: 930 },
 };
 
 const HORIZON_SUBZONE_IDS: HorizonSubzoneId[] = ['zenith', 'true', 'nadir'];
@@ -147,7 +147,7 @@ function makeBossPositions(): Array<{ x: number; y: number }> {
     const angle = -Math.PI * 0.7 + i * 0.82;
     const radius = 82 + i * 24;
     return {
-      x: 720 + Math.cos(angle) * radius,
+      x: 900 + Math.cos(angle) * radius,
       y: 390 + Math.sin(angle) * radius,
     };
   });
@@ -712,12 +712,10 @@ export function createRpgZoneSelectPanel(
   // Kick off icon preloads (fire-and-forget; getCachedImage used during draw)
   for (const node of [...zoneNodes, ...horizonNodes, ...bossNodes]) {
     loadImage(node.iconPath).catch(() => {
-      // eslint-disable-next-line no-console
       console.warn(`[ZoneSelect] missing icon: ${node.iconPath}`);
     });
   }
   loadImage(BACKGROUND_PATH).catch(() => {
-    // eslint-disable-next-line no-console
     console.warn(`[ZoneSelect] missing background: ${BACKGROUND_PATH}`);
   });
 
