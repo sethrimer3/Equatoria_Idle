@@ -417,12 +417,46 @@
   flex-shrink: 0;
 }
 
+.rpg-player-icon-button {
+  width: 26px;
+  height: 26px;
+  margin: -2px 0;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.rpg-player-icon-button:active,
+.rpg-player-icon-button--auto {
+  border-color: rgba(255, 215, 100, 0.42);
+  background: rgba(255, 215, 100, 0.08);
+  box-shadow: inset 0 0 6px rgba(255, 215, 100, 0.10);
+}
+
 /* "Lv.N" text above the player icon */
 .rpg-player-level-label {
   font-size: calc(7px + var(--game-font-size-offset-px));
   font-weight: 700;
   color: #c4b5fd;
   line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.rpg-player-auto-label {
+  font-size: calc(7px + var(--game-font-size-offset-px));
+  font-weight: 700;
+  color: #ffd764;
+  line-height: 1;
+  text-shadow: 0 0 4px rgba(255, 215, 100, 0.55);
   white-space: nowrap;
   pointer-events: none;
 }

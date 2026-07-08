@@ -51,6 +51,8 @@ export interface RpgMenuPanel {
   isVisible: boolean;
   /** Whether auto-move is currently enabled (session-only, not persisted). */
   isAutoMoveEnabled: boolean;
+  /** Set auto-move through the same session state used by the menu checkbox. */
+  setAutoMoveEnabled(enabled: boolean): void;
   /** Sync the persisted RPG rack position into the menu tab. */
   setRpgRackPosition(position: RpgRackPosition): void;
   setRpgMenuButtonPosition(position: RpgVerticalPosition): void;
@@ -257,6 +259,10 @@ export function createRpgMenuPanel(
     setRpgRackPosition(position: RpgRackPosition): void {
       lastRpgRackPosition = position;
       menuTabPane.setRpgRackPosition(position);
+    },
+    setAutoMoveEnabled(enabled: boolean): void {
+      panel.isAutoMoveEnabled = enabled;
+      menuTabPane.setAutoMoveEnabled(enabled);
     },
     setRpgMenuButtonPosition(position: RpgVerticalPosition): void {
       lastRpgMenuButtonPosition = position;

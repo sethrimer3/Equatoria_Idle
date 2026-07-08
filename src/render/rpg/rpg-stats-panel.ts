@@ -80,6 +80,10 @@ export interface RpgStatsPanelHandle {
   update(): void;
   /** Show or hide the dev-mode numerical designators on each panel box. */
   setDevMode(enabled: boolean): void;
+  /** Sync the Box 1 player-icon auto-move label/pressed state. */
+  setAutoMoveEnabled(enabled: boolean): void;
+  /** Install or replace the Box 1 player-icon auto-move toggle handler. */
+  setAutoMoveToggleHandler(handler: (() => void) | null): void;
   /**
    * Returns true if the given weapon-slot index (0-based) has a Box 1 wire
    * connected to it.  When no Box 1 wires exist at all, returns true for all
@@ -152,7 +156,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     playerXpInEl,
     mod1XpIn, mod1Out, mod2XpIn, mod2Out, mod3XpIn, mod3Out,
     modProgressFills, modLevelTexts,
-    playerLevelEl, playerXpBarFill,
+    playerLevelEl, playerIconButtonEl, playerAutoMoveLabelEl, playerXpBarFill,
     weapHeaderCell,
     dpsLabelEl, dpsValueEl, dpsChartEl, dpsAxisEl, dpsAxisLowEl, dpsAxisHighEl,
   } = buildStatsPanelDom();
@@ -213,6 +217,16 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     }
     return els;
   }
+
+  let onAutoMoveIconToggle: (() => void) | null = null;
+  playerIconButtonEl.addEventListener('pointerdown', (ev) => {
+    ev.stopPropagation();
+  });
+  playerIconButtonEl.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    onAutoMoveIconToggle?.();
+  });
 
   function _updatePlayerStatusBar(): void {
     const statuses = getActivePlayerStatuses(rpgSimState);
@@ -781,6 +795,14 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
     setDevMode(enabled: boolean): void {
       if (enabled) statsPanel.classList.add('rpg-dev-mode');
       else statsPanel.classList.remove('rpg-dev-mode');
+    },
+    setAutoMoveEnabled(enabled: boolean): void {
+      playerAutoMoveLabelEl.hidden = !enabled;
+      playerIconButtonEl.setAttribute('aria-pressed', String(enabled));
+      playerIconButtonEl.classList.toggle('rpg-player-icon-button--auto', enabled);
+    },
+    setAutoMoveToggleHandler(handler: (() => void) | null): void {
+      onAutoMoveIconToggle = handler;
     },
     isSlotEquippedByWire,
     hasAnyEquipWire,

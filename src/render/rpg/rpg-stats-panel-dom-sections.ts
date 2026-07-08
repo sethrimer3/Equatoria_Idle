@@ -28,6 +28,10 @@ export interface StatsPanelPrimaryColumnRefs {
   modLevelTexts: HTMLSpanElement[];
   /** "Lv.N" label shown above the player icon. Updated on level-up. */
   playerLevelEl: HTMLSpanElement;
+  /** Tappable player icon button used to toggle auto-move. */
+  playerIconButtonEl: HTMLButtonElement;
+  /** "Auto" status label shown under the player icon while auto-move is enabled. */
+  playerAutoMoveLabelEl: HTMLSpanElement;
   /** XP progress bar fill element below the player icon. Width updated each frame. */
   playerXpBarFill: HTMLDivElement;
   /** The 5 cell divs in the header label row (Weap / ATK / Spd / Rng / Prc). */
@@ -53,6 +57,8 @@ export interface StatsPanelRightColumnRefs {
 function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
   wrapperEl: HTMLDivElement;
   levelLabelEl: HTMLSpanElement;
+  iconButtonEl: HTMLButtonElement;
+  autoMoveLabelEl: HTMLSpanElement;
   xpBarFill: HTMLDivElement;
 } {
   const wrapperEl = document.createElement('div');
@@ -63,6 +69,12 @@ function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
   levelLabelEl.className = 'rpg-player-level-label';
   levelLabelEl.textContent = 'Lv.1';
   wrapperEl.appendChild(levelLabelEl);
+
+  const iconButtonEl = document.createElement('button');
+  iconButtonEl.type = 'button';
+  iconButtonEl.className = 'rpg-player-icon-button';
+  iconButtonEl.setAttribute('aria-label', 'Toggle auto-move');
+  iconButtonEl.setAttribute('aria-pressed', 'false');
 
   // Player icon canvas (existing logic, unchanged).
   const playerIconEl = document.createElement('div');
@@ -124,7 +136,14 @@ function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
   }
   requestAnimationFrame((ms) => { iconPrevMs = ms; requestAnimationFrame(iconAnimLoop); });
 
-  wrapperEl.appendChild(playerIconEl);
+  iconButtonEl.appendChild(playerIconEl);
+  wrapperEl.appendChild(iconButtonEl);
+
+  const autoMoveLabelEl = document.createElement('span');
+  autoMoveLabelEl.className = 'rpg-player-auto-label';
+  autoMoveLabelEl.textContent = 'Auto';
+  autoMoveLabelEl.hidden = true;
+  wrapperEl.appendChild(autoMoveLabelEl);
 
   // XP progress bar below the player icon — mirrors the modifier box progress track style.
   const xpBarTrack = document.createElement('div');
@@ -135,7 +154,7 @@ function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
   xpBarTrack.appendChild(xpBarFill);
   wrapperEl.appendChild(xpBarTrack);
 
-  return { wrapperEl, levelLabelEl, xpBarFill };
+  return { wrapperEl, levelLabelEl, iconButtonEl, autoMoveLabelEl, xpBarFill };
 }
 
 function makeBox5Row(label: string | HTMLElement): { box: HTMLDivElement; xpOutPlug: HTMLDivElement } {
@@ -230,6 +249,8 @@ export function createStatsPanelPrimaryColumn(
   const {
     wrapperEl: playerIconWidget,
     levelLabelEl: playerLevelEl,
+    iconButtonEl: playerIconButtonEl,
+    autoMoveLabelEl: playerAutoMoveLabelEl,
     xpBarFill: playerXpBarFill,
   } = createPlayerIconWidget(getIsStatsPanelVisible);
   xpBox1.appendChild(playerIconWidget);
@@ -353,6 +374,8 @@ export function createStatsPanelPrimaryColumn(
     modProgressFills: [mod1Fill, mod2Fill, mod3Fill],
     modLevelTexts: [mod1Level, mod2Level, mod3Level],
     playerLevelEl,
+    playerIconButtonEl,
+    playerAutoMoveLabelEl,
     playerXpBarFill,
     box4LabelCells: box4LabelsRow,
   };

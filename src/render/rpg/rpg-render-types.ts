@@ -9,6 +9,10 @@ export interface RpgRender {
   menuButtonContainer: HTMLElement;
   /** Register floating RPG overlay buttons that should fade when gameplay entities pass behind them. */
   registerOverlayFadeElements(elements: readonly HTMLElement[]): void;
+  /** Sync the Box 1 rack player-icon auto-move status display. */
+  setRackAutoMoveEnabled(enabled: boolean): void;
+  /** Install or replace the Box 1 rack player-icon auto-move toggle handler. */
+  setRackAutoMoveToggleHandler(handler: (() => void) | null): void;
   update(deltaMs: number, autoMoveEnabled?: boolean): void;
   resize(container: HTMLElement): void;
   setActive(active: boolean): void;

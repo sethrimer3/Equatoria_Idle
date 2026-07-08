@@ -27,6 +27,8 @@ export interface RpgMenuTabPane {
   element: HTMLElement;
   /** Whether auto-move is currently enabled. Updated immediately on checkbox change. */
   isAutoMoveEnabled: boolean;
+  /** Sync auto-move state into this pane without rebuilding the menu. */
+  setAutoMoveEnabled(enabled: boolean): void;
   /** Re-render the menu tab with fresh RPG state. */
   update(
     rpgState: RpgSimState | null,
@@ -64,6 +66,7 @@ export function createRpgMenuTabPane(
   const element = document.createElement('div');
 
   let isAutoMoveEnabled = false;
+  let autoMoveCheckbox: HTMLInputElement | null = null;
   let isConfirmingRespawn = false;
   let rpgRackPosition: RpgRackPosition = 'bottom';
   let rpgMenuButtonPosition: RpgVerticalPosition = 'top';
@@ -129,6 +132,7 @@ export function createRpgMenuTabPane(
     rpgZonePosition = zonePosition;
     isTopographicTerrainDebugEnabled = topographicTerrainDebugEnabled;
     isSharpTopographyShadows = sharpTopographyShadows;
+    autoMoveCheckbox = null;
     element.innerHTML = '';
 
     const rackSection = document.createElement('section');
@@ -153,18 +157,16 @@ export function createRpgMenuTabPane(
     labelGroup.appendChild(labelEl);
     labelGroup.appendChild(descEl);
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.className = 'settings-checkbox';
-    checkbox.checked = isAutoMoveEnabled;
-    checkbox.addEventListener('change', () => {
-      isAutoMoveEnabled = checkbox.checked;
-      pane.isAutoMoveEnabled = isAutoMoveEnabled;
-      onAutoMoveChange(isAutoMoveEnabled);
+    autoMoveCheckbox = document.createElement('input');
+    autoMoveCheckbox.type = 'checkbox';
+    autoMoveCheckbox.className = 'settings-checkbox';
+    autoMoveCheckbox.checked = isAutoMoveEnabled;
+    autoMoveCheckbox.addEventListener('change', () => {
+      pane.setAutoMoveEnabled(autoMoveCheckbox?.checked ?? false);
     });
 
     row.appendChild(labelGroup);
-    row.appendChild(checkbox);
+    row.appendChild(autoMoveCheckbox);
     element.appendChild(row);
 
     // ── Bar at Top row ──
@@ -547,6 +549,12 @@ export function createRpgMenuTabPane(
   const pane: RpgMenuTabPane = {
     element,
     isAutoMoveEnabled,
+    setAutoMoveEnabled(enabled: boolean): void {
+      isAutoMoveEnabled = enabled;
+      pane.isAutoMoveEnabled = enabled;
+      if (autoMoveCheckbox) autoMoveCheckbox.checked = enabled;
+      onAutoMoveChange(enabled);
+    },
     update,
     setRpgRackPosition(position: RpgRackPosition): void {
       rpgRackPosition = position;

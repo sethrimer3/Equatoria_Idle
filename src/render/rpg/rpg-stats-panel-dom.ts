@@ -62,6 +62,10 @@ export interface StatsPanelDomRefs {
 
   /** "Lv.N" label shown above the player icon. Updated on level-up. */
   playerLevelEl: HTMLSpanElement;
+  /** Tappable player icon button used to toggle auto-move. */
+  playerIconButtonEl: HTMLButtonElement;
+  /** "Auto" status label shown under the player icon while auto-move is enabled. */
+  playerAutoMoveLabelEl: HTMLSpanElement;
   /** XP progress bar fill element below the player icon. Width updated each frame. */
   playerXpBarFill: HTMLDivElement;
   /** The "Weap" header cell — first cell of the label row. Used for WEAP-column tap handling. */
@@ -129,6 +133,8 @@ export function buildStatsPanelDom(): StatsPanelDomRefs {
     modProgressFills: primary.modProgressFills,
     modLevelTexts: primary.modLevelTexts,
     playerLevelEl: primary.playerLevelEl,
+    playerIconButtonEl: primary.playerIconButtonEl,
+    playerAutoMoveLabelEl: primary.playerAutoMoveLabelEl,
     playerXpBarFill: primary.playerXpBarFill,
     weapHeaderCell: primary.box4LabelCells[0] as HTMLDivElement,
     dpsLabelEl: right.dpsLabelEl,

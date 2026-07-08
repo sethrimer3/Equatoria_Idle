@@ -2313,8 +2313,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
         }
       }
     },
+    setRackAutoMoveEnabled(enabled: boolean): void {
+      statsPanel.setAutoMoveEnabled(enabled);
+    },
+    setRackAutoMoveToggleHandler(handler: (() => void) | null): void {
+      statsPanel.setAutoMoveToggleHandler(handler);
+    },
 
     update(deltaMs: number, autoMoveEnabled = false): void {
+      statsPanel.setAutoMoveEnabled(autoMoveEnabled);
       if (rpgPhase !== 'alive' && targeting.getManualTargetedEnemy()) {
         targeting.clearTargetedEnemy();
         targetSelectedAtMs = 0;

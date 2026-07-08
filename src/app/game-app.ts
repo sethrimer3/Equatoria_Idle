@@ -385,6 +385,11 @@ export async function startApp(): Promise<void> {
   );
   rpgMenuPanel.element.style.display = 'none';
   root.appendChild(rpgMenuPanel.element);
+  rpgRender.setRackAutoMoveToggleHandler(() => {
+    rpgMenuPanel.setAutoMoveEnabled(!rpgMenuPanel.isAutoMoveEnabled);
+    rpgRender.setRackAutoMoveEnabled(rpgMenuPanel.isAutoMoveEnabled);
+  });
+  rpgRender.setRackAutoMoveEnabled(rpgMenuPanel.isAutoMoveEnabled);
 
   // Apply saved bar position immediately after panel is in the DOM
   applyRpgRackPosition(settings.rpgRackPosition);
