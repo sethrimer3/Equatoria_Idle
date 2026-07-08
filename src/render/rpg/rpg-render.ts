@@ -142,6 +142,8 @@ import { type OrbitProjectileCtx } from './rpg-orbit-projectile';
 import {
   type PlayerMovementCtx,
   type PlayerMovementState,
+  getPlayerAutoMovePathState,
+  clearPlayerAutoMovePath,
 } from './rpg-player-movement';
 import { createRpgInput } from './rpg-input';
 import { createPlayerDamageFns, type PlayerDamageCtx } from './rpg-player-damage';
@@ -260,6 +262,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // Pre-generate caustics tiles before the first Caustics frame to avoid stutter.
     if (newZoneId === 'caustics') prewarmCausticsTextures();
     resetActiveEncounterForZoneSwitch();
+    clearPlayerAutoMovePath();
     rpgSimState.activeZoneId = newZoneId;
     // Restore the new zone's previously-saved wave (0 if never visited).
     currentWave = rpgSimState.currentWaveByZone[newZoneId] ?? 0;
@@ -277,6 +280,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     nadirSubstrate = null;
     nadirCubicGrid = null;
     isNadirEliteWave = false;
+    clearPlayerAutoMovePath();
   }, (bossId) => startBossFightFromZoneSelect(bossId), () => activeBossId);
   rpgArea.appendChild(zoneSelectPanel.element);
 
@@ -854,6 +858,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function clearWaveTerrainForBossFight(): void {
     topographicTerrainState = null;
     rpgNavGrid = buildRpgNavigationGrid(null, widthPx, heightPx);
+    clearPlayerAutoMovePath();
   }
 
   function clearArrays(...arrays: Array<{ length: number }>): void {
@@ -2147,6 +2152,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getTargetSelectedAtMs:        () => targetSelectedAtMs,
     rpgSimState,
     getNavGrid:                   () => rpgNavGrid,
+    getPlayerAutoMovePathState:   () => getPlayerAutoMovePathState(),
+    getAutoMoveEnabled:           () => _autoMoveEnabled && rpgPhase === 'alive',
     getPathfindingDebugEnabled:   () => _isDevMode && developerVisuals.pathfinding,
     getViewportDebugEnabled:      () => _isDevMode && developerVisuals.viewport,
     getVerdureWallDebugEnabled:   () => _isDevMode && developerVisuals.verdureWalls,
@@ -2322,6 +2329,9 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
     update(deltaMs: number, autoMoveEnabled = false): void {
       statsPanel.setAutoMoveEnabled(autoMoveEnabled);
+      if (rpgPhase !== 'alive') {
+        clearPlayerAutoMovePath();
+      }
       if (rpgPhase !== 'alive' && targeting.getManualTargetedEnemy()) {
         targeting.clearTargetedEnemy();
         targetSelectedAtMs = 0;
@@ -2422,6 +2432,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     devJumpToWave(wave: number): void {
+      clearPlayerAutoMovePath();
       const savedRespawnWave = rpgSimState.respawnWave;
       rpgSimState.respawnWave = Math.max(0, wave - 1);
       _doRestart(deathRestartCtx);
@@ -2430,6 +2441,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     respawnNow(): void {
+      clearPlayerAutoMovePath();
       _doRestart(deathRestartCtx);
       rpgPhase = 'restarting'; phaseTimerMs = 0; restartFadeAlpha = 0;
     },

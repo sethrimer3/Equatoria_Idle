@@ -672,6 +672,7 @@ export function computePathSteeredDirection(
   );
 
   if (pathState.path.length === 0) {
+    if (navGrid) return { dx: 0, dy: 0 };
     // Fallback: direct direction.
     const dx = targetX - x, dy = targetY - y;
     const len = Math.sqrt(dx * dx + dy * dy) || 1;

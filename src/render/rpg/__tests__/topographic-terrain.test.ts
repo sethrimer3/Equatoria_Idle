@@ -30,9 +30,49 @@ import {
   computeTerrainRepulsionForce,
   signedDistanceToTerrainBoundary,
   RING_POINTS,
+  beginWaveTerrain,
+  getTerrainKindForZone,
+  shouldUseTopographicTerrain,
 } from '../terrain/topographic-terrain';
+import { buildRpgNavigationGrid, hasRpgNavGridLineOfSight } from '../terrain/rpg-pathfinding';
 import { applyLaserBeamHitSweep } from '../rpg-weapon-laser-beam-hits';
 import type { LaserBeamHitSweepCtx } from '../rpg-weapon-laser-beam-hits';
+import type { LaserEnemy } from '../rpg-types';
+
+describe('Caustics-only topographic terrain gating', () => {
+  it('allows generated topographic terrain only for Caustics', () => {
+    expect(shouldUseTopographicTerrain('caustics')).toBe(true);
+    expect(shouldUseTopographicTerrain('life')).toBe(false);
+    expect(shouldUseTopographicTerrain('euhedral')).toBe(false);
+  });
+
+  it('does not begin wave terrain for Life', () => {
+    expect(beginWaveTerrain(1, 360, 640, 0, 'life')).toBeNull();
+    expect(getTerrainKindForZone('life', 1)).toBe('none');
+  });
+
+  it('still begins Caustics seafloor topographic terrain', () => {
+    const state = beginWaveTerrain(1, 360, 640, 0, 'caustics');
+    expect(state).not.toBeNull();
+    expect(state?.terrainKind).toBe('topographic');
+    expect(state?.paletteId).toBe('cyanTactical');
+    expect(getTerrainKindForZone('caustics', 1)).toBe('topographic');
+  });
+});
+
+describe('hasRpgNavGridLineOfSight', () => {
+  it('returns false when blocked terrain cells cross a direct route', () => {
+    const state = buildSquareTerrain(100, 100, 30);
+    const grid = buildRpgNavigationGrid(state, 220, 220, 20);
+    expect(hasRpgNavGridLineOfSight(grid, 20, 100, 180, 100)).toBe(false);
+  });
+
+  it('returns true when the direct route stays on open cells', () => {
+    const state = buildSquareTerrain(100, 100, 30);
+    const grid = buildRpgNavigationGrid(state, 220, 220, 20);
+    expect(hasRpgNavGridLineOfSight(grid, 20, 180, 180, 180)).toBe(true);
+  });
+});
 
 // ── Helper: build a minimal terrain state with one square island ──────────
 
@@ -67,6 +107,39 @@ function buildSquareTerrain(
   } as unknown as TopographicTerrainState;
 }
 
+function buildLaserEnemy(x: number, y: number): LaserEnemy {
+  return {
+    kind: 'laser',
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    hp: 100,
+    maxHp: 100,
+    atk: 10,
+    def: 0,
+    phase: 'idle',
+    phaseElapsedMs: 0,
+    dashDirX: 0,
+    dashDirY: 0,
+    dashTraveled: 0,
+    lockedTargetX: x,
+    lockedTargetY: y,
+    attackTrail: {
+      active: false,
+      startX: x,
+      startY: y,
+      endX: x,
+      endY: y,
+      controlAngle: 0,
+      trailStartMs: 0,
+      trailEndMs: 0,
+    },
+    patrolTimerMs: 0,
+    hasHitPlayer: false,
+  };
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────
 
 describe('isPointInsideTopographicTerrain', () => {
@@ -96,7 +169,7 @@ describe('isPointInsideTopographicTerrain', () => {
 
   it('returns false when phase is hidden', () => {
     const state = buildSquareTerrain(100, 100, 50, 1, 'visible');
-    (state as any).phase = 'hidden';
+    state.phase = 'hidden';
     expect(isPointInsideTopographicTerrain(state, 100, 100)).toBe(false);
   });
 });
@@ -345,8 +418,8 @@ describe('applyLaserBeamHitSweep — terrain truncation regression', () => {
     expect(tMax).toBeLessThan(tFull);
 
     // Enemies relative to origin.
-    const earlyEnemy = { x: 80,  y: 100, hp: 100, maxHp: 100, atk: 10 };
-    const lateEnemy  = { x: 400, y: 100, hp: 100, maxHp: 100, atk: 10 };
+    const earlyEnemy = buildLaserEnemy(80, 100);
+    const lateEnemy  = buildLaserEnemy(400, 100);
 
     let earlyHit = false;
     let lateHit  = false;
@@ -365,7 +438,7 @@ describe('applyLaserBeamHitSweep — terrain truncation regression', () => {
       beamGlow: '#f00',
       hitEffects: [],
       bossEnemy: null,
-      enemies: [earlyEnemy as any, lateEnemy as any],
+      enemies: [earlyEnemy, lateEnemy],
       sapphireEnemies: [],
       sapphireMissiles: [],
       emeraldEnemies: [],
@@ -387,7 +460,7 @@ describe('applyLaserBeamHitSweep — terrain truncation regression', () => {
       lifeColonies: [],
       damageLifeCell: noop0,
       damageLifeCore: noop0,
-      damageEnemy: (e: any, dmg: number) => {
+      damageEnemy: (e: LaserEnemy, dmg: number) => {
         if (e === earlyEnemy) earlyHit = true;
         if (e === lateEnemy)  lateHit  = true;
         return dmg;
@@ -650,7 +723,7 @@ describe('computeTerrainRepulsionForce', () => {
 
   it('returns 0 when growth01 = 0', () => {
     const state = generateTopographicTerrain(1, 42, 800, 600);
-    (state as any).growth01 = 0;
+    state.growth01 = 0;
     const force = { x: 0, y: 0 };
     const depth = computeTerrainRepulsionForce(state, 400, 300, 1.0, force);
     expect(depth).toBe(0);
@@ -693,7 +766,7 @@ describe('signedDistanceToTerrainBoundary', () => {
 
   it('returns Infinity for hidden phase', () => {
     const state = generateTopographicTerrain(1, 42, 800, 600);
-    (state as any).phase = 'hidden';
+    state.phase = 'hidden';
     const dist = signedDistanceToTerrainBoundary(state, 400, 300, null);
     expect(dist).toBe(Infinity);
   });

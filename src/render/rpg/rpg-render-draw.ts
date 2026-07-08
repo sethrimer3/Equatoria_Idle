@@ -1118,11 +1118,18 @@ export function drawRpgFrame(
   }
 
   // Pathfinding debug overlay (dev mode only — no-op otherwise).
+  drawRpgPlayerPathPreview(
+    canvas2d,
+    ctx.getAutoMoveEnabled(),
+    ctx.mote.x,
+    ctx.mote.y,
+    ctx.getPlayerAutoMovePathState(),
+  );
   drawRpgPathfindingDebug(
     canvas2d,
     ctx.getPathfindingDebugEnabled(),
     ctx.getNavGrid(),
-    null,  // player path state not exposed here; could be wired later if desired
+    ctx.getPlayerAutoMovePathState(),
     [],    // enemy path states — not collected here; kept lightweight
   );
   if (ctx.getVerdureWallDebugEnabled() && isVerdureZone) {

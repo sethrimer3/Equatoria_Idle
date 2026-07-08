@@ -7,12 +7,10 @@ import type { TopographyLightCache } from './topographic-lighting-types';
 import {
   type RecursiveSquareNode,
   type EnemyInfluencePoint,
-  generateRecursiveSquareTerrain,
   renderRecursiveSquareTerrain,
 } from './recursive-square-terrain';
 import {
   type BasaltTerrainState,
-  generateBasaltTerrain,
   renderBasaltTerrain,
 } from './basalt-terrain';
 import {
@@ -474,34 +472,6 @@ function createTopographicTerrainState(
   state.phase = 'growing';
   state.growth01 = 0;
   return state;
-}
-
-function createRecursiveSquareTerrainState(
-  waveNumber: number,
-  seed: number,
-  canvasW: number,
-  canvasH: number,
-  nowMs: number,
-): TopographicTerrainState {
-  const squareNodes = generateRecursiveSquareTerrain(seed, waveNumber, canvasW, canvasH);
-  const squareMaxDepth = squareNodes.reduce((m, n) => Math.max(m, n.depth), 0);
-  return {
-    waveNumber,
-    seed,
-    paletteId: 'mono',
-    terrainKind: 'recursiveSquares',
-    islands: [],
-    phase: 'growing',
-    phaseStartedAtMs: nowMs,
-    growDurationMs: TERRAIN_GROW_DURATION_MS,
-    shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
-    growth01: 0,
-    mergedContours: null,
-    lightCache: null,
-    squareNodes,
-    squareMaxDepth,
-    basalt: undefined,
-  };
 }
 
 export function updateTopographicTerrain(state: TopographicTerrainState, nowMs: number): void {
