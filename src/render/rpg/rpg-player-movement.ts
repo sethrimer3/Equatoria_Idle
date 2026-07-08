@@ -42,7 +42,7 @@ import {
   actorMoveX, actorMoveY, buildActorSolidCtx,
 } from './rpg-actor-collision';
 import {
-  createRpgPathState, computePathSteeredDirection, PLAYER_REPATH_MS,
+  createRpgPathState, computePathSteeredDirection, hasRpgNavGridLineOfSight, PLAYER_REPATH_MS,
   type RpgPathState,
 } from './terrain/rpg-pathfinding';
 
@@ -119,6 +119,16 @@ export interface PlayerMovementState {
 // PlayerMovementState to keep that interface simple and serialisable.
 const _playerPathState: RpgPathState = createRpgPathState();
 
+export function getPlayerAutoMovePathState(): RpgPathState {
+  return _playerPathState;
+}
+
+export function clearPlayerAutoMovePath(): void {
+  _playerPathState.path.length = 0;
+  _playerPathState.waypointIdx = 0;
+  _playerPathState.nextRepathMs = 0;
+}
+
 // ── Core update function ──────────────────────────────────────────────────────
 
 const MIN_TRAIL_DISTANCE_SQ = MIN_TRAIL_DISTANCE * MIN_TRAIL_DISTANCE;
@@ -149,7 +159,7 @@ export function updatePlayerMovement(
 
   if (joystick.isActive) {
     // Manual input: clear cached path so A* re-runs when auto-move resumes.
-    _playerPathState.path.length = 0;
+    clearPlayerAutoMovePath();
     const dx = joystick.thumbX - joystick.baseX;
     const dy = joystick.thumbY - joystick.baseY;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -172,7 +182,7 @@ export function updatePlayerMovement(
 
     if (hasKeyInput) {
       // Manual keyboard input: clear cached path so A* re-runs when auto-move resumes.
-      _playerPathState.path.length = 0;
+      clearPlayerAutoMovePath();
       const targetVx = (dirX / dirLen) * effectiveMaxSpeed;
       const targetVy = (dirY / dirLen) * effectiveMaxSpeed;
       const lerpT = Math.min(1, accelFactor * dt);
@@ -246,14 +256,18 @@ export function updatePlayerMovement(
 
           const terrain = ctx.getTerrainState();
           const hasLos = hasTopographicTerrainLineOfSight(terrain, mote.x, mote.y, nearestX, nearestY);
+          const navGrid = ctx.getNavGrid();
+          const hasGridLos = hasRpgNavGridLineOfSight(navGrid, mote.x, mote.y, goalX, goalY);
 
           let steerDx: number, steerDy: number;
-          if (hasLos) {
+          if (hasLos && hasGridLos) {
             // Direct line of sight: steer straight toward the goal.
+            _playerPathState.path.length = 1;
+            _playerPathState.path[0] = { wx: goalX, wy: goalY };
+            _playerPathState.waypointIdx = 0;
             steerDx = ex / d; steerDy = ey / d;
           } else {
-            // Terrain blocks direct path: use A* pathfinding.
-            const navGrid = ctx.getNavGrid();
+            // Terrain or nav-grid obstacles block direct path: use A* pathfinding.
             const speed = Math.sqrt(mote.vx * mote.vx + mote.vy * mote.vy);
             const dir = computePathSteeredDirection(
               _playerPathState,
@@ -271,11 +285,13 @@ export function updatePlayerMovement(
           mote.vx = steerDx * effectiveMaxSpeed;
           mote.vy = steerDy * effectiveMaxSpeed;
         } else {
+          clearPlayerAutoMovePath();
           mote.vx *= RPG_VELOCITY_DAMPING;
           mote.vy *= RPG_VELOCITY_DAMPING;
         }
       }
     } else {
+      clearPlayerAutoMovePath();
       mote.vx *= RPG_VELOCITY_DAMPING;
       mote.vy *= RPG_VELOCITY_DAMPING;
     }

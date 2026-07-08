@@ -448,6 +448,39 @@ export function findRpgPath(
   return _funnelPath(rawWaypoints, startX, startY, terrain);
 }
 
+/** Returns false when a straight segment crosses blocked cells in the nav grid. */
+export function hasRpgNavGridLineOfSight(
+  navGrid: RpgNavGrid | null,
+  startX: number,
+  startY: number,
+  goalX: number,
+  goalY: number,
+): boolean {
+  if (!navGrid) return true;
+  const dx = goalX - startX;
+  const dy = goalY - startY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist <= 0.001) return true;
+
+  const stepPx = Math.max(4, navGrid.cellSizePx * 0.35);
+  const steps = Math.max(1, Math.ceil(dist / stepPx));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const wx = startX + dx * t;
+    const wy = startY + dy * t;
+    const { col, row } = worldToCell(
+      wx, wy,
+      navGrid.cellSizePx,
+      navGrid.cols,
+      navGrid.rows,
+      navGrid.originX,
+      navGrid.originY,
+    );
+    if (navGrid.blocked[cellIndex(col, row, navGrid.cols)]) return false;
+  }
+  return true;
+}
+
 /** Octile heuristic for 8-directional grids. */
 function _heuristic(c1: number, r1: number, c2: number, r2: number): number {
   const dc = Math.abs(c1 - c2), dr = Math.abs(r1 - r2);
@@ -713,6 +746,52 @@ export function drawRpgPathfindingDebug(
     _drawPath(ctx, playerPathState.path);
   }
 
+  ctx.restore();
+}
+
+export function drawRpgPlayerPathPreview(
+  ctx: CanvasRenderingContext2D,
+  enabled: boolean,
+  playerX: number,
+  playerY: number,
+  pathState: RpgPathState | null,
+): void {
+  if (!enabled || !pathState || pathState.path.length === 0) return;
+  const path = pathState.path;
+
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  ctx.strokeStyle = 'rgba(255, 215, 100, 1)';
+  ctx.lineWidth = 1.25;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.shadowBlur = 4;
+  ctx.shadowColor = 'rgba(255, 215, 100, 0.35)';
+
+  ctx.beginPath();
+  ctx.moveTo(playerX, playerY);
+  if (path.length === 1) {
+    ctx.lineTo(path[0].wx, path[0].wy);
+  } else {
+    let prevX = playerX;
+    let prevY = playerY;
+    for (let i = 0; i < path.length - 1; i++) {
+      const cur = path[i];
+      const next = path[i + 1];
+      const midX = (cur.wx + next.wx) * 0.5;
+      const midY = (cur.wy + next.wy) * 0.5;
+      if (i === 0 && Math.hypot(cur.wx - prevX, cur.wy - prevY) < 2) {
+        ctx.lineTo(midX, midY);
+      } else {
+        ctx.quadraticCurveTo(cur.wx, cur.wy, midX, midY);
+      }
+      prevX = cur.wx;
+      prevY = cur.wy;
+    }
+    const last = path[path.length - 1];
+    ctx.quadraticCurveTo(prevX, prevY, last.wx, last.wy);
+  }
+  ctx.stroke();
   ctx.restore();
 }
 

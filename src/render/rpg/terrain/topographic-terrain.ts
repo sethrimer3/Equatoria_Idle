@@ -421,14 +421,19 @@ export function getTerrainKindForZone(
   zoneId: RpgZoneId,
   seed: number,
 ): RpgTerrainKind {
+  if (!shouldUseTopographicTerrain(zoneId)) return 'none';
   const { terrainProfile } = getRpgZoneTerrainProfile(zoneId);
-  if (terrainProfile === 'horizon') return 'none';
-  if (terrainProfile === 'asteroids') return 'none';
-  if (terrainProfile === 'overgrowth') return 'none';
   if (terrainProfile === 'seafloor') return 'topographic';
-  // crystalline (Euhedral): recursiveSquares 75% of the time, basalt 25%
-  if (seed % 4 === 0) return 'basalt';
-  return 'recursiveSquares';
+  void seed;
+  return 'none';
+}
+
+/**
+ * Authoritative zone gate for generated topographic terrain.
+ * For now, mountain/ridge terrain belongs only to Caustics.
+ */
+export function shouldUseTopographicTerrain(zoneId: RpgZoneId): boolean {
+  return zoneId === 'caustics';
 }
 
 export function beginWaveTerrain(
@@ -438,92 +443,24 @@ export function beginWaveTerrain(
   nowMs: number,
   activeZoneId: RpgZoneId = 'euhedral',
 ): TopographicTerrainState | null {
-  // Seed is derived from waveNumber only — canvas dimensions must NOT be included
-  // here.  The terrain coordinate space is the fixed RPG logical world size, so
+  // Seed is derived from waveNumber only - canvas dimensions must NOT be included
+  // here. The terrain coordinate space is the fixed RPG logical world size, so
   // terrain layout must be identical regardless of window size, browser zoom, or
-  // devicePixelRatio.  Including canvasW/canvasH in the seed would cause different
+  // devicePixelRatio. Including canvasW/canvasH in the seed would cause different
   // terrain to be generated after a resize, violating coordinate stability.
   const seed = ((waveNumber + 1) * 0x9e3779b1) >>> 0;
   const { terrainProfile } = getRpgZoneTerrainProfile(activeZoneId);
 
-  if (terrainProfile === 'horizon') {
-    return null;
-  }
-
-  // Impetus: no terrain obstacles — visual space effects are handled by impetus-overlay.ts.
-  if (terrainProfile === 'asteroids') {
-    return null;
-  }
+  if (!shouldUseTopographicTerrain(activeZoneId)) return null;
 
   if (terrainProfile === 'seafloor') {
     return createTopographicTerrainState(waveNumber, seed, canvasW, canvasH, nowMs, 'cyanTactical');
   }
 
-  // Verdure: no terrain obstacles — cave-wall/vine visuals are handled by verdure-overlay.ts
-  // and rpg-verdure-render.ts.
-  if (terrainProfile === 'overgrowth') {
-    return null;
-  }
-
-  // Euhedral (crystalline): fractured square plates primarily, basalt/hex occasionally.
-  // Never use topographic terrain for Euhedral.
-  if (terrainProfile === 'crystalline') {
-    if (seed % 4 === 0) {
-      return {
-        waveNumber,
-        seed,
-        paletteId: 'mono',
-        terrainKind: 'basalt',
-        islands: [],
-        phase: 'growing',
-        phaseStartedAtMs: nowMs,
-        growDurationMs: TERRAIN_GROW_DURATION_MS,
-        shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
-        growth01: 0,
-        mergedContours: null,
-        lightCache: null,
-        squareNodes: [],
-        squareMaxDepth: 0,
-        basalt: generateBasaltTerrain(seed, waveNumber, canvasW, canvasH),
-      };
-    }
-    return createRecursiveSquareTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
-  }
-
-  // Fallback for unknown profiles: use the classic 20-wave cycle.
-  const terrainKind = getTerrainKindForWave(waveNumber, false);
-
-  if (terrainKind === 'none') {
-    return null;
-  }
-
-  if (terrainKind === 'recursiveSquares') {
-    return createRecursiveSquareTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
-  }
-
-  if (terrainKind === 'basalt') {
-    return {
-      waveNumber,
-      seed,
-      paletteId: 'mono',
-      terrainKind: 'basalt',
-      islands: [],
-      phase: 'growing',
-      phaseStartedAtMs: nowMs,
-      growDurationMs: TERRAIN_GROW_DURATION_MS,
-      shrinkDurationMs: TERRAIN_SHRINK_DURATION_MS,
-      growth01: 0,
-      mergedContours: null,
-      lightCache: null,
-      squareNodes: [],
-      squareMaxDepth: 0,
-      basalt: generateBasaltTerrain(seed, waveNumber, canvasW, canvasH),
-    };
-  }
-
-  return createTopographicTerrainState(waveNumber, seed, canvasW, canvasH, nowMs);
+  // Caustics currently uses the seafloor profile. Keep a conservative null
+  // fallback if data changes before another terrain profile is explicitly routed.
+  return null;
 }
-
 function createTopographicTerrainState(
   waveNumber: number,
   seed: number,

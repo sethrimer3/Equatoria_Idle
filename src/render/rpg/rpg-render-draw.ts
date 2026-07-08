@@ -149,7 +149,7 @@ import { renderTopographicTerrain } from './terrain/topographic-terrain';
 import type { EnemyInfluencePoint } from './terrain/topographic-terrain';
 import { renderPersistentTopographySunlight, renderTopographyLighting } from './terrain/topographic-lighting';
 import type { TopographicTerrainState } from './terrain/topographic-terrain';
-import { drawRpgPathfindingDebug } from './terrain/rpg-pathfinding';
+import { drawRpgPathfindingDebug, drawRpgPlayerPathPreview, type RpgPathState } from './terrain/rpg-pathfinding';
 import {
   drawCausticsBackground,
   drawCausticsFloorEffects,
@@ -477,6 +477,10 @@ export interface RpgDrawCtx {
   getFieldSpace(): RpgFieldSpace;
   /** Returns the current navigation grid for pathfinding debug draw. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
+  /** Returns the current player auto-move path cache for preview rendering. */
+  getPlayerAutoMovePathState(): RpgPathState | null;
+  /** Returns true while player auto-move is enabled. */
+  getAutoMoveEnabled(): boolean;
   /** Returns true when pathfinding debug visualization should be drawn. */
   getPathfindingDebugEnabled(): boolean;
   /** Returns true when the viewport/field-space diagnostic overlay should be drawn. */
