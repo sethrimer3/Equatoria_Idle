@@ -118,6 +118,11 @@
   flex-shrink: 0;
 }
 
+#rpg-area.rpg-area--letterboxed {
+  outline: 1px solid rgba(212, 170, 64, 0.92);
+  outline-offset: -1px;
+}
+
 /*
  * The RPG canvas fills its #rpg-area wrapper 100%×100%.
  * Its backing store is updated on every resize to CSS size × DPR, so

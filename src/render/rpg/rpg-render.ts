@@ -446,6 +446,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     // flex (align-items/justify-content: center).
     rpgArea.style.width  = `${areaW}px`;
     rpgArea.style.height = `${areaH}px`;
+    rpgArea.classList.toggle('rpg-area--letterboxed', areaW < containerW - 1 || areaH < containerH - 1);
 
     // CSS display size (== fitted area size, not raw container size).
     rpgCssW = areaW;
