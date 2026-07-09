@@ -22,10 +22,13 @@
  *   - Physical coordinates: screen × devicePixelRatio (used for canvas backing store).
  *
  * Scale invariant (checked by rpgFieldSpace.test.ts):
- *   The full 360×640 safe core must always fit inside the visible canvas.
- *   Scale = min(containerW / 360, containerH / 640, 1).
- *   Growing the canvas beyond the safe core reveals more world without zooming in.
- *   Shrinking the host reduces the scale so the full safe core remains visible.
+ *   Callers always pass a `canvasCssW × canvasCssH` that already has the exact
+ *   360:640 safe-core aspect ratio (the letterboxed/pillarboxed fit rectangle
+ *   computed by `doResize()`). Scale = min(containerW / 360, containerH / 640),
+ *   uncapped — growing the fitted area enlarges the view (more zoom), it never
+ *   reveals additional world. `visibleBounds`/`activeBounds`/`spawnBounds`
+ *   therefore always resolve to the fixed 360×640 world rect regardless of
+ *   window size.
  */
 
 // ── Core types ────────────────────────────────────────────────────────────────
@@ -72,11 +75,10 @@ export interface RpgFieldSpace {
   // ── World-space scale ─────────────────────────────────────────
   /**
    * Stable pixels-per-world-unit scale.
-   * Derived from `Math.min(canvasCssW / safeCoreWorldW, canvasCssH / safeCoreWorldH, 1)`.
-   * This ensures the full safe core (360×640) always fits inside the canvas.
-   * Growing the canvas beyond the safe core reveals more world without zooming in;
-   * shrinking the host below safe-core size reduces scale so the full safe core
-   * remains visible.
+   * Derived from `Math.min(canvasCssW / safeCoreWorldW, canvasCssH / safeCoreWorldH)`,
+   * uncapped. Callers always pass a canvas size with the exact safe-core aspect
+   * ratio, so this scale maps the fixed 360×640 world onto the fitted canvas
+   * area — growing the canvas zooms in, it never reveals more world.
    */
   scale: number;
 
@@ -104,7 +106,8 @@ export interface RpgFieldSpace {
   /**
    * The full world rectangle currently visible through the RPG camera.
    * Equals `canvasCssW / scale` wide and `canvasCssH / scale` tall, centred on the
-   * camera.  Growing the canvas grows these bounds without changing `scale`.
+   * camera.  Since callers always pass a canvas size with the exact safe-core
+   * aspect ratio, this is always the fixed 360×640 world rect.
    *
    * Use this as the primary reference for world rendering, culling, and
    * coordinate conversion.
@@ -233,13 +236,14 @@ export function makeSpawnBounds(_args: {
 // ── Main factory ──────────────────────────────────────────────────────────────
 
 /**
- * Computes the stable RPG safe-core scale from container CSS dimensions.
+ * Computes the RPG safe-core fit scale from container CSS dimensions.
  *
- * The scale is the largest value ≤ 1 that makes the full `RPG_LOGICAL_WIDTH ×
- * RPG_LOGICAL_HEIGHT` safe core fit inside the container:
+ * The scale is the largest value that makes the full `RPG_LOGICAL_WIDTH ×
+ * RPG_LOGICAL_HEIGHT` safe core fit inside the container (uncapped — large
+ * windows enlarge the view instead of revealing more world):
  *
  * ```ts
- * Math.min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT, 1)
+ * Math.min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT)
  * ```
  *
  * Use this in `doResize()` and tests to ensure the formula cannot drift.
@@ -250,7 +254,7 @@ export function computeRpgSafeCoreScale(
   safeCoreW: number,
   safeCoreH: number,
 ): number {
-  return Math.min(containerW / safeCoreW, containerH / safeCoreH, 1);
+  return Math.min(containerW / safeCoreW, containerH / safeCoreH);
 }
 
 /**

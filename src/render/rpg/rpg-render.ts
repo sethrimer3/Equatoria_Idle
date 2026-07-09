@@ -164,7 +164,7 @@ import {
   type RpgDrawCtx, createRpgDrawFrameState,
 } from './rpg-render-draw';
 import {
-  computeRpgFieldSpace, computeRpgSafeCoreScale, type RpgFieldSpace,
+  computeRpgFieldSpace, type RpgFieldSpace,
 } from './rpgFieldSpace';
 import {
   triggerDeath as _triggerDeath, doRestart as _doRestart,
@@ -412,78 +412,82 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   /**
-   * Expand #rpg-area to fill the full container and update the canvas backing
-   * store to containerW×DPR by containerH×DPR physical pixels.
+   * Fit #rpg-area to the largest 360×640 (9:16) rectangle that fits inside the
+   * container, centred via CSS letterbox/pillarbox, and update the canvas
+   * backing store to areaW×DPR by areaH×DPR physical pixels.
    *
    * World coordinates (widthPx × heightPx = 360 × 640) are NEVER changed —
-   * all game-entity positions stay in the fixed logical space.  Instead, a
-   * safe-core transform is stored (rpgSafeScale / rpgSafeOffsetX/Y) that
-   * drawRpgFrame applies each frame to centre the 360×640 world within the
-   * full canvas.  Extra space beyond the world reveals additional world area
-   * (extended background) rather than zooming in.
+   * all game-entity positions stay in the fixed logical space.  Because
+   * #rpg-area is always sized at exactly the 360:640 aspect ratio, the world
+   * viewport (`viewport`, and rpgFieldSpace.visibleBounds/activeBounds) never
+   * expands or contracts with the container — only the on-screen scale
+   * (rpgSafeScale) changes.  This guarantees gameplay bounds (spawn areas,
+   * grids, arenas) are identical regardless of window size.
    *
    * Scale invariant:
-   *   - Scale = min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT, 1).
-   *   - The full 360×640 safe core is always fully visible.
-   *   - Growing the canvas beyond the safe core reveals more world without zooming in.
-   *   - Shortening the host below 640 px reduces scale so the safe core remains visible.
-   *   - On a reference 360×640 phone:  scale = 1.0 (1 px per world unit).
-   *   - On a wider canvas (e.g. 600×640): scale = 1.0, worldViewW = 600
-   *     (more world visible, same zoom).
-   *   - On a 480×415 host: scale ≈ 415/640 ≈ 0.648 (full safe core still fits).
+   *   - fitScale = min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT).
+   *   - NOT capped at 1: large windows enlarge the view rather than reveal more world.
+   *   - areaW/areaH = RPG_LOGICAL_WIDTH/HEIGHT * fitScale, letterboxed/centred by CSS.
+   *   - The world viewport stays fixed at {left:0, top:0, right:360, bottom:640}.
+   *   - On a reference 360×640 phone:  fitScale = 1.0 (1 px per world unit).
+   *   - On a 480×415 host: fitScale ≈ min(480/360, 415/640) ≈ 0.648.
    */
   function doResize(cont: HTMLElement): void {
     const containerW = cont.clientWidth  || widthPx;
     const containerH = cont.clientHeight || heightPx;
 
-    // Expand #rpg-area to fill the entire container.
-    rpgArea.style.width  = `${containerW}px`;
-    rpgArea.style.height = `${containerH}px`;
+    // Largest 360:640 rectangle that fits inside the container, uncapped so
+    // large windows scale the view up rather than revealing more world.
+    const fitScale = Math.min(containerW / RPG_LOGICAL_WIDTH, containerH / RPG_LOGICAL_HEIGHT);
+    const areaW = Math.floor(RPG_LOGICAL_WIDTH  * fitScale);
+    const areaH = Math.floor(RPG_LOGICAL_HEIGHT * fitScale);
 
-    // CSS display size (== container size now).
-    rpgCssW = containerW;
-    rpgCssH = containerH;
+    // Size #rpg-area to the fitted rect; #rpg-container centres it via CSS
+    // flex (align-items/justify-content: center).
+    rpgArea.style.width  = `${areaW}px`;
+    rpgArea.style.height = `${areaH}px`;
+
+    // CSS display size (== fitted area size, not raw container size).
+    rpgCssW = areaW;
+    rpgCssH = areaH;
 
     // Full canvas dimensions for diagnostics and clear pass.
-    rpgFullW = containerW;
-    rpgFullH = containerH;
+    rpgFullW = areaW;
+    rpgFullH = areaH;
 
-    // Stable RPG scale: fit the full 360×640 safe core inside the container,
-    // capped at 1 so the world never zooms in beyond 1 px-per-world-unit.
-    // Growing the canvas beyond the safe core reveals more world, not more zoom.
-    rpgSafeScale   = computeRpgSafeCoreScale(containerW, containerH, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT);
-    rpgSafeOffsetX = (containerW - RPG_LOGICAL_WIDTH  * rpgSafeScale) / 2;
-    rpgSafeOffsetY = (containerH - RPG_LOGICAL_HEIGHT * rpgSafeScale) / 2;
+    // Stable RPG scale: the fitted, uncapped scale. No internal letterboxing
+    // offset is needed since the area is already exactly the safe-core ratio.
+    rpgSafeScale   = fitScale;
+    rpgSafeOffsetX = 0;
+    rpgSafeOffsetY = 0;
 
-    // Visible world-space dimensions: canvas CSS size divided by the stable scale.
-    // When the canvas grows, worldViewW/H grow; the scale stays the same.
-    rpgWorldViewW = containerW / rpgSafeScale;
-    rpgWorldViewH = containerH / rpgSafeScale;
+    // Visible world-space dimensions always equal the fixed logical world size.
+    rpgWorldViewW = RPG_LOGICAL_WIDTH;
+    rpgWorldViewH = RPG_LOGICAL_HEIGHT;
 
-    // Update the live viewport bounds in world coordinates.
-    // These define the full *visible* gameplay area.  The safe core (360×640) is
-    // always centred inside them.
-    viewport.left   = -rpgSafeOffsetX / rpgSafeScale;
-    viewport.top    = -rpgSafeOffsetY / rpgSafeScale;
-    viewport.right  = (containerW - rpgSafeOffsetX) / rpgSafeScale;
-    viewport.bottom = (containerH - rpgSafeOffsetY) / rpgSafeScale;
+    // The viewport is fixed to the logical world bounds — never expands or
+    // contracts with container size.
+    viewport.left   = 0;
+    viewport.top    = 0;
+    viewport.right  = RPG_LOGICAL_WIDTH;
+    viewport.bottom = RPG_LOGICAL_HEIGHT;
 
-    // Update the physical backing store (DPR-scaled full-container size).
+    // Update the physical backing store (DPR-scaled fitted-area size).
     const dpr = window.devicePixelRatio || 1;
-    const backingW = Math.round(containerW * dpr);
-    const backingH = Math.round(containerH * dpr);
+    const backingW = Math.round(areaW * dpr);
+    const backingH = Math.round(areaH * dpr);
     if (canvas.width  !== backingW) canvas.width  = backingW;
     if (canvas.height !== backingH) canvas.height = backingH;
 
     // Recompute the authoritative field-space snapshot so all subsystems that
-    // consume rpgFieldSpace (draw, spawn, effects) share the same bounds.
+    // consume rpgFieldSpace (draw, spawn, effects) share the same fixed bounds.
     rpgFieldSpace = computeRpgFieldSpace({
-      canvasCssW:     containerW,
-      canvasCssH:     containerH,
+      canvasCssW:     areaW,
+      canvasCssH:     areaH,
       backingW,
       backingH,
       dpr,
-      stableScale:    rpgSafeScale,
+      stableScale:    fitScale,
       cameraCenter:   { x: RPG_LOGICAL_WIDTH / 2, y: RPG_LOGICAL_HEIGHT / 2 },
       safeCoreWorldW: RPG_LOGICAL_WIDTH,
       safeCoreWorldH: RPG_LOGICAL_HEIGHT,

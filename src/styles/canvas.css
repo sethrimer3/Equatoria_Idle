@@ -89,9 +89,9 @@
  * The RPG canvas container sits above the stats panel (3×tab-height) and the
  * tab bar (1×tab-height + safe-bottom), so its height excludes both.
  *
- * #rpg-area fills the full container — no letterboxing.  The safe-core
- * transform applied in drawRpgFrame() centres the 360×640 game world within
- * the full canvas; any extra space shows the background fill (#0a0a12).
+ * #rpg-area is sized by doResize() to the largest 360×640-ratio rectangle
+ * that fits inside the container, and this flex layout centres it
+ * (letterbox/pillarbox); the background fill (#0a0a12) shows in the margins.
  */
 #rpg-container {
   position: absolute;
@@ -108,9 +108,9 @@
 }
 
 /*
- * #rpg-area fills the full #rpg-container (width × height set by doResize()).
- * The canvas backing store is widthPx×DPR by heightPx×DPR (HiDPI-aware).
- * A safe-core transform in drawRpgFrame() centres the 360×640 game world.
+ * #rpg-area is sized to the fitted 360:640 area (width × height set by
+ * doResize()), always ≤ #rpg-container. The canvas backing store is
+ * areaW×DPR by areaH×DPR (HiDPI-aware).
  */
 #rpg-area {
   position: relative;
