@@ -37,29 +37,67 @@ import { rollLensEffects } from '../../../data/rpg/lens-rolling';
 import { LENS_T2_IMPLEMENTED_TIER_IDS } from '../../../data/rpg/lens-definitions';
 import type { CraftedLensData } from '../../../data/rpg/lens-types';
 import type { TierId } from '../../../data/tiers';
+import type { RpgSimState } from '../../../sim/rpg/rpg-state';
+import type { RpgPlayerAttackCtx } from '../rpg-player-attack';
+import type { ClosestTarget, LaserEnemy, RpgPlayerStats } from '../rpg-types';
 
 // ── Mock enemy and ctx factories ──────────────────────────────────────────────
 
-function makeEnemy(overrides: Partial<{ hp: number; x: number; y: number }> = {}) {
-  return { hp: 200, maxHp: 200, x: 100, y: 100, vx: 0, vy: 0, ...overrides };
+function makeEnemy(overrides: Partial<LaserEnemy> = {}): LaserEnemy {
+  return {
+    kind: 'laser',
+    hp: 200,
+    maxHp: 200,
+    x: 100,
+    y: 100,
+    vx: 0,
+    vy: 0,
+    atk: 1,
+    def: 0,
+    phase: 'idle',
+    phaseElapsedMs: 0,
+    dashDirX: 0,
+    dashDirY: 0,
+    dashTraveled: 0,
+    lockedTargetX: 100,
+    lockedTargetY: 100,
+    attackTrail: {
+      active: false,
+      startX: 0,
+      startY: 0,
+      endX: 0,
+      endY: 0,
+      controlAngle: 0,
+      trailStartMs: 0,
+      trailEndMs: 0,
+    },
+    patrolTimerMs: 0,
+    hasHitPlayer: false,
+    ...overrides,
+  };
 }
 
 type MockEnemy = ReturnType<typeof makeEnemy>;
+type MockAttackCtx = RpgPlayerAttackCtx & {
+  _hitVisualsLog: Array<{ x: number; y: number }>;
+  _fluidLog: Array<{ x: number; y: number }>;
+  _t2EffectCallCount: () => number;
+};
 
 /** Build a minimal RpgPlayerAttackCtx mock that routes findClosestTarget to a provided enemy. */
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-function makeCtx(enemy: MockEnemy | null = null): import('../../../render/rpg/rpg-player-attack').RpgPlayerAttackCtx & { _hitVisualsLog: Array<{x:number;y:number}>; _fluidLog: Array<{x:number;y:number}> } {
+ 
+function makeCtx(enemy: MockEnemy | null = null): MockAttackCtx {
   const hitVisualsLog: Array<{ x: number; y: number }> = [];
   const fluidLog: Array<{ x: number; y: number }> = [];
-  let t2EffectCallCount = 0;
+  const t2EffectCallCount = 0;
 
-  const laserEnemy = enemy as (MockEnemy & { kind?: string }) | null;
+  const laserEnemy = enemy;
 
   const ctx = {
     mote: { x: 0, y: 0 },
     get bossEnemy() { return null; },
-    rpgSimState: {} as any,
-    playerStats: {} as any,
+    rpgSimState: {} as RpgSimState,
+    playerStats: { hp: 100, maxHp: 100, atk: 1, def: 0, regen: 0 } satisfies RpgPlayerStats,
     enemies: laserEnemy ? [laserEnemy] : [],
     sapphireEnemies: [],
     sapphireMissiles: [],
@@ -175,13 +213,13 @@ function makeCtx(enemy: MockEnemy | null = null): import('../../../render/rpg/rp
       addExplosion: (x: number, y: number) => { fluidLog.push({ x, y }); },
     },
 
-    findClosestTarget: (rangeSq: number) => {
+    findClosestTarget: (rangeSq: number): ClosestTarget | null => {
       if (!laserEnemy || laserEnemy.hp <= 0) return null;
       const dx = laserEnemy.x - 0;
       const dy = laserEnemy.y - 0;
       if (dx * dx + dy * dy > rangeSq) return null;
       return {
-        kind: 'laser' as any,
+        kind: 'laser',
         x: laserEnemy.x,
         y: laserEnemy.y,
         distSq: dx * dx + dy * dy,
@@ -203,7 +241,7 @@ function makeCtx(enemy: MockEnemy | null = null): import('../../../render/rpg/rp
     _hitVisualsLog: hitVisualsLog,
     _fluidLog: fluidLog,
     _t2EffectCallCount: () => t2EffectCallCount,
-  } as unknown as ReturnType<typeof makeCtx>;
+  } as unknown as MockAttackCtx;
 
   return ctx;
 }
@@ -256,7 +294,7 @@ function makeParams(
     hitDamage,
     lens: makeLensWithT2(tierId),
     weaponId: 'weapon_test',
-    ctx: makeCtx(enemy) as any,
+    ctx: makeCtx(enemy),
   };
 }
 
@@ -457,7 +495,7 @@ describe('lens-tier2-effects — 10. All T3 effects implemented; T2 handler skip
       hitDamage: 100,
       lens: lensWithOnlyT3,
       weaponId: 'w1',
-      ctx: makeCtx(enemy) as any,
+      ctx: makeCtx(enemy),
     };
     withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
     expect(enemy.hp).toBe(initialHp);
@@ -483,7 +521,7 @@ describe('lens-tier2-effects — 11. Weapons without lenses unaffected', () => {
       hitDamage: 100,
       lens: emptyLens,
       weaponId: 'w1',
-      ctx: makeCtx(enemy) as any,
+      ctx: makeCtx(enemy),
     };
     withAlwaysProc(() => handleLensTier2EffectsOnWeaponHit(params));
     expect(enemy.hp).toBe(200);

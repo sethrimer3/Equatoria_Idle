@@ -47,7 +47,10 @@ function makeEnemy(overrides: Partial<{ hp: number; x: number; y: number; vx: nu
 
 // ── Minimal arrays for tickLensStatuses ───────────────────────────────────────
 
-function makeArrays(enemies: ReturnType<typeof makeEnemy>[] = []) {
+type StatusTickArrays = Parameters<typeof tickLensStatuses>[0];
+type MockEnemy = StatusTickArrays['enemies'][number];
+
+function makeArrays(enemies: MockEnemy[] = []): StatusTickArrays {
   const empty: never[] = [];
   return {
     enemies,
@@ -142,7 +145,7 @@ describe('enemy-status-effects — 2. Ruby T1 → Burning', () => {
   it('burning ticks reduce HP over time', () => {
     const enemy = makeEnemy({ hp: 100 });
     applyLensStatus(enemy, burningParams());
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     // Tick past 1000ms to trigger burn
     tickLensStatuses(arrays, 1100, 0, 0);
     expect(enemy.hp).toBeLessThan(100);
@@ -151,7 +154,7 @@ describe('enemy-status-effects — 2. Ruby T1 → Burning', () => {
   it('burning expires after duration', () => {
     const enemy = makeEnemy();
     applyLensStatus(enemy, burningParams());
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     tickLensStatuses(arrays, 5000, 0, 0);
     expect(getActiveStatuses(enemy).some(s => s.key === 'burning')).toBe(false);
   });
@@ -167,7 +170,7 @@ describe('enemy-status-effects — 3. Emerald T1 → Poisoned', () => {
   it('poisoned ticks reduce HP', () => {
     const enemy = makeEnemy({ hp: 100 });
     applyLensStatus(enemy, poisonedParams());
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     tickLensStatuses(arrays, 1100, 0, 0);
     expect(enemy.hp).toBeLessThan(100);
   });
@@ -175,7 +178,7 @@ describe('enemy-status-effects — 3. Emerald T1 → Poisoned', () => {
   it('poisoned persists longer than burning (6000ms vs 4000ms)', () => {
     const enemy = makeEnemy();
     applyLensStatus(enemy, poisonedParams());
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     tickLensStatuses(arrays, 4500, 0, 0);
     expect(getActiveStatuses(enemy).some(s => s.key === 'poisoned')).toBe(true);
     tickLensStatuses(arrays, 2000, 0, 0);
@@ -240,7 +243,7 @@ describe('enemy-status-effects — 7. Reapplying refreshes duration', () => {
   it('reapplying abraded refreshes remaining time instead of stacking', () => {
     const enemy = makeEnemy();
     applyLensStatus(enemy, abradedParams());
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     // Advance 2s so there's only 1.5s remaining
     tickLensStatuses(arrays, 2000, 0, 0);
     expect(getActiveStatuses(enemy).some(s => s.key === 'abraded')).toBe(true);
@@ -266,7 +269,7 @@ describe('enemy-status-effects — 8. DoT statuses tick and expire', () => {
   it('burning deals damage every 1000ms', () => {
     const enemy = makeEnemy({ hp: 100 });
     applyLensStatus(enemy, burningParams());
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     tickLensStatuses(arrays, 1000, 0, 0);
     const after1 = enemy.hp;
     tickLensStatuses(arrays, 1000, 0, 0);
@@ -280,8 +283,8 @@ describe('enemy-status-effects — 8. DoT statuses tick and expire', () => {
     const poisonEnemy = makeEnemy({ hp: 100 });
     applyLensStatus(burnEnemy, burningParams());
     applyLensStatus(poisonEnemy, poisonedParams());
-    const burnArrays = makeArrays([burnEnemy] as any);
-    const poisonArrays = makeArrays([poisonEnemy] as any);
+    const burnArrays = makeArrays([burnEnemy]);
+    const poisonArrays = makeArrays([poisonEnemy]);
     tickLensStatuses(burnArrays, 1000, 0, 0);
     tickLensStatuses(poisonArrays, 1000, 0, 0);
     const burnDmg = 100 - burnEnemy.hp;
@@ -303,7 +306,7 @@ describe('enemy-status-effects — 9. Echo-Marked single non-recursive repeat', 
   it('echo fires after 600ms and reduces HP', () => {
     const enemy = makeEnemy({ hp: 100 });
     applyLensStatus(enemy, echoParams(20));
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     tickLensStatuses(arrays, 700, 0, 0);
     expect(enemy.hp).toBeLessThan(100);
   });
@@ -311,7 +314,7 @@ describe('enemy-status-effects — 9. Echo-Marked single non-recursive repeat', 
   it('echo does not fire before 600ms', () => {
     const enemy = makeEnemy({ hp: 100 });
     applyLensStatus(enemy, echoParams(20));
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     tickLensStatuses(arrays, 400, 0, 0);
     expect(enemy.hp).toBe(100);
   });
@@ -319,7 +322,7 @@ describe('enemy-status-effects — 9. Echo-Marked single non-recursive repeat', 
   it('echo fires exactly once (no recursive echo-of-echo)', () => {
     const enemy = makeEnemy({ hp: 100 });
     applyLensStatus(enemy, echoParams(20));
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     tickLensStatuses(arrays, 700, 0, 0);
     const dmgAfterFirstEcho = 100 - enemy.hp;
     tickLensStatuses(arrays, 1000, 0, 0);
@@ -448,7 +451,7 @@ describe('enemy-status-effects — 13. Boss Fractal Wound reduced tick count', (
       durationMs: 5000, magnitude: 10, tickEveryMs: 600,
       fractalInitialDamage: 10,
     });
-    const arrays = makeArrays([enemy] as any);
+    const arrays = makeArrays([enemy]);
     // Tick in 600ms increments so DoT fires before expiry check
     for (let i = 0; i < 8; i++) tickLensStatuses(arrays, 600, 0, 0);
     // Should have taken damage (ticks fired)
@@ -467,8 +470,8 @@ describe('enemy-status-effects — 13. Boss Fractal Wound reduced tick count', (
     };
     applyLensStatus(normal, baseParams);
     applyLensStatus(boss,   { ...baseParams, fractalTickCount: ENEMY_FRAC_TICKS_BOSS });
-    const normalArrays = makeArrays([normal] as any);
-    const bossArrays   = makeArrays([boss] as any);
+    const normalArrays = makeArrays([normal]);
+    const bossArrays   = makeArrays([boss]);
     // Tick in 600ms increments
     for (let i = 0; i < 8; i++) {
       tickLensStatuses(normalArrays, 600, 0, 0);

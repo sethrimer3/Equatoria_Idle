@@ -226,7 +226,7 @@ export function actorMoveX(
 ): void {
   const rem = _getRemainder(entity);
   rem.x += amount;
-  let move = Math.round(rem.x);
+  const move = Math.round(rem.x);
   if (move === 0) return;
   rem.x -= move;
   const sign = (move > 0 ? 1 : -1) as 1 | -1;
@@ -258,7 +258,7 @@ export function actorMoveY(
 ): void {
   const rem = _getRemainder(entity);
   rem.y += amount;
-  let move = Math.round(rem.y);
+  const move = Math.round(rem.y);
   if (move === 0) return;
   rem.y -= move;
   const sign = (move > 0 ? 1 : -1) as 1 | -1;
@@ -305,7 +305,7 @@ export class ActorBody {
 
   moveX(amount: number, ctx: ActorSolidCtx, onCollide?: (hit: CollisionHit) => void): void {
     this.xRemainder += amount;
-    let move = Math.round(this.xRemainder);
+    const move = Math.round(this.xRemainder);
     if (move === 0) return;
     this.xRemainder -= move;
     const hw = this.w / 2, hh = this.h / 2;
@@ -324,7 +324,7 @@ export class ActorBody {
 
   moveY(amount: number, ctx: ActorSolidCtx, onCollide?: (hit: CollisionHit) => void): void {
     this.yRemainder += amount;
-    let move = Math.round(this.yRemainder);
+    const move = Math.round(this.yRemainder);
     if (move === 0) return;
     this.yRemainder -= move;
     const hw = this.w / 2, hh = this.h / 2;

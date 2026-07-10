@@ -5,7 +5,7 @@ export const BOSS_SPAWN_FADE_MS = 240;
 export const BOSS_SPAWN_INTRO_DURATION_MS = 960 + BOSS_SPAWN_FADE_MS;
 
 // Legacy no-op — spawn circle is now started via startBossIntro in rpg-render.ts.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export function pushBossSpawnCircle(_x: number, _y: number): void { /* no-op */ }
 import { getBossIntroDrawState } from './boss-intro-director';
 import { getCachedImage, loadImage } from '../assets/asset-loader';

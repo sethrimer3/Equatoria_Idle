@@ -16,6 +16,7 @@ import type {
   RpgMote, RpgPhase, RpgPlayerStats,
   LaserEnemy, SapphireEnemy, SapphireMissile,
 } from './rpg-types';
+import type { RpgFluid } from './rpg-fluid';
 import type {
   EmeraldEnemy, AmberEnemy, AmberShard, VoidEnemy,
   QuartzEnemy, QuartzSpike, RubyEnemy, RubyBolt,
@@ -94,7 +95,7 @@ import {
   updateBinaryRingMissiles,
   updateBinaryLaserSweep,
 } from './rpg-binary-ring-encounter';
-import { updateStardustEnemies } from './rpg-stardust-update';
+import { updateStardustEnemies, type StardustUpdateCtx } from './rpg-stardust-update';
 import { updateHorizonPentagonGroups } from './horizon-pentagon-update';
 import { updateSpawnFlashes } from './rpg-spawn-flash';
 import { updateBossIntro } from './boss-intro-director';
@@ -294,7 +295,7 @@ export interface RpgUpdateCtx {
 
   // Rendering
   statsPanel: { update(): void };
-  fluid: { step(deltaMs: number): void };
+  fluid: RpgFluid;
   drawCtx: RpgDrawCtx;
   drawFrameState: RpgDrawFrameState;
   getBinaryLaserSweep(): BinaryLaserSweep | null;
@@ -514,14 +515,14 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
   }
   // Stardust enemy update (prismatic particle cloud + laser bounce)
   if (a.stardustEnemies.length > 0) {
-    const stardustCtx = {
+    const stardustCtx: StardustUpdateCtx = {
       mote: ctx.mote,
       dim: { w: ctx.enemyCtx.dim.w, h: ctx.enemyCtx.dim.h },
       playerStats: ctx.playerStats,
       getTopographicTerrainState: ctx.getTopographicTerrainState.bind(ctx),
       dealDamageToPlayer: ctx.enemyCtx.dealDamageToPlayer.bind(ctx.enemyCtx),
       spawnDamageNumber: ctx.spawnDamageNumber.bind(ctx),
-      fluid: ctx.fluid as any,
+      fluid: ctx.fluid,
     };
     updateStardustEnemies(a.stardustEnemies, stardustCtx, deltaMs);
   }

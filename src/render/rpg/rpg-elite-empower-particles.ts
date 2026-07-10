@@ -58,7 +58,7 @@ interface EmpowerParticle {
 
 // ── Module-level state ─────────────────────────────────────────────────────────
 
-let _particles: EmpowerParticle[] = [];
+const _particles: EmpowerParticle[] = [];
 let _glowCanvas: HTMLCanvasElement | null = null;
 let _glowCtx: CanvasRenderingContext2D | null = null;
 

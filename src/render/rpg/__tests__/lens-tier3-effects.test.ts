@@ -46,18 +46,55 @@ import { rollLensEffects } from '../../../data/rpg/lens-rolling';
 import { LENS_T3_IMPLEMENTED_TIER_IDS } from '../../../data/rpg/lens-definitions';
 import type { CraftedLensData } from '../../../data/rpg/lens-types';
 import type { TierId } from '../../../data/tiers';
+import type { RpgPlayerAttackCtx } from '../rpg-player-attack';
+import type { ClosestTarget, LaserEnemy } from '../rpg-types';
 
 // ── Mock enemy factory ──────────────────────────────────────────────────────────
 
-function makeEnemy(overrides: Partial<{ hp: number; x: number; y: number }> = {}) {
-  return { hp: 200, maxHp: 200, x: 100, y: 100, vx: 0, vy: 0, ...overrides };
+function makeEnemy(overrides: Partial<LaserEnemy> = {}): LaserEnemy {
+  return {
+    kind: 'laser',
+    hp: 200,
+    maxHp: 200,
+    x: 100,
+    y: 100,
+    vx: 0,
+    vy: 0,
+    atk: 1,
+    def: 0,
+    phase: 'idle',
+    phaseElapsedMs: 0,
+    dashDirX: 0,
+    dashDirY: 0,
+    dashTraveled: 0,
+    lockedTargetX: 100,
+    lockedTargetY: 100,
+    attackTrail: {
+      active: false,
+      startX: 0,
+      startY: 0,
+      endX: 0,
+      endY: 0,
+      controlAngle: 0,
+      trailStartMs: 0,
+      trailEndMs: 0,
+    },
+    patrolTimerMs: 0,
+    hasHitPlayer: false,
+    ...overrides,
+  };
 }
 
 type MockEnemy = ReturnType<typeof makeEnemy>;
+type T3EnemyArrays = Parameters<typeof tickLensTier3Effects>[0];
+type MockAttackCtx = RpgPlayerAttackCtx & {
+  _hitVisualsLog: Array<{ x: number; y: number }>;
+  _fluidLog: Array<{ x: number; y: number }>;
+};
 
 // ── Mock ctx factory ────────────────────────────────────────────────────────────
 
-function makeCtx(enemy: MockEnemy | null = null) {
+function makeCtx(enemy: MockEnemy | null = null): MockAttackCtx {
   const hitVisualsLog: Array<{ x: number; y: number }> = [];
   const fluidLog: Array<{ x: number; y: number }> = [];
 
@@ -105,21 +142,18 @@ function makeCtx(enemy: MockEnemy | null = null) {
     fluid: {
       addExplosion: (x: number, y: number) => { fluidLog.push({ x, y }); },
     },
-    findClosestTarget: (rangeSq: number) => {
+    findClosestTarget: (rangeSq: number): ClosestTarget | null => {
       if (!enemy || enemy.hp <= 0) return null;
       const dx = enemy.x - 0;
       const dy = enemy.y - 0;
       if (dx * dx + dy * dy > rangeSq) return null;
-      return { x: enemy.x, y: enemy.y, distSq: dx * dx + dy * dy, laser: enemy } as any;
+      return { kind: 'laser', x: enemy.x, y: enemy.y, distSq: dx * dx + dy * dy, laser: enemy };
     },
 
     _hitVisualsLog: hitVisualsLog,
     _fluidLog: fluidLog,
   };
-  return ctx as unknown as import('../../../render/rpg/rpg-player-attack').RpgPlayerAttackCtx & {
-    _hitVisualsLog: typeof hitVisualsLog;
-    _fluidLog: typeof fluidLog;
-  };
+  return ctx as unknown as MockAttackCtx;
 }
 
 // ── Lens factories ────────────────────────────────────────────────────────────
@@ -168,11 +202,11 @@ function makeParams(tierId: TierId, enemy: MockEnemy, hitDamage = 100): LensTier
     hitDamage,
     lens: makeLensWithT3(tierId),
     weaponId: 'weapon_test',
-    ctx: makeCtx(enemy) as any,
+    ctx: makeCtx(enemy),
   };
 }
 
-function makeArrays(enemy: MockEnemy | null = null) {
+function makeArrays(enemy: MockEnemy | null = null): T3EnemyArrays {
   return {
     enemies: enemy ? [enemy] : [],
     sapphireEnemies: [], emeraldEnemies: [], amberEnemies: [], voidEnemies: [],
@@ -246,7 +280,7 @@ describe('lens-tier3-effects — 2. Sandstorm Cascade triggers on Sand T3 hit', 
       }],
     };
     const params: LensTier3HitParams = {
-      targetEntity: enemy, hitDamage: 100, lens: lensNoT3, weaponId: 'w1', ctx: makeCtx(enemy) as any,
+      targetEntity: enemy, hitDamage: 100, lens: lensNoT3, weaponId: 'w1', ctx: makeCtx(enemy),
     };
     withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
     expect(enemy.hp).toBe(200);
@@ -417,7 +451,7 @@ describe('lens-tier3-effects — 10. Radiant Detonation fires on tagged Radiant 
     });
     const params: LensTier3HitParams = {
       targetEntity: enemy, hitDamage: 100, lens: makeLensWithT3('citrine'),
-      weaponId: 'w1', ctx: ctx as any,
+      weaponId: 'w1', ctx,
     };
     // Hit: kills enemy (hp 1 - 100 = 0 or less via weapon), Citrine T3 checks death
     withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
@@ -468,7 +502,7 @@ describe('lens-tier3-effects — 12. Viridian Bloom creates a zone on Poisoned e
     });
     const params: LensTier3HitParams = {
       targetEntity: enemy, hitDamage: 10, lens: makeLensWithT3('emerald'),
-      weaponId: 'w1', ctx: ctx as any,
+      weaponId: 'w1', ctx,
     };
     const beforeCount = getActiveBloomZoneCount();
     withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
@@ -490,7 +524,7 @@ describe('lens-tier3-effects — 12. Viridian Bloom creates a zone on Poisoned e
     // Create a bloom zone by simulating a death
     const params: LensTier3HitParams = {
       targetEntity: enemy, hitDamage: 10, lens: makeLensWithT3('emerald'),
-      weaponId: 'w1', ctx: ctx as any,
+      weaponId: 'w1', ctx,
     };
     withNeverProc(() => handleLensTier3EffectsOnWeaponHit(params)); // tag the enemy
     enemy.hp = 0; // simulate death
@@ -500,7 +534,7 @@ describe('lens-tier3-effects — 12. Viridian Bloom creates a zone on Poisoned e
     const initialBloom = getActiveBloomZoneCount();
     if (initialBloom > 0) {
       // Tick until bloom expires
-      expect(() => tickLensTier3Effects(makeArrays() as any, 4000)).not.toThrow();
+      expect(() => tickLensTier3Effects(makeArrays(), 4000)).not.toThrow();
       expect(getActiveBloomZoneCount()).toBe(0);
     }
     clearEnemyStatuses(enemy);
@@ -530,7 +564,7 @@ describe('lens-tier3-effects — 14. Absolute Zero freeze on chill hit threshold
     const lens = makeLensWithT3('sapphire');
     const ctx = makeCtx(enemy);
     const params: LensTier3HitParams = {
-      targetEntity: enemy, hitDamage: 10, lens, weaponId: 'w1', ctx: ctx as any,
+      targetEntity: enemy, hitDamage: 10, lens, weaponId: 'w1', ctx,
     };
 
     withNeverProc(() => {
@@ -619,7 +653,7 @@ describe('lens-tier3-effects — 17. All 12 T3 effects implemented, no STUB', ()
     };
     const params: LensTier3HitParams = {
       targetEntity: enemy, hitDamage: 100, lens: lensNotApplied, weaponId: 'w1',
-      ctx: makeCtx(enemy) as any,
+      ctx: makeCtx(enemy),
     };
     withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
     expect(enemy.hp).toBe(initialHp);
@@ -793,7 +827,7 @@ describe('lens-tier3-effects — 23. Nullstone Event Horizon', () => {
     const params = makeParams('nullstone', enemy);
     withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
     if (getEventHorizonZoneCount() > 0) {
-      tickLensTier3Effects(makeArrays() as any, 2000); // tick past duration
+      tickLensTier3Effects(makeArrays(), 2000); // tick past duration
       expect(getEventHorizonZoneCount()).toBe(0);
     }
     clearEnemyStatuses(enemy);
@@ -832,7 +866,7 @@ describe('lens-tier3-effects — 24. Fracteryl Infinite Descent', () => {
     clearEnemyStatuses(enemy);
 
     // Tick should detect wound gone and attempt descent (always proc → repeat count becomes 1)
-    withAlwaysProc(() => tickLensTier3Effects(makeArrays(enemy) as any, 16));
+    withAlwaysProc(() => tickLensTier3Effects(makeArrays(enemy), 16));
     expect(getDescentRepeatCount(enemy)).toBeLessThanOrEqual(2);
     clearEnemyStatuses(enemy);
   });
@@ -846,7 +880,7 @@ describe('lens-tier3-effects — 24. Fracteryl Infinite Descent', () => {
     withAlwaysProc(() => {
       for (let i = 0; i < 10; i++) {
         clearEnemyStatuses(enemy); // remove any wound
-        tickLensTier3Effects(makeArrays(enemy) as any, 16);
+        tickLensTier3Effects(makeArrays(enemy), 16);
       }
     });
     expect(getDescentRepeatCount(enemy)).toBeLessThanOrEqual(2);
@@ -858,7 +892,7 @@ describe('lens-tier3-effects — 24. Fracteryl Infinite Descent', () => {
     const params = makeParams('fracteryl', enemy);
     expect(() => withAlwaysProc(() => {
       for (let i = 0; i < 10; i++) handleLensTier3EffectsOnWeaponHit(params);
-      tickLensTier3Effects(makeArrays(enemy) as any, 100);
+      tickLensTier3Effects(makeArrays(enemy), 100);
     })).not.toThrow();
     clearEnemyStatuses(enemy);
   });
@@ -916,7 +950,7 @@ describe('lens-tier3-effects — 25. Eigenstein Reality Cascade', () => {
 
     // Remove riftScarred and tick — instability should clear
     clearEnemyStatuses(enemy);
-    tickLensTier3Effects(makeArrays(enemy) as any, 16);
+    tickLensTier3Effects(makeArrays(enemy), 16);
     expect(getRealityCascadeInstability(enemy, params.lens.id)).toBe(0);
     clearEnemyStatuses(enemy);
   });
@@ -963,7 +997,7 @@ describe('lens-tier3-effects — 19. Lenses without T3 effects unaffected', () =
     };
     const params: LensTier3HitParams = {
       targetEntity: enemy, hitDamage: 100, lens: t1OnlyLens, weaponId: 'w1',
-      ctx: makeCtx(enemy) as any,
+      ctx: makeCtx(enemy),
     };
     withAlwaysProc(() => handleLensTier3EffectsOnWeaponHit(params));
     expect(enemy.hp).toBe(200);
