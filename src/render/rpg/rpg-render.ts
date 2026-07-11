@@ -40,6 +40,7 @@ import {
   PLAYER_SLOWED_DURATION_MS, PLAYER_TIMEWARP_DURATION_MS,
 } from '../../sim/rpg/player-status-effects';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
+import { onZoneEntered } from '../../achievements/achievementHooks';
 import { getBossTempoBpm } from '../../data/rpg/boss-tempo-config';
 import { CASSETTE_START_PATH, CASSETTE_END_PATH, getBossBeatLoopPath, getRandomBossMusicTrack } from '../../audio/audio-paths';
 import { startBossIntro, onBossIntroCassetteStarted, onBossIntroCassetteDone, resetBossIntro } from './boss-intro-director';
@@ -264,6 +265,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     resetActiveEncounterForZoneSwitch();
     clearPlayerAutoMovePath();
     rpgSimState.activeZoneId = newZoneId;
+    onZoneEntered(newZoneId);
     // Restore the new zone's previously-saved wave (0 if never visited).
     currentWave = rpgSimState.currentWaveByZone[newZoneId] ?? 0;
     rpgSimState.currentWaveByZone[newZoneId] = currentWave;

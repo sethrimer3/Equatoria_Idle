@@ -108,6 +108,17 @@ export function deserializeGameState(data: SaveData): GameState {
     recomputeBonuses(state.achievements);
   }
 
+  // Platform achievements (v39+; absent in older saves defaults to no records)
+  if (data.platformAchievements?.records) {
+    for (const [id, rec] of Object.entries(data.platformAchievements.records)) {
+      state.platformAchievements.records[id] = {
+        unlocked: rec.unlocked ?? false,
+        revealed: rec.revealed ?? false,
+        progress: rec.progress ?? 0,
+      };
+    }
+  }
+
   state.elapsedMs = data.elapsedMs;
 
   // Aliven state (v6+; older saves have no alivened tiers)

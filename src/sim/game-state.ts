@@ -73,6 +73,8 @@ import {
   checkAndUnlockAchievements,
   type AchievementState,
 } from './achievements';
+import { createAchievementServiceState, type AchievementServiceState } from '../achievements/achievementService';
+import { onMoteForged } from '../achievements/achievementHooks';
 import {
   createAlivenState,
   tryAliven,
@@ -119,6 +121,8 @@ export interface GameState {
   forge: ForgeCrunchState;
   looms: LoomState;
   achievements: AchievementState;
+  /** Platform (Steam/Google Play) achievement sync state — see src/achievements. */
+  platformAchievements: AchievementServiceState;
   aliven: AlivenState;
   rpg: RpgSimState;
   lastAutoTapMs: number;
@@ -136,6 +140,7 @@ export function createGameState(): GameState {
     forge: createForgeCrunchState(),
     looms: createLoomState(),
     achievements: createAchievementState(),
+    platformAchievements: createAchievementServiceState(),
     aliven: createAlivenState(),
     rpg: createRpgSimState(),
     lastAutoTapMs: 0,
@@ -354,6 +359,7 @@ export function craftWeapon(
   state.rpg.purchasedWeaponIds.add(craftedWeapon.id);
   state.rpg.weaponTiersByWeaponId.set(craftedWeapon.id, 1);
   registerCraftedWeapons([craftedWeapon]);
+  onMoteForged();
   return true;
 }
 

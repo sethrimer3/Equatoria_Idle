@@ -2,6 +2,7 @@ import {
   getXpPerKill, formatXp, addXpWithAllocation,
   getBossXpMultiplier, getWaveStatScale,
 } from '../../sim/rpg/rpg-state';
+import { onBossDefeated, onWaveClearedWithSingleWeapon, onWaveClearedAt1Hp } from '../../achievements/achievementHooks';
 import {
   BOSS_GLOW_COLORS,
   FLUID_EXPLOSION_STRENGTH,
@@ -202,6 +203,8 @@ export function handleBossDefeat(ctx: WaveManagerCtx): void {
   const bossEnemy = ctx.getBossEnemy();
   if (!bossEnemy || bossEnemy.hp > 0) return;
 
+  onBossDefeated();
+
   const speedPct = rpgSimState.bossSpeedPct;
   const xpMult = getBossXpMultiplier(speedPct);
   const bossXp = Math.ceil(getXpPerKill(ctx.getCurrentWave()) * getWaveStatScale(ctx.getCurrentWave()) * 5.0 * xpMult);
@@ -214,10 +217,12 @@ export function handleBossDefeat(ctx: WaveManagerCtx): void {
     }
     if (rpgSimState.equippedWeaponIds.size === 1) {
       rpgSimState.bossDefeated1Weapon = true;
+      onWaveClearedWithSingleWeapon();
     }
     const hpRatio = getPlayerHpRatio();
     if (hpRatio < 0.1) {
       rpgSimState.secretAchievementFlags.add('boss_below_10pct_hp');
+      onWaveClearedAt1Hp();
     }
     if (speedPct >= 100 && !rpgSimState.tookDamageThisWave) {
       rpgSimState.secretAchievementFlags.add('boss_100_no_damage');

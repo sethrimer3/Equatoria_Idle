@@ -30,6 +30,8 @@ import {
 } from './dev-panel-render';
 import { getEquippedWeaveModifiers } from '../../data/rpg/equipment-modifiers';
 import { getTotalActiveWeaveBuffDefPct, getTotalActiveWeaveBuffCooldownPct, getTotalActiveWeaveBuffWeaponDamagePct, formatActiveWeaveBuffStat, getActiveWeaveBuffDisplayName } from '../../data/rpg/weave-proc-effects';
+import { getAchievementService } from '../../achievements/achievementHooks';
+import { ACHIEVEMENT_REGISTRY } from '../../achievements/achievementRegistry';
 
 // ─── Public interface ────────────────────────────────────────────
 
@@ -238,6 +240,70 @@ export function createDevPanel(): DevPanel {
       weaveBuffTotalsLine.textContent = parts.length > 0 ? `Totals: ${parts.join(' / ')}` : '';
     }
   }
+
+  // ── Platform Achievements ───────────────────────────────────────
+  section.appendChild(makeSubTitle('Platform Achievements'));
+
+  const achievementListWrap = el('div', 'dev-panel-info-line');
+  section.appendChild(achievementListWrap);
+
+  const achievementBtnRow = el('div', 'dev-panel-btn-row');
+
+  const listAchievementsBtn = el('button', 'settings-dev-reset-btn');
+  listAchievementsBtn.textContent = 'List';
+  listAchievementsBtn.title = 'Print unlock/progress state for every registered achievement';
+  listAchievementsBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  listAchievementsBtn.addEventListener('click', () => {
+    const service = getAchievementService();
+    if (!service) { achievementListWrap.textContent = 'Achievement service not initialized'; return; }
+    const lines = ACHIEVEMENT_REGISTRY.map(def => {
+      const unlocked = service.isUnlocked(def.id);
+      const progress = def.targetCount !== undefined ? ` (${service.getProgress(def.id)}/${def.targetCount})` : '';
+      return `${def.id}: ${unlocked ? '✅' : '⬜'}${progress}`;
+    });
+    achievementListWrap.textContent = lines.join(' | ');
+  });
+  achievementBtnRow.appendChild(listAchievementsBtn);
+
+  const forceUnlockBtn = el('button', 'settings-dev-reset-btn');
+  forceUnlockBtn.textContent = 'Force Unlock All';
+  forceUnlockBtn.title = 'Force-unlock every registered achievement (dev only)';
+  forceUnlockBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  forceUnlockBtn.addEventListener('click', () => {
+    const service = getAchievementService();
+    if (!service) return;
+    for (const def of ACHIEVEMENT_REGISTRY) service.unlock(def.id);
+    achievementListWrap.textContent = 'All achievements force-unlocked';
+  });
+  achievementBtnRow.appendChild(forceUnlockBtn);
+
+  const resetAchievementsBtn = el('button', 'settings-dev-reset-btn');
+  resetAchievementsBtn.textContent = 'Reset State';
+  resetAchievementsBtn.title = 'Clear all platform achievement unlock/progress state (dev only)';
+  resetAchievementsBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  resetAchievementsBtn.addEventListener('click', () => {
+    const service = getAchievementService();
+    if (!service) return;
+    for (const key of Object.keys(service.getState().records)) {
+      delete service.getState().records[key];
+    }
+    achievementListWrap.textContent = 'Achievement state reset';
+  });
+  achievementBtnRow.appendChild(resetAchievementsBtn);
+
+  const printSyncQueueBtn = el('button', 'settings-dev-reset-btn');
+  printSyncQueueBtn.textContent = 'Print Sync Queue';
+  printSyncQueueBtn.title = 'Print achievement ids still pending platform sync';
+  printSyncQueueBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  printSyncQueueBtn.addEventListener('click', () => {
+    const service = getAchievementService();
+    if (!service) { achievementListWrap.textContent = 'Achievement service not initialized'; return; }
+    const pending = service.getPendingSyncIds();
+    achievementListWrap.textContent = pending.length > 0 ? `Pending sync: ${pending.join(', ')}` : 'Sync queue empty';
+  });
+  achievementBtnRow.appendChild(printSyncQueueBtn);
+
+  section.appendChild(achievementBtnRow);
 
   // ─── Helpers ─────────────────────────────────────────────────
 

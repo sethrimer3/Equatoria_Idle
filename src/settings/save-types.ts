@@ -8,7 +8,7 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 38;
+export const SAVE_VERSION = 39;
 
 export interface SaveData {
   version: number;
@@ -65,6 +65,10 @@ export interface SaveData {
   achievements: {
     unlockedIds: string[];
     claimedIds: string[];
+  };
+  /** v39+: platform (Steam/Google Play) achievement sync state. Absent in older saves. */
+  platformAchievements?: {
+    records: Record<string, { unlocked: boolean; revealed: boolean; progress: number }>;
   };
   aliven: {
     alivenedTierIds: string[];

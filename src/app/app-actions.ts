@@ -31,6 +31,7 @@ import { rollLensDrop, rollWeaveDrop, rollEquipmentReward } from '../data/rpg/eq
 import { getUnlockedWeaveSlotCount } from '../sim/forge/forge-state';
 import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
 import { getMotes, spendMotes } from '../sim/resources';
+import { onSkillUnlocked } from '../achievements/achievementHooks';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
 import { RPG_UPGRADE_BY_ID } from '../data/rpg/rpg-upgrade-definitions';
 import {
@@ -281,6 +282,7 @@ export function handleAction(
         if (upgradeDef.costPerLevel > 0) spendMotes(state.game.resources, upgradeDef.costTierId, upgradeDef.costPerLevel);
       }
       state.game.rpg.rpgUpgradeLevels.set(action.upgradeId, currentLevel + 1);
+      onSkillUnlocked();
       audioSystem?.onBuyLoomUpgrade();
       // Notify the render so speed multiplier updates immediately.
       uiPanels.rpgRender.notifyEquip();

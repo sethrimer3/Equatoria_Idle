@@ -62,6 +62,9 @@ export function serializeGameState(state: GameState): SaveData {
       unlockedIds: Array.from(state.achievements.unlockedIds),
       claimedIds: Array.from(state.achievements.claimedIds),
     },
+    platformAchievements: {
+      records: { ...state.platformAchievements.records },
+    },
     aliven: {
       alivenedTierIds: Array.from(state.aliven.alivenedTierIds),
       interactionMatrix: serializeInteractionMatrix(state.aliven.interactionMatrix),

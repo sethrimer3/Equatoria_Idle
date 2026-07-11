@@ -29,6 +29,7 @@ import type { TopographicTerrainState } from './terrain/topographic-terrain';
 import { clearEliteBuffRegistry } from './rpg-elite-buff';
 import { clearEmpowerParticles } from './rpg-elite-empower-particles';
 import { initParticleLifeMatrix } from './terrain/impetus-particle-life';
+import { onEnemyDefeated } from '../../achievements/achievementHooks';
 import type {
   LaserEnemy, SapphireEnemy, SapphireMissile, SpawnEntry,
 } from './rpg-types';
@@ -213,6 +214,7 @@ export function createWaveManager(ctx: WaveManagerCtx): WaveManagerHandle {
   /** Increments the per-type kill counter in lifetimeKillsByType. */
   function addKill(typeId: string): void {
     rpgSimState.lifetimeKillsByType.set(typeId, (rpgSimState.lifetimeKillsByType.get(typeId) ?? 0) + 1);
+    onEnemyDefeated();
   }
 
   function removeDeadEnemies(): void {

@@ -55,6 +55,8 @@ import { applyIdleRewardsIfEligible } from './game-app-idle';
 import { wireCanvasPointerInput } from './game-app-canvas-input';
 import { createIdleOverlay } from '../ui/idle/idle-overlay';
 import { makePageBreak } from '../ui/ui-helpers';
+import { AchievementService } from '../achievements/achievementService';
+import { setAchievementService } from '../achievements/achievementHooks';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
@@ -81,6 +83,7 @@ export async function startApp(): Promise<void> {
   writeLastActiveTimestamp(); // immediately record so next session measures from now
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
+  setAchievementService(new AchievementService(game.platformAchievements));
   const settings = loadSettings();
   applyFontSizeOffset(settings.fontSizeOffsetPx);
 
