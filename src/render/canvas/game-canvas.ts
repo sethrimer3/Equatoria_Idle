@@ -30,6 +30,13 @@
  * Fallback constants — used as default world dimensions before first resize:
  */
 
+import {
+  computeRenderResolution,
+  readNativeDevicePixelRatio,
+  OVERLAY_MAX_BACKING_PIXELS,
+  type RenderResolutionQuality,
+} from './render-resolution-policy';
+
 /** Fallback logical width (used before first resize). */
 export const IDLE_LOGICAL_WIDTH = 320;
 /** Fallback logical height (used before first resize). */
@@ -70,6 +77,12 @@ export interface CanvasContext {
    */
   dpr: number;
   /**
+   * Effective device-pixel ratio of the crisp overlay canvas.  The overlay uses
+   * a larger pixel budget than the world canvas, so its effective DPR can differ
+   * from `dpr`.  Overlay draw code must scale by THIS value, not `dpr`.
+   */
+  overlayDpr: number;
+  /**
    * The `#game-area` wrapper element that contains the canvas and HUD overlay.
    * Its CSS dimensions are updated by `resizeCanvas` to fill the container.
    */
@@ -80,6 +93,14 @@ export interface CanvasContext {
    * Defaults to 'pixelated'.
    */
   idleCanvasRenderStyle: 'pixelated' | 'crisp';
+  /**
+   * Render-resolution quality tier for crisp mode.  Caps the crisp backing
+   * store (and the overlay canvas) so high-DPI / 4K displays don't allocate a
+   * full `container × nativeDPR` backing every frame.  Ignored in pixelated
+   * mode (which is already fixed-low-resolution).  Update then call
+   * `resizeCanvas` to apply.  Defaults to 'auto'.
+   */
+  renderResolutionQuality: RenderResolutionQuality;
 }
 
 /**
@@ -134,8 +155,10 @@ export function createGameCanvas(container: HTMLElement): CanvasContext {
     widthPx: IDLE_LOGICAL_WIDTH,
     heightPx: IDLE_LOGICAL_HEIGHT,
     dpr: window.devicePixelRatio || 1,
+    overlayDpr: window.devicePixelRatio || 1,
     gameArea,
     idleCanvasRenderStyle: 'pixelated',
+    renderResolutionQuality: 'auto',
   };
   resizeCanvas(cc, container);
   return cc;
@@ -166,22 +189,31 @@ export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
   const containerH = container.clientHeight;
   if (containerW <= 0 || containerH <= 0) return;
 
-  const dpr = window.devicePixelRatio || 1;
+  const nativeDpr = readNativeDevicePixelRatio();
 
   // Size #game-area to fill the full container (no pillarboxing).
   cc.gameArea.style.width    = `${containerW}px`;
   cc.gameArea.style.height   = `${containerH}px`;
   cc.gameArea.style.position = 'relative';
 
-  // Overlay canvas is always crisp at full DPR resolution.
-  const overlayBackingW = Math.round(containerW * dpr);
-  const overlayBackingH = Math.round(containerH * dpr);
-  if (cc.overlayCanvas.width  !== overlayBackingW) cc.overlayCanvas.width  = overlayBackingW;
-  if (cc.overlayCanvas.height !== overlayBackingH) cc.overlayCanvas.height = overlayBackingH;
-
-  cc.dpr = dpr;
+  // Overlay canvas hosts crisp DOM-quality text/UI, so it gets a larger pixel
+  // budget than the world canvas — but is still capped so a 4K display doesn't
+  // allocate a full ~10MP transparent overlay backing store.
+  const overlayRes = computeRenderResolution({
+    cssWidth:  containerW,
+    cssHeight: containerH,
+    nativeDevicePixelRatio: nativeDpr,
+    quality: cc.renderResolutionQuality,
+    maxPixelBudget: OVERLAY_MAX_BACKING_PIXELS,
+  });
+  if (cc.overlayCanvas.width  !== overlayRes.backingWidth)  cc.overlayCanvas.width  = overlayRes.backingWidth;
+  if (cc.overlayCanvas.height !== overlayRes.backingHeight) cc.overlayCanvas.height = overlayRes.backingHeight;
+  cc.overlayDpr = overlayRes.effectiveDevicePixelRatio;
 
   if (cc.idleCanvasRenderStyle === 'pixelated') {
+    // Pixelated mode keeps its own fixed low-resolution backing; DPR is unused
+    // for the world canvas but stored for consistency.
+    cc.dpr = nativeDpr;
     // Compute low-resolution internal dimensions that preserve the container aspect.
     const internalW = PIXELATED_INTERNAL_WIDTH;
     const internalH = Math.round(containerH * (internalW / containerW));
@@ -196,14 +228,24 @@ export function resizeCanvas(cc: CanvasContext, container: HTMLElement): void {
     // Apply pixelated upscaling class.
     cc.canvas.classList.add('idle-canvas-pixelated');
   } else {
-    // Crisp HiDPI mode: world coords = CSS size, backing = CSS × DPR.
+    // Crisp HiDPI mode: world coords = CSS size, backing = CSS × EFFECTIVE DPR.
+    // Root-cause fix: previously backing = CSS × nativeDPR (uncapped), which on
+    // a 4K display allocated a huge backing store re-rasterized every frame.
+    // The render-resolution policy caps the effective DPR by a pixel budget;
+    // `resetCanvasRenderState` uses `cc.dpr` (the effective DPR) so draw calls
+    // still use CSS-pixel coordinates and the browser upscales smoothly.
+    const worldRes = computeRenderResolution({
+      cssWidth:  containerW,
+      cssHeight: containerH,
+      nativeDevicePixelRatio: nativeDpr,
+      quality: cc.renderResolutionQuality,
+    });
+    cc.dpr = worldRes.effectiveDevicePixelRatio;
     cc.widthPx  = containerW;
     cc.heightPx = containerH;
 
-    const backingW = Math.round(containerW * dpr);
-    const backingH = Math.round(containerH * dpr);
-    if (cc.canvas.width  !== backingW) cc.canvas.width  = backingW;
-    if (cc.canvas.height !== backingH) cc.canvas.height = backingH;
+    if (cc.canvas.width  !== worldRes.backingWidth)  cc.canvas.width  = worldRes.backingWidth;
+    if (cc.canvas.height !== worldRes.backingHeight) cc.canvas.height = worldRes.backingHeight;
 
     // Remove pixelated class.
     cc.canvas.classList.remove('idle-canvas-pixelated');

@@ -168,6 +168,11 @@ import {
   computeRpgFieldSpace, type RpgFieldSpace,
 } from './rpgFieldSpace';
 import {
+  computeRenderResolution,
+  readNativeDevicePixelRatio,
+  type RenderResolutionQuality,
+} from '../canvas/render-resolution-policy';
+import {
   triggerDeath as _triggerDeath, doRestart as _doRestart,
   type RpgDeathRestartCtx,
 } from './rpg-death-restart';
@@ -313,6 +318,16 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   /** Expanded world-space dimensions visible through the full canvas. */
   let rpgWorldViewW = RPG_LOGICAL_WIDTH;
   let rpgWorldViewH = RPG_LOGICAL_HEIGHT;
+  /**
+   * Render-resolution quality tier — caps the physical backing store so the
+   * RPG world (a fixed 360×640) is not re-rasterized across a full 4K/high-DPI
+   * backing every frame.  The world size, visible bounds, and input mapping are
+   * unaffected; only the backing-store resolution (effective DPR) changes.
+   */
+  let _renderResolutionQuality: RenderResolutionQuality = 'auto';
+  /** Last effective (capped) DPR + native DPR from doResize(), for diagnostics. */
+  let _lastNativeDpr = 1;
+  let _lastResolutionCapped = false;
   /** Set to true when dev mode is active (controls diagnostic overlay). */
   let _isDevMode = false;
   const developerVisuals = {
@@ -475,12 +490,36 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     viewport.right  = RPG_LOGICAL_WIDTH;
     viewport.bottom = RPG_LOGICAL_HEIGHT;
 
-    // Update the physical backing store (DPR-scaled fitted-area size).
-    const dpr = window.devicePixelRatio || 1;
-    const backingW = Math.round(areaW * dpr);
-    const backingH = Math.round(areaH * dpr);
+    // Update the physical backing store.  Root-cause fix: instead of blindly
+    // using the native devicePixelRatio (which on a fullscreen 4K display makes
+    // the backing store `areaW×DPR × areaH×DPR` — up to ~10 megapixels — and
+    // forces every path/gradient/shadow/particle to re-rasterize across it every
+    // frame), we run the fitted CSS area through the centralized render-
+    // resolution policy.  The policy returns an EFFECTIVE (capped) DPR bounded
+    // by a pixel budget.  The browser upscales the smaller backing store to the
+    // CSS area (smoothly), so the world size, visible bounds, and CSS-space
+    // input mapping are all unchanged — only the raster resolution drops.
+    const nativeDpr = readNativeDevicePixelRatio();
+    const res = computeRenderResolution({
+      cssWidth:  areaW,
+      cssHeight: areaH,
+      nativeDevicePixelRatio: nativeDpr,
+      quality: _renderResolutionQuality,
+    });
+    // `dpr` is the EFFECTIVE render DPR (world→backing scale factor), NOT the
+    // native browser DPR.  The draw transform multiplies world coords by
+    // `fs.scale * fs.dpr`, so storing the effective DPR in fs.dpr is what makes
+    // the whole world render into the reduced backing store correctly.
+    const dpr = res.effectiveDevicePixelRatio;
+    const backingW = res.backingWidth;
+    const backingH = res.backingHeight;
+    _lastNativeDpr = res.nativeDevicePixelRatio;
+    _lastResolutionCapped = res.wasCapped;
     if (canvas.width  !== backingW) canvas.width  = backingW;
     if (canvas.height !== backingH) canvas.height = backingH;
+    // Reduced-resolution modes upscale smoothly (default); the dev pixelated
+    // backbuffer path handles its own nearest-neighbor look separately.
+    canvas.style.imageRendering = '';
 
     // Recompute the authoritative field-space snapshot so all subsystems that
     // consume rpgFieldSpace (draw, spawn, effects) share the same fixed bounds.
@@ -2186,6 +2225,12 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getWorldViewW:                () => rpgWorldViewW,
     getWorldViewH:                () => rpgWorldViewH,
     getFieldSpace:                () => rpgFieldSpace,
+    getRenderResolutionInfo:      () => ({
+      nativeDpr:    _lastNativeDpr,
+      effectiveDpr: rpgFieldSpace.dpr,
+      capped:       _lastResolutionCapped,
+      quality:      _renderResolutionQuality,
+    }),
     getOverlayFadeRects:          () => {
       const areaRect = rpgArea.getBoundingClientRect();
       const rects: { left: number; top: number; right: number; bottom: number }[] = [];
@@ -2458,6 +2503,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       fluid.setLowGraphicsMode(enabled);
       setBossAttacksLowGraphics(enabled);
       setAllDrawLowGraphics(enabled);
+    },
+
+    setRenderResolutionQuality(quality: RenderResolutionQuality): void {
+      if (_renderResolutionQuality === quality) return;
+      _renderResolutionQuality = quality;
+      // Re-run resize so the backing store is re-sized to the new budget
+      // immediately (no restart required).
+      if (_devOverlayContainer) doResize(_devOverlayContainer);
+      else doResize(container);
     },
 
     setScreenShakeEnabled(enabled: boolean): void {

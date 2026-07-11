@@ -8,6 +8,17 @@ export interface SettingsState {
   isMusicOnlyWhenFocused: boolean;
   isReducedParticles: boolean;
   graphicsQuality: 'auto' | 'high' | 'low';
+  /**
+   * Controls the backing-store resolution of the world canvases (RPG and the
+   * Equation/Idle crisp canvas) independently of effect quality.  Caps the
+   * physical pixel count so high-DPI / 4K displays don't rasterize a huge
+   * backing store every frame.  See render-resolution-policy.ts.
+   * - 'auto'        — safe pixel budget on high-DPI displays (default).
+   * - 'high'        — prioritize sharpness (large budget, conservative safety cap).
+   * - 'balanced'    — moderately reduced backing resolution.
+   * - 'performance' — substantially reduced backing resolution, prioritize FPS.
+   */
+  renderResolutionQuality: 'auto' | 'high' | 'balanced' | 'performance';
   fpsLimit: FpsLimitSetting;
   isScreenShakeEnabled: boolean;
   colorTheme: 'dark' | 'light';
@@ -97,6 +108,7 @@ export function createDefaultSettings(): SettingsState {
     isMusicOnlyWhenFocused: true,
     isReducedParticles: false,
     graphicsQuality: 'auto',
+    renderResolutionQuality: 'auto',
     fpsLimit: 'unlimited',
     isScreenShakeEnabled: true,
     colorTheme: 'dark',
@@ -143,6 +155,16 @@ export function loadSettings(): SettingsState {
     }
     if (settings.fpsLimit !== 60 && settings.fpsLimit !== 120 && settings.fpsLimit !== 'unlimited') {
       settings.fpsLimit = 'unlimited';
+    }
+    // Validate persisted render-resolution quality; older saves lack the field
+    // (spread default already supplied 'auto') and corrupt values fall back.
+    if (
+      settings.renderResolutionQuality !== 'auto' &&
+      settings.renderResolutionQuality !== 'high' &&
+      settings.renderResolutionQuality !== 'balanced' &&
+      settings.renderResolutionQuality !== 'performance'
+    ) {
+      settings.renderResolutionQuality = 'auto';
     }
     settings.fontSizeOffsetPx = clampFontSizeOffset(settings.fontSizeOffsetPx);
     return settings;

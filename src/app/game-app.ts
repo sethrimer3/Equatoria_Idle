@@ -152,6 +152,7 @@ export async function startApp(): Promise<void> {
   // Apply the persisted idle canvas render style immediately so the first
   // frame already uses the correct backing store / image-rendering mode.
   cc.idleCanvasRenderStyle = settings.idleCanvasRenderStyle;
+  cc.renderResolutionQuality = settings.renderResolutionQuality;
   resizeCanvas(cc, canvasContainer);
 
   // ── HUD overlay (DOM layer above canvas, non-pixelated) ──
@@ -274,11 +275,18 @@ export async function startApp(): Promise<void> {
   const resourcePanel = createResourcePanel((tierId) => {
     equationPanelRef?.setHighlightedTier(tierId);
   });
+  // Late-bound so the render-resolution change handler can reach rpgRender,
+  // which is created after the settings panel.
+  let applyRenderResolutionQuality: () => void = () => {
+    // Idle crisp canvas re-reads the policy on resize; RPG hook attached below.
+    resizeCanvas(cc, canvasContainer);
+    recomputeGenerators();
+  };
   const settingsPanel = createSettingsPanel(settings, dispatch, audioSystem, applyFocusedAudio, () => {
     cc.idleCanvasRenderStyle = settings.idleCanvasRenderStyle;
     resizeCanvas(cc, canvasContainer);
     recomputeGenerators();
-  });
+  }, () => { applyRenderResolutionQuality(); });
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
 
   // Right column of the Equation sub-tab: mote resources on top, tier unlock
@@ -343,6 +351,15 @@ export async function startApp(): Promise<void> {
     dispatch,
   });
   rpgRender.setNumberFormat(settings.numberFormat);
+  rpgRender.setRenderResolutionQuality(settings.renderResolutionQuality);
+  // Now that rpgRender exists, route render-resolution changes to both the RPG
+  // renderer and the idle crisp canvas.
+  applyRenderResolutionQuality = () => {
+    rpgRender.setRenderResolutionQuality(settings.renderResolutionQuality);
+    cc.renderResolutionQuality = settings.renderResolutionQuality;
+    resizeCanvas(cc, canvasContainer);
+    recomputeGenerators();
+  };
   // Stats panel is positioned in the root (above the tab bar); visibility
   // is toggled by setActiveTab alongside rpgContainer.
   root.appendChild(rpgRender.statsPanel);

@@ -475,6 +475,14 @@ export interface RpgDrawCtx {
   getWorldViewH?(): number;
   /** Returns the authoritative field-space snapshot for this frame. */
   getFieldSpace(): RpgFieldSpace;
+  /**
+   * Returns render-resolution diagnostics for the dev overlay: the native
+   * device-pixel ratio, the effective (capped) DPR actually used for the
+   * backing store, whether the pixel budget capped it, and the active quality
+   * tier.  `fs.dpr` already holds the effective DPR; this exposes the native
+   * value and cap state which are otherwise not derivable from field-space.
+   */
+  getRenderResolutionInfo?(): { nativeDpr: number; effectiveDpr: number; capped: boolean; quality: string };
   /** Returns the current navigation grid for pathfinding debug draw. */
   getNavGrid(): import('./terrain/rpg-pathfinding').RpgNavGrid | null;
   /** Returns the current player auto-move path cache for preview rendering. */
@@ -943,10 +951,15 @@ export function drawRpgFrame(
   const vwH = fs.visibleBounds.height;
   const visibleDrawBounds = fs.visibleBounds;
 
-  // Clear and fill the full visible world area (covers extra space when canvas > safe-core).
-  canvas2d.clearRect(vwX, vwY, vwW, vwH);
-  canvas2d.fillStyle = '#0a0a12';
-  canvas2d.fillRect(vwX, vwY, vwW, vwH);
+  // NOTE: the authoritative clear + background fill happens once above, at
+  // identity transform, across the full physical backing (Step 1).  Because the
+  // #rpg-area (and thus the canvas) is always fitted to the exact safe-core
+  // aspect ratio, `fs.visibleBounds` maps precisely onto the full backing, so a
+  // second world-space clear+fill here would be redundant — and the identity
+  // pass is strictly safer (it covers the whole backing regardless of
+  // transform rounding, and it runs before the screen-shake translate below, so
+  // shake can never expose an un-cleared edge).  The previous per-frame
+  // world-space clearRect + fillRect were removed as redundant full-canvas work.
 
   // Apply Zenith Binary Horizon screen-shake offset (0,0 when inactive).
   const shakeOff = ctx.getZenithShakeOffset?.() ?? { x: 0, y: 0 };
@@ -1527,7 +1540,15 @@ function drawRpgViewportDiagnostics(
   const lines: Array<{ text: string; warn?: boolean }> = [
     { text: `RPG world:  ${RPG_LOGICAL_WIDTH} × ${RPG_LOGICAL_HEIGHT}  (core gameplay)` },
     { text: `render host: ${css.w} × ${css.h}  canvas CSS: ${fullW} × ${fullH}`, warn: widthMismatch },
-    { text: `backing: ${backingW} × ${backingH}  dpr: ${dpr.toFixed(2)}` },
+    { text: `backing: ${backingW} × ${backingH}  effDPR: ${dpr.toFixed(2)}` },
+    ...(ctx.getRenderResolutionInfo ? (() => {
+      const rr = ctx.getRenderResolutionInfo!();
+      const mp = (backingW * backingH / 1_000_000).toFixed(2);
+      return [
+        { text: `res mode: ${rr.quality}  nativeDPR: ${rr.nativeDpr.toFixed(2)}  capped: ${rr.capped ? 'Yes' : 'No'}`, warn: false },
+        { text: `pixels: ${mp} MP` },
+      ];
+    })() : []),
     { text: `stable scale: ${safeScl.toFixed(3)}  safePx: ${safePx}`, warn: scaleTooLarge },
     { text: `visibleWorld: ${worldViewW.toFixed(1)} × ${worldViewH.toFixed(1)}`, warn: stillNarrow },
     { text: `cam offset: (${safeOffX.toFixed(1)}, ${safeOffY.toFixed(1)})` },

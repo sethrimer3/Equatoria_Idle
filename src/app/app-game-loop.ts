@@ -495,9 +495,9 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       if (ctx.settings.isIdleViewportDebugEnabled) {
         drawIdleViewportDebug(ctx.cc);
       }
-      const _oW = ctx.cc.overlayCanvas.width / ctx.cc.dpr;
-      const _oH = ctx.cc.overlayCanvas.height / ctx.cc.dpr;
-      drawPerfStats(ctx.cc.overlayCtx, _oW, _oH, ctx.cc.dpr);
+      const _oW = ctx.cc.overlayCanvas.width / ctx.cc.overlayDpr;
+      const _oH = ctx.cc.overlayCanvas.height / ctx.cc.overlayDpr;
+      drawPerfStats(ctx.cc.overlayCtx, _oW, _oH, ctx.cc.overlayDpr);
     }
 
     if (Math.floor(nowMs / 100) !== Math.floor((nowMs - deltaMs) / 100)) {

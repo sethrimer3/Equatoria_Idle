@@ -45,6 +45,7 @@ export function createSettingsPanel(
   audioSystem?: AudioSystem,
   onFocusSettingChange?: () => void,
   onIdleCanvasRenderStyleChange?: () => void,
+  onRenderResolutionQualityChange?: () => void,
 ): SettingsPanel {
   const panel = document.createElement('div');
   panel.className = 'panel settings-panel';
@@ -153,6 +154,28 @@ export function createSettingsPanel(
     },
   );
   pane('visual').appendChild(graphicsRow);
+
+  // Render Resolution — caps the world-canvas backing store on high-DPI / 4K
+  // displays.  Distinct from Graphics Quality (which controls effect richness):
+  // this controls how many physical pixels the RPG and crisp idle canvases
+  // rasterize each frame.  Applies immediately (no restart).
+  const renderResolutionRow = createSelectRow(
+    'Render Resolution',
+    settings.renderResolutionQuality,
+    [
+      { value: 'auto',        label: 'Auto (recommended)' },
+      { value: 'high',        label: 'High'               },
+      { value: 'balanced',    label: 'Balanced'           },
+      { value: 'performance', label: 'Performance'        },
+    ],
+    (v) => {
+      settings.renderResolutionQuality = v as SettingsState['renderResolutionQuality'];
+      saveSettings(settings);
+      onRenderResolutionQualityChange?.();
+      audioSystem?.onSettingsChanged();
+    },
+  );
+  pane('visual').appendChild(renderResolutionRow);
 
   const fpsLimitRow = createSelectRow(
     'FPS Limit',

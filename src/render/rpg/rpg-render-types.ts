@@ -1,6 +1,7 @@
 import type { TierId } from '../../data/tiers';
 import type { NumberFormat } from '../../util/format';
 import type { ActionHandler } from '../../input';
+import type { RenderResolutionQuality } from '../canvas/render-resolution-policy';
 
 export interface RpgRender {
   canvas: HTMLCanvasElement;
@@ -24,6 +25,11 @@ export interface RpgRender {
   respawnNow(): void;
   /** Enable/disable low graphics mode (skips glows and expensive effects). */
   setLowGraphicsMode(enabled: boolean): void;
+  /**
+   * Set the render-resolution quality tier (caps the backing-store resolution
+   * on high-DPI displays).  Applies immediately — no restart required.
+   */
+  setRenderResolutionQuality(quality: RenderResolutionQuality): void;
   /** Enable/disable screen shake (forwarded to Zenith Binary Horizon). */
   setScreenShakeEnabled(enabled: boolean): void;
   /** Sets enemy indicator style for RPG enemies. */
