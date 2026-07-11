@@ -29,7 +29,7 @@ import {
 } from '../sim';
 import { rollLensDrop, rollWeaveDrop, rollEquipmentReward } from '../data/rpg/equipment-rewards';
 import { getUnlockedWeaveSlotCount } from '../sim/forge/forge-state';
-import { setInteractionMatrixCell, resetInteractionMatrix } from '../sim/aliven';
+import { setInteractionMatrixCell, resetInteractionMatrix, randomizeInteractionMatrix } from '../sim/aliven';
 import { getMotes, spendMotes } from '../sim/resources';
 import { onSkillUnlocked } from '../achievements/achievementHooks';
 import { WEAPON_BY_ID } from '../data/rpg/weapon-definitions';
@@ -153,13 +153,29 @@ export function handleAction(
       break;
     }
     case 'set_interaction_matrix_cell':
+      if (state.game.aliven.matrixLocked || !state.game.aliven.manualModeEnabled) break;
       setInteractionMatrixCell(state.game.aliven, action.row, action.col, action.value);
       // Sync immediately so the particle system picks up the change on the next frame
       particles.interactionMatrix = state.game.aliven.interactionMatrix;
       break;
     case 'reset_interaction_matrix':
+      if (state.game.aliven.matrixLocked) break;
       resetInteractionMatrix(state.game.aliven);
       particles.interactionMatrix = state.game.aliven.interactionMatrix;
+      break;
+    case 'randomize_interaction_matrix':
+      if (state.game.aliven.matrixLocked) break;
+      randomizeInteractionMatrix(state.game.aliven);
+      particles.interactionMatrix = state.game.aliven.interactionMatrix;
+      break;
+    case 'set_aliven_matrix_locked':
+      if (state.game.aliven.matrixLocked === action.locked) break;
+      state.game.aliven.matrixLocked = action.locked;
+      audioSystem?.onAchievementUnlocked(false);
+      break;
+    case 'set_aliven_manual_mode':
+      if (state.game.aliven.matrixLocked) break;
+      state.game.aliven.manualModeEnabled = action.enabled;
       break;
     case 'claim_achievement':
       claimAchievement(state.game.achievements, action.achievementId);

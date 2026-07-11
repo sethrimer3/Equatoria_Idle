@@ -37,7 +37,7 @@ import { computeWeavePowerScale } from '../../data/rpg/weave-rolling';
 import { LENS_EFFECT_NAMES, getLensMaxMoteTypes, getLensEffectUnlockChances } from '../../data/rpg/lens-definitions';
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
-import type { ResourceState } from '../../sim/resources/resource-state';
+import { hasDiscoveredMote, type ResourceState } from '../../sim/resources/resource-state';
 import { buildLensInventorySection } from './lens-inventory';
 import { getUnlockedWeaveSlotCount } from '../../sim/forge/forge-state';
 import type { ActionHandler } from '../../input';
@@ -208,6 +208,12 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     return latestResources?.moteTotals ?? latestRpgState?.refinedCrystalsByTierId ?? new Map();
   }
 
+  function isTierAvailableForCrafting(tierId: TierId): boolean {
+    if (latestIsDevMode) return true;
+    if (latestResources && !hasDiscoveredMote(latestResources, tierId)) return false;
+    return (getInventory().get(tierId) ?? 0) > 0;
+  }
+
   function getForgeCapacityCurrent(): number {
     if (!latestRpgState) return 2;
     const level = getRpgUpgradeLevel(latestRpgState, 'forge_craft_level') + 1;
@@ -253,7 +259,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   function refreshInventory(): void {
     if (!inventoryEl || !latestRpgState) return;
     const invMap = getInventory();
-    const hasAnyMotes = Array.from(invMap.values()).some(n => n > 0);
+    const hasAnyMotes = TIERS.some(tier => isTierAvailableForCrafting(tier.id));
     inventoryEl.innerHTML = '';
 
     if (!hasAnyMotes && !latestIsDevMode) {
@@ -290,7 +296,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     // One chip per tier
     for (const tier of TIERS) {
       const count = invMap.get(tier.id) ?? 0;
-      if (count <= 0 && !latestIsDevMode) continue;
+      if (!isTierAvailableForCrafting(tier.id)) continue;
 
       const chip = document.createElement('span');
       chip.className = 'forge-craft__inventory-chip';
@@ -376,7 +382,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
         moteHeadingEl.textContent = `Select mote types (${selectedTiers.length}/${capacity}):`;
       }
     }
-    const availableTiers = TIERS.filter(tier => latestIsDevMode || (inventory.get(tier.id) ?? 0) > 0);
+    const availableTiers = TIERS.filter(tier => isTierAvailableForCrafting(tier.id));
     const total = Math.max(availableTiers.length, 1);
 
     // Remove buttons for tiers no longer in the available set
@@ -1199,6 +1205,9 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
     const capacity = getEffectiveCapacity();
     while (selectedTiers.length > capacity) selectedTiers.pop();
+    for (let i = selectedTiers.length - 1; i >= 0; i--) {
+      if (!isTierAvailableForCrafting(selectedTiers[i])) selectedTiers.splice(i, 1);
+    }
     if (capacityLabelEl) {
       if (craftingMode === 'lens') {
         capacityLabelEl.textContent = `Lens limit: ${capacity} mote type${capacity === 1 ? '' : 's'}`;

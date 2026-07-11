@@ -36,7 +36,7 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `looms/loom-state.ts` | `LoomState`, passive production, capture conversion | `tickLooms`, `applyLoomCapture` |
 | `achievements/achievement-state.ts` | `AchievementState`, unlocked/claimed sets | `checkAndUnlockAchievements` |
 | `achievements/achievement-conditions.ts` | Per-achievement check logic | SAFE — add new conditions here |
-| `aliven/aliven-state.ts` | `AlivenState` — alivened tiers, interaction matrix | `tryAliven` |
+| `aliven/aliven-state.ts` | `AlivenState` — canonical eligible tiers, interaction matrix, persisted lock/Manual state, reset/randomize helpers | `tryAliven` |
 | `rpg/rpg-state.ts` | `RpgSimState` — persistent RPG progression, weapons, XP | CAUTION — large, drives save |
 | `particles/generator-state.ts` | `GeneratorState`, generator positions | `createGeneratorState`, `computeGeneratorPositions` |
 | `idle/apply-idle-rewards.ts` | Offline mote batching and queue population | Called by `game-app-idle.ts` |

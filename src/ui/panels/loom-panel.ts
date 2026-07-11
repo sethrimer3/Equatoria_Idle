@@ -142,6 +142,7 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
   let activeSubTab: 'forge' | 'equation' | 'loom' | 'aliven' = 'forge';
 
   function setSubTab(tab: 'forge' | 'equation' | 'loom' | 'aliven'): void {
+    if (activeSubTab === 'aliven' && tab !== 'aliven') alivenPane.cancelTransient();
     activeSubTab = tab;
     forgeTabBtn.classList.toggle('active', tab === 'forge');
     equationTabBtn.classList.toggle('active', tab === 'equation');

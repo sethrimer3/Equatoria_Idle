@@ -35,6 +35,11 @@ export function getLifetimeMotes(state: ResourceState, tierId: TierId): number {
   return state.lifetimeMotes.get(tierId) ?? 0;
 }
 
+/** Whether the player has ever created or otherwise earned this mote tier. */
+export function hasDiscoveredMote(state: ResourceState, tierId: TierId): boolean {
+  return getLifetimeMotes(state, tierId) > 0;
+}
+
 /** Total motes across all tiers (sum). Used as basic "score". */
 export function getTotalMotes(state: ResourceState): number {
   let total = 0;

@@ -316,6 +316,12 @@ export function createSettingsPanel(
   });
   pane('gameplay').appendChild(skipIdlePopupRow);
 
+  const startupTipRow = createToggleRow('Show tip on startup', settings.showTipOnStartup, (v) => {
+    settings.showTipOnStartup = v;
+    saveSettings(settings);
+  });
+  pane('gameplay').appendChild(startupTipRow);
+
   // Dev section and dev panel (live in Profile tab but toggled by devModeRow)
   const devSection = createDevTweaksSection();
   devSection.style.display = settings.isDevMode ? '' : 'none';

@@ -1,26 +1,21 @@
 /**
- * Aliven system — tracks which mote types have been "alivened".
- *
- * Until a mote type is alivened, its particles are fully inert in the
- * Particle Life simulation (they neither exert nor receive PL forces).
- *
- * Rules:
- *   - Only the first 11 tiers (unlockOrder 0–10, up to Nullstone) can be alivened.
- *   - Fracteryl (index 11) and Eigenstein (index 12) are end-game and cannot be alivened.
- *   - Each aliven costs ALIVEN_COST motes of that tier's own type.
- *   - The interaction matrix grows: n alivened tiers → n×n visible matrix.
+ * ALIVEN state and directional Particle Life matrix.
+ * Every non-secret tier in the canonical registry is eligible and starts alivened.
+ * Player edits require both an unlocked matrix and enabled Manual mode.
  */
 
 import type { TierId } from '../../data/tiers';
-import { TIER_BY_ID } from '../../data/tiers';
+import { TIERS, TIER_BY_ID } from '../../data/tiers';
 import type { ResourceState } from '../resources';
 import { getMotes, spendMotes } from '../resources';
-import { createDefaultInteractionMatrix } from '../../data/particles/interaction-matrix';
+import { createDefaultInteractionMatrix, createRandomInteractionMatrix } from '../../data/particles/interaction-matrix';
 
 // ─── Constants ───────────────────────────────────────────────────
 
-/** Maximum unlock order that can be alivened (Nullstone = 10). */
-export const MAX_ALIVENEABLE_UNLOCK_ORDER = 10;
+/** Canonical ordered registry used by every ALIVEN surface. */
+export const ALIVEN_ELIGIBLE_TIERS = TIERS.filter(tier => !tier.isSecret);
+export const ALIVEN_ELIGIBLE_TIER_IDS = ALIVEN_ELIGIBLE_TIERS.map(tier => tier.id);
+export const MAX_ALIVENEABLE_UNLOCK_ORDER = Math.max(...ALIVEN_ELIGIBLE_TIERS.map(tier => tier.unlockOrder));
 
 /** Mote cost (of own type) to aliven a mote type. */
 export const ALIVEN_COST = 10_000;
@@ -31,16 +26,20 @@ export interface AlivenState {
   /** Set of tier IDs that have been alivened. */
   alivenedTierIds: Set<TierId>;
   /**
-   * 13×13 Particle Life interaction matrix, editable by the player.
+   * Canonical tier-count Particle Life matrix, editable by the player.
    * Defaults to createDefaultInteractionMatrix(); persisted in save data.
    */
   interactionMatrix: number[][];
+  matrixLocked: boolean;
+  manualModeEnabled: boolean;
 }
 
 export function createAlivenState(): AlivenState {
   return {
-    alivenedTierIds: new Set(),
+    alivenedTierIds: new Set(ALIVEN_ELIGIBLE_TIER_IDS),
     interactionMatrix: createDefaultInteractionMatrix(),
+    matrixLocked: true,
+    manualModeEnabled: false,
   };
 }
 
@@ -49,7 +48,7 @@ export function createAlivenState(): AlivenState {
 /** Returns true if the given tier can potentially be alivened (is within the aliveneable range). */
 export function isTierAliveneable(tierId: TierId): boolean {
   const tier = TIER_BY_ID.get(tierId);
-  return tier !== undefined && tier.unlockOrder <= MAX_ALIVENEABLE_UNLOCK_ORDER;
+  return tier !== undefined && !tier.isSecret;
 }
 
 /** Returns true if the given tier has already been alivened. */
@@ -138,4 +137,13 @@ export function resetInteractionMatrix(state: AlivenState): void {
       state.interactionMatrix[i][j] = defaults[i][j];
     }
   }
+  state.alivenedTierIds = new Set(ALIVEN_ELIGIBLE_TIER_IDS);
+}
+
+export function randomizeInteractionMatrix(state: AlivenState, random: () => number = Math.random): void {
+  const randomized = createRandomInteractionMatrix(0.5, random);
+  for (let i = 0; i < randomized.length; i++) {
+    for (let j = 0; j < randomized[i].length; j++) state.interactionMatrix[i][j] = randomized[i][j];
+  }
+  state.alivenedTierIds = new Set(ALIVEN_ELIGIBLE_TIER_IDS);
 }

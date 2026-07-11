@@ -32,6 +32,11 @@ export function serializeGameState(state: GameState): SaveData {
   return {
     version: SAVE_VERSION,
     timestamp: Date.now(),
+    startupTips: {
+      order: [...state.startupTips.order],
+      cursor: state.startupTips.cursor,
+      lastShownId: state.startupTips.lastShownId,
+    },
     equation: {
       segments: state.equation.segments.map(s => ({
         tierId: s.tierId,
@@ -68,6 +73,8 @@ export function serializeGameState(state: GameState): SaveData {
     aliven: {
       alivenedTierIds: Array.from(state.aliven.alivenedTierIds),
       interactionMatrix: serializeInteractionMatrix(state.aliven.interactionMatrix),
+      matrixLocked: state.aliven.matrixLocked,
+      manualModeEnabled: state.aliven.manualModeEnabled,
     },
     rpg: {
       highestWaveReached: state.rpg.highestWaveReached,

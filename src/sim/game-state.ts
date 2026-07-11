@@ -13,6 +13,7 @@ import { getRpgUpgradeLevel } from './rpg';
 import type { CraftedWeaponIngredient } from '../data/rpg/crafted-weapon-types';
 import type { CraftedWeaveData } from '../data/rpg/weave-types';
 import type { CraftedLensData } from '../data/rpg/lens-types';
+import type { StartupTipDeckState } from '../ui/loading/startup-tips';
 import { MERGE_THRESHOLD } from '../data/particles/size-tiers';
 import {
   INITIAL_UNLOCKED_TIER_COUNT,
@@ -130,6 +131,7 @@ export interface GameState {
   elapsedMs: number;
   /** Idle motes queued for frame-by-frame drip-addition to resources. */
   pendingIdleMotes: PendingMoteEntry[];
+  startupTips: StartupTipDeckState;
 }
 
 export function createGameState(): GameState {
@@ -147,6 +149,7 @@ export function createGameState(): GameState {
     lastSaveMs: 0,
     elapsedMs: 0,
     pendingIdleMotes: [],
+    startupTips: { order: [], cursor: 0 },
   };
 }
 

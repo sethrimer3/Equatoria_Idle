@@ -14,6 +14,9 @@ export type GameAction =
   | { kind: 'reset_game' }
   | { kind: 'set_interaction_matrix_cell'; row: number; col: number; value: number }
   | { kind: 'reset_interaction_matrix' }
+  | { kind: 'randomize_interaction_matrix' }
+  | { kind: 'set_aliven_matrix_locked'; locked: boolean }
+  | { kind: 'set_aliven_manual_mode'; enabled: boolean }
   | { kind: 'purchase_weapon'; weaponId: string }
   | { kind: 'equip_weapon'; weaponId: string }
   | { kind: 'equip_weapon_to_slot'; weaponId: string; slotIndex: number }

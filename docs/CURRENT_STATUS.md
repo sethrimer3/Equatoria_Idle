@@ -1,5 +1,17 @@
 # Equatoria Idle Current Status
 
+## Build 327: canonical 13-mote ALIVEN matrix controls
+
+- ALIVEN now derives all eligible motes from the canonical tier registry; Fracteryl and Eigenstein participate as full directional rows and columns, and every eligible mote starts alivened.
+- The matrix defaults locked, persists lock and Manual mode per profile, and safely merges legacy custom matrices into current defaults.
+- The ALIVEN panel now provides guarded lock, Manual, Reset to Default, and Randomize controls with transient confirmations, lock feedback animation/sound, and responsive scrolling.
+
+## Build 325: persistent startup tips and two-loop loading gate
+
+- Startup now waits for both application initialization and two complete loading-animation cycles.
+- Each save profile owns a reconciled shuffled tip deck; disabled tips do not consume the deck.
+- Gameplay settings now include the default-enabled `Show tip on startup` option.
+
 Last updated: 2026-06-24
 Current build: 318
 

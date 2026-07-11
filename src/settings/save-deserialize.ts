@@ -26,6 +26,12 @@ import { getVisibleSkillTreeSpentPoints } from '../data/rpg/rpg-skill-tree-defin
 
 export function deserializeGameState(data: SaveData): GameState {
   const state = createGameState();
+  if (data.startupTips && Array.isArray(data.startupTips.order)) {
+    state.startupTips.order = data.startupTips.order.filter((id): id is string => typeof id === 'string');
+    state.startupTips.cursor = Number.isInteger(data.startupTips.cursor)
+      ? Math.max(0, Math.min(data.startupTips.cursor, state.startupTips.order.length)) : 0;
+    if (typeof data.startupTips.lastShownId === 'string') state.startupTips.lastShownId = data.startupTips.lastShownId;
+  }
 
   // Equation
   for (const saved of data.equation.segments) {
@@ -122,11 +128,7 @@ export function deserializeGameState(data: SaveData): GameState {
   state.elapsedMs = data.elapsedMs;
 
   // Aliven state (v6+; older saves have no alivened tiers)
-  if (data.aliven?.alivenedTierIds) {
-    for (const id of data.aliven.alivenedTierIds) {
-      state.aliven.alivenedTierIds.add(id as TierId);
-    }
-  }
+  // createAlivenState already reconciles all current canonical tiers as alivened.
 
   // Interaction matrix (v8+; older saves use the default matrix)
   if (data.aliven?.interactionMatrix) {
@@ -137,6 +139,8 @@ export function deserializeGameState(data: SaveData): GameState {
       }
     }
   }
+  state.aliven.matrixLocked = typeof data.aliven?.matrixLocked === 'boolean' ? data.aliven.matrixLocked : true;
+  state.aliven.manualModeEnabled = typeof data.aliven?.manualModeEnabled === 'boolean' ? data.aliven.manualModeEnabled : false;
 
   // Forge heat-tap state (v23+; older saves default to initial state)
   if (data.forge) {

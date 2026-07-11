@@ -26,6 +26,7 @@ import { createAlivenPaneMatrixSection } from './aliven-pane-matrix';
 export interface AlivenPane {
   element: HTMLElement;
   update(state: GameState, numberFormat: NumberFormat): void;
+  cancelTransient(): void;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -137,5 +138,5 @@ export function createAlivenPane(dispatch: ActionHandler, traceEffect?: TraceEff
 
   }
 
-  return { element: pane, update };
+  return { element: pane, update, cancelTransient: matrixSection.cancelTransient };
 }

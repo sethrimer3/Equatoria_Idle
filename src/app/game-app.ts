@@ -24,7 +24,7 @@ import { createParticleDragState } from '../input/particle-drag';
 import { createTabBar } from '../ui/tabs';
 import { createUpgradePanel, createResourcePanel, createSettingsPanel, createLoomPanel, createEquationPanel, createAchievementsPanel } from '../ui/panels';
 import { createHudOverlay } from '../ui/hud/hud-overlay';
-import { createLoadingScreen } from '../ui/loading';
+import { createLoadingScreen, selectStartupTip } from '../ui/loading';
 import { applyFontSizeOffset, loadSettings, saveGame, loadGame, deleteSave, readLastActiveTimestamp, writeLastActiveTimestamp, saveSettings } from '../settings';
 import { TIERS } from '../data/tiers';
 // createForgeCrunchState no longer needed here; appState.forge === game.forge directly
@@ -86,6 +86,11 @@ export async function startApp(): Promise<void> {
   setAchievementService(new AchievementService(game.platformAchievements));
   const settings = loadSettings();
   applyFontSizeOffset(settings.fontSizeOffsetPx);
+  if (settings.showTipOnStartup) {
+    const tip = selectStartupTip(game.startupTips);
+    loadingScreen.setTip(tip?.text ?? null);
+    if (tip) saveGame(game);
+  }
 
   // ── Preload Poiret One font for canvas rendering ──
   try {

@@ -8,11 +8,13 @@
 // ─── Save format ────────────────────────────────────────────────
 
 export const SAVE_KEY = 'equatoria_save';
-export const SAVE_VERSION = 39;
+export const SAVE_VERSION = 41;
 
 export interface SaveData {
   version: number;
   timestamp: number;
+  /** v40+: per-profile persistent shuffled startup-tip deck. */
+  startupTips?: { order: string[]; cursor: number; lastShownId?: string };
   equation: {
     segments: Array<{ tierId: string; level: number; isUnlocked: boolean }>;
     totalTapCount: number;
@@ -74,6 +76,9 @@ export interface SaveData {
     alivenedTierIds: string[];
     /** v8+: flat 169-element array for the 13×13 interaction matrix. Absent in older saves. */
     interactionMatrix?: number[];
+    /** v41+: ALIVEN edit protection and manual-edit preference. */
+    matrixLocked?: boolean;
+    manualModeEnabled?: boolean;
   };
   /** v10+: RPG persistent state. Absent in older saves. */
   rpg?: {

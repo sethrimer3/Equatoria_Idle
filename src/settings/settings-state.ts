@@ -56,6 +56,8 @@ export interface SettingsState {
    * Offline/idle rewards are still applied silently; only the popup is suppressed.
    */
   skipIdlePopupAtStart: boolean;
+  /** Whether one persistent profile tip is shown on the startup screen. */
+  showTipOnStartup: boolean;
   /** Retained for settings-file compatibility; no active UI reads this field. */
   equationRenderStyle: 'pixel' | 'smooth';
   /**
@@ -118,6 +120,7 @@ export function createDefaultSettings(): SettingsState {
     rpgMenuButtonPosition: 'top',
     rpgZonePosition: 'top',
     skipIdlePopupAtStart: false,
+    showTipOnStartup: true,
     equationRenderStyle: 'pixel',
     idleCanvasRenderStyle: 'pixelated',
     isIdleViewportDebugEnabled: false,

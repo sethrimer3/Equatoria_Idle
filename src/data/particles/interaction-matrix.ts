@@ -23,8 +23,10 @@
  *   - Mixed (a→b > 0, b→a < 0) creates orbiting loops.
  */
 
-/** Number of distinct mote types (matches tier count). */
-export const MOTE_TYPE_COUNT = 13;
+import { TIERS } from '../tiers';
+
+/** Number of distinct mote types, derived from the canonical tier registry. */
+export const MOTE_TYPE_COUNT = TIERS.length;
 
 /**
  * Default hand-tuned interaction matrix.
@@ -74,12 +76,13 @@ export function cloneInteractionMatrix(matrix: number[][]): number[][] {
  * Generate a random interaction matrix with values in [-maxStrength, maxStrength].
  * Useful for experimentation and late-game randomization.
  */
-export function createRandomInteractionMatrix(maxStrength = 0.5): number[][] {
+export function createRandomInteractionMatrix(maxStrength = 0.5, random: () => number = Math.random): number[][] {
   const matrix: number[][] = new Array(MOTE_TYPE_COUNT);
   for (let i = 0; i < MOTE_TYPE_COUNT; i++) {
     matrix[i] = new Array(MOTE_TYPE_COUNT);
     for (let j = 0; j < MOTE_TYPE_COUNT; j++) {
-      matrix[i][j] = (Math.random() * 2 - 1) * maxStrength;
+      const stepCount = Math.round(((random() * 2 - 1) * maxStrength) / 0.05);
+      matrix[i][j] = Number((stepCount * 0.05).toFixed(2));
     }
   }
   return matrix;
@@ -103,13 +106,14 @@ export function serializeInteractionMatrix(matrix: number[][]): number[] {
  * Returns default matrix if the input is invalid.
  */
 export function deserializeInteractionMatrix(flat: number[]): number[][] {
-  const expected = MOTE_TYPE_COUNT * MOTE_TYPE_COUNT;
-  if (!flat || flat.length !== expected) return createDefaultInteractionMatrix();
-  const matrix: number[][] = new Array(MOTE_TYPE_COUNT);
-  for (let i = 0; i < MOTE_TYPE_COUNT; i++) {
-    matrix[i] = new Array(MOTE_TYPE_COUNT);
-    for (let j = 0; j < MOTE_TYPE_COUNT; j++) {
-      matrix[i][j] = flat[i * MOTE_TYPE_COUNT + j];
+  const matrix = createDefaultInteractionMatrix();
+  if (!Array.isArray(flat)) return matrix;
+  const savedSide = Math.sqrt(flat.length);
+  if (!Number.isInteger(savedSide) || savedSide < 1 || savedSide > MOTE_TYPE_COUNT) return matrix;
+  for (let i = 0; i < savedSide; i++) {
+    for (let j = 0; j < savedSide; j++) {
+      const value = flat[i * savedSide + j];
+      if (Number.isFinite(value) && value >= -1 && value <= 1) matrix[i][j] = value;
     }
   }
   return matrix;

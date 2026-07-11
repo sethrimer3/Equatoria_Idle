@@ -2,11 +2,12 @@
  * Loading screen shown while the application finishes bootstrap work.
  */
 
+import { canLeaveLoadingScreen, type LoadingGateState } from './loading-gate';
+
 const SPRITESHEET_PATH = 'ASSETS/ANIMATIONS/computerBackground/spritesheet.png';
 const SPRITESHEET_DATA_PATH = 'ASSETS/ANIMATIONS/computerBackground/spritesheet.json';
 const FRAME_DURATION_MS = 1000 / 30;
 const LAST_FRAME_HOLD_MS = 3000;
-const MINIMUM_DISPLAY_MS = 4000;
 
 interface AtlasFrame {
   x: number;
@@ -24,17 +25,13 @@ export interface LoadingScreen {
   readonly element: HTMLElement;
   /** Fade out and remove the loading screen after its minimum display time. */
   fadeOut(): Promise<void>;
-}
-
-function delay(durationMs: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, durationMs));
+  setTip(text: string | null): void;
 }
 
 /**
  * Create the loading screen and begin its controlled frame animation.
  */
 export async function createLoadingScreen(): Promise<LoadingScreen> {
-  const createdAtMs = performance.now();
   const overlay = document.createElement('div');
   overlay.className = 'loading-screen';
 
@@ -45,11 +42,22 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
   canvas.setAttribute('aria-label', 'Loading Equatoria Idle');
   overlay.appendChild(canvas);
 
+  const tipPanel = document.createElement('div');
+  tipPanel.className = 'loading-tip';
+  tipPanel.setAttribute('role', 'status');
+  tipPanel.hidden = true;
+  overlay.appendChild(tipPanel);
+
   const context = canvas.getContext('2d');
   const spritesheet = new Image();
   let frames: AtlasFrame[] = [];
   let animationFrameId = 0;
   let animationStartMs = 0;
+  let previousCycleIndex = 0;
+  const gate: LoadingGateState = { completedLoops: 0, isLoadingComplete: false, hasFailed: false };
+  let resolveGate: (() => void) | null = null;
+  const gateReady = new Promise<void>(resolve => { resolveGate = resolve; });
+  const checkGate = (): void => { if (canLeaveLoadingScreen(gate)) resolveGate?.(); };
 
   const drawFrame = (frameIndex: number): void => {
     const frame = frames[frameIndex];
@@ -72,6 +80,12 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
     const cycleAnimationMs = frames.length * FRAME_DURATION_MS;
     const cycleDurationMs = cycleAnimationMs + LAST_FRAME_HOLD_MS;
     const cycleElapsedMs = (nowMs - animationStartMs) % cycleDurationMs;
+    const cycleIndex = Math.floor((nowMs - animationStartMs) / cycleDurationMs);
+    if (cycleIndex > previousCycleIndex) {
+      gate.completedLoops += cycleIndex - previousCycleIndex;
+      previousCycleIndex = cycleIndex;
+      checkGate();
+    }
     const frameIndex = cycleElapsedMs >= cycleAnimationMs
       ? frames.length - 1
       : Math.min(frames.length - 1, Math.floor(cycleElapsedMs / FRAME_DURATION_MS));
@@ -103,13 +117,20 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
     animationFrameId = requestAnimationFrame(animate);
   }).catch(() => {
     canvas.classList.add('loading-animation--unavailable');
+    gate.hasFailed = true;
+    checkGate();
   });
 
   return {
     element: overlay,
+    setTip(text: string | null): void {
+      tipPanel.hidden = !text;
+      tipPanel.textContent = text ? `TIP: ${text}` : '';
+    },
     async fadeOut(): Promise<void> {
-      const remainingDisplayMs = Math.max(0, MINIMUM_DISPLAY_MS - (performance.now() - createdAtMs));
-      await delay(remainingDisplayMs);
+      gate.isLoadingComplete = true;
+      checkGate();
+      await gateReady;
 
       return new Promise(resolve => {
         let resolved = false;
