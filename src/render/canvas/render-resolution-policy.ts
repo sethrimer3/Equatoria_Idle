@@ -97,13 +97,6 @@ export const OVERLAY_MAX_BACKING_PIXELS = 4_000_000;
  */
 const MAX_BACKING_DIMENSION = 4096;
 
-/**
- * Floor on the effective DPR so reduced-resolution modes never dip into an
- * unreadable mush.  0.5 keeps at least half-resolution per axis (quarter the
- * pixels) relative to CSS size.
- */
-const MIN_EFFECTIVE_DPR = 0.5;
-
 /** Returns the default backing pixel budget for a quality tier. */
 export function pixelBudgetForQuality(quality: RenderResolutionQuality): number {
   switch (quality) {
@@ -146,12 +139,13 @@ export function computeRenderResolution(
   const budgetScale = Math.sqrt(budget / nativePixels);
 
   // We keep native resolution (scale 1) unless the budget forces a reduction.
+  // The pixel budget itself is the effective floor on absolute resolution
+  // (Performance guarantees ~0.75MP), so no separate DPR floor is applied — a
+  // fixed DPR floor would otherwise push the backing store *above* budget on
+  // very large / 4K displays, defeating the cap.  The Math.max(1, round(...))
+  // on the backing dimensions still guarantees a non-zero canvas.
   let finalScale = Math.min(1, budgetScale);
-
-  // Effective DPR, floored so we never go below MIN_EFFECTIVE_DPR (but never
-  // above native — a small canvas already under budget stays at native).
   let effectiveDpr = nativeDpr * finalScale;
-  effectiveDpr = Math.min(nativeDpr, Math.max(MIN_EFFECTIVE_DPR, effectiveDpr));
 
   // ── Backing dimensions ───────────────────────────────────────────────────
   let backingWidth  = Math.max(1, Math.round(cssW * effectiveDpr));
