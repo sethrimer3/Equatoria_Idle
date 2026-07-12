@@ -51,23 +51,29 @@ export function getChromaKeyedImage(
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context || canvas.width === 0 || canvas.height === 0) return source;
 
-  context.drawImage(source, 0, 0);
-  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-  const pixels = imageData.data;
-  const toleranceSquared = tolerance * tolerance;
-  for (let i = 0; i < pixels.length; i += 4) {
-    const redDelta = pixels[i]! - red;
-    const greenDelta = pixels[i + 1]! - green;
-    const blueDelta = pixels[i + 2]! - blue;
-    if (
-      redDelta * redDelta +
-      greenDelta * greenDelta +
-      blueDelta * blueDelta <= toleranceSquared
-    ) {
-      pixels[i + 3] = 0;
+  try {
+    context.drawImage(source, 0, 0);
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    const toleranceSquared = tolerance * tolerance;
+    for (let i = 0; i < pixels.length; i += 4) {
+      const redDelta = pixels[i]! - red;
+      const greenDelta = pixels[i + 1]! - green;
+      const blueDelta = pixels[i + 2]! - blue;
+      if (
+        redDelta * redDelta +
+        greenDelta * greenDelta +
+        blueDelta * blueDelta <= toleranceSquared
+      ) {
+        pixels[i + 3] = 0;
+      }
     }
+    context.putImageData(imageData, 0, 0);
+  } catch {
+    // Pixel readback can be rejected for tainted or restricted canvases.
+    // Keep rendering with the unprocessed source rather than aborting the frame.
+    return source;
   }
-  context.putImageData(imageData, 0, 0);
   chromaKeyCache.set(cacheKey, canvas);
   return canvas;
 }
