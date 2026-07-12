@@ -83,26 +83,8 @@ export function getRefinedGemFallbackPath(tierId: TierId): string {
 // applied the status.
 // Folder: ASSETS/SPRITES/statusEffectIcons/
 
-/** Maps each EnemyStatusKey to the tier whose icon represents it. */
-const STATUS_EFFECT_TIER: Record<EnemyStatusKey, TierId> = {
-  abraded:      'sand',
-  refracted:    'quartz',
-  burning:      'ruby',
-  radiant:      'sunstone',
-  poisoned:     'emerald',
-  chilled:      'sapphire',
-  timeWarped:   'iolite',
-  echoMarked:   'amethyst',
-  cracked:      'diamond',
-  gravitized:   'nullstone',
-  fractalWound: 'fracteryl',
-  riftScarred:  'eigenstein',
-  frozen:       'sapphire',   // shares sapphire (cold / freeze)
-};
-
 export function getStatusEffectIconPath(key: EnemyStatusKey): string {
-  const tierId = STATUS_EFFECT_TIER[key];
-  return `${BASE}/SPRITES/statusEffectIcons/${tierId}.webp`;
+  return `${BASE}/SPRITES/statusEffectIcons/${key}.png`;
 }
 
 // ── Generator Sprites ──────────────────────────────────────────

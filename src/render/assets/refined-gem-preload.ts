@@ -30,8 +30,7 @@ export function preloadRefinedGemSprites(): void {
     // the masked icon immediately rather than showing the diamond fallback.
     silentLoad(getItemMaskPath('weapon', tier.id));
   }
-  // Status effect icons are deduplicated by asset-loader cache; some tiers
-  // share an icon (e.g. frozen → sapphire) so duplicates are no-ops.
+  // Preload each status effect's named icon.
   for (const key of ALL_STATUS_KEYS) {
     silentLoad(getStatusEffectIconPath(key));
   }
