@@ -136,6 +136,7 @@ Remaining before first Play submission (see ANDROID_RELEASE.md):
 
 ## Completed or superseded references
 
+- [x] Build 332: one explicit `AppRuntime` owns loop, listeners, interval, input, callbacks, audio/effects, panels, RPG teardown, and DOM cleanup.
 - [x] Build 298: Quartz boss signature beat missile with three beat-locked split iterations and damaging thick trails.
 - [x] Build 297: Quartz boss now uses the real `ASSETS/bossMidi/1-QuartzBoss/` MIDI/OGG phrase folder instead of the temporary demo MIDI.
 - [x] Build 296: boss MIDI attack scheduler with demo Boss 1 pattern, mapping config, fallback behavior, dev diagnostics, and scheduler/parser tests.

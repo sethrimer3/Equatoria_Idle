@@ -1,5 +1,12 @@
 # Equatoria Idle Current Status
 
+## Build 332: owned application runtime lifecycle
+
+- Each `startApp()` call now returns an idempotent `AppRuntime` that owns the main game-loop controller, app-level listeners, the 250 ms skill-point poller, removable canvas input, callbacks, audio, background effects, panels, trace overlay, RPG teardown, and app-created DOM.
+- The main loop has explicit `start()`, `stop()`, and `dispose()` behavior with one pending frame at most; stopping during a callback prevents rescheduling and disposal clears particle callbacks.
+- Runtime shutdown stops active work first and removes root DOM last. Production startup remains page-driven, while reset still intentionally uses a full page reload.
+- Focused fake-RAF/event/timer tests cover loop scheduling, input unwiring, visibility/focus/idle behavior, unread polling, reverse cleanup order, replacement runtimes, and preserved Build 331 trace invariants.
+
 ## Build 331: demand-driven trace overlay lifecycle
 
 - The fullscreen golden trace overlay now schedules animation frames only while equation or ALIVEN matrix targets are active.
@@ -18,8 +25,8 @@
 - Each save profile owns a reconciled shuffled tip deck; disabled tips do not consume the deck.
 - Gameplay settings now include the default-enabled `Show tip on startup` option.
 
-Last updated: 2026-07-11
-Current build: 331
+Last updated: 2026-07-12
+Current build: 332
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 

@@ -72,11 +72,12 @@ Application orchestration. Read for bootstrap, resize wiring, action dispatch, g
 
 Key files:
 
-- `game-app.ts`: starts the app, wires DOM, panels, canvas input, resize, loop.
+- `game-app.ts`: starts one owned app instance, wires DOM/panels/resources, and returns its `AppRuntime`.
+- `app-runtime.ts`: app-local reverse-order cleanup owner; root DOM is removed last.
+- `app-lifecycle.ts`: owns visibility/focus/resize listeners and the skill-point unread poller.
 - `app-actions.ts`: central `handleAction()` dispatcher and tab switching.
-- `app-game-loop.ts`: frame loop and cross-system update/render order.
-- Retired equation/forge-preview display implementations live under `src/render/legacy/` and `src/ui/legacy/`; active runtime code must not import them.
-- `game-app-canvas-input.ts`: pointer input wiring for tap, drag, hover, forge/equation actions.
+- `app-game-loop.ts`: owned frame controller plus cross-system update/render order.
+- `game-app-canvas-input.ts`: removable pointer input wiring for tap, drag, hover, forge/equation actions.
 - `game-app-idle.ts`: offline/idle reward eligibility and queueing helper.
 
 Risks:
@@ -84,6 +85,7 @@ Risks:
 - Do not bury progression logic inside UI or DOM handlers.
 - Tab switches often need both DOM panel refresh and canvas/render lifecycle updates.
 - Resize behavior differs between idle canvas and RPG canvas.
+- New app-scoped resources must register cleanup immediately after creation; cleanup must remain idempotent and avoid clearing a replacement runtime's registration.
 
 ### `src/sim/`
 

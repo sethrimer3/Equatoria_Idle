@@ -11,7 +11,7 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
    - Build DOM structure: canvas container, panels container, tab bar
    - Set up input listeners on canvas (tap dispatch + particle drag)
    - Compute initial generator ring positions
-   - Start `requestAnimationFrame` game loop
+   - Start the owned game-loop controller and return an `AppRuntime`
 
 2. **Game Loop** (60 fps target)
    - `simTick()` — advance simulation (auto-tap, timers)
@@ -25,6 +25,18 @@ Equatoria Idle is a mobile-first idle game built with TypeScript, rendered on a 
    - Input layer translates pointer events into `GameAction` objects
    - Tab buttons and upgrade buttons dispatch actions directly
    - `handleAction()` in `game-app.ts` routes all actions
+
+## Application Runtime Lifecycle
+
+Each successful `startApp()` invocation returns one `AppRuntime` with an idempotent `dispose()` method. `main.ts` retains the current handle and disposes it before replacement.
+
+The runtime composes app-scoped cleanup in reverse creation order. The main loop stops first, followed by global listeners, canvas input, panel/RPG resources, timers, callbacks, audio, background effects, and achievement registration. Root DOM is removed last. Cleanup failures are reported individually and do not prevent remaining cleanup.
+
+The main `GameLoopController` owns at most one pending animation frame. Repeated `start()` calls cannot create parallel loops, `stop()` cancels the pending frame, stopping during a callback prevents a successor, and disposed loops cannot simulate. Frame cadence, FPS limiting, update/render ordering, RPG updates, and auto-save remain in the existing loop body.
+
+The shared lazy `AudioContext`, decoded audio buffers, asset caches, and the reusable RPG zone-select stylesheet are process-scoped. App-created audio sources/gains/timers, DOM, callbacks, effects, listeners, and render resources are runtime-scoped.
+
+Reset remains a page-reload flow. Runtime disposal provides teardown and safe replacement; it is not an in-process reset of gameplay state.
 
 ## System Boundaries
 

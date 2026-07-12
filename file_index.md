@@ -26,7 +26,7 @@
 - Boss-only MIDI pattern assets. Files are loaded by `rpg-boss-midi-runtime.ts`, parsed once, and copied into `dist/ASSETS/bossMidi` by `scripts/copy-assets.mjs`.
 
 ### src/main.ts
-- Entry point. Boots the app when DOM is ready.
+- Entry point. Boots the app when DOM is ready, retains the active `AppRuntime`, and disposes a previous runtime before replacement.
 
 ### src/styles.css
 - Import barrel for all CSS. Re-imports from `src/styles/` sub-files.
@@ -67,13 +67,22 @@
 
 ### src/app/game-app.ts
 - Slim application bootstrap (DOM setup, panel wiring, pointer listeners, resize handler).
-- `startApp()` — creates systems and wires them via `app-actions` and `app-game-loop`.
+- `startApp(): Promise<AppRuntime>` — creates one owned app instance and wires it via `app-actions`, `app-game-loop`, and the app-local cleanup owner.
 - Delegates action handling to `app-actions.ts`, game loop to `app-game-loop.ts`, canvas pointer wiring to `game-app-canvas-input.ts`, and idle-reward eligibility checks to `game-app-idle.ts`.
+- Registers child cleanup immediately after creation; startup failures dispose resources already created, and root DOM is removed after active work stops.
 - **Build 193+:** initialises `cc.idleCanvasRenderStyle` from persisted settings immediately after `createGameCanvas`; passes `onIdleCanvasRenderStyleChange` callback to `createSettingsPanel` that updates `cc.idleCanvasRenderStyle`, calls `resizeCanvas`, and recomputes generator positions.
 - Resize handler skips hidden zero-size main-canvas measurements while the RPG tab is active, preventing the Equation canvas from being resized to 0 after focus or viewport changes.
 
 ### src/app/app-types.ts
 - `AppState` and `UIPanels` interfaces shared by app modules.
+
+### src/app/app-runtime.ts
+- Defines the public idempotent `AppRuntime` handle and the app-local reverse-order cleanup owner.
+- Cleanup failures are reported without preventing later cleanup; root DOM cleanup is registered first so it executes last.
+
+### src/app/app-lifecycle.ts
+- Owns the app-level `visibilitychange`, `blur`, `focus`, and `resize` listeners with idempotent removal.
+- Owns the retained 250 ms RPG skill-point unread poller and its mark-read baseline.
 
 ### src/app/app-actions.ts
 - `handleAction()` — central action dispatcher.
@@ -84,8 +93,9 @@
 - Switching from RPG back to a non-RPG tab refreshes the main canvas size and generator positions before the next Equation render.
 
 ### src/app/app-game-loop.ts
-- `createGameLoop()` factory — creates the frame-by-frame game loop.
+- `createGameLoop()` factory — creates a `GameLoopController` with idempotent `start()`, `stop()`, and `dispose()` lifecycle.
 - `GameLoopContext` interface — all dependencies injected.
+- Owns at most one pending animation frame; stop cancels it, stop during a callback prevents rescheduling, and disposal clears particle callbacks.
 - Loop: sim tick → `tickForgeWarmup` → particle update → background → render → forge preview computation → dev viewport debug (dev mode only) → UI update → auto-save.
 - Calls `computeForgePreviewTerms` each frame and passes `forgePreviewTerms` to `hudOverlay.update`.
 - Calls `drawIdleViewportDebug(cc)` when `settings.isDevMode` is true (drawn last so it is always visible).
@@ -99,7 +109,7 @@
 
 ### src/app/game-app-canvas-input.ts
 - Canvas pointer-input wiring extracted from `game-app.ts`.
-- Exports `wireCanvasPointerInput()` to connect pointer down/move/up/cancel handlers for drag interactions, generator hover tracking, and forge/equation tap dispatch.
+- Exports `wireCanvasPointerInput()` to connect named pointer down/move/up/cancel/leave handlers and return an idempotent cleanup that removes all five, releases drag state, and clears generator hover.
 - **Build 108+:** accepts a `dispatch: ActionHandler` parameter and dispatches the `tap` action directly from the canvas `pointerdown` event (with `{ passive: false }` and `preventDefault()` to suppress synthetic mobile mouse events). This is more reliable on mobile than listening on the container, because the canvas has `touch-action: none` and pointer capture is set immediately.
 
 ### src/app/game-app-idle.ts
@@ -1538,6 +1548,7 @@
 - **Luck stat** — `LUCK` widget in stats panel shows `formatLuckPercent(xp)`. On each enemy kill, `trySpawnLuckyMote()` rolls against `getCachedLuckPercent()` (cached to avoid repeated log calls). On success, a `LuckyMote` of the enemy's tier spawns at the death position with random drift. Lucky motes magnetize to the player within `LUCKY_MOTE_MAGNET_DIST` px and are collected within `LUCKY_MOTE_COLLECT_DIST` px, triggering `onLuckyMoteCollected` callback and spawning a `LuckyMotePopup` floating text. Enemy-to-tier mapping: laser→sand, amber→sunstone, void→nullstone; all others map to matching tier.
 - Accepts `rpgSimState: RpgSimState` and optional `options: RpgRenderOptions` (`onLuckyMoteCollected` callback) as factory arguments.
 - Exports `createRpgRender(container, rpgSimState, options?)` factory and `RpgRender` / `RpgRenderOptions` interfaces.
+- `RpgRender.dispose()` removes RPG canvas/document input, stops stats/codex/zone RAFs and transient timers, clears module callbacks/debug flags, dismisses app-created overlays, stops boss audio through the app callback, and destroys active RPG background resources.
 - **Game loop** — `update()` delegates to `runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled)` in `rpg-render-update.ts`; `updateCtx: RpgUpdateCtx` is built once at factory creation time and captures all mutable state through getters/setters.
 - **Build 169:** Fixed missing `getVerdureCaveWallState` in `movementCtx` (player wall collision was dead). Added `getVerdureCaveWallState` to both `movementCtx` and `enemyCtx`. `beginWaveTerrain` now applies Impetus asteroid soft obstacles and Verdure wall hard-blocks to the nav grid immediately after `buildRpgNavigationGrid`.
 
@@ -1857,6 +1868,7 @@ Audio system — eight focused modules:
 - **`ambiance-player.ts`** — `AmbiancePlayer` — looping `lowRumble.mp3` at −10 dB relative to SFX volume. Fades in/out (1 s) when the `equation` tab is entered/left.
 - **`sfx-player.ts`** — `SfxPlayer` — single SFX, random-from-list, polyphony-limited (motes merging, max 2), forge charging fade-in/out; disables and drops SFX while focus audio is paused so suspended-context events do not burst on resume.
 - **`audio-system.ts`** — `AudioSystem` interface + `createAudioSystem(musicVolume, sfxVolume)` factory. No-op fallback when Web Audio API is unavailable; tracks focus state and gates SFX event handlers while unfocused.
+- `AudioSystem.dispose()` stops app-owned playlist/boss/ambiance/forge sources and timers and disconnects app-owned gains; the shared lazy `AudioContext` and decoded-buffer cache remain intentionally process-scoped.
 - **`index.ts`** — Barrel: exports `AudioSystem`, `createAudioSystem`.
 
 ### src/data/particles/particle-config.ts

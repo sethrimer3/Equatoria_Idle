@@ -4,6 +4,22 @@ Lightweight log of architectural facts discovered and major structural changes. 
 
 ---
 
+## 2026-07-12 — Owned application runtime lifecycle (build 332)
+
+**Agent:** Codex architectural audit
+
+**Changed:**
+- `startApp()` returns an `AppRuntime`; `main.ts` retains and replaces the active runtime safely.
+- `createGameLoop()` returns an explicit start/stop/dispose controller, and canvas pointer wiring returns an idempotent cleanup.
+- App listeners, unread polling, achievement registration, audio, effects, panels, RPG resources, callbacks, and DOM now compose under one reverse-order cleanup owner.
+
+**New invariants:**
+- One app runtime owns at most one main RAF, one unread interval, and one app-level global-listener set.
+- Disposal is idempotent, stops active work before root DOM removal, and prevents disposed callbacks from mutating live runtime state.
+- Page-reload reset remains intentional; runtime disposal is not an in-process gameplay reset.
+
+---
+
 ## 2026-07-11 — Demand-driven trace overlay lifecycle (build 331)
 
 **Agent:** Codex architectural audit

@@ -12,12 +12,14 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 
 | File | Responsibility | Edit risk |
 |---|---|---|
-| `game-app.ts` | `startApp()` — full bootstrap: DOM, audio, loop, panels | CAUTION — very large, many wiring paths |
-| `app-game-loop.ts` | `createGameLoop()` — per-frame sim+render+autosave | CAUTION — update order matters |
+| `game-app.ts` | `startApp()` — full bootstrap returning one owned `AppRuntime` | CAUTION — very large, many wiring paths |
+| `app-runtime.ts` | App-local idempotent reverse-order cleanup owner; root DOM cleanup runs last | CAUTION — lifecycle ordering |
+| `app-lifecycle.ts` | Visibility/focus/resize listeners and skill-point unread interval ownership | Medium |
+| `app-game-loop.ts` | `createGameLoop()` — start/stop/dispose controller plus per-frame sim+render+autosave | CAUTION — update order matters |
 | `app-actions.ts` | `handleAction()` + `setActiveTab()` + `updateVisiblePanels()` | CAUTION — central dispatch |
 | `app-types.ts` | `AppState`, `UIPanels` interfaces | CAUTION — shape used in loop and actions |
 | `render/legacy/forge-equation-preview-legacy.ts` | Retired forge equation-preview bridge | Never import at runtime |
-| `game-app-canvas-input.ts` | `wireCanvasPointerInput()` — pointer/touch input wiring | Medium |
+| `game-app-canvas-input.ts` | `wireCanvasPointerInput()` — pointer/touch input wiring with idempotent cleanup | Medium |
 | `game-app-idle.ts` | `applyIdleRewardsIfEligible()` — offline reward queue | SAFE |
 
 ## src/sim/ — Simulation State

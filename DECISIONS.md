@@ -1,5 +1,17 @@
 # Equatoria Idle — Technical Decisions
 
+## Owned Application Runtime Lifecycle
+
+**Decision** (build 332): Every `startApp()` call creates and returns one explicit, idempotent `AppRuntime`. The runtime is the ownership boundary for the main loop, app-level listeners and polling, canvas input, global callbacks, achievement registration, app-owned audio/effects, panel resources, required RPG teardown, and app-created DOM.
+
+**Shutdown order**: cleanup is registered as resources are created and runs once in reverse order. Active frames, timers, listeners, input, callbacks, and audio stop before root DOM removal. A cleanup failure is reported but does not stop later cleanup.
+
+**Game loop**: `createGameLoop()` returns a controller rather than a self-scheduling callback. The controller permits one pending RAF at most, supports safe stop/restart, prevents rescheduling after a stop inside a callback, and clears particle callbacks on disposal without changing the per-frame simulation/render body.
+
+**Process-scoped exceptions**: the lazy shared `AudioContext`, decoded-buffer/asset caches, and reusable static style registrations survive runtime disposal. Closing the shared context would make a later runtime unable to resume normal audio without rebuilding process-level caches.
+
+**Reset boundary**: the existing page-reload reset remains intentional. Runtime disposal is for teardown and duplicate-free replacement, not an in-process reconstruction of RPG gameplay state.
+
 ## RPG Render Coordinate System
 
 **Decision** (build 129): The RPG gameplay arena uses a **fixed** logical coordinate space of **360 × 640** px (9:16 aspect ratio).
