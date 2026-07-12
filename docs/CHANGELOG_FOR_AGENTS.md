@@ -4,6 +4,20 @@ Lightweight log of architectural facts discovered and major structural changes. 
 
 ---
 
+## 2026-07-11 — Demand-driven trace overlay lifecycle (build 331)
+
+**Agent:** Codex architectural audit
+
+**Changed:**
+- `src/render/ui/trace-effect.ts` no longer runs a permanent fullscreen animation loop while it has no targets.
+- Target setters now wake or stop the loop, and `dispose()` is idempotent.
+- Lifecycle coverage lives in `src/render/ui/__tests__/trace-effect.test.ts`.
+
+**New invariants:**
+- The trace overlay must own at most one scheduled animation frame and zero while target-free.
+
+---
+
 ## 2026-06-06 — Documentation pass (build 230)
 
 **Agent:** codebase cartographer

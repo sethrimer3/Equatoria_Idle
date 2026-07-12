@@ -5,9 +5,9 @@
  *  - A golden glowing rectangle outline around target DOM elements.
  *  - Two small glowing golden circles that continuously trace the perimeter.
  *
- * Used for:
- *  - Equation term highlights when hovering over an upgrade button.
- *  - Interaction matrix cell highlight during a click-and-hold drag.
+ * Used by the active UI for ALIVEN interaction-matrix highlighting during a
+ * click-and-hold drag. The equation-target API remains available for compatible
+ * callers even though the visible equation display is currently retired.
  */
 
 // ─── Types ────────────────────────────────────────────────────────

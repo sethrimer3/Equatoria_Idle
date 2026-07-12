@@ -1722,9 +1722,10 @@
 
 ### src/render/ui/trace-effect.ts
 - Fullscreen fixed canvas overlay for animated golden outline + tracing circles.
-- `createTraceEffect(mountTarget)` — returns `TraceEffect` with `setEquationTargets()` and `setMatrixTarget()`.
-- Used by equation-panel (upgrade hover) and loom-panel (matrix cell drag).
+- `createTraceEffect(mountTarget)` — returns `TraceEffect` with `setEquationTargets()`, `setMatrixTarget()`, and idempotent `dispose()` lifecycle cleanup.
+- Used by the active ALIVEN matrix drag highlight; the equation-target API remains available while the visible equation display is retired.
 - Two small golden circles trace the perimeter of the outlined rect using `perimeterPoint()`.
+- The overlay is demand-driven: it owns no animation frame while target-free, wakes when the first target appears, and cancels immediately after the last target clears.
 
 ### src/data/achievements/achievement-definition-types.ts
 - `AchievementBonusKind`, `AchievementCondition` (discriminated union, 60+ kinds), `AchievementDefinition` interface.
