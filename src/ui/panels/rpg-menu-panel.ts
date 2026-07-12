@@ -65,6 +65,7 @@ export interface RpgMenuPanel {
   setSharpTopographyShadows(enabled: boolean): void;
   /** Sync an individual developer visual checkbox without a full re-render. */
   setDeveloperVisual(kind: GameAction['kind'], enabled: boolean): void;
+  dispose(): void;
 }
 
 // ─── Factory ─────────────────────────────────────────────────────
@@ -289,6 +290,13 @@ export function createRpgMenuPanel(
 
     setDeveloperVisual(kind: GameAction['kind'], enabled: boolean): void {
       menuTabPane.setDeveloperVisual(kind, enabled);
+    },
+
+    dispose(): void {
+      skillTreePane.stopLoop();
+      enemiesTabPane.dispose();
+      lastRpgState = null;
+      lastResources = null;
     },
 
     isVisible: false,

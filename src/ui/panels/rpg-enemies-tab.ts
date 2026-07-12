@@ -27,7 +27,7 @@ import {
 import { type EnemyCatalogEntry, type EnemyZoneId, ENEMY_CATALOG, BOSS_DESCRIPTIONS } from './rpg-enemies-catalog';
 import {
   ICON_SIZE,
-  createAlivenIconCanvas, createProcIconCanvas, drawEnemyIcon,
+  createAlivenIconCanvas, createProcIconCanvas, disposeEnemyIconCanvas, drawEnemyIcon,
 } from './rpg-enemies-tab-icons';
 import {
   getEnemyIconPath,
@@ -48,6 +48,7 @@ import { ENEMY_STATUS_SOURCES } from '../../data/rpg/enemy-status-sources';
 export interface RpgEnemiesTabPane {
   element: HTMLElement;
   update(rpgState: RpgSimState | null, isDevMode: boolean): void;
+  dispose(): void;
 }
 
 type EnemyZoneTabId = 'all' | EnemyZoneId;
@@ -658,6 +659,7 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
   function update(rpgState: RpgSimState | null, isDevMode: boolean): void {
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
+    for (const canvas of element.querySelectorAll('canvas')) disposeEnemyIconCanvas(canvas);
     element.innerHTML = '';
     if (!rpgState) return;
 
@@ -756,6 +758,13 @@ export function createRpgEnemiesTabPane(_dispatch: ActionHandler): RpgEnemiesTab
     }
   }
 
-  const pane: RpgEnemiesTabPane = { element, update };
+  const pane: RpgEnemiesTabPane = {
+    element,
+    update,
+    dispose(): void {
+      for (const canvas of element.querySelectorAll('canvas')) disposeEnemyIconCanvas(canvas);
+      latestRpgState = null;
+    },
+  };
   return pane;
 }

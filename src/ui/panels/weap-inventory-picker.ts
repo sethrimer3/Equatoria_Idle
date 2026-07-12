@@ -86,6 +86,8 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
   // Pre-select the weapon already in the tapped slot (if any)
   let selectedWeaponId: string | null =
     slotIdx !== null ? (rpgSimState.equippedWeaponSlots.get(slotIdx) ?? null) : null;
+  let isDismissed = false;
+  let escapeListenerTimer: ReturnType<typeof setTimeout> | null = null;
 
   function getWeaponSlot(weaponId: string): number | null {
     for (const [s, wid] of rpgSimState.equippedWeaponSlots) {
@@ -460,11 +462,15 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
 
   // ── Dismiss logic ──────────────────────────────────────────────────────────
   function dismiss(): void {
+    if (isDismissed) return;
+    isDismissed = true;
     overlay.remove();
     cleanupDrag();
     if (slotIdx !== null && weapSlotCells[slotIdx]) {
       weapSlotCells[slotIdx].classList.remove('weap-slot-picker-source');
     }
+    if (escapeListenerTimer !== null) clearTimeout(escapeListenerTimer);
+    escapeListenerTimer = null;
     document.removeEventListener('keydown', onEscape);
   }
 
@@ -478,8 +484,9 @@ export function showWeapInventoryPicker(opts: WeapInventoryPickerOpts): { dismis
   }
 
   // Delay by one frame so the triggering tap doesn't immediately dismiss
-  setTimeout(() => {
-    document.addEventListener('keydown', onEscape);
+  escapeListenerTimer = setTimeout(() => {
+    escapeListenerTimer = null;
+    if (!isDismissed) document.addEventListener('keydown', onEscape);
   }, 0);
 
   return { dismiss };

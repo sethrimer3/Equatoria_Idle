@@ -52,7 +52,7 @@ export class BossMusicPlayer {
   }
 
   playCassetteStart(path: string, onDone: () => void): void {
-    if (this._isDisposed) { onDone(); return; }
+    if (this._isDisposed) return;
     this._playOneShotWithCallback(path, onDone);
   }
 
@@ -150,7 +150,8 @@ export class BossMusicPlayer {
     const ctx = getAudioContext();
     if (!ctx) { setTimeout(onDone, 0); return; }
     void loadAudioBuffer(ctx, path).then((buffer) => {
-      if (!buffer || this._isDisposed) { onDone(); return; }
+      if (this._isDisposed) return;
+      if (!buffer) { onDone(); return; }
       try {
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(this._volume(), ctx.currentTime);

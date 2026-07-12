@@ -26,6 +26,7 @@ export interface TabBar {
   updateAchievementIndicator(state: GameState): void;
   /** Show a golden "Achieved!" floater rising above the achievements tab button. */
   showAchievedPopup(delayMs?: number): void;
+  dispose(): void;
 }
 
 // ─── Sprite configuration ────────────────────────────────────────
@@ -192,7 +193,7 @@ function upgradesAnimStart(anim: UpgradesAnimState): void {
  */
 function buildTabIconEl(
   sprites: TabSprites,
-): { container: HTMLElement; animState?: UpgradesAnimState } {
+): { container: HTMLElement; animState?: UpgradesAnimState; preloadTimeoutId?: number } {
   const container = document.createElement('div');
   container.className = 'tab-icon-sprite';
 
@@ -228,7 +229,7 @@ function buildTabIconEl(
 
   // Preload animation frames asynchronously after the current task completes
   // so the initial render is not delayed.
-  setTimeout(() => {
+  const preloadTimeoutId = window.setTimeout(() => {
     for (const frameSrc of sprites.frames) {
       const preload = new Image();
       preload.src = frameSrc;
@@ -236,7 +237,7 @@ function buildTabIconEl(
   }, 0);
 
   const animState = createUpgradesAnimState(imgEl);
-  return { container, animState };
+  return { container, animState, preloadTimeoutId };
 }
 
 // ─── Main factory ────────────────────────────────────────────────
@@ -247,6 +248,7 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
 
   const buttons: Map<TabId, HTMLButtonElement> = new Map();
   let upgradesAnim: UpgradesAnimState | null = null;
+  let upgradesPreloadTimeoutId: number | null = null;
 
   for (const tab of TABS) {
     const sprites = TAB_SPRITES[tab.id];
@@ -254,7 +256,7 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
     btn.className = 'tab-btn';
     btn.dataset['tabId'] = tab.id;
 
-    const { container, animState } = buildTabIconEl(sprites);
+    const { container, animState, preloadTimeoutId } = buildTabIconEl(sprites);
     btn.appendChild(container);
 
     const labelEl = document.createElement('span');
@@ -269,6 +271,7 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
 
     if (animState) {
       upgradesAnim = animState;
+      upgradesPreloadTimeoutId = preloadTimeoutId ?? null;
 
       btn.addEventListener('pointerenter', () => {
         animState.isHovered = true;
@@ -293,6 +296,8 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
 
   const achievementButton = buttons.get('achievements') ?? null;
   let sparkleEmitter: SparkleEmitter | null = null;
+  const popupTimeoutIds = new Set<number>();
+  const ownedPopups = new Set<HTMLElement>();
 
   function createSparkle(host: HTMLElement): void {
     const sparkle = document.createElement('span');
@@ -378,13 +383,34 @@ export function createTabBar(dispatch: ActionHandler): TabBar {
         popup.style.left = `${rect.left + rect.width / 2}px`;
         popup.style.bottom = `${window.innerHeight - rect.top + 4}px`;
         document.body.appendChild(popup);
-        popup.addEventListener('animationend', () => popup.remove(), { once: true });
+        ownedPopups.add(popup);
+        popup.addEventListener('animationend', () => {
+          popup.remove();
+          ownedPopups.delete(popup);
+        }, { once: true });
       };
       if (delayMs > 0) {
-        window.setTimeout(show, delayMs);
+        const timeoutId = window.setTimeout(() => {
+          popupTimeoutIds.delete(timeoutId);
+          show();
+        }, delayMs);
+        popupTimeoutIds.add(timeoutId);
       } else {
         show();
       }
+    },
+    dispose(): void {
+      if (upgradesAnim?.rafId !== null && upgradesAnim?.rafId !== undefined) {
+        cancelAnimationFrame(upgradesAnim.rafId);
+        upgradesAnim.rafId = null;
+      }
+      if (upgradesPreloadTimeoutId !== null) window.clearTimeout(upgradesPreloadTimeoutId);
+      upgradesPreloadTimeoutId = null;
+      setSparkleEmitter(achievementButton ?? bar, false);
+      for (const timeoutId of popupTimeoutIds) window.clearTimeout(timeoutId);
+      popupTimeoutIds.clear();
+      for (const popup of ownedPopups) popup.remove();
+      ownedPopups.clear();
     },
   };
 }

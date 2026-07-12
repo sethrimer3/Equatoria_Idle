@@ -99,6 +99,9 @@ export function createAlivenPaneMatrixSection(dispatch: ActionHandler, traceEffe
     armed = null;
     if (confirmTimer) clearTimeout(confirmTimer);
     confirmTimer = null;
+    if (overlayTimer) clearTimeout(overlayTimer);
+    overlayTimer = null;
+    overlay.classList.remove('is-playing');
     resetBtn.textContent = 'Reset to Default';
     randomBtn.textContent = 'Randomize';
     resetBtn.setAttribute('aria-pressed', 'false');

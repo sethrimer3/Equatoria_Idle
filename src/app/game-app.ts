@@ -98,7 +98,10 @@ async function startOwnedApp(root: HTMLElement, runtimeOwner: AppRuntimeOwner): 
   const game = savedGame ?? createGameState();
   const achievementService = new AchievementService(game.platformAchievements);
   setAchievementService(achievementService);
-  runtimeOwner.addCleanup(() => clearAchievementService(achievementService));
+  runtimeOwner.addCleanup(() => {
+    clearAchievementService(achievementService);
+    achievementService.dispose();
+  });
   const settings = loadSettings();
   applyFontSizeOffset(settings.fontSizeOffsetPx);
   if (settings.showTipOnStartup) {
@@ -276,6 +279,7 @@ async function startOwnedApp(root: HTMLElement, runtimeOwner: AppRuntimeOwner): 
     resizeCanvas(cc, canvasContainer);
     recomputeGenerators();
   }, () => { applyRenderResolutionQuality(); });
+  runtimeOwner.addCleanup(() => settingsPanel.dispose());
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
   runtimeOwner.addCleanup(() => achievementsPanel.destroy());
 
@@ -295,6 +299,7 @@ async function startOwnedApp(root: HTMLElement, runtimeOwner: AppRuntimeOwner): 
   equationContentDiv.appendChild(equationPanel.element);
 
   const loomPanel = createLoomPanel(dispatch, traceEffect, equationContentDiv);
+  runtimeOwner.addCleanup(() => loomPanel.dispose());
 
   // Prepend large page break to the top of each scrollable panel
   loomPanel.element.prepend(makePageBreak('large'));
@@ -397,6 +402,7 @@ async function startOwnedApp(root: HTMLElement, runtimeOwner: AppRuntimeOwner): 
       rpgMenuPanel.setRpgZonePosition(position);
     },
   );
+  runtimeOwner.addCleanup(() => rpgMenuPanel.dispose());
   rpgMenuPanel.element.style.display = 'none';
   root.appendChild(rpgMenuPanel.element);
   rpgRender.setRackAutoMoveToggleHandler(() => {
@@ -514,6 +520,7 @@ async function startOwnedApp(root: HTMLElement, runtimeOwner: AppRuntimeOwner): 
   rpgRender.registerOverlayFadeElements([hiddenRackMenuBtn, codexBtn, skillTreeBtn]);
 
   const tabBar = createTabBar(dispatch);
+  runtimeOwner.addCleanup(() => tabBar.dispose());
   root.appendChild(tabBar.element);
 
   const uiPanels: UIPanels = {

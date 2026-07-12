@@ -35,6 +35,7 @@ export interface BalanceForecastPanel {
   setDevMode(isDevMode: boolean): void;
   /** Call with latest game state when the panel is opened or refreshed. */
   update(game: GameState): void;
+  dispose(): void;
 }
 
 // ─── Max simulation time options ─────────────────────────────────
@@ -120,6 +121,16 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
   let lastGame: GameState | null = null;
   let lastResult: ForecastResult | null = null;
   let isRunning = false;
+  let isDisposed = false;
+  const ownedTimeoutIds = new Set<ReturnType<typeof setTimeout>>();
+
+  function scheduleTimeout(callback: () => void, delayMs: number): void {
+    const id = setTimeout(() => {
+      ownedTimeoutIds.delete(id);
+      if (!isDisposed) callback();
+    }, delayMs);
+    ownedTimeoutIds.add(id);
+  }
 
   function getMaxSimSeconds(): number {
     return parseInt(maxSimSelect.value, 10) || DEFAULT_MAX_SIM_SECONDS;
@@ -139,7 +150,7 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
   }
 
   function runAnalysis(game: GameState): void {
-    if (isRunning) return;
+    if (isDisposed || isRunning) return;
     isRunning = true;
     statusLine.textContent = '⏳ Running simulation…';
     refreshBtn.disabled = true;
@@ -149,7 +160,7 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
       : '🔀 Strategy Comparison (Fresh Run)';
 
     // Use a minimal setTimeout so the UI updates before the blocking computation
-    setTimeout(() => {
+    scheduleTimeout(() => {
       try {
         const opts: ForecastOptions = {
           maxSimSeconds: getMaxSimSeconds(),
@@ -179,9 +190,11 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
     if (!lastResult) return;
     const text = buildTextReport(lastResult);
     navigator.clipboard?.writeText(text).then(() => {
+      if (isDisposed) return;
       copyBtn.textContent = '✓ Copied!';
-      setTimeout(() => { copyBtn.textContent = '📋 Copy Results'; }, 2000);
+      scheduleTimeout(() => { copyBtn.textContent = '📋 Copy Results'; }, 2000);
     }).catch(() => {
+      if (isDisposed) return;
       statusLine.textContent = 'Clipboard unavailable — see console.';
       console.log('[BalanceForecast results]\n', text);
     });
@@ -205,11 +218,20 @@ export function createBalanceForecastPanel(): BalanceForecastPanel {
     },
 
     update(game: GameState): void {
+      if (isDisposed) return;
       lastGame = game;
       // Auto-run when first opened (no result yet)
       if (!lastResult) {
         runAnalysis(game);
       }
+    },
+    dispose(): void {
+      if (isDisposed) return;
+      isDisposed = true;
+      for (const timeoutId of ownedTimeoutIds) clearTimeout(timeoutId);
+      ownedTimeoutIds.clear();
+      lastGame = null;
+      lastResult = null;
     },
   };
 }

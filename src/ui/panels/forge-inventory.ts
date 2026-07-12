@@ -17,6 +17,7 @@ const MIN_SLOT_COUNT = 12;
 export interface ForgeInventory {
   element: HTMLElement;
   update(craftedWeapons: readonly CraftedWeaponData[]): void;
+  dispose(): void;
 }
 
 export function createForgeInventory(): ForgeInventory {
@@ -40,6 +41,7 @@ export function createForgeInventory(): ForgeInventory {
 
   let activePopup: HTMLElement | null = null;
   let popupDismissHandler: ((e: Event) => void) | null = null;
+  let popupListenerTimer: ReturnType<typeof setTimeout> | null = null;
 
   function dismissPopup(): void {
     if (activePopup) { activePopup.remove(); activePopup = null; }
@@ -115,7 +117,8 @@ export function createForgeInventory(): ForgeInventory {
     popupDismissHandler = (e: Event) => {
       if (activePopup && !activePopup.contains(e.target as Node)) dismissPopup();
     };
-    setTimeout(() => {
+    popupListenerTimer = setTimeout(() => {
+      popupListenerTimer = null;
       if (popupDismissHandler) document.addEventListener('pointerdown', popupDismissHandler);
     }, 0);
   }
@@ -334,5 +337,14 @@ export function createForgeInventory(): ForgeInventory {
     if (changed) renderGrid();
   }
 
-  return { element, update };
+  function dispose(): void {
+    if (popupListenerTimer !== null) clearTimeout(popupListenerTimer);
+    popupListenerTimer = null;
+    dismissPopup();
+    document.removeEventListener('pointermove', onDocPointerMove);
+    document.removeEventListener('pointerup', onDocPointerUp);
+    cleanupDrag();
+  }
+
+  return { element, update, dispose };
 }

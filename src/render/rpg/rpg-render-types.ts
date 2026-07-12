@@ -6,6 +6,7 @@ import type { RenderResolutionQuality } from '../canvas/render-resolution-policy
 export interface RpgRender {
   canvas: HTMLCanvasElement;
   statsPanel: HTMLElement;
+  dispose(): void;
   /** Container inside the right column of the stats panel where the RPG menu button should be appended. */
   menuButtonContainer: HTMLElement;
   /** Register floating RPG overlay buttons that should fade when gameplay entities pass behind them. */

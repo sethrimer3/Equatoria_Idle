@@ -240,6 +240,25 @@ import { showWeapInventoryPicker } from '../../ui/panels/weap-inventory-picker';
 export type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 
 export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState, options: RpgRenderOptions = {}): RpgRender {
+  let isDisposed = false;
+  const ownedTimeoutIds = new Set<number>();
+  const ownedFrameIds = new Set<number>();
+
+  function scheduleTimeout(callback: () => void, delayMs: number): void {
+    const id = window.setTimeout(() => {
+      ownedTimeoutIds.delete(id);
+      if (!isDisposed) callback();
+    }, delayMs);
+    ownedTimeoutIds.add(id);
+  }
+
+  function scheduleFrame(callback: FrameRequestCallback): void {
+    const id = requestAnimationFrame((nowMs) => {
+      ownedFrameIds.delete(id);
+      if (!isDisposed) callback(nowMs);
+    });
+    ownedFrameIds.add(id);
+  }
 
   // ── RPG area wrapper (aspect-ratio-preserving letterbox / pillarbox) ───────
   // `#rpg-area` is sized in CSS pixels by resizeRpgArea() to be the largest
@@ -711,6 +730,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // first.  ESLint's prefer-const rule cannot model this deferred-init pattern.
   // eslint-disable-next-line prefer-const
   let statsPanel!: RpgStatsPanelHandle;
+  let activeWeaponPicker: { dismiss(): void } | null = null;
   // eslint-disable-next-line prefer-const
   let weaponSystems!: RpgWeaponHandle;
   // eslint-disable-next-line prefer-const
@@ -1239,7 +1259,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let targetSelectedAtMs = 0;
 
   // ── Enemy bark system (speech bubbles) ────────────────────────
-  initEnemyBarkSystem({
+  const disposeEnemyBarkSystem = initEnemyBarkSystem({
     // findClosestEnemy returns the enemy object directly (union type); cast to the bark
     // system's minimal BarkableEnemy shape (all enemy types in the union have these fields).
     getClosestLivingEnemy: () => {
@@ -1342,9 +1362,10 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     onBossVictory:           (speedPct) => {
       pendingBossVictory = true;
       const handleCassetteDone = () => {
+        if (isDisposed) return;
         pendingBossVictory = false;
         _showBossScoreOverlay(rpgArea, speedPct);
-        setTimeout(() => { zoneSelectPanel.open(); }, 3000);
+        scheduleTimeout(() => { zoneSelectPanel.open(); }, 3000);
       };
       if (options.onBossMusicStopWithCassette) {
         options.onBossMusicStopWithCassette(CASSETTE_END_PATH, handleCassetteDone);
@@ -1381,6 +1402,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   }
 
   function _showBossScoreOverlay(container: HTMLElement, speedPct: number): void {
+    if (isDisposed) return;
     const overlay = document.createElement('div');
     overlay.style.cssText = [
       'position:absolute',
@@ -1412,21 +1434,22 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     container.appendChild(overlay);
 
     // Trigger the drop animation on next frame
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    scheduleFrame(() => {
+      scheduleFrame(() => {
         overlay.style.transform = 'translateY(0)';
       });
     });
 
     // Remove after 4 seconds (1s after zone select opens)
-    setTimeout(() => {
+    scheduleTimeout(() => {
       overlay.style.transition = 'opacity 0.4s';
       overlay.style.opacity = '0';
-      setTimeout(() => { overlay.remove(); }, 500);
+      scheduleTimeout(() => { overlay.remove(); }, 500);
     }, 4000);
   }
 
   function showEquipmentRewardToast(reward: GrantedEquipmentReward): void {
+    if (isDisposed) return;
     const itemName = reward.item.name || 'Unknown Item';
     const typeLabel = reward.kind === 'lens' ? 'Lens' : 'Weave';
     const rarity = reward.kind === 'lens'
@@ -1515,11 +1538,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     host.appendChild(toast);
 
     while (host.children.length > 4) host.firstElementChild?.remove();
-    window.setTimeout(() => {
+    scheduleTimeout(() => {
       toast.style.transition = 'opacity 360ms ease, transform 360ms ease';
       toast.style.opacity = '0';
       toast.style.transform = 'translateY(-8px)';
-      window.setTimeout(() => toast.remove(), 420);
+      scheduleTimeout(() => toast.remove(), 420);
     }, reward.isMajor ? 5600 : 3400);
   }
 
@@ -1753,7 +1776,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
       spawnDamageNumber(mote.x, mote.y - 10, 0, -1, 'Level Up!', 1, '#a78bfa');
     },
     onWeapCellTap: options.dispatch ? (slotIdx, anchorEl) => {
-      showWeapInventoryPicker({
+      activeWeaponPicker?.dismiss();
+      activeWeaponPicker = showWeapInventoryPicker({
         anchor: anchorEl,
         slotIdx,
         rpgSimState,
@@ -1919,7 +1943,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     spawnDamageNumber: (x, y, vx, vy, text, ratio, color) => spawnDamageNumber(x, y, vx, vy, text, ratio, color),
   };
 
-  createRpgInput({
+  const rpgInput = createRpgInput({
     canvas,
     dim,
     joystick,
@@ -2357,13 +2381,43 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   // defers the ~10–60 ms generation work until after the current synchronous
   // init path completes, keeping startup fast.
   if (rpgSimState.activeZoneId === 'caustics') {
-    setTimeout(() => prewarmCausticsTextures(), 0);
+    scheduleTimeout(() => prewarmCausticsTextures(), 0);
   }
 
   return {
     canvas,
     statsPanel: statsPanel.element,
     menuButtonContainer: statsPanel.menuButtonContainer,
+    dispose(): void {
+      if (isDisposed) return;
+      isDisposed = true;
+      _isActive = false;
+      for (const id of ownedFrameIds) cancelAnimationFrame(id);
+      ownedFrameIds.clear();
+      for (const id of ownedTimeoutIds) window.clearTimeout(id);
+      ownedTimeoutIds.clear();
+      rpgInput.dispose();
+      disposeEnemyBarkSystem();
+      initBossDialogueSystem();
+      setTopographicTerrainDevMode(false);
+      setTopographyLightingDevMode(false);
+      setBossAttacksLowGraphics(false);
+      setAllDrawLowGraphics(false);
+      activeWeaponPicker?.dismiss();
+      activeWeaponPicker = null;
+      statsPanel.setAutoMoveToggleHandler(null);
+      statsPanel.dispose();
+      zoneSelectPanel.dispose();
+      options.onBossMusicStop?.();
+      zenithBinaryHorizon?.destroy();
+      trueBinaryHorizon?.destroy();
+      zenithBinaryRingBg?.destroy();
+      nadirSubstrate?.destroy();
+      nadirCubicGrid?.destroy();
+      fluid.reset();
+      overlayFadeElements.length = 0;
+      clearPlayerAutoMovePath();
+    },
     registerOverlayFadeElements(elements: readonly HTMLElement[]): void {
       for (const element of elements) {
         if (!overlayFadeElements.includes(element)) {
@@ -2380,6 +2434,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     update(deltaMs: number, autoMoveEnabled = false): void {
+      if (isDisposed) return;
       statsPanel.setAutoMoveEnabled(autoMoveEnabled);
       if (rpgPhase !== 'alive') {
         clearPlayerAutoMovePath();
@@ -2454,6 +2509,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     resize(cont: HTMLElement): void {
+      if (isDisposed) return;
       _devOverlayContainer = cont;
       if (_isDevMode && _showDebugOverlay && !_devOverlay.parentElement) cont.appendChild(_devOverlay);
       doResize(cont);
@@ -2465,6 +2521,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     },
 
     setActive(active: boolean): void {
+      if (isDisposed) return;
       _isActive = active;
       if (!active) { keys.left = keys.right = keys.up = keys.down = false; }
       if (active) {

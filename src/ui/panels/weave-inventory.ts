@@ -29,6 +29,7 @@ import { compareWeave, type ItemSortMode } from '../../data/rpg/item-sort-helper
 export interface WeaveInventoryPanel {
   element: HTMLElement;
   update(craftedWeaves: readonly CraftedWeaveData[], equippedSlots: (string | null)[], rpgState?: RpgSimState): void;
+  dispose(): void;
 }
 
 export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?: ActionHandler): WeaveInventoryPanel {
@@ -48,6 +49,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
   let equippedIds: Set<string> = new Set();
   let localOrder: string[] = [];
   let currentRpgState: RpgSimState | undefined;
+  const ownedOverlays = new Set<HTMLElement>();
 
   // ── Resonance Dust header ──────────────────────────────────────────────
   const dustHeader = document.createElement('div');
@@ -691,6 +693,7 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     overlay.appendChild(box);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
+    ownedOverlays.add(overlay);
   }
 
   function render(): void {
@@ -723,5 +726,15 @@ export function createWeaveInventoryPanel(slotsPanel: WeaveSlotsPanel, dispatch?
     render();
   }
 
-  return { element, update };
+  return {
+    element,
+    update,
+    dispose(): void {
+      document.removeEventListener('pointermove', onDocPointerMove);
+      document.removeEventListener('pointerup', onDocPointerUp);
+      cleanupDrag();
+      for (const overlay of ownedOverlays) overlay.remove();
+      ownedOverlays.clear();
+    },
+  };
 }

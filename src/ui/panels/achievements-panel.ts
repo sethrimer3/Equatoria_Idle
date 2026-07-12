@@ -129,8 +129,19 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
   const rewardQueue: string[] = [];
   let isRewardShowing = false;
+  let isDestroyed = false;
+  const ownedTimeoutIds = new Set<ReturnType<typeof setTimeout>>();
+
+  function scheduleTimeout(callback: () => void, delayMs: number): void {
+    const id = setTimeout(() => {
+      ownedTimeoutIds.delete(id);
+      if (!isDestroyed) callback();
+    }, delayMs);
+    ownedTimeoutIds.add(id);
+  }
 
   function showNextReward(): void {
+    if (isDestroyed) return;
     if (isRewardShowing) return;
     const next = rewardQueue.shift();
     if (!next) return;
@@ -178,7 +189,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
     // Stagger-append each bonus line.
     bonusLines.forEach((text, i) => {
-      setTimeout(() => {
+      scheduleTimeout(() => {
         const el = document.createElement('div');
         el.className = 'golden-text-bonus';
         el.textContent = text;
@@ -192,7 +203,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
 
     const STAGGER_OUT_MS = 100;
     bonusLines.forEach((_, i) => {
-      setTimeout(() => {
+      scheduleTimeout(() => {
         const el = bonusEls[i];
         if (!el) return;
         el.classList.add('golden-text-bonus--out');
@@ -213,7 +224,7 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
       const lastBonusRemoveMs = totalAppearMs + STAGGER_OUT_MS * bonusLines.length + 250;
       const headerAnimMs = 7000; // matches golden-text-float duration
       const waitAfterHeader = Math.max(0, lastBonusRemoveMs - headerAnimMs);
-      setTimeout(() => {
+      scheduleTimeout(() => {
         isRewardShowing = false;
         showNextReward();
       }, waitAfterHeader);
@@ -313,6 +324,11 @@ export function createAchievementsPanel(dispatch: ActionHandler, audioSystem?: A
   }
 
   function destroy(): void {
+    if (isDestroyed) return;
+    isDestroyed = true;
+    for (const timeoutId of ownedTimeoutIds) clearTimeout(timeoutId);
+    ownedTimeoutIds.clear();
+    rewardQueue.length = 0;
     stopGlyphAnimation();
     stopAllSparkles();
     if (createdContainer) goldenTextContainer.remove();

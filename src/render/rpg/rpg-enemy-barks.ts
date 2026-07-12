@@ -126,16 +126,24 @@ function _getBarkColor(enemy: BarkableEnemy): string {
 export function initEnemyBarkSystem(opts: {
   /** Returns the closest live enemy to the player, or null if the field is empty. */
   getClosestLivingEnemy: () => BarkableEnemy | null;
-}): void {
+}): () => void {
   _getClosestLivingEnemy = opts.getClosestLivingEnemy;
   _initialized           = true;
   // Wire into the status-effect system so status application fires a bark.
-  setStatusAppliedCallback((enemy, statusKey) => {
+  const onStatusApplied = (enemy: object, statusKey: string): void => {
     _handleStatusApplied(
       enemy as BarkableEnemy,
       statusKey,
     );
-  });
+  };
+  setStatusAppliedCallback(onStatusApplied);
+  return () => {
+    if (_getClosestLivingEnemy !== opts.getClosestLivingEnemy) return;
+    _initialized = false;
+    _getClosestLivingEnemy = null;
+    _activeBubbles.length = 0;
+    setStatusAppliedCallback(null);
+  };
 }
 
 // ── Core try-bark ─────────────────────────────────────────────────────────────

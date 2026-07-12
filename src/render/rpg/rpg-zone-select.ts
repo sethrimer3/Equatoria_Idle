@@ -483,6 +483,7 @@ export interface RpgZoneSelectPanel {
   close(): void;
   isOpen: boolean;
   setDevMode(enabled: boolean): void;
+  dispose(): void;
 }
 
 // ─── Factory ───────────────────────────────────────────────────────────────
@@ -496,6 +497,7 @@ export function createRpgZoneSelectPanel(
 ): RpgZoneSelectPanel {
 
   let _isOpen     = false;
+  let _isDisposed = false;
   let _rafId      = 0;
   let _lastTMs    = 0;
   let _isDevMode  = false;
@@ -1235,7 +1237,7 @@ export function createRpgZoneSelectPanel(
   }
 
   function loop(tMs: number): void {
-    if (!_isOpen) return;
+    if (_isDisposed || !_isOpen) return;
     drawFrame(tMs);
     _rafId = requestAnimationFrame(loop);
   }
@@ -1246,6 +1248,7 @@ export function createRpgZoneSelectPanel(
     element: overlay,
 
     open(): void {
+      if (_isDisposed) return;
       overlay.style.display = 'block';
       _isOpen   = true;
       hoveredId = null;
@@ -1262,6 +1265,7 @@ export function createRpgZoneSelectPanel(
     },
 
     close(): void {
+      if (_isDisposed) return;
       overlay.style.display = 'none';
       _isOpen = false;
       cancelAnimationFrame(_rafId);
@@ -1273,6 +1277,15 @@ export function createRpgZoneSelectPanel(
 
     setDevMode(enabled: boolean): void {
       _isDevMode = enabled;
+    },
+
+    dispose(): void {
+      if (_isDisposed) return;
+      _isDisposed = true;
+      _isOpen = false;
+      cancelAnimationFrame(_rafId);
+      ptrs.clear();
+      overlay.remove();
     },
   };
 

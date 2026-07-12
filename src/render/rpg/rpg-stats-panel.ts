@@ -72,6 +72,7 @@ export interface RpgStatsPanelCtx {
 
 export interface RpgStatsPanelHandle {
   element: HTMLElement;
+  dispose(): void;
   /** Container inside the right column where the RPG menu button should be appended. */
   menuButtonContainer: HTMLElement;
   recordDps(dmg: number, _legacyColor?: string): void;
@@ -146,6 +147,7 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   // ── DOM elements (construction delegated to rpg-stats-panel-dom.ts) ──────────
   const {
+    dispose: disposeStatsPanelDom,
     statsPanel,
     menuArea,
     xpAmountEl,
@@ -785,6 +787,10 @@ export function createRpgStatsPanel(ctx: RpgStatsPanelCtx): RpgStatsPanelHandle 
 
   return {
     element: statsPanel,
+    dispose(): void {
+      disposeStatsPanelDom();
+      onAutoMoveIconToggle = null;
+    },
     menuButtonContainer: menuArea,
     recordDps,
     withDamageSource,

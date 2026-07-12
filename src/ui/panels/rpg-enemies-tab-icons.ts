@@ -56,6 +56,12 @@ interface MiniParticle {
   phase: number;
 }
 
+const animatedIconDisposers = new WeakMap<HTMLCanvasElement, () => void>();
+
+export function disposeEnemyIconCanvas(canvas: HTMLCanvasElement): void {
+  animatedIconDisposers.get(canvas)?.();
+}
+
 /**
  * Creates an animated canvas that simulates a small cluster of aliven
  * particles bouncing inside the icon box. The RAF loop stops automatically
@@ -93,10 +99,12 @@ export function createAlivenIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElem
 
   let lastTime = performance.now();
   let rafId = 0;
+  let isDisposed = false;
 
   function frame(t: number): void {
-    if (!canvas.isConnected) {
+    if (isDisposed || !canvas.isConnected) {
       cancelAnimationFrame(rafId);
+      animatedIconDisposers.delete(canvas);
       return;
     }
     const dt = Math.min(t - lastTime, 50);
@@ -149,6 +157,12 @@ export function createAlivenIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElem
   }
 
   rafId = requestAnimationFrame(frame);
+  animatedIconDisposers.set(canvas, () => {
+    if (isDisposed) return;
+    isDisposed = true;
+    cancelAnimationFrame(rafId);
+    animatedIconDisposers.delete(canvas);
+  });
   return canvas;
 }
 
@@ -294,10 +308,12 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
 
   let lastTime = performance.now();
   let rafId = 0;
+  let isDisposed = false;
 
   function frame(t: number): void {
-    if (!canvas.isConnected) {
+    if (isDisposed || !canvas.isConnected) {
       cancelAnimationFrame(rafId);
+      animatedIconDisposers.delete(canvas);
       return;
     }
     if (state === null) return;
@@ -372,6 +388,12 @@ export function createProcIconCanvas(entry: EnemyCatalogEntry): HTMLCanvasElemen
   }
 
   rafId = requestAnimationFrame(frame);
+  animatedIconDisposers.set(canvas, () => {
+    if (isDisposed) return;
+    isDisposed = true;
+    cancelAnimationFrame(rafId);
+    animatedIconDisposers.delete(canvas);
+  });
   return canvas;
 }
 

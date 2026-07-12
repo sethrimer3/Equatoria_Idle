@@ -40,6 +40,7 @@ export function createBackgroundAnimation(): BackgroundAnimation {
   let elapsedMs = 0;
   let isDestroyed = false;
   let isLoadingBatch = false;
+  let loadFrameId: number | null = null;
 
   const frameDurationMs = 1000 / BG_ANIMATION_FPS;
 
@@ -77,13 +78,15 @@ export function createBackgroundAnimation(): BackgroundAnimation {
       const idx = loadIndex;
       const img = new Image();
       img.onload = () => {
-        if (!isDestroyed) {
-          frameBuffer.set(idx, img);
-        }
+        if (isDestroyed) { isLoadingBatch = false; return; }
+        frameBuffer.set(idx, img);
         loadIndex++;
         // Load a few at a time, then yield to avoid blocking
         if (loadIndex % 5 === 0) {
-          requestAnimationFrame(loadNext);
+          loadFrameId = requestAnimationFrame(() => {
+            loadFrameId = null;
+            loadNext();
+          });
         } else {
           loadNext();
         }
@@ -126,7 +129,10 @@ export function createBackgroundAnimation(): BackgroundAnimation {
   }
 
   function destroy(): void {
+    if (isDestroyed) return;
     isDestroyed = true;
+    if (loadFrameId !== null) cancelAnimationFrame(loadFrameId);
+    loadFrameId = null;
     frameBuffer.clear();
   }
 

@@ -25,6 +25,7 @@ export interface SettingsPanel {
   devPanel: DevPanel;
   /** Wire up the dev panel after rpgRender and game are available. */
   registerDevHooks(hooks: DevPanelHooks): void;
+  dispose(): void;
 }
 
 type SubTabId = 'audio' | 'visual' | 'gameplay' | 'profile';
@@ -489,6 +490,9 @@ export function createSettingsPanel(
     devPanel,
     registerDevHooks(hooks: DevPanelHooks): void {
       devPanel.setHooks(hooks);
+    },
+    dispose(): void {
+      balanceForecastPanel.dispose();
     },
   };
 }

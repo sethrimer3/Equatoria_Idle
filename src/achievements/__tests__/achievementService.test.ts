@@ -99,4 +99,19 @@ describe('AchievementService', () => {
     expect(restoredService.isUnlocked('FIRST_BLOOD')).toBe(true);
     expect(restoredService.getProgress('MOTE_COUNT_50')).toBe(12);
   });
+
+  it('stops accepting gameplay mutations after disposal', async () => {
+    adapter.ready = false;
+    service.increment('ENEMY_COUNT_100', 5);
+    service.dispose();
+    service.increment('ENEMY_COUNT_100', 5);
+    service.unlock('FIRST_BLOOD');
+    adapter.ready = true;
+    await service.syncAll();
+
+    expect(service.getProgress('ENEMY_COUNT_100')).toBe(5);
+    expect(service.isUnlocked('FIRST_BLOOD')).toBe(false);
+    expect(service.getPendingSyncIds()).toHaveLength(0);
+    expect(adapter.unlocked).toHaveLength(0);
+  });
 });

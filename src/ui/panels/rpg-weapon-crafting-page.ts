@@ -59,6 +59,7 @@ type CraftingMode = 'weapon' | 'weave' | 'lens';
 export interface RpgWeaponCraftingPage {
   element: HTMLElement;
   update(rpgState: RpgSimState, isDevMode: boolean, forgeState?: ForgeCrunchState, resources?: ResourceState, numberFormat?: NumberFormat): void;
+  dispose(): void;
 }
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -93,6 +94,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   const loomCanvases = new Map<TierId, HTMLCanvasElement>();
   const loomRotations = new Map<TierId, number>();
   let animRafId: number | null = null;
+  let isDisposed = false;
   let lastAnimMs: number | null = null;
 
   // â”€â”€ Segment fog fills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -117,7 +119,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
 
   function animTick(nowMs: number): void {
     // Stop the loop if the component has been removed from the DOM
-    if (!element.isConnected) { animRafId = null; return; }
+    if (isDisposed || !element.isConnected) { animRafId = null; return; }
 
     const deltaMs = lastAnimMs !== null ? nowMs - lastAnimMs : 16.67;
     lastAnimMs = nowMs;
@@ -180,7 +182,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   }
 
   function startAnimLoop(): void {
-    if (animRafId !== null) return;
+    if (isDisposed || animRafId !== null) return;
     animRafId = requestAnimationFrame(animTick);
   }
 
@@ -643,6 +645,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     refreshAdvanced();
   }
 
+  const documentDragCleanups: Array<() => void> = [];
+
   function attachHandleDrag(handle: HTMLElement, hi: number): void {
     let dragging = false;
 
@@ -680,6 +684,14 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       document.addEventListener('touchmove', onTouchMove, { passive: false });
       document.addEventListener('touchend', onTouchEnd);
     }, { passive: false });
+
+    documentDragCleanups.push(() => {
+      dragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    });
   }
 
   function attachHandleKeyboard(handle: HTMLElement, hi: number): void {
@@ -1229,5 +1241,18 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     weaveInventoryPanel.update(rpgState.craftedWeaves, rpgState.equippedWeaveSlots, rpgState);
   }
 
-  return { element, update };
+  return {
+    element,
+    update,
+    dispose(): void {
+      if (isDisposed) return;
+      isDisposed = true;
+      if (animRafId !== null) cancelAnimationFrame(animRafId);
+      animRafId = null;
+      for (const cleanup of documentDragCleanups) cleanup();
+      documentDragCleanups.length = 0;
+      weaveInventoryPanel.dispose();
+      weaveSlotsPanel.dispose();
+    },
+  };
 }

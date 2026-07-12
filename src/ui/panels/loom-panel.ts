@@ -29,6 +29,7 @@ const FORGE_PREVIEW_SIZE = 160;
 export interface LoomPanel {
   element: HTMLElement;
   update(state: GameState, numberFormat: NumberFormat, isDevMode?: boolean): void;
+  dispose(): void;
 }
 
 export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffect, equationContent?: HTMLElement): LoomPanel {
@@ -186,5 +187,16 @@ export function createLoomPanel(dispatch: ActionHandler, traceEffect?: TraceEffe
     if (activeSubTab === 'aliven') alivenPane.update(state, numberFormat);
   }
 
-  return { element: panel, update };
+  return {
+    element: panel,
+    update,
+    dispose(): void {
+      if (forgePreviewRafId !== null) cancelAnimationFrame(forgePreviewRafId);
+      forgePreviewRafId = null;
+      latestForgeState = null;
+      craftingPage.dispose();
+      inventory.dispose();
+      alivenPane.cancelTransient();
+    },
+  };
 }

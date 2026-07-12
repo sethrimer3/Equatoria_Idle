@@ -166,7 +166,7 @@ describe('createGameLoop lifecycle', () => {
 
   it('FPS-limited skipped callbacks still own exactly one successor', () => {
     const raf = new FakeRaf();
-    const loop = createGameLoop(createContext(30), raf);
+    const loop = createGameLoop(createContext(60), raf);
     loop.start();
 
     raf.takeNext()(100);

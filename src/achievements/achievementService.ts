@@ -41,6 +41,7 @@ export class AchievementService {
   private readonly state: AchievementServiceState;
   private readonly pendingSyncIds = new Set<string>();
   private syncInFlight = false;
+  private isDisposed = false;
 
   constructor(state: AchievementServiceState = createAchievementServiceState(), adapter: AchievementPlatformAdapter = new NoopAchievementAdapter()) {
     this.state = state;
@@ -49,6 +50,7 @@ export class AchievementService {
 
   /** Swap the active platform adapter (e.g. once a platform SDK becomes available). */
   setAdapter(adapter: AchievementPlatformAdapter): void {
+    if (this.isDisposed) return;
     this.adapter = adapter;
   }
 
@@ -72,6 +74,7 @@ export class AchievementService {
 
   /** Reveal a hidden achievement (e.g. once its condition is first hinted at) without unlocking it. */
   reveal(id: string): void {
+    if (this.isDisposed) return;
     if (!ACHIEVEMENT_REGISTRY_BY_ID.has(id)) return;
     const rec = getOrCreateRecord(this.state, id);
     rec.revealed = true;
@@ -79,6 +82,7 @@ export class AchievementService {
 
   /** Unlock an achievement. Idempotent — a second call is a no-op. */
   unlock(id: string): void {
+    if (this.isDisposed) return;
     const def = ACHIEVEMENT_REGISTRY_BY_ID.get(id);
     if (!def) return;
     const rec = getOrCreateRecord(this.state, id);
@@ -93,6 +97,7 @@ export class AchievementService {
 
   /** Increment progress toward an incremental achievement's target. Unlocks once the threshold is crossed, exactly once. */
   increment(id: string, amount: number): void {
+    if (this.isDisposed) return;
     const def = ACHIEVEMENT_REGISTRY_BY_ID.get(id);
     if (!def || def.targetCount === undefined) return;
     const rec = getOrCreateRecord(this.state, id);
@@ -106,6 +111,7 @@ export class AchievementService {
 
   /** Set absolute progress toward an incremental achievement's target. Unlocks once the threshold is crossed, exactly once. */
   setProgress(id: string, value: number): void {
+    if (this.isDisposed) return;
     const def = ACHIEVEMENT_REGISTRY_BY_ID.get(id);
     if (!def || def.targetCount === undefined) return;
     const rec = getOrCreateRecord(this.state, id);
@@ -131,11 +137,12 @@ export class AchievementService {
    * queued in the meantime before it finishes.
    */
   async syncAll(): Promise<void> {
+    if (this.isDisposed) return;
     if (this.syncInFlight) return;
     if (!this.adapter.isReady()) return;
     this.syncInFlight = true;
     try {
-      while (this.pendingSyncIds.size > 0) {
+      while (!this.isDisposed && this.pendingSyncIds.size > 0) {
         const id = this.pendingSyncIds.values().next().value as string;
         this.pendingSyncIds.delete(id);
         const def = ACHIEVEMENT_REGISTRY_BY_ID.get(id);
@@ -155,5 +162,12 @@ export class AchievementService {
   /** IDs still waiting to be synced to the active adapter. */
   getPendingSyncIds(): string[] {
     return Array.from(this.pendingSyncIds);
+  }
+
+  dispose(): void {
+    if (this.isDisposed) return;
+    this.isDisposed = true;
+    this.pendingSyncIds.clear();
+    this.adapter = new NoopAchievementAdapter();
   }
 }

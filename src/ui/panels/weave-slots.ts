@@ -34,6 +34,7 @@ export interface WeaveSlotsPanel {
   ): void;
   /** Called by inventory when a drag operation starts. Highlights valid empty slots. */
   setDragActive(weaveId: string | null): void;
+  dispose(): void;
 }
 
 type PopupDismissHandler = (e: Event) => void;
@@ -60,6 +61,7 @@ export function createWeaveSlotsPanel(dispatch: ActionHandler): WeaveSlotsPanel 
   // ── Popup ──────────────────────────────────────────────────────────────
   let activePopup: HTMLElement | null = null;
   let popupDismiss: PopupDismissHandler | null = null;
+  let popupListenerTimer: ReturnType<typeof setTimeout> | null = null;
 
   function dismissPopup(): void {
     activePopup?.remove();
@@ -161,7 +163,8 @@ export function createWeaveSlotsPanel(dispatch: ActionHandler): WeaveSlotsPanel 
     popupDismiss = (e: Event) => {
       if (activePopup && !activePopup.contains(e.target as Node)) dismissPopup();
     };
-    setTimeout(() => {
+    popupListenerTimer = setTimeout(() => {
+      popupListenerTimer = null;
       if (popupDismiss) document.addEventListener('pointerdown', popupDismiss);
     }, 0);
 
@@ -404,5 +407,17 @@ export function createWeaveSlotsPanel(dispatch: ActionHandler): WeaveSlotsPanel 
   }
 
   render();
-  return { element, update, setDragActive };
+  return {
+    element,
+    update,
+    setDragActive,
+    dispose(): void {
+      if (popupListenerTimer !== null) clearTimeout(popupListenerTimer);
+      popupListenerTimer = null;
+      dismissPopup();
+      document.removeEventListener('pointermove', onSlotDocPointerMove);
+      document.removeEventListener('pointerup', onSlotDocPointerUp);
+      cleanupSlotDrag();
+    },
+  };
 }
