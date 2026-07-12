@@ -15,7 +15,7 @@
 import { getActiveStatuses } from '../../sim/rpg/enemy-status-effects';
 import type { EnemyStatusKey } from '../../sim/rpg/enemy-status-effects';
 import { getStatusEffectIconPath } from '../../render/assets/asset-paths';
-import { getCachedImage } from '../../render/assets/asset-loader';
+import { getChromaKeyedImage } from '../../render/assets/asset-loader';
 
 // ── Label config ───────────────────────────────────────────────────────────────
 
@@ -107,7 +107,13 @@ function _drawStatusIconsForEnemy(
     const lx = cx - half;
     const ly = topY;
 
-    const sprite = getCachedImage(getStatusEffectIconPath(s.key));
+    const sprite = getChromaKeyedImage(
+      getStatusEffectIconPath(s.key),
+      255,
+      0,
+      255,
+      48,
+    );
 
     if (sprite) {
       // Dark background square
