@@ -9,8 +9,13 @@ import { AchievementService } from './achievementService';
 let service: AchievementService | null = null;
 
 /** Wire up the singleton service instance used by the hooks below. */
-export function setAchievementService(instance: AchievementService): void {
+export function setAchievementService(instance: AchievementService | null): void {
   service = instance;
+}
+
+/** Clear a registration only if it still belongs to the disposing runtime. */
+export function clearAchievementService(instance: AchievementService): void {
+  if (service === instance) service = null;
 }
 
 export function getAchievementService(): AchievementService | null {

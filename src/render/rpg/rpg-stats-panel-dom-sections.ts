@@ -1,6 +1,7 @@
 import { GLOW_PULSE_SPEED, RPG_MOTE_COLOR, RPG_MOTE_GLOW } from './rpg-constants';
 
 export interface StatsPanelPrimaryColumnRefs {
+  disposePlayerIconAnimation(): void;
   xpBox1: HTMLDivElement;
   xpBox2: HTMLDivElement;
   xpBox3: HTMLDivElement;
@@ -60,6 +61,7 @@ function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
   iconButtonEl: HTMLButtonElement;
   autoMoveLabelEl: HTMLSpanElement;
   xpBarFill: HTMLDivElement;
+  dispose(): void;
 } {
   const wrapperEl = document.createElement('div');
   wrapperEl.className = 'rpg-player-icon-widget';
@@ -127,14 +129,21 @@ function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
   }
 
   let iconPrevMs = 0;
+  let iconRafId: number | null = null;
+  let isDisposed = false;
   function iconAnimLoop(ms: number): void {
+    if (isDisposed) return;
     if (getIsStatsPanelVisible()) {
       drawPlayerIdleFrame(ms - iconPrevMs);
     }
     iconPrevMs = ms;
-    requestAnimationFrame(iconAnimLoop);
+    iconRafId = requestAnimationFrame(iconAnimLoop);
   }
-  requestAnimationFrame((ms) => { iconPrevMs = ms; requestAnimationFrame(iconAnimLoop); });
+  iconRafId = requestAnimationFrame((ms) => {
+    if (isDisposed) return;
+    iconPrevMs = ms;
+    iconRafId = requestAnimationFrame(iconAnimLoop);
+  });
 
   iconButtonEl.appendChild(playerIconEl);
   wrapperEl.appendChild(iconButtonEl);
@@ -154,7 +163,19 @@ function createPlayerIconWidget(getIsStatsPanelVisible: () => boolean): {
   xpBarTrack.appendChild(xpBarFill);
   wrapperEl.appendChild(xpBarTrack);
 
-  return { wrapperEl, levelLabelEl, iconButtonEl, autoMoveLabelEl, xpBarFill };
+  return {
+    wrapperEl,
+    levelLabelEl,
+    iconButtonEl,
+    autoMoveLabelEl,
+    xpBarFill,
+    dispose(): void {
+      if (isDisposed) return;
+      isDisposed = true;
+      if (iconRafId !== null) cancelAnimationFrame(iconRafId);
+      iconRafId = null;
+    },
+  };
 }
 
 function makeBox5Row(label: string | HTMLElement): { box: HTMLDivElement; xpOutPlug: HTMLDivElement } {
@@ -252,6 +273,7 @@ export function createStatsPanelPrimaryColumn(
     iconButtonEl: playerIconButtonEl,
     autoMoveLabelEl: playerAutoMoveLabelEl,
     xpBarFill: playerXpBarFill,
+    dispose: disposePlayerIconAnimation,
   } = createPlayerIconWidget(getIsStatsPanelVisible);
   xpBox1.appendChild(playerIconWidget);
 
@@ -351,6 +373,7 @@ export function createStatsPanelPrimaryColumn(
   }
 
   return {
+    disposePlayerIconAnimation,
     xpBox1,
     xpBox2,
     xpBox3,

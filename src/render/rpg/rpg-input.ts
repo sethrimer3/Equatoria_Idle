@@ -70,6 +70,7 @@ const TAP_MAX_MOVE_PX = 10;   // max pointer movement in px for a press to count
 
 export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
   const { canvas, dim, joystick, keys, getIsActive, tryTargetEnemyAt, onZoneLabelTap } = ctx;
+  let isDisposed = false;
 
   const ZONE_SELECTION_SPRITE_SIZE = 120;
   const ZONE_SELECTION_OVERLAY_HEIGHT = ZONE_SELECTION_SPRITE_SIZE + 6 + ((Math.round(14 * 0.7) + 5) * 2) + 8;
@@ -125,7 +126,8 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
 
   // ── Pointer event listeners ────────────────────────────────────────────────
 
-  canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+  function handlePointerDown(e: PointerEvent): void {
+    if (isDisposed) return;
     e.preventDefault(); e.stopPropagation();
     canvas.setPointerCapture(e.pointerId);
     const pos = toCanvasCoords(e.clientX, e.clientY);
@@ -137,9 +139,10 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
     pointerDownTime = Date.now();
     pointerDownX = pos.x;
     pointerDownY = pos.y;
-  }, { passive: false });
+  }
 
-  canvas.addEventListener('pointermove', (e: PointerEvent) => {
+  function handlePointerMove(e: PointerEvent): void {
+    if (isDisposed) return;
     const pos = toCanvasCoords(e.clientX, e.clientY);
     setZoneSelectionSpriteHover(isInZoneSelectionSprite(pos));
     if (!joystick.isActive || e.pointerId !== joystick.pointerId) return;
@@ -153,7 +156,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
     } else {
       joystick.thumbX = pos.x; joystick.thumbY = pos.y;
     }
-  }, { passive: false });
+  }
 
   function endJoystick(pointerId: number, pos?: { x: number; y: number }): void {
     if (pointerId !== joystick.pointerId) return;
@@ -176,18 +179,32 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
     setZoneSelectionSpriteHover(false);
   }
 
-  canvas.addEventListener('pointerup', (e: PointerEvent) => {
+  function handlePointerUp(e: PointerEvent): void {
+    if (isDisposed) return;
     const pos = toCanvasCoords(e.clientX, e.clientY);
     endJoystick(e.pointerId, pos);
-  });
+  }
 
-  canvas.addEventListener('pointercancel', (e: PointerEvent) => endJoystick(e.pointerId));
-  canvas.addEventListener('pointerleave', () => setZoneSelectionSpriteHover(false));
+  function handlePointerCancel(e: PointerEvent): void {
+    if (isDisposed) return;
+    endJoystick(e.pointerId);
+  }
+
+  function handlePointerLeave(): void {
+    if (isDisposed) return;
+    setZoneSelectionSpriteHover(false);
+  }
+
+  canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
+  canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
+  canvas.addEventListener('pointerup', handlePointerUp);
+  canvas.addEventListener('pointercancel', handlePointerCancel);
+  canvas.addEventListener('pointerleave', handlePointerLeave);
 
   // ── Keyboard event listeners ───────────────────────────────────────────────
 
   function handleKeyDown(e: KeyboardEvent): void {
-    if (!getIsActive()) return;
+    if (isDisposed || !getIsActive()) return;
     switch (e.code) {
       case 'ArrowLeft':  case 'KeyA': keys.left  = true;  break;
       case 'ArrowRight': case 'KeyD': keys.right = true;  break;
@@ -200,7 +217,7 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
   }
 
   function handleKeyUp(e: KeyboardEvent): void {
-    if (!getIsActive()) return;
+    if (isDisposed || !getIsActive()) return;
     switch (e.code) {
       case 'ArrowLeft':  case 'KeyA': keys.left  = false; break;
       case 'ArrowRight': case 'KeyD': keys.right = false; break;
@@ -214,8 +231,19 @@ export function createRpgInput(ctx: RpgInputCtx): RpgInputHandle {
 
   return {
     dispose(): void {
+      if (isDisposed) return;
+      isDisposed = true;
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerup', handlePointerUp);
+      canvas.removeEventListener('pointercancel', handlePointerCancel);
+      canvas.removeEventListener('pointerleave', handlePointerLeave);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup',   handleKeyUp);
+      joystick.isActive = false;
+      joystick.pointerId = -1;
+      keys.left = keys.right = keys.up = keys.down = false;
+      setZoneSelectionSpriteHover(false);
     },
   };
 }

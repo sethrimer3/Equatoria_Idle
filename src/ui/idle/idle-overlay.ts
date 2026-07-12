@@ -13,6 +13,7 @@ export interface IdleOverlay {
   element: HTMLElement;
   show(summary: IdleRewardSummary): void;
   hide(): void;
+  dispose(): void;
 }
 
 const ANIMATE_DURATION_MS = 600;
@@ -59,7 +60,10 @@ export function createIdleOverlay(): IdleOverlay {
   let visibleTierRewards: IdleRewardSummary['tierRewards'] = [];
   let animationId = 0;
 
-  overlay.addEventListener('pointerdown', hide);
+  function onPointerDown(): void {
+    hide();
+  }
+  overlay.addEventListener('pointerdown', onPointerDown);
 
   function show(summary: IdleRewardSummary): void {
     const mins = Math.round(summary.minutesAway);
@@ -129,5 +133,10 @@ export function createIdleOverlay(): IdleOverlay {
     overlay.classList.remove('idle-overlay--visible');
   }
 
-  return { element: overlay, show, hide };
+  function dispose(): void {
+    hide();
+    overlay.removeEventListener('pointerdown', onPointerDown);
+  }
+
+  return { element: overlay, show, hide, dispose };
 }

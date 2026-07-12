@@ -78,9 +78,27 @@ export interface GameLoopContext {
   audioSystem?: AudioSystem;
 }
 
+export interface GameLoopController {
+  readonly isRunning: boolean;
+  start(): void;
+  stop(): void;
+  dispose(): void;
+}
+
+export interface GameLoopFrameScheduler {
+  requestFrame(callback: FrameRequestCallback): number;
+  cancelFrame(id: number): void;
+}
+
 // ─── Game loop ──────────────────────────────────────────────────
 
-export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
+export function createGameLoop(
+  ctx: GameLoopContext,
+  scheduler: GameLoopFrameScheduler = {
+    requestFrame: (callback) => requestAnimationFrame(callback),
+    cancelFrame: (id) => cancelAnimationFrame(id),
+  },
+): GameLoopController {
   // Per-loom fractional particle accumulator (render-side only, not persisted).
   // Tracks sub-particle remainders so fractional emit rates average out correctly.
   const particleEmitAccumulators = new Map<TierId, number>();
@@ -132,12 +150,11 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
     ctx.appState.lastRefinedCrystalsGained = crystalsGained;
   };
 
-  function gameLoop(nowMs: number): void {
+  function runFrame(nowMs: number): void {
     const fpsLimit = ctx.settings.fpsLimit;
     if (fpsLimit !== 'unlimited') {
       const minFrameMs = 1000 / fpsLimit;
       if (_nextFrameTargetMs > 0 && nowMs + 0.25 < _nextFrameTargetMs) {
-        requestAnimationFrame(gameLoop);
         return;
       }
       _nextFrameTargetMs = _nextFrameTargetMs > 0
@@ -188,7 +205,6 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
         ctx.settings.isDevMode && ctx.settings.isTopographicTerrainDebugEnabled,
       );
       ctx.uiPanels.rpgRender.update(deltaMs, autoMove);
-      requestAnimationFrame(gameLoop);
       return;
     }
 
@@ -504,10 +520,51 @@ export function createGameLoop(ctx: GameLoopContext): (nowMs: number) => void {
       updateVisiblePanels(ctx.appState, ctx.uiPanels, ctx.appState.game, ctx.settings.isDevMode, ctx.settings.numberFormat);
     }
 
-    requestAnimationFrame(gameLoop);
   }
 
-  return gameLoop;
+  let pendingFrameId: number | null = null;
+  let isRunning = false;
+  let isDisposed = false;
+
+  function scheduleNextFrame(): void {
+    if (!isRunning || isDisposed || pendingFrameId !== null) return;
+    pendingFrameId = scheduler.requestFrame(onAnimationFrame);
+  }
+
+  function onAnimationFrame(nowMs: number): void {
+    pendingFrameId = null;
+    if (!isRunning || isDisposed) return;
+    runFrame(nowMs);
+    scheduleNextFrame();
+  }
+
+  function stop(): void {
+    if (!isRunning && pendingFrameId === null) return;
+    isRunning = false;
+    if (pendingFrameId !== null) {
+      scheduler.cancelFrame(pendingFrameId);
+      pendingFrameId = null;
+    }
+  }
+
+  return {
+    get isRunning(): boolean {
+      return isRunning;
+    },
+    start(): void {
+      if (isDisposed || isRunning) return;
+      isRunning = true;
+      scheduleNextFrame();
+    },
+    stop,
+    dispose(): void {
+      if (isDisposed) return;
+      isDisposed = true;
+      stop();
+      ctx.particles.onParticleCapturedByLoom = undefined;
+      ctx.particles.onEquationForgeCrunchCompleted = undefined;
+    },
+  };
 }
 
 /**

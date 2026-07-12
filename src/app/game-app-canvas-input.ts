@@ -29,8 +29,11 @@ export function wireCanvasPointerInput(
   particles: ParticleSystem,
   audioSystem: AudioSystem,
   dispatch: ActionHandler,
-): void {
-  cc.canvas.addEventListener('pointerdown', (event: PointerEvent) => {
+): () => void {
+  let isDisposed = false;
+
+  function onPointerDown(event: PointerEvent): void {
+    if (isDisposed) return;
     // Prevent synthetic mouse events that mobile browsers fire after touch,
     // which would otherwise trigger a second tap dispatch on the same gesture.
     event.preventDefault();
@@ -60,33 +63,62 @@ export function wireCanvasPointerInput(
       cc.widthPx,
       cc.heightPx,
     );
-  }, { passive: false });
+  }
 
-
-  cc.canvas.addEventListener('pointermove', (event: PointerEvent) => {
+  function onPointerMove(event: PointerEvent): void {
+    if (isDisposed) return;
     const pos = canvasCoordsFromPointerEvent(cc, event);
     if (appState.activeTab !== 'rpg') {
       updateGeneratorPointerPos(pos.x, pos.y);
     }
     if (!appState.particleDrag.isDown) return;
     event.preventDefault();
-    // Record latest position only — actual particle update is batched to the game loop via flushParticleDragMove
+    // Record only the latest position; the game loop batches the actual move.
     recordParticleDragMove(appState.particleDrag, pos.x, pos.y, event.timeStamp);
-  }, { passive: false });
+  }
 
-  cc.canvas.addEventListener('pointerleave', () => {
+  function onPointerLeave(): void {
+    if (isDisposed) return;
     clearGeneratorPointerPos();
-  });
+  }
 
-  cc.canvas.addEventListener('pointerup', (event: PointerEvent) => {
+  function onPointerUp(event: PointerEvent): void {
+    if (isDisposed) return;
     const pos = canvasCoordsFromPointerEvent(cc, event);
     handleParticleDragUp(appState.particleDrag, pos.x, pos.y, event.timeStamp, particles.particles);
     clearGeneratorPointerPos();
-  });
+  }
 
-  cc.canvas.addEventListener('pointercancel', (event: PointerEvent) => {
+  function onPointerCancel(event: PointerEvent): void {
+    if (isDisposed) return;
     const pos = canvasCoordsFromPointerEvent(cc, event);
     handleParticleDragUp(appState.particleDrag, pos.x, pos.y, event.timeStamp, particles.particles);
     clearGeneratorPointerPos();
-  });
+  }
+
+  cc.canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+  cc.canvas.addEventListener('pointermove', onPointerMove, { passive: false });
+  cc.canvas.addEventListener('pointerleave', onPointerLeave);
+  cc.canvas.addEventListener('pointerup', onPointerUp);
+  cc.canvas.addEventListener('pointercancel', onPointerCancel);
+
+  return () => {
+    if (isDisposed) return;
+    isDisposed = true;
+    cc.canvas.removeEventListener('pointerdown', onPointerDown);
+    cc.canvas.removeEventListener('pointermove', onPointerMove);
+    cc.canvas.removeEventListener('pointerleave', onPointerLeave);
+    cc.canvas.removeEventListener('pointerup', onPointerUp);
+    cc.canvas.removeEventListener('pointercancel', onPointerCancel);
+    if (appState.particleDrag.isDown || appState.particleDrag.lockedParticles.length > 0) {
+      handleParticleDragUp(
+        appState.particleDrag,
+        appState.particleDrag.canvasX,
+        appState.particleDrag.canvasY,
+        performance.now(),
+        particles.particles,
+      );
+    }
+    clearGeneratorPointerPos();
+  };
 }

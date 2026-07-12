@@ -251,4 +251,14 @@ export class SfxPlayer {
       try { gain.disconnect(); } catch { /* ignore */ }
     }
   }
+
+  dispose(): void {
+    this._isEnabled = false;
+    this._motesActiveCount = 0;
+    this._stopCharging(0);
+    if (this._masterGain) {
+      try { this._masterGain.disconnect(); } catch { /* already disconnected */ }
+      this._masterGain = null;
+    }
+  }
 }

@@ -35,6 +35,8 @@ import {
 // ─── Public interface ────────────────────────────────────────────
 
 export interface AudioSystem {
+  /** Stop app-owned sources/timers and disconnect app-owned gain nodes. */
+  dispose(): void;
   /** Resume a suspended AudioContext after a user gesture. */
   resumeContext(): Promise<void>;
   setMusicVolume(v: number): void;
@@ -83,6 +85,7 @@ export interface AudioSystem {
 
 function createNoOpAudioSystem(): AudioSystem {
   return {
+    dispose:                () => {},
     resumeContext:          async () => {},
     setMusicVolume:         () => {},
     setSfxVolume:           () => {},
@@ -130,10 +133,21 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
 
   let _contextStarted = false;
   let _isFocused = true;
+  let _isDisposed = false;
 
   return {
+    dispose(): void {
+      if (_isDisposed) return;
+      _isDisposed = true;
+      music.dispose();
+      ambiance.dispose();
+      sfx.dispose();
+      bossMusic.dispose();
+    },
     async resumeContext(): Promise<void> {
+      if (_isDisposed) return;
       await resumeAudioContext();
+      if (_isDisposed) return;
       if (!_contextStarted) {
         _contextStarted = true;
         music.start();
@@ -173,6 +187,7 @@ export function createAudioSystem(musicVolume = 0.5, sfxVolume = 0.7): AudioSyst
     },
 
     setFocused(focused: boolean): void {
+      if (_isDisposed) return;
       _isFocused = focused;
       sfx.setEnabled(focused);
       // No-op until the context has been started by a user gesture.

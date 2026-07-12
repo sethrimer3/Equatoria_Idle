@@ -20,6 +20,7 @@ import {
 
 /** All live element references the stats-panel logic layer needs. */
 export interface StatsPanelDomRefs {
+  dispose(): void;
   // Root element
   statsPanel: HTMLDivElement;
 
@@ -113,6 +114,7 @@ export function buildStatsPanelDom(): StatsPanelDomRefs {
   );
 
   return {
+    dispose: primary.disposePlayerIconAnimation,
     statsPanel,
     menuArea: right.menuArea,
     xpAmountEl: primary.xpAmountEl,

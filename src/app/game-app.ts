@@ -56,17 +56,30 @@ import { wireCanvasPointerInput } from './game-app-canvas-input';
 import { createIdleOverlay } from '../ui/idle/idle-overlay';
 import { makePageBreak } from '../ui/ui-helpers';
 import { AchievementService } from '../achievements/achievementService';
-import { setAchievementService } from '../achievements/achievementHooks';
+import { clearAchievementService, setAchievementService } from '../achievements/achievementHooks';
+import { createAppRuntimeOwner, type AppRuntime, type AppRuntimeOwner } from './app-runtime';
+import { createAppWindowLifecycle, createSkillPointUnreadTracker } from './app-lifecycle';
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 
-export async function startApp(): Promise<void> {
+export async function startApp(): Promise<AppRuntime> {
   const root = document.getElementById('app')!;
-  root.innerHTML = '';
+  const runtimeOwner = createAppRuntimeOwner(root);
+  root.replaceChildren();
+  try {
+    return await startOwnedApp(root, runtimeOwner);
+  } catch (error) {
+    runtimeOwner.runtime.dispose();
+    throw error;
+  }
+}
+
+async function startOwnedApp(root: HTMLElement, runtimeOwner: AppRuntimeOwner): Promise<AppRuntime> {
 
   // ── Loading screen ──
   const loadingScreen = await createLoadingScreen();
   root.appendChild(loadingScreen.element);
+  runtimeOwner.addCleanup(() => loadingScreen.dispose());
 
   // ── Preload essential sprites ──
   preloadGeneratorSprites();
@@ -83,7 +96,9 @@ export async function startApp(): Promise<void> {
   writeLastActiveTimestamp(); // immediately record so next session measures from now
   const savedGame = loadGame();
   const game = savedGame ?? createGameState();
-  setAchievementService(new AchievementService(game.platformAchievements));
+  const achievementService = new AchievementService(game.platformAchievements);
+  setAchievementService(achievementService);
+  runtimeOwner.addCleanup(() => clearAchievementService(achievementService));
   const settings = loadSettings();
   applyFontSizeOffset(settings.fontSizeOffsetPx);
   if (settings.showTipOnStartup) {
@@ -117,6 +132,7 @@ export async function startApp(): Promise<void> {
 
   // ── Audio system ──
   const audioSystem = createAudioSystem(settings.musicVolume, settings.sfxVolume);
+  runtimeOwner.addCleanup(() => audioSystem.dispose());
 
   const appState: AppState = {
     game,
@@ -136,11 +152,14 @@ export async function startApp(): Promise<void> {
   // ── Background effects ──
   const bgAnimation = createBackgroundAnimation();
   root.appendChild(bgAnimation.canvas);
+  runtimeOwner.addCleanup(() => bgAnimation.destroy());
 
   const vermiculateEffect = createVermiculateEffect();
+  runtimeOwner.addCleanup(() => vermiculateEffect.destroy());
   const substrateEffect = createSubstrateEffect({
     quality: settings.graphicsQuality === 'low' ? 'low' : 'high',
   });
+  runtimeOwner.addCleanup(() => substrateEffect.destroy());
 
   // ── Canvas container (full screen) ──
   const canvasContainer = document.createElement('div');
@@ -165,6 +184,7 @@ export async function startApp(): Promise<void> {
   // ── Idle reward overlay ──
   const idleOverlay = createIdleOverlay();
   root.appendChild(idleOverlay.element);
+  runtimeOwner.addCleanup(() => idleOverlay.dispose());
 
   // ── Panels overlay container ──
   const panelsContainer = document.createElement('div');
@@ -201,6 +221,7 @@ export async function startApp(): Promise<void> {
   let isResettingGame = false;
 
   const dispatch = (action: GameAction): void => {
+    if (runtimeOwner.runtime.isDisposed) return;
     // Resume audio context on user interaction (autoplay policy)
     audioSystem.resumeContext().catch(() => { /* silently ignore */ });
 
@@ -224,48 +245,16 @@ export async function startApp(): Promise<void> {
   };
 
   // ── Focus-aware audio pause ──
-  let _isWindowFocused = document.visibilityState === 'visible';
-  // Tracks whether the tab has been hidden at least once since app start,
-  // so we can run an idle-reward check when the player returns to the tab.
-  let _wasHiddenSinceStart = false;
+  let isWindowFocused = document.visibilityState === 'visible';
 
   function applyFocusedAudio(): void {
     // If the setting is off, always keep audio running.
-    audioSystem.setFocused(!settings.isMusicOnlyWhenFocused || _isWindowFocused);
+    audioSystem.setFocused(!settings.isMusicOnlyWhenFocused || isWindowFocused);
   }
-
-  document.addEventListener('visibilitychange', () => {
-    _isWindowFocused = document.visibilityState === 'visible';
-    applyFocusedAudio();
-    if (document.visibilityState === 'hidden') {
-      _wasHiddenSinceStart = true;
-      writeLastActiveTimestamp();
-      if (!isResettingGame) {
-        saveGame(game);
-      }
-    } else if (document.visibilityState === 'visible' && _wasHiddenSinceStart) {
-      // Player returned to the tab — check for idle rewards for the time away.
-      // The hidden handler already wrote the departure timestamp, so just read it.
-      const hiddenTs = readLastActiveTimestamp();
-      if (hiddenTs !== null) {
-        const elapsedMs = Math.min(Date.now() - hiddenTs, MAX_OFFLINE_HOURS * 3_600_000);
-        applyIdleRewardsIfEligible(game, elapsedMs, idleOverlay);
-      }
-    }
-  });
-
-  window.addEventListener('blur', () => {
-    _isWindowFocused = false;
-    applyFocusedAudio();
-  });
-
-  window.addEventListener('focus', () => {
-    _isWindowFocused = true;
-    applyFocusedAudio();
-  });
 
   // ── Trace effect overlay (golden outline + tracer circles for UI highlights) ──
   const traceEffect = createTraceEffect(root);
+  runtimeOwner.addCleanup(() => traceEffect.dispose());
 
   // ── UI panels ──
   const upgradePanel = createUpgradePanel(dispatch);
@@ -288,6 +277,7 @@ export async function startApp(): Promise<void> {
     recomputeGenerators();
   }, () => { applyRenderResolutionQuality(); });
   const achievementsPanel = createAchievementsPanel(dispatch, audioSystem);
+  runtimeOwner.addCleanup(() => achievementsPanel.destroy());
 
   // Right column of the Equation sub-tab: mote resources on top, tier unlock
   // button at the bottom so new resources appear right above it when unlocked.
@@ -323,16 +313,14 @@ export async function startApp(): Promise<void> {
 
   let setCodexUnread = (_unread: boolean): void => undefined;
   let setSkillCodexUnread = (_unread: boolean): void => undefined;
-  let lastSeenUnspentSkillPoints = game.rpg.unspentSkillPoints;
-  window.setInterval(() => {
-    const currentSkillPoints = appState.game.rpg.unspentSkillPoints;
-    if (currentSkillPoints > lastSeenUnspentSkillPoints) {
-      setSkillCodexUnread(true);
-    }
-    lastSeenUnspentSkillPoints = currentSkillPoints;
-  }, 250);
+  const skillPointUnreadTracker = createSkillPointUnreadTracker({
+    getUnspentSkillPoints: () => appState.game.rpg.unspentSkillPoints,
+    setUnread: (unread) => { setSkillCodexUnread(unread); },
+  });
+  runtimeOwner.addCleanup(() => skillPointUnreadTracker.dispose());
   const rpgRender = createRpgRender(rpgContainer, appState.game.rpg, {
     onLuckyMoteCollected: (tierId: TierId, bonusPct: number) => {
+      if (runtimeOwner.runtime.isDisposed) return;
       const current = appState.game.resources.moteTotals.get(tierId) ?? 0;
       // Apply percentage bonus; ensure at least 1 mote so the drop is never worthless
       // even when the player has not yet collected any motes of this tier.
@@ -350,6 +338,7 @@ export async function startApp(): Promise<void> {
     onBossMusicPhrase: (path) => { audioSystem.playBossMusicPhrase(path); },
     dispatch,
   });
+  runtimeOwner.addCleanup(() => rpgRender.dispose());
   rpgRender.setNumberFormat(settings.numberFormat);
   rpgRender.setRenderResolutionQuality(settings.renderResolutionQuality);
   // Now that rpgRender exists, route render-resolution changes to both the RPG
@@ -517,8 +506,7 @@ export async function startApp(): Promise<void> {
   skillTreeBtn.appendChild(skillSpriteWrap);
   setSkillCodexUnread = (unread) => { skillTreeBtn.classList.toggle('rpg-skill-tree-btn--unread', unread); };
   skillTreeBtn.addEventListener('click', () => {
-    setSkillCodexUnread(false);
-    lastSeenUnspentSkillPoints = appState.game.rpg.unspentSkillPoints;
+    skillPointUnreadTracker.markRead();
     rpgMenuPanel.update(appState.game.rpg, appState.game.resources, settings.numberFormat, settings.isDevMode);
     rpgMenuPanel.openSkillTreeTab();
   });
@@ -548,7 +536,8 @@ export async function startApp(): Promise<void> {
   // ── Input listeners ──
   // Tap dispatch is handled inside wireCanvasPointerInput directly on cc.canvas,
   // which is more reliable on mobile (canvas has touch-action: none and pointer capture).
-  wireCanvasPointerInput(cc, appState, particles, audioSystem, dispatch);
+  const cleanupCanvasPointerInput = wireCanvasPointerInput(cc, appState, particles, audioSystem, dispatch);
+  runtimeOwner.addCleanup(cleanupCanvasPointerInput);
 
   // ── Resize handler ──
   const onResize = (): void => {
@@ -565,7 +554,20 @@ export async function startApp(): Promise<void> {
     }
     rpgRender.resize(rpgContainer);
   };
-  window.addEventListener('resize', onResize);
+  const appWindowLifecycle = createAppWindowLifecycle({
+    isResetting: () => isResettingGame,
+    save: () => { saveGame(game); },
+    writeLastActiveTimestamp,
+    readLastActiveTimestamp,
+    applyIdleRewards: (elapsedMs) => { applyIdleRewardsIfEligible(game, elapsedMs, idleOverlay); },
+    setAudioFocused: (focused) => {
+      isWindowFocused = focused;
+      applyFocusedAudio();
+    },
+    resize: onResize,
+    maxIdleMs: MAX_OFFLINE_HOURS * 3_600_000,
+  });
+  runtimeOwner.addCleanup(() => appWindowLifecycle.dispose());
   bgAnimation.resize(canvasContainer.clientWidth, canvasContainer.clientHeight);
 
   // ── Game loop ──
@@ -584,6 +586,7 @@ export async function startApp(): Promise<void> {
     lastFrameMs: { value: performance.now() },
     audioSystem,
   });
+  runtimeOwner.addCleanup(() => gameLoop.dispose());
 
   // Initial generator setup
   recomputeGenerators();
@@ -597,5 +600,6 @@ export async function startApp(): Promise<void> {
     applyIdleRewardsIfEligible(game, elapsedMs, idleOverlay, settings.skipIdlePopupAtStart);
   }
 
-  requestAnimationFrame(gameLoop);
+  gameLoop.start();
+  return runtimeOwner.runtime;
 }

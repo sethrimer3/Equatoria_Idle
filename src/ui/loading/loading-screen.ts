@@ -26,6 +26,7 @@ export interface LoadingScreen {
   /** Fade out and remove the loading screen after its minimum display time. */
   fadeOut(): Promise<void>;
   setTip(text: string | null): void;
+  dispose(): void;
 }
 
 /**
@@ -53,6 +54,9 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
   let frames: AtlasFrame[] = [];
   let animationFrameId = 0;
   let animationStartMs = 0;
+  let isDisposed = false;
+  let fadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  let resolveFade: (() => void) | null = null;
   let previousCycleIndex = 0;
   const gate: LoadingGateState = { completedLoops: 0, isLoadingComplete: false, hasFailed: false };
   let resolveGate: (() => void) | null = null;
@@ -77,6 +81,7 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
   };
 
   const animate = (nowMs: number): void => {
+    if (isDisposed) return;
     const cycleAnimationMs = frames.length * FRAME_DURATION_MS;
     const cycleDurationMs = cycleAnimationMs + LAST_FRAME_HOLD_MS;
     const cycleElapsedMs = (nowMs - animationStartMs) % cycleDurationMs;
@@ -106,6 +111,7 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
       return response.json() as Promise<AtlasData>;
     }),
   ]).then(([, atlas]) => {
+    if (isDisposed) return;
     frames = Object.entries(atlas.frames)
       .sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
       .map(([, entry]) => entry.frame);
@@ -121,6 +127,19 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
     checkGate();
   });
 
+  function dispose(): void {
+    if (isDisposed) return;
+    isDisposed = true;
+    gate.hasFailed = true;
+    checkGate();
+    cancelAnimationFrame(animationFrameId);
+    if (fadeTimeoutId !== null) clearTimeout(fadeTimeoutId);
+    fadeTimeoutId = null;
+    overlay.remove();
+    resolveFade?.();
+    resolveFade = null;
+  }
+
   return {
     element: overlay,
     setTip(text: string | null): void {
@@ -131,12 +150,17 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
       gate.isLoadingComplete = true;
       checkGate();
       await gateReady;
+      if (isDisposed) return;
 
       return new Promise(resolve => {
+        resolveFade = resolve;
         let resolved = false;
         const finish = (): void => {
           if (resolved) return;
           resolved = true;
+          resolveFade = null;
+          if (fadeTimeoutId !== null) clearTimeout(fadeTimeoutId);
+          fadeTimeoutId = null;
           cancelAnimationFrame(animationFrameId);
           overlay.remove();
           resolve();
@@ -144,8 +168,9 @@ export async function createLoadingScreen(): Promise<LoadingScreen> {
 
         overlay.classList.add('loading-screen--fade-out');
         overlay.addEventListener('transitionend', finish, { once: true });
-        setTimeout(finish, 1000);
+        fadeTimeoutId = setTimeout(finish, 1000);
       });
     },
+    dispose,
   };
 }

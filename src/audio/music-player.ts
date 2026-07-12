@@ -27,6 +27,7 @@ export class MusicPlayer {
   private _trackIndex = 0;
   private _volume: number;
   private _isStarted = false;
+  private _isDisposed = false;
   private _nextTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(volume: number) {
@@ -40,12 +41,13 @@ export class MusicPlayer {
 
   /** Begin playback. Should be called after first user interaction. */
   start(): void {
-    if (this._isStarted) return;
+    if (this._isStarted || this._isDisposed) return;
     this._isStarted = true;
     this._setup();
   }
 
   setVolume(v: number): void {
+    if (this._isDisposed) return;
     this._volume = v;
     const ctx = getAudioContext();
     if (!ctx || !this._masterGain) return;
@@ -53,6 +55,7 @@ export class MusicPlayer {
   }
 
   private _setup(): void {
+    if (this._isDisposed) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     try {
@@ -75,6 +78,7 @@ export class MusicPlayer {
   }
 
   private async _playNextTrack(slotIndex: 0 | 1): Promise<void> {
+    if (this._isDisposed) return;
     const ctx = getAudioContext();
     if (!ctx || !this._slots) return;
 
@@ -84,7 +88,7 @@ export class MusicPlayer {
       if (!path) return;
 
       const buffer = await loadAudioBuffer(ctx, path);
-      if (!buffer || !this._slots) return;
+      if (!buffer || !this._slots || this._isDisposed) return;
 
       const slot = this._slots[slotIndex];
       const prevSlotIndex: 0 | 1 = slotIndex === 0 ? 1 : 0;
@@ -124,6 +128,28 @@ export class MusicPlayer {
       }, timeUntilNextMs);
     } catch {
       // Silently ignore playback failures
+    }
+  }
+
+  dispose(): void {
+    if (this._isDisposed) return;
+    this._isDisposed = true;
+    if (this._nextTimer !== null) clearTimeout(this._nextTimer);
+    this._nextTimer = null;
+    if (this._slots) {
+      for (const slot of this._slots) {
+        if (slot.source) {
+          try { slot.source.stop(); } catch { /* already stopped */ }
+          try { slot.source.disconnect(); } catch { /* already disconnected */ }
+          slot.source = null;
+        }
+        try { slot.gain.disconnect(); } catch { /* already disconnected */ }
+      }
+    }
+    this._slots = null;
+    if (this._masterGain) {
+      try { this._masterGain.disconnect(); } catch { /* already disconnected */ }
+      this._masterGain = null;
     }
   }
 }

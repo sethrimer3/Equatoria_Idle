@@ -13,16 +13,20 @@ export class BossMusicPlayer {
   private readonly _volume: () => number;
   private _loops: LoopSource[] = [];
   private _activeKey: string | null = null;
+  private readonly _oneShots = new Set<AudioBufferSourceNode>();
+  private _isDisposed = false;
 
   constructor(volume: () => number) {
     this._volume = volume;
   }
 
   start(beatLoop: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void {
+    if (this._isDisposed) return;
     this._startLoops(beatLoop, bgLayers, 0.25, onPrimaryTrackReady);
   }
 
   startWithCassette(cassetteStartPath: string, beatLoopPath: string, bgLayers: readonly string[], onPrimaryTrackReady?: (durationMs: number) => void): void {
+    if (this._isDisposed) return;
     // Play cassette start as one-shot, then crossfade boss loops in over 2s
     this._playOneShot(cassetteStartPath);
     this._startLoops(beatLoopPath, bgLayers, 2.0, onPrimaryTrackReady);
@@ -39,6 +43,7 @@ export class BossMusicPlayer {
   }
 
   setVolume(volume: number): void {
+    if (this._isDisposed) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     for (const loop of this._loops) {
@@ -47,10 +52,12 @@ export class BossMusicPlayer {
   }
 
   playCassetteStart(path: string, onDone: () => void): void {
+    if (this._isDisposed) { onDone(); return; }
     this._playOneShotWithCallback(path, onDone);
   }
 
   playPhrase(path: string): void {
+    if (this._isDisposed) return;
     this._playOneShot(path);
   }
 
@@ -63,7 +70,7 @@ export class BossMusicPlayer {
     if (!ctx) return;
     this._activeKey = key;
     void Promise.all(paths.map((path) => loadAudioBuffer(ctx, path))).then((buffers) => {
-      if (this._activeKey !== key) return;
+      if (this._activeKey !== key || this._isDisposed) return;
       // Scheduling all sources against one timestamp keeps the BeatLoop and
       // selected full track phase-locked even when their files decode at different speeds.
       const startAt = ctx.currentTime + 0.05;
@@ -119,7 +126,7 @@ export class BossMusicPlayer {
     const ctx = getAudioContext();
     if (!ctx) return;
     void loadAudioBuffer(ctx, path).then((buffer) => {
-      if (!buffer) return;
+      if (!buffer || this._isDisposed) return;
       try {
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(this._volume(), ctx.currentTime);
@@ -128,7 +135,9 @@ export class BossMusicPlayer {
         source.buffer = buffer;
         source.connect(gain);
         source.start();
+        this._oneShots.add(source);
         source.onended = () => {
+          this._oneShots.delete(source);
           try { gain.disconnect(); } catch { /* ignore */ }
         };
       } catch {
@@ -141,7 +150,7 @@ export class BossMusicPlayer {
     const ctx = getAudioContext();
     if (!ctx) { setTimeout(onDone, 0); return; }
     void loadAudioBuffer(ctx, path).then((buffer) => {
-      if (!buffer) { onDone(); return; }
+      if (!buffer || this._isDisposed) { onDone(); return; }
       try {
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(this._volume(), ctx.currentTime);
@@ -150,7 +159,9 @@ export class BossMusicPlayer {
         source.buffer = buffer;
         source.connect(gain);
         source.start();
+        this._oneShots.add(source);
         source.onended = () => {
+          this._oneShots.delete(source);
           try { gain.disconnect(); } catch { /* ignore */ }
           onDone();
         };
@@ -158,5 +169,24 @@ export class BossMusicPlayer {
         onDone();
       }
     });
+  }
+
+  dispose(): void {
+    if (this._isDisposed) return;
+    this._isDisposed = true;
+    this._activeKey = null;
+    const loops = this._loops;
+    this._loops = [];
+    for (const loop of loops) {
+      try { loop.source.stop(); } catch { /* already stopped */ }
+      try { loop.source.disconnect(); } catch { /* already disconnected */ }
+      try { loop.gain.disconnect(); } catch { /* already disconnected */ }
+    }
+    for (const source of this._oneShots) {
+      source.onended = null;
+      try { source.stop(); } catch { /* already stopped */ }
+      try { source.disconnect(); } catch { /* already disconnected */ }
+    }
+    this._oneShots.clear();
   }
 }

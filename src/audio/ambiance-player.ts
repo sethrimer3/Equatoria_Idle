@@ -16,9 +16,11 @@ const FADE_DURATION_S = 1.0;
 
 export class AmbiancePlayer {
   private _gainNode: GainNode | null = null;
+  private _sourceNode: AudioBufferSourceNode | null = null;
   private _sfxVolume: number;
   private _isActive = false;
   private _hasStarted = false;
+  private _isDisposed = false;
 
   constructor(sfxVolume: number) {
     this._sfxVolume = sfxVolume;
@@ -26,6 +28,7 @@ export class AmbiancePlayer {
 
   /** Update the sfxVolume reference. Adjusts gain immediately if currently active. */
   setSfxVolume(v: number): void {
+    if (this._isDisposed) return;
     this._sfxVolume = v;
     if (!this._gainNode || !this._isActive) return;
     const ctx = getAudioContext();
@@ -36,6 +39,7 @@ export class AmbiancePlayer {
 
   /** Fade the ambiance in (active=true) or out (active=false). */
   setActive(active: boolean): void {
+    if (this._isDisposed) return;
     if (this._isActive === active) return;
     this._isActive = active;
 
@@ -64,7 +68,7 @@ export class AmbiancePlayer {
   private async _initSource(ctx: AudioContext): Promise<void> {
     try {
       const buffer = await loadAudioBuffer(ctx, AMBIANCE_PATH);
-      if (!buffer) return;
+      if (!buffer || this._isDisposed) return;
 
       this._gainNode = ctx.createGain();
       this._gainNode.gain.setValueAtTime(0, ctx.currentTime);
@@ -75,6 +79,7 @@ export class AmbiancePlayer {
       source.loop = true;
       source.connect(this._gainNode);
       source.start();
+      this._sourceNode = source;
 
       // If still active by the time the buffer loaded, fade in
       if (this._isActive) {
@@ -84,6 +89,20 @@ export class AmbiancePlayer {
       }
     } catch {
       // Silently ignore
+    }
+  }
+
+  dispose(): void {
+    if (this._isDisposed) return;
+    this._isDisposed = true;
+    if (this._sourceNode) {
+      try { this._sourceNode.stop(); } catch { /* already stopped */ }
+      try { this._sourceNode.disconnect(); } catch { /* already disconnected */ }
+      this._sourceNode = null;
+    }
+    if (this._gainNode) {
+      try { this._gainNode.disconnect(); } catch { /* already disconnected */ }
+      this._gainNode = null;
     }
   }
 }
