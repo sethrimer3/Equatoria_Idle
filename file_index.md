@@ -1678,11 +1678,16 @@
 - Standalone weapon-crafting workspace rendered inside the Upgrades tab (temporary; move to a Forge tab later).
 - `RpgWeaponCraftingPage` interface; `createRpgWeaponCraftingPage(dispatch)` factory.
 - `update(rpgState, isDevMode)` rebuilds the full crafting UI while preserving slider/chip state.
+- `dispose()` cancels its animation/drag work and disposes weave and Lens children, including transient body overlays.
 - Multi-segment percentage slider: N-1 draggable handles (mouse + touch + keyboard), colored segments.
 - Tier chip selector (respects forge capacity); power slider (1–100% of max budget).
 - Live actual composition preview (post-floor via `computeCraftedWeaponComposition`).
 - Dispatches `{ kind: 'craft_weapon', ingredients }`.
 - Collapsible "Exact counts / advanced" fallback with number inputs.
+
+### src/ui/panels/lens-inventory.ts
+- Lens inventory cards, refinement, attachment/replacement, dismantling, sorting, and drag reordering.
+- `buildLensInventorySection(...)` returns an owned `LensInventorySection`; `dispose()` removes document drag handlers, drag ghosts, and body-level modal overlays.
 
 ### src/data/rpg/crafting-allocation.ts
 - Pure math helpers for the crafting page percentage-to-ingredient conversion.

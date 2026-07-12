@@ -14,6 +14,7 @@ export class BossMusicPlayer {
   private _loops: LoopSource[] = [];
   private _activeKey: string | null = null;
   private readonly _oneShots = new Set<AudioBufferSourceNode>();
+  private readonly _callbackTimers = new Set<ReturnType<typeof setTimeout>>();
   private _isDisposed = false;
 
   constructor(volume: () => number) {
@@ -148,7 +149,14 @@ export class BossMusicPlayer {
 
   private _playOneShotWithCallback(path: string, onDone: () => void): void {
     const ctx = getAudioContext();
-    if (!ctx) { setTimeout(onDone, 0); return; }
+    if (!ctx) {
+      const timerId = setTimeout(() => {
+        this._callbackTimers.delete(timerId);
+        if (!this._isDisposed) onDone();
+      }, 0);
+      this._callbackTimers.add(timerId);
+      return;
+    }
     void loadAudioBuffer(ctx, path).then((buffer) => {
       if (this._isDisposed) return;
       if (!buffer) { onDone(); return; }
@@ -189,5 +197,7 @@ export class BossMusicPlayer {
       try { source.disconnect(); } catch { /* already disconnected */ }
     }
     this._oneShots.clear();
+    for (const timerId of this._callbackTimers) clearTimeout(timerId);
+    this._callbackTimers.clear();
   }
 }

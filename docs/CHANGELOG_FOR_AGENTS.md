@@ -12,6 +12,7 @@ Lightweight log of architectural facts discovered and major structural changes. 
 - `startApp()` returns an `AppRuntime`; `main.ts` retains and replaces the active runtime safely.
 - `createGameLoop()` returns an explicit start/stop/dispose controller, and canvas pointer wiring returns an idempotent cleanup.
 - App listeners, unread polling, achievement registration, audio, effects, panels, RPG resources, callbacks, and DOM now compose under one reverse-order cleanup owner.
+- Transient Lens overlays/document drag handlers and boss-audio fallback callbacks are child-owned and are cancelled during disposal.
 
 **New invariants:**
 - One app runtime owns at most one main RAF, one unread interval, and one app-level global-listener set.

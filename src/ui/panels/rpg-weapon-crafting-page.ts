@@ -38,7 +38,7 @@ import { LENS_EFFECT_NAMES, getLensMaxMoteTypes, getLensEffectUnlockChances } fr
 import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import { getRpgUpgradeLevel } from '../../sim/rpg/rpg-state';
 import { hasDiscoveredMote, type ResourceState } from '../../sim/resources/resource-state';
-import { buildLensInventorySection } from './lens-inventory';
+import { buildLensInventorySection, type LensInventorySection } from './lens-inventory';
 import { getUnlockedWeaveSlotCount } from '../../sim/forge/forge-state';
 import type { ActionHandler } from '../../input';
 import { createWeaveSlotsPanel } from './weave-slots';
@@ -189,6 +189,7 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
   // â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const weaveSlotsPanel = createWeaveSlotsPanel(dispatch);
   const weaveInventoryPanel = createWeaveInventoryPanel(weaveSlotsPanel, dispatch);
+  let lensInventorySection: LensInventorySection | null = null;
 
   // â”€â”€ Section elements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let inventoryEl: HTMLElement | null = null;
@@ -1082,6 +1083,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
     latestRpgState = rpgState;
     latestIsDevMode = isDevMode;
 
+    lensInventorySection?.dispose();
+    lensInventorySection = null;
     element.innerHTML = '';
 
     const forgeLevel = latestForgeState.forgeLevel;
@@ -1196,7 +1199,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       invDivider.className = 'forge-section-divider';
       invDivider.textContent = 'Lens Inventory';
       element.appendChild(invDivider);
-      element.appendChild(buildLensInventorySection(rpgState, dispatch));
+      lensInventorySection = buildLensInventorySection(rpgState, dispatch);
+      element.appendChild(lensInventorySection.element);
     }
 
     startAnimLoop();
@@ -1251,6 +1255,8 @@ export function createRpgWeaponCraftingPage(dispatch: ActionHandler): RpgWeaponC
       animRafId = null;
       for (const cleanup of documentDragCleanups) cleanup();
       documentDragCleanups.length = 0;
+      lensInventorySection?.dispose();
+      lensInventorySection = null;
       weaveInventoryPanel.dispose();
       weaveSlotsPanel.dispose();
     },

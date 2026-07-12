@@ -39,6 +39,7 @@ function buildLensCard(
   rpgState: RpgSimState,
   dispatch: ActionHandler,
   container: HTMLElement,
+  ownBodyElement: (element: HTMLElement) => void,
 ): HTMLElement {
   const card = document.createElement('div');
   card.className = 'weapon-store__card';
@@ -158,7 +159,7 @@ function buildLensCard(
   attachBtn.style.cssText = 'flex:1;background:rgba(80,200,120,0.12);border-color:rgba(80,200,120,0.4);color:#50c878;';
   attachBtn.textContent = 'Attach';
   attachBtn.addEventListener('click', () => {
-    showWeaponPicker(lens, rpgState, dispatch, container);
+    showWeaponPicker(lens, rpgState, dispatch, container, ownBodyElement);
   });
   actionRow.appendChild(attachBtn);
 
@@ -170,7 +171,7 @@ function buildLensCard(
   dismantleBtn.textContent = `Dismantle (+${dustYield} Dust)`;
   dismantleBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    showLensDismantleConfirm(lens, dustYield, dispatch);
+    showLensDismantleConfirm(lens, dustYield, dispatch, ownBodyElement);
   });
   actionRow.appendChild(dismantleBtn);
 
@@ -179,7 +180,12 @@ function buildLensCard(
   return card;
 }
 
-function showLensDismantleConfirm(lens: CraftedLensData, dustYield: number, dispatch: ActionHandler): void {
+function showLensDismantleConfirm(
+  lens: CraftedLensData,
+  dustYield: number,
+  dispatch: ActionHandler,
+  ownBodyElement: (element: HTMLElement) => void,
+): void {
   const overlay = document.createElement('div');
   overlay.style.cssText =
     'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);' +
@@ -224,6 +230,7 @@ function showLensDismantleConfirm(lens: CraftedLensData, dustYield: number, disp
   overlay.appendChild(box);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+  ownBodyElement(overlay);
 }
 
 function buildEffectRow(effect: LensEffect): HTMLElement {
@@ -314,6 +321,7 @@ function showWeaponPicker(
   rpgState: RpgSimState,
   dispatch: ActionHandler,
   container: HTMLElement,
+  ownBodyElement: (element: HTMLElement) => void,
 ): void {
   // Remove any existing picker
   container.querySelector('.lens-weapon-picker')?.remove();
@@ -342,7 +350,7 @@ function showWeaponPicker(
   }
 
   for (const weapon of rpgState.craftedWeapons) {
-    const weaponBtn = buildWeaponPickerBtn(weapon, lens, rpgState, dispatch, picker);
+    const weaponBtn = buildWeaponPickerBtn(weapon, lens, rpgState, dispatch, picker, ownBodyElement);
     box.appendChild(weaponBtn);
   }
 
@@ -358,6 +366,7 @@ function showWeaponPicker(
   picker.addEventListener('click', (e) => { if (e.target === picker) picker.remove(); });
   // Append to body so it overlays everything
   document.body.appendChild(picker);
+  ownBodyElement(picker);
 }
 
 function buildWeaponPickerBtn(
@@ -366,6 +375,7 @@ function buildWeaponPickerBtn(
   rpgState: RpgSimState,
   dispatch: ActionHandler,
   pickerOverlay: HTMLElement,
+  ownBodyElement: (element: HTMLElement) => void,
 ): HTMLElement {
   const btn = document.createElement('div');
   btn.style.cssText =
@@ -417,7 +427,7 @@ function buildWeaponPickerBtn(
   btn.addEventListener('click', () => {
     pickerOverlay.remove();
     if (hasExistingLens) {
-      showReplaceConfirmation(lens, weapon, rpgState, dispatch);
+      showReplaceConfirmation(lens, weapon, rpgState, dispatch, ownBodyElement);
     } else {
       dispatch({ kind: 'attach_lens_to_weapon', lensId: lens.id, weaponId: weapon.id });
     }
@@ -431,6 +441,7 @@ function showReplaceConfirmation(
   weapon: CraftedWeaponData,
   _rpgState: RpgSimState,
   dispatch: ActionHandler,
+  ownBodyElement: (element: HTMLElement) => void,
 ): void {
   const overlay = document.createElement('div');
   overlay.style.cssText =
@@ -482,13 +493,29 @@ function showReplaceConfirmation(
   overlay.appendChild(box);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+  ownBodyElement(overlay);
 }
 
 // ─── Public builder ───────────────────────────────────────────────
 
-export function buildLensInventorySection(rpgState: RpgSimState, dispatch: ActionHandler): HTMLElement {
+export interface LensInventorySection {
+  readonly element: HTMLElement;
+  dispose(): void;
+}
+
+export function buildLensInventorySection(rpgState: RpgSimState, dispatch: ActionHandler): LensInventorySection {
   const container = document.createElement('div');
   container.className = 'lens-inventory';
+  const ownedBodyElements = new Set<HTMLElement>();
+  let isDisposed = false;
+
+  function ownBodyElement(element: HTMLElement): void {
+    if (isDisposed) {
+      element.remove();
+      return;
+    }
+    ownedBodyElements.add(element);
+  }
 
   // Resonance Dust balance header
   const dustHeader = document.createElement('div');
@@ -510,7 +537,12 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
     empty.style.cssText = 'color:#888;font-size:0.85em;text-align:center;padding:12px;';
     empty.textContent = 'No lenses crafted yet. Select mote types above and craft a lens.';
     container.appendChild(empty);
-    return container;
+    return {
+      element: container,
+      dispose(): void {
+        isDisposed = true;
+      },
+    };
   }
 
   // ── Sort mode ─────────────────────────────────────────────────────────────
@@ -682,7 +714,7 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
     for (const id of localOrder) {
       const lens = lensByIdMap.get(id);
       if (!lens) continue;
-      const card = buildLensCard(lens, rpgState, dispatch, container);
+      const card = buildLensCard(lens, rpgState, dispatch, container, ownBodyElement);
       card.classList.add('lens-card');
       addLensDrag(card, id);
       container.appendChild(card);
@@ -690,5 +722,16 @@ export function buildLensInventorySection(rpgState: RpgSimState, dispatch: Actio
   }
 
   renderCards();
-  return container;
+  return {
+    element: container,
+    dispose(): void {
+      if (isDisposed) return;
+      isDisposed = true;
+      document.removeEventListener('pointermove', onDocLensPointerMove);
+      document.removeEventListener('pointerup', onDocLensPointerUp);
+      cleanupLensDrag();
+      for (const element of ownedBodyElements) element.remove();
+      ownedBodyElements.clear();
+    },
+  };
 }
