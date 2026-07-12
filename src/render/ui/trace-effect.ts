@@ -79,11 +79,12 @@ export function createTraceEffect(mountTarget: HTMLElement): TraceEffect {
 
   mountTarget.appendChild(canvas);
 
+  const ctx = canvas.getContext('2d');
   let equationTargets: Element[] = [];
   let matrixTarget: Element | null = null;
-  let animId = 0;
-  let tSec = 0;
-  let lastNow = performance.now();
+  let animId: number | null = null;
+  let isDisposed = false;
+  const animationOriginMs = performance.now();
 
   function syncCanvasSize(): void {
     canvas.width = window.innerWidth;
@@ -92,70 +93,87 @@ export function createTraceEffect(mountTarget: HTMLElement): TraceEffect {
   syncCanvasSize();
   window.addEventListener('resize', syncCanvasSize);
 
-  function draw(now: number): void {
-    const delta = now - lastNow;
-    lastNow = now;
-    tSec += delta / 1000;
+  function hasTargets(): boolean {
+    return equationTargets.length > 0 || matrixTarget !== null;
+  }
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) { animId = requestAnimationFrame(draw); return; }
+  function drawTarget(el: Element, tSec: number): void {
+    if (!ctx) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    const rx = rect.left - OUTLINE_PAD;
+    const ry = rect.top  - OUTLINE_PAD;
+    const rw = rect.width  + OUTLINE_PAD * 2;
+    const rh = rect.height + OUTLINE_PAD * 2;
+    const perimeter = 2 * (rw + rh);
+
+    ctx.save();
+    ctx.strokeStyle = GOLD_STROKE;
+    ctx.lineWidth = OUTLINE_LINE_WIDTH;
+    ctx.shadowColor = GOLD_SHADOW;
+    ctx.shadowBlur = OUTLINE_SHADOW_BLUR;
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = GOLD_FILL;
+    ctx.shadowColor = GOLD_SHADOW;
+    ctx.shadowBlur = CIRCLE_SHADOW_BLUR;
+    for (let k = 0; k < 2; k++) {
+      const offset = k * 0.5 * perimeter;
+      const pos = ((tSec * TRACE_SPEED_RPS * perimeter) + offset) % perimeter;
+      const [px, py] = perimeterPoint(rx, ry, rw, rh, pos);
+      ctx.beginPath();
+      ctx.arc(px, py, CIRCLE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function draw(now: number): void {
+    animId = null;
+    if (isDisposed || !ctx || !hasTargets()) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const targets: Element[] = [...equationTargets, ...(matrixTarget ? [matrixTarget] : [])];
-    if (targets.length === 0) { animId = requestAnimationFrame(draw); return; }
-
-    for (const el of targets) {
-      const rect = el.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) continue;
-
-      const rx = rect.left - OUTLINE_PAD;
-      const ry = rect.top  - OUTLINE_PAD;
-      const rw = rect.width  + OUTLINE_PAD * 2;
-      const rh = rect.height + OUTLINE_PAD * 2;
-      const perimeter = 2 * (rw + rh);
-
-      // ── Golden outline ──────────────────────────────────────────
-      ctx.save();
-      ctx.strokeStyle = GOLD_STROKE;
-      ctx.lineWidth = OUTLINE_LINE_WIDTH;
-      ctx.shadowColor = GOLD_SHADOW;
-      ctx.shadowBlur = OUTLINE_SHADOW_BLUR;
-      ctx.strokeRect(rx, ry, rw, rh);
-      ctx.restore();
-
-      // ── Tracing circles (2, offset by half the perimeter) ───────
-      ctx.save();
-      ctx.fillStyle = GOLD_FILL;
-      ctx.shadowColor = GOLD_SHADOW;
-      ctx.shadowBlur = CIRCLE_SHADOW_BLUR;
-
-      for (let k = 0; k < 2; k++) {
-        const offset = k * 0.5 * perimeter;
-        const pos = ((tSec * TRACE_SPEED_RPS * perimeter) + offset) % perimeter;
-        const [px, py] = perimeterPoint(rx, ry, rw, rh, pos);
-        ctx.beginPath();
-        ctx.arc(px, py, CIRCLE_RADIUS, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
+    const tSec = (now - animationOriginMs) / 1000;
+    for (let i = 0; i < equationTargets.length; i++) {
+      drawTarget(equationTargets[i], tSec);
     }
+    if (matrixTarget) drawTarget(matrixTarget, tSec);
 
     animId = requestAnimationFrame(draw);
   }
 
-  animId = requestAnimationFrame(draw);
+  function updateAnimationState(): void {
+    if (isDisposed || !ctx) return;
+    if (hasTargets()) {
+      if (animId === null) animId = requestAnimationFrame(draw);
+      return;
+    }
+    if (animId !== null) {
+      cancelAnimationFrame(animId);
+      animId = null;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
 
   return {
     setEquationTargets(els) {
       equationTargets = els;
+      updateAnimationState();
     },
     setMatrixTarget(el) {
       matrixTarget = el;
+      updateAnimationState();
     },
     dispose() {
-      cancelAnimationFrame(animId);
+      if (isDisposed) return;
+      isDisposed = true;
+      if (animId !== null) cancelAnimationFrame(animId);
+      animId = null;
+      equationTargets = [];
+      matrixTarget = null;
       window.removeEventListener('resize', syncCanvasSize);
       canvas.remove();
     },

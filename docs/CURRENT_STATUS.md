@@ -1,5 +1,11 @@
 # Equatoria Idle Current Status
 
+## Build 331: demand-driven trace overlay lifecycle
+
+- The fullscreen golden trace overlay now schedules animation frames only while equation or ALIVEN matrix targets are active.
+- Clearing the last target cancels the pending frame and clears the overlay immediately; disposal is idempotent and releases its frame, resize listener, and canvas.
+- Focused lifecycle tests cover inactive, active, clear, and dispose behavior.
+
 ## Build 327: canonical 13-mote ALIVEN matrix controls
 
 - ALIVEN now derives all eligible motes from the canonical tier registry; Fracteryl and Eigenstein participate as full directional rows and columns, and every eligible mote starts alivened.
@@ -12,8 +18,8 @@
 - Each save profile owns a reconciled shuffled tip deck; disabled tips do not consume the deck.
 - Gameplay settings now include the default-enabled `Show tip on startup` option.
 
-Last updated: 2026-06-24
-Current build: 318
+Last updated: 2026-07-11
+Current build: 331
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 
