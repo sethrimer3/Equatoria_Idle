@@ -591,14 +591,14 @@ Append:
 
 ## Implementation Checklist
 
-- [ ] Read repository and agent instructions.
-- [ ] Confirm branch, build, working tree, and auto-sync state.
-- [ ] Inspect commits after Build 332.
-- [ ] Run baseline typecheck, tests, lint, browser build, and desktop build.
-- [ ] Inventory collections and consumers.
-- [ ] Build the collection membership matrix.
-- [ ] Characterize boss-entry, zone-switch, normal-restart, and boss-restart behavior.
-- [ ] Investigate teleport, Nadir, Stardust, and transient ownership differences.
+- [x] Read repository and agent instructions.
+- [x] Confirm branch, build, working tree, and auto-sync state.
+- [x] Inspect commits after Build 332.
+- [x] Run baseline typecheck, tests, lint, browser build, and desktop build.
+- [x] Inventory collections and consumers.
+- [x] Build the collection membership matrix.
+- [x] Characterize boss-entry, zone-switch, normal-restart, and boss-restart behavior.
+- [x] Investigate teleport, Nadir, Stardust, and transient ownership differences.
 - [ ] Add factory and stable-reference tests.
 - [ ] Add exact reset-profile and idempotency tests.
 - [ ] Add context-wiring tests.
@@ -620,19 +620,88 @@ Append:
 
 ## Collection Membership Matrix
 
-Complete during implementation.
+Recorded from `rpg-render-update.ts`, `rpg-render-draw.ts`, `rpg-targeting-*`,
+`rpg-wave-manager.ts`, `rpg-wave-dead-enemies-*`, and the three reset call sites before migration.
+`Y` means direct participation or direct clearing; `-` means no direct participation. `N` is
+normal restart and `BR` is the effective boss-restart result after boss exit and re-entry. `V` is
+Verdure resize correction and `O` is overlay fading.
 
-| Collection | Update | Draw | Target | Wave/dead sweep | Boss entry | Zone switch | Death/restart | Notes |
-|---|---|---|---|---|---|---|---|---|
-| `enemies` | Pending | Pending | Pending | Pending | Pending | Pending | Pending | |
-| `sapphireEnemies` | Pending | Pending | Pending | Pending | Pending | Pending | Pending | |
-| `sapphireMissiles` | Pending | Pending | Pending | Pending | Pending | Pending | Pending | |
-| `stardustEnemies` | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Verify restart |
-| `nadirCubePointEnemies` | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Verify indirect clears |
-| `teleportParticles` | Pending | Pending | N/A | N/A | Pending | Pending | Pending | Profile difference |
-| `luckyMotes` | Pending | Pending | N/A | Pending | Pending | Pending | Pending | |
-| `hitEffects` | Pending | Pending | N/A | N/A | Pending | Pending | Pending | Evaluate ownership |
-| Additional collections | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Expand inventory |
+| Collection | U | D | T | W/dead | Boss | Zone | N | BR | V | O | Specialized evidence |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `spawnQueue` | Y | - | - | Y | Y | Y | Y | Y | - | - | Wave spawning and completion gate |
+| `enemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Ordinary laser enemy |
+| `sapphireEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `sapphireMissiles` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable projectile |
+| `emeraldEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `amberEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `amberShards` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `voidEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `quartzEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `quartzSpikes` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `rubyEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `rubyBolts` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `sunstoneEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `citrineEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `citrineBolts` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `ioliteEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `amethystEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `amethystShards` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `diamondEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `diamondShards` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `nullstoneEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `voidTendrils` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `fracterylEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `fracterylShards` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable sub-entity |
+| `eigensteinEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Gem enemy |
+| `eigensteinBeams` | Y | Y | - | - | Y | Y | Y | Y | - | - | Beam lifetime is owned by Eigenstein update |
+| `eliteEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Elite sweep, buff registry |
+| `polyominoEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Verdure polyomino |
+| `fissilePolyominoEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Verdure polyomino |
+| `refractorPolyominoEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Verdure polyomino |
+| `binaryRingEnemies` | Y | Y | Y | - | Y | Y | Y | Y | - | Y | Binary Ring special encounter |
+| `binaryRingMissiles` | Y | Y | - | - | Y | Y | Y | Y | - | - | Binary Ring special encounter |
+| `nadirCubePointEnemies` | Y | Y | Y | Y | - | - | Y | Y | - | Y | Nadir cube and True-surface entities; indirect transition cleanup |
+| `nadirCubeMines` | Y | Y | - | Y | - | - | Y | Y | - | - | Nadir cleanup helper |
+| `nadirCubeTrailSegments` | Y | Y | - | Y | - | - | Y | Y | - | - | Nadir cleanup helper |
+| `nadirCubeTurretBolts` | Y | Y | - | Y | - | - | Y | Y | - | - | Nadir cleanup helper |
+| `nadirCubeLinkLasers` | Y | Y | - | Y | - | - | Y | Y | - | - | Nadir cleanup helper |
+| `stardustEnemies` | Y | Y | - | Y | Y | Y | Y* | Y | - | Y | `Y*` is the evidenced normal-restart correction |
+| `horizonPentagonGroups` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Horizon/True group owns shadows and missiles |
+| `alivenGroups` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | ALIVEN particle groups |
+| `lifeColonies` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Life colony controllers |
+| `dustWispEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `ribbonWormEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `lanternMothEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `eyeStalkEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `jellyfishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `eliteJellyfishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural elite body |
+| `clothGhostEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `plantTurretEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `gearInsectEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `spiderCrawlerEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `moteSwarmEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `shadowHandEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural body |
+| `sandFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `quartzFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `rubyFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `sunstoneFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `emeraldFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `sapphireFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `amethystFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `diamondFishEnemies` | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Procedural fish body |
+| `plantProjectiles` | Y | Y | Y | Y | Y | Y | Y | Y | - | - | Targetable procedural projectile |
+| `fishMines` | Y | Y | - | Y | Y | Y | Y | Y | - | - | Procedural hazard |
+| `fishSpikes` | Y | Y | - | Y | Y | Y | Y | Y | - | - | Procedural hazard |
+| `fishBolts` | Y | Y | - | Y | Y | Y | Y | Y | - | - | Procedural hazard |
+| `fishDecoys` | Y | Y | - | Y | Y | Y | Y | Y | - | - | Procedural hazard |
+| `bossProjectiles` | Y | Y | - | Y | Y | Y | Y | Y | - | - | Boss attack and boss-defeat cleanup |
+| `teleportParticles` | Y | Y | - | - | - | Y | - | Y | - | - | Boss teleport; boss exit supplies BR clear |
+| `luckyMotes` | Y | Y | - | Y | Y | Y | Y | Y | - | - | Reward output of dead-enemy sweep |
+| `luckyMotePopups` | Y | Y | - | - | Y | Y | Y | Y | - | - | Lucky-mote collection feedback |
+| `hitEffects` | Y | Y | - | - | Y | Y | Y | Y | - | - | Encounter-scoped combat visual |
+| `shotLines` | Y | Y | - | - | Y | Y | Y | Y | - | - | Encounter-scoped combat visual |
+| `damageNumbers` | Y | Y | - | - | Y | Y | Y | Y | - | - | Encounter-scoped combat visual |
+| `deathParticles` | Y | Y | - | - | Y | Y | Y | Y | - | - | Player-death burst; trigger/reset mutate in place |
 
 ---
 
@@ -640,26 +709,76 @@ Complete during implementation.
 
 ### Boss entry
 
-**Current clear membership:** Pending  
-**Intent evidence:** Pending  
-**Retained collections:** Pending  
-**Potential defects:** Pending
+**Current clear membership:** Every canonical collection except the five Nadir arrays and
+`teleportParticles`, in `rpg-render.ts::clearStageForBossFight()`.  
+**Intent evidence:** Boss entry originates outside an active boss wave; teleport particles are
+only created by the boss teleport system and are cleared by boss exit. Nadir arrays are
+specialized and are cleared by `rpg-render-update.ts::clearNadirCubeEncounter()` on the next
+non-Nadir/boss update.  
+**Retained collections:** `nadirCubePointEnemies`, `nadirCubeMines`,
+`nadirCubeTrailSegments`, `nadirCubeTurretBolts`, `nadirCubeLinkLasers`, and
+`teleportParticles`.  
+**Potential defects:** None proven. Preserve the direct profile and its deferred Nadir seam.
 
 ### Zone switch
 
-**Current clear membership:** Pending  
-**Intent evidence:** Pending  
-**Retained collections:** Pending  
-**Potential defects:** Pending
+**Current clear membership:** Every canonical collection except the five Nadir arrays in
+`rpg-render.ts::resetActiveEncounterForZoneSwitch()`.  
+**Intent evidence:** Teleport particles are cleared directly (and also by boss exit when leaving
+an active boss). The update loop clears non-applicable Nadir/True cube entities after the active
+zone/subzone changes.  
+**Retained collections:** The five Nadir arrays until the next update.  
+**Potential defects:** None proven. Preserve the specialized deferred cleanup and update order.
 
 ### Death/restart
 
-**Current clear membership:** Pending  
-**Intent evidence:** Pending  
-**Retained collections:** Pending  
-**Potential defects:** Pending
+**Current clear membership:** Direct `doRestart()` clears every canonical collection except
+`stardustEnemies` and `teleportParticles`. On boss restart, `exitBossWave()` clears teleport
+particles and synchronous boss re-entry clears Stardust, so the effective boss profile clears all
+canonical collections.  
+**Intent evidence:** `rpg-death-restart.ts` documents restart as clearing entity arrays and resetting
+within-run combat state. Stardust participates in update, draw, dead sweeping, and wave completion;
+retaining a live Stardust enemy across normal restart leaves an entity from the abandoned encounter
+and can block the respawned wave. Normal gameplay cannot create boss teleport particles, while boss
+restart already clears them through the boss owner.  
+**Retained collections:** Normal restart retains `teleportParticles`; the pre-refactor code also
+retains `stardustEnemies`. Boss restart retains none after its full exit/re-entry sequence.  
+**Potential defects:** The normal-restart Stardust omission is a confirmed ownership/reset defect.
 
-**Approved behavioral deltas:** None at planning time.
+**Approved behavioral deltas:** Add `stardustEnemies` to normal death/restart clearing after a
+focused failing regression test. Preserve teleport and Nadir profile differences.
+
+### Investigation-question answers
+
+1. **Boss entry and teleport particles:** No direct clear. Boss entry cannot overlap an existing
+   boss (`rpg-boss-wave.ts::startBossFight()` guard), and the boss teleport owner clears particles
+   on boss exit. Preserve current membership.
+2. **Indirect Nadir cleanup:** Yes. `runRpgUpdate()` calls `clearNadirCubeEncounter()` when the
+   Nadir tenth-wave condition is false; this happens on the next update after boss entry or a zone
+   change. True-surface entities share `nadirCubePointEnemies` and are distinguished by
+   `surfaceKind`.
+3. **Restart and Stardust:** Yes. Normal restart must clear it; otherwise the old target remains
+   update/draw/wave-owned after scalar wave state resets.
+4. **Restart and teleport particles:** Preserve the current split: normal restart does not clear
+   them directly; boss restart clears them through `exitBossWave()`.
+5. **Combo and ward effects:** Neither belongs to encounter collections. `comboEffects` currently
+   survives all three encounter resets and expires through its own timer. `wardEffects` survives
+   boss entry and zone switching but is cleared with player statuses by the restart callback.
+6. **Encounter-owned visuals:** `teleportParticles`, `luckyMotes`, `luckyMotePopups`, `hitEffects`,
+   `shotLines`, `damageNumbers`, and `deathParticles` are per-renderer, mutate in place, and share
+   the encounter reset boundary. Weapon visuals, orbit projectiles/particles, afterimages, combo,
+   and ward effects retain their existing owners.
+7. **Verdure cleanup:** `clearVerdurePlants()` also clears module-owned `verdureFragments` and
+   resets the module spawn timer to 1500 ms; it must remain specialized.
+8. **Stable-reference consumers:** Targeting, wave/dead sweep, movement, orbit-projectile,
+   player-attack/weapon systems, death/restart, draw, and update contexts are constructed once and
+   retain direct references. `createWaveManager()` additionally destructures those references once.
+9. **Property replacement:** No canonical candidate array is replaced; renderer bindings are
+   `const` and consumers use push/splice/in-place length truncation. Separately owned values such as
+   `orbitProjectiles` and the weapon laser-beam object can be replaced and are intentionally out.
+10. **Circular imports:** Broad contexts can migrate safely. The canonical module imports only leaf
+    entity types with `import type`; update, draw, targeting, wave, and restart import the canonical
+    type/helper, and the canonical module imports none of those consumers.
 
 ---
 
@@ -667,11 +786,12 @@ Complete during implementation.
 
 | Command / Scenario | Exit / Result | Classification | Notes |
 |---|---:|---|---|
-| Baseline `npm run typecheck` | Pending | Pending | |
-| Baseline `npm test` | Pending | Pending | |
-| Baseline `npm run lint` | Pending | Pending | |
-| Baseline `npm run build` | Pending | Pending | |
-| Baseline `npm run build:desktop` | Pending | Pending | |
+| Baseline `npm run typecheck` | 0 | Passed | `npm.cmd run typecheck` |
+| Baseline `npm test` (restricted first attempt) | 1 | Environmental | Vitest/esbuild could not load the config because the wrapper was denied directory access; not described as passing |
+| Baseline `npm test` (approved rerun) | 0 | Passed | 72 files and 1469 tests passed; expected invalid-URL Boss MIDI stderr remained |
+| Baseline `npm run lint` | 0 | Passed | `npm.cmd run lint` |
+| Baseline `npm run build` | 0 | Passed | TypeScript + Vite; existing chunk-size warning |
+| Baseline `npm run build:desktop` | 0 | Passed | TypeScript + Vite; existing chunk-size warning |
 | Focused collection tests | Pending | Pending | |
 | Final `npm run typecheck` | Pending | Pending | |
 | Final `npm test` | Pending | Pending | |
@@ -726,6 +846,56 @@ Complete during implementation.
 **Next action:**
 
 - Implement Phase Three according to this document.
+
+### 2026-07-12 23:18 — Codex (GPT-5)
+
+**Status:** investigating
+
+**Work completed:**
+
+- Fast-forwarded local `main` to `origin/main` and preserved the committed Phase Three plan.
+- Read the required repository, architecture, status, routing, convention, decision, and file-guide documents.
+- Inspected the only commit after Build 332 and the update, draw, targeting, wave/dead-sweep,
+  death/restart, boss, movement, weapon, procedural, and special-encounter ownership paths.
+- Recorded the full 74-collection membership matrix and resolved all ten investigation questions.
+
+**Evidence/findings:**
+
+- Baseline HEAD is `3b9c5ef39ca6a0290116e6038f42666a9aa91e5a`; Build 332 phase baseline is
+  `938315712323aeedbe957a92fac7647eff8670c3`.
+- Baseline branch was clean `main`, synchronized with `origin/main`, at build 332 with no unrelated
+  user changes.
+- Multiple Git processes were active; process inspection was partially access-limited, so HEAD and
+  status will be rechecked at edit and commit boundaries rather than treating auto-sync as absent.
+- Boss-entry and zone-switch Nadir omissions are followed by specialized next-update cleanup.
+- Normal restart omits Stardust even though Stardust remains update/draw/wave-owned, making the stale
+  entity observable and capable of blocking completion after respawn.
+
+**Validation:**
+
+- `npm.cmd run typecheck` — exit 0 — passed.
+- `npm.cmd test` — exit 1 — environmental restricted-wrapper failure loading Vitest config.
+- `npm.cmd test` (approved rerun) — exit 0 — 72 files and 1469 tests passed.
+- `npm.cmd run lint` — exit 0 — passed.
+- `npm.cmd run build` — exit 0 — passed with the existing chunk-size warning.
+- `npm.cmd run build:desktop` — exit 0 — passed with the existing chunk-size warning.
+
+**Behavioral decisions:**
+
+- Preserve boss-entry teleport retention, deferred Nadir cleanup, normal teleport retention, and
+  player-owned combo/ward behavior.
+- Add a focused failing regression before correcting normal-restart Stardust retention.
+- Keep Verdure, weapon, orbit, afterimage, combo, and ward cleanup with their current owners.
+
+**Blockers/limitations:**
+
+- Runtime smoke testing has not yet been performed.
+- Native Android device validation is not available from the baseline command set.
+
+**Next action:**
+
+- Add the Node-safe canonical factory and current-profile characterization tests without removing
+  the existing reset lists.
 
 ---
 
