@@ -14,31 +14,9 @@ import type { RpgSimState } from '../../sim/rpg/rpg-state';
 import type { TierId } from '../../data/tiers';
 import type {
   RpgMote, RpgPhase, RpgPlayerStats,
-  LaserEnemy, SapphireEnemy, SapphireMissile,
 } from './rpg-types';
 import type { RpgFluid } from './rpg-fluid';
-import type {
-  EmeraldEnemy, AmberEnemy, AmberShard, VoidEnemy,
-  QuartzEnemy, QuartzSpike, RubyEnemy, RubyBolt,
-  SunstoneEnemy, CitrineEnemy, CitrineBolt,
-  IoliteEnemy, AmethystEnemy, AmethystShard,
-  DiamondEnemy, DiamondShard, NullstoneEnemy, VoidTendril,
-  FracterylEnemy, FracterylShard, EigensteinEnemy, EigensteinBeam,
-  BossEnemy, BossProjectile,
-  TeleportParticle, LuckyMote, LuckyMotePopup, EliteEnemy,
-} from './rpg-enemy-types';
-import type {
-  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
-  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
-  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
-  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
-  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
-  FishMine, FishSpike, FishBolt, FishDecoy,
-} from './rpg-procedural-types';
-import type {
-  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
-} from './polyomino-enemy-types';
-import type { AlivenParticleGroup } from './rpg-aliven-types';
+import type { BossEnemy } from './rpg-enemy-types';
 import type { RpgEnemyCtx } from './rpg-enemy-updates';
 import type { EliteEnemyCtx } from './rpg-elite-enemy-updates';
 import type { AlivenUpdateCtx } from './rpg-aliven-updates';
@@ -49,7 +27,7 @@ import type { BossMidiRuntimeState } from './rpg-boss-midi-runtime';
 import type { WeaponOrbitCtx } from './rpg-weapon-orbit';
 import type { OrbitProjectileCtx } from './rpg-orbit-projectile';
 import type { OrbitProjectile } from './rpg-types';
-import type { BinaryRingEnemy, BinaryRingMissile, BinaryLaserSweep } from './rpg-binary-ring-encounter';
+import type { BinaryLaserSweep } from './rpg-binary-ring-encounter';
 import type { WeaponTickCtx } from './rpg-weapon-tick';
 import type { PlayerMovementCtx, PlayerMovementState } from './rpg-player-movement';
 import type { RpgDeathRestartCtx } from './rpg-death-restart';
@@ -129,7 +107,6 @@ import { updateEmpowerParticles } from './rpg-elite-empower-particles';
 import { spawnNadirCubeEncounter, updateNadirCubePointEnemies, clearNadirCubeEncounter } from './nadir-cube-point-update';
 import { tickEnemySpeechBubbles, tickNoDamageBarks } from './rpg-enemy-barks';
 import { tickBossDialogue } from './rpg-boss-dialogue';
-import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { tickLensStatuses } from '../../sim/rpg/enemy-status-effects';
 import { tickPlayerStatuses } from '../../sim/rpg/player-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
@@ -137,15 +114,8 @@ import { tickLensTier3Effects } from './lens-tier3-effects';
 import { createTrueSurfaceElite, TRUE_SURFACE_ROTATION, updateTrueSurfaceElite } from './true-surface-elite';
 import type { RpgEncounterCollections } from './rpg-encounter-collections';
 
-// ── Enemy array bundle ────────────────────────────────────────────────────────
-
-/**
- * All enemy and projectile arrays needed by a single update tick, bundled so
- * that RpgUpdateCtx doesn't need ~30 individual array fields.
- */
-export interface RpgEnemyUpdateArrays extends RpgEncounterCollections {
-  // ── Procedural creature arrays ──────────────────────────────────────────────
-}
+/** Backward-compatible name for the canonical update collection view. */
+export type RpgEnemyUpdateArrays = RpgEncounterCollections;
 
 // ── Update context interface ──────────────────────────────────────────────────
 

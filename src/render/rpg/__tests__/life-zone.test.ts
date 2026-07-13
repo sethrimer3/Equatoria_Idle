@@ -28,6 +28,7 @@ import { RPG_ZONE_DEFINITIONS, RPG_ZONE_BY_ID } from '../../../data/rpg/rpg-zone
 import { getSpawnableEnemyTypesForZone, getZoneWaveDefinition } from '../../../data/rpg/wave-definitions';
 import { isLifeBodyTarget, getLifeTargetBody } from '../life-weapon-helpers';
 import type { ClosestTarget } from '../rpg-types';
+import { createRpgEncounterCollections } from '../rpg-encounter-collections';
 
 describe('life-grid', () => {
   const bounds = makeLifeGridBounds(0, 0, 280, 280, LIFE_CELL_SIZE);
@@ -620,30 +621,10 @@ describe('life-weapon-helpers — shared targeting/damage helpers', () => {
 const unused = (..._args: unknown[]): never => { throw new Error('unused stub invoked'); };
 
 function makeMinimalTargetingCtx(overrides: Partial<RpgTargetingCtx> = {}): RpgTargetingCtx {
+  const collections = createRpgEncounterCollections();
   return {
     mote: { x: 0, y: 0 },
     bossEnemy: null,
-    enemies: [], sapphireEnemies: [], sapphireMissiles: [],
-    emeraldEnemies: [], amberEnemies: [], amberShards: [],
-    voidEnemies: [], quartzEnemies: [], quartzSpikes: [],
-    rubyEnemies: [], rubyBolts: [],
-    sunstoneEnemies: [], citrineEnemies: [], citrineBolts: [],
-    ioliteEnemies: [], amethystEnemies: [], amethystShards: [],
-    diamondEnemies: [], diamondShards: [],
-    nullstoneEnemies: [], voidTendrils: [],
-    fracterylEnemies: [], fracterylShards: [],
-    eigensteinEnemies: [], eliteEnemies: [],
-    polyominoEnemies: [], fissilePolyominoEnemies: [], refractorPolyominoEnemies: [],
-    binaryRingEnemies: [], stardustEnemies: [],
-    alivenGroups: [],
-    lifeColonies: [],
-    dustWispEnemies: [], ribbonWormEnemies: [], lanternMothEnemies: [], eyeStalkEnemies: [],
-    jellyfishEnemies: [], eliteJellyfishEnemies: [],
-    clothGhostEnemies: [], plantTurretEnemies: [], gearInsectEnemies: [],
-    spiderCrawlerEnemies: [], moteSwarmEnemies: [], shadowHandEnemies: [],
-    sandFishEnemies: [], quartzFishEnemies: [], rubyFishEnemies: [], sunstoneFishEnemies: [],
-    emeraldFishEnemies: [], sapphireFishEnemies: [], amethystFishEnemies: [], diamondFishEnemies: [],
-    plantProjectiles: [],
     damageEnemy: unused, damageSapphireEnemy: unused, damageMissile: unused,
     damageEmeraldEnemy: unused, damageAmberEnemy: unused, damageAmberShard: unused,
     damageVoidEnemy: unused, damageQuartzEnemy: unused, damageQuartzSpike: unused,
@@ -670,12 +651,12 @@ function makeMinimalTargetingCtx(overrides: Partial<RpgTargetingCtx> = {}): RpgT
     damagePlantProjectile: unused,
     verdurePlants: [],
     damageVerdurePlant: unused,
-    nadirCubePointEnemies: [],
     damageNadirCubePointEnemy: unused,
-    horizonPentagonGroups: [],
     damageHorizonPentagonReal: unused,
     damageHorizonMissile: unused,
     getTerrainState: () => null,
+    collections,
+    ...collections,
     ...overrides,
   };
 }

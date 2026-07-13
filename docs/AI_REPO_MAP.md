@@ -218,6 +218,8 @@ Large RPG combat/render subsystem. Use `file_index.md` for exact file-level deta
 Major clusters:
 
 - constants and types: `rpg-constants.ts`, `rpg-weapon-constants.ts`, `rpg-enemy-constants.ts`, `rpg-types.ts`, `rpg-enemy-types.ts`, `rpg-entity-types.ts`.
+- encounter ownership: `rpg-encounter-collections.ts` is the canonical per-renderer array inventory,
+  factory, and boss/zone/restart profile source; do not add parallel clear lists.
 - factories: `rpg-factories.ts`, `rpg-factories-early.ts`, `rpg-factories-mid.ts`, `rpg-factories-late.ts`.
 - enemies: enemy update/draw modules, elite update/draw modules, Aliven modules.
 - player/weapons: player attack, projectiles, chain whip, sword, lasers, poison, missiles, mines, companion ships.
@@ -227,6 +229,9 @@ Major clusters:
 - UI: RPG menu, weapons tab, upgrades/stats panels.
 
 Risks:
+
+- Canonical encounter arrays must retain identity. Mutate contents in place and keep specialized
+  cleanup with its owner when it does more than truncation.
 
 - RPG code is broad. Do not read all of it for every task; choose a cluster first.
 - Keep weapon resolver support for crafted weapons. Static catalog lookups are not enough when equipped ids may be crafted.

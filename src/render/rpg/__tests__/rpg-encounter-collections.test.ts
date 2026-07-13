@@ -16,6 +16,8 @@ import type { RpgDrawCtx } from '../rpg-render-draw';
 import type { RpgTargetingCtx } from '../rpg-targeting-types';
 import type { WaveManagerCtx } from '../rpg-wave-manager';
 import type { RpgDeathRestartCtx } from '../rpg-death-restart';
+import { doRestart } from '../rpg-death-restart';
+import { createBossAttackState } from '../rpg-boss-attack-types';
 
 type EncounterCollectionKey = keyof RpgEncounterCollections;
 
@@ -51,6 +53,67 @@ function verifyExactProfile(
   }
 }
 
+function createRestartContext(
+  collections: RpgEncounterCollections,
+  bossId: number | null,
+): { ctx: RpgDeathRestartCtx; getExitCount(): number; getStartedBossId(): number | null } {
+  let exitCount = 0;
+  let startedBossId: number | null = null;
+  let phase: RpgDeathRestartCtx['getRpgPhase'] extends () => infer T ? T : never = 'alive';
+  const ctx: RpgDeathRestartCtx = {
+    collections,
+    getRpgPhase: () => phase,
+    setRpgPhase: (next) => { phase = next; },
+    getPhaseTimerMs: () => 0,
+    setPhaseTimerMs: () => {},
+    getDeathAlpha: () => 1,
+    setDeathAlpha: () => {},
+    getScreenDarken: () => 0,
+    setScreenDarken: () => {},
+    getRestartFadeAlpha: () => 0,
+    setRestartFadeAlpha: () => {},
+    setPlayerIFramesMs: () => {},
+    mote: {
+      x: 5, y: 6, vx: 1, vy: 1,
+      trailX: new Float64Array(1), trailY: new Float64Array(1),
+      trailHead: 1, trailCount: 1,
+    },
+    playerStats: { hp: 0, maxHp: 10, atk: 1, def: 1, regen: 0 },
+    playerMovementState: { glowMovementIntensity: 1, playerAimAngle: 0 },
+    bossAttackState: createBossAttackState(),
+    weaponSystems: { reset: () => {} } as never,
+    weaponAttackTimers: new Map([['test', 1]]),
+    fluid: { reset: () => {} },
+    bossWave: {
+      exitBossWave: () => { exitCount++; },
+      startBossFight: (id) => { startedBossId = id; },
+    },
+    getBossEnemy: () => bossId === null ? null : { bossId } as never,
+    setBossEnemy: () => {},
+    setBinaryLaserSweep: () => {},
+    setDanmakuSafeZone: () => {},
+    setIsBossFightFromMenu: () => {},
+    setBossHitsInRound: () => {},
+    setCurrentWave: () => {},
+    setIsInterWave: () => {},
+    setInterWaveTimerMs: () => {},
+    getWidthPx: () => 360,
+    getHeightPx: () => 640,
+    rpgSimState: {
+      respawnWave: 5,
+      consecutiveWaveStreak: 2,
+      damageFreeWaveStreak: 2,
+      tookDamageThisWave: true,
+    },
+    applyEquipmentStats: () => {},
+  };
+  return {
+    ctx,
+    getExitCount: () => exitCount,
+    getStartedBossId: () => startedBossId,
+  };
+}
+
 describe('RPG encounter collection factory', () => {
   it('creates separate empty objects and arrays for every renderer instance', () => {
     const first = createRpgEncounterCollections();
@@ -58,6 +121,7 @@ describe('RPG encounter collection factory', () => {
 
     expect(first).not.toBe(second);
     expect(new Set(RPG_ENCOUNTER_COLLECTION_KEYS).size).toBe(RPG_ENCOUNTER_COLLECTION_KEYS.length);
+    expect(Object.keys(first).sort()).toEqual([...RPG_ENCOUNTER_COLLECTION_KEYS].sort());
     for (const key of RPG_ENCOUNTER_COLLECTION_KEYS) {
       expect(first[key], `${key} first empty`).toEqual([]);
       expect(second[key], `${key} second empty`).toEqual([]);
@@ -169,5 +233,37 @@ describe('RPG encounter context wiring', () => {
     expect(draw.enemies).toEqual([]);
     expect(targeting.enemies).toEqual([]);
     expect(wave.enemies).toEqual([]);
+  });
+
+  it('routes doRestart through the normal profile without replacing references', () => {
+    const collections = createRpgEncounterCollections();
+    const stardustReference = collections.stardustEnemies;
+    const teleportReference = collections.teleportParticles;
+    collections.stardustEnemies.push({ hp: 1 } as never);
+    collections.teleportParticles.push({ alpha: 1 } as never);
+    const restart = createRestartContext(collections, null);
+
+    doRestart(restart.ctx);
+
+    expect(collections.stardustEnemies).toBe(stardustReference);
+    expect(collections.stardustEnemies).toEqual([]);
+    expect(collections.teleportParticles).toBe(teleportReference);
+    expect(collections.teleportParticles).toHaveLength(1);
+    expect(restart.getExitCount()).toBe(1);
+    expect(restart.getStartedBossId()).toBeNull();
+  });
+
+  it('routes boss doRestart through the effective boss profile', () => {
+    const collections = createRpgEncounterCollections();
+    seedEveryCollection(collections);
+    const restart = createRestartContext(collections, 3);
+
+    doRestart(restart.ctx);
+
+    for (const key of RPG_ENCOUNTER_COLLECTION_KEYS) {
+      expect(collections[key], `${key} boss restart`).toEqual([]);
+    }
+    expect(restart.getExitCount()).toBe(1);
+    expect(restart.getStartedBossId()).toBe(3);
   });
 });

@@ -4,41 +4,9 @@
 
 
 > equatoria-idle@0.1.0 dev
-> vite --host 127.0.0.1 --port 5181 --strictPort
+> vite --host 127.0.0.1 --port 5180 --strictPort
 
 
-  [32m[1mVITE[22m v8.0.3[39m  [2mready in [0m[1m191[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v8.0.3[39m  [2mready in [0m[1m164[22m[2m[0m ms[22m
 
-  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5181[22m/[39m
-[2m10:31:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/game-app.ts[22m
-[2m10:31:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/audio/generated-boss-music-tracks.ts[22m
-[2m10:31:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/buildInfo.ts[22m
-[2m10:31:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-render-draw.ts[22m
-[2m10:31:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/ui/panels/rpg-weapon-crafting-page.ts[22m
-[2m10:31:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-render.ts[22m
-[2m10:31:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/game-app.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/app-actions.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/audio/audio-system.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/assets/asset-paths.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/canvas/game-canvas.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/debug/perf-stats.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/forge/forge-renderer-draw.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/app-game-loop.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/app/game-app.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/generators/generator-renderer.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/buildInfo.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/particles/particle-glow-field.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/audio/boss-music-player.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/settings/settings-state.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/ui/panels/loom-panel.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-boss-spawn-circle.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-boss-wave.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-player-movement.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-render-draw.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-render-update.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-render.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/render/rpg/rpg-targeting.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/ui/panels/rpg-enemies-tab.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/ui/panels/rpg-menu-panel.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/ui/panels/rpg-weapon-crafting-page.ts[22m
-[2m10:32:10 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/ui/panels/settings-panel.ts[22m
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5180[22m/[39m

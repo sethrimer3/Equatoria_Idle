@@ -104,45 +104,19 @@ import {
 } from './polyomino-enemy-draw';
 import type {
   RpgMote, RpgJoystick, RpgPhase,
-  HitEffect, ShotLine, DamageNumber, DeathParticle, ComboEffect, WardEffect,
+  ComboEffect, WardEffect,
   WeaponOrbitParticle, OrbitProjectile,
-  SapphireEnemy, SapphireMissile, LaserEnemy,
   ClosestTarget,
 } from './rpg-types';
 import type {
-  EmeraldEnemy,
-  AmberEnemy, AmberShard,
-  VoidEnemy, QuartzEnemy, QuartzSpike,
-  RubyEnemy, RubyBolt,
-  SunstoneEnemy, CitrineEnemy, CitrineBolt,
-  IoliteEnemy, AmethystEnemy, AmethystShard,
-  DiamondEnemy, DiamondShard,
-  NullstoneEnemy, VoidTendril,
-  BossEnemy, BossProjectile,
-  FracterylEnemy, FracterylShard,
-  EigensteinEnemy, EigensteinBeam,
-  DanmakuSafeZone, TeleportParticle,
-  LuckyMote, LuckyMotePopup, EliteEnemy,
+  BossEnemy,
+  DanmakuSafeZone,
 } from './rpg-enemy-types';
-import type {
-  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
-  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
-  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
-  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
-  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
-  FishMine, FishSpike, FishBolt, FishDecoy,
-} from './rpg-procedural-types';
 import type { BossAttackState } from './rpg-boss-attack-types';
-import type { BinaryRingEnemy, BinaryRingMissile } from './rpg-binary-ring-encounter';
-import type {
-  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
-} from './polyomino-enemy-types';
 import { drawNadirCubeEncounter, setNadirCubeLowGraphics } from './nadir-cube-point-draw';
-import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import type { NadirCubeProjectionState } from '../background/nadir-cube-projection';
 import { drawTrueSurfaceElite } from './true-surface-elite';
 import type { RpgWeaponHandle } from './rpg-weapon-systems';
-import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { JOYSTICK_OUTER_RADIUS, JOYSTICK_THUMB_RADIUS, BASE_ATTACK_TIMER_KEY, RPG_LOGICAL_WIDTH, RPG_LOGICAL_HEIGHT } from './rpg-constants';
 import { resolveWeaponDefinition } from '../../data/rpg/crafted-weapon-helpers';
 import { renderTopographicTerrain } from './terrain/topographic-terrain';

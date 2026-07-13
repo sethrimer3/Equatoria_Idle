@@ -1,6 +1,6 @@
 # Equatoria Idle — File Guide
 
-Last verified: 2026-06-06 (build 230)
+Last verified: 2026-07-12 (build 333)
 
 Per-file responsibilities grouped by system. For full-size file index see `file_index.md` at repo root. For folder-level map see `docs/REPO_MAP.md`.
 
@@ -80,11 +80,12 @@ Legend: **CAUTION** = many dependents or fragile; **SAFE** = low blast radius; *
 | `background/background-animation.ts` | `createBackgroundAnimation()` — ring animation | Non-idle, always-on |
 | `background/vermiculate-effect.ts` | Vermiculate background pattern | Optional, high-perf |
 | `background/substrate-effect.ts` | Substrate background pattern | Optional |
-| `rpg/rpg-render.ts` | `createRpgRender()` — full RPG combat canvas | CAUTION — very large |
+| `rpg/rpg-render.ts` | `createRpgRender()` — RPG composition root; creates one canonical encounter collection owner | CAUTION — very large |
+| `rpg/rpg-encounter-collections.ts` | Node-safe 74-array encounter interface/factory and typed reset profiles | CAUTION — lifecycle membership |
 | `rpg/rpg-boss-midi-runtime.ts` | Boss-only MIDI asset loading/cache and adapter into existing boss attacks | Medium |
 | `rpg/rpg-constants.ts` | RPG layout constants: logical size, player init | `RPG_LOGICAL_WIDTH/HEIGHT` |
 | `rpg/rpg-types.ts` | RPG entity types: `RpgMote`, `LaserEnemy`, etc. | Type definitions |
-| `rpg/rpg-wave-manager.ts` | Wave state machine | Drives enemy spawning |
+| `rpg/rpg-wave-manager.ts` | Wave state machine consuming the canonical collection view | Drives enemy spawning/dead sweep |
 | `rpg/terrain/topographic-terrain.ts` | Procedural terrain for topographic zones | Medium |
 | `assets/asset-loader.ts` | `loadImage()`, sprite caching | Used by preload fns |
 | `assets/asset-paths.ts` | Canonical sprite path constants | SAFE to extend |

@@ -1,5 +1,16 @@
 # Equatoria Idle Current Status
 
+## Build 333: canonical RPG encounter collections
+
+- `createRpgRender()` now creates one canonical `RpgEncounterCollections` object with 74 fresh,
+  renderer-local arrays whose identities remain stable for the renderer lifetime.
+- Update, draw, targeting, wave/dead-sweep, and death/restart contexts share those exact arrays;
+  boss entry, zone switching, normal restart, and boss restart use explicit typed reset profiles.
+- Normal death/restart now clears stale Stardust enemies. Deferred Nadir cleanup, boss teleport
+  cleanup, specialized Verdure cleanup, and player/weapon-owned effects retain their prior owners.
+- Focused coverage verifies factory isolation, exact reset membership, idempotency, context wiring,
+  stable references, and normal/boss `doRestart()` routing.
+
 ## Build 332: owned application runtime lifecycle
 
 - Each `startApp()` call now returns an idempotent `AppRuntime` that owns the main game-loop controller, app-level listeners, the 250 ms skill-point poller, removable canvas input, callbacks, audio, background effects, panels, trace overlay, RPG teardown, and app-created DOM.
@@ -26,7 +37,7 @@
 - Gameplay settings now include the default-enabled `Show tip on startup` option.
 
 Last updated: 2026-07-12
-Current build: 332
+Current build: 333
 
 This file is the concise current-status layer for AI agents. It intentionally summarizes what matters for near-term work and should be kept more current than root historical docs.
 

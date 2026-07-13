@@ -49,15 +49,10 @@ export interface RpgDeathRestartCtx {
   setPlayerIFramesMs(ms: number): void;
   collections: RpgEncounterCollections;
 
-  // ── Particle arrays ─────────────────────────────────────────────
-
   // ── Player / physics ────────────────────────────────────────────
   mote: RpgMote;
   playerStats: RpgPlayerStats;
   playerMovementState: PlayerMovementState;
-
-  // ── Entity arrays (cleared on restart) ──────────────────────────
-  // ── Procedural creature arrays (cleared on restart) ──────────────────────────
 
   // ── Systems cleared on restart ───────────────────────────────────
   bossAttackState: BossAttackState;

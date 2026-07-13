@@ -30,30 +30,7 @@ import { clearEliteBuffRegistry } from './rpg-elite-buff';
 import { clearEmpowerParticles } from './rpg-elite-empower-particles';
 import { initParticleLifeMatrix } from './terrain/impetus-particle-life';
 import { onEnemyDefeated } from '../../achievements/achievementHooks';
-import type {
-  LaserEnemy, SapphireEnemy, SapphireMissile, SpawnEntry,
-} from './rpg-types';
-import type {
-  EmeraldEnemy, AmberEnemy, AmberShard,
-  VoidEnemy, QuartzEnemy, QuartzSpike,
-  RubyEnemy, RubyBolt, SunstoneEnemy, CitrineEnemy, CitrineBolt,
-  IoliteEnemy, AmethystEnemy, AmethystShard,
-  DiamondEnemy, DiamondShard, NullstoneEnemy, VoidTendril,
-  FracterylEnemy, FracterylShard, EigensteinEnemy,
-  BossEnemy, BossProjectile,
-  LuckyMote, EliteEnemy,
-} from './rpg-enemy-types';
-import type {
-  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
-  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
-  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
-  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
-  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
-  FishMine, FishSpike, FishBolt, FishDecoy,
-} from './rpg-procedural-types';
-import type {
-  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
-} from './polyomino-enemy-types';
+import type { BossEnemy } from './rpg-enemy-types';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 import { resetGalaxyWaveHitChain } from './true-galaxy-enemy';
 import type { RpgEncounterCollections } from './rpg-encounter-collections';

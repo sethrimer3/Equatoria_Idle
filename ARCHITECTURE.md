@@ -170,7 +170,14 @@ The Equation / Idle render uses a **fixed logical coordinate space** of 320 × 6
 
 ## RPG Combat Rendering
 
-- `createRpgRender()` owns transient RPG combat entities, input state, weapon timers, companion ships, projectiles, visual effects, and the RPG stats panel DOM
+- `createRpgRender()` creates one renderer-local `RpgEncounterCollections` owner for encounter
+  bodies, sub-entities, special encounters, rewards, and short-lived combat visuals. Update, draw,
+  targeting, wave/dead-sweep, and restart contexts retain the same stable arrays.
+- Boss entry, zone switching, normal restart, and boss restart use explicit typed reset profiles that
+  truncate arrays in place. Specialized Verdure, Nadir, boss/MIDI, weapon, fluid, and player-effect
+  cleanup remains outside the collection owner.
+- `createRpgRender()` separately owns input state, weapon timers and internals, companion ships,
+  scalar wave/boss/player state, terrain, audio hooks, and the RPG stats panel DOM
 - Persistent RPG progression lives in `RpgSimState`; equipped weapon ids and weapon tiers are read from sim state rather than duplicated in rendering code
 - Sapphire and Amethyst companion ships are persistent render/combat entities while their weapons are equipped; ship count is derived from weapon tier
 - Sapphire ships use nearest-enemy targeting. Amethyst ships sort enemies by distance from the player and distribute ships across the furthest targets

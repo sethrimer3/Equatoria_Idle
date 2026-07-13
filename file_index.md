@@ -1118,7 +1118,7 @@
 
 ### src/render/rpg/rpg-targeting-types.ts
 - Type-only home for targeting contracts extracted from `rpg-targeting.ts`.
-- Exports `RpgTargetingCtx` (all enemy arrays + damage dispatch callbacks) and `RpgTargetingHandle` (public targeting API).
+- Exports `RpgTargetingCtx` (canonical encounter collection view + damage dispatch callbacks) and `RpgTargetingHandle` (public targeting API).
 - Includes Binary Ring elite arrays and `damageBinaryRingEnemy`, so generic targeting can lock onto the Zenith encounter body.
 - Keeps runtime logic in `rpg-targeting.ts` while preserving existing import compatibility through type re-exports.
 
@@ -1499,6 +1499,14 @@
 - Exports `createCachedLuckPercentGetter(rpgSimState)` (XP-change-based luck cache), `findEquippedWeaponIdByEffect(effectKind, equippedWeaponIds)`, and `clampEnemyToBounds(enemy, widthPx, heightPx)`.
 - Contains no render-loop ownership state; `rpg-render.ts` remains the orchestrator and passes current values through.
 
+### src/render/rpg/rpg-encounter-collections.ts *(added — build 333)*
+- Node-safe canonical interface and factory for all 74 renderer-local encounter arrays.
+- Every factory call returns fresh arrays; lifecycle helpers truncate in place and never replace a
+  reference.
+- Exports typed key tuples and explicit boss-entry, zone-switch, normal-restart, and boss-restart
+  profiles. Nadir, Verdure, boss/MIDI, weapon, fluid, and player-effect specialized cleanup remains
+  with its existing owner.
+
 ### src/render/rpg/rpg-render.ts *(updated — build 169)*
 - Independent RPG canvas rendering system for the RPG tab (~990 lines after this refactor).
 - Module-level constants, types, and factory functions have been extracted to `rpg-constants.ts`, `rpg-types.ts`, and `rpg-factories.ts` respectively.
@@ -1521,7 +1529,7 @@
 - Boss draw, safe-zone, and wave-clear banner functions extracted to `rpg-boss-draw.ts`.
 - Chain whip and vortex draw functions extracted to `rpg-weapon-draw.ts`; sword combo and sand blade draw functions extracted to `rpg-weapon-draw-sword.ts`.
 - Pure helpers (`chainNodeRadius`, `chainNodeInvMass`, `getSwordLength`, etc.) extracted to `rpg-helpers.ts`.
-- Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) extracted to `rpg-wave-manager.ts`; rpg-render.ts retains ownership of all wave/enemy arrays and scalar state via getter/setter lambdas.
+- Wave lifecycle (removeDeadEnemies, spawnEnemyById, startNextWave, checkWaveCompletion, tickSpawnQueue) is delegated to `rpg-wave-manager.ts`; build 333 supplies its arrays from the canonical renderer-local collection owner while scalar state stays in `rpg-render.ts` via getter/setter lambdas.
 - Per-frame canvas draw function extracted to `rpg-render-draw.ts` via `drawRpgFrame(ctx, state, nowMs)`; `setAllDrawLowGraphics` forwards low-graphics flag to all draw modules.
 - `drawZoneBgOverlay` now swaps between Binary Horizon, the Binary Ring offscreen background, and Nadir substrate depending on active Horizon subzone + encounter state.
 - Death/restart lifecycle (triggerDeath, doRestart, updateDying, updateRestarting) extracted to `rpg-death-restart.ts`; rpg-render.ts builds `deathRestartCtx: RpgDeathRestartCtx` and delegates all four functions.
@@ -1552,10 +1560,10 @@
 - **Game loop** — `update()` delegates to `runRpgUpdate(updateCtx, deltaMs, autoMoveEnabled)` in `rpg-render-update.ts`; `updateCtx: RpgUpdateCtx` is built once at factory creation time and captures all mutable state through getters/setters.
 - **Build 169:** Fixed missing `getVerdureCaveWallState` in `movementCtx` (player wall collision was dead). Added `getVerdureCaveWallState` to both `movementCtx` and `enemyCtx`. `beginWaveTerrain` now applies Impetus asteroid soft obstacles and Verdure wall hard-blocks to the nav grid immediately after `buildRpgNavigationGrid`.
 
-### src/render/rpg/rpg-render-update.ts *(updated — build 169)*
+### src/render/rpg/rpg-render-update.ts *(updated — build 333)*
 - Per-frame simulation step extracted from `rpg-render.ts` (`~325 lines`).
-- Exports `runRpgUpdate(ctx, deltaMs, autoMoveEnabled)`, `RpgUpdateCtx` interface, and `RpgEnemyUpdateArrays` interface.
-- `RpgEnemyUpdateArrays` bundles all 31 enemy/projectile arrays into one typed object to avoid bloating `RpgUpdateCtx`.
+- Exports `runRpgUpdate(ctx, deltaMs, autoMoveEnabled)`, `RpgUpdateCtx`, and the compatibility alias
+  `RpgEnemyUpdateArrays = RpgEncounterCollections`; update consumes the canonical object directly.
 - `RpgUpdateCtx` exposes mutable closure variables through getters/setters so rpg-render.ts closures remain the single source of truth.
 - Runs all enemy type update functions, boss physics, weapon tick, lucky motes, achievement flag tracking, HP regen, and death check; then calls `drawRpgFrame`.
 - **Build 169:** Centralized Verdure wall push-out pass runs after all enemy updates when `getVerdureCaveWallState?.()` is non-null. Iterates all 26 mobile enemy arrays via `_applyVerdureWallPassToArray` helper and calls `applyEnemyVerdureWallPushOut` on each entity.
@@ -1567,6 +1575,8 @@
 - **Screen shake**: reads `ctx.getZenithShakeOffset?.()` at the top of each frame; if non-zero, wraps all scene drawing in `canvas2d.save() / translate(shakeX, shakeY) / restore()`.
 - `shouldDrawPersistentTopographySunlight(activeZoneId, terrainState)` helper gates the topography sunlight fill.
 - `RpgDrawCtx` includes optional `drawZoneBgOverlay()` and `getZenithShakeOffset?()` for Horizon substrate + shake.
+- Build 333: `RpgDrawCtx` extends the canonical encounter collection view and retains its source
+  `collections` object; draw order and direct property access are unchanged.
 - `setAllDrawLowGraphics` forwards the low-graphics flag to all draw-side modules.
 - Dev overlay (`drawRpgViewportDiagnostics`) reports: zone, subzone, terrainKind, lowGraphics, bg route, sunlightWash.
 
@@ -1574,7 +1584,8 @@
 - Player death and level-restart lifecycle extracted from `rpg-render.ts` (~227 lines).
 - Exports `RpgDeathRestartCtx` interface, `triggerDeath(ctx)`, `doRestart(ctx)`, `updateDying(ctx, deltaMs)`, `updateRestarting(ctx, deltaMs)`.
 - `triggerDeath` transitions to 'dying' phase and spawns `DEATH_BURST_COUNT` radial burst particles.
-- `doRestart` clears all entity arrays, resets all physics/wave state, and calls `applyEquipmentStats()`.
+- `doRestart` selects the explicit normal or boss canonical reset profile, then performs the existing
+  specialized boss, weapon, physics, wave, spawn-flash, dying-enemy, fluid, and equipment resets.
 - `updateDying` advances the death animation and calls `doRestart` + transitions to 'restarting' when the hold time elapses.
 - `updateRestarting` fades the restart overlay in and transitions to 'alive'.
 

@@ -4,6 +4,27 @@ Lightweight log of architectural facts discovered and major structural changes. 
 
 ---
 
+## 2026-07-12 — Canonical RPG encounter collections (build 333)
+
+**Agent:** Codex Phase Three implementation
+
+**Changed:**
+- Added the Node-safe `rpg-encounter-collections.ts` interface/factory and typed lifecycle profiles.
+- `createRpgRender()` creates one collection owner; update, draw, targeting, wave/dead-sweep, and
+  death/restart contexts retain its object and exact array references.
+- Replaced the boss-entry, zone-switch, and restart collection clear inventories with in-place
+  profile helpers. Normal restart intentionally now clears stale Stardust enemies.
+
+**New invariants:**
+- Every RPG renderer instance receives fresh arrays, and no canonical collection property or array
+  reference is replaced during its lifetime.
+- Reset helpers may iterate static typed key tuples only at lifecycle boundaries; per-frame update,
+  draw, targeting, and wave order remains direct and unchanged.
+- Verdure, Nadir, spawn-flash, dying-enemy, elite-buff, boss/MIDI, fluid, path, weapon, combo, and
+  ward cleanup remains with the specialized owner where truncation alone is insufficient.
+
+---
+
 ## 2026-07-12 — Owned application runtime lifecycle (build 332)
 
 **Agent:** Codex architectural audit

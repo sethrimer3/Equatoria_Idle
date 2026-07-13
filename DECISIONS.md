@@ -12,6 +12,25 @@
 
 **Reset boundary**: the existing page-reload reset remains intentional. Runtime disposal is for teardown and duplicate-free replacement, not an in-process reconstruction of RPG gameplay state.
 
+## Canonical RPG Encounter-Collection Ownership
+
+**Decision** (build 333): `createRpgEncounterCollections()` creates the single typed inventory of
+renderer-local encounter arrays. `createRpgRender()` calls it once and gives update, draw, targeting,
+wave/dead-sweep, and death/restart contexts the same object and exact array references.
+
+**Identity rule**: collection properties and arrays are never replaced. Reset helpers truncate in
+place using static typed key tuples at lifecycle boundaries; hot update/draw/targeting paths retain
+their direct access and established ordering.
+
+**Reset profiles**: boss entry intentionally retains teleport and Nadir collections; zone switching
+retains Nadir collections for their specialized next-update cleanup; normal restart retains teleport
+but clears Stardust; effective boss restart clears all canonical collections through its explicit
+profile plus the existing boss lifecycle.
+
+**Boundary**: scalar phase/wave/boss/player state, terrain/navigation, Verdure plants, boss/MIDI
+state, weapon internals, orbit/afterimage state, combo/ward effects, audio, DOM, and saves remain
+outside this owner. Cleanup that does more than truncation remains specialized.
+
 ## RPG Render Coordinate System
 
 **Decision** (build 129): The RPG gameplay arena uses a **fixed** logical coordinate space of **360 × 640** px (9:16 aspect ratio).

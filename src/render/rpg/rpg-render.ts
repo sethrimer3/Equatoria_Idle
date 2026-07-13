@@ -55,7 +55,6 @@ import { applyLensStatus, getActiveStatuses, incrementRiftScarredStacks } from '
 import { getRecentComboEvents } from '../../dev/rpg-combat-event-log';
 import { createDamageFns } from './rpg-damage';
 import { getCodexMultiplier } from '../../sim/rpg/rpg-codex';
-import type { NadirCubePointEnemy, NadirCubeMine, NadirCubeTrailSegment, NadirCubeTurretBolt, NadirCubeLinkLaser } from './nadir-cube-point-types';
 import { createRpgStatsPanel, type RpgStatsPanelHandle } from './rpg-stats-panel';
 import {
   createPlayerContactDamageState,
@@ -83,10 +82,8 @@ import { getBossBeatVisualState } from './rpg-boss-beat-visuals';
 import { getBossBpm } from '../../data/rpg/boss-bpm';
 import type {
   RpgMote, RpgJoystick, RpgKeyState, RpgPlayerStats,
-  LaserEnemy,
-  RpgPhase, DeathParticle, SpawnEntry, HitEffect, ShotLine, DamageNumber,
+  RpgPhase,
   WeaponOrbitParticle, OrbitProjectile,
-  SapphireEnemy, SapphireMissile,
   ClosestTarget, SwordComboPhase,
 } from './rpg-types';
 import { createRpgWeaponSystems, type RpgWeaponCtx, type RpgWeaponHandle } from './rpg-weapon-systems';
@@ -97,35 +94,9 @@ import { tryTriggerPlayerDamagedWeaveEffects, tryTriggerPlayerHitEnemyWeaveEffec
 import { applyLingeringHex, tickLingeringHexDebuffs } from '../../sim/rpg/weave-enemy-debuffs';
 import { WARD_TOTAL_MS } from './rpg-combat-effects-draw';
 import type {
-  EmeraldEnemy,
-  AmberEnemy, AmberShard,
-  VoidEnemy, QuartzEnemy, QuartzSpike,
-  RubyEnemy, RubyBolt,
-  SunstoneEnemy, CitrineEnemy, CitrineBolt,
-  IoliteEnemy, AmethystEnemy, AmethystShard,
-  DiamondEnemy, DiamondShard,
-  NullstoneEnemy, VoidTendril,
-  BossEnemy, BossProjectile,
-  FracterylEnemy, FracterylShard,
-  EigensteinEnemy, EigensteinBeam,
+  BossEnemy,
   DanmakuSafeZone,
-  TeleportParticle,
-  LuckyMote, LuckyMotePopup,
-  EliteEnemy,
-  StardustEnemy,
 } from './rpg-enemy-types';
-import type {
-  DustWispEnemy, RibbonWormEnemy, LanternMothEnemy, EyeStalkEnemy,
-  JellyfishEnemy, ClothGhostEnemy, PlantTurretEnemy, GearInsectEnemy,
-  SpiderCrawlerEnemy, MoteSwarmEnemy, ShadowHandEnemy, PlantProjectile,
-  SandFishEnemy, QuartzFishEnemy, RubyFishEnemy, SunstoneFishEnemy,
-  EmeraldFishEnemy, SapphireFishEnemy, AmethystFishEnemy, DiamondFishEnemy,
-  FishMine, FishSpike, FishBolt, FishDecoy,
-} from './rpg-procedural-types';
-import type { EliteJellyfishEnemy } from './rpg-jellyfish-elite-types';
-import type {
-  PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
-} from './polyomino-enemy-types';
 import { createBossWaveManager, type BossWaveHandle } from './rpg-boss-wave';
 import { createWaveManager, type WaveManagerHandle } from './rpg-wave-manager';
 import {
@@ -138,7 +109,6 @@ import {
 } from './rpg-boss-stage-director';
 import { type AlivenUpdateCtx } from './rpg-aliven-updates';
 import { damageAlivenParticle, damageLifeCell, damageLifeCore } from './rpg-damage';
-import type { AlivenParticleGroup } from './rpg-aliven-types';
 import { makeAlivenGroup } from './rpg-aliven-factories';
 import { ALIVEN_VARIANTS, MAX_ACTIVE_ALIVEN_GROUPS, type AlivenVariantId } from './rpg-aliven-constants';
 import { type RpgEnemyCtx } from './rpg-enemy-updates';
@@ -187,9 +157,7 @@ import {
   type WeaponOrbitCtx,
 } from './rpg-weapon-orbit';
 import { type WeaponTickCtx } from './rpg-weapon-tick';
-import {
-  runRpgUpdate, type RpgEnemyUpdateArrays, type RpgUpdateCtx,
-} from './rpg-render-update';
+import { runRpgUpdate, type RpgUpdateCtx } from './rpg-render-update';
 import type { RpgRender, RpgRenderOptions } from './rpg-render-types';
 import type { GrantedEquipmentReward } from '../../sim/game-state';
 import {
@@ -221,8 +189,6 @@ import {
 } from '../background/nadir-cubic-grid-background';
 import type { NadirCubeProjectionState } from '../background/nadir-cube-projection';
 import {
-  type BinaryRingEnemy,
-  type BinaryRingMissile,
   type BinaryLaserSweep,
   drawBinaryRingEncounter,
 } from './rpg-binary-ring-encounter';
@@ -402,26 +368,24 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let trueBinaryHorizon: TrueBinaryHorizon | null = null;
   const collections = createRpgEncounterCollections();
   const {
-    spawnQueue,
     enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
     amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
     rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
     ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
     nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies,
+    eigensteinEnemies, eliteEnemies,
     polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
     binaryRingEnemies, binaryRingMissiles,
-    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments,
-    nadirCubeTurretBolts, nadirCubeLinkLasers,
+    nadirCubePointEnemies,
     stardustEnemies, horizonPentagonGroups, alivenGroups, lifeColonies,
     dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
     jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies,
     gearInsectEnemies, spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
     sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
     emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
-    bossProjectiles, teleportParticles, luckyMotes, luckyMotePopups,
-    hitEffects, shotLines, damageNumbers, deathParticles,
+    plantProjectiles,
+    bossProjectiles, teleportParticles,
+    hitEffects, shotLines, damageNumbers,
   } = collections;
   let binaryLaserSweep: BinaryLaserSweep | null = null;
   let zenithBinaryRingBg: ZenithBinaryRingBackground | null = null;
