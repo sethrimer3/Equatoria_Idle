@@ -599,21 +599,21 @@ Append:
 - [x] Build the collection membership matrix.
 - [x] Characterize boss-entry, zone-switch, normal-restart, and boss-restart behavior.
 - [x] Investigate teleport, Nadir, Stardust, and transient ownership differences.
-- [ ] Add factory and stable-reference tests.
-- [ ] Add exact reset-profile and idempotency tests.
-- [ ] Add context-wiring tests.
-- [ ] Implement canonical interface and factory.
-- [ ] Implement typed subsets and reset profiles.
-- [ ] Instantiate collections once in `createRpgRender()`.
-- [ ] Replace boss-entry and zone-switch clear lists.
-- [ ] Migrate death/restart.
-- [ ] Align update, draw, targeting, and wave contexts.
-- [ ] Review optional movable-body and overlay-fade subsets.
-- [ ] Confirm no circular imports or hot-path allocation.
-- [ ] Update documentation and build number.
-- [ ] Run focused and complete validation.
-- [ ] Perform available browser and desktop smoke tests.
-- [ ] Record limitations, work log, ideas, and final report.
+- [x] Add factory and stable-reference tests.
+- [x] Add exact reset-profile and idempotency tests.
+- [x] Add context-wiring tests.
+- [x] Implement canonical interface and factory.
+- [x] Implement typed subsets and reset profiles.
+- [x] Instantiate collections once in `createRpgRender()`.
+- [x] Replace boss-entry and zone-switch clear lists.
+- [x] Migrate death/restart.
+- [x] Align update, draw, targeting, and wave contexts.
+- [x] Review optional movable-body and overlay-fade subsets.
+- [x] Confirm no circular imports or hot-path allocation.
+- [x] Update documentation and build number.
+- [x] Run focused and complete validation.
+- [x] Perform available browser and desktop smoke tests.
+- [x] Record limitations, work log, ideas, and final report.
 - [ ] Review the diff, commit, push, and confirm final status.
 
 ---
@@ -792,18 +792,21 @@ focused failing regression test. Preserve teleport and Nadir profile differences
 | Baseline `npm run lint` | 0 | Passed | `npm.cmd run lint` |
 | Baseline `npm run build` | 0 | Passed | TypeScript + Vite; existing chunk-size warning |
 | Baseline `npm run build:desktop` | 0 | Passed | TypeScript + Vite; existing chunk-size warning |
-| Focused collection tests | Pending | Pending | |
-| Final `npm run typecheck` | Pending | Pending | |
-| Final `npm test` | Pending | Pending | |
-| Final `npm run lint` | Pending | Pending | |
-| Final `npm run build` | Pending | Pending | |
-| Final `npm run build:desktop` | Pending | Pending | |
-| Browser RPG smoke | Pending | Pending | |
-| Death/restart smoke | Pending | Pending | |
-| Boss entry/restart smoke | Pending | Pending | |
-| Zone-switch smoke | Pending | Pending | |
-| Electron smoke | Pending | Pending | |
-| Capacitor/web check | Pending | Pending | |
+| Focused collection tests | 0 | Passed | 11 tests; exact factory/profile/reference/context/restart coverage |
+| Pre-fix Stardust regression | 1 | Expected red | 7 passed, 1 failed because normal restart retained the seeded Stardust enemy; passed after the one-key profile correction |
+| RPG renderer test directory | 0 | Passed | 21 files and 348 tests during migration |
+| Final `npm run typecheck` | 0 | Passed | `npm.cmd run typecheck` |
+| Final `npm test` | 0 | Passed | 73 files and 1480 tests; expected Boss MIDI invalid-URL stderr remained |
+| Final `npm run lint` | 0 | Passed | `npm.cmd run lint` |
+| Final `npm run build` | 0 | Passed | 441 modules; existing chunk-size warning |
+| Final `npm run build:desktop` | 0 | Passed | 441 modules; existing chunk-size warning |
+| Browser RPG smoke | Passed | Passed | Startup, RPG entry, ordinary combat/update/draw/targeting, Wave 100 jump, and Equation-to-RPG re-entry remained responsive |
+| Death/restart smoke | Passed | Passed | Player HP fell from 100 to 48 during the Wave 100 run and later returned to 100 without manual restart input, with the RPG view active; collection reset behavior is also directly covered by Node tests |
+| Boss entry/restart smoke | Partial | Limited | Wave 100 transition exercised; boss death/restart and boss victory were not completed interactively and are covered only by focused restart and existing boss tests |
+| Zone-switch smoke | Not run | Limited | Fresh profile had no unlocked Horizon/Nadir/True/ALIVEN/Life surfaces; no claim of interactive coverage |
+| Electron smoke | 0 | Passed with warnings | Hidden launch stayed alive for 8 seconds and logged `Renderer finished loading`; existing missing menu-background frame warnings remained, with no load failure or uncaught exception in the captured tail |
+| Capacitor doctor | Terminated | Environmental | Both `npx.cmd cap doctor` and the direct local CLI produced no output and were terminated rather than called passing |
+| Capacitor Android sync | 0 | Passed | Local Capacitor 8.4.0 copied the built web assets and updated Android plugins; no native device run |
 
 ---
 
@@ -897,6 +900,73 @@ focused failing regression test. Preserve teleport and Nadir profile differences
 - Add the Node-safe canonical factory and current-profile characterization tests without removing
   the existing reset lists.
 
+### 2026-07-12 23:55 - Codex (GPT-5)
+
+**Status:** implemented and validating
+
+**Work completed:**
+
+- Added `rpg-encounter-collections.ts` with the canonical 74-array interface, a fresh-array
+  factory, typed membership tuples, and in-place boss-entry, zone-switch, normal-restart, and
+  boss-restart profiles.
+- Added the factory, exact-membership, idempotency, stable-reference, shared-context, and
+  `doRestart()` characterization suite before removing the old duplicated clear inventories.
+- Instantiated the owner once in `createRpgRender()` and migrated update, draw, targeting, wave,
+  and restart contexts without changing their direct frame-path access or ordering.
+- Replaced the boss-entry, zone-switch, and death/restart clear lists while leaving Verdure,
+  Nadir transition cleanup, weapon reset, dying-enemy cleanup, elite registries, boss/MIDI,
+  fluid, auto-move, combo, and ward cleanup with their existing owners.
+- Updated the repository maps, status, changelog, file guide/index, architecture, decisions, TODO,
+  and build number from 332 to 333.
+
+**Evidence/findings:**
+
+- Each factory call owns 74 fresh arrays, and every profile truncates in place.
+- The old normal-restart Stardust omission was reproduced by a focused test: the first run exited
+  1 with 7 tests passing and the seeded Stardust array still populated. Adding only
+  `stardustEnemies` to the normal profile made the regression and full exact-profile test pass.
+- `rg` found no production assignment to a canonical collection property. The only
+  `Object.keys()` completeness check is test-only; lifecycle profiles use typed static tuples.
+- The canonical module imports only entity types and imports no consumer, so the migrated type-only
+  dependency direction does not introduce a cycle.
+- Auto-sync preserved and pushed the work in four commits; the temporary Vite log content captured
+  by one commit was restored exactly by the subsequent housekeeping commit, leaving no net log diff
+  from the phase baseline.
+
+**Validation:**
+
+- Focused collection suite: exit 0, 11 tests passed.
+- RPG renderer test directory during migration: exit 0, 21 files and 348 tests passed.
+- Final typecheck, lint, full tests, browser build, and desktop build all exited 0.
+- Full suite: 73 files and 1480 tests passed.
+- Browser smoke covered startup, RPG entry, ordinary combat, Wave 100, the observed automatic HP
+  reset consistent with death/restart, and
+  Equation-to-RPG re-entry.
+- Hidden Electron launch stayed alive for 8 seconds and reached `Renderer finished loading`.
+- Direct `cap sync android` exited 0 after copying the final build and updating Android plugins.
+
+**Behavioral decisions:**
+
+- Corrected normal death/restart to clear stale Stardust enemies.
+- Preserved boss-entry teleport retention, normal-restart teleport retention, deferred Nadir
+  transition cleanup, all ordering, and every specialized cleanup boundary.
+- Deferred Verdure movable-body, overlay-fade, and weapon-context compaction because none was needed
+  to establish the canonical encounter owner and each would broaden the mechanical surface.
+
+**Blockers/limitations:**
+
+- Locked zones prevented interactive Horizon, Nadir, True, ALIVEN, and Life switching checks.
+- Boss death/restart and boss victory were not completed interactively; focused and existing test
+  coverage passed.
+- Electron emitted existing missing menu-background-frame warnings, although the renderer loaded and
+  the captured log tail contained no load failure or uncaught exception.
+- Capacitor doctor produced no output and was terminated; Android sync passed, but no native device
+  or release bundle was run.
+
+**Next action:**
+
+- Finish the scoped Git closeout and stop after Phase Three.
+
 ---
 
 ## Ideas for Improvement
@@ -907,7 +977,8 @@ focused failing regression test. Preserve teleport and Nadir profile differences
 - **Expected value:** New enemy families cannot accidentally remain embedded after regeneration.
 - **Risk:** Medium; some families may require specialized correction.
 - **Phase Three:** Optional when mechanically characterizable.
-- **Status:** Candidate.
+- **Status:** Deferred. The membership matrix was characterized, but introducing the subset is not
+  required for reset ownership and would mix resize-specific semantics into this phase.
 
 ### Canonical overlay-fade body subset
 
@@ -915,7 +986,8 @@ focused failing regression test. Preserve teleport and Nadir profile differences
 - **Expected value:** New bodies participate consistently.
 - **Risk:** Low to medium; projectiles must remain excluded.
 - **Phase Three:** Optional.
-- **Status:** Candidate.
+- **Status:** Deferred. Existing order and membership remain explicit; no reproduced overlay defect
+  justified another shared subset.
 
 ### Weapon-context compaction
 
@@ -945,6 +1017,136 @@ focused failing regression test. Preserve teleport and Nadir profile differences
 
 ## Final Phase Report
 
-To be appended by the implementing agent after Phase Three is complete.
+### Outcome
+
+Phase Three is complete at Build 333 on `main`. The renderer now creates one
+`RpgEncounterCollections` object per `createRpgRender()` call. Its 74 arrays are fresh per factory
+call, retain identity for that renderer's lifetime, and are shared by the major update, draw,
+targeting, wave/dead-sweep, and restart contexts. Reset helpers truncate static typed profiles in
+place; no combat, draw, targeting, or wave order was changed.
+
+### Baseline architecture and full inventory
+
+Build 332 allocated encounter arrays independently in `rpg-render.ts`, passed repeated inventories
+to broad contexts, and maintained overlapping clear lists in boss entry, zone switching, and
+death/restart. The complete 74-collection inventory and consumer/reset membership is the matrix in
+this document. Scalar wave/phase state, the player, boss objects and attack/MIDI state, terrain,
+backgrounds, weapon internals, orbit projectiles, afterimages, combo/ward effects, audio, DOM, and
+saves remain outside the collection owner.
+
+### Reset profiles characterized
+
+- Boss entry directly clears 68 collections and retains the five Nadir arrays plus
+  `teleportParticles`; Nadir cleanup remains with the next-update specialized helper.
+- Zone switching directly clears 69 collections and retains only the five Nadir arrays until the
+  next update.
+- Normal death/restart clears 73 collections and retains `teleportParticles`.
+- Effective boss death/restart clears all 74 collections, including teleport particles through the
+  boss lifecycle/profile.
+- All profiles are exact-membership tested, idempotent, and preserve every array reference.
+
+The ten investigation questions are answered in `Reset Profile Findings`. In summary: boss entry
+does not directly clear teleport particles; Nadir arrays are cleared indirectly on transitions;
+normal restart now clears Stardust; normal restart retains teleport; combo/ward effects retain
+their separate owners; seven visual/reward families are encounter-owned; Verdure's helper also
+clears fragments and resets its timer; broad consumers retain stable references; no canonical
+property replacement was found; and type-only leaf imports avoided circular dependencies.
+
+### Canonical module, migration, and behavioral delta
+
+`src/render/rpg/rpg-encounter-collections.ts` provides `RpgEncounterCollections`,
+`createRpgEncounterCollections()`, the canonical key tuple, four typed profile tuples, and the
+three lifecycle helpers. `createRpgRender()` instantiates it once. `RpgUpdateCtx`/the aligned
+`RpgEnemyUpdateArrays`, `RpgDrawCtx`, `RpgTargetingCtx`, `WaveManagerCtx`, and
+`RpgDeathRestartCtx` all retain that same owner and its stable arrays. Existing local aliases remain
+only where they reduce call-site churn; they point to canonical arrays.
+
+The only intentional gameplay delta is that normal death/restart now clears `stardustEnemies`.
+The omission was reproduced first: a seeded Stardust entity survived the abandoned encounter while
+remaining update/draw/wave-owned. The correction added exactly that key; no other profile was made
+symmetrical.
+
+### Files and tests
+
+Added:
+
+- `src/render/rpg/rpg-encounter-collections.ts`
+- `src/render/rpg/__tests__/rpg-encounter-collections.test.ts`
+
+Migrated or adapted:
+
+- `src/render/rpg/rpg-render.ts`
+- `src/render/rpg/rpg-render-update.ts`
+- `src/render/rpg/rpg-render-draw.ts`
+- `src/render/rpg/rpg-targeting-types.ts`
+- `src/render/rpg/rpg-wave-manager.ts`
+- `src/render/rpg/rpg-death-restart.ts`
+- `src/render/rpg/__tests__/life-zone.test.ts`
+- `src/buildInfo.ts`
+
+Updated living documentation:
+
+- `RefactorPlan.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `file_index.md`
+- `docs/AI_REPO_MAP.md`, `docs/CHANGELOG_FOR_AGENTS.md`, `docs/CURRENT_STATUS.md`,
+  `docs/FILE_GUIDE.md`, and `docs/TODO.md`
+
+The new 11-test suite covers factory isolation/emptiness, mutation isolation, exact reset
+membership, stable identities, idempotency, Stardust regression behavior, representative ordinary,
+projectile, procedural, special, boss, reward, and visual collections, shared update/draw/targeting/
+wave/restart references, and normal/boss `doRestart()` integration. No test was weakened.
+
+### Final validation and runtime checks
+
+- `npm.cmd run typecheck` - exit 0.
+- `npm.cmd test` - exit 0; 73 files and 1480 tests passed. The existing Boss MIDI invalid-URL
+  diagnostic remained on stderr.
+- `npm.cmd run lint` - exit 0.
+- `npm.cmd run build` - exit 0; 441 modules, with the existing chunk-size warning.
+- `npm.cmd run build:desktop` - exit 0; 441 modules, with the existing chunk-size warning.
+- Focused collection suite - exit 0; 11 tests passed.
+- Browser smoke - startup, RPG entry, ordinary combat, Wave 100, an automatic HP reset from 48 to
+  100 without manual restart input, and Equation-to-RPG re-entry completed. The console showed only
+  the existing missing Problem and Solution boss-icon warnings during the captured session.
+- Electron smoke - exit 0 for the harness; the hidden app stayed alive for 8 seconds and logged
+  `Renderer finished loading`. Existing missing menu-background-frame warnings remained.
+- Capacitor - local CLI 8.4.0; `cap sync android` exited 0. Capacitor doctor did not complete and was
+  terminated. No Android device, emulator, or release bundle validation was performed.
+- Locked-zone switching, boss death/restart, and boss victory were not claimed as interactive
+  coverage; the focused reset suite and existing Horizon, True, ALIVEN, Life, procedural, status,
+  weapon, boss, zone-isolation, and lifecycle tests passed in the full suite.
+
+### Performance, compatibility, and remaining risk
+
+No performance improvement is claimed. Review found no new per-frame collection allocation,
+reflection, dynamic key scan, target scan, or update/draw/targeting ordering change. The factory
+allocates once per renderer; profile key iteration occurs only at lifecycle resets. Hot paths retain
+direct property access. There is no module-level mutable state, DOM dependency, proxy, `any`, save
+format change, setting change, or native-platform branch.
+
+Compatibility is expected to remain intact across browser, Electron, Android/Capacitor, saves,
+settings, rewards, boss lifecycle, special encounters, procedural enemies, and low-graphics mode
+because the refactor preserves the same entity objects and array identities. The remaining risk is
+limited to interactive paths not available in the fresh smoke profile: locked special-zone
+transitions, a complete boss loss/restart, and boss victory. Electron's pre-existing missing
+menu-background-frame warnings and the non-responsive doctor command are separate validation
+limitations, not attributed to this phase.
+
+### Git and delivery
+
+- Branch: `main`.
+- Build: 333.
+- Phase commits at report-draft time:
+  - `f05af0af7fe3af30d88f3159e830541b6aeea0ce` - canonical module, initial tests, matrix/findings.
+  - `e09c43f8e6be12bc3d376e5845b93947d807b649` - context/reset migration and Stardust correction.
+  - `674ea79fd7ef383fbe9040636c04d1562f51492d` - documentation, build bump, final context/test cleanup.
+  - `9eac55b34b238c53c15ce922c2c213b8fea2c3a7` - restore the tracked Vite smoke log exactly.
+- Auto-sync involvement: all four commits above were created and pushed by auto-sync; none was
+  reset, amended, or rewritten.
+- Push result at report-draft time: `origin/main` matched local `main` (`ahead 0`, `behind 0`).
+- Working tree before appending this closeout record: clean.
+
+**Exactly one recommended next action:** Run one manual smoke session with an unlocked test save to
+exercise boss loss/restart, boss victory, and Horizon/Nadir/True/ALIVEN/Life zone switching before
+starting any separate refactor phase.
 
 Do not remove the planning, evidence, checklist, matrix, findings, validation, ideas, or work-log sections above.
