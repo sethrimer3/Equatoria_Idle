@@ -228,11 +228,10 @@ export const ZONE_SWITCH_CLEAR_KEYS = [
   'teleportParticles',
 ] as const satisfies readonly (keyof RpgEncounterCollections)[];
 
-// Initially mirrors the pre-refactor direct restart list. A focused regression
-// test will establish whether Stardust should join this profile.
 export const NORMAL_DEATH_RESTART_CLEAR_KEYS = [
   ...COMMON_RESET_KEYS,
   ...NADIR_COLLECTION_KEYS,
+  'stardustEnemies',
 ] as const satisfies readonly (keyof RpgEncounterCollections)[];
 
 export const BOSS_DEATH_RESTART_CLEAR_KEYS = [

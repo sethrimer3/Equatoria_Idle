@@ -207,6 +207,7 @@ import { drawEuhedralHexFloor } from './terrain/euhedral-hex-floor';
 import { drawEmpowerParticles } from './rpg-elite-empower-particles';
 import { getSpawnDebugLog } from './rpg-enemy-spawn';
 import type { RpgFieldSpace } from './rpgFieldSpace';
+import type { RpgEncounterCollections } from './rpg-encounter-collections';
 import { renderEnemyStatusLabels } from './enemy-status-render';
 import { drawTargetNamePopup } from './rpg-target-popup';
 
@@ -318,88 +319,22 @@ function drawZoneSelectionLabelIcon(
  * All the arrays/objects that drawRpgFrame needs, passed once when the system
  * is constructed (arrays are always mutated in place, so references stay valid).
  */
-export interface RpgDrawCtx {
+export interface RpgDrawCtx extends RpgEncounterCollections {
+  collections: RpgEncounterCollections;
   canvas2d: CanvasRenderingContext2D;
   fluid: { render(ctx: CanvasRenderingContext2D): void };
   getWidthPx(): number;
   getHeightPx(): number;
 
   // ── Enemy arrays (all mutated in-place by update loops) ───
-  enemies: LaserEnemy[];
-  sapphireEnemies: SapphireEnemy[];
-  sapphireMissiles: SapphireMissile[];
-  emeraldEnemies: EmeraldEnemy[];
-  amberEnemies: AmberEnemy[];
-  amberShards: AmberShard[];
-  voidEnemies: VoidEnemy[];
-  quartzEnemies: QuartzEnemy[];
-  quartzSpikes: QuartzSpike[];
-  rubyEnemies: RubyEnemy[];
-  rubyBolts: RubyBolt[];
-  sunstoneEnemies: SunstoneEnemy[];
-  citrineEnemies: CitrineEnemy[];
-  citrineBolts: CitrineBolt[];
-  ioliteEnemies: IoliteEnemy[];
-  amethystEnemies: AmethystEnemy[];
-  amethystShards: AmethystShard[];
-  diamondEnemies: DiamondEnemy[];
-  diamondShards: DiamondShard[];
-  nullstoneEnemies: NullstoneEnemy[];
-  voidTendrils: VoidTendril[];
-  fracterylEnemies: FracterylEnemy[];
-  fracterylShards: FracterylShard[];
-  eigensteinEnemies: EigensteinEnemy[];
-  eigensteinBeams: EigensteinBeam[];
-  eliteEnemies: EliteEnemy[];
-  polyominoEnemies: PolyominoEnemy[];
-  fissilePolyominoEnemies: FissilePolyominoEnemy[];
-  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
-  binaryRingEnemies: BinaryRingEnemy[];
-  binaryRingMissiles: BinaryRingMissile[];
-  nadirCubePointEnemies: NadirCubePointEnemy[];
-  nadirCubeMines: NadirCubeMine[];
-  nadirCubeTrailSegments: NadirCubeTrailSegment[];
-  nadirCubeTurretBolts: NadirCubeTurretBolt[];
-  nadirCubeLinkLasers: NadirCubeLinkLaser[];
-  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
-  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
-  alivenGroups: AlivenParticleGroup[];
-  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
-  dustWispEnemies: DustWispEnemy[];
-  ribbonWormEnemies: RibbonWormEnemy[];
-  lanternMothEnemies: LanternMothEnemy[];
-  eyeStalkEnemies: EyeStalkEnemy[];
-  jellyfishEnemies: JellyfishEnemy[];
-  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
-  clothGhostEnemies: ClothGhostEnemy[];
-  plantTurretEnemies: PlantTurretEnemy[];
-  gearInsectEnemies: GearInsectEnemy[];
-  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
-  moteSwarmEnemies: MoteSwarmEnemy[];
-  shadowHandEnemies: ShadowHandEnemy[];
-  sandFishEnemies: SandFishEnemy[];
-  quartzFishEnemies: QuartzFishEnemy[];
-  rubyFishEnemies: RubyFishEnemy[];
-  sunstoneFishEnemies: SunstoneFishEnemy[];
-  emeraldFishEnemies: EmeraldFishEnemy[];
-  sapphireFishEnemies: SapphireFishEnemy[];
-  amethystFishEnemies: AmethystFishEnemy[];
-  diamondFishEnemies: DiamondFishEnemy[];
-  plantProjectiles: PlantProjectile[];
-  fishMines: FishMine[];
-  fishSpikes: FishSpike[];
-  fishBolts: FishBolt[];
-  fishDecoys: FishDecoy[];
   /** Verdure zone environmental plants — empty when not in Verdure zone. */
   verdurePlants: VerdurePlant[];
 
   // ── Boss & projectile state ───────────────────────────────
   getBossEnemy(): BossEnemy | null;
   getDanmakuSafeZone(): DanmakuSafeZone | null;
-  bossProjectiles: BossProjectile[];
   bossAttackState: BossAttackState;
-  teleportParticles: TeleportParticle[];
   bossStageDirectorState: BossStageDirectorState;
 
   // ── Weapon systems handle (exposes all weapon arrays) ─────
@@ -410,14 +345,8 @@ export interface RpgDrawCtx {
   joystick: RpgJoystick;
 
   // ── Visual effect arrays ──────────────────────────────────
-  hitEffects: HitEffect[];
-  shotLines: ShotLine[];
-  damageNumbers: DamageNumber[];
   comboEffects: ComboEffect[];
   wardEffects: WardEffect[];
-  luckyMotes: LuckyMote[];
-  luckyMotePopups: LuckyMotePopup[];
-  deathParticles: DeathParticle[];
   weaponOrbitParticles: WeaponOrbitParticle[];
   getOrbitProjectiles(): OrbitProjectile[];
   getAfterimages(): import('./rpg-types').AfterimageSnapshot[];

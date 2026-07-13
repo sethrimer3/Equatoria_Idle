@@ -56,10 +56,12 @@ import type {
 } from './polyomino-enemy-types';
 import type { RpgFieldSpace } from './rpgFieldSpace';
 import { resetGalaxyWaveHitChain } from './true-galaxy-enemy';
+import type { RpgEncounterCollections } from './rpg-encounter-collections';
 
 // ── Dependency-injection context ──────────────────────────────────────────
 
-export interface WaveManagerCtx {
+export interface WaveManagerCtx extends RpgEncounterCollections {
+  collections: RpgEncounterCollections;
   /**
    * Authoritative field-space snapshot — provides `spawnBounds` (threaded
    * through to `spawnEnemyById`) and other bounds as needed.
@@ -70,72 +72,7 @@ export interface WaveManagerCtx {
   rpgSimState: RpgSimState;
 
   // Enemy arrays — passed by reference; module pushes to and splices from these
-  enemies: LaserEnemy[];
-  sapphireMissiles: SapphireMissile[];
-  sapphireEnemies: SapphireEnemy[];
-  emeraldEnemies: EmeraldEnemy[];
-  amberEnemies: AmberEnemy[];
-  amberShards: AmberShard[];
-  voidEnemies: VoidEnemy[];
-  quartzEnemies: QuartzEnemy[];
-  quartzSpikes: QuartzSpike[];
-  rubyEnemies: RubyEnemy[];
-  rubyBolts: RubyBolt[];
-  sunstoneEnemies: SunstoneEnemy[];
-  citrineEnemies: CitrineEnemy[];
-  citrineBolts: CitrineBolt[];
-  ioliteEnemies: IoliteEnemy[];
-  amethystEnemies: AmethystEnemy[];
-  amethystShards: AmethystShard[];
-  diamondEnemies: DiamondEnemy[];
-  diamondShards: DiamondShard[];
-  nullstoneEnemies: NullstoneEnemy[];
-  voidTendrils: VoidTendril[];
-  fracterylEnemies: FracterylEnemy[];
-  fracterylShards: FracterylShard[];
-  eigensteinEnemies: EigensteinEnemy[];
-  eliteEnemies: EliteEnemy[];
-  polyominoEnemies: PolyominoEnemy[];
-  fissilePolyominoEnemies: FissilePolyominoEnemy[];
-  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
-  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
-  alivenGroups: import('./rpg-aliven-types').AlivenParticleGroup[];
-  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
-  dustWispEnemies: DustWispEnemy[];
-  ribbonWormEnemies: RibbonWormEnemy[];
-  lanternMothEnemies: LanternMothEnemy[];
-  eyeStalkEnemies: EyeStalkEnemy[];
-  jellyfishEnemies: JellyfishEnemy[];
-  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
-  clothGhostEnemies: ClothGhostEnemy[];
-  plantTurretEnemies: PlantTurretEnemy[];
-  gearInsectEnemies: GearInsectEnemy[];
-  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
-  moteSwarmEnemies: MoteSwarmEnemy[];
-  shadowHandEnemies: ShadowHandEnemy[];
-  sandFishEnemies: SandFishEnemy[];
-  quartzFishEnemies: QuartzFishEnemy[];
-  rubyFishEnemies: RubyFishEnemy[];
-  sunstoneFishEnemies: SunstoneFishEnemy[];
-  emeraldFishEnemies: EmeraldFishEnemy[];
-  sapphireFishEnemies: SapphireFishEnemy[];
-  amethystFishEnemies: AmethystFishEnemy[];
-  diamondFishEnemies: DiamondFishEnemy[];
-  plantProjectiles: PlantProjectile[];
-  fishMines: FishMine[];
-  fishSpikes: FishSpike[];
-  fishBolts: FishBolt[];
-  fishDecoys: FishDecoy[];
-  bossProjectiles: BossProjectile[];
-  spawnQueue: SpawnEntry[];
-  luckyMotes: LuckyMote[];
-  nadirCubePointEnemies: import('./nadir-cube-point-types').NadirCubePointEnemy[];
-  nadirCubeMines: import('./nadir-cube-point-types').NadirCubeMine[];
-  nadirCubeTrailSegments: import('./nadir-cube-point-types').NadirCubeTrailSegment[];
-  nadirCubeTurretBolts: import('./nadir-cube-point-types').NadirCubeTurretBolt[];
-  nadirCubeLinkLasers: import('./nadir-cube-point-types').NadirCubeLinkLaser[];
-  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
 
   fluid: {
     addExplosion(x: number, y: number, strength: number, r: number, g: number, b: number): void;

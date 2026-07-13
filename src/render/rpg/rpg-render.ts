@@ -46,6 +46,11 @@ import { CASSETTE_START_PATH, CASSETTE_END_PATH, getBossBeatLoopPath, getRandomB
 import { startBossIntro, onBossIntroCassetteStarted, onBossIntroCassetteDone, resetBossIntro } from './boss-intro-director';
 import type { NumberFormat } from '../../util/format';
 import { createRpgFluid } from './rpg-fluid';
+import {
+  clearForBossEntry,
+  clearForZoneSwitch,
+  createRpgEncounterCollections,
+} from './rpg-encounter-collections';
 import { applyLensStatus, getActiveStatuses, incrementRiftScarredStacks } from '../../sim/rpg/enemy-status-effects';
 import { getRecentComboEvents } from '../../dev/rpg-combat-event-log';
 import { createDamageFns } from './rpg-damage';
@@ -395,13 +400,29 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   const fluid = createRpgFluid();
   let zenithBinaryHorizon: ZenithBinaryHorizon | null = null;
   let trueBinaryHorizon: TrueBinaryHorizon | null = null;
-  const binaryRingEnemies: BinaryRingEnemy[] = [];
-  const binaryRingMissiles: BinaryRingMissile[] = [];
-  const nadirCubePointEnemies: NadirCubePointEnemy[] = [];
-  const nadirCubeMines: NadirCubeMine[] = [];
-  const nadirCubeTrailSegments: NadirCubeTrailSegment[] = [];
-  const nadirCubeTurretBolts: NadirCubeTurretBolt[] = [];
-  const nadirCubeLinkLasers: NadirCubeLinkLaser[] = [];
+  const collections = createRpgEncounterCollections();
+  const {
+    spawnQueue,
+    enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
+    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
+    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
+    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
+    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
+    eigensteinEnemies, eigensteinBeams, eliteEnemies,
+    polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
+    binaryRingEnemies, binaryRingMissiles,
+    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments,
+    nadirCubeTurretBolts, nadirCubeLinkLasers,
+    stardustEnemies, horizonPentagonGroups, alivenGroups, lifeColonies,
+    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
+    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies,
+    gearInsectEnemies, spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
+    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
+    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
+    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
+    bossProjectiles, teleportParticles, luckyMotes, luckyMotePopups,
+    hitEffects, shotLines, damageNumbers, deathParticles,
+  } = collections;
   let binaryLaserSweep: BinaryLaserSweep | null = null;
   let zenithBinaryRingBg: ZenithBinaryRingBackground | null = null;
   let nadirSubstrate: NadirSubstrateEffect | null = null;
@@ -591,8 +612,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let topographicTerrainState: TopographicTerrainState | null = null;
   /** Nav grid for pathfinding — rebuilt when terrain or canvas dimensions change. */
   let rpgNavGrid: RpgNavGrid | null = null;
-  const enemies: LaserEnemy[]    = [];
-  const spawnQueue: SpawnEntry[] = [];
   let glowTimeS = 0;
   let _isActive = false;
   let rpgPhase: RpgPhase = 'alive';
@@ -616,12 +635,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let deathAlpha       = 1;
   let screenDarken     = 0;
   let restartFadeAlpha = 0;
-  const deathParticles: DeathParticle[] = [];
-
   // ── Player attack state ────────────────────────────────────────
-  const hitEffects: HitEffect[] = [];
-  const shotLines:  ShotLine[]  = [];
-  const damageNumbers: DamageNumber[] = [];
   const comboEffects: import('./rpg-types').ComboEffect[] = [];
   const wardEffects: import('./rpg-types').WardEffect[] = [];
   /** Timestamp of the last "Reactive Ward" floating text, for anti-spam debounce. */
@@ -643,68 +657,11 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let prevSandBladePhase: SwordComboPhase = 'idle';
 
   // ── Sapphire enemies, missiles, and new weapon state ──────────
-  const sapphireEnemies: SapphireEnemy[]  = [];
-  const sapphireMissiles: SapphireMissile[] = [];
   // ── New enemy type arrays ──────────────────────────────────────
-  const emeraldEnemies: EmeraldEnemy[] = [];
-  const amberEnemies: AmberEnemy[]     = [];
-  const amberShards: AmberShard[]      = [];
-  const voidEnemies: VoidEnemy[]       = [];
 
   // ── Crystal hierarchy enemy arrays ────────────────────────────
-  const quartzEnemies: QuartzEnemy[]       = [];
-  const quartzSpikes: QuartzSpike[]        = [];
-  const rubyEnemies: RubyEnemy[]           = [];
-  const rubyBolts: RubyBolt[]              = [];
-  const sunstoneEnemies: SunstoneEnemy[]   = [];
-  const citrineEnemies: CitrineEnemy[]     = [];
-  const citrineBolts: CitrineBolt[]        = [];
-  const ioliteEnemies: IoliteEnemy[]       = [];
-  const amethystEnemies: AmethystEnemy[]   = [];
-  const amethystShards: AmethystShard[]    = [];
-  const diamondEnemies: DiamondEnemy[]     = [];
-  const diamondShards: DiamondShard[]      = [];
-  const nullstoneEnemies: NullstoneEnemy[] = [];
-  const voidTendrils: VoidTendril[]        = [];
-  const fracterylEnemies: FracterylEnemy[] = [];
-  const fracterylShards: FracterylShard[]  = [];
-  const eigensteinEnemies: EigensteinEnemy[] = [];
-  const eigensteinBeams: EigensteinBeam[]  = [];
-  const eliteEnemies: EliteEnemy[]         = [];
-  const polyominoEnemies: PolyominoEnemy[] = [];
-  const fissilePolyominoEnemies: FissilePolyominoEnemy[] = [];
-  const refractorPolyominoEnemies: RefractorPolyominoEnemy[] = [];
-  const stardustEnemies: StardustEnemy[]   = [];
-  const horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[] = [];
-  const alivenGroups: AlivenParticleGroup[] = [];
-  const lifeColonies: import('./life-types').LifeColonyController[] = [];
 
   // ── Procedural creature arrays ─────────────────────────────────
-  const dustWispEnemies: DustWispEnemy[]             = [];
-  const ribbonWormEnemies: RibbonWormEnemy[]         = [];
-  const lanternMothEnemies: LanternMothEnemy[]       = [];
-  const eyeStalkEnemies: EyeStalkEnemy[]             = [];
-  const jellyfishEnemies: JellyfishEnemy[]             = [];
-  const eliteJellyfishEnemies: EliteJellyfishEnemy[]   = [];
-  const clothGhostEnemies: ClothGhostEnemy[]           = [];
-  const plantTurretEnemies: PlantTurretEnemy[]       = [];
-  const gearInsectEnemies: GearInsectEnemy[]         = [];
-  const spiderCrawlerEnemies: SpiderCrawlerEnemy[]   = [];
-  const moteSwarmEnemies: MoteSwarmEnemy[]           = [];
-  const shadowHandEnemies: ShadowHandEnemy[]         = [];
-  const sandFishEnemies: SandFishEnemy[]             = [];
-  const quartzFishEnemies: QuartzFishEnemy[]         = [];
-  const rubyFishEnemies: RubyFishEnemy[]             = [];
-  const sunstoneFishEnemies: SunstoneFishEnemy[]     = [];
-  const emeraldFishEnemies: EmeraldFishEnemy[]       = [];
-  const sapphireFishEnemies: SapphireFishEnemy[]     = [];
-  const amethystFishEnemies: AmethystFishEnemy[]     = [];
-  const diamondFishEnemies: DiamondFishEnemy[]       = [];
-  const plantProjectiles: PlantProjectile[]          = [];
-  const fishMines: FishMine[]                        = [];
-  const fishSpikes: FishSpike[]                      = [];
-  const fishBolts: FishBolt[]                        = [];
-  const fishDecoys: FishDecoy[]                      = [];
 
   // ── Verdure zone environmental plants ──────────────────────────
   const verdurePlants: import('./terrain/rpg-verdure-growth').VerdurePlant[] = [];
@@ -713,8 +670,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   let verdureCaveWallState: import('./terrain/verdure-cave-walls').VerdureCaveWallState | null = null;
 
   // ── Lucky mote drops (luck mechanic) ─────────────────────────
-  const luckyMotes: LuckyMote[] = [];
-  const luckyMotePopups: LuckyMotePopup[] = [];
 
   /** Cached luck percentage getter; updated only when XP changes. */
   const getCachedLuckPercent = createCachedLuckPercentGetter(rpgSimState);
@@ -779,8 +734,6 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
 
   let bossEnemy: BossEnemy | null = null;
   let danmakuSafeZone: DanmakuSafeZone | null = null;
-  const bossProjectiles: BossProjectile[] = [];
-  const teleportParticles: TeleportParticle[] = [];
   const bossAttackState: BossAttackState = createBossAttackState();
   const bossMidiState = createBossMidiRuntimeState();
   /** Counts successive diamond-blade hits on the boss; resets to 0 after every teleport. */
@@ -927,29 +880,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     clearPlayerAutoMovePath();
   }
 
-  function clearArrays(...arrays: Array<{ length: number }>): void {
-    for (const array of arrays) array.length = 0;
-  }
-
   function clearStageForBossFight(): void {
-    clearArrays(
-      spawnQueue,
-      enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
-      amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
-      rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
-      ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-      nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies, eigensteinBeams,
-      eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-      binaryRingEnemies, binaryRingMissiles, stardustEnemies, horizonPentagonGroups, alivenGroups, lifeColonies,
-      dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-      jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-      spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-      sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-      emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-      plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
-      bossProjectiles, hitEffects, shotLines, damageNumbers, deathParticles,
-      luckyMotes, luckyMotePopups,
-    );
+    clearForBossEntry(collections);
     binaryLaserSweep = null;
     zenithBinaryRingBg = null;
     nadirCubicGrid = null;
@@ -1015,25 +947,7 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   function resetActiveEncounterForZoneSwitch(): void {
     if (isBossWaveActive) bossWave.exitBossWave();
 
-    clearArrays(
-      spawnQueue,
-      enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
-      amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
-      rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
-      ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-      nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies, eigensteinBeams,
-      eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-      binaryRingEnemies, binaryRingMissiles, stardustEnemies, horizonPentagonGroups, alivenGroups, lifeColonies,
-      dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-      jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-      spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-      sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-      emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-      plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
-      bossProjectiles, teleportParticles,
-      hitEffects, shotLines, damageNumbers, deathParticles,
-      luckyMotes, luckyMotePopups,
-    );
+    clearForZoneSwitch(collections);
     binaryLaserSweep = null;
     zenithBinaryRingBg = null;
     nadirCubicGrid = null;
@@ -1215,23 +1129,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   targeting = createRpgTargeting({
     mote,
     get bossEnemy() { return bossEnemy; },
-    enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
-    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
-    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
-    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    binaryRingEnemies,
-    nadirCubePointEnemies,
-    horizonPentagonGroups,
-    stardustEnemies,
-    alivenGroups, lifeColonies,
-    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-    plantProjectiles,
+    collections,
+    ...collections,
     verdurePlants,
     damageEnemy, damageSapphireEnemy, damageMissile,
     damageEmeraldEnemy, damageAmberEnemy, damageAmberShard,
@@ -1276,22 +1175,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getFieldSpace: () => rpgFieldSpace,
     mote,
     rpgSimState,
-    enemies, sapphireMissiles, sapphireEnemies, emeraldEnemies,
-    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
-    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
-    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards, eigensteinEnemies,
-    eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    stardustEnemies, alivenGroups, lifeColonies, horizonPentagonGroups,
-    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
-    bossProjectiles, spawnQueue, luckyMotes,
-    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments,
-    nadirCubeTurretBolts, nadirCubeLinkLasers,
+    collections,
+    ...collections,
     fluid,
     getCachedLuckPercent,
     applyEquipmentStats: () => applyEquipmentStats(),
@@ -2095,25 +1980,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     getRestartFadeAlpha:   () => restartFadeAlpha,
     setRestartFadeAlpha:   (v) => { restartFadeAlpha = v; },
     setPlayerIFramesMs:    (ms) => { playerIFramesMs = ms; },
-    deathParticles,
+    collections,
     mote, playerStats, playerMovementState,
-    enemies, spawnQueue, sapphireEnemies, sapphireMissiles,
-    emeraldEnemies, amberEnemies, amberShards, voidEnemies,
-    quartzEnemies, quartzSpikes, rubyEnemies, rubyBolts,
-    sunstoneEnemies, citrineEnemies, citrineBolts, ioliteEnemies,
-    amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies, polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    binaryRingEnemies, binaryRingMissiles,
-    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
-    stardustEnemies, horizonPentagonGroups, alivenGroups, lifeColonies,
-    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
-    bossProjectiles, luckyMotes, luckyMotePopups, hitEffects, shotLines, damageNumbers,
     bossAttackState, weaponSystems, weaponAttackTimers,
     fluid: { reset: () => fluid.reset() },
     bossWave: { exitBossWave: () => bossWave.exitBossWave(), startBossFight: (id) => bossWave.startBossFight(id) },
@@ -2171,30 +2039,15 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
     fluid: { render: (c) => fluid.render(c) },
     getWidthPx:   () => widthPx,
     getHeightPx:  () => heightPx,
-    enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
-    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
-    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
-    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies,
-    polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    binaryRingEnemies, binaryRingMissiles,
-    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
-    stardustEnemies, horizonPentagonGroups, alivenGroups, lifeColonies,
-    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
+    collections,
+    ...collections,
     verdurePlants,
     getBossEnemy:         () => bossEnemy,
     getDanmakuSafeZone:   () => danmakuSafeZone,
-    bossProjectiles, bossAttackState, teleportParticles,
+    bossAttackState,
     bossStageDirectorState,
     weaponSystems, mote, joystick,
-    hitEffects, shotLines, damageNumbers, comboEffects, wardEffects, luckyMotes, luckyMotePopups,
-    deathParticles, weaponOrbitParticles,
+    comboEffects, wardEffects, weaponOrbitParticles,
     getOrbitProjectiles:          () => orbitProjectiles,
     getAfterimages:               () => afterimages,
     getGlowMovementIntensity:     () => playerMovementState.glowMovementIntensity,
@@ -2282,27 +2135,8 @@ export function createRpgRender(container: HTMLElement, rpgSimState: RpgSimState
   };
 
   // ── Update context (wired to runRpgUpdate in rpg-render-update.ts) ───────────
-  const enemyArrays: RpgEnemyUpdateArrays = {
-    enemies, sapphireEnemies, sapphireMissiles, emeraldEnemies,
-    amberEnemies, amberShards, voidEnemies, quartzEnemies, quartzSpikes,
-    rubyEnemies, rubyBolts, sunstoneEnemies, citrineEnemies, citrineBolts,
-    ioliteEnemies, amethystEnemies, amethystShards, diamondEnemies, diamondShards,
-    nullstoneEnemies, voidTendrils, fracterylEnemies, fracterylShards,
-    eigensteinEnemies, eigensteinBeams, eliteEnemies,
-    polyominoEnemies, fissilePolyominoEnemies, refractorPolyominoEnemies,
-    binaryRingEnemies, binaryRingMissiles,
-    nadirCubePointEnemies, nadirCubeMines, nadirCubeTrailSegments, nadirCubeTurretBolts, nadirCubeLinkLasers,
-    stardustEnemies, horizonPentagonGroups, alivenGroups, lifeColonies,
-    dustWispEnemies, ribbonWormEnemies, lanternMothEnemies, eyeStalkEnemies,
-    jellyfishEnemies, eliteJellyfishEnemies, clothGhostEnemies, plantTurretEnemies, gearInsectEnemies,
-    spiderCrawlerEnemies, moteSwarmEnemies, shadowHandEnemies,
-    sandFishEnemies, quartzFishEnemies, rubyFishEnemies, sunstoneFishEnemies,
-    emeraldFishEnemies, sapphireFishEnemies, amethystFishEnemies, diamondFishEnemies,
-    plantProjectiles, fishMines, fishSpikes, fishBolts, fishDecoys,
-    teleportParticles, bossProjectiles, luckyMotes, luckyMotePopups,
-  };
   const updateCtx: RpgUpdateCtx = {
-    arrays: enemyArrays,
+    collections,
     getRpgPhase:            () => rpgPhase,
     getGlowTimeS:           () => glowTimeS,
     addGlowTimeS:           (v) => { glowTimeS += v; },

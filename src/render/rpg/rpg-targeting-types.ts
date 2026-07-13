@@ -40,64 +40,13 @@ import type { HorizonPentagonGroup } from './horizon-pentagon-types';
 import type {
   PolyominoEnemy, FissilePolyominoEnemy, RefractorPolyominoEnemy,
 } from './polyomino-enemy-types';
+import type { RpgEncounterCollections } from './rpg-encounter-collections';
 
-export interface RpgTargetingCtx {
+export interface RpgTargetingCtx extends RpgEncounterCollections {
+  collections: RpgEncounterCollections;
   mote: { x: number; y: number };
   readonly bossEnemy: BossEnemy | null;
-  enemies: LaserEnemy[];
-  sapphireEnemies: SapphireEnemy[];
-  sapphireMissiles: SapphireMissile[];
-  emeraldEnemies: EmeraldEnemy[];
-  amberEnemies: AmberEnemy[];
-  amberShards: AmberShard[];
-  voidEnemies: VoidEnemy[];
-  quartzEnemies: QuartzEnemy[];
-  quartzSpikes: QuartzSpike[];
-  rubyEnemies: RubyEnemy[];
-  rubyBolts: RubyBolt[];
-  sunstoneEnemies: SunstoneEnemy[];
-  citrineEnemies: CitrineEnemy[];
-  citrineBolts: CitrineBolt[];
-  ioliteEnemies: IoliteEnemy[];
-  amethystEnemies: AmethystEnemy[];
-  amethystShards: AmethystShard[];
-  diamondEnemies: DiamondEnemy[];
-  diamondShards: DiamondShard[];
-  nullstoneEnemies: NullstoneEnemy[];
-  voidTendrils: VoidTendril[];
-  fracterylEnemies: FracterylEnemy[];
-  fracterylShards: FracterylShard[];
-  eigensteinEnemies: EigensteinEnemy[];
-  eliteEnemies: EliteEnemy[];
-  polyominoEnemies: PolyominoEnemy[];
-  fissilePolyominoEnemies: FissilePolyominoEnemy[];
-  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
-  binaryRingEnemies: BinaryRingEnemy[];
-  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
-  alivenGroups: AlivenParticleGroup[];
-  lifeColonies: import('./life-types').LifeColonyController[];
   // ── Procedural creature arrays ──────────────────────────────────────────────
-  dustWispEnemies: DustWispEnemy[];
-  ribbonWormEnemies: RibbonWormEnemy[];
-  lanternMothEnemies: LanternMothEnemy[];
-  eyeStalkEnemies: EyeStalkEnemy[];
-  jellyfishEnemies: JellyfishEnemy[];
-  eliteJellyfishEnemies: EliteJellyfishEnemy[];
-  clothGhostEnemies: ClothGhostEnemy[];
-  plantTurretEnemies: PlantTurretEnemy[];
-  gearInsectEnemies: GearInsectEnemy[];
-  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
-  moteSwarmEnemies: MoteSwarmEnemy[];
-  shadowHandEnemies: ShadowHandEnemy[];
-  sandFishEnemies: SandFishEnemy[];
-  quartzFishEnemies: QuartzFishEnemy[];
-  rubyFishEnemies: RubyFishEnemy[];
-  sunstoneFishEnemies: SunstoneFishEnemy[];
-  emeraldFishEnemies: EmeraldFishEnemy[];
-  sapphireFishEnemies: SapphireFishEnemy[];
-  amethystFishEnemies: AmethystFishEnemy[];
-  diamondFishEnemies: DiamondFishEnemy[];
-  plantProjectiles: PlantProjectile[];
   damageEnemy: (e: LaserEnemy, raw: number, pierce: number) => number;
   damageSapphireEnemy: (e: SapphireEnemy, raw: number, pierce: number, bypass: boolean) => number;
   damageMissile: (m: SapphireMissile, raw: number, pierce: number) => number;
@@ -157,9 +106,7 @@ export interface RpgTargetingCtx {
   verdurePlants: import('./terrain/rpg-verdure-growth').VerdurePlant[];
   /** Applies damage to a Verdure plant environmental hazard. */
   damageVerdurePlant: (plant: import('./terrain/rpg-verdure-growth').VerdurePlant, raw: number) => number;
-  nadirCubePointEnemies: NadirCubePointEnemy[];
   damageNadirCubePointEnemy: (e: NadirCubePointEnemy, raw: number, pierce: number) => number;
-  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
   damageHorizonPentagonReal: (g: import('./horizon-pentagon-types').HorizonPentagonGroup, raw: number, pierce: number) => number;
   damageHorizonMissile: (m: import('./horizon-pentagon-types').HorizonMissile, raw: number, pierce: number) => number;
   /** Returns the current topographic terrain state, or null if none is active. */

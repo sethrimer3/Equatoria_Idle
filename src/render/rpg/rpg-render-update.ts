@@ -135,6 +135,7 @@ import { tickPlayerStatuses } from '../../sim/rpg/player-status-effects';
 import { tickLensTier2DelayedEffects } from './lens-tier2-effects';
 import { tickLensTier3Effects } from './lens-tier3-effects';
 import { createTrueSurfaceElite, TRUE_SURFACE_ROTATION, updateTrueSurfaceElite } from './true-surface-elite';
+import type { RpgEncounterCollections } from './rpg-encounter-collections';
 
 // ── Enemy array bundle ────────────────────────────────────────────────────────
 
@@ -142,77 +143,8 @@ import { createTrueSurfaceElite, TRUE_SURFACE_ROTATION, updateTrueSurfaceElite }
  * All enemy and projectile arrays needed by a single update tick, bundled so
  * that RpgUpdateCtx doesn't need ~30 individual array fields.
  */
-export interface RpgEnemyUpdateArrays {
-  enemies: LaserEnemy[];
-  sapphireEnemies: SapphireEnemy[];
-  sapphireMissiles: SapphireMissile[];
-  emeraldEnemies: EmeraldEnemy[];
-  amberEnemies: AmberEnemy[];
-  amberShards: AmberShard[];
-  voidEnemies: VoidEnemy[];
-  quartzEnemies: QuartzEnemy[];
-  quartzSpikes: QuartzSpike[];
-  rubyEnemies: RubyEnemy[];
-  rubyBolts: RubyBolt[];
-  sunstoneEnemies: SunstoneEnemy[];
-  citrineEnemies: CitrineEnemy[];
-  citrineBolts: CitrineBolt[];
-  ioliteEnemies: IoliteEnemy[];
-  amethystEnemies: AmethystEnemy[];
-  amethystShards: AmethystShard[];
-  diamondEnemies: DiamondEnemy[];
-  diamondShards: DiamondShard[];
-  nullstoneEnemies: NullstoneEnemy[];
-  voidTendrils: VoidTendril[];
-  fracterylEnemies: FracterylEnemy[];
-  fracterylShards: FracterylShard[];
-  eigensteinEnemies: EigensteinEnemy[];
-  eigensteinBeams: EigensteinBeam[];
-  eliteEnemies: EliteEnemy[];
-  polyominoEnemies: PolyominoEnemy[];
-  fissilePolyominoEnemies: FissilePolyominoEnemy[];
-  refractorPolyominoEnemies: RefractorPolyominoEnemy[];
-  binaryRingEnemies: BinaryRingEnemy[];
-  binaryRingMissiles: BinaryRingMissile[];
-  nadirCubePointEnemies: NadirCubePointEnemy[];
-  nadirCubeMines: NadirCubeMine[];
-  nadirCubeTrailSegments: NadirCubeTrailSegment[];
-  nadirCubeTurretBolts: NadirCubeTurretBolt[];
-  nadirCubeLinkLasers: NadirCubeLinkLaser[];
-  stardustEnemies: import('./rpg-enemy-types').StardustEnemy[];
-  horizonPentagonGroups: import('./horizon-pentagon-types').HorizonPentagonGroup[];
-  alivenGroups: AlivenParticleGroup[];
-  lifeColonies: import('./life-types').LifeColonyController[];
+export interface RpgEnemyUpdateArrays extends RpgEncounterCollections {
   // ── Procedural creature arrays ──────────────────────────────────────────────
-  dustWispEnemies: DustWispEnemy[];
-  ribbonWormEnemies: RibbonWormEnemy[];
-  lanternMothEnemies: LanternMothEnemy[];
-  eyeStalkEnemies: EyeStalkEnemy[];
-  jellyfishEnemies: JellyfishEnemy[];
-  eliteJellyfishEnemies: import('./rpg-jellyfish-elite-types').EliteJellyfishEnemy[];
-  clothGhostEnemies: ClothGhostEnemy[];
-  plantTurretEnemies: PlantTurretEnemy[];
-  gearInsectEnemies: GearInsectEnemy[];
-  spiderCrawlerEnemies: SpiderCrawlerEnemy[];
-  moteSwarmEnemies: MoteSwarmEnemy[];
-  shadowHandEnemies: ShadowHandEnemy[];
-  sandFishEnemies: SandFishEnemy[];
-  quartzFishEnemies: QuartzFishEnemy[];
-  rubyFishEnemies: RubyFishEnemy[];
-  sunstoneFishEnemies: SunstoneFishEnemy[];
-  emeraldFishEnemies: EmeraldFishEnemy[];
-  sapphireFishEnemies: SapphireFishEnemy[];
-  amethystFishEnemies: AmethystFishEnemy[];
-  diamondFishEnemies: DiamondFishEnemy[];
-  plantProjectiles: PlantProjectile[];
-  fishMines: FishMine[];
-  fishSpikes: FishSpike[];
-  fishBolts: FishBolt[];
-  fishDecoys: FishDecoy[];
-  teleportParticles: TeleportParticle[];
-  bossProjectiles: BossProjectile[];
-  luckyMotes: LuckyMote[];
-  luckyMotePopups: LuckyMotePopup[];
 }
 
 // ── Update context interface ──────────────────────────────────────────────────
@@ -223,7 +155,7 @@ export interface RpgEnemyUpdateArrays {
  * variables are accessed through named getters / setters.
  */
 export interface RpgUpdateCtx {
-  arrays: RpgEnemyUpdateArrays;
+  collections: RpgEncounterCollections;
 
   // Mutable render-loop state
   getRpgPhase(): RpgPhase;
@@ -363,7 +295,7 @@ export function runRpgUpdate(ctx: RpgUpdateCtx, deltaMs: number, autoMoveEnabled
     ctx.checkWaveCompletion();
   }
 
-  const a = ctx.arrays;
+  const a = ctx.collections;
   updatePlayerMovement(ctx.movementCtx, ctx.playerMovementState, deltaMs);
   updateLaserEnemies(a.enemies, ctx.enemyCtx, deltaMs, nowMs);
   updateSapphireEnemies(a.sapphireEnemies, a.sapphireMissiles, ctx.enemyCtx, deltaMs);

@@ -11,6 +11,11 @@ import {
   createRpgEncounterCollections,
   type RpgEncounterCollections,
 } from '../rpg-encounter-collections';
+import type { RpgUpdateCtx } from '../rpg-render-update';
+import type { RpgDrawCtx } from '../rpg-render-draw';
+import type { RpgTargetingCtx } from '../rpg-targeting-types';
+import type { WaveManagerCtx } from '../rpg-wave-manager';
+import type { RpgDeathRestartCtx } from '../rpg-death-restart';
 
 type EncounterCollectionKey = keyof RpgEncounterCollections;
 
@@ -83,11 +88,20 @@ describe('RPG encounter reset profiles', () => {
     verifyExactProfile(clearForZoneSwitch, ZONE_SWITCH_CLEAR_KEYS);
   });
 
-  it('characterizes the pre-refactor normal-restart membership', () => {
+  it('uses the corrected exact normal-restart membership', () => {
     verifyExactProfile(
       (collections) => clearForDeathRestart(collections, 'normal'),
       NORMAL_DEATH_RESTART_CLEAR_KEYS,
     );
+  });
+
+  it('clears stale Stardust enemies on a normal death/restart', () => {
+    const collections = createRpgEncounterCollections();
+    collections.stardustEnemies.push({ hp: 1 } as never);
+
+    clearForDeathRestart(collections, 'normal');
+
+    expect(collections.stardustEnemies).toEqual([]);
   });
 
   it('characterizes the effective boss-restart membership', () => {
@@ -119,5 +133,41 @@ describe('RPG encounter reset profiles', () => {
     expect(collections.bossProjectiles).toBe(references.bossProjectiles);
     expect(collections.luckyMotes).toBe(references.luckyMotes);
     expect(collections.hitEffects).toBe(references.hitEffects);
+  });
+});
+
+describe('RPG encounter context wiring', () => {
+  it('keeps update, draw, targeting, wave, and restart consumers on the same references', () => {
+    const collections = createRpgEncounterCollections();
+    const update: Pick<RpgUpdateCtx, 'collections'> = { collections };
+    const draw: Pick<RpgDrawCtx, 'collections' | 'enemies'> = {
+      collections,
+      enemies: collections.enemies,
+    };
+    const targeting: Pick<RpgTargetingCtx, 'collections' | 'enemies'> = {
+      collections,
+      enemies: collections.enemies,
+    };
+    const wave: Pick<WaveManagerCtx, 'collections' | 'enemies'> = {
+      collections,
+      enemies: collections.enemies,
+    };
+    const restart: Pick<RpgDeathRestartCtx, 'collections'> = { collections };
+
+    expect(update.collections).toBe(collections);
+    expect(draw.collections).toBe(collections);
+    expect(targeting.collections).toBe(collections);
+    expect(wave.collections).toBe(collections);
+    expect(restart.collections).toBe(collections);
+    expect(draw.enemies).toBe(collections.enemies);
+    expect(targeting.enemies).toBe(collections.enemies);
+    expect(wave.enemies).toBe(collections.enemies);
+
+    collections.enemies.push({ hp: 1 } as never);
+    clearForZoneSwitch(collections);
+
+    expect(draw.enemies).toEqual([]);
+    expect(targeting.enemies).toEqual([]);
+    expect(wave.enemies).toEqual([]);
   });
 });
